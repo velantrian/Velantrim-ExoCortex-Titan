@@ -1,0 +1,63 @@
+# Данные (не коммитить!)
+data/*.db
+data/*.sqlite
+data/*.jsonl
+data/*.kuzu
+data/*.lbug
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite-shm
+*.sqlite-wal
+
+# Окружение
+.env
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Тесты
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Сборка
+dist/
+build/
+*.egg-info/
+
+# Логи и временные артефакты прогонов (не коммитить — устаревают)
+logs/
+*.log
+tmp_*
+*-last.txt
+*_last.txt
+pytest-full-last.txt
+test_run_last.txt
+
+# Бинарники, тулчейн, архивы (не место в репозитории)
+*.exe
+*.zip
+*.7z
+.tools/
+
+# Резервные копии БД
+data/backups/
+
+# Claude transient worktrees (do not ignore the whole .claude folder)
+.claude/worktrees/
+
+# macOS
+.DS_Store

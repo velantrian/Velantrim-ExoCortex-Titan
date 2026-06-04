@@ -1,0 +1,50 @@
+# BATCH_126 — Metrology, Tolerance & QC Detail
+# world_skills_core · source: world_skills_core:batch_126:metrology_tolerance_qc_detail
+# KnowledgeUnits: 44
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|----|---------------|-----|------|--------------------|
+| metrod.msa.gage_rr | Gage R&R | invariant | Gage R&R оценивает, какая доля вариации измерения возникает от прибора и оператора, а не от самой детали. | проверка системы измерений |
+| metrod.msa.repeatability | Repeatability in MSA | invariant | Повторяемость измерения показывает разброс результатов, когда один оператор измеряет один объект одним прибором. | отделить шум прибора |
+| metrod.msa.reproducibility | Reproducibility in MSA | invariant | Воспроизводимость измерения показывает разброс между операторами, приборами или условиями при измерении одного объекта. | отделить влияние человека |
+| metrod.msa.bias_study | Measurement bias study | invariant | Bias study сравнивает среднее показание системы измерений с эталонным значением, чтобы обнаружить систематическое смещение. | не путать точность с стабильностью |
+| metrod.msa.linearity_study | Measurement linearity | invariant | Linearity study проверяет, меняется ли смещение измерительной системы по диапазону измерений. | прибор может быть точен не везде |
+| metrod.msa.stability_study | Measurement stability | invariant | Stability study отслеживает измерительную систему во времени, чтобы увидеть дрейф показаний при неизменном эталоне. | планировать калибровку |
+| metrod.uncertainty.type_a | Type A uncertainty | invariant | Неопределенность типа A оценивается статистически по серии повторных наблюдений. | числить случайный разброс |
+| metrod.uncertainty.type_b | Type B uncertainty | invariant | Неопределенность типа B оценивается из сертификатов, спецификаций, опыта или справочных данных. | учитывать несерийные источники |
+| metrod.uncertainty.budget | Uncertainty budget | invariant | Бюджет неопределенности перечисляет источники вклада, их распределения, коэффициенты чувствительности и общий результат. | прозрачный отчет измерения |
+| metrod.uncertainty.expanded | Expanded uncertainty | invariant | Расширенная неопределенность умножает стандартную неопределенность на коэффициент покрытия для заданного уровня доверия. | понятный интервал результата |
+| metrod.uncertainty.guard_band | Guard banding | variant | Guard banding сужает область приемки, чтобы снизить риск принять изделие около границы допуска из-за неопределенности. | решение pass/fail с риском |
+| metrod.calibration.as_found_as_left | As-found and as-left | invariant | Калибровочный отчет as-found показывает состояние до регулировки, а as-left показывает состояние после регулировки. | понять риск прошлых измерений |
+| metrod.calibration.interval_risk | Calibration interval risk | variant | Интервал калибровки выбирают по стабильности прибора, критичности измерений, истории дрейфа и условиям использования. | не только календарь |
+| metrod.calibration.out_of_tolerance | Out-of-tolerance impact | invariant | Когда прибор найден вне допуска, нужно оценить, какие прошлые измерения могли быть затронуты. | защита качества партии |
+| metrod.calibration.traceability_chain | Traceability chain detail | invariant | Прослеживаемость измерения требует непрерывной документированной цепочки сравнений к признанным эталонам. | доверие к результату |
+| metrod.environment.temperature_control | Measurement temperature control | variant | Температура влияет на размеры и показания, поэтому точные измерения требуют контролируемой или компенсированной температуры. | избегать тепловой ошибки |
+| metrod.environment.thermal_soak | Thermal soak | variant | Thermal soak даёт детали и прибору время выровнять температуру перед точным измерением. | стабильность размера |
+| metrod.environment.clean_surface | Clean measurement surface | invariant | Загрязнение, заусенцы и пленки на поверхности могут создать измерительную ошибку больше заявленного разрешения прибора. | подготовка детали |
+| metrod.instrument.resolution_limit | Instrument resolution limit | invariant | Разрешение прибора задаёт минимальный шаг отображения, но не равно полной точности измерения. | не переоценивать цифры |
+| metrod.instrument.range_selection | Instrument range selection | variant | Выбор диапазона прибора влияет на разрешение, погрешность и риск перегрузки измерительной системы. | правильная настройка |
+| metrod.instrument.contact_force | Contact measurement force | variant | Сила контакта щупа может деформировать мягкую деталь или изменить положение измеряемой поверхности. | аккуратность измерения |
+| metrod.instrument.cosine_error | Cosine error | invariant | Cosine error возникает, когда измерительная ось не совпадает с направлением измеряемого перемещения. | выравнивание прибора |
+| metrod.gdandt.datum_feature | Datum feature | invariant | Datum feature — реальная поверхность или элемент детали, от которого строят базу измерения и ориентации. | основа GD&T контроля |
+| metrod.gdandt.datum_reference_frame | Datum reference frame | invariant | Datum reference frame задаёт координатную систему, относительно которой оценивают геометрические отклонения детали. | единый язык чертежа |
+| metrod.gdandt.true_position | True position | invariant | Допуск true position ограничивает допустимое отклонение фактического положения элемента от теоретически точного положения. | контроль отверстий и штифтов |
+| metrod.gdandt.profile_tolerance | Profile tolerance | invariant | Profile tolerance ограничивает отклонение поверхности или линии от заданной теоретической формы. | контроль сложных контуров |
+| metrod.gdandt.flatness | Flatness tolerance | invariant | Допуск плоскостности ограничивает отклонение поверхности от идеальной плоскости без привязки к datum. | контакт и уплотнение |
+| metrod.gdandt.perpendicularity | Perpendicularity tolerance | invariant | Допуск перпендикулярности ограничивает отклонение элемента от угла 90 градусов относительно выбранной базы. | сборка и посадка |
+| metrod.gdandt.runout | Runout tolerance | invariant | Runout tolerance оценивает изменение поверхности при вращении детали вокруг базовой оси. | контроль валов и дисков |
+| metrod.tolerance.stackup | Tolerance stack-up | invariant | Tolerance stack-up суммирует влияния допусков нескольких размеров на критический зазор или положение сборки. | предсказать сборку |
+| metrod.tolerance.worst_case | Worst-case tolerance | variant | Worst-case анализ предполагает одновременное худшее сочетание размеров и даёт консервативную оценку сборки. | безопасно, но дорого |
+| metrod.tolerance.rss_method | RSS tolerance method | variant | RSS-анализ складывает независимые вариации квадратично и обычно даёт менее консервативный результат, чем worst-case. | статистический подход |
+| metrod.tolerance.clearance_fit | Clearance fit | invariant | Посадка с зазором гарантирует пространство между валом и отверстием в заданных пределах размеров. | свободное движение |
+| metrod.tolerance.interference_fit | Interference fit | invariant | Посадка с натягом делает вал больше отверстия в расчетном диапазоне и создаёт удержание за счет упругой деформации. | прессовая сборка |
+| metrod.tolerance.transition_fit | Transition fit | variant | Переходная посадка может дать небольшой зазор или небольшой натяг в зависимости от фактических размеров деталей. | точная сборка |
+| metrod.surface.ra_limit | Ra roughness parameter | invariant | Ra показывает среднее арифметическое отклонение профиля шероховатости, но не описывает форму пиков и впадин полностью. | не единственный параметр поверхности |
+| metrod.surface.rz_parameter | Rz roughness parameter | invariant | Rz описывает высоту профиля по нескольким пикам и впадинам и может выявлять грубость, скрытую средним Ra. | контроль функциональной поверхности |
+| metrod.surface.lay_direction | Surface lay direction | variant | Направление рисок поверхности влияет на трение, удержание смазки, герметичность и видимый след обработки. | учитывать процесс обработки |
+| metrod.qc.control_plan | Control plan | invariant | Control plan связывает критические характеристики, метод измерения, частоту контроля, реакцию на отклонение и ответственного. | операционный контроль качества |
+| metrod.qc.sampling_plan | Sampling plan | variant | План выборочного контроля задаёт размер выборки и критерий приемки, балансируя риск производителя и риск потребителя. | контроль партии |
+| metrod.qc.first_article | First article inspection | variant | First article inspection проверяет первую изготовленную деталь или партию на соответствие чертежу и процессу. | запуск производства |
+| metrod.qc.control_chart | Control chart | invariant | Контрольная карта отличает обычную вариацию процесса от специальных причин по статистическим границам. | раннее обнаружение сдвига |
+| metrod.qc.reaction_plan | Reaction plan | invariant | Reaction plan описывает, что делать при выходе характеристики за пределы контроля или спецификации. | не импровизировать при браке |
+| metrod.qc.master_sample | Master sample | variant | Master sample служит согласованным физическим эталоном внешнего вида, цвета, текстуры или сборочного качества. | согласование субъективных признаков |

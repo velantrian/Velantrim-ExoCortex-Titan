@@ -1,0 +1,48 @@
+# Velantrim Exo-Cortex V8.7 Titan — docker-compose.yml
+# Запуск: docker-compose up -d
+# Остановка: docker-compose down
+
+version: "3.9"
+
+services:
+  velantrim:
+    build: .
+    container_name: velantrim-v8.7
+    ports:
+      - "8000:8000"
+    environment:
+      - VELANTRIM_API_KEY=${VELANTRIM_API_KEY:-dev-key-change-me}
+      - STORAGE_BACKEND=${STORAGE_BACKEND:-sqlite}
+      - VELANTRIM_DB_PATH=/app/data/velantrim.db
+      - VELANTRIM_NGRAM_DB=/app/data/ngram.db
+      - KUZU_DB_PATH=/app/data/exocortex.kuzu
+      - LADYBUG_DB_PATH=/app/data/exocortex.lbug
+      - LLM_PROVIDER=${LLM_PROVIDER:-none}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # V8.7 новые флаги
+      - VELANTRIM_ASYNC_DB=1
+      - VELANTRIM_LEMMATIZE_RU=1
+      - ENABLE_PROMETHEUS_METRICS=1
+      # Опциональные слои (выключены по умолчанию)
+      - ENABLE_CONCEPT_EMERGENCE=1
+      - ENABLE_WORKING_NOTEBOOK=1
+      - ENABLE_CAUSAL_GRAPH=1
+      - ENABLE_EVENT_BUS=1
+      - ENABLE_COGNITIVE_RUNTIME=1
+      - ENABLE_VELUM=1
+      - ENABLE_GRAPH_LAB=1
+      - ENABLE_ESSENCE=1
+    volumes:
+      - velantrim_data:/app/data
+      - ./docs:/app/docs:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  velantrim_data:
+    driver: local

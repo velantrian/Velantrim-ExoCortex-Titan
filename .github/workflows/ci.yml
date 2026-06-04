@@ -1,0 +1,45 @@
+name: CI — Velantrim V8.7 Titan
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev,parsers,retrieval,embeddings]"
+
+      - name: Ruff check (lint)
+        run: ruff check core/ --output-format=github
+
+      - name: Mypy check (type safety · BLOCKING)
+        run: mypy core/ --show-error-codes
+
+      - name: Pytest
+        run: python -m pytest tests/ -v --tb=short --timeout=300 -x
+        continue-on-error: false
+        env:
+          PYTHONUNBUFFERED: 1
+          VELANTRIM_DB_PATH: ":memory:"
+          VELANTRIM_NGRAM_DB: ":memory:"

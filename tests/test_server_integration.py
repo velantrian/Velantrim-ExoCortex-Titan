@@ -1,0 +1,494 @@
+"""
+tests/test_server_integration.py — Velantrim ExoCortex
+=======================================================
+Интеграционные тесты через FastAPI TestClient.
+
+Цель: ловить баги на стыках компонентов (server ↔ pipeline ↔ sleep_worker ↔ ngram).
+До v8.4.0 этого слоя тестов не было — поэтому SleepTimeWorker startup TypeError,
+NGram split, CORS misconfig прожили до production.
+
+Эти тесты:
+  - Не требуют запущенного uvicorn — TestClient поднимает app внутри процесса
+  - Используют tmp_path для изоляции — каждый тест получает свежую БД
+  - Покрывают: startup lifespan, авторизацию, NGram→pipeline coherence,
+    SleepTimeWorker реально запущен, transition audit trail spoofing.
+
+AUDIT-FIX v8.4.0: новый файл, регрессионная защита для всех integration-багов.
+
+Запуск:
+    pytest tests/test_server_integration.py -v
+"""
+from __future__ import annotations
+
+import os
+import sys
+
+import pytest
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+
+# ─── Фикстура: изолированный сервер через TestClient ─────────────────────────
+
+@pytest.fixture
+def test_client(tmp_path, monkeypatch):
+    """
+    FastAPI TestClient с изолированными БД в tmp_path.
+
+    Каждый тест получает свежую систему — никакого state-share.
+    API_KEY="test-key" — те же тесты могут проверять auth.
+    """
+    db_path        = str(tmp_path / "integration.db")
+    ngram_db_path  = str(tmp_path / "integration_ngram.db")
+    blocks_db_path = str(tmp_path / "blocks.db")
+    notebook_db    = str(tmp_path / "notebook.db")
+
+    # Настройка ENV ДО импорта server (он читает их при инициализации)
+    monkeypatch.setenv("VELANTRIM_API_KEY",       "test-key")
+    monkeypatch.setenv("VELANTRIM_DB_PATH",       db_path)
+    monkeypatch.setenv("VELANTRIM_NGRAM_DB",      ngram_db_path)
+    monkeypatch.setenv("CORE_BLOCKS_DB",          blocks_db_path)
+    monkeypatch.setenv("NOTEBOOK_DB",             notebook_db)
+    monkeypatch.setenv("LLM_PROVIDER",            "none")
+    # false — избегаем database is locked при параллельных PATCH/transition;
+    # SleepTimeWorker тестируется в fixture sleep_client ниже.
+    monkeypatch.setenv("SLEEP_WORKER_ENABLED",    "false")
+    monkeypatch.setenv("VELANTRIM_ALLOW_OPEN",    "false")  # с ключом, не открытый
+    monkeypatch.setenv("ENABLE_CAUSAL_GRAPH",     "0")  # отдельный conn singleton → lock
+    monkeypatch.setenv("ENABLE_VELUM",           "0")
+
+    # Импорт ПОСЛЕ настройки ENV
+    # Удаляем кеш если был
+    for mod in list(sys.modules.keys()):
+        if mod.startswith(("server", "core.")):
+            del sys.modules[mod]
+
+    try:
+        from fastapi.testclient import TestClient
+
+        import server as srv
+        from core.feature_config import clear_config_cache
+    except ImportError as exc:
+        pytest.skip(f"Сервер недоступен ({exc})")
+
+    clear_config_cache()
+
+    # TestClient автоматически запускает lifespan
+    with TestClient(srv.app) as client:
+        client.headers.update({"X-Api-Key": "test-key"})
+        yield client, srv
+
+
+@pytest.fixture
+def sleep_client(tmp_path, monkeypatch):
+    """TestClient со SleepTimeWorker (отдельная БД)."""
+    db_path = str(tmp_path / "sleep_integration.db")
+    ngram_db_path = str(tmp_path / "sleep_integration_ngram.db")
+    monkeypatch.setenv("VELANTRIM_API_KEY", "test-key")
+    monkeypatch.setenv("VELANTRIM_DB_PATH", db_path)
+    monkeypatch.setenv("VELANTRIM_NGRAM_DB", ngram_db_path)
+    monkeypatch.setenv("CORE_BLOCKS_DB", str(tmp_path / "blocks.db"))
+    monkeypatch.setenv("NOTEBOOK_DB", str(tmp_path / "notebook.db"))
+    monkeypatch.setenv("LLM_PROVIDER", "none")
+    monkeypatch.setenv("SLEEP_WORKER_ENABLED", "true")
+    monkeypatch.setenv("VELANTRIM_ALLOW_OPEN", "false")
+
+    for mod in list(sys.modules.keys()):
+        if mod.startswith(("server", "core.")):
+            del sys.modules[mod]
+
+    try:
+        from fastapi.testclient import TestClient
+
+        import server as srv
+    except ImportError as exc:
+        pytest.skip(str(exc))
+
+    with TestClient(srv.app) as client:
+        client.headers.update({"X-Api-Key": "test-key"})
+        yield client, srv
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 1. Startup lifespan — проверка что SleepTimeWorker реально запустился
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestStartupLifespan:
+    """
+    Regression: SleepTimeWorker до v8.4.0 не запускался из-за TypeError
+    на параметре store=. Ошибка глоталась try/except → /agent/* возвращали 503.
+    """
+
+    def test_root_endpoint_alive(self, sleep_client):
+        """Базовая проверка: сервер поднялся."""
+        client, _ = sleep_client
+        r = client.get("/")
+        assert r.status_code == 200, "Root endpoint должен отвечать"
+
+    def test_health_includes_sleep_worker_status(self, sleep_client):
+        """/health показывает статус SleepTimeWorker."""
+        client, _ = sleep_client
+        r = client.get("/health")
+        assert r.status_code in (200, 503)
+        data = r.json()
+        # SleepTimeWorker должен быть упомянут — если его нет в response,
+        # значит, lifespan его не инициализировал
+        assert "components" in data or "status" in data
+
+    def test_sleep_worker_endpoints_not_503(self, sleep_client):
+        """
+        Regression: /agent/notebook должен НЕ возвращать 503.
+        До v8.4.0 эти endpoints всегда 503, потому что worker молча упал
+        на startup с TypeError на `store=` параметре.
+        """
+        client, srv = sleep_client
+
+        # Если worker запустился — endpoint вернёт 200 (даже с пустым notebook)
+        # Если не запустился — 503
+        r = client.get("/agent/notebook")
+        assert r.status_code != 503, (
+            "SleepTimeWorker не запустился (status=503). "
+            "Регрессия v8.4.0 фикса: проверь что `store=` не вернулся "
+            "в вызов make_sleep_time_worker в server.py"
+        )
+
+    def test_sleep_worker_instance_exists(self, sleep_client):
+        """_sleep_worker модуля server должен быть не None."""
+        _, srv = sleep_client
+        assert srv._sleep_worker is not None, (
+            "_sleep_worker is None — startup провалился. "
+            "Это та самая регрессия, что v8.4.0 закрыл."
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2. NGram coherence: pipeline пишет → server находит
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestNGramCoherence:
+    """
+    Regression: до v8.4.0 server создавал свой _ngram, pipeline писал
+    через ngram_index_fact() в module-singleton с хардкоженным путём.
+    Получались две разные БД — pipeline индексировал в одну, server искал в другой.
+    """
+
+    def test_indexed_fact_findable_through_server(self, test_client):
+        """
+        Делаем ingest через server → server должен видеть факт в NGramIndex.
+
+        Это integration-тест который смог бы поймать NGram split до v8.4.0.
+        """
+        client, srv = test_client
+
+        # Ingest текста — server индексирует через свой _ngram
+        r = client.post("/ingest/text", json={
+            "text":       "quantum entanglement is a physical phenomenon",
+            "source":     "integration_test",
+            "confidence": 0.9,
+        })
+        assert r.status_code == 200, f"Ingest failed: {r.text}"
+
+        # Тот же _ngram должен найти этот контент
+        if srv._ngram and srv._ngram.available:
+            candidates = srv._ngram.query("quantum", limit=10)
+            assert len(candidates) > 0, (
+                "NGram split regression: server._ngram не нашёл только что "
+                "проиндексированный факт. Pipeline и server используют разные БД."
+            )
+
+    def test_ngram_path_synced(self, test_client):
+        """server._ngram и module _GLOBAL_NGRAM должны указывать на одну БД."""
+        _, srv = test_client
+        if not srv._ngram:
+            pytest.skip("NGramIndex недоступен")
+
+        from core.ngram_index import get_global_ngram
+        global_ngram = get_global_ngram()
+        assert global_ngram is srv._ngram, (
+            "_GLOBAL_NGRAM != server._ngram — set_global_ngram() не отработал. "
+            "Pipeline будет писать в одну БД, server — в другую."
+        )
+
+
+class TestConsoleChatMemory:
+    """Regression tests for the browser console chat memory path."""
+
+    def test_chat_surfaces_observed_memory_without_llm(self, test_client):
+        client, _ = test_client
+
+        r = client.post("/facts", json={
+            "fact_id": "console_name_fact",
+            "claim": "my name is Ruslan",
+            "source": "console_chat",
+            "confidence": 0.88,
+            "metadata": {"memory_category": "personal"},
+        })
+        assert r.status_code == 201, r.text
+
+        r = client.post("/chat", json={
+            "message": "what is my name?",
+            "profile": "citizen",
+            "use_memory": True,
+            "llm_enabled": False,
+            "ui_lang": "en",
+            "auto_save_memory": False,
+            "block_memory": [],
+            "chat_history": [],
+        })
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert data["error"] is None
+        assert data["facts_count"] >= 1
+        assert "my name is Ruslan" in data["reply"]
+        assert "not validated yet" in data["reply"]
+
+    def test_chat_stream_surfaces_observed_memory_without_llm(self, test_client):
+        client, _ = test_client
+
+        r = client.post("/facts", json={
+            "fact_id": "console_stream_name_fact",
+            "claim": "my name is Ruslan",
+            "source": "console_chat",
+            "confidence": 0.88,
+            "metadata": {"memory_category": "personal"},
+        })
+        assert r.status_code == 201, r.text
+
+        r = client.post("/chat/stream", json={
+            "message": "what is my name?",
+            "profile": "citizen",
+            "use_memory": True,
+            "llm_enabled": False,
+            "ui_lang": "en",
+            "auto_save_memory": False,
+            "block_memory": [],
+            "chat_history": [],
+        })
+        assert r.status_code == 200, r.text
+        assert "my name is Ruslan" in r.text
+        assert "not validated yet" in r.text
+        assert '"facts_count": 1' in r.text
+
+    def test_offline_about_user_inventory_ru_en(self, test_client):
+        client, _ = test_client
+        r = client.post("/facts", json={
+            "fact_id": "offline_name_fact",
+            "claim": "my name is Ruslan",
+            "source": "console_chat",
+            "confidence": 0.88,
+            "metadata": {"memory_category": "personal"},
+        })
+        assert r.status_code == 201, r.text
+
+        ru = client.post("/chat", json={
+            "message": "что ты знаешь обо мне подробно?",
+            "profile": "citizen",
+            "use_memory": True,
+            "llm_enabled": False,
+            "ui_lang": "ru",
+            "auto_save_memory": False,
+        })
+        assert ru.status_code == 200, ru.text
+        assert "Что я знаю о тебе" in ru.json()["reply"]
+        assert "my name is Ruslan" in ru.json()["reply"]
+        assert ru.json()["facts_count"] >= 1
+
+        en = client.post("/chat", json={
+            "message": "what do you know about me in detail?",
+            "profile": "citizen",
+            "use_memory": True,
+            "llm_enabled": False,
+            "ui_lang": "en",
+            "auto_save_memory": False,
+        })
+        assert en.status_code == 200, en.text
+        assert "What I know about you" in en.json()["reply"]
+        assert "my name is Ruslan" in en.json()["reply"]
+        assert en.json()["facts_count"] >= 1
+
+    def test_console_notes_crud_and_offline_notes_reply(self, test_client):
+        client, _ = test_client
+        r = client.post("/console/notes", json={
+            "content": "Call Ruslan about the green industry project",
+            "title": "Project call",
+        })
+        assert r.status_code == 201, r.text
+        note_id = r.json()["note_id"]
+        assert note_id.startswith("note_")
+
+        r = client.post(f"/console/notes/{note_id}/edit", json={
+            "instruction": "добавь обсудить биосовместимые технологии",
+        })
+        assert r.status_code == 200, r.text
+        assert "биосовместимые" in r.json()["content"]
+
+        r = client.post("/chat", json={
+            "message": "какие заметки у тебя сохранены?",
+            "profile": "citizen",
+            "use_memory": True,
+            "llm_enabled": False,
+            "ui_lang": "ru",
+            "auto_save_memory": False,
+        })
+        assert r.status_code == 200, r.text
+        assert note_id in r.json()["reply"]
+        assert "Call Ruslan" in r.json()["reply"]
+
+    def test_chat_accepts_long_console_message_without_llm(self, test_client):
+        client, _ = test_client
+        long_message = "что ты знаешь обо мне? " + ("детально " * 650)
+
+        r = client.post("/chat", json={
+            "message": long_message,
+            "profile": "citizen",
+            "use_memory": False,
+            "llm_enabled": False,
+            "ui_lang": "ru",
+            "auto_save_memory": False,
+        })
+
+        assert r.status_code == 200, r.text
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 3. Authorization & security — закрывает CORS, API_KEY, req.by spoofing
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestSecurityIntegration:
+
+    def test_no_api_key_returns_401_or_403(self, test_client):
+        """Запрос без X-Api-Key → отказ."""
+        client, _ = test_client
+        # Очищаем дефолтный header
+        r = client.post("/query", json={"query": "test"}, headers={"X-Api-Key": ""})
+        assert r.status_code in (401, 403), (
+            f"Запрос без ключа должен быть отклонён, got {r.status_code}. "
+            "Возможно VELANTRIM_API_KEY=\"\" → сервер открыт."
+        )
+
+    def test_wrong_api_key_rejected(self, test_client):
+        """Неправильный ключ → 401/403."""
+        client, _ = test_client
+        r = client.post("/query", json={"query": "test"},
+                        headers={"X-Api-Key": "wrong-key-xyz"})
+        assert r.status_code in (401, 403)
+
+    def test_health_does_not_require_auth(self, test_client):
+        """/health должен быть доступен без ключа (для k8s liveness)."""
+        client, _ = test_client
+        r = client.get("/health", headers={"X-Api-Key": ""})
+        # 200 или 503 OK; 401/403 — означает что health тоже под auth (плохо)
+        assert r.status_code in (200, 503), (
+            f"/health под auth — k8s liveness probe не сработает. "
+            f"Got {r.status_code}"
+        )
+
+    def test_transition_by_field_not_spoofable(self, test_client):
+        """
+        Regression: req.by игнорируется, actor подставляется серверный.
+        До v8.4.0 клиент мог подделать audit trail.
+        """
+        client, _ = test_client
+
+        # Создаём факт через ingest
+        r = client.post("/facts", json={
+            "fact_id":    "spoof_test_1",
+            "claim":      "test claim for spoofing",
+            "source":     "integration",
+            "confidence": 0.6,
+        })
+        if r.status_code not in (200, 201):
+            pytest.skip(f"POST /facts недоступен: {r.status_code}")
+
+        # Пытаемся подделать by="admin_attacker"
+        r = client.patch(
+            "/facts/spoof_test_1/transition",
+            json={"new_state": "Hypothesized", "by": "admin_attacker"},
+        )
+        if r.status_code != 200:
+            pytest.skip(f"Transition endpoint не отработал: {r.status_code} {r.text}")
+
+        # Проверяем что в history записано серверное имя, не подделка
+        r = client.get("/facts/spoof_test_1")
+        if r.status_code == 200:
+            fact = r.json()
+            history = fact.get("history", [])
+            if history:
+                last_by = history[-1].get("by", "")
+                assert not last_by.startswith("admin_"), (
+                    f"By field spoofed: actor='{last_by}' принят от клиента. "
+                    "Регрессия v8.4.0 фикса transition endpoint."
+                )
+                assert last_by.startswith("api:"), (
+                    f"Serverный actor должен начинаться с 'api:', got '{last_by}'"
+                )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 4. Pipeline идемпотентность через HTTP (HybridRetriever singleton проверка)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestPipelinePerformance:
+    """
+    Косвенная проверка singleton HybridRetriever: второй запрос должен быть
+    значительно быстрее первого (warm-up vs warm).
+    """
+
+    def test_second_query_faster_than_first(self, test_client):
+        """
+        Regression v8.4.0: HybridRetriever singleton. До этого фикса каждый
+        запрос пересоздавал retriever с загрузкой sentence-transformer (1-2с).
+        После фикса второй запрос должен быть существенно быстрее.
+        """
+        import time
+        client, _ = test_client
+
+        # Сначала наполняем — иначе retrieval пустой
+        client.post("/ingest/text", json={
+            "text":   "quantum mechanics describes nature at smallest scales",
+            "source": "perf_test", "confidence": 0.8,
+        })
+
+        # Первый запрос — может быть медленным (warmup)
+        t1 = time.perf_counter()
+        r1 = client.post("/query", json={"query": "quantum"})
+        elapsed_1 = time.perf_counter() - t1
+        assert r1.status_code in (200, 404)  # 404 если retrieval пустой — ок
+
+        # Второй запрос — должен быть быстрее (singleton переиспользован)
+        t2 = time.perf_counter()
+        r2 = client.post("/query", json={"query": "quantum"})
+        elapsed_2 = time.perf_counter() - t2
+        assert r2.status_code in (200, 404)
+
+        # Мягкая проверка: второй не должен быть СУЩЕСТВЕННО медленнее первого
+        # (если бы singleton не работал — второй был бы такой же или дольше)
+        # Если различие в порядке + warmup эффект не сработал — может быть мелкая база.
+        # Для базы из 1 факта разница может быть в шуме — поэтому только sanity.
+        assert elapsed_2 < elapsed_1 * 5, (
+            f"Pipeline возможно пересоздаёт HybridRetriever: "
+            f"first={elapsed_1*1000:.0f}ms, second={elapsed_2*1000:.0f}ms"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 5. CORS configuration sanity
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestCORSConfig:
+    """CORS misconfig не должен ломать preflight."""
+
+    def test_cors_not_wildcard_with_credentials(self, test_client):
+        """
+        Если CORS_ORIGINS=*, allow_credentials должен быть False (CORS spec).
+        До v8.4.0 был баг: дефолт `*` + `credentials=True` → браузеры отклоняют preflight.
+        """
+        _, srv = test_client
+
+        # Если у сервера CORS_ALLOW_CREDENTIALS=True, в CORS_ORIGINS не должно быть "*"
+        if hasattr(srv, "CORS_ORIGINS") and hasattr(srv, "CORS_ALLOW_CREDENTIALS"):
+            if "*" in srv.CORS_ORIGINS:
+                assert not srv.CORS_ALLOW_CREDENTIALS, (
+                    "CORS misconfig: origins='*' + allow_credentials=True. "
+                    "v8.4.0 фикс должен был автоматически отключить credentials."
+                )

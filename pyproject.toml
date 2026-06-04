@@ -1,0 +1,130 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "velantrim-v8-6-complex"
+version = "8.6.0"
+description = "VELANTRIM V8.6 Complex — long-term memory for AI agents with L6 welfare MVP"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Velantrian" }]
+
+# Ядро работает на stdlib (sqlite3, collections, math, hashlib).
+# Внешние зависимости нужны только для опциональных фич.
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["core*", "api*"]
+exclude = ["tests*", "scripts*", ".venv*"]
+
+[project.optional-dependencies]
+
+# Парсеры для FileIngester (RFC0063, 20+ форматов)
+parsers = [
+    "pypdf2>=3.0",
+    "python-docx>=1.0",
+    "openpyxl>=3.1",
+    "pyyaml>=6.0",
+    "pillow>=10.0",
+    # blake3 — если нет, автоматический fallback на sha256 с WARNING
+    "blake3>=0.4.1; platform_python_implementation == 'CPython'",
+]
+
+# LadybugDB — встроенный L3-граф (STORAGE_BACKEND=ladybug). Форк Kuzu, API-совместим;
+# Kùzu Inc. заархивировала Kuzu в октябре 2025, LadybugDB поддерживается.
+graph-embedded = [
+    "ladybug>=0.17",
+]
+
+# NetworkX Graph-Analysis Lab (read-only structural analytics over the causal graph)
+graph-lab = [
+    "networkx>=3",
+]
+
+# Embeddings для EmbeddingRegistry и будущего HybridRetriever
+embeddings = [
+    "sentence-transformers>=3.0",
+    "numpy>=1.26",
+]
+
+# Audio transcription для FileIngester
+audio = [
+    "openai-whisper>=20231117",
+]
+
+# Sprint 2a: HybridRetriever
+retrieval = [
+    "rank-bm25>=0.2.2",
+    "sentence-transformers>=3.0",
+    "numpy>=1.26",
+]
+
+# Sprint 2c: async + Neo4j
+async-backend = [
+    "aiosqlite>=0.19",
+    # ВАЖНО: НЕ использовать aioredis — deprecated, не работает на Python 3.11+
+    # Использовать redis.asyncio из официального пакета:
+    "redis>=4.6.0",          # redis.asyncio встроен с 4.2.0+
+    "graphiti-core>=0.3.0",  # bi-temporal L3 граф (MIT)
+]
+
+# Dev-инструменты
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0",
+    "mypy>=1.10",
+    "ruff>=0.4",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short --cov=core --cov-report=term-missing"
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["core"]  # FIX v8.5.1: unified import path
+omit = [
+    "tests/*",
+    "scripts/*",
+    "**/migrations/*",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+
+[tool.mypy]
+python_version = "3.11"
+# Enforced gate (триаж июнь 2026): strict (ВКЛЮЧАЯ strict-optional/None-safety) МИНУС
+# долг аннотаций → ловит класс реальных багов (attr-defined/arg-type/union-attr/None-safety),
+# без шума отсутствующих аннотаций. `mypy core` = 0, в CI BLOCKING.
+strict = true
+follow_imports = "silent"
+ignore_missing_imports = true
+disable_error_code = [
+    "type-arg", "no-untyped-def", "no-untyped-call",
+    "no-any-return", "annotation-unchecked", "unused-ignore",
+]
+exclude = ["scripts/", "tests/"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP"]
+ignore = [
+    "E501",   # длина строки (длинные строки/URL — намеренно)
+    "E402",   # import-not-at-top: ленивые/условные импорты
+    "N806",   # uppercase-locals
+    "UP042",  # str-enum: class X(str, Enum) намеренно
+    "E741",   # ambiguous `l`
+    "E701",   # multiple-statements (colon)
+    "E702",   # multiple-statements (semicolon)
+    "E731",   # lambda-assignment
+]

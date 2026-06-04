@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Velantrim Research</title>
+  <style>
+    :root{--bg:#070b14;--p:#0a1120;--p2:#0d1828;--l:rgba(255,255,255,.08);--t:#e0e8f0;--m:#9ba8bc;--s:#5a6a80;--a:#4ecdc4;--g:#40c080;--y:#f0c040;--r:#ff5555;--b:#74a7ff}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,rgba(78,205,196,.06),transparent 300px),var(--bg);color:var(--t);font-family:"JetBrains Mono",Consolas,monospace}.w{max-width:900px;margin:0 auto;padding:0 20px}header{background:linear-gradient(135deg,#0d1421,#111927);border-bottom:1px solid rgba(78,205,196,.15);padding:28px 0}.k{color:var(--a);font-size:10px;letter-spacing:.2em;text-transform:uppercase}h1{font-size:24px;margin:7px 0;color:#f2f6fb}p{color:var(--m);font-size:12px;line-height:1.7}.nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.nav a{color:var(--m);text-decoration:none;border:1px solid var(--l);border-radius:6px;padding:6px 10px;font-size:10px}.nav a:first-child{background:var(--a);color:#06110f;border-color:var(--a);font-weight:700}section{border-top:1px solid var(--l);padding:22px 0}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.c{background:var(--p);border:1px solid var(--l);border-left:3px solid var(--a);border-radius:8px;padding:12px}.g{border-left-color:var(--g)}.y{border-left-color:var(--y)}.r{border-left-color:var(--r)}.b{border-left-color:var(--b)}.lab{color:var(--s);font-size:10px}.val{font-size:13px;font-weight:700;margin-top:6px;line-height:1.45}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.box{background:var(--p);border:1px solid var(--l);border-radius:8px;padding:13px}h2{font-size:15px;margin:0 0 12px}.row{display:grid;grid-template-columns:120px 1fr;gap:10px;border-top:1px solid rgba(255,255,255,.06);padding:8px 0;font-size:11px}.row:first-child{border-top:0}.key{color:var(--s)}code{color:#d5fff8;background:rgba(78,205,196,.08);border:1px solid rgba(78,205,196,.16);border-radius:4px;padding:1px 5px}pre{margin:0;background:var(--p2);border:1px solid rgba(78,205,196,.18);border-radius:8px;padding:14px;overflow:auto;color:#c8d8e8;font-size:12px;line-height:1.7}.note{border:1px solid rgba(240,192,64,.25);border-radius:8px;background:rgba(240,192,64,.06);color:#f3d992;padding:12px;font-size:11px;line-height:1.65}@media(max-width:760px){.cards,.grid{grid-template-columns:1fr}.row{grid-template-columns:1fr;gap:3px}}
+  </style>
+</head>
+<body>
+  <header><div class="w">
+    <div class="k">Velantrim ExoCortex · Research</div>
+    <h1>Отдельная экспериментальная память</h1>
+    <p>Research Mode — песочница рядом со stable V8.6. Браузер и AI-агент используют Velantrim как API-инструмент памяти, но пишут в отдельную БД.</p>
+    <div class="nav"><a href="/console/research-app">Research App</a><a href="/console/research">Research</a><a href="/console/research-roadmap">PWA Roadmap</a><a href="/console/">Console</a><a href="/console/roadmap">Core Roadmap</a></div>
+  </div></header>
+  <main class="w">
+    <section><div class="cards">
+      <div class="c g"><div class="lab">STABLE</div><div class="val">V8.6 остаётся чистым ядром</div></div>
+      <div class="c y"><div class="lab">RESEARCH</div><div class="val">отдельная БД и sandbox</div></div>
+      <div class="c b"><div class="lab">API TOOL</div><div class="val">память как инструмент агента</div></div>
+      <div class="c r"><div class="lab">RUNTIME</div><div class="val">browser sandbox активен</div></div>
+    </div></section>
+    <section><h2>Поток</h2><pre>AI / Browser Console -> Velantrim API -> Research DB
+-> Fractal Router -> RetrievalPath + TRACE -> answer</pre></section>
+    <section><h2>Stable vs Research</h2><div class="grid">
+      <div class="box">
+        <div class="row"><div class="key">Stable UI</div><div><code>/console</code></div></div>
+        <div class="row"><div class="key">Stable API</div><div><code>POST /query</code></div></div>
+        <div class="row"><div class="key">Stable DB</div><div><code>data/velantrim.db</code></div></div>
+        <div class="row"><div class="key">Retrieval</div><div>Hybrid / Causal pipeline</div></div>
+      </div>
+      <div class="box">
+        <div class="row"><div class="key">Research UI</div><div><code>/console/research-app</code></div></div>
+        <div class="row"><div class="key">Research API</div><div><code>POST /research/query</code></div></div>
+        <div class="row"><div class="key">Research DB</div><div><code>data/velantrim_research.db</code></div></div>
+        <div class="row"><div class="key">Retrieval</div><div>recursive + <code>RetrievalPath</code></div></div>
+      </div>
+    </div></section>
+    <section><h2>Что сохранять отдельно</h2><p>raw input, derived facts, <code>RetrievalPath</code>, TRACE, Guardian decisions, compression steps.</p></section>
+    <section><h2>Минимальный профиль</h2><pre>VELANTRIM_PROFILE=research
+VELANTRIM_DB_PATH=./data/velantrim_research.db
+ENABLE_FRACTAL_ROUTER=1
+ENABLE_RETRIEVAL_PATH=1
+ENABLE_RESEARCH_API=1</pre></section>
+    <section><div class="note">Это overview и архитектурный контракт. Активная браузерная версия: <code>/console/research-app</code>. Серверный runtime <code>/research/query</code> пока не включён, чтобы stable V8.6 не получила экспериментальные записи.</div></section>
+  </main>
+</body>
+</html>

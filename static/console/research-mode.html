@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Velantrim Research Mode</title>
+  <style>
+    :root{--bg:#070b14;--p:#0a1120;--p2:#0d1828;--l:rgba(255,255,255,.08);--t:#e0e8f0;--m:#9ba8bc;--s:#5a6a80;--a:#4ecdc4;--g:#40c080;--y:#f0c040;--r:#ff5555;--b:#74a7ff}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,rgba(78,205,196,.06),transparent 320px),var(--bg);color:var(--t);font-family:"JetBrains Mono","Fira Code",Consolas,monospace;min-height:100vh;padding-bottom:48px}.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+    header{background:linear-gradient(135deg,#0d1421,#111927);border-bottom:1px solid rgba(78,205,196,.15);padding:28px 0 22px}.k{color:var(--a);font-size:10px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:7px}h1{margin:0 0 6px;font-size:24px;color:#f2f6fb}h2{margin:0 0 12px;font-size:15px;color:#f0f5fb}p{margin:0 0 12px;color:var(--m);font-size:12px;line-height:1.7}.sub{max-width:760px;color:var(--s)}
+    nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}nav a{color:var(--m);text-decoration:none;border:1px solid var(--l);border-radius:6px;padding:6px 10px;font-size:10px;background:rgba(255,255,255,.02)}nav a:first-child{color:#06110f;border-color:var(--a);background:var(--a);font-weight:700}
+    section{border-top:1px solid var(--l);padding:22px 0}section:first-child{border-top:0}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.card{background:var(--p);border:1px solid var(--l);border-left:3px solid var(--a);border-radius:8px;padding:12px;min-height:80px}.card.g{border-left-color:var(--g)}.card.y{border-left-color:var(--y)}.card.r{border-left-color:var(--r)}.card.b{border-left-color:var(--b)}.lab{color:var(--s);font-size:10px;margin-bottom:6px}.val{font-size:13px;font-weight:700;line-height:1.45}
+    pre{margin:0;background:var(--p2);border:1px solid rgba(78,205,196,.18);border-radius:8px;padding:14px;overflow:auto;color:#c8d8e8;font-size:12px;line-height:1.75}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}.box{background:var(--p);border:1px solid var(--l);border-radius:8px;overflow:hidden}.box h3{margin:0;padding:11px 13px;border-bottom:1px solid var(--l);font-size:12px;background:rgba(255,255,255,.025)}.body{padding:12px 13px}.kv{display:grid;grid-template-columns:120px 1fr;gap:10px;border-top:1px solid rgba(255,255,255,.05);padding:8px 0;font-size:11px;line-height:1.55}.kv:first-child{border-top:0;padding-top:0}.key{color:var(--s)}.x{color:#d7e4f1}
+    code{color:#d5fff8;background:rgba(78,205,196,.08);border:1px solid rgba(78,205,196,.16);border-radius:4px;padding:1px 5px;font-family:inherit;font-size:.92em}
+    table{width:100%;border-collapse:collapse;border:1px solid var(--l);border-radius:8px;overflow:hidden;background:var(--p);font-size:11px}th,td{text-align:left;padding:10px 11px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top;line-height:1.55}th{color:var(--a);background:rgba(78,205,196,.05)}td{color:var(--m)}tr:last-child td{border-bottom:0}.ok{color:var(--g);font-weight:700}.wait{color:var(--y);font-weight:700}.no{color:var(--r);font-weight:700}
+    ol{counter-reset:n;display:grid;gap:8px;margin:0;padding:0;list-style:none}li{counter-increment:n;background:var(--p);border:1px solid var(--l);border-radius:8px;padding:10px 12px 10px 42px;color:var(--m);font-size:11px;line-height:1.55;position:relative}li:before{content:counter(n);position:absolute;left:12px;top:10px;width:20px;height:20px;border-radius:50%;background:rgba(78,205,196,.12);color:var(--a);display:grid;place-items:center;font-size:10px;font-weight:700}.note{border:1px solid rgba(240,192,64,.25);border-radius:8px;background:rgba(240,192,64,.06);color:#f3d992;padding:11px 13px;font-size:11px;line-height:1.65}
+    @media(max-width:780px){.cards,.split{grid-template-columns:1fr}.kv{grid-template-columns:1fr;gap:3px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="k">Velantrim ExoCortex · Research Mode</div>
+      <h1>Отдельная экспериментальная память</h1>
+      <p class="sub">Research Mode — песочница рядом со stable V8.6: браузер и AI-агент используют Velantrim как API-инструмент памяти, но пишут в отдельную базу и возвращают расширенный TRACE с RetrievalPath.</p>
+      <nav><a href="/console/research-mode">Research Mode</a><a href="/console/">Console</a><a href="/console/roadmap">Roadmap</a><a href="/console/help">Help</a></nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <section>
+      <div class="cards">
+        <div class="card g"><div class="lab">STABLE</div><div class="val">V8.6 остаётся чистым ядром</div></div>
+        <div class="card y"><div class="lab">RESEARCH</div><div class="val">отдельная БД и sandbox</div></div>
+        <div class="card b"><div class="lab">API TOOL</div><div class="val">память как инструмент агента</div></div>
+        <div class="card r"><div class="lab">RUNTIME</div><div class="val">ещё не активирован</div></div>
+      </div>
+    </section>
+    <section>
+      <h2>Главная схема</h2>
+      <pre>AI / Browser Console
+  -> Velantrim API
+  -> Research memory DB
+  -> Fractal Router
+  -> RetrievalPath + TRACE
+  -> answer / analysis in browser</pre>
+    </section>
+    <section>
+      <h2>Stable vs Research</h2>
+      <div class="split">
+        <div class="box"><h3>Stable V8.6</h3><div class="body">
+          <div class="kv"><div class="key">Назначение</div><div class="x">доверенная долговременная память</div></div>
+          <div class="kv"><div class="key">UI</div><div class="x"><code>/console</code></div></div>
+          <div class="kv"><div class="key">Query</div><div class="x"><code>POST /query</code></div></div>
+          <div class="kv"><div class="key">База</div><div class="x"><code>data/velantrim.db</code></div></div>
+          <div class="kv"><div class="key">Retrieval</div><div class="x">Hybrid / Causal pipeline</div></div>
+        </div></div>
+        <div class="box"><h3>Research Mode</h3><div class="body">
+          <div class="kv"><div class="key">Назначение</div><div class="x">экспериментальная память и Fractal Router</div></div>
+          <div class="kv"><div class="key">UI</div><div class="x"><code>/console/research</code></div></div>
+          <div class="kv"><div class="key">Query</div><div class="x"><code>POST /research/query</code></div></div>
+          <div class="kv"><div class="key">База</div><div class="x"><code>data/velantrim_research.db</code></div></div>
+          <div class="kv"><div class="key">Retrieval</div><div class="x">recursive retrieval + <code>RetrievalPath</code></div></div>
+        </div></div>
+      </div>
+    </section>
+    <section>
+      <h2>Что сохраняет Research Mode</h2>
+      <table><thead><tr><th>Данные</th><th>Зачем</th><th>Статус</th></tr></thead><tbody>
+        <tr><td>raw input</td><td>защита от semantic drift</td><td><span class="wait">план</span></td></tr>
+        <tr><td>derived facts</td><td>проверить, что извлекла система</td><td><span class="wait">план</span></td></tr>
+        <tr><td><code>RetrievalPath</code></td><td>путь внимания: какие узлы посещены и почему</td><td><span class="ok">contract есть</span></td></tr>
+        <tr><td>TRACE</td><td>источники, confidence, ESM и provenance</td><td><span class="ok">ядро есть</span></td></tr>
+        <tr><td>Guardian decisions</td><td>почему разрешено, заблокировано или отправлено в Pending</td><td><span class="ok">contract есть</span></td></tr>
+      </tbody></table>
+    </section>
+    <section>
+      <h2>Минимальный профиль</h2>
+      <pre>VELANTRIM_PROFILE=research
+VELANTRIM_DB_PATH=./data/velantrim_research.db
+VELANTRIM_NGRAM_DB=./data/velantrim_research_ngram.db
+ENABLE_FRACTAL_ROUTER=1
+ENABLE_RETRIEVAL_PATH=1
+ENABLE_RESEARCH_API=1</pre>
+    </section>
+    <section>
+      <h2>Порядок реализации</h2>
+      <ol>
+        <li>Создать <code>config/exocortex-research.env</code> с отдельными путями БД.</li>
+        <li>Добавить ResearchStore или безопасный wrapper вокруг SQLiteGraphStore.</li>
+        <li>Добавить <code>POST /research/query</code> без изменения стабильного <code>POST /query</code>.</li>
+        <li>Вернуть <code>memory_route</code> и <code>RetrievalPath</code> в JSON-ответе.</li>
+        <li>Добавить отдельную страницу <code>/console/research</code> для тестов.</li>
+      </ol>
+    </section>
+    <section><div class="note">Сейчас это красивый overview и архитектурный контракт. Runtime <code>/research/query</code> ещё не включён, чтобы stable V8.6 не получила случайные экспериментальные записи.</div></section>
+  </main>
+</body>
+</html>
