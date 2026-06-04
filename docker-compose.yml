@@ -13,6 +13,7 @@ services:
     environment:
       - VELANTRIM_API_KEY=${VELANTRIM_API_KEY:-dev-key-change-me}
       - STORAGE_BACKEND=${STORAGE_BACKEND:-sqlite}
+      # Docker intentionally uses an isolated named volume, not the host ./data folder.
       - VELANTRIM_DB_PATH=/app/data/velantrim.db
       - VELANTRIM_NGRAM_DB=/app/data/ngram.db
       - KUZU_DB_PATH=/app/data/exocortex.kuzu

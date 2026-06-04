@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "velantrim-v8-6-complex"
-version = "8.6.0"
-description = "VELANTRIM V8.6 Complex — long-term memory for AI agents with L6 welfare MVP"
+name = "velantrim-v8-7-titan"
+version = "8.7.0"
+description = "VELANTRIM V8.7 Titan — long-term memory for AI agents with causal graph, immune layer, and identity axis"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
@@ -21,6 +21,17 @@ include = ["core*", "api*"]
 exclude = ["tests*", "scripts*", ".venv*"]
 
 [project.optional-dependencies]
+
+# HTTP/API runtime used by server.py, Docker, and integration tests.
+server = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "python-dotenv>=1.0",
+    "pydantic>=2.0",
+    "httpx>=0.27",
+    "aiosqlite>=0.19",
+    "kuzu>=0.7,<0.12",
+]
 
 # Парсеры для FileIngester (RFC0063, 20+ форматов)
 parsers = [
@@ -73,11 +84,13 @@ async-backend = [
 
 # Dev-инструменты
 dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "pytest-cov>=4.0",
-    "mypy>=1.10",
-    "ruff>=0.4",
+    "pytest>=8.0.0,<9",
+    "pytest-asyncio>=0.23.0,<1",
+    "pytest-cov>=4.0,<8",
+    "pytest-timeout>=2.3,<3",
+    "mypy>=1.10,<2",
+    "ruff>=0.4,<0.5",
+    "types-PyYAML>=6.0.12,<7",
 ]
 
 [tool.pytest.ini_options]
@@ -100,9 +113,9 @@ show_missing = true
 
 [tool.mypy]
 python_version = "3.11"
-# Enforced gate (триаж июнь 2026): strict (ВКЛЮЧАЯ strict-optional/None-safety) МИНУС
+# Intended strict gate (триаж июнь 2026): strict (ВКЛЮЧАЯ strict-optional/None-safety) МИНУС
 # долг аннотаций → ловит класс реальных багов (attr-defined/arg-type/union-attr/None-safety),
-# без шума отсутствующих аннотаций. `mypy core` = 0, в CI BLOCKING.
+# без шума отсутствующих аннотаций. Сейчас оставлен blocking, но аудит показывает накопленный debt.
 strict = true
 follow_imports = "silent"
 ignore_missing_imports = true
@@ -127,4 +140,13 @@ ignore = [
     "E701",   # multiple-statements (colon)
     "E702",   # multiple-statements (semicolon)
     "E731",   # lambda-assignment
+    "I001",   # import-sort noise; keep semantic F-codes blocking
+    "UP006",  # legacy typing.List/Dict/etc. is accepted in this codebase
+    "UP007",  # legacy Optional/Union syntax is accepted in this codebase
+    "UP015",  # explicit open mode kept for readability
+    "UP017",  # datetime.UTC migration is not semantic audit priority
+    "UP035",  # deprecated typing imports are style debt, not runtime defects
+    "UP038",  # isinstance tuple style is accepted here
+    "W291",   # whitespace churn is handled separately
+    "W293",   # whitespace churn is handled separately
 ]

@@ -16,11 +16,10 @@ WORKDIR /app
 
 # Зависимости
 COPY pyproject.toml requirements-dev.txt ./
-RUN pip install --no-cache-dir -e ".[dev,parsers,retrieval,embeddings,audio]"
+RUN pip install --no-cache-dir -e ".[server,dev,parsers,retrieval,embeddings,audio,graph-lab]"
 
 # Дополнительные инструменты V8.7
 RUN pip install --no-cache-dir \
-    aiosqlite \
     pymorphy3 \
     && python -c "import pymorphy3; pymorphy3.MorphAnalyzer(lang='ru')" || echo "pymorphy3 ready"
 

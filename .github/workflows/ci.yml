@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -e ".[dev,parsers,retrieval,embeddings]"
+          pip install -e ".[server,dev,parsers,retrieval,embeddings,graph-lab]"
 
       - name: Ruff check (lint)
         run: ruff check core/ --output-format=github

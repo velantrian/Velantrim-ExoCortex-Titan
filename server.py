@@ -1,6 +1,6 @@
 # server.py
-# VELANTRIM V8.6 Complex — HTTP API Server
-# v8.6.0
+# VELANTRIM V8.7 Titan — HTTP API Server
+# v8.7.0
 #
 # Запуск:
 #   pip install fastapi uvicorn[standard] python-dotenv httpx
@@ -13,8 +13,8 @@
 #   OPENAI_API_KEY=sk-...                    # если provider=openai
 #   OPENAI_MODEL=gpt-4o                      # опционально
 #   ANTHROPIC_MODEL=claude-sonnet-4-20250514 # опционально
-#   VELANTRIM_DB_PATH=./data/velantrim.db    # путь к БД
-#   VELANTRIM_NGRAM_DB=./data/ngram.db       # путь к NGram индексу
+#   VELANTRIM_DB_PATH=./data/velantrim_house.db # путь к БД
+#   VELANTRIM_NGRAM_DB=./data/ngram_house.db    # путь к NGram индексу
 #   LOG_LEVEL=INFO                           # DEBUG | INFO | WARNING
 #   CORS_ORIGINS=*                           # разрешённые origins
 #   SLEEP_WORKER_ENABLED=true                # включить SleepTimeWorker
@@ -55,8 +55,8 @@ ANTHROPIC_KEY    = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL  = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
 OPENAI_KEY       = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL     = os.getenv("OPENAI_MODEL", "gpt-4o")
-DB_PATH          = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
-NGRAM_DB         = os.getenv("VELANTRIM_NGRAM_DB", "./data/velantrim_ngram.db")
+DB_PATH          = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim_house.db")
+NGRAM_DB         = os.getenv("VELANTRIM_NGRAM_DB", "./data/ngram_house.db")
 SLEEP_ENABLED    = os.getenv("SLEEP_WORKER_ENABLED", "true").lower() == "true"
 # AUDIT-FIX v8.4.0: CORS дефолт — пустой список (CORS отключён), не "*"
 # С credentials=True старый дефолт "*" нарушал CORS spec.
@@ -439,7 +439,7 @@ async def lifespan(app: FastAPI):
         else:
             logger.error("   LLM API: %s ❌ не зарегистрирован", _llm_path)
 
-    logger.info("✅ VELANTRIM V8.6 Complex готов")
+    logger.info("✅ VELANTRIM V8.7 Titan готов")
     yield
 
     # Shutdown
@@ -455,12 +455,12 @@ async def lifespan(app: FastAPI):
 # Включить для разработки: ENABLE_API_DOCS=true.
 _API_DOCS = os.getenv("ENABLE_API_DOCS", "false").lower() == "true"
 app = FastAPI(
-    title="VELANTRIM V8.6 Complex API",
+    title="VELANTRIM V8.7 Titan API",
     description=(
         "Долговременная память для AI-агентов с каузальным графом.\n\n"
         "**Принципы:** Graph = Truth · LLM = Language · Memory = Physiology"
     ),
-    version="8.6.0",
+    version="8.7.0",
     lifespan=lifespan,
     docs_url="/docs" if _API_DOCS else None,
     redoc_url="/redoc" if _API_DOCS else None,
@@ -1242,8 +1242,8 @@ async def root():
     if _console_available():
         return RedirectResponse(url="/console/")
     return {
-        "name": "VELANTRIM V8.6 Complex",
-        "version": "8.6.0",
+        "name": "VELANTRIM V8.7 Titan",
+        "version": "8.7.0",
         "console": "/console/",
         "api_docs": "/docs",
         "error": "static/console/index.html не найден — проверьте каталог запуска",
@@ -1254,8 +1254,8 @@ async def root():
 async def api_info():
     """JSON-информация о сервере (для скриптов)."""
     return {
-        "name":     "VELANTRIM V8.6 Complex",
-        "version":  "8.6.0",
+        "name":     "VELANTRIM V8.7 Titan",
+        "version":  "8.7.0",
         "status":   "running",
         "uptime_s": round(time.time() - _startup_time, 1),
         "llm":      LLM_PROVIDER,
