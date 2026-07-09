@@ -68,6 +68,18 @@ Google: gemini-3.5-flash | Llama: llama-4-maverick
 
 ## 🖥️ Веб-консоль + LLM (тест в браузере)
 
+### 🌐 Онлайн (GitHub Pages — ПК и смартфон PWA)
+
+| Страница | Ссылка |
+|----------|--------|
+| **Портал** | https://velantrian.github.io/Velantrim-ExoCortex-Titan/ |
+| **Research PWA** (работает без сервера) | https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/research-app.html |
+| **PWA Roadmap** | https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/research-roadmap.html |
+
+На телефоне: откройте Research PWA → «Добавить на главный экран» / «Установить приложение».
+
+### 💻 Локально (полная консоль + LLM)
+
 Экспериментальный стенд V8.7 Titan: чат, блок памяти в **localStorage**, поиск по сообщениям, вкладка **🔗 Эссенция**.
 
 **Обзор (красиво, с путями и переносом):** [docs/CONSOLE_OVERVIEW.ru.md](docs/CONSOLE_OVERVIEW.ru.md)

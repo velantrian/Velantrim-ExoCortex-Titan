@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#3d8bfd" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="VELANTRIM" />
+  <title>VELANTRIM — Web & PWA</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <style>
+    :root{--bg:#0f1419;--panel:#1a2332;--border:#2d3a4f;--text:#e7ecf3;--muted:#8b9cb3;--accent:#3d8bfd;--ok:#3dd68c}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(1200px 600px at 10% -10%,#1b2b45,transparent),var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,sans-serif}
+    .wrap{max-width:920px;margin:0 auto;padding:1.2rem 1rem 2.5rem}
+    h1{margin:.2rem 0 .35rem;font-size:1.55rem}p.lead{color:var(--muted);line-height:1.55;margin:0 0 1.2rem}
+    .grid{display:grid;gap:1rem}@media(min-width:760px){.grid{grid-template-columns:1fr 1fr}}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:1rem 1.05rem}
+    .card h2{margin:.1rem 0 .55rem;font-size:1.05rem}.tag{display:inline-block;font-size:.68rem;border:1px solid var(--border);border-radius:999px;padding:.15rem .5rem;color:var(--muted);margin-right:.35rem}
+    .tag.ok{color:var(--ok);border-color:var(--ok)}a.btn{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;margin:.35rem .45rem .35rem 0;padding:.62rem .9rem;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:#fff;text-decoration:none;font-weight:650}
+    a.btn.secondary{background:transparent;color:var(--text)}a.btn:hover{filter:brightness(1.08)}
+    code{background:#0b111b;border:1px solid rgba(61,139,253,.25);border-radius:6px;padding:.08rem .35rem;color:#9ec5ff}
+    ol,ul{color:var(--muted);line-height:1.55;padding-left:1.2rem}li{margin:.35rem 0}
+    footer{margin-top:1.2rem;color:var(--muted);font-size:.78rem}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🔱 VELANTRIM — Web & PWA</h1>
+    <p class="lead">Откройте в браузере на ПК или установите на смартфон как приложение (PWA). Research App работает без сервера; полная консоль с LLM — через локальный запуск.</p>
+
+    <div class="grid">
+      <section class="card">
+        <span class="tag ok">📱 PWA · ПК · телефон</span>
+        <h2>Research App</h2>
+        <p style="color:var(--muted);line-height:1.5;font-size:.92rem">Память в браузере: факты, ESM, TRACE, Truth Gate. Работает офлайн после первой загрузки.</p>
+        <a class="btn" href="console/research-app.html">🧪 Открыть Research PWA</a>
+        <a class="btn secondary" href="console/research-roadmap.html">🗺 Roadmap</a>
+      </section>
+
+      <section class="card">
+        <span class="tag">💻 ПК · нужен сервер</span>
+        <h2>Полная консоль + LLM</h2>
+        <p style="color:var(--muted);line-height:1.5;font-size:.92rem">Чат, эссенция, провайдеры LLM. Запустите <code>scripts\start_console.ps1</code> на своём ПК.</p>
+        <a class="btn" href="http://127.0.0.1:8755/console/?v=41">💬 Локальная консоль</a>
+        <a class="btn secondary" href="console/index.html">🖥 UI-оболочка (GitHub)</a>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:1rem">
+      <h2>📲 Установить на смартфон (PWA)</h2>
+      <ol>
+        <li>Откройте <strong>Research PWA</strong> в Chrome (Android) или Safari (iPhone).</li>
+        <li>Android: меню ⋮ → <strong>Установить приложение</strong> / <strong>Добавить на главный экран</strong>.</li>
+        <li>iPhone: кнопка «Поделиться» → <strong>На экран «Домой»</strong>.</li>
+      </ol>
+      <p style="color:var(--muted);font-size:.88rem;margin:.6rem 0 0">После установки иконка откроет приложение в полноэкранном режиме.</p>
+    </section>
+
+    <footer>
+      Репозиторий: <a href="https://github.com/velantrian/Velantrim-ExoCortex-Titan" style="color:#9ec5ff">github.com/velantrian/Velantrim-ExoCortex-Titan</a>
+    </footer>
+  </div>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+  </script>
+</body>
+</html>
