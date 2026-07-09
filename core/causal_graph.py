@@ -640,15 +640,25 @@ class CausalGraph:
         requires: list[dict] = []
         implied_by: list[dict] = []
 
-        for rel in self.get_relations_to(fact_id, relation_type="caused_by"):
+        for rel in self.get_relations_from(fact_id, relation_type="caused_by"):
+            causes.append({"fact_id": rel.to_fact_id, "confidence": rel.confidence,
+                           "status": rel.knowledge_status})
+        # Совместимость: прямые входящие causes/requires/implies
+        for rel in self.get_relations_to(fact_id, relation_type="causes"):
             causes.append({"fact_id": rel.from_fact_id, "confidence": rel.confidence,
                            "status": rel.knowledge_status})
 
-        for rel in self.get_relations_to(fact_id, relation_type="required_by"):
+        for rel in self.get_relations_from(fact_id, relation_type="required_by"):
+            requires.append({"fact_id": rel.to_fact_id, "confidence": rel.confidence,
+                             "status": rel.knowledge_status})
+        for rel in self.get_relations_to(fact_id, relation_type="requires"):
             requires.append({"fact_id": rel.from_fact_id, "confidence": rel.confidence,
                              "status": rel.knowledge_status})
 
-        for rel in self.get_relations_to(fact_id, relation_type="implied_by"):
+        for rel in self.get_relations_from(fact_id, relation_type="implied_by"):
+            implied_by.append({"fact_id": rel.to_fact_id, "confidence": rel.confidence,
+                               "status": rel.knowledge_status})
+        for rel in self.get_relations_to(fact_id, relation_type="implies"):
             implied_by.append({"fact_id": rel.from_fact_id, "confidence": rel.confidence,
                                "status": rel.knowledge_status})
 

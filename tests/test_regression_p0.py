@@ -36,7 +36,7 @@ def test_p0_1_store_fact_preserves_validated_state(fresh_db):
     """P0.1: повторный store_fact (claim changed) не откатывает Validated в L1."""
     m = fresh_db
     m.store_fact({"fact_id": "x", "claim": "a", "source": "s", "confidence": 0.5})
-    m.transition_esm("x", "Validated")
+    m.promote_to_validated("x")
     assert m.get_fact("x")["epistemic_state"] == "Validated"
 
     m._l0.clear()
@@ -89,7 +89,7 @@ def test_ddl_initialized_per_store_instance(tmp_path):
     Проверяет: каждый SQLiteGraphStore инициализирует DDL в свою БД,
     данные не перемешиваются между инстансами.
     """
-    from core.memory import SQLiteGraphStore
+    from core.memory import SQLiteGraphStore, promote_to_validated
 
     db_a = str(tmp_path / "a.db")
     db_b = str(tmp_path / "b.db")
@@ -127,7 +127,7 @@ def test_pipeline_run_persistent_db_no_crash(fresh_db):
     Теперь должен проходить без ошибок.
     TASK-07: явно заполняем store — DATABASE mock убран из production-пути.
     """
-    from core.memory import store_fact, transition_esm
+    from core.memory import promote_to_validated, store_fact, transition_esm
     from core.pipeline import run
 
     # Кладём 3+ факта — BM25 IDF > 0 только при corpus >= 3 docs.
@@ -139,7 +139,7 @@ def test_pipeline_run_persistent_db_no_crash(fresh_db):
     ]
     for f in facts:
         store_fact(f)
-        transition_esm(f["fact_id"], "Validated")
+        promote_to_validated(f["fact_id"])
 
     r1 = run("DNA")
     assert r1.get("answer") is not None
@@ -161,6 +161,8 @@ def test_bitemporal_ingestion_end_set_on_collapsed(fresh_db):
     m.store_fact({"fact_id": "col", "claim": "x", "source": "s"})
     assert m.get_fact("col")["t_ingestion_end"] is None
 
+    m.transition_esm("col", "Hypothesized")
+    m.transition_esm("col", "Contradicted")
     m.transition_esm("col", "Collapsed")
     f = m.get_fact("col")
     assert f is not None,               "Факт не должен быть удалён"

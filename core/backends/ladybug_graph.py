@@ -48,5 +48,15 @@ class LadybugGraphStore(CypherGraphStore):
         result = self._conn.execute(cypher, parameters=params or {})
         return rows_from_ladybug_result(result)
 
+    def close(self) -> None:
+        """Закрыть соединение и БД (фикстуры тестов вызывают в teardown)."""
+        try:
+            if self._conn is not None:
+                self._conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+        self._conn = None
+        self._db = None
+
 
 __all__ = ["LadybugGraphStore"]

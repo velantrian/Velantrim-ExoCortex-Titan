@@ -51,18 +51,26 @@ class TestWelfareMonitor:
 
 class TestVolitionGate:
     @pytest.mark.asyncio
-    async def test_block_red(self):
-        from core.feature_config import get_config
+    async def test_block_red(self, monkeypatch):
+        from core.feature_config import clear_config_cache, get_config
 
+        monkeypatch.setenv("ENABLE_L6_WELFARE", "1")
+        monkeypatch.setattr(
+            "core.runtime_flags.is_l6_welfare_enabled",
+            lambda: True,
+        )
+        clear_config_cache()
         assert get_config().app.enable_l6_welfare
 
-        mon = get_welfare_monitor("block_red_user")
-        for _ in range(40):
+        uid = "block_red_user"
+        reset_welfare_monitors()
+        mon = get_welfare_monitor(uid)
+        for _ in range(60):
             mon.record_error("e")
         snap = mon.snapshot()
         assert snap.level == WelfareLevel.RED.value, snap.to_dict()
 
-        ok, reason, _ = check_volition_allowed("block_red_user")
+        ok, reason, _ = check_volition_allowed(uid)
         assert not ok
         assert "welfare_red" in reason
 

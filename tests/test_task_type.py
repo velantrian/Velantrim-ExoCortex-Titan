@@ -56,7 +56,7 @@ def test_pipeline_task_routing_sets_type(isolated_db, monkeypatch):
     WHY → reasoning (расширение разрешено), FACT → прямой (расширение запрещено)."""
     import core.essence as ess
     from core import pipeline
-    from core.memory import store_fact, transition_esm
+    from core.memory import store_fact, transition_esm, promote_to_validated
     monkeypatch.setattr(ess, "is_essence_enabled", lambda: True)
     monkeypatch.setattr(pipeline, "_task_routing_enabled", lambda: True)
 
@@ -65,7 +65,7 @@ def test_pipeline_task_routing_sets_type(isolated_db, monkeypatch):
         store_fact({"fact_id": fid, "claim": claim, "source": "chem", "confidence": 0.9,
                     "claim_type": "WORLD_FACT", "origin_type": "EXTERNAL",
                     "metadata": {"evidence_refs": [{"source_id": "c", "span": "1"}]}})
-        transition_esm(fid, "Validated")
+        promote_to_validated(fid)
 
     r_why = pipeline.run("почему железо ржавеет")
     r_fact = pipeline.run("сколько железа ржавеет")

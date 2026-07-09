@@ -83,16 +83,15 @@ def test_store_and_get_fact_roundtrip():
 
 
 def test_transition_esm_valid():
-    from core.memory import get_fact, store_fact, transition_esm
+    from core.memory import get_fact, promote_to_validated, store_fact
     store_fact({"fact_id": "t2", "claim": "x", "source": "s", "confidence": 0.5})
-    assert transition_esm("t2", "Validated") is True
+    assert promote_to_validated("t2") is True
     assert get_fact("t2")["epistemic_state"] == "Validated"
 
 
 def test_transition_esm_invalid_transition_raises():
     from core.memory import store_fact, transition_esm
     store_fact({"fact_id": "t3", "claim": "x", "source": "s", "confidence": 0.5})
-    transition_esm("t3", "Collapsed")
     with pytest.raises(ValueError, match="недопустим"):
         transition_esm("t3", "Validated")
 
@@ -145,9 +144,9 @@ def test_store_fact_rejects_immutable_core_for_regular_fact():
 
 def test_transition_to_immutable_core_blocked_for_regular_fact():
     """Только Ring Zero может перейти в ImmutableCore."""
-    from core.memory import ImmutableStateError, store_fact, transition_esm
+    from core.memory import ImmutableStateError, promote_to_validated, store_fact, transition_esm
     store_fact({"fact_id": "regular", "claim": "x", "source": "s", "confidence": 0.5})
-    transition_esm("regular", "Validated")
+    promote_to_validated("regular")
     with pytest.raises(ImmutableStateError, match="ImmutableCore"):
         transition_esm("regular", "ImmutableCore")
 
@@ -159,9 +158,9 @@ def test_store_fact_drift_protection_auto_contradicted():
     TASK-02: claim изменился у Validated факта → авто-переход в Contradicted
     с записью в history (store_fact_upsert_drift_protection).
     """
-    from core.memory import get_fact, store_fact, transition_esm
+    from core.memory import get_fact, promote_to_validated, store_fact, transition_esm
     store_fact({"fact_id": "drift1", "claim": "original", "source": "s", "confidence": 0.8})
-    transition_esm("drift1", "Validated")
+    promote_to_validated("drift1")
 
     store_fact({"fact_id": "drift1", "claim": "CHANGED claim", "source": "s",
                 "confidence": 0.8})
@@ -175,9 +174,9 @@ def test_store_fact_drift_protection_auto_contradicted():
 
 def test_store_fact_drift_protection_same_claim_no_transition():
     """TASK-02: одинаковый claim не триггерит Contradicted."""
-    from core.memory import get_fact, store_fact, transition_esm
+    from core.memory import get_fact, promote_to_validated, store_fact, transition_esm
     store_fact({"fact_id": "nodrift", "claim": "same", "source": "s", "confidence": 0.8})
-    transition_esm("nodrift", "Validated")
+    promote_to_validated("nodrift")
     store_fact({"fact_id": "nodrift", "claim": "same", "source": "s", "confidence": 0.9})
     assert get_fact("nodrift")["epistemic_state"] == "Validated"
 
@@ -258,8 +257,10 @@ def test_get_fact_at_returns_none_before_ingestion():
 
 def test_collapsed_sets_ingestion_end():
     """При переходе в Collapsed: t_ingestion_end устанавливается автоматически."""
-    from core.memory import get_fact, store_fact, transition_esm
+    from core.memory import get_fact, promote_to_validated, store_fact, transition_esm
     store_fact({"fact_id": "col1", "claim": "x", "source": "s", "confidence": 0.5})
+    transition_esm("col1", "Hypothesized")
+    transition_esm("col1", "Contradicted")
     transition_esm("col1", "Collapsed")
     f = get_fact("col1")
     assert f["t_ingestion_end"] is not None, \
@@ -354,7 +355,7 @@ def test_store_fact_preserves_validated_after_upsert(isolated_db):
     """
     from core import memory
     memory.store_fact({"fact_id": "x", "claim": "a", "source": "s", "confidence": 0.5})
-    memory.transition_esm("x", "Validated")
+    memory.promote_to_validated("x")
     assert memory.get_fact("x")["epistemic_state"] == "Validated"
 
     memory._L0.clear()
@@ -382,7 +383,7 @@ def test_store_fact_drift_protection_keeps_l0_l1_in_sync(isolated_db):
     from core import memory
     memory.store_fact({"fact_id": "y", "claim": "original", "source": "s",
                        "confidence": 0.5})
-    memory.transition_esm("y", "Validated")
+    memory.promote_to_validated("y")
     assert memory.get_fact("y")["epistemic_state"] == "Validated"
 
     memory._L0.clear()
@@ -414,56 +415,56 @@ def test_new_fact_has_empty_history():
 
 
 def test_transition_appends_history_entry():
-    from core.memory import get_fact, store_fact, transition_esm
+    from core.memory import get_fact, promote_to_validated, store_fact, transition_esm
     store_fact({"fact_id": "h2", "claim": "x", "source": "s"})
-    transition_esm("h2", "Validated")
+    promote_to_validated("h2")
     f = get_fact("h2")
-    assert len(f["history"]) == 1
-    entry = f["history"][0]
+    assert len(f["history"]) == 3
+    entry = f["history"][-1]
     assert entry["state"] == "Validated"
-    assert entry["from"]  == "Observed"
+    assert entry["from"]  == "Supported"
     assert "at"           in entry
-    assert entry["by"]    == "transition_esm"
+    assert entry["by"]    == "promote_to_validated"
 
 
 def test_history_persists_across_l0_clear(isolated_db):
     from core import memory
     memory.store_fact({"fact_id": "h5", "claim": "x", "source": "s"})
-    memory.transition_esm("h5", "Supported")
-    memory.transition_esm("h5", "Validated")
+    memory.promote_to_validated("h5")
 
     memory._L0.clear()
     f = memory.get_fact("h5")
     assert f["epistemic_state"] == "Validated"
-    assert len(f["history"])    == 2
+    assert len(f["history"])    == 3
 
     with sqlite3.connect(isolated_db.db_path) as conn:
         row = conn.execute(
             "SELECT history FROM facts WHERE fact_id='h5'"
         ).fetchone()
     h = json.loads(row[0])
-    assert len(h)         == 2
-    assert h[0]["state"]  == "Supported"
-    assert h[1]["state"]  == "Validated"
+    assert len(h)         == 3
+    assert h[0]["state"]  == "Hypothesized"
+    assert h[1]["state"]  == "Supported"
+    assert h[2]["state"]  == "Validated"
 
 
 def test_transition_esm_by_param_recorded():
-    from core.memory import get_fact, store_fact, transition_esm
+    from core.memory import get_fact, promote_to_validated, store_fact, transition_esm
     store_fact({"fact_id": "h_by", "claim": "x", "source": "s"})
-    transition_esm("h_by", "Validated", by="custom_caller")
-    entry = get_fact("h_by")["history"][0]
+    promote_to_validated("h_by", by="custom_caller")
+    entry = get_fact("h_by")["history"][-1]
     assert entry["by"] == "custom_caller"
 
 
 # ─── get_all_facts фильтр ────────────────────────────────────────────────────
 
 def test_get_all_facts_filter_by_state():
-    from core.memory import get_all_facts, store_fact, transition_esm
+    from core.memory import get_all_facts, promote_to_validated, store_fact, transition_esm
     store_fact({"fact_id": "a1", "claim": "x", "source": "s"})
     store_fact({"fact_id": "a2", "claim": "x", "source": "s"})
     store_fact({"fact_id": "a3", "claim": "x", "source": "s"})
-    transition_esm("a1", "Validated")
-    transition_esm("a2", "Validated")
+    promote_to_validated("a1")
+    promote_to_validated("a2")
 
     validated = get_all_facts(epistemic_state="Validated")
     assert len(validated) == 2
@@ -475,10 +476,10 @@ def test_get_all_facts_filter_by_state():
 
 
 def test_get_all_facts_no_filter_returns_all():
-    from core.memory import get_all_facts, store_fact, transition_esm
+    from core.memory import get_all_facts, promote_to_validated, store_fact, transition_esm
     store_fact({"fact_id": "all1", "claim": "x", "source": "s"})
     store_fact({"fact_id": "all2", "claim": "x", "source": "s"})
-    transition_esm("all1", "Validated")
+    promote_to_validated("all1")
     all_facts = get_all_facts()
     ids = {f["fact_id"] for f in all_facts}
     assert {"all1", "all2"} <= ids

@@ -86,11 +86,12 @@ def test_semantic_corroboration_counts_distinct_sources():
 
 
 def test_corroboration_feeds_promotion():
-    # связка: семантическая корроборация → promotion рекомендует Supported
+    # связка: семантическая корроборация → promotion рекомендует первый шаг лестницы
     from core.promotion_policy import Evidence, recommend_transition
     corr = compute_semantic_corroboration(_facts(), threshold=0.92, embed_fn=_fake_embed)
     ev = Evidence(corroboration=corr["f1"])        # =2
-    assert recommend_transition("Observed", "Water boils at 100C long enough", ev) == "Supported"
+    assert recommend_transition("Observed", "Water boils at 100C long enough", ev) == "Hypothesized"
+    assert recommend_transition("Hypothesized", "Water boils at 100C long enough", ev) == "Supported"
 
 
 # ── merge plan ────────────────────────────────────────────────────────────────────

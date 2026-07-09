@@ -39,14 +39,14 @@ def test_observed_lonely_untrusted_goes_to_hypothesized():
     assert recommend_transition("Observed", CLAIM, ev) == "Hypothesized"
 
 
-def test_observed_trusted_goes_to_supported():
+def test_observed_trusted_goes_to_hypothesized():
     ev = Evidence(corroboration=1, source_trusted=True, confidence=0.5)
-    assert recommend_transition("Observed", CLAIM, ev) == "Supported"
+    assert recommend_transition("Observed", CLAIM, ev) == "Hypothesized"
 
 
-def test_observed_with_corroboration_goes_to_supported():
+def test_observed_with_corroboration_goes_to_hypothesized():
     ev = Evidence(corroboration=2, source_trusted=False, confidence=0.5)
-    assert recommend_transition("Observed", CLAIM, ev) == "Supported"
+    assert recommend_transition("Observed", CLAIM, ev) == "Hypothesized"
 
 
 def test_hypothesized_needs_evidence_for_supported():
@@ -162,7 +162,9 @@ def test_engine_trusted_fact_climbs_to_validated_over_runs(tmp_path):
     s.store_fact({"fact_id": "t1", "claim": "A trusted seed axiom about the domain",
                   "source": "domain_seed", "confidence": 0.9})
     cfg = PromotionConfig(validate_min_age_s=0)  # без выдержки для теста
-    run_graduated_promotion(s, cfg=cfg)                    # Observed -> Supported
+    run_graduated_promotion(s, cfg=cfg)                    # Observed -> Hypothesized
+    assert s.get_fact("t1")["epistemic_state"] == "Hypothesized"
+    run_graduated_promotion(s, cfg=cfg)                    # Hypothesized -> Supported
     assert s.get_fact("t1")["epistemic_state"] == "Supported"
     run_graduated_promotion(s, cfg=cfg)                    # Supported -> Validated
     assert s.get_fact("t1")["epistemic_state"] == "Validated"
@@ -186,7 +188,12 @@ def test_dispatch_naive_when_flag_off(tmp_path, monkeypatch):
     monkeypatch.delenv("ENABLE_GRADUATED_PROMOTION", raising=False)
     from core.consolidation_engine import run_consolidation
     s = _store(tmp_path)
-    s.store_fact(dict(_LONELY))
+    s.store_fact({
+        "fact_id": "d1",
+        "claim": "Some random unverified claim from one source",
+        "source": "manual",
+        "confidence": 0.8,
+    })
     report = run_consolidation(s)
     assert s.get_fact("d1")["epistemic_state"] == "Validated"      # наивный штамп
     assert "promoted_validated" in report.to_dict()                # ConsolidationReport

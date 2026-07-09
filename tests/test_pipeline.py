@@ -44,7 +44,7 @@ def seeded_db(isolated_db):
     TASK-07: DATABASE mock fallback убран из production-пути.
     Тесты pipeline теперь явно кладут данные в store.
     """
-    from core.memory import store_fact, transition_esm
+    from core.memory import promote_to_validated, store_fact, transition_esm, promote_to_validated
     seed_facts = [
         {"fact_id": "f1", "claim": "Water boils at 100 degrees Celsius",
          "source": "physics", "confidence": 0.99},
@@ -59,7 +59,7 @@ def seeded_db(isolated_db):
     ]
     for f in seed_facts:
         store_fact(f)
-        transition_esm(f["fact_id"], "Validated")
+        promote_to_validated(f["fact_id"])
     return isolated_db
 
 
@@ -99,7 +99,7 @@ def test_pipeline_step6_modality_flag_on(isolated_db, monkeypatch):
     """Флаг ON: EMOTION валидна как модальность, но truth_status=UNVERIFIED;
     WORLD_FACT с evidence → VERIFIED. (Флаг OFF проверяется happy_path = всё VERIFIED.)"""
     from core import pipeline
-    from core.memory import get_fact, store_fact, transition_esm
+    from core.memory import get_fact, promote_to_validated, store_fact, transition_esm
     monkeypatch.setattr(pipeline, "_truth_policy_enabled", lambda: True)
 
     store_fact({
@@ -107,14 +107,14 @@ def test_pipeline_step6_modality_flag_on(isolated_db, monkeypatch):
         "source": "user_message", "confidence": 0.9,
         "claim_type": "EMOTION", "origin_type": "USER_REPORTED",
     })
-    transition_esm("emo1", "Validated")
+    promote_to_validated("emo1")
     store_fact({
         "fact_id": "wf1", "claim": "anxiety is a documented physiological response",
         "source": "psychology", "confidence": 0.95,
         "claim_type": "WORLD_FACT", "origin_type": "EXTERNAL",
         "metadata": {"evidence_refs": [{"source_id": "doi:1", "span": "1-5"}]},
     })
-    transition_esm("wf1", "Validated")
+    promote_to_validated("wf1")
 
     assert get_fact("emo1")["claim_type"] == "EMOTION"
     assert get_fact("wf1")["claim_type"] == "WORLD_FACT"
@@ -141,14 +141,14 @@ def test_graph_expansion_pulls_reliable_neighbors(isolated_db):
     """_expand_with_graph_neighbors тянет reliable причинных соседей факта из
     causal_graph — основа multi-hop рассуждения (рёбра + соседи → цепочка)."""
     from core import pipeline
-    from core.memory import store_fact, transition_esm
+    from core.memory import promote_to_validated, store_fact, transition_esm
     for fid, claim in [("ga", "Лидер молнии начинает разряд"),
                        ("gb", "Лидер создаёт ионизированный канал"),
                        ("gc", "Канал проводит главный разряд молнии")]:
         store_fact({"fact_id": fid, "claim": claim, "source": "physics", "confidence": 0.9,
                     "claim_type": "WORLD_FACT", "origin_type": "EXTERNAL",
                     "metadata": {"evidence_refs": [{"source_id": "p", "span": "1"}]}})
-        transition_esm(fid, "Validated")
+        promote_to_validated(fid)
     cg = pipeline._get_causal_graph()
     assert cg is not None, "causal_graph недоступен в тестовом контексте"
     cg.add_relation("ga", "gb", "causes", confidence=0.9)
@@ -167,10 +167,10 @@ def test_graph_expansion_pulls_reliable_neighbors(isolated_db):
 def test_graph_expansion_no_graph_is_noop(isolated_db):
     """Без рёбер / соседей — expansion возвращает исходный набор (безопасно)."""
     from core import pipeline
-    from core.memory import store_fact, transition_esm
+    from core.memory import promote_to_validated, store_fact, transition_esm
     store_fact({"fact_id": "solo", "claim": "Одинокий факт без связей", "source": "x",
                 "confidence": 0.9, "claim_type": "WORLD_FACT", "origin_type": "EXTERNAL"})
-    transition_esm("solo", "Validated")
+    promote_to_validated("solo")
     seed = [{"fact_id": "solo", "claim": "Одинокий факт без связей",
              "epistemic_state": "Validated", "confidence": 0.9, "claim_type": "WORLD_FACT"}]
     out = pipeline._expand_with_graph_neighbors(seed)
@@ -478,7 +478,7 @@ def test_get_facts_by_ids_empty_input():
 
 def test_causal_hints_in_response_for_causal_facts(seeded_db):
     """TASK-08: run() возвращает causal_hints когда факты содержат каузальные паттерны."""
-    from core.memory import store_fact, transition_esm
+    from core.memory import promote_to_validated, store_fact, transition_esm
     from core.pipeline import run
 
     # Кладём факты с каузальными паттернами
@@ -489,7 +489,7 @@ def test_causal_hints_in_response_for_causal_facts(seeded_db):
     store_fact({"fact_id": "cg3", "claim": "Cooling results in condensation",
                 "source": "physics", "confidence": 0.9})
     for fid in ["cg1", "cg2", "cg3"]:
-        transition_esm(fid, "Validated")
+        promote_to_validated(fid)
 
     result = run("heat causes evaporation")
     # Проверяем что ответ пришёл
@@ -535,7 +535,7 @@ def test_causal_hints_are_non_blocking(seeded_db):
 
 def test_conflicts_block_present_when_contradictions_exist(seeded_db):
     """TASK-16: pipeline.run() возвращает conflicts когда в CausalGraph есть contradicts-связи."""
-    from core.memory import store_fact, transition_esm
+    from core.memory import promote_to_validated, store_fact, transition_esm
     from core.pipeline import _get_causal_graph, run
 
     # Кладём два противоречивых факта
@@ -544,7 +544,7 @@ def test_conflicts_block_present_when_contradictions_exist(seeded_db):
     store_fact({"fact_id": "earth_flat",  "claim": "Earth is flat",
                 "source": "myth", "confidence": 0.10})
     for fid in ["earth_round", "earth_flat"]:
-        transition_esm(fid, "Validated")
+        promote_to_validated(fid)
 
     # Создаём contradicts-связь между ними
     cg = _get_causal_graph()
@@ -597,13 +597,13 @@ def test_no_conflicts_block_for_facts_without_contradictions(seeded_db):
 
 def test_conflicts_extraction_handles_cycles(seeded_db):
     """TASK-16 × TASK-10: при циклах в графе не зависаем (используем cycle protection)."""
-    from core.memory import store_fact, transition_esm
+    from core.memory import promote_to_validated, store_fact, transition_esm
     from core.pipeline import _get_causal_graph, run
 
     # Создаём 3 факта с цикличными contradicts (теоретически возможный плохой случай)
     for fid, claim in [("c1","Statement A"), ("c2","Statement B"), ("c3","Statement C")]:
         store_fact({"fact_id": fid, "claim": claim, "source": "test", "confidence": 0.8})
-        transition_esm(fid, "Validated")
+        promote_to_validated(fid)
 
     cg = _get_causal_graph()
     if cg is not None:

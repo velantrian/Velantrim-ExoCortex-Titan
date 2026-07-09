@@ -114,9 +114,9 @@ class CognitiveFactStore:
         *,
         by: str = "cognitive_store",
     ) -> CognitiveFact | None:
-        from core.memory import transition_esm
+        from core.memory import promote_esm_to
 
-        transition_esm(fact_id, new_state, by=by)
+        promote_esm_to(fact_id, new_state, by=by)
         _emit_fact_event(fact_id, is_new=False, event_type="fact_esm_transition")
         return self.get(fact_id)
 

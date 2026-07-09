@@ -70,6 +70,8 @@ class TestCognitiveStore:
 
         cf = CognitiveFactStore.create_observed("x", "s")
         get_cognitive_store().save(cf)
+        get_cognitive_store().transition(cf.id, "Hypothesized")
+        get_cognitive_store().transition(cf.id, "Supported")
         updated = get_cognitive_store().transition(cf.id, "Validated")
         assert updated is not None
         assert updated.epistemic_state == "Validated"

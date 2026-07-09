@@ -19,6 +19,17 @@ from typing import Any
 
 from core.memory import ESM_STATES, ESM_TRANSITIONS
 
+_ESM_LADDER = ("Observed", "Hypothesized", "Supported", "Validated")
+
+
+def _can_reach_esm(current: str, target: str) -> bool:
+    """Проверка достижимости target из current (лестница или один шаг)."""
+    if current == target:
+        return True
+    if target in _ESM_LADDER and current in _ESM_LADDER:
+        return _ESM_LADDER.index(current) < _ESM_LADDER.index(target)
+    return target in ESM_TRANSITIONS.get(current, set())
+
 # ─── TRACE BUILDER ────────────────────────────────────────────────────────────
 
 def build_trace(retrieved: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -89,8 +100,7 @@ def promote_trace(
         current = element.get("epistemic_state", "Observed")
         if current == new_state:
             continue  # идемпотентный случай
-        allowed = ESM_TRANSITIONS.get(current, set())
-        if new_state not in allowed:
+        if not _can_reach_esm(current, new_state):
             raise ValueError(
                 f"promote_trace: переход '{current}' → '{new_state}' недопустим "
                 f"(fact_id={element.get('fact_id', '?')})"

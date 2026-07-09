@@ -112,8 +112,8 @@ def recommend_transition(
     has_evidence = ev.source_trusted or ev.corroboration >= cfg.support_corroboration
 
     if state == "Observed":
-        # Есть доказательства → сразу Supported; иначе входим в рассуждение как гипотеза.
-        return "Supported" if has_evidence else "Hypothesized"
+        # V8.8 ESM: из Observed только в Hypothesized (один шаг за цикл).
+        return "Hypothesized"
 
     if state == "Hypothesized":
         return "Supported" if has_evidence else None

@@ -33,7 +33,7 @@ def test_checksum_stable():
 
 def test_episode_hash_dedup(mem_db):
     from core.fact_integrity import compute_episode_hash
-    from core.memory import find_fact_id_by_episode_hash, get_fact, store_fact
+    from core.memory import find_fact_id_by_episode_hash, get_fact, store_fact, promote_to_validated
 
     claim = "Velantrim использует Kuzu для графа"
     eh = compute_episode_hash(claim, "manual")
@@ -54,7 +54,7 @@ def test_episode_hash_dedup(mem_db):
 
 def test_protected_claim_change_drift_contradicted(mem_db):
     """Смена claim у Validated → TASK-02 drift protection, не тихий overwrite."""
-    from core.memory import get_fact, store_fact, transition_esm
+    from core.memory import get_fact, promote_to_validated, store_fact, transition_esm
 
     store_fact(
         {
@@ -64,7 +64,7 @@ def test_protected_claim_change_drift_contradicted(mem_db):
             "confidence": 0.95,
         }
     )
-    transition_esm("f_prot", "Validated", by="test")
+    promote_to_validated("f_prot", by="test")
     store_fact(
         {
             "fact_id": "f_prot",
@@ -84,7 +84,7 @@ def test_consolidation_promotes_high_confidence(mem_db):
         {
             "fact_id": "f_cons",
             "claim": "Длинный факт для консолидации в Validated",
-            "source": "test",
+            "source": "manual",
             "confidence": 0.88,
         }
     )

@@ -33,6 +33,7 @@ import hashlib
 import json
 import os
 import sqlite3
+import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -52,6 +53,9 @@ def _metadata_json(value: Any) -> str:
             parsed = {"raw": value}
         return json.dumps(parsed, ensure_ascii=False, sort_keys=True)
     return json.dumps(value or {}, ensure_ascii=False, sort_keys=True)
+
+_SCHEMA_INIT_LOCK = threading.Lock()
+_SCHEMA_READY: set[str] = set()
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Schema
@@ -163,7 +167,7 @@ class VersionStore:
         db_dir = os.path.dirname(self.db_path)
         if db_dir:
             os.makedirs(db_dir, exist_ok=True)
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA busy_timeout = 30000")
         conn.execute("PRAGMA foreign_keys = ON")
@@ -181,9 +185,12 @@ class VersionStore:
             conn.close()
 
     def _ensure_schema(self) -> None:
-        with self._db() as conn:
-            conn.executescript(VERSIONS_SCHEMA)
-            conn.commit()
+        with _SCHEMA_INIT_LOCK:
+            if self.db_path in _SCHEMA_READY:
+                return
+            with self._db() as conn:
+                conn.executescript(VERSIONS_SCHEMA)
+            _SCHEMA_READY.add(self.db_path)
 
     # ── INSTRUMENTATION HOOK ────────────────────────────────────────────
 

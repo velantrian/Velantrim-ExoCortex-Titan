@@ -94,7 +94,7 @@ def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
     Создаёт ребро old -SUPERSEDED_BY→ new в causal_graph (если доступен).
     Возвращает fact_id нового факта или None.
     """
-    from core.memory import get_fact, store_fact, transition_esm
+    from core.memory import get_fact, store_fact, promote_to_validated, transition_esm
 
     old = get_fact(old_id)
     if old is None:
@@ -119,10 +119,10 @@ def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
         if not ok:
             logger.warning("TruthMaintenance.supersede: TruthGate отклонил новый факт: %s", msg)
         else:
-            transition_esm(new_id, "Validated")
+            promote_to_validated(new_id)
     except ImportError:
         # TruthGate недоступен — fallback без проверки (старое поведение)
-        transition_esm(new_id, "Validated")
+        promote_to_validated(new_id)
     except Exception as exc:
         logger.warning("TruthMaintenance.supersede: ESM-переход нового: %s", exc)
 

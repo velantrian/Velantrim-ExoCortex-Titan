@@ -144,7 +144,7 @@ def ingest_facts(store: Any, facts: Sequence[dict[str, Any]], validate: bool = T
     if validate:
         for f in facts:
             try:
-                if store.transition_esm(f["fact_id"], "Validated", by="world_skills_ingest"):
+                if store.promote_to_validated(f["fact_id"], by="world_skills_ingest"):
                     rep["validated"] += 1
             except Exception as exc:  # noqa: BLE001
                 logger.debug("validate %s: %s", f.get("fact_id"), exc)

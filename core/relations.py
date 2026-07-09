@@ -139,9 +139,9 @@ class RelationStore:
         db_dir = os.path.dirname(self.db_path)
         if db_dir:
             os.makedirs(db_dir, exist_ok=True)
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, check_same_thread=False)
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA busy_timeout = 5000")
+        conn.execute("PRAGMA busy_timeout = 30000")
         conn.execute("PRAGMA foreign_keys = ON")
 
         if self.db_path not in RelationStore._ddl_initialized_paths:
@@ -316,6 +316,30 @@ class RelationStore:
             return [self._row_to_relation(r) for r in rows]
 
     # ─── Transitions (R-03, R-04) ──────────────────────────────────────────────
+
+    def promote_esm_to(
+        self,
+        relation_id: str,
+        target: str,
+        by: str = "RelationStore.promote_esm_to",
+    ) -> bool:
+        """Пошагово повышает связь до target по канонической лестнице ESM."""
+        rel = self.by_id(relation_id)
+        if not rel:
+            return False
+        ladder = ("Observed", "Hypothesized", "Supported", "Validated")
+        current = rel.epistemic_state
+        if current == target:
+            return True
+        if target in ladder and current in ladder:
+            cur_i, tgt_i = ladder.index(current), ladder.index(target)
+            if cur_i >= tgt_i:
+                return True
+            for state in ladder[cur_i + 1 : tgt_i + 1]:
+                if not self.transition(relation_id, state, by=by):
+                    return False
+            return True
+        return self.transition(relation_id, target, by=by)
 
     def transition(
         self,

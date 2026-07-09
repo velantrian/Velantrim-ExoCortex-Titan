@@ -128,9 +128,14 @@ class ConsolidationEngine:
 
             target = "Validated" if self.prefer_validated else "Hypothesized"
             try:
-                ok = self._store.transition_esm(
-                    fact_id, target, by="consolidation_engine"
-                )
+                if target == "Validated":
+                    ok = self._store.promote_to_validated(
+                        fact_id, by="consolidation_engine"
+                    )
+                else:
+                    ok = self._store.transition_esm(
+                        fact_id, target, by="consolidation_engine"
+                    )
                 if ok:
                     if target == "Validated":
                         report.promoted_validated += 1
@@ -190,6 +195,9 @@ class ConsolidationEngine:
     def _count_relations(self, fact_id: str) -> int:
         """Число рёбер для факта."""
         try:
+            from core.memory import SQLiteGraphStore
+            if not isinstance(self._store, SQLiteGraphStore):
+                return 0
             with self._store._db() as conn:
                 row = conn.execute(
                     "SELECT COUNT(*) FROM relations WHERE from_fact_id = ? OR to_fact_id = ?",

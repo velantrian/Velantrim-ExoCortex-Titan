@@ -89,6 +89,49 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def _upgrade_erasure_log_schema(conn: sqlite3.Connection) -> None:
+    """Миграция legacy erasure_log (fact_id PK, actor/content_hash) → схема 012."""
+    rows = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='erasure_log'"
+    ).fetchone()
+    if rows is None:
+        return
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_log)").fetchall()}
+    if "erasure_id" in cols and "user_id" in cols:
+        return
+    conn.execute("ALTER TABLE erasure_log RENAME TO erasure_log_legacy")
+    conn.execute("""
+        CREATE TABLE erasure_log (
+            erasure_id   TEXT PRIMARY KEY,
+            fact_id      TEXT NOT NULL,
+            user_id      TEXT NOT NULL DEFAULT 'default',
+            reason       TEXT NOT NULL DEFAULT 'user_request',
+            claim_hash   TEXT NOT NULL,
+            erased_at    TEXT NOT NULL,
+            request_ref  TEXT DEFAULT NULL
+        )
+    """)
+    legacy_cols = {
+        r[1] for r in conn.execute("PRAGMA table_info(erasure_log_legacy)").fetchall()
+    }
+    actor_col = "actor" if "actor" in legacy_cols else "user_id"
+    hash_col = "content_hash" if "content_hash" in legacy_cols else "claim_hash"
+    conn.execute(
+        f"""
+        INSERT INTO erasure_log (erasure_id, fact_id, user_id, reason, claim_hash, erased_at)
+        SELECT
+            'era_' || substr(hex(randomblob(6)), 1, 12),
+            fact_id,
+            COALESCE({actor_col}, 'default'),
+            COALESCE(reason, 'user_request'),
+            COALESCE({hash_col}, ''),
+            erased_at
+        FROM erasure_log_legacy
+        """
+    )
+    conn.execute("DROP TABLE erasure_log_legacy")
+
+
 # ─── SQLiteGraphStore ─────────────────────────────────────────────────────────
 class SQLiteGraphStore(GraphStore):
     """
@@ -109,234 +152,249 @@ class SQLiteGraphStore(GraphStore):
         self._has_fact_version: bool | None = None
         self.use_json_insert = sqlite3.sqlite_version_info >= (3, 38, 0)
         self._closed = False
-        # V8.8: connection pool — переиспользование соединений вместо per-op connect/close
-        self._conn_pool: list[sqlite3.Connection | None] = []
-        self._pool_counter = 0
+        # Одно WAL-соединение + RLock: исключает deadlock пула из 3 conn.
+        self._sqlite_conn: sqlite3.Connection | None = None
+        self._db_lock = threading.RLock()
 
     @contextmanager
     def _db(self):
-        """
-        V8.8: Connection pooling — переиспользует WAL-соединение вместо
-        открытия нового на каждый вызов. До V8.8 каждый store_fact / get_fact
-        открывал/закрывал соединение → избыточные fsync и рукопожатия WAL.
-
-        Pool из 3 соединений (чтение/запись/миграция) — ротация по кругу.
-        Прирост: ~40% по latency на частых операциях.
-        """
+        """Контекст БД: одно переиспользуемое соединение, сериализованное RLock."""
         if self._closed:
             raise RuntimeError(f"SQLiteGraphStore '{self.db_path}' уже закрыт")
         db_dir = os.path.dirname(self.db_path)
         if db_dir:
             os.makedirs(db_dir, exist_ok=True)
 
-        # Используем пул из кэшированных соединений
-        pool_key = (self._pool_counter % 3)
-        self._pool_counter += 1
-
-        # Открыть или переиспользовать
-        if pool_key < len(self._conn_pool) and self._conn_pool[pool_key] is not None:
-            conn = self._conn_pool[pool_key]
-            # Проверить что соединение живо (execute без ошибки)
-            try:
-                conn.execute("SELECT 1")
-            except sqlite3.ProgrammingError:
-                conn = sqlite3.connect(self.db_path, timeout=30.0)
+        with self._db_lock:
+            conn = self._sqlite_conn
+            if conn is None:
+                conn = sqlite3.connect(
+                    self.db_path, timeout=30.0, check_same_thread=False
+                )
                 conn.row_factory = sqlite3.Row
-                self._conn_pool[pool_key] = conn
-        else:
-            conn = sqlite3.connect(self.db_path, timeout=30.0)
-            conn.row_factory = sqlite3.Row
-            # Растянуть пул если нужно
-            while len(self._conn_pool) <= pool_key:
-                self._conn_pool.append(None)
-            self._conn_pool[pool_key] = conn
+                self._sqlite_conn = conn
+            else:
+                try:
+                    conn.execute("SELECT 1")
+                except sqlite3.ProgrammingError:
+                    conn = sqlite3.connect(
+                        self.db_path, timeout=30.0, check_same_thread=False
+                    )
+                    conn.row_factory = sqlite3.Row
+                    self._sqlite_conn = conn
 
-        conn.execute("PRAGMA busy_timeout = 30000")
-        try:
-            conn.execute("PRAGMA journal_mode = WAL")
-        except sqlite3.OperationalError:
-            pass
-
-        _sync = os.getenv("VELANTRIM_SQLITE_SYNCHRONOUS", "FULL").upper()
-        if _sync not in ("FULL", "NORMAL", "OFF", "EXTRA"):
-            _sync = "FULL"
-        try:
-            conn.execute(f"PRAGMA synchronous = {_sync}")
-        except sqlite3.OperationalError:
-            pass
-
-        if self.db_path not in self._ddl_initialized_paths:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS facts (
-                    fact_id               TEXT PRIMARY KEY,
-                    claim                 TEXT NOT NULL,
-                    source                TEXT NOT NULL,
-                    confidence            REAL    DEFAULT 0.5,
-                    epistemic_state       TEXT    DEFAULT 'Observed',
-                    created_at            TEXT    NOT NULL,
-                    updated_at            TEXT    NOT NULL,
-                    metadata              TEXT    DEFAULT '{}',
-                    history               TEXT    DEFAULT '[]',
-                    -- Bi-temporal fields (I96, V9 Sprint 1 Contract)
-                    t_event_valid_start   TEXT    DEFAULT NULL,
-                    t_event_valid_end     TEXT    DEFAULT NULL,
-                    t_ingestion_start     TEXT    DEFAULT NULL,
-                    t_ingestion_end       TEXT    DEFAULT NULL,
-                    -- Modality fields (v8.7, P0 claim-type spec)
-                    claim_type            TEXT    NOT NULL DEFAULT 'UNKNOWN',
-                    origin_type           TEXT    NOT NULL DEFAULT 'UNKNOWN',
-                    -- Memory type taxonomy (v8.8 Codex audit): episodic/semantic/procedural/system
-                    memory_type           TEXT    NOT NULL DEFAULT 'semantic'
-                )
-            """)
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_facts_epistemic_state
-                ON facts (epistemic_state)
-            """)
-            # Bi-temporal индексы для time-travel запросов
-            # Обёрнуты в try/except: legacy-БД без bi-temporal колонок
-            # сначала получат ALTER TABLE ниже, а индексы создадутся при следующем open().
+            conn.execute("PRAGMA busy_timeout = 30000")
             try:
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_facts_ingestion
-                    ON facts (fact_id, t_ingestion_start, t_ingestion_end)
-                """)
+                conn.execute("PRAGMA journal_mode = WAL")
             except sqlite3.OperationalError:
                 pass
+
+            _sync = os.getenv("VELANTRIM_SQLITE_SYNCHRONOUS", "FULL").upper()
+            if _sync not in ("FULL", "NORMAL", "OFF", "EXTRA"):
+                _sync = "FULL"
             try:
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_facts_event_valid
-                    ON facts (fact_id, t_event_valid_start, t_event_valid_end)
-                """)
+                conn.execute(f"PRAGMA synchronous = {_sync}")
             except sqlite3.OperationalError:
                 pass
-            # D1 (audit M5): expression index on claim_dedup_key → O(log N) dedup lookup
-            try:
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_facts_claim_dedup
-                    ON facts (json_extract(metadata, '$.claim_dedup_key'))
-                """)
-            except sqlite3.OperationalError:
-                pass  # старая версия SQLite без индексов по выражению
-            # V8.8: FTS5 полнотекстовый индекс для O(log N) search()
-            try:
-                conn.execute("""
-                    CREATE VIRTUAL TABLE IF NOT EXISTS facts_fts
-                    USING fts5(fact_id UNINDEXED, claim, source, tokenize='unicode61')
-                """)
-            except sqlite3.OperationalError:
-                pass  # FTS5 не поддерживается этой сборкой SQLite
-            # Миграция существующих БД — добавить колонки если их нет
-            existing_cols = {
-                r[1] for r in conn.execute("PRAGMA table_info(facts)").fetchall()
-            }
-            for col in ("history", "t_event_valid_start", "t_event_valid_end",
-                        "t_ingestion_start", "t_ingestion_end"):
-                if col not in existing_cols:
-                    conn.execute(
-                        f"ALTER TABLE facts ADD COLUMN {col} TEXT DEFAULT NULL"
-                    )
-            # v8.7 P0: modality fields — safe migration for existing databases
-            if "claim_type" not in existing_cols:
-                conn.execute(
-                    "ALTER TABLE facts ADD COLUMN claim_type TEXT NOT NULL DEFAULT 'UNKNOWN'"
-                )
-            if "origin_type" not in existing_cols:
-                conn.execute(
-                    "ALTER TABLE facts ADD COLUMN origin_type TEXT NOT NULL DEFAULT 'UNKNOWN'"
-                )
 
-            # TASK-09: L0 Raw Memory (migration 010 DDL — идемпотентно)
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS l0_raw_memory (
-                    raw_id        TEXT PRIMARY KEY,
-                    original_text TEXT NOT NULL,
-                    content_hash  TEXT NOT NULL UNIQUE,
-                    source        TEXT,
-                    source_type   TEXT DEFAULT 'unknown',
-                    language      TEXT DEFAULT 'unknown',
-                    char_count    INTEGER NOT NULL DEFAULT 0,
-                    word_count    INTEGER NOT NULL DEFAULT 0,
-                    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
-                    metadata      TEXT DEFAULT '{}'
-                )
-            """)
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_raw_hash
-                ON l0_raw_memory(content_hash)
-            """)
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS l0_fact_provenance (
-                    id              TEXT PRIMARY KEY,
-                    raw_id          TEXT NOT NULL REFERENCES l0_raw_memory(raw_id),
-                    fact_id         TEXT NOT NULL REFERENCES facts(fact_id),
-                    derivation_type TEXT NOT NULL DEFAULT 'direct',
-                    step_index      INTEGER NOT NULL DEFAULT 0,
-                    transformation  TEXT,
-                    linked_at       TEXT NOT NULL DEFAULT (datetime('now'))
-                )
-            """)
-            # GDPR Art. 17/30: content-free erasure tombstones (right to be forgotten).
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS erasure_log (
-                    erasure_id   TEXT PRIMARY KEY,
-                    fact_id      TEXT NOT NULL,
-                    user_id      TEXT NOT NULL DEFAULT 'default',
-                    reason       TEXT NOT NULL DEFAULT 'user_request',
-                    claim_hash   TEXT NOT NULL,
-                    erased_at    TEXT NOT NULL,
-                    request_ref  TEXT DEFAULT NULL
-                )
-            """)
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_erasure_user
-                ON erasure_log(user_id, erased_at)
-            """)
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_erasure_fact
-                ON erasure_log(fact_id)
-            """)
-            # TASK-09: derived_from на facts (указывает на l0_raw_memory.raw_id)
-            if "derived_from" not in existing_cols:
-                conn.execute(
-                    "ALTER TABLE facts ADD COLUMN derived_from TEXT DEFAULT NULL"
-                )
-
-            # D1 (audit M5): backfill claim_dedup_key для legacy-фактов без него,
-            # чтобы индексированный lookup был ПОЛНЫМ, а fallback не трогал keyed-факты.
-            # Идемпотентно: после первого прохода запрос возвращает 0 строк (быстро по индексу).
-            try:
-                from core.fact_integrity import compute_claim_dedup_key as _cdk
-                missing = conn.execute(
-                    "SELECT fact_id, claim, metadata FROM facts "
-                    "WHERE json_extract(metadata, '$.claim_dedup_key') IS NULL"
-                ).fetchall()
-                for _fid, _claim, _meta in missing:
-                    try:
-                        _md = json.loads(_meta or "{}")
-                    except (json.JSONDecodeError, TypeError):
-                        _md = {}
-                    _md["claim_dedup_key"] = _cdk(_claim or "")
-                    conn.execute(
-                        "UPDATE facts SET metadata = ? WHERE fact_id = ?",
-                        (json.dumps(_md), _fid),
+            if self.db_path not in self._ddl_initialized_paths:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS facts (
+                        fact_id               TEXT PRIMARY KEY,
+                        claim                 TEXT NOT NULL,
+                        source                TEXT NOT NULL,
+                        confidence            REAL    DEFAULT 0.5,
+                        epistemic_state       TEXT    DEFAULT 'Observed',
+                        created_at            TEXT    NOT NULL,
+                        updated_at            TEXT    NOT NULL,
+                        metadata              TEXT    DEFAULT '{}',
+                        history               TEXT    DEFAULT '[]',
+                        -- Bi-temporal fields (I96, V9 Sprint 1 Contract)
+                        t_event_valid_start   TEXT    DEFAULT NULL,
+                        t_event_valid_end     TEXT    DEFAULT NULL,
+                        t_ingestion_start     TEXT    DEFAULT NULL,
+                        t_ingestion_end       TEXT    DEFAULT NULL,
+                        -- Modality fields (v8.7, P0 claim-type spec)
+                        claim_type            TEXT    NOT NULL DEFAULT 'UNKNOWN',
+                        origin_type           TEXT    NOT NULL DEFAULT 'UNKNOWN',
+                        -- Memory type taxonomy (v8.8 Codex audit): episodic/semantic/procedural/system
+                        memory_type           TEXT    NOT NULL DEFAULT 'semantic'
                     )
+                """)
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_facts_epistemic_state
+                    ON facts (epistemic_state)
+                """)
+                # Bi-temporal индексы для time-travel запросов
+                # Обёрнуты в try/except: legacy-БД без bi-temporal колонок
+                # сначала получат ALTER TABLE ниже, а индексы создадутся при следующем open().
+                try:
+                    conn.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_facts_ingestion
+                        ON facts (fact_id, t_ingestion_start, t_ingestion_end)
+                    """)
+                except sqlite3.OperationalError:
+                    pass
+                try:
+                    conn.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_facts_event_valid
+                        ON facts (fact_id, t_event_valid_start, t_event_valid_end)
+                    """)
+                except sqlite3.OperationalError:
+                    pass
+                # D1 (audit M5): expression index on claim_dedup_key → O(log N) dedup lookup
+                try:
+                    conn.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_facts_claim_dedup
+                        ON facts (json_extract(metadata, '$.claim_dedup_key'))
+                    """)
+                except sqlite3.OperationalError:
+                    pass  # старая версия SQLite без индексов по выражению
+                # V8.8: FTS5 полнотекстовый индекс для O(log N) search()
+                try:
+                    conn.execute("""
+                        CREATE VIRTUAL TABLE IF NOT EXISTS facts_fts
+                        USING fts5(fact_id UNINDEXED, claim, source, tokenize='unicode61')
+                    """)
+                except sqlite3.OperationalError:
+                    pass  # FTS5 не поддерживается этой сборкой SQLite
+                # Миграция существующих БД — добавить колонки если их нет
+                existing_cols = {
+                    r[1] for r in conn.execute("PRAGMA table_info(facts)").fetchall()
+                }
+                for col in ("history", "t_event_valid_start", "t_event_valid_end",
+                            "t_ingestion_start", "t_ingestion_end"):
+                    if col not in existing_cols:
+                        conn.execute(
+                            f"ALTER TABLE facts ADD COLUMN {col} TEXT DEFAULT NULL"
+                        )
+                # v8.7 P0: modality fields — safe migration for existing databases
+                if "claim_type" not in existing_cols:
+                    conn.execute(
+                        "ALTER TABLE facts ADD COLUMN claim_type TEXT NOT NULL DEFAULT 'UNKNOWN'"
+                    )
+                if "origin_type" not in existing_cols:
+                    conn.execute(
+                        "ALTER TABLE facts ADD COLUMN origin_type TEXT NOT NULL DEFAULT 'UNKNOWN'"
+                    )
+
+                # TASK-09: L0 Raw Memory (migration 010 DDL — идемпотентно)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS l0_raw_memory (
+                        raw_id        TEXT PRIMARY KEY,
+                        original_text TEXT NOT NULL,
+                        content_hash  TEXT NOT NULL UNIQUE,
+                        source        TEXT,
+                        source_type   TEXT DEFAULT 'unknown',
+                        language      TEXT DEFAULT 'unknown',
+                        char_count    INTEGER NOT NULL DEFAULT 0,
+                        word_count    INTEGER NOT NULL DEFAULT 0,
+                        created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+                        metadata      TEXT DEFAULT '{}'
+                    )
+                """)
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_raw_hash
+                    ON l0_raw_memory(content_hash)
+                """)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS l0_fact_provenance (
+                        id              TEXT PRIMARY KEY,
+                        raw_id          TEXT NOT NULL REFERENCES l0_raw_memory(raw_id),
+                        fact_id         TEXT NOT NULL REFERENCES facts(fact_id),
+                        derivation_type TEXT NOT NULL DEFAULT 'direct',
+                        step_index      INTEGER NOT NULL DEFAULT 0,
+                        transformation  TEXT,
+                        linked_at       TEXT NOT NULL DEFAULT (datetime('now'))
+                    )
+                """)
+                # GDPR Art. 17/30: content-free erasure tombstones (right to be forgotten).
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS erasure_log (
+                        erasure_id   TEXT PRIMARY KEY,
+                        fact_id      TEXT NOT NULL,
+                        user_id      TEXT NOT NULL DEFAULT 'default',
+                        reason       TEXT NOT NULL DEFAULT 'user_request',
+                        claim_hash   TEXT NOT NULL,
+                        erased_at    TEXT NOT NULL,
+                        request_ref  TEXT DEFAULT NULL
+                    )
+                """)
+                _upgrade_erasure_log_schema(conn)
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_erasure_user
+                    ON erasure_log(user_id, erased_at)
+                """)
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_erasure_fact
+                    ON erasure_log(fact_id)
+                """)
+                # TASK-09: derived_from на facts (указывает на l0_raw_memory.raw_id)
+                if "derived_from" not in existing_cols:
+                    conn.execute(
+                        "ALTER TABLE facts ADD COLUMN derived_from TEXT DEFAULT NULL"
+                    )
+
+                # D1 (audit M5): backfill claim_dedup_key для legacy-фактов без него,
+                # чтобы индексированный lookup был ПОЛНЫМ, а fallback не трогал keyed-факты.
+                # Идемпотентно: после первого прохода запрос возвращает 0 строк (быстро по индексу).
+                try:
+                    from core.fact_integrity import compute_claim_dedup_key as _cdk
+                    missing = conn.execute(
+                        "SELECT fact_id, claim, metadata FROM facts "
+                        "WHERE json_extract(metadata, '$.claim_dedup_key') IS NULL"
+                    ).fetchall()
+                    for _fid, _claim, _meta in missing:
+                        try:
+                            _md = json.loads(_meta or "{}")
+                        except (json.JSONDecodeError, TypeError):
+                            _md = {}
+                        _md["claim_dedup_key"] = _cdk(_claim or "")
+                        conn.execute(
+                            "UPDATE facts SET metadata = ? WHERE fact_id = ?",
+                            (json.dumps(_md), _fid),
+                        )
+                except Exception:
+                    pass  # backfill — best-effort, не должен ломать запуск
+
+                conn.commit()
+                self._ddl_initialized_paths.add(self.db_path)
+
+                # VersionStore — отдельное соединение; закрываем основное до DDL warmup.
+                try:
+                    if self._sqlite_conn is not None:
+                        self._sqlite_conn.close()
+                except Exception:
+                    pass
+                self._sqlite_conn = None
+                try:
+                    from core.version_store import VersionStore
+                    VersionStore(self.db_path)
+                except Exception:
+                    logger.debug("VersionStore schema warmup skipped", exc_info=True)
+
+                conn = self._sqlite_conn
+                if conn is None:
+                    conn = sqlite3.connect(
+                        self.db_path, timeout=30.0, check_same_thread=False
+                    )
+                    conn.row_factory = sqlite3.Row
+                    self._sqlite_conn = conn
+
+            try:
+                yield conn
+                conn.commit()
             except Exception:
-                pass  # backfill — best-effort, не должен ломать запуск
-
-            conn.commit()
-            self._ddl_initialized_paths.add(self.db_path)
-
-        try:
-            yield conn
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            # V8.8: НЕ закрываем соединение — оно в пуле.
-            # Пустая операция: контекст просто передаёт соединение обратно в пул.
-            pass
+                conn.rollback()
+                raise
+            finally:
+                # Не держим файл открытым между вызовами — RelationStore/VersionStore
+                # используют отдельные соединения к тому же db_path.
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                self._sqlite_conn = None
 
     # ── L0 LRU кэш ─────────────────────────────────────────────────────────
 
@@ -363,21 +421,13 @@ class SQLiteGraphStore(GraphStore):
             self._l0.pop(fact_id, None)
 
     def _release_stray_locks(self) -> None:
-        """Commit stray transactions left open on pooled connections.
-
-        The 3-connection pool can leave a connection mid-transaction after a
-        prior op; in WAL that stray state blocks a fresh write with 'database is
-        locked'. Erasure is the first write-after-read path to hit this.
-        Committing (rather than rolling back) releases the lock while preserving
-        any pending writes — no data loss. The underlying pool transaction
-        management is tracked for the concurrency-hardening pass (KERNEL_STATE).
-        """
-        for c in self._conn_pool:
-            if c is not None and c.in_transaction:
-                try:
-                    c.commit()
-                except Exception:  # noqa: BLE001 — best-effort lock release
-                    pass
+        """Commit незавершённой транзакции на единственном соединении."""
+        conn = self._sqlite_conn
+        if conn is not None and conn.in_transaction:
+            try:
+                conn.commit()
+            except Exception:  # noqa: BLE001 — best-effort lock release
+                pass
 
     def delete_fact_l1(self, fact_id: str) -> bool:
         """Physically delete a fact from L0 cache + L1 SQLite and every dependent
@@ -545,6 +595,18 @@ class SQLiteGraphStore(GraphStore):
         }:
             return
         try:
+            # Закрываем основное соединение под lock, но VersionStore вызываем
+            # ВНЕ lock — иначе второй поток блокируется на всё время snapshot I/O.
+            with self._db_lock:
+                if self._sqlite_conn is not None:
+                    try:
+                        if self._sqlite_conn.in_transaction:
+                            self._sqlite_conn.commit()
+                        self._sqlite_conn.close()
+                    except Exception:
+                        pass
+                    self._sqlite_conn = None
+
             from core.version_store import VersionStore
 
             VersionStore(self.db_path).snapshot_before_change(
@@ -832,11 +894,12 @@ class SQLiteGraphStore(GraphStore):
 
         # V8.8: синхронизировать FTS5 индекс
         try:
-            conn.execute(
-                "INSERT OR REPLACE INTO facts_fts(rowid, fact_id, claim, source) "
-                "VALUES ((SELECT rowid FROM facts WHERE fact_id=?), ?, ?, ?)",
-                (fact_id, fact_id, new_claim, source_val),
-            )
+            with self._db() as conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO facts_fts(rowid, fact_id, claim, source) "
+                    "VALUES ((SELECT rowid FROM facts WHERE fact_id=?), ?, ?, ?)",
+                    (fact_id, fact_id, new_claim, source_val),
+                )
         except sqlite3.OperationalError:
             pass  # FTS5 недоступен
 
@@ -1233,6 +1296,7 @@ class SQLiteGraphStore(GraphStore):
             raise ImmutableStateError(
                 "transition_esm: переход в 'ImmutableCore' только для Ring Zero"
             )
+        self._release_stray_locks()
         fact = self.get_fact(fact_id)
         if not fact:
             return False
@@ -1252,6 +1316,33 @@ class SQLiteGraphStore(GraphStore):
             caused_by=f"memory.transition_esm:{by}",
         )
         return self.update_state(fact_id, new_state, history_entry, now)
+
+    _ESM_LADDER = ("Observed", "Hypothesized", "Supported", "Validated")
+
+    def promote_esm_to(self, fact_id: str, target: str, by: str = "promote_esm") -> bool:
+        """Пошагово повышает факт до target по канонической лестнице ESM."""
+        if target not in ESM_STATES:
+            raise ValueError(f"promote_esm_to: недопустимое состояние '{target}'")
+        fact = self.get_fact(fact_id)
+        if not fact:
+            return False
+        current = fact.get("epistemic_state", "Observed")
+        if current == target:
+            return True
+        if target in self._ESM_LADDER and current in self._ESM_LADDER:
+            cur_i = self._ESM_LADDER.index(current)
+            tgt_i = self._ESM_LADDER.index(target)
+            if cur_i >= tgt_i:
+                return True
+            for state in self._ESM_LADDER[cur_i + 1 : tgt_i + 1]:
+                if not self.transition_esm(fact_id, state, by=by):
+                    return False
+            return True
+        return self.transition_esm(fact_id, target, by=by)
+
+    def promote_to_validated(self, fact_id: str, by: str = "promote_to_validated") -> bool:
+        """Каноническая цепочка Observed → Hypothesized → Supported → Validated."""
+        return self.promote_esm_to(fact_id, "Validated", by=by)
 
     # ── Bi-temporal операции (I96) ──────────────────────────────────────────
 
@@ -1596,17 +1687,17 @@ class SQLiteGraphStore(GraphStore):
     # ── close ───────────────────────────────────────────────────────────────
 
     def close(self) -> None:
-        """Идемпотентное закрытие. V8.8: закрывает все соединения в пуле."""
+        """Идемпотентное закрытие единственного SQLite-соединения."""
         if self._closed:
             return
         self._closed = True
-        for conn in self._conn_pool:
-            if conn is not None:
+        with self._db_lock:
+            if self._sqlite_conn is not None:
                 try:
-                    conn.close()
+                    self._sqlite_conn.close()
                 except Exception:
                     pass
-        self._conn_pool.clear()
+                self._sqlite_conn = None
 
 
 # ─── Фабрика для тестовой изоляции ────────────────────────────────────────────
@@ -1651,6 +1742,14 @@ def find_fact_id_by_claim_dedup(claim: str) -> str | None:
 
 def transition_esm(fact_id: str, new_state: str, by: str = "transition_esm") -> bool:
     return _GLOBAL_STORE.transition_esm(fact_id, new_state, by)
+
+
+def promote_to_validated(fact_id: str, by: str = "promote_to_validated") -> bool:
+    return _GLOBAL_STORE.promote_to_validated(fact_id, by=by)
+
+
+def promote_esm_to(fact_id: str, target: str, by: str = "promote_esm") -> bool:
+    return _GLOBAL_STORE.promote_esm_to(fact_id, target, by=by)
 
 def get_all_facts(
     epistemic_state: str | None = None,

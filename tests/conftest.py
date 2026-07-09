@@ -28,6 +28,7 @@ import pytest
 # сессии понижаем до NORMAL, чтобы write-heavy сьют не тормозил. setdefault — уважает
 # явный VELANTRIM_SQLITE_SYNCHRONOUS, если он задан в окружении.
 os.environ.setdefault("VELANTRIM_SQLITE_SYNCHRONOUS", "NORMAL")
+os.environ.setdefault("VELANTRIM_VERSION_SNAPSHOTS", "true")
 
 
 @pytest.fixture(autouse=True)

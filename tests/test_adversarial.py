@@ -19,6 +19,11 @@ import pytest
 
 # ─── ФИКСТУРЫ ────────────────────────────────────────────────────────────────
 
+def _promote_to_validated(store, fact_id: str, by: str = "test") -> None:
+    """Observed → Hypothesized → Supported → Validated (матрица ESM V8.8)."""
+    store.promote_to_validated(fact_id, by=by)
+
+
 @pytest.fixture
 def store(tmp_path):
     """Изолированный store для каждого теста."""
@@ -311,7 +316,7 @@ class TestMemoryAttacks:
         """
         store.store_fact({"fact_id": "dup1", "claim": "original claim",
                           "source": "s", "confidence": 0.8})
-        store.transition_esm("dup1", "Validated", by="test")
+        _promote_to_validated(store, "dup1")
 
         # Другой claim → drift protection
         store.store_fact({"fact_id": "dup1", "claim": "different claim",
@@ -608,7 +613,7 @@ class TestAuditFixesRegression:
                     "claim": "вода кипит при 100 градусах",
                     "source": "physics", "confidence": 0.99,
                 })
-                mem.transition_esm("boil1", "Validated", by="test")
+                _promote_to_validated(s, "boil1")
 
                 gate = TruthGate(s, contradiction_detector="naive")
                 new_fact = {
@@ -624,6 +629,7 @@ class TestAuditFixesRegression:
                     f"не противоречие. reason={v.reason} contradictions={v.contradictions}"
                 )
             finally:
+                s.close()
                 mem._GLOBAL_STORE = None
 
     def test_truth_gate_default_skips_naive_contradiction(self):
@@ -643,7 +649,7 @@ class TestAuditFixesRegression:
                     "claim": "вода кипит при 100 градусах",
                     "source": "physics", "confidence": 0.99,
                 })
-                mem.transition_esm("boil1", "Validated", by="test")
+                _promote_to_validated(s, "boil1")
 
                 # Default detector="none" — naive false positive не активен
                 gate = TruthGate(s)
@@ -656,6 +662,7 @@ class TestAuditFixesRegression:
                 v = gate.evaluate(new_fact, mode=CognitiveMode.BALANCED)
                 assert v.passed, "Default detector должен пропустить (без false positive)"
             finally:
+                s.close()
                 mem._GLOBAL_STORE = None
 
     def test_truth_gate_rejects_invalid_detector(self):

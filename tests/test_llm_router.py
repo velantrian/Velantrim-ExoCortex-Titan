@@ -33,7 +33,7 @@ def test_openai_catalog_uses_current_models():
     assert p is not None
     assert p["default_model"] == "chat-latest"
     assert p["models"][:3] == ["chat-latest", "gpt-5.5", "gpt-5.5-2026-04-23"]
-    assert "gpt-5.4" in p["models"]
+    assert "gpt-5.5" in p["models"]
     assert "gpt-4o-mini" not in p["models"]
     assert "gpt-4.1-mini" not in p["models"]
 

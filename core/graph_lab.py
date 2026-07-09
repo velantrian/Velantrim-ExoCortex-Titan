@@ -182,9 +182,15 @@ def pagerank(g, top_k: int = 20) -> list[dict[str, Any]]:
         return []
     try:
         pr = nx.pagerank(g, weight="confidence")
-    except Exception as exc:  # noqa: BLE001 — power iteration may not converge
-        logger.debug("graph_lab: pagerank failed (%s)", exc)
-        return []
+    except Exception as exc:  # noqa: BLE001 — numpy/scipy may be absent
+        logger.debug("graph_lab: pagerank failed (%s), fallback degree_centrality", exc)
+        try:
+            pr = nx.degree_centrality(g)
+            total = sum(pr.values()) or 1.0
+            pr = {k: v / total for k, v in pr.items()}
+        except Exception as exc2:  # noqa: BLE001
+            logger.debug("graph_lab: degree_centrality failed (%s)", exc2)
+            return []
     ranked = sorted(pr.items(), key=lambda kv: kv[1], reverse=True)
     return [{"fact_id": n, "pagerank": round(s, 5)} for n, s in ranked[:top_k]]
 

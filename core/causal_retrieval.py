@@ -26,6 +26,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 # Все 13 типов рёбер из RELATION_KINDS
@@ -111,9 +112,14 @@ def _retrieve_candidates(query: str, store: Any, top_k: int) -> list[dict[str, A
                 item.get("retrieval_score") or item.get("_search_score") or 0.0
             )
             candidates.append(item)
-        return candidates
+        if candidates:
+            return candidates
 
-    terms = [t for t in query.lower().split() if len(t) > 2]
+    terms = [
+        re.sub(r"[^\w]", "", t)
+        for t in query.lower().split()
+        if len(re.sub(r"[^\w]", "", t)) > 2
+    ]
     candidates = []
     for fact in store.get_all_facts():
         claim = str(fact.get("claim", "")).lower()

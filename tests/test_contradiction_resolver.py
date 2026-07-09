@@ -75,7 +75,7 @@ def test_recency_uses_timestamp():
 # ── движок (реальный store) ────────────────────────────────────────────────────
 
 def _store(tmp_path):
-    from core.memory import SQLiteGraphStore
+    from core.memory import SQLiteGraphStore, promote_to_validated
     return SQLiteGraphStore(db_path=str(tmp_path / "contra.db"))
 
 
@@ -83,7 +83,7 @@ def test_resolve_validated_not_demoted_by_newer_observed(tmp_path):
     # H2/M3 fix: новый low-trust Observed НЕ демотирует старый Validated (trust-aware).
     s = _store(tmp_path)
     s.store_fact({"fact_id": "a", "claim": "Дерево подходит для дома", "source": "s1", "confidence": 0.9})
-    s.transition_esm("a", "Validated", by="test")
+    s.promote_to_validated("a", by="test")
     s.store_fact({"fact_id": "b", "claim": "Дерево не подходит для дома", "source": "s2", "confidence": 0.4})
     rep = resolve_contradictions(s)
     assert rep.detected == 1 and rep.demoted == 0
@@ -96,9 +96,9 @@ def test_resolve_demotes_weaker_validated_loser(tmp_path):
     # менее доверенный Validated-проигравший (выбор по доверию, а не по новизне).
     s = _store(tmp_path)
     s.store_fact({"fact_id": "a", "claim": "Дерево подходит для дома", "source": "u1", "confidence": 0.9})
-    s.transition_esm("a", "Validated", by="test")
+    s.promote_to_validated("a", by="test")
     s.store_fact({"fact_id": "b", "claim": "Дерево не подходит для дома", "source": "domain_seed", "confidence": 0.9})
-    s.transition_esm("b", "Validated", by="test")
+    s.promote_to_validated("b", by="test")
     rep = resolve_contradictions(s)
     assert rep.detected == 1 and rep.demoted == 1
     assert s.get_fact("a")["epistemic_state"] == "Contradicted"   # слабее (untrusted) → демотирован

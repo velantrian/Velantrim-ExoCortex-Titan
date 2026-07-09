@@ -6,7 +6,7 @@ from core.sleep_consolidation import is_sleep_consolidation_enabled, run_sleep_c
 
 
 def _store(tmp_path):
-    from core.memory import SQLiteGraphStore
+    from core.memory import SQLiteGraphStore, promote_to_validated
     return SQLiteGraphStore(db_path=str(tmp_path / "sleep.db"))
 
 
@@ -27,15 +27,15 @@ def test_sleep_loop_promotes_and_resolves(tmp_path):
     # D5/trust-aware: противоречие двух Validated — побеждает БОЛЕЕ ДОВЕРЕННЫЙ источник,
     # проигравший Validated демотируется (демоушен по-прежнему работает, но по доверию, не по новизне).
     s.store_fact({"fact_id": "a", "claim": "Дерево подходит для дома", "source": "u1", "confidence": 0.9})
-    s.transition_esm("a", "Validated", by="test")
+    s.promote_to_validated("a", by="test")
     s.store_fact({"fact_id": "b", "claim": "Дерево не подходит для дома", "source": "domain_seed", "confidence": 0.9})
-    s.transition_esm("b", "Validated", by="test")
+    s.promote_to_validated("b", by="test")
 
     rep = run_sleep_consolidation(s)
 
     assert rep.facts_examined == 3
     assert rep.corroboration_mode == "lexical"           # embedder не передан
-    assert s.get_fact("t1")["epistemic_state"] in ("Supported", "Validated")   # промоушен
+    assert s.get_fact("t1")["epistemic_state"] in ("Hypothesized", "Supported", "Validated")   # промоушен
     assert s.get_fact("a")["epistemic_state"] == "Contradicted"                # проигравший (менее доверенный)
     assert s.get_fact("b")["epistemic_state"] == "Validated"                   # победитель (domain_seed) цел
     assert rep.contradictions["demoted"] == 1
@@ -47,7 +47,7 @@ def test_sleep_loop_validated_not_demoted_by_newer_observed(tmp_path):
     # H2/M3 fix: новый Observed low-trust НЕ демотирует старый Validated trusted.
     s = _store(tmp_path)
     s.store_fact({"fact_id": "a", "claim": "Дерево подходит для дома", "source": "u1", "confidence": 0.9})
-    s.transition_esm("a", "Validated", by="test")
+    s.promote_to_validated("a", by="test")
     s.store_fact({"fact_id": "b", "claim": "Дерево не подходит для дома", "source": "u2", "confidence": 0.4})
     first = run_sleep_consolidation(s)
     second = run_sleep_consolidation(s)

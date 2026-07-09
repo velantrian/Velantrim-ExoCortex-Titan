@@ -52,6 +52,8 @@ from core.memory import (
     get_fact,
     get_fact_ids,
     get_facts_by_ids,
+    promote_esm_to,
+    promote_to_validated,
     store_fact,
     transition_esm,
 )
@@ -1341,7 +1343,7 @@ def run(
             from core.truth_policy import recommend_target_state
             target, _reason = recommend_target_state(fact)
             if _ESM_RANK.get(target, -1) > _ESM_RANK.get(fact["epistemic_state"], 99):
-                transition_esm(fact["fact_id"], target, by="pipeline.run")
+                promote_esm_to(fact["fact_id"], target, by="pipeline.run")
                 updated = get_fact(fact["fact_id"])
                 if updated:
                     fact["epistemic_state"] = updated["epistemic_state"]
@@ -1353,7 +1355,7 @@ def run(
             )
         else:
             if fact["epistemic_state"] != "Validated":
-                transition_esm(fact["fact_id"], "Validated", by="pipeline.run")
+                promote_to_validated(fact["fact_id"], by="pipeline.run")
                 updated = get_fact(fact["fact_id"])
                 if updated:
                     fact["epistemic_state"] = updated["epistemic_state"]
