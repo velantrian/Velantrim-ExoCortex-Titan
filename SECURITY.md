@@ -135,23 +135,18 @@ on top of, not as a substitute for one.
 
 ## 10. Reporting a vulnerability
 
-<!--
-TODO(maintainer): replace this placeholder with a real, monitored contact before
-accepting reports from the public — e.g. a security@ mailbox or a GitHub Security
-Advisory contact for this repository.
--->
-
 If you find a security issue in Velantrim Titan, please **do not open a public GitHub
 issue**. Instead:
 
-1. Open a private security advisory via this repository's GitHub **Security** tab
-   (Security → Advisories → "Report a vulnerability"), or
-2. Contact the maintainer through the channel listed in the repository's GitHub profile.
+1. Prefer opening a private security advisory via this repository's GitHub **Security**
+   tab (Security → Advisories → "Report a vulnerability").
+2. If advisories are not available to you, contact the maintainer through the channel
+   listed in the repository's GitHub profile.
 
 Please include: the affected version (`GET /` or `GET /api` reports the running
 version), a minimal reproduction, and the potential impact. This is a small,
-research-stage project — please give a reasonable amount of time to respond and ship a
-fix before any public disclosure.
+research-grade prototype maintained without a dedicated security team — please allow
+time for a response and a fix before any public disclosure.
 
 ## 11. Current status
 
