@@ -5,6 +5,39 @@
 
 ---
 
+## [9.0.0] — 2026-07-09 — VELANTRIM TITAN 9.0 (version unification)
+
+Публичный ребрендинг: продукт называется и выглядит как **Velantrim Titan 9.0** во всех
+главных entrypoint-файлах. Функционально это тот же рантайм, что и 8.7.0 — изменения ниже
+чисто версионные/косметические, без изменения API-логики.
+
+### Изменено
+- `pyproject.toml` — `version` → `9.0.0`; `name` → `velantrim-titan` (было `velantrim-v8-7-titan`);
+  `core/__init__.py` синхронизирован с новым именем дистрибутива.
+- `server.py` — заголовок, `FastAPI(title=..., version=...)` и JSON-ответы `/` и `/api` теперь
+  используют `core.__version__` вместо захардкоженной строки; убраны видимые упоминания V8.7.
+- `README.md`, `README.en.md` — заголовок и версия обновлены на Titan 9.0; убрано "100%
+  hallucination-free"-подобных формулировок (их и не было); добавлены формулировки
+  local-first verifiable memory runtime / evidence-gated AI memory / auditable provenance /
+  truth-bound generation / research-grade prototype moving toward production hardening.
+- `Dockerfile`, `docker-compose.yml` — image/container переименованы в `velantrim-titan`;
+  `docker-compose.yml` (production) теперь требует явный `VELANTRIM_API_KEY`
+  (`${VELANTRIM_API_KEY:?...}`), permissive dev-ключ вынесен в новый `docker-compose.dev.yml`.
+- `.github/workflows/ci.yml` — имя workflow обновлено на "CI — Velantrim Titan 9.0".
+- `docs/AUDIT_V8_6.ru.md`, `docs/MIGRATION_V8.6_TO_CANON.ru.md` — помечены как legacy-заметки
+  (оставлены на месте — на них есть активные ссылки из нескольких документов).
+
+### Намеренно не изменено
+- `core/crypto.py` `_KDF_SALT` — исторический литерал с "v8-7" внутри; это фиксированная соль
+  KDF для encryption-at-rest. Смена изменила бы производные ключи и сделала бы нечитаемыми уже
+  зашифрованные данные. Оставлено намеренно.
+- Комментарии вида `# v8.7 audit`, `# FIX P1 (v8.7 audit)` в `core/*.py` и `server.py` — это
+  ссылки на конкретные исторические аудит-фиксы, документируют WHY конкретного кода, а не
+  бренд продукта.
+- `CANONICAL.md`, `Velantrim_Project_Map.md`, журналы (`WORK_LOG.md`, `COLLAB_JOURNAL.md`,
+  `AUDIT_ACTION_ITEMS.md`, `AUDIT_DEEP_2026-06-06.md`, `ROADMAP.md`) — историческая хроника,
+  версии в них документируют факты о прошлом, а не текущий бренд.
+
 ## [8.7.0] — 2026-06-03 — VELANTRIM V8.7 Titan
 
 ### 🛡️ Иммунная система (из Crystal)

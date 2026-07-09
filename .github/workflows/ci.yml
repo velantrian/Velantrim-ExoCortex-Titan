@@ -1,4 +1,4 @@
-name: CI — Velantrim V8.7 Titan
+name: CI — Velantrim Titan 9.0
 
 on:
   push:

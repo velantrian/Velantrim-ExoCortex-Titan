@@ -1,15 +1,17 @@
-# 🔱 VELANTRIM V8.6 Complex
+# 🔱 VELANTRIM TITAN 9.0
 
-**Language:** English  
-**Russian source:** [`README.md`](README.md)  
+**Language:** English
+**Russian source:** [`README.md`](README.md)
 **Purpose:** English companion README, placed next to the Russian original.
 
-Long-term memory for AI agents with causal understanding, evidence, browser testing, and an experimental research layer.
+A local-first verifiable memory runtime for AI agents: evidence-gated AI memory with a causal graph, an immune layer, and an identity axis. Research-grade prototype moving toward production hardening.
 
-> 🌿 **Philosophy:** [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md)  
-> 🔒 **For AI agents:** [docs/PHILOSOPHY_SPEC.md](docs/PHILOSOPHY_SPEC.md)  
-> 🗺️ **Project map:** [Velantrim_Project_Map.md](Velantrim_Project_Map.md)  
+> 🌿 **Philosophy:** [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md)
+> 🔒 **For AI agents:** [docs/PHILOSOPHY_SPEC.md](docs/PHILOSOPHY_SPEC.md)
+> 🗺️ **Project map:** [Velantrim_Project_Map.md](Velantrim_Project_Map.md)
 > 📁 **Related folders:** [docs/RELATED_PROJECTS.ru.md](docs/RELATED_PROJECTS.ru.md) — do not confuse with `Graphiti_fractal-main`
+>
+> Legacy notes are preserved in [CHANGELOG.md](CHANGELOG.md) and `docs/archive/`.
 
 ---
 
@@ -17,7 +19,7 @@ Long-term memory for AI agents with causal understanding, evidence, browser test
 
 Velantrim is not just a chatbot and not just a vector database.
 
-It is an **ExoCortex**: a memory-and-reasoning system where truth, evidence, memory, and language generation are separated.
+It is an **ExoCortex**: a memory-and-reasoning system where truth, evidence, memory, and language generation are separated — auditable provenance and truth-bound generation instead of a single opaque model call.
 
 ```text
 Normal LLM:
@@ -40,15 +42,31 @@ LLM / BAE = Voice
 
 ---
 
-## 🆕 V8.6 Complex — ExoCortex + L6
+## 🆕 Titan 9.0 — Immune System + Identity Axis + Production Hardening
 
-Modules L1.5-L5.5 were moved from `Graphiti_fractal-main`. By default, most advanced layers are **off** and activated through ENV flags.
+**199 modules · 91 test files · 18 invariants enforced in CI · docker-compose up**
+
+| Area | Module | Purpose |
+|---|---|---|
+| 🛡️ Immune system | `core/meta_supervisor.py` | HEALTHY/DEGRADED/SAFE_MODE, 10s heartbeat, L3 read-only on critical degradation |
+| 🛡️ Immune system | `core/immutable_core_scheduler.py` | SHA-256 delta snapshots of the graph every 24h |
+| 🛡️ Immune system | `core/provenance_chain.py` | Append-only hash chain — a blockchain for memory |
+| 🛡️ Immune system | `core/atomic_split.py` | I91: one proposition = one fact |
+| 🧬 Identity Axis | `core/identity_layer.py` | F1–F4: VALUES / WORLDVIEW / BIOGRAPHY / COMPASS |
+| 🧬 Identity Axis | `core/stimulus_map.py` | Two-way traceability: stimulus ↔ fact ↔ answer |
+| 🧬 Identity Axis | `core/forgetting.py` | GDPR "right to be forgotten" + PII redaction |
+| 🚀 Production | `Dockerfile` + `docker-compose.yml` | One-command deploy: `docker-compose up -d` |
+| 🚀 Production | `core/async_store.py` | aiosqlite + run_in_executor — the event loop never blocks |
+| 🚀 Production | `core/metrics.py` | Prometheus metrics + `/health` endpoint |
+| 🚀 Production | `.github/workflows/ci.yml` | CI/CD: mypy strict + ruff + pytest, blocking |
+
+Most advanced layers (L1.5–L5.5) are **off by default** and activated through ENV flags:
 
 | Layer | Module | Flag / Status |
 |---|---|---|
 | L0 | Raw Memory | always 🟢 |
 | L1 | ESM + Truth Gate | 🟢 |
-| L1 | CognitiveFact / Store (v9) | `ENABLE_COGNITIVE_FACT`, `ENABLE_COGNITIVE_STORE` |
+| L1 | CognitiveFact / Store | `ENABLE_COGNITIVE_FACT`, `ENABLE_COGNITIVE_STORE` |
 | L1.5 | Velum, Salience | `ENABLE_VELUM`, `ENABLE_SALIENCE` |
 | L2 | Concept Emergence | `ENABLE_CONCEPT_EMERGENCE` |
 | L2.5 | Staging (research) | 🔬 no code yet — [docs/horizons/L2_5_STAGING.md](docs/horizons/L2_5_STAGING.md) |
@@ -59,7 +77,7 @@ Modules L1.5-L5.5 were moved from `Graphiti_fractal-main`. By default, most adva
 | L5.5 | Predictive Fusion | `ENABLE_PREDICTIVE_FUSION` |
 | L6 | Welfare MVP | `ENABLE_L6_WELFARE` |
 | — | Fractal Memory contracts | `core/fractal_memory.py` 🟡 skeleton |
-| — | SleepTimeWorker | `SLEEP_WORKER_ENABLED` (V8.6 only) |
+| — | SleepTimeWorker | `SLEEP_WORKER_ENABLED` |
 | — | EventBus | `ENABLE_EVENT_BUS` |
 
 ---
@@ -67,7 +85,7 @@ Modules L1.5-L5.5 were moved from `Graphiti_fractal-main`. By default, most adva
 ## 🗺️ System At A Glance
 
 ```text
-🔱 VELANTRIM_ExoCortex_V8.6
+🔱 Velantrim Titan 9.0
 │
 ├── 🧠 Core
 │   ├── memory.py             facts, ESM, cache, bi-temporal memory
@@ -97,7 +115,7 @@ Modules L1.5-L5.5 were moved from `Graphiti_fractal-main`. By default, most adva
 │
 └── ⚙️ Config
     ├── pyproject.toml
-    ├── requirements.txt
+    ├── requirements-dev.txt
     ├── config/exocortex-dev.env
     └── config/llm.example.env
 ```
@@ -106,7 +124,7 @@ Modules L1.5-L5.5 were moved from `Graphiti_fractal-main`. By default, most adva
 
 ## 🧪 Research Mode — Separate Experimental Memory
 
-Research Mode describes a smaller experimental version next to stable V8.6.
+Research Mode describes a smaller experimental version next to the stable runtime.
 
 The browser console and AI agent can use Velantrim as an **API memory tool**, but write into a separate database:
 
@@ -142,8 +160,8 @@ The experimental browser stand includes:
 - live graph of topic and relations through SSE,
 - optional AI provider connection.
 
-**Docs:** [docs/CONSOLE_BROWSER_TEST.ru.md](docs/CONSOLE_BROWSER_TEST.ru.md)  
-After server start: [http://127.0.0.1:8755/console/help](http://127.0.0.1:8755/console/help)  
+**Docs:** [docs/CONSOLE_BROWSER_TEST.ru.md](docs/CONSOLE_BROWSER_TEST.ru.md)
+After server start: [http://127.0.0.1:8755/console/help](http://127.0.0.1:8755/console/help)
 Roadmap: [http://127.0.0.1:8755/console/roadmap](http://127.0.0.1:8755/console/roadmap)
 
 ```powershell
@@ -151,7 +169,7 @@ Roadmap: [http://127.0.0.1:8755/console/roadmap](http://127.0.0.1:8755/console/r
 .\scripts\start_console.ps1
 
 # 2. Browser:
-http://127.0.0.1:8755/console/?v=23
+http://127.0.0.1:8755/console/?v=40
 
 # 3. Task roadmap:
 http://127.0.0.1:8755/console/roadmap
@@ -177,6 +195,11 @@ Setup and docs:
 ## 🚀 Quick Start
 
 ```bash
+# Option 1: Docker (recommended)
+docker-compose up -d
+# Server on http://localhost:8000
+
+# Option 2: Manual run
 python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install fastapi "uvicorn[standard]" python-dotenv pydantic pytest httpx
 cp .env.example .env
@@ -201,6 +224,8 @@ ENABLE_EVENT_BUS=1
 
 ## 📚 Documentation
 
+- `docs/TRUTH_AND_RINGZERO_CANON.en.md` 🏛️ — the canonical spec: Truth Engine (Core-3) + Ring Zero, verdict `allow/gap_notice/reject`, invariants I0–I8, conformance C1–C12 ([RU](docs/TRUTH_AND_RINGZERO_CANON.ru.md))
+- `core/core3_adapter.py` 🔀 — Dual Core Router: subprocess bridge to Core-3 (strict high-risk verification)
 - `docs/CONSOLE_BROWSER_TEST.ru.md` — browser console test
 - `docs/VELANTRIM_ARCHITECTURE.md` — architecture
 - `docs/VELANTRIM_ARCHITECTURE.en.md` — English architecture companion
@@ -212,7 +237,6 @@ ENABLE_EVENT_BUS=1
 - `docs/WORLD_KNOWLEDGE_CORE_v1_0.ru.md` — future-work canon: quality of knowledge, time, negative knowledge, contradiction review
 - `docs/RESEARCH_MODE.ru.md` — separate experimental memory and Velantrim as an API tool
 - `docs/EITI_PWA_RESEARCH_ROADMAP.ru.md` — T1-T12 roadmap for browser Research PWA
-- `docs/Velantrim_V9_Final_Audited.md` — V9 specification
 
 ---
 
@@ -245,6 +269,5 @@ For now, side-by-side files make comparison simple.
 
 ## 🧭 Version
 
-**8.6.0** — product **VELANTRIM V8.6 Complex**.  
-The repository folder may remain named `VELANTRIM_ExoCortex_V8.6`.
-
+**9.0.0** — product **VELANTRIM TITAN 9.0**.
+Version history (V8.6 → V8.7 → V9.0) is preserved in [CHANGELOG.md](CHANGELOG.md) and `docs/archive/legacy/`.

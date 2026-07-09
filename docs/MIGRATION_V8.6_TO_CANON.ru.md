@@ -1,5 +1,9 @@
 # 🗺️ План миграции V8.6 → Канон (Движок Истины + Ring Zero)
 
+> 🕰️ **Legacy migration note.** Продукт сейчас называется **Velantrim Titan 9.0**
+> (см. [README.md](../README.md)); задачи ниже написаны для V8.6 и остаются актуальны
+> как трекер conformance C1–C12, пока не закрыты.
+
 > **Дата:** 2026-05-31 · **Канон:** [TRUTH_AND_RINGZERO_CANON.ru.md](TRUTH_AND_RINGZERO_CANON.ru.md) ([EN](TRUTH_AND_RINGZERO_CANON.en.md))
 > **Источник gap-анализа:** глубокий аудит 2026-05-31 (находки C1/C2/H1–H3, M1–M5) + [AUDIT_V8_6.ru.md](AUDIT_V8_6.ru.md)
 >

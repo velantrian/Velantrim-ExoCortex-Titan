@@ -1,6 +1,8 @@
-# 🔱 VELANTRIM V8.7 TITAN
+# 🔱 VELANTRIM TITAN 9.0
 
-Долговременная память для AI-агентов с каузальным пониманием, иммунной системой и осью идентичности.
+Local-first verifiable memory runtime for AI agents: evidence-gated AI memory with a causal graph, an immune layer, and an identity axis.
+
+Research-grade prototype moving toward production hardening.
 
 > 🌿 **Философия:** [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md)
 > 🔒 **Для AI-агентов:** [docs/PHILOSOPHY_SPEC.md](docs/PHILOSOPHY_SPEC.md)
@@ -9,8 +11,10 @@
 > 📋 **Журнал устаревших технологий:** [research/DEPRECATIONS.md](research/DEPRECATIONS.md)
 > 🏛️ **4 оси архитектуры:** [research/ARCHITECTURE_AXES.md](research/ARCHITECTURE_AXES.md)
 > 🔬 **Будущие компоненты:** [research/FUTURE_COMPONENTS.md](research/FUTURE_COMPONENTS.md)
+>
+> Legacy notes are preserved in [CHANGELOG.md](CHANGELOG.md) and `docs/archive/`.
 
-## 🆕 V8.7 Titan — Иммунная система + Identity Axis + Production-ready (3 июня 2026)
+## 🆕 Titan 9.0 — иммунная система, auditable provenance, truth-bound generation
 
 **199 модулей · 91 тестовый файл · 18 инвариантов в CI · docker-compose up**
 
@@ -40,7 +44,7 @@
 | `core/rate_limit.py` | Token-bucket per-IP |
 | `.github/workflows/ci.yml` | CI/CD: mypy strict + ruff + pytest. BLOCKING |
 
-### 🧠 Когнитивные модули V8.7
+### 🧠 Когнитивные модули
 | Модуль | Назначение |
 |--------|-----------|
 | `core/perspectives.py` | 9 ролей: ENGINEER/SCIENTIST/ANALYST/CRITIC/ADVISOR/FRIEND/PHILOSOPHER/CREATIVE/CHILD |
@@ -85,14 +89,14 @@ Google: gemini-3.5-flash | Llama: llama-4-maverick
 
 ### 💻 Локально (полная консоль + LLM)
 
-Экспериментальный стенд V8.7 Titan: чат, блок памяти в **localStorage**, поиск по сообщениям, вкладка **🔗 Эссенция**.
+Экспериментальный стенд Titan 9.0: чат, блок памяти в **localStorage**, поиск по сообщениям, вкладка **🔗 Эссенция**.
 
 **Обзор (красиво, с путями и переносом):** [docs/CONSOLE_OVERVIEW.ru.md](docs/CONSOLE_OVERVIEW.ru.md)
 
 **Документация:** [docs/CONSOLE_BROWSER_TEST.ru.md](docs/CONSOLE_BROWSER_TEST.ru.md) · [http://127.0.0.1:8755/console/help](http://127.0.0.1:8755/console/help) · [roadmap](http://127.0.0.1:8755/console/roadmap)
 
 ```powershell
-cd "C:\Users\VELAN\Documents\Research Velantrim\VELANTRIM_ExoCortex_V8.7_Titan"
+cd "C:\Users\VELAN\Documents\Research Velantrim\Velantrim-ExoCortex-Titan"
 # 1. .env: VELANTRIM_API_KEY=...  (+ LLM из config/llm.example.env)
 .\scripts\start_console.ps1
 # 2. Браузер: http://127.0.0.1:8755/console/?v=40
@@ -147,6 +151,6 @@ ENABLE_EVENT_BUS=1
 
 ## Версия
 
-**8.7.0 Titan** — продукт **VELANTRIM V8.7 TITAN** (3 июня 2026).  
+**9.0.0** — продукт **VELANTRIM TITAN 9.0**.  
 199 модулей в `core/` · 1212 тестов · Docker + CI/CD.  
-Исходный код V8.6 сохранён нетронутым в папке `VELANTRIM_ExoCortex_V8.6`.
+История версий (V8.6 → V8.7 → V9.0) — в [CHANGELOG.md](CHANGELOG.md) и `docs/archive/legacy/`.
