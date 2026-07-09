@@ -1,9 +1,7 @@
 * text=auto eol=lf
-
 *.ps1 text eol=crlf
 *.bat text eol=crlf
 *.cmd text eol=crlf
-
 *.db binary
 *.sqlite binary
 *.db-shm binary
@@ -21,3 +19,4 @@
 *.docx binary
 *.pptx binary
 *.xlsx binary
+data/velantrim_kb.db filter=lfs diff=lfs merge=lfs -text
