@@ -435,9 +435,15 @@ class SQLiteGraphStore(GraphStore):
         """Record a content-free erasure tombstone (GDPR Art. 30)."""
         import uuid
         self._release_stray_locks()
+        claim_hash = content_hash or ""
         with self._db() as conn:
+            exists = conn.execute(
+                "SELECT 1 FROM erasure_log WHERE fact_id = ? LIMIT 1", (fact_id,)
+            ).fetchone()
+            if exists:
+                return
             conn.execute(
-                "INSERT OR IGNORE INTO erasure_log "
+                "INSERT INTO erasure_log "
                 "(erasure_id, fact_id, user_id, reason, claim_hash, erased_at) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
                 (
@@ -445,7 +451,7 @@ class SQLiteGraphStore(GraphStore):
                     fact_id,
                     actor,
                     reason,
-                    content_hash or "",
+                    claim_hash,
                     _now(),
                 ),
             )
@@ -459,14 +465,7 @@ class SQLiteGraphStore(GraphStore):
             ).fetchone()
         if row is None:
             return None
-        return {
-            "erasure_id": row[0],
-            "fact_id": row[1],
-            "user_id": row[2],
-            "reason": row[3],
-            "claim_hash": row[4],
-            "erased_at": row[5],
-        }
+        return self._row_to_tombstone(row)
 
     def get_tombstones(self) -> list[dict]:
         with self._db() as conn:
@@ -474,17 +473,21 @@ class SQLiteGraphStore(GraphStore):
                 "SELECT erasure_id, fact_id, user_id, reason, claim_hash, erased_at "
                 "FROM erasure_log ORDER BY erased_at"
             ).fetchall()
-        return [
-            {
-                "erasure_id": r[0],
-                "fact_id": r[1],
-                "user_id": r[2],
-                "reason": r[3],
-                "claim_hash": r[4],
-                "erased_at": r[5],
-            }
-            for r in rows
-        ]
+        return [self._row_to_tombstone(r) for r in rows]
+
+    @staticmethod
+    def _row_to_tombstone(row) -> dict:
+        claim_hash = row[4] or ""
+        return {
+            "erasure_id": row[0],
+            "fact_id": row[1],
+            "user_id": row[2],
+            "actor": row[2],
+            "reason": row[3],
+            "claim_hash": claim_hash,
+            "content_hash": claim_hash,
+            "erased_at": row[5],
+        }
 
     def set_restricted(self, fact_id: str, restricted: bool) -> bool:
         """Mark/unmark a fact's processing restriction (GDPR Art. 18).
