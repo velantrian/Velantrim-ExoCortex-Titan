@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 from core.gemini_models import GEMINI_CATALOG_REVISION, build_gemini_provider_entry
 
 # Меняйте при обновлении списков моделей — видно в GET /console/llm/providers
-CATALOG_BUILD_ID = "2026-06-velantrim-v87-titan-qwen37-deepseekv4"
+CATALOG_BUILD_ID = "2026-07-velantrim-titan-90-provider-catalog"
 _CATALOG_FILE = Path(__file__).resolve()
 
 OPENAI_MODELS: List[str] = [

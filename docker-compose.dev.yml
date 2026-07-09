@@ -6,8 +6,6 @@
 # dev-ключ. Для production используйте docker-compose.yml, который требует
 # явный VELANTRIM_API_KEY.
 
-version: "3.9"
-
 services:
   velantrim:
     build: .
