@@ -224,6 +224,9 @@ ENABLE_EVENT_BUS=1
 
 ## 📚 Documentation
 
+- [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) 🔍 — a map for reviewers: what this is, what it isn't, where to inspect first
+- [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) 📊 — maturity by module, known risks, P0/P1/P2 roadmap
+- [`SECURITY.md`](SECURITY.md) 🔒 — security model, API key, dev vs production, responsible disclosure
 - `docs/TRUTH_AND_RINGZERO_CANON.en.md` 🏛️ — the canonical spec: Truth Engine (Core-3) + Ring Zero, verdict `allow/gap_notice/reject`, invariants I0–I8, conformance C1–C12 ([RU](docs/TRUTH_AND_RINGZERO_CANON.ru.md))
 - `core/core3_adapter.py` 🔀 — Dual Core Router: subprocess bridge to Core-3 (strict high-risk verification)
 - `docs/CONSOLE_BROWSER_TEST.ru.md` — browser console test

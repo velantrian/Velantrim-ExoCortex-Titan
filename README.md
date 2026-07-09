@@ -134,6 +134,9 @@ ENABLE_EVENT_BUS=1
 
 ## 📚 Документация
 
+- [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) 🔍 — карта для ревьюеров: что это, чего это не делает, где смотреть в первую очередь
+- [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) 📊 — зрелость по модулям, известные риски, roadmap P0/P1/P2
+- [`SECURITY.md`](SECURITY.md) 🔒 — модель безопасности, API-ключ, dev vs production, ответственное раскрытие
 - `docs/TRUTH_AND_RINGZERO_CANON.ru.md` 🏛️ — **единый канон-эталон**: Движок Истины (Core-3) + Ring Zero (малое ядро), вердикт `allow/gap_notice/reject`, инварианты I0–I8, conformance C1–C12 ([EN](docs/TRUTH_AND_RINGZERO_CANON.en.md))
 - `docs/MIGRATION_V8.6_TO_CANON.ru.md` 🗺️ — план миграции V8.6 к канону (C1–C12 → задачи по файлам)
 - `core/core3_adapter.py` 🔀 — Dual Core Router: субпроцесс-мост к Core-3 (строгая проверка high-risk)
