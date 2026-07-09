@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime, timezone
@@ -200,7 +199,6 @@ class MetaSupervisor:
 
     async def _heartbeat_loop(self) -> None:
         last_gc = 0.0
-        last_mhi = 0.0
 
         while self._running:
             try:
@@ -244,7 +242,6 @@ class MetaSupervisor:
     def _collect_mhi(self) -> None:
         """Собрать MHI и SLO-метрики из живых компонентов."""
         try:
-            from core.mhi import MHIStatus
             from core.event_bus import get_event_bus
 
             # MHI
@@ -303,7 +300,6 @@ class MetaSupervisor:
     async def _evaluate(self, elapsed: float) -> None:
         """Оценить состояние и выполнить переход если нужно."""
         cfg = self._config
-        old_mode = self._mode
 
         # Чтение текущих метрик
         mhi = self._mhi_cache

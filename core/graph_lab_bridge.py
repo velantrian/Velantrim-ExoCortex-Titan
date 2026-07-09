@@ -30,6 +30,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 from typing import Any
 
@@ -99,9 +100,7 @@ def analyze_graph(
     db = db_path or os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
 
     # NetworkX check
-    try:
-        import networkx as nx
-    except ImportError:
+    if importlib.util.find_spec("networkx") is None:
         return {"available": False, "reason": "networkx not installed"}
 
     # GraphLab check

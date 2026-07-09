@@ -32,10 +32,8 @@ core/hybrid_retriever.py — Velantrim v8.3.0
 from __future__ import annotations
 
 import logging
-import math
 import os
 from dataclasses import dataclass, field
-from typing import Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +163,6 @@ class DenseRetriever:
     def _load(self) -> None:
         try:
             from sentence_transformers import SentenceTransformer
-            import numpy as np
             self._model = SentenceTransformer(self._model_name)
             claims = [f.get("claim", "") for f in self._facts]
             self._embeddings = self._model.encode(claims, normalize_embeddings=True)
@@ -190,7 +187,6 @@ class DenseRetriever:
         if not self.available:
             return []
         try:
-            import numpy as np
             q_emb = self._model.encode([query], normalize_embeddings=True)[0]
             sims  = self._embeddings @ q_emb          # dot product = cosine (нормализовано)
             indexed = sorted(enumerate(sims), key=lambda x: x[1], reverse=True)

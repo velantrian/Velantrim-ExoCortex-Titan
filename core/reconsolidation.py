@@ -171,7 +171,6 @@ class ReconsolidationEngine:
         if signal.user_satisfaction is not None:
             sat = max(0.0, min(1.0, signal.user_satisfaction))
             old_conf = float(fact.get("confidence", 0.5))
-            total_uses = usage + 1  # включая текущий
 
             # Bayesian: Beta(α, β) posterior
             # α = prior_conf * prior_strength + successes

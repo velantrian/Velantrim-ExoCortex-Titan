@@ -51,10 +51,14 @@ from core.essence import (  # type: ignore[attr-defined]
 )
 
 __all__ = [
+    "Essence",
     "Gist",
     "GistSynthesizer",
+    "MeaningRole",
     "SituationModel",
+    "WhyTrace",
     "build_situation",
+    "compose_essence",
     "extract_gist",
     "get_causal_bridge",
     "get_gist_synthesizer",
@@ -62,4 +66,5 @@ __all__ = [
     "get_mirror_bridge",
     "get_observer_bridge",
     "get_situation_model",
+    "is_essence_enabled",
 ]

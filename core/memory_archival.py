@@ -23,8 +23,7 @@ import json
 import logging
 import os
 import sqlite3
-import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional

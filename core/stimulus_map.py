@@ -26,9 +26,8 @@ from __future__ import annotations
 import logging
 import os
 import sqlite3
-import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("velantrim.stimulus_map")
 

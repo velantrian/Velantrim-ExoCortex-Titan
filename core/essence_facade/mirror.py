@@ -1,6 +1,5 @@
 """🪞 core/essence/mirror.py — Mirror bridge"""
 from __future__ import annotations
-from typing import Any, Dict, Optional
 
 
 def get_mirror_bridge():

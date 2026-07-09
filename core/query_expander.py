@@ -26,7 +26,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Dict, Optional
 
 
 # RU→EN научные синонимы (самые частые в World Skills KB)
