@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| fueldistops.activation.trigger | fuel activation trigger | MODEL | Trigger includes utility outage, fleet surge, generator deployment or fuel market disruption. | Starts controlled fuel operations. |
-| fueldistops.activation.fuel_cell | fuel cell | RECORD | Fuel cell names lead, finance, logistics, safety and supplier contacts. | Centralizes decisions. |
-| fueldistops.activation.priority_policy | priority policy | CONSTRAINT | Policy ranks life safety, hospitals, shelters, water, public safety and critical fleets. | Allocates scarce fuel fairly. |
-| fueldistops.activation.safety_brief | safety briefing | SAFETY_RULE | Brief covers fire, spills, vapors, traffic, grounding, PPE and no-smoking rules. | Protects people and facilities. |
-| fueldistops.request.request_id | fuel request ID | RECORD | Request ID links requester, mission, fuel type, quantity, location and priority. | Tracks demand. |
-| fueldistops.request.fuel_type | fuel type | RECORD | Type distinguishes gasoline, diesel, propane, aviation, heating or generator fuel. | Prevents wrong delivery. |
-| fueldistops.request.burn_rate | burn rate | MEASUREMENT | Burn rate estimates consumption per hour, vehicle, generator or facility. | Predicts resupply timing. |
-| fueldistops.request.validation | request validation | QUALITY_CHECK | Validation checks mission need, tank capacity, current stock and duplicate requests. | Prevents over-ordering. |
-| fueldistops.allocation.priority | allocation priority | MODEL | Allocation considers mission criticality, remaining fuel, delivery distance and alternatives. | Sends fuel where needed most. |
-| fueldistops.allocation.quantity | allocation quantity | METHOD | Quantity balances requested amount, safe storage and available supply. | Avoids waste and shortage. |
-| fueldistops.allocation.reserve | reserve level | CONSTRAINT | Reserve protects critical missions and next operational period. | Prevents empty depots. |
-| fueldistops.allocation.approval | allocation approval | RECORD | Approval records amount, approver, mission and restrictions. | Supports audit. |
-| fueldistops.depot.depot_id | depot ID | RECORD | Depot ID links location, tanks, capacity, staff, security and fuel types. | Creates controlled storage point. |
-| fueldistops.depot.inventory | depot inventory | MEASUREMENT | Inventory tracks starting stock, receipts, issues, losses and ending balance. | Maintains accountability. |
-| fueldistops.depot.access | depot access control | SAFETY_RULE | Access is limited to authorized staff, drivers and vehicles. | Protects scarce fuel. |
-| fueldistops.depot.spill_control | spill control | SAFETY_RULE | Spill kits, containment and reporting process are staged at depot. | Reduces environmental harm. |
-| fueldistops.delivery.dispatch | delivery dispatch | METHOD | Dispatch assigns truck, driver, route, quantity, destination and contact. | Moves fuel safely. |
-| fueldistops.delivery.route | route planning | METHOD | Route considers road closures, security, bridge limits, weather and return fuel. | Improves reliability. |
-| fueldistops.delivery.meter_ticket | meter ticket | RECORD | Meter ticket records gallons, fuel type, source, destination and operator. | Supports reconciliation. |
-| fueldistops.delivery.receipt | delivery receipt | RECORD | Recipient confirms quantity, condition, time and tank/equipment filled. | Closes delivery loop. |
-| fueldistops.equipment.generator_link | generator link | RECORD | Fuel issue links to generator ID, size, run hours and site. | Supports refuel planning. |
-| fueldistops.equipment.vehicle_link | vehicle link | RECORD | Vehicle fueling records unit, odometer/hour meter, fuel type and mission. | Controls fleet fuel. |
-| fueldistops.equipment.tank_capacity | tank capacity | RECORD | Tank capacity prevents unsafe overfill and informs delivery quantity. | Reduces spills. |
-| fueldistops.equipment.compatibility | fuel compatibility | SAFETY_RULE | Fuel type must match engine, tank, hose and site rules. | Prevents equipment damage. |
-| fueldistops.security.escort | escort need | MODEL | High-risk deliveries may need escort due to scarcity, unrest or route hazard. | Protects supply. |
-| fueldistops.security.theft_flag | theft flag | MODEL | Abnormal loss, missing tickets or unauthorized access trigger review. | Detects diversion. |
-| fueldistops.security.seal | seal control | RECORD | Tanker or portable tank seals are recorded where used. | Maintains integrity. |
-| fueldistops.security.public_queue | public queue control | METHOD | Public fuel distribution, if authorized, uses queue, limits and safety controls. | Prevents disorder. |
-| fueldistops.finance.price_record | price record | RECORD | Price records contract, spot price, taxes, fees and emergency premium. | Supports finance. |
-| fueldistops.finance.cost_code | cost code | RECORD | Fuel costs link to incident, mission, department and reimbursement category. | Enables recovery. |
-| fueldistops.finance.invoice_match | invoice match | QUALITY_CHECK | Invoice matches delivery tickets, receipts and contract terms. | Prevents overpayment. |
-| fueldistops.finance.exception | finance exception | RECORD | Exceptions record disputed gallons, price, missing ticket or rejected delivery. | Keeps issues visible. |
-| fueldistops.records.daily_reconcile | daily reconciliation | QUALITY_CHECK | Daily reconciliation compares stock, receipts, issues, meter and physical inventory. | Finds losses early. |
-| fueldistops.records.environment | environmental record | RECORD | Spills, disposal, contaminated fuel and cleanup are documented. | Supports compliance. |
-| fueldistops.records.retention | retention rule | CONSTRAINT | Tickets, logs, invoices and incident records follow finance/grant retention. | Preserves audit trail. |
-| fueldistops.communication.status | fuel status update | METHOD | Status updates report stock, shortages, delivery delays and priorities. | Guides command. |
-| fueldistops.communication.requester_notice | requester notice | METHOD | Requesters receive approved quantity, ETA, limits or denial reason. | Sets expectations. |
-| fueldistops.communication.safety_notice | safety notice | SAFETY_RULE | Fuel safety notices cover generator distance, ventilation, refueling and storage. | Reduces fires and poisoning. |
-| fueldistops.metrics.fill_rate | fill rate | MEASUREMENT | Fill rate tracks requested versus delivered fuel by mission. | Shows supply adequacy. |
-| fueldistops.metrics.stockout | stockout risk | MEASUREMENT | Stockout risk estimates time until depletion by depot and fuel type. | Drives resupply. |
-| fueldistops.qa.audit_sample | audit sample | QUALITY_CHECK | Samples verify tickets, receipts, missions and inventories. | Improves integrity. |
-| fueldistops.demob.recovery | demob recovery | METHOD | Demob recovers portable tanks, closes depots, reconciles inventory and returns equipment. | Ends operation cleanly. |
-| fueldistops.review.after_action | after-action review | METHOD | Review captures supplier, routing, theft, safety and allocation lessons. | Improves next fuel response. |
-| fueldistops.governance.fuel_owner | fuel owner | RECORD | Fuel owner coordinates logistics, finance, safety and supplier contracts. | Keeps accountability clear. |
+| fueldistops.activation.trigger | триггер активации подачи топлива | MODEL | Триггер включает в себя отключение коммунальных услуг, увеличение парка техники, запуск генераторов или перебои на рынке топлива. | Запускает контролируемые операции с топливом. |
+| fueldistops.activation.fuel_cell | топливный элемент | RECORD | Названия топливных элементов руководят финансами, логистикой, безопасностью и контактами с поставщиками. | Централизует решения. |
+| fueldistops.activation.priority_policy | приоритетная политика | CONSTRAINT | Политика оценивает безопасность жизни, больницы, приюты, воду, общественную безопасность и критически важные автопарки. | Справедливо распределяет дефицитное топливо. |
+| fueldistops.activation.safety_brief | инструктаж по безопасности | SAFETY_RULE | Краткое описание охватывает пожар, разливы, пары, дорожное движение, заземление, СИЗ и правила, запрещающие курение. | Защищает людей и объекты. |
+| fueldistops.request.request_id | идентификатор запроса топлива | RECORD | Идентификатор запроса связывает отправителя запроса, миссию, тип топлива, количество, местоположение и приоритет. | Треки востребованы. |
+| fueldistops.request.fuel_type | тип топлива | RECORD | По типу различают бензиновое, дизельное, пропановое, авиационное, отопительное или генераторное топливо. | Предотвращает неправильную доставку. |
+| fueldistops.request.burn_rate | скорость горения | MEASUREMENT | Скорость сгорания оценивает потребление в час, транспортное средство, генератор или объект. | Предсказывает время пополнения запасов. |
+| fueldistops.request.validation | запросить проверку | QUALITY_CHECK | При проверке проверяются потребности миссии, вместимость резервуаров, текущий запас и повторяющиеся запросы. | Предотвращает чрезмерный заказ. |
+| fueldistops.allocation.priority | приоритет распределения | MODEL | Распределение учитывает критичность миссии, оставшееся топливо, расстояние доставки и альтернативы. | Посылает топливо туда, где оно больше всего необходимо. |
+| fueldistops.allocation.quantity | количество распределения | METHOD | Количество балансирует запрошенную сумму, безопасное хранение и доступный запас. | Избегает потерь и нехватки. |
+| fueldistops.allocation.reserve | уровень резерва | CONSTRAINT | Резерв защищает критически важные миссии и следующий оперативный период. | Предотвращает пустые склады. |
+| fueldistops.allocation.approval | утверждение распределения | RECORD | Утверждение записывает сумму, утверждающего, миссию и ограничения. | Поддерживает аудит. |
+| fueldistops.depot.depot_id | идентификатор депо | RECORD | Идентификатор депо связывает местоположение, резервуары, вместимость, персонал, безопасность и типы топлива. | Создает контролируемую точку хранения. |
+| fueldistops.depot.inventory | складской инвентарь | MEASUREMENT | Инвентаризация отслеживает начальный запас, поступления, проблемы, потери и конечный баланс. | Сохраняет ответственность. |
+| fueldistops.depot.access | контроль доступа в депо | SAFETY_RULE | Доступ ограничен уполномоченным персоналом, водителями и транспортными средствами. | Защищает дефицитное топливо. |
+| fueldistops.depot.spill_control | контроль разливов | SAFETY_RULE | Комплекты для разливов, процесс локализации и отчетности осуществляется на складе. | Снижает вред окружающей среде. |
+| fueldistops.delivery.dispatch | отправка доставки | METHOD | Диспетчерская служба назначает грузовик, водителя, маршрут, количество, пункт назначения и контакт. | Перемещает топливо безопасно. |
+| fueldistops.delivery.route | планирование маршрута | METHOD | Маршрут учитывает перекрытие дорог, безопасность, ограничения мостов, погоду и возврат топлива. | Повышает надежность. |
+| fueldistops.delivery.meter_ticket | билет по счетчику | RECORD | В билете счетчика указаны галлоны, тип топлива, источник, пункт назначения и оператор. | Поддерживает примирение. |
+| fueldistops.delivery.receipt | квитанция о доставке | RECORD | Получатель подтверждает количество, состояние, время и заполненность резервуара/оборудования. | Замыкает цикл доставки. |
+| fueldistops.equipment.generator_link | ссылка на генератор | RECORD | Проблемы с топливом связаны с идентификатором генератора, размером, часами работы и местом расположения. | Поддерживает планирование дозаправки. |
+| fueldistops.equipment.vehicle_link | ссылка на транспортное средство | RECORD | Единица учета заправки автомобиля, одометр/счетчик часов, тип топлива и предназначение. | Контролирует топливо флота. |
+| fueldistops.equipment.tank_capacity | емкость бака | RECORD | Емкость бака предотвращает небезопасное переполнение и сообщает объем поставки. | Уменьшает разливы. |
+| fueldistops.equipment.compatibility | совместимость топлива | SAFETY_RULE | Тип топлива должен соответствовать правилам двигателя, бака, шланга и места эксплуатации. | Предотвращает повреждение оборудования. |
+| fueldistops.security.escort | необходимость сопровождения | MODEL | Доставки высокого риска могут нуждаться в сопровождении из-за их дефицита, беспорядков или опасности на маршруте. | Защищает поставки. |
+| fueldistops.security.theft_flag | флаг кражи | MODEL | Непредвиденная потеря, недостающие билеты или несанкционированный доступ вызывают проверку. | Обнаруживает утечку. |
+| fueldistops.security.seal | контроль уплотнения | RECORD | Пломбы для цистерн или переносных цистерн регистрируются там, где они используются. | Сохраняет целостность. |
+| fueldistops.security.public_queue | контроль общественной очереди | METHOD | Общественное распределение топлива, если оно разрешено, использует очередь, ограничения и меры безопасности. | Предотвращает беспорядок. |
+| fueldistops.finance.price_record | ценовой рекорд | RECORD | Цена записывает контракт, спотовую цену, налоги, сборы и экстренную премию. | Поддерживает финансы. |
+| fueldistops.finance.cost_code | код стоимости | RECORD | Затраты на топливо связаны с происшествием, миссией, отделом и категорией возмещения. | Включает восстановление. |
+| fueldistops.finance.invoice_match | совпадение счетов | QUALITY_CHECK | Счет-фактура соответствует билетам на доставку, квитанциям и условиям договора. | Предотвращает переплату. |
+| fueldistops.finance.exception | финансовое исключение | RECORD | Исключения касаются спорных галлонов, цены, отсутствия билета или отклонения доставки. | Делает проблемы видимыми. |
+| fueldistops.records.daily_reconcile | ежедневное примирение | QUALITY_CHECK | Ежедневная сверка сравнивает запасы, поступления, выпуски, счетчики и физические запасы. | Рано находит потери. |
+| fueldistops.records.environment | экологический рекорд | RECORD | Разливы, утилизация, загрязнение топлива и очистка документируются. | Поддерживает соответствие. |
+| fueldistops.records.retention | правило хранения | CONSTRAINT | Билеты, журналы, счета-фактуры и записи об инцидентах следуют за сохранением финансов/грантов. | Сохраняет контрольный журнал. |
+| fueldistops.communication.status | обновление статуса топлива | METHOD | Обновления статуса сообщают о запасах, дефиците, задержках доставки и приоритетах. | Команда гидов. |
+| fueldistops.communication.requester_notice | уведомление запрашивающей стороны | METHOD | Запрашивающие получают утвержденное количество, расчетное время прибытия, лимиты или причину отказа. | Устанавливает ожидания. |
+| fueldistops.communication.safety_notice | уведомление о безопасности | SAFETY_RULE | Примечания по безопасности топлива охватывают расстояние до генератора, вентиляцию, заправку и хранение. | Уменьшает пожары и отравления. |
+| fueldistops.metrics.fill_rate | скорость заполнения | MEASUREMENT | Скорость заправки отслеживает запрошенное топливо по сравнению с доставленным топливом по миссиям. | Показывает адекватность поставок. |
+| fueldistops.metrics.stockout | риск дефицита | MEASUREMENT | Риск нехватки топлива оценивает время до его исчерпания по складам и типам топлива. | Приводит пополнение запасов. |
+| fueldistops.qa.audit_sample | образец аудита | QUALITY_CHECK | Образцы проверяют билеты, квитанции, миссии и описи. | Улучшает целостность. |
+| fueldistops.demob.recovery | дембельское восстановление | METHOD | Дембель забирает переносные цистерны, закрывает склады, сверяет инвентарь и возвращает технику. | Завершает работу чисто. |
+| fueldistops.review.after_action | обзор после действий | METHOD | В обзоре отражены уроки поставщиков, маршрутизации, хищений, безопасности и распределения. | Улучшает реакцию на следующее топливо. |
+| fueldistops.governance.fuel_owner | владелец топлива | RECORD | Владелец топлива координирует логистику, финансы, безопасность и контракты с поставщиками. | Обеспечивает четкую подотчетность. |

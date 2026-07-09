@@ -6,48 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| mainflushops.program.flush_zone | flushing zone | RECORD | System is divided into zones by pressure, pipe network, valves and water age. | Prevents random flushing that stirs problems elsewhere. |
-| mainflushops.program.unidirectional | unidirectional flushing | METHOD | UDF closes valves to force high velocity in one pipe segment at a time. | Better removes sediment than ordinary hydrant opening. |
-| mainflushops.program.velocity_target | velocity target | MEASUREMENT | Flushing aims for enough velocity to mobilize sediment without damaging system. | Too little does nothing; too much can create problems. |
-| mainflushops.program.dead_end | dead-end main | MODEL | Dead-end mains have low turnover and need scheduled flushing. | Reduces water age, odor and discoloration complaints. |
-| mainflushops.program.season | seasonal planning | DECISION_RULE | Flushing is scheduled around demand, freezing risk, drought restrictions and construction. | Timing affects safety and water availability. |
-| mainflushops.mapping.pipe_material | pipe material map | RECORD | Pipe material, age and diameter are reviewed before flushing. | Old iron mains may release more discoloration. |
-| mainflushops.mapping.valve_sequence | valve sequence | RECORD | Sequence lists which valves to close/open and in what order. | Prevents pressure loss and unintended outages. |
-| mainflushops.mapping.hydrant_list | hydrant list | RECORD | Hydrant ID, location, nozzle size, drainage and condition are documented. | Crews need reliable discharge points. |
-| mainflushops.mapping.sensitive_customers | sensitive customers | RECORD | Hospitals, dialysis, food plants and large users are flagged. | Reduces impact on critical customers. |
-| mainflushops.valves.exercise | valve exercise | METHOD | Valves are exercised carefully and recorded during flushing setup. | Stuck or broken valves change zone plan. |
-| mainflushops.valves.status_tag | valve status tag | RECORD | Field crews track temporary closed/open status. | Prevents leaving a valve wrong after flushing. |
-| mainflushops.valves.broken_valve | broken valve | FAILURE_MODE | Broken or lost valves are reported for repair and map update. | Improves future isolation capability. |
-| mainflushops.hydrants.flow_setup | hydrant flow setup | METHOD | Hydrant is opened slowly, flowed, monitored and closed slowly. | Reduces water hammer and main disturbance. |
-| mainflushops.hydrants.diffuser | diffuser use | SAFETY_RULE | Diffuser or hose controls discharge direction and erosion. | Protects traffic, property and streams. |
-| mainflushops.hydrants.dechlorination | dechlorination | CONSTRAINT | Discharge may require dechlorination before entering storm drains or waterways. | Prevents chlorine harm to aquatic life. |
-| mainflushops.hydrants.hydrant_defect | hydrant defect | RECORD | Leaks, poor drainage, bad caps, stiff stems or traffic damage are logged. | Flushing doubles as hydrant condition check. |
-| mainflushops.waterquality.discoloration | discoloration | OBSERVATION | Brown or red water often indicates iron or manganese sediment mobilized. | Explains customer calls during flushing. |
-| mainflushops.waterquality.residual | chlorine residual | MEASUREMENT | Residual is checked before, during or after flushing where required. | Confirms disinfectant remains adequate. |
-| mainflushops.waterquality.turbidity | turbidity check | MEASUREMENT | Turbidity or visual clarity helps decide when to stop flushing. | Avoids wasting water after pipe clears. |
-| mainflushops.waterquality.water_age | water age | MODEL | Low demand areas can lose residual and develop taste/odor issues. | Flushing manages stagnant zones. |
-| mainflushops.waterquality.sample_after | post-flush sample | QUALITY_CHECK | Samples may verify residual, clarity or bacteriological status after unusual work. | Confirms safe return to normal. |
-| mainflushops.customer.notice | customer notice | METHOD | Notice explains dates, areas, possible discoloration and what customers should do. | Reduces surprise and complaint volume. |
-| mainflushops.customer.laundry_warning | laundry warning | METHOD | Customers are warned to avoid laundry during discoloration windows. | Prevents stained clothes and claims. |
-| mainflushops.customer.complaint_log | complaint log | RECORD | Complaints record address, time, color, pressure, odor and action. | Helps correlate impacts with flushing sequence. |
-| mainflushops.customer.followup | customer follow-up | METHOD | Persistent issues trigger service line flush, sample or field visit. | Shows whether problem is system or premise plumbing. |
-| mainflushops.pressure.low_pressure | low pressure risk | FAILURE_MODE | Excessive flushing can drop pressure in nearby areas. | Pressure monitoring protects service and fire flow. |
-| mainflushops.pressure.water_hammer | water hammer | FAILURE_MODE | Rapid valve or hydrant changes can create surge. | Slow operation protects mains and services. |
-| mainflushops.pressure.fire_flow | fire flow coordination | METHOD | Fire department and dispatch may be informed of active zones and hydrant use. | Avoids conflict during emergencies. |
-| mainflushops.traffic.work_zone | work zone | SAFETY_RULE | Crews use cones, signs, vests and safe hydrant positioning. | Hydrants often sit near traffic. |
-| mainflushops.traffic.night_work | night work | DECISION_RULE | Night flushing may reduce customer impact but increases traffic and visibility hazards. | Schedule choice balances disruption and crew safety. |
-| mainflushops.environment.erosion | erosion control | METHOD | Discharge is directed to avoid soil erosion, flooding yards or icing roads. | Prevents maintenance from creating damage. |
-| mainflushops.environment.discharge_permit | discharge permit | CONSTRAINT | Some areas require permits or best practices for chlorinated discharge. | Keeps flushing compliant. |
-| mainflushops.operations.crew_brief | crew brief | METHOD | Crew reviews map, sequence, hazards, customer notes, sample needs and contacts. | Reduces mistakes in field sequence. |
-| mainflushops.operations.flow_duration | flow duration | RECORD | Start time, stop time, estimated flow and clarity endpoint are logged. | Supports water loss accounting and future planning. |
-| mainflushops.operations.abort_criteria | abort criteria | DECISION_RULE | Work stops for main break, pressure drop, unsafe traffic, flooding or major customer impact. | Protects system and public. |
-| mainflushops.operations.restoration | restoration check | QUALITY_CHECK | Valves are returned, hydrants closed, caps replaced, pavement clear and records completed. | Prevents after-work failures. |
-| mainflushops.records.water_loss | water loss estimate | MEASUREMENT | Volume is estimated from hydrant flow and duration. | Supports non-revenue water accounting. |
-| mainflushops.records.gis_update | GIS update | RECORD | New valve status, hydrant defects and pipe notes update maps. | Field work improves asset data. |
-| mainflushops.records.sequence_revision | sequence revision | METHOD | Field discoveries revise future flushing sequence. | Program improves with each cycle. |
-| mainflushops.records.annual_history | annual history | RECORD | Yearly history tracks zones completed, complaints, water quality and repairs found. | Shows program effect over time. |
-| mainflushops.qa.field_audit | field audit | QUALITY_CHECK | Supervisor audits sequence, safety, records and water quality checks. | Keeps crews consistent. |
-| mainflushops.qa.data_review | data review | QUALITY_CHECK | Logs are reviewed for missing times, impossible flows and unresolved complaints. | Prevents bad operational records. |
-| mainflushops.reporting.program_summary | program summary | RECORD | Summary reports miles flushed, water used, complaints, hydrant defects and water-quality results. | Communicates value of flushing program. |
-| mainflushops.reporting.next_cycle | next cycle plan | METHOD | Next plan adjusts zones by complaints, residual trends, construction and valve issues. | Keeps flushing targeted rather than ritual. |
-
+| mainflushops.program.flush_zone | зона промывки | RECORD | Система разделена на зоны по давлению, трубопроводной сети, клапанам и возрасту воды. | Предотвращает случайный смыв, вызывающий проблемы в других местах. |
+| mainflushops.program.unidirectional | однонаправленная промывка | METHOD | UDF закрывает клапаны, чтобы обеспечить высокую скорость в одном сегменте трубы за раз. | Лучше удаляет осадок, чем обычное открывание гидранта. |
+| mainflushops.program.velocity_target | цель скорости | MEASUREMENT | Промывка направлена ​​на достижение достаточной скорости для мобилизации отложений без повреждения системы. | Слишком мало ничего не дает; слишком много может создать проблемы. |
+| mainflushops.program.dead_end | тупиковая магистраль | MODEL | Тупиковые сети имеют низкую текучесть и требуют плановой промывки. | Уменьшает возраст воды, запах и изменение цвета. |
+| mainflushops.program.season | сезонное планирование | DECISION_RULE | Промывка запланирована с учетом спроса, риска замерзания, ограничений засухи и строительства. | Время влияет на безопасность и доступность воды. |
+| mainflushops.mapping.pipe_material | Карта материалов труб | RECORD | Перед промывкой проверяются материал, возраст и диаметр трубы. | Старая железная сеть может привести к еще большему обесцвечиванию. |
+| mainflushops.mapping.valve_sequence | последовательность клапанов | RECORD | В последовательности указано, какие клапаны следует закрывать/открывать и в каком порядке. | Предотвращает потерю давления и непреднамеренные отключения. |
+| mainflushops.mapping.hydrant_list | список гидрантов | RECORD | Идентификатор гидранта, его расположение, размер патрубка, дренаж и состояние документируются. | Экипажам нужны надежные точки сброса. |
+| mainflushops.mapping.sensitive_customers | чувствительные клиенты | RECORD | Помечены больницы, диализные предприятия, пищевые предприятия и крупные потребители. | Снижает влияние на критически важных клиентов. |
+| mainflushops.valves.exercise | тренировка клапана | METHOD | Клапаны тщательно проверяются и регистрируются во время настройки промывки. | Застрявшие или сломанные клапаны меняют план зоны. |
+| mainflushops.valves.status_tag | метка состояния клапана | RECORD | Полевые бригады отслеживают временное закрытое/открытое состояние. | Предотвращает неправильное оставление клапана после промывки. |
+| mainflushops.valves.broken_valve | сломанный клапан | FAILURE_MODE | О сломанных или утерянных клапанах сообщается для ремонта и обновления карты. | Улучшает возможности изоляции в будущем. |
+| mainflushops.hydrants.flow_setup | настройка потока гидранта | METHOD | Гидрант медленно открывается, течет, контролируется и медленно закрывается. | Уменьшает гидравлический удар и основные помехи. |
+| mainflushops.hydrants.diffuser | использование диффузора | SAFETY_RULE | Диффузор или шланг контролируют направление выброса и эрозию. | Защищает трафик, имущество и потоки. |
+| mainflushops.hydrants.dechlorination | дехлорирование | CONSTRAINT | Сбросы могут потребовать дехлорирования перед попаданием в ливневые стоки или водные пути. | Предотвращает вред хлора для водных организмов. |
+| mainflushops.hydrants.hydrant_defect | дефект гидранта | RECORD | Регистрируются протечки, плохой дренаж, плохие крышки, жесткие стебли или повреждения в результате дорожного движения. | Промывка одновременно является проверкой состояния гидранта. |
+| mainflushops.waterquality.discoloration | обесцвечивание | OBSERVATION | Коричневая или красная вода часто указывает на мобилизованный осадок железа или марганца. | Объясняет звонки клиентов во время промывки. |
+| mainflushops.waterquality.residual | остаточный хлор | MEASUREMENT | Остаток проверяется до, во время или после промывки, где это необходимо. | Подтверждает, что дезинфицирующего средства остается в достаточном количестве. |
+| mainflushops.waterquality.turbidity | проверка мутности | MEASUREMENT | Мутность или визуальная прозрачность помогают решить, когда прекратить промывание. | Позволяет избежать потери воды после очистки трубы. |
+| mainflushops.waterquality.water_age | возраст воды | MODEL | В зонах с низким спросом могут потеряться остатки и возникнуть проблемы со вкусом/запахом. | Промывка справляется с застойными зонами. |
+| mainflushops.waterquality.sample_after | образец после промывки | QUALITY_CHECK | Пробы могут проверять остаточное содержание, прозрачность или бактериологический статус после необычной работы. | Подтверждает безопасное возвращение к нормальной жизни. |
+| mainflushops.customer.notice | уведомление клиента | METHOD | В уведомлении указаны даты, области, возможное изменение цвета и действия, которые следует делать покупателям. | Уменьшает количество удивлений и жалоб. |
+| mainflushops.customer.laundry_warning | предупреждение о стирке | METHOD | Клиентов предупреждают о том, что им следует избегать стирки во время обесцвечивания окон. | Предотвращает появление пятен на одежде и претензий. |
+| mainflushops.customer.complaint_log | журнал жалоб | RECORD | Жалобы фиксируют адрес, время, цвет, давление, запах и действие. | Помогает соотнести воздействие с последовательностью промывки. |
+| mainflushops.customer.followup | сопровождение клиентов | METHOD | Постоянные проблемы вызывают необходимость промывки линии обслуживания, отбора проб или выезда на место. | Показывает, связана ли проблема с сантехникой в ​​системе или в помещении. |
+| mainflushops.pressure.low_pressure | риск низкого давления | FAILURE_MODE | Чрезмерная промывка может привести к снижению давления в близлежащих областях. | Мониторинг давления защищает потоки обслуживания и пожара. |
+| mainflushops.pressure.water_hammer | гидравлический удар | FAILURE_MODE | Быстрая замена клапанов или гидрантов может вызвать скачок напряжения. | Медленная работа защищает сеть и службы. |
+| mainflushops.pressure.fire_flow | координация пожарных потоков | METHOD | Пожарная служба и диспетчерская могут быть проинформированы об активных зонах и использовании гидрантов. | Избегает конфликтов в чрезвычайных ситуациях. |
+| mainflushops.traffic.work_zone | рабочая зона | SAFETY_RULE | Экипажи используют конусы, знаки, жилеты и безопасное расположение гидрантов. | Гидранты часто располагаются рядом с движением транспорта. |
+| mainflushops.traffic.night_work | ночная работа | DECISION_RULE | Ночная промывка может снизить воздействие на клиентов, но увеличивает опасность дорожного движения и видимости. | Выбор расписания позволяет сбалансировать сбои в работе и безопасность экипажа. |
+| mainflushops.environment.erosion | контроль эрозии | METHOD | Сброс направлен во избежание эрозии почвы, затопления дворов или обледенения дорог. | Предотвращает повреждение при обслуживании. |
+| mainflushops.environment.discharge_permit | разрешение на сброс | CONSTRAINT | В некоторых районах требуются разрешения или передовые методы сброса хлорированных веществ. | Соблюдает требования к промывке. |
+| mainflushops.operations.crew_brief | краткое описание экипажа | METHOD | Экипаж просматривает карту, последовательность действий, опасности, заметки клиентов, образцы потребностей и контакты. | Уменьшает ошибки в последовательности полей. |
+| mainflushops.operations.flow_duration | продолжительность потока | RECORD | Регистрируются время начала, время остановки, расчетный расход и конечная точка прозрачности. | Поддерживает учет потерь воды и планирование на будущее. |
+| mainflushops.operations.abort_criteria | критерии прерывания | DECISION_RULE | Работы прекращаются из-за поломки основного трубопровода, падения давления, опасного дорожного движения, наводнения или серьезного воздействия на клиента. | Защищает систему и общественность. |
+| mainflushops.operations.restoration | проверка восстановления | QUALITY_CHECK | Клапаны возвращены, гидранты закрыты, заглушки заменены, тротуар очищен, а записи заполнены. | Предотвращает сбои после работы. |
+| mainflushops.records.water_loss | оценка потерь воды | MEASUREMENT | Объем оценивается по расходу гидранта и его продолжительности. | Поддерживает недоходный учет воды. |
+| mainflushops.records.gis_update | Обновление ГИС | RECORD | Обновлены карты статуса нового клапана, дефектов гидрантов и примечаний к трубам. | Полевые работы улучшают данные об активах. |
+| mainflushops.records.sequence_revision | пересмотр последовательности | METHOD | Открытия на местах пересматривают будущую последовательность промывки. | Программа совершенствуется с каждым циклом. |
+| mainflushops.records.annual_history | годовая история | RECORD | Ежегодная история отслеживает завершенные работы по зонам, жалобы, качество воды и обнаруженные ремонтные работы. | Показывает эффект программы с течением времени. |
+| mainflushops.qa.field_audit | выездной аудит | QUALITY_CHECK | Супервайзер проверяет последовательность действий, безопасность, записи и качество воды. | Обеспечивает последовательность действий экипажей. |
+| mainflushops.qa.data_review | обзор данных | QUALITY_CHECK | Журналы просматриваются на предмет пропущенного времени, невозможных потоков и неразрешенных жалоб. | Предотвращает плохие эксплуатационные записи. |
+| mainflushops.reporting.program_summary | резюме программы | RECORD | Сводные отчеты о промытых милях, использованной воде, жалобах, дефектах гидрантов и результатах качества воды. | Сообщает значение программы промывки. |
+| mainflushops.reporting.next_cycle | план следующего цикла | METHOD | Следующий план корректирует зоны с учетом жалоб, остаточных тенденций, проблем со строительством и клапанами. | Продолжает смывать целенаправленно, а не ритуально. |

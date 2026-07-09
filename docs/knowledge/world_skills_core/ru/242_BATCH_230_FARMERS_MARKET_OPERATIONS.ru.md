@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| farmersmarket.vendor.vendor_application | Farmers market vendor application | invariant | Application records business, products, permits, insurance, farm or producer status and contact. | onboard vendor |
-| farmersmarket.vendor.product_category | Market product category | invariant | Category separates produce, meat, dairy, bakery, prepared food, crafts, flowers or services. | plan mix |
-| farmersmarket.vendor.permit_check | Vendor permit check | invariant | Check verifies health, food, business, tax, fire or temporary event permits where needed. | compliance |
-| farmersmarket.vendor.insurance_record | Vendor insurance record | variant | Record tracks liability coverage, certificate dates and market requirements. | risk transfer |
-| farmersmarket.vendor.vendor_rules_ack | Vendor rules acknowledgment | invariant | Acknowledgment covers arrival, stall, waste, pricing, safety, conduct and departure rules. | shared norms |
-| farmersmarket.layout.stall_assignment | Market stall assignment | invariant | Assignment maps vendor to stall, size, power, vehicle access and product category. | organize site |
-| farmersmarket.layout.site_map | Farmers market site map | invariant | Map shows stalls, entrances, exits, toilets, waste, first aid, power and emergency access. | spatial control |
-| farmersmarket.layout.arrival_window | Vendor arrival window | invariant | Window controls setup timing, traffic, unloading and pedestrian safety. | avoid chaos |
-| farmersmarket.layout.vehicle_control | Market vehicle control | invariant | Control limits vehicles during public hours and manages loading zones. | crowd safety |
-| farmersmarket.layout.weather_layout | Weather layout adjustment | variant | Adjustment changes tents, weights, aisles, drainage or closures due to weather. | adapt site |
-| farmersmarket.food.food_safety_check | Market food safety check | invariant | Check observes temperature, covers, handwashing, sampling, labels and permit conditions. | protect customers |
-| farmersmarket.food.temperature_log | Vendor temperature log | variant | Log tracks cold or hot holding for regulated foods. | evidence |
-| farmersmarket.food.sampling_rule | Food sampling rule | invariant | Rule controls sample size, utensils, hand hygiene, covers and allergy awareness. | safe tasting |
-| farmersmarket.food.allergen_label | Market allergen label | variant | Label communicates allergens in baked, prepared or packaged goods. | customer safety |
-| farmersmarket.food.recall_notice | Market recall notice | invariant | Notice removes affected product, informs vendor and records customer communication where needed. | fast risk response |
-| farmersmarket.payments.token_program | Market token program | variant | Program converts card, SNAP or voucher value into market tokens or credits. | payment access |
-| farmersmarket.payments.vendor_reimbursement | Vendor reimbursement | invariant | Reimbursement reconciles tokens, vouchers, fees, sales reports and payout. | pay vendors |
-| farmersmarket.payments.stall_fee | Market stall fee | invariant | Fee charges vendor by day, season, size, category or services. | market revenue |
-| farmersmarket.payments.cash_control | Farmers market cash control | invariant | Control manages token booth cash, receipts, deposits, refunds and variance. | money safety |
-| farmersmarket.payments.sales_reporting | Vendor sales reporting | variant | Reporting collects sales totals or categories when market requires metrics. | measure activity |
-| farmersmarket.operations.market_open | Market opening round | invariant | Round checks stalls, signage, toilets, waste, first aid, weather, staff and access. | open safely |
-| farmersmarket.operations.market_close | Market closeout | invariant | Closeout clears vendors, trash, signs, payments, lost items, incidents and site condition. | leave site clean |
-| farmersmarket.operations.market_manager | Market manager role | invariant | Manager coordinates vendors, customers, safety, rules, payments, incidents and host site. | on-site authority |
-| farmersmarket.operations.volunteer_assignment | Market volunteer assignment | variant | Assignment covers token booth, wayfinding, surveys, setup, cleanup or crowd help. | extra hands |
-| farmersmarket.operations.supply_kit | Farmers market supply kit | invariant | Kit includes signs, tape, forms, first aid, weights, pens, bags, radios and cleanup tools. | ready market |
-| farmersmarket.customer.info_booth | Market information booth | invariant | Booth answers vendor location, payment tokens, rules, lost items, complaints and emergencies. | customer anchor |
-| farmersmarket.customer.accessibility_path | Market accessibility path | invariant | Path keeps aisles, ramps, curb cuts and accessible parking usable. | inclusive flow |
-| farmersmarket.customer.crowd_flow | Farmers market crowd flow | invariant | Flow manages queues, aisles, entrances, exits, strollers, bikes and dogs. | comfortable movement |
-| farmersmarket.customer.pet_policy | Market pet policy | variant | Policy defines where pets may go, leash rules, food areas and service animals. | reduce conflict |
-| farmersmarket.customer.complaint_log | Farmers market complaint log | invariant | Log records vendor, product, safety, pricing, access, noise or behavior complaint. | service recovery |
-| farmersmarket.safety.tent_weight | Tent weight requirement | invariant | Requirement prevents tents from moving in wind and injuring people. | wind safety |
-| farmersmarket.safety.trip_hazard | Market trip hazard | invariant | Hazard includes cords, tent legs, uneven pavement, mats, boxes or produce spills. | prevent falls |
-| farmersmarket.safety.first_aid | Farmers market first aid | invariant | First aid process records injury, response, EMS call and follow-up. | incident readiness |
-| farmersmarket.safety.fire_safety | Market fire safety | variant | Safety controls cooking fuel, generators, extension cords, extinguishers and clearances. | prevent fire |
-| farmersmarket.safety.emergency_access | Market emergency access | invariant | Access keeps lanes open for ambulance, fire, police or evacuation. | response path |
-| farmersmarket.waste.waste_station | Market waste station | invariant | Station separates trash, recycling, compost and vendor waste if supported. | clean event |
-| farmersmarket.waste.grease_disposal | Market grease disposal | variant | Disposal controls cooking oil or grease from prepared food vendors. | protect drains |
-| farmersmarket.waste.produce_recovery | Unsold produce recovery | variant | Recovery coordinates donation, compost, vendor return or disposal. | reduce waste |
-| farmersmarket.waste.site_cleanup | Farmers market site cleanup | invariant | Cleanup removes trash, signs, spills, marks and vendor debris after market. | host relationship |
-| farmersmarket.waste.restroom_service | Market restroom service | variant | Service checks portable toilets or facility bathrooms for supplies, cleanliness and issues. | basic comfort |
-| farmersmarket.weather.wind_action | Market wind action | invariant | Action adds weights, lowers tents, pauses setup or closes when wind exceeds rule. | prevent tent incidents |
-| farmersmarket.weather.heat_plan | Market heat plan | variant | Plan adds shade, water, staff breaks, vendor advice and customer messaging. | heat safety |
-| farmersmarket.metrics.market_kpi | Farmers market KPI | variant | KPI tracks vendors, attendance, sales, incidents, complaints, tokens and waste. | manage market |
-| farmersmarket.continuity.site_closure | Farmers market site closure | invariant | Closure process notifies vendors, customers, host, staff and payment partners. | controlled cancellation |
+| farmersmarket.vendor.vendor_application | Приложение для поставщиков на фермерском рынке | invariant | Приложение записывает бизнес, продукты, разрешения, страхование, статус фермы или производителя и контакты. | бортовой поставщик |
+| farmersmarket.vendor.product_category | Категория рыночного продукта | invariant | Категория разделяет продукты, мясо, молочные продукты, хлебобулочные изделия, готовые блюда, поделки, цветы или услуги. | план микс |
+| farmersmarket.vendor.permit_check | Проверка разрешения продавца | invariant | Проверка проверяет наличие разрешений на здравоохранение, питание, ведение бизнеса, налогов, пожаров или временных разрешений на мероприятия, где это необходимо. | согласие |
+| farmersmarket.vendor.insurance_record | Страховой полис поставщика | variant | Record отслеживает покрытие ответственности, даты сертификатов и требования рынка. | передача риска |
+| farmersmarket.vendor.vendor_rules_ack | Подтверждение правил поставщика | invariant | Подтверждение охватывает прибытие, стойло, отходы, ценообразование, безопасность, правила поведения и ухода. | общие нормы |
+| farmersmarket.layout.stall_assignment | Назначение рыночного прилавка | invariant | Присвоение сопоставляет поставщика с стойлом, размером, мощностью, доступом к транспортному средству и категорией продукта. | организовать сайт |
+| farmersmarket.layout.site_map | Карта сайта фермерского рынка | invariant | На карте показаны киоски, входы, выходы, туалеты, мусор, первая помощь, электричество и аварийный доступ. | пространственный контроль |
+| farmersmarket.layout.arrival_window | Окно прибытия продавца | invariant | Оконные элементы управления установкой тайминга, движения транспорта, разгрузки и безопасности пешеходов. | избегать хаоса |
+| farmersmarket.layout.vehicle_control | Контроль транспортных средств на рынке | invariant | Контроль ограничивает количество транспортных средств в часы общественного пользования и управляет зонами погрузки. | безопасность толпы |
+| farmersmarket.layout.weather_layout | Настройка макета погоды | variant | В зависимости от погоды вносятся изменения в палатки, грузы, проходы, дренаж или закрытия. | адаптировать сайт |
+| farmersmarket.food.food_safety_check | Проверка безопасности пищевых продуктов на рынке | invariant | Проверьте соблюдение температуры, чехлов, мытья рук, отбора проб, этикеток и условий разрешений. | защищать клиентов |
+| farmersmarket.food.temperature_log | Журнал температуры производителя | variant | Журнал отслеживает холодное или горячее хранение регулируемых пищевых продуктов. | доказательство |
+| farmersmarket.food.sampling_rule | Правило отбора проб продуктов питания | invariant | Правило контролирует размер выборки, посуду, гигиену рук, покрывала и осведомленность об аллергиях. | безопасная дегустация |
+| farmersmarket.food.allergen_label | Маркировка рыночных аллергенов | variant | Этикетка сообщает об аллергенах в выпеченных, готовых или упакованных продуктах. | безопасность клиентов |
+| farmersmarket.food.recall_notice | Уведомление об отзыве с рынка | invariant | Уведомление удаляет затронутый продукт, информирует поставщика и записывает общение с клиентом, где это необходимо. | быстрое реагирование на риски |
+| farmersmarket.payments.token_program | Программа рыночных токенов | variant | Программа конвертирует стоимость карты, SNAP или ваучера в рыночные жетоны или кредиты. | доступ к платежам |
+| farmersmarket.payments.vendor_reimbursement | Возмещение поставщику | invariant | Возмещение согласовывает токены, ваучеры, комиссии, отчеты о продажах и выплаты. | платить поставщикам |
+| farmersmarket.payments.stall_fee | Плата за рыночную палатку | invariant | Оплата взимается с поставщика по дням, сезонам, размерам, категориям или услугам. | рыночный доход |
+| farmersmarket.payments.cash_control | Контроль денежных средств на фермерском рынке | invariant | Управление управляет наличностью в жетонной кассе, квитанциями, депозитами, возвратами и отклонениями. | безопасность денег |
+| farmersmarket.payments.sales_reporting | Отчетность по продажам поставщикам | variant | В отчетах собираются общие суммы продаж или категории, когда рынок требует показателей. | измерять активность |
+| farmersmarket.operations.market_open | Раунд открытия рынка | invariant | Круглые киоски для проверки, вывески, туалеты, мусор, первая помощь, погода, персонал и доступ. | открыть безопасно |
+| farmersmarket.operations.market_close | Закрытие рынка | invariant | Распродажа удаляет продавцов, мусор, вывески, платежи, потерянные предметы, инциденты и состояние объекта. | оставить сайт чистым |
+| farmersmarket.operations.market_manager | Роль менеджера по рынку | invariant | Менеджер координирует поставщиков, клиентов, безопасность, правила, платежи, инциденты и хост-сайт. | местный орган власти |
+| farmersmarket.operations.volunteer_assignment | Волонтерское задание на рынке | variant | Задание включает в себя стенд с жетонами, навигацию, опросы, настройку, уборку или помощь толпе. | дополнительные руки |
+| farmersmarket.operations.supply_kit | Комплект поставки для фермерского рынка | invariant | В комплект входят таблички, лента, бланки, средства первой помощи, гири, ручки, сумки, радиоприемники и инструменты для уборки. | готовый рынок |
+| farmersmarket.customer.info_booth | Информационный стенд о рынке | invariant | Бут отвечает на информацию о местонахождении продавца, платежных токенах, правилах, потерянных вещах, жалобах и чрезвычайных ситуациях. | якорь клиента |
+| farmersmarket.customer.accessibility_path | Путь доступа к рынку | invariant | Дорожка сохраняет проходы, пандусы, бордюры и доступную парковку пригодными для использования. | инклюзивный поток |
+| farmersmarket.customer.crowd_flow | Поток толпы на фермерском рынке | invariant | Flow управляет очередями, проходами, входами и выходами, колясками, велосипедами и собаками. | комфортное движение |
+| farmersmarket.customer.pet_policy | Политика рынка домашних животных | variant | Политика определяет, куда могут ходить домашние животные, правила использования поводка, зоны питания и животных-поводырей. | уменьшить конфликт |
+| farmersmarket.customer.complaint_log | Журнал жалоб на фермерский рынок | invariant | В журнале регистрируются жалобы о поставщике, продукте, безопасности, ценах, доступе, шуме или поведении. | восстановление службы |
+| farmersmarket.safety.tent_weight | Требуемый вес палатки | invariant | Требование предотвращает перемещение палаток на ветру и травмирование людей. | ветрозащита |
+| farmersmarket.safety.trip_hazard | Опасность поездки на рынок | invariant | Опасность включает в себя шнуры, ножки палатки, неровный тротуар, коврики, коробки или разлитую продукцию. | предотвратить падения |
+| farmersmarket.safety.first_aid | Фермеры продают первую помощь | invariant | В процессе оказания первой помощи фиксируются травмы, реакция, вызов скорой помощи и последующие действия. | готовность к инцидентам |
+| farmersmarket.safety.fire_safety | Рынок пожарной безопасности | variant | Безопасность контролирует топливо для приготовления пищи, генераторы, удлинители, огнетушители и зазоры. | предотвратить пожар |
+| farmersmarket.safety.emergency_access | Экстренный доступ к рынку | invariant | Благодаря доступу полосы движения остаются открытыми для машин скорой помощи, пожарных, полиции или эвакуации. | путь ответа |
+| farmersmarket.waste.waste_station | Рынок отходов | invariant | Станция разделяет мусор, переработку, компост и отходы поставщиков, если это поддерживается. | чистое событие |
+| farmersmarket.waste.grease_disposal | Утилизация рыночного жира | variant | Утилизация контролирует растительное масло или жир от поставщиков готовых продуктов питания. | защитить стоки |
+| farmersmarket.waste.produce_recovery | Восстановление непроданной продукции | variant | Восстановление координирует пожертвование, компост, возврат или утилизацию продавцом. | сократить отходы |
+| farmersmarket.waste.site_cleanup | Уборка территории фермерского рынка | invariant | Уборка удаляет мусор, знаки, разливы, следы и мусор от поставщиков после продажи. | принимающие отношения |
+| farmersmarket.waste.restroom_service | Рынок туалетных услуг | variant | Служба проверяет переносные туалеты или ванные комнаты на предмет наличия принадлежностей, чистоты и проблем. | базовый комфорт |
+| farmersmarket.weather.wind_action | Действие рыночного ветра | invariant | Действие добавляет грузы, опускает палатки, приостанавливает установку или закрывается, когда ветер превышает норму. | предотвратить инциденты с палатками |
+| farmersmarket.weather.heat_plan | План рыночного отопления | variant | План добавляет тень, воду, перерывы для персонала, советы поставщиков и сообщения клиентам. | тепловая безопасность |
+| farmersmarket.metrics.market_kpi | KPI фермерского рынка | variant | KPI отслеживает поставщиков, посещаемость, продажи, инциденты, жалобы, жетоны и отходы. | управлять рынком |
+| farmersmarket.continuity.site_closure | Закрытие фермерского рынка | invariant | В процессе закрытия уведомляются поставщики, клиенты, принимающая сторона, персонал и партнеры по платежам. | контролируемая отмена |

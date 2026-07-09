@@ -1,0 +1,13 @@
+# BATCH 1021: Window Well — Egress & Drainage
+
+**KnowledgeUnits:** 5
+**Namespace:** `windowwell.ops.*`
+**Scope:** excavation, well, drain, cover, egress, ladder, gravel, waterproof, rock
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| windowwell.ops.egress_code_dimensions | Выходное окно — размеры кода | METHOD | Требования к аварийному окну подвала. Minimum width: 50 см. Minimum height: 60 см. Net clear opening: 0.53 м² (5.7 sq ft). Maximum sill height above floor: 112 см. Window well: minimum 0.8×0.9 м площадь, minimum горизонтальное расстояние от окна до стенки well = 90 см (для выхода). Ladder/rungs: если well глубже 112 см — обязательна лестница (постоянная). Cover: если над well могут упасть предметы/люди — решётка (должна открываться изнутри без ключа). | Без egress: в подвале спальня незаконна. |
+| windowwell.ops.gravel_drain_to_footing | Дренаж — Гравий и трубы | METHOD | Дренаж оконного приямка. Gravel: 20-30 см слой на дне (drainage). Drain pipe: перфорированная труба из well в footing drain (или daylights если уклон). Filter fabric: wrap gravel/pipe. Если нет дренажа: вода накапливается и просачивается через окно в подвал. Отмостка вокруг well: уклон наружу. Крышка well: прозрачная (polycarbonate) для света, или металлическая решётка. | Стоячая вода в well = подвал flooded. |
+| windowwell.ops.well_liner_material | Хвостовик скважины — Материалы | METHOD | Стенки приямка. Corrugated galv steel (самый частый). Masonry (кирпич/блоки — прочнее, дороже). Plastic (полиэтилен). Timber (обработанное дерево — 25 лет). Монтаж: liner заглубляется, rear edge крепится к foundation wall (concrete screws). Ширина между liner и стеной: минимальная. Backfill: gravel. Отделка внутри: stone veneer. | Liner не должен касаться оконной рамы (теплопередача). |
+| windowwell.ops.cover_snow_load | Чехол — номинальная снеговая нагрузка | METHOD | Крышка приямка. Polycarbonate cover: UV-stabilized, snow load capacity (120-200 кг/м²). Крепление: шарниры к стене или clips. Egress: открывается изнутри (manual push). Sloped cover: лучше сбрасывает воду и снег. Lock: не должно блокировать выход (breakaway padlock или latch). Очистка: от листьев/снега. | Крышка должна выдерживать вес человека (peдкий случай). |
+| windowwell.ops.rock_garden_drainage | Декоративный камень — Дренаж | METHOD | Декоративная отсыпка приямка. Слои: landscape fabric → gravel → river rock (декоративный камень). Размеры: 5-15 см river rock. Не блокировать окно. Замена gravel: каждые 5-10 лет (заиливание). Очистка: промывка водой от sediment. Растения: shade-tolerant (hostas, ferns) если глубокий well. | Декоративный well повышает стоимость дома. |

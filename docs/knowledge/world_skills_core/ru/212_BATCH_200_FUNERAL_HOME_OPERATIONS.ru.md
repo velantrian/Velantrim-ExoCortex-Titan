@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| funeralops.call.first_call | Funeral first call | invariant | First call records decedent identity, location, caller, next of kin, time and immediate needs. | start case carefully |
-| funeralops.call.case_number | Funeral case number | invariant | Case number uniquely links authorizations, care, arrangements, permits, services and billing. | track respectfully |
-| funeralops.call.next_of_kin | Next-of-kin verification | invariant | Verification identifies authorized person for decisions, releases and arrangements. | right authority |
-| funeralops.call.removal_request | Removal request | invariant | Request coordinates transfer from place of death with identity, location, timing and staff. | first logistics |
-| funeralops.call.after_hours_protocol | After-hours protocol | variant | Protocol covers calls, removals, staffing, facility access and urgent family support outside office hours. | service never fully sleeps |
-| funeralops.transfer.transfer_chain | Decedent transfer chain | invariant | Chain records custody, identity checks, location, staff, vehicle and receiving time. | dignity and trace |
-| funeralops.transfer.identity_tag | Decedent identity tag | invariant | Tag links decedent to case number and required identifiers throughout care. | prevent misidentification |
-| funeralops.transfer.personal_effects | Personal effects inventory | invariant | Inventory records clothing, jewelry, documents or valuables received and released. | protect belongings |
-| funeralops.transfer.vehicle_log | Funeral vehicle log | invariant | Log records trip, staff, mileage, cleaning, equipment and case. | transport accountability |
-| funeralops.transfer.facility_intake | Care facility intake | invariant | Intake confirms identity, condition, authorizations, refrigeration or care pathway. | begin care workflow |
-| funeralops.arrange.arrangement_meeting | Arrangement meeting | invariant | Meeting gathers family wishes, disposition choice, service details, products and documents. | plan ceremony and care |
-| funeralops.arrange.disposition_authorization | Disposition authorization | invariant | Authorization permits burial, cremation, donation, shipment or other legal disposition. | legal permission |
-| funeralops.arrange.service_type | Funeral service type | invariant | Type defines viewing, ceremony, graveside, memorial, direct disposition or private family service. | shape operations |
-| funeralops.arrange.price_disclosure | Funeral price disclosure | invariant | Disclosure provides required itemized pricing and choices before selection. | transparent decisions |
-| funeralops.arrange.prearrangement_file | Prearrangement file | variant | File stores prepaid or preplanned wishes, contracts, merchandise and contacts. | honor prior plans |
-| funeralops.documents.death_certificate | Death certificate workflow | invariant | Workflow coordinates required data, certifier, filing, copies and corrections. | official record |
-| funeralops.documents.permit_request | Burial or cremation permit | invariant | Permit authorizes disposition under local requirements. | cannot proceed without it |
-| funeralops.documents.obituary_draft | Obituary draft | variant | Draft captures life details, survivors, service information, photo and publication approval. | public notice |
-| funeralops.documents.veteran_benefits | Veteran benefit request | variant | Request coordinates flag, honors, cemetery, marker or benefit forms where eligible. | service entitlement |
-| funeralops.documents.shipping_document | Human remains shipping document | variant | Document supports transport across regions with permits, container, carrier and receiving funeral home. | cross-border care |
-| funeralops.care.refrigeration_log | Funeral refrigeration log | invariant | Log records location, time, condition and checks for decedent in controlled storage. | preservation control |
-| funeralops.care.preparation_plan | Decedent preparation plan | invariant | Plan defines washing, dressing, cosmetics, casketing, restoration limits and family requests. | respectful readiness |
-| funeralops.care.embalming_authorization | Embalming authorization | variant | Authorization documents permission, reason, disclosure and responsible professional where embalming is chosen. | regulated care |
-| funeralops.care.clothing_inventory | Clothing inventory | invariant | Inventory records garments, shoes, jewelry and special items for viewing or burial. | avoid loss |
-| funeralops.care.viewing_readiness | Viewing readiness check | invariant | Check confirms identity, presentation, room, casket, flowers, photos and family instructions. | dignified viewing |
-| funeralops.merch.casket_selection | Casket selection | variant | Selection records model, size, color, price, availability and delivery timing. | product fit |
-| funeralops.merch.urn_selection | Urn selection | variant | Selection records urn, keepsake, engraving, capacity, delivery and family approval. | memorial product |
-| funeralops.merch.flower_order | Funeral flower order | variant | Order captures arrangement type, message, delivery time and placement. | ceremony detail |
-| funeralops.merch.printed_materials | Printed memorial materials | variant | Materials include programs, prayer cards, register book, photos and service folders. | guest support |
-| funeralops.merch.inventory_control | Funeral merchandise inventory | invariant | Control tracks stock, special orders, returns, damaged items and assignment to case. | avoid shortages |
-| funeralops.service.service_schedule | Funeral service schedule | invariant | Schedule coordinates staff, venue, clergy, celebrant, music, transport, cemetery and family arrival. | event timeline |
-| funeralops.service.room_setup | Funeral room setup | invariant | Setup arranges seating, casket or urn, flowers, photos, guest book, audio and accessibility. | respectful space |
-| funeralops.service.procession_plan | Funeral procession plan | variant | Plan coordinates vehicles, route, timing, flags, lead car and cemetery arrival. | move together |
-| funeralops.service.livestream | Funeral livestream | variant | Livestream setup checks camera, audio, privacy, link, recording and support. | remote attendance |
-| funeralops.service.graveside_handoff | Graveside handoff | invariant | Handoff coordinates cemetery staff, committal service, lowering, flowers and family movement. | final stage |
-| funeralops.crematory.cremation_chain | Cremation chain of custody | variant | Chain records identity, authorization, container, retort, time, processor and release. | irreversible process control |
-| funeralops.crematory.cremated_remains_release | Cremated remains release | variant | Release verifies recipient, container, documentation, date and signature. | return correctly |
-| funeralops.crematory.implant_check | Implant and device check | variant | Check identifies devices that may require special handling before cremation. | equipment and safety |
-| funeralops.aftercare.aftercare_call | Funeral aftercare call | variant | Call offers grief resources, document reminders, feedback and unresolved-item follow-up. | support after service |
-| funeralops.aftercare.document_packet | Family document packet | invariant | Packet includes certified copies, permits, receipts, service records and next-step information. | family administration |
-| funeralops.admin.case_file_audit | Funeral case file audit | invariant | Audit checks authorizations, identity, permits, prices, care logs, service notes and releases. | compliance evidence |
-| funeralops.admin.payment_record | Funeral payment record | invariant | Record tracks deposits, insurance assignment, balances, receipts and refunds. | financial clarity |
-| funeralops.metrics.funeral_kpi | Funeral home KPI | variant | KPI tracks case volume, document errors, service timing, family feedback and aftercare completion. | manage sensitive service |
-| funeralops.continuity.capacity_plan | Funeral home capacity plan | invariant | Plan covers surge deaths, refrigeration capacity, staffing, vehicles and mutual aid. | operate during crisis |
+| funeralops.call.first_call | Похороны: первый звонок | invariant | При первом звонке фиксируются личность умершего, его местоположение, звонивший, ближайшие родственники, время и неотложные потребности. | начинайте дело осторожно |
+| funeralops.call.case_number | Номер похоронного дела | invariant | Номер дела однозначно связывает разрешения, уход, договоренности, разрешения, услуги и выставление счетов. | отслеживать с уважением |
+| funeralops.call.next_of_kin | Проверка ближайших родственников | invariant | Проверка определяет уполномоченное лицо для принятия решений, релизов и договоренностей. | правая власть |
+| funeralops.call.removal_request | Запрос на удаление | invariant | Запросите координаты перевозки с места смерти с указанием личности, места, времени и персонала. | первая логистика |
+| funeralops.call.after_hours_protocol | Протокол после закрытия | variant | Протокол охватывает звонки, переезды, подбор персонала, доступ к объектам и срочную поддержку семьи в нерабочее время. | сервис никогда не спит полностью |
+| funeralops.transfer.transfer_chain | Умершая цепочка передачи | invariant | Сеть фиксирует хранение, проверку личности, местонахождение, персонал, транспортное средство и время получения. | достоинство и след |
+| funeralops.transfer.identity_tag | Умерший идентификационный тег | invariant | Теги ссылаются на номер дела и необходимые идентификаторы на протяжении всего периода лечения. | предотвратить ошибочную идентификацию |
+| funeralops.transfer.personal_effects | Инвентаризация личных вещей | invariant | В инвентаризации фиксируются полученные и выданные одежда, украшения, документы или ценности. | защищать вещи |
+| funeralops.transfer.vehicle_log | Журнал похоронного транспорта | invariant | В журнале фиксируются поездка, персонал, пробег, уборка, оборудование и чемодан. | транспортная ответственность |
+| funeralops.transfer.facility_intake | Прием в учреждения по уходу | invariant | Прием подтверждает личность, состояние, разрешения, хранение в холодильнике или путь ухода. | начать рабочий процесс по уходу |
+| funeralops.arrange.arrangement_meeting | Организация встречи | invariant | На встрече собираются семейные пожелания, выбор расположения, детали услуг, продуктов и документов. | спланировать церемонию и уход |
+| funeralops.arrange.disposition_authorization | Разрешение на размещение | invariant | Разрешение разрешает захоронение, кремацию, дарение, отправку или другое законное распоряжение. | юридическое разрешение |
+| funeralops.arrange.service_type | Тип похоронной услуги | invariant | Тип определяет просмотр, церемонию, могилу, мемориал, прямое расположение или частную семейную службу. | операции с фигурами |
+| funeralops.arrange.price_disclosure | Раскрытие стоимости похорон | invariant | Раскрытие информации обеспечивает необходимые детализированные цены и выбор перед выбором. | прозрачные решения |
+| funeralops.arrange.prearrangement_file | Файл предварительной аранжировки | variant | В файлах хранятся заранее оплаченные или заранее запланированные пожелания, контракты, товары и контакты. | соблюдать предыдущие планы |
+| funeralops.documents.death_certificate | Порядок оформления свидетельства о смерти | invariant | Рабочий процесс координирует необходимые данные, сертификатора, регистрацию, копии и исправления. | официальный отчет |
+| funeralops.documents.permit_request | Разрешение на захоронение или кремацию | invariant | Разрешение разрешает утилизацию в соответствии с местными требованиями. | без этого невозможно продолжить |
+| funeralops.documents.obituary_draft | Черновик некролога | variant | В черновике отражены подробности жизни, выживших, служебная информация, фотографии и одобрение публикации. | публичное уведомление |
+| funeralops.documents.veteran_benefits | Заявление о выплате ветеранам | variant | Запросите координаты флага, почестей, кладбища, маркера или формы льгот, если это возможно. | право на обслуживание |
+| funeralops.documents.shipping_document | Документ на перевозку человеческих останков | variant | Документ поддерживает транспортировку по регионам с разрешениями, контейнером, перевозчиком и принимающим похоронным бюро. | трансграничный уход |
+| funeralops.care.refrigeration_log | Журнал похоронного холодильника | invariant | Журнал записывает местоположение, время, состояние и проверяет наличие умершего в контролируемом хранилище. | контроль сохранности |
+| funeralops.care.preparation_plan | План подготовки к умершему | invariant | План определяет стирку, одевание, косметику, гробование, пределы реставрации и запросы семьи. | почтительная готовность |
+| funeralops.care.embalming_authorization | Разрешение на бальзамирование | variant | Разрешительные документы, разрешение, причина, раскрытие информации и ответственный специалист, если выбрано бальзамирование. | регулируемый уход |
+| funeralops.care.clothing_inventory | Инвентаризация одежды | invariant | В инвентаре фиксируются одежда, обувь, украшения и специальные предметы для осмотра или захоронения. | избежать потерь |
+| funeralops.care.viewing_readiness | Просмотр проверки готовности | invariant | Чек подтверждает личность, презентацию, комнату, шкатулку, цветы, фотографии и семейные инструкции. | достойный просмотр |
+| funeralops.merch.casket_selection | Выбор шкатулки | variant | При выборе учитывается модель, размер, цвет, цена, наличие и сроки доставки. | продукт подходит |
+| funeralops.merch.urn_selection | Выбор урны | variant | Урна для отборных записей, сувенир на память, гравировка, вместимость, доставка и одобрение семьи. | мемориальное изделие |
+| funeralops.merch.flower_order | Заказ цветов на похороны | variant | В заказе указывается тип договоренности, сообщение, время доставки и место размещения. | деталь церемонии |
+| funeralops.merch.printed_materials | Печатные мемориальные материалы | variant | Материалы включают программы, молитвенные карточки, регистрационную книгу, фотографии и служебные папки. | поддержка гостей |
+| funeralops.merch.inventory_control | Инвентаризация похоронных товаров | invariant | Контроль отслеживает наличие товара, специальные заказы, возвраты, поврежденные товары и их распределение по делу. | избегать дефицита |
+| funeralops.service.service_schedule | График похорон | invariant | График координирует персонал, место проведения, духовенство, священнослужителей, музыку, транспорт, кладбище и прибытие семьи. | график событий |
+| funeralops.service.room_setup | Оформление похоронного зала | invariant | Установка организует сидение, гроб или урну, цветы, фотографии, гостевую книгу, аудио и доступность. | почтительное пространство |
+| funeralops.service.procession_plan | План похоронной процессии | variant | План координирует транспортные средства, маршрут, время, флаги, ведущую машину и прибытие на кладбище. | двигаться вместе |
+| funeralops.service.livestream | Похороны в прямом эфире | variant | Настройка прямой трансляции проверяет камеру, звук, конфиденциальность, ссылку, запись и поддержку. | удаленное присутствие |
+| funeralops.service.graveside_handoff | Передача могилы | invariant | Передача координирует персонал кладбища, комиссионные службы, спуск, цветы и передвижение семьи. | заключительный этап |
+| funeralops.crematory.cremation_chain | Цепь кремации | variant | Цепочка записывает идентичность, авторизацию, контейнер, реторту, время, процессор и выпуск. | необратимый контроль процесса |
+| funeralops.crematory.cremated_remains_release | Выпуск кремированных останков | variant | При выпуске проверяется получатель, контейнер, документация, дата и подпись. | вернуться правильно |
+| funeralops.crematory.implant_check | Проверка имплантата и устройства | variant | Проверка выявляет устройства, которые могут потребовать особого обращения перед кремацией. | оборудование и безопасность |
+| funeralops.aftercare.aftercare_call | Вызов послепогребальной службы | variant | Call предлагает ресурсы для скорби, напоминания о документах, отзывы и последующие действия по нерешенным вопросам. | поддержка после обслуживания |
+| funeralops.aftercare.document_packet | Пакет семейных документов | invariant | Пакет включает заверенные копии, разрешения, квитанции, сервисные записи и информацию о дальнейших действиях. | семейное управление |
+| funeralops.admin.case_file_audit | Проверка материалов дела о похоронах | invariant | Аудит проверяет авторизации, личность, разрешения, цены, журналы обслуживания, сервисные примечания и разрешения. | доказательства соответствия |
+| funeralops.admin.payment_record | Запись на похороны | invariant | Запись отслеживает депозиты, страховые выплаты, балансы, поступления и возмещения. | финансовая ясность |
+| funeralops.metrics.funeral_kpi | Похоронное бюро КПИ | variant | KPI отслеживает объем дел, ошибки в документах, сроки оказания услуг, отзывы членов семьи и завершение послеоперационного ухода. | управлять конфиденциальным сервисом |
+| funeralops.continuity.capacity_plan | План вместимости похоронного бюро | invariant | План покрывает резкий рост смертности, холодильные мощности, кадровое обеспечение, транспортные средства и взаимопомощь. | действовать во время кризиса |

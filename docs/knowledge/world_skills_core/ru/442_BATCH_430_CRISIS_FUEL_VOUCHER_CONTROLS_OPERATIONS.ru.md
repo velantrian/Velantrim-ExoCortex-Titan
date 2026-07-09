@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| fuelvoucherops.activation.trigger | activation trigger | MODEL | Trigger includes evacuation, job/medical transport, outage, supply disruption or recovery travel. | Starts fuel aid. |
-| fuelvoucherops.activation.program_scope | program scope | CONSTRAINT | Scope defines eligible trips, service area, fuel type and excluded uses. | Controls purpose. |
-| fuelvoucherops.activation.funding_source | funding source | RECORD | Source records grant, donation, public fund, restrictions and reporting code. | Supports accounting. |
-| fuelvoucherops.activation.command_link | command link | RECORD | Program links finance, logistics, casework, transport and fraud review. | Maintains oversight. |
-| fuelvoucherops.eligibility.criteria | eligibility criteria | CONSTRAINT | Criteria define disaster impact, need, trip purpose, vehicle access and frequency. | Preserves fairness. |
-| fuelvoucherops.eligibility.trip_purpose | trip purpose | RECORD | Purpose records medical, shelter, work, school, supply pickup, evacuation or caregiving trip. | Justifies voucher. |
-| fuelvoucherops.eligibility.vehicle_check | vehicle check | QUALITY_CHECK | Check confirms applicant has vehicle access or authorized driver. | Avoids unusable issue. |
-| fuelvoucherops.eligibility.exception | exception record | RECORD | Exception records urgent medical, rural access, disability or family reunification need. | Allows flexibility. |
-| fuelvoucherops.limits.value_limit | value limit | MEASUREMENT | Limit records amount per voucher, household, week and funding source. | Controls spending. |
-| fuelvoucherops.limits.frequency | frequency limit | CONSTRAINT | Frequency limits repeat vouchers by household, case or trip type. | Extends funds. |
-| fuelvoucherops.limits.expiration | expiration rule | CONSTRAINT | Expiration defines use-by date and unused fund release. | Reduces open liability. |
-| fuelvoucherops.limits.partial_issue | partial issue | METHOD | Partial issue provides smaller amount when need or funds are limited. | Preserves access. |
-| fuelvoucherops.vendor.vendor_roster | vendor roster | RECORD | Roster lists approved fuel stations, contacts, locations, hours and payment methods. | Enables redemption. |
-| fuelvoucherops.vendor.validation | vendor validation | QUALITY_CHECK | Validation checks station legitimacy, tax/payment details, fuel availability and agreement. | Prevents fraud. |
-| fuelvoucherops.vendor.agreement | vendor agreement | RECORD | Agreement defines eligible purchases, voucher handling, receipts, invoicing and disputes. | Sets rules. |
-| fuelvoucherops.vendor.status_update | vendor status update | METHOD | Vendors report closures, fuel shortages, price changes and redemption issues. | Keeps referrals current. |
-| fuelvoucherops.issue.unique_id | unique voucher ID | SAFETY_RULE | Each voucher has unique ID, value, expiration, recipient and restrictions. | Prevents reuse. |
-| fuelvoucherops.issue.issue_record | issue record | RECORD | Issue captures applicant, purpose, value, vendor option, date and staff. | Creates trail. |
-| fuelvoucherops.issue.identity_check | identity check | QUALITY_CHECK | Staff verify recipient according to program policy before issue. | Reduces misuse. |
-| fuelvoucherops.issue.lost_voucher | lost voucher process | METHOD | Lost voucher is voided, flagged or replaced according to control rules. | Controls leakage. |
-| fuelvoucherops.redemption.receipt | redemption receipt | RECORD | Receipt records voucher ID, vendor, date, amount, gallons and eligible items. | Supports reconciliation. |
-| fuelvoucherops.redemption.restriction | purchase restriction | CONSTRAINT | Voucher covers approved fuel or transport use, not unrelated store purchases. | Protects funds. |
-| fuelvoucherops.redemption.overage | overage rule | METHOD | Overage explains who pays beyond voucher value and how it is recorded. | Avoids disputes. |
-| fuelvoucherops.redemption.void | void record | RECORD | Void records expired, canceled, duplicate, damaged or fraud-suspect voucher. | Maintains control. |
-| fuelvoucherops.reconcile.invoice | invoice reconciliation | QUALITY_CHECK | Invoice matches voucher IDs, receipts, rates, vendor agreement and payment request. | Prevents overpayment. |
-| fuelvoucherops.reconcile.fund_balance | fund balance | MEASUREMENT | Balance tracks issued, redeemed, voided, expired and remaining funds. | Controls budget. |
-| fuelvoucherops.reconcile.exception_review | exception review | QUALITY_CHECK | Review checks high-value, repeat, manual or out-of-area redemptions. | Detects misuse. |
-| fuelvoucherops.reconcile.dispute | dispute record | RECORD | Dispute captures duplicate redemption, missing receipt, wrong item or vendor error. | Resolves issue. |
-| fuelvoucherops.fraud.duplicate_check | duplicate check | QUALITY_CHECK | Check compares applicant, household, vehicle, purpose and recent issues. | Reduces double dipping. |
-| fuelvoucherops.fraud.pattern_alert | pattern alert | MODEL | Alert flags unusual redemption patterns by vendor, staff, household or value. | Finds risk. |
-| fuelvoucherops.fraud.staff_separation | duty separation | SAFETY_RULE | Approval, issue and reconciliation roles are separated where possible. | Strengthens controls. |
-| fuelvoucherops.fraud.escalation | fraud escalation | METHOD | Suspected fraud routes to supervisor, finance or compliance process. | Protects program. |
-| fuelvoucherops.communication.recipient_script | recipient script | METHOD | Script explains eligible use, expiration, vendor, receipt and replacement rules. | Reduces confusion. |
-| fuelvoucherops.communication.vendor_script | vendor script | METHOD | Script explains how vendor validates, redeems, documents and invoices voucher. | Standardizes redemption. |
-| fuelvoucherops.communication.partner_update | partner update | METHOD | Partners receive eligibility, limits, available vendors and funding status. | Aligns referrals. |
-| fuelvoucherops.records.case_log | case log | RECORD | Log stores eligibility, issue, redemption, exception, dispute and closeout. | Creates continuity. |
-| fuelvoucherops.records.retention | retention rule | CONSTRAINT | Voucher, vendor, finance and fraud records follow retention schedules. | Preserves audit. |
-| fuelvoucherops.reporting.daily_summary | daily summary | MEASUREMENT | Summary reports vouchers issued, redeemed, voided, funds remaining and exceptions. | Informs managers. |
-| fuelvoucherops.metrics.redemption_rate | redemption rate | MEASUREMENT | Rate compares issued and redeemed vouchers by period and vendor. | Shows uptake. |
-| fuelvoucherops.metrics.cost_per_trip | cost per trip | MEASUREMENT | Cost metric links redeemed value to supported trip purpose. | Supports budgeting. |
-| fuelvoucherops.metrics.fraud_flags | fraud flags | MEASUREMENT | Count tracks suspected fraud or control exceptions by category. | Guides review. |
-| fuelvoucherops.qa.sample_audit | sample audit | QUALITY_CHECK | Audit samples eligibility, voucher issue, vendor receipt and reconciliation. | Improves reliability. |
-| fuelvoucherops.demob.closeout | closeout | METHOD | Closeout voids unused vouchers, reconciles vendors, archives logs and releases funds. | Ends safely. |
-| fuelvoucherops.review.after_action | after-action review | METHOD | Review captures eligibility, vendor controls, fraud patterns, reconciliation and reporting lessons. | Improves future vouchers. |
+| fuelvoucherops.activation.trigger | триггер активации | MODEL | Триггер включает эвакуацию, транспортировку на работу/медицинский транспорт, отключение электроэнергии, перебои в поставках или поездку для восстановления. | Запускает систему подачи топлива. |
+| fuelvoucherops.activation.program_scope | объем программы | CONSTRAINT | Объем определяет подходящие поездки, зону обслуживания, тип топлива и исключенные виды использования. | Контролирует цель. |
+| fuelvoucherops.activation.funding_source | источник финансирования | RECORD | Исходные данные о грантах, пожертвованиях, государственном фонде, ограничениях и кодексе отчетности. | Поддерживает учет. |
+| fuelvoucherops.activation.command_link | командная ссылка | RECORD | Программа объединяет финансы, логистику, работу с делами, транспорт и проверку случаев мошенничества. | Сохраняет надзор. |
+| fuelvoucherops.eligibility.criteria | критерии приемлемости | CONSTRAINT | Критерии определяют воздействие стихийного бедствия, необходимость, цель поездки, доступ к транспортному средству и частоту. | Сохраняет справедливость. |
+| fuelvoucherops.eligibility.trip_purpose | цель поездки | RECORD | Записи о целях: медицинская помощь, убежище, работа, учеба, доставка припасов, эвакуация или поездка по уходу. | Оправдывает ваучер. |
+| fuelvoucherops.eligibility.vehicle_check | проверка автомобиля | QUALITY_CHECK | Проверка подтверждает, что у заявителя есть доступ к транспортному средству или авторизованный водитель. | Избегает бесполезной проблемы. |
+| fuelvoucherops.eligibility.exception | запись об исключении | RECORD | Исключением является срочная медицинская помощь, необходимость доступа в сельскую местность, инвалидность или потребность в воссоединении семьи. | Обеспечивает гибкость. |
+| fuelvoucherops.limits.value_limit | предел значения | MEASUREMENT | Ограничьте сумму записей для каждого ваучера, семьи, недели и источника финансирования. | Контролирует расходы. |
+| fuelvoucherops.limits.frequency | предел частоты | CONSTRAINT | Частота повторных ваучеров ограничена в зависимости от домохозяйства, случая или типа поездки. | Расширяет средства. |
+| fuelvoucherops.limits.expiration | правило истечения срока действия | CONSTRAINT | Срок действия определяет дату использования и высвобождение неиспользованных средств. | Уменьшает открытую ответственность. |
+| fuelvoucherops.limits.partial_issue | частичный выпуск | METHOD | Частичная эмиссия обеспечивает меньшую сумму, когда необходимость или средства ограничены. | Сохраняет доступ. |
+| fuelvoucherops.vendor.vendor_roster | список поставщиков | RECORD | В реестре перечислены утвержденные заправочные станции, контакты, места, часы работы и способы оплаты. | Включает искупление. |
+| fuelvoucherops.vendor.validation | проверка поставщика | QUALITY_CHECK | При проверке проверяется легитимность станции, сведения о налогах/платежах, наличие топлива и соглашение. | Предотвращает мошенничество. |
+| fuelvoucherops.vendor.agreement | соглашение с поставщиком | RECORD | Соглашение определяет приемлемые покупки, обработку ваучеров, квитанции, выставление счетов и споры. | Устанавливает правила. |
+| fuelvoucherops.vendor.status_update | обновление статуса поставщика | METHOD | Продавцы сообщают о закрытии, нехватке топлива, изменении цен и проблемах с погашением. | Поддерживает рефералов в актуальном состоянии. |
+| fuelvoucherops.issue.unique_id | уникальный идентификатор ваучера | SAFETY_RULE | Каждый ваучер имеет уникальный идентификатор, стоимость, срок действия, получателя и ограничения. | Предотвращает повторное использование. |
+| fuelvoucherops.issue.issue_record | выпустить запись | RECORD | В проблеме указывается заявитель, цель, стоимость, вариант поставщика, дата и персонал. | Создает след. |
+| fuelvoucherops.issue.identity_check | проверка личности | QUALITY_CHECK | Перед выдачей сотрудники проверяют получателя в соответствии с политикой программы. | Уменьшает неправильное использование. |
+| fuelvoucherops.issue.lost_voucher | процесс потери ваучера | METHOD | Утерянный ваучер аннулируется, помечается или заменяется в соответствии с правилами контроля. | Контролирует утечку. |
+| fuelvoucherops.redemption.receipt | квитанция о погашении | RECORD | В квитанции указывается идентификатор ваучера, поставщик, дата, сумма, галлоны и соответствующие товары. | Поддерживает примирение. |
+| fuelvoucherops.redemption.restriction | ограничение покупки | CONSTRAINT | Ваучер покрывает утвержденное использование топлива или транспорта, а не посторонние покупки в магазине. | Защищает средства. |
+| fuelvoucherops.redemption.overage | правило превышения | METHOD | Избыток объясняет, кто платит сверх суммы ваучера и как она учитывается. | Избегает споров. |
+| fuelvoucherops.redemption.void | аннулировать запись | RECORD | Аннулированные записи с истекшим сроком действия, аннулированные, дублированные, поврежденные или подозрительные на мошенничество ваучеры. | Сохраняет контроль. |
+| fuelvoucherops.reconcile.invoice | сверка счетов | QUALITY_CHECK | Счет-фактура соответствует идентификаторам ваучеров, квитанциям, тарифам, соглашению с поставщиком и запросу платежа. | Предотвращает переплату. |
+| fuelvoucherops.reconcile.fund_balance | баланс фонда | MEASUREMENT | Баланс отслеживает выданные, погашенные, аннулированные, истекшие и оставшиеся средства. | Контролирует бюджет. |
+| fuelvoucherops.reconcile.exception_review | проверка исключений | QUALITY_CHECK | Проверка проверяет крупные суммы, повторные, ручные погашения или погашения за пределами региона. | Обнаруживает неправильное использование. |
+| fuelvoucherops.reconcile.dispute | запись о споре | RECORD | Спор охватывает двойное погашение, отсутствие квитанции, неправильный товар или ошибку поставщика. | Решает проблему. |
+| fuelvoucherops.fraud.duplicate_check | дубликат чека | QUALITY_CHECK | При проверке сравниваются кандидат, домохозяйство, транспортное средство, цель и недавние проблемы. | Уменьшает двойное погружение. |
+| fuelvoucherops.fraud.pattern_alert | шаблон оповещения | MODEL | Оповещения сообщают о необычных схемах погашения по поставщикам, сотрудникам, домохозяйствам или стоимости. | Находит риск. |
+| fuelvoucherops.fraud.staff_separation | разделение обязанностей | SAFETY_RULE | Роли утверждения, выдачи и сверки по возможности разделены. | Усиливает контроль. |
+| fuelvoucherops.fraud.escalation | эскалация мошенничества | METHOD | Подозреваемые случаи мошенничества направляются в надзорный орган, в финансовый отдел или в процесс обеспечения соответствия. | Защищает программу. |
+| fuelvoucherops.communication.recipient_script | сценарий получателя | METHOD | Сценарий объясняет допустимое использование, срок действия, правила поставщика, получения и замены. | Уменьшает путаницу. |
+| fuelvoucherops.communication.vendor_script | скрипт поставщика | METHOD | Сценарий объясняет, как поставщик проверяет, выкупает, документирует и выставляет ваучеры. | Стандартизирует выкуп. |
+| fuelvoucherops.communication.partner_update | обновление партнера | METHOD | Партнеры получают право на участие, лимиты, доступных поставщиков и статус финансирования. | Выравнивает рефералов. |
+| fuelvoucherops.records.case_log | журнал дел | RECORD | Журнал сохраняет право на участие, выпуск, погашение, исключение, спор и закрытие. | Создает преемственность. |
+| fuelvoucherops.records.retention | правило хранения | CONSTRAINT | Записи о ваучерах, поставщиках, финансах и мошенничестве соответствуют графикам хранения. | Сохраняет аудит. |
+| fuelvoucherops.reporting.daily_summary | ежедневная сводка | MEASUREMENT | Сводные отчеты о выданных, погашенных, аннулированных ваучерах, оставшихся средствах и исключениях. | Информирует менеджеров. |
+| fuelvoucherops.metrics.redemption_rate | ставка погашения | MEASUREMENT | В рейтинге сравниваются выданные и погашенные ваучеры по периодам и поставщикам. | Показывает понимание. |
+| fuelvoucherops.metrics.cost_per_trip | стоимость за поездку | MEASUREMENT | Показатель стоимости связывает погашенную стоимость с поддерживаемой целью поездки. | Поддерживает бюджетирование. |
+| fuelvoucherops.metrics.fraud_flags | признаки мошенничества | MEASUREMENT | Count отслеживает предполагаемые случаи мошенничества или контролирует исключения по категориям. | Обзор гидов. |
+| fuelvoucherops.qa.sample_audit | выборочный аудит | QUALITY_CHECK | Проверка соответствия образцов, выдача ваучеров, получение и сверка поставщика. | Повышает надежность. |
+| fuelvoucherops.demob.closeout | распродажа | METHOD | Closeout аннулирует неиспользованные ваучеры, сверяет поставщиков, архивирует журналы и освобождает средства. | Заканчивается благополучно. |
+| fuelvoucherops.review.after_action | обзор после действий | METHOD | Обзор фиксирует право на участие, контроль поставщиков, модели мошенничества, уроки сверки и отчетности. | Улучшает будущие ваучеры. |

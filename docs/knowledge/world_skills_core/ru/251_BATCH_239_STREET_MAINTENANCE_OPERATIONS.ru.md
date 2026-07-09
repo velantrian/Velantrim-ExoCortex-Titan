@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| streetops.request.citizen_report | Street maintenance citizen report | invariant | Report records location, defect type, photos, reporter, hazard and callback need. | start response |
-| streetops.request.duplicate_merge | Street request duplicate merge | invariant | Merge links repeated reports for the same pothole, sign, signal or drainage issue. | reduce noise |
-| streetops.request.priority_score | Street maintenance priority score | invariant | Score ranks safety risk, road class, traffic volume, school route and service impact. | triage work |
-| streetops.request.service_area | Street maintenance service area | variant | Area groups requests by district, crew yard, contractor zone or council boundary. | route work |
-| streetops.request.status_notice | Street request status notice | variant | Notice updates reporter on received, scheduled, completed, deferred or referred status. | public transparency |
-| streetops.pothole.pothole_inspection | Pothole inspection | invariant | Inspection records location, size, depth, lane, hazard level and repair method. | choose repair |
-| streetops.pothole.cold_patch | Cold patch pothole repair | variant | Repair fills defect temporarily with material, compaction, traffic control and photo proof. | quick stabilization |
-| streetops.pothole.permanent_patch | Permanent pavement patch | variant | Patch cuts, cleans, tacks, fills, compacts and seals pavement defect. | durable repair |
-| streetops.pothole.utility_cut | Utility cut restoration | invariant | Restoration verifies trench backfill, surface repair, settlement and responsible party. | protect roadway |
-| streetops.pothole.repair_failure | Pavement repair failure | invariant | Failure record captures recurrence, material issue, drainage cause or contractor defect. | learn and recover |
-| streetops.sign.sign_inventory | Street sign inventory | invariant | Inventory tracks sign type, location, post, condition, reflectivity and installation date. | asset control |
-| streetops.sign.missing_sign | Missing street sign response | invariant | Response prioritizes stop, warning, street-name or regulatory sign replacement. | restore safety |
-| streetops.sign.sign_knockdown | Sign knockdown work order | invariant | Work order records crash, vandalism, weather, temporary control and permanent repair. | fix hazard |
-| streetops.sign.reflectivity_check | Sign reflectivity check | variant | Check evaluates nighttime visibility, fading, damage and replacement need. | safe navigation |
-| streetops.sign.work_zone_signage | Street work zone signage | invariant | Signage sets advance warning, cones, flagging, detour and pedestrian guidance. | protect crews |
-| streetops.signal.signal_outage | Traffic signal outage response | invariant | Response records intersection, mode, police need, contractor, timing and restoration. | control traffic |
-| streetops.signal.conflict_monitor | Traffic signal conflict monitor | variant | Monitor flags conflicting indications, controller fault or detector failure for urgent repair. | prevent crashes |
-| streetops.signal.detector_loop | Signal detector loop repair | variant | Repair tracks loop, camera, radar or button failure and verification. | restore detection |
-| streetops.signal.ped_button | Pedestrian button repair | invariant | Repair verifies push button, audible cue, crossing call and accessibility. | safer crossings |
-| streetops.signal.timing_request | Signal timing request | variant | Request evaluates congestion, pedestrian delay, transit priority or school timing. | improve flow |
-| streetops.striping.lane_marking | Street lane marking | invariant | Marking defines lanes, arrows, stop bars, crosswalks and bike symbols. | guide movement |
-| streetops.striping.crosswalk_refresh | Crosswalk refresh | variant | Refresh schedules worn crosswalk repainting by school, transit, crash or wear priority. | pedestrian visibility |
-| streetops.striping.material_choice | Pavement marking material choice | variant | Choice selects paint, thermoplastic, tape or raised markers by durability and road type. | fit conditions |
-| streetops.striping.no_parking_zone | No-parking curb marking | invariant | Marking implements fire lane, bus stop, loading, ADA or sight-distance restriction. | curb clarity |
-| streetops.striping.quality_check | Street striping quality check | invariant | Check verifies alignment, thickness, retroreflectivity, curing and traffic reopening. | good markings |
-| streetops.drainage.catch_basin_clean | Catch basin cleaning | invariant | Cleaning removes sediment, debris, leaves, trash and blockage from drainage structure. | prevent flooding |
-| streetops.drainage.inlet_blockage | Storm inlet blockage response | invariant | Response clears blockage, checks upstream flooding and documents cause. | restore flow |
-| streetops.drainage.culvert_inspection | Street culvert inspection | variant | Inspection checks debris, erosion, collapse, outfall, animal blockage and capacity. | drainage reliability |
-| streetops.drainage.flood_call | Street flood call | invariant | Call records water depth, road closure need, pump need, weather and notifications. | protect drivers |
-| streetops.drainage.sinkhole_flag | Street sinkhole flag | invariant | Flag secures area, assesses utility/drainage cause, closes lane and escalates repair. | prevent collapse |
-| streetops.closure.lane_closure_plan | Street lane closure plan | invariant | Plan defines limits, signs, cones, flaggers, hours, detour and emergency access. | safe work |
-| streetops.closure.detour_route | Street detour route | variant | Route avoids weight, height, school, transit and emergency conflicts during closure. | move traffic |
-| streetops.closure.permit_coordination | Street closure permit coordination | invariant | Coordination aligns public works, police, transit, businesses, events and notifications. | reduce disruption |
-| streetops.crew.daily_assignment | Street crew daily assignment | invariant | Assignment lists crew, truck, tools, material, work orders, route and safety briefing. | organize field work |
-| streetops.crew.material_loadout | Street maintenance material loadout | invariant | Loadout records asphalt, signs, cones, paint, tools, fuel and PPE. | ready crew |
-| streetops.crew.field_note | Street crew field note | invariant | Note captures site condition, work performed, quantities, photos and unresolved issues. | field evidence |
-| streetops.crew.returned_material | Street maintenance returned material | variant | Record tracks unused asphalt, signs, cones, paint or tools back to inventory. | stock control |
-| streetops.safety.traffic_control_audit | Traffic control audit | invariant | Audit checks taper, buffer, signs, cones, visibility, flagger position and pedestrian route. | crew safety |
-| streetops.safety.near_miss | Street crew near miss | invariant | Report captures vehicle intrusion, equipment incident, trip, struck-by or public conflict. | safety learning |
-| streetops.safety.night_work | Street night work setup | variant | Setup covers lighting, reflective gear, noise limits, lane control and fatigue. | safe off-hours |
-| streetops.reporting.asset_update | Street asset update | invariant | Update changes pavement, sign, signal, drainage or curb asset status after work. | current map |
-| streetops.reporting.cost_capture | Street maintenance cost capture | variant | Capture records labor, equipment, material, contractor and disposal cost by job. | budget insight |
-| streetops.metrics.street_kpi | Street maintenance KPI | variant | KPI tracks response time, backlog, potholes repaired, closures, repeat defects and safety incidents. | manage streets |
-| streetops.continuity.storm_response | Street storm response | invariant | Response stages crews, clears roads, manages flooding, downed signs, debris and closures. | restore mobility |
+| streetops.request.citizen_report | Отчет гражданина по обслуживанию улиц | invariant | Отчет записывает местоположение, тип дефекта, фотографии, репортера, опасность и необходимость обратного вызова. | начать ответ |
+| streetops.request.duplicate_merge | Улица запросила объединение дубликатов | invariant | Объедините ссылки на повторяющиеся отчеты об одной и той же выбоине, знаке, сигнале или проблеме с дренажем. | уменьшить шум |
+| streetops.request.priority_score | Оценка приоритетности обслуживания улиц | invariant | Оценка оценивает риск безопасности, класс дороги, интенсивность движения, школьный маршрут и влияние услуг. | сортировочная работа |
+| streetops.request.service_area | Участок обслуживания улиц | variant | Запросы групп территорий по району, бригаде, зоне подрядчика или границе совета. | маршрутная работа |
+| streetops.request.status_notice | Уведомление о статусе запроса на улицу | variant | Уведомление обновляет репортера о статусе получения, запланированного, завершенного, отложенного или направленного. | общественная прозрачность |
+| streetops.pothole.pothole_inspection | Проверка выбоин | invariant | Осмотр фиксирует местоположение, размер, глубину, полосу движения, уровень опасности и метод ремонта. | выбрать ремонт |
+| streetops.pothole.cold_patch | Холодный ремонт выбоин | variant | Ремонт временно заполняет дефект материалом, уплотнением, контролем дорожного движения и фотодоказательством. | быстрая стабилизация |
+| streetops.pothole.permanent_patch | Постоянный участок тротуара | variant | Заплатка режет, очищает, прихватывает, заполняет, уплотняет и герметизирует дефекты дорожного покрытия. | долговечный ремонт |
+| streetops.pothole.utility_cut | Реставрация служебного разреза | invariant | При восстановлении проверяется засыпка траншеи, ремонт поверхности, осадка и ответственная сторона. | защитить проезжую часть |
+| streetops.pothole.repair_failure | Неудачный ремонт дорожного покрытия | invariant | В протоколе отказов фиксируются повторения, проблемы с материалами, причины дренажа или дефекты подрядчика. | учиться и восстанавливаться |
+| streetops.sign.sign_inventory | Инвентаризация уличных знаков | invariant | Инвентаризация отслеживает тип знака, местоположение, столб, состояние, отражательную способность и дату установки. | контроль активов |
+| streetops.sign.missing_sign | Отсутствует реакция дорожного знака | invariant | При реагировании приоритет отдается остановкам, предупреждениям, названиям улиц или замене нормативных знаков. | восстановить безопасность |
+| streetops.sign.sign_knockdown | Подписать приказ о разборке | invariant | В наряде на работу фиксируются аварии, вандализм, погодные условия, временный контроль и постоянный ремонт. | устранить опасность |
+| streetops.sign.reflectivity_check | Проверка отражательной способности знака | variant | При проверке оценивается видимость в ночное время, выцветание, повреждение и необходимость замены. | безопасная навигация |
+| streetops.sign.work_zone_signage | Указатели уличной рабочей зоны | invariant | Знаки устанавливают предварительное предупреждение, конусы, разметку, объезд и указание пешеходам. | защищать экипажи |
+| streetops.signal.signal_outage | Реакция на сбой светофора | invariant | Реагирование фиксирует пересечение, режим, потребности полиции, подрядчика, сроки и восстановление. | контролировать движение |
+| streetops.signal.conflict_monitor | Монитор конфликта светофоров | variant | Мониторинг помечает противоречивые показания, неисправность контроллера или неисправность детектора для срочного ремонта. | предотвращать сбои |
+| streetops.signal.detector_loop | Ремонт шлейфа детектора сигнала | variant | Ремонт петли треков, камеры, радара или кнопки, неисправность и проверка. | восстановить обнаружение |
+| streetops.signal.ped_button | Ремонт пешеходной кнопки | invariant | При ремонте проверяется кнопка, звуковой сигнал, перекрестный вызов и доступность. | более безопасные переходы |
+| streetops.signal.timing_request | Запрос синхронизации сигнала | variant | Запрос оценивает заторы, задержки пешеходов, приоритет общественного транспорта или расписание занятий в школе. | улучшить поток |
+| streetops.striping.lane_marking | Разметка уличных полос | invariant | Разметка обозначает полосы движения, стрелки, полосы остановки, пешеходные переходы и символы велосипедов. | направляющее движение |
+| streetops.striping.crosswalk_refresh | Обновление пешеходного перехода | variant | Обновите графики перекраски изношенных пешеходных переходов в зависимости от школы, общественного транспорта, аварии или приоритета износа. | видимость пешеходов |
+| streetops.striping.material_choice | Выбор материала для разметки тротуарной плитки | variant | Выбор позволяет выбрать краску, термопластик, ленту или рельефные маркеры в зависимости от долговечности и типа дороги. | подходящие условия |
+| streetops.striping.no_parking_zone | Маркировка бордюров, запрещающих парковку | invariant | Маркировка реализует пожарную полосу, автобусную остановку, погрузку, ADA или ограничение дальности видимости. | ограничить ясность |
+| streetops.striping.quality_check | Проверка качества разметки улиц | invariant | Проверка проверяет выравнивание, толщину, световозвращающую способность, затвердевание и возобновление движения. | хорошие отметки |
+| streetops.drainage.catch_basin_clean | Очистка водосборника | invariant | Очистка удаляет осадок, мусор, листья, мусор и засоры из дренажной конструкции. | предотвратить наводнение |
+| streetops.drainage.inlet_blockage | Реакция на блокировку ливневого входа | invariant | Реагирование устраняет засорение, проверяет затопление в верхнем течении и документирует причину. | восстановить поток |
+| streetops.drainage.culvert_inspection | Осмотр уличных водопропускных труб | variant | Инспекция проверяет мусор, эрозию, обрушение, сброс, засорение животными и вместимость. | надежность дренажа |
+| streetops.drainage.flood_call | Звонок о наводнении на улице | invariant | Вызов записывает глубину воды, необходимость закрытия дорог, потребность в насосе, погоду и уведомления. | защитить водителей |
+| streetops.drainage.sinkhole_flag | Флаг уличной воронки | invariant | Флаг охраняет территорию, оценивает причину коммунальных услуг/дренажа, перекрывает полосу движения и ускоряет ремонт. | предотвратить коллапс |
+| streetops.closure.lane_closure_plan | План закрытия уличных полос | invariant | План определяет границы, знаки, конусы, указатели, часы, объезд и аварийный доступ. | безопасная работа |
+| streetops.closure.detour_route | Маршрут объезда улицы | variant | Маршрут позволяет избежать конфликтов веса, роста, школы, транзита и чрезвычайных ситуаций во время закрытия. | перемещать трафик |
+| streetops.closure.permit_coordination | Согласование разрешения на перекрытие улиц | invariant | Координация объединяет общественные работы, полицию, транспорт, бизнес, мероприятия и уведомления. | уменьшить сбои |
+| streetops.crew.daily_assignment | Ежедневное задание уличной бригады | invariant | В задании указана бригада, грузовик, инструменты, материалы, рабочие задания, маршрут и инструктаж по технике безопасности. | организовать полевые работы |
+| streetops.crew.material_loadout | Загрузка материалов для содержания улиц | invariant | В выкладке учитывается асфальт, знаки, конусы, краска, инструменты, топливо и СИЗ. | готовый экипаж |
+| streetops.crew.field_note | Полевая записка уличной бригады | invariant | В заметках указывается состояние объекта, выполненные работы, объемы, фотографии и нерешенные проблемы. | полевые доказательства |
+| streetops.crew.returned_material | Уход за улицами вернул материал | variant | Запишите следы неиспользованного асфальта, знаков, конусов, краски или инструментов обратно в инвентарь. | контроль запасов |
+| streetops.safety.traffic_control_audit | Аудит дорожного движения | invariant | Аудит проверяет конусность, буфер, знаки, конусы, видимость, положение флажков и пешеходный маршрут. | безопасность экипажа |
+| streetops.safety.near_miss | Уличная бригада на грани промаха | invariant | Отчет фиксирует вторжение транспортного средства, инцидент с оборудованием, поездку, столкновение или общественный конфликт. | обучение безопасности |
+| streetops.safety.night_work | Устройство работы на улице в ночное время | variant | Настройка охватывает освещение, светоотражающее оборудование, ограничения по шуму, контроль полосы движения и усталость. | безопасное нерабочее время |
+| streetops.reporting.asset_update | Обновление уличных объектов | invariant | Обновление изменяет состояние тротуара, знака, сигнала, дренажа или бордюра после работы. | текущая карта |
+| streetops.reporting.cost_capture | Учет затрат на содержание улиц | variant | Ведите учет затрат на рабочую силу, оборудование, материалы, подрядчиков и утилизацию по каждому заданию. | понимание бюджета |
+| streetops.metrics.street_kpi | КПЭ по содержанию улиц | variant | KPI отслеживает время реагирования, отставание, устраненные выбоины, закрытия, повторные дефекты и инциденты, связанные с безопасностью. | управлять улицами |
+| streetops.continuity.storm_response | Реакция на уличный шторм | invariant | Вызывает бригады реагирования, расчищает дороги, борется с наводнениями, упавшими знаками, обломками и перекрытиями. | восстановить подвижность |

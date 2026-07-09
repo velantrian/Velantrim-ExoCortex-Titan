@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| fieldapptops.intake.appointment_need | appointment need | RECORD | Appointment reason records meter, inspection, leak, service start, repair or customer request. | Defines crew skill and time need. |
-| fieldapptops.intake.contact_confirm | contact confirmation | QUALITY_CHECK | Phone, email, address and preferred channel are verified before scheduling. | Reduces missed visits. |
-| fieldapptops.intake.access_requirements | access requirements | RECORD | Case captures gate codes, pets, interior access, tenant presence and keys. | Field work depends on access. |
-| fieldapptops.scheduling.window | access window | RECORD | Appointment window gives date, time range, location and customer obligations. | Sets shared expectation. |
-| fieldapptops.scheduling.capacity | schedule capacity | MODEL | Capacity depends on crew count, geography, job duration and emergency load. | Avoids overbooking. |
-| fieldapptops.scheduling.priority | priority rule | DECISION_RULE | Safety, outage, leak and regulatory deadlines can override routine windows. | Keeps urgent work ahead. |
-| fieldapptops.scheduling.reschedule | reschedule process | METHOD | Reschedules preserve history, reason, customer notice and new window. | Keeps accountability. |
-| fieldapptops.dispatch.technician_match | technician match | METHOD | Job is assigned by skill, tools, certifications, vehicle and route. | Improves first-visit completion. |
-| fieldapptops.dispatch.route_optimization | route optimization | METHOD | Route groups appointments by area, priority, time windows and travel. | Reduces windshield time. |
-| fieldapptops.dispatch.same_day | same-day add-on | DECISION_RULE | Same-day jobs require capacity, parts and customer readiness check. | Prevents schedule collapse. |
-| fieldapptops.dispatch.status_updates | status updates | RECORD | Technician status shows assigned, en route, on site, delayed, complete or exception. | Call center can answer customer questions. |
-| fieldapptops.customer.readiness_notice | readiness notice | METHOD | Notice tells customer to clear meter, secure pets, be present or provide access. | Raises completion rate. |
-| fieldapptops.customer.arrival_notice | arrival notice | METHOD | Customer receives reminder or en-route notification when supported. | Reduces no-access. |
-| fieldapptops.customer.no_show_customer | customer no-show | FAILURE_MODE | No-show is recorded with time, contact attempts and site evidence. | Supports fees or reschedule policy. |
-| fieldapptops.customer.special_needs | special needs | RECORD | Accessibility, language or medical needs are captured for field visit. | Makes service safer and fairer. |
-| fieldapptops.site.address_verify | address verification | SAFETY_RULE | Technician verifies address, meter and work order before action. | Prevents wrong-property work. |
-| fieldapptops.site.hazard_scan | hazard scan | SAFETY_RULE | Site is checked for dogs, traffic, electrical, confined space, weather and unsafe structures. | Protects technician. |
-| fieldapptops.site.property_protection | property protection | METHOD | Mats, covers, photos and careful routing reduce property damage. | Prevents claims. |
-| fieldapptops.site.permission | permission to enter | CONSTRAINT | Interior or fenced access requires customer permission or legal authority. | Protects privacy and legality. |
-| fieldapptops.work.precheck | work precheck | METHOD | Technician reviews task, parts, account notes, history and safety flags before arrival. | Reduces surprises. |
-| fieldapptops.work.parts_ready | parts readiness | QUALITY_CHECK | Needed meters, endpoints, tools, seals or forms are confirmed. | Avoids failed visits from missing materials. |
-| fieldapptops.work.scope_control | scope control | DECISION_RULE | Technician distinguishes scheduled task from new customer requests. | Prevents uncontrolled work expansion. |
-| fieldapptops.work.field_decision | field decision | METHOD | Field staff may complete, defer, escalate, create follow-up or mark no access. | Standardizes outcomes. |
-| fieldapptops.missed.no_access | no-access code | RECORD | No-access reasons include locked gate, no adult, unsafe site, dog, buried meter or wrong address. | Makes missed visits analyzable. |
-| fieldapptops.missed.trip_fee | trip fee rule | CONSTRAINT | Policy defines when missed appointment fees apply. | Keeps customer charges consistent. |
-| fieldapptops.missed.followup | missed-visit follow-up | METHOD | Customer receives reason, evidence, fee if any and reschedule path. | Closes communication gap. |
-| fieldapptops.safety.lone_worker | lone worker | SAFETY_RULE | Lone worker procedures define check-ins, panic options and escalation. | Field appointments can be isolated. |
-| fieldapptops.safety.aggressive_customer | aggressive customer | SAFETY_RULE | Hostile behavior triggers withdrawal, supervisor notice and safety flag. | Protects employees. |
-| fieldapptops.safety.traffic_control | traffic control | METHOD | Street appointments use cones, vests, signs and vehicle positioning. | Prevents roadside injury. |
-| fieldapptops.safety.weather | weather delay | DECISION_RULE | Lightning, ice, heat or flooding can postpone appointment. | Safety overrides schedule. |
-| fieldapptops.closeout.completion_code | completion code | RECORD | Completion code states completed, partial, no access, unsafe, parts needed or customer canceled. | Makes backlog accurate. |
-| fieldapptops.closeout.work_notes | work notes | RECORD | Notes include action taken, readings, parts, photos, customer contact and next steps. | Supports billing and service follow-up. |
-| fieldapptops.closeout.customer_signature | customer signature | RECORD | Signature or acknowledgment may confirm interior work, restoration or refusal. | Reduces disputes. |
-| fieldapptops.closeout.followup_order | follow-up order | METHOD | Unfinished work creates linked order with reason, priority and requirements. | Prevents dropped tasks. |
-| fieldapptops.records.photo_evidence | photo evidence | RECORD | Photos document access, meter, repair, property condition and no-access reason. | Supports QA and claims. |
-| fieldapptops.records.time_tracking | time tracking | MEASUREMENT | Travel, onsite and admin time are recorded by job type. | Improves scheduling model. |
-| fieldapptops.records.inventory_use | inventory use | RECORD | Parts and seals used are linked to work order. | Supports stock control. |
-| fieldapptops.qa.first_visit_completion | first-visit completion | MEASUREMENT | Metric tracks jobs completed without repeat visit. | Shows schedule and readiness quality. |
-| fieldapptops.qa.appointment_accuracy | appointment accuracy | MEASUREMENT | Arrival within window is measured by job class and route. | Supports customer-service promises. |
-| fieldapptops.qa.audit | field audit | QUALITY_CHECK | Supervisor audits photos, notes, safety and completion codes. | Keeps field records reliable. |
-| fieldapptops.reporting.dashboard | appointment dashboard | RECORD | Dashboard shows scheduled, completed, missed, delayed, canceled and aged jobs. | Gives operations visibility. |
-| fieldapptops.reporting.no_access_trend | no-access trend | MODEL | Trends identify neighborhoods, job types or communication gaps causing missed visits. | Guides process improvement. |
-| fieldapptops.reporting.customer_impact | customer impact | MEASUREMENT | Reports include wait time, reschedule count and complaint links. | Shows service experience. |
-| fieldapptops.review.route_review | route review | METHOD | Dispatch reviews travel time, emergency interruptions and appointment density. | Improves future routing. |
+| fieldapptops.intake.appointment_need | необходимость встречи | RECORD | Причина назначения фиксирует счетчик, проверку, утечку, начало обслуживания, ремонт или запрос клиента. | Определяет навыки экипажа и необходимое время. |
+| fieldapptops.intake.contact_confirm | подтверждение контакта | QUALITY_CHECK | Телефон, адрес электронной почты, адрес и предпочтительный канал проверяются перед планированием. | Сокращает количество пропущенных посещений. |
+| fieldapptops.intake.access_requirements | требования к доступу | RECORD | В кейсе фиксируются коды ворот, домашние животные, доступ внутрь, присутствие арендаторов и ключи. | Работа на местах зависит от доступа. |
+| fieldapptops.scheduling.window | окно доступа | RECORD | В окне назначения указывается дата, диапазон времени, место и обязательства клиента. | Устанавливает общие ожидания. |
+| fieldapptops.scheduling.capacity | график мощности | MODEL | Производительность зависит от количества бригад, географии, продолжительности работ и аварийной нагрузки. | Избегает овербукинга. |
+| fieldapptops.scheduling.priority | правило приоритета | DECISION_RULE | Безопасность, простои, утечки и нормативные сроки могут иметь приоритет над обычными окнами. | Держит впереди срочные дела. |
+| fieldapptops.scheduling.reschedule | перенести процесс | METHOD | При переносе расписания сохраняются история, причина, уведомление клиента и новое окно. | Сохраняет ответственность. |
+| fieldapptops.dispatch.technician_match | технический матч | METHOD | Работа определяется навыками, инструментами, сертификатами, транспортным средством и маршрутом. | Улучшает завершение первого посещения. |
+| fieldapptops.dispatch.route_optimization | оптимизация маршрута | METHOD | Маршрут группирует встречи по области, приоритету, временным окнам и поездкам. | Сокращает время работы с лобовым стеклом. |
+| fieldapptops.dispatch.same_day | дополнение в тот же день | DECISION_RULE | Работы, выполняемые в тот же день, требуют проверки мощности, запасных частей и готовности клиента. | Предотвращает срыв графика. |
+| fieldapptops.dispatch.status_updates | обновления статуса | RECORD | Статус технического специалиста показывает: назначен, в пути, на месте, задержан, завершен или исключен. | Колл-центр может ответить на вопросы клиентов. |
+| fieldapptops.customer.readiness_notice | уведомление о готовности | METHOD | В уведомлении клиенту предлагается очистить счетчик, обеспечить безопасность домашних животных, присутствовать или предоставить доступ. | Повышает процент завершения. |
+| fieldapptops.customer.arrival_notice | уведомление о прибытии | METHOD | При наличии поддержки клиент получает напоминание или уведомление о маршруте. | Уменьшает отсутствие доступа. |
+| fieldapptops.customer.no_show_customer | неявка клиента | FAILURE_MODE | Неявка фиксируется с указанием времени, попыток контакта и данных с места происшествия. | Поддерживает сборы или политику переноса сроков. |
+| fieldapptops.customer.special_needs | особые потребности | RECORD | Доступность, языковые или медицинские потребности учитываются при посещении объекта. | Делает обслуживание более безопасным и справедливым. |
+| fieldapptops.site.address_verify | проверка адреса | SAFETY_RULE | Прежде чем действовать, техник проверяет адрес, счетчик и порядок работы. | Предотвращает неправильную работу свойств. |
+| fieldapptops.site.hazard_scan | сканирование опасностей | SAFETY_RULE | Сайт проверяется на наличие собак, дорожного движения, электропроводки, замкнутого пространства, погодных условий и небезопасных конструкций. | Защищает технику. |
+| fieldapptops.site.property_protection | защита собственности | METHOD | Коврики, чехлы, фотографии и тщательная прокладка уменьшают материальный ущерб. | Предотвращает претензии. |
+| fieldapptops.site.permission | разрешение на вход | CONSTRAINT | Для внутреннего или огороженного доступа требуется разрешение клиента или юридические полномочия. | Защищает конфиденциальность и законность. |
+| fieldapptops.work.precheck | предварительная проверка работы | METHOD | Перед прибытием технический специалист проверяет задачу, детали, учетные записи, историю и флажки безопасности. | Уменьшает количество сюрпризов. |
+| fieldapptops.work.parts_ready | готовность запчастей | QUALITY_CHECK | Подтверждаются необходимые счетчики, конечные точки, инструменты, пломбы или формы. | Избегает неудачных посещений из-за недостающих материалов. |
+| fieldapptops.work.scope_control | контроль объема | DECISION_RULE | Техник отличает запланированную задачу от новых запросов клиентов. | Предотвращает неконтролируемое расширение работы. |
+| fieldapptops.work.field_decision | решение на местах | METHOD | Полевой персонал может завершать, откладывать, передавать на более высокий уровень, создавать последующие действия или отмечать отсутствие доступа. | Стандартизирует результаты. |
+| fieldapptops.missed.no_access | код запрета доступа | RECORD | Причинами отсутствия доступа являются запертые ворота, отсутствие взрослых, небезопасное место, собака, закопанный счетчик или неправильный адрес. | Позволяет анализировать пропущенные посещения. |
+| fieldapptops.missed.trip_fee | правило платы за поездку | CONSTRAINT | Политика определяет, когда взимается плата за пропущенный прием. | Поддерживает постоянство сборов с клиентов. |
+| fieldapptops.missed.followup | наблюдение за пропущенным визитом | METHOD | Клиент получает причину, доказательства, плату, если таковая имеется, и способ переноса графика. | Закрывает пробел в общении. |
+| fieldapptops.safety.lone_worker | одинокий работник | SAFETY_RULE | Процедуры одинокого работника определяют проверки, варианты паники и эскалацию. | Выездные встречи могут быть изолированными. |
+| fieldapptops.safety.aggressive_customer | агрессивный клиент | SAFETY_RULE | Враждебное поведение вызывает отказ, уведомление руководителя и флажок безопасности. | Защищает сотрудников. |
+| fieldapptops.safety.traffic_control | контроль дорожного движения | METHOD | При назначении на улицу используются конусы, жилеты, знаки и позиционирование транспортных средств. | Предотвращает травмы на дороге. |
+| fieldapptops.safety.weather | задержка погоды | DECISION_RULE | Молния, лед, жара или наводнение могут отложить встречу. | График корректировок безопасности. |
+| fieldapptops.closeout.completion_code | код завершения | RECORD | Код завершения указывает на завершение, частичное, отсутствие доступа, небезопасность, необходимость в деталях или отмену заказа клиентом. | Делает отставание точным. |
+| fieldapptops.closeout.work_notes | рабочие заметки | RECORD | Примечания включают предпринятые действия, показания, детали, фотографии, контакт с клиентом и следующие шаги. | Поддерживает выставление счетов и отслеживание обслуживания. |
+| fieldapptops.closeout.customer_signature | подпись клиента | RECORD | Подпись или признание могут подтвердить внутренние работы, реставрацию или отказ. | Уменьшает споры. |
+| fieldapptops.closeout.followup_order | последующий приказ | METHOD | Незавершенная работа создает связанный порядок с разумом, приоритетом и требованиями. | Предотвращает сброс задач. |
+| fieldapptops.records.photo_evidence | фотодоказательства | RECORD | Фотографии документов доступа, счетчика, ремонта, состояния объекта и причины отсутствия доступа. | Поддерживает контроль качества и претензии. |
+| fieldapptops.records.time_tracking | отслеживание времени | MEASUREMENT | Время на поездки, пребывание на объекте и время администратора фиксируются по типу работы. | Улучшает модель планирования. |
+| fieldapptops.records.inventory_use | использование инвентаря | RECORD | Используемые детали и уплотнения привязаны к рабочему заданию. | Поддерживает контроль запасов. |
+| fieldapptops.qa.first_visit_completion | завершение первого визита | MEASUREMENT | Метрика отслеживает задания, выполненные без повторного посещения. | Показывает график и качество готовности. |
+| fieldapptops.qa.appointment_accuracy | точность назначения | MEASUREMENT | Прибытие в пределах окна измеряется классом работы и маршрутом. | Поддерживает обещания по обслуживанию клиентов. |
+| fieldapptops.qa.audit | выездной аудит | QUALITY_CHECK | Супервайзер проверяет фотографии, заметки, коды безопасности и завершения работ. | Обеспечивает надежность полевых записей. |
+| fieldapptops.reporting.dashboard | панель встреч | RECORD | На информационной панели отображаются запланированные, завершенные, пропущенные, отложенные, отмененные и устаревшие задания. | Обеспечивает видимость операций. |
+| fieldapptops.reporting.no_access_trend | тенденция отсутствия доступа | MODEL | Тенденции определяют районы, типы должностей или пробелы в общении, вызывающие пропуск посещений. | Направляет процесс улучшения. |
+| fieldapptops.reporting.customer_impact | влияние на клиента | MEASUREMENT | Отчеты включают время ожидания, количество переносов и ссылки на жалобы. | Показывает опыт обслуживания. |
+| fieldapptops.review.route_review | обзор маршрута | METHOD | Dispatch анализирует время в пути, экстренные перерывы и плотность встреч. | Улучшает будущую маршрутизацию. |

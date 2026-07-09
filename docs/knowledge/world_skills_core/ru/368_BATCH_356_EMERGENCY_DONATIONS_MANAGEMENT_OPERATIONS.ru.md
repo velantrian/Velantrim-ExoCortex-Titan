@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| donationops.intake.offer_id | offer ID | RECORD | Offer ID links donor, item, quantity, location, timing and restrictions. | Creates traceable donation intake. |
-| donationops.intake.offer_channel | offer channel | RECORD | Channel records web form, phone, email, partner, corporate offer or walk-in. | Shows donation flow. |
-| donationops.intake.donor_contact | donor contact | RECORD | Donor contact stores organization/person, callback, logistics and tax receipt need. | Enables coordination. |
-| donationops.intake.item_description | item description | RECORD | Description captures type, condition, quantity, packaging and special handling. | Prevents vague offers. |
-| donationops.criteria.accepted_list | accepted item list | CONSTRAINT | Accepted list reflects current incident needs, safety and storage capacity. | Keeps donations useful. |
-| donationops.criteria.not_needed | not-needed list | CONSTRAINT | Not-needed list blocks unsuitable goods like dirty clothing, expired food or random bulk. | Avoids waste burden. |
-| donationops.criteria.safety_screen | safety screen | SAFETY_RULE | Food, medicine, equipment and hazardous goods require safety review before acceptance. | Protects recipients. |
-| donationops.criteria.cash_preferred | cash preference | METHOD | Public messaging may direct donors to cash or vetted partners. | Increases flexibility. |
-| donationops.acceptance.accept_decision | acceptance decision | RECORD | Decision records accepted, declined, waitlisted or redirected with reason. | Makes intake defensible. |
-| donationops.acceptance.conditions | acceptance conditions | CONSTRAINT | Conditions include delivery time, packaging, labeling, temperature or documentation. | Prevents unusable drop-offs. |
-| donationops.acceptance.receipt | donation receipt | RECORD | Receipt records donor, goods, estimated quantity and acknowledgment. | Supports donor records. |
-| donationops.acceptance.restriction | restricted donation | CONSTRAINT | Restricted donations are tracked to ensure use matches donor limits. | Avoids compliance issues. |
-| donationops.logistics.pickup | pickup coordination | METHOD | Pickup plan covers vehicle, driver, loading, timing and contact. | Moves accepted goods. |
-| donationops.logistics.delivery_window | delivery window | METHOD | Delivery windows prevent unmanaged arrivals at response sites. | Reduces congestion. |
-| donationops.logistics.transport_limit | transport limit | CONSTRAINT | Bulky, heavy, refrigerated or hazardous goods may exceed available logistics. | Guides accept/decline decisions. |
-| donationops.logistics.unloading | unloading plan | METHOD | Unloading plan includes dock, volunteers, equipment and traffic flow. | Prevents bottlenecks. |
-| donationops.warehouse.receiving | warehouse receiving | METHOD | Receiving verifies quantity, condition, labels and source. | Starts inventory control. |
-| donationops.warehouse.storage_zone | storage zone | METHOD | Zones separate food, hygiene, clothing, medical, bulk, restricted and disposal items. | Makes warehouse usable. |
-| donationops.warehouse.cold_chain | cold chain | SAFETY_RULE | Refrigerated donations need temperature logs and release criteria. | Prevents unsafe distribution. |
-| donationops.warehouse.inventory_count | inventory count | MEASUREMENT | Counts track SKU/item, quantity, lot, location and status. | Supports matching and reporting. |
-| donationops.matching.needs_board | needs board | RECORD | Needs board lists requested items, location, priority, quantity and requester. | Matches supply to demand. |
-| donationops.matching.allocation | allocation method | METHOD | Allocation assigns goods by need, urgency, restrictions and transportation. | Gets items to right place. |
-| donationops.matching.substitution | substitution rule | METHOD | Substitutions use comparable goods when exact request is unavailable. | Keeps distribution moving. |
-| donationops.matching.expiry_priority | expiry priority | MODEL | Perishable or expiring items move first when safe and needed. | Reduces waste. |
-| donationops.distribution.release_order | release order | RECORD | Release order records item, quantity, recipient, destination and approver. | Controls outbound goods. |
-| donationops.distribution.handoff | handoff proof | RECORD | Handoff proof captures receiver, time, condition and transport. | Closes custody trail. |
-| donationops.distribution.last_mile | last mile | METHOD | Last-mile distribution uses shelters, food sites, clinics, field teams or partners. | Reaches affected people. |
-| donationops.distribution.equity | equity check | QUALITY_CHECK | Distribution is checked for geographic, access and population fairness. | Avoids favoritism. |
-| donationops.unsolicited.dropoff | unsolicited drop-off | FAILURE_MODE | Unsolicited goods arrive without intake and can overwhelm operations. | Requires controlled response. |
-| donationops.unsolicited.sorting | sorting process | METHOD | Sorting classifies unsolicited goods into usable, redirect, recycle, disposal or quarantine. | Reduces chaos. |
-| donationops.unsolicited.public_message | public message | METHOD | Messaging tells public what is needed, where to give and what not to bring. | Prevents donation surges. |
-| donationops.unsolicited.disposal | disposal process | METHOD | Unusable goods are disposed, recycled or transferred under policy. | Clears space safely. |
-| donationops.records.chain | chain of custody | RECORD | Chain records source, storage, release and recipient for controlled items. | Supports accountability. |
-| donationops.records.value | value record | RECORD | Value may be estimated for accounting, insurance or reporting without inflating claims. | Supports finance. |
-| donationops.records.restriction_log | restriction log | RECORD | Restricted gifts track donor limits, use and remaining balance. | Prevents misuse. |
-| donationops.records.retention | retention rule | CONSTRAINT | Donation records follow finance, grant, audit and privacy schedules. | Keeps evidence. |
-| donationops.finance.cash_donation | cash donation route | METHOD | Cash gifts go through authorized finance or nonprofit channels. | Protects funds. |
-| donationops.finance.in_kind | in-kind accounting | METHOD | In-kind donations are recorded separately from purchased inventory. | Improves reporting. |
-| donationops.finance.fraud_flag | fraud flag | MODEL | Suspicious offers, inflated values or diversion attempts are flagged. | Protects response resources. |
-| donationops.safety.recall | recall process | SAFETY_RULE | Recalled or unsafe goods are isolated and recipients notified if distributed. | Reduces harm. |
-| donationops.safety.volunteer_lifting | lifting safety | SAFETY_RULE | Warehouse volunteers receive lifting, PPE and equipment guidance. | Prevents injuries. |
-| donationops.metrics.fill_rate | need fill rate | MEASUREMENT | Fill rate measures requested items fulfilled from donations. | Shows usefulness. |
-| donationops.metrics.waste_rate | waste rate | MEASUREMENT | Waste rate tracks unusable, expired or disposed donations. | Improves messaging. |
-| donationops.closeout.reconcile | reconciliation | QUALITY_CHECK | Closeout reconciles offers, inventory, distributions, disposal and restrictions. | Ends operation cleanly. |
+| donationops.intake.offer_id | идентификатор предложения | RECORD | Идентификатор предложения связывает донора, товар, количество, местоположение, сроки и ограничения. | Создает отслеживаемый прием пожертвований. |
+| donationops.intake.offer_channel | предложить канал | RECORD | Канал записывает веб-форму, телефон, электронную почту, партнера, корпоративное предложение или личное присутствие. | Показывает поток пожертвований. |
+| donationops.intake.donor_contact | контакт с донором | RECORD | Организация/человек, хранящий контакты с донорами, необходимость обратного вызова, логистики и налоговых квитанций. | Обеспечивает координацию. |
+| donationops.intake.item_description | описание предмета | RECORD | В описании указаны тип, состояние, количество, упаковка и особые условия обращения. | Предотвращает расплывчатые предложения. |
+| donationops.criteria.accepted_list | список принятых товаров | CONSTRAINT | Принятый список отражает текущие потребности в инцидентах, безопасность и емкость хранилища. | Делает пожертвования полезными. |
+| donationops.criteria.not_needed | ненужный список | CONSTRAINT | Список ненужных блокирует неподходящие товары, такие как грязная одежда, продукты с истекшим сроком годности или случайные партии. | Избегает бремени отходов. |
+| donationops.criteria.safety_screen | защитный экран | SAFETY_RULE | Продукты питания, лекарства, оборудование и опасные товары требуют проверки безопасности перед приемкой. | Защищает получателей. |
+| donationops.criteria.cash_preferred | предпочтение наличными | METHOD | Публичные сообщения могут направлять доноров к денежным или проверенным партнерам. | Увеличивает гибкость. |
+| donationops.acceptance.accept_decision | решение о приемке | RECORD | Записи о решениях приняты, отклонены, внесены в список ожидания или перенаправлены с указанием причины. | Делает потребление оправданным. |
+| donationops.acceptance.conditions | условия приемки | CONSTRAINT | Условия включают время доставки, упаковку, маркировку, температуру или документацию. | Предотвращает бесполезные выпадения. |
+| donationops.acceptance.receipt | квитанция о пожертвовании | RECORD | В квитанции указывается даритель, товары, предполагаемое количество и подтверждение. | Поддерживает записи доноров. |
+| donationops.acceptance.restriction | ограниченное пожертвование | CONSTRAINT | Ограниченные пожертвования отслеживаются, чтобы гарантировать соответствие использования лимитам доноров. | Избегает проблем с соблюдением требований. |
+| donationops.logistics.pickup | координация пикапа | METHOD | План пикапа охватывает транспортное средство, водителя, погрузку, время и контакт. | Перемещает принятый товар. |
+| donationops.logistics.delivery_window | окно доставки | METHOD | Окна доставки предотвращают неуправляемое прибытие на места реагирования. | Уменьшает заторы. |
+| donationops.logistics.transport_limit | транспортный лимит | CONSTRAINT | Громоздкие, тяжелые, охлажденные или опасные грузы могут превышать объем доступной логистики. | Гиды принимают/отклоняют решения. |
+| donationops.logistics.unloading | план разгрузки | METHOD | План разгрузки включает причал, волонтеров, оборудование и транспортный поток. | Предотвращает возникновение узких мест. |
+| donationops.warehouse.receiving | складской прием | METHOD | При приемке проверяется количество, состояние, маркировка и источник. | Начинает инвентаризацию. |
+| donationops.warehouse.storage_zone | зона хранения | METHOD | Зоны разделяют продукты питания, средства гигиены, одежду, медицинские, сыпучие, ограниченные и утилизируемые предметы. | Делает склад полезным. |
+| donationops.warehouse.cold_chain | холодовая цепь | SAFETY_RULE | Для охлажденных пожертвований необходимы журналы температуры и критерии выпуска. | Предотвращает небезопасное распространение. |
+| donationops.warehouse.inventory_count | инвентаризация | MEASUREMENT | Подсчеты отслеживают артикул/товар, количество, партию, местоположение и статус. | Поддерживает сопоставление и отчетность. |
+| donationops.matching.needs_board | нужна доска | RECORD | На доске потребностей перечислены запрошенные предметы, их местоположение, приоритет, количество и отправитель запроса. | Соответствует предложению спросу. |
+| donationops.matching.allocation | метод распределения | METHOD | Распределение распределяет товары по необходимости, срочности, ограничениям и транспортировке. | Доставляет предметы в нужное место. |
+| donationops.matching.substitution | правило замены | METHOD | При замене используются сопоставимые товары, когда точный запрос недоступен. | Продолжает распространение. |
+| donationops.matching.expiry_priority | приоритет истечения срока действия | MODEL | Скоропортящиеся или просроченные товары перемещаются первыми, когда они безопасны и необходимы. | Уменьшает отходы. |
+| donationops.distribution.release_order | приказ о выпуске | RECORD | В заказе на выпуск фиксируются позиция, количество, получатель, пункт назначения и утверждающее лицо. | Контролирует исходящие товары. |
+| donationops.distribution.handoff | доказательство передачи | RECORD | Доказательство передачи фиксирует получателя, время, состояние и транспортировку. | Закрывает след задержания. |
+| donationops.distribution.last_mile | последняя миля | METHOD | Для распределения на последней миле используются приюты, пункты питания, клиники, полевые бригады или партнеры. | Достигает пострадавших людей. |
+| donationops.distribution.equity | проверка капитала | QUALITY_CHECK | Распределение проверяется на географическую справедливость, доступность и демографическую справедливость. | Избегает фаворитизма. |
+| donationops.unsolicited.dropoff | нежелательный вылет | FAILURE_MODE | Нежелательные товары поступают без приема и могут затруднить работу. | Требует контролируемого реагирования. |
+| donationops.unsolicited.sorting | процесс сортировки | METHOD | Сортировка классифицирует нежелательные товары на пригодные к использованию, перенаправление, переработку, утилизацию или карантин. | Уменьшает хаос. |
+| donationops.unsolicited.public_message | публичное сообщение | METHOD | Обмен сообщениями сообщает общественности, что необходимо, куда давать, а что не приносить. | Предотвращает резкий рост пожертвований. |
+| donationops.unsolicited.disposal | процесс утилизации | METHOD | Непригодные для использования товары утилизируются, перерабатываются или передаются в соответствии с политикой. | Безопасно очищает пространство. |
+| donationops.records.chain | цепочка поставок | RECORD | Цепочка фиксирует источник, хранение, выпуск и получателя контролируемых предметов. | Поддерживает ответственность. |
+| donationops.records.value | запись значения | RECORD | Стоимость может быть оценена для целей бухгалтерского учета, страхования или отчетности без завышения требований. | Поддерживает финансы. |
+| donationops.records.restriction_log | журнал ограничений | RECORD | Ограниченные подарки отслеживают лимиты доноров, использование и остаток средств. | Предотвращает неправильное использование. |
+| donationops.records.retention | правило хранения | CONSTRAINT | Записи о пожертвованиях соответствуют графикам финансирования, грантов, аудита и конфиденциальности. | Хранит доказательства. |
+| donationops.finance.cash_donation | маршрут пожертвования наличными | METHOD | Денежные подарки передаются через уполномоченные финансовые или некоммерческие каналы. | Защищает средства. |
+| donationops.finance.in_kind | натуральный учет | METHOD | Пожертвования в натуральной форме учитываются отдельно от приобретенных товаров. | Улучшает отчетность. |
+| donationops.finance.fraud_flag | флаг мошенничества | MODEL | Подозрительные предложения, завышенные цены или попытки перенаправления помечаются. | Защищает ресурсы реагирования. |
+| donationops.safety.recall | процесс отзыва | SAFETY_RULE | Отозванные или небезопасные товары изолируются, а в случае их распространения получатели уведомляются. | Уменьшает вред. |
+| donationops.safety.volunteer_lifting | безопасность подъема | SAFETY_RULE | Волонтёры склада получают инструкции по подъему грузов, средствам индивидуальной защиты и оборудованию. | Предотвращает травмы. |
+| donationops.metrics.fill_rate | нужна скорость заполнения | MEASUREMENT | Меры по заполнению запрошенных предметов выполняются за счет пожертвований. | Показывает полезность. |
+| donationops.metrics.waste_rate | уровень отходов | MEASUREMENT | Коэффициент отходов отслеживает непригодные для использования, просроченные или выброшенные пожертвования. | Улучшает обмен сообщениями. |
+| donationops.closeout.reconcile | примирение | QUALITY_CHECK | Распродажа согласовывает предложения, запасы, дистрибуцию, удаление и ограничения. | Завершает работу чисто. |

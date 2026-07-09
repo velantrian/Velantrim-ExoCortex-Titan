@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| logstageops.activation.trigger | activation trigger | MODEL | Staging area activates when incident resources need central receiving and dispatch. | Creates logistics control. |
-| logstageops.activation.site | site selection | METHOD | Site checks access, space, security, surface, utilities, hazards and proximity. | Picks usable area. |
-| logstageops.activation.authority | site authority | RECORD | Authority records owner, lead agency, period and access rules. | Clarifies control. |
-| logstageops.activation.layout | layout plan | METHOD | Layout separates inbound, inspection, storage, outbound, parking and staff areas. | Reduces congestion. |
-| logstageops.receiving.delivery_id | delivery ID | RECORD | Delivery ID links supplier, carrier, load, time, contents and condition. | Tracks inbound goods. |
-| logstageops.receiving.checkin | vehicle check-in | METHOD | Drivers check in with manifest, destination, safety and unloading instructions. | Controls arrival flow. |
-| logstageops.receiving.inspection | receiving inspection | QUALITY_CHECK | Inspection checks count, damage, temperature, labels and hazards. | Prevents bad stock. |
-| logstageops.receiving.exception | receiving exception | RECORD | Exceptions record overage, shortage, damage, wrong item or missing paperwork. | Supports correction. |
-| logstageops.inventory.item_record | item record | RECORD | Item record stores type, quantity, unit, lot, location and status. | Makes stock visible. |
-| logstageops.inventory.location | location code | RECORD | Location code maps yard, tent, pallet, rack or container. | Speeds finding items. |
-| logstageops.inventory.cycle_count | cycle count | QUALITY_CHECK | Counts compare physical goods to system records. | Detects drift. |
-| logstageops.inventory.reserved_stock | reserved stock | CONSTRAINT | Reserved stock is held for priority mission or future wave. | Avoids accidental issue. |
-| logstageops.staging.zone | staging zone | METHOD | Zones group water, food, medical, shelter, tools, fuel and equipment. | Organizes operations. |
-| logstageops.staging.pallet_label | pallet label | RECORD | Label shows item, quantity, destination, priority and handling needs. | Prevents dispatch errors. |
-| logstageops.staging.crossdock | cross-dock | METHOD | High-priority goods move from inbound to outbound without storage. | Speeds delivery. |
-| logstageops.staging.cold_storage | cold storage | SAFETY_RULE | Temperature-sensitive goods use monitored cold storage or rapid transfer. | Protects supplies. |
-| logstageops.request.resource_request | resource request | RECORD | Request records mission, item, quantity, destination, priority and requester. | Controls outbound demand. |
-| logstageops.request.validation | request validation | QUALITY_CHECK | Validation checks authorization, need, duplication and availability. | Prevents misuse. |
-| logstageops.request.substitution | substitution | METHOD | Substitution offers equivalent items when exact item is unavailable. | Keeps missions moving. |
-| logstageops.request.shortage | shortage notice | METHOD | Shortage notice informs requester of partial fill, delay or alternate source. | Sets expectations. |
-| logstageops.dispatch.pick_ticket | pick ticket | RECORD | Pick ticket lists item, quantity, location, destination and route. | Guides loaders. |
-| logstageops.dispatch.load_plan | load plan | METHOD | Load plan orders goods by weight, priority, route and unloading sequence. | Prevents unsafe loads. |
-| logstageops.dispatch.driver_packet | driver packet | RECORD | Packet includes manifest, route, contacts, delivery proof and safety notes. | Supports delivery. |
-| logstageops.dispatch.proof | delivery proof | RECORD | Proof captures receiver, time, condition, shortages and signature/photo. | Closes loop. |
-| logstageops.traffic.inbound_lane | inbound lane | METHOD | Inbound lanes separate trucks, small vehicles, emergency units and pedestrians. | Reduces collisions. |
-| logstageops.traffic.outbound_lane | outbound lane | METHOD | Outbound lanes stage loaded vehicles for dispatch order. | Improves flow. |
-| logstageops.traffic.parking | parking control | METHOD | Parking separates staff, volunteers, drivers, equipment and visitors. | Keeps access clear. |
-| logstageops.traffic.signage | signage | METHOD | Signs direct check-in, speed, PPE, hazards, loading and exits. | Reduces confusion. |
-| logstageops.safety.site_hazards | hazard assessment | SAFETY_RULE | Hazards include forklifts, heat, fuel, unstable loads, night work and traffic. | Protects workers. |
-| logstageops.safety.ppe | PPE rule | SAFETY_RULE | PPE requirements match lifting, traffic, weather and material hazards. | Reduces injury. |
-| logstageops.safety.forklift | forklift control | SAFETY_RULE | Forklift operators, spotters and pedestrian zones are controlled. | Prevents serious incidents. |
-| logstageops.safety.incident | incident report | RECORD | Incidents record injury, near miss, spill, vehicle damage or security issue. | Supports correction. |
-| logstageops.security.access | access control | METHOD | Access limits site to authorized staff, drivers, volunteers and officials. | Protects resources. |
-| logstageops.security.high_value | high-value storage | SAFETY_RULE | Fuel, medical, electronics or scarce items use locked or guarded storage. | Prevents theft. |
-| logstageops.security.seals | seal control | RECORD | Seals track closed trailers, containers and controlled loads. | Maintains integrity. |
-| logstageops.staffing.roster | staffing roster | RECORD | Roster tracks logistics, inventory, loaders, safety, traffic and admin roles. | Maintains coverage. |
-| logstageops.staffing.briefing | shift briefing | METHOD | Briefing covers missions, hazards, inventory, weather and traffic changes. | Aligns team. |
-| logstageops.records.sitrep | logistics sitrep | RECORD | Sitrep reports inbound, outbound, stock, shortages, staffing and issues. | Feeds command. |
-| logstageops.records.cost | cost record | RECORD | Costs track labor, rentals, fuel, equipment, supplies and damage. | Supports reimbursement. |
-| logstageops.metrics.throughput | throughput | MEASUREMENT | Throughput measures loads received, staged and dispatched per period. | Shows capacity. |
-| logstageops.metrics.order_cycle | order cycle time | MEASUREMENT | Cycle time measures request-to-delivery proof. | Reveals bottlenecks. |
-| logstageops.demob.site_restore | site restoration | METHOD | Demob removes stock, cleans site, repairs damage and returns keys. | Closes facility. |
-| logstageops.demob.final_reconcile | final reconciliation | QUALITY_CHECK | Final reconciliation matches remaining stock, dispatch proofs, losses and transfers. | Prevents unresolved inventory gaps. |
-| logstageops.review.after_action | after-action review | METHOD | Review captures layout, inventory accuracy, safety, traffic and dispatch lessons. | Improves next staging area. |
+| logstageops.activation.trigger | триггер активации | MODEL | Зона подготовки активируется, когда ресурсы для инцидентов нуждаются в централизованном приеме и отправке. | Создает логистический контроль. |
+| logstageops.activation.site | выбор места | METHOD | На объекте проверяется доступ, пространство, безопасность, поверхность, коммунальные услуги, опасности и близость. | Подбирает полезную площадь. |
+| logstageops.activation.authority | авторитет сайта | RECORD | Владелец авторитетных записей, ведущее учреждение, период и правила доступа. | Уточняет контроль. |
+| logstageops.activation.layout | план расположения | METHOD | Планировка разделяет въездную, инспекционную, складскую, выездную, парковочную и служебную зоны. | Уменьшает заторы. |
+| logstageops.receiving.delivery_id | идентификатор доставки | RECORD | Идентификатор доставки связывает поставщика, перевозчика, груз, время, содержимое и состояние. | Отслеживает входящие товары. |
+| logstageops.receiving.checkin | регистрация автомобиля | METHOD | Водители регистрируются с указанием манифеста, пункта назначения, инструкций по безопасности и разгрузке. | Управляет потоком прибытия. |
+| logstageops.receiving.inspection | приемочный осмотр | QUALITY_CHECK | Инспекционные проверки проверяют количество, повреждения, температуру, этикетки и опасности. | Предотвращает плохой запас. |
+| logstageops.receiving.exception | получение исключения | RECORD | Исключениями являются избыток, недостача, повреждение, неправильный товар или отсутствие документов. | Поддерживает коррекцию. |
+| logstageops.inventory.item_record | запись предмета | RECORD | Запись о товаре хранит тип, количество, единицу измерения, партию, местоположение и статус. | Делает запас видимым. |
+| logstageops.inventory.location | код местоположения | RECORD | Карты кодов местоположения: двор, палатка, поддон, стеллаж или контейнер. | Ускоряет поиск предметов. |
+| logstageops.inventory.cycle_count | количество циклов | QUALITY_CHECK | Подсчеты сравнивают физические товары с системными записями. | Обнаруживает дрейф. |
+| logstageops.inventory.reserved_stock | зарезервированный запас | CONSTRAINT | Зарезервированный запас хранится для приоритетной миссии или будущей волны. | Избегает случайной проблемы. |
+| logstageops.staging.zone | плацдарм | METHOD | Зоны группируют воду, еду, медицинские услуги, жилье, инструменты, топливо и оборудование. | Организует операции. |
+| logstageops.staging.pallet_label | этикетка поддона | RECORD | На этикетке указан товар, количество, пункт назначения, приоритет и потребности в обработке. | Предотвращает ошибки отправки. |
+| logstageops.staging.crossdock | перегрузка | METHOD | Высокоприоритетные товары перемещаются из входящего в исходящий без хранения. | Ускоряет доставку. |
+| logstageops.staging.cold_storage | холодильное хранилище | SAFETY_RULE | Для товаров, чувствительных к температуре, используется контролируемое холодильное хранение или быстрая транспортировка. | Защищает расходные материалы. |
+| logstageops.request.resource_request | запрос ресурсов | RECORD | Запрос записывает миссию, товар, количество, пункт назначения, приоритет и отправителя запроса. | Контролирует исходящий спрос. |
+| logstageops.request.validation | запросить проверку | QUALITY_CHECK | Валидация проверяет авторизацию, необходимость, дублирование и доступность. | Предотвращает неправильное использование. |
+| logstageops.request.substitution | замена | METHOD | Замена предлагает эквивалентные товары, когда конкретный товар недоступен. | Обеспечивает движение миссий. |
+| logstageops.request.shortage | уведомление о недостаче | METHOD | Уведомление о нехватке информирует запрашивающую сторону о частичном заполнении, задержке или альтернативном источнике. | Устанавливает ожидания. |
+| logstageops.dispatch.pick_ticket | выбрать билет | RECORD | В билете выбора указаны товар, количество, местоположение, пункт назначения и маршрут. | Направляющие погрузчики. |
+| logstageops.dispatch.load_plan | план загрузки | METHOD | План загрузки упорядочивает товары по весу, приоритету, маршруту и ​​последовательности разгрузки. | Предотвращает небезопасные нагрузки. |
+| logstageops.dispatch.driver_packet | пакет драйвера | RECORD | Пакет включает в себя манифест, маршрут, контакты, подтверждение доставки и указания по безопасности. | Поддерживает доставку. |
+| logstageops.dispatch.proof | подтверждение доставки | RECORD | В доказательстве указаны получатель, время, состояние, недостача и подпись/фотография. | Замыкает цикл. |
+| logstageops.traffic.inbound_lane | входящая полоса | METHOD | Входящие полосы разделяют грузовики, небольшие транспортные средства, аварийные службы и пешеходов. | Уменьшает количество столкновений. |
+| logstageops.traffic.outbound_lane | выездная полоса | METHOD | Выездные полосы выставляют загруженные транспортные средства для заказа на отправку. | Улучшает поток. |
+| logstageops.traffic.parking | контроль парковки | METHOD | Парковка разделяет персонал, волонтеров, водителей, оборудование и посетителей. | Обеспечивает свободный доступ. |
+| logstageops.traffic.signage | вывески | METHOD | Знаки прямой регистрации, скорости, средств индивидуальной защиты, опасностей, погрузки и выхода. | Уменьшает путаницу. |
+| logstageops.safety.site_hazards | оценка опасности | SAFETY_RULE | Опасности включают вилочные погрузчики, жару, топливо, нестабильные грузы, ночную работу и движение транспорта. | Защищает рабочих. |
+| logstageops.safety.ppe | правило СИЗ | SAFETY_RULE | Требования к средствам индивидуальной защиты соответствуют опасностям, связанным с подъемом, дорожным движением, погодными условиями и материалами. | Уменьшает травматизм. |
+| logstageops.safety.forklift | управление вилочным погрузчиком | SAFETY_RULE | Операторы погрузчиков, корректировщики и пешеходные зоны находятся под контролем. | Предотвращает серьезные инциденты. |
+| logstageops.safety.incident | отчет об инциденте | RECORD | Инциденты фиксируют травмы, опасные ситуации, разливы, повреждения транспортных средств или проблемы с безопасностью. | Поддерживает коррекцию. |
+| logstageops.security.access | контроль доступа | METHOD | Доступ к сайту ограничен уполномоченным персоналом, водителями, волонтерами и должностными лицами. | Защищает ресурсы. |
+| logstageops.security.high_value | ценное хранилище | SAFETY_RULE | Топливо, медикаменты, электроника или дефицитные предметы хранятся в запертом или охраняемом хранилище. | Предотвращает кражу. |
+| logstageops.security.seals | контроль уплотнения | RECORD | Тюлени отслеживают закрытые прицепы, контейнеры и контролируемые грузы. | Сохраняет целостность. |
+| logstageops.staffing.roster | штатное расписание | RECORD | Реестр отслеживает логистику, инвентарь, грузчиков, безопасность, трафик и роли администратора. | Сохраняет покрытие. |
+| logstageops.staffing.briefing | инструктаж по смене | METHOD | Брифинг охватывает миссии, опасности, инвентарь, погоду и изменения на дорогах. | Выравнивает команду. |
+| logstageops.records.sitrep | отдел логистики | RECORD | Sitrep сообщает о входящих и исходящих товарах, запасах, нехватке, укомплектовании персоналом и проблемах. | Подает команду. |
+| logstageops.records.cost | запись затрат | RECORD | Затраты учитывают рабочую силу, аренду, топливо, оборудование, расходные материалы и ущерб. | Поддерживает возмещение. |
+| logstageops.metrics.throughput | пропускная способность | MEASUREMENT | Пропускная способность измеряет количество полученных, подготовленных и отправленных грузов за период. | Показывает емкость. |
+| logstageops.metrics.order_cycle | время цикла заказа | MEASUREMENT | Время цикла измеряет доказательство от запроса до доставки. | Выявляет узкие места. |
+| logstageops.demob.site_restore | восстановление сайта | METHOD | Демоб вывозит инвентарь, убирает территорию, устраняет повреждения и возвращает ключи. | Закрывает объект. |
+| logstageops.demob.final_reconcile | окончательное примирение | QUALITY_CHECK | Окончательная сверка соответствует остаткам на складе, подтверждениям отправки, потерям и перемещениям. | Предотвращает неустраненные пробелы в запасах. |
+| logstageops.review.after_action | обзор после действий | METHOD | В обзоре отражены уроки планировки, точности инвентаризации, безопасности, дорожного движения и диспетчеризации. | Улучшает следующую зону плацдарма. |

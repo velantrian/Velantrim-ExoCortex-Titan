@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| travelops.policy.travel_policy | Corporate travel policy | invariant | Policy defines allowed booking channels, cabin class, hotels, meals, approvals, exceptions and duty of care. | rules before booking |
-| travelops.policy.pretrip_approval | Pre-trip approval | invariant | Approval confirms business purpose, budget, dates, destination, traveler and policy compliance. | spend gate |
-| travelops.policy.exception_request | Travel exception request | variant | Exception request records why traveler needs nonstandard fare, hotel, route or supplier. | controlled flexibility |
-| travelops.policy.preferred_supplier | Preferred travel supplier | variant | Preferred suppliers support negotiated rates, reporting, service levels and traveler tracking. | leverage buying power |
-| travelops.policy.booking_window | Advance booking window | variant | Booking window encourages purchase far enough ahead to reduce cost and availability risk. | timing affects fare |
-| travelops.policy.trip_purpose_code | Trip purpose code | invariant | Purpose code classifies travel for reporting, tax, project, client or compliance needs. | why travel happened |
-| travelops.profile.traveler_profile | Traveler profile | invariant | Profile stores name, contacts, documents, loyalty IDs, preferences and emergency data. | faster accurate booking |
-| travelops.profile.passport_expiry | Passport expiry check | invariant | Expiry check flags passport validity risk before international booking. | document readiness |
-| travelops.profile.visa_requirement | Visa requirement flag | variant | Flag indicates destination may require visa, permit or entry authorization. | avoid denied boarding |
-| travelops.profile.accessibility_need | Traveler accessibility need | variant | Need records assistance, seating, mobility, accommodation or communication requirement. | inclusive travel |
-| travelops.profile.risk_contact | Emergency contact | invariant | Contact supports traveler assistance during disruption, illness or security event. | duty of care |
-| travelops.profile.data_privacy | Traveler data privacy | invariant | Privacy controls limit access to personal documents, health notes and location data. | sensitive profile |
-| travelops.booking.air_booking | Corporate air booking | invariant | Booking selects flight based on policy, schedule, fare, flexibility and traveler need. | route plus rules |
-| travelops.booking.hotel_booking | Corporate hotel booking | invariant | Hotel booking considers rate, location, safety, cancellation, amenities and policy caps. | stay control |
-| travelops.booking.rail_booking | Corporate rail booking | variant | Rail booking may replace air or car depending on time, cost, policy and geography. | mode choice |
-| travelops.booking.car_rental | Car rental booking | variant | Rental booking checks vehicle class, insurance rules, driver eligibility and pickup logistics. | ground mobility |
-| travelops.booking.unused_ticket | Unused ticket credit | invariant | Credit tracking preserves value from cancelled or changed air tickets for future use. | avoid lost money |
-| travelops.booking.group_travel | Group travel coordination | variant | Group travel coordinates travelers, room blocks, shared transport, manifests and changes. | many travelers, one plan |
-| travelops.disruption.flight_disruption | Flight disruption workflow | invariant | Workflow handles delay, cancellation, missed connection, rebooking, hotel and traveler notification. | recover the trip |
-| travelops.disruption.traveler_locator | Traveler locator | invariant | Locator identifies travelers in affected region or route during disruption or crisis. | know who is where |
-| travelops.disruption.after_hours_support | After-hours travel support | variant | Support provides booking and emergency help outside normal business hours. | travel never sleeps |
-| travelops.disruption.weather_waiver | Airline waiver tracking | variant | Waiver tracking helps change travel without fees under airline disruption policy. | use available flexibility |
-| travelops.disruption.medical_emergency | Traveler medical emergency workflow | invariant | Workflow routes traveler to assistance provider, manager, insurance and emergency contacts under policy. | duty of care response |
-| travelops.disruption.security_alert | Destination security alert | variant | Alert informs travelers and approvers about risk, restrictions or assistance steps. | situational awareness |
-| travelops.expense.expense_report | Travel expense report | invariant | Report claims trip costs with receipts, coding, policy checks and approvals. | close spend |
-| travelops.expense.receipt_capture | Receipt capture | invariant | Capture preserves proof of purchase, tax, vendor, date, amount and currency. | evidence for reimbursement |
-| travelops.expense.per_diem | Per diem | variant | Per diem uses fixed allowance rules by location, date, meal or overnight status. | simpler meal accounting |
-| travelops.expense.currency_conversion | Currency conversion | invariant | Conversion records exchange rate source, transaction amount and reimbursement currency. | cross-border accounting |
-| travelops.expense.policy_violation | Travel expense violation | invariant | Violation flags out-of-policy spend, missing receipt, late submission or nonbusiness item. | control leakage |
-| travelops.expense.corporate_card_match | Corporate card match | invariant | Card match links transaction feed to expense line and trip purpose. | reduce manual entry |
-| travelops.duty.risk_rating | Destination risk rating | variant | Risk rating grades destination by security, health, political, environmental or transport factors. | pretrip awareness |
-| travelops.duty.check_in | Traveler check-in | variant | Check-in confirms traveler safety during disruption, high-risk trip or emergency. | contact loop |
-| travelops.duty.assistance_provider | Travel assistance provider | variant | Provider offers emergency support, medical referral, evacuation coordination or security advice. | specialized support |
-| travelops.duty.incident_record | Travel incident record | invariant | Record captures event, traveler, location, actions, contacts, costs and follow-up. | learn and evidence |
-| travelops.duty.policy_acknowledgment | Travel policy acknowledgment | invariant | Acknowledgment confirms traveler received relevant rules, safety expectations and responsibilities. | shared responsibility |
-| travelops.duty.repatriation_plan | Repatriation plan | variant | Plan coordinates return travel from crisis location under business continuity or safety decision. | get traveler home |
-| travelops.reporting.spend_report | Travel spend report | invariant | Report groups spend by supplier, route, department, traveler, purpose and policy status. | manage travel budget |
-| travelops.reporting.supplier_performance | Supplier performance report | invariant | Report tracks rates, service, disruptions, refunds, complaints and contract value. | manage vendors |
-| travelops.reporting.carbon_report | Travel carbon report | variant | Carbon report estimates travel emissions by route, mode, distance and methodology. | sustainability view |
-| travelops.reporting.compliance_rate | Travel compliance rate | invariant | Compliance rate measures bookings and expenses following travel policy. | behavior metric |
-| travelops.reporting.savings_tracking | Travel savings tracking | variant | Tracking estimates savings from negotiated rates, advance booking, avoided trips or unused ticket use. | value of program |
-| travelops.close.trip_closeout | Trip closeout | invariant | Closeout confirms travel complete, expenses submitted, unused tickets captured and incidents resolved. | finish the trip |
-| travelops.close.records_retention | Travel records retention | invariant | Retention defines storage period for approvals, itineraries, expenses, receipts and incident records. | audit readiness |
-| travelops.close.audit_sample | Travel audit sample | variant | Sample reviews trips for policy, receipts, approvals, duplicates, personal spend and vendor patterns. | targeted control |
+| travelops.policy.travel_policy | Политика корпоративных поездок | invariant | Политика определяет разрешенные каналы бронирования, класс салона, отели, питание, разрешения, исключения и обязанности соблюдать осторожность. | правила перед бронированием |
+| travelops.policy.pretrip_approval | Предварительное одобрение | invariant | Одобрение подтверждает деловую цель, бюджет, даты, пункт назначения, путешественника и соответствие политике. | тратить ворота |
+| travelops.policy.exception_request | Запрос на исключение из поездки | variant | В запросе на исключение указывается, почему путешественнику нужен нестандартный тариф, отель, маршрут или поставщик. | контролируемая гибкость |
+| travelops.policy.preferred_supplier | Предпочитаемый поставщик туристических услуг | variant | Предпочитаемые поставщики поддерживают договорные тарифы, отчетность, уровни обслуживания и отслеживание путешественников. | использовать покупательную способность |
+| travelops.policy.booking_window | Окно предварительного бронирования | variant | Окно бронирования поощряет покупку заблаговременно, чтобы снизить затраты и риск доступности. | время влияет на стоимость проезда |
+| travelops.policy.trip_purpose_code | Код цели поездки | invariant | Код цели классифицирует поездки для целей отчетности, налогообложения, проекта, клиента или соблюдения требований. | почему произошло путешествие |
+| travelops.profile.traveler_profile | Профиль путешественника | invariant | В профиле хранятся имя, контакты, документы, идентификаторы лояльности, предпочтения и данные о чрезвычайных ситуациях. | более быстрое точное бронирование |
+| travelops.profile.passport_expiry | Проверка срока действия паспорта | invariant | Проверка срока действия указывает на риск действительности паспорта перед международным бронированием. | готовность документа |
+| travelops.profile.visa_requirement | Флаг требования визы | variant | Флаг указывает, что в пункте назначения может потребоваться виза, разрешение или разрешение на въезд. | избежать отказа в посадке |
+| travelops.profile.accessibility_need | Потребность в доступности для путешественников | variant | Нужна помощь с записями, требования к местам, мобильности, размещению или связи. | инклюзивное путешествие |
+| travelops.profile.risk_contact | Экстренный контакт | invariant | Contact поддерживает помощь путешественникам во время сбоев, болезней или событий, связанных с безопасностью. | обязанность заботиться |
+| travelops.profile.data_privacy | Конфиденциальность данных путешественников | invariant | Средства контроля конфиденциальности ограничивают доступ к личным документам, медицинским записям и данным о местоположении. | деликатный профиль |
+| travelops.booking.air_booking | Корпоративное бронирование авиабилетов | invariant | Компания Booking выбирает рейс на основе политики, расписания, тарифа, гибкости и потребностей путешественника. | маршрут плюс правила |
+| travelops.booking.hotel_booking | Корпоративное бронирование отелей. | invariant | При бронировании отелей учитываются тарифы, расположение, безопасность, аннулирование, удобства и ограничения по правилам. | сохранять контроль |
+| travelops.booking.rail_booking | Корпоративное бронирование железнодорожных билетов | variant | Бронирование поездов может заменить самолет или автомобиль в зависимости от времени, стоимости, политики и географии. | выбор режима |
+| travelops.booking.car_rental | Бронирование аренды автомобиля | variant | При бронировании аренды проверяется класс автомобиля, правила страхования, право водителя и логистика получения. | наземная мобильность |
+| travelops.booking.unused_ticket | Неиспользованный кредит на билет | invariant | Отслеживание кредита сохраняет стоимость отмененных или измененных авиабилетов для использования в будущем. | избежать потерянных денег |
+| travelops.booking.group_travel | Координация групповых поездок | variant | Групповые поездки координируют путешественников, жилые помещения, общий транспорт, декларации и изменения. | много путешественников, один план |
+| travelops.disruption.flight_disruption | Рабочий процесс срыва рейса | invariant | Рабочий процесс обрабатывает задержку, отмену, пропущенную стыковку, повторное бронирование, уведомление об отеле и путешественниках. | восстановить поездку |
+| travelops.disruption.traveler_locator | Поиск путешественников | invariant | Локатор идентифицирует путешественников в пострадавшем регионе или маршруте во время сбоев или кризиса. | знать, кто где |
+| travelops.disruption.after_hours_support | Поддержка в поездках в нерабочее время | variant | Служба поддержки обеспечивает бронирование и экстренную помощь в нерабочее время. | путешествие никогда не спит |
+| travelops.disruption.weather_waiver | Отслеживание отказа авиакомпании | variant | Отслеживание отказов помогает изменить поездку без сборов в соответствии с политикой авиакомпании в отношении сбоев. | использовать доступную гибкость |
+| travelops.disruption.medical_emergency | Рабочий процесс неотложной медицинской помощи путешественнику | invariant | Рабочий процесс направляет путешественника к поставщику помощи, менеджеру, страховому агенту и контактным лицам в случае чрезвычайной ситуации в соответствии с полисом. | обязанность проявлять заботу |
+| travelops.disruption.security_alert | Предупреждение безопасности пункта назначения | variant | Alert информирует путешественников и утверждающих лиц о рисках, ограничениях или мерах по оказанию помощи. | ситуационная осведомленность |
+| travelops.expense.expense_report | Отчет о командировочных расходах | invariant | Сообщайте о расходах на поездки с квитанциями, кодированием, проверками и утверждениями политик. | близкие расходы |
+| travelops.expense.receipt_capture | Захват квитанции | invariant | Capture сохраняет подтверждение покупки, налог, поставщика, дату, сумму и валюту. | доказательства возмещения |
+| travelops.expense.per_diem | Суточные | variant | В суточных используются правила фиксированных надбавок в зависимости от местоположения, даты, приема пищи или статуса ночевки. | упрощенный учет питания |
+| travelops.expense.currency_conversion | Конвертация валюты | invariant | Конвертация фиксирует источник обменного курса, сумму транзакции и валюту возмещения. | трансграничный учет |
+| travelops.expense.policy_violation | Нарушение командировочных расходов | invariant | Нарушение сигнализирует о расходах, не соответствующих политике, отсутствующем чеке, поздней отправке или некоммерческой статье. | контрольная утечка |
+| travelops.expense.corporate_card_match | Матч корпоративной карты | invariant | Сопоставление карт связывает поток транзакций со строкой расходов и целью поездки. | сократить ручной ввод |
+| travelops.duty.risk_rating | Рейтинг риска дестинации | variant | Рейтинг риска оценивает пункт назначения по факторам безопасности, здоровья, политики, окружающей среды или транспорта. | предрейсовая осведомленность |
+| travelops.duty.check_in | Регистрация путешественника | variant | Регистрация подтверждает безопасность путешественника во время сбоев, поездки с высоким риском или чрезвычайной ситуации. | контактный контур |
+| travelops.duty.assistance_provider | Поставщик туристической помощи | variant | Поставщик предлагает экстренную поддержку, направление к врачу, координацию эвакуации или советы по безопасности. | специализированная поддержка |
+| travelops.duty.incident_record | Запись о дорожном происшествии | invariant | Запись фиксирует событие, путешественника, местоположение, действия, контакты, расходы и последующие действия. | учиться и доказывать |
+| travelops.duty.policy_acknowledgment | Подтверждение туристической политики | invariant | Подтверждение подтверждает, что путешественник ознакомился с соответствующими правилами, ожиданиями безопасности и обязанностями. | общая ответственность |
+| travelops.duty.repatriation_plan | План репатриации | variant | План координирует обратный путь из места кризиса в соответствии с решением о непрерывности бизнеса или безопасности. | отвезти путешественника домой |
+| travelops.reporting.spend_report | Отчет о расходах на поездки | invariant | Группы отчетов о расходах по поставщику, маршруту, отделу, путешественнику, цели и статусу политики. | управлять бюджетом поездки |
+| travelops.reporting.supplier_performance | Отчет о работе поставщика | invariant | В отчете отслеживаются тарифы, обслуживание, сбои, возвраты, жалобы и стоимость контракта. | управлять поставщиками |
+| travelops.reporting.carbon_report | Отчет о выбросах углерода в путешествиях | variant | В отчете об выбросах углерода оцениваются выбросы от поездок по маршруту, виду транспорта, расстоянию и методологии. | взгляд на устойчивое развитие |
+| travelops.reporting.compliance_rate | Коэффициент соблюдения требований к поездкам | invariant | Коэффициент соответствия измеряет бронирования и расходы в соответствии с политикой поездок. | метрика поведения |
+| travelops.reporting.savings_tracking | Отслеживание экономии в поездках | variant | Отслеживание оценки экономии за счет договорных тарифов, предварительного бронирования, неиспользованных поездок или неиспользованного использования билетов. | стоимость программы |
+| travelops.close.trip_closeout | Закрытие поездки | invariant | Закрытие подтверждает завершение поездки, оплату расходов, регистрацию неиспользованных билетов и устранение инцидентов. | закончить поездку |
+| travelops.close.records_retention | Хранение документации о поездках | invariant | Хранение определяет период хранения утверждений, маршрутов, расходов, квитанций и записей об инцидентах. | готовность к аудиту |
+| travelops.close.audit_sample | Образец аудита путешествий | variant | Примеры поездок для проверки на предмет политики, квитанций, разрешений, дубликатов, личных расходов и моделей работы поставщиков. | целевой контроль |

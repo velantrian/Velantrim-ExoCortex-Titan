@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| appliancereplaceops.intake.request_source | request source | RECORD | Source records caseworker, survivor center, housing agency, hotline or partner referral. | Shows entry path. |
-| appliancereplaceops.intake.household | household profile | RECORD | Profile captures residents, address, displacement, income, vulnerabilities and contact. | Supports eligibility. |
-| appliancereplaceops.intake.appliance_type | appliance type | RECORD | Type distinguishes refrigerator, stove, washer, dryer, freezer, heater or accessibility appliance. | Defines need. |
-| appliancereplaceops.intake.urgency | urgency model | MODEL | Urgency weighs food safety, medical storage, children, elder care, accessibility and habitability. | Prioritizes cases. |
-| appliancereplaceops.eligibility.criteria | eligibility criteria | CONSTRAINT | Criteria define disaster impact, residence, ownership/tenancy, income and duplication of benefits. | Preserves fairness. |
-| appliancereplaceops.eligibility.tenant_owner | tenant owner rule | CONSTRAINT | Rule clarifies landlord responsibility, tenant property and lease-related limitations. | Avoids wrong payment. |
-| appliancereplaceops.eligibility.duplicate_benefit | duplicate benefit check | QUALITY_CHECK | Check compares insurance, FEMA, nonprofit, warranty and landlord coverage. | Prevents duplication. |
-| appliancereplaceops.eligibility.exception | exception record | RECORD | Exception records special medical, accessibility or safety need and approval. | Allows flexibility. |
-| appliancereplaceops.damage.photo_proof | photo proof | RECORD | Photos document damaged appliance, serial plate, room, waterline or fire impact when allowed. | Supports decision. |
-| appliancereplaceops.damage.inspection_note | inspection note | RECORD | Note records field verification, unsafe condition, appliance age and feasibility. | Validates claim. |
-| appliancereplaceops.damage.disposal_status | disposal status | RECORD | Status records whether damaged unit remains, was removed or requires pickup. | Plans delivery. |
-| appliancereplaceops.damage.repair_vs_replace | repair replace model | MODEL | Model weighs safety, cost, availability, warranty and recovery timeline. | Chooses path. |
-| appliancereplaceops.spec.size | size specification | RECORD | Spec captures dimensions, hookups, capacity, fuel type, voltage and doorway constraints. | Prevents mismatch. |
-| appliancereplaceops.spec.accessibility | accessibility spec | RECORD | Accessibility notes controls, height, visibility, mobility access and caregiver use. | Improves usability. |
-| appliancereplaceops.spec.energy | energy requirement | CONSTRAINT | Appliance must match electrical, gas, venting and local installation requirements. | Prevents hazard. |
-| appliancereplaceops.spec.substitution | substitution rule | METHOD | Substitution uses approved equivalent when exact model is unavailable. | Keeps service moving. |
-| appliancereplaceops.vendor.vendor_roster | vendor roster | RECORD | Roster lists approved vendors, items, prices, delivery area, installation ability and contacts. | Coordinates supply. |
-| appliancereplaceops.vendor.quote | quote record | RECORD | Quote records model, price, delivery, installation, disposal, taxes and expiration. | Supports approval. |
-| appliancereplaceops.vendor.order | purchase order | RECORD | Order links household, appliance, funding source, vendor and delivery terms. | Starts fulfillment. |
-| appliancereplaceops.vendor.stock_check | stock check | QUALITY_CHECK | Stock check confirms availability, lead time, substitutions and backorder risk. | Avoids delay. |
-| appliancereplaceops.delivery.schedule | delivery schedule | RECORD | Schedule records date, window, address, contact, access and old-unit pickup. | Plans handoff. |
-| appliancereplaceops.delivery.access_check | access check | METHOD | Check covers stairs, elevator, driveway, doorway, pets, debris and resident availability. | Prevents failed delivery. |
-| appliancereplaceops.delivery.failed_delivery | failed delivery | RECORD | Failure records no access, wrong size, unsafe install, weather or vendor issue. | Enables reschedule. |
-| appliancereplaceops.delivery.confirmation | delivery confirmation | RECORD | Confirmation captures appliance delivered, condition, resident signature and photos if allowed. | Closes delivery. |
-| appliancereplaceops.install.install_need | installation need | RECORD | Need records hookup, leveling, venting, water line, gas technician or electrician. | Plans safe setup. |
-| appliancereplaceops.install.licensed_work | licensed work rule | SAFETY_RULE | Gas, electrical or code-sensitive work uses qualified providers where required. | Prevents unsafe install. |
-| appliancereplaceops.install.functional_test | functional test | QUALITY_CHECK | Test checks startup, leaks, cooling/heating, drainage and error messages. | Confirms usability. |
-| appliancereplaceops.install.user_brief | user briefing | METHOD | Resident receives basic use, safety, warranty and maintenance information. | Reduces problems. |
-| appliancereplaceops.disposal.old_unit_pickup | old unit pickup | METHOD | Pickup removes damaged appliance when safe, authorized and included. | Clears hazard. |
-| appliancereplaceops.disposal.recycling | recycling path | METHOD | Recycling separates refrigerant, metal, electronics or hazardous parts according to rules. | Supports compliance. |
-| appliancereplaceops.disposal.disposal_proof | disposal proof | RECORD | Proof records vendor, date, item and disposal/recycling route. | Supports audit. |
-| appliancereplaceops.disposal.contaminated | contaminated appliance | SAFETY_RULE | Mold, floodwater or fire-contaminated units follow handling and PPE precautions. | Protects crews. |
-| appliancereplaceops.warranty.warranty_record | warranty record | RECORD | Warranty captures model, serial, start date, vendor, coverage and resident copy. | Supports future service. |
-| appliancereplaceops.warranty.claim_path | claim pathway | METHOD | Claim path explains who contacts vendor, manufacturer or program for defects. | Handles failures. |
-| appliancereplaceops.warranty.service_call | service call | RECORD | Service call records defect, appointment, provider, outcome and cost responsibility. | Tracks follow-up. |
-| appliancereplaceops.warranty.resident_packet | resident packet | RECORD | Packet includes receipt, warranty, safety notes and program contact. | Gives clarity. |
-| appliancereplaceops.finance.funding_source | funding source | RECORD | Funding source links grant, nonprofit, insurance gap or public program. | Supports accounting. |
-| appliancereplaceops.finance.approval | approval record | RECORD | Approval records eligibility, amount, approver, vendor and conditions. | Controls spending. |
-| appliancereplaceops.finance.invoice_reconcile | invoice reconciliation | QUALITY_CHECK | Invoice checks order, delivery, installation, disposal and approved price. | Prevents overpayment. |
-| appliancereplaceops.records.case_log | case log | RECORD | Log stores intake, proof, specs, vendor, delivery, installation, warranty and closeout. | Creates continuity. |
-| appliancereplaceops.metrics.delivery_time | delivery time | MEASUREMENT | Metric measures approval to delivered and installed appliance. | Shows delay. |
-| appliancereplaceops.metrics.failed_rate | failed delivery rate | MEASUREMENT | Rate tracks failed deliveries by reason and vendor. | Improves planning. |
-| appliancereplaceops.metrics.households_served | households served | MEASUREMENT | Count tracks households and appliance types completed. | Shows output. |
-| appliancereplaceops.review.after_action | after-action review | METHOD | Review captures eligibility, sizing, vendor lead times, installation safety and warranty lessons. | Improves future aid. |
+| appliancereplaceops.intake.request_source | источник запроса | RECORD | Источник записывает социального работника, центр помощи пострадавшим, жилищное агентство, горячую линию или направление партнера. | Показывает путь входа. |
+| appliancereplaceops.intake.household | профиль домохозяйства | RECORD | Профиль фиксирует жителей, адрес, перемещение, доход, уязвимые места и контакты. | Поддерживает приемлемость. |
+| appliancereplaceops.intake.appliance_type | тип устройства | RECORD | Тип различает холодильник, плиту, стиральную машину, сушилку, морозильную камеру, обогреватель или прибор доступности. | Определяет потребность. |
+| appliancereplaceops.intake.urgency | модель срочности | MODEL | Срочность учитывает безопасность пищевых продуктов, медицинское хранение, уход за детьми, пожилыми людьми, доступность и пригодность для проживания. | Расставляет приоритеты по делам. |
+| appliancereplaceops.eligibility.criteria | критерии приемлемости | CONSTRAINT | Критерии определяют воздействие стихийного бедствия, место жительства, право собственности/аренды, доход и дублирование выгод. | Сохраняет справедливость. |
+| appliancereplaceops.eligibility.tenant_owner | правило арендатора-владельца | CONSTRAINT | Правило разъясняет ответственность арендодателя, имущество арендатора и ограничения, связанные с арендой. | Позволяет избежать неправильной оплаты. |
+| appliancereplaceops.eligibility.duplicate_benefit | дубликат чека на пособие | QUALITY_CHECK | Проверьте сравнение страхования, FEMA, некоммерческой деятельности, гарантии и покрытия арендодателя. | Предотвращает дублирование. |
+| appliancereplaceops.eligibility.exception | запись об исключении | RECORD | Исключение фиксирует особые медицинские потребности, потребности в доступности или безопасности и одобрение. | Обеспечивает гибкость. |
+| appliancereplaceops.damage.photo_proof | фото доказательство | RECORD | Фотографии документируют повреждение устройства, серийной таблички, помещения, ватерлинии или воздействия огня, если это разрешено. | Поддерживает решение. |
+| appliancereplaceops.damage.inspection_note | записка об осмотре | RECORD | В заметках записаны проверки на месте, небезопасное состояние, возраст устройства и его осуществимость. | Подтверждает претензию. |
+| appliancereplaceops.damage.disposal_status | статус утилизации | RECORD | В статусе указывается, остался ли поврежденный блок, был ли он удален или его необходимо забрать. | Планирует доставку. |
+| appliancereplaceops.damage.repair_vs_replace | ремонт заменить модель | MODEL | В модели учитываются безопасность, стоимость, доступность, гарантия и сроки восстановления. | Выбирает путь. |
+| appliancereplaceops.spec.size | спецификация размера | RECORD | В спецификации указаны размеры, подключения, емкость, тип топлива, напряжение и ограничения дверного проема. | Предотвращает несоответствие. |
+| appliancereplaceops.spec.accessibility | спецификация доступности | RECORD | Примечания о доступности: элементы управления, высота, видимость, доступ к мобильности и использование лицом, осуществляющим уход. | Улучшает удобство использования. |
+| appliancereplaceops.spec.energy | потребность в энергии | CONSTRAINT | Прибор должен соответствовать электрическим, газовым, вентиляционным и местным требованиям по установке. | Предотвращает опасность. |
+| appliancereplaceops.spec.substitution | правило замены | METHOD | При замене используется утвержденный эквивалент, когда точная модель недоступна. | Обеспечивает движение сервиса. |
+| appliancereplaceops.vendor.vendor_roster | список поставщиков | RECORD | В реестре перечислены утвержденные поставщики, позиции, цены, зона доставки, возможность установки и контакты. | Координирует поставки. |
+| appliancereplaceops.vendor.quote | запись котировки | RECORD | В котировках указывается модель, цена, доставка, установка, утилизация, налоги и срок действия. | Поддерживает одобрение. |
+| appliancereplaceops.vendor.order | заказ на покупку | RECORD | В заказе указывается бытовая техника, бытовая техника, источник финансирования, поставщик и условия доставки. | Начинает реализацию. |
+| appliancereplaceops.vendor.stock_check | проверка запасов | QUALITY_CHECK | Проверка запасов подтверждает наличие, время выполнения заказа, замену и риск задержки заказа. | Избегает задержек. |
+| appliancereplaceops.delivery.schedule | график доставки | RECORD | В расписании записываются дата, окно, адрес, контакт, доступ и вывоз старой квартиры. | Передача планов. |
+| appliancereplaceops.delivery.access_check | проверка доступа | METHOD | Проверьте лестницу, лифт, подъездную дорожку, дверной проем, домашних животных, мусор и наличие жильцов. | Предотвращает неудачную доставку. |
+| appliancereplaceops.delivery.failed_delivery | неудачная доставка | RECORD | Отказ фиксирует отсутствие доступа, неправильный размер, небезопасную установку, проблемы с погодой или поставщиком. | Включает перепланирование. |
+| appliancereplaceops.delivery.confirmation | подтверждение доставки | RECORD | В подтверждении указывается доставленное устройство, его состояние, подпись жильца и фотографии, если это разрешено. | Закрывает доставку. |
+| appliancereplaceops.install.install_need | необходимость установки | RECORD | Нужны записи о подключении, выравнивании, вентиляции, водопроводе, газотехнике или электрике. | Планируется безопасная установка. |
+| appliancereplaceops.install.licensed_work | правило лицензионной работы | SAFETY_RULE | При работе с газом, электричеством или с соблюдением норм безопасности при необходимости привлекаются квалифицированные поставщики. | Предотвращает небезопасную установку. |
+| appliancereplaceops.install.functional_test | функциональный тест | QUALITY_CHECK | Тестирование проверяет запуск, утечки, охлаждение/нагрев, дренаж и сообщения об ошибках. | Подтверждает удобство использования. |
+| appliancereplaceops.install.user_brief | брифинг для пользователей | METHOD | Резидент получает основную информацию об использовании, безопасности, гарантии и техническом обслуживании. | Уменьшает проблемы. |
+| appliancereplaceops.disposal.old_unit_pickup | старый пикап | METHOD | Самовывоз удаляет поврежденное устройство, если оно безопасно, разрешено и включено в комплект поставки. | Устраняет опасность. |
+| appliancereplaceops.disposal.recycling | путь переработки | METHOD | При вторичной переработке хладагент, металл, электроника и опасные детали отделяются в соответствии с правилами. | Поддерживает соответствие. |
+| appliancereplaceops.disposal.disposal_proof | доказательство утилизации | RECORD | В доказательстве указывается поставщик, дата, предмет и маршрут утилизации/переработки. | Поддерживает аудит. |
+| appliancereplaceops.disposal.contaminated | загрязненный прибор | SAFETY_RULE | Установки, загрязненные плесенью, паводковой водой или пожаром, соблюдают меры предосторожности при обращении и использовании СИЗ. | Защищает экипажи. |
+| appliancereplaceops.warranty.warranty_record | гарантийная запись | RECORD | Гарантия включает модель, серийный номер, дату начала, поставщика, покрытие и резидентную копию. | Поддерживает будущее обслуживание. |
+| appliancereplaceops.warranty.claim_path | путь претензии | METHOD | Путь претензии объясняет, кто связывается с поставщиком, производителем или программой по поводу дефектов. | Справляется с неудачами. |
+| appliancereplaceops.warranty.service_call | сервисный вызов | RECORD | Сервисный вызов записывает дефекты, назначение, поставщика, результат и ответственность за расходы. | Отслеживает последующие действия. |
+| appliancereplaceops.warranty.resident_packet | резидентный пакет | RECORD | В комплект поставки входят чек, гарантия, указания по безопасности и контактная информация по программе. | Дает ясность. |
+| appliancereplaceops.finance.funding_source | источник финансирования | RECORD | Источник финансирования связывает грант, некоммерческую организацию, страховой дефицит или государственную программу. | Поддерживает учет. |
+| appliancereplaceops.finance.approval | запись об утверждении | RECORD | В утверждении фиксируются право на участие, сумма, утверждающее лицо, поставщик и условия. | Контролирует расходы. |
+| appliancereplaceops.finance.invoice_reconcile | сверка счетов | QUALITY_CHECK | В счете-фактуре указывается заказ, доставка, установка, утилизация и утвержденная цена. | Предотвращает переплату. |
+| appliancereplaceops.records.case_log | журнал дел | RECORD | Журналы приема, подтверждения, спецификации, поставщик, доставка, установка, гарантия и распродажа. | Создает преемственность. |
+| appliancereplaceops.metrics.delivery_time | срок поставки | MEASUREMENT | Метрические меры одобрения доставленного и установленного устройства. | Показывает задержку. |
+| appliancereplaceops.metrics.failed_rate | процент неудачных поставок | MEASUREMENT | Оценка отслеживает неудачные поставки по причинам и поставщикам. | Улучшает планирование. |
+| appliancereplaceops.metrics.households_served | обслуживаемые домохозяйства | MEASUREMENT | Подсчет отслеживает домохозяйства и типы завершенных приборов. | Показывает вывод. |
+| appliancereplaceops.review.after_action | обзор после действий | METHOD | В обзоре учитываются право на участие, размеры, сроки выполнения работ поставщиками, безопасность установки и уроки по гарантии. | Улучшает будущую помощь. |

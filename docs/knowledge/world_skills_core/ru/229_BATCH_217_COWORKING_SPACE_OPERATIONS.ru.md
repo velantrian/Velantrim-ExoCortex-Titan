@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| cowork.member.member_onboarding | Coworking member onboarding | invariant | Onboarding sets plan, identity, access, billing, rules, amenities and communication channels. | start membership |
-| cowork.member.plan_type | Coworking plan type | invariant | Plan defines hot desk, dedicated desk, office, virtual office, day pass or meeting-room bundle. | service entitlement |
-| cowork.member.member_profile | Member profile | invariant | Profile stores contacts, company, billing, access level, emergency contact and preferences. | account anchor |
-| cowork.member.house_rules_ack | House rules acknowledgment | invariant | Acknowledgment records acceptance of noise, guests, security, meeting room and conduct rules. | shared space norms |
-| cowork.member.offboarding | Coworking member offboarding | invariant | Offboarding removes access, closes billing, collects keys and handles mail or deposits. | clean exit |
-| cowork.access.access_credential | Coworking access credential | invariant | Credential grants door, floor, room or after-hours access according to membership. | controlled entry |
-| cowork.access.guest_registration | Coworking guest registration | invariant | Registration records visitor, host, time, purpose, access limit and badge if used. | visitor control |
-| cowork.access.after_hours_access | After-hours coworking access | variant | Access applies extra rules for security, HVAC, support and incident response. | quiet-hours control |
-| cowork.access.lost_credential | Lost credential process | invariant | Process disables credential, issues replacement and records risk. | prevent misuse |
-| cowork.access.door_event_review | Door event review | variant | Review checks access logs for incident, lockout, tailgating or unauthorized entry. | security evidence |
-| cowork.rooms.room_booking | Meeting room booking | invariant | Booking reserves room, time, host, attendees, equipment and billing rule. | manage shared rooms |
-| cowork.rooms.room_setup | Meeting room setup | invariant | Setup prepares layout, screen, video, whiteboard, supplies, catering or signage. | ready meeting |
-| cowork.rooms.no_show_release | Room no-show release | variant | Release returns unused room to inventory after grace period. | reduce waste |
-| cowork.rooms.overrun_handling | Meeting overrun handling | invariant | Handling extends, bills, relocates or clears room when booking exceeds time. | protect next booking |
-| cowork.rooms.room_turnover | Meeting room turnover | invariant | Turnover cleans surfaces, resets furniture, removes trash and checks equipment. | next user ready |
-| cowork.amenity.mail_handling | Coworking mail handling | variant | Handling receives, sorts, notifies, stores and releases mail for authorized members. | virtual office support |
-| cowork.amenity.print_service | Coworking print service | variant | Service controls printer access, quotas, faults, supplies and confidential output. | shared office tool |
-| cowork.amenity.coffee_station | Coworking coffee station | invariant | Station needs stocking, cleaning, machine checks, spills and supply ordering. | daily amenity |
-| cowork.amenity.phone_booth | Phone booth management | variant | Management controls availability, time limits, cleaning, ventilation and acoustic use. | private calls |
-| cowork.amenity.internet_support | Coworking internet support | invariant | Support handles Wi-Fi access, outages, VLAN rules, guest network and escalation. | core utility |
-| cowork.community.event_calendar | Coworking event calendar | variant | Calendar schedules workshops, networking, member demos, socials and partner events. | community engine |
-| cowork.community.event_registration | Coworking event registration | variant | Registration captures attendee, capacity, payment, dietary needs and check-in. | event control |
-| cowork.community.member_intro | Member introduction | variant | Intro connects members by consent, interest, industry or collaboration need. | build network |
-| cowork.community.notice_board | Coworking notice board | variant | Board shares announcements, events, policies, openings and member offers. | shared awareness |
-| cowork.community.conduct_issue | Member conduct issue | invariant | Issue records noise, harassment, cleanliness, security, guest or rule violation. | protect community |
-| cowork.billing.membership_invoice | Coworking membership invoice | invariant | Invoice charges plan, desks, rooms, services, deposits, discounts and taxes. | bill services |
-| cowork.billing.proration | Coworking proration | variant | Proration adjusts partial month, upgrade, downgrade, move-in or move-out charges. | fair billing |
-| cowork.billing.failed_payment | Coworking failed payment | invariant | Failure triggers notice, retry, access review and account follow-up. | revenue control |
-| cowork.billing.deposit_return | Coworking deposit return | variant | Return checks damages, keys, unpaid balance and lease terms before refund. | close money |
-| cowork.billing.room_overage | Meeting room overage | variant | Overage bills excess time, guests, equipment or service beyond plan allowance. | entitlement control |
-| cowork.facility.opening_round | Coworking opening round | invariant | Round checks doors, lights, HVAC, coffee, rooms, cleanliness, mail and tickets. | start day |
-| cowork.facility.closing_round | Coworking closing round | invariant | Round secures rooms, trash, doors, equipment, lights, guests and incident notes. | end day |
-| cowork.facility.cleaning_ticket | Coworking cleaning ticket | invariant | Ticket records spill, restroom issue, trash, meeting room mess or special cleaning. | keep space usable |
-| cowork.facility.maintenance_ticket | Coworking maintenance ticket | invariant | Ticket captures furniture, HVAC, plumbing, electrical, network, access or appliance issue. | fix shared space |
-| cowork.facility.capacity_monitor | Coworking capacity monitor | variant | Monitor tracks desks, rooms, occupancy, guest load and crowding patterns. | space planning |
-| cowork.security.package_release | Package release control | variant | Control verifies member authorization before releasing packages or deliveries. | avoid loss |
-| cowork.security.incident_report | Coworking incident report | invariant | Report documents theft, injury, conflict, unauthorized access, damage or safety concern. | formal record |
-| cowork.security.emergency_contact | Coworking emergency contact | invariant | Contact list supports fire, medical, building, police, landlord and member escalation. | rapid response |
-| cowork.security.camera_policy | Coworking camera policy | variant | Policy defines where cameras operate, review authorization and privacy boundaries. | trust and evidence |
-| cowork.security.fire_drill | Coworking fire drill | invariant | Drill tests evacuation routes, alarms, assembly area and staff roles. | safety readiness |
-| cowork.admin.staff_shift | Coworking staff shift | invariant | Shift assigns front desk, community, facility, events and support responsibilities. | coverage |
-| cowork.admin.vendor_coordination | Coworking vendor coordination | invariant | Coordination manages cleaners, maintenance, IT, coffee, security and event suppliers. | external work |
-| cowork.metrics.coworking_kpi | Coworking KPI | variant | KPI tracks occupancy, churn, room utilization, incidents, tickets, event attendance and revenue. | manage space |
-| cowork.continuity.access_system_outage | Access system outage | invariant | Outage process handles manual entry, member notice, security patrol and credential recovery. | keep space usable |
+| cowork.member.member_onboarding | Регистрация участника коворкинга | invariant | Адаптация устанавливает план, личность, доступ, выставление счетов, правила, удобства и каналы связи. | начать членство |
+| cowork.member.plan_type | Тип плана коворкинга | invariant | План определяет «горячий стол», «выделенный стол», «офис», «виртуальный офис», «дневной пропуск» или пакет «комната для собраний». | право на обслуживание |
+| cowork.member.member_profile | Профиль участника | invariant | В профиле хранятся контакты, компания, платежные данные, уровень доступа, экстренный контакт и предпочтения. | привязка аккаунта |
+| cowork.member.house_rules_ack | Подтверждение правил внутреннего распорядка | invariant | Подтверждение фиксирует принятие шума, гостей, безопасности, конференц-зала и правил поведения. | нормы общего пространства |
+| cowork.member.offboarding | Отстранение участника коворкинга | invariant | Отключение лишает доступа, закрывает выставление счетов, забирает ключи и обрабатывает почту или депозиты. | чистый выход |
+| cowork.access.access_credential | Учетные данные для доступа в коворкинг | invariant | Учетные данные предоставляют доступ к двери, этажу, комнате или в нерабочее время в зависимости от членства. | контролируемый вход |
+| cowork.access.guest_registration | Регистрация гостей коворкинга | invariant | При регистрации фиксируются посетитель, организатор, время, цель, лимит доступа и значок, если он используется. | контроль посетителей |
+| cowork.access.after_hours_access | Доступ в коворкинг в нерабочее время | variant | В Access применяются дополнительные правила безопасности, вентиляции, кондиционирования, поддержки и реагирования на инциденты. | контроль тихого часа |
+| cowork.access.lost_credential | Процесс потери учетных данных | invariant | Процесс отключает учетные данные, выдает замену и записывает риски. | предотвратить неправильное использование |
+| cowork.access.door_event_review | Обзор событий с дверями | variant | Просмотрите журналы доступа на предмет инцидентов, блокировок, взлома или несанкционированного проникновения. | доказательства безопасности |
+| cowork.rooms.room_booking | Бронирование конференц-зала | invariant | Бронирование резервирует помещение, время, организатора, участников, оборудование и правила выставления счетов. | управлять общими комнатами |
+| cowork.rooms.room_setup | Оформление конференц-зала | invariant | Установка готовит макет, экран, видео, доску, расходные материалы, кейтеринг или вывески. | готовая встреча |
+| cowork.rooms.no_show_release | Разрешение на неявку номера | variant | Освобождение возвращает неиспользованное пространство в инвентарь после льготного периода. | сократить отходы |
+| cowork.rooms.overrun_handling | Обработка переполнения собрания | invariant | Обработка продлевает время, выставляет счета, перемещает или освобождает номер, когда время бронирования превышает время. | защитить следующее бронирование |
+| cowork.rooms.room_turnover | Оборот конференц-зала | invariant | Товарищ чистит поверхности, расставляет мебель, выносит мусор и проверяет оборудование. | следующий пользователь готов |
+| cowork.amenity.mail_handling | Работа с почтой в коворкинге | variant | Handling получает, сортирует, уведомляет, хранит и отпускает почту для авторизованных участников. | поддержка виртуального офиса |
+| cowork.amenity.print_service | Коворкинг-сервис печати | variant | Служба контролирует доступ к принтеру, квоты, неисправности, расходные материалы и конфиденциальный вывод. | общий офисный инструмент |
+| cowork.amenity.coffee_station | Коворкинг-кофейня | invariant | Станция нуждается в хранении, очистке, проверке оборудования, устранении разливов и заказе расходных материалов. | ежедневные удобства |
+| cowork.amenity.phone_booth | Управление телефонной будкой | variant | Руководство контролирует доступность, ограничения по времени, уборку, вентиляцию и использование акустики. | частные звонки |
+| cowork.amenity.internet_support | Интернет-поддержка коворкинга | invariant | Поддержка занимается доступом к Wi-Fi, сбоями, правилами VLAN, гостевой сетью и эскалацией. | основная утилита |
+| cowork.community.event_calendar | Календарь мероприятий коворкинга | variant | В календаре расписаны семинары, нетворкинг, демонстрации для участников, социальные сети и партнерские мероприятия. | двигатель сообщества |
+| cowork.community.event_registration | Регистрация на мероприятие коворкинга | variant | Регистрация фиксирует участников, вместимость, оплату, диетические потребности и регистрацию. | контроль событий |
+| cowork.community.member_intro | Представление участника | variant | Intro объединяет участников по согласию, интересу, отрасли или необходимости сотрудничества. | построить сеть |
+| cowork.community.notice_board | Доска объявлений о коворкинге | variant | Совет делится объявлениями, событиями, политикой, вакансиями и предложениями для членов. | общее осознание |
+| cowork.community.conduct_issue | Проблема поведения участника | invariant | Проблема фиксирует шум, притеснения, чистоту, безопасность, гостей или нарушение правил. | защитить сообщество |
+| cowork.billing.membership_invoice | Счет за членство в коворкинге | invariant | План выставления счетов, столы, комнаты, услуги, депозиты, скидки и налоги. | услуги по выставлению счетов |
+| cowork.billing.proration | Прорациональное соотношение коворкинга | variant | Пропорциональное регулирование корректирует расходы за неполный месяц, повышение, понижение, въезд или выезд. | справедливое выставление счетов |
+| cowork.billing.failed_payment | Коворкинг не прошел платеж | invariant | Сбой вызывает уведомление, повторную попытку, проверку доступа и последующие действия по учетной записи. | контроль доходов |
+| cowork.billing.deposit_return | Возврат депозита в коворкинге | variant | Перед возвратом средств проверяется наличие повреждений, ключи, неоплаченный остаток и условия аренды. | закрыть деньги |
+| cowork.billing.room_overage | Избыток конференц-зала | variant | Перерасход включает в себя лишнее время, гостей, оборудование или услуги сверх предусмотренных планом. | контроль прав |
+| cowork.facility.opening_round | Открытие коворкинга | invariant | Круглый проверяет двери, освещение, систему отопления, вентиляции и кондиционирования, кофе, номера, чистоту, почту и билеты. | день начала |
+| cowork.facility.closing_round | Закрытие коворкинга | invariant | Round обеспечивает безопасность помещений, мусора, дверей, оборудования, освещения, гостей и записей о происшествиях. | Конечный день |
+| cowork.facility.cleaning_ticket | Талон на уборку коворкинга | invariant | Разлив записей о билетах, проблемы с туалетом, мусор, беспорядок в конференц-зале или специальная уборка. | сохраняйте пространство пригодным для использования |
+| cowork.facility.maintenance_ticket | Талон на обслуживание коворкинга | invariant | В билете фиксируются проблемы с мебелью, системой отопления, вентиляции и кондиционирования, сантехникой, электричеством, сетью, доступом или бытовой техникой. | исправить общее пространство |
+| cowork.facility.capacity_monitor | Монитор коворкинга | variant | Монитор отслеживает столы, комнаты, заполняемость, загруженность гостей и структуру скученности. | планирование пространства |
+| cowork.security.package_release | Контроль выпуска пакетов | variant | Компания Control проверяет авторизацию участника перед выпуском пакетов или поставок. | избежать потерь |
+| cowork.security.incident_report | Отчет об инциденте в коворкинге | invariant | Сообщайте о краже документов, травмах, конфликтах, несанкционированном доступе, повреждении или угрозе безопасности. | официальная запись |
+| cowork.security.emergency_contact | Коворкинг для экстренных случаев | invariant | Список контактов поддерживает пожарную, медицинскую, строительную, полицию, арендодателей и участников. | быстрое реагирование |
+| cowork.security.camera_policy | Политика камеры коворкинга | variant | Политика определяет, где работают камеры, разрешение на просмотр и границы конфиденциальности. | доверие и доказательства |
+| cowork.security.fire_drill | Коворкинг пожарных учений | invariant | Отрабатываются маршруты эвакуации, сигнализация, зона сбора и роли персонала. | готовность к безопасности |
+| cowork.admin.staff_shift | Смена персонала в коворкинге | invariant | Смена распределяет обязанности по стойке регистрации, сообществу, объекту, мероприятиям и поддержке. | покрытие |
+| cowork.admin.vendor_coordination | Координация поставщиков коворкинга | invariant | Координация управляет уборщиками, техническим обслуживанием, ИТ, кофе, безопасностью и поставщиками мероприятий. | внешняя работа |
+| cowork.metrics.coworking_kpi | Коворкинг KPI | variant | KPI отслеживает заполняемость, отток клиентов, использование помещений, инциденты, билеты, посещаемость мероприятий и доходы. | управлять пространством |
+| cowork.continuity.access_system_outage | Сбой в системе доступа | invariant | Процесс отключения включает ручной ввод, уведомление участников, патрулирование безопасности и восстановление учетных данных. | сохраняйте пространство пригодным для использования |

@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| donationhotlineops.intake.call_id | call ID | RECORD | Call ID links caller, offer type, time, channel, agent and outcome. | Tracks hotline work. |
-| donationhotlineops.intake.offer_type | offer type | RECORD | Type distinguishes volunteer time, goods, cash, services, equipment or space. | Routes correctly. |
-| donationhotlineops.intake.caller_contact | caller contact | RECORD | Contact records name, organization, phone, email, location and callback preference. | Enables follow-up. |
-| donationhotlineops.intake.urgency | urgency | MODEL | Urgency reflects perishable goods, scarce skills, mission need and timing. | Prioritizes handling. |
-| donationhotlineops.script.opening | opening script | METHOD | Opening explains hotline purpose, privacy and current priority needs. | Sets caller expectation. |
-| donationhotlineops.script.accepted | accepted-offer script | METHOD | Script captures details and explains next review or deployment step. | Keeps intake consistent. |
-| donationhotlineops.script.decline | decline script | METHOD | Decline script thanks caller and explains why offer is not usable now. | Preserves goodwill. |
-| donationhotlineops.script.safety | safety script | SAFETY_RULE | Agents warn against self-deployment, unsafe drop-offs or blocked roads. | Prevents response disruption. |
-| donationhotlineops.volunteer.skill | volunteer skill record | RECORD | Skill record captures credentials, availability, language, transport and limits. | Supports matching. |
-| donationhotlineops.volunteer.screen | screening route | METHOD | Volunteer offers route to reception center, credentialing or partner organization. | Keeps deployment controlled. |
-| donationhotlineops.volunteer.spontaneous | spontaneous volunteer | MODEL | Spontaneous volunteers need structured intake before field work. | Reduces safety risk. |
-| donationhotlineops.volunteer.remote | remote volunteer offer | METHOD | Remote offers cover calls, translation, data, mapping or admin tasks. | Uses help safely. |
-| donationhotlineops.goods.item_detail | item detail | RECORD | Item detail records quantity, condition, packaging, location and transport needs. | Evaluates usefulness. |
-| donationhotlineops.goods.acceptance | acceptance criteria | CONSTRAINT | Agents compare goods to current accepted/not-needed lists. | Avoids warehouse burden. |
-| donationhotlineops.goods.perishable | perishable offer | SAFETY_RULE | Perishables require food safety, cold chain and rapid matching. | Prevents unsafe donations. |
-| donationhotlineops.goods.large_offer | large offer route | METHOD | Bulk or corporate offers route to logistics/donations manager. | Handles complex offers. |
-| donationhotlineops.cash.authorized_route | authorized cash route | SAFETY_RULE | Cash donors are directed only to approved finance or nonprofit channels. | Prevents fraud. |
-| donationhotlineops.cash.no_card | no card handling | CONSTRAINT | Hotline should not collect payment card data unless authorized system exists. | Protects callers. |
-| donationhotlineops.cash.receipt | receipt expectation | METHOD | Agents explain receipt process and official donation page. | Builds trust. |
-| donationhotlineops.services.service_offer | service offer | RECORD | Services include transport, lodging, equipment, cleaning, catering or professional support. | Captures non-goods help. |
-| donationhotlineops.services.vendor_check | vendor check route | METHOD | Commercial service offers route to procurement or donations review. | Separates gift from contract. |
-| donationhotlineops.services.liability | liability question | CONSTRAINT | Liability, insurance and licensing questions are escalated before use. | Reduces risk. |
-| donationhotlineops.routing.queue | routing queue | METHOD | Offers route to volunteer, donations, logistics, finance, procurement or public information. | Sends work to owner. |
-| donationhotlineops.routing.priority | priority routing | MODEL | Priority uses mission need, scarcity, timing and safety. | Handles urgent offers first. |
-| donationhotlineops.routing.partner | partner referral | METHOD | Offers unsuitable for government may route to vetted nonprofits. | Keeps goodwill productive. |
-| donationhotlineops.routing.escalation | escalation | METHOD | Unclear, high-value, risky or media-sensitive offers escalate to supervisor. | Controls exceptions. |
-| donationhotlineops.crm.note | CRM note | RECORD | Note records offer, script used, route, promise and next action. | Maintains continuity. |
-| donationhotlineops.crm.status | status field | RECORD | Status tracks new, routed, accepted, declined, pending, completed or closed. | Shows pipeline. |
-| donationhotlineops.crm.duplicate | duplicate check | QUALITY_CHECK | Duplicate checks compare caller, organization, offer and callback. | Prevents repeated work. |
-| donationhotlineops.crm.privacy | privacy rule | SAFETY_RULE | Caller data is shared only with teams needing the offer. | Protects donors. |
-| donationhotlineops.fraud.red_flag | fraud flag | MODEL | Flags include fee demand, phishing, suspicious charity, inflated value or pressure tactics. | Protects public and response. |
-| donationhotlineops.fraud.report | fraud report | METHOD | Suspicious calls route to supervisor, legal, finance or law enforcement as policy requires. | Controls scams. |
-| donationhotlineops.fraud.public_warning | public warning | METHOD | Repeated scams can trigger public information warning. | Protects donors. |
-| donationhotlineops.callback.callback_task | callback task | RECORD | Task records owner, due time, reason and callback number. | Prevents missed offers. |
-| donationhotlineops.callback.no_answer | no-answer process | METHOD | No-answer attempts are logged with retry or closure rule. | Keeps queue clean. |
-| donationhotlineops.callback.acceptance_notice | acceptance notice | METHOD | Accepted caller receives delivery, scheduling or credentialing instructions. | Moves offer forward. |
-| donationhotlineops.qa.call_review | call review | QUALITY_CHECK | Sample calls check accuracy, tone, privacy, routing and promises. | Improves hotline quality. |
-| donationhotlineops.qa.script_update | script update | METHOD | Scripts update as needs, accepted lists and scams change. | Keeps guidance current. |
-| donationhotlineops.metrics.call_volume | call volume | MEASUREMENT | Volume tracks calls by hour, type and outcome. | Guides staffing. |
-| donationhotlineops.metrics.offer_conversion | offer conversion | MEASUREMENT | Conversion tracks offers that become deployed volunteer time or accepted goods. | Shows usefulness. |
-| donationhotlineops.records.retention | retention rule | CONSTRAINT | Hotline records follow incident, privacy and donation retention rules. | Preserves audit trail. |
-| donationhotlineops.closeout.pipeline_clear | pipeline clear | METHOD | Closeout resolves pending offers and transfers future donations route. | Ends hotline responsibly. |
-| donationhotlineops.closeout.thank_you | donor thank-you | METHOD | Closed accepted offers receive acknowledgement and future official giving route. | Maintains donor trust. |
-| donationhotlineops.review.after_action | after-action review | METHOD | Review captures scripts, routing, scams, unmet needs and staffing lessons. | Improves next activation. |
+| donationhotlineops.intake.call_id | идентификатор вызова | RECORD | Идентификатор вызова связывает вызывающего абонента, тип предложения, время, канал, агента и результат. | Отслеживает работу горячей линии. |
+| donationhotlineops.intake.offer_type | тип предложения | RECORD | Тип различает время волонтера, товары, деньги, услуги, оборудование или пространство. | Маршрутизирует правильно. |
+| donationhotlineops.intake.caller_contact | контакт вызывающего абонента | RECORD | Контакт записывает имя, организацию, телефон, адрес электронной почты, местоположение и настройки обратного вызова. | Включает дальнейшее наблюдение. |
+| donationhotlineops.intake.urgency | срочность | MODEL | Срочность отражает скоропортящиеся товары, дефицит навыков, необходимость и сроки выполнения миссии. | Приоритет отдается обработке. |
+| donationhotlineops.script.opening | вступительный сценарий | METHOD | В открытии объясняется цель горячей линии, конфиденциальность и текущие приоритетные потребности. | Устанавливает ожидание звонящего. |
+| donationhotlineops.script.accepted | сценарий принятого предложения | METHOD | Сценарий фиксирует детали и объясняет следующий шаг проверки или развертывания. | Обеспечивает постоянный прием. |
+| donationhotlineops.script.decline | отклонить сценарий | METHOD | Скрипт отклонения благодарит звонящего и объясняет, почему предложение сейчас невозможно использовать. | Сохраняет доброжелательность. |
+| donationhotlineops.script.safety | сценарий безопасности | SAFETY_RULE | Агенты предостерегают от саморазвертывания, небезопасных высадок и блокирования дорог. | Предотвращает нарушение реакции. |
+| donationhotlineops.volunteer.skill | запись о навыках волонтера | RECORD | В записи навыков фиксируются учетные данные, доступность, язык, транспорт и ограничения. | Поддерживает сопоставление. |
+| donationhotlineops.volunteer.screen | маршрут проверки | METHOD | Волонтер предлагает дорогу до центра приема, аттестации или партнерской организации. | Обеспечивает контроль над развертыванием. |
+| donationhotlineops.volunteer.spontaneous | спонтанный волонтер | MODEL | Спонтанным волонтерам необходим структурированный прием перед полевой работой. | Снижает риск безопасности. |
+| donationhotlineops.volunteer.remote | предложение удаленного волонтерства | METHOD | Удаленные предложения охватывают звонки, перевод, данные, картографирование или задачи администрирования. | Безопасно пользуется помощью. |
+| donationhotlineops.goods.item_detail | деталь предмета | RECORD | В деталях товара указывается количество, состояние, упаковка, местоположение и потребности в транспортировке. | Оценивает полезность. |
+| donationhotlineops.goods.acceptance | критерии приемки | CONSTRAINT | Агенты сравнивают товары с текущими списками принятых/ненужных. | Избегает складской нагрузки. |
+| donationhotlineops.goods.perishable | скоропортящееся предложение | SAFETY_RULE | Скоропортящиеся продукты требуют безопасности пищевых продуктов, холодовой цепи и быстрого соответствия. | Предотвращает небезопасное пожертвование. |
+| donationhotlineops.goods.large_offer | большой маршрут предложения | METHOD | Массовые или корпоративные предложения направляются менеджеру по логистике/пожертвованиям. | Работает со сложными предложениями. |
+| donationhotlineops.cash.authorized_route | авторизованный маршрут наличных денег | SAFETY_RULE | Денежные доноры направляются только по утвержденным финансовым или некоммерческим каналам. | Предотвращает мошенничество. |
+| donationhotlineops.cash.no_card | нет работы с картой | CONSTRAINT | Горячая линия не должна собирать данные платежных карт, если не существует авторизованной системы. | Защищает звонящих. |
+| donationhotlineops.cash.receipt | ожидание поступления | METHOD | Агенты объясняют процесс получения и официальную страницу пожертвования. | Вызывает доверие. |
+| donationhotlineops.services.service_offer | предложение услуги | RECORD | Услуги включают транспорт, проживание, оборудование, уборку, питание или профессиональную поддержку. | Захватывает нетоварную помощь. |
+| donationhotlineops.services.vendor_check | маршрут проверки поставщика | METHOD | Коммерческая служба предлагает путь к закупкам или проверке пожертвований. | Отделяет подарок от контракта. |
+| donationhotlineops.services.liability | вопрос об ответственности | CONSTRAINT | Вопросы ответственности, страхования и лицензирования обсуждаются перед использованием. | Снижает риск. |
+| donationhotlineops.routing.queue | очередь маршрутизации | METHOD | Предлагает путь к волонтерству, пожертвованиям, логистике, финансам, закупкам или общественной информации. | Отправляет работу владельцу. |
+| donationhotlineops.routing.priority | приоритетная маршрутизация | MODEL | Приоритет учитывает необходимость миссии, дефицит, время и безопасность. | В первую очередь обрабатывает срочные предложения. |
+| donationhotlineops.routing.partner | реферал партнера | METHOD | Предложения, неподходящие для правительства, могут направляться проверенным некоммерческим организациям. | Сохраняет доброжелательность продуктивной. |
+| donationhotlineops.routing.escalation | эскалация | METHOD | Неясные, дорогостоящие, рискованные или чувствительные к средствам массовой информации предложения передаются руководителю. | Управляет исключениями. |
+| donationhotlineops.crm.note | Примечание CRM | RECORD | Примечание записывает предложение, используемый сценарий, маршрут, обещание и следующее действие. | Сохраняет преемственность. |
+| donationhotlineops.crm.status | поле статуса | RECORD | Статус отслеживает новые, перенаправленные, принятые, отклоненные, ожидающие, завершенные или закрытые. | Показывает трубопровод. |
+| donationhotlineops.crm.duplicate | дубликат чека | QUALITY_CHECK | Дубликаты проверок сравнивают звонящего, организацию, предложение и обратный звонок. | Предотвращает повторную работу. |
+| donationhotlineops.crm.privacy | правило конфиденциальности | SAFETY_RULE | Данные о звонящих передаются только командам, нуждающимся в этом предложении. | Защищает доноров. |
+| donationhotlineops.fraud.red_flag | флаг мошенничества | MODEL | Флаги включают требование платы, фишинг, подозрительную благотворительность, завышенную стоимость или тактику давления. | Защищает общественность и реакцию. |
+| donationhotlineops.fraud.report | отчет о мошенничестве | METHOD | Подозрительные звонки перенаправляются в руководящие, юридические, финансовые или правоохранительные органы в соответствии с требованиями политики. | Контролирует мошенничество. |
+| donationhotlineops.fraud.public_warning | публичное предупреждение | METHOD | Повторяющиеся мошенничества могут вызвать предупреждение общественности. | Защищает доноров. |
+| donationhotlineops.callback.callback_task | задача обратного вызова | RECORD | Владелец записи задачи, время выполнения, причина и номер обратного вызова. | Предотвращает пропущенные предложения. |
+| donationhotlineops.callback.no_answer | процедура отсутствия ответа | METHOD | Попытки отсутствия ответа регистрируются с помощью правила повтора или закрытия. | Содержит очередь в чистоте. |
+| donationhotlineops.callback.acceptance_notice | уведомление о приемке | METHOD | Принятый вызывающий абонент получает инструкции по доставке, планированию или проверке подлинности. | Продвигает предложение вперед. |
+| donationhotlineops.qa.call_review | обзор звонка | QUALITY_CHECK | Примеры звонков проверяют точность, тональность, конфиденциальность, маршрутизацию и обещания. | Улучшает качество горячей линии. |
+| donationhotlineops.qa.script_update | обновление сценария | METHOD | Скрипты обновляются по мере необходимости, списки принятых и мошенничества меняются. | Поддерживает актуальность руководства. |
+| donationhotlineops.metrics.call_volume | громкость звонка | MEASUREMENT | Volume отслеживает звонки по часам, типу и результату. | Кадровое обеспечение гидов. |
+| donationhotlineops.metrics.offer_conversion | предложить конверсию | MEASUREMENT | Конверсия отслеживает предложения, которые превращаются в потраченное волонтерское время или принятые товары. | Показывает полезность. |
+| donationhotlineops.records.retention | правило хранения | CONSTRAINT | Записи горячей линии соответствуют правилам инцидентов, конфиденциальности и хранения пожертвований. | Сохраняет контрольный журнал. |
+| donationhotlineops.closeout.pipeline_clear | трубопровод чистый | METHOD | Closeout разрешает ожидающие предложения и передает маршрут будущих пожертвований. | Завершает горячую линию ответственно. |
+| donationhotlineops.closeout.thank_you | донор, спасибо | METHOD | Закрытые принятые предложения получают подтверждение и будущий официальный маршрут. | Поддерживает доверие доноров. |
+| donationhotlineops.review.after_action | обзор после действий | METHOD | В обзоре отражены сценарии, маршрутизация, мошенничество, неудовлетворенные потребности и уроки кадрового обеспечения. | Улучшает следующую активацию. |

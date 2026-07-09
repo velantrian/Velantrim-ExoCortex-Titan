@@ -6,48 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| watertowerops.inventory.tank_id | tank ID | RECORD | Tower record includes ID, location, volume, height, material, owner and pressure zone. | Links inspection, water quality and capital planning. |
-| watertowerops.inventory.design_file | design file | RECORD | Plans, coating history, repairs, mixing equipment and appurtenances are kept together. | Inspectors compare field condition to known structure. |
-| watertowerops.inventory.access_route | access route | RECORD | Access notes cover gate, road, easement, weather limits and contractor staging. | Prevents failed inspections due to unreachable site. |
-| watertowerops.level.normal_range | normal level range | MEASUREMENT | Operators track high, low and normal operating levels for the tank. | Abnormal levels reveal controls or demand problems. |
-| watertowerops.level.altitude_valve | altitude valve check | INSPECTION | Altitude valves are checked for correct fill/close behavior and leakage. | Prevents overflow or underfilled storage. |
-| watertowerops.level.overflow_pipe | overflow pipe | INSPECTION | Overflow pipe is checked for screening, discharge path, staining and freeze damage. | Shows past overflows and protects from entry. |
-| watertowerops.level.mixer | tank mixer | INSPECTION | Mixer operation is checked through status, vibration, power and water-quality effect. | Reduces stratification and disinfectant decay. |
-| watertowerops.coating.exterior | exterior coating | INSPECTION | Exterior coating is checked for chalking, peeling, rust, cracks and UV damage. | Coating protects steel and extends service life. |
-| watertowerops.coating.interior | interior coating | INSPECTION | Interior coating is checked for blistering, holidays, delamination, rust and sediment. | Interior failure can affect water quality and corrosion. |
-| watertowerops.coating.holiday_test | holiday testing | QUALITY_CHECK | Coating holiday tests detect pinholes or missed spots after coating work. | Finds defects before tank returns to service. |
-| watertowerops.coating.lead_paint | legacy lead paint | CONSTRAINT | Older exterior coatings may require lead handling, containment and worker protection. | Painting becomes environmental and safety work. |
-| watertowerops.coating.recoat_priority | recoat priority | DECISION_RULE | Recoating priority uses corrosion, coating age, water quality risk, access and budget. | Prevents waiting until structural damage. |
-| watertowerops.hatches.roof_hatch | roof hatch | INSPECTION | Hatches are checked for locks, seals, curbs, hinges and water intrusion. | Protects potable water from contamination. |
-| watertowerops.hatches.access_hatch | access hatch | INSPECTION | Access hatches need secure closure, safe opening and sanitary seal. | Enables inspection without compromising water quality. |
-| watertowerops.vents.vent_screen | vent screen | INSPECTION | Vents are checked for intact screen, weather hood, corrosion and blockage. | Allows breathing while excluding birds, insects and debris. |
-| watertowerops.vents.overflow_airgap | overflow air gap | SAFETY_RULE | Overflow and drain arrangements avoid cross-connection to unsafe drains. | Protects against backflow contamination. |
-| watertowerops.ladders.fixed_ladder | fixed ladder | INSPECTION | Ladders are checked for rungs, corrosion, anchorage, cages or fall-arrest rail. | Climb safety is part of tank inspection. |
-| watertowerops.ladders.fall_arrest | fall arrest | SAFETY_RULE | Fall protection equipment and anchor points must be rated and inspected. | Prevents fatal falls during tower work. |
-| watertowerops.ladders.platform | platform condition | INSPECTION | Platforms, guardrails and toe boards are checked for corrosion and stability. | Keeps operators safe at height. |
-| watertowerops.ladders.lockout_access | locked access | SECURITY | Ladder guards and locked gates restrict unauthorized climbing. | Reduces vandalism and injury risk. |
-| watertowerops.cathodic.anode | sacrificial anode | INSPECTION | Anodes are checked for consumption, connection and coverage. | Slows corrosion inside submerged steel. |
-| watertowerops.cathodic.impressed_current | impressed current | INSPECTION | Rectifier output, wiring and reference readings are reviewed. | Cathodic system must be powered and tuned. |
-| watertowerops.cathodic.reading_log | cathodic readings | RECORD | Voltage/current readings are logged with date and water level. | Trends show protection loss before corrosion appears. |
-| watertowerops.structure.shell | shell condition | INSPECTION | Shell is checked for corrosion, deformation, leaks, weld cracks and staining. | Detects structural and coating failures. |
-| watertowerops.structure.roof | roof condition | INSPECTION | Roof plates, seams, drainage, penetrations and bird activity are checked. | Roof defects can admit contamination. |
-| watertowerops.structure.foundation | foundation | INSPECTION | Foundation, anchor bolts, grout and settlement are inspected. | Structural support problems can progress slowly. |
-| watertowerops.structure.leak | leak tracking | RECORD | Leaks are recorded by location, flow, staining and operating level. | Helps distinguish condensation, overflow and shell leak. |
-| watertowerops.sampling.sample_tap | sample tap | INSPECTION | Sample taps are checked for sanitary design, accessibility and flushing. | Bad taps create misleading water-quality samples. |
-| watertowerops.sampling.chlorine | chlorine residual | MEASUREMENT | Residual is checked at tank or downstream points. | Low residual signals age, mixing or nitrification issues. |
-| watertowerops.sampling.bacti | bacteriological sampling | QUALITY_CHECK | Bacti samples follow sterile technique after tank entry or repairs. | Confirms safe return to service. |
-| watertowerops.sampling.sediment | sediment observation | OBSERVATION | Sediment depth, color and deposits are noted during interior inspection. | Indicates cleaning need and source issues. |
-| watertowerops.security.fence | fence and gate | INSPECTION | Fence, gate, locks and signage are checked for breaches. | Protects critical drinking-water asset. |
-| watertowerops.security.intrusion | intrusion evidence | SECURITY | Graffiti, cut locks, footprints, open hatches or tampering are documented. | Triggers security and water-quality response. |
-| watertowerops.security.camera | camera or alarm | INSPECTION | Cameras, door alarms and telemetry are checked where installed. | Security tools need maintenance too. |
-| watertowerops.operations.drain_down | drain-down plan | METHOD | Interior inspection needs drawdown, isolation, pressure review and customer impact plan. | Prevents pressure loss while tank is offline. |
-| watertowerops.operations.disinfection | disinfection after entry | METHOD | Tank is cleaned, disinfected and sampled before return to service. | Protects potable water after workers enter. |
-| watertowerops.operations.confined_space | confined space | SAFETY_RULE | Tank entry requires confined-space review, ventilation, rescue and atmospheric checks. | Interior work has oxygen and chemical hazards. |
-| watertowerops.operations.coordination | operations coordination | METHOD | Operators coordinate SCADA levels, valves, pumps, crews and notifications. | Inspection must fit system hydraulics. |
-| watertowerops.records.inspection_report | inspection report | RECORD | Report includes photos, deficiencies, severity, recommendations and repair priorities. | Turns field observations into action. |
-| watertowerops.records.deficiency_log | deficiency log | RECORD | Each issue has owner, status, due date, cost and closeout evidence. | Prevents inspection findings from being forgotten. |
-| watertowerops.records.paint_history | paint history | RECORD | Coating type, contractor, surface prep, date and warranty are stored. | Supports lifecycle planning and claims. |
-| watertowerops.reporting.capital_plan | capital plan | MODEL | Capital plan prioritizes recoating, mixing, safety retrofits, structural repairs and replacement. | Converts tower condition into budget decisions. |
-| watertowerops.reporting.regulatory | regulatory report | RECORD | Reports may document sanitary defects, inspection date, disinfection and corrective actions. | Supports drinking-water compliance. |
-| watertowerops.review.risk_score | tank risk score | MODEL | Risk combines condition, water quality, security, redundancy, age and pressure-zone importance. | Helps rank towers across a utility. |
-
+| watertowerops.inventory.tank_id | идентификатор танка | RECORD | Запись башни включает идентификатор, местоположение, объем, высоту, материал, владельца и зону давления. | Связывает инспекцию, качество воды и капитальное планирование. |
+| watertowerops.inventory.design_file | файл дизайна | RECORD | Планы, история нанесения покрытий, ремонты, смесительное оборудование и принадлежности хранятся вместе. | Инспекторы сравнивают состояние поля с известной структурой. |
+| watertowerops.inventory.access_route | маршрут доступа | RECORD | Примечания к доступу охватывают ворота, дорогу, сервитут, погодные ограничения и размещение подрядчика. | Предотвращает неудачные проверки из-за недоступности сайта. |
+| watertowerops.level.normal_range | нормальный диапазон уровней | MEASUREMENT | Операторы отслеживают высокие, низкие и нормальные рабочие уровни резервуара. | Аномальные уровни указывают на проблемы контроля или спроса. |
+| watertowerops.level.altitude_valve | проверка клапана высоты | INSPECTION | Высотные клапаны проверяются на правильность заполнения/закрытия и наличие утечек. | Предотвращает переполнение или недополнение хранилища. |
+| watertowerops.level.overflow_pipe | переливная труба | INSPECTION | Переливная труба проверяется на наличие засоров, путей слива, пятен и повреждений от замерзания. | Показывает прошлые переполнения и защищает от входа. |
+| watertowerops.level.mixer | бак-смеситель | INSPECTION | Работа смесителя проверяется по состоянию, вибрации, мощности и влиянию на качество воды. | Уменьшает расслоение и разложение дезинфицирующих средств. |
+| watertowerops.coating.exterior | внешнее покрытие | INSPECTION | Внешнее покрытие проверяется на отсутствие меления, отслаивания, ржавчины, трещин и повреждений, вызванных ультрафиолетом. | Покрытие защищает сталь и продлевает срок службы. |
+| watertowerops.coating.interior | внутреннее покрытие | INSPECTION | Внутреннее покрытие проверяется на наличие вздутий, дефектов, расслоений, ржавчины и осадка. | Внутренний отказ может повлиять на качество воды и вызвать коррозию. |
+| watertowerops.coating.holiday_test | праздничное тестирование | QUALITY_CHECK | Тесты покрытия на отпуск выявляют отверстия или пропущенные пятна после нанесения покрытия. | Находит дефекты до того, как танк вернется в эксплуатацию. |
+| watertowerops.coating.lead_paint | устаревшая свинцовая краска | CONSTRAINT | Старые наружные покрытия могут потребовать обращения со свинцом, локализации и защиты работников. | Покраска становится экологической и безопасной работой. |
+| watertowerops.coating.recoat_priority | приоритет повторного покрытия | DECISION_RULE | Приоритет повторного покрытия учитывает коррозию, возраст покрытия, риск качества воды, доступ и бюджет. | Предотвращает ожидание структурного повреждения. |
+| watertowerops.hatches.roof_hatch | люк на крыше | INSPECTION | Люки проверяются на наличие замков, уплотнений, бордюров, петель и проникновения воды. | Защищает питьевую воду от загрязнения. |
+| watertowerops.hatches.access_hatch | люк доступа | INSPECTION | Люки доступа должны быть надежно закрыты, безопасно открываться и иметь гигиеническую пломбу. | Позволяет осуществлять проверку без ущерба для качества воды. |
+| watertowerops.vents.vent_screen | вентиляционный экран | INSPECTION | Вентиляционные отверстия проверяются на наличие неповрежденной сетки, защитного кожуха, коррозии и засоров. | Позволяет дышать, исключая птиц, насекомых и мусор. |
+| watertowerops.vents.overflow_airgap | перепускной воздушный зазор | SAFETY_RULE | Устройства перелива и слива позволяют избежать перекрестного соединения с небезопасными стоками. | Защищает от загрязнения обратного потока. |
+| watertowerops.ladders.fixed_ladder | фиксированная лестница | INSPECTION | Лестницы проверяются на наличие перекладин, коррозии, креплений, клеток или поручней для защиты от падения. | Безопасность при подъеме является частью проверки резервуара. |
+| watertowerops.ladders.fall_arrest | остановка падения | SAFETY_RULE | Оборудование для защиты от падения и точки крепления должны быть оценены и проверены. | Предотвращает фатальные падения во время работы на вышке. |
+| watertowerops.ladders.platform | состояние платформы | INSPECTION | Платформы, перила и борта проверяются на предмет коррозии и устойчивости. | Обеспечивает безопасность операторов на высоте. |
+| watertowerops.ladders.lockout_access | заблокированный доступ | SECURITY | Лестничные ограждения и запертые ворота препятствуют несанкционированному подъему. | Снижает риск вандализма и травм. |
+| watertowerops.cathodic.anode | жертвенный анод | INSPECTION | Аноды проверяются на расход, подключение и покрытие. | Замедляет коррозию внутри погруженной стали. |
+| watertowerops.cathodic.impressed_current | подаваемый ток | INSPECTION | Просматриваются выходные данные выпрямителя, проводка и справочные показания. | Катодная система должна быть запитана и настроена. |
+| watertowerops.cathodic.reading_log | катодные показания | RECORD | Показания напряжения/тока регистрируются с указанием даты и уровня воды. | Тенденции показывают потерю защиты до появления коррозии. |
+| watertowerops.structure.shell | состояние оболочки | INSPECTION | Оболочка проверяется на наличие коррозии, деформации, утечек, трещин сварных швов и пятен. | Обнаруживает дефекты конструкции и покрытия. |
+| watertowerops.structure.roof | состояние крыши | INSPECTION | Проверяются кровельные плиты, швы, дренаж, проходы и активность птиц. | Дефекты крыши могут привести к загрязнению. |
+| watertowerops.structure.foundation | фундамент | INSPECTION | Проверяются фундамент, анкерные болты, раствор и осадка. | Проблемы структурной поддержки могут прогрессировать медленно. |
+| watertowerops.structure.leak | отслеживание утечек | RECORD | Утечки фиксируются по местоположению, потоку, загрязнению и рабочему уровню. | Помогает отличить конденсат, перелив и течь корпуса. |
+| watertowerops.sampling.sample_tap | пробный кран | INSPECTION | Пробоотборные краны проверяются на санитарное исполнение, доступность и промывку. | Плохие краны создают ошибочные пробы качества воды. |
+| watertowerops.sampling.chlorine | остаточный хлор | MEASUREMENT | Остаток проверяется в резервуаре или в точках, расположенных ниже по потоку. | Низкие остаточные сигналы, связанные с возрастом, смешиванием или нитрификацией. |
+| watertowerops.sampling.bacti | бактериологический отбор проб | QUALITY_CHECK | Образцы Bacti обрабатываются стерильно после попадания в резервуар или после его ремонта. | Подтверждает безопасное возвращение в эксплуатацию. |
+| watertowerops.sampling.sediment | наблюдение за отложениями | OBSERVATION | Во время внутреннего осмотра отмечают глубину, цвет и отложения отложений. | Указывает на необходимость очистки и проблемы с источником. |
+| watertowerops.security.fence | забор и ворота | INSPECTION | Забор, ворота, замки и вывески проверяются на наличие нарушений. | Защищает критически важные ресурсы питьевой воды. |
+| watertowerops.security.intrusion | доказательства вторжения | SECURITY | Задокументированы граффити, срезанные замки, следы ног, открытые люки или фальсификация. | Обеспечивает безопасность и реагирование на качество воды. |
+| watertowerops.security.camera | камера или сигнализация | INSPECTION | Камеры, дверные сигнализации и телеметрия проверяются там, где они установлены. | Инструменты безопасности также нуждаются в обслуживании. |
+| watertowerops.operations.drain_down | план дренажа | METHOD | Внутренняя проверка требует сокращения, изоляции, анализа давления и плана воздействия на клиентов. | Предотвращает потерю давления, когда резервуар находится в автономном режиме. |
+| watertowerops.operations.disinfection | дезинфекция после входа | METHOD | Перед возвращением в эксплуатацию резервуар очищается, дезинфицируется и отбирается проба. | Защищает питьевую воду после входа рабочих. |
+| watertowerops.operations.confined_space | замкнутое пространство | SAFETY_RULE | Вход в резервуар требует осмотра замкнутого пространства, вентиляции, спасательных и атмосферных проверок. | Внутренние работы сопряжены с кислородной и химической опасностью. |
+| watertowerops.operations.coordination | координация операций | METHOD | Операторы координируют уровни SCADA, клапаны, насосы, бригады и уведомления. | Проверка должна соответствовать гидравлике системы. |
+| watertowerops.records.inspection_report | отчет об инспекции | RECORD | Отчет включает фотографии, недостатки, серьезность, рекомендации и приоритеты ремонта. | Превращает полевые наблюдения в действия. |
+| watertowerops.records.deficiency_log | журнал дефектов | RECORD | У каждого выпуска есть владелец, статус, срок выполнения, стоимость и подтверждение закрытия. | Предотвращает забвение результатов проверки. |
+| watertowerops.records.paint_history | история краски | RECORD | Сохраняются тип покрытия, подрядчик, подготовка поверхности, дата и гарантия. | Поддерживает планирование жизненного цикла и претензии. |
+| watertowerops.reporting.capital_plan | план капитального ремонта | MODEL | План капитальных затрат уделяет приоритетное внимание нанесению повторного покрытия, смешиванию, модернизации безопасности, структурному ремонту и замене. | Преобразует состояние башни в бюджетные решения. |
+| watertowerops.reporting.regulatory | регулирующий отчет | RECORD | В отчетах могут быть указаны санитарные дефекты, дата проверки, дезинфекция и корректирующие действия. | Поддерживает соблюдение требований к питьевой воде. |
+| watertowerops.review.risk_score | оценка танкового риска | MODEL | Риск сочетает в себе состояние, качество воды, безопасность, резервирование, возраст и важность зоны давления. | Помогает ранжировать башни по коммунальным предприятиям. |

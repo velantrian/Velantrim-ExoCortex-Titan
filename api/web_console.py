@@ -186,7 +186,7 @@ def register_console_routes(app) -> bool:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=(
                     f"Консоль не найдена: {_CONSOLE_INDEX}. "
-                    "Запускайте uvicorn из папки VELANTRIM_ExoCortex_V8.6."
+                    "Запускайте uvicorn из папки VELANTRIM_ExoCortex_V8.7_Titan."
                 ),
             )
         return FileResponse(

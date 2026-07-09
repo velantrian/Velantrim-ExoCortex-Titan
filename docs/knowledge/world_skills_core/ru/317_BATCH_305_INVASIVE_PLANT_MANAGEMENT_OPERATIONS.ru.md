@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| invasiveops.mapping.invasive_patch | Invasive plant patch record | invariant | Record stores species, location, area, density, landowner, date and treatment history. | map infestation |
-| invasiveops.mapping.survey_route | Invasive plant survey route | invariant | Route defines search area, timing, access, target species and observer. | organize survey |
-| invasiveops.mapping.early_detection | Early detection invasive report | variant | Report flags new, small or high-risk infestation needing rapid response. | prevent spread |
-| invasiveops.mapping.priority_zone | Invasive plant priority zone | variant | Zone ranks infestation by habitat value, spread risk, access and feasibility. | target effort |
-| invasiveops.identification.species_id | Invasive plant species identification | invariant | Identification uses leaves, stems, flowers, fruits, roots, season and lookalike checks. | avoid mistakes |
-| invasiveops.identification.lookalike_risk | Native lookalike risk | invariant | Risk occurs when invasive resembles native or desirable species during removal. | prevent damage |
-| invasiveops.identification.phenology_window | Invasive plant phenology window | variant | Window tracks growth stage for detection, treatment timing and seed prevention. | time work |
-| invasiveops.prioritization.rapid_response | Invasive rapid response priority | invariant | Priority treats small new infestations before they become established. | reduce future cost |
-| invasiveops.prioritization.containment_strategy | Invasive containment strategy | variant | Strategy limits spread from large infestation when eradication is unrealistic. | manage boundaries |
-| invasiveops.prioritization.asset_protection | Invasive asset protection | variant | Protection prioritizes rare habitat, waterways, trails, infrastructure or restoration sites. | protect value |
-| invasiveops.removal.hand_pulling | Invasive hand pulling | invariant | Pulling removes entire plant and root where soil, species and timing make it effective. | low-impact removal |
-| invasiveops.removal.digging | Invasive plant digging | variant | Digging removes roots, crowns, rhizomes or bulbs with soil disturbance control. | remove perennials |
-| invasiveops.removal.cutting | Invasive plant cutting | invariant | Cutting reduces biomass or seed production but may need follow-up for regrowth. | suppress plants |
-| invasiveops.removal.mowing | Invasive plant mowing | variant | Mowing treats larger areas at timed intervals before seed set. | reduce spread |
-| invasiveops.removal.girdling | Invasive tree girdling | variant | Girdling interrupts vascular flow on selected woody invasive stems where appropriate. | kill standing tree |
-| invasiveops.herbicide.spot_treatment | Invasive spot herbicide treatment | variant | Treatment applies approved herbicide only to target plants with minimal off-target exposure. | precise control |
-| invasiveops.herbicide.cut_stump_treatment | Cut-stump invasive treatment | invariant | Treatment applies herbicide to freshly cut stump to prevent resprouting. | control woody plants |
-| invasiveops.herbicide.weather_check | Herbicide weather check | invariant | Check reviews wind, rain, temperature, drift risk, water buffers and label limits. | apply safely |
-| invasiveops.herbicide.applicator_record | Herbicide applicator record | invariant | Record stores certified applicator, product, rate, location, date, weather and target species. | legal trace |
-| invasiveops.biocontrol.biocontrol_release | Invasive plant biocontrol release | variant | Release uses approved host-specific organisms with permits, monitoring and containment awareness. | add tool |
-| invasiveops.disposal.seed_head_bagging | Invasive seed head bagging | invariant | Bagging prevents mature seeds from spreading during removal and transport. | stop spread |
-| invasiveops.disposal.plant_material_disposal | Invasive plant material disposal | invariant | Disposal handles landfill, solarization, drying, burning if legal or controlled composting. | prevent regrowth |
-| invasiveops.disposal.equipment_cleaning | Invasive work equipment cleaning | invariant | Cleaning removes seeds, fragments and soil from boots, tools, tires and machinery. | prevent spread |
-| invasiveops.followup.regrowth_check | Invasive regrowth check | invariant | Check revisits treated patches for sprouts, missed plants or new seedlings. | sustain control |
-| invasiveops.followup.seedbank_monitoring | Invasive seedbank monitoring | variant | Monitoring tracks seedlings emerging from persistent seedbank after treatment. | plan years |
-| invasiveops.followup.retreatment_plan | Invasive retreatment plan | invariant | Plan schedules follow-up based on species biology, treatment success and season. | prevent rebound |
-| invasiveops.restoration.revegetation | Post-removal revegetation | invariant | Revegetation installs native or desired cover after invasive removal to occupy niche. | reduce reinvasion |
-| invasiveops.restoration.mulch_cover | Post-removal mulch cover | variant | Mulch suppresses seedlings, protects soil and reduces erosion where suitable. | stabilize site |
-| invasiveops.restoration.erosion_risk | Invasive removal erosion risk | variant | Risk rises when removal exposes soil on slope, bank, trail or drainage area. | plan stabilization |
-| invasiveops.safety.ppe | Invasive plant management PPE | invariant | PPE covers gloves, eye protection, long sleeves, respirator if needed and boots. | protect crew |
-| invasiveops.safety.toxic_plant | Toxic invasive plant hazard | invariant | Hazard includes sap burns, allergens, thorns, toxic berries or irritant dust. | avoid exposure |
-| invasiveops.safety.terrain_hazard | Invasive treatment terrain hazard | variant | Hazard includes slopes, wetlands, ticks, heat, water, traffic or remote work. | plan safety |
-| invasiveops.volunteers.volunteer_pull | Invasive volunteer pull event | variant | Event organizes target species, tools, safety, ID training, disposal and records. | mobilize community |
-| invasiveops.volunteers.quality_check | Invasive volunteer quality check | invariant | Check confirms volunteers removed target plants correctly and avoided natives. | maintain accuracy |
-| invasiveops.volunteers.public_education | Invasive plant public education | variant | Education explains identification, reporting, disposal, garden alternatives and spread prevention. | reduce introductions |
-| invasiveops.records.treatment_log | Invasive treatment log | invariant | Log records species, method, area, labor, material, weather, disposal and follow-up date. | trace work |
-| invasiveops.records.before_after_photo | Invasive before-after photo | invariant | Photos document infestation, treatment, regrowth and restoration progress. | visual evidence |
-| invasiveops.records.permission_record | Invasive management permission record | variant | Record stores landowner approval, access terms, herbicide permission and notification. | work lawfully |
-| invasiveops.reporting.program_report | Invasive plant program report | invariant | Report summarizes acres surveyed, treated, species, outcomes, costs and priorities. | manage program |
-| invasiveops.reporting.new_detection_notice | New invasive detection notice | variant | Notice alerts partners about new species, location, risk and response need. | coordinate response |
-| invasiveops.metrics.cover_reduction | Invasive cover reduction KPI | invariant | KPI measures decrease in target invasive cover after treatment. | evaluate success |
-| invasiveops.metrics.followup_completion | Invasive follow-up completion KPI | variant | KPI tracks scheduled follow-up visits completed on time. | avoid rebound |
-| invasiveops.coordination.partner_network | Invasive partner network coordination | variant | Coordination links parks, roads, utilities, landowners, volunteers and conservation groups. | scale control |
-| invasiveops.close.site_closeout | Invasive site closeout | invariant | Closeout records final treatment, disposal, restoration, follow-up schedule and map update. | finish cycle |
+| invasiveops.mapping.invasive_patch | Запись об инвазивных растениях | invariant | Запись хранит виды, местоположение, площадь, плотность, землевладельца, дату и историю обработки. | заражение карты |
+| invasiveops.mapping.survey_route | Маршрут обследования инвазивных растений | invariant | Маршрут определяет зону поиска, время, доступ, целевые виды и наблюдателя. | организовать опрос |
+| invasiveops.mapping.early_detection | Отчет об инвазивном раннем обнаружении | variant | В отчете отмечаются новые, небольшие или высокорисковые заражения, требующие быстрого реагирования. | предотвратить распространение |
+| invasiveops.mapping.priority_zone | Приоритетная зона инвазивных растений | variant | Зона ранжирует заражение по ценности среды обитания, риску распространения, доступу и осуществимости. | целевое усилие |
+| invasiveops.identification.species_id | Идентификация инвазивных видов растений | invariant | Для идентификации используются листья, стебли, цветы, плоды, корни, сезонные проверки и проверки на сходство. | избегать ошибок |
+| invasiveops.identification.lookalike_risk | Нативный риск двойника | invariant | Риск возникает, когда во время удаления инвазивный вид напоминает аборигенный или желательный вид. | предотвратить повреждение |
+| invasiveops.identification.phenology_window | Окно фенологии инвазивных растений | variant | Окно отслеживает стадию роста для обнаружения, времени обработки и предотвращения появления семян. | время работы |
+| invasiveops.prioritization.rapid_response | Инвазивный приоритет быстрого реагирования | invariant | В приоритетном порядке рассматриваются небольшие новые заражения до того, как они укоренятся. | снизить будущие затраты |
+| invasiveops.prioritization.containment_strategy | Инвазивная стратегия сдерживания | variant | Ограничения стратегии распространяются из-за большого заражения, когда искоренение нереально. | управлять границами |
+| invasiveops.prioritization.asset_protection | Инвазивная защита активов | variant | При защите приоритет отдается редкой среде обитания, водным путям, тропам, инфраструктуре или местам восстановления. | защитить ценность |
+| invasiveops.removal.hand_pulling | Инвазивное вытягивание руки | invariant | Выдергивание удаляет все растение и корень там, где почва, виды и время делают это эффективным. | удаление с низким уровнем воздействия |
+| invasiveops.removal.digging | Инвазивное выкапывание растений | variant | При выкопке удаляются корни, кроны, корневища или луковицы с контролем нарушения почвы. | удалить многолетние растения |
+| invasiveops.removal.cutting | Инвазивная обрезка растений | invariant | Срезка снижает биомассу или производство семян, но может потребоваться последующий контроль для возобновления роста. | подавлять растения |
+| invasiveops.removal.mowing | Инвазивное скашивание растений | variant | Скашивание обрабатывает большие площади через определенные промежутки времени до завязывания семян. | уменьшить распространение |
+| invasiveops.removal.girdling | Инвазивное опоясывание деревьев | variant | Опоясывание прерывает сосудистый кровоток на отдельных древесных инвазивных стеблях, где это необходимо. | убить стоящее дерево |
+| invasiveops.herbicide.spot_treatment | Инвазивная точечная обработка гербицидами | variant | При обработке применяется одобренный гербицид только для целевых растений с минимальным нецелевым воздействием. | точный контроль |
+| invasiveops.herbicide.cut_stump_treatment | Инвазивное лечение методом разрезания культи | invariant | При лечении гербицид наносится на свежесрезанный пень, чтобы предотвратить повторное прорастание. | контролировать древесные растения |
+| invasiveops.herbicide.weather_check | Проверка погоды гербицидами | invariant | Проверьте обзоры ветра, дождя, температуры, риска заноса, водных буферов и ограничений на этикетках. | применять безопасно |
+| invasiveops.herbicide.applicator_record | Рекорд по применению гербицидов | invariant | В магазинах записан сертифицированный аппликатор, продукт, норма, местоположение, дата, погода и целевые виды. | юридический след |
+| invasiveops.biocontrol.biocontrol_release | Инвазивный выпуск биоконтроля растений | variant | При выпуске используются одобренные организмы, специфичные для хозяина, с разрешениями, мониторингом и осведомленностью о сдерживании. | добавить инструмент |
+| invasiveops.disposal.seed_head_bagging | Инвазивное расфасовывание семенных головок в мешки | invariant | Упаковка в мешки предотвращает распространение зрелых семян во время вывоза и транспортировки. | остановить распространение |
+| invasiveops.disposal.plant_material_disposal | Инвазивное удаление растительного материала | invariant | Утилизация подразумевает захоронение на свалке, соляризацию, сушку, сжигание, если это разрешено законом, или контролируемое компостирование. | предотвратить повторный рост |
+| invasiveops.disposal.equipment_cleaning | Инвазивная очистка рабочего оборудования | invariant | При очистке удаляются семена, фрагменты и почва с ботинок, инструментов, шин и машин. | предотвратить распространение |
+| invasiveops.followup.regrowth_check | Инвазивная проверка возобновления роста | invariant | При повторном посещении обработанных участков проверяйте наличие ростков, пропущенных растений или новых саженцев. | поддерживать контроль |
+| invasiveops.followup.seedbank_monitoring | Инвазивный мониторинг банка семян | variant | Мониторинг отслеживает появление всходов из постоянного банка семян после обработки. | плановые годы |
+| invasiveops.followup.retreatment_plan | План инвазивного повторного лечения | invariant | Составьте график последующих действий с учетом биологии вида, успешности лечения и сезона. | предотвратить отскок |
+| invasiveops.restoration.revegetation | Восстановление растительности после удаления | invariant | После инвазивного удаления растительность создает естественное или желаемое покрытие, чтобы занять нишу. | уменьшить реинвазию |
+| invasiveops.restoration.mulch_cover | Мульчирующее покрытие после удаления | variant | Мульча подавляет всходы, защищает почву и уменьшает эрозию там, где это возможно. | стабилизировать сайт |
+| invasiveops.restoration.erosion_risk | Риск эрозии при инвазивном удалении | variant | Риск возрастает, когда при удалении обнажается почва на склоне, берегу, тропе или в зоне дренажа. | план стабилизации |
+| invasiveops.safety.ppe | СИЗ для инвазивного управления заводами | invariant | СИЗ включают перчатки, средства защиты глаз, длинные рукава, респиратор, если необходимо, и обувь. | защитить экипаж |
+| invasiveops.safety.toxic_plant | Опасность токсичных инвазивных растений | invariant | Опасность включает ожоги соком, аллергены, шипы, токсичные ягоды или раздражающую пыль. | избежать контакта |
+| invasiveops.safety.terrain_hazard | Опасность местности при инвазивном лечении | variant | Опасности включают склоны, заболоченные территории, клещи, жару, воду, движение транспорта или удаленную работу. | планировать безопасность |
+| invasiveops.volunteers.volunteer_pull | Инвазивное мероприятие по привлечению волонтеров | variant | Мероприятие организует целевые виды, инструменты, безопасность, обучение идентификации, утилизацию и учет. | мобилизовать сообщество |
+| invasiveops.volunteers.quality_check | Инвазивная волонтерская проверка качества | invariant | Проверка подтверждает, что добровольцы правильно удаляли целевые растения и избегали местных растений. | сохранять точность |
+| invasiveops.volunteers.public_education | Просвещение общественности об инвазивных растениях | variant | Образование объясняет выявление, отчетность, утилизацию, альтернативы садоводству и предотвращение распространения. | сократить знакомства |
+| invasiveops.records.treatment_log | Журнал инвазивного лечения | invariant | В журнале фиксируются виды, метод, территория, трудозатраты, материалы, погода, утилизация и дата последующих действий. | отслеживать работу |
+| invasiveops.records.before_after_photo | Инвазивное фото «до и после» | invariant | Фотографии документируют заражение, лечение, возобновление роста и восстановление. | визуальные доказательства |
+| invasiveops.records.permission_record | Запись о разрешении на инвазивное управление | variant | Хранит записи об одобрении землевладельца, условиях доступа, разрешениях на использование гербицидов и уведомлениях. | работать законно |
+| invasiveops.reporting.program_report | Отчет о программе инвазивных растений | invariant | В отчете суммируются обследованные и обработанные акры, виды, результаты, затраты и приоритеты. | управлять программой |
+| invasiveops.reporting.new_detection_notice | Новое уведомление об инвазивном обнаружении | variant | Уведомление предупреждает партнеров о новых видах, местонахождении, рисках и необходимости реагирования. | координировать ответ |
+| invasiveops.metrics.cover_reduction | KPI по снижению инвазивного покрытия | invariant | KPI измеряет снижение целевого инвазивного покрытия после лечения. | оценить успех |
+| invasiveops.metrics.followup_completion | KPI инвазивного последующего завершения | variant | KPI отслеживает запланированные последующие визиты, завершенные вовремя. | избежать отскока |
+| invasiveops.coordination.partner_network | Инвазивная координация партнерской сети | variant | Координация связывает парки, дороги, коммунальные службы, землевладельцев, волонтеров и природоохранные группы. | контроль масштаба |
+| invasiveops.close.site_closeout | Инвазивное закрытие сайта | invariant | Closeout записывает окончательную обработку, утилизацию, восстановление, график последующих действий и обновление карты. | закончить цикл |

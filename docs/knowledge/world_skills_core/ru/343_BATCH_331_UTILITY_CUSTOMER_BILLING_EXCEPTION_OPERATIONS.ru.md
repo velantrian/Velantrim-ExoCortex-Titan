@@ -6,48 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| billxops.intake.case_id | billing exception case | RECORD | Case ID links account, bill, customer contact, issue type and dates. | Prevents scattered notes from becoming inconsistent decisions. |
-| billxops.intake.issue_type | issue classification | RECORD | Issues are classified as high bill, estimated read, leak, misread, rate error, move-in/out or dispute. | Routes work to the right review path. |
-| billxops.intake.customer_statement | customer statement | RECORD | Customer explanation records occupancy, irrigation, leaks, repairs, travel and unusual use. | Gives context before changing bill data. |
-| billxops.intake.deadline | dispute deadline | CONSTRAINT | Policies define how long customers have to dispute bills. | Protects fairness and revenue controls. |
-| billxops.highbill.usage_compare | usage comparison | METHOD | Current usage is compared with prior periods, weather, household size and meter history. | Separates real use from possible error. |
-| billxops.highbill.seasonality | seasonal pattern | MODEL | Irrigation, cooling, guests or business cycles can explain spikes. | Avoids treating every high bill as a leak. |
-| billxops.highbill.neighbor_check | neighbor comparison | QUALITY_CHECK | Nearby accounts or district totals may show shared reading or pressure issues. | Detects systemic events. |
-| billxops.highbill.threshold | high-bill threshold | DECISION_RULE | Review triggers may use percentage increase, volume, customer class or dollar amount. | Focuses staff effort on meaningful anomalies. |
-| billxops.leak.leak_indicator | leak indicator | MEASUREMENT | AMI continuous flow, meter dial movement or usage pattern can indicate leaks. | Supports leak adjustment decisions. |
-| billxops.leak.repair_proof | repair proof | RECORD | Repair invoice, plumber note, photo or customer attestation confirms corrective action. | Prevents repeated credits without repair. |
-| billxops.leak.adjustment_formula | leak adjustment formula | MODEL | Adjustment may average normal use, split excess, or waive sewer charges by policy. | Makes credits consistent and auditable. |
-| billxops.leak.repeat_limit | repeat leak limit | CONSTRAINT | Policy may limit number or frequency of leak adjustments. | Balances customer relief and utility revenue. |
-| billxops.estimate.estimated_read | estimated read | RECORD | Estimated bills are flagged with reason, method and later true-up rule. | Customers can understand non-actual reads. |
-| billxops.estimate.true_up | true-up calculation | METHOD | Actual read after estimate reconciles under- or over-billing. | Prevents permanent billing distortion. |
-| billxops.estimate.no_read_reason | no-read reason | RECORD | No-read causes include access, endpoint failure, dog, weather, vacancy or meter damage. | Drives field correction. |
-| billxops.meter.misread_review | misread review | QUALITY_CHECK | Suspected misreads compare photo, route sheet, AMI, register and historical pattern. | Prevents incorrect adjustments. |
-| billxops.meter.multiplier | meter multiplier | CONSTRAINT | Large meters may require multiplier or register factor. | Wrong factor can massively distort bills. |
-| billxops.meter.changeout_overlap | changeout overlap | FAILURE_MODE | Meter replacement can create duplicate, missing or reversed reads. | Needs reconciliation before billing. |
-| billxops.meter.stopped_meter | stopped meter | FAILURE_MODE | Zero or flat use may indicate stopped meter rather than no consumption. | Protects revenue and service records. |
-| billxops.rate.rate_code | rate code review | QUALITY_CHECK | Account class, meter size, sewer status and surcharges are checked. | Rate errors look like usage problems to customers. |
-| billxops.rate.proration | proration review | METHOD | Move dates, rate changes and service periods are prorated. | Prevents overcharge at account transitions. |
-| billxops.rate.tax_fee | tax and fee check | QUALITY_CHECK | Taxes, storm fees, fire fees and franchise charges are verified. | Some disputes are fee configuration issues. |
-| billxops.adjustment.approval_level | approval level | CONSTRAINT | Credit thresholds define staff, supervisor or manager approval. | Maintains internal financial control. |
-| billxops.adjustment.reason_code | adjustment reason code | RECORD | Each credit or debit uses standardized reason codes. | Enables reporting and audit. |
-| billxops.adjustment.support_docs | support documents | RECORD | Adjustment file stores calculations, evidence, approvals and customer notice. | Makes decision defensible later. |
-| billxops.adjustment.audit_trail | audit trail | RECORD | System logs who changed what, when and why. | Prevents unauthorized billing changes. |
-| billxops.dispute.hold_status | dispute hold | METHOD | Account may be held from collections while review is active. | Avoids shutoff during unresolved dispute. |
-| billxops.dispute.escalation | escalation path | METHOD | Complex disputes route to supervisor, field services, meter shop or legal. | Keeps difficult cases moving. |
-| billxops.dispute.hearing | hearing record | RECORD | Formal appeals record evidence, decision, date and final amount. | Supports due process. |
-| billxops.communication.explanation | customer explanation | METHOD | Staff explain findings, policy, calculation and next steps in plain language. | Reduces repeat contacts. |
-| billxops.communication.denial_letter | denial letter | RECORD | Denial states reason, evidence reviewed, policy basis and appeal option. | Makes negative decisions transparent. |
-| billxops.communication.credit_notice | credit notice | RECORD | Credit notice shows amount, bill impact and remaining balance. | Prevents confusion after adjustment. |
-| billxops.field.field_read | field read order | METHOD | Field crew verifies read, meter condition, leak indicator and access. | Brings physical evidence into billing review. |
-| billxops.field.premise_leak | premise leak observation | OBSERVATION | Running toilets, irrigation leaks or service leaks may be noted when visible. | Helps customer resolve high usage. |
-| billxops.field.safety_note | field safety note | RECORD | Dogs, locked gates, unsafe pits and hostile contacts are recorded. | Protects crews and future visits. |
-| billxops.qa.batch_review | batch review | QUALITY_CHECK | Large adjustment batches are sampled for correct reason, math and approval. | Catches systemic processing errors. |
-| billxops.qa.segmentation | customer class segmentation | MODEL | Residential, commercial and irrigation accounts need different review expectations. | Avoids false positives. |
-| billxops.qa.duplicate_credit | duplicate credit check | QUALITY_CHECK | System checks whether same event already received credit. | Prevents double relief. |
-| billxops.records.retention | record retention | CONSTRAINT | Billing exception records are retained according to finance and public-record rules. | Supports later audits. |
-| billxops.records.linked_cases | linked cases | RECORD | Related leak, meter, shutoff or complaint cases are linked. | Shows full customer history. |
-| billxops.reporting.exception_volume | exception volume | MEASUREMENT | Reports track case counts by type, amount, age and outcome. | Shows workload and policy impact. |
-| billxops.reporting.credit_total | credit total | MEASUREMENT | Credit totals are monitored by period, reason and approver. | Supports financial oversight. |
-| billxops.reporting.root_cause | root-cause report | MODEL | Trends identify meter failures, route issues, confusing bills or policy gaps. | Turns exceptions into process improvement. |
-| billxops.review.policy_update | policy update review | METHOD | Repeated disputes inform changes to forms, notices, rates or leak policy. | Keeps billing rules practical. |
-
+| billxops.intake.case_id | исключительный случай выставления счетов | RECORD | Идентификатор обращения связывает учетную запись, счет, контакт с клиентом, тип проблемы и даты. | Предотвращает превращение разрозненных заметок в противоречивые решения. |
+| billxops.intake.issue_type | классификация проблем | RECORD | Проблемы классифицируются как высокие счета, предполагаемое прочтение, утечка, неправильное прочтение, ошибка оценки, въезд/выезд или спор. | Маршруты работают по правильному пути просмотра. |
+| billxops.intake.customer_statement | заявление клиента | RECORD | В объяснениях для клиентов фиксируются случаи использования, ирригации, утечек, ремонта, поездок и необычного использования. | Предоставляет контекст перед изменением данных счета. |
+| billxops.intake.deadline | срок спора | CONSTRAINT | Политика определяет, как долго клиенты должны оспаривать счета. | Обеспечивает справедливость и контроль доходов. |
+| billxops.highbill.usage_compare | сравнение использования | METHOD | Текущее использование сравнивается с предыдущими периодами, погодой, размером домохозяйства и историей счетчиков. | Отделяет реальное использование от возможной ошибки. |
+| billxops.highbill.seasonality | сезонный характер | MODEL | Всплески могут быть объяснены ирригацией, охлаждением, гостями или экономическими циклами. | Позволяет избежать рассмотрения каждого большого счета как утечки. |
+| billxops.highbill.neighbor_check | сравнение соседей | QUALITY_CHECK | Соседние учетные записи или общие данные по округу могут указывать на проблемы с общим чтением или давлением. | Обнаруживает системные события. |
+| billxops.highbill.threshold | порог высокого счета | DECISION_RULE | Триггеры обзора могут использовать процентное увеличение, объем, класс клиента или сумму в долларах. | Сосредоточивает усилия персонала на значимых аномалиях. |
+| billxops.leak.leak_indicator | индикатор утечки | MEASUREMENT | Непрерывный поток AMI, движение шкалы счетчика или характер использования могут указывать на утечки. | Поддерживает решения по устранению утечек. |
+| billxops.leak.repair_proof | доказательство ремонта | RECORD | Счет за ремонт, записка сантехника, фотография или свидетельство клиента подтверждают корректирующие действия. | Предотвращает повторные кредиты без ремонта. |
+| billxops.leak.adjustment_formula | формула регулировки утечки | MODEL | Корректировка может привести к усреднению нормального использования, разделению излишков или отмене платы за канализацию в соответствии с политикой. | Делает кредиты последовательными и проверяемыми. |
+| billxops.leak.repeat_limit | повторный предел утечки | CONSTRAINT | Политика может ограничивать количество или частоту корректировок утечек. | Сбалансирует помощь клиентам и доходы от коммунальных услуг. |
+| billxops.estimate.estimated_read | предполагаемое прочтение | RECORD | Оценочные счета помечаются с указанием причины, метода и последующего правила сверки. | Клиенты могут понять неактуальные чтения. |
+| billxops.estimate.true_up | сверочный расчет | METHOD | Фактическое чтение после оценки согласовывает заниженные или завышенные счета. | Предотвращает постоянные искажения при выставлении счетов. |
+| billxops.estimate.no_read_reason | причина отсутствия чтения | RECORD | К причинам отсутствия чтения относятся доступ, сбой конечной точки, собака, погода, отсутствие свободного времени или повреждение счетчика. | Коррекция поля приводов. |
+| billxops.meter.misread_review | неправильно прочитал обзор | QUALITY_CHECK | При подозрении на ошибку сравните фотографию, маршрутный лист, AMI, реестр и исторический образец. | Предотвращает неправильную настройку. |
+| billxops.meter.multiplier | множитель метра | CONSTRAINT | Для больших счетчиков может потребоваться множитель или регистровый коэффициент. | Неправильный коэффициент может сильно исказить купюры. |
+| billxops.meter.changeout_overlap | перекрытие замены | FAILURE_MODE | Замена счетчика может привести к дублированию, отсутствию или обратным показаниям. | Требуется сверка перед выставлением счета. |
+| billxops.meter.stopped_meter | остановленный счетчик | FAILURE_MODE | Нулевое или фиксированное использование может указывать на остановку счетчика, а не на отсутствие потребления. | Защищает записи о доходах и услугах. |
+| billxops.rate.rate_code | оценить проверку кода | QUALITY_CHECK | Проверяется класс счета, размер счетчика, состояние канализации и доплаты. | Ошибки в ставках выглядят для клиентов как проблемы с использованием. |
+| billxops.rate.proration | пересмотр пропорциональности | METHOD | Даты переезда, изменения тарифов и периоды обслуживания рассчитываются пропорционально. | Предотвращает переплату при переходе учетной записи. |
+| billxops.rate.tax_fee | проверка налогов и сборов | QUALITY_CHECK | Налоги, сборы за шторм, пожарные сборы и сборы за франшизу проверяются. | Некоторые споры связаны с проблемами конфигурации платы. |
+| billxops.adjustment.approval_level | уровень одобрения | CONSTRAINT | Пороги кредита определяют одобрение персонала, руководителя или менеджера. | Осуществляет внутренний финансовый контроль. |
+| billxops.adjustment.reason_code | код причины корректировки | RECORD | Для каждого кредита или дебета используются стандартизированные коды причин. | Включает отчетность и аудит. |
+| billxops.adjustment.support_docs | подтверждающие документы | RECORD | В файле корректировок хранятся расчеты, доказательства, утверждения и уведомления для клиентов. | Делает решение оправданным позже. |
+| billxops.adjustment.audit_trail | аудиторский след | RECORD | Системные журналы, кто что изменил, когда и почему. | Предотвращает несанкционированное изменение счетов. |
+| billxops.dispute.hold_status | спор приостановлен | METHOD | Аккаунт может быть заблокирован из коллекций, пока активна проверка. | Позволяет избежать отключения во время неразрешенного спора. |
+| billxops.dispute.escalation | путь эскалации | METHOD | Сложные споры направляются руководителю, выездным службам, счетчикам или юридическим лицам. | Продолжает продвигать сложные дела. |
+| billxops.dispute.hearing | протокол слушания | RECORD | В официальных апелляциях фиксируются доказательства, решение, дата и окончательная сумма. | Поддерживает надлежащую правовую процедуру. |
+| billxops.communication.explanation | объяснение клиента | METHOD | Сотрудники объясняют выводы, политику, расчеты и последующие шаги доступным языком. | Уменьшает повторные контакты. |
+| billxops.communication.denial_letter | отказное письмо | RECORD | В отказе указывается причина, рассмотренные доказательства, политическая основа и возможность апелляции. | Делает негативные решения прозрачными. |
+| billxops.communication.credit_notice | уведомление о кредите | RECORD | В уведомлении о кредите указана сумма, влияние счета и оставшийся баланс. | Предотвращает путаницу после регулировки. |
+| billxops.field.field_read | порядок чтения полей | METHOD | Полевая бригада проверяет показания, состояние счетчика, индикатор утечки и доступ. | Приносит вещественные доказательства при проверке счетов. |
+| billxops.field.premise_leak | наблюдение за утечками в помещении | OBSERVATION | Если они видны, можно заметить работающие туалеты, утечки ирригационной системы или утечки из-за обслуживания. | Помогает клиенту решить проблему высокого уровня использования. |
+| billxops.field.safety_note | Примечание по безопасности на местах | RECORD | Фиксируются собаки, запертые ворота, небезопасные ямы и враждебные контакты. | Защищает экипажи и будущие посещения. |
+| billxops.qa.batch_review | пакетный обзор | QUALITY_CHECK | Большие корректирующие партии отбираются по правильной причине, математическим расчетам и утверждению. | Перехватывает системные ошибки обработки. |
+| billxops.qa.segmentation | сегментация по классам клиентов | MODEL | Счета жилищного, коммерческого и ирригационного сектора требуют разных ожиданий при проверке. | Избегает ложных срабатываний. |
+| billxops.qa.duplicate_credit | дубликат проверки кредитоспособности | QUALITY_CHECK | Система проверяет, получило ли уже признание то же событие. | Предотвращает двойное облегчение. |
+| billxops.records.retention | хранение записей | CONSTRAINT | Записи об исключениях в счетах сохраняются в соответствии с правилами финансов и публичного учета. | Поддерживает последующие аудиты. |
+| billxops.records.linked_cases | связанные дела | RECORD | Соответствующие случаи утечек, счетчиков, отключений или рекламаций связаны между собой. | Показывает полную историю клиентов. |
+| billxops.reporting.exception_volume | объем исключений | MEASUREMENT | В отчетах отслеживается количество случаев заболевания по типу, количеству, возрасту и исходу. | Показывает рабочую нагрузку и влияние политики. |
+| billxops.reporting.credit_total | общая сумма кредита | MEASUREMENT | Итоговые суммы кредитов отслеживаются по периоду, причине и утверждающему лицу. | Поддерживает финансовый надзор. |
+| billxops.reporting.root_cause | отчет о первопричине | MODEL | Тенденции выявляют неисправности счетчиков, проблемы с маршрутами, запутанные счета или пробелы в политике. | Превращает исключения в улучшение процесса. |
+| billxops.review.policy_update | обзор обновления политики | METHOD | Повторные споры приводят к изменению форм, уведомлений, тарифов или политики утечки информации. | Правила выставления счетов остаются практичными. |

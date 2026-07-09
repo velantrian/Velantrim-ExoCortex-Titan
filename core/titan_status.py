@@ -1,11 +1,15 @@
 """
-Сводный статус компонентов Titan v7.5 → V8.6 (для GET /titan/status).
+Сводный статус компонентов Titan (для GET /titan/status).
+
+Версия продукта берётся из core.__version__ — единый источник истины
+(pyproject.toml), без хардкода версии в этом файле.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from core import __version__
 from core.feature_config import get_config
 
 
@@ -58,7 +62,7 @@ def build_titan_status() -> dict[str, Any]:
         actr_block["stats"] = actr_stats()
 
     return {
-        "product": "VELANTRIM V8.6 Complex",
+        "product": f"VELANTRIM v{__version__} Titan",
         "source": "Velantrim_v7.5_Titan.md (HYPERIA-2,6,7,8,3)",
         "any_enabled": any_enabled,
         "flags": flags,

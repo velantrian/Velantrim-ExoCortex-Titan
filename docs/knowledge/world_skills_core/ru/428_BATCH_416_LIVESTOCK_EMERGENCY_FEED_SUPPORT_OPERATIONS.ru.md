@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| livestockfeedops.intake.request_source | request source | RECORD | Source records producer, veterinarian, extension, emergency manager, cooperative or hotline. | Shows entry path. |
-| livestockfeedops.intake.producer_contact | producer contact | RECORD | Contact captures owner, farm, phone, delivery location and backup contact. | Enables coordination. |
-| livestockfeedops.intake.need_reason | need reason | RECORD | Reason records drought, flood, fire, snow, transport disruption or pasture loss. | Explains request. |
-| livestockfeedops.intake.urgency | urgency model | MODEL | Urgency weighs remaining feed, animal condition, weather, isolation and water access. | Prioritizes delivery. |
-| livestockfeedops.herd.species | species record | RECORD | Species record distinguishes cattle, sheep, goats, horses, poultry, swine or specialty livestock. | Selects feed. |
-| livestockfeedops.herd.headcount | herd count | MEASUREMENT | Count captures animals by class, age, weight band and lactation where relevant. | Sizes need. |
-| livestockfeedops.herd.vulnerable | vulnerable group | RECORD | Vulnerable group includes young, pregnant, lactating, sick or senior animals. | Adjusts priority. |
-| livestockfeedops.herd.location | herd location | RECORD | Location records pasture, barn, evacuation site, county and access constraints. | Supports routing. |
-| livestockfeedops.feed.feed_type | feed type | RECORD | Type distinguishes hay, grain, pellets, silage, mineral, milk replacer or species feed. | Defines supply. |
-| livestockfeedops.feed.ration_note | ration note | METHOD | Ration note uses producer/veterinary guidance without replacing professional nutrition advice. | Prevents mismatch. |
-| livestockfeedops.feed.quantity_estimate | quantity estimate | MEASUREMENT | Estimate calculates requested units by animal count, period and feed type. | Plans stock. |
-| livestockfeedops.feed.special_need | special need | RECORD | Special need captures medical diet, feed transition, storage limits or species restrictions. | Protects animals. |
-| livestockfeedops.sourcing.supplier_roster | supplier roster | RECORD | Roster lists feed mills, hay brokers, cooperatives, farms and donation sources. | Finds supply. |
-| livestockfeedops.sourcing.availability | availability check | QUALITY_CHECK | Check confirms quantity, quality, pickup time, price, loading and transport needs. | Avoids failed sourcing. |
-| livestockfeedops.sourcing.donation | donation record | RECORD | Donation captures donor, feed type, quantity, condition, restrictions and receipt needs. | Tracks gifts. |
-| livestockfeedops.sourcing.purchase_order | purchase order | RECORD | Order links supplier, feed, quantity, price, funding and delivery terms. | Starts procurement. |
-| livestockfeedops.quality.feed_condition | feed condition | QUALITY_CHECK | Condition checks moisture, mold, spoilage, contamination, packaging and lot. | Protects herds. |
-| livestockfeedops.quality.species_fit | species fit | SAFETY_RULE | Feed unsuitable for a species or class is not issued without expert approval. | Prevents harm. |
-| livestockfeedops.quality.storage | storage check | SAFETY_RULE | Storage protects feed from water, pests, heat, theft and contamination. | Preserves supply. |
-| livestockfeedops.quality.recall | recall check | QUALITY_CHECK | Recall or contamination notices are checked for purchased or donated feed. | Avoids unsafe issue. |
-| livestockfeedops.delivery.route_plan | route plan | METHOD | Route groups deliveries by geography, urgency, feed type and truck capacity. | Saves time. |
-| livestockfeedops.delivery.access_check | access check | METHOD | Check covers roads, gates, mud, bridges, loading area and unloading equipment. | Prevents failed delivery. |
-| livestockfeedops.delivery.transport_unit | transport unit | RECORD | Unit records truck, trailer, driver, capacity, route and contact. | Executes movement. |
-| livestockfeedops.delivery.delivery_window | delivery window | RECORD | Window records pickup, ETA, site contact, unloading plan and weather risk. | Sets expectations. |
-| livestockfeedops.safety.loading | loading safety | SAFETY_RULE | Loading uses equipment, weight limits, traffic control and trained operators. | Prevents injuries. |
-| livestockfeedops.safety.biosecurity | biosecurity rule | SAFETY_RULE | Vehicles and staff follow disease-control precautions between farms. | Reduces spread. |
-| livestockfeedops.safety.driver | driver safety | SAFETY_RULE | Driver safety covers fatigue, road hazards, animal areas, backing and communication. | Protects crew. |
-| livestockfeedops.safety.site_hazard | site hazard | RECORD | Site hazard records aggressive animals, damaged structures, floodwater or unstable ground. | Guides crew. |
-| livestockfeedops.issue.issue_record | issue record | RECORD | Record captures producer, feed, quantity, date, source, driver and signature if feasible. | Tracks distribution. |
-| livestockfeedops.issue.limit_rule | issue limit | CONSTRAINT | Limits define quantity per herd, period, species or priority. | Extends supply. |
-| livestockfeedops.issue.exception | exception issue | RECORD | Exception records urgent animal welfare need, approval and reason. | Allows flexibility. |
-| livestockfeedops.issue.refusal | refusal record | RECORD | Refusal records unsuitable feed, access failure, producer cancellation or safety issue. | Explains non-delivery. |
-| livestockfeedops.reconcile.stock_count | stock count | MEASUREMENT | Count reconciles received, issued, spoiled, transferred and remaining feed. | Shows inventory. |
-| livestockfeedops.reconcile.invoice | invoice reconciliation | QUALITY_CHECK | Invoice checks supplier, quantity, delivery, price and funding code. | Prevents overpayment. |
-| livestockfeedops.reconcile.donation_receipt | donation receipt | RECORD | Receipt documents donor acknowledgement, restrictions and disposition. | Supports accountability. |
-| livestockfeedops.reconcile.loss | loss record | RECORD | Loss records spoiled, damaged, stolen or unusable feed and reason. | Explains variance. |
-| livestockfeedops.communication.producer_update | producer update | METHOD | Update explains delivery status, limits, substitutions, safety notes and next request path. | Reduces uncertainty. |
-| livestockfeedops.communication.partner_update | partner update | METHOD | Partners receive feed gaps, delivery barriers, herd needs and supplier status. | Coordinates response. |
-| livestockfeedops.communication.public_notice | public notice | METHOD | Notice states request channel, eligible species, required herd information and limits. | Guides producers. |
-| livestockfeedops.reporting.daily_summary | daily summary | MEASUREMENT | Summary reports requests, deliveries, feed issued, stock, shortages and urgent herds. | Informs command. |
-| livestockfeedops.metrics.herds_served | herds served | MEASUREMENT | Count tracks producers and animals served by species and area. | Shows reach. |
-| livestockfeedops.metrics.feed_tons | feed tons | MEASUREMENT | Metric totals feed issued by type, source and destination. | Shows scale. |
-| livestockfeedops.metrics.failed_delivery | failed delivery rate | MEASUREMENT | Rate tracks failed or delayed deliveries by reason. | Improves logistics. |
-| livestockfeedops.review.after_action | after-action review | METHOD | Review captures sourcing, quality, biosecurity, delivery access and reconciliation lessons. | Improves future feed support. |
+| livestockfeedops.intake.request_source | источник запроса | RECORD | Производитель исходных записей, ветеринар, специалист по распространению информации, менеджер по чрезвычайным ситуациям, кооператив или горячая линия. | Показывает путь входа. |
+| livestockfeedops.intake.producer_contact | контакт продюсера | RECORD | Контакт фиксирует владельца, ферму, телефон, место доставки и резервный контакт. | Обеспечивает координацию. |
+| livestockfeedops.intake.need_reason | нужна причина | RECORD | Разум фиксирует засуху, наводнение, пожар, снегопад, нарушение работы транспорта или потерю пастбищ. | Объясняет запрос. |
+| livestockfeedops.intake.urgency | модель срочности | MODEL | Срочность учитывает остатки корма, состояние животных, погоду, изоляцию и доступ к воде. | Отдает приоритет доставке. |
+| livestockfeedops.herd.species | запись вида | RECORD | В учете видов различают крупный рогатый скот, овец, коз, лошадей, птицу, свиней или специальный скот. | Выбирает корм. |
+| livestockfeedops.herd.headcount | подсчет стада | MEASUREMENT | При подсчете учитываются животные по классам, возрасту, весовому диапазону и лактации, где это необходимо. | Размеры нужны. |
+| livestockfeedops.herd.vulnerable | уязвимая группа | RECORD | К уязвимой группе относятся молодые, беременные, кормящие, больные и пожилые животные. | Регулирует приоритет. |
+| livestockfeedops.herd.location | расположение стада | RECORD | Местоположение записывает пастбище, сарай, место эвакуации, округ и ограничения доступа. | Поддерживает маршрутизацию. |
+| livestockfeedops.feed.feed_type | тип корма | RECORD | По типу различают сено, зерно, пеллеты, силос, минеральные, заменители молока или видовые корма. | Определяет предложение. |
+| livestockfeedops.feed.ration_note | продовольственная записка | METHOD | В примечаниях к рациону используются рекомендации производителя/ветеринара, но они не заменяют профессиональных рекомендаций по питанию. | Предотвращает несоответствие. |
+| livestockfeedops.feed.quantity_estimate | оценка количества | MEASUREMENT | Estimate рассчитывает запрошенные единицы по количеству животных, периоду и типу корма. | Планы сток. |
+| livestockfeedops.feed.special_need | особая потребность | RECORD | Особые потребности включают медицинскую диету, смену корма, пределы хранения или ограничения по видам. | Защищает животных. |
+| livestockfeedops.sourcing.supplier_roster | список поставщиков | RECORD | В реестре перечислены комбикормовые заводы, торговцы сеном, кооперативы, фермы и источники пожертвований. | Находит снабжение. |
+| livestockfeedops.sourcing.availability | проверка доступности | QUALITY_CHECK | Проверка подтверждает количество, качество, время получения, цену, необходимость погрузки и транспортировки. | Избегает неудачных источников. |
+| livestockfeedops.sourcing.donation | запись о пожертвовании | RECORD | Пожертвование учитывает донора, тип корма, количество, состояние, ограничения и потребности в получении. | Отслеживает подарки. |
+| livestockfeedops.sourcing.purchase_order | заказ на покупку | RECORD | Ссылки для заказа поставщика, корма, количества, цены, финансирования и условий доставки. | Начинает закупки. |
+| livestockfeedops.quality.feed_condition | состояние корма | QUALITY_CHECK | Состояние проверяется на влажность, плесень, порчу, загрязнение, упаковку и партию. | Защищает стада. |
+| livestockfeedops.quality.species_fit | виды подходят | SAFETY_RULE | Корма, непригодные для вида или класса, без заключения экспертизы не выдаются. | Предотвращает вред. |
+| livestockfeedops.quality.storage | проверка хранилища | SAFETY_RULE | Хранение защищает корм от воды, вредителей, тепла, кражи и загрязнения. | Сохраняет запасы. |
+| livestockfeedops.quality.recall | проверка отзыва | QUALITY_CHECK | Уведомления об отзыве или загрязнении проверяются для купленных или подаренных кормов. | Избегает небезопасных проблем. |
+| livestockfeedops.delivery.route_plan | план маршрута | METHOD | Маршрутные группы доставки по географии, срочности, типу корма и вместимости грузовика. | Экономит время. |
+| livestockfeedops.delivery.access_check | проверка доступа | METHOD | Проверка охватывает дороги, ворота, грязь, мосты, погрузочную площадку и разгрузочное оборудование. | Предотвращает неудачную доставку. |
+| livestockfeedops.delivery.transport_unit | транспортная единица | RECORD | Устройство записывает грузовик, прицеп, водителя, вместимость, маршрут и контакт. | Выполняет движение. |
+| livestockfeedops.delivery.delivery_window | окно доставки | RECORD | Окно записывает получение, расчетное время прибытия, контакт с объектом, план разгрузки и погодные риски. | Устанавливает ожидания. |
+| livestockfeedops.safety.loading | безопасность загрузки | SAFETY_RULE | При погрузке используется оборудование, ограничения по весу, контроль движения и обученные операторы. | Предотвращает травмы. |
+| livestockfeedops.safety.biosecurity | правило биобезопасности | SAFETY_RULE | Транспортные средства и персонал соблюдают меры предосторожности по борьбе с болезнями между фермами. | Уменьшает распространение. |
+| livestockfeedops.safety.driver | безопасность водителя | SAFETY_RULE | Безопасность водителя включает усталость, дорожные опасности, зоны содержания животных, движение сзади и общение. | Защищает экипаж. |
+| livestockfeedops.safety.site_hazard | опасность на объекте | RECORD | Опасность на объекте связана с агрессивными животными, поврежденными конструкциями, паводковыми водами или нестабильным грунтом. | Гид-бригада. |
+| livestockfeedops.issue.issue_record | выпустить запись | RECORD | В записи указываются производитель, корм, количество, дата, источник, драйвер и подпись, если это возможно. | Распространение треков. |
+| livestockfeedops.issue.limit_rule | лимит эмиссии | CONSTRAINT | Ограничения определяют количество на стадо, период, вид или приоритет. | Расширяет поставки. |
+| livestockfeedops.issue.exception | проблема исключения | RECORD | В исключении указываются срочные потребности в защите животных, одобрение и причина. | Обеспечивает гибкость. |
+| livestockfeedops.issue.refusal | запись об отказе | RECORD | Отказ фиксирует неподходящий корм, отказ доступа, отмену производителя или проблему безопасности. | Объясняет невозможность доставки. |
+| livestockfeedops.reconcile.stock_count | инвентаризация | MEASUREMENT | Подсчет сверяет полученные, выданные, испорченные, переданные и оставшиеся корма. | Показывает инвентарь. |
+| livestockfeedops.reconcile.invoice | сверка счетов | QUALITY_CHECK | В счете-фактуре проверяется поставщик, количество, доставка, цена и код финансирования. | Предотвращает переплату. |
+| livestockfeedops.reconcile.donation_receipt | квитанция о пожертвовании | RECORD | Квитанция документирует подтверждение донора, ограничения и распоряжение. | Поддерживает ответственность. |
+| livestockfeedops.reconcile.loss | запись о потерях | RECORD | Записи о потерях испорченных, поврежденных, украденных или непригодных для использования кормов и их причины. | Объясняет дисперсию. |
+| livestockfeedops.communication.producer_update | обновление продюсера | METHOD | Обновление объясняет статус доставки, ограничения, замены, примечания по безопасности и путь следующего запроса. | Уменьшает неопределенность. |
+| livestockfeedops.communication.partner_update | обновление партнера | METHOD | Партнеры получают информацию о дефиците кормов, барьерах доставки, потребностях стада и статусе поставщика. | Координирует ответ. |
+| livestockfeedops.communication.public_notice | публичное уведомление | METHOD | В уведомлении указывается канал запроса, подходящие виды, необходимая информация о стаде и ограничения. | Продюсеры гидов. |
+| livestockfeedops.reporting.daily_summary | ежедневная сводка | MEASUREMENT | Сводные отчеты о запросах, поставках, выдаче кормов, запасах, нехватке и срочных стадах. | Информирует командование. |
+| livestockfeedops.metrics.herds_served | стада обслуживаются | MEASUREMENT | Подсчет отслеживает производителей и животных, обслуживаемых по видам и территориям. | Показывает охват. |
+| livestockfeedops.metrics.feed_tons | тонны корма | MEASUREMENT | Фид итоговых показателей, выдаваемый по типу, источнику и назначению. | Показывает масштаб. |
+| livestockfeedops.metrics.failed_delivery | процент неудачных поставок | MEASUREMENT | Ставка отслеживает неудачные или задержанные поставки по причинам. | Улучшает логистику. |
+| livestockfeedops.review.after_action | обзор после действий | METHOD | В обзоре отражены уроки по источникам, качеству, биобезопасности, доступу к доставке и сверке уроков. | Улучшает будущую поддержку фидов. |

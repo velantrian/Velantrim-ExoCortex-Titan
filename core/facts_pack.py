@@ -238,6 +238,45 @@ class FactsPackBuilder:
         self._candidates.extend(facts)
         return self
 
+    @staticmethod
+    def _dedup_semantic(facts: list[PackedFact]) -> list[PackedFact]:
+        """
+        V8.8: Семантическая дедупликация — удалить факты с почти идентичным смыслом.
+
+        Алгоритм: pairwise Jaccard-сходство по токенам claim.
+        Если два факта имеют >70% общих токенов — оставляем с большим confidence.
+        Без LLM, без эмбеддингов — чистая токен-математика.
+        """
+        if len(facts) <= 1:
+            return facts
+
+        # Токенизировать все claims
+        tokenized = []
+        for f in facts:
+            tokens = frozenset(f.claim.lower().split())
+            tokenized.append(tokens)
+
+        keep: list[bool] = [True] * len(facts)
+        for i in range(len(facts)):
+            if not keep[i]:
+                continue
+            for j in range(i + 1, len(facts)):
+                if not keep[j]:
+                    continue
+                # Jaccard similarity
+                a, b = tokenized[i], tokenized[j]
+                if not a or not b:
+                    continue
+                overlap = len(a & b) / min(len(a), len(b))
+                if overlap > 0.7:
+                    # Оставить с большим confidence
+                    if facts[j].confidence > facts[i].confidence:
+                        keep[i] = False
+                    else:
+                        keep[j] = False
+
+        return [f for f, k in zip(facts, keep) if k]
+
     def build(self, query: str) -> FactsPack:
         """
         Применить политики и построить FactsPack.
@@ -304,8 +343,12 @@ class FactsPackBuilder:
                 living_context=fact.get("living_context"),
             ))
 
-        # Сортируем по confidence DESC
-        included.sort(key=lambda f: -f.confidence)
+        # V8.8: Семантическая дедупликация — удалить дубликаты по смыслу
+        # перед отправкой LLM. Экономия token budget + качество ответа.
+        included = self._dedup_semantic(included)
+
+        # Сортируем по confidence × retrieval_score DESC
+        included.sort(key=lambda f: -(f.confidence * max(f.retrieval_score, 0.01)))
 
         # Предупреждение если нашли что-то плохое
         warning = None

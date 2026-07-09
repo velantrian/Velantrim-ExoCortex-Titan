@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| massfeedingops.activation.trigger | feeding trigger | MODEL | Trigger includes sheltering, displacement, power outage, field crews or access loss. | Starts meal coordination. |
-| massfeedingops.activation.lead_agency | lead agency | RECORD | Lead agency coordinates kitchen, partners, logistics, public health and sites. | Clarifies responsibility. |
-| massfeedingops.activation.capacity | kitchen capacity | MEASUREMENT | Capacity estimates meals per period by staff, equipment, space and supplies. | Prevents overcommitment. |
-| massfeedingops.activation.service_model | service model | RECORD | Model distinguishes fixed kitchen, mobile kitchen, catered meals or shelf-stable meals. | Defines operation. |
-| massfeedingops.menu.menu_plan | menu plan | RECORD | Menu plan lists meals, portions, dates, ingredients and nutrition assumptions. | Guides production. |
-| massfeedingops.menu.dietary | dietary needs | METHOD | Dietary planning considers allergies, medical, religious, cultural and infant needs. | Improves safe access. |
-| massfeedingops.menu.shelf_stable | shelf-stable option | METHOD | Shelf-stable meals support delivery gaps or no-cook environments. | Adds resilience. |
-| massfeedingops.menu.menu_change | menu change | METHOD | Menu changes record supply, safety or demand reasons. | Keeps staff aligned. |
-| massfeedingops.supply.inventory | food inventory | MEASUREMENT | Inventory tracks ingredients, prepared meals, packaging, water and special diets. | Shows available supply. |
-| massfeedingops.supply.receiving | food receiving | QUALITY_CHECK | Receiving checks source, temperature, condition, date and quantity. | Protects food safety. |
-| massfeedingops.supply.reorder | reorder trigger | MODEL | Reorder uses meal counts, burn rate, delivery time and reserve. | Prevents meal gaps. |
-| massfeedingops.supply.donation | donated food control | SAFETY_RULE | Donated food must meet safety, packaging and traceability rules. | Prevents illness. |
-| massfeedingops.production.batch | production batch | RECORD | Batch records menu, quantity, staff, start/end, lot ingredients and destination. | Creates traceability. |
-| massfeedingops.production.portion | portion control | METHOD | Portion standards align count, nutrition and inventory. | Reduces waste. |
-| massfeedingops.production.hot_hold | hot holding | SAFETY_RULE | Hot foods maintain required temperature until service or delivery. | Prevents foodborne illness. |
-| massfeedingops.production.cold_hold | cold holding | SAFETY_RULE | Cold foods stay under required temperature limits. | Maintains safety. |
-| massfeedingops.foodsafety.haccp | food safety plan | SAFETY_RULE | Plan covers receiving, storage, prep, cooking, holding, transport and service. | Controls illness risk. |
-| massfeedingops.foodsafety.temp_log | temperature log | RECORD | Logs record cooking, holding, cooling, transport and corrective actions. | Provides evidence. |
-| massfeedingops.foodsafety.allergen | allergen control | SAFETY_RULE | Allergens are labeled and separated where feasible. | Protects recipients. |
-| massfeedingops.foodsafety.ill_worker | ill worker rule | SAFETY_RULE | Ill food workers are excluded or reassigned by policy. | Prevents outbreaks. |
-| massfeedingops.delivery.delivery_id | delivery ID | RECORD | Delivery ID links meals, route, driver, time, site and count. | Tracks outbound meals. |
-| massfeedingops.delivery.route | route planning | METHOD | Routes consider shelters, field sites, road closures, time and temperature. | Gets meals there safely. |
-| massfeedingops.delivery.handoff | handoff proof | RECORD | Receiver confirms quantity, condition, time and temperature if required. | Closes delivery loop. |
-| massfeedingops.delivery.delay | delay response | METHOD | Delays trigger site notice, temperature check, replacement or discard decision. | Protects safety. |
-| massfeedingops.service.site_count | site meal count | MEASUREMENT | Sites report requested, delivered, served, leftover and unmet meals. | Sizes production. |
-| massfeedingops.service.queue | service queue | METHOD | Queue layout handles access, shade, disability, children and crowd flow. | Keeps service orderly. |
-| massfeedingops.service.leftovers | leftover handling | SAFETY_RULE | Leftovers are reused, donated or discarded only under safety rules. | Prevents unsafe reuse. |
-| massfeedingops.service.feedback | recipient feedback | METHOD | Feedback captures dietary gaps, timing, quality and access issues. | Improves service. |
-| massfeedingops.volunteers.role | volunteer role | RECORD | Roles include prep, packing, loading, serving, cleaning and runner. | Organizes labor. |
-| massfeedingops.volunteers.training | food safety training | SAFETY_RULE | Volunteers receive hygiene, allergen, temperature and conduct briefing. | Reduces mistakes. |
-| massfeedingops.volunteers.supervision | supervision | METHOD | Volunteers work under kitchen lead or station captain. | Maintains quality. |
-| massfeedingops.volunteers.fatigue | fatigue control | SAFETY_RULE | Long kitchen shifts require breaks, hydration and rotation. | Protects workers. |
-| massfeedingops.sanitation.cleaning | cleaning schedule | RECORD | Schedule covers surfaces, equipment, floors, dishwashing and waste. | Maintains hygiene. |
-| massfeedingops.sanitation.waste | waste handling | METHOD | Waste is sorted, removed and stored away from food. | Reduces pests and contamination. |
-| massfeedingops.sanitation.water | water and handwash | SAFETY_RULE | Handwashing and safe water must be available for prep and service. | Enables safe operation. |
-| massfeedingops.sanitation.pest | pest control | METHOD | Food and waste storage reduce pests. | Protects kitchen. |
-| massfeedingops.reporting.daily_report | daily report | RECORD | Report summarizes meals produced, delivered, served, wasted and unmet. | Feeds command. |
-| massfeedingops.reporting.cost | cost record | RECORD | Costs track food, labor, equipment, transport, packaging and donations. | Supports reimbursement. |
-| massfeedingops.reporting.special_diet | special diet report | MEASUREMENT | Report tracks special diet demand and fulfillment. | Guides menu planning. |
-| massfeedingops.records.retention | retention rule | CONSTRAINT | Records follow food safety, finance, emergency and grant schedules. | Preserves audit. |
-| massfeedingops.qa.safety_audit | safety audit | QUALITY_CHECK | Audit checks temperature logs, cleaning, allergens, receiving and worker hygiene. | Prevents outbreaks. |
-| massfeedingops.qa.count_reconcile | count reconciliation | QUALITY_CHECK | Meal counts reconcile production, delivery, service and leftovers. | Controls waste and funding. |
-| massfeedingops.demob.kitchen_close | kitchen closeout | METHOD | Closeout cleans, inventories, disposes food, returns equipment and archives records. | Ends feeding safely. |
-| massfeedingops.review.after_action | after-action review | METHOD | Review captures capacity, diet needs, routes, volunteers and food safety lessons. | Improves next response. |
+| massfeedingops.activation.trigger | триггер подачи | MODEL | Триггер включает укрытие, перемещение, отключение электроэнергии, работу полевых бригад или потерю доступа. | Начинает координировать прием пищи. |
+| massfeedingops.activation.lead_agency | ведущее агентство | RECORD | Ведущее агентство координирует кухню, партнеров, логистику, здравоохранение и объекты. | Уточняет ответственность. |
+| massfeedingops.activation.capacity | вместимость кухни | MEASUREMENT | Производительность оценивает питание за период с разбивкой по персоналу, оборудованию, помещениям и расходным материалам. | Предотвращает чрезмерные обязательства. |
+| massfeedingops.activation.service_model | модель обслуживания | RECORD | Модель различает стационарную кухню, мобильную кухню, питание с обслуживанием или питание длительного хранения. | Определяет операцию. |
+| massfeedingops.menu.menu_plan | план меню | RECORD | В плане меню перечислены блюда, порции, даты, ингредиенты и предположения о питании. | Производство направляющих. |
+| massfeedingops.menu.dietary | диетические потребности | METHOD | При планировании диеты учитываются аллергии, медицинские, религиозные, культурные и детские потребности. | Улучшает безопасный доступ. |
+| massfeedingops.menu.shelf_stable | устойчивый к хранению вариант | METHOD | Блюда длительного хранения позволяют избежать проблем с доставкой или отсутствием готовки. | Добавляет устойчивости. |
+| massfeedingops.menu.menu_change | изменение меню | METHOD | Меню меняется по соображениям предложения, безопасности или спроса. | Обеспечивает сплоченность персонала. |
+| massfeedingops.supply.inventory | запас продуктов питания | MEASUREMENT | Инвентаризация отслеживает ингредиенты, готовые блюда, упаковку, воду и специальные диеты. | Показывает доступный запас. |
+| massfeedingops.supply.receiving | получение еды | QUALITY_CHECK | Прием чеков: источник, температура, состояние, дата и количество. | Обеспечивает безопасность пищевых продуктов. |
+| massfeedingops.supply.reorder | триггер изменения порядка | MODEL | При повторном заказе учитываются количество приемов пищи, скорость сжигания, время доставки и резерв. | Предотвращает перерывы в приеме пищи. |
+| massfeedingops.supply.donation | контроль пожертвованной еды | SAFETY_RULE | Пожертвованные продукты питания должны соответствовать правилам безопасности, упаковки и отслеживания. | Предотвращает болезнь. |
+| massfeedingops.production.batch | производственная партия | RECORD | Меню пакетной записи, количество, персонал, начало/конец, ингредиенты партии и пункт назначения. | Обеспечивает прослеживаемость. |
+| massfeedingops.production.portion | контроль порций | METHOD | Нормы порций выравнивают количество, питание и инвентарь. | Уменьшает отходы. |
+| massfeedingops.production.hot_hold | горячий холдинг | SAFETY_RULE | Горячие блюда сохраняют необходимую температуру до момента подачи или доставки. | Предотвращает болезни пищевого происхождения. |
+| massfeedingops.production.cold_hold | холодная выдержка | SAFETY_RULE | Холодные продукты остаются в необходимых температурных пределах. | Сохраняет безопасность. |
+| massfeedingops.foodsafety.haccp | план безопасности пищевых продуктов | SAFETY_RULE | План охватывает получение, хранение, подготовку, приготовление пищи, хранение, транспортировку и обслуживание. | Контролирует риск заболеваний. |
+| massfeedingops.foodsafety.temp_log | журнал температуры | RECORD | В журналах фиксируются приготовления, выдерживание, охлаждение, транспортировка и корректирующие действия. | Предоставляет доказательства. |
+| massfeedingops.foodsafety.allergen | контроль аллергенов | SAFETY_RULE | Аллергены маркируются и отделяются, где это возможно. | Защищает получателей. |
+| massfeedingops.foodsafety.ill_worker | правило плохого работника | SAFETY_RULE | Больные работники пищевой промышленности исключаются или переназначаются в соответствии с политикой. | Предотвращает вспышки. |
+| massfeedingops.delivery.delivery_id | идентификатор доставки | RECORD | Идентификатор доставки связывает блюда, маршрут, водителя, время, место и количество. | Отслеживает исходящие блюда. |
+| massfeedingops.delivery.route | планирование маршрута | METHOD | Маршруты учитывают укрытия, полевые площадки, перекрытие дорог, время и температуру. | Обедает там безопасно. |
+| massfeedingops.delivery.handoff | доказательство передачи | RECORD | При необходимости получатель подтверждает количество, состояние, время и температуру. | Замыкает цикл доставки. |
+| massfeedingops.delivery.delay | реакция задержки | METHOD | Задержки приводят к уведомлению объекта, проверке температуры, принятию решения о замене или утилизации. | Обеспечивает безопасность. |
+| massfeedingops.service.site_count | счетчик еды на сайте | MEASUREMENT | Сайты сообщают о запрошенных, доставленных, обслуженных, остатках и неудовлетворенных блюдах. | Производство размеров. |
+| massfeedingops.service.queue | очередь обслуживания | METHOD | Схема очереди учитывает доступ, тень, инвалидность, детей и толпу. | Содержит сервис в порядке. |
+| massfeedingops.service.leftovers | обработка остатков | SAFETY_RULE | Остатки повторно используются, отдаются или выбрасываются только в соответствии с правилами безопасности. | Предотвращает небезопасное повторное использование. |
+| massfeedingops.service.feedback | отзыв получателя | METHOD | Обратная связь отражает пробелы в питании, сроки, качество и проблемы доступа. | Улучшает сервис. |
+| massfeedingops.volunteers.role | роль волонтера | RECORD | В обязанности входит подготовка, упаковка, погрузка, подача, уборка и бегун. | Организует труд. |
+| massfeedingops.volunteers.training | обучение безопасности пищевых продуктов | SAFETY_RULE | Волонтёры получают гигиенические, аллергенные, температурные данные и проводят инструктаж. | Уменьшает ошибки. |
+| massfeedingops.volunteers.supervision | надзор | METHOD | Добровольцы работают под руководством начальника кухни или начальника станции. | Сохраняет качество. |
+| massfeedingops.volunteers.fatigue | контроль усталости | SAFETY_RULE | Длительные кухонные смены требуют перерывов, питья и ротации. | Защищает рабочих. |
+| massfeedingops.sanitation.cleaning | график уборки | RECORD | График охватывает поверхности, оборудование, полы, мытье посуды и отходы. | Соблюдает гигиену. |
+| massfeedingops.sanitation.waste | обработка отходов | METHOD | Отходы сортируются, вывозятся и хранятся отдельно от продуктов питания. | Уменьшает количество вредителей и загрязнений. |
+| massfeedingops.sanitation.water | вода и мытье рук | SAFETY_RULE | Для подготовки и обслуживания должны быть доступны мытье рук и безопасная вода. | Обеспечивает безопасную работу. |
+| massfeedingops.sanitation.pest | борьба с вредителями | METHOD | Хранение продуктов питания и отходов уменьшает количество вредителей. | Защищает кухню. |
+| massfeedingops.reporting.daily_report | ежедневный отчет | RECORD | В отчете суммируются блюда, произведенные, доставленные, поданные, потраченные впустую и неудовлетворенные. | Подает команду. |
+| massfeedingops.reporting.cost | запись затрат | RECORD | Затраты учитывают продукты питания, рабочую силу, оборудование, транспорт, упаковку и пожертвования. | Поддерживает возмещение. |
+| massfeedingops.reporting.special_diet | специальный отчет о диете | MEASUREMENT | Отчет отслеживает спрос на специальные диеты и их выполнение. | Планирование меню гидов. |
+| massfeedingops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам безопасности пищевых продуктов, финансов, чрезвычайных ситуаций и грантов. | Сохраняет аудит. |
+| massfeedingops.qa.safety_audit | аудит безопасности | QUALITY_CHECK | Аудит проверяет журналы температуры, уборку, аллергены, приемку и гигиену работников. | Предотвращает вспышки. |
+| massfeedingops.qa.count_reconcile | подсчет сверки | QUALITY_CHECK | Подсчеты еды согласовывают производство, доставку, обслуживание и остатки. | Контролирует отходы и финансирование. |
+| massfeedingops.demob.kitchen_close | кухня распродажа | METHOD | Распродажа производит уборку, инвентаризацию, утилизацию продуктов питания, возврат оборудования и архивирование записей. | Заканчивает кормление благополучно. |
+| massfeedingops.review.after_action | обзор после действий | METHOD | В обзоре учитываются возможности, потребности в питании, маршруты, волонтеры и уроки по безопасности пищевых продуктов. | Улучшает следующий ответ. |

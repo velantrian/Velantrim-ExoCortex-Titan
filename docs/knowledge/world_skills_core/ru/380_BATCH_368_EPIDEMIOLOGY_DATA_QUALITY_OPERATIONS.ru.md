@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| epidataops.intake.feed_registry | feed registry | RECORD | Registry lists labs, hospitals, clinics, schools and manual entry sources. | Shows data origins. |
-| epidataops.intake.file_receipt | file receipt | RECORD | Receipt records file, timestamp, sender, schema and row count. | Creates ingest audit. |
-| epidataops.intake.schema_check | schema check | QUALITY_CHECK | Incoming fields are checked against expected names, types and code sets. | Prevents broken imports. |
-| epidataops.intake.error_queue | error queue | METHOD | Invalid records route to repair queue with reason. | Keeps failures visible. |
-| epidataops.identity.person_key | person key | MODEL | Person key combines name, date, contact, address and identifiers. | Supports matching. |
-| epidataops.identity.case_key | case key | MODEL | Case key combines person, disease, event and date logic. | Prevents duplicate cases. |
-| epidataops.identity.merge_rule | merge rule | METHOD | Merge rule decides when records combine, remain separate or need review. | Controls deduplication. |
-| epidataops.identity.unmerge | unmerge process | METHOD | Incorrect merges can be reversed with audit history. | Repairs false matches. |
-| epidataops.missing.required_fields | required fields | CONSTRAINT | Required fields vary by condition, report type and surveillance purpose. | Defines completeness. |
-| epidataops.missing.completeness | completeness metric | MEASUREMENT | Completeness tracks missing onset, lab, demographics, location and outcome. | Shows data quality. |
-| epidataops.missing.followup_task | follow-up task | METHOD | Missing critical fields trigger investigator, provider or lab query. | Improves records. |
-| epidataops.missing.unknown_code | unknown code | RECORD | Unknown is distinct from blank or not asked. | Prevents false precision. |
-| epidataops.definition.case_definition | case definition | CONSTRAINT | Case definition maps lab, symptoms, exposure and epidemiologic criteria. | Standardizes classification. |
-| epidataops.definition.version | definition version | RECORD | Version records which definition applied at classification time. | Supports trend interpretation. |
-| epidataops.definition.probable | probable case | MODEL | Probable case meets partial clinical/epidemiologic criteria. | Preserves uncertainty. |
-| epidataops.definition.reclassification | reclassification | METHOD | Cases can change status when new lab or exposure data arrives. | Keeps dataset current. |
-| epidataops.codes.code_set | code set | RECORD | Code sets define disease, lab, location, race/ethnicity, setting and outcome values. | Enables analysis. |
-| epidataops.codes.mapping | code mapping | METHOD | Mapping converts local codes to standard codes. | Integrates sources. |
-| epidataops.codes.invalid_code | invalid code | FAILURE_MODE | Invalid code breaks dashboards or misclassifies cases. | Requires validation. |
-| epidataops.codes.retired_code | retired code | CONSTRAINT | Retired codes are preserved historically but blocked for new records. | Maintains continuity. |
-| epidataops.linkage.lab_link | lab linkage | METHOD | Lab results link to cases by person, specimen and accession. | Connects evidence. |
-| epidataops.linkage.hospital_link | hospital linkage | METHOD | Hospital data links admissions, ICU, discharge and deaths. | Tracks severity. |
-| epidataops.linkage.outbreak_link | outbreak linkage | METHOD | Cases link to outbreak, facility, event or exposure cluster. | Supports response. |
-| epidataops.linkage.privacy | linkage privacy | SAFETY_RULE | Linkage uses minimum necessary access and logs. | Protects sensitive data. |
-| epidataops.temporal.event_date | event date hierarchy | MODEL | Date hierarchy prioritizes onset, specimen, diagnosis, report and entry dates by use. | Prevents trend distortion. |
-| epidataops.temporal.lag | reporting lag | MEASUREMENT | Lag measures event-to-report and report-to-entry delay. | Explains delayed trends. |
-| epidataops.temporal.backfill | backfill handling | METHOD | Backfilled records update historical counts with versioned refresh. | Keeps dashboards honest. |
-| epidataops.temporal.timezone | timezone standard | CONSTRAINT | Timestamps use consistent timezone or UTC conversion. | Avoids daily count errors. |
-| epidataops.dashboard.metric_definition | metric definition | RECORD | Each dashboard metric has numerator, denominator, filters and refresh cadence. | Prevents ambiguous charts. |
-| epidataops.dashboard.suppression | small cell suppression | SAFETY_RULE | Small counts are suppressed or aggregated when privacy risk exists. | Protects identity. |
-| epidataops.dashboard.refresh_log | refresh log | RECORD | Refresh log records data time, run status and anomalies. | Supports trust. |
-| epidataops.dashboard.annotation | annotation | METHOD | Public charts note definition changes, outages, backlogs and reporting shifts. | Reduces misinterpretation. |
-| epidataops.audit.change_log | change log | RECORD | Changes to records capture old value, new value, user, time and reason. | Makes edits accountable. |
-| epidataops.audit.access_log | access log | RECORD | Access logs show who viewed or exported sensitive data. | Detects misuse. |
-| epidataops.audit.sample_review | sample review | QUALITY_CHECK | Sampled cases are reviewed for classification, completeness and linkage. | Improves reliability. |
-| epidataops.audit.export_review | export review | QUALITY_CHECK | Exports are checked for privacy, fields, filters and recipient authorization. | Prevents disclosure mistakes. |
-| epidataops.governance.data_owner | data owner | RECORD | Data owner defines standards, approvals and quality thresholds. | Keeps accountability. |
-| epidataops.governance.dictionary | data dictionary | RECORD | Dictionary explains fields, values, sources and caveats. | Supports reuse. |
-| epidataops.governance.issue_log | issue log | RECORD | Issue log tracks defects, owner, priority, fix and validation. | Turns quality into work. |
-| epidataops.governance.release_rule | release rule | CONSTRAINT | Public release requires privacy, accuracy and communications review. | Protects public trust. |
-| epidataops.metrics.duplicate_rate | duplicate rate | MEASUREMENT | Duplicate rate tracks likely duplicates per feed and condition. | Targets cleanup. |
-| epidataops.metrics.timeliness | timeliness metric | MEASUREMENT | Timeliness measures report-to-action-ready record time. | Shows operational speed. |
-| epidataops.closeout.archive | archive snapshot | RECORD | Dataset snapshots preserve definitions, extracts and dashboards. | Enables later analysis. |
-| epidataops.review.lessons | data lessons | METHOD | Review identifies source problems, training needs and automation improvements. | Strengthens surveillance. |
+| epidataops.intake.feed_registry | реестр каналов | RECORD | В реестре перечислены лаборатории, больницы, клиники, школы и источники ручного ввода. | Показывает происхождение данных. |
+| epidataops.intake.file_receipt | получение файла | RECORD | Квитанция записывает файл, метку времени, отправителя, схему и количество строк. | Создает аудит приема. |
+| epidataops.intake.schema_check | проверка схемы | QUALITY_CHECK | Входящие поля проверяются на соответствие ожидаемым именам, типам и наборам кодов. | Предотвращает сбой импорта. |
+| epidataops.intake.error_queue | очередь ошибок | METHOD | Неверные записи направляются в очередь восстановления с указанием причины. | Делает сбои видимыми. |
+| epidataops.identity.person_key | ключ человека | MODEL | Ключ человека объединяет имя, дату, контакт, адрес и идентификаторы. | Поддерживает сопоставление. |
+| epidataops.identity.case_key | ключ от дела | MODEL | Ключ дела объединяет логику человека, заболевания, события и даты. | Предотвращает дублирование дел. |
+| epidataops.identity.merge_rule | правило слияния | METHOD | Правило слияния определяет, когда записи объединяются, остаются отдельными или требуют проверки. | Управляет дедупликацией. |
+| epidataops.identity.unmerge | объединить процесс | METHOD | Неправильные слияния можно отменить с помощью истории аудита. | Исправляет ложные совпадения. |
+| epidataops.missing.required_fields | обязательные поля | CONSTRAINT | Обязательные поля различаются в зависимости от состояния, типа отчета и цели наблюдения. | Определяет полноту. |
+| epidataops.missing.completeness | показатель полноты | MEASUREMENT | Полнота отслеживает отсутствие начала, лаборатории, демографических данных, местоположения и результата. | Показывает качество данных. |
+| epidataops.missing.followup_task | последующая задача | METHOD | Отсутствие критических полей вызывает запрос исследователя, поставщика или лаборатории. | Улучшает записи. |
+| epidataops.missing.unknown_code | неизвестный код | RECORD | Неизвестно отличается от пустого или не заданного. | Предотвращает ложную точность. |
+| epidataops.definition.case_definition | определение случая | CONSTRAINT | При определении случаев заболевания отображаются лабораторные данные, симптомы, воздействие и эпидемиологические критерии. | Стандартизирует классификацию. |
+| epidataops.definition.version | версия определения | RECORD | Версия записывает, какое определение применялось во время классификации. | Поддерживает интерпретацию тренда. |
+| epidataops.definition.probable | вероятный случай | MODEL | Вероятный случай соответствует частичным клиническим/эпидемиологическим критериям. | Сохраняет неопределенность. |
+| epidataops.definition.reclassification | реклассификация | METHOD | Статус случаев может измениться при поступлении новых лабораторных данных или данных о воздействии. | Поддерживает актуальность набора данных. |
+| epidataops.codes.code_set | кодовый набор | RECORD | Наборы кодов определяют заболевание, лабораторию, местоположение, расу/этническую принадлежность, условия и значения результатов. | Включает анализ. |
+| epidataops.codes.mapping | отображение кода | METHOD | Сопоставление преобразует местные коды в стандартные коды. | Интегрирует источники. |
+| epidataops.codes.invalid_code | неверный код | FAILURE_MODE | Неверный код нарушает работу информационных панелей или неправильно классифицирует обращения. | Требует проверки. |
+| epidataops.codes.retired_code | устаревший код | CONSTRAINT | Устаревшие коды исторически сохраняются, но блокируются для новых записей. | Сохраняет преемственность. |
+| epidataops.linkage.lab_link | связь с лабораторией | METHOD | Результаты лабораторных исследований связаны со случаями по отдельным лицам, образцам и образцам. | Соединяет доказательства. |
+| epidataops.linkage.hospital_link | связь с больницей | METHOD | Больничные данные связывают госпитализацию, отделение интенсивной терапии, выписку и смертность. | Отслеживает серьезность. |
+| epidataops.linkage.outbreak_link | связь со вспышкой | METHOD | Случаи связаны со вспышкой, учреждением, событием или кластером воздействия. | Поддерживает ответ. |
+| epidataops.linkage.privacy | конфиденциальность связи | SAFETY_RULE | Linkage использует минимально необходимый доступ и журналы. | Защищает конфиденциальные данные. |
+| epidataops.temporal.event_date | иерархия дат событий | MODEL | Иерархия дат определяет приоритетность дат начала, образца, диагноза, отчета и поступления в зависимости от использования. | Предотвращает искажение тренда. |
+| epidataops.temporal.lag | задержка отчетности | MEASUREMENT | Задержка измеряет задержку от события до отчета и от отчета до записи. | Объясняет отсроченные тенденции. |
+| epidataops.temporal.backfill | обработка обратной засыпки | METHOD | Записи с обратным заполнением обновляют исторические значения с помощью обновления версий. | Обеспечивает честность информационных панелей. |
+| epidataops.temporal.timezone | стандарт часового пояса | CONSTRAINT | Временные метки используют согласованный часовой пояс или преобразование UTC. | Избегает ошибок ежедневного подсчета. |
+| epidataops.dashboard.metric_definition | определение метрики | RECORD | Каждая метрика информационной панели имеет числитель, знаменатель, фильтры и частоту обновления. | Предотвращает появление неоднозначных диаграмм. |
+| epidataops.dashboard.suppression | подавление мелких клеток | SAFETY_RULE | Небольшие значения подавляются или суммируются, если существует риск конфиденциальности. | Защищает личность. |
+| epidataops.dashboard.refresh_log | обновить журнал | RECORD | В журнале обновления фиксируются данные о времени, статусе выполнения и аномалиях. | Поддерживает доверие. |
+| epidataops.dashboard.annotation | аннотация | METHOD | Публичные графики отмечают изменения в определениях, сбои в работе, задержки и изменения в отчетности. | Уменьшает неправильное толкование. |
+| epidataops.audit.change_log | журнал изменений | RECORD | Изменения в записях фиксируют старое значение, новое значение, пользователя, время и причину. | Привлекает к ответственности правки. |
+| epidataops.audit.access_log | журнал доступа | RECORD | Журналы доступа показывают, кто просматривал или экспортировал конфиденциальные данные. | Обнаруживает неправильное использование. |
+| epidataops.audit.sample_review | образец обзора | QUALITY_CHECK | Отобранные случаи проверяются на классификацию, полноту и взаимосвязь. | Повышает надежность. |
+| epidataops.audit.export_review | обзор экспорта | QUALITY_CHECK | Экспорты проверяются на конфиденциальность, поля, фильтры и авторизацию получателя. | Предотвращает ошибки раскрытия информации. |
+| epidataops.governance.data_owner | владелец данных | RECORD | Владелец данных определяет стандарты, разрешения и пороговые значения качества. | Сохраняет ответственность. |
+| epidataops.governance.dictionary | словарь данных | RECORD | Словарь объясняет поля, значения, источники и предостережения. | Поддерживает повторное использование. |
+| epidataops.governance.issue_log | журнал проблем | RECORD | Журнал проблем отслеживает дефекты, владельца, приоритет, исправления и проверки. | Превращает качество в работу. |
+| epidataops.governance.release_rule | правило выпуска | CONSTRAINT | Публичная публикация требует конфиденциальности, точности и проверки связи. | Защищает общественное доверие. |
+| epidataops.metrics.duplicate_rate | дублирующая ставка | MEASUREMENT | Коэффициент дубликатов отслеживает вероятные дубликаты для каждого корма и условия. | Очистка целей. |
+| epidataops.metrics.timeliness | показатель своевременности | MEASUREMENT | Своевременность измеряет время подготовки отчета к действию. | Показывает скорость работы. |
+| epidataops.closeout.archive | архивный снимок | RECORD | Снимки набора данных сохраняют определения, выдержки и информационные панели. | Включает последующий анализ. |
+| epidataops.review.lessons | уроки данных | METHOD | Обзор выявляет исходные проблемы, потребности в обучении и улучшения автоматизации. | Усиливает надзор. |

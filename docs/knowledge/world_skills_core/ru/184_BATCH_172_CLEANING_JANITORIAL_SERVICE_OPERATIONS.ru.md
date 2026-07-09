@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| cleanops.plan.area_schedule | Cleaning area schedule | invariant | Area schedule assigns spaces, tasks, frequency, time window and responsible team. | clean by plan |
-| cleanops.plan.scope_of_work | Janitorial scope of work | invariant | Scope defines surfaces, rooms, tasks, exclusions, quality expectations and reporting duties. | avoid unclear cleaning |
-| cleanops.plan.zone_map | Cleaning zone map | variant | Zone map divides facility into manageable routes based on risk, traffic, floor type and access. | route the work |
-| cleanops.plan.high_touch_list | High-touch surface list | invariant | List identifies handles, switches, rails, counters, buttons and shared devices needing frequent attention. | focus on contact points |
-| cleanops.plan.frequency_matrix | Cleaning frequency matrix | invariant | Matrix links task frequency to space type, traffic, risk and client requirement. | not every room daily deep clean |
-| cleanops.plan.after_hours_access | After-hours access | variant | Access plan controls keys, alarms, escort rules, restricted rooms and sign-in for cleaning staff. | clean safely after close |
-| cleanops.chemicals.sds_access | Safety data sheet access | invariant | SDS access ensures workers can review hazards, PPE, dilution and emergency actions for chemicals. | know the chemical |
-| cleanops.chemicals.dilution_control | Chemical dilution control | invariant | Dilution control prevents too-weak, too-strong or incompatible cleaning solution. | chemistry must be measured |
-| cleanops.chemicals.labeling | Secondary container labeling | invariant | Labeling identifies product, hazard and use when chemical is transferred from original container. | no mystery bottles |
-| cleanops.chemicals.compatibility | Chemical compatibility | invariant | Compatibility rules prevent dangerous mixing such as acids with bleach or ammonia-containing products. | avoid toxic reactions |
-| cleanops.chemicals.storage | Janitorial chemical storage | invariant | Storage separates incompatible chemicals, restricts access and prevents leaks or food-area contamination. | closet as safety zone |
-| cleanops.chemicals.spill_response | Cleaning chemical spill response | invariant | Spill response isolates area, uses appropriate PPE, contains material and escalates if beyond staff capability. | small spill can harm |
-| cleanops.tasks.restroom_clean | Restroom cleaning cycle | invariant | Cycle covers fixtures, floors, mirrors, consumables, odor, trash and touchpoints. | high-risk service area |
-| cleanops.tasks.floor_mopping | Wet mopping | invariant | Mopping removes soil while controlling slip risk, water quality, mop condition and wet-floor signage. | clean without creating hazard |
-| cleanops.tasks.vacuuming | Vacuuming task | invariant | Vacuuming removes dry soil from carpets with attention to edges, traffic lanes and cord safety. | carpet maintenance |
-| cleanops.tasks.trash_removal | Trash removal | invariant | Trash workflow handles liners, segregation, leakage, weight, route and disposal location. | waste leaves safely |
-| cleanops.tasks.dusting | Dusting task | variant | Dusting removes settled particles from surfaces without spreading contamination or damaging finishes. | visible quality |
-| cleanops.tasks.glass_cleaning | Glass cleaning | variant | Glass cleaning controls streaks, fingerprints, product residue and ladder or edge safety. | transparent surfaces show defects |
-| cleanops.equipment.cart_setup | Janitorial cart setup | invariant | Cart setup stocks tools, chemicals, PPE, liners, cloths and forms for route completion. | mobile workstation |
-| cleanops.equipment.color_coding | Cleaning color coding | variant | Color coding separates cloths, mops or tools by area or contamination risk. | prevent cross-use |
-| cleanops.equipment.autoscrubber | Autoscrubber operation | variant | Autoscrubber work requires correct pad, solution, squeegee, battery, route and recovery tank handling. | machine cleaning |
-| cleanops.equipment.vacuum_filter | Vacuum filter maintenance | invariant | Filter maintenance preserves suction, dust control and machine life. | equipment quality |
-| cleanops.equipment.mop_laundering | Mop and cloth laundering | invariant | Laundering or replacement prevents tools from spreading odor, soil or microbes. | dirty tools cannot clean |
-| cleanops.equipment.locked_storage | Equipment locked storage | invariant | Locked storage prevents misuse, theft, chemical access and obstruction of public areas. | control assets |
-| cleanops.quality.inspection_checklist | Cleaning inspection checklist | invariant | Checklist verifies task completion, visible quality, supplies, odors, damage and safety issues. | inspect against standard |
-| cleanops.quality.deficiency_tag | Cleaning deficiency tag | invariant | Deficiency tag records missed task, location, severity, photo, owner and correction status. | issue becomes action |
-| cleanops.quality.complaint_log | Janitorial complaint log | invariant | Complaint log captures client or occupant issue, time, location, response and trend. | feedback loop |
-| cleanops.quality.atp_swab | ATP swab | variant | ATP swab gives rapid indicator of organic residue on selected surfaces but does not identify pathogens. | verification tool |
-| cleanops.quality.before_after_photo | Before-after photo | variant | Photo evidence can document special cleans, damage, access issues or complaint closure. | visual proof |
-| cleanops.quality.service_level_review | Cleaning service level review | invariant | Review compares performance, complaints, inspections, staffing and scope against contract. | manage service |
-| cleanops.safety.slip_trip | Slip and trip control | invariant | Control includes signs, dry routes, cord management, prompt spill response and clutter reduction. | do not create accidents |
-| cleanops.safety.ppe_selection | Janitorial PPE selection | invariant | PPE matches task hazards such as chemicals, sharps, dust, bodily fluids or noise. | not one glove for all |
-| cleanops.safety.sharps_found | Sharps found procedure | invariant | Procedure avoids hand pickup, uses tools or approved container and reports location. | protect cleaners |
-| cleanops.safety.blood_bodily_fluid | Bodily fluid cleanup | invariant | Cleanup uses trained staff, correct PPE, containment, disinfectant and disposal path. | high-risk task |
-| cleanops.safety.ladder_use | Cleaning ladder use | variant | Ladder use requires correct height, condition, surface, positioning and no overreach. | avoid fall |
-| cleanops.safety.lone_worker | Janitorial lone worker check | variant | Lone worker process provides check-ins, emergency contact and access control for isolated shifts. | night work safety |
-| cleanops.staffing.route_time | Cleaning route time | invariant | Route time estimates labor needed for tasks, travel, setup, restocking and interruptions. | realistic staffing |
-| cleanops.staffing.task_training | Task training record | invariant | Training record confirms worker understands methods, chemicals, equipment and safety requirements. | competence evidence |
-| cleanops.staffing.substitution_plan | Cleaner substitution plan | variant | Substitution plan covers absence without losing critical tasks or access knowledge. | continuity of service |
-| cleanops.staffing.productivity_rate | Cleaning productivity rate | variant | Rate estimates area or fixtures cleaned per hour but must account for soil, traffic and scope. | compare with context |
-| cleanops.special.deep_clean | Deep cleaning project | variant | Deep clean addresses accumulated soil, vents, carpets, high surfaces, grout or periodic detail tasks. | beyond routine |
-| cleanops.special.post_construction_clean | Post-construction clean | variant | Post-construction cleaning removes dust, debris, labels, residues and fine particles before occupancy. | handover readiness |
-| cleanops.special.event_clean | Event cleaning | variant | Event clean handles pre-event, during-event and post-event waste, restrooms, spills and high traffic. | cleaning follows crowd |
-| cleanops.records.cleaning_log | Cleaning log | invariant | Log records task completion, time, worker, area, exceptions and corrective notes. | proof of service |
+| cleanops.plan.area_schedule | График уборки территории | invariant | Расписание зон определяет места, задачи, периодичность, временные окна и ответственную команду. | убирать по плану |
+| cleanops.plan.scope_of_work | Объем работ по уборке | invariant | Объем определяет поверхности, помещения, задачи, исключения, ожидания качества и обязанности по отчетности. | избегайте нечеткой очистки |
+| cleanops.plan.zone_map | Карта зон очистки | variant | Карта зон делит объект на управляемые маршруты в зависимости от риска, трафика, типа этажа и доступа. | направить работу |
+| cleanops.plan.high_touch_list | Список поверхностей, к которым часто прикасаются | invariant | В списке указаны ручки, переключатели, направляющие, счетчики, кнопки и общие устройства, требующие частого внимания. | сосредоточьтесь на контактных точках |
+| cleanops.plan.frequency_matrix | Матрица частоты очистки | invariant | Матрица связывает частоту выполнения задач с типом помещения, трафиком, риском и требованиями клиента. | не в каждом номере ежедневная глубокая уборка |
+| cleanops.plan.after_hours_access | Доступ в нерабочее время | variant | План доступа контролирует ключи, сигнализацию, правила сопровождения, комнаты с ограниченным доступом и вход для уборщиков. | безопасная очистка после закрытия |
+| cleanops.chemicals.sds_access | Доступ к паспорту безопасности | invariant | Доступ к паспорту безопасности гарантирует, что работники смогут ознакомиться с опасностями, средствами индивидуальной защиты, разбавлением и экстренными действиями в отношении химикатов. | знать химию |
+| cleanops.chemicals.dilution_control | Контроль химического разбавления | invariant | Контроль разбавления предотвращает использование слишком слабого, слишком сильного или несовместимого чистящего раствора. | химию надо измерять |
+| cleanops.chemicals.labeling | Маркировка вторичной тары | invariant | Маркировка идентифицирует продукт, опасность и способ использования при транспортировке химиката из оригинального контейнера. | никаких загадочных бутылок |
+| cleanops.chemicals.compatibility | Химическая совместимость | invariant | Правила совместимости предотвращают опасное смешивание, например, кислот с отбеливателями или продуктами, содержащими аммиак. | избегать токсических реакций |
+| cleanops.chemicals.storage | Уборочный склад химикатов | invariant | Хранение позволяет отделить несовместимые химические вещества, ограничить доступ и предотвратить утечки или загрязнение пищевых продуктов. | шкаф как зона безопасности |
+| cleanops.chemicals.spill_response | Реагирование на разливы химических веществ | invariant | При реагировании на разлив изолируется зона, используются соответствующие средства индивидуальной защиты, локализуются материалы и усиливается ситуация, если она выходит за рамки возможностей персонала. | небольшой разлив может нанести вред |
+| cleanops.tasks.restroom_clean | Цикл уборки туалета | invariant | Цикл охватывает светильники, полы, зеркала, расходные материалы, запахи, мусор и точки соприкосновения. | зона обслуживания повышенного риска |
+| cleanops.tasks.floor_mopping | Влажная уборка | invariant | Мытье шваброй удаляет почву, одновременно контролируя риск поскользнуться, качество воды, состояние швабры и таблички о мокром полу. | очистить, не создавая опасности |
+| cleanops.tasks.vacuuming | Задача по уборке | invariant | Пылесос удаляет сухую грязь с ковров, уделяя внимание краям, полосам движения и безопасности шнура. | уход за коврами |
+| cleanops.tasks.trash_removal | Вынос мусора | invariant | Рабочий процесс сбора мусора учитывает вкладыши, сегрегацию, утечку, вес, маршрут и место вывоза. | безопасно выбрасывать листья |
+| cleanops.tasks.dusting | Задача по удалению пыли | variant | Напыление удаляет осевшие частицы с поверхностей, не распространяя загрязнения и не повреждая отделку. | видимое качество |
+| cleanops.tasks.glass_cleaning | Очистка стекол | variant | Очистка стекла позволяет избежать разводов, отпечатков пальцев, остатков продукта и безопасности лестниц и краев. | прозрачные поверхности показывают дефекты |
+| cleanops.equipment.cart_setup | Установка тележки для уборки | invariant | В тележке хранятся инструменты, химикаты, СИЗ, вкладыши, ткань и формы для завершения маршрута. | мобильная рабочая станция |
+| cleanops.equipment.color_coding | Цветовая маркировка очистки | variant | Цветовая маркировка разделяет тряпки, швабры или инструменты по площади или риску загрязнения. | предотвратить перекрестное использование |
+| cleanops.equipment.autoscrubber | Работа автоскруббера | variant | Работа автоскруббера требует правильного обращения с подушкой, раствором, шваброй, аккумулятором, маршрутом и резервуаром для утилизации. | чистка машины |
+| cleanops.equipment.vacuum_filter | Обслуживание вакуумного фильтра | invariant | Обслуживание фильтра сохраняет всасывание, контроль пыли и срок службы машины. | качество оборудования |
+| cleanops.equipment.mop_laundering | Стирка швабры и ткани | invariant | Стирка или замена предотвращает распространение запаха, грязи и микробов на инструментах. | грязные инструменты невозможно очистить |
+| cleanops.equipment.locked_storage | Запираемое хранилище для оборудования | invariant | Запираемое хранилище предотвращает неправильное использование, кражу, доступ к химическим веществам и засорение общественных мест. | контролировать активы |
+| cleanops.quality.inspection_checklist | Контрольный список проверки очистки | invariant | Контрольный список проверяет выполнение задач, видимое качество, расходные материалы, запахи, повреждения и вопросы безопасности. | проверять на соответствие стандарту |
+| cleanops.quality.deficiency_tag | Метка о недостатке очистки | invariant | Метка дефицита записывает пропущенное задание, местоположение, серьезность, фотографию, владельца и статус исправления. | проблема становится действием |
+| cleanops.quality.complaint_log | Журнал жалоб на уборку | invariant | В журнале жалоб фиксируются проблемы клиента или жильца, время, местоположение, реакция и тенденции. | петля обратной связи |
+| cleanops.quality.atp_swab | АТФ-мазок | variant | Тампон АТФ дает быстрый индикатор органических остатков на выбранных поверхностях, но не идентифицирует болезнетворные микроорганизмы. | инструмент проверки |
+| cleanops.quality.before_after_photo | Фото до и после | variant | Фотодоказательства могут документировать специальные чистки, повреждения, проблемы с доступом или закрытие жалобы. | визуальное доказательство |
+| cleanops.quality.service_level_review | Обзор уровня клининговых услуг | invariant | В обзоре сравниваются производительность, жалобы, проверки, штатное расписание и объем работ с контрактом. | управлять сервисом |
+| cleanops.safety.slip_trip | Контроль пробуксовки и отключения | invariant | Контроль включает в себя знаки, сухие маршруты, управление шнурами, быстрое реагирование на разливы и уменьшение беспорядка. | не создавайте аварий |
+| cleanops.safety.ppe_selection | Выбор средств индивидуальной защиты для уборки | invariant | СИЗ соответствуют опасностям, связанным с работой, таким как химикаты, острые предметы, пыль, биологические жидкости или шум. | ни одна перчатка для всех |
+| cleanops.safety.sharps_found | Процедура обнаружения острых предметов | invariant | Процедура исключает сбор вручную, использует инструменты или одобренный контейнер и сообщает о местонахождении. | защитить чистящих средств |
+| cleanops.safety.blood_bodily_fluid | Очистка телесных жидкостей | invariant | Для уборки используется обученный персонал, правильные СИЗ, средства локализации, дезинфицирующие средства и пути утилизации. | задача высокого риска |
+| cleanops.safety.ladder_use | Использование лестницы для очистки | variant | Использование лестницы требует правильной высоты, состояния, поверхности, расположения и отсутствия перенапряжения. | избежать падения |
+| cleanops.safety.lone_worker | Проверка одинокого работника по уборке | variant | Процесс одиночного работника обеспечивает регистрацию, экстренную связь и контроль доступа для изолированных смен. | безопасность работы в ночное время |
+| cleanops.staffing.route_time | Время маршрута уборки | invariant | Время маршрута оценивает трудозатраты, необходимые для выполнения задач, поездок, настройки, пополнения запасов и простоев. | реалистичное кадровое обеспечение |
+| cleanops.staffing.task_training | Запись об обучении задаче | invariant | Запись об обучении подтверждает, что работник понимает методы, химикаты, оборудование и требования безопасности. | свидетельство компетентности |
+| cleanops.staffing.substitution_plan | План замены очистителя | variant | План замены покрывает отсутствие без потери важных задач или доступа к знаниям. | непрерывность обслуживания |
+| cleanops.staffing.productivity_rate | Производительность очистки | variant | Расценки оценивают площадь или оборудование, очищенные за час, но должны учитывать почву, движение транспорта и объем работ. | сравнить с контекстом |
+| cleanops.special.deep_clean | Проект глубокой очистки | variant | Глубокая очистка направлена ​​на скопление грязи, вентиляционных отверстий, ковров, высоких поверхностей, затирки или периодических мелких работ. | за пределами рутины |
+| cleanops.special.post_construction_clean | Чистота после строительства | variant | Послестроительная уборка удаляет пыль, мусор, этикетки, остатки и мелкие частицы перед заселением. | готовность к передаче |
+| cleanops.special.event_clean | Уборка мероприятий | variant | Уборка во время мероприятия позволяет избавиться от мусора до, во время и после мероприятия, туалетов, разливов и интенсивного движения. | уборка следует за толпой |
+| cleanops.records.cleaning_log | Журнал очистки | invariant | В журнале фиксируются выполнение задач, время, работник, область, исключения и корректирующие примечания. | подтверждение обслуживания |

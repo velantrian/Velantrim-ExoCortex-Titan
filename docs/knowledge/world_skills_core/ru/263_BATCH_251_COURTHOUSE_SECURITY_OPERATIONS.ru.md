@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| courtsec.screening.entry_queue | Courthouse entry queue | invariant | Queue separates visitors, staff, attorneys, jurors and deliveries by screening lane. | manage entry |
-| courtsec.screening.magnetometer_check | Courthouse magnetometer check | invariant | Check routes person through detector, secondary search and clearance decision. | detect hazards |
-| courtsec.screening.xray_bag | Courthouse bag x-ray | invariant | X-ray screens bags, packages, folders and electronics for prohibited items. | inspect property |
-| courtsec.screening.secondary_search | Courthouse secondary search | invariant | Search resolves alarm, unclear image or suspicious item with documented staff action. | clear exception |
-| courtsec.screening.accessibility_screen | Accessible courthouse screening | variant | Screening adapts process for mobility devices, medical devices, interpreters or support persons. | inclusive entry |
-| courtsec.access.staff_credential | Courthouse staff credential | invariant | Credential verifies employee, judge, contractor or authorized worker access level. | control staff access |
-| courtsec.access.attorney_access | Courthouse attorney access | variant | Access recognizes attorney credentials, client materials, courtroom limits and security rules. | professional flow |
-| courtsec.access.juror_checkin | Courthouse juror security check-in | variant | Check-in directs jurors through screening, waiting area, badges and reporting room. | jury flow |
-| courtsec.access.restricted_area | Courthouse restricted area control | invariant | Control protects chambers, clerk back office, holding cells, evidence rooms and secure corridors. | protect zones |
-| courtsec.access.afterhours_access | Courthouse after-hours access | variant | Access records authorized person, time, reason, escort, alarm and exit. | secure building |
-| courtsec.prohibited.item_policy | Courthouse prohibited item policy | invariant | Policy defines weapons, tools, sprays, cameras, food or other restricted articles. | consistent rules |
-| courtsec.prohibited.item_disposition | Prohibited item disposition | invariant | Disposition records return-to-car, surrender, locker, seizure or law enforcement referral. | resolve item |
-| courtsec.prohibited.weapon_find | Courthouse weapon finding | invariant | Finding secures weapon, separates person, notifies supervisor and records incident. | prevent harm |
-| courtsec.prohibited.evidence_exception | Courthouse evidence item exception | variant | Exception permits controlled entry of case evidence through authorization and custody. | support proceedings |
-| courtsec.courtroom.courtroom_post | Courtroom security post | invariant | Post assignment lists courtroom, officer, judge, case risk, entrances and relief. | cover hearings |
-| courtsec.courtroom.high_profile_case | High-profile case security | variant | Plan covers crowds, media, parties, threats, seating, escorts and overflow rooms. | reduce disruption |
-| courtsec.courtroom.disruption_response | Courtroom disruption response | invariant | Response manages shouting, threats, refusal, filming, protest or medical issue. | restore order |
-| courtsec.courtroom.no_contact_seating | Courtroom no-contact seating | variant | Seating separates protected persons, witnesses, defendants and families under court order. | reduce intimidation |
-| courtsec.courtroom.judge_escort | Judge escort | variant | Escort moves judge between chambers, bench, parking or secure area when risk requires. | protect judiciary |
-| courtsec.prisoner.sally_port | Courthouse sally port | invariant | Sally port controls prisoner vehicle entry, doors, search, handoff and logs. | secure transfer |
-| courtsec.prisoner.holding_cell | Courthouse holding cell | invariant | Cell operation tracks occupancy, checks, separation, property and movement. | safe custody |
-| courtsec.prisoner.prisoner_movement | Courthouse prisoner movement | invariant | Movement records route, restraints, escort staff, time, destination and return. | custody control |
-| courtsec.prisoner.medical_alert | Prisoner medical alert at court | variant | Alert communicates known medical, mobility or medication concern to custody staff. | safe handling |
-| courtsec.prisoner.escape_alarm | Courthouse escape alarm | invariant | Alarm locks routes, alerts agencies, preserves scene and starts search protocol. | emergency response |
-| courtsec.incident.threat_report | Courthouse threat report | invariant | Report records threat source, target, words, evidence, risk review and notification. | risk management |
-| courtsec.incident.assault_response | Courthouse assault response | invariant | Response secures scene, separates parties, requests medical care and documents witnesses. | protect people |
-| courtsec.incident.medical_call | Courthouse medical call | invariant | Call records symptoms, location, aid, EMS, witnesses and room status. | care trail |
-| courtsec.incident.public_disturbance | Courthouse public disturbance | variant | Disturbance handling manages protest, crowding, shouting or refusal outside courtroom. | maintain order |
-| courtsec.incident.lost_child | Courthouse lost child response | variant | Response secures exits, broadcasts description, checks rooms and reunites guardian. | rapid resolution |
-| courtsec.emergency.evacuation_plan | Courthouse evacuation plan | invariant | Plan defines exits, assembly, prisoner handling, judges, staff and public guidance. | emergency readiness |
-| courtsec.emergency.lockdown | Courthouse lockdown | invariant | Lockdown secures entrances, courtrooms, chambers, holding areas and communication. | contain threat |
-| courtsec.emergency.fire_alarm | Courthouse fire alarm response | invariant | Response evacuates or shelters per plan, secures custody and reports all-clear. | life safety |
-| courtsec.emergency.suspicious_package | Courthouse suspicious package response | invariant | Response isolates package, clears area, notifies specialists and documents timeline. | reduce risk |
-| courtsec.records.daily_log | Courthouse security daily log | invariant | Log records posts, staffing, incidents, screening volumes, alarms and unusual activity. | shift record |
-| courtsec.records.visitor_count | Courthouse visitor count | variant | Count tracks public flow by entrance, time, hearing load and security staffing. | capacity planning |
-| courtsec.records.camera_review | Courthouse camera review | variant | Review retrieves video for incident, request, investigation or quality check. | evidence support |
-| courtsec.records.key_control | Courthouse security key control | invariant | Control tracks keys, cards, radios, panic devices, checkout and return. | asset custody |
-| courtsec.staff.post_orders | Courthouse post orders | invariant | Orders describe duties, routes, alarms, contacts, escalation and local rules. | consistent work |
-| courtsec.staff.shift_briefing | Courthouse security shift briefing | invariant | Briefing covers cases, risks, closures, equipment, staffing and incidents from prior shift. | align team |
-| courtsec.staff.training_record | Courthouse security training record | invariant | Record tracks screening, de-escalation, custody, emergency, legal limits and equipment. | qualified staff |
-| courtsec.quality.screening_audit | Courthouse screening audit | variant | Audit reviews lane operation, item handling, alarms, courtesy and documentation. | improve screening |
-| courtsec.reporting.security_summary | Courthouse security summary | invariant | Summary reports incidents, threats, weapons, disruptions, staffing gaps and trends. | leadership awareness |
-| courtsec.metrics.courtsec_kpi | Courthouse security KPI | variant | KPI tracks screening volume, wait time, incidents, contraband, response time and audits. | manage security |
-| courtsec.continuity.system_outage | Courthouse security system outage | invariant | Outage plan covers magnetometer, camera, access control, radio or alarm failure. | maintain security |
+| courtsec.screening.entry_queue | Очередь на вход в здание суда | invariant | Очередь разделяет посетителей, персонал, адвокатов, присяжных и доставки по досмотровому проходу. | управлять входом |
+| courtsec.screening.magnetometer_check | Проверка магнитометра в здании суда | invariant | Проверка маршрутов человека через детектор, вторичный обыск и принятие решения о разрешении. | обнаруживать опасности |
+| courtsec.screening.xray_bag | Рентгеновский снимок сумки в здании суда | invariant | Рентгеновские проверяют сумки, пакеты, папки и электронику на наличие запрещенных предметов. | осматривать имущество |
+| courtsec.screening.secondary_search | Вторичный обыск в здании суда | invariant | Поиск устраняет тревогу, нечеткое изображение или подозрительный предмет с помощью документированных действий персонала. | явное исключение |
+| courtsec.screening.accessibility_screen | Доступный досмотр в здании суда | variant | Процесс скрининга адаптируется к мобильным устройствам, медицинским приборам, переводчикам или вспомогательному персоналу. | инклюзивный вход |
+| courtsec.access.staff_credential | Удостоверение сотрудника суда | invariant | Учетные данные подтверждают уровень доступа сотрудника, судьи, подрядчика или уполномоченного работника. | контролировать доступ персонала |
+| courtsec.access.attorney_access | Доступ адвоката в здание суда | variant | Access распознает учетные данные адвокатов, материалы клиентов, ограничения зала суда и правила безопасности. | профессиональный поток |
+| courtsec.access.juror_checkin | Проверка безопасности присяжных в здании суда | variant | Регистрация позволяет присяжным пройти через зону проверки, зону ожидания, бейджи и комнату для отчетов. | поток жюри |
+| courtsec.access.restricted_area | Контроль запретной зоны здания суда | invariant | Контроль защищает камеры, служебные помещения клерков, камеры предварительного заключения, комнаты для улик и безопасные коридоры. | защищать зоны |
+| courtsec.access.afterhours_access | Доступ в здание суда в нерабочее время | variant | Доступ к записям уполномоченного лица, времени, причины, сопровождения, тревоги и выхода. | безопасное здание |
+| courtsec.prohibited.item_policy | Политика здания суда в отношении запрещенных предметов | invariant | Политика определяет оружие, инструменты, спреи, фотоаппараты, продукты питания и другие предметы, подлежащие ограничению. | последовательные правила |
+| courtsec.prohibited.item_disposition | Запрещенное размещение предметов | invariant | В распоряжении фиксируются возврат в машину, сдача, помещение в шкафчик, арест или направление в правоохранительные органы. | решить предмет |
+| courtsec.prohibited.weapon_find | Обнаружение оружия в здании суда | invariant | Находка фиксирует оружие, изолирует человека, уведомляет руководителя и записывает происшествие. | предотвратить вред |
+| courtsec.prohibited.evidence_exception | Исключение в отношении доказательств в здании суда | variant | Исключением является контролируемый ввод доказательств по делу посредством получения разрешения и хранения. | вспомогательное производство |
+| courtsec.courtroom.courtroom_post | Пост охраны зала суда | invariant | В почтовом задании перечислены зал суда, должностное лицо, судья, риск по делу, входы и помощь. | освещать слушания |
+| courtsec.courtroom.high_profile_case | Высококлассная охрана дела | variant | План охватывает толпу, средства массовой информации, вечеринки, угрозы, рассадку, сопровождение и дополнительные помещения. | уменьшить сбои |
+| courtsec.courtroom.disruption_response | Реакция на нарушение зала суда | invariant | Реагирование включает в себя крики, угрозы, отказ, видеосъемку, протест или медицинскую проблему. | восстановить порядок |
+| courtsec.courtroom.no_contact_seating | Бесконтактное размещение в зале суда | variant | Сидения разделяют защищаемых лиц, свидетелей, обвиняемых и семьи по решению суда. | уменьшить запугивание |
+| courtsec.courtroom.judge_escort | Судья эскорт | variant | Сопровождение перемещает судью между камерами, скамейкой, парковкой или охраняемой зоной, когда этого требует риск. | защищать судебную систему |
+| courtsec.prisoner.sally_port | Салли Порт в здании суда | invariant | Салли Порт контролирует въезд в машины с заключенными, двери, обыск, передачу и журналы. | безопасная передача |
+| courtsec.prisoner.holding_cell | Камера предварительного заключения в здании суда | invariant | Работа ячейки отслеживает размещение, проверки, разделение, имущество и перемещение. | безопасное хранение |
+| courtsec.prisoner.prisoner_movement | Движение заключенных здания суда | invariant | Движение фиксирует маршрут, ограничения, сопровождающий персонал, время, место назначения и возвращение. | контроль хранения |
+| courtsec.prisoner.medical_alert | Медицинское оповещение заключенного в суде | variant | Оповещение сообщает персоналу мест содержания под стражей об известных проблемах со здоровьем, мобильностью или лекарствами. | безопасное обращение |
+| courtsec.prisoner.escape_alarm | Сигнализация побега из здания суда | invariant | Сигнализация блокирует маршруты, предупреждает агентства, сохраняет место происшествия и запускает протокол поиска. | реагирование на чрезвычайную ситуацию |
+| courtsec.incident.threat_report | Отчет об угрозах в здании суда | invariant | В отчете фиксируются источник угрозы, цель, слова, доказательства, анализ рисков и уведомления. | управление рисками |
+| courtsec.incident.assault_response | Реакция на нападение на здание суда | invariant | Оперативники обеспечивают охрану места происшествия, разделяют стороны, запрашивают медицинскую помощь и документируют свидетелей. | защищать людей |
+| courtsec.incident.medical_call | Медицинский вызов в здании суда | invariant | Звонки записывают симптомы, местоположение, помощь, скорую помощь, свидетелей и состояние комнаты. | тропа ухода |
+| courtsec.incident.public_disturbance | Общественные беспорядки в здании суда | variant | Управление беспорядками позволяет справиться с протестами, скоплением людей, криками или отказом за пределами зала суда. | поддерживать порядок |
+| courtsec.incident.lost_child | Суд потерял ответ ребенка | variant | Ответ обеспечивает выходы, передает описание, проверяет комнаты и воссоединяет стража. | быстрое разрешение |
+| courtsec.emergency.evacuation_plan | План эвакуации здания суда | invariant | План определяет выходы, собрания, обращение с заключенными, судей, персонал и общественное руководство. | аварийная готовность |
+| courtsec.emergency.lockdown | Блокировка здания суда | invariant | Блокировка обеспечивает безопасность входов, залов судебных заседаний, палат, зон ожидания и связи. | содержать угрозу |
+| courtsec.emergency.fire_alarm | Реакция пожарной сигнализации в здании суда | invariant | Ответные меры эвакуируют или укрывают согласно плану, обеспечивают охрану и сообщают, что все в порядке. | безопасность жизни |
+| courtsec.emergency.suspicious_package | Ответ на подозрительную посылку в здании суда | invariant | Ответные меры изолируют посылку, очищают территорию, уведомляют специалистов и документируют сроки. | снизить риск |
+| courtsec.records.daily_log | Ежедневный журнал службы безопасности здания суда | invariant | Журнал записывает сообщения, штатное расписание, инциденты, объемы проверок, сигналы тревоги и необычную активность. | запись смены |
+| courtsec.records.visitor_count | Количество посетителей здания суда | variant | Count отслеживает поток посетителей по входу, времени, нагрузке на слух и численности сотрудников службы безопасности. | планирование мощности |
+| courtsec.records.camera_review | Обзор камеры в здании суда | variant | При просмотре извлекается видео для инцидента, запроса, расследования или проверки качества. | доказательная поддержка |
+| courtsec.records.key_control | Контроль ключей безопасности здания суда | invariant | Система управления отслеживает ключи, карты, радиоприемники, тревожные устройства, кассу и возврат. | хранение активов |
+| courtsec.staff.post_orders | Почтовые приказы в здании суда | invariant | Приказы описывают обязанности, маршруты, сигналы тревоги, контакты, эскалацию и местные правила. | последовательная работа |
+| courtsec.staff.shift_briefing | Брифинг смены службы безопасности здания суда | invariant | На инструктаже рассматриваются случаи, риски, закрытия, оборудование, персонал и инциденты, произошедшие в предыдущую смену. | объединить команду |
+| courtsec.staff.training_record | Протокол обучения охране здания суда | invariant | Запишите треки проверки, деэскалации, содержания под стражей, чрезвычайной ситуации, юридических ограничений и оборудования. | квалифицированный персонал |
+| courtsec.quality.screening_audit | Проверка здания суда | variant | Аудит проверяет работу полос, обращение с предметами, сигналы тревоги, вежливость и документацию. | улучшить скрининг |
+| courtsec.reporting.security_summary | Обзор безопасности здания суда | invariant | Сводные отчеты об инцидентах, угрозах, оружии, сбоях, кадровых проблемах и тенденциях. | осознание лидерства |
+| courtsec.metrics.courtsec_kpi | KPI охраны здания суда | variant | KPI отслеживает объем досмотра, время ожидания, инциденты, контрабанду, время реагирования и проверки. | управлять безопасностью |
+| courtsec.continuity.system_outage | Сбой в системе безопасности здания суда | invariant | План отключения охватывает магнитометр, камеру, систему контроля доступа, радио или сигнализацию. | поддерживать безопасность |

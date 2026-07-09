@@ -1,0 +1,13 @@
+# BATCH 719: Propane — Tank & Line Installation
+
+**KnowledgeUnits:** 50
+**Namespace:** `propane.ops.*`
+**Scope:** tank_placement, regulator, pigtail, copper_line, pressure_test, leak, fill
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| propane.ops.tank_clearance_distances | Tank Placement — Clearance | METHOD | Размещение пропанового баллона. ASME tank (надземный): расстояние от здания 3 м, от property line 3 м, от ignition source 3 м. Underground tank: 3 м от здания (pressure relief vent вне). Перевозимые баллоны (100 lb): нельзя хранить внутри! Concrete pad: tank должен стоять на негорючем основании. Protection: от vehicles (bollards). Sun exposure: не под прямым солнцем (давление растёт). | Сливной шланг delivery truck: 30 м max от tank. |
+| propane.ops.regulator_vent_point_down | Regulator — Vent Orientation | METHOD | Установка газового регулятора. First stage (красный): на tank (10 psi). Second stage (зелёный/серый): у дома (11" WC). Vent (отверстие в регуляторе): направлено ВНИЗ (защита от дождя/насекомых). Не закрывать vent! (иначе руголятор не дышит — неправильное давление). Проверка: 1 раз в год визуально (vent чистый, не blocked). Замена: каждые 15-20 лет (мембрана дубеет). | Mud wasps любят забивать vent. |
+| propane.ops.copper_flare_fitting | Copper Line — Flare Fitting | METHOD | Пайка/обжим медной газовой линии. Tube: type K или L (толстостенная медь). Flare fitting: 45° double flare. Запрещено: soft solder (плавится при пожаре). Разрешено: brazing (температура >538°C). Underground: plastic-coated copper или полиэтиленовый CSST. Sleeve: где проходит через стену (защита). Pressure test: 15-25 psi воздухом (после установки, до подключения appliances). | Flare fitting без leak check: самая частая утечка. |
+| propane.ops.leak_test_soap_solution | Leak Test — Soap Solution | METHOD | Проверка на утечку газа. Мыльный раствор (non-corrosive — специальный leak detector), наносится кистью или spray на все соединения. Признак утечки: пузыри (растущие). Манометрический тест: pump pressure, wait 3-5 мин (watch gauge). Падение >1 psi/15 мин = утечка. Электронный детектор (combustible gas detector): вдоль труб — beeping. После устранения: повторный тест. | Никогда не искать утечку спичкой! |
+| propane.ops.filling_percent_rule | Tank Fill — 80% Rule | METHOD | Уровень заполнения пропаном. Пропан расширяется с температурой — танк заполняется только на 80% (liquid space). Overfill protection: OPD valve (Overfill Prevention Device — автоматически останавливает filling). Float gauge: показывает % (не gallons!). Weight: propane весит 1.96 кг/л (4.24 lbs/gallon). Периодичность fill: по погоде (зимой больше). | Переполненный tank: при нагреве pressure relief valve стравливает (опасно). |

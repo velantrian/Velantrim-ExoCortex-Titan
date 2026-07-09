@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| roadclearops.activation.trigger | clearance trigger | MODEL | Trigger includes blocked critical routes, emergency access loss, debris, flooding or infrastructure failure. | Starts organized road clearance. |
-| roadclearops.activation.route_priority | route priority | MODEL | Priority ranks hospitals, shelters, fire stations, supply routes, bridges and evacuation paths. | Opens the most important routes first. |
-| roadclearops.activation.command_link | command link | RECORD | Clearance operations link to incident command, public works and emergency services. | Keeps route decisions aligned. |
-| roadclearops.activation.safety_brief | safety briefing | SAFETY_RULE | Brief covers traffic, utilities, chainsaw work, unstable debris, floodwater and PPE. | Protects crews. |
-| roadclearops.intake.blockage_id | blockage ID | RECORD | Blockage ID links location, type, reporter, route priority and status. | Tracks each obstruction. |
-| roadclearops.intake.location | location capture | METHOD | Location records road, milepost, GPS, intersection, lane and access direction. | Helps crews find the site. |
-| roadclearops.intake.blockage_type | blockage type | RECORD | Type distinguishes tree, pole, vehicle, slide, water, structure, wire or debris pile. | Routes the right crew. |
-| roadclearops.intake.access_status | access status | RECORD | Status records open, restricted, one-lane, closed or unknown. | Guides responders and public notices. |
-| roadclearops.assessment.windshield | windshield assessment | METHOD | Rapid drive-by assessment identifies route passability and hazards. | Builds early road picture. |
-| roadclearops.assessment.hazard_scan | hazard scan | SAFETY_RULE | Scan checks wires, gas, unstable slopes, flood depth, traffic and fire risk. | Prevents unsafe entry. |
-| roadclearops.assessment.equipment_need | equipment need | MODEL | Need estimates chainsaws, loaders, dump trucks, pumps, signs or barriers. | Dispatches useful resources. |
-| roadclearops.assessment.clearance_level | clearance level | CONSTRAINT | Level distinguishes emergency pass, single lane, full lane or final cleanup. | Sets realistic target. |
-| roadclearops.utility.wire_down | wire-down protocol | SAFETY_RULE | Downed wires require utility clearance before cutting or moving nearby debris. | Prevents electrocution. |
-| roadclearops.utility.gas_water | gas and water coordination | SAFETY_RULE | Gas leaks, broken mains or sewer hazards trigger utility coordination. | Avoids secondary damage. |
-| roadclearops.utility.pole_conflict | pole conflict | METHOD | Pole or telecom debris requires owner notification and safe sequencing. | Prevents service damage. |
-| roadclearops.utility.clearance_release | clearance release | RECORD | Utility release records time, contact, hazard cleared and remaining restrictions. | Documents safe work start. |
-| roadclearops.crews.crew_assignment | crew assignment | RECORD | Assignment lists route, task, supervisor, equipment, hazards and shift. | Makes work accountable. |
-| roadclearops.crews.skill_match | skill match | METHOD | Chainsaw, heavy equipment, traffic control and inspection skills are matched to task. | Improves safety and speed. |
-| roadclearops.crews.fatigue | fatigue control | SAFETY_RULE | Long storm shifts require breaks, relief and night-work controls. | Protects judgment. |
-| roadclearops.crews.checkin | crew check-in | METHOD | Crews report arrival, hazards, progress and departure. | Maintains situational awareness. |
-| roadclearops.operations.debris_cut | debris cut | METHOD | Crews cut or move enough debris to meet assigned clearance level. | Restores access quickly. |
-| roadclearops.operations.push_clear | push-clear method | METHOD | Emergency push-clear moves debris aside for access before full removal. | Opens routes fast. |
-| roadclearops.operations.loadout | loadout | METHOD | Debris is loaded and hauled when route priority and monitoring allow. | Moves from access to cleanup. |
-| roadclearops.operations.pumpout | pumpout | METHOD | Water on road may require pumps, ditch clearing or drainage checks. | Restores passability. |
-| roadclearops.traffic.barricade | barricade placement | SAFETY_RULE | Barricades close unsafe lanes or roads with visible approach warning. | Protects drivers. |
-| roadclearops.traffic.flagging | flagging | METHOD | Flaggers manage alternating traffic where one lane is cleared. | Maintains limited flow. |
-| roadclearops.traffic.detour | detour route | METHOD | Detours consider emergency vehicles, buses, trucks and accessibility. | Keeps movement possible. |
-| roadclearops.traffic.night_marking | night marking | SAFETY_RULE | Night hazards need lights, cones, reflective devices or closure. | Prevents crashes. |
-| roadclearops.records.photo | photo record | RECORD | Photos document blockage, hazards, clearance and damage. | Supports reimbursement and disputes. |
-| roadclearops.records.work_log | work log | RECORD | Work log records crew, equipment, hours, materials and task result. | Supports finance and review. |
-| roadclearops.records.map_update | map update | METHOD | Road status updates GIS, dispatch and public information tools. | Keeps route status current. |
-| roadclearops.records.retention | retention rule | CONSTRAINT | Records follow emergency, public works and reimbursement retention schedules. | Preserves audit trail. |
-| roadclearops.communication.public_notice | public notice | METHOD | Notices state closures, detours, hazards, estimated reopening and safety warnings. | Helps public avoid blocked roads. |
-| roadclearops.communication.dispatch_update | dispatch update | METHOD | Dispatch receives route status for responders and service crews. | Protects emergency routing. |
-| roadclearops.communication.partner_sync | partner sync | METHOD | Transit, schools, utilities and neighboring agencies receive route updates. | Coordinates shared movement. |
-| roadclearops.qa.duplicate_blockage | duplicate blockage check | QUALITY_CHECK | Duplicate reports for same blockage are merged. | Keeps workload accurate. |
-| roadclearops.qa.clearance_verification | clearance verification | QUALITY_CHECK | Supervisor or crew verifies assigned clearance level before reopening. | Prevents unsafe openings. |
-| roadclearops.qa.damage_claim | damage claim route | METHOD | Vehicle or property damage claims route to risk or contractor review. | Handles cleanup impacts. |
-| roadclearops.metrics.routes_opened | routes opened | MEASUREMENT | Routes opened by priority and time show progress. | Guides command decisions. |
-| roadclearops.metrics.clearance_time | clearance time | MEASUREMENT | Time from report to passable status reveals bottlenecks. | Improves future response. |
-| roadclearops.demob.final_sweep | final sweep | METHOD | Final sweep removes residual hazards, signs and debris after emergency phase. | Completes work. |
-| roadclearops.demob.transition | transition to recovery | METHOD | Remaining repairs transfer to maintenance, capital or claims teams. | Avoids dropped issues. |
-| roadclearops.review.after_action | after-action review | METHOD | Review captures route priority, utility delays, crew safety and public notice gaps. | Improves next event. |
-| roadclearops.governance.route_owner | route owner | RECORD | Route owner coordinates public works, emergency management, traffic and utilities. | Keeps accountability clear. |
+| roadclearops.activation.trigger | спусковой крючок | MODEL | Триггер включает блокировку критически важных маршрутов, аварийную потерю доступа, обломки, наводнение или сбой инфраструктуры. | Начинается организованный расчистка дорог. |
+| roadclearops.activation.route_priority | приоритет маршрута | MODEL | Приоритет отдается больницам, убежищам, пожарным депо, путям снабжения, мостам и путям эвакуации. | Первыми открывает самые важные маршруты. |
+| roadclearops.activation.command_link | командная ссылка | RECORD | Операции по разминированию связаны с командованием в случае ЧС, общественными работами и службами экстренной помощи. | Согласовывает решения по маршруту. |
+| roadclearops.activation.safety_brief | инструктаж по безопасности | SAFETY_RULE | Краткое описание охватывает дорожное движение, коммунальные услуги, работу бензопилой, нестабильный мусор, паводковые воды и СИЗ. | Защищает экипажи. |
+| roadclearops.intake.blockage_id | идентификатор блокировки | RECORD | Идентификатор блокировки связывает местоположение, тип, отправителя, приоритет маршрута и статус. | Отслеживает каждое препятствие. |
+| roadclearops.intake.location | захват местоположения | METHOD | Местоположение записывает дорогу, мильный столб, GPS, перекресток, полосу движения и направление доступа. | Помогает бригадам найти место. |
+| roadclearops.intake.blockage_type | тип блокировки | RECORD | Тип различает дерево, столб, транспортное средство, горку, воду, конструкцию, проволоку или кучу мусора. | Направляет нужную команду. |
+| roadclearops.intake.access_status | статус доступа | RECORD | Записи о состоянии открыты, ограничены, однополосны, закрыты или неизвестны. | Руководства для ответчиков и публичные уведомления. |
+| roadclearops.assessment.windshield | оценка лобового стекла | METHOD | Быстрая оценка проезда выявляет проходимость маршрута и опасности. | Создает раннюю картину дороги. |
+| roadclearops.assessment.hazard_scan | сканирование опасностей | SAFETY_RULE | Сканирование проверяет провода, газ, неустойчивые склоны, глубину затопления, риск дорожного движения и пожара. | Предотвращает небезопасный вход. |
+| roadclearops.assessment.equipment_need | потребность в оборудовании | MODEL | Нужны оценки бензопил, погрузчиков, самосвалов, насосов, знаков или барьеров. | Рассылает полезные ресурсы. |
+| roadclearops.assessment.clearance_level | уровень допуска | CONSTRAINT | Уровень различает аварийный проход, однополосный проход, полную полосу движения или окончательную уборку. | Устанавливает реалистичную цель. |
+| roadclearops.utility.wire_down | протокол проводного соединения | SAFETY_RULE | Прежде чем резать или перемещать близлежащие обломки, необходимо освободить оборванные провода. | Предотвращает поражение электрическим током. |
+| roadclearops.utility.gas_water | координация газа и воды | SAFETY_RULE | Утечки газа, обрывы электросети или опасности в канализации требуют координации действий коммунальных предприятий. | Предотвращает вторичное повреждение. |
+| roadclearops.utility.pole_conflict | конфликт полюсов | METHOD | Обломки опор или телекоммуникаций требуют уведомления владельца и безопасного определения последовательности. | Предотвращает повреждение оборудования. |
+| roadclearops.utility.clearance_release | выпуск разрешения | RECORD | В релизе утилиты фиксируются время, контакт, устранение опасностей и оставшиеся ограничения. | Документы безопасного начала работы. |
+| roadclearops.crews.crew_assignment | назначение экипажа | RECORD | В назначении указаны маршрут, задача, руководитель, оборудование, опасности и смена. | Делает работу ответственной. |
+| roadclearops.crews.skill_match | совпадение навыков | METHOD | Бензопила, тяжелое оборудование, навыки управления дорожным движением и проверки соответствуют задаче. | Повышает безопасность и скорость. |
+| roadclearops.crews.fatigue | контроль усталости | SAFETY_RULE | Длительные смены во время шторма требуют перерывов, смен и контроля работы в ночное время. | Защищает суждение. |
+| roadclearops.crews.checkin | регистрация экипажа | METHOD | Экипажи сообщают о прибытии, опасностях, ходе и отбытии. | Сохраняет ситуационную осведомленность. |
+| roadclearops.operations.debris_cut | вырубка мусора | METHOD | Бригады срезают или перемещают достаточно мусора, чтобы обеспечить заданный уровень допуска. | Быстро восстанавливает доступ. |
+| roadclearops.operations.push_clear | метод принудительной очистки | METHOD | Аварийная очистка отодвигает мусор в сторону для доступа перед его полным удалением. | Быстро открывает маршруты. |
+| roadclearops.operations.loadout | выгрузка | METHOD | Мусор загружается и вывозится, когда это позволяют приоритет маршрута и мониторинг. | Переход от доступа к очистке. |
+| roadclearops.operations.pumpout | откачка | METHOD | Вода на дороге может потребовать откачки насосов, очистки канав или проверки дренажа. | Восстанавливает проходимость. |
+| roadclearops.traffic.barricade | размещение баррикад | SAFETY_RULE | Баррикады закрывают небезопасные полосы движения или дороги с видимым предупреждением о приближении. | Защищает водителей. |
+| roadclearops.traffic.flagging | пометка | METHOD | Флаггеры управляют попеременным движением, при котором одна полоса освобождается. | Поддерживает ограниченный поток. |
+| roadclearops.traffic.detour | объездной маршрут | METHOD | При объездах учитываются автомобили скорой помощи, автобусы, грузовики и доступность. | Сохраняет возможность движения. |
+| roadclearops.traffic.night_marking | ночная маркировка | SAFETY_RULE | Ночные опасности требуют освещения, конусов, светоотражающих устройств или затворов. | Предотвращает сбои. |
+| roadclearops.records.photo | фотозапись | RECORD | Фотографии документируют засоры, опасности, очистку и повреждения. | Поддерживает возмещение и споры. |
+| roadclearops.records.work_log | журнал работы | RECORD | В журнале работ фиксируются бригада, оборудование, часы, материалы и результаты выполнения задач. | Поддерживает финансы и обзор. |
+| roadclearops.records.map_update | обновление карты | METHOD | Информация о состоянии дорог обновляется в ГИС, средствах диспетчеризации и общественной информации. | Сохраняет текущий статус маршрута. |
+| roadclearops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам хранения чрезвычайных ситуаций, общественных работ и возмещения расходов. | Сохраняет контрольный журнал. |
+| roadclearops.communication.public_notice | публичное уведомление | METHOD | Уведомляет о закрытии штатов, объездах, опасностях, предполагаемом открытии и предупреждениях о безопасности. | Помогает общественности избегать заблокированных дорог. |
+| roadclearops.communication.dispatch_update | обновление отправки | METHOD | Диспетчерская получает статус маршрута для спасателей и сервисных бригад. | Защищает аварийную маршрутизацию. |
+| roadclearops.communication.partner_sync | синхронизация партнеров | METHOD | Транспорт, школы, коммунальные службы и соседние агентства получают обновления маршрутов. | Координирует совместное движение. |
+| roadclearops.qa.duplicate_blockage | проверка дубликата блокировки | QUALITY_CHECK | Повторяющиеся отчеты об одной и той же блокировке объединяются. | Обеспечивает точность рабочей нагрузки. |
+| roadclearops.qa.clearance_verification | проверка допуска | QUALITY_CHECK | Руководитель или бригада проверяют назначенный уровень допуска перед повторным открытием. | Предотвращает небезопасные открытия. |
+| roadclearops.qa.damage_claim | маршрут претензии по возмещению ущерба | METHOD | Претензии о повреждении транспортного средства или имущества направляются на рассмотрение рисков или рассмотрение подрядчика. | Справляется с эффектами очистки. |
+| roadclearops.metrics.routes_opened | маршруты открыты | MEASUREMENT | Маршруты, открытые по приоритету и времени, показывают прогресс. | Направляет командование решениями. |
+| roadclearops.metrics.clearance_time | время оформления | MEASUREMENT | Время от отчета до удовлетворительного статуса выявляет узкие места. | Улучшает будущую реакцию. |
+| roadclearops.demob.final_sweep | финальная зачистка | METHOD | Заключительная уборка удаляет остаточные опасности, знаки и мусор после аварийной фазы. | Завершает работу. |
+| roadclearops.demob.transition | переход к восстановлению | METHOD | Оставшийся ремонт передается группам технического обслуживания, капитального ремонта или претензий. | Избегает пропущенных проблем. |
+| roadclearops.review.after_action | обзор после действий | METHOD | Обзор фиксирует приоритет маршрута, задержки с коммунальными службами, безопасность экипажа и пробелы в уведомлениях общественности. | Улучшает следующее событие. |
+| roadclearops.governance.route_owner | владелец маршрута | RECORD | Владелец маршрута координирует общественные работы, управление чрезвычайными ситуациями, дорожное движение и коммунальные услуги. | Обеспечивает четкую подотчетность. |

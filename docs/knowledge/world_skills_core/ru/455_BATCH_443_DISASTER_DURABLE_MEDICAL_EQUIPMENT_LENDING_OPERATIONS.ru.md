@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| dmelendingops.intake.request_source | request source | RECORD | Source records shelter desk, clinic, caseworker, discharge planner, caregiver, hotline or outreach team. | Shows entry path. |
-| dmelendingops.intake.borrower_profile | borrower profile | RECORD | Profile captures contact, location, language, caregiver, mobility need and safe-contact limits. | Defines support. |
-| dmelendingops.intake.equipment_need | equipment need | RECORD | Need records wheelchair, walker, cane, shower chair, commode, hospital bed accessory or transfer aid. | Frames request. |
-| dmelendingops.intake.urgency_score | urgency score | MODEL | Score weighs fall risk, discharge timing, shelter access, caregiver absence, medical dependence and distance. | Prioritizes loans. |
-| dmelendingops.eligibility.disaster_link | disaster link | CONTROL | Link verifies equipment is needed because of loss, displacement, damage, access barrier or recovery condition. | Targets stock. |
-| dmelendingops.eligibility.loan_boundary | loan boundary | CONTROL | Boundary defines short-term loan, replacement bridge, nonclinical support and exclusions. | Prevents scope creep. |
-| dmelendingops.eligibility.duplicate_check | duplicate check | CONTROL | Check compares borrower, household, device type, serial number and prior loan records. | Avoids duplicate issue. |
-| dmelendingops.inventory.asset_record | asset record | RECORD | Asset record captures device type, serial, size, condition, accessories, location and ownership source. | Tracks inventory. |
-| dmelendingops.inventory.availability_status | availability status | STATE | Status marks available, reserved, issued, cleaning, repair, missing, retired or quarantine. | Shows usable stock. |
-| dmelendingops.inventory.accessory_set | accessory set | RECORD | Set records cushions, footrests, tips, wheels, brakes, chargers, rails, bags or manuals. | Prevents incomplete loans. |
-| dmelendingops.inventory.stock_threshold | stock threshold | CONTROL | Threshold flags minimum quantities by device type and size for reorder or donation request. | Prevents shortages. |
-| dmelendingops.fit.size_match | size match | CONTROL | Match checks height, weight range, seat width, grip height, stability and intended environment. | Improves safety. |
-| dmelendingops.fit.environment_check | environment check | PROCESS | Check reviews stairs, door width, floor surface, bathroom layout, transport and shelter rules. | Confirms usability. |
-| dmelendingops.fit.user_instruction | user instruction | PROCESS | Instruction covers safe use, adjustment, brakes, storage, cleaning responsibility and return contact. | Reduces misuse. |
-| dmelendingops.fit.caregiver_brief | caregiver brief | PROCESS | Brief explains transfers, limits, warning signs, equipment care and escalation route. | Supports helpers. |
-| dmelendingops.cleaning.intake_cleaning | intake cleaning | PROCESS | Cleaning removes soil, disinfects surfaces, inspects wear and documents readiness before issue. | Protects users. |
-| dmelendingops.cleaning.contact_time | disinfectant contact time | CONTROL | Contact time verifies the disinfectant stayed wet long enough for the device category. | Improves sanitation. |
-| dmelendingops.cleaning.quarantine_flag | quarantine flag | STATE | Flag separates devices exposed to contamination, pests, bodily fluids or uncertain cleaning history. | Prevents cross-risk. |
-| dmelendingops.cleaning.clean_tag | clean tag | RECORD | Tag records cleaned date, staff, method, condition and next inspection need. | Supports trust. |
-| dmelendingops.custody.loan_agreement | loan agreement | RECORD | Agreement records borrower, device, accessories, expected return, liability limits and contact path. | Creates custody. |
-| dmelendingops.custody.issue_log | issue log | RECORD | Log captures date, staff, device ID, borrower confirmation, condition photo and instruction given. | Documents release. |
-| dmelendingops.custody.transfer_between_sites | transfer between sites | PROCESS | Transfer records moving stock between shelter, clinic, warehouse, outreach team or repair vendor. | Keeps inventory accurate. |
-| dmelendingops.custody.loss_report | loss report | RECORD | Report captures missing, stolen, damaged, unreturned or destroyed device and recovery steps. | Controls losses. |
-| dmelendingops.delivery.pickup_option | pickup option | PROCESS | Option schedules borrower pickup, caregiver pickup, shelter desk handoff or field delivery. | Gets equipment to user. |
-| dmelendingops.delivery.accessible_delivery | accessible delivery | PROCESS | Delivery accounts for stairs, curb access, vehicle loading, caregiver presence and setup time. | Prevents failed handoff. |
-| dmelendingops.delivery.handoff_proof | handoff proof | RECORD | Proof records recipient role, device ID, accessories, date and signature or alternate confirmation. | Closes custody. |
-| dmelendingops.return.return_window | return window | RECORD | Window records due date, reminder cadence, extension rules and alternate return site. | Manages circulation. |
-| dmelendingops.return.extension_request | extension request | PROCESS | Request reviews ongoing need, stock pressure, safety status and funding or replacement path. | Balances fairness. |
-| dmelendingops.return.receipt_check | receipt check | PROCESS | Check verifies returned device, accessories, condition, cleaning need and damage notes. | Reopens inventory. |
-| dmelendingops.return.no_return_followup | no-return follow-up | PROCESS | Follow-up contacts borrower, caregiver or caseworker and records barriers or loss status. | Reduces attrition. |
-| dmelendingops.maintenance.condition_inspection | condition inspection | PROCESS | Inspection checks brakes, tips, wheels, welds, frame, batteries, cushions, fasteners and stability. | Finds hazards. |
-| dmelendingops.maintenance.repair_ticket | repair ticket | RECORD | Ticket records defect, priority, parts, vendor, cost estimate, approval and completion. | Organizes repair. |
-| dmelendingops.maintenance.retirement_rule | retirement rule | CONTROL | Rule removes unsafe, obsolete, repeatedly damaged or uneconomical equipment from circulation. | Protects users. |
-| dmelendingops.records.case_file | case file | RECORD | File links intake, eligibility, fit, issue, custody, return, cleaning and closeout. | Supports audit. |
-| dmelendingops.records.status_board | status board | RECORD | Board tracks requested, reserved, issued, delivered, extended, overdue, returned, cleaning and retired. | Shows flow. |
-| dmelendingops.records.exception_log | exception log | RECORD | Log captures no stock, poor fit, failed delivery, damage, infection concern, overdue or lost item. | Enables review. |
-| dmelendingops.communication.borrower_update | borrower update | PROCESS | Update explains availability, pickup, safe use, return date, extension option and maintenance contact. | Reduces confusion. |
-| dmelendingops.communication.partner_request | partner request | PROCESS | Request asks donors, clinics or vendors for specific sizes, parts or repair capacity. | Fills gaps. |
-| dmelendingops.communication.referral_note | referral note | RECORD | Note routes clinical fitting, complex rehab equipment or permanent replacement needs to qualified services. | Avoids unsafe substitution. |
-| dmelendingops.metrics.fulfillment_rate | fulfillment rate | METRIC | Rate tracks eligible requests filled from available stock. | Measures service. |
-| dmelendingops.metrics.turnaround_time | turnaround time | METRIC | Time measures request to issued usable equipment. | Shows speed. |
-| dmelendingops.metrics.return_rate | return rate | METRIC | Rate compares issued devices, returned devices, overdue devices and lost devices. | Guides inventory planning. |
-| dmelendingops.closeout.borrower_confirmation | borrower confirmation | PROCESS | Confirmation verifies device works, barriers remain understood and follow-up is scheduled if needed. | Closes loop. |
-| dmelendingops.closeout.after_action | after-action note | RECORD | Note captures shortages, fit issues, cleaning capacity, repair needs and partner improvements. | Improves next activation. |
+| dmelendingops.intake.request_source | источник запроса | RECORD | Исходные записи: отдел приюта, клиника, социальный работник, специалист по выписке, лицо, осуществляющее уход, горячая линия или аутрич-группа. | Показывает путь входа. |
+| dmelendingops.intake.borrower_profile | профиль заемщика | RECORD | В профиле указаны контакты, местоположение, язык, лицо, осуществляющее уход, потребность в мобильности и пределы безопасного контакта. | Определяет поддержку. |
+| dmelendingops.intake.equipment_need | потребность в оборудовании | RECORD | Нужны записи в инвалидной коляске, ходунках, трости, кресле для душа, туалете, аксессуарах для больничной койки или средствах для транспортировки. | Запрос кадров. |
+| dmelendingops.intake.urgency_score | оценка срочности | MODEL | Оценка учитывает риск падения, время выписки, доступ к приюту, отсутствие лица, осуществляющего уход, медицинскую зависимость и расстояние. | Отдает предпочтение кредитам. |
+| dmelendingops.eligibility.disaster_link | ссылка на катастрофу | CONTROL | Link проверяет, необходимо ли оборудование из-за потери, смещения, повреждения, барьера доступа или условий восстановления. | Целевой запас. |
+| dmelendingops.eligibility.loan_boundary | граница кредита | CONTROL | Граница определяет краткосрочный кредит, замещающий мост, доклиническую поддержку и исключения. | Предотвращает расползание прицела. |
+| dmelendingops.eligibility.duplicate_check | дубликат чека | CONTROL | При проверке сравниваются заемщик, домохозяйство, тип устройства, серийный номер и предыдущие записи о кредите. | Избегает дублирования проблем. |
+| dmelendingops.inventory.asset_record | запись об активах | RECORD | В записи об активах указывается тип устройства, его серийный номер, размер, состояние, аксессуары, местоположение и источник владения. | Отслеживает инвентарь. |
+| dmelendingops.inventory.availability_status | статус доступности | STATE | Метки статуса доступны, зарезервированы, выданы, очищены, отремонтированы, отсутствуют, удалены или помещены в карантин. | Показывает полезный запас. |
+| dmelendingops.inventory.accessory_set | набор аксессуаров | RECORD | Установите рекорды на подушках, подставках для ног, наконечниках, колесах, тормозах, зарядных устройствах, рельсах, сумках или руководствах. | Предотвращает незавершенные кредиты. |
+| dmelendingops.inventory.stock_threshold | порог запаса | CONTROL | Пороговое значение отмечает минимальное количество по типу и размеру устройства для повторного заказа или запроса на пожертвование. | Предотвращает дефицит. |
+| dmelendingops.fit.size_match | соответствие размера | CONTROL | Сопоставление проверяет рост, весовой диапазон, ширину сиденья, высоту захвата, устойчивость и предполагаемую среду. | Повышает безопасность. |
+| dmelendingops.fit.environment_check | проверка окружающей среды | PROCESS | Проверьте обзоры лестниц, ширины дверей, поверхности пола, планировки санузлов, правил транспортировки и укрытия. | Подтверждает удобство использования. |
+| dmelendingops.fit.user_instruction | инструкция пользователя | PROCESS | Инструкция охватывает безопасное использование, регулировку, тормоза, хранение, ответственность за очистку и обратный контакт. | Уменьшает неправильное использование. |
+| dmelendingops.fit.caregiver_brief | краткое содержание лица, осуществляющего уход | PROCESS | Краткое описание объясняет передачу, ограничения, предупреждающие знаки, уход за оборудованием и маршрут эскалации. | Поддерживает помощников. |
+| dmelendingops.cleaning.intake_cleaning | очистка впуска | PROCESS | При чистке удаляются загрязнения, дезинфицируются поверхности, проверяется износ и документируется готовность перед выпуском. | Защищает пользователей. |
+| dmelendingops.cleaning.contact_time | время контакта дезинфицирующего средства | CONTROL | Время контакта подтверждает, что дезинфицирующее средство оставалось влажным достаточно долго для данной категории устройств. | Улучшает санитарию. |
+| dmelendingops.cleaning.quarantine_flag | карантинный флаг | STATE | Флажок отделяет устройства, подвергшиеся воздействию загрязнений, вредителей, биологических жидкостей или неопределенной истории очистки. | Предотвращает перекрестный риск. |
+| dmelendingops.cleaning.clean_tag | очистить тег | RECORD | Пометки записывают дату очистки, персонал, метод, состояние и необходимость следующей проверки. | Поддерживает доверие. |
+| dmelendingops.custody.loan_agreement | кредитный договор | RECORD | В соглашении фиксируются заемщик, устройство, аксессуары, ожидаемый доход, пределы ответственности и путь контакта. | Создает опеку. |
+| dmelendingops.custody.issue_log | журнал проблем | RECORD | В журнале фиксируются дата, персонал, идентификатор устройства, подтверждение заемщика, фотография состояния и предоставленные инструкции. | Выпуск документов. |
+| dmelendingops.custody.transfer_between_sites | перенос между сайтами | PROCESS | Передавайте записи о перемещении запасов между приютом, клиникой, складом, аутрич-группой или поставщиком услуг ремонта. | Обеспечивает точность инвентаризации. |
+| dmelendingops.custody.loss_report | отчет о потерях | RECORD | В отчете описываются пропавшие, украденные, поврежденные, невозвращенные или уничтоженные устройства и этапы восстановления. | Контролирует потери. |
+| dmelendingops.delivery.pickup_option | вариант самовывоза | PROCESS | Вариант расписания: забрать заемщика, забрать опекуна, передать в приют или доставить на место. | Передает оборудование пользователю. |
+| dmelendingops.delivery.accessible_delivery | доступная доставка | PROCESS | При доставке учитываются лестница, доступ к бордюру, загрузка транспортного средства, присутствие лица, осуществляющего уход, и время подготовки. | Предотвращает неудачную передачу обслуживания. |
+| dmelendingops.delivery.handoff_proof | доказательство передачи | RECORD | В доказательстве указывается роль получателя, идентификатор устройства, аксессуары, дата и подпись или альтернативное подтверждение. | Закрывает опеку. |
+| dmelendingops.return.return_window | окно возврата | RECORD | В окне записываются срок выполнения, частота напоминаний, правила продления и альтернативное место возврата. | Управляет кровообращением. |
+| dmelendingops.return.extension_request | запрос на расширение | PROCESS | В запросе рассматриваются текущие потребности, нехватка запасов, статус безопасности и пути финансирования или замены. | Балансирует справедливость. |
+| dmelendingops.return.receipt_check | чек квитанции | PROCESS | При проверке проверяется возвращенное устройство, аксессуары, его состояние, необходимость очистки и примечания о повреждениях. | Снова открывает инвентарь. |
+| dmelendingops.return.no_return_followup | безвозвратное сопровождение | PROCESS | Последующие контакты связываются с заемщиком, лицом, осуществляющим уход, или социальным работником и фиксируют препятствия или статус потери. | Уменьшает истощение. |
+| dmelendingops.maintenance.condition_inspection | проверка состояния | PROCESS | При осмотре проверяются тормоза, наконечники, колеса, сварные швы, рама, аккумуляторы, подушки, крепления и устойчивость. | Находит опасности. |
+| dmelendingops.maintenance.repair_ticket | билет на ремонт | RECORD | В заявках регистрируются дефекты, приоритет, детали, поставщик, смета расходов, утверждение и завершение. | Организует ремонт. |
+| dmelendingops.maintenance.retirement_rule | правило выхода на пенсию | CONTROL | Правило удаляет из оборота небезопасное, устаревшее, неоднократно поврежденное или неэкономичное оборудование. | Защищает пользователей. |
+| dmelendingops.records.case_file | материалы дела | RECORD | Прием файловых ссылок, соответствие требованиям, соответствие, выдача, хранение, возврат, очистка и закрытие. | Поддерживает аудит. |
+| dmelendingops.records.status_board | статусная доска | RECORD | Треки платы запрошены, зарезервированы, выданы, доставлены, продлены, просрочены, возвращены, очищены и удалены. | Показывает поток. |
+| dmelendingops.records.exception_log | журнал исключений | RECORD | В журнале фиксируются отсутствие товара на складе, плохая посадка, неудачная доставка, повреждение, угроза заражения, просрочка или потеря товара. | Включает обзор. |
+| dmelendingops.communication.borrower_update | обновление заемщика | PROCESS | Обновление объясняет наличие, получение, безопасное использование, дату возврата, возможность продления и контактную информацию для обслуживания. | Уменьшает путаницу. |
+| dmelendingops.communication.partner_request | запрос партнера | PROCESS | В запросе донорам, клиникам или поставщикам запрашиваются конкретные размеры, детали или возможности ремонта. | Заполняет пробелы. |
+| dmelendingops.communication.referral_note | направление | RECORD | Обратите внимание на маршруты клинической установки, сложного реабилитационного оборудования или постоянной замены, необходимые для квалифицированных услуг. | Позволяет избежать небезопасной замены. |
+| dmelendingops.metrics.fulfillment_rate | скорость выполнения | METRIC | Ставка отслеживает соответствующие запросы, заполненные из имеющихся на складе. | Меры обслуживания. |
+| dmelendingops.metrics.turnaround_time | время выполнения заказа | METRIC | Запрос мер времени на выдачу используемого оборудования. | Показывает скорость. |
+| dmelendingops.metrics.return_rate | ставка возврата | METRIC | В рейтинге сравниваются выданные, возвращенные, просроченные и потерянные устройства. | Направляет планирование запасов. |
+| dmelendingops.closeout.borrower_confirmation | подтверждение заемщика | PROCESS | Подтверждение подтверждает, что устройство работает, барьеры остаются понятными, и при необходимости назначаются последующие действия. | Замыкает цикл. |
+| dmelendingops.closeout.after_action | записка после действия | RECORD | В заметках отражены недостатки, проблемы с посадкой, возможности очистки, потребности в ремонте и улучшения партнеров. | Улучшает следующую активацию. |

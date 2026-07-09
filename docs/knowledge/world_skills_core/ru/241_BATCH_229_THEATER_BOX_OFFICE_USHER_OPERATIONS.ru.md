@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| theaterops.ticket.event_setup | Theater event setup | invariant | Setup defines show, date, venue, seating map, prices, holds, fees and sale windows. | open sales |
-| theaterops.ticket.seat_inventory | Theater seat inventory | invariant | Inventory tracks available, sold, held, comp, accessible, blocked and broken seats. | know capacity |
-| theaterops.ticket.price_scale | Ticket price scale | variant | Scale assigns price by section, performance, discount, demand or package. | revenue control |
-| theaterops.ticket.discount_code | Theater discount code | variant | Code applies student, senior, member, promo, group or comp rule. | controlled discount |
-| theaterops.ticket.ticket_fee | Ticket fee | invariant | Fee covers service, facility, delivery, exchange or processing charges. | transparent price |
-| theaterops.sales.box_office_sale | Box office sale | invariant | Sale records seat, price, payment, customer, delivery method and receipt. | direct transaction |
-| theaterops.sales.online_order | Theater online order | variant | Order links customer, tickets, payment, delivery, confirmation and fraud checks. | digital sales |
-| theaterops.sales.group_sale | Theater group sale | variant | Sale handles blocks, deposits, deadlines, seating, final count and group contact. | group workflow |
-| theaterops.sales.complimentary_ticket | Complimentary ticket | variant | Comp ticket requires reason, approver, recipient and inventory record. | free seat control |
-| theaterops.sales.exchange_request | Ticket exchange request | invariant | Request changes performance, seat, price or patron under policy. | flexible service |
-| theaterops.willcall.will_call | Will-call pickup | invariant | Pickup verifies patron identity, order, tickets, payment balance and pickup note. | front desk handoff |
-| theaterops.willcall.print_at_home | Print-at-home ticket | variant | Ticket uses barcode, seat, event and validation rules for entry. | remote delivery |
-| theaterops.willcall.mobile_ticket | Mobile ticket | variant | Ticket displays barcode or wallet pass for scanning and validation. | phone entry |
-| theaterops.willcall.reprint | Ticket reprint | invariant | Reprint voids or marks prior ticket and records reason to prevent duplicate entry. | fraud control |
-| theaterops.willcall.lost_ticket | Lost ticket process | invariant | Process verifies customer, order, seat and ID before replacement. | protect seat |
-| theaterops.entry.ticket_scan | Ticket scan | invariant | Scan validates event, date, barcode, seat and entry status. | door control |
-| theaterops.entry.bag_policy | Theater bag policy | variant | Policy limits bag size, prohibited items, inspection or storage. | safety and speed |
-| theaterops.entry.late_seating | Late seating policy | invariant | Policy defines when late patrons may enter without disrupting show. | protect performance |
-| theaterops.entry.accessible_entry | Accessible entry | invariant | Entry supports wheelchair, mobility, hearing, vision or companion needs. | inclusive access |
-| theaterops.entry.reentry_rule | Theater reentry rule | variant | Rule controls whether scanned patrons may leave and return. | access integrity |
-| theaterops.usher.pre_show_brief | Usher pre-show briefing | invariant | Briefing covers seating, late policy, emergency exits, accessibility, VIPs and show notes. | align team |
-| theaterops.usher.program_distribution | Program distribution | variant | Distribution gives programs or inserts while monitoring inventory and entrances. | guest information |
-| theaterops.usher.seat_assistance | Seat assistance | invariant | Assistance helps patron find row, seat, section and accessible path. | smooth seating |
-| theaterops.usher.seat_dispute | Seat dispute | invariant | Dispute resolves duplicate seat, wrong performance, blocked seat or customer conflict. | protect experience |
-| theaterops.usher.house_count | House count | invariant | Count tracks scanned patrons, no-shows, comps and attendance. | show record |
-| theaterops.show.house_open | House open | invariant | Opening confirms ushers, doors, auditorium, stage clearance, temperature and front-of-house readiness. | admit audience |
-| theaterops.show.curtain_hold | Curtain hold | variant | Hold delays start for access, safety, ticketing, weather or production reason. | coordinated delay |
-| theaterops.show.intermission_flow | Intermission flow | invariant | Flow manages restrooms, concessions, reentry, seating and timing. | crowd pulse |
-| theaterops.show.house_close | House close | invariant | Close clears patrons, checks lost items, damage, spills, programs and incident notes. | reset venue |
-| theaterops.show.no_late_entry | No-late-entry show | variant | Rule holds late patrons until interval or denies entry for certain performances. | artistic requirement |
-| theaterops.guest.accessibility_request | Accessibility request | invariant | Request records seating, device, interpreter, audio description, captioning or companion need. | plan support |
-| theaterops.guest.patron_complaint | Patron complaint | invariant | Complaint records seating, sound, view, staff, refund, safety or behavior issue. | service recovery |
-| theaterops.guest.disruptive_patron | Disruptive patron response | invariant | Response de-escalates noise, filming, intoxication, harassment or unsafe conduct. | protect audience |
-| theaterops.guest.medical_incident | Theater medical incident | invariant | Incident records location, response, EMS, staff, witnesses and follow-up. | emergency record |
-| theaterops.guest.lost_found | Theater lost and found | invariant | Process tags, stores, claims and disposes found items after show. | return property |
-| theaterops.refund.refund_policy | Theater refund policy | invariant | Policy defines eligibility, cancellation, exchange, weather, illness or event change handling. | consistent decisions |
-| theaterops.refund.cancelled_show | Cancelled show workflow | invariant | Workflow notifies patrons, processes refunds or exchanges and updates inventory. | disruption response |
-| theaterops.refund.chargeback_case | Theater chargeback case | variant | Case gathers order, scan, policy, communication and receipt evidence. | payment dispute |
-| theaterops.cash.box_office_close | Box office close | invariant | Close reconciles cash, cards, comps, exchanges, refunds, batches and deposit. | financial control |
-| theaterops.cash.cash_drawer | Theater cash drawer | invariant | Drawer tracks starting bank, sales, payouts, variance and secure handoff. | cash accountability |
-| theaterops.safety.emergency_evac | Theater evacuation support | invariant | Support guides exits, accessible patrons, assembly, crowd communication and incident log. | emergency readiness |
-| theaterops.safety.fire_watch | Theater fire watch | variant | Watch applies when alarm, pyrotechnics, impairment or venue rule requires monitoring. | temporary protection |
-| theaterops.metrics.theater_kpi | Theater FOH KPI | variant | KPI tracks attendance, ticket yield, scan rate, complaints, refunds, late seating and incidents. | manage front-of-house |
-| theaterops.continuity.ticketing_outage | Ticketing system outage | invariant | Outage process uses manual lists, offline scanning, receipts and later reconciliation. | keep doors moving |
+| theaterops.ticket.event_setup | Оформление театрального мероприятия | invariant | Настройка определяет шоу, дату, место проведения, схему рассадки, цены, удержание, сборы и окна продаж. | открытые продажи |
+| theaterops.ticket.seat_inventory | Инвентаризация мест в театре | invariant | Инвентарные треки доступны, проданы, удержаны, аккредитованы, доступны, заблокированы и сломаны. | знать емкость |
+| theaterops.ticket.price_scale | Шкала цен на билеты | variant | Шкала назначает цену по разделу, производительности, скидке, спросу или упаковке. | контроль доходов |
+| theaterops.ticket.discount_code | Код скидки в театре | variant | Кодекс применяет правила для студентов, пожилых людей, участников, промо-акций, групп или соревнований. | контролируемая скидка |
+| theaterops.ticket.ticket_fee | Стоимость билета | invariant | Плата покрывает расходы на обслуживание, услуги, доставку, обмен или обработку. | прозрачная цена |
+| theaterops.sales.box_office_sale | Продажа кассовых сборов | invariant | При продаже фиксируются местонахождение, цена, оплата, клиент, способ доставки и квитанция. | прямая сделка |
+| theaterops.sales.online_order | Театр онлайн заказ | variant | Заказ связывает клиента, билеты, оплату, доставку, подтверждение и проверки на мошенничество. | цифровые продажи |
+| theaterops.sales.group_sale | Продажа театральной группы | variant | Продажа обрабатывает блоки, депозиты, сроки, рассадку, окончательный подсчет и групповой контакт. | групповой рабочий процесс |
+| theaterops.sales.complimentary_ticket | Пригласительный билет | variant | Для билета Comp требуется причина, утверждающее лицо, получатель и инвентарная запись. | свободное управление сиденьем |
+| theaterops.sales.exchange_request | Запрос на обмен билетов | invariant | Запросить изменение производительности, места, цены или покровителя в соответствии с политикой. | гибкий сервис |
+| theaterops.willcall.will_call | Перехват вызова | invariant | Pickup проверяет личность клиента, заказ, билеты, платежный баланс и примечание о получении. | передача на стойку регистрации |
+| theaterops.willcall.print_at_home | Билет распечатать дома | variant | Билет использует штрих-код, место, событие и правила проверки для входа. | удаленная доставка |
+| theaterops.willcall.mobile_ticket | Мобильный билет | variant | На билете отображается штрих-код или пропуск кошелька для сканирования и проверки. | запись по телефону |
+| theaterops.willcall.reprint | Перепечатка билета | invariant | Повторная распечатка аннулирует или помечает предыдущий билет и записывает причину, чтобы предотвратить повторную запись. | борьба с мошенничеством |
+| theaterops.willcall.lost_ticket | Процесс потери билета | invariant | Перед заменой процесс проверяет клиента, заказ, место и идентификатор. | защитить сиденье |
+| theaterops.entry.ticket_scan | Скан билета | invariant | Сканирование подтверждает событие, дату, штрих-код, место и статус входа. | управление дверью |
+| theaterops.entry.bag_policy | Политика в отношении театральных сумок | variant | Политика ограничивает размер сумки, запрещенные предметы, проверку или хранение. | безопасность и скорость |
+| theaterops.entry.late_seating | Политика поздней рассадки | invariant | Политика определяет, когда опоздавшие посетители могут войти, не нарушая представления. | защитить производительность |
+| theaterops.entry.accessible_entry | Доступный вход | invariant | Вход соответствует потребностям в инвалидной коляске, мобильности, слуху, зрению или сопровождающему лицу. | инклюзивный доступ |
+| theaterops.entry.reentry_rule | Правило возвращения в театр | variant | Правило определяет, могут ли сканируемые посетители уходить и возвращаться. | целостность доступа |
+| theaterops.usher.pre_show_brief | Брифинг Ашера перед выставкой | invariant | На брифинге рассматриваются рассадки, правила опоздания, запасные выходы, доступность, VIP-персоны и заметки о выступлениях. | объединить команду |
+| theaterops.usher.program_distribution | Распространение программы | variant | Раздача дает программы или вставки при мониторинге инвентаря и входов. | информация о госте |
+| theaterops.usher.seat_assistance | Помощь при сидении | invariant | Помощь помогает посетителю найти ряд, место, секцию и доступный путь. | гладкая посадка |
+| theaterops.usher.seat_dispute | Спор о месте | invariant | Спор разрешает дублирование мест, неправильную работу, заблокированное место или конфликт с клиентом. | защитить опыт |
+| theaterops.usher.house_count | Количество домов | invariant | Подсчет отслеживает просмотренных посетителей, неявок, выступлений и посещаемости. | показать запись |
+| theaterops.show.house_open | Дом открыт | invariant | При открытии подтверждаются швейцары, двери, зрительный зал, свобода сцены, температура и готовность входа в зал. | допустить аудиторию |
+| theaterops.show.curtain_hold | Занавес удержание | variant | Приостановить задержку начала по причинам доступа, безопасности, билетов, погоды или производства. | скоординированная задержка |
+| theaterops.show.intermission_flow | Поток антракта | invariant | Поток управляет туалетами, концессиями, входом, размещением и временем. | пульс толпы |
+| theaterops.show.house_close | Дом близко | invariant | Close очищает посетителей, проверяет потерянные предметы, повреждения, разливы, программы и записи о происшествиях. | сбросить место проведения |
+| theaterops.show.no_late_entry | Шоу без позднего входа | variant | Правило удерживает опоздавших посетителей до антракта или запрещает вход на определенные представления. | художественное требование |
+| theaterops.guest.accessibility_request | Запрос доступности | invariant | Запросите записи о сидячих местах, устройстве, переводчике, аудиоописании, субтитрах или необходимости сопровождающего. | планировать поддержку |
+| theaterops.guest.patron_complaint | Жалоба патрона | invariant | В жалобе фиксируются места, звук, вид, персонал, возврат денег, проблемы с безопасностью или поведением. | восстановление службы |
+| theaterops.guest.disruptive_patron | Деструктивный ответ патрона | invariant | Реагирование снижает уровень шума, съемок, интоксикации, преследования или небезопасного поведения. | защитить аудиторию |
+| theaterops.guest.medical_incident | Медицинский инцидент в театре | invariant | Записывает место происшествия, меры реагирования, службу скорой помощи, персонал, свидетелей и последующие действия. | аварийная запись |
+| theaterops.guest.lost_found | Театр потерян и найден | invariant | Обработка тегов, сохранение, утверждение и удаление найденных элементов после показа. | вернуть имущество |
+| theaterops.refund.refund_policy | Политика возврата денег в кинотеатре | invariant | Политика определяет право на участие, отмену, обмен, изменение погоды, болезни или события. | последовательные решения |
+| theaterops.refund.cancelled_show | Отменён рабочий процесс показа | invariant | Рабочий процесс уведомляет клиентов, обрабатывает возвраты или обмены и обновляет инвентарь. | реагирование на нарушение |
+| theaterops.refund.chargeback_case | Дело о возврате театрального платежа | variant | Дело собирает доказательства порядка, сканирования, политики, связи и получения. | платежный спор |
+| theaterops.cash.box_office_close | Касса закрывается | invariant | Close сверяет наличные, карты, компенсации, обмены, возвраты, партии и депозиты. | финансовый контроль |
+| theaterops.cash.cash_drawer | Денежный ящик театра | invariant | Ящик отслеживает стартовый банк, продажи, выплаты, отклонения и безопасную передачу. | денежная отчетность |
+| theaterops.safety.emergency_evac | Поддержка эвакуации из театра | invariant | Поддержка направляет выходы, доступных посетителей, собрания, общение с толпой и журнал инцидентов. | аварийная готовность |
+| theaterops.safety.fire_watch | Театральный пожарный дежурство | variant | Наблюдение применяется, когда сигнализация, пиротехника, нарушение правил или правила места проведения требуют наблюдения. | временная защита |
+| theaterops.metrics.theater_kpi | Театр ФОН КПИ | variant | KPI отслеживает посещаемость, доходность билетов, частоту сканирования, жалобы, возвраты средств, опоздания на места и инциденты. | управлять фасадом дома |
+| theaterops.continuity.ticketing_outage | Сбой в системе продажи билетов | invariant | В процессе отключения используются ручные списки, автономное сканирование, квитанции и последующая сверка. | держать двери движущимися |

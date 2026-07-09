@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| outreachcaseops.field.location_log | location log | RECORD | Log records outreach site, date, team, weather and observed needs. | Tracks field coverage. |
-| outreachcaseops.field.team_safety | team safety check | SAFETY_RULE | Staff check hazards, partner status, radio/phone and exit route before contact. | Protects outreach workers. |
-| outreachcaseops.field.engagement | engagement approach | METHOD | Outreach begins with voluntary, trauma-informed contact and practical offer. | Builds trust. |
-| outreachcaseops.field.repeat_contact | repeat contact | METHOD | Repeated contacts may be needed before assessment or service acceptance. | Respects client readiness. |
-| outreachcaseops.consent.informed_consent | informed consent | SAFETY_RULE | Client consent is obtained before sharing identifiable information unless law permits exception. | Protects autonomy and privacy. |
-| outreachcaseops.consent.release_scope | release scope | RECORD | Release states agency, data type, purpose, duration and revocation route. | Makes sharing bounded. |
-| outreachcaseops.consent.decline | service decline | RECORD | Decline records offer, reason if given and next safe contact plan. | Avoids coercive service. |
-| outreachcaseops.consent.capacity_concern | capacity concern | MODEL | Capacity concern triggers supervisor or clinical consultation when safety or understanding is impaired. | Balances autonomy and protection. |
-| outreachcaseops.assessment.vulnerability | vulnerability assessment | METHOD | Assessment covers age, disability, health, victimization, duration homeless and safety risk. | Prioritizes support. |
-| outreachcaseops.assessment.needs | needs assessment | RECORD | Needs include shelter, ID, benefits, medical, behavioral health, substance use, transport and food. | Guides case plan. |
-| outreachcaseops.assessment.identity_docs | identity documents | RECORD | Document status tracks ID, birth certificate, social/security numbers or immigration papers where relevant. | Enables benefits and housing. |
-| outreachcaseops.assessment.encampment_risk | encampment risk | MODEL | Risk considers weather, sanitation, violence, fire, flooding and public works conflict. | Informs response. |
-| outreachcaseops.case.plan | case plan | RECORD | Plan records goals, referrals, responsibilities, dates and barriers. | Turns outreach into coordinated action. |
-| outreachcaseops.case.owner | case owner | RECORD | One owner coordinates contacts until transfer or closure. | Prevents fragmented help. |
-| outreachcaseops.case.priority | priority level | MODEL | Priority reflects vulnerability, risk, eligibility and available placement. | Allocates scarce resources. |
-| outreachcaseops.case.barrier | barrier tracking | RECORD | Barriers include documents, phone, transport, pets, partner, belongings or behavioral health. | Makes obstacles explicit. |
-| outreachcaseops.referral.shelter | shelter referral | METHOD | Referral checks bed availability, eligibility, curfew, accessibility and client preference. | Improves placement success. |
-| outreachcaseops.referral.housing | housing referral | METHOD | Housing referral links assessment, documentation, voucher or coordinated entry status. | Moves beyond emergency shelter. |
-| outreachcaseops.referral.health | health referral | METHOD | Health referral connects to clinic, crisis team, detox, medication support or insurance help. | Addresses care needs. |
-| outreachcaseops.referral.benefits | benefits referral | METHOD | Benefits referral supports applications for income, food, insurance or disability aid. | Stabilizes client resources. |
-| outreachcaseops.placement.bed_match | bed match | METHOD | Bed match considers household, gender policy, accessibility, pets, safety and location. | Reduces failed placements. |
-| outreachcaseops.placement.transport | transport coordination | METHOD | Transport plan gets client to shelter, clinic, office or housing appointment. | Prevents missed opportunity. |
-| outreachcaseops.placement.warm_handoff | warm handoff | METHOD | Staff directly connect client to receiving program when possible. | Reduces drop-off. |
-| outreachcaseops.placement.failed | failed placement | FAILURE_MODE | Placement fails from no-show, rule conflict, capacity change, transport or client choice. | Triggers new plan. |
-| outreachcaseops.followup.appointment | appointment follow-up | METHOD | Follow-up confirms attendance, barriers and next step. | Maintains momentum. |
-| outreachcaseops.followup.locate | locate attempt | METHOD | Locate attempt uses known sites, phone, partner check or outreach schedule. | Finds clients without stable contact. |
-| outreachcaseops.followup.status_update | status update | RECORD | Status update records housed, sheltered, unsheltered, unreachable, declined or transferred. | Keeps caseload accurate. |
-| outreachcaseops.followup.reengagement | reengagement | METHOD | Reengagement restarts contact after missed appointments or service declines. | Keeps door open. |
-| outreachcaseops.records.case_note | case note | RECORD | Case note records facts, offers, client choices and next action respectfully. | Supports continuity. |
-| outreachcaseops.records.hmis | HMIS entry | METHOD | Homeless management system data follows local definitions and consent rules. | Supports coordinated services. |
-| outreachcaseops.records.privacy | privacy boundary | SAFETY_RULE | Location and personal data are shared only with need-to-know partners. | Protects vulnerable clients. |
-| outreachcaseops.records.retention | retention rule | CONSTRAINT | Outreach records follow program, grant and privacy retention rules. | Controls data lifecycle. |
-| outreachcaseops.partners.coordinated_entry | coordinated entry | METHOD | Coordinated entry uses shared assessment and prioritization for housing resources. | Aligns regional housing access. |
-| outreachcaseops.partners.public_works | public works liaison | METHOD | Liaison coordinates encampment cleanup timing, notices and belongings policy. | Reduces harm during site actions. |
-| outreachcaseops.partners.police_fire | emergency services liaison | METHOD | Liaison supports safety calls without turning routine outreach into enforcement. | Keeps roles clear. |
-| outreachcaseops.partners.nonprofit | nonprofit partner | METHOD | Partner referrals share tasks for meals, showers, legal aid, clothing or casework. | Broadens support. |
-| outreachcaseops.supplies.field_kit | field kit | RECORD | Kit includes water, snacks, hygiene, forms, PPE, chargers and weather supplies. | Enables practical help. |
-| outreachcaseops.supplies.inventory | supply inventory | MEASUREMENT | Inventory tracks issued items, stock and replenishment needs. | Prevents shortages. |
-| outreachcaseops.safety.weather | weather protocol | SAFETY_RULE | Extreme heat, cold, smoke or storm changes outreach cadence and referral urgency. | Protects clients and staff. |
-| outreachcaseops.safety.incident | incident report | RECORD | Incident report records threat, injury, overdose, death, conflict or mandated report. | Supports safety review. |
-| outreachcaseops.metrics.contacts | contact metric | MEASUREMENT | Contacts track unique people, repeat contacts, assessments and referrals. | Shows outreach activity. |
-| outreachcaseops.metrics.placement_rate | placement rate | MEASUREMENT | Placement rate tracks shelter or housing placements from outreach contacts. | Measures outcomes. |
-| outreachcaseops.qa.supervision | case supervision | QUALITY_CHECK | Supervisors review high-risk cases, documentation and service barriers. | Improves practice. |
-| outreachcaseops.closeout.closure_reason | closure reason | RECORD | Closure reason states housed, transferred, declined, unreachable, moved or deceased. | Makes case end explicit. |
+| outreachcaseops.field.location_log | журнал местоположений | RECORD | В журнале фиксируются место проведения информационно-пропагандистской работы, дата, команда, погода и наблюдаемые потребности. | Отслеживает покрытие поля. |
+| outreachcaseops.field.team_safety | проверка безопасности команды | SAFETY_RULE | Перед контактом сотрудники проверяют опасности, статус партнера, радио/телефон и путь выхода. | Защищает аутрич-работников. |
+| outreachcaseops.field.engagement | подход к вовлечению | METHOD | Аутрич-работа начинается с добровольного контакта с учетом травм и практических предложений. | Вызывает доверие. |
+| outreachcaseops.field.repeat_contact | повторить контакт | METHOD | Перед оценкой или принятием услуги могут потребоваться повторные контакты. | Уважает готовность клиента. |
+| outreachcaseops.consent.informed_consent | информированное согласие | SAFETY_RULE | Согласие клиента получается перед раскрытием идентифицирующей информации, если закон не допускает исключения. | Защищает автономность и конфиденциальность. |
+| outreachcaseops.consent.release_scope | объем выпуска | RECORD | В выпуске указывается агентство, тип данных, цель, продолжительность и маршрут отзыва. | Делает обмен ограниченным. |
+| outreachcaseops.consent.decline | отказ в обслуживании | RECORD | Предложение об отклонении записей, причина, если указана, и план следующего безопасного контакта. | Избегает принудительной службы. |
+| outreachcaseops.consent.capacity_concern | проблема с пропускной способностью | MODEL | Проблемы с производительностью требуют супервайзера или клинической консультации, когда безопасность или понимание нарушены. | Балансирует автономность и защиту. |
+| outreachcaseops.assessment.vulnerability | оценка уязвимости | METHOD | Оценка охватывает возраст, инвалидность, состояние здоровья, виктимизацию, продолжительность бездомности и риск безопасности. | Отдает приоритет поддержке. |
+| outreachcaseops.assessment.needs | оценка потребностей | RECORD | Потребности включают жилье, удостоверение личности, льготы, медицинское обслуживание, поведенческое здоровье, употребление психоактивных веществ, транспорт и еду. | План дела руководства. |
+| outreachcaseops.assessment.identity_docs | документы, удостоверяющие личность | RECORD | Статус документа отслеживает удостоверение личности, свидетельство о рождении, номера социального страхования/страхования или иммиграционные документы, где это необходимо. | Предоставляет льготы и жилье. |
+| outreachcaseops.assessment.encampment_risk | риск лагеря | MODEL | Риск учитывает погодные условия, санитарные условия, насилие, пожары, наводнения и конфликты в сфере общественных работ. | Информирует ответ. |
+| outreachcaseops.case.plan | план дела | RECORD | План записывает цели, направления, обязанности, даты и препятствия. | Превращает информационную работу в скоординированные действия. |
+| outreachcaseops.case.owner | владелец дела | RECORD | Один владелец согласовывает контакты до момента перевода или закрытия. | Предотвращает фрагментированную помощь. |
+| outreachcaseops.case.priority | уровень приоритета | MODEL | Приоритет отражает уязвимость, риск, право на участие и доступное место размещения. | Распределяет дефицитные ресурсы. |
+| outreachcaseops.case.barrier | отслеживание барьеров | RECORD | К барьерам относятся документы, телефон, транспорт, домашние животные, партнер, вещи или поведенческое здоровье. | Делает препятствия явными. |
+| outreachcaseops.referral.shelter | направление в приют | METHOD | Направление проверяет наличие коек, право на участие, комендантский час, доступность и предпочтения клиента. | Улучшает успех размещения. |
+| outreachcaseops.referral.housing | направление на жилье | METHOD | Оценка реферальных ссылок на жилье, документация, ваучер или статус согласованного въезда. | Выходит за пределы аварийного убежища. |
+| outreachcaseops.referral.health | медицинское направление | METHOD | Направление на медицинское обслуживание связано с клиникой, кризисной командой, детоксикацией, медикаментозной поддержкой или страховой помощью. | Удовлетворяет потребности в уходе. |
+| outreachcaseops.referral.benefits | направление на льготы | METHOD | Направление на льготы поддерживает заявки на доход, питание, страхование или помощь по инвалидности. | Стабилизирует ресурсы клиента. |
+| outreachcaseops.placement.bed_match | кровать спичка | METHOD | Подбор кроватей учитывает домашнее хозяйство, гендерную политику, доступность, домашних животных, безопасность и местоположение. | Уменьшает количество неудачных размещений. |
+| outreachcaseops.placement.transport | координация транспорта | METHOD | Транспортный план доставит клиента до приюта, клиники, офиса или места назначения. | Предотвращает упущенные возможности. |
+| outreachcaseops.placement.warm_handoff | теплая передача | METHOD | По возможности сотрудники напрямую подключают клиента к принимающей программе. | Уменьшает выпадение. |
+| outreachcaseops.placement.failed | неудачное размещение | FAILURE_MODE | Размещение не удалось из-за неявки, конфликта правил, изменения мощности, транспорта или выбора клиента. | Запускает новый план. |
+| outreachcaseops.followup.appointment | сопровождение встречи | METHOD | Последующее наблюдение подтверждает посещаемость, препятствия и следующий шаг. | Сохраняет темп. |
+| outreachcaseops.followup.locate | найти попытку | METHOD | При попытке найти используются известные сайты, телефон, проверка партнеров или график работы. | Находит клиентов без стабильного контакта. |
+| outreachcaseops.followup.status_update | обновление статуса | RECORD | Записи об обновлении статуса размещены, защищены, незащищены, недоступны, отклонены или перенесены. | Обеспечивает точность загрузки дел. |
+| outreachcaseops.followup.reengagement | повторное участие | METHOD | Повторное взаимодействие возобновляет контакт после пропущенных встреч или отказа в обслуживании. | Держит дверь открытой. |
+| outreachcaseops.records.case_note | примечание по делу | RECORD | В примечании к делу с уважением фиксируются факты, предложения, выбор клиента и последующие действия. | Поддерживает непрерывность. |
+| outreachcaseops.records.hmis | запись в ИСУЗ | METHOD | Данные системы управления бездомными соответствуют местным определениям и правилам согласия. | Поддерживает скоординированные услуги. |
+| outreachcaseops.records.privacy | граница конфиденциальности | SAFETY_RULE | Местоположение и личные данные передаются только тем партнерам, которым необходимо знать. | Защищает уязвимых клиентов. |
+| outreachcaseops.records.retention | правило хранения | CONSTRAINT | Записи информационно-пропагандистской деятельности соответствуют правилам программы, грантов и сохранения конфиденциальности. | Управляет жизненным циклом данных. |
+| outreachcaseops.partners.coordinated_entry | скоординированный вход | METHOD | Координированный вход использует совместную оценку и определение приоритетов жилищных ресурсов. | Выравнивает региональный доступ к жилью. |
+| outreachcaseops.partners.public_works | связь с общественными работами | METHOD | Контактное лицо координирует сроки уборки лагеря, уведомления и политику в отношении имущества. | Снижает вред при действиях на площадке. |
+| outreachcaseops.partners.police_fire | связь экстренных служб | METHOD | Liaison поддерживает звонки по вопросам безопасности, не превращая рутинные разъяснительные работы в принудительные меры. | Сохраняет четкость ролей. |
+| outreachcaseops.partners.nonprofit | некоммерческий партнер | METHOD | Направления партнеров разделяют задачи по питанию, принятию душа, юридической помощи, одежде или работе по делам. | Расширяет поддержку. |
+| outreachcaseops.supplies.field_kit | полевой комплект | RECORD | В комплект входят вода, закуски, средства гигиены, формы, средства индивидуальной защиты, зарядные устройства и принадлежности для погодных условий. | Обеспечивает практическую помощь. |
+| outreachcaseops.supplies.inventory | поставка инвентаря | MEASUREMENT | Инвентаризация отслеживает выданные товары, запасы и потребности в пополнении. | Предотвращает дефицит. |
+| outreachcaseops.safety.weather | протокол погоды | SAFETY_RULE | Экстремальная жара, холод, дым или шторм меняют частоту охвата и срочность направления. | Защищает клиентов и персонал. |
+| outreachcaseops.safety.incident | отчет об инциденте | RECORD | В отчете об инциденте фиксируются угрозы, травмы, передозировка, смерть, конфликт или обязательный отчет. | Поддерживает проверку безопасности. |
+| outreachcaseops.metrics.contacts | контактная метрика | MEASUREMENT | Контакты отслеживают уникальных людей, повторяют контакты, оценки и рекомендации. | Показывает просветительскую деятельность. |
+| outreachcaseops.metrics.placement_rate | ставка размещения | MEASUREMENT | Коэффициент размещения отслеживает размещение в приюте или жилье от контактов с аутрич-работой. | Измеряет результаты. |
+| outreachcaseops.qa.supervision | надзор за делом | QUALITY_CHECK | Надзорные органы рассматривают случаи высокого риска, документацию и барьеры в обслуживании. | Улучшает практику. |
+| outreachcaseops.closeout.closure_reason | причина закрытия | RECORD | В причине закрытия указывается: размещено, переведено, отклонено, недоступно, перемещено или умерло. | Делает окончание регистра явным. |

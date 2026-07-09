@@ -72,6 +72,12 @@ class RetrievedFact:
             "source":     self.source,
             "confidence": self.confidence,
             "score":      self.final_score,
+            "score_breakdown": {
+                "bm25":   round(self.bm25_score, 4),
+                "dense":  round(self.dense_score, 4),
+                "rrf":    round(self.rrf_score, 4),
+                "final":  round(self.final_score, 4),
+            },
             "metadata":   self.metadata,
         }
 
@@ -203,14 +209,35 @@ def reciprocal_rank_fusion(
     k: int = 60,
 ) -> list[tuple[int, float]]:
     """
-    RRF (Cormack et al., 2009).
-    Объединяет N ранкированных списков (index, score) → единый список.
+    RRF (Cormack et al., 2009) с калибровкой скора (V8.8).
 
     Формула: RRF(d) = Σ 1/(k + rank(d))
     k=60 — стандартное значение из оригинальной статьи.
+
+    V8.8 FIX: BM25 и cosine similarity в разных диапазонах
+    (BM25: 0..∞, cosine: -1..1). Перед RRF нормализуем каждый список
+    к единой шкале [0,1] через min-max scaling, чтобы один тип
+    retrieval не доминировал над другим.
     """
-    rrf_scores: dict[int, float] = {}
+    # Нормализовать каждый список к [0,1]
+    normalized: list[list[tuple[int, float]]] = []
     for ranked in ranked_lists:
+        if not ranked:
+            normalized.append([])
+            continue
+        scores = [s for _, s in ranked]
+        min_s, max_s = min(scores), max(scores)
+        if max_s == min_s:
+            # Все одинаковые — оставляем 0.5
+            normalized.append([(idx, 0.5) for idx, _ in ranked])
+        else:
+            normalized.append([
+                (idx, (s - min_s) / (max_s - min_s))
+                for idx, s in ranked
+            ])
+
+    rrf_scores: dict[int, float] = {}
+    for ranked in normalized:
         for rank, (idx, _score) in enumerate(ranked, start=1):
             rrf_scores[idx] = rrf_scores.get(idx, 0.0) + 1.0 / (k + rank)
 
@@ -473,15 +500,33 @@ class HybridRetriever:
         # Собрать соседей (BFS на depth уровней)
         visited: set[str] = set(seed_ids)
         frontier: set[str] = set(seed_ids)
+        # BFS на depth уровней с учётом весов рёбер (V8.8)
+        visited: set[str] = set(seed_ids)
+        frontier: set[str] = set(seed_ids)
+
+        # Загружаем RELATION_TYPE_WEIGHTS для фильтрации
+        try:
+            from core.causal_graph import RELATION_TYPE_WEIGHTS
+            type_weights = RELATION_TYPE_WEIGHTS
+        except ImportError:
+            type_weights = {}
+
         for _ in range(depth):
             next_frontier: set[str] = set()
             for fid in frontier:
                 try:
-                    neighbors = cg.get_neighbors(fid)
-                    for nb in neighbors:
-                        if nb not in visited:
-                            visited.add(nb)
-                            next_frontier.add(nb)
+                    # V8.8: weighted traversal — получаем все рёбра и фильтруем по весу
+                    relations = cg.get_relations_from(fid)
+                    for rel in relations:
+                        nb = rel.to_fact_id
+                        if nb in visited:
+                            continue
+                        # V8.8: фильтр по весу типа ребра — слабые связи пропускаем
+                        type_weight = type_weights.get(rel.relation_type, 0.5)
+                        if type_weight < 0.5:
+                            continue
+                        visited.add(nb)
+                        next_frontier.add(nb)
                 except Exception:
                     continue
             frontier = next_frontier
@@ -500,3 +545,62 @@ class HybridRetriever:
             for nid in neighbor_ids
             if nid in fact_index
         ]
+
+    # ── V8.8: MMR Diversity + Retrieval Cache ───────────────────────────────
+
+    def retrieve_diverse(
+        self,
+        query: str,
+        top_k: int = 10,
+        *,
+        lambda_param: float = 0.7,
+    ) -> list[RetrievedFact]:
+        """
+        Maximal Marginal Relevance — баланс релевантности и разнообразия.
+
+        Без MMR 10 результатов могут быть про одно и то же.
+        С MMR: λ=0.7 → 70% релевантность, 30% разнообразие.
+
+        Args:
+            lambda_param: 0..1, баланс релевантности vs разнообразия
+                          1.0 = только релевантность (обычный retrieval)
+                          0.0 = только разнообразие (все разные)
+        """
+        # Получить больше кандидатов чем нужно
+        candidates = self.retrieve(query, top_k=top_k * 3)
+        if len(candidates) <= top_k:
+            return candidates
+
+        selected: list[RetrievedFact] = []
+        remaining = list(candidates)
+
+        while len(selected) < top_k and remaining:
+            mmr_scores: list[float] = []
+            for cand in remaining:
+                relevance = cand.final_score
+                # Разнообразие: максимальное сходство с уже выбранными
+                max_sim = 0.0
+                for s in selected:
+                    sim = self._jaccard_claim_similarity(cand.claim, s.claim)
+                    max_sim = max(max_sim, sim)
+                redundancy = max_sim
+                mmr = lambda_param * relevance - (1.0 - lambda_param) * redundancy
+                mmr_scores.append(mmr)
+
+            best_idx = max(range(len(mmr_scores)), key=lambda i: mmr_scores[i])
+            selected.append(remaining.pop(best_idx))
+
+        return selected
+
+    @staticmethod
+    def _jaccard_claim_similarity(claim_a: str, claim_b: str) -> float:
+        """Jaccard-сходство двух claims по токенам (для MMR)."""
+        if not claim_a or not claim_b:
+            return 0.0
+        tokens_a = set(claim_a.lower().split())
+        tokens_b = set(claim_b.lower().split())
+        if not tokens_a or not tokens_b:
+            return 0.0
+        intersection = tokens_a & tokens_b
+        union = tokens_a | tokens_b
+        return len(intersection) / len(union) if union else 0.0

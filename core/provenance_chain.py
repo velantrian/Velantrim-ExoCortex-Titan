@@ -115,51 +115,91 @@ class ProvenanceChain:
         """
         Добавить событие в цепочку провенанса.
 
+        FIX P1 (v8.7 audit): seq-чтение + INSERT теперь в одной транзакции
+        (BEGIN IMMEDIATE). До фикса 50 параллельных append → только 2 успешно,
+        48 падали на lock/unique из-за гонки между _next_seq() и INSERT.
+        Теперь retry на SQLITE_BUSY с экспоненциальной задержкой.
+
         Возвращает (ok, event_hash).
         """
         if not fact_id:
             return False, "empty_fact_id"
 
-        # Определить следующий seq
-        seq = self._next_seq(fact_id)
+        import time as _time
 
-        # Предыдущий хеш
-        prev_hash = GENESIS
-        if seq > 0:
-            prev_event = self._get_event(fact_id, seq - 1)
-            if prev_event:
-                prev_hash = prev_event.get("event_hash", GENESIS)
+        max_retries = 5
+        for attempt in range(max_retries):
+            try:
+                conn = sqlite3.connect(self._db_path, timeout=10.0)
+                conn.execute("PRAGMA journal_mode=WAL")
 
-        # Вычислить хеш события
-        created_at = datetime.now(timezone.utc).isoformat()
-        payload_str = json.dumps(payload or {}, sort_keys=True, ensure_ascii=False)
-        event_hash = self._compute_hash(
-            prev_hash, event_type, fact_id, from_state, to_state,
-            payload_str, created_at,
-        )
+                # BEGIN IMMEDIATE — захватываем write lock до чтения seq,
+                # чтобы никто не прочитал тот же seq параллельно
+                conn.execute("BEGIN IMMEDIATE")
 
-        # Записать
-        try:
-            conn = sqlite3.connect(self._db_path, timeout=10.0)
-            conn.execute(
-                """INSERT INTO provenance_chains
-                   (fact_id, seq, event_type, actor, from_state, to_state,
-                    reason, payload_json, event_hash, prev_hash, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    fact_id, seq, event_type, actor,
-                    from_state, to_state,
-                    reason, json.dumps(payload or {}, ensure_ascii=False),
-                    event_hash, prev_hash, created_at,
-                ),
-            )
-            conn.commit()
-            conn.close()
-            logger.debug("Provenance: %s seq=%d type=%s hash=%s", fact_id, seq, event_type, event_hash[:12])
-            return True, event_hash
-        except Exception as exc:
-            logger.error("Provenance append: %s", exc)
-            return False, str(exc)
+                seq = self._next_seq(fact_id, conn)
+
+                prev_hash = GENESIS
+                if seq > 0:
+                    row = conn.execute(
+                        "SELECT event_hash FROM provenance_chains "
+                        "WHERE fact_id = ? AND seq = ?",
+                        (fact_id, seq - 1),
+                    ).fetchone()
+                    if row:
+                        prev_hash = row[0]
+
+                created_at = datetime.now(timezone.utc).isoformat()
+                payload_str = json.dumps(payload or {}, sort_keys=True, ensure_ascii=False)
+                event_hash = self._compute_hash(
+                    prev_hash, event_type, fact_id,
+                    actor=actor, reason=reason or "",
+                    from_state=from_state, to_state=to_state,
+                    payload_str=payload_str, created_at=created_at,
+                )
+
+                conn.execute(
+                    """INSERT INTO provenance_chains
+                       (fact_id, seq, event_type, actor, from_state, to_state,
+                        reason, payload_json, event_hash, prev_hash, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        fact_id, seq, event_type, actor,
+                        from_state, to_state,
+                        reason, json.dumps(payload or {}, ensure_ascii=False),
+                        event_hash, prev_hash, created_at,
+                    ),
+                )
+                conn.commit()
+                conn.close()
+                logger.debug(
+                    "Provenance: %s seq=%d type=%s hash=%s",
+                    fact_id, seq, event_type, event_hash[:12],
+                )
+                return True, event_hash
+
+            except sqlite3.OperationalError as exc:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                errmsg = str(exc)
+                if "database is locked" in errmsg.lower() and attempt < max_retries - 1:
+                    wait = 0.05 * (2 ** attempt)  # 50ms, 100ms, 200ms, 400ms, 800ms
+                    _time.sleep(wait)
+                    continue
+                logger.error("Provenance append (attempt %d): %s", attempt + 1, exc)
+                return False, str(exc)
+
+            except Exception as exc:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                logger.error("Provenance append: %s", exc)
+                return False, str(exc)
+
+        return False, "max_retries_exceeded"
 
     # ── Чтение ────────────────────────────────────────────────────────────
 
@@ -218,10 +258,12 @@ class ProvenanceChain:
                 expected_prev,
                 event["event_type"],
                 event["fact_id"],
-                event.get("from_state"),
-                event.get("to_state"),
-                payload_str,
-                event["created_at"],
+                actor=event.get("actor", "system"),
+                reason=event.get("reason", ""),
+                from_state=event.get("from_state"),
+                to_state=event.get("to_state"),
+                payload_str=payload_str,
+                created_at=event["created_at"],
             )
 
             if recalc != event["event_hash"]:
@@ -247,10 +289,15 @@ class ProvenanceChain:
         payload_str: str,
         created_at: str,
     ) -> str:
+        # FIX #6/#7 (Claude audit): включаем actor, reason в хеш-цепь.
+        # Раньше хеш не зависел от того КТО сделал изменение и ПОЧЕМУ —
+        # подделка actor/reason не обнаруживалась verify().
         data = "|".join([
             prev_hash,
             event_type,
             fact_id,
+            actor or "system",
+            reason or "",
             from_state or "",
             to_state or "",
             payload_str,
@@ -258,15 +305,21 @@ class ProvenanceChain:
         ])
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
-    def _next_seq(self, fact_id: str) -> int:
+    def _next_seq(self, fact_id: str, conn: sqlite3.Connection | None = None) -> int:
         try:
-            conn = sqlite3.connect(self._db_path, timeout=10.0)
-            row = conn.execute(
+            if conn is not None:
+                row = conn.execute(
+                    "SELECT MAX(seq) FROM provenance_chains WHERE fact_id = ?",
+                    (fact_id,),
+                ).fetchone()
+                return (row[0] if row[0] is not None else -1) + 1
+            c = sqlite3.connect(self._db_path, timeout=10.0)
+            row = c.execute(
                 "SELECT MAX(seq) FROM provenance_chains WHERE fact_id = ?",
                 (fact_id,),
             ).fetchone()
-            conn.close()
-            return (row[0] or -1) + 1
+            c.close()
+            return (row[0] if row[0] is not None else -1) + 1
         except Exception:
             return 0
 

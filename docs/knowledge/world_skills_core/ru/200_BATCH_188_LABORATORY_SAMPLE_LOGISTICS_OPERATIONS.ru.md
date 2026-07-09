@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| samplelog.order.test_order | Laboratory test order | invariant | Test order defines patient or client, sample type, requested tests, priority and destination lab. | start of chain |
-| samplelog.order.collection_window | Collection window | invariant | Window defines acceptable time for sample collection relative to test requirement. | timing affects validity |
-| samplelog.order.sample_label | Sample label | invariant | Label identifies sample with unique ID, subject, type, time, collector and required tests. | identity control |
-| samplelog.order.requisition_form | Requisition form | invariant | Form carries order details, clinical or project context, billing and special instructions. | paperwork follows sample |
-| samplelog.order.priority_status | Sample priority status | variant | Status such as routine, urgent or stat changes pickup, transport and accession handling. | speed by need |
-| samplelog.collection.collector_id | Collector identification | invariant | Collector ID links collection act to trained person and timestamp. | accountability |
-| samplelog.collection.sample_container | Sample container | invariant | Container must match sample, preservative, volume, closure and test requirements. | wrong tube invalidates |
-| samplelog.collection.minimum_volume | Minimum sample volume | invariant | Minimum volume is required amount for analysis, repeats and quality control. | enough material |
-| samplelog.collection.contamination_risk | Collection contamination risk | invariant | Risk arises from wrong container, skin prep, environment, carryover or mixed materials. | protect result quality |
-| samplelog.collection.collection_exception | Collection exception | invariant | Exception records difficult draw, partial volume, delay, leakage, wrong label or patient issue. | tell the lab |
-| samplelog.packaging.primary_container | Primary sample container | invariant | Primary container directly holds specimen and must be sealed before transport. | first barrier |
-| samplelog.packaging.secondary_packaging | Secondary packaging | invariant | Secondary packaging contains leakage and separates sample from paperwork. | containment layer |
-| samplelog.packaging.absorbent_material | Absorbent material | invariant | Absorbent material captures leakage inside compliant transport packaging. | manage spills |
-| samplelog.packaging.temperature_packout | Temperature packout | invariant | Packout maintains required ambient, refrigerated, frozen or controlled condition for transport. | stability control |
-| samplelog.packaging.dangerous_goods_marking | Dangerous goods marking | variant | Marking communicates regulated biological, chemical or hazardous material transport requirements. | carriers need warning |
-| samplelog.chain.chain_of_custody | Sample chain of custody | invariant | Custody record tracks possession, time, condition and transfer signatures. | evidence integrity |
-| samplelog.chain.handoff_scan | Handoff barcode scan | variant | Scan records pickup, transfer, arrival and exception events in tracking system. | real-time trace |
-| samplelog.chain.seal_integrity | Seal integrity check | invariant | Check confirms tamper seal, bag, container and package closure are intact. | detect interference |
-| samplelog.chain.custody_gap | Custody gap | invariant | Gap is missing time, person or location in custody history and needs investigation. | trust issue |
-| samplelog.chain.receipt_confirmation | Receipt confirmation | invariant | Confirmation records laboratory receipt, condition, time, accession and rejected items. | close transport |
-| samplelog.transport.route_plan | Sample courier route plan | invariant | Route plan orders pickups by priority, time window, temperature and destination. | efficient pickup |
-| samplelog.transport.courier_kit | Courier kit | invariant | Kit includes bags, labels, spill materials, PPE, temperature materials and documentation. | ready for exceptions |
-| samplelog.transport.vehicle_cleanliness | Sample vehicle cleanliness | invariant | Cleanliness prevents cross-contamination, pests, odor and uncontrolled exposure. | transport hygiene |
-| samplelog.transport.temperature_logger | Sample temperature logger | variant | Logger records temperature history for samples needing controlled conditions. | prove condition |
-| samplelog.transport.delay_event | Courier delay event | invariant | Delay event records cause, affected samples, time impact and mitigation. | decide sample acceptability |
-| samplelog.exception.leaking_sample | Leaking sample | invariant | Leaking sample requires containment, safety response, documentation and lab acceptance decision. | safety and validity |
-| samplelog.exception.mislabelled_sample | Mislabelled sample | invariant | Mislabelled sample cannot be trusted without approved correction pathway. | identity risk |
-| samplelog.exception.clotted_sample | Clotted sample | variant | Clotting may make certain blood tests invalid or limited. | specimen quality |
-| samplelog.exception.hemolysis_flag | Hemolysis flag | variant | Hemolysis indicates red cell breakdown that can interfere with some analyses. | result interference |
-| samplelog.exception.temperature_excursion | Sample temperature excursion | invariant | Excursion occurs when sample leaves required temperature range during storage or transit. | stability question |
-| samplelog.accession.accession_number | Laboratory accession number | invariant | Accession number assigns received sample to lab workflow, tests and reports. | lab identity |
-| samplelog.accession.acceptance_criteria | Sample acceptance criteria | invariant | Criteria define acceptable label, container, volume, time, temperature and condition. | gate before testing |
-| samplelog.accession.rejection_reason | Sample rejection reason | invariant | Reason records why sample cannot be tested or needs recollection. | transparent refusal |
-| samplelog.accession.split_sample | Split sample | variant | Split creates aliquots for multiple tests, backup, referral or storage. | divide safely |
-| samplelog.accession.referral_lab | Referral laboratory | variant | Referral sends sample to external lab with custody, packaging and result tracking. | specialized testing |
-| samplelog.storage.short_term_hold | Short-term sample hold | invariant | Hold keeps sample under required condition until testing, repeat or disposal. | controlled waiting |
-| samplelog.storage.freeze_thaw_cycle | Freeze-thaw cycle | variant | Cycle can degrade some analytes or materials and must be tracked where relevant. | storage can change sample |
-| samplelog.storage.retention_period | Sample retention period | invariant | Period defines how long sample or aliquot is kept after testing. | repeat and audit |
-| samplelog.storage.disposal_log | Sample disposal log | invariant | Disposal log records sample ID, date, method, authorization and hazard route. | end of lifecycle |
-| samplelog.quality.transport_audit | Sample logistics audit | invariant | Audit checks labels, custody, packaging, temperature, timing, exceptions and training. | verify chain |
-| samplelog.quality.courier_training | Courier sample training | invariant | Training covers packaging, custody, temperature, spills, privacy and delivery rules. | people protect samples |
-| samplelog.quality.turnaround_metric | Sample logistics turnaround | variant | Metric tracks collection-to-pickup, pickup-to-lab and accession delay. | find bottlenecks |
-| samplelog.quality.nonconformance | Sample logistics nonconformance | invariant | Nonconformance documents deviation from procedure, impact assessment and corrective action. | quality loop |
-| samplelog.continuity.outage_procedure | Sample logistics outage procedure | invariant | Procedure defines paper tracking, alternate routes, manual receipts and recovery during system outage. | keep chain alive |
+| samplelog.order.test_order | Заказ лабораторных испытаний | invariant | В заказе на тестирование определяется пациент или клиент, тип образца, запрошенные тесты, приоритет и лаборатория назначения. | начало цепочки |
+| samplelog.order.collection_window | Окно коллекции | invariant | Окно определяет приемлемое время для сбора проб в соответствии с требованиями теста. | время влияет на достоверность |
+| samplelog.order.sample_label | Образец этикетки | invariant | Этикетка идентифицирует образец с уникальным идентификатором, предметом, типом, временем, коллекционером и необходимыми тестами. | контроль личности |
+| samplelog.order.requisition_form | Форма заявки | invariant | Форма содержит сведения о заказе, клинический контекст или контекст проекта, выставление счетов и специальные инструкции. | оформление документов соответствует образцу |
+| samplelog.order.priority_status | Пример статуса приоритета | variant | Статус, такой как плановый, срочный или сбор изменений статистики, транспортировка и обработка доступа. | скорость по необходимости |
+| samplelog.collection.collector_id | Идентификация коллектора | invariant | Идентификатор коллектора связывает акт сбора с обученным лицом и временной меткой. | подотчетность |
+| samplelog.collection.sample_container | Контейнер для образцов | invariant | Контейнер должен соответствовать требованиям к образцу, консерванту, объему, укупорке и тестированию. | неправильная трубка делает недействительной |
+| samplelog.collection.minimum_volume | Минимальный объем образца | invariant | Минимальный объем – необходимая сумма для анализа, повторов и контроля качества. | достаточно материала |
+| samplelog.collection.contamination_risk | Риск загрязнения коллекции | invariant | Риск возникает из-за неправильного контейнера, подготовки кожи, окружающей среды, переноса или смешивания материалов. | защитить качество результата |
+| samplelog.collection.collection_exception | Исключение коллекции | invariant | Исключения регистрируют трудную затяжку, неполный объем, задержку, утечку, неправильную этикетку или проблему с пациентом. | скажи в лабораторию |
+| samplelog.packaging.primary_container | Контейнер для первичного образца | invariant | Первичный контейнер непосредственно содержит образец и должен быть запечатан перед транспортировкой. | первый барьер |
+| samplelog.packaging.secondary_packaging | Вторичная упаковка | invariant | Вторичная упаковка предотвращает утечку и отделяет образец от документации. | защитный слой |
+| samplelog.packaging.absorbent_material | Абсорбирующий материал | invariant | Абсорбирующий материал улавливает утечки внутри соответствующей транспортной упаковки. | управлять разливами |
+| samplelog.packaging.temperature_packout | Температурный пакет | invariant | Упаковка поддерживает необходимые условия окружающей среды, охлаждения, заморозки или контролируемые условия для транспортировки. | контроль устойчивости |
+| samplelog.packaging.dangerous_goods_marking | Маркировка опасных грузов | variant | Маркировка сообщает о регулируемых требованиях к транспортировке биологических, химических или опасных материалов. | перевозчикам нужно предупреждение |
+| samplelog.chain.chain_of_custody | Образец цепочки поставок | invariant | В протоколе хранения фиксируются владение, время, состояние и подписи передачи. | целостность доказательств |
+| samplelog.chain.handoff_scan | Сканирование штрих-кода передачи | variant | Сканирование записывает события получения, передачи, прибытия и исключений в системе отслеживания. | трассировка в реальном времени |
+| samplelog.chain.seal_integrity | Проверка целостности пломбы | invariant | Проверка подтверждает, что тамперная пломба, пакет, контейнер и застежка упаковки не повреждены. | обнаружить помехи |
+| samplelog.chain.custody_gap | Депозитарий | invariant | В истории задержания Гэпа не указано время, человек или место, и он требует расследования. | проблема доверия |
+| samplelog.chain.receipt_confirmation | Подтверждение получения | invariant | В подтверждении фиксируется получение лаборатории, состояние, время, принадлежность и бракованные изделия. | близкий транспорт |
+| samplelog.transport.route_plan | Примерный план маршрута курьера | invariant | План маршрута упорядочивает пикапы по приоритету, временному окну, температуре и пункту назначения. | эффективный пикап |
+| samplelog.transport.courier_kit | Курьерский комплект | invariant | В комплект входят мешки, этикетки, материалы для разлива, СИЗ, температурные материалы и документация. | готов к исключениям |
+| samplelog.transport.vehicle_cleanliness | Пример чистоты автомобиля | invariant | Чистота предотвращает перекрестное загрязнение, вредителей, запах и неконтролируемое воздействие. | транспортная гигиена |
+| samplelog.transport.temperature_logger | Образец регистратора температуры | variant | Регистратор записывает историю температур для образцов, требующих контролируемых условий. | доказать условие |
+| samplelog.transport.delay_event | Событие задержки курьера | invariant | Причина задержки записи событий, затронутые образцы, влияние времени и смягчение последствий. | принять решение о приемлемости образца |
+| samplelog.exception.leaking_sample | Утечка образца | invariant | Утечка образца требует локализации, мер безопасности, документации и решения о приемке лаборатории. | безопасность и достоверность |
+| samplelog.exception.mislabelled_sample | Образец с неправильной маркировкой | invariant | Неправильно маркированному образцу нельзя доверять без утвержденного способа коррекции. | риск идентичности |
+| samplelog.exception.clotted_sample | Свернувшийся образец | variant | Свертывание крови может сделать некоторые анализы крови недействительными или ограниченными. | качество образца |
+| samplelog.exception.hemolysis_flag | Флаг гемолиза | variant | Гемолиз указывает на распад эритроцитов, который может повлиять на результаты некоторых анализов. | результат помех |
+| samplelog.exception.temperature_excursion | Пример температурного отклонения | invariant | Отклонение происходит, когда образец выходит за пределы требуемого температурного диапазона во время хранения или транспортировки. | вопрос стабильности |
+| samplelog.accession.accession_number | Инвентарный номер лаборатории | invariant | Регистрационный номер присваивает полученный образец рабочему процессу лаборатории, тестам и отчетам. | лабораторная идентичность |
+| samplelog.accession.acceptance_criteria | Примеры критериев приемки | invariant | Критерии определяют приемлемую этикетку, контейнер, объем, время, температуру и состояние. | ворота перед тестированием |
+| samplelog.accession.rejection_reason | Пример причины отказа | invariant | Причина записывает, почему образец не может быть проверен или его необходимо вспомнить. | прозрачный отказ |
+| samplelog.accession.split_sample | Разделить выборку | variant | Split создает аликвоты для нескольких тестов, резервного копирования, направления или хранения. | разделить безопасно |
+| samplelog.accession.referral_lab | Справочная лаборатория | variant | Направление отправляет образец во внешнюю лабораторию с хранением, упаковкой и отслеживанием результатов. | специализированное тестирование |
+| samplelog.storage.short_term_hold | Кратковременное хранение образцов | invariant | Функция Hold сохраняет образец в требуемом состоянии до проведения испытаний, повторения или утилизации. | контролируемое ожидание |
+| samplelog.storage.freeze_thaw_cycle | Цикл замораживания-оттаивания | variant | Цикл может привести к ухудшению качества некоторых аналитов или материалов, и его необходимо отслеживать, где это необходимо. | хранилище может изменить образец |
+| samplelog.storage.retention_period | Срок хранения образца | invariant | Период определяет, как долго образец или аликвота хранится после тестирования. | повторить и проверить |
+| samplelog.storage.disposal_log | Образец журнала утилизации | invariant | В журнале утилизации регистрируются идентификатор образца, дата, метод, разрешение и маршрут опасности. | конец жизненного цикла |
+| samplelog.quality.transport_audit | Образец логистического аудита | invariant | Аудит проверяет этикетки, хранение, упаковку, температуру, сроки, исключения и обучение. | проверить цепочку |
+| samplelog.quality.courier_training | Образец обучения курьера | invariant | Обучение охватывает вопросы упаковки, хранения, температуры, разливов, конфиденциальности и правил доставки. | люди защищают образцы |
+| samplelog.quality.turnaround_metric | Пример логистического оборота | variant | Метрика отслеживает время от сбора до получения, доставки в лабораторию и задержку поступления. | найти узкие места |
+| samplelog.quality.nonconformance | Пример несоответствия логистики | invariant | Несоответствие документирует отклонение от процедуры, оценку воздействия и корректирующие действия. | цикл качества |
+| samplelog.continuity.outage_procedure | Пример процедуры отключения логистики | invariant | Процедура определяет отслеживание документов, альтернативные маршруты, ручные поступления и восстановление во время сбоя системы. | сохранить цепь живой |

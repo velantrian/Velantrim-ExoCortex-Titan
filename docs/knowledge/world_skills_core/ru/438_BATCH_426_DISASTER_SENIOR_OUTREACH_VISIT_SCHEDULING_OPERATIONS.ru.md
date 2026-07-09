@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| seniorvisitops.intake.referral_source | referral source | RECORD | Source records hotline, clinic, utility, neighbor, shelter, caseworker or family. | Shows origin. |
-| seniorvisitops.intake.senior_profile | senior profile | RECORD | Profile captures name, age, address, contact, language, access and safe-contact limits. | Defines visit target. |
-| seniorvisitops.intake.vulnerability | vulnerability record | RECORD | Record notes mobility, isolation, oxygen, medication, cognition, heat/cold risk or caregiver absence. | Supports priority. |
-| seniorvisitops.intake.consent_basis | consent basis | RECORD | Consent or welfare-check basis documents why outreach is appropriate. | Protects privacy. |
-| seniorvisitops.priority.priority_score | priority score | MODEL | Score weighs medical dependence, isolation, outage, missed contact, age and hazard zone. | Orders visits. |
-| seniorvisitops.priority.life_safety | life safety flag | SAFETY_RULE | Immediate danger routes to emergency services rather than routine visit. | Prevents delay. |
-| seniorvisitops.priority.duplicate_referral | duplicate referral check | QUALITY_CHECK | Check links repeated referrals for the same person or address. | Reduces wasted visits. |
-| seniorvisitops.priority.revisit_rule | revisit rule | CONSTRAINT | Revisit timing depends on risk level, prior outcome and available capacity. | Maintains coverage. |
-| seniorvisitops.route.route_batch | route batch | METHOD | Batch groups visits by geography, priority, road access and team capacity. | Saves time. |
-| seniorvisitops.route.travel_time | travel time | MEASUREMENT | Estimate includes road closures, weather, stairs and rural access. | Plans shift. |
-| seniorvisitops.route.access_notes | access notes | RECORD | Notes capture gate code, apartment, elevator, pets, mobility or language support. | Prevents failed visit. |
-| seniorvisitops.route.map_status | map status | RECORD | Map marks pending, attempted, completed, escalated and blocked visits. | Visualizes work. |
-| seniorvisitops.team.team_assignment | team assignment | RECORD | Assignment lists team members, vehicle, route, PPE, phone and supervisor. | Deploys safely. |
-| seniorvisitops.team.role_brief | role brief | METHOD | Brief defines contact, observation, referral, documentation and escalation roles. | Aligns team. |
-| seniorvisitops.team.interpreter_need | interpreter need | RECORD | Need records language, phone interpreter or bilingual team assignment. | Improves access. |
-| seniorvisitops.team.badge | badge rule | SAFETY_RULE | Teams carry identification and explain role before asking questions. | Builds trust. |
-| seniorvisitops.safety.field_brief | field safety brief | SAFETY_RULE | Brief covers hazards, pets, conflict, weather, unsafe structures and withdrawal rules. | Protects team. |
-| seniorvisitops.safety.buddy_system | buddy system | SAFETY_RULE | Visits use buddy or check-in system when risk warrants. | Reduces field risk. |
-| seniorvisitops.safety.no_entry | no-entry rule | CONSTRAINT | Teams avoid entering unsafe or private spaces unless policy and safety allow. | Controls liability. |
-| seniorvisitops.safety.incident | incident report | RECORD | Incident records injury, threat, medical event, unsafe site or missing person concern. | Supports review. |
-| seniorvisitops.contact.phone_attempt | phone attempt | RECORD | Attempt records number, time, result, voicemail and next action. | Builds contact history. |
-| seniorvisitops.contact.door_attempt | door attempt | RECORD | Door attempt records time, answer, observation, note left and safety issues. | Tracks visit. |
-| seniorvisitops.contact.neighbor_info | neighbor information | RECORD | Neighbor information captures source, reliability, privacy limits and lead. | Adds context. |
-| seniorvisitops.contact.no_contact | no-contact outcome | METHOD | No-contact rules define retry, welfare escalation or closure by risk. | Prevents missed danger. |
-| seniorvisitops.needs.needs_screen | needs screen | RECORD | Screen covers food, water, medication, power, cooling/heating, transport and caregiver support. | Identifies support. |
-| seniorvisitops.needs.home_safety | home safety observation | QUALITY_CHECK | Observation notes heat/cold, fall hazards, utilities, sanitation and access. | Flags risks. |
-| seniorvisitops.needs.social_isolation | isolation note | RECORD | Note records loneliness, no caregiver, no phone or lost community contact. | Guides support. |
-| seniorvisitops.needs.supply_request | supply request | RECORD | Request captures items needed, urgency, delivery constraints and referral owner. | Starts help. |
-| seniorvisitops.referral.medical | medical referral | METHOD | Medical concerns route to EMS, clinic, nurse line or public health pathway. | Connects care. |
-| seniorvisitops.referral.casework | casework referral | METHOD | Casework handles benefits, housing, repairs, documents and long-term support. | Supports recovery. |
-| seniorvisitops.referral.utility | utility referral | METHOD | Utility referral handles outage priority, medical baseline, reconnection or device power. | Reduces risk. |
-| seniorvisitops.referral.transport | transport referral | METHOD | Transport referral supports clinic, shelter, cooling center or supply pickup trips. | Restores access. |
-| seniorvisitops.followup.followup_date | follow-up date | RECORD | Date records next call, revisit, referral check or closure review. | Maintains continuity. |
-| seniorvisitops.followup.referral_check | referral check | QUALITY_CHECK | Check confirms whether urgent referral was accepted or completed. | Closes loop. |
-| seniorvisitops.followup.status_update | status update | METHOD | Update informs referral source within privacy limits. | Reduces duplicate requests. |
-| seniorvisitops.followup.case_close | case close | RECORD | Closure records safe, referred, moved, unreachable, escalated or deceased outcome. | Ends case. |
-| seniorvisitops.records.visit_log | visit log | RECORD | Log stores referral, priority, attempts, observations, needs, referrals and outcome. | Creates audit trail. |
-| seniorvisitops.records.privacy | privacy rule | SAFETY_RULE | Records minimize health and household details while preserving safety facts. | Protects seniors. |
-| seniorvisitops.records.retention | retention rule | CONSTRAINT | Records follow emergency, aging services, privacy and grant schedules. | Controls lifecycle. |
-| seniorvisitops.metrics.visits_completed | visits completed | MEASUREMENT | Count tracks visits completed by route, priority and outcome. | Shows output. |
-| seniorvisitops.metrics.time_to_visit | time to visit | MEASUREMENT | Time measures referral to first attempt and confirmed outcome. | Reveals delay. |
-| seniorvisitops.metrics.unmet_need | unmet need count | MEASUREMENT | Count tracks food, medical, utility, transport and social support gaps. | Guides resources. |
-| seniorvisitops.qa.supervisor_review | supervisor review | QUALITY_CHECK | Review checks high-risk closures, no-contact cases and referral completion. | Improves safety. |
-| seniorvisitops.review.after_action | after-action review | METHOD | Review captures priority rules, route planning, safety, contact barriers and referral lessons. | Improves future outreach. |
+| seniorvisitops.intake.referral_source | источник рефералов | RECORD | Источник записывает горячую линию, клинику, коммунальное предприятие, соседа, приют, социального работника или семью. | Показывает происхождение. |
+| seniorvisitops.intake.senior_profile | старший профиль | RECORD | В профиле фиксируются имя, возраст, адрес, контакт, язык, ограничения доступа и безопасного контакта. | Определяет цель посещения. |
+| seniorvisitops.intake.vulnerability | запись об уязвимости | RECORD | Записывайте данные о передвижении, изоляции, кислороде, приеме лекарств, когнитивных способностях, риске перегрева/холода или отсутствии лица, осуществляющего уход. | Поддерживает приоритет. |
+| seniorvisitops.intake.consent_basis | основа согласия | RECORD | Согласие или проверка благосостояния подтверждают, почему проведение информационно-разъяснительной работы является целесообразным. | Защищает конфиденциальность. |
+| seniorvisitops.priority.priority_score | приоритетный балл | MODEL | Оценка учитывает медицинскую зависимость, изоляцию, отключение, пропущенный контакт, возраст и опасную зону. | Заказ визитов. |
+| seniorvisitops.priority.life_safety | флаг безопасности жизни | SAFETY_RULE | Непосредственные опасные маршруты в службы экстренной помощи, а не обычные посещения. | Предотвращает задержку. |
+| seniorvisitops.priority.duplicate_referral | дубликат реферальной проверки | QUALITY_CHECK | Проверьте ссылки на повторные рекомендации для одного и того же человека или адреса. | Сокращает количество ненужных посещений. |
+| seniorvisitops.priority.revisit_rule | вернуться к правилу | CONSTRAINT | Время повторного визита зависит от уровня риска, предыдущих результатов и имеющихся возможностей. | Сохраняет покрытие. |
+| seniorvisitops.route.route_batch | маршрутный пакет | METHOD | Посещения групповых групп по географическому положению, приоритету, доступности дорог и вместимости команды. | Экономит время. |
+| seniorvisitops.route.travel_time | время в пути | MEASUREMENT | Оценка включает перекрытие дорог, погодные условия, лестницы и доступ в сельскую местность. | Планы меняются. |
+| seniorvisitops.route.access_notes | доступ к заметкам | RECORD | В заметках указывается код ворот, квартира, лифт, домашние животные, мобильность или языковая поддержка. | Предотвращает неудачный визит. |
+| seniorvisitops.route.map_status | статус карты | RECORD | На карте отмечены ожидающие, предпринятые, завершенные, эскалированные и заблокированные посещения. | Визуализирует работу. |
+| seniorvisitops.team.team_assignment | командное задание | RECORD | В назначении указаны члены команды, транспортное средство, маршрут, средства индивидуальной защиты, телефон и руководитель. | Развертывается безопасно. |
+| seniorvisitops.team.role_brief | краткое описание роли | METHOD | Краткое описание определяет роли контакта, наблюдения, направления, документирования и эскалации. | Выравнивает команду. |
+| seniorvisitops.team.interpreter_need | нужен переводчик | RECORD | Нужен язык записи, переводчик по телефону или задание двуязычной команды. | Улучшает доступ. |
+| seniorvisitops.team.badge | правило значка | SAFETY_RULE | Команды имеют удостоверения личности и объясняют роль, прежде чем задавать вопросы. | Вызывает доверие. |
+| seniorvisitops.safety.field_brief | краткий обзор по полевой безопасности | SAFETY_RULE | Краткое описание охватывает опасности, домашних животных, конфликты, погоду, небезопасные конструкции и правила ухода. | Защищает команду. |
+| seniorvisitops.safety.buddy_system | система друзей | SAFETY_RULE | При посещении используйте систему напарников или систему регистрации, когда это оправдано. | Снижает полевой риск. |
+| seniorvisitops.safety.no_entry | правило запрета на въезд | CONSTRAINT | Команды избегают входа в небезопасные или частные помещения, если это не разрешено политикой и безопасностью. | Контролирует ответственность. |
+| seniorvisitops.safety.incident | отчет об инциденте | RECORD | Инцидент фиксирует травмы, угрозы, медицинские события, небезопасное место или беспокойство о пропавшем человеке. | Поддерживает обзор. |
+| seniorvisitops.contact.phone_attempt | попытка телефона | RECORD | Попытка записывает номер, время, результат, голосовое сообщение и следующее действие. | Создает историю контактов. |
+| seniorvisitops.contact.door_attempt | попытка открыть дверь | RECORD | Попытка открыть дверь записывает время, ответ, наблюдение, оставленную заметку и вопросы безопасности. | Треки посещают. |
+| seniorvisitops.contact.neighbor_info | информация о соседях | RECORD | Информация о соседях фиксирует источник, надежность, ограничения конфиденциальности и лидерство. | Добавляет контекст. |
+| seniorvisitops.contact.no_contact | бесконтактный результат | METHOD | Правила отсутствия контактов определяют повторную попытку, повышение благосостояния или закрытие из-за риска. | Предотвращает пропущенную опасность. |
+| seniorvisitops.needs.needs_screen | нужен экран | RECORD | Экран охватывает еду, воду, лекарства, электроэнергию, охлаждение/нагрев, транспортировку и поддержку лиц, осуществляющих уход. | Обозначает поддержку. |
+| seniorvisitops.needs.home_safety | наблюдение за безопасностью дома | QUALITY_CHECK | Наблюдения отмечают жару/холод, опасность падения, коммунальные услуги, санитарию и доступ. | Флаги рисков. |
+| seniorvisitops.needs.social_isolation | изоляционное примечание | RECORD | В заметках записано одиночество, отсутствие опекуна, отсутствие телефона или потеря контактов с обществом. | Поддержка гидов. |
+| seniorvisitops.needs.supply_request | запрос на поставку | RECORD | Запрос фиксирует необходимые элементы, срочность, ограничения доставки и владельца реферала. | Начинается помощь. |
+| seniorvisitops.referral.medical | медицинское направление | METHOD | Медицинские проблемы направляются в службу скорой помощи, клинику, линию медсестры или в пункт общественного здравоохранения. | Подключает уход. |
+| seniorvisitops.referral.casework | направление на рассмотрение дела | METHOD | Работа с делами занимается вопросами пособий, жилья, ремонта, документов и долгосрочной поддержки. | Поддерживает восстановление. |
+| seniorvisitops.referral.utility | направление на коммунальные услуги | METHOD | Направление к коммунальным предприятиям определяет приоритет отключения, базовый медицинский уровень, повторное подключение или питание устройства. | Снижает риск. |
+| seniorvisitops.referral.transport | транспортное направление | METHOD | Направление на транспорт поддерживает поездку в клинику, приют, холодильный центр или поездку за продуктами. | Восстанавливает доступ. |
+| seniorvisitops.followup.followup_date | дата последующего наблюдения | RECORD | Дата записывает следующий звонок, повторное посещение, проверку направления или проверку закрытия. | Сохраняет преемственность. |
+| seniorvisitops.followup.referral_check | реферальная проверка | QUALITY_CHECK | Проверка подтверждает, было ли принято или завершено срочное направление. | Замыкает цикл. |
+| seniorvisitops.followup.status_update | обновление статуса | METHOD | Обновление информирует источник направления в пределах конфиденциальности. | Уменьшает дублирование запросов. |
+| seniorvisitops.followup.case_close | дело закрыто | RECORD | Закрытие регистрирует безопасный, направленный, перемещенный, недоступный, повышенный или умерший результат. | Завершается дело. |
+| seniorvisitops.records.visit_log | журнал посещений | RECORD | В журнале хранятся направления, приоритеты, попытки, наблюдения, потребности, направления и результаты. | Создает контрольный журнал. |
+| seniorvisitops.records.privacy | правило конфиденциальности | SAFETY_RULE | Записи сводят к минимуму информацию о здоровье и домашнем хозяйстве, сохраняя при этом факты безопасности. | Защищает пожилых людей. |
+| seniorvisitops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам оказания экстренной помощи, услуг по старению, конфиденциальности и грантов. | Управляет жизненным циклом. |
+| seniorvisitops.metrics.visits_completed | посещений завершено | MEASUREMENT | Подсчет отслеживает совершенные посещения по маршруту, приоритету и результату. | Показывает вывод. |
+| seniorvisitops.metrics.time_to_visit | время посетить | MEASUREMENT | Время измеряет направление на первую попытку и подтвержденный результат. | Выявляет задержку. |
+| seniorvisitops.metrics.unmet_need | неудовлетворенные потребности | MEASUREMENT | Count отслеживает дефицит продуктов питания, медицинской, коммунальной, транспортной и социальной поддержки. | Путеводители по ресурсам. |
+| seniorvisitops.qa.supervisor_review | обзор руководителя | QUALITY_CHECK | Проверка проверяет закрытие с высоким риском, случаи отсутствия контакта и завершение направления. | Повышает безопасность. |
+| seniorvisitops.review.after_action | обзор после действий | METHOD | В обзоре отражены приоритетные правила, планирование маршрута, безопасность, контактные барьеры и уроки направления. | Улучшает охват в будущем. |

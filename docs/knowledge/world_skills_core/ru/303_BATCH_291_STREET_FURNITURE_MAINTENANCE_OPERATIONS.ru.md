@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| streetfurnops.inventory.asset_record | Street furniture asset record | invariant | Record stores asset ID, type, location, owner, condition, install date and maintenance history. | manage asset |
-| streetfurnops.inventory.bench_record | Public bench record | invariant | Record captures bench material, mounting, accessibility, nearby stop or plaza and condition. | maintain seating |
-| streetfurnops.inventory.bin_record | Public litter bin record | invariant | Record stores bin type, capacity, liner, service frequency, condition and location. | manage waste |
-| streetfurnops.inventory.bollard_record | Bollard record | variant | Record captures fixed, removable, flexible or decorative bollard location, purpose and condition. | protect space |
-| streetfurnops.inventory.bike_rack_record | Bike rack record | variant | Record stores rack type, capacity, mounting, spacing, condition and demand context. | support parking |
-| streetfurnops.inventory.shelter_record | Street furniture shelter record | variant | Record captures small shelter, canopy, frame, panels, seating relation, lighting and condition. | maintain shelter |
-| streetfurnops.inspection.routine_check | Street furniture routine check | invariant | Check reviews damage, cleanliness, stability, placement, accessibility and safety hazards. | find defects |
-| streetfurnops.inspection.post_event_check | Post-event furniture check | variant | Check looks for moved barriers, damaged bins, broken benches, litter and missing assets. | restore area |
-| streetfurnops.inspection.post_storm_check | Post-storm furniture check | variant | Check reviews fallen branches, flooding, wind damage, loose fixtures and blocked paths. | recover safety |
-| streetfurnops.damage.vandalism | Street furniture vandalism | invariant | Vandalism includes graffiti, broken parts, fire damage, removed bolts or deliberate misuse. | repair damage |
-| streetfurnops.damage.vehicle_strike | Vehicle strike damage | invariant | Damage occurs when vehicle hits bench, bollard, bin, rack, planter or shelter element. | protect public |
-| streetfurnops.damage.corrosion | Street furniture corrosion | variant | Corrosion weakens metal frames, fasteners, mounts and exposed surfaces. | plan renewal |
-| streetfurnops.damage.loose_mount | Loose furniture mount | invariant | Loose mount creates wobble, trip hazard, theft risk or impact hazard. | secure asset |
-| streetfurnops.cleaning.graffiti_removal | Street furniture graffiti removal | invariant | Removal cleans paint, marker, stickers or etching using approved method and surface protection. | restore appearance |
-| streetfurnops.cleaning.pressure_washing | Street furniture pressure washing | variant | Washing removes grime, spills, stains and odor while avoiding damage to finishes. | deep clean |
-| streetfurnops.cleaning.sticker_removal | Sticker removal | variant | Removal clears unauthorized posters, stickers and adhesive residue from public assets. | keep legible |
-| streetfurnops.cleaning.bin_sanitation | Public bin sanitation | invariant | Sanitation cleans bin interior, exterior, odor sources, leaks and pest attractants. | improve hygiene |
-| streetfurnops.repairs.bench_repair | Public bench repair | invariant | Repair fixes slats, frame, anchors, armrests, finish, sharp edges and stability. | restore seating |
-| streetfurnops.repairs.bin_repair | Public bin repair | invariant | Repair fixes lid, liner, door, mount, corrosion, fire damage or capacity issue. | restore waste point |
-| streetfurnops.repairs.bollard_replacement | Bollard replacement | invariant | Replacement restores protection, spacing, visibility, foundation and removable hardware if needed. | restore barrier |
-| streetfurnops.repairs.bike_rack_repair | Bike rack repair | variant | Repair addresses bent rack, loose bolts, corrosion, spacing conflict or missing part. | secure bikes |
-| streetfurnops.stock.spare_parts | Street furniture spare parts | invariant | Stock includes slats, bolts, locks, liners, lids, reflectors, brackets and finish materials. | repair readiness |
-| streetfurnops.stock.standard_models | Street furniture standard models | variant | Standards define approved bench, bin, rack, bollard, planter and replacement parts. | maintain consistency |
-| streetfurnops.placement.access_clearance | Street furniture access clearance | invariant | Clearance preserves sidewalk width, curb ramps, doors, tactile paths and emergency access. | avoid obstruction |
-| streetfurnops.placement.sightline_conflict | Street furniture sightline conflict | variant | Conflict occurs when asset blocks crossings, signs, driveways or intersection visibility. | protect users |
-| streetfurnops.placement.anchoring_requirement | Street furniture anchoring requirement | invariant | Anchoring prevents tipping, theft, movement, wind displacement and vehicle impact movement. | secure asset |
-| streetfurnops.complaints.damaged_asset_report | Damaged furniture report | invariant | Report records asset type, location, damage, safety risk, photo and priority. | start work |
-| streetfurnops.complaints.cleanliness_complaint | Furniture cleanliness complaint | variant | Complaint covers dirty bench, overflowing bin, odor, spills, sticky surfaces or pests. | dispatch service |
-| streetfurnops.complaints.access_obstruction | Furniture access obstruction complaint | variant | Complaint notes asset blocking sidewalk, wheelchair route, curb ramp, door or bike lane. | restore access |
-| streetfurnops.safety.sharp_edge | Street furniture sharp edge | invariant | Sharp edge can come from broken metal, splintered wood, cracked plastic or vandalism. | make safe |
-| streetfurnops.safety.trip_hazard | Street furniture trip hazard | invariant | Hazard includes loose base, protruding bolt, displaced rack, raised plate or broken paving. | prevent falls |
-| streetfurnops.safety.fire_damage | Street furniture fire damage | variant | Fire damage affects bins, benches, shelters, planters and nearby surfaces. | assess safety |
-| streetfurnops.contracts.adopted_asset | Adopted street furniture asset | variant | Adopted asset has partner, sponsor or business maintenance responsibilities and reporting rules. | clarify owner |
-| streetfurnops.contracts.cleaning_vendor | Street furniture cleaning vendor | variant | Vendor scope defines routes, frequency, standards, supplies, documentation and issue escalation. | manage service |
-| streetfurnops.data.gis_update | Street furniture GIS update | invariant | Update corrects asset location, type, status, ownership, condition or removal. | keep map |
-| streetfurnops.data.photo_evidence | Street furniture photo evidence | invariant | Photos document damage, location, repair, cleaning and final condition. | support records |
-| streetfurnops.reporting.condition_report | Street furniture condition report | invariant | Report summarizes assets by type, condition, defects, repairs, removals and backlog. | plan renewal |
-| streetfurnops.reporting.service_frequency_report | Street furniture service frequency report | variant | Report compares cleaning or waste service frequency with demand, complaints and overflow. | adjust service |
-| streetfurnops.metrics.repair_cycle_time | Street furniture repair cycle time KPI | invariant | KPI measures time from report to make-safe and permanent repair. | improve response |
-| streetfurnops.metrics.asset_uptime | Street furniture asset uptime KPI | variant | KPI tracks share of assets usable, clean, stable and not closed for repair. | monitor quality |
-| streetfurnops.coordination.sanitation_link | Street furniture sanitation coordination | variant | Coordination aligns bins, sweeping, litter crews and event cleanup needs. | reduce litter |
-| streetfurnops.coordination.transport_link | Street furniture transport coordination | variant | Coordination handles furniture near stops, curb zones, bike lanes and traffic control. | avoid conflict |
-| streetfurnops.continuity.temporary_removal | Temporary street furniture removal | variant | Removal supports construction, events, security, repair or seasonal operations with tracking. | protect assets |
-| streetfurnops.close.work_closeout | Street furniture work closeout | invariant | Closeout confirms repair or cleaning, photos, inventory update, complaint response and cost. | finish work |
+| streetfurnops.inventory.asset_record | Учет активов уличной мебели | invariant | Запись хранит идентификатор актива, тип, местоположение, владельца, состояние, дату установки и историю обслуживания. | управлять активом |
+| streetfurnops.inventory.bench_record | Рекорд общественной скамейки | invariant | Запись фиксирует материал скамейки, ее монтаж, доступность, близлежащую остановку или площадь и состояние. | сохранять сидение |
+| streetfurnops.inventory.bin_record | Рекорд общественного мусорного бака | invariant | Укажите тип бункера, вместимость, вкладыш, частоту обслуживания, состояние и расположение. | управлять отходами |
+| streetfurnops.inventory.bollard_record | Боллард рекорд | variant | Запись фиксирует расположение, назначение и состояние стационарных, съемных, гибких или декоративных столбиков. | защищать космос |
+| streetfurnops.inventory.bike_rack_record | Рекорд велосипедной стойки | variant | Запись хранит тип стойки, вместимость, монтаж, расстояние, состояние и контекст спроса. | поддержка парковки |
+| streetfurnops.inventory.shelter_record | Рекорд приюта для уличной мебели | variant | Запись фиксирует небольшое укрытие, навес, каркас, панели, расположение сидений, освещение и состояние. | поддерживать убежище |
+| streetfurnops.inspection.routine_check | Плановая проверка уличной мебели | invariant | Проверьте обзоры повреждений, чистоты, устойчивости, размещения, доступности и угроз безопасности. | найти дефекты |
+| streetfurnops.inspection.post_event_check | Проверка мебели после мероприятия | variant | Проверьте, нет ли сдвинутых барьеров, поврежденных мусорных баков, сломанных скамеек, мусора и пропавших активов. | восстановить область |
+| streetfurnops.inspection.post_storm_check | Проверка мебели после урагана | variant | Проверьте упавшие ветки, наводнения, повреждения ветром, незакрепленные крепления и заблокированные пути. | восстановить безопасность |
+| streetfurnops.damage.vandalism | Вандализм уличной мебели | invariant | К вандализму относятся граффити, сломанные детали, повреждения от пожара, снятые болты или умышленное неправильное использование. | ремонт повреждений |
+| streetfurnops.damage.vehicle_strike | Ущерб от удара транспортного средства | invariant | Повреждение происходит, когда транспортное средство сталкивается со скамейкой, столбиком, контейнером, стойкой, горшком или элементом навеса. | защищать общественность |
+| streetfurnops.damage.corrosion | Коррозия уличной мебели | variant | Коррозия ослабляет металлические каркасы, крепления, крепления и открытые поверхности. | продление плана |
+| streetfurnops.damage.loose_mount | Свободное крепление мебели | invariant | Ослабленное крепление создает раскачивание, опасность спотыкания, кражи или удара. | безопасный актив |
+| streetfurnops.cleaning.graffiti_removal | Удаление граффити с уличной мебели | invariant | При удалении очищается краска, маркер, наклейки или гравировка с использованием утвержденного метода и средства защиты поверхности. | восстановить внешний вид |
+| streetfurnops.cleaning.pressure_washing | Мойка уличной мебели под давлением | variant | Стирка удаляет грязь, разливы, пятна и запахи, не повреждая при этом отделку. | глубокая очистка |
+| streetfurnops.cleaning.sticker_removal | Удаление наклейки | variant | При удалении из общественных объектов удаляются несанкционированные плакаты, наклейки и остатки клея. | сохранять разборчивость |
+| streetfurnops.cleaning.bin_sanitation | Общественная санитарная урна | invariant | Санитарная очистка контейнеров внутри и снаружи, от источников запахов, утечек и средств, привлекающих вредителей. | улучшить гигиену |
+| streetfurnops.repairs.bench_repair | Ремонт общественной скамейки | invariant | Ремонт устраняет планки, раму, анкеры, подлокотники, отделку, острые края и устойчивость. | восстановить сидение |
+| streetfurnops.repairs.bin_repair | Ремонт общественного мусорного бака | invariant | Ремонт устраняет крышку, облицовку, дверцу, крепление, коррозию, повреждение от пожара или проблему с емкостью. | восстановить точку сброса |
+| streetfurnops.repairs.bollard_replacement | Замена болларда | invariant | При замене восстанавливается защита, расстояние, видимость, фундамент и съемное оборудование, если это необходимо. | восстановить барьер |
+| streetfurnops.repairs.bike_rack_repair | Ремонт велосипедной стойки | variant | Ремонт устраняет изогнутую стойку, ослабленные болты, коррозию, нарушение промежутков или отсутствие детали. | безопасные велосипеды |
+| streetfurnops.stock.spare_parts | Запчасти для уличной мебели | invariant | В ассортимент входят планки, болты, замки, вкладыши, крышки, отражатели, кронштейны и отделочные материалы. | готовность к ремонту |
+| streetfurnops.stock.standard_models | Стандартные модели уличной мебели | variant | Стандарты определяют одобренные скамейки, контейнеры, стеллажи, столбики, сеялки и запасные части. | поддерживать последовательность |
+| streetfurnops.placement.access_clearance | Разрешение доступа к уличной мебели | invariant | Зазор сохраняет ширину тротуара, пандусы, двери, тактильные дорожки и аварийный доступ. | избегать препятствий |
+| streetfurnops.placement.sightline_conflict | Конфликт в плане видимости уличной мебели | variant | Конфликт возникает, когда объект блокирует переходы, знаки, подъездные пути или видимость перекрестков. | защитить пользователей |
+| streetfurnops.placement.anchoring_requirement | Требования к креплению уличной мебели | invariant | Крепление предотвращает опрокидывание, кражу, перемещение, смещение ветром и движение транспортного средства при ударе. | безопасный актив |
+| streetfurnops.complaints.damaged_asset_report | Отчет о поврежденной мебели | invariant | В отчете указывается тип актива, его местоположение, ущерб, угроза безопасности, фотография и приоритет. | начать работу |
+| streetfurnops.complaints.cleanliness_complaint | Жалоба на чистоту мебели | variant | Жалоба распространяется на грязную скамейку, переполненное мусорное ведро, запах, разливы, липкие поверхности или вредителей. | диспетчерская служба |
+| streetfurnops.complaints.access_obstruction | Жалоба на препятствие доступу к мебели | variant | В жалобе отмечается, что объект блокирует тротуар, дорогу для инвалидных колясок, съезд, дверь или велосипедную полосу. | восстановить доступ |
+| streetfurnops.safety.sharp_edge | Уличная мебель с острым краем | invariant | Острый край может возникнуть из-за сломанного металла, расколотого дерева, треснувшего пластика или вандализма. | сделать безопасным |
+| streetfurnops.safety.trip_hazard | Опасность спотыкания об уличной мебели | invariant | Опасность включает в себя незакрепленное основание, выступающий болт, смещенную стойку, приподнятую пластину или сломанное покрытие. | предотвратить падения |
+| streetfurnops.safety.fire_damage | Ущерб от пожара уличной мебели | variant | Повреждения от огня поражают контейнеры, скамейки, навесы, цветочные горшки и близлежащие поверхности. | оценить безопасность |
+| streetfurnops.contracts.adopted_asset | Принятый объект уличной мебели | variant | Принятый актив несет ответственность за партнерство, спонсора или обслуживание бизнеса, а также правила отчетности. | уточнить владельца |
+| streetfurnops.contracts.cleaning_vendor | Продавец чистки уличной мебели | variant | Объем поставок определяет маршруты, частоту, стандарты, расходные материалы, документацию и эскалацию проблем. | управлять сервисом |
+| streetfurnops.data.gis_update | Обновление ГИС уличной мебели | invariant | Обновление исправляет местоположение, тип, статус, право собственности, состояние или удаление актива. | сохранить карту |
+| streetfurnops.data.photo_evidence | Фотодоказательства уличной мебели | invariant | Фотографии документируют повреждения, местонахождение, ремонт, чистку и окончательное состояние. | поддержка записей |
+| streetfurnops.reporting.condition_report | Отчет о состоянии уличной мебели | invariant | В отчете обобщаются активы по типу, состоянию, дефектам, ремонту, удалению и отставанию. | продление плана |
+| streetfurnops.reporting.service_frequency_report | Отчет о частоте обслуживания уличной мебели | variant | В отчете сравнивается частота уборки или обслуживания отходов со спросом, жалобами и переполнением. | настроить сервис |
+| streetfurnops.metrics.repair_cycle_time | Время цикла ремонта уличной мебели KPI | invariant | KPI измеряет время от отчета до безопасного и постоянного ремонта. | улучшить реакцию |
+| streetfurnops.metrics.asset_uptime | KPI времени безотказной работы объектов уличной мебели | variant | KPI отслеживает долю активов, пригодных к использованию, чистых, стабильных и не закрытых на ремонт. | контролировать качество |
+| streetfurnops.coordination.sanitation_link | Координация санитарной обработки уличной мебели | variant | Координация позволяет согласовать мусорные контейнеры, подметальные бригады, бригады по уборке мусора и потребности в уборке мероприятий. | уменьшить мусор |
+| streetfurnops.coordination.transport_link | Координация перевозки уличной мебели | variant | Координация обрабатывает мебель возле остановок, бордюров, велосипедных дорожек и контроля дорожного движения. | избегать конфликта |
+| streetfurnops.continuity.temporary_removal | Временный вывоз уличной мебели | variant | Удаление поддерживает строительство, мероприятия, безопасность, ремонт или сезонные операции с отслеживанием. | защищать активы |
+| streetfurnops.close.work_closeout | Завершение работ по уличной мебели | invariant | Распродажа подтверждает ремонт или чистку, фотографии, обновление инвентаря, ответ на жалобу и стоимость. | закончить работу |

@@ -9,13 +9,13 @@
 2. Запустите сервер с консолью:
 
 ```powershell
-cd VELANTRIM_ExoCortex_V8.6
+cd VELANTRIM_ExoCortex_V8.7_Titan
 .\scripts\start_console.ps1
 ```
 
 Скрипт откроет браузер по адресу:
 
-`http://127.0.0.1:8755/console/?v=23`
+`http://127.0.0.1:8755/console/?v=40`
 
 3. В **браузере** (Chrome, Edge, Firefox):
    - введите ключ Velantrim API (или dev-ключ из скрипта);
@@ -100,4 +100,4 @@ Raw Markdown: `GET /console/research-mode.md`.
 
 ---
 
-*VELANTRIM V8.6 — тестовая веб-консоль. Вопросы по архитектуре: [docs/VELANTRIM_ARCHITECTURE.md](VELANTRIM_ARCHITECTURE.md).*
+*VELANTRIM V8.7 Titan — веб-консоль. Обзор: [CONSOLE_OVERVIEW.ru.md](CONSOLE_OVERVIEW.ru.md).*

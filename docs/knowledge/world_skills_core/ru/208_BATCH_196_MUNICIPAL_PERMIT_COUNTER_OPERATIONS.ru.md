@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| permitctr.intake.application_intake | Permit application intake | invariant | Intake records applicant, parcel, work type, valuation, documents, fees and contact details. | open permit file |
-| permitctr.intake.parcel_lookup | Parcel lookup | invariant | Lookup connects application to property, zoning, owner, address and prior permit history. | site identity |
-| permitctr.intake.work_description | Work description | invariant | Description states proposed scope clearly enough for routing and review. | know what is requested |
-| permitctr.intake.completeness_check | Permit completeness check | invariant | Check verifies required forms, plans, signatures, contractor data, fees and supporting documents. | avoid review delay |
-| permitctr.intake.application_deficiency | Application deficiency | invariant | Deficiency records missing, inconsistent or unacceptable item needing correction. | return actionable list |
-| permitctr.fees.fee_schedule | Permit fee schedule | invariant | Schedule defines fees by permit type, valuation, area, inspection or surcharge. | price consistently |
-| permitctr.fees.valuation_basis | Project valuation basis | variant | Basis estimates construction value for fee and reporting rules. | fee input |
-| permitctr.fees.payment_receipt | Permit payment receipt | invariant | Receipt records amount, method, payer, permit number and date. | money evidence |
-| permitctr.fees.refund_request | Permit refund request | variant | Request documents unused permit, overpayment, withdrawal or policy-based refund. | controlled money return |
-| permitctr.fees.fee_waiver | Permit fee waiver | variant | Waiver applies authorized exemption, public project rule or hardship program. | exception control |
-| permitctr.routing.review_route | Plan review routing | invariant | Routing sends application to building, zoning, fire, health, engineering or planning reviewers. | right desks |
-| permitctr.routing.discipline_review | Discipline review | invariant | Review evaluates application against rules for one technical discipline. | specialized check |
-| permitctr.routing.parallel_review | Parallel review | variant | Parallel review lets multiple disciplines evaluate at the same time. | shorten turnaround |
-| permitctr.routing.resubmittal_cycle | Resubmittal cycle | invariant | Cycle tracks applicant response to comments and renewed review. | manage corrections |
-| permitctr.routing.external_agency | External agency referral | variant | Referral sends item to utility, heritage, environmental, state or road authority when required. | outside dependency |
-| permitctr.review.comment_letter | Permit comment letter | invariant | Letter lists review deficiencies, code references, requested changes and next steps. | clear correction path |
-| permitctr.review.condition_of_approval | Condition of approval | invariant | Condition imposes requirement that must be met before issuance, inspection or final closure. | approval with obligations |
-| permitctr.review.code_reference | Code reference | invariant | Reference cites adopted rule, standard, zoning section or ordinance. | trace decision |
-| permitctr.review.expired_review | Expired review | variant | Review can expire after inactivity or code cycle change under policy. | time matters |
-| permitctr.review.approval_stamp | Permit approval stamp | invariant | Stamp marks approved plans, revision, date and reviewing authority. | field uses approved set |
-| permitctr.issuance.permit_number | Permit number | invariant | Number uniquely identifies permit, type, site, status and history. | tracking anchor |
-| permitctr.issuance.issue_packet | Permit issue packet | invariant | Packet provides permit card, approved plans, conditions, inspection list and contact instructions. | applicant can proceed |
-| permitctr.issuance.contractor_license | Contractor license check | variant | Check confirms license, insurance or registration meets permit requirements. | qualified party |
-| permitctr.issuance.owner_builder | Owner-builder declaration | variant | Declaration records owner responsibility when work is not by licensed contractor. | accountability |
-| permitctr.issuance.revision_submittal | Permit revision submittal | invariant | Revision updates approved scope, plans, valuation or conditions before or during work. | control changes |
-| permitctr.inspection.inspection_request | Inspection request | invariant | Request schedules type, permit, address, contact, access notes and preferred date. | field visit trigger |
-| permitctr.inspection.inspection_window | Inspection window | variant | Window communicates expected date or time range for inspector arrival. | coordinate access |
-| permitctr.inspection.result_code | Inspection result code | invariant | Code records pass, fail, partial, cancel, no access or correction required. | status clarity |
-| permitctr.inspection.correction_notice | Inspection correction notice | invariant | Notice lists failed items, references, photos if used and reinspection requirement. | fix field issues |
-| permitctr.inspection.final_inspection | Final inspection | invariant | Final confirms required inspections, conditions and documentation are complete for closure. | legal closeout |
-| permitctr.notices.public_notice | Permit public notice | variant | Notice informs neighbors or public about application, hearing, variance or work. | transparency |
-| permitctr.notices.stop_work_order | Stop-work order | invariant | Order halts work due to unsafe, unpermitted or noncompliant activity. | enforcement |
-| permitctr.notices.expiration_notice | Permit expiration notice | invariant | Notice warns permit will expire without action, inspection or extension. | prevent surprise closure |
-| permitctr.notices.appeal_window | Appeal window | variant | Window defines deadline and path for challenging decision. | procedural fairness |
-| permitctr.notices.certificate_issue | Certificate issuance | variant | Certificate confirms occupancy, completion, compliance or use permission where required. | official outcome |
-| permitctr.records.permit_file | Permit file | invariant | File stores application, plans, comments, fees, inspections, notices and final documents. | full permit history |
-| permitctr.records.plan_version | Permit plan version | invariant | Version controls submitted, reviewed, approved and superseded plan sets. | avoid wrong drawings |
-| permitctr.records.public_record | Permit public record | invariant | Public record exposes allowed permit information while protecting restricted data. | civic transparency |
-| permitctr.records.retention_rule | Permit retention rule | invariant | Rule defines how long applications, plans and inspection records are kept. | archive lifecycle |
-| permitctr.records.audit_trail | Permit audit trail | invariant | Trail records status changes, reviewers, approvals, payments, comments and issuance. | explain decisions |
-| permitctr.counter.customer_queue | Permit counter queue | invariant | Queue organizes walk-ins, calls, online submissions, appointments and technical questions. | service flow |
-| permitctr.counter.preapplication_meeting | Pre-application meeting | variant | Meeting clarifies requirements, constraints, route and likely issues before formal submittal. | reduce rework |
-| permitctr.metrics.permit_kpi | Permit counter KPI | variant | KPI tracks intake volume, review time, resubmittals, inspection pass rate and backlog. | manage service |
-| permitctr.continuity.system_outage | Permit system outage process | invariant | Process defines manual receipts, temporary numbers, later data entry and applicant communication. | keep counter operating |
+| permitctr.intake.application_intake | Прием заявок на получение разрешения | invariant | Приемные записи заявителя, посылки, типа работы, оценки, документов, сборов и контактных данных. | открыть файл разрешения |
+| permitctr.intake.parcel_lookup | Поиск посылки | invariant | Поиск связывает заявку с собственностью, зонированием, владельцем, адресом и историей предыдущих разрешений. | идентичность сайта |
+| permitctr.intake.work_description | Описание работы | invariant | В описании достаточно четко указан предлагаемый объем для маршрутизации и проверки. | знать, что требуется |
+| permitctr.intake.completeness_check | Проверка комплектности разрешения | invariant | Проверка проверяет необходимые формы, планы, подписи, данные подрядчика, гонорары и подтверждающие документы. | избежать задержки рассмотрения |
+| permitctr.intake.application_deficiency | Дефицит приложения | invariant | Дефицит фиксирует отсутствующие, противоречивые или неприемлемые элементы, требующие исправления. | вернуть список действий |
+| permitctr.fees.fee_schedule | График платы за разрешение | invariant | В графике указаны сборы в зависимости от типа разрешения, оценки, площади, проверки или дополнительной платы. | цена стабильна |
+| permitctr.fees.valuation_basis | Основа оценки проекта | variant | Компания Basis оценивает стоимость строительства с учетом платы и правил отчетности. | ввод комиссии |
+| permitctr.fees.payment_receipt | Разрешить получение платежа | invariant | В квитанции указывается сумма, способ, плательщик, номер и дата разрешения. | денежные доказательства |
+| permitctr.fees.refund_request | Разрешить запрос на возврат средств | variant | Запросите документы о неиспользованном разрешении, переплате, отзыве или возврате средств на основании полиса. | контролируемый возврат денег |
+| permitctr.fees.fee_waiver | Отказ от платы за разрешение | variant | Отказ применяется к санкционированному освобождению, правилу общественного проекта или программе помощи в трудных условиях. | контроль исключений |
+| permitctr.routing.review_route | Планирование маршрута проверки | invariant | Служба маршрутизации отправляет заявку специалистам по строительству, зонированию, пожарной безопасности, здравоохранению, инженерному делу или планированию. | правильные столы |
+| permitctr.routing.discipline_review | Обзор дисциплины | invariant | Проверка оценивает заявку на соответствие правилам одной технической дисциплины. | специализированная проверка |
+| permitctr.routing.parallel_review | Параллельное рассмотрение | variant | Параллельная проверка позволяет одновременно оценивать результаты нескольких дисциплин. | сократить оборот |
+| permitctr.routing.resubmittal_cycle | Цикл повторной отправки | invariant | Cycle отслеживает реакцию заявителя на комментарии и возобновленную проверку. | управлять исправлениями |
+| permitctr.routing.external_agency | Направление из внешнего агентства | variant | При необходимости объект направляется в коммунальные службы, органы охраны наследия, охраны окружающей среды, штата или дорожные органы. | внешняя зависимость |
+| permitctr.review.comment_letter | Письмо с комментариями к разрешению | invariant | В списках писем рассматриваются недостатки, ссылки на коды, запрошенные изменения и последующие шаги. | четкий путь коррекции |
+| permitctr.review.condition_of_approval | Условие одобрения | invariant | Условие накладывает требование, которое должно быть выполнено до выдачи, проверки или окончательного закрытия. | одобрение с обязательствами |
+| permitctr.review.code_reference | Ссылка на код | invariant | В ссылке цитируются принятые правила, стандарты, разделы о зонировании или постановления. | решение по трассировке |
+| permitctr.review.expired_review | Просроченный отзыв | variant | Срок действия проверки может истечь после бездействия или изменения цикла кода в соответствии с политикой. | время имеет значение |
+| permitctr.review.approval_stamp | Штамп утверждения разрешения | invariant | Штампы маркируют утвержденные планы, дату пересмотра и проверяющий орган. | в полевых условиях используется утвержденный набор |
+| permitctr.issuance.permit_number | Номер разрешения | invariant | Номер однозначно идентифицирует разрешение, тип, место, статус и историю. | следящий якорь |
+| permitctr.issuance.issue_packet | Пакет разрешительной выдачи | invariant | Пакет предоставляет разрешительную карту, утвержденные планы, условия, список проверок и контактные инструкции. | заявитель может продолжить |
+| permitctr.issuance.contractor_license | Проверка лицензии подрядчика | variant | Проверка подтверждает, что лицензия, страховка или регистрация соответствуют требованиям разрешения. | квалифицированная сторона |
+| permitctr.issuance.owner_builder | Декларация собственника-застройщика | variant | В декларации фиксируется ответственность владельца, когда работа выполняется не лицензированным подрядчиком. | подотчетность |
+| permitctr.issuance.revision_submittal | Подача разрешения на пересмотр | invariant | Пересмотр обновляет утвержденный объем, планы, оценку или условия до или во время работы. | контролировать изменения |
+| permitctr.inspection.inspection_request | Запрос на проверку | invariant | Запросите тип расписания, разрешение, адрес, контакт, примечания к доступу и предпочтительную дату. | триггер выезда на место |
+| permitctr.inspection.inspection_window | Смотровое окно | variant | В окне отображается ожидаемая дата или диапазон времени прибытия инспектора. | координировать доступ |
+| permitctr.inspection.result_code | Код результата проверки | invariant | Записи кода проходят, не проходят, частично, отменяются, доступ или исправление не требуются. | ясность статуса |
+| permitctr.inspection.correction_notice | Уведомление об исправлении проверки | invariant | В уведомлении перечислены неисправные изделия, ссылки, фотографии, если они использовались, и требования к повторной проверке. | исправить проблемы с полем |
+| permitctr.inspection.final_inspection | Окончательная проверка | invariant | Окончательное подтверждение подтверждает, что необходимые проверки, условия и документация выполнены для закрытия. | юридическое закрытие |
+| permitctr.notices.public_notice | Разрешить публичное уведомление | variant | Уведомление информирует соседей или общественность о заявлении, слушании, отклонении или работе. | прозрачность |
+| permitctr.notices.stop_work_order | Приказ о прекращении работы | invariant | Приказ останавливает работу из-за небезопасной, неразрешенной или несоответствующей деятельности. | исполнение |
+| permitctr.notices.expiration_notice | Уведомление об истечении срока действия разрешения | invariant | Уведомление предупреждает, что срок действия разрешения истечет без каких-либо действий, проверки или продления. | предотвратить внезапное закрытие |
+| permitctr.notices.appeal_window | Окно апелляции | variant | Окно определяет крайний срок и путь принятия оспариваемого решения. | процессуальная справедливость |
+| permitctr.notices.certificate_issue | Выдача сертификата | variant | Сертификат подтверждает размещение, завершение строительства, соответствие требованиям или разрешение на использование, где это необходимо. | официальный результат |
+| permitctr.records.permit_file | Разрешительный файл | invariant | В файлах хранятся заявки, планы, комментарии, сборы, проверки, уведомления и итоговые документы. | полная история разрешений |
+| permitctr.records.plan_version | Версия плана разрешения | invariant | Средства контроля версий отправляют, проверяют, утверждают и заменяют наборы планов. | избегайте неправильных рисунков |
+| permitctr.records.public_record | Разрешить публичную запись | invariant | Публичные записи предоставляют информацию о разрешении, одновременно защищая данные ограниченного доступа. | гражданская прозрачность |
+| permitctr.records.retention_rule | Правило хранения разрешений | invariant | Правило определяет, как долго хранятся заявки, планы и записи проверок. | жизненный цикл архива |
+| permitctr.records.audit_trail | Разрешительный контрольный журнал | invariant | След фиксирует изменения статуса, рецензентов, утверждения, платежи, комментарии и выпуски. | объяснить решения |
+| permitctr.counter.customer_queue | Очередь счетчика разрешений | invariant | Очередь организует входы, звонки, онлайн-заявки, встречи и технические вопросы. | поток обслуживания |
+| permitctr.counter.preapplication_meeting | Встреча перед подачей заявки | variant | На совещании уточняются требования, ограничения, маршрут и возможные проблемы перед официальной подачей заявки. | уменьшить количество переделок |
+| permitctr.metrics.permit_kpi | Счетчик разрешений KPI | variant | KPI отслеживает объем приема, время рассмотрения, повторные отправки, процент прохождения проверок и количество невыполненных работ. | управлять сервисом |
+| permitctr.continuity.system_outage | Разрешение процесса отключения системы | invariant | Процесс определяет квитанции вручную, временные номера, последующий ввод данных и общение с заявителем. | продолжать работу счетчика |

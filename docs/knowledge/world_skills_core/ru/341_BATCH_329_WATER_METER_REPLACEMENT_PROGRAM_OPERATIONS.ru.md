@@ -6,48 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| meterreplaceops.inventory.meter_id | meter ID | RECORD | Meter record includes serial, account, size, location, register, endpoint and install date. | Forms the worklist for replacement. |
-| meterreplaceops.inventory.age_filter | age filter | DECISION_RULE | Replacement candidates are selected by age, failure, size, read errors or AMI transition. | Targets meters most likely to under-register or fail. |
-| meterreplaceops.inventory.size_class | size class | RECORD | Small residential and large commercial meters follow different workflows. | Scheduling, testing and billing risk differ by size. |
-| meterreplaceops.inventory.location_note | location note | RECORD | Location notes describe pit, basement, mechanical room, access hours and hazards. | Reduces missed appointments. |
-| meterreplaceops.scheduling.route_batch | route batch | METHOD | Work is grouped by neighborhood, meter type, crew skill and parts. | Improves productivity. |
-| meterreplaceops.scheduling.appointment | appointment scheduling | METHOD | Customer appointments confirm access, shutoff impact, pets and contact details. | Prevents wasted truck rolls. |
-| meterreplaceops.scheduling.no_access | no-access case | RECORD | No-access attempts are logged with notice, date, reason and next action. | Supports escalation and accurate backlog. |
-| meterreplaceops.scheduling.critical_customer | critical customer | DECISION_RULE | Medical, industrial or continuous-use accounts need special scheduling. | Avoids harmful service interruption. |
-| meterreplaceops.access.pit_condition | meter pit condition | INSPECTION | Pit is checked for water, insects, traffic, lid condition, confined-space concerns and setter access. | Protects crew and equipment. |
-| meterreplaceops.access.indoor_access | indoor access | SAFETY_RULE | Indoor work respects identity, privacy, property protection and safe work area. | Maintains trust and reduces claims. |
-| meterreplaceops.access.valve_operability | valve operability | INSPECTION | Inlet/outlet valves are checked before removal. | Meter change fails if water cannot be isolated. |
-| meterreplaceops.access.frozen_pipe | frozen or brittle pipe | FAILURE_MODE | Old piping, corrosion or freezing can make replacement risky. | Crews may need plumber or repair plan. |
-| meterreplaceops.install.old_read | old meter final read | RECORD | Final read is recorded before removal with photo or electronic capture. | Protects billing accuracy. |
-| meterreplaceops.install.remove_meter | meter removal | METHOD | Removal uses pressure relief, spill control and thread protection. | Prevents leaks and property damage. |
-| meterreplaceops.install.new_meter | new meter install | METHOD | New meter is installed with correct flow direction, gaskets, spacing and register orientation. | Ensures accurate measurement. |
-| meterreplaceops.install.leak_check | leak check | QUALITY_CHECK | Connections and valves are checked under pressure after install. | Prevents callbacks and property damage. |
-| meterreplaceops.install.plumbing_issue | plumbing issue | FAILURE_MODE | Cross-threading, bad setters, old valves or unsupported pipes become exception cases. | Replacement program must handle field reality. |
-| meterreplaceops.testing.bench_test | bench test | QUALITY_CHECK | Removed meters may be tested for accuracy by flow range. | Confirms under-registration and replacement benefit. |
-| meterreplaceops.testing.large_meter | large meter test | METHOD | Large meters may need in-situ testing, bypass planning or calibrated test bench. | Commercial billing impact can be large. |
-| meterreplaceops.testing.initial_read | initial read | RECORD | New meter initial read is entered as starting point. | Prevents billing discontinuity. |
-| meterreplaceops.ami.endpoint_pair | endpoint pairing | METHOD | AMI endpoint is paired with meter ID, account and location. | Avoids reads assigned to wrong customer. |
-| meterreplaceops.ami.signal_check | signal check | QUALITY_CHECK | Endpoint signal, register read and network join are verified. | Confirms meter can be read remotely. |
-| meterreplaceops.ami.tamper_alarm | tamper alarm | RECORD | Tamper, reverse flow or leak alerts are configured and tested where available. | Turns meter into operational sensor. |
-| meterreplaceops.ami.exception_queue | AMI exception queue | METHOD | Failed activation, weak signal or mismatched reads go to exception queue. | Prevents silent non-reading meters. |
-| meterreplaceops.billing.handoff | billing handoff | RECORD | Billing receives old read, new serial, install date, initial read and account link. | Protects customer bills. |
-| meterreplaceops.billing.proration | proration | METHOD | Billing period may be split between old and new meter if needed. | Avoids unfair charges. |
-| meterreplaceops.billing.high_low_review | high-low review | QUALITY_CHECK | First bills after replacement are reviewed for unusual consumption changes. | Detects installation or data errors. |
-| meterreplaceops.billing.customer_question | billing question response | METHOD | Staff explain why new meters may register usage differently. | Reduces disputes after replacement. |
-| meterreplaceops.exceptions.wrong_size | wrong size | FAILURE_MODE | Field crew may find meter size or connection differs from records. | Requires parts, record correction and sometimes reschedule. |
-| meterreplaceops.exceptions.account_mismatch | account mismatch | FAILURE_MODE | Meter location may not match account or address. | Must resolve before install to avoid billing crossovers. |
-| meterreplaceops.exceptions.leak_found | leak found | DECISION_RULE | Existing customer-side leaks found during replacement are documented and communicated. | Separates utility work from private repair. |
-| meterreplaceops.exceptions.refusal | refusal | RECORD | Customer refusal is logged with reason, notice and policy next step. | Supports program completion and fairness. |
-| meterreplaceops.materials.stock_control | stock control | RECORD | Meters, endpoints, gaskets, couplings and lids are tracked by lot and crew. | Prevents field shortages. |
-| meterreplaceops.materials.serial_scan | serial scan | QUALITY_CHECK | Serial numbers are scanned instead of typed where possible. | Reduces data-entry mistakes. |
-| meterreplaceops.safety.pressure | pressure safety | SAFETY_RULE | Crews relieve pressure and avoid sudden water release. | Prevents injury and property damage. |
-| meterreplaceops.safety.traffic | traffic safety | SAFETY_RULE | Meter pits in streets require traffic control and safe vehicle placement. | Protects crews and drivers. |
-| meterreplaceops.records.work_order | work order | RECORD | Work order includes old/new serials, reads, photos, issues, installer and completion status. | Creates auditable replacement record. |
-| meterreplaceops.records.photo | photo evidence | RECORD | Photos show old meter, new meter, reads, pit condition and repairs. | Supports QA and billing disputes. |
-| meterreplaceops.records.asset_update | asset update | METHOD | Asset system updates meter, endpoint, warranty, location and lifecycle status. | Keeps inventory current. |
-| meterreplaceops.qa.field_audit | field audit | QUALITY_CHECK | Supervisor checks sample of installs for leaks, data accuracy and workmanship. | Protects program quality. |
-| meterreplaceops.qa.data_reconciliation | data reconciliation | QUALITY_CHECK | Work orders, AMI, billing and inventory are reconciled after batches. | Finds orphaned or mismatched installs. |
-| meterreplaceops.reporting.progress | progress dashboard | RECORD | Dashboard tracks scheduled, completed, no-access, exceptions, activations and costs. | Shows program throughput. |
-| meterreplaceops.reporting.benefit | program benefit | MODEL | Benefits include reduced apparent losses, fewer estimates, better leak alerts and accurate billing. | Explains why replacement matters. |
-| meterreplaceops.review.lessons | lessons learned | METHOD | Program reviews access problems, parts, customer response and data errors. | Improves future replacement waves. |
-
+| meterreplaceops.inventory.meter_id | идентификатор счетчика | RECORD | Запись счетчика включает серийный номер, учетную запись, размер, местоположение, регистрацию, конечную точку и дату установки. | Формирует рабочий список на замену. |
+| meterreplaceops.inventory.age_filter | возрастной фильтр | DECISION_RULE | Кандидаты на замену выбираются по возрасту, неисправности, размеру, ошибкам чтения или переходу AMI. | Целевые измерители, скорее всего, не зарегистрируются или выйдут из строя. |
+| meterreplaceops.inventory.size_class | класс размера | RECORD | Небольшие бытовые и крупные коммерческие счетчики используют разные рабочие процессы. | Риски планирования, тестирования и выставления счетов различаются в зависимости от размера. |
+| meterreplaceops.inventory.location_note | примечание о местоположении | RECORD | В примечаниях к местоположению описываются яма, подвал, механическое помещение, часы доступа и опасности. | Сокращает количество пропущенных встреч. |
+| meterreplaceops.scheduling.route_batch | маршрутный пакет | METHOD | Работы группируются по району, типу счетчика, квалификации бригады и запчастям. | Улучшает производительность. |
+| meterreplaceops.scheduling.appointment | планирование встреч | METHOD | Встречи с клиентами подтверждают доступ, влияние отключения, домашних животных и контактные данные. | Предотвращает бесполезные поездки грузовика. |
+| meterreplaceops.scheduling.no_access | случай отсутствия доступа | RECORD | Попытки отсутствия доступа регистрируются с указанием уведомления, даты, причины и следующего действия. | Поддерживает эскалацию и точное отставание. |
+| meterreplaceops.scheduling.critical_customer | критический клиент | DECISION_RULE | Медицинские, промышленные счета или счета постоянного использования требуют особого планирования. | Позволяет избежать нежелательных прерываний обслуживания. |
+| meterreplaceops.access.pit_condition | состояние метрической ямы | INSPECTION | Яму проверяют на наличие воды, насекомых, движения транспорта, состояния крышки, проблем с ограниченным пространством и доступа к инкубатору. | Защищает экипаж и оборудование. |
+| meterreplaceops.access.indoor_access | доступ в помещение | SAFETY_RULE | При работе в помещении соблюдаются конфиденциальность, конфиденциальность, защита собственности и безопасное рабочее место. | Поддерживает доверие и снижает претензии. |
+| meterreplaceops.access.valve_operability | работоспособность клапана | INSPECTION | Перед снятием проверяются впускные/выпускные клапаны. | Замена счетчика невозможна, если воду невозможно изолировать. |
+| meterreplaceops.access.frozen_pipe | замерзшая или хрупкая труба | FAILURE_MODE | Старый трубопровод, коррозия или замерзание могут сделать замену рискованной. | Бригадам может понадобиться сантехник или план ремонта. |
+| meterreplaceops.install.old_read | последнее чтение старого счетчика | RECORD | Окончательное прочтение записывается перед удалением с помощью фото или электронного захвата. | Обеспечивает точность выставления счетов. |
+| meterreplaceops.install.remove_meter | снятие счетчика | METHOD | При удалении используется сброс давления, контроль разлива и защита резьбы. | Предотвращает утечки и материальный ущерб. |
+| meterreplaceops.install.new_meter | установка нового счетчика | METHOD | Новый счетчик установлен с правильным направлением потока, прокладками, расстоянием и ориентацией регистра. | Обеспечивает точность измерений. |
+| meterreplaceops.install.leak_check | проверка утечки | QUALITY_CHECK | После установки соединения и клапаны проверяются под давлением. | Предотвращает обратные вызовы и повреждение имущества. |
+| meterreplaceops.install.plumbing_issue | проблема с сантехникой | FAILURE_MODE | Исключением становятся перекрестная резьба, плохие сеттеры, старые клапаны или трубы без опор. | Программа замены должна учитывать полевые реалии. |
+| meterreplaceops.testing.bench_test | стендовые испытания | QUALITY_CHECK | Снятые счетчики можно проверить на точность по диапазону расхода. | Подтверждает льготы по неполной регистрации и замене. |
+| meterreplaceops.testing.large_meter | большой тест метра | METHOD | Для больших счетчиков может потребоваться тестирование на месте, планирование обхода или калиброванный испытательный стенд. | Влияние коммерческого выставления счетов может быть значительным. |
+| meterreplaceops.testing.initial_read | первоначальное чтение | RECORD | Новое начальное показание счетчика вводится в качестве отправной точки. | Предотвращает разрывы в выставлении счетов. |
+| meterreplaceops.ami.endpoint_pair | сопряжение конечных точек | METHOD | Конечная точка AMI связана с идентификатором счетчика, учетной записью и местоположением. | Избегает операций чтения, назначенных не тому клиенту. |
+| meterreplaceops.ami.signal_check | проверка сигнала | QUALITY_CHECK | Проверяются сигнал конечной точки, чтение регистра и присоединение к сети. | Подтверждает, что показания счетчика можно считывать удаленно. |
+| meterreplaceops.ami.tamper_alarm | сигнализация тампера | RECORD | Оповещения о вскрытии, обратном потоке или утечке настраиваются и тестируются там, где это возможно. | Превращает счетчик в оперативный датчик. |
+| meterreplaceops.ami.exception_queue | Очередь исключений AMI | METHOD | Неудачная активация, слабый сигнал или несовпадающие чтения отправляются в очередь исключений. | Предотвращает бесшумное несчитывание показаний счетчиков. |
+| meterreplaceops.billing.handoff | передача биллинга | RECORD | Выставление счетов получает данные о старом прочтении, новом серийном номере, дате установки, первоначальном прочтении и ссылке на учетную запись. | Защищает счета клиентов. |
+| meterreplaceops.billing.proration | пропорциональное распределение | METHOD | При необходимости расчетный период может быть разделен между старым и новым счетчиком. | Избегает несправедливых обвинений. |
+| meterreplaceops.billing.high_low_review | обзор высокого и низкого уровня | QUALITY_CHECK | Первые счета после замены проверяются на предмет необычных изменений потребления. | Обнаруживает ошибки установки или данных. |
+| meterreplaceops.billing.customer_question | ответ на вопрос по оплате | METHOD | Сотрудники объясняют, почему новые счетчики могут регистрировать использование по-другому. | Уменьшает споры после замены. |
+| meterreplaceops.exceptions.wrong_size | неправильный размер | FAILURE_MODE | Полевая бригада может обнаружить, что размер счетчика или подключение отличаются от записей. | Требуются запчасти, исправление записи и иногда перенос. |
+| meterreplaceops.exceptions.account_mismatch | несоответствие аккаунта | FAILURE_MODE | Местоположение счетчика может не совпадать с учетной записью или адресом. | Необходимо устранить проблему перед установкой, чтобы избежать пересечения счетов. |
+| meterreplaceops.exceptions.leak_found | обнаружена утечка | DECISION_RULE | Существующие утечки на стороне клиента, обнаруженные во время замены, документируются и доводятся до сведения. | Отделяет коммунальные работы от частного ремонта. |
+| meterreplaceops.exceptions.refusal | отказ | RECORD | Отказ клиента регистрируется с указанием причины, уведомления и следующего шага политики. | Поддерживает завершение программы и ее справедливость. |
+| meterreplaceops.materials.stock_control | контроль запасов | RECORD | Счетчики, конечные точки, прокладки, муфты и крышки отслеживаются партией и бригадой. | Предотвращает нехватку полей. |
+| meterreplaceops.materials.serial_scan | последовательное сканирование | QUALITY_CHECK | Серийные номера там, где это возможно, сканируются, а не печатаются. | Уменьшает ошибки при вводе данных. |
+| meterreplaceops.safety.pressure | безопасность давления | SAFETY_RULE | Экипажи сбрасывают давление и избегают внезапного выброса воды. | Предотвращает травмы и материальный ущерб. |
+| meterreplaceops.safety.traffic | безопасность дорожного движения | SAFETY_RULE | Метрические ямы на улицах требуют контроля дорожного движения и безопасного размещения транспортных средств. | Защищает экипаж и водителей. |
+| meterreplaceops.records.work_order | заказ на работу | RECORD | Рабочий заказ включает старые/новые сериалы, прочтения, фотографии, проблемы, статус установки и завершения. | Создает проверяемую запись о замене. |
+| meterreplaceops.records.photo | фотодоказательства | RECORD | На фотографиях показаны старый счетчик, новый счетчик, показания, состояние ямы и ремонт. | Поддерживает контроль качества и споры по вопросам выставления счетов. |
+| meterreplaceops.records.asset_update | обновление актива | METHOD | Система активов обновляет счетчик, конечную точку, гарантию, местоположение и статус жизненного цикла. | Поддерживает инвентарь в актуальном состоянии. |
+| meterreplaceops.qa.field_audit | выездной аудит | QUALITY_CHECK | Супервайзер проверяет образцы установок на наличие утечек, точность данных и качество изготовления. | Защищает качество программы. |
+| meterreplaceops.qa.data_reconciliation | сверка данных | QUALITY_CHECK | Рабочие задания, AMI, выставление счетов и запасы сверяются после партий. | Находит потерянные или несовпадающие установки. |
+| meterreplaceops.reporting.progress | панель прогресса | RECORD | Панель мониторинга отслеживает запланированные, выполненные, недоступные, исключения, активации и затраты. | Показывает производительность программы. |
+| meterreplaceops.reporting.benefit | выгода программы | MODEL | Преимущества включают снижение видимых потерь, меньшее количество оценок, лучшее оповещение об утечках и точное выставление счетов. | Объясняет, почему замена имеет значение. |
+| meterreplaceops.review.lessons | извлеченные уроки | METHOD | Программа анализирует проблемы доступа, детали, ответы клиентов и ошибки данных. | Улучшает будущие волны замены. |

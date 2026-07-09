@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| grantdocreviewops.intake.request_source | request source | RECORD | Source records applicant, caseworker, nonprofit, portal, clinic or agency referral. | Shows entry path. |
-| grantdocreviewops.intake.grant_program | grant program | RECORD | Program record captures funder, grant name, deadline, purpose and applicant type. | Defines review. |
-| grantdocreviewops.intake.applicant_profile | applicant profile | RECORD | Profile captures household, organization or business identity and contact. | Supports eligibility. |
-| grantdocreviewops.intake.deadline | deadline capture | SAFETY_RULE | Deadline records due date, time zone, portal cutoff and submission method. | Prevents late filing. |
-| grantdocreviewops.eligibility.basic_check | basic eligibility | QUALITY_CHECK | Check compares applicant, geography, disaster impact, income or entity status to rules. | Avoids wasted effort. |
-| grantdocreviewops.eligibility.duplication | duplication check | QUALITY_CHECK | Review checks insurance, prior grants, loans, donations or benefits overlap. | Prevents duplicate funding. |
-| grantdocreviewops.eligibility.exclusion | exclusion check | CONSTRAINT | Exclusions identify ineligible costs, entities, locations or time periods. | Reduces denial risk. |
-| grantdocreviewops.eligibility.exception | exception note | RECORD | Exception note documents waiver, special rule or funder clarification. | Preserves rationale. |
-| grantdocreviewops.completeness.checklist | completeness checklist | RECORD | Checklist lists required forms, attachments, budget, signatures and certifications. | Organizes packet. |
-| grantdocreviewops.completeness.missing_item | missing item | RECORD | Missing item records owner, source, due time and workaround. | Drives cleanup. |
-| grantdocreviewops.completeness.version_control | version control | METHOD | Versions track draft, revised, final and submitted documents. | Prevents wrong file. |
-| grantdocreviewops.completeness.final_scan | final scan | QUALITY_CHECK | Final scan verifies required fields, page limits, filenames and attachments. | Improves submission. |
-| grantdocreviewops.budget.cost_category | cost category | RECORD | Budget categories map costs to allowed uses and funding codes. | Clarifies request. |
-| grantdocreviewops.budget.cost_basis | cost basis | RECORD | Basis records estimate, invoice, receipt, quote or standard rate. | Supports amount. |
-| grantdocreviewops.budget.match_funds | match funds | RECORD | Match record captures required match, source, documentation and restrictions. | Meets conditions. |
-| grantdocreviewops.budget.math_check | math check | QUALITY_CHECK | Review checks totals, subtotals, percentages and narrative-budget consistency. | Prevents errors. |
-| grantdocreviewops.attachments.identity | identity attachment | RECORD | Identity attachment supports applicant status, ownership, residency or authority. | Proves applicant. |
-| grantdocreviewops.attachments.damage | damage attachment | RECORD | Damage evidence includes photos, inspection, loss statement, insurance or repair estimate. | Supports need. |
-| grantdocreviewops.attachments.finance | financial attachment | RECORD | Finance documents include income, tax, bank, payroll, receipts or hardship proof. | Supports eligibility. |
-| grantdocreviewops.attachments.naming | file naming rule | METHOD | Files use program-required names, applicant ID and document type. | Prevents portal confusion. |
-| grantdocreviewops.signatures.signature_required | signature required | CONSTRAINT | Signature list identifies who must sign forms, certifications and releases. | Prevents invalid submission. |
-| grantdocreviewops.signatures.authority | signing authority | QUALITY_CHECK | Authority verifies officer, owner, guardian, power of attorney or applicant role. | Ensures validity. |
-| grantdocreviewops.signatures.date_check | date check | QUALITY_CHECK | Signature dates match current version and program timing rules. | Avoids rejection. |
-| grantdocreviewops.signatures.e_signature | e-signature path | METHOD | Electronic signature follows funder, identity and consent requirements. | Enables remote filing. |
-| grantdocreviewops.submission.portal_account | portal account | RECORD | Account record captures login owner, MFA, applicant ID and support contact. | Enables submission. |
-| grantdocreviewops.submission.upload_order | upload order | METHOD | Upload order follows funder categories and avoids duplicate attachments. | Reduces errors. |
-| grantdocreviewops.submission.confirmation | confirmation proof | RECORD | Proof records confirmation number, timestamp, email receipt or screenshot. | Verifies filing. |
-| grantdocreviewops.submission.backup_method | backup method | METHOD | Backup uses email, mail, dropbox or agency contact if portal fails. | Prevents missed deadline. |
-| grantdocreviewops.corrections.deficiency_notice | deficiency notice | RECORD | Notice records funder request, missing item, deadline and response method. | Starts correction. |
-| grantdocreviewops.corrections.response_plan | response plan | METHOD | Plan assigns owner, document source, review and submission time. | Keeps response organized. |
-| grantdocreviewops.corrections.resubmission | resubmission proof | RECORD | Proof captures corrected upload, email, mail tracking or portal status. | Closes deficiency. |
-| grantdocreviewops.corrections.withdrawal | withdrawal record | RECORD | Withdrawal records applicant decision, reason, funder notice and alternate referral. | Ends packet cleanly. |
-| grantdocreviewops.communication.applicant_update | applicant update | METHOD | Update explains missing items, risks, deadline, submission status and next steps. | Reduces uncertainty. |
-| grantdocreviewops.communication.funder_question | funder question | RECORD | Question log captures clarification request, answer, date and staff. | Preserves guidance. |
-| grantdocreviewops.communication.partner_handoff | partner handoff | METHOD | Handoff gives caseworker or advisor packet status and unresolved issues. | Coordinates support. |
-| grantdocreviewops.communication.language | language support | METHOD | Translation or interpreter support helps applicant understand forms and certifications. | Improves access. |
-| grantdocreviewops.privacy.minimum_data | minimum data | SAFETY_RULE | Review stores only documents needed for grant and audit. | Reduces exposure. |
-| grantdocreviewops.privacy.secure_storage | secure storage | SAFETY_RULE | Sensitive financial and identity files are restricted and encrypted or locked. | Protects applicant. |
-| grantdocreviewops.records.case_log | case log | RECORD | Log stores review checklist, eligibility notes, budget, submission and corrections. | Creates continuity. |
-| grantdocreviewops.metrics.completion_rate | completion rate | MEASUREMENT | Rate tracks packets completed, submitted, deficient, denied or withdrawn. | Shows throughput. |
-| grantdocreviewops.metrics.deficiency_rate | deficiency rate | MEASUREMENT | Deficiency rate tracks funder correction requests by category. | Improves review. |
-| grantdocreviewops.metrics.time_to_submit | time to submit | MEASUREMENT | Time measures intake to confirmed submission. | Reveals delays. |
-| grantdocreviewops.qa.peer_review | peer review | QUALITY_CHECK | Peer review samples high-value or deadline-sensitive applications before submission. | Reduces mistakes. |
-| grantdocreviewops.review.after_action | after-action review | METHOD | Review captures eligibility confusion, attachment gaps, portal failures and correction lessons. | Improves future reviews. |
+| grantdocreviewops.intake.request_source | источник запроса | RECORD | Источник записывает направление заявителя, социального работника, некоммерческой организации, портала, клиники или агентства. | Показывает путь входа. |
+| grantdocreviewops.intake.grant_program | грантовая программа | RECORD | В записи программы указывается спонсор, название гранта, крайний срок, цель и тип заявителя. | Определяет обзор. |
+| grantdocreviewops.intake.applicant_profile | профиль заявителя | RECORD | Профиль отражает личность и контакты домохозяйства, организации или бизнеса. | Поддерживает приемлемость. |
+| grantdocreviewops.intake.deadline | захват крайнего срока | SAFETY_RULE | Крайний срок записывает дату сдачи, часовой пояс, время закрытия портала и метод подачи. | Предотвращает несвоевременную подачу документов. |
+| grantdocreviewops.eligibility.basic_check | базовое право | QUALITY_CHECK | Проверка сравнивает заявителя, географию, воздействие стихийного бедствия, доход или статус организации с правилами. | Избегает напрасных усилий. |
+| grantdocreviewops.eligibility.duplication | проверка дублирования | QUALITY_CHECK | Проверка страховых чеков, предыдущих грантов, кредитов, пожертвований или льгот частично перекрывается. | Предотвращает дублирование финансирования. |
+| grantdocreviewops.eligibility.exclusion | проверка исключения | CONSTRAINT | Исключения идентифицируют неприемлемые затраты, организации, места или периоды времени. | Снижает риск отказа. |
+| grantdocreviewops.eligibility.exception | примечание об исключении | RECORD | Примечание об исключении документов об отказе от участия, специальном правиле или разъяснении спонсора. | Сохраняет обоснованность. |
+| grantdocreviewops.completeness.checklist | контрольный список полноты | RECORD | В контрольном списке перечислены необходимые формы, приложения, бюджет, подписи и сертификаты. | Организует пакет. |
+| grantdocreviewops.completeness.missing_item | недостающий предмет | RECORD | Отсутствуют владелец записи элемента, источник, срок выполнения и обходной путь. | Очистка дисков. |
+| grantdocreviewops.completeness.version_control | контроль версий | METHOD | Версии отслеживают черновые, исправленные, окончательные и отправленные документы. | Предотвращает неправильный файл. |
+| grantdocreviewops.completeness.final_scan | окончательное сканирование | QUALITY_CHECK | Окончательное сканирование проверяет обязательные поля, ограничения на количество страниц, имена файлов и вложения. | Улучшает подачу. |
+| grantdocreviewops.budget.cost_category | категория затрат | RECORD | Категории бюджета сопоставляют затраты с разрешенными видами использования и кодами финансирования. | Уточняет запрос. |
+| grantdocreviewops.budget.cost_basis | базис затрат | RECORD | Базис записывает смету, счет-фактуру, квитанцию, расценки или стандартную ставку. | Поддерживает сумму. |
+| grantdocreviewops.budget.match_funds | сопоставить средства | RECORD | Запись о совпадении фиксирует необходимое совпадение, источник, документацию и ограничения. | Соответствует условиям. |
+| grantdocreviewops.budget.math_check | проверка по математике | QUALITY_CHECK | Обзор проверяет итоговые суммы, промежуточные итоги, проценты и согласованность описательного бюджета. | Предотвращает ошибки. |
+| grantdocreviewops.attachments.identity | привязанность к личности | RECORD | Прикрепление личности поддерживает статус заявителя, право собственности, место жительства или полномочия. | Доказывает заявитель. |
+| grantdocreviewops.attachments.damage | повреждение вложения | RECORD | Доказательства ущерба включают фотографии, осмотр, заявление о потерях, страховку или смету ремонта. | Поддерживает потребность. |
+| grantdocreviewops.attachments.finance | финансовая привязанность | RECORD | Финансовые документы включают в себя доходы, налоги, банковские ведомости, заработную плату, квитанции или доказательства трудностей. | Поддерживает приемлемость. |
+| grantdocreviewops.attachments.naming | правило именования файлов | METHOD | В файлах используются имена, необходимые программе, идентификатор заявителя и тип документа. | Предотвращает путаницу в портале. |
+| grantdocreviewops.signatures.signature_required | требуется подпись | CONSTRAINT | В списке подписей указано, кто должен подписывать формы, сертификаты и релизы. | Предотвращает недействительную отправку. |
+| grantdocreviewops.signatures.authority | подписывающий орган | QUALITY_CHECK | Орган проверяет должностное лицо, владельца, опекуна, доверенность или роль заявителя. | Обеспечивает валидность. |
+| grantdocreviewops.signatures.date_check | проверка даты | QUALITY_CHECK | Даты подписания соответствуют текущей версии и правилам программы. | Избегает отказа. |
+| grantdocreviewops.signatures.e_signature | путь электронной подписи | METHOD | Электронная подпись соответствует требованиям спонсора, личности и согласия. | Позволяет осуществлять удаленную регистрацию. |
+| grantdocreviewops.submission.portal_account | учетная запись портала | RECORD | Запись учетной записи фиксирует имя владельца входа, МИД, идентификатор заявителя и контакт службы поддержки. | Включает отправку. |
+| grantdocreviewops.submission.upload_order | заказ загрузки | METHOD | Порядок загрузки соответствует категориям спонсоров и позволяет избежать дублирования вложений. | Уменьшает ошибки. |
+| grantdocreviewops.submission.confirmation | подтверждение доказательства | RECORD | Доказательство записывает номер подтверждения, временную метку, квитанцию ​​по электронной почте или снимок экрана. | Проверяет сдачу. |
+| grantdocreviewops.submission.backup_method | метод резервного копирования | METHOD | Резервное копирование использует электронную почту, почту, Dropbox или контакт агентства в случае сбоя портала. | Предотвращает пропуск сроков. |
+| grantdocreviewops.corrections.deficiency_notice | уведомление о недостатке | RECORD | В уведомлении указывается запрос на финансирование, недостающий элемент, крайний срок и метод ответа. | Начинает коррекцию. |
+| grantdocreviewops.corrections.response_plan | план реагирования | METHOD | План назначает владельца, источник документа, время проверки и отправки. | Держит ответ организованным. |
+| grantdocreviewops.corrections.resubmission | доказательство повторной подачи | RECORD | Доказательство фиксирует исправленную загрузку, электронную почту, отслеживание почты или статус портала. | Закрывает дефицит. |
+| grantdocreviewops.corrections.withdrawal | запись о снятии средств | RECORD | При отзыве фиксируются решение заявителя, причина, уведомление спонсора и альтернативное направление. | Заканчивает пакет чисто. |
+| grantdocreviewops.communication.applicant_update | обновление заявителя | METHOD | Обновление объясняет недостающие элементы, риски, сроки, статус подачи и следующие шаги. | Уменьшает неопределенность. |
+| grantdocreviewops.communication.funder_question | вопрос спонсора | RECORD | В журнале вопросов фиксируются запросы на разъяснения, ответы, дата и персонал. | Сохраняет руководство. |
+| grantdocreviewops.communication.partner_handoff | передача партнера | METHOD | Передача обслуживания дает координатору или консультанту статус пакета и нерешенные проблемы. | Поддержка координат. |
+| grantdocreviewops.communication.language | языковая поддержка | METHOD | Поддержка письменного или устного переводчика помогает заявителю понять формы и сертификаты. | Улучшает доступ. |
+| grantdocreviewops.privacy.minimum_data | минимальные данные | SAFETY_RULE | Обзор хранит только документы, необходимые для гранта и аудита. | Уменьшает воздействие. |
+| grantdocreviewops.privacy.secure_storage | безопасное хранение | SAFETY_RULE | Конфиденциальные финансовые и идентификационные файлы ограничены и зашифрованы или заблокированы. | Защищает заявителя. |
+| grantdocreviewops.records.case_log | журнал дел | RECORD | Контрольный список проверки журналов магазинов, примечания к участию, бюджет, подача и исправления. | Создает преемственность. |
+| grantdocreviewops.metrics.completion_rate | степень завершения | MEASUREMENT | Скорость отслеживает завершенные, отправленные, недостающие, отклоненные или отозванные пакеты. | Показывает пропускную способность. |
+| grantdocreviewops.metrics.deficiency_rate | уровень дефицита | MEASUREMENT | Коэффициент дефицита отслеживает запросы на исправление спонсоров по категориям. | Улучшает обзор. |
+| grantdocreviewops.metrics.time_to_submit | пора отправлять | MEASUREMENT | Время измеряет прием до подтверждения подачи. | Выявляет задержки. |
+| grantdocreviewops.qa.peer_review | экспертная оценка | QUALITY_CHECK | Перед подачей на экспертную оценку выбираются заявки с высокой стоимостью или сроками подачи. | Уменьшает ошибки. |
+| grantdocreviewops.review.after_action | обзор после действий | METHOD | В обзоре отражены путаница в отношении права на участие, пробелы в приложениях, сбои портала и уроки по исправлению ситуации. | Улучшает будущие обзоры. |

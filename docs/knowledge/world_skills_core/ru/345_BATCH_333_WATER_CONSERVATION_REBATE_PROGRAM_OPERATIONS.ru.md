@@ -6,48 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| rebateops.program.rebate_catalog | rebate catalog | RECORD | Catalog lists eligible devices, rebate amounts, limits, dates and required proof. | Gives customers and staff one rule source. |
-| rebateops.program.budget_cap | budget cap | CONSTRAINT | Program stops, waits or prorates when budget is exhausted. | Prevents overcommitment. |
-| rebateops.program.target_savings | target savings | MODEL | Program estimates water savings by device, customer class and adoption rate. | Connects rebates to conservation goals. |
-| rebateops.application.case_id | application ID | RECORD | Application ID links customer, device, property, documents and payment status. | Tracks request from intake to closeout. |
-| rebateops.application.required_docs | required documents | CONSTRAINT | Receipts, photos, model numbers, install date and account status may be required. | Prevents unsupported payments. |
-| rebateops.application.preapproval | preapproval | DECISION_RULE | Some rebates require approval before purchase or installation. | Controls eligibility before customer spends money. |
-| rebateops.application.duplicate_check | duplicate check | QUALITY_CHECK | Account, address, serial and receipt are checked for prior rebates. | Prevents double payment. |
-| rebateops.eligibility.account_good | account eligibility | QUALITY_CHECK | Account class, service status, arrears and location are checked. | Ensures funds serve program jurisdiction. |
-| rebateops.eligibility.device_qualified | device qualification | CONSTRAINT | Device must meet efficiency, label, model or performance criteria. | Rebate buys verified conservation. |
-| rebateops.eligibility.old_device | old device replacement | RECORD | Some programs require proof of inefficient fixture removed. | Avoids paying for upgrades that do not save water. |
-| rebateops.eligibility.property_limit | property limit | CONSTRAINT | Maximum rebates per property, year or device type are enforced. | Spreads funds fairly. |
-| rebateops.devices.toilet | high-efficiency toilet | METHOD | Toilet rebate checks gallons per flush and installation proof. | Reduces indoor baseline demand. |
-| rebateops.devices.washer | efficient washer | METHOD | Washer rebate verifies eligible model and residential account. | Saves water and energy in frequent use. |
-| rebateops.devices.irrigation_controller | smart irrigation controller | METHOD | Controller rebate verifies weather-based or soil-moisture capability. | Reduces outdoor overwatering. |
-| rebateops.devices.turf_removal | turf removal | METHOD | Turf program verifies area removed, replacement landscape and irrigation changes. | Targets high outdoor demand. |
-| rebateops.devices.rain_barrel | rain barrel | METHOD | Rain barrel rebate may require capacity, downspout connection and mosquito control. | Supports small nonpotable reuse. |
-| rebateops.inspection.pre_inspection | pre-inspection | INSPECTION | Pre-inspection confirms existing condition before customer changes site. | Prevents fraudulent after-the-fact claims. |
-| rebateops.inspection.post_inspection | post-inspection | INSPECTION | Post-inspection verifies installed device, landscape and continued service. | Confirms conservation measure exists. |
-| rebateops.inspection.photo_review | photo review | QUALITY_CHECK | Submitted photos are checked for date, location, device and completeness. | Reduces field visits while controlling fraud. |
-| rebateops.inspection.failed_inspection | failed inspection | RECORD | Failure records missing device, wrong model, incomplete install or unsafe condition. | Gives customer correction path. |
-| rebateops.approval.review_queue | review queue | METHOD | Applications are reviewed by received date, completeness, budget and priority. | Keeps workflow fair. |
-| rebateops.approval.approval_code | approval code | RECORD | Approval stores eligible amount, reviewer, program year and funding source. | Supports payment and audit. |
-| rebateops.approval.denial | denial record | RECORD | Denial states rule, missing proof, ineligible device or deadline miss. | Makes decisions transparent. |
-| rebateops.approval.appeal | appeal path | METHOD | Customers can submit missing evidence or request review under policy. | Reduces unfair denials. |
-| rebateops.payment.payee | payee verification | QUALITY_CHECK | Payee name, account, address and tax requirements are verified. | Prevents payment errors. |
-| rebateops.payment.payment_batch | payment batch | METHOD | Approved rebates are grouped for finance processing with controls. | Efficient payment without losing audit trail. |
-| rebateops.payment.status | payment status | RECORD | Status tracks approved, sent to finance, paid, voided or returned. | Customer service can answer payment questions. |
-| rebateops.payment.tax_form | tax form trigger | CONSTRAINT | Large incentives may require tax forms or vendor records. | Keeps finance compliant. |
-| rebateops.audit.sample_audit | sample audit | QUALITY_CHECK | Random paid rebates are checked for documents, eligibility and inspection evidence. | Detects errors and fraud. |
-| rebateops.audit.receipt_fraud | receipt fraud screen | QUALITY_CHECK | Duplicate receipts, altered dates or mismatched models are flagged. | Protects public funds. |
-| rebateops.audit.site_recheck | site recheck | INSPECTION | Some sites are rechecked after payment for continued compliance. | Discourages temporary installations. |
-| rebateops.outcomes.savings_estimate | savings estimate | MODEL | Savings are estimated from device factors, usage history or measured demand change. | Reports program effectiveness. |
-| rebateops.outcomes.baseline | baseline use | MEASUREMENT | Pre-install consumption sets baseline for outcome analysis. | Helps avoid overstated savings. |
-| rebateops.outcomes.persistence | persistence | MODEL | Savings may decay if devices fail, landscapes change or behavior reverts. | Long-term value needs monitoring. |
-| rebateops.communication.application_help | application help | METHOD | Staff explain eligibility, documents and deadlines before submission. | Improves complete applications. |
-| rebateops.communication.status_notice | status notice | METHOD | Notices tell customer received, incomplete, approved, denied or paid status. | Reduces calls and uncertainty. |
-| rebateops.communication.water_budget | water budget advice | METHOD | Rebate communication may include efficient-use guidance. | Device incentives pair with behavior change. |
-| rebateops.equity.low_income | low-income priority | DECISION_RULE | Program may reserve funds or higher rebates for low-income customers. | Makes conservation accessible. |
-| rebateops.equity.multifamily | multifamily handling | METHOD | Multifamily rebates handle owner/tenant roles, unit counts and common areas. | Avoids excluding renters. |
-| rebateops.records.document_retention | document retention | RECORD | Applications, receipts, inspections, approvals and payments are retained. | Supports audits and grant reporting. |
-| rebateops.records.crm_link | CRM link | RECORD | Rebate case links to account, conservation outreach and complaint records. | Gives full customer context. |
-| rebateops.reporting.dashboard | program dashboard | RECORD | Dashboard tracks applications, approvals, payments, budget and estimated savings. | Shows program health. |
-| rebateops.reporting.cost_effectiveness | cost effectiveness | MODEL | Cost per saved unit of water compares rebate types. | Guides future funding allocation. |
-| rebateops.review.program_tuning | program tuning | METHOD | Review adjusts eligible devices, rebate amounts, outreach and inspection rates. | Keeps conservation spending effective. |
-
+| rebateops.program.rebate_catalog | каталог скидок | RECORD | В каталоге перечислены подходящие устройства, суммы скидок, лимиты, даты и необходимые доказательства. | Предоставляет клиентам и персоналу один источник правил. |
+| rebateops.program.budget_cap | ограничение бюджета | CONSTRAINT | Программа останавливается, ждет или распределяет пропорционально, когда бюджет исчерпан. | Предотвращает чрезмерные обязательства. |
+| rebateops.program.target_savings | целевые сбережения | MODEL | Программа оценивает экономию воды в зависимости от устройства, класса клиента и уровня внедрения. | Связывает скидки с целями охраны природы. |
+| rebateops.application.case_id | идентификатор приложения | RECORD | Идентификатор приложения связывает клиента, устройство, имущество, документы и статус платежа. | Отслеживает запрос от поступления до закрытия. |
+| rebateops.application.required_docs | необходимые документы | CONSTRAINT | Могут потребоваться квитанции, фотографии, номера моделей, дата установки и статус учетной записи. | Предотвращает неподдерживаемые платежи. |
+| rebateops.application.preapproval | предварительное одобрение | DECISION_RULE | Некоторые скидки требуют одобрения перед покупкой или установкой. | Контролирует право на участие до того, как клиент потратит деньги. |
+| rebateops.application.duplicate_check | дубликат чека | QUALITY_CHECK | Счет, адрес, серийный номер и квитанция проверяются на наличие предыдущих скидок. | Предотвращает двойную оплату. |
+| rebateops.eligibility.account_good | соответствие учетной записи | QUALITY_CHECK | Проверяются класс счета, статус услуги, задолженность и местоположение. | Обеспечивает, чтобы средства служили юрисдикции программы. |
+| rebateops.eligibility.device_qualified | квалификация устройства | CONSTRAINT | Устройство должно соответствовать критериям эффективности, маркировки, модели или производительности. | Скидка покупает проверенную сохранность. |
+| rebateops.eligibility.old_device | замена старого устройства | RECORD | Некоторые программы требуют доказательства удаления неэффективного приспособления. | Позволяет избежать оплаты обновлений, которые не экономят воду. |
+| rebateops.eligibility.property_limit | лимит собственности | CONSTRAINT | Применяются максимальные скидки для каждого объекта недвижимости, года или типа устройства. | Распределяет средства справедливо. |
+| rebateops.devices.toilet | высокоэффективный туалет | METHOD | Скидка на унитаз включает галлоны за каждый смыв и подтверждение установки. | Снижает базовый спрос в помещении. |
+| rebateops.devices.washer | эффективная шайба | METHOD | Скидка на стиральную машину подтверждает соответствие модели и жилому счету. | Экономит воду и энергию при частом использовании. |
+| rebateops.devices.irrigation_controller | умный контроллер полива | METHOD | Скидка контроллера подтверждает возможность работы в зависимости от погоды или влажности почвы. | Уменьшает чрезмерный полив на открытом воздухе. |
+| rebateops.devices.turf_removal | удаление газона | METHOD | Программа газонов проверяет удаленные площади, замену ландшафта и изменения в ирригации. | Ориентирован на высокий спрос на открытом воздухе. |
+| rebateops.devices.rain_barrel | дождевая бочка | METHOD | Для притвора дождевой бочки может потребоваться емкость, подключение водосточной трубы и защита от комаров. | Поддерживает повторное использование небольших объемов, не пригодных для питья. |
+| rebateops.inspection.pre_inspection | предварительная проверка | INSPECTION | Предварительная проверка подтверждает существующее состояние до того, как клиент сменит площадку. | Предотвращает мошеннические претензии постфактум. |
+| rebateops.inspection.post_inspection | послеинспекция | INSPECTION | Последующая проверка проверяет установленное устройство, ландшафт и дальнейшее обслуживание. | Подтверждает наличие меры по сохранению. |
+| rebateops.inspection.photo_review | фотообзор | QUALITY_CHECK | Представленные фотографии проверяются на дату, место, устройство и полноту. | Сокращает количество выездов на места и одновременно контролирует мошенничество. |
+| rebateops.inspection.failed_inspection | неудавшаяся проверка | RECORD | Сбой фиксирует отсутствие устройства, неправильную модель, неполную установку или небезопасное состояние. | Указывает путь исправления клиента. |
+| rebateops.approval.review_queue | очередь просмотра | METHOD | Заявки рассматриваются по дате получения, полноте, бюджету и приоритету. | Обеспечивает справедливый рабочий процесс. |
+| rebateops.approval.approval_code | код одобрения | RECORD | В утверждении сохраняется подходящая сумма, рецензент, год программы и источник финансирования. | Поддерживает оплату и аудит. |
+| rebateops.approval.denial | запись об отказе | RECORD | В отказе указывается правило, отсутствие доказательств, несоответствующее устройство или нарушение сроков. | Делает решения прозрачными. |
+| rebateops.approval.appeal | путь апелляции | METHOD | Клиенты могут предоставить недостающие доказательства или запросить проверку в соответствии с политикой. | Уменьшает несправедливые отрицания. |
+| rebateops.payment.payee | проверка получателя платежа | QUALITY_CHECK | Имя получателя платежа, счет, адрес и налоговые требования проверены. | Предотвращает ошибки оплаты. |
+| rebateops.payment.payment_batch | пакет платежей | METHOD | Утвержденные скидки группируются для финансовой обработки с помощью элементов управления. | Эффективная оплата без потери контрольного журнала. |
+| rebateops.payment.status | статус платежа | RECORD | Отслеживание статуса одобрено, отправлено на финансирование, оплачено, аннулировано или возвращено. | Служба поддержки клиентов может ответить на вопросы по оплате. |
+| rebateops.payment.tax_form | триггер налоговой формы | CONSTRAINT | Для крупных стимулов могут потребоваться налоговые формы или записи поставщиков. | Обеспечивает соблюдение финансовых требований. |
+| rebateops.audit.sample_audit | выборочный аудит | QUALITY_CHECK | Случайные выплачиваемые скидки проверяются на наличие документов, соответствия критериям и доказательств проверки. | Обнаруживает ошибки и мошенничество. |
+| rebateops.audit.receipt_fraud | экран мошенничества с квитанциями | QUALITY_CHECK | Отмечаются дубликаты квитанций, измененные даты или несовпадающие модели. | Защищает государственные средства. |
+| rebateops.audit.site_recheck | перепроверка сайта | INSPECTION | Некоторые сайты после оплаты проходят повторную проверку на предмет дальнейшего соответствия. | Препятствует временным установкам. |
+| rebateops.outcomes.savings_estimate | оценка экономии | MODEL | Экономия оценивается на основе факторов устройства, истории использования или измеренных изменений спроса. | Отчеты об эффективности программы. |
+| rebateops.outcomes.baseline | базовое использование | MEASUREMENT | Потребление перед установкой устанавливает базовый уровень для анализа результатов. | Помогает избежать завышенной экономии. |
+| rebateops.outcomes.persistence | упорство | MODEL | Экономия может снизиться, если устройства выйдут из строя, изменится ландшафт или изменится поведение. | Долгосрочная стоимость требует мониторинга. |
+| rebateops.communication.application_help | справка по приложению | METHOD | Перед подачей сотрудники объясняют право на участие, документы и сроки. | Улучшает полные приложения. |
+| rebateops.communication.status_notice | уведомление о статусе | METHOD | Уведомления сообщают клиенту о полученном, неполном, одобренном, отклоненном или оплаченном статусе. | Уменьшает количество звонков и неопределенности. |
+| rebateops.communication.water_budget | рекомендации по водному бюджету | METHOD | Сообщение о скидках может включать в себя рекомендации по эффективному использованию. | Стимулы к устройствам сочетаются с изменением поведения. |
+| rebateops.equity.low_income | приоритет с низким доходом | DECISION_RULE | Программа может зарезервировать средства или более высокие скидки для клиентов с низким доходом. | Делает консервацию доступной. |
+| rebateops.equity.multifamily | обработка многоквартирных домов | METHOD | Скидки на многоквартирные дома учитывают роли владельца/арендатора, количество квартир и места общего пользования. | Избегает исключения арендаторов. |
+| rebateops.records.document_retention | хранение документов | RECORD | Заявки, квитанции, проверки, разрешения и платежи сохраняются. | Поддерживает аудит и отчетность по грантам. |
+| rebateops.records.crm_link | ссылка на CRM | RECORD | Ссылки на дела о скидках на учетную запись, информацию о природоохранных мероприятиях и записях жалоб. | Предоставляет полный контекст клиента. |
+| rebateops.reporting.dashboard | панель управления программой | RECORD | Панель мониторинга отслеживает заявки, утверждения, платежи, бюджет и предполагаемую экономию. | Показывает работоспособность программы. |
+| rebateops.reporting.cost_effectiveness | экономическая эффективность | MODEL | Стоимость сэкономленной единицы воды сравнивается с типами скидок. | Направляет будущее распределение финансирования. |
+| rebateops.review.program_tuning | настройка программы | METHOD | При проверке корректируются подходящие устройства, суммы скидок, охват и уровень проверок. | Обеспечивает эффективность расходов на природоохранную деятельность. |

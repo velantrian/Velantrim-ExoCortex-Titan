@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| voterreg.application.application_intake | Voter registration application intake | invariant | Intake records applicant, address, date, source, signature and form type. | start registration |
-| voterreg.application.online_submission | Online voter registration submission | variant | Submission captures portal data, authentication result, timestamp and validation status. | digital intake |
-| voterreg.application.paper_form | Paper voter registration form | invariant | Form handling scans, indexes, batches and tracks physical application custody. | process mail/forms |
-| voterreg.application.agency_source | Agency voter registration source | variant | Source identifies motor vehicle, public assistance, school, outreach or third-party drive. | source tracking |
-| voterreg.application.deadline_stamp | Voter registration deadline stamp | invariant | Stamp records received or postmarked date for election eligibility deadlines. | deadline control |
-| voterreg.verification.identity_match | Voter identity match | invariant | Match checks name, birthdate, ID number or other permitted identifiers. | verify applicant |
-| voterreg.verification.residence_check | Voter residence check | invariant | Check confirms address falls in jurisdiction, precinct, district and valid residence type. | assign ballot |
-| voterreg.verification.duplicate_check | Voter duplicate check | invariant | Check compares existing records for same person, prior address or alternate spelling. | avoid duplicates |
-| voterreg.verification.eligibility_flag | Voter eligibility flag | invariant | Flag records citizenship, age, residency, legal status or other jurisdiction-specific requirement. | determine status |
-| voterreg.verification.pending_status | Pending voter registration status | variant | Status holds application awaiting missing information, verification, signature or deadline review. | manage incomplete |
-| voterreg.update.address_change | Voter address change | invariant | Change updates residence, mailing address, precinct, districts and notice route. | current list |
-| voterreg.update.name_change | Voter name change | invariant | Change records legal name update, signature change if needed and notice. | accurate record |
-| voterreg.update.party_change | Voter party affiliation change | variant | Change records permitted party update, deadline, ballot impact and confirmation. | primary eligibility |
-| voterreg.update.signature_update | Voter signature update | variant | Update stores current signature reference, date and source for verification use. | signature matching |
-| voterreg.update.status_reactivation | Voter status reactivation | variant | Reactivation restores inactive voter after confirmation, voting activity or valid update. | preserve access |
-| voterreg.list.precinct_assignment | Voter precinct assignment | invariant | Assignment maps residence to precinct, districts, polling place and ballot style. | correct election |
-| voterreg.list.district_mapping | Voter district mapping | invariant | Mapping applies legislative, municipal, school, special and referendum districts. | ballot accuracy |
-| voterreg.list.inactive_process | Voter inactive process | invariant | Process marks voter inactive after allowed notice, returned mail or inactivity trigger. | list maintenance |
-| voterreg.list.cancellation_record | Voter cancellation record | invariant | Record documents death, move, duplicate, request, felony status or legal cancellation basis. | clean list |
-| voterreg.list.batch_update | Voter list batch update | variant | Update applies validated changes from agencies, mail, canvass, court or election activity. | efficient maintenance |
-| voterreg.notice.acknowledgment_notice | Voter registration acknowledgment notice | invariant | Notice confirms registration, precinct, polling place, status or missing information. | inform voter |
-| voterreg.notice.returned_mail | Voter returned mail record | invariant | Record captures undeliverable notice, address issue, status impact and follow-up. | maintain list |
-| voterreg.notice.deficiency_notice | Voter registration deficiency notice | invariant | Notice identifies missing signature, ID, address, eligibility or incomplete field. | cure application |
-| voterreg.notice.cancellation_notice | Voter cancellation notice | variant | Notice informs voter of cancellation basis, effective date and appeal or correction path. | due process |
-| voterreg.deadline.close_of_books | Close of books | variant | Deadline freezes or limits registration updates before an election under local rule. | election readiness |
-| voterreg.deadline.same_day | Same-day registration workflow | variant | Workflow processes election-day registration, proof, ballot style and provisional path if needed. | late access |
-| voterreg.deadline.cure_period | Voter registration cure period | invariant | Period allows applicant to fix missing information within defined timeline. | preserve eligibility |
-| voterreg.audit.audit_trail | Voter registration audit trail | invariant | Trail records creation, update, user, source, timestamp and reason codes. | accountability |
-| voterreg.audit.access_control | Voter registration system access control | invariant | Control assigns user roles, permissions, review, deactivation and login monitoring. | protect list |
-| voterreg.audit.change_review | Voter record change review | invariant | Review checks high-risk updates, bulk changes, cancellations and unusual patterns. | detect errors |
-| voterreg.audit.thirdparty_batch | Third-party registration batch audit | variant | Audit checks batch count, timeliness, completeness, duplicates and source compliance. | oversee drives |
-| voterreg.public.lookup_support | Voter lookup support | variant | Support helps voters verify registration, precinct, polling place and status. | voter service |
-| voterreg.public.record_request | Voter registration public record request | variant | Request handles lawful access, protected fields, fees, format and delivery. | transparency |
-| voterreg.public.privacy_protection | Voter privacy protection | invariant | Protection restricts confidential addresses, protected voters, personal identifiers and signatures. | safety |
-| voterreg.public.assistance_log | Voter registration assistance log | variant | Log records nonpartisan help given, language support, accessibility need and unresolved question. | service evidence |
-| voterreg.operations.election_roster | Election roster production | invariant | Production creates pollbooks, voter lists, labels or export files for election use. | prepare voting |
-| voterreg.operations.pollbook_sync | Electronic pollbook sync | variant | Sync transfers eligible voters, updates, absentee indicators and ballot style data. | current check-in |
-| voterreg.operations.absentee_indicator | Absentee ballot indicator | variant | Indicator marks issued, returned, challenged or cancelled absentee status in voter record. | prevent double voting |
-| voterreg.quality.data_validation | Voter registration data validation | invariant | Validation checks required fields, address format, district logic and duplicate risk. | improve accuracy |
-| voterreg.quality.error_correction | Voter registration error correction | invariant | Correction fixes clerical, mapping, duplicate or source errors with audit reason. | reliable list |
-| voterreg.reporting.registration_report | Voter registration report | invariant | Report summarizes active, inactive, new, updated, cancelled and pending records. | office visibility |
-| voterreg.reporting.deadline_report | Voter deadline processing report | variant | Report tracks applications near deadline, pending cures, same-day and late submissions. | manage workload |
-| voterreg.metrics.voterreg_kpi | Voter registration KPI | variant | KPI tracks processing time, pending rate, returned mail, duplicates, errors and notices. | manage office |
-| voterreg.continuity.system_outage | Voter registration system outage | invariant | Outage plan uses paper intake, queue control, communication and later data entry. | preserve operations |
+| voterreg.application.application_intake | Прием заявлений о регистрации избирателей | invariant | Приемные записи заявителя, адрес, дата, источник, подпись и тип формы. | начать регистрацию |
+| voterreg.application.online_submission | Подача заявки на онлайн-регистрацию избирателя | variant | При отправке фиксируются данные портала, результат аутентификации, временная метка и статус проверки. | цифровой вход |
+| voterreg.application.paper_form | Бумажная форма регистрации избирателя | invariant | Обработка форм сканирует, индексирует, обрабатывает пакеты и отслеживает физическое хранение приложений. | обрабатывать почту/формы |
+| voterreg.application.agency_source | Источник регистрации избирателей Агентства | variant | Источник идентифицирует автомобиль, общественную помощь, школу, информационно-просветительскую работу или проезд третьей стороны. | отслеживание источника |
+| voterreg.application.deadline_stamp | Штамп крайнего срока регистрации избирателей | invariant | В записях о получении или проштамповке даты крайнего срока права на участие в выборах. | контроль сроков |
+| voterreg.verification.identity_match | Совпадение личности избирателя | invariant | Совпадение проверяет имя, дату рождения, идентификационный номер или другие разрешенные идентификаторы. | проверить заявителя |
+| voterreg.verification.residence_check | Проверка места жительства избирателя | invariant | Проверка подтверждает, что адрес соответствует юрисдикции, округу, округу и действительному типу проживания. | назначить голосование |
+| voterreg.verification.duplicate_check | Проверка дубликатов избирателя | invariant | Проверка сравнивает существующие записи для одного и того же человека, предыдущего адреса или альтернативного написания. | избегайте дубликатов |
+| voterreg.verification.eligibility_flag | Флаг права избирателя | invariant | Флаг фиксирует гражданство, возраст, место жительства, правовой статус или другие требования, специфичные для юрисдикции. | определить статус |
+| voterreg.verification.pending_status | Статус ожидания регистрации избирателя | variant | Статус удерживает заявку в ожидании недостающей информации, проверки, подписи или проверки крайнего срока. | управлять неполным |
+| voterreg.update.address_change | Изменение адреса избирателя | invariant | Изменение обновляет место жительства, почтовый адрес, участок, районы и маршрут уведомления. | текущий список |
+| voterreg.update.name_change | Изменение имени избирателя | invariant | Записи об изменениях, обновление юридического имени, изменение подписи, если необходимо, и уведомление. | точная запись |
+| voterreg.update.party_change | Изменение партийной принадлежности избирателя | variant | Записи об изменениях разрешены для партийного обновления, сроков, влияния на голосование и подтверждения. | первичное право на участие |
+| voterreg.update.signature_update | Обновление подписи избирателя | variant | Обновление сохраняет текущую ссылку на подпись, дату и источник для использования при проверке. | сопоставление подписей |
+| voterreg.update.status_reactivation | Возобновление статуса избирателя | variant | Повторная активация восстанавливает неактивного избирателя после подтверждения, активности голосования или действительного обновления. | сохранить доступ |
+| voterreg.list.precinct_assignment | Назначение избирательного участка | invariant | Присвоение карты проживания по избирательным участкам, округам, избирательному участку и стилю голосования. | правильные выборы |
+| voterreg.list.district_mapping | Картирование избирательных округов | invariant | Картирование распространяется на законодательные, муниципальные, школьные, специальные округа и округа для референдума. | точность голосования |
+| voterreg.list.inactive_process | Избирательный неактивный процесс | invariant | Процесс помечает избирателя неактивным после разрешенного уведомления, возврата почты или срабатывания неактивности. | ведение списка |
+| voterreg.list.cancellation_record | Запись об отмене голосования | invariant | Записывайте документы о смерти, переезде, дублировании, запросе, статусе уголовного преступления или основании юридического аннулирования. | чистый список |
+| voterreg.list.batch_update | Пакетное обновление списка избирателей | variant | Обновление применяет проверенные изменения, внесенные агентствами, почтой, агитацией, судом или выборной деятельностью. | эффективное обслуживание |
+| voterreg.notice.acknowledgment_notice | Уведомление о подтверждении регистрации избирателя | invariant | Уведомление подтверждает регистрацию, избирательный участок, избирательный участок, статус или недостающую информацию. | информировать избирателя |
+| voterreg.notice.returned_mail | Избиратель вернул почтовую запись | invariant | Запись фиксирует недоставленное уведомление, проблему с адресом, влияние на статус и последующие действия. | вести список |
+| voterreg.notice.deficiency_notice | Уведомление о недостатке регистрации избирателей | invariant | В уведомлении указывается отсутствующая подпись, идентификатор, адрес, право на участие или неполное поле. | приложение для лечения |
+| voterreg.notice.cancellation_notice | Уведомление об отмене голосования | variant | Уведомление информирует избирателя об основаниях отмены, дате вступления в силу и способе апелляции или исправления. | надлежащая правовая процедура |
+| voterreg.deadline.close_of_books | Закрытие книг | variant | Крайний срок приостанавливает или ограничивает обновления регистрации перед выборами в соответствии с местными правилами. | готовность к выборам |
+| voterreg.deadline.same_day | Процедура регистрации в тот же день | variant | Рабочий процесс обрабатывает регистрацию в день выборов, подтверждение, стиль бюллетеня и предварительный путь, если это необходимо. | поздний доступ |
+| voterreg.deadline.cure_period | Период восстановления регистрации избирателей | invariant | Период позволяет заявителю исправить недостающую информацию в установленные сроки. | сохранить право на участие |
+| voterreg.audit.audit_trail | Контрольный след регистрации избирателей | invariant | Создание, обновление записей отслеживания, коды пользователей, источников, временных меток и причин. | подотчетность |
+| voterreg.audit.access_control | Контроль доступа к системе регистрации избирателей | invariant | Управление назначает роли пользователей, разрешения, просмотр, деактивацию и мониторинг входа в систему. | защитить список |
+| voterreg.audit.change_review | Обзор изменений в записях избирателей | invariant | Обзор проверяет обновления с высоким уровнем риска, массовые изменения, отмены и необычные закономерности. | обнаруживать ошибки |
+| voterreg.audit.thirdparty_batch | Пакетный аудит сторонней регистрации | variant | Аудит проверяет количество партий, своевременность, полноту, наличие дубликатов и соответствие источника. | наблюдать за поездками |
+| voterreg.public.lookup_support | Поддержка поиска избирателей | variant | Поддержка помогает избирателям проверить регистрацию, избирательный участок, избирательный участок и статус. | служба избирателей |
+| voterreg.public.record_request | Запрос на публичную регистрацию регистрации избирателей | variant | Запрос регулирует законный доступ, защищенные поля, сборы, формат и доставку. | прозрачность |
+| voterreg.public.privacy_protection | Защита конфиденциальности избирателей | invariant | Защита ограничивает конфиденциальные адреса, защищенные избиратели, личные идентификаторы и подписи. | безопасность |
+| voterreg.public.assistance_log | Журнал помощи в регистрации избирателей | variant | В журнале фиксируются предоставленная беспартийная помощь, языковая поддержка, потребность в доступности и нерешенные вопросы. | служебные доказательства |
+| voterreg.operations.election_roster | Составление избирательного списка | invariant | Production создает журналы опросов, списки избирателей, ярлыки или файлы экспорта для использования на выборах. | подготовить голосование |
+| voterreg.operations.pollbook_sync | Синхронизация электронного журнала опросов | variant | Синхронизация передает избирателей, имеющих право голоса, обновления, индикаторы отсутствия и данные о стиле бюллетеня. | текущая регистрация |
+| voterreg.operations.absentee_indicator | Индикатор заочного голосования | variant | Индикаторные отметки о выдаче, возврате, оспорении или аннулировании статуса отсутствующего в записях избирателей. | предотвратить двойное голосование |
+| voterreg.quality.data_validation | Проверка данных регистрации избирателей | invariant | При проверке проверяются обязательные поля, формат адреса, логика округа и риск дублирования. | улучшить точность |
+| voterreg.quality.error_correction | Исправление ошибок при регистрации избирателей | invariant | Исправление устраняет канцелярские, картографические, повторяющиеся или исходные ошибки по причине аудита. | надежный список |
+| voterreg.reporting.registration_report | Отчет о регистрации избирателей | invariant | Отчет суммирует активные, неактивные, новые, обновленные, отмененные и ожидающие записи. | видимость офиса |
+| voterreg.reporting.deadline_report | Отчет об обработке сроков для избирателей | variant | В отчете отслеживаются заявки, поданные в ближайшее время, ожидающие исправления, поданные в тот же день и с опозданием. | управлять рабочей нагрузкой |
+| voterreg.metrics.voterreg_kpi | KPI регистрации избирателей | variant | KPI отслеживает время обработки, скорость обработки, возвращенную почту, дубликаты, ошибки и уведомления. | управлять офисом |
+| voterreg.continuity.system_outage | Сбой в системе регистрации избирателей | invariant | План отключения использует прием бумаги, управление очередями, связь и последующий ввод данных. | сохранять операции |

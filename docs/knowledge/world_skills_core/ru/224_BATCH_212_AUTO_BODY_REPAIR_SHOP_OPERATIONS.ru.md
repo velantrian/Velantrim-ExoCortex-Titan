@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| autobody.intake.repair_intake | Auto body repair intake | invariant | Intake records customer, vehicle, claim, damage area, drivability, photos and authorization. | open repair file |
-| autobody.intake.vehicle_checkin | Vehicle check-in | invariant | Check-in captures mileage, fuel, warning lights, belongings, keys and pre-existing damage. | baseline evidence |
-| autobody.intake.insurance_claim | Insurance claim link | variant | Link connects estimate, insurer, adjuster, claim number, approvals and supplements. | claim workflow |
-| autobody.intake.customer_authorization | Repair authorization | invariant | Authorization allows tear-down, estimate, storage, repair or parts order according to scope. | permission control |
-| autobody.intake.drivability_assessment | Drivability assessment | invariant | Assessment determines whether vehicle can be safely moved, stored or driven. | safety and logistics |
-| autobody.estimate.damage_photo | Damage photo set | invariant | Photos document impact area, panels, gaps, VIN, odometer and hidden indicators. | visual evidence |
-| autobody.estimate.initial_estimate | Initial body repair estimate | invariant | Estimate lists visible damage, labor operations, parts, materials, scans and assumptions. | first cost view |
-| autobody.estimate.supplement_request | Repair supplement request | invariant | Request adds hidden damage, extra labor, parts or procedures discovered after tear-down. | adjust scope |
-| autobody.estimate.oem_procedure_check | OEM procedure check | variant | Check verifies manufacturer repair, calibration, welding or replacement procedure. | repair correctly |
-| autobody.estimate.total_loss_flag | Total loss flag | variant | Flag indicates repair may exceed economic or insurer threshold. | avoid wasted work |
-| autobody.parts.parts_order | Auto body parts order | invariant | Order lists part number, side, quantity, supplier, ETA, price and claim linkage. | supply repair |
-| autobody.parts.parts_mirror_match | Parts mirror match | invariant | Match compares received part to damaged part, estimate and vehicle options. | prevent wrong install |
-| autobody.parts.backorder | Body shop parts backorder | variant | Backorder delays repair and triggers customer, insurer and schedule updates. | manage wait |
-| autobody.parts.core_return | Auto body core return | variant | Return sends bumper, headlamp, module or reusable component back under supplier rule. | recover credit |
-| autobody.parts.parts_cart | Repair parts cart | invariant | Cart keeps job-specific parts, clips, hardware and labels together. | avoid mix-up |
-| autobody.teardown.damage_discovery | Tear-down damage discovery | invariant | Discovery exposes hidden structural, mechanical, electrical or trim damage. | find full scope |
-| autobody.teardown.hardware_bag | Hardware bagging | invariant | Bagging labels fasteners, clips and small parts by panel or operation. | reassembly discipline |
-| autobody.teardown.pre_repair_scan | Pre-repair scan | variant | Scan records diagnostic codes and affected systems before repair. | electronic baseline |
-| autobody.teardown.repair_plan | Body repair plan | invariant | Plan sequences structural, panel, mechanical, paint, calibration and quality steps. | shop roadmap |
-| autobody.teardown.blueprint_meeting | Repair blueprint meeting | variant | Meeting aligns estimator, technician, parts and production on full repair plan. | reduce surprises |
-| autobody.repair.frame_measure | Frame measurement | variant | Measurement compares vehicle structure to specification after collision damage. | structural accuracy |
-| autobody.repair.panel_replacement | Panel replacement | invariant | Replacement follows approved cut, weld, bond, fastener or seam procedure. | restore body |
-| autobody.repair.panel_repair | Panel repair | invariant | Repair reshapes, fills or refinishes damaged panel within quality and safety limits. | save part where suitable |
-| autobody.repair.corrosion_protection | Corrosion protection | invariant | Protection restores coatings, seam sealer, cavity wax or primer after repair. | long-term durability |
-| autobody.repair.adjacent_damage | Adjacent damage note | variant | Note identifies damage near repair area that may be unrelated, prior or supplement-worthy. | scope clarity |
-| autobody.paint.paint_code | Paint code verification | invariant | Verification confirms vehicle paint code, variant, refinish area and blend needs. | color starts right |
-| autobody.paint.surface_prep | Paint surface preparation | invariant | Prep cleans, sands, masks, primes and controls dust before coating. | finish quality |
-| autobody.paint.color_match | Paint color match | invariant | Match uses formula, spray-out, lighting and blend strategy to reduce mismatch. | visible quality |
-| autobody.paint.booth_schedule | Paint booth schedule | variant | Schedule coordinates jobs, cure times, booth capacity, masking and materials. | bottleneck control |
-| autobody.paint.paint_material_log | Paint material log | invariant | Log tracks primer, base, clear, reducer, hardener, lot and usage. | cost and trace |
-| autobody.reassembly.reassembly_check | Reassembly check | invariant | Check ensures panels, trim, lights, sensors, clips and seals are installed correctly. | put back whole |
-| autobody.reassembly.gap_alignment | Gap and alignment check | invariant | Check confirms panel gaps, flushness, closures and weather sealing. | body fit |
-| autobody.reassembly.post_repair_scan | Post-repair scan | variant | Scan checks electronic systems after repair and before delivery. | hidden faults |
-| autobody.reassembly.calibration_need | Calibration need | variant | Need flags ADAS, cameras, sensors or steering systems requiring calibration. | modern repair |
-| autobody.reassembly.road_test | Body shop road test | variant | Test confirms noise, alignment, warning lights, drivability and water leaks where appropriate. | final function |
-| autobody.quality.quality_gate | Body repair quality gate | invariant | Gate checks estimate completion, fit, finish, cleanliness, scans, calibrations and paperwork. | release standard |
-| autobody.quality.detail_delivery | Delivery detail | invariant | Detail cleans vehicle, removes dust, checks glass, interior and exterior presentation. | customer impression |
-| autobody.quality.customer_walkaround | Customer delivery walkaround | invariant | Walkaround explains repairs, warranty, care instructions and remaining issues. | transparent handoff |
-| autobody.quality.comeback | Body shop comeback | invariant | Comeback records customer return for defect, noise, paint, fit or missed item. | quality loop |
-| autobody.quality.warranty_note | Repair warranty note | variant | Note states covered repair areas, limits, duration and claim path. | expectation clarity |
-| autobody.admin.production_board | Body shop production board | invariant | Board shows jobs by stage, owner, parts, target date and blockers. | manage flow |
-| autobody.admin.sublet_work | Sublet repair work | variant | Work outsourced for glass, alignment, calibration, mechanical or specialty repair. | external dependency |
-| autobody.metrics.cycle_time | Auto body cycle time KPI | variant | KPI measures drop-off to delivery, touch time, supplement delay and parts delay. | manage throughput |
-| autobody.continuity.paint_booth_down | Paint booth downtime plan | invariant | Plan resequences work, updates customers and coordinates repair during booth outage. | keep shop moving |
+| autobody.intake.repair_intake | Прием кузовного ремонта автомобилей | invariant | Приемка записывает клиента, транспортное средство, претензию, зону повреждения, управляемость, фотографии и разрешение. | открыть файл восстановления |
+| autobody.intake.vehicle_checkin | Регистрация автомобиля | invariant | При регистрации фиксируются пробег, топливо, контрольные лампы, вещи, ключи и ранее существовавшие повреждения. | исходные данные |
+| autobody.intake.insurance_claim | Ссылка на страховое возмещение | variant | Ссылка соединяет смету, страховщика, аджастера, номер претензии, одобрения и дополнения. | рабочий процесс претензии |
+| autobody.intake.customer_authorization | Разрешение на ремонт | invariant | Авторизация позволяет осуществлять демонтаж, оценку, хранение, ремонт или заказ запчастей в соответствии с объемом. | контроль разрешений |
+| autobody.intake.drivability_assessment | Оценка управляемости | invariant | Оценка определяет, можно ли безопасно перемещать, хранить или эксплуатировать транспортное средство. | безопасность и логистика |
+| autobody.estimate.damage_photo | Набор фотографий повреждений | invariant | Фотографии документируют зону удара, панели, зазоры, VIN, одометр и скрытые индикаторы. | визуальные доказательства |
+| autobody.estimate.initial_estimate | Первоначальная смета на кузовной ремонт | invariant | В смете указаны видимые повреждения, трудовые операции, детали, материалы, сканы и предположения. | первый просмотр стоимости |
+| autobody.estimate.supplement_request | Запрос на доплату за ремонт | invariant | Запрос добавляет скрытые повреждения, дополнительную работу, детали или процедуры, обнаруженные после разборки. | настроить объем |
+| autobody.estimate.oem_procedure_check | Проверка процедуры OEM | variant | Проверка подтверждает процедуру ремонта, калибровки, сварки или замены производителя. | ремонтируйте правильно |
+| autobody.estimate.total_loss_flag | Флаг полной потери | variant | Флаг указывает, что ремонт может превысить экономический или страховой порог. | избежать напрасной работы |
+| autobody.parts.parts_order | Заказ кузовных запчастей | invariant | В заказе указан номер детали, сторона, количество, поставщик, расчетное время прибытия, цена и связь с рекламацией. | ремонт снабжения |
+| autobody.parts.parts_mirror_match | Зеркальное совпадение деталей | invariant | Match сравнивает полученную деталь с поврежденной деталью, оценкой и вариантами автомобиля. | предотвратить неправильную установку |
+| autobody.parts.backorder | Заказ запчастей для кузовного цеха | variant | Отложенный заказ задерживает ремонт и приводит к обновлению обновлений для клиентов, страховщиков и расписания. | управлять ждать |
+| autobody.parts.core_return | Автоматический возврат ядра кузова | variant | При возврате бампер, фара, модуль или многоразовый компонент возвращается в соответствии с правилами поставщика. | восстановить кредит |
+| autobody.parts.parts_cart | Тележка для ремонта запчастей | invariant | В тележке хранятся детали, зажимы, крепежные детали и этикетки, предназначенные для конкретной работы. | избежать путаницы |
+| autobody.teardown.damage_discovery | Обнаружение повреждений при сносе | invariant | Discovery выявляет скрытые структурные, механические, электрические повреждения или повреждения отделки. | найти полный объем |
+| autobody.teardown.hardware_bag | Аппаратная упаковка в пакеты | invariant | Упаковывание в мешки этикеток, креплений, зажимов и мелких деталей по панелям или по операциям. | дисциплина повторной сборки |
+| autobody.teardown.pre_repair_scan | Предремонтное сканирование | variant | Перед ремонтом сканируйте записи диагностических кодов и затронутых систем. | электронная базовая линия |
+| autobody.teardown.repair_plan | План кузовного ремонта | invariant | Спланируйте последовательность операций по сборке, монтажу панелей, механической обработке, покраске, калибровке и контролю качества. | дорожная карта магазина |
+| autobody.teardown.blueprint_meeting | Совещание по плану ремонта | variant | Встреча согласовывает сметчика, технического специалиста, детали и производство по полному плану ремонта. | уменьшить количество сюрпризов |
+| autobody.repair.frame_measure | Измерение кадра | variant | При измерении сравнивается структура транспортного средства со спецификациями после повреждения в результате столкновения. | структурная точность |
+| autobody.repair.panel_replacement | Замена панели | invariant | Замена производится в соответствии с утвержденной процедурой резки, сварки, склеивания, крепления или шва. | восстановить тело |
+| autobody.repair.panel_repair | Ремонт панели | invariant | Ремонт изменяет форму, заполняет или полирует поврежденную панель в пределах качества и безопасности. | сохраните часть, где это возможно |
+| autobody.repair.corrosion_protection | Защита от коррозии | invariant | Защита восстанавливает покрытия, герметик швов, воск или грунтовку после ремонта. | длительная долговечность |
+| autobody.repair.adjacent_damage | Соседняя запись о повреждении | variant | В примечании указаны повреждения вблизи зоны ремонта, которые могут быть несвязанными, предыдущими или заслуживающими дополнения. | ясность объема |
+| autobody.paint.paint_code | Проверка кода краски | invariant | Проверка подтверждает код краски автомобиля, вариант, область покраски и потребности в смеси. | цвет начинается правильно |
+| autobody.paint.surface_prep | Подготовка поверхности под покраску | invariant | Prep очищает, шлифует, маскирует, грунтует и контролирует пыль перед нанесением покрытия. | качество отделки |
+| autobody.paint.color_match | Цвет краски соответствует | invariant | Match использует формулу, распыление, освещение и стратегию смешивания, чтобы уменьшить несоответствие. | видимое качество |
+| autobody.paint.booth_schedule | График работы покрасочной камеры | variant | В графике указаны рабочие места, время отверждения, вместимость стенда, маскировка и материалы. | контроль узких мест |
+| autobody.paint.paint_material_log | Журнал лакокрасочных материалов | invariant | В журнале отслеживаются грунтовка, основа, лак, разбавитель, отвердитель, партия и использование. | стоимость и трассировка |
+| autobody.reassembly.reassembly_check | Проверка сборки | invariant | Убедитесь, что панели, обшивка, фонари, датчики, зажимы и уплотнения установлены правильно. | положить обратно целиком |
+| autobody.reassembly.gap_alignment | Проверка зазора и соосности | invariant | Проверка подтверждает зазоры между панелями, заподлицо, закрытие и герметизацию от атмосферных воздействий. | тело подходит |
+| autobody.reassembly.post_repair_scan | Сканирование после ремонта | variant | Scan проверяет электронные системы после ремонта и перед доставкой. | скрытые недостатки |
+| autobody.reassembly.calibration_need | Необходимость калибровки | variant | Нужны флаги ADAS, камеры, датчики или системы рулевого управления, требующие калибровки. | современный ремонт |
+| autobody.reassembly.road_test | Дорожные испытания кузовного цеха | variant | Тест подтверждает шум, выравнивание, сигнальные лампы, управляемость и утечку воды, где это необходимо. | конечная функция |
+| autobody.quality.quality_gate | Качественные ворота кузовного ремонта | invariant | Ворота проверяют завершение оценки, подгонку, отделку, чистоту, сканирование, калибровку и оформление документации. | стандарт выпуска |
+| autobody.quality.detail_delivery | Детали доставки | invariant | Деталь очищает автомобиль, удаляет пыль, проверяет стекла, внешний и внутренний вид. | впечатление клиента |
+| autobody.quality.customer_walkaround | Обход доставки для клиентов | invariant | В обходе описаны ремонт, гарантия, инструкции по уходу и оставшиеся проблемы. | прозрачная передача |
+| autobody.quality.comeback | Возвращение кузовного цеха | invariant | При возврате учитываются возвраты клиентов из-за дефектов, шума, краски, подходящего или пропущенного товара. | цикл качества |
+| autobody.quality.warranty_note | Гарантийное письмо на ремонт | variant | Примечание: указаны области ремонта, ограничения, продолжительность и порядок претензий. | ясность ожиданий |
+| autobody.admin.production_board | Производственный цех кузовного цеха | invariant | Доска показывает задания по стадиям, владельцам, деталям, установленной дате и блокировщикам. | управлять потоком |
+| autobody.admin.sublet_work | Ремонтные работы в субаренду | variant | Аутсорсинг работ по стеклу, выравниванию, калибровке, механическому или специальному ремонту. | внешняя зависимость |
+| autobody.metrics.cycle_time | KPI времени автоматического кузовного цикла | variant | KPI измеряет время доставки, время доставки, задержку поставки и задержку поставки запчастей. | управлять пропускной способностью |
+| autobody.continuity.paint_booth_down | План простоя покрасочной камеры | invariant | Планируйте повторные работы, информируйте клиентов и координируйте ремонт во время простоя стенда. | продолжайте движение магазина |

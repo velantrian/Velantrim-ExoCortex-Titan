@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| benefitsdeskops.intake.request_source | request source | RECORD | Source records survivor center, hotline, shelter, outreach, partner or walk-in desk. | Shows entry path. |
-| benefitsdeskops.intake.household_profile | household profile | RECORD | Profile captures household size, location, displacement, income change and urgent needs. | Supports screening. |
-| benefitsdeskops.intake.preferred_contact | preferred contact | RECORD | Contact records phone, email, address, language, safe contact and backup person. | Enables follow-up. |
-| benefitsdeskops.intake.consent | consent record | RECORD | Consent documents permission to discuss benefits with agencies or caseworkers. | Enables coordination. |
-| benefitsdeskops.screening.need_screen | need screen | MODEL | Screen identifies food, cash, housing, unemployment, health, childcare, repair or legal needs. | Finds programs. |
-| benefitsdeskops.screening.eligibility_hint | eligibility hint | MODEL | Hint uses disaster impact, income, citizenship rules, residence and household factors. | Guides next step. |
-| benefitsdeskops.screening.urgent_benefit | urgent benefit flag | MODEL | Urgency weighs eviction, food shortage, medical need, childcare, income loss and deadline. | Prioritizes help. |
-| benefitsdeskops.screening.duplicate_case | duplicate case check | QUALITY_CHECK | Duplicate check links repeated visits and existing applications. | Prevents confusion. |
-| benefitsdeskops.program.program_match | program match | METHOD | Matching maps needs to public, nonprofit, insurance, employment and recovery programs. | Builds options. |
-| benefitsdeskops.program.program_limits | program limits | CONSTRAINT | Limits explain eligibility boundaries, deadlines, benefit caps and documentation requirements. | Sets expectations. |
-| benefitsdeskops.program.sequence | program sequence | METHOD | Sequence orders applications to avoid conflicts and meet deadlines. | Improves outcomes. |
-| benefitsdeskops.program.no_wrong_door | no wrong door | METHOD | Staff redirect residents to correct program without closing support. | Keeps access open. |
-| benefitsdeskops.documents.document_list | document list | RECORD | List shows required identity, address, income, loss, household and disaster proof. | Organizes preparation. |
-| benefitsdeskops.documents.missing_docs | missing documents | RECORD | Missing document list records gaps and replacement pathway. | Targets support. |
-| benefitsdeskops.documents.upload_support | upload support | METHOD | Staff help scan or upload documents using secure handling rules. | Completes application. |
-| benefitsdeskops.documents.redaction | redaction rule | SAFETY_RULE | Copies redact unnecessary numbers or sensitive details when allowed. | Protects identity. |
-| benefitsdeskops.application.form_support | form support | METHOD | Staff explain forms and help with navigation while resident confirms answers. | Reduces errors. |
-| benefitsdeskops.application.submission_proof | submission proof | RECORD | Proof includes confirmation number, receipt, mailed tracking or agency note. | Verifies filing. |
-| benefitsdeskops.application.status_check | status check | METHOD | Status check uses agency portal, phone line, caseworker or automated notice. | Tracks progress. |
-| benefitsdeskops.application.correction | correction request | RECORD | Correction records agency request, missing item, deadline and responsible person. | Keeps case moving. |
-| benefitsdeskops.referral.warm_referral | warm referral | METHOD | Warm referral confirms receiving agency, contact, eligibility clue and appointment need. | Reduces drop-off. |
-| benefitsdeskops.referral.legal_aid | legal aid referral | METHOD | Legal aid handles denials, appeals, identity issues, landlord conflict or benefit termination. | Adds expertise. |
-| benefitsdeskops.referral.case_management | case management referral | METHOD | Case management handles complex multi-need households and long-term recovery. | Provides continuity. |
-| benefitsdeskops.referral.language_access | language referral | METHOD | Language support connects interpreter, translated forms or bilingual agency contact. | Improves access. |
-| benefitsdeskops.appointment.slot_booking | slot booking | RECORD | Booking records agency, date, mode, confirmation, documents and access needs. | Secures next step. |
-| benefitsdeskops.appointment.reminder | reminder process | METHOD | Reminder uses preferred contact, language and backup channel. | Reduces missed appointments. |
-| benefitsdeskops.appointment.transport | transport need | RECORD | Transport need records trip purpose, time, accessibility and referral status. | Supports attendance. |
-| benefitsdeskops.appointment.no_show | no-show handling | METHOD | No-show reason is recorded and reschedule or alternate pathway is offered. | Preserves case. |
-| benefitsdeskops.appeal.denial_intake | denial intake | RECORD | Intake captures notice, deadline, reason, program, evidence and resident goal. | Starts appeal review. |
-| benefitsdeskops.appeal.deadline_alert | deadline alert | SAFETY_RULE | Appeal deadlines are flagged with escalation and reminder. | Prevents lost rights. |
-| benefitsdeskops.appeal.evidence_plan | evidence plan | METHOD | Plan identifies documents, statements, photos, receipts or agency records needed. | Builds appeal. |
-| benefitsdeskops.appeal.referral_status | appeal referral status | RECORD | Status tracks legal aid, advocate, agency contact or self-filed appeal. | Shows owner. |
-| benefitsdeskops.followup.followup_queue | follow-up queue | RECORD | Queue tracks open cases by status, deadline, owner and next contact date. | Maintains continuity. |
-| benefitsdeskops.followup.outcome_record | outcome record | RECORD | Outcome records approved, denied, pending, referred, withdrawn or unreachable. | Closes loop. |
-| benefitsdeskops.followup.unreachable | unreachable process | METHOD | Process documents attempts, backup contact and final closure rule. | Keeps audit fair. |
-| benefitsdeskops.followup.reopen | reopen rule | METHOD | Case can reopen for denial, new need, missed deadline or new documents. | Handles change. |
-| benefitsdeskops.privacy.minimum_data | minimum data | SAFETY_RULE | Desk stores only needed benefit, identity and contact data. | Reduces exposure. |
-| benefitsdeskops.privacy.safe_contact | safe contact | SAFETY_RULE | Safe-contact rule avoids unsafe messages for domestic violence or unstable housing cases. | Protects residents. |
-| benefitsdeskops.privacy.role_access | role access | SAFETY_RULE | Access differs for navigators, supervisors, legal partners and volunteers. | Controls records. |
-| benefitsdeskops.reporting.daily_summary | daily summary | MEASUREMENT | Summary reports visits, programs screened, applications supported, referrals and barriers. | Informs command. |
-| benefitsdeskops.metrics.application_count | application count | MEASUREMENT | Count tracks applications by program, status and site. | Shows workload. |
-| benefitsdeskops.metrics.approval_rate | approval rate | MEASUREMENT | Approval rate measures known approvals among completed applications by program. | Shows effectiveness. |
-| benefitsdeskops.metrics.barrier_count | barrier count | MEASUREMENT | Barriers count missing documents, language, internet, transport, deadline and eligibility issues. | Guides fixes. |
-| benefitsdeskops.review.after_action | after-action review | METHOD | Review captures program confusion, document barriers, referral quality, appeals and privacy lessons. | Improves future desks. |
+| benefitsdeskops.intake.request_source | источник запроса | RECORD | Источник записывает центр для пострадавших, горячую линию, приют, информационно-просветительскую работу, партнера или стойку регистрации. | Показывает путь входа. |
+| benefitsdeskops.intake.household_profile | профиль домохозяйства | RECORD | Профиль отражает размер домохозяйства, его местоположение, перемещение, изменение доходов и неотложные потребности. | Поддерживает скрининг. |
+| benefitsdeskops.intake.preferred_contact | предпочтительный контакт | RECORD | Контакт записывает телефон, электронную почту, адрес, язык, безопасный контакт и резервное лицо. | Включает дальнейшее наблюдение. |
+| benefitsdeskops.intake.consent | запись о согласии | RECORD | Согласие документирует разрешение обсуждать льготы с агентствами или социальными работниками. | Обеспечивает координацию. |
+| benefitsdeskops.screening.need_screen | нужен экран | MODEL | Экран определяет потребности в еде, деньгах, жилье, безработице, здравоохранении, уходе за детьми, ремонте или юридических потребностях. | Находит программы. |
+| benefitsdeskops.screening.eligibility_hint | подсказка о приемлемости | MODEL | Подсказка учитывает влияние стихийного бедствия, доход, правила гражданства, факторы проживания и домохозяйства. | Направляет следующий шаг. |
+| benefitsdeskops.screening.urgent_benefit | Флаг срочного пособия | MODEL | Срочность учитывает выселение, нехватку продовольствия, медицинские потребности, уход за детьми, потерю дохода и крайние сроки. | Отдает приоритет помощи. |
+| benefitsdeskops.screening.duplicate_case | проверка дубликата дела | QUALITY_CHECK | Дублирующая проверка связывает повторные посещения и существующие заявки. | Предотвращает путаницу. |
+| benefitsdeskops.program.program_match | совпадение программы | METHOD | Сопоставление карт необходимо с государственными, некоммерческими программами, программами страхования, занятости и восстановления. | Создает варианты. |
+| benefitsdeskops.program.program_limits | ограничения программы | CONSTRAINT | Ограничения объясняют границы права, сроки, пределы пособий и требования к документации. | Устанавливает ожидания. |
+| benefitsdeskops.program.sequence | последовательность программы | METHOD | Последовательность упорядочивает заявки, чтобы избежать конфликтов и соблюсти сроки. | Улучшает результаты. |
+| benefitsdeskops.program.no_wrong_door | нет неправильной двери | METHOD | Персонал перенаправляет жителей на правильную программу, не закрывая поддержку. | Оставляет доступ открытым. |
+| benefitsdeskops.documents.document_list | список документов | RECORD | В списке указаны требуемые данные о личности, адресе, доходе, потере, домохозяйстве и доказательствах стихийных бедствий. | Организует подготовку. |
+| benefitsdeskops.documents.missing_docs | недостающие документы | RECORD | В списке отсутствующих документов указаны пробелы и пути замены. | Поддержка целей. |
+| benefitsdeskops.documents.upload_support | поддержка загрузки | METHOD | Сотрудники помогают сканировать или загружать документы, используя правила безопасной обработки. | Завершает заявку. |
+| benefitsdeskops.documents.redaction | правило редактирования | SAFETY_RULE | Копии удаляют ненужные цифры или конфиденциальные данные, если это разрешено. | Защищает личность. |
+| benefitsdeskops.application.form_support | поддержка формы | METHOD | Персонал объясняет формы и помогает с навигацией, а резидент подтверждает ответы. | Уменьшает ошибки. |
+| benefitsdeskops.application.submission_proof | подтверждение подачи | RECORD | Доказательство включает номер подтверждения, квитанцию, отправленное по почте отслеживание или уведомление агентства. | Проверяет сдачу. |
+| benefitsdeskops.application.status_check | проверка статуса | METHOD | Для проверки статуса используется портал агентства, телефонная линия, координатор или автоматическое уведомление. | Отслеживает прогресс. |
+| benefitsdeskops.application.correction | запрос на исправление | RECORD | Запрос агентства на исправление записей, недостающий элемент, срок и ответственное лицо. | Удерживает дело в движении. |
+| benefitsdeskops.referral.warm_referral | теплый отзыв | METHOD | Теплое направление подтверждает принимающее агентство, контактное лицо, подтверждение права на участие и необходимость предварительной записи. | Уменьшает выпадение. |
+| benefitsdeskops.referral.legal_aid | направление на юридическую помощь | METHOD | Юридическая помощь рассматривает отказы, апелляции, вопросы идентификации, конфликты с арендодателями или прекращение льгот. | Добавляет экспертности. |
+| benefitsdeskops.referral.case_management | направление на ведение дела | METHOD | Управление делами занимается сложными домашними хозяйствами с множеством потребностей и долгосрочным восстановлением. | Обеспечивает непрерывность. |
+| benefitsdeskops.referral.language_access | направление по языку | METHOD | Языковая поддержка включает переводчика, переведенные формы или двуязычный контакт с агентством. | Улучшает доступ. |
+| benefitsdeskops.appointment.slot_booking | бронирование слотов | RECORD | Агентство записи бронирования, дата, режим, подтверждение, документы и требования к доступу. | Обеспечивает следующий шаг. |
+| benefitsdeskops.appointment.reminder | процесс напоминания | METHOD | Напоминание использует предпочтительный контакт, язык и резервный канал. | Сокращает количество пропущенных встреч. |
+| benefitsdeskops.appointment.transport | потребность в транспорте | RECORD | Потребность в транспорте записывает цель поездки, время, доступность и статус направления. | Поддерживает посещаемость. |
+| benefitsdeskops.appointment.no_show | обработка неявки | METHOD | Причина неявки фиксируется, и предлагается перенести дату или альтернативный путь. | Сохраняет дело. |
+| benefitsdeskops.appeal.denial_intake | отказ от приема | RECORD | Прием фиксирует уведомление, крайний срок, причину, программу, доказательства и цель резидента. | Начинается рассмотрение апелляции. |
+| benefitsdeskops.appeal.deadline_alert | предупреждение о крайнем сроке | SAFETY_RULE | Сроки подачи апелляции отмечены эскалацией и напоминанием. | Предотвращает утрату прав. |
+| benefitsdeskops.appeal.evidence_plan | план доказательств | METHOD | План определяет необходимые документы, заявления, фотографии, квитанции или отчеты агентства. | Создает привлекательность. |
+| benefitsdeskops.appeal.referral_status | обжаловать статус направления | RECORD | Статус отслеживает юридическую помощь, адвоката, контакты с агентством или самостоятельную подачу апелляции. | Показывает владельца. |
+| benefitsdeskops.followup.followup_queue | последующая очередь | RECORD | Очередь отслеживает открытые обращения по статусу, сроку, владельцу и дате следующего обращения. | Сохраняет преемственность. |
+| benefitsdeskops.followup.outcome_record | запись о результате | RECORD | Записи о результатах утверждены, отклонены, ожидают рассмотрения, переданы, отозваны или недоступны. | Замыкает цикл. |
+| benefitsdeskops.followup.unreachable | недостижимый процесс | METHOD | Обработка документов о попытках, резервном контакте и правиле окончательного закрытия. | Обеспечивает справедливый аудит. |
+| benefitsdeskops.followup.reopen | правило повторного открытия | METHOD | Дело может быть возобновлено в случае отказа, новой необходимости, пропущенного срока или новых документов. | Ручки меняются. |
+| benefitsdeskops.privacy.minimum_data | минимальные данные | SAFETY_RULE | Настольным магазинам требовались только льготы, идентификационные и контактные данные. | Уменьшает воздействие. |
+| benefitsdeskops.privacy.safe_contact | безопасный контакт | SAFETY_RULE | Правило безопасного контакта позволяет избежать небезопасных сообщений о домашнем насилии или нестабильном жилье. | Защищает жильцов. |
+| benefitsdeskops.privacy.role_access | ролевой доступ | SAFETY_RULE | Доступ различается для штурманов, руководителей, юридических партнеров и волонтеров. | Контролирует записи. |
+| benefitsdeskops.reporting.daily_summary | ежедневная сводка | MEASUREMENT | Сводные отчеты о посещениях, проверенных программах, поддерживаемых приложениях, направлениях и препятствиях. | Информирует командование. |
+| benefitsdeskops.metrics.application_count | количество заявок | MEASUREMENT | Count отслеживает заявки по программе, статусу и сайту. | Показывает загруженность. |
+| benefitsdeskops.metrics.approval_rate | процент одобрения | MEASUREMENT | Коэффициент одобрения измеряет количество известных утверждений среди завершенных заявок по программе. | Показывает эффективность. |
+| benefitsdeskops.metrics.barrier_count | количество барьеров | MEASUREMENT | Барьеры включают недостающие документы, язык, Интернет, транспорт, сроки и вопросы соответствия критериям. | Исправления в руководствах. |
+| benefitsdeskops.review.after_action | обзор после действий | METHOD | В обзоре отражены путаница в программе, барьеры, связанные с документацией, качество направлений, апелляции и уроки конфиденциальности. | Улучшает будущие столы. |

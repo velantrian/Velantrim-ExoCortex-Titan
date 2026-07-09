@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| habitinsp.complaint.intake | Housing habitability complaint intake | invariant | Intake records unit, tenant, owner, issue, dates, photos and safe contact. | start case |
-| habitinsp.complaint.urgent_flag | Habitability urgent flag | invariant | Flag marks no heat, no water, sewage, fire damage, collapse, lockout or severe hazard. | triage risk |
-| habitinsp.complaint.retaliation_note | Housing retaliation note | variant | Note records alleged retaliation, eviction threat, utility shutoff or harassment. | protect tenant |
-| habitinsp.complaint.jurisdiction_check | Housing habitability jurisdiction check | invariant | Check confirms unit type, location, authority, exemptions and referral needs. | route case |
-| habitinsp.schedule.inspection_notice | Housing inspection notice | invariant | Notice states date, time window, purpose, access rights and contact. | lawful entry |
-| habitinsp.schedule.entry_plan | Housing inspection entry plan | variant | Plan coordinates tenant, owner, interpreter, safety, pets, keys and access limits. | field readiness |
-| habitinsp.field.entry_record | Housing inspection entry record | invariant | Record captures arrival, persons present, consent, authority and areas inspected. | evidence |
-| habitinsp.field.photo_record | Habitability photo record | invariant | Photo links condition, room, violation, date and inspector notes. | document condition |
-| habitinsp.field.tenant_statement | Tenant statement | variant | Statement captures reported timeline, effects, repair requests and owner response. | context |
-| habitinsp.field.owner_statement | Owner statement | variant | Statement captures repair history, access attempts, contractors and disputed facts. | balanced record |
-| habitinsp.check.heat_check | Housing heat check | invariant | Check records heating system, indoor temperature, season rule and utility status. | habitability |
-| habitinsp.check.hot_water_check | Housing hot water check | invariant | Check verifies hot water availability, temperature, fixtures and equipment condition. | basic service |
-| habitinsp.check.plumbing_check | Housing plumbing check | invariant | Check reviews leaks, drainage, sewage, toilets, sinks, tubs and water pressure. | sanitation |
-| habitinsp.check.electrical_check | Housing electrical check | invariant | Check reviews outlets, exposed wiring, panels, lighting, overloads and unsafe conditions. | fire safety |
-| habitinsp.check.structural_check | Housing structural check | invariant | Check observes walls, ceilings, floors, stairs, railings, windows and doors. | physical safety |
-| habitinsp.check.moisture_mold | Housing moisture and mold check | invariant | Check records visible mold, moisture source, ventilation, leaks and affected materials. | health concern |
-| habitinsp.check.pest_condition | Housing pest condition | invariant | Check records rodents, insects, droppings, entry points, sanitation and treatment evidence. | pest control |
-| habitinsp.check.smoke_co | Smoke and CO alarm check | invariant | Check verifies presence, placement, power, test status and missing devices. | life safety |
-| habitinsp.check.egress_check | Housing egress check | invariant | Check confirms exits, windows, locks, stairs and obstructions allow safe escape. | emergency exit |
-| habitinsp.check.sanitation | Housing sanitation check | variant | Check reviews trash, debris, hoarding concern, waste, odors and shared-area condition. | healthy unit |
-| habitinsp.violation.code_violation | Housing code violation | invariant | Violation links condition to code, room, severity, evidence and correction. | enforce rule |
-| habitinsp.violation.imminent_hazard | Housing imminent hazard | invariant | Hazard requires urgent repair, vacate, utility action or emergency referral. | prevent harm |
-| habitinsp.violation.repeat_violation | Housing repeat violation | variant | Violation repeats prior issue, missed repair or recurring condition. | escalate |
-| habitinsp.notice.notice_of_violation | Housing notice of violation | invariant | Notice lists violations, corrections, deadlines, parties, appeal and reinspection. | formal order |
-| habitinsp.notice.repair_deadline | Housing repair deadline | invariant | Deadline sets correction date by severity, rule and practical urgency. | manage compliance |
-| habitinsp.notice.service_proof | Housing notice service proof | invariant | Proof records mail, posting, hand delivery, email if allowed and date. | due process |
-| habitinsp.reinspect.reinspection_schedule | Housing reinspection schedule | invariant | Schedule checks claimed or required corrections after deadline or extension. | verify repair |
-| habitinsp.reinspect.correction_verified | Housing correction verified | invariant | Verification records repaired, partially repaired, inaccessible or not corrected status. | close item |
-| habitinsp.reinspect.no_access | Housing reinspection no-access | variant | Record captures missed access, attempted contact, notice and next step. | preserve process |
-| habitinsp.enforcement.citation | Housing habitability citation | variant | Citation records failure to correct, penalty, hearing route and evidence. | enforce compliance |
-| habitinsp.enforcement.vacate_order | Housing vacate order | variant | Order removes occupancy due to unsafe, unfit or emergency condition. | protect occupants |
-| habitinsp.enforcement.repair_escrow_referral | Repair escrow referral | variant | Referral routes unresolved habitability case to court, escrow or tenant remedy process. | support remedy |
-| habitinsp.communication.tenant_update | Housing tenant update | invariant | Update explains inspection result, notices, deadlines, resources and next steps. | keep informed |
-| habitinsp.communication.owner_update | Housing owner update | invariant | Update explains violations, evidence, deadlines, appeal and reinspection process. | support compliance |
-| habitinsp.communication.language_access | Housing inspection language access | variant | Access provides interpreter, translated notices, plain-language explanation and safe contact. | fair service |
-| habitinsp.records.case_file | Housing inspection case file | invariant | File stores complaint, notices, photos, reports, statements, reinspections and closure. | case memory |
-| habitinsp.records.inspection_report | Housing habitability report | invariant | Report summarizes unit, findings, violations, photos, orders, deadlines and follow-up. | official record |
-| habitinsp.records.audit_trail | Housing inspection audit trail | invariant | Trail records edits, notices, status changes, evidence and closure actions. | accountability |
-| habitinsp.quality.supervisor_review | Housing inspection supervisor review | invariant | Review checks authority, evidence, violation coding, deadlines, orders and closure. | consistency |
-| habitinsp.safety.inspector_safety | Housing inspector safety | invariant | Safety covers animals, hostility, structural hazards, biohazards, traffic and buddy need. | protect staff |
-| habitinsp.reporting.program_report | Housing habitability program report | variant | Report summarizes complaints, inspections, violations, orders, citations and closures. | oversight |
-| habitinsp.metrics.habitability_kpi | Housing habitability KPI | variant | KPI tracks response time, urgent cases, correction rate, repeat violations and no-access. | manage program |
-| habitinsp.close.case_closure | Housing habitability case closure | invariant | Closure records corrected, unfounded, referred, vacated, legal action or withdrawn. | end case |
-| habitinsp.continuity.disaster_housing | Disaster housing habitability inspection | variant | Inspection triages units after fire, flood, storm, freeze or utility outage. | rapid safety |
+| habitinsp.complaint.intake | Прием жалоб на жильё | invariant | Приемная документация, арендатор, владелец, проблема, даты, фотографии и безопасный контакт. | начать дело |
+| habitinsp.complaint.urgent_flag | Срочный флаг обитаемости | invariant | Флаг означает отсутствие тепла, воды, сточных вод, пожара, обрушения, локаута или серьезной опасности. | сортировочный риск |
+| habitinsp.complaint.retaliation_note | Записка о возмездии за жилье | variant | В заметке зафиксированы предполагаемые репрессалии, угрозы выселения, отключения коммунальных услуг или преследования. | защитить арендатора |
+| habitinsp.complaint.jurisdiction_check | Проверка юрисдикции проживания в жилье | invariant | Проверка подтверждает тип подразделения, его местоположение, полномочия, льготы и необходимость направления. | маршрутный случай |
+| habitinsp.schedule.inspection_notice | Уведомление о жилищной инспекции | invariant | В уведомлении указывается дата, временной интервал, цель, права доступа и контакт. | законный въезд |
+| habitinsp.schedule.entry_plan | План входа в жилищную инспекцию | variant | В плане координаты арендатора, владельца, переводчика, безопасность, домашние животные, ключи и ограничения доступа. | полевая готовность |
+| habitinsp.field.entry_record | Акт записи жилищной инспекции | invariant | В протоколе фиксируются прибытие, присутствующие лица, согласие, полномочия и проверенные территории. | доказательство |
+| habitinsp.field.photo_record | Фоторегистрация обитаемости | invariant | Состояние ссылки на фото, помещение, нарушение, дата и примечания инспектора. | состояние документа |
+| habitinsp.field.tenant_statement | Заявление арендатора | variant | В заявлении отражены сообщаемые сроки, последствия, запросы на ремонт и реакция владельца. | контекст |
+| habitinsp.field.owner_statement | Заявление владельца | variant | В отчете отражена история ремонта, попытки доступа, подрядчики и спорные факты. | сбалансированный рекорд |
+| habitinsp.check.heat_check | Проверка тепла корпуса | invariant | Проверьте записи системы отопления, температуры в помещении, сезонных правил и состояния коммунальных услуг. | обитаемость |
+| habitinsp.check.hot_water_check | Проверка горячей воды в доме | invariant | Проверка проверяет наличие горячей воды, температуру, состояние сантехники и оборудования. | базовая услуга |
+| habitinsp.check.plumbing_check | Проверка сантехники в доме | invariant | Проверьте обзоры утечек, дренажа, сточных вод, туалетов, раковин, ванн и давления воды. | санитария |
+| habitinsp.check.electrical_check | Проверка электрооборудования корпуса | invariant | Проверьте розетки, открытую проводку, панели, освещение, перегрузки и небезопасные условия. | пожарная безопасность |
+| habitinsp.check.structural_check | Проверка конструкции жилья | invariant | При проверке осматриваются стены, потолки, полы, лестницы, перила, окна и двери. | физическая безопасность |
+| habitinsp.check.moisture_mold | Проверка корпуса на влажность и плесень | invariant | Проверьте записи видимой плесени, источника влаги, вентиляции, утечек и поврежденных материалов. | забота о здоровье |
+| habitinsp.check.pest_condition | Состояние жилищного вредителя | invariant | Проверьте записи о грызунах, насекомых, помете, точках входа, санитарных условиях и доказательствах лечения. | борьба с вредителями |
+| habitinsp.check.smoke_co | Проверка сигнализации дыма и CO | invariant | Проверка проверяет наличие, размещение, питание, состояние тестирования и отсутствие устройств. | безопасность жизни |
+| habitinsp.check.egress_check | Проверка выхода из дома | invariant | Проверка подтверждает, что выходы, окна, замки, лестницы и препятствия позволяют безопасно покинуть помещение. | запасный выход |
+| habitinsp.check.sanitation | Санитарная проверка жилья | variant | Проверьте отзывы о мусоре, обломках, проблемах с накоплением, отходах, запахах и состоянии помещений общего пользования. | здоровая единица |
+| habitinsp.violation.code_violation | Нарушение Жилищного кодекса | invariant | Нарушение связывает состояние с кодом, помещением, серьезностью, доказательствами и исправлением. | обеспечить соблюдение правила |
+| habitinsp.violation.imminent_hazard | Непосредственная опасность для жилья | invariant | Опасность требует срочного ремонта, освобождения помещения, действий коммунальных служб или направления в экстренную службу. | предотвратить вред |
+| habitinsp.violation.repeat_violation | Повторное жилищное нарушение | variant | Нарушение повторяет предыдущую проблему, пропущенный ремонт или повторяющееся состояние. | обострять |
+| habitinsp.notice.notice_of_violation | Уведомление о нарушении жилищного права | invariant | В уведомлении перечислены нарушения, исправления, сроки, стороны, апелляция и повторная проверка. | официальный приказ |
+| habitinsp.notice.repair_deadline | Срок ремонта жилья | invariant | Крайний срок устанавливает дату исправления в зависимости от серьезности, правила и практической срочности. | управлять соблюдением требований |
+| habitinsp.notice.service_proof | Подтверждение вручения жилищного уведомления | invariant | В доказательствах указывается почта, почтовые отправления, доставка вручную, электронная почта, если это разрешено, и дата. | надлежащая правовая процедура |
+| habitinsp.reinspect.reinspection_schedule | График переосвидетельствования жилья | invariant | Плановые проверки заявлены или требуют внесения исправлений после истечения крайнего срока или продления. | проверить ремонт |
+| habitinsp.reinspect.correction_verified | Исправление корпуса проверено | invariant | Записи о проверке статуса исправлены, частично исправлены, недоступны или не исправлены. | закрыть элемент |
+| habitinsp.reinspect.no_access | Повторная инспекция жилья, доступ запрещен | variant | Запись фиксирует пропущенный доступ, попытку контакта, уведомление и следующий шаг. | сохранить процесс |
+| habitinsp.enforcement.citation | Цитата об обитаемости жилья | variant | В цитировании фиксируются неисправления, штрафы, порядок слушаний и доказательства. | обеспечивать соблюдение требований |
+| habitinsp.enforcement.vacate_order | Приказ об освобождении жилья | variant | Приказ отменяет размещение в связи с небезопасным, непригодным или аварийным состоянием. | защитить пассажиров |
+| habitinsp.enforcement.repair_escrow_referral | Направление на ремонт условного депонирования | variant | Передача неразрешенного дела о пригодности жилья в суд, условное депонирование или процесс возмещения ущерба арендатору. | средство поддержки |
+| habitinsp.communication.tenant_update | Обновление арендатора жилья | invariant | Обновление объясняет результаты проверки, уведомления, сроки, ресурсы и следующие шаги. | держать в курсе |
+| habitinsp.communication.owner_update | Обновление собственника жилья | invariant | Обновление объясняет нарушения, доказательства, сроки, процесс апелляции и повторной проверки. | поддержка соответствия |
+| habitinsp.communication.language_access | Языковой доступ жилищной инспекции | variant | Доступ обеспечивает переводчика, переведенные уведомления, объяснения простым языком и безопасный контакт. | честное обслуживание |
+| habitinsp.records.case_file | Материалы дела жилищной инспекции | invariant | Файл хранит жалобы, уведомления, фотографии, отчеты, заявления, повторные проверки и закрытия. | память корпуса |
+| habitinsp.records.inspection_report | Отчет об обитаемости жилья | invariant | В отчете кратко излагаются подразделение, выводы, нарушения, фотографии, приказы, сроки и последующие действия. | официальный отчет |
+| habitinsp.records.audit_trail | Ревизия жилищной инспекции | invariant | След фиксирует изменения, уведомления, изменения статуса, доказательства и действия по закрытию. | подотчетность |
+| habitinsp.quality.supervisor_review | Отзыв руководителя жилищной инспекции | invariant | Обзор проверяет полномочия, доказательства, кодирование нарушений, сроки, приказы и закрытие. | последовательность |
+| habitinsp.safety.inspector_safety | Жилищный инспектор по безопасности | invariant | Безопасность охватывает животных, враждебность, структурные опасности, биологические опасности, дорожное движение и потребность в друзьях. | защитить персонал |
+| habitinsp.reporting.program_report | Отчет о программе жилищного строительства | variant | В отчете обобщаются жалобы, проверки, нарушения, приказы, цитаты и закрытия. | надзор |
+| habitinsp.metrics.habitability_kpi | KPI обитаемости жилья | variant | KPI отслеживает время реагирования, срочные случаи, частоту исправлений, повторные нарушения и отсутствие доступа. | управлять программой |
+| habitinsp.close.case_closure | Закрытие дела о пригодности жилья | invariant | Записи о закрытии исправлены, необоснованны, переданы, аннулированы, судебные иски или отозваны. | конец дела |
+| habitinsp.continuity.disaster_housing | Проверка пригодности аварийного жилья | variant | Инспекционная сортировка объектов после пожара, наводнения, урагана, заморозков или отключения электроэнергии. | быстрая безопасность |

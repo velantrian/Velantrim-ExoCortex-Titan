@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| unemployops.claim.initial_claim | Unemployment initial claim | invariant | Claim records claimant identity, employment history, separation, wages and contact. | start benefits case |
-| unemployops.claim.identity_proof | Unemployment identity proof | invariant | Proof verifies claimant identity through approved documents, systems or checks. | prevent misidentity |
-| unemployops.claim.employer_notice | Unemployment employer notice | invariant | Notice asks employer to confirm wages, dates, separation reason and protest. | gather facts |
-| unemployops.claim.effective_date | Unemployment claim effective date | invariant | Date anchors benefit year, waiting week, filing period and payment eligibility. | timeline control |
-| unemployops.claim.channel_support | Unemployment claim channel support | variant | Support helps claimant file by web, phone, office, language line or assisted service. | access |
-| unemployops.eligibility.base_period | Unemployment base period review | invariant | Review checks wages and covered employment in the applicable measurement period. | monetary eligibility |
-| unemployops.eligibility.separation_issue | Unemployment separation issue | invariant | Issue records layoff, quit, discharge, labor dispute or other separation facts. | adjudication input |
-| unemployops.eligibility.able_available | Able and available review | invariant | Review checks ability to work, availability, restrictions and work search obligations. | ongoing eligibility |
-| unemployops.eligibility.work_search | Unemployment work search record | invariant | Record captures contacts, applications, activities, exemptions and audit trail. | verify effort |
-| unemployops.eligibility.partial_earnings | Partial earnings report | variant | Report records wages, hours, self-employment or gig income for benefit adjustment. | correct payment |
-| unemployops.documents.document_request | Unemployment document request | invariant | Request asks for paystubs, ID, separation notice, medical restriction or work authorization. | complete file |
-| unemployops.documents.upload_intake | Unemployment document upload intake | invariant | Intake records file type, claimant, date, case, readability and virus scan status. | manage evidence |
-| unemployops.documents.missing_document | Missing unemployment document | invariant | Record tracks missing item, deadline, reminder, consequence and received status. | avoid delay |
-| unemployops.documents.translation_need | Unemployment document translation need | variant | Need routes non-English or unclear document to translation or language support. | understand evidence |
-| unemployops.adjudication.issue_queue | Unemployment adjudication issue queue | invariant | Queue prioritizes separation, availability, wages, fraud, overpayment or employer protest. | manage workload |
-| unemployops.adjudication.fact_finding | Unemployment fact finding | invariant | Fact finding gathers claimant, employer, documents, timelines and contradictions. | decide fairly |
-| unemployops.adjudication.determination | Unemployment determination | invariant | Determination states eligible, ineligible, disqualified, pending or adjusted with reason. | official decision |
-| unemployops.adjudication.notice_of_decision | Unemployment notice of decision | invariant | Notice communicates facts, law basis, effect, appeal rights and deadlines. | due process |
-| unemployops.adjudication.reopen_claim | Reopen unemployment claim | variant | Reopen handles break in filing, return to work, new separation or missed certifications. | restore case |
-| unemployops.certification.weekly_cert | Weekly unemployment certification | invariant | Certification records unemployment status, work search, earnings, availability and job refusal. | authorize payment |
-| unemployops.certification.late_cert | Late unemployment certification | variant | Certification records reason for late filing and whether week can be accepted. | handle exceptions |
-| unemployops.certification.job_refusal | Job refusal issue | invariant | Issue records job offer, suitability, reason refused, employer contact and decision route. | eligibility control |
-| unemployops.payments.payment_release | Unemployment payment release | invariant | Release sends approved benefit amount, week, method, deductions and hold status. | pay claimant |
-| unemployops.payments.payment_hold | Unemployment payment hold | invariant | Hold stops payment for unresolved issue, identity, earnings, appeal or fraud concern. | prevent improper pay |
-| unemployops.payments.direct_deposit | Unemployment direct deposit setup | variant | Setup records bank validation, claimant authorization, changes and failed deposits. | payment channel |
-| unemployops.payments.debit_card | Unemployment debit card issuance | variant | Issuance records card order, address, activation issue, replacement and fraud notice. | payment access |
-| unemployops.payments.overpayment | Unemployment overpayment record | invariant | Record captures cause, amount, fault status, notices, waiver, repayment and offset. | recover funds |
-| unemployops.appeal.appeal_intake | Unemployment appeal intake | invariant | Intake records appellant, decision, date, timeliness, issues and hearing preference. | start review |
-| unemployops.appeal.hearing_packet | Unemployment hearing packet | invariant | Packet contains decision, evidence, parties, notices, exhibits and instructions. | prepare hearing |
-| unemployops.appeal.hearing_schedule | Unemployment hearing schedule | invariant | Schedule coordinates parties, interpreter, officer, evidence deadline and notice. | due process |
-| unemployops.appeal.appeal_decision | Unemployment appeal decision | invariant | Decision affirms, reverses, remands or modifies determination with reasoning. | final action |
-| unemployops.fraud.identity_flag | Unemployment identity fraud flag | invariant | Flag captures suspicious identity, duplicate claim, breached credentials or mismatched data. | protect program |
-| unemployops.fraud.employer_mismatch | Employer wage mismatch flag | variant | Flag compares reported earnings, employer records, wage files and claimant statements. | find errors |
-| unemployops.fraud.crossmatch_hit | Unemployment crossmatch hit | invariant | Hit identifies incarceration, death, new hire, wages, duplicate state or other disqualifying signal. | fraud control |
-| unemployops.fraud.investigation_case | Unemployment fraud investigation | variant | Case records evidence, interviews, findings, referral, penalty and recovery action. | resolve fraud |
-| unemployops.service.call_center_case | Unemployment call center case | variant | Case records question, authentication, issue type, response, escalation and callback. | claimant service |
-| unemployops.service.appointment | Unemployment office appointment | variant | Appointment schedules in-person or virtual help for complex filing or identity issue. | guided service |
-| unemployops.service.language_access | Unemployment language access | invariant | Access provides interpreter, translated notice, bilingual staff or alternate format. | fair service |
-| unemployops.service.escalation | Unemployment case escalation | invariant | Escalation routes hardship, legislative inquiry, overdue issue or system error to specialist. | unblock case |
-| unemployops.reporting.backlog_report | Unemployment backlog report | invariant | Report summarizes pending claims, adjudication age, appeals, calls and payment holds. | manage office |
-| unemployops.reporting.timeliness_report | Unemployment timeliness report | invariant | Report tracks first payment, determination, appeal, call and document processing times. | oversight |
-| unemployops.quality.case_review | Unemployment case quality review | invariant | Review checks evidence, notices, law application, payments and audit trail. | improve accuracy |
-| unemployops.metrics.unemployment_kpi | Unemployment benefits KPI | variant | KPI tracks claims, payment timeliness, adjudication backlog, appeals, fraud hits and satisfaction. | manage benefits |
-| unemployops.continuity.claim_surge | Unemployment claim surge response | variant | Response adds staffing, triage, communications, automation and policy guidance for volume spike. | preserve service |
+| unemployops.claim.initial_claim | Первоначальная заявка на пособие по безработице | invariant | В иске указываются личность заявителя, история трудоустройства, увольнение, заработная плата и контакты. | начать дело о льготах |
+| unemployops.claim.identity_proof | Подтверждение личности безработного | invariant | Доказательство подтверждает личность заявителя с помощью утвержденных документов, систем или проверок. | предотвратить ошибочную идентификацию |
+| unemployops.claim.employer_notice | Уведомление работодателя о безработице | invariant | В уведомлении работодателю предлагается подтвердить заработную плату, даты, причину увольнения и протест. | собирать факты |
+| unemployops.claim.effective_date | Дата вступления в силу заявления на пособие по безработице | invariant | Привязка даты: год выплаты, неделя ожидания, период подачи заявки и право на выплату. | контроль временной шкалы |
+| unemployops.claim.channel_support | Поддержка канала подачи заявлений на пособие по безработице | variant | Служба поддержки помогает заявителю подать заявку через Интернет, по телефону, в офисе, по языковой линии или через службу поддержки. | доступ |
+| unemployops.eligibility.base_period | Обзор базового периода по безработице | invariant | Обзор проверок заработной платы и охваченной занятости в применимом периоде измерения. | денежное право |
+| unemployops.eligibility.separation_issue | Проблема увольнения по безработице | invariant | Выдавайте записи об увольнении, увольнении, увольнении, трудовом споре или других фактах увольнения. | вклад в решение |
+| unemployops.eligibility.able_available | Способный и доступный обзор | invariant | Обзор проверяет трудоспособность, доступность, ограничения и обязательства по поиску работы. | постоянное право на участие |
+| unemployops.eligibility.work_search | Запись о поиске работы по безработице | invariant | Запись фиксирует контакты, заявки, действия, исключения и контрольный журнал. | проверить усилие |
+| unemployops.eligibility.partial_earnings | Частичный отчет о доходах | variant | В отчете фиксируются заработная плата, часы, самозанятость или доход от подработки для корректировки пособий. | правильный платеж |
+| unemployops.documents.document_request | Запрос справки о безработице | invariant | В запросе запрашиваются квитанции о заработной плате, удостоверение личности, уведомление об увольнении, медицинские ограничения или разрешение на работу. | полный файл |
+| unemployops.documents.upload_intake | Прием документов для загрузки документов по безработице | invariant | Прием записывает тип файла, истца, дату, случай, читаемость и статус сканирования на вирусы. | управлять доказательствами |
+| unemployops.documents.missing_document | Отсутствует документ о безработице | invariant | Запись отслеживает отсутствующий элемент, крайний срок, напоминание, последствия и статус получения. | избежать задержки |
+| unemployops.documents.translation_need | Нужен перевод документов по безработице | variant | Нужны маршруты неанглоязычного или непонятного документа для перевода или языковой поддержки. | понимать доказательства |
+| unemployops.adjudication.issue_queue | Очередь по вынесению решения по делу о безработице | invariant | Очередь отдает приоритет увольнению, доступности, заработной плате, мошенничеству, переплате или протесту работодателя. | управлять рабочей нагрузкой |
+| unemployops.adjudication.fact_finding | Установление фактов безработицы | invariant | При установлении фактов собираются истец, работодатель, документы, сроки и противоречия. | решить справедливо |
+| unemployops.adjudication.determination | Определение безработицы | invariant | В решении указывается годный, неправомочный, дисквалифицированный, ожидающий рассмотрения или скорректированный по причине. | официальное решение |
+| unemployops.adjudication.notice_of_decision | Уведомление о решении по безработице | invariant | В уведомлении сообщаются факты, правовая основа, последствия, права на апелляцию и сроки. | надлежащая правовая процедура |
+| unemployops.adjudication.reopen_claim | Возобновить подачу заявления на пособие по безработице | variant | Повторное открытие обрабатывает перерыв в регистрации, возвращение на работу, новое увольнение или пропущенные сертификаты. | восстановить дело |
+| unemployops.certification.weekly_cert | Еженедельная справка по безработице | invariant | Сертификация фиксирует статус безработного, поиск работы, заработок, доступность и отказ от работы. | авторизовать платеж |
+| unemployops.certification.late_cert | Поздняя справка по безработице | variant | В сертификационных записях указывается причина поздней подачи и может ли быть принята неделя. | обрабатывать исключения |
+| unemployops.certification.job_refusal | Проблема отказа в приеме на работу | invariant | В выпуске фиксируются предложение о работе, пригодность, причина отказа, контакт с работодателем и путь принятия решения. | контроль приемлемости |
+| unemployops.payments.payment_release | Выдача пособия по безработице | invariant | При выпуске отправляется утвержденная сумма пособия, неделя, метод, вычеты и статус удержания. | истец выплаты |
+| unemployops.payments.payment_hold | Приостановка выплаты по безработице | invariant | Удержание останавливает оплату в случае нерешенной проблемы, личности, дохода, апелляции или мошенничества. | предотвратить неправомерную оплату |
+| unemployops.payments.direct_deposit | Настройка прямого вклада по безработице | variant | Настройка записывает проверку банка, авторизацию заявителя, изменения и неудачные депозиты. | платежный канал |
+| unemployops.payments.debit_card | Выпуск дебетовой карты по безработице | variant | При выдаче фиксируются заказ карты, адрес, проблема активации, замена и уведомление о мошенничестве. | доступ к платежам |
+| unemployops.payments.overpayment | Запись о переплате по безработице | invariant | Запись фиксирует причину, сумму, статус неисправности, уведомления, отказ, погашение и компенсацию. | вернуть средства |
+| unemployops.appeal.appeal_intake | Прием апелляций по безработице | invariant | Прием записывает апеллянта, решение, дату, своевременность, проблемы и предпочтения слушания. | начать обзор |
+| unemployops.appeal.hearing_packet | Пакет слушаний по делу о безработице | invariant | Пакет содержит решение, доказательства, стороны, уведомления, вещественные доказательства и инструкции. | подготовить слушание |
+| unemployops.appeal.hearing_schedule | График слушаний по делу о безработице | invariant | В графике указаны координаты сторон, переводчика, офицера, срок предоставления доказательств и уведомление. | надлежащая правовая процедура |
+| unemployops.appeal.appeal_decision | Решение по апелляции по безработице | invariant | Решение подтверждает, отменяет, отменяет или изменяет определение с обоснованием. | последнее действие |
+| unemployops.fraud.identity_flag | Флаг мошенничества с данными о безработице | invariant | Пометка фиксирует подозрительную личность, повторяющиеся претензии, нарушенные учетные данные или несовпадающие данные. | защитить программу |
+| unemployops.fraud.employer_mismatch | Флаг несоответствия заработной платы работодателя | variant | Флаг сравнивает заявленные доходы, записи работодателей, файлы заработной платы и заявления заявителей. | найти ошибки |
+| unemployops.fraud.crossmatch_hit | Кросс-сопоставление по безработице ударило | invariant | Попадание идентифицирует тюремное заключение, смерть, новый прием на работу, заработную плату, дублирование штата или другой дисквалифицирующий сигнал. | борьба с мошенничеством |
+| unemployops.fraud.investigation_case | Расследование мошенничества с безработицей | variant | В протоколе дела фиксируются доказательства, интервью, выводы, направления, штрафы и меры по взысканию ущерба. | разрешить мошенничество |
+| unemployops.service.call_center_case | Дело в колл-центре по безработице | variant | В записи обращения задаются вопросы, аутентификация, тип проблемы, ответ, эскалация и обратный вызов. | служба истца |
+| unemployops.service.appointment | Запись в бюро по безработице | variant | График встреч: личная или виртуальная помощь в случае сложной подачи документов или проблем с идентификацией. | услуги гида |
+| unemployops.service.language_access | Языковой доступ для безработных | invariant | Доступ обеспечивает переводчика, переведенное уведомление, двуязычный персонал или альтернативный формат. | честное обслуживание |
+| unemployops.service.escalation | Эскалация дела по безработице | invariant | Эскалация направляет специалистам по вопросам, связанным с трудностями, законодательными запросами, просроченными проблемами или системными ошибками. | разблокировать дело |
+| unemployops.reporting.backlog_report | Отчет о невыполненной работе по безработице | invariant | В отчете суммируются ожидающие рассмотрения претензии, возраст вынесения решения, апелляции, звонки и приостановки платежей. | управлять офисом |
+| unemployops.reporting.timeliness_report | Своевременный отчет по безработице | invariant | В отчете отслеживается время первого платежа, определения, апелляции, звонка и обработки документов. | надзор |
+| unemployops.quality.case_review | Проверка качества дела по безработице | invariant | Обзор проверяет доказательства, уведомления, применение закона, платежи и аудиторский след. | улучшить точность |
+| unemployops.metrics.unemployment_kpi | KPI пособий по безработице | variant | KPI отслеживает претензии, своевременность платежей, количество невыполненных судебных решений, апелляции, случаи мошенничества и удовлетворенность. | управлять преимуществами |
+| unemployops.continuity.claim_surge | Реакция на резкий рост заявок на пособие по безработице | variant | Response добавляет кадровое обеспечение, сортировку, связь, автоматизацию и руководство по политике на случай резкого увеличения объема. | сохранить сервис |

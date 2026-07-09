@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, TypeVar
 
@@ -134,12 +135,13 @@ class VelantrimApp:
 
     def _init_components(self) -> None:
         """Инициализировать все lazy-компоненты (вызывается при старте)."""
-        from core.memory import create_store as _create_store
+        # FIX #10 (Claude audit): create_store не существует → используем make_store
+        from core.memory import make_store
 
         cfg = self.config.app
 
         # Store
-        self._lazy["store"] = _Lazy(lambda: _create_store(
+        self._lazy["store"] = _Lazy(lambda: make_store(
             db_path=self.config.db.sqlite_graph_path,
         ))
 
@@ -180,9 +182,21 @@ class VelantrimApp:
         logger.debug("Компоненты зарегистрированы: %s", list(self._lazy.keys()))
 
     def health(self) -> Dict[str, Any]:
-        """Быстрая проверка здоровья."""
+        """
+        Быстрая проверка здоровья.
+
+        FIX P1 (v8.7 audit): self.store обращается к _lazy["store"](), что падает
+        с KeyError если _init_components() не вызвана (пустой словарь).
+        Теперь безопасно проверяет наличие ключа до обращения.
+        """
+        store_ok = False
+        try:
+            if "store" in self._lazy:
+                store_ok = self._lazy["store"]() is not None
+        except Exception:
+            pass
         return {
-            "store": self.store is not None,
+            "store": store_ok,
             "config.version": getattr(self.config, "version", "unknown"),
         }
 
@@ -207,7 +221,17 @@ def _create_event_bus():
 
 def _create_causal_graph():
     from core.causal_graph import CausalGraph
-    return CausalGraph()
+    # FIX P1 (v8.7 audit): CausalGraph требует db_conn, а не db_path.
+    # Передаём соединение от store (SQLiteGraphStore открывает своё).
+    from core.memory import _GLOBAL_STORE
+    if _GLOBAL_STORE is not None:
+        conn = _GLOBAL_STORE._conn()
+        return CausalGraph(conn)
+    # Fallback: прямой connect к БД (для тестов без store)
+    import sqlite3
+    conn = sqlite3.connect(os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db"))
+    conn.execute("PRAGMA foreign_keys = ON")
+    return CausalGraph(conn)
 
 
 def _create_graph_backend():
@@ -221,8 +245,9 @@ def _create_cognitive_runtime():
 
 
 def _create_essence_layer():
-    from core.essence import EssenceLayer
-    return EssenceLayer()
+    # FIX #10 (Claude audit): EssenceLayer не существует → используем compose_essence
+    from core.essence import compose_essence
+    return lambda: compose_essence
 
 
 def _create_working_notebook():

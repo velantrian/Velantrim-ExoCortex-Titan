@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| showervoucherops.intake.request_source | request source | RECORD | Source records shelter, outreach, hotline, caseworker, clinic or walk-in. | Shows entry path. |
-| showervoucherops.intake.household | household profile | RECORD | Profile captures people, location, contact, language and shower barrier. | Defines demand. |
-| showervoucherops.intake.need_reason | need reason | RECORD | Reason records displacement, utility outage, flooding, shelter crowding or hygiene risk. | Explains support. |
-| showervoucherops.intake.urgency | urgency model | MODEL | Urgency weighs health risk, work/school need, caregiving, heat and days without shower. | Prioritizes slots. |
-| showervoucherops.eligibility.criteria | eligibility criteria | CONSTRAINT | Criteria define disaster impact, location, frequency and referral requirements. | Preserves fairness. |
-| showervoucherops.eligibility.verification | verification method | METHOD | Verification uses self-attestation, shelter roster, referral or affected-address check. | Keeps access workable. |
-| showervoucherops.eligibility.frequency | frequency limit | CONSTRAINT | Frequency limit defines uses per person or household per period. | Extends capacity. |
-| showervoucherops.eligibility.exception | exception record | RECORD | Exception records medical, occupational, disability or caregiver need and approval. | Allows flexibility. |
-| showervoucherops.vendor.vendor_roster | vendor roster | RECORD | Roster lists mobile shower providers, gyms, pools, hotels and community sites. | Coordinates capacity. |
-| showervoucherops.vendor.agreement | vendor agreement | RECORD | Agreement defines eligible service, rate, hours, privacy, cleaning and billing. | Sets terms. |
-| showervoucherops.vendor.capacity | capacity status | MEASUREMENT | Capacity tracks stalls, hours, water, wastewater, staff and accessible units. | Avoids overbooking. |
-| showervoucherops.vendor.status_update | status update | METHOD | Vendors report closures, queue, water limits, sanitation issues and available slots. | Keeps schedule current. |
-| showervoucherops.schedule.slot_request | slot request | RECORD | Request records preferred time, site, household size, accessibility and transport need. | Starts scheduling. |
-| showervoucherops.schedule.booking | booking record | RECORD | Booking stores voucher ID, time, site, person count, confirmation and restrictions. | Creates appointment. |
-| showervoucherops.schedule.reminder | reminder process | METHOD | Reminder gives time, location, documents, towel/toiletry note and cancellation rule. | Reduces no-shows. |
-| showervoucherops.schedule.no_show | no-show handling | METHOD | No-show records reason, rebooking rule and unused slot recovery. | Protects capacity. |
-| showervoucherops.voucher.voucher_id | voucher ID | SAFETY_RULE | Unique voucher ID links issue, booking, redemption and billing. | Reduces misuse. |
-| showervoucherops.voucher.issue_record | issue record | RECORD | Issue record captures recipient, value, date, site, staff and expiration. | Creates audit trail. |
-| showervoucherops.voucher.transfer_rule | transfer rule | CONSTRAINT | Transfer limits define whether another household member may use the voucher. | Controls fairness. |
-| showervoucherops.voucher.lost_voucher | lost voucher | METHOD | Lost voucher is voided or flagged before reissue where possible. | Prevents double use. |
-| showervoucherops.accessibility.accessible_slot | accessible slot | RECORD | Slot records wheelchair access, caregiver, service animal, privacy or extra time need. | Improves inclusion. |
-| showervoucherops.accessibility.transport | transport link | METHOD | Transport referral supports people unable to reach shower site. | Restores access. |
-| showervoucherops.accessibility.language | language support | METHOD | Shower-site instructions translate voucher use, privacy rules, time slots and hygiene steps. | Improves comprehension. |
-| showervoucherops.accessibility.dignity | dignity practice | SAFETY_RULE | Staff protect privacy around hygiene needs, gender concerns and disability support. | Preserves dignity. |
-| showervoucherops.safety.site_sanitation | site sanitation | QUALITY_CHECK | Site checks cleaning, drainage, waste, slip hazards and supplies. | Protects users. |
-| showervoucherops.safety.water_temp | water temperature | SAFETY_RULE | Water temperature and anti-scald controls are checked where feasible. | Prevents burns. |
-| showervoucherops.safety.security | security rule | SAFETY_RULE | Site uses supervision, lighting, complaint route and separation from unsafe areas. | Protects users. |
-| showervoucherops.safety.incident | incident report | RECORD | Incident records injury, harassment, lost item, sanitation failure or conflict. | Supports review. |
-| showervoucherops.redemption.redemption_log | redemption log | RECORD | Log captures voucher ID, vendor, date, service count and staff confirmation. | Supports payment. |
-| showervoucherops.redemption.void | void record | RECORD | Void records expired, duplicate, lost, unused or canceled voucher. | Controls funds. |
-| showervoucherops.redemption.dispute | dispute record | RECORD | Dispute captures rejected charge, user complaint, duplicate redemption or vendor error. | Resolves billing. |
-| showervoucherops.reconcile.invoice_packet | invoice packet | RECORD | Packet groups vendor invoice, redemption list, voids, disputes and approval note. | Supports payment. |
-| showervoucherops.reconcile.invoice | invoice reconciliation | QUALITY_CHECK | Invoice matches redemption logs, rates, voids and vendor agreement. | Prevents overpayment. |
-| showervoucherops.reconcile.fund_balance | fund balance | MEASUREMENT | Balance tracks issued, redeemed, voided, expired and remaining voucher funds. | Controls budget. |
-| showervoucherops.communication.public_notice | public notice | METHOD | Notice states eligibility, sites, hours, limits, accessibility and hygiene rules. | Guides residents. |
-| showervoucherops.communication.partner_update | partner update | METHOD | Partners receive capacity, schedule, transport gaps and voucher rules. | Aligns referrals. |
-| showervoucherops.records.case_log | case log | RECORD | Log stores intake, eligibility, scheduling, voucher, redemption and closeout. | Creates continuity. |
-| showervoucherops.records.retention | retention rule | CONSTRAINT | Voucher, vendor, incident and finance records follow retention schedules. | Preserves audit. |
-| showervoucherops.metrics.people_served | people served | MEASUREMENT | Count tracks people served by site, day and accessibility need. | Shows reach. |
-| showervoucherops.metrics.no_show_rate | no-show rate | MEASUREMENT | Rate tracks no-shows by site, time and reminder method. | Improves scheduling. |
-| showervoucherops.metrics.cost_per_use | cost per use | MEASUREMENT | Cost per use compares redeemed value with completed showers. | Supports budgeting. |
-| showervoucherops.qa.sample_review | sample review | QUALITY_CHECK | Review checks eligibility, issue, redemption, invoice and complaint records. | Improves reliability. |
-| showervoucherops.demob.closeout | closeout | METHOD | Closeout voids unused vouchers, reconciles vendors and transfers unresolved cases. | Ends operation. |
-| showervoucherops.review.after_action | after-action review | METHOD | Review captures capacity, accessibility, dignity, sanitation, no-shows and billing lessons. | Improves future showers. |
+| showervoucherops.intake.request_source | источник запроса | RECORD | Источник записывает приют, информационно-пропагандистскую работу, горячую линию, социального работника, клинику или место, где можно прийти без предварительной записи. | Показывает путь входа. |
+| showervoucherops.intake.household | профиль домохозяйства | RECORD | Профиль фиксирует людей, местоположение, контакты, язык и душевой барьер. | Определяет спрос. |
+| showervoucherops.intake.need_reason | нужна причина | RECORD | Причина фиксирует перемещение, отключение коммунальных услуг, наводнение, скученность жилья или гигиенический риск. | Объясняет поддержку. |
+| showervoucherops.intake.urgency | модель срочности | MODEL | Срочность учитывает риск для здоровья, необходимость работы/учебы, уход, жару и дни без душа. | Отдает приоритет слотам. |
+| showervoucherops.eligibility.criteria | критерии приемлемости | CONSTRAINT | Критерии определяют воздействие стихийного бедствия, местоположение, частоту и требования к направлению. | Сохраняет справедливость. |
+| showervoucherops.eligibility.verification | метод проверки | METHOD | Для проверки используется самоаттестация, список приютов, направление или проверка затронутого адреса. | Обеспечивает работоспособность доступа. |
+| showervoucherops.eligibility.frequency | предел частоты | CONSTRAINT | Предел частоты определяет использование на человека или домохозяйство за период. | Расширяет емкость. |
+| showervoucherops.eligibility.exception | запись об исключении | RECORD | Исключения фиксируют медицинские, профессиональные потребности, потребности и одобрения лиц, осуществляющих уход, а также инвалидность. | Обеспечивает гибкость. |
+| showervoucherops.vendor.vendor_roster | список поставщиков | RECORD | В реестре перечислены поставщики мобильных душей, тренажерные залы, бассейны, отели и общественные места. | Координирует мощность. |
+| showervoucherops.vendor.agreement | соглашение с поставщиком | RECORD | Соглашение определяет приемлемые услуги, тарифы, часы, конфиденциальность, уборку и выставление счетов. | Устанавливает условия. |
+| showervoucherops.vendor.capacity | статус мощности | MEASUREMENT | Производительность отслеживает киоски, часы работы, воду, сточные воды, персонал и доступные помещения. | Избегает овербукинга. |
+| showervoucherops.vendor.status_update | обновление статуса | METHOD | Продавцы сообщают о закрытии, очередях, ограничениях на воду, проблемах с санитарией и наличии свободных мест. | Поддерживает актуальность расписания. |
+| showervoucherops.schedule.slot_request | запрос слота | RECORD | В запросе указывается предпочтительное время, место, размер семьи, доступность и потребность в транспорте. | Начинает планировать. |
+| showervoucherops.schedule.booking | запись бронирования | RECORD | Бронирование сохраняет идентификатор ваучера, время, место, количество человек, подтверждение и ограничения. | Создает встречу. |
+| showervoucherops.schedule.reminder | процесс напоминания | METHOD | В напоминании указывается время, место, документы, примечание о полотенцах/туалетных принадлежностях и правила отмены. | Снижает количество неявок. |
+| showervoucherops.schedule.no_show | обработка неявки | METHOD | Причина неявки, правило перебронирования и восстановление неиспользованного слота. | Защищает емкость. |
+| showervoucherops.voucher.voucher_id | идентификатор ваучера | SAFETY_RULE | Выдача, бронирование, погашение и выставление счетов с уникальным идентификатором ваучера. | Уменьшает неправильное использование. |
+| showervoucherops.voucher.issue_record | выпустить запись | RECORD | В записи о выпуске указывается получатель, стоимость, дата, местонахождение, персонал и срок действия. | Создает контрольный журнал. |
+| showervoucherops.voucher.transfer_rule | правило передачи | CONSTRAINT | Лимиты перевода определяют, может ли другой член семьи использовать ваучер. | Контролирует справедливость. |
+| showervoucherops.voucher.lost_voucher | потерянный ваучер | METHOD | Утерянный ваучер аннулируется или помечается перед повторным выпуском, если это возможно. | Предотвращает двойное использование. |
+| showervoucherops.accessibility.accessible_slot | доступный слот | RECORD | Слот записывает доступ к инвалидной коляске, опекуна, животное-поводыря, конфиденциальность или необходимость дополнительного времени. | Улучшает инклюзивность. |
+| showervoucherops.accessibility.transport | транспортное сообщение | METHOD | Направление на транспорт помогает людям, которые не могут добраться до душевой. | Восстанавливает доступ. |
+| showervoucherops.accessibility.language | языковая поддержка | METHOD | Инструкции для душа объясняют использование ваучеров, правила конфиденциальности, временные интервалы и меры гигиены. | Улучшает понимание. |
+| showervoucherops.accessibility.dignity | практика достоинства | SAFETY_RULE | Персонал защищает конфиденциальность в отношении гигиенических потребностей, гендерных проблем и поддержки инвалидов. | Сохраняет достоинство. |
+| showervoucherops.safety.site_sanitation | санитария сайта | QUALITY_CHECK | На объекте проверяется чистота, дренаж, наличие отходов, опасность поскользнуться и расходные материалы. | Защищает пользователей. |
+| showervoucherops.safety.water_temp | температура воды | SAFETY_RULE | Там, где это возможно, проверяются температура воды и средства защиты от ожогов. | Предотвращает ожоги. |
+| showervoucherops.safety.security | правило безопасности | SAFETY_RULE | На территории предусмотрен надзор, освещение, маршрут подачи жалоб и отделение от небезопасных зон. | Защищает пользователей. |
+| showervoucherops.safety.incident | отчет об инциденте | RECORD | Инцидент фиксирует травмы, преследования, потерю вещей, нарушение санитарных условий или конфликты. | Поддерживает обзор. |
+| showervoucherops.redemption.redemption_log | журнал погашения | RECORD | В журнале фиксируются идентификатор ваучера, поставщик, дата, количество услуг и подтверждение персонала. | Поддерживает оплату. |
+| showervoucherops.redemption.void | аннулировать запись | RECORD | Аннулирование записей с истекшим сроком действия, дублирование, утеря, неиспользование или аннулирование ваучера. | Контролирует средства. |
+| showervoucherops.redemption.dispute | запись о споре | RECORD | В спорах учитываются отклоненные платежи, жалобы пользователей, повторные выплаты или ошибки поставщика. | Решает биллинг. |
+| showervoucherops.reconcile.invoice_packet | пакет счетов | RECORD | Счет поставщика группы пакетов, список погашения, аннулирование, споры и примечание об утверждении. | Поддерживает оплату. |
+| showervoucherops.reconcile.invoice | сверка счетов | QUALITY_CHECK | Счет-фактура соответствует журналам погашения, ставкам, аннулированию и соглашению с поставщиком. | Предотвращает переплату. |
+| showervoucherops.reconcile.fund_balance | баланс фонда | MEASUREMENT | Баланс отслеживает выданные, погашенные, аннулированные, истекшие и оставшиеся средства ваучера. | Контролирует бюджет. |
+| showervoucherops.communication.public_notice | публичное уведомление | METHOD | В уведомлении указаны право на участие, места, часы работы, ограничения, доступность и правила гигиены. | Проводники жителей. |
+| showervoucherops.communication.partner_update | обновление партнера | METHOD | Партнеры получают информацию о мощности, расписании, транспортных перерывах и правилах ваучеров. | Выравнивает рефералов. |
+| showervoucherops.records.case_log | журнал дел | RECORD | Регистрируйте поступления в магазины, право на участие, планирование, ваучеры, погашение и закрытие. | Создает преемственность. |
+| showervoucherops.records.retention | правило хранения | CONSTRAINT | Записи ваучеров, поставщиков, инцидентов и финансов соответствуют графикам хранения. | Сохраняет аудит. |
+| showervoucherops.metrics.people_served | люди служили | MEASUREMENT | Count отслеживает людей, обслуживаемых по месту, дню и потребностям в доступности. | Показывает охват. |
+| showervoucherops.metrics.no_show_rate | процент неявок | MEASUREMENT | Оценка отслеживает неявки по сайту, времени и методу напоминания. | Улучшает планирование. |
+| showervoucherops.metrics.cost_per_use | стоимость за использование | MEASUREMENT | Стоимость за использование сравнивает выкупленную стоимость с готовыми душевыми кабинами. | Поддерживает бюджетирование. |
+| showervoucherops.qa.sample_review | образец обзора | QUALITY_CHECK | Просмотрите записи о проверке приемлемости, выдаче, погашении, счетах и ​​жалобах. | Повышает надежность. |
+| showervoucherops.demob.closeout | распродажа | METHOD | Closeout аннулирует неиспользованные ваучеры, сверяет поставщиков и передает неразрешенные дела. | Завершает операцию. |
+| showervoucherops.review.after_action | обзор после действий | METHOD | В обзоре учитываются вместимость, доступность, достоинство, санитария, неявки и уроки выставления счетов. | Улучшает будущий душ. |

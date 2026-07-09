@@ -6,48 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| swpondops.inventory.pond_id | pond ID | RECORD | Pond file stores ID, watershed, owner, design type, drainage area, outlet and easements. | Links inspections, complaints and maintenance obligations. |
-| swpondops.inventory.design_plan | design plan | RECORD | Design plan shows permanent pool, storage, forebay, outlet, spillway and access. | Maintenance checks compare field condition to intended function. |
-| swpondops.inventory.owner_duty | owner duty | CONSTRAINT | Private or HOA ponds often have maintenance duties in agreements or permits. | Clarifies who must act and pay. |
-| swpondops.inventory.access_easement | access easement | RECORD | Access routes and easements are mapped for equipment and inspectors. | Sediment removal fails if heavy equipment cannot reach pond. |
-| swpondops.forebay.function | forebay function | MODEL | Forebay traps coarse sediment before main pond cell. | Easier cleanout protects main storage and habitat. |
-| swpondops.forebay.sediment_marker | sediment marker | MEASUREMENT | Staff plates or survey points track sediment accumulation. | Creates objective cleanout trigger. |
-| swpondops.forebay.cleanout | forebay cleanout | METHOD | Cleanout removes sediment, stabilizes disturbed area and prevents downstream release. | Restores pretreatment capacity. |
-| swpondops.forebay.access | forebay access | INSPECTION | Inspectors check whether access pad, ramp or gate remains usable. | Maintenance planning depends on actual equipment access. |
-| swpondops.embankment.slope | embankment slope | INSPECTION | Embankment is checked for settlement, cracks, slides, erosion and animal holes. | Pond embankment failure can release stored water. |
-| swpondops.embankment.crest | crest condition | INSPECTION | Crest is checked for low spots, rutting, trees, unauthorized paths and vehicle damage. | Maintains freeboard and structural integrity. |
-| swpondops.embankment.seepage | seepage signs | OBSERVATION | Wet spots, boils or cloudy flow at downstream toe are recorded. | Can signal internal erosion risk. |
-| swpondops.embankment.spillway | emergency spillway | INSPECTION | Spillway is checked for blockage, erosion, settlement and vegetation. | Protects pond from overtopping. |
-| swpondops.outlet.riser | outlet riser | INSPECTION | Riser is checked for clogging, corrosion, cracks, trash rack and structural stability. | Outlet controls water level and detention time. |
-| swpondops.outlet.orifice | orifice opening | INSPECTION | Orifices are checked for trash, sediment, algae and missing plates. | Small openings clog easily and change discharge. |
-| swpondops.outlet.barrel | outlet barrel | INSPECTION | Barrel is checked for joint separation, blockage, sinkholes and downstream erosion. | Hidden outlet failure can undermine embankment. |
-| swpondops.outlet.trash_rack | trash rack | METHOD | Trash rack is maintained clear while preserving safety and wildlife considerations. | Prevents flooding from blocked outlet. |
-| swpondops.outlet.low_flow | low-flow channel | INSPECTION | Low-flow path is checked for blockage, sediment and erosion. | Maintains dry-weather conveyance. |
-| swpondops.vegetation.buffer | vegetated buffer | METHOD | Buffer around pond filters runoff and discourages mowing to water edge. | Improves pollutant removal and bank stability. |
-| swpondops.vegetation.invasive | invasive vegetation | FAILURE_MODE | Invasive reeds, woody plants or nuisance species can reduce access and function. | Requires planned control, not random cutting. |
-| swpondops.vegetation.trees_on_dam | trees on embankment | FAILURE_MODE | Trees on embankment can create root paths and inspection obstruction. | Often prohibited by dam/pond maintenance standards. |
-| swpondops.vegetation.mowing | mowing plan | METHOD | Mowing frequency balances visibility, erosion protection, habitat and access. | Over-mowing and neglect both create problems. |
-| swpondops.vegetation.aquatic_plants | aquatic plant balance | MODEL | Some aquatic vegetation supports treatment, but dense mats block flow. | Maintenance aims for function, not bare pond. |
-| swpondops.sediment.bathymetry | bathymetry survey | MEASUREMENT | Survey estimates sediment volume and lost storage. | Determines dredging need and budget. |
-| swpondops.sediment.cleanout_trigger | sediment cleanout trigger | DECISION_RULE | Trigger may be percent storage loss, forebay marker, water quality failure or flooding. | Makes dredging defensible. |
-| swpondops.sediment.disposal | sediment disposal | METHOD | Sediment is tested or handled according to contamination risk and local rules. | Prevents moving pollutants to a new site. |
-| swpondops.sediment.upstream_source | upstream source | METHOD | Sediment source is traced to construction, erosion, roads, banks or failing controls. | Cleanout without source control repeats quickly. |
-| swpondops.inspection.routine | routine inspection | METHOD | Inspection covers water level, inlets, outlet, embankment, vegetation, sediment and access. | Creates complete maintenance picture. |
-| swpondops.inspection.post_storm | post-storm inspection | METHOD | After large storms, check debris, erosion, outlet blockage, high-water marks and damage. | Storms reveal capacity and blockage issues. |
-| swpondops.inspection.photo_points | photo points | RECORD | Fixed photos document inlets, outlet, forebay, slopes and access. | Shows change over time. |
-| swpondops.inspection.condition_score | condition score | MODEL | Score combines structural, hydraulic, sediment, vegetation and access issues. | Ranks ponds across a portfolio. |
-| swpondops.repairs.bank_stabilization | bank stabilization | METHOD | Banks may need grading, vegetation, coir, riprap or toe protection. | Reduces erosion and sediment feedback. |
-| swpondops.repairs.outlet_repair | outlet repair | METHOD | Outlet repairs address cracks, clogged orifices, corrosion, joints and trash racks. | Restores designed water release. |
-| swpondops.repairs.access_repair | access repair | METHOD | Gates, paths, pads and ramps are repaired for inspection and equipment. | Keeps future maintenance possible. |
-| swpondops.repairs.animal_damage | animal damage repair | METHOD | Burrows or dams are assessed for embankment risk and flow impacts. | Wildlife activity can become structural issue. |
-| swpondops.compliance.notice_owner | owner notice | METHOD | Owner receives inspection findings, required correction, deadline and evidence needs. | Moves private pond defects toward action. |
-| swpondops.compliance.escalation | escalation | DECISION_RULE | Missed deadlines may lead to penalties, municipal work, liens or permit enforcement. | Protects public drainage when owner fails. |
-| swpondops.compliance.recorded_agreement | recorded agreement | RECORD | Maintenance agreement is stored with parcel or HOA records. | Future owners inherit obligations. |
-| swpondops.compliance.reinspection | reinspection | QUALITY_CHECK | Completed repairs are verified with field check, photos and invoices where needed. | Prevents paper-only compliance. |
-| swpondops.safety.public_access | public access safety | SAFETY_RULE | Steep slopes, deep water, thin ice and outlet structures need signage or barriers. | Ponds are infrastructure, not just landscape. |
-| swpondops.safety.mosquito | mosquito complaint | METHOD | Mosquito complaints trigger checks for stagnant pockets, blocked flow and vegetation mats. | Fixes habitat conditions rather than only spraying. |
-| swpondops.records.work_order | work order | RECORD | Work orders include location, defect, crew, contractor, photos, materials and closeout. | Maintains maintenance history. |
-| swpondops.records.cost_history | cost history | RECORD | Dredging, mowing, repairs and inspections are tracked by pond ID. | Supports lifecycle budgeting. |
-| swpondops.reporting.portfolio | portfolio report | RECORD | Report lists inspected ponds, condition scores, urgent defects, costs and compliance cases. | Gives managers a system-level view. |
-| swpondops.reporting.capital_plan | capital plan | MODEL | Capital plan prioritizes dredging, outlet rebuilds, access and retrofits by risk and benefit. | Turns inspections into budget decisions. |
-
+| swpondops.inventory.pond_id | идентификатор пруда | RECORD | В файле пруда указывается идентификатор, водораздел, владелец, тип конструкции, площадь водосбора, водоотвод и сервитуты. | Связывает проверки, жалобы и обязательства по техническому обслуживанию. |
+| swpondops.inventory.design_plan | план дизайна | RECORD | На плане проекта показаны постоянный бассейн, хранилище, передняя часть, выпуск, водосброс и доступ. | В ходе технического обслуживания сравниваются условия эксплуатации и предполагаемая функция. |
+| swpondops.inventory.owner_duty | обязанность владельца | CONSTRAINT | Частные пруды или пруды ТСЖ часто предусматривают обязанности по техническому обслуживанию в соглашениях или разрешениях. | Уточняется, кто должен действовать и платить. |
+| swpondops.inventory.access_easement | сервитут доступа | RECORD | Маршруты доступа и сервитуты нанесены на карту для оборудования и инспекторов. | Удаление отложений не удастся, если тяжелое оборудование не сможет добраться до пруда. |
+| swpondops.forebay.function | функция предоплаты | MODEL | Передняя часть пруда задерживает крупный осадок перед основной ячейкой пруда. | Более простая очистка защищает основное хранилище и среду обитания. |
+| swpondops.forebay.sediment_marker | маркер осадка | MEASUREMENT | Таблички персонала или точки наблюдения отслеживают накопление отложений. | Создает объективный триггер очистки. |
+| swpondops.forebay.cleanout | очистка залива | METHOD | Очистка удаляет осадок, стабилизирует нарушенную территорию и предотвращает выбросы вниз по течению. | Восстанавливает способность к предварительной обработке. |
+| swpondops.forebay.access | предварительный доступ | INSPECTION | Инспекторы проверяют, можно ли использовать подъездную площадку, пандус или ворота. | Планирование технического обслуживания зависит от фактического доступа к оборудованию. |
+| swpondops.embankment.slope | уклон набережной | INSPECTION | Насыпь проверяется на наличие осадок, трещин, оползней, эрозий и нор животных. | Обрушение насыпи пруда может привести к выбросу накопленной воды. |
+| swpondops.embankment.crest | состояние гребня | INSPECTION | Crest проверяется на предмет неровностей, колеи, деревьев, несанкционированных дорожек и повреждений транспортных средств. | Сохраняет надводный борт и структурную целостность. |
+| swpondops.embankment.seepage | знаки просачивания | OBSERVATION | Регистрируются влажные пятна, фурункулы или мутные выделения на нижнем пальце ноги. | Может сигнализировать о риске внутренней эрозии. |
+| swpondops.embankment.spillway | аварийный водосброс | INSPECTION | Водосброс проверяется на наличие засоров, эрозии, осадок и растительности. | Защищает пруд от перелива. |
+| swpondops.outlet.riser | выпускной стояк | INSPECTION | Стояк проверяется на предмет засорения, коррозии, трещин, мусорных корзин и структурной устойчивости. | Выход контролирует уровень воды и время задержания. |
+| swpondops.outlet.orifice | отверстие отверстия | INSPECTION | Отверстия проверяются на наличие мусора, осадка, водорослей и недостающих пластин. | Маленькие отверстия легко засоряются и меняют слив. |
+| swpondops.outlet.barrel | выпускной ствол | INSPECTION | Бочку проверяют на предмет разделения швов, закупорки, провалов и эрозии ниже по течению. | Скрытый выход из строя может подорвать насыпь. |
+| swpondops.outlet.trash_rack | стойка для мусора | METHOD | Стойка для мусора поддерживается чистой, сохраняя при этом соображения безопасности и охраны дикой природы. | Предотвращает затопление из-за заблокированной розетки. |
+| swpondops.outlet.low_flow | малопоточный канал | INSPECTION | Путь низкого потока проверяется на наличие засоров, отложений и эрозии. | Обеспечивает транспортировку в сухую погоду. |
+| swpondops.vegetation.buffer | растительный буфер | METHOD | Буфер вокруг пруда фильтрует сточные воды и препятствует скашиванию к кромке воды. | Улучшает удаление загрязняющих веществ и устойчивость берегов. |
+| swpondops.vegetation.invasive | инвазивная растительность | FAILURE_MODE | Инвазивный тростник, древесные растения или вредные виды могут ограничить доступ и функционирование. | Требует планового контроля, а не случайного сокращения. |
+| swpondops.vegetation.trees_on_dam | деревья на набережной | FAILURE_MODE | Деревья на насыпи могут создавать корневые пути и мешать осмотру. | Часто запрещено стандартами содержания плотин/прудов. |
+| swpondops.vegetation.mowing | план кошения | METHOD | Частота скашивания обеспечивает баланс видимости, защиты от эрозии, среды обитания и доступа. | Чрезмерное скашивание и пренебрежение создают проблемы. |
+| swpondops.vegetation.aquatic_plants | баланс водных растений | MODEL | Некоторая водная растительность поддерживает лечение, но плотные маты блокируют поток. | Техническое обслуживание направлено на функционирование, а не на голый пруд. |
+| swpondops.sediment.bathymetry | батиметрическая съемка | MEASUREMENT | Исследование оценивает объем отложений и потерянное хранилище. | Определяет необходимость и бюджет дноуглубительных работ. |
+| swpondops.sediment.cleanout_trigger | триггер очистки от осадка | DECISION_RULE | Триггером может быть процентная потеря объема воды, отметка залива, ухудшение качества воды или наводнение. | Делает дноуглубительные работы оправданными. |
+| swpondops.sediment.disposal | удаление отложений | METHOD | Осадки проверяются и обрабатываются в соответствии с риском загрязнения и местными правилами. | Предотвращает перемещение загрязняющих веществ на новое место. |
+| swpondops.sediment.upstream_source | верхний источник | METHOD | Источником отложений являются строительство, эрозия, дороги, банки или неэффективность контроля. | Очистка без контроля версий быстро повторяется. |
+| swpondops.inspection.routine | плановый осмотр | METHOD | Проверка охватывает уровень воды, входы и выходы, насыпи, растительность, отложения и доступ. | Создает полную картину технического обслуживания. |
+| swpondops.inspection.post_storm | инспекция после урагана | METHOD | После сильных штормов проверьте наличие мусора, эрозии, закупорки выпускных отверстий, отметок паводка и повреждений. | Штормы выявляют проблемы с пропускной способностью и блокировкой. |
+| swpondops.inspection.photo_points | фото точки | RECORD | Фиксированные фотографии документируют входы, выходы, переднюю часть, откосы и подъезды. | Показания меняются со временем. |
+| swpondops.inspection.condition_score | оценка состояния | MODEL | Оценка сочетает в себе структурные, гидравлические, отложения, растительность и проблемы доступа. | Ранжирует пруды в портфолио. |
+| swpondops.repairs.bank_stabilization | стабилизация банка | METHOD | Берегам может потребоваться планировка, растительность, кокосовое волокно, каменная наброска или защита пальцев ног. | Уменьшает эрозию и обратную связь с отложениями. |
+| swpondops.repairs.outlet_repair | ремонт розетки | METHOD | Ремонт выпускных отверстий устраняет трещины, засоренные отверстия, коррозию, стыки и стойки для мусора. | Восстанавливает расчетный водоотлив. |
+| swpondops.repairs.access_repair | ремонт доступа | METHOD | Ворота, дорожки, площадки и пандусы отремонтированы для осмотра и оборудования. | Обеспечивает возможность дальнейшего обслуживания. |
+| swpondops.repairs.animal_damage | ремонт повреждений животных | METHOD | Норы или плотины оцениваются на предмет риска насыпей и воздействия на потоки. | Деятельность дикой природы может стать структурной проблемой. |
+| swpondops.compliance.notice_owner | уведомление владельца | METHOD | Владелец получает результаты проверки, необходимые исправления, сроки и необходимые доказательства. | Приводит к действию дефекты частного пруда. |
+| swpondops.compliance.escalation | эскалация | DECISION_RULE | Пропущенные сроки могут привести к штрафам, муниципальным работам, залогам или принудительному взысканию разрешений. | Защищает общественную канализацию в случае неисправности владельца. |
+| swpondops.compliance.recorded_agreement | зарегистрированное соглашение | RECORD | Договор на техническое обслуживание хранится в записях участков или ТСЖ. | Будущие владельцы наследуют обязательства. |
+| swpondops.compliance.reinspection | повторная проверка | QUALITY_CHECK | Завершенный ремонт подтверждается выездной проверкой, фотографиями и счетами-фактурами, где это необходимо. | Предотвращает соблюдение требований только на бумажном носителе. |
+| swpondops.safety.public_access | безопасность общественного доступа | SAFETY_RULE | Крутые склоны, глубокая вода, тонкий лед и водоотводные сооружения нуждаются в указателях или барьерах. | Пруды – это инфраструктура, а не только ландшафт. |
+| swpondops.safety.mosquito | жалоба на комара | METHOD | Жалобы на комаров вызывают проверки на предмет застойных карманов, закупорки потока и растительных ковриков. | Исправляет условия среды обитания, а не только опрыскивание. |
+| swpondops.records.work_order | заказ на работу | RECORD | Заказы на выполнение работ включают местоположение, дефект, команду, подрядчика, фотографии, материалы и завершение работ. | Сохраняет историю обслуживания. |
+| swpondops.records.cost_history | история затрат | RECORD | Дноуглубительные работы, покос, ремонт и проверки отслеживаются по идентификатору пруда. | Поддерживает бюджетирование жизненного цикла. |
+| swpondops.reporting.portfolio | отчет по портфолио | RECORD | В отчете перечислены проверенные пруды, оценки состояния, срочные дефекты, затраты и случаи соответствия. | Дает менеджерам представление на уровне системы. |
+| swpondops.reporting.capital_plan | план капитального ремонта | MODEL | План капитальных затрат отдает приоритет дноуглубительным работам, реконструкции выходов, доступу и модернизации с учетом рисков и выгод. | Превращает проверки в бюджетные решения. |

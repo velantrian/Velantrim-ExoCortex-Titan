@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| medcacheops.inventory.item_id | item ID | RECORD | Item ID links product, lot, quantity, location, expiration and status. | Creates controlled inventory. |
-| medcacheops.inventory.category | item category | RECORD | Category distinguishes PPE, medications, devices, testing, sanitation or field supplies. | Supports allocation. |
-| medcacheops.inventory.lot | lot tracking | RECORD | Lot and serial data are recorded for recalls and expiry. | Enables traceability. |
-| medcacheops.inventory.condition | condition status | QUALITY_CHECK | Condition records sealed, damaged, expired, quarantined or deployable. | Prevents unsafe issue. |
-| medcacheops.storage.zone | storage zone | METHOD | Zones separate temperature, security, sterile, hazardous and fast-pick items. | Makes warehouse usable. |
-| medcacheops.storage.temperature | temperature control | SAFETY_RULE | Temperature-sensitive supplies use monitored storage and excursion logs. | Preserves usability. |
-| medcacheops.storage.security | security control | SAFETY_RULE | Controlled or high-value items require access control and logs. | Prevents diversion. |
-| medcacheops.storage.shelf_map | shelf map | RECORD | Shelf map identifies aisle, rack, bin and pallet. | Speeds picking. |
-| medcacheops.rotation.fefo | FEFO rotation | METHOD | First-expire-first-out is used for dated supplies. | Reduces waste. |
-| medcacheops.rotation.expiry_alert | expiry alert | MEASUREMENT | Alerts flag items nearing expiration for use, transfer or disposal. | Protects readiness. |
-| medcacheops.rotation.exercising | stock exercise | METHOD | Supplies may be rotated through routine programs before expiry. | Maintains value. |
-| medcacheops.rotation.disposal | disposal process | SAFETY_RULE | Expired or damaged medical supplies are disposed by regulation. | Prevents unsafe reuse. |
-| medcacheops.request.request_id | request ID | RECORD | Request ID links requester, incident, item, quantity, justification and priority. | Controls demand. |
-| medcacheops.request.authorized_requester | authorized requester | CONSTRAINT | Only approved agencies or roles can request cache release. | Protects stock. |
-| medcacheops.request.need_validation | need validation | QUALITY_CHECK | Need is checked against incident data, burn rate and local stock. | Prevents over-allocation. |
-| medcacheops.request.substitution | substitution rule | METHOD | Equivalent supplies may be offered when exact item is unavailable. | Keeps response moving. |
-| medcacheops.allocation.priority | allocation priority | MODEL | Priority considers life safety, healthcare capacity, vulnerable settings and scarcity. | Allocates fairly. |
-| medcacheops.allocation.formula | allocation formula | METHOD | Formula uses population, caseload, beds, staff or mission size. | Makes distribution transparent. |
-| medcacheops.allocation.reserve | reserve level | CONSTRAINT | Minimum reserve protects future surge and critical missions. | Avoids empty cache. |
-| medcacheops.allocation.approval | approval record | RECORD | Approval records decision, approver, quantity, restrictions and rationale. | Supports audit. |
-| medcacheops.deployment.pick_list | pick list | RECORD | Pick list specifies item, lot, quantity, bin and handling requirement. | Reduces fulfillment error. |
-| medcacheops.deployment.pack | packing process | METHOD | Packing checks count, lot, label, chain of custody and transport condition. | Ships correct supplies. |
-| medcacheops.deployment.courier | courier handoff | RECORD | Handoff records driver, vehicle, seal, time and destination. | Maintains custody. |
-| medcacheops.deployment.receipt | receiving confirmation | RECORD | Recipient confirms quantity, condition, time and discrepancies. | Closes delivery loop. |
-| medcacheops.transport.cold_chain | cold-chain transport | SAFETY_RULE | Cold-chain transport uses validated containers and temperature logs. | Protects sensitive supplies. |
-| medcacheops.transport.route | route plan | METHOD | Route plan considers urgency, security, weather, access and fuel. | Improves delivery reliability. |
-| medcacheops.transport.security | transport security | SAFETY_RULE | High-value or controlled items may need escorts, seals or restricted routes. | Reduces theft. |
-| medcacheops.transport.delay | delay handling | METHOD | Delay triggers recipient notice, temperature check and reroute decision. | Manages risk. |
-| medcacheops.return.return_id | return ID | RECORD | Return ID links deployed items, unused stock, condition and source. | Tracks reverse logistics. |
-| medcacheops.return.inspection | return inspection | QUALITY_CHECK | Returned supplies are inspected for seal, temperature, damage and contamination. | Decides redeployability. |
-| medcacheops.return.quarantine | quarantine status | METHOD | Questionable items are isolated until safety decision. | Prevents bad stock mixing. |
-| medcacheops.return.restock | restock process | METHOD | Deployable returns are counted, relabeled and placed back into inventory. | Restores readiness. |
-| medcacheops.records.chain | chain of custody | RECORD | Chain records each transfer, handler and condition. | Supports accountability. |
-| medcacheops.records.recall | recall record | METHOD | Recall process finds lots by location and recipient. | Enables rapid removal. |
-| medcacheops.records.retention | retention rule | CONSTRAINT | Cache records follow medical, finance, grant and emergency retention schedules. | Keeps audit trail. |
-| medcacheops.finance.valuation | valuation | RECORD | Stock value is tracked for insurance, grant and replacement planning. | Supports finance. |
-| medcacheops.finance.replenishment | replenishment trigger | MODEL | Replenishment triggers after deployment, expiry, loss or minimum stock breach. | Maintains readiness. |
-| medcacheops.qa.cycle_count | cycle count | QUALITY_CHECK | Cycle counts compare physical stock to system records. | Detects errors. |
-| medcacheops.qa.drill | deployment drill | METHOD | Drills test request, pick, pack, delivery and documentation speed. | Proves readiness. |
-| medcacheops.metrics.fill_rate | fill rate | MEASUREMENT | Fill rate measures requested quantity fulfilled on time. | Shows cache usefulness. |
-| medcacheops.metrics.expiry_loss | expiry loss | MEASUREMENT | Expiry loss tracks stock discarded due to age. | Improves rotation. |
-| medcacheops.governance.cache_owner | cache owner | RECORD | Cache owner defines policy, access, inventory standards and reporting. | Keeps accountability clear. |
-| medcacheops.governance.mutual_aid | mutual aid agreement | RECORD | Agreements define borrowing, replacement, liability and documentation between agencies. | Expands cache capacity safely. |
-| medcacheops.closeout.after_action | after-action review | METHOD | Review captures request quality, allocation fairness, delivery issues and replenishment needs. | Improves next deployment. |
+| medcacheops.inventory.item_id | идентификатор предмета | RECORD | Идентификатор товара связывает продукт, партию, количество, местоположение, срок годности и статус. | Создает контролируемый инвентарь. |
+| medcacheops.inventory.category | категория товара | RECORD | Категория различает СИЗ, лекарства, устройства, средства для тестирования, санитарные или полевые принадлежности. | Поддерживает распределение. |
+| medcacheops.inventory.lot | отслеживание лотов | RECORD | Данные партии и серийного номера записываются для отзыва и истечения срока годности. | Обеспечивает возможность отслеживания. |
+| medcacheops.inventory.condition | статус состояния | QUALITY_CHECK | Записи о состоянии запечатаны, повреждены, просрочены, помещены в карантин или готовы к развертыванию. | Предотвращает небезопасную проблему. |
+| medcacheops.storage.zone | зона хранения | METHOD | Зоны разделяют температурные, охранные, стерильные, опасные и быстро собираемые предметы. | Делает склад полезным. |
+| medcacheops.storage.temperature | контроль температуры | SAFETY_RULE | В расходных материалах, чувствительных к температуре, используются контролируемые хранилища и журналы экскурсий. | Сохраняет удобство использования. |
+| medcacheops.storage.security | контроль безопасности | SAFETY_RULE | Контролируемые или ценные предметы требуют контроля доступа и журналов. | Предотвращает утечку. |
+| medcacheops.storage.shelf_map | карта полки | RECORD | На карте полок указаны проход, стеллаж, контейнер и поддон. | Выбор скоростей. |
+| medcacheops.rotation.fefo | Ротация ФЕФО | METHOD | Для поставок с истекшим сроком годности используется принцип «первый срок годности — первый отпуск». | Уменьшает отходы. |
+| medcacheops.rotation.expiry_alert | предупреждение об истечении срока действия | MEASUREMENT | Оповещения обозначают предметы, срок годности которых истекает, для использования, передачи или утилизации. | Защищает готовность. |
+| medcacheops.rotation.exercising | упражнения на фондовом рынке | METHOD | До истечения срока годности запасы можно чередовать с помощью обычных программ. | Сохраняет ценность. |
+| medcacheops.rotation.disposal | процесс утилизации | SAFETY_RULE | Просроченные или поврежденные предметы медицинского назначения утилизируются в соответствии с законодательством. | Предотвращает небезопасное повторное использование. |
+| medcacheops.request.request_id | идентификатор запроса | RECORD | Идентификатор запроса связывает отправителя запроса, инцидент, позицию, количество, обоснование и приоритет. | Контролирует спрос. |
+| medcacheops.request.authorized_requester | уполномоченный запрашивающий | CONSTRAINT | Только утвержденные агентства или роли могут запрашивать освобождение кэша. | Защищает запас. |
+| medcacheops.request.need_validation | нужна проверка | QUALITY_CHECK | Потребность сверяется с данными об инцидентах, скоростью сжигания и местными запасами. | Предотвращает чрезмерное распределение. |
+| medcacheops.request.substitution | правило замены | METHOD | Эквивалентные поставки могут быть предложены, когда конкретный товар недоступен. | Продолжает реакцию. |
+| medcacheops.allocation.priority | приоритет распределения | MODEL | Приоритетными являются безопасность жизни, возможности здравоохранения, уязвимые условия и дефицит. | Распределяет справедливо. |
+| medcacheops.allocation.formula | формула распределения | METHOD | В формуле учитывается численность населения, количество больных, койки, штат или размер миссии. | Делает распространение прозрачным. |
+| medcacheops.allocation.reserve | уровень резерва | CONSTRAINT | Минимальный резерв защищает будущие пиковые и критические миссии. | Избегает пустого кеша. |
+| medcacheops.allocation.approval | запись об утверждении | RECORD | В утверждении фиксируются решение, утверждающее лицо, количество, ограничения и обоснование. | Поддерживает аудит. |
+| medcacheops.deployment.pick_list | список выбора | RECORD | В списке комплектации указаны товар, партия, количество, ячейка и требования к обработке. | Уменьшает ошибку выполнения. |
+| medcacheops.deployment.pack | процесс упаковки | METHOD | Упаковочные проверки учитывают количество, партию, этикетку, цепочку поставок и состояние транспортировки. | Отправляет правильные поставки. |
+| medcacheops.deployment.courier | передача курьера | RECORD | Передача записывает водителя, транспортное средство, печать, время и пункт назначения. | Сохраняет опеку. |
+| medcacheops.deployment.receipt | получение подтверждения | RECORD | Получатель подтверждает количество, состояние, время и несоответствия. | Замыкает цикл доставки. |
+| medcacheops.transport.cold_chain | транспортировка в холодовой цепи | SAFETY_RULE | При транспортировке холодовой цепи используются проверенные контейнеры и журналы температуры. | Защищает чувствительные материалы. |
+| medcacheops.transport.route | план маршрута | METHOD | План маршрута учитывает срочность, безопасность, погоду, доступ и топливо. | Повышает надежность доставки. |
+| medcacheops.transport.security | транспортная безопасность | SAFETY_RULE | Ценные или контролируемые предметы могут нуждаться в сопровождении, опломбировании или ограничении маршрутов. | Уменьшает кражи. |
+| medcacheops.transport.delay | обработка задержки | METHOD | Задержка приводит к уведомлению получателя, проверке температуры и принятию решения о перенаправлении. | Управляет риском. |
+| medcacheops.return.return_id | идентификатор возврата | RECORD | Идентификатор возврата связывает развернутые элементы, неиспользованные запасы, состояние и источник. | Отслеживает обратную логистику. |
+| medcacheops.return.inspection | возвратная инспекция | QUALITY_CHECK | Возвращенные расходные материалы проверяются на герметичность, температуру, наличие повреждений и загрязнений. | Решает возможность повторного развертывания. |
+| medcacheops.return.quarantine | карантинный статус | METHOD | Сомнительные предметы изолируются до принятия решения по безопасности. | Предотвращает плохое перемешивание сырья. |
+| medcacheops.return.restock | процесс пополнения запасов | METHOD | Развертываемые возвраты подсчитываются, перемаркируются и помещаются обратно в инвентарь. | Восстанавливает готовность. |
+| medcacheops.records.chain | цепочка поставок | RECORD | Цепочка записывает каждую передачу, обработчик и состояние. | Поддерживает ответственность. |
+| medcacheops.records.recall | вспомнить запись | METHOD | Процесс отзыва находит лоты по местонахождению и получателю. | Обеспечивает быстрое удаление. |
+| medcacheops.records.retention | правило хранения | CONSTRAINT | Записи кэша соответствуют медицинским, финансовым, грантовым и экстренным графикам хранения. | Сохраняет контрольный журнал. |
+| medcacheops.finance.valuation | оценка | RECORD | Стоимость запасов отслеживается для целей страхования, грантов и планирования замены. | Поддерживает финансы. |
+| medcacheops.finance.replenishment | триггер пополнения | MODEL | Пополнение активируется после развертывания, истечения срока действия, потери или превышения минимального запаса. | Поддерживает готовность. |
+| medcacheops.qa.cycle_count | количество циклов | QUALITY_CHECK | При подсчете циклов физические запасы сравниваются с системными записями. | Обнаруживает ошибки. |
+| medcacheops.qa.drill | учения по развертыванию | METHOD | Отрабатывает запрос на тестирование, комплектацию, упаковку, доставку и скорость документирования. | Доказывает готовность. |
+| medcacheops.metrics.fill_rate | скорость заполнения | MEASUREMENT | Показатели скорости заполнения: запрошенное количество выполнено вовремя. | Показывает полезность кэша. |
+| medcacheops.metrics.expiry_loss | убыток по истечении срока действия | MEASUREMENT | Потери по истечении срока годности отслеживают запасы, выброшенные из-за возраста. | Улучшает вращение. |
+| medcacheops.governance.cache_owner | владелец кэша | RECORD | Владелец кэша определяет политику, доступ, стандарты инвентаризации и отчетность. | Обеспечивает четкую подотчетность. |
+| medcacheops.governance.mutual_aid | соглашение о взаимопомощи | RECORD | Соглашения определяют заимствование, замену, ответственность и документацию между агентствами. | Безопасно расширяет емкость кэша. |
+| medcacheops.closeout.after_action | обзор после действий | METHOD | Обзор фиксирует качество запросов, справедливость распределения, проблемы с доставкой и потребности в пополнении. | Улучшает следующее развертывание. |

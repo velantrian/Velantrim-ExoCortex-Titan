@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| crisishotlineops.intake.contact_id | contact ID | RECORD | Contact ID links caller, channel, time, queue, counselor and outcome. | Creates traceable hotline contact. |
-| crisishotlineops.intake.channel | contact channel | RECORD | Channel distinguishes voice, text, chat, relay, app or partner transfer. | Supports different workflows. |
-| crisishotlineops.intake.presenting_issue | presenting issue | RECORD | Presenting issue summarizes caller concern in respectful neutral language. | Guides triage. |
-| crisishotlineops.intake.location | location capture | METHOD | Location is sought when needed for emergency response or local referral. | Enables relevant help. |
-| crisishotlineops.triage.risk_level | risk level | MODEL | Risk level considers immediate danger, intent, means, support and protective factors. | Guides response intensity. |
-| crisishotlineops.triage.safety_question | safety question | METHOD | Safety questions assess immediate harm risk without scripted interrogation. | Clarifies urgency. |
-| crisishotlineops.triage.third_party | third-party concern | METHOD | Third-party callers are guided to support, consent limits and emergency options. | Handles indirect risk. |
-| crisishotlineops.triage.non_crisis | non-crisis routing | METHOD | Non-crisis needs route to information, benefits, housing, clinic or community resources. | Keeps hotline useful. |
-| crisishotlineops.safety.safety_plan | safety plan | METHOD | Safety plan identifies coping steps, contacts, environment changes and follow-up route. | Supports immediate stability. |
-| crisishotlineops.safety.imminent_risk | imminent risk | SAFETY_RULE | Imminent risk may require emergency service activation under policy. | Protects life safety. |
-| crisishotlineops.safety.mandated_report | mandated report | CONSTRAINT | Abuse, neglect or danger reports follow jurisdiction and program rules. | Meets legal duties. |
-| crisishotlineops.safety.least_intrusive | least intrusive response | MODEL | Response aims for least intrusive safe intervention consistent with risk. | Balances safety and autonomy. |
-| crisishotlineops.referral.resource_match | resource match | METHOD | Referral matches need, location, eligibility, hours, language and capacity. | Avoids useless referrals. |
-| crisishotlineops.referral.warm_handoff | warm handoff | METHOD | Warm handoff connects caller directly to provider with consent. | Reduces drop-off. |
-| crisishotlineops.referral.cold_referral | cold referral | METHOD | Cold referral gives contact details, hours, eligibility and what to expect. | Supports caller action. |
-| crisishotlineops.referral.no_resource | no resource found | FAILURE_MODE | No-resource result records unmet need and alternative safety/support steps. | Shows service gaps. |
-| crisishotlineops.directory.current_status | current status | RECORD | Resource status includes open, closed, waitlist, restricted or unknown. | Keeps referrals realistic. |
-| crisishotlineops.directory.eligibility | eligibility filter | METHOD | Eligibility filters by age, residence, insurance, income, issue, identity or documentation. | Avoids wrong handoffs. |
-| crisishotlineops.directory.capacity | capacity check | METHOD | Capacity check verifies beds, appointments, crisis slots or intake windows when possible. | Prevents dead-end referrals. |
-| crisishotlineops.directory.language | language availability | RECORD | Directory tracks interpreter, bilingual staff and translated materials. | Supports accessible referral. |
-| crisishotlineops.communication.active_listening | active listening | METHOD | Counselor uses reflective listening, validation and pacing. | Helps caller stabilize. |
-| crisishotlineops.communication.deescalation | de-escalation | METHOD | De-escalation reduces panic, anger or overwhelm through calm structured support. | Improves safety. |
-| crisishotlineops.communication.boundaries | scope boundary | CONSTRAINT | Hotline does not replace medical, legal or emergency services. | Prevents false promises. |
-| crisishotlineops.communication.accessibility | accessibility support | METHOD | Relay, text, interpretation or alternate channel supports communication barriers. | Keeps service reachable. |
-| crisishotlineops.privacy.confidentiality | confidentiality rule | SAFETY_RULE | Confidentiality is explained with limits for safety and legal duties. | Builds informed trust. |
-| crisishotlineops.privacy.minimal_data | minimal data | CONSTRAINT | Hotline collects only data needed for safety, referral and reporting. | Reduces privacy burden. |
-| crisishotlineops.privacy.consent_share | consent to share | RECORD | Consent to share is recorded before provider handoff when required. | Protects caller choice. |
-| crisishotlineops.privacy.anonymous | anonymous caller | METHOD | Anonymous callers can receive support unless emergency action requires more information. | Preserves access. |
-| crisishotlineops.documentation.contact_note | contact note | RECORD | Note records risk, support provided, referrals, consent and follow-up. | Supports continuity and audit. |
-| crisishotlineops.documentation.risk_rationale | risk rationale | RECORD | Risk rationale explains why level and response were chosen. | Makes decisions reviewable. |
-| crisishotlineops.documentation.followup_task | follow-up task | RECORD | Follow-up task records callback, provider confirmation or supervisor review. | Prevents open loops. |
-| crisishotlineops.documentation.retention | retention rule | CONSTRAINT | Notes, recordings and chats follow privacy, clinical and grant retention rules. | Controls sensitive data. |
-| crisishotlineops.followup.callback | callback | METHOD | Callback follows consent, safety plan and timing rules. | Maintains support after contact. |
-| crisishotlineops.followup.provider_confirm | provider confirmation | METHOD | Confirmation checks whether handoff or referral was accepted when program allows. | Improves closed-loop support. |
-| crisishotlineops.followup.unreachable | unreachable process | METHOD | Unreachable follow-up uses privacy-safe attempts and escalation if risk requires. | Balances safety and privacy. |
-| crisishotlineops.staffing.supervision | clinical supervision | QUALITY_CHECK | Supervisors review high-risk contacts and counselor support needs. | Improves safety and staff care. |
-| crisishotlineops.staffing.breaks | break rule | SAFETY_RULE | Counselors need breaks after intense contacts and long shifts. | Reduces burnout. |
-| crisishotlineops.staffing.training | training curriculum | METHOD | Training covers crisis skills, risk policy, cultural humility, resources and documentation. | Builds competence. |
-| crisishotlineops.qa.call_review | contact review | QUALITY_CHECK | Sample contacts are reviewed for risk assessment, empathy, policy and referral accuracy. | Improves hotline quality. |
-| crisishotlineops.qa.resource_error | resource error correction | METHOD | Bad referral data triggers directory update and staff notice. | Prevents repeat errors. |
-| crisishotlineops.metrics.answer_time | answer time | MEASUREMENT | Answer time tracks how quickly contacts reach counselor. | Shows access. |
-| crisishotlineops.metrics.abandonment | abandonment rate | MEASUREMENT | Abandonment tracks contacts leaving before service. | Signals staffing pressure. |
-| crisishotlineops.metrics.outcome | outcome category | MEASUREMENT | Outcome categories include stabilized, referral, emergency dispatch, follow-up or information only. | Shows service pattern. |
-| crisishotlineops.closeout.shift_handoff | shift handoff | METHOD | Shift handoff flags open follow-ups, high-risk cases and resource changes. | Maintains continuity. |
+| crisishotlineops.intake.contact_id | идентификатор контакта | RECORD | Contact ID связывает звонящего, канал, время, очередь, консультанта и результат. | Создает отслеживаемый контакт горячей линии. |
+| crisishotlineops.intake.channel | контактный канал | RECORD | Канал различает голос, текст, чат, ретрансляцию, передачу через приложение или партнеру. | Поддерживает различные рабочие процессы. |
+| crisishotlineops.intake.presenting_issue | представляя проблему | RECORD | Представление проблемы отражает обеспокоенность звонящего уважительным нейтральным языком. | Сортировка гидов. |
+| crisishotlineops.intake.location | захват местоположения | METHOD | Местоположение ищется, когда это необходимо для экстренного реагирования или направления к местному специалисту. | Включает соответствующую помощь. |
+| crisishotlineops.triage.risk_level | уровень риска | MODEL | Уровень риска учитывает непосредственную опасность, намерения, средства, факторы поддержки и защиты. | Управляет интенсивностью реакции. |
+| crisishotlineops.triage.safety_question | вопрос безопасности | METHOD | Вопросы безопасности позволяют оценить непосредственный риск причинения вреда без проведения допроса по сценарию. | Уточняет срочность. |
+| crisishotlineops.triage.third_party | забота третьей стороны | METHOD | Сторонние абоненты получают инструкции по поддержке, ограничениям согласия и вариантам экстренной помощи. | Управляет косвенным риском. |
+| crisishotlineops.triage.non_crisis | некризисная маршрутизация | METHOD | Некризисные потребности направляются к информации, льготам, жилью, клиникам или общественным ресурсам. | Делает горячую линию полезной. |
+| crisishotlineops.safety.safety_plan | план безопасности | METHOD | План безопасности определяет меры реагирования, контакты, изменения окружающей среды и дальнейшие действия. | Поддерживает немедленную стабильность. |
+| crisishotlineops.safety.imminent_risk | неизбежный риск | SAFETY_RULE | Неизбежный риск может потребовать активации экстренной службы в соответствии с политикой. | Обеспечивает безопасность жизни. |
+| crisishotlineops.safety.mandated_report | обязательный отчет | CONSTRAINT | Сообщения о злоупотреблениях, пренебрежении или опасности соответствуют юрисдикции и правилам программы. | Соответствует юридическим обязанностям. |
+| crisishotlineops.safety.least_intrusive | наименее навязчивый ответ | MODEL | Ответные меры направлены на наименее интрузивное безопасное вмешательство, соответствующее риску. | Балансирует безопасность и автономность. |
+| crisishotlineops.referral.resource_match | совпадение ресурсов | METHOD | Направление соответствует потребностям, местоположению, критериям, часам работы, языку и возможностям. | Избегает бесполезных ссылок. |
+| crisishotlineops.referral.warm_handoff | теплая передача | METHOD | Теплая передача обслуживания соединяет вызывающего абонента напрямую с провайдером с согласия. | Уменьшает выпадение. |
+| crisishotlineops.referral.cold_referral | холодное направление | METHOD | Холодное направление дает контактную информацию, часы работы, право на участие и чего ожидать. | Поддерживает действия вызывающего абонента. |
+| crisishotlineops.referral.no_resource | ресурс не найден | FAILURE_MODE | Результат отсутствия ресурсов фиксирует неудовлетворенные потребности и альтернативные меры безопасности/поддержки. | Показывает пробелы в обслуживании. |
+| crisishotlineops.directory.current_status | текущий статус | RECORD | Статус ресурса включает открытый, закрытый, список ожидания, ограниченный или неизвестный. | Сохраняет рефералы реалистичными. |
+| crisishotlineops.directory.eligibility | фильтр приемлемости | METHOD | Право на участие фильтруется по возрасту, месту жительства, страховке, доходу, проблеме, личности или документам. | Избегает неправильных передач. |
+| crisishotlineops.directory.capacity | проверка емкости | METHOD | При проверке мощности проверяются койки, встречи, кризисные места или приемные окна, когда это возможно. | Предотвращает тупиковые рефералы. |
+| crisishotlineops.directory.language | доступность языка | RECORD | В справочнике отслеживаются переводчики, двуязычный персонал и переведенные материалы. | Поддерживает доступное направление. |
+| crisishotlineops.communication.active_listening | активное слушание | METHOD | Консультант использует рефлексивное слушание, проверку и темп. | Помогает звонящему стабилизироваться. |
+| crisishotlineops.communication.deescalation | деэскалация | METHOD | Деэскалация снижает панику, гнев и подавленность благодаря спокойной структурированной поддержке. | Повышает безопасность. |
+| crisishotlineops.communication.boundaries | граница области действия | CONSTRAINT | Горячая линия не заменяет медицинскую, юридическую или экстренную помощь. | Предотвращает ложные обещания. |
+| crisishotlineops.communication.accessibility | поддержка доступности | METHOD | Ретрансляционный, текстовый, устный или альтернативный канал поддерживает коммуникационные барьеры. | Обеспечивает доступность сервиса. |
+| crisishotlineops.privacy.confidentiality | правило конфиденциальности | SAFETY_RULE | Конфиденциальность объясняется ограничениями безопасности и юридическими обязанностями. | Вызывает информированное доверие. |
+| crisishotlineops.privacy.minimal_data | минимальные данные | CONSTRAINT | Горячая линия собирает только данные, необходимые для обеспечения безопасности, направления и отчетности. | Уменьшает нагрузку на конфиденциальность. |
+| crisishotlineops.privacy.consent_share | согласие поделиться | RECORD | Согласие на обмен регистрируется до передачи поставщику услуг, когда это необходимо. | Защищает выбор вызывающего абонента. |
+| crisishotlineops.privacy.anonymous | анонимный абонент | METHOD | Анонимные абоненты могут получить поддержку, если только экстренные действия не требуют дополнительной информации. | Сохраняет доступ. |
+| crisishotlineops.documentation.contact_note | контактное примечание | RECORD | В записях фиксируются риски, предоставленная поддержка, направления, согласие и последующее наблюдение. | Поддерживает непрерывность и аудит. |
+| crisishotlineops.documentation.risk_rationale | обоснование риска | RECORD | Обоснование риска объясняет, почему были выбраны уровень и ответ. | Делает решения подлежащими пересмотру. |
+| crisishotlineops.documentation.followup_task | последующая задача | RECORD | Последующая задача записывает обратный звонок, подтверждение поставщика или отзыв супервизора. | Предотвращает открытые петли. |
+| crisishotlineops.documentation.retention | правило хранения | CONSTRAINT | Заметки, записи и чаты соответствуют правилам конфиденциальности, клиническим правилам и правилам хранения грантов. | Контролирует конфиденциальные данные. |
+| crisishotlineops.followup.callback | перезвонить | METHOD | Обратный вызов соответствует согласию, плану безопасности и правилам времени. | Сохраняет поддержку после контакта. |
+| crisishotlineops.followup.provider_confirm | подтверждение поставщика | METHOD | При подтверждении проверяется, была ли принята передача или направление, если это позволяет программа. | Улучшает поддержку замкнутого цикла. |
+| crisishotlineops.followup.unreachable | недостижимый процесс | METHOD | В случае недостижимости используются попытки с соблюдением конфиденциальности и эскалация, если этого требует риск. | Балансирует безопасность и конфиденциальность. |
+| crisishotlineops.staffing.supervision | клиническое наблюдение | QUALITY_CHECK | Супервизоры рассматривают контакты высокого риска и потребности в поддержке консультантов. | Повышает безопасность и заботу о персонале. |
+| crisishotlineops.staffing.breaks | нарушать правило | SAFETY_RULE | Консультантам нужны перерывы после интенсивных контактов и длительных смен. | Уменьшает выгорание. |
+| crisishotlineops.staffing.training | учебная программа | METHOD | Обучение охватывает навыки работы в кризисных ситуациях, политику риска, культурное смирение, ресурсы и документацию. | Формирует компетентность. |
+| crisishotlineops.qa.call_review | обзор контактов | QUALITY_CHECK | Выборочные контакты проверяются на предмет оценки риска, сочувствия, политики и точности направлений. | Улучшает качество горячей линии. |
+| crisishotlineops.qa.resource_error | исправление ошибок ресурса | METHOD | Неверные данные о рефералах приводят к обновлению каталога и уведомлению персонала. | Предотвращает повторение ошибок. |
+| crisishotlineops.metrics.answer_time | время ответа | MEASUREMENT | Время ответа отслеживает, насколько быстро контакты доходят до консультанта. | Показывает доступ. |
+| crisishotlineops.metrics.abandonment | процент отказов | MEASUREMENT | Отказ отслеживает контакты, ушедшие до обслуживания. | Сигнализирует о кадровом давлении. |
+| crisishotlineops.metrics.outcome | категория результата | MEASUREMENT | Категории результатов включают стабилизацию, направление, экстренную отправку, последующее наблюдение или только информацию. | Показывает шаблон обслуживания. |
+| crisishotlineops.closeout.shift_handoff | передача смены | METHOD | Флаги передачи смены открывают последующие действия, случаи высокого риска и изменения ресурсов. | Сохраняет преемственность. |

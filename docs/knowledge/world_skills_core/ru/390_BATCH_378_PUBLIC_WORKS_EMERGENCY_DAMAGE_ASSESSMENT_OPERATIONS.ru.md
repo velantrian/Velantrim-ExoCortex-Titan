@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| pwdamageops.activation.trigger | assessment trigger | MODEL | Trigger includes storm, flood, earthquake, fire, crash, outage or infrastructure failure. | Starts organized inspection. |
-| pwdamageops.activation.team_roster | team roster | RECORD | Roster lists inspectors, engineers, GIS, safety and admin roles. | Assigns work. |
-| pwdamageops.activation.priority_map | priority map | METHOD | Map ranks critical routes, utilities, bridges, public buildings and hazards. | Sends teams first where risk is high. |
-| pwdamageops.activation.safety_brief | safety briefing | SAFETY_RULE | Brief covers downed wires, unstable structures, floodwater, traffic, PPE and communications. | Protects assessors. |
-| pwdamageops.intake.asset_id | asset ID | RECORD | Asset ID links road, bridge, culvert, building, pump, sign, light or facility. | Grounds damage in inventory. |
-| pwdamageops.intake.location | location capture | METHOD | Location records address, GPS, milepost, intersection or GIS feature. | Enables repair dispatch. |
-| pwdamageops.intake.report_source | report source | RECORD | Source distinguishes field crew, 311, police, resident, sensor or partner agency. | Shows discovery path. |
-| pwdamageops.intake.initial_condition | initial condition | RECORD | Initial condition describes visible damage, hazard and service impact. | Starts assessment trail. |
-| pwdamageops.rapid.windshield | windshield survey | METHOD | Windshield survey quickly scans routes or neighborhoods for obvious damage. | Gives early situational picture. |
-| pwdamageops.rapid.safety_tag | safety tag | RECORD | Tag marks asset as open, restricted, closed, unsafe or needs specialist review. | Communicates immediate use status. |
-| pwdamageops.rapid.photo | photo documentation | RECORD | Photos capture damage, context, scale and access constraints. | Supports estimates and claims. |
-| pwdamageops.rapid.access_limit | access limit | CONSTRAINT | Some sites wait for water recession, utility clearance or security. | Prevents unsafe inspection. |
-| pwdamageops.detail.damage_category | damage category | RECORD | Category distinguishes pavement, structure, drainage, electrical, mechanical, debris or erosion. | Routes expertise. |
-| pwdamageops.detail.severity | severity rating | MODEL | Severity considers safety, service loss, structural risk and repair complexity. | Prioritizes repair. |
-| pwdamageops.detail.cause | cause note | RECORD | Cause notes flood, wind, impact, overload, fire, earth movement or preexisting condition. | Supports reimbursement logic. |
-| pwdamageops.detail.temporary_measure | temporary measure | METHOD | Barricade, shoring, pump, patch, detour or signage may stabilize site. | Reduces immediate risk. |
-| pwdamageops.estimates.quantity | quantity estimate | MEASUREMENT | Quantities measure debris, asphalt, pipe, guardrail, signs, labor or equipment. | Supports cost estimate. |
-| pwdamageops.estimates.cost | cost estimate | MEASUREMENT | Estimate uses unit prices, labor, equipment, materials and contractor assumptions. | Plans funding. |
-| pwdamageops.estimates.confidence | confidence level | MODEL | Confidence notes rapid, preliminary, engineer-reviewed or final estimate. | Prevents false precision. |
-| pwdamageops.estimates.update | estimate update | METHOD | Estimates update after detailed inspection, bids, hidden damage or scope change. | Keeps finance realistic. |
-| pwdamageops.safety.closure | closure decision | SAFETY_RULE | Closure is based on unsafe condition, structural doubt, flooding, wires or traffic hazard. | Protects public. |
-| pwdamageops.safety.detour | detour setup | METHOD | Detour identifies route, signs, accessibility, emergency access and duration. | Maintains mobility. |
-| pwdamageops.safety.utility_clearance | utility clearance | SAFETY_RULE | Work waits for gas, electric, water or telecom clearance when needed. | Prevents secondary harm. |
-| pwdamageops.safety.reentry | reentry rule | CONSTRAINT | Reentry to damaged facility follows structural, environmental and safety clearance. | Protects staff. |
-| pwdamageops.documentation.field_form | field form | RECORD | Form captures asset, damage, photos, quantities, safety status and assessor. | Standardizes data. |
-| pwdamageops.documentation.gis_update | GIS update | METHOD | Damage points update map layers for command and repair teams. | Makes status visible. |
-| pwdamageops.documentation.time_log | time log | RECORD | Staff and equipment time are recorded by incident and asset. | Supports reimbursement. |
-| pwdamageops.documentation.evidence_pack | evidence package | RECORD | Package includes before/after photos, maps, costs, work orders and approvals. | Supports claims. |
-| pwdamageops.reporting.sitrep | situation report | RECORD | Sitrep summarizes damaged assets, closures, priorities, costs and unmet needs. | Feeds emergency management. |
-| pwdamageops.reporting.public_status | public status | METHOD | Public status communicates closures, detours, hazards and repair estimates. | Keeps residents informed. |
-| pwdamageops.reporting.state_federal | state/federal report | METHOD | Reports meet assistance program fields and deadlines. | Enables funding. |
-| pwdamageops.reporting.dashboard | damage dashboard | MEASUREMENT | Dashboard tracks open assessments, severity, costs and repair status. | Supports management. |
-| pwdamageops.repair.work_order | repair work order | RECORD | Work order links assessment, scope, crew/contractor, priority and status. | Moves from assessment to action. |
-| pwdamageops.repair.temporary_repair | temporary repair | METHOD | Temporary repair restores minimal safe service until permanent fix. | Speeds recovery. |
-| pwdamageops.repair.permanent_repair | permanent repair scope | METHOD | Permanent scope addresses full repair, standards, permits and resilience. | Restores asset properly. |
-| pwdamageops.repair.close_verification | close verification | QUALITY_CHECK | Completed repair is checked against assessment and safety status. | Confirms closure. |
-| pwdamageops.qa.duplicate_asset | duplicate asset check | QUALITY_CHECK | Duplicate checks prevent multiple records for same damage. | Keeps counts accurate. |
-| pwdamageops.qa.field_review | field review | QUALITY_CHECK | Supervisors review high-cost, closed or unclear assessments. | Improves reliability. |
-| pwdamageops.qa.eligibility_review | eligibility review | QUALITY_CHECK | Damage is reviewed for incident relation and reimbursement eligibility. | Protects claims. |
-| pwdamageops.records.retention | retention rule | CONSTRAINT | Records follow disaster, asset, finance and grant schedules. | Keeps audit trail. |
-| pwdamageops.metrics.assessment_rate | assessment rate | MEASUREMENT | Rate tracks assets assessed per day/team. | Shows progress. |
-| pwdamageops.metrics.cost_total | cost total | MEASUREMENT | Total estimated damage by asset class and area supports planning. | Guides funding requests. |
-| pwdamageops.demob.transition | transition to recovery | METHOD | Open items transfer from emergency assessment to capital, maintenance or claims teams. | Prevents dropped repairs. |
-| pwdamageops.review.after_action | after-action review | METHOD | Review captures map gaps, forms, safety issues, estimate accuracy and repair handoff. | Improves next event. |
+| pwdamageops.activation.trigger | триггер оценки | MODEL | Триггер включает в себя шторм, наводнение, землетрясение, пожар, аварию, отключение электроэнергии или сбой в инфраструктуре. | Начинается организованная проверка. |
+| pwdamageops.activation.team_roster | состав команды | RECORD | В реестре перечислены инспекторы, инженеры, сотрудники ГИС, службы безопасности и администраторы. | Назначает работу. |
+| pwdamageops.activation.priority_map | карта приоритетов | METHOD | На карте отмечены важные маршруты, инженерные коммуникации, мосты, общественные здания и опасности. | Сначала отправляет команды туда, где риск высок. |
+| pwdamageops.activation.safety_brief | инструктаж по безопасности | SAFETY_RULE | Краткое описание касается оборванных проводов, нестабильных конструкций, паводковых вод, дорожного движения, средств индивидуальной защиты и коммуникаций. | Защищает оценщиков. |
+| pwdamageops.intake.asset_id | идентификатор актива | RECORD | Идентификатор объекта связывает дорогу, мост, водопропускную трубу, здание, насос, знак, свет или объект. | Заземляет повреждения в инвентаре. |
+| pwdamageops.intake.location | захват местоположения | METHOD | Местоположение записывает адрес, GPS, дорожный столб, перекресток или объект ГИС. | Включает отправку на ремонт. |
+| pwdamageops.intake.report_source | источник отчета | RECORD | Источник различает полевые бригады, 311, полицию, резидента, сенсорное или партнерское агентство. | Показывает путь обнаружения. |
+| pwdamageops.intake.initial_condition | исходное состояние | RECORD | Исходное состояние описывает видимые повреждения, опасности и влияние на обслуживание. | Начинается оценочный маршрут. |
+| pwdamageops.rapid.windshield | обследование лобового стекла | METHOD | Обзор лобового стекла позволяет быстро сканировать маршруты или окрестности на предмет очевидных повреждений. | Дает раннюю картину ситуации. |
+| pwdamageops.rapid.safety_tag | бирка безопасности | RECORD | Тег помечает актив как открытый, ограниченный, закрытый, небезопасный или требующий проверки специалистом. | Сообщает о статусе немедленного использования. |
+| pwdamageops.rapid.photo | фотодокументация | RECORD | Фотографии отражают ущерб, контекст, масштаб и ограничения доступа. | Поддерживает оценки и претензии. |
+| pwdamageops.rapid.access_limit | ограничение доступа | CONSTRAINT | Некоторые объекты ждут спада воды, разрешения инженерных сетей или обеспечения безопасности. | Предотвращает небезопасный осмотр. |
+| pwdamageops.detail.damage_category | категория повреждения | RECORD | В категории различают дорожное покрытие, конструкцию, дренажную, электрическую, механическую, мусорную или эрозионную. | Экспертиза маршрутов. |
+| pwdamageops.detail.severity | рейтинг серьезности | MODEL | Серьезность учитывает безопасность, потерю обслуживания, структурный риск и сложность ремонта. | В приоритете ремонт. |
+| pwdamageops.detail.cause | причина примечания | RECORD | Причина указывает на наводнение, ветер, удар, перегрузку, пожар, движение земли или ранее существовавшие условия. | Поддерживает логику возмещения. |
+| pwdamageops.detail.temporary_measure | временная мера | METHOD | Баррикада, опора, насос, заплата, объезд или указатели могут стабилизировать участок. | Снижает непосредственный риск. |
+| pwdamageops.estimates.quantity | оценка количества | MEASUREMENT | Количества измеряются обломками, асфальтом, трубами, ограждениями, знаками, рабочей силой или оборудованием. | Поддерживает оценку стоимости. |
+| pwdamageops.estimates.cost | смета расходов | MEASUREMENT | В оценке используются цены за единицу продукции, допущения о труде, оборудовании, материалах и подрядчике. | Планирует финансирование. |
+| pwdamageops.estimates.confidence | уровень доверия | MODEL | Уверенность означает быструю, предварительную, проверенную инженером или окончательную оценку. | Предотвращает ложную точность. |
+| pwdamageops.estimates.update | обновление оценки | METHOD | Оценки обновляются после детальной проверки, ставок, скрытых повреждений или изменения объема. | Сохраняет финансы реалистичными. |
+| pwdamageops.safety.closure | решение о закрытии | SAFETY_RULE | Закрытие вызвано небезопасным состоянием, структурными сомнениями, наводнением, проводами или опасностью дорожного движения. | Защищает общественность. |
+| pwdamageops.safety.detour | установка объезда | METHOD | Объезд определяет маршрут, знаки, доступность, аварийный доступ и продолжительность. | Сохраняет подвижность. |
+| pwdamageops.safety.utility_clearance | разрешение на коммунальные услуги | SAFETY_RULE | При необходимости работа ожидает разрешения на газ, электричество, воду или связь. | Предотвращает вторичный вред. |
+| pwdamageops.safety.reentry | правило повторного входа | CONSTRAINT | Возвращение на поврежденный объект осуществляется после получения разрешения на структурные, экологические и безопасные условия. | Защищает персонал. |
+| pwdamageops.documentation.field_form | форма поля | RECORD | В форме указаны активы, повреждения, фотографии, количества, статус безопасности и оценщик. | Стандартизирует данные. |
+| pwdamageops.documentation.gis_update | Обновление ГИС | METHOD | Точки повреждений обновляют слои карты для командных и ремонтных команд. | Делает статус видимым. |
+| pwdamageops.documentation.time_log | журнал времени | RECORD | Время работы персонала и оборудования фиксируется по происшествиям и активам. | Поддерживает возмещение. |
+| pwdamageops.documentation.evidence_pack | пакет доказательств | RECORD | Пакет включает в себя фотографии до/после, карты, стоимость, рабочие задания и разрешения. | Поддерживает претензии. |
+| pwdamageops.reporting.sitrep | отчет о ситуации | RECORD | Ситреп суммирует поврежденные активы, закрытия, приоритеты, затраты и неудовлетворенные потребности. | Подает управление в чрезвычайных ситуациях. |
+| pwdamageops.reporting.public_status | общественный статус | METHOD | Публичный статус сообщает о закрытиях, объездах, опасностях и оценках ремонта. | Держит жителей в курсе. |
+| pwdamageops.reporting.state_federal | государственный/федеральный отчет | METHOD | Отчеты соответствуют полям и срокам программы помощи. | Обеспечивает финансирование. |
+| pwdamageops.reporting.dashboard | панель повреждений | MEASUREMENT | Панель мониторинга отслеживает открытые оценки, серьезность, затраты и статус ремонта. | Поддерживает управление. |
+| pwdamageops.repair.work_order | заказ на ремонтные работы | RECORD | Заказ на работу связывает оценку, объем, бригаду/подрядчика, приоритет и статус. | Переход от оценки к действию. |
+| pwdamageops.repair.temporary_repair | временный ремонт | METHOD | Временный ремонт восстанавливает минимальную безопасную работу до момента постоянного исправления. | Ускоряет восстановление. |
+| pwdamageops.repair.permanent_repair | объем постоянного ремонта | METHOD | Постоянный объем работ предусматривает полный ремонт, стандарты, разрешения и устойчивость. | Восстанавливает актив должным образом. |
+| pwdamageops.repair.close_verification | закрытая проверка | QUALITY_CHECK | Завершенный ремонт проверяется на соответствие оценке и состоянию безопасности. | Подтверждает закрытие. |
+| pwdamageops.qa.duplicate_asset | дубликат проверки актива | QUALITY_CHECK | Двойные проверки предотвращают появление нескольких записей об одном и том же ущербе. | Сохраняет точность подсчетов. |
+| pwdamageops.qa.field_review | полевой обзор | QUALITY_CHECK | Руководители рассматривают дорогостоящие, закрытые или неясные оценки. | Повышает надежность. |
+| pwdamageops.qa.eligibility_review | проверка приемлемости | QUALITY_CHECK | Ущерб проверяется на предмет связи с инцидентом и возможности возмещения. | Защищает претензии. |
+| pwdamageops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам стихийных бедствий, активов, финансов и грантов. | Сохраняет контрольный журнал. |
+| pwdamageops.metrics.assessment_rate | ставка взноса | MEASUREMENT | Ставка отслеживает активы, оцененные за день/команду. | Показывает прогресс. |
+| pwdamageops.metrics.cost_total | общая стоимость | MEASUREMENT | Общий расчетный ущерб по классам активов и районам помогает при планировании. | Направляет запросы на финансирование. |
+| pwdamageops.demob.transition | переход к восстановлению | METHOD | Незавершенные статьи передаются из отдела оценки чрезвычайных ситуаций в группы капитального ремонта, технического обслуживания или претензий. | Предотвращает неудачный ремонт. |
+| pwdamageops.review.after_action | обзор после действий | METHOD | Обзор фиксирует пробелы в карте, формы, проблемы безопасности, точность оценки и передачу ремонта. | Улучшает следующее событие. |

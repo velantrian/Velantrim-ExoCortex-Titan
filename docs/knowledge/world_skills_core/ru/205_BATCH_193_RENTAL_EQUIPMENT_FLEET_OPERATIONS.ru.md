@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| rentfleet.asset.asset_register | Rental asset register | invariant | Register lists equipment ID, serial, category, status, location, ownership and maintenance history. | know fleet |
-| rentfleet.asset.utilization_status | Equipment utilization status | invariant | Status shows available, reserved, on-rent, down, in-service, lost or retired. | sell only what exists |
-| rentfleet.asset.hour_meter | Hour meter record | variant | Record captures machine runtime for billing, maintenance and wear tracking. | hours matter |
-| rentfleet.asset.attachment_set | Equipment attachment set | variant | Set links buckets, bits, hoses, chargers or accessories to main rental item. | complete package |
-| rentfleet.asset.replacement_value | Replacement value | invariant | Value supports deposit, insurance, damage claim and loss decision. | risk pricing |
-| rentfleet.reserve.reservation | Rental reservation | invariant | Reservation holds equipment, dates, customer, delivery option, rate and required accessories. | promise capacity |
-| rentfleet.reserve.availability_check | Availability check | invariant | Check compares requested dates with fleet status, maintenance, transport and prior bookings. | prevent double booking |
-| rentfleet.reserve.rate_card | Rental rate card | invariant | Rate card defines daily, weekly, monthly, overtime, mileage, fuel or usage fees. | consistent pricing |
-| rentfleet.reserve.deposit_rule | Rental deposit rule | variant | Rule sets security amount based on customer, equipment, value, risk and payment method. | cover exposure |
-| rentfleet.reserve.contract_terms | Rental contract terms | invariant | Terms define responsibility, allowed use, return condition, damage, insurance and late fees. | legal frame |
-| rentfleet.dispatch.pre_rental_inspection | Pre-rental inspection | invariant | Inspection documents condition, safety devices, fluids, tires, attachments and cleanliness before dispatch. | baseline condition |
-| rentfleet.dispatch.make_ready | Rental make-ready | invariant | Make-ready cleans, fuels, charges, tests and stages equipment for pickup or delivery. | ready to use |
-| rentfleet.dispatch.customer_training | Customer use briefing | variant | Briefing covers basic operation, limits, safety warnings and support contact. | reduce misuse |
-| rentfleet.dispatch.delivery_ticket | Delivery ticket | invariant | Ticket records equipment, condition, destination, time, driver, recipient and signature. | handoff evidence |
-| rentfleet.dispatch.transport_fit | Transport fit check | variant | Check confirms trailer, tie-downs, route, loading capacity and access match equipment. | safe move |
-| rentfleet.return.return_checkin | Rental return check-in | invariant | Check-in records return time, meter, fuel, condition, accessories and customer notes. | close rental period |
-| rentfleet.return.damage_note | Damage note | invariant | Note records new damage, photos, severity, cause if known and claim route. | evidence before repair |
-| rentfleet.return.missing_accessory | Missing accessory | invariant | Missing accessory record triggers search, charge, replacement or customer follow-up. | complete inventory |
-| rentfleet.return.fuel_charge | Fuel or recharge charge | variant | Charge applies when equipment returns below agreed fuel or battery level. | recover service cost |
-| rentfleet.return.late_return | Late return handling | invariant | Handling updates billing, availability, next reservation risk and customer communication. | schedule impact |
-| rentfleet.maintenance.preventive_schedule | Rental preventive schedule | invariant | Schedule uses calendar, hours, cycles or inspections to trigger maintenance. | uptime discipline |
-| rentfleet.maintenance.down_tag | Down equipment tag | invariant | Tag removes unsafe or failed item from available fleet until repaired and released. | do not rent broken gear |
-| rentfleet.maintenance.repair_order | Rental repair order | invariant | Order records fault, diagnosis, labor, parts, vendor and return-to-service test. | fix trace |
-| rentfleet.maintenance.safety_recall | Equipment safety recall | variant | Recall identifies affected assets, rental customers, stop-use instructions and repair evidence. | urgent risk control |
-| rentfleet.maintenance.cleaning_standard | Rental cleaning standard | invariant | Standard defines acceptable cleanliness, sanitation, debris removal and appearance before rent. | customer-ready |
-| rentfleet.billing.rental_invoice | Rental invoice | invariant | Invoice calculates rate, duration, delivery, fuel, damage, accessories, taxes and credits. | bill accurately |
-| rentfleet.billing.partial_day_rule | Partial-day rule | variant | Rule defines how early returns, late pickups or hour limits affect charges. | avoid disputes |
-| rentfleet.billing.damage_billing | Damage billing | invariant | Billing links damage evidence, contract responsibility, repair estimate and customer notification. | recover loss |
-| rentfleet.billing.loss_charge | Lost equipment charge | invariant | Charge applies when item is not returned after search and escalation. | asset accountability |
-| rentfleet.billing.credit_adjustment | Rental credit adjustment | variant | Adjustment corrects outage, wrong equipment, service failure or agreed concession. | fair resolution |
-| rentfleet.customer.account_approval | Rental account approval | invariant | Approval checks identity, payment, credit, insurance, tax status and authorized users. | trust before release |
-| rentfleet.customer.insurance_certificate | Insurance certificate | variant | Certificate confirms customer coverage required for certain equipment or contracts. | transfer risk |
-| rentfleet.customer.authorized_operator | Authorized operator | variant | Operator record identifies who may pick up, sign or use controlled equipment. | prevent misuse |
-| rentfleet.customer.jobsite_record | Customer jobsite record | variant | Record captures delivery address, access hours, hazards, contact and site rules. | delivery readiness |
-| rentfleet.customer.dispute_case | Rental dispute case | invariant | Case documents billing, damage, delay or service disagreement and resolution. | structured recovery |
-| rentfleet.inventory.parts_stock | Rental parts stock | variant | Stock supports common maintenance parts, wear items and consumables. | faster turnaround |
-| rentfleet.inventory.consumable_sale | Consumable sale | variant | Sale adds blades, belts, fuel, PPE, chemicals or supplies to rental transaction. | attach needed items |
-| rentfleet.inventory.cycle_count | Rental inventory cycle count | invariant | Count verifies physical assets and accessories against system records. | find losses |
-| rentfleet.inventory.asset_transfer | Fleet asset transfer | invariant | Transfer moves equipment between branches with condition, transport and system update. | balance demand |
-| rentfleet.inventory.retirement | Rental asset retirement | invariant | Retirement removes asset due to age, damage, utilization, safety or economics. | lifecycle close |
-| rentfleet.safety.ppe_requirement | Rental PPE requirement | variant | Requirement communicates protective equipment needed for equipment use. | safety context |
-| rentfleet.safety.prohibited_use | Prohibited rental use | invariant | Prohibition defines unsafe, illegal, overloaded, untrained or out-of-scope operation. | boundaries |
-| rentfleet.metrics.fleet_utilization | Fleet utilization KPI | variant | KPI measures rental days, revenue, downtime, turn time, repair cost and availability. | manage fleet economics |
-| rentfleet.continuity.substitution | Equipment substitution | variant | Substitution offers equivalent item when reserved unit is unavailable. | save the job |
+| rentfleet.asset.asset_register | Реестр арендного имущества | invariant | В реестре перечислены идентификатор оборудования, серийный номер, категория, статус, местоположение, история владения и обслуживания. | знать флот |
+| rentfleet.asset.utilization_status | Статус использования оборудования | invariant | Статус показывает: доступен, зарезервирован, взят в аренду, отключен, находится в эксплуатации, потерян или выведен из эксплуатации. | продавать только то, что есть |
+| rentfleet.asset.hour_meter | Рекорд счетчика часов | variant | Запись фиксирует время работы машины для выставления счетов, технического обслуживания и отслеживания износа. | часы имеют значение |
+| rentfleet.asset.attachment_set | Комплект крепления оборудования | variant | Установите привязки ведер, бит, шлангов, зарядных устройств или аксессуаров к основному арендуемому предмету. | полный пакет |
+| rentfleet.asset.replacement_value | Восстановительная стоимость | invariant | Стоимость поддерживает залог, страхование, требование о возмещении ущерба и решение о возмещении убытков. | ценообразование за риск |
+| rentfleet.reserve.reservation | Бронирование аренды | invariant | В резервации указывается оборудование, даты, заказчик, вариант доставки, тариф и необходимые аксессуары. | обещание мощности |
+| rentfleet.reserve.availability_check | Проверка доступности | invariant | Check сравнивает запрошенные даты с состоянием автопарка, техническим обслуживанием, транспортом и предыдущими бронированиями. | предотвратить двойное бронирование |
+| rentfleet.reserve.rate_card | Тарифная карта аренды | invariant | Прейскурант определяет ежедневную, еженедельную, ежемесячную плату, сверхурочную работу, пробег, топливо или плату за использование. | стабильное ценообразование |
+| rentfleet.reserve.deposit_rule | Правило залога за аренду | variant | Правило устанавливает сумму обеспечения в зависимости от клиента, оборудования, стоимости, риска и способа оплаты. | прикрыть разоблачение |
+| rentfleet.reserve.contract_terms | Условия договора аренды | invariant | Условия определяют ответственность, разрешенное использование, условия возврата, ущерб, страхование и пени за просрочку платежа. | правовая база |
+| rentfleet.dispatch.pre_rental_inspection | Предарендный осмотр | invariant | Перед отправкой проверьте состояние документов, предохранительные устройства, жидкости, шины, навесное оборудование и чистоту. | базовое состояние |
+| rentfleet.dispatch.make_ready | Подготовка к аренде | invariant | Подготовка к очистке, заправке, зарядке, испытаниям и подготовке оборудования для самовывоза или доставки. | готов к использованию |
+| rentfleet.dispatch.customer_training | Брифинг по использованию клиентом | variant | Инструктаж охватывает основные операции, ограничения, предупреждения о безопасности и контакты службы поддержки. | уменьшить неправильное использование |
+| rentfleet.dispatch.delivery_ticket | Билет на доставку | invariant | В билете фиксируется оборудование, состояние, пункт назначения, время, водитель, получатель и подпись. | передача доказательств |
+| rentfleet.dispatch.transport_fit | Проверка транспортной пригодности | variant | Проверка подтверждает прицеп, крепления, маршрут, грузоподъемность и доступ к соответствующему оборудованию. | безопасный ход |
+| rentfleet.return.return_checkin | Регистрация возврата аренды | invariant | При регистрации фиксируются время возврата, показания счетчика, топливо, состояние, аксессуары и примечания клиента. | закрыть срок аренды |
+| rentfleet.return.damage_note | Примечание о повреждении | invariant | В записке указываются новые повреждения, фотографии, тяжесть, причина, если она известна, и маршрут претензии. | доказательства перед ремонтом |
+| rentfleet.return.missing_accessory | Отсутствует аксессуар | invariant | Отсутствие записи об аксессуаре приводит к поиску, оплате, замене или отслеживанию клиента. | полная инвентаризация |
+| rentfleet.return.fuel_charge | Плата за топливо или перезарядку | variant | Плата взимается, когда уровень топлива или аккумулятора оборудования оказывается ниже согласованного уровня. | возместить стоимость услуги |
+| rentfleet.return.late_return | Обработка позднего возврата | invariant | Обработка обновлений выставления счетов, доступности, риска следующего бронирования и общения с клиентами. | влияние графика |
+| rentfleet.maintenance.preventive_schedule | Профилактический график аренды | invariant | В расписании используются календарь, часы, циклы или проверки для запуска технического обслуживания. | дисциплина безотказной работы |
+| rentfleet.maintenance.down_tag | Бирка для снаряжения вниз | invariant | Тег удаляет небезопасный или неисправный элемент из доступного парка до тех пор, пока он не будет отремонтирован и выпущен. | не сдавайте в аренду сломанное снаряжение |
+| rentfleet.maintenance.repair_order | Заказ на ремонт аренды | invariant | В заказе фиксируются неисправности, диагностика, работа, детали, проверка поставщика и возврат в эксплуатацию. | исправить след |
+| rentfleet.maintenance.safety_recall | Отзыв оборудования по безопасности | variant | Напомним, идентифицирует затронутые активы, клиентов по аренде, инструкции по прекращению использования и доказательства ремонта. | срочный контроль рисков |
+| rentfleet.maintenance.cleaning_standard | Стандарт уборки в аренду | invariant | Стандарт определяет приемлемую чистоту, санитарные условия, удаление мусора и внешний вид перед сдачей в аренду. | готовый к использованию клиентом |
+| rentfleet.billing.rental_invoice | Счет за аренду | invariant | В счете-фактуре указаны тариф, продолжительность, доставка, топливо, ущерб, аксессуары, налоги и кредиты. | выставлять счета точно |
+| rentfleet.billing.partial_day_rule | Правило неполного дня | variant | Правило определяет, как ранние возвраты, поздние получения или ограничения по часам влияют на расходы. | избегать споров |
+| rentfleet.billing.damage_billing | Выставление счетов за ущерб | invariant | Выставление счетов связывает доказательства ущерба, ответственность по контракту, смету ремонта и уведомление клиента. | возмещать убытки |
+| rentfleet.billing.loss_charge | Затраты на потерянное оборудование | invariant | Плата взимается, если товар не возвращается после поиска и эскалации. | отчетность по активам |
+| rentfleet.billing.credit_adjustment | Корректировка арендного кредита | variant | Регулировка исправляет сбой, неправильное оборудование, сбой в обслуживании или согласованную уступку. | справедливое решение |
+| rentfleet.customer.account_approval | Одобрение арендного счета | invariant | При одобрении проверяется личность, платеж, кредит, страховка, налоговый статус и авторизованные пользователи. | доверие перед выпуском |
+| rentfleet.customer.insurance_certificate | Страховой сертификат | variant | Сертификат подтверждает покрытие клиентов, необходимое для определенного оборудования или контрактов. | трансферный риск |
+| rentfleet.customer.authorized_operator | Авторизованный оператор | variant | В записи оператора указано, кто может брать, подписывать или использовать контролируемое оборудование. | предотвратить неправильное использование |
+| rentfleet.customer.jobsite_record | Запись на рабочем месте клиента | variant | Запись фиксирует адрес доставки, часы доступа, опасности, контакты и правила на месте. | готовность к доставке |
+| rentfleet.customer.dispute_case | Дело по спору об аренде | invariant | В деле документируются выставление счетов, ущерб, задержка или разногласия по обслуживанию и их разрешение. | структурированное восстановление |
+| rentfleet.inventory.parts_stock | Склад запчастей для аренды | variant | На складе имеются общие запасные части, быстроизнашивающиеся детали и расходные материалы. | более быстрый оборот |
+| rentfleet.inventory.consumable_sale | Продажа расходных материалов | variant | При продаже к аренде добавляются лезвия, ремни, топливо, СИЗ, химикаты или расходные материалы. | прикрепить необходимые предметы |
+| rentfleet.inventory.cycle_count | Подсчет цикла инвентаризации в аренду | invariant | Count сверяет физические активы и аксессуары с системными записями. | найти потери |
+| rentfleet.inventory.asset_transfer | Передача активов флота | invariant | Передача перемещает оборудование между филиалами с указанием состояния, транспортировки и обновления системы. | баланс спроса |
+| rentfleet.inventory.retirement | Выбытие арендного актива | invariant | При выводе из эксплуатации актив удаляется из-за возраста, повреждения, использования, безопасности или экономики. | завершение жизненного цикла |
+| rentfleet.safety.ppe_requirement | Требования к аренде СИЗ | variant | Требование указывает на защитное оборудование, необходимое для использования оборудования. | контекст безопасности |
+| rentfleet.safety.prohibited_use | Запрещенное использование в аренде | invariant | Запрет определяет небезопасные, незаконные, перегруженные, необученные или выходящие за рамки действия операции. | границы |
+| rentfleet.metrics.fleet_utilization | KPI использования автопарка | variant | KPI измеряет дни аренды, доход, время простоя, время поворота, стоимость ремонта и доступность. | управлять экономикой автопарка |
+| rentfleet.continuity.substitution | Замена оборудования | variant | Замена предлагает эквивалентный товар, когда зарезервированная единица недоступна. | сохранить работу |

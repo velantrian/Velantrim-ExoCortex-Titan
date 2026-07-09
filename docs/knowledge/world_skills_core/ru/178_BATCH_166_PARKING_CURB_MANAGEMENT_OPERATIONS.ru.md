@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| curbops.inventory.curb_inventory | Curb inventory | invariant | Curb inventory records spaces, zones, signs, meters, loading areas, restrictions and geometry. | know the curb asset |
-| curbops.inventory.parking_space | Parking space record | invariant | Space record links location, type, length, restrictions, meter ID and enforcement rules. | one stall, one rule set |
-| curbops.inventory.sign_code | Parking sign code | invariant | Sign code translates posted regulation into enforceable time, vehicle, permit, price or loading condition. | sign becomes data |
-| curbops.inventory.loading_zone | Loading zone | invariant | Loading zone allocates curb space for goods, service vehicles or short commercial activity. | deliveries need curb |
-| curbops.inventory.accessible_space | Accessible parking space | invariant | Accessible space provides regulated access features, location and enforcement protection. | equity in curb design |
-| curbops.inventory.fire_lane | Fire lane | invariant | Fire lane restriction protects emergency access and has high-priority enforcement. | safety over convenience |
-| curbops.permit.residential_permit | Residential parking permit | variant | Residential permit gives eligible residents parking rights within defined area and conditions. | local access control |
-| curbops.permit.commercial_permit | Commercial vehicle permit | variant | Commercial permit authorizes specific business parking, loading or service activity under defined limits. | work vehicles managed |
-| curbops.permit.visitor_permit | Visitor permit | variant | Visitor permit provides temporary local parking permission with time, address or quota controls. | guest access |
-| curbops.permit.permit_fraud_check | Permit fraud check | invariant | Fraud check looks for copied, expired, misused, sold or ineligible permits. | protect scarce space |
-| curbops.permit.digital_permit | Digital parking permit | variant | Digital permit links vehicle plate or account to authorization without physical decal. | enforcement by data |
-| curbops.permit.permit_waitlist | Permit waitlist | variant | Waitlist controls demand when permits exceed available curb or garage capacity. | ration scarce permits |
-| curbops.pricing.meter_rate | Meter rate | invariant | Meter rate sets price by zone, time, vehicle type or policy objective. | price shapes demand |
-| curbops.pricing.dynamic_pricing | Dynamic parking pricing | variant | Dynamic pricing adjusts rates based on occupancy, time, event or demand targets. | manage availability |
-| curbops.pricing.occupancy_target | Parking occupancy target | invariant | Occupancy target defines desired use level so drivers can usually find a space. | not always 100 percent full |
-| curbops.pricing.payment_session | Parking payment session | invariant | Payment session links plate, zone, start, paid duration, amount and expiration. | proof of payment |
-| curbops.pricing.grace_period | Parking grace period | variant | Grace period allows small timing tolerance before or after paid session under policy. | reduce unfair citations |
-| curbops.pricing.rate_table_update | Rate table update | invariant | Rate update synchronizes meters, apps, signs, enforcement devices and public information. | avoid conflicting prices |
-| curbops.enforcement.plate_scan | License plate scan | invariant | Plate scan checks observed vehicle against payment, permit, stolen, boot or citation data. | enforcement input |
-| curbops.enforcement.citation | Parking citation | invariant | Citation records violation, evidence, location, time, officer, plate and legal basis. | formal penalty |
-| curbops.enforcement.photo_evidence | Parking photo evidence | invariant | Photo evidence documents vehicle, sign, curb, meter or violation context for review. | dispute-proofing |
-| curbops.enforcement.chalk_mark | Tire chalking | variant | Chalking marks or digitally records vehicle presence to enforce time limits where allowed. | time-limit evidence |
-| curbops.enforcement.scofflaw | Scofflaw vehicle | variant | Scofflaw status identifies vehicle with repeated unpaid citations that may trigger immobilization or tow. | chronic nonpayment |
-| curbops.enforcement.tow_authorization | Tow authorization | invariant | Tow authorization requires qualifying violation, evidence, notification rules and safe vehicle removal. | severe enforcement |
-| curbops.appeals.appeal_intake | Citation appeal intake | invariant | Appeal intake records contest reason, evidence, deadlines, citation and appellant identity. | due process path |
-| curbops.appeals.hearing_review | Parking hearing review | invariant | Review evaluates citation evidence, ordinance, signage, payment data and appellant claim. | independent judgment |
-| curbops.appeals.dismissal_reason | Dismissal reason | invariant | Dismissal reason classifies why citation is cancelled, such as error, unclear sign, valid permit or emergency. | learn from mistakes |
-| curbops.appeals.payment_plan | Citation payment plan | variant | Payment plan spreads fines over time for eligible debt while tracking compliance. | collection with flexibility |
-| curbops.appeals.refund_process | Parking refund process | variant | Refund process returns overpayment or invalid charge with approval and audit trail. | money correction |
-| curbops.occupancy.sensor | Parking occupancy sensor | variant | Sensor estimates space occupancy using in-ground, camera, meter or mobile data. | real-time availability |
-| curbops.occupancy.manual_survey | Manual occupancy survey | invariant | Survey counts occupied and available spaces at defined times and locations. | ground truth |
-| curbops.occupancy.turnover | Parking turnover | invariant | Turnover measures how many different vehicles use a space over time. | short stay versus storage |
-| curbops.occupancy.cruising | Cruising for parking | variant | Cruising occurs when drivers circle searching for parking and adds traffic, emissions and delay. | hidden congestion |
-| curbops.occupancy.event_parking | Event parking plan | variant | Event plan adjusts pricing, staffing, signage, transit coordination and enforcement around large demand spikes. | temporary peak |
-| curbops.curb.ridehail_pickup | Ridehail pickup zone | variant | Pickup zone organizes curb access for ridehail vehicles to reduce double parking and passenger confusion. | curb for apps |
-| curbops.curb.micro_mobility_parking | Micromobility parking area | variant | Micromobility parking area manages scooters or bikes to protect sidewalks and access. | small vehicles need rules |
-| curbops.curb.bus_stop_clearance | Bus stop clearance | invariant | Clearance around bus stop ensures transit access, safe boarding and schedule reliability. | curb supports transit |
-| curbops.curb.delivery_window | Curb delivery window | variant | Delivery window reserves curb for loading during specific periods and allows other use later. | time-sharing curb |
-| curbops.curb.temporary_no_parking | Temporary no-parking order | variant | Temporary order reserves curb for construction, moving, events, utilities or emergency work. | curb can change |
-| curbops.operations.meter_fault | Meter fault | invariant | Meter fault affects payment, citation validity, repair dispatch and customer communication. | broken device risk |
-| curbops.operations.sign_maintenance | Parking sign maintenance | invariant | Sign maintenance keeps regulations visible, accurate, legally enforceable and aligned with data systems. | sign is law interface |
-| curbops.operations.cash_collection | Meter cash collection | variant | Cash collection controls route, canister, count, deposit, variance and staff security. | physical money remains |
-| curbops.operations.enforcement_beat | Enforcement beat | invariant | Beat assigns officer area, timing, priority violations and expected coverage. | patrol design |
-| curbops.operations.policy_evaluation | Curb policy evaluation | invariant | Evaluation compares occupancy, turnover, citations, revenue, complaints and equity impacts against policy goals. | manage curb deliberately |
+| curbops.inventory.curb_inventory | Ограничить инвентарь | invariant | Инвентаризация бордюров фиксирует пространства, зоны, знаки, метры, зоны погрузки, ограничения и геометрию. | знать ограниченный актив |
+| curbops.inventory.parking_space | Рекорд парковочных мест | invariant | Пространственная запись связывает местоположение, тип, длину, ограничения, идентификатор счетчика и правила применения. | один киоск, один набор правил |
+| curbops.inventory.sign_code | Код знака парковки | invariant | Код знака переводит опубликованные правила в обязательные к исполнению сроки, транспортное средство, разрешение, цену или условия загрузки. | знак становится данными |
+| curbops.inventory.loading_zone | Зона загрузки | invariant | Зона погрузки выделяет пространство для грузов, служебных автомобилей или кратковременной коммерческой деятельности. | поставки необходимо ограничить |
+| curbops.inventory.accessible_space | Доступное парковочное место | invariant | Доступное пространство обеспечивает регулируемые функции доступа, местоположение и защиту правоприменения. | справедливость в дизайне бордюров |
+| curbops.inventory.fire_lane | Пожарный переулок | invariant | Ограничение пожарных полос защищает доступ в экстренных ситуациях и имеет высокий приоритет. | безопасность важнее удобства |
+| curbops.permit.residential_permit | Разрешение на жилую парковку | variant | Вид на жительство дает право на парковку жителям, имеющим на это право, в пределах определенной территории и условий. | локальный контроль доступа |
+| curbops.permit.commercial_permit | Разрешение на коммерческий транспорт | variant | Коммерческое разрешение дает право на определенную коммерческую парковку, погрузку или оказание услуг в определенных пределах. | рабочие машины под управлением |
+| curbops.permit.visitor_permit | Разрешение на посещение | variant | Разрешение на посещение дает временное разрешение на местную парковку с контролем времени, адреса или квоты. | гостевой доступ |
+| curbops.permit.permit_fraud_check | Разрешить проверку на мошенничество | invariant | Проверка на мошенничество ищет скопированные, просроченные, неправильно использованные, проданные или неприемлемые разрешения. | защитить ограниченное пространство |
+| curbops.permit.digital_permit | Цифровое разрешение на парковку | variant | Цифровое разрешение связывает номерной знак или учетную запись транспортного средства с авторизацией без физической наклейки. | принудительное исполнение по данным |
+| curbops.permit.permit_waitlist | Список ожидания разрешения | variant | Список ожидания контролирует спрос, когда разрешения превышают доступную вместимость обочины или гаража. | нехватка разрешений на рацион |
+| curbops.pricing.meter_rate | Скорость метра | invariant | Тариф счетчика устанавливает цену в зависимости от зоны, времени, типа транспортного средства или цели политики. | цена формирует спрос |
+| curbops.pricing.dynamic_pricing | Динамическое ценообразование на парковку | variant | Динамическое ценообразование корректирует тарифы в зависимости от занятости, времени, событий или целевых показателей спроса. | управлять доступностью |
+| curbops.pricing.occupancy_target | Целевой показатель занятости парковки | invariant | Целевая заполняемость определяет желаемый уровень использования, поэтому водители обычно могут найти место. | не всегда заполнен на 100 процентов |
+| curbops.pricing.payment_session | Сеанс оплаты парковки | invariant | Платежная сессия связывает номер, зону, начало, оплаченную продолжительность, сумму и срок действия. | подтверждение оплаты |
+| curbops.pricing.grace_period | Льготный период парковки | variant | Льготный период допускает небольшой допуск по времени до или после платного сеанса в соответствии с политикой. | сократить несправедливые цитаты |
+| curbops.pricing.rate_table_update | Обновление таблицы тарифов | invariant | Обновление тарифов синхронизирует счетчики, приложения, знаки, устройства контроля и общедоступную информацию. | избегать противоречивых цен |
+| curbops.enforcement.plate_scan | Скан номерного знака | invariant | Сканирование номеров проверяет наблюдаемое транспортное средство на соответствие данным об оплате, разрешении, краже, загрузке или цитированию. | входные данные принудительного исполнения |
+| curbops.enforcement.citation | Справка о парковке | invariant | В цитировании фиксируются нарушения, доказательства, место, время, должностное лицо, табличка и юридическое основание. | формальный штраф |
+| curbops.enforcement.photo_evidence | Фотодоказательства парковки | invariant | Фотодоказательства документируют транспортное средство, знак, бордюр, счетчик или контекст нарушения для проверки. | защита от споров |
+| curbops.enforcement.chalk_mark | Мелование шин | variant | Нанесение отметок мелом или цифровая запись присутствия транспортного средства для обеспечения соблюдения ограничений по времени, где это разрешено. | доказательства, ограниченные во времени |
+| curbops.enforcement.scofflaw | Автомобиль негодяя | variant | Статус Scofflaw определяет транспортное средство с неоднократными неоплаченными штрафами, которые могут привести к иммобилизации или буксировке. | хронические неплатежи |
+| curbops.enforcement.tow_authorization | Разрешение на буксировку | invariant | Разрешение на эвакуацию требует наличия квалифицирующего нарушения, доказательств, правил уведомления и безопасного удаления транспортного средства. | суровое правоприменение |
+| curbops.appeals.appeal_intake | Прием апелляции по цитированию | invariant | Записи о приеме апелляции оспаривают причину, доказательства, сроки, цитату и личность апеллянта. | путь надлежащей правовой процедуры |
+| curbops.appeals.hearing_review | Рассмотрение слушаний по поводу парковки | invariant | При проверке оцениваются доказательства, постановления, вывески, данные о платежах и претензии апеллянта. | независимое суждение |
+| curbops.appeals.dismissal_reason | Причина увольнения | invariant | Причина увольнения определяет, почему указание аннулируется, например, ошибка, неясный знак, действующее разрешение или чрезвычайная ситуация. | учиться на ошибках |
+| curbops.appeals.payment_plan | План оплаты по цитированию | variant | План платежей распределяет штрафы по времени для приемлемой задолженности, одновременно отслеживая соблюдение требований. | коллекция с гибкостью |
+| curbops.appeals.refund_process | Процедура возврата денег за парковку | variant | Процесс возврата возвращает переплату или недействительный платеж с одобрением и контрольным журналом. | коррекция денег |
+| curbops.occupancy.sensor | Датчик занятости парковки | variant | Датчик оценивает занятость пространства, используя данные с земли, с камеры, счетчика или мобильных устройств. | доступность в режиме реального времени |
+| curbops.occupancy.manual_survey | Ручное обследование занятости | invariant | Исследование подсчитывает занятые и свободные места в определенное время и в определенных местах. | основная истина |
+| curbops.occupancy.turnover | Оборот парковки | invariant | Оборот измеряет, сколько различных транспортных средств используют пространство с течением времени. | кратковременное пребывание вместо хранения |
+| curbops.occupancy.cruising | Круиз для парковки | variant | Движение происходит, когда водители кружат в поисках парковки, что увеличивает пробки, выбросы и задержки. | скрытая пробка |
+| curbops.occupancy.event_parking | План парковки для мероприятия | variant | В плане мероприятия корректируются цены, штатное расписание, вывески, координация транзита и обеспечение соблюдения требований в случае больших всплесков спроса. | временный пик |
+| curbops.curb.ridehail_pickup | Зона выдачи заказов | variant | Зона пикапа обеспечивает доступ к тротуару для транспортных средств, чтобы уменьшить двойную парковку и путаницу для пассажиров. | бордюр для приложений |
+| curbops.curb.micro_mobility_parking | Парковка для микромобильности | variant | Парковка для микромобильности позволяет управлять скутерами или велосипедами для защиты тротуаров и доступа. | Маленьким транспортным средствам нужны правила |
+| curbops.curb.bus_stop_clearance | Оформление автобусной остановки | invariant | Свободное пространство вокруг автобусной остановки обеспечивает транзитный доступ, безопасную посадку и надежность расписания. | бордюр поддерживает транзит |
+| curbops.curb.delivery_window | Окно доставки бордюра | variant | Окно доставки резервирует бордюр для погрузки в определенные периоды и позволяет использовать его позже. | бордюр с разделением времени |
+| curbops.curb.temporary_no_parking | Временный запрет на парковку | variant | Временный порядок резервирует бордюр для строительства, переезда, проведения мероприятий, коммунальных услуг или аварийных работ. | бордюр может измениться |
+| curbops.operations.meter_fault | Неисправность счетчика | invariant | Неисправность счетчика влияет на оплату, действительность квитанции, отправку ремонта и общение с клиентом. | риск поломки устройства |
+| curbops.operations.sign_maintenance | Обслуживание знаков парковки | invariant | Обслуживание знаков делает правила видимыми, точными, юридически осуществимыми и согласованными с системами данных. | знак - это интерфейс закона |
+| curbops.operations.cash_collection | Сбор денежных средств по счетчику | variant | Инкассация контролирует маршрут, канистру, подсчет, депозит, отклонения и безопасность персонала. | физические деньги остаются |
+| curbops.operations.enforcement_beat | Принудительный удар | invariant | Бит назначает офицеру зону, время, приоритетные нарушения и ожидаемое покрытие. | патрульный дизайн |
+| curbops.operations.policy_evaluation | Оценка политики ограничения | invariant | При оценке сравниваются заполняемость, оборот, цитирование, доходы, жалобы и влияние на справедливость с целями политики. | сознательно управлять бордюром |

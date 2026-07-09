@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| jicops.activation.trigger | activation trigger | MODEL | JIC activates when incident information demand exceeds routine communications. | Centralizes public messaging. |
-| jicops.activation.lead_pio | lead PIO | RECORD | Lead public information officer coordinates agencies, approvals and release cadence. | Clarifies authority. |
-| jicops.activation.roster | JIC roster | RECORD | Roster lists writers, monitors, translators, media staff and approvals. | Organizes communications labor. |
-| jicops.activation.workspace | workspace setup | METHOD | Workspace includes phones, internet, monitors, briefing area and shared files. | Makes JIC functional. |
-| jicops.message.objective | message objective | RECORD | Objective states what the public needs to know, do, avoid or expect. | Keeps wording action-focused. |
-| jicops.message.audience | audience segment | RECORD | Audience distinguishes residents, evacuees, media, partners, languages and access needs. | Targets messages. |
-| jicops.message.key_message | key message | METHOD | Key messages use confirmed facts, action steps, uncertainty and next update time. | Reduces confusion. |
-| jicops.message.call_to_action | call to action | SAFETY_RULE | Public safety instructions are specific, feasible and time-bound. | Helps people act. |
-| jicops.clearance.fact_check | fact check | QUALITY_CHECK | Facts are checked with operations, planning, safety or technical source. | Prevents false releases. |
-| jicops.clearance.approval_path | approval path | METHOD | Approval path identifies who clears technical, legal, policy and incident command content. | Speeds safe release. |
-| jicops.clearance.fast_release | fast release | METHOD | Preapproved templates allow urgent warnings with duty officer clearance. | Saves time in danger. |
-| jicops.clearance.version | version record | RECORD | Version records draft, approver, time, channel and changes. | Supports audit. |
-| jicops.channels.press_release | press release | METHOD | Press release gives confirmed facts, quotes, actions and contacts. | Serves media. |
-| jicops.channels.social | social media post | METHOD | Social posts summarize action and link to canonical source. | Reaches fast-moving audiences. |
-| jicops.channels.website | website update | METHOD | Website is canonical location for long-form updates and archives. | Reduces fragmented information. |
-| jicops.channels.alert | emergency alert | SAFETY_RULE | Emergency alerts use official alerting criteria and concise protective action wording. | Avoids alert fatigue. |
-| jicops.media.briefing_schedule | briefing schedule | RECORD | Briefings occur at predictable times with known spokespeople. | Reduces rumor pressure. |
-| jicops.media.spokesperson | spokesperson | RECORD | Spokesperson is briefed on facts, limits and anticipated questions. | Keeps public voice coherent. |
-| jicops.media.qanda | Q&A log | RECORD | Questions and answers are logged for consistency and follow-up. | Prevents mixed responses. |
-| jicops.media.pool | media pool | METHOD | Media pool controls access when scene safety or privacy limits movement. | Balances transparency and safety. |
-| jicops.rumor.monitoring | rumor monitoring | METHOD | Staff monitor social, calls, media and partner reports for misinformation. | Detects harmful narratives. |
-| jicops.rumor.risk_rank | rumor risk rank | MODEL | Rumors are ranked by reach, harm, credibility and action impact. | Prioritizes response. |
-| jicops.rumor.correction | correction message | METHOD | Corrections state what is true, what action to take and official source. | Reduces misinformation. |
-| jicops.rumor.record | rumor record | RECORD | Rumor log stores claim, source, action and outcome. | Supports after-action review. |
-| jicops.translation.priority | translation priority | MODEL | Translation priority uses life safety, affected languages and legal requirements. | Uses language capacity wisely. |
-| jicops.translation.review | translation review | QUALITY_CHECK | Translated messages are checked against source facts and protective actions. | Prevents dangerous drift. |
-| jicops.translation.plain_language | plain language | METHOD | Messages avoid jargon and explain uncertainty simply. | Improves public understanding. |
-| jicops.translation.accessible | accessible format | METHOD | Accessible formats include captions, alt text, large print or audio where feasible. | Supports inclusive alerts. |
-| jicops.partners.partner_sync | partner sync | METHOD | Agencies receive shared talking points and update schedule. | Keeps partners aligned. |
-| jicops.partners.elected_official | elected official update | METHOD | Officials receive approved facts and constituent guidance. | Reduces unofficial messaging. |
-| jicops.partners.call_center | call center script | METHOD | Call centers receive current scripts, FAQs and escalation rules. | Aligns public answers. |
-| jicops.partners.community_org | community organization route | METHOD | Trusted organizations relay messages to hard-to-reach groups. | Expands reach. |
-| jicops.monitoring.media_clip | media clipping | RECORD | Clips capture broadcast, print, online and social coverage. | Shows message spread. |
-| jicops.monitoring.sentiment | sentiment signal | MEASUREMENT | Sentiment signals confusion, fear, anger or misinformation. | Guides future messages. |
-| jicops.monitoring.hotline_topics | hotline topics | MEASUREMENT | Hotline and 311 topics reveal public information gaps. | Improves FAQs. |
-| jicops.monitoring.web_metrics | web metrics | MEASUREMENT | Page views, searches and clicks show information demand. | Guides placement. |
-| jicops.archive.release_archive | release archive | RECORD | Archive stores all released messages by channel and time. | Preserves record. |
-| jicops.archive.approval_archive | approval archive | RECORD | Drafts and approvals are retained for accountability. | Supports investigation. |
-| jicops.archive.photo_video | media asset archive | RECORD | Photos, video and graphics store rights, caption and release status. | Prevents misuse. |
-| jicops.archive.retention | retention rule | CONSTRAINT | Records follow incident, public records and legal hold schedules. | Controls lifecycle. |
-| jicops.staffing.shift_handoff | shift handoff | METHOD | Handoff covers open approvals, rumors, briefings, partner needs and next updates. | Maintains continuity. |
-| jicops.staffing.burnout | staff fatigue | SAFETY_RULE | Communications staff need breaks during high-pressure information surges. | Maintains judgment. |
-| jicops.qa.message_audit | message audit | QUALITY_CHECK | Audit checks accuracy, approvals, accessibility and archive completeness. | Improves reliability. |
-| jicops.demob.stepdown | stepdown | METHOD | JIC demobilizes when demand falls and routine PIO can resume. | Ends surge cleanly. |
+| jicops.activation.trigger | триггер активации | MODEL | JIC активируется, когда потребность в информации об инциденте превышает обычные объемы связи. | Централизует публичные сообщения. |
+| jicops.activation.lead_pio | ведущий СОИ | RECORD | Ведущий сотрудник по общественной информации координирует работу агентств, согласование и периодичность публикации. | Уточняет полномочия. |
+| jicops.activation.roster | Состав JIC | RECORD | В реестре перечислены писатели, наблюдатели, переводчики, сотрудники средств массовой информации и разрешения. | Организует работу связи. |
+| jicops.activation.workspace | настройка рабочего пространства | METHOD | Рабочее пространство включает в себя телефоны, Интернет, мониторы, зону для брифингов и общие файлы. | Делает JIC функциональным. |
+| jicops.message.objective | цель сообщения | RECORD | Цель определяет, что общественность должна знать, делать, избегать или ожидать. | Сохраняет формулировку ориентированной на действие. |
+| jicops.message.audience | сегмент аудитории | RECORD | Аудитория различает жителей, эвакуированных, средства массовой информации, партнеров, языки и потребности в доступе. | Целевые сообщения. |
+| jicops.message.key_message | ключевое сообщение | METHOD | В ключевых сообщениях используются подтвержденные факты, этапы действий, неопределенность и время следующего обновления. | Уменьшает путаницу. |
+| jicops.message.call_to_action | призыв к действию | SAFETY_RULE | Инструкции по обеспечению общественной безопасности являются конкретными, выполнимыми и ограниченными по времени. | Помогает людям действовать. |
+| jicops.clearance.fact_check | проверка фактов | QUALITY_CHECK | Факты проверяются с помощью операций, планирования, безопасности или технических источников. | Предотвращает ложные срабатывания. |
+| jicops.clearance.approval_path | путь утверждения | METHOD | Путь утверждения определяет, кто очищает техническое, юридическое, политическое и инцидентное содержимое. | Ускоряет безопасное освобождение. |
+| jicops.clearance.fast_release | быстрый выпуск | METHOD | Предварительно утвержденные шаблоны позволяют делать срочные предупреждения с разрешения дежурного офицера. | Экономит время в опасности. |
+| jicops.clearance.version | запись версии | RECORD | Версия записывает черновик, утверждающего, время, канал и изменения. | Поддерживает аудит. |
+| jicops.channels.press_release | пресс-релиз | METHOD | В пресс-релизе приводятся подтвержденные факты, цитаты, действия и контакты. | Обслуживает СМИ. |
+| jicops.channels.social | пост в социальных сетях | METHOD | Посты в социальных сетях резюмируют действия и ссылаются на канонический источник. | Охват быстроподвижной аудитории. |
+| jicops.channels.website | обновление сайта | METHOD | Веб-сайт является каноническим местом для хранения полных обновлений и архивов. | Уменьшает фрагментированность информации. |
+| jicops.channels.alert | аварийное оповещение | SAFETY_RULE | В аварийных оповещениях используются официальные критерии оповещения и краткие формулировки защитных мер. | Избегает усталости. |
+| jicops.media.briefing_schedule | график брифингов | RECORD | Брифинги проводятся в предсказуемое время с участием известных представителей. | Снижает давление слухов. |
+| jicops.media.spokesperson | представитель | RECORD | Пресс-секретарь информируется о фактах, ограничениях и ожидаемых вопросах. | Сохраняет связность общественного мнения. |
+| jicops.media.qanda | Журнал вопросов и ответов | RECORD | Вопросы и ответы протоколируются для обеспечения единообразия и последующего контроля. | Предотвращает неоднозначные реакции. |
+| jicops.media.pool | медиа-пул | METHOD | Медиа-пул контролирует доступ, когда безопасность сцены или конфиденциальность ограничивают передвижение. | Баланс прозрачности и безопасности. |
+| jicops.rumor.monitoring | мониторинг слухов | METHOD | Сотрудники отслеживают социальные сети, звонки, сообщения в СМИ и партнеров на предмет дезинформации. | Обнаруживает вредные повествования. |
+| jicops.rumor.risk_rank | рейтинг риска слухов | MODEL | Слухи ранжируются по охвату, вреду, достоверности и воздействию на действия. | Приоритет реагирования. |
+| jicops.rumor.correction | сообщение об исправлении | METHOD | В исправлениях указывается, что является правдой, какие действия следует предпринять, а также указан официальный источник. | Уменьшает дезинформацию. |
+| jicops.rumor.record | запись слухов | RECORD | В журнале слухов хранятся утверждения, источники, действия и результаты. | Поддерживает обзор после действий. |
+| jicops.translation.priority | приоритет перевода | MODEL | В приоритете перевода – безопасность жизнедеятельности, затронутые языки и требования законодательства. | Разумно использует языковой потенциал. |
+| jicops.translation.review | обзор перевода | QUALITY_CHECK | Переведенные сообщения проверяются на соответствие исходным фактам и защитным действиям. | Предотвращает опасный занос. |
+| jicops.translation.plain_language | простой язык | METHOD | Сообщения избегают жаргона и просто объясняют неопределенность. | Улучшает общественное понимание. |
+| jicops.translation.accessible | доступный формат | METHOD | Доступные форматы включают подписи, замещающий текст, крупный шрифт или аудио, где это возможно. | Поддерживает инклюзивные оповещения. |
+| jicops.partners.partner_sync | синхронизация партнеров | METHOD | Агентства получают общие темы для обсуждения и обновляемый график. | Обеспечивает согласованность действий партнеров. |
+| jicops.partners.elected_official | избранное официальное обновление | METHOD | Должностные лица получают утвержденные факты и учредительные указания. | Уменьшает количество неофициальных сообщений. |
+| jicops.partners.call_center | скрипт колл-центра | METHOD | Колл-центры получают текущие сценарии, часто задаваемые вопросы и правила эскалации. | Согласовывает публичные ответы. |
+| jicops.partners.community_org | маршрут общественной организации | METHOD | Доверенные организации передают сообщения труднодоступным группам. | Расширяет охват. |
+| jicops.monitoring.media_clip | медиа-вырезка | RECORD | Клипы охватывают трансляцию, печатные издания, Интернет и социальные сети. | Показывает распространение сообщений. |
+| jicops.monitoring.sentiment | сигнал настроений | MEASUREMENT | Настроения сигнализируют о замешательстве, страхе, гневе или дезинформации. | Направляет будущие сообщения. |
+| jicops.monitoring.hotline_topics | темы горячей линии | MEASUREMENT | Горячая линия и 311 тем выявляют пробелы в общественной информации. | Улучшает часто задаваемые вопросы. |
+| jicops.monitoring.web_metrics | веб-метрики | MEASUREMENT | Просмотры страниц, поисковые запросы и клики показывают спрос на информацию. | Размещение направляющих. |
+| jicops.archive.release_archive | архив релизов | RECORD | В архиве хранятся все выпущенные сообщения по каналу и времени. | Сохраняет запись. |
+| jicops.archive.approval_archive | архив утверждений | RECORD | Черновики и согласования сохраняются для подотчетности. | Поддерживает расследование. |
+| jicops.archive.photo_video | архив медиа-активов | RECORD | Фотографии, видео и графика сохраняют права, подпись и статус выпуска. | Предотвращает неправильное использование. |
+| jicops.archive.retention | правило хранения | CONSTRAINT | Записи следуют за инцидентами, публичными записями и графиками юридического хранения. | Управляет жизненным циклом. |
+| jicops.staffing.shift_handoff | передача смены | METHOD | Передача охватывает открытые утверждения, слухи, брифинги, потребности партнеров и следующие обновления. | Сохраняет преемственность. |
+| jicops.staffing.burnout | усталость персонала | SAFETY_RULE | Персоналу связи нужны перерывы во время информационных всплесков. | Сохраняет суждение. |
+| jicops.qa.message_audit | аудит сообщений | QUALITY_CHECK | Аудит проверяет точность, одобрение, доступность и полноту архива. | Повышает надежность. |
+| jicops.demob.stepdown | отставка | METHOD | JIC демобилизуется, когда спрос падает и рутинная работа PIO может возобновиться. | Концы растут чисто. |

@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| fitclub.member.membership_sale | Fitness membership sale | invariant | Sale records plan, term, price, start date, agreement, billing and access rules. | start account |
-| fitclub.member.member_profile | Fitness member profile | invariant | Profile stores identity, contact, emergency contact, access level and preferences. | know member |
-| fitclub.member.waiver_ack | Fitness waiver acknowledgment | invariant | Acknowledgment records risk, conduct, facility rule and health disclosure acceptance. | permission evidence |
-| fitclub.member.freeze_request | Membership freeze request | variant | Request pauses billing or access for approved reason and period. | account flexibility |
-| fitclub.member.cancel_request | Fitness cancellation request | invariant | Request records notice date, reason, final billing, access end and confirmation. | clean exit |
-| fitclub.access.checkin | Fitness club check-in | invariant | Check-in verifies active membership, day pass, guest, class booking or alert. | entry control |
-| fitclub.access.guest_pass | Fitness guest pass | variant | Pass records visitor, sponsor, waiver, fee, access limits and expiration. | controlled trial |
-| fitclub.access.door_access | Fitness door access | invariant | Access controls entrance, locker area, after-hours and staff-only spaces. | security |
-| fitclub.access.tailgating | Fitness tailgating event | invariant | Event flags unauthorized entry behind another member and needs staff response. | revenue and safety |
-| fitclub.access.age_restriction | Fitness age restriction | invariant | Restriction limits equipment, areas, hours or supervision by age policy. | youth safety |
-| fitclub.floor.equipment_layout | Fitness floor layout | invariant | Layout places cardio, strength, stretching and circulation for safe use and supervision. | usable space |
-| fitclub.floor.equipment_orientation | Equipment orientation | variant | Orientation explains basic safe use, adjustment, cleaning and staff help path. | reduce misuse |
-| fitclub.floor.floor_walk | Fitness floor walk | invariant | Walk checks equipment, weights, spills, towels, crowding, behavior and hazards. | active oversight |
-| fitclub.floor.weight_restack | Weight restack | invariant | Restack returns plates, dumbbells, bars and accessories to designated locations. | order and safety |
-| fitclub.floor.equipment_outage | Fitness equipment outage | invariant | Outage tags broken equipment, logs fault, blocks use and schedules repair. | prevent injury |
-| fitclub.class.class_schedule | Fitness class schedule | invariant | Schedule assigns class type, room, instructor, capacity, equipment and booking rule. | organize classes |
-| fitclub.class.class_checkin | Fitness class check-in | invariant | Check-in verifies booking, waitlist, capacity and attendance. | room control |
-| fitclub.class.waitlist | Fitness class waitlist | variant | Waitlist fills canceled spots and manages demand for popular sessions. | fair access |
-| fitclub.class.instructor_sub | Instructor substitution | invariant | Substitution replaces absent instructor, updates class notes and informs members. | continuity |
-| fitclub.class.room_turnover | Studio room turnover | invariant | Turnover resets equipment, floor, mirrors, sound and ventilation between classes. | ready room |
-| fitclub.training.pt_consult | Personal training consultation | variant | Consult records goals, limitations, package, trainer match and scheduling preference. | start coaching |
-| fitclub.training.package_sale | Personal training package sale | variant | Sale tracks sessions, price, expiration, trainer, cancellation and refund rules. | service revenue |
-| fitclub.training.session_note | Training session note | invariant | Note records attendance, focus, exercises, response, next plan and incidents. | coaching memory |
-| fitclub.training.trainer_credential | Trainer credential record | invariant | Record tracks certification, specialty, insurance if needed, CPR/AED and expiry. | qualified staff |
-| fitclub.training.session_no_show | Training session no-show | invariant | No-show record applies package policy, notice, trainer time and follow-up. | protect time |
-| fitclub.cleaning.equipment_wipe | Equipment wipe routine | invariant | Routine cleans high-touch surfaces, pads, handles, screens and mats. | hygiene |
-| fitclub.cleaning.locker_room_round | Locker room round | invariant | Round checks showers, toilets, lockers, towels, supplies, floors and privacy concerns. | member comfort |
-| fitclub.cleaning.towel_service | Fitness towel service | variant | Service manages clean towels, soiled bins, laundry, shortage and misuse. | amenity control |
-| fitclub.cleaning.sweat_spill | Sweat or spill response | invariant | Response cleans liquid, marks hazard and prevents slips. | floor safety |
-| fitclub.cleaning.sanitation_log | Fitness sanitation log | invariant | Log records cleaning rounds, staff, area, time and exceptions. | proof of care |
-| fitclub.safety.incident_report | Fitness incident report | invariant | Report documents injury, illness, conflict, equipment issue, theft or privacy concern. | formal record |
-| fitclub.safety.aed_check | Fitness AED check | invariant | Check verifies device, pads, battery, location and inspection date. | emergency readiness |
-| fitclub.safety.emergency_action_plan | Fitness emergency action plan | invariant | Plan defines staff roles, EMS call, crowd control, documentation and handoff. | respond fast |
-| fitclub.safety.behavior_policy | Fitness behavior policy | invariant | Policy manages harassment, filming, dropping weights, unsafe lifting, intoxication or aggression. | shared norms |
-| fitclub.safety.child_area | Child or family area control | variant | Control covers supervised zones, pickup, age limits, toys, ratios and incidents. | family safety |
-| fitclub.retail.pro_shop_sale | Fitness pro shop sale | variant | Sale handles supplements, apparel, locks, bottles, accessories and returns. | extra revenue |
-| fitclub.retail.locker_rental | Locker rental | variant | Rental controls assigned locker, term, fee, lock, contents and abandoned items. | storage service |
-| fitclub.billing.failed_payment | Fitness failed payment | invariant | Failure triggers retry, notice, access review, collections or cancellation path. | revenue control |
-| fitclub.billing.refund_request | Fitness refund request | invariant | Request records reason, policy, approval, payment method and credit. | financial control |
-| fitclub.billing.corporate_plan | Corporate fitness plan | variant | Plan links employer, eligible members, discounts, invoicing and reporting. | group account |
-| fitclub.admin.opening_round | Fitness club opening round | invariant | Round checks access, equipment, locker rooms, cleaning, cash, classes and staffing. | start day |
-| fitclub.admin.closing_round | Fitness club closing round | invariant | Round clears members, secures cash, locks areas, logs issues and resets equipment. | end day |
-| fitclub.metrics.fitness_kpi | Fitness club KPI | variant | KPI tracks joins, cancels, utilization, class fill, PT sales, incidents and maintenance backlog. | manage club |
-| fitclub.continuity.power_outage | Fitness power outage plan | invariant | Plan handles lighting, access, equipment shutdown, member notice and reopening. | safe disruption |
+| fitclub.member.membership_sale | Распродажа фитнес-абонентов | invariant | План продаж записывает, срок, цену, дату начала, соглашение, правила выставления счетов и доступа. | открыть аккаунт |
+| fitclub.member.member_profile | Профиль фитнес-участника | invariant | В профиле хранятся данные о личности, контактах, экстренных контактах, уровне доступа и предпочтениях. | знаю члена |
+| fitclub.member.waiver_ack | Подтверждение отказа от фитнеса | invariant | В подтверждении фиксируются риски, поведение, правила учреждения и согласие на раскрытие информации о состоянии здоровья. | свидетельство о разрешении |
+| fitclub.member.freeze_request | Запрос на заморозку членства | variant | Запрос приостанавливает выставление счетов или доступ по утвержденной причине и на определенный период. | гибкость аккаунта |
+| fitclub.member.cancel_request | Запрос на отмену фитнеса | invariant | Запрос записывает дату уведомления, причину, окончательный счет, прекращение доступа и подтверждение. | чистый выход |
+| fitclub.access.checkin | Регистрация в фитнес-клубе | invariant | Регистрация подтверждает активное членство, дневной пропуск, гостя, бронирование занятий или оповещение. | входной контроль |
+| fitclub.access.guest_pass | Гостевой билет на фитнес | variant | Пропуск записывает посетителя, спонсора, отказ, плату, ограничения доступа и срок действия. | контролируемое исследование |
+| fitclub.access.door_access | Доступ к двери фитнес-центра | invariant | Контроль доступа: вход, раздевалки, помещения в нерабочее время и помещения только для персонала. | безопасность |
+| fitclub.access.tailgating | Фитнес-мероприятие | invariant | Событие отмечает несанкционированное проникновение за другим участником и требует реакции персонала. | доход и безопасность |
+| fitclub.access.age_restriction | Ограничение по возрасту для фитнеса | invariant | Ограничения ограничивают оборудование, площади, часы или контроль в соответствии с возрастной политикой. | безопасность молодежи |
+| fitclub.floor.equipment_layout | Планировка фитнес-зала | invariant | Расположение мест для кардио, силовых тренировок, растяжки и кровообращения обеспечивает безопасное использование и контроль. | полезная площадь |
+| fitclub.floor.equipment_orientation | Ориентация оборудования | variant | В курсе объясняются основы безопасного использования, настройки, очистки и порядок оказания помощи персоналу. | уменьшить неправильное использование |
+| fitclub.floor.floor_walk | Прогулка по фитнес-полу | invariant | Прогулка проверяет оборудование, вес, утечки, полотенца, скопление людей, поведение и опасности. | активный надзор |
+| fitclub.floor.weight_restack | Пересчёт веса | invariant | Restack возвращает блины, гантели, штанги и аксессуары в назначенные места. | порядок и безопасность |
+| fitclub.floor.equipment_outage | Отключение фитнес-оборудования | invariant | Отключение отмечает неисправное оборудование, регистрирует неисправности, использование блоков и составляет график ремонта. | предотвратить травмы |
+| fitclub.class.class_schedule | График занятий фитнесом | invariant | Расписание определяет тип класса, комнату, инструктора, вместимость, оборудование и правила бронирования. | организовывать занятия |
+| fitclub.class.class_checkin | Регистрация на занятия фитнесом | invariant | При регистрации проверяется бронирование, список ожидания, вместимость и посещаемость. | контроль помещения |
+| fitclub.class.waitlist | Список ожидания на занятия фитнесом | variant | Список ожидания заполняет отмененные места и управляет спросом на популярные сеансы. | справедливый доступ |
+| fitclub.class.instructor_sub | Замена инструктора | invariant | Замена заменяет отсутствующего инструктора, обновляет записи занятий и информирует участников. | преемственность |
+| fitclub.class.room_turnover | Оборот студии | invariant | При обороте сбрасывается оборудование, пол, зеркала, звук и вентиляция между занятиями. | готовая комната |
+| fitclub.training.pt_consult | Персональная консультация по обучению | variant | Консультация записывает цели, ограничения, пакет, соответствие тренера и предпочтения в расписании. | начать тренировать |
+| fitclub.training.package_sale | Распродажа пакетов персональных тренировок | variant | Распродажа отслеживает сеансы, цену, срок действия, тренера, правила отмены и возврата средств. | доход от услуг |
+| fitclub.training.session_note | Примечание о тренировке | invariant | Записывайте записи посещаемости, фокуса, упражнений, реагирования, следующего плана и инцидентов. | тренерская память |
+| fitclub.training.trainer_credential | Квалификационная запись тренера | invariant | Запишите информацию о сертификации, специальности, страховке, если необходимо, CPR/AED и сроке действия. | квалифицированный персонал |
+| fitclub.training.session_no_show | Неявка на тренировку | invariant | Запись о неявке распространяется на политику пакета, уведомление, время тренера и последующие действия. | беречь время |
+| fitclub.cleaning.equipment_wipe | Процедура очистки оборудования | invariant | Регулярная очистка поверхностей, к которым часто прикасаются, подушек, ручек, экранов и ковриков. | гигиена |
+| fitclub.cleaning.locker_room_round | Раздевалка круглая | invariant | Круговая проверка душевых, туалетов, шкафчиков, полотенец, расходных материалов, полов и соблюдения конфиденциальности. | комфорт члена |
+| fitclub.cleaning.towel_service | Сервис полотенец для фитнеса | variant | Служба контролирует чистые полотенца, грязные мусорные ведра, стирку, нехватку и неправильное использование. | контроль удобств |
+| fitclub.cleaning.sweat_spill | Реакция на пот или разлив | invariant | Response очищает жидкость, отмечает опасность и предотвращает скольжение. | безопасность пола |
+| fitclub.cleaning.sanitation_log | Санитарный журнал фитнеса | invariant | В журнале фиксируются циклы уборки, персонал, территория, время и исключения. | доказательство ухода |
+| fitclub.safety.incident_report | Отчет о фитнес-инциденте | invariant | Сообщайте о травмах, заболеваниях, конфликтах, проблемах с оборудованием, краже или угрозах конфиденциальности. | официальная запись |
+| fitclub.safety.aed_check | Фитнес-проверка AED | invariant | При проверке проверяется устройство, колодки, аккумулятор, местоположение и дата проверки. | аварийная готовность |
+| fitclub.safety.emergency_action_plan | План действий в чрезвычайных ситуациях в фитнесе | invariant | План определяет роли персонала, вызов скорой помощи, контроль толпы, документацию и передачу обслуживания. | реагировать быстро |
+| fitclub.safety.behavior_policy | Политика фитнес-поведения | invariant | Политика регулирует преследование, съемку на видео, падение тяжестей, небезопасный подъем, отравление или агрессию. | общие нормы |
+| fitclub.safety.child_area | Контроль детской или семейной зоны | variant | Контроль охватывает контролируемые зоны, вывоз, возрастные ограничения, игрушки, рационы и инциденты. | семейная безопасность |
+| fitclub.retail.pro_shop_sale | Распродажа в магазине фитнес-профи | variant | Распродажа занимается добавками, одеждой, замками, бутылками, аксессуарами и возвратами. | дополнительный доход |
+| fitclub.retail.locker_rental | Аренда шкафчика | variant | Прокат контролирует назначенный шкафчик, срок, плату, замок, содержимое и оставленные предметы. | услуги хранения |
+| fitclub.billing.failed_payment | Фитнес не смог оплатить | invariant | Сбой вызывает повторную попытку, уведомление, проверку доступа, сбор или отмену. | контроль доходов |
+| fitclub.billing.refund_request | Запрос на возврат средств за фитнес | invariant | Запрос записывает причину, политику, одобрение, способ оплаты и кредит. | финансовый контроль |
+| fitclub.billing.corporate_plan | Корпоративный фитнес-план | variant | План связывает работодателя, соответствующих участников, скидки, выставление счетов и отчетность. | групповой аккаунт |
+| fitclub.admin.opening_round | Открытие фитнес-клуба | invariant | Круглые проверки доступа, оборудования, раздевалок, уборки, наличных денег, занятий и персонала. | день начала |
+| fitclub.admin.closing_round | Закрытие фитнес-клуба | invariant | Раунд очищает участников, обеспечивает безопасность денежных средств, блокирует зоны, регистрирует проблемы и сбрасывает оборудование. | Конечный день |
+| fitclub.metrics.fitness_kpi | Фитнес-клуб КПИ | variant | KPI отслеживает присоединения, отмены, использование, заполнение классов, продажи PT, инциденты и отставание в обслуживании. | управлять клубом |
+| fitclub.continuity.power_outage | План отключения электроэнергии в фитнес-центре | invariant | План регулирует освещение, доступ, отключение оборудования, уведомление участников и повторное открытие. | безопасное нарушение |

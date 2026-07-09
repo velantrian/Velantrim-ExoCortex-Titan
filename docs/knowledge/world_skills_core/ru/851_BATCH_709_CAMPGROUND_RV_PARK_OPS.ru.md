@@ -1,0 +1,13 @@
+# BATCH 709: Campground — RV Park Operations
+
+**KnowledgeUnits:** 5
+**Namespace:** `campground.ops.*`
+**Scope:** site_layout, hookup, dump_station, reservation, fire_ring, picnic, bathhouse, seasonal
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| campground.ops.rv_site_hookup_pedestal | Подключение автофургона — установка на пьедестал | METHOD | Установка pedestal (электро-водо-канализация) для RV. Power: 50A (14-50R), 30A (TT-30R), 20A УЗО (УЗО (GFCI)) duplex. Water: frost-free hydrant (ниже frost line). Sewer: 4" PVC с threaded cap. Расстояние: pedestal на задне-левой стороне site (стандарт). Высота: 60-90 см над ground. Pad: gravel или concrete (ровный). Level: site должен быть level в пределах 3-5 см (RV levelling). | Электричество до water: во избежание electrocution. |
+| campground.ops.dump_station_sanitation | Свалка — Санитария | METHOD | Станция слива для хранения цистерн RV. Бетонная площадка с дренажем. Шланг для воды: непитьевой (промывной). Знак: «Только питьевая вода» или «Непитьевая вода». Порядок: 1) Черная вода (туалет), 2) Серая вода (душ/раковина). Смыв шланг после использования. Слив в септическую/канализационную систему. Санитария: спрей с отбеливателем, ножной водяной клапан. | Не используйте шланг для питьевой воды для промывки канализации! |
+| campground.ops.fire_ring_safety_clearance | Огненное Кольцо — Зазор | METHOD | Установка кострового кольца. Материал: steel (3-5 мм), на ножках или врыто в землю. Clearance: 3-5 м от тентов/RV, от деревьев (overhead branches). Base: gravel pad. Fire grate (решётка для cooking). Правила: burn bans (по сезону), только purchased firewood (не местное — invasive pests). Тушение: полное (вода + stir). Запах: дым не должен идти в соседние sites (wind direction). | Лесные пожары часто из-за костров. |
+| campground.ops.bathhouse_fixture_count | Баня — Количество светильников | METHOD | Расчёт количества сантехники. По building code (IPC): toilets (1 на 20 women + 1 на 10 men), urinals и lavatories. Hot water: tank или tankless, достаточная capacity для пика (утро). Ventilation: exhaust fan. Уборка: ежедневно (minimum). Комфорт: heated (север), privacy partitions. Освещение: от сумерек до рассвета. | Переполненный bathhouse: жалобы. |
+| campground.ops.reservation_grid_system | Резервирование — Карта сетки | METHOD | Управление бронированиями. Карта: grid каждого site с цветовым кодом (свободен/занят/техобслуживание). Reservation software: Campspot, ResNexus, RoverPass. Site lock: назначенное место (по размеру RV, shade preference). Minimum stay: 2-3 ночи для выходных/праздников. Check-in: 14:00, Check-out: 11:00. Quiet hours: 22:00-07:00. Депозит: 1 ночь (non-refundable cancellation). Wait list. | Overbooking: недопустимо. |

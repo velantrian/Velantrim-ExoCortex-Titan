@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| elevatorops.inventory.unit_record | Elevator unit record | invariant | Record stores device ID, address, type, capacity, speed, owner and contractor. | asset registry |
-| elevatorops.inventory.device_type | Elevator device type | invariant | Type identifies passenger, freight, escalator, platform lift, dumbwaiter or moving walk. | apply rules |
-| elevatorops.inventory.status | Elevator status | invariant | Status tracks active, inactive, removed, under construction, violation, outage or certified. | program visibility |
-| elevatorops.inventory.owner_contact | Elevator owner contact | invariant | Contact stores owner, manager, billing, emergency and contractor information. | communication |
-| elevatorops.schedule.periodic_cycle | Elevator periodic inspection cycle | invariant | Cycle sets inspection frequency by device type, age, use, risk and rule. | plan inspections |
-| elevatorops.schedule.test_due | Elevator test due date | invariant | Due date tracks annual, periodic, category, load, safety or acceptance tests. | avoid overdue |
-| elevatorops.schedule.inspector_assignment | Elevator inspector assignment | invariant | Assignment links inspector, device, test type, route, access and due date. | organize work |
-| elevatorops.schedule.contractor_coordination | Elevator contractor coordination | variant | Coordination schedules mechanic, keys, machine room, test weights and shutdown. | inspect safely |
-| elevatorops.schedule.no_access | Elevator inspection no-access | invariant | Record captures locked room, no contractor, tenant issue, unsafe access or cancellation. | reschedule evidence |
-| elevatorops.field.site_arrival | Elevator inspection site arrival | invariant | Arrival records device, address, contact, access, contractor, time and safety. | start visit |
-| elevatorops.field.machine_room | Elevator machine room check | invariant | Check reviews access, lighting, storage, ventilation, labels, disconnects and housekeeping. | safe equipment room |
-| elevatorops.field.pit_check | Elevator pit check | invariant | Check reviews ladder, lighting, water, debris, stop switch, clearance and hazards. | pit safety |
-| elevatorops.field.car_check | Elevator car check | invariant | Check reviews doors, lighting, communication, capacity plate, controls and ride quality. | passenger safety |
-| elevatorops.field.hoistway_check | Elevator hoistway check | invariant | Check reviews doors, locks, clearances, equipment, obstructions and condition. | shaft safety |
-| elevatorops.test.safety_test | Elevator safety test | invariant | Test verifies safeties, governor, brake, buffers, limits or other required protections. | prevent failure |
-| elevatorops.test.door_reversal | Elevator door reversal test | invariant | Test checks reopening device, force, timing, sensors and door operation. | prevent entrapment |
-| elevatorops.test.emergency_phone | Elevator emergency communication test | invariant | Test verifies phone or communication device reaches monitored assistance with location. | trapped passenger aid |
-| elevatorops.test.fire_service | Elevator fire service test | variant | Test checks recall, firefighter operation, indicators, keys and smoke control interface. | fire response |
-| elevatorops.test.load_test | Elevator load test | variant | Test uses approved weight or method with contractor, safety zones and documentation. | verify capacity |
-| elevatorops.violation.violation_code | Elevator violation code | invariant | Code links observed deficiency to rule, severity, deadline and required correction. | consistent enforcement |
-| elevatorops.violation.immediate_hazard | Elevator immediate hazard | invariant | Hazard requires shutdown, barricade, lockout, emergency repair or restricted use. | prevent injury |
-| elevatorops.violation.repeat_defect | Elevator repeat defect | variant | Defect repeats prior violation and may escalate enforcement or inspection frequency. | address pattern |
-| elevatorops.order.shutdown_order | Elevator shutdown order | invariant | Order removes device from service and states conditions for return. | control unsafe device |
-| elevatorops.order.correction_notice | Elevator correction notice | invariant | Notice lists defects, rule references, deadlines, owner duty and reinspection process. | guide correction |
-| elevatorops.certificate.certificate_issue | Elevator certificate issue | invariant | Certificate records device, inspection, expiration, conditions and posting requirement. | authorize operation |
-| elevatorops.certificate.expired_certificate | Expired elevator certificate | invariant | Record flags operation beyond certificate date and triggers notice or enforcement. | compliance |
-| elevatorops.certificate.temporary_certificate | Temporary elevator certificate | variant | Certificate allows limited operation with conditions, deadline and pending correction. | controlled use |
-| elevatorops.outage.outage_report | Elevator outage report | variant | Report captures device down, reason, trapped passenger, repair ETA and accessibility impact. | service awareness |
-| elevatorops.outage.entrapment_response | Elevator entrapment response | invariant | Response coordinates emergency contact, contractor, fire service, documentation and follow-up. | trapped passenger safety |
-| elevatorops.outage.accessibility_impact | Elevator accessibility impact | invariant | Impact record notes affected floors, alternative route, notification and duration. | protect access |
-| elevatorops.records.inspection_report | Elevator inspection report | invariant | Report documents device, tests, findings, violations, photos, contractor and result. | official record |
-| elevatorops.records.test_document | Elevator test document | invariant | Document stores contractor test forms, readings, weights, signatures and deficiencies. | proof |
-| elevatorops.records.photo_log | Elevator inspection photo log | variant | Log links images to defect, location, device, date and inspector. | evidence |
-| elevatorops.records.case_file | Elevator program case file | invariant | File stores inventory, reports, certificates, violations, orders, correspondence and closure. | device memory |
-| elevatorops.billing.fee_assessment | Elevator inspection fee assessment | variant | Assessment records permit, inspection, certificate, reinspection or penalty fee. | program finance |
-| elevatorops.billing.invoice_status | Elevator inspection invoice status | variant | Status tracks billed, paid, overdue, waived, disputed or refunded fees. | financial control |
-| elevatorops.contractor.contractor_license | Elevator contractor license check | invariant | Check verifies contractor, mechanic credential, insurance and authorization status. | qualified work |
-| elevatorops.contractor.repair_confirmation | Elevator repair confirmation | invariant | Confirmation records corrected item, contractor, date, parts, test and proof. | close violation |
-| elevatorops.quality.supervisor_review | Elevator inspection supervisor review | invariant | Review checks shutdowns, violations, certificates, tests, fees and contested findings. | consistency |
-| elevatorops.reporting.overdue_report | Elevator overdue inspection report | invariant | Report lists overdue inspections, tests, certificates, violations and owners. | manage backlog |
-| elevatorops.metrics.elevator_kpi | Elevator inspection KPI | variant | KPI tracks overdue rate, shutdowns, violations, entrapments, certificates and reinspection pass rate. | manage program |
-| elevatorops.continuity.inspector_shortage | Elevator inspector shortage plan | variant | Plan prioritizes high-risk devices, overdue certificates, complaints and contractor tests. | keep coverage |
-| elevatorops.continuity.system_outage | Elevator program system outage | invariant | Outage uses paper reports, manual certificates, phone scheduling and later entry. | maintain program |
-| elevatorops.close.case_closure | Elevator inspection case closure | invariant | Closure records certificate issued, violation corrected, device removed or enforcement complete. | end cycle |
+| elevatorops.inventory.unit_record | Запись лифтовой установки | invariant | Запись хранит идентификатор устройства, адрес, тип, емкость, скорость, владельца и подрядчика. | реестр активов |
+| elevatorops.inventory.device_type | Тип устройства лифта | invariant | Тип идентифицирует пассажирский, грузовой, эскалатор, подъемник-платформу, кухонный лифт или движущуюся дорожку. | применять правила |
+| elevatorops.inventory.status | Статус лифта | invariant | Статус отслеживает активный, неактивный, удаленный, в разработке, нарушение, сбой или сертифицированный. | видимость программы |
+| elevatorops.inventory.owner_contact | Контакт владельца лифта | invariant | Свяжитесь с владельцем магазина, менеджером, информацией о выставлении счетов, чрезвычайной ситуации и подрядчике. | коммуникация |
+| elevatorops.schedule.periodic_cycle | Цикл периодического осмотра лифта | invariant | Cycle устанавливает частоту проверок в зависимости от типа устройства, возраста, использования, риска и правила. | планировать проверки |
+| elevatorops.schedule.test_due | Срок проведения испытания лифта | invariant | Срок выполнения отслеживает ежегодные, периодические испытания, испытания категории, нагрузки, безопасности или приемочные испытания. | избегать просроченных |
+| elevatorops.schedule.inspector_assignment | Должность инспектора по лифтам | invariant | Назначение связывает инспектора, устройство, тип теста, маршрут, доступ и срок выполнения. | организовать работу |
+| elevatorops.schedule.contractor_coordination | Координация подрядчика по лифтам | variant | Согласование графиков механика, ключей, машинного помещения, испытаний весов и останова. | безопасно проверять |
+| elevatorops.schedule.no_access | Осмотр лифта, доступ запрещен | invariant | Запись фиксирует запертую комнату, отсутствие подрядчика, проблемы с арендатором, небезопасный доступ или отмену. | перенести доказательства |
+| elevatorops.field.site_arrival | Прибытие на место осмотра лифта | invariant | Прибытие записывает устройство, адрес, контакт, доступ, подрядчика, время и безопасность. | начать посещение |
+| elevatorops.field.machine_room | Проверка машинного помещения лифта | invariant | Проверьте доступ, освещение, хранение, вентиляцию, маркировку, отключения и уборку. | безопасная аппаратная комната |
+| elevatorops.field.pit_check | Проверка лифтовой ямы | invariant | Проверьте обзор лестницы, освещения, воды, мусора, выключателя, свободного пространства и опасностей. | безопасность ямы |
+| elevatorops.field.car_check | Проверка кабины лифта | invariant | Проверьте отзывы о дверях, светотехнике, коммуникации, мощности таблички, управлении и ходовых качествах. | безопасность пассажиров |
+| elevatorops.field.hoistway_check | Проверка шахты лифта | invariant | Проверьте двери, замки, зазоры, оборудование, препятствия и состояние. | безопасность вала |
+| elevatorops.test.safety_test | Проверка безопасности лифта | invariant | Испытания проверяют средства безопасности, регулятор, тормоз, буферы, пределы или другие необходимые средства защиты. | предотвратить неудачу |
+| elevatorops.test.door_reversal | Тест реверса двери лифта | invariant | При тестировании проверяется устройство повторного открытия, сила, время, датчики и работа двери. | предотвратить попадание в ловушку |
+| elevatorops.test.emergency_phone | Проверка аварийной связи лифта | invariant | Тест подтверждает, что телефон или устройство связи достигает контролируемой помощи с определением местоположения. | помощь застрявшему пассажиру |
+| elevatorops.test.fire_service | Проверка пожарной службы лифта | variant | Тестовые проверки отзыва, работы пожарных, индикаторов, клавиш и интерфейса дымоудаления. | реагирование на пожар |
+| elevatorops.test.load_test | Нагрузочное испытание лифта | variant | При тестировании используются утвержденные вес или метод с подрядчиком, зонами безопасности и документацией. | проверить емкость |
+| elevatorops.violation.violation_code | Код нарушения в лифте | invariant | В ссылках кода наблюдаются несоответствия правилам, серьезности, срокам и необходимым исправлениям. | последовательное правоприменение |
+| elevatorops.violation.immediate_hazard | Непосредственная опасность лифта | invariant | Опасность требует отключения, баррикады, блокировки, аварийного ремонта или ограничения использования. | предотвратить травмы |
+| elevatorops.violation.repeat_defect | Повторный дефект лифта | variant | Дефект повторяет предыдущее нарушение и может привести к увеличению частоты проверок или проверок. | шаблон адреса |
+| elevatorops.order.shutdown_order | Порядок отключения лифта | invariant | В заказе устройство выводится из эксплуатации и указываются условия возврата. | управлять небезопасным устройством |
+| elevatorops.order.correction_notice | Уведомление об исправлении лифта | invariant | В уведомлении перечислены дефекты, ссылки на правила, сроки, обязанности владельца и процесс повторной проверки. | коррекция направляющей |
+| elevatorops.certificate.certificate_issue | Выдача сертификата на лифт | invariant | В сертификате записано устройство, проверка, срок действия, условия и требования к публикации. | разрешить операцию |
+| elevatorops.certificate.expired_certificate | Сертификат лифта с истекшим сроком действия | invariant | Запись помечает операцию после даты сертификата и вызывает уведомление или принудительное исполнение. | согласие |
+| elevatorops.certificate.temporary_certificate | Временное удостоверение на лифт | variant | Сертификат разрешает ограниченную работу с условиями, сроками и ожидающими исправлениями. | контролируемое использование |
+| elevatorops.outage.outage_report | Отчет об отключении лифта | variant | В отчете указывается неисправность устройства, причина, застрявший пассажир, расчетное время ремонта и влияние доступности. | осведомленность об услугах |
+| elevatorops.outage.entrapment_response | Реакция на защемление лифта | invariant | Служба реагирования координирует контакты в случае чрезвычайной ситуации, подрядчика, пожарную службу, документацию и последующие действия. | безопасность пассажиров в ловушке |
+| elevatorops.outage.accessibility_impact | Влияние доступности лифта | invariant | Записи о воздействии затронули этажи, альтернативный маршрут, уведомление и продолжительность. | защитить доступ |
+| elevatorops.records.inspection_report | Отчет о проверке лифта | invariant | Отчетные документы об устройстве, испытаниях, выводах, нарушениях, фотографиях, исполнителе и результате. | официальный отчет |
+| elevatorops.records.test_document | Документ об испытаниях лифта | invariant | В документе хранятся формы испытаний подрядчика, показания, веса, подписи и недостатки. | доказательство |
+| elevatorops.records.photo_log | Фотожурнал осмотра лифта | variant | Журнал связывает изображения с дефектом, местоположением, устройством, датой и инспектором. | доказательство |
+| elevatorops.records.case_file | Дело о программе лифта | invariant | В файле хранятся описи, отчеты, справки, нарушения, приказы, переписка и закрытия. | память устройства |
+| elevatorops.billing.fee_assessment | Оценка стоимости осмотра лифта | variant | Записи об оценке позволяют получить разрешение, проверку, сертификат, повторную проверку или штраф. | Программное финансирование |
+| elevatorops.billing.invoice_status | Статус счета за осмотр лифта | variant | Статус отслеживает выставленные счета, оплаченные, просроченные, отмененные, оспоренные или возвращенные сборы. | финансовый контроль |
+| elevatorops.contractor.contractor_license | Проверка лицензии подрядчика по лифтам | invariant | Проверка проверяет подрядчика, полномочия механика, статус страхования и авторизации. | квалифицированная работа |
+| elevatorops.contractor.repair_confirmation | Подтверждение ремонта лифта | invariant | В подтверждении указывается исправленная позиция, подрядчик, дата, детали, испытания и доказательства. | серьезное нарушение |
+| elevatorops.quality.supervisor_review | Отзыв руководителя инспекции лифтов | invariant | Просмотрите проверки отключений, нарушений, сертификатов, тестов, сборов и оспариваемых результатов. | последовательность |
+| elevatorops.reporting.overdue_report | Отчет о просроченной проверке лифта | invariant | В отчете перечислены просроченные проверки, испытания, сертификаты, нарушения и владельцы. | управлять отставанием |
+| elevatorops.metrics.elevator_kpi | Проверка лифтов KPI | variant | KPI отслеживает уровень просрочек, остановок, нарушений, провокаций, сертификатов и количества повторных проверок. | управлять программой |
+| elevatorops.continuity.inspector_shortage | План нехватки инспектора по лифтам | variant | План уделяет приоритетное внимание устройствам высокого риска, просроченным сертификатам, жалобам и тестам подрядчиков. | поддерживать освещение |
+| elevatorops.continuity.system_outage | Отказ системы программы лифта | invariant | В Outage используются бумажные отчеты, ручные сертификаты, планирование по телефону и последующий ввод данных. | поддерживать программу |
+| elevatorops.close.case_closure | Закрытие дела о проверке лифта | invariant | Выдан сертификат о закрытии записей, нарушение исправлено, устройство удалено или принудительное исполнение завершено. | конец цикла |

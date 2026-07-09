@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| appdeliv.order.delivery_order | Appliance delivery order | invariant | Order records customer, address, appliance, service level, time window, payment and contacts. | start delivery |
-| appdeliv.order.sku_match | Appliance SKU match | invariant | Match verifies ordered SKU, color, size, accessories and serial before loadout. | avoid wrong item |
-| appdeliv.order.install_scope | Installation scope | invariant | Scope defines delivery only, basic hookup, haul-away, door reversal or accessory install. | know allowed work |
-| appdeliv.order.site_notes | Delivery site notes | invariant | Notes cover stairs, elevator, parking, gate, floor, pets, access and customer constraints. | plan route |
-| appdeliv.order.customer_confirmation | Delivery customer confirmation | invariant | Confirmation verifies time window, address, readiness, old appliance and required adult presence. | reduce failed stop |
-| appdeliv.route.route_manifest | Appliance route manifest | invariant | Manifest lists stops, items, services, sequence, crew, truck and proof requirements. | route plan |
-| appdeliv.route.truck_capacity | Appliance truck capacity | invariant | Capacity checks cube, weight, straps, liftgate and appliance protection. | safe load |
-| appdeliv.route.stop_sequence | Appliance stop sequence | variant | Sequence balances promised windows, geography, load order and install complexity. | efficient day |
-| appdeliv.route.delay_notice | Appliance delivery delay notice | invariant | Notice informs customer about traffic, warehouse, weather, access or installation delay. | expectation control |
-| appdeliv.route.failed_stop | Failed delivery stop | invariant | Stop fails due to no access, unsafe path, not home, wrong address or unready site. | explain non-delivery |
-| appdeliv.load.warehouse_pick | Appliance warehouse pick | invariant | Pick pulls correct unit, accessories, paperwork and haul-away supplies. | prepare load |
-| appdeliv.load.serial_capture | Appliance serial capture | invariant | Capture links physical unit serial to customer order and warranty. | trace exact appliance |
-| appdeliv.load.damage_check | Preload damage check | invariant | Check documents dents, scratches, carton damage or missing parts before loading. | baseline evidence |
-| appdeliv.load.appliance_padding | Appliance padding | invariant | Padding protects surfaces, doors, handles, glass and floors during transport. | damage prevention |
-| appdeliv.load.load_securement | Appliance load securement | invariant | Securement uses straps, blocks, liftgate position and weight balance. | prevent shift |
-| appdeliv.site.path_assessment | Delivery path assessment | invariant | Assessment checks doorway, stairs, turns, flooring, overhead clearance and obstacles. | fit before moving |
-| appdeliv.site.floor_protection | Appliance delivery floor protection | invariant | Protection uses runners, blankets, sliders or mats to reduce scratches and dirt. | respect home |
-| appdeliv.site.door_removal | Door removal need | variant | Need identifies whether appliance or home door removal is required and allowed. | fit issue |
-| appdeliv.site.utility_readiness | Appliance utility readiness | invariant | Readiness checks outlet, water, drain, vent, gas shutoff or space requirements. | install boundary |
-| appdeliv.site.stop_work_condition | Delivery stop-work condition | invariant | Condition includes unsafe stairs, pests, hazard, missing shutoff, bad electrical or impossible fit. | crew safety |
-| appdeliv.install.leveling | Appliance leveling | invariant | Leveling adjusts feet or position to support safe and correct operation. | basic setup |
-| appdeliv.install.water_connection | Water connection handoff | variant | Handoff connects approved hose or records why connection was not performed. | controlled hookup |
-| appdeliv.install.dryer_vent | Dryer vent check | variant | Check verifies compatible vent path, condition, airflow concern and installation limits. | fire and performance |
-| appdeliv.install.range_anti_tip | Range anti-tip check | variant | Check verifies bracket need, presence or install status where service includes it. | tip risk control |
-| appdeliv.install.test_cycle | Appliance test cycle | invariant | Test confirms power, obvious leaks, controls or startup according to delivery scope. | prove setup |
-| appdeliv.haulaway.old_appliance | Old appliance haul-away | variant | Haul-away removes old unit if disconnected, empty, accessible and included in order. | complete service |
-| appdeliv.haulaway.recycling_route | Appliance recycling route | variant | Route sends old appliance to recycler, warehouse, scrap or disposal vendor. | end-of-life |
-| appdeliv.haulaway.refrigerant_item | Refrigerant appliance handling | variant | Handling routes refrigerators or freezers through approved recycling or recovery process. | environmental control |
-| appdeliv.haulaway.property_left | Property left behind | invariant | Record notes appliance, parts or debris intentionally left with customer or site. | avoid confusion |
-| appdeliv.haulaway.debris_removal | Delivery debris removal | variant | Removal collects packaging, straps, cardboard and protective film according to service. | clean finish |
-| appdeliv.proof.delivery_signature | Delivery signature | invariant | Signature confirms receipt, condition, services performed and exceptions. | proof |
-| appdeliv.proof.photo_proof | Appliance photo proof | variant | Photo documents delivered item, install, damage, path issue or haul-away. | visual evidence |
-| appdeliv.proof.exception_note | Delivery exception note | invariant | Note explains damage, refusal, partial service, missing accessory or unsafe condition. | close variance |
-| appdeliv.proof.customer_refusal | Customer refusal | invariant | Refusal records reason, item condition, service issue, restock and next action. | controlled return |
-| appdeliv.proof.return_to_warehouse | Return to warehouse | invariant | Return logs undelivered appliance, condition, reason, truck, crew and restock status. | inventory control |
-| appdeliv.claim.damage_claim | Appliance delivery damage claim | invariant | Claim records product or property damage, photos, timing, crew note and resolution. | service recovery |
-| appdeliv.claim.missing_part | Missing accessory or part | invariant | Missing part record triggers warehouse search, reorder, ship-to-customer or return visit. | complete order |
-| appdeliv.claim.install_issue | Appliance install issue | invariant | Issue records leak, fit, leveling, connection, venting or startup problem after delivery. | follow-up |
-| appdeliv.claim.customer_complaint | Delivery customer complaint | invariant | Complaint records delay, crew conduct, damage, incomplete work or communication issue. | quality loop |
-| appdeliv.claim.revisit_order | Appliance delivery revisit | variant | Revisit schedules second trip for missing part, fit correction, inspection or exchange. | close gap |
-| appdeliv.admin.crew_assignment | Appliance delivery crew assignment | invariant | Assignment matches driver, helper, skills, truck and route. | staff route |
-| appdeliv.admin.safety_briefing | Delivery safety briefing | invariant | Briefing covers lifting, stairs, weather, pets, utilities, driving and stop-work rules. | crew protection |
-| appdeliv.metrics.delivery_kpi | Appliance delivery KPI | variant | KPI tracks on-time rate, damage claims, failed stops, haul-away completion and revisits. | manage operation |
-| appdeliv.continuity.truck_breakdown | Appliance truck breakdown | invariant | Breakdown plan secures load, updates customers, reassigns route and documents delay. | recover route |
+| appdeliv.order.delivery_order | Заказ на поставку техники | invariant | В заказе фиксируются клиент, адрес, устройство, уровень обслуживания, временной интервал, оплата и контакты. | начать доставку |
+| appdeliv.order.sku_match | Соответствие SKU устройства | invariant | Перед выгрузкой компания Match проверяет заказанный артикул, цвет, размер, аксессуары и серийный номер. | избегайте неправильного предмета |
+| appdeliv.order.install_scope | Объем установки | invariant | Объем поставки включает только доставку, базовое подключение, транспортировку, переворачивание двери или установку аксессуаров. | знать разрешенную работу |
+| appdeliv.order.site_notes | Примечания к месту доставки | invariant | Примечания касаются лестниц, лифта, парковки, ворот, пола, домашних животных, доступа и ограничений для клиентов. | планировать маршрут |
+| appdeliv.order.customer_confirmation | Подтверждение доставки клиента | invariant | Подтверждение проверяет временное окно, адрес, готовность, старое устройство и необходимое присутствие взрослых. | уменьшить неудачную остановку |
+| appdeliv.route.route_manifest | Манифест маршрута устройства | invariant | В манифесте перечислены остановки, предметы, услуги, последовательность, экипаж, грузовик и требования к доказательствам. | план маршрута |
+| appdeliv.route.truck_capacity | Вместимость грузовика с бытовой техникой | invariant | Вместимость проверяет куб, вес, ремни, заднюю дверь и защиту приборов. | безопасная нагрузка |
+| appdeliv.route.stop_sequence | Последовательность остановки устройства | variant | Последовательность балансирует обещанные окна, географию, порядок загрузки и сложность установки. | эффективный день |
+| appdeliv.route.delay_notice | Уведомление о задержке доставки устройства | invariant | Уведомление информирует клиента о дорожном движении, складе, погоде, задержке доступа или установки. | контроль ожиданий |
+| appdeliv.route.failed_stop | Не удалось остановить доставку | invariant | Остановить не удалось из-за отсутствия доступа, небезопасного пути, отсутствия дома, неправильного адреса или неготового сайта. | объясните недоставку |
+| appdeliv.load.warehouse_pick | Выбор склада бытовой техники | invariant | Pick достает нужный блок, аксессуары, документы и материалы для вывоза. | подготовить груз |
+| appdeliv.load.serial_capture | Захват серийного номера устройства | invariant | Capture связывает серийный номер физического устройства с заказом клиента и гарантией. | отследить точное устройство |
+| appdeliv.load.damage_check | Проверка повреждений перед нагрузкой | invariant | Перед загрузкой проверьте документы на наличие вмятин, царапин, повреждений коробки или отсутствия деталей. | исходные данные |
+| appdeliv.load.appliance_padding | Подкладка для устройства | invariant | Набивка защищает поверхности, двери, ручки, стекло и пол во время транспортировки. | предотвращение повреждений |
+| appdeliv.load.load_securement | Крепление нагрузки устройства | invariant | Для крепления используются ремни, блоки, положение задней двери и баланс веса. | предотвратить сдвиг |
+| appdeliv.site.path_assessment | Оценка пути доставки | invariant | При оценке проверяются дверной проем, лестница, повороты, пол, просвет над головой и препятствия. | подходит перед переездом |
+| appdeliv.site.floor_protection | Защита пола при доставке техники | invariant | Защита использует полозья, одеяла, ползунки или коврики для уменьшения царапин и грязи. | уважать дом |
+| appdeliv.site.door_removal | Требуется демонтаж двери | variant | Потребность определяет, требуется и разрешено ли снятие прибора или домашней двери. | подходит проблема |
+| appdeliv.site.utility_readiness | Готовность оборудования к эксплуатации | invariant | Готовность проверяет выпуск, воду, слив, вентиляцию, отключение газа или требования к пространству. | установить границу |
+| appdeliv.site.stop_work_condition | Условия прекращения доставки | invariant | Состояние включает в себя небезопасную лестницу, вредителей, опасность, отсутствие отключения, неисправное электричество или невозможность установки. | безопасность экипажа |
+| appdeliv.install.leveling | Выравнивание прибора | invariant | Функция выравнивания регулирует ножки или положение для обеспечения безопасной и правильной работы. | базовая настройка |
+| appdeliv.install.water_connection | Передача подключения к воде | variant | Handoff подключает одобренный шланг или записывает, почему подключение не было выполнено. | контролируемое подключение |
+| appdeliv.install.dryer_vent | Проверка вентиляции сушилки | variant | При проверке проверяется совместимость вентиляционного канала, состояние, проблема с воздушным потоком и пределы установки. | огонь и производительность |
+| appdeliv.install.range_anti_tip | Проверка диапазона против опрокидывания | variant | Проверка подтверждает необходимость, наличие или статус установки кронштейна, если он включен в услугу. | контроль риска чаевых |
+| appdeliv.install.test_cycle | Цикл испытаний устройства | invariant | Тест подтверждает наличие питания, очевидные утечки, контроль или запуск в соответствии с объемом поставки. | доказать установку |
+| appdeliv.haulaway.old_appliance | Вывоз старой техники | variant | При вывозе старый блок удаляется, если он отсоединен, пуст, доступен и включен в порядок. | полное обслуживание |
+| appdeliv.haulaway.recycling_route | Маршрут переработки бытовой техники | variant | Маршрут отправляет старое устройство на переработку, на склад, в металлолом или на утилизацию. | конец жизни |
+| appdeliv.haulaway.refrigerant_item | Обращение с холодильным оборудованием | variant | Обработка холодильников или морозильников через утвержденный процесс переработки или восстановления. | экологический контроль |
+| appdeliv.haulaway.property_left | Имущество осталось позади | invariant | Делайте записи о приборе, его деталях или мусоре, намеренно оставленных покупателю или на объекте. | избежать путаницы |
+| appdeliv.haulaway.debris_removal | Вывоз мусора при доставке | variant | При вывозе собирается упаковка, ремни, картон и защитная пленка согласно услуге. | чистая отделка |
+| appdeliv.proof.delivery_signature | Подпись доставки | invariant | Подпись подтверждает получение, состояние, выполненные услуги и исключения. | доказательство |
+| appdeliv.proof.photo_proof | Фотодоказательство устройства | variant | Фотодокументы о доставке товара, установке, повреждении, проблеме с маршрутом или вывозе. | визуальные доказательства |
+| appdeliv.proof.exception_note | Примечание об исключении доставки | invariant | В примечании поясняются повреждения, отказ, частичное обслуживание, отсутствие аксессуаров или небезопасное состояние. | близкое отклонение |
+| appdeliv.proof.customer_refusal | Отказ клиента | invariant | В отказе указывается причина, состояние товара, проблема с обслуживанием, пополнение запасов и следующее действие. | контролируемый возврат |
+| appdeliv.proof.return_to_warehouse | Вернуться на склад | invariant | В журнале возврата регистрируются недоставленное устройство, его состояние, причина, грузовик, экипаж и состояние пополнения запасов. | контроль запасов |
+| appdeliv.claim.damage_claim | Претензия о повреждении прибора при доставке | invariant | В претензии указываются повреждения продукта или имущества, фотографии, сроки, заметки экипажа и решение. | восстановление службы |
+| appdeliv.claim.missing_part | Отсутствует аксессуар или деталь | invariant | Отсутствие записи о детали приводит к поиску на складе, повторному заказу, отправке клиенту или обратному визиту. | полный порядок |
+| appdeliv.claim.install_issue | Проблема с установкой устройства | invariant | В отчетах о проблемах с утечками, посадкой, выравниванием, соединением, вентиляцией или запуском после поставки. | следовать за |
+| appdeliv.claim.customer_complaint | Жалоба клиента доставки | invariant | В жалобе фиксируются задержки, поведение экипажа, повреждения, незавершенные работы или проблемы со связью. | цикл качества |
+| appdeliv.claim.revisit_order | Повторный визит к доставке оборудования | variant | Revisit планирует вторую поездку на предмет недостающей детали, корректировки посадки, проверки или замены. | закрыть разрыв |
+| appdeliv.admin.crew_assignment | Назначение бригады по доставке бытовой техники | invariant | Задание соответствует водителю, помощнику, навыкам, грузовику и маршруту. | маршрут персонала |
+| appdeliv.admin.safety_briefing | Инструктаж по безопасности доставки | invariant | Инструктаж охватывает подъем, лестницу, погоду, домашних животных, коммунальные услуги, правила вождения и остановки на работе. | защита экипажа |
+| appdeliv.metrics.delivery_kpi | KPI поставки оборудования | variant | KPI отслеживает соблюдение сроков, претензии по возмещению ущерба, неудачные остановки, завершение вывоза и повторные посещения. | управлять операцией |
+| appdeliv.continuity.truck_breakdown | Поломка грузовика с бытовой техникой | invariant | План аварийной остановки обеспечивает загрузку, информирует клиентов, переназначает маршрут и задерживает документы. | восстановить маршрут |

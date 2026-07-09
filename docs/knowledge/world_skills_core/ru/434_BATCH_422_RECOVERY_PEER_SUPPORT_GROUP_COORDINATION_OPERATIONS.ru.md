@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| peersupportops.activation.need_signal | need signal | MODEL | Need signal includes displacement stress, grief, isolation, recovery fatigue or repeated outreach requests. | Starts groups. |
-| peersupportops.activation.group_model | group model | RECORD | Model distinguishes open group, closed cohort, topic group, family group or virtual group. | Defines format. |
-| peersupportops.activation.partner | partner roster | RECORD | Roster lists mental health, community, faith, survivor and recovery organizations. | Builds support network. |
-| peersupportops.activation.command_link | command link | RECORD | Coordination links behavioral health, case management, public information and referral partners. | Maintains oversight. |
-| peersupportops.intake.participant | participant intake | RECORD | Intake captures contact, language, access needs, topic interest and safety concerns. | Supports placement. |
-| peersupportops.intake.consent | consent record | RECORD | Consent explains peer nature, privacy limits, data use and referral boundaries. | Sets expectation. |
-| peersupportops.intake.group_fit | group fit | MODEL | Fit considers topic, age, culture, loss type, language, schedule and support needs. | Improves match. |
-| peersupportops.intake.crisis_screen | crisis screen | SAFETY_RULE | Acute risk routes to crisis or clinical service rather than peer group alone. | Protects participant. |
-| peersupportops.facilitator.roster | facilitator roster | RECORD | Roster lists trained facilitators, languages, availability, lived experience and boundaries. | Schedules leaders. |
-| peersupportops.facilitator.training | facilitator training | QUALITY_CHECK | Training covers trauma-informed practice, boundaries, referrals, confidentiality and de-escalation. | Supports quality. |
-| peersupportops.facilitator.assignment | facilitator assignment | RECORD | Assignment links facilitator, group, date, topic, location and backup. | Creates schedule. |
-| peersupportops.facilitator.backup | backup facilitator | METHOD | Backup handles illness, no-show, overload or crisis escalation. | Adds resilience. |
-| peersupportops.schedule.session_calendar | session calendar | RECORD | Calendar records dates, frequency, location, virtual link and capacity. | Coordinates attendance. |
-| peersupportops.schedule.reminder | reminder process | METHOD | Reminders use preferred contact, safe language and opt-out option. | Reduces no-shows. |
-| peersupportops.schedule.accessibility | accessibility planning | METHOD | Planning covers transport, childcare, interpreters, wheelchair access and quiet space. | Improves inclusion. |
-| peersupportops.schedule.cancellation | cancellation process | METHOD | Cancellation records reason, notice, reschedule and participant update. | Reduces confusion. |
-| peersupportops.groundrules.confidentiality | confidentiality rule | SAFETY_RULE | Group rule explains privacy expectations and legal/safety limits. | Builds trust. |
-| peersupportops.groundrules.respect | respect rule | METHOD | Rules support turn-taking, nonjudgment, no coercion and cultural respect. | Keeps group safe. |
-| peersupportops.groundrules.no_advice_pressure | advice boundary | METHOD | Participants share experience without pressuring others into decisions. | Prevents harm. |
-| peersupportops.groundrules.crisis_boundary | crisis boundary | SAFETY_RULE | Group is not emergency care; crisis concerns escalate immediately. | Clarifies limits. |
-| peersupportops.referrals.resource_list | resource list | RECORD | List includes crisis lines, counseling, casework, legal aid, housing and benefits. | Enables handoff. |
-| peersupportops.referrals.warm_handoff | warm handoff | METHOD | Facilitator connects participant to service with consent when urgent or complex. | Reduces drop-off. |
-| peersupportops.referrals.followup | referral follow-up | METHOD | Follow-up checks whether participant reached referred service where appropriate. | Closes loop. |
-| peersupportops.referrals.unmet_need | unmet need record | RECORD | Record captures service gaps, waitlists, transport or language barriers. | Informs planning. |
-| peersupportops.attendance.signin | attendance sign-in | RECORD | Sign-in tracks attendance using privacy-protective identifiers where possible. | Shows participation. |
-| peersupportops.attendance.no_show | no-show process | METHOD | No-show follow-up respects consent and safe contact preferences. | Maintains connection. |
-| peersupportops.attendance.capacity | capacity limit | CONSTRAINT | Capacity defines safe group size, waitlist and alternate session pathway. | Protects quality. |
-| peersupportops.attendance.repeat_pattern | repeat pattern | MEASUREMENT | Pattern tracks repeat attendance and drop-off without excessive personal detail. | Measures engagement. |
-| peersupportops.safety.distress_signal | distress signal | SAFETY_RULE | Facilitator watches for dissociation, panic, anger, hopelessness or withdrawal. | Enables support. |
-| peersupportops.safety.deescalation | de-escalation | METHOD | De-escalation uses calm break, co-facilitator, private check and referral route. | Maintains safety. |
-| peersupportops.safety.incident_report | incident report | RECORD | Incident records crisis, threat, injury, confidentiality breach or mandated escalation. | Supports review. |
-| peersupportops.safety.facilitator_support | facilitator support | METHOD | Facilitators receive debrief, supervision or rotation after difficult sessions. | Prevents burnout. |
-| peersupportops.communication.public_notice | public notice | METHOD | Notice states group purpose, schedule, eligibility, peer nature and how to join. | Guides residents. |
-| peersupportops.communication.partner_update | partner update | METHOD | Partners receive aggregate attendance, referral gaps and schedule changes. | Coordinates services. |
-| peersupportops.communication.language | language access | METHOD | Groups use interpreter, bilingual facilitator or separate language-specific session. | Improves access. |
-| peersupportops.communication.feedback | feedback process | METHOD | Participants can provide anonymous feedback on usefulness, safety and barriers. | Improves group. |
-| peersupportops.records.case_minimum | minimum record | SAFETY_RULE | Records avoid detailed personal stories and store only coordination data. | Protects privacy. |
-| peersupportops.records.session_note | session note | RECORD | Note records topic, attendance count, referrals, incidents and logistics issues. | Creates continuity. |
-| peersupportops.records.retention | retention rule | CONSTRAINT | Records follow behavioral health, volunteer, privacy and grant schedules. | Controls lifecycle. |
-| peersupportops.metrics.sessions_held | sessions held | MEASUREMENT | Count tracks sessions held, canceled, virtual and in-person. | Shows activity. |
-| peersupportops.metrics.attendance | attendance metric | MEASUREMENT | Metric tracks participants by session, topic and language without exposing identity. | Shows reach. |
-| peersupportops.metrics.referral_count | referral count | MEASUREMENT | Count tracks referrals from group to clinical, casework or social services. | Shows linkage. |
-| peersupportops.qa.facilitator_review | facilitator review | QUALITY_CHECK | Review checks ground rules, boundaries, referrals, incidents and feedback. | Improves quality. |
-| peersupportops.review.after_action | after-action review | METHOD | Review captures group fit, facilitator capacity, safety, referrals and participant feedback. | Improves future coordination. |
+| peersupportops.activation.need_signal | нужен сигнал | MODEL | Сигнал о необходимости включает в себя стресс, связанный с перемещением, горе, изоляцию, усталость от восстановления или неоднократные запросы на оказание помощи. | Запускает группы. |
+| peersupportops.activation.group_model | групповая модель | RECORD | Модель различает открытую группу, закрытую когорту, тематическую группу, семейную группу или виртуальную группу. | Определяет формат. |
+| peersupportops.activation.partner | список партнеров | RECORD | В реестре перечислены организации, занимающиеся психическим здоровьем, сообществом, религией, организациями, пережившими насилие, и организациями, занимающимися восстановлением. | Создает сеть поддержки. |
+| peersupportops.activation.command_link | командная ссылка | RECORD | Координация связывает поведенческое здоровье, ведение случаев, общественную информацию и партнеров по направлениям. | Сохраняет надзор. |
+| peersupportops.intake.participant | набор участников | RECORD | Прием фиксирует контакты, язык, потребности в доступе, тематический интерес и проблемы безопасности. | Поддерживает размещение. |
+| peersupportops.intake.consent | запись о согласии | RECORD | В согласии разъясняется характер одноранговых партнеров, ограничения конфиденциальности, использование данных и границы направления. | Устанавливает ожидание. |
+| peersupportops.intake.group_fit | групповое соответствие | MODEL | Fit учитывает тему, возраст, культуру, тип потери, язык, график и потребности в поддержке. | Улучшает соответствие. |
+| peersupportops.intake.crisis_screen | кризисный экран | SAFETY_RULE | Острый риск направляет в кризисную ситуацию или в клиническую службу, а не только в группу сверстников. | Защищает участника. |
+| peersupportops.facilitator.roster | список координаторов | RECORD | В реестре перечислены обученные координаторы, языки, доступность, жизненный опыт и границы. | Графики лидеров. |
+| peersupportops.facilitator.training | обучение фасилитаторов | QUALITY_CHECK | Обучение охватывает практику, основанную на травмах, границы, направление к специалистам, конфиденциальность и деэскалацию. | Поддерживает качество. |
+| peersupportops.facilitator.assignment | назначение координатора | RECORD | Назначение связывает координатора, группу, дату, тему, местоположение и резервную копию. | Создает расписание. |
+| peersupportops.facilitator.backup | резервный координатор | METHOD | Резервное копирование помогает справиться с болезнью, неявкой, перегрузкой или эскалацией кризиса. | Добавляет устойчивости. |
+| peersupportops.schedule.session_calendar | календарь сеансов | RECORD | Календарь записывает даты, частоту, местоположение, виртуальную связь и емкость. | Координирует посещаемость. |
+| peersupportops.schedule.reminder | процесс напоминания | METHOD | В напоминаниях используются предпочтительные контакты, безопасный язык и возможность отказа. | Снижает количество неявок. |
+| peersupportops.schedule.accessibility | планирование доступности | METHOD | Планирование охватывает транспорт, уход за детьми, переводчиков, доступ для инвалидных колясок и тихое пространство. | Улучшает инклюзивность. |
+| peersupportops.schedule.cancellation | процесс отмены | METHOD | В записи причины отмены, уведомления, переноса и обновления участников. | Уменьшает путаницу. |
+| peersupportops.groundrules.confidentiality | правило конфиденциальности | SAFETY_RULE | Правило группы объясняет ожидания конфиденциальности и юридические ограничения/ограничения безопасности. | Вызывает доверие. |
+| peersupportops.groundrules.respect | правило уважения | METHOD | Правила поддерживают очередность, отсутствие осуждения, отсутствие принуждения и культурное уважение. | Обеспечивает безопасность группы. |
+| peersupportops.groundrules.no_advice_pressure | граница совета | METHOD | Участники делятся опытом, не заставляя других принимать решения. | Предотвращает вред. |
+| peersupportops.groundrules.crisis_boundary | граница кризиса | SAFETY_RULE | Группа не является неотложной помощью; Кризисные опасения немедленно обостряются. | Уточняет лимиты. |
+| peersupportops.referrals.resource_list | список ресурсов | RECORD | Список включает кризисные линии, консультации, работу с делами, юридическую помощь, жилье и льготы. | Включает передачу обслуживания. |
+| peersupportops.referrals.warm_handoff | теплая передача | METHOD | Фасилитатор подключает участника к услуге с согласия, когда это срочно или сложно. | Уменьшает выпадение. |
+| peersupportops.referrals.followup | отслеживание направлений | METHOD | Последующие проверки проверяют, получил ли участник указанную услугу, где это необходимо. | Замыкает цикл. |
+| peersupportops.referrals.unmet_need | запись о неудовлетворенной потребности | RECORD | Запись фиксирует пробелы в обслуживании, списки ожидания, транспортные или языковые барьеры. | Информирует планирование. |
+| peersupportops.attendance.signin | вход в систему посещаемости | RECORD | При входе в систему посещаемость отслеживается с использованием идентификаторов, защищающих конфиденциальность, где это возможно. | Показывает участие. |
+| peersupportops.attendance.no_show | процесс неявки | METHOD | Последующие действия в случае неявки учитывают согласие и предпочтения безопасного контакта. | Поддерживает связь. |
+| peersupportops.attendance.capacity | предел мощности | CONSTRAINT | Емкость определяет безопасный размер группы, список ожидания и альтернативный путь сеанса. | Защищает качество. |
+| peersupportops.attendance.repeat_pattern | повторяющийся узор | MEASUREMENT | Шаблоны отслеживания повторяют посещаемость и уход без чрезмерных личных подробностей. | Измеряет вовлеченность. |
+| peersupportops.safety.distress_signal | сигнал бедствия | SAFETY_RULE | Фасилитатор наблюдает за диссоциацией, паникой, гневом, безнадежностью или замкнутостью. | Включает поддержку. |
+| peersupportops.safety.deescalation | деэскалация | METHOD | Деэскалация использует спокойный перерыв, со-координатора, частную проверку и маршрут направления. | Сохраняет безопасность. |
+| peersupportops.safety.incident_report | отчет об инциденте | RECORD | Инцидент фиксирует кризис, угрозу, травму, нарушение конфиденциальности или обязательную эскалацию. | Поддерживает обзор. |
+| peersupportops.safety.facilitator_support | поддержка координатора | METHOD | Фасилитаторы получают отчет, супервизию или ротацию после сложных сессий. | Предотвращает выгорание. |
+| peersupportops.communication.public_notice | публичное уведомление | METHOD | В уведомлении указывается цель группы, расписание, право на участие, характер сверстников и способы присоединения. | Проводники жителей. |
+| peersupportops.communication.partner_update | обновление партнера | METHOD | Партнеры получают информацию о совокупной посещаемости, пробелах в рефералах и изменениях в расписании. | Координирует услуги. |
+| peersupportops.communication.language | языковой доступ | METHOD | Группы используют переводчика, двуязычного координатора или отдельные занятия, посвященные конкретному языку. | Улучшает доступ. |
+| peersupportops.communication.feedback | процесс обратной связи | METHOD | Участники могут предоставить анонимную обратную связь о полезности, безопасности и барьерах. | Улучшает группу. |
+| peersupportops.records.case_minimum | минимальная запись | SAFETY_RULE | Записи избегают подробных личных историй и хранят только данные координации. | Защищает конфиденциальность. |
+| peersupportops.records.session_note | заметка о сессии | RECORD | В заметках фиксируются темы, количество посещений, направления, инциденты и вопросы логистики. | Создает преемственность. |
+| peersupportops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам поведенческого здоровья, волонтерства, конфиденциальности и грантов. | Управляет жизненным циклом. |
+| peersupportops.metrics.sessions_held | проведенных сессий | MEASUREMENT | Подсчет отслеживает проведенные, отмененные, виртуальные и личные сеансы. | Проявляет активность. |
+| peersupportops.metrics.attendance | показатель посещаемости | MEASUREMENT | Метрика отслеживает участников по сеансам, темам и языкам, не раскрывая их личности. | Показывает охват. |
+| peersupportops.metrics.referral_count | количество рефералов | MEASUREMENT | Count отслеживает направления из групп в клинические, социальные или социальные службы. | Показывает связь. |
+| peersupportops.qa.facilitator_review | обзор координатора | QUALITY_CHECK | Обзор проверяет основные правила, границы, направления, инциденты и обратную связь. | Улучшает качество. |
+| peersupportops.review.after_action | обзор после действий | METHOD | В обзоре учитываются соответствие группы, возможности координатора, безопасность, направления и отзывы участников. | Улучшает будущую координацию. |

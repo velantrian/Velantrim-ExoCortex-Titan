@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| legalclinicops.intake.request_source | request source | RECORD | Source records survivor center, hotline, shelter, caseworker, court, nonprofit or walk-in. | Shows entry path. |
-| legalclinicops.intake.client_profile | client profile | RECORD | Profile captures name, contact, location, language, household and safe-contact limits. | Supports appointment. |
-| legalclinicops.intake.disaster_link | disaster link | RECORD | Link records how the legal issue relates to disaster damage, displacement or recovery. | Determines relevance. |
-| legalclinicops.intake.urgency | urgency model | MODEL | Urgency weighs court date, eviction, benefits deadline, safety risk and document deadline. | Prioritizes scheduling. |
-| legalclinicops.triage.issue_type | issue type | RECORD | Type distinguishes housing, benefits, insurance, documents, employment, family, debt or consumer issue. | Routes expertise. |
-| legalclinicops.triage.service_level | service level | MODEL | Level distinguishes information, advice, brief service, referral or full representation screen. | Sets expectation. |
-| legalclinicops.triage.deadline | deadline capture | SAFETY_RULE | Deadlines are recorded with date, source, consequence and reminder. | Prevents missed rights. |
-| legalclinicops.triage.out_of_scope | out-of-scope rule | CONSTRAINT | Criminal, complex litigation, non-disaster or prohibited matters may route elsewhere. | Protects clinic limits. |
-| legalclinicops.conflict.identity_check | identity check | RECORD | Conflict check captures opposing parties, landlords, insurers, employers and agencies. | Finds conflicts. |
-| legalclinicops.conflict.database_search | database search | QUALITY_CHECK | Staff search prior clients, related parties and adverse parties before advice. | Protects ethics. |
-| legalclinicops.conflict.potential_conflict | potential conflict | RECORD | Potential conflict is flagged for attorney review before appointment proceeds. | Avoids improper advice. |
-| legalclinicops.conflict.clearance | clearance record | RECORD | Clearance records reviewer, decision, limits and date. | Documents ethics step. |
-| legalclinicops.scheduling.slot_match | slot match | METHOD | Slot matches issue, urgency, language, attorney skill, clinic site and access needs. | Books right appointment. |
-| legalclinicops.scheduling.appointment_record | appointment record | RECORD | Record stores date, mode, location/link, client, issue, attorney and documents needed. | Creates schedule. |
-| legalclinicops.scheduling.waitlist | waitlist | RECORD | Waitlist captures priority, issue, deadline and callback method. | Tracks unmet demand. |
-| legalclinicops.scheduling.reschedule | reschedule process | METHOD | Reschedule records reason, new date, deadline impact and notification. | Keeps case active. |
-| legalclinicops.documents.document_list | document list | RECORD | List includes notices, leases, policies, IDs, bills, photos, letters and agency decisions. | Prepares review. |
-| legalclinicops.documents.upload | upload support | METHOD | Staff help securely scan or upload documents before appointment. | Saves clinic time. |
-| legalclinicops.documents.missing | missing document | RECORD | Missing items and alternatives are documented for attorney review. | Keeps issue visible. |
-| legalclinicops.documents.privacy | document privacy | SAFETY_RULE | Sensitive records are stored securely and shared only with authorized clinic roles. | Protects client. |
-| legalclinicops.reminders.first_notice | first reminder | METHOD | Reminder confirms time, place, documents, phone/link and safe contact. | Reduces no-shows. |
-| legalclinicops.reminders.deadline_notice | deadline reminder | SAFETY_RULE | Cases with legal deadlines receive extra reminder and escalation. | Protects rights. |
-| legalclinicops.reminders.language | language reminder | METHOD | Reminder uses preferred language and interpreter instructions. | Improves access. |
-| legalclinicops.reminders.no_response | no-response handling | METHOD | No-response cases receive attempts, backup contact and waitlist adjustment. | Maintains schedule. |
-| legalclinicops.dayof.checkin | check-in | RECORD | Check-in confirms identity, appointment, conflict status, consent and documents. | Starts visit. |
-| legalclinicops.dayof.interpreter | interpreter assignment | RECORD | Interpreter assignment records language, mode, confidentiality and availability. | Enables advice. |
-| legalclinicops.dayof.private_space | private space | SAFETY_RULE | Legal conversations occur in private area or secure remote channel. | Preserves confidentiality. |
-| legalclinicops.dayof.no_show | no-show record | RECORD | No-show records attempts, reason if known, deadline impact and reschedule decision. | Manages capacity. |
-| legalclinicops.outcome.advice_given | advice outcome | RECORD | Outcome records advice topic, brief service, documents reviewed and next steps without excess detail. | Closes loop. |
-| legalclinicops.outcome.referral | referral outcome | METHOD | Referral connects client to legal aid, bar program, agency, court help or advocate. | Extends help. |
-| legalclinicops.outcome.representation_screen | representation screen | RECORD | Screen records eligibility for further legal services and decision status. | Handles complex cases. |
-| legalclinicops.outcome.client_copy | client copy | METHOD | Client receives plain next-step summary, deadlines and contact information. | Supports follow-through. |
-| legalclinicops.records.case_note | case note | RECORD | Note stores intake, triage, conflicts, appointment, documents, outcome and follow-up. | Creates continuity. |
-| legalclinicops.records.confidentiality | confidentiality rule | SAFETY_RULE | Records follow attorney-client, legal aid and privacy requirements. | Protects privilege. |
-| legalclinicops.records.retention | retention rule | CONSTRAINT | Records follow legal clinic, funder and professional retention schedules. | Controls lifecycle. |
-| legalclinicops.records.supervisor_review | supervisor review | QUALITY_CHECK | Supervisor reviews appointment records for triage, conflict, deadline and outcome completeness. | Improves reliability. |
-| legalclinicops.records.data_export | data export | QUALITY_CHECK | Aggregate exports avoid client-identifying facts and legal advice details. | Supports reporting safely. |
-| legalclinicops.followup.followup_task | follow-up task | RECORD | Task tracks documents, deadline, referral completion, appeal filing or next appointment. | Keeps momentum. |
-| legalclinicops.followup.callback | callback process | METHOD | Callback documents attempt, result, new issue and closure decision. | Maintains continuity. |
-| legalclinicops.followup.referral_confirm | referral confirmation | QUALITY_CHECK | Confirmation checks whether referred client reached receiving service. | Closes loop. |
-| legalclinicops.metrics.appointments_held | appointments held | MEASUREMENT | Metric tracks scheduled, completed, canceled, no-show and rescheduled appointments. | Shows throughput. |
-| legalclinicops.metrics.issue_mix | issue mix | MEASUREMENT | Issue mix counts housing, benefits, insurance, documents and other legal needs. | Plans staffing. |
-| legalclinicops.metrics.deadline_cases | deadline cases | MEASUREMENT | Deadline cases track urgent legal deadlines and outcomes. | Shows risk load. |
-| legalclinicops.review.after_action | after-action review | METHOD | Review captures triage, conflicts, document readiness, no-shows, referrals and privacy lessons. | Improves future clinics. |
+| legalclinicops.intake.request_source | источник запроса | RECORD | Источник записывает центр для пострадавших, горячую линию, приют, соцработника, суд, некоммерческую организацию или организацию, в которой можно прийти без предварительной записи. | Показывает путь входа. |
+| legalclinicops.intake.client_profile | профиль клиента | RECORD | В профиле указаны имя, контакт, местоположение, язык, домохозяйство и пределы безопасного контакта. | Поддерживает назначение. |
+| legalclinicops.intake.disaster_link | ссылка на катастрофу | RECORD | Линк описывает, как юридический вопрос связан с ущербом от стихийного бедствия, перемещением или восстановлением. | Определяет актуальность. |
+| legalclinicops.intake.urgency | модель срочности | MODEL | Срочность учитывает дату суда, выселение, срок получения пособий, риск для безопасности и срок подачи документов. | Отдает приоритет планированию. |
+| legalclinicops.triage.issue_type | тип проблемы | RECORD | Тип отличает жилье, льготы, страховку, документы, трудоустройство, семью, долг или потребительский вопрос. | Экспертиза маршрутов. |
+| legalclinicops.triage.service_level | уровень обслуживания | MODEL | Уровень различает информацию, совет, краткое обслуживание, направление или полный экран представления. | Устанавливает ожидание. |
+| legalclinicops.triage.deadline | захват крайнего срока | SAFETY_RULE | Сроки фиксируются с указанием даты, источника, последствий и напоминания. | Предотвращает упущенные права. |
+| legalclinicops.triage.out_of_scope | правило, выходящее за рамки | CONSTRAINT | Уголовные дела, сложные судебные разбирательства, дела, не связанные с катастрофами, или запрещенные дела могут быть рассмотрены в другом месте. | Защищает границы клиники. |
+| legalclinicops.conflict.identity_check | проверка личности | RECORD | Проверка конфликтов охватывает противоборствующие стороны, арендодателей, страховщиков, работодателей и агентства. | Находит конфликты. |
+| legalclinicops.conflict.database_search | поиск по базе данных | QUALITY_CHECK | Прежде чем давать рекомендации, сотрудники ищут предыдущих клиентов, связанные стороны и враждебные стороны. | Защищает этику. |
+| legalclinicops.conflict.potential_conflict | потенциальный конфликт | RECORD | Потенциальный конфликт помечается для рассмотрения адвокатом до начала назначения. | Избегает неправильных советов. |
+| legalclinicops.conflict.clearance | запись о разрешении | RECORD | Оформление записывает проверяющего, решение, пределы и дату. | Этап этики документов. |
+| legalclinicops.scheduling.slot_match | слот-матч | METHOD | Слот соответствует проблеме, срочности, языку, навыкам адвоката, сайту клиники и потребностям доступа. | Заказывает правильное назначение. |
+| legalclinicops.scheduling.appointment_record | запись о встрече | RECORD | Дата хранения записей, режим, местоположение/ссылка, клиент, проблема, адвокат и необходимые документы. | Создает расписание. |
+| legalclinicops.scheduling.waitlist | список ожидания | RECORD | В списке ожидания фиксируются приоритет, проблема, крайний срок и метод обратного вызова. | Отслеживает неудовлетворенный спрос. |
+| legalclinicops.scheduling.reschedule | перенести процесс | METHOD | Причина переноса записи, новая дата, влияние на крайний срок и уведомление. | Сохраняет дело активным. |
+| legalclinicops.documents.document_list | список документов | RECORD | Список включает уведомления, договоры аренды, политики, удостоверения личности, счета, фотографии, письма и решения агентства. | Готовит обзор. |
+| legalclinicops.documents.upload | поддержка загрузки | METHOD | Сотрудники помогут безопасно отсканировать или загрузить документы перед встречей. | Экономит время клиники. |
+| legalclinicops.documents.missing | недостающий документ | RECORD | Отсутствующие предметы и альтернативы документируются для проверки адвокатом. | Делает проблему видимой. |
+| legalclinicops.documents.privacy | конфиденциальность документа | SAFETY_RULE | Конфиденциальные записи надежно хранятся и доступны только авторизованным сотрудникам клиники. | Защищает клиента. |
+| legalclinicops.reminders.first_notice | первое напоминание | METHOD | Напоминание подтверждает время, место, документы, телефон/ссылку и безопасный контакт. | Снижает количество неявок. |
+| legalclinicops.reminders.deadline_notice | напоминание о сроке | SAFETY_RULE | Дела с установленными законом сроками получают дополнительное напоминание и передачу на более высокий уровень. | Защищает права. |
+| legalclinicops.reminders.language | напоминание о языке | METHOD | В напоминании используется предпочитаемый язык и инструкции переводчика. | Улучшает доступ. |
+| legalclinicops.reminders.no_response | обработка отсутствия ответа | METHOD | В случае отсутствия ответа получают попытки, резервный контакт и корректировку списка ожидания. | Соблюдает график. |
+| legalclinicops.dayof.checkin | регистрироваться | RECORD | Регистрация подтверждает личность, назначение, конфликтный статус, согласие и документы. | Начинается визит. |
+| legalclinicops.dayof.interpreter | задание переводчика | RECORD | При назначении переводчика учитываются язык, режим, конфиденциальность и доступность. | Включает советы. |
+| legalclinicops.dayof.private_space | личное пространство | SAFETY_RULE | Юридические разговоры происходят в приватной зоне или по защищенному удаленному каналу. | Сохраняет конфиденциальность. |
+| legalclinicops.dayof.no_show | запись о неявке | RECORD | Записываются попытки неявки, причина, если она известна, влияние на сроки и решение о переносе даты. | Управляет емкостью. |
+| legalclinicops.outcome.advice_given | результат совета | RECORD | В записях о результатах записываются темы советов, краткое обслуживание, рассмотренные документы и последующие шаги без лишних подробностей. | Замыкает цикл. |
+| legalclinicops.outcome.referral | результат направления | METHOD | Направление позволяет клиенту получить юридическую помощь, адвокатскую программу, агентство, судебную помощь или адвоката. | Расширяет помощь. |
+| legalclinicops.outcome.representation_screen | экран представления | RECORD | Экран фиксирует право на получение дальнейших юридических услуг и статус решения. | Берется за сложные дела. |
+| legalclinicops.outcome.client_copy | клиентская копия | METHOD | Клиент получает краткое описание следующего шага, сроки и контактную информацию. | Поддерживает сопровождение. |
+| legalclinicops.records.case_note | примечание по делу | RECORD | В заметках хранятся данные о приеме, сортировке, конфликтах, встречах, документах, результатах и ​​последующем наблюдении. | Создает преемственность. |
+| legalclinicops.records.confidentiality | правило конфиденциальности | SAFETY_RULE | Записи соответствуют требованиям адвоката-клиента, юридической помощи и конфиденциальности. | Защищает привилегии. |
+| legalclinicops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам хранения юридической клиники, спонсоров и специалистов. | Управляет жизненным циклом. |
+| legalclinicops.records.supervisor_review | обзор руководителя | QUALITY_CHECK | Руководитель проверяет записи о встречах на предмет сортировки, конфликтов, сроков и полноты результатов. | Повышает надежность. |
+| legalclinicops.records.data_export | экспорт данных | QUALITY_CHECK | Совокупный экспорт позволяет избежать фактов, идентифицирующих клиента, и подробностей юридических консультаций. | Поддерживает безопасную отчетность. |
+| legalclinicops.followup.followup_task | последующая задача | RECORD | Задача отслеживает документы, сроки, завершение направления, подачу апелляции или следующую встречу. | Сохраняет темп. |
+| legalclinicops.followup.callback | процесс обратного вызова | METHOD | Документы обратного вызова: попытка, результат, новая проблема и решение о закрытии. | Сохраняет преемственность. |
+| legalclinicops.followup.referral_confirm | подтверждение реферала | QUALITY_CHECK | Подтверждение проверяет, достиг ли направленный клиент получения услуги. | Замыкает цикл. |
+| legalclinicops.metrics.appointments_held | проведенные встречи | MEASUREMENT | Метрика отслеживает запланированные, завершенные, отмененные, неявки и перенесенные встречи. | Показывает пропускную способность. |
+| legalclinicops.metrics.issue_mix | микс выпусков | MEASUREMENT | В комплекс вопросов входят жилье, льготы, страхование, документы и другие юридические потребности. | Планирует штатное расписание. |
+| legalclinicops.metrics.deadline_cases | крайние сроки дела | MEASUREMENT | Дела о сроках отслеживают срочные юридические сроки и результаты. | Показывает рисковую нагрузку. |
+| legalclinicops.review.after_action | обзор после действий | METHOD | В обзоре учитываются сортировка, конфликты, готовность документов, неявки, направления и уроки конфиденциальности. | Улучшает будущие клиники. |

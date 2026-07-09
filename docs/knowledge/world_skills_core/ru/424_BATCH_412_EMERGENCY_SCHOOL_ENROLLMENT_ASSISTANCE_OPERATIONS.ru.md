@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| schoolenrollops.intake.request_source | request source | RECORD | Source records shelter, family, school district, caseworker, hotline or outreach desk. | Shows entry path. |
-| schoolenrollops.intake.student_profile | student profile | RECORD | Profile captures student name, age, grade, prior school, caregiver and language. | Defines enrollment. |
-| schoolenrollops.intake.displacement | displacement status | RECORD | Status records temporary address, shelter, doubled-up housing, hotel or no fixed address. | Supports flexibility. |
-| schoolenrollops.intake.urgency | urgency model | MODEL | Urgency weighs days out of school, exams, special services, safety and caregiver availability. | Prioritizes help. |
-| schoolenrollops.residency.flex_rule | residency flexibility | CONSTRAINT | Disaster displacement may allow enrollment without usual proof under applicable policy. | Keeps access open. |
-| schoolenrollops.residency.school_origin | school of origin | METHOD | Family may need support comparing origin school versus local enrollment. | Preserves continuity. |
-| schoolenrollops.residency.address_affidavit | address affidavit | RECORD | Affidavit documents temporary living arrangement when standard proof is missing. | Supports enrollment. |
-| schoolenrollops.residency.boundary_check | boundary check | QUALITY_CHECK | Check identifies correct district, school, transfer option or liaison. | Avoids routing error. |
-| schoolenrollops.documents.document_list | document list | RECORD | List includes ID, birth date, prior records, immunization, guardianship and address alternatives. | Organizes packet. |
-| schoolenrollops.documents.missing_records | missing records | RECORD | Missing record list records source, request date, substitute and follow-up owner. | Keeps file moving. |
-| schoolenrollops.documents.record_request | record request | METHOD | Prior school records are requested through district, family or emergency liaison. | Restores history. |
-| schoolenrollops.documents.secure_handling | secure handling | SAFETY_RULE | Student records are handled with education privacy controls. | Protects children. |
-| schoolenrollops.guardian.guardian_check | guardian check | QUALITY_CHECK | Check confirms enrolling adult authority, caregiver role or emergency contact limits. | Prevents improper release. |
-| schoolenrollops.guardian.temporary_caregiver | temporary caregiver | RECORD | Record captures disaster caregiver, relationship, permissions and expiration if applicable. | Supports continuity. |
-| schoolenrollops.guardian.custody_flag | custody flag | SAFETY_RULE | Custody or safety concerns route to school official or legal pathway. | Protects student. |
-| schoolenrollops.guardian.contact_update | contact update | METHOD | Contact list includes safe phone, email, pickup adults and emergency contacts. | Enables communication. |
-| schoolenrollops.transport.transport_need | transport need | RECORD | Need records origin school, temporary address, disability access and schedule. | Starts routing. |
-| schoolenrollops.transport.route_request | route request | METHOD | Request goes to district transport, liaison, transit partner or voucher path. | Gets student to school. |
-| schoolenrollops.transport.accessible_bus | accessible bus | RECORD | Accessible transport records wheelchair, aide, medical equipment or curb needs. | Supports inclusion. |
-| schoolenrollops.transport.transport_delay | transport delay | RECORD | Delay records reason, interim plan, caregiver notice and escalation. | Prevents missed school. |
-| schoolenrollops.services.special_ed | special education record | RECORD | Record captures IEP/504 status, services, evaluations and prior provider contacts. | Maintains support. |
-| schoolenrollops.services.health_plan | health plan | RECORD | Health plan notes allergies, medication boundary, nurse needs and emergency care plan. | Protects student. |
-| schoolenrollops.services.language | language services | METHOD | Language support identifies interpreter, bilingual staff and translated forms. | Improves access. |
-| schoolenrollops.services.counseling | counseling referral | METHOD | Counseling referral supports trauma, grief, displacement stress or attendance concerns. | Helps adjustment. |
-| schoolenrollops.enrollment.application | enrollment application | RECORD | Application records school, date, student, caregiver, documents and missing items. | Starts process. |
-| schoolenrollops.enrollment.immediate_entry | immediate entry | METHOD | Immediate entry supports attendance while records are pending where policy allows. | Reduces learning loss. |
-| schoolenrollops.enrollment.denial | denial record | RECORD | Denial records reason, policy cited, appeal path and alternate contact. | Enables correction. |
-| schoolenrollops.enrollment.transfer | transfer record | RECORD | Transfer records origin, destination, grade placement, credits and services. | Maintains continuity. |
-| schoolenrollops.communication.family_script | family script | METHOD | Script explains rights, needed documents, timelines, transport and next steps. | Sets expectations. |
-| schoolenrollops.communication.school_contact | school contact | RECORD | Contact records registrar, liaison, counselor, nurse and transport staff. | Coordinates work. |
-| schoolenrollops.communication.partner_update | partner update | METHOD | Partners receive aggregate barriers, transport issues and document gaps. | Aligns support. |
-| schoolenrollops.communication.reminder | reminder process | METHOD | Reminders cover appointments, first day, transport, missing documents and meetings. | Reduces drop-off. |
-| schoolenrollops.followup.first_day | first-day check | METHOD | Check confirms student attended, transport worked and caregiver received schedule. | Closes access loop. |
-| schoolenrollops.followup.service_check | service check | QUALITY_CHECK | Follow-up confirms special services, language support and health plans started. | Prevents service gaps. |
-| schoolenrollops.followup.attendance | attendance watch | MEASUREMENT | Attendance watch flags repeated absence after enrollment. | Finds barriers. |
-| schoolenrollops.followup.case_close | case close | RECORD | Closure records enrolled, transferred, referred, denied, moved or unreachable. | Ends support. |
-| schoolenrollops.privacy.student_privacy | student privacy | SAFETY_RULE | Student data is shared only with authorized school and support roles. | Protects records. |
-| schoolenrollops.privacy.safe_contact | safe contact | SAFETY_RULE | Safe contact avoids exposing location or caregiver details where risk exists. | Protects family. |
-| schoolenrollops.reporting.daily_summary | daily summary | MEASUREMENT | Summary reports students assisted, enrolled, pending, transport needs and barriers. | Informs response. |
-| schoolenrollops.metrics.time_to_enroll | time to enroll | MEASUREMENT | Metric measures intake to confirmed enrollment or denial. | Shows delay. |
-| schoolenrollops.metrics.transport_gap | transport gap | MEASUREMENT | Gap count tracks students waiting for transport by reason. | Guides resources. |
-| schoolenrollops.metrics.document_gap | document gap | MEASUREMENT | Gap count tracks missing records, guardianship, immunization or residency proof. | Targets help. |
-| schoolenrollops.qa.case_review | case review | QUALITY_CHECK | Review checks application, documents, transport, services and follow-up completeness. | Improves reliability. |
-| schoolenrollops.review.after_action | after-action review | METHOD | Review captures enrollment flexibility, transport, records, special services and privacy lessons. | Improves future support. |
+| schoolenrollops.intake.request_source | источник запроса | RECORD | Источник записывает приют, семью, школьный округ, социального работника, горячую линию или информационно-пропагандистскую службу. | Показывает путь входа. |
+| schoolenrollops.intake.student_profile | профиль студента | RECORD | В профиле указаны имя учащегося, возраст, класс, предыдущая школа, опекун и язык. | Определяет регистрацию. |
+| schoolenrollops.intake.displacement | статус перемещения | RECORD | В статусе указывается временный адрес, приют, совмещенное жилье, гостиница или отсутствие постоянного адреса. | Поддерживает гибкость. |
+| schoolenrollops.intake.urgency | модель срочности | MODEL | Срочность учитывает дни отсутствия в школе, экзамены, специальные услуги, безопасность и наличие опекунов. | Отдает приоритет помощи. |
+| schoolenrollops.residency.flex_rule | гибкость проживания | CONSTRAINT | Перемещение в результате стихийного бедствия может позволить зачисление без обычных доказательств в соответствии с применимой политикой. | Оставляет доступ открытым. |
+| schoolenrollops.residency.school_origin | школа происхождения | METHOD | Семье может потребоваться помощь в сравнении исходной школы с местной школой. | Сохраняет преемственность. |
+| schoolenrollops.residency.address_affidavit | адресное свидетельство | RECORD | Аффидевит документирует временные условия проживания, когда стандартные доказательства отсутствуют. | Поддерживает регистрацию. |
+| schoolenrollops.residency.boundary_check | пограничная проверка | QUALITY_CHECK | Проверьте правильность округа, школы, варианта перевода или связующего лица. | Избегает ошибок маршрутизации. |
+| schoolenrollops.documents.document_list | список документов | RECORD | Список включает удостоверение личности, дату рождения, предыдущие записи, прививки, опеку и альтернативные адреса. | Организует пакет. |
+| schoolenrollops.documents.missing_records | недостающие записи | RECORD | Отсутствует источник записей списка записей, дата запроса, замещающий и последующий владелец. | Обеспечивает перемещение файла. |
+| schoolenrollops.documents.record_request | запрос на запись | METHOD | Предыдущие школьные записи запрашиваются через районную, семейную или экстренную связь. | Восстанавливает историю. |
+| schoolenrollops.documents.secure_handling | безопасное обращение | SAFETY_RULE | Записи учащихся обрабатываются с использованием средств контроля конфиденциальности в сфере образования. | Защищает детей. |
+| schoolenrollops.guardian.guardian_check | проверка опекуна | QUALITY_CHECK | Проверка подтверждает регистрацию полномочий взрослого, роли лица, осуществляющего уход, или ограничений на контакты в случае экстренной ситуации. | Предотвращает неправильный выпуск. |
+| schoolenrollops.guardian.temporary_caregiver | временный опекун | RECORD | В записи указываются лицо, осуществляющее уход при стихийных бедствиях, взаимоотношения, разрешения и срок действия, если применимо. | Поддерживает непрерывность. |
+| schoolenrollops.guardian.custody_flag | флаг опеки | SAFETY_RULE | Проблемы опеки или безопасности направляются в школу официальным или законным путем. | Защищает ученика. |
+| schoolenrollops.guardian.contact_update | обновление контактов | METHOD | Список контактов включает в себя безопасный телефон, электронную почту, взрослых и контакты для экстренных случаев. | Включает общение. |
+| schoolenrollops.transport.transport_need | потребность в транспорте | RECORD | Нужны записи о происхождении школы, временный адрес, доступ для людей с ограниченными возможностями и расписание. | Запускает маршрутизацию. |
+| schoolenrollops.transport.route_request | запрос маршрута | METHOD | Запрос поступает в районный транспорт, связь, транзитного партнера или ваучерный путь. | Отвозит ученика в школу. |
+| schoolenrollops.transport.accessible_bus | доступный автобус | RECORD | Доступный транспорт учитывает потребности в инвалидной коляске, помощнике, медицинском оборудовании или ограничениях. | Поддерживает включение. |
+| schoolenrollops.transport.transport_delay | задержка транспорта | RECORD | Причина задержки, временный план, уведомление опекуна и эскалация. | Предотвращает пропуск занятий в школе. |
+| schoolenrollops.services.special_ed | запись о специальном образовании | RECORD | В записи фиксируются статус IEP/504, услуги, оценки и предыдущие контакты с поставщиками услуг. | Сохраняет поддержку. |
+| schoolenrollops.services.health_plan | план медицинского страхования | RECORD | В плане медицинского обслуживания указаны аллергии, границы приема лекарств, потребности медсестры и план неотложной помощи. | Защищает ученика. |
+| schoolenrollops.services.language | лингвистические услуги | METHOD | Языковая поддержка включает переводчика, двуязычного персонала и переведенные формы. | Улучшает доступ. |
+| schoolenrollops.services.counseling | направление на консультацию | METHOD | Направление на консультацию помогает при травмах, горе, стрессе, связанном с перемещением, или проблемах с посещаемостью. | Помогает настроиться. |
+| schoolenrollops.enrollment.application | заявка на регистрацию | RECORD | Приложение записывает школу, дату, ученика, опекуна, документы и недостающие предметы. | Запускает процесс. |
+| schoolenrollops.enrollment.immediate_entry | немедленный вход | METHOD | Немедленная запись поддерживает посещаемость, пока записи находятся на рассмотрении, если это разрешено политикой. | Уменьшает потери в обучении. |
+| schoolenrollops.enrollment.denial | запись об отказе | RECORD | В отказе указывается причина, указанная политика, способ апелляции и альтернативный контакт. | Включает коррекцию. |
+| schoolenrollops.enrollment.transfer | запись о передаче | RECORD | Передача записывает происхождение, назначение, классификацию, кредиты и услуги. | Сохраняет преемственность. |
+| schoolenrollops.communication.family_script | семейный сценарий | METHOD | Сценарий объясняет права, необходимые документы, сроки, транспорт и следующие шаги. | Устанавливает ожидания. |
+| schoolenrollops.communication.school_contact | школьный контакт | RECORD | Регистратор контактных записей, координатор по связям, консультант, медсестра и транспортный персонал. | Координаты работают. |
+| schoolenrollops.communication.partner_update | обновление партнера | METHOD | Партнеры получают совокупные барьеры, транспортные проблемы и пробелы в документации. | Выравнивает поддержку. |
+| schoolenrollops.communication.reminder | процесс напоминания | METHOD | Напоминания охватывают встречи, первый день, транспорт, недостающие документы и встречи. | Уменьшает выпадение. |
+| schoolenrollops.followup.first_day | проверка первого дня | METHOD | Проверка подтверждает, что учащийся присутствовал, транспорт работал и опекун получил расписание. | Замыкает цикл доступа. |
+| schoolenrollops.followup.service_check | сервисный чек | QUALITY_CHECK | Последующее наблюдение подтверждает, что специальные услуги, языковая поддержка и планы медицинского страхования начались. | Предотвращает перерывы в обслуживании. |
+| schoolenrollops.followup.attendance | часы посещаемости | MEASUREMENT | Контроль посещаемости отмечает повторное отсутствие после регистрации. | Находит преграды. |
+| schoolenrollops.followup.case_close | дело закрыто | RECORD | Записи закрытия зарегистрированы, переданы, направлены, отклонены, перемещены или недоступны. | Заканчивается поддержка. |
+| schoolenrollops.privacy.student_privacy | конфиденциальность студентов | SAFETY_RULE | Данные учащихся передаются только авторизованным школам и службам поддержки. | Защищает записи. |
+| schoolenrollops.privacy.safe_contact | безопасный контакт | SAFETY_RULE | Безопасный контакт позволяет избежать раскрытия местоположения или сведений о лице, осуществляющем уход, в случае существования риска. | Защищает семью. |
+| schoolenrollops.reporting.daily_summary | ежедневная сводка | MEASUREMENT | Сводные отчеты о том, кому помогли учащиеся, зачислены, ожидают рассмотрения, транспортные потребности и препятствия. | Информирует ответ. |
+| schoolenrollops.metrics.time_to_enroll | пора записываться | MEASUREMENT | Метрика измеряет количество подтвержденных зачислений или отказов. | Показывает задержку. |
+| schoolenrollops.metrics.transport_gap | транспортный разрыв | MEASUREMENT | Подсчет пропусков отслеживает учащихся, ожидающих транспорта, по причинам. | Путеводители по ресурсам. |
+| schoolenrollops.metrics.document_gap | пробел в документе | MEASUREMENT | Подсчет пробелов отслеживает недостающие записи, документы об опеке, прививках или месте жительства. | Цели помогают. |
+| schoolenrollops.qa.case_review | рассмотрение дела | QUALITY_CHECK | Обзор проверяет заявление, документы, транспорт, услуги и последующую полноту. | Повышает надежность. |
+| schoolenrollops.review.after_action | обзор после действий | METHOD | В обзоре отражены гибкость регистрации, транспорт, записи, специальные услуги и уроки конфиденциальности. | Улучшает будущую поддержку. |

@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| ptclinic.referral.referral_intake | Physical therapy referral intake | invariant | Intake records diagnosis, provider, body region, precautions, authorization and requested therapy. | start episode |
-| ptclinic.referral.script_check | Therapy prescription check | variant | Check verifies frequency, duration, restrictions and payer requirements where prescription is required. | compliant scheduling |
-| ptclinic.referral.authorization_visits | Authorized therapy visits | variant | Authorization defines approved visit count, dates, services and documentation rules. | know billing limit |
-| ptclinic.referral.red_flag_route | Therapy red-flag routing | invariant | Routing sends concerning symptoms or unsafe presentations to clinical review before routine care. | safety boundary |
-| ptclinic.referral.prior_records | Prior record collection | variant | Collection gathers imaging reports, operative notes, precautions and previous therapy notes. | context for evaluation |
-| ptclinic.schedule.eval_slot | PT evaluation slot | invariant | Slot reserves therapist time for initial assessment, goals and plan of care. | episode entry |
-| ptclinic.schedule.treatment_slot | Treatment visit slot | invariant | Slot reserves therapist, assistant, equipment and treatment space. | therapy capacity |
-| ptclinic.schedule.plan_frequency | Plan frequency | invariant | Frequency defines expected visits per week or period in plan of care. | schedule matches plan |
-| ptclinic.schedule.cancel_no_show | PT cancel or no-show | invariant | Record notes missed visit, reason, policy, patient contact and effect on plan. | continuity risk |
-| ptclinic.schedule.progress_due | Progress note due | invariant | Due date tracks required reassessment or payer progress report interval. | documentation clock |
-| ptclinic.intake.patient_goals | Patient therapy goals | invariant | Goals capture patient priorities such as walking, work, sport, pain reduction or function. | meaningful plan |
-| ptclinic.intake.outcome_measure | Outcome measure | invariant | Measure quantifies baseline function, pain, balance, mobility or disability. | track change |
-| ptclinic.intake.precaution_flag | Therapy precaution flag | invariant | Flag marks weight bearing, post-op limits, fall risk, cardiac, infection or other restrictions. | safe exercise |
-| ptclinic.intake.consent_forms | PT consent forms | invariant | Forms document consent to evaluation, treatment, privacy and financial policies. | permission and clarity |
-| ptclinic.intake.home_program_baseline | Home program baseline | variant | Baseline records what patient already does and barriers to adherence. | realistic homework |
-| ptclinic.eval.initial_evaluation | Initial PT evaluation | invariant | Evaluation documents history, exam, impairments, function, assessment and plan. | clinical foundation |
-| ptclinic.eval.range_of_motion | Range of motion record | invariant | Record captures joint movement measurement, side, method and limitation. | mobility datum |
-| ptclinic.eval.strength_assessment | Strength assessment | invariant | Assessment records muscle performance or functional strength using defined scale or task. | capacity datum |
-| ptclinic.eval.gait_observation | Gait observation | variant | Observation notes walking pattern, device, safety, speed, pain or compensation. | movement insight |
-| ptclinic.eval.fall_risk_screen | Fall risk screen | variant | Screen evaluates balance, history, mobility aids and home risk. | prevent injury |
-| ptclinic.treatment.exercise_flow | Therapeutic exercise flow | invariant | Flow sequences warm-up, exercises, dosage, cues, rest and response monitoring. | structured session |
-| ptclinic.treatment.manual_therapy_note | Manual therapy note | variant | Note records technique region, purpose, patient response and precautions. | document hands-on care |
-| ptclinic.treatment.modality_use | Therapy modality use | variant | Use records heat, ice, stimulation, ultrasound or other modality with indication and response. | support treatment |
-| ptclinic.treatment.neuromuscular_reeducation | Neuromuscular reeducation | variant | Activity retrains balance, coordination, posture, movement control or proprioception. | movement quality |
-| ptclinic.treatment.patient_response | Patient response record | invariant | Record notes pain, fatigue, tolerance, adverse symptoms and progress during visit. | adjust care |
-| ptclinic.home.hep_instruction | Home exercise program instruction | invariant | Instruction gives approved exercises, frequency, safety cues and progression limits. | work between visits |
-| ptclinic.home.hep_adherence | Home program adherence | variant | Adherence record notes completion, barriers, symptoms and needed adjustment. | real-world progress |
-| ptclinic.home.exercise_sheet | Exercise sheet | variant | Sheet provides visual or written exercise instructions tied to patient plan. | memory aid |
-| ptclinic.home.equipment_need | Home equipment need | variant | Need identifies bands, cane, brace, ice pack or home setup for program. | practical support |
-| ptclinic.home.safety_instruction | Home safety instruction | invariant | Instruction warns about stop signs, fall prevention, pain limits and when to contact clinic. | avoid harm |
-| ptclinic.documentation.daily_note | PT daily note | invariant | Note records interventions, time, response, changes, education and plan for next visit. | visit evidence |
-| ptclinic.documentation.progress_note | PT progress note | invariant | Note compares baseline, goals, measures, response and need for continued care. | justify ongoing therapy |
-| ptclinic.documentation.plan_of_care | Plan of care | invariant | Plan states diagnosis, goals, frequency, interventions, duration and discharge criteria. | treatment roadmap |
-| ptclinic.documentation.discharge_summary | PT discharge summary | invariant | Summary records outcome, goals met, remaining limits, home plan and follow-up advice. | close episode |
-| ptclinic.documentation.late_note | Late documentation flag | invariant | Flag marks documentation not completed on time and needing review. | billing and quality risk |
-| ptclinic.flow.gym_space_assignment | Therapy gym space assignment | variant | Assignment coordinates tables, equipment, privacy and therapist coverage. | avoid bottlenecks |
-| ptclinic.flow.equipment_sanitization | Therapy equipment sanitization | invariant | Sanitization cleans tables, bands, weights, mats and shared tools between patients. | infection control |
-| ptclinic.flow.assistant_handoff | Therapist assistant handoff | variant | Handoff communicates plan, precautions, exercises and supervision needs. | team treatment |
-| ptclinic.flow.patient_late_arrival | PT late arrival handling | invariant | Handling adjusts session, documents lost time and protects next appointments. | schedule discipline |
-| ptclinic.flow.incident_report | Therapy incident report | invariant | Report documents fall, symptom event, equipment injury, privacy issue or complaint. | safety learning |
-| ptclinic.billing.charge_units | Therapy charge units | invariant | Units reflect documented timed or untimed services according to billing rules. | align note and charge |
-| ptclinic.billing.denial_reason | PT denial reason | variant | Reason identifies authorization, medical necessity, documentation, coding or eligibility issue. | fix revenue leak |
-| ptclinic.metrics.pt_kpi | PT clinic KPI | variant | KPI tracks visits, cancellations, outcomes, authorization use, documentation lag and discharge rates. | manage clinic |
-| ptclinic.continuity.therapist_absence | Therapist absence plan | invariant | Plan reschedules, reassigns or notifies patients while preserving clinical continuity. | keep care moving |
+| ptclinic.referral.referral_intake | Приём направлений на физиотерапию | invariant | Прием записывает диагноз, поставщика услуг, область тела, меры предосторожности, разрешение и запрашиваемую терапию. | начать эпизод |
+| ptclinic.referral.script_check | Проверка рецепта на терапию | variant | Проверка проверяет частоту, продолжительность, ограничения и требования плательщика, когда требуется рецепт. | согласованное планирование |
+| ptclinic.referral.authorization_visits | Авторизованные визиты к врачу | variant | Авторизация определяет утвержденное количество посещений, даты, услуги и правила документирования. | узнать лимит платежа |
+| ptclinic.referral.red_flag_route | Маршрутизация терапии | invariant | При маршрутизации симптомы или небезопасные проявления направляются на клиническую экспертизу перед оказанием планового лечения. | граница безопасности |
+| ptclinic.referral.prior_records | Предыдущий сбор записей | variant | В коллекции собраны отчеты о визуализации, оперативные заметки, меры предосторожности и записи предыдущего лечения. | контекст для оценки |
+| ptclinic.schedule.eval_slot | Слот для оценки PT | invariant | Слот оставляет терапевту время для первоначальной оценки, целей и плана лечения. | запись эпизода |
+| ptclinic.schedule.treatment_slot | Время посещения лечения | invariant | В слоте резервируются терапевт, ассистент, оборудование и место для процедур. | терапевтический потенциал |
+| ptclinic.schedule.plan_frequency | Плановая частота | invariant | Частота определяет ожидаемые посещения в неделю или период в плане ухода. | расписание матчей план |
+| ptclinic.schedule.cancel_no_show | PT отмена или неявка | invariant | Записывайте записи о пропущенном визите, причине, политике, контакте с пациентом и влиянии на план. | риск непрерывности |
+| ptclinic.schedule.progress_due | Записка о ходе работ должна быть подана | invariant | Срок оплаты отслеживает требуемый интервал повторной оценки или отчета о проделанной работе плательщика. | часы для документации |
+| ptclinic.intake.patient_goals | Цели терапии пациентов | invariant | Цели отражают приоритеты пациента, такие как ходьба, работа, спорт, уменьшение боли или функционирование. | содержательный план |
+| ptclinic.intake.outcome_measure | Мера результата | invariant | Измерение количественно определяет базовую функцию, боль, равновесие, подвижность или инвалидность. | отслеживать изменения |
+| ptclinic.intake.precaution_flag | Флаг предосторожности при терапии | invariant | Флажок отмечает нагрузку, ограничения после операции, риск падения, сердечно-сосудистые заболевания, инфекции или другие ограничения. | безопасное упражнение |
+| ptclinic.intake.consent_forms | Формы согласия PT | invariant | Формирует документ-согласие на оценку, лечение, конфиденциальность и финансовую политику. | разрешение и ясность |
+| ptclinic.intake.home_program_baseline | Базовый уровень программы Home | variant | Базовый уровень фиксирует то, что пациент уже делает, и препятствия на пути к соблюдению режима лечения. | реалистичное домашнее задание |
+| ptclinic.eval.initial_evaluation | Первоначальная оценка ПК | invariant | История оценочных документов, экзамен, нарушения, функции, оценка и план. | клиническая основа |
+| ptclinic.eval.range_of_motion | Диапазон записи движения | invariant | Запись фиксирует измерение движения суставов, сторону, метод и ограничение. | данные мобильности |
+| ptclinic.eval.strength_assessment | Оценка прочности | invariant | При оценке фиксируются мышечные показатели или функциональная сила с использованием определенной шкалы или задачи. | данные о мощности |
+| ptclinic.eval.gait_observation | Наблюдение за походкой | variant | Наблюдение отмечает характер ходьбы, устройство, безопасность, скорость, боль или компенсацию. | понимание движения |
+| ptclinic.eval.fall_risk_screen | Экран риска падения | variant | Экран оценивает баланс, историю, средства передвижения и домашний риск. | предотвратить травмы |
+| ptclinic.treatment.exercise_flow | Схема лечебной физкультуры | invariant | Последовательности потоков: разминка, упражнения, дозировка, сигналы, отдых и мониторинг реакции. | структурированная сессия |
+| ptclinic.treatment.manual_therapy_note | Примечание по мануальной терапии | variant | Запишите область применения метода, цель, реакцию пациента и меры предосторожности. | документировать практический уход |
+| ptclinic.treatment.modality_use | Использование методов терапии | variant | Используйте записи тепла, льда, стимуляции, ультразвука или других методов с индикацией и ответом. | поддерживающее лечение |
+| ptclinic.treatment.neuromuscular_reeducation | Нервно-мышечное перевоспитание | variant | Активность переучивает баланс, координацию, осанку, контроль движений или проприоцепцию. | качество движения |
+| ptclinic.treatment.patient_response | Запись ответа пациента | invariant | Записывайте записи о боли, усталости, толерантности, побочных симптомах и прогрессе во время визита. | корректировать уход |
+| ptclinic.home.hep_instruction | Инструкция по программе домашних тренировок | invariant | В инструкции указаны утвержденные упражнения, их частота, указания по безопасности и пределы прогресса. | работа между визитами |
+| ptclinic.home.hep_adherence | Соблюдение домашней программы | variant | В протоколе соблюдения режима лечения отмечаются завершение, препятствия, симптомы и необходимые корректировки. | реальный прогресс |
+| ptclinic.home.exercise_sheet | Лист упражнений | variant | Лист содержит визуальные или письменные инструкции по упражнениям, привязанные к плану пациента. | помощь в памяти |
+| ptclinic.home.equipment_need | Необходимость домашнего оборудования | variant | Нужны идентифицирующие ленты, трость, корсет, пакет со льдом или домашняя установка для программы. | практическая поддержка |
+| ptclinic.home.safety_instruction | Инструкция по безопасности дома | invariant | Инструкция предупреждает о знаках остановки, предотвращении падений, пределах боли и о том, когда следует обращаться в клинику. | избегать вреда |
+| ptclinic.documentation.daily_note | Ежедневная заметка PT | invariant | В записях фиксируются вмешательства, время, реакция, изменения, обучение и план следующего визита. | посетить доказательства |
+| ptclinic.documentation.progress_note | Примечание о ходе PT | invariant | В примечании сравниваются исходные данные, цели, меры, ответные меры и потребность в продолжении лечения. | оправдать продолжающуюся терапию |
+| ptclinic.documentation.plan_of_care | План ухода | invariant | В плане указывается диагноз, цели, частота, вмешательства, продолжительность и критерии выписки. | дорожная карта лечения |
+| ptclinic.documentation.discharge_summary | Сводка о выписке PT | invariant | В сводке фиксируются результаты, достигнутые цели, оставшиеся ограничения, домашний план и последующие советы. | закрыть эпизод |
+| ptclinic.documentation.late_note | Флаг поздней документации | invariant | Документация по флаговым знакам не завершена вовремя и требует проверки. | выставление счетов и риск качества |
+| ptclinic.flow.gym_space_assignment | Назначение места в терапевтическом спортзале | variant | Назначение координирует столы, оборудование, конфиденциальность и работу терапевта. | избегать узких мест |
+| ptclinic.flow.equipment_sanitization | Санитарная обработка терапевтического оборудования | invariant | Санитарная обработка очищает столы, ленты, гири, коврики и инструменты, используемые пациентами. | инфекционный контроль |
+| ptclinic.flow.assistant_handoff | Передача помощника терапевта | variant | Передача сообщает о плане, мерах предосторожности, учениях и потребностях в надзоре. | командное лечение |
+| ptclinic.flow.patient_late_arrival | Обработка позднего прибытия PT | invariant | Handling корректирует сеанс, документирует потерянное время и защищает следующие встречи. | график дисциплины |
+| ptclinic.flow.incident_report | Отчет о терапевтическом инциденте | invariant | Сообщите о падении документов, появлении симптомов, травме оборудования, проблеме конфиденциальности или жалобе. | обучение безопасности |
+| ptclinic.billing.charge_units | Единицы платы за терапию | invariant | Единицы отражают документированные повременные или не повременные услуги в соответствии с правилами выставления счетов. | согласовать заметку и заряд |
+| ptclinic.billing.denial_reason | Причина отказа в ПТ | variant | Причина определяет разрешение, медицинскую необходимость, документацию, кодирование или проблему приемлемости. | исправить утечку доходов |
+| ptclinic.metrics.pt_kpi | ПТ клиника КПИ | variant | KPI отслеживает посещения, отмены, результаты, использование авторизации, задержку документации и частоту выписок. | управлять клиникой |
+| ptclinic.continuity.therapist_absence | План отсутствия терапевта | invariant | Планируйте перенос, переназначение или уведомление пациентов, сохраняя при этом клиническую непрерывность. | продолжайте заботиться |

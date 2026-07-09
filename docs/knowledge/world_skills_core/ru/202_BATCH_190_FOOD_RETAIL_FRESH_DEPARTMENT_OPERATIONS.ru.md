@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| freshretail.receiving.delivery_window | Fresh delivery window | invariant | Window controls arrival time for produce, meat, dairy, bakery or prepared foods. | freshness starts at door |
-| freshretail.receiving.temperature_check | Receiving temperature check | invariant | Check records product temperature for chilled, frozen or hot-held items at receipt. | cold chain gate |
-| freshretail.receiving.vendor_quality | Vendor quality check | invariant | Check reviews count, condition, date code, packaging, odor, damage and specification. | reject bad stock early |
-| freshretail.receiving.lot_trace | Fresh lot trace | invariant | Trace links case, supplier, lot, date and department for recall and rotation. | know origin |
-| freshretail.receiving.reject_credit | Fresh receiving rejection | invariant | Rejection records product, reason, quantity, vendor and credit or replacement action. | protect margin |
-| freshretail.storage.coldroom_zone | Coldroom zone | invariant | Zone separates products by temperature, category, allergen, odor, raw/cooked and contamination risk. | storage discipline |
-| freshretail.storage.date_code | Fresh date code | invariant | Date code controls sale-by, use-by, pack, thaw or prep timing. | rotate correctly |
-| freshretail.storage.fifo_fefo | FIFO and FEFO rotation | invariant | Rotation uses first-in-first-out or first-expire-first-out based on category. | reduce waste |
-| freshretail.storage.covering_label | Covering and labeling | invariant | Covered labeled product shows identity, date, owner and status. | prevent mystery food |
-| freshretail.storage.thaw_control | Controlled thawing | variant | Thawing keeps product under safe temperature and time conditions before sale or prep. | avoid unsafe thaw |
-| freshretail.display.case_temperature | Display case temperature | invariant | Case temperature maintains safe and quality range during merchandising. | shelf cold chain |
-| freshretail.display.case_load_limit | Display case load limit | invariant | Load limit prevents blocking airflow and overfilling refrigerated display. | cold air must move |
-| freshretail.display.planogram | Fresh department planogram | variant | Planogram sets product placement, facings, flow, adjacency and promotional space. | sell and replenish |
-| freshretail.display.misting_control | Produce misting control | variant | Misting supports produce appearance but can create spoilage or slip risk if misused. | water with judgment |
-| freshretail.display.hot_hold | Hot-hold display | variant | Hot-hold display keeps prepared foods above required holding condition and time limit. | ready-to-eat safety |
-| freshretail.prep.prep_schedule | Fresh prep schedule | invariant | Schedule plans cutting, grinding, slicing, baking or packaging based on demand and shelf life. | make at right time |
-| freshretail.prep.sanitary_setup | Fresh prep sanitary setup | invariant | Setup verifies clean surfaces, tools, PPE, handwash and separation before food handling. | safe start |
-| freshretail.prep.recipe_yield | Fresh recipe yield | variant | Yield compares expected output to input weight and waste. | margin control |
-| freshretail.prep.allergen_control | Fresh allergen control | invariant | Control prevents undeclared allergen contact through separation, labeling, cleaning and recipe discipline. | protect customers |
-| freshretail.prep.knife_safety | Fresh knife safety | invariant | Safety covers sharp tools, cut gloves, storage, handling and focused cutting. | common injury risk |
-| freshretail.pack.scale_label | Scale label | invariant | Label prints price, weight, item, date, barcode and required consumer information. | sell accurately |
-| freshretail.pack.tare_control | Tare control | invariant | Tare subtracts package weight so customer pays for product only. | fair pricing |
-| freshretail.pack.modified_atmosphere | Modified atmosphere packaging | variant | Packaging changes gas environment to preserve product where process is validated. | extend shelf life |
-| freshretail.pack.leak_check | Package leak check | invariant | Check identifies broken seals, dripping, torn wrap or swollen packs. | quality and safety |
-| freshretail.pack.country_origin | Country of origin label | variant | Label communicates origin where category and jurisdiction require it. | compliance display |
-| freshretail.floor.replenishment | Fresh replenishment | invariant | Replenishment fills display from backroom while checking date, quality and temperature. | shelf never blind |
-| freshretail.floor.culling | Fresh culling | invariant | Culling removes spoiled, damaged, expired, wilted or unsafe items from sale. | protect customer trust |
-| freshretail.floor.markdown | Fresh markdown | variant | Markdown reduces price for short-dated or cosmetically imperfect product within policy. | recover value |
-| freshretail.floor.customer_request | Fresh customer request | invariant | Request may require slicing, custom cut, advice, substitution or special order. | service interaction |
-| freshretail.floor.cross_merchandising | Cross-merchandising | variant | Display pairs related fresh items with sauces, bakery, herbs or meal components. | increase basket |
-| freshretail.shrink.shrink_log | Fresh shrink log | invariant | Log records discarded, donated, marked-down, damaged or expired quantity and reason. | margin visibility |
-| freshretail.shrink.spoilage_trend | Spoilage trend | variant | Trend identifies over-ordering, temperature issues, weak rotation or supplier quality problems. | attack root cause |
-| freshretail.shrink.production_planning | Fresh production planning | invariant | Planning uses sales, weather, events, season and shelf life to set prep quantity. | make enough, not too much |
-| freshretail.shrink.donation_route | Fresh donation route | variant | Route sends safe unsold food to approved donation partner under policy. | reduce waste |
-| freshretail.shrink.inventory_count | Fresh inventory count | invariant | Count measures on-hand product, backroom, display and work-in-process. | order accurately |
-| freshretail.safety.handwash_compliance | Fresh handwash compliance | invariant | Compliance ensures staff wash hands at required transitions and contamination events. | behavior control |
-| freshretail.safety.cleaning_schedule | Fresh cleaning schedule | invariant | Schedule covers counters, slicers, grinders, cases, drains, floors, tools and bins. | sanitation rhythm |
-| freshretail.safety.slicer_control | Deli slicer control | invariant | Control includes guard use, cleaning, lockout, blade handling and assigned trained users. | severe injury risk |
-| freshretail.safety.foreign_material | Fresh foreign material control | invariant | Control prevents glass, plastic, metal, wood or packaging fragments entering food. | protect product |
-| freshretail.safety.recall_pull | Fresh recall pull | invariant | Pull removes affected lots from shelf, backroom and prep areas and records disposition. | fast risk removal |
-| freshretail.people.department_open | Fresh department opening | invariant | Opening checks temperatures, displays, cleanliness, dates, production plan and staffing. | day starts controlled |
-| freshretail.people.department_close | Fresh department close | invariant | Close secures product, cleans equipment, records shrink, checks cases and prepares next day. | reset department |
-| freshretail.people.skill_matrix | Fresh department skill matrix | variant | Matrix tracks who can cut, slice, bake, receive, close, order or train. | staff capability |
-| freshretail.metrics.fresh_kpi | Fresh department KPI | variant | KPI tracks sales, margin, shrink, availability, temperature compliance, labor and complaints. | manage fresh tradeoffs |
+| freshretail.receiving.delivery_window | Окно доставки свежих продуктов | invariant | Окно контролирует время прибытия продуктов, мяса, молочных продуктов, хлебобулочных изделий или готовых блюд. | свежесть начинается у двери |
+| freshretail.receiving.temperature_check | Получение проверки температуры | invariant | При получении проверяйте записи температуры охлажденных, замороженных или горячих продуктов. | ворота холодовой цепи |
+| freshretail.receiving.vendor_quality | Проверка качества поставщика | invariant | Проверьте количество отзывов, состояние, код даты, упаковку, запах, повреждения и технические характеристики. | заранее отказаться от плохих акций |
+| freshretail.receiving.lot_trace | След свежей партии | invariant | Отслеживание связей с корпусом, поставщиком, партией, датой и отделом для отзыва и ротации. | знать происхождение |
+| freshretail.receiving.reject_credit | Свежий отказ | invariant | В отказе фиксируются продукт, причина, количество, поставщик и действие по кредиту или замене. | защитить маржу |
+| freshretail.storage.coldroom_zone | Холодильная зона | invariant | Зона разделяет продукты по температуре, категории, аллергену, запаху, сырости/приготовленности и риску загрязнения. | дисциплина хранения |
+| freshretail.storage.date_code | Свежий код даты | invariant | Код даты контролирует срок продажи, использования, упаковки, размораживания или подготовки. | вращать правильно |
+| freshretail.storage.fifo_fefo | Ротация FIFO и FEFO | invariant | В зависимости от категории в ротации используется принцип «первым пришел — первым вышел» или «первым вышел — первым вышел». | сократить отходы |
+| freshretail.storage.covering_label | Покрытие и маркировка | invariant | На крытой маркировке продукта указаны личность, дата, владелец и статус. | предотвратить таинственную еду |
+| freshretail.storage.thaw_control | Контролируемое оттаивание | variant | Оттаивание сохраняет продукт при безопасных температурных и временных условиях перед продажей или приготовлением. | избежать небезопасной оттепели |
+| freshretail.display.case_temperature | Температура витрины | invariant | Температура ящика поддерживает безопасный и качественный диапазон во время мерчандайзинга. | холодовая цепь полки |
+| freshretail.display.case_load_limit | Предел нагрузки витрины | invariant | Ограничение нагрузки предотвращает блокировку воздушного потока и переполнение холодильной витрины. | холодный воздух должен двигаться |
+| freshretail.display.planogram | Планограмма отдела свежих продуктов | variant | Планограмма определяет размещение продукта, облицовку, поток, смежность и рекламное пространство. | продать и пополнить |
+| freshretail.display.misting_control | Обеспечить контроль запотевания | variant | Запотевание опор улучшает внешний вид, но при неправильном использовании может создать риск порчи или скольжения. | вода с осуждением |
+| freshretail.display.hot_hold | Дисплей горячего удержания | variant | Дисплей горячей выдержки поддерживает приготовленные продукты в соответствии с требуемыми условиями и лимитом времени выдержки. | безопасность готового блюда |
+| freshretail.prep.prep_schedule | Свежий график подготовки | invariant | Планируйте нарезку, измельчение, нарезку ломтиками, запекание или упаковку в зависимости от спроса и срока годности. | сделать в нужное время |
+| freshretail.prep.sanitary_setup | Санитарная установка для свежей подготовки | invariant | Установка проверяет чистоту поверхностей, инструментов, средств индивидуальной защиты, мытья рук и разделения перед работой с пищевыми продуктами. | безопасный старт |
+| freshretail.prep.recipe_yield | Выход по свежему рецепту | variant | Урожайность сравнивает ожидаемый выпуск с входным весом и отходами. | контроль маржи |
+| freshretail.prep.allergen_control | Контроль свежих аллергенов | invariant | Контроль предотвращает необъявленный контакт с аллергенами посредством разделения, маркировки, очистки и соблюдения рецептурной дисциплины. | защищать клиентов |
+| freshretail.prep.knife_safety | Безопасность свежего ножа | invariant | Безопасность охватывает острые инструменты, режущие перчатки, хранение, обращение и целенаправленную резку. | общий риск травм |
+| freshretail.pack.scale_label | Этикетка масштаба | invariant | На этикетке печатается цена, вес, товар, дата, штрих-код и необходимая информация для потребителя. | продавать точно |
+| freshretail.pack.tare_control | Контроль тары | invariant | Из тары вычитается вес упаковки, поэтому клиент платит только за продукт. | справедливая цена |
+| freshretail.pack.modified_atmosphere | Упаковка в модифицированной атмосфере | variant | Упаковка меняет газовую среду, чтобы сохранить продукт там, где процесс проверен. | продлить срок годности |
+| freshretail.pack.leak_check | Проверка герметичности упаковки | invariant | При проверке выявляются сломанные пломбы, капли, порванная упаковка или вздутые упаковки. | качество и безопасность |
+| freshretail.pack.country_origin | Этикетка страны происхождения | variant | На этикетке указывается происхождение товара, если этого требуют категория и юрисдикция. | отображение соответствия |
+| freshretail.floor.replenishment | Свежее пополнение | invariant | Пополнение запасов заполняет дисплей из подсобного помещения, проверяя дату, качество и температуру. | полка никогда не слепая |
+| freshretail.floor.culling | Свежая выбраковка | invariant | Выбраковка удаляет из продажи испорченные, поврежденные, просроченные, увядшие или небезопасные товары. | защитить доверие клиентов |
+| freshretail.floor.markdown | Свежая уценка | variant | Уценка снижает цену на просроченный или косметически несовершенный товар в рамках полиса. | восстановить стоимость |
+| freshretail.floor.customer_request | Свежий запрос клиента | invariant | Запрос может потребовать нарезки, индивидуальной резки, консультации, замены или специального заказа. | взаимодействие служб |
+| freshretail.floor.cross_merchandising | Кросс-мерчендайзинг | variant | Показывайте пары связанных свежих продуктов с соусами, выпечкой, травами или компонентами еды. | увеличить корзину |
+| freshretail.shrink.shrink_log | Свежий термоусадочный журнал | invariant | Записи в журнале об отброшенных, подаренных, уцененных, поврежденных или просроченных количествах и причинах. | видимость полей |
+| freshretail.shrink.spoilage_trend | Тенденция к порче | variant | Тенденция выявляет чрезмерные заказы, проблемы с температурой, слабую ротацию или проблемы с качеством поставщика. | первопричина атаки |
+| freshretail.shrink.production_planning | Планирование свежего производства | invariant | При планировании используются данные о продажах, погоде, событиях, сезоне и сроке годности, чтобы установить количество заготовок. | зарабатывать достаточно, не слишком много |
+| freshretail.shrink.donation_route | Свежий маршрут пожертвований | variant | В соответствии с политикой Route отправляет безопасные непроданные продукты питания утвержденному партнеру-пожертвователю. | сократить отходы |
+| freshretail.shrink.inventory_count | Свежая инвентаризация | invariant | Подсчитайте показатели наличия продукта, подсобных помещений, витрины и незавершенного производства. | заказывать точно |
+| freshretail.safety.handwash_compliance | Соблюдение требований к мытью рук в свежем виде | invariant | Соблюдение требований гарантирует, что персонал моет руки при необходимых переходах и в случаях заражения. | контроль поведения |
+| freshretail.safety.cleaning_schedule | График свежей уборки | invariant | В расписание включены прилавки, нарезки, мясорубки, ящики, стоки, полы, инструменты и контейнеры. | санитарный ритм |
+| freshretail.safety.slicer_control | Управление слайсером гастронома | invariant | Контроль включает в себя использование защитных приспособлений, очистку, блокировку, обращение с лезвиями и назначение обученных пользователей. | риск серьезной травмы |
+| freshretail.safety.foreign_material | Контроль свежих посторонних материалов | invariant | Контроль предотвращает попадание в пищу фрагментов стекла, пластика, металла, дерева или упаковки. | защитить продукт |
+| freshretail.safety.recall_pull | Свежий отзыв | invariant | Функция Pull удаляет затронутые партии с полок, подсобных помещений и подготовительных зон и записывает их размещение. | быстрое устранение рисков |
+| freshretail.people.department_open | Открытие свежего отдела | invariant | При открытии проверяются температура, витрины, чистота, даты, производственный план и укомплектованность персоналом. | день начинается под контролем |
+| freshretail.people.department_close | Отдел свежих продуктов закрыть | invariant | Закрытие обеспечивает безопасность продукта, чистит оборудование, упаковывает записи, проверяет ящики и готовится на следующий день. | отдел сброса |
+| freshretail.people.skill_matrix | Матрица навыков свежего отдела | variant | Матрица отслеживает тех, кто может резать, нарезать, печь, получать, закрывать, заказывать или обучать. | возможности персонала |
+| freshretail.metrics.fresh_kpi | KPI свежего отдела | variant | KPI отслеживает продажи, рентабельность, усадку, доступность, соблюдение температурного режима, трудозатраты и жалобы. | управлять новыми компромиссами |

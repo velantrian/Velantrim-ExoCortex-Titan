@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| wwops.influent.influent_flow | Influent flow | invariant | Influent flow is incoming wastewater volume rate entering the treatment plant. | load begins at inlet |
-| wwops.influent.screening | Influent screening | invariant | Screening removes rags, plastics and large solids before they damage downstream equipment. | protect pumps and process |
-| wwops.influent.grit_removal | Grit removal | invariant | Grit removal separates sand, gravel and heavy inorganic particles that cause abrasion and deposits. | save equipment |
-| wwops.influent.equalization | Flow equalization | variant | Equalization dampens hydraulic or pollutant peaks before biological or chemical treatment. | smooth the shock |
-| wwops.influent.influent_sampling | Influent sampling | invariant | Sampling characterizes load, pollutants, temperature and abnormal influent events. | know what arrives |
-| wwops.influent.illicit_discharge | Illicit discharge signal | variant | Signal of illicit discharge includes unusual odor, color, pH, toxicity, foam or sudden process upset. | catch abnormal input |
-| wwops.primary.primary_clarifier | Primary clarifier | invariant | Primary clarifier settles solids and removes floatables before biological treatment. | first settling step |
-| wwops.primary.scum_removal | Scum removal | invariant | Scum removal controls floating grease and solids that can create odor, blockage or process issues. | surface matters |
-| wwops.primary.sludge_blanket | Sludge blanket | invariant | Sludge blanket depth indicates solids accumulation and affects clarifier performance. | not too high |
-| wwops.primary.weir_cleaning | Clarifier weir cleaning | invariant | Weir cleaning maintains even flow and prevents solids, algae or grease from disrupting discharge. | small edge, big effect |
-| wwops.primary.primary_sludge_pumping | Primary sludge pumping | invariant | Pumping removes settled sludge at controlled rate for downstream thickening or digestion. | solids keep moving |
-| wwops.primary.odor_source | Odor source control | variant | Odor control targets sulfides, septicity, ventilation, covers and chemical treatment where needed. | community impact |
-| wwops.biological.activated_sludge | Activated sludge process | invariant | Activated sludge uses microorganisms and aeration to remove organic matter and nutrients. | biology as treatment |
-| wwops.biological.mixed_liquor | Mixed liquor | invariant | Mixed liquor is the mixture of wastewater and microbial solids in aeration basin. | process soup |
-| wwops.biological.do_control | Dissolved oxygen control | invariant | DO control balances microbial needs, energy use and treatment performance. | air is expensive |
-| wwops.biological.return_activated_sludge | Return activated sludge | invariant | RAS returns settled biomass to aeration basin to maintain microbial population. | keep biology in system |
-| wwops.biological.waste_activated_sludge | Waste activated sludge | invariant | WAS removes excess biomass to control sludge age and solids concentration. | biology must be wasted |
-| wwops.biological.sludge_age | Sludge age | invariant | Sludge age indicates average biomass retention time and affects nitrification, settling and stability. | age controls microbes |
-| wwops.biological.filamentous_bulking | Filamentous bulking | variant | Bulking reduces sludge settling due to microbial imbalance or operating conditions. | clarifier trouble |
-| wwops.biological.nitrification | Nitrification | invariant | Nitrification converts ammonia to nitrate under aerobic conditions with suitable biomass and temperature. | nitrogen step one |
-| wwops.biological.denitrification | Denitrification | invariant | Denitrification converts nitrate to nitrogen gas under anoxic conditions with carbon source. | nitrogen removal |
-| wwops.secondary.secondary_clarifier | Secondary clarifier | invariant | Secondary clarifier separates biological solids from treated effluent after aeration. | settle the biomass |
-| wwops.secondary.settleability_test | Sludge settleability test | invariant | Settleability test indicates how well mixed liquor solids compact and clarify. | jar tells process story |
-| wwops.secondary.sludge_bulking_response | Bulking response | variant | Response may adjust wasting, DO, nutrients, selectors or chemical aids based on cause. | diagnose before action |
-| wwops.secondary.rising_sludge | Rising sludge | variant | Rising sludge may result from denitrification gas, septic conditions or solids management problems. | blanket floats |
-| wwops.tertiary.filtration | Tertiary filtration | variant | Filtration removes remaining suspended solids before disinfection or discharge where required. | polish effluent |
-| wwops.tertiary.disinfection | Wastewater disinfection | invariant | Disinfection reduces pathogens using chlorine, UV or other approved systems before discharge or reuse. | public health barrier |
-| wwops.tertiary.uv_intensity | UV intensity | invariant | UV intensity and dose determine whether disinfection receives enough light energy. | lamps age |
-| wwops.tertiary.dechlorination | Dechlorination | variant | Dechlorination removes residual chlorine when discharge limits protect receiving waters. | treatment after disinfecting |
-| wwops.sludge.thickening | Sludge thickening | invariant | Thickening increases solids concentration before digestion, dewatering or hauling. | less water to handle |
-| wwops.sludge.anaerobic_digestion | Anaerobic digestion | variant | Anaerobic digestion stabilizes sludge and can produce biogas under controlled temperature and mixing. | waste becomes energy |
-| wwops.sludge.dewatering | Sludge dewatering | invariant | Dewatering reduces water content using centrifuges, presses, beds or other equipment. | hauling cost reduction |
-| wwops.sludge.polymer_dosing | Polymer dosing | variant | Polymer dosing improves floc formation for thickening or dewatering but requires dose control. | chemical helps solids |
-| wwops.sludge.biosolids_class | Biosolids classification | invariant | Biosolids class depends on treatment, pathogen reduction, vector attraction and regulatory criteria. | disposal route |
-| wwops.lab.bod_test | BOD test | invariant | BOD test estimates biodegradable organic load by measuring oxygen demand over defined time. | core wastewater metric |
-| wwops.lab.cod_test | COD test | invariant | COD test estimates chemically oxidizable matter and is faster than BOD but not identical. | quick load signal |
-| wwops.lab.tss_test | TSS test | invariant | TSS test measures suspended solids in influent, process streams or effluent. | solids compliance |
-| wwops.lab.ammonia_test | Ammonia test | invariant | Ammonia monitoring helps assess nitrification performance and discharge compliance. | nitrogen control |
-| wwops.lab.ph_alkalinity | pH and alkalinity | invariant | pH and alkalinity affect biological process stability, nitrification and chemical treatment. | process buffer |
-| wwops.alarms.high_level_alarm | High-level alarm | invariant | High-level alarm warns of overflow, pump failure, blockage or hydraulic overload. | prevent spill |
-| wwops.alarms.blower_alarm | Blower alarm | invariant | Blower alarm affects aeration and can quickly harm biological treatment. | air supply critical |
-| wwops.compliance.discharge_permit | Discharge permit | invariant | Permit defines effluent limits, monitoring frequency, sampling locations and reporting requirements. | legal discharge boundary |
-| wwops.compliance.daily_log | Wastewater daily log | invariant | Daily log records flows, process readings, lab results, alarms, maintenance and unusual events. | plant memory |
-| wwops.compliance.bypass_event | Bypass event | invariant | Bypass event diverts flow around treatment and requires documentation, cause assessment and notification if applicable. | serious exception |
+| wwops.influent.influent_flow | Приток | invariant | Приток – это объемный расход сточных вод, поступающих на очистные сооружения. | нагрузка начинается на входе |
+| wwops.influent.screening | Влиятельный скрининг | invariant | Скрининг удаляет ветошь, пластик и крупные твердые частицы до того, как они повредят оборудование, расположенное ниже по потоку. | защитить насосы и технологические |
+| wwops.influent.grit_removal | Удаление песка | invariant | Удаление песка отделяет песок, гравий и тяжелые неорганические частицы, которые вызывают истирание и отложения. | сохранить оборудование |
+| wwops.influent.equalization | Выравнивание потока | variant | Выравнивание гасит гидравлические пики или пики выбросов загрязняющих веществ перед биологической или химической обработкой. | сгладить шок |
+| wwops.influent.influent_sampling | Входящий отбор проб | invariant | Отбор проб характеризует нагрузку, загрязняющие вещества, температуру и аномальные притоки. | знать, что приходит |
+| wwops.influent.illicit_discharge | Сигнал о незаконном сбросе | variant | Сигналом о незаконных сбросах является необычный запах, цвет, pH, токсичность, пена или внезапное нарушение процесса. | поймать ненормальный ввод |
+| wwops.primary.primary_clarifier | Первичный осветлитель | invariant | Первичный осветлитель оседает твердые частицы и удаляет плавучие вещества перед биологической очисткой. | первый шаг урегулирования |
+| wwops.primary.scum_removal | Удаление накипи | invariant | Удаление накипи позволяет контролировать плавающий жир и твердые частицы, которые могут создавать запах, закупорку или проблемы с процессом. | поверхностные вопросы |
+| wwops.primary.sludge_blanket | Иловое одеяло | invariant | Глубина слоя ила указывает на накопление твердых частиц и влияет на производительность осветлителя. | не слишком высокий |
+| wwops.primary.weir_cleaning | Очистка водослива осветлителем | invariant | Очистка водослива поддерживает равномерный поток и предотвращает нарушение сброса твердых частиц, водорослей или жира. | маленький край, большой эффект |
+| wwops.primary.primary_sludge_pumping | Первичная перекачка осадка | invariant | Насос удаляет осевший ил с контролируемой скоростью для дальнейшего сгущения или разложения. | твердые тела продолжают двигаться |
+| wwops.primary.odor_source | Контроль источника запаха | variant | Контроль запаха нацелен на сульфиды, загрязненность, вентиляцию, укрытия и химическую обработку, где это необходимо. | влияние на сообщество |
+| wwops.biological.activated_sludge | Процесс с активным илом | invariant | Активный ил использует микроорганизмы и аэрацию для удаления органических веществ и питательных веществ. | биология как лечение |
+| wwops.biological.mixed_liquor | Смешанный ликер | invariant | Смешанный щелок представляет собой смесь сточных вод и твердых микробных частиц в аэротенке. | процесс супа |
+| wwops.biological.do_control | Контроль растворенного кислорода | invariant | Контроль DO уравновешивает потребности микроорганизмов, потребление энергии и эффективность лечения. | воздух дорогой |
+| wwops.biological.return_activated_sludge | Возвратный активный ил | invariant | УЗВ возвращает осевшую биомассу в аэротенк для поддержания микробной популяции. | держать биологию в системе |
+| wwops.biological.waste_activated_sludge | Отходы активного ила | invariant | WAS удаляет излишки биомассы для контроля возраста осадка и концентрации твердых веществ. | биология должна быть потрачена впустую |
+| wwops.biological.sludge_age | Возраст осадка | invariant | Возраст ила указывает на среднее время удерживания биомассы и влияет на нитрификацию, осаждение и стабильность. | возраст контролирует микробы |
+| wwops.biological.filamentous_bulking | Нитевидное набухание | variant | Наполнение уменьшает осаждение осадка из-за микробного дисбаланса или условий эксплуатации. | проблема с осветлителем |
+| wwops.biological.nitrification | Нитрификация | invariant | Нитрификация превращает аммиак в нитрат в аэробных условиях с подходящей биомассой и температурой. | азот, шаг первый |
+| wwops.biological.denitrification | Денитрификация | invariant | Денитрификация превращает нитрат в газообразный азот в бескислородных условиях с источником углерода. | удаление азота |
+| wwops.secondary.secondary_clarifier | Вторичный осветлитель | invariant | Вторичный отстойник отделяет биологические твердые вещества от очищенных сточных вод после аэрации. | оседать биомассу |
+| wwops.secondary.settleability_test | Испытание на осаждаемость осадка | invariant | Тест на осаждаемость показывает, насколько хорошо уплотняются и осветляются твердые вещества смешанного щелока. | jar рассказывает историю процесса |
+| wwops.secondary.sludge_bulking_response | Массовый ответ | variant | Реагирование может корректировать потери, DO, питательные вещества, селекторы или химические добавки в зависимости от причины. | диагностируйте перед действием |
+| wwops.secondary.rising_sludge | Поднимающийся ил | variant | Поднимающийся осадок может быть результатом денитрификационного газа, септических условий или проблем с обращением с твердыми веществами. | одеяло плавает |
+| wwops.tertiary.filtration | Третичная фильтрация | variant | Фильтрация удаляет оставшиеся взвешенные твердые частицы перед дезинфекцией или сливом, где это необходимо. | польские сточные воды |
+| wwops.tertiary.disinfection | Обеззараживание сточных вод | invariant | Дезинфекция уменьшает количество болезнетворных микроорганизмов с помощью хлора, ультрафиолета или других одобренных систем перед выгрузкой или повторным использованием. | барьер общественного здравоохранения |
+| wwops.tertiary.uv_intensity | интенсивность УФ | invariant | Интенсивность и доза УФ-излучения определяют, получает ли дезинфекция достаточно световой энергии. | возраст лампы |
+| wwops.tertiary.dechlorination | Дехлорирование | variant | Дехлорирование удаляет остаточный хлор, когда пределы сброса защищают принимающие воды. | обработка после дезинфекции |
+| wwops.sludge.thickening | Утолщение осадка | invariant | Загущение увеличивает концентрацию твердых веществ перед перевариванием, обезвоживанием или транспортировкой. | меньше воды для обработки |
+| wwops.sludge.anaerobic_digestion | Анаэробное пищеварение | variant | Анаэробное сбраживание стабилизирует осадок и позволяет производить биогаз при контролируемой температуре и перемешивании. | отходы становятся энергией |
+| wwops.sludge.dewatering | Обезвоживание осадка | invariant | Обезвоживание снижает содержание воды с помощью центрифуг, прессов, кроватей или другого оборудования. | снижение затрат на транспортировку |
+| wwops.sludge.polymer_dosing | Дозирование полимеров | variant | Дозирование полимера улучшает образование хлопьев при загущении или обезвоживании, но требует контроля дозы. | химия помогает твердым веществам |
+| wwops.sludge.biosolids_class | Классификация твердых биологических веществ | invariant | Класс твердых биологических веществ зависит от обработки, снижения количества патогенов, привлечения переносчиков и нормативных критериев. | маршрут утилизации |
+| wwops.lab.bod_test | БПК-тест | invariant | Тест БПК оценивает биоразлагаемую органическую нагрузку путем измерения потребности в кислороде в течение определенного времени. | основной показатель сточных вод |
+| wwops.lab.cod_test | тест наложенного платежа | invariant | Тест ХПК оценивает химически окисляемые вещества и работает быстрее, чем БПК, но не идентичен. | сигнал быстрой загрузки |
+| wwops.lab.tss_test | ТСС-тест | invariant | Тест TSS измеряет взвешенные твердые вещества в сточных водах, технологических потоках или сточных водах. | соответствие твердым веществам |
+| wwops.lab.ammonia_test | Тест на аммиак | invariant | Мониторинг аммиака помогает оценить эффективность нитрификации и соблюдение требований по сбросу. | контроль азота |
+| wwops.lab.ph_alkalinity | pH и щелочность | invariant | Уровень pH и щелочность влияют на стабильность биологических процессов, нитрификацию и химическую обработку. | буфер процесса |
+| wwops.alarms.high_level_alarm | Сигнализация высокого уровня | invariant | Сигнализация высокого уровня предупреждает о переливе, отказе насоса, блокировке или перегрузке гидравлической системы. | предотвратить разлив |
+| wwops.alarms.blower_alarm | Сигнализация вентилятора | invariant | Сигнализация вентилятора влияет на аэрацию и может быстро нанести вред биологической очистке. | подача воздуха критическая |
+| wwops.compliance.discharge_permit | Разрешение на сброс | invariant | В разрешении определяются пределы выбросов, частота мониторинга, места отбора проб и требования к отчетности. | законная граница сброса |
+| wwops.compliance.daily_log | Ежедневный журнал сточных вод | invariant | Ежедневный журнал записывает потоки, показания процессов, результаты лабораторных исследований, сигналы тревоги, техническое обслуживание и необычные события. | память растений |
+| wwops.compliance.bypass_event | Обход события | invariant | Обходное событие отвлекает поток лечения и требует документирования, оценки причины и уведомления, если применимо. | серьезное исключение |

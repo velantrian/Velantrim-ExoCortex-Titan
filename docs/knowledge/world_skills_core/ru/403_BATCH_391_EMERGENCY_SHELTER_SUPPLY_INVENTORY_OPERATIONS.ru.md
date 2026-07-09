@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| sheltersupplyops.activation.supply_plan | supply plan | RECORD | Plan lists expected population, operating days, supply categories and owners. | Sets inventory baseline. |
-| sheltersupplyops.activation.cache_link | cache link | RECORD | Shelter inventory links to local cache, donations, vendors and logistics staging. | Shows supply sources. |
-| sheltersupplyops.activation.role_roster | role roster | RECORD | Roster names inventory lead, receiving, issue desk, runners and finance support. | Clarifies responsibility. |
-| sheltersupplyops.activation.initial_count | initial count | MEASUREMENT | Opening count records supplies on hand before shelter operation begins. | Establishes audit baseline. |
-| sheltersupplyops.items.cots | cot inventory | RECORD | Cot inventory tracks type, quantity, condition, location and setup status. | Manages sleeping capacity. |
-| sheltersupplyops.items.blankets | blanket inventory | RECORD | Blanket inventory tracks clean, issued, soiled and reserve blankets. | Prevents night shortages. |
-| sheltersupplyops.items.hygiene_kits | hygiene kits | RECORD | Kits include soap, toothbrush, menstrual products, wipes or local standard contents. | Supports dignity. |
-| sheltersupplyops.items.ppe | PPE inventory | RECORD | PPE tracks masks, gloves, gowns, eye protection and sanitizer. | Protects health operations. |
-| sheltersupplyops.receiving.delivery_id | delivery ID | RECORD | Delivery ID links supplier, driver, items, count, time and receiver. | Tracks inbound supplies. |
-| sheltersupplyops.receiving.condition_check | condition check | QUALITY_CHECK | Received goods are checked for damage, contamination, expiration and count. | Prevents bad stock. |
-| sheltersupplyops.receiving.shortage | receiving shortage | RECORD | Shortage records expected, received, missing and follow-up owner. | Keeps supplier issues visible. |
-| sheltersupplyops.receiving.storage_route | storage route | METHOD | Supplies route to sleeping, medical, food, PPE, cleaning or secure storage. | Prevents pileups. |
-| sheltersupplyops.storage.zone | storage zone | METHOD | Zones separate clean, soiled, medical, restricted, bulk and daily-use goods. | Makes stock findable. |
-| sheltersupplyops.storage.security | secure storage | SAFETY_RULE | Scarce, medical or high-value supplies use controlled access. | Reduces loss. |
-| sheltersupplyops.storage.environment | storage condition | CONSTRAINT | Supplies are protected from moisture, pests, heat, chemicals and traffic. | Preserves usability. |
-| sheltersupplyops.storage.labeling | bin labeling | METHOD | Bins and pallets show item, quantity, date and reorder threshold. | Speeds work. |
-| sheltersupplyops.issue.issue_log | issue log | RECORD | Issue log records item, quantity, destination, requester and time. | Tracks outbound use. |
-| sheltersupplyops.issue.resident_issue | resident issue | METHOD | Resident-issued items may be logged by household, dorm area or anonymous count. | Balances privacy and stock control. |
-| sheltersupplyops.issue.department_issue | department issue | METHOD | Functional areas receive supplies through approved request path. | Prevents uncontrolled grabbing. |
-| sheltersupplyops.issue.return | return process | METHOD | Unused clean supplies can return to inventory after inspection. | Reduces waste. |
-| sheltersupplyops.reorder.burn_rate | burn rate | MEASUREMENT | Burn rate estimates daily use by population and activity. | Predicts shortages. |
-| sheltersupplyops.reorder.threshold | reorder threshold | MODEL | Threshold uses lead time, criticality, reserve and burn rate. | Triggers timely ordering. |
-| sheltersupplyops.reorder.request | reorder request | RECORD | Request records item, quantity, justification, priority and funding source. | Starts resupply. |
-| sheltersupplyops.reorder.substitution | substitution | METHOD | Equivalent supplies are approved when exact item is unavailable. | Keeps service operating. |
-| sheltersupplyops.shortage.shortage_id | shortage ID | RECORD | Shortage ID tracks item, site impact, priority, workaround and owner. | Makes gaps actionable. |
-| sheltersupplyops.shortage.rationing | rationing rule | CONSTRAINT | Rationing prioritizes life safety, health, accessibility and minimum dignity. | Allocates fairly. |
-| sheltersupplyops.shortage.escalation | shortage escalation | METHOD | Critical shortages escalate to logistics, donations, procurement or mutual aid. | Finds supply fast. |
-| sheltersupplyops.shortage.public_message | public message | METHOD | Public messages request only needed donations and avoid unwanted items. | Reduces clutter. |
-| sheltersupplyops.sanitation.soiled_goods | soiled goods | METHOD | Soiled blankets, towels and clothing are separated and bagged. | Prevents contamination. |
-| sheltersupplyops.sanitation.laundry_route | laundry route | METHOD | Laundry routes send reusable textiles to approved cleaning or disposal. | Restores stock. |
-| sheltersupplyops.sanitation.waste | waste handling | SAFETY_RULE | Damaged, contaminated or single-use supplies are disposed by policy. | Protects health. |
-| sheltersupplyops.sanitation.pest | pest prevention | METHOD | Food-like or textile storage is checked for pests. | Protects inventory. |
-| sheltersupplyops.records.daily_count | daily count | MEASUREMENT | Daily count checks high-use and scarce supplies. | Keeps inventory current. |
-| sheltersupplyops.records.adjustment | inventory adjustment | RECORD | Adjustments record loss, damage, correction, donation or transfer reason. | Preserves audit trail. |
-| sheltersupplyops.records.cost | cost record | RECORD | Costs track purchases, rentals, donations, losses and transfers. | Supports finance. |
-| sheltersupplyops.records.retention | retention rule | CONSTRAINT | Inventory records follow emergency, finance and grant schedules. | Keeps evidence. |
-| sheltersupplyops.qa.cycle_count | cycle count | QUALITY_CHECK | Cycle counts compare physical stock to logs. | Detects errors. |
-| sheltersupplyops.qa.loss_review | loss review | QUALITY_CHECK | Losses are reviewed for theft, damage, spoilage or documentation gap. | Improves control. |
-| sheltersupplyops.metrics.stockout | stockout metric | MEASUREMENT | Stockouts record item, duration, cause and impact. | Guides improvement. |
-| sheltersupplyops.metrics.per_resident | per-resident use | MEASUREMENT | Use per resident helps forecast future shelter supply needs. | Improves planning. |
-| sheltersupplyops.demob.final_reconcile | final reconciliation | QUALITY_CHECK | Final reconciliation matches opening, receipts, issues, returns and remaining stock. | Closes inventory. |
-| sheltersupplyops.demob.transfer | supply transfer | METHOD | Remaining supplies transfer to cache, shelters, donations or disposal. | Avoids waste. |
-| sheltersupplyops.review.after_action | after-action review | METHOD | Review captures shortages, reorder delays, storage and issue-control lessons. | Improves next shelter. |
-| sheltersupplyops.governance.inventory_owner | inventory owner | RECORD | Owner coordinates shelter, logistics, finance and donations for supplies. | Keeps accountability clear. |
+| sheltersupplyops.activation.supply_plan | план поставок | RECORD | В плане указано ожидаемое население, дни работы, категории поставок и владельцы. | Устанавливает базовый уровень запасов. |
+| sheltersupplyops.activation.cache_link | ссылка на кеш | RECORD | Инвентаризация убежища связана с местным тайником, пожертвованиями, продавцами и логистикой. | Показывает источники поставок. |
+| sheltersupplyops.activation.role_roster | список ролей | RECORD | В реестре указаны руководители инвентаризации, приемки, службы выдачи, курьеры и финансовая поддержка. | Уточняет ответственность. |
+| sheltersupplyops.activation.initial_count | первоначальный подсчет | MEASUREMENT | При подсчете открытий фиксируются имеющиеся запасы до начала работы убежища. | Устанавливает базовый уровень аудита. |
+| sheltersupplyops.items.cots | инвентарь для кроватки | RECORD | Инвентарь детской кроватки отслеживает тип, количество, состояние, местоположение и статус установки. | Управляет спальным местом. |
+| sheltersupplyops.items.blankets | общий инвентарь | RECORD | В инвентаре одеял учитываются чистые, выданные, загрязненные и резервные одеяла. | Предотвращает ночные нехватки. |
+| sheltersupplyops.items.hygiene_kits | гигиенические наборы | RECORD | В комплекты входят мыло, зубная щетка, средства для менструального цикла, салфетки или содержимое, соответствующее местным стандартам. | Поддерживает достоинство. |
+| sheltersupplyops.items.ppe | инвентарь СИЗ | RECORD | СИЗ отслеживают маски, перчатки, халаты, средства защиты глаз и дезинфицирующие средства. | Защищает медицинские операции. |
+| sheltersupplyops.receiving.delivery_id | идентификатор доставки | RECORD | Идентификатор доставки связывает поставщика, водителя, товары, количество, время и получателя. | Отслеживает входящие поставки. |
+| sheltersupplyops.receiving.condition_check | проверка состояния | QUALITY_CHECK | Поступившие товары проверяются на наличие повреждений, загрязнений, сроков годности и пересчета. | Предотвращает плохой запас. |
+| sheltersupplyops.receiving.shortage | получение дефицита | RECORD | Записи об ожидаемой недостаче, получении, недостаче и последующем контроле владельца. | Делает проблемы поставщиков видимыми. |
+| sheltersupplyops.receiving.storage_route | маршрут хранения | METHOD | Поставки расходных материалов направляются к спальным местам, медицинским учреждениям, продуктам питания, средствам индивидуальной защиты, уборке или безопасному хранению. | Предотвращает скопления людей. |
+| sheltersupplyops.storage.zone | зона хранения | METHOD | Зоны разделяют чистые, загрязненные, медицинские, ограниченные, сыпучие товары и товары повседневного использования. | Делает запасы доступными для поиска. |
+| sheltersupplyops.storage.security | безопасное хранение | SAFETY_RULE | Доступ к дефицитным, медицинским или дорогостоящим товарам осуществляется через контролируемый доступ. | Уменьшает потери. |
+| sheltersupplyops.storage.environment | условия хранения | CONSTRAINT | Поставки защищены от влаги, вредителей, тепла, химикатов и дорожного движения. | Сохраняет удобство использования. |
+| sheltersupplyops.storage.labeling | маркировка контейнеров | METHOD | В контейнерах и поддонах отображается товар, количество, дата и порог повторного заказа. | Скорости работают. |
+| sheltersupplyops.issue.issue_log | журнал проблем | RECORD | В журнале проблем фиксируются товар, количество, пункт назначения, отправитель запроса и время. | Отслеживает исходящее использование. |
+| sheltersupplyops.issue.resident_issue | проблема резидента | METHOD | Предметы, выданные жильцами, могут регистрироваться по домохозяйству, общежитию или анонимному подсчету. | Балансирует конфиденциальность и контроль запасов. |
+| sheltersupplyops.issue.department_issue | проблема отдела | METHOD | Функциональные области получают материалы по утвержденному пути запроса. | Предотвращает неконтролируемый захват. |
+| sheltersupplyops.issue.return | процесс возврата | METHOD | Неиспользованные чистые материалы могут вернуться в инвентарь после проверки. | Уменьшает отходы. |
+| sheltersupplyops.reorder.burn_rate | скорость горения | MEASUREMENT | Скорость сгорания оценивает ежедневное использование населением и деятельностью. | Прогнозирует дефицит. |
+| sheltersupplyops.reorder.threshold | порог повторного заказа | MODEL | Пороговое значение учитывает время выполнения заказа, критичность, резерв и скорость сгорания. | Обеспечивает своевременный заказ. |
+| sheltersupplyops.reorder.request | запрос на повторный заказ | RECORD | В запросе указывается позиция, количество, обоснование, приоритет и источник финансирования. | Начинается пополнение запасов. |
+| sheltersupplyops.reorder.substitution | замена | METHOD | Эквивалентные поставки одобряются, когда конкретный товар недоступен. | Поддерживает работу сервиса. |
+| sheltersupplyops.shortage.shortage_id | идентификатор дефицита | RECORD | Идентификатор нехватки отслеживает элемент, влияние на сайт, приоритет, обходной путь и владельца. | Делает пробелы действенными. |
+| sheltersupplyops.shortage.rationing | правило нормирования | CONSTRAINT | При нормировании приоритеты отдаются безопасности жизни, здоровью, доступности и минимальному достоинству. | Распределяет справедливо. |
+| sheltersupplyops.shortage.escalation | эскалация дефицита | METHOD | Критическая нехватка перерастает в логистику, пожертвования, закупки или взаимопомощь. | Быстро находит поставки. |
+| sheltersupplyops.shortage.public_message | публичное сообщение | METHOD | Публичные сообщения требуют только необходимых пожертвований и избегают нежелательных предметов. | Уменьшает беспорядок. |
+| sheltersupplyops.sanitation.soiled_goods | грязные товары | METHOD | Грязные одеяла, полотенца и одежда отделяются и складываются в пакеты. | Предотвращает загрязнение. |
+| sheltersupplyops.sanitation.laundry_route | маршрут прачечной | METHOD | Маршруты прачечных отправляют многоразовые текстильные изделия на утвержденную очистку или утилизацию. | Восстанавливает запас. |
+| sheltersupplyops.sanitation.waste | обработка отходов | SAFETY_RULE | Поврежденные, загрязненные или одноразовые расходные материалы подлежат утилизации в соответствии с правилами. | Защищает здоровье. |
+| sheltersupplyops.sanitation.pest | профилактика вредителей | METHOD | Хранение пищевых продуктов или текстиля проверяется на наличие вредителей. | Защищает инвентарь. |
+| sheltersupplyops.records.daily_count | ежедневный подсчет | MEASUREMENT | Ежедневный подсчет проверяет часто используемые и дефицитные запасы. | Поддерживает инвентарь в актуальном состоянии. |
+| sheltersupplyops.records.adjustment | корректировка запасов | RECORD | Корректировки фиксируют потерю, повреждение, исправление, причину дарения или передачи. | Сохраняет контрольный журнал. |
+| sheltersupplyops.records.cost | запись затрат | RECORD | Расходы отслеживают покупки, аренду, пожертвования, потери и переводы. | Поддерживает финансы. |
+| sheltersupplyops.records.retention | правило хранения | CONSTRAINT | Записи инвентаризации соответствуют графикам чрезвычайных ситуаций, финансирования и грантов. | Хранит доказательства. |
+| sheltersupplyops.qa.cycle_count | количество циклов | QUALITY_CHECK | При подсчете циклов сравниваются физические запасы с бревнами. | Обнаруживает ошибки. |
+| sheltersupplyops.qa.loss_review | обзор убытков | QUALITY_CHECK | Потери проверяются на предмет кражи, повреждения, порчи или пробелов в документации. | Улучшает контроль. |
+| sheltersupplyops.metrics.stockout | показатель дефицита | MEASUREMENT | Дефициты фиксируют товар, продолжительность, причину и влияние. | Улучшение направляющих. |
+| sheltersupplyops.metrics.per_resident | использование на одного жителя | MEASUREMENT | Использование на одного жителя помогает прогнозировать будущие потребности в жилье. | Улучшает планирование. |
+| sheltersupplyops.demob.final_reconcile | окончательное примирение | QUALITY_CHECK | Окончательная сверка соответствует открытию, поступлениям, расходам, возвратам и остаткам на складе. | Закрывает инвентарь. |
+| sheltersupplyops.demob.transfer | передача поставок | METHOD | Оставшиеся припасы передаются в тайники, приюты, в дар или на утилизацию. | Избегает отходов. |
+| sheltersupplyops.review.after_action | обзор после действий | METHOD | В обзоре отражены дефициты, задержки повторного заказа, уроки хранения и контроля проблем. | Улучшает следующее убежище. |
+| sheltersupplyops.governance.inventory_owner | владелец инвентаря | RECORD | Владелец координирует приют, логистику, финансы и пожертвования на поставки. | Обеспечивает четкую подотчетность. |

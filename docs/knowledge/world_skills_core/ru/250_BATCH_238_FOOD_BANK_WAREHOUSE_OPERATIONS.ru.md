@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| foodbankops.donation.donor_offer | Food bank donor offer | invariant | Offer records donor, product, quantity, condition, pickup window and restrictions. | evaluate donation |
-| foodbankops.donation.donation_acceptance | Food bank donation acceptance | invariant | Acceptance checks product safety, date, packaging, storage need and mission fit. | protect inventory |
-| foodbankops.donation.receipt_record | Food bank donor receipt | invariant | Receipt documents donated goods, weight, date, donor and acknowledgment route. | donor accountability |
-| foodbankops.donation.reject_reason | Food bank donation rejection | invariant | Rejection records unsafe, expired, damaged, unlabeled or unsuitable goods and communication. | avoid risk |
-| foodbankops.donation.food_drive | Food bank food drive intake | variant | Intake manages event source, boxes, sorting load, volunteers and acknowledgment. | community supply |
-| foodbankops.receiving.appointment_dock | Food bank receiving dock appointment | variant | Appointment schedules carrier, donor, dock, product type, labor and equipment. | smooth receiving |
-| foodbankops.receiving.weight_capture | Food bank weight capture | invariant | Capture records pallet, case, bulk or mixed donation weight by category. | inventory measure |
-| foodbankops.receiving.condition_check | Food bank receiving condition check | invariant | Check reviews temperature, pests, packaging, leakage, damage and contamination. | safe stock |
-| foodbankops.receiving.lot_date | Food bank lot and date capture | invariant | Capture records lot, best-by, production date or traceability mark when present. | recall readiness |
-| foodbankops.receiving.putaway_task | Food bank putaway task | invariant | Task assigns product to dry, cooler, freezer, quarantine or sorting area. | correct storage |
-| foodbankops.sorting.sort_category | Food bank sorting category | invariant | Category separates grains, cans, produce, dairy, protein, hygiene, infant or special diet items. | usable inventory |
-| foodbankops.sorting.quality_sort | Food bank quality sort | invariant | Sort removes dented, leaking, open, contaminated, unlabeled or unsafe items. | protect clients |
-| foodbankops.sorting.repack_line | Food bank repack line | variant | Line converts bulk goods into household, agency or program packs with labels. | distribute usable units |
-| foodbankops.sorting.volunteer_line | Food bank volunteer sorting line | variant | Line assigns roles, safety briefing, bins, pace, supervision and cleanup. | productive volunteers |
-| foodbankops.sorting.allergen_separation | Food bank allergen separation | variant | Separation keeps allergens or special diet products identified and not misrepresented. | protect recipients |
-| foodbankops.inventory.location_control | Food bank location control | invariant | Control tracks product by aisle, rack, bin, cooler, freezer or quarantine location. | find stock |
-| foodbankops.inventory.fifo_rotation | Food bank FIFO rotation | invariant | Rotation moves older acceptable product forward and flags short-dated stock. | reduce waste |
-| foodbankops.inventory.cycle_count | Food bank cycle count | invariant | Count verifies selected SKUs, lots, locations and variances against system. | inventory accuracy |
-| foodbankops.inventory.quarantine_hold | Food bank quarantine hold | invariant | Hold isolates questionable product pending safety, recall, pest or quality decision. | prevent release |
-| foodbankops.inventory.product_master | Food bank product master | invariant | Master records item name, category, storage type, pack size, allergens and handling notes. | consistent data |
-| foodbankops.agency.agency_order | Food bank agency order | invariant | Order records partner agency, items, quantities, pickup time, limits and substitutions. | fulfill demand |
-| foodbankops.agency.allocation_rule | Food bank allocation rule | variant | Rule distributes scarce goods by agency size, program need, fairness or priority. | equitable supply |
-| foodbankops.agency.pick_ticket | Food bank pick ticket | invariant | Ticket lists locations, items, quantities, lot constraints and staging lane. | guide picking |
-| foodbankops.agency.substitution_note | Food bank substitution note | variant | Note records unavailable item, approved substitute, quantity change and agency notice. | manage shortages |
-| foodbankops.agency.agency_compliance | Partner agency compliance record | invariant | Record tracks agreements, food safety training, monitoring, reports and corrective actions. | protect network |
-| foodbankops.cold.cold_receiving | Food bank cold receiving | invariant | Receiving verifies temperature, time, product condition, storage route and exception. | cold safety |
-| foodbankops.cold.cooler_log | Food bank cooler log | invariant | Log records cooler temperature, alarm, corrective action and product impact. | maintain chain |
-| foodbankops.cold.freezer_log | Food bank freezer log | invariant | Log records freezer status, defrost issues, door checks and temperature trends. | protect frozen food |
-| foodbankops.cold.produce_sort | Food bank produce sort | variant | Sort separates usable, immediate-use, compost, animal feed or discard produce. | reduce waste |
-| foodbankops.cold.refrigerated_staging | Refrigerated staging | variant | Staging holds picked cold orders by agency, time, route and temperature control. | safe dispatch |
-| foodbankops.distribution.pick_wave | Food bank pick wave | invariant | Wave groups orders by route, agency, product zone or pickup window. | efficient picking |
-| foodbankops.distribution.loading_check | Food bank loading check | invariant | Check verifies agency, order, pallet count, cold items, paperwork and seal if used. | correct shipment |
-| foodbankops.distribution.route_dispatch | Food bank route dispatch | variant | Dispatch assigns driver, truck, route, stops, temperature checks and proof of delivery. | outbound control |
-| foodbankops.distribution.mobile_pantry | Food bank mobile pantry loadout | variant | Loadout prepares product mix, tables, signage, volunteers, cold control and records. | community distribution |
-| foodbankops.distribution.proof_delivery | Food bank proof of delivery | invariant | Proof records recipient, time, items, quantity, condition and exceptions. | close order |
-| foodbankops.recall.recall_notice | Food bank recall notice | invariant | Notice identifies affected product, lots, locations, agencies and hold instructions. | stop distribution |
-| foodbankops.recall.trace_query | Food bank trace query | invariant | Query finds received, stored, shipped or discarded quantities for affected product. | recall scope |
-| foodbankops.recall.agency_notification | Food bank agency notification | invariant | Notification tells partners what to hold, return, destroy or report. | network safety |
-| foodbankops.recall.disposition_record | Food bank recall disposition | invariant | Record documents product returned, destroyed, released or unaccounted with approval. | audit trail |
-| foodbankops.safety.forklift_check | Food bank forklift check | invariant | Check verifies battery, forks, tires, horn, brakes, leaks and operator readiness. | warehouse safety |
-| foodbankops.safety.pest_log | Food bank pest log | invariant | Log tracks evidence, traps, contractor findings, sanitation actions and affected stock. | food protection |
-| foodbankops.safety.volunteer_safety | Food bank volunteer safety briefing | invariant | Briefing covers lifting, blades, allergens, forklift zones, PPE and reporting. | reduce injury |
-| foodbankops.reporting.inventory_report | Food bank inventory report | invariant | Report summarizes on-hand, short-dated, quarantined, received, shipped and waste. | operational visibility |
-| foodbankops.metrics.foodbank_kpi | Food bank warehouse KPI | variant | KPI tracks pounds received, pounds distributed, waste, order fill, cold exceptions and volunteer hours. | manage warehouse |
+| foodbankops.donation.donor_offer | Предложение донора продовольственного банка | invariant | Предлагайте записи о доноре, продукте, количестве, состоянии, окне самовывоза и ограничениях. | оценить пожертвование |
+| foodbankops.donation.donation_acceptance | Прием пожертвований в продовольственный банк | invariant | При приемке проверяется безопасность продукта, дата, упаковка, необходимость хранения и соответствие поставленной цели. | защитить инвентарь |
+| foodbankops.donation.receipt_record | Квитанция донора продовольственного банка | invariant | Приемные документы о подаренном товаре, вес, дата, донор и путь подтверждения. | подотчетность доноров |
+| foodbankops.donation.reject_reason | Отказ от пожертвования продовольственного банка | invariant | Отказ фиксирует небезопасные, просроченные, поврежденные, немаркированные или неподходящие товары и средства связи. | избегать риска |
+| foodbankops.donation.food_drive | Прием еды из продовольственного банка | variant | Intake управляет источником событий, ящиками, сортировкой загрузки, волонтерами и подтверждением. | общественное питание |
+| foodbankops.receiving.appointment_dock | Продовольственный банк принимает назначение на док | variant | График приема перевозчика, донора, дока, типа продукции, рабочей силы и оборудования. | плавное получение |
+| foodbankops.receiving.weight_capture | Учет веса продовольственного банка | invariant | Ведите учет веса поддонов, ящиков, массовых или смешанных пожертвований по категориям. | инвентарная мера |
+| foodbankops.receiving.condition_check | Проверка состояния приема продовольственного банка | invariant | Проверьте температуру, наличие вредителей, упаковку, утечки, повреждения и загрязнения. | безопасный запас |
+| foodbankops.receiving.lot_date | Участок продовольственного банка и захват даты | invariant | Записывайте данные о партии, сроке годности, дате производства или отметке прослеживаемости, если она имеется. | напомнить о готовности |
+| foodbankops.receiving.putaway_task | Задача по складированию продовольственного банка | invariant | Задача распределяет продукт в сухую, холодильную, морозильную, карантинную или сортировочную зону. | правильное хранение |
+| foodbankops.sorting.sort_category | Категория сортировки продовольственного банка | invariant | Категория разделяет зерновые, консервированные продукты, молочные продукты, протеины, предметы гигиены, продукты для детского питания или продукты специального питания. | полезный инвентарь |
+| foodbankops.sorting.quality_sort | Качественный сорт продовольственного банка | invariant | Сортировка удаляет помятые, протекающие, открытые, загрязненные, немаркированные или небезопасные предметы. | защищать клиентов |
+| foodbankops.sorting.repack_line | Линия по переупаковке продовольственных банков | variant | Line преобразует оптовые товары в упаковки для дома, агентств или программ с этикетками. | распределить полезные единицы |
+| foodbankops.sorting.volunteer_line | Линия сортировки волонтеров продовольственного банка | variant | Линия распределяет роли, проводит инструктаж по технике безопасности, мусорные баки, темп, надзор и уборку. | продуктивные волонтеры |
+| foodbankops.sorting.allergen_separation | Отделение аллергенов в продовольственном банке | variant | Разделение позволяет идентифицировать аллергены или специальные диетические продукты, а не искажать их. | защитить получателей |
+| foodbankops.inventory.location_control | Контроль местоположения продовольственного банка | invariant | Система управления отслеживает продукцию по проходам, стойкам, контейнерам, холодильникам, морозильникам или местам карантина. | найти акции |
+| foodbankops.inventory.fifo_rotation | Ротация ФИФО продовольственного банка | invariant | Ротация продвигает более старые приемлемые продукты и помечает запасы с коротким сроком годности. | сократить отходы |
+| foodbankops.inventory.cycle_count | Подсчет циклов продовольственного банка | invariant | Подсчет проверяет выбранные SKU, лоты, местоположения и отклонения по сравнению с системой. | точность инвентаризации |
+| foodbankops.inventory.quarantine_hold | Карантин продовольственного банка | invariant | Приостановление изолирует сомнительный продукт до принятия решения о безопасности, отзыве, вредителях или качестве. | предотвратить выпуск |
+| foodbankops.inventory.product_master | Мастер продуктового банка продуктов питания | invariant | В основных записях указывается название товара, категория, тип хранения, размер упаковки, аллергены и примечания по обращению. | последовательные данные |
+| foodbankops.agency.agency_order | Заказ агентства продовольственного банка | invariant | Заказы записывают партнерское агентство, товары, количество, время получения, лимиты и замены. | удовлетворить спрос |
+| foodbankops.agency.allocation_rule | Правило распределения продовольственного банка | variant | Правило распределяет дефицитные товары по размеру агентства, потребностям программы, справедливости или приоритету. | справедливое предложение |
+| foodbankops.agency.pick_ticket | Билет на выбор из продовольственного банка | invariant | В билете указаны местоположения, предметы, количества, ограничения лотов и промежуточные этапы. | руководство по выбору |
+| foodbankops.agency.substitution_note | Примечание о замене продовольственного банка | variant | В записях указывается недоступный товар, одобренная замена, изменение количества и уведомление агентства. | управлять дефицитом |
+| foodbankops.agency.agency_compliance | Отчет о соответствии агентства-партнера | invariant | Запись отслеживает соглашения, обучение безопасности пищевых продуктов, мониторинг, отчеты и корректирующие действия. | защитить сеть |
+| foodbankops.cold.cold_receiving | Холодный прием продовольственного банка | invariant | При приемке проверяется температура, время, состояние продукта, маршрут хранения и исключения. | холодная безопасность |
+| foodbankops.cold.cooler_log | Журнал холодильника для продовольственного банка | invariant | В журнале регистрируются температура охладителя, сигналы тревоги, корректирующие действия и влияние продукта. | поддерживать цепочку |
+| foodbankops.cold.freezer_log | Журнал морозильной камеры продовольственного банка | invariant | В журнале фиксируются состояние морозильной камеры, проблемы с разморозкой, проверки дверей и тенденции температуры. | защитить замороженные продукты |
+| foodbankops.cold.produce_sort | Сортировка продуктов продовольственного банка | variant | Сортировка позволяет отделить продукты, пригодные для немедленного использования, компост, корм для животных или выброшенные продукты. | сократить отходы |
+| foodbankops.cold.refrigerated_staging | Охлаждаемая постановка | variant | Холодные заказы отбираются по организации, времени, маршруту и ​​температурному режиму. | безопасная отправка |
+| foodbankops.distribution.pick_wave | Волна выбора продовольственного банка | invariant | Волна группирует заказы по маршруту, агентству, продуктовой зоне или окну самовывоза. | эффективный сбор |
+| foodbankops.distribution.loading_check | Проверка загрузки продовольственного банка | invariant | Проверка проверяет агентство, заказ, количество поддонов, холодные товары, документы и печати, если они используются. | правильная отгрузка |
+| foodbankops.distribution.route_dispatch | Отправка продовольственного банка по маршруту | variant | Диспетчер назначает водителя, грузовик, маршрут, остановки, проверку температуры и подтверждение доставки. | исходящий контроль |
+| foodbankops.distribution.mobile_pantry | Загрузка мобильной кладовой продовольственного банка | variant | Выгрузка готовит ассортимент продукции, таблицы, вывески, волонтеров, холодный контроль и записи. | распространение сообщества |
+| foodbankops.distribution.proof_delivery | Подтверждение доставки продовольственного банка | invariant | В подтверждении фиксируются получатель, время, предметы, количество, состояние и исключения. | закрыть заказ |
+| foodbankops.recall.recall_notice | Уведомление об отзыве продовольственного банка | invariant | В уведомлении указаны затронутые продукты, партии, местоположения, агентства и инструкции по хранению. | прекратить распространение |
+| foodbankops.recall.trace_query | Запрос отслеживания продовольственного банка | invariant | Запрос позволяет найти количество полученного, хранимого, отгруженного или выброшенного продукта. | объем отзыва |
+| foodbankops.recall.agency_notification | Уведомление агентства продовольственного банка | invariant | Уведомление сообщает партнерам, что следует оставить, вернуть, уничтожить или сообщить. | сетевая безопасность |
+| foodbankops.recall.disposition_record | Порядок отзыва продовольственного банка | invariant | Учетные документы о возврате, уничтожении, выпуске или пропаже продукта с одобрения. | аудиторский след |
+| foodbankops.safety.forklift_check | Проверка вилочного погрузчика продовольственного банка | invariant | При проверке проверяется аккумулятор, вилы, шины, звуковой сигнал, тормоза, наличие утечек и готовность оператора. | безопасность склада |
+| foodbankops.safety.pest_log | Журнал о вредителях продовольственного банка | invariant | В журнале фиксируются улики, ловушки, выводы подрядчиков, санитарные меры и пострадавшие запасы. | защита пищевых продуктов |
+| foodbankops.safety.volunteer_safety | Брифинг по безопасности волонтеров продовольственного банка | invariant | Инструктаж охватывает подъем, лезвия, аллергены, зоны вилочных погрузчиков, СИЗ и отчетность. | уменьшить травмы |
+| foodbankops.reporting.inventory_report | Отчет об инвентаризации продовольственного банка | invariant | Отчет суммирует имеющиеся, краткосрочные, карантинные, полученные, отправленные и отходы. | оперативная видимость |
+| foodbankops.metrics.foodbank_kpi | Склад продовольственного банка КПИ | variant | KPI отслеживает полученные фунты, распределенные фунты, потери, выполнение заказов, холодные исключения и часы волонтерства. | управлять складом |

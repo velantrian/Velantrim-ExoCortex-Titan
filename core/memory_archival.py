@@ -116,12 +116,13 @@ class MemoryArchival:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.row_factory = sqlite3.Row
 
-            # Найти старые факты
+            # Найти старые факты — FIX #11 (Claude audit): исключать уже-архивированные
             rows = conn.execute(
                 """SELECT fact_id, claim, epistemic_state, confidence, created_at
                    FROM facts
                    WHERE created_at < ?
                      AND epistemic_state NOT IN ('ImmutableCore',)
+                     AND fact_id NOT IN (SELECT fact_id FROM archived_facts)
                    ORDER BY created_at ASC""",
                 (cutoff,),
             ).fetchall()
@@ -200,9 +201,11 @@ class MemoryArchival:
         for fact in batch:
             archive_key = f"archive://{archive_file.name}#{fact['fact_id']}"
 
-            # Отметить в таблице archived_facts
+            # Отметить в таблице archived_facts — FIX #11 (Claude audit):
+            # INSERT OR IGNORE чтобы избежать дублей при перезапуске.
+            # Фильтр: исключать уже-архивированные (AND fact_id NOT IN archived_facts).
             conn.execute(
-                """INSERT OR REPLACE INTO archived_facts
+                """INSERT OR IGNORE INTO archived_facts
                    (fact_id, archive_key, archived_at, original_claim, original_state, archive_file)
                    VALUES (?, ?, ?, ?, ?, ?)""",
                 (
@@ -215,9 +218,18 @@ class MemoryArchival:
                 ),
             )
 
-            # Обновить claim в facts
+            # Обновить claim в facts + bump fact_version (триггер 009 требует)
+            bump = ""
+            try:
+                has_version = any(
+                    r[1] == "fact_version"
+                    for r in conn.execute("PRAGMA table_info(facts)")
+                )
+                bump = ", fact_version = fact_version + 1" if has_version else ""
+            except Exception:
+                pass
             conn.execute(
-                "UPDATE facts SET claim = ?, updated_at = ? WHERE fact_id = ?",
+                f"UPDATE facts SET claim = ?, updated_at = ?{bump} WHERE fact_id = ?",
                 (
                     f"[ARCHIVED: {archive_key}]",
                     datetime.now(timezone.utc).isoformat(),

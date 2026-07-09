@@ -3,7 +3,12 @@
 Проверяют: парсинг тегов, направленные рёбра по совпадению тег↔сегмент-id,
 складывание в цепочку, отсутствие self-edge и матча на корень-домен, статус/уверенность.
 """
-from core.knowledge_linker import DEFAULT_RELATION, link_by_tags, parse_tags
+from core.knowledge_linker import (
+    DEFAULT_RELATION,
+    link_by_tags,
+    link_facts,
+    parse_tags,
+)
 
 # ── parse_tags ────────────────────────────────────────────────────────────────
 
@@ -131,3 +136,42 @@ def test_causal_cue_uses_causes():
     edges = link_by_tags(facts)
     assert len(edges) == 1
     assert edges[0]["relation_type"] == "causes"
+
+
+# ── ③ namespace-линковщик: связность (F-01 регрессия-гард) ──────────────────────
+
+def test_namespace_linker_eliminates_isolation():
+    """F-01: link_by_tags оставлял ~80% фактов изолированными (нечего матчить по тегам).
+    link_facts добавляет структурные namespace-рёбра из иерархии id → изолированных
+    не остаётся. Гард против регрессии связности (live: 20%→99.96%)."""
+    facts = [
+        {"fact_id": f"{domain}.{sub}.{term}", "links": ""}
+        for domain in ("agro", "phys", "food")
+        for sub in ("alpha", "beta", "gamma")
+        for term in ("one", "two", "three")
+    ]  # 27 фактов, без тег-связей
+    assert link_by_tags(facts) == []          # по тегам — 0 рёбер (всё было бы изолировано)
+
+    edges = link_facts(facts)
+    nodes = {f["fact_id"] for f in facts}
+    touched = {e["source_id"] for e in edges} | {e["target_id"] for e in edges}
+    isolated = nodes - touched
+    connectivity = len(touched) / len(nodes)
+    assert connectivity >= 0.99, (
+        f"namespace linker оставил {len(isolated)} изолированных: {sorted(isolated)}"
+    )
+
+
+def test_link_facts_no_duplicate_pairs():
+    """link_facts: namespace-ребро не дублирует уже существующую тег-пару (в любом
+    направлении) — точные тег-связи приоритетны."""
+    facts = [
+        {"fact_id": "agro.wheat.grain", "links": ""},
+        {"fact_id": "agro.wheat.gluten", "links": ""},
+        {"fact_id": "food.milling.flour", "links": "wheat"},  # тег-ребро agro.wheat.* → food
+    ]
+    edges = link_facts(facts)
+    pairs = [frozenset((e["source_id"], e["target_id"])) for e in edges]
+    assert len(pairs) == len(set(pairs)), "дублирующиеся пары source/target в link_facts"
+    # namespace добавил рёбра сверх тег-рёбер (agro.wheat.grain↔gluten не связаны тегом)
+    assert len(edges) > len(link_by_tags(facts))

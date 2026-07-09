@@ -259,6 +259,10 @@ CREATIVE_TRIAD = ["CREATIVE", "PHILOSOPHER", "ANALYST"]
 # Для объяснения простым языком: ребёнок + друг
 SIMPLE_DUO = ["CHILD", "FRIEND"]
 
+# FIX P2 (v8.7 audit): LIGHT_DUO был в __all__ но не определён → ImportError
+# при from perspectives import *. Это алиас для SIMPLE_DUO (лёгкое объяснение).
+LIGHT_DUO = ["CHILD", "FRIEND"]
+
 
 # ─── API ──────────────────────────────────────────────────────────────────────
 

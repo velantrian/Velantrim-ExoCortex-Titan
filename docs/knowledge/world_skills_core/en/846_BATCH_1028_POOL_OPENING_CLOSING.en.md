@@ -1,0 +1,13 @@
+# BATCH 704: Pool — Opening & Closing Service
+
+**KnowledgeUnits:** 50
+**Namespace:** `poolservice.ops.*`
+**Scope:** opening, closing, cover, chemistry, pump, filter, vacuum, winterizing
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| poolservice.ops.spring_opening_procedure | Spring Opening — Steps | METHOD | Расконсервация бассейна. Снять cover (откачать воду с cover сначала). Очистить cover, сложить. Plug returns (вынуть winter plugs). Reinstall drain plugs, strainer baskets, ladder, diving board. Fill water до нормального уровня. Pump: prime (залить воду в strainer basket). Filter: backwash или clean cartridge. Shock treatment: хлор (5-10× normal). Balance: pH 7.2-7.6, TA 80-120, CH 200-400, CYA 30-50. Run pump 24-48 часов, vacuum, test chemistry. | Открытие: тяжелейшая работа сезона. |
+| poolservice.ops.winter_closing_chemicals | Winter Closing — Chemistry | METHOD | Консервация на зиму. Баланс: отрегулировать до закрытия (pH, TA, CH). Shock: хлор 10-15 ppm. Algaecide: полимерный (не на основе меди — пятна!). Winter kit: floating dispenser с slow-release хлором. Антифриз: RV в линии (для холодных регионов). Уровень воды: ниже skimmer, выше returns (10-15 см ниже плитки). Cover: safety cover (spring anchored) или solid tarp + water bags. | Неправильная зимовка: зелёный бассейн весной. |
+| poolservice.ops.filter_sand_change | Sand Filter — Change | METHOD | Замена песка в фильтре. Периодичность: каждые 5-7 лет. Слив воды из фильтра. Снять multiport valve (осторожно, laterals хрупкие!). Вычистить старый песок (shopvac). Промыть tank. Засыпать новый #20 silica sand (freeboard 50% заполнения). Защита laterals: залить воду в tank перед песком (подушка). Песок: медленно, не повредить laterals. Multiport собрать, backwash, rinse. | Песок канализируется (channeling) со временем. |
+| poolservice.ops.heat_pump_maintenance | Heat Pump — Maintenance | METHOD | Обслуживание теплового насоса. Evaporator coil: чистить (soft brush, coil cleaner). Конденсатор: проверить контакты, amp draw. Condensate drain: прочистить. Refrigerant: проверка по sight glass и pressures (только EPA certified). Water flow: достаточный (check pressure gauge). By-pass: на зиму. Winter: если не drained — freeze damage. | Heat pump эффективен до +8-10°C наружного воздуха. |
+| poolservice.ops.salt_cell_cleaning | Salt Cell — Cleaning | METHOD | Чистка электролизёра солевого хлорогенератора. Calcium scale на plates: acid wash (muriatic acid 1:4) — залить в cell, bubbles (CaCO₃ растворяется). Не передерживать! (acid eats plates). Промыть водой. Проверить plates на износ (black coating wear). Замена cell: каждые 3-7 лет (10000+ часов). Salt level: 2700-3400 ppm. | Низкий salt: не генерирует хлор. |

@@ -1,0 +1,13 @@
+# BATCH 695: Hot Tub — Installation & Water Care
+
+**KnowledgeUnits:** 50
+**Namespace:** `hottub.ops.*`
+**Scope:** electrical, pad, water_chemistry, jets, filter, heater, cover, winterization
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| hottub.ops.electrical_gfci_disconnect | Electrical — GFCI Disconnect | METHOD | Электроподключение джакузи. 240V 50A (или 60A). GFCI: обязательно! Устанавливается в line-of-sight от spa (но не ближе 1.5 м к воде). Conduit: Liquid-tight flexible (для последнего метра от disconnect к spa pack). Wire: 6 AWG copper (для 50A). Изоляция: все соединения водонепроницаемы. Ground: bonding сетка (все металлические части в радиусе 1.5 м от spa — поручни, забор). | Без GFCI: риск electrocution. |
+| hottub.ops.pad_gravel_concrete_base | Pad — Level Surface | METHOD | Основание под спа. Бетонная плита: 10-15 см reinforced, уровень, ровная. Или gravel base (10-15 см, compacted) + synthetic spa pad (Eco-spa pad). Или deck усиленный (до 500+ кг/м² load). Дренаж: уклон 1-2% от дома. Доступ: для обслуживания (снять боковую панель). Расстояние от дома: 20-30 см для доступа. Электрика проложена до pad. | Неровная поверхность = трещина acrylic shell. |
+| hottub.ops.water_chemistry_bromine | Water Chemistry — Chlorine vs Bromine | METHOD | Химия воды в спа. Chlorine (гранулы дихлор) или bromine (таблетки в floater). Уровень: Cl 3-5 ppm, Br 4-6 ppm. pH: 7.2-7.6 (регулируется pH Up/Down). Alkalinity (TA): 80-120 ppm (буфер). Calcium hardness: 150-250 ppm (ниже = коррозия, выше = scale). Shock: MPS (non-chlorine) weekly, или chlorine shock. Test strips чаще чем в бассейне (маленький объём воды, химия меняется быстро). Замена воды: каждые 3-4 мес (TDS build-up). | Горячая вода + аэрация = pH drift. |
+| hottub.ops.filter_cleaning_rotation | Filter — Cleaning Rotation | METHOD | Обслуживание фильтра. Cartridge filter: съёмный элемент. Очистка: spray water (hose nozzle) между складок (каждые 2-4 нед). Глубокая очистка: замачивание в filter cleaner (TSP — trisodium phosphate) на несколько часов (каждые 3-4 мес). Сменные элементы: второй комплект для rotation (пока один замочен, другой работает). Замена фильтра: каждые 1-2 года. | Грязный фильтр: снижение flow = слабые jets + error heater. |
+| hottub.ops.winter_shut_down_drain | Winterization — Drain & Blow | METHOD | Консервация на зиму (если не используется). Drain: через drain plug. Shop-Vac: blow out jets и plumbing lines (оставшаяся вода разорвёт трубы при замерзании). Antifreeze: RV antifreeze (propylene glycol) через линии. Отключение электричества. Крышка заперта (ветром не сдует). | Замёрзшая вода в plumbing: expensive repair. |

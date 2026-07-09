@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| vetboard.reserve.boarding_reservation | Veterinary boarding reservation | invariant | Reservation records pet, owner, dates, lodging type, services, feeding and medical notes. | hold kennel space |
-| vetboard.reserve.capacity_calendar | Boarding capacity calendar | invariant | Calendar tracks kennels, runs, cat condos, isolation spaces and staffing limits. | avoid overbooking |
-| vetboard.reserve.vaccine_requirement | Boarding vaccine requirement | variant | Requirement defines proof needed for facility entry according to species and policy. | reduce disease risk |
-| vetboard.reserve.deposit_policy | Boarding deposit policy | variant | Policy controls reservation hold, cancellation and peak-date commitment. | protect capacity |
-| vetboard.reserve.special_service | Boarding special service | variant | Service may include playtime, grooming, medication support, photos or extra walks. | customize stay |
-| vetboard.intake.pet_checkin | Pet boarding check-in | invariant | Check-in confirms identity, owner contact, belongings, diet, meds, behavior and release terms. | safe admission |
-| vetboard.intake.belongings_inventory | Pet belongings inventory | invariant | Inventory lists food, bedding, toys, leash, carrier and medication received. | return everything |
-| vetboard.intake.feeding_instruction | Feeding instruction | invariant | Instruction records food type, amount, timing, restrictions and owner-provided supply. | consistent meals |
-| vetboard.intake.medication_instruction | Boarding medication instruction | variant | Instruction records medication name, schedule, route, storage and owner authorization for staff handling. | high-attention task |
-| vetboard.intake.behavior_note | Boarding behavior note | invariant | Note flags aggression, fear, escape risk, separation anxiety, group limits or handling preference. | protect pets and staff |
-| vetboard.housing.kennel_assignment | Kennel assignment | invariant | Assignment places pet by species, size, temperament, health status and service level. | right space |
-| vetboard.housing.clean_bedding | Clean bedding cycle | invariant | Cycle replaces soiled bedding and records laundry or disposal needs. | comfort and hygiene |
-| vetboard.housing.water_check | Boarding water check | invariant | Check confirms water availability, clean bowl and abnormal drinking notes. | basic welfare |
-| vetboard.housing.temperature_comfort | Boarding temperature comfort | variant | Comfort monitoring checks room temperature, ventilation and pet-specific sensitivity. | environmental care |
-| vetboard.housing.isolation_space | Boarding isolation space | variant | Space separates pets with illness signs, exposure risk or policy restrictions. | infection control |
-| vetboard.care.feeding_round | Boarding feeding round | invariant | Round gives correct diet, amount and time while noting refusal, vomiting or special issue. | daily care evidence |
-| vetboard.care.walk_schedule | Boarding walk schedule | variant | Schedule assigns outdoor breaks, leash rules, yard use and cleanup. | routine and welfare |
-| vetboard.care.playgroup_screen | Playgroup screening | variant | Screening evaluates compatibility, size, behavior, vaccine status and supervision needs. | social safety |
-| vetboard.care.elimination_log | Elimination log | invariant | Log records urination, stool, diarrhea, constipation or accidents. | health signal |
-| vetboard.care.enrichment_activity | Boarding enrichment activity | variant | Activity provides safe play, interaction, puzzle, cuddle or exercise according to pet profile. | reduce stress |
-| vetboard.health.daily_observation | Daily pet observation | invariant | Observation notes appetite, energy, stool, breathing, skin, behavior and abnormal signs. | early issue detection |
-| vetboard.health.weight_check | Boarding weight check | variant | Check monitors weight for long stays, medical boarding or fragile animals. | trend signal |
-| vetboard.health.vet_alert | Veterinary alert | invariant | Alert notifies clinician or supervisor about abnormal observation, injury, illness or medication issue. | escalate care |
-| vetboard.health.incident_record | Boarding incident record | invariant | Record documents bite, fight, injury, escape, illness, property damage or handling problem. | accountability |
-| vetboard.health.owner_notification | Owner notification | invariant | Notification records reason, time, contact method, message and owner decision if needed. | keep owner informed |
-| vetboard.meds.medication_log | Boarding medication log | variant | Log records scheduled dose handling, time, staff, refusal, spill or exception without giving medical advice. | trace administration task |
-| vetboard.meds.controlled_storage | Boarding medication storage | invariant | Storage separates labeled pet medication, refrigeration needs, access and expired items. | avoid mix-up |
-| vetboard.meds.missed_med_exception | Missed medication exception | invariant | Exception records missed, late, refused or vomited medication and escalation. | high-risk variance |
-| vetboard.meds.refill_alert | Medication supply alert | variant | Alert warns owner or staff when owner-provided medication may run out during stay. | prevent gap |
-| vetboard.meds.medication_return | Medication return | invariant | Return verifies remaining medication, label and owner pickup at checkout. | close custody |
-| vetboard.clean.cleaning_schedule | Boarding cleaning schedule | invariant | Schedule covers kennels, bowls, floors, drains, yards, litter and common areas. | hygiene rhythm |
-| vetboard.clean.disinfection_protocol | Boarding disinfection protocol | invariant | Protocol defines products, contact time, surfaces, separation and safety precautions. | infection control |
-| vetboard.clean.waste_handling | Pet waste handling | invariant | Handling controls bagging, litter, soiled bedding, odor, pests and disposal route. | sanitation |
-| vetboard.clean.laundry_flow | Boarding laundry flow | variant | Flow separates soiled, clean, contaminated and owner-owned bedding. | avoid cross-contamination |
-| vetboard.clean.pest_prevention | Boarding pest prevention | invariant | Prevention checks food storage, waste, standing water, entry gaps and monitoring. | protect facility |
-| vetboard.checkout.pet_checkout | Pet boarding checkout | invariant | Checkout verifies owner identity, pet, belongings, medications, balance and stay notes. | return correctly |
-| vetboard.checkout.report_card | Boarding report card | variant | Report card summarizes feeding, behavior, activities, observations and issues. | owner reassurance |
-| vetboard.checkout.grooming_handoff | Boarding grooming handoff | variant | Handoff coordinates bath, nail trim or grooming before pickup. | finish service |
-| vetboard.checkout.late_pickup | Boarding late pickup | invariant | Process updates care, fees, space, feeding and owner communication for delayed pickup. | handle overstay |
-| vetboard.checkout.poststay_followup | Post-stay follow-up | variant | Follow-up checks satisfaction, health concerns, lost items or future booking. | service loop |
-| vetboard.admin.staff_assignment | Boarding staff assignment | invariant | Assignment maps staff to feeding, cleaning, walks, meds, observations and front desk tasks. | who does what |
-| vetboard.admin.training_record | Boarding staff training record | invariant | Record tracks animal handling, cleaning, bite prevention, medication task policy and emergency procedures. | competent care |
-| vetboard.metrics.boarding_kpi | Boarding operations KPI | variant | KPI tracks occupancy, incidents, medication exceptions, complaints, rebooking and labor. | manage facility |
-| vetboard.continuity.emergency_evacuation | Boarding emergency evacuation | invariant | Plan covers pet identification, carriers, records, transport, owner contacts and alternate housing. | protect boarded animals |
+| vetboard.reserve.boarding_reservation | Бронирование ветеринарного интерната | invariant | Бронирование записывает домашнее животное, владельца, даты, тип проживания, услуги, кормление и медицинские записи. | занимать место в конуре |
+| vetboard.reserve.capacity_calendar | Календарь посадочных мест | invariant | Календарь отслеживает питомники, пробежки, кошачьи домики, места для изоляции и ограничения на персонал. | избегайте овербукинга |
+| vetboard.reserve.vaccine_requirement | Требования к посадочной вакцине | variant | Требование определяет доказательства, необходимые для входа на объект в соответствии с видами и политикой. | снизить риск заболеваний |
+| vetboard.reserve.deposit_policy | Политика депозита при посадке | variant | Политика контролирует удержание, отмену резервирования и соблюдение максимальной даты. | защитить емкость |
+| vetboard.reserve.special_service | Специальная служба посадки | variant | Услуга может включать в себя игры, уход, медикаментозную поддержку, фотографии или дополнительные прогулки. | настроить пребывание |
+| vetboard.intake.pet_checkin | Регистрация для размещения домашних животных | invariant | Регистрация подтверждает личность, контакт владельца, вещи, диету, лекарства, поведение и условия освобождения. | безопасный вход |
+| vetboard.intake.belongings_inventory | Инвентаризация вещей для домашних животных | invariant | В инвентаре перечислены продукты питания, постельные принадлежности, игрушки, поводок, переноска и полученные лекарства. | вернуть все |
+| vetboard.intake.feeding_instruction | Инструкция по кормлению | invariant | В инструкции указаны тип, количество, время, ограничения и запасы, предоставляемые владельцем. | последовательное питание |
+| vetboard.intake.medication_instruction | Инструкция по приему лекарств | variant | В инструкции записаны название лекарства, график приема, маршрут, место хранения и разрешение владельца на обращение с персоналом. | задача повышенного внимания |
+| vetboard.intake.behavior_note | Примечание о посадке | invariant | Обратите внимание на признаки агрессии, страха, риска побега, тревоги разлуки, групповых ограничений или предпочтений в обращении. | защитить домашних животных и персонал |
+| vetboard.housing.kennel_assignment | Назначение питомника | invariant | Назначение мест питомцам по видам, размерам, темпераменту, состоянию здоровья и уровню обслуживания. | правильное пространство |
+| vetboard.housing.clean_bedding | Цикл очистки постельного белья | invariant | Cycle заменяет грязное постельное белье и записывает потребности в стирке или утилизации. | комфорт и гигиена |
+| vetboard.housing.water_check | Проверка посадочной воды | invariant | Проверка подтверждает наличие воды, чистую чашу и наличие отметок об отклонениях от нормы. | базовое благосостояние |
+| vetboard.housing.temperature_comfort | Комфортная температура посадки | variant | Мониторинг комфорта проверяет температуру в помещении, вентиляцию и чувствительность животных. | забота об окружающей среде |
+| vetboard.housing.isolation_space | Посадочное изоляционное пространство | variant | Пространство разделяет домашних животных с признаками заболевания, риском заражения или политическими ограничениями. | инфекционный контроль |
+| vetboard.care.feeding_round | Интернат для кормления | invariant | Раунд дает правильную диету, количество и время, отмечая при этом отказ, рвоту или особые проблемы. | доказательства ежедневного ухода |
+| vetboard.care.walk_schedule | График посадки на прогулку | variant | Расписание определяет перерывы на свежем воздухе, правила использования поводка, использование двора и уборку. | рутина и благополучие |
+| vetboard.care.playgroup_screen | Показ игровой группы | variant | При скрининге оцениваются совместимость, размер, поведение, статус вакцинации и потребности в наблюдении. | социальная безопасность |
+| vetboard.care.elimination_log | Журнал исключений | invariant | Журнал записывает мочеиспускание, стул, диарею, запор или несчастные случаи. | сигнал здоровья |
+| vetboard.care.enrichment_activity | Интернат-обогатительная деятельность | variant | Активность обеспечивает безопасную игру, взаимодействие, головоломки, объятия или упражнения в соответствии с профилем питомца. | уменьшить стресс |
+| vetboard.health.daily_observation | Ежедневное наблюдение за домашними животными | invariant | Наблюдение отмечает аппетит, энергию, стул, дыхание, состояние кожи, поведение и аномальные признаки. | раннее обнаружение проблем |
+| vetboard.health.weight_check | Проверка посадочного веса | variant | Проверьте вес мониторов на предмет длительного проживания, медицинской интернации или хрупких животных. | сигнал тренда |
+| vetboard.health.vet_alert | Ветеринарная тревога | invariant | Оповещение уведомляет врача или руководителя об отклонениях в наблюдениях, травмах, заболеваниях или проблемах с приемом лекарств. | повысить уровень ухода |
+| vetboard.health.incident_record | Запись об инциденте при посадке | invariant | Запишите в документах укус, драку, травму, побег, болезнь, материальный ущерб или проблемы с обращением. | подотчетность |
+| vetboard.health.owner_notification | Уведомление владельца | invariant | В уведомлении указывается причина, время, способ связи, сообщение и решение владельца, если это необходимо. | держать владельца в курсе |
+| vetboard.meds.medication_log | Журнал приема лекарств | variant | В журнале регистрируются запланированные действия с дозой, время, персонал, отказ, утечка или исключение без предоставления медицинских рекомендаций. | задача администрирования трассировки |
+| vetboard.meds.controlled_storage | Хранение медикаментов на борту | invariant | Хранение разделяет маркированные лекарства для домашних животных, потребности в охлаждении, доступ и предметы с истекшим сроком годности. | избежать путаницы |
+| vetboard.meds.missed_med_exception | Исключение из-за пропуска приема лекарств | invariant | Записи об исключениях: пропуск, опоздание, отказ от приема лекарства или рвота, а также эскалация. | дисперсия с высоким риском |
+| vetboard.meds.refill_alert | Оповещение о поставках лекарств | variant | Оповещение предупреждает владельца или персонал, если предоставленные владельцем лекарства могут закончиться во время пребывания. | предотвратить разрыв |
+| vetboard.meds.medication_return | Возврат лекарств | invariant | При возврате проверяется остаток лекарства, этикетка и получение владельцем при оформлении заказа. | строгая стража |
+| vetboard.clean.cleaning_schedule | График уборки интерната | invariant | Расписание охватывает конуры, миски, полы, канализации, дворы, мусор и места общего пользования. | гигиенический ритм |
+| vetboard.clean.disinfection_protocol | Протокол дезинфекции посадки | invariant | Протокол определяет продукты, время контакта, поверхности, разделение и меры безопасности. | инфекционный контроль |
+| vetboard.clean.waste_handling | Обращение с домашними отходами | invariant | Обработка контролирует мешки, мусор, загрязненную подстилку, запах, вредителей и пути утилизации. | санитария |
+| vetboard.clean.laundry_flow | Посадка в прачечную | variant | Поток разделяет грязное, чистое, загрязненное и принадлежащее владельцу постельное белье. | избегать перекрестного загрязнения |
+| vetboard.clean.pest_prevention | Профилактика вредителей на посадке | invariant | Профилактика проверяет хранение продуктов питания, отходы, стоячую воду, проходы и мониторинг. | защищать объект |
+| vetboard.checkout.pet_checkout | Касса для размещения домашних животных | invariant | Касса проверяет личность владельца, домашнее животное, вещи, лекарства, баланс и записи о пребывании. | вернуться правильно |
+| vetboard.checkout.report_card | Табель успеваемости по посадке | variant | В табеле успеваемости суммируются кормление, поведение, деятельность, наблюдения и проблемы. | уверенность владельца |
+| vetboard.checkout.grooming_handoff | Передача ухода за посадкой | variant | Передача координирует принятие ванны, стрижку ногтей или уход перед тем, как забрать. | закончить обслуживание |
+| vetboard.checkout.late_pickup | Поздняя посадка | invariant | Обработка обновлений по уходу, оплате, пространству, кормлению и общению с владельцем в случае отложенного получения. | справиться с просрочкой |
+| vetboard.checkout.poststay_followup | Наблюдение после пребывания | variant | Последующие проверки проверяют удовлетворенность, проблемы со здоровьем, потерянные вещи или будущие бронирования. | сервисный цикл |
+| vetboard.admin.staff_assignment | Распределение персонала по интернату | invariant | Назначение распределяет персонал по кормлению, уборке, прогулкам, приему лекарств, наблюдениям и задачам на стойке регистрации. | кто что делает |
+| vetboard.admin.training_record | Протокол обучения персонала интерната | invariant | Запись отслеживает обращение с животными, их чистку, предотвращение укусов, политику приема лекарств и действия в чрезвычайных ситуациях. | грамотный уход |
+| vetboard.metrics.boarding_kpi | KPI посадочных операций | variant | KPI отслеживает занятость, инциденты, исключения из приема лекарств, жалобы, перебронирование и роды. | управлять объектом |
+| vetboard.continuity.emergency_evacuation | Посадка, экстренная эвакуация | invariant | План покрывает идентификацию домашних животных, перевозчиков, записи, транспорт, контакты владельцев и альтернативное жилье. | защитить животных на борту |

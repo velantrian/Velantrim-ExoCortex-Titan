@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| resourcedirops.provider.provider_id | provider ID | RECORD | Provider ID links organization, sites, services, contacts and verification history. | Creates stable directory record. |
-| resourcedirops.provider.organization | organization record | RECORD | Organization record stores legal name, public name, parent agency and service area. | Prevents duplicate listings. |
-| resourcedirops.provider.site | site record | RECORD | Site record stores address, phone, accessibility, hours and geographic coordinates. | Supports accurate referral. |
-| resourcedirops.provider.contact_owner | contact owner | RECORD | Contact owner is the person or role responsible for updates. | Makes verification possible. |
-| resourcedirops.service.service_taxonomy | service taxonomy | MODEL | Taxonomy classifies food, housing, health, legal, benefits, transport and crisis resources. | Makes search consistent. |
-| resourcedirops.service.service_record | service record | RECORD | Service record describes what is offered, to whom, where and how. | Separates site from service. |
-| resourcedirops.service.modality | service modality | RECORD | Modality distinguishes walk-in, appointment, phone, online, outreach or mobile service. | Helps users access correctly. |
-| resourcedirops.service.boundary | service boundary | CONSTRAINT | Directory states what the provider does not offer or cannot guarantee. | Prevents misleading referrals. |
-| resourcedirops.eligibility.criteria | eligibility criteria | RECORD | Criteria include age, residence, income, insurance, identity, documents or issue type. | Avoids wrong referrals. |
-| resourcedirops.eligibility.documents | document requirements | RECORD | Requirements list IDs, proofs, applications or referrals needed. | Helps callers prepare. |
-| resourcedirops.eligibility.fees | fee information | RECORD | Fee information states free, sliding scale, insurance, copay or donation. | Reduces surprise costs. |
-| resourcedirops.eligibility.restrictions | restrictions | CONSTRAINT | Restrictions include waitlists, capacity limits, legal limits or temporary closures. | Keeps referrals realistic. |
-| resourcedirops.hours.regular | regular hours | RECORD | Regular hours state days, opening, closing and intake cutoff. | Supports basic access. |
-| resourcedirops.hours.holiday | holiday hours | RECORD | Holiday and seasonal exceptions are stored separately. | Prevents stale open/closed status. |
-| resourcedirops.hours.emergency | emergency hours | RECORD | Emergency hours may activate during disasters, heat, cold or public health events. | Supports crisis response. |
-| resourcedirops.hours.last_confirmed | last confirmed timestamp | RECORD | Last confirmed timestamp shows when hours were verified. | Signals reliability. |
-| resourcedirops.capacity.status | capacity status | RECORD | Status shows open, limited, waitlist, full, closed or unknown. | Reduces dead-end referrals. |
-| resourcedirops.capacity.update_source | capacity source | RECORD | Source records provider self-update, call verification, API, partner or field report. | Shows confidence. |
-| resourcedirops.capacity.expiry | capacity expiry | CONSTRAINT | Time-sensitive capacity status expires after defined period. | Prevents stale availability. |
-| resourcedirops.capacity.alert | capacity alert | METHOD | Alert notifies hotline or partners when key resource status changes. | Keeps front line current. |
-| resourcedirops.verification.schedule | verification schedule | METHOD | Records are verified on risk-based cycle by service type and change frequency. | Keeps directory fresh. |
-| resourcedirops.verification.call_script | verification script | METHOD | Script checks service, eligibility, hours, capacity, contact and accessibility. | Standardizes updates. |
-| resourcedirops.verification.failed_contact | failed contact | FAILURE_MODE | Failed verification records attempts, channels and confidence downgrade. | Exposes uncertain listings. |
-| resourcedirops.verification.provider_portal | provider portal | METHOD | Providers can submit updates through controlled portal with review. | Speeds maintenance. |
-| resourcedirops.update.change_request | change request | RECORD | Change request records proposed edit, source, evidence and reviewer. | Controls modifications. |
-| resourcedirops.update.review | editorial review | QUALITY_CHECK | Review checks clarity, taxonomy, duplicates, safety and policy before publish. | Prevents bad directory data. |
-| resourcedirops.update.publish | publish workflow | METHOD | Publish workflow changes public record, timestamp and change log. | Makes updates traceable. |
-| resourcedirops.update.rollback | rollback | METHOD | Rollback restores prior listing after error or disputed change. | Limits harm. |
-| resourcedirops.quality.duplicate | duplicate detection | QUALITY_CHECK | Duplicate detection matches name, address, phone, website and service overlap. | Keeps search clean. |
-| resourcedirops.quality.dead_link | dead link check | QUALITY_CHECK | Websites, forms, maps and phone links are checked for failure. | Prevents unusable referrals. |
-| resourcedirops.quality.plain_language | plain language | QUALITY_CHECK | Listings use clear public wording rather than internal program names. | Helps users understand. |
-| resourcedirops.quality.accessibility | accessibility detail | RECORD | Accessibility records transit, parking, ramps, language, TTY and accommodation process. | Supports equitable access. |
-| resourcedirops.search.keyword | keyword synonyms | METHOD | Synonyms connect user language to taxonomy terms. | Improves search discovery. |
-| resourcedirops.search.geo_filter | geographic filter | METHOD | Search can filter by distance, jurisdiction, service area or transit access. | Finds relevant nearby help. |
-| resourcedirops.search.priority | priority ranking | MODEL | Ranking considers service fit, availability, proximity, eligibility and recency. | Improves referral quality. |
-| resourcedirops.search.sensitive_terms | sensitive search terms | SAFETY_RULE | Sensitive categories avoid exposing users or providers to stigma or unsafe disclosure. | Protects privacy and dignity. |
-| resourcedirops.integration.hotline | hotline integration | METHOD | Hotline systems use directory records for referral and call notes. | Aligns data with counseling. |
-| resourcedirops.integration.casework | casework integration | METHOD | Caseworkers can link referrals and outcomes to directory entries. | Supports closed-loop service. |
-| resourcedirops.integration.api | API feed | METHOD | API feed shares approved listings with partner systems. | Reduces duplicate directories. |
-| resourcedirops.integration.open_data | public data policy | CONSTRAINT | Public feeds exclude sensitive or restricted provider data. | Controls misuse. |
-| resourcedirops.governance.data_owner | data owner | RECORD | Data owner defines taxonomy, standards, verification and publication rules. | Keeps directory accountable. |
-| resourcedirops.governance.risk_tier | risk tier | MODEL | High-risk resources like crisis, shelter or medical listings require stricter verification. | Reduces harmful referrals. |
-| resourcedirops.metrics.freshness | freshness metric | MEASUREMENT | Freshness measures percent of listings verified within target window. | Shows data health. |
-| resourcedirops.closeout.retire_listing | retire listing | METHOD | Closed programs are retired with reason, date and replacement referrals if known. | Prevents obsolete referrals. |
+| resourcedirops.provider.provider_id | идентификатор провайдера | RECORD | Идентификатор провайдера связывает организацию, сайты, услуги, контакты и историю проверок. | Создает стабильную запись каталога. |
+| resourcedirops.provider.organization | запись организации | RECORD | В записи организации хранятся юридическое название, публичное имя, головное агентство и территория обслуживания. | Предотвращает дублирование списков. |
+| resourcedirops.provider.site | запись сайта | RECORD | Запись сайта хранит адрес, телефон, доступность, часы работы и географические координаты. | Поддерживает точное направление. |
+| resourcedirops.provider.contact_owner | связаться с владельцем | RECORD | Владелец контакта — это лицо или роль, ответственные за обновления. | Делает верификацию возможной. |
+| resourcedirops.service.service_taxonomy | таксономия услуг | MODEL | Таксономия классифицирует продукты питания, жилье, здравоохранение, юридические, льготы, транспорт и кризисные ресурсы. | Делает поиск последовательным. |
+| resourcedirops.service.service_record | послужной список | RECORD | Запись об оказании услуг описывает, что предлагается, кому, где и как. | Отделяет сайт от сервиса. |
+| resourcedirops.service.modality | модальность обслуживания | RECORD | Модальность различает услуги «при личном кабинете», «по предварительной записи», по телефону, через Интернет, на выезде или через мобильную связь. | Помогает пользователям получить правильный доступ. |
+| resourcedirops.service.boundary | граница обслуживания | CONSTRAINT | В справочнике указано, что поставщик не предлагает или не может гарантировать. | Предотвращает вводящие в заблуждение направления. |
+| resourcedirops.eligibility.criteria | критерии приемлемости | RECORD | Критерии включают возраст, место жительства, доход, страховку, личность, документы или тип проблемы. | Избегает неправильных рекомендаций. |
+| resourcedirops.eligibility.documents | требования к документам | RECORD | Список требований: необходимые удостоверения личности, доказательства, заявления или направления. | Помогает абонентам подготовиться. |
+| resourcedirops.eligibility.fees | информация о сборах | RECORD | В информации о платежах указывается бесплатно, по скользящей шкале, страховка, доплата или пожертвование. | Снижает неожиданные затраты. |
+| resourcedirops.eligibility.restrictions | ограничения | CONSTRAINT | Ограничения включают списки ожидания, ограничения мощности, юридические ограничения или временное закрытие. | Сохраняет рефералы реалистичными. |
+| resourcedirops.hours.regular | обычные часы | RECORD | В обычном графике указаны дни, открытие, закрытие и прекращение подачи воды. | Поддерживает базовый доступ. |
+| resourcedirops.hours.holiday | праздничные часы | RECORD | Праздничные и сезонные исключения хранятся отдельно. | Предотвращает устаревшее состояние открытия/закрытия. |
+| resourcedirops.hours.emergency | аварийные часы | RECORD | Часы экстренной помощи могут активироваться во время стихийных бедствий, жары, холода или событий в области общественного здравоохранения. | Поддерживает реагирование на кризисы. |
+| resourcedirops.hours.last_confirmed | последняя подтвержденная временная метка | RECORD | Временная метка последнего подтверждения показывает, когда были проверены часы. | Сигнализирует надежность. |
+| resourcedirops.capacity.status | статус мощности | RECORD | Статус показывает: открыто, ограничено, в списке ожидания, заполнено, закрыто или неизвестно. | Уменьшает количество тупиковых рефералов. |
+| resourcedirops.capacity.update_source | источник мощности | RECORD | Самообновление поставщика исходных записей, проверка звонков, API, партнерский или полевой отчет. | Показывает уверенность. |
+| resourcedirops.capacity.expiry | истечение емкости | CONSTRAINT | Срок действия статуса емкости, зависящего от времени, истекает по истечении определенного периода. | Предотвращает устаревшую доступность. |
+| resourcedirops.capacity.alert | оповещение о емкости | METHOD | Оповещение уведомляет горячую линию или партнеров об изменении статуса ключевого ресурса. | Поддерживает линию фронта в актуальном состоянии. |
+| resourcedirops.verification.schedule | график проверки | METHOD | Записи проверяются в соответствии с циклом, основанным на рисках, по типу услуги и частоте изменений. | Сохраняет каталог свежим. |
+| resourcedirops.verification.call_script | сценарий проверки | METHOD | Сценарий проверяет обслуживание, право на участие, часы, вместимость, контакт и доступность. | Стандартизирует обновления. |
+| resourcedirops.verification.failed_contact | неудачный контакт | FAILURE_MODE | Неудачные проверки фиксируют попытки, каналы и понижение доверия. | Выявляет неопределенные списки. |
+| resourcedirops.verification.provider_portal | портал провайдера | METHOD | Поставщики могут отправлять обновления через контролируемый портал с проверкой. | Поддержание скоростей. |
+| resourcedirops.update.change_request | запрос на изменение | RECORD | Запрос на изменение записывает предлагаемое редактирование, источник, доказательства и рецензента. | Управляет модификациями. |
+| resourcedirops.update.review | редакционная рецензия | QUALITY_CHECK | Перед публикацией рецензент проверяет ясность, таксономию, наличие дубликатов, безопасность и политику. | Предотвращает появление неверных данных каталога. |
+| resourcedirops.update.publish | опубликовать рабочий процесс | METHOD | Публикация изменений рабочего процесса в общедоступной записи, метке времени и журнале изменений. | Обеспечивает отслеживание обновлений. |
+| resourcedirops.update.rollback | откат | METHOD | Откат восстанавливает предыдущий листинг после ошибки или спорного изменения. | Ограничивает вред. |
+| resourcedirops.quality.duplicate | обнаружение дубликатов | QUALITY_CHECK | Обнаружение дубликатов совпадает с именем, адресом, телефоном, веб-сайтом и службой. | Обеспечивает чистоту поиска. |
+| resourcedirops.quality.dead_link | проверка мертвой ссылки | QUALITY_CHECK | Веб-сайты, формы, карты и телефонные ссылки проверяются на предмет сбоев. | Предотвращает непригодные рефералы. |
+| resourcedirops.quality.plain_language | простой язык | QUALITY_CHECK | В листингах используются ясные публичные формулировки, а не внутренние названия программ. | Помогает пользователям понять. |
+| resourcedirops.quality.accessibility | Детали доступности | RECORD | Доступность фиксирует транзит, парковку, пандусы, язык, телетайп и процесс проживания. | Поддерживает равный доступ. |
+| resourcedirops.search.keyword | синонимы ключевых слов | METHOD | Синонимы связывают язык пользователя с терминами таксономии. | Улучшает поиск при поиске. |
+| resourcedirops.search.geo_filter | географический фильтр | METHOD | Поиск может фильтроваться по расстоянию, юрисдикции, зоне обслуживания или транзитному доступу. | Находит соответствующую помощь поблизости. |
+| resourcedirops.search.priority | приоритетный рейтинг | MODEL | При ранжировании учитываются соответствие услуг, доступность, близость, приемлемость и новизна. | Улучшает качество рефералов. |
+| resourcedirops.search.sensitive_terms | деликатные поисковые запросы | SAFETY_RULE | Деликатные категории избегают подвергания пользователей или поставщиков стигматизации или небезопасному раскрытию информации. | Защищает частную жизнь и достоинство. |
+| resourcedirops.integration.hotline | интеграция горячей линии | METHOD | Системы «горячих линий» используют записи каталогов для направлений и заметок о звонках. | Сопоставляет данные с консультированием. |
+| resourcedirops.integration.casework | интеграция работы с делами | METHOD | Соцработники могут связать направления и результаты с записями справочника. | Поддерживает сервис замкнутого цикла. |
+| resourcedirops.integration.api | API-фид | METHOD | API-канал делится утвержденными списками с партнерскими системами. | Уменьшает дублирование каталогов. |
+| resourcedirops.integration.open_data | политика публичных данных | CONSTRAINT | Публичные каналы исключают конфиденциальные или ограниченные данные поставщиков. | Контролирует неправильное использование. |
+| resourcedirops.governance.data_owner | владелец данных | RECORD | Владелец данных определяет таксономию, стандарты, правила проверки и публикации. | Держит директорию подотчетной. |
+| resourcedirops.governance.risk_tier | уровень риска | MODEL | Ресурсы высокого риска, такие как кризисные ситуации, приюты или медицинские списки, требуют более строгой проверки. | Уменьшает количество вредных рефералов. |
+| resourcedirops.metrics.freshness | показатель свежести | MEASUREMENT | Свежесть измеряет процент объявлений, проверенных в пределах целевого окна. | Показывает работоспособность данных. |
+| resourcedirops.closeout.retire_listing | удалить листинг | METHOD | Закрытые программы закрываются с указанием причины, даты и новых направлений, если они известны. | Предотвращает устаревшие ссылки. |

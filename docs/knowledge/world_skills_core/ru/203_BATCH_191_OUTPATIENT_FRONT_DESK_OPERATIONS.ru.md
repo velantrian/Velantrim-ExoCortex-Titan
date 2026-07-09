@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| clinicdesk.schedule.appointment_slot | Appointment slot | invariant | Slot defines provider, service type, duration, location, time and booking rules. | schedule capacity |
-| clinicdesk.schedule.template | Provider schedule template | invariant | Template sets normal clinic sessions, breaks, visit types and allowable overbooks. | repeatable calendar |
-| clinicdesk.schedule.waitlist | Appointment waitlist | variant | Waitlist tracks patients who can accept earlier or alternative appointment times. | fill cancellations |
-| clinicdesk.schedule.no_show | No-show record | invariant | Record notes missed appointment, policy action, reason if known and follow-up need. | protect capacity |
-| clinicdesk.schedule.reschedule_rule | Reschedule rule | invariant | Rule controls how changes are made, documented and communicated to patient and provider. | reduce confusion |
-| clinicdesk.registration.patient_identity | Patient identity check | invariant | Check verifies name, date of birth, contact and identifiers before service. | avoid wrong record |
-| clinicdesk.registration.demographic_update | Demographic update | invariant | Update captures address, phone, emergency contact, language and communication preference. | current records |
-| clinicdesk.registration.consent_status | Consent status | invariant | Status shows required consents, notices or authorizations are present before visit. | paperwork readiness |
-| clinicdesk.registration.new_patient_packet | New patient packet | variant | Packet gathers history forms, privacy notices, payment information and clinic policies. | first visit setup |
-| clinicdesk.registration.portal_activation | Patient portal activation | variant | Activation enables secure messages, forms, results access and appointment management. | digital access |
-| clinicdesk.eligibility.coverage_check | Coverage eligibility check | invariant | Check verifies payer, plan, active coverage, network and basic visit eligibility. | reduce billing surprises |
-| clinicdesk.eligibility.copay_collection | Copay collection | variant | Collection records expected patient payment, receipt, waiver reason or later billing route. | front-end revenue |
-| clinicdesk.eligibility.self_pay_flag | Self-pay flag | invariant | Flag identifies patient without billable coverage or choosing direct payment. | different workflow |
-| clinicdesk.eligibility.prior_authorization | Prior authorization status | variant | Status tracks approval, denial, pending request, expiration and service match. | service may depend on approval |
-| clinicdesk.eligibility.referral_status | Referral status | variant | Status verifies referral source, validity, visit limit and required documentation. | route compliant care |
-| clinicdesk.checkin.arrival_timestamp | Arrival timestamp | invariant | Timestamp records when patient arrives or begins check-in. | measure flow |
-| clinicdesk.checkin.visit_reason | Visit reason confirmation | invariant | Confirmation matches appointment purpose, forms and provider expectations. | prepare visit |
-| clinicdesk.checkin.forms_completion | Forms completion | invariant | Completion checks required questionnaires, updates, consents and signatures. | ready for rooming |
-| clinicdesk.checkin.late_arrival | Late arrival handling | invariant | Handling follows policy for grace period, provider decision, reschedule or wait. | protect schedule |
-| clinicdesk.checkin.interpreter_need | Interpreter need flag | variant | Flag identifies language or communication support required for visit. | accessible service |
-| clinicdesk.flow.waiting_room_status | Waiting room status | invariant | Status tracks checked-in, waiting, roomed, provider-ready, completed or left. | visible patient flow |
-| clinicdesk.flow.provider_delay | Provider delay communication | invariant | Communication updates patients and staff when clinic is running late. | reduce frustration |
-| clinicdesk.flow.walk_in_triage_route | Walk-in routing | variant | Routing sends unscheduled patients to approved desk, nurse, urgent slot or referral path. | front desk does not diagnose |
-| clinicdesk.flow.queue_priority | Desk queue priority | invariant | Priority separates check-in, checkout, phone, urgent admin issue and documentation tasks. | manage workload |
-| clinicdesk.flow.service_recovery | Patient service recovery | variant | Recovery responds to delay, error, access problem or complaint with escalation and documentation. | preserve trust |
-| clinicdesk.messages.phone_queue | Clinic phone queue | invariant | Queue handles appointment, refill, result, billing and urgent routing calls by script. | calls become work |
-| clinicdesk.messages.secure_message | Secure patient message | invariant | Message is routed to appropriate clinical, scheduling or billing queue with timestamp. | protect privacy |
-| clinicdesk.messages.callback_task | Callback task | invariant | Task records caller, issue, owner, due time and closure note. | no lost calls |
-| clinicdesk.messages.result_inquiry | Result inquiry routing | variant | Inquiry is routed through authorized clinical workflow rather than front desk interpretation. | avoid unsafe advice |
-| clinicdesk.messages.escalation_rule | Front desk escalation rule | invariant | Rule defines when staff contact supervisor, nurse, provider, billing or emergency channel. | know limits |
-| clinicdesk.checkout.followup_booking | Follow-up booking | invariant | Booking schedules next visit, test, referral or procedure per provider instruction. | continuity |
-| clinicdesk.checkout.after_visit_paperwork | After-visit paperwork | variant | Paperwork gives visit summary, orders, school/work forms or instructions from approved record. | close visit |
-| clinicdesk.checkout.balance_notice | Balance notice | variant | Notice explains outstanding patient balance without delaying clinically necessary workflow. | financial clarity |
-| clinicdesk.checkout.referral_packet | Referral packet | variant | Packet sends required demographics, notes, order, authorization and contact details. | handoff to outside care |
-| clinicdesk.checkout.departure_status | Departure status | invariant | Status closes visit in scheduling and billing workflow when patient leaves. | end of front-desk loop |
-| clinicdesk.records.document_scan | Clinic document scan | invariant | Scan attaches external forms, IDs, authorizations or correspondence to correct patient record. | evidence in chart |
-| clinicdesk.records.release_request | Records release request | invariant | Request records patient authorization, recipient, scope, dates and delivery method. | privacy controlled sharing |
-| clinicdesk.records.correction_request | Record correction request | variant | Request captures patient-reported error and routes to authorized record amendment process. | controlled correction |
-| clinicdesk.records.duplicate_chart | Duplicate chart alert | invariant | Alert flags possible duplicate patient record for merge review. | prevent split history |
-| clinicdesk.records.privacy_incident | Front desk privacy incident | invariant | Incident records misdirected communication, exposure, wrong chart or unauthorized disclosure. | respond to breach risk |
-| clinicdesk.controls.cash_drawer | Clinic cash drawer control | variant | Control reconciles payments, refunds, receipts, drawer access and deposit handoff. | payment accountability |
-| clinicdesk.controls.daily_close | Front desk daily close | invariant | Close verifies schedules, no-shows, messages, payments, scans, referrals and open tasks. | reset for tomorrow |
-| clinicdesk.metrics.front_desk_kpi | Front desk KPI | variant | KPI tracks wait time, call abandonment, no-show rate, check-in errors and task aging. | manage service |
-| clinicdesk.training.role_boundary | Front desk role boundary | invariant | Boundary separates administrative help from clinical advice, diagnosis or treatment decisions. | safety and compliance |
+| clinicdesk.schedule.appointment_slot | Время встречи | invariant | Слот определяет поставщика, тип услуги, продолжительность, местоположение, время и правила бронирования. | график мощности |
+| clinicdesk.schedule.template | Шаблон расписания поставщика | invariant | Шаблон устанавливает обычные сеансы в клинике, перерывы, типы посещений и допустимые резервы. | повторяемый календарь |
+| clinicdesk.schedule.waitlist | Список ожидания встречи | variant | Список ожидания отслеживает пациентов, которые могут согласиться на более раннее или альтернативное время приема. | заполнить отмены |
+| clinicdesk.schedule.no_show | Запись о неявках | invariant | Записывайте записи о пропущенном приеме, политических действиях, причине, если она известна, и необходимости последующих действий. | защитить емкость |
+| clinicdesk.schedule.reschedule_rule | Правило переноса расписания | invariant | Правило контролирует, как изменения вносятся, документируются и доводятся до сведения пациента и поставщика услуг. | уменьшить путаницу |
+| clinicdesk.registration.patient_identity | Проверка личности пациента | invariant | Перед обслуживанием проверяется имя, дата рождения, контакт и идентификаторы. | избежать неправильной записи |
+| clinicdesk.registration.demographic_update | Демографическое обновление | invariant | Обновление фиксирует адрес, телефон, контакт для экстренных случаев, языковые и коммуникационные предпочтения. | текущие записи |
+| clinicdesk.registration.consent_status | Статус согласия | invariant | Статус показывает, что перед посещением имеются необходимые согласия, уведомления или разрешения. | готовность документов |
+| clinicdesk.registration.new_patient_packet | Новый пакет пациента | variant | Packet собирает формы истории, уведомления о конфиденциальности, информацию о платежах и политику клиники. | настройка первого посещения |
+| clinicdesk.registration.portal_activation | Активация портала пациента | variant | Активация обеспечивает защиту сообщений, форм, доступа к результатам и управления встречами. | цифровой доступ |
+| clinicdesk.eligibility.coverage_check | Проверка права на покрытие | invariant | Проверка проверяет плательщика, план, активное покрытие, сеть и право на базовое посещение. | уменьшить неожиданности при выставлении счетов |
+| clinicdesk.eligibility.copay_collection | Сбор доплаты | variant | В отчетах о сборе фиксируются ожидаемые платежи пациента, квитанция, причина отказа или последующий маршрут выставления счетов. | внешний доход |
+| clinicdesk.eligibility.self_pay_flag | Флаг самооплаты | invariant | Флаг идентифицирует пациента без оплачиваемого покрытия или выбора прямой оплаты. | другой рабочий процесс |
+| clinicdesk.eligibility.prior_authorization | Статус предварительной авторизации | variant | Статус отслеживает одобрение, отказ, ожидающий запрос, срок действия и соответствие услуги. | обслуживание может зависеть от одобрения |
+| clinicdesk.eligibility.referral_status | Статус реферала | variant | Статус проверяет источник направления, действительность, лимит посещений и необходимую документацию. | уход в соответствии с маршрутом |
+| clinicdesk.checkin.arrival_timestamp | Временная метка прибытия | invariant | Временная метка фиксирует, когда пациент прибывает или начинает регистрацию. | измерить расход |
+| clinicdesk.checkin.visit_reason | Подтверждение причины посещения | invariant | Подтверждение соответствует цели назначения, формам и ожиданиям поставщика услуг. | подготовить визит |
+| clinicdesk.checkin.forms_completion | Заполнение форм | invariant | Завершение проверки необходимых анкет, обновлений, согласий и подписей. | готов к проживанию |
+| clinicdesk.checkin.late_arrival | Обработка позднего прибытия | invariant | Обработка осуществляется в соответствии с политикой льготного периода, решением поставщика, переносом графика или ожиданием. | защитить расписание |
+| clinicdesk.checkin.interpreter_need | Интерпретатору нужен флаг | variant | Флаг указывает языковую или коммуникационную поддержку, необходимую для посещения. | доступный сервис |
+| clinicdesk.flow.waiting_room_status | Статус зала ожидания | invariant | Статус отслеживает регистрацию, ожидание, размещение, готовность к работе с поставщиком услуг, завершение или окончание. | видимый поток пациентов |
+| clinicdesk.flow.provider_delay | Задержка связи с поставщиком | invariant | Связь информирует пациентов и персонал, когда клиника опаздывает. | уменьшить разочарование |
+| clinicdesk.flow.walk_in_triage_route | Прогулочная маршрутизация | variant | Маршрутизация направляет незапланированных пациентов к утвержденному столу, медсестре, месту неотложной помощи или направлению к направлению. | регистратура не ставит диагноз |
+| clinicdesk.flow.queue_priority | Приоритет очереди на рабочий стол | invariant | Приоритет разделяет регистрацию заезда, оформление заказа, телефон, срочные административные вопросы и задачи документирования. | управлять рабочей нагрузкой |
+| clinicdesk.flow.service_recovery | Восстановление обслуживания пациентов | variant | Восстановление реагирует на задержку, ошибку, проблему доступа или жалобу с эскалацией и документацией. | сохранять доверие |
+| clinicdesk.messages.phone_queue | Очередь на телефон клиники | invariant | Очередь обрабатывает встречи, пополнения баланса, результаты, выставление счетов и срочную маршрутизацию вызовов с помощью сценария. | звонки становятся работой |
+| clinicdesk.messages.secure_message | Безопасное сообщение пациента | invariant | Сообщение направляется в соответствующую клиническую очередь, очередь планирования или выставления счетов с отметкой времени. | защищать конфиденциальность |
+| clinicdesk.messages.callback_task | Задача обратного вызова | invariant | Задача записывает вызывающего абонента, проблему, владельца, время выполнения и примечание о закрытии. | никаких потерянных звонков |
+| clinicdesk.messages.result_inquiry | Маршрутизация запроса результатов | variant | Запрос направляется через авторизованный клинический рабочий процесс, а не через устный перевод на стойке регистрации. | избегайте небезопасных советов |
+| clinicdesk.messages.escalation_rule | Правило эскалации на стойке регистрации | invariant | Правило определяет, когда сотрудники связываются с руководителем, медсестрой, поставщиком услуг, платежным каналом или каналом экстренной помощи. | знать пределы |
+| clinicdesk.checkout.followup_booking | Последующее бронирование | invariant | График бронирования следующего визита, анализа, направления или процедуры согласно инструкциям поставщика услуг. | преемственность |
+| clinicdesk.checkout.after_visit_paperwork | Оформление документов после посещения | variant | В документации содержится сводка посещений, приказы, школьные/рабочие формы или инструкции из утвержденной записи. | близкий визит |
+| clinicdesk.checkout.balance_notice | Уведомление о балансе | variant | В уведомлении поясняется превосходный баланс пациентов без задержки клинически необходимого рабочего процесса. | финансовая ясность |
+| clinicdesk.checkout.referral_packet | Реферальный пакет | variant | Пакет отправляет необходимые демографические данные, заметки, порядок, авторизацию и контактные данные. | передача на постороннее обслуживание |
+| clinicdesk.checkout.departure_status | Статус отправления | invariant | Статус закрытия визита в рабочем процессе планирования и выставления счетов, когда пациент уходит. | конец цикла регистрации |
+| clinicdesk.records.document_scan | Скан документов клиники | invariant | Сканирование прикрепляет внешние формы, удостоверения личности, разрешения или корреспонденцию для исправления записей пациента. | доказательства в таблице |
+| clinicdesk.records.release_request | Запрос на выпуск записей | invariant | Запрос записывает авторизацию пациента, получателя, объем, даты и способ доставки. | совместное использование с контролем конфиденциальности |
+| clinicdesk.records.correction_request | Запрос на исправление записи | variant | Запрос фиксирует ошибки, о которых сообщил пациент, и направляет к авторизованному процессу внесения изменений в записи. | контролируемая коррекция |
+| clinicdesk.records.duplicate_chart | Оповещение о дублировании диаграммы | invariant | Предупреждение отмечает возможное дублирование записи пациента для проверки слияния. | предотвратить разделение истории |
+| clinicdesk.records.privacy_incident | Инцидент с конфиденциальностью на стойке регистрации | invariant | Инциденты фиксируют неправильную коммуникацию, воздействие, неверную карту или несанкционированное раскрытие информации. | реагировать на риск нарушения |
+| clinicdesk.controls.cash_drawer | Управление денежным ящиком клиники | variant | Контроль сверяет платежи, возвраты, поступления, доступ к кассам и передачу депозитов. | отчетность по платежам |
+| clinicdesk.controls.daily_close | Стойка регистрации ежедневно закрывается | invariant | Close проверяет расписания, неявки, сообщения, платежи, сканирования, рекомендации и открытые задачи. | сброс на завтра |
+| clinicdesk.metrics.front_desk_kpi | Рецепция КПИ | variant | KPI отслеживает время ожидания, отказ от звонков, процент неявок, ошибки регистрации и устаревание задач. | управлять сервисом |
+| clinicdesk.training.role_boundary | Граница роли стойки регистрации | invariant | Граница отделяет административную помощь от клинических рекомендаций, диагностики или решений о лечении. | безопасность и соответствие |

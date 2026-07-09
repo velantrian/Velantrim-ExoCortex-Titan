@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| inspectops.appointment.booking | Vehicle inspection appointment | invariant | Booking records vehicle, owner, inspection type, time, station and contact. | plan lane load |
-| inspectops.appointment.walkin_queue | Inspection walk-in queue | variant | Queue orders unscheduled vehicles by arrival, capacity, priority and cutoff time. | manage demand |
-| inspectops.appointment.reminder_notice | Inspection reminder notice | variant | Notice sends time, documents, fees, safety rules and reschedule path. | reduce no-shows |
-| inspectops.appointment.no_show | Inspection no-show record | invariant | Record tracks missed slot, communication, fee if any and rebooking. | protect capacity |
-| inspectops.intake.vehicle_identity | Vehicle identity check | invariant | Check verifies plate, VIN, registration and inspection category before testing. | right vehicle |
-| inspectops.intake.document_review | Vehicle inspection document review | invariant | Review checks ownership, registration, prior failure, exemption or special authorization. | eligibility gate |
-| inspectops.intake.fee_collection | Inspection fee collection | invariant | Collection records fee type, payment, receipt, waiver or refund. | financial trail |
-| inspectops.intake.customer_disclosure | Inspection customer disclosure | invariant | Disclosure explains scope, pass/fail result, limits and dispute route. | clear expectations |
-| inspectops.lane.lane_assignment | Inspection lane assignment | invariant | Assignment directs vehicle to lane by type, equipment, staffing and queue. | efficient flow |
-| inspectops.lane.lane_safety_check | Inspection lane safety check | invariant | Check confirms ventilation, lifts, rollers, barriers, signage and pedestrian separation. | safe workspace |
-| inspectops.lane.vehicle_positioning | Vehicle inspection positioning | invariant | Positioning places vehicle for brakes, emissions, lights or underbody checks. | test accuracy |
-| inspectops.lane.stop_work_signal | Inspection stop-work signal | variant | Signal stops lane for unsafe vehicle condition, equipment fault or person in hazard zone. | prevent harm |
-| inspectops.safety.lift_use | Inspection station lift use | variant | Use records lift points, weight limits, locking, spotter and lowering checks. | safe elevation |
-| inspectops.safety.exhaust_ventilation | Inspection exhaust ventilation | invariant | Ventilation removes exhaust during idle, dynamometer or indoor running. | air safety |
-| inspectops.safety.fire_readiness | Inspection station fire readiness | invariant | Readiness covers extinguishers, fuel leaks, hot surfaces, batteries and evacuation routes. | emergency readiness |
-| inspectops.safety.ppe_requirement | Inspection PPE requirement | invariant | Requirement defines eye, hand, hearing, footwear or respiratory protection by task. | reduce injury |
-| inspectops.checks.brake_test | Vehicle brake test workflow | variant | Workflow records method, equipment, readings, imbalance and pass/fail outcome. | braking evidence |
-| inspectops.checks.light_check | Vehicle light check workflow | invariant | Workflow verifies required lights, signals, reflectors, brightness and mounting. | road visibility |
-| inspectops.checks.tire_check | Vehicle tire check workflow | invariant | Workflow checks tread, damage, size, inflation and unsafe wear. | road safety |
-| inspectops.checks.steering_suspension | Steering and suspension check | invariant | Check reviews looseness, leaks, mounts, joints and safety-critical damage. | mechanical safety |
-| inspectops.checks.glass_mirror | Glass and mirror check | invariant | Check verifies windshield, mirrors, visibility, cracks and required equipment. | driver visibility |
-| inspectops.checks.underbody_check | Vehicle underbody check | variant | Check reviews leaks, corrosion, loose components, exhaust mounting and visible damage. | hidden risk |
-| inspectops.emissions.test_selection | Emissions test selection | variant | Selection chooses OBD, tailpipe, opacity or exemption path by vehicle rules. | proper test |
-| inspectops.emissions.obd_connection | OBD emissions connection | variant | Connection records vehicle readiness, fault codes, communication and result. | electronic evidence |
-| inspectops.emissions.analyzer_calibration | Emissions analyzer calibration | invariant | Calibration verifies gas, leak, zero/span or device readiness before testing. | reliable result |
-| inspectops.emissions.failed_emissions | Failed emissions result | invariant | Result records pollutant or system failure, retest rule and customer notice. | compliance path |
-| inspectops.emissions.exemption_review | Emissions exemption review | variant | Review confirms age, fuel, location, waiver or special status documentation. | correct exception |
-| inspectops.result.pass_certificate | Inspection pass certificate | invariant | Certificate links vehicle, date, station, inspector, result and expiration. | proof of compliance |
-| inspectops.result.failure_notice | Inspection failure notice | invariant | Notice lists failed items, severity, retest window, repair guidance and dispute path. | actionable result |
-| inspectops.result.retest_record | Vehicle retest record | invariant | Record links previous failure, repairs claimed, retest scope, result and fee. | close failure |
-| inspectops.result.sticker_control | Inspection sticker control | invariant | Control tracks sticker inventory, issue, voids, damaged stock and reconciliation. | prevent misuse |
-| inspectops.result.data_upload | Inspection result data upload | invariant | Upload sends result to registry or authority with confirmation and error handling. | official record |
-| inspectops.quality.inspector_credential | Vehicle inspector credential | invariant | Credential records training, authorization, expiration, scope and suspension status. | qualified staff |
-| inspectops.quality.audit_sample | Inspection audit sample | variant | Sample reviews selected tests, video, data, certificates and inspector notes. | detect errors |
-| inspectops.quality.equipment_maintenance | Inspection equipment maintenance | invariant | Maintenance tracks dyno, lift, analyzer, brake tester, cameras and calibration due dates. | equipment reliability |
-| inspectops.quality.tamper_flag | Vehicle tamper flag | variant | Flag documents suspected odometer, emissions, VIN or equipment tampering for escalation. | integrity |
-| inspectops.dispute.customer_dispute | Inspection customer dispute | invariant | Dispute records complaint, evidence, reviewer, decision and communication. | fair review |
-| inspectops.dispute.second_opinion | Inspection second opinion | variant | Opinion routes vehicle to supervisor, referee station or independent review when allowed. | resolve uncertainty |
-| inspectops.dispute.data_correction | Inspection data correction | invariant | Correction fixes plate, VIN, result or clerical error with authorization and audit trail. | accurate record |
-| inspectops.close.lane_closeout | Inspection lane closeout | invariant | Closeout secures tools, equipment, stickers, cash, data uploads and waste. | end-day control |
-| inspectops.close.waste_handling | Inspection station waste handling | variant | Handling manages fluids, filters, batteries, rags and hazardous waste containers. | environmental care |
-| inspectops.close.daily_reconciliation | Inspection daily reconciliation | invariant | Reconciliation compares appointments, tests, fees, stickers, uploads and exceptions. | operational control |
-| inspectops.metrics.station_kpi | Vehicle inspection station KPI | variant | KPI tracks throughput, pass rate, retests, equipment downtime, disputes and audit findings. | manage station |
-| inspectops.continuity.system_outage | Inspection system outage | invariant | Outage plan records offline tests, paper controls, customer notices and later upload. | keep service safe |
+| inspectops.appointment.booking | Запись на техосмотр автомобиля | invariant | В бронировании фиксируются транспортное средство, владелец, тип проверки, время, станция и контакт. | планировать загрузку полосы движения |
+| inspectops.appointment.walkin_queue | Очередь на досмотр | variant | Очередь заказывает незапланированные транспортные средства по прибытии, вместимости, приоритету и времени окончания. | управлять спросом |
+| inspectops.appointment.reminder_notice | Напоминание о проверке | variant | Уведомление отправляет время, документы, сборы, правила безопасности и путь переноса расписания. | сократить неявки |
+| inspectops.appointment.no_show | Протокол неявки на инспекцию | invariant | Запись треков пропущенного слота, связи, платы, если таковая имеется, и перебронирования. | защитить емкость |
+| inspectops.intake.vehicle_identity | Проверка личности автомобиля | invariant | Перед тестированием проверяется номерной знак, VIN, регистрация и категория проверки. | правильный автомобиль |
+| inspectops.intake.document_review | Рассмотрение документов техосмотра автомобиля | invariant | Обзор проверяет право собственности, регистрацию, предыдущую неисправность, освобождение от ответственности или специальное разрешение. | ворота приемлемости |
+| inspectops.intake.fee_collection | Сбор платы за проверку | invariant | Запись о сборе фиксирует тип комиссии, оплату, квитанцию, отказ или возврат. | финансовый след |
+| inspectops.intake.customer_disclosure | Раскрытие информации о клиентах при проверке | invariant | Раскрытие информации объясняет объем, результат «прошел/не прошел», ограничения и путь спора. | четкие ожидания |
+| inspectops.lane.lane_assignment | Назначение полос досмотра | invariant | Назначение направляет транспортное средство на полосу движения по типу, оснащению, укомплектованности персоналу и очереди. | эффективный поток |
+| inspectops.lane.lane_safety_check | Проверка безопасности на контрольной полосе | invariant | Проверка подтверждает наличие вентиляции, лифтов, роликов, барьеров, указателей и разделения пешеходов. | безопасное рабочее место |
+| inspectops.lane.vehicle_positioning | Позиционирование автомобиля для осмотра | invariant | Расположение автомобиля для проверки тормозов, выбросов, освещения или днища кузова. | точность теста |
+| inspectops.lane.stop_work_signal | Контрольный сигнал остановки работы | variant | Сигнал останавливает полосу движения в случае небезопасного состояния автомобиля, неисправности оборудования или присутствия человека в опасной зоне. | предотвратить вред |
+| inspectops.safety.lift_use | Станция осмотра использования лифта | variant | Используйте записи точек подъема, пределов веса, проверок фиксации, корректировки и опускания. | безопасное возвышение |
+| inspectops.safety.exhaust_ventilation | Ревизия вытяжной вентиляции | invariant | Вентиляция удаляет выхлопные газы во время работы на холостом ходу, на динамометрическом стенде или в помещении. | воздушная безопасность |
+| inspectops.safety.fire_readiness | Пункт проверки пожарной готовности | invariant | Готовность охватывает огнетушители, утечки топлива, горячие поверхности, аккумуляторы и пути эвакуации. | аварийная готовность |
+| inspectops.safety.ppe_requirement | Инспекция требований к СИЗ | invariant | Требование определяет защиту глаз, рук, слуха, обуви или органов дыхания в зависимости от задачи. | уменьшить травмы |
+| inspectops.checks.brake_test | Рабочий процесс проверки тормозов автомобиля | variant | Рабочий процесс записывает метод, оборудование, показания, дисбаланс и результат «прошел/не прошел». | доказательства торможения |
+| inspectops.checks.light_check | Порядок проверки фар автомобиля | invariant | Рабочий процесс проверяет необходимое освещение, сигналы, отражатели, яркость и монтаж. | видимость дороги |
+| inspectops.checks.tire_check | Рабочий процесс проверки шин автомобиля | invariant | Рабочий процесс проверяет протектор, повреждения, размер, надувание и небезопасный износ. | безопасность дорожного движения |
+| inspectops.checks.steering_suspension | Проверка рулевого управления и подвески | invariant | Проверьте надежность крепления, утечки, крепления, соединения и критические для безопасности повреждения. | механическая безопасность |
+| inspectops.checks.glass_mirror | Проверка стекол и зеркал | invariant | Проверка проверяет лобовое стекло, зеркала, видимость, наличие трещин и необходимое оборудование. | видимость для водителя |
+| inspectops.checks.underbody_check | Проверка днища автомобиля | variant | Проверьте наличие утечек, коррозии, незакрепленных компонентов, крепления выхлопной системы и видимых повреждений. | скрытый риск |
+| inspectops.emissions.test_selection | Выбор теста на выбросы | variant | Выбор выбирает OBD, выхлопную трубу, непрозрачность или путь освобождения в соответствии с правилами транспортного средства. | правильный тест |
+| inspectops.emissions.obd_connection | Подключение OBD по выбросам | variant | Connection записывает готовность автомобиля, коды неисправностей, связь и результат. | электронные доказательства |
+| inspectops.emissions.analyzer_calibration | Калибровка анализатора выбросов | invariant | Калибровка проверяет наличие газа, утечки, нуля/диапазона или готовность устройства перед тестированием. | надежный результат |
+| inspectops.emissions.failed_emissions | Результат неудачных выбросов | invariant | В результатах фиксируются загрязняющие вещества или сбой системы, правило повторного тестирования и уведомление клиента. | путь соответствия |
+| inspectops.emissions.exemption_review | Обзор освобождения от выбросов | variant | Проверка подтверждает возраст, топливо, местоположение, отказ или документацию об особом статусе. | правильное исключение |
+| inspectops.result.pass_certificate | Сертификат прохождения техосмотра | invariant | Сертификат связывает транспортное средство, дату, станцию, инспектора, результат и срок действия. | доказательство соответствия |
+| inspectops.result.failure_notice | Уведомление о сбое проверки | invariant | В уведомлении перечислены неисправные элементы, серьезность, окно повторного тестирования, рекомендации по ремонту и путь спора. | практический результат |
+| inspectops.result.retest_record | Протокол повторного испытания автомобиля | invariant | Запишите ссылки на предыдущие неисправности, заявленные ремонтные работы, объем повторных испытаний, результат и стоимость. | близкая неудача |
+| inspectops.result.sticker_control | Контроль наклеек инспекции | invariant | Контроль отслеживает наличие наклеек, проблемы, дефекты, поврежденные запасы и сверку. | предотвратить неправильное использование |
+| inspectops.result.data_upload | Загрузка данных о результатах проверки | invariant | Загрузка отправляет результат в реестр или орган власти с подтверждением и обработкой ошибок. | официальный отчет |
+| inspectops.quality.inspector_credential | Квалификация инспектора транспортного средства | invariant | Записи учетных данных об обучении, авторизации, сроке действия, объеме и статусе приостановки. | квалифицированный персонал |
+| inspectops.quality.audit_sample | Образец инспекционного аудита | variant | Выборочные обзоры выбранных тестов, видео, данных, сертификатов и заметок инспекторов. | обнаруживать ошибки |
+| inspectops.quality.equipment_maintenance | Обслуживание инспекционного оборудования | invariant | Техническое обслуживание отслеживает динамометрический стенд, подъемник, анализатор, тормозной стенд, камеры и сроки калибровки. | надежность оборудования |
+| inspectops.quality.tamper_flag | Флаг тампера автомобиля | variant | Пометить документы, подозрительные на одометр, выбросы, VIN или оборудование, для эскалации. | честность |
+| inspectops.dispute.customer_dispute | Спор с клиентом инспекции | invariant | В спорах фиксируются жалобы, доказательства, рецензенты, решения и сообщения. | честный обзор |
+| inspectops.dispute.second_opinion | Второе мнение инспекции | variant | Мнение направляет транспортное средство руководителю, судейскому посту или независимой проверке, если это разрешено. | разрешить неопределенность |
+| inspectops.dispute.data_correction | Корректировка данных проверки | invariant | Исправление исправляет табличку, VIN, результат или техническую ошибку с авторизацией и контрольным журналом. | точная запись |
+| inspectops.close.lane_closeout | Закрытие полосы досмотра | invariant | Closeout защищает инструменты, оборудование, наклейки, наличные, загружаемые данные и отходы. | контроль в конце дня |
+| inspectops.close.waste_handling | Станция контроля обращения с отходами | variant | При обращении с жидкостью, фильтрами, аккумуляторами, тряпками и контейнерами для опасных отходов. | забота об окружающей среде |
+| inspectops.close.daily_reconciliation | Проверка ежедневной сверки | invariant | При сверке сравниваются встречи, тесты, сборы, наклейки, загрузки и исключения. | оперативный контроль |
+| inspectops.metrics.station_kpi | Станция техосмотра КПИ | variant | KPI отслеживает пропускную способность, скорость прохождения, повторные испытания, время простоя оборудования, споры и результаты аудита. | станция управления |
+| inspectops.continuity.system_outage | Отказ системы проверки | invariant | В плане простоев фиксируются автономные тесты, бумажные проверки, уведомления клиентов и последующая загрузка. | обеспечить безопасность обслуживания |

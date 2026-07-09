@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| animaldisasterops.activation.trigger | activation trigger | MODEL | Animal response activates when disaster affects pets, livestock, strays or bite risk. | Opens animal-specific operations. |
-| animaldisasterops.activation.authority | authority record | RECORD | Authority records lead agency, incident link, site and operating period. | Clarifies responsibility. |
-| animaldisasterops.activation.partner_roles | partner roles | RECORD | Partners include animal control, shelters, vets, rescue groups and agriculture agencies. | Aligns response network. |
-| animaldisasterops.activation.field_boundary | field boundary | CONSTRAINT | Response scope separates owned pets, strays, livestock, wildlife and dangerous animals. | Routes cases correctly. |
-| animaldisasterops.intake.request_id | rescue request ID | RECORD | Request ID links caller, animal, location, hazard, owner and status. | Tracks animal rescue demand. |
-| animaldisasterops.intake.location | location capture | METHOD | Location captures address, GPS, access route, flood/fire zone and owner contact. | Helps field teams find animals. |
-| animaldisasterops.intake.animal_description | animal description | RECORD | Description records species, breed, color, size, microchip, collar and behavior. | Supports identification. |
-| animaldisasterops.intake.priority | priority level | MODEL | Priority uses life risk, trapped status, weather, aggression, owner evacuation and public hazard. | Sends teams to urgent cases. |
-| animaldisasterops.field.team_safety | team safety | SAFETY_RULE | Field teams assess access, utilities, flood, fire, bites and PPE before approach. | Protects responders. |
-| animaldisasterops.field.capture_plan | capture plan | METHOD | Capture plan chooses traps, leads, crates, nets or specialist support. | Reduces injury. |
-| animaldisasterops.field.owner_permission | owner permission | CONSTRAINT | Entry or animal removal requires permission or emergency authority. | Protects property rights. |
-| animaldisasterops.field.transport | animal transport | METHOD | Transport separates species, aggression, illness and temperature needs. | Moves animals safely. |
-| animaldisasterops.shelter.intake | animal shelter intake | METHOD | Intake records animal, source, condition, owner, location and belongings. | Starts custody trail. |
-| animaldisasterops.shelter.cage_card | cage card | RECORD | Cage card shows ID, species, warnings, feeding, meds and owner status. | Keeps care visible. |
-| animaldisasterops.shelter.separation | species separation | SAFETY_RULE | Species, size, aggression and disease risk are separated. | Prevents conflict and spread. |
-| animaldisasterops.shelter.capacity | shelter capacity | MEASUREMENT | Capacity tracks kennels, crates, staff, food and veterinary limits. | Prevents overcrowding. |
-| animaldisasterops.medical.triage | veterinary triage | METHOD | Triage identifies injury, dehydration, heat/cold exposure, pregnancy or infectious signs. | Routes urgent care. |
-| animaldisasterops.medical.medication | medication record | RECORD | Medication from owner or vet is logged without improvising treatment. | Maintains continuity. |
-| animaldisasterops.medical.quarantine | quarantine area | SAFETY_RULE | Bite, rabies risk or infectious animals use quarantine protocol. | Protects animals and people. |
-| animaldisasterops.medical.vet_referral | vet referral | METHOD | Animals needing care route to veterinarian or emergency clinic. | Avoids unsafe shelter care. |
-| animaldisasterops.reunification.owner_claim | owner claim | METHOD | Owner claim verifies identity, animal match and custody right. | Prevents wrong release. |
-| animaldisasterops.reunification.microchip | microchip scan | METHOD | Microchip scan links animal to registered owner when data is current. | Speeds reunification. |
-| animaldisasterops.reunification.photo_board | photo board | METHOD | Public photo lists show found animals while limiting sensitive location data. | Helps owners search. |
-| animaldisasterops.reunification.release | release record | RECORD | Release records owner, proof, animal condition, time and instructions. | Closes custody. |
-| animaldisasterops.bite.incident | bite incident | RECORD | Bite record captures victim, animal, circumstances, wound report and owner. | Starts required follow-up. |
-| animaldisasterops.bite.quarantine_order | quarantine order | CONSTRAINT | Bite cases follow rabies and animal control quarantine rules. | Protects public health. |
-| animaldisasterops.bite.exposure_referral | exposure referral | SAFETY_RULE | Human exposure routes to medical or public health guidance. | Reduces health risk. |
-| animaldisasterops.bite.investigation | bite investigation | METHOD | Investigation reviews animal history, vaccination, behavior and legal status. | Supports decisions. |
-| animaldisasterops.supplies.food | animal food supply | RECORD | Food inventory tracks species, special diets, quantity and burn rate. | Prevents shortages. |
-| animaldisasterops.supplies.crates | crates and cages | RECORD | Crates are tracked by size, condition, owner and location. | Keeps containment available. |
-| animaldisasterops.supplies.sanitation | sanitation supplies | SAFETY_RULE | Cleaning, waste, litter and disinfectant supplies support disease control. | Keeps shelter safe. |
-| animaldisasterops.supplies.donation | animal donation control | METHOD | Donations are accepted by need, safety, packaging and storage capacity. | Avoids unusable piles. |
-| animaldisasterops.records.custody | custody log | RECORD | Custody log tracks rescue, transport, shelter, care and release. | Supports legal accountability. |
-| animaldisasterops.records.photo | photo record | RECORD | Photos document animal condition and identification at intake/release. | Reduces disputes. |
-| animaldisasterops.records.privacy | owner privacy | SAFETY_RULE | Owner addresses and contacts are not publicly exposed unnecessarily. | Protects evacuees. |
-| animaldisasterops.records.retention | retention rule | CONSTRAINT | Records follow animal control, emergency and legal schedules. | Preserves evidence. |
-| animaldisasterops.communication.public_notice | public notice | METHOD | Notices explain pet sheltering, found animals, claims, supplies and deadlines. | Guides owners. |
-| animaldisasterops.communication.owner_update | owner update | METHOD | Owners receive animal status, location, care needs and pickup rules. | Reduces anxiety. |
-| animaldisasterops.communication.partner_update | partner update | METHOD | Partners receive capacity, supply needs, hazards and transport requests. | Coordinates support. |
-| animaldisasterops.metrics.animals_served | animals served | MEASUREMENT | Counts track rescued, sheltered, reunited, transferred and deceased animals. | Shows workload. |
-| animaldisasterops.metrics.reunification_rate | reunification rate | MEASUREMENT | Rate measures animals returned to owners from shelter population. | Shows outcome quality. |
-| animaldisasterops.qa.case_audit | case audit | QUALITY_CHECK | Audit checks custody, owner proof, medical notes and release records. | Improves control. |
-| animaldisasterops.demob.transfer | transfer process | METHOD | Remaining animals transfer to shelters, fosters or owners under records. | Prevents abandonment. |
-| animaldisasterops.demob.after_action | after-action review | METHOD | Review captures rescue gaps, shelter capacity, bite issues and supply needs. | Improves next response. |
+| animaldisasterops.activation.trigger | триггер активации | MODEL | Реакция животных активируется, когда стихийное бедствие затрагивает домашних животных, домашний скот, бездомных или подвергается риску укуса. | Открывает операции, связанные с животными. |
+| animaldisasterops.activation.authority | авторитетная запись | RECORD | Орган фиксирует ведущее агентство, ссылку на инцидент, место и период работы. | Уточняет ответственность. |
+| animaldisasterops.activation.partner_roles | партнерские роли | RECORD | В число партнеров входят службы по контролю за животными, приюты, ветеринары, спасательные группы и сельскохозяйственные агентства. | Выравнивает сеть реагирования. |
+| animaldisasterops.activation.field_boundary | граница поля | CONSTRAINT | Объем реагирования разделяет домашних животных, бездомных, домашний скот, диких и опасных животных. | Маршрутизирует дела правильно. |
+| animaldisasterops.intake.request_id | идентификатор запроса на спасение | RECORD | Запрос идентификатора связывает звонящего, животное, местоположение, опасность, владельца и статус. | Отслеживает спрос на спасение животных. |
+| animaldisasterops.intake.location | захват местоположения | METHOD | Местоположение фиксирует адрес, GPS, маршрут доступа, зону наводнения/пожара и контакт владельца. | Помогает полевым командам находить животных. |
+| animaldisasterops.intake.animal_description | описание животного | RECORD | В описании фиксируются виды, породы, окрас, размер, микрочип, ошейник и поведение. | Поддерживает идентификацию. |
+| animaldisasterops.intake.priority | уровень приоритета | MODEL | Приоритет учитывает риск для жизни, статус ловушки, погоду, агрессию, эвакуацию владельца и общественную опасность. | Направляет бригады на неотложные дела. |
+| animaldisasterops.field.team_safety | безопасность команды | SAFETY_RULE | Перед приближением полевые группы оценивают доступ, коммунальные услуги, наводнение, пожар, укусы и СИЗ. | Защищает ответчиков. |
+| animaldisasterops.field.capture_plan | план захвата | METHOD | В плане поимки выбираются ловушки, поводки, ящики, сети или поддержка специалистов. | Уменьшает травматизм. |
+| animaldisasterops.field.owner_permission | разрешение владельца | CONSTRAINT | Для проникновения или вывоза животных требуется разрешение или полномочия органа по чрезвычайным ситуациям. | Защищает права собственности. |
+| animaldisasterops.field.transport | транспортировка животных | METHOD | Транспорт разделяет виды, агрессию, болезни и температурные потребности. | Перевозит животных безопасно. |
+| animaldisasterops.shelter.intake | прием приюта для животных | METHOD | Приемка записывает животное, источник, состояние, владельца, местонахождение и имущество. | Начало следствия по опеке. |
+| animaldisasterops.shelter.cage_card | клетка-карта | RECORD | На карточке клетки указаны идентификатор, вид, предупреждения, кормление, лекарства и статус владельца. | Делает уход видимым. |
+| animaldisasterops.shelter.separation | разделение видов | SAFETY_RULE | Разделены виды, размер, агрессивность и риск заболеваний. | Предотвращает конфликты и распространение. |
+| animaldisasterops.shelter.capacity | вместимость убежища | MEASUREMENT | Емкость отслеживает вольеры, ящики, персонал, продукты питания и ветеринарные ограничения. | Предотвращает перенаселение. |
+| animaldisasterops.medical.triage | ветеринарная сортировка | METHOD | Сортировка выявляет травмы, обезвоживание, воздействие жары/холода, беременность или признаки инфекции. | Маршруты неотложной помощи. |
+| animaldisasterops.medical.medication | запись о приеме лекарств | RECORD | Прием лекарств от владельца или ветеринара регистрируется без импровизированного лечения. | Сохраняет преемственность. |
+| animaldisasterops.medical.quarantine | карантинная область | SAFETY_RULE | Укусы, риск бешенства или заразные животные должны соблюдать карантинный протокол. | Защищает животных и людей. |
+| animaldisasterops.medical.vet_referral | направление к ветеринару | METHOD | Животные, нуждающиеся в помощи, направляются к ветеринару или в клинику неотложной помощи. | Избегает небезопасного ухода за приютом. |
+| animaldisasterops.reunification.owner_claim | претензия владельца | METHOD | Заявление владельца подтверждает личность, соответствие животного и право на опеку. | Предотвращает неправильный выпуск. |
+| animaldisasterops.reunification.microchip | сканирование микрочипа | METHOD | Сканирование микрочипа связывает животное с зарегистрированным владельцем, если данные актуальны. | Ускоряет воссоединение. |
+| animaldisasterops.reunification.photo_board | фото доска | METHOD | В общедоступных списках фотографий показаны найденные животные, но конфиденциальные данные о местонахождении ограничены. | Помогает найти владельцев. |
+| animaldisasterops.reunification.release | выпустить пластинку | RECORD | Выпуск регистрирует владельца, доказательства, состояние животного, время и инструкции. | Закрывает опеку. |
+| animaldisasterops.bite.incident | инцидент с укусом | RECORD | В записи укусов фиксируются жертва, животное, обстоятельства, отчет о ранении и владелец. | Начинает необходимое наблюдение. |
+| animaldisasterops.bite.quarantine_order | карантинный приказ | CONSTRAINT | Случаи укусов соответствуют правилам карантина по бешенству и контролю за животными. | Защищает здоровье населения. |
+| animaldisasterops.bite.exposure_referral | направление на воздействие | SAFETY_RULE | Пути воздействия на человека согласно медицинским рекомендациям или рекомендациям общественного здравоохранения. | Снижает риск для здоровья. |
+| animaldisasterops.bite.investigation | расследование укуса | METHOD | В ходе расследования изучаются истории животных, вакцинация, поведение и правовой статус. | Поддерживает решения. |
+| animaldisasterops.supplies.food | поставки корма для животных | RECORD | Инвентаризация продуктов питания отслеживает виды, специальные диеты, количество и скорость сжигания. | Предотвращает дефицит. |
+| animaldisasterops.supplies.crates | ящики и клетки | RECORD | Ящики отслеживаются по размеру, состоянию, владельцу и местоположению. | Обеспечивает доступность сдерживания. |
+| animaldisasterops.supplies.sanitation | санитарно-гигиенические принадлежности | SAFETY_RULE | Средства для уборки, сбора мусора, мусора и дезинфицирующие средства способствуют борьбе с болезнями. | Обеспечивает безопасность убежища. |
+| animaldisasterops.supplies.donation | контроль донорства животных | METHOD | Пожертвования принимаются в зависимости от необходимости, сохранности, упаковки и вместимости. | Избегает непригодных для использования свай. |
+| animaldisasterops.records.custody | журнал хранения | RECORD | Журнал задержания отслеживает спасение, транспортировку, укрытие, уход и освобождение. | Поддерживает юридическую ответственность. |
+| animaldisasterops.records.photo | фотозапись | RECORD | Фотографии документируют состояние и идентификацию животных при приеме/выпуске. | Уменьшает споры. |
+| animaldisasterops.records.privacy | конфиденциальность владельца | SAFETY_RULE | Адреса и контакты владельцев не публикуются без необходимости. | Защищает эвакуированных. |
+| animaldisasterops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют правилам контроля за животными, чрезвычайным ситуациям и законодательным нормам. | Сохраняет доказательства. |
+| animaldisasterops.communication.public_notice | публичное уведомление | METHOD | В уведомлениях рассказывается о приютах для домашних животных, найденных животных, претензиях, расходных материалах и сроках. | Владельцы гидов. |
+| animaldisasterops.communication.owner_update | обновление владельца | METHOD | Владельцы получают информацию о статусе животного, его местонахождении, потребностях в уходе и правилах вывоза. | Уменьшает тревожность. |
+| animaldisasterops.communication.partner_update | обновление партнера | METHOD | Партнеры получают информацию о мощностях, потребностях в поставках, опасностях и запросах на транспортировку. | Поддержка координат. |
+| animaldisasterops.metrics.animals_served | животные служили | MEASUREMENT | Учитывает спасенных, приютивших, воссоединившихся, перевезенных и умерших животных. | Показывает загруженность. |
+| animaldisasterops.metrics.reunification_rate | скорость воссоединения | MEASUREMENT | Коэффициент измерения животных, возвращенных владельцам из приюта. | Показывает качество результата. |
+| animaldisasterops.qa.case_audit | аудит дела | QUALITY_CHECK | Аудит проверяет хранение, доказательства владельца, медицинские записи и записи о выпуске. | Улучшает контроль. |
+| animaldisasterops.demob.transfer | процесс передачи | METHOD | Оставшихся животных передают в приюты, на передержки или владельцам под учет. | Предотвращает отказ. |
+| animaldisasterops.demob.after_action | обзор после действий | METHOD | Обзор отражает пробелы в спасательных операциях, вместимость укрытий, проблемы с укусами и потребности в снабжении. | Улучшает следующий ответ. |

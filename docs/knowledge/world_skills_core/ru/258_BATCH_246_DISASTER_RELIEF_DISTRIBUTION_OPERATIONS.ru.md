@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| reliefops.intake.survivor_intake | Disaster relief survivor intake | invariant | Intake records household, disaster impact, location, immediate needs and contact. | start assistance |
-| reliefops.intake.identity_check | Relief identity check | invariant | Check verifies identity enough for program rules while preserving emergency access. | reduce misuse |
-| reliefops.intake.household_profile | Relief household profile | variant | Profile captures household size, age groups, disability, language, pets and transportation needs. | tailor support |
-| reliefops.intake.duplicate_screen | Relief duplicate screen | invariant | Screen checks prior assistance, household overlap, address duplication and referral history. | fair distribution |
-| reliefops.intake.privacy_notice | Relief privacy notice | invariant | Notice explains data use, sharing, retention, voluntary fields and consent. | informed service |
-| reliefops.eligibility.damage_category | Disaster relief damage category | variant | Category records destroyed, major, minor, affected, displaced or utility outage status. | prioritize aid |
-| reliefops.eligibility.program_rule | Relief program eligibility rule | invariant | Rule defines who qualifies, documentation, geography, date, need and assistance limit. | consistent decisions |
-| reliefops.eligibility.vulnerability_priority | Relief vulnerability priority | variant | Priority considers age, disability, medical dependence, pregnancy, income or access barrier. | equitable triage |
-| reliefops.eligibility.exception_review | Relief eligibility exception review | variant | Review handles missing documents, informal housing, displacement or special hardship. | avoid unfair exclusion |
-| reliefops.inventory.donation_receiving | Disaster relief donation receiving | invariant | Receiving records item, donor, quantity, condition, restrictions and storage need. | supply input |
-| reliefops.inventory.item_category | Relief inventory item category | invariant | Category separates water, food, hygiene, cleanup, bedding, baby, medical support or tools. | organized stock |
-| reliefops.inventory.expiration_check | Relief supply expiration check | invariant | Check flags expired food, medicine, formula, batteries or perishable goods. | safe distribution |
-| reliefops.inventory.kit_build | Relief kit build | variant | Build assembles standard household, hygiene, cleanup or shelter kits with count control. | fast handout |
-| reliefops.inventory.stock_count | Relief inventory stock count | invariant | Count tracks on-hand, committed, distributed, damaged, expired and inbound quantities. | supply visibility |
-| reliefops.inventory.reorder_trigger | Relief reorder trigger | variant | Trigger flags low stock, surge demand, route need or special population shortage. | maintain supply |
-| reliefops.site.site_selection | Relief distribution site selection | invariant | Selection checks access, safety, parking, utilities, shelter, visibility and community reach. | usable site |
-| reliefops.site.site_layout | Relief distribution site layout | invariant | Layout defines intake, queue, eligibility, pickup, loading, exits and private support area. | safe flow |
-| reliefops.site.queue_management | Relief queue management | invariant | Management handles arrival order, priority needs, shade, water, updates and crowd calming. | humane waiting |
-| reliefops.site.accessibility_support | Relief site accessibility support | invariant | Support provides ramps, seating, interpreters, mobility help and alternate pickup. | inclusive aid |
-| reliefops.site.traffic_control | Relief distribution traffic control | variant | Control separates vehicles, pedestrians, trucks, emergency access and staging. | prevent conflict |
-| reliefops.distribution.voucher_issue | Relief voucher issue | variant | Issue records approved household, item or service, value, vendor and expiration. | controlled assistance |
-| reliefops.distribution.direct_handout | Relief direct handout | invariant | Handout records household, items, quantities, staff, date and any exceptions. | accountable aid |
-| reliefops.distribution.bulk_agency_order | Relief agency bulk order | variant | Order sends supplies to partner shelter, clinic, pantry or community site. | extend reach |
-| reliefops.distribution.delivery_route | Relief delivery route | variant | Route serves homebound, isolated, shelter, rural or blocked-access households. | reach people |
-| reliefops.distribution.proof_distribution | Proof of relief distribution | invariant | Proof records signature, scan, photo, witness or staff attestation as allowed. | audit trail |
-| reliefops.referral.referral_screen | Disaster relief referral screen | invariant | Screen identifies needs for shelter, medical, benefits, legal, mental health or rebuilding help. | connect services |
-| reliefops.referral.partner_directory | Relief partner directory | invariant | Directory lists agencies, services, eligibility, capacity, hours and contact. | navigation |
-| reliefops.referral.warm_referral | Relief warm referral | variant | Referral connects survivor directly to partner with consent and essential details. | reduce drop-off |
-| reliefops.referral.unmet_need | Disaster unmet need record | invariant | Record captures aid gap, urgency, household, barrier and escalation path. | target resources |
-| reliefops.safety.site_safety_briefing | Relief site safety briefing | invariant | Briefing covers hazards, weather, conflict, traffic, lifting, PPE and emergency roles. | protect team |
-| reliefops.safety.heat_cold_control | Relief heat or cold control | variant | Control provides shade, warming, water, breaks, monitoring and vulnerable-person support. | reduce harm |
-| reliefops.safety.conflict_deescalation | Relief conflict de-escalation | invariant | De-escalation uses calm communication, boundaries, supervisor support and security referral. | safer site |
-| reliefops.safety.incident_report | Relief distribution incident report | invariant | Report records injury, conflict, lost child, theft, vehicle issue, exposure or near miss. | incident trail |
-| reliefops.safety.supply_security | Relief supply security | invariant | Security controls warehouse, site, truck, high-demand items, keys and after-hours storage. | prevent loss |
-| reliefops.reporting.situation_report | Relief distribution situation report | invariant | Report summarizes demand, distributed items, stock, staffing, incidents and gaps. | command awareness |
-| reliefops.reporting.demographic_summary | Relief demographic summary | variant | Summary aggregates non-identifying household needs, language, geography and vulnerability. | equity monitoring |
-| reliefops.reporting.donor_report | Disaster relief donor report | variant | Report documents received goods, distribution outcomes, restrictions and remaining stock. | donor accountability |
-| reliefops.reporting.after_action | Relief after-action note | variant | Note captures lessons, bottlenecks, partner issues, unmet needs and improvements. | learn |
-| reliefops.volunteer.volunteer_checkin | Relief volunteer check-in | invariant | Check-in records identity, role, shift, training, waiver and supervisor. | manage volunteers |
-| reliefops.volunteer.role_assignment | Relief volunteer role assignment | variant | Assignment places volunteers in intake, packing, loading, translation, traffic or cleanup. | useful staffing |
-| reliefops.volunteer.shift_closeout | Relief volunteer shift closeout | invariant | Closeout records hours, issues, supplies, handoff and release time. | continuity |
-| reliefops.finance.expense_tracking | Relief distribution expense tracking | variant | Tracking records purchase, transport, rental, staffing, reimbursement code and documentation. | financial control |
-| reliefops.metrics.relief_distribution_kpi | Disaster relief distribution KPI | variant | KPI tracks households served, wait time, stockouts, referrals, incidents, equity reach and cost. | manage relief |
-| reliefops.continuity.site_relocation | Relief site relocation response | invariant | Response moves distribution due to hazard, crowding, access loss or operational failure. | keep aid flowing |
+| reliefops.intake.survivor_intake | Прием помощи пострадавшим от стихийных бедствий | invariant | Прием регистрирует домохозяйство, воздействие стихийного бедствия, местоположение, неотложные потребности и контакты. | начать помощь |
+| reliefops.intake.identity_check | Облегченная проверка личности | invariant | Проверка проверяет личность, достаточную для правил программы, сохраняя при этом экстренный доступ. | уменьшить неправильное использование |
+| reliefops.intake.household_profile | Профиль домохозяйства | variant | Профиль отражает размер домохозяйства, возрастные группы, инвалидность, язык, наличие домашних животных и потребности в транспорте. | индивидуальная поддержка |
+| reliefops.intake.duplicate_screen | Рельефный дублирующий экран | invariant | Скрининг проверяет предыдущую помощь, совпадение домохозяйств, дублирование адресов и историю обращений. | справедливое распределение |
+| reliefops.intake.privacy_notice | Уведомление о конфиденциальности | invariant | В уведомлении поясняется использование, обмен, хранение данных, добровольные поля и согласие. | информированное обслуживание |
+| reliefops.eligibility.damage_category | Категория ущерба при ликвидации последствий стихийных бедствий | variant | Записи категорий уничтожены, имеют статус крупных, незначительных, затронутых, перемещенных или отключений коммунальных услуг. | расставить приоритеты в помощи |
+| reliefops.eligibility.program_rule | Правило участия в программе помощи | invariant | Правило определяет, кто имеет право на помощь, документацию, географию, дату, потребность и лимит помощи. | последовательные решения |
+| reliefops.eligibility.vulnerability_priority | Приоритет устранения уязвимости | variant | Приоритет учитывает возраст, инвалидность, медицинскую зависимость, беременность, доход или барьер доступа. | справедливая сортировка |
+| reliefops.eligibility.exception_review | Обзор исключений, имеющих право на получение льготы | variant | Проверка касается пропавших документов, неофициального жилья, перемещения или особых лишений. | избежать несправедливого исключения |
+| reliefops.inventory.donation_receiving | Получение пожертвований на помощь при стихийных бедствиях | invariant | Приемка записей о предмете, доноре, количестве, состоянии, ограничениях и необходимости хранения. | вход питания |
+| reliefops.inventory.item_category | Категория предмета инвентаря рельефа | invariant | Категория разделяет воду, еду, гигиену, уборку, постельное белье, ребенка, медицинскую помощь или инструменты. | организованный запас |
+| reliefops.inventory.expiration_check | Проверка истечения срока годности запасных частей | invariant | Проверьте наличие просроченных продуктов питания, лекарств, детского питания, батареек или скоропортящихся товаров. | безопасное распространение |
+| reliefops.inventory.kit_build | Сборка комплекта помощи | variant | Сборка собирает стандартные комплекты для дома, гигиены, уборки или укрытия с контролем подсчета. | быстрый раздаточный материал |
+| reliefops.inventory.stock_count | Подсчет запасов по оказанию помощи | invariant | Подсчитайте имеющиеся, зафиксированные, распределенные, поврежденные, просроченные и входящие треки. | прозрачность поставок |
+| reliefops.inventory.reorder_trigger | Триггер изменения порядка рельефа | variant | Триггерные сигналы указывают на низкий запас, резкий рост спроса, потребность в маршрутах или особую нехватку населения. | поддерживать поставки |
+| reliefops.site.site_selection | Выбор места распределения помощи | invariant | Отбор проверяет доступ, безопасность, парковку, коммунальные услуги, жилье, видимость и охват сообщества. | полезный сайт |
+| reliefops.site.site_layout | Планировка участка распределения помощи | invariant | Планировка определяет прием, очередь, право на получение, погрузку, выход и частную зону поддержки. | безопасный поток |
+| reliefops.site.queue_management | Управление очередью помощи | invariant | Руководство занимается порядком прибытия, приоритетными потребностями, тенью, водой, обновлениями и успокоением толпы. | гуманное ожидание |
+| reliefops.site.accessibility_support | Поддержка доступности сайта | invariant | Служба поддержки предоставляет пандусы, места для сидения, переводчиков, помощь в передвижении и альтернативный трансфер. | инклюзивная помощь |
+| reliefops.site.traffic_control | Разгрузочное управление дорожным движением | variant | Контроль разделяет транспортные средства, пешеходов, грузовые автомобили, аварийный доступ и этапы. | предотвратить конфликт |
+| reliefops.distribution.voucher_issue | Проблема с ваучером на помощь | variant | Выпуск записей об одобренном домашнем хозяйстве, предмете или услуге, их стоимости, поставщике и сроке действия. | контролируемая помощь |
+| reliefops.distribution.direct_handout | Прямая раздача помощи | invariant | В раздаточном материале указывается дом, предметы, количество, персонал, дата и любые исключения. | подотчетная помощь |
+| reliefops.distribution.bulk_agency_order | Массовый заказ агентства по оказанию помощи | variant | Заказ отправляет материалы в партнерский приют, клинику, кладовую или общественный объект. | расширить охват |
+| reliefops.distribution.delivery_route | Маршрут доставки помощи | variant | Маршрут обслуживает дома, изолированные, приютившие, сельские домохозяйства или домохозяйства с заблокированным доступом. | достигать людей |
+| reliefops.distribution.proof_distribution | Доказательство распределения помощи | invariant | В качестве доказательства фиксируются подписи, сканы, фотографии, показания свидетелей или сотрудников, если это разрешено. | аудиторский след |
+| reliefops.referral.referral_screen | Экран направления помощи при стихийных бедствиях | invariant | Скрининг выявляет потребности в жилье, медицинской помощи, льготах, юридической помощи, помощи в области психического здоровья или помощи в восстановлении. | подключать услуги |
+| reliefops.referral.partner_directory | Каталог партнеров по оказанию помощи | invariant | В справочнике перечислены агентства, услуги, право на участие, вместимость, часы работы и контакты. | навигация |
+| reliefops.referral.warm_referral | Облегчение теплое направление | variant | Направление связывает пострадавшего напрямую с партнером при наличии согласия и необходимых подробностей. | уменьшить выпадение |
+| reliefops.referral.unmet_need | Рекорд неудовлетворенных потребностей в связи со стихийным бедствием | invariant | Запись отражает дефицит помощи, срочность, домохозяйство, препятствия и пути эскалации. | целевые ресурсы |
+| reliefops.safety.site_safety_briefing | Инструктаж по безопасности на месте оказания помощи | invariant | На инструктаже рассматриваются опасности, погода, конфликты, дорожное движение, подъем, СИЗ и действия в чрезвычайных ситуациях. | защитить команду |
+| reliefops.safety.heat_cold_control | Облегчение контроля тепла или холода | variant | Контроль обеспечивает тень, согревание, воду, перерывы, мониторинг и поддержку уязвимых лиц. | уменьшить вред |
+| reliefops.safety.conflict_deescalation | Деэскалация конфликта | invariant | Деэскалация использует спокойное общение, границы, поддержку руководителя и направление в службу безопасности. | более безопасный сайт |
+| reliefops.safety.incident_report | Отчет о происшествии при раздаче помощи | invariant | В отчете фиксируются травмы, конфликты, потеря ребенка, кража, проблемы с транспортным средством, воздействие или опасность. | след происшествия |
+| reliefops.safety.supply_security | Безопасность поставок гуманитарной помощи | invariant | Охрана контролирует склад, площадку, грузовик, предметы повышенного спроса, ключи и хранение в нерабочее время. | предотвратить потерю |
+| reliefops.reporting.situation_report | Отчет о ситуации с распределением помощи | invariant | В отчете суммируются спрос, распределенные товары, запасы, укомплектование персоналом, инциденты и пробелы. | осведомленность о командах |
+| reliefops.reporting.demographic_summary | Демографическая сводка по оказанию помощи | variant | Сводные данные объединяют неопределяющие потребности домохозяйств, язык, географию и уязвимость. | мониторинг капитала |
+| reliefops.reporting.donor_report | Отчет донора по оказанию помощи при стихийных бедствиях | variant | Отчетные документы о поступлении товара, результатах распределения, ограничениях и остатках. | подотчетность доноров |
+| reliefops.reporting.after_action | Примечание о последствиях действия | variant | В примечаниях отражены уроки, узкие места, проблемы партнеров, неудовлетворенные потребности и улучшения. | учиться |
+| reliefops.volunteer.volunteer_checkin | Регистрация волонтеров помощи | invariant | При регистрации фиксируются личность, роль, смена, обучение, отказ и руководитель. | управлять волонтерами |
+| reliefops.volunteer.role_assignment | Назначение ролей волонтера по оказанию помощи | variant | В рамках задания волонтеры занимаются приемом, упаковкой, погрузкой, переводом, транспортировкой или уборкой. | полезный кадровый состав |
+| reliefops.volunteer.shift_closeout | Закрытие смены волонтеров по оказанию помощи | invariant | Closeout записывает часы, проблемы, расходные материалы, время передачи и выпуска. | преемственность |
+| reliefops.finance.expense_tracking | Отслеживание расходов на распределение помощи | variant | Отслеживание покупок, транспорта, аренды, укомплектования персоналом, кода возмещения и документации. | финансовый контроль |
+| reliefops.metrics.relief_distribution_kpi | KPI распределения помощи при стихийных бедствиях | variant | KPI отслеживает количество обслуживаемых домохозяйств, время ожидания, дефицит, направления, инциденты, охват капитала и стоимость. | управлять помощью |
+| reliefops.continuity.site_relocation | Ответ на переезд места оказания помощи | invariant | Реагирование перемещает распределение из-за опасности, скопления людей, потери доступа или сбоя в работе. | продолжайте поступать помощь |

@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| recops.class.record_classification | Record classification | invariant | Classification assigns record to category based on function, content, owner and retention rule. | know what it is |
-| recops.class.file_plan | File plan | invariant | File plan organizes record categories, locations, naming and ownership. | structured storage |
-| recops.class.record_series | Record series | invariant | Series groups similar records created by same process and retention need. | manage in batches |
-| recops.class.vital_record | Vital record | variant | Vital record is essential for continuity, legal rights or recovery after disaster. | protect first |
-| recops.class.transitory_record | Transitory record | invariant | Transitory record has short-term value and should not be kept longer than needed. | reduce clutter |
-| recops.class.metadata_required | Required records metadata | invariant | Metadata captures title, owner, date, category, retention, security and location. | find and govern records |
-| recops.retention.retention_schedule | Retention schedule | invariant | Schedule defines how long each record series is kept and what happens after. | lifecycle rule |
-| recops.retention.trigger_event | Retention trigger event | invariant | Trigger starts retention clock, such as closure, termination, expiration or completion. | time starts from event |
-| recops.retention.retention_hold | Retention hold | invariant | Hold suspends normal destruction because of legal, audit, investigation or business need. | do not destroy |
-| recops.retention.schedule_update | Retention schedule update | variant | Update changes rules after legal, business or regulatory review. | keep rules current |
-| recops.retention.owner_approval | Retention owner approval | invariant | Owner approval confirms retention rule and disposition for business area. | accountability |
-| recops.retention.retention_exception | Retention exception | variant | Exception documents why record deviates from normal retention. | controlled deviation |
-| recops.legal.legal_hold_notice | Legal hold notice | invariant | Notice tells custodians what records to preserve and what actions are prohibited. | preservation instruction |
-| recops.legal.custodian_ack | Custodian acknowledgment | invariant | Acknowledgment confirms recipient understood and accepted hold obligations. | prove notice |
-| recops.legal.hold_scope | Legal hold scope | invariant | Scope defines matter, records, dates, custodians, systems and keywords. | preserve enough, not everything |
-| recops.legal.hold_release | Legal hold release | invariant | Release ends preservation duty and returns records to normal retention where allowed. | restart lifecycle |
-| recops.legal.collection_log | Records collection log | invariant | Log records collected sources, dates, tools, custodians and chain of custody. | evidence integrity |
-| recops.legal.spoliation_risk | Spoliation risk | invariant | Risk arises when records may be altered, deleted or lost after preservation duty begins. | serious legal exposure |
-| recops.storage.physical_box | Physical records box | invariant | Box record links contents, barcode, owner, retention, location and access restrictions. | warehouse control |
-| recops.storage.offsite_storage | Offsite records storage | variant | Offsite storage needs inventory, retrieval SLA, environmental controls and destruction service. | external custody |
-| recops.storage.electronic_repository | Electronic records repository | invariant | Repository stores records with access controls, metadata, retention and audit trails. | digital recordkeeping |
-| recops.storage.access_control | Records access control | invariant | Access control limits who may view, modify, export or destroy records. | protect information |
-| recops.storage.version_control | Record version control | invariant | Version control distinguishes draft, final, superseded and approved versions. | avoid wrong record |
-| recops.storage.backup_not_record | Backup not record copy | invariant | Backup is for recovery and should not be treated as primary recordkeeping repository. | avoid governance confusion |
-| recops.digitization.scan_spec | Records scan specification | invariant | Scan spec defines resolution, format, color, OCR, naming and quality checks. | consistent digitization |
-| recops.digitization.indexing | Records indexing | invariant | Indexing adds metadata that lets scanned records be searched and retrieved. | scan without index is pile |
-| recops.digitization.quality_check | Digitization quality check | invariant | QC checks page count, legibility, orientation, completeness and metadata accuracy. | trust digital copy |
-| recops.digitization.source_disposition | Source paper disposition | variant | Disposition decides whether paper original is retained, destroyed or returned after scanning. | paper lifecycle |
-| recops.digitization.ocr_correction | OCR correction | variant | Correction improves searchability for critical fields or poor-quality scans. | text layer quality |
-| recops.digitization.chain_of_custody | Digitization chain of custody | invariant | Chain records handoff from box or file to scanning, QC, repository and return or destruction. | preserve accountability |
-| recops.disposition.disposition_review | Disposition review | invariant | Review confirms records are eligible for destruction or transfer and no hold applies. | final gate |
-| recops.disposition.destruction_certificate | Destruction certificate | invariant | Certificate documents records destroyed, method, date, vendor and authorization. | proof of disposal |
-| recops.disposition.secure_shredding | Secure shredding | variant | Shredding destroys paper records to reduce information exposure. | physical privacy |
-| recops.disposition.digital_delete | Digital deletion | invariant | Deletion removes eligible electronic records from active repository according to approved process. | digital cleanup |
-| recops.disposition.archive_transfer | Archive transfer | variant | Transfer moves permanent records to archive with metadata, rights and preservation requirements. | keep long-term value |
-| recops.disposition.disposition_freeze | Disposition freeze | invariant | Freeze stops planned destruction when hold, audit or incident arises. | pause destruction |
-| recops.audit.inventory_audit | Records inventory audit | invariant | Audit compares expected records with actual boxes, files, systems and metadata. | find gaps |
-| recops.audit.access_audit | Records access audit | invariant | Audit reviews who accessed, exported, modified or deleted records. | security visibility |
-| recops.audit.retention_compliance | Retention compliance check | invariant | Check compares record age and status with schedule and holds. | enforce lifecycle |
-| recops.audit.orphan_record | Orphan record | invariant | Orphan record lacks owner, category or retention rule and needs remediation. | unmanaged risk |
-| recops.audit.disposition_sampling | Disposition sampling | variant | Sampling verifies destroyed records matched approval list and no exceptions were present. | trust but verify |
-| recops.training.custodian_training | Records custodian training | invariant | Training teaches classification, retention, holds, storage, privacy and disposition duties. | people create compliance |
-| recops.training.policy_ack | Records policy acknowledgment | invariant | Acknowledgment records that staff accepted recordkeeping responsibilities. | accountability |
-| recops.reporting.records_kpi | Records management KPI | variant | KPI tracks classification, overdue disposition, holds, retrieval time, audit issues and storage cost. | manage program |
+| recops.class.record_classification | Классификация записей | invariant | Классификация присваивает записи категории на основе функции, содержания, владельца и правила хранения. | знаю, что это такое |
+| recops.class.file_plan | План файлов | invariant | В плане файлов организованы категории записей, местоположения, наименование и право собственности. | структурированное хранилище |
+| recops.class.record_series | Рекордная серия | invariant | Серии группируют похожие записи, созданные с помощью одного и того же процесса и с одинаковыми требованиями к хранению. | управлять партиями |
+| recops.class.vital_record | Важная запись | variant | Записи актов гражданского состояния необходимы для обеспечения непрерывности, законных прав или восстановления после стихийного бедствия. | защитить в первую очередь |
+| recops.class.transitory_record | Временная запись | invariant | Временная запись имеет краткосрочную ценность и не должна храниться дольше, чем необходимо. | уменьшить беспорядок |
+| recops.class.metadata_required | Обязательные метаданные записей | invariant | Метаданные фиксируют название, владельца, дату, категорию, срок хранения, безопасность и местоположение. | находить и управлять записями |
+| recops.retention.retention_schedule | График хранения | invariant | Расписание определяет, как долго хранится каждая серия записей и что происходит после. | правило жизненного цикла |
+| recops.retention.trigger_event | Триггерное событие удержания | invariant | Триггер запускает часы хранения, такие как закрытие, прекращение, истечение срока действия или завершение. | время начинается с события |
+| recops.retention.retention_hold | Удержание | invariant | Удержание приостанавливает обычное уничтожение по причинам юридического характера, аудита, расследования или деловой необходимости. | не разрушай |
+| recops.retention.schedule_update | Обновление графика хранения | variant | Обновляйте правила изменений после юридической, деловой или нормативной проверки. | поддерживать правила в актуальном состоянии |
+| recops.retention.owner_approval | Утверждение владельца хранения | invariant | Утверждение владельца подтверждает правила хранения и распоряжение бизнес-сферой. | подотчетность |
+| recops.retention.retention_exception | Исключение хранения | variant | Исключение документирует, почему запись отличается от нормального хранения. | контролируемое отклонение |
+| recops.legal.legal_hold_notice | Уведомление о законном приостановлении | invariant | Уведомление сообщает хранителям, какие записи следует сохранять и какие действия запрещены. | инструкция по консервации |
+| recops.legal.custodian_ack | Подтверждение депозитария | invariant | Подтверждение подтверждает, что получатель понял и принял обязательства по удержанию средств. | доказать уведомление |
+| recops.legal.hold_scope | Юридический объем удержания | invariant | Область действия определяет материю, записи, даты, хранителей, системы и ключевые слова. | сохранить достаточно, но не все |
+| recops.legal.hold_release | Освобождение от юридического удержания | invariant | Освобождение прекращает обязанность по сохранению и возвращает записи в нормальное состояние, где это разрешено. | перезапустить жизненный цикл |
+| recops.legal.collection_log | Журнал сбора записей | invariant | Журнал записей собирает источники, даты, инструменты, хранителей и цепочку поставок. | целостность доказательств |
+| recops.legal.spoliation_risk | Риск хищения | invariant | Риск возникает, когда записи могут быть изменены, удалены или утеряны после начала работы по сохранению. | серьезное юридическое разоблачение |
+| recops.storage.physical_box | Ящик для физических записей | invariant | Запись ящика связывает содержимое, штрих-код, владельца, хранение, местоположение и ограничения доступа. | складской контроль |
+| recops.storage.offsite_storage | Выездное хранение документации | variant | Для хранения за пределами объекта требуется инвентаризация, соглашение об уровне обслуживания, экологический контроль и услуги по уничтожению. | внешняя опека |
+| recops.storage.electronic_repository | Репозиторий электронных записей | invariant | В репозитории хранятся записи с контролем доступа, метаданными, журналами хранения и аудита. | цифровой учет |
+| recops.storage.access_control | Контроль доступа к записям | invariant | Ограничения контроля доступа для тех, кто может просматривать, изменять, экспортировать или уничтожать записи. | защищать информацию |
+| recops.storage.version_control | Контроль версий записи | invariant | В системе контроля версий различают черновые, окончательные, замененные и утвержденные версии. | избежать неправильной записи |
+| recops.storage.backup_not_record | Резервная копия, а не запись | invariant | Резервное копирование предназначено для восстановления и не должно рассматриваться как основное хранилище записей. | избежать путаницы в управлении |
+| recops.digitization.scan_spec | Спецификация сканирования записей | invariant | Спецификация сканирования определяет разрешение, формат, цвет, оптическое распознавание текста, именование и проверку качества. | последовательная оцифровка |
+| recops.digitization.indexing | Индексирование записей | invariant | Индексирование добавляет метаданные, которые позволяют осуществлять поиск и извлечение отсканированных записей. | скан без индекса в стопке |
+| recops.digitization.quality_check | Проверка качества оцифровки | invariant | QC проверяет количество страниц, читаемость, ориентацию, полноту и точность метаданных. | доверять цифровой копии |
+| recops.digitization.source_disposition | Расположение исходного документа | variant | Распоряжение решает, будет ли бумажный оригинал сохранен, уничтожен или возвращен после сканирования. | жизненный цикл бумаги |
+| recops.digitization.ocr_correction | OCR-коррекция | variant | Исправление улучшает поиск важных полей или некачественных сканирований. | качество текстового слоя |
+| recops.digitization.chain_of_custody | Оцифровка цепочки поставок | invariant | Цепочка передачи записей из коробки или файла для сканирования, контроля качества, хранилища и возврата или уничтожения. | сохранять ответственность |
+| recops.disposition.disposition_review | Обзор диспозиции | invariant | Проверка подтверждает, что записи подлежат уничтожению или передаче, и приостановка не применяется. | последние ворота |
+| recops.disposition.destruction_certificate | Сертификат об уничтожении | invariant | В сертификатных документах записи об уничтожении, метод, дата, поставщик и авторизация. | доказательство утилизации |
+| recops.disposition.secure_shredding | Безопасное уничтожение | variant | Уничтожение уничтожает бумажные записи, чтобы уменьшить раскрытие информации. | физическая конфиденциальность |
+| recops.disposition.digital_delete | Цифровое удаление | invariant | При удалении соответствующие электронные записи удаляются из активного репозитория в соответствии с утвержденным процессом. | цифровая очистка |
+| recops.disposition.archive_transfer | Перенос архива | variant | При передаче постоянные записи перемещаются в архив с метаданными, правами и требованиями к сохранению. | сохранять долгосрочную ценность |
+| recops.disposition.disposition_freeze | Заморозка диспозиции | invariant | Заморозка останавливает запланированное уничтожение в случае блокировки, проверки или инцидента. | приостановить разрушение |
+| recops.audit.inventory_audit | Записывает инвентаризационный аудит | invariant | Аудит сравнивает ожидаемые записи с реальными ящиками, файлами, системами и метаданными. | найти пробелы |
+| recops.audit.access_audit | Аудит доступа к записям | invariant | Аудит проверяет, кто получал доступ, экспортировал, изменял или удалял записи. | видимость безопасности |
+| recops.audit.retention_compliance | Проверка соблюдения сроков хранения | invariant | Проверка сравнивает возраст и статус записи с расписанием и удержаниями. | обеспечить соблюдение жизненного цикла |
+| recops.audit.orphan_record | Сиротская запись | invariant | У потерянной записи не указан владелец, категория или правило хранения, и она требует исправления. | неуправляемый риск |
+| recops.audit.disposition_sampling | Выборка диспозиции | variant | Выборка проверяет соответствие уничтоженных записей списку разрешений и отсутствие исключений. | доверяй, но проверяй |
+| recops.training.custodian_training | Обучение хранителей записей | invariant | Обучение обучает классификации, хранению, удержанию, хранению, конфиденциальности и обязанностям по уничтожению. | люди создают соответствие |
+| recops.training.policy_ack | Подтверждение политики записи | invariant | Подтверждение того, что сотрудники приняли на себя обязанности по ведению документации. | подотчетность |
+| recops.reporting.records_kpi | KPI управления записями | variant | KPI отслеживает классификацию, удаление просроченных документов, удержание, время поиска, проблемы аудита и стоимость хранения. | управлять программой |

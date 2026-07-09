@@ -10,7 +10,7 @@
 | photo.aperture.dof | Глубина резкости (ГРИП) | invariant | малая f → размытый фон; большая f → всё резко | портрет vs пейзаж |
 | photo.shutter.speed | Выдержка | invariant | время экспонирования | заморозка/смаз движения |
 | photo.shutter.motion | Выдержка и движение | invariant | короткая замораживает, длинная смазывает | спорт vs шлейфы |
-| photo.iso.sensitivity | ISO | invariant | чувствительность; выше → ярче, но шум | съёмка при низком свете |
+| photo.iso.sensitivity | ИСО | invariant | чувствительность; выше → ярче, но шум | съёмка при низком свете |
 | photo.iso.noise | Шум при высоком ISO | invariant | зернистость в тенях | баланс яркость/качество |
 | photo.exposure.reciprocity | Взаимозаменяемость параметров | invariant | один параметр компенсирует другой | творческий контроль |
 | photo.focus.af | Автофокус | invariant | камера наводит резкость | резкость объекта |
@@ -30,7 +30,7 @@
 | photo.light.direction | Направление света | invariant | фронт/бок/контровой меняют объём | форма объекта |
 | photo.light.golden_hour | Золотой час | variant | мягкий тёплый свет на рассвете/закате | красивые кадры |
 | photo.light.wb | Баланс белого | invariant | коррекция цветовой температуры | естественные цвета |
-| photo.format.raw_jpeg | RAW vs JPEG | invariant | RAW — гибкость обработки; JPEG — готовый | постобработка |
+| photo.format.raw_jpeg | RAW против JPEG | invariant | RAW — гибкость обработки; JPEG — готовый | постобработка |
 | photo.format.resolution | Разрешение (мегапиксели) | variant | детализация; не главное в качестве | печать, кадрирование |
 | photo.camera.types | Типы камер | variant | смартфон, беззеркалка, зеркалка | под задачу |
 | photo.camera.sensor | Размер матрицы | invariant | больше матрица → лучше свет/ГРИП | качество |

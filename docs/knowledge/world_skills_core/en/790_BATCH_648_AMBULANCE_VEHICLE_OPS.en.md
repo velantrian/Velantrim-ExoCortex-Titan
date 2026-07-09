@@ -1,0 +1,11 @@
+# BATCH 648: Ambulance — Vehicle Preparation & Operations
+
+**KnowledgeUnits:** 50
+**Namespace:** `ambulance.ops.*`
+**Scope:** vehicle_check, restocking, stretcher, oxygen, suction, defibrillator, cleaning, driving
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| ambulance.ops.vehicle_daily_check | Vehicle Check — Daily Inspection | METHOD | Ежедневная проверка скорой. Engine: масло, ОЖ, топливо, шины, свет, сирена. Patient compartment: чистота (disinfected), oxygen (main tank + portable — давление >1000 psi), suction unit (работает, canister пуст), defibrillator (self-test, pads срок годности, батарея >50%), монитор (ECG, SpO2, NIBP — калибровка), stretcher (фиксация, ремни), stair chair, backboard, cervical collars, jump bag (airway, trauma, OB kit), medications (контроль срока годности), narcotics count. Оборудование закреплено (не летает при ДТП). Инфекционный контроль: красный мешок (biohazard), острые предметы контейнер. | Без проверки в начале смены: на вызове не работает suction (пациент захлёбывается). |
+| ambulance.ops.loading_stretcher_lift | Stretcher — Powered Lift Operation | METHOD | Погрузка пациента на носилках (Stryker Power-PRO, Ferno). Оценка веса: если >150 кг — bariatric stretcher или дополнительный персонал. Safety: ремни (3-5 point — грудь, таз, колени). Подъём: гидравлика (power lift), не ручной (травма спины). Подкат к машине: loading wheel, auto load system (рельсы). Фиксация в ambulance: anti-roll lock. Разгрузка: обратный процесс. Контроль: проверить защёлки. | Ручной подъём пациента — причина №1 травм спины у EMT. |
+| ambulance.ops.decontamination_transport | Decon — Vehicle After Contaminated Patient | METHOD | Дезинфекция скорой после инфекционного пациента. PPE: gown, gloves, N95/PAPR, face shield. Уборка: сначала сухая (удаление органических загрязнений), затем дезинфекция (bleach 1:10 или hydrogen peroxide wipes). Все поверхности: stretcher, поручни, монитор, стены, пол. Contact time: 10 мин. Туман (fogger): hydrogen peroxide mist для полной дезинфекции (30-60 мин). Ozone generator (альтернатива). После: проветривание. Terminal clean (после особо опасных инфекций — Ebola, MERS, CJD): специальный протокол. | COVID: N95 mask + face shield минимально. |

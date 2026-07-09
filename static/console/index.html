@@ -3,20 +3,36 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>VELANTRIM — console</title>
+  <title>VELANTRIM Titan — console</title>
   <script>
     (function () {
-      var tk = "velantrim_console_theme";
-      var t = localStorage.getItem(tk) || "dark";
-      if (["dark", "light", "skeu", "volumetric", "volumetric-light", "book", "neon"].indexOf(t) < 0) t = "dark";
-      document.documentElement.setAttribute("data-theme", t);
-      var lk = "velantrim_console_lang";
-      var l = localStorage.getItem(lk);
-      if (l !== "ru" && l !== "en") {
-        l = ((navigator.language || "ru").slice(0, 2) === "en") ? "en" : "ru";
+      var tk = "velantrim_titan_console_theme";
+      var lk = "velantrim_titan_console_lang";
+      var VALID_THEMES = ["dark", "light", "skeu", "volumetric", "volumetric-light", "book", "neon"];
+      function detectBrowserLang() {
+        var langs = navigator.languages && navigator.languages.length
+          ? Array.prototype.slice.call(navigator.languages)
+          : [navigator.language || "en"];
+        for (var i = 0; i < langs.length; i++) {
+          var base = String(langs[i] || "").toLowerCase().replace("_", "-").split("-")[0];
+          if (base === "ru") return "ru";
+          if (base === "de") return "de";
+        }
+        return "en";
       }
+      function detectSystemTheme() {
+        try {
+          if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) return "light";
+        } catch (e) {}
+        return "dark";
+      }
+      var t = localStorage.getItem(tk);
+      if (!t || VALID_THEMES.indexOf(t) < 0) t = detectSystemTheme();
+      document.documentElement.setAttribute("data-theme", t);
+      var l = localStorage.getItem(lk);
+      if (l !== "ru" && l !== "en" && l !== "de") l = detectBrowserLang();
       document.documentElement.setAttribute("data-ui-lang", l);
-      document.documentElement.lang = l === "en" ? "en" : "ru";
+      document.documentElement.lang = l === "ru" ? "ru" : l === "de" ? "de" : "en";
     })();
   </script>
   <style>
@@ -1461,6 +1477,12 @@
       color: var(--accent);
       text-decoration: underline;
       text-underline-offset: 2px;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+    .msg-body.md-body a mark.search-hit {
+      color: #1a1a1a;
+      text-decoration: inherit;
     }
     .msg-body.md-body a:hover { opacity: 0.88; }
     .msg-body.md-body blockquote.md-quote {
@@ -1948,8 +1970,10 @@
       align-items: center;
       gap: 0.3rem;
       min-width: 0;
-      flex: 1 1 auto;
-      justify-content: flex-start;
+      flex: 0 0 auto;
+      margin-left: auto;
+      padding-left: 0.45rem;
+      justify-content: flex-end;
       max-width: none;
     }
     .theme-picker-label {
@@ -2670,6 +2694,8 @@
     html[data-ui-lang="ru"][data-chat-read="1"] .msg.bot::before { content: "Velantrim"; }
     html[data-ui-lang="en"][data-chat-read="1"] .msg.user::before { content: "You"; }
     html[data-ui-lang="en"][data-chat-read="1"] .msg.bot::before { content: "Velantrim"; }
+    html[data-ui-lang="de"][data-chat-read="1"] .msg.user::before { content: "Sie"; }
+    html[data-ui-lang="de"][data-chat-read="1"] .msg.bot::before { content: "Velantrim"; }
     html[data-chat-read="1"] .msg.user .msg-body {
       font-size: 1rem;
       line-height: 1.65;
@@ -2888,8 +2914,8 @@
   <div class="chat-read-autoscroll-hint" id="chatReadAutoScrollHint" hidden aria-live="polite"></div>
   <header>
     <div>
-      <h1>🔱 VELANTRIM</h1>
-      <div class="sub" data-i18n="header.subtitle">Память + LLM · настройте API и общайтесь в чате</div>
+      <h1 data-i18n="header.title">🔱 VELANTRIM Titan</h1>
+      <div class="sub" data-i18n="header.subtitle">V8.7 · память + LLM · настройте API и общайтесь в чате</div>
     </div>
     <div class="header-right">
       <div class="header-tools">
@@ -3265,8 +3291,9 @@
     </div>
   </div>
   <script>
-    const STORAGE_KEY = "velantrim_console";
-    const THEME_KEY = "velantrim_console_theme";
+    const STORAGE_KEY = "velantrim_titan_console";
+    const THEME_KEY = STORAGE_KEY + "_theme";
+    const LANG_KEY = STORAGE_KEY + "_lang";
     const VOICE_MODE_KEY = STORAGE_KEY + "_voiceMode";
     const VOICE_STT_KEY = STORAGE_KEY + "_voiceSttKey";
     const TTS_MODE_KEY = STORAGE_KEY + "_ttsMode";
@@ -3304,17 +3331,18 @@
 
     // --- VELANTRIM I18N START ---
 // VELANTRIM console i18n — вставляется в index.html
-    const LANG_KEY = "velantrim_console_lang";
-    const VALID_LANGS = ["ru", "en"];
+    const VALID_LANGS = ["ru", "en", "de"];
     const LANG_CATALOG = [
       { id: "ru", flag: "🇷🇺", code: "RU", title: "Русский" },
       { id: "en", flag: "🇬🇧", code: "EN", title: "English" },
+      { id: "de", flag: "🇩🇪", code: "DE", title: "Deutsch" },
     ];
 
     const I18N = {
       ru: {
-        pageTitle: "VELANTRIM — консоль",
-        "header.subtitle": "Память + LLM · настройте API и общайтесь в чате",
+        pageTitle: "VELANTRIM Titan — консоль",
+        "header.title": "🔱 VELANTRIM Titan",
+        "header.subtitle": "V8.7 · память + LLM · настройте API и общайтесь в чате",
         "readMode.enter": "Чтение",
         "readMode.exit": "Выйти",
         "readMode.toggleTitle": "Полный экран — только текст чата",
@@ -3695,9 +3723,10 @@
         "voice.geminiErrBot": "⚠️ Голос (Gemini): {msg}",
       },
       en: {
-        pageTitle: "VELANTRIM — console",
-        "header.subtitle": "Memory + LLM · configure API and chat",
-        "readMode.enter": "Reading",
+        pageTitle: "VELANTRIM Titan — console",
+        "header.title": "🔱 VELANTRIM Titan",
+        "header.subtitle": "V8.7 · memory + LLM · configure API and chat",
+        "readMode.enter": "Read",
         "readMode.exit": "Exit",
         "readMode.toggleTitle": "Full screen — chat text only",
         "readMode.exitTitle": "Exit reading mode (Esc)",
@@ -4077,17 +4106,427 @@
         "voice.geminiErrBot": "⚠️ Voice (Gemini): {msg}",
       },
     };
+    I18N.de = {
+      "header.title": "🔱 VELANTRIM Titan",
+      "header.subtitle": "V8.7 · Speicher + LLM · API einrichten und chatten",
+      "readMode.enter": "Lesen",
+      "readMode.exit": "Beenden",
+      "readMode.toggleTitle": "Vollbild — nur Chat-Text",
+      "readMode.exitTitle": "Lesemodus verlassen (Esc)",
+      "readMode.autoScrollHint": "▶ Scrollen… Klick — Stopp",
+      "layout.chatOnly": "Chat",
+      "layout.chatOnlyTitle": "Nur Chat — Seitenleisten ausblenden",
+      "layout.foldSettings": "Einstellungen einklappen",
+      "layout.expandSettings": "Einstellungen anzeigen",
+      "search.open": "🔍 Suche",
+      "search.placeholder": "Wortsuche…",
+      "search.scopeCurrent": "Aktueller Chat",
+      "search.scopeAll": "Alle Chats",
+      "search.close": "✕",
+      "search.noResults": "Keine Treffer",
+      "search.found": "Gefunden: {n}",
+      "search.inChat": "in «{title}»",
+      "search.user": "Sie",
+      "search.bot": "Velantrim",
+      "search.unpinHit": "Klicken, um Hervorhebung zu entfernen",
+      "lang.label": "Sprache",
+      "theme.label": "Design",
+      "tts.toggle": "TTS",
+      "tts.toggleTitle": "Bot-Antworten vorlesen (Web Speech API)",
+      "tts.autoOn": "Auto-Vorlesen an (Sprache aus Text)",
+      "tts.autoOff": "Auto-Vorlesen aus — 🔊 an jeder Antwort",
+      "tts.unavailable": "Web Speech API nicht verfügbar",
+      "tts.speak": "Vorlesen",
+      "tts.stop": "Stopp",
+      "tts.unavailBrowser": "Sprachausgabe in diesem Browser nicht verfügbar",
+      "tts.modeLabel": "Sprachausgabe-Modus",
+      "tts.modeBrowser": "① Ohne API — Browser-Stimme (kostenlos)",
+      "tts.modeGemini": "② Google Gemini TTS — AIza…-Schlüssel",
+      "tts.modeOpenai": "③ OpenAI TTS — sk-…-Schlüssel (mp3-Stream)",
+      "tts.voiceLabel": "Stimme",
+      "tts.modelLabel": "TTS-Modell",
+      "tts.keyLabel": "API-Schlüssel für Sprache",
+      "tts.keyGemini": "Google-Gemini-Schlüssel (AIza…) für TTS",
+      "tts.keyOpenai": "OpenAI-Schlüssel (sk-…) für TTS",
+      "tts.placeholderKey": "API-Schlüssel einfügen",
+      "tts.placeholderGemini": "AIza… von aistudio.google.com/apikey",
+      "tts.placeholderOpenai": "sk-… von platform.openai.com",
+      "tts.browserOk": "✓ Ohne API — kein Schlüssel nötig, 🔊 bei Bot-Antworten",
+      "tts.testKey": "Schlüssel bestätigen",
+      "tts.testOk": "✓ Schlüssel bestätigt",
+      "tts.playTest": "▶ Stimme testen",
+      "tts.playTestOk": "✓ Stimme geprüft",
+      "tts.connected": "✓ {provider} verbunden · Stimme «{voice}»",
+      "tts.voiceCount": "Verfügbare Stimmen: {n} (Google-Gemini-API-Katalog)",
+      "tts.voiceCountOpenai": "OpenAI-Stimmen: {n}",
+      "tts.confirmFirstForTest": "Zuerst «Schlüssel bestätigen» klicken.",
+      "tts.keyOkPlayTest": "Schlüssel akzeptiert. «Stimme testen» klicken.",
+      "tts.hintGemini": "<b>Gemini TTS:</b> 30 Stimmen (Kore, Puck, Charon…). Stimme wählen → AIza…-Schlüssel → <b>Schlüssel bestätigen</b> → <b>Stimme testen</b>.",
+      "tts.hintOpenai": "<b>OpenAI TTS:</b> Stimme wählen → sk-…-Schlüssel → bestätigen → Stimme testen. mp3-Stream bei 🔊.",
+      "tts.testingVoice": "Testphrase wird abgespielt…",
+      "tts.testPhrase": "Velantrim-Sprachtest. Die gewählte Stimme funktioniert.",
+      "tts.hintDefault": "Gemini: schneller Start bei erster Phrase. OpenAI: mp3-Stream — Ton kurz nach 🔊.",
+      "tts.hintBrowser": "<b>Ohne API:</b> eingebaute Browser-Stimme (Web Speech). 🔊 bei jeder Antwort.",
+      "tts.testing": "Prüfe {api}…",
+      "tts.keyOk": "Sprach-API-Schlüssel bestätigt.",
+      "tts.insertGemini": "Gemini-Schlüssel einfügen (AIza…)",
+      "tts.insertOpenai": "OpenAI-Schlüssel einfügen (sk-…)",
+      "tts.verifyFirst": "Zuerst Sprach-API-Schlüssel im linken Bereich bestätigen.",
+      "tts.noApiNeeded": "Browser-Modus — keine Schlüsselbestätigung nötig.",
+      "tts.speakFail": "Sprache: {msg}",
+      "tts.toggleTitleApi": "Antworten automatisch vorlesen (gewählter TTS-Modus)",
+      "status.ttsDash": "TTS —",
+      "status.ttsBrowser": "TTS ✓ Browser",
+      "status.ttsGemini": "TTS ✓ Gemini",
+      "status.ttsOpenai": "TTS ✓ OpenAI",
+      "status.ttsMaybe": "TTS ?",
+      "toast.ttsConnected": "TTS {mode} — Schlüssel bestätigt",
+      "theme.darkShort": "dunkel",
+      "theme.darkTitle": "Dunkel — klassisches dunkles Design",
+      "theme.lightShort": "hell",
+      "theme.lightTitle": "Hell — minimalistisch",
+      "theme.skeuShort": "skeu",
+      "theme.skeuTitle": "Skeuomorph — erhabene Buttons",
+      "theme.volShort": "3d",
+      "theme.volTitle": "Volumetrisches 3D (dunkel)",
+      "theme.volLightShort": "3d+",
+      "theme.volLightTitle": "Volumetrisches 3D (hell)",
+      "theme.bookShort": "buch",
+      "theme.bookTitle": "Buch — warmes Papier, Serif",
+      "theme.neonShort": "neon",
+      "theme.neonTitle": "Neon — dunkel mit Leuchten",
+      "section.modeChats": "⚡ Modus und Chats",
+      "mode.offline": "📴 Offline",
+      "mode.online": "🌐 Online",
+      "mode.offlineHint": "Offline: LLM aus; Antworten aus Speicher und Notizen.",
+      "mode.onlineHint": "Online: LLM kann im Bereich unten aktiviert werden.",
+      "chat.sidebarTitle": "Chats",
+      "chat.newChatTitle": "Neuer Chat",
+      "chat.emptyList": "Noch keine Chats",
+      "chat.pin": "Chat anheften",
+      "chat.unpin": "Chat lösen",
+      "chat.delete": "Chat löschen",
+      "chat.more": "Chat-Menü",
+      "chat.pinnedGroup": "Angeheftet",
+      "chat.recentGroup": "Chats",
+      "section.velantrim": "🔑 1. Velantrim-Schlüssel (Server)",
+      "section.llm": "🤖 2. LLM-API (DeepSeek, Gemini, …)",
+      "section.voice": "🎤 Spracheingabe (Sprache → Text)",
+      "section.profile": "👤 Anfrageprofil",
+      "section.fact": "📝 Fakt merken",
+      "label.apiUrl": "Basis-URL (für externe Clients)",
+      "label.velantrimKey": "VELANTRIM_API_KEY aus .env — nicht DeepSeek/Gemini",
+      "placeholder.velantrimKey": "z. B. dev-change-me (aus .env)",
+      "hint.apiExternal": "Externe Apps: Header <code>X-Api-Key: &lt;Ihr Schlüssel&gt;</code>. Endpunkte: <code>POST /query</code>, <code>POST /chat</code>, <code>GET /health</code>. <a href=\"/docs\" target=\"_blank\" rel=\"noopener\">OpenAPI (/docs)</a>.",
+      "hint.velantrim": "Zuerst dieses Feld ausfüllen (.env-Schlüssel), dann LLM-Schlüssel unten. Nur im Browser gespeichert (localStorage).",
+      "hint.storageOnly": " Nur im Browser gespeichert.",
+      "btn.fillVelantrim": "Velantrim-Schlüssel aus .env (localhost)",
+      "btn.fillVelantrimServer": "Velantrim-Schlüssel vom Server (localhost)",
+      "btn.verifyVelantrim": "Schlüssel prüfen (API + Chat-Test)",
+      "btn.verifyVelantrimShort": "Velantrim-Schlüssel prüfen",
+      "btn.verifiedVelantrim": "✓ Schlüssel geprüft (API + Chat)",
+      "label.llmProvider": "1. Anbieter wählen",
+      "label.llmQuick": "Schnellauswahl (Karten)",
+      "label.llmCustomModel": "Eigenes Modell (falls nicht in Liste)",
+      "placeholder.llmKey": "Schlüssel einfügen",
+      "placeholder.customModel": "z. B. deepseek-v4-pro",
+      "placeholder.apiKeyGeneric": "API-Schlüssel",
+      "banner.provider": "Anbieter: …",
+      "banner.subline": "Karte anklicken oder aus Liste wählen",
+      "banner.defaultModel": "Standardmodell: {model}",
+      "label.llmKeyFor": "2. API-Schlüssel für {name}",
+      "label.llmModelFor": "3. Modell ({name})",
+      "label.llmModel": "3. Modell",
+      "btn.llmOff": "LLM aus",
+      "btn.llmOn": "✅ LLM an",
+      "btn.confirmKey": "Schlüssel bestätigen",
+      "btn.keyConfirmed": "✓ Schlüssel bestätigt",
+      "btn.confirmKeyTitle": "Sendet Testanfrage an gewählten Anbieter",
+      "hint.llmLoading": "Anbieter werden geladen…",
+      "hint.llmBase": "💡 Jeder Anbieter braucht eigenen Schlüssel — einfügen, «Schlüssel bestätigen», dann LLM aktivieren.",
+      "hint.llmServer": "🖥️ Server hat auch LLM aus .env: <b>{provider}</b>.",
+      "hint.llmCurrent": "<br>✅ Aktiv: <b>{name}</b> / {model}",
+      "hint.llmFallback": "⚠️ Serverliste nicht verfügbar ({msg}). Eingebaute Anbieter werden genutzt.",
+      "hint.llmLoadErr": "LLM-Ladefehler: {msg}",
+      "hint.geminiSetup": "✨ <b>Google Gemini</b> — AIza… from <a href=\"https://aistudio.google.com/apikey\" target=\"_blank\" rel=\"noopener\">AI Studio</a>. Models: <a href=\"https://ai.google.dev/gemini-api/docs/models\" target=\"_blank\" rel=\"noopener\">Google docs</a> (<code>gemini-3.5-flash</code>, 2.5, 3.1; 2.0 retired). After key verify, models sync from API. Caching: implicit 2.5+, explicit for long system. HTTP 403: <b>OpenRouter</b> → <code>google/gemini-3.5-flash</code>.",
+      "voice.modeLabel": "Erkennungsmodus",
+      "voice.modeBrowser": "① Ohne API — Browser (kostenlos, Google in Chrome/Edge)",
+      "voice.modeGemini": "② Google Gemini API — AIza…-Schlüssel",
+      "voice.modeOpenai": "③ OpenAI API — sk-…-Schlüssel (Whisper)",
+      "voice.keyLabel": "Sprach-API-Schlüssel",
+      "voice.keyGemini": "Google-Gemini-Schlüssel (AIza…) für Sprache",
+      "voice.keyOpenai": "OpenAI-Schlüssel (sk-…) für Sprache (Whisper)",
+      "voice.placeholderKey": "API-Schlüssel einfügen",
+      "voice.placeholderGemini": "AIza… von aistudio.google.com/apikey",
+      "voice.placeholderOpenai": "sk-… von platform.openai.com",
+      "voice.browserOk": "✓ Ohne API — kein Schlüssel nötig, 🎤 unten drücken",
+      "voice.testKey": "Sprachschlüssel prüfen (API)",
+      "voice.testOk": "✓ Sprach-API geprüft",
+      "voice.hintPick": "Modus wählen. Für kostenlose Eingabe «Ohne API» lassen. 🎤 ist unter dem Chatfeld.",
+      "voice.hintBrowser": "<b>Ohne API:</b> kostenlos in Chrome/Edge. 🎤 unten → sprechen → 🎤 erneut. <b>Abbrechen</b> setzt zurück.",
+      "voice.hintBrowserNo": "<b>Ohne API</b> in diesem Browser nicht verfügbar. Gemini oder OpenAI wählen und Schlüssel oben einfügen.",
+      "voice.hintGemini": "<b>Gemini API:</b> AIza… oben einfügen (oder gleicher Schlüssel wie LLM bei Gemini). Dann 🎤 unten.",
+      "voice.hintOpenai": "<b>OpenAI Whisper:</b> sk-… oben einfügen. Dann 🎤 unten.",
+      "voice.micBrowser": "Sprache ohne API (Browser)",
+      "voice.micGemini": "Sprache über Gemini API",
+      "voice.micOpenai": "Sprache über OpenAI Whisper",
+      "voice.listening": "Höre zu…",
+      "voice.noMic": "Mikrofonzugriff verweigert",
+      "voice.notRecognized": "Sprache nicht erkannt",
+      "voice.processing": "{api} transkribiert…",
+      "voice.doneBrowser": "Fertig (Browser-Stimme)",
+      "voice.tryAgain": "Bitte erneut sprechen",
+      "voice.doneApi": "Fertig ({api})",
+      "voice.fromMic": "Text vom Mikrofon",
+      "voice.shortRecording": "Text vom Mikrofon (Aufnahme zu kurz für API)",
+      "voice.failRecognize": "Sprache konnte nicht erkannt werden",
+      "profile.citizen.title": "Für alle",
+      "profile.citizen.tagline": "Einfacher persönlicher Assistent: fragen — Antwort aus dem Speicher",
+      "profile.personal.title": "Persönlicher Bot",
+      "profile.personal.tagline": "Ziele, Gewohnheiten, Notizen — Speicher nur für Sie",
+      "profile.company.title": "Unternehmen",
+      "profile.company.tagline": "Unternehmensspeicher: Fakten, Audit, Limits, Systemzustand",
+      "profile.science.title": "Wissenschaft",
+      "profile.science.tagline": "Fakten, Quellen, Kausalität — für Forschungsarbeit",
+      "profile.education.title": "Bildung",
+      "profile.education.tagline": "Kurse, Notizen, Prüfungen — Speicher für Lernende oder Lehrende",
+      "profile.research.title": "Forschung",
+      "profile.research.tagline": "Maximale Verknüpfungen, Cross-Domain, Cognitive Runtime",
+      "profile.developer.title": "Entwickler",
+      "profile.developer.tagline": "Alle ExoCortex-Schichten — Dev-Profil",
+      "profile.loading": "Laden…",
+      "profile.server": "Server: <b>{emoji} {title}</b>. Anderes Profil im Chat wählbar.",
+      "profile.none": "Kein Serverprofil — Karte oben wählen.",
+      "link.openapi": "OpenAPI",
+      "link.llmJson": "LLM JSON",
+      "right.tabInstructions": "Anweisungen",
+      "right.tabMemory": "Speicher",
+      "right.tabEssence": "Essenz",
+      "right.instructionsHint": "Zusätzliche LLM-Regeln: Ton, Prioritäten, Antwortformat.",
+      "right.instructionsPlaceholder": "Z. B. kurz antworten; Daten und Namen speichern…",
+      "right.autoSave": "Wichtige Fakten aus Chat automatisch speichern",
+      "right.autoSaveBlock": "Automatisch in Speicherblock aus Chat",
+      "right.persistSystem": "Auch im Velantrim-System speichern",
+      "right.blockMemory": "🧩 Speicherblock",
+      "right.notes": "📝 Notizen",
+      "notes.btnAdd": "＋ Hinzufügen",
+      "notes.btnRefresh": "Aktualisieren",
+      "notes.empty": "Noch keine Notizen.",
+      "notes.prompt": "Notiztext:",
+      "notes.editPrompt": "Bearbeitungsanweisung:",
+      "block.btnAdd": "＋ Hinzufügen",
+      "block.btnClear": "Leeren",
+      "block.btnEdit": "Bearbeiten",
+      "block.btnDelete": "Löschen",
+      "block.btnSave": "Speichern",
+      "block.btnToSystem": "Ins System",
+      "block.empty": "Block leer. Chatten oder «Hinzufügen».",
+      "block.savedToast": "🧩 Im Speicherblock: {n}",
+      "block.cleared": "Speicherblock geleert",
+      "memory.flyoutBlock": "Im Block gespeichert",
+      "right.memoryHint": "Notizen im Speicherblock (Browser). Neue Chats und LLM sehen sie. Rechts bearbeitbar.",
+      "right.memoryHighlights": "Jetzt im Kontext",
+      "right.memorySuggestions": "Kann gespeichert werden",
+      "right.memoryAll": "Gesamter Speicher",
+      "right.memoryContextFold": "Kontext und Systemspeicher",
+      "essence.testBadge": "⚗️ Testsystem · Browser",
+      "essence.hint": "Lebende Dialog-Essenz: Thema, Knoten, Verknüpfungen — nicht der volle Chat-Text.",
+      "essence.live": "Tab beim Senden öffnen",
+      "essence.waiting": "Warte auf Nachricht…",
+      "essence.nodes": "Knoten",
+      "essence.edges": "Verknüpfungen",
+      "essence.docLink": "Doku: Browser-Testkonsole",
+      "essence.phase.read": "Phase: Nachricht lesen",
+      "essence.phase.link": "Phase: mit Speicher verknüpfen",
+      "essence.phase.commit": "Phase: festhalten",
+      "chat.newChat": "＋ Neuer Chat",
+      "chat.copyAll": "📋 Ganzen Chat kopieren",
+      "chat.newSession": "🆕 Neuer Chat. Vorheriger Dialog wurde als Kontext an das Modell übergeben.",
+      "chat.newSessionEmpty": "🆕 Neuer Chat. Nachricht schreiben — wichtige Fakten werden automatisch gespeichert.",
+      "chat.previousContext": "📎 Kontext des vorherigen Chats:\n{summary}",
+      "chat.defaultTitle": "Aktueller Chat",
+      "chat.stream": "Antwort streamen",
+      "chat.expand": "Erweitern",
+      "chat.fold": "Einklappen",
+      "chat.clearInput": "Eingabe leeren",
+      "chat.attachBtn": "Langen Text anhängen",
+      "chat.attachRemove": "Anhang entfernen",
+      "chat.attachChip": "📎 Text · {n} Zeichen",
+      "chat.attachChipLines": "📎 Text · {n} Zeilen",
+      "chat.typing": "Tippt…",
+      "chat.thinking": "🧠 Denkt nach…",
+      "hint.llmMaxTokens": "Bis 40.000 für lange Antworten. DeepSeek V4 API unterstützt sehr große Ausgaben.",
+      "label.deepseekThinking": "4. Thinking (DeepSeek V4)",
+      "deepseek.thinkOff": "Aus — schnelle Antwort",
+      "deepseek.thinkHigh": "High — Reasoning",
+      "deepseek.thinkMax": "X-High (max) — tiefes Reasoning",
+      "label.llmMaxTokens": "Max. Antwort-Tokens",
+      "memory.savedToast": "💾 Im Speicher gespeichert: {n}",
+      "memory.suggestToast": "💡 Für Speicher gefunden: {n} — unten speichern",
+      "memory.noneToast": "Auto-Speichern: keine Schlüsselfakten in Nachricht",
+      "memory.btnSave": "Speichern",
+      "memory.btnSaveAll": "Alle speichern",
+      "right.memoryEmpty": "Speicher leer. Chatten oder Fakt links speichern.",
+      "memory.flyoutSaved": "Im Speicher gespeichert",
+      "memory.flyoutDedup": "Bereits im Speicher",
+      "memory.flyoutWhere": "Speicher: {store} · {category}",
+      "memory.chatBubble": "{emoji} {title}\n{claim}",
+      "guide.llmConnected": "✅ LLM connected ({provider} / {model}).\n\n🔱 How Velantrim works:\n• Your chat text is visible to the system.\n• Long-term facts (names, birthdays, work, projects) go to POST /facts and are retrieved for replies.\n• Right panel: Instructions — your rules; Memory — what is stored.\n• Say «remember: …» or share important info — the console may auto-save.\n\nYou can chat now.",
+      "fact.placeholder": "Faktentext…",
+      "btn.saveFact": "Im Speicher speichern",
+      "chat.placeholder": "Tippen oder 🎤… Enter zum Senden",
+      "btn.send": "Senden",
+      "btn.cancel": "Abbrechen",
+      "btn.copy": "Kopieren",
+      "btn.edit": "Bearbeiten",
+      "btn.save": "Speichern",
+      "btn.resend": "Erneut senden",
+      "btn.clear": "Leeren",
+      "btn.showKey": "Schlüssel anzeigen",
+      "btn.hideKey": "Schlüssel verbergen",
+      "copy.url": "URL kopieren",
+      "copy.key": "Schlüssel kopieren",
+      "copy.llmKey": "LLM-Schlüssel kopieren",
+      "toast.nothing": "Nichts zu kopieren",
+      "toast.copied": "Kopiert",
+      "toast.copyFail": "Kopieren fehlgeschlagen",
+      "toast.msgCopied": "Text kopiert",
+      "toast.chatCopied": "Ganzer Chat kopiert",
+      "toast.velantrimFilled": "Velantrim-Schlüssel eingesetzt",
+      "toast.voiceConnected": "Sprache {mode} — API verbunden",
+      "status.velUnknown": "Velantrim ?",
+      "status.velOk": "Velantrim ✓ API+Chat",
+      "status.velBad": "Velantrim ungeprüft",
+      "status.llmOn": "{name} an",
+      "status.llmOff": "LLM aus",
+      "status.llmOk": "LLM ✓",
+      "status.llmMaybe": "LLM ?",
+      "status.llmDash": "LLM —",
+      "status.voiceDash": "Sprache —",
+      "status.voiceBrowser": "Sprache ✓ Browser",
+      "status.voiceGemini": "Sprache ✓ Gemini",
+      "status.voiceOpenai": "Sprache ✓ OpenAI",
+      "status.voiceMaybe": "Sprache ?",
+      "llm.keyVerifiedTag": " · Schlüssel ✓ geprüft",
+      "llm.keyUnverifiedTag": " · Schlüssel (ungeprüft)",
+      "llm.modelSaved": " (gespeichert)",
+      "llm.alreadyVerified": "Schlüssel {name} für aktuellen Wert bereits geprüft.",
+      "llm.geminiDiscovered": "Gemini-Liste von API: {count} Modelle",
+      "meta.profile": "Profil: {name}",
+      "meta.memory": "📚 Speicher",
+      "meta.facts": "{n} Fakten · {ms} ms",
+      "meta.empty": "(leer)",
+      "meta.emptyAnswer": "(leere Antwort)",
+      "auth.checking": "Abgleich mit Server…",
+      "auth.probing": "API-Anfrage (Speicher + Chat)…",
+      "auth.badResponse": "Ungültige Serverantwort.",
+      "auth.httpFail": "Server lehnte Prüfung ab (HTTP {code}).",
+      "auth.noServer": "Server nicht erreichbar. scripts\\start_console.ps1 ausführen",
+      "auth.fail": "Velantrim-Schlüssel bestand API-Prüfung nicht.",
+      "auth.ok": "Schlüssel geprüft — Chat verfügbar.",
+      "auth.filledOk": "Schlüssel eingesetzt und geprüft.",
+      "auth.filledFail": "Schlüssel vom Server konnte nicht geprüft werden.",
+      "auth.insertKey": "VELANTRIM_API_KEY aus .env ins obere Feld einfügen.",
+      "auth.notVerified": "Schlüssel bestand API-Prüfung nicht.",
+      "auth.beforeSend": "Schlüssel vor Senden prüfen…",
+      "auth.notVerifiedShort": "Schlüsselprüfung fehlgeschlagen.",
+      "auth.llmInTop": "Oberes Feld hatte LLM-Schlüssel — in «LLM-API»-Block verschieben.",
+      "auth.missingKey": "⚠️ Velantrim-Schlüssel in «1. Velantrim-Schlüssel (Server)» nötig — VELANTRIM_API_KEY aus .env.\n\nDeepSeek / Gemini / OpenAI-Schlüssel gehören in «2. LLM-API» — anderer Schlüssel.",
+      "auth.missingKeyLocal": "\n\n«Velantrim-Schlüssel vom Server» oder «Velantrim-Schlüssel prüfen» (mit start_console.ps1 oft dev-console-key, nicht dev-change-me).",
+      "auth.help401": "Ungültiger Velantrim-Schlüssel (X-Api-Key).\n\nOberes Feld = VELANTRIM_API_KEY aus .env (nicht DeepSeek/Gemini).\n«Velantrim-Schlüssel prüfen» oder «Schlüssel aus .env».",
+      "err.llmKeyMissing": "⚠️ LLM-API-Schlüssel einfügen (Feld unter Anbieter).",
+      "err.llmConfirmFirst": "Zuerst «Schlüssel bestätigen» — LLM ohne erfolgreichen Test nicht aktiv.",
+      "err.llmNotVerified": "⚠️ Schlüssel ungeprüft. «Schlüssel bestätigen» und auf ✓ warten.",
+      "err.llmKeyInChat": "LLM-API-Schlüssel einfügen (nicht Velantrim-Schlüssel).",
+      "err.llmOnNoKey": "⚠️ LLM an: LLM-Schlüssel ins zweite Feld (OpenAI / DeepSeek / …).",
+      "err.llmNotConfirmed": "⚠️ LLM-Schlüssel nicht bestätigt — «Schlüssel bestätigen».",
+      "err.llmInTopField": "⚠️ Oberes Feld sieht wie LLM-Schlüssel aus (sk-… / AIza…).\n\nIn «2. LLM-API» verschieben, oben VELANTRIM_API_KEY aus .env.",
+      "err.verifyVelantrimBtn": "\n\n«Velantrim-Schlüssel prüfen» — API- und Chat-Test müssen bestehen.",
+      "err.sendMeta": "Prüfen: 1) Velantrim-Schlüssel 2) LLM-Schlüssel 3) Anbieter 4) Server neu starten",
+      "err.sendPrefix": "Fehler: {msg}",
+      "err.keyMeta": "Server-Schlüssel ≠ LLM-Schlüssel",
+      "err.llmTestPending": "Prüfe {provider} / {model}…",
+      "err.llmTestOk": "✅ Schlüssel geprüft: {provider} / {model}. Antwort: {preview}",
+      "err.llmTestBotOk": "✅ LLM-Schlüssel bestätigt: {provider} / {model}\n{preview}",
+      "err.llmTestFail": "❌ LLM-Test: {msg}",
+      "fact.saved": "Gemerkt: {text}",
+      "fact.fail": "Nicht gespeichert: {msg}",
+      "voice.noApiNeeded": "Modus ohne API — Schlüsselprüfung nicht nötig.",
+      "voice.insertOpenai": "OpenAI sk-…-Schlüssel oben einfügen.",
+      "voice.insertGemini": "Gemini AIza…-Schlüssel oben einfügen.",
+      "voice.testingStt": "STT {api} wird geprüft…",
+      "voice.keyOk": "Schlüssel geprüft.",
+      "voice.response": " Antwort: «{text}»",
+      "voice.needOpenaiKey": "OpenAI sk-…-Schlüssel links in «Spracheingabe» setzen.",
+      "voice.needGeminiKey": "Gemini AIza…-Schlüssel links in «Spracheingabe» setzen.",
+      "boot.noLlm": "⚠️ Server ohne LLM-API. Alten uvicorn stoppen und ausführen:\nscripts\\start_console.ps1",
+      "boot.noChat": "⚠️ Kein /chat — scripts\\start_console.ps1 neu starten",
+      "welcome.bot": "Hallo! 🔱\n\nZwei Schlüssel:\n1) Oben — VELANTRIM_API_KEY aus .env (Server-Schlüssel)\n2) Unten — LLM-Schlüssel (DeepSeek, Gemini, OpenAI…)\n\nDann: Anbieter → «Schlüssel bestätigen» → «LLM an» → Chat\n\n🎤 Sprachblock links: ohne API (kostenlos) oder Gemini/OpenAI. 🎤 unten am Chat.",
+      "boot.serverDown": "Server nicht verfügbar: {msg}\nAusführen: scripts\\start_console.ps1",
+      "label.llmKeyGeneric": "2. API-Schlüssel für gewählten Anbieter",
+      "label.llmProviderAria": "LLM-Anbieter",
+      "label.voiceModeAria": "Spracheingabe-Modus",
+      "voice.micTitle": "Spracheingabe",
+      "voice.cancelTitle": "Aufnahme abbrechen",
+      "link.profiles": "Profile",
+      "auth.verifiedShort": "Schlüssel geprüft.",
+      "auth.llmInTopField": "Oberes Feld hatte LLM-Schlüssel. In «LLM-API» verschieben; oben VELANTRIM_API_KEY aus .env.",
+      "auth.missingKeySuffix": "DeepSeek / Gemini / OpenAI-Schlüssel unten in «2. LLM-API» — anderer Schlüssel.",
+      "err.llmTestOkShort": "✅ Schlüssel geprüft: {provider} / {model}. Antwort: {preview}",
+      "err.llmTestFailPrefix": "❌ LLM-Test: {msg}",
+      "err.llmOnNoKeyShort": "⚠️ LLM an: LLM-Schlüssel ins zweite Feld (OpenAI / DeepSeek / …).",
+      "err.llmNotConfirmedShort": "⚠️ LLM-Schlüssel nicht bestätigt — «Schlüssel bestätigen».",
+      "err.verifyVelantrimSend": "⚠️ {hint}\n\n«Velantrim-Schlüssel prüfen» — API- und Chat-Test müssen bestehen.",
+      "voice.listeningBrowser": "Höre zu… (Browser, kostenlos)",
+      "voice.listeningApi": "Höre zu… ({api})",
+      "voice.listeningApiLive": "Höre zu… Browser-Livetext, final prüft {api}",
+      "voice.livePreviewUnavailable": "Livetext nicht verfügbar; finale Transkription nach Stopp",
+      "voice.stopBrowser": "Aufnahme stoppen (Browser)",
+      "voice.stopApi": "Stoppen und an API senden",
+      "voice.browserUnavailable": "⚠️ Kostenlose Browser-Stimme in Chrome oder Edge. Oder «Gemini API» und AIza…-Schlüssel.",
+      "voice.needOpenaiBlock": "⚠️ OpenAI-Modus: sk-…-Schlüssel links in «🎤 Spracheingabe».",
+      "voice.needGeminiBlock": "⚠️ Gemini-Modus: AIza…-Schlüssel links in «🎤 Spracheingabe».",
+      "voice.verifyKeyFirst": "Zuerst «Sprachschlüssel prüfen (API)»",
+      "voice.verifyKeyFirstBot": "⚠️ Zuerst Sprachschlüssel links mit «Sprachschlüssel prüfen (API)».",
+      "voice.micUnavailable": "⚠️ Mikrofon nicht verfügbar. Chrome/Edge oder «Browser»-Modus.",
+      "voice.micDeniedUi": "Mikrofonzugriff verweigert",
+      "voice.micDeniedBot": "⚠️ Mikrofonzugriff im Browser erlauben.",
+      "voice.recordingFail": "⚠️ Aufnahme konnte nicht starten: {msg}",
+      "voice.geminiErrLeft": "Gemini: {msg} (Browsertext beibehalten)",
+      "voice.geminiErrBot": "⚠️ Sprache (Gemini): {msg}"
+    };
+
+    function detectBrowserLang() {
+      const langs = navigator.languages?.length ? [...navigator.languages] : [navigator.language || "en"];
+      for (const lang of langs) {
+        const base = String(lang || "").toLowerCase().replace("_", "-").split("-")[0];
+        if (base === "ru") return "ru";
+        if (base === "de") return "de";
+      }
+      return "en";
+    }
+
+    function detectSystemTheme() {
+      try {
+        if (window.matchMedia?.("(prefers-color-scheme: light)").matches) return "light";
+      } catch (_) {}
+      return "dark";
+    }
 
     let currentLang = (() => {
       const saved = localStorage.getItem(LANG_KEY);
       if (VALID_LANGS.includes(saved)) return saved;
       const attr = document.documentElement.getAttribute("data-ui-lang");
       if (VALID_LANGS.includes(attr)) return attr;
-      return (navigator.language || "ru").slice(0, 2) === "en" ? "en" : "ru";
+      return detectBrowserLang();
     })();
 
     function t(key, vars) {
-      let s = (I18N[currentLang] && I18N[currentLang][key]) || (I18N.ru && I18N.ru[key]) || key;
+      let s =
+        (I18N[currentLang] && I18N[currentLang][key]) ||
+        (currentLang === "de" && I18N.en && I18N.en[key]) ||
+        (I18N.ru && I18N.ru[key]) ||
+        key;
       if (vars) {
         for (const [k, v] of Object.entries(vars)) {
           s = s.split("{" + k + "}").join(String(v));
@@ -4112,7 +4551,7 @@
 
     function applyStaticI18n() {
       document.title = t("pageTitle");
-      document.documentElement.lang = currentLang === "en" ? "en" : "ru";
+      document.documentElement.lang = currentLang === "ru" ? "ru" : currentLang === "de" ? "de" : "en";
       document.documentElement.setAttribute("data-ui-lang", currentLang);
       document.querySelectorAll("[data-i18n]").forEach((node) => {
         if (node.id === "ttsToggleLabel") return;
@@ -4375,6 +4814,9 @@
     function langFlagSvg(langId) {
       if (langId === "ru") {
         return '<svg class="lang-flag-svg" viewBox="0 0 3 2" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="3" height="2" fill="#fff"/><rect y="0.667" width="3" height="0.667" fill="#0039a6"/><rect y="1.333" width="3" height="0.667" fill="#d52b1e"/></svg>';
+      }
+      if (langId === "de") {
+        return '<svg class="lang-flag-svg" viewBox="0 0 5 3" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="5" height="3" fill="#ffce00"/><rect y="1" width="5" height="1" fill="#dd0000"/><rect y="2" width="5" height="1" fill="#000"/></svg>';
       }
       return '<svg class="lang-flag-svg" viewBox="0 0 60 30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="60" height="30" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#C8102E" stroke-width="3"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6"/></svg>';
     }
@@ -4931,7 +5373,7 @@
         btn.addEventListener("click", () => applyTheme(themeItem.id));
         grid.appendChild(btn);
       });
-      applyTheme(localStorage.getItem(THEME_KEY) || "dark");
+      applyTheme(localStorage.getItem(THEME_KEY) || detectSystemTheme());
     }
 
     // renderThemeGrid() — после загрузки i18n (см. async init)
@@ -5655,9 +6097,22 @@
       text = escapeHtml(text);
 
       text = text.replace(
-        /\[([^\]]+)\]\((https?:\/\/[^\s<]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+        /\[([^\]]+)\]\(([^)\s]+)\)/g,
+        (_, label, href) => {
+          const safeHref = String(href || "").trim();
+          const ok =
+            /^https?:\/\//i.test(safeHref) ||
+            /^mailto:/i.test(safeHref) ||
+            /^\/[^\s]*$/i.test(safeHref) ||
+            /^#/.test(safeHref);
+          if (!ok) return `[${label}](${href})`;
+          return `<a href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+        }
       );
+      text = text.replace(/(^|[\s(>])((https?:\/\/)[^\s<)&"]+)/g, (m, before, url) => {
+        if (String(before).includes('href="')) return m;
+        return `${before}<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+      });
       text = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
       text = text.replace(/__(.+?)__/g, "<strong>$1</strong>");
       // Без (?<!) — совместимость со старыми браузерами (иначе ломается весь скрипт консоли)
@@ -6227,7 +6682,7 @@
       const addBlk = el("blockMemoryAddBtn");
       if (addBlk) {
         addBlk.addEventListener("click", () => {
-          const claim = prompt(currentLang === "en" ? "Fact text:" : "Текст заметки:");
+          const claim = prompt(t("notes.prompt"));
           if (claim && claim.trim()) {
             addToBlockMemory({ claim: claim.trim(), confidence: 0.9 });
             switchRightTab("memory");
@@ -6655,6 +7110,20 @@
       }
     }
 
+    function chatCopyRoleLabel(role) {
+      if (role === "user") {
+        if (currentLang === "ru") return "Пользователь";
+        if (currentLang === "de") return "Benutzer";
+        return "User";
+      }
+      if (role === "bot") {
+        if (currentLang === "ru") return "Ассистент";
+        if (currentLang === "de") return "Assistent";
+        return "Assistant";
+      }
+      return "System";
+    }
+
     function formatWholeChatForCopy() {
       const title = chatTitleFor(activeChat);
       const started = activeChat.startedAt ? new Date(activeChat.startedAt).toLocaleString() : "";
@@ -6663,12 +7132,7 @@
       lines.push("");
       for (const m of activeChat.messages || []) {
         if (!m || !String(m.text || "").trim()) continue;
-        const role =
-          m.role === "user"
-            ? (currentLang === "en" ? "User" : "Пользователь")
-            : m.role === "bot"
-              ? (currentLang === "en" ? "Assistant" : "Ассистент")
-              : "System";
+        const role = chatCopyRoleLabel(m.role === "bot" ? "bot" : m.role);
         lines.push(`${role}:`);
         lines.push(String(m.text).trim());
         if (m.meta && m.meta !== "system") lines.push(`[${m.meta}]`);
@@ -6755,7 +7219,7 @@
         .filter((m) => m && (m.role === "user" || m.role === "bot"))
         .slice(-3)
         .map((m) => {
-          const prefix = m.role === "user" ? (currentLang === "en" ? "You" : "Вы") : "AI";
+          const prefix = m.role === "user" ? t("search.user") : "AI";
           return `${prefix}: ${String(m.text || "").replace(/\s+/g, " ").trim()}`;
         })
         .filter(Boolean);
@@ -7016,9 +7480,7 @@
       const lines = [];
       for (const m of messages || []) {
         if (m.role !== "user" && m.role !== "bot") continue;
-        const label = m.role === "user" ? "User" : "Assistant";
-        const ru = currentLang === "ru";
-        const prefix = m.role === "user" ? (ru ? "Пользователь" : "User") : ru ? "Ассистент" : "Assistant";
+        const prefix = m.role === "user" ? chatCopyRoleLabel("user") : chatCopyRoleLabel("bot");
         lines.push(prefix + ": " + String(m.text || "").slice(0, 400));
       }
       return lines.join("\n").slice(0, 6000);
@@ -7048,7 +7510,8 @@
       });
       box.scrollTop = box.scrollHeight;
       updateChatSessionTitle();
-      if (typeof refreshSearchHighlights === "function") refreshSearchHighlights();
+      if (isChatSearchOpen()) refreshSearchHighlights();
+      else restoreStickySearchHighlights();
     }
 
     function renderMsgToDom(role, text, meta, options = {}) {
@@ -7074,7 +7537,8 @@
       if (!options.system) attachMsgActions(div, role);
       el("messages").appendChild(div);
       el("messages").scrollTop = el("messages").scrollHeight;
-      if (typeof refreshSearchHighlights === "function") refreshSearchHighlights();
+      if (isChatSearchOpen()) refreshSearchHighlights();
+      else restoreStickySearchHighlights(div);
       if (role === "bot" && options.autoSpeak && ttsAutoEnabled) {
         const speakBtn = div.querySelector(".msg-speak-btn");
         speakText(text, speakBtn || null);
@@ -9065,7 +9529,9 @@
     function voiceLang() {
       if (currentLang === "en") return "en-US";
       if (currentLang === "ru") return "ru-RU";
+      if (currentLang === "de") return "de-DE";
       const nav = (navigator.language || "ru-RU").replace("_", "-");
+      if (nav.startsWith("de")) return "de-DE";
       if (nav.startsWith("en")) return "en-US";
       if (nav.startsWith("uk")) return "uk-UA";
       return "ru-RU";
@@ -9579,6 +10045,7 @@
     }
 
     let searchState = { open: false, query: "", scope: "current", hits: [], activeHit: -1, lastQuery: "" };
+    let suppressSearchInput = false;
 
     function isChatSearchOpen() {
       const panel = el("chatSearchPanel");
@@ -9706,14 +10173,22 @@
       document.querySelectorAll("#messages .msg.search-focus-msg").forEach((n) => n.classList.remove("search-focus-msg"));
     }
 
-    function applySearchHighlights(query) {
+    function applySearchHighlights(query, rootMsgEl) {
       const q = String(query || "").trim();
       if (!q) return;
-      document.querySelectorAll("#messages .msg").forEach((msg) => {
+      const msgs = rootMsgEl ? [rootMsgEl] : document.querySelectorAll("#messages .msg");
+      Array.from(msgs).forEach((msg) => {
         msg.querySelectorAll(".msg-body, .msg-body-part").forEach((part) => {
           highlightRootTextNodes(part, q);
         });
       });
+    }
+
+    function restoreStickySearchHighlights(rootMsgEl) {
+      if (isChatSearchOpen()) return;
+      const q = String(searchState.lastQuery || searchState.query || "").trim();
+      if (!q) return;
+      applySearchHighlights(q, rootMsgEl || null);
     }
 
     function getHighlightTerms(query) {
@@ -9767,7 +10242,8 @@
           const p = node.parentElement;
           if (!p) return NodeFilter.FILTER_REJECT;
           if (p.closest("mark.search-hit")) return NodeFilter.FILTER_REJECT;
-          if (/^(SCRIPT|STYLE|MARK)$/i.test(p.tagName)) return NodeFilter.FILTER_REJECT;
+          if (p.closest("a")) return NodeFilter.FILTER_REJECT;
+          if (/^(SCRIPT|STYLE|MARK|CODE|PRE)$/i.test(p.tagName)) return NodeFilter.FILTER_REJECT;
           return NodeFilter.FILTER_ACCEPT;
         },
       });
@@ -9785,8 +10261,6 @@
           mark.className = "search-hit";
           mark.textContent = text.slice(r.start, r.end);
           mark.title = t("search.unpinHit");
-          mark.setAttribute("role", "button");
-          mark.tabIndex = 0;
           frag.appendChild(mark);
           pos = r.end;
         });
@@ -9868,11 +10342,13 @@
         })
         .join("");
       box.onclick = (e) => {
+        if (e.target.closest("mark.search-hit")) e.preventDefault();
         const row = e.target.closest(".chat-search-hit-row");
         if (!row) return;
         const idx = parseInt(row.dataset.hitIdx, 10);
-        if (Number.isNaN(idx) || !hits[idx]) return;
-        gotoSearchHit(hits[idx]);
+        const hit = searchState.hits[idx];
+        if (Number.isNaN(idx) || !hit) return;
+        gotoSearchHit(hit);
         box.querySelectorAll(".chat-search-hit-row").forEach((r) => r.classList.remove("active"));
         row.classList.add("active");
       };
@@ -9948,7 +10424,10 @@
       const box = el("chatSearchResults");
       if (meta) meta.textContent = "";
       if (box) box.innerHTML = "";
+      suppressSearchInput = true;
       if (input) input.value = "";
+      suppressSearchInput = false;
+      restoreStickySearchHighlights();
       document.querySelectorAll("#messages mark.search-hit").forEach((mark) => {
         mark.title = t("search.unpinHit");
       });
@@ -9973,6 +10452,7 @@
       const scopeEl = el("chatSearchScope");
       let debounce = null;
       input?.addEventListener("input", () => {
+        if (suppressSearchInput) return;
         clearTimeout(debounce);
         debounce = setTimeout(runChatSearch, 70);
       });
@@ -9982,6 +10462,8 @@
       });
       const messages = el("messages");
       messages?.addEventListener("click", (e) => {
+        const link = e.target.closest("#messages a[href]");
+        if (link && !e.target.closest("mark.search-hit")) return;
         const mark = e.target.closest("#messages mark.search-hit");
         if (mark) onSearchHitMarkActivate(mark, e);
       });

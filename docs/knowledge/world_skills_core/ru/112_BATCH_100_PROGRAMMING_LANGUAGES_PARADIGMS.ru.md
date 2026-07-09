@@ -18,20 +18,20 @@
 | proglang.paradigm.oop | ООП | invariant | объекты с данными и методами; инкапсуляция, наследование | моделирование сущностей |
 | proglang.paradigm.functional | Функциональное | invariant | чистые функции, неизменяемость, функции высшего порядка | предсказуемость, параллелизм |
 | proglang.paradigm.declarative | Декларативное | variant | что нужно, а не как (SQL, HTML) | абстракция от реализации |
-| proglang.python.role | Python | variant | читаемый, динамический; ML, скрипты, бэкенд | универсальный язык |
+| proglang.python.role | Питон | variant | читаемый, динамический; ML, скрипты, бэкенд | универсальный язык |
 | proglang.python.idioms | Питонические идиомы | variant | list comprehension, контекст-менеджеры, утиная типизация | чистый код |
 | proglang.js.role | JavaScript | variant | язык веба (браузер) + Node.js (сервер) | фронтенд и фуллстек |
 | proglang.js.async | Асинхронность в JS | variant | колбэки, промисы, async/await | неблокирующий ввод-вывод |
-| proglang.java.role | Java | variant | статическая типизация, JVM, «написал раз — запускай везде» | enterprise, Android |
+| proglang.java.role | Ява | variant | статическая типизация, JVM, «написал раз — запускай везде» | предприятие, Android |
 | proglang.c.role | C | variant | низкоуровневый, ручная память, скорость | системы, встраиваемое |
-| proglang.cpp.role | C++ | variant | C + ООП + шаблоны; производительность | игры, системы, HPC |
-| proglang.rust.role | Rust | variant | безопасность памяти без сборщика мусора (borrow checker) | системы без утечек/гонок |
-| proglang.go.role | Go | variant | простота, конкурентность (goroutines), компиляция | серверы, облако |
+| proglang.cpp.role | С++ | variant | C + ООП + шаблоны; производительность | игры, системы, HPC |
+| proglang.rust.role | Ржавчина | variant | безопасность памяти без сборщика мусора (borrow checker) | системы без утечек/гонок |
+| proglang.go.role | Идти | variant | простота, конкурентность (goroutines), компиляция | серверы, облако |
 | proglang.sql.role | SQL | invariant | декларативный язык запросов к реляционным БД | работа с данными |
 | proglang.compile.compiler | Компилятор | invariant | переводит код в машинный заранее | скорость исполнения |
 | proglang.compile.interpreter | Интерпретатор | invariant | исполняет код построчно | гибкость, отладка |
 | proglang.compile.bytecode | Байт-код и виртуальная машина | variant | промежуточный код для VM (JVM, .NET, Python) | переносимость |
-| proglang.memory.gc | Сборка мусора | invariant | автоматическое освобождение памяти | удобство (Java, Python, Go) |
+| proglang.memory.gc | Сборка мусора | invariant | автоматическое освобождение памяти | удобно (Java, Python, Go) |
 | proglang.memory.manual | Ручное управление памятью | variant | malloc/free (C) — мощно, но опасно | утечки, контроль |
 | proglang.memory.ownership | Владение и заимствование (Rust) | variant | компилятор гарантирует безопасность памяти | без GC и без гонок |
 | proglang.practice.naming | Именование | invariant | понятные имена переменных и функций | читаемость кода |

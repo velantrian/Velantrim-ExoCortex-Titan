@@ -96,7 +96,9 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v --tb=short --cov=core --cov-report=term-missing"
+addopts = "-v --tb=short"
+# FIX #9/#27 (Claude audit): --cov удалён из дефолтного addopts.
+# Полный coverage-шаг вынесен в выделенную CI-job.
 asyncio_mode = "auto"
 
 [tool.coverage.run]

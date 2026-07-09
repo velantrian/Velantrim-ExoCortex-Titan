@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| doctranslationops.intake.request_source | request source | RECORD | Source records resident, legal clinic, benefits desk, school, clinic or caseworker. | Shows origin. |
-| doctranslationops.intake.requester_profile | requester profile | RECORD | Profile captures name, contact, language, safe contact and assistance context. | Supports follow-up. |
-| doctranslationops.intake.document_count | document count | MEASUREMENT | Count records number of pages, files, images and priority sections. | Sizes workload. |
-| doctranslationops.intake.deadline | deadline capture | SAFETY_RULE | Deadline records submission date, appointment, appeal, school or medical timing. | Prioritizes work. |
-| doctranslationops.language.source_language | source language | RECORD | Source language records document language, script, dialect or uncertainty. | Selects translator. |
-| doctranslationops.language.target_language | target language | RECORD | Target language records needed output language, locale and reading level. | Defines output. |
-| doctranslationops.language.certified_need | certified need | CONSTRAINT | Some documents require certified, sworn or agency-approved translation. | Routes correctly. |
-| doctranslationops.language.interpreter_note | interpreter note | METHOD | Interpreter support may clarify intake without replacing written translation. | Reduces errors. |
-| doctranslationops.document.doc_type | document type | RECORD | Type distinguishes ID, lease, notice, benefits, school, medical, insurance or court document. | Routes expertise. |
-| doctranslationops.document.sensitivity | sensitivity level | SAFETY_RULE | Sensitivity flags medical, legal, immigration, child, financial or safety data. | Controls access. |
-| doctranslationops.document.completeness | completeness check | QUALITY_CHECK | Check confirms pages, signatures, dates, stamps and readable scans. | Prevents missing translation. |
-| doctranslationops.document.format_need | format need | RECORD | Format need captures plain text, form field, letter, certified PDF or summary. | Guides delivery. |
-| doctranslationops.confidentiality.minimum_data | minimum data | SAFETY_RULE | Staff store only needed document and request information. | Reduces exposure. |
-| doctranslationops.confidentiality.access_control | access control | SAFETY_RULE | Sensitive files are restricted to assigned translator, reviewer and supervisor. | Protects requester. |
-| doctranslationops.confidentiality.agreement | confidentiality agreement | RECORD | Translators acknowledge confidentiality, conflict and role boundaries. | Creates proof. |
-| doctranslationops.confidentiality.secure_transfer | secure transfer | METHOD | Files move through approved secure upload, locked storage or encrypted channel. | Prevents leakage. |
-| doctranslationops.assignment.translator_match | translator match | METHOD | Match considers language, credential, topic, urgency, availability and conflict. | Improves quality. |
-| doctranslationops.assignment.assignment_record | assignment record | RECORD | Record stores translator, reviewer, document type, deadline and delivery method. | Creates accountability. |
-| doctranslationops.assignment.conflict_check | conflict check | QUALITY_CHECK | Check screens adverse parties, personal relationship or sensitive role conflicts. | Protects neutrality. |
-| doctranslationops.assignment.backup | backup assignment | METHOD | Backup handles no-show, overload, rare language or deadline risk. | Adds resilience. |
-| doctranslationops.workflow.translation_brief | translation brief | METHOD | Brief explains purpose, audience, certification need and formatting constraints. | Guides translator. |
-| doctranslationops.workflow.question_log | question log | RECORD | Questions capture unclear handwriting, missing context or ambiguous terms. | Improves accuracy. |
-| doctranslationops.workflow.partial_delivery | partial delivery | METHOD | Urgent pages may be delivered first with clear status and remaining work. | Meets deadlines. |
-| doctranslationops.workflow.version_control | version control | RECORD | Versions track draft, reviewed, corrected and delivered translations. | Prevents confusion. |
-| doctranslationops.qa.peer_review | peer review | QUALITY_CHECK | Review checks completeness, terminology, numbers, names, dates and formatting. | Improves quality. |
-| doctranslationops.qa.certification_check | certification check | QUALITY_CHECK | Certified output includes required statement, translator identity and date. | Supports acceptance. |
-| doctranslationops.qa.red_flag | red flag | SAFETY_RULE | Legal or medical advice questions route to qualified professionals, not translator judgment. | Maintains boundary. |
-| doctranslationops.qa.correction | correction process | METHOD | Corrections record issue, reviewer, translator response and final version. | Fixes errors. |
-| doctranslationops.delivery.delivery_method | delivery method | RECORD | Method records pickup, email, secure portal, caseworker handoff or mail. | Controls handoff. |
-| doctranslationops.delivery.confirmation | delivery confirmation | RECORD | Confirmation records recipient, date, files, version and unresolved issues. | Closes request. |
-| doctranslationops.delivery.client_summary | client summary | METHOD | Summary explains what was translated and any limits or missing pages. | Sets expectations. |
-| doctranslationops.delivery.archive_copy | archive copy | CONSTRAINT | Archive rule defines whether translated files are retained, deleted or returned. | Controls lifecycle. |
-| doctranslationops.communication.status_update | status update | METHOD | Updates explain received, assigned, in review, delayed, delivered or blocked status. | Reduces uncertainty. |
-| doctranslationops.communication.partner_update | partner update | METHOD | Partners receive aggregate language demand, deadlines, capacity and barriers. | Coordinates support. |
-| doctranslationops.communication.language_gap | language gap alert | METHOD | Rare language gaps route to partner agencies or professional vendors. | Expands capacity. |
-| doctranslationops.records.case_log | case log | RECORD | Log stores intake, files, assignment, review, delivery and deletion/retention decision. | Creates audit trail. |
-| doctranslationops.records.cost | cost record | RECORD | Cost tracks volunteer hours, vendor fees, rush fees and funding source. | Supports finance. |
-| doctranslationops.records.retention | retention rule | CONSTRAINT | Records follow privacy, legal, grant and document handling schedules. | Preserves audit. |
-| doctranslationops.metrics.requests_completed | requests completed | MEASUREMENT | Count tracks completed translations by language, type and urgency. | Shows output. |
-| doctranslationops.metrics.turnaround | turnaround time | MEASUREMENT | Time measures intake to delivery by document type and language. | Reveals delay. |
-| doctranslationops.metrics.correction_rate | correction rate | MEASUREMENT | Rate tracks reviewed documents needing correction. | Improves QA. |
-| doctranslationops.qa.sample_audit | sample audit | QUALITY_CHECK | Audit checks privacy, assignment fit, review proof and delivery confirmation. | Improves reliability. |
-| doctranslationops.demob.closeout | closeout | METHOD | Closeout resolves open requests, archives permitted files and deletes restricted files. | Ends safely. |
-| doctranslationops.review.after_action | after-action review | METHOD | Review captures language gaps, confidentiality, certified needs, turnaround and QA lessons. | Improves future translation. |
+| doctranslationops.intake.request_source | источник запроса | RECORD | Источник записывает резидента, юридическую клинику, отдел пособий, школу, клинику или социального работника. | Показывает происхождение. |
+| doctranslationops.intake.requester_profile | профиль запрашивающего | RECORD | Профиль фиксирует имя, контакт, язык, безопасный контакт и контекст помощи. | Поддерживает дальнейшее наблюдение. |
+| doctranslationops.intake.document_count | количество документов | MEASUREMENT | Подсчет записывает количество страниц, файлов, изображений и приоритетных разделов. | Размер рабочей нагрузки. |
+| doctranslationops.intake.deadline | захват крайнего срока | SAFETY_RULE | Крайний срок записи: дата подачи, назначение, апелляция, время учебы или медицинского обслуживания. | Расставляет приоритеты в работе. |
+| doctranslationops.language.source_language | исходный язык | RECORD | Исходный язык записывает язык документа, сценарий, диалект или неопределенность. | Выбирает переводчика. |
+| doctranslationops.language.target_language | целевой язык | RECORD | Для записей целевого языка требовался язык вывода, локаль и уровень чтения. | Определяет вывод. |
+| doctranslationops.language.certified_need | подтвержденная потребность | CONSTRAINT | Некоторые документы требуют заверенного, заверенного или одобренного агентством перевода. | Маршрутизирует правильно. |
+| doctranslationops.language.interpreter_note | записка переводчика | METHOD | Поддержка переводчика может уточнить прием без замены письменного перевода. | Уменьшает ошибки. |
+| doctranslationops.document.doc_type | тип документа | RECORD | Тип отличает удостоверение личности, договор аренды, уведомление, льготы, школьный, медицинский, страховой или судебный документ. | Экспертиза маршрутов. |
+| doctranslationops.document.sensitivity | уровень чувствительности | SAFETY_RULE | Чувствительность обозначает медицинские, юридические, иммиграционные, детские, финансовые данные или данные о безопасности. | Контролирует доступ. |
+| doctranslationops.document.completeness | проверка комплектности | QUALITY_CHECK | Проверка подтверждает страницы, подписи, даты, печати и читаемые сканы. | Предотвращает отсутствие перевода. |
+| doctranslationops.document.format_need | нужен формат | RECORD | Необходимость формата включает в себя обычный текст, поле формы, письмо, сертифицированный PDF-файл или резюме. | Доставка гидов. |
+| doctranslationops.confidentiality.minimum_data | минимальные данные | SAFETY_RULE | Сотрудники хранят только необходимые документы и запрашивают информацию. | Уменьшает воздействие. |
+| doctranslationops.confidentiality.access_control | контроль доступа | SAFETY_RULE | Конфиденциальные файлы доступны только назначенному переводчику, рецензенту и руководителю. | Защищает запрашивающего. |
+| doctranslationops.confidentiality.agreement | соглашение о конфиденциальности | RECORD | Переводчики признают конфиденциальность, конфликтность и ролевые границы. | Создает доказательства. |
+| doctranslationops.confidentiality.secure_transfer | безопасная передача | METHOD | Файлы перемещаются через утвержденную безопасную загрузку, заблокированное хранилище или зашифрованный канал. | Предотвращает утечку. |
+| doctranslationops.assignment.translator_match | переводчик матч | METHOD | Сопоставление учитывает язык, учетные данные, тему, срочность, доступность и конфликт. | Улучшает качество. |
+| doctranslationops.assignment.assignment_record | запись о назначении | RECORD | Запись хранит переводчика, рецензента, тип документа, срок и способ доставки. | Создает подотчетность. |
+| doctranslationops.assignment.conflict_check | проверка конфликтов | QUALITY_CHECK | Проверьте экраны враждебных сторон, личных отношений или деликатных ролевых конфликтов. | Защищает нейтралитет. |
+| doctranslationops.assignment.backup | резервное назначение | METHOD | Резервное копирование позволяет избежать риска неявки, перегрузки, редкой речи или крайнего срока. | Добавляет устойчивости. |
+| doctranslationops.workflow.translation_brief | краткий обзор перевода | METHOD | Краткое описание объясняет цель, аудиторию, необходимость сертификации и ограничения форматирования. | Переводчик гидов. |
+| doctranslationops.workflow.question_log | журнал вопросов | RECORD | Вопросы отражают нечеткий почерк, отсутствие контекста или двусмысленные термины. | Улучшает точность. |
+| doctranslationops.workflow.partial_delivery | частичная доставка | METHOD | Срочные страницы могут быть доставлены первыми с четким статусом и оставшейся работой. | Соблюдает сроки. |
+| doctranslationops.workflow.version_control | контроль версий | RECORD | Версии отслеживают черновые, проверенные, исправленные и доставленные переводы. | Предотвращает путаницу. |
+| doctranslationops.qa.peer_review | экспертная оценка | QUALITY_CHECK | Рецензент проверяет полноту, терминологию, цифры, имена, даты и форматирование. | Улучшает качество. |
+| doctranslationops.qa.certification_check | сертификационная проверка | QUALITY_CHECK | Сертифицированный результат включает необходимое заявление, личность переводчика и дату. | Поддерживает принятие. |
+| doctranslationops.qa.red_flag | красный флаг | SAFETY_RULE | Вопросы юридического или медицинского характера направляются к квалифицированным специалистам, а не к мнению переводчика. | Держит границу. |
+| doctranslationops.qa.correction | процесс коррекции | METHOD | Выпуск исправлений, рецензент, ответ переводчика и окончательная версия. | Исправляет ошибки. |
+| doctranslationops.delivery.delivery_method | способ доставки | RECORD | Метод записывает получение, электронную почту, безопасный портал, передачу соцработнику или почту. | Передача управления. |
+| doctranslationops.delivery.confirmation | подтверждение доставки | RECORD | В подтверждении указывается получатель, дата, файлы, версия и нерешенные проблемы. | Закрывает запрос. |
+| doctranslationops.delivery.client_summary | резюме клиента | METHOD | В резюме объясняется, что было переведено, а также ограничения или недостающие страницы. | Устанавливает ожидания. |
+| doctranslationops.delivery.archive_copy | архивная копия | CONSTRAINT | Правило архивирования определяет, будут ли переведенные файлы сохранены, удалены или возвращены. | Управляет жизненным циклом. |
+| doctranslationops.communication.status_update | обновление статуса | METHOD | В обновлениях поясняется статус получения, назначения, рассмотрения, задержки, доставки или блокировки. | Уменьшает неопределенность. |
+| doctranslationops.communication.partner_update | обновление партнера | METHOD | Партнеры получают совокупный языковой спрос, сроки, возможности и препятствия. | Поддержка координат. |
+| doctranslationops.communication.language_gap | оповещение о языковом разрыве | METHOD | Редкие языковые пробелы направляются к партнерским агентствам или профессиональным поставщикам. | Расширяет емкость. |
+| doctranslationops.records.case_log | журнал дел | RECORD | В журнале хранятся данные о приеме, файлах, назначении, просмотре, доставке и решении об удалении/сохранении. | Создает контрольный журнал. |
+| doctranslationops.records.cost | запись затрат | RECORD | Стоимость учитывает часы волонтеров, гонорары поставщиков, срочные сборы и источник финансирования. | Поддерживает финансы. |
+| doctranslationops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам конфиденциальности, правовым нормам, грантам и обработке документов. | Сохраняет аудит. |
+| doctranslationops.metrics.requests_completed | запросы выполнены | MEASUREMENT | Подсчет отслеживает выполненные переводы по языку, типу и срочности. | Показывает вывод. |
+| doctranslationops.metrics.turnaround | время выполнения заказа | MEASUREMENT | Время измеряет доставку до типа документа и языка. | Выявляет задержку. |
+| doctranslationops.metrics.correction_rate | скорость коррекции | MEASUREMENT | Оценка отслеживает рассмотренные документы, нуждающиеся в исправлении. | Улучшает качество. |
+| doctranslationops.qa.sample_audit | выборочный аудит | QUALITY_CHECK | Аудит проверяет конфиденциальность, соответствие задания, подтверждение проверки и подтверждение доставки. | Повышает надежность. |
+| doctranslationops.demob.closeout | распродажа | METHOD | Closeout разрешает открытые запросы, архивирует разрешенные файлы и удаляет файлы с ограниченным доступом. | Заканчивается благополучно. |
+| doctranslationops.review.after_action | обзор после действий | METHOD | В обзоре учитываются языковые пробелы, конфиденциальность, сертифицированные потребности, уроки, связанные с улучшением ситуации и обеспечением качества. | Улучшает будущий перевод. |

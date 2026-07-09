@@ -256,10 +256,26 @@ class MetaSupervisor:
                 pass
 
             if store is not None:
-                from core.mhi import compute_mhi
-                report = compute_mhi(store)
-                self._mhi_cache = report.mhi
-                self._mhi_status_cache = report.status.value
+                # FIX #1 (Claude audit): compute_mhi — устаревшая функция.
+                # Заменена на MHICalculator(store).calculate().
+                # Сбор MHI/DLQ/budget разнесён по отдельным try-блокам —
+                # сбой одного канала не теряет остальные.
+                mhi_ok = False
+                try:
+                    from core.mhi import MHICalculator
+                    calc = MHICalculator(store)
+                    report = calc.calculate()
+                    self._mhi_cache = report.mhi
+                    self._mhi_status_cache = report.status.value
+                    mhi_ok = True
+                except Exception as exc:
+                    logger.warning("MetaSupervisor: MHI collection failed: %s", exc)
+
+                if not mhi_ok:
+                    # Fallback: сохранить предыдущее значение, не перезаписывать
+                    if self._mhi_cache == 1.0:  # ещё ни разу не собирали
+                        self._mhi_cache = 0.75
+                        self._mhi_status_cache = "DEGRADED"
             else:
                 self._mhi_cache = 1.0
                 self._mhi_status_cache = "HEALTHY"

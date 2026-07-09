@@ -68,15 +68,17 @@ Google: gemini-3.5-flash | Llama: llama-4-maverick
 
 ## 🖥️ Веб-консоль + LLM (тест в браузере)
 
-Экспериментальный стенд: чат, блок памяти в **localStorage**, опционально RAG (`/facts`), вкладка **🔗 Эссенция** — живой граф темы и связей по SSE.
+Экспериментальный стенд V8.7 Titan: чат, блок памяти в **localStorage**, поиск по сообщениям, вкладка **🔗 Эссенция**.
 
-**Документация:** [docs/CONSOLE_BROWSER_TEST.ru.md](docs/CONSOLE_BROWSER_TEST.ru.md) · в браузере после запуска: [http://127.0.0.1:8755/console/help](http://127.0.0.1:8755/console/help) · roadmap: [http://127.0.0.1:8755/console/roadmap](http://127.0.0.1:8755/console/roadmap)
+**Обзор (красиво, с путями и переносом):** [docs/CONSOLE_OVERVIEW.ru.md](docs/CONSOLE_OVERVIEW.ru.md)
+
+**Документация:** [docs/CONSOLE_BROWSER_TEST.ru.md](docs/CONSOLE_BROWSER_TEST.ru.md) · [http://127.0.0.1:8755/console/help](http://127.0.0.1:8755/console/help) · [roadmap](http://127.0.0.1:8755/console/roadmap)
 
 ```powershell
+cd "C:\Users\VELAN\Documents\Research Velantrim\VELANTRIM_ExoCortex_V8.7_Titan"
 # 1. .env: VELANTRIM_API_KEY=...  (+ LLM из config/llm.example.env)
 .\scripts\start_console.ps1
-# 2. Браузер: http://127.0.0.1:8755/console/?v=23
-# 3. Roadmap задач: http://127.0.0.1:8755/console/roadmap
+# 2. Браузер: http://127.0.0.1:8755/console/?v=40
 ```
 
 Профили: **citizen** · **personal** · **company** · **science** · **education** · **research** · **developer**  

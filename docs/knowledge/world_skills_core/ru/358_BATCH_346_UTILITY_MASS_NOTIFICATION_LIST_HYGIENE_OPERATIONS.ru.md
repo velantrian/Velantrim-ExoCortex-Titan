@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| notifyhygieneops.source.contact_master | contact master | RECORD | Contact master stores account, person, channel, address, consent and status. | Creates a controlled notification base. |
-| notifyhygieneops.source.cis_sync | CIS sync | METHOD | Customer information system sync updates account status, service address and contacts. | Keeps lists aligned with billing records. |
-| notifyhygieneops.source.portal_sync | portal preference sync | METHOD | Portal preferences update channels, language and opt-in choices. | Respects customer self-service choices. |
-| notifyhygieneops.source.callcenter_update | call center update | METHOD | Agents can update verified contact details with audit trail. | Improves data during live interactions. |
-| notifyhygieneops.optin.channel_optin | channel opt-in | RECORD | Opt-in records channel, purpose, date, source and proof. | Supports consent compliance. |
-| notifyhygieneops.optin.purpose_scope | purpose scope | CONSTRAINT | Consent scope distinguishes outage, billing, marketing, emergency and service notices. | Prevents overuse of consent. |
-| notifyhygieneops.optin.double_confirm | double confirmation | METHOD | High-risk channels may use confirmation code or double opt-in. | Reduces wrong-number notifications. |
-| notifyhygieneops.optin.minor_guard | minor guard | SAFETY_RULE | Contact preferences avoid collecting or using minor data outside policy. | Protects vulnerable users. |
-| notifyhygieneops.optout.unsubscribe | unsubscribe | METHOD | Opt-out path is available by channel and recorded quickly. | Respects customer choice. |
-| notifyhygieneops.optout.global_suppression | global suppression | CONSTRAINT | Global suppression blocks nonmandatory communications. | Prevents repeated unwanted contact. |
-| notifyhygieneops.optout.mandatory_exception | mandatory exception | CONSTRAINT | Emergency or legally required notices may override some preferences under policy. | Maintains public safety communication. |
-| notifyhygieneops.optout.confirmation | opt-out confirmation | RECORD | Opt-out confirmation records channel, time and remaining mandatory categories. | Reduces confusion. |
-| notifyhygieneops.quality.bad_email | bad email | FAILURE_MODE | Bad email is detected by bounce, typo pattern, domain error or repeated failure. | Improves deliverability. |
-| notifyhygieneops.quality.bad_phone | bad phone | FAILURE_MODE | Bad phone is detected by disconnected number, carrier error or customer correction. | Prevents wasted SMS/calls. |
-| notifyhygieneops.quality.bad_address | bad address | FAILURE_MODE | Bad address is detected by returned mail, invalid service match or geocode failure. | Improves postal and geographic targeting. |
-| notifyhygieneops.quality.stale_contact | stale contact | MODEL | Contact is stale when unused, unconfirmed or tied to inactive account beyond policy window. | Prioritizes cleanup. |
-| notifyhygieneops.dedupe.identity_key | identity key | MODEL | Identity key combines account, person, channel and normalized contact value. | Finds duplicate contacts. |
-| notifyhygieneops.dedupe.household_merge | household merge | METHOD | Household merge prevents repeated notices while preserving individual consent. | Reduces notification fatigue. |
-| notifyhygieneops.dedupe.business_site | business site contacts | METHOD | Business accounts may keep multiple role-based contacts for safety and operations. | Avoids over-merge errors. |
-| notifyhygieneops.dedupe.conflict_resolution | conflict resolution | METHOD | Conflicting preferences are resolved by latest proof, stronger consent or manual review. | Keeps records defensible. |
-| notifyhygieneops.language.preference | language preference | RECORD | Language preference is stored per account/person/channel where available. | Sends understandable notices. |
-| notifyhygieneops.language.fallback | language fallback | METHOD | Fallback language is chosen when preference is missing or translation unavailable. | Keeps urgent notices flowing. |
-| notifyhygieneops.language.translation_tag | translation tag | RECORD | Notification template records language version and approval status. | Prevents sending unapproved translations. |
-| notifyhygieneops.language.accessibility | accessibility preference | RECORD | Accessibility preference may include TTY, large print, voice call or email format. | Supports inclusive communication. |
-| notifyhygieneops.segmentation.geo_target | geographic targeting | METHOD | Service address, feeder, pressure zone, route or map polygon targets affected customers. | Limits alerts to impacted users. |
-| notifyhygieneops.segmentation.customer_class | customer class | METHOD | Customer class segments residential, business, critical, landlord or assistance customers. | Tailors message relevance. |
-| notifyhygieneops.segmentation.sensitive_customer | sensitive customer flag | SAFETY_RULE | Sensitive customer flags are protected and used only for approved service purposes. | Balances care and privacy. |
-| notifyhygieneops.segmentation.exclusion | exclusion list | CONSTRAINT | Exclusion list removes employees, test accounts, inactive accounts or legal holds as needed. | Prevents improper sends. |
-| notifyhygieneops.suppression.quiet_hours | quiet hours | CONSTRAINT | Quiet hours suppress nonurgent messages by channel and jurisdiction. | Reduces nuisance and legal risk. |
-| notifyhygieneops.suppression.frequency_cap | frequency cap | CONSTRAINT | Frequency cap limits repeated messages within a time window. | Prevents customer fatigue. |
-| notifyhygieneops.suppression.duplicate_send | duplicate send prevention | QUALITY_CHECK | Duplicate send prevention checks campaign, contact, account and event ID. | Avoids repeated alerts. |
-| notifyhygieneops.suppression.test_accounts | test account suppression | QUALITY_CHECK | Test accounts are separated from production send lists. | Prevents accidental public campaigns. |
-| notifyhygieneops.delivery.bounce_process | bounce process | METHOD | Bounce process classifies hard bounce, soft bounce and temporary provider errors. | Guides cleanup and retries. |
-| notifyhygieneops.delivery.sms_carrier | SMS carrier result | RECORD | SMS result stores delivered, failed, filtered, opted out or carrier unknown. | Measures mobile channel health. |
-| notifyhygieneops.delivery.voice_result | voice result | RECORD | Voice call result stores answered, voicemail, busy, failed or disconnected. | Supports reachability analysis. |
-| notifyhygieneops.delivery.postal_return | postal return | METHOD | Returned mail updates address quality and may trigger verification. | Improves physical notices. |
-| notifyhygieneops.audit.consent_proof | consent proof audit | QUALITY_CHECK | Audit samples contacts to verify consent proof and purpose match. | Detects compliance gaps. |
-| notifyhygieneops.audit.send_log | send log audit | QUALITY_CHECK | Send logs are reconciled against campaign approvals and target rules. | Shows messages went to intended lists. |
-| notifyhygieneops.audit.admin_access | admin access audit | QUALITY_CHECK | List export and admin access are reviewed for need and misuse. | Protects customer data. |
-| notifyhygieneops.audit.vendor_controls | vendor controls | CONSTRAINT | Notification vendors must meet privacy, security, retention and incident obligations. | Controls outsourced risk. |
-| notifyhygieneops.metrics.deliverability | deliverability rate | MEASUREMENT | Deliverability rate tracks successful sends by channel and list segment. | Shows list health. |
-| notifyhygieneops.metrics.optout_rate | opt-out rate | MEASUREMENT | Opt-out rate by campaign reveals fatigue, bad targeting or wording issues. | Improves communication strategy. |
-| notifyhygieneops.metrics.coverage_gap | coverage gap | MEASUREMENT | Coverage gap identifies accounts lacking valid reachable contacts. | Prioritizes collection efforts. |
-| notifyhygieneops.closeout.hygiene_backlog | hygiene backlog | RECORD | Backlog tracks bad contacts, duplicates, stale records and unresolved conflicts. | Turns data quality into managed work. |
+| notifyhygieneops.source.contact_master | связаться с мастером | RECORD | Мастер контактов хранит учетную запись, человека, канал, адрес, согласие и статус. | Создает контролируемую базу уведомлений. |
+| notifyhygieneops.source.cis_sync | СНГ-синхронизация | METHOD | Синхронизация информационной системы клиента обновляет статус учетной записи, адрес службы и контакты. | Сохраняет списки в соответствии с записями о выставлении счетов. |
+| notifyhygieneops.source.portal_sync | синхронизация предпочтений портала | METHOD | В настройках портала обновляются каналы, язык и варианты подписки. | Уважает выбор клиентов в сфере самообслуживания. |
+| notifyhygieneops.source.callcenter_update | обновление колл-центра | METHOD | Агенты могут обновлять проверенные контактные данные с помощью контрольного журнала. | Улучшает данные во время живого взаимодействия. |
+| notifyhygieneops.optin.channel_optin | согласие на участие в канале | RECORD | Согласие записывает канал, цель, дату, источник и подтверждение. | Поддерживает соблюдение согласия. |
+| notifyhygieneops.optin.purpose_scope | цель | CONSTRAINT | В области согласия различаются уведомления о сбоях, выставлении счетов, маркетинговые, экстренные и сервисные уведомления. | Предотвращает чрезмерное использование согласия. |
+| notifyhygieneops.optin.double_confirm | двойное подтверждение | METHOD | Каналы с высоким уровнем риска могут использовать код подтверждения или двойное согласие. | Уменьшает количество уведомлений о неправильных номерах. |
+| notifyhygieneops.optin.minor_guard | мелкий охранник | SAFETY_RULE | Предпочтения в контактах позволяют избежать сбора или использования второстепенных данных за пределами политики. | Защищает уязвимых пользователей. |
+| notifyhygieneops.optout.unsubscribe | отказаться от подписки | METHOD | Путь отказа доступен для каждого канала и быстро записывается. | Уважает выбор клиента. |
+| notifyhygieneops.optout.global_suppression | глобальное подавление | CONSTRAINT | Глобальное подавление блокирует необязательные коммуникации. | Предотвращает повторный нежелательный контакт. |
+| notifyhygieneops.optout.mandatory_exception | обязательное исключение | CONSTRAINT | Экстренные уведомления или уведомления, требуемые по закону, могут иметь приоритет над некоторыми предпочтениями, предусмотренными политикой. | Поддерживает связь в целях общественной безопасности. |
+| notifyhygieneops.optout.confirmation | подтверждение отказа | RECORD | Подтверждение отказа записывает канал, время и оставшиеся обязательные категории. | Уменьшает путаницу. |
+| notifyhygieneops.quality.bad_email | плохая электронная почта | FAILURE_MODE | Плохое электронное письмо обнаруживается по возврату, опечатке, ошибке домена или повторному сбою. | Улучшает доставляемость. |
+| notifyhygieneops.quality.bad_phone | плохой телефон | FAILURE_MODE | Плохой телефон обнаруживается по отключенному номеру, ошибке оператора связи или исправлению клиента. | Предотвращает ненужные SMS/звонки. |
+| notifyhygieneops.quality.bad_address | плохой адрес | FAILURE_MODE | Неверный адрес обнаруживается по возвращенной почте, недопустимому совпадению службы или сбою геокодирования. | Улучшает почтовый и географический таргетинг. |
+| notifyhygieneops.quality.stale_contact | устаревший контакт | MODEL | Контакт устарел, если он не используется, не подтвержден или привязан к неактивной учетной записи за пределами окна политики. | Отдает предпочтение уборке. |
+| notifyhygieneops.dedupe.identity_key | идентификационный ключ | MODEL | Ключ идентификации объединяет учетную запись, человека, канал и нормализованное значение контакта. | Находит повторяющиеся контакты. |
+| notifyhygieneops.dedupe.household_merge | слияние семей | METHOD | Объединение семей предотвращает повторные уведомления, сохраняя при этом индивидуальное согласие. | Уменьшает усталость от уведомлений. |
+| notifyhygieneops.dedupe.business_site | контакты бизнес-сайта | METHOD | Бизнес-аккаунты могут хранить несколько ролевых контактов в целях безопасности и работы. | Избегает ошибок чрезмерного слияния. |
+| notifyhygieneops.dedupe.conflict_resolution | разрешение конфликта | METHOD | Конфликтующие предпочтения разрешаются путем последнего доказательства, более строгого согласия или проверки вручную. | Хранит записи надежно. |
+| notifyhygieneops.language.preference | языковые предпочтения | RECORD | Языковые предпочтения сохраняются для каждой учетной записи/человека/канала, если это возможно. | Отправляет понятные уведомления. |
+| notifyhygieneops.language.fallback | запасной вариант языка | METHOD | Запасной язык выбирается, когда предпочтения отсутствуют или недоступен перевод. | Обеспечивает поток срочных уведомлений. |
+| notifyhygieneops.language.translation_tag | тег перевода | RECORD | В шаблоне уведомления записывается языковая версия и статус утверждения. | Предотвращает отправку неутвержденных переводов. |
+| notifyhygieneops.language.accessibility | предпочтение доступности | RECORD | Предпочтения в отношении доступности могут включать телетайп, крупный шрифт, голосовой вызов или формат электронной почты. | Поддерживает инклюзивное общение. |
+| notifyhygieneops.segmentation.geo_target | географический таргетинг | METHOD | Адрес обслуживания, фидер, зона давления, маршрут или полигон карты затронули клиентов. | Ограничивает оповещения затронутыми пользователями. |
+| notifyhygieneops.segmentation.customer_class | класс клиента | METHOD | По классам клиентов сегментируются жилые, деловые, критически важные, арендодатели или клиенты, оказывающие помощь. | Адаптирует актуальность сообщения. |
+| notifyhygieneops.segmentation.sensitive_customer | чувствительный флаг клиента | SAFETY_RULE | Конфиденциальные флаги клиентов защищены и используются только в утвержденных целях обслуживания. | Балансирует заботу и конфиденциальность. |
+| notifyhygieneops.segmentation.exclusion | список исключений | CONSTRAINT | Список исключений удаляет сотрудников, тестовые учетные записи, неактивные учетные записи или юридические блокировки по мере необходимости. | Предотвращает неправильную отправку. |
+| notifyhygieneops.suppression.quiet_hours | тихие часы | CONSTRAINT | Тихие часы подавляют несрочные сообщения по каналам и юрисдикциям. | Снижает неудобства и юридические риски. |
+| notifyhygieneops.suppression.frequency_cap | ограничение частоты показов | CONSTRAINT | Ограничение частоты ограничивает повторение сообщений в течение определенного периода времени. | Предотвращает усталость клиентов. |
+| notifyhygieneops.suppression.duplicate_send | предотвращение повторной отправки | QUALITY_CHECK | Повторная рассылка проверяет кампанию, контакт, учетную запись и идентификатор события. | Избегает повторных предупреждений. |
+| notifyhygieneops.suppression.test_accounts | подавление тестового аккаунта | QUALITY_CHECK | Тестовые аккаунты отделены от рабочих списков рассылки. | Предотвращает случайные публичные кампании. |
+| notifyhygieneops.delivery.bounce_process | процесс отскока | METHOD | Процесс возврата классифицирует жесткий отказ, мягкий отказ и временные ошибки поставщика. | Направляет очистку и повторные попытки. |
+| notifyhygieneops.delivery.sms_carrier | Результат SMS-оператора | RECORD | Сохраняются результаты SMS-сообщений: доставленные, неудачные, отфильтрованные, отключенные или оператор связи неизвестен. | Измеряет состояние мобильного канала. |
+| notifyhygieneops.delivery.voice_result | голосовой результат | RECORD | В результатах голосового вызова сохраняются ответы, голосовая почта, занято, сбой или отключение. | Поддерживает анализ достижимости. |
+| notifyhygieneops.delivery.postal_return | почтовый возврат | METHOD | Возвращенное письмо обновляет качество адреса и может вызвать проверку. | Улучшает физические уведомления. |
+| notifyhygieneops.audit.consent_proof | аудит подтверждения согласия | QUALITY_CHECK | Аудит образцов контактов для проверки подтверждения согласия и соответствия цели. | Обнаруживает пробелы в соблюдении требований. |
+| notifyhygieneops.audit.send_log | отправить аудит журнала | QUALITY_CHECK | Журналы отправки сверяются с утверждениями кампании и целевыми правилами. | Показывает, что сообщения отправлены в назначенные списки. |
+| notifyhygieneops.audit.admin_access | аудит доступа администратора | QUALITY_CHECK | Экспорт списков и доступ администратора проверяются на предмет необходимости и неправильного использования. | Защищает данные клиентов. |
+| notifyhygieneops.audit.vendor_controls | средства контроля поставщика | CONSTRAINT | Поставщики уведомлений должны соблюдать обязательства по конфиденциальности, безопасности, хранению и инцидентам. | Контролирует переданные на аутсорсинг риски. |
+| notifyhygieneops.metrics.deliverability | скорость доставки | MEASUREMENT | Коэффициент доставляемости отслеживает успешные отправки по каналам и сегментам списка. | Показывает список здоровья. |
+| notifyhygieneops.metrics.optout_rate | процент отказа | MEASUREMENT | Доля отказов по кампаниям указывает на усталость, плохой таргетинг или проблемы с формулировками. | Улучшает коммуникационную стратегию. |
+| notifyhygieneops.metrics.coverage_gap | разрыв в охвате | MEASUREMENT | Пробел в охвате определяет учетные записи, в которых отсутствуют действительные доступные контакты. | Отдает приоритет усилиям по сбору средств. |
+| notifyhygieneops.closeout.hygiene_backlog | отставание в области гигиены | RECORD | Журнал невыполненной работы отслеживает плохие контакты, дубликаты, устаревшие записи и неразрешенные конфликты. | Превращает качество данных в управляемую работу. |

@@ -5,7 +5,7 @@
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
 | mediaprod.journalism.role | Роль журналистики | invariant | информирование общества, контроль власти (четвёртая власть) | основа осведомлённого общества |
-| mediaprod.journalism.5w | Принцип 5W+H | invariant | who, what, when, where, why, how — каркас новости | полнота сообщения |
+| mediaprod.journalism.5w | Принцип 5W+H | invariant | кто, что, когда, где, почему, как — каркас новости | полнота сообщения |
 | mediaprod.journalism.inverted_pyramid | Перевёрнутая пирамида | invariant | главное в начале, детали ниже | структура новостного текста |
 | mediaprod.journalism.sources | Работа с источниками | invariant | проверка, минимум два независимых, защита анонимных | достоверность |
 | mediaprod.journalism.factcheck | Фактчекинг | invariant | проверка утверждений перед публикацией | борьба с дезинформацией |
@@ -26,7 +26,7 @@
 | mediaprod.photo.composition | Композиция кадра | variant | правило третей, направляющие линии, кадрирование | выразительность |
 | mediaprod.photo.lighting | Свет в фотографии | invariant | жёсткий/мягкий, направление, золотой час | настроение и объём |
 | mediaprod.photo.whitebalance | Баланс белого | invariant | коррекция цветовой температуры под источник | естественные цвета |
-| mediaprod.photo.raw | RAW vs JPEG | variant | RAW — максимум данных для обработки; JPEG — готовый | гибкость постобработки |
+| mediaprod.photo.raw | RAW против JPEG | variant | RAW — максимум данных для обработки; JPEG — готовый | гибкость постобработки |
 | mediaprod.photo.lens | Объективы и фокусное | variant | широкоугольный, нормальный, теле, макро | выбор под сюжет |
 | mediaprod.video.framerate | Частота кадров (fps) | invariant | 24 (кино), 30, 60+; влияет на плавность | стиль и восприятие |
 | mediaprod.video.resolution | Разрешение | variant | HD, 4K, 8K — детализация изображения | качество и объём файла |

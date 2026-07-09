@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| phonerepair.intake.device_intake | Phone repair device intake | invariant | Intake records customer, device, model, serial/IMEI, symptom, condition and passcode policy. | open repair |
-| phonerepair.intake.privacy_notice | Phone repair privacy notice | invariant | Notice explains data handling, access limits, backup responsibility and customer consent. | protect data |
-| phonerepair.intake.condition_photo | Phone condition photo | invariant | Photos document cracks, dents, liquid indicators, missing parts and screen state. | baseline |
-| phonerepair.intake.repair_quote | Phone repair quote | invariant | Quote states diagnosis, parts, labor, risks, warranty and approval. | informed consent |
-| phonerepair.intake.warranty_check | Device warranty check | variant | Check identifies manufacturer, shop, insurance or prior repair coverage. | billing route |
-| phonerepair.diagnostic.power_test | Phone power test | invariant | Test checks charging, boot, battery behavior, buttons and visible error state. | reproduce symptom |
-| phonerepair.diagnostic.screen_test | Screen function test | invariant | Test checks touch, pixels, brightness, cracks, proximity and display response. | common fault |
-| phonerepair.diagnostic.port_test | Charging port test | invariant | Test checks cable fit, debris, charging, data connection and looseness. | port workflow |
-| phonerepair.diagnostic.camera_test | Phone camera test | variant | Test checks front, rear, focus, flash, image artifacts and app access. | verify module |
-| phonerepair.diagnostic.liquid_damage_check | Liquid damage check | variant | Check looks for corrosion, indicators, residue and board risk. | repair risk |
-| phonerepair.parts.part_compatibility | Phone part compatibility | invariant | Compatibility checks model, revision, region, color, connector and feature support. | avoid wrong part |
-| phonerepair.parts.screen_assembly | Screen assembly part | variant | Part may include glass, digitizer, OLED/LCD, frame or sensors. | know replacement scope |
-| phonerepair.parts.battery_part | Phone battery part | variant | Part must match device, capacity, connector, safety and supplier quality. | power component |
-| phonerepair.parts.small_parts | Phone small parts | variant | Small parts include seals, screws, brackets, mesh, adhesive and gaskets. | tiny but critical |
-| phonerepair.parts.parts_inventory | Phone repair parts inventory | invariant | Inventory tracks stock, cost, supplier, quality, defects and returns. | first-visit repair |
-| phonerepair.repair.esd_control | ESD control | invariant | Control uses mats, straps, grounding and handling to reduce static damage. | protect electronics |
-| phonerepair.repair.screw_map | Phone screw map | invariant | Map tracks screw size and location to avoid board or screen damage. | tiny order matters |
-| phonerepair.repair.adhesive_removal | Adhesive removal | invariant | Removal uses heat, tools and care to separate screen or battery without damage. | safe disassembly |
-| phonerepair.repair.battery_safety | Battery safety | invariant | Safety avoids puncture, bending, overheating, swelling or shorting lithium battery. | high-risk component |
-| phonerepair.repair.water_resistance_limit | Water-resistance limit | invariant | Repair may reduce sealing unless tested and restored under controlled process. | set expectation |
-| phonerepair.workflow.screen_replacement | Screen replacement workflow | invariant | Workflow removes damaged assembly, transfers parts if needed, installs, seals and tests. | common repair |
-| phonerepair.workflow.battery_replacement | Battery replacement workflow | invariant | Workflow removes battery, installs compatible part, checks charging and records cycle. | restore runtime |
-| phonerepair.workflow.port_cleaning | Charging port cleaning | variant | Cleaning removes lint or debris without damaging pins or seals. | simple fix |
-| phonerepair.workflow.board_repair_route | Board repair route | variant | Route sends micro-soldering or board-level work to qualified bench or vendor. | specialized work |
-| phonerepair.workflow.data_recovery_route | Data recovery route | variant | Route handles nonbooting device with consent, privacy and realistic limits. | data-sensitive job |
-| phonerepair.test.post_repair_test | Phone post-repair test | invariant | Test confirms repaired function plus core phone, charging, audio, camera and connectivity. | prove repair |
-| phonerepair.test.biometric_test | Biometric function test | variant | Test checks fingerprint or face unlock where repair may affect sensor. | feature validation |
-| phonerepair.test.call_audio_test | Call and audio test | invariant | Test checks speaker, microphone, earpiece, vibration and call path. | phone basics |
-| phonerepair.test.network_test | Phone network test | variant | Test checks Wi-Fi, Bluetooth, cellular detection or SIM recognition as applicable. | connectivity |
-| phonerepair.test.final_cleanup | Device final cleanup | invariant | Cleanup removes adhesive residue, fingerprints, dust and temporary labels. | professional finish |
-| phonerepair.privacy.customer_data_boundary | Customer data boundary | invariant | Boundary limits browsing, copying or viewing personal data beyond repair need and consent. | trust |
-| phonerepair.privacy.passcode_policy | Phone passcode policy | invariant | Policy controls when passcode is needed, stored, avoided or customer-assisted. | privacy control |
-| phonerepair.privacy.data_backup_advice | Backup responsibility notice | invariant | Notice tells customer repair can risk data and backup is customer responsibility unless contracted. | expectation |
-| phonerepair.privacy.device_wipe | Device wipe authorization | variant | Wipe requires explicit customer approval and documentation. | irreversible action |
-| phonerepair.privacy.abandoned_device | Abandoned phone process | invariant | Process handles notice, storage, legal timeline, data privacy and disposal. | close old jobs |
-| phonerepair.billing.invoice | Phone repair invoice | invariant | Invoice lists diagnosis, part, labor, tax, discount, warranty and payment. | close money |
-| phonerepair.billing.deposit | Repair deposit | variant | Deposit reserves part or bench time and defines refund rules. | reduce no-shows |
-| phonerepair.billing.refund | Phone repair refund | variant | Refund handles failed part, customer cancellation, warranty return or goodwill adjustment. | service recovery |
-| phonerepair.warranty.repair_warranty | Phone repair warranty | invariant | Warranty defines covered part, labor, duration, exclusions and claim path. | expectation clarity |
-| phonerepair.warranty.comeback | Phone repair comeback | invariant | Comeback records repeated issue, part failure, workmanship concern and resolution. | quality loop |
-| phonerepair.admin.technician_skill | Phone technician skill record | invariant | Record tracks device families, microsoldering, data privacy, ESD and battery safety competence. | assign work |
-| phonerepair.admin.tool_calibration | Phone repair tool check | variant | Check covers heat plate, microscope, screwdrivers, testers and ESD tools. | reliable bench |
-| phonerepair.metrics.phone_repair_kpi | Phone repair KPI | variant | KPI tracks turnaround, comeback rate, part defects, margin, data incidents and customer reviews. | manage shop |
-| phonerepair.continuity.part_shortage | Phone part shortage process | invariant | Process informs customer, offers alternatives, holds device or cancels with documented choice. | keep trust |
+| phonerepair.intake.device_intake | Приемник устройства для ремонта телефона | invariant | Intake записывает клиента, устройство, модель, серийный номер/IMEI, симптомы, состояние и политику паролей. | открытый ремонт |
+| phonerepair.intake.privacy_notice | Уведомление о конфиденциальности при ремонте телефона | invariant | В уведомлении поясняется обработка данных, ограничения доступа, ответственность за резервное копирование и согласие клиента. | защитить данные |
+| phonerepair.intake.condition_photo | Фото состояния телефона | invariant | На фотографиях зафиксированы трещины, вмятины, индикаторы жидкости, недостающие детали и состояние экрана. | базовый уровень |
+| phonerepair.intake.repair_quote | Стоимость ремонта телефона | invariant | В цитате указаны диагностика, детали, работа, риски, гарантия и одобрение. | информированное согласие |
+| phonerepair.intake.warranty_check | Проверка гарантии на устройство | variant | Проверка определяет производителя, магазин, страховку или покрытие предварительного ремонта. | маршрут выставления счетов |
+| phonerepair.diagnostic.power_test | Проверка мощности телефона | invariant | Тест проверяет зарядку, загрузку, поведение батареи, кнопки и видимое состояние ошибки. | воспроизвести симптом |
+| phonerepair.diagnostic.screen_test | Функциональный тест экрана | invariant | Тест проверяет прикосновение, пиксели, яркость, трещины, близость и реакцию дисплея. | общая ошибка |
+| phonerepair.diagnostic.port_test | Тест зарядного порта | invariant | Тест проверяет посадку кабеля, наличие мусора, зарядку, соединение для передачи данных и надежность крепления. | рабочий процесс порта |
+| phonerepair.diagnostic.camera_test | Тест камеры телефона | variant | Тестовая проверка проверяет переднюю и заднюю часть, фокус, вспышку, артефакты изображения и доступ к приложениям. | проверить модуль |
+| phonerepair.diagnostic.liquid_damage_check | Проверка повреждений жидкостью | variant | Проверьте наличие коррозии, индикаторов, остатков и рисков на плате. | риск ремонта |
+| phonerepair.parts.part_compatibility | Совместимость частей телефона | invariant | Совместимость проверяет модель, версию, регион, цвет, разъем и поддержку функций. | избегайте неправильной части |
+| phonerepair.parts.screen_assembly | Часть экрана в сборе | variant | Деталь может включать стекло, дигитайзер, OLED/LCD, рамку или датчики. | знать объем замены |
+| phonerepair.parts.battery_part | Часть аккумулятора телефона | variant | Деталь должна соответствовать устройству, мощности, разъему, безопасности и качеству поставщика. | силовой компонент |
+| phonerepair.parts.small_parts | Мелкие детали телефона | variant | К мелким деталям относятся уплотнения, винты, кронштейны, сетка, клей и прокладки. | крошечный, но критический |
+| phonerepair.parts.parts_inventory | Инвентаризация запасных частей для ремонта телефонов | invariant | Инвентаризация отслеживает запасы, стоимость, поставщика, качество, дефекты и возвраты. | ремонт с первым выездом |
+| phonerepair.repair.esd_control | ЭСР-контроль | invariant | Control использует коврики, ремни, заземление и манипуляции для уменьшения статического повреждения. | защитить электронику |
+| phonerepair.repair.screw_map | Карта винтов телефона | invariant | Карта отслеживает размер и расположение винтов, чтобы избежать повреждения платы или экрана. | крошечный порядок имеет значение |
+| phonerepair.repair.adhesive_removal | Удаление клея | invariant | При снятии требуется тепло, инструменты и осторожность, чтобы отделить экран или батарею без повреждений. | безопасная разборка |
+| phonerepair.repair.battery_safety | Безопасность аккумулятора | invariant | Безопасность позволяет избежать проколов, изгибов, перегрева, вздутия или короткого замыкания литиевой батареи. | компонент высокого риска |
+| phonerepair.repair.water_resistance_limit | Предел водостойкости | invariant | Ремонт может привести к снижению герметичности, если он не будет проверен и восстановлен в рамках контролируемого процесса. | установить ожидание |
+| phonerepair.workflow.screen_replacement | Процесс замены экрана | invariant | Рабочий процесс удаляет поврежденный узел, при необходимости переносит детали, устанавливает, пломбирует и тестирует. | общий ремонт |
+| phonerepair.workflow.battery_replacement | Порядок замены батареи | invariant | Рабочий процесс: извлечение аккумулятора, установка совместимой детали, проверка зарядки и запись цикла. | восстановить время выполнения |
+| phonerepair.workflow.port_cleaning | Очистка порта зарядки | variant | Очистка удаляет ворс и мусор, не повреждая штифты или уплотнения. | простое решение |
+| phonerepair.workflow.board_repair_route | Маршрут ремонта платы | variant | Route отправляет работы по микропайке или на уровне платы квалифицированному стенду или поставщику. | специализированная работа |
+| phonerepair.workflow.data_recovery_route | Маршрут восстановления данных | variant | Route обрабатывает незагружающееся устройство с согласием, конфиденциальностью и реалистичными ограничениями. | работа, требующая конфиденциальных данных |
+| phonerepair.test.post_repair_test | Проверка телефона после ремонта | invariant | Тест подтверждает отремонтированную работоспособность, а также основной телефон, зарядку, звук, камеру и возможности подключения. | доказать ремонт |
+| phonerepair.test.biometric_test | Биометрический функциональный тест | variant | Тестовая проверка проверяет разблокировку по отпечатку пальца или лицу, где ремонт может повлиять на датчик. | проверка функции |
+| phonerepair.test.call_audio_test | Проверка звонка и звука | invariant | Тест проверяет динамик, микрофон, наушник, вибрацию и путь вызова. | основы телефона |
+| phonerepair.test.network_test | Тест телефонной сети | variant | Тест проверяет Wi-Fi, Bluetooth, обнаружение сотовой связи или распознавание SIM-карты, если применимо. | возможность подключения |
+| phonerepair.test.final_cleanup | Окончательная очистка устройства | invariant | Очистка удаляет остатки клея, отпечатки пальцев, пыль и временные этикетки. | профессиональная отделка |
+| phonerepair.privacy.customer_data_boundary | Граница данных клиента | invariant | Граница ограничивает просмотр, копирование или просмотр личных данных без необходимости восстановления и согласия. | доверять |
+| phonerepair.privacy.passcode_policy | Политика использования кодов доступа к телефону | invariant | Политика контролирует, когда пароль необходим, хранится, избегается или поддерживается клиентом. | контроль конфиденциальности |
+| phonerepair.privacy.data_backup_advice | Уведомление об ответственности за резервное копирование | invariant | В уведомлении говорится, что ремонт клиента может привести к риску данных, а ответственность за резервное копирование лежит на клиенте, если не заключен договор. | ожидание |
+| phonerepair.privacy.device_wipe | Разрешение на удаление данных с устройства | variant | Удаление требует явного одобрения клиента и документации. | необратимое действие |
+| phonerepair.privacy.abandoned_device | Заброшенный телефонный процесс | invariant | Процесс регулирует уведомление, хранение, юридические сроки, конфиденциальность и удаление данных. | закрыть старые рабочие места |
+| phonerepair.billing.invoice | Счет за ремонт телефона | invariant | В счете-фактуре указаны диагностика, детали, работа, налоги, скидки, гарантия и оплата. | закрыть деньги |
+| phonerepair.billing.deposit | Залог за ремонт | variant | Депозит резервирует часть времени или время ожидания и определяет правила возврата. | сократить неявки |
+| phonerepair.billing.refund | Возврат денег за ремонт телефона | variant | Возврат касается неисправной детали, аннулирования заказа клиентом, гарантийного возврата или корректировки деловой репутации. | восстановление службы |
+| phonerepair.warranty.repair_warranty | Гарантия на ремонт телефона | invariant | Гарантия определяет покрываемую деталь, работу, продолжительность, исключения и порядок претензий. | ясность ожиданий |
+| phonerepair.warranty.comeback | Возвращение ремонта телефона | invariant | При возврате фиксируются повторяющиеся проблемы, неисправности деталей, проблемы с качеством изготовления и их решение. | цикл качества |
+| phonerepair.admin.technician_skill | Квалификация телефонного техника | invariant | Запись отслеживает семейства устройств, микропайку, конфиденциальность данных, ESD и компетентность в области безопасности аккумуляторов. | назначать работу |
+| phonerepair.admin.tool_calibration | Проверка инструмента для ремонта телефона | variant | Проверьте чехлы: тепловую пластину, микроскоп, отвертки, тестеры и инструменты для защиты от электростатических разрядов. | надежная скамейка |
+| phonerepair.metrics.phone_repair_kpi | КПИ по ремонту телефонов | variant | KPI отслеживает обороты, скорость возврата, дефекты деталей, прибыль, инциденты с данными и отзывы клиентов. | управлять магазином |
+| phonerepair.continuity.part_shortage | Процесс нехватки запчастей для телефона | invariant | Процесс информирует клиента, предлагает альтернативы, удерживает устройство или отменяет его с документально подтвержденным выбором. | сохранять доверие |

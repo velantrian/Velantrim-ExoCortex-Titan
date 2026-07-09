@@ -10,68 +10,68 @@
 
 | ID | Тип | Суть | Условия / границы | Связи |
 |---|---|---|---|---|
-| `systems.boundary` | MODEL | Граница системы определяет, что включено в анализ, а что считается средой. | Неверная граница меняет вывод. | modeling |
-| `systems.input_output` | MODEL | Система преобразует входы в выходы через процессы и состояния. | Слишком простая схема скрывает feedback. | systems |
-| `systems.state` | TERM | Состояние системы описывает важные переменные в данный момент. | Не все переменные наблюдаемы. | modeling |
-| `systems.stock_flow` | MODEL | Stock — накопление, flow — скорость изменения накопления. | Важно для воды, денег, запасов, населения. | dynamics |
-| `systems.feedback_positive` | MECHANISM | Positive feedback усиливает изменение. | Может вести к росту или runaway. | dynamics |
-| `systems.feedback_negative` | MECHANISM | Negative feedback стабилизирует систему через коррекцию отклонений. | Задержки могут вызвать колебания. | control |
-| `systems.delay` | MECHANISM | Задержка между причиной и эффектом усложняет управление. | Часто вызывает overshoot. | dynamics |
-| `systems.nonlinearity` | PROPERTY | Нелинейность означает, что эффект не пропорционален причине. | Малые изменения могут иметь большой эффект. | math |
-| `systems.threshold` | PROPERTY | Threshold — уровень, после которого поведение системы меняется. | До порога риск может быть незаметен. | risk |
-| `systems.tipping_point` | MODEL | Tipping point — критический переход системы в другой режим. | Точное предсказание часто трудно. | climate |
-| `systems.resilience` | PROPERTY | Resilience — способность системы сохранять или восстанавливать функцию после удара. | Не равно неизменности. | safety |
-| `systems.robustness` | PROPERTY | Robustness — устойчивость к вариациям без отказа. | Может снижать гибкость. | engineering |
-| `systems.redundancy` | DESIGN_PRINCIPLE | Redundancy добавляет запасные элементы для отказоустойчивости. | Увеличивает стоимость и сложность. | reliability |
-| `systems.diversity` | DESIGN_PRINCIPLE | Разнообразие путей и компонентов снижает общий риск одинакового отказа. | Может снижать стандартизацию. | resilience |
-| `systems.modularity` | DESIGN_PRINCIPLE | Модульность ограничивает распространение ошибок и упрощает замену. | Слишком много интерфейсов увеличивает complexity. | architecture |
-| `systems.coupling.tight` | PROPERTY | Tight coupling означает сильную и быструю зависимость компонентов. | Ошибки быстро распространяются. | safety |
-| `systems.coupling.loose` | PROPERTY | Loose coupling даёт буфер между частями системы. | Может снижать эффективность. | design |
-| `systems.complexity.essential_accidental` | DISTINCTION | Essential complexity исходит из задачи; accidental — из плохой реализации. | Важно для software и организаций. | engineering |
-| `systems.emergence` | PHENOMENON | Emergence — свойства целого, не очевидные из отдельных частей. | Не магия, а результат взаимодействий. | complexity |
-| `systems.path_dependence` | MODEL | Path dependence означает, что история выбора ограничивает будущее. | Часто в технологиях и институтах. | history |
-| `systems.lock_in` | FAILURE_MODE | Lock-in удерживает систему в неидеальном стандарте из-за costs switching. | Может быть рыночным или техническим. | economics |
-| `systems.leverage_point` | MODEL | Leverage point — место, где малое изменение даёт большой эффект. | Трудно определить без модели. | strategy |
-| `systems.local_global_optimum` | DISTINCTION | Локальная оптимизация может ухудшить глобальный результат. | Часто в supply chains и бюрократии. | optimization |
-| `systems.constraint_theory` | MODEL | Theory of constraints ищет узкое место, ограничивающее throughput. | После устранения ограничение перемещается. | operations |
-| `systems.tradeoff` | PRINCIPLE | Tradeoff означает, что улучшение одного свойства часто ухудшает другое. | Не все компромиссы неизбежны. | design |
-| `systems.second_order_effect` | MODEL | Вторичные эффекты появляются после прямого результата решения. | Часто недооцениваются. | policy |
-| `systems.unintended_consequence` | FAILURE_MODE | Непреднамеренные последствия возникают из-за сложных связей и стимулов. | Требуют monitoring. | policy |
-| `systems.incentive_alignment` | PRINCIPLE | Система работает лучше, когда стимулы участников совпадают с целью. | Люди оптимизируют то, что измеряется. | governance |
-| `systems.metric_gaming` | FAILURE_MODE | Metric gaming возникает, когда метрика становится целью и искажает поведение. | Goodhart's law. | management |
-| `systems.goodharts_law` | PRINCIPLE | Когда показатель становится целью, он теряет качество показателя. | Нужно использовать multiple signals. | measurement |
-| `systems.risk.hazard_exposure_vulnerability` | MODEL | Риск зависит от опасности, воздействия и уязвимости. | Уменьшать можно любой компонент. | disaster |
-| `systems.risk.expected_value` | MODEL | Expected value умножает вероятность на последствия. | Плохо описывает tail risks. | statistics |
-| `systems.risk.tail` | RISK_MODEL | Tail risk — редкое событие с большим ущербом. | Средние значения скрывают. | finance |
-| `systems.risk.precautionary` | PRINCIPLE | Precautionary principle осторожен при серьёзном риске и неопределённости. | Может конфликтовать с инновациями. | ethics |
-| `systems.risk.fail_safe` | DESIGN_PRINCIPLE | Fail-safe переводит систему в безопасное состояние при отказе. | Требует понимания safe state. | safety |
-| `systems.risk.fail_operational` | DESIGN_PRINCIPLE | Fail-operational сохраняет работу после отказа. | Нужно в авиации, медицине, инфраструктуре. | reliability |
-| `systems.causality.correlation` | DISTINCTION | Корреляция показывает совместное изменение, но не причину. | Может быть confounding. | statistics |
-| `systems.causality.confounder` | TERM | Confounder влияет и на предполагаемую причину, и на результат. | Искажает наблюдательные выводы. | causal |
-| `systems.causality.mediator` | TERM | Mediator передаёт часть причинного эффекта от X к Y. | Не путать с confounder. | causal |
-| `systems.causality.collider` | TERM | Collider — переменная, на которую влияют две причины; условие на ней создаёт ложную связь. | Частая ошибка анализа. | causal |
-| `systems.causality.dag` | MODEL | DAG показывает направленные причинные связи без циклов. | Упрощает реальность. | causal_graph |
-| `systems.causality.intervention` | METHOD | Интервенция спрашивает, что будет, если изменить X принудительно. | Отличается от наблюдения. | causal |
-| `systems.causality.counterfactual` | METHOD | Контрфакт спрашивает, что было бы при другом условии. | Требует causal model. | reasoning |
-| `systems.model.abstraction` | PRINCIPLE | Абстракция оставляет важное и убирает детали. | Можно убрать слишком много. | modeling |
-| `systems.model.assumption` | TERM | Assumption — принятое условие модели. | Должно быть явно указано. | epistemology |
-| `systems.model.sensitivity` | METHOD | Sensitivity analysis проверяет, как результат меняется от assumptions. | Выявляет fragile conclusions. | modeling |
-| `systems.model.scenario` | METHOD | Scenario planning сравнивает несколько возможных будущих. | Не является предсказанием. | strategy |
-| `systems.model.monte_carlo` | METHOD | Monte Carlo моделирует неопределённость через множество случайных прогонов. | Зависит от распределений входов. | statistics |
-| `systems.model.agent_based` | METHOD | Agent-based model строит поведение системы из действий агентов. | Требует правил агентов и валидации. | simulation |
-| `systems.model.system_dynamics` | METHOD | System dynamics моделирует stocks, flows, feedback and delays. | Полезно для policy и operations. | simulation |
-| `systems.model.digital_twin` | SYSTEM | Digital twin связывает модель объекта с данными реального состояния. | Нужны sensors, calibration, governance. | industry |
-| `systems.optimization.objective_function` | TERM | Objective function задаёт, что оптимизируется. | Неправильная цель портит решение. | math |
-| `systems.optimization.constraint` | TERM | Constraint ограничивает допустимые решения. | Игнорирование constraints делает решение нереальным. | math |
-| `systems.optimization.pareto_front` | MODEL | Pareto front показывает решения, где нельзя улучшить одно без ухудшения другого. | Помогает tradeoff analysis. | decision |
-| `systems.decision.criteria_matrix` | TOOL | Матрица критериев сравнивает варианты по нескольким признакам. | Веса критериев субъективны. | decision |
-| `systems.decision.pre_mortem` | METHOD | Pre-mortem заранее спрашивает, почему проект мог провалиться. | Помогает найти риски до старта. | project |
-| `systems.decision.reversibility` | PRINCIPLE | Обратимые решения можно принимать быстрее, необратимые требуют проверки. | Степень обратимости надо оценивать честно. | strategy |
-| `systems.learning.feedback_loop` | SYSTEM | Система учится, если собирает feedback и меняет поведение. | Feedback может быть шумным или запаздывать. | learning |
-| `systems.learning.double_loop` | METHOD | Double-loop learning пересматривает не только действия, но и правила/цели. | Требует психологической безопасности. | organization |
-| `systems.knowledge.unknown_unknowns` | RISK | Unknown unknowns — неизвестные неизвестные, не включённые в модель. | Нужны разведка, эксперименты, резервы. | epistemology |
-| `systems.knowledge.map_territory` | PRINCIPLE | Модель или карта не равна реальности. | Полезная модель всё равно неполна. | epistemology |
-| `systems.explanation.mechanism` | PRINCIPLE | Хорошее объяснение показывает механизм, а не только совпадение. | Механизм должен иметь evidence. | science |
+| `systems.boundary` | МОДЕЛЬ | Граница системы определяет, что включено в анализ, а что считается средой. | Неверная граница меняет вывод. | моделирование |
+| `systems.input_output` | МОДЕЛЬ | Система преобразует входы в выходы через процессы и состояния. | Слишком простая схема скрывает feedback. | системы |
+| `systems.state` | СРОК | Состояние системы описывает важные переменные в данный момент. | Не все переменные наблюдаемы. | моделирование |
+| `systems.stock_flow` | МОДЕЛЬ | Stock — накопление, flow — скорость изменения накопления. | Важно для воды, денег, запасов, населения. | динамика |
+| `systems.feedback_positive` | МЕХАНИЗМ | Positive feedback усиливает изменение. | Может вести к росту или runaway. | динамика |
+| `systems.feedback_negative` | МЕХАНИЗМ | Negative feedback стабилизирует систему через коррекцию отклонений. | Задержки могут вызвать колебания. | контроль |
+| `systems.delay` | МЕХАНИЗМ | Задержка между причиной и эффектом усложняет управление. | Часто вызывает overshoot. | динамика |
+| `systems.nonlinearity` | СВОЙСТВО | Нелинейность означает, что эффект не пропорционален причине. | Малые изменения могут иметь большой эффект. | математика |
+| `systems.threshold` | СВОЙСТВО | Threshold — уровень, после которого поведение системы меняется. | До порога риск может быть незаметен. | риск |
+| `systems.tipping_point` | МОДЕЛЬ | Tipping point — критический переход системы в другой режим. | Точное предсказание часто трудно. | климат |
+| `systems.resilience` | СВОЙСТВО | Resilience — способность системы сохранять или восстанавливать функцию после удара. | Не равно неизменности. | безопасность |
+| `systems.robustness` | СВОЙСТВО | Robustness — устойчивость к вариациям без отказа. | Может снижать гибкость. | инженерия |
+| `systems.redundancy` | ДИЗАЙН_ПРИНЦИПЛЕ | Redundancy добавляет запасные элементы для отказоустойчивости. | Увеличивает стоимость и сложность. | надежность |
+| `systems.diversity` | ДИЗАЙН_ПРИНЦИПЛЕ | Разнообразие путей и компонентов снижает общий риск одинакового отказа. | Может снижать стандартизацию. | устойчивость |
+| `systems.modularity` | ДИЗАЙН_ПРИНЦИПЛЕ | Модульность ограничивает распространение ошибок и упрощает замену. | Слишком много интерфейсов увеличивает complexity. | архитектура |
+| `systems.coupling.tight` | СВОЙСТВО | Tight coupling означает сильную и быструю зависимость компонентов. | Ошибки быстро распространяются. | безопасность |
+| `systems.coupling.loose` | СВОЙСТВО | Loose coupling даёт буфер между частями системы. | Может снижать эффективность. | дизайн |
+| `systems.complexity.essential_accidental` | РАЗЛИЧИЕ | Essential complexity исходит из задачи; accidental — из плохой реализации. | Важно для software и организаций. | инженерия |
+| `systems.emergence` | ФЕНОМЕН | Emergence — свойства целого, не очевидные из отдельных частей. | Не магия, а результат взаимодействий. | сложность |
+| `systems.path_dependence` | МОДЕЛЬ | Path dependence означает, что история выбора ограничивает будущее. | Часто в технологиях и институтах. | история |
+| `systems.lock_in` | FAILURE_MODE | Lock-in удерживает систему в неидеальном стандарте из-за costs switching. | Может быть рыночным или техническим. | экономика |
+| `systems.leverage_point` | МОДЕЛЬ | Leverage point — место, где малое изменение даёт большой эффект. | Трудно определить без модели. | стратегия |
+| `systems.local_global_optimum` | РАЗЛИЧИЕ | Локальная оптимизация может ухудшить глобальный результат. | Часто в supply chains и бюрократии. | оптимизация |
+| `systems.constraint_theory` | МОДЕЛЬ | Theory of constraints ищет узкое место, ограничивающее throughput. | После устранения ограничение перемещается. | операции |
+| `systems.tradeoff` | ПРИНЦИП | Tradeoff означает, что улучшение одного свойства часто ухудшает другое. | Не все компромиссы неизбежны. | дизайн |
+| `systems.second_order_effect` | МОДЕЛЬ | Вторичные эффекты появляются после прямого результата решения. | Часто недооцениваются. | политика |
+| `systems.unintended_consequence` | FAILURE_MODE | Непреднамеренные последствия возникают из-за сложных связей и стимулов. | Требуют monitoring. | политика |
+| `systems.incentive_alignment` | ПРИНЦИП | Система работает лучше, когда стимулы участников совпадают с целью. | Люди оптимизируют то, что измеряется. | управление |
+| `systems.metric_gaming` | FAILURE_MODE | Metric gaming возникает, когда метрика становится целью и искажает поведение. | Goodhart's law. | управление |
+| `systems.goodharts_law` | ПРИНЦИП | Когда показатель становится целью, он теряет качество показателя. | Нужно использовать multiple signals. | измерение |
+| `systems.risk.hazard_exposure_vulnerability` | МОДЕЛЬ | Риск зависит от опасности, воздействия и уязвимости. | Уменьшать можно любой компонент. | катастрофа |
+| `systems.risk.expected_value` | МОДЕЛЬ | Expected value умножает вероятность на последствия. | Плохо описывает tail risks. | статистика |
+| `systems.risk.tail` | РИСК_МОДЕЛЬ | Tail risk — редкое событие с большим ущербом. | Средние значения скрывают. | финансы |
+| `systems.risk.precautionary` | ПРИНЦИП | Precautionary principle осторожен при серьёзном риске и неопределённости. | Может конфликтовать с инновациями. | этика |
+| `systems.risk.fail_safe` | ДИЗАЙН_ПРИНЦИПЛЕ | Fail-safe переводит систему в безопасное состояние при отказе. | Требует понимания safe state. | безопасность |
+| `systems.risk.fail_operational` | ДИЗАЙН_ПРИНЦИПЛЕ | Fail-operational сохраняет работу после отказа. | Нужно в авиации, медицине, инфраструктуре. | надежность |
+| `systems.causality.correlation` | РАЗЛИЧИЕ | Корреляция показывает совместное изменение, но не причину. | Может быть confounding. | статистика |
+| `systems.causality.confounder` | СРОК | Confounder влияет и на предполагаемую причину, и на результат. | Искажает наблюдательные выводы. | причинный |
+| `systems.causality.mediator` | СРОК | Mediator передаёт часть причинного эффекта от X к Y. | Не путать с confounder. | причинный |
+| `systems.causality.collider` | СРОК | Collider — переменная, на которую влияют две причины; условие на ней создаёт ложную связь. | Частая ошибка анализа. | причинный |
+| `systems.causality.dag` | МОДЕЛЬ | DAG показывает направленные причинные связи без циклов. | Упрощает реальность. | причинный_граф |
+| `systems.causality.intervention` | МЕТОД | Интервенция спрашивает, что будет, если изменить X принудительно. | Отличается от наблюдения. | причинный |
+| `systems.causality.counterfactual` | МЕТОД | Контрфакт спрашивает, что было бы при другом условии. | Требует causal model. | рассуждение |
+| `systems.model.abstraction` | ПРИНЦИП | Абстракция оставляет важное и убирает детали. | Можно убрать слишком много. | моделирование |
+| `systems.model.assumption` | СРОК | Assumption — принятое условие модели. | Должно быть явно указано. | эпистемология |
+| `systems.model.sensitivity` | МЕТОД | Sensitivity analysis проверяет, как результат меняется от assumptions. | Выявляет fragile conclusions. | моделирование |
+| `systems.model.scenario` | МЕТОД | Scenario planning сравнивает несколько возможных будущих. | Не является предсказанием. | стратегия |
+| `systems.model.monte_carlo` | МЕТОД | Monte Carlo моделирует неопределённость через множество случайных прогонов. | Зависит от распределений входов. | статистика |
+| `systems.model.agent_based` | МЕТОД | Agent-based model строит поведение системы из действий агентов. | Требует правил агентов и валидации. | моделирование |
+| `systems.model.system_dynamics` | МЕТОД | Системная динамика моделирует запасы, потоки, обратную связь и задержки. | Полезно для policy и operations. | моделирование |
+| `systems.model.digital_twin` | СИСТЕМА | Digital twin связывает модель объекта с данными реального состояния. | Нужны sensors, calibration, governance. | промышленность |
+| `systems.optimization.objective_function` | СРОК | Objective function задаёт, что оптимизируется. | Неправильная цель портит решение. | математика |
+| `systems.optimization.constraint` | СРОК | Constraint ограничивает допустимые решения. | Игнорирование constraints делает решение нереальным. | математика |
+| `systems.optimization.pareto_front` | МОДЕЛЬ | Pareto front показывает решения, где нельзя улучшить одно без ухудшения другого. | Помогает tradeoff analysis. | решение |
+| `systems.decision.criteria_matrix` | ИНСТРУМЕНТ | Матрица критериев сравнивает варианты по нескольким признакам. | Веса критериев субъективны. | решение |
+| `systems.decision.pre_mortem` | МЕТОД | Pre-mortem заранее спрашивает, почему проект мог провалиться. | Помогает найти риски до старта. | проект |
+| `systems.decision.reversibility` | ПРИНЦИП | Обратимые решения можно принимать быстрее, необратимые требуют проверки. | Степень обратимости надо оценивать честно. | стратегия |
+| `systems.learning.feedback_loop` | СИСТЕМА | Система учится, если собирает feedback и меняет поведение. | Feedback может быть шумным или запаздывать. | обучение |
+| `systems.learning.double_loop` | МЕТОД | Double-loop learning пересматривает не только действия, но и правила/цели. | Требует психологической безопасности. | организация |
+| `systems.knowledge.unknown_unknowns` | РИСК | Unknown unknowns — неизвестные неизвестные, не включённые в модель. | Нужны разведка, эксперименты, резервы. | эпистемология |
+| `systems.knowledge.map_territory` | ПРИНЦИП | Модель или карта не равна реальности. | Полезная модель всё равно неполна. | эпистемология |
+| `systems.explanation.mechanism` | ПРИНЦИП | Хорошее объяснение показывает механизм, а не только совпадение. | Механизм должен иметь evidence. | наука |
 
 ---
 

@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| treeops.inventory.tree_record | Urban tree record | invariant | Record stores tree ID, species, size, location, ownership, condition and maintenance history. | manage trees |
-| treeops.inventory.planting_site | Tree planting site record | invariant | Site records available space, soil, utilities, sidewalk constraints, visibility and planting suitability. | choose site |
-| treeops.inventory.tree_risk_zone | Tree risk zone | variant | Zone identifies targets such as roads, sidewalks, buildings, playgrounds or power lines near tree. | assess risk |
-| treeops.inventory.vacant_tree_pit | Vacant tree pit record | variant | Record tracks empty planting space, stump status, soil condition and replanting priority. | plan planting |
-| treeops.intake.resident_tree_request | Resident tree service request | invariant | Request captures pruning, removal, planting, roots, pests, storm damage or visibility concern. | start workflow |
-| treeops.intake.emergency_tree_call | Emergency tree call | invariant | Call reports fallen limb, blocked road, power conflict, split trunk or immediate hazard. | triage danger |
-| treeops.intake.duplicate_tree_request | Duplicate tree request handling | variant | Handling links repeated resident reports to existing work order or inspection record. | avoid duplication |
-| treeops.inspection.tree_condition_assessment | Tree condition assessment | invariant | Assessment reviews crown, trunk, roots, lean, decay, pests, wounds and site stress. | decide action |
-| treeops.inspection.risk_assessment | Tree risk assessment | invariant | Assessment combines likelihood of failure, part size, target occupancy and consequences. | prioritize safety |
-| treeops.inspection.pest_disease_check | Tree pest and disease check | variant | Check observes insects, fungal signs, dieback, cankers, boring holes or leaf symptoms. | manage health |
-| treeops.inspection.sidewalk_root_conflict | Sidewalk root conflict inspection | variant | Inspection evaluates root uplift, tree stability, sidewalk access and repair options. | balance assets |
-| treeops.pruning.clearance_pruning | Tree clearance pruning | invariant | Pruning clears roads, sidewalks, signs, signals, buildings and streetlights within standards. | maintain clearance |
-| treeops.pruning.structural_pruning | Tree structural pruning | invariant | Pruning improves branch spacing, removes weak attachments and develops stable form. | long-term health |
-| treeops.pruning.deadwood_removal | Tree deadwood removal | invariant | Removal takes dead, broken or hanging branches out of crown to reduce hazard. | reduce risk |
-| treeops.pruning.line_clearance_coordination | Line clearance coordination | variant | Coordination handles pruning near electric, telecom or service wires with proper owner roles. | avoid hazards |
-| treeops.removal.tree_removal_order | Tree removal order | invariant | Order authorizes removal based on risk, death, disease, conflict or construction decision. | remove tree |
-| treeops.removal.stump_grinding_order | Stump grinding order | invariant | Order removes stump to safe grade and prepares site for restoration or planting. | finish removal |
-| treeops.removal.tree_replacement_rule | Tree replacement rule | variant | Rule defines whether, where and when removed public tree must be replaced. | preserve canopy |
-| treeops.planting.species_selection | Urban tree species selection | invariant | Selection matches species to site space, climate, soil, utilities, pests and diversity goals. | plant wisely |
-| treeops.planting.planting_work_order | Tree planting work order | invariant | Order specifies species, nursery stock, site prep, staking, mulch, watering and warranty. | install tree |
-| treeops.planting.establishment_watering | Tree establishment watering | variant | Watering supports new trees through first seasons based on weather, soil and species. | improve survival |
-| treeops.planting.mulch_ring | Tree mulch ring | variant | Mulch moderates soil moisture, protects roots and reduces mower or trimmer damage. | support health |
-| treeops.storm.fallen_limb_response | Fallen limb response | invariant | Response removes limb from road, sidewalk, vehicle, structure or park and assesses tree. | restore safety |
-| treeops.storm.fallen_tree_response | Fallen tree response | invariant | Response secures area, coordinates utilities, clears access, documents damage and schedules removal. | emergency recovery |
-| treeops.storm.hanger_branch | Hanger branch hazard | invariant | Hazard is broken branch lodged in crown that can fall unpredictably. | remove hazard |
-| treeops.storm.debris_staging | Tree storm debris staging | variant | Staging collects limbs and logs for chipping, hauling, reuse or disposal. | organize cleanup |
-| treeops.notices.resident_notice | Urban forestry resident notice | invariant | Notice informs resident of inspection result, planned work, restrictions, timing and contact. | communicate action |
-| treeops.notices.removal_notice | Tree removal notice | variant | Notice explains removal reason, appeal path if any, replacement and schedule. | transparent decision |
-| treeops.notices.planting_notice | Tree planting notice | variant | Notice tells adjacent resident species, care expectations, watering and protection needs. | support establishment |
-| treeops.workorders.pruning_work_order | Tree pruning work order | invariant | Order records tree ID, pruning type, priority, crew, equipment, traffic control and closeout. | execute pruning |
-| treeops.workorders.risk_mitigation_order | Tree risk mitigation order | invariant | Order specifies pruning, cabling, monitoring, removal, access control or target reduction. | reduce risk |
-| treeops.workorders.contractor_assignment | Forestry contractor assignment | variant | Assignment sends tree work to contractor with scope, standards, schedule and verification. | expand capacity |
-| treeops.safety.chainsaw_safety | Urban forestry chainsaw safety | invariant | Safety covers PPE, drop zone, saw handling, kickback, communication and emergency plan. | protect crew |
-| treeops.safety.aerial_tree_work | Aerial tree work safety | invariant | Safety covers bucket truck, climbing, rigging, fall protection, traffic and overhead hazards. | safe access |
-| treeops.safety.traffic_control | Tree crew traffic control | invariant | Control protects workers and road users during pruning, removal, chipping or loading. | work safely |
-| treeops.data.photo_documentation | Tree work photo documentation | invariant | Photos show condition, defect, work performed, stump, planting and site restoration. | evidence |
-| treeops.data.gis_canopy_update | Urban forestry GIS canopy update | variant | Update records tree status, new planting, removal, species correction or work history. | keep inventory |
-| treeops.reporting.work_backlog_report | Urban forestry work backlog report | invariant | Report summarizes open requests by type, priority, age, district and crew assignment. | manage demand |
-| treeops.reporting.canopy_change_report | Urban canopy change report | variant | Report tracks removals, plantings, survival, species diversity and canopy goals. | monitor canopy |
-| treeops.metrics.request_cycle_time | Tree request cycle time KPI | invariant | KPI measures time from request to inspection, decision and work completion. | improve service |
-| treeops.metrics.planting_survival_rate | Tree planting survival rate KPI | variant | KPI tracks newly planted trees alive after establishment period by species, contractor and site. | improve planting |
-| treeops.coordination.sidewalk_program | Urban forestry sidewalk coordination | variant | Coordination aligns root, pruning, removal or planting decisions with sidewalk repairs. | reduce conflict |
-| treeops.coordination.utility_notification | Tree work utility notification | variant | Notification informs utility owner of work near lines, service drops, poles or underground plant. | prevent incident |
-| treeops.close.work_order_closeout | Urban forestry work order closeout | invariant | Closeout confirms work done, debris removed, photos stored, inventory updated and notice complete. | finish case |
+| treeops.inventory.tree_record | Рекорд городских деревьев | invariant | Запись хранит идентификатор дерева, виды, размер, местоположение, право собственности, состояние и историю обслуживания. | управлять деревьями |
+| treeops.inventory.planting_site | Запись о месте посадки деревьев | invariant | На участке фиксируются доступное пространство, почва, инженерные коммуникации, ограничения на тротуарах, видимость и пригодность посадок. | выбрать сайт |
+| treeops.inventory.tree_risk_zone | Зона риска деревьев | variant | Зона определяет такие цели, как дороги, тротуары, здания, игровые площадки или линии электропередачи рядом с деревом. | оценить риск |
+| treeops.inventory.vacant_tree_pit | Запись о свободной древесной яме | variant | Запись отслеживает пустое место для посадки, состояние пня, состояние почвы и приоритет пересадки. | план посадки |
+| treeops.intake.resident_tree_request | Запрос на обслуживание резидентных деревьев | invariant | Запрос охватывает обрезку, удаление, посадку, корни, вредителей, ущерб от урагана или проблемы с видимостью. | начать рабочий процесс |
+| treeops.intake.emergency_tree_call | Экстренный вызов дерева | invariant | Вызов сообщает об упавшей конечности, заблокированной дороге, конфликте электропитания, расщепленном багажнике или непосредственной опасности. | сортировка опасности |
+| treeops.intake.duplicate_tree_request | Обработка повторяющихся запросов дерева | variant | Обработка связывает повторяющиеся отчеты резидентов с существующими нарядами на работу или протоколами проверок. | избегать дублирования |
+| treeops.inspection.tree_condition_assessment | Оценка состояния деревьев | invariant | При оценке рассматриваются крона, ствол, корни, сухость, гниение, вредители, раны и стресс на месте. | решить действие |
+| treeops.inspection.risk_assessment | Оценка риска деревьев | invariant | Оценка сочетает в себе вероятность отказа, размер детали, целевую занятость и последствия. | приоритет безопасности |
+| treeops.inspection.pest_disease_check | Проверка деревьев на вредителей и болезней | variant | При проверке наблюдаются насекомые, грибковые признаки, отмирание, язвы, просверленные отверстия или симптомы листьев. | управлять здоровьем |
+| treeops.inspection.sidewalk_root_conflict | Проверка корневого конфликта на тротуаре | variant | В ходе проверки оценивается подъем корней, устойчивость дерева, доступ к тротуару и варианты ремонта. | Балансовые активы |
+| treeops.pruning.clearance_pruning | Обрезка деревьев | invariant | В ходе обрезки очищаются дороги, тротуары, знаки, сигналы, здания и уличные фонари в соответствии со стандартами. | поддерживать зазор |
+| treeops.pruning.structural_pruning | Структурная обрезка деревьев | invariant | Обрезка улучшает расстояние между ветвями, удаляет слабые прикрепления и развивает устойчивую форму. | долгосрочное здоровье |
+| treeops.pruning.deadwood_removal | Удаление валежника | invariant | При удалении из кроны удаляются мертвые, сломанные или свисающие ветви, чтобы снизить опасность. | снизить риск |
+| treeops.pruning.line_clearance_coordination | Координация зазора линии | variant | Координация обеспечивает обрезку вблизи электрических, телекоммуникационных или служебных проводов с соблюдением соответствующих ролей владельца. | избегать опасностей |
+| treeops.removal.tree_removal_order | Порядок удаления деревьев | invariant | Приказ разрешает удаление на основании риска, смерти, болезни, конфликта или строительного решения. | удалить дерево |
+| treeops.removal.stump_grinding_order | Порядок измельчения пней | invariant | Приказ удаляет пень до безопасного уровня и подготавливает участок к реставрации или посадке растений. | завершить удаление |
+| treeops.removal.tree_replacement_rule | Правило замены дерева | variant | Правило определяет, необходимо ли, где и когда заменить удаленное публичное дерево. | сохранить навес |
+| treeops.planting.species_selection | Выбор городских пород деревьев | invariant | Выбор сопоставляет виды с пространством участка, климатом, почвой, коммунальными услугами, вредителями и целями разнообразия. | сажать с умом |
+| treeops.planting.planting_work_order | Порядок работ по посадке деревьев | invariant | В заказе указаны виды, поголовье питомника, подготовка участка, размещение кольев, мульча, полив и гарантия. | установить дерево |
+| treeops.planting.establishment_watering | Полив деревьев | variant | Полив поддерживает новые деревья в течение первых сезонов в зависимости от погоды, почвы и видов. | улучшить выживаемость |
+| treeops.planting.mulch_ring | Кольцо мульчи для деревьев | variant | Мульча снижает влажность почвы, защищает корни и уменьшает повреждение газонокосилки или триммера. | поддерживать здоровье |
+| treeops.storm.fallen_limb_response | Реакция на упавшую конечность | invariant | В ответ удаляют ветки с дороги, тротуара, транспортного средства, строения или парка и оценивают дерево. | восстановить безопасность |
+| treeops.storm.fallen_tree_response | Реакция на упавшее дерево | invariant | Служба реагирования обеспечивает безопасность территории, координирует коммунальные услуги, освобождает доступ, документирует повреждения и планирует удаление. | аварийное восстановление |
+| treeops.storm.hanger_branch | Опасность вешалки | invariant | Опасность представляет собой застрявшую в кроне сломанную ветку, которая может непредсказуемо упасть. | устранить опасность |
+| treeops.storm.debris_staging | Постановка мусора от урагана деревьев | variant | Staging собирает ветки и бревна для измельчения, перевозки, повторного использования или утилизации. | организовать уборку |
+| treeops.notices.resident_notice | Уведомление жителя городского лесничества | invariant | Уведомление информирует жителя о результатах проверки, запланированных работах, ограничениях, сроках и контактах. | сообщить о действии |
+| treeops.notices.removal_notice | Уведомление об удалении деревьев | variant | В уведомлении объясняется причина удаления, порядок апелляции, если таковая имеется, замена и график. | прозрачное решение |
+| treeops.notices.planting_notice | Уведомление о посадке деревьев | variant | В уведомлении указаны соседние виды, ожидания по уходу, потребности в поливе и защите. | учреждение поддержки |
+| treeops.workorders.pruning_work_order | Порядок работ по обрезке деревьев | invariant | Идентификатор дерева заказов, тип обрезки, приоритет, экипаж, оборудование, управление движением и закрытие. | выполнить обрезку |
+| treeops.workorders.risk_mitigation_order | Приказ о снижении риска деревьев | invariant | В заказе указывается обрезка, прокладка кабелей, мониторинг, удаление, контроль доступа или целевое сокращение. | снизить риск |
+| treeops.workorders.contractor_assignment | Назначение подрядчика лесного хозяйства | variant | При назначении подрядчику отправляется дерево работ с объемом, стандартами, графиком и проверкой. | расширять возможности |
+| treeops.safety.chainsaw_safety | Безопасность бензопилы в городском лесном хозяйстве | invariant | Безопасность охватывает СИЗ, зону падения, обращение с пилой, отдачу, связь и план действий в чрезвычайной ситуации. | защитить экипаж |
+| treeops.safety.aerial_tree_work | Безопасность работы с воздушными деревьями | invariant | Безопасность охватывает автовышку, подъем, такелаж, защиту от падения, дорожное движение и опасности над головой. | безопасный доступ |
+| treeops.safety.traffic_control | Управление дорожным движением бригады деревьев | invariant | Система контроля защищает рабочих и участников дорожного движения во время обрезки, удаления, измельчения или погрузки. | работать безопасно |
+| treeops.data.photo_documentation | Фотодокументация работы с деревом | invariant | На фотографиях видно состояние, дефект, выполненные работы, пень, посадки и восстановление участка. | доказательство |
+| treeops.data.gis_canopy_update | Обновление ГИС-полога городского лесного хозяйства | variant | Обновление записей о состоянии деревьев, новых посадках, удалении, исправлении видов или истории работ. | держать инвентарь |
+| treeops.reporting.work_backlog_report | Отчет о невыполненных работах в городском лесном хозяйстве | invariant | В отчете суммируются открытые запросы по типу, приоритету, возрасту, району и назначению экипажа. | управлять спросом |
+| treeops.reporting.canopy_change_report | Отчет об изменении городского навеса | variant | В отчете отслеживаются вывозы, посадки, выживание, видовое разнообразие и цели полога. | навес для монитора |
+| treeops.metrics.request_cycle_time | KPI времени цикла запроса дерева | invariant | KPI измеряет время от запроса до проверки, принятия решения и завершения работы. | улучшить обслуживание |
+| treeops.metrics.planting_survival_rate | KPI приживаемости посадок деревьев | variant | KPI отслеживает живые вновь посаженные деревья после периода приживления по видам, подрядчикам и участкам. | улучшить посадки |
+| treeops.coordination.sidewalk_program | Координация городских лесных тротуаров | variant | Координация позволяет согласовывать решения по укоренению, обрезке, удалению или посадке растений с ремонтом тротуаров. | уменьшить конфликт |
+| treeops.coordination.utility_notification | Уведомление утилиты работы с деревом | variant | Уведомление информирует владельца коммунального предприятия о работах вблизи линий, линий обслуживания, опор или подземных электростанций. | предотвратить инцидент |
+| treeops.close.work_order_closeout | Закрытие заказа на выполнение работ в городском лесном хозяйстве | invariant | Закрытие подтверждает, что работа выполнена, мусор удален, фотографии сохранены, инвентарь обновлен и уведомление заполнено. | закончить дело |

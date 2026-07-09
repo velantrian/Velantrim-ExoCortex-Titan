@@ -120,13 +120,28 @@ class AsyncSQLiteStore:
                 return await loop.run_in_executor(None, lambda: fn(*args, **kwargs))
 
     async def _aiosqlite_store_fact(self, conn, fact) -> None:
+        # FIX P0: INSERT OR REPLACE в SQLite = DELETE + INSERT, что вызывает
+        # ON DELETE CASCADE в таблице relations (миграция 008) → все рёбра факта
+        # теряются при обновлении. Заменено на INSERT ... ON CONFLICT UPSERT.
         q = """
-            INSERT OR REPLACE INTO facts
+            INSERT INTO facts
                 (fact_id, claim, source, confidence, epistemic_state,
                  created_at, updated_at, metadata, history,
                  t_event_valid_start, t_event_valid_end,
                  t_ingestion_start, t_ingestion_end)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(fact_id) DO UPDATE SET
+                claim               = excluded.claim,
+                source              = excluded.source,
+                confidence          = excluded.confidence,
+                epistemic_state     = excluded.epistemic_state,
+                updated_at          = excluded.updated_at,
+                metadata            = excluded.metadata,
+                history             = excluded.history,
+                t_event_valid_start = excluded.t_event_valid_start,
+                t_event_valid_end   = excluded.t_event_valid_end,
+                t_ingestion_start   = excluded.t_ingestion_start,
+                t_ingestion_end     = excluded.t_ingestion_end
         """
         await conn.execute(q, (
             fact.get("fact_id"),
@@ -166,13 +181,27 @@ class AsyncSQLiteStore:
         return [dict(r) for r in rows]
 
     async def _aiosqlite_store_batch(self, conn, facts: list) -> None:
+        # FIX P0: INSERT OR REPLACE заменено на UPSERT (та же причина что в store_fact:
+        # DELETE + INSERT → CASCADE удаляет relations).
         q = """
-            INSERT OR REPLACE INTO facts
+            INSERT INTO facts
                 (fact_id, claim, source, confidence, epistemic_state,
                  created_at, updated_at, metadata, history,
                  t_event_valid_start, t_event_valid_end,
                  t_ingestion_start, t_ingestion_end)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(fact_id) DO UPDATE SET
+                claim               = excluded.claim,
+                source              = excluded.source,
+                confidence          = excluded.confidence,
+                epistemic_state     = excluded.epistemic_state,
+                updated_at          = excluded.updated_at,
+                metadata            = excluded.metadata,
+                history             = excluded.history,
+                t_event_valid_start = excluded.t_event_valid_start,
+                t_event_valid_end   = excluded.t_event_valid_end,
+                t_ingestion_start   = excluded.t_ingestion_start,
+                t_ingestion_end     = excluded.t_ingestion_end
         """
         rows = [
             (

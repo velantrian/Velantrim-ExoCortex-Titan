@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| smbrecoveryops.intake.request_source | request source | RECORD | Source records business owner, chamber, hotline, lender, agency, nonprofit or outreach. | Shows entry path. |
-| smbrecoveryops.intake.business_profile | business profile | RECORD | Profile captures business name, owner, location, sector, employees and contact. | Defines applicant. |
-| smbrecoveryops.intake.operating_status | operating status | RECORD | Status distinguishes open, limited, closed, displaced, online-only or relocating. | Shows disruption. |
-| smbrecoveryops.intake.urgency | urgency model | MODEL | Urgency weighs payroll, rent, inventory loss, closure length, debt and community service role. | Prioritizes help. |
-| smbrecoveryops.damage.physical_damage | physical damage | RECORD | Damage record captures building, equipment, inventory, vehicles, utilities and access. | Documents loss. |
-| smbrecoveryops.damage.photo_evidence | photo evidence | RECORD | Photos document damaged areas, equipment, inventory and exterior context when allowed. | Supports claims. |
-| smbrecoveryops.damage.estimate | repair estimate | RECORD | Estimate records vendor, scope, cost, assumptions and date. | Supports funding. |
-| smbrecoveryops.damage.access_issue | access issue | CONSTRAINT | Access issue records road closure, unsafe building, landlord restriction or utility outage. | Explains closure. |
-| smbrecoveryops.revenue.revenue_loss | revenue loss | RECORD | Loss compares pre-disaster and post-disaster sales, bookings or contracts. | Shows economic impact. |
-| smbrecoveryops.revenue.cashflow | cashflow need | MODEL | Cashflow need weighs expenses, payroll, rent, inventory and expected reopening date. | Targets support. |
-| smbrecoveryops.revenue.payroll | payroll pressure | RECORD | Payroll record captures employees, missed payroll, reduced hours or layoffs. | Guides workforce aid. |
-| smbrecoveryops.revenue.records_gap | records gap | RECORD | Gap notes missing POS, bank, tax, invoice or bookkeeping records. | Directs document help. |
-| smbrecoveryops.insurance.policy_info | policy information | RECORD | Policy captures carrier, number, coverage type, deductible and claim contact. | Starts claim coordination. |
-| smbrecoveryops.insurance.claim_status | claim status | RECORD | Status records filed, adjuster assigned, paid, denied, delayed or not covered. | Shows funding path. |
-| smbrecoveryops.insurance.denial_reason | denial reason | RECORD | Denial records exclusion, deductible, documentation gap or coverage limit. | Guides appeal/referral. |
-| smbrecoveryops.insurance.duplication | duplication check | QUALITY_CHECK | Assistance review checks insurance, grants, loans and donations overlap. | Prevents duplicate benefits. |
-| smbrecoveryops.loans.loan_screen | loan screen | MODEL | Screen checks interest tolerance, debt capacity, collateral, credit and eligibility. | Routes loan options. |
-| smbrecoveryops.loans.sba_referral | SBA referral | METHOD | Referral captures disaster loan interest, required documents and application status. | Connects federal path. |
-| smbrecoveryops.loans.local_lender | local lender referral | METHOD | Local lender path captures bank, CDFI, credit union or emergency fund option. | Expands financing. |
-| smbrecoveryops.loans.loan_status | loan status | RECORD | Status records inquiry, application, approved, denied, withdrawn or funded. | Tracks progress. |
-| smbrecoveryops.grants.grant_match | grant match | METHOD | Matching finds grants by sector, geography, ownership, damage and use of funds. | Builds options. |
-| smbrecoveryops.grants.eligibility | grant eligibility | QUALITY_CHECK | Eligibility checks business size, location, disaster impact, registration and expenses. | Avoids wasted filing. |
-| smbrecoveryops.grants.application_status | application status | RECORD | Status records draft, submitted, deficient, approved, denied or paid. | Tracks aid. |
-| smbrecoveryops.grants.use_restriction | use restriction | CONSTRAINT | Restrictions identify eligible payroll, rent, equipment, inventory or working capital uses. | Prevents misuse. |
-| smbrecoveryops.documents.document_list | document list | RECORD | List includes tax, bank, lease, payroll, insurance, licenses, photos and estimates. | Organizes packet. |
-| smbrecoveryops.documents.missing_doc | missing document | RECORD | Missing documents record owner, source, deadline and workaround. | Drives completion. |
-| smbrecoveryops.documents.license_check | license check | QUALITY_CHECK | Business registration, permit, tax ID or professional license is verified where needed. | Supports eligibility. |
-| smbrecoveryops.documents.secure_storage | secure storage | SAFETY_RULE | Financial and identity documents are stored with restricted access. | Protects business. |
-| smbrecoveryops.referral.technical_assist | technical assistance | METHOD | Referral connects business to SBDC, accountant, chamber or recovery advisor. | Adds expertise. |
-| smbrecoveryops.referral.workforce | workforce referral | METHOD | Workforce referral handles layoffs, hiring, wage support or employee benefits. | Supports employees. |
-| smbrecoveryops.referral.real_estate | site relocation referral | METHOD | Relocation referral handles temporary site, permits, lease and utilities. | Restores operations. |
-| smbrecoveryops.referral.legal | legal referral | METHOD | Legal path handles lease dispute, insurance denial, contract issue or debt pressure. | Reduces risk. |
-| smbrecoveryops.tracking.case_status | case status | RECORD | Status distinguishes intake, document gathering, referred, application pending, funded or closed. | Shows progress. |
-| smbrecoveryops.tracking.followup_queue | follow-up queue | RECORD | Queue tracks next contact, deadline, owner and unresolved barrier. | Maintains continuity. |
-| smbrecoveryops.tracking.outcome | outcome record | RECORD | Outcome records reopened, funded, referred, denied, closed, relocated or unreachable. | Closes loop. |
-| smbrecoveryops.tracking.reopen | reopen rule | METHOD | Case reopens for new denial, damage, funding source or document. | Handles change. |
-| smbrecoveryops.communication.owner_update | owner update | METHOD | Update explains options, documents, deadlines, risks and next steps. | Reduces uncertainty. |
-| smbrecoveryops.communication.partner_update | partner update | METHOD | Partners receive aggregate demand, sector needs, funding gaps and referral barriers. | Coordinates ecosystem. |
-| smbrecoveryops.communication.language | language support | METHOD | Interpretation or translated forms support owner intake and applications. | Improves access. |
-| smbrecoveryops.reporting.daily_summary | daily summary | MEASUREMENT | Summary reports businesses assisted, sectors, closures, applications and urgent needs. | Informs recovery. |
-| smbrecoveryops.metrics.businesses_served | businesses served | MEASUREMENT | Count tracks businesses served by sector, size, geography and status. | Shows reach. |
-| smbrecoveryops.metrics.funding_pipeline | funding pipeline | MEASUREMENT | Pipeline tracks requested, approved, denied and disbursed funds. | Shows finance gap. |
-| smbrecoveryops.metrics.reopen_rate | reopen rate | MEASUREMENT | Rate tracks businesses reopened or stabilized after support. | Measures outcome. |
-| smbrecoveryops.review.after_action | after-action review | METHOD | Review captures sector needs, documentation barriers, insurance gaps and funding lessons. | Improves future intake. |
+| smbrecoveryops.intake.request_source | источник запроса | RECORD | Источник записи владельца бизнеса, палаты, горячей линии, кредитора, агентства, некоммерческой организации или информационно-пропагандистской организации. | Показывает путь входа. |
+| smbrecoveryops.intake.business_profile | бизнес-профиль | RECORD | В профиле указывается название компании, владелец, местоположение, сектор, сотрудники и контакты. | Определяет заявителя. |
+| smbrecoveryops.intake.operating_status | рабочее состояние | RECORD | Статус различает открытый, ограниченный, закрытый, перемещенный, доступный только онлайн или перемещающийся. | Показывает разрушение. |
+| smbrecoveryops.intake.urgency | модель срочности | MODEL | Срочность учитывает заработную плату, арендную плату, потери запасов, продолжительность закрытия, долг и роль общественных работ. | Отдает приоритет помощи. |
+| smbrecoveryops.damage.physical_damage | физический ущерб | RECORD | В отчете о повреждениях фиксируются здания, оборудование, инвентарь, транспортные средства, инженерные коммуникации и доступ. | Потеря документов. |
+| smbrecoveryops.damage.photo_evidence | фотодоказательства | RECORD | Фотографии документируют поврежденные участки, оборудование, инвентарь и внешний контекст, если это разрешено. | Поддерживает претензии. |
+| smbrecoveryops.damage.estimate | смета на ремонт | RECORD | Оцените поставщика записей, объем, стоимость, предположения и дату. | Поддерживает финансирование. |
+| smbrecoveryops.damage.access_issue | проблема доступа | CONSTRAINT | Проблемы с доступом фиксируют перекрытие дорог, небезопасное здание, ограничения арендодателя или отключение коммунальных услуг. | Объясняет закрытие. |
+| smbrecoveryops.revenue.revenue_loss | потеря дохода | RECORD | Убыток сравнивает продажи, заказы или контракты до и после стихийного бедствия. | Показывает экономический эффект. |
+| smbrecoveryops.revenue.cashflow | потребность в денежном потоке | MODEL | Потребность в денежном потоке учитывает расходы, фонд заработной платы, арендную плату, запасы и ожидаемую дату открытия. | Поддержка целей. |
+| smbrecoveryops.revenue.payroll | давление на заработную плату | RECORD | В отчете о заработной плате фиксируются сотрудники, пропущенные выплаты заработной платы, сокращенные часы или увольнения. | Направляет рабочую силу. |
+| smbrecoveryops.revenue.records_gap | разрыв в записях | RECORD | В примечаниях отсутствуют записи POS, банковские, налоговые, счета-фактуры или бухгалтерские записи. | Направляет документальную справку. |
+| smbrecoveryops.insurance.policy_info | информация о политике | RECORD | В полисе указаны оператор связи, номер, тип покрытия, франшиза и контактное лицо по претензиям. | Начинается согласование претензий. |
+| smbrecoveryops.insurance.claim_status | статус претензии | RECORD | Записи о состоянии поданы, назначен оценщик, оплачено, отказано, задержано или не покрыто. | Показывает путь финансирования. |
+| smbrecoveryops.insurance.denial_reason | причина отказа | RECORD | Отказ в исключении записей, франшиза, пробел в документации или лимит покрытия. | Апелляция/направление гидов. |
+| smbrecoveryops.insurance.duplication | проверка дублирования | QUALITY_CHECK | Проверка помощи проверяет страхование, гранты, кредиты и пожертвования частично перекрываются. | Предотвращает дублирование льгот. |
+| smbrecoveryops.loans.loan_screen | экран кредита | MODEL | Скрининг проверяет толерантность к процентной ставке, кредитоемкость, залог, кредит и право на участие. | Маршруты вариантов кредита. |
+| smbrecoveryops.loans.sba_referral | направление SBA | METHOD | В разделе «Направление» фиксируются проценты по кредиту на случай стихийных бедствий, необходимые документы и статус заявки. | Соединяет федеральную трассу. |
+| smbrecoveryops.loans.local_lender | направление местного кредитора | METHOD | Путь местного кредитора включает в себя банк, CDFI, кредитный союз или резервный фонд. | Расширяет финансирование. |
+| smbrecoveryops.loans.loan_status | статус кредита | RECORD | Статус записывает запрос, заявку, одобрено, отклонено, отозвано или профинансировано. | Отслеживает прогресс. |
+| smbrecoveryops.grants.grant_match | грантовый матч | METHOD | Сопоставление позволяет найти гранты по секторам, географии, собственности, ущербу и использованию средств. | Создает варианты. |
+| smbrecoveryops.grants.eligibility | предоставить право на участие | QUALITY_CHECK | Право на участие проверяет размер бизнеса, его местоположение, воздействие стихийного бедствия, регистрацию и расходы. | Избегает напрасной подачи документов. |
+| smbrecoveryops.grants.application_status | статус заявки | RECORD | Записи о состоянии: проект, отправлено, недостаточно, одобрено, отклонено или оплачено. | Отслеживает помощь. |
+| smbrecoveryops.grants.use_restriction | ограничение использования | CONSTRAINT | Ограничения определяют приемлемое использование заработной платы, арендной платы, оборудования, инвентаря или оборотного капитала. | Предотвращает неправильное использование. |
+| smbrecoveryops.documents.document_list | список документов | RECORD | Список включает налоги, банк, аренду, расчет заработной платы, страхование, лицензии, фотографии и оценки. | Организует пакет. |
+| smbrecoveryops.documents.missing_doc | недостающий документ | RECORD | В отсутствующих документах указывается владелец, источник, крайний срок и обходной путь. | Завершение приводов. |
+| smbrecoveryops.documents.license_check | проверка лицензии | QUALITY_CHECK | Регистрация бизнеса, разрешение, налоговый идентификатор или профессиональная лицензия проверяются при необходимости. | Поддерживает приемлемость. |
+| smbrecoveryops.documents.secure_storage | безопасное хранение | SAFETY_RULE | Финансовые документы и документы, удостоверяющие личность, хранятся с ограниченным доступом. | Защищает бизнес. |
+| smbrecoveryops.referral.technical_assist | техническая помощь | METHOD | Направление связывает бизнес с SBDC, бухгалтером, консультантом палаты или консультантом по восстановлению. | Добавляет экспертности. |
+| smbrecoveryops.referral.workforce | направление рабочей силы | METHOD | Направление рабочей силы занимается увольнениями, наймом, поддержкой заработной платы или льготами для сотрудников. | Поддерживает сотрудников. |
+| smbrecoveryops.referral.real_estate | направление на переезд сайта | METHOD | Направление по переезду занимается вопросами временного участка, разрешений, аренды и коммунальных услуг. | Восстанавливает работу. |
+| smbrecoveryops.referral.legal | юридическое направление | METHOD | Юридический путь решает споры по аренде, отказ в страховании, проблемы с контрактами или долговое давление. | Снижает риск. |
+| smbrecoveryops.tracking.case_status | статус дела | RECORD | Статус различает прием, сбор документов, направление, рассмотрение заявки, финансирование или закрытие. | Показывает прогресс. |
+| smbrecoveryops.tracking.followup_queue | последующая очередь | RECORD | Очередь отслеживает следующий контакт, крайний срок, владельца и неразрешенный барьер. | Сохраняет преемственность. |
+| smbrecoveryops.tracking.outcome | запись о результате | RECORD | Записи о результатах были вновь открыты, профинансированы, направлены, отклонены, закрыты, перемещены или недоступны. | Замыкает цикл. |
+| smbrecoveryops.tracking.reopen | правило повторного открытия | METHOD | Дело возобновляется в случае нового опровержения, ущерба, источника финансирования или документа. | Ручки меняются. |
+| smbrecoveryops.communication.owner_update | обновление владельца | METHOD | Обновление объясняет варианты, документы, сроки, риски и следующие шаги. | Уменьшает неопределенность. |
+| smbrecoveryops.communication.partner_update | обновление партнера | METHOD | Партнеры получают информацию о совокупном спросе, потребностях сектора, дефиците финансирования и барьерах направления. | Координирует экосистему. |
+| smbrecoveryops.communication.language | языковая поддержка | METHOD | Интерпретация или переведенные формы поддерживают прием и подачу заявок владельцами. | Улучшает доступ. |
+| smbrecoveryops.reporting.daily_summary | ежедневная сводка | MEASUREMENT | Сводные отчеты о предприятиях, которым была оказана помощь, секторах, закрытиях, приложениях и неотложных потребностях. | Сообщает о восстановлении. |
+| smbrecoveryops.metrics.businesses_served | предприятия обслуживаются | MEASUREMENT | Count отслеживает обслуживаемые предприятия по секторам, размерам, географическому положению и статусу. | Показывает охват. |
+| smbrecoveryops.metrics.funding_pipeline | трубопровод финансирования | MEASUREMENT | На трубопроводах запрошены, одобрены, отклонены и выплачены средства. | Показывает финансовый дефицит. |
+| smbrecoveryops.metrics.reopen_rate | частота повторных открытий | MEASUREMENT | Ставки отслеживаются предприятиями, которые вновь открылись или стабилизировались после поддержки. | Измеряет результат. |
+| smbrecoveryops.review.after_action | обзор после действий | METHOD | Обзор отражает потребности сектора, барьеры в документации, пробелы в страховании и уроки финансирования. | Улучшает будущее потребление. |

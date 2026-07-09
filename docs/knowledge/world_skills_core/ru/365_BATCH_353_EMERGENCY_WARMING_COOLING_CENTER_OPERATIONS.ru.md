@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| tempcenterops.activation.threshold | activation threshold | MODEL | Threshold uses temperature, wind chill, heat index, smoke, outage or public health guidance. | Defines opening trigger. |
-| tempcenterops.activation.authority | activation authority | RECORD | Authority records agency decision, time, sites and expected duration. | Clarifies responsibility. |
-| tempcenterops.activation.site_ready | site readiness | QUALITY_CHECK | Site is checked for HVAC, water, toilets, accessibility, exits, seating and power. | Prevents unsafe activation. |
-| tempcenterops.activation.hours | operating hours | RECORD | Hours define opening, overnight status, meal periods and closure plan. | Sets public expectation. |
-| tempcenterops.site.capacity | capacity count | MEASUREMENT | Capacity counts seats, sleeping space if any, staff, pets and accessibility space. | Avoids overcrowding. |
-| tempcenterops.site.layout | layout plan | METHOD | Layout separates intake, seating, rest, supplies, pets, staff and quiet space. | Makes operations flow. |
-| tempcenterops.site.accessibility | accessibility check | QUALITY_CHECK | Routes, restrooms, signage and seating support disability access. | Keeps service inclusive. |
-| tempcenterops.site.backup_power | backup power | CONSTRAINT | Backup power supports critical lighting, communications, refrigeration and HVAC where available. | Improves resilience. |
-| tempcenterops.staffing.roster | staff roster | RECORD | Roster tracks roles, shifts, contacts, credentials and relief coverage. | Keeps center staffed. |
-| tempcenterops.staffing.briefing | shift briefing | METHOD | Briefing covers weather, capacity, incidents, supplies, vulnerable guests and closing plan. | Aligns team. |
-| tempcenterops.staffing.volunteer | volunteer management | SAFETY_RULE | Volunteers are registered, assigned and supervised. | Reduces safeguarding risk. |
-| tempcenterops.staffing.fatigue | fatigue control | MODEL | Long activations require breaks, relief and overnight staffing rules. | Protects staff performance. |
-| tempcenterops.intake.sign_in | sign-in | METHOD | Sign-in may record count, name or anonymous use depending on policy. | Balances accountability and access. |
-| tempcenterops.intake.needs_screen | needs screen | METHOD | Screen identifies medical, mobility, language, transport, pet or charging needs. | Connects guests to support. |
-| tempcenterops.intake.privacy | privacy boundary | SAFETY_RULE | Guest information is minimized and protected. | Reduces fear and misuse. |
-| tempcenterops.intake.referral | referral pathway | METHOD | Guests can be referred to shelter, outreach, clinic, transport or benefits help. | Extends beyond temporary relief. |
-| tempcenterops.supplies.water | water supply | RECORD | Water stock is planned by occupancy, hours and heat/cold conditions. | Prevents dehydration. |
-| tempcenterops.supplies.food | food and snacks | METHOD | Food plan covers simple meals, snacks, dietary limits and food safety. | Supports extended stays. |
-| tempcenterops.supplies.hygiene | hygiene supplies | RECORD | Supplies include tissues, sanitizer, masks, menstrual products and cleaning materials. | Maintains dignity and sanitation. |
-| tempcenterops.supplies.charging | device charging | METHOD | Charging stations are supervised and capacity-limited. | Helps guests contact family/services. |
-| tempcenterops.health.heat_illness | heat illness watch | SAFETY_RULE | Staff watch for heat illness signs and escalate to medical response. | Protects life safety. |
-| tempcenterops.health.cold_exposure | cold exposure watch | SAFETY_RULE | Staff watch for hypothermia, frostbite or exposure risk. | Protects guests in cold events. |
-| tempcenterops.health.medical_escalation | medical escalation | METHOD | Medical concerns route to EMS, nurse, public health or clinic partner. | Avoids unsafe onsite improvisation. |
-| tempcenterops.health.infection_control | infection control | METHOD | Cleaning, ventilation, masking or spacing follows current public health guidance. | Reduces disease spread. |
-| tempcenterops.transport.route_info | route information | METHOD | Public communications include transit routes, pickup points and accessible transport. | Helps people reach center. |
-| tempcenterops.transport.shuttle | shuttle coordination | METHOD | Shuttle plan covers stops, schedule, driver contacts and accessibility. | Supports high-need guests. |
-| tempcenterops.transport.return_trip | return trip | METHOD | Closure plan includes safe return or next destination transport. | Avoids stranding people. |
-| tempcenterops.transport.partner_dispatch | partner dispatch | METHOD | Outreach, transit, police non-emergency or nonprofits may help transport. | Coordinates field access. |
-| tempcenterops.communication.public_notice | public notice | METHOD | Notice states location, hours, eligibility, pets, transport, supplies and contacts. | Directs public clearly. |
-| tempcenterops.communication.partner_alert | partner alert | METHOD | Partners receive activation, referral rules and resource needs. | Aligns outreach network. |
-| tempcenterops.communication.language | language access | METHOD | Core notices are translated or interpreted for local high-need languages. | Improves access. |
-| tempcenterops.communication.status_update | status update | METHOD | Updates announce capacity, hours changes, relocation or closure. | Prevents wasted trips. |
-| tempcenterops.security.access | access control | METHOD | Access controls entry, restricted rooms, after-hours movement and staff-only areas. | Keeps center orderly. |
-| tempcenterops.security.conduct | conduct rules | METHOD | Rules address safety, weapons, harassment, pets, quiet areas and substance policy. | Sets shared expectations. |
-| tempcenterops.security.incident | incident report | RECORD | Incidents record facts, action, escalation and follow-up. | Supports review. |
-| tempcenterops.security.deescalation | de-escalation | METHOD | Staff use de-escalation and support referral where safe. | Reduces conflict. |
-| tempcenterops.records.sitrep | situation report | RECORD | Sitrep tracks occupancy, supplies, incidents, staffing and open needs. | Feeds emergency management. |
-| tempcenterops.records.costs | cost record | RECORD | Costs track labor, food, supplies, transport, facility and contracts. | Supports reimbursement. |
-| tempcenterops.records.retention | retention rule | CONSTRAINT | Records follow emergency management, privacy and grant retention rules. | Keeps audit trail. |
-| tempcenterops.metrics.utilization | utilization metric | MEASUREMENT | Utilization tracks visitors by hour, day, site and condition. | Guides future activation. |
-| tempcenterops.metrics.unmet_need | unmet need | MEASUREMENT | Unmet need captures turnaways, transport barriers and supply shortages. | Improves planning. |
-| tempcenterops.closeout.close_trigger | close trigger | METHOD | Closure occurs when weather, hazard, power or public health conditions improve. | Ends activation safely. |
-| tempcenterops.closeout.site_restore | site restoration | METHOD | Site is cleaned, supplies inventoried, damages recorded and keys returned. | Restores host facility. |
-| tempcenterops.review.after_action | after-action review | METHOD | Review captures timing, outreach, capacity, incidents and improvement actions. | Strengthens future response. |
+| tempcenterops.activation.threshold | порог активации | MODEL | Порог использует температуру, охлаждение ветром, индекс жары, дым, отключение электроэнергии или рекомендации общественного здравоохранения. | Определяет триггер открытия. |
+| tempcenterops.activation.authority | полномочия активации | RECORD | Орган фиксирует решение агентства, время, места и ожидаемую продолжительность. | Уточняет ответственность. |
+| tempcenterops.activation.site_ready | готовность объекта | QUALITY_CHECK | На объекте проверяются системы отопления, вентиляции и кондиционирования, вода, туалеты, доступность, выходы, места для сидения и электроснабжение. | Предотвращает небезопасную активацию. |
+| tempcenterops.activation.hours | часы работы | RECORD | Часы определяют открытие, статус ночи, периоды приема пищи и план закрытия. | Устанавливает общественные ожидания. |
+| tempcenterops.site.capacity | количество емкости | MEASUREMENT | Вместимость учитывает количество сидячих мест, спальное место, если таковое имеется, персонал, домашних животных и доступное пространство. | Позволяет избежать перенаселения. |
+| tempcenterops.site.layout | план расположения | METHOD | Планировка разделяет вход, места для сидения, отдыха, принадлежности, домашних животных, персонал и тихое пространство. | Обеспечивает поток операций. |
+| tempcenterops.site.accessibility | проверка доступности | QUALITY_CHECK | Маршруты, туалеты, указатели и места для сидения обеспечивают доступ для людей с ограниченными возможностями. | Сохраняет сервис включенным. |
+| tempcenterops.site.backup_power | резервное питание | CONSTRAINT | Резервное питание поддерживает критически важное освещение, связь, охлаждение и ОВКВ, где это возможно. | Улучшает устойчивость. |
+| tempcenterops.staffing.roster | штатное расписание | RECORD | Реестр отслеживает роли, смены, контакты, полномочия и покрытие помощи. | Центр укомплектован персоналом. |
+| tempcenterops.staffing.briefing | инструктаж по смене | METHOD | Брифинг охватывает погоду, мощность, инциденты, поставки, уязвимых гостей и план закрытия. | Выравнивает команду. |
+| tempcenterops.staffing.volunteer | волонтерский менеджмент | SAFETY_RULE | Добровольцы регистрируются, назначаются и контролируются. | Снижает охранный риск. |
+| tempcenterops.staffing.fatigue | контроль усталости | MODEL | Длительная активация требует перерывов, смен и ночных правил укомплектования персоналом. | Защищает производительность персонала. |
+| tempcenterops.intake.sign_in | войти | METHOD | В зависимости от политики при входе может записываться количество, имя или анонимное использование. | Баланс подотчетности и доступа. |
+| tempcenterops.intake.needs_screen | нужен экран | METHOD | Экран определяет потребности в медицинских целях, мобильности, языке, транспорте, домашних животных или зарядке. | Подключает гостей к поддержке. |
+| tempcenterops.intake.privacy | граница конфиденциальности | SAFETY_RULE | Информация о гостях сведена к минимуму и защищена. | Уменьшает страх и неправильное использование. |
+| tempcenterops.intake.referral | путь направления | METHOD | Гости могут быть направлены в приют, информационно-просветительскую организацию, клинику, транспорт или льготную помощь. | Выходит за рамки временного облегчения. |
+| tempcenterops.supplies.water | водоснабжение | RECORD | Запас воды планируется с учетом занятости, часов работы и условий жары/холода. | Предотвращает обезвоживание. |
+| tempcenterops.supplies.food | еда и закуски | METHOD | План питания охватывает простые блюда, закуски, диетические ограничения и безопасность пищевых продуктов. | Поддерживает длительное пребывание. |
+| tempcenterops.supplies.hygiene | средства гигиены | RECORD | В комплект поставки входят салфетки, дезинфицирующее средство, маски, средства для менструального цикла и чистящие средства. | Сохраняет достоинство и санитарию. |
+| tempcenterops.supplies.charging | зарядка устройства | METHOD | Зарядные станции контролируются и имеют ограниченную мощность. | Помогает гостям связаться с семьей/службами. |
+| tempcenterops.health.heat_illness | часы от жары | SAFETY_RULE | Сотрудники наблюдают за признаками теплового заболевания и обращаются за медицинской помощью. | Обеспечивает безопасность жизни. |
+| tempcenterops.health.cold_exposure | часы для воздействия холода | SAFETY_RULE | Персонал следит за риском переохлаждения, обморожения или заражения. | Защищает гостей на холодных мероприятиях. |
+| tempcenterops.health.medical_escalation | медицинская эскалация | METHOD | Медицинские проблемы направляются в службу скорой помощи, медсестру, общественное здравоохранение или партнерскую клинику. | Избегает небезопасной импровизации на месте. |
+| tempcenterops.health.infection_control | инфекционный контроль | METHOD | Очистка, вентиляция, маскировка или соблюдение интервалов соответствуют действующим рекомендациям общественного здравоохранения. | Уменьшает распространение болезней. |
+| tempcenterops.transport.route_info | информация о маршруте | METHOD | Общественные коммуникации включают транзитные маршруты, пункты посадки и доступный транспорт. | Помогает людям добраться до центра. |
+| tempcenterops.transport.shuttle | координация шаттла | METHOD | План трансфера включает остановки, расписание, контакты водителя и доступность. | Поддерживает особо нуждающихся гостей. |
+| tempcenterops.transport.return_trip | обратный путь | METHOD | План закрытия включает безопасное возвращение или транспортировку до следующего пункта назначения. | Избегает застревания людей. |
+| tempcenterops.transport.partner_dispatch | партнерская отправка | METHOD | Аутрич, транзит, полицейские нечрезвычайные или некоммерческие организации могут помочь в транспортировке. | Координирует доступ к полям. |
+| tempcenterops.communication.public_notice | публичное уведомление | METHOD | В уведомлении указывается местонахождение, часы работы, право на участие, домашние животные, транспорт, расходные материалы и контакты. | Четко направляет публику. |
+| tempcenterops.communication.partner_alert | оповещение партнера | METHOD | Партнеры получают активацию, реферальные правила и потребности в ресурсах. | Выравнивает информационно-пропагандистскую сеть. |
+| tempcenterops.communication.language | языковой доступ | METHOD | Основные уведомления переводятся или интерпретируются на местные языки с высокой потребностью. | Улучшает доступ. |
+| tempcenterops.communication.status_update | обновление статуса | METHOD | В обновлениях сообщается о вместимости, изменении графика работы, переезде или закрытии. | Предотвращает бесполезные поездки. |
+| tempcenterops.security.access | контроль доступа | METHOD | Контроль доступа: вход, помещения с ограниченным доступом, передвижение в нерабочее время и зоны только для персонала. | Поддерживает порядок в центре. |
+| tempcenterops.security.conduct | правила поведения | METHOD | Правила касаются безопасности, оружия, притеснений, домашних животных, тихих мест и политики в отношении веществ. | Устанавливает общие ожидания. |
+| tempcenterops.security.incident | отчет об инциденте | RECORD | Инциденты фиксируют факты, действия, эскалацию и последующие меры. | Поддерживает обзор. |
+| tempcenterops.security.deescalation | деэскалация | METHOD | Персонал использует деэскалацию и оказывает поддержку в тех случаях, когда это безопасно. | Уменьшает конфликтность. |
+| tempcenterops.records.sitrep | отчет о ситуации | RECORD | Sitrep отслеживает занятость, поставки, инциденты, кадровое обеспечение и открытые потребности. | Подает управление в чрезвычайных ситуациях. |
+| tempcenterops.records.costs | запись затрат | RECORD | Затраты отслеживают рабочую силу, продукты питания, материалы, транспорт, оборудование и контракты. | Поддерживает возмещение. |
+| tempcenterops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют правилам управления чрезвычайными ситуациями, конфиденциальности и хранения грантов. | Сохраняет контрольный журнал. |
+| tempcenterops.metrics.utilization | показатель использования | MEASUREMENT | Использование отслеживает посетителей по часам, дням, местам и условиям. | Направляет будущую активацию. |
+| tempcenterops.metrics.unmet_need | неудовлетворенная потребность | MEASUREMENT | Неудовлетворенные потребности включают отказы, транспортные барьеры и дефицит поставок. | Улучшает планирование. |
+| tempcenterops.closeout.close_trigger | закрыть триггер | METHOD | Закрытие происходит, когда улучшаются погодные условия, опасности, электроснабжение или состояние здоровья населения. | Безопасное завершение активации. |
+| tempcenterops.closeout.site_restore | восстановление сайта | METHOD | Уборка территории, инвентаризация расходных материалов, фиксация повреждений и возврат ключей. | Восстанавливает хост-объект. |
+| tempcenterops.review.after_action | обзор после действий | METHOD | Обзор фиксирует сроки, охват, возможности, инциденты и действия по улучшению. | Усиливает будущую реакцию. |

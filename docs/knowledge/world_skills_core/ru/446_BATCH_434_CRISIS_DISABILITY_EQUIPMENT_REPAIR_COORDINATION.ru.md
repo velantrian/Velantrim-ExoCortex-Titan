@@ -2,51 +2,51 @@
 
 **KnowledgeUnits:** 44  
 **Namespace:** `disabilityrepairops.*`  
-**Scope:** intake, device type, safety triage, parts, vendors, loaners, delivery and closeout.
+**Scope:** intake, device type, safety triage, parts, vendors, подменное устройствоs, delivery and closeout.
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| disabilityrepairops.intake.request_source | request source | RECORD | Source records user, caregiver, shelter, clinic, hotline, caseworker or outreach team. | Shows entry path. |
-| disabilityrepairops.intake.user_profile | user profile | RECORD | Profile captures contact, location, language, caregiver and safe-contact limits. | Defines support. |
-| disabilityrepairops.intake.device_need | device need | RECORD | Need records device failure, lost equipment, damaged accessory or unsafe function. | Frames request. |
-| disabilityrepairops.intake.urgency | urgency model | MODEL | Urgency weighs mobility, medical dependence, caregiver absence, shelter access and safety risk. | Prioritizes cases. |
-| disabilityrepairops.device.device_type | device type | RECORD | Type distinguishes wheelchair, walker, scooter, CPAP, oxygen support, lift or communication device. | Routes repair. |
-| disabilityrepairops.device.model_info | model information | RECORD | Model info records brand, serial, size, power, battery and accessory details. | Finds parts. |
-| disabilityrepairops.device.ownership | ownership status | RECORD | Status records owned, rented, insurer-provided, loaner, donated or unknown. | Determines pathway. |
-| disabilityrepairops.device.user_constraint | user constraint | RECORD | Constraint captures fit, weight, transfer, charging, transport and caregiver needs. | Ensures usability. |
-| disabilityrepairops.triage.safety_screen | safety screen | SAFETY_RULE | Screen checks brakes, frame, battery, oxygen, wiring, stability and immediate danger. | Prevents harm. |
-| disabilityrepairops.triage.stop_use | stop-use rule | SAFETY_RULE | Unsafe device is removed from use or limited until repair/loaner is arranged. | Protects user. |
-| disabilityrepairops.triage.medical_escalation | medical escalation | METHOD | Health or device-dependence concerns route to clinical or emergency support. | Avoids under-response. |
-| disabilityrepairops.triage.access_impact | access impact | MEASUREMENT | Impact measures lost mobility, communication, sleep, breathing support or daily living function. | Sets priority. |
-| disabilityrepairops.parts.parts_needed | parts needed | RECORD | Parts list captures tires, brakes, battery, charger, cushion, tubing, filters or fasteners. | Starts sourcing. |
-| disabilityrepairops.parts.compatibility | compatibility check | QUALITY_CHECK | Check confirms part fits model, size, voltage, pressure or safety requirement. | Avoids bad repair. |
-| disabilityrepairops.parts.source | parts source | METHOD | Source routes to vendor, manufacturer, donor cache, repair shop or insurer. | Finds material. |
-| disabilityrepairops.parts.backorder | backorder record | RECORD | Backorder records delay, substitute, loaner need and user update. | Maintains continuity. |
-| disabilityrepairops.vendor.vendor_roster | vendor roster | RECORD | Roster lists repair shops, DME suppliers, technicians, delivery and emergency contacts. | Coordinates capacity. |
-| disabilityrepairops.vendor.credential | vendor credential | QUALITY_CHECK | Credential checks license, authorization, insurance or manufacturer capability where needed. | Protects quality. |
-| disabilityrepairops.vendor.work_order | vendor work order | RECORD | Work order captures device, issue, parts, pickup, estimate, approval and deadline. | Starts repair. |
-| disabilityrepairops.vendor.estimate | estimate record | RECORD | Estimate records cost, labor, parts, timeline, warranty and funding source. | Supports decision. |
-| disabilityrepairops.loaner.loaner_need | loaner need | RECORD | Need records device type, size, duration, transport, charger and safety constraints. | Restores function. |
-| disabilityrepairops.loaner.match | loaner match | METHOD | Match considers user size, device fit, caregiver ability and environment. | Makes loaner useful. |
-| disabilityrepairops.loaner.issue_log | loaner issue log | RECORD | Log records loaner ID, condition, user, accessories, issue and return date. | Tracks assets. |
-| disabilityrepairops.loaner.return_check | return check | QUALITY_CHECK | Return checks condition, cleaning, accessories and damage. | Keeps stock usable. |
-| disabilityrepairops.delivery.pickup | device pickup | METHOD | Pickup plan covers address, access, caregiver, packaging and chain of custody. | Moves device safely. |
-| disabilityrepairops.delivery.delivery | repaired delivery | RECORD | Delivery records device return, fit check, user confirmation and unresolved concerns. | Closes handoff. |
-| disabilityrepairops.delivery.transport | transport coordination | METHOD | Transport supports user movement while device is unavailable. | Reduces isolation. |
-| disabilityrepairops.delivery.failed | failed delivery | RECORD | Failure records no contact, access barrier, wrong device, weather or vendor issue. | Enables reschedule. |
-| disabilityrepairops.funding.funding_check | funding check | METHOD | Check routes to insurance, Medicaid, nonprofit, disaster fund, warranty or private pay. | Finds payment. |
-| disabilityrepairops.funding.authorization | authorization record | RECORD | Authorization records payer approval, amount, conditions and expiration. | Controls spending. |
-| disabilityrepairops.funding.invoice | invoice reconciliation | QUALITY_CHECK | Invoice matches estimate, work order, parts, delivery and approval. | Prevents overpayment. |
-| disabilityrepairops.funding.denial | denial pathway | METHOD | Denial routes to appeal, alternate fund, loaner extension or case management. | Avoids dead end. |
-| disabilityrepairops.communication.user_update | user update | METHOD | Update explains status, loaner, parts delay, appointment and safety precautions. | Reduces uncertainty. |
-| disabilityrepairops.communication.partner_update | partner update | METHOD | Partners receive aggregate repair backlogs, part shortages and urgent needs. | Coordinates support. |
-| disabilityrepairops.privacy.minimum_data | minimum data | SAFETY_RULE | Records avoid unnecessary medical detail while preserving device function needs. | Protects user. |
-| disabilityrepairops.records.case_log | case log | RECORD | Log stores intake, triage, parts, vendor, loaner, funding, delivery and closeout. | Creates continuity. |
-| disabilityrepairops.records.retention | retention rule | CONSTRAINT | Repair, loaner, finance and privacy records follow retention schedules. | Preserves audit. |
-| disabilityrepairops.records.device_photo | device photo record | RECORD | Photos document device condition, serial plate, damage and repaired state when consent allows. | Supports repair review. |
-| disabilityrepairops.metrics.repairs_completed | repairs completed | MEASUREMENT | Count tracks repairs completed by device type, vendor and urgency. | Shows output. |
-| disabilityrepairops.metrics.loaner_days | loaner days | MEASUREMENT | Metric tracks loaner duration and overdue returns. | Manages stock. |
-| disabilityrepairops.metrics.time_to_restore | time to restore | MEASUREMENT | Time measures intake to repaired device or workable loaner. | Reveals delay. |
-| disabilityrepairops.qa.case_review | case review | QUALITY_CHECK | Review checks safety triage, fit, funding, delivery and closeout completeness. | Improves reliability. |
-| disabilityrepairops.demob.transfer | transfer plan | METHOD | Ongoing cases transfer to DME provider, case manager or disability agency. | Maintains support. |
-| disabilityrepairops.review.after_action | after-action review | METHOD | Review captures device patterns, part shortages, loaner fit, vendor delays and funding lessons. | Improves future repairs. |
+| disabilityrepairops.intake.request_source | источник запроса | RECORD | Источник записывает пользователя, опекуна, приют, клинику, горячую линию, социального работника или аутрич-группу. | Показывает путь входа. |
+| disabilityrepairops.intake.user_profile | профиль пользователя | RECORD | Профиль фиксирует контакты, местоположение, язык, лицо, осуществляющее уход, и пределы безопасного контакта. | Определяет поддержку. |
+| disabilityrepairops.intake.device_need | потребность в устройстве | RECORD | Необходимость записи сбоев устройства, потери оборудования, поврежденных аксессуаров или небезопасных функций. | Запрос кадров. |
+| disabilityrepairops.intake.urgency | модель срочности | MODEL | Срочность учитывает мобильность, медицинскую зависимость, отсутствие лиц, осуществляющих уход, доступ к приюту и риск безопасности. | Расставляет приоритеты по делам. |
+| disabilityrepairops.device.device_type | тип устройства | RECORD | Тип различает инвалидную коляску, ходунки, самокаты, CPAP, кислородную поддержку, лифт или устройство связи. | Ремонт маршрутов. |
+| disabilityrepairops.device.model_info | информация о модели | RECORD | Информация о модели записывает марку, серийный номер, размер, мощность, аккумулятор и информацию об аксессуарах. | Находит запчасти. |
+| disabilityrepairops.device.ownership | статус собственности | RECORD | Записи о состоянии принадлежат, арендованы, предоставлены страховщиком, взяты взаймы, подарены или неизвестны. | Определяет путь. |
+| disabilityrepairops.device.user_constraint | ограничение пользователя | RECORD | Ограничения учитывают посадку, вес, транспортировку, зарядку, транспортировку и потребности лиц, осуществляющих уход. | Обеспечивает удобство использования. |
+| disabilityrepairops.triage.safety_screen | защитный экран | SAFETY_RULE | Экран проверяет тормоза, раму, аккумулятор, кислород, проводку, устойчивость и непосредственную опасность. | Предотвращает вред. |
+| disabilityrepairops.triage.stop_use | правило прекращения использования | SAFETY_RULE | Небезопасное устройство выводится из эксплуатации или ограничивается до тех пор, пока не будет организован ремонт или сдача в аренду. | Защищает пользователя. |
+| disabilityrepairops.triage.medical_escalation | медицинская эскалация | METHOD | Проблемы со здоровьем или зависимостью от устройств направляются в клиническую или неотложную помощь. | Избегает недостаточного ответа. |
+| disabilityrepairops.triage.access_impact | влияние доступа | MEASUREMENT | Меры воздействия лишили подвижность, общение, сон, поддержку дыхания или повседневную жизнедеятельность. | Устанавливает приоритет. |
+| disabilityrepairops.parts.parts_needed | необходимые детали | RECORD | В списке запчастей указаны шины, тормоза, аккумулятор, зарядное устройство, подушки, трубки, фильтры и крепежные детали. | Начинает поиск. |
+| disabilityrepairops.parts.compatibility | проверка совместимости | QUALITY_CHECK | Проверка подтверждает, что деталь соответствует модели, размеру, напряжению, давлению или требованиям безопасности. | Позволяет избежать плохого ремонта. |
+| disabilityrepairops.parts.source | источник запчастей | METHOD | Маршруты поиска к поставщику, производителю, донорскому кэшу, ремонтной мастерской или страховой компании. | Находит материал. |
+| disabilityrepairops.parts.backorder | запись отложенного заказа | RECORD | В невыполненных заказах фиксируются задержки, замены, потребности заемщиков и обновления пользователей. | Сохраняет преемственность. |
+| disabilityrepairops.vendor.vendor_roster | список поставщиков | RECORD | В реестре перечислены ремонтные мастерские, поставщики DME, технические специалисты, контакты по доставке и экстренной помощи. | Координирует мощность. |
+| disabilityrepairops.vendor.credential | учетные данные поставщика | QUALITY_CHECK | При необходимости проверка полномочий проверяет лицензию, авторизацию, страховку или возможности производителя. | Защищает качество. |
+| disabilityrepairops.vendor.work_order | заказ на работу поставщику | RECORD | В рабочем заказе фиксируются устройство, проблема, детали, получение, оценка, утверждение и крайний срок. | Приступает к ремонту. |
+| disabilityrepairops.vendor.estimate | оценка записи | RECORD | Оцените стоимость записей, рабочую силу, детали, сроки, гарантию и источник финансирования. | Поддерживает решение. |
+| disabilityrepairops.подменное устройство.подменное устройство_need | потребность в кредите | RECORD | Нужны записи о типе устройства, размере, сроке службы, транспортировке, зарядном устройстве и ограничениях безопасности. | Восстанавливает функцию. |
+| disabilityrepairops.подменное устройство.match | арендованный матч | METHOD | При подборе учитывается размер пользователя, соответствие устройства, возможности лица, осуществляющего уход, и окружающая среда. | Делает займодателя полезным. |
+| disabilityrepairops.подменное устройство.issue_log | журнал выдачи кредита | RECORD | В журнале регистрируются идентификатор заемщика, состояние, пользователь, аксессуары, дата выдачи и возврата. | Отслеживает активы. |
+| disabilityrepairops.подменное устройство.return_check | возврат чека | QUALITY_CHECK | При возврате проверяется состояние, чистота, аксессуары и наличие повреждений. | Сохраняет запасы пригодными для использования. |
+| disabilityrepairops.delivery.pickup | прием устройства | METHOD | План выдачи включает адрес, доступ, опекуна, упаковку и цепочку поставок. | Перемещает устройство безопасно. |
+| disabilityrepairops.delivery.delivery | отремонтированная доставка | RECORD | При доставке регистрируются возврат устройства, проверка соответствия, подтверждение пользователя и нерешенные проблемы. | Закрывает передачу. |
+| disabilityrepairops.delivery.transport | координация транспорта | METHOD | Транспорт поддерживает перемещение пользователя, пока устройство недоступно. | Уменьшает изоляцию. |
+| disabilityrepairops.delivery.failed | неудачная доставка | RECORD | Отказ фиксирует отсутствие контакта, барьер доступа, неправильное устройство, погоду или проблему с поставщиком. | Включает перепланирование. |
+| disabilityrepairops.funding.funding_check | проверка финансирования | METHOD | Проверьте пути к страховке, Medicaid, некоммерческой организации, фонду помощи при стихийных бедствиях, гарантийным или частным выплатам. | Находит оплату. |
+| disabilityrepairops.funding.authorization | авторизационная запись | RECORD | В авторизации фиксируются утверждение плательщика, сумма, условия и срок действия. | Контролирует расходы. |
+| disabilityrepairops.funding.invoice | сверка счетов | QUALITY_CHECK | Счет-фактура соответствует смете, заказу на работу, деталям, доставке и утверждению. | Предотвращает переплату. |
+| disabilityrepairops.funding.denial | путь отрицания | METHOD | Отказ в апелляции, альтернативном фонде, продлении срока действия кредита или ведении дела. | Избегает тупика. |
+| disabilityrepairops.communication.user_update | обновление пользователя | METHOD | Обновление объясняет статус, арендодателя, задержку запчастей, встречу и меры предосторожности. | Уменьшает неопределенность. |
+| disabilityrepairops.communication.partner_update | обновление партнера | METHOD | Партнеры получают совокупные данные о невыполненных ремонтах, нехватке запчастей и неотложных потребностях. | Поддержка координат. |
+| disabilityrepairops.privacy.minimum_data | минимальные данные | SAFETY_RULE | Записи позволяют избежать ненужных медицинских подробностей, сохраняя при этом функциональные потребности устройства. | Защищает пользователя. |
+| disabilityrepairops.records.case_log | журнал дел | RECORD | Регистрация поступления в магазины, сортировки, запчастей, поставщиков, кредиторов, финансирования, доставки и закрытия. | Создает преемственность. |
+| disabilityrepairops.records.retention | правило хранения | CONSTRAINT | Записи о ремонте, залоге, финансах и конфиденциальности соответствуют графикам хранения. | Сохраняет аудит. |
+| disabilityrepairops.records.device_photo | запись фотографий с устройства | RECORD | Фотографии документируют состояние устройства, серийный номер, повреждения и состояние ремонта, если позволяет согласие. | Поддерживает обзор ремонта. |
+| disabilityrepairops.metrics.repairs_completed | ремонт завершен | MEASUREMENT | Count отслеживает выполненные ремонты по типу устройства, производителю и срочности. | Показывает вывод. |
+| disabilityrepairops.metrics.подменное устройство_days | дни займа | MEASUREMENT | Метрика отслеживает продолжительность кредита и просроченные доходы. | Управляет запасами. |
+| disabilityrepairops.metrics.time_to_restore | время восстанавливать | MEASUREMENT | Время измеряет доставку отремонтированного устройства или работоспособного арендатора. | Выявляет задержку. |
+| disabilityrepairops.qa.case_review | рассмотрение дела | QUALITY_CHECK | Обзор проверяет сортировку на безопасность, соответствие, финансирование, полноту доставки и закрытия сделки. | Повышает надежность. |
+| disabilityrepairops.demob.transfer | план трансфера | METHOD | Текущие дела передаются поставщику услуг DME, куратору дела или агентству по делам инвалидов. | Сохраняет поддержку. |
+| disabilityrepairops.review.after_action | обзор после действий | METHOD | В обзоре отражаются модели устройств, нехватка запчастей, соответствие требованиям кредиторов, задержки с поставщиками и уроки финансирования. | Улучшает будущий ремонт. |

@@ -11,7 +11,7 @@ Set-Location $Root
 
 $index = Join-Path $Root "static\console\index.html"
 if (-not (Test-Path $index)) {
-    Write-Error "Нет $index — нужна папка VELANTRIM_ExoCortex_V8.6"
+    Write-Error "Нет $index — нужна папка VELANTRIM_ExoCortex_V8.7_Titan"
 }
 
 if (-not $NoKill) {
@@ -50,8 +50,9 @@ $py = Join-Path $Root ".venv\Scripts\python.exe"
 if (-not (Test-Path $py)) { $py = "python" }
 
 $base = "http://127.0.0.1:$Port"
-$consoleUrl = "$base/console/?v=34"
+$consoleUrl = "$base/console/?v=41"
 Write-Host ""
+Write-Host "VELANTRIM V8.7 Titan" -ForegroundColor Cyan
 Write-Host "Папка:   $Root"
 Write-Host "Консоль (откройте в браузере):"
 Write-Host "  $consoleUrl" -ForegroundColor Cyan

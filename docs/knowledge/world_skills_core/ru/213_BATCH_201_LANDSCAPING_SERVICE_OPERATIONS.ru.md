@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| landscape.sales.site_visit | Landscaping site visit | invariant | Visit records property size, access, slopes, plantings, irrigation, hazards and client goals. | understand site |
-| landscape.sales.scope_estimate | Landscaping scope estimate | invariant | Estimate defines tasks, frequency, materials, labor, equipment, disposal and exclusions. | price the work |
-| landscape.sales.service_contract | Landscape service contract | invariant | Contract sets schedule, scope, price, weather rules, change orders and client responsibilities. | stable agreement |
-| landscape.sales.seasonal_plan | Seasonal landscape plan | variant | Plan adapts services for spring cleanup, growing season, leaf fall, winter or drought. | work follows season |
-| landscape.sales.property_map | Landscape property map | variant | Map marks turf, beds, trees, irrigation zones, utilities, gates and no-service areas. | crew orientation |
-| landscape.crew.route_schedule | Landscape route schedule | invariant | Schedule orders sites by geography, service window, crew, equipment and priority. | efficient day |
-| landscape.crew.crew_briefing | Landscape crew briefing | invariant | Briefing covers tasks, hazards, weather, customer notes, equipment and expected hours. | start aligned |
-| landscape.crew.time_capture | Landscaping time capture | invariant | Capture records crew arrival, departure, travel, task time and exceptions. | labor control |
-| landscape.crew.client_access | Client access instruction | invariant | Instruction covers gates, pets, parking, water access, noise limits and restricted areas. | avoid friction |
-| landscape.crew.service_photo | Landscape service photo | variant | Photo documents completed work, issue, damage, plant condition or before-after state. | remote evidence |
-| landscape.mow.mowing_height | Mowing height | invariant | Height is set by turf type, season, weather and client preference. | avoid turf stress |
-| landscape.mow.edging | Lawn edging | invariant | Edging defines clean boundary along walks, beds, curbs and drives. | finished look |
-| landscape.mow.trimming | String trimming | invariant | Trimming cuts areas mowers cannot reach without damaging plants, bark or structures. | detail work |
-| landscape.mow.clipping_management | Clipping management | variant | Clippings may be mulched, bagged or removed based on turf health and appearance. | manage residue |
-| landscape.mow.turf_damage | Turf damage note | invariant | Note documents scalping, ruts, disease, drought, pests or equipment damage. | fix or prevent |
-| landscape.plant.pruning_plan | Pruning plan | invariant | Plan defines plant, timing, objective, cut limits and debris handling. | prune with purpose |
-| landscape.plant.shrub_shaping | Shrub shaping | variant | Shaping maintains appearance while avoiding excessive cutback or plant stress. | aesthetics and health |
-| landscape.plant.tree_clearance | Tree clearance note | variant | Note flags branches near buildings, signs, wires, walkways or sightlines for proper service. | manage conflicts |
-| landscape.plant.mulch_depth | Mulch depth | invariant | Depth affects moisture, weeds, roots and trunk rot risk. | not too much |
-| landscape.plant.plant_replacement | Plant replacement | variant | Replacement records dead plant, warranty status, species, size, location and reason. | maintain design |
-| landscape.irrigation.zone_check | Irrigation zone check | invariant | Check confirms heads, coverage, leaks, pressure, valves and controller schedule. | water where needed |
-| landscape.irrigation.controller_schedule | Irrigation controller schedule | invariant | Schedule sets start times, duration, days and seasonal adjustment. | water control |
-| landscape.irrigation.leak_report | Irrigation leak report | invariant | Report documents broken head, pipe leak, valve issue, wet area or water waste. | stop loss |
-| landscape.irrigation.winterization | Irrigation winterization | variant | Winterization removes or protects water from system before freezing season. | prevent burst damage |
-| landscape.irrigation.backflow_check | Backflow device check | variant | Check verifies required irrigation backflow protection status and inspection need. | protect water supply |
-| landscape.safety.equipment_inspection | Landscape equipment inspection | invariant | Inspection checks blades, guards, fuel, leaks, tires, belts and safety controls. | safe equipment |
-| landscape.safety.ppe_check | Landscape PPE check | invariant | Check verifies eye, hearing, gloves, footwear, sun and respiratory protection as needed. | worker protection |
-| landscape.safety.utility_marking | Utility marking awareness | invariant | Awareness avoids digging or staking without utility location process. | prevent strikes |
-| landscape.safety.chemical_handling | Landscape chemical handling | variant | Handling follows label, storage, PPE, mixing, application and notification requirements. | avoid exposure |
-| landscape.safety.heat_stress | Heat stress procedure | invariant | Procedure covers hydration, breaks, shade, symptoms and escalation during hot work. | outdoor risk |
-| landscape.materials.debris_disposal | Landscape debris disposal | invariant | Disposal manages grass, leaves, branches, soil, stone and waste by allowed route. | clean finish |
-| landscape.materials.material_delivery | Landscape material delivery | variant | Delivery coordinates mulch, soil, plants, stone or sod quantity, placement and access. | material logistics |
-| landscape.materials.tool_inventory | Landscape tool inventory | invariant | Inventory tracks mowers, trimmers, blowers, hand tools, fuel and spare parts. | avoid lost gear |
-| landscape.materials.fuel_control | Landscape fuel control | invariant | Control manages fuel type, containers, storage, spill response and usage. | fire and cost risk |
-| landscape.materials.equipment_maintenance | Landscape equipment maintenance | invariant | Maintenance covers blade sharpening, oil, filters, belts, batteries, tires and cleaning. | uptime |
-| landscape.quality.service_checklist | Landscape service checklist | invariant | Checklist confirms tasks completed, gates closed, debris cleared and issues noted. | consistent service |
-| landscape.quality.client_issue | Landscape client issue | invariant | Issue records complaint, missed task, damage, billing concern or special request. | service recovery |
-| landscape.quality.property_damage | Landscape property damage | invariant | Damage record captures object, location, photos, cause, client notice and repair route. | accountability |
-| landscape.quality.rework_order | Landscape rework order | variant | Order sends crew back to correct incomplete or defective service. | close quality gap |
-| landscape.quality.season_review | Landscape season review | variant | Review evaluates contract fit, plant health, irrigation, client satisfaction and next-season needs. | improve account |
-| landscape.billing.service_invoice | Landscape service invoice | invariant | Invoice links completed visits, contract items, extras, materials and taxes. | bill work done |
-| landscape.billing.change_order | Landscape change order | invariant | Change order approves extra pruning, cleanup, planting, repair or material beyond contract. | control extras |
-| landscape.metrics.landscape_kpi | Landscaping operations KPI | variant | KPI tracks route efficiency, rework, equipment downtime, complaints, margins and safety incidents. | manage crew business |
-| landscape.continuity.weather_delay | Landscaping weather delay | invariant | Delay procedure reschedules work, informs clients and prioritizes weather-sensitive tasks. | weather drives work |
+| landscape.sales.site_visit | Выезд на ландшафтный дизайн | invariant | Посещение записывает размер собственности, доступ, склоны, насаждения, ирригацию, опасности и цели клиента. | понять сайт |
+| landscape.sales.scope_estimate | Оценка объема ландшафтного дизайна | invariant | Смета определяет задачи, периодичность, материалы, рабочую силу, оборудование, утилизацию и исключения. | оценить работу |
+| landscape.sales.service_contract | Договор на ландшафтное обслуживание | invariant | Контракт устанавливает график, объем, цену, погодные правила, заказы на изменения и обязанности клиента. | стабильное соглашение |
+| landscape.sales.seasonal_plan | Сезонный ландшафтный план | variant | План адаптирует услуги для весенней уборки, вегетационного периода, листопада, зимы или засухи. | работа следует сезону |
+| landscape.sales.property_map | Карта ландшафтных объектов | variant | На карте отмечены газон, грядки, деревья, зоны орошения, инженерные коммуникации, ворота и зоны без обслуживания. | ориентация экипажа |
+| landscape.crew.route_schedule | Расписание ландшафтных маршрутов | invariant | Распределяйте сайты заказов по географическому положению, окну обслуживания, экипажу, оборудованию и приоритету. | эффективный день |
+| landscape.crew.crew_briefing | Брифинг ландшафтной бригады | invariant | Брифинг охватывает задачи, опасности, погоду, заметки клиентов, оборудование и ожидаемые часы. | начало выровнено |
+| landscape.crew.time_capture | Захват времени в ландшафтном дизайне | invariant | Записывайте данные о прибытии, отбытии, перемещении экипажа, времени выполнения задач и исключениях. | контроль труда |
+| landscape.crew.client_access | Инструкция по доступу клиента | invariant | Инструкция касается ворот, домашних животных, парковки, доступа к воде, ограничений по шуму и зон с ограниченным доступом. | избегать трения |
+| landscape.crew.service_photo | Фото ландшафтного сервиса | variant | Фотодокументы о выполненных работах, выпуске, повреждениях, состоянии завода или состоянии до-после. | отдаленные доказательства |
+| landscape.mow.mowing_height | Высота скашивания | invariant | Высота устанавливается в зависимости от типа газона, сезона, погоды и предпочтений клиента. | избегать стресса на газоне |
+| landscape.mow.edging | Бордюр газона | invariant | Бордюр определяет четкую границу вдоль дорожек, грядок, бордюров и проездов. | законченный вид |
+| landscape.mow.trimming | Обрезка струн | invariant | Обрезка участков, до которых газонокосилки не могут добраться, не повредив растения, кору или конструкции. | Детальная работа |
+| landscape.mow.clipping_management | Управление обрезкой | variant | Обрезки можно мульчировать, упаковывать в пакеты или удалять в зависимости от состояния и внешнего вида газона. | управлять остатком |
+| landscape.mow.turf_damage | Справка о повреждении газона | invariant | Обратите внимание на скальпирование, колеи, болезни, засуху, вредителей или повреждение оборудования. | исправить или предотвратить |
+| landscape.plant.pruning_plan | План обрезки | invariant | План определяет завод, сроки, цель, пределы вырубки и порядок обращения с мусором. | обрезать целенаправленно |
+| landscape.plant.shrub_shaping | Формировка кустарника | variant | Формирование сохраняет внешний вид, избегая при этом чрезмерного сокращения или стресса растений. | эстетика и здоровье |
+| landscape.plant.tree_clearance | Записка о вырубке деревьев | variant | Обратите внимание на разветвления флажков возле зданий, знаков, проводов, пешеходных дорожек или линий обзора для обеспечения надлежащего обслуживания. | управлять конфликтами |
+| landscape.plant.mulch_depth | Глубина мульчи | invariant | Глубина влияет на влажность, сорняки, корни и риск загнивания ствола. | не слишком много |
+| landscape.plant.plant_replacement | Замена растений | variant | При замене регистрируются мертвые растения, гарантийный статус, вид, размер, местоположение и причина. | поддерживать дизайн |
+| landscape.irrigation.zone_check | Проверка зоны орошения | invariant | Проверка подтверждает напоры, покрытие, утечки, давление, клапаны и график работы контроллера. | вода где нужно |
+| landscape.irrigation.controller_schedule | График работы контроллера полива | invariant | Расписание устанавливает время начала, продолжительность, дни и сезонную корректировку. | контроль воды |
+| landscape.irrigation.leak_report | Отчет об утечке при ирригации | invariant | Сообщите о сломанной головке, утечке трубы, проблеме с клапаном, влажной зоне или утечке воды. | стоп-лосс |
+| landscape.irrigation.winterization | Ирригация к зиме | variant | Подготовка к зиме удаляет или защищает воду из системы перед сезоном заморозков. | предотвратить взрывное повреждение |
+| landscape.irrigation.backflow_check | Проверка устройства обратного слива | variant | Проверка подтверждает необходимое состояние защиты от обратного потока орошения и необходимость проверки. | защитить водоснабжение |
+| landscape.safety.equipment_inspection | Проверка ландшафтного оборудования | invariant | В ходе проверки проверяются лезвия, ограждения, топливо, утечки, шины, ремни и средства обеспечения безопасности. | безопасное оборудование |
+| landscape.safety.ppe_check | Проверка СИЗ в ландшафте | invariant | Проверка проверяет наличие средств защиты глаз, слуха, перчаток, обуви, защиты от солнца и органов дыхания, если это необходимо. | защита работников |
+| landscape.safety.utility_marking | Осведомленность о маркировке утилит | invariant | Осведомленность позволяет избежать раскопок или разбивки без процесса определения местоположения инженерных сетей. | предотвращать забастовки |
+| landscape.safety.chemical_handling | Химическая обработка ландшафта | variant | Обращение соответствует требованиям маркировки, хранения, СИЗ, смешивания, применения и уведомления. | избежать контакта |
+| landscape.safety.heat_stress | Процедура теплового стресса | invariant | Процедура охватывает гидратацию, перерывы, тень, симптомы и обострение во время огневых работ. | внешний риск |
+| landscape.materials.debris_disposal | Утилизация ландшафтного мусора | invariant | Трава, листья, ветки, почва, камни и отходы вывозятся разрешенным маршрутом. | чистая отделка |
+| landscape.materials.material_delivery | Доставка ландшафтного материала | variant | Доставка координирует мульчу, почву, растения, количество камней или дерна, размещение и доступ. | материальная логистика |
+| landscape.materials.tool_inventory | Инвентаризация ландшафтных инструментов | invariant | Инвентаризация включает косилки, триммеры, воздуходувки, ручные инструменты, топливо и запасные части. | избежать потери снаряжения |
+| landscape.materials.fuel_control | Ландшафтный контроль топлива | invariant | Контроль управляет типом топлива, контейнерами, хранением, реагированием на разливы и использованием. | риск пожара и затрат |
+| landscape.materials.equipment_maintenance | Обслуживание ландшафтного оборудования | invariant | Техническое обслуживание включает заточку лезвий, замену масла, фильтров, ремней, аккумуляторов, шин и чистку. | время безотказной работы |
+| landscape.quality.service_checklist | Контрольный список ландшафтных услуг | invariant | Контрольный список подтверждает выполнение задач, закрытие ворот, уборку мусора и отмеченные проблемы. | последовательное обслуживание |
+| landscape.quality.client_issue | Проблема с ландшафтным клиентом | invariant | Выдача записей жалоб, пропущенных задач, повреждений, проблем с выставлением счетов или особых запросов. | восстановление службы |
+| landscape.quality.property_damage | Ущерб ландшафтной собственности | invariant | В записи о повреждениях фиксируются объект, местоположение, фотографии, причина, уведомление клиента и маршрут ремонта. | подотчетность |
+| landscape.quality.rework_order | Заказ на переработку ландшафта | variant | Приказ отправляет экипаж обратно для исправления неполного или дефектного обслуживания. | ликвидировать разрыв в качестве |
+| landscape.quality.season_review | Обзор пейзажного сезона | variant | В обзоре оценивается соответствие контракта, состояние растений, ирригация, удовлетворенность клиентов и потребности на следующий сезон. | улучшить аккаунт |
+| landscape.billing.service_invoice | Счет за ландшафтные услуги | invariant | В счете-фактуре указаны выполненные посещения, позиции контракта, дополнительные услуги, материалы и налоги. | счет за выполненную работу |
+| landscape.billing.change_order | Порядок изменения ландшафта | invariant | Приказ об изменении утверждает дополнительную обрезку, очистку, посадку растений, ремонт или использование материалов, выходящих за рамки контракта. | управлять дополнительными функциями |
+| landscape.metrics.landscape_kpi | KPI работ по благоустройству | variant | KPI отслеживает эффективность маршрутов, доработки, простои оборудования, жалобы, прибыль и инциденты, связанные с безопасностью. | управлять бизнесом экипажа |
+| landscape.continuity.weather_delay | Задержка в ландшафтном дизайне | invariant | Процедура задержки переносит работу, информирует клиентов и определяет приоритетность задач, чувствительных к погодным условиям. | погода движет работой |

@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| sanitationkitops.activation.trigger | activation trigger | MODEL | Trigger includes displacement, sewage disruption, cleanup work, sheltering or hygiene shortage. | Starts kit operation. |
-| sanitationkitops.activation.service_area | service area | RECORD | Area defines neighborhoods, shelters, cleanup zones and partner distribution routes. | Focuses supply. |
-| sanitationkitops.activation.partner | partner roster | RECORD | Roster lists public health, warehouses, nonprofits, shelters and cleanup teams. | Coordinates capacity. |
-| sanitationkitops.activation.command_link | command link | RECORD | Operation reports to logistics, public health, sheltering and public information. | Maintains oversight. |
-| sanitationkitops.contents.item_master | item master | RECORD | Master lists soap, sanitizer, gloves, masks, bags, wipes, bleach, towels and instructions. | Standardizes kits. |
-| sanitationkitops.contents.required_items | required items | CONSTRAINT | Required items define minimum kit contents by use case. | Preserves quality. |
-| sanitationkitops.contents.optional_items | optional items | RECORD | Optional items include diapers, menstrual supplies, cleanup tools or water treatment where appropriate. | Adapts kits. |
-| sanitationkitops.contents.restriction | restricted item | SAFETY_RULE | Chemicals and sharp tools require handling warnings or may be excluded. | Reduces harm. |
-| sanitationkitops.assembly.workstation | assembly workstation | METHOD | Workstation sets tables, bins, labels, counts and quality check point. | Speeds packing. |
-| sanitationkitops.assembly.pick_list | pick list | RECORD | Pick list defines items, quantity, language inserts and kit type. | Guides volunteers. |
-| sanitationkitops.assembly.batch_record | batch record | RECORD | Batch records date, kit type, quantity, staff and lot/source where needed. | Supports traceability. |
-| sanitationkitops.assembly.quality_check | kit quality check | QUALITY_CHECK | Check verifies contents, sealed items, expiration and instruction sheet. | Prevents incomplete kits. |
-| sanitationkitops.eligibility.criteria | eligibility criteria | CONSTRAINT | Criteria define household impact, cleanup role, shelter status or partner referral. | Preserves fairness. |
-| sanitationkitops.eligibility.frequency | frequency limit | CONSTRAINT | Limit defines kits per household or team per period. | Extends stock. |
-| sanitationkitops.eligibility.exception | exception record | RECORD | Exception records medical, infant, large household or heavy cleanup need. | Allows flexibility. |
-| sanitationkitops.eligibility.duplicate_check | duplicate check | QUALITY_CHECK | Check links prior issues, household and route delivery. | Prevents overissue. |
-| sanitationkitops.storage.clean_storage | clean storage | SAFETY_RULE | Kits stay dry, pest-free, temperature-appropriate and separated from waste. | Preserves usability. |
-| sanitationkitops.storage.chemical_separation | chemical separation | SAFETY_RULE | Chemicals are separated from food, medical items and incompatible products. | Prevents contamination. |
-| sanitationkitops.storage.expiry_rotation | expiry rotation | METHOD | Short-dated items are issued first and expired items removed. | Reduces waste. |
-| sanitationkitops.storage.security | stock security | SAFETY_RULE | High-demand items use supervised storage and counts. | Reduces loss. |
-| sanitationkitops.distribution.pickup_flow | pickup flow | METHOD | Flow handles eligibility, queue, kit issue, safety message and receipt. | Serves residents. |
-| sanitationkitops.distribution.delivery_request | delivery request | RECORD | Request captures address, kit type, access, contact and mobility barrier. | Enables delivery. |
-| sanitationkitops.distribution.route_plan | route plan | METHOD | Route groups deliveries by geography, urgency and kit type. | Saves time. |
-| sanitationkitops.distribution.issue_receipt | issue receipt | RECORD | Receipt records household/team, kit type, quantity, date and staff. | Supports inventory. |
-| sanitationkitops.safety.instruction_sheet | instruction sheet | RECORD | Sheet explains safe use, hand hygiene, chemical dilution warnings and disposal. | Prevents misuse. |
-| sanitationkitops.safety.bleach_warning | bleach warning | SAFETY_RULE | Warning says not to mix bleach with ammonia, acids or unknown cleaners. | Prevents toxic gas. |
-| sanitationkitops.safety.ppe_message | PPE message | METHOD | Message explains gloves, mask limits, eye protection and handwashing. | Improves safety. |
-| sanitationkitops.safety.waste_message | waste message | METHOD | Message explains bagging, debris separation, sharps and local disposal route. | Supports sanitation. |
-| sanitationkitops.inventory.receiving | receiving check | QUALITY_CHECK | Receiving checks quantity, condition, expiration, labels and source. | Protects stock. |
-| sanitationkitops.inventory.stock_count | stock count | MEASUREMENT | Count reconciles received, assembled, issued, damaged and remaining items. | Shows inventory. |
-| sanitationkitops.inventory.shortage | shortage record | RECORD | Shortage records item, kit impact, substitute and procurement need. | Guides resupply. |
-| sanitationkitops.inventory.reconciliation | reconciliation | QUALITY_CHECK | Reconciliation compares component stock with completed kits and issue records. | Detects errors. |
-| sanitationkitops.communication.public_notice | public notice | METHOD | Notice states kit contents, eligibility, locations, limits and safety cautions. | Guides residents. |
-| sanitationkitops.communication.partner_update | partner update | METHOD | Partners receive kit stock, shortages, pickup rules and delivery routes. | Aligns referrals. |
-| sanitationkitops.communication.language | language support | METHOD | Inserts and signs use common local languages and pictograms. | Improves access. |
-| sanitationkitops.communication.feedback | feedback process | METHOD | Feedback captures missing items, unclear instructions or access barriers. | Improves kits. |
-| sanitationkitops.records.daily_log | daily log | RECORD | Log stores assembly count, distribution, deliveries, shortages and incidents. | Creates audit trail. |
-| sanitationkitops.records.cost | cost record | RECORD | Cost tracks components, packing, transport, storage and labor. | Supports finance. |
-| sanitationkitops.records.retention | retention rule | CONSTRAINT | Records follow emergency, grant, finance and public health schedules. | Preserves audit. |
-| sanitationkitops.metrics.kits_issued | kits issued | MEASUREMENT | Count tracks kits issued by type, area and channel. | Shows output. |
-| sanitationkitops.metrics.component_loss | component loss | MEASUREMENT | Loss tracks damaged, expired, missing or unusable components. | Improves control. |
-| sanitationkitops.qa.sample_audit | sample audit | QUALITY_CHECK | Audit opens sample kits to verify contents and inserts. | Maintains quality. |
-| sanitationkitops.demob.closeout | closeout | METHOD | Closeout transfers stock, reconciles inventory, archives logs and retires expired items. | Ends cleanly. |
-| sanitationkitops.review.after_action | after-action review | METHOD | Review captures contents, safety messages, distribution, shortages and inventory lessons. | Improves future kits. |
+| sanitationkitops.activation.trigger | триггер активации | MODEL | Триггером является перемещение населения, нарушение работы канализации, работы по очистке, отсутствие жилья или нехватка средств гигиены. | Запускает работу комплекта. |
+| sanitationkitops.activation.service_area | зона обслуживания | RECORD | Зона определяет кварталы, убежища, зоны очистки и маршруты распространения партнеров. | Фокусируется на поставках. |
+| sanitationkitops.activation.partner | список партнеров | RECORD | В реестре перечислены организации общественного здравоохранения, склады, некоммерческие организации, приюты и команды по уборке. | Координирует мощность. |
+| sanitationkitops.activation.command_link | командная ссылка | RECORD | Оперативные отчеты отправляются в службы логистики, общественного здравоохранения, обеспечения жильем и общественной информации. | Сохраняет надзор. |
+| sanitationkitops.contents.item_master | мастер предметов | RECORD | Мастер перечисляет мыло, дезинфицирующее средство, перчатки, маски, пакеты, салфетки, отбеливатель, полотенца и инструкции. | Стандартизирует комплекты. |
+| sanitationkitops.contents.required_items | необходимые предметы | CONSTRAINT | Обязательные элементы определяют минимальное содержимое комплекта в зависимости от варианта использования. | Сохраняет качество. |
+| sanitationkitops.contents.optional_items | дополнительные элементы | RECORD | Дополнительные предметы включают подгузники, менструальные принадлежности, инструменты для очистки или очистку воды, где это необходимо. | Адаптирует комплекты. |
+| sanitationkitops.contents.restriction | ограниченный предмет | SAFETY_RULE | Химические вещества и острые инструменты требуют предупреждений об обращении или могут быть исключены. | Уменьшает вред. |
+| sanitationkitops.assembly.workstation | сборочная рабочая станция | METHOD | Рабочая станция устанавливает столы, контейнеры, этикетки, счетчики и контрольные точки качества. | Ускоряет упаковку. |
+| sanitationkitops.assembly.pick_list | список выбора | RECORD | Список выбора определяет позиции, количество, языковые вставки и тип комплекта. | Гиды-волонтёры. |
+| sanitationkitops.assembly.batch_record | пакетная запись | RECORD | Записывает дату партии, тип комплекта, количество, персонал и партию/источник, где это необходимо. | Поддерживает отслеживаемость. |
+| sanitationkitops.assembly.quality_check | проверка качества комплекта | QUALITY_CHECK | Проверка проверяет содержимое, запечатанные предметы, срок годности и инструкцию. | Предотвращает неполные комплекты. |
+| sanitationkitops.eligibility.criteria | критерии приемлемости | CONSTRAINT | Критерии определяют воздействие на домохозяйство, роль в уборке, статус приюта или направление партнера. | Сохраняет справедливость. |
+| sanitationkitops.eligibility.frequency | предел частоты | CONSTRAINT | Лимит определяет наборы на одно домохозяйство или команду за период. | Расширяет запас. |
+| sanitationkitops.eligibility.exception | запись об исключении | RECORD | Исключением являются медицинские, детские, крупные бытовые или серьезные потребности в уборке. | Обеспечивает гибкость. |
+| sanitationkitops.eligibility.duplicate_check | дубликат чека | QUALITY_CHECK | Проверьте ссылки на предыдущие выпуски, бытовые и маршрутные доставки. | Предотвращает переизбыток. |
+| sanitationkitops.storage.clean_storage | чистое хранилище | SAFETY_RULE | Наборы остаются сухими, свободными от вредителей, соответствуют температуре и отделены от отходов. | Сохраняет удобство использования. |
+| sanitationkitops.storage.chemical_separation | химическое разделение | SAFETY_RULE | Химические вещества отделяются от продуктов питания, медицинских изделий и несовместимых продуктов. | Предотвращает загрязнение. |
+| sanitationkitops.storage.expiry_rotation | ротация истечения срока действия | METHOD | Товары с коротким сроком годности выдаются первыми, а товары с истекшим сроком годности удаляются. | Уменьшает отходы. |
+| sanitationkitops.storage.security | фондовая безопасность | SAFETY_RULE | Товары с высоким спросом требуют контролируемого хранения и подсчета. | Уменьшает потери. |
+| sanitationkitops.distribution.pickup_flow | расход подборщика | METHOD | Flow обрабатывает право на участие, очередь, выпуск комплекта, сообщение о безопасности и получение. | Обслуживает жителей. |
+| sanitationkitops.distribution.delivery_request | запрос на доставку | RECORD | Запрос фиксирует адрес, тип комплекта, доступ, контакт и барьер мобильности. | Включает доставку. |
+| sanitationkitops.distribution.route_plan | план маршрута | METHOD | Маршрутизируйте групповые доставки по географии, срочности и типу комплекта. | Экономит время. |
+| sanitationkitops.distribution.issue_receipt | выдать квитанцию | RECORD | В квитанции указывается домохозяйство/команда, тип комплекта, количество, дата и персонал. | Поддерживает инвентарь. |
+| sanitationkitops.safety.instruction_sheet | инструкция | RECORD | В инструкции поясняется безопасное использование, гигиена рук, предупреждения о разбавлении химических веществ и их утилизация. | Предотвращает неправильное использование. |
+| sanitationkitops.safety.bleach_warning | предупреждение о отбеливателе | SAFETY_RULE | Предупреждение гласит: не смешивайте отбеливатель с аммиаком, кислотами или неизвестными чистящими средствами. | Предотвращает появление токсичных газов. |
+| sanitationkitops.safety.ppe_message | Сообщение о средствах индивидуальной защиты | METHOD | В сообщении объясняются перчатки, ограничения на использование масок, защита глаз и мытье рук. | Повышает безопасность. |
+| sanitationkitops.safety.waste_message | пустое сообщение | METHOD | В сообщении поясняется упаковка в мешки, сортировка мусора, острые предметы и местные пути их утилизации. | Поддерживает санитарию. |
+| sanitationkitops.inventory.receiving | получение чека | QUALITY_CHECK | Прием чеков о количестве, состоянии, сроке действия, этикетках и источнике. | Защищает запас. |
+| sanitationkitops.inventory.stock_count | инвентаризация | MEASUREMENT | Подсчет сверяет полученные, собранные, выданные, поврежденные и оставшиеся предметы. | Показывает инвентарь. |
+| sanitationkitops.inventory.shortage | запись о дефиците | RECORD | Нехватка фиксирует предмет, влияние комплекта, замену и потребность в закупках. | Пополнение запасов гидов. |
+| sanitationkitops.inventory.reconciliation | примирение | QUALITY_CHECK | При сверке сравниваются запасы компонентов с готовыми комплектами и записями о выпуске. | Обнаруживает ошибки. |
+| sanitationkitops.communication.public_notice | публичное уведомление | METHOD | В уведомлении указано содержимое комплекта, его соответствие требованиям, местонахождение, ограничения и меры безопасности. | Проводники жителей. |
+| sanitationkitops.communication.partner_update | обновление партнера | METHOD | Партнеры получают информацию о наличии комплектов, дефиците, правилах самовывоза и маршрутах доставки. | Выравнивает рефералов. |
+| sanitationkitops.communication.language | языковая поддержка | METHOD | На вставках и знаках используются распространенные местные языки и пиктограммы. | Улучшает доступ. |
+| sanitationkitops.communication.feedback | процесс обратной связи | METHOD | Обратная связь позволяет выявить недостающие элементы, нечеткие инструкции или препятствия доступа. | Улучшает комплекты. |
+| sanitationkitops.records.daily_log | ежедневник | RECORD | Журнал хранит данные о сборках, распределении, поставках, недостачах и происшествиях. | Создает контрольный журнал. |
+| sanitationkitops.records.cost | запись затрат | RECORD | Стоимость учитывает компоненты, упаковку, транспортировку, хранение и рабочую силу. | Поддерживает финансы. |
+| sanitationkitops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам чрезвычайных ситуаций, грантов, финансов и общественного здравоохранения. | Сохраняет аудит. |
+| sanitationkitops.metrics.kits_issued | выпущены комплекты | MEASUREMENT | Подсчитайте выпущенные комплекты гусениц по типу, площади и каналу. | Показывает вывод. |
+| sanitationkitops.metrics.component_loss | потеря компонента | MEASUREMENT | Убытки отслеживают поврежденные, просроченные, отсутствующие или непригодные для использования компоненты. | Улучшает контроль. |
+| sanitationkitops.qa.sample_audit | выборочный аудит | QUALITY_CHECK | Аудит открывает наборы образцов для проверки содержимого и вкладышей. | Сохраняет качество. |
+| sanitationkitops.demob.closeout | распродажа | METHOD | Closeout перемещает запасы, сверяет запасы, архивирует журналы и удаляет товары с истекшим сроком годности. | Заканчивается чисто. |
+| sanitationkitops.review.after_action | обзор после действий | METHOD | Обзор фиксирует содержание, сообщения о безопасности, распространение, нехватку и уроки инвентаризации. | Улучшает будущие комплекты. |

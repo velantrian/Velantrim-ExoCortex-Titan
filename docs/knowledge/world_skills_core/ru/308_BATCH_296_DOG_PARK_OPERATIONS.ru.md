@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| dogparkops.inventory.dog_park_record | Dog park record | invariant | Record stores location, size, zones, gates, surfacing, water, amenities and maintenance history. | manage facility |
-| dogparkops.inventory.small_dog_area | Small dog area | variant | Area separates smaller dogs by weight, size, age or behavior policy. | reduce conflict |
-| dogparkops.inventory.double_gate | Dog park double-gate entry | invariant | Entry uses two gates to reduce escape risk during arrivals and exits. | control access |
-| dogparkops.inventory.waste_station | Dog park waste station | invariant | Station includes bag dispenser, bin, signage, service frequency and stock status. | manage waste |
-| dogparkops.gates.gate_latch_check | Dog park gate latch check | invariant | Check ensures gate closes, latches, aligns, swings safely and resists dog escape. | prevent escapes |
-| dogparkops.gates.fence_condition | Dog park fence condition | invariant | Condition checks height, gaps, holes, leaning posts, sharp edges and undermining. | secure perimeter |
-| dogparkops.gates.accessibility_gate | Dog park accessible gate | variant | Gate supports usable width, hardware reach, surface and maneuvering clearance. | inclusive access |
-| dogparkops.surfacing.turf_condition | Dog park turf condition | variant | Condition includes bare spots, mud, compaction, urine burn, drainage and overuse. | maintain surface |
-| dogparkops.surfacing.gravel_surface | Dog park gravel surface | variant | Surface needs grading, replenishment, dust control, drainage and debris removal. | keep usable |
-| dogparkops.surfacing.mud_control | Dog park mud control | invariant | Control uses drainage, rest periods, surface repair, mulch, gravel or temporary closure. | reduce mess |
-| dogparkops.surfacing.hole_repair | Dog park hole repair | invariant | Repair fills dog-dug holes and settles surface to prevent trips and injury. | remove hazard |
-| dogparkops.water.drinking_fountain | Dog park drinking fountain | invariant | Fountain serves dogs and handlers and requires cleaning, drainage, leaks and seasonal control. | provide water |
-| dogparkops.water.bowl_station | Dog park bowl station | variant | Station manages shared bowls, cleaning, storage, contamination and theft risk. | support hydration |
-| dogparkops.water.winter_shutoff | Dog park water winter shutoff | variant | Shutoff prevents freeze damage and requires public notice or alternate water plan. | protect plumbing |
-| dogparkops.cleaning.waste_pickup | Dog park waste pickup | invariant | Pickup removes feces, bagged waste, litter and overflowing bins from park areas. | hygiene |
-| dogparkops.cleaning.disinfection_need | Dog park disinfection need | variant | Need arises after disease concern, contamination, high use, vomit, blood or outbreak notice. | protect health |
-| dogparkops.cleaning.odor_control | Dog park odor control | invariant | Control manages urine concentration, waste bins, drainage, ventilation and cleaning frequency. | improve comfort |
-| dogparkops.rules.rule_signage | Dog park rule signage | invariant | Signage states leash, vaccination, waste, supervision, aggressive dog and hours rules. | set behavior |
-| dogparkops.rules.license_requirement | Dog park license requirement | variant | Requirement may link access to dog license, registration, permit or proof of vaccination. | manage eligibility |
-| dogparkops.rules.closure_rule | Dog park closure rule | invariant | Rule defines closure for maintenance, weather, disease, unsafe conditions or overcrowding. | manage risk |
-| dogparkops.incidents.dog_bite_incident | Dog bite incident | invariant | Incident records parties, dog details, injury, location, witnesses, animal control referral and follow-up. | respond safely |
-| dogparkops.incidents.aggressive_dog_report | Aggressive dog report | variant | Report captures behavior, repeat concerns, owner response, witness and enforcement path. | reduce conflict |
-| dogparkops.incidents.escape_incident | Dog escape incident | invariant | Incident records gate, fence, handler, direction, outcome and corrective action. | improve containment |
-| dogparkops.incidents.user_conflict | Dog park user conflict | variant | Conflict involves disputes about behavior, rules, waste, gates, children or park etiquette. | manage community |
-| dogparkops.repairs.fence_repair | Dog park fence repair | invariant | Repair fixes holes, loose fabric, posts, rails, gates, hinges or sharp edges. | restore containment |
-| dogparkops.repairs.bench_shade_repair | Dog park bench and shade repair | variant | Repair addresses seating, shade structures, umbrellas, anchors, splinters and stability. | restore amenities |
-| dogparkops.repairs.irrigation_repair | Dog park irrigation repair | variant | Repair handles broken heads, leaks, overspray, timers and turf watering needs. | support surface |
-| dogparkops.safety.heat_risk | Dog park heat risk | invariant | Risk includes hot surfacing, limited shade, dehydration, high temperature and vulnerable dogs. | prevent harm |
-| dogparkops.safety.surface_hazard | Dog park surface hazard | invariant | Hazard includes holes, glass, sharp objects, exposed roots, ice, mud or broken edging. | prevent injury |
-| dogparkops.safety.disease_notice | Dog park disease notice | variant | Notice communicates outbreak concern, cleaning action, closure or animal health guidance. | inform users |
-| dogparkops.complaints.waste_complaint | Dog park waste complaint | invariant | Complaint reports uncollected feces, overflowing bins, missing bags or odor. | dispatch cleaning |
-| dogparkops.complaints.noise_complaint | Dog park noise complaint | variant | Complaint concerns barking, early use, crowd behavior or nearby residential impact. | manage nuisance |
-| dogparkops.complaints.maintenance_complaint | Dog park maintenance complaint | invariant | Complaint reports broken gate, fence gap, water issue, surface hazard or damaged amenity. | start work |
-| dogparkops.records.daily_check_log | Dog park daily check log | invariant | Log records gates, surfacing, waste, water, incidents, cleaning, repairs and closures. | trace service |
-| dogparkops.records.incident_record | Dog park incident record | invariant | Record stores injury, bite, escape, conflict, witness, referral and corrective action. | manage liability |
-| dogparkops.records.closure_record | Dog park closure record | variant | Record explains closure reason, duration, notices, barriers, repairs and reopening check. | document outage |
-| dogparkops.reporting.condition_report | Dog park condition report | invariant | Report summarizes gates, fencing, surfacing, waste, water, amenities, incidents and backlog. | manage park |
-| dogparkops.reporting.use_pattern_report | Dog park use pattern report | variant | Report tracks peak times, crowding, zone use, complaints and maintenance demand. | plan capacity |
-| dogparkops.metrics.waste_station_uptime | Dog park waste station uptime KPI | invariant | KPI measures stations stocked, usable and serviced on schedule. | monitor hygiene |
-| dogparkops.metrics.incident_rate | Dog park incident rate KPI | variant | KPI tracks bites, escapes, conflicts and injuries by period and location. | target controls |
-| dogparkops.coordination.animal_control | Dog park animal control coordination | invariant | Coordination handles bite reports, dangerous behavior, licensing, enforcement and public education. | manage incidents |
-| dogparkops.coordination.volunteer_group | Dog park volunteer group coordination | variant | Coordination aligns cleanup, feedback, events, minor stewardship and reporting. | support park |
-| dogparkops.continuity.emergency_closure | Dog park emergency closure | invariant | Closure handles unsafe fence, bite cluster, contamination, storm damage or severe surface hazard. | protect users |
-| dogparkops.close.work_closeout | Dog park work closeout | invariant | Closeout confirms repair or cleaning, photos, signs, records and complaint response. | finish work |
+| dogparkops.inventory.dog_park_record | Рекорд парка собак | invariant | Записывайте расположение, размер, зоны, ворота, поверхность, воду, удобства и историю обслуживания магазинов. | управлять объектом |
+| dogparkops.inventory.small_dog_area | Маленькая зона для собак | variant | Зона разделяет более мелких собак по весу, размеру, возрасту или поведению. | уменьшить конфликт |
+| dogparkops.inventory.double_gate | Вход в парк для собак через двойные ворота | invariant | При входе используются двое ворот, чтобы снизить риск побега во время прибытия и выхода. | контроль доступа |
+| dogparkops.inventory.waste_station | Станция мусора для собачьего парка | invariant | Станция включает в себя диспенсер для пакетов, корзину, указатели, частоту обслуживания и состояние запасов. | управлять отходами |
+| dogparkops.gates.gate_latch_check | Проверка защелки ворот парка для собак | invariant | Проверка гарантирует, что ворота закрываются, защелкиваются, выравниваются, безопасно поворачиваются и препятствуют побегу собаки. | предотвратить побеги |
+| dogparkops.gates.fence_condition | Состояние забора в парке для собак | invariant | Состояние проверяется по высоте, зазорам, отверстиям, наклонным стойкам, острым краям и подрывам. | безопасный периметр |
+| dogparkops.gates.accessibility_gate | Ворота для доступа в парк для собак | variant | Ворота поддерживают полезную ширину, вылет оборудования, свободное пространство и пространство для маневрирования. | инклюзивный доступ |
+| dogparkops.surfacing.turf_condition | Состояние газона в парке для собак | variant | Состояние включает оголенные пятна, грязь, уплотнения, ожоги мочи, дренаж и чрезмерное использование. | поддерживать поверхность |
+| dogparkops.surfacing.gravel_surface | Гравийное покрытие для собачьего парка | variant | Поверхность требует планировки, пополнения, борьбы с пылью, дренажа и удаления мусора. | сохранять работоспособность |
+| dogparkops.surfacing.mud_control | Борьба с грязью в парке для собак | invariant | Для борьбы используются дренаж, периоды отдыха, ремонт поверхности, мульча, гравий или временное закрытие. | уменьшить беспорядок |
+| dogparkops.surfacing.hole_repair | Ремонт ямы в парке для собак | invariant | При ремонте заполняют вырытые собаками ямы и выравнивают поверхность, чтобы предотвратить спотыкания и травмы. | устранить опасность |
+| dogparkops.water.drinking_fountain | Питьевой фонтанчик в парке для собак | invariant | Фонтан обслуживает собак и хендлеров и требует очистки, дренажа, устранения утечек и сезонного контроля. | обеспечить водой |
+| dogparkops.water.bowl_station | Станция для мисок в парке для собак | variant | Станция управляет общими емкостями, уборкой, хранением, риском загрязнения и кражи. | поддерживать гидратацию |
+| dogparkops.water.winter_shutoff | Зимнее отключение воды в парке для собак | variant | Отключение предотвращает повреждение от замерзания и требует уведомления общественности или альтернативного плана водоснабжения. | защитить сантехнику |
+| dogparkops.cleaning.waste_pickup | Сбор мусора из собачьего парка | invariant | Пикап убирает фекалии, упакованные в мешки отходы, мусор и переполненные мусорные баки из парковых зон. | гигиена |
+| dogparkops.cleaning.disinfection_need | Необходимость дезинфекции собачьего парка | variant | Потребность возникает после уведомления о заболевании, загрязнении, интенсивном употреблении, рвоте, крови или вспышке. | защитить здоровье |
+| dogparkops.cleaning.odor_control | Контроль запаха в парке для собак | invariant | Контроль управляет концентрацией мочи, мусорными баками, дренажем, вентиляцией и частотой очистки. | улучшить комфорт |
+| dogparkops.rules.rule_signage | Таблички с правилами парковки для собак | invariant | На табличках указаны правила поведения на поводке, вакцинации, отходах, присмотре, агрессивной собаке и часы работы. | установить поведение |
+| dogparkops.rules.license_requirement | Требование к лицензии на парк для собак | variant | Требование может связывать доступ к лицензии на собаку, регистрации, разрешению или доказательству вакцинации. | управлять правомочностью |
+| dogparkops.rules.closure_rule | Правило закрытия собачьего парка | invariant | Правило определяет закрытие из-за технического обслуживания, погодных условий, болезней, небезопасных условий или переполненности. | управлять риском |
+| dogparkops.incidents.dog_bite_incident | Случай с укусом собаки | invariant | Записывает стороны происшествий, данные о собаках, травмы, местонахождение, свидетелей, направление на контроль за животными и последующие действия. | реагировать безопасно |
+| dogparkops.incidents.aggressive_dog_report | Отчет об агрессивной собаке | variant | В отчете отражено поведение, повторяющиеся опасения, реакция владельца, свидетели и пути правоприменения. | уменьшить конфликт |
+| dogparkops.incidents.escape_incident | Инцидент с побегом собаки | invariant | Инцидент записывает ворота, ограждение, обработчика, направление, результат и корректирующие действия. | улучшить условия содержания |
+| dogparkops.incidents.user_conflict | Конфликт с пользователем парка для собак | variant | Конфликт включает в себя споры о поведении, правилах, отходах, воротах, детях или этикете в парке. | управлять сообществом |
+| dogparkops.repairs.fence_repair | Ремонт забора в парке для собак | invariant | Ремонт устраняет дыры, рыхлую ткань, стойки, перила, ворота, петли или острые края. | восстановить сдерживание |
+| dogparkops.repairs.bench_shade_repair | Ремонт скамейки и навеса для собак в парке | variant | Ремонт касается сидений, навесных конструкций, зонтов, анкеров, осколков и устойчивости. | восстановить удобства |
+| dogparkops.repairs.irrigation_repair | Ремонт ирригационной системы в парке для собак | variant | Ремонт устраняет сломанные головки, утечки, избыточное распыление, таймеры и потребности в поливе газона. | опорная поверхность |
+| dogparkops.safety.heat_risk | Риск жары в собачьем парке | invariant | Риск включает в себя горячую поверхность, ограниченную тень, обезвоживание, высокую температуру и уязвимость собак. | предотвратить вред |
+| dogparkops.safety.surface_hazard | Опасность на поверхности парка для собак | invariant | Опасность включает дыры, стекло, острые предметы, открытые корни, лед, грязь или сломанные края. | предотвратить травмы |
+| dogparkops.safety.disease_notice | Уведомление о болезни в парке для собак | variant | В уведомлении сообщается о проблеме, связанной со вспышкой, мерах по очистке, закрытии или рекомендациях по охране здоровья животных. | информировать пользователей |
+| dogparkops.complaints.waste_complaint | Жалоба на мусор в парке для собак | invariant | Жалоба сообщает о несобранных фекалиях, переполненных мусорных баках, недостающих мешках или запахе. | диспетчерская уборка |
+| dogparkops.complaints.noise_complaint | Жалоба на шум в парке для собак | variant | Жалоба касается лая, раннего использования, поведения толпы или воздействия на близлежащие жилые дома. | справляться с неприятностями |
+| dogparkops.complaints.maintenance_complaint | Жалоба на содержание собачьего парка | invariant | В жалобе сообщается о сломанных воротах, дыре в заборе, проблемах с водой, опасностях на поверхности или повреждении удобств. | начать работу |
+| dogparkops.records.daily_check_log | Ежедневный журнал проверок парка собак | invariant | В журнале фиксируются ворота, покрытие, отходы, вода, происшествия, уборка, ремонт и закрытие. | служба трассировки |
+| dogparkops.records.incident_record | Запись об инциденте в парке собак | invariant | В записях хранятся травмы, укусы, побеги, конфликты, свидетели, направления и корректирующие действия. | управлять ответственностью |
+| dogparkops.records.closure_record | Рекорд закрытия парка собак | variant | В записи описываются причина закрытия, продолжительность, уведомления, барьеры, ремонт и проверка повторного открытия. | сбой в работе с документами |
+| dogparkops.reporting.condition_report | Отчет о состоянии собачьего парка | invariant | В отчете суммируются ворота, ограждения, покрытия, отходы, вода, удобства, инциденты и отставание. | управлять парком |
+| dogparkops.reporting.use_pattern_report | Отчет о характере использования парка для собак | variant | В отчете отслеживаются часы пик, скопление людей, использование зон, жалобы и требования к техническому обслуживанию. | плановая мощность |
+| dogparkops.metrics.waste_station_uptime | KPI времени безотказной работы станции сбора мусора в парке для собак | invariant | KPI измеряет, что станции укомплектованы, пригодны к использованию и обслуживаются в соответствии с графиком. | следить за гигиеной |
+| dogparkops.metrics.incident_rate | KPI показателя инцидентности в парке собак | variant | KPI отслеживает укусы, побеги, конфликты и травмы по периодам и местам. | целевые элементы управления |
+| dogparkops.coordination.animal_control | Координация контроля над животными в собачьих парках | invariant | Координация занимается сообщениями об укусах, опасным поведением, лицензированием, правоприменением и просвещением общественности. | управлять инцидентами |
+| dogparkops.coordination.volunteer_group | Координация волонтерской группы собачьего парка | variant | Координация согласовывает очистку, обратную связь, мероприятия, второстепенное управление и отчетность. | парк поддержки |
+| dogparkops.continuity.emergency_closure | Аварийное закрытие собачьего парка | invariant | Закрытие предотвращает небезопасное ограждение, скопление укусов, загрязнение, повреждение ураганом или серьезную опасность на поверхности. | защитить пользователей |
+| dogparkops.close.work_closeout | Закрытие парка для собак | invariant | Закрытие подтверждает ремонт или уборку, фотографии, знаки, записи и ответы на жалобы. | закончить работу |

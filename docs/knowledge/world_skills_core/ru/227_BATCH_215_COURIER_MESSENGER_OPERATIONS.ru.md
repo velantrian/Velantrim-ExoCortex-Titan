@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| courier.dispatch.job_intake | Courier job intake | invariant | Intake records sender, recipient, address, item type, deadline, service level and contact. | open delivery task |
-| courier.dispatch.service_level | Courier service level | invariant | Level defines standard, rush, same-day, scheduled, legal, medical or fragile handling. | priority logic |
-| courier.dispatch.zone_assignment | Courier zone assignment | variant | Assignment maps jobs to rider, driver, walking messenger or depot zone. | efficient dispatch |
-| courier.dispatch.route_priority | Route priority | invariant | Priority orders pickups and drops by deadline, distance, custody risk and promised service. | deliver on time |
-| courier.dispatch.capacity_check | Courier capacity check | invariant | Check verifies vehicle, bag, weight, size, temperature or security capacity. | accept only feasible work |
-| courier.pickup.pickup_proof | Pickup proof | invariant | Proof records time, location, sender, signature, photo, barcode or scan. | custody starts |
-| courier.pickup.item_count | Pickup item count | invariant | Count verifies envelopes, parcels, bags or totes accepted from sender. | prevent shortage |
-| courier.pickup.package_condition | Package condition note | invariant | Note records damage, seal status, wetness, missing label or fragile state at pickup. | baseline evidence |
-| courier.pickup.label_scan | Courier label scan | variant | Scan connects physical item to dispatch record and tracking timeline. | item identity |
-| courier.pickup.failed_pickup | Failed pickup | invariant | Failure records no item, closed office, wrong address, access denial or cancellation. | explain non-collection |
-| courier.custody.chain_of_custody | Courier chain of custody | invariant | Custody log tracks possession, transfer, time, person and condition. | accountable movement |
-| courier.custody.sealed_bag | Sealed courier bag | variant | Bag uses tamper-evident seal and recorded seal number for sensitive contents. | protect integrity |
-| courier.custody.high_value_item | High-value courier item | variant | Item requires extra authorization, secure handling, proof and exception escalation. | reduce loss risk |
-| courier.custody.medical_specimen | Medical specimen courier item | variant | Specimen uses required packaging, temperature, labels and handoff workflow. | special custody |
-| courier.custody.legal_document | Legal document courier item | variant | Document delivery may require named recipient, filing deadline, stamp or affidavit. | deadline proof |
-| courier.route.route_manifest | Courier route manifest | invariant | Manifest lists stops, sequence, items, contacts, notes and required proofs. | route plan |
-| courier.route.dynamic_resequence | Dynamic route resequence | variant | Resequence adjusts route after rush job, traffic, failed stop or deadline change. | stay responsive |
-| courier.route.traffic_delay | Courier traffic delay | invariant | Delay records cause, affected jobs, ETA change and customer notice. | manage promise |
-| courier.route.secure_parking | Secure parking decision | variant | Decision balances proximity, theft risk, loading rules, vehicle safety and time. | protect items |
-| courier.route.multi_stop_batch | Multi-stop batch | invariant | Batch groups pickups or deliveries for efficiency while preserving priority and custody. | route density |
-| courier.delivery.delivery_proof | Delivery proof | invariant | Proof records recipient, time, signature, photo, GPS, stamp or scan. | close delivery |
-| courier.delivery.named_recipient | Named recipient delivery | variant | Delivery must be handed only to specified person or authorized substitute. | controlled handoff |
-| courier.delivery.safe_drop | Safe drop rule | variant | Rule permits unattended delivery only under sender, recipient or service policy. | avoid risky drop |
-| courier.delivery.failed_delivery | Failed delivery | invariant | Failure records no access, refused item, wrong address, closed office or recipient unavailable. | next action needed |
-| courier.delivery.return_to_sender | Return-to-sender courier flow | invariant | Flow routes undeliverable or refused item back with proof and status update. | close failed job |
-| courier.exception.address_issue | Courier address issue | invariant | Issue records missing suite, bad address, inaccessible location or conflicting directions. | solve navigation |
-| courier.exception.damaged_item | Courier damaged item | invariant | Damage record captures condition, photos, custody stage, notification and claim path. | incident evidence |
-| courier.exception.lost_item | Courier lost item | invariant | Lost item process searches custody, route, vehicle, depot and scans before claim. | structured recovery |
-| courier.exception.customer_change | Courier customer change | variant | Change updates address, deadline, recipient, service level or cancellation with approval. | control scope |
-| courier.exception.security_incident | Courier security incident | invariant | Incident records theft, threat, assault, vehicle break-in or suspicious item. | protect staff and cargo |
-| courier.comms.customer_eta | Courier customer ETA | variant | ETA message updates sender or recipient about pickup or delivery timing. | transparency |
-| courier.comms.dispatch_radio | Courier dispatch communication | invariant | Communication gives concise stop, status, exception and safety updates. | live coordination |
-| courier.comms.proof_request | Proof request response | invariant | Response sends delivery proof, chain detail or exception notes to customer. | answer evidence need |
-| courier.comms.escalation_contact | Courier escalation contact | invariant | Contact defines who decides on failed, high-value, legal, medical or unsafe delivery. | fast decision |
-| courier.comms.recipient_call | Recipient call | variant | Call confirms access, location, delivery window or special instruction. | reduce failed stop |
-| courier.billing.price_quote | Courier price quote | invariant | Quote uses distance, urgency, item, wait time, vehicle, route and special handling. | price before dispatch |
-| courier.billing.wait_time | Courier wait time charge | variant | Charge applies when courier waits beyond included pickup or delivery window. | recover delay cost |
-| courier.billing.proof_billing | Proof-linked billing | invariant | Billing connects completed job, proofs, exceptions, surcharges and customer account. | invoice defensibly |
-| courier.billing.account_terms | Courier account terms | variant | Terms define credit limit, invoicing cycle, service levels and dispute process. | repeat customer control |
-| courier.billing.dispute_case | Courier billing dispute | invariant | Case records charge issue, proof, communication, correction or denial. | resolve cleanly |
-| courier.admin.courier_equipment | Courier equipment checklist | invariant | Checklist covers bag, scanner, phone, charger, lock, PPE, forms and vehicle items. | ready to work |
-| courier.admin.license_insurance | Courier license and insurance | variant | Record confirms driver, vehicle, insurance and permits where required. | compliance |
-| courier.metrics.courier_kpi | Courier operations KPI | variant | KPI tracks on-time delivery, failed stops, claims, route density, wait time and customer issues. | manage dispatch |
-| courier.continuity.vehicle_breakdown | Courier vehicle breakdown plan | invariant | Plan reassigns items, secures cargo, updates customers and documents delay. | recover route |
+| courier.dispatch.job_intake | Прием на работу курьером | invariant | Приемные записи: отправитель, получатель, адрес, тип элемента, срок, уровень обслуживания и контакт. | открыть задачу доставки |
+| courier.dispatch.service_level | Уровень курьерской службы | invariant | Уровень определяет стандартную, срочную, экстренную, запланированную, юридическую, медицинскую или хрупкую обработку. | приоритетная логика |
+| courier.dispatch.zone_assignment | Назначение курьерской зоны | variant | При назначении рабочие места распределяются по пассажирам, водителям, пешеходам или зонам депо. | эффективная отправка |
+| courier.dispatch.route_priority | Приоритет маршрута | invariant | Приоритетные заказы на доставку и доставку в зависимости от крайнего срока, расстояния, риска хранения и обещанного обслуживания. | доставить вовремя |
+| courier.dispatch.capacity_check | Проверка пропускной способности курьера | invariant | При проверке проверяется транспортное средство, сумка, вес, размер, температура или емкость безопасности. | принимать только посильную работу |
+| courier.pickup.pickup_proof | Доказательство получения | invariant | В доказательстве фиксируются время, местонахождение, отправитель, подпись, фотография, штрих-код или сканирование. | начало опеки |
+| courier.pickup.item_count | Количество предметов самовывоза | invariant | Подсчет проверяет конверты, посылки, сумки или сумки, принятые от отправителя. | предотвратить нехватку |
+| courier.pickup.package_condition | Примечание о состоянии упаковки | invariant | В заметке фиксируются повреждения, состояние пломбы, влажность, отсутствие этикетки или хрупкое состояние при получении. | исходные данные |
+| courier.pickup.label_scan | Сканирование курьерской этикетки | variant | Сканирование соединяет физический предмет с записью об отправке и графиком отслеживания. | идентичность предмета |
+| courier.pickup.failed_pickup | Не удалось получить | invariant | При сбое не фиксируется отсутствие товара, закрытый офис, неправильный адрес, отказ в доступе или отмена. | объясните отсутствие сбора |
+| courier.custody.chain_of_custody | Курьерская цепочка поставок | invariant | В журнале хранения фиксируются хранение, передача, время, личность и состояние. | подотчетное движение |
+| courier.custody.sealed_bag | Запечатанная курьерская сумка | variant | В сумке используется пломбировка, предупреждающая несанкционированный доступ, и записанный номер печати для конфиденциального содержимого. | защищать целостность |
+| courier.custody.high_value_item | Дорогой курьерский товар | variant | Для элемента требуется дополнительная авторизация, безопасная обработка, подтверждение и эскалация исключений. | снизить риск потерь |
+| courier.custody.medical_specimen | Курьерский предмет для медицинских образцов | variant | Образец использует необходимую упаковку, температуру, этикетки и рабочий процесс передачи. | специальная опека |
+| courier.custody.legal_document | Юридический документ курьерского отправления | variant | Для доставки документа может потребоваться имя получателя, крайний срок подачи, печать или письменное показание. | доказательство крайнего срока |
+| courier.route.route_manifest | Манифест маршрута курьера | invariant | В манифесте перечислены остановки, последовательность, предметы, контакты, примечания и необходимые доказательства. | план маршрута |
+| courier.route.dynamic_resequence | Динамическая последовательность маршрутов | variant | Функция Resequence корректирует маршрут после срочной работы, пробок, неудачной остановки или изменения крайнего срока. | оставаться отзывчивым |
+| courier.route.traffic_delay | Задержка курьерского движения | invariant | Причина задержки записывает, затронутые работы, изменение расчетного времени прибытия и уведомление клиента. | управлять обещанием |
+| courier.route.secure_parking | Решение о безопасной парковке | variant | Решение учитывает близость, риск кражи, правила погрузки, безопасность транспортного средства и время. | защитить предметы |
+| courier.route.multi_stop_batch | Многоступенчатая партия | invariant | Пакетные группировки самовывозов или доставок для повышения эффективности, сохраняя при этом приоритет и ответственное хранение. | плотность маршрутов |
+| courier.delivery.delivery_proof | Доказательство доставки | invariant | Доказательство записывает получателя, время, подпись, фотографию, GPS, печать или сканирование. | закрытие поставки |
+| courier.delivery.named_recipient | Доставка по имени получателя | variant | Доставка должна быть передана только указанному лицу или уполномоченному лицу. | контролируемая передача обслуживания |
+| courier.delivery.safe_drop | Правило безопасного сброса | variant | Правило разрешает автоматическую доставку только в соответствии с политикой отправителя, получателя или службы. | избежать рискованного падения |
+| courier.delivery.failed_delivery | Неудачная доставка | invariant | Сбой фиксирует отсутствие доступа, отказ в отправке товара, неправильный адрес, закрытый офис или недоступность получателя. | необходимо следующее действие |
+| courier.delivery.return_to_sender | Курьерский поток с возвратом отправителю | invariant | Маршруты потока не могут быть доставлены или товар отклонен обратно с подтверждением и обновлением статуса. | закрыть неудавшуюся работу |
+| courier.exception.address_issue | Проблема с адресом курьера | invariant | В проблеме отмечается отсутствие номера, неверный адрес, недоступное местоположение или противоречивые указания. | решить навигацию |
+| courier.exception.damaged_item | Курьер повредил товар | invariant | В отчете о повреждениях фиксируются состояние, фотографии, этап хранения, уведомление и путь претензии. | доказательства происшествия |
+| courier.exception.lost_item | Курьер потерял товар | invariant | Процесс поиска потерянных вещей проверяет место хранения, маршрут, транспортное средство, склад и сканирует перед предъявлением претензии. | структурированное восстановление |
+| courier.exception.customer_change | Смена клиента курьера | variant | Измените адрес обновлений, крайний срок, получателя, уровень обслуживания или отмену с одобрения. | объем контроля |
+| courier.exception.security_incident | Инцидент с курьерской безопасностью | invariant | Инцидент фиксирует кражу, угрозу, нападение, взлом автомобиля или наличие подозрительного предмета. | защитить персонал и груз |
+| courier.comms.customer_eta | Клиент-курьер ETA | variant | Сообщение ETA информирует отправителя или получателя о времени получения или доставки. | прозрачность |
+| courier.comms.dispatch_radio | Курьерская диспетчерская связь | invariant | Связь предоставляет краткую информацию об остановке, состоянии, исключениях и безопасности. | живая координация |
+| courier.comms.proof_request | Ответ на запрос подтверждения | invariant | Ответ отправляет клиенту подтверждение доставки, подробную информацию о цепочке или примечания об исключениях. | ответьте на необходимость доказательства |
+| courier.comms.escalation_contact | Контактная информация для курьера | invariant | Контакт определяет, кто принимает решение о неудачных, дорогостоящих, законных, медицинских или небезопасных родах. | быстрое решение |
+| courier.comms.recipient_call | Звонок получателя | variant | Звонок подтверждает доступ, местоположение, окно доставки или специальные инструкции. | уменьшить неудачную остановку |
+| courier.billing.price_quote | Ценовое предложение курьера | invariant | В ценовом предложении учитываются расстояние, срочность, предмет, время ожидания, транспортное средство, маршрут и особая обработка. | цена до отправки |
+| courier.billing.wait_time | Оплата времени ожидания курьера | variant | Плата взимается, когда курьер ожидает за пределами включенного окна выдачи или доставки. | возместить стоимость задержки |
+| courier.billing.proof_billing | Платежи, связанные с подтверждением | invariant | Выставление счетов связывает выполненную работу, доказательства, исключения, надбавки и учетную запись клиента. | выставлять счета обоснованно |
+| courier.billing.account_terms | Условия курьерского счета | variant | Условия определяют кредитный лимит, цикл выставления счетов, уровни обслуживания и процесс разрешения споров. | повторный контроль клиентов |
+| courier.billing.dispute_case | Спор по счетам курьера | invariant | В материалах дела содержится информация о выдаче, доказательстве, сообщении, исправлении или опровержении. | решить чисто |
+| courier.admin.courier_equipment | Контрольный список курьерского оборудования | invariant | Контрольный список охватывает сумку, сканер, телефон, зарядное устройство, замок, СИЗ, бланки и транспортные средства. | готов работать |
+| courier.admin.license_insurance | Лицензия и страховка курьера | variant | Запись подтверждает водителя, транспортное средство, страховку и разрешения, где это необходимо. | согласие |
+| courier.metrics.courier_kpi | KPI курьерских операций | variant | KPI отслеживает своевременную доставку, неудачные остановки, претензии, плотность маршрутов, время ожидания и проблемы клиентов. | управлять отправкой |
+| courier.continuity.vehicle_breakdown | План поломки курьерского автомобиля | invariant | План переназначает предметы, обеспечивает безопасность груза, информирует клиентов и документирует задержку. | восстановить маршрут |

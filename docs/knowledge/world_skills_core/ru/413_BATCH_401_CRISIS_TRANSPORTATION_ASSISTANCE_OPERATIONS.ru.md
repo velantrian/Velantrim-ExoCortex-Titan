@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| crisistransportops.intake.request_source | request source | RECORD | Source records shelter, hotline, clinic, caseworker, school, outreach or public desk. | Shows origin. |
-| crisistransportops.intake.trip_purpose | trip purpose | RECORD | Purpose distinguishes shelter, medical, benefits, food, reunification, work or evacuation trip. | Routes service. |
-| crisistransportops.intake.origin_destination | origin destination | RECORD | Record captures pickup, destination, time window, contact and access constraints. | Defines trip. |
-| crisistransportops.intake.passenger_count | passenger count | MEASUREMENT | Count includes adults, children, caregivers, pets, luggage and equipment. | Selects vehicle. |
-| crisistransportops.eligibility.criteria | eligibility criteria | CONSTRAINT | Criteria define disaster impact, income, referral source, trip purpose and service area. | Preserves fairness. |
-| crisistransportops.eligibility.priority | priority model | MODEL | Priority weighs life safety, medical appointment, shelter access, disability and time sensitivity. | Orders requests. |
-| crisistransportops.eligibility.exception | exception record | RECORD | Exception records unusual need, approval, reason and limits. | Allows flexibility. |
-| crisistransportops.eligibility.duplicate_check | duplicate check | QUALITY_CHECK | Duplicate check links repeated trip requests and prevents double voucher issue. | Protects resources. |
-| crisistransportops.routing.mode_match | mode match | METHOD | Mode match selects bus, paratransit, rideshare, taxi, shuttle, nonprofit van or fuel card. | Fits need. |
-| crisistransportops.routing.route_plan | route plan | METHOD | Plan groups trips by geography, urgency, capacity and road conditions. | Improves throughput. |
-| crisistransportops.routing.pickup_window | pickup window | RECORD | Window records earliest/latest pickup, driver instructions and contact backup. | Reduces misses. |
-| crisistransportops.routing.road_status | road status | CONSTRAINT | Road status checks closures, flood, debris, security and weather. | Keeps trips feasible. |
-| crisistransportops.accessible.vehicle_need | accessible vehicle need | RECORD | Need records wheelchair, lift, stretcher, low-step, service animal or caregiver support. | Selects accessible transport. |
-| crisistransportops.accessible.device_space | device space | SAFETY_RULE | Vehicle must fit mobility devices, oxygen, luggage and securement needs. | Prevents unsafe loading. |
-| crisistransportops.accessible.driver_brief | driver brief | METHOD | Brief explains assistance level, communication need and safe boarding procedure. | Improves service. |
-| crisistransportops.accessible.no_accessible_vehicle | no accessible vehicle | RECORD | Gap record captures wait time, alternative, escalation and resident update. | Exposes unmet need. |
-| crisistransportops.voucher.voucher_issue | voucher issue | RECORD | Voucher records amount, vendor, trip purpose, rider, expiration and restrictions. | Controls subsidy. |
-| crisistransportops.voucher.fuel_card | fuel card | RECORD | Fuel card issue records vehicle, amount, eligibility, purpose and receipt expectation. | Supports self-transport. |
-| crisistransportops.voucher.ride_code | ride code | RECORD | Ride code tracks platform, limit, origin/destination rule and activation time. | Enables digital rides. |
-| crisistransportops.voucher.cancellation | cancellation rule | METHOD | Cancellations reclaim unused voucher or record reason for no-show. | Prevents waste. |
-| crisistransportops.safety.driver_check | driver check | QUALITY_CHECK | Provider checks driver credential, vehicle status, insurance and dispatch contact. | Protects riders. |
-| crisistransportops.safety.child_transport | child transport | SAFETY_RULE | Child transport follows guardian, seat, school or reunification rules. | Prevents unsafe release. |
-| crisistransportops.safety.medical_trip | medical trip safety | SAFETY_RULE | Medical trips define when EMS, non-emergency medical transport or regular ride is appropriate. | Avoids under-response. |
-| crisistransportops.safety.incident_report | incident report | RECORD | Incident records crash, no-show, threat, medical event, lost rider or complaint. | Supports review. |
-| crisistransportops.dispatch.assignment | dispatch assignment | RECORD | Assignment names provider, driver/vehicle if known, pickup time and trip ID. | Executes trip. |
-| crisistransportops.dispatch.rider_notify | rider notification | METHOD | Rider receives pickup window, vehicle info, contact, cost and cancellation rule. | Sets expectations. |
-| crisistransportops.dispatch.provider_update | provider update | METHOD | Provider receives changes, delays, accessibility notes and route hazards. | Keeps trip aligned. |
-| crisistransportops.dispatch.failed_pickup | failed pickup | RECORD | Failed pickup records cause, attempts, driver note and next action. | Enables reschedule. |
-| crisistransportops.records.trip_log | trip log | RECORD | Trip log stores intake, eligibility, assignment, completion, cost and incident notes. | Creates audit trail. |
-| crisistransportops.records.receipt | receipt record | RECORD | Receipt captures vendor charge, voucher use, fuel proof or reimbursement support. | Supports finance. |
-| crisistransportops.records.privacy | privacy rule | SAFETY_RULE | Trip data hides sensitive destinations where safety or medical privacy requires. | Protects riders. |
-| crisistransportops.records.retention | retention rule | CONSTRAINT | Records follow emergency, finance, grant and privacy schedules. | Preserves audit. |
-| crisistransportops.reconcile.vendor_invoice | vendor invoice | QUALITY_CHECK | Invoice reconciles trip IDs, fares, cancellations, wait fees and authorized limits. | Prevents overpayment. |
-| crisistransportops.reconcile.voucher_balance | voucher balance | MEASUREMENT | Balance tracks issued, used, expired, canceled and remaining voucher funds. | Shows funds. |
-| crisistransportops.reconcile.exception_review | exception review | QUALITY_CHECK | Review checks trips outside limits, duplicate riders and unusual costs. | Controls misuse. |
-| crisistransportops.reconcile.grant_code | grant code | RECORD | Grant code links trips to eligible funding source and documentation. | Supports reimbursement. |
-| crisistransportops.communication.public_info | public information | METHOD | Public info explains who can request rides, purposes, hours and limits. | Guides residents. |
-| crisistransportops.communication.partner_referral | partner referral | METHOD | Partners use referral form with eligibility, destination and accessibility fields. | Standardizes requests. |
-| crisistransportops.communication.language | language support | METHOD | Calls and notices use interpreter or translated scripts when needed. | Improves access. |
-| crisistransportops.communication.shortage | shortage message | METHOD | Shortage notice explains delays, alternatives, priority rules and callback timing. | Reduces frustration. |
-| crisistransportops.metrics.completed_trips | completed trips | MEASUREMENT | Completed trips count rides delivered by purpose, mode, area and provider. | Shows output. |
-| crisistransportops.metrics.wait_time | wait time | MEASUREMENT | Wait time measures request to assignment and pickup. | Reveals bottleneck. |
-| crisistransportops.metrics.no_show_rate | no-show rate | MEASUREMENT | No-show rate tracks rider, driver or provider failures. | Improves dispatch. |
-| crisistransportops.review.after_action | after-action review | METHOD | Review captures eligibility, routing, accessible vehicle gaps, voucher controls and safety lessons. | Improves future transport. |
+| crisistransportops.intake.request_source | источник запроса | RECORD | Исходные данные включают приют, горячую линию, клинику, социального работника, школу, информационно-пропагандистскую работу или общественный стол. | Показывает происхождение. |
+| crisistransportops.intake.trip_purpose | цель поездки | RECORD | По назначению различают приют, медицинскую, льготную, продовольственную, воссоединяющую, рабочую или эвакуационную поездку. | Сервис маршрутов. |
+| crisistransportops.intake.origin_destination | пункт отправления | RECORD | Запись фиксирует отправку, пункт назначения, временной интервал, контакты и ограничения доступа. | Определяет поездку. |
+| crisistransportops.intake.passenger_count | количество пассажиров | MEASUREMENT | В число входят взрослые, дети, лица, осуществляющие уход, домашние животные, багаж и оборудование. | Выбирает транспортное средство. |
+| crisistransportops.eligibility.criteria | критерии приемлемости | CONSTRAINT | Критерии определяют воздействие стихийного бедствия, доход, источник направления, цель поездки и территорию обслуживания. | Сохраняет справедливость. |
+| crisistransportops.eligibility.priority | приоритетная модель | MODEL | В приоритете безопасность жизни, посещение врача, доступ к приюту, инвалидность и чувствительность ко времени. | Запросы на заказы. |
+| crisistransportops.eligibility.exception | запись об исключении | RECORD | Исключение фиксирует необычную потребность, одобрение, причину и ограничения. | Обеспечивает гибкость. |
+| crisistransportops.eligibility.duplicate_check | дубликат чека | QUALITY_CHECK | Двойная проверка связывает повторные запросы на поездку и предотвращает выдачу двойного ваучера. | Защищает ресурсы. |
+| crisistransportops.routing.mode_match | соответствие режима | METHOD | Сопоставление режимов позволяет выбрать автобус, паратранзит, совместную поездку, такси, маршрутный автобус, некоммерческий фургон или топливную карту. | Соответствует необходимости. |
+| crisistransportops.routing.route_plan | план маршрута | METHOD | Планируйте групповые поездки с учетом географии, срочности, вместимости и дорожных условий. | Улучшает пропускную способность. |
+| crisistransportops.routing.pickup_window | окно грузового автомобиля | RECORD | Окно записывает самое раннее/последнее получение, инструкции водителя и резервную копию контактов. | Уменьшает промахи. |
+| crisistransportops.routing.road_status | статус дороги | CONSTRAINT | Состояние дорог проверяет закрытие, наводнения, мусор, безопасность и погоду. | Обеспечивает возможность поездок. |
+| crisistransportops.accessible.vehicle_need | потребность в доступном транспортном средстве | RECORD | Нужны записи в инвалидной коляске, лифте, носилках, низкой ступеньке, поддержке животных-поводырей или лиц, осуществляющих уход. | Выбирает доступный транспорт. |
+| crisistransportops.accessible.device_space | пространство устройства | SAFETY_RULE | Транспортное средство должно соответствовать потребностям в средствах передвижения, кислороде, багаже ​​и безопасности. | Предотвращает небезопасную загрузку. |
+| crisistransportops.accessible.driver_brief | водительское резюме | METHOD | Краткое описание объясняет уровень помощи, необходимость общения и процедуру безопасной посадки. | Улучшает сервис. |
+| crisistransportops.accessible.no_accessible_vehicle | нет доступного транспортного средства | RECORD | Запись пробелов фиксирует время ожидания, альтернативу, эскалацию и резидентное обновление. | Обнажает неудовлетворенную потребность. |
+| crisistransportops.voucher.voucher_issue | выпуск ваучера | RECORD | В ваучере указывается сумма, поставщик, цель поездки, пассажир, срок действия и ограничения. | Контролирует субсидии. |
+| crisistransportops.voucher.fuel_card | топливная карта | RECORD | При выпуске топливной карты фиксируются транспортное средство, сумма, право на получение, цель и ожидаемое получение. | Поддерживает самостоятельную транспортировку. |
+| crisistransportops.voucher.ride_code | код поездки | RECORD | Код поездки отслеживает платформу, лимит, правила отправления/назначения и время активации. | Позволяет совершать цифровые поездки. |
+| crisistransportops.voucher.cancellation | правило отмены | METHOD | В случае отмены бронирования возвращается неиспользованный ваучер или указывается причина неявки. | Предотвращает отходы. |
+| crisistransportops.safety.driver_check | проверка водителя | QUALITY_CHECK | Поставщик проверяет учетные данные водителя, статус транспортного средства, страховку и контакт диспетчера. | Защищает гонщиков. |
+| crisistransportops.safety.child_transport | детский транспорт | SAFETY_RULE | Транспортировка детей осуществляется в соответствии с правилами опекуна, места, школы или воссоединения. | Предотвращает небезопасный выпуск. |
+| crisistransportops.safety.medical_trip | безопасность медицинской поездки | SAFETY_RULE | Медицинские поездки определяют, когда уместна скорая медицинская помощь, неэкстренный медицинский транспорт или обычная поездка. | Избегает недостаточного ответа. |
+| crisistransportops.safety.incident_report | отчет об инциденте | RECORD | Записи об авариях, неявках, угрозах, медицинских событиях, потерянных гонщиках или жалобах. | Поддерживает обзор. |
+| crisistransportops.dispatch.assignment | задание на отправку | RECORD | Имя поставщика назначения, водитель/транспортное средство, если известно, время посадки и идентификатор поездки. | Осуществляет поездку. |
+| crisistransportops.dispatch.rider_notify | уведомление гонщика | METHOD | Пассажир получает окно получения, информацию об автомобиле, контактную информацию, стоимость и правила отмены. | Устанавливает ожидания. |
+| crisistransportops.dispatch.provider_update | обновление провайдера | METHOD | Поставщик получает изменения, задержки, примечания о доступности и опасности на маршруте. | Держит поездку согласованной. |
+| crisistransportops.dispatch.failed_pickup | неудачный пикап | RECORD | В записи о причине неудачного захвата, попытках, примечаниях водителя и дальнейших действиях. | Включает перепланирование. |
+| crisistransportops.records.trip_log | журнал поездки | RECORD | В журнале поездок хранятся записи о поступлениях, правах, назначении, завершении, стоимости и происшествиях. | Создает контрольный журнал. |
+| crisistransportops.records.receipt | запись о получении | RECORD | В квитанции отражаются сборы поставщика, использование ваучера, подтверждение топлива или поддержка возмещения расходов. | Поддерживает финансы. |
+| crisistransportops.records.privacy | правило конфиденциальности | SAFETY_RULE | Данные о поездках скрывают конфиденциальные пункты назначения, где требуется безопасность или медицинская конфиденциальность. | Защищает гонщиков. |
+| crisistransportops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам чрезвычайных ситуаций, финансов, грантов и конфиденциальности. | Сохраняет аудит. |
+| crisistransportops.reconcile.vendor_invoice | счет поставщика | QUALITY_CHECK | В счете-фактуре сверяются идентификаторы поездок, тарифы, отмены, плата за ожидание и разрешенные лимиты. | Предотвращает переплату. |
+| crisistransportops.reconcile.voucher_balance | баланс ваучера | MEASUREMENT | Баланс отслеживает выданные, использованные, истекшие, аннулированные и оставшиеся средства ваучера. | Показывает средства. |
+| crisistransportops.reconcile.exception_review | проверка исключений | QUALITY_CHECK | Просмотрите чеки о поездках за пределами ограничений, дублировании пассажиров и необычных расходах. | Контролирует неправильное использование. |
+| crisistransportops.reconcile.grant_code | код гранта | RECORD | Код гранта связывает поездки с приемлемым источником финансирования и документацией. | Поддерживает возмещение. |
+| crisistransportops.communication.public_info | общественная информация | METHOD | В общедоступной информации объясняется, кто может запрашивать поездки, цели, часы и ограничения. | Проводники жителей. |
+| crisistransportops.communication.partner_referral | реферал партнера | METHOD | Партнеры используют реферальную форму с полями приемлемости, пункта назначения и доступности. | Стандартизирует запросы. |
+| crisistransportops.communication.language | языковая поддержка | METHOD | При звонках и уведомлениях при необходимости используется переводчик или переведенные сценарии. | Улучшает доступ. |
+| crisistransportops.communication.shortage | сообщение о нехватке | METHOD | В уведомлении о нехватке объясняются задержки, альтернативы, правила приоритета и время обратного вызова. | Уменьшает разочарование. |
+| crisistransportops.metrics.completed_trips | завершенные поездки | MEASUREMENT | Завершенные поездки учитывают поездки, выполненные по цели, виду транспорта, региону и поставщику услуг. | Показывает вывод. |
+| crisistransportops.metrics.wait_time | время ожидания | MEASUREMENT | Время ожидания измеряет запрос на назначение и получение. | Выявляет узкое место. |
+| crisistransportops.metrics.no_show_rate | процент неявок | MEASUREMENT | Показатель неявок отслеживает сбои в работе пассажира, водителя или поставщика услуг. | Улучшает отправку. |
+| crisistransportops.review.after_action | обзор после действий | METHOD | В обзоре учитываются право на участие, маршрут, доступные пробелы в транспортных средствах, контроль ваучеров и уроки безопасности. | Улучшает будущий транспорт. |

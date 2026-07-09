@@ -1840,19 +1840,22 @@ async def query_with_roles(req: _QueryRolesRequest):
     try:
         from core.branch_manager import get_branch_manager
         bm = get_branch_manager()
-        synthesis = await asyncio.to_thread(
-            lambda: asyncio.get_event_loop().run_until_complete(
-                bm.reason(query=req.query, roles=role_list)
-            )
-        )
+        # FIX P1 (v8.7 audit): asyncio.to_thread + get_event_loop + run_until_complete
+        # создавало новый event loop в треде → «no current event loop in thread».
+        # branch_manager.reason() — async, вызываем напрямую из async-обработчика.
+        synthesis = await bm.reason(query=req.query, roles=role_list)
         return QueryResponse(
             answer=synthesis.response,
-            facts=synthesis.to_dict(),
+            facts=synthesis.facts,
             query=req.query,
+            confidence=synthesis.confidence,
+            roles_used=[r.role_id for r in (synthesis.roles_used or [])],
         )
     except Exception as exc:
-        logger.exception("query/roles failed")
-        raise HTTPException(status_code=500, detail=f"Multi-perspective query failed: {exc}") from exc
+        logger.exception("query/roles failed: %s", exc)
+        # FIX #20 (Claude audit): не раскрывать детали внутренних ошибок
+        # в ответе клиенту — security/privacy leak.
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @app.get("/system/epigenetic", tags=["V8.7 Titan"])
@@ -1867,9 +1870,16 @@ async def epigenetic_state():
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
-@app.get("/metrics/eval", tags=["V8.7 Titan"])
+@app.get("/metrics/eval", tags=["V8.7 Titan"],
+          dependencies=[Depends(require_api_key)])
 async def eval_metrics():
-    """Лёгкие метрики: grounding_score, trace_completeness, latency."""
+    """
+    Лёгкие метрики: grounding_score, trace_completeness, latency.
+
+    FIX P1 (v8.7 audit): эндпоинт теперь требует X-Api-Key — read_recent(10)
+    отдаёт последние запросы пользователя (до 200 символов каждый), что без
+    авторизации является утечкой приватных данных.
+    """
     try:
         from core.lightweight_metrics import get_lightweight_metrics
         lm = get_lightweight_metrics()

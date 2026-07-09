@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| fieldinstall.order.work_order | Installation work order | invariant | Work order defines customer, site, equipment, scope, schedule, access and acceptance criteria. | job authority |
-| fieldinstall.order.scope_boundary | Scope boundary | invariant | Boundary states what is included, excluded, optional and chargeable. | avoid field disputes |
-| fieldinstall.order.site_contact | Site contact | invariant | Contact provides access, approvals, local constraints and issue escalation. | someone can decide |
-| fieldinstall.order.previsit_call | Previsit call | invariant | Call confirms address, readiness, access, hazards, power, space and customer availability. | prevent wasted trip |
-| fieldinstall.order.permit_check | Installation permit check | variant | Check verifies whether permit, inspection, license or landlord approval is required. | legal readiness |
-| fieldinstall.readiness.site_survey | Installation site survey | invariant | Survey captures dimensions, utilities, structure, network, environment and constraints. | reality before install |
-| fieldinstall.readiness.readiness_gate | Site readiness gate | invariant | Gate confirms prerequisites before dispatching crew, equipment and materials. | do not arrive too early |
-| fieldinstall.readiness.utility_availability | Utility availability | invariant | Availability checks power, water, drain, gas, air, network or other service needed. | system needs inputs |
-| fieldinstall.readiness.access_path | Access path | invariant | Path confirms equipment can be moved through doors, stairs, lifts, dock or corridor. | logistics fit |
-| fieldinstall.readiness.customer_prerequisite | Customer prerequisite | invariant | Prerequisite is work customer must complete before installation can proceed. | shared responsibility |
-| fieldinstall.materials.pick_list | Installation pick list | invariant | Pick list lists equipment, parts, consumables, tools, documents and serial numbers. | pack the job |
-| fieldinstall.materials.kit_check | Installation kit check | invariant | Kit check verifies all items before departure against scope and site conditions. | avoid return visit |
-| fieldinstall.materials.serial_capture | Installed serial capture | invariant | Serial capture links installed equipment to customer, warranty, configuration and service history. | asset identity |
-| fieldinstall.materials.spare_part | Field spare part | variant | Spare part supports common failures or adjustments during installation. | resilience in van |
-| fieldinstall.materials.return_material | Return material authorization | invariant | RMA controls unused, damaged, exchanged or defective items returning from site. | inventory discipline |
-| fieldinstall.safety.job_hazard_analysis | Job hazard analysis | invariant | Analysis identifies site hazards, controls, PPE, energy sources, work at height and traffic. | plan safe work |
-| fieldinstall.safety.lockout_need | Lockout requirement | variant | Requirement applies when installation exposes hazardous energy needing isolation. | protect technicians |
-| fieldinstall.safety.ladder_control | Ladder and access control | invariant | Control checks ladder suitability, surface, angle, user competence and exclusion area. | common injury source |
-| fieldinstall.safety.hot_work_clearance | Hot work clearance | variant | Clearance controls welding, cutting or heat work near combustible material. | fire prevention |
-| fieldinstall.safety.stop_work_authority | Stop work authority | invariant | Authority allows technician to pause job when unsafe condition appears. | safety over schedule |
-| fieldinstall.execution.arrival_checkin | Field arrival check-in | invariant | Check-in records arrival time, contact, site access, safety briefing and scope confirmation. | start evidence |
-| fieldinstall.execution.layout_marking | Installation layout marking | invariant | Marking places equipment, penetrations, brackets or cable paths before permanent work. | measure before drill |
-| fieldinstall.execution.mounting | Equipment mounting | invariant | Mounting secures device according to load, substrate, vibration, clearance and service access. | physical stability |
-| fieldinstall.execution.connection | Field connection | invariant | Connection joins power, network, pipe, duct, signal or mechanical interface per specification. | make system work |
-| fieldinstall.execution.field_adjustment | Field adjustment | variant | Adjustment adapts minor fit, alignment or configuration issue within approved limits. | real sites vary |
-| fieldinstall.config.initial_configuration | Initial configuration | invariant | Configuration sets parameters, address, firmware, user roles, calibration or network identity. | install is not just hardware |
-| fieldinstall.config.firmware_version | Firmware version record | variant | Record notes installed software version and update status. | support trace |
-| fieldinstall.config.customer_setting | Customer-specific setting | variant | Setting adapts operation to site preference, process, schedule or integration. | usable system |
-| fieldinstall.config.network_test | Network connectivity test | variant | Test confirms device communicates with local network, cloud, controller or monitoring system. | data path works |
-| fieldinstall.config.security_baseline | Installation security baseline | invariant | Baseline changes default credentials, applies roles and disables unnecessary access. | reduce exposure |
-| fieldinstall.test.functional_test | Functional test | invariant | Test proves installed system performs required core functions. | acceptance evidence |
-| fieldinstall.test.safety_test | Installation safety test | invariant | Test confirms guards, interlocks, grounding, leaks, alarms or protective devices as applicable. | safe operation |
-| fieldinstall.test.calibration_check | Field calibration check | variant | Check verifies measurement or control output against reference or expected value. | trust readings |
-| fieldinstall.test.integration_test | Integration test | variant | Test confirms installed item works with existing systems, controls, software or process. | whole system fit |
-| fieldinstall.test.defect_punchlist | Installation punchlist | invariant | Punchlist records incomplete work, defects, owner, deadline and closure evidence. | finish visibly |
-| fieldinstall.handover.user_training | User handover training | invariant | Training covers normal use, basic care, warnings, support path and documentation. | customer can operate |
-| fieldinstall.handover.as_built_record | As-built installation record | invariant | Record captures actual location, routing, serials, settings, deviations and photos. | future service map |
-| fieldinstall.handover.acceptance_signature | Acceptance signature | invariant | Signature confirms customer received work, training, documents and noted exceptions. | commercial close |
-| fieldinstall.handover.warranty_start | Warranty start record | invariant | Record defines warranty start date, covered items, exclusions and service path. | lifecycle begins |
-| fieldinstall.handover.site_cleanup | Site cleanup | invariant | Cleanup removes packaging, debris, temporary marks and waste according to site rules. | leave ready |
-| fieldinstall.closeout.time_materials | Time and materials capture | invariant | Capture records labor, travel, parts, consumables and chargeable exceptions. | accurate billing |
-| fieldinstall.closeout.photo_evidence | Installation photo evidence | invariant | Photos document before, during, after, labels, defects and final state. | remote proof |
-| fieldinstall.closeout.followup_visit | Follow-up visit | variant | Visit resolves punchlist, training gaps, parts delay or post-install adjustment. | close remaining risk |
-| fieldinstall.metrics.first_time_fix | Installation first-time-fix | variant | Metric tracks jobs completed without return visit or missing part. | quality and planning |
+| fieldinstall.order.work_order | Порядок работ по установке | invariant | Заказ на работу определяет клиента, площадку, оборудование, объем, график, критерии доступа и приемки. | полномочия по трудоустройству |
+| fieldinstall.order.scope_boundary | Граница области действия | invariant | Граница определяет, что включено, исключено, необязательно и платно. | избегать споров на местах |
+| fieldinstall.order.site_contact | Контакты сайта | invariant | Контакт обеспечивает доступ, утверждения, местные ограничения и эскалацию проблем. | кто-то может решить |
+| fieldinstall.order.previsit_call | Предварительный звонок | invariant | Звонок подтверждает адрес, готовность, доступ, опасности, мощность, пространство и доступность клиентов. | предотвратить бесполезную поездку |
+| fieldinstall.order.permit_check | Проверка разрешения на установку | variant | Проверка проверяет, требуется ли разрешение, проверка, лицензия или одобрение арендодателя. | юридическая готовность |
+| fieldinstall.readiness.site_survey | Обследование места установки | invariant | Исследование фиксирует размеры, утилиты, структуру, сеть, окружающую среду и ограничения. | реальность перед установкой |
+| fieldinstall.readiness.readiness_gate | Ворота готовности объекта | invariant | Гейт подтверждает необходимые условия перед отправкой бригады, оборудования и материалов. | не приходи слишком рано |
+| fieldinstall.readiness.utility_availability | Доступность утилит | invariant | Доступность проверяет электроэнергию, воду, канализацию, газ, воздух, сеть или другие необходимые услуги. | системе нужны входные данные |
+| fieldinstall.readiness.access_path | Путь доступа | invariant | Путь подтверждает, что оборудование можно перемещать через двери, лестницы, лифты, причалы или коридоры. | логистика подходит |
+| fieldinstall.readiness.customer_prerequisite | Обязательное условие клиента | invariant | Обязательным условием является работа, которую клиент должен выполнить перед продолжением установки. | общая ответственность |
+| fieldinstall.materials.pick_list | Список выбора установки | invariant | В списке выбора перечислены оборудование, детали, расходные материалы, инструменты, документы и серийные номера. | упаковать работу |
+| fieldinstall.materials.kit_check | Проверка установочного комплекта | invariant | Проверка комплекта проверяет все элементы перед отправкой на предмет соответствия объему и условиям на месте. | избегать повторного визита |
+| fieldinstall.materials.serial_capture | Установлен серийный захват | invariant | Последовательный захват связывает установленное оборудование с клиентом, гарантией, конфигурацией и историей обслуживания. | идентичность актива |
+| fieldinstall.materials.spare_part | Полевая запчасть | variant | Запасная часть устраняет распространенные неисправности или корректировки во время установки. | устойчивость в фургоне |
+| fieldinstall.materials.return_material | Разрешение на возврат материалов | invariant | RMA контролирует неиспользованные, поврежденные, замененные или дефектные товары, возвращаемые с объекта. | дисциплина инвентаризации |
+| fieldinstall.safety.job_hazard_analysis | Анализ рисков на работе | invariant | Анализ определяет опасности на площадке, меры контроля, средства индивидуальной защиты, источники энергии, работу на высоте и движение транспорта. | планировать безопасную работу |
+| fieldinstall.safety.lockout_need | Требование блокировки | variant | Требование применяется, когда при установке возникает опасная энергия, требующая изоляции. | защитить технических специалистов |
+| fieldinstall.safety.ladder_control | Лестница и контроль доступа | invariant | Контроль проверяет пригодность лестницы, поверхность, угол наклона, компетентность пользователя и запретную зону. | распространенный источник травм |
+| fieldinstall.safety.hot_work_clearance | Разрешение на проведение горячих работ | variant | Зазор контролирует сварку, резку или термообработку вблизи горючих материалов. | предотвращение пожаров |
+| fieldinstall.safety.stop_work_authority | Остановить работу власти | invariant | Полномочия позволяют технику приостановить работу при появлении небезопасного состояния. | безопасность сверх графика |
+| fieldinstall.execution.arrival_checkin | Регистрация на месте прибытия | invariant | При регистрации фиксируются время прибытия, контакты, доступ на объект, инструктаж по технике безопасности и подтверждение объема работ. | начать доказательства |
+| fieldinstall.execution.layout_marking | Маркировка места установки | invariant | Маркировка места размещения оборудования, проходок, кронштейнов или кабельных трасс перед постоянными работами. | измерить перед тренировкой |
+| fieldinstall.execution.mounting | Монтаж оборудования | invariant | Монтаж фиксирует устройство в зависимости от нагрузки, основания, вибрации, зазора и доступа для обслуживания. | физическая стабильность |
+| fieldinstall.execution.connection | Полевое подключение | invariant | Соединение соединяет силовой, сетевой, трубный, воздуховодный, сигнальный или механический интерфейс в соответствии со спецификацией. | заставить систему работать |
+| fieldinstall.execution.field_adjustment | Регулировка поля | variant | Регулировка устраняет незначительные проблемы с посадкой, выравниванием или конфигурацией в пределах утвержденных пределов. | реальные сайты различаются |
+| fieldinstall.config.initial_configuration | Начальная конфигурация | invariant | Конфигурация устанавливает параметры, адрес, прошивку, роли пользователя, калибровку или сетевую идентификацию. | установка — это не только оборудование |
+| fieldinstall.config.firmware_version | Запись версии прошивки | variant | Запишите версию установленного программного обеспечения и статус обновления. | поддержка трассировки |
+| fieldinstall.config.customer_setting | Индивидуальная настройка клиента | variant | Настройка адаптирует работу к предпочтениям сайта, процессу, расписанию или интеграции. | полезная система |
+| fieldinstall.config.network_test | Тест подключения к сети | variant | Тест подтверждает, что устройство взаимодействует с локальной сетью, облаком, контроллером или системой мониторинга. | путь к данным работает |
+| fieldinstall.config.security_baseline | Базовый уровень безопасности установки | invariant | Базовый вариант меняет учетные данные по умолчанию, применяет роли и отключает ненужный доступ. | уменьшить воздействие |
+| fieldinstall.test.functional_test | Функциональный тест | invariant | Тестирование доказывает, что установленная система выполняет необходимые основные функции. | свидетельство о приемке |
+| fieldinstall.test.safety_test | Проверка безопасности установки | invariant | Испытания подтверждают наличие защитных устройств, блокировок, заземления, утечек, сигналов тревоги или защитных устройств, если это применимо. | безопасная эксплуатация |
+| fieldinstall.test.calibration_check | Проверка калибровки в полевых условиях | variant | Проверка проверяет соответствие выходного сигнала измерения или управления эталонному или ожидаемому значению. | доверительные показания |
+| fieldinstall.test.integration_test | Интеграционный тест | variant | Тестирование подтверждает, что установленный элемент работает с существующими системами, элементами управления, программным обеспечением или процессом. | вся система подходит |
+| fieldinstall.test.defect_punchlist | Список ошибок при установке | invariant | В контрольном списке фиксируются незавершенные работы, дефекты, владелец, сроки и доказательства закрытия. | закончить заметно |
+| fieldinstall.handover.user_training | Обучение передаче пользователей | invariant | Обучение охватывает нормальное использование, базовый уход, предупреждения, способы поддержки и документацию. | клиент может работать |
+| fieldinstall.handover.as_built_record | Запись фактической установки | invariant | Запись фиксирует фактическое местоположение, маршрутизацию, серийные номера, настройки, отклонения и фотографии. | карта будущего обслуживания |
+| fieldinstall.handover.acceptance_signature | Подпись о приеме | invariant | Подпись подтверждает, что клиент получил работу, обучение, документы и отмеченные исключения. | коммерческое закрытие |
+| fieldinstall.handover.warranty_start | Запись о начале гарантии | invariant | Запись определяет дату начала гарантии, покрываемые товары, исключения и путь обслуживания. | жизненный цикл начинается |
+| fieldinstall.handover.site_cleanup | Очистка сайта | invariant | При уборке удаляется упаковка, мусор, временные следы и отходы в соответствии с правилами площадки. | оставь готовым |
+| fieldinstall.closeout.time_materials | Учет времени и материалов | invariant | Собирайте записи о трудозатратах, поездках, запчастях, расходных материалах и оплачиваемых исключениях. | точный биллинг |
+| fieldinstall.closeout.photo_evidence | Фотодоказательства установки | invariant | Фотографии документа до, во время, после, этикетки, дефекты и окончательное состояние. | удаленное доказательство |
+| fieldinstall.closeout.followup_visit | Последующий визит | variant | Посещение позволяет устранить дефекты, пробелы в обучении, задержку поставки деталей или корректировку после установки. | закрыть оставшийся риск |
+| fieldinstall.metrics.first_time_fix | Исправление при первой установке | variant | Метрика отслеживает задания, выполненные без повторного посещения или отсутствия детали. | качество и планирование |

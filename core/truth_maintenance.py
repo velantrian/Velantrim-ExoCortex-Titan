@@ -41,7 +41,8 @@ def reinforce(fact_id: str, agreement: bool = True) -> Optional[float]:
     Счётчик наблюдений: metadata['observations'].
     Подкрепление сбрасывает часы спада (last_consolidated).
     """
-    from core.memory import get_fact, update_fact
+    from core.memory import get_fact, store_fact
+    # FIX #10 (Claude audit): update_fact не существует → используем store_fact
 
     fact = get_fact(fact_id)
     if fact is None:
@@ -65,7 +66,10 @@ def reinforce(fact_id: str, agreement: bool = True) -> Optional[float]:
 
     meta["observations"] = obs + 1
     meta["last_consolidated"] = _now()
-    update_fact(fact_id, confidence=new_conf, metadata=meta)
+    fact["confidence"] = new_conf
+    fact["metadata"] = meta
+    store_fact(fact)
+    # FIX #10 (Claude audit): update_fact → store_fact
 
     # Лог в provenance
     try:
@@ -105,8 +109,19 @@ def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
     store_fact(new_fact)
     new_id = new_fact.get("fact_id", "")
 
-    # Промоут нового → Validated
+    # Промоут нового → Validated — FIX #14 (Claude audit):
+    # прогоняем через TruthGate перед переходом. Без этого обходится I68
+    # (требование верификации перед Validated).
     try:
+        from core.truth_gate import TruthGate, CognitiveMode
+        tg = TruthGate(mode=CognitiveMode.PRECISION)
+        ok, msg = tg.evaluate(new_fact)
+        if not ok:
+            logger.warning("TruthMaintenance.supersede: TruthGate отклонил новый факт: %s", msg)
+        else:
+            transition_esm(new_id, "Validated")
+    except ImportError:
+        # TruthGate недоступен — fallback без проверки (старое поведение)
         transition_esm(new_id, "Validated")
     except Exception as exc:
         logger.warning("TruthMaintenance.supersede: ESM-переход нового: %s", exc)
@@ -126,7 +141,7 @@ def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
                 from_fact_id=old_id,
                 to_fact_id=new_id,
                 relation_type=REL_SUPERSEDED_BY,
-                weight=0.95,
+                confidence=0.95,
             )
     except Exception:
         logger.debug("supersede: causal edge not added")
@@ -211,7 +226,8 @@ def confidence_decay(
     Не разрушает факт. Только снижает confidence.
     Идемпотентен: elapsed считает от last_consolidated.
     """
-    from core.memory import get_fact, update_fact
+    from core.memory import get_fact, store_fact
+    # FIX #10 (Claude audit): update_fact не существует → используем store_fact
 
     fact = get_fact(fact_id)
     if fact is None:
@@ -250,7 +266,10 @@ def confidence_decay(
         return conf
 
     meta["last_consolidated"] = now.isoformat()
-    update_fact(fact_id, confidence=new_conf, metadata=meta)
+    fact["confidence"] = new_conf
+    fact["metadata"] = meta
+    store_fact(fact)
+    # FIX #10 (Claude audit): update_fact → store_fact
     return new_conf
 
 

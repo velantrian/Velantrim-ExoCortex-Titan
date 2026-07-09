@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| recordsreq.intake.request_channel | Public records request channel | invariant | Channel captures web, email, mail, walk-in, phone or portal submission. | receive request |
-| recordsreq.intake.requester_profile | Public records requester profile | variant | Profile records requester contact, organization, communication preference and fee status. | route communications |
-| recordsreq.intake.scope_statement | Records request scope statement | invariant | Statement defines requested records, date range, departments, keywords and format. | clarify search |
-| recordsreq.intake.date_received | Records request date received | invariant | Date starts statutory response clock, acknowledgement and tracking timeline. | deadline control |
-| recordsreq.intake.clarification_needed | Records request clarification | invariant | Clarification asks requester to narrow ambiguous, broad or unclear terms. | searchable scope |
-| recordsreq.tracking.case_number | Public records case number | invariant | Number links request, correspondence, search tasks, fees, releases and appeals. | case control |
-| recordsreq.tracking.deadline_clock | Public records deadline clock | invariant | Clock tracks acknowledgement, estimate, production, extension and appeal deadlines. | compliance |
-| recordsreq.tracking.extension_notice | Records request extension notice | variant | Notice explains lawful reason, new date, scope and contact path. | manage time |
-| recordsreq.tracking.status_update | Records request status update | invariant | Update records received, searching, reviewing, fee pending, produced, denied or closed. | transparency |
-| recordsreq.search.custodian_assignment | Records custodian assignment | invariant | Assignment routes search to department, official, system owner or archive. | find records |
-| recordsreq.search.search_instruction | Records search instruction | invariant | Instruction gives scope, keywords, systems, date ranges and preservation expectations. | consistent search |
-| recordsreq.search.email_search | Public records email search | variant | Search queries mailbox, archive, subject, sender, recipient, date and attachments. | retrieve email |
-| recordsreq.search.casefile_search | Public records casefile search | variant | Search examines permits, complaints, contracts, agendas, logs or case management systems. | retrieve files |
-| recordsreq.search.no_record_cert | No-record certification | invariant | Certification documents searched locations, custodians, terms and no responsive records. | support closure |
-| recordsreq.search.search_log | Public records search log | invariant | Log records who searched, where, when, terms used and result count. | audit trail |
-| recordsreq.exemption.exemption_review | Public records exemption review | invariant | Review identifies legal exemptions, privacy limits, privilege and required withholding basis. | lawful release |
-| recordsreq.exemption.privacy_screen | Records privacy screen | invariant | Screen flags personal identifiers, health, juvenile, security or protected contact information. | protect privacy |
-| recordsreq.exemption.privilege_claim | Records privilege claim | variant | Claim records attorney-client, deliberative, investigation or other privileged material basis. | controlled withholding |
-| recordsreq.exemption.security_risk | Records security risk review | variant | Review checks facility maps, credentials, vulnerabilities, emergency plans or protected infrastructure details. | avoid exposure |
-| recordsreq.exemption.segmentation | Records segmentation | invariant | Segmentation separates releasable from exempt portions before denial or redaction. | maximize release |
-| recordsreq.redaction.redaction_queue | Public records redaction queue | invariant | Queue organizes responsive records by review priority, volume, format and deadline. | manage workload |
-| recordsreq.redaction.redaction_mark | Redaction mark | invariant | Mark blocks exempt text, image, audio or metadata while preserving context. | protect content |
-| recordsreq.redaction.redaction_reason | Redaction reason code | invariant | Code links each withheld portion to exemption, reviewer and explanation. | defensible redaction |
-| recordsreq.redaction.quality_check | Records redaction quality check | invariant | Check confirms no hidden text, metadata, layers or missed protected details remain. | prevent leakage |
-| recordsreq.redaction.version_control | Records redaction version control | variant | Control preserves original, review copy, redacted copy and released copy separately. | evidence control |
-| recordsreq.fees.fee_estimate | Public records fee estimate | variant | Estimate calculates search, review, copies, media, postage or special service charges. | inform requester |
-| recordsreq.fees.deposit_request | Public records deposit request | variant | Request asks for allowed prepayment before large search, copy or production work. | recover costs |
-| recordsreq.fees.fee_waiver | Public records fee waiver | variant | Waiver records public-interest, hardship, media, agency or discretionary fee decision. | fair access |
-| recordsreq.fees.payment_record | Public records payment record | invariant | Record links invoice, payment, refund, receipt and release timing. | financial trail |
-| recordsreq.production.production_format | Records production format | invariant | Format defines PDF, native file, spreadsheet, paper, audio, video or inspection access. | deliver usable records |
-| recordsreq.production.delivery_package | Public records delivery package | invariant | Package includes records, redaction log, cover letter, fee receipt and instructions. | complete response |
-| recordsreq.production.portal_release | Records portal release | variant | Release uploads files, access link, expiry, download confirmation and privacy notices. | digital delivery |
-| recordsreq.production.partial_release | Public records partial release | variant | Release provides available records while review continues on remaining records. | reduce delay |
-| recordsreq.production.inspection_session | Records inspection session | variant | Session schedules on-site review, supervision, copying rules and materials control. | controlled access |
-| recordsreq.denial.denial_letter | Public records denial letter | invariant | Letter states denied records, exemption basis, appeal rights and contact. | explain refusal |
-| recordsreq.denial.no_responsive_records | No responsive records response | invariant | Response explains search completed and no matching records were located. | close request |
-| recordsreq.denial.withdrawn_request | Withdrawn records request | variant | Closure records requester withdrawal, nonpayment, no clarification or abandoned request. | clean queue |
-| recordsreq.appeal.appeal_intake | Public records appeal intake | invariant | Intake records appeal basis, request case, date, appellant and required reviewer. | review dispute |
-| recordsreq.appeal.appeal_record | Public records appeal record | invariant | Record tracks review, decision, revised release, denial upheld or litigation referral. | appeal trail |
-| recordsreq.governance.retention_hold | Records request retention hold | invariant | Hold preserves request file, search logs, originals, redactions and correspondence. | defend process |
-| recordsreq.governance.metrics_report | Public records metrics report | variant | Report tracks volume, age, closures, fees, exemptions, appeals and overdue cases. | manage office |
-| recordsreq.governance.template_library | Public records template library | variant | Library stores approved acknowledgement, clarification, extension, fee, release and denial templates. | consistent language |
-| recordsreq.metrics.records_request_kpi | Public records request KPI | variant | KPI tracks response time, backlog, pages released, appeals, fees and requester satisfaction. | improve service |
-| recordsreq.continuity.bulk_request | Public records bulk request response | variant | Response plans staffing, batching, estimates, partial releases and leadership updates. | handle surge |
+| recordsreq.intake.request_channel | Канал запроса общедоступных записей | invariant | Канал фиксирует материалы через Интернет, электронную почту, почту, личный кабинет, телефон или портал. | получить запрос |
+| recordsreq.intake.requester_profile | Профиль запрашивающего публичные записи | variant | В профиле записываются контакты запрашивающего, организация, предпочтения в области связи и статус оплаты. | маршрут связи |
+| recordsreq.intake.scope_statement | Заявление об объеме запроса записей | invariant | В заявлении определяются запрошенные записи, диапазон дат, отделы, ключевые слова и формат. | уточнить поиск |
+| recordsreq.intake.date_received | Дата получения запроса на записи | invariant | Дата начала установленных законом часов ответа, подтверждения и отслеживания сроков. | контроль сроков |
+| recordsreq.intake.clarification_needed | Записи требуют разъяснений | invariant | Разъяснение требует от запрашивающего сузить двусмысленные, широкие или неясные термины. | область поиска |
+| recordsreq.tracking.case_number | Номер дела в государственных архивах | invariant | Запрос номерных ссылок, переписка, поисковые задачи, сборы, релизы и обращения. | контроль дела |
+| recordsreq.tracking.deadline_clock | Срок окончания публичных отчетов | invariant | Часы отслеживают сроки подтверждения, оценки, производства, продления и апелляции. | согласие |
+| recordsreq.tracking.extension_notice | Уведомление о продлении запроса на запись | variant | В уведомлении поясняются законные основания, новая дата, объем и способ связи. | управлять временем |
+| recordsreq.tracking.status_update | Обновление статуса запроса записей | invariant | Обновить полученные записи, поиск, проверку, ожидание оплаты, создание, отказ или закрытие. | прозрачность |
+| recordsreq.search.custodian_assignment | Назначение хранителя записей | invariant | Поиск маршрутов назначения отделу, должностному лицу, владельцу системы или архиву. | найти записи |
+| recordsreq.search.search_instruction | Инструкция по поиску записей | invariant | Инструкция дает объем, ключевые слова, системы, диапазоны дат и ожидания по сохранению. | последовательный поиск |
+| recordsreq.search.email_search | Поиск по электронной почте в публичных записях | variant | Поисковые запросы по почтовому ящику, архиву, теме, отправителю, получателю, дате и вложениям. | получить электронную почту |
+| recordsreq.search.casefile_search | Поиск по делу в публичных архивах | variant | Поиск исследует разрешения, жалобы, контракты, повестки дня, журналы или системы управления делами. | получить файлы |
+| recordsreq.search.no_record_cert | Сертификация без записи | invariant | Сертификационные документы были проверены по местонахождению, хранителям, условиям и не нашли соответствующих записей. | поддержка закрытия |
+| recordsreq.search.search_log | Журнал поиска в публичных записях | invariant | Журнал записывает, кто искал, где, когда, использованные термины и количество результатов. | аудиторский след |
+| recordsreq.exemption.exemption_review | Обзор исключений из государственных архивов | invariant | В обзоре определяются юридические исключения, ограничения конфиденциальности, привилегии и необходимые основания для удержания налогов. | законное освобождение |
+| recordsreq.exemption.privacy_screen | Экран конфиденциальности записей | invariant | На экране помечаются личные идентификаторы, информация о здоровье, несовершеннолетних, безопасности или защищенная контактная информация. | защищать конфиденциальность |
+| recordsreq.exemption.privilege_claim | Заявление о привилегиях на записи | variant | Исковые заявления адвокатско-клиентского, совещательного, следственного или иного секретного материального характера. | контролируемое удержание |
+| recordsreq.exemption.security_risk | Записывает обзор рисков безопасности | variant | Просмотрите карты объектов, учетные данные, уязвимости, планы действий в чрезвычайных ситуациях или сведения о защищенной инфраструктуре. | избежать контакта |
+| recordsreq.exemption.segmentation | Сегментация записей | invariant | Сегментация отделяет подлежащие освобождению части от освобожденных перед отрицанием или редактированием. | максимизировать выпуск |
+| recordsreq.redaction.redaction_queue | Очередь редактирования публичных записей | invariant | Очередь упорядочивает реагирующие записи по приоритету проверки, объему, формату и сроку. | управлять рабочей нагрузкой |
+| recordsreq.redaction.redaction_mark | Знак редактирования | invariant | Отметьте блоки, исключающие текст, изображение, аудио или метаданные, сохраняя при этом контекст. | защитить контент |
+| recordsreq.redaction.redaction_reason | Код причины редактирования | invariant | Кодекс связывает каждую удержанную часть с освобождением, проверяющим и объяснением. | оправданная редакция |
+| recordsreq.redaction.quality_check | Проверка качества редактирования записей | invariant | Проверка подтверждает, что скрытого текста, метаданных, слоев или пропущенных защищенных данных не осталось. | предотвратить утечку |
+| recordsreq.redaction.version_control | Контроль версий редактирования записей | variant | Компания Control сохраняет оригинал, рецензируемую копию, отредактированную копию и выпущенную копию отдельно. | контроль доказательств |
+| recordsreq.fees.fee_estimate | Оценка платы за публичные записи | variant | Оценка рассчитывает расходы на поиск, рецензирование, копирование, средства массовой информации, почтовые расходы или специальные услуги. | сообщить запрашивающему |
+| recordsreq.fees.deposit_request | Запрос на депозит в государственных архивах | variant | Запрос требует разрешенной предоплаты перед масштабной работой по поиску, копированию или производству. | возмещать затраты |
+| recordsreq.fees.fee_waiver | Отказ от платы за публичные записи | variant | В отказе фиксируются решения, связанные с общественными интересами, трудностями, средствами массовой информации, агентствами или дискреционными гонорарами. | справедливый доступ |
+| recordsreq.fees.payment_record | Публичный отчет о платежах | invariant | Запишите ссылки на счет-фактуру, оплату, возврат, время получения и выпуска. | финансовый след |
+| recordsreq.production.production_format | Формат производства пластинок | invariant | Формат определяет PDF, собственный файл, электронную таблицу, бумагу, аудио, видео или доступ к проверке. | предоставлять полезные записи |
+| recordsreq.production.delivery_package | Пакет поставки государственных документов | invariant | В комплект поставки входят записи, журнал редактирования, сопроводительное письмо, квитанция об оплате и инструкции. | полный ответ |
+| recordsreq.production.portal_release | Релиз портала записей | variant | В выпуске загружаются файлы, ссылка для доступа, срок действия, подтверждение загрузки и уведомления о конфиденциальности. | цифровая доставка |
+| recordsreq.production.partial_release | Частичный выпуск публичных записей | variant | При выпуске предоставляются доступные записи, а просмотр продолжается по оставшимся записям. | уменьшить задержку |
+| recordsreq.production.inspection_session | Сессия проверки записей | variant | В расписании сессий просмотр на месте, контроль, правила копирования и контроль материалов. | контролируемый доступ |
+| recordsreq.denial.denial_letter | Письмо об отказе в публичных записях | invariant | В письме говорится, что отказано в записях, основаниях для освобождения, правах на апелляцию и контактах. | объяснить отказ |
+| recordsreq.denial.no_responsive_records | Нет ответа на ответные записи | invariant | В ответе объясняется, что поиск завершен, но совпадающих записей обнаружено не было. | закрыть запрос |
+| recordsreq.denial.withdrawn_request | Запрос на отозванные записи | variant | Закрытие фиксирует отзыв заявителя, неплатеж, отсутствие разъяснений или отказ от запроса. | очистить очередь |
+| recordsreq.appeal.appeal_intake | Прием апелляций по государственным данным | invariant | Приемные записи основывают апелляцию, дело запроса, дату, апеллянта и требуемого рецензента. | рассмотреть спор |
+| recordsreq.appeal.appeal_record | Запись об апелляции в государственных архивах | invariant | Запись отслеживает проверку, решение, пересмотренный выпуск, оставленный в силе отказ или направление в судебный процесс. | апелляционный суд |
+| recordsreq.governance.retention_hold | Записи требуют удержания | invariant | Функция Hold сохраняет файл запроса, журналы поиска, оригиналы, исправления и переписку. | защищать процесс |
+| recordsreq.governance.metrics_report | Отчет о показателях общедоступных записей | variant | Отчет отслеживает объем, возраст, закрытия, сборы, освобождения, апелляции и просроченные дела. | управлять офисом |
+| recordsreq.governance.template_library | Библиотека шаблонов общедоступных записей | variant | В библиотеке хранятся утвержденные шаблоны подтверждений, разъяснений, продлений, оплаты, освобождения и отказа. | последовательный язык |
+| recordsreq.metrics.records_request_kpi | KPI запроса публичных записей | variant | KPI отслеживает время ответа, количество невыполненных работ, выпущенные страницы, апелляции, сборы и удовлетворенность запрашивающих. | улучшить обслуживание |
+| recordsreq.continuity.bulk_request | Ответ на массовый запрос общедоступных записей | variant | Планы реагирования: укомплектование персоналом, группирование, оценки, частичные релизы и обновления руководства. | справиться с всплеском |

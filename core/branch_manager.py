@@ -226,9 +226,11 @@ class BranchManager:
         """Сгенерировать ответ в стиле роли."""
         # Попробовать LLM
         try:
-            from core.llm_router import llm_complete
+            from core.llm_router import chat_complete
+            from core.llm_router import LlmCallConfig
             prompt = self._build_prompt(query, facts, role)
-            response = await llm_complete(prompt, max_tokens=500)
+            cfg = LlmCallConfig(max_tokens=500)
+            response = await chat_complete(cfg, prompt)
             if response:
                 return response, 0.8
         except Exception:
@@ -236,10 +238,9 @@ class BranchManager:
 
         # Fallback: детерминированный ответ через essence
         try:
-            from core.essence import EssenceLayer
-            essence = EssenceLayer()
-            result = essence.synthesize(facts, query)
-            return str(result), 0.6
+            from core.essence import compose_essence
+            result = compose_essence(query=query, facts=facts)
+            return str(result.get("gist", "")), 0.6
         except Exception:
             pass
 

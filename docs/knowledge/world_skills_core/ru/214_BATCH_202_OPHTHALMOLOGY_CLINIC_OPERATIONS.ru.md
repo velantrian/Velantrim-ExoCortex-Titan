@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| eyeclinic.schedule.visit_type | Ophthalmology visit type | invariant | Visit type defines exam, imaging, procedure, post-op, contact lens or urgent slot. | schedule correctly |
-| eyeclinic.schedule.provider_template | Eye clinic provider template | invariant | Template allocates physician, optometrist, technician, imaging and procedure capacity. | match flow to resources |
-| eyeclinic.schedule.dilation_buffer | Dilation buffer | variant | Buffer accounts for waiting time after drops before exam or imaging. | eye visits take time |
-| eyeclinic.schedule.recall_list | Eye clinic recall list | invariant | Recall list tracks patients due for follow-up, monitoring, imaging or post-op visit. | prevent lost follow-up |
-| eyeclinic.schedule.urgent_eye_route | Urgent eye routing | variant | Routing escalates red-flag symptoms to clinical triage rather than routine scheduling. | front desk boundary |
-| eyeclinic.intake.ocular_history | Ocular history intake | invariant | Intake records prior eye disease, surgery, injury, lenses, medications and symptoms. | exam context |
-| eyeclinic.intake.visual_acuity | Visual acuity capture | invariant | Capture records measured vision using clinic method, correction status and eye laterality. | baseline function |
-| eyeclinic.intake.laterality_check | Eye laterality check | invariant | Check confirms right, left or both eyes for testing, procedure and documentation. | prevent wrong-eye errors |
-| eyeclinic.intake.medication_allergy | Eye clinic medication allergy | invariant | Record flags allergy or sensitivity relevant to drops, contrast or procedure supplies. | safety screen |
-| eyeclinic.intake.consent_status | Ophthalmology consent status | invariant | Status confirms required consent for imaging, procedure, dilation or surgery-related care. | permission evidence |
-| eyeclinic.testing.refraction_workup | Refraction workup handoff | variant | Handoff sends measurement results, patient goals and lens history to clinician. | optical workflow |
-| eyeclinic.testing.iop_measurement | Intraocular pressure measurement | invariant | Measurement records pressure result, method, time and eye. | monitoring datum |
-| eyeclinic.testing.visual_field | Visual field test | variant | Test maps patient response across field of vision using defined protocol. | functional map |
-| eyeclinic.testing.color_vision | Color vision test | variant | Test screens color discrimination using standardized plates or device. | specific function |
-| eyeclinic.testing.pachymetry | Corneal thickness measurement | variant | Measurement records corneal thickness when needed for diagnosis or planning context. | structural datum |
-| eyeclinic.imaging.oct_scan | OCT scan workflow | variant | Workflow captures optical coherence images with eye, scan type, quality and storage. | retinal or nerve image |
-| eyeclinic.imaging.fundus_photo | Fundus photo workflow | variant | Photo captures retina images with laterality, field, quality and comparison tags. | document appearance |
-| eyeclinic.imaging.topography | Corneal topography workflow | variant | Workflow maps corneal shape and stores quality-controlled image for clinician review. | shape data |
-| eyeclinic.imaging.image_quality | Eye image quality check | invariant | Check flags blur, artifact, wrong eye, poor fixation or incomplete scan. | usable images |
-| eyeclinic.imaging.image_handoff | Imaging handoff | invariant | Handoff ensures clinician can find images, timestamps, eye labels and technician notes. | no lost tests |
-| eyeclinic.flow.technician_rooming | Ophthalmic technician rooming | invariant | Rooming prepares history, acuity, preliminary tests, drops and equipment before clinician. | efficient exam |
-| eyeclinic.flow.drop_administration_log | Eye drop administration log | invariant | Log records drop type, eye, time, staff and patient reaction if relevant. | timing and safety |
-| eyeclinic.flow.room_turnover | Eye exam room turnover | invariant | Turnover cleans surfaces, resets equipment, disposes supplies and protects instruments. | infection control |
-| eyeclinic.flow.patient_education_packet | Patient education packet | variant | Packet gives approved instructions, procedure info or lens guidance from clinic materials. | consistent communication |
-| eyeclinic.flow.checkout_orders | Eye clinic checkout orders | invariant | Checkout schedules follow-up, testing, prescriptions, referrals or procedure dates from clinician plan. | close loop |
-| eyeclinic.procedure.laser_room_setup | Ophthalmology laser room setup | variant | Setup verifies equipment, lens, consent, eye, staff, safety signs and documentation. | procedure readiness |
-| eyeclinic.procedure.injection_flow | Intravitreal injection flow | variant | Flow coordinates consent, medication handling, sterile setup, timeout, documentation and follow-up. | controlled procedure |
-| eyeclinic.procedure.timeout | Ophthalmology procedure timeout | invariant | Timeout confirms patient, procedure, eye, consent, medication or device and allergies. | wrong-site prevention |
-| eyeclinic.procedure.instrument_trace | Ophthalmology instrument trace | invariant | Trace links reusable instruments to sterilization cycle, procedure and patient where required. | infection traceability |
-| eyeclinic.procedure.postprocedure_note | Post-procedure note | invariant | Note records procedure completion, tolerance, instructions, lot numbers if needed and follow-up. | close procedure |
-| eyeclinic.optical.frame_selection | Optical frame selection | variant | Selection records frame, size, fit, price, insurance and patient preference. | optical retail |
-| eyeclinic.optical.lens_order | Lens order | variant | Order captures prescription, lens type, coating, measurements, frame and lab route. | make glasses |
-| eyeclinic.optical.pupillary_distance | Pupillary distance measurement | variant | Measurement supports accurate lens fabrication and fitting. | align optics |
-| eyeclinic.optical.order_verification | Optical order verification | invariant | Verification checks prescription, lens, frame, measurements, price and patient approval before lab order. | avoid remake |
-| eyeclinic.optical.dispensing_adjustment | Glasses dispensing adjustment | variant | Adjustment fits frame, confirms vision, comfort and patient instructions at pickup. | usable eyewear |
-| eyeclinic.records.eye_diagram | Eye diagram documentation | variant | Diagram marks lesion, finding, procedure site or observation with laterality. | visual record |
-| eyeclinic.records.referral_letter | Ophthalmology referral letter | invariant | Letter communicates reason, findings, tests, urgency and requested action to another provider. | care handoff |
-| eyeclinic.records.surgery_packet | Eye surgery packet | variant | Packet compiles clearance, measurements, consent, lens choice, medications and scheduling details. | surgery readiness |
-| eyeclinic.records.device_lot | Ophthalmology device lot record | variant | Record tracks lens, implant, medication or supply lot when procedure traceability is required. | recall support |
-| eyeclinic.records.privacy_screen | Eye clinic privacy screen | invariant | Screen limits visible images, charts and conversations in high-flow testing areas. | protect patient data |
-| eyeclinic.quality.no_show_recall | Eye clinic no-show recall | invariant | Recall workflow follows up missed high-risk monitoring, post-op or procedure appointments. | avoid care gaps |
-| eyeclinic.quality.equipment_qc | Ophthalmic equipment QC | invariant | QC checks calibration, cleaning, software, image quality and service status. | reliable testing |
-| eyeclinic.quality.incident_report | Eye clinic incident report | invariant | Report documents fall, wrong-eye risk, drop reaction, equipment issue, privacy event or complaint. | safety learning |
-| eyeclinic.metrics.eyeclinic_kpi | Ophthalmology clinic KPI | variant | KPI tracks wait time, imaging defects, recall completion, room utilization, no-shows and procedure flow. | manage clinic |
+| eyeclinic.schedule.visit_type | Тип визита к офтальмологу | invariant | Тип визита определяет обследование, визуализацию, процедуру, послеоперационный период, контактные линзы или неотложную помощь. | правильно планировать |
+| eyeclinic.schedule.provider_template | Шаблон поставщика офтальмологической клиники | invariant | В шаблоне указаны возможности врача, оптометриста, техника, специалиста по визуализации и процедур. | сопоставить поток с ресурсами |
+| eyeclinic.schedule.dilation_buffer | Буфер расширения | variant | Буфер учитывает время ожидания после падения перед исследованием или визуализацией. | Осмотры требуют времени |
+| eyeclinic.schedule.recall_list | Список отзывов о глазных клиниках | invariant | В списке отзыва отслеживаются пациенты, которым предстоит последующее наблюдение, мониторинг, визуализация или послеоперационный визит. | предотвратить потерю последующего наблюдения |
+| eyeclinic.schedule.urgent_eye_route | Срочная маршрутизация глаз | variant | Маршрутизация приводит к эскалации тревожных симптомов до клинической сортировки, а не до обычного планирования. | граница стойки регистрации |
+| eyeclinic.intake.ocular_history | Сбор глазного анамнеза | invariant | При приеме регистрируются перенесенные заболевания глаз, операции, травмы, контактные линзы, лекарства и симптомы. | контекст экзамена |
+| eyeclinic.intake.visual_acuity | Регистрация остроты зрения | invariant | Запись записей измеряла зрение с использованием клинического метода, статус коррекции и латеральность глаза. | базовая функция |
+| eyeclinic.intake.laterality_check | Проверка латерализации глаз | invariant | Проверка подтверждает правый, левый или оба глаза для тестирования, процедуры и документации. | предотвратить ошибочные ошибки зрения |
+| eyeclinic.intake.medication_allergy | Аллергия на лекарства в глазной клинике | invariant | Запишите флажки об аллергии или чувствительности, относящиеся к каплям, контрастному веществу или расходным материалам для процедур. | защитный экран |
+| eyeclinic.intake.consent_status | Статус согласия на офтальмологическое лечение | invariant | Статус подтверждает необходимое согласие на визуализацию, процедуру, расширение или уход, связанный с хирургическим вмешательством. | свидетельство о разрешении |
+| eyeclinic.testing.refraction_workup | Передача исследования рефракции | variant | Handoff отправляет врачу результаты измерений, цели пациента и историю линз. | оптический рабочий процесс |
+| eyeclinic.testing.iop_measurement | Измерение внутриглазного давления | invariant | Измерение записывает результат давления, метод, время и глаз. | данные мониторинга |
+| eyeclinic.testing.visual_field | Тест поля зрения | variant | Тест отображает реакцию пациента по всему полю зрения с использованием определенного протокола. | функциональная карта |
+| eyeclinic.testing.color_vision | Тест цветового зрения | variant | Тестирование цветовой дискриминации экранов с использованием стандартизированных пластин или устройств. | конкретная функция |
+| eyeclinic.testing.pachymetry | Измерение толщины роговицы | variant | При измерении регистрируется толщина роговицы, когда это необходимо для диагностики или планирования. | структурная база данных |
+| eyeclinic.imaging.oct_scan | Рабочий процесс ОКТ-сканирования | variant | Рабочий процесс захватывает оптические когерентные изображения с указанием глаза, типа сканирования, качества и места хранения. | изображение сетчатки или нерва |
+| eyeclinic.imaging.fundus_photo | Рабочий процесс с фотографиями глазного дна | variant | Фотография захватывает изображения сетчатки с тегами латерали, поля, качества и сравнения. | внешний вид документа |
+| eyeclinic.imaging.topography | Рабочий процесс топографии роговицы | variant | Рабочий процесс отображает форму роговицы и сохраняет изображения с контролем качества для просмотра врачом. | данные формы |
+| eyeclinic.imaging.image_quality | Проверка качества изображения глаза | invariant | Отметьте флажками размытие, артефакт, неправильный глаз, плохую фиксацию или неполное сканирование. | полезные изображения |
+| eyeclinic.imaging.image_handoff | Передача изображений | invariant | Handoff гарантирует, что врач сможет найти изображения, метки времени, метки глаз и заметки технического специалиста. | никаких потерянных тестов |
+| eyeclinic.flow.technician_rooming | Помещение офтальмотехника | invariant | Комната готовит анамнез, остроту зрения, предварительные тесты, капли и оборудование перед клиницистом. | эффективный экзамен |
+| eyeclinic.flow.drop_administration_log | Журнал применения глазных капель | invariant | В журнале фиксируются тип капли, глаз, время, персонал и реакция пациента, если это необходимо. | сроки и безопасность |
+| eyeclinic.flow.room_turnover | Оборот кабинета для проверки зрения | invariant | При перевороте очищаются поверхности, перезагружается оборудование, утилизируются расходные материалы и защищаются инструменты. | инфекционный контроль |
+| eyeclinic.flow.patient_education_packet | Пакет обучения пациентов | variant | В пакете содержатся утвержденные инструкции, информация о процедуре или рекомендации по выбору линз из материалов клиники. | последовательное общение |
+| eyeclinic.flow.checkout_orders | Заказы на кассу в офтальмологической клинике | invariant | Графики последующих осмотров, тестирования, рецептов, направлений или дат процедур согласно плану врача. | замкнутый контур |
+| eyeclinic.procedure.laser_room_setup | Устройство лазерного кабинета офтальмологии | variant | Установка проверяет оборудование, линзы, согласие, глаз, персонал, знаки безопасности и документацию. | готовность процедуры |
+| eyeclinic.procedure.injection_flow | Поток интравитреальной инъекции | variant | Согласие на координаты потока, обращение с лекарствами, стерильная установка, тайм-аут, документирование и последующее наблюдение. | контролируемая процедура |
+| eyeclinic.procedure.timeout | Тайм-аут процедуры офтальмологии | invariant | Тайм-аут подтверждает пациента, процедуру, глаз, согласие, лекарство или устройство и аллергию. | предотвращение неправильного сайта |
+| eyeclinic.procedure.instrument_trace | След офтальмологического инструмента | invariant | Система отслеживания связывает многоразовые инструменты с циклом стерилизации, процедурой и пациентом, где это необходимо. | отслеживаемость инфекции |
+| eyeclinic.procedure.postprocedure_note | Примечание после процедуры | invariant | В записях фиксируются выполнение процедуры, допуски, инструкции, номера партий, если необходимо, и последующие действия. | процедура закрытия |
+| eyeclinic.optical.frame_selection | Выбор оптической оправы | variant | Выбор учитывает структуру, размер, соответствие, цену, страховку и предпочтения пациента. | оптическая розничная торговля |
+| eyeclinic.optical.lens_order | Заказ линз | variant | В заказе указывается рецепт, тип линзы, покрытие, размеры, оправа и маршрут лаборатории. | сделать очки |
+| eyeclinic.optical.pupillary_distance | Измерение зрачкового расстояния | variant | Измерения способствуют точному изготовлению и установке линз. | выровнять оптику |
+| eyeclinic.optical.order_verification | Оптическая проверка заказа | invariant | Перед заказом в лабораторию проверяется рецепт, линзы, оправа, размеры, цена и одобрение пациента. | избегайте римейка |
+| eyeclinic.optical.dispensing_adjustment | Регулировка выдачи стаканов | variant | Регулировка соответствует раме, подтверждает зрение, комфорт и инструкции пациента при получении. | годные к употреблению очки |
+| eyeclinic.records.eye_diagram | Документация по глазковым диаграммам | variant | На диаграмме отмечено поражение, находка, место процедуры или наблюдение с латеральной стороны. | визуальная запись |
+| eyeclinic.records.referral_letter | Направление к офтальмологу | invariant | В письме сообщается причина, выводы, тесты, срочность и требуемые действия другому поставщику услуг. | передача ухода |
+| eyeclinic.records.surgery_packet | Пакет услуг по хирургии глаза | variant | Пакет собирает разрешение, измерения, согласие, выбор линз, лекарства и детали планирования. | готовность к операции |
+| eyeclinic.records.device_lot | Запись партии офтальмологических устройств | variant | Если требуется отслеживание процедуры, записывайте данные о линзах, имплантатах, лекарствах или партиях расходных материалов. | поддержка отзыва |
+| eyeclinic.records.privacy_screen | Экран конфиденциальности глазной клиники | invariant | Экран ограничивает видимые изображения, диаграммы и разговоры в зонах тестирования с интенсивным потоком людей. | защитить данные пациентов |
+| eyeclinic.quality.no_show_recall | Отзыв о неявке глазной клиники | invariant | Вспомните рабочий процесс, который отслеживает пропущенные встречи с высоким риском, послеоперационные или процедурные встречи. | избегать пробелов в уходе |
+| eyeclinic.quality.equipment_qc | Контроль качества офтальмологического оборудования | invariant | QC проверяет калибровку, очистку, программное обеспечение, качество изображения и статус обслуживания. | надежное тестирование |
+| eyeclinic.quality.incident_report | Отчет о происшествии в офтальмологической клинике | invariant | Сообщайте о падении документов, риске неправильного просмотра, реакции на падение, проблеме с оборудованием, событии, связанном с конфиденциальностью, или жалобе. | обучение безопасности |
+| eyeclinic.metrics.eyeclinic_kpi | Офтальмологическая клиника КПИ | variant | KPI отслеживает время ожидания, дефекты изображений, завершение отзыва, использование помещения, неявки и ход процедур. | управлять клиникой |

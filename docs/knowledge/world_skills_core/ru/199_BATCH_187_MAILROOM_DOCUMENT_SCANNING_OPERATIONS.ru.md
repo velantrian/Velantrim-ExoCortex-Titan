@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| mailops.intake.mail_receipt | Mail receipt log | invariant | Receipt log records date, sender, carrier, item type, tracking number and recipient. | prove arrival |
-| mailops.intake.courier_handoff | Courier handoff | invariant | Handoff captures custody, signature, time, package count and exception notes. | chain of custody |
-| mailops.intake.security_screening | Mail security screening | invariant | Screening checks for suspicious packages, damage, leaks, odors, unknown sender or prohibited items. | protect workplace |
-| mailops.intake.priority_sort | Mail priority sort | invariant | Sort separates urgent, registered, legal, financial, confidential and routine items. | route by risk |
-| mailops.intake.undeliverable_mail | Undeliverable mail | invariant | Undeliverable item lacks valid recipient, address or department and needs research or return. | prevent lost documents |
-| mailops.intake.confidential_mail | Confidential mail handling | invariant | Confidential mail is restricted by recipient, access rule, sealed state and delivery evidence. | privacy control |
-| mailops.prep.document_prep | Document prep | invariant | Prep removes staples, repairs pages, unfolds, separates batches and adds separator sheets. | scanner-ready input |
-| mailops.prep.batch_sheet | Scan batch sheet | invariant | Batch sheet identifies job, source, owner, document type, count and indexing rules. | control the batch |
-| mailops.prep.page_count | Page count control | invariant | Count compares expected, prepared, scanned and indexed pages. | catch missing pages |
-| mailops.prep.exception_item | Mailroom exception item | invariant | Exception item needs special handling because of damage, oversize, illegibility, sensitivity or mismatch. | do not force flow |
-| mailops.prep.barcode_separator | Barcode separator | variant | Separator barcode tells scanner or capture system where a document or batch starts. | automate splitting |
-| mailops.scan.scanner_profile | Scanner profile | invariant | Profile sets resolution, color mode, duplex, file type, compression and enhancement. | consistent images |
-| mailops.scan.duplex_capture | Duplex capture | invariant | Duplex capture scans both sides and suppresses blank pages only under controlled rules. | avoid missing backs |
-| mailops.scan.image_quality | Scan image quality | invariant | Quality checks skew, crop, contrast, blank pages, streaks, orientation and completeness. | readable record |
-| mailops.scan.rescan_request | Rescan request | invariant | Rescan corrects missing, blurred, skewed, cropped or wrong-document images. | fix before archive |
-| mailops.scan.oversize_scan | Oversize document scan | variant | Oversize scan uses large-format device, stitching or special handling for plans and posters. | fit unusual media |
-| mailops.ocr.ocr_capture | OCR capture | variant | OCR converts document images into searchable text with confidence scores. | search and extract |
-| mailops.ocr.ocr_confidence | OCR confidence review | invariant | Review flags fields or pages where recognition confidence is too low. | humans check weak text |
-| mailops.ocr.handwriting_limit | Handwriting OCR limit | variant | Handwriting recognition is less reliable and may require manual keying or double entry. | know automation limits |
-| mailops.ocr.zonal_ocr | Zonal OCR | variant | Zonal OCR extracts data from predefined areas such as invoice number, date or account. | structured capture |
-| mailops.index.document_type | Document type index | invariant | Index assigns captured item to type such as invoice, claim, contract, form or correspondence. | drives workflow |
-| mailops.index.metadata_field | Metadata field | invariant | Field stores values such as date, sender, account, case, department, retention class or owner. | find later |
-| mailops.index.validation_rule | Index validation rule | invariant | Rule checks required fields, format, allowed values and cross-field consistency. | prevent bad metadata |
-| mailops.index.double_keying | Double keying | variant | Two operators enter critical fields independently and mismatches are reconciled. | reduce errors |
-| mailops.index.lookup_match | Lookup match | variant | Match compares indexed data to customer, vendor, case or employee master records. | route correctly |
-| mailops.workflow.routing_queue | Document routing queue | invariant | Queue sends indexed documents to department, case worker, approver or system integration. | work moves onward |
-| mailops.workflow.sla_clock | Mailroom SLA clock | invariant | SLA clock measures receipt-to-scan, scan-to-index, and index-to-route time. | control delay |
-| mailops.workflow.priority_exception | Priority exception | variant | Exception accelerates legal, payment, deadline or safety-related documents. | deadlines matter |
-| mailops.workflow.return_to_sender | Return-to-sender workflow | invariant | Workflow records reason, approval, packaging and dispatch evidence for returned item. | close impossible delivery |
-| mailops.workflow.physical_delivery | Internal physical delivery | invariant | Delivery route moves items to recipients with route, signature or mailbox evidence. | last-mile control |
-| mailops.qa.sample_review | Scan QA sampling | invariant | Sampling reviews batches for missing pages, bad images, wrong type and metadata defects. | quality evidence |
-| mailops.qa.defect_code | Document capture defect code | invariant | Code classifies error such as missing page, wrong index, unreadable image or duplicate scan. | learn from errors |
-| mailops.qa.reconciliation | Mailroom reconciliation | invariant | Reconciliation compares received items, scanned batches, routed records and held exceptions. | no item disappears |
-| mailops.qa.duplicate_document | Duplicate document detection | variant | Detection finds repeated scans or re-submitted documents by metadata, barcode or image similarity. | avoid duplicate cases |
-| mailops.qa.operator_feedback | Capture operator feedback | variant | Feedback gives operators defect patterns and corrected examples. | improve accuracy |
-| mailops.records.retention_class | Mailroom retention class | invariant | Retention class links document type to storage, legal hold and destruction rules. | lifecycle from intake |
-| mailops.records.original_handling | Original document handling | invariant | Original handling defines return, archive, shred or temporary hold after scanning. | paper fate |
-| mailops.records.secure_shred | Secure shredding | invariant | Shred process records authorization, container, vendor or internal destruction evidence. | dispose safely |
-| mailops.records.audit_trail | Capture audit trail | invariant | Audit trail records receipt, prep, scan, index, QA, routing, access and disposition events. | explain history |
-| mailops.records.legal_hold_flag | Legal hold flag | invariant | Hold flag prevents destruction or alteration while investigation, litigation or audit requires preservation. | stop normal disposal |
-| mailops.equipment.scanner_maintenance | Scanner maintenance | invariant | Maintenance covers rollers, glass, feed path, calibration, firmware and cleaning. | image quality depends on equipment |
-| mailops.equipment.feed_jam | Scanner feed jam | invariant | Jam response clears pages, verifies order, rescans affected pages and records exception. | avoid missing pages |
-| mailops.metrics.mailroom_kpi | Mailroom KPI | variant | KPI tracks volumes, turnaround, defects, backlog, SLA misses, exceptions and cost. | manage service |
-| mailops.continuity.backlog_recovery | Mailroom backlog recovery | invariant | Recovery prioritizes aged, deadline-critical and high-risk documents after outage or surge. | catch up safely |
+| mailops.intake.mail_receipt | Журнал получения почты | invariant | В журнале квитанций фиксируются дата, отправитель, перевозчик, тип отправления, номер отслеживания и получатель. | доказать прибытие |
+| mailops.intake.courier_handoff | Передача курьера | invariant | Передача фиксирует хранение, подпись, время, количество пакетов и примечания об исключениях. | цепочка поставок |
+| mailops.intake.security_screening | Проверка безопасности почты | invariant | Скрининговые проверки на наличие подозрительных посылок, повреждений, утечек, запахов, неизвестного отправителя или запрещенных предметов. | защитить рабочее место |
+| mailops.intake.priority_sort | Сортировка по приоритету почты | invariant | Сортировка разделяет срочные, зарегистрированные, юридические, финансовые, конфиденциальные и рутинные сообщения. | маршрут по риску |
+| mailops.intake.undeliverable_mail | Недоставленное письмо | invariant | Недоставленный товар не имеет действительного получателя, адреса или отдела и требует исследования или возврата. | предотвратить потерю документов |
+| mailops.intake.confidential_mail | Конфиденциальная обработка почты | invariant | Конфиденциальная почта ограничена получателем, правилом доступа, состоянием запечатанности и доказательством доставки. | контроль конфиденциальности |
+| mailops.prep.document_prep | Подготовка документов | invariant | Prep удаляет скрепки, восстанавливает страницы, разворачивает, разделяет пакеты и добавляет разделительные листы. | готовый к сканеру ввод |
+| mailops.prep.batch_sheet | Сканировать пакетный лист | invariant | В пакетном листе указаны задание, источник, владелец, тип документа, правила подсчета и индексации. | контролировать партию |
+| mailops.prep.page_count | Контроль количества страниц | invariant | Count сравнивает ожидаемые, подготовленные, отсканированные и проиндексированные страницы. | поймать недостающие страницы |
+| mailops.prep.exception_item | Элемент исключения почтового отделения | invariant | Исключительный элемент требует особого обращения из-за повреждения, слишком большого размера, неразборчивости, чувствительности или несоответствия. | не форсируйте поток |
+| mailops.prep.barcode_separator | Разделитель штрих-кода | variant | Штрих-код-разделитель сообщает сканеру или системе захвата, где начинается документ или пакет. | автоматизировать разделение |
+| mailops.scan.scanner_profile | Профиль сканера | invariant | Профиль устанавливает разрешение, цветовой режим, дуплекс, тип файла, сжатие и улучшение. | последовательные изображения |
+| mailops.scan.duplex_capture | Дуплексный захват | invariant | Дуплексный захват сканирует обе стороны и подавляет пустые страницы только в соответствии с контролируемыми правилами. | избегайте промахов спины |
+| mailops.scan.image_quality | Качество изображения сканирования | invariant | Проверка качества: перекос, обрезка, контрастность, пустые страницы, полосы, ориентация и полнота. | читаемая запись |
+| mailops.scan.rescan_request | Запрос на повторное сканирование | invariant | Повторное сканирование исправляет отсутствующие, размытые, перекошенные, обрезанные или неправильно задокументированные изображения. | исправить перед архивированием |
+| mailops.scan.oversize_scan | Сканирование документов увеличенного размера | variant | При сканировании увеличенного размера используется широкоформатное устройство, сшивание или специальная обработка планов и плакатов. | подходят необычные носители |
+| mailops.ocr.ocr_capture | захват оптического распознавания символов | variant | OCR преобразует изображения документов в текст с возможностью поиска с оценкой достоверности. | искать и извлекать |
+| mailops.ocr.ocr_confidence | Проверка достоверности OCR | invariant | Просмотрите поля или страницы флажков, где достоверность распознавания слишком низкая. | люди проверяют слабый текст |
+| mailops.ocr.handwriting_limit | Ограничение распознавания рукописного текста | variant | Распознавание рукописного ввода менее надежно и может потребовать ручного ввода или двойного ввода. | знать пределы автоматизации |
+| mailops.ocr.zonal_ocr | Зональное распознавание текста | variant | Зональное распознавание текста извлекает данные из заранее определенных областей, таких как номер счета, дата или счет. | структурированный захват |
+| mailops.index.document_type | Индекс типа документа | invariant | Индекс присваивает захваченному элементу тип, например счет, претензию, контракт, форму или корреспонденцию. | управляет рабочим процессом |
+| mailops.index.metadata_field | Поле метаданных | invariant | В поле хранятся такие значения, как дата, отправитель, учетная запись, дело, отдел, класс хранения или владелец. | найти позже |
+| mailops.index.validation_rule | Правило проверки индекса | invariant | Правило проверяет обязательные поля, формат, допустимые значения и согласованность между полями. | предотвратить плохие метаданные |
+| mailops.index.double_keying | Двойной ключ | variant | Два оператора независимо вводят критические поля и устраняют несоответствия. | уменьшить количество ошибок |
+| mailops.index.lookup_match | Поиск совпадения | variant | Сопоставление сравнивает индексированные данные с основными записями клиентов, поставщиков, обращений или сотрудников. | проложить правильный маршрут |
+| mailops.workflow.routing_queue | Очередь маршрутизации документов | invariant | Очередь отправляет проиндексированные документы в отдел, ответственному за дело, утверждающему или системному интегратору. | работа продвигается вперед |
+| mailops.workflow.sla_clock | Часы SLA для почтового отделения | invariant | Часы SLA измеряют время от получения до сканирования, от сканирования до индекса и от индекса до маршрутизации. | задержка управления |
+| mailops.workflow.priority_exception | Приоритетное исключение | variant | Исключение ускоряет оформление юридических документов, платежей, сроков или документов, связанных с безопасностью. | сроки имеют значение |
+| mailops.workflow.return_to_sender | Рабочий процесс возврата отправителю | invariant | В рабочем процессе фиксируются причины, одобрение, упаковка и доказательства отправки возвращенного товара. | закрыть невозможную доставку |
+| mailops.workflow.physical_delivery | Внутренняя физическая доставка | invariant | Маршрут доставки перемещает предметы получателям с указанием маршрута, подписи или почтового ящика. | контроль последней мили |
+| mailops.qa.sample_review | Сканировать выборку для контроля качества | invariant | Выборочная проверка пакетов на наличие отсутствующих страниц, плохих изображений, неправильного типа и дефектов метаданных. | качественные доказательства |
+| mailops.qa.defect_code | Код дефекта захвата документа | invariant | Код классифицирует такие ошибки, как отсутствующая страница, неправильный индекс, нечитаемое изображение или дублированное сканирование. | учиться на ошибках |
+| mailops.qa.reconciliation | Согласование почтового отделения | invariant | При сверке сравниваются полученные элементы, отсканированные пакеты, маршрутизированные записи и удержанные исключения. | ни один предмет не исчезает |
+| mailops.qa.duplicate_document | Обнаружение дубликатов документов | variant | Обнаружение обнаруживает повторные сканирования или повторно отправленные документы по метаданным, штрих-коду или сходству изображений. | избегать дублирования дел |
+| mailops.qa.operator_feedback | Собирайте отзывы операторов | variant | Обратная связь дает операторам шаблоны дефектов и исправленные примеры. | улучшить точность |
+| mailops.records.retention_class | Класс хранения почтовых отправлений | invariant | Класс хранения связывает тип документа с правилами хранения, юридического хранения и уничтожения. | жизненный цикл от поступления |
+| mailops.records.original_handling | Обработка оригинала документа | invariant | Обработка оригинала определяет возврат, архивирование, уничтожение или временное удержание после сканирования. | бумажная судьба |
+| mailops.records.secure_shred | Безопасное уничтожение | invariant | Уничтожьте записи процесса авторизации, доказательства контейнера, поставщика или внутреннего уничтожения. | безопасно утилизировать |
+| mailops.records.audit_trail | Сохранение контрольного журнала | invariant | В журнале аудита фиксируются события получения, подготовки, сканирования, индексирования, контроля качества, маршрутизации, доступа и удаления. | объяснить историю |
+| mailops.records.legal_hold_flag | Флаг юридического удержания | invariant | Флаг хранения предотвращает уничтожение или изменение, пока расследование, судебное разбирательство или аудит требуют сохранения. | прекратить нормальную утилизацию |
+| mailops.equipment.scanner_maintenance | Обслуживание сканера | invariant | Техническое обслуживание охватывает ролики, стекло, путь подачи, калибровку, прошивку и очистку. | качество изображения зависит от оборудования |
+| mailops.equipment.feed_jam | Застревание в подаче сканера | invariant | Реакция на застревание очищает страницы, проверяет порядок, повторно сканирует затронутые страницы и записывает исключения. | избежать пропущенных страниц |
+| mailops.metrics.mailroom_kpi | КПЭ почтового отделения | variant | KPI отслеживает объемы, обороты, дефекты, отставание, нарушения соглашений об уровне обслуживания, исключения и затраты. | управлять сервисом |
+| mailops.continuity.backlog_recovery | Восстановление накопившейся почты в почтовом отделении | invariant | При восстановлении приоритет отдается устаревшим, срочным документам и документам с высоким уровнем риска после сбоя или резкого увеличения нагрузки. | догнать безопасно |

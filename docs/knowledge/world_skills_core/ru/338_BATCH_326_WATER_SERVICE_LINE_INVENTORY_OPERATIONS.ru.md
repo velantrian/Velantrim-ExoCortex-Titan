@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| servicelineops.inventory.service_id | service line ID | RECORD | Each service has account, parcel, meter, curb stop, public side and customer side record. | Creates traceable unit for inventory and replacement. |
-| servicelineops.inventory.material_status | material status | RECORD | Material is classified as lead, galvanized requiring replacement, copper, plastic, unknown or other. | Drives risk and compliance actions. |
-| servicelineops.inventory.public_private | public-private split | CONSTRAINT | Ownership split between utility and customer side is recorded. | Replacement planning needs legal responsibility. |
-| servicelineops.inventory.install_year | install year | RECORD | Install year, subdivision age or plumbing permit dates inform material probability. | Helps prioritize unknown services. |
-| servicelineops.records.tap_card | tap card | RECORD | Tap cards may show original service material, size, date and location. | Historical records reduce field uncertainty. |
-| servicelineops.records.plumbing_permit | plumbing permit review | METHOD | Permits reveal service replacements, meter moves or building plumbing changes. | Updates inventory without excavation. |
-| servicelineops.records.meter_record | meter record | RECORD | Meter size, setter, pit, basement location and customer notes support verification. | Field crews know where to look. |
-| servicelineops.records.confidence | confidence rating | MODEL | Confidence score reflects record quality, field evidence and consistency. | Separates verified from assumed material. |
-| servicelineops.field.scratch_test | scratch test | METHOD | Scratch test checks color and hardness of exposed pipe. | Distinguishes lead, copper and plastic when accessible. |
-| servicelineops.field.magnet_test | magnet test | METHOD | Magnet indicates ferrous galvanized or steel pipe. | Supports classification of non-lead but risky materials. |
-| servicelineops.field.swab_test | lead swab | QUALITY_CHECK | Lead swab can support field identification but is not sole evidence. | Useful screening with limitations. |
-| servicelineops.field.visual_meter | meter-area visual | INSPECTION | Pipe entering meter or wall is inspected where safely accessible. | Low-cost verification for interior services. |
-| servicelineops.field.curb_stop | curb stop verification | METHOD | Curb stop excavation or vacuum potholing can reveal public-side material. | Confirms buried segment when records are weak. |
-| servicelineops.field.potholing | potholing | METHOD | Vacuum excavation exposes service with less damage than open trench. | Verifies material before replacement design. |
-| servicelineops.field.safety | field safety | SAFETY_RULE | Crews manage traffic, excavation, utilities, confined spaces and customer property. | Inventory work still has construction risks. |
-| servicelineops.customer.self_report | customer self-report | METHOD | Customers submit photos or forms of visible service material. | Expands inventory coverage quickly. |
-| servicelineops.customer.photo_guidance | photo guidance | METHOD | Instructions show where to photograph pipe, scratch area and meter context. | Improves quality of self-reported data. |
-| servicelineops.customer.access_appointment | access appointment | METHOD | Appointments coordinate interior inspections, language needs and safety. | Reduces missed visits. |
-| servicelineops.customer.privacy | privacy handling | SAFETY_RULE | Customer photos and interior access data are handled with privacy controls. | Maintains trust and legal compliance. |
-| servicelineops.leadrisk.lead_gooseneck | lead gooseneck | RECORD | Lead connectors or goosenecks are recorded even when main service is not lead. | Small components can still create lead risk. |
-| servicelineops.leadrisk.galvanized_downstream | galvanized downstream | MODEL | Galvanized pipe downstream of lead can accumulate lead scale. | May require replacement classification. |
-| servicelineops.leadrisk.unknown_priority | unknown priority | DECISION_RULE | Unknowns are prioritized by age, neighborhood, vulnerable populations and records. | Reduces highest-risk uncertainty first. |
-| servicelineops.leadrisk.disturbance | disturbance risk | SAFETY_RULE | Construction or partial replacement can release lead particles. | Requires flushing, filters or notices. |
-| servicelineops.notices.initial_notice | initial notice | METHOD | Customers are notified of known or unknown service material and health information. | Supports transparency and compliance. |
-| servicelineops.notices.replacement_notice | replacement notice | METHOD | Replacement notices explain schedule, access, cost, ownership and post-work steps. | Helps customers participate. |
-| servicelineops.notices.filter | filter notice | METHOD | Filters may be provided or recommended after lead work or disturbance. | Reduces exposure during transition. |
-| servicelineops.notices.language_access | language access | METHOD | Notices use plain language and translation where needed. | Improves participation and equity. |
-| servicelineops.replacement.full_replacement | full replacement | METHOD | Full replacement removes lead from public and customer side in one coordinated project. | Avoids risks of partial replacement. |
-| servicelineops.replacement.partial | partial replacement | FAILURE_MODE | Partial replacement can leave lead and disturb scale. | Often requires extra risk controls. |
-| servicelineops.replacement.bundle | bundle projects | METHOD | Replacements are bundled with paving, main replacement or neighborhood projects. | Reduces cost and disruption. |
-| servicelineops.replacement.contractor | contractor management | METHOD | Contractors need specs, customer coordination, restoration and data return requirements. | Replacement data must update inventory. |
-| servicelineops.replacement.restoration | restoration | QUALITY_CHECK | Pavement, sidewalk, lawn and interior penetrations are restored after work. | Customer acceptance depends on site restoration. |
-| servicelineops.funding.grant | grant tracking | RECORD | Grants track eligible costs, match, addresses, procurement and reporting. | Supports affordability of replacements. |
-| servicelineops.funding.customer_cost | customer cost policy | DECISION_RULE | Utility policy defines whether customer-side replacement is free, shared or financed. | Impacts participation and equity. |
-| servicelineops.funding.priority_equity | equity priority | MODEL | Priority may consider children, schools, income, lead levels and disadvantaged areas. | Targets replacement where benefit is greatest. |
-| servicelineops.data.database | inventory database | RECORD | Database stores material, evidence, confidence, dates, photos and replacement status. | Single source of truth for program. |
-| servicelineops.data.gis_layer | GIS layer | RECORD | GIS maps service status by parcel, main and project area. | Visualizes unknown clusters and replacement progress. |
-| servicelineops.data.qa | data QA | QUALITY_CHECK | QA checks duplicates, impossible materials, missing evidence and public/private mismatch. | Keeps inventory defensible. |
-| servicelineops.data.public_map | public map | METHOD | Public-facing map or lookup shares service status with customers. | Builds transparency. |
-| servicelineops.sampling.lead_sample | lead sampling link | RECORD | Water lead results are linked to service material and premise plumbing notes. | Helps interpret exposure and corrosion control. |
-| servicelineops.sampling.post_replacement | post-replacement sampling | QUALITY_CHECK | Samples after replacement verify lead reduction and detect disturbance. | Confirms project outcome. |
-| servicelineops.reporting.compliance | compliance report | RECORD | Report summarizes lead, galvanized, unknown, replaced and notices. | Meets regulatory and management needs. |
-| servicelineops.reporting.progress | progress dashboard | RECORD | Dashboard tracks verifications, replacements, funding and customer participation. | Shows whether program is moving. |
-| servicelineops.review.lessons | lessons learned | METHOD | Program reviews records quality, customer response, contractor issues and lead results. | Improves next replacement phase. |
+| servicelineops.inventory.service_id | идентификатор линии обслуживания | RECORD | Каждая услуга имеет учетную запись, посылку, счетчик, бордюрную остановку, общедоступную запись и запись на стороне клиента. | Создает отслеживаемую единицу для инвентаризации и замены. |
+| servicelineops.inventory.material_status | материальный статус | RECORD | Материал классифицируется как свинец, оцинкованный, требующий замены, медь, пластик, неизвестный или другой. | Управляет рисками и действиями по обеспечению соответствия. |
+| servicelineops.inventory.public_private | государственно-частный раскол | CONSTRAINT | Распределение собственности между коммунальным предприятием и стороной потребителя фиксируется. | Планирование замены требует юридической ответственности. |
+| servicelineops.inventory.install_year | год установки | RECORD | Год установки, возраст подразделения или даты разрешения на сантехнические работы указывают на существенную вероятность. | Помогает расставить приоритеты неизвестным службам. |
+| servicelineops.records.tap_card | нажмите карту | RECORD | На карточках кранов могут быть указаны оригинальные служебные материалы, размер, дата и местонахождение. | Исторические записи уменьшают неопределенность на местах. |
+| servicelineops.records.plumbing_permit | проверка разрешения на водопровод | METHOD | Разрешения указывают на замену услуг, перенос счетчиков или замену сантехники в здании. | Обновляет инвентарь без раскопок. |
+| servicelineops.records.meter_record | запись счетчика | RECORD | Размер счетчика, сеттер, яма, расположение подвала и примечания клиента поддерживают проверку. | Полевые бригады знают, где искать. |
+| servicelineops.records.confidence | рейтинг доверия | MODEL | Показатель уверенности отражает качество записей, фактические данные и последовательность. | Отделяет проверенный от предполагаемого материала. |
+| servicelineops.field.scratch_test | скретч-тест | METHOD | Испытание на царапины позволяет проверить цвет и твердость открытой трубы. | Отличает свинец, медь и пластик, если они доступны. |
+| servicelineops.field.magnet_test | магнитный тест | METHOD | Магнит указывает на черную оцинкованную или стальную трубу. | Поддерживает классификацию не свинцовых, но опасных материалов. |
+| servicelineops.field.swab_test | свинцовый тампон | QUALITY_CHECK | Свинцовый мазок может подтвердить идентификацию на местах, но не является единственным доказательством. | Полезный скрининг с ограничениями. |
+| servicelineops.field.visual_meter | визуальный на метр площади | INSPECTION | Труба, входящая в счетчик или стену, проверяется в безопасных местах. | Недорогая проверка для внутренних услуг. |
+| servicelineops.field.curb_stop | проверка остановки на бордюре | METHOD | Раскопки бордюров или вакуумная очистка выбоин могут обнаружить материалы, находящиеся на общественной территории. | Подтверждает скрытый сегмент, когда записи слабые. |
+| servicelineops.field.potholing | спелеология | METHOD | Вакуумные раскопки обеспечивают меньший ущерб, чем открытая траншея. | Проверяет материал перед заменой конструкции. |
+| servicelineops.field.safety | полевая безопасность | SAFETY_RULE | Бригады управляют дорожным движением, земляными работами, коммунальными услугами, замкнутыми пространствами и имуществом клиентов. | Инвентаризационные работы по-прежнему сопряжены со строительными рисками. |
+| servicelineops.customer.self_report | самоотчет клиента | METHOD | Клиенты отправляют фотографии или формы видимых сервисных материалов. | Быстро расширяет охват запасов. |
+| servicelineops.customer.photo_guidance | фото-руководство | METHOD | В инструкциях показано, где фотографировать трубу, область царапины и контекст счетчика. | Улучшает качество данных, сообщаемых самими пользователями. |
+| servicelineops.customer.access_appointment | доступ к назначению | METHOD | Назначения координируют внутренние проверки, языковые потребности и безопасность. | Сокращает количество пропущенных посещений. |
+| servicelineops.customer.privacy | обработка конфиденциальности | SAFETY_RULE | Фотографии клиентов и данные доступа внутрь обрабатываются с помощью средств контроля конфиденциальности. | Поддерживает доверие и соблюдение законодательства. |
+| servicelineops.leadrisk.lead_gooseneck | свинцовая шея | RECORD | Соединители выводов или гибкие шеи регистрируются, даже если основная линия не подключена. | Небольшие компоненты по-прежнему могут создавать риск свинца. |
+| servicelineops.leadrisk.galvanized_downstream | оцинкованный после выхода | MODEL | Оцинкованная труба после свинца может накапливать свинцовую окалину. | Может потребоваться замена классификации. |
+| servicelineops.leadrisk.unknown_priority | неизвестный приоритет | DECISION_RULE | Неизвестные имеют приоритет по возрасту, месту проживания, уязвимым группам населения и записям. | В первую очередь снижает неопределенность самого высокого риска. |
+| servicelineops.leadrisk.disturbance | риск нарушения | SAFETY_RULE | Строительство или частичная замена могут привести к выбросу частиц свинца. | Требуется промывка, фильтры или уведомления. |
+| servicelineops.notices.initial_notice | первоначальное уведомление | METHOD | Клиенты уведомляются об известных или неизвестных служебных материалах и медицинской информации. | Поддерживает прозрачность и соответствие требованиям. |
+| servicelineops.notices.replacement_notice | уведомление о замене | METHOD | В уведомлениях о замене поясняются график, доступ, стоимость, право собственности и этапы после завершения работ. | Помогает клиентам участвовать. |
+| servicelineops.notices.filter | уведомление о фильтре | METHOD | Фильтры могут быть предоставлены или рекомендованы после проведения работ или помех. | Уменьшает воздействие во время перехода. |
+| servicelineops.notices.language_access | языковой доступ | METHOD | В уведомлениях используются простой язык и перевод, где это необходимо. | Улучшает участие и равенство. |
+| servicelineops.replacement.full_replacement | полная замена | METHOD | Полная замена устраняет лидерство со стороны общественности и клиентов в рамках одного скоординированного проекта. | Избегает риска частичной замены. |
+| servicelineops.replacement.partial | частичная замена | FAILURE_MODE | Частичная замена может привести к появлению свинца и нарушению накипи. | Часто требует дополнительных мер по контролю рисков. |
+| servicelineops.replacement.bundle | группировать проекты | METHOD | Замены связаны с проектами дорожного покрытия, основной заменой или проектами по соседству. | Снижает затраты и сбои. |
+| servicelineops.replacement.contractor | управление подрядчиками | METHOD | Подрядчикам нужны спецификации, требования к координации с заказчиком, восстановлению и возврату данных. | Данные о замене должны обновлять инвентарь. |
+| servicelineops.replacement.restoration | восстановление | QUALITY_CHECK | Тротуар, тротуар, газон и внутренние проходы восстанавливаются после работ. | Принятие клиента зависит от восстановления сайта. |
+| servicelineops.funding.grant | отслеживание грантов | RECORD | Гранты отслеживают приемлемые расходы, соответствие, адреса, закупки и отчетность. | Поддерживает доступность замен. |
+| servicelineops.funding.customer_cost | политика затрат клиентов | DECISION_RULE | Политика коммунальных предприятий определяет, является ли замена на стороне клиента бесплатной, совместной или финансируемой. | Влияет на участие и равенство. |
+| servicelineops.funding.priority_equity | приоритет справедливости | MODEL | Приоритетом могут быть дети, школы, доходы, уровни свинца и неблагополучные районы. | Замена целей там, где польза наибольшая. |
+| servicelineops.data.database | база данных инвентаризации | RECORD | В базе данных хранятся материалы, доказательства, сведения, даты, фотографии и статус замены. | Единый источник истины для программы. |
+| servicelineops.data.gis_layer | Слой ГИС | RECORD | ГИС-карты отображают статус сервиса по участкам, основным территориям и территориям проекта. | Визуализирует неизвестные кластеры и ход замены. |
+| servicelineops.data.qa | контроль качества данных | QUALITY_CHECK | Служба контроля качества проверяет дубликаты, невозможные материалы, недостающие доказательства и несоответствия между публичным и частным. | Сохраняет запасы защищенными. |
+| servicelineops.data.public_map | общедоступная карта | METHOD | Общедоступная карта или поиск сообщают клиентам о статусе обслуживания. | Создает прозрачность. |
+| servicelineops.sampling.lead_sample | ссылка на выборку потенциальных клиентов | RECORD | Результаты по содержанию свинца в воде связаны с служебными материалами и примечаниями по сантехнике в помещении. | Помогает интерпретировать воздействие и контроль коррозии. |
+| servicelineops.sampling.post_replacement | выборка после замены | QUALITY_CHECK | Образцы после замены проверяют снижение содержания свинца и обнаруживают нарушения. | Подтверждает результат проекта. |
+| servicelineops.reporting.compliance | отчет о соответствии | RECORD | В отчете содержится сводная информация о свинце, оцинкованном, неизвестном, замененном и примечаниях. | Соответствует нормативным и управленческим потребностям. |
+| servicelineops.reporting.progress | панель прогресса | RECORD | Панель мониторинга отслеживает проверки, замены, финансирование и участие клиентов. | Показывает, движется ли программа. |
+| servicelineops.review.lessons | извлеченные уроки | METHOD | Программа проверяет качество записей, реакцию клиентов, проблемы подрядчиков и результаты потенциальных клиентов. | Улучшает следующий этап замены. |

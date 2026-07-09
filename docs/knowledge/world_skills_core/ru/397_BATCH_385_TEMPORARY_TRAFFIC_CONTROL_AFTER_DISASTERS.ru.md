@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| disastertrafficops.activation.trigger | traffic control trigger | MODEL | Trigger includes road damage, debris, evacuation, utility work, flooding or emergency repair. | Starts temporary control plan. |
-| disastertrafficops.activation.traffic_lead | traffic lead | RECORD | Lead coordinates public works, police, fire, transit and contractors. | Clarifies responsibility. |
-| disastertrafficops.activation.priority_route | priority route | MODEL | Priority routes include emergency access, evacuation, hospitals, shelters and supply corridors. | Protects critical movement. |
-| disastertrafficops.activation.safety_brief | safety briefing | SAFETY_RULE | Brief covers work zones, night visibility, floodwater, downed wires and driver behavior. | Protects crews. |
-| disastertrafficops.plan.control_plan | control plan | RECORD | Plan records closure, detour, devices, staffing, timing and approval. | Makes field setup deliberate. |
-| disastertrafficops.plan.mutcd_check | standards check | CONSTRAINT | Devices and layouts follow applicable temporary traffic control standards. | Keeps setups defensible. |
-| disastertrafficops.plan.emergency_access | emergency access | SAFETY_RULE | Fire, EMS and police access is preserved or rerouted. | Maintains response capability. |
-| disastertrafficops.plan.accessibility | accessibility | METHOD | Pedestrian, transit and disability access are considered when feasible. | Reduces public harm. |
-| disastertrafficops.devices.barricade | barricade | METHOD | Barricades block unsafe roads or lanes with clear approach warning. | Prevents entry. |
-| disastertrafficops.devices.cones | cones and drums | METHOD | Cones/drums channel vehicles around hazards and work areas. | Defines travel path. |
-| disastertrafficops.devices.signs | temporary signs | METHOD | Signs warn, guide, detour and explain closures. | Reduces confusion. |
-| disastertrafficops.devices.lighting | lighting | SAFETY_RULE | Night or low-visibility setups need lights or reflective devices. | Improves visibility. |
-| disastertrafficops.detour.detour_route | detour route | METHOD | Detour route checks capacity, bridge limits, turns, transit and emergency access. | Avoids new bottlenecks. |
-| disastertrafficops.detour.map_update | map update | METHOD | Detours update GIS, dispatch, public websites and navigation partners when possible. | Keeps routing current. |
-| disastertrafficops.detour.local_access | local access | CONSTRAINT | Local access rules allow residents, businesses or responders where safe. | Balances closure and access. |
-| disastertrafficops.detour.truck_route | truck route | METHOD | Heavy vehicles need route checks for height, weight, turning and pavement condition. | Prevents damage. |
-| disastertrafficops.flagging.flagger_assignment | flagger assignment | RECORD | Assignment records location, shift, supervisor, radio and traffic pattern. | Controls staffing. |
-| disastertrafficops.flagging.training | flagger training | SAFETY_RULE | Flaggers need training, PPE and escape path. | Reduces injury. |
-| disastertrafficops.flagging.radio | radio coordination | METHOD | Opposing flaggers coordinate via radio or visible line when alternating traffic. | Prevents head-on conflicts. |
-| disastertrafficops.flagging.relief | relief schedule | METHOD | Relief schedule manages fatigue, heat, cold and long shifts. | Maintains attention. |
-| disastertrafficops.signals.temporary_signal | temporary signal | METHOD | Temporary signals control one-lane or damaged intersections when flagging is impractical. | Improves flow. |
-| disastertrafficops.signals.generator | signal power | METHOD | Generator or battery supports critical signals during outage. | Maintains intersection control. |
-| disastertrafficops.signals.timing | timing adjustment | METHOD | Signal timing adjusts for detour volumes and emergency routes. | Reduces congestion. |
-| disastertrafficops.signals.failure | signal failure | FAILURE_MODE | Failed signals require stop control, police/manual control or repair. | Keeps intersections safe. |
-| disastertrafficops.field.install | field installation | METHOD | Crews install devices per plan and site conditions. | Creates real-world control. |
-| disastertrafficops.field.inspection | field inspection | QUALITY_CHECK | Inspection checks device placement, visibility, stability and public behavior. | Catches unsafe setups. |
-| disastertrafficops.field.adjustment | field adjustment | METHOD | Layout changes when traffic, water, debris or work scope changes. | Keeps control relevant. |
-| disastertrafficops.field.damage | device damage | RECORD | Damaged or missing devices are logged and replaced. | Maintains control. |
-| disastertrafficops.communication.public_notice | public notice | METHOD | Notices state closures, detours, expected duration and safety advice. | Helps drivers plan. |
-| disastertrafficops.communication.dispatch | dispatch notification | METHOD | Dispatch receives current closures and emergency access routes. | Supports responders. |
-| disastertrafficops.communication.partner | partner notice | METHOD | Transit, schools, utilities and neighboring jurisdictions receive updates. | Aligns operations. |
-| disastertrafficops.communication.change_notice | change notice | METHOD | Route or schedule changes are communicated quickly. | Reduces surprises. |
-| disastertrafficops.records.device_log | device log | RECORD | Log tracks devices placed, moved, damaged, recovered and stored. | Controls inventory. |
-| disastertrafficops.records.work_log | work log | RECORD | Work log captures crews, equipment, hours and site changes. | Supports reimbursement. |
-| disastertrafficops.records.photo | photo documentation | RECORD | Photos document layout, hazards and changes. | Supports audit and claims. |
-| disastertrafficops.records.retention | retention rule | CONSTRAINT | Traffic control records follow public works and disaster retention rules. | Preserves evidence. |
-| disastertrafficops.qa.drive_through | drive-through review | QUALITY_CHECK | Supervisor drives route to verify understandable guidance. | Improves driver experience. |
-| disastertrafficops.qa.crash_review | crash review | QUALITY_CHECK | Crashes or near misses trigger layout review. | Reduces repeated incidents. |
-| disastertrafficops.qa.compliance | compliance check | QUALITY_CHECK | Device setups are checked against standards and approved deviations. | Protects liability. |
-| disastertrafficops.metrics.closure_count | closure count | MEASUREMENT | Counts track closures, restrictions, detours and reopenings. | Shows network status. |
-| disastertrafficops.metrics.response_time | setup response time | MEASUREMENT | Time from request to installed control shows readiness. | Finds bottlenecks. |
-| disastertrafficops.demob.device_recovery | device recovery | METHOD | Devices are retrieved, inspected, cleaned and restocked. | Ends control safely. |
-| disastertrafficops.demob.reopen_check | reopen check | QUALITY_CHECK | Road reopens after hazard cleared and traffic control removed/changed. | Prevents unsafe reopening. |
-| disastertrafficops.review.after_action | after-action review | METHOD | Review captures detour quality, device shortages, crashes and partner coordination. | Improves next disaster. |
+| disastertrafficops.activation.trigger | триггер управления дорожным движением | MODEL | Триггер включает повреждение дороги, мусор, эвакуацию, коммунальные работы, наводнение или аварийный ремонт. | Запускает временный план управления. |
+| disastertrafficops.activation.traffic_lead | трафик лидирует | RECORD | Ведущий координирует общественные работы, работу полиции, пожарной охраны, транспорта и подрядчиков. | Уточняет ответственность. |
+| disastertrafficops.activation.priority_route | приоритетный маршрут | MODEL | Приоритетные маршруты включают аварийный доступ, эвакуацию, больницы, убежища и коридоры снабжения. | Защищает критические движения. |
+| disastertrafficops.activation.safety_brief | инструктаж по безопасности | SAFETY_RULE | Краткое описание охватывает рабочие зоны, ночную видимость, паводковые воды, оборванные провода и поведение водителя. | Защищает экипажи. |
+| disastertrafficops.plan.control_plan | план контроля | RECORD | Планируйте закрытие записей, обход, устройства, укомплектование персоналом, сроки и утверждение. | Делает настройку поля преднамеренной. |
+| disastertrafficops.plan.mutcd_check | проверка стандартов | CONSTRAINT | Устройства и планировка соответствуют применимым временным стандартам регулирования дорожного движения. | Обеспечивает защиту установок. |
+| disastertrafficops.plan.emergency_access | аварийный доступ | SAFETY_RULE | Доступ пожарных, скорой помощи и полиции сохраняется или перенаправляется. | Сохраняет способность реагирования. |
+| disastertrafficops.plan.accessibility | доступность | METHOD | Там, где это возможно, учитываются возможности доступа для пешеходов, общественного транспорта и людей с ограниченными возможностями. | Уменьшает общественный вред. |
+| disastertrafficops.devices.barricade | баррикада | METHOD | Баррикады блокируют небезопасные дороги или полосы движения с четким предупреждением о приближении. | Препятствует входу. |
+| disastertrafficops.devices.cones | конусы и барабаны | METHOD | Конусы/барабаны направляют транспортные средства вокруг опасностей и рабочих зон. | Определяет путь путешествия. |
+| disastertrafficops.devices.signs | временные знаки | METHOD | Знаки предупреждают, направляют, обходят и объясняют закрытие. | Уменьшает путаницу. |
+| disastertrafficops.devices.lighting | освещение | SAFETY_RULE | Ночные установки или установки в условиях плохой видимости требуют освещения или светоотражающих устройств. | Улучшает видимость. |
+| disastertrafficops.detour.detour_route | объездной маршрут | METHOD | Объездной маршрут проверяет пропускную способность, пределы моста, повороты, транзитный и аварийный доступ. | Избегает новых узких мест. |
+| disastertrafficops.detour.map_update | обновление карты | METHOD | Объезды обновляют ГИС, диспетчерскую службу, общедоступные веб-сайты и навигационных партнеров, когда это возможно. | Поддерживает маршрутизацию в актуальном состоянии. |
+| disastertrafficops.detour.local_access | локальный доступ | CONSTRAINT | Правила локального доступа позволяют жителям, предприятиям или службам реагирования находиться в безопасном месте. | Баланс закрытия и доступа. |
+| disastertrafficops.detour.truck_route | Полоса для грузовиков | METHOD | Тяжелые транспортные средства нуждаются в проверке маршрута на предмет высоты, веса, поворотов и состояния дорожного покрытия. | Предотвращает повреждение. |
+| disastertrafficops.flagging.flagger_assignment | назначение флагмана | RECORD | При назначении фиксируются местоположение, смена, руководитель, радиосвязь и схема движения. | Контролирует кадровое обеспечение. |
+| disastertrafficops.flagging.training | обучение флаггерам | SAFETY_RULE | Флаггерам необходима подготовка, средства индивидуальной защиты и пути эвакуации. | Уменьшает травматизм. |
+| disastertrafficops.flagging.radio | радиокоординация | METHOD | Противостоящие флагманы координируют свои действия по радио или видимой линии при переменном движении. | Предотвращает лобовые конфликты. |
+| disastertrafficops.flagging.relief | график помощи | METHOD | График смен позволяет учитывать усталость, жару, холод и длительные смены. | Удерживает внимание. |
+| disastertrafficops.signals.temporary_signal | временный сигнал | METHOD | Временные сигналы контролируют однополосные или поврежденные перекрестки, когда разметка нецелесообразна. | Улучшает поток. |
+| disastertrafficops.signals.generator | мощность сигнала | METHOD | Генератор или батарея поддерживают критические сигналы во время отключения электроэнергии. | Обеспечивает контроль на перекрёстке. |
+| disastertrafficops.signals.timing | регулировка времени | METHOD | Время сигнала регулируется в зависимости от объема объездов и маршрутов экстренной помощи. | Уменьшает заторы. |
+| disastertrafficops.signals.failure | сбой сигнала | FAILURE_MODE | Неисправные сигналы требуют остановки, полицейского/ручного управления или ремонта. | Обеспечивает безопасность перекрестков. |
+| disastertrafficops.field.install | полевая установка | METHOD | Бригады устанавливают устройства в соответствии с планом и условиями площадки. | Создает реальный контроль. |
+| disastertrafficops.field.inspection | выездная инспекция | QUALITY_CHECK | При проверке проверяется размещение устройства, его видимость, стабильность и поведение в общественных местах. | Отлавливает небезопасные настройки. |
+| disastertrafficops.field.adjustment | корректировка поля | METHOD | Планировка меняется при изменении дорожного движения, воды, мусора или объема работ. | Сохраняет актуальность контроля. |
+| disastertrafficops.field.damage | повреждение устройства | RECORD | Поврежденные или отсутствующие устройства регистрируются и заменяются. | Сохраняет контроль. |
+| disastertrafficops.communication.public_notice | публичное уведомление | METHOD | Уведомляет о закрытии дорог, объездах, ожидаемой продолжительности и советах по безопасности. | Помогает водителям планировать. |
+| disastertrafficops.communication.dispatch | уведомление об отправке | METHOD | Диспетчерская получает информацию о текущих закрытиях и маршрутах аварийного доступа. | Поддерживает ответчиков. |
+| disastertrafficops.communication.partner | уведомление партнера | METHOD | Транзит, школы, коммунальные услуги и соседние юрисдикции получают обновления. | Выравнивает операции. |
+| disastertrafficops.communication.change_notice | уведомление об изменении | METHOD | Об изменениях маршрута или расписания сообщается быстро. | Уменьшает количество сюрпризов. |
+| disastertrafficops.records.device_log | журнал устройства | RECORD | Журнал отслеживает размещение, перемещение, повреждение, восстановление и хранение устройств. | Контролирует запасы. |
+| disastertrafficops.records.work_log | журнал работы | RECORD | В журнале работ фиксируются данные о бригадах, оборудовании, часах и изменениях на площадке. | Поддерживает возмещение. |
+| disastertrafficops.records.photo | фотодокументация | RECORD | Фотографии макета документа, опасностей и изменений. | Поддерживает аудит и претензии. |
+| disastertrafficops.records.retention | правило хранения | CONSTRAINT | Записи управления дорожным движением соответствуют правилам общественных работ и предотвращения стихийных бедствий. | Сохраняет доказательства. |
+| disastertrafficops.qa.drive_through | сквозной обзор | QUALITY_CHECK | Супервайзер прокладывает маршрут, чтобы проверить понятность указаний. | Улучшает опыт водителя. |
+| disastertrafficops.qa.crash_review | обзор сбоя | QUALITY_CHECK | Сбои или промахи вызывают проверку макета. | Снижает количество повторных инцидентов. |
+| disastertrafficops.qa.compliance | проверка соответствия | QUALITY_CHECK | Настройки устройств проверяются на соответствие стандартам и утвержденным отклонениям. | Защищает ответственность. |
+| disastertrafficops.metrics.closure_count | количество закрытий | MEASUREMENT | Подсчеты отслеживают закрытия, ограничения, объезды и повторные открытия. | Показывает состояние сети. |
+| disastertrafficops.metrics.response_time | настроить время ответа | MEASUREMENT | Время от запроса до установки контроля показывает готовность. | Находит узкие места. |
+| disastertrafficops.demob.device_recovery | восстановление устройства | METHOD | Устройства извлекаются, проверяются, очищаются и пополняются. | Завершает контроль благополучно. |
+| disastertrafficops.demob.reopen_check | повторно открыть чек | QUALITY_CHECK | Дорога вновь открывается после устранения опасности и снятия/изменения регулирования дорожного движения. | Предотвращает небезопасное повторное открытие. |
+| disastertrafficops.review.after_action | обзор после действий | METHOD | В обзоре учитываются качество обхода, нехватка устройств, сбои и координация действий партнеров. | Улучшает следующую катастрофу. |

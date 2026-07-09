@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| mentormatchops.intake.participant_source | participant source | RECORD | Source records caseworker, recovery center, workforce partner, school, nonprofit or self-referral. | Shows entry path. |
-| mentormatchops.intake.participant_profile | participant profile | RECORD | Profile captures contact, language, recovery stage, access limits, preferred schedule and support needs. | Defines matching context. |
-| mentormatchops.intake.consent | mentoring consent | CONTROL | Consent explains voluntary participation, communication channels, privacy limits and ending process. | Sets trust. |
-| mentormatchops.intake.safeguarding_screen | safeguarding screen | CONTROL | Screen flags minors, vulnerable adults, trauma risk, conflict risk and mandatory reporting boundaries. | Protects participants. |
-| mentormatchops.goals.goal_statement | goal statement | RECORD | Statement names the practical aim such as job search, documents, study, housing steps or routines. | Guides matching. |
-| mentormatchops.goals.goal_scope | goal scope | CONTROL | Scope prevents mentors from acting as lawyers, clinicians, financial advisers or case managers. | Keeps role safe. |
-| mentormatchops.goals.step_plan | step plan | PROCESS | Plan breaks goals into small tasks, deadlines, resources and check-in points. | Makes support concrete. |
-| mentormatchops.goals.progress_marker | progress marker | METRIC | Marker tracks completed actions, barriers removed and next milestone. | Shows movement. |
-| mentormatchops.mentor.application | mentor application | RECORD | Application captures identity, contact, skills, availability, languages, lived experience and restrictions. | Builds mentor pool. |
-| mentormatchops.mentor.background_check | background check | CONTROL | Check records required screening, reference, credential or organization approval. | Reduces risk. |
-| mentormatchops.mentor.skill_profile | skill profile | RECORD | Profile maps skills such as resume help, budgeting, school navigation, transport planning or digital access. | Supports fit. |
-| mentormatchops.mentor.training_complete | training complete | CONTROL | Training covers boundaries, trauma-informed conduct, privacy, escalation and documentation. | Standardizes support. |
-| mentormatchops.match.criteria | match criteria | MODEL | Criteria weighs goals, language, schedule, location, skill, lived experience, risk and preference. | Improves fit. |
-| mentormatchops.match.conflict_check | conflict check | CONTROL | Check looks for personal conflicts, service conflicts, dependency risk or prior negative contact. | Avoids harm. |
-| mentormatchops.match.introduction_plan | introduction plan | PROCESS | Plan sets first meeting channel, agenda, staff presence and confirmation messages. | Starts safely. |
-| mentormatchops.match.rematch_trigger | rematch trigger | CONTROL | Trigger allows rematch for no-shows, boundary concerns, poor fit, changed goals or safety issue. | Keeps support viable. |
-| mentormatchops.boundaries.role_boundary | role boundary | CONTROL | Boundary defines what mentors can discuss, document, promise and escalate. | Prevents overreach. |
-| mentormatchops.boundaries.communication_rule | communication rule | CONTROL | Rule defines approved channels, hours, group messages, recording limits and emergency contact route. | Protects both sides. |
-| mentormatchops.boundaries.gift_policy | gift policy | CONTROL | Policy restricts cash, loans, expensive gifts, personal favors and dependency-forming support. | Reduces exploitation. |
-| mentormatchops.boundaries.transport_policy | transport policy | CONTROL | Policy states when rides, meeting locations or home visits are allowed or prohibited. | Manages safety. |
-| mentormatchops.schedule.availability_grid | availability grid | RECORD | Grid captures mentor and participant windows, timezone, access needs and blackout dates. | Enables scheduling. |
-| mentormatchops.schedule.session_plan | session plan | RECORD | Plan records date, channel, goal focus, materials needed and responsible staff. | Organizes support. |
-| mentormatchops.schedule.no_show_process | no-show process | PROCESS | Process logs missed session, contact attempts, grace rules and reschedule path. | Prevents drift. |
-| mentormatchops.schedule.cadence_review | cadence review | PROCESS | Review adjusts meeting frequency as goals stabilize, barriers rise or mentor capacity changes. | Keeps fit. |
-| mentormatchops.checkin.first_checkin | first check-in | PROCESS | Staff check-in after initial contact asks about fit, comfort, boundaries and next steps. | Catches early issues. |
-| mentormatchops.checkin.routine_checkin | routine check-in | PROCESS | Routine check-in reviews progress, barriers, safety, attendance and support quality. | Maintains oversight. |
-| mentormatchops.checkin.escalation_flag | escalation flag | STATE | Flag marks distress, abuse concern, legal issue, medical crisis, housing danger or mentor misconduct. | Routes help. |
-| mentormatchops.checkin.closure_readiness | closure readiness | MODEL | Readiness weighs goal completion, participant confidence, mentor availability and referral needs. | Plans ending. |
-| mentormatchops.records.match_file | match file | RECORD | File links profiles, consent, criteria, sessions, check-ins, incidents, outcomes and closure. | Supports audit. |
-| mentormatchops.records.session_note | session note | RECORD | Note records attendance, topic, action steps, referrals and boundary concerns without sensitive overdetail. | Preserves continuity. |
-| mentormatchops.records.incident_log | incident log | RECORD | Log captures safety concern, complaint, breach, missed contacts, inappropriate request or escalation. | Enables oversight. |
-| mentormatchops.records.data_minimization | data minimization | CONTROL | Minimization limits notes to operational need and avoids unnecessary trauma detail. | Protects dignity. |
-| mentormatchops.communication.welcome_message | welcome message | PROCESS | Message explains match purpose, first session, boundaries, contact channel and staff support. | Reduces confusion. |
-| mentormatchops.communication.resource_handoff | resource handoff | PROCESS | Handoff shares approved templates, referral lists, worksheets or digital tools aligned to goals. | Supports action. |
-| mentormatchops.communication.pause_notice | pause notice | PROCESS | Notice explains temporary pause, staff contact and reactivation path when match cannot continue. | Maintains clarity. |
-| mentormatchops.outcomes.goal_completed | goal completed | STATE | Completion records achieved task, participant confirmation, date and remaining needs. | Marks success. |
-| mentormatchops.outcomes.referral_completed | referral completed | METRIC | Metric tracks successful connections to training, benefits, housing help, counseling or job services. | Measures value. |
-| mentormatchops.outcomes.participant_feedback | participant feedback | RECORD | Feedback captures usefulness, respect, accessibility, cultural fit and improvement ideas. | Improves program. |
-| mentormatchops.metrics.match_rate | match rate | METRIC | Rate compares eligible participants, active mentors, successful matches and waitlist. | Shows capacity. |
-| mentormatchops.metrics.retention_rate | retention rate | METRIC | Retention tracks matches still active after set intervals and reasons for ending. | Measures stability. |
-| mentormatchops.metrics.boundary_incidents | boundary incidents | METRIC | Metric counts boundary breaches, complaints, escalations and corrective actions. | Monitors safety. |
-| mentormatchops.closeout.closure_session | closure session | PROCESS | Session reviews progress, final referrals, feedback, records and future re-entry option. | Ends respectfully. |
-| mentormatchops.closeout.mentor_debrief | mentor debrief | PROCESS | Debrief captures mentor workload, barriers, training needs and safeguarding concerns. | Supports volunteers. |
-| mentormatchops.closeout.after_action | after-action note | RECORD | Note summarizes matching bottlenecks, risks, outcomes and program improvements. | Improves next cycle. |
+| mentormatchops.intake.participant_source | источник участника | RECORD | Источник записывает соцработника, реабилитационный центр, партнера по работе, школу, некоммерческую организацию или самостоятельное обращение. | Показывает путь входа. |
+| mentormatchops.intake.participant_profile | профиль участника | RECORD | Профиль фиксирует контакт, язык, этап восстановления, ограничения доступа, предпочтительный график и потребности в поддержке. | Определяет соответствующий контекст. |
+| mentormatchops.intake.consent | согласие на наставничество | CONTROL | В согласии объясняются добровольное участие, каналы связи, ограничения конфиденциальности и процесс завершения. | Устанавливает доверие. |
+| mentormatchops.intake.safeguarding_screen | защитный экран | CONTROL | На экране отмечаются несовершеннолетние, уязвимые взрослые, риск травм, риск конфликта и границы обязательного сообщения. | Защищает участников. |
+| mentormatchops.goals.goal_statement | формулировка цели | RECORD | В заявлении указываются практические цели, такие как поиск работы, документов, учебы, жилья, этапы или распорядок дня. | Соответствие направляющих. |
+| mentormatchops.goals.goal_scope | масштаб цели | CONTROL | Сфера действия не позволяет наставникам выступать в качестве юристов, врачей, финансовых консультантов или кураторов. | Обеспечивает безопасность роли. |
+| mentormatchops.goals.step_plan | план действий | PROCESS | План разбивает цели на небольшие задачи, сроки, ресурсы и точки проверки. | Делает опору бетонной. |
+| mentormatchops.goals.progress_marker | маркер прогресса | METRIC | Маркер отслеживает завершенные действия, устраненные препятствия и следующую веху. | Показывает движение. |
+| mentormatchops.mentor.application | приложение наставника | RECORD | Приложение фиксирует личность, контакты, навыки, доступность, языки, жизненный опыт и ограничения. | Формирует пул наставников. |
+| mentormatchops.mentor.background_check | проверка анкетных данных | CONTROL | Проверьте записи, требующие проверки, справки, полномочий или одобрения организации. | Снижает риск. |
+| mentormatchops.mentor.skill_profile | профиль навыков | RECORD | Навыки карты профиля, такие как помощь в составлении резюме, составление бюджета, школьная навигация, планирование транспорта или цифровой доступ. | Поддерживает посадку. |
+| mentormatchops.mentor.training_complete | обучение завершено | CONTROL | Обучение охватывает границы, поведение с учетом травм, конфиденциальность, эскалацию и документирование. | Стандартизирует поддержку. |
+| mentormatchops.match.criteria | критерии соответствия | MODEL | Критерии учитывают цели, язык, график, местоположение, навыки, жизненный опыт, риск и предпочтения. | Улучшает посадку. |
+| mentormatchops.match.conflict_check | проверка конфликтов | CONTROL | Проверка ищет личные конфликты, конфликты в сфере обслуживания, риск зависимости или предыдущие негативные контакты. | Избегает вреда. |
+| mentormatchops.match.introduction_plan | план внедрения | PROCESS | План устанавливает первый канал встречи, повестку дня, присутствие персонала и сообщения с подтверждением. | Запускается безопасно. |
+| mentormatchops.match.rematch_trigger | триггер реванша | CONTROL | Триггер позволяет провести матч-реванш в случае неявки, проблем с границами, плохой подгонки, изменения целей или проблем с безопасностью. | Обеспечивает жизнеспособность поддержки. |
+| mentormatchops.boundaries.role_boundary | граница роли | CONTROL | Граница определяет, что наставники могут обсуждать, документировать, обещать и передавать на эскалацию. | Предотвращает перебор. |
+| mentormatchops.boundaries.communication_rule | правило связи | CONTROL | Правило определяет утвержденные каналы, часы, групповые сообщения, ограничения записи и маршрут экстренной связи. | Защищает обе стороны. |
+| mentormatchops.boundaries.gift_policy | политика подарков | CONTROL | Политика ограничивает наличные деньги, кредиты, дорогие подарки, личные услуги и поддержку, формирующую зависимость. | Уменьшает эксплуатацию. |
+| mentormatchops.boundaries.transport_policy | транспортная политика | CONTROL | В правилах указано, когда разрешены или запрещены поездки, места встреч или посещения на дому. | Управляет безопасностью. |
+| mentormatchops.schedule.availability_grid | сетка доступности | RECORD | Сетка фиксирует окна наставников и участников, часовой пояс, потребности в доступе и даты отключения. | Включает планирование. |
+| mentormatchops.schedule.session_plan | план сессии | RECORD | Запланируйте дату записи, канал, цель, необходимые материалы и ответственный персонал. | Организует поддержку. |
+| mentormatchops.schedule.no_show_process | процесс неявки | PROCESS | Процесс регистрирует пропущенные сеансы, попытки контакта, правила отсрочки и путь изменения расписания. | Предотвращает снос. |
+| mentormatchops.schedule.cadence_review | обзор каденса | PROCESS | Обзор корректирует частоту встреч по мере стабилизации целей, роста барьеров или изменения способностей наставников. | Держит форму. |
+| mentormatchops.checkin.first_checkin | первая регистрация | PROCESS | При проверке персонала после первого контакта спрашивают о пригодности, комфорте, границах и следующих шагах. | Улавливает ранние проблемы. |
+| mentormatchops.checkin.routine_checkin | обычная регистрация | PROCESS | Регулярная проверка позволяет оценить прогресс, препятствия, безопасность, посещаемость и качество поддержки. | Сохраняет надзор. |
+| mentormatchops.checkin.escalation_flag | флаг эскалации | STATE | Флаг обозначает бедствие, беспокойство по поводу злоупотреблений, юридические проблемы, медицинский кризис, жилищную опасность или неправомерное поведение наставника. | Маршруты помогают. |
+| mentormatchops.checkin.closure_readiness | готовность к закрытию | MODEL | Готовность учитывает достижение цели, уверенность участников, наличие наставников и потребности в рекомендациях. | Планы заканчиваются. |
+| mentormatchops.records.match_file | файл соответствия | RECORD | Профили файловых ссылок, согласие, критерии, сеансы, проверки, инциденты, результаты и закрытие. | Поддерживает аудит. |
+| mentormatchops.records.session_note | заметка о сессии | RECORD | В заметках фиксируются посещаемость, темы, действия, рекомендации и ограничения без излишней детализации. | Сохраняет преемственность. |
+| mentormatchops.records.incident_log | журнал инцидентов | RECORD | В журнале фиксируются проблемы безопасности, жалобы, нарушения, пропущенные контакты, неуместные запросы или эскалации. | Позволяет осуществлять надзор. |
+| mentormatchops.records.data_minimization | минимизация данных | CONTROL | Минимизация ограничивает примечания оперативными потребностями и позволяет избежать ненужных подробностей о травмах. | Защищает достоинство. |
+| mentormatchops.communication.welcome_message | приветственное сообщение | PROCESS | В сообщении объясняется цель матча, первая сессия, границы, канал связи и поддержка персонала. | Уменьшает путаницу. |
+| mentormatchops.communication.resource_handoff | передача ресурсов | PROCESS | Передача делится утвержденными шаблонами, списками рекомендаций, рабочими таблицами или цифровыми инструментами, соответствующими целям. | Поддерживает действие. |
+| mentormatchops.communication.pause_notice | уведомление о паузе | PROCESS | В уведомлении поясняется временная пауза, контакт с персоналом и путь возобновления матча, когда матч не может продолжиться. | Сохраняет ясность. |
+| mentormatchops.outcomes.goal_completed | цель достигнута | STATE | Завершение фиксирует выполненную задачу, подтверждение участника, дату и оставшиеся потребности. | Отмечает успех. |
+| mentormatchops.outcomes.referral_completed | направление завершено | METRIC | Метрика отслеживает успешные связи с обучением, льготами, жилищной помощью, консультированием или услугами по трудоустройству. | Измеряет ценность. |
+| mentormatchops.outcomes.participant_feedback | отзывы участников | RECORD | Обратная связь отражает полезность, уважение, доступность, культурное соответствие и идеи по улучшению. | Улучшает программу. |
+| mentormatchops.metrics.match_rate | коэффициент соответствия | METRIC | В рейтинге сравниваются подходящие участники, активные наставники, успешные совпадения и список ожидания. | Показывает емкость. |
+| mentormatchops.metrics.retention_rate | коэффициент удержания | METRIC | Хранение отслеживает совпадения, которые все еще активны после установленных интервалов и причин завершения. | Измеряет стабильность. |
+| mentormatchops.metrics.boundary_incidents | пограничные инциденты | METRIC | Метрика учитывает нарушения границ, жалобы, эскалации и корректирующие действия. | Следит за безопасностью. |
+| mentormatchops.closeout.closure_session | заключительное заседание | PROCESS | Сессия рассматривает прогресс, окончательные направления, отзывы, записи и возможность повторного входа в будущем. | Заканчивается достойно. |
+| mentormatchops.closeout.mentor_debrief | подведение итогов наставника | PROCESS | В отчете отражаются рабочая нагрузка наставника, препятствия, потребности в обучении и проблемы безопасности. | Поддерживает волонтеров. |
+| mentormatchops.closeout.after_action | записка после действия | RECORD | В примечании кратко излагаются соответствующие узкие места, риски, результаты и улучшения программы. | Улучшается в следующем цикле. |

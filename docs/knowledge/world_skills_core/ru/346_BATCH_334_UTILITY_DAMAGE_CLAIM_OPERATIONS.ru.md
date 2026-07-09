@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| damageclaimops.intake.claim_id | claim ID | RECORD | Claim ID links claimant, incident, location, date, damages and staff owner. | Creates controlled record for possible liability. |
-| damageclaimops.intake.timeliness | timeliness screen | CONSTRAINT | Claims are checked against notice deadlines and limitation rules. | Late claims may follow different handling. |
-| damageclaimops.intake.damage_type | damage type | RECORD | Damage is classified as property, vehicle, landscaping, plumbing, business loss or injury. | Determines investigation and insurance path. |
-| damageclaimops.intake.initial_docs | initial documents | RECORD | Intake requests photos, receipts, estimates, invoices, police report or witness info. | Evidence quality shapes review. |
-| damageclaimops.field.site_visit | site visit | METHOD | Field visit documents location, asset condition, work zone, weather and visible damage. | Captures facts before repairs erase evidence. |
-| damageclaimops.field.photo_log | photo log | RECORD | Photos include overview, close-up, asset, damage, measurements and direction. | Makes later review possible. |
-| damageclaimops.field.asset_history | asset history | RECORD | Work orders, breaks, complaints and maintenance near incident are pulled. | Shows whether utility action or failure was involved. |
-| damageclaimops.field.crew_statement | crew statement | RECORD | Crew statements record work performed, timing, observations and unusual conditions. | Adds operational perspective. |
-| damageclaimops.evidence.timeline | timeline | METHOD | Timeline aligns customer report, utility work, weather, alarms and field response. | Clarifies causation. |
-| damageclaimops.evidence.map_overlay | map overlay | METHOD | Claim location is compared with assets, easements, service lines and work limits. | Prevents reviewing wrong asset. |
-| damageclaimops.evidence.third_party | third-party involvement | RECORD | Contractors, other utilities or private plumbers are identified. | Liability may not rest with the utility. |
-| damageclaimops.evidence.preexisting | preexisting condition | QUALITY_CHECK | Prior cracks, tree roots, old plumbing or grading are considered. | Avoids paying unrelated damage. |
-| damageclaimops.liability.duty | duty analysis | MODEL | Review considers duty, breach, causation and documented damage. | Organizes fair liability decision. |
-| damageclaimops.liability.negligence | negligence review | DECISION_RULE | Utility pays only when policy/legal review supports responsibility. | Protects public funds. |
-| damageclaimops.liability.no_fault | no-fault event | MODEL | Main breaks or storms may cause damage without utility negligence. | Explains why harm and liability differ. |
-| damageclaimops.liability.contractor | contractor liability | METHOD | Contractor-caused damage may be referred to contract insurance or indemnity. | Routes claim to responsible party. |
-| damageclaimops.estimates.repair_estimate | repair estimate | RECORD | Claimant estimates are reviewed for scope, reasonableness and relation to incident. | Prevents inflated or unrelated costs. |
-| damageclaimops.estimates.depreciation | depreciation | MODEL | Older property may be valued with depreciation or actual cash value by policy. | Settlement reflects value, not automatic new replacement. |
-| damageclaimops.estimates.mitigation | mitigation costs | RECORD | Reasonable emergency mitigation may be reimbursable when tied to incident. | Encourages limiting further damage. |
-| damageclaimops.estimates.business_loss | business loss review | QUALITY_CHECK | Business loss requires strong documentation of revenue, closure and causation. | Higher-risk claim category needs scrutiny. |
-| damageclaimops.approval.threshold | approval threshold | CONSTRAINT | Settlement amount determines supervisor, legal, risk or board approval. | Maintains financial control. |
-| damageclaimops.approval.legal_review | legal review | METHOD | Complex, injury or high-value claims go to legal/risk management. | Reduces unmanaged liability. |
-| damageclaimops.approval.insurance_notice | insurance notice | METHOD | Insurer or risk pool is notified according to policy and threshold. | Preserves coverage. |
-| damageclaimops.decision.approve | approval letter | RECORD | Approval states covered items, amount, release requirements and payment process. | Makes settlement terms clear. |
-| damageclaimops.decision.partial | partial approval | RECORD | Partial decision explains accepted and denied components separately. | Reduces confusion and disputes. |
-| damageclaimops.decision.denial | denial letter | RECORD | Denial explains evidence, policy basis and appeal or reconsideration option. | Documents fair decision. |
-| damageclaimops.settlement.release | release form | CONSTRAINT | Payment may require signed release of claims. | Prevents duplicate recovery. |
-| damageclaimops.settlement.payment | payment request | METHOD | Approved payment goes to finance with claim ID, payee, amount and documentation. | Controls disbursement. |
-| damageclaimops.settlement.subrogation | subrogation | METHOD | If insurer pays claimant, utility may coordinate subrogation review. | Avoids paying same loss twice. |
-| damageclaimops.communication.acknowledge | acknowledgment | METHOD | Claimant receives confirmation, process outline and expected review time. | Sets expectations. |
-| damageclaimops.communication.status | status update | METHOD | Staff provide updates when investigation, legal review or insurer review is pending. | Reduces repeat contacts. |
-| damageclaimops.communication.boundaries | communication boundaries | SAFETY_RULE | Staff avoid admitting liability before review is complete. | Protects legal position while remaining helpful. |
-| damageclaimops.records.claim_file | claim file | RECORD | File stores intake, evidence, decisions, approvals, letters and payments. | Single source for audit and litigation. |
-| damageclaimops.records.privilege | privileged material | CONSTRAINT | Legal advice and privileged documents are stored with access controls. | Protects sensitive review. |
-| damageclaimops.records.retention | retention | CONSTRAINT | Claim records are retained per legal and insurance requirements. | Supports future disputes. |
-| damageclaimops.qa.consistency | consistency check | QUALITY_CHECK | Similar claims are compared for consistent decisions. | Reduces unfair outcomes. |
-| damageclaimops.qa.missing_evidence | missing evidence check | QUALITY_CHECK | Reviewer confirms core evidence before final decision. | Prevents weak denials or weak approvals. |
-| damageclaimops.qa.fraud_flags | fraud flags | QUALITY_CHECK | Altered invoices, staged photos or inconsistent timeline are flagged. | Protects funds. |
-| damageclaimops.reporting.claim_volume | claim volume | MEASUREMENT | Claims are tracked by type, cause, location, amount and outcome. | Shows risk patterns. |
-| damageclaimops.reporting.loss_trend | loss trend | MODEL | Repeated claims near asset type or crew activity suggest operational issue. | Turns claims into prevention data. |
-| damageclaimops.reporting.recovery | recovery tracking | RECORD | Recoveries from contractors, insurers or third parties are tracked. | Improves financial accuracy. |
-| damageclaimops.review.after_action | after-action review | METHOD | Significant claims trigger review of field practices, communication and asset condition. | Prevents repeat damage. |
-| damageclaimops.review.policy_update | policy update | METHOD | Claim trends may update forms, thresholds, contractor controls or customer guidance. | Keeps claim process aligned with risk. |
-| damageclaimops.safety.injury_claim | injury claim escalation | SAFETY_RULE | Injury claims receive immediate risk/legal review and preservation of evidence. | Higher stakes require controlled handling. |
+| damageclaimops.intake.claim_id | идентификатор заявки | RECORD | Идентификатор претензии связывает заявителя, инцидент, место, дату, ущерб и владельца персонала. | Создает контролируемую запись для возможной ответственности. |
+| damageclaimops.intake.timeliness | экран своевременности | CONSTRAINT | Претензии проверяются на соответствие срокам уведомления и правилам ограничения. | Просроченные претензии могут обрабатываться по-разному. |
+| damageclaimops.intake.damage_type | тип повреждения | RECORD | Ущерб классифицируется как ущерб имуществу, транспортному средству, ландшафтному дизайну, водопроводу, коммерческим потерям или травмам. | Определяет путь расследования и страхования. |
+| damageclaimops.intake.initial_docs | первичные документы | RECORD | Intake запрашивает фотографии, квитанции, сметы, счета-фактуры, отчеты полиции или информацию свидетелей. | Обзор качества доказательств. |
+| damageclaimops.field.site_visit | посещение сайта | METHOD | Выезд на место документирует местонахождение, состояние активов, рабочую зону, погоду и видимые повреждения. | Фиксирует факты до того, как ремонт сотрет улики. |
+| damageclaimops.field.photo_log | фотожурнал | RECORD | Фотографии включают обзор, крупный план, актив, повреждения, размеры и направление. | Делает возможным последующий просмотр. |
+| damageclaimops.field.asset_history | история активов | RECORD | Рабочие задания, перерывы, жалобы и техническое обслуживание в случае инцидента регистрируются. | Показывает, имело ли место действие утилиты или сбой. |
+| damageclaimops.field.crew_statement | заявление экипажа | RECORD | В отчетах экипажа фиксируются выполненные работы, время, наблюдения и необычные условия. | Добавляет оперативную перспективу. |
+| damageclaimops.evidence.timeline | график времени | METHOD | Временная шкала объединяет отчеты клиентов, работу коммунальных предприятий, погоду, сигналы тревоги и реагирование на местах. | Уточняет причинно-следственную связь. |
+| damageclaimops.evidence.map_overlay | наложение карты | METHOD | Местоположение претензии сравнивается с активами, сервитутами, линиями обслуживания и ограничениями на работу. | Предотвращает просмотр неправильного актива. |
+| damageclaimops.evidence.third_party | участие третьих лиц | RECORD | Подрядчики, другие коммунальные предприятия или частные сантехники идентифицируются. | Ответственность не может нести коммунальное предприятие. |
+| damageclaimops.evidence.preexisting | ранее существовавшее состояние | QUALITY_CHECK | Учитываются предшествующие трещины, корни деревьев, старая сантехника или планировка. | Избегает выплаты несвязанного ущерба. |
+| damageclaimops.liability.duty | анализ обязанностей | MODEL | При рассмотрении учитываются обязанность, нарушение, причинно-следственная связь и документально подтвержденный ущерб. | Организует справедливое решение об ответственности. |
+| damageclaimops.liability.negligence | рассмотрение халатности | DECISION_RULE | Коммунальное предприятие платит только тогда, когда политика/юридическая проверка подтверждает ответственность. | Защищает государственные средства. |
+| damageclaimops.liability.no_fault | событие без вины | MODEL | Главные аварии или штормы могут причинить ущерб без халатности коммунальных служб. | Объясняет, почему вред и ответственность различаются. |
+| damageclaimops.liability.contractor | ответственность подрядчика | METHOD | Ущерб, причиненный Подрядчиком, может быть отнесен к договорному страхованию или возмещению. | Маршруты претендуют на ответственную сторону. |
+| damageclaimops.estimates.repair_estimate | смета на ремонт | RECORD | Оценки заявителя проверяются на предмет объема, разумности и связи с инцидентом. | Предотвращает завышенные или несвязанные расходы. |
+| damageclaimops.estimates.depreciation | амортизация | MODEL | Старое имущество может оцениваться с учетом амортизации или фактической денежной стоимости в соответствии с политикой. | Расчет отражает стоимость, а не автоматическую новую замену. |
+| damageclaimops.estimates.mitigation | затраты на смягчение последствий | RECORD | Разумные меры по смягчению последствий чрезвычайной ситуации могут подлежать возмещению, если они связаны с инцидентом. | Поощряет ограничить дальнейший ущерб. |
+| damageclaimops.estimates.business_loss | обзор коммерческих потерь | QUALITY_CHECK | Потери бизнеса требуют надежного документирования доходов, закрытия и причинно-следственных связей. | Категория претензий с более высоким риском требует тщательного изучения. |
+| damageclaimops.approval.threshold | порог одобрения | CONSTRAINT | Сумма урегулирования зависит от одобрения надзорного органа, юридического отдела, риска или совета директоров. | Сохраняет финансовый контроль. |
+| damageclaimops.approval.legal_review | юридическая экспертиза | METHOD | Сложные претензии, ущербы или дорогостоящие претензии передаются в отдел юридических услуг/управления рисками. | Снижает неуправляемую ответственность. |
+| damageclaimops.approval.insurance_notice | уведомление о страховании | METHOD | Страховщик или группа рисков уведомляются в соответствии с политикой и порогом. | Сохраняет покрытие. |
+| damageclaimops.decision.approve | письмо-одобрение | RECORD | Утверждения охватывают позиции, сумму, требования к выпуску и процесс оплаты. | Проясняет условия урегулирования. |
+| damageclaimops.decision.partial | частичное одобрение | RECORD | Частичное решение объясняет принятые и отклоненные компоненты отдельно. | Уменьшает путаницу и споры. |
+| damageclaimops.decision.denial | отказное письмо | RECORD | Отрицание объясняет доказательства, политическую основу и возможность апелляции или пересмотра. | Документирует справедливое решение. |
+| damageclaimops.settlement.release | форма выпуска | CONSTRAINT | Для оплаты может потребоваться подписанное освобождение от претензий. | Предотвращает дублированное восстановление. |
+| damageclaimops.settlement.payment | запрос платежа | METHOD | Утвержденный платеж поступает на финансирование с указанием идентификатора претензии, получателя платежа, суммы и документации. | Контролирует выплату. |
+| damageclaimops.settlement.subrogation | суброгация | METHOD | Если страховщик платит истцу, коммунальное предприятие может координировать проверку суброгации. | Избегает выплаты одной и той же потери дважды. |
+| damageclaimops.communication.acknowledge | признание | METHOD | Заявитель получает подтверждение, описание процесса и ожидаемое время рассмотрения. | Устанавливает ожидания. |
+| damageclaimops.communication.status | обновление статуса | METHOD | Сотрудники предоставляют обновленную информацию, когда ожидается расследование, юридическая проверка или проверка страховщика. | Уменьшает повторные контакты. |
+| damageclaimops.communication.boundaries | границы общения | SAFETY_RULE | Сотрудники избегают признания ответственности до завершения проверки. | Защищает юридическую позицию, оставаясь при этом полезным. |
+| damageclaimops.records.claim_file | файл претензии | RECORD | В файле хранятся поступления, доказательства, решения, одобрения, письма и платежи. | Единый источник для аудита и судебных разбирательств. |
+| damageclaimops.records.privilege | привилегированный материал | CONSTRAINT | Юридические консультации и конфиденциальные документы хранятся с контролем доступа. | Защищает конфиденциальный обзор. |
+| damageclaimops.records.retention | удержание | CONSTRAINT | Записи о претензиях сохраняются в соответствии с юридическими и страховыми требованиями. | Поддерживает будущие споры. |
+| damageclaimops.qa.consistency | проверка согласованности | QUALITY_CHECK | Подобные претензии сравниваются на предмет последовательных решений. | Уменьшает несправедливые результаты. |
+| damageclaimops.qa.missing_evidence | проверка недостающих доказательств | QUALITY_CHECK | Рецензент подтверждает основные доказательства перед принятием окончательного решения. | Предотвращает слабое отрицание или слабое одобрение. |
+| damageclaimops.qa.fraud_flags | признаки мошенничества | QUALITY_CHECK | Отмечены измененные счета, постановочные фотографии или несоответствующие сроки. | Защищает средства. |
+| damageclaimops.reporting.claim_volume | объем претензии | MEASUREMENT | Претензии отслеживаются по типу, причине, месту, сумме и результату. | Показывает модели риска. |
+| damageclaimops.reporting.loss_trend | тенденция потерь | MODEL | Неоднократные претензии относительно типа объекта или деятельности экипажа указывают на оперативную проблему. | Превращает претензии в профилактические данные. |
+| damageclaimops.reporting.recovery | отслеживание восстановления | RECORD | Возвраты от подрядчиков, страховщиков или третьих лиц отслеживаются. | Повышает финансовую точность. |
+| damageclaimops.review.after_action | обзор после действий | METHOD | Серьезные претензии требуют пересмотра полевых практик, коммуникаций и состояния активов. | Предотвращает повторное повреждение. |
+| damageclaimops.review.policy_update | обновление политики | METHOD | Тенденции претензий могут обновлять формы, пороговые значения, средства контроля подрядчиков или инструкции для клиентов. | Поддерживает процесс урегулирования претензий в соответствии с риском. |
+| damageclaimops.safety.injury_claim | Эскалация иска о травме | SAFETY_RULE | Заявления о травмах подлежат немедленному рассмотрению рисков/юридическому анализу и сохранению доказательств. | Более высокие ставки требуют контролируемого управления. |

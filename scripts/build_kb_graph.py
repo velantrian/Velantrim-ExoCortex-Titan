@@ -43,8 +43,8 @@ def main() -> int:
     args = ap.parse_args()
 
     from core import pipeline
-    from core.knowledge_linker import link_by_tags
-    from core.memory import _GLOBAL_STORE, store_facts_batch
+    from core.knowledge_linker import link_facts
+    from core.memory import _GLOBAL_STORE, _now, store_facts_batch
     from core.world_skills_ingest import parse_knowledge_dir
 
     db = os.environ["VELANTRIM_DB_PATH"]
@@ -68,22 +68,53 @@ def main() -> int:
     st = store_facts_batch(payload)
     print(f"  факты в store: stored={st.get('stored')} updated={st.get('updated')} errors={st.get('errors')}")
 
-    # 2+3) модальность (WORLD_FACT/EXTERNAL) + массовая валидация → Validated, ОДНИМ
-    #      bulk UPDATE. Почему не per-fact transition_esm: на 19k это ~часы (per-call
-    #      conn + checksum). Для bulk-load КУРИРУЕМОЙ KB прямой UPDATE приемлем — нет
-    #      дрейфа/конкуренции; per-fact ESM-история тут не ведётся (admin-загрузка).
-    #      WHERE epistemic_state='Observed' → идемпотентно: на ре-ране трогает только новые.
+    # 2) модальность (WORLD_FACT/EXTERNAL) — не меняет epistemic_state, ESM-триггеры молчат.
+    # 3) валидация по СТРОГОЙ лестнице ESM. Прямой Observed→Validated запрещён DB-триггером
+    #    truth_kernel (migrations/009): разрешены только ступени Observed→Hypothesized→
+    #    Supported→Validated, и каждый UPDATE epistemic_state ОБЯЗАН поднять fact_version
+    #    (триггер bump_fact_version). Делаем это 3-мя bulk-UPDATE по ступеням — быстро
+    #    (не per-fact transition_esm, который на 19k = ~часы) и легально.
+    #    Scoped к корпусу через temp-табличку _kb_ids: факты иных источников/состояний
+    #    (Hypothesized из реального reasoning, ImmutableCore/Collapsed) НЕ трогаем.
+    #    Идемпотентно: на ре-ране уже-Validated не матчатся ни одной ступенью (val=0).
+    fact_ids = [f["fact_id"] for f in facts]
+    now = _now()
     with _GLOBAL_STORE._db() as conn:
-        cur = conn.execute(
-            "UPDATE facts "
-            "SET claim_type='WORLD_FACT', origin_type='EXTERNAL', epistemic_state='Validated' "
-            "WHERE epistemic_state='Observed'"
+        # fact_version есть только на мигрированной БД (009 truth_kernel). Если есть —
+        # поднимаем его на каждой ступени (триггер bump_fact_version этого требует);
+        # если нет — UPDATE без него. Так скрипт работает на любой версии схемы.
+        has_version = any(
+            r[1] == "fact_version" for r in conn.execute("PRAGMA table_info(facts)")
         )
-        val = cur.rowcount
-    print(f"  валидировано → Validated (bulk): {val}")
+        bump = ", fact_version = fact_version + 1" if has_version else ""
 
-    # 4) рёбра (вычисляются из тегов) → causal_graph
-    edges = link_by_tags(facts)
+        conn.execute("CREATE TEMP TABLE IF NOT EXISTS _kb_ids (fact_id TEXT PRIMARY KEY)")
+        conn.execute("DELETE FROM _kb_ids")
+        conn.executemany("INSERT OR IGNORE INTO _kb_ids VALUES (?)", [(i,) for i in fact_ids])
+        conn.execute(
+            "UPDATE facts SET claim_type='WORLD_FACT', origin_type='EXTERNAL' "
+            "WHERE fact_id IN (SELECT fact_id FROM _kb_ids) "
+            "  AND epistemic_state NOT IN ('ImmutableCore', 'Collapsed') "
+            "  AND (claim_type IS NULL OR claim_type != 'WORLD_FACT')"
+        )
+        val = 0
+        for frm, to in (
+            ("Observed", "Hypothesized"),
+            ("Hypothesized", "Supported"),
+            ("Supported", "Validated"),
+        ):
+            cur = conn.execute(
+                f"UPDATE facts SET epistemic_state=?, updated_at=?{bump} "
+                "WHERE epistemic_state=? AND fact_id IN (SELECT fact_id FROM _kb_ids)",
+                (to, now, frm),
+            )
+            val = cur.rowcount  # последняя ступень = число доведённых до Validated
+        conn.execute("DROP TABLE IF EXISTS _kb_ids")
+    print(f"  валидировано → Validated (строгая лестница ESM, 3 ступени): {val}")
+
+    # 4) рёбра → causal_graph. link_facts = тег-матч (точные) ∪ namespace-структура
+    #    (покрытие из иерархии id). Namespace-рёбра помечены inference_source='autolinker'.
+    edges = link_facts(facts)
     cg = pipeline._get_causal_graph()
     added = skipped = 0
     if cg is not None:
@@ -92,6 +123,7 @@ def main() -> int:
                 cg.add_relation(
                     e["source_id"], e["target_id"], e["relation_type"],
                     confidence=e["confidence"], knowledge_status=e["knowledge_status"],
+                    inference_source=e.get("inference_source"),
                 )
                 added += 1
             except Exception:  # noqa: BLE001 — дубль ребра / отсутствующий факт → пропуск

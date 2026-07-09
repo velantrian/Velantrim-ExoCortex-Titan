@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| bloodops.schedule.donor_appointment | Blood donor appointment | invariant | Appointment records donor, donation type, time, site, eligibility reminders and contact. | plan donor flow |
-| bloodops.schedule.walkin_flow | Blood donation walk-in flow | variant | Flow handles unscheduled donors by capacity, staffing and inventory need. | flexible intake |
-| bloodops.schedule.donation_type | Donation type schedule | invariant | Type allocates whole blood, platelet, plasma or other collection slot where offered. | match equipment |
-| bloodops.schedule.no_show | Donor no-show record | invariant | Record tracks missed appointment, communication and rescheduling. | protect capacity |
-| bloodops.schedule.mobile_drive | Mobile blood drive schedule | variant | Schedule coordinates host site, staff, equipment, donor slots, transport and setup. | offsite collection |
-| bloodops.registration.donor_identity | Donor identity check | invariant | Check verifies donor identity against record before screening and labeling. | right donor |
-| bloodops.registration.consent_capture | Blood donation consent capture | invariant | Consent confirms donor understands process, testing, privacy and release rules. | permission evidence |
-| bloodops.registration.questionnaire | Donor questionnaire | invariant | Questionnaire captures health, travel, medication and risk information for trained review. | screening input |
-| bloodops.registration.record_update | Donor record update | invariant | Update captures contact, demographics, deferral status and communication preference. | current donor file |
-| bloodops.registration.language_support | Donor language support | variant | Support ensures donor can understand forms, questions and instructions. | informed process |
-| bloodops.screening.screening_queue | Donor screening queue | invariant | Queue manages private interview, checks, deferral review and collection readiness. | orderly flow |
-| bloodops.screening.deferral_status | Donor deferral status | invariant | Status records temporary, permanent or resolved deferral according to trained decision process. | eligibility control |
-| bloodops.screening.vital_check_record | Donor vital check record | invariant | Record captures required pre-donation measurements for staff review. | safety gate |
-| bloodops.screening.hemoglobin_check | Hemoglobin check workflow | variant | Workflow records sample, result, staff, device and eligibility outcome under protocol. | donation safety |
-| bloodops.screening.private_interview | Donor private interview | invariant | Interview protects confidentiality while reviewing questionnaire and eligibility. | privacy and safety |
-| bloodops.collection.bed_assignment | Donor bed assignment | invariant | Assignment links donor, donation type, collection staff, equipment and unit labels. | collection setup |
-| bloodops.collection.collection_kit | Blood collection kit | invariant | Kit includes bag, tubing, labels, needle, samples and required supplies. | ready collection |
-| bloodops.collection.unit_label | Blood unit label | invariant | Label uniquely identifies collected unit, donor, samples and processing path. | traceability |
-| bloodops.collection.collection_start | Collection start record | invariant | Record captures start time, staff, unit ID, equipment and donor readiness. | begin chain |
-| bloodops.collection.collection_end | Collection end record | invariant | Record captures end time, volume/status, samples, reaction notes and disposition. | close collection |
-| bloodops.donorcare.reaction_response | Donor reaction response | invariant | Response documents faintness, bruising, nausea or other event and staff action under protocol. | donor safety |
-| bloodops.donorcare.post_donation_care | Post-donation care | invariant | Care provides rest, refreshments, instructions and observation as required. | recovery |
-| bloodops.donorcare.adverse_event_report | Donor adverse event report | invariant | Report captures event, severity, actions, follow-up and quality review. | safety learning |
-| bloodops.donorcare.aftercare_instruction | Donor aftercare instruction | invariant | Instruction gives approved post-donation guidance and contact path. | donor leaves informed |
-| bloodops.donorcare.followup_contact | Donor follow-up contact | variant | Contact checks recovery, reports issue or requests additional information. | close loop |
-| bloodops.specimen.sample_tube_label | Sample tube label | invariant | Label links test samples to unit and donor before lab handoff. | specimen identity |
-| bloodops.specimen.sample_packout | Blood sample packout | invariant | Packout protects tubes, requisitions, temperature and transport route. | lab readiness |
-| bloodops.specimen.courier_handoff | Blood sample courier handoff | invariant | Handoff records time, courier, container, condition and destination. | custody |
-| bloodops.specimen.missing_sample | Missing sample exception | invariant | Exception records absent, unlabeled, broken or mismatched sample and escalation. | testing risk |
-| bloodops.specimen.test_result_route | Donor test result route | variant | Route sends lab result, quarantine, release or donor notification tasks through approved process. | controlled output |
-| bloodops.component.unit_quarantine | Blood unit quarantine | invariant | Quarantine holds unit until testing, review or investigation clears disposition. | protect supply |
-| bloodops.component.component_handoff | Component processing handoff | variant | Handoff transfers unit to processing with temperature, time and identity controls. | next stage |
-| bloodops.component.temperature_log | Blood product temperature log | invariant | Log tracks required storage or transport temperature for units and components. | quality |
-| bloodops.component.discard_record | Blood unit discard record | invariant | Record documents reason, unit, authorization and disposal route. | trace loss |
-| bloodops.component.inventory_status | Blood inventory status | variant | Status tracks collected, quarantined, released, shipped, expired or discarded units. | supply visibility |
-| bloodops.quality.equipment_qc | Donation equipment QC | invariant | QC checks scales, sealers, refrigerators, agitators, beds and screening devices. | reliable operation |
-| bloodops.quality.lot_trace | Blood collection lot trace | invariant | Trace links bags, tubes, reagents, labels and supplies to donation events. | recall support |
-| bloodops.quality.deviation_report | Blood center deviation report | invariant | Report documents process departure, impact assessment, containment and corrective action. | quality system |
-| bloodops.quality.staff_competency | Blood center staff competency | invariant | Competency tracks registration, screening, phlebotomy, donor care, labeling and emergency response. | qualified work |
-| bloodops.quality.audit_trail | Blood donation audit trail | invariant | Trail records donor flow, labels, units, samples, staff actions, exceptions and dispositions. | full trace |
-| bloodops.mobile.mobile_setup | Mobile blood drive setup | variant | Setup places beds, screening, privacy, supplies, power, refrigeration and donor flow. | temporary center |
-| bloodops.mobile.mobile_teardown | Mobile blood drive teardown | variant | Teardown secures units, samples, waste, equipment, records and site cleanup. | safe departure |
-| bloodops.metrics.blood_center_kpi | Blood donation center KPI | variant | KPI tracks donor throughput, deferrals, reactions, collection failures, discards and appointment fill. | manage center |
-| bloodops.continuity.refrigeration_alarm | Blood refrigeration alarm response | invariant | Response protects units, documents excursion, escalates quality review and restores storage. | product safety |
+| bloodops.schedule.donor_appointment | Запись на прием к донору крови | invariant | При назначении регистрируется донор, тип пожертвования, время, место, напоминания о праве на участие и контакт. | планировать поток доноров |
+| bloodops.schedule.walkin_flow | Поток для сдачи крови | variant | Flow обслуживает внеплановых доноров по мощности, кадровому обеспечению и потребностям в инвентаре. | гибкий вход |
+| bloodops.schedule.donation_type | График типов пожертвований | invariant | Тип определяет цельную кровь, тромбоциты, плазму или другой слот для сбора, если таковой имеется. | матчевое оборудование |
+| bloodops.schedule.no_show | Реестр неявок доноров | invariant | Запись отслеживает пропущенные встречи, общение и перенос расписаний. | защитить емкость |
+| bloodops.schedule.mobile_drive | График мобильного сдачи крови | variant | В расписании указаны координаты принимающей площадки, персонала, оборудования, донорских мест, транспорта и установки. | выездная коллекция |
+| bloodops.registration.donor_identity | Проверка личности донора | invariant | Перед проверкой и маркировкой личность донора проверяется по данным записи. | правильный донор |
+| bloodops.registration.consent_capture | Получение согласия на сдачу крови | invariant | Согласие подтверждает, что донор понимает правила процесса, тестирования, конфиденциальности и выпуска информации. | свидетельство о разрешении |
+| bloodops.registration.questionnaire | Анкета донора | invariant | Анкета собирает информацию о здоровье, поездках, лекарствах и рисках для подготовленного анализа. | входные данные для скрининга |
+| bloodops.registration.record_update | Обновление записи донора | invariant | Обновление фиксирует контакты, демографические данные, статус отсрочки и предпочтения в общении. | текущий файл донора |
+| bloodops.registration.language_support | Языковая поддержка доноров | variant | Поддержка гарантирует, что донор сможет понять формы, вопросы и инструкции. | информированный процесс |
+| bloodops.screening.screening_queue | Очередь на проверку доноров | invariant | Очередь управляет частным собеседованием, проверками, рассмотрением отсрочки и готовностью коллекции. | упорядоченный поток |
+| bloodops.screening.deferral_status | Статус отсрочки донора | invariant | Статус фиксирует временную, постоянную или решенную отсрочку в соответствии с обученным процессом принятия решений. | контроль приемлемости |
+| bloodops.screening.vital_check_record | Запись жизненно важного осмотра донора | invariant | Для записи записей требовались измерения перед пожертвованием для проверки персоналом. | ворота безопасности |
+| bloodops.screening.hemoglobin_check | Порядок проверки гемоглобина | variant | Рабочий процесс записывает образец, результат, персонал, устройство и результаты приемлемости в соответствии с протоколом. | безопасность пожертвования |
+| bloodops.screening.private_interview | Частное интервью с донором | invariant | Собеседование защищает конфиденциальность при проверке анкеты и соответствия требованиям. | конфиденциальность и безопасность |
+| bloodops.collection.bed_assignment | Назначение донорской койки | invariant | Назначение связывает донора, тип пожертвования, персонал по сбору, оборудование и этикетки единиц. | настройка коллекции |
+| bloodops.collection.collection_kit | Набор для сбора крови | invariant | В комплект входят сумка, трубки, этикетки, игла, образцы и необходимые расходные материалы. | готовая коллекция |
+| bloodops.collection.unit_label | Этикетка единицы крови | invariant | Этикетка однозначно идентифицирует собранную единицу, донора, образцы и путь обработки. | прослеживаемость |
+| bloodops.collection.collection_start | Стартовая запись коллекции | invariant | Запись фиксирует время начала, персонал, идентификатор подразделения, оборудование и готовность доноров. | начать цепочку |
+| bloodops.collection.collection_end | Конечная запись коллекции | invariant | Запись фиксирует время окончания, объем/статус, образцы, заметки о реакциях и расположение. | закрыть коллекцию |
+| bloodops.donorcare.reaction_response | Реакция донора | invariant | В ответах документируется обморок, синяки, тошнота или другие явления, а также действия персонала в соответствии с протоколом. | безопасность донора |
+| bloodops.donorcare.post_donation_care | Уход после донорства | invariant | Уход предусматривает отдых, прохладительные напитки, инструкции и наблюдение по мере необходимости. | восстановление |
+| bloodops.donorcare.adverse_event_report | Отчет донора о нежелательных явлениях | invariant | В отчете фиксируются события, серьезность, действия, последующие действия и проверка качества. | обучение безопасности |
+| bloodops.donorcare.aftercare_instruction | Инструкция по уходу за донором | invariant | В инструкции приведены утвержденные рекомендации и способы связи после донорства. | донор уходит с уведомлением |
+| bloodops.donorcare.followup_contact | Контактная информация для доноров | variant | Контакт проверяет восстановление, сообщает о проблеме или запрашивает дополнительную информацию. | замкнутый контур |
+| bloodops.specimen.sample_tube_label | Этикетка пробирки с образцом | invariant | Этикетка связывает тестовые образцы с единицей и донором перед передачей в лабораторию. | образец идентичности |
+| bloodops.specimen.sample_packout | Упаковка образцов крови | invariant | Упаковка защищает пробирки, материалы, температуру и маршрут транспортировки. | готовность лаборатории |
+| bloodops.specimen.courier_handoff | Передача проб крови курьеру | invariant | Передача записывает время, курьера, контейнер, состояние и пункт назначения. | попечение |
+| bloodops.specimen.missing_sample | Отсутствует образец исключения | invariant | Записи об исключениях отсутствуют, не помечены, повреждены или не соответствуют выборке и эскалации. | риск тестирования |
+| bloodops.specimen.test_result_route | Маршрут результатов донорского теста | variant | Маршрут отправляет результаты лабораторных исследований, задачи карантина, выпуска или уведомления доноров через утвержденный процесс. | контролируемый выход |
+| bloodops.component.unit_quarantine | Карантин отделения крови | invariant | На карантине устройство сохраняется до тех пор, пока тестирование, проверка или расследование не установят решение. | защитить поставки |
+| bloodops.component.component_handoff | Передача обработки компонентов | variant | Передача передает блок на обработку с контролем температуры, времени и идентичности. | следующий этап |
+| bloodops.component.temperature_log | Журнал температуры продуктов крови | invariant | Журнал отслеживает необходимую температуру хранения или транспортировки узлов и компонентов. | качество |
+| bloodops.component.discard_record | Запись об отказе от единицы крови | invariant | Запишите причину документов, единицу, авторизацию и путь утилизации. | потеря следа |
+| bloodops.component.inventory_status | Статус запасов крови | variant | Статус отслеживает собранные, помещенные в карантин, выпущенные, отправленные, просроченные или выброшенные единицы. | прозрачность поставок |
+| bloodops.quality.equipment_qc | Пожертвование оборудования, контроль качества | invariant | Контроль качества проверяет весы, упаковщики, холодильники, мешалки, кровати и просеивающие устройства. | надежная работа |
+| bloodops.quality.lot_trace | След партии сбора крови | invariant | Отслеживайте связи сумок, пробирок, реагентов, этикеток и расходных материалов с мероприятиями по донорству. | поддержка отзыва |
+| bloodops.quality.deviation_report | Отчет об отклонении центра крови | invariant | Отчетные документы описывают выбытие, оценку воздействия, сдерживание и корректирующие действия. | система качества |
+| bloodops.quality.staff_competency | Компетентность персонала центра крови | invariant | Компетенция отслеживает регистрацию, скрининг, флеботомию, уход за донорами, маркировку и реагирование на чрезвычайные ситуации. | квалифицированная работа |
+| bloodops.quality.audit_trail | Контрольный журнал сдачи крови | invariant | Trail записывает поток доноров, этикетки, единицы, образцы, действия персонала, исключения и распоряжения. | полная трассировка |
+| bloodops.mobile.mobile_setup | Настройка мобильного донорства крови | variant | В установке размещаются кровати, скрининг, конфиденциальность, расходные материалы, электроэнергия, охлаждение и поток доноров. | временный центр |
+| bloodops.mobile.mobile_teardown | Демонтаж мобильного устройства для сдачи крови | variant | Демонтаж обеспечивает безопасность единиц, образцов, отходов, оборудования, записей и очистки объекта. | безопасный отъезд |
+| bloodops.metrics.blood_center_kpi | Центр донорства крови КПИ | variant | KPI отслеживает пропускную способность доноров, задержки, реакции, сбои в сборе, отказы и запись на прием. | центр управления |
+| bloodops.continuity.refrigeration_alarm | Реакция на сигнал тревоги об охлаждении крови | invariant | Реагирование защищает устройства, документирует отклонения, повышает качество проверки и восстанавливает хранилище. | безопасность продукта |

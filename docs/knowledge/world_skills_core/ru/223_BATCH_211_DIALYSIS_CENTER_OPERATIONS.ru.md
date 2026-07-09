@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| dialysis.schedule.chair_schedule | Dialysis chair schedule | invariant | Schedule assigns patient, chair, shift, staff, treatment window and transport notes. | manage scarce chairs |
-| dialysis.schedule.shift_wave | Dialysis shift wave | invariant | Wave groups patient arrivals and turnovers to keep treatment area flowing. | avoid crowding |
-| dialysis.schedule.missed_treatment | Missed dialysis appointment | invariant | Record flags missed session, patient contact, clinical escalation and rescheduling need. | high-risk absence |
-| dialysis.schedule.transport_coordination | Dialysis transport coordination | variant | Coordination tracks pickup, arrival, late vehicle, return ride and mobility needs. | patients depend on rides |
-| dialysis.schedule.transient_patient | Transient dialysis patient | variant | Workflow handles visiting patient records, orders, insurance and chair assignment. | temporary service |
-| dialysis.intake.identity_check | Dialysis identity check | invariant | Check verifies patient identifiers before chairing, documentation and samples. | right patient |
-| dialysis.intake.pre_treatment_weight | Pre-treatment weight capture | invariant | Capture records weight before treatment according to center workflow. | operational baseline |
-| dialysis.intake.vital_record | Dialysis vital record | invariant | Record captures required observations at defined points for clinician review. | monitoring evidence |
-| dialysis.intake.access_checkin | Vascular access check-in | invariant | Check-in documents access type, condition observations and escalation flags without prescribing care. | protect access workflow |
-| dialysis.intake.consent_status | Dialysis consent status | invariant | Status confirms required treatment, privacy and procedure consents are current. | permission evidence |
-| dialysis.water.water_system_check | Dialysis water system check | invariant | Check verifies water treatment readiness, alarms, logs and release status before patient use. | water is critical |
-| dialysis.water.chlorine_chloramine_test | Chlorine and chloramine test | invariant | Test confirms treated water meets center acceptance before use. | safety gate |
-| dialysis.water.conductivity_monitor | Water conductivity monitor | variant | Monitor flags abnormal ionic content or system issue requiring response. | process control |
-| dialysis.water.ro_alarm_response | Reverse osmosis alarm response | invariant | Response stops unsafe use, notifies responsible staff and documents recovery. | protect patients |
-| dialysis.water.water_log | Dialysis water log | invariant | Log records tests, times, results, staff, alarms, corrective actions and release. | audit trail |
-| dialysis.machine.machine_setup | Dialysis machine setup | invariant | Setup verifies machine status, prescription entry source, disposables, alarms and disinfection state. | ready station |
-| dialysis.machine.machine_disinfection | Dialysis machine disinfection | invariant | Disinfection follows validated cycle, contact time, test and documentation. | infection control |
-| dialysis.machine.machine_alarm | Dialysis machine alarm | invariant | Alarm requires staff response, patient check and event documentation by protocol. | do not ignore |
-| dialysis.machine.station_turnover | Dialysis station turnover | invariant | Turnover cleans chair, surfaces, machine exterior, supplies and waste between patients. | safe next patient |
-| dialysis.machine.preventive_maintenance | Dialysis equipment PM | invariant | PM tracks service intervals, calibration, parts, alarms, sensors and release to use. | reliable equipment |
-| dialysis.supplies.dialyzer_inventory | Dialyzer inventory | variant | Inventory controls compatible dialyzers, lots, expirations, allocation and shortages. | supply fit |
-| dialysis.supplies.concentrate_inventory | Dialysis concentrate inventory | invariant | Inventory tracks acid, bicarbonate, containers, lots, expiration and storage. | core consumable |
-| dialysis.supplies.single_use_supply | Dialysis single-use supplies | invariant | Supplies include lines, needles, syringes, dressings, PPE and test materials. | chair readiness |
-| dialysis.supplies.expiry_round | Dialysis expiry round | invariant | Round removes expired sterile, chemical, testing or medication-related items from use areas. | prevent unsafe stock |
-| dialysis.supplies.shortage_plan | Dialysis supply shortage plan | invariant | Plan prioritizes critical inventory, substitutes only by approval and informs operations. | continue safely |
-| dialysis.flow.patient_chairing | Patient chairing workflow | invariant | Workflow moves patient from waiting to station with identity, readiness and access checks. | start controlled |
-| dialysis.flow.treatment_start_record | Treatment start record | invariant | Record captures start time, machine, station, staff and required setup confirmations. | begin trace |
-| dialysis.flow.intratreatment_round | Intratreatment round | invariant | Round records observations, machine status, patient comfort and escalation needs at required intervals. | active monitoring |
-| dialysis.flow.treatment_end_record | Treatment end record | invariant | Record captures end time, post-treatment workflow, events and discharge readiness. | close session |
-| dialysis.flow.handoff_note | Dialysis handoff note | invariant | Note communicates patient status, machine issue, access concern, incident or pending task. | continuity |
-| dialysis.infection.hand_hygiene_station | Dialysis hand hygiene station | invariant | Station supports required hand hygiene at chair, supply and transition points. | behavior control |
-| dialysis.infection.ppe_zone | Dialysis PPE zone | invariant | Zone defines gown, glove, eye protection or mask expectations by task and exposure. | staff safety |
-| dialysis.infection.blood_spill_response | Dialysis blood spill response | invariant | Response isolates, cleans, disinfects, disposes and documents spill according to protocol. | high-risk cleanup |
-| dialysis.infection.isolation_workflow | Dialysis isolation workflow | variant | Workflow separates patient, machine, supplies or room where infection policy requires it. | reduce transmission |
-| dialysis.infection.environmental_audit | Dialysis environmental audit | invariant | Audit checks cleaning, hand hygiene, supplies, waste, water logs and station turnover. | verify controls |
-| dialysis.records.treatment_record | Dialysis treatment record | invariant | Record compiles session data, staff actions, machine data, events and notes. | legal clinical record |
-| dialysis.records.lab_sample_route | Dialysis lab sample route | variant | Route labels, stores, hands off and tracks samples collected in center. | specimen trace |
-| dialysis.records.incident_report | Dialysis incident report | invariant | Report documents fall, access issue, machine problem, reaction, spill, missed treatment or transfer. | safety learning |
-| dialysis.records.transfer_packet | Dialysis transfer packet | variant | Packet sends patient records, schedule, access notes and orders to another facility. | continuity |
-| dialysis.records.privacy_control | Dialysis privacy control | invariant | Control protects charts, screens, conversations and visible treatment information in open clinic. | dignity and compliance |
-| dialysis.admin.staff_assignment | Dialysis staff assignment | invariant | Assignment maps nurses, technicians, biomedical support and charge role to shifts and stations. | coverage clarity |
-| dialysis.admin.competency_record | Dialysis competency record | invariant | Record tracks staff training, machine, water, infection control and emergency competencies. | qualified work |
-| dialysis.metrics.dialysis_kpi | Dialysis center KPI | variant | KPI tracks missed treatments, chair utilization, turnover time, incidents, water issues and documentation lag. | manage center |
-| dialysis.continuity.power_water_outage | Dialysis power or water outage | invariant | Outage plan covers patient safety, treatment interruption, alternate sites, transport and communication. | resilience |
+| dialysis.schedule.chair_schedule | График работы диализного кресла | invariant | В расписании назначаются пациент, кресло, смена, персонал, окно лечения и транспортные заметки. | управлять дефицитом стульев |
+| dialysis.schedule.shift_wave | Волна смены диализа | invariant | Волнообразно группируются прибытия и текучесть пациентов, чтобы обеспечить бесперебойную работу зоны лечения. | избегать скопления людей |
+| dialysis.schedule.missed_treatment | Пропущенный визит на диализ | invariant | Записывайте флажки о пропущенном сеансе, контакте с пациентом, эскалации клинической ситуации и необходимости переноса графика. | отсутствие высокого риска |
+| dialysis.schedule.transport_coordination | Координация транспортировки при диализе | variant | Координация отслеживает получение, прибытие, опоздание автомобиля, обратную поездку и потребности в мобильности. | пациенты зависят от поездок |
+| dialysis.schedule.transient_patient | Временный пациент на диализе | variant | Рабочий процесс обрабатывает записи посещений пациентов, заказы, страхование и назначение стула. | временная служба |
+| dialysis.intake.identity_check | Диализная проверка личности | invariant | Проверка проверяет идентификаторы пациентов перед председательством, документацию и образцы. | правильный пациент |
+| dialysis.intake.pre_treatment_weight | Замер веса перед процедурой | invariant | Сохраняйте записи веса перед лечением в соответствии с рабочим процессом центра. | оперативный базовый уровень |
+| dialysis.intake.vital_record | Запись о жизни на диализе | invariant | Запись фиксирует необходимые наблюдения в определенных точках для клинического анализа. | данные мониторинга |
+| dialysis.intake.access_checkin | Регистрация сосудистого доступа | invariant | Регистрация документов о типе доступа, наблюдениях за состоянием и флагах эскалации без предписания осторожности. | защита рабочего процесса доступа |
+| dialysis.intake.consent_status | Статус согласия на диализ | invariant | Статус подтверждает, что требуемое лечение, согласие на конфиденциальность и процедуры действительны. | свидетельство о разрешении |
+| dialysis.water.water_system_check | Проверка системы воды для диализа | invariant | Перед использованием пациентом проверяется готовность системы очистки воды, сигналы тревоги, журналы и статус выпуска. | вода имеет решающее значение |
+| dialysis.water.chlorine_chloramine_test | Тест на хлор и хлорамин | invariant | Тест подтверждает, что очищенная вода соответствует требованиям центра перед использованием. | ворота безопасности |
+| dialysis.water.conductivity_monitor | Монитор проводимости воды | variant | Монитор сигнализирует об аномальном ионном содержании или системной проблеме, требующей реагирования. | управление процессом |
+| dialysis.water.ro_alarm_response | Реакция на сигнал тревоги обратного осмоса | invariant | Реагирование прекращает небезопасное использование, уведомляет ответственный персонал и документирует восстановление. | защищать пациентов |
+| dialysis.water.water_log | Журнал воды для диализа | invariant | Журнал записывает тесты, время, результаты, персонал, сигналы тревоги, корректирующие действия и выпуск. | аудиторский след |
+| dialysis.machine.machine_setup | Настройка аппарата для диализа | invariant | Программа установки проверяет состояние машины, источник ввода рецепта, расходные материалы, сигналы тревоги и состояние дезинфекции. | готовая станция |
+| dialysis.machine.machine_disinfection | Дезинфекция диализного аппарата | invariant | Дезинфекция осуществляется в соответствии с утвержденным циклом, временем контакта, испытаниями и документацией. | инфекционный контроль |
+| dialysis.machine.machine_alarm | Сигнализация аппарата для диализа | invariant | Тревога требует реакции персонала, проверки пациента и документирования событий в соответствии с протоколом. | не игнорируй |
+| dialysis.machine.station_turnover | Оборот станции диализа | invariant | Очистка кресла, поверхностей, внешней части аппарата, расходных материалов и отходов между пациентами осуществляется при ротации. | безопасный следующий пациент |
+| dialysis.machine.preventive_maintenance | Диализное оборудование ПМ | invariant | PM отслеживает интервалы обслуживания, калибровку, детали, сигналы тревоги, датчики и разрешение на использование. | надежное оборудование |
+| dialysis.supplies.dialyzer_inventory | Инвентарь диализатора | variant | Инвентаризация контролирует совместимые диализаторы, партии, срок годности, распределение и нехватку. | поставка подходит |
+| dialysis.supplies.concentrate_inventory | Запасы диализного концентрата | invariant | Инвентаризация отслеживает кислоту, бикарбонат, контейнеры, партии, срок годности и хранение. | основной расходный материал |
+| dialysis.supplies.single_use_supply | Одноразовые расходные материалы для диализа | invariant | В комплект поставки входят шнуры, иглы, шприцы, перевязочные материалы, СИЗ и тестовые материалы. | готовность стула |
+| dialysis.supplies.expiry_round | Срок окончания диализа | invariant | Round удаляет из зон использования стерильные, химические, тестовые или лекарственные предметы с истекшим сроком годности. | предотвратить небезопасные запасы |
+| dialysis.supplies.shortage_plan | План дефицита поставок диализа | invariant | План определяет приоритетность важнейших запасов, заменяет их только после утверждения и информирует операции. | продолжать безопасно |
+| dialysis.flow.patient_chairing | Рабочий процесс ведения пациента | invariant | Рабочий процесс перемещает пациента от места ожидания к месту приема с проверкой личности, готовности и доступа. | запуск контролируемый |
+| dialysis.flow.treatment_start_record | Запись о начале лечения | invariant | Запись фиксирует время запуска, машину, станцию, персонал и необходимые подтверждения настройки. | начать трассировку |
+| dialysis.flow.intratreatment_round | Внутрилечебный раунд | invariant | Круглые записи наблюдений, состояния машины, комфорта пациента и потребностей в эскалации через необходимые промежутки времени. | активный мониторинг |
+| dialysis.flow.treatment_end_record | Запись об окончании лечения | invariant | Запись фиксирует время окончания, рабочий процесс после лечения, события и готовность к выписке. | закрыть сессию |
+| dialysis.flow.handoff_note | Записка о передаче диализа | invariant | В заметке сообщается о состоянии пациента, проблеме с аппаратом, проблеме доступа, инциденте или ожидающей задаче. | преемственность |
+| dialysis.infection.hand_hygiene_station | Станция гигиены рук для диализа | invariant | Станция обеспечивает необходимую гигиену рук на кресле, в точках питания и перехода. | контроль поведения |
+| dialysis.infection.ppe_zone | Зона СИЗ для диализа | invariant | Зона определяет требования к халату, перчаткам, средствам защиты глаз или маске в зависимости от задачи и воздействия. | безопасность персонала |
+| dialysis.infection.blood_spill_response | Реакция на разлив крови при диализе | invariant | Ответные меры изолируют, очищают, дезинфицируют, утилизируют и утилизируют документы в соответствии с протоколом. | очистка с высоким риском |
+| dialysis.infection.isolation_workflow | Рабочий процесс изоляции при диализе | variant | Рабочий процесс разделяет пациента, машину, расходные материалы или комнату, где этого требует политика по борьбе с инфекциями. | уменьшить передачу |
+| dialysis.infection.environmental_audit | Экологический аудит диализа | invariant | Аудит проверяет уборку, гигиену рук, расходные материалы, отходы, журналы учета воды и оборот станции. | проверить элементы управления |
+| dialysis.records.treatment_record | Запись о лечении диализом | invariant | Record собирает данные сеансов, действия персонала, машинные данные, события и заметки. | юридическая история болезни |
+| dialysis.records.lab_sample_route | Маршрут пробы из лаборатории диализа | variant | Маршрутизируйте этикетки, храните, не вмешивайтесь и отслеживайте образцы, собранные в центре. | след образца |
+| dialysis.records.incident_report | Отчет о происшествии на диализе | invariant | Сообщите о падении документов, проблеме доступа, проблеме с машиной, реакции, разливе, пропущенной обработке или передаче. | обучение безопасности |
+| dialysis.records.transfer_packet | Пакет для перевода на диализ | variant | Пакет отправляет записи пациентов, расписание, заметки о доступе и заказы в другое учреждение. | преемственность |
+| dialysis.records.privacy_control | Контроль конфиденциальности при диализе | invariant | Control защищает диаграммы, экраны, разговоры и видимую информацию о лечении в открытой клинике. | достоинство и соответствие |
+| dialysis.admin.staff_assignment | Распределение персонала по диализу | invariant | При назначении медсестры, техники, биомедицинская поддержка и ответственные лица распределяются по сменам и станциям. | четкость покрытия |
+| dialysis.admin.competency_record | Запись о компетентности в сфере диализа | invariant | Запись отслеживает обучение персонала, навыки работы с машинами, водой, инфекционным контролем и действиями в чрезвычайных ситуациях. | квалифицированная работа |
+| dialysis.metrics.dialysis_kpi | Диализный центр КПИ | variant | KPI отслеживает пропущенные процедуры, использование кресла, время оборота, инциденты, проблемы с водой и задержку документации. | центр управления |
+| dialysis.continuity.power_water_outage | Отключение электроэнергии или воды для диализа | invariant | План на случай простоев охватывает безопасность пациентов, прерывание лечения, альтернативные места, транспорт и связь. | устойчивость |

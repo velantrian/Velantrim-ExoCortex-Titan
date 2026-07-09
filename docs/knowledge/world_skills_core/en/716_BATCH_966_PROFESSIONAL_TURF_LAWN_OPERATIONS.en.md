@@ -1,0 +1,12 @@
+# BATCH 574: Lawns — Professional Turf Management Operations
+
+**KnowledgeUnits:** 44
+**Namespace:** `turf.ops.*`
+**Scope:** mowing, fertilizing, weed_control, aerating, irrigation, sod, pest, seasonal
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| turf.ops.mowing_height_seasonal | Mowing — Height & Seasonal Adjustment | METHOD | Стрижка газона. Правило 1/3 — никогда не удалять больше 1/3 длины листа. Высоты: Fescue/Bluegrass — 6-8 см, Bermuda — 2.5-4 см. Сезонность: весной чуть ниже, летом выше, осенью постепенно понижать. Mulching: возврат скошенной травы удобряет. Частота: весной/осенью каждые 5-7 дней, летом 7-14. Острота лезвий: заточка каждые 20-25 часов. | Scalping: случается на неровных участках, оставляет проплешины. Профилактика: регулировка деки косилки, подсыпка неровностей. |
+| turf.ops.fertigation_program | Lawn Fertilizer Program | METHOD | Программа удобрения. Азот (N): весной quick-release или slow-release, летом НИЗКИЙ азот, осенью high N (winterizer). Фосфор (P): для корневого роста. Калий (K): стрессоустойчивость. Норма: 25-50 кг N/га за внесение. Формы: Granular (разбрасыватель), Liquid (spray). Калибровка spreader обязательна. Органика: компост, compost tea. pH: газон любит 6.0-7.0. | Ожог азотом: слишком много quick-release N + жара — коричневые полосы. Лечить обильным поливом. Не удобрять по мокрой траве. |
+| turf.ops.broadleaf_weed_control | Weed Control — Selective Herbicide | METHOD | Борьба с сорняками (dandelion, clover). Selective herbicides: 2,4-D, dicamba, triclopyr. Timing: сорняк активно растёт (весна, ранняя осень). Температура: 15-25°C. Не косить 1-2 дня до и после. Не поливать 24-48 часов. Spot treatment: точечный spray. Pre-emergent: Prodiamine, Dithiopyr (вносить ДО прорастания crabgrass при t почвы 12-15°C). Post-emergent: Quinclorac. | Herbicide resistance: ротировать modes of action (HRAC группы). |
+| turf.ops.aeration_timing_execution | Aeration — Core & Liquid Techniques | METHOD | Аэрация газона. Core aeration: машина с полыми зубьями извлекает цилиндры почвы (диаметр 1-2 см, глубина 5-10 см). Признаки уплотнения: вода стоит лужами, трава жёлтая несмотря на удобрение. Timing: осень (идеально) или весна. Почва влажная но не мокрая. Проходы перекрёстно. После: overseeding + удобрение + лёгкий полив. | Не путать с dethatching! Аэрация — для уплотнения, dethatching — для слоя thatch. Аэрация помогает разрушению thatch микробами. |

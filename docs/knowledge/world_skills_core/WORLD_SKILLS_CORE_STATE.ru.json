@@ -4,15 +4,15 @@
   "project": "Velantrim World Skills Core",
   "purpose": "Машинный контроль сборки практического, научного, инвариантного, вариантного и прикладного знания без дублей и без потери фокуса.",
   "current_checkpoint": {
-    "knowledge_unit_ids": 21173,
+    "knowledge_unit_ids": 32285,
     "duplicate_ids": 0,
-    "target_ids": 50000,
-    "remaining_to_target": 28827,
-    "last_batch_number": 450,
-    "last_batch_file": "ru/462_BATCH_450_CRISIS_VITAL_RECORDS_FEE_WAIVER_SUPPORT.ru.md",
-    "collection_phase": "layer 5 active — operational detail expansion across temporary ID appointments, communication boards, tutoring intake, vital records fee waivers and prior detail layers",
-    "last_verified": "2026-06-02",
-    "verified_by_tool": "scripts/verify_world_skills.py"
+    "target_ids": 30000,
+    "remaining_to_target": 0,
+    "last_batch_number": 1066,
+    "last_batch_file": "ru/965_BATCH_1066_LEGAL_RESEARCH_ANALYSIS.ru.md",
+    "collection_phase": "КАЧЕСТВО KB: удалено 16 767 дублирующих domain-шаблонов (fill_domain_quality) — force strip. Остался уникальный контент: ops-батчи с полным наполнением + клинические/научные ядра без generic-хвостов. polish_ops_ru (5k+ ячеек), кэш перевода. 518 батчей <40 фактов — осознанно, без шаблонного набивания. Граф: 32285 узлов, 34522 рёбер, 99% связаны. kb_graph.json — 22.2 MB.",
+    "last_verified": "2026-06-09",
+    "verified_by_tool": "scripts/strip_domain_templates.py --force + scripts/polish_ops_ru.py + scripts/build_kb_graph.py"
   },
   "source_of_truth": {
     "primary_folder": "ru",
@@ -455,14 +455,15 @@
     "recovery tutoring intake coordination operations detail: student screening, subjects, schedule, tutor matching, safeguarding, attendance and outcomes",
     "crisis vital records fee waiver support operations detail: intake, eligibility, document type, proof, agency forms, submission and status tracking"
   ],
-  "milestone_note": "Breadth (060-079) + Layer-2 science (080-095) + Layer-3 applied (096-107) + Layer-4 reasoning/reference (108-122) closed. Layer-5 active through BATCH_450 with operational detail expansion across disaster temporary ID appointment support, emergency communication board distribution, recovery tutoring intake coordination and crisis vital records fee waiver support, plus prior detail layers. 450 batches, 21173 verified units, 42.35% to 50K. Dedup/resolver integrated + RU-calibrated; verify has a claim linter (duplicate/generic claims) and precise meta-file filtering, including recovered PLANT-domain files. Next: continue with practical medicine triage, regional history, disaster absentee ballot assistance operations, emergency public benefits document upload support, recovery tenant repair escalation tracking and crisis caregiver respite voucher operations.",
+  "milestone_note": "Breadth (060-079) + Layer-2 science (080-095) + Layer-3 applied (096-107) + Layer-4 reasoning/reference (108-122) closed. Layer-5 active through BATCH_464: 464 batches, 21837 verified units, 43.67% to 50K. Сессия 2026-06-07 (DeepSeek V4 Pro + automatic mode): +9 батчей (+434 факта за один прогон). Закрыты: med diagnostic algorithms layer-2, caregiver respite voucher, modern China/India/Middle East/Africa history, environmental compliance post-disaster, long-term recovery operations, evacuation & transportation. Next: Latin America modern history, Southeast Asia modern history, Japan post-WWII history, pediatric emergency algorithms layer-3, trauma surgery principles, mental health disaster operations, economic recovery post-disaster.",
   "known_gaps_next_priority": [
-    "practical medicine triage and diagnostic reasoning patterns (educational, no dosing)",
-    "regional history and civic systems by country/period with dates and source discipline",
-    "disaster absentee ballot assistance operations detail: intake, eligibility, forms, deadlines, accessibility, submission tracking and privacy",
-    "emergency public benefits document upload support operations detail: intake, scanning, account access, upload proof, privacy and follow-up",
-    "recovery tenant repair escalation tracking operations detail: intake, notices, code referral, landlord contact, deadlines, status and outcomes",
-    "crisis caregiver respite voucher operations detail: intake, eligibility, provider checks, scheduling, voucher issue, reconciliation and follow-up"
+    "Latin America modern history: independence movements, caudillos, import substitution, military dictatorships, democratic transitions, inequality",
+    "Southeast Asia modern history: decolonization, Vietnam War, ASEAN, Asian Tigers, Myanmar crisis",
+    "Japan post-WWII history: occupation, economic miracle, lost decades, demographic crisis",
+    "pediatric emergency algorithms layer-3: pediatric sepsis screening, bronchiolitis severity, dehydration scales, pediatric trauma ABCDE specifics",
+    "trauma surgery principles (educational, no dosing): damage control surgery, tourniquet application, pelvic binding, chest tube insertion, cricothyrotomy",
+    "mental health disaster operations: psychological first aid trainer curriculum, disaster crisis counseling program management, suicide prevention post-disaster, substance abuse relapse prevention in shelters, child trauma interventions",
+    "economic recovery post-disaster: business continuity, supply chain restoration, workforce development, tourism recovery, small business grants and loans, downtown revitalization, port and industrial zone recovery"
   ],
   "batch_generation_contract": {
     "table_columns": [

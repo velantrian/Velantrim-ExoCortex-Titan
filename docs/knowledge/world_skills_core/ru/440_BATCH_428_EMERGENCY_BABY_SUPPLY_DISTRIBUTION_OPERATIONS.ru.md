@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| babysupplyops.activation.trigger | activation trigger | MODEL | Trigger includes displacement, income shock, store closure, formula shortage or sheltering. | Starts baby support. |
-| babysupplyops.activation.partner | partner roster | RECORD | Roster lists food banks, clinics, WIC partners, shelters, donors and delivery teams. | Coordinates supply. |
-| babysupplyops.activation.service_area | service area | RECORD | Area defines eligible shelters, neighborhoods, routes and jurisdictions. | Focuses resources. |
-| babysupplyops.activation.command_link | command link | RECORD | Operation reports to logistics, public health, family services and donations. | Maintains oversight. |
-| babysupplyops.intake.caregiver | caregiver intake | RECORD | Intake captures caregiver, infant count, age, contact, language and pickup/delivery need. | Defines request. |
-| babysupplyops.intake.child_profile | child profile | RECORD | Profile records age, size, feeding type, allergies and special care notes. | Selects supplies. |
-| babysupplyops.intake.urgent_need | urgent need | MODEL | Urgency weighs no formula, no diapers, medical need, transport barrier and infant age. | Prioritizes cases. |
-| babysupplyops.intake.privacy | privacy rule | SAFETY_RULE | Family and infant data is collected only for distribution and referral. | Protects household. |
-| babysupplyops.eligibility.criteria | eligibility criteria | CONSTRAINT | Criteria define disaster impact, caregiver status, service area and frequency. | Preserves fairness. |
-| babysupplyops.eligibility.verification | verification method | METHOD | Verification can use self-attestation, shelter roster, clinic referral or benefits desk. | Keeps access humane. |
-| babysupplyops.eligibility.frequency | frequency limit | CONSTRAINT | Limit defines diapers, wipes or formula amount per period. | Extends stock. |
-| babysupplyops.eligibility.exception | exception record | RECORD | Exception records twins, medical need, lost supplies or urgent feeding risk. | Allows flexibility. |
-| babysupplyops.inventory.item_master | item master | RECORD | Master lists diaper sizes, wipes, formula types, bottles, hygiene and baby food. | Standardizes stock. |
-| babysupplyops.inventory.receiving | receiving check | QUALITY_CHECK | Receiving checks expiration, seal, recall, condition, source and quantity. | Protects infants. |
-| babysupplyops.inventory.formula_lot | formula lot | RECORD | Formula lot records brand, type, lot, expiration and recall status. | Enables recall. |
-| babysupplyops.inventory.stock_count | stock count | MEASUREMENT | Count tracks received, issued, damaged, expired and remaining supplies. | Shows availability. |
-| babysupplyops.storage.clean_storage | clean storage | SAFETY_RULE | Baby supplies stay dry, clean, pest-free and separated from chemicals. | Preserves safety. |
-| babysupplyops.storage.temperature | temperature control | SAFETY_RULE | Formula and baby food follow storage temperature and expiration guidance. | Prevents spoilage. |
-| babysupplyops.storage.recall_hold | recall hold | METHOD | Recalled or suspect products are held and not issued. | Prevents harm. |
-| babysupplyops.storage.security | stock security | SAFETY_RULE | High-demand formula and diapers use supervised storage and counts. | Reduces loss. |
-| babysupplyops.issue.standard_bundle | standard bundle | METHOD | Bundle combines diapers, wipes and feeding/hygiene items by child age and need. | Speeds handoff. |
-| babysupplyops.issue.formula_match | formula match | SAFETY_RULE | Formula type matches caregiver report; substitutions include safe messaging and referral. | Reduces feeding risk. |
-| babysupplyops.issue.receipt | issue receipt | RECORD | Receipt records caregiver, child age/size, items, quantity, date and staff. | Supports inventory. |
-| babysupplyops.issue.referral | referral path | METHOD | Feeding, medical or benefits concerns route to clinic, WIC or public health. | Adds expertise. |
-| babysupplyops.delivery.delivery_request | delivery request | RECORD | Request captures address, contact, infant needs, access and time window. | Enables outreach. |
-| babysupplyops.delivery.route_plan | route plan | METHOD | Route groups deliveries by urgency, area, formula type and vehicle capacity. | Saves time. |
-| babysupplyops.delivery.no_contact | no-contact handling | METHOD | Policy defines retry, hold, partner handoff or safe drop-off restrictions. | Controls loss. |
-| babysupplyops.delivery.confirmation | delivery confirmation | RECORD | Confirmation records recipient, items, time and unresolved needs. | Closes handoff. |
-| babysupplyops.safety.safe_prep | safe preparation message | METHOD | Message covers clean water, hand hygiene, formula preparation and storage basics. | Protects infants. |
-| babysupplyops.safety.breastfeeding_support | breastfeeding support | METHOD | Families needing lactation support are referred without pressure or stigma. | Supports choice. |
-| babysupplyops.safety.recall_message | recall message | SAFETY_RULE | Recall instructions explain product check, hold and replacement pathway. | Prevents unsafe use. |
-| babysupplyops.safety.water_warning | water warning | SAFETY_RULE | Unsafe water conditions trigger public health guidance for feeding preparation. | Reduces illness. |
-| babysupplyops.communication.public_notice | public notice | METHOD | Notice states items, eligibility, pickup/delivery, limits and safety guidance. | Guides caregivers. |
-| babysupplyops.communication.partner_update | partner update | METHOD | Partners receive stock levels, urgent needs, recalls, shortages and referral rules. | Aligns support. |
-| babysupplyops.communication.language | language support | METHOD | Scripts and inserts use common local languages and pictograms. | Improves access. |
-| babysupplyops.records.daily_log | daily log | RECORD | Log stores requests, stock, issues, deliveries, recalls and unmet needs. | Creates audit trail. |
-| babysupplyops.records.cost | cost record | RECORD | Costs track purchased supplies, transport, storage and labor. | Supports finance. |
-| babysupplyops.records.retention | retention rule | CONSTRAINT | Distribution, recall, finance and privacy records follow retention schedules. | Preserves audit. |
-| babysupplyops.metrics.children_served | children served | MEASUREMENT | Count tracks children served by age, item type and area. | Shows reach. |
-| babysupplyops.metrics.stockout | stockout rate | MEASUREMENT | Rate tracks diaper size, formula type or wipe shortages. | Guides procurement. |
-| babysupplyops.metrics.delivery_time | delivery time | MEASUREMENT | Time measures request to pickup or delivery completion. | Reveals delay. |
-| babysupplyops.qa.sample_review | sample review | QUALITY_CHECK | Review checks eligibility, formula lot, issue receipt and referral notes. | Improves reliability. |
-| babysupplyops.demob.closeout | closeout | METHOD | Closeout transfers stock, archives logs, resolves recalls and closes deliveries. | Ends operation. |
-| babysupplyops.review.after_action | after-action review | METHOD | Review captures formula safety, diaper sizes, delivery gaps, referrals and inventory lessons. | Improves future support. |
+| babysupplyops.activation.trigger | триггер активации | MODEL | Триггером может быть перемещение населения, шок доходов, закрытие магазинов, нехватка детского питания или убежище. | Начинает поддержку ребенка. |
+| babysupplyops.activation.partner | список партнеров | RECORD | В реестре перечислены продовольственные банки, клиники, партнеры WIC, приюты, доноры и группы доставки. | Координирует поставки. |
+| babysupplyops.activation.service_area | зона обслуживания | RECORD | Район определяет подходящие приюты, кварталы, маршруты и юрисдикцию. | Фокусирует ресурсы. |
+| babysupplyops.activation.command_link | командная ссылка | RECORD | Оперативные отчеты отправляются в службу логистики, общественного здравоохранения, семейных служб и пожертвований. | Сохраняет надзор. |
+| babysupplyops.intake.caregiver | прием опекуна | RECORD | В приеме учитываются лица, осуществляющие уход, количество младенцев, возраст, контакт, язык и потребность в получении/доставке. | Определяет запрос. |
+| babysupplyops.intake.child_profile | дочерний профиль | RECORD | В профиле записываются возраст, размер, тип кормления, аллергия и особые примечания по уходу. | Подбирает расходные материалы. |
+| babysupplyops.intake.urgent_need | острая необходимость | MODEL | Срочность не учитывает отсутствие молочной смеси, отсутствие подгузников, медицинские потребности, транспортные барьеры и возраст ребенка. | Расставляет приоритеты по делам. |
+| babysupplyops.intake.privacy | правило конфиденциальности | SAFETY_RULE | Данные о семьях и младенцах собираются только для распространения и направления. | Защищает домочадцев. |
+| babysupplyops.eligibility.criteria | критерии приемлемости | CONSTRAINT | Критерии определяют воздействие стихийного бедствия, статус лица, осуществляющего уход, зону обслуживания и частоту оказания услуг. | Сохраняет справедливость. |
+| babysupplyops.eligibility.verification | метод проверки | METHOD | Для проверки можно использовать самоаттестацию, реестр приютов, направление в клинику или бюро пособий. | Сохраняет доступ гуманным. |
+| babysupplyops.eligibility.frequency | предел частоты | CONSTRAINT | Лимит определяет количество подгузников, салфеток или молочной смеси за период. | Расширяет запас. |
+| babysupplyops.eligibility.exception | запись об исключении | RECORD | Исключение составляют близнецы, медицинские потребности, потеря припасов или риск срочного кормления. | Обеспечивает гибкость. |
+| babysupplyops.inventory.item_master | мастер предметов | RECORD | Мастер перечисляет размеры подгузников, салфеток, типов детских смесей, бутылочек, средств гигиены и детского питания. | Стандартизирует запасы. |
+| babysupplyops.inventory.receiving | получение чека | QUALITY_CHECK | Прием чеков на срок действия, печать, отзыв, состояние, источник и количество. | Защищает младенцев. |
+| babysupplyops.inventory.formula_lot | формула лота | RECORD | В партии формулы фиксируются марка, тип, партия, срок годности и статус отзыва. | Включает отзыв. |
+| babysupplyops.inventory.stock_count | инвентаризация | MEASUREMENT | Подсчитайте полученные, выданные, поврежденные, просроченные и оставшиеся треки. | Показывает наличие. |
+| babysupplyops.storage.clean_storage | чистое хранилище | SAFETY_RULE | Детские принадлежности остаются сухими, чистыми, свободными от вредителей и отделенными от химикатов. | Сохраняет безопасность. |
+| babysupplyops.storage.temperature | контроль температуры | SAFETY_RULE | Смесь и детское питание соответствуют температуре хранения и сроку годности. | Предотвращает порчу. |
+| babysupplyops.storage.recall_hold | вспомнить, удерживать | METHOD | Отозванная или подозрительная продукция задерживается и не выдается. | Предотвращает вред. |
+| babysupplyops.storage.security | фондовая безопасность | SAFETY_RULE | Востребованные смеси и подгузники хранятся под присмотром и учитываются. | Уменьшает потери. |
+| babysupplyops.issue.standard_bundle | стандартный комплект | METHOD | В комплект входят подгузники, салфетки и предметы для кормления и гигиены в зависимости от возраста и потребностей ребенка. | Ускоряет передачу обслуживания. |
+| babysupplyops.issue.formula_match | совпадение по формуле | SAFETY_RULE | Тип формулы соответствует отчету лица, осуществляющего уход; замены включают безопасный обмен сообщениями и направление к специалистам. | Снижает риск кормления. |
+| babysupplyops.issue.receipt | выдать квитанцию | RECORD | В квитанции указывается лицо, осуществляющее уход, возраст/размер ребенка, предметы, количество, дата и персонал. | Поддерживает инвентарь. |
+| babysupplyops.issue.referral | реферальный путь | METHOD | Кормление, медицинское обслуживание или льготы касаются маршрута в клинику, WIC или общественное здравоохранение. | Добавляет экспертности. |
+| babysupplyops.delivery.delivery_request | запрос на доставку | RECORD | Запрос фиксирует адрес, контакт, потребности ребенка, доступ и временное окно. | Обеспечивает охват. |
+| babysupplyops.delivery.route_plan | план маршрута | METHOD | Маршрутные группировки доставки по срочности, площади, типу формулы и вместимости транспорта. | Экономит время. |
+| babysupplyops.delivery.no_contact | бесконтактное обращение | METHOD | Политика определяет ограничения на повтор, удержание, передачу управления партнером или безопасное завершение. | Контролирует потери. |
+| babysupplyops.delivery.confirmation | подтверждение доставки | RECORD | В подтверждении фиксируются получатель, предметы, время и нерешенные потребности. | Закрывает передачу. |
+| babysupplyops.safety.safe_prep | сообщение о безопасной подготовке | METHOD | В сообщении говорится о чистой воде, гигиене рук, приготовлении смесей и основах хранения. | Защищает младенцев. |
+| babysupplyops.safety.breastfeeding_support | поддержка грудного вскармливания | METHOD | Семьи, нуждающиеся в поддержке лактации, направляются без давления и стигмы. | Поддерживает выбор. |
+| babysupplyops.safety.recall_message | напомнить сообщение | SAFETY_RULE | Инструкции по отзыву объясняют порядок проверки, удержания и замены продукта. | Предотвращает небезопасное использование. |
+| babysupplyops.safety.water_warning | предупреждение о воде | SAFETY_RULE | Небезопасные условия воды требуют рекомендаций общественного здравоохранения по приготовлению кормления. | Уменьшает заболеваемость. |
+| babysupplyops.communication.public_notice | публичное уведомление | METHOD | В уведомлении указаны предметы, соответствие требованиям, получение/доставка, ограничения и рекомендации по безопасности. | Направляющие лица, осуществляющие уход. |
+| babysupplyops.communication.partner_update | обновление партнера | METHOD | Партнеры получают информацию об уровне запасов, срочных потребностях, отзывах, дефиците и правилах направления. | Выравнивает поддержку. |
+| babysupplyops.communication.language | языковая поддержка | METHOD | В сценариях и вставках используются распространенные местные языки и пиктограммы. | Улучшает доступ. |
+| babysupplyops.records.daily_log | ежедневник | RECORD | В журнале хранятся запросы, запасы, проблемы, поставки, отзывы и неудовлетворенные потребности. | Создает контрольный журнал. |
+| babysupplyops.records.cost | запись затрат | RECORD | Затраты учитывают закупленные материалы, транспортировку, хранение и рабочую силу. | Поддерживает финансы. |
+| babysupplyops.records.retention | правило хранения | CONSTRAINT | Записи о распространении, отзыве, финансах и конфиденциальности соответствуют графикам хранения. | Сохраняет аудит. |
+| babysupplyops.metrics.children_served | дети обслуживаются | MEASUREMENT | Count отслеживает обслуживаемых детей по возрасту, типу предметов и площади. | Показывает охват. |
+| babysupplyops.metrics.stockout | уровень дефицита | MEASUREMENT | Ставка отслеживает размер подгузников, тип смеси или нехватку салфеток. | Руководства по закупкам. |
+| babysupplyops.metrics.delivery_time | срок поставки | MEASUREMENT | Время измеряет запрос на самовывоз или завершение доставки. | Выявляет задержку. |
+| babysupplyops.qa.sample_review | образец обзора | QUALITY_CHECK | Просмотрите проверки соответствия критериям, партию формулы, квитанцию ​​о выдаче и рекомендации. | Повышает надежность. |
+| babysupplyops.demob.closeout | распродажа | METHOD | Closeout перемещает запасы, архивирует журналы, разрешает отзывы и закрывает поставки. | Завершает операцию. |
+| babysupplyops.review.after_action | обзор после действий | METHOD | В обзоре отражены безопасность смесей, размеры подгузников, пробелы в доставке, направления и уроки по инвентаризации. | Улучшает будущую поддержку. |

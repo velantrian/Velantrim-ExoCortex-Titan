@@ -6,48 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| callescops.intake.call_reason | call reason | RECORD | Call reason codes identify billing, outage, leak, move, complaint, payment or field issue. | Routes the call to the right workflow. |
-| callescops.intake.priority_screen | priority screen | DECISION_RULE | Safety, water outage, sewer backup, medical or media issues get urgent priority. | Prevents high-risk cases from waiting in normal queue. |
-| callescops.intake.account_context | account context | METHOD | Agent reviews account status, open orders, recent contacts and alerts before escalation. | Avoids repeating work. |
-| callescops.tiering.tier1_scope | tier 1 scope | CONSTRAINT | Tier 1 handles standard scripts, simple account actions and common answers. | Keeps routine calls fast. |
-| callescops.tiering.tier2_scope | tier 2 scope | CONSTRAINT | Tier 2 handles complex billing, policy exceptions, technical issues and repeated contacts. | Gives difficult cases deeper review. |
-| callescops.tiering.specialist_route | specialist route | METHOD | Calls route to billing, field, water quality, collections, engineering or legal specialists. | Expertise matches issue. |
-| callescops.tiering.warm_transfer | warm transfer | METHOD | Agent briefs receiving staff before transferring customer. | Reduces customer repetition. |
-| callescops.callbacks.callback_promise | callback promise | RECORD | Callback includes owner, due time, contact number and issue summary. | Makes promises trackable. |
-| callescops.callbacks.callback_queue | callback queue | METHOD | Queue sorts callbacks by SLA, priority and staff skill. | Prevents forgotten returns. |
-| callescops.callbacks.failed_callback | failed callback | RECORD | Failed attempt logs time, number, voicemail and next attempt. | Shows good-faith follow-up. |
-| callescops.callbacks.after_hours | after-hours callback | DECISION_RULE | Urgent after-hours issues route to standby or emergency dispatch. | Keeps safety issues active outside office. |
-| callescops.supervisor.supervisor_review | supervisor review | DECISION_RULE | Supervisor handles policy exceptions, angry customers, threats, high credits and escalated complaints. | Adds judgment and authority. |
-| callescops.supervisor.approval_note | approval note | RECORD | Supervisor decision records policy basis, facts, approval or denial. | Supports audit and consistency. |
-| callescops.supervisor.deescalation | de-escalation | METHOD | Staff use calm language, boundaries and options to reduce conflict. | Improves safety and customer outcomes. |
-| callescops.field.field_ticket | field ticket | RECORD | Escalated field ticket includes address, issue, access, hazards, contact and priority. | Gives dispatch actionable information. |
-| callescops.field.dispatch_sync | dispatch sync | METHOD | Call center checks field availability, route and emergency load before promising timing. | Prevents unrealistic commitments. |
-| callescops.field.result_return | field result return | RECORD | Field result returns diagnosis, action, photos, reads and next steps to customer service. | Allows complete customer follow-up. |
-| callescops.field.safety_alert | safety alert | SAFETY_RULE | Threats, dogs, unsafe property or hostile calls are flagged for field crews. | Protects staff. |
-| callescops.complaints.formal_complaint | formal complaint | RECORD | Formal complaint records issue, requested remedy, prior contacts and escalation level. | Creates governed path beyond ordinary call. |
-| callescops.complaints.regulatory | regulatory complaint | METHOD | Regulator or elected-official complaints receive special tracking and deadlines. | Protects compliance and reputation. |
-| callescops.complaints.repeat_contact | repeat contact | QUALITY_CHECK | Multiple contacts on same issue trigger escalation review. | Prevents churn without resolution. |
-| callescops.complaints.root_cause | complaint root cause | MODEL | Root cause categories include policy, billing error, field delay, communication or customer misunderstanding. | Helps fix process, not just one case. |
-| callescops.sla.response_sla | response SLA | CONSTRAINT | SLA defines response or resolution target by priority and issue type. | Sets measurable service expectations. |
-| callescops.sla.breach | SLA breach | FAILURE_MODE | Breached cases are flagged for supervisor action and explanation. | Keeps aged work visible. |
-| callescops.sla.pause_rule | SLA pause rule | DECISION_RULE | SLA may pause for customer documents, weather, parts, or third-party dependency. | Makes metrics fair. |
-| callescops.knowledge.kb_article | knowledge base article | RECORD | Article stores approved answer, policy, steps, owner and review date. | Keeps agents consistent. |
-| callescops.knowledge.kb_gap | knowledge gap | RECORD | Agents flag missing or unclear guidance for update. | Improves self-service and training. |
-| callescops.knowledge.script_update | script update | METHOD | Scripts are revised after policy change, incident or repeated confusion. | Keeps call handling current. |
-| callescops.quality.call_monitor | call monitoring | QUALITY_CHECK | Supervisors review calls for accuracy, empathy, verification and closeout. | Builds coaching evidence. |
-| callescops.quality.coaching | coaching note | RECORD | Coaching records issue, example, expected behavior and follow-up. | Turns QA into improvement. |
-| callescops.quality.error_correction | error correction | METHOD | Incorrect advice triggers customer correction and staff feedback. | Repairs harm from bad guidance. |
-| callescops.system.crm_case | CRM case | RECORD | CRM case stores call notes, tasks, attachments, SLA, owner and status. | Single source for escalation. |
-| callescops.system.queue_status | queue status | RECORD | Status distinguishes new, assigned, waiting, field pending, customer pending, resolved and closed. | Makes backlog manageable. |
-| callescops.system.integration_error | integration error | FAILURE_MODE | Billing, outage, AMI or work-order integration failures can hide updates. | Agents need fallback checks. |
-| callescops.communication.plain_summary | plain summary | METHOD | Agent summarizes decision, next step, owner and expected timing. | Customer knows what will happen. |
-| callescops.communication.bad_news | bad-news delivery | METHOD | Denials or delays are explained with policy basis and options. | Reduces escalation caused by surprise. |
-| callescops.communication.accessibility | accessibility support | METHOD | Calls may need relay, translation, large-print follow-up or caregiver authorization. | Expands equitable service. |
-| callescops.reporting.escalation_volume | escalation volume | MEASUREMENT | Reports track escalations by reason, tier, age, outcome and owner. | Shows pressure points. |
-| callescops.reporting.first_call_resolution | first-call resolution | MEASUREMENT | FCR measures cases solved without escalation or repeat contact. | Indicates knowledge and authority quality. |
-| callescops.reporting.top_drivers | top drivers | MODEL | Top escalation drivers reveal policy confusion, field delays or system defects. | Guides improvement work. |
-| callescops.review.daily_huddle | daily huddle | METHOD | Teams review hot cases, outages, policy changes and staffing. | Keeps call center aligned. |
-| callescops.review.after_event | after-event review | METHOD | Major billing, outage or water-quality events get call-center after-action review. | Improves surge response. |
-| callescops.closeout.close_criteria | close criteria | QUALITY_CHECK | Case closes only after answer, action, customer notice or documented no-response. | Prevents premature closure. |
-| callescops.closeout.satisfaction_note | satisfaction note | RECORD | Optional satisfaction or sentiment note records unresolved frustration. | Helps identify cases needing management attention. |
-
+| callescops.intake.call_reason | причина звонка | RECORD | Коды причин звонков идентифицируют выставление счетов, сбои в работе, утечки, перемещения, жалобы, платежи или проблемы на местах. | Направляет вызов в нужный рабочий процесс. |
+| callescops.intake.priority_screen | экран приоритета | DECISION_RULE | Безопасность, отключение воды, резервная канализация, медицинские вопросы или вопросы СМИ получают неотложный приоритет. | Предотвращает ожидание дел с высоким риском в обычной очереди. |
+| callescops.intake.account_context | контекст аккаунта | METHOD | Агент просматривает состояние учетной записи, открытые заказы, последние контакты и оповещения перед эскалацией. | Избегает повторения работы. |
+| callescops.tiering.tier1_scope | объем 1 уровня | CONSTRAINT | Уровень 1 обрабатывает стандартные сценарии, простые действия с учетной записью и общие ответы. | Обычные звонки выполняются быстро. |
+| callescops.tiering.tier2_scope | объем 2 уровня | CONSTRAINT | Уровень 2 занимается сложными выставлением счетов, исключениями из правил, техническими проблемами и повторяющимися контактами. | Дает более глубокий анализ сложных случаев. |
+| callescops.tiering.specialist_route | специализированный маршрут | METHOD | Звонки направляются к специалистам по выставлению счетов, полевым специалистам, специалистам по качеству воды, коллекторам, инженерам или юристам. | Экспертиза соответствует проблеме. |
+| callescops.tiering.warm_transfer | теплый трансфер | METHOD | Агент инструктирует принимающий персонал перед переводом клиента. | Уменьшает повторение клиентов. |
+| callescops.callbacks.callback_promise | обещание обратного звонка | RECORD | Обратный вызов включает владельца, время выполнения, контактный номер и сводку проблемы. | Делает обещания отслеживаемыми. |
+| callescops.callbacks.callback_queue | очередь обратного вызова | METHOD | Очередь сортирует обратные вызовы по SLA, приоритету и квалификации персонала. | Предотвращает забытые возвраты. |
+| callescops.callbacks.failed_callback | неудачный обратный вызов | RECORD | При неудачной попытке регистрируется время, номер, голосовая почта и следующая попытка. | Демонстрирует добросовестное наблюдение. |
+| callescops.callbacks.after_hours | обратный звонок в нерабочее время | DECISION_RULE | Срочные вопросы, возникающие в нерабочее время, направляются в резервную или экстренную службу. | Поддерживает вопросы безопасности за пределами офиса. |
+| callescops.supervisor.supervisor_review | обзор руководителя | DECISION_RULE | Супервайзер занимается исключениями из правил, недовольными клиентами, угрозами, высокими кредитами и растущими жалобами. | Добавляет рассудительности и авторитета. |
+| callescops.supervisor.approval_note | записка об утверждении | RECORD | Решение надзорного органа фиксирует основу политики, факты, одобрение или отрицание. | Поддерживает аудит и согласованность. |
+| callescops.supervisor.deescalation | деэскалация | METHOD | Сотрудники используют спокойный язык, границы и варианты, чтобы уменьшить конфликт. | Повышает безопасность и качество обслуживания клиентов. |
+| callescops.field.field_ticket | полевой билет | RECORD | Эскалированная полевая заявка включает адрес, проблему, доступ, опасности, контакт и приоритет. | Предоставляет полезную информацию для отправки. |
+| callescops.field.dispatch_sync | синхронизация отправки | METHOD | Колл-центр проверяет наличие полей, маршрут и аварийную загрузку перед обещанием времени. | Предотвращает нереалистичные обязательства. |
+| callescops.field.result_return | возврат результата поля | RECORD | Результат поля возвращает диагноз, действия, фотографии, показания и последующие шаги в службу поддержки клиентов. | Обеспечивает полное сопровождение клиентов. |
+| callescops.field.safety_alert | предупреждение о безопасности | SAFETY_RULE | Угрозы, собаки, небезопасное имущество или враждебные звонки помечаются для полевых бригад. | Защищает персонал. |
+| callescops.complaints.formal_complaint | официальная жалоба | RECORD | Официальные записи о жалобах, запрашиваемые средства правовой защиты, предыдущие контакты и уровень эскалации. | Создает управляемый путь, выходящий за рамки обычного вызова. |
+| callescops.complaints.regulatory | жалоба регулирующих органов | METHOD | Жалобы регулирующих органов или выборных должностных лиц имеют особый порядок отслеживания и сроки. | Защищает соблюдение требований и репутацию. |
+| callescops.complaints.repeat_contact | повторить контакт | QUALITY_CHECK | Несколько контактов по одной и той же проблеме вызывают рассмотрение на эскалацию. | Предотвращает отток без разрешения. |
+| callescops.complaints.root_cause | основная причина жалобы | MODEL | Категории основных причин включают политику, ошибку выставления счетов, задержку на местах, общение или непонимание клиента. | Помогает исправить процесс, а не один случай. |
+| callescops.sla.response_sla | ответное соглашение об уровне обслуживания | CONSTRAINT | SLA определяет цель ответа или решения по приоритету и типу проблемы. | Устанавливает измеримые ожидания от обслуживания. |
+| callescops.sla.breach | Нарушение соглашения об уровне обслуживания | FAILURE_MODE | Случаи нарушений помечаются для принятия мер и объяснений руководителем. | Сохраняет старую работу видимой. |
+| callescops.sla.pause_rule | Правило приостановки SLA | DECISION_RULE | Соглашение об уровне обслуживания может быть приостановлено из-за документов клиента, погоды, запчастей или сторонних зависимостей. | Делает показатели справедливыми. |
+| callescops.knowledge.kb_article | статья в базе знаний | RECORD | В статье хранится утвержденный ответ, политика, шаги, владелец и дата рассмотрения. | Обеспечивает последовательность действий агентов. |
+| callescops.knowledge.kb_gap | пробел в знаниях | RECORD | Агенты отмечают отсутствие или неясность инструкций по обновлению. | Улучшает самообслуживание и обучение. |
+| callescops.knowledge.script_update | обновление сценария | METHOD | Сценарии пересматриваются после изменения политики, инцидентов или повторяющихся путаниц. | Поддерживает обработку вызовов в актуальном состоянии. |
+| callescops.quality.call_monitor | мониторинг звонков | QUALITY_CHECK | Руководители проверяют звонки на точность, сочувствие, проверку и завершение. | Создает тренерские доказательства. |
+| callescops.quality.coaching | тренерская записка | RECORD | Коучинг записывает проблему, пример, ожидаемое поведение и последующие действия. | Превращает контроль качества в улучшение. |
+| callescops.quality.error_correction | исправление ошибок | METHOD | Неправильный совет вызывает исправление со стороны клиентов и обратную связь со стороны персонала. | Возмещает вред от плохого руководства. |
+| callescops.system.crm_case | CRM-кейс | RECORD | В CRM-кейсе хранятся заметки о звонках, задачи, вложения, SLA, владелец и статус. | Единственный источник для эскалации. |
+| callescops.system.queue_status | статус очереди | RECORD | Статус различает новое, назначенное, ожидающее, ожидающее поле, ожидающее клиента, решенное и закрытое. | Делает отставание управляемым. |
+| callescops.system.integration_error | ошибка интеграции | FAILURE_MODE | Сбои в выставлении счетов, сбои в работе, AMI или интеграции заказов на работу могут скрыть обновления. | Агентам необходимы резервные проверки. |
+| callescops.communication.plain_summary | простое резюме | METHOD | Агент суммирует решение, следующий шаг, владельца и ожидаемые сроки. | Клиент знает, что произойдет. |
+| callescops.communication.bad_news | доставка плохих новостей | METHOD | Отказы или задержки объясняются политической основой и вариантами. | Уменьшает эскалацию, вызванную неожиданностью. |
+| callescops.communication.accessibility | поддержка доступности | METHOD | Для звонков может потребоваться ретрансляция, перевод, последующее сопровождение, напечатанное крупным шрифтом, или разрешение лица, осуществляющего уход. | Расширяет справедливое обслуживание. |
+| callescops.reporting.escalation_volume | объем эскалации | MEASUREMENT | В отчетах отслеживаются эскалации по причине, уровню, возрасту, результату и владельцу. | Показывает точки давления. |
+| callescops.reporting.first_call_resolution | решение по первому требованию | MEASUREMENT | FCR измеряет случаи, решенные без эскалации или повторного контакта. | Указывает на качество знаний и авторитета. |
+| callescops.reporting.top_drivers | лучшие водители | MODEL | Основные причины эскалации указывают на путаницу в политике, задержки на местах или системные дефекты. | Направляет работу по улучшению. |
+| callescops.review.daily_huddle | ежедневная встреча | METHOD | Команды рассматривают горячие случаи, сбои в работе, изменения в политике и кадровом обеспечении. | Обеспечивает согласованность колл-центра. |
+| callescops.review.after_event | обзор после мероприятия | METHOD | Крупные события, связанные с выставлением счетов, отключением электроэнергии или качеством воды, подлежат последующей проверке в колл-центре. | Улучшает реакцию на скачки напряжения. |
+| callescops.closeout.close_criteria | близкие критерии | QUALITY_CHECK | Дело закрывается только после ответа, действия, уведомления клиента или документально подтвержденного отсутствия ответа. | Предотвращает преждевременное закрытие. |
+| callescops.closeout.satisfaction_note | уведомление об удовлетворении | RECORD | Дополнительная заметка об удовлетворении или настроении фиксирует неразрешенное разочарование. | Помогает выявить случаи, требующие внимания руководства. |

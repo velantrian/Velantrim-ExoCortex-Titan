@@ -1,0 +1,13 @@
+# BATCH 718: Log Cabin — Construction & Chinking
+
+**KnowledgeUnits:** 50
+**Namespace:** `logcabin.ops.*`
+**Scope:** log_selection, notching, chinking, settling, roof, foundation, sealing
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| logcabin.ops.log_peeling_drawknife | Log Peeling — Drawknife | METHOD | Окорка бревна. Инструмент: drawknife (двуручный скобель) или spud (лопатка для коры). Время: весной (сок течёт под корой — кора легко снимается). Техника: тянуть drawknife к себе вдоль бревна. Сушка: после окорки — air dry 6-12 мес (до 20% MC). Проверка: moisture meter. Не сушить быстро в kiln (трещины — checking). | Зимний лес: меньше влаги, меньше насекомых. |
+| logcabin.ops.saddle_notch_scribing | Saddle Notch — Scribing | METHOD | Вырубка седлового паза (Scandinavian scribe). Инструмент: scriber (циркуль с levels) — повторяет контур нижнего бревна на верхнем. Chainsaw: notch cutouts (боковые), затем chainsaw/axe (удаление центра). Chisel: доводка. Зазор: идеально плотно (no light). Укладка: каждое бревно notch'ем садится на нижнее. Insulation: между брёвнами — fibreglass gasket или wool. | Saddle notch: самый распространённый (простой, прочный). |
+| logcabin.ops.chinking_synthetic_application | Chinking — Synthetic Application | METHOD | Герметизация щелей между брёвнами (chinking). Синтетический chinking (Log Jam, Perma-Chink): эластичный акриловый состав. Backer rod: пенополиэтиленовый шнур вставляется в щель (backing). Нанесение: пистолет (caulk gun) или bulk loader, разглаживание шпателем (concave tooling). Сцепление: primer на wood. Цвет: match wood. Движение: chinking эластичный (растягивается с settlement). Ремонт: вырезать повреждённый участок, нанести новый. | Chinking ≠ mortar (традиционный mortar трескается). |
+| logcabin.ops.settling_gap_allowance | Settling — Gap Allowance | METHOD | Компенсация усадки сруба. Log walls оседают на 3-8% высоты при сушке (зависит от MC). Slip joint: над окнами/дверями — adjustable frame (screw jack), или gap (зазоры заполняются insulation, закрываются trim). Через год: подтянуть screws. Threaded rod: через всю стену (стягивает брёвна по мере усадки), гайки периодически подтягиваются. | Без slip joint: окна/двери зажаты или деформированы. |
+| logcabin.ops.roof_overhang_protection | Roof Overhang — Protection | METHOD | Защита бревенчатых стен от осадков. Overhang (свес крыши): 90-120 см минимум (logs должны быть укрыты от прямого дождя). Gutters: большие (ливни!). Porch: wrap-around porch защищает ещё лучше. UV защита: бревна обрабатываются UV-blocking stain. Широкие eaves: традиционная защита в скандинавском стиле. | Дождь = rot на торцах брёвен. |

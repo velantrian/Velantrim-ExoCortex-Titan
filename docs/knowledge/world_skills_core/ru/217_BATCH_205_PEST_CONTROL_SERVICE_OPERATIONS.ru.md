@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| pestops.intake.service_request | Pest control service request | invariant | Request records pest concern, site, contact, access, urgency, pets, children and prior treatment. | start safely |
-| pestops.intake.pest_sighting | Pest sighting record | invariant | Record captures pest type, location, time, quantity, evidence and customer photo if available. | direct inspection |
-| pestops.intake.property_profile | Pest property profile | invariant | Profile lists structure type, rooms, exterior zones, sanitation issues and sensitive areas. | know environment |
-| pestops.intake.service_agreement | Pest service agreement | invariant | Agreement defines scope, frequency, target pests, exclusions, price and safety responsibilities. | clear service |
-| pestops.intake.notification_requirement | Treatment notification requirement | variant | Requirement defines tenant, neighbor, staff or occupant notices before service. | communication duty |
-| pestops.inspect.site_inspection | Pest site inspection | invariant | Inspection checks entry points, food, moisture, harborages, droppings, nests and activity. | diagnose conditions |
-| pestops.inspect.pest_identification | Pest identification | invariant | Identification distinguishes species or pest group to choose suitable control approach. | wrong ID wastes treatment |
-| pestops.inspect.conducive_condition | Conducive condition | invariant | Condition such as moisture, clutter, gaps or food supports pest activity. | fix root cause |
-| pestops.inspect.exclusion_gap | Pest exclusion gap | invariant | Gap is opening or defect allowing pest entry or movement. | physical control |
-| pestops.inspect.monitoring_device | Monitoring device | variant | Device detects activity using trap, bait station, glue board or sensor. | evidence over guess |
-| pestops.plan.treatment_plan | Pest treatment plan | invariant | Plan states target pest, areas, method, product or nonchemical controls and follow-up. | structured response |
-| pestops.plan.integrated_pest_management | Integrated pest management | invariant | IPM combines inspection, sanitation, exclusion, monitoring and targeted treatment. | reduce overuse |
-| pestops.plan.threshold | Pest action threshold | variant | Threshold defines activity level that triggers treatment or escalation. | proportional response |
-| pestops.plan.customer_preparation | Customer preparation instruction | invariant | Instruction tells occupant what to clean, move, protect, remove or avoid before service. | treatment readiness |
-| pestops.plan.sensitive_site | Sensitive site flag | variant | Flag marks daycare, food plant, healthcare, water, animals, pollinators or protected area. | extra caution |
-| pestops.chemical.product_label | Pesticide label | invariant | Label defines legal use, target pests, dosage, PPE, site, restrictions and warnings. | label is control |
-| pestops.chemical.mix_log | Chemical mix log | invariant | Log records product, amount, dilution, applicator, site, time and target. | trace application |
-| pestops.chemical.ppe_requirement | Pest control PPE requirement | invariant | Requirement follows label, task, product and exposure risk. | worker safety |
-| pestops.chemical.storage_control | Pesticide storage control | invariant | Control separates, secures, labels and contains products according to hazard and rule. | prevent exposure |
-| pestops.chemical.spill_response | Pesticide spill response | invariant | Response isolates area, uses kit, protects people, contains product and documents event. | emergency readiness |
-| pestops.method.bait_station | Bait station service | variant | Service checks placement, condition, consumption, security, labeling and replenishment. | controlled bait use |
-| pestops.method.trap_placement | Trap placement | variant | Placement considers pest travel paths, safety, access, non-target risk and inspection schedule. | catch effectively |
-| pestops.method.exclusion_work | Exclusion work | variant | Work seals gaps, screens vents, repairs sweeps or blocks access points. | physical prevention |
-| pestops.method.sanitation_recommendation | Sanitation recommendation | invariant | Recommendation targets food, waste, clutter, grease, moisture or storage practices. | customer part |
-| pestops.method.heat_treatment | Heat treatment | variant | Treatment uses controlled heat process with monitoring and safety planning where appropriate. | nonchemical option |
-| pestops.route.route_schedule | Pest route schedule | invariant | Schedule groups customers by geography, contract frequency, prep readiness and urgency. | efficient service |
-| pestops.route.vehicle_inventory | Pest vehicle inventory | invariant | Inventory tracks products, traps, PPE, tools, labels, SDS and spill kit. | ready truck |
-| pestops.route.access_issue | Pest access issue | invariant | Issue records locked gate, absent customer, unsafe area, animal, weather or denied entry. | explain missed work |
-| pestops.route.weather_limit | Pest weather limit | variant | Limit stops or changes exterior treatment during wind, rain, heat or freezing conditions. | protect environment |
-| pestops.route.service_window | Pest service window | invariant | Window communicates expected technician arrival and required occupant action. | customer planning |
-| pestops.records.service_report | Pest service report | invariant | Report lists findings, actions, products, locations, recommendations, restrictions and next visit. | service evidence |
-| pestops.records.site_map | Pest site map | variant | Map marks stations, traps, hotspots, entry points and restricted zones. | repeatable route |
-| pestops.records.sds_access | Safety data sheet access | invariant | Access provides chemical hazard and response information to workers and customers where required. | informed safety |
-| pestops.records.regulatory_log | Pest regulatory log | invariant | Log supports required application, product, license, customer and notification records. | compliance |
-| pestops.records.photo_evidence | Pest photo evidence | variant | Photos document damage, droppings, devices, conditions or completed exclusion. | visual proof |
-| pestops.followup.followup_visit | Pest follow-up visit | invariant | Visit checks activity after treatment, customer actions, device results and next steps. | verify effect |
-| pestops.followup.reinfestation | Reinfestation note | variant | Note distinguishes new entry, survival, neighboring source or incomplete control. | choose response |
-| pestops.followup.customer_education | Pest customer education | invariant | Education explains prevention, sanitation, storage, moisture and monitoring responsibilities. | long-term control |
-| pestops.followup.escalation | Pest escalation | invariant | Escalation involves supervisor, alternative method, structural repair or specialist. | solve persistent issue |
-| pestops.followup.closure_criteria | Pest closure criteria | variant | Criteria define when activity is controlled enough to close case or reduce service. | avoid endless work |
-| pestops.safety.non_target_risk | Non-target risk | invariant | Risk covers people, pets, wildlife, pollinators, food, water and sensitive surfaces. | avoid collateral harm |
-| pestops.safety.license_record | Applicator license record | invariant | Record tracks technician certification, categories, expiration and continuing education. | legal applicator |
-| pestops.metrics.pest_kpi | Pest control KPI | variant | KPI tracks callbacks, activity trends, route completion, product use, safety events and retention. | manage service |
-| pestops.continuity.outbreak_response | Pest outbreak response | invariant | Response prioritizes severe infestation, communication, staffing, supplies and repeated monitoring. | handle surge |
+| pestops.intake.service_request | Заявка на услугу дезинсекции | invariant | Запрос записывает проблему с вредителями, местонахождение, контакт, доступ, срочность, домашних животных, детей и предыдущую обработку. | начать безопасно |
+| pestops.intake.pest_sighting | Рекорд наблюдения за вредителями | invariant | В протоколе фиксируются тип вредного организма, местонахождение, время, количество, доказательства и фотография клиента, если таковая имеется. | прямой осмотр |
+| pestops.intake.property_profile | Профиль свойств вредителей | invariant | В профиле указаны тип конструкции, помещения, внешние зоны, проблемы санитарии и чувствительные зоны. | знать окружающую среду |
+| pestops.intake.service_agreement | Договор на оказание услуг по борьбе с вредителями | invariant | Соглашение определяет объем, частоту, целевые вредные организмы, исключения, цену и ответственность за безопасность. | четкий сервис |
+| pestops.intake.notification_requirement | Требование уведомления о лечении | variant | Требование определяет уведомления арендатора, соседа, персонала или жильцов перед обслуживанием. | обязанность связи |
+| pestops.inspect.site_inspection | Осмотр территории от вредителей | invariant | Инспекция проверяет точки входа, пищу, влажность, убежища, помет, гнезда и активность. | диагностировать состояния |
+| pestops.inspect.pest_identification | Идентификация вредителей | invariant | Идентификация позволяет различать виды или группы вредителей, чтобы выбрать подходящий метод борьбы. | неправильный идентификатор обращения с отходами |
+| pestops.inspect.conducive_condition | Благоприятные условия | invariant | Такие условия, как влажность, беспорядок, пробелы или еда, способствуют активности вредителей. | устранить первопричину |
+| pestops.inspect.exclusion_gap | Пробел в исключении вредителей | invariant | Зазор – это отверстие или дефект, позволяющий проникнуть или передвигаться вредителям. | физический контроль |
+| pestops.inspect.monitoring_device | Устройство мониторинга | variant | Устройство обнаруживает активность с помощью ловушки, станции приманки, клеевой доски или датчика. | доказательства важнее догадок |
+| pestops.plan.treatment_plan | План борьбы с вредителями | invariant | В плане указаны цели борьбы с вредителями, зоны, методы, продукты или нехимические меры борьбы и последующие меры. | структурированный ответ |
+| pestops.plan.integrated_pest_management | Комплексная борьба с вредителями | invariant | ИПМ сочетает в себе инспекцию, санитарную обработку, изоляцию, мониторинг и целенаправленное лечение. | уменьшить чрезмерное использование |
+| pestops.plan.threshold | Порог действия вредителей | variant | Порог определяет уровень активности, который вызывает лечение или эскалацию. | пропорциональный ответ |
+| pestops.plan.customer_preparation | Инструкция по подготовке клиента | invariant | Инструкция сообщает жильцу, что следует чистить, перемещать, защищать, удалять или избегать перед обслуживанием. | готовность к лечению |
+| pestops.plan.sensitive_site | Флаг деликатного сайта | variant | Флаг отмечает детский сад, пищевое растение, здравоохранение, воду, животных, опылителей или охраняемую территорию. | дополнительная осторожность |
+| pestops.chemical.product_label | Этикетка пестицидов | invariant | На этикетке указано законное использование, целевые вредители, дозировка, СИЗ, место размещения, ограничения и предупреждения. | этикетка - это контроль |
+| pestops.chemical.mix_log | Журнал химической смеси | invariant | В журнале регистрируются продукт, количество, разведение, аппликатор, место, время и цель. | приложение трассировки |
+| pestops.chemical.ppe_requirement | Требования к СИЗ для борьбы с вредителями | invariant | Требование соответствует маркировке, задаче, продукту и риску воздействия. | безопасность работников |
+| pestops.chemical.storage_control | Контроль хранения пестицидов | invariant | Контроль отделяет, защищает, маркирует и удерживает продукты в соответствии с опасностями и правилами. | предотвратить воздействие |
+| pestops.chemical.spill_response | Реагирование на разлив пестицидов | invariant | Реагирование изолирует зону, использует комплект, защищает людей, локализует продукт и документирует событие. | аварийная готовность |
+| pestops.method.bait_station | Сервис приманочной станции | variant | Служба проверяет размещение, состояние, расход, безопасность, маркировку и пополнение запасов. | контролируемое использование приманки |
+| pestops.method.trap_placement | Размещение ловушки | variant | При размещении учитываются пути перемещения вредных организмов, безопасность, доступ, нецелевой риск и график проверок. | эффективно ловить |
+| pestops.method.exclusion_work | Исключительная работа | variant | Работа герметизирует щели, экранирует вентиляционные отверстия, ремонтирует подчистки или блокирует точки доступа. | физическая профилактика |
+| pestops.method.sanitation_recommendation | Рекомендации по санитарии | invariant | Рекомендация касается пищевых продуктов, отходов, беспорядка, жира, влаги или методов хранения. | клиентская часть |
+| pestops.method.heat_treatment | Термическая обработка | variant | При лечении используется контролируемый тепловой процесс с мониторингом и планированием безопасности, где это необходимо. | нехимический вариант |
+| pestops.route.route_schedule | Расписание пештского маршрута | invariant | График группирует клиентов по географическому положению, частоте заключения контрактов, готовности и срочности. | эффективный сервис |
+| pestops.route.vehicle_inventory | Инвентаризация транспортных средств от вредителей | invariant | Инвентаризация отслеживает продукты, ловушки, СИЗ, инструменты, этикетки, паспорта безопасности и набор для разлива. | готовый грузовик |
+| pestops.route.access_issue | Проблема доступа к вредителям | invariant | Выдавайте записи о запертых воротах, отсутствии клиента, небезопасной зоне, животных, погоде или запрете на вход. | объяснить пропущенную работу |
+| pestops.route.weather_limit | Погодный лимит Пешта | variant | Ограничение останавливает или меняет внешнюю обработку во время ветра, дождя, жары или мороза. | защищать окружающую среду |
+| pestops.route.service_window | Окно службы борьбы с вредителями | invariant | Окно сообщает об ожидаемом прибытии технического специалиста и необходимых действиях пассажира. | планирование клиентов |
+| pestops.records.service_report | Отчет службы по борьбе с вредителями | invariant | В отчете перечислены выводы, действия, продукты, места, рекомендации, ограничения и следующее посещение. | служебные доказательства |
+| pestops.records.site_map | Карта сайта о вредителях | variant | На карте отмечены станции, ловушки, горячие точки, точки входа и зоны ограниченного доступа. | повторяемый маршрут |
+| pestops.records.sds_access | Доступ к паспорту безопасности | invariant | Доступ предоставляет работникам и клиентам информацию о химической опасности и мерах реагирования, где это необходимо. | информированная безопасность |
+| pestops.records.regulatory_log | Журнал регулирования вредителей | invariant | Журнал поддерживает необходимые записи приложений, продуктов, лицензий, клиентов и уведомлений. | согласие |
+| pestops.records.photo_evidence | Фотодоказательства о вредителях | variant | Фотографии документируют повреждения, помет, устройства, условия или полное исключение. | визуальное доказательство |
+| pestops.followup.followup_visit | Последующий визит к вредителю | invariant | Посещение проверяет активность после лечения, действия клиентов, результаты работы устройств и последующие шаги. | проверить эффект |
+| pestops.followup.reinfestation | Примечание о повторном заражении | variant | Обратите внимание, различают новое проникновение, выживание, соседний источник или неполный контроль. | выберите ответ |
+| pestops.followup.customer_education | Обучение клиентов Pest | invariant | Образование объясняет обязанности по профилактике, санитарии, хранению, влажности и мониторингу. | долгосрочный контроль |
+| pestops.followup.escalation | Эскалация вредителей | invariant | Эскалация предполагает участие руководителя, альтернативного метода, структурного ремонта или специалиста. | решить постоянную проблему |
+| pestops.followup.closure_criteria | Критерии закрытия вредных организмов | variant | Критерии определяют, когда деятельность контролируется достаточно, чтобы закрыть дело или сократить объем услуг. | избегать бесконечной работы |
+| pestops.safety.non_target_risk | Нецелевой риск | invariant | Риск распространяется на людей, домашних животных, дикую природу, опылителей, продукты питания, воду и чувствительные поверхности. | избежать сопутствующего вреда |
+| pestops.safety.license_record | Запись о лицензии аппликатора | invariant | Запись отслеживает сертификацию технического специалиста, категории, срок действия и непрерывное образование. | юридический заявитель |
+| pestops.metrics.pest_kpi | KPI по борьбе с вредителями | variant | KPI отслеживает обратные вызовы, тенденции активности, завершение маршрута, использование продукта, события безопасности и удержание. | управлять сервисом |
+| pestops.continuity.outbreak_response | Реакция на вспышку вредителей | invariant | При реагировании приоритетными являются серьезное заражение, коммуникация, укомплектование персоналом, снабжение и повторный мониторинг. | справиться с всплеском |

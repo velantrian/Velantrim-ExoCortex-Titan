@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| parcelops.induction.parcel_induction | Parcel induction | invariant | Parcel induction вводит отправление в сеть через прием, сканирование, маркировку и первичную проверку. | старт tracking |
-| parcelops.induction.acceptance_scan | Acceptance scan | invariant | Acceptance scan подтверждает, что оператор получил отправление в определенном месте и времени. | доказать прием |
-| parcelops.induction.label_readability | Label readability | invariant | Читаемая этикетка нужна для автоматической сортировки, route planning и customer visibility. | label drives movement |
-| parcelops.induction.dimension_capture | Dimension capture | invariant | Dimension capture фиксирует размер и вес посылки для тарифа, capacity и handling rules. | объем тоже стоимость |
-| parcelops.induction.dangerous_goods_check | Dangerous goods check | invariant | Проверка dangerous goods выявляет запрещенные или ограниченные вложения до входа в сеть. | безопасность сети |
-| parcelops.induction.address_quality | Address quality | invariant | Address quality проверяет полноту, postcode, locality, apartment, recipient и deliverability. | плохой адрес задерживает |
-| parcelops.sorting.primary_sort | Primary sort | invariant | Primary sort разделяет отправления по крупным направлениям, hubs, regions или transport lanes. | first network split |
-| parcelops.sorting.secondary_sort | Secondary sort | invariant | Secondary sort уточняет направление до depot, route, delivery zone или carrier partner. | ближе к последней миле |
-| parcelops.sorting.missort | Missort | invariant | Missort отправляет parcel в неверный поток и вызывает задержку, rework или customer complaint. | ошибка сортировки |
-| parcelops.sorting.chute_overflow | Chute overflow | variant | Chute overflow возникает, когда сортировочный выход переполнен и начинает тормозить line flow. | capacity bottleneck |
-| parcelops.sorting.manual_sort | Manual sort | variant | Manual sort нужен для нестандартных, поврежденных, unreadable или exception parcels. | automation cannot handle all |
-| parcelops.sorting.sort_plan | Sort plan | invariant | Sort plan задает destinations, cutoffs, equipment settings, staffing и contingency routing. | сортировка по плану |
-| parcelops.routing.route_sequence | Route sequencing | invariant | Route sequencing упорядочивает доставки по geography, service commitments, traffic и vehicle constraints. | водитель едет логично |
-| parcelops.routing.delivery_zone | Delivery zone | invariant | Delivery zone группирует адреса для устойчивого распределения объема между routes. | territory design |
-| parcelops.routing.cutoff_time | Parcel cutoff time | invariant | Cutoff time определяет последний момент, когда отправление может попасть в конкретный transport или delivery cycle. | deadline network |
-| parcelops.routing.linehaul_dispatch | Linehaul dispatch | invariant | Linehaul dispatch отправляет trailers или containers между hubs по расписанию, capacity и priority. | магистральная сеть |
-| parcelops.routing.load_plan | Parcel load plan | invariant | Load plan определяет, какие containers, bags или parcels идут в vehicle and in what order. | loading supports delivery |
-| parcelops.routing.route_rebalance | Route rebalance | variant | Rebalance перераспределяет stops или parcels при перегрузе, absence, vehicle issue или weather disruption. | keep routes feasible |
-| parcelops.tracking.event_scan | Tracking event scan | invariant | Event scan updates parcel status, location and time in customer and operational systems. | visibility through network |
-| parcelops.tracking.out_for_delivery | Out-for-delivery event | invariant | Out-for-delivery event означает, что parcel assigned to courier route for delivery attempt. | customer expectation |
-| parcelops.tracking.delivery_attempt | Delivery attempt | invariant | Delivery attempt records whether courier reached address, delivered, failed, redirected or left notice. | last-mile truth |
-| parcelops.tracking.proof_of_delivery | Proof of delivery | invariant | Proof of delivery may include signature, photo, PIN, geolocation or recipient confirmation. | доказать завершение |
-| parcelops.tracking.exception_event | Parcel exception event | invariant | Exception event records abnormal condition such as damage, delay, address issue, hold or failed delivery. | signal to intervene |
-| parcelops.tracking.scan_compliance | Scan compliance | invariant | Scan compliance measures whether required scans occur at expected handoff points. | network data quality |
-| parcelops.delivery.safe_place | Safe-place delivery | variant | Safe-place delivery leaves parcel at approved location when policy, risk and customer preference allow it. | convenience with risk |
-| parcelops.delivery.recipient_not_home | Recipient not home | invariant | Recipient-not-home outcome triggers notice, retry, pickup point, locker or return workflow. | failed attempt path |
-| parcelops.delivery.locker_delivery | Parcel locker delivery | variant | Locker delivery uses authenticated compartment access and changes delivery, pickup and exception processes. | unattended handover |
-| parcelops.delivery.age_check | Age-check delivery | variant | Age-check delivery verifies recipient eligibility for restricted goods according to policy and law. | not every parcel can drop |
-| parcelops.delivery.cod_collection | Cash-on-delivery collection | variant | COD collection links parcel handover to payment capture, receipt and reconciliation. | delivery plus money |
-| parcelops.delivery.route_closeout | Route closeout | invariant | Route closeout reconciles delivered, failed, returned, cash, devices and undelivered parcels. | finish driver day |
-| parcelops.returns.return_label | Return label | invariant | Return label identifies reverse shipment, merchant, customer, service and routing. | reverse logistics starts |
-| parcelops.returns.return_authorization | Return authorization | variant | Authorization confirms that merchant or carrier allows return under specific conditions. | control reverse flow |
-| parcelops.returns.undeliverable_return | Undeliverable return | invariant | Undeliverable return sends parcel back when delivery cannot be completed after defined attempts or holds. | close failed delivery |
-| parcelops.returns.damage_claim | Parcel damage claim | invariant | Damage claim records item condition, packaging, evidence, liability review and compensation path. | structured dispute |
-| parcelops.returns.lost_parcel_investigation | Lost parcel investigation | invariant | Investigation checks scans, containers, depot records, route notes and exception logs to locate parcel. | find before compensate |
-| parcelops.returns.customer_refund_signal | Refund signal | variant | Refund signal informs merchant or service team that parcel status may justify customer refund or replacement. | commerce depends on tracking |
-| parcelops.capacity.peak_plan | Peak parcel plan | variant | Peak plan prepares staffing, linehaul, sort capacity, lockers, vehicles and customer messaging for high volume. | seasonality hits network |
-| parcelops.capacity.trailer_utilization | Trailer utilization | invariant | Trailer utilization measures how well transport capacity is used by volume, weight or container count. | moving air is expensive |
-| parcelops.capacity.depot_backlog | Depot backlog | invariant | Backlog shows parcels waiting beyond planned processing, dispatch or delivery cycle. | visible congestion |
-| parcelops.capacity.route_density | Route density | invariant | Route density reflects stops or parcels per area and affects cost, speed and service design. | geography shapes economics |
-| parcelops.quality.service_level | Parcel service level | invariant | Service level compares actual delivery time with promised product or SLA. | promise versus reality |
-| parcelops.quality.damage_rate | Parcel damage rate | invariant | Damage rate tracks damaged parcels by lane, packaging, handler, product type or facility. | find weak points |
-| parcelops.quality.complaint_code | Parcel complaint code | invariant | Complaint codes classify customer issues for trends, root cause and process improvement. | complaints become data |
-| parcelops.quality.network_root_cause | Network root cause | invariant | Root cause analysis connects delay or failure to scan gap, capacity, address, transport, sort or delivery issue. | fix network, not symptom |
+| parcelops.induction.parcel_induction | Индукция посылки | invariant | Parcel induction вводит отправление в сеть через прием, сканирование, маркировку и первичную проверку. | начать отслеживание |
+| parcelops.induction.acceptance_scan | Приемочное сканирование | invariant | Acceptance scan подтверждает, что оператор получил отправление в определенном месте и времени. | доказать прием |
+| parcelops.induction.label_readability | Читабельность этикетки | invariant | Читаемая этикетка нужна для автоматической сортировки, route planning и customer visibility. | этикетка стимулирует движение |
+| parcelops.induction.dimension_capture | Захват размеров | invariant | Dimension capture фиксирует размер и вес посылки для тарифа, capacity и handling rules. | объем тоже стоимость |
+| parcelops.induction.dangerous_goods_check | Проверка опасных грузов | invariant | Проверка dangerous goods выявляет запрещенные или ограниченные вложения до входа в сеть. | безопасность сети |
+| parcelops.induction.address_quality | Качество адреса | invariant | Качество адреса, почтовый индекс, населенный пункт, квартира, получатель и возможность доставки. | плохой адрес задерживает |
+| parcelops.sorting.primary_sort | Первичная сортировка | invariant | Primary sort разделяет отправления по крупным направлениям, hubs, regions или transport lanes. | первое разделение сети |
+| parcelops.sorting.secondary_sort | Вторичная сортировка | invariant | Вторичная сортировка уточняет направление до депо, маршрута, зоны доставки или партнера-перевозчика. | ближе к последней миле |
+| parcelops.sorting.missort | Миссорт | invariant | Missort отправляет parcel в неверный поток и вызывает задержку, rework или customer complaint. | ошибка сортировки |
+| parcelops.sorting.chute_overflow | Перелив желоба | variant | Chute overflow возникает, когда сортировочный выход переполнен и начинает тормозить line flow. | узкое место в мощности |
+| parcelops.sorting.manual_sort | Ручная сортировка | variant | Manual sort нужен для нестандартных, поврежденных, unreadable или exception parcels. | автоматизация не может справиться со всем |
+| parcelops.sorting.sort_plan | План сортировки | invariant | План сортировки задает пункты назначения, обрезки, настройки оборудования, укомплектование персоналом и маршрутизацию на случай непредвиденных обстоятельств. | сортировка по плану |
+| parcelops.routing.route_sequence | Последовательность маршрутов | invariant | Последовательность маршрутов упорядочивает доставку с учетом географии, обязательств по обслуживанию, ограничений на движение транспорта и транспортных средств. | водитель едет логично |
+| parcelops.routing.delivery_zone | Зона доставки | invariant | Delivery zone группирует адреса для устойчивого распределения объема между routes. | дизайн территории |
+| parcelops.routing.cutoff_time | Время окончания посылки | invariant | Cutoff time определяет последний момент, когда отправление может попасть в конкретный transport или delivery cycle. | сеть сроков |
+| parcelops.routing.linehaul_dispatch | Линейная диспетчеризация | invariant | Диспетчерская линия Linehaul отправляет прицепы или контейнеры между узлами по расписанию, мощности и приоритету. | магистральная сеть |
+| parcelops.routing.load_plan | План загрузки посылки | invariant | План загрузки определяет, какие контейнеры, сумки или посылки помещаются в транспортное средство и в каком порядке. | погрузка поддерживает доставку |
+| parcelops.routing.route_rebalance | Ребалансировка маршрутов | variant | Ребалансировка перераспределяет остановки или посылки при перегрузке, отсутствии, проблеме с транспортным средством или погодных сбоях. | сохранять маршруты осуществимыми |
+| parcelops.tracking.event_scan | Отслеживание событий сканирования | invariant | Сканирование событий обновляет статус, местоположение и время посылки в клиентских и операционных системах. | видимость через сеть |
+| parcelops.tracking.out_for_delivery | Событие завершения доставки | invariant | Событие «Отправка для доставки» означает, что посылка назначена курьерскому маршруту для попытки доставки. | ожидания клиентов |
+| parcelops.tracking.delivery_attempt | Попытка доставки | invariant | Попытка доставки фиксирует, достиг ли курьер адреса, доставил его, не удалось, перенаправил или оставил уведомление. | правда последней мили |
+| parcelops.tracking.proof_of_delivery | Доказательство доставки | invariant | Доказательством доставки может быть подпись, фотография, PIN-код, геолокация или подтверждение получателя. | доказать завершение |
+| parcelops.tracking.exception_event | Событие исключения посылки | invariant | Событие-исключение фиксирует аномальные условия, такие как повреждение, задержка, проблема с адресом, задержка или сбой доставки. | сигнал о вмешательстве |
+| parcelops.tracking.scan_compliance | Сканирование соответствия | invariant | Соответствие сканирования определяет, выполняются ли требуемые сканирования в ожидаемых точках передачи обслуживания. | качество сетевых данных |
+| parcelops.delivery.safe_place | Доставка в безопасное место | variant | Доставка в безопасное место оставляет посылку в утвержденном месте, если это позволяют политика, риск и предпочтения клиента. | удобство с риском |
+| parcelops.delivery.recipient_not_home | Получателя нет дома | invariant | Результат «получатель отсутствует дома» запускает уведомление, повторную попытку, пункт выдачи, шкафчик или рабочий процесс возврата. | путь неудачной попытки |
+| parcelops.delivery.locker_delivery | Доставка в почтомат | variant | При доставке в шкафчик используется аутентифицированный доступ к отсеку и вносятся изменения в процессы доставки, получения и исключения. | необслуживаемая передача |
+| parcelops.delivery.age_check | Доставка с проверкой возраста | variant | Доставка с проверкой возраста подтверждает право получателя на получение ограниченных товаров в соответствии с политикой и законодательством. | не каждая посылка может упасть |
+| parcelops.delivery.cod_collection | Получение наложенным платежом | variant | Сбор наложенным платежом связывает передачу посылки с получением, получением и сверкой платежей. | доставка плюс деньги |
+| parcelops.delivery.route_closeout | Закрытие маршрута | invariant | Закрытие маршрута сверяет доставленные, не доставленные, возвращенные, наличные, устройства и недоставленные посылки. | закончить день водителя |
+| parcelops.returns.return_label | Возвратная этикетка | invariant | Этикетка возврата идентифицирует обратную отправку, продавца, клиента, услугу и маршрут. | начинается обратная логистика |
+| parcelops.returns.return_authorization | Разрешение на возврат | variant | Авторизация подтверждает, что продавец или перевозчик разрешают возврат при определенных условиях. | управлять обратным потоком |
+| parcelops.returns.undeliverable_return | Недоставленный возврат | invariant | При возврате с невозможностью доставки посылка отправляется обратно, если доставка не может быть завершена после определенных попыток или задержек. | закрыть неудачную доставку |
+| parcelops.returns.damage_claim | Претензия о повреждении посылки | invariant | В претензии о возмещении ущерба фиксируются состояние товара, упаковка, доказательства, проверка ответственности и порядок компенсации. | структурированный спор |
+| parcelops.returns.lost_parcel_investigation | Расследование утерянной посылки | invariant | В ходе расследования проверяются сканы, контейнеры, записи склада, заметки о маршрутах и ​​журналы исключений, чтобы найти посылку. | найти, прежде чем компенсировать |
+| parcelops.returns.customer_refund_signal | Сигнал возврата | variant | Сигнал возврата информирует продавца или сервисную службу о том, что статус посылки может оправдывать возврат или замену покупателем. | коммерция зависит от отслеживания |
+| parcelops.capacity.peak_plan | Пиковый план посылки | variant | Пиковый план предусматривает подготовку персонала, транспортных перевозок, сортировочных мощностей, шкафчиков, транспортных средств и сообщений клиентам для больших объемов перевозок. | сезонность поражает сеть |
+| parcelops.capacity.trailer_utilization | Использование прицепа | invariant | Загрузка прицепа измеряет, насколько хорошо используются транспортные возможности по объему, весу или количеству контейнеров. | перемещение воздуха стоит дорого |
+| parcelops.capacity.depot_backlog | Отставание в депо | invariant | В журнале невыполненных заказов отображаются посылки, ожидающие завершения запланированного цикла обработки, отправки или доставки. | видимая пробка |
+| parcelops.capacity.route_density | Плотность маршрута | invariant | Плотность маршрутов отражает количество остановок или участков на каждую зону и влияет на стоимость, скорость и структуру услуг. | география формирует экономику |
+| parcelops.quality.service_level | Уровень обслуживания посылок | invariant | Уровень обслуживания сравнивает фактическое время доставки с обещанным продуктом или соглашением об уровне обслуживания. | обещание против реальности |
+| parcelops.quality.damage_rate | Степень повреждения посылки | invariant | Коэффициент повреждения отслеживает поврежденные посылки по маршруту, упаковке, обработчику, типу продукта или предприятию. | найти слабые места |
+| parcelops.quality.complaint_code | Код жалобы на посылку | invariant | Коды жалоб классифицируют проблемы клиентов по тенденциям, первопричинам и улучшениям процессов. | жалобы становятся данными |
+| parcelops.quality.network_root_cause | Основная причина сети | invariant | Анализ первопричин связывает задержку или невозможность сканирования пробелов, емкости, адреса, проблемы транспортировки, сортировки или доставки. | исправить сеть, а не симптом |

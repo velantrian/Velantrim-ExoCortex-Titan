@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| irrigationops.inventory.canal_segment | Irrigation canal segment record | invariant | Record stores canal reach, capacity, lining, structures, ownership, condition and maintenance history. | manage canal |
-| irrigationops.inventory.gate_record | Irrigation gate record | invariant | Record captures gate type, location, actuator, condition, setting range and service area. | manage control |
-| irrigationops.inventory.delivery_point | Irrigation delivery point | invariant | Point connects district supply to turnout, farm lateral, meter, user or rotation schedule. | deliver water |
-| irrigationops.inventory.check_structure | Canal check structure | variant | Structure controls upstream water level, flow division and delivery stability. | regulate canal |
-| irrigationops.scheduling.water_order | Irrigation water order | invariant | Order records user, volume or flow, start time, duration, crop area and delivery point. | schedule delivery |
-| irrigationops.scheduling.rotation_schedule | Irrigation rotation schedule | invariant | Schedule allocates water turns by user, lateral, flow, time and priority rules. | share water |
-| irrigationops.scheduling.delivery_change | Irrigation delivery change | variant | Change modifies order because of weather, crop need, canal condition or user request. | adapt operations |
-| irrigationops.flow.flow_measurement | Irrigation flow measurement | invariant | Measurement estimates discharge using meter, weir, flume, gate rating or velocity-area method. | account water |
-| irrigationops.flow.staff_gauge_reading | Canal staff gauge reading | invariant | Reading records water level at structure for operations, flow estimation or alarms. | monitor level |
-| irrigationops.flow.gate_setting | Irrigation gate setting | invariant | Setting defines opening position used to control flow or water level. | regulate delivery |
-| irrigationops.flow.flow_balance | Irrigation flow balance | variant | Balance compares inflow, deliveries, spills, storage change, seepage and losses. | account water |
-| irrigationops.canals.patrol | Irrigation canal patrol | invariant | Patrol checks water level, banks, debris, leaks, gates, trespass and vegetation. | detect issues |
-| irrigationops.canals.debris_removal | Canal debris removal | invariant | Removal clears branches, trash, weeds, sediment or obstruction from canal and structures. | maintain flow |
-| irrigationops.canals.bank_slump | Canal bank slump | invariant | Slump indicates bank instability that can reduce capacity or cause breach. | prevent failure |
-| irrigationops.canals.seepage_spot | Canal seepage spot | invariant | Seepage shows leakage through bank, lining, structure joint or animal burrow. | investigate leak |
-| irrigationops.gates.gate_operation | Irrigation gate operation | invariant | Operation opens, closes or adjusts gate safely while monitoring level and downstream effects. | control water |
-| irrigationops.gates.gate_jam | Irrigation gate jam | variant | Jam occurs from sediment, debris, corrosion, bent stem, failed actuator or misalignment. | restore control |
-| irrigationops.gates.actuator_fault | Gate actuator fault | variant | Fault affects motor, gearbox, power, telemetry, limit switch or control signal. | repair automation |
-| irrigationops.maintenance.canal_dewatering | Canal dewatering | invariant | Dewatering lowers or diverts water to allow inspection, repair, sediment removal or lining work. | access asset |
-| irrigationops.maintenance.sediment_removal | Irrigation canal sediment removal | invariant | Removal restores capacity by excavating or flushing accumulated silt and sand. | improve conveyance |
-| irrigationops.maintenance.vegetation_control | Canal vegetation control | invariant | Control manages weeds, roots and brush affecting flow, access, lining or visibility. | maintain capacity |
-| irrigationops.maintenance.lining_repair | Canal lining repair | variant | Repair fixes cracks, panels, geomembrane, erosion, uplift or joint failure. | reduce losses |
-| irrigationops.leaks.leak_complaint | Irrigation leak complaint | invariant | Complaint records seepage, wet field, bank leak, turnout leak or flooding concern. | dispatch check |
-| irrigationops.leaks.emergency_breach | Irrigation canal breach | invariant | Breach releases uncontrolled water and requires shutdown, notifications, containment and repair. | protect property |
-| irrigationops.leaks.turnout_leak | Irrigation turnout leak | variant | Leak at delivery structure may involve gate seal, pipe, valve, joint or damage. | fix delivery |
-| irrigationops.complaints.low_flow_complaint | Irrigation low-flow complaint | invariant | Complaint reports insufficient delivery due to schedule, obstruction, gate, measurement or supply issue. | resolve service |
-| irrigationops.complaints.flooding_complaint | Irrigation flooding complaint | variant | Complaint reports overtopping, spill, operational error, blockage or downstream impact. | reduce damage |
-| irrigationops.complaints.water_quality_complaint | Irrigation water quality complaint | variant | Complaint notes sediment, algae, odor, debris or contamination affecting user delivery. | investigate source |
-| irrigationops.accounting.delivery_record | Irrigation delivery record | invariant | Record logs delivered flow, duration, volume, user, point and operator. | bill and account |
-| irrigationops.accounting.loss_estimate | Irrigation conveyance loss estimate | variant | Estimate covers seepage, evaporation, spills, operational waste and measurement error. | improve efficiency |
-| irrigationops.accounting.allocation_balance | Irrigation allocation balance | invariant | Balance tracks user entitlement, ordered water, delivered water and remaining amount. | manage rights |
-| irrigationops.safety.canal_public_safety | Irrigation canal public safety | invariant | Safety covers drowning risk, steep banks, fast water, signs, fences and outreach. | protect public |
-| irrigationops.safety.field_staff_safety | Irrigation field staff safety | invariant | Safety includes lone work, water hazards, gates, snakes, heat, vehicles and confined spaces. | protect workers |
-| irrigationops.safety.lockout_gate | Irrigation gate lockout | variant | Lockout controls energy before gate, actuator, pump or structure maintenance. | prevent injury |
-| irrigationops.telemetry.remote_monitoring | Irrigation remote monitoring | variant | Monitoring tracks levels, flows, gates, alarms, power and communication status. | operate efficiently |
-| irrigationops.telemetry.sensor_fault | Irrigation sensor fault | invariant | Fault affects level, flow, gate position, rain, pressure or communication readings. | verify data |
-| irrigationops.telemetry.manual_override | Irrigation manual override | invariant | Override lets field staff operate structure when automation fails or safety requires. | maintain control |
-| irrigationops.records.patrol_log | Irrigation patrol log | invariant | Log records canal conditions, flows, gate settings, issues, photos and actions. | trace fieldwork |
-| irrigationops.records.maintenance_ticket | Irrigation maintenance ticket | invariant | Ticket tracks defect, priority, crew, materials, shutdown need, completion and cost. | manage repairs |
-| irrigationops.reporting.daily_operations_report | Irrigation daily operations report | invariant | Report summarizes orders, deliveries, flows, outages, spills, complaints and maintenance. | coordinate staff |
-| irrigationops.metrics.delivery_reliability | Irrigation delivery reliability KPI | invariant | KPI measures scheduled deliveries completed at requested flow and time. | improve service |
-| irrigationops.metrics.unaccounted_water | Irrigation unaccounted water KPI | variant | KPI compares diverted water to measured deliveries, storage and known losses. | find losses |
-| irrigationops.coordination.watermaster_link | Irrigation watermaster coordination | variant | Coordination aligns field operations with water rights, river diversions, orders and curtailments. | obey allocation |
-| irrigationops.close.work_closeout | Irrigation field work closeout | invariant | Closeout confirms repair, gate setting, delivery status, records, user notice and follow-up. | finish work |
+| irrigationops.inventory.canal_segment | Запись участка оросительного канала | invariant | Хранит записи о протяженности каналов, пропускной способности, облицовке, конструкциях, собственности, состоянии и истории обслуживания. | управлять каналом |
+| irrigationops.inventory.gate_record | Запись оросительных ворот | invariant | Запись фиксирует тип ворот, местоположение, привод, состояние, диапазон настроек и зону обслуживания. | управлять контролем |
+| irrigationops.inventory.delivery_point | Пункт подачи орошения | invariant | Точка соединяет районное снабжение с стрелочным переводом, отводом фермы, счетчиком, пользователем или графиком ротации. | доставлять воду |
+| irrigationops.inventory.check_structure | Структура проверки канала | variant | Конструкция контролирует уровень воды в верхнем течении, разделение потока и стабильность подачи. | регулировать канал |
+| irrigationops.scheduling.water_order | Заказ поливной воды | invariant | В заказе фиксируются пользователь, объем или расход, время начала, продолжительность, площадь урожая и точка доставки. | запланировать доставку |
+| irrigationops.scheduling.rotation_schedule | График ротации полива | invariant | Расписание распределяет обороты воды по правилам пользователя, бокового направления, расхода, времени и приоритета. | поделиться водой |
+| irrigationops.scheduling.delivery_change | Изменение режима орошения | variant | Изменение изменяет порядок в зависимости от погоды, потребности в урожае, состояния канала или запроса пользователя. | адаптировать операции |
+| irrigationops.flow.flow_measurement | Измерение расхода орошения | invariant | Измерения оценивают расход с использованием счетчика, водослива, лотка, рейтинга ворот или метода площади-скорости. | счет воды |
+| irrigationops.flow.staff_gauge_reading | Показания датчика персонала канала | invariant | Чтение записей уровня воды на сооружении для операций, оценки расхода или сигналов тревоги. | уровень монитора |
+| irrigationops.flow.gate_setting | Настройка ирригационных ворот | invariant | Настройка определяет положение открытия, используемое для контроля расхода или уровня воды. | регулировать доставку |
+| irrigationops.flow.flow_balance | Баланс ирригационного стока | variant | Баланс сравнивает приток, поставки, разливы, изменения в хранилищах, просачивание и потери. | счет воды |
+| irrigationops.canals.patrol | Патруль оросительных каналов | invariant | Патруль проверяет уровень воды, берега, мусор, протечки, ворота, нарушение границ и растительность. | обнаруживать проблемы |
+| irrigationops.canals.debris_removal | Удаление мусора из канала | invariant | При удалении из канала и сооружений удаляются ветки, мусор, сорняки, отложения или препятствия. | поддерживать поток |
+| irrigationops.canals.bank_slump | Обвал берега канала | invariant | Спад указывает на нестабильность банка, которая может снизить пропускную способность или привести к взлому. | предотвратить неудачу |
+| irrigationops.canals.seepage_spot | Место просачивания канала | invariant | Просачивание указывает на утечку через берег, подкладку, стык конструкции или нору животного. | расследовать утечку |
+| irrigationops.gates.gate_operation | Работа оросительных ворот | invariant | Операция безопасно открывает, закрывает или регулирует ворота, отслеживая уровень и последствия на выходе. | контролировать воду |
+| irrigationops.gates.gate_jam | Заклинивание ирригационных ворот | variant | Заклинивание происходит из-за отложений, мусора, коррозии, изогнутого штока, неисправности привода или несоосности. | восстановить контроль |
+| irrigationops.gates.actuator_fault | Неисправность привода ворот | variant | Неисправность влияет на двигатель, коробку передач, мощность, телеметрию, концевой выключатель или управляющий сигнал. | автоматизация ремонта |
+| irrigationops.maintenance.canal_dewatering | Обезвоживание канала | invariant | Обезвоживание снижает или отводит воду для проведения осмотра, ремонта, удаления отложений или выполнения облицовочных работ. | доступ к активу |
+| irrigationops.maintenance.sediment_removal | Удаление отложений из оросительных каналов | invariant | Удаление восстанавливает емкость путем выкапывания или промывки накопившегося ила и песка. | улучшить транспортировку |
+| irrigationops.maintenance.vegetation_control | Контроль растительности канала | invariant | Контроль контролирует сорняки, корни и кустарники, влияющие на поток, доступ, подстилку или видимость. | поддерживать мощность |
+| irrigationops.maintenance.lining_repair | Ремонт облицовки канала | variant | Ремонт устраняет трещины, панели, геомембрану, эрозию, подъем или разрушение суставов. | сократить потери |
+| irrigationops.leaks.leak_complaint | Жалоба на утечку в оросительной системе | invariant | В жалобе фиксируются утечки, мокрое поле, утечка из берегов, утечка стрелок или опасения о наводнении. | чек отправки |
+| irrigationops.leaks.emergency_breach | Прорыв оросительного канала | invariant | В результате нарушения происходит неконтролируемый выброс воды, что требует отключения, уведомления, локализации и ремонта. | защищать собственность |
+| irrigationops.leaks.turnout_leak | Утечка оросительных стрелок | variant | Утечка в напорной конструкции может быть связана с уплотнением затвора, трубой, клапаном, соединением или повреждением. | исправить доставку |
+| irrigationops.complaints.low_flow_complaint | Жалоба на низкий расход при орошении | invariant | Жалоба сообщает о недостаточной доставке из-за графика, препятствий, проблем с воротами, измерениями или поставками. | решить проблему |
+| irrigationops.complaints.flooding_complaint | Жалоба на ирригационный паводок | variant | В жалобах сообщается о переливе, разливе, эксплуатационной ошибке, блокировке или воздействии на нисходящий поток. | уменьшить ущерб |
+| irrigationops.complaints.water_quality_complaint | Жалоба на качество оросительной воды | variant | В жалобе отмечается наличие осадка, водорослей, запаха, мусора или загрязнений, влияющих на доставку пользователем. | исследовать источник |
+| irrigationops.accounting.delivery_record | Рекорд полива | invariant | Записывайте журналы доставленного потока, продолжительности, объема, пользователя, точки и оператора. | счет и счет |
+| irrigationops.accounting.loss_estimate | Оценка потерь при ирригационной транспортировке | variant | Оценка включает просачивание, испарение, разливы, эксплуатационные отходы и ошибки измерения. | повысить эффективность |
+| irrigationops.accounting.allocation_balance | Баланс распределения ирригации | invariant | Баланс отслеживает права пользователя, заказанную воду, доставленную воду и оставшуюся сумму. | управлять правами |
+| irrigationops.safety.canal_public_safety | Общественная безопасность оросительного канала | invariant | Безопасность охватывает риск утопления, крутые берега, быструю воду, знаки, заборы и просвет. | защищать общественность |
+| irrigationops.safety.field_staff_safety | Безопасность персонала ирригационных полей | invariant | Безопасность включает работу в одиночку, водные опасности, ворота, змей, жару, транспортные средства и замкнутые пространства. | защитить работников |
+| irrigationops.safety.lockout_gate | Блокировка ирригационных ворот | variant | Блокировка контролирует энергию перед обслуживанием ворот, привода, насоса или конструкции. | предотвратить травмы |
+| irrigationops.telemetry.remote_monitoring | Дистанционный мониторинг орошения | variant | Мониторинг отслеживает уровни, потоки, ворота, сигналы тревоги, состояние питания и связи. | работать эффективно |
+| irrigationops.telemetry.sensor_fault | Неисправность датчика полива | invariant | Неисправность влияет на уровень, расход, положение затвора, дождь, давление или показания связи. | проверить данные |
+| irrigationops.telemetry.manual_override | Ручное управление поливом | invariant | Функция Override позволяет полевому персоналу управлять конструкцией в случае сбоя автоматизации или необходимости обеспечения безопасности. | сохранять контроль |
+| irrigationops.records.patrol_log | Журнал ирригационного патруля | invariant | В журнале фиксируются условия канала, потоки, настройки ворот, проблемы, фотографии и действия. | отслеживать полевые работы |
+| irrigationops.records.maintenance_ticket | Талон на обслуживание ирригации | invariant | Билет отслеживает дефект, приоритет, команду, материалы, необходимость остановки, завершение и стоимость. | управлять ремонтом |
+| irrigationops.reporting.daily_operations_report | Ежедневный отчет о ирригационных операциях | invariant | В отчете суммируются заказы, поставки, потоки, простои, разливы, жалобы и техническое обслуживание. | координировать персонал |
+| irrigationops.metrics.delivery_reliability | KPI надежности орошения | invariant | KPI измеряет запланированные поставки, выполненные в требуемом потоке и времени. | улучшить обслуживание |
+| irrigationops.metrics.unaccounted_water | КПЭ неучтенной воды для орошения | variant | KPI сравнивает отведенную воду с измеренными поставками, хранением и известными потерями. | найти потери |
+| irrigationops.coordination.watermaster_link | Координация мастера по оросительной воде | variant | Координация согласовывает полевые операции с правами на воду, отводом рек, приказами и ограничениями. | подчиняться распределению |
+| irrigationops.close.work_closeout | Завершение ирригационных полевых работ | invariant | Закрытие подтверждает ремонт, настройку ворот, статус доставки, записи, уведомление пользователя и последующие действия. | закончить работу |

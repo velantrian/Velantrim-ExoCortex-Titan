@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| applrepair.intake.service_request | Appliance repair service request | invariant | Request records appliance, model, symptom, location, access, warranty and customer contact. | open job |
-| applrepair.intake.model_serial | Model and serial capture | invariant | Capture identifies exact appliance version for parts, manuals and warranty checks. | right information |
-| applrepair.intake.symptom_notes | Appliance symptom notes | invariant | Notes describe failure, noises, leaks, codes, timing and customer observations. | guide diagnosis |
-| applrepair.intake.warranty_status | Appliance warranty status | variant | Status checks manufacturer, extended plan, labor, parts and authorization requirements. | billing path |
-| applrepair.intake.safety_warning | Previsit safety warning | variant | Warning tells customer to stop using appliance when leak, smoke, shock, gas smell or overheating is reported. | reduce risk |
-| applrepair.schedule.dispatch_slot | Appliance repair dispatch slot | invariant | Slot assigns technician, route, time window, skills, appliance type and parts. | schedule visit |
-| applrepair.schedule.route_optimization | Repair route optimization | variant | Optimization groups calls by geography, parts availability, priority and appointment window. | reduce travel |
-| applrepair.schedule.customer_confirmation | Appointment confirmation | invariant | Confirmation verifies address, availability, parking, appliance access and preparation. | avoid failed trip |
-| applrepair.schedule.no_access | No-access visit | invariant | Record documents missed appointment, locked door, unsafe site or unavailable adult. | explain trip failure |
-| applrepair.schedule.priority_repair | Priority repair | variant | Priority applies to safety, refrigeration failure, repeat call or contract SLA. | triage service |
-| applrepair.diagnostic.visual_inspection | Appliance visual inspection | invariant | Inspection checks condition, installation, leaks, damage, power, ventilation and user controls. | first look |
-| applrepair.diagnostic.error_code | Appliance error code | variant | Code provides manufacturer diagnostic clue but needs confirmation by testing. | clue, not proof |
-| applrepair.diagnostic.power_check | Appliance power check | invariant | Check verifies outlet, breaker, cord, voltage suitability and control response where safe. | basic input |
-| applrepair.diagnostic.water_leak_check | Appliance leak check | variant | Check examines hoses, valves, pumps, seals, drains, trays and installation. | contain water risk |
-| applrepair.diagnostic.functional_test | Appliance functional test | invariant | Test runs appliance mode to observe symptom, cycle, sound, temperature or fault. | reproduce issue |
-| applrepair.safety.lockout | Appliance service lockout | invariant | Lockout removes power, gas or water exposure before hazardous service work. | protect technician |
-| applrepair.safety.gas_appliance_precaution | Gas appliance precaution | variant | Precaution checks shutoff, odor, ventilation, ignition risk and qualified scope. | high-risk system |
-| applrepair.safety.refrigerant_boundary | Refrigerant service boundary | variant | Boundary limits sealed-system work to qualified technician and approved process. | compliance and safety |
-| applrepair.safety.sharp_edge_ppe | Appliance sharp-edge PPE | invariant | PPE protects from sheet metal, glass, springs, motors and cramped spaces. | common injury risk |
-| applrepair.safety.floor_protection | Customer floor protection | invariant | Protection uses mats, sliders or covers to avoid scratches, water and dirt. | respect home |
-| applrepair.parts.part_identification | Appliance part identification | invariant | Identification matches part number, revision, compatibility and substitution rules. | avoid wrong part |
-| applrepair.parts.truck_stock | Appliance truck stock | variant | Stock covers common parts, tools and consumables by appliance category. | first-visit fix |
-| applrepair.parts.special_order | Special order part | invariant | Order records supplier, ETA, price, approval, deposit and return rule. | plan second visit |
-| applrepair.parts.core_return | Core or defective part return | variant | Return sends replaced board, motor or compressor to supplier under warranty or rebuild process. | recover value |
-| applrepair.parts.part_warranty | Part warranty record | invariant | Record tracks installed part, date, warranty period and claim evidence. | future coverage |
-| applrepair.repair.repair_estimate | Appliance repair estimate | invariant | Estimate states diagnosis, parts, labor, taxes, risks and customer approval. | informed decision |
-| applrepair.repair.customer_approval | Repair approval | invariant | Approval records customer consent to price, scope and parts before work proceeds. | avoid dispute |
-| applrepair.repair.repair_note | Appliance repair note | invariant | Note documents diagnosis, replaced parts, tests, settings, observations and remaining issues. | service history |
-| applrepair.repair.installation_correction | Installation correction | variant | Correction fixes leveling, venting, drain height, hose routing or clearance within scope. | many failures are setup |
-| applrepair.repair.unrepairable_decision | Unrepairable decision | variant | Decision explains cost, part unavailability, unsafe condition or age making repair impractical. | honest closure |
-| applrepair.test.post_repair_test | Post-repair test | invariant | Test confirms appliance operates, fault cleared, leaks absent and controls respond. | prove fix |
-| applrepair.test.leak_recheck | Leak recheck | variant | Recheck observes water, gas or refrigerant risk after repair according to scope. | verify safety |
-| applrepair.test.temperature_check | Appliance temperature check | variant | Check verifies cooling, heating or drying performance where relevant. | function evidence |
-| applrepair.test.customer_demo | Customer demonstration | variant | Demo shows repaired function, maintenance advice and warning signs. | customer confidence |
-| applrepair.test.repeat_call_flag | Repeat call flag | invariant | Flag identifies same symptom or related issue after recent service. | quality focus |
-| applrepair.billing.invoice | Appliance repair invoice | invariant | Invoice lists trip, labor, parts, tax, discount, warranty coverage and payment. | close money |
-| applrepair.billing.diagnostic_fee | Diagnostic fee | variant | Fee covers technician diagnosis and may apply to repair under policy. | price visit |
-| applrepair.billing.warranty_claim | Appliance warranty claim | variant | Claim sends authorization, diagnosis, part, labor and proof to warranty payer. | recover cost |
-| applrepair.billing.refund_adjustment | Repair refund or adjustment | variant | Adjustment corrects overcharge, failed repair, goodwill or warranty reversal. | service recovery |
-| applrepair.customer.damage_claim | In-home damage claim | invariant | Claim records alleged property damage, photos, technician notes and resolution. | protect customer and firm |
-| applrepair.customer.followup_call | Repair follow-up call | variant | Call checks performance, satisfaction and repeat symptoms after service. | quality loop |
-| applrepair.admin.technician_training | Appliance technician training | invariant | Training covers electrical, gas, water, manufacturer procedures, documentation and customer conduct. | competent field work |
-| applrepair.metrics.first_visit_completion | First-visit completion KPI | variant | KPI tracks jobs completed without return visit, missing part or repeat failure. | service effectiveness |
-| applrepair.continuity.parts_shortage | Parts shortage procedure | invariant | Procedure communicates delay, alternatives, temporary safety advice and job status updates. | keep customer informed |
+| applrepair.intake.service_request | Заявка на ремонт бытовой техники | invariant | Запрос записывает устройство, модель, симптом, местоположение, доступ, гарантию и контакт с клиентом. | открыть вакансию |
+| applrepair.intake.model_serial | Модель и серийный захват | invariant | Capture определяет точную версию устройства для деталей, руководств и гарантийных проверок. | нужная информация |
+| applrepair.intake.symptom_notes | Примечания по симптомам устройства | invariant | В примечаниях описываются неисправности, шумы, утечки, коды, время и наблюдения клиентов. | направляющий диагноз |
+| applrepair.intake.warranty_status | Гарантийный статус устройства | variant | Статус проверяет производителя, расширенный план, трудозатраты, детали и требования к авторизации. | путь выставления счетов |
+| applrepair.intake.safety_warning | Предварительное предупреждение о безопасности | variant | Предупреждение сообщает клиенту о необходимости прекратить использование прибора при появлении утечки, дыма, удара, запаха газа или перегрева. | снизить риск |
+| applrepair.schedule.dispatch_slot | Место отправки по ремонту бытовой техники | invariant | Слот назначает техника, маршрут, временной интервал, навыки, тип устройства и детали. | запланировать визит |
+| applrepair.schedule.route_optimization | Оптимизация маршрута ремонта | variant | Оптимизация группирует звонки по географическому положению, наличию запчастей, приоритету и окну записи. | сократить поездки |
+| applrepair.schedule.customer_confirmation | Подтверждение записи | invariant | Подтверждение проверяет адрес, доступность, парковку, доступ к устройству и подготовку. | избежать неудачной поездки |
+| applrepair.schedule.no_access | Посещение без доступа | invariant | Запишите документы о пропущенной встрече, запертой двери, небезопасном месте или недоступном взрослом. | объяснить неудачную поездку |
+| applrepair.schedule.priority_repair | Приоритетный ремонт | variant | Приоритет распространяется на безопасность, сбой в охлаждении, повторный звонок или соглашение об уровне обслуживания. | сортировочная служба |
+| applrepair.diagnostic.visual_inspection | Визуальный осмотр прибора | invariant | В ходе проверки проверяются состояние, установка, утечки, повреждения, электропитание, вентиляция и средства управления пользователем. | первый взгляд |
+| applrepair.diagnostic.error_code | Код ошибки устройства | variant | Код предоставляет диагностическую информацию производителя, но требует подтверждения путем тестирования. | подсказка, а не доказательство |
+| applrepair.diagnostic.power_check | Проверка мощности прибора | invariant | Проверка проверяет розетку, автоматический выключатель, шнур, соответствие напряжения и реакцию системы управления там, где это безопасно. | основной ввод |
+| applrepair.diagnostic.water_leak_check | Проверка герметичности прибора | variant | При проверке проверяются шланги, клапаны, насосы, уплотнения, сливы, лотки и установка. | сдерживать водный риск |
+| applrepair.diagnostic.functional_test | Функциональный тест устройства | invariant | Тестовый запуск режима устройства для наблюдения за симптомами, циклами, звуками, температурой или неисправностями. | воспроизвести проблему |
+| applrepair.safety.lockout | Блокировка обслуживания устройства | invariant | Блокировка устраняет воздействие электропитания, газа или воды перед опасными сервисными работами. | защитить техника |
+| applrepair.safety.gas_appliance_precaution | Меры предосторожности при использовании газового оборудования | variant | Меры предосторожности проверяют отключение, запах, вентиляцию, риск воспламенения и квалифицированный объем. | система высокого риска |
+| applrepair.safety.refrigerant_boundary | Граница обслуживания хладагента | variant | Граница ограничивает работу герметичной системы квалифицированным техническим специалистом и утвержденным процессом. | соответствие и безопасность |
+| applrepair.safety.sharp_edge_ppe | СИЗ с острыми краями для бытовой техники | invariant | СИЗ защищают от листового металла, стекла, пружин, двигателей и тесных помещений. | общий риск травм |
+| applrepair.safety.floor_protection | Защита пола клиента | invariant | Для защиты используются коврики, ползунки или чехлы, чтобы избежать царапин, воды и грязи. | уважать дом |
+| applrepair.parts.part_identification | Идентификация детали устройства | invariant | Идентификация соответствует номеру детали, редакции, правилам совместимости и замены. | избегайте неправильной части |
+| applrepair.parts.truck_stock | Наличие грузовиков с бытовой техникой | variant | На складе представлены общие детали, инструменты и расходные материалы по категориям приборов. | исправление при первом посещении |
+| applrepair.parts.special_order | Часть специального заказа | invariant | Поставщик записей заказов, расчетное время прибытия, цена, утверждение, правила депозита и возврата. | запланировать второй визит |
+| applrepair.parts.core_return | Возврат сердечника или дефектной детали | variant | При возврате замененная плата, двигатель или компрессор отправляется поставщику по гарантии или в процессе восстановления. | восстановить стоимость |
+| applrepair.parts.part_warranty | Запись о гарантии на деталь | invariant | Запишите информацию об установленной детали, дате, гарантийном сроке и доказательствах претензии. | будущее покрытие |
+| applrepair.repair.repair_estimate | Смета на ремонт бытовой техники | invariant | В смете указывается диагностика, запасные части, работа, налоги, риски и одобрение клиента. | обоснованное решение |
+| applrepair.repair.customer_approval | Разрешение на ремонт | invariant | В утверждении фиксируется согласие клиента на цену, объем и детали до начала работ. | избежать спора |
+| applrepair.repair.repair_note | Заметка о ремонте бытовой техники | invariant | Запишите документацию по диагностике, замененным деталям, тестам, настройкам, наблюдениям и оставшимся проблемам. | история обслуживания |
+| applrepair.repair.installation_correction | Корректировка установки | variant | Исправление исправляет выравнивание, вентиляцию, высоту слива, прокладку шлангов или зазор в пределах объема. | много сбоев настроено |
+| applrepair.repair.unrepairable_decision | Неремонтопригодное решение | variant | Решение объясняет стоимость, отсутствие запчастей, небезопасное состояние или возраст, что делает ремонт нецелесообразным. | честное закрытие |
+| applrepair.test.post_repair_test | Послеремонтное испытание | invariant | Проверка подтверждает, что прибор работает, неисправность устранена, утечки отсутствуют и органы управления реагируют. | доказать исправление |
+| applrepair.test.leak_recheck | Повторная проверка утечки | variant | Повторная проверка выявляет риск попадания воды, газа или хладагента после ремонта в соответствии с объемом. | проверить безопасность |
+| applrepair.test.temperature_check | Проверка температуры прибора | variant | Проверка проверяет эффективность охлаждения, нагрева или сушки, где это необходимо. | функциональное доказательство |
+| applrepair.test.customer_demo | Демонстрация для клиентов | variant | В демонстрационной версии показаны отремонтированные функции, советы по техническому обслуживанию и предупреждающие знаки. | доверие клиентов |
+| applrepair.test.repeat_call_flag | Флаг повторного вызова | invariant | Флаг указывает на тот же симптом или связанную с ним проблему после недавнего обслуживания. | качественный фокус |
+| applrepair.billing.invoice | Счет за ремонт бытовой техники | invariant | В счете-фактуре указаны поездка, работа, запчасти, налоги, скидки, гарантийное покрытие и оплата. | закрыть деньги |
+| applrepair.billing.diagnostic_fee | Стоимость диагностики | variant | Плата покрывает техническую диагностику и может применяться к ремонту в соответствии с полисом. | цена посещения |
+| applrepair.billing.warranty_claim | Претензия по гарантии на устройство | variant | В претензии плательщику по гарантии направляются авторизация, диагностика, детали, работа и доказательства. | возмещать затраты |
+| applrepair.billing.refund_adjustment | Возврат или корректировка ремонта | variant | Регулировка корректирует завышенную цену, неудачный ремонт, гудвил или аннулирование гарантии. | восстановление службы |
+| applrepair.customer.damage_claim | Претензия о возмещении ущерба в доме | invariant | В претензии указываются предполагаемый материальный ущерб, фотографии, технические примечания и решение. | защитить клиента и фирму |
+| applrepair.customer.followup_call | Повторный звонок по ремонту | variant | Звонок проверяет производительность, удовлетворенность и повторяет симптомы после обслуживания. | цикл качества |
+| applrepair.admin.technician_training | Обучение специалиста по бытовой технике | invariant | Обучение охватывает электричество, газ, воду, процедуры производителя, документацию и поведение клиентов. | грамотная полевая работа |
+| applrepair.metrics.first_visit_completion | KPI завершения первого визита | variant | KPI отслеживает задания, выполненные без повторного посещения, отсутствия детали или повторного сбоя. | эффективность обслуживания |
+| applrepair.continuity.parts_shortage | Процедура нехватки запчастей | invariant | Процедура сообщает о задержке, альтернативах, временных советах по безопасности и обновлениях статуса работы. | держать клиента в курсе |

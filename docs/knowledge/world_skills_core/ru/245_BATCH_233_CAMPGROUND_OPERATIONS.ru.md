@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| campops.reservation.site_inventory | Campground site inventory | invariant | Inventory tracks tent, RV, cabin, group, accessible and closed sites. | sell capacity |
-| campops.reservation.booking_record | Campground booking record | invariant | Record links guest, dates, site, equipment, vehicle, occupants, fees and rules. | reservation source |
-| campops.reservation.deposit_policy | Campground deposit policy | invariant | Policy defines deposit, cancellation, refund, no-show and modification terms. | reduce disputes |
-| campops.reservation.seasonal_hold | Seasonal campsite hold | variant | Hold reserves recurring sites with contract, payment schedule and occupancy limits. | long-stay control |
-| campops.reservation.overbooking_check | Campground overbooking check | invariant | Check prevents duplicate site sale across channels, maps and manual holds. | avoid conflict |
-| campops.checkin.arrival_packet | Campground arrival packet | invariant | Packet provides map, rules, permits, tags, emergency contacts and amenities. | orient guest |
-| campops.checkin.identity_vehicle | Campground identity and vehicle check | invariant | Check verifies reservation, vehicle plates, extra cars and registered occupants. | access control |
-| campops.checkin.site_assignment | Campground site assignment | invariant | Assignment matches equipment length, hookups, accessibility, pets and guest preferences. | right site |
-| campops.checkin.late_arrival | Campground late arrival | variant | Process provides gate code, map, quiet setup rule and next-day verification. | after-hours service |
-| campops.checkin.walkup_booking | Campground walk-up booking | variant | Booking assigns unsold site, collects payment, records guest and explains rules. | fill capacity |
-| campops.utilities.electric_hookup | Campsite electric hookup | variant | Hookup record notes amperage, pedestal status, guest connection and fault reports. | reliable power |
-| campops.utilities.water_hookup | Campsite water hookup | variant | Hookup checks spigot, hose rules, backflow protection and leak reporting. | water safety |
-| campops.utilities.sewer_connection | Campsite sewer connection | variant | Connection governs hose seal, slope, cap, spill response and closure. | sanitation |
-| campops.utilities.dump_station | Campground dump station | invariant | Station operation manages queue, rinse water, signage, spill kit and cleaning. | waste control |
-| campops.utilities.utility_outage | Campground utility outage | invariant | Outage record tracks affected sites, cause, guest communication and restoration. | continuity |
-| campops.sanitation.restroom_round | Campground restroom round | invariant | Round checks toilets, showers, supplies, drains, odors, lighting and damage. | guest hygiene |
-| campops.sanitation.trash_collection | Campground trash collection | invariant | Collection schedules dumpsters, bear-proof bins, litter routes and overflow response. | clean grounds |
-| campops.sanitation.potable_water_test | Campground potable water test | invariant | Test records sample point, date, result, notice and corrective action. | safe water |
-| campops.sanitation.pest_watch | Campground pest watch | variant | Watch tracks insects, rodents, wildlife attractants, complaints and treatment route. | health and comfort |
-| campops.sanitation.graywater_policy | Campground graywater policy | invariant | Policy prohibits unsafe discharge and routes graywater to approved disposal. | site protection |
-| campops.quiet.quiet_hours | Campground quiet hours | invariant | Rule defines start, end, noise expectations, warnings and enforcement. | guest rest |
-| campops.quiet.generator_hours | Campground generator hours | variant | Rule defines permitted times, distance, exhaust direction and exceptions. | noise and safety |
-| campops.quiet.group_noise | Campground group noise response | invariant | Response records complaint, warning, leader contact, escalation and eviction if needed. | fair enforcement |
-| campops.quiet.pet_control | Campground pet control | invariant | Control covers leash, waste, barking, restricted areas and incident response. | reduce conflict |
-| campops.safety.fire_ring_check | Campground fire ring check | invariant | Check verifies permitted location, ash condition, clearance, bans and extinguishing. | fire safety |
-| campops.safety.burn_ban | Campground burn ban | invariant | Ban communication posts rules, notifies guests, restricts fuels and logs enforcement. | prevent wildfire |
-| campops.safety.wildlife_encounter | Campground wildlife encounter | variant | Encounter record captures species, attractant, guest action, staff response and notices. | reduce risk |
-| campops.safety.first_aid | Campground first aid report | invariant | Report records injury, care, witnesses, EMS if needed and follow-up. | care evidence |
-| campops.safety.weather_alert | Campground weather alert | invariant | Alert communicates storm, flood, heat, wind or smoke instructions to guests. | timely warning |
-| campops.maintenance.site_turnover | Campsite turnover | invariant | Turnover checks trash, fire pit, picnic table, hookups, hazards and signage. | ready next stay |
-| campops.maintenance.road_condition | Campground road condition | variant | Condition log tracks potholes, washouts, dust, snow, drainage and grading needs. | access safety |
-| campops.maintenance.tree_hazard | Campground tree hazard | invariant | Hazard record identifies dead limbs, lean, root issues, closure and arborist action. | prevent injury |
-| campops.maintenance.facility_workorder | Campground facility work order | invariant | Work order covers restroom, cabin, gate, lighting, dock, trail or utility repair. | maintenance tracking |
-| campops.maintenance.signage_check | Campground signage check | invariant | Check verifies site numbers, rules, exits, hazards, maps and emergency signs. | wayfinding |
-| campops.incident.rule_violation | Campground rule violation | invariant | Violation records rule, guest, warning, fee, eviction or law enforcement involvement. | enforce rules |
-| campops.incident.property_damage | Campground property damage | invariant | Damage record links site, asset, guest, photo, cost and recovery action. | protect assets |
-| campops.incident.missing_person | Campground missing person response | invariant | Response assigns search zones, contacts, last seen, authorities and resolution log. | rapid response |
-| campops.incident.neighbor_conflict | Campsite neighbor conflict | variant | Conflict record captures noise, boundaries, pets, smoke or behavior and mediation. | restore calm |
-| campops.store.camp_store_sale | Camp store sale | variant | Sale records firewood, ice, supplies, rentals, tax and receipt. | guest convenience |
-| campops.store.firewood_control | Campground firewood control | invariant | Control tracks source, pest restrictions, bundles, storage and sales. | protect forest |
-| campops.checkout.checkout_check | Campground checkout check | invariant | Check confirms departure, site condition, keys, permits, refunds and next turnover. | close stay |
-| campops.reporting.occupancy_report | Campground occupancy report | invariant | Report summarizes site nights, revenue, no-shows, extensions, cancellations and closures. | manage capacity |
-| campops.metrics.campground_kpi | Campground KPI | variant | KPI tracks occupancy, revenue, incidents, maintenance backlog, complaints and sanitation scores. | manage campground |
-| campops.continuity.evacuate_campground | Campground evacuation | invariant | Evacuation coordinates notice, routes, roll call, gates, authorities and reentry. | emergency control |
+| campops.reservation.site_inventory | Инвентаризация кемпинга | invariant | Инвентаризация треков палатка, дом на колесах, хижина, группа, доступные и закрытые площадки. | продать мощность |
+| campops.reservation.booking_record | Запись о бронировании палаточного лагеря | invariant | Запись связывает гостей, даты, место, оборудование, транспортное средство, пассажиров, сборы и правила. | источник резервирования |
+| campops.reservation.deposit_policy | Политика залога в кемпинге | invariant | Политика определяет условия депозита, отмены, возврата, неявки и изменения. | уменьшить споры |
+| campops.reservation.seasonal_hold | Сезонное размещение в кемпинге | variant | Держите резервы повторяющихся площадок с контрактом, графиком платежей и ограничениями на вместимость. | контроль длительного пребывания |
+| campops.reservation.overbooking_check | Проверка овербукинга в кемпинге | invariant | Проверка предотвращает повторную продажу сайта по каналам, картам и приостановке вручную. | избегать конфликта |
+| campops.checkin.arrival_packet | Пакет прибытия в палаточный лагерь | invariant | Пакет предоставляет карту, правила, разрешения, метки, контакты для экстренных случаев и удобства. | ориентировать гостя |
+| campops.checkin.identity_vehicle | Проверка подлинности палаточного лагеря и автомобиля | invariant | Проверка проверяет бронирование, номерные знаки транспортных средств, дополнительные автомобили и зарегистрированных пассажиров. | контроль доступа |
+| campops.checkin.site_assignment | Назначение места для палаточного лагеря | invariant | Назначение соответствует длине оборудования, способам подключения, доступности, предпочтениям домашних животных и гостей. | правильный сайт |
+| campops.checkin.late_arrival | Позднее прибытие в палаточный лагерь | variant | Процесс предоставляет код входа, карту, правило тихой настройки и проверку на следующий день. | обслуживание в нерабочее время |
+| campops.checkin.walkup_booking | Бронирование места в палаточном лагере | variant | Booking присваивает непроданный сайт, взимает оплату, записывает гостя и объясняет правила. | емкость заполнения |
+| campops.utilities.electric_hookup | Электрическое подключение в кемпинге | variant | Запись о подключении отмечает силу тока, состояние подставки, гостевое подключение и отчеты о неисправностях. | надежная мощность |
+| campops.utilities.water_hookup | Подключение воды в кемпинге | variant | При подключении проверяется патрубок, правила использования шлангов, защита от обратного потока и отчеты об утечках. | безопасность на воде |
+| campops.utilities.sewer_connection | Подключение канализации на территории кемпинга | variant | Соединение определяет уплотнение шланга, уклон, крышку, реакцию на утечку и закрытие. | санитария |
+| campops.utilities.dump_station | Свалка кемпинга | invariant | Работа станции управляет очередью, промывочной водой, вывесками, комплектом для разлива и уборкой. | контроль отходов |
+| campops.utilities.utility_outage | Отключение коммунальных услуг в кемпинге | invariant | Запись об отключении отслеживает затронутые сайты, причину, общение с гостями и восстановление. | преемственность |
+| campops.sanitation.restroom_round | Круглый туалет в палаточном лагере | invariant | Круглый проверяет туалеты, душевые, расходные материалы, канализацию, запахи, освещение и повреждения. | гигиена гостя |
+| campops.sanitation.trash_collection | Сбор мусора в палаточном лагере | invariant | Графики сбора мусора: мусорные контейнеры, защищенные от медведей контейнеры, маршруты для мусора и меры реагирования на переполнение. | чистая территория |
+| campops.sanitation.potable_water_test | Тест питьевой воды в палаточном лагере | invariant | Тест записывает точку отбора проб, дату, результат, уведомление и корректирующие действия. | безопасная вода |
+| campops.sanitation.pest_watch | Наблюдение за вредителями в кемпинге | variant | Следите за насекомыми, грызунами, аттрактантами дикой природы, жалобами и маршрутами лечения. | здоровье и комфорт |
+| campops.sanitation.graywater_policy | Политика в отношении «серой воды» в палаточном лагере | invariant | Политика запрещает небезопасный сброс и направляет серые воды на утвержденную утилизацию. | защита сайта |
+| campops.quiet.quiet_hours | Тихие часы в палаточном лагере | invariant | Правило определяет начало, конец, ожидаемый уровень шума, предупреждения и обеспечение соблюдения. | гостевой отдых |
+| campops.quiet.generator_hours | Часы работы генератора в палаточном лагере | variant | Правило определяет разрешенное время, расстояние, направление выхлопа и исключения. | шум и безопасность |
+| campops.quiet.group_noise | Реакция на шум группы в палаточном лагере | invariant | В ответе фиксируются жалобы, предупреждения, контакты с руководителем, эскалация ситуации и выселение, если это необходимо. | справедливое правоприменение |
+| campops.quiet.pet_control | Контроль за домашними животными в палаточном лагере | invariant | Контроль охватывает поводок, отходы, лай, зоны ограниченного доступа и реагирование на инциденты. | уменьшить конфликт |
+| campops.safety.fire_ring_check | Проверка пожарного кольца в палаточном лагере | invariant | Проверка проверяет разрешенное место, состояние золы, очистку, запреты и тушение. | пожарная безопасность |
+| campops.safety.burn_ban | Запрет на сжигание палаточного лагеря | invariant | Запретить общение публикует правила, уведомляет гостей, ограничивает использование топлива и фиксирует соблюдение правил. | предотвратить лесной пожар |
+| campops.safety.wildlife_encounter | Встреча с дикой природой в палаточном лагере | variant | В записи о встречах фиксируются виды, аттрактанты, действия гостей, реакция персонала и уведомления. | снизить риск |
+| campops.safety.first_aid | Отчет о первой помощи в палаточном лагере | invariant | В отчете указываются травмы, уход, свидетели, скорая помощь, если необходимо, и последующие действия. | доказательства ухода |
+| campops.safety.weather_alert | Оповещение о погоде в кемпинге | invariant | Оповещение сообщает гостям инструкции о шторме, наводнении, жаре, ветре или задымлении. | своевременное предупреждение |
+| campops.maintenance.site_turnover | Оборот кемпинга | invariant | Оборот проверяет мусор, место для костра, стол для пикника, подключения, опасности и указатели. | готов к следующему пребыванию |
+| campops.maintenance.road_condition | Состояние дорог в кемпинге | variant | В журнале состояния отслеживаются выбоины, размывы, пыль, снег, потребности в дренаже и выравнивании. | безопасность доступа |
+| campops.maintenance.tree_hazard | Опасность деревьев в палаточном лагере | invariant | В отчете об опасностях указаны мертвые конечности, сухожилия, проблемы с корнями, закрытие и действия арбористов. | предотвратить травмы |
+| campops.maintenance.facility_workorder | Порядок работы кемпинга | invariant | Заказ на работы включает ремонт туалета, каюты, ворот, освещения, причала, тропы или коммунальных услуг. | отслеживание технического обслуживания |
+| campops.maintenance.signage_check | Проверка вывесок кемпинга | invariant | Проверка проверяет номера объектов, правила, выходы, опасности, карты и аварийные знаки. | поиск пути |
+| campops.incident.rule_violation | Нарушение правил кемпинга | invariant | Нарушение фиксирует правила, гостя, предупреждение, штраф, выселение или участие правоохранительных органов. | обеспечивать соблюдение правил |
+| campops.incident.property_damage | Ущерб имуществу кемпинга | invariant | Запись о повреждении связывает сайт, актив, гостя, фотографию, стоимость и действия по возмещению. | защищать активы |
+| campops.incident.missing_person | Реакция на пропавшего человека в палаточном лагере | invariant | Ответ назначает зоны поиска, контакты, время последнего посещения, полномочия и журнал разрешений. | быстрое реагирование |
+| campops.incident.neighbor_conflict | Конфликт соседей по лагерю | variant | Запись конфликта фиксирует шум, границы, домашних животных, дым или поведение и посредничество. | восстановить спокойствие |
+| campops.store.camp_store_sale | Распродажа в лагерном магазине | variant | При продаже учитываются дрова, лед, расходные материалы, арендная плата, налоги и квитанции. | удобство для гостей |
+| campops.store.firewood_control | Контроль дров в палаточном лагере | invariant | Контроль отслеживает источник, ограничения по вредителям, пакеты, хранение и продажу. | защитить лес |
+| campops.checkout.checkout_check | Квитанция о выезде из кемпинга | invariant | Проверка подтверждает выезд, состояние объекта, ключи, разрешения, возврат средств и следующий оборот. | близкое пребывание |
+| campops.reporting.occupancy_report | Отчет о занятости палаточного лагеря | invariant | В отчете суммируются ночи на сайте, доходы, неявки, продления, отмены и закрытия. | управлять емкостью |
+| campops.metrics.campground_kpi | Палаточный лагерь КПИ | variant | KPI отслеживает заполняемость, доходы, инциденты, отставание в обслуживании, жалобы и показатели санитарии. | управлять палаточным лагерем |
+| campops.continuity.evacuate_campground | Эвакуация палаточного лагеря | invariant | Координаты эвакуации, маршруты, перекличка, ворота, органы власти и повторный вход. | аварийное управление |

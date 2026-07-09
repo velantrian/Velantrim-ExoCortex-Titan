@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| mediateops.intake.case_intake | Mediation case intake | invariant | Intake records parties, dispute type, referral source, court status and contact. | open mediation case |
-| mediateops.intake.referral_source | Mediation referral source | variant | Source identifies court, agency, school, community, employer, attorney or self-referral. | route case |
-| mediateops.intake.party_contact | Mediation party contact | invariant | Contact captures safe phone, email, language, representative and communication limits. | reach parties |
-| mediateops.intake.consent_notice | Mediation consent notice | invariant | Notice explains voluntary process, confidentiality, neutrality, limits and fees. | informed participation |
-| mediateops.intake.urgent_timeline | Mediation urgent timeline flag | variant | Flag marks court deadline, eviction, custody, workplace disruption or community conflict. | schedule priority |
-| mediateops.screen.suitability_screen | Mediation suitability screen | invariant | Screen evaluates willingness, power balance, safety, legal constraints and topic fit. | appropriate process |
-| mediateops.screen.safety_screen | Mediation safety screen | invariant | Screen checks intimidation, violence, coercion, restraining orders or unsafe contact. | protect parties |
-| mediateops.screen.conflict_check | Mediator conflict check | invariant | Check identifies mediator relationships, prior work, interests or bias concerns. | neutrality |
-| mediateops.screen.exclusion_reason | Mediation exclusion reason | variant | Reason records unsafe, inappropriate, nonconsensual, legal bar or unavailable party. | explain nonacceptance |
-| mediateops.assignment.mediator_roster | Mediation mediator roster | invariant | Roster stores training, specialty, availability, languages, fees and status. | assignment pool |
-| mediateops.assignment.mediator_match | Mediator match | invariant | Match chooses mediator by case type, language, location, availability and conflict status. | fit case |
-| mediateops.assignment.co_mediation | Co-mediation assignment | variant | Assignment pairs mediators for complex, high-conflict, training or language needs. | support process |
-| mediateops.assignment.confirmation | Mediation assignment confirmation | invariant | Confirmation sends mediator, parties, date, format, location and preparation notes. | align participants |
-| mediateops.schedule.session_schedule | Mediation session schedule | invariant | Schedule records date, time, duration, room or link, parties and mediator. | set meeting |
-| mediateops.schedule.reschedule_request | Mediation reschedule request | variant | Request records party availability, reason, deadline impact and new date. | manage calendar |
-| mediateops.schedule.no_show | Mediation no-show record | invariant | Record captures absent party, contact attempt, fee rule, reschedule or closure. | case control |
-| mediateops.schedule.remote_session | Remote mediation session | variant | Session plan includes platform, private rooms, tech check, documents and backup phone. | virtual process |
-| mediateops.prep.party_orientation | Mediation party orientation | invariant | Orientation explains roles, ground rules, confidentiality, caucus, agreement and exit options. | prepare parties |
-| mediateops.prep.document_exchange | Mediation document exchange | variant | Exchange manages statements, exhibits, summaries, confidentiality and deadlines. | shared context |
-| mediateops.prep.interpreter_need | Mediation interpreter need | variant | Need records language, interpreter, confidentiality, remote support and scheduling. | meaningful access |
-| mediateops.session.opening_statement | Mediation opening statement | invariant | Statement reviews neutrality, process, confidentiality, voluntary participation and ground rules. | frame session |
-| mediateops.session.issue_list | Mediation issue list | invariant | List captures topics, interests, priorities and unresolved questions from parties. | structure dialogue |
-| mediateops.session.caucus_note | Mediation caucus note | variant | Note records private meeting occurrence, authorized disclosures and process concerns. | manage confidentiality |
-| mediateops.session.power_balance | Mediation power balance action | variant | Action adjusts format, breaks, support persons or shuttle process for fairness. | safer dialogue |
-| mediateops.session.impasse_record | Mediation impasse record | invariant | Record states unresolved issues, options explored, party decisions and next step. | close attempt |
-| mediateops.agreement.draft_agreement | Mediation draft agreement | invariant | Draft records terms, responsibilities, dates, payments, behavior commitments and review needs. | capture deal |
-| mediateops.agreement.legal_review_flag | Mediation legal review flag | variant | Flag reminds parties to seek legal review before signing when appropriate. | avoid overreach |
-| mediateops.agreement.signature_process | Mediation signature process | invariant | Process records party signatures, date, copies, filing need and distribution. | formalize agreement |
-| mediateops.agreement.court_filing | Mediation court filing | variant | Filing sends agreement, status report or nonagreement notice to court as required. | update docket |
-| mediateops.close.case_closure | Mediation case closure | invariant | Closure records agreement, partial agreement, impasse, withdrawal, no-show or unsuitable result. | end case |
-| mediateops.close.followup_check | Mediation follow-up check | variant | Check asks parties about compliance, satisfaction, further dispute or referral need. | support durability |
-| mediateops.close.satisfaction_survey | Mediation satisfaction survey | variant | Survey measures fairness, clarity, safety, mediator skill and outcome satisfaction. | improve service |
-| mediateops.records.confidential_file | Mediation confidential file | invariant | File stores intake, notes, agreement, communications and limits disclosure. | protect process |
-| mediateops.records.retention_rule | Mediation record retention | invariant | Rule defines retention, destruction, court reporting and confidential notes handling. | compliance |
-| mediateops.records.data_correction | Mediation data correction | invariant | Correction fixes party, date, result, mediator or referral error with audit note. | accurate records |
-| mediateops.quality.mediator_feedback | Mediator feedback review | invariant | Review assesses neutrality, process control, complaints, timeliness and training needs. | quality control |
-| mediateops.quality.complaint_response | Mediation complaint response | invariant | Response records complaint, review, mediator response, outcome and corrective action. | accountability |
-| mediateops.quality.training_record | Mediator training record | invariant | Record tracks basic, advanced, ethics, domestic violence, cultural and specialty training. | qualified roster |
-| mediateops.reporting.case_volume | Mediation case volume report | invariant | Report summarizes referrals, scheduled, held, agreements, no-shows, closures and backlog. | manage center |
-| mediateops.reporting.outcome_report | Mediation outcome report | variant | Report tracks full agreement, partial, impasse, satisfaction, compliance and court impact. | evaluate program |
-| mediateops.metrics.mediation_kpi | Mediation center KPI | variant | KPI tracks time to session, agreement rate, no-shows, safety screens, complaints and satisfaction. | manage mediation |
-| mediateops.continuity.mediator_no_show | Mediator no-show response | variant | Response contacts backup, informs parties, reschedules, records impact and roster action. | preserve service |
-| mediateops.continuity.system_outage | Mediation system outage | invariant | Outage uses paper schedule, secure notes, phone confirmations and later entry. | continue operations |
-| mediateops.outreach.community_referral | Mediation community referral outreach | variant | Outreach explains services, eligibility, neutrality, limits and referral process to partners. | build pipeline |
+| mediateops.intake.case_intake | Прием дел о медиации | invariant | Приемные записи сторон, тип спора, источник направления, статус суда и контакт. | открыть дело о медиации |
+| mediateops.intake.referral_source | Источник рефералов медиации | variant | Источник указывает суд, агентство, школу, сообщество, работодателя, адвоката или самостоятельное обращение. | маршрутный случай |
+| mediateops.intake.party_contact | Контактное лицо стороны медиации | invariant | Контакт фиксирует безопасные ограничения по телефону, электронной почте, языку, представителям и общению. | достичь сторон |
+| mediateops.intake.consent_notice | Уведомление о согласии на посредничество | invariant | В уведомлении разъясняются добровольный процесс, конфиденциальность, нейтральность, ограничения и сборы. | информированное участие |
+| mediateops.intake.urgent_timeline | Флаг срочной шкалы медиации | variant | Флаг отмечает крайний срок суда, выселение, содержание под стражей, нарушение рабочего места или конфликт в обществе. | приоритет расписания |
+| mediateops.screen.suitability_screen | Экран пригодности для медиации | invariant | Экран оценивает готовность, баланс сил, безопасность, юридические ограничения и соответствие темы. | соответствующий процесс |
+| mediateops.screen.safety_screen | Экран безопасности медиации | invariant | Проверка проверяет запугивание, насилие, принуждение, запретительные приказы или небезопасный контакт. | защищать стороны |
+| mediateops.screen.conflict_check | Проверка конфликта медиатора | invariant | Проверка выявляет отношения посредника, предыдущую работу, интересы или предвзятость. | нейтралитет |
+| mediateops.screen.exclusion_reason | Причина исключения медиации | variant | Причина фиксирует небезопасные, неуместные, несогласованные, законные препятствия или недоступную сторону. | объяснить непринятие |
+| mediateops.assignment.mediator_roster | Список медиаторов-посредников | invariant | В реестре хранится информация о подготовке, специальности, доступности, языках, стоимости обучения и статусе. | пул назначений |
+| mediateops.assignment.mediator_match | Медиаторный матч | invariant | Match выбирает посредника по типу дела, языку, местоположению, доступности и статусу конфликта. | подходящий чехол |
+| mediateops.assignment.co_mediation | Задание на совместное посредничество | variant | Назначение парных посредников для решения сложных, конфликтных ситуаций, обучения или языковых потребностей. | процесс поддержки |
+| mediateops.assignment.confirmation | Подтверждение назначения медиации | invariant | Подтверждение отправляет посредника, стороны, дату, формат, место и примечания к подготовке. | выровнять участников |
+| mediateops.schedule.session_schedule | График медиации | invariant | Расписание записей даты, времени, продолжительности, комнаты или ссылки, сторон и посредника. | назначить встречу |
+| mediateops.schedule.reschedule_request | Запрос на перенос даты медиации | variant | Запрос записывает доступность стороны, причину, влияние на крайний срок и новую дату. | управлять календарем |
+| mediateops.schedule.no_show | Запись о неявке в ходе посредничества | invariant | Запись фиксирует отсутствующую сторону, попытку контакта, правила оплаты, перенос или закрытие. | контроль дела |
+| mediateops.schedule.remote_session | Удаленная посредническая сессия | variant | План сессии включает платформу, отдельные комнаты, техническую проверку, документы и резервный телефон. | виртуальный процесс |
+| mediateops.prep.party_orientation | Ориентация посреднической стороны | invariant | Ориентация объясняет роли, основные правила, конфиденциальность, собрания, соглашения и варианты выхода. | готовить вечеринки |
+| mediateops.prep.document_exchange | Медиационный обмен документами | variant | Exchange управляет заявлениями, приложениями, резюме, конфиденциальностью и сроками. | общий контекст |
+| mediateops.prep.interpreter_need | Требуется переводчик-медиатор | variant | Нужен язык записи, переводчик, конфиденциальность, удаленная поддержка и планирование. | значимый доступ |
+| mediateops.session.opening_statement | Вступительное заявление посредничества | invariant | В заявлении рассматриваются нейтральность, процесс, конфиденциальность, добровольное участие и основные правила. | сеанс кадра |
+| mediateops.session.issue_list | Список проблем медиации | invariant | В списке отражаются темы, интересы, приоритеты и нерешенные вопросы сторон. | структурный диалог |
+| mediateops.session.caucus_note | Записка о совещании по посредничеству | variant | В заметках фиксируются случаи частных встреч, санкционированные раскрытия информации и проблемы, связанные с процессами. | управлять конфиденциальностью |
+| mediateops.session.power_balance | Посреднические действия по балансу сил | variant | Действие корректирует формат, перерывы, вспомогательных лиц или челночный процесс для обеспечения справедливости. | более безопасный диалог |
+| mediateops.session.impasse_record | Отчет о тупиковых ситуациях медиации | invariant | В записи указываются нерешенные проблемы, изученные варианты, партийные решения и следующий шаг. | близкая попытка |
+| mediateops.agreement.draft_agreement | Проект соглашения о медиации | invariant | Проект условий записи, ответственности, дат, платежей, обязательств по поведению и потребностей в проверке. | сделка по захвату |
+| mediateops.agreement.legal_review_flag | Флаг юридической проверки медиации | variant | Флаг напоминает сторонам о необходимости проведения юридической экспертизы перед подписанием, когда это необходимо. | избегать перенапряжения |
+| mediateops.agreement.signature_process | Процесс подписания посредничества | invariant | В процессе фиксируются подписи сторон, дата, копии, необходимость подачи и распространения. | оформить соглашение |
+| mediateops.agreement.court_filing | Подача заявления в арбитражный суд | variant | По мере необходимости в суд направляется соглашение, отчет о состоянии или уведомление о несогласии. | обновить список |
+| mediateops.close.case_closure | Закрытие дела о медиации | invariant | Закрытие протоколов соглашения, частичного согласия, тупика, отказа, неявки или неподходящего результата. | конец дела |
+| mediateops.close.followup_check | Последующая проверка медиации | variant | При проверке стороны спрашивают о соблюдении требований, удовлетворенности, дальнейших спорах или необходимости направления. | поддержка долговечности |
+| mediateops.close.satisfaction_survey | Опрос удовлетворенности медиацией | variant | Опрос оценивает справедливость, ясность, безопасность, навыки медиатора и удовлетворенность результатами. | улучшить обслуживание |
+| mediateops.records.confidential_file | Конфиденциальный файл медиации | invariant | В файлах хранятся поступления, примечания, соглашения, сообщения и раскрытие ограничений. | защитить процесс |
+| mediateops.records.retention_rule | Хранение записей медиации | invariant | Правило определяет хранение, уничтожение, судебную отчетность и обработку конфиденциальных записей. | согласие |
+| mediateops.records.data_correction | Исправление данных медиации | invariant | Исправление исправляет ошибку стороны, даты, результата, посредника или направления с помощью контрольного примечания. | точные записи |
+| mediateops.quality.mediator_feedback | Проверка обратной связи медиатора | invariant | Проверка оценивает нейтральность, контроль процесса, жалобы, своевременность и потребности в обучении. | контроль качества |
+| mediateops.quality.complaint_response | Ответ на жалобу на посредничество | invariant | В ответе фиксируются жалоба, проверка, ответ посредника, результат и корректирующие действия. | подотчетность |
+| mediateops.quality.training_record | Протокол обучения медиатора | invariant | Запись отслеживает базовую, продвинутую подготовку, этику, насилие в семье, культурную и специальную подготовку. | квалифицированный список |
+| mediateops.reporting.case_volume | Отчет об объеме дел медиации | invariant | В отчете суммируются обращения, запланированные, удержанные, соглашения, неявки, закрытия и отставание. | центр управления |
+| mediateops.reporting.outcome_report | Отчет о результатах медиации | variant | Отчет отслеживает полное согласие, частичное согласие, тупиковую ситуацию, удовлетворение, соблюдение требований и влияние суда. | оценить программу |
+| mediateops.metrics.mediation_kpi | Медиационный центр КПИ | variant | KPI отслеживает время до сеанса, уровень согласия, неявки, проверки безопасности, жалобы и удовлетворенность. | управлять посредничеством |
+| mediateops.continuity.mediator_no_show | Ответ посредника о неявке | variant | Ответные действия связываются с резервной копией, информируют стороны, меняют графики, фиксируют влияние и действия реестра. | сохранить сервис |
+| mediateops.continuity.system_outage | Сбой в системе медиации | invariant | Outage использует бумажный график, защищенные заметки, подтверждения по телефону и поздний вход. | продолжать работу |
+| mediateops.outreach.community_referral | Информационная работа с сообществом медиаторов | variant | Outreach объясняет партнерам услуги, право на участие, нейтральность, ограничения и процесс направления. | построить трубопровод |

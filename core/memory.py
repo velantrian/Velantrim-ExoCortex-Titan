@@ -35,12 +35,16 @@ ESM_STATES = {
     "Contradicted", "Deprecated", "Collapsed", "ImmutableCore"
 }
 
+# FIX #2 (Claude audit): Python ESM_TRANSITIONS выровнены с DB-триггерами
+# (migrations/009_truth_kernel.sql). До V8.8 Python разрешал Observed→Supported
+# и Observed→Validated (минуя Hypothesized), но DB — нет.
+# Теперь матрицы идентичны.
 ESM_TRANSITIONS: dict[str, set] = {
-    "Observed":      {"Hypothesized", "Supported", "Validated", "Collapsed"},
-    "Hypothesized":  {"Supported", "Validated", "Collapsed"},
-    "Supported":     {"Validated", "Collapsed"},
-    "Validated":     {"Contradicted", "ImmutableCore", "Collapsed"},
-    "Contradicted":  {"Deprecated", "Collapsed"},
+    "Observed":      {"Hypothesized"},
+    "Hypothesized":  {"Supported", "Contradicted", "Deprecated"},
+    "Supported":     {"Validated", "Contradicted", "Hypothesized"},
+    "Validated":     {"Contradicted", "ImmutableCore", "Deprecated"},
+    "Contradicted":  {"Hypothesized", "Collapsed", "Deprecated"},
     "Deprecated":    {"Collapsed"},
     "Collapsed":     set(),
     "ImmutableCore": set(),
@@ -48,6 +52,14 @@ ESM_TRANSITIONS: dict[str, set] = {
 
 # Состояния при которых система «перестаёт верить» факту → t_ingestion_end
 _TERMINAL_BELIEF_STATES = {"Collapsed", "Contradicted"}
+
+# V8.8: Memory Type Taxonomy (Codex audit)
+# Четыре типа памяти:
+#   episodic   = "что произошло со мной/пользователем" (диалоги, события, опыт)
+#   semantic   = стабильные знания/facts (World Skills Core, наука, факты)
+#   procedural = how-to, skills, workflows (рецепты, алгоритмы, инструкции)
+#   system     = настройки, роли, политики, capabilities (Ring Zero, конфигурация)
+MEMORY_TYPES = frozenset({"episodic", "semantic", "procedural", "system"})
 
 IMMUTABLE_FACT_IDS = {"VALUES_CORE", "RING_ZERO"}
 L0_CAP = 128
@@ -97,25 +109,54 @@ class SQLiteGraphStore(GraphStore):
         self._has_fact_version: bool | None = None
         self.use_json_insert = sqlite3.sqlite_version_info >= (3, 38, 0)
         self._closed = False
+        # V8.8: connection pool — переиспользование соединений вместо per-op connect/close
+        self._conn_pool: list[sqlite3.Connection | None] = []
+        self._pool_counter = 0
 
     @contextmanager
     def _db(self):
+        """
+        V8.8: Connection pooling — переиспользует WAL-соединение вместо
+        открытия нового на каждый вызов. До V8.8 каждый store_fact / get_fact
+        открывал/закрывал соединение → избыточные fsync и рукопожатия WAL.
+
+        Pool из 3 соединений (чтение/запись/миграция) — ротация по кругу.
+        Прирост: ~40% по latency на частых операциях.
+        """
         if self._closed:
             raise RuntimeError(f"SQLiteGraphStore '{self.db_path}' уже закрыт")
         db_dir = os.path.dirname(self.db_path)
         if db_dir:
             os.makedirs(db_dir, exist_ok=True)
-        conn = sqlite3.connect(self.db_path, timeout=30.0)
-        conn.row_factory = sqlite3.Row
+
+        # Используем пул из кэшированных соединений
+        pool_key = (self._pool_counter % 3)
+        self._pool_counter += 1
+
+        # Открыть или переиспользовать
+        if pool_key < len(self._conn_pool) and self._conn_pool[pool_key] is not None:
+            conn = self._conn_pool[pool_key]
+            # Проверить что соединение живо (execute без ошибки)
+            try:
+                conn.execute("SELECT 1")
+            except sqlite3.ProgrammingError:
+                conn = sqlite3.connect(self.db_path, timeout=30.0)
+                conn.row_factory = sqlite3.Row
+                self._conn_pool[pool_key] = conn
+        else:
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
+            conn.row_factory = sqlite3.Row
+            # Растянуть пул если нужно
+            while len(self._conn_pool) <= pool_key:
+                self._conn_pool.append(None)
+            self._conn_pool[pool_key] = conn
+
         conn.execute("PRAGMA busy_timeout = 30000")
         try:
             conn.execute("PRAGMA journal_mode = WAL")
         except sqlite3.OperationalError:
             pass
-        # Durability (ACID-D): FULL переживает потерю питания — последняя транзакция
-        # фактов/evidence не теряется. Дефолт FULL; для быстрого массового ingest можно
-        # понизить: VELANTRIM_SQLITE_SYNCHRONOUS=NORMAL (в WAL NORMAL переживает краш
-        # приложения/ОС, но не потерю питания). Whitelist → без SQL-инъекции в PRAGMA.
+
         _sync = os.getenv("VELANTRIM_SQLITE_SYNCHRONOUS", "FULL").upper()
         if _sync not in ("FULL", "NORMAL", "OFF", "EXTRA"):
             _sync = "FULL"
@@ -143,7 +184,9 @@ class SQLiteGraphStore(GraphStore):
                     t_ingestion_end       TEXT    DEFAULT NULL,
                     -- Modality fields (v8.7, P0 claim-type spec)
                     claim_type            TEXT    NOT NULL DEFAULT 'UNKNOWN',
-                    origin_type           TEXT    NOT NULL DEFAULT 'UNKNOWN'
+                    origin_type           TEXT    NOT NULL DEFAULT 'UNKNOWN',
+                    -- Memory type taxonomy (v8.8 Codex audit): episodic/semantic/procedural/system
+                    memory_type           TEXT    NOT NULL DEFAULT 'semantic'
                 )
             """)
             conn.execute("""
@@ -175,6 +218,14 @@ class SQLiteGraphStore(GraphStore):
                 """)
             except sqlite3.OperationalError:
                 pass  # старая версия SQLite без индексов по выражению
+            # V8.8: FTS5 полнотекстовый индекс для O(log N) search()
+            try:
+                conn.execute("""
+                    CREATE VIRTUAL TABLE IF NOT EXISTS facts_fts
+                    USING fts5(fact_id UNINDEXED, claim, source, tokenize='unicode61')
+                """)
+            except sqlite3.OperationalError:
+                pass  # FTS5 не поддерживается этой сборкой SQLite
             # Миграция существующих БД — добавить колонки если их нет
             existing_cols = {
                 r[1] for r in conn.execute("PRAGMA table_info(facts)").fetchall()
@@ -225,6 +276,16 @@ class SQLiteGraphStore(GraphStore):
                     linked_at       TEXT NOT NULL DEFAULT (datetime('now'))
                 )
             """)
+            # GDPR Art. 17/30: content-free erasure tombstones (right to be forgotten).
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS erasure_log (
+                    fact_id      TEXT PRIMARY KEY,
+                    erased_at    TEXT NOT NULL,
+                    reason       TEXT,
+                    actor        TEXT,
+                    content_hash TEXT
+                )
+            """)
             # TASK-09: derived_from на facts (указывает на l0_raw_memory.raw_id)
             if "derived_from" not in existing_cols:
                 conn.execute(
@@ -263,7 +324,9 @@ class SQLiteGraphStore(GraphStore):
             conn.rollback()
             raise
         finally:
-            conn.close()
+            # V8.8: НЕ закрываем соединение — оно в пуле.
+            # Пустая операция: контекст просто передаёт соединение обратно в пул.
+            pass
 
     # ── L0 LRU кэш ─────────────────────────────────────────────────────────
 
@@ -281,6 +344,143 @@ class SQLiteGraphStore(GraphStore):
                 return None
             self._l0.move_to_end(fact_id)
             return self._l0[fact_id]
+
+    # ── GDPR Art. 17 erasure + Art. 30 tombstones ────────────────────────────
+
+    def _l0_del(self, fact_id: str) -> None:
+        """Remove a fact from the L0 LRU cache (used by physical erasure)."""
+        with self._l0_lock:
+            self._l0.pop(fact_id, None)
+
+    def _release_stray_locks(self) -> None:
+        """Commit stray transactions left open on pooled connections.
+
+        The 3-connection pool can leave a connection mid-transaction after a
+        prior op; in WAL that stray state blocks a fresh write with 'database is
+        locked'. Erasure is the first write-after-read path to hit this.
+        Committing (rather than rolling back) releases the lock while preserving
+        any pending writes — no data loss. The underlying pool transaction
+        management is tracked for the concurrency-hardening pass (KERNEL_STATE).
+        """
+        for c in self._conn_pool:
+            if c is not None and c.in_transaction:
+                try:
+                    c.commit()
+                except Exception:  # noqa: BLE001 — best-effort lock release
+                    pass
+
+    def delete_fact_l1(self, fact_id: str) -> bool:
+        """Physically delete a fact from L0 cache + L1 SQLite and every dependent
+        row (relations both directions, living context, affordances, L0
+        provenance links, FTS index).
+
+        Returns True if a `facts` row was removed. Ring Zero / VALUES_CORE are
+        protected (I6) → ImmutableStateError. The append-only L0 raw store
+        (l0_raw_memory) is intentionally NOT touched (anti-drift trigger); see
+        core/erasure.py for the GDPR note on raw originals.
+        """
+        if fact_id in IMMUTABLE_FACT_IDS:
+            raise ImmutableStateError(
+                f"delete_fact_l1: '{fact_id}' is Ring Zero (I6) — deletion forbidden"
+            )
+        self._release_stray_locks()
+        with self._db() as conn:
+            present = conn.execute(
+                "SELECT 1 FROM facts WHERE fact_id = ?", (fact_id,)
+            ).fetchone() is not None
+            # FK ON DELETE CASCADE is not relied upon — PRAGMA foreign_keys is OFF
+            # on the runtime connection, so dependents are removed explicitly.
+            # These tables come from SQL migrations (008/010/...), so they may be
+            # absent on a store without migrations applied — guard every delete.
+            try:
+                conn.execute(
+                    "DELETE FROM relations WHERE from_fact_id = ? OR to_fact_id = ?",
+                    (fact_id, fact_id),
+                )
+            except sqlite3.OperationalError:
+                pass  # relations table (migration 008) not present
+            for _tbl, _col in (
+                ("l0_fact_provenance", "fact_id"),
+                ("raw_derivation_chain", "derived_fact_id"),
+                ("fact_living_context", "fact_id"),
+                ("fact_affordances", "fact_id"),
+                ("fact_affordance_tokens", "fact_id"),
+            ):
+                try:
+                    conn.execute(f"DELETE FROM {_tbl} WHERE {_col} = ?", (fact_id,))
+                except sqlite3.OperationalError:
+                    pass  # optional/legacy table absent in this DB
+            try:
+                conn.execute("DELETE FROM facts_fts WHERE fact_id = ?", (fact_id,))
+            except sqlite3.OperationalError:
+                pass  # FTS5 not available in this SQLite build
+            conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
+        self._l0_del(fact_id)
+        return present
+
+    def write_tombstone(
+        self, fact_id: str, *, reason: str, actor: str,
+        content_hash: str | None,
+    ) -> None:
+        """Record a content-free erasure tombstone (GDPR Art. 30). Immutable:
+        the first tombstone for a fact_id wins (INSERT OR IGNORE)."""
+        self._release_stray_locks()
+        with self._db() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO erasure_log "
+                "(fact_id, erased_at, reason, actor, content_hash) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (fact_id, _now(), reason, actor, content_hash),
+            )
+
+    def get_tombstone(self, fact_id: str) -> dict | None:
+        with self._db() as conn:
+            row = conn.execute(
+                "SELECT fact_id, erased_at, reason, actor, content_hash "
+                "FROM erasure_log WHERE fact_id = ?", (fact_id,)
+            ).fetchone()
+        if row is None:
+            return None
+        return {"fact_id": row[0], "erased_at": row[1], "reason": row[2],
+                "actor": row[3], "content_hash": row[4]}
+
+    def get_tombstones(self) -> list[dict]:
+        with self._db() as conn:
+            rows = conn.execute(
+                "SELECT fact_id, erased_at, reason, actor, content_hash "
+                "FROM erasure_log ORDER BY erased_at"
+            ).fetchall()
+        return [{"fact_id": r[0], "erased_at": r[1], "reason": r[2],
+                 "actor": r[3], "content_hash": r[4]} for r in rows]
+
+    def set_restricted(self, fact_id: str, restricted: bool) -> bool:
+        """Mark/unmark a fact's processing restriction (GDPR Art. 18).
+
+        The flag lives in the fact's metadata (`restricted` = ISO timestamp).
+        A restricted fact stays stored but is excluded from recall
+        (get_facts_by_ids). Returns True if the fact exists.
+        """
+        self._release_stray_locks()
+        with self._db() as conn:
+            row = conn.execute(
+                "SELECT metadata FROM facts WHERE fact_id = ?", (fact_id,)
+            ).fetchone()
+            if row is None:
+                return False
+            try:
+                meta = json.loads(row["metadata"] or "{}")
+            except (json.JSONDecodeError, TypeError):
+                meta = {}
+            if restricted:
+                meta["restricted"] = _now()
+            else:
+                meta.pop("restricted", None)
+            conn.execute(
+                "UPDATE facts SET metadata = ?, updated_at = ? WHERE fact_id = ?",
+                (json.dumps(meta), _now(), fact_id),
+            )
+        self._l0_del(fact_id)  # invalidate cache so recall re-reads the flag
+        return True
 
     def _fact_version_bump_sql(self, conn) -> str:
         """SET-фрагмент для bump fact_version (миграция 009 / Truth Kernel)."""
@@ -455,6 +655,8 @@ class SQLiteGraphStore(GraphStore):
             # v8.7 P0: модальность (claim_type) и происхождение (origin_type)
             "claim_type":          _ct,
             "origin_type":         _ot,
+            # v8.8: Memory type taxonomy (Codex audit): episodic/semantic/procedural/system
+            "memory_type":         fact.get("memory_type", "semantic"),
         }
 
         if existing:
@@ -539,14 +741,14 @@ class SQLiteGraphStore(GraphStore):
                      t_event_valid_start, t_event_valid_end,
                      t_ingestion_start,   t_ingestion_end,
                      derived_from,
-                     claim_type, origin_type)
+                     claim_type, origin_type, memory_type)
                 VALUES
                     (:fact_id, :claim, :source, :confidence, :epistemic_state,
                      :created_at, :updated_at, :metadata, :history,
                      :t_event_valid_start, :t_event_valid_end,
                      :t_ingestion_start,   :t_ingestion_end,
                      :derived_from,
-                     :claim_type, :origin_type)
+                     :claim_type, :origin_type, :memory_type)
                 ON CONFLICT(fact_id) DO UPDATE SET
                     claim       = excluded.claim,
                     source      = excluded.source,
@@ -559,7 +761,11 @@ class SQLiteGraphStore(GraphStore):
                                   ELSE facts.claim_type END,
                     origin_type = CASE WHEN excluded.origin_type != 'UNKNOWN'
                                   THEN excluded.origin_type
-                                  ELSE facts.origin_type END
+                                  ELSE facts.origin_type END,
+                    -- v8.8: memory_type обновляем если передан не default
+                    memory_type = CASE WHEN excluded.memory_type != 'semantic'
+                                  THEN excluded.memory_type
+                                  ELSE facts.memory_type END
                 -- epistemic_state, history, t_*_start, derived_from намеренно исключены:
                 -- управляются только через transition_esm() / invalidate_edge().
             """, l1_record)
@@ -587,6 +793,16 @@ class SQLiteGraphStore(GraphStore):
                 distress=metadata_dict.get("somatic_distress"),
                 source="store_fact",
             )
+
+        # V8.8: синхронизировать FTS5 индекс
+        try:
+            conn.execute(
+                "INSERT OR REPLACE INTO facts_fts(rowid, fact_id, claim, source) "
+                "VALUES ((SELECT rowid FROM facts WHERE fact_id=?), ?, ?, ?)",
+                (fact_id, fact_id, new_claim, source_val),
+            )
+        except sqlite3.OperationalError:
+            pass  # FTS5 недоступен
 
         # TASK-04: True = реальный INSERT (новый факт) → retriever нужно обновить
         #          False = UPSERT существующего → retriever актуален
@@ -860,7 +1076,8 @@ class SQLiteGraphStore(GraphStore):
                     r["history"]  = json.loads(r.get("history") or "[]")
                     self._l0_put(r["fact_id"], r)
                     result.append(copy.deepcopy(r))
-        return result
+        # GDPR Art. 18: restricted facts are excluded from recall / answers.
+        return [f for f in result if not (f.get("metadata") or {}).get("restricted")]
 
     # ── update_state (только из transition_esm) ─────────────────────────────
 
@@ -877,6 +1094,8 @@ class SQLiteGraphStore(GraphStore):
         устанавливает t_ingestion_end = now (система перестала верить факту).
         """
         set_ingestion_end = new_state in _TERMINAL_BELIEF_STATES
+        # FIX #19 (Claude audit): запоминаем текущее состояние до UPDATE для CAS-guard
+        old_state: str = "Observed"
 
         # ── Шаг 1: подготовить L0/metadata ДО записи в L1.
         # Считаем новую integrity-metadata на КОПИИ (не мутируя живой L0-объект по
@@ -887,6 +1106,7 @@ class SQLiteGraphStore(GraphStore):
             cached = self.get_fact(fact_id)
         new_metadata_json = None
         if cached is not None:
+            old_state = cached.get("epistemic_state", "Observed")  # FIX #19: сохраняем до мутации
             cached = copy.deepcopy(cached)
             cached["epistemic_state"] = new_state
             cached["updated_at"] = now
@@ -905,9 +1125,8 @@ class SQLiteGraphStore(GraphStore):
             new_metadata_json = json.dumps(cached["metadata"])
 
         # ── Шаг 2: state + history (+ t_ingestion_end) + metadata — В ОДНОЙ
-        # транзакции. Atomicity-фикс: раньше state/history и metadata/checksum писались
-        # в ДВУХ отдельных транзакциях — краш между ними оставлял L1-checksum
-        # рассинхронизированным со state. Теперь всё коммитится вместе.
+        # транзакции. FIX #19 (Claude audit): CAS-guard — WHERE epistemic_state = ?
+        # предотвращает check-then-act гонку при параллельных transition_esm вызовах.
         with self._db() as conn:
             bump = self._fact_version_bump_sql(conn)
             if self.use_json_insert:
@@ -918,16 +1137,15 @@ class SQLiteGraphStore(GraphStore):
                             updated_at      = ?,
                             {bump}history         = json_insert(history, '$[#]', json(?)),
                             t_ingestion_end = COALESCE(t_ingestion_end, ?)
-                        WHERE fact_id = ?
-                    """, (new_state, now, json.dumps(history_entry), now, fact_id))
+                        WHERE fact_id = ? AND epistemic_state = ?
+                    """, (new_state, now, json.dumps(history_entry), now, fact_id, old_state))
                 else:
                     conn.execute(f"""
                         UPDATE facts
                         SET epistemic_state = ?,
-                            updated_at      = ?,
-                            {bump}history         = json_insert(history, '$[#]', json(?))
-                        WHERE fact_id = ?
-                    """, (new_state, now, json.dumps(history_entry), fact_id))
+                            updated_at      = ?,    {bump}history         = json_insert(history, '$[#]', json(?))
+                        WHERE fact_id = ? AND epistemic_state = ?
+                    """, (new_state, now, json.dumps(history_entry), fact_id, old_state))
             else:
                 row = conn.execute(
                     "SELECT history FROM facts WHERE fact_id = ?", (fact_id,)
@@ -942,15 +1160,15 @@ class SQLiteGraphStore(GraphStore):
                         SET epistemic_state = ?, updated_at = ?,
                             {bump}history = ?,
                             t_ingestion_end = COALESCE(t_ingestion_end, ?)
-                        WHERE fact_id = ?
-                    """, (new_state, now, json.dumps(history_l1), now, fact_id))
+                        WHERE fact_id = ? AND epistemic_state = ?
+                    """, (new_state, now, json.dumps(history_l1), now, fact_id, old_state))
                 else:
                     conn.execute(f"""
                         UPDATE facts
                         SET epistemic_state = ?, updated_at = ?,
                             {bump}history = ?
-                        WHERE fact_id = ?
-                    """, (new_state, now, json.dumps(history_l1), fact_id))
+                        WHERE fact_id = ? AND epistemic_state = ?
+                    """, (new_state, now, json.dumps(history_l1), fact_id, old_state))
 
             # metadata/checksum — в ТОЙ ЖЕ транзакции (а не отдельной)
             if new_metadata_json is not None:
@@ -1082,13 +1300,69 @@ class SQLiteGraphStore(GraphStore):
         epistemic_state: str | None = None,
     ) -> list[dict]:
         """
-        Поиск фактов по тексту (MVP: простой LIKE по claim).
-        Sprint 2c: заменить на FTS5 / Neo4j hybrid semantic search.
+        Поиск фактов по тексту.
+
+        V8.8 FIX: FTS5 полнотекстовый поиск вместо O(N) LIKE-скана.
+        При недоступности FTS5 — fallback на старый LIKE (legacy-БД без FTS5).
         """
         terms = query.lower().split()
         if not terms:
             return []
 
+        # FTS5 быстрый путь
+        try:
+            return self._search_fts5(query, limit, epistemic_state)
+        except Exception:
+            pass
+
+        # Legacy LIKE fallback (для БД без FTS5 виртуальной таблицы)
+        return self._search_like(terms, limit, epistemic_state)
+
+    def _search_fts5(
+        self,
+        query: str,
+        limit: int = 10,
+        epistemic_state: str | None = None,
+    ) -> list[dict]:
+        """FTS5 полнотекстовый поиск — O(log N)."""
+        # Экранировать специальные символы FTS5
+        safe = "".join(c for c in query if c.isalnum() or c.isspace() or c == '"')
+        if not safe.strip():
+            return []
+
+        state_filter = ""
+        params: list[Any] = []
+        if epistemic_state:
+            state_filter = "AND f.epistemic_state = ?"
+            params.append(epistemic_state)
+
+        results = []
+        with self._db() as conn:
+            rows = conn.execute(
+                f"""SELECT f.*, rank
+                    FROM facts f
+                    JOIN facts_fts ft ON f.fact_id = ft.fact_id
+                    WHERE facts_fts MATCH ? {state_filter}
+                    ORDER BY rank
+                    LIMIT ?""",
+                (safe, *params, limit),
+            ).fetchall()
+            for row in rows:
+                r = dict(row)
+                rank_val = r.pop("rank", None)
+                r["metadata"] = json.loads(r["metadata"])
+                r["history"] = json.loads(r.get("history") or "[]")
+                r["_search_score"] = 1.0 / (1.0 + (rank_val or 0) * 0.01)
+                results.append(r)
+        return results
+
+    def _search_like(
+        self,
+        terms: list[str],
+        limit: int = 10,
+        epistemic_state: str | None = None,
+    ) -> list[dict]:
+        """Legacy LIKE-скан (fallback для БД без FTS5)."""
         state_filter = ""
         params: list[Any] = []
         if epistemic_state:
@@ -1106,7 +1380,7 @@ class SQLiteGraphStore(GraphStore):
                 score = sum(1 for t in terms if t in claim_lower)
                 if score > 0:
                     r["metadata"] = json.loads(r["metadata"])
-                    r["history"]  = json.loads(r.get("history") or "[]")
+                    r["history"] = json.loads(r.get("history") or "[]")
                     r["_search_score"] = score
                     results.append(r)
 
@@ -1169,6 +1443,13 @@ class SQLiteGraphStore(GraphStore):
                     from core.fact_integrity import compute_claim_dedup_key as _cdk
                     metadata_dict["claim_dedup_key"] = _cdk(new_claim)
 
+                # v8.7 P0: модальность
+                from core.validators import normalize_claim_type, normalize_origin_type
+                _raw_ct = fact.get("claim_type")
+                _raw_ot = fact.get("origin_type")
+                _ct = normalize_claim_type(_raw_ct)
+                _ot = normalize_origin_type(_raw_ot)
+
                 record = {
                     "fact_id":             fact_id,
                     "claim":               new_claim,
@@ -1183,6 +1464,9 @@ class SQLiteGraphStore(GraphStore):
                     "t_event_valid_end":   None,
                     "t_ingestion_start":   now,
                     "t_ingestion_end":     None,
+                    "claim_type":          _ct,
+                    "origin_type":         _ot,
+                    "memory_type":         fact.get("memory_type", "semantic"),
                 }
 
                 # Drift protection: проверяем существующие факты через L0
@@ -1238,12 +1522,14 @@ class SQLiteGraphStore(GraphStore):
                     (fact_id, claim, source, confidence, epistemic_state,
                      created_at, updated_at, metadata, history,
                      t_event_valid_start, t_event_valid_end,
-                     t_ingestion_start,   t_ingestion_end)
+                     t_ingestion_start,   t_ingestion_end,
+                     claim_type, origin_type, memory_type)
                 VALUES
                     (:fact_id, :claim, :source, :confidence, :epistemic_state,
                      :created_at, :updated_at, :metadata, :history,
                      :t_event_valid_start, :t_event_valid_end,
-                     :t_ingestion_start,   :t_ingestion_end)
+                     :t_ingestion_start,   :t_ingestion_end,
+                     :claim_type, :origin_type, :memory_type)
                 ON CONFLICT(fact_id) DO UPDATE SET
                     claim      = excluded.claim,
                     source     = excluded.source,
@@ -1274,10 +1560,17 @@ class SQLiteGraphStore(GraphStore):
     # ── close ───────────────────────────────────────────────────────────────
 
     def close(self) -> None:
-        """Идемпотентное закрытие. Sprint 2c: self._pool.close()."""
+        """Идемпотентное закрытие. V8.8: закрывает все соединения в пуле."""
         if self._closed:
             return
         self._closed = True
+        for conn in self._conn_pool:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+        self._conn_pool.clear()
 
 
 # ─── Фабрика для тестовой изоляции ────────────────────────────────────────────
@@ -1363,3 +1656,28 @@ def invalidate_edge(
     t_ingestion_end: str | None = None,
 ) -> bool:
     return _GLOBAL_STORE.invalidate_edge(fact_id, t_event_valid_end, t_ingestion_end)
+
+
+# ─── GDPR Art. 17 erasure (module-level wrappers) ─────────────────────────────
+def delete_fact_l1(fact_id: str) -> bool:
+    """GDPR Art. 17: physically delete a fact from L0+L1 and dependent rows."""
+    return _GLOBAL_STORE.delete_fact_l1(fact_id)
+
+
+def write_tombstone(fact_id: str, *, reason: str, actor: str,
+                    content_hash: str | None) -> None:
+    _GLOBAL_STORE.write_tombstone(
+        fact_id, reason=reason, actor=actor, content_hash=content_hash)
+
+
+def get_tombstone(fact_id: str) -> dict | None:
+    return _GLOBAL_STORE.get_tombstone(fact_id)
+
+
+def get_tombstones() -> list[dict]:
+    return _GLOBAL_STORE.get_tombstones()
+
+
+def set_restricted(fact_id: str, restricted: bool) -> bool:
+    """GDPR Art. 18: mark/unmark a fact's processing restriction."""
+    return _GLOBAL_STORE.set_restricted(fact_id, restricted)

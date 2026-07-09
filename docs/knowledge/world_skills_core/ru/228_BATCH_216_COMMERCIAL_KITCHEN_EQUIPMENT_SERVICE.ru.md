@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| kitchsvc.intake.service_call | Kitchen equipment service call | invariant | Call records equipment, symptom, location, urgency, warranty, access and foodservice impact. | open service job |
-| kitchsvc.intake.asset_tag | Kitchen equipment asset tag | invariant | Tag links unit to model, serial, owner, location, warranty and service history. | identify exact unit |
-| kitchsvc.intake.symptom_category | Equipment symptom category | invariant | Category groups no heat, no power, leak, poor temperature, noise, ignition or control fault. | dispatch skill |
-| kitchsvc.intake.priority_level | Kitchen service priority | variant | Priority reflects safety, refrigeration loss, production outage, health risk or SLA. | triage work |
-| kitchsvc.intake.previsit_instruction | Previsit instruction | invariant | Instruction asks customer to clear access, stop unsafe use or preserve error conditions. | technician readiness |
-| kitchsvc.dispatch.technician_assignment | Kitchen service technician assignment | invariant | Assignment matches gas, refrigeration, electrical, steam or warewash skill to call. | right expertise |
-| kitchsvc.dispatch.parts_preload | Parts preload | variant | Preload sends likely igniters, probes, gaskets, pumps or controls based on symptom. | improve first fix |
-| kitchsvc.dispatch.site_access | Kitchen site access | invariant | Access notes delivery dock, kitchen hours, contact, security, parking and after-hours rules. | reach equipment |
-| kitchsvc.dispatch.foodservice_window | Foodservice work window | variant | Window avoids peak meal production when possible. | reduce disruption |
-| kitchsvc.dispatch.no_service_condition | No-service condition | invariant | Condition records unsafe site, inaccessible unit, missing authorization or unavailable contact. | explain stop |
-| kitchsvc.safety.gas_safety_check | Gas equipment safety check | variant | Check covers shutoff, odor, ventilation, combustion area and qualified scope. | gas risk control |
-| kitchsvc.safety.electrical_lockout | Kitchen electrical lockout | invariant | Lockout isolates power before exposure to hazardous components. | technician safety |
-| kitchsvc.safety.hot_surface | Hot surface control | invariant | Control manages burns from ovens, fryers, grills, steamers or hot liquids. | avoid injury |
-| kitchsvc.safety.refrigerant_boundary | Refrigerant handling boundary | variant | Boundary limits sealed-system work to qualified staff and approved recovery process. | compliance |
-| kitchsvc.safety.food_contact_safety | Food-contact safety | invariant | Safety prevents tools, chemicals, debris or lubricants from contaminating food-contact surfaces. | protect food |
-| kitchsvc.diagnostic.visual_inspection | Kitchen equipment visual inspection | invariant | Inspection checks installation, damage, cleanliness, airflow, water, power, gas and controls. | first evidence |
-| kitchsvc.diagnostic.error_code | Kitchen equipment error code | variant | Code points to possible fault but must be verified by test and context. | diagnostic clue |
-| kitchsvc.diagnostic.temperature_test | Equipment temperature test | invariant | Test measures actual heating, cooling or holding performance against expected operation. | verify symptom |
-| kitchsvc.diagnostic.leak_check | Kitchen equipment leak check | invariant | Check looks for water, gas, steam, oil or refrigerant-related leak signs within scope. | containment |
-| kitchsvc.diagnostic.cycle_observation | Equipment cycle observation | variant | Observation watches ignition, compressor, pump, fan, timer, drain or control sequence. | see failure happen |
-| kitchsvc.repair.repair_estimate | Commercial kitchen repair estimate | invariant | Estimate lists diagnosis, parts, labor, downtime, risk and customer approval. | informed choice |
-| kitchsvc.repair.part_replacement | Kitchen equipment part replacement | invariant | Replacement follows manufacturer procedure and verifies compatibility. | restore function |
-| kitchsvc.repair.gasket_repair | Door gasket repair | variant | Repair fixes seal, alignment and cleaning issue on refrigeration, oven or warmer doors. | efficiency and temperature |
-| kitchsvc.repair.burner_service | Burner service | variant | Service cleans, adjusts or repairs burner components within qualified gas procedure. | reliable heat |
-| kitchsvc.repair.pump_service | Pump service | variant | Service addresses warewasher, ice machine, drain or circulation pump issue. | water movement |
-| kitchsvc.test.post_repair_test | Kitchen post-repair test | invariant | Test confirms unit starts, cycles, reaches performance target and no obvious leaks remain. | prove repair |
-| kitchsvc.test.safety_device_test | Kitchen safety device test | invariant | Test verifies interlocks, limits, flame safeguard, guards or shutoffs as applicable. | safe release |
-| kitchsvc.test.sanitation_return | Sanitation return check | invariant | Check leaves food-contact and work areas clean after service. | kitchen can resume |
-| kitchsvc.test.customer_demo | Kitchen equipment customer demo | variant | Demo shows repaired function, basic care and warning signs to staff. | reduce callbacks |
-| kitchsvc.test.return_to_service | Return-to-service release | invariant | Release records unit condition, test result, restrictions and customer acceptance. | operational handoff |
-| kitchsvc.pm.pm_schedule | Kitchen equipment PM schedule | invariant | Schedule sets cleaning, inspection, calibration, lubrication, filters and safety checks. | prevent outage |
-| kitchsvc.pm.filter_cleaning | Filter cleaning task | variant | Task covers hood, fryer, ice, refrigeration or water filter condition where applicable. | performance depends on flow |
-| kitchsvc.pm.scale_control | Scale control | variant | Control manages mineral buildup in steamers, dish machines, coffee and ice equipment. | water chemistry |
-| kitchsvc.pm.belt_fan_check | Belt and fan check | variant | Check verifies airflow components, tension, noise and bearing condition. | heat transfer |
-| kitchsvc.pm.pm_report | Kitchen PM report | invariant | Report lists findings, work done, parts used, risks and recommendations. | maintenance evidence |
-| kitchsvc.parts.part_identification | Kitchen service part identification | invariant | Identification matches model, serial, revision, voltage, gas type and manufacturer part. | avoid wrong part |
-| kitchsvc.parts.emergency_part | Emergency part sourcing | variant | Sourcing finds critical part for production-down equipment through approved channel. | reduce downtime |
-| kitchsvc.parts.warranty_part | Warranty part claim | variant | Claim documents failed part, install date, diagnosis and manufacturer return requirement. | recover cost |
-| kitchsvc.parts.van_stock | Kitchen service van stock | variant | Stock includes common gaskets, igniters, probes, switches, hoses, fittings and hardware. | faster repair |
-| kitchsvc.parts.obsolete_part | Obsolete part path | invariant | Path documents no-longer-available part, substitute, rebuild or replacement recommendation. | honest next step |
-| kitchsvc.records.service_note | Kitchen service note | invariant | Note captures diagnosis, safety checks, repair, tests, parts, photos and restrictions. | job memory |
-| kitchsvc.records.maintenance_contract | Maintenance contract record | variant | Record defines covered equipment, PM frequency, response terms, exclusions and price. | recurring service |
-| kitchsvc.metrics.kitchen_service_kpi | Kitchen service KPI | variant | KPI tracks response time, first-fix rate, callbacks, downtime, parts delay and contract compliance. | manage service |
-| kitchsvc.continuity.critical_equipment_outage | Critical kitchen equipment outage | invariant | Outage plan communicates downtime, workaround, parts ETA and foodservice risk. | keep kitchen informed |
+| kitchsvc.intake.service_call | Вызов специалиста по обслуживанию кухонного оборудования | invariant | Оборудование для записи вызовов, симптомы, местоположение, срочность, гарантия, доступ и влияние на общественное питание. | открыть сервисную вакансию |
+| kitchsvc.intake.asset_tag | Тег актива кухонного оборудования | invariant | Тег связывает устройство с моделью, серийным номером, владельцем, местоположением, гарантией и историей обслуживания. | определить точную единицу |
+| kitchsvc.intake.symptom_category | Категория симптомов оборудования | invariant | Группы категорий: отсутствие нагрева, отсутствие питания, утечка, низкая температура, шум, неисправность зажигания или управления. | умение диспетчеризации |
+| kitchsvc.intake.priority_level | Приоритет обслуживания кухни | variant | Приоритет отражает безопасность, потери холода, простои производства, риск для здоровья или SLA. | сортировочная работа |
+| kitchsvc.intake.previsit_instruction | Инструкция по предварительному посещению | invariant | Инструкция просит клиента освободить доступ, прекратить небезопасное использование или сохранить ошибочные состояния. | техническая готовность |
+| kitchsvc.dispatch.technician_assignment | Должность мастера по обслуживанию кухни | invariant | Назначение соответствует навыкам работы с газом, холодильным оборудованием, электричеством, паром или мытьем посуды. | правильный опыт |
+| kitchsvc.dispatch.parts_preload | Предварительная нагрузка деталей | variant | Предварительная нагрузка отправляет вероятные воспламенители, датчики, прокладки, насосы или элементы управления в зависимости от симптома. | улучшить первое исправление |
+| kitchsvc.dispatch.site_access | Доступ к кухне | invariant | Примечания к доставке, часы работы кухни, контакты, охрана, парковка и правила работы в нерабочее время. | досягаемое оборудование |
+| kitchsvc.dispatch.foodservice_window | Окно работы общественного питания | variant | Window по возможности избегает пикового производства еды. | уменьшить сбои |
+| kitchsvc.dispatch.no_service_condition | Необслуживаемое состояние | invariant | Состояние фиксирует небезопасное место, недоступное устройство, отсутствие авторизации или недоступный контакт. | объясни стоп |
+| kitchsvc.safety.gas_safety_check | Проверка безопасности газового оборудования | variant | Проверьте крышки, отключение, запах, вентиляцию, зону горения и квалифицированный объем. | контроль газовых рисков |
+| kitchsvc.safety.electrical_lockout | Электрическая блокировка на кухне | invariant | Блокировка изолирует питание перед воздействием опасных компонентов. | техника безопасности |
+| kitchsvc.safety.hot_surface | Контроль горячей поверхности | invariant | Control помогает справиться с ожогами от духовок, фритюрниц, грилей, пароварок или горячих жидкостей. | избегать травм |
+| kitchsvc.safety.refrigerant_boundary | Граница обращения с хладагентом | variant | Граница ограничивает работу в герметичной системе квалифицированным персоналом и утвержденным процессом восстановления. | согласие |
+| kitchsvc.safety.food_contact_safety | Безопасность при контакте с пищевыми продуктами | invariant | Безопасность предотвращает загрязнение поверхностей, контактирующих с пищевыми продуктами, инструментами, химикатами, мусором или смазочными материалами. | защищать еду |
+| kitchsvc.diagnostic.visual_inspection | Визуальный осмотр кухонного оборудования | invariant | Инспекция проверяет установку, наличие повреждений, чистоту, поток воздуха, воду, электроэнергию, газ и средства управления. | первое доказательство |
+| kitchsvc.diagnostic.error_code | Код ошибки кухонного оборудования | variant | Код указывает на возможную неисправность, но должен быть проверен путем тестирования и контекста. | диагностический ключ |
+| kitchsvc.diagnostic.temperature_test | Температурный тест оборудования | invariant | Испытание измеряет фактическую производительность нагрева, охлаждения или удержания в сравнении с ожидаемой работой. | проверить симптом |
+| kitchsvc.diagnostic.leak_check | Проверка герметичности кухонного оборудования | invariant | Проверка ищет признаки утечек воды, газа, пара, масла или хладагента в пределах объема. | сдерживание |
+| kitchsvc.diagnostic.cycle_observation | Наблюдение за циклом работы оборудования | variant | Наблюдение наблюдает за зажиганием, компрессором, насосом, вентилятором, таймером, последовательностью слива или управления. | увидеть, как случается неудача |
+| kitchsvc.repair.repair_estimate | Смета на ремонт коммерческой кухни | invariant | В смете указаны диагностика, детали, работа, время простоя, риски и одобрение клиента. | осознанный выбор |
+| kitchsvc.repair.part_replacement | Замена детали кухонного оборудования | invariant | Замена осуществляется в соответствии с процедурой производителя и с проверкой совместимости. | восстановить функцию |
+| kitchsvc.repair.gasket_repair | Ремонт уплотнителя двери | variant | Ремонт устраняет проблемы с уплотнением, выравниванием и очисткой дверей холодильника, духовки или обогревателя. | эффективность и температура |
+| kitchsvc.repair.burner_service | Сервис горелок | variant | Сервисная служба очищает, регулирует или ремонтирует компоненты горелки в рамках квалифицированной газовой процедуры. | надежное тепло |
+| kitchsvc.repair.pump_service | Сервис насосов | variant | Сервисное обслуживание решает проблемы с посудомоечной машиной, льдогенератором, сливным или циркуляционным насосом. | движение воды |
+| kitchsvc.test.post_repair_test | Тест кухни после ремонта | invariant | Тест подтверждает, что устройство запускается, работает, достигает целевых показателей производительности и не остается очевидных утечек. | доказать ремонт |
+| kitchsvc.test.safety_device_test | Проверка кухонного защитного устройства | invariant | Испытания проверяют блокировки, ограничения, защиту от возгорания, защитные приспособления или запорные устройства, в зависимости от обстоятельств. | безопасный выпуск |
+| kitchsvc.test.sanitation_return | Санитарная проверка возврата | invariant | Проверка оставляет места, контактирующие с пищевыми продуктами, и рабочие зоны после обслуживания чистыми. | кухня может возобновить работу |
+| kitchsvc.test.customer_demo | Демонстрация кухонного оборудования для клиентов | variant | Демонстрация демонстрирует отремонтированные функции, базовый уход и предупреждающие знаки для персонала. | уменьшить количество обратных вызовов |
+| kitchsvc.test.return_to_service | Релиз для возврата в эксплуатацию | invariant | Публикация записывает состояние устройства, результаты испытаний, ограничения и приемку заказчиком. | оперативная передача |
+| kitchsvc.pm.pm_schedule | Кухонное оборудование График работы после обеда | invariant | Запланируйте очистку, проверку, калибровку, смазку, фильтры и проверки безопасности. | предотвратить отключение |
+| kitchsvc.pm.filter_cleaning | Задача очистки фильтра | variant | Задача охватывает состояние вытяжки, фритюрницы, льда, охлаждения или водяного фильтра, где это применимо. | производительность зависит от потока |
+| kitchsvc.pm.scale_control | Контроль масштаба | variant | Control контролирует накопление минералов в пароварках, посудомоечных машинах, оборудовании для приготовления кофе и льда. | химия воды |
+| kitchsvc.pm.belt_fan_check | Проверка ремня и вентилятора | variant | При проверке проверяются компоненты воздушного потока, натяжение, шум и состояние подшипников. | теплопередача |
+| kitchsvc.pm.pm_report | Отчет о кухонном ремонте | invariant | В отчете перечислены выводы, проделанная работа, использованные детали, риски и рекомендации. | доказательства содержания |
+| kitchsvc.parts.part_identification | Идентификация кухонных принадлежностей | invariant | Идентификация соответствует модели, серийному номеру, версии, напряжению, типу газа и детали производителя. | избегайте неправильной части |
+| kitchsvc.parts.emergency_part | Экстренный поиск запчастей | variant | Поиск критически важных деталей для оборудования, снятого с производства, осуществляется через утвержденный канал. | сократить время простоя |
+| kitchsvc.parts.warranty_part | Претензия по гарантийной части | variant | В претензионной документации указана неисправная деталь, дата установки, диагноз и требование возврата производителю. | возмещать затраты |
+| kitchsvc.parts.van_stock | Кухонный фургон | variant | В ассортимент входят обычные прокладки, воспламенители, датчики, переключатели, шланги, фитинги и крепежные детали. | более быстрый ремонт |
+| kitchsvc.parts.obsolete_part | Устаревший путь детали | invariant | Путевые документы о более недоступной детали, замене, восстановлении или рекомендации по замене. | честный следующий шаг |
+| kitchsvc.records.service_note | Сервисная записка на кухне | invariant | В заметках указаны диагностика, проверки безопасности, ремонт, испытания, детали, фотографии и ограничения. | память заданий |
+| kitchsvc.records.maintenance_contract | Запись договора на техническое обслуживание | variant | В записи указывается обслуживаемое оборудование, частота ПМ, сроки ответа, исключения и цена. | повторяющаяся услуга |
+| kitchsvc.metrics.kitchen_service_kpi | Кухонный сервис КПИ | variant | KPI отслеживает время отклика, скорость первого исправления, обратные вызовы, время простоя, задержку запчастей и соблюдение контракта. | управлять сервисом |
+| kitchsvc.continuity.critical_equipment_outage | Критический выход из строя кухонного оборудования | invariant | В плане простоев указывается время простоя, обходные пути, расчетное время прибытия запчастей и риски в сфере общественного питания. | держать кухню в курсе |

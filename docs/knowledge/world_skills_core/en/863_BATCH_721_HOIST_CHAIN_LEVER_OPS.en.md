@@ -1,0 +1,13 @@
+# BATCH 721: Hoist — Chain & Lever Operations
+
+**KnowledgeUnits:** 50
+**Namespace:** `chainfall.ops.*`
+**Scope:** lever_hoist, chain_block, trolley, beam_clamp, overload_clutch, inspection
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| chainfall.ops.lever_hoist_operation | Lever Hoist — Operation | METHOD | Ручная рычажная таль (come-along). Механизм: ratchet + pawl, lever forward/backward = load moves. Нагрузка: 0.25-9 тонн. Подъём: lever stroke на ~1-2 см load movement. Free chaining: для быстрой выборки слабины (без нагрузки). Применение: rigging, pulling, tensioning, vehicle recovery. Отличие от chain block: lever можно использовать горизонтально (тянуть). | Рычаг: никогда не удлинять трубой (overload). |
+| chainfall.ops.chain_block_hand_geared | Chain Block — Hand Geared | METHOD | Ручная цепная таль (ручная). Hand chain (бесконечная цепь) → gears reduction → load chain sprocket → load поднимается. Reduction ratio: большой (тянуть много ручной цепи для малого подъёма). Load brake: Weston-style или disc brake (удерживает load даже при отпускании ручной цепи). Overload protection: slip clutch (проскальзывает при >125% WLL). Смазка: load chain (oil), gears (grease). | Дёргать за load chain: категорически нельзя. |
+| chainfall.ops.trolley_push_geared | Trolley — Push vs Geared | METHOD | Тележка (trolley) для перемещения тали по балке. Push trolley (ручная): толкать руками load по beam. Geared trolley (с цепным приводом): более точное позиционирование, для тяжёлых грузов. Beam: I-beam (S-shape), flange width соответствует trolley. End stops: на концах beam (обязательны!). Anti-drop plates: safety. Радиус поворота: для curved beam — special trolley. | Push trolley: для частого перемещения лёгких грузов. |
+| chainfall.ops.beam_clamp_fixed | Beam Clamp — Fixed Point | METHOD | Крепление тали к балке (фиксированная точка). Clamp: зажимает flange I-beam, нагрузка через threaded spindle. Установка: на проектной позиции, затянут. Использование: для неподвижного подъёма (сервис оборудования). Проверка: не соскочит ли при vibration. Временное крепление: не для permanent. | Clamp не заменяет trolley для передвижения. |
+| chainfall.ops.pre_use_inspection_hoist | Pre-Use Inspection — Hoist | METHOD | Ежедневный осмотр тали. Check: hooks (деформация, трещины, safety latch), load chain (wear elongation >5%, links не заклинены), hand chain (то же), brake (держит ли load), labels (WLL читаем), lubrication. Any defect: RED TAG out of service. Logbook: запись ежедневного осмотра. | Дефектный hook: катастрофический отказ (load падает). |

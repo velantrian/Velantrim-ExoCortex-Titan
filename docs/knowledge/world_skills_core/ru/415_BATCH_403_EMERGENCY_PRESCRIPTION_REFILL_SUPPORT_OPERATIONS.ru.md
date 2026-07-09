@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| rxrefillops.intake.request_source | request source | RECORD | Source records shelter, hotline, clinic, pharmacy, caseworker or outreach desk. | Shows entry path. |
-| rxrefillops.intake.patient_identity | patient identity | RECORD | Identity captures name, date of birth, contact, location and preferred language. | Enables matching. |
-| rxrefillops.intake.medication_list | medication list | RECORD | List captures medication names, strength as reported, schedule as reported and prescribing provider. | Defines need. |
-| rxrefillops.intake.urgent_flag | urgent flag | MODEL | Urgency weighs running out, chronic condition, controlled status, displacement and access barriers. | Prioritizes help. |
-| rxrefillops.proof.prescription_proof | prescription proof | RECORD | Proof may include bottle, pharmacy profile, prescriber note, patient portal or prior claim. | Supports refill. |
-| rxrefillops.proof.no_bottle | no-bottle pathway | METHOD | No-bottle pathway uses pharmacy lookup, prescriber contact or health record verification. | Helps displaced patients. |
-| rxrefillops.proof.identity_gap | identity gap | CONSTRAINT | Missing ID is documented and routed through pharmacy or emergency policy alternatives. | Avoids automatic denial. |
-| rxrefillops.proof.disaster_status | disaster status proof | RECORD | Disaster status records evacuation, sheltering, damage address or declared emergency basis. | Supports exceptions. |
-| rxrefillops.pharmacy.preferred_pharmacy | preferred pharmacy | RECORD | Preferred pharmacy records name, phone, chain, store number and operating status. | Starts contact. |
-| rxrefillops.pharmacy.open_status | pharmacy status | QUALITY_CHECK | Status checks hours, power, inventory, delivery ability and transfer capacity. | Finds workable outlet. |
-| rxrefillops.pharmacy.profile_transfer | profile transfer | METHOD | Transfer coordinates refill history or prescription movement between pharmacies. | Restores access. |
-| rxrefillops.pharmacy.callback_log | callback log | RECORD | Callback records staff contacted, time, message, decision and next action. | Maintains trail. |
-| rxrefillops.rules.emergency_supply | emergency supply rule | CONSTRAINT | Rule records legal or policy basis for limited emergency supply. | Keeps support compliant. |
-| rxrefillops.rules.controlled_med | controlled medication flag | SAFETY_RULE | Controlled or high-risk medicines require stricter verification and lawful pathway. | Prevents unsafe handling. |
-| rxrefillops.rules.insurance_override | insurance override | METHOD | Override support helps pharmacy or plan apply disaster refill exception where available. | Reduces payment barrier. |
-| rxrefillops.rules.prescriber_required | prescriber required | CONSTRAINT | Some requests must return to prescriber, clinic, pharmacist or emergency medical pathway. | Sets boundary. |
-| rxrefillops.delivery.pickup_plan | pickup plan | METHOD | Pickup plan records who can collect, location, ID need, hours and transport barrier. | Gets medicine to patient. |
-| rxrefillops.delivery.authorized_pickup | authorized pickup | RECORD | Authorization records caregiver, family member or courier permission and limits. | Protects privacy. |
-| rxrefillops.delivery.courier_request | courier request | RECORD | Courier request captures address, pharmacy, package constraints and handoff confirmation. | Enables delivery. |
-| rxrefillops.delivery.failed_handoff | failed handoff | RECORD | Failed handoff records no-contact, closed pharmacy, unpaid cost or access problem. | Triggers follow-up. |
-| rxrefillops.privacy.minimum_data | minimum data | SAFETY_RULE | Staff avoid storing unnecessary diagnosis, full medication detail or identifiers. | Reduces privacy risk. |
-| rxrefillops.privacy.private_space | private discussion | METHOD | Medication conversations occur away from public lines or shelter dorms. | Preserves dignity. |
-| rxrefillops.privacy.release_form | release form | RECORD | Release documents permission to speak with pharmacy, prescriber, plan or caregiver. | Enables coordination. |
-| rxrefillops.privacy.secure_notes | secure notes | SAFETY_RULE | Case notes are stored in restricted system or sealed paper workflow. | Protects health data. |
-| rxrefillops.referral.clinic_referral | clinic referral | METHOD | Clinic referral handles expired prescriptions, new symptoms or medical reassessment needs. | Avoids unsafe refill. |
-| rxrefillops.referral.prescriber_contact | prescriber contact | METHOD | Staff help contact prescriber office or on-call coverage for authorization. | Restores continuity. |
-| rxrefillops.referral.assistance_program | assistance program | METHOD | Cost barriers route to manufacturer, nonprofit, public benefit or emergency fund support. | Helps affordability. |
-| rxrefillops.referral.transport_referral | transport referral | METHOD | Pickup barriers route to crisis transport, delivery partner or mobile pharmacy. | Solves access. |
-| rxrefillops.records.case_log | case log | RECORD | Log stores intake, proof, contacts, decision, delivery, cost barrier and closure. | Creates continuity. |
-| rxrefillops.records.medication_redaction | medication redaction | SAFETY_RULE | Reports aggregate medication support without exposing individual drug details. | Protects patients. |
-| rxrefillops.records.status | request status | RECORD | Status distinguishes intake, verification, pharmacy contacted, ready, delivered, denied or referred. | Shows progress. |
-| rxrefillops.records.retention | retention rule | CONSTRAINT | Records follow health privacy, emergency, grant and agency schedules. | Controls lifecycle. |
-| rxrefillops.communication.patient_update | patient update | METHOD | Patient update explains status, pickup plan, cost issue, delay or referral. | Reduces uncertainty. |
-| rxrefillops.communication.pharmacy_script | pharmacy script | METHOD | Script standardizes disaster context, proof, release and request details. | Improves calls. |
-| rxrefillops.communication.partner_update | partner update | METHOD | Partners receive aggregate barriers, pharmacy closures, transport needs and urgent gaps. | Coordinates response. |
-| rxrefillops.communication.language | language support | METHOD | Interpreters or translated medication-access scripts support consent and instructions. | Improves access. |
-| rxrefillops.qa.supervisor_review | supervisor review | QUALITY_CHECK | Supervisor reviews controlled flags, denials, privacy incidents and aging urgent cases. | Adds control. |
-| rxrefillops.qa.case_reconciliation | case reconciliation | QUALITY_CHECK | Reconciliation checks open cases against pharmacy callbacks and delivery logs. | Prevents lost requests. |
-| rxrefillops.qa.exception_audit | exception audit | QUALITY_CHECK | Audit checks emergency supply exceptions against policy and documentation. | Maintains compliance. |
-| rxrefillops.qa.denial_review | denial review | METHOD | Denials are reviewed for alternate pharmacy, clinic, assistance or appeal path. | Reduces dead ends. |
-| rxrefillops.metrics.requests_completed | requests completed | MEASUREMENT | Metric tracks refill support requests completed by pathway and site. | Shows output. |
-| rxrefillops.metrics.time_to_ready | time to ready | MEASUREMENT | Time measures intake to pharmacy-ready or referral decision. | Reveals delay. |
-| rxrefillops.metrics.barrier_count | barrier count | MEASUREMENT | Barriers count proof, cost, pharmacy closure, controlled status and transport issues. | Guides fixes. |
-| rxrefillops.review.after_action | after-action review | METHOD | Review captures verification, privacy, pharmacy access, delivery and cost lessons. | Improves future support. |
+| rxrefillops.intake.request_source | источник запроса | RECORD | Исходные данные включают приют, горячую линию, клинику, аптеку, социального работника или информационно-пропагандистскую службу. | Показывает путь входа. |
+| rxrefillops.intake.patient_identity | личность пациента | RECORD | Идентификация фиксирует имя, дату рождения, контакт, местоположение и предпочитаемый язык. | Включает сопоставление. |
+| rxrefillops.intake.medication_list | список лекарств | RECORD | В списке указаны названия лекарств, указанная сила действия, указанный график приема и поставщик, выписавший рецепт. | Определяет потребность. |
+| rxrefillops.intake.urgent_flag | срочный флаг | MODEL | Срочность учитывает истощение, хроническое состояние, контролируемый статус, перемещение и барьеры доступа. | Отдает приоритет помощи. |
+| rxrefillops.proof.prescription_proof | доказательство рецепта | RECORD | Доказательство может включать бутылку, профиль аптеки, записку от врача, портал для пациентов или предыдущую заявку. | Поддерживает пополнение. |
+| rxrefillops.proof.no_bottle | путь без бутылок | METHOD | Путь без бутылочек предполагает поиск аптек, контакт с врачом, назначающим лекарство, или проверку медицинской документации. | Помогает перемещенным пациентам. |
+| rxrefillops.proof.identity_gap | разрыв в идентичности | CONSTRAINT | Отсутствие удостоверения личности документируется и направляется через аптеку или альтернативные полисы экстренной помощи. | Избегает автоматического отказа. |
+| rxrefillops.proof.disaster_status | подтверждение статуса катастрофы | RECORD | Статус стихийного бедствия фиксирует эвакуацию, укрытие, адрес повреждения или объявленную чрезвычайную ситуацию. | Поддерживает исключения. |
+| rxrefillops.pharmacy.preferred_pharmacy | предпочтительная аптека | RECORD | Предпочитаемая аптека записывает название, телефон, сеть, номер магазина и статус работы. | Начинает контакт. |
+| rxrefillops.pharmacy.open_status | статус аптеки | QUALITY_CHECK | Статус проверяет часы, мощность, запасы, возможность доставки и пропускную способность. | Находит работоспособную розетку. |
+| rxrefillops.pharmacy.profile_transfer | перенос профиля | METHOD | Передача координат истории пополнения или перемещения рецептов между аптеками. | Восстанавливает доступ. |
+| rxrefillops.pharmacy.callback_log | журнал обратных вызовов | RECORD | Обратный звонок записывает, с кем связались сотрудники, время, сообщение, решение и следующее действие. | След сохраняет. |
+| rxrefillops.rules.emergency_supply | правило аварийного снабжения | CONSTRAINT | Правило описывает юридическую или политическую основу для ограниченного аварийного снабжения. | Обеспечивает соответствие требованиям поддержки. |
+| rxrefillops.rules.controlled_med | флаг контролируемого лекарства | SAFETY_RULE | Контролируемые лекарства или лекарства высокого риска требуют более строгой проверки и законного пути распространения. | Предотвращает небезопасное обращение. |
+| rxrefillops.rules.insurance_override | отмена страховки | METHOD | Поддержка переопределения помогает аптеке или плану применить исключение пополнения запасов в случае аварийной ситуации, если это возможно. | Снижает платежный барьер. |
+| rxrefillops.rules.prescriber_required | требуется врач, назначающий лекарство | CONSTRAINT | Некоторые запросы должны быть возвращены врачу, назначающему препарат, в клинику, фармацевту или в отделение неотложной медицинской помощи. | Устанавливает границу. |
+| rxrefillops.delivery.pickup_plan | план пикапа | METHOD | В плане выдачи указывается, кто может забрать, местонахождение, необходимость удостоверения личности, часы работы и транспортный барьер. | Доставляет лекарство пациенту. |
+| rxrefillops.delivery.authorized_pickup | авторизованный пикап | RECORD | В авторизации фиксируются разрешения и ограничения лица, осуществляющего уход, члена семьи или курьера. | Защищает конфиденциальность. |
+| rxrefillops.delivery.courier_request | запрос курьера | RECORD | Запрос курьера фиксирует адрес, аптеку, ограничения по упаковке и подтверждение передачи. | Включает доставку. |
+| rxrefillops.delivery.failed_handoff | неудачная передача обслуживания | RECORD | Неудачная передача регистрирует отсутствие контакта, закрытую аптеку, неоплаченные расходы или проблемы с доступом. | Запускает дальнейшее наблюдение. |
+| rxrefillops.privacy.minimum_data | минимальные данные | SAFETY_RULE | Персонал избегает хранения ненужных диагнозов, полной информации о лекарствах или идентификаторов. | Снижает риск конфиденциальности. |
+| rxrefillops.privacy.private_space | частное обсуждение | METHOD | Разговоры о лекарствах происходят вдали от общественных мест или общежитий приютов. | Сохраняет достоинство. |
+| rxrefillops.privacy.release_form | форма выпуска | RECORD | Выпустите документы, разрешающие разговаривать с аптекой, врачом, назначающим лекарство, планом или лицом, осуществляющим уход. | Обеспечивает координацию. |
+| rxrefillops.privacy.secure_notes | безопасные заметки | SAFETY_RULE | Записи о делах хранятся в ограниченной системе или в запечатанном бумажном документообороте. | Защищает данные о здоровье. |
+| rxrefillops.referral.clinic_referral | направление в клинику | METHOD | Направление в клинику касается просроченных рецептов, новых симптомов или необходимости повторного медицинского обследования. | Позволяет избежать небезопасного пополнения. |
+| rxrefillops.referral.prescriber_contact | контакт с врачом, назначающим лекарство | METHOD | Персонал помогает связаться с офисом, выписывающим рецепт, или с дежурной службой для получения разрешения. | Восстанавливает непрерывность. |
+| rxrefillops.referral.assistance_program | программа помощи | METHOD | Ценовые барьеры ведут к производителям, некоммерческим организациям, общественным организациям или поддержке из чрезвычайного фонда. | Помогает доступность. |
+| rxrefillops.referral.transport_referral | транспортное направление | METHOD | Барьеры для самовывоза направляются к транспорту кризисной ситуации, партнеру по доставке или мобильной аптеке. | Решает доступ. |
+| rxrefillops.records.case_log | журнал дел | RECORD | Журнал поступления в магазины, доказательства, контакты, решение, доставка, ценовой барьер и закрытие. | Создает преемственность. |
+| rxrefillops.records.medication_redaction | редактирование лекарств | SAFETY_RULE | Сообщает совокупную поддержку лекарств, не раскрывая детали отдельных препаратов. | Защищает пациентов. |
+| rxrefillops.records.status | статус запроса | RECORD | Статус различает прием, проверку, обращение в аптеку, готовность, доставку, отказ или направление. | Показывает прогресс. |
+| rxrefillops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам конфиденциальности в отношении здоровья, экстренных ситуаций, грантов и агентств. | Управляет жизненным циклом. |
+| rxrefillops.communication.patient_update | обновленная информация о пациенте | METHOD | В обновленной информации о пациенте поясняется статус, план получения, проблема с расходами, задержка или направление. | Уменьшает неопределенность. |
+| rxrefillops.communication.pharmacy_script | скрипт аптеки | METHOD | Сценарий стандартизирует контекст бедствия, подтверждение, выпуск и детали запроса. | Улучшает звонки. |
+| rxrefillops.communication.partner_update | обновление партнера | METHOD | Партнеры получают совокупные барьеры, закрытие аптек, транспортные потребности и срочные пробелы. | Координирует ответ. |
+| rxrefillops.communication.language | языковая поддержка | METHOD | Переводчики или переведенные сценарии доступа к лекарствам поддерживают согласие и инструкции. | Улучшает доступ. |
+| rxrefillops.qa.supervisor_review | обзор руководителя | QUALITY_CHECK | Супервайзер проверяет контролируемые пометки, отказы, нарушения конфиденциальности и неотложные дела. | Добавляет контроль. |
+| rxrefillops.qa.case_reconciliation | сверка дел | QUALITY_CHECK | В ходе сверки открытые обращения проверяются по обратным звонкам из аптек и журналам поставок. | Предотвращает потерю запросов. |
+| rxrefillops.qa.exception_audit | аудит исключений | QUALITY_CHECK | Аудит проверяет исключения, связанные с аварийными поставками, на соответствие политике и документации. | Соблюдает соответствие. |
+| rxrefillops.qa.denial_review | отказ от рассмотрения | METHOD | Отказы рассматриваются на предмет альтернативной аптеки, клиники, помощи или апелляции. | Уменьшает тупики. |
+| rxrefillops.metrics.requests_completed | запросы выполнены | MEASUREMENT | Метрика отслеживает запросы на пополнение поддержки, выполненные по пути и сайту. | Показывает вывод. |
+| rxrefillops.metrics.time_to_ready | пора готовиться | MEASUREMENT | Время измеряет прием до принятия решения о готовности к приему в аптеку или направлении. | Выявляет задержку. |
+| rxrefillops.metrics.barrier_count | количество барьеров | MEASUREMENT | Барьеры включают доказательства, стоимость, закрытие аптеки, контролируемый статус и транспортные проблемы. | Исправления в руководствах. |
+| rxrefillops.review.after_action | обзор после действий | METHOD | В обзоре отражены уроки по проверке, конфиденциальности, доступу к аптекам, доставке и стоимости. | Улучшает будущую поддержку. |

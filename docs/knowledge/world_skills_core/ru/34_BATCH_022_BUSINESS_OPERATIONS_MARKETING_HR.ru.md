@@ -10,73 +10,73 @@
 
 | ID | Тип | Суть | Условия / границы | Связи |
 |---|---|---|---|---|
-| `business.value_proposition` | MODEL | Value proposition объясняет, какую проблему решает продукт и почему он ценен. | Не равен slogan. | product |
-| `business.customer_segment` | MODEL | Customer segment группирует людей по потребности, поведению или контексту. | Сегмент должен быть достижимым. | marketing |
-| `business.problem_solution_fit` | MODEL | Problem-solution fit показывает, что решение реально закрывает важную боль. | Не доказывает масштабируемый бизнес. | startup |
-| `business.product_market_fit` | MODEL | Product-market fit означает устойчивый спрос на продукт в выбранном рынке. | Не имеет одной универсальной метрики. | startup |
-| `business.minimum_viable_product` | METHOD | MVP проверяет ключевую гипотезу минимальным продуктом. | Не означает плохое качество. | product |
-| `business.unit_economics` | MODEL | Unit economics оценивает доходы и затраты на единицу клиента/заказа/продукта. | Средние могут скрыть сегменты. | finance |
-| `business.customer_acquisition_cost` | METRIC | CAC — стоимость привлечения клиента. | Должен сравниваться с LTV и margin. | marketing |
-| `business.lifetime_value` | METRIC | LTV оценивает будущую ценность клиента. | Зависит от retention и assumptions. | finance |
-| `business.churn_rate` | METRIC | Churn измеряет уход клиентов за период. | Нужно различать logo churn и revenue churn. | SaaS |
-| `business.retention_cohort` | METRIC | Cohort retention показывает, как группы клиентов остаются со временем. | Сильнее средней retention. | analytics |
-| `business.sales_funnel` | MODEL | Sales funnel описывает путь от lead до покупки. | Может быть нелинейным. | sales |
-| `business.lead_qualification` | METHOD | Qualification оценивает, подходит ли потенциальный клиент. | Экономит время sales team. | sales |
-| `business.crm` | SYSTEM | CRM хранит контакты, сделки, историю и задачи по клиентам. | Данные должны быть актуальными. | software |
-| `business.pipeline_forecast` | METHOD | Forecast оценивает будущие продажи по стадиям и вероятностям. | Оптимизм и sandbagging искажают. | sales |
-| `business.pricing.cost_plus` | METHOD | Cost-plus добавляет маржу к себестоимости. | Может игнорировать ценность для клиента. | pricing |
-| `business.pricing.value_based` | METHOD | Value-based pricing опирается на ценность результата для клиента. | Требует понимания клиента и альтернатив. | pricing |
-| `business.pricing.subscription` | MODEL | Subscription распределяет оплату во времени за доступ или сервис. | Требует retention и поддержки. | SaaS |
-| `business.pricing.freight_landed_cost` | METHOD | Landed cost включает товар, доставку, пошлины, страховку, обработку. | Нужен для импортного pricing. | trade |
-| `business.marketing.positioning` | METHOD | Positioning задаёт место продукта в голове клиента относительно альтернатив. | Должно соответствовать реальности. | marketing |
-| `business.marketing.brand` | ASSET | Brand — устойчивые ассоциации, доверие и обещание продукта. | Не только логотип. | marketing |
-| `business.marketing.channel` | SYSTEM | Marketing channel доставляет сообщение или продукт аудитории. | Канал должен соответствовать поведению сегмента. | marketing |
-| `business.marketing.content` | METHOD | Content marketing создаёт полезный материал для привлечения и доверия. | Без полезности превращается в шум. | communication |
-| `business.marketing.seo` | METHOD | SEO повышает видимость в поисковых системах через структуру, контент и authority. | Алгоритмы меняются. | web |
-| `business.marketing.email` | CHANNEL | Email marketing работает через разрешённые рассылки и сегментацию. | Спам разрушает доверие. | marketing |
-| `business.marketing.conversion_rate` | METRIC | Conversion rate показывает долю людей, совершивших целевое действие. | Нужен denominator и контекст. | analytics |
-| `business.marketing.ab_test` | METHOD | A/B test сравнивает варианты на реальной аудитории. | Требует достаточного объёма и корректной метрики. | statistics |
-| `business.customer_support.ticket` | SYSTEM | Ticket system отслеживает обращение клиента от регистрации до решения. | Категории и SLA важны. | support |
-| `business.customer_support.sla` | CONTRACT | SLA задаёт ожидаемый уровень сервиса или времени реакции. | Нужны измеримые критерии. | operations |
-| `business.customer_support.knowledge_base` | TOOL | Knowledge base помогает клиентам и поддержке находить ответы. | Должна обновляться после новых проблем. | documentation |
-| `business.customer_success` | FUNCTION | Customer success помогает клиенту получить результат, чтобы снизить churn. | Не равен обычной техподдержке. | SaaS |
-| `business.operations.process_map` | TOOL | Process map показывает шаги, роли, входы, выходы и узкие места. | Нужна реальная практика, не только идеальная схема. | operations |
-| `business.operations.sop` | DOCUMENT | SOP стандартизирует повторяемую операцию. | Перегруженный SOP никто не читает. | quality |
-| `business.operations.kpi` | METRIC | KPI измеряет важный результат или поведение процесса. | Плохой KPI искажает действия. | management |
-| `business.operations.okr` | METHOD | OKR связывает цели и измеримые ключевые результаты. | Не должен быть списком всех задач. | management |
-| `business.operations.capacity_planning` | METHOD | Capacity planning оценивает ресурсы под спрос. | Ошибки ведут к очередям или простоям. | operations |
-| `business.operations.queue` | MODEL | Очередь возникает, когда спрос временно превышает обслуживание. | Вариативность важна так же, как средняя скорость. | systems |
-| `business.operations.service_blueprint` | TOOL | Service blueprint показывает frontstage, backstage и support processes. | Полезен для услуг. | design |
-| `business.operations.inventory_policy` | METHOD | Политика запасов задаёт уровень, пополнение и риск дефицита. | Зависит от спроса и lead time. | logistics |
-| `business.operations.quality_cost` | MODEL | Cost of quality включает prevention, appraisal, internal и external failure. | Дешевле предотвращать, чем исправлять после клиента. | quality |
-| `business.hr.job_description` | DOCUMENT | Job description описывает роль, задачи, требования и критерии. | Нечёткая роль создаёт конфликт. | HR |
-| `business.hr.recruiting_funnel` | PROCESS | Recruiting funnel ведёт кандидата от sourcing до offer. | Bias может возникать на каждом шаге. | HR |
-| `business.hr.structured_interview` | METHOD | Structured interview задаёт одинаковые вопросы и критерии. | Снижает субъективность. | HR |
-| `business.hr.onboarding` | PROCESS | Onboarding вводит человека в роль, процессы, культуру и ожидания. | Первые недели критичны. | management |
-| `business.hr.performance_review` | PROCESS | Performance review оценивает вклад и развитие. | Может быть вредным без ясных критериев. | HR |
-| `business.hr.compensation_band` | SYSTEM | Compensation bands задают диапазоны оплаты по роли/уровню. | Помогают справедливости и бюджету. | finance |
-| `business.hr.training_matrix` | TOOL | Training matrix показывает, кто обучен каким навыкам. | Важно для безопасности и замещения. | operations |
-| `business.hr.shift_scheduling` | METHOD | Графики смен балансируют спрос, закон, отдых и навыки. | Ошибки ведут к усталости и дефициту персонала. | labor |
-| `business.hr.workplace_safety` | SYSTEM | Безопасность труда управляет рисками места, процесса и поведения. | Требует reporting без страха. | safety |
-| `business.hr.conflict_resolution` | METHOD | Разрешение конфликтов ищет факты, интересы и безопасный процесс. | Не все конфликты симметричны. | communication |
-| `business.legal.entity` | STRUCTURE | Юридическое лицо отделяет бизнес от владельцев в правовом смысле. | Ответственность зависит от формы и закона. | law |
-| `business.legal.contract_basics` | DOCUMENT | Контракт фиксирует стороны, предмет, цену, сроки, ответственность и споры. | Шаблон без контекста опасен. | law |
-| `business.legal.nda` | DOCUMENT | NDA ограничивает раскрытие конфиденциальной информации. | Не защищает уже публичное. | IP |
-| `business.legal.terms_of_service` | DOCUMENT | Terms of service задают правила использования продукта или сервиса. | Должны соответствовать закону и UX. | product |
-| `business.legal.privacy_policy` | DOCUMENT | Privacy policy объясняет сбор, использование, хранение и права по данным. | Требует фактического соответствия процессам. | privacy |
-| `business.compliance.kyc` | PROCESS | KYC проверяет клиента для снижения финансовых и правовых рисков. | Балансирует privacy и regulation. | finance |
-| `business.compliance.aml` | SYSTEM | AML снижает риск отмывания денег через мониторинг и reporting. | Требует правил и анализа транзакций. | finance |
-| `business.compliance.supplier_audit` | PROCESS | Supplier audit проверяет поставщика по качеству, правам, безопасности, экологии. | Аудит без corrective actions слаб. | supply_chain |
-| `business.supply.vendor_selection` | METHOD | Выбор поставщика сравнивает цену, качество, сроки, риск и поддержку. | Самая низкая цена не всегда выгодна. | procurement |
-| `business.supply.dual_sourcing` | RISK_TOOL | Dual sourcing снижает зависимость от одного поставщика. | Может снижать объёмные скидки. | resilience |
-| `business.supply.contract_manufacturing` | MODEL | Contract manufacturing отдаёт производство внешней фабрике. | Требует контроля качества и IP. | manufacturing |
-| `business.supply.quality_agreement` | DOCUMENT | Quality agreement распределяет обязанности по качеству между сторонами. | Особенно важно в regulated industries. | quality |
-| `business.finance.burn_rate` | METRIC | Burn rate показывает скорость расходования денежных средств. | Важен для стартапов и runway. | finance |
-| `business.finance.runway` | METRIC | Runway показывает, на сколько времени хватит денег при текущем burn. | Меняется с доходом и расходами. | startup |
-| `business.finance.margin_stack` | MODEL | Margin stack показывает, как цена распадается на себестоимость, логистику, комиссии, налоги и прибыль. | Полезен для retail и marketplace. | finance |
-| `business.strategy.swot` | TOOL | SWOT группирует strengths, weaknesses, opportunities и threats. | Часто поверхностен без данных. | strategy |
-| `business.strategy.moat` | MODEL | Moat — устойчивое преимущество, защищающее бизнес. | Может исчезнуть с технологией или рынком. | strategy |
-| `business.exit.sunset_product` | METHOD | Sunset product — планированное закрытие продукта с миграцией клиентов. | Требует коммуникации и поддержки. | product |
+| `business.value_proposition` | МОДЕЛЬ | Value proposition объясняет, какую проблему решает продукт и почему он ценен. | Не равен slogan. | продукт |
+| `business.customer_segment` | МОДЕЛЬ | Customer segment группирует людей по потребности, поведению или контексту. | Сегмент должен быть достижимым. | маркетинг |
+| `business.problem_solution_fit` | МОДЕЛЬ | Problem-solution fit показывает, что решение реально закрывает важную боль. | Не доказывает масштабируемый бизнес. | запускать |
+| `business.product_market_fit` | МОДЕЛЬ | Product-market fit означает устойчивый спрос на продукт в выбранном рынке. | Не имеет одной универсальной метрики. | запускать |
+| `business.minimum_viable_product` | МЕТОД | MVP проверяет ключевую гипотезу минимальным продуктом. | Не означает плохое качество. | продукт |
+| `business.unit_economics` | МОДЕЛЬ | Unit economics оценивает доходы и затраты на единицу клиента/заказа/продукта. | Средние могут скрыть сегменты. | финансы |
+| `business.customer_acquisition_cost` | МЕТРИЧЕСКИЕ | CAC — стоимость привлечения клиента. | Должен сравниваться с LTV и margin. | маркетинг |
+| `business.lifetime_value` | МЕТРИЧЕСКИЕ | LTV оценивает будущую ценность клиента. | Зависит от retention и assumptions. | финансы |
+| `business.churn_rate` | МЕТРИЧЕСКИЕ | Churn измеряет уход клиентов за период. | Нужно различать logo churn и revenue churn. | SaaS |
+| `business.retention_cohort` | МЕТРИЧЕСКИЕ | Cohort retention показывает, как группы клиентов остаются со временем. | Сильнее средней retention. | аналитика |
+| `business.sales_funnel` | МОДЕЛЬ | Sales funnel описывает путь от lead до покупки. | Может быть нелинейным. | продажи |
+| `business.lead_qualification` | МЕТОД | Qualification оценивает, подходит ли потенциальный клиент. | Экономит время sales team. | продажи |
+| `business.crm` | СИСТЕМА | CRM хранит контакты, сделки, историю и задачи по клиентам. | Данные должны быть актуальными. | программное обеспечение |
+| `business.pipeline_forecast` | МЕТОД | Forecast оценивает будущие продажи по стадиям и вероятностям. | Оптимизм и sandbagging искажают. | продажи |
+| `business.pricing.cost_plus` | МЕТОД | Cost-plus добавляет маржу к себестоимости. | Может игнорировать ценность для клиента. | ценообразование |
+| `business.pricing.value_based` | МЕТОД | Value-based pricing опирается на ценность результата для клиента. | Требует понимания клиента и альтернатив. | ценообразование |
+| `business.pricing.subscription` | МОДЕЛЬ | Subscription распределяет оплату во времени за доступ или сервис. | Требует retention и поддержки. | SaaS |
+| `business.pricing.freight_landed_cost` | МЕТОД | Landed cost включает товар, доставку, пошлины, страховку, обработку. | Нужен для импортного pricing. | торговля |
+| `business.marketing.positioning` | МЕТОД | Positioning задаёт место продукта в голове клиента относительно альтернатив. | Должно соответствовать реальности. | маркетинг |
+| `business.marketing.brand` | ОБЪЕКТ | Brand — устойчивые ассоциации, доверие и обещание продукта. | Не только логотип. | маркетинг |
+| `business.marketing.channel` | СИСТЕМА | Marketing channel доставляет сообщение или продукт аудитории. | Канал должен соответствовать поведению сегмента. | маркетинг |
+| `business.marketing.content` | МЕТОД | Content marketing создаёт полезный материал для привлечения и доверия. | Без полезности превращается в шум. | коммуникация |
+| `business.marketing.seo` | МЕТОД | SEO повышает видимость в поисковых системах через структуру, контент и authority. | Алгоритмы меняются. | сеть |
+| `business.marketing.email` | КАНАЛ | Email marketing работает через разрешённые рассылки и сегментацию. | Спам разрушает доверие. | маркетинг |
+| `business.marketing.conversion_rate` | МЕТРИЧЕСКИЕ | Conversion rate показывает долю людей, совершивших целевое действие. | Нужен denominator и контекст. | аналитика |
+| `business.marketing.ab_test` | МЕТОД | A/B test сравнивает варианты на реальной аудитории. | Требует достаточного объёма и корректной метрики. | статистика |
+| `business.customer_support.ticket` | СИСТЕМА | Ticket system отслеживает обращение клиента от регистрации до решения. | Категории и SLA важны. | поддерживать |
+| `business.customer_support.sla` | ДОГОВОР | SLA задаёт ожидаемый уровень сервиса или времени реакции. | Нужны измеримые критерии. | операции |
+| `business.customer_support.knowledge_base` | ИНСТРУМЕНТ | Knowledge base помогает клиентам и поддержке находить ответы. | Должна обновляться после новых проблем. | документация |
+| `business.customer_success` | ФУНКЦИЯ | Customer success помогает клиенту получить результат, чтобы снизить churn. | Не равен обычной техподдержке. | SaaS |
+| `business.operations.process_map` | ИНСТРУМЕНТ | Process map показывает шаги, роли, входы, выходы и узкие места. | Нужна реальная практика, не только идеальная схема. | операции |
+| `business.operations.sop` | ДОКУМЕНТ | SOP стандартизирует повторяемую операцию. | Перегруженный SOP никто не читает. | качество |
+| `business.operations.kpi` | МЕТРИЧЕСКИЕ | KPI измеряет важный результат или поведение процесса. | Плохой KPI искажает действия. | управление |
+| `business.operations.okr` | МЕТОД | OKR связывает цели и измеримые ключевые результаты. | Не должен быть списком всех задач. | управление |
+| `business.operations.capacity_planning` | МЕТОД | Capacity planning оценивает ресурсы под спрос. | Ошибки ведут к очередям или простоям. | операции |
+| `business.operations.queue` | МОДЕЛЬ | Очередь возникает, когда спрос временно превышает обслуживание. | Вариативность важна так же, как средняя скорость. | системы |
+| `business.operations.service_blueprint` | ИНСТРУМЕНТ | Схема обслуживания показывает фронт-стейдж, бэкстейдж и процессы поддержки. | Полезен для услуг. | дизайн |
+| `business.operations.inventory_policy` | МЕТОД | Политика запасов задаёт уровень, пополнение и риск дефицита. | Зависит от спроса и lead time. | логистика |
+| `business.operations.quality_cost` | МОДЕЛЬ | Стоимость качества включает предотвращение, оценку, внутренние и внешние сбои. | Дешевле предотвращать, чем исправлять после клиента. | качество |
+| `business.hr.job_description` | ДОКУМЕНТ | Job description описывает роль, задачи, требования и критерии. | Нечёткая роль создаёт конфликт. | HR |
+| `business.hr.recruiting_funnel` | ПРОЦЕСС | Воронка рекрутинга ведет кандидата от поиска до предложения. | Bias может возникать на каждом шаге. | HR |
+| `business.hr.structured_interview` | МЕТОД | Structured interview задаёт одинаковые вопросы и критерии. | Снижает субъективность. | HR |
+| `business.hr.onboarding` | ПРОЦЕСС | Onboarding вводит человека в роль, процессы, культуру и ожидания. | Первые недели критичны. | управление |
+| `business.hr.performance_review` | ПРОЦЕСС | Performance review оценивает вклад и развитие. | Может быть вредным без ясных критериев. | HR |
+| `business.hr.compensation_band` | СИСТЕМА | Compensation bands задают диапазоны оплаты по роли/уровню. | Помогают справедливости и бюджету. | финансы |
+| `business.hr.training_matrix` | ИНСТРУМЕНТ | Training matrix показывает, кто обучен каким навыкам. | Важно для безопасности и замещения. | операции |
+| `business.hr.shift_scheduling` | МЕТОД | Графики смен балансируют спрос, закон, отдых и навыки. | Ошибки ведут к усталости и дефициту персонала. | труд |
+| `business.hr.workplace_safety` | СИСТЕМА | Безопасность труда управляет рисками места, процесса и поведения. | Требует reporting без страха. | безопасность |
+| `business.hr.conflict_resolution` | МЕТОД | Разрешение конфликтов ищет факты, интересы и безопасный процесс. | Не все конфликты симметричны. | коммуникация |
+| `business.legal.entity` | СТРУКТУРА | Юридическое лицо отделяет бизнес от владельцев в правовом смысле. | Ответственность зависит от формы и закона. | закон |
+| `business.legal.contract_basics` | ДОКУМЕНТ | Контракт фиксирует стороны, предмет, цену, сроки, ответственность и споры. | Шаблон без контекста опасен. | закон |
+| `business.legal.nda` | ДОКУМЕНТ | NDA ограничивает раскрытие конфиденциальной информации. | Не защищает уже публичное. | ИП |
+| `business.legal.terms_of_service` | ДОКУМЕНТ | Terms of service задают правила использования продукта или сервиса. | Должны соответствовать закону и UX. | продукт |
+| `business.legal.privacy_policy` | ДОКУМЕНТ | Privacy policy объясняет сбор, использование, хранение и права по данным. | Требует фактического соответствия процессам. | конфиденциальность |
+| `business.compliance.kyc` | ПРОЦЕСС | KYC проверяет клиента для снижения финансовых и правовых рисков. | Балансирует privacy и regulation. | финансы |
+| `business.compliance.aml` | СИСТЕМА | AML снижает риск отмывания денег через мониторинг и reporting. | Требует правил и анализа транзакций. | финансы |
+| `business.compliance.supplier_audit` | ПРОЦЕСС | Supplier audit проверяет поставщика по качеству, правам, безопасности, экологии. | Аудит без corrective actions слаб. | цепочка поставок |
+| `business.supply.vendor_selection` | МЕТОД | Выбор поставщика сравнивает цену, качество, сроки, риск и поддержку. | Самая низкая цена не всегда выгодна. | приобретение |
+| `business.supply.dual_sourcing` | РИСК_ИНСТРУМЕНТ | Dual sourcing снижает зависимость от одного поставщика. | Может снижать объёмные скидки. | устойчивость |
+| `business.supply.contract_manufacturing` | МОДЕЛЬ | Contract manufacturing отдаёт производство внешней фабрике. | Требует контроля качества и IP. | производство |
+| `business.supply.quality_agreement` | ДОКУМЕНТ | Quality agreement распределяет обязанности по качеству между сторонами. | Особенно важно в regulated industries. | качество |
+| `business.finance.burn_rate` | МЕТРИЧЕСКИЕ | Burn rate показывает скорость расходования денежных средств. | Важен для стартапов и runway. | финансы |
+| `business.finance.runway` | МЕТРИЧЕСКИЕ | Runway показывает, на сколько времени хватит денег при текущем burn. | Меняется с доходом и расходами. | запускать |
+| `business.finance.margin_stack` | МОДЕЛЬ | Margin stack показывает, как цена распадается на себестоимость, логистику, комиссии, налоги и прибыль. | Полезен для retail и marketplace. | финансы |
+| `business.strategy.swot` | ИНСТРУМЕНТ | SWOT группирует сильные и слабые стороны, возможности и угрозы. | Часто поверхностен без данных. | стратегия |
+| `business.strategy.moat` | МОДЕЛЬ | Moat — устойчивое преимущество, защищающее бизнес. | Может исчезнуть с технологией или рынком. | стратегия |
+| `business.exit.sunset_product` | МЕТОД | Sunset product — планированное закрытие продукта с миграцией клиентов. | Требует коммуникации и поддержки. | продукт |
 
 ---
 

@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| storminsp.inventory.outfall_record | Stormwater outfall record | invariant | Record stores outfall ID, location, receiving water, pipe size, material and status. | know discharge points |
-| storminsp.inventory.pond_record | Stormwater pond record | invariant | Record captures pond type, owner, drainage area, outlet, access and maintenance history. | manage BMP |
-| storminsp.inventory.bmp_type | Stormwater BMP type | invariant | Type identifies basin, swale, filter, inlet protection, separator or green infrastructure. | inspect correctly |
-| storminsp.schedule.inspection_cycle | Stormwater inspection cycle | invariant | Cycle sets frequency by permit, season, rain event, risk and asset type. | plan compliance |
-| storminsp.schedule.rain_event | Stormwater rain event trigger | variant | Trigger schedules inspection after defined rainfall, runoff, complaint or construction activity. | catch issues |
-| storminsp.outfall.dry_weather_screen | Dry-weather outfall screen | invariant | Screen checks flow, odor, color, turbidity, floatables, staining and biological indicators. | detect illicit discharge |
-| storminsp.outfall.flow_observation | Stormwater outfall flow observation | invariant | Observation records flow presence, rate estimate, weather, tide or upstream condition. | interpret discharge |
-| storminsp.outfall.field_test | Stormwater outfall field test | variant | Test records pH, chlorine, ammonia, conductivity, temperature or detergent indicator. | screen pollutants |
-| storminsp.illicit.idde_case | Illicit discharge detection case | invariant | Case links report, outfall, observations, tracing, source, enforcement and closure. | track IDDE |
-| storminsp.illicit.source_tracing | Illicit discharge source tracing | variant | Tracing uses maps, manholes, dye, CCTV, sampling or business checks. | find source |
-| storminsp.illicit.spill_response | Stormwater spill response | invariant | Response contains spill, protects inlets, notifies agencies, documents cleanup and samples. | reduce pollution |
-| storminsp.illicit.enforcement_notice | Stormwater illicit discharge notice | invariant | Notice states discharge, evidence, required correction, deadline and penalty path. | compel fix |
-| storminsp.pond.embankment_check | Stormwater pond embankment check | invariant | Check reviews erosion, settlement, animal burrows, trees, seepage and slope stability. | prevent failure |
-| storminsp.pond.outlet_structure | Stormwater outlet structure check | invariant | Check reviews trash racks, weirs, orifices, valves, debris and damage. | preserve function |
-| storminsp.pond.sediment_level | Stormwater pond sediment level | variant | Level estimates sediment accumulation, storage loss and dredging need. | maintain capacity |
-| storminsp.pond.vegetation_condition | Stormwater pond vegetation condition | variant | Condition records invasive plants, bare areas, clogged filter media or overgrowth. | manage performance |
-| storminsp.construction.site_entry | Construction stormwater site entry | invariant | Entry records permit, operator, weather, phase, disturbed area and inspector. | start inspection |
-| storminsp.construction.erosion_control | Erosion control check | invariant | Check reviews silt fence, wattles, blankets, stabilization and perimeter controls. | keep sediment onsite |
-| storminsp.construction.sediment_basin | Sediment basin check | variant | Check reviews capacity, outlet, skimmer, sediment depth, embankment and discharge. | manage runoff |
-| storminsp.construction.inlet_protection | Storm inlet protection check | invariant | Check verifies inlet barriers, sediment removal, bypass, placement and maintenance. | protect drains |
-| storminsp.construction.trackout | Construction trackout check | invariant | Check records sediment on streets, stabilized entrance, sweeping and vehicle controls. | prevent pollution |
-| storminsp.maintenance.work_order | Stormwater maintenance work order | invariant | Work order records asset, defect, priority, crew, equipment, due date and result. | fix issues |
-| storminsp.maintenance.debris_removal | Stormwater debris removal | invariant | Removal clears trash, leaves, sediment, branches or blockages from storm asset. | restore flow |
-| storminsp.maintenance.mowing_access | Stormwater mowing and access | variant | Maintenance keeps access roads, slopes, easements and structures reachable. | enable service |
-| storminsp.maintenance.repair_referral | Stormwater repair referral | variant | Referral sends structural defect, sinkhole, pipe collapse or outlet damage to repair crew. | escalate defects |
-| storminsp.violation.violation_code | Stormwater violation code | invariant | Code links finding to permit, ordinance, plan requirement or maintenance duty. | consistent enforcement |
-| storminsp.violation.repeat_violation | Stormwater repeat violation | variant | Violation repeats previous missed maintenance, discharge, erosion or documentation issue. | escalate |
-| storminsp.followup.corrective_action | Stormwater corrective action | invariant | Action defines repair, cleanup, stabilization, maintenance or source removal. | resolve finding |
-| storminsp.followup.reinspection | Stormwater reinspection | invariant | Reinspection verifies corrective action, site stabilization, discharge stop or maintenance. | close loop |
-| storminsp.sampling.sample_decision | Stormwater sampling decision | variant | Decision selects sample when screening, complaint, spill or permit requires lab evidence. | evidence |
-| storminsp.sampling.sample_chain | Stormwater sample custody | invariant | Custody tracks sample ID, location, time, collector, preservation and lab handoff. | defensible data |
-| storminsp.records.inspection_report | Stormwater inspection report | invariant | Report documents site, weather, assets, findings, photos, violations and actions. | official record |
-| storminsp.records.photo_log | Stormwater inspection photo log | invariant | Log links photos to asset, location, finding, date and inspector. | visual evidence |
-| storminsp.records.map_update | Stormwater map update | variant | Update corrects asset location, connectivity, ownership, access or status. | better GIS |
-| storminsp.records.case_file | Stormwater inspection case file | invariant | File stores complaints, inspections, samples, notices, orders, photos and closure. | history |
-| storminsp.communication.owner_notice | Stormwater owner notice | invariant | Notice tells owner/operator finding, requirement, deadline, evidence and contact. | clear action |
-| storminsp.communication.public_report | Stormwater public report response | variant | Response updates resident on complaint receipt, action, referral or closure. | transparency |
-| storminsp.quality.supervisor_review | Stormwater inspection supervisor review | invariant | Review checks evidence, permit basis, violation coding, deadlines and closure. | quality |
-| storminsp.safety.field_safety | Stormwater inspector field safety | invariant | Safety covers traffic, water, steep slopes, confined spaces, wildlife and weather. | protect inspector |
-| storminsp.reporting.permit_report | Stormwater permit report | invariant | Report summarizes inspections, illicit discharges, maintenance, violations and public education. | permit compliance |
-| storminsp.metrics.stormwater_kpi | Stormwater inspection KPI | variant | KPI tracks inspections completed, IDDE cases, maintenance backlog, violations and closure time. | manage program |
-| storminsp.continuity.flood_response | Stormwater flood response inspection | variant | Inspection documents blocked assets, damage, high-water marks, repairs and public hazards. | recovery |
-| storminsp.close.case_closure | Stormwater case closure | invariant | Closure records corrected, referred, unfounded, monitored, enforcement or long-term project. | end case |
-| storminsp.audit.audit_trail | Stormwater inspection audit trail | invariant | Trail records inspection edits, notices, work orders, samples, approvals and closure. | accountability |
+| storminsp.inventory.outfall_record | Рекорд ливневых стоков | invariant | Запись хранит идентификатор водоотвода, местоположение, приемную воду, размер трубы, материал и состояние. | знать точки сброса |
+| storminsp.inventory.pond_record | Рекорд ливневого пруда | invariant | Запись фиксирует тип пруда, владельца, площадь водосбора, выпуск, историю доступа и обслуживания. | управлять БМП |
+| storminsp.inventory.bmp_type | Тип БМП ливневой канализации | invariant | Тип идентифицирует бассейн, канавку, фильтр, защиту на входе, сепаратор или зеленую инфраструктуру. | проверить правильно |
+| storminsp.schedule.inspection_cycle | Цикл проверки ливневых вод | invariant | Цикл устанавливает частоту в зависимости от разрешения, сезона, дождя, риска и типа актива. | соответствие плану |
+| storminsp.schedule.rain_event | Триггер события ливневого дождя | variant | Запустите график проверки после определенных осадков, стоков, жалоб или строительных работ. | ловить проблемы |
+| storminsp.outfall.dry_weather_screen | Сливной экран для сухой погоды | invariant | Скрининг проверяет поток, запах, цвет, мутность, плавучесть, окрашивание и биологические индикаторы. | обнаружить незаконные сбросы |
+| storminsp.outfall.flow_observation | Наблюдение за стоком ливневых вод | invariant | Наблюдения фиксируют наличие потока, оценку скорости, погоду, прилив или состояние верхнего течения. | интерпретировать выписку |
+| storminsp.outfall.field_test | Полевые испытания ливневого стока | variant | Тест фиксирует pH, хлор, аммиак, проводимость, температуру или индикатор моющего средства. | загрязнители экрана |
+| storminsp.illicit.idde_case | Дело о выявлении незаконных сбросов | invariant | Отчет о связях со случаями, последствия, наблюдения, отслеживание, источник, исполнение и закрытие. | трек IDDE |
+| storminsp.illicit.source_tracing | Отслеживание источника незаконных выбросов | variant | При отслеживании используются карты, люки, красители, системы видеонаблюдения, отбор проб или бизнес-проверки. | найти источник |
+| storminsp.illicit.spill_response | Реагирование на разлив ливневых вод | invariant | Реагирование локализует разлив, защищает водозаборы, уведомляет агентства, осуществляет очистку документов и отбор проб. | уменьшить загрязнение |
+| storminsp.illicit.enforcement_notice | Уведомление о незаконном сбросе ливневых вод | invariant | В уведомлении указываются увольнение, доказательства, требуемое исправление, крайний срок и порядок наказания. | заставить исправить |
+| storminsp.pond.embankment_check | Проверка набережной ливневого пруда | invariant | Проверьте обзоры эрозии, поселений, нор животных, деревьев, просачивания и устойчивости склонов. | предотвратить неудачу |
+| storminsp.pond.outlet_structure | Проверка конструкции отвода ливневой воды | invariant | Проверьте стойки для мусора, водосливы, отверстия, клапаны, мусор и повреждения. | сохранить функцию |
+| storminsp.pond.sediment_level | Уровень отложений в пруду с ливневой водой | variant | Уровень оценивает накопление отложений, потери при хранении и необходимость дноуглубительных работ. | поддерживать мощность |
+| storminsp.pond.vegetation_condition | Состояние растительности ливневого пруда | variant | Состояние фиксирует наличие инвазивных растений, голых участков, засорения фильтрующего материала или чрезмерного роста. | управлять производительностью |
+| storminsp.construction.site_entry | Вход на строительную площадку ливневой канализации | invariant | Разрешение на вход, оператор, погода, фаза, нарушенная зона и инспектор. | начать проверку |
+| storminsp.construction.erosion_control | Проверка контроля эрозии | invariant | Проверьте обзоры противоилового ограждения, плетней, одеял, средств стабилизации и контроля периметра. | держать осадок на месте |
+| storminsp.construction.sediment_basin | Проверка отстойника | variant | Проверьте емкость, выпускное отверстие, скиммер, глубину отложений, насыпь и слив. | управлять стоком |
+| storminsp.construction.inlet_protection | Проверка защиты от ливневки | invariant | При проверке проверяются входные барьеры, удаление отложений, байпас, размещение и техническое обслуживание. | защитить стоки |
+| storminsp.construction.trackout | Проверка отслеживания строительства | invariant | Проверьте записи осадка на улицах, стабилизированного входа, подметания и контроля транспортных средств. | предотвратить загрязнение |
+| storminsp.maintenance.work_order | Порядок работ по обслуживанию ливневой канализации | invariant | В рабочем заказе фиксируются активы, дефекты, приоритет, команда, оборудование, срок выполнения и результат. | исправлять проблемы |
+| storminsp.maintenance.debris_removal | Удаление мусора из ливневой воды | invariant | При удалении удаляется мусор, листья, осадок, ветки или засоры из ливневого объекта. | восстановить поток |
+| storminsp.maintenance.mowing_access | Скашивание ливневой воды и доступ к ней | variant | Техническое обслуживание обеспечивает доступность подъездных дорог, склонов, сервитутов и сооружений. | включить службу |
+| storminsp.maintenance.repair_referral | Направление на ремонт ливневой канализации | variant | При обращении в ремонтную бригаду направляется дефект конструкции, провал, обрушение трубы или повреждение выпускного отверстия. | обострять дефекты |
+| storminsp.violation.violation_code | Код нарушения ливневой канализации | invariant | Кодекс связывает данные с разрешениями, постановлениями, требованиями плана или обязанностями по техническому обслуживанию. | последовательное правоприменение |
+| storminsp.violation.repeat_violation | Повторное нарушение ливневой воды | variant | Нарушение повторяет предыдущее пропущенное техническое обслуживание, сброс, эрозию или проблему с документацией. | обострять |
+| storminsp.followup.corrective_action | Корректирующие действия по ливневой воде | invariant | Действие определяет ремонт, очистку, стабилизацию, техническое обслуживание или удаление источника. | решить поиск |
+| storminsp.followup.reinspection | Повторная проверка ливневых вод | invariant | Повторная проверка проверяет корректирующие действия, стабилизацию площадки, остановку разгрузки или техническое обслуживание. | замкнутый контур |
+| storminsp.sampling.sample_decision | Решение о отборе проб ливневой воды | variant | В решении отбирается образец, когда для проверки, жалобы, разлива или разрешения требуются лабораторные доказательства. | доказательство |
+| storminsp.sampling.sample_chain | Хранение проб ливневой воды | invariant | Хранение отслеживает идентификатор образца, местоположение, время, сборщика, сохранение и передачу в лабораторию. | защищенные данные |
+| storminsp.records.inspection_report | Отчет о проверке ливневых вод | invariant | Отчет документирует сайт, погоду, активы, выводы, фотографии, нарушения и действия. | официальный отчет |
+| storminsp.records.photo_log | Фотожурнал проверки ливневых вод | invariant | Журнал связывает фотографии с объектом, местоположением, находкой, датой и инспектором. | визуальные доказательства |
+| storminsp.records.map_update | Обновление карты ливневых вод | variant | Обновление исправляет местоположение, подключение, право собственности, доступ или статус актива. | лучшая ГИС |
+| storminsp.records.case_file | Материалы дела по проверке ливневых вод | invariant | В файле хранятся жалобы, проверки, образцы, уведомления, приказы, фотографии и закрытия. | история |
+| storminsp.communication.owner_notice | Уведомление владельца ливневой канализации | invariant | В уведомлении содержится информация о выводе владельца/оператора, требованиях, сроках, доказательствах и контактах. | четкое действие |
+| storminsp.communication.public_report | Ответ на публичный отчет о ливневых водах | variant | Ответ информирует резидента о получении жалобы, действии, направлении или закрытии жалобы. | прозрачность |
+| storminsp.quality.supervisor_review | Отзыв руководителя инспекции ливневых вод | invariant | Обзор проверяет доказательства, основания для получения разрешений, кодирование нарушений, сроки и закрытие. | качество |
+| storminsp.safety.field_safety | Инспектор по ливневой канализации полевой безопасности | invariant | Безопасность охватывает дорожное движение, воду, крутые склоны, замкнутые пространства, дикую природу и погоду. | инспектор защиты |
+| storminsp.reporting.permit_report | Отчет о разрешении на ливневую воду | invariant | Отчет суммирует проверки, незаконные сбросы, техническое обслуживание, нарушения и просвещение населения. | разрешать соблюдение |
+| storminsp.metrics.stormwater_kpi | КПИ инспекции ливневых вод | variant | KPI отслеживает завершенные проверки, случаи IDDE, отставание в обслуживании, нарушения и время закрытия. | управлять программой |
+| storminsp.continuity.flood_response | Проверка реагирования на ливневые паводки | variant | Документы проверки заблокировали активы, повреждения, отметки паводков, ремонты и общественные опасности. | восстановление |
+| storminsp.close.case_closure | Закрытие дела о ливневой канализации | invariant | Записи о закрытии исправлены, переданы, необоснованны, отслеживаются, принудительны или долгосрочны. | конец дела |
+| storminsp.audit.audit_trail | Аудиторский след проверки ливневых вод | invariant | Следы фиксируют изменения, уведомления, рабочие задания, образцы, утверждения и закрытия. | подотчетность |

@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| debrismonitorops.activation.monitor_plan | monitor plan | RECORD | Plan defines zones, contractors, monitors, disposal sites and reporting cadence. | Controls debris oversight. |
-| debrismonitorops.activation.role_roster | role roster | RECORD | Roster lists field, tower, disposal, QA and supervisor monitors. | Assigns accountability. |
-| debrismonitorops.activation.safety_brief | safety briefing | SAFETY_RULE | Brief covers traffic, heavy equipment, dust, heat, unstable piles and PPE. | Protects monitors. |
-| debrismonitorops.activation.map_book | map book | RECORD | Map book shows eligible roads, zones, disposal sites and restricted areas. | Prevents ineligible pickup. |
-| debrismonitorops.truck.cert_id | truck certification ID | RECORD | Certification links truck, owner, plate, capacity, photos and date. | Establishes legal hauling capacity. |
-| debrismonitorops.truck.capacity_measure | capacity measure | MEASUREMENT | Capacity is measured in cubic yards or approved unit. | Supports payment accuracy. |
-| debrismonitorops.truck.photo | truck photo | RECORD | Photos document bed, sideboards, plate and markings. | Detects altered capacity. |
-| debrismonitorops.truck.decertify | decertification | METHOD | Truck is removed when modified, unsafe, duplicate or unauthorized. | Prevents bad tickets. |
-| debrismonitorops.load.ticket_id | load ticket ID | RECORD | Ticket links truck, monitor, origin, debris type, time, destination and volume. | Creates payment evidence. |
-| debrismonitorops.load.origin | load origin | RECORD | Origin records street, GPS, zone, parcel or right-of-way location. | Verifies eligibility. |
-| debrismonitorops.load.debris_type | debris type | RECORD | Type distinguishes vegetative, construction, white goods, hazardous or mixed debris. | Routes disposal correctly. |
-| debrismonitorops.load.fullness | fullness estimate | MEASUREMENT | Monitor estimates percentage of certified capacity loaded. | Determines payable volume. |
-| debrismonitorops.route.route_check | route check | QUALITY_CHECK | Route checks compare truck path with eligible collection zones. | Detects ineligible hauling. |
-| debrismonitorops.route.detour | detour note | RECORD | Detours record road closure, access issue or safety reason. | Explains route variation. |
-| debrismonitorops.route.gps_log | GPS log | RECORD | GPS log supports origin, route and disposal verification where available. | Strengthens audit. |
-| debrismonitorops.route.repeat_load | repeat load flag | MODEL | Repeat load patterns can signal duplicate ticketing or short hauling. | Targets review. |
-| debrismonitorops.disposal.site_entry | disposal entry | METHOD | Site monitor confirms truck, ticket, debris type and arrival time. | Closes load chain. |
-| debrismonitorops.disposal.tower_check | tower check | QUALITY_CHECK | Tower monitor estimates volume and load quality from safe vantage point. | Validates payment. |
-| debrismonitorops.disposal.reduction | debris reduction | RECORD | Grinding, burning, chipping or compaction records input and output volumes. | Supports final accounting. |
-| debrismonitorops.disposal.rejection | rejected load | RECORD | Rejection records contamination, unsafe material, wrong site or missing ticket. | Prevents improper disposal. |
-| debrismonitorops.eligibility.row | right-of-way eligibility | CONSTRAINT | Public reimbursement often requires debris from eligible right-of-way or approved property. | Protects funding. |
-| debrismonitorops.eligibility.private_property | private property debris | CONSTRAINT | Private property debris needs authorization and separate tracking. | Avoids claim errors. |
-| debrismonitorops.eligibility.preexisting | preexisting debris | FAILURE_MODE | Preexisting debris can be mistaken for disaster debris. | Requires evidence review. |
-| debrismonitorops.eligibility.hazardous | hazardous material route | SAFETY_RULE | Hazardous loads use specialist handling and separate documentation. | Protects health and compliance. |
-| debrismonitorops.dispute.contractor_dispute | contractor dispute | METHOD | Contractor disputes on volume, rejection or eligibility are logged and reviewed. | Provides fair resolution. |
-| debrismonitorops.dispute.monitor_conflict | monitor conflict | METHOD | Conflicting monitor notes trigger supervisor review. | Keeps records consistent. |
-| debrismonitorops.dispute.resident_claim | resident claim | RECORD | Resident claims of missed pickup, damage or wrong removal are tracked. | Supports service recovery. |
-| debrismonitorops.dispute.adjustment | ticket adjustment | METHOD | Adjustments document reason, approver, original and corrected value. | Preserves audit trail. |
-| debrismonitorops.qa.ticket_audit | ticket audit | QUALITY_CHECK | Audit samples tickets for truck, origin, volume, debris and disposal proof. | Detects billing error. |
-| debrismonitorops.qa.field_shadow | field shadowing | QUALITY_CHECK | Supervisors shadow monitors to verify consistent estimates. | Improves reliability. |
-| debrismonitorops.qa.fraud_flag | fraud flag | MODEL | Red flags include duplicate tickets, inflated volume, altered trucks or off-route loads. | Targets investigation. |
-| debrismonitorops.qa.training | monitor training | METHOD | Training covers tickets, eligibility, safety, debris types and ethics. | Builds defensible records. |
-| debrismonitorops.records.daily_log | daily log | RECORD | Daily log captures monitors, trucks, zones, weather, issues and ticket counts. | Summarizes work. |
-| debrismonitorops.records.photo_log | photo log | RECORD | Photos support truck certification, debris piles, damage and disputes. | Adds evidence. |
-| debrismonitorops.records.retention | retention rule | CONSTRAINT | Tickets, logs, photos and GPS data follow disaster grant retention. | Preserves reimbursement evidence. |
-| debrismonitorops.records.chain | custody chain | RECORD | Ticket custody tracks issue, completion, review, upload and archive. | Prevents loss. |
-| debrismonitorops.reporting.daily_volume | daily volume | MEASUREMENT | Daily volume reports cubic yards by type, zone and site. | Shows progress. |
-| debrismonitorops.reporting.cost_support | cost support | RECORD | Monitored quantities support contractor invoices and reimbursement claims. | Links work to payment. |
-| debrismonitorops.reporting.dashboard | dashboard | MEASUREMENT | Dashboard tracks loads, volumes, rejects, disputes and remaining zones. | Guides operations. |
-| debrismonitorops.reporting.closeout_pack | closeout package | RECORD | Package compiles certifications, tickets, invoices, maps, disputes and approvals. | Supports audit closeout. |
-| debrismonitorops.safety.stop_work | stop-work authority | SAFETY_RULE | Monitors or supervisors can stop unsafe loading or hauling. | Prevents harm. |
-| debrismonitorops.safety.public_contact | public contact rule | METHOD | Monitors route resident questions to public information or field supervisor. | Keeps role clear. |
-| debrismonitorops.demob.final_ticket_review | final ticket review | QUALITY_CHECK | Final review resolves missing, duplicate and disputed tickets. | Closes billing risk. |
-| debrismonitorops.review.after_action | after-action review | METHOD | Review captures monitoring staffing, forms, technology and contractor issues. | Improves next debris operation. |
+| debrismonitorops.activation.monitor_plan | план мониторинга | RECORD | План определяет зоны, подрядчиков, наблюдателей, места утилизации и периодичность отчетности. | Контролирует вывоз мусора. |
+| debrismonitorops.activation.role_roster | список ролей | RECORD | В реестре перечислены наблюдатели на местах, на вышках, по утилизации, по обеспечению качества и наблюдатели-супервайзеры. | Назначает ответственность. |
+| debrismonitorops.activation.safety_brief | инструктаж по безопасности | SAFETY_RULE | Краткое описание охватывает дорожное движение, тяжелое оборудование, пыль, жару, нестабильные сваи и СИЗ. | Защищает мониторы. |
+| debrismonitorops.activation.map_book | книга карт | RECORD | В книге карт показаны подходящие дороги, зоны, свалки и зоны ограниченного доступа. | Предотвращает неправомочный получение. |
+| debrismonitorops.truck.cert_id | Идентификатор сертификации грузовика | RECORD | Сертификация связывает грузовик, владельца, номерной знак, мощность, фотографии и дату. | Устанавливает законную грузоподъемность. |
+| debrismonitorops.truck.capacity_measure | мера емкости | MEASUREMENT | Емкость измеряется в кубических ярдах или утвержденных единицах. | Поддерживает точность платежей. |
+| debrismonitorops.truck.photo | фото грузовика | RECORD | На фотографиях документирована кровать, серванты, плита и маркировка. | Обнаруживает измененную емкость. |
+| debrismonitorops.truck.decertify | десертификация | METHOD | Грузовик удаляется, если он модифицирован, небезопасен, дублируется или несанкционирован. | Предотвращает плохие билеты. |
+| debrismonitorops.load.ticket_id | загрузить идентификатор билета | RECORD | Билет связывает грузовик, монитор, происхождение, тип мусора, время, пункт назначения и объем. | Создает подтверждение оплаты. |
+| debrismonitorops.load.origin | источник нагрузки | RECORD | Origin фиксирует местоположение улицы, GPS, зоны, участка или полосы отвода. | Проверяет пригодность. |
+| debrismonitorops.load.debris_type | тип мусора | RECORD | По типу различают растительный, строительный, бытовую технику, опасный или смешанный мусор. | Маршруты расположены правильно. |
+| debrismonitorops.load.fullness | оценка полноты | MEASUREMENT | Монитор оценивает процент загруженной сертифицированной мощности. | Определяет объем платежа. |
+| debrismonitorops.route.route_check | проверка маршрута | QUALITY_CHECK | При проверке маршрута сравнивается путь грузовика с подходящими зонами сбора. | Обнаруживает недопустимую перевозку. |
+| debrismonitorops.route.detour | объездная записка | RECORD | Объезды фиксируют перекрытие дороги, проблемы с доступом или соображения безопасности. | Объясняет вариацию маршрута. |
+| debrismonitorops.route.gps_log | GPS-журнал | RECORD | Журнал GPS поддерживает проверку происхождения, маршрута и утилизации, если это возможно. | Усиливает аудит. |
+| debrismonitorops.route.repeat_load | флаг повторной загрузки | MODEL | Повторяющиеся схемы загрузки могут сигнализировать о дублировании билетов или коротких перевозках. | Обзор целей. |
+| debrismonitorops.disposal.site_entry | запись об утилизации | METHOD | Монитор на объекте подтверждает наличие грузовика, билета, типа мусора и времени прибытия. | Замыкает грузовую цепь. |
+| debrismonitorops.disposal.tower_check | проверка башни | QUALITY_CHECK | Башенный монитор оценивает объем и качество загрузки с безопасной точки зрения. | Подтверждает оплату. |
+| debrismonitorops.disposal.reduction | уменьшение мусора | RECORD | Измельчение, сжигание, измельчение или уплотнение фиксируют входные и выходные объемы. | Поддерживает окончательный учет. |
+| debrismonitorops.disposal.rejection | отклоненная нагрузка | RECORD | Отказ фиксирует загрязнение, небезопасный материал, неправильное место или отсутствие билета. | Предотвращает неправильную утилизацию. |
+| debrismonitorops.eligibility.row | право на право отвода | CONSTRAINT | Государственное возмещение часто требует мусора от соответствующей полосы отвода или утвержденной собственности. | Защищает финансирование. |
+| debrismonitorops.eligibility.private_property | обломки частной собственности | CONSTRAINT | Мусор частной собственности требует разрешения и отдельного отслеживания. | Избегает ошибок в претензии. |
+| debrismonitorops.eligibility.preexisting | ранее существовавшие обломки | FAILURE_MODE | Существующие ранее обломки можно принять за обломки после катастрофы. | Требует проверки доказательств. |
+| debrismonitorops.eligibility.hazardous | маршрут опасного материала | SAFETY_RULE | Опасные грузы требуют специального обращения и отдельной документации. | Защищает здоровье и соблюдение требований. |
+| debrismonitorops.dispute.contractor_dispute | спор с подрядчиком | METHOD | Споры подрядчика по объему, отказу или приемлемости регистрируются и рассматриваются. | Обеспечивает справедливое разрешение. |
+| debrismonitorops.dispute.monitor_conflict | отслеживать конфликт | METHOD | Противоречивые записи монитора вызывают проверку супервайзером. | Обеспечивает единообразие записей. |
+| debrismonitorops.dispute.resident_claim | требование резидента | RECORD | Жалобы жителей о пропущенном получении, повреждении или неправильном удалении отслеживаются. | Поддерживает восстановление сервисов. |
+| debrismonitorops.dispute.adjustment | корректировка билета | METHOD | Причина корректировки, утверждающее лицо, исходное и исправленное значение. | Сохраняет контрольный журнал. |
+| debrismonitorops.qa.ticket_audit | проверка билетов | QUALITY_CHECK | Аудит образцов квитанций на грузовик, происхождение, объем, мусор и доказательства утилизации. | Обнаруживает ошибку биллинга. |
+| debrismonitorops.qa.field_shadow | затенение поля | QUALITY_CHECK | Руководители осуществляют совместный мониторинг для проверки согласованности оценок. | Повышает надежность. |
+| debrismonitorops.qa.fraud_flag | флаг мошенничества | MODEL | К тревожным сигналам относятся двойные билеты, завышенный объем, измененные грузовики или грузы, находящиеся вне маршрута. | Расследование целей. |
+| debrismonitorops.qa.training | контролировать обучение | METHOD | Обучение охватывает билеты, право на участие, безопасность, типы мусора и этику. | Создает заслуживающие доверия записи. |
+| debrismonitorops.records.daily_log | ежедневник | RECORD | Ежедневный журнал фиксирует мониторы, грузовики, зоны, погоду, проблемы и количество билетов. | Подводит итоги работы. |
+| debrismonitorops.records.photo_log | фотожурнал | RECORD | Фотографии подтверждают сертификацию грузовика, груды мусора, повреждения и споры. | Добавляет доказательства. |
+| debrismonitorops.records.retention | правило хранения | CONSTRAINT | Билеты, журналы, фотографии и данные GPS учитываются при сохранении грантов на случай стихийных бедствий. | Сохраняет доказательства возмещения. |
+| debrismonitorops.records.chain | цепочка поставок | RECORD | Хранение билетов отслеживает выдачу, завершение, проверку, загрузку и архивирование. | Предотвращает потери. |
+| debrismonitorops.reporting.daily_volume | дневной объем | MEASUREMENT | Ежедневный объем сообщает кубические ярды по типу, зоне и участку. | Показывает прогресс. |
+| debrismonitorops.reporting.cost_support | поддержка затрат | RECORD | Отслеживаемые количества подтверждают счета-фактуры подрядчиков и заявки на возмещение. | Ссылки рабочие на оплату. |
+| debrismonitorops.reporting.dashboard | приборная панель | MEASUREMENT | Панель мониторинга отслеживает загрузки, объемы, брак, споры и оставшиеся зоны. | Руководит операциями. |
+| debrismonitorops.reporting.closeout_pack | распродажа пакета | RECORD | В пакете собраны сертификаты, билеты, счета-фактуры, карты, споры и согласования. | Поддерживает закрытие аудита. |
+| debrismonitorops.safety.stop_work | орган по прекращению работы | SAFETY_RULE | Контролеры или супервайзеры могут остановить небезопасную погрузку или транспортировку. | Предотвращает вред. |
+| debrismonitorops.safety.public_contact | правило публичного контакта | METHOD | Наблюдатели направляют вопросы жителей в службу общественной информации или руководителю на местах. | Сохраняет роль ясной. |
+| debrismonitorops.demob.final_ticket_review | окончательный обзор билетов | QUALITY_CHECK | Заключительная проверка решает вопрос об отсутствующих, дублирующих и спорных билетах. | Закрывает биллинговый риск. |
+| debrismonitorops.review.after_action | обзор после действий | METHOD | Обзор охватывает мониторинг кадрового обеспечения, форм, технологий и вопросов подрядчиков. | Улучшает следующую операцию с мусором. |

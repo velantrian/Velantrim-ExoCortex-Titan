@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| debrisassistops.intake.case_id | debris case ID | RECORD | Case ID links property, owner, damage, hazard, date, channel and status. | Creates controlled intake. |
-| debrisassistops.intake.property_location | property location | RECORD | Location captures address, parcel, GPS, access route and jurisdiction. | Supports field verification. |
-| debrisassistops.intake.damage_type | damage type | RECORD | Damage type distinguishes vegetative, construction, household, hazardous, vehicle or sediment debris. | Routes to correct process. |
-| debrisassistops.intake.photo | photo evidence | RECORD | Photos document debris, access, hazards and property context. | Helps triage and reimbursement. |
-| debrisassistops.eligibility.program_area | program area | CONSTRAINT | Eligibility depends on declared incident, jurisdiction, property type and approved program. | Prevents out-of-scope work. |
-| debrisassistops.eligibility.owner_status | owner status | METHOD | Owner, tenant, HOA or business status affects authority and assistance path. | Clarifies permissions. |
-| debrisassistops.eligibility.duplicate_aid | duplicate aid check | QUALITY_CHECK | Check compares insurance, private contractor and other public assistance. | Avoids improper duplicate benefits. |
-| debrisassistops.eligibility.private_property | private property limit | CONSTRAINT | Private property debris removal requires special authority and documentation. | Protects legal boundaries. |
-| debrisassistops.rightofentry.roe_form | right-of-entry form | RECORD | ROE grants permission for inspection, debris removal and access conditions. | Enables lawful work. |
-| debrisassistops.rightofentry.identity | owner identity proof | SAFETY_RULE | Ownership or authority is verified before ROE acceptance. | Prevents trespass or fraud. |
-| debrisassistops.rightofentry.scope | ROE scope | CONSTRAINT | Scope states what crews may remove, access and disturb. | Limits unintended damage. |
-| debrisassistops.rightofentry.revocation | ROE revocation | METHOD | Owner can revoke permission under defined process before work stage. | Preserves property rights. |
-| debrisassistops.triage.hazard_priority | hazard priority | MODEL | Priority considers blocked access, public safety, utilities, mold, chemicals, instability and vulnerable residents. | Sends crews to highest need. |
-| debrisassistops.triage.access_blocked | access blocked | FAILURE_MODE | Blocked roads, gates, dogs, water or unstable structures delay assessment. | Requires coordination. |
-| debrisassistops.triage.vulnerable | vulnerable resident | MODEL | Elderly, disabled, medically fragile or low-resource households may receive priority under policy. | Supports equity. |
-| debrisassistops.triage.environment | environmental risk | SAFETY_RULE | Asbestos, fuel, chemicals, sewage or biomedical waste trigger specialist handling. | Prevents unsafe cleanup. |
-| debrisassistops.field.inspection | field inspection | METHOD | Inspector verifies debris type, volume, access, hazard and eligibility markers. | Confirms intake facts. |
-| debrisassistops.field.volume_estimate | volume estimate | MEASUREMENT | Volume estimate records cubic yards, category and confidence. | Supports resource planning. |
-| debrisassistops.field.tagging | property tag | METHOD | Tag or digital marker shows inspection status, ROE, hazards and work authorization. | Guides crews. |
-| debrisassistops.field.denial | field denial | RECORD | Denial records reason such as ineligible, unsafe, no ROE or already cleared. | Supports appeals. |
-| debrisassistops.contractor.work_packet | work packet | RECORD | Packet includes property, scope, debris category, hazards, access and documentation requirements. | Hands off cleanly to contractor. |
-| debrisassistops.contractor.assignment | contractor assignment | METHOD | Assignment uses zone, capacity, equipment, material type and priority. | Deploys resources efficiently. |
-| debrisassistops.contractor.monitor | debris monitor | QUALITY_CHECK | Monitor observes work, volume, category and site damage. | Controls contractor claims. |
-| debrisassistops.contractor.safety | contractor safety | SAFETY_RULE | Contractors follow PPE, traffic, utility, chainsaw, heavy equipment and hazard controls. | Reduces injury. |
-| debrisassistops.operations.separation | debris separation | METHOD | Residents may separate vegetative, construction, appliances, hazardous and electronics. | Speeds compliant pickup. |
-| debrisassistops.operations.pickup_schedule | pickup schedule | METHOD | Schedule groups cases by zone, material and access constraints. | Improves route efficiency. |
-| debrisassistops.operations.load_ticket | load ticket | RECORD | Load ticket records truck, origin, debris type, volume/weight and disposal site. | Supports reimbursement. |
-| debrisassistops.operations.disposal_site | disposal site | RECORD | Disposal site must accept category and document entry, weight and environmental rules. | Maintains compliance. |
-| debrisassistops.communication.ack | acknowledgment | METHOD | Acknowledgment gives case number, eligibility caveat and next step. | Confirms report. |
-| debrisassistops.communication.prep_notice | preparation notice | METHOD | Notice explains sorting, placement, deadlines and what not to put out. | Reduces rejected piles. |
-| debrisassistops.communication.delay | delay notice | METHOD | Delay notice explains access, hazard, capacity, weather or contractor issue. | Keeps residents informed. |
-| debrisassistops.communication.close_notice | closeout notice | METHOD | Closeout notice states removed, ineligible, referred or no debris found. | Closes resident loop. |
-| debrisassistops.records.case_file | case file | RECORD | File stores intake, ROE, inspection, work packet, tickets, photos and communications. | Creates audit trail. |
-| debrisassistops.records.fema | reimbursement record | RECORD | Eligible work is documented to meet reimbursement or grant rules. | Protects public funding. |
-| debrisassistops.records.retention | retention rule | CONSTRAINT | Records follow disaster, procurement and environmental retention schedules. | Supports later review. |
-| debrisassistops.records.privacy | privacy limit | CONSTRAINT | Personal and property details are protected from unnecessary public release. | Protects residents. |
-| debrisassistops.qa.roe_audit | ROE audit | QUALITY_CHECK | Audit checks authorization before private property work. | Prevents unlawful entry. |
-| debrisassistops.qa.ticket_reconcile | ticket reconciliation | QUALITY_CHECK | Load tickets reconcile with assignments, monitors and disposal receipts. | Detects billing errors. |
-| debrisassistops.qa.damage_claim | damage claim route | METHOD | Property damage claims route to contractor, insurer or city review. | Handles cleanup harm. |
-| debrisassistops.metrics.cubic_yards | cubic yards removed | MEASUREMENT | Cubic yards removed by type and zone show progress. | Tracks recovery. |
-| debrisassistops.metrics.case_age | case age | MEASUREMENT | Case age tracks time from intake to closeout. | Finds delays. |
-| debrisassistops.closeout.final_inspection | final inspection | QUALITY_CHECK | Final inspection confirms removal scope and site condition. | Verifies completion. |
-| debrisassistops.closeout.lessons | lessons learned | METHOD | Review captures intake gaps, contractor issues, communication and equity concerns. | Improves next disaster. |
-| debrisassistops.governance.program_owner | program owner | RECORD | Program owner coordinates emergency management, public works, legal and finance. | Avoids fragmented control. |
+| debrisassistops.intake.case_id | идентификатор ящика с мусором | RECORD | Идентификатор дела связывает имущество, владельца, ущерб, опасность, дату, канал и статус. | Создает контролируемое потребление. |
+| debrisassistops.intake.property_location | расположение недвижимости | RECORD | Местоположение фиксирует адрес, посылку, GPS, маршрут доступа и юрисдикцию. | Поддерживает проверку на местах. |
+| debrisassistops.intake.damage_type | тип повреждения | RECORD | По типу повреждения различают растительный, строительный, бытовой, опасный, автомобильный или наносный мусор. | Пути исправления процесса. |
+| debrisassistops.intake.photo | фотодоказательства | RECORD | Фотографии документируют обломки, доступ, опасности и контекст собственности. | Помогает в сортировке и возмещении расходов. |
+| debrisassistops.eligibility.program_area | программная область | CONSTRAINT | Право на участие зависит от заявленного инцидента, юрисдикции, типа объекта и утвержденной программы. | Предотвращает работу, выходящую за рамки. |
+| debrisassistops.eligibility.owner_status | статус владельца | METHOD | Владелец, арендатор, ТСЖ или бизнес-статус влияют на полномочия и путь оказания помощи. | Уточняет разрешения. |
+| debrisassistops.eligibility.duplicate_aid | дубликат чека помощи | QUALITY_CHECK | Проверьте сравнение страхования, частного подрядчика и другой государственной помощи. | Избегает неправомерного дублирования льгот. |
+| debrisassistops.eligibility.private_property | лимит частной собственности | CONSTRAINT | Вывоз мусора на частной территории требует специальных полномочий и документации. | Защищает правовые границы. |
+| debrisassistops.rightofentry.roe_form | форма права входа | RECORD | РОЭ дает разрешение на осмотр, вывоз мусора и условия доступа. | Позволяет легально работать. |
+| debrisassistops.rightofentry.identity | удостоверение личности владельца | SAFETY_RULE | Право собственности или полномочия проверяются перед принятием ROE. | Предотвращает проникновение или мошенничество. |
+| debrisassistops.rightofentry.scope | Объем ROE | CONSTRAINT | Объем определяет, что бригады могут удалять, получать доступ и нарушать. | Ограничивает непреднамеренный ущерб. |
+| debrisassistops.rightofentry.revocation | отзыв ROE | METHOD | Владелец может отозвать разрешение в рамках определенного процесса до этапа работ. | Сохраняет права собственности. |
+| debrisassistops.triage.hazard_priority | приоритет опасности | MODEL | Приоритетом считаются заблокированный доступ, общественная безопасность, коммунальные услуги, плесень, химикаты, нестабильность и уязвимые жители. | Отправляет экипажи в места крайней нужды. |
+| debrisassistops.triage.access_blocked | доступ заблокирован | FAILURE_MODE | Заблокированные дороги, ворота, собаки, вода или нестабильные конструкции задерживают оценку. | Требует координации. |
+| debrisassistops.triage.vulnerable | уязвимый житель | MODEL | Пожилые, инвалиды, семьи с слабым здоровьем или семьи с низкими ресурсами могут получить приоритет в рамках политики. | Поддерживает справедливость. |
+| debrisassistops.triage.environment | экологический риск | SAFETY_RULE | Асбест, топливо, химикаты, сточные воды или биомедицинские отходы требуют обращения со специалистом. | Предотвращает небезопасную очистку. |
+| debrisassistops.field.inspection | выездная инспекция | METHOD | Инспектор проверяет тип мусора, объем, маркеры доступа, опасности и приемлемости. | Подтверждает факты поступления. |
+| debrisassistops.field.volume_estimate | оценка объема | MEASUREMENT | В оценке объема фиксируются кубические ярды, категория и достоверность. | Поддерживает планирование ресурсов. |
+| debrisassistops.field.tagging | тег свойства | METHOD | Метка или цифровой маркер показывает статус проверки, ROE, опасности и разрешение на работу. | Гиды экипажей. |
+| debrisassistops.field.denial | отрицание поля | RECORD | Причина отказа в записи, например, не соответствует требованиям, небезопасна, отсутствует ROE или уже очищена. | Поддерживает апелляции. |
+| debrisassistops.contractor.work_packet | рабочий пакет | RECORD | Пакет включает в себя имущество, объем, категорию мусора, опасности, требования к доступу и документации. | Руки должны быть полностью переданы подрядчику. |
+| debrisassistops.contractor.assignment | назначение подрядчика | METHOD | При назначении используются зона, мощность, оборудование, тип материала и приоритет. | Эффективно распределяет ресурсы. |
+| debrisassistops.contractor.monitor | монитор мусора | QUALITY_CHECK | Монитор отслеживает работу, объем, категорию и повреждение объекта. | Контролирует претензии подрядчиков. |
+| debrisassistops.contractor.safety | безопасность подрядчика | SAFETY_RULE | Подрядчики следят за средствами индивидуальной защиты, дорожным движением, коммунальными услугами, бензопилой, тяжелым оборудованием и контролем за опасностями. | Уменьшает травматизм. |
+| debrisassistops.operations.separation | разделение мусора | METHOD | Жители могут разделить растительное, строительное, бытовое, опасное и электронное оборудование. | Пикап, соответствующий скорости. |
+| debrisassistops.operations.pickup_schedule | график получения | METHOD | Расписание группирует дела по зонам, материалам и ограничениям доступа. | Повышает эффективность маршрута. |
+| debrisassistops.operations.load_ticket | загрузить билет | RECORD | В погрузочной квитанции указывается грузовик, происхождение, тип мусора, объем/вес и место утилизации. | Поддерживает возмещение. |
+| debrisassistops.operations.disposal_site | место захоронения | RECORD | На месте утилизации должны быть приняты категория и запись в документе, вес и экологические правила. | Соблюдает соответствие. |
+| debrisassistops.communication.ack | признание | METHOD | В подтверждении указывается номер дела, предупреждение о приемлемости и следующий шаг. | Подтверждает отчет. |
+| debrisassistops.communication.prep_notice | уведомление о подготовке | METHOD | В уведомлении поясняется сортировка, размещение, сроки и то, что не следует выкладывать. | Уменьшает бракованные сваи. |
+| debrisassistops.communication.delay | уведомление о задержке | METHOD | В уведомлении о задержке разъясняются вопросы доступа, опасности, мощности, погоды или подрядчика. | Держит жителей в курсе. |
+| debrisassistops.communication.close_notice | уведомление о закрытии | METHOD | В уведомлении о закрытии указано, что оно удалено, не соответствует требованиям, передано или мусор не обнаружен. | Замыкает резидентный цикл. |
+| debrisassistops.records.case_file | материалы дела | RECORD | Прием файловых магазинов, ROE, проверка, рабочий пакет, билеты, фотографии и сообщения. | Создает контрольный журнал. |
+| debrisassistops.records.fema | запись о возмещении | RECORD | Приемлемая работа документируется в соответствии с правилами возмещения или гранта. | Защищает государственное финансирование. |
+| debrisassistops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам стихийных бедствий, закупок и сохранения окружающей среды. | Поддерживает более поздний обзор. |
+| debrisassistops.records.privacy | предел конфиденциальности | CONSTRAINT | Личные и имущественные данные защищены от ненужной публичной разглашения. | Защищает жильцов. |
+| debrisassistops.qa.roe_audit | Аудит ROE | QUALITY_CHECK | Аудит проверяет авторизацию перед работой с частной собственностью. | Препятствует незаконному проникновению. |
+| debrisassistops.qa.ticket_reconcile | сверка билетов | QUALITY_CHECK | Загрузочные талоны сверяются с заданиями, мониторами и квитанциями об утилизации. | Обнаруживает ошибки биллинга. |
+| debrisassistops.qa.damage_claim | маршрут претензии по возмещению ущерба | METHOD | Претензии о материальном ущербе направляются подрядчику, страховщику или городской администрации. | Справляется с очисткой повреждений. |
+| debrisassistops.metrics.cubic_yards | кубических ярдов удалено | MEASUREMENT | Кубические ярды, удаленные по типам и зонам, показывают прогресс. | Отслеживает восстановление. |
+| debrisassistops.metrics.case_age | возраст корпуса | MEASUREMENT | Возраст обращения отслеживает время от поступления до закрытия. | Находит задержки. |
+| debrisassistops.closeout.final_inspection | окончательная проверка | QUALITY_CHECK | Заключительная проверка подтверждает объем удаления и состояние объекта. | Проверяет завершение. |
+| debrisassistops.closeout.lessons | извлеченные уроки | METHOD | Обзор отражает пробелы в приеме, проблемы подрядчиков, проблемы коммуникации и справедливости. | Улучшает следующую катастрофу. |
+| debrisassistops.governance.program_owner | владелец программы | RECORD | Владелец программы координирует управление чрезвычайными ситуациями, общественные работы, юридические и финансы. | Избегает фрагментированного контроля. |

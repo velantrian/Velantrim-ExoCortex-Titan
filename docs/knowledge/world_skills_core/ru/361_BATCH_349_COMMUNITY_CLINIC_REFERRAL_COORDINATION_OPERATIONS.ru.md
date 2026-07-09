@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| clinicrefops.intake.referral_id | referral ID | RECORD | Referral ID links patient, source, service requested, date and coordinator. | Creates traceable handoff. |
-| clinicrefops.intake.source | referral source | RECORD | Source distinguishes primary care, ED, school, social service, outreach or self-referral. | Helps prioritize and communicate. |
-| clinicrefops.intake.reason | referral reason | RECORD | Reason summarizes need without replacing clinical assessment. | Preserves why the referral exists. |
-| clinicrefops.intake.urgency | urgency level | MODEL | Urgency reflects risk, symptoms, time sensitivity and service capacity. | Guides scheduling priority. |
-| clinicrefops.intake.consent | information consent | SAFETY_RULE | Sharing records requires patient consent or lawful basis. | Protects privacy. |
-| clinicrefops.eligibility.coverage | coverage check | METHOD | Coverage check reviews insurance, program eligibility, sliding fee or charity care. | Reduces surprise costs. |
-| clinicrefops.eligibility.service_fit | service fit | METHOD | Service fit checks whether clinic can provide requested specialty or support. | Avoids wrong referrals. |
-| clinicrefops.eligibility.catchment | catchment rule | CONSTRAINT | Catchment rules may limit geography, population or program category. | Uses resources as intended. |
-| clinicrefops.eligibility.barrier_screen | barrier screen | METHOD | Screen identifies transport, language, housing, phone, disability or technology barriers. | Supports successful attendance. |
-| clinicrefops.records.minimum_packet | minimum packet | RECORD | Packet includes demographics, referral reason, relevant records and contact details. | Lets receiving clinic act. |
-| clinicrefops.records.missing_info | missing information | FAILURE_MODE | Missing records, consent or contact details delay referral. | Creates clear follow-up task. |
-| clinicrefops.records.secure_transfer | secure transfer | SAFETY_RULE | Records move through approved secure channel. | Prevents privacy breach. |
-| clinicrefops.records.update_log | update log | RECORD | Log records contacts, attempts, status and next action. | Keeps coordination continuous. |
-| clinicrefops.scheduling.appointment_match | appointment match | METHOD | Appointment match considers urgency, service type, location, language and patient availability. | Increases completed visits. |
-| clinicrefops.scheduling.waitlist | waitlist | METHOD | Waitlist records priority, earliest acceptable date and contact rules. | Manages limited slots. |
-| clinicrefops.scheduling.transport | transport support | METHOD | Transport support may arrange ride resources or directions. | Reduces no-shows. |
-| clinicrefops.scheduling.reminder | reminder | METHOD | Reminder confirms appointment, location, prep and cancellation path. | Improves attendance. |
-| clinicrefops.scheduling.reschedule | reschedule workflow | METHOD | Reschedule keeps referral active while updating urgency and barrier notes. | Prevents silent dropout. |
-| clinicrefops.no_show.no_show_record | no-show record | RECORD | No-show records missed appointment, outreach attempts and reason if known. | Enables follow-up. |
-| clinicrefops.no_show.risk_review | no-show risk review | MODEL | Risk review distinguishes routine miss from medically or socially high-risk loss to follow-up. | Prioritizes outreach. |
-| clinicrefops.no_show.outreach | outreach attempt | METHOD | Outreach uses approved channels and privacy-safe messages. | Reconnects patient. |
-| clinicrefops.no_show.close_rule | no-show closure rule | CONSTRAINT | Referral closes only after defined attempts, time or source notification. | Avoids premature closure. |
-| clinicrefops.followup.visit_confirm | visit confirmation | RECORD | Visit confirmation records whether patient attended, declined, rescheduled or redirected. | Closes the loop. |
-| clinicrefops.followup.result_summary | result summary | RECORD | Result summary sends necessary outcome back to referring provider under consent. | Supports continuity of care. |
-| clinicrefops.followup.next_step | next step | METHOD | Next step may be additional service, community resource, return visit or case closure. | Keeps care pathway moving. |
-| clinicrefops.followup.patient_feedback | patient feedback | METHOD | Feedback captures access barriers, clarity and satisfaction. | Improves referral system. |
-| clinicrefops.communication.patient_message | patient message | METHOD | Message uses plain language and avoids sensitive details when channel is uncertain. | Protects privacy and comprehension. |
-| clinicrefops.communication.referrer_update | referrer update | METHOD | Referrer receives status such as accepted, scheduled, completed, delayed or declined. | Prevents duplicate referrals. |
-| clinicrefops.communication.language | language services | METHOD | Interpretation and translated instructions are arranged when needed. | Supports equitable access. |
-| clinicrefops.communication.warm_handoff | warm handoff | METHOD | Warm handoff connects patient directly to receiving service or navigator. | Reduces drop-off. |
-| clinicrefops.capacity.slot_inventory | slot inventory | RECORD | Slot inventory tracks service availability, provider, location and eligibility constraints. | Makes scheduling realistic. |
-| clinicrefops.capacity.backlog | referral backlog | MEASUREMENT | Backlog tracks open referrals by age, urgency and service type. | Shows access pressure. |
-| clinicrefops.capacity.diversion | diversion route | METHOD | Diversion sends referral to alternate clinic, telehealth or community partner when capacity is insufficient. | Prevents stalled care. |
-| clinicrefops.capacity.priority_review | priority review | QUALITY_CHECK | High-urgency referrals are reviewed for scheduling delays. | Reduces harm from waitlists. |
-| clinicrefops.quality.closed_loop | closed-loop rate | MEASUREMENT | Closed-loop rate measures referrals with confirmed outcome. | Shows coordination reliability. |
-| clinicrefops.quality.leakage | referral leakage | FAILURE_MODE | Leakage occurs when referral never reaches appointment or outcome confirmation. | Identifies system breaks. |
-| clinicrefops.quality.data_accuracy | data accuracy check | QUALITY_CHECK | Contact, eligibility, appointment and status fields are sampled for accuracy. | Prevents operational drift. |
-| clinicrefops.integration.ehr_link | EHR link | METHOD | Referral is linked to EHR task, order or external referral module where possible. | Reduces double entry. |
-| clinicrefops.integration.community_resource | community resource link | METHOD | Nonclinical needs can link to food, housing, transport or benefits resources. | Addresses access barriers. |
-| clinicrefops.integration.hie | health information exchange | CONSTRAINT | HIE use follows consent, minimum necessary and access rules. | Keeps exchange lawful. |
-| clinicrefops.governance.owner | referral owner | RECORD | Each referral has active owner until completed, transferred or closed. | Avoids abandoned referrals. |
-| clinicrefops.governance.protocol | referral protocol | METHOD | Protocol defines acceptance criteria, urgency, records and escalation. | Standardizes coordination. |
-| clinicrefops.governance.safety_net | safety net rule | SAFETY_RULE | High-risk unresolved referrals require escalation or documented clinical review. | Protects vulnerable patients. |
-| clinicrefops.closeout.closure_reason | closure reason | RECORD | Closure reason states completed, declined, unreachable, ineligible, duplicate or transferred. | Makes outcomes measurable. |
+| clinicrefops.intake.referral_id | идентификатор реферала | RECORD | Идентификатор направления связывает пациента, источник, запрошенную услугу, дату и координатора. | Создает отслеживаемую передачу обслуживания. |
+| clinicrefops.intake.source | источник рефералов | RECORD | Источник различает первичную помощь, неотложную помощь, школу, социальную службу, аутрич-услуги или самостоятельное обращение. | Помогает расставлять приоритеты и общаться. |
+| clinicrefops.intake.reason | причина направления | RECORD | Разум обобщает потребности, не заменяя клиническую оценку. | Сохраняет причину существования ссылки. |
+| clinicrefops.intake.urgency | уровень срочности | MODEL | Срочность отражает риск, симптомы, чувствительность ко времени и возможности обслуживания. | Гиды планируют приоритет. |
+| clinicrefops.intake.consent | информационное согласие | SAFETY_RULE | Для обмена записями требуется согласие пациента или законное основание. | Защищает конфиденциальность. |
+| clinicrefops.eligibility.coverage | проверка покрытия | METHOD | Проверка покрытия проверяет страховку, право на участие в программе, скользящую плату или благотворительную помощь. | Снижает неожиданные затраты. |
+| clinicrefops.eligibility.service_fit | пригодность для обслуживания | METHOD | Пригодность к обслуживанию проверяет, может ли клиника предоставить запрашиваемую специальность или поддержку. | Избегает неправильных рекомендаций. |
+| clinicrefops.eligibility.catchment | правило водосбора | CONSTRAINT | Правила охвата могут ограничивать географию, население или категорию программы. | Использует ресурсы по назначению. |
+| clinicrefops.eligibility.barrier_screen | барьерный экран | METHOD | Экран выявляет транспортные, языковые, жилищные, телефонные, инвалидные или технологические барьеры. | Поддерживает успешную посещаемость. |
+| clinicrefops.records.minimum_packet | минимальный пакет | RECORD | Пакет включает демографические данные, причину направления, соответствующие записи и контактные данные. | Давайте действовать в приемной клинике. |
+| clinicrefops.records.missing_info | недостающая информация | FAILURE_MODE | Отсутствие записей, согласия или контактных данных задерживает направление. | Создает четкую последующую задачу. |
+| clinicrefops.records.secure_transfer | безопасная передача | SAFETY_RULE | Записи перемещаются по утвержденному защищенному каналу. | Предотвращает нарушение конфиденциальности. |
+| clinicrefops.records.update_log | обновить журнал | RECORD | Журнал записывает контакты, попытки, статус и следующее действие. | Обеспечивает постоянную координацию. |
+| clinicrefops.scheduling.appointment_match | назначение матча | METHOD | При назначении встречи учитывается срочность, тип услуги, местоположение, язык и доступность пациентов. | Увеличивает количество завершенных посещений. |
+| clinicrefops.scheduling.waitlist | список ожидания | METHOD | В списке ожидания записан приоритет, самая ранняя приемлемая дата и правила связи. | Управляет ограниченным количеством слотов. |
+| clinicrefops.scheduling.transport | транспортное обеспечение | METHOD | Транспортная поддержка может предоставить ресурсы или маршруты для поездок. | Снижает количество неявок. |
+| clinicrefops.scheduling.reminder | напоминание | METHOD | Напоминание подтверждает встречу, место, путь подготовки и отмены. | Улучшает посещаемость. |
+| clinicrefops.scheduling.reschedule | перенести рабочий процесс | METHOD | Перепланирование сохраняет направление активным, одновременно обновляя примечания о срочности и барьерах. | Предотвращает бесшумное отключение. |
+| clinicrefops.no_show.no_show_record | запись о неявке | RECORD | Записи о неявках на прием, попытках разъяснительной работы и причинах, если они известны. | Включает дальнейшее наблюдение. |
+| clinicrefops.no_show.risk_review | проверка риска неявки | MODEL | При анализе рисков проводится различие между обычным пропуском лечения и потерей наблюдения с высоким медицинским или социальным риском. | Приоритет отдается разъяснительной работе. |
+| clinicrefops.no_show.outreach | попытка разъяснительной работы | METHOD | Outreach использует утвержденные каналы и сообщения, безопасные для конфиденциальности. | Воссоединяет пациента. |
+| clinicrefops.no_show.close_rule | правило закрытия по неявке | CONSTRAINT | Реферал закрывается только после определенных попыток, времени или уведомления источника. | Предотвращает преждевременное закрытие. |
+| clinicrefops.followup.visit_confirm | подтверждение посещения | RECORD | В подтверждении посещения записывается, посещал ли пациент, отклонял ли его, переносил или перенаправлял. | Замыкает цикл. |
+| clinicrefops.followup.result_summary | сводка результатов | RECORD | Сводка результатов отправляет необходимые результаты обратно направляющему поставщику с согласия. | Поддерживает непрерывность ухода. |
+| clinicrefops.followup.next_step | следующий шаг | METHOD | Следующим шагом может быть дополнительная услуга, общественный ресурс, повторный визит или закрытие дела. | Продолжает движение по пути ухода. |
+| clinicrefops.followup.patient_feedback | обратная связь с пациентом | METHOD | Обратная связь отражает барьеры доступа, ясность и удовлетворенность. | Улучшает реферальную систему. |
+| clinicrefops.communication.patient_message | сообщение пациента | METHOD | В сообщении используется простой язык и избегаются конфиденциальные детали, если канал неизвестен. | Защищает конфиденциальность и понимание. |
+| clinicrefops.communication.referrer_update | обновление реферера | METHOD | Реферер получает такой статус, как «принято», «запланировано», «завершено», «отложено» или «отклонено». | Предотвращает дублирование рефералов. |
+| clinicrefops.communication.language | лингвистические услуги | METHOD | При необходимости организуется устный перевод и переведенные инструкции. | Поддерживает равный доступ. |
+| clinicrefops.communication.warm_handoff | теплая передача | METHOD | Теплая передача обслуживания соединяет пациента напрямую с принимающей службой или навигатором. | Уменьшает выпадение. |
+| clinicrefops.capacity.slot_inventory | инвентарь слотов | RECORD | Инвентаризация слотов отслеживает доступность услуг, поставщиков, местоположение и ограничения приемлемости. | Делает планирование реалистичным. |
+| clinicrefops.capacity.backlog | отставание по рефералам | MEASUREMENT | Журнал ожидания отслеживает открытые направления по возрасту, срочности и типу услуги. | Показывает давление доступа. |
+| clinicrefops.capacity.diversion | объездной маршрут | METHOD | При переадресации направляется направление в альтернативную клинику, телемедицину или партнера по сообществу, когда возможностей недостаточно. | Предотвращает застой в уходе. |
+| clinicrefops.capacity.priority_review | приоритетное рассмотрение | QUALITY_CHECK | Срочные направления проверяются на предмет задержек в расписании. | Снижает вред от списков ожидания. |
+| clinicrefops.quality.closed_loop | скорость с обратной связью | MEASUREMENT | Замкнутый коэффициент измеряет количество обращений с подтвержденным результатом. | Показывает надежность координации. |
+| clinicrefops.quality.leakage | утечка рефералов | FAILURE_MODE | Утечка происходит, когда направление никогда не доходит до назначения или подтверждения результата. | Выявляет системные сбои. |
+| clinicrefops.quality.data_accuracy | проверка точности данных | QUALITY_CHECK | Поля «Контакт», «Право на участие», «Встреча» и «Статус» выбираются для обеспечения точности. | Предотвращает рабочий дрейф. |
+| clinicrefops.integration.ehr_link | ссылка на ЭМК | METHOD | Направление связано с задачей EHR, заказом или внешним модулем направления, где это возможно. | Уменьшает двойную запись. |
+| clinicrefops.integration.community_resource | ссылка на ресурс сообщества | METHOD | Неклинические потребности могут быть связаны с продуктами питания, жильем, транспортом или льготами. | Устраняет препятствия доступа. |
+| clinicrefops.integration.hie | обмен медицинской информацией | CONSTRAINT | Использование HIE соответствует согласию, минимально необходимому минимуму и правилам доступа. | Обеспечивает законность обмена. |
+| clinicrefops.governance.owner | владелец реферала | RECORD | У каждого реферала есть активный владелец, пока он не будет завершен, передан или закрыт. | Избегает заброшенных рефералов. |
+| clinicrefops.governance.protocol | протокол направления | METHOD | Протокол определяет критерии приемки, срочность, записи и эскалацию. | Стандартизирует координацию. |
+| clinicrefops.governance.safety_net | правило системы безопасности | SAFETY_RULE | Нерешенные направления пациентов с высоким риском требуют эскалации или документированной клинической проверки. | Защищает уязвимых пациентов. |
+| clinicrefops.closeout.closure_reason | причина закрытия | RECORD | В причине закрытия указано, что сообщение выполнено, отклонено, недоступно, не соответствует требованиям, дублируется или перенесено. | Делает результаты измеримыми. |

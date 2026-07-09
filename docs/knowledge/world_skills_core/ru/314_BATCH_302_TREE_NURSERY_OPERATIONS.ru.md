@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| treenurseryops.inventory.nursery_record | Tree nursery record | invariant | Record stores site, beds, containers, species, irrigation, inventory, staff and history. | manage nursery |
-| treenurseryops.inventory.plant_lot | Nursery plant lot | invariant | Lot groups trees by species, source, propagation date, container size and status. | trace stock |
-| treenurseryops.inventory.species_mix | Tree nursery species mix | variant | Mix balances climate suitability, diversity, site demand, pest risk and program goals. | plan inventory |
-| treenurseryops.inventory.size_class | Tree nursery size class | invariant | Class groups seedlings, liners, containers, balled stock or caliper sizes. | organize stock |
-| treenurseryops.propagation.seed_collection | Tree seed collection | variant | Collection records species, location, date, permission, ripeness and storage conditions. | start stock |
-| treenurseryops.propagation.seed_treatment | Tree seed treatment | invariant | Treatment may include cleaning, stratification, scarification, soaking or temperature control. | improve germination |
-| treenurseryops.propagation.cutting_propagation | Tree cutting propagation | variant | Propagation uses cuttings, rooting media, humidity, hormone if allowed and labels. | clone plants |
-| treenurseryops.propagation.germination_record | Tree germination record | invariant | Record tracks sowing date, medium, temperature, moisture, emergence and survival. | monitor success |
-| treenurseryops.potting.potting_media | Tree potting media | invariant | Media supports drainage, aeration, moisture and nutrients suitable for tree roots. | grow healthy stock |
-| treenurseryops.potting.upshift | Tree nursery upshift | invariant | Upshift moves plant into larger container before root restriction harms growth. | maintain vigor |
-| treenurseryops.potting.root_pruning | Tree nursery root pruning | variant | Pruning corrects circling, kinked or excessive roots during container production. | improve structure |
-| treenurseryops.potting.labeling | Tree nursery labeling | invariant | Label identifies species, lot, date, size, source and treatment history. | prevent mixups |
-| treenurseryops.irrigation.irrigation_zone | Tree nursery irrigation zone | invariant | Zone groups stock by water need, container size, exposure and valve layout. | water accurately |
-| treenurseryops.irrigation.moisture_check | Nursery moisture check | invariant | Check assesses container or bed moisture, drainage, wilt, overwatering and weather. | prevent stress |
-| treenurseryops.irrigation.emitter_check | Nursery emitter check | variant | Check finds clogged, missing, misaligned or leaking emitters and uneven coverage. | maintain irrigation |
-| treenurseryops.irrigation.water_quality | Nursery water quality | variant | Quality includes salts, pH, alkalinity, contaminants and suitability for irrigation. | protect plants |
-| treenurseryops.nutrition.fertilizer_plan | Tree nursery fertilizer plan | invariant | Plan sets nutrient type, rate, timing and monitoring by species and growth stage. | support growth |
-| treenurseryops.nutrition.deficiency_check | Tree nutrient deficiency check | variant | Check observes chlorosis, poor growth, leaf symptoms, soil test or media issue. | diagnose nutrition |
-| treenurseryops.pest.scouting | Tree nursery pest scouting | invariant | Scouting checks insects, disease, weeds, browsing, root problems and environmental stress. | detect early |
-| treenurseryops.pest.quarantine_hold | Nursery quarantine hold | invariant | Hold isolates suspect stock after pest, disease, invasive weed or source concern. | prevent spread |
-| treenurseryops.pest.weed_control | Tree nursery weed control | variant | Control uses mulching, hand weeding, sanitation, spacing or approved treatments. | reduce competition |
-| treenurseryops.structure.staking | Tree nursery staking | variant | Staking supports young trees when needed without restricting trunk development. | improve form |
-| treenurseryops.structure.pruning | Tree nursery structural pruning | invariant | Pruning develops leader, branch spacing, clearance and stable future form. | produce quality |
-| treenurseryops.structure.spacing | Nursery spacing | invariant | Spacing prevents crowding, poor airflow, leaning, shade stress and access problems. | maintain quality |
-| treenurseryops.hardening.hardening_off | Tree hardening off | invariant | Hardening gradually exposes plants to outdoor light, wind, temperature and water stress. | prepare planting |
-| treenurseryops.hardening.winter_protection | Nursery winter protection | variant | Protection includes grouping, mulch, covers, windbreaks, irrigation and freeze monitoring. | reduce losses |
-| treenurseryops.hardening.transport_readiness | Tree transport readiness | invariant | Readiness checks watering, staking, labels, rootball, container stability and load sequence. | ship safely |
-| treenurseryops.distribution.plant_request | Tree nursery plant request | invariant | Request records species, size, quantity, destination, planting date and program. | allocate stock |
-| treenurseryops.distribution.stock_reservation | Nursery stock reservation | variant | Reservation holds plants for project, school, park, giveaway or replacement planting. | prevent conflicts |
-| treenurseryops.distribution.delivery_record | Tree nursery delivery record | invariant | Record tracks plants, lot, condition, recipient, route, date and acceptance. | trace handoff |
-| treenurseryops.quality.root_quality_check | Tree root quality check | invariant | Check looks for circling, girdling, kinked, dry, diseased or insufficient roots. | plant success |
-| treenurseryops.quality.crown_quality_check | Tree crown quality check | invariant | Check reviews leader, branch structure, damage, pests, vigor and species form. | deliver quality |
-| treenurseryops.quality.specification_match | Tree nursery specification match | variant | Match confirms species, size, container, health and form meet project requirements. | avoid rejection |
-| treenurseryops.safety.lifting_handling | Nursery lifting and handling safety | invariant | Safety covers heavy containers, carts, posture, team lifts, wet surfaces and gloves. | protect staff |
-| treenurseryops.safety.tool_safety | Tree nursery tool safety | invariant | Safety covers pruners, knives, saws, potting tools, sanitation and storage. | prevent injury |
-| treenurseryops.safety.heat_work | Tree nursery heat work safety | variant | Safety adjusts shifts, water, shade and workload during hot nursery operations. | protect workers |
-| treenurseryops.records.propagation_log | Tree nursery propagation log | invariant | Log records seed or cutting source, treatment, date, media, germination and success. | trace origins |
-| treenurseryops.records.pest_treatment_log | Tree nursery pest treatment log | invariant | Log tracks pest issue, treatment, date, lot, applicator, result and restrictions. | document control |
-| treenurseryops.records.inventory_count | Tree nursery inventory count | invariant | Count reconciles living stock, losses, reservations, distributions and size classes. | know stock |
-| treenurseryops.reporting.loss_report | Tree nursery loss report | variant | Report summarizes mortality by species, lot, cause, season and production stage. | improve process |
-| treenurseryops.metrics.survival_rate | Tree nursery survival rate KPI | invariant | KPI tracks living plants versus started or received plants by lot and species. | assess quality |
-| treenurseryops.metrics.ready_stock_rate | Tree nursery ready-stock rate KPI | variant | KPI measures share of requested plants meeting quality and size at distribution time. | meet demand |
-| treenurseryops.coordination.planting_program | Tree nursery planting program coordination | variant | Coordination matches nursery stock with parks, streets, schools, restoration or giveaway schedules. | align supply |
-| treenurseryops.close.season_closeout | Tree nursery season closeout | invariant | Closeout updates inventory, losses, winter protection, records, sanitation and next season needs. | finish season |
+| treenurseryops.inventory.nursery_record | Запись в питомнике | invariant | Место хранения записей, грядки, контейнеры, виды, ирригация, инвентарь, персонал и история. | управлять питомником |
+| treenurseryops.inventory.plant_lot | Участок питомника | invariant | На участке деревья группируются по видам, источнику, дате размножения, размеру контейнера и статусу. | отслеживать запасы |
+| treenurseryops.inventory.species_mix | Смесь пород древесных питомников | variant | Сочетание балансирует климатическую пригодность, разнообразие, требования к месту, риск вредителей и цели программы. | планировать инвентаризацию |
+| treenurseryops.inventory.size_class | Размерный класс питомника | invariant | Классовые группы: саженцы, вкладыши, контейнеры, комбикормовый материал или размеры суппорта. | организовать запас |
+| treenurseryops.propagation.seed_collection | Сбор семян деревьев | variant | В коллекции указывается вид, местонахождение, дата, разрешение, спелость и условия хранения. | стартовый запас |
+| treenurseryops.propagation.seed_treatment | Обработка семенами деревьев | invariant | Обработка может включать очистку, стратификацию, скарификацию, замачивание или контроль температуры. | улучшить всхожесть |
+| treenurseryops.propagation.cutting_propagation | Размножение обрезкой деревьев | variant | Для размножения используются черенки, среда для укоренения, влажность, гормоны, если это разрешено, и этикетки. | клонированные растения |
+| treenurseryops.propagation.germination_record | Рекорд всхожести деревьев | invariant | Запишите дату посева, среду, температуру, влажность, всходы и приживаемость. | следить за успехом |
+| treenurseryops.potting.potting_media | Горшечная среда для деревьев | invariant | Среда поддерживает дренаж, аэрацию, влажность и питательные вещества, подходящие для корней деревьев. | вырастить здоровый поголовье |
+| treenurseryops.potting.upshift | Повышение передачи в питомнике деревьев | invariant | Функция Upshift перемещает растение в контейнер большего размера до того, как ограничение корней повредит росту. | сохранять бодрость |
+| treenurseryops.potting.root_pruning | Обрезка корней в питомнике деревьев | variant | Обрезка корректирует кружащиеся, изогнутые или чрезмерные корни во время производства контейнеров. | улучшить структуру |
+| treenurseryops.potting.labeling | Маркировка питомника | invariant | На этикетке указаны вид, партия, дата, размер, источник и история обработки. | предотвратить путаницу |
+| treenurseryops.irrigation.irrigation_zone | Зона орошения лесопитомника | invariant | Запас группируется по зонам в зависимости от потребности в воде, размера контейнера, экспозиции и расположения клапанов. | поливайте аккуратно |
+| treenurseryops.irrigation.moisture_check | Проверка влажности в детской | invariant | При проверке оценивается влажность контейнера или грядки, дренаж, увядание, чрезмерный полив и погода. | предотвратить стресс |
+| treenurseryops.irrigation.emitter_check | Проверка детского излучателя | variant | Проверка обнаруживает засоренные, отсутствующие, смещенные или негерметичные эмиттеры, а также неравномерное покрытие. | поддерживать орошение |
+| treenurseryops.irrigation.water_quality | Качество воды в питомнике | variant | Качество включает соли, pH, щелочность, загрязнения и пригодность для орошения. | защищать растения |
+| treenurseryops.nutrition.fertilizer_plan | План удобрения древесного питомника | invariant | План устанавливает тип питательных веществ, норму, сроки и мониторинг по видам и стадиям роста. | поддерживать рост |
+| treenurseryops.nutrition.deficiency_check | Проверка дефицита питательных веществ у деревьев | variant | При проверке наблюдаются хлороз, плохой рост, симптомы листьев, анализ почвы или проблемы со средой. | диагностировать питание |
+| treenurseryops.pest.scouting | Обнаружение вредителей в питомнике деревьев | invariant | Разведка проверяет насекомых, болезни, сорняки, паутину, проблемы с корнями и стресс окружающей среды. | обнаружить на ранней стадии |
+| treenurseryops.pest.quarantine_hold | Карантин в детском саду | invariant | Храните подозрительные изоляты после появления вредителей, болезней, инвазивных сорняков или источников беспокойства. | предотвратить распространение |
+| treenurseryops.pest.weed_control | Борьба с сорняками в питомнике деревьев | variant | Для борьбы используются мульчирование, ручная прополка, санитарная обработка, соблюдение интервалов или одобренные обработки. | уменьшить конкуренцию |
+| treenurseryops.structure.staking | Разбивка питомника | variant | Ставка поддерживает молодые деревья, когда это необходимо, не ограничивая развитие ствола. | улучшить форму |
+| treenurseryops.structure.pruning | Структурная обрезка питомника | invariant | Обрезка развивает лидер, расстояние между ветвями, зазор и стабильную будущую форму. | производить качество |
+| treenurseryops.structure.spacing | Расстояние между питомниками | invariant | Расстояние предотвращает скопление людей, плохую циркуляцию воздуха, наклон, стресс от тени и проблемы с доступом. | поддерживать качество |
+| treenurseryops.hardening.hardening_off | Дерево затвердевает | invariant | Закаливание постепенно подвергает растения воздействию уличного света, ветра, температуры и водного стресса. | подготовить посадку |
+| treenurseryops.hardening.winter_protection | Защита детского сада от зимы | variant | Защита включает в себя группировку, мульчу, укрытия, ветрозащитные полосы, орошение и мониторинг замерзания. | сократить потери |
+| treenurseryops.hardening.transport_readiness | Готовность к транспортировке деревьев | invariant | Готовность проверяется полив, размещение, этикетки, корневой ком, устойчивость контейнера и последовательность загрузки. | отправить безопасно |
+| treenurseryops.distribution.plant_request | Заявка на посадку древесного питомника | invariant | Запрос записывает вид, размер, количество, место назначения, дату и программу посадки. | распределить акции |
+| treenurseryops.distribution.stock_reservation | Резервирование питомника | variant | В резервации хранятся растения для проектов, школ, парков, бесплатных или заменяющих насаждений. | предотвращать конфликты |
+| treenurseryops.distribution.delivery_record | Запись о доставке в питомник | invariant | Запись отслеживает растения, партию, состояние, получателя, маршрут, дату и приемку. | трассировка передачи обслуживания |
+| treenurseryops.quality.root_quality_check | Проверка качества корней деревьев | invariant | Проверьте, нет ли кружащихся, опоясывающих, изогнутых, сухих, больных или недостаточных корней. | успех завода |
+| treenurseryops.quality.crown_quality_check | Проверка качества кроны дерева | invariant | Проверьте отзывы о лидере, строении ветвей, повреждениях, вредителях, силе роста и видовой форме. | обеспечить качество |
+| treenurseryops.quality.specification_match | Соответствие спецификации питомника | variant | Соответствие подтверждает, что вид, размер, контейнер, здоровье и форма соответствуют требованиям проекта. | избежать отказа |
+| treenurseryops.safety.lifting_handling | Безопасность подъема и транспортировки в детском саду | invariant | Безопасность распространяется на тяжелые контейнеры, тележки, положение тела, групповые подъемники, влажные поверхности и перчатки. | защитить персонал |
+| treenurseryops.safety.tool_safety | Безопасность инструмента для питомника деревьев | invariant | Безопасность охватывает секаторы, ножи, пилы, инструменты для заливки, санитарные условия и хранение. | предотвратить травмы |
+| treenurseryops.safety.heat_work | Безопасность работы при утеплении лесопитомника | variant | Безопасность регулирует смены, воду, тень и рабочую нагрузку во время работы в жарких детских садах. | защитить работников |
+| treenurseryops.records.propagation_log | Журнал размножения древесного питомника | invariant | В журнале фиксируются источники семян или черенков, обработка, дата, среда, всхожесть и успех. | проследить происхождение |
+| treenurseryops.records.pest_treatment_log | Журнал обработки вредителей в питомнике деревьев | invariant | В журнале фиксируются проблемы с вредителями, обработка, дата, партия, аппликатор, результат и ограничения. | контроль документов |
+| treenurseryops.records.inventory_count | Инвентаризация лесопитомника | invariant | Подсчет согласовывает поголовье, потери, резервации, распределения и размерные классы. | знать запас |
+| treenurseryops.reporting.loss_report | Отчет о потере лесопитомника | variant | В отчете суммируются данные о смертности по видам, партиям, причинам, сезонам и стадиям производства. | улучшить процесс |
+| treenurseryops.metrics.survival_rate | KPI выживаемости лесопитомника | invariant | KPI отслеживает живые растения по сравнению с выращенными или полученными растениями по партиям и видам. | оценить качество |
+| treenurseryops.metrics.ready_stock_rate | KPI показателя готовности лесопитомника | variant | KPI измеряет долю запрошенных растений, соответствующих качеству и размеру на момент поставки. | удовлетворить спрос |
+| treenurseryops.coordination.planting_program | Координация программы посадки древесных питомников | variant | Координация сопоставляет питомник с парками, улицами, школами, графиками реставрации или раздачи подарков. | выравнивать поставки |
+| treenurseryops.close.season_closeout | Закрытие сезона питомников деревьев | invariant | Распродажа обновляет инвентарь, потери, зимнюю защиту, записи, санитарные условия и потребности следующего сезона. | закончить сезон |

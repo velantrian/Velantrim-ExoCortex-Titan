@@ -165,18 +165,36 @@ class ReconsolidationEngine:
             metadata["pad_history"] = pad_history
             updated = True
 
-        # 5. Обновить confidence от реакции пользователя
+        # 5. V8.8: Bayesian confidence update (Beta-binomial conjugate)
+        # вместо линейного delta. Учитывает prior confidence и количество
+        # наблюдений — более устойчив к выбросам.
         if signal.user_satisfaction is not None:
             sat = max(0.0, min(1.0, signal.user_satisfaction))
             old_conf = float(fact.get("confidence", 0.5))
+            total_uses = usage + 1  # включая текущий
+
+            # Bayesian: Beta(α, β) posterior
+            # α = prior_conf * prior_strength + successes
+            # β = (1-prior_conf) * prior_strength + failures
+            prior_strength = 10.0  # вес prior (чем выше — тем медленнее меняется)
             if sat > 0.7:
-                delta = min(self.MAX_CONFIDENCE_DELTA, (sat - 0.7) * 0.1)
-                new_conf = min(1.0, old_conf + delta)
+                success = 1
+                failure = 0
             elif sat < 0.3:
-                delta = min(self.MAX_CONFIDENCE_DELTA, (0.3 - sat) * 0.1)
-                new_conf = max(0.1, old_conf - delta)
+                success = 0
+                failure = 1
             else:
-                new_conf = old_conf
+                # Нейтральная реакция — не меняем confidence
+                success = 0
+                failure = 0
+
+            if success + failure > 0:
+                alpha = old_conf * prior_strength + success
+                beta_param = (1.0 - old_conf) * prior_strength + failure
+                new_conf = alpha / (alpha + beta_param)
+                # Ограничить delta для плавности
+                new_conf = old_conf + max(-0.05, min(0.05, new_conf - old_conf))
+                new_conf = max(0.1, min(1.0, new_conf))
 
             if abs(new_conf - old_conf) > 0.001:
                 fact["confidence"] = round(new_conf, 4)

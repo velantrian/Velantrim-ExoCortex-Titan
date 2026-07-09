@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| printops.intake.job_ticket | Print job ticket | invariant | Job ticket records customer, artwork, quantity, substrate, colors, finishing, due date and approvals. | one source for job |
-| printops.intake.spec_review | Print specification review | invariant | Review checks size, paper, color, bleed, binding, variable data and delivery requirements. | clarify before production |
-| printops.intake.artwork_receipt | Artwork receipt | invariant | Receipt logs file source, version, date, format and customer contact. | track supplied files |
-| printops.intake.quote_basis | Print quote basis | variant | Quote basis estimates material, setup, run time, finishing, waste, outsourcing and delivery. | price from process |
-| printops.intake.rush_job | Rush print job | variant | Rush job compresses planning and increases need for clear approvals, capacity check and risk note. | speed has tradeoffs |
-| printops.intake.change_order | Print change order | invariant | Change order documents customer-approved changes to artwork, quantity, schedule, material or price. | prevent hidden scope creep |
-| printops.prepress.preflight | Preflight check | invariant | Preflight checks fonts, links, resolution, bleed, color spaces, page size and file integrity. | catch file problems |
-| printops.prepress.bleed | Bleed | invariant | Bleed extends artwork beyond trim edge to avoid white gaps after cutting. | design for cutting |
-| printops.prepress.imposition | Imposition | invariant | Imposition arranges pages on sheet for printing, folding, binding and trimming sequence. | pages in production order |
-| printops.prepress.color_profile | Color profile | invariant | Color profile defines how color values map to device or print condition. | color translation |
-| printops.prepress.rip_processing | RIP processing | invariant | RIP converts artwork into printer-ready raster or plate instructions. | file becomes press data |
-| printops.prepress.variable_data_merge | Variable data merge | variant | Merge combines template with data records for personalized print while controlling proof and privacy. | every copy may differ |
-| printops.proofing.soft_proof | Soft proof | variant | Soft proof shows digital preview but cannot fully prove substrate, ink, finish or device output. | screen is approximate |
-| printops.proofing.hard_proof | Hard proof | invariant | Hard proof physically demonstrates color, layout, paper or finishing before production approval. | approve tangible result |
-| printops.proofing.proof_approval | Proof approval | invariant | Approval records customer or internal signoff before production proceeds. | no print without signoff |
-| printops.proofing.proof_revision | Proof revision | invariant | Revision tracks changes between proof versions and prevents mixing old and new artwork. | version control |
-| printops.proofing.contract_proof | Contract proof | variant | Contract proof becomes agreed visual reference for acceptable production output. | standard for dispute |
-| printops.proofing.press_check | Press check | variant | Press check reviews live production sheet for color, registration and defects before full run. | approve at machine |
-| printops.press.make_ready | Press make-ready | invariant | Make-ready sets plates, ink, registration, substrate feed, color and quality before saleable production. | setup before run |
-| printops.press.registration | Print registration | invariant | Registration aligns colors or print passes so images and text fit correctly. | prevent color misalignment |
-| printops.press.ink_density | Ink density | invariant | Ink density measures printed ink strength and helps control consistent color. | color control metric |
-| printops.press.dot_gain | Dot gain | invariant | Dot gain is increase in printed dot size compared with file or plate and affects tone. | press changes image |
-| printops.press.blanket_wash | Blanket wash | variant | Blanket wash removes ink, paper dust and debris from offset blanket to restore print quality. | maintain image transfer |
-| printops.press.sheet_pull | Sheet pull | invariant | Sheet pull samples production output for inspection at defined intervals. | quality during run |
-| printops.digital.toner_calibration | Digital press calibration | invariant | Calibration aligns digital output for density, color, registration and consistency. | keep machine stable |
-| printops.digital.substrate_setting | Digital substrate setting | invariant | Substrate setting configures printer for paper weight, coating, size and feed behavior. | avoid jams and defects |
-| printops.digital.click_charge | Click charge | variant | Click charge is per-impression cost used in digital print pricing and job costing. | cost per print |
-| printops.digital.variable_data_qc | Variable data QC | invariant | QC verifies record count, sample personalization, sequence and data-field mapping. | avoid personalized errors |
-| printops.finishing.cutting | Guillotine cutting | invariant | Cutting trims stacks to final size using guides, clamps, blade condition and safety procedure. | final size accuracy |
-| printops.finishing.folding | Folding operation | invariant | Folding creates panels or signatures and requires correct grain, sequence, score and alignment. | mailers and brochures |
-| printops.finishing.binding | Binding operation | variant | Binding joins pages by saddle stitch, perfect bind, coil, wire or other method. | turn sheets into product |
-| printops.finishing.lamination | Lamination | variant | Lamination adds protective film and requires heat, pressure, adhesion and trim allowance control. | finish changes durability |
-| printops.finishing.die_cut | Die cutting | variant | Die cutting shapes printed material using die, pressure, registration and waste stripping. | custom shape |
-| printops.finishing.kitting | Print kitting | variant | Kitting groups multiple printed pieces into sets for fulfillment or distribution. | assemble deliverable |
-| printops.quality.color_variation | Color variation | invariant | Variation arises from substrate, ink, machine, environment, profile or batch changes. | color not magic |
-| printops.quality.hickey | Printing hickey | invariant | Hickey is a spot or defect caused by debris, dried ink or contamination. | small speck, visible defect |
-| printops.quality.misfeed | Press misfeed | invariant | Misfeed disrupts sheet handling and may cause waste, damage or registration errors. | feed reliability |
-| printops.quality.spoilage_count | Print spoilage count | invariant | Spoilage count tracks unusable sheets from setup, defects, damage or overrun. | waste control |
-| printops.quality.retention_sample | Print retention sample | variant | Retention sample preserves representative output for reference, dispute or repeat job. | keep evidence |
-| printops.material.paper_grain | Paper grain direction | invariant | Grain direction affects folding, cracking, stiffness and binding behavior. | paper has direction |
-| printops.material.paper_conditioning | Paper conditioning | variant | Conditioning lets paper acclimate to shop humidity and temperature to reduce curl or misfeed. | environment matters |
-| printops.delivery.packaging | Print delivery packaging | invariant | Packaging protects finished print from bending, moisture, scuffing and mixing during delivery. | product leaves safely |
-| printops.delivery.delivery_manifest | Print delivery manifest | invariant | Manifest records boxes, quantities, destination, carrier, due date and proof of handoff. | close the job |
-| printops.delivery.job_closeout | Print job closeout | invariant | Closeout confirms delivered quantity, spoilage, samples, invoice status, file archive and customer notes. | finish with records |
+| printops.intake.job_ticket | Распечатать квитанцию ​​о работе | invariant | В наряд-заказе указываются заказчик, произведение искусства, количество, подложка, цвета, отделка, срок выполнения и утверждения. | один источник работы |
+| printops.intake.spec_review | Обзор спецификации печати | invariant | Просмотрите размер чеков, бумагу, цвет, выход за обрез, переплет, переменные данные и требования к доставке. | уточнить перед производством |
+| printops.intake.artwork_receipt | Получение произведения искусства | invariant | В квитанции указывается источник файла журнала, версия, дата, формат и контакт с клиентом. | отслеживать предоставленные файлы |
+| printops.intake.quote_basis | Распечатать основу предложения | variant | На основе расценок оцениваются материалы, установка, время выполнения, отделка, отходы, аутсорсинг и доставка. | цена от процесса |
+| printops.intake.rush_job | Срочная печать | variant | Срочные работы усложняют планирование и увеличивают потребность в четких разрешениях, проверке мощности и примечаниях о рисках. | скорость имеет компромиссы |
+| printops.intake.change_order | Распечатать приказ об изменении | invariant | Заказ на изменение документирует одобренные клиентом изменения в графическом оформлении, количестве, графике, материале или цене. | предотвратить расползание скрытой области видимости |
+| printops.prepress.preflight | Предполетная проверка | invariant | Предварительная проверка проверяет шрифты, ссылки, разрешение, выход за обрез, цветовые пространства, размер страницы и целостность файла. | выявить проблемы с файлами |
+| printops.prepress.bleed | Кровотечение | invariant | Выпуск за обрез расширяет произведение искусства за пределы обрезки, чтобы избежать белых пробелов после обрезки. | дизайн для резки |
+| printops.prepress.imposition | Наложение | invariant | Спуск упорядочивает страницы на листе для печати, фальцовки, переплета и обрезки. | страницы в производственном порядке |
+| printops.prepress.color_profile | Цветовой профиль | invariant | Цветовой профиль определяет, как значения цвета соответствуют устройству или условиям печати. | цветной перевод |
+| printops.prepress.rip_processing | RIP-обработка | invariant | RIP преобразует графические изображения в готовые для печати растровые изображения или инструкции по изготовлению пластин. | файл становится данными для печати |
+| printops.prepress.variable_data_merge | Объединение переменных данных | variant | Merge объединяет шаблон с записями данных для персонализированной печати, одновременно контролируя доказательства и конфиденциальность. | каждая копия может отличаться |
+| printops.proofing.soft_proof | Мягкое доказательство | variant | Мягкая цветопроба показывает цифровой предварительный просмотр, но не может полностью подтвердить носитель, чернила, отделку или выходные данные устройства. | экран приблизительный |
+| printops.proofing.hard_proof | Веское доказательство | invariant | На твердом пробном отпечатке физически демонстрируется цвет, макет, бумага или отделка до утверждения производства. | утвердить ощутимый результат |
+| printops.proofing.proof_approval | Доказательство утверждения | invariant | При утверждении фиксируется утверждение со стороны клиента или внутри компании до начала производства. | нет печати без подписи |
+| printops.proofing.proof_revision | Проверка доказательства | invariant | Редакция отслеживает изменения между пробными версиями и предотвращает смешивание старых и новых иллюстраций. | контроль версий |
+| printops.proofing.contract_proof | Подтверждение контракта | variant | Подтверждение контракта становится согласованным визуальным ориентиром приемлемого объема производства. | стандарт для спора |
+| printops.proofing.press_check | Нажмите «Проверить» | variant | Пресс-проверка проверяет производственный лист на предмет цвета, регистрации и дефектов перед запуском в эксплуатацию. | утвердить на машине |
+| printops.press.make_ready | Пресс-подготовка | invariant | Готовые наборы пластин, чернил, регистрации, подачи носителя, цвета и качества перед выпуском в продажу. | настройка перед запуском |
+| printops.press.registration | Распечатать регистрацию | invariant | Регистрация выравнивает цвета или проходы печати, чтобы изображения и текст соответствовали правильному расположению. | предотвратить несовпадение цветов |
+| printops.press.ink_density | Плотность чернил | invariant | Плотность чернил измеряет прочность печатных чернил и помогает контролировать постоянство цвета. | показатель управления цветом |
+| printops.press.dot_gain | Увеличение точек | invariant | Растрирование — это увеличение размера печатной точки по сравнению с файлом или пластиной, которое влияет на тон. | нажмите меняет изображение |
+| printops.press.blanket_wash | Стирка одеял | variant | Стирка офсетного полотна удаляет чернила, бумажную пыль и мусор с офсетного полотна, восстанавливая качество печати. | поддерживать передачу изображений |
+| printops.press.sheet_pull | Листовая тяга | invariant | Производственная продукция вытягивает образцы листов для проверки через определенные промежутки времени. | качество во время бега |
+| printops.digital.toner_calibration | Цифровая калибровка пресса | invariant | Калибровка выравнивает цифровой выходной сигнал по плотности, цвету, совмещению и последовательности. | держать машину стабильной |
+| printops.digital.substrate_setting | Настройка цифрового носителя для печати | invariant | Настройка носителя настраивает принтер в зависимости от плотности бумаги, покрытия, размера и режима подачи. | избежать замятий и дефектов |
+| printops.digital.click_charge | Нажмите зарядить | variant | Плата за клик — это стоимость за показ, используемая при расчете цен на цифровую печать и стоимости работ. | стоимость за отпечаток |
+| printops.digital.variable_data_qc | Контроль качества переменных данных | invariant | QC проверяет количество записей, персонализацию образцов, сопоставление последовательностей и полей данных. | избежать персонализированных ошибок |
+| printops.finishing.cutting | Гильотинная резка | invariant | Обрезка стопок обрезков до окончательного размера с использованием направляющих, зажимов, состояния лезвия и мер безопасности. | окончательная точность размера |
+| printops.finishing.folding | Операция складывания | invariant | Сгибание создает панели или подписи и требует правильной текстуры, последовательности, разметки и выравнивания. | почтовые рассылки и брошюры |
+| printops.finishing.binding | Операция привязки | variant | Переплет соединяет страницы седельным швом, идеальной переплеткой, катушкой, проволокой или другим способом. | превратить листы в продукт |
+| printops.finishing.lamination | Ламинирование | variant | Ламинирование создает защитную пленку и требует контроля температуры, давления, адгезии и припусков на обрезку. | отделка меняет долговечность |
+| printops.finishing.die_cut | Высечка | variant | Высечка формирует печатный материал с помощью штампа, давления, совмещения и удаления отходов. | нестандартная форма |
+| printops.finishing.kitting | Комплектация печати | variant | Комплектование группирует несколько печатных изделий в наборы для выполнения или распространения. | собрать результат |
+| printops.quality.color_variation | Цветовая вариация | invariant | Изменения возникают из-за изменений носителя, чернил, машины, окружающей среды, профиля или партии. | цвет не волшебство |
+| printops.quality.hickey | Печать засоса | invariant | Засос — это пятно или дефект, вызванный мусором, засохшими чернилами или загрязнением. | маленькое пятнышко, видимый дефект |
+| printops.quality.misfeed | Нажмите застревание | invariant | Застревание подачи мешает обработке листов и может привести к нерациональному использованию, повреждению или ошибкам регистрации. | надежность подачи |
+| printops.quality.spoilage_count | Печать количества порчи | invariant | Подсчет порчи отслеживает непригодные для использования листы из-за установки, дефектов, повреждений или переполнения. | контроль отходов |
+| printops.quality.retention_sample | Образец хранения печати | variant | Выборка хранения сохраняет репрезентативные выходные данные для справки, оспаривания или повторения задания. | хранить доказательства |
+| printops.material.paper_grain | Направление волокон бумаги | invariant | Направление волокон влияет на сгибание, растрескивание, жесткость и характеристики скрепления. | бумага имеет направление |
+| printops.material.paper_conditioning | Кондиционирование бумаги | variant | Кондиционирование позволяет бумаге адаптироваться к влажности и температуре в магазине, предотвращая скручивание и застревание бумаги. | окружающая среда имеет значение |
+| printops.delivery.packaging | Распечатать упаковку доставки | invariant | Упаковка защищает готовый отпечаток от сгибания, влаги, потертостей и смешивания во время доставки. | продукт уходит благополучно |
+| printops.delivery.delivery_manifest | Распечатать декларацию о доставке | invariant | В манифесте записываются ящики, количество, пункт назначения, перевозчик, срок оплаты и подтверждение передачи. | закрыть работу |
+| printops.delivery.job_closeout | Закрытие задания печати | invariant | При распродаже подтверждается поставленное количество, брак, образцы, статус счета, файловый архив и примечания клиента. | закончить с записями |

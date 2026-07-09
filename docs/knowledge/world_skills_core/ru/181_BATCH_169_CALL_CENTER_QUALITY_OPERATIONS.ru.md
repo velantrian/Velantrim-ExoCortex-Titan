@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| callops.queue.service_level | Call center service level | invariant | Service level measures percentage of contacts answered within target time. | queue promise |
-| callops.queue.average_speed_answer | Average speed of answer | invariant | ASA measures average wait time before agent answer for handled contacts. | waiting experience |
-| callops.queue.abandon_rate | Abandon rate | invariant | Abandon rate shows contacts that leave queue before answer. | demand lost |
-| callops.queue.queue_priority | Queue priority | variant | Priority routes contacts by customer type, issue severity, SLA, language or channel. | not every contact equal |
-| callops.queue.callback_offer | Callback offer | variant | Callback lets customer keep place without waiting on line if system capacity supports it. | reduce hold frustration |
-| callops.queue.overflow_routing | Overflow routing | variant | Overflow routing sends contacts to backup team, vendor or channel when queue exceeds threshold. | protect service level |
-| callops.wfm.forecast_volume | Contact volume forecast | invariant | Forecast estimates future contacts by interval, channel, seasonality, events and historical patterns. | staffing starts here |
-| callops.wfm.shrinkage | Workforce shrinkage | invariant | Shrinkage accounts for paid time not available for contacts, including breaks, training, absence and meetings. | true capacity |
-| callops.wfm.schedule_adherence | Schedule adherence | invariant | Adherence compares agent actual activity to scheduled activity by interval. | schedule discipline |
-| callops.wfm.intraday_management | Intraday management | invariant | Intraday adjusts breaks, queues, overtime, training or routing based on actual demand. | day changes live |
-| callops.wfm.occupancy | Agent occupancy | invariant | Occupancy measures time agents spend handling contacts or after-call work versus available time. | workload intensity |
-| callops.wfm.staffing_gap | Staffing gap | invariant | Gap compares required agents with available agents for an interval. | see undercoverage |
-| callops.script.call_opening | Call opening | invariant | Opening confirms brand, agent identity, greeting and readiness to help. | first seconds matter |
-| callops.script.identity_verification | Customer identity verification | invariant | Verification checks customer identity before account-specific disclosure or action. | protect account data |
-| callops.script.discovery_questions | Discovery questions | invariant | Discovery questions clarify issue, context, urgency, history and desired outcome. | diagnose request |
-| callops.script.disclosure_statement | Disclosure statement | variant | Disclosure informs caller of recording, terms, privacy or regulated information where required. | compliance in words |
-| callops.script.call_closing | Call closing | invariant | Closing confirms resolution, next steps, reference number and final customer question. | end with clarity |
-| callops.script.knowledge_article | Knowledge article | invariant | Article gives agents approved steps, wording, policy and escalation criteria for an issue. | consistent answer |
-| callops.qa.scorecard | QA scorecard | invariant | Scorecard rates contact quality against criteria such as accuracy, compliance, empathy and resolution. | structured evaluation |
-| callops.qa.calibration_session | QA calibration | invariant | Calibration aligns evaluators on scoring standards using shared examples and discussion. | reduce scorer drift |
-| callops.qa.sample_selection | QA sample selection | variant | Sample selection chooses contacts by random, risk, agent, queue, complaint or new process. | what gets reviewed |
-| callops.qa.critical_error | Critical error | invariant | Critical error is a severe miss such as privacy breach, misinformation, unauthorized action or abusive conduct. | high-severity quality gap |
-| callops.qa.qa_dispute | QA dispute | variant | Dispute lets agent or supervisor challenge score with evidence and reviewer decision. | fairness in scoring |
-| callops.qa.trend_analysis | QA trend analysis | invariant | Trend analysis groups quality misses by topic, agent, queue, policy or training gap. | quality becomes improvement |
-| callops.escalation.tier_two | Tier-two escalation | invariant | Tier-two handles issues beyond front-line authority, tool access or knowledge. | structured handoff |
-| callops.escalation.supervisor_takeover | Supervisor takeover | variant | Takeover moves live customer interaction to supervisor when authority, safety or service recovery requires it. | escalation in real time |
-| callops.escalation.ticket_creation | Support ticket creation | invariant | Ticket records issue, customer, evidence, priority, owner, SLA and next action. | asynchronous work |
-| callops.escalation.sla_clock | Support SLA clock | invariant | SLA clock measures time to response or resolution from defined start point. | deadline visibility |
-| callops.escalation.root_cause_tag | Contact root cause tag | invariant | Root cause tag classifies why customer contacted, not only what agent did. | fix upstream cause |
-| callops.escalation.warm_transfer | Warm transfer | variant | Warm transfer briefs receiving agent before customer handoff to avoid repetition. | better transfer |
-| callops.complaint.complaint_intake | Complaint intake | invariant | Intake captures dissatisfaction, issue, impact, desired resolution and regulatory sensitivity. | complaint as case |
-| callops.complaint.service_recovery | Service recovery | variant | Recovery offers correction, apology, credit, replacement or follow-up within authority. | repair trust |
-| callops.complaint.vulnerable_customer_flag | Vulnerable customer flag | variant | Flag prompts extra care, accessibility support or specialist handling under policy. | adapt service |
-| callops.complaint.regulatory_complaint | Regulatory complaint | invariant | Regulatory complaint requires special tracking, deadlines, evidence and approved response. | higher compliance risk |
-| callops.coaching.coaching_plan | Agent coaching plan | invariant | Coaching plan links observed behavior, goal, action, practice and follow-up review. | quality improvement |
-| callops.coaching.side_by_side | Side-by-side coaching | variant | Coach observes live or recorded contacts with agent to identify practical improvements. | learn from real work |
-| callops.coaching.knowledge_gap | Agent knowledge gap | invariant | Knowledge gap indicates missing understanding of product, policy, tool or process. | train the right thing |
-| callops.coaching.behavioral_feedback | Behavioral feedback | invariant | Feedback focuses on observable behavior and customer impact rather than personality. | coach fairly |
-| callops.channels.email_queue | Email queue | variant | Email queue manages asynchronous written contacts with templates, SLA and quality review. | not all contacts are calls |
-| callops.channels.chat_concurrency | Chat concurrency | variant | Chat concurrency defines how many simultaneous chats agent can handle safely. | multitasking limit |
-| callops.channels.social_media_response | Social media response | variant | Social response balances speed, public tone, privacy and escalation to private channel. | public service desk |
-| callops.channels.omnichannel_history | Omnichannel history | invariant | History links previous contacts across channels so customer context is visible. | no repeated story |
-| callops.reporting.contact_reason | Contact reason report | invariant | Report shows why customers contact and supports self-service, product fixes or staffing. | demand intelligence |
-| callops.reporting.first_contact_resolution | First contact resolution | invariant | FCR measures whether issue is resolved without repeat contact within defined window. | solve once |
+| callops.queue.service_level | Уровень обслуживания колл-центра | invariant | Уровень обслуживания измеряет процент контактов, на которые ответили в течение заданного времени. | обещание очереди |
+| callops.queue.average_speed_answer | Средняя скорость ответа | invariant | ASA измеряет среднее время ожидания до ответа агента на обработанные контакты. | опыт ожидания |
+| callops.queue.abandon_rate | Скорость отказа | invariant | Коэффициент отказа показывает контакты, которые покидают очередь до ответа. | спрос потерян |
+| callops.queue.queue_priority | Приоритет очереди | variant | Приоритетная маршрутизация контактов по типу клиента, серьезности проблемы, соглашению об уровне обслуживания, языку или каналу. | не все контакты равны |
+| callops.queue.callback_offer | Предложение обратного звонка | variant | Обратный вызов позволяет клиенту оставаться на месте, не дожидаясь линии, если это позволяет пропускная способность системы. | уменьшить разочарование при удержании |
+| callops.queue.overflow_routing | Маршрутизация переполнения | variant | Маршрутизация переполнения отправляет контакты резервной группе, поставщику или каналу, когда очередь превышает пороговое значение. | защитить уровень обслуживания |
+| callops.wfm.forecast_volume | Прогноз объема контактов | invariant | Прогноз оценивает будущие контакты по интервалу, каналу, сезонности, событиям и историческим закономерностям. | подбор персонала начинается здесь |
+| callops.wfm.shrinkage | Сокращение рабочей силы | invariant | Сокращение учитывает оплачиваемое время, недоступное для контактов, включая перерывы, обучение, отсутствие и встречи. | истинная емкость |
+| callops.wfm.schedule_adherence | Соблюдение графика | invariant | Приверженность сравнивает фактическую активность агента с запланированной активностью по интервалам. | график дисциплины |
+| callops.wfm.intraday_management | Внутридневное управление | invariant | Intraday корректирует перерывы, очереди, сверхурочную работу, обучение или маршрутизацию в зависимости от фактического спроса. | день меняется в прямом эфире |
+| callops.wfm.occupancy | Заполняемость агента | invariant | Занятость измеряет время, которое агенты тратят на обработку контактов или работу после звонка, по сравнению с доступным временем. | интенсивность нагрузки |
+| callops.wfm.staffing_gap | Кадровый дефицит | invariant | Gap сравнивает требуемых агентов с доступными агентами за определенный интервал. | см. недостаточное покрытие |
+| callops.script.call_opening | Открытие звонка | invariant | Открытие подтверждает бренд, личность агента, приветствие и готовность помочь. | первые секунды имеют значение |
+| callops.script.identity_verification | Проверка личности клиента | invariant | Проверка проверяет личность клиента перед раскрытием информации или действием по конкретной учетной записи. | защитить данные учетной записи |
+| callops.script.discovery_questions | Вопросы для открытия | invariant | Информационные вопросы проясняют проблему, контекст, срочность, историю и желаемый результат. | диагностировать запрос |
+| callops.script.disclosure_statement | Заявление о раскрытии информации | variant | Раскрытие информирует звонящего о записи, условиях, конфиденциальности или регулируемой информации, где это необходимо. | согласие на словах |
+| callops.script.call_closing | Закрытие звонка | invariant | Закрытие подтверждает решение, следующие шаги, ссылочный номер и последний вопрос клиента. | закончить ясностью |
+| callops.script.knowledge_article | Статья знаний | invariant | В статье приведены утвержденные агентами шаги, формулировки, политика и критерии эскалации проблемы. | последовательный ответ |
+| callops.qa.scorecard | Система показателей качества | invariant | Система показателей оценивает качество контактов по таким критериям, как точность, соответствие, сочувствие и решительность. | структурированная оценка |
+| callops.qa.calibration_session | Калибровка качества | invariant | Калибровка позволяет оценщикам согласовывать стандарты оценки с использованием общих примеров и обсуждений. | уменьшить дрейф бомбардира |
+| callops.qa.sample_selection | Выбор образца для контроля качества | variant | При выборе выборки контакты выбираются случайным образом, по риску, агенту, очереди, жалобе или новому процессу. | что рассматривается |
+| callops.qa.critical_error | Критическая ошибка | invariant | Критическая ошибка – это серьезное упущение, такое как нарушение конфиденциальности, дезинформация, несанкционированные действия или оскорбительное поведение. | серьезный разрыв в качестве |
+| callops.qa.qa_dispute | Спор по обеспечению качества | variant | Спор позволяет агенту или руководителю оспорить оценку с помощью доказательств и решения рецензента. | справедливость в подсчете очков |
+| callops.qa.trend_analysis | Анализ тенденций качества | invariant | Анализ тенденций группирует недостатки качества по темам, агентам, очереди, политике или пробелам в обучении. | качество становится улучшением |
+| callops.escalation.tier_two | Эскалация второго уровня | invariant | Второй уровень решает вопросы, выходящие за рамки полномочий, доступа к инструментам или знаний. | структурированная передача |
+| callops.escalation.supervisor_takeover | Поглощение супервайзера | variant | Поглощение передает непосредственное взаимодействие с клиентами непосредственному руководителю, когда этого требуют полномочия, безопасность или восстановление обслуживания. | эскалация в реальном времени |
+| callops.escalation.ticket_creation | Поддержка создания билетов | invariant | В записях записаны выдача, клиент, доказательства, приоритет, владелец, соглашение об уровне обслуживания и следующее действие. | асинхронная работа |
+| callops.escalation.sla_clock | Поддержка часов SLA | invariant | Часы SLA измеряют время ответа или разрешения от определенной начальной точки. | видимость сроков |
+| callops.escalation.root_cause_tag | Тег основной причины контакта | invariant | Тег основной причины классифицирует, почему клиент связался, а не только то, что сделал агент. | устранить причину, вышестоящую по течению |
+| callops.escalation.warm_transfer | Теплый трансфер | variant | Теплые сводки по передаче агенту по передаче перед передачей клиенту, чтобы избежать повторения. | лучший трансфер |
+| callops.complaint.complaint_intake | Прием жалоб | invariant | Прием отражает неудовлетворенность, проблему, влияние, желаемое решение и чувствительность регулирования. | жалоба как случай |
+| callops.complaint.service_recovery | Восстановление сервиса | variant | Восстановление предполагает исправление, извинение, признание, замену или последующее наблюдение в рамках полномочий. | ремонт доверия |
+| callops.complaint.vulnerable_customer_flag | Флаг уязвимого клиента | variant | Флаг требует дополнительной осторожности, поддержки доступности или обращения к специалисту в соответствии с политикой. | адаптировать сервис |
+| callops.complaint.regulatory_complaint | Нормативная жалоба | invariant | Жалоба в регулирующие органы требует особого отслеживания, сроков, доказательств и одобренного ответа. | более высокий комплаенс-риск |
+| callops.coaching.coaching_plan | План обучения агента | invariant | План коучинга связывает наблюдаемое поведение, цель, действие, практику и последующий анализ. | улучшение качества |
+| callops.coaching.side_by_side | Параллельное обучение | variant | Тренер наблюдает за живыми или записанными контактами с агентом, чтобы определить практические улучшения. | учиться на реальной работе |
+| callops.coaching.knowledge_gap | Пробел в знаниях агента | invariant | Пробел в знаниях указывает на отсутствие понимания продукта, политики, инструмента или процесса. | тренируйся правильно |
+| callops.coaching.behavioral_feedback | Поведенческая обратная связь | invariant | Обратная связь фокусируется на наблюдаемом поведении и влиянии на клиента, а не на личности. | тренер справедливо |
+| callops.channels.email_queue | Очередь электронной почты | variant | Очередь электронной почты управляет асинхронными письменными контактами с помощью шаблонов, соглашений об уровне обслуживания и проверки качества. | не все контакты являются звонками |
+| callops.channels.chat_concurrency | Параллелизм чата | variant | Параллелизм чата определяет, сколько одновременных чатов агент может безопасно обработать. | предел многозадачности |
+| callops.channels.social_media_response | Реакция в социальных сетях | variant | Социальное реагирование уравновешивает скорость, публичный тон, конфиденциальность и передачу сообщения в частный канал. | стол государственной службы |
+| callops.channels.omnichannel_history | Омниканальная история | invariant | История связывает предыдущие контакты по разным каналам, поэтому контекст клиента виден. | нет повторяющейся истории |
+| callops.reporting.contact_reason | Отчет о причине контакта | invariant | Отчет показывает, почему клиенты обращаются и поддерживают самообслуживание, исправления продуктов или подбор персонала. | требовать разведки |
+| callops.reporting.first_contact_resolution | Разрешение первого контакта | invariant | FCR измеряет, решена ли проблема без повторного контакта в течение определенного периода. | решить один раз |

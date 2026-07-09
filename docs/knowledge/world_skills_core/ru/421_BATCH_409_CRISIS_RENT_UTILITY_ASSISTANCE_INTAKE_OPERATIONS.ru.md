@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| rentutilityintakeops.intake.request_source | request source | RECORD | Source records hotline, nonprofit, shelter, benefits desk, utility, landlord or walk-in. | Shows entry path. |
-| rentutilityintakeops.intake.household | household profile | RECORD | Profile captures household size, address, income, disaster impact, arrears and contact. | Supports screening. |
-| rentutilityintakeops.intake.assistance_type | assistance type | RECORD | Type distinguishes rent, deposit, mortgage, electric, gas, water, internet or reconnection. | Routes case. |
-| rentutilityintakeops.intake.urgency | urgency model | MODEL | Urgency weighs eviction date, shutoff date, health risk, children, disability and displacement. | Prioritizes help. |
-| rentutilityintakeops.screening.program_fit | program fit | MODEL | Fit matches household to eligible funding streams and service area rules. | Selects path. |
-| rentutilityintakeops.screening.income_check | income check | QUALITY_CHECK | Income check records wages, benefits, unemployment, self-employment or hardship statement. | Supports eligibility. |
-| rentutilityintakeops.screening.hardship | hardship statement | RECORD | Statement describes disaster, job loss, medical cost, displacement or utility burden. | Documents need. |
-| rentutilityintakeops.screening.duplication | duplication check | QUALITY_CHECK | Check compares prior assistance, insurance, FEMA, landlord credits and utility programs. | Prevents duplicate payment. |
-| rentutilityintakeops.documents.document_list | document list | RECORD | List includes ID, lease, bill, ledger, income proof, hardship and payment instructions. | Organizes case. |
-| rentutilityintakeops.documents.missing_doc | missing document | RECORD | Missing document records item, owner, deadline and workaround if allowed. | Keeps case moving. |
-| rentutilityintakeops.documents.upload | upload support | METHOD | Staff help scan/upload records under privacy rules. | Completes file. |
-| rentutilityintakeops.documents.redaction | redaction rule | SAFETY_RULE | Sensitive numbers are redacted when not needed for payment or eligibility. | Protects identity. |
-| rentutilityintakeops.landlord.contact | landlord contact | RECORD | Contact records landlord/manager name, phone, email, payment method and verification. | Enables rent payment. |
-| rentutilityintakeops.landlord.ledger | rent ledger | RECORD | Ledger captures months owed, fees, credits, court costs and payment deadline. | Verifies arrears. |
-| rentutilityintakeops.landlord.w9_vendor | vendor setup | METHOD | Vendor setup collects required tax/payment information for landlord or property manager. | Enables payment. |
-| rentutilityintakeops.landlord.hold_agreement | hold agreement | RECORD | Hold agreement records pause on eviction or fees while assistance is processed. | Protects tenancy. |
-| rentutilityintakeops.utility.account_verify | utility account verify | QUALITY_CHECK | Verification checks customer, account number, service address, balance and shutoff date. | Prevents wrong payment. |
-| rentutilityintakeops.utility.utility_contact | utility contact | RECORD | Contact records provider, department, representative, extension and confirmation number. | Tracks communication. |
-| rentutilityintakeops.utility.payment_plan | payment plan | RECORD | Plan records arrears, installment terms, reconnection, deposits and assistance pledge. | Coordinates relief. |
-| rentutilityintakeops.utility.medical_need | medical need flag | SAFETY_RULE | Medical device or health risk flag routes to utility protection or urgent review. | Prevents harm. |
-| rentutilityintakeops.pledge.pledge_record | pledge record | RECORD | Pledge records amount, funding source, recipient, conditions, expiration and approver. | Commits funds. |
-| rentutilityintakeops.pledge.partial_payment | partial payment | METHOD | Partial support documents remaining balance and other resources needed. | Sets expectations. |
-| rentutilityintakeops.pledge.pledge_letter | pledge letter | RECORD | Letter confirms amount, case ID, payee and processing timeline. | Reassures landlord/utility. |
-| rentutilityintakeops.pledge.expiration | pledge expiration | CONSTRAINT | Expiration rule defines when unused pledge returns to available funds. | Controls budget. |
-| rentutilityintakeops.payment.payment_request | payment request | RECORD | Request links case, payee, amount, documents, approval and funding code. | Starts payment. |
-| rentutilityintakeops.payment.payee_validation | payee validation | QUALITY_CHECK | Validation checks landlord, utility or vendor identity and payment destination. | Prevents fraud. |
-| rentutilityintakeops.payment.disbursement | disbursement record | RECORD | Record captures payment date, method, reference, amount and payee confirmation. | Closes finance loop. |
-| rentutilityintakeops.payment.reconciliation | reconciliation | QUALITY_CHECK | Reconciliation matches pledge, payment, ledger/utility posting and remaining balance. | Ensures accuracy. |
-| rentutilityintakeops.denial.denial_reason | denial reason | RECORD | Reason captures ineligibility, missing documents, duplicate benefit, exhausted funds or no response. | Explains outcome. |
-| rentutilityintakeops.denial.notice | denial notice | RECORD | Notice tells applicant reason, appeal/review path and alternate referrals. | Maintains fairness. |
-| rentutilityintakeops.denial.appeal | appeal review | METHOD | Appeal reviews new evidence, error, deadline or exceptional hardship. | Corrects decisions. |
-| rentutilityintakeops.denial.referral | alternate referral | METHOD | Denied cases receive other benefits, legal aid, mediation or payment-plan referral. | Reduces dead end. |
-| rentutilityintakeops.followup.status_check | status check | METHOD | Staff check payment posting, eviction hold, reconnection or resident outcome. | Confirms effect. |
-| rentutilityintakeops.followup.unreachable | unreachable process | METHOD | Attempts, backup contact and closure reason are recorded. | Keeps audit fair. |
-| rentutilityintakeops.followup.reopen | reopen rule | METHOD | Case can reopen for new shutoff, eviction notice, returned payment or new documents. | Handles change. |
-| rentutilityintakeops.followup.case_close | case close | RECORD | Closure records final payment, denial, referral, balance and household notification. | Ends case. |
-| rentutilityintakeops.privacy.minimum_data | minimum data | SAFETY_RULE | Intake stores only needed identity, housing, utility and income data. | Reduces exposure. |
-| rentutilityintakeops.privacy.safe_contact | safe contact | SAFETY_RULE | Safe contact controls messages for domestic violence, shared housing or insecure phone access. | Protects applicants. |
-| rentutilityintakeops.privacy.role_access | role access | SAFETY_RULE | Role access limits who can view income, landlord, utility and payment details. | Controls records. |
-| rentutilityintakeops.reporting.daily_summary | daily summary | MEASUREMENT | Summary reports applications, approvals, denials, payments, holds and urgent risks. | Informs fund managers. |
-| rentutilityintakeops.metrics.approval_rate | approval rate | MEASUREMENT | Rate tracks approvals among completed applications by program and reason. | Shows effectiveness. |
-| rentutilityintakeops.metrics.time_to_payment | time to payment | MEASUREMENT | Time measures intake to disbursement or denial. | Reveals bottlenecks. |
-| rentutilityintakeops.metrics.funds_remaining | funds remaining | MEASUREMENT | Remaining funds track committed, paid, expired and available balances. | Controls budget. |
-| rentutilityintakeops.review.after_action | after-action review | METHOD | Review captures document barriers, landlord/utility coordination, payment delays and denial fairness. | Improves future intake. |
+| rentutilityintakeops.intake.request_source | источник запроса | RECORD | Источник записывает горячую линию, некоммерческую организацию, приют, отдел пособий, коммунальное предприятие, домовладельца или всеобщее присутствие. | Показывает путь входа. |
+| rentutilityintakeops.intake.household | профиль домохозяйства | RECORD | Профиль отражает размер домохозяйства, адрес, доход, воздействие стихийного бедствия, задолженность и контакты. | Поддерживает скрининг. |
+| rentutilityintakeops.intake.assistance_type | тип помощи | RECORD | Тип различает аренду, залог, ипотеку, электричество, газ, воду, интернет или переподключение. | Дело о маршрутах. |
+| rentutilityintakeops.intake.urgency | модель срочности | MODEL | Срочность учитывает дату выселения, дату закрытия, риск для здоровья, наличие детей, инвалидность и перемещение. | Отдает приоритет помощи. |
+| rentutilityintakeops.screening.program_fit | программа подходит | MODEL | Fit сопоставляет домохозяйство с приемлемыми потоками финансирования и правилами зоны обслуживания. | Выбирает путь. |
+| rentutilityintakeops.screening.income_check | чек о доходах | QUALITY_CHECK | В проверке доходов фиксируются заработная плата, льготы, безработица, самозанятость или заявления о трудностях. | Поддерживает приемлемость. |
+| rentutilityintakeops.screening.hardship | заявление о трудностях | RECORD | В заявлении описывается катастрофа, потеря работы, медицинские расходы, перемещение или нагрузка на коммунальные услуги. | Документы нужны. |
+| rentutilityintakeops.screening.duplication | проверка дублирования | QUALITY_CHECK | Проверьте, сравнивает ли предыдущую помощь, страховку, FEMA, кредиты арендодателя и программы коммунальных услуг. | Предотвращает дублирование платежей. |
+| rentutilityintakeops.documents.document_list | список документов | RECORD | Список включает удостоверение личности, договор аренды, счет, бухгалтерскую книгу, подтверждение дохода, трудности и инструкции по оплате. | Организует дело. |
+| rentutilityintakeops.documents.missing_doc | недостающий документ | RECORD | В отсутствующем документе указывается элемент, владелец, крайний срок и обходной путь, если это разрешено. | Удерживает дело в движении. |
+| rentutilityintakeops.documents.upload | поддержка загрузки | METHOD | Сотрудники помогают сканировать/загружать записи в соответствии с правилами конфиденциальности. | Завершает файл. |
+| rentutilityintakeops.documents.redaction | правило редактирования | SAFETY_RULE | Конфиденциальные номера удаляются, когда они не нужны для оплаты или соответствия критериям. | Защищает личность. |
+| rentutilityintakeops.landlord.contact | контакт с арендодателем | RECORD | В контактных данных записано имя арендодателя/менеджера, телефон, адрес электронной почты, способ оплаты и подтверждение. | Позволяет платить арендную плату. |
+| rentutilityintakeops.landlord.rent_ledger | Книга аренды | RECORD | В книге регистрируются месяцы задолженности, сборы, кредиты, судебные издержки и сроки оплаты. | Проверяет задолженность. |
+| rentutilityintakeops.landlord.w9_vendor | настройка поставщика | METHOD | Настройка поставщика собирает необходимую информацию о налогах/платежах для арендодателя или управляющего недвижимостью. | Включает оплату. |
+| rentutilityintakeops.landlord.hold_agreement | держать соглашение | RECORD | Хранение записей по соглашению приостанавливается в связи с выселением или сборами, пока обрабатывается помощь. | Защищает аренду. |
+| rentutilityintakeops.utility.account_verify | проверка учетной записи коммунального предприятия | QUALITY_CHECK | При проверке проверяется клиент, номер счета, адрес обслуживания, баланс и дата отключения. | Предотвращает неправильную оплату. |
+| rentutilityintakeops.utility.utility_contact | контакт с коммунальными службами | RECORD | Поставщик контактных записей, отдел, представитель, добавочный номер и номер подтверждения. | Отслеживает общение. |
+| rentutilityintakeops.utility.payment_plan | план оплаты | RECORD | В плане учитываются задолженность, условия рассрочки, переподключение, депозиты и залог помощи. | Координирует рельеф. |
+| rentutilityintakeops.utility.medical_need | Флаг медицинской необходимости | SAFETY_RULE | Медицинское оборудование или пометка о риске для здоровья направляют в службу защиты или в срочную проверку. | Предотвращает вред. |
+| rentutilityintakeops.pledge.pledge_record | залоговая запись | RECORD | В залоге указывается сумма, источник финансирования, получатель, условия, срок действия и утверждающее лицо. | Вкладывает средства. |
+| rentutilityintakeops.pledge.partial_payment | частичная оплата | METHOD | Частичные подтверждающие документы, оставшийся остаток и другие необходимые ресурсы. | Устанавливает ожидания. |
+| rentutilityintakeops.pledge.pledge_letter | залоговое письмо | RECORD | В письме подтверждается сумма, идентификатор дела, получатель платежа и сроки обработки. | Успокаивает арендодателя/коммунальное предприятие. |
+| rentutilityintakeops.pledge.expiration | истечение срока залога | CONSTRAINT | Правило истечения срока действия определяет, когда неиспользованный залог возвращается в доступные средства. | Контролирует бюджет. |
+| rentutilityintakeops.payment.payment_request | запрос платежа | RECORD | Запрос связывает дело, получателя платежа, сумму, документы, код одобрения и финансирования. | Начинает оплату. |
+| rentutilityintakeops.payment.payee_validation | проверка получателя платежа | QUALITY_CHECK | При проверке проверяется личность арендодателя, коммунального предприятия или поставщика и место назначения платежа. | Предотвращает мошенничество. |
+| rentutilityintakeops.payment.disbursement | запись о выплате | RECORD | Запись фиксирует дату платежа, метод, ссылку, сумму и подтверждение получателя платежа. | Замыкает финансовый цикл. |
+| rentutilityintakeops.payment.reconciliation | примирение | QUALITY_CHECK | Сверка сопоставляет залог, платеж, проводку в бухгалтерской книге/коммунальных услугах и оставшийся баланс. | Обеспечивает точность. |
+| rentutilityintakeops.denial.denial_reason | причина отказа | RECORD | Причиной является отсутствие права на получение пособия, отсутствие документов, двойное пособие, исчерпание средств или отсутствие ответа. | Объясняет результат. |
+| rentutilityintakeops.denial.notice | уведомление об отказе | RECORD | В уведомлении указывается причина заявителя, порядок апелляции/пересмотра и альтернативные направления. | Сохраняет справедливость. |
+| rentutilityintakeops.denial.appeal | рассмотрение апелляции | METHOD | Апелляция рассматривает новые доказательства, ошибки, крайние сроки или исключительные трудности. | Корректирует решения. |
+| rentutilityintakeops.denial.referral | альтернативное направление | METHOD | В делах, которым отказано, предоставляются другие льготы, юридическая помощь, посредничество или направление в план выплат. | Уменьшает тупик. |
+| rentutilityintakeops.followup.status_check | проверка статуса | METHOD | Сотрудники проверяют проводку платежа, приостановку выселения, повторное подключение или результат проживания. | Подтверждает эффект. |
+| rentutilityintakeops.followup.unreachable | недостижимый процесс | METHOD | Фиксируются попытки, резервный контакт и причина закрытия. | Обеспечивает справедливый аудит. |
+| rentutilityintakeops.followup.reopen | правило повторного открытия | METHOD | Дело может быть возобновлено для нового отключения, уведомления о выселении, возврата платежа или новых документов. | Ручки меняются. |
+| rentutilityintakeops.followup.case_close | дело закрыто | RECORD | Закрытие фиксирует окончательный платеж, отказ, направление, баланс и уведомление семьи. | Завершается дело. |
+| rentutilityintakeops.privacy.minimum_data | минимальные данные | SAFETY_RULE | Приемным магазинам требовались только данные о личности, жилье, коммунальных услугах и доходах. | Уменьшает воздействие. |
+| rentutilityintakeops.privacy.safe_contact | безопасный контакт | SAFETY_RULE | Безопасный контакт контролирует сообщения о домашнем насилии, совместном жилье или небезопасном доступе к телефону. | Защищает заявителей. |
+| rentutilityintakeops.privacy.role_access | ролевой доступ | SAFETY_RULE | Ролевой доступ ограничивает тех, кто может просматривать сведения о доходе, арендодателе, коммунальных услугах и платежах. | Контролирует записи. |
+| rentutilityintakeops.reporting.daily_summary | ежедневная сводка | MEASUREMENT | Сводные отчеты о заявках, одобрениях, отказах, платежах, задержках и срочных рисках. | Информирует управляющих фондами. |
+| rentutilityintakeops.metrics.approval_rate | процент одобрения | MEASUREMENT | Рейтинг отслеживает одобрения среди завершенных заявок по программе и причине. | Показывает эффективность. |
+| rentutilityintakeops.metrics.time_to_payment | время оплаты | MEASUREMENT | Время измеряет получение средств до их выплаты или отказа. | Выявляет узкие места. |
+| rentutilityintakeops.metrics.funds_remaining | оставшиеся средства | MEASUREMENT | Оставшиеся средства отслеживают зафиксированные, оплаченные, просроченные и доступные остатки. | Контролирует бюджет. |
+| rentutilityintakeops.review.after_action | обзор после действий | METHOD | Проверка фиксирует барьеры в документах, координацию между арендодателем и коммунальными предприятиями, задержки платежей и справедливость отказа. | Улучшает будущее потребление. |

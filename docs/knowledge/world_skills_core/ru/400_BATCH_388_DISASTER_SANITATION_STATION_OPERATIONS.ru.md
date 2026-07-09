@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| sanitationstationops.activation.trigger | activation trigger | MODEL | Trigger includes sheltering, water outage, outdoor queues, debris crews or damaged restrooms. | Starts sanitation support. |
-| sanitationstationops.activation.site_list | site list | RECORD | Site list stores locations, users, expected volume, owner and service level. | Organizes deployment. |
-| sanitationstationops.activation.health_review | health review | SAFETY_RULE | Public health reviews placement, waste handling and handwashing needs. | Reduces disease risk. |
-| sanitationstationops.activation.vendor | vendor assignment | RECORD | Vendor record links units, service frequency, contacts and contract terms. | Controls outsourced service. |
-| sanitationstationops.placement.location | placement location | METHOD | Placement considers access, distance, lighting, drainage, traffic and privacy. | Makes units usable. |
-| sanitationstationops.placement.setback | setback rule | CONSTRAINT | Units avoid wells, food areas, waterways and blocked exits. | Protects health and safety. |
-| sanitationstationops.placement.accessibility | accessible unit | METHOD | Accessible units are placed on firm route near services. | Supports disabled users. |
-| sanitationstationops.placement.security | security lighting | METHOD | Lighting, patrol or fencing may protect users and units. | Reduces misuse. |
-| sanitationstationops.inventory.unit_id | toilet unit ID | RECORD | Unit ID links vendor, type, location, status and service history. | Tracks assets. |
-| sanitationstationops.inventory.handwash_id | handwash station ID | RECORD | Station ID links water, soap, towels, sanitizer and location. | Controls hygiene support. |
-| sanitationstationops.inventory.supplies | supply inventory | MEASUREMENT | Supplies track toilet paper, soap, sanitizer, towels, water and chemicals. | Prevents depletion. |
-| sanitationstationops.inventory.status | unit status | RECORD | Status records clean, full, damaged, tipped, inaccessible or removed. | Guides service. |
-| sanitationstationops.service.frequency | service frequency | MODEL | Frequency uses expected users, heat, event length and waste capacity. | Prevents overflow. |
-| sanitationstationops.service.pumping | pumping service | METHOD | Pumping removes waste and refreshes chemicals under safe handling rules. | Keeps toilets operational. |
-| sanitationstationops.service.cleaning | cleaning service | METHOD | Cleaning addresses surfaces, odors, paper, handwash and visible soil. | Maintains dignity. |
-| sanitationstationops.service.water_refill | handwash refill | METHOD | Water, soap and towels are refilled on schedule or demand. | Maintains hygiene. |
-| sanitationstationops.waste.disposal_site | disposal site | RECORD | Waste disposal site is approved and documented. | Protects environment. |
-| sanitationstationops.waste.manifest | waste manifest | RECORD | Manifest records volume, unit, truck, time and disposal location. | Supports compliance. |
-| sanitationstationops.waste.spill | toilet waste spill response | SAFETY_RULE | Toilet waste spills trigger cordon, vendor pumpout, disinfection, health notification and cleanup record. | Prevents contamination. |
-| sanitationstationops.waste.hazard | hazardous conflict | CONSTRAINT | Toilets near chemical, flood or structural hazards may need relocation. | Protects users. |
-| sanitationstationops.complaint.complaint_id | complaint ID | RECORD | Complaint ID links site, issue, reporter, time and resolution. | Tracks service problems. |
-| sanitationstationops.complaint.odor | odor complaint | METHOD | Odor complaints trigger cleaning, pumping, relocation or ventilation review. | Improves usability. |
-| sanitationstationops.complaint.access | access complaint | METHOD | Access complaints address blocked path, lighting, distance or disability barriers. | Supports equity. |
-| sanitationstationops.complaint.vandalism | vandalism complaint | RECORD | Vandalism records damage, safety issue, photo and repair/removal. | Maintains function. |
-| sanitationstationops.public.signage | signage | METHOD | Signs direct users to toilets and handwashing without blocking traffic. | Helps people find facilities. |
-| sanitationstationops.public.instructions | user instructions | METHOD | Instructions explain handwashing, waste, hours and complaint contact. | Encourages proper use. |
-| sanitationstationops.public.language | language support | METHOD | Core sanitation signs use local languages and symbols where possible. | Improves access. |
-| sanitationstationops.public.privacy | privacy screen | METHOD | Screens or placement protect dignity where queues or open areas exist. | Improves acceptance. |
-| sanitationstationops.safety.staff_ppe | staff PPE | SAFETY_RULE | Service staff use PPE for waste, chemicals, lifting and traffic. | Protects workers. |
-| sanitationstationops.safety.traffic | traffic protection | SAFETY_RULE | Service trucks and users are protected from vehicle conflicts. | Reduces accidents. |
-| sanitationstationops.safety.weather | weather anchoring | SAFETY_RULE | Units are anchored or moved for wind, flood, snow or heat exposure. | Prevents tipping and hazards. |
-| sanitationstationops.safety.night | night safety | METHOD | Night sites need lighting, visibility and security review. | Protects users. |
-| sanitationstationops.records.service_log | service log | RECORD | Log records cleaning, pumping, refill, repair, removal and technician. | Provides evidence. |
-| sanitationstationops.records.photo | photo record | RECORD | Photos document placement, damage, access and closeout condition. | Supports disputes. |
-| sanitationstationops.records.cost | cost record | RECORD | Costs track rental, service, damage, supplies and emergency fees. | Supports finance. |
-| sanitationstationops.records.retention | retention rule | CONSTRAINT | Records follow health, procurement, finance and emergency retention rules. | Preserves audit. |
-| sanitationstationops.metrics.unit_ratio | unit ratio | MEASUREMENT | Ratio compares toilets/handwash stations to user population. | Shows adequacy. |
-| sanitationstationops.metrics.service_miss | missed service | MEASUREMENT | Missed service records vendor, site, cause and corrective action. | Improves reliability. |
-| sanitationstationops.qa.site_inspection | site inspection | QUALITY_CHECK | Inspection checks cleanliness, supplies, access, safety and placement. | Keeps service acceptable. |
-| sanitationstationops.demob.removal | unit removal | METHOD | Removal pumps, cleans, documents condition and restores site. | Ends service cleanly. |
-| sanitationstationops.demob.final_reconcile | final reconciliation | QUALITY_CHECK | Final reconciliation matches units, service logs, invoices and damage. | Prevents billing gaps. |
-| sanitationstationops.review.after_action | after-action review | METHOD | Review captures placement, servicing, complaints, accessibility and vendor lessons. | Improves next deployment. |
-| sanitationstationops.governance.health_liaison | health liaison | RECORD | Public health liaison reviews sanitation adequacy, complaints and disease risk. | Keeps health accountability visible. |
-| sanitationstationops.governance.owner | program owner | RECORD | Owner coordinates public health, logistics, vendor and site managers. | Keeps accountability clear. |
+| sanitationstationops.activation.trigger | триггер активации | MODEL | Триггером может быть укрытие, отключение воды, очереди на открытом воздухе, работы бригад по сбору мусора или поврежденные туалеты. | Начинается санитарная поддержка. |
+| sanitationstationops.activation.site_list | список сайтов | RECORD | В списке сайтов хранятся местоположения, пользователи, ожидаемый объем, владелец и уровень обслуживания. | Организует размещение. |
+| sanitationstationops.activation.health_review | обзор здоровья | SAFETY_RULE | Общественное здравоохранение проверяет размещение, обращение с отходами и потребности в мытье рук. | Снижает риск заболеваний. |
+| sanitationstationops.activation.vendor | назначение поставщика | RECORD | Запись о поставщиках связывает единицы измерения, частоту обслуживания, контакты и условия контракта. | Контролирует аутсорсинговые услуги. |
+| sanitationstationops.placement.location | место размещения | METHOD | При размещении учитываются доступ, расстояние, освещение, дренаж, движение транспорта и конфиденциальность. | Делает юниты пригодными для использования. |
+| sanitationstationops.placement.setback | правило отступления | CONSTRAINT | Подразделения избегают колодцев, пищевых зон, водных путей и заблокированных выходов. | Защищает здоровье и безопасность. |
+| sanitationstationops.placement.accessibility | доступная единица | METHOD | Доступные объекты размещаются на твердом маршруте рядом с услугами. | Поддерживает пользователей с ограниченными возможностями. |
+| sanitationstationops.placement.security | охранное освещение | METHOD | Освещение, патрулирование или ограждение могут защитить пользователей и объекты. | Уменьшает неправильное использование. |
+| sanitationstationops.inventory.unit_id | идентификатор туалетного узла | RECORD | Идентификатор устройства связывает поставщика, тип, местоположение, статус и историю обслуживания. | Отслеживает активы. |
+| sanitationstationops.inventory.handwash_id | идентификатор станции для мытья рук | RECORD | Идентификатор станции связывает воду, мыло, полотенца, дезинфицирующее средство и местоположение. | Контролирует соблюдение гигиены. |
+| sanitationstationops.inventory.supplies | поставка инвентаря | MEASUREMENT | В запасы входят туалетная бумага, мыло, дезинфицирующее средство, полотенца, вода и химикаты. | Предотвращает истощение. |
+| sanitationstationops.inventory.status | статус объекта | RECORD | Записи о состоянии чистые, полные, поврежденные, с отклонениями, недоступные или удаленные. | Услуги гидов. |
+| sanitationstationops.service.frequency | частота обслуживания | MODEL | Частота учитывает ожидаемых пользователей, теплоту, продолжительность события и мощность отходов. | Предотвращает перелив. |
+| sanitationstationops.service.pumping | насосное обслуживание | METHOD | Насос удаляет отходы и обновляет химикаты в соответствии с правилами безопасного обращения. | Поддерживает туалеты в рабочем состоянии. |
+| sanitationstationops.service.cleaning | услуги по уборке | METHOD | Очистка направлена ​​на поверхности, запахи, бумагу, мытье рук и видимые загрязнения. | Сохраняет достоинство. |
+| sanitationstationops.service.water_refill | наполнитель для мытья рук | METHOD | Вода, мыло и полотенца пополняются по расписанию или по требованию. | Соблюдает гигиену. |
+| sanitationstationops.waste.disposal_site | место захоронения | RECORD | Место захоронения отходов утверждено и задокументировано. | Защищает окружающую среду. |
+| sanitationstationops.waste.manifest | ведомость отходов | RECORD | В манифесте указывается объем, единица измерения, грузовик, время и место утилизации. | Поддерживает соответствие. |
+| sanitationstationops.waste.spill | реагирование на разлив туалетных отходов | SAFETY_RULE | Разливы туалетных отходов вызывают оцепление, откачку продавцом, дезинфекцию, уведомление о состоянии здоровья и запись об уборке. | Предотвращает загрязнение. |
+| sanitationstationops.waste.hazard | опасный конфликт | CONSTRAINT | Туалеты, расположенные вблизи химических опасностей, наводнений или структурных опасностей, возможно, придется переместить. | Защищает пользователей. |
+| sanitationstationops.complaint.complaint_id | идентификатор жалобы | RECORD | Идентификатор жалобы связывает сайт, проблему, репортера, время и решение. | Отслеживает проблемы обслуживания. |
+| sanitationstationops.complaint.odor | жалоба на запах | METHOD | Жалобы на запах требуют очистки, откачки, перемещения или проверки вентиляции. | Улучшает удобство использования. |
+| sanitationstationops.complaint.access | жалоба на доступ | METHOD | Жалобы на доступ касаются заблокированных дорожек, освещения, расстояния или барьеров для инвалидов. | Поддерживает справедливость. |
+| sanitationstationops.complaint.vandalism | жалоба на вандализм | RECORD | Вандализм фиксирует повреждения, проблемы безопасности, фотографии и ремонт/удаление. | Сохраняет функцию. |
+| sanitationstationops.public.signage | вывески | METHOD | Знаки направляют пользователей в туалеты и места для мытья рук, не блокируя движение транспорта. | Помогает людям найти объекты. |
+| sanitationstationops.public.instructions | инструкции пользователя | METHOD | В инструкциях описаны правила мытья рук, отходы, часы работы и контакт с жалобами. | Поощряет правильное использование. |
+| sanitationstationops.public.language | языковая поддержка | METHOD | В основных санитарных знаках, где это возможно, используются местные языки и символы. | Улучшает доступ. |
+| sanitationstationops.public.privacy | экран конфиденциальности | METHOD | Экраны или их расположение защищают достоинство там, где существуют очереди или открытые пространства. | Улучшает принятие. |
+| sanitationstationops.safety.staff_ppe | СИЗ для персонала | SAFETY_RULE | Обслуживающий персонал использует СИЗ для сбора отходов, химикатов, подъема и дорожного движения. | Защищает рабочих. |
+| sanitationstationops.safety.traffic | защита трафика | SAFETY_RULE | Сервисные машины и пользователи защищены от конфликтов транспортных средств. | Снижает количество аварий. |
+| sanitationstationops.safety.weather | погодная якорь | SAFETY_RULE | Установки закрепляются или перемещаются из-за воздействия ветра, наводнения, снега или жары. | Предотвращает опрокидывание и опасности. |
+| sanitationstationops.safety.night | ночная безопасность | METHOD | Ночные площадки нуждаются в освещении, видимости и проверке безопасности. | Защищает пользователей. |
+| sanitationstationops.records.service_log | журнал обслуживания | RECORD | Журнал записи чистки, прокачки, пополнения, ремонта, удаления и технического обслуживания. | Предоставляет доказательства. |
+| sanitationstationops.records.photo | фотозапись | RECORD | Фотографии документируют размещение, повреждения, состояние доступа и закрытия. | Поддерживает споры. |
+| sanitationstationops.records.cost | запись затрат | RECORD | Затраты включают аренду, обслуживание, ущерб, расходные материалы и экстренные сборы. | Поддерживает финансы. |
+| sanitationstationops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют правилам хранения в области здравоохранения, закупок, финансов и чрезвычайных ситуаций. | Сохраняет аудит. |
+| sanitationstationops.metrics.unit_ratio | соотношение единиц | MEASUREMENT | Соотношение сравнивает туалеты/станции для мытья рук с количеством пользователей. | Показывает адекватность. |
+| sanitationstationops.metrics.service_miss | пропущенное обслуживание | MEASUREMENT | Пропущенные сервисные записи о поставщике, объекте, причине и корректирующих действиях. | Повышает надежность. |
+| sanitationstationops.qa.site_inspection | осмотр объекта | QUALITY_CHECK | Инспекция проверяет чистоту, расходные материалы, доступ, безопасность и размещение. | Обслуживание приемлемое. |
+| sanitationstationops.demob.removal | удаление устройства | METHOD | Удаление насосов, чистка, документирование состояния и восстановление сайта. | Заканчивает обслуживание чисто. |
+| sanitationstationops.demob.final_reconcile | окончательное примирение | QUALITY_CHECK | Окончательная сверка сопоставляет единицы, журналы обслуживания, счета-фактуры и ущерб. | Предотвращает разрывы в счетах. |
+| sanitationstationops.review.after_action | обзор после действий | METHOD | Обзор охватывает размещение, обслуживание, жалобы, доступность и уроки поставщиков. | Улучшает следующее развертывание. |
+| sanitationstationops.governance.health_liaison | связь со здоровьем | RECORD | Представитель по связям с общественным здравоохранением проверяет адекватность санитарных условий, жалобы и риск заболеваний. | Обеспечивает видимость подотчетности в области здравоохранения. |
+| sanitationstationops.governance.owner | владелец программы | RECORD | Владелец координирует общественное здравоохранение, логистику, работу поставщиков и менеджеров объектов. | Обеспечивает четкую подотчетность. |

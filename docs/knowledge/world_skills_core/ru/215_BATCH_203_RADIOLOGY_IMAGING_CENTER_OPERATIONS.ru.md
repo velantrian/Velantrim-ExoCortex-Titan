@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| radops.schedule.imaging_order | Imaging order | invariant | Order states patient, modality, body part, indication, priority and ordering provider. | exam authority |
-| radops.schedule.modality_slot | Modality slot | invariant | Slot allocates scanner, protocol time, room, technologist and preparation window. | schedule scarce equipment |
-| radops.schedule.prep_instruction | Imaging prep instruction | invariant | Instruction tells patient fasting, clothing, arrival, medication or document requirements. | reduce failed exams |
-| radops.schedule.authorization_status | Imaging authorization status | variant | Status tracks payer approval, denial, pending review, expiration and exam match. | prevent billing denial |
-| radops.schedule.no_show_recovery | Imaging no-show recovery | invariant | Recovery contacts patient, updates order status, releases slot and reschedules if needed. | protect capacity |
-| radops.protocol.protocoling | Radiology protocoling | invariant | Protocoling selects exam parameters, contrast, sequences or views based on order and history. | right exam setup |
-| radops.protocol.laterality_check | Imaging laterality check | invariant | Check confirms right, left or bilateral body side before exam. | avoid wrong-side imaging |
-| radops.protocol.contrast_screen | Contrast screening | variant | Screening checks allergy, kidney risk, pregnancy status where relevant and prior reactions. | contrast safety gate |
-| radops.protocol.implant_screen | MRI implant screening | variant | Screening identifies implants, devices, metal fragments and documentation required for MRI safety. | magnetic risk control |
-| radops.protocol.prior_image_review | Prior image review | variant | Review compares earlier studies to choose protocol and support interpretation. | context matters |
-| radops.intake.patient_identity | Imaging patient identity check | invariant | Check verifies patient identifiers against order before exam. | correct patient |
-| radops.intake.consent_form | Imaging consent form | variant | Consent documents patient agreement for contrast, invasive component or special procedure. | permission evidence |
-| radops.intake.clinical_history | Imaging clinical history | invariant | History captures symptoms, surgery, trauma, labs or question to answer. | help interpretation |
-| radops.intake.gowning_locker | Gowning and locker process | variant | Process removes metal or clothing items and secures belongings before exam. | readiness and safety |
-| radops.intake.pregnancy_screen | Pregnancy screening | variant | Screening follows policy before radiation or contrast exposure. | risk review |
-| radops.flow.patient_call | Patient call to scanner | invariant | Call moves patient from waiting area to modality with identity and readiness check. | flow control |
-| radops.flow.exam_timeout | Imaging exam timeout | invariant | Timeout confirms patient, exam, side, contrast, allergies and protocol before acquisition. | prevent major errors |
-| radops.flow.positioning | Imaging positioning | invariant | Positioning aligns patient, body part, coil, detector or table for diagnostic acquisition. | image starts with setup |
-| radops.flow.motion_management | Motion management | variant | Management uses instruction, supports, timing or repeat policy to reduce motion artifact. | sharper images |
-| radops.flow.exam_completion | Exam completion status | invariant | Status records completed, partial, canceled, refused or failed exam with reason. | close workflow |
-| radops.modality.xray_flow | X-ray workflow | variant | Workflow covers order check, positioning, exposure, image review and radiation safety. | common modality |
-| radops.modality.ct_flow | CT workflow | variant | Workflow covers protocol, positioning, scout, acquisition, contrast timing and reconstruction. | cross-sectional flow |
-| radops.modality.mri_flow | MRI workflow | variant | Workflow covers safety screen, coils, sequences, monitoring, communication and image transfer. | controlled magnetic environment |
-| radops.modality.ultrasound_flow | Ultrasound workflow | variant | Workflow covers patient prep, probe selection, images, measurements and sonographer notes. | operator-dependent imaging |
-| radops.modality.mammography_flow | Mammography workflow | variant | Workflow covers positioning, compression, image quality, prior comparison and patient communication. | specialized screening |
-| radops.qa.image_quality_check | Radiology image quality check | invariant | Check reviews coverage, positioning, exposure, artifacts, labels and completeness before release. | avoid nondiagnostic study |
-| radops.qa.repeat_image | Repeat image record | invariant | Record explains repeated acquisition due to motion, positioning, exposure or artifact. | dose and quality tracking |
-| radops.qa.dicom_metadata | DICOM metadata check | invariant | Check verifies patient, study, series, laterality, timestamps and accession. | digital identity |
-| radops.qa.critical_finding_route | Critical finding route | invariant | Route ensures urgent radiologist findings reach responsible clinical contact. | safety communication |
-| radops.qa.discrepancy_review | Imaging discrepancy review | variant | Review examines interpretation, prior comparisons, technical limitations and communication issues. | learn from misses |
-| radops.records.accession_number | Radiology accession number | invariant | Accession uniquely links order, exam, images, report and billing. | study anchor |
-| radops.records.pacs_transfer | PACS transfer | invariant | Transfer sends images to archive with complete metadata and confirmation. | images available |
-| radops.records.report_status | Radiology report status | invariant | Status tracks draft, preliminary, final, amended or addendum report. | know interpretation state |
-| radops.records.result_delivery | Imaging result delivery | invariant | Delivery routes final report to ordering provider, patient portal or referral system. | complete loop |
-| radops.records.image_release | Image release request | variant | Request provides images to patient or external provider with authorization and format. | portability |
-| radops.safety.radiation_dose_record | Radiation dose record | variant | Record captures exposure metrics for applicable modalities and quality monitoring. | dose awareness |
-| radops.safety.mri_zone_control | MRI zone control | variant | Control restricts access by safety zone, screening status and trained supervision. | magnetic safety |
-| radops.safety.contrast_reaction | Contrast reaction response | variant | Response documents symptoms, actions, clinician involvement, lot and follow-up. | adverse event control |
-| radops.safety.fall_risk | Imaging fall risk | invariant | Risk flag prompts transfer help, wheelchair, escort or monitoring during visit. | patient safety |
-| radops.safety.equipment_qc | Imaging equipment QC | invariant | QC checks scanner performance, calibration, artifacts, safety systems and service status. | reliable modality |
-| radops.billing.charge_capture | Imaging charge capture | invariant | Capture links completed exam, contrast, supplies and modifiers to billing workflow. | bill what happened |
-| radops.metrics.turnaround_time | Radiology turnaround time | variant | Metric measures order-to-schedule, exam-to-report and critical-result communication time. | manage delays |
-| radops.metrics.modality_utilization | Modality utilization KPI | variant | KPI tracks scanner occupancy, cancellations, repeats, downtime and backlog. | manage capacity |
-| radops.continuity.scanner_downtime | Scanner downtime procedure | invariant | Procedure reroutes patients, reschedules exams, informs staff and tracks service recovery. | recover capacity |
+| radops.schedule.imaging_order | Порядок изображений | invariant | В заказе указываются пациент, модальность, часть тела, показания, приоритет и поставщик, отправляющий заказ. | экзаменационный орган |
+| radops.schedule.modality_slot | Слот модальности | invariant | Слот распределяет сканер, время протокола, комнату, технолога и окно подготовки. | запланировать дефицитное оборудование |
+| radops.schedule.prep_instruction | Инструкция по подготовке к визуализации | invariant | Инструкция сообщает пациенту о голодании, одежде, прибытии, приеме лекарств или требованиях к документам. | сократить количество проваленных экзаменов |
+| radops.schedule.authorization_status | Статус авторизации изображений | variant | Статус отслеживает одобрение плательщика, отказ, ожидающее рассмотрения, истечение срока действия и совпадение экзаменов. | предотвратить отказ в выставлении счетов |
+| radops.schedule.no_show_recovery | Восстановление изображений при неявке | invariant | Выздоровевший связывается с пациентом, обновляет статус заказа, освобождает слот и при необходимости переносит график. | защитить емкость |
+| radops.protocol.protocoling | Протоколирование радиологии | invariant | Протоколирование выбирает параметры исследования, контрастность, последовательности или представления на основе порядка и истории. | правильная подготовка к экзамену |
+| radops.protocol.laterality_check | Проверка латерализации изображения | invariant | Перед исследованием проверка подтверждает правую, левую или двустороннюю сторону тела. | избегайте неправильного изображения |
+| radops.protocol.contrast_screen | Контрастный скрининг | variant | При скрининге проверяются аллергия, риск для почек, статус беременности, если это необходимо, и предшествующие реакции. | контрастные защитные ворота |
+| radops.protocol.implant_screen | МРТ-скрининг имплантатов | variant | При скрининге выявляются имплантаты, устройства, металлические фрагменты и документация, необходимая для безопасности МРТ. | контроль магнитного риска |
+| radops.protocol.prior_image_review | Предыдущий просмотр изображения | variant | В обзоре сравниваются более ранние исследования для выбора протокола и поддержки интерпретации. | контекст имеет значение |
+| radops.intake.patient_identity | Проверка личности пациента с помощью визуализации | invariant | Перед исследованием проверка сверяет идентификаторы пациентов с заказом. | правильный пациент |
+| radops.intake.consent_form | Форма согласия на получение изображений | variant | Согласие документирует согласие пациента на использование контрастного вещества, инвазивного компонента или специальной процедуры. | свидетельство о разрешении |
+| radops.intake.clinical_history | Визуализация клинического анамнеза | invariant | В анамнезе фиксируются симптомы, операции, травмы, лабораторные исследования или вопросы, на которые нужно ответить. | помощь в интерпретации |
+| radops.intake.gowning_locker | Процесс переодевания и раздевалки | variant | Перед экзаменом процесс удаляет металлические предметы или предметы одежды и закрепляет вещи. | готовность и безопасность |
+| radops.intake.pregnancy_screen | Скрининг беременности | variant | Скрининг проводится в соответствии с правилами перед облучением или контрастным воздействием. | обзор рисков |
+| radops.flow.patient_call | Звонок пациента к сканеру | invariant | Вызов перемещает пациента из зоны ожидания в модальность с проверкой личности и готовности. | контроль потока |
+| radops.flow.exam_timeout | Тайм-аут исследования изображений | invariant | Тайм-аут подтверждает пациента, исследование, сторону, контраст, аллергию и протокол перед получением данных. | предотвратить серьезные ошибки |
+| radops.flow.positioning | Позиционирование изображения | invariant | Позиционирование выравнивает пациента, часть тела, катушку, детектор или стол для получения диагностических данных. | изображение начинается с установки |
+| radops.flow.motion_management | Управление движением | variant | Руководство использует инструкции, поддержку, политику синхронизации или повторения для уменьшения артефактов движения. | более четкие изображения |
+| radops.flow.exam_completion | Статус завершения экзамена | invariant | Записи о статусе завершены, частичны, отменены, отклонены или провалены на экзамене с указанием причины. | закрыть рабочий процесс |
+| radops.modality.xray_flow | Рабочий процесс рентгена | variant | Рабочий процесс включает проверку заказа, позиционирование, экспозицию, просмотр изображений и радиационную безопасность. | общая модальность |
+| radops.modality.ct_flow | Рабочий процесс КТ | variant | Рабочий процесс охватывает протокол, позиционирование, разведку, сбор данных, время контрастирования и реконструкцию. | поперечный поток |
+| radops.modality.mri_flow | Рабочий процесс МРТ | variant | Рабочий процесс охватывает экран безопасности, катушки, последовательности, мониторинг, связь и передачу изображений. | контролируемая магнитная среда |
+| radops.modality.ultrasound_flow | Рабочий процесс УЗИ | variant | Рабочий процесс включает подготовку пациента, выбор датчика, изображения, измерения и записи сонографиста. | зависимая от оператора визуализация |
+| radops.modality.mammography_flow | Рабочий процесс маммографии | variant | Рабочий процесс охватывает позиционирование, сжатие, качество изображения, предварительное сравнение и общение с пациентом. | специализированный скрининг |
+| radops.qa.image_quality_check | Проверка качества радиологических изображений | invariant | Перед выпуском проверьте охват, позиционирование, экспозицию, артефакты, ярлыки и полноту обзоров. | избегать недиагностических исследований |
+| radops.qa.repeat_image | Повторить запись изображения | invariant | Запись объясняет повторяющееся получение изображений из-за движения, позиционирования, экспозиции или артефактов. | отслеживание дозы и качества |
+| radops.qa.dicom_metadata | Проверка метаданных DICOM | invariant | Проверка проверяет пациента, исследование, серию, латеральность, временные метки и доступ. | цифровая идентификация |
+| radops.qa.critical_finding_route | Критический маршрут поиска | invariant | Маршрут гарантирует, что срочные заключения рентгенологов будут доведены до ответственного клинического контакта. | безопасная связь |
+| radops.qa.discrepancy_review | Проверка несоответствия изображений | variant | В обзоре рассматриваются интерпретация, предыдущие сравнения, технические ограничения и проблемы коммуникации. | учиться на промахах |
+| radops.records.accession_number | Регистрационный номер радиологии | invariant | Access уникально связывает заказ, экзамен, изображения, отчет и выставление счетов. | ведущий исследования |
+| radops.records.pacs_transfer | передача PACS | invariant | Transfer отправляет изображения в архив с полными метаданными и подтверждением. | доступны изображения |
+| radops.records.report_status | Статус отчета о радиологии | invariant | Статус отслеживает черновой, предварительный, окончательный, исправленный или дополнительный отчет. | знать состояние интерпретации |
+| radops.records.result_delivery | Доставка результатов визуализации | invariant | Окончательный отчет о маршрутах доставки поставщику заказа, порталу для пациентов или справочной системе. | полный цикл |
+| radops.records.image_release | Запрос на публикацию изображения | variant | Запрос предоставляет изображения пациенту или внешнему поставщику с разрешением и форматом. | портативность |
+| radops.safety.radiation_dose_record | Учет дозы радиации | variant | Запись фиксирует показатели воздействия для применимых условий и мониторинга качества. | осведомленность о дозе |
+| radops.safety.mri_zone_control | Контроль зоны МРТ | variant | Контроль ограничивает доступ по зоне безопасности, статусу досмотра и обученному присмотру. | магнитная безопасность |
+| radops.safety.contrast_reaction | Контрастная реакция | variant | Ответ документирует симптомы, действия, участие врача, партию и последующее наблюдение. | контроль нежелательных явлений |
+| radops.safety.fall_risk | Риск падения изображения | invariant | Флаг риска указывает на помощь при транспортировке, использование инвалидной коляски, сопровождение или наблюдение во время посещения. | безопасность пациента |
+| radops.safety.equipment_qc | Контроль качества оборудования для обработки изображений | invariant | QC проверяет производительность сканера, калибровку, артефакты, системы безопасности и статус обслуживания. | надежная модальность |
+| radops.billing.charge_capture | Захват заряда изображения | invariant | Capture связывает завершенное обследование, контраст, расходные материалы и модификаторы с рабочим процессом выставления счетов. | Билл, что случилось |
+| radops.metrics.turnaround_time | Срок выполнения рентгенологического исследования | variant | Метрика измеряет время от заказа до графика, от исследования до отчета и время передачи критически важных результатов. | управлять задержками |
+| radops.metrics.modality_utilization | KPI использования модальности | variant | KPI отслеживает занятость сканера, отмены, повторы, время простоя и невыполненную работу. | управлять емкостью |
+| radops.continuity.scanner_downtime | Процедура простоя сканера | invariant | Процедура перенаправляет пациентов, переносит обследования, информирует персонал и отслеживает восстановление обслуживания. | восстановить емкость |

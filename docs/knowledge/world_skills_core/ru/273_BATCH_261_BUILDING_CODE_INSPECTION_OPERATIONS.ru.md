@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| buildinsp.permit.permit_link | Building inspection permit link | invariant | Link connects inspection request to permit, address, scope, plans and contractor. | inspect right work |
-| buildinsp.permit.approved_plan | Approved plan reference | invariant | Reference identifies drawing set, revisions, deferred submittals and special conditions. | compare field work |
-| buildinsp.permit.inspection_type | Building inspection type | invariant | Type defines footing, framing, electrical, plumbing, mechanical, fire, final or special inspection. | route inspector |
-| buildinsp.schedule.request_intake | Building inspection request intake | invariant | Intake records permit, requested type, date, contact, access and readiness statement. | schedule visit |
-| buildinsp.schedule.route_planning | Building inspector route planning | variant | Planning groups inspections by geography, type, duration, priority and travel time. | use day well |
-| buildinsp.schedule.cancel_reschedule | Building inspection cancel or reschedule | variant | Change records reason, requester, new time, failed readiness and notice. | calendar control |
-| buildinsp.field.site_arrival | Building inspection site arrival | invariant | Arrival records address, time, contact, permit card, access and safety condition. | start field check |
-| buildinsp.field.scope_boundary | Building inspection scope boundary | invariant | Boundary keeps inspection limited to permitted work, code phase and visible conditions. | avoid overreach |
-| buildinsp.field.photo_record | Building inspection photo record | variant | Photo documents concealed work, correction, hazard, site condition or approval basis. | evidence |
-| buildinsp.field.site_safety | Building inspector site safety | invariant | Safety checks fall hazards, excavation, traffic, power, dogs, confined spaces and PPE. | protect inspector |
-| buildinsp.structural.footing_check | Building footing inspection | invariant | Check reviews forms, depth, reinforcement, soil, setbacks, drainage and approved plans. | foundation control |
-| buildinsp.structural.framing_check | Building framing inspection | invariant | Check reviews members, connections, openings, bracing, fire blocking and plan alignment. | structural quality |
-| buildinsp.structural.shear_wall | Shear wall inspection | variant | Inspection checks nailing, hold-downs, panels, anchors, straps and special details. | lateral resistance |
-| buildinsp.structural.roof_truss | Roof truss inspection | variant | Inspection checks layout, bracing, hangers, damage, field cuts and engineering documents. | roof safety |
-| buildinsp.systems.electrical_rough | Electrical rough inspection | invariant | Check reviews boxes, wiring, grounding, protection, clearances and panel preparation. | safe wiring |
-| buildinsp.systems.plumbing_rough | Plumbing rough inspection | invariant | Check reviews piping, slope, supports, vents, tests, cleanouts and protection. | reliable plumbing |
-| buildinsp.systems.mechanical_rough | Mechanical rough inspection | invariant | Check reviews ducts, equipment, combustion air, venting, clearances and condensate. | safe systems |
-| buildinsp.systems.energy_check | Energy code inspection | variant | Check reviews insulation, air sealing, windows, ducts, lighting or envelope details. | energy compliance |
-| buildinsp.systems.elevator_coordination | Elevator inspection coordination | variant | Coordination links elevator permit, third-party inspection, safety devices, access and final approval. | vertical transport |
-| buildinsp.fire.firestopping | Firestopping inspection | invariant | Check reviews penetrations, rated assemblies, listed systems and installation quality. | maintain fire rating |
-| buildinsp.fire.egress_check | Means of egress check | invariant | Check verifies exits, stairs, doors, lighting, signs, path width and obstructions. | life safety |
-| buildinsp.access.accessibility_check | Building accessibility inspection | invariant | Check reviews routes, ramps, doors, restrooms, parking, controls and signage. | inclusive access |
-| buildinsp.corrections.correction_notice | Building correction notice | invariant | Notice lists code issue, location, required correction, reference and reinspection need. | guide fix |
-| buildinsp.corrections.stop_work | Building stop-work order | variant | Order halts unsafe, unpermitted or noncompliant work and states release criteria. | control risk |
-| buildinsp.corrections.deviation_record | Building field deviation record | invariant | Record captures work differing from approved plans and routes revision or correction. | maintain design intent |
-| buildinsp.corrections.reinspection | Building reinspection | invariant | Reinspection verifies corrections, prior notice items, access and new related issues. | close issues |
-| buildinsp.special.special_inspection | Building special inspection record | variant | Record tracks third-party inspector, tests, reports, deviations and engineer review. | verify critical work |
-| buildinsp.special.material_test | Building material test report | variant | Report includes concrete, steel, weld, soil, masonry or fireproofing test results. | evidence quality |
-| buildinsp.final.final_inspection | Building final inspection | invariant | Inspection verifies completed work, life safety, systems, accessibility, documents and open items. | permit closeout |
-| buildinsp.final.certificate_ready | Certificate readiness review | invariant | Review checks approvals, fees, plans, special reports, addressing and final conditions. | issue certificate |
-| buildinsp.final.temporary_certificate | Temporary certificate review | variant | Review permits limited occupancy with remaining safe conditions, deadlines and bonds. | phased opening |
-| buildinsp.records.inspection_result | Building inspection result | invariant | Result records approved, partial, failed, cancelled, no access or not ready status. | official outcome |
-| buildinsp.records.inspector_note | Building inspector note | invariant | Note documents observations, references, conversations, photos and correction rationale. | case memory |
-| buildinsp.records.code_reference | Building code reference | invariant | Reference links finding to adopted code section, standard, plan note or condition. | defensible decision |
-| buildinsp.records.data_correction | Building inspection data correction | variant | Correction fixes permit, address, result, date or inspector error with audit note. | accurate record |
-| buildinsp.communication.contractor_notice | Building contractor notice | invariant | Notice communicates result, corrections, reinspection steps, fees and contact path. | clear communication |
-| buildinsp.communication.owner_question | Building owner question response | variant | Response explains process, status, correction path and limits of inspector advice. | service |
-| buildinsp.quality.peer_review | Building inspection peer review | variant | Review checks complex decisions, code interpretation, photographs and consistency. | quality |
-| buildinsp.quality.calibration_meeting | Building inspection calibration meeting | variant | Meeting aligns inspectors on code updates, common defects and interpretation. | consistent enforcement |
-| buildinsp.reporting.inspection_backlog | Building inspection backlog report | invariant | Report tracks requested, completed, overdue, failed, reinspection and final inspections. | manage workload |
-| buildinsp.reporting.permit_closeout | Building permit closeout report | invariant | Report identifies permits ready, stalled, expired, missing inspections or certificate issues. | clean records |
-| buildinsp.metrics.buildinsp_kpi | Building inspection KPI | variant | KPI tracks timeliness, pass rate, repeat corrections, stops, certificates and backlog. | manage program |
-| buildinsp.continuity.system_outage | Building inspection system outage | invariant | Outage uses paper route, offline notes, photos, phone dispatch and later entry. | keep inspections moving |
-| buildinsp.continuity.disaster_damage | Building disaster damage inspection | variant | Inspection triages unsafe structures, placards, utilities, occupancy and follow-up. | post-disaster safety |
+| buildinsp.permit.permit_link | Ссылка на разрешение на осмотр здания | invariant | Ссылка соединяет запрос на проверку с разрешением, адресом, объемом, планами и подрядчиком. | проверить правильную работу |
+| buildinsp.permit.approved_plan | Ссылка на утвержденный план | invariant | Ссылка идентифицирует набор чертежей, изменения, отложенную отправку и особые условия. | сравнить полевые работы |
+| buildinsp.permit.inspection_type | Тип проверки здания | invariant | Тип определяет фундамент, каркас, электрическую, сантехническую, механическую, пожарную, окончательную или специальную проверку. | инспектор маршрута |
+| buildinsp.schedule.request_intake | Прием запроса на осмотр здания | invariant | Разрешение на прием записей, запрошенный тип, дата, контакт, заявление о доступе и готовности. | запланировать визит |
+| buildinsp.schedule.route_planning | Планирование маршрута строительного инспектора | variant | Планирование групповых проверок по географическому положению, типу, продолжительности, приоритету и времени в пути. | использовать день с пользой |
+| buildinsp.schedule.cancel_reschedule | Строительная инспекция отменяется или переносится | variant | Причина изменения записи, запрашивающая сторона, новое время, неготовность к сбою и уведомление. | календарный контроль |
+| buildinsp.field.site_arrival | Прибытие на место строительной инспекции | invariant | Прибытие записывает адрес, время, контакт, пропускную карту, условия доступа и безопасности. | начать проверку поля |
+| buildinsp.field.scope_boundary | Граница области осмотра здания | invariant | Граница ограничивает проверку разрешенными работами, фазой кода и видимыми условиями. | избегать перенапряжения |
+| buildinsp.field.photo_record | Фотоотчет осмотра здания | variant | Фотодокументы, скрывающие работы, исправления, опасности, состояние объекта или основания для одобрения. | доказательство |
+| buildinsp.field.site_safety | Безопасность строительного инспектора на площадке | invariant | Проверки безопасности на предмет опасности падения, земляных работ, дорожного движения, электропитания, собак, замкнутых пространств и СИЗ. | инспектор защиты |
+| buildinsp.structural.footing_check | Проверка фундамента здания | invariant | Проверьте формы обзоров, глубину, армирование, почву, отступы, дренаж и утвержденные планы. | контроль фундамента |
+| buildinsp.structural.framing_check | Проверка каркаса здания | invariant | Проверьте элементы, соединения, проемы, распорки, противопожарную блокировку и выравнивание плана. | структурное качество |
+| buildinsp.structural.shear_wall | Проверка стены на сдвиг | variant | Инспекция проверяет гвозди, крепления, панели, анкеры, ремни и специальные детали. | боковое сопротивление |
+| buildinsp.structural.roof_truss | Проверка стропильной конструкции крыши | variant | Инспекция проверяет планировку, распорки, подвески, наличие повреждений, порезы и техническую документацию. | безопасность крыши |
+| buildinsp.systems.electrical_rough | Грубая проверка электрооборудования | invariant | Проверьте коробки, проводку, заземление, защиту, зазоры и подготовку панели. | безопасная проводка |
+| buildinsp.systems.plumbing_rough | Грубая проверка сантехники | invariant | Проверьте трубопроводы, уклон, опоры, вентиляционные отверстия, тесты, очистки и защиту. | надежная сантехника |
+| buildinsp.systems.mechanical_rough | Механический грубый контроль | invariant | Проверьте воздуховоды, оборудование, воздух для горения, вентиляцию, зазоры и наличие конденсата. | безопасные системы |
+| buildinsp.systems.energy_check | Проверка энергетического кода | variant | Проверьте изоляцию, герметичность, окна, воздуховоды, освещение или детали оболочки. | энергетическое соответствие |
+| buildinsp.systems.elevator_coordination | Координация проверки лифтов | variant | Координация связывает разрешение на лифт, проверку третьей стороной, устройства безопасности, доступ и окончательное одобрение. | вертикальный транспорт |
+| buildinsp.fire.firestopping | Противопожарная инспекция | invariant | Проверьте обзоры проходок, номинальных сборок, перечисленных систем и качества установки. | поддерживать класс огнестойкости |
+| buildinsp.fire.egress_check | Средства проверки выхода | invariant | Проверка проверяет выходы, лестницы, двери, освещение, знаки, ширину пути и препятствия. | безопасность жизни |
+| buildinsp.access.accessibility_check | Проверка доступности здания | invariant | Проверьте маршруты, пандусы, двери, туалеты, парковку, элементы управления и указатели. | инклюзивный доступ |
+| buildinsp.corrections.correction_notice | Уведомление о корректировке здания | invariant | В уведомлении перечислены проблемы с кодом, их местонахождение, необходимые исправления, ссылки и необходимость повторной проверки. | исправление руководства |
+| buildinsp.corrections.stop_work | Постановление о прекращении работы | variant | Приказ останавливает небезопасную, неразрешенную или противоречащую требованиям работу и устанавливает критерии освобождения. | контролировать риск |
+| buildinsp.corrections.deviation_record | Запись отклонения поля здания | invariant | В учете фиксируются работы, отличающиеся от утвержденных планов, а также пересмотр или исправление маршрутов. | сохранить дизайнерский замысел |
+| buildinsp.corrections.reinspection | Реинспекция здания | invariant | Повторная проверка проверяет исправления, элементы предварительного уведомления, доступ и новые связанные проблемы. | закрыть проблемы |
+| buildinsp.special.special_inspection | Создание протокола специальной проверки | variant | Запись отслеживает результаты стороннего инспектора, испытаний, отчетов, отклонений и проверок инженеров. | проверить критическую работу |
+| buildinsp.special.material_test | Протокол испытаний строительных материалов | variant | Отчет включает результаты испытаний бетона, стали, сварных швов, грунта, каменной кладки или огнестойкости. | качество доказательств |
+| buildinsp.final.final_inspection | Окончательный осмотр здания | invariant | Инспекция проверяет выполненные работы, безопасность жизнедеятельности, системы, доступность, документы и открытые предметы. | разрешить закрытие |
+| buildinsp.final.certificate_ready | Проверка готовности сертификата | invariant | Обзор проверяет утверждения, сборы, планы, специальные отчеты, адреса и окончательные условия. | выдать сертификат |
+| buildinsp.final.temporary_certificate | Временная проверка сертификата | variant | Обзор разрешает ограниченное размещение с сохранением безопасных условий, сроков и залогов. | поэтапное открытие |
+| buildinsp.records.inspection_result | Результат проверки здания | invariant | Записи результатов утверждены, частичны, неудачны, отменены, нет доступа или состояние неготовности. | официальный результат |
+| buildinsp.records.inspector_note | Записка инспектора по строительству | invariant | Записывайте документы наблюдений, ссылок, разговоров, фотографий и обоснований исправлений. | память корпуса |
+| buildinsp.records.code_reference | Ссылка на строительные нормы и правила | invariant | Поиск справочных ссылок на принятый раздел норм, стандарт, примечание к плану или условие. | оправданное решение |
+| buildinsp.records.data_correction | Корректировка данных обследования зданий | variant | Исправление исправляет разрешение, адрес, результат, дату или ошибку инспектора с примечанием о проверке. | точная запись |
+| buildinsp.communication.contractor_notice | Уведомление строительного подрядчика | invariant | В уведомлении сообщаются результаты, исправления, этапы повторной проверки, сборы и способы связи. | четкое общение |
+| buildinsp.communication.owner_question | Ответ на вопрос владельца здания | variant | В ответе объясняется процесс, статус, путь исправления и пределы рекомендаций инспектора. | услуга |
+| buildinsp.quality.peer_review | Экспертная оценка строительной инспекции | variant | Обзор проверяет сложные решения, интерпретацию кода, фотографии и последовательность. | качество |
+| buildinsp.quality.calibration_meeting | Калибровочное совещание по инспекции зданий | variant | Встреча объединяет инспекторов по вопросам обновлений кода, распространенных дефектов и интерпретации. | последовательное правоприменение |
+| buildinsp.reporting.inspection_backlog | Отчет о невыполненной проверке здания | invariant | Отчет отслеживает запрошенные, завершенные, просроченные, неудачные, повторные и окончательные проверки. | управлять рабочей нагрузкой |
+| buildinsp.reporting.permit_closeout | Отчет о закрытии разрешения на строительство | invariant | В отчете указываются готовые, приостановленные, истекшие разрешения, отсутствие проверок или проблемы с сертификатами. | чистые записи |
+| buildinsp.metrics.buildinsp_kpi | КПИ строительной инспекции | variant | KPI отслеживает своевременность, скорость прохождения, повторные исправления, остановки, сертификаты и отставание. | управлять программой |
+| buildinsp.continuity.system_outage | Отказ системы инспекции зданий | invariant | Outage использует бумажный маршрут, автономные заметки, фотографии, отправку по телефону и последующий ввод. | продолжать проверки |
+| buildinsp.continuity.disaster_damage | Проверка ущерба, нанесенного зданию в результате стихийного бедствия | variant | Инспекция сортирует небезопасные конструкции, таблички, коммунальные услуги, заполняемость и последующие меры. | безопасность после стихийных бедствий |

@@ -1,0 +1,13 @@
+# BATCH 723: Dental Crown — Lab Fabrication
+
+**KnowledgeUnits:** 50
+**Namespace:** `dentalcrown.ops.*`
+**Scope:** zirconia, emax, PFM, CAD_CAM, sintering, staining, glazing, cementation
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| dentalcrown.ops.zirconia_milling_green | Zirconia — Milling Green State | PROCESS | Фрезеровка диоксида циркония. Zirconia block: pre-sintered (зелёное состояние — мягкое как мел). CAD/CAM: intraoral scan (или model scan) → design crown в software (exocad, 3Shape) → milling (CEREC, Roland DWX). Enlargement: milled на 20-25% больше (усадка при sintering). Время milling: 10-20 мин на единицу. После milling: отделить от block, окрасить (stain — A1, A2, etc.), сушка. | Milling слишком быстро = chip margin. |
+| dentalcrown.ops.zirconia_sintering_cycle | Zirconia — Sintering | PROCESS | Спекание (sintering) циркония в печи. Печь: до 1500-1550°C, цикл 8-12 часов. Ramp up: медленный подъём (10-20°C/мин). Hold: 2 часа на пиковой температуре. Ramp down: медленное остывание. Усадка: ~20-25% (до full density). Проверка после sintering: fit on die (marginal gap <50 мкм), цвет (до окрашивания). | Слишком быстрый ramp: трещины. |
+| dentalcrown.ops.emax_pressing_technique | E-Max — Press Technique | PROCESS | Литьё литий-дисиликатной (IPS e.max) керамики. Wax-up: восковая модель на refractory die. Investment: заформовывается в investment ring. Burnout: wax выжигается (850°C). Press: e.max ingot помещается в furnace (920°C), поршень под давлением (5 бар) запрессовывает керамику в форму. Время: 15-20 мин press. После: divest (разбить investment), пескоструйка, cut-off sprues. Stain и glaze. | E.max: отличная эстетика, прочность ~400 MPa. |
+| dentalcrown.ops.stain_glaze_application | Stain & Glaze — Application | METHOD | Окрашивание и глазуровка коронки. Stain kit: различные цвета (incisal, cervical, blue, orange, white). Техника: тонкая кисть, dilute с glaze liquid. Слой за слоем: build up colour (как акварель). Glaze: покрывает всю коронку (блеск). Firing: 750-820°C (ниже чем sintering, не деформирует). Проверка: match to shade guide (Vita Classic A1-D4). | Перебор stain: unnatural look (зуб как пластик). |
+| dentalcrown.ops.cementation_protocol | Cementation — Adhesive Protocol | METHOD | Фиксация коронки в полости рта. Cement: resin cement (RelyX, PANAVIA) или glass ionomer (для не-эстетических). Первые шаги: try-in (проверить fit, occlusion, контактные пункты), adjust если нужно. Затем: clean crown (Ivoclean), silane (для керамики), bond. Tooth: etch, bond. Cement нанести в crown, seat firmly, light cure (2-5 сек для удаления excess, затем full cure). Удалить excess cement (floss). Проверить occlusion. | Excess cement под десной: воспаление (гингивит). |

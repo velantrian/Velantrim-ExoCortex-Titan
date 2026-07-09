@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| plazaops.inventory.plaza_record | Public plaza record | invariant | Record stores boundaries, owner, surfaces, utilities, furniture, landscaping and operating rules. | manage place |
-| plazaops.inventory.zone_map | Public plaza zone map | invariant | Map divides seating, circulation, event, vendor, landscape, service and emergency access zones. | organize space |
-| plazaops.inventory.utility_point | Plaza utility point | variant | Point includes electrical outlet, water connection, drain, lighting controller or service cabinet. | support operations |
-| plazaops.daily.opening_check | Plaza opening check | invariant | Check reviews cleanliness, hazards, seating, lighting, restrooms, vendors, access and overnight issues. | start day |
-| plazaops.daily.midday_check | Plaza midday check | variant | Check addresses litter, crowding, spills, furniture movement, complaints and emerging maintenance. | maintain quality |
-| plazaops.daily.closing_check | Plaza closing check | invariant | Check secures equipment, removes trash, records damage and confirms overnight status. | end day |
-| plazaops.cleaning.litter_pickup | Plaza litter pickup | invariant | Pickup removes trash, glass, food waste, flyers and windblown debris. | keep clean |
-| plazaops.cleaning.surface_washing | Plaza surface washing | invariant | Washing removes spills, stains, residue, dirt and odor from hardscape. | reset surface |
-| plazaops.cleaning.graffiti_response | Plaza graffiti response | invariant | Response cleans walls, furniture, paving, signs and public art using approved methods. | restore appearance |
-| plazaops.cleaning.special_cleaning | Plaza special cleaning | variant | Cleaning handles biohazards, grease, gum, confetti, wax, paint or event residue. | handle exceptions |
-| plazaops.seating.moveable_chair_control | Moveable plaza chair control | variant | Control tracks deployment, arrangement, stacking, missing chairs and storage. | manage seating |
-| plazaops.seating.fixed_seating_condition | Fixed plaza seating condition | invariant | Condition reviews benches, seat walls, anchors, cracks, splinters and accessibility. | maintain seating |
-| plazaops.events.event_permit_check | Plaza event permit check | invariant | Check verifies permitted area, dates, insurance, layout, utilities, noise and cleanup plan. | govern events |
-| plazaops.events.load_in_plan | Plaza event load-in plan | variant | Plan controls vendor arrival, vehicle access, staging, surface protection and timing. | prevent conflict |
-| plazaops.events.load_out_check | Plaza event load-out check | variant | Check confirms equipment removal, cleaning, damage review and utility shutoff after event. | restore plaza |
-| plazaops.vendors.vendor_location | Plaza vendor location | invariant | Location assigns vending space, queue area, power, waste, access and pedestrian clearance. | manage vendors |
-| plazaops.vendors.vendor_compliance | Plaza vendor compliance | variant | Compliance checks permit, hours, footprint, waste, noise, fire safety and cleanup. | enforce rules |
-| plazaops.access.accessible_route | Plaza accessible route | invariant | Route preserves clear path through plaza to seating, crossings, transit, restrooms and destinations. | inclusive access |
-| plazaops.access.emergency_access | Plaza emergency access | invariant | Access keeps fire, EMS, police and maintenance routes clear through events and daily use. | emergency readiness |
-| plazaops.access.crowd_flow | Plaza crowd flow | variant | Flow manages queues, pinch points, entrances, exits, vendors and event barriers. | reduce congestion |
-| plazaops.safety.trip_hazard | Plaza trip hazard | invariant | Hazard includes lifted pavers, broken edges, mats, cords, planters or settlement. | prevent falls |
-| plazaops.safety.slip_hazard | Plaza slip hazard | invariant | Hazard comes from water, algae, ice, spills, leaves, grease or polished surface. | reduce injuries |
-| plazaops.safety.lighting_issue | Plaza lighting issue | invariant | Issue affects visibility, security, event safety or wayfinding after dark. | repair lights |
-| plazaops.safety.behavior_incident | Plaza behavior incident | variant | Incident includes conflict, intoxication, harassment, unsafe activity or security call. | coordinate response |
-| plazaops.repairs.paver_repair | Plaza paver repair | invariant | Repair resets pavers, fills joints, corrects settlement and restores smooth surface. | fix hardscape |
-| plazaops.repairs.furniture_repair | Plaza furniture repair | invariant | Repair fixes tables, chairs, benches, bollards, bins, umbrellas or planters. | restore amenities |
-| plazaops.repairs.drainage_repair | Plaza drainage repair | variant | Repair addresses ponding, clogged trench drain, settlement, broken grate or poor slope. | keep dry |
-| plazaops.landscape.planter_maintenance | Plaza planter maintenance | variant | Maintenance covers watering, pruning, weeds, mulch, soil, irrigation and seasonal plants. | keep landscape |
-| plazaops.landscape.tree_care_link | Plaza tree care coordination | variant | Coordination handles tree wells, pruning, roots, lighting, seating conflicts and irrigation. | protect trees |
-| plazaops.publicrealm.signage_condition | Plaza signage condition | invariant | Condition checks rules signs, maps, event signs, directional signs and readability. | inform users |
-| plazaops.publicrealm.public_art_link | Plaza public art coordination | variant | Coordination covers cleaning, protection, lighting, events, repairs and artist requirements. | preserve art |
-| plazaops.complaints.noise_complaint | Plaza noise complaint | variant | Complaint concerns music, events, vendors, maintenance, crowds or equipment. | manage impact |
-| plazaops.complaints.cleanliness_complaint | Plaza cleanliness complaint | invariant | Complaint reports litter, odor, spills, overflowing bins, pests or dirty seating. | dispatch cleaning |
-| plazaops.complaints.access_complaint | Plaza access complaint | variant | Complaint reports blocked route, vendor encroachment, inaccessible seating or unsafe crossing. | restore access |
-| plazaops.records.daily_log | Plaza daily log | invariant | Log records checks, cleaning, incidents, repairs, vendor issues, events and weather. | trace operations |
-| plazaops.records.damage_photo | Plaza damage photo | invariant | Photo documents broken surface, furniture, landscape, utility, public art or event damage. | evidence |
-| plazaops.reporting.operations_report | Plaza operations report | invariant | Report summarizes visits, events, cleaning, incidents, repairs, complaints and closures. | manage place |
-| plazaops.reporting.event_impact_report | Plaza event impact report | variant | Report compares event attendance, damage, cleanup, complaints, revenue and staffing. | evaluate event |
-| plazaops.metrics.cleanliness_score | Plaza cleanliness score KPI | variant | Score rates litter, stains, bins, surfaces, furniture and complaint pattern. | monitor quality |
-| plazaops.metrics.repair_backlog | Plaza repair backlog KPI | invariant | KPI tracks open defects by severity, age, trade, cost and location. | prioritize work |
-| plazaops.coordination.police_security | Plaza police or security coordination | variant | Coordination handles patrols, incidents, events, closures and behavior concerns. | keep safe |
-| plazaops.coordination.business_stakeholders | Plaza business stakeholder coordination | variant | Coordination aligns operations with adjacent businesses, deliveries, patios and complaints. | reduce friction |
-| plazaops.continuity.weather_closure | Plaza weather closure | variant | Closure may occur for ice, wind, flooding, heat, lightning, smoke or severe storm. | protect users |
-| plazaops.close.daily_closeout | Plaza daily closeout | invariant | Closeout confirms logs, unresolved issues, locked assets, waste removal and next-day needs. | finish day |
+| plazaops.inventory.plaza_record | Рекорд общественной площади | invariant | Запишите границы магазинов, владельца, площади, коммунальные услуги, мебель, ландшафтный дизайн и правила эксплуатации. | управлять местом |
+| plazaops.inventory.zone_map | Карта зоны общественной площади | invariant | Карта разделяет зоны для сидения, движения, мероприятий, поставщиков, ландшафта, обслуживания и аварийного доступа. | организовать пространство |
+| plazaops.inventory.utility_point | Коммунальный пункт Плаза | variant | Точка включает в себя электрическую розетку, подключение воды, слив, контроллер освещения или сервисный шкаф. | операции поддержки |
+| plazaops.daily.opening_check | Проверка открытия Плазы | invariant | Проверьте обзоры на чистоту, опасности, места для сидения, освещение, туалеты, продавцов, доступ и проблемы с ночевкой. | день начала |
+| plazaops.daily.midday_check | Проверка Плазы в полдень | variant | Проверьте адреса: мусор, скопление людей, разливы, перемещение мебели, жалобы и неотложные ремонтные работы. | поддерживать качество |
+| plazaops.daily.closing_check | Проверка закрытия Плазы | invariant | Проверка безопасности оборудования, удаление мусора, запись повреждений и подтверждение ночлега. | Конечный день |
+| plazaops.cleaning.litter_pickup | Вывоз мусора Плаза | invariant | Пикап убирает мусор, стекло, пищевые отходы, рекламные листовки и мусор, принесенный ветром. | держать в чистоте |
+| plazaops.cleaning.surface_washing | Мойка поверхностей Плаза | invariant | Мойка удаляет разливы, пятна, остатки, грязь и запахи с твердого ландшафта. | поверхность сброса |
+| plazaops.cleaning.graffiti_response | Ответ на граффити на площади | invariant | Response очищает стены, мебель, тротуарную плитку, вывески и произведения искусства, используя утвержденные методы. | восстановить внешний вид |
+| plazaops.cleaning.special_cleaning | Специальная уборка Плазы | variant | Очистка позволяет избавиться от биологических опасностей, жира, жевательной резинки, конфетти, воска, краски или остатков событий. | обрабатывать исключения |
+| plazaops.seating.moveable_chair_control | Управление передвижным креслом | variant | Контроль отслеживает развертывание, расстановку, укладку, отсутствие стульев и место хранения. | управлять рассадкой |
+| plazaops.seating.fixed_seating_condition | Исправлено состояние сидения на площади | invariant | Состояние проверяет скамейки, стенки сидений, анкеры, трещины, осколки и доступность. | сохранять сидение |
+| plazaops.events.event_permit_check | Проверка разрешения на мероприятие Plaza | invariant | Проверка проверяет разрешенную площадь, даты, страховку, планировку, коммунальные услуги, шум и план уборки. | управлять событиями |
+| plazaops.events.load_in_plan | План загрузки мероприятий Plaza | variant | План контролирует прибытие поставщиков, доступ транспортных средств, размещение, защиту поверхностей и время. | предотвратить конфликт |
+| plazaops.events.load_out_check | Проверка загрузки на мероприятие Plaza | variant | Проверка подтверждает снятие оборудования, его очистку, проверку повреждений и отключение энергосистем после события. | восстановить площадь |
+| plazaops.vendors.vendor_location | Расположение торговца Плаза | invariant | Местоположение определяет торговые площади, зону очередей, электроэнергию, мусор, доступ и свободное пространство для пешеходов. | управлять поставщиками |
+| plazaops.vendors.vendor_compliance | Соответствие требованиям поставщиков Plaza | variant | Проверки соответствия разрешению, часам работы, занимаемой площади, отходам, шуму, пожарной безопасности и уборке. | обеспечивать соблюдение правил |
+| plazaops.access.accessible_route | Доступный маршрут Плазы | invariant | Маршрут сохраняет свободный путь через площадь к местам для сидения, переходам, транзиту, туалетам и местам назначения. | инклюзивный доступ |
+| plazaops.access.emergency_access | Экстренный доступ к Плазе | invariant | Доступ обеспечивает чистоту маршрутов для пожарных, служб скорой помощи, полиции и технического обслуживания во время событий и повседневного использования. | аварийная готовность |
+| plazaops.access.crowd_flow | Поток толпы на площади | variant | Flow управляет очередями, точками защемления, входами и выходами, продавцами и барьерами событий. | уменьшить заторы |
+| plazaops.safety.trip_hazard | Опасность поездки на Плазу | invariant | Опасность включает поднятую брусчатку, сломанные края, коврики, шнуры, горшки или осадки. | предотвратить падения |
+| plazaops.safety.slip_hazard | Опасность скольжения на площади | invariant | Опасность исходит от воды, водорослей, льда, пролитой жидкости, листьев, жира или полированной поверхности. | уменьшить травмы |
+| plazaops.safety.lighting_issue | Проблема с освещением площади. | invariant | Проблема влияет на видимость, безопасность, безопасность событий или навигацию в темное время суток. | ремонт фар |
+| plazaops.safety.behavior_incident | Инцидент с поведением Плазы | variant | Инцидент включает в себя конфликт, состояние опьянения, преследование, небезопасную деятельность или вызов службы безопасности. | координировать ответ |
+| plazaops.repairs.paver_repair | Ремонт тротуарной плитки Плаза | invariant | Ремонт восстанавливает брусчатку, заполняет швы, исправляет осадку и восстанавливает гладкую поверхность. | исправить хардскейп |
+| plazaops.repairs.furniture_repair | Ремонт мебели Плаза | invariant | Ремонт ремонтирует столы, стулья, скамейки, тумбы, мусорные ведра, зонтики или цветочные горшки. | восстановить удобства |
+| plazaops.repairs.drainage_repair | Ремонт канализации Плаза | variant | Ремонт устраняет затопление, засоренный дренаж траншеи, осадок, сломанную решетку или плохой уклон. | держать сухим |
+| plazaops.landscape.planter_maintenance | Обслуживание цветочных горшков Плаза | variant | Уход включает полив, обрезку, удаление сорняков, мульчу, почву, орошение и сезонные растения. | сохранить пейзаж |
+| plazaops.landscape.tree_care_link | Координация ухода за деревьями Plaza | variant | Координация регулирует колодцы деревьев, обрезку, корни, освещение, конфликты при посадке и орошение. | защищать деревья |
+| plazaops.publicrealm.signage_condition | Состояние вывесок Плазы | invariant | Состояние проверяет правила, знаки, карты, указатели событий, указатели направления и читаемость. | информировать пользователей |
+| plazaops.publicrealm.public_art_link | Координация общественного искусства Plaza | variant | Координация охватывает уборку, защиту, освещение, мероприятия, ремонт и требования артистов. | сохранять искусство |
+| plazaops.complaints.noise_complaint | Жалоба на шум в Плазе | variant | Жалоба касается музыки, мероприятий, продавцов, технического обслуживания, толпы или оборудования. | управлять воздействием |
+| plazaops.complaints.cleanliness_complaint | Жалоба на чистоту в Плазе | invariant | Жалоба сообщает о мусоре, запахе, разливах, переполненных мусорных баках, вредителях или грязных сиденьях. | диспетчерская уборка |
+| plazaops.complaints.access_complaint | Жалоба на доступ к Плазе | variant | Жалобы сообщают о заблокированном маршруте, вторжении продавцов, недоступных сиденьях или небезопасном переходе. | восстановить доступ |
+| plazaops.records.daily_log | Ежедневный журнал Плазы | invariant | Журнал записывает проверки, уборку, происшествия, ремонты, проблемы с поставщиками, события и погоду. | операции трассировки |
+| plazaops.records.damage_photo | Фото повреждений Плазы | invariant | На фотографиях документируются повреждения поверхности, мебели, ландшафта, коммунальных услуг, объектов общественного искусства или событий. | доказательство |
+| plazaops.reporting.operations_report | Отчет о работе Плазы | invariant | Отчет суммирует посещения, события, уборку, инциденты, ремонты, жалобы и закрытия. | управлять местом |
+| plazaops.reporting.event_impact_report | Отчет о влиянии событий Plaza | variant | В отчете сравниваются посещаемость мероприятий, ущерб, уборка, жалобы, доходы и кадровое обеспечение. | оценить событие |
+| plazaops.metrics.cleanliness_score | KPI показателя чистоты Плазы | variant | Оценивайте мусор, пятна, мусорные баки, поверхности, мебель и характер жалоб. | контролировать качество |
+| plazaops.metrics.repair_backlog | КПЭ отставания по ремонту Плазы | invariant | KPI отслеживает открытые дефекты по серьезности, возрасту, торговле, стоимости и местоположению. | расставить приоритеты в работе |
+| plazaops.coordination.police_security | Полиция Плазы или координация службы безопасности | variant | Координация занимается патрулированием, инцидентами, событиями, закрытиями и проблемами поведения. | берегите себя |
+| plazaops.coordination.business_stakeholders | Координация заинтересованных сторон бизнеса Plaza | variant | Координация согласовывает операции со смежными предприятиями, поставками, внутренними двориками и жалобами. | уменьшить трение |
+| plazaops.continuity.weather_closure | Плаза закрыта из-за погодных условий | variant | Закрытие может произойти из-за гололеда, ветра, наводнения, жары, молнии, задымления или сильного шторма. | защитить пользователей |
+| plazaops.close.daily_closeout | Ежедневная распродажа Plaza | invariant | Closeout подтверждает журналы, нерешенные проблемы, заблокированные активы, удаление отходов и потребности на следующий день. | финишный день |

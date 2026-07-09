@@ -12,11 +12,14 @@ Version: v8.5.0
 from __future__ import annotations
 
 import json
+import logging
 import math
 import uuid
 from collections import deque
 from dataclasses import dataclass
 from datetime import UTC, datetime
+
+logger = logging.getLogger(__name__)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Константы
@@ -104,6 +107,46 @@ BACKWARD_TYPES: dict[str, str] = {
     "implies":     "implied_by",
     "requires":    "required_by",
     "enables":     "enabled_by",
+}
+
+# ── Веса типов рёбер для ранжирования traversal ───────────────────────────────
+#
+# Из статьи Wiki-MCP-Server (Хабр, апрель 2026): типы рёбер — не украшение,
+# а архитектура. Вес ребра влияет на осмысленность hop-результатов.
+# depends_on=0.95 → сильная связь; mentions=0.3 → слабая ассоциация.
+#
+# Использование:
+#   weighted_conf = rel.confidence * RELATION_TYPE_WEIGHTS.get(rel.relation_type, 0.5)
+#   ChainResult.weighted_confidence — учитывает и тип, и confidence.
+#
+RELATION_TYPE_WEIGHTS: dict[str, float] = {
+    # Причинные — максимальный вес (это НЕ ассоциация, это механика)
+    "causes":        0.95,
+    "caused_by":     0.95,
+    "prevents":      0.90,
+    "prevented_by":  0.90,
+    "requires":      0.90,
+    "required_by":   0.90,
+    # Логические
+    "implies":       0.85,
+    "implied_by":    0.85,
+    "contradicts":   0.95,  # противоречие — сильный сигнал
+    # Структурные
+    "composes":      0.80,
+    "composed_of":   0.80,
+    "enables":       0.75,
+    "enabled_by":    0.75,
+    "becomes":       0.70,
+    "specializes":   0.65,
+    "generalizes":   0.60,
+    # Темпоральные
+    "precedes":      0.50,
+    "follows":       0.50,
+    # Affordance
+    "affords":       0.40,
+    "inhabited_by":  0.35,
+    # Ассоциативные — минимальный вес (слабая связь)
+    "analogous_to":  0.30,
 }
 
 
@@ -202,6 +245,47 @@ class ChainResult:
             "unknown_count":      self.unknown_count,
             "trustworthy":        self.is_trustworthy(),
         }
+
+    @property
+    def weighted_confidence(self) -> float:
+        """Уверенность с учётом весов типов рёбер (RELATION_TYPE_WEIGHTS).
+
+        Используй для сортировки/ранжирования цепочек —
+        причинная цепь (causes, weight=0.95) получает приоритет
+        над ассоциативной (analogous_to, weight=0.30).
+        """
+        if not self.chain:
+            return 1.0
+        total = 1.0
+        for rel in self.chain:
+            type_weight = RELATION_TYPE_WEIGHTS.get(rel.relation_type, 0.5)
+            total *= rel.confidence * type_weight
+        return round(total, 4)
+
+    def explain_path(self) -> str:
+        """Человекочитаемое объяснение цепочки.
+
+        Пример:
+            'A →[causes, 0.95]→ B →[enables, 0.75]→ C (3 узла, уверенность 0.71)'
+
+        Используется Essence Layer для ответа на «как связано X и Y?».
+        """
+        if not self.chain:
+            return "(пустая цепочка)"
+        steps: list[str] = []
+        for rel in self.chain:
+            tw = RELATION_TYPE_WEIGHTS.get(rel.relation_type, 0.5)
+            steps.append(
+                f"{rel.from_fact_id} →[{rel.relation_type}, "
+                f"conf={rel.confidence:.2f}, w={tw:.0%}]→ {rel.to_fact_id}"
+            )
+        path = " и затем ".join(steps)
+        return (
+            f"{path} "
+            f"({len(self.chain)} рёбер, "
+            f"мин.уверенность={self.min_confidence:.2f}, "
+            f"взвешенная={self.weighted_confidence:.2f})"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -544,21 +628,27 @@ class CausalGraph:
     def explain(self, fact_id: str) -> dict:
         """
         Почему этот факт верен? Backward reasoning.
-        Обход по обратным рёбрам: caused_by, implied_by, required_by.
+        Обход по ОБРАТНЫМ рёбрам: caused_by, implied_by, required_by.
+
+        FIX P0 (v8.5.2 audit): после того как add_relation() начал
+        сохранять backward-типы (caused_by, required_by, implied_by)
+        как авто-inverse, explain() должен искать именно их, а не
+        forward-типы (causes, requires, implies). До фикса всегда
+        возвращал пустые списки.
         """
         causes: list[dict] = []
         requires: list[dict] = []
         implied_by: list[dict] = []
 
-        for rel in self.get_relations_to(fact_id, relation_type="causes"):
+        for rel in self.get_relations_to(fact_id, relation_type="caused_by"):
             causes.append({"fact_id": rel.from_fact_id, "confidence": rel.confidence,
                            "status": rel.knowledge_status})
 
-        for rel in self.get_relations_to(fact_id, relation_type="requires"):
+        for rel in self.get_relations_to(fact_id, relation_type="required_by"):
             requires.append({"fact_id": rel.from_fact_id, "confidence": rel.confidence,
                              "status": rel.knowledge_status})
 
-        for rel in self.get_relations_to(fact_id, relation_type="implies"):
+        for rel in self.get_relations_to(fact_id, relation_type="implied_by"):
             implied_by.append({"fact_id": rel.from_fact_id, "confidence": rel.confidence,
                                "status": rel.knowledge_status})
 
@@ -672,7 +762,6 @@ class CausalGraph:
         # Получаем профиль типов у исходного факта
         own_rels = self.get_relations_from(fact_id)
         own_types = frozenset(r.relation_type for r in own_rels)
-        {r.relation_type: r.to_fact_id for r in own_rels}
 
         if not own_types:
             return []
@@ -833,7 +922,13 @@ class CausalGraph:
                     knowledge_status=str(row.get("knowledge_status") or "known"),
                 )
                 imported += 1
-            except (ValueError, Exception):
+            except ValueError as exc:
+                logger.warning("import_snapshots: пропущено ребро %s→%s (%s): %s",
+                               from_id, to_id, rtype, exc)
+                continue
+            except Exception as exc:
+                logger.error("import_snapshots: ошибка при импорте %s→%s: %s",
+                             from_id, to_id, exc)
                 continue
         return imported
 
@@ -869,7 +964,187 @@ class CausalGraph:
             "density": round(total / max(unique_facts, 1), 2),
         }
 
+    # ── Integrity Diagnostics (из Wiki-MCP-Server, апрель 2026) ─────────────────
+    #
+    # Набор инструментов для наблюдаемости графа. Из статьи:
+    #   wiki_graph_stats, wiki_graph_contradictions, graph_dedup_edges —
+    #   орфан-ноды, dangling-рёбра, дубли, противоречия.
+    #
+    # Для Velantrim это фундамент observability/auditability.
+
+    def find_orphan_nodes(self, limit: int = 100) -> list[str]:
+        """
+        Найти факты с нулевым числом рёбер (изолированные узлы).
+
+        Орфаны — факты в графе, которые не связаны ни с одним другим фактом.
+        При namespace-линковщике (link_by_namespace) их должно быть <1%.
+        Если >5% — линковщик не покрывает граф.
+        """
+        rows = self._conn.execute("""
+            SELECT f.fact_id
+            FROM facts f
+            WHERE f.fact_id NOT IN (
+                SELECT from_fact_id FROM relations
+                UNION
+                SELECT to_fact_id FROM relations
+            )
+            AND f.epistemic_state != 'Collapsed'
+            LIMIT ?
+        """, (limit,)).fetchall()
+        return [r[0] for r in rows]
+
+    def count_orphan_nodes(self) -> int:
+        """Количество изолированных узлов."""
+        row = self._conn.execute("""
+            SELECT COUNT(*)
+            FROM facts f
+            WHERE f.fact_id NOT IN (
+                SELECT from_fact_id FROM relations
+                UNION
+                SELECT to_fact_id FROM relations
+            )
+            AND f.epistemic_state != 'Collapsed'
+        """).fetchone()
+        return row[0] if row else 0
+
+    def find_dangling_edges(self, limit: int = 100) -> list[dict]:
+        """
+        Найти рёбра, ссылающиеся на несуществующие факты.
+
+        Dangling edge — база говорит что A→B связаны, но B (или A) нет в facts.
+        Это симптом: либо факт удалён без каскада, либо баг в ingest.
+        """
+        rows = self._conn.execute("""
+            SELECT r.relation_id, r.from_fact_id, r.to_fact_id, r.relation_type
+            FROM relations r
+            WHERE r.from_fact_id NOT IN (SELECT fact_id FROM facts)
+               OR r.to_fact_id   NOT IN (SELECT fact_id FROM facts)
+            LIMIT ?
+        """, (limit,)).fetchall()
+        result: list[dict] = []
+        for row in rows:
+            result.append({
+                "relation_id": row[0],
+                "from_fact_id": row[1],
+                "to_fact_id": row[2],
+                "relation_type": row[3],
+                "missing_from": row[1] not in self._get_fact_ids_set(),
+                "missing_to": row[2] not in self._get_fact_ids_set(),
+            })
+        return result
+
+    def count_dangling_edges(self) -> int:
+        """Количество рёбер с несуществующими узлами."""
+        row = self._conn.execute("""
+            SELECT COUNT(*)
+            FROM relations r
+            WHERE r.from_fact_id NOT IN (SELECT fact_id FROM facts)
+               OR r.to_fact_id   NOT IN (SELECT fact_id FROM facts)
+        """).fetchone()
+        return row[0] if row else 0
+
+    def find_duplicate_edges(self, limit: int = 100) -> list[dict]:
+        """
+        Найти дублирующиеся рёбра (одинаковые from+to+type).
+        dedup_edges() в knowledge_linker предотвращает создание,
+        но если кто-то пишет напрямую в relations — могут появиться.
+        """
+        rows = self._conn.execute("""
+            SELECT from_fact_id, to_fact_id, relation_type, COUNT(*) AS cnt
+            FROM relations
+            GROUP BY from_fact_id, to_fact_id, relation_type
+            HAVING cnt > 1
+            LIMIT ?
+        """, (limit,)).fetchall()
+        return [
+            {"from": r[0], "to": r[1], "type": r[2], "count": r[3]}
+            for r in rows
+        ]
+
+    def find_missing_evidence(self, limit: int = 100) -> list[dict]:
+        """
+        Рёбра без evidence_ref (не подкреплены источником).
+
+        Для Guardian/TruthGate: рёбра без evidence — кандидаты на downgrade
+        knowledge_status до 'inferred' или 'hypothetical'.
+        """
+        rows = self._conn.execute("""
+            SELECT relation_id, from_fact_id, to_fact_id, relation_type,
+                   knowledge_status, confidence
+            FROM relations
+            WHERE (evidence_ref IS NULL OR evidence_ref = '')
+              AND knowledge_status = 'known'
+            LIMIT ?
+        """, (limit,)).fetchall()
+        return [
+            {
+                "relation_id": r[0],
+                "from": r[1], "to": r[2], "type": r[3],
+                "status": r[4], "confidence": r[5],
+            }
+            for r in rows
+        ]
+
+    def integrity_report(self) -> dict:
+        """
+        Полный отчёт о целостности графа.
+
+        Объединяет все диагностики в один вызов — как wiki_graph_stats
+        из статьи, но для Velantrim. Используется для:
+          - CI/CD (блокировать деплой при >X орфанов)
+          - Guardian dashboard (observability)
+          - Аудит (грант: «система знает о своём состоянии»)
+        """
+        orphans = self.count_orphan_nodes()
+        dangling = self.count_dangling_edges()
+        s = self.stats()
+        total_facts = self._conn.execute(
+            "SELECT COUNT(*) FROM facts"
+        ).fetchone()[0]
+
+        orphan_pct = round(orphans / max(total_facts, 1) * 100, 2)
+        integrity_score = 100.0
+
+        issues: list[str] = []
+        if orphans > 0:
+            issues.append(f"{orphans} орфан-узлов ({orphan_pct}% фактов изолированы)")
+            integrity_score -= min(30, orphan_pct * 10)
+        if dangling > 0:
+            issues.append(f"{dangling} dangling-рёбер (ссылаются на несуществующие факты)")
+            integrity_score -= min(40, dangling * 2)
+
+        # Проверка на критические проблемы
+        critical = orphan_pct > 20 or dangling > 10
+
+        return {
+            "integrity_score": round(max(0, integrity_score), 1),
+            "healthy": integrity_score >= 80 and not critical,
+            "total_facts": total_facts,
+            "total_relations": s["total_relations"],
+            "orphan_nodes": orphans,
+            "orphan_pct": orphan_pct,
+            "dangling_edges": dangling,
+            "issues": issues,
+            "by_relation_type": s.get("by_relation_type", {}),
+            "by_knowledge_status": s.get("by_knowledge_status", {}),
+            "contradictions_detected": self._conn.execute(
+                "SELECT COUNT(*) FROM relations WHERE relation_type = 'contradicts'"
+            ).fetchone()[0],
+            "recommendation": (
+                "cleanup_required" if critical
+                else "verify" if orphans > 0 or dangling > 0
+                else "healthy"
+            ),
+        }
+
     # ── Internal helpers ───────────────────────────────────────────────────────
+
+    def _get_fact_ids_set(self) -> frozenset[str]:
+        """Кэшируемый набор всех fact_id (для диагностик)."""
+        rows = self._conn.execute(
+            "SELECT fact_id FROM facts"
+        ).fetchall()
+        return frozenset(r[0] for r in rows)
 
     @staticmethod
     def _row_to_relation(row) -> Relation:
@@ -902,12 +1177,20 @@ class CausalGraph:
 # ── Singleton API (V8.6 — для causal_bridge и ingest) ─────────────────────────
 
 def is_causal_graph_enabled() -> bool:
-    """Флаг ENABLE_CAUSAL_GRAPH из feature_config."""
+    """Флаг ENABLE_CAUSAL_GRAPH из feature_config (дефолт True)."""
     try:
         from core.feature_config import get_config
 
         return get_config().app.enable_causal_graph
-    except Exception:
+    except Exception:  # noqa: BLE001
+        # F-02: раньше возвращали True МОЛЧА. Дефолт остаётся True (совпадает с
+        # feature_config.enable_causal_graph=True), но сбой чтения конфига теперь виден,
+        # а не маскируется. (Ср. write_gate.is_write_gate_enabled → fail-closed к False,
+        # т.к. там дефолт OFF: направление fallback'а = задокументированный дефолт флага.)
+        logger.warning(
+            "is_causal_graph_enabled: config read failed, falling back to default=True",
+            exc_info=True,
+        )
         return True
 
 

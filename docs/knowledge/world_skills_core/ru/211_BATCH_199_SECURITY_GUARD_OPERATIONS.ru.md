@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| guardops.post.post_order | Security post order | invariant | Post order defines duties, authority, patrols, contacts, alarms, access rules and reporting. | guard playbook |
-| guardops.post.shift_briefing | Security shift briefing | invariant | Briefing shares risks, events, banned persons, maintenance issues and special instructions. | start informed |
-| guardops.post.uniform_check | Guard uniform check | variant | Check confirms identification, equipment, radio, keys, PPE and professional appearance. | visible authority |
-| guardops.post.key_control | Security key control | invariant | Control records issue, return, holder, time, purpose and missing-key escalation. | protect access |
-| guardops.post.post_relief | Guard post relief | invariant | Relief transfers responsibility, logs, keys, radio and active incidents between guards. | no gap in coverage |
-| guardops.patrol.patrol_route | Security patrol route | invariant | Route defines checkpoints, timing, areas, hazards and observation points. | systematic coverage |
-| guardops.patrol.checkpoint_scan | Patrol checkpoint scan | variant | Scan proves guard visited location at time and may capture exception notes. | patrol evidence |
-| guardops.patrol.randomization | Patrol randomization | variant | Randomization varies timing or route to reduce predictability. | deterrence |
-| guardops.patrol.observation_note | Security observation note | invariant | Note records unusual condition, person, vehicle, door, leak, fire risk or safety issue. | eyes on site |
-| guardops.patrol.patrol_exception | Patrol exception | invariant | Exception explains missed checkpoint, unsafe area, emergency diversion or access barrier. | transparent variance |
-| guardops.access.visitor_checkin | Security visitor check-in | invariant | Check-in verifies identity, purpose, host, badge, time and access area. | controlled entry |
-| guardops.access.badge_issue | Temporary badge issue | invariant | Issue records badge number, visitor, host, valid area and return. | temporary identity |
-| guardops.access.delivery_access | Delivery access control | variant | Control verifies carrier, manifest, dock assignment, vehicle and recipient. | manage logistics entry |
-| guardops.access.tailgating | Tailgating prevention | invariant | Prevention stops unauthorized person following authorized entry through controlled door. | access integrity |
-| guardops.access.deny_entry | Entry denial | invariant | Denial records reason, person, supervisor contact and escalation when entry is refused. | lawful boundary |
-| guardops.alarm.alarm_response | Alarm response | invariant | Response follows procedure for fire, intrusion, duress, equipment or environmental alarm. | act on signal |
-| guardops.alarm.false_alarm | False alarm record | invariant | Record notes cause, system, area, response time and corrective action. | reduce noise |
-| guardops.alarm.cctv_review | CCTV review request | variant | Request defines camera, time window, reason, authorization and evidence handling. | controlled video use |
-| guardops.alarm.door_forced | Forced-door alarm | invariant | Alarm indicates door opened without valid credential or request-to-exit sequence. | investigate access breach |
-| guardops.alarm.dispatch_escalation | Security dispatch escalation | invariant | Escalation contacts supervisor, facilities, police, fire, medical or client contact per protocol. | right help fast |
-| guardops.incident.incident_report | Security incident report | invariant | Report documents who, what, where, when, actions, witnesses, evidence and notifications. | formal record |
-| guardops.incident.use_of_force_report | Use-of-force report | variant | Report records force type, reason, injuries, witnesses, policy basis and review path. | high-risk accountability |
-| guardops.incident.trespass_case | Trespass case | variant | Case documents unauthorized presence, warning, removal, law enforcement contact and future restriction. | repeat prevention |
-| guardops.incident.medical_assist | Security medical assist | variant | Assist records observed emergency, first aid limits, EMS call and handoff. | support without clinical overreach |
-| guardops.incident.property_damage | Property damage incident | invariant | Incident records location, photos, asset, suspected cause, immediate controls and notification. | preserve evidence |
-| guardops.emergency.evacuation_support | Evacuation support | invariant | Support helps direct occupants, keep routes clear, report hazards and account for assigned area. | emergency role |
-| guardops.emergency.lockdown_support | Lockdown support | variant | Support follows site procedure for access control, communication and safe positioning. | threat response |
-| guardops.emergency.fire_watch | Fire watch | variant | Watch monitors area when fire system impairment or hot work requires human surveillance. | temporary protection |
-| guardops.emergency.severe_weather | Severe weather procedure | variant | Procedure guides shelter, access restriction, patrol suspension and communication during weather threat. | protect people |
-| guardops.emergency.emergency_drill | Security emergency drill | invariant | Drill tests guard role, communications, timing, reporting and corrective actions. | practice before crisis |
-| guardops.communication.radio_protocol | Security radio protocol | invariant | Protocol uses clear calls, location, priority, acknowledgments and concise updates. | shared awareness |
-| guardops.communication.daily_activity_report | Daily activity report | invariant | Report summarizes patrols, visitors, incidents, alarms, issues and handovers. | client visibility |
-| guardops.communication.escalation_tree | Security escalation tree | invariant | Tree lists who to notify by event type, time, severity and site. | no guessing |
-| guardops.communication.confidential_info | Security confidential information | invariant | Sensitive names, investigations, camera footage and access data are shared only by need. | privacy and trust |
-| guardops.communication.client_update | Client security update | variant | Update informs client contact about incidents, risks, service issue or corrective action. | align expectations |
-| guardops.safety.personal_safety | Guard personal safety | invariant | Safety covers distance, lighting, backup, communication, PPE and avoiding unnecessary confrontation. | guard comes home |
-| guardops.safety.deescalation | De-escalation | invariant | De-escalation uses calm communication, space, listening and options to reduce conflict. | lower risk |
-| guardops.safety.prohibited_action | Prohibited guard action | invariant | Prohibition limits searches, detention, pursuit, force or advice outside law and policy. | boundaries matter |
-| guardops.safety.lone_post_check | Lone post welfare check | variant | Check confirms guard safety and alertness during isolated or overnight work. | protect lone worker |
-| guardops.safety.hazard_report | Security hazard report | invariant | Report flags unsafe conditions found during patrol or post duty. | safety feedback |
-| guardops.admin.training_record | Guard training record | invariant | Record tracks licensing, site orientation, emergency procedures, de-escalation and equipment training. | qualified coverage |
-| guardops.admin.license_expiry | Guard license expiry | invariant | Expiry tracking prevents assignment of unlicensed or unauthorized guard. | compliance |
-| guardops.metrics.security_kpi | Security operations KPI | variant | KPI tracks incidents, response time, patrol completion, alarm rate, access exceptions and client issues. | manage service |
-| guardops.continuity.staffing_gap | Security staffing gap | invariant | Gap procedure covers replacement, overtime, post prioritization and client notification. | maintain coverage |
+| guardops.post.post_order | Заказ поста охраны | invariant | Почтовый порядок определяет обязанности, полномочия, патрули, контакты, сигналы тревоги, правила доступа и отчетность. | книга охранников |
+| guardops.post.shift_briefing | Инструктаж по смене охраны | invariant | На брифинге рассказывается о рисках, событиях, запрещенных лицах, вопросах технического обслуживания и специальных инструкциях. | начать с информирования |
+| guardops.post.uniform_check | Проверка формы охранника | variant | Проверка подтверждает личность, оборудование, радио, ключи, СИЗ и профессиональный внешний вид. | видимый авторитет |
+| guardops.post.key_control | Управление электронным ключом | invariant | Контролируйте выдачу, возврат, владельца, время, цель и передачу отсутствующих ключей. | защитить доступ |
+| guardops.post.post_relief | Смена поста охраны | invariant | Релиф передает ответственность, логи, ключи, радио и активные инциденты между охранниками. | нет пробелов в покрытии |
+| guardops.patrol.patrol_route | Маршрут патрулирования безопасности | invariant | Маршрут определяет контрольно-пропускные пункты, время, зоны, опасности и точки наблюдения. | систематический охват |
+| guardops.patrol.checkpoint_scan | Сканирование контрольно-пропускного пункта патрулем | variant | Сканирование подтверждает место, которое посетил охранник в определенное время, и может фиксировать примечания об исключениях. | патрульные доказательства |
+| guardops.patrol.randomization | Рандомизация патруля | variant | Рандомизация меняет время или маршрут, чтобы уменьшить предсказуемость. | сдерживание |
+| guardops.patrol.observation_note | Замечание по безопасности | invariant | В заметках фиксируются необычные условия, сведения о человеке, транспортном средстве, двери, утечке, риске возгорания или проблеме безопасности. | глаза на месте |
+| guardops.patrol.patrol_exception | Исключение патрулирования | invariant | Исключение связано с пропущенным контрольно-пропускным пунктом, небезопасной зоной, аварийным объездом или барьером доступа. | прозрачное отклонение |
+| guardops.access.visitor_checkin | Регистрация посетителей службы безопасности | invariant | При регистрации проверяется личность, цель, хозяин, бейдж, время и зона доступа. | контролируемый вход |
+| guardops.access.badge_issue | Временная проблема со значком | invariant | Выдача записывает номер бейджа, посетителя, хозяина, действующую территорию и возврат. | временная личность |
+| guardops.access.delivery_access | Контроль доступа к доставке | variant | Контроль проверяет перевозчика, манифест, назначение дока, транспортное средство и получателя. | управлять входом в логистику |
+| guardops.access.tailgating | Предотвращение задержек | invariant | Предупреждение останавливает несанкционированного проникновения человека через контролируемую дверь. | целостность доступа |
+| guardops.access.deny_entry | Отказ во въезде | invariant | В отказе записывается причина, лицо, контакт с руководителем и эскалация в случае отказа во входе. | законная граница |
+| guardops.alarm.alarm_response | Реакция на тревогу | invariant | Реагирование осуществляется в соответствии с процедурой в случае пожара, проникновения, принуждения, тревоги оборудования или окружающей среды. | действовать по сигналу |
+| guardops.alarm.false_alarm | Запись ложной тревоги | invariant | Запишите причину, систему, область, время реагирования и корректирующие действия. | уменьшить шум |
+| guardops.alarm.cctv_review | Запрос на проверку системы видеонаблюдения | variant | Запрос определяет камеру, временное окно, причину, авторизацию и обработку доказательств. | контролируемое использование видео |
+| guardops.alarm.door_forced | Сигнализация взлома | invariant | Сигнал тревоги указывает на то, что дверь открылась без действительных учетных данных или последовательности запроса на выход. | расследовать нарушение доступа |
+| guardops.alarm.dispatch_escalation | Эскалация диспетчерской службы безопасности | invariant | Эскалация контактов с руководителем, объектами, полицией, пожарными, медицинскими или клиентскими контактами в соответствии с протоколом. | правильно, помогите быстро |
+| guardops.incident.incident_report | Отчет об инциденте безопасности | invariant | Отчетные документы кто, что, где, когда, действия, свидетели, доказательства и уведомления. | официальная запись |
+| guardops.incident.use_of_force_report | Отчет о применении силы | variant | В отчете указывается тип силы, причина, травмы, свидетели, политическая основа и путь проверки. | ответственность за высокий риск |
+| guardops.incident.trespass_case | Дело о незаконном проникновении | variant | В деле документально подтверждено несанкционированное присутствие, предупреждение, удаление, контакт с правоохранительными органами и будущие ограничения. | предотвращение повторения |
+| guardops.incident.medical_assist | Охранная медицинская помощь | variant | Помощь в записи наблюдаемых аварийных ситуаций, ограничений на оказание первой помощи, вызовов скорой помощи и передачи обслуживания. | поддержка без клинического вмешательства |
+| guardops.incident.property_damage | Инцидент с повреждением имущества | invariant | Происшествие фиксирует местоположение, фотографии, имущество, предполагаемую причину, немедленный контроль и уведомление. | сохранять доказательства |
+| guardops.emergency.evacuation_support | Поддержка эвакуации | invariant | Поддержка помогает направлять пассажиров, обеспечивать чистоту маршрутов, сообщать об опасностях и учитывать назначенную территорию. | чрезвычайная роль |
+| guardops.emergency.lockdown_support | Поддержка блокировки | variant | Поддержка соблюдает процедуры контроля доступа, связи и безопасного позиционирования на объекте. | ответ на угрозу |
+| guardops.emergency.fire_watch | Пожарный дозор | variant | Наблюдайте за зоной наблюдения, когда неисправности пожарной системы или огневые работы требуют наблюдения со стороны человека. | временная защита |
+| guardops.emergency.severe_weather | Процедура для суровых погодных условий | variant | Процедура предусматривает укрытие, ограничение доступа, приостановку патрулирования и связь во время погодных угроз. | защищать людей |
+| guardops.emergency.emergency_drill | Учения по чрезвычайным ситуациям в области безопасности | invariant | Роль охранников в ходе учебных испытаний, связь, сроки, отчетность и корректирующие действия. | практика перед кризисом |
+| guardops.communication.radio_protocol | Радиопротокол безопасности | invariant | Протокол использует четкие вызовы, местоположение, приоритет, подтверждения и краткие обновления. | общее осознание |
+| guardops.communication.daily_activity_report | Ежедневный отчет о деятельности | invariant | Отчет суммирует патрули, посетителей, инциденты, сигналы тревоги, проблемы и передачи. | видимость клиента |
+| guardops.communication.escalation_tree | Дерево эскалации безопасности | invariant | В дереве перечислены, кого следует уведомлять по типу события, времени, серьезности и месту. | без догадок |
+| guardops.communication.confidential_info | Конфиденциальная информация безопасности | invariant | Конфиденциальные имена, расследования, записи с камер и данные доступа передаются только при необходимости. | конфиденциальность и доверие |
+| guardops.communication.client_update | Обновление безопасности клиента | variant | Обновление информирует контакт с клиентом об инцидентах, рисках, проблемах с обслуживанием или корректирующих действиях. | согласовать ожидания |
+| guardops.safety.personal_safety | Охрана личной безопасности | invariant | Безопасность включает в себя расстояние, освещение, резервное копирование, связь, средства индивидуальной защиты и избежание ненужных столкновений. | охранник приходит домой |
+| guardops.safety.deescalation | Деэскалация | invariant | Деэскалация использует спокойное общение, пространство, выслушивание и варианты уменьшения конфликта. | меньший риск |
+| guardops.safety.prohibited_action | Запрещенные охранные действия | invariant | Запрет ограничивает обыски, задержания, преследования, применение силы или советы за пределами закона и политики. | Границы имеют значение |
+| guardops.safety.lone_post_check | Проверка благосостояния одинокой почты | variant | Проверка подтверждает безопасность и бдительность охранника во время изолированной или ночной работы. | защитить одинокого работника |
+| guardops.safety.hazard_report | Отчет об угрозах безопасности | invariant | Сообщайте о небезопасных условиях, обнаруженных во время патрулирования или почтовой службы. | обратная связь по безопасности |
+| guardops.admin.training_record | Реестр обучения охранника | invariant | Запись лицензий на треки, ориентация на месте, действия в чрезвычайных ситуациях, деэскалация и обучение работе с оборудованием. | квалифицированное покрытие |
+| guardops.admin.license_expiry | Срок действия лицензии охранника истек | invariant | Отслеживание срока действия предотвращает назначение нелицензированной или несанкционированной охраны. | согласие |
+| guardops.metrics.security_kpi | KPI операций безопасности | variant | KPI отслеживает инциденты, время реагирования, завершение патрулирования, частоту сигналов тревоги, исключения доступа и проблемы клиентов. | управлять сервисом |
+| guardops.continuity.staffing_gap | Нехватка кадров в службе безопасности | invariant | Процедура пробелов охватывает замену, сверхурочную работу, определение приоритетности должностей и уведомление клиента. | поддерживать покрытие |

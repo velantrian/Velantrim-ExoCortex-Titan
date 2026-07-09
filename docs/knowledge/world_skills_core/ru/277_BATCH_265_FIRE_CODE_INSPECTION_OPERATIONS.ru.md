@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| fireinsp.occupancy.occupancy_record | Fire inspection occupancy record | invariant | Record stores business, use group, occupant load, contacts, permits and hazards. | know site |
-| fireinsp.occupancy.preplan_link | Fire preplan link | variant | Link connects inspection findings to response plan, hydrants, access and hazards. | response readiness |
-| fireinsp.occupancy.risk_class | Fire inspection risk class | invariant | Class ranks occupancy by hazard, size, vulnerability, history and systems. | schedule priority |
-| fireinsp.schedule.inspection_cycle | Fire inspection cycle | invariant | Cycle sets routine frequency by occupancy, risk, code and local policy. | plan workload |
-| fireinsp.schedule.complaint_assignment | Fire code complaint assignment | invariant | Assignment routes complaint by hazard, occupancy, inspector, urgency and jurisdiction. | investigate |
-| fireinsp.entry.entry_conference | Fire inspection entry conference | invariant | Conference identifies responsible person, scope, authority and inspection route. | set expectations |
-| fireinsp.entry.access_problem | Fire inspection access problem | variant | Problem records locked doors, no representative, unsafe entry or denied access. | reschedule/escalate |
-| fireinsp.hazard.egress_obstruction | Egress obstruction | invariant | Finding records blocked exits, aisles, doors, stairs or discharge paths. | keep escape clear |
-| fireinsp.hazard.storage_hazard | Fire storage hazard | invariant | Finding records combustible storage, height, clearance, housekeeping or incompatible materials. | reduce fuel |
-| fireinsp.hazard.electrical_hazard | Fire electrical hazard | invariant | Finding records extension cords, overloads, panels, exposed wiring or damaged equipment. | reduce ignition |
-| fireinsp.hazard.hot_work | Fire hot work control | variant | Control checks permits, fire watch, shielding, combustibles, extinguishers and duration. | prevent fires |
-| fireinsp.hazard.fire_lane_access | Fire lane and hydrant access | invariant | Finding records blocked fire lanes, hydrants, fire department connections or access roads. | support response |
-| fireinsp.system.alarm_panel | Fire alarm panel check | invariant | Check reviews status, trouble, monitoring, inspections, documentation and access. | alarm readiness |
-| fireinsp.system.sprinkler_system | Fire sprinkler system check | invariant | Check reviews valves, gauges, clearance, tags, impairments and records. | suppression readiness |
-| fireinsp.system.extinguisher | Fire extinguisher check | invariant | Check reviews location, type, charge, tag, access and spacing. | first response |
-| fireinsp.system.hood_suppression | Kitchen hood suppression check | variant | Check reviews tags, nozzles, fuel shutoff, cleaning and service records. | kitchen safety |
-| fireinsp.system.emergency_lighting | Emergency lighting check | invariant | Check verifies exit signs, backup lights, testing records and visibility. | egress safety |
-| fireinsp.permit.special_event | Fire special event permit | variant | Permit checks tents, crowds, exits, cooking, generators, pyrotechnics and emergency access. | event safety |
-| fireinsp.permit.hazardous_material | Fire hazardous material permit | variant | Permit records quantities, storage, SDS, signage, separation and emergency plan. | manage hazmat |
-| fireinsp.permit.occupancy_permit | Fire occupancy permit | invariant | Permit confirms use, capacity, systems, exits, address and inspection approval. | lawful occupancy |
-| fireinsp.violation.violation_notice | Fire code violation notice | invariant | Notice lists violation, code basis, correction, deadline, appeal and reinspection. | enforce code |
-| fireinsp.violation.immediate_danger | Fire immediate danger | invariant | Danger triggers evacuation, closure, fire watch, system repair or emergency order. | prevent casualties |
-| fireinsp.violation.repeat_violation | Fire repeat violation | variant | Violation repeats prior issue and may escalate enforcement or penalties. | address pattern |
-| fireinsp.firewatch.fire_watch_order | Fire watch order | variant | Order requires trained watch, patrol frequency, logs, communication and duration. | compensate impairment |
-| fireinsp.firewatch.fire_watch_log | Fire watch log | invariant | Log records patrol times, findings, staff, communication device and termination. | verify watch |
-| fireinsp.reinspect.reinspection_schedule | Fire reinspection schedule | invariant | Schedule verifies correction by deadline, risk, occupancy and inspector availability. | close violations |
-| fireinsp.reinspect.correction_evidence | Fire correction evidence | invariant | Evidence includes photos, service tags, invoices, test reports or field observation. | verify fix |
-| fireinsp.enforcement.citation | Fire code citation | variant | Citation records uncorrected violation, penalty, authority, evidence and hearing route. | compel compliance |
-| fireinsp.enforcement.closure_order | Fire closure order | variant | Order closes occupancy or area due to unsafe fire condition or system failure. | protect public |
-| fireinsp.education.owner_guidance | Fire code owner guidance | variant | Guidance explains corrections, maintenance, permits, records and prevention practices. | help compliance |
-| fireinsp.education.public_education | Fire public education contact | variant | Contact records smoke alarms, evacuation, extinguisher, school or business outreach. | prevention |
-| fireinsp.records.inspection_report | Fire inspection report | invariant | Report documents occupancy, findings, systems, violations, photos and deadlines. | official record |
-| fireinsp.records.system_test_record | Fire system test record | invariant | Record stores alarm, sprinkler, hood, pump, extinguisher or emergency light test. | system history |
-| fireinsp.records.photo_log | Fire inspection photo log | invariant | Log links image, location, violation, date and inspector. | evidence |
-| fireinsp.records.case_file | Fire inspection case file | invariant | File stores reports, permits, complaints, notices, reinspections and enforcement. | case memory |
-| fireinsp.quality.supervisor_review | Fire inspection supervisor review | invariant | Review checks code basis, deadlines, enforcement, closures and documentation. | consistency |
-| fireinsp.quality.code_update | Fire code update briefing | variant | Briefing aligns inspectors on adopted code changes, interpretations and policy. | shared practice |
-| fireinsp.safety.inspector_safety | Fire inspector safety | invariant | Safety covers hostile sites, traffic, roofs, confined spaces, chemicals and PPE. | protect staff |
-| fireinsp.reporting.program_report | Fire inspection program report | invariant | Report summarizes inspections, violations, permits, fire watches, closures and education. | oversight |
-| fireinsp.metrics.fireinsp_kpi | Fire inspection KPI | variant | KPI tracks inspection completion, correction rate, repeat violations, closures and system impairments. | manage program |
-| fireinsp.continuity.post_fire_inspection | Post-fire inspection | variant | Inspection documents damage, utilities, hazards, occupancy limits and investigation coordination. | recover safely |
-| fireinsp.continuity.system_outage | Fire inspection system outage | invariant | Outage uses paper route, offline reports, phone dispatch and later entry. | keep inspections |
-| fireinsp.close.case_closure | Fire inspection case closure | invariant | Closure records corrected, referred, cited, closed, withdrawn or education-only outcome. | finish case |
-| fireinsp.audit.audit_trail | Fire inspection audit trail | invariant | Trail records user, date, report, notice, edit, result and enforcement actions. | accountability |
+| fireinsp.occupancy.occupancy_record | Акт посещения пожарной инспекции | invariant | Запишите деятельность магазинов, группу использования, количество пассажиров, контакты, разрешения и опасности. | знать сайт |
+| fireinsp.occupancy.preplan_link | Ссылка на предварительный план пожара | variant | Link связывает результаты проверок с планом реагирования, гидрантами, доступом и опасностями. | готовность к реагированию |
+| fireinsp.occupancy.risk_class | Класс риска пожарной инспекции | invariant | Класс ранжирует размещение по опасностям, размеру, уязвимости, истории и системам. | приоритет расписания |
+| fireinsp.schedule.inspection_cycle | Цикл пожарной проверки | invariant | Cycle устанавливает регулярную частоту в зависимости от занятости, риска, кода и местной политики. | планировать рабочую нагрузку |
+| fireinsp.schedule.complaint_assignment | Распределение жалоб по пожарному кодексу | invariant | Назначение маршрутов подачи жалоб в зависимости от опасности, занятости, инспектора, срочности и юрисдикции. | расследовать |
+| fireinsp.entry.entry_conference | Вступительная конференция пожарной инспекции | invariant | Конференция определяет ответственное лицо, объем, полномочия и маршрут проверки. | устанавливать ожидания |
+| fireinsp.entry.access_problem | Проблема доступа пожарной инспекции | variant | Проблема фиксирует запертые двери, отсутствие представителя, небезопасный вход или отказ в доступе. | перенести/повысить график |
+| fireinsp.hazard.egress_obstruction | Препятствие на выходе | invariant | Обнаружение записей о заблокированных выходах, проходах, дверях, лестницах или разгрузочных путях. | держаться подальше от побега |
+| fireinsp.hazard.storage_hazard | Опасность хранения пожара | invariant | Нахождение записей о хранении горючих материалов, высоте, зазоре, содержании или несовместимых материалах. | уменьшить топливо |
+| fireinsp.hazard.electrical_hazard | Пожарная электрическая опасность | invariant | Нахождение записей об удлинителях, перегрузках, панелях, оголенной проводке или поврежденном оборудовании. | уменьшить зажигание |
+| fireinsp.hazard.hot_work | Контроль огневых работ при пожаре | variant | Разрешения на контрольные проверки, пожарное дежурство, экранирование, горючие материалы, огнетушители и продолжительность. | предотвращать пожары |
+| fireinsp.hazard.fire_lane_access | Доступ к пожарному коридору и гидранту | invariant | Обнаружение записей блокировало пожарные полосы, гидранты, соединения пожарных частей или подъездные дороги. | ответ поддержки |
+| fireinsp.system.alarm_panel | Проверка панели пожарной сигнализации | invariant | Проверьте статус проверок, проблемы, мониторинг, проверки, документацию и доступ. | готовность к тревоге |
+| fireinsp.system.sprinkler_system | Проверка спринклерной системы пожаротушения | invariant | Проверьте клапаны, манометры, зазоры, бирки, дефекты и записи. | готовность к подавлению |
+| fireinsp.system.extinguisher | Проверка огнетушителя | invariant | Проверьте местоположение, тип, стоимость, тег, доступ и интервал отзывов. | первый ответ |
+| fireinsp.system.hood_suppression | Проверка подавления кухонной вытяжки | variant | Проверьте бирки отзывов, форсунки, отключение подачи топлива, записи о чистке и обслуживании. | безопасность кухни |
+| fireinsp.system.emergency_lighting | Проверка аварийного освещения | invariant | Проверка проверяет знаки выхода, резервные фонари, записи испытаний и видимость. | безопасность выхода |
+| fireinsp.permit.special_event | Разрешение на проведение специальных пожарных мероприятий | variant | Разрешение проверяет палатки, скопление людей, выходы, приготовление пищи, генераторы, пиротехнику и аварийный доступ. | безопасность мероприятий |
+| fireinsp.permit.hazardous_material | Разрешение на пожароопасные материалы | variant | В разрешении фиксируются количество, хранение, паспорт безопасности, указатели, разделение и план действий в чрезвычайных ситуациях. | управлять опасными веществами |
+| fireinsp.permit.occupancy_permit | Разрешение на пожарную эксплуатацию | invariant | Разрешение подтверждает использование, мощность, системы, выходы, адрес и одобрение проверки. | законное владение |
+| fireinsp.violation.violation_notice | Уведомление о нарушении пожарных норм | invariant | В уведомлении перечислены нарушения, основания кодекса, исправления, сроки, апелляция и повторная проверка. | применять кодекс |
+| fireinsp.violation.immediate_danger | Непосредственная опасность пожара | invariant | Опасность вызывает эвакуацию, закрытие, пожарное дежурство, ремонт системы или экстренный приказ. | предотвратить жертвы |
+| fireinsp.violation.repeat_violation | Нарушение повтора пожара | variant | Нарушение повторяет предыдущую проблему и может ужесточить меры наказания или ужесточить меры наказания. | шаблон адреса |
+| fireinsp.firewatch.fire_watch_order | Порядок пожарного дежурства | variant | Порядок требует обученного дежурства, частоты патрулирования, журналов, связи и продолжительности. | компенсировать обесценение |
+| fireinsp.firewatch.fire_watch_log | Журнал пожарного дежурства | invariant | В журнале фиксируются время патрулирования, результаты, персонал, устройства связи и прекращение работы. | проверить часы |
+| fireinsp.reinspect.reinspection_schedule | График пожарной проверки | invariant | График проверяет корректировку по срокам, рискам, занятости и доступности инспекторов. | серьезные нарушения |
+| fireinsp.reinspect.correction_evidence | Доказательства корректировки огня | invariant | Доказательства включают фотографии, сервисные бирки, счета-фактуры, отчеты об испытаниях или наблюдения на местах. | проверить исправление |
+| fireinsp.enforcement.citation | Ссылка на правила пожарной безопасности | variant | В цитировании фиксируются неисправленные нарушения, штрафы, полномочия, доказательства и порядок проведения слушаний. | принуждать к соблюдению |
+| fireinsp.enforcement.closure_order | Приказ о ликвидации пожара | variant | Приказ закрывает помещение или зону из-за небезопасного пожара или сбоя системы. | защищать общественность |
+| fireinsp.education.owner_guidance | Руководство для владельцев пожарных норм | variant | Руководство объясняет корректировки, техническое обслуживание, разрешения, записи и методы предотвращения. | помочь соблюдению требований |
+| fireinsp.education.public_education | Уволить контакт в сфере государственного образования | variant | Контакт записывает сигналы дымовой сигнализации, эвакуацию, огнетушитель, работу в школе или на предприятии. | профилактика |
+| fireinsp.records.inspection_report | Отчет пожарной инспекции | invariant | Сообщайте о занятости документов, выводах, системах, нарушениях, фотографиях и сроках. | официальный отчет |
+| fireinsp.records.system_test_record | Протокол испытаний пожарной системы | invariant | Запись хранит сигналы тревоги, разбрызгиватели, вытяжки, насосы, огнетушители или испытания аварийного освещения. | история системы |
+| fireinsp.records.photo_log | Фотожурнал пожарной инспекции | invariant | Журнал связывает изображение, местоположение, нарушение, дату и инспектора. | доказательство |
+| fireinsp.records.case_file | Материалы дела пожарной инспекции | invariant | В файлах хранятся отчеты, разрешения, жалобы, уведомления, повторные проверки и правоприменение. | память корпуса |
+| fireinsp.quality.supervisor_review | Отзыв руководителя пожарной инспекции | invariant | Обзор проверяет основу кода, сроки, соблюдение требований, закрытие и документацию. | последовательность |
+| fireinsp.quality.code_update | Брифинг по обновлению пожарных норм | variant | Брифинг знакомит инспекторов с принятыми изменениями в кодексе, интерпретациями и политикой. | совместная практика |
+| fireinsp.safety.inspector_safety | Инспектор по пожарной безопасности | invariant | Безопасность охватывает враждебные объекты, движение транспорта, крыши, замкнутые пространства, химикаты и СИЗ. | защитить персонал |
+| fireinsp.reporting.program_report | Отчет программы пожарной инспекции | invariant | Отчет суммирует проверки, нарушения, разрешения, пожарные дежурства, закрытия и обучение. | надзор |
+| fireinsp.metrics.fireinsp_kpi | Пожарная инспекция КПИ | variant | KPI отслеживает завершение проверок, скорость исправлений, повторные нарушения, закрытия и сбои в работе системы. | управлять программой |
+| fireinsp.continuity.post_fire_inspection | Послепожарный осмотр | variant | Инспекция документирует повреждения, коммунальные услуги, опасности, пределы занятости и координацию расследования. | безопасно восстановиться |
+| fireinsp.continuity.system_outage | Отказ системы пожарной инспекции | invariant | Outage использует бумажный маршрут, автономные отчеты, отправку по телефону и последующий ввод. | проводить проверки |
+| fireinsp.close.case_closure | Закрытие дела пожарной инспекции | invariant | Записи о закрытии исправлены, переданы, процитированы, закрыты, отозваны или имеют только образовательный характер. | закончить дело |
+| fireinsp.audit.audit_trail | Ревизионная проверка пожарной инспекции | invariant | След записывает пользователя, дату, отчет, уведомление, редактирование, результат и меры воздействия. | подотчетность |

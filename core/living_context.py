@@ -19,8 +19,11 @@ Version: Patch 14 v2
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+
+logger = logging.getLogger(__name__)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Dataclasses
@@ -332,55 +335,52 @@ class LivingContextStore:
             "DELETE FROM fact_affordance_tokens WHERE fact_id = ?",
             (fact_id,),
         )
+        # F-02: ошибки INSERT больше не глотаются молча перед commit() — считаем и логируем
+        # (поведение сохранено: INSERT OR IGNORE + commit), чтобы неполный индекс был виден.
+        failed = 0
+        last_err: Exception | None = None
+
+        def _insert(token: str, field_name: str) -> None:
+            nonlocal failed, last_err
+            try:
+                self._conn.execute(
+                    "INSERT OR IGNORE INTO fact_affordance_tokens "
+                    "(fact_id, token, field) VALUES (?, ?, ?)",
+                    (fact_id, token, field_name),
+                )
+            except Exception as exc:  # noqa: BLE001
+                failed += 1
+                last_err = exc
+
         for affordance in ctx.affordances:
             for token in self._tokenize(affordance):
-                try:
-                    self._conn.execute(
-                        """
-                        INSERT OR IGNORE INTO fact_affordance_tokens
-                        (fact_id, token, field) VALUES (?, ?, 'affordance')
-                        """,
-                        (fact_id, token),
-                    )
-                except Exception:
-                    pass
+                _insert(token, "affordance")
         for product in ctx.products:
             for token in self._tokenize(product):
-                try:
-                    self._conn.execute(
-                        """
-                        INSERT OR IGNORE INTO fact_affordance_tokens
-                        (fact_id, token, field) VALUES (?, ?, 'product')
-                        """,
-                        (fact_id, token),
-                    )
-                except Exception:
-                    pass
+                _insert(token, "product")
         for agent in ctx.agents:
             for token in self._tokenize(agent.entity):
-                try:
-                    self._conn.execute(
-                        """
-                        INSERT OR IGNORE INTO fact_affordance_tokens
-                        (fact_id, token, field) VALUES (?, ?, 'agent')
-                        """,
-                        (fact_id, token),
-                    )
-                except Exception:
-                    pass
+                _insert(token, "agent")
         self._conn.commit()
+        if failed:
+            logger.warning(
+                "living-context index(%s): %d token insert(s) failed (last: %r); "
+                "search index may be incomplete",
+                fact_id, failed, last_err,
+            )
 
     @staticmethod
     def _tokenize(text: str) -> list[str]:
         """
-        Простая токенизация. FIX: использует pymorphy2 если установлен
-        для лемматизации русских слов.
+        Токенизация через единый модуль utils/text_utils.
+
+        FIX (v8.7 audit): больше не создаёт отдельный MorphAnalyzer —
+        использует общий из utils/text_utils.py (экономия ~40MB RAM).
         """
-        tokens = [t.lower().strip() for t in text.split() if len(t) > 2]
         try:
-            import pymorphy2
-            morph = pymorphy2.MorphAnalyzer()
-            tokens = [morph.parse(t)[0].normal_form for t in tokens]
+            from utils.text_utils import tokenize_lemmatized
+            return tokenize_lemmatized(text)
         except ImportError:
-            pass
-        return tokens
+            # Fallback: простая токенизация без pymorphy2
+            tokens = [t.lower().strip() for t in text.split() if len(t) > 2]
+            return tokens

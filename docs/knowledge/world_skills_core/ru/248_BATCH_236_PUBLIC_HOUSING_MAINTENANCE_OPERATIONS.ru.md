@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| housingops.intake.service_request | Public housing service request | invariant | Request records resident, unit, issue, contact, access permission and urgency. | start maintenance |
-| housingops.intake.emergency_triage | Housing emergency triage | invariant | Triage separates life safety, loss of utilities, lockout, leak and routine work. | prioritize risk |
-| housingops.intake.duplicate_check | Housing duplicate request check | invariant | Check links repeated calls to existing work order, resident and issue history. | avoid confusion |
-| housingops.intake.language_support | Housing maintenance language support | variant | Support ensures resident can report issue, understand access and receive notices. | equitable service |
-| housingops.intake.afterhours_call | Housing after-hours maintenance call | variant | Call captures emergency details, dispatch decision, contractor route and follow-up. | 24-hour response |
-| housingops.workorder.work_order_create | Housing maintenance work order | invariant | Work order links asset, unit, priority, trade, parts, labor and due date. | control work |
-| housingops.workorder.trade_assignment | Housing trade assignment | invariant | Assignment routes plumbing, electrical, HVAC, carpentry, pest, cleaning or grounds work. | right crew |
-| housingops.workorder.sla_clock | Housing maintenance SLA clock | invariant | Clock tracks required response time by emergency, urgent or routine priority. | compliance |
-| housingops.workorder.status_note | Housing work order status note | invariant | Note records attempted access, parts wait, vendor handoff, completion or deferral. | transparent progress |
-| housingops.workorder.resident_confirmation | Housing resident completion confirmation | variant | Confirmation captures resident acceptance, unresolved issue or follow-up need. | close loop |
-| housingops.access.entry_notice | Housing unit entry notice | invariant | Notice states date, window, reason, staff or vendor and resident rights. | lawful access |
-| housingops.access.key_control | Housing maintenance key control | invariant | Control tracks key checkout, staff, unit, time, return and exception. | protect residents |
-| housingops.access.no_access | Housing no-access record | invariant | Record documents missed appointment, notice, door tag, resident contact and reschedule. | evidence |
-| housingops.access.occupied_unit_safety | Occupied unit work safety | invariant | Safety covers tools, dust, pets, children, belongings, privacy and cleanup. | respectful work |
-| housingops.access.reasonable_accommodation | Housing maintenance accommodation | variant | Accommodation adjusts notice, communication, scheduling or access for resident need. | fair service |
-| housingops.trades.plumbing_leak | Housing plumbing leak response | invariant | Response isolates leak, protects property, repairs source and documents damage. | stop damage |
-| housingops.trades.electrical_fault | Housing electrical fault response | invariant | Response secures hazard, tests circuit, repairs approved components and documents safety. | prevent shock/fire |
-| housingops.trades.hvac_outage | Housing HVAC outage response | invariant | Response records temperature, vulnerable residents, equipment status, repair and temporary measures. | habitability |
-| housingops.trades.appliance_repair | Housing appliance repair | variant | Repair tracks appliance, symptom, part, warranty, replacement decision and resident notice. | restore function |
-| housingops.trades.pest_workorder | Housing pest work order | invariant | Work order records pest type, prep instructions, treatment, follow-up and education. | control infestation |
-| housingops.vendor.vendor_dispatch | Housing vendor dispatch | invariant | Dispatch sends scope, unit, access, insurance, safety rules and completion requirements. | controlled outsourcing |
-| housingops.vendor.vendor_checkin | Housing vendor check-in | variant | Check-in verifies arrival, ID, scope, keys, resident contact and building rules. | site control |
-| housingops.vendor.invoice_match | Housing vendor invoice match | invariant | Match compares invoice to work order, rates, completion proof and approvals. | payment control |
-| housingops.vendor.warranty_callback | Housing warranty callback | variant | Callback routes repeat defect to vendor under warranty or workmanship review. | reduce cost |
-| housingops.inspection.unit_inspection | Public housing unit inspection | invariant | Inspection records condition, safety, housekeeping, repairs, photos and notices. | asset oversight |
-| housingops.inspection.moveout_inspection | Housing move-out inspection | invariant | Inspection captures damages, wear, cleaning, keys, charges and turnover tasks. | prepare unit |
-| housingops.inspection.annual_inspection | Housing annual inspection | variant | Inspection reviews unit condition, health, safety, smoke detectors and resident issues. | compliance |
-| housingops.inspection.quality_control | Housing repair quality control | invariant | Control checks completed work against scope, safety, cleanliness and resident impact. | workmanship |
-| housingops.turnover.vacant_unit_scope | Vacant unit scope | invariant | Scope lists cleaning, paint, flooring, repairs, appliances, locks and inspection needs. | turn unit |
-| housingops.turnover.lock_change | Housing lock change | invariant | Change records lockset, keys, unit status, staff, date and secure handoff. | security |
-| housingops.turnover.make_ready_schedule | Housing make-ready schedule | variant | Schedule sequences trades, vendors, inspection and leasing deadline for vacant unit. | reduce vacancy |
-| housingops.safety.smoke_detector_check | Housing smoke detector check | invariant | Check records device presence, test, battery, replacement and resident notice. | life safety |
-| housingops.safety.mold_moisture | Housing mold and moisture response | invariant | Response investigates source, moisture, ventilation, cleaning, repair and follow-up. | health protection |
-| housingops.safety.lead_safe_work | Housing lead-safe work control | invariant | Control applies trained methods, containment, notices and clearance where required. | protect residents |
-| housingops.safety.incident_report | Housing maintenance incident report | invariant | Report covers injury, property damage, conflict, exposure, security or emergency. | incident trail |
-| housingops.parts.parts_inventory | Housing maintenance parts inventory | invariant | Inventory tracks stock, reorder point, issue to work order and storage location. | faster repairs |
-| housingops.parts.appliance_stock | Housing appliance stock | variant | Stock manages refrigerators, stoves, parts, serials, warranties and assignments. | replacement control |
-| housingops.parts.tool_checkout | Housing maintenance tool checkout | invariant | Checkout records tool, staff, job, condition, return and damage. | asset control |
-| housingops.reporting.backlog_report | Housing maintenance backlog report | invariant | Report summarizes open orders by priority, trade, age, building and cause. | manage workload |
-| housingops.reporting.compliance_report | Housing maintenance compliance report | invariant | Report tracks emergency response, inspections, safety checks and overdue work. | oversight |
-| housingops.resident.resident_notice | Housing resident maintenance notice | invariant | Notice communicates planned work, outage, entry, delay, preparation or completion. | clear communication |
-| housingops.resident.complaint_escalation | Housing maintenance complaint escalation | variant | Escalation routes unresolved issue to supervisor, resident services or quality review. | restore trust |
-| housingops.metrics.housing_kpi | Public housing maintenance KPI | variant | KPI tracks response time, backlog age, repeat repairs, no-access, vacancy days and complaints. | manage service |
-| housingops.continuity.building_outage | Housing building outage response | invariant | Response coordinates water, heat, elevator, power or sewer outage communication and repair. | protect residents |
+| housingops.intake.service_request | Заявка на жилищно-коммунальное обслуживание | invariant | Запрос записей резидента, подразделения, проблемы, контакта, разрешения на доступ и срочности. | начать техническое обслуживание |
+| housingops.intake.emergency_triage | Аварийная сортировка жилья | invariant | В сортировке разделяются вопросы безопасности жизни, потери коммунальных услуг, локаута, утечек и рутинной работы. | расставлять приоритеты риска |
+| housingops.intake.duplicate_check | Проверка запроса на получение дубликата жилья | invariant | Проверьте связи повторных вызовов с существующим заказом на работу, историей резидентов и проблем. | избежать путаницы |
+| housingops.intake.language_support | Языковая поддержка жилищного хозяйства | variant | Поддержка гарантирует, что резидент может сообщить о проблеме, понять доступ и получать уведомления. | равноправное обслуживание |
+| housingops.intake.afterhours_call | Вызов службы обслуживания жилья в нерабочее время | variant | Вызов фиксирует детали чрезвычайной ситуации, решение об отправке, маршрут подрядчика и последующие действия. | 24-часовой ответ |
+| housingops.workorder.work_order_create | Порядок проведения работ по содержанию жилья | invariant | Заказ на работу связывает актив, единицу, приоритет, сделку, детали, трудозатраты и срок выполнения. | контрольная работа |
+| housingops.workorder.trade_assignment | Торговое задание на жилье | invariant | Назначение маршрутов: сантехнические, электрические, HVAC, столярные, дезинсекционные, уборочные или земельные работы. | правильный экипаж |
+| housingops.workorder.sla_clock | Часы работы SLA по обслуживанию жилья | invariant | Часы отслеживают необходимое время реагирования по экстренному, срочному или обычному приоритету. | согласие |
+| housingops.workorder.status_note | Статус заказа на выполнение жилищных работ | invariant | Отмечайте попытки доступа, ожидание деталей, передачу поставщику, завершение или отсрочку. | прозрачный прогресс |
+| housingops.workorder.resident_confirmation | Подтверждение завершения строительства жилья жильцом | variant | Подтверждение отражает согласие резидента, нерешенную проблему или необходимость дальнейших действий. | замкнутый контур |
+| housingops.access.entry_notice | Уведомление о въезде в жилую единицу | invariant | В уведомлении указываются дата, окно, причина, персонал или поставщик и права резидента. | законный доступ |
+| housingops.access.key_control | Управление ключами по обслуживанию жилья | invariant | Управление отслеживает выдачу ключей, персонал, подразделение, время, возврат и исключение. | защищать жителей |
+| housingops.access.no_access | Запись о запрете доступа к жилью | invariant | Запишите документы о пропущенной встрече, уведомлении, дверной бирке, контакте с жильцом и переносе графика. | доказательство |
+| housingops.access.occupied_unit_safety | Безопасность труда занимаемого подразделения | invariant | Безопасность распространяется на инструменты, пыль, домашних животных, детей, личные вещи, конфиденциальность и уборку. | уважительная работа |
+| housingops.access.reasonable_accommodation | Жилищно-эксплуатационные помещения | variant | Жилье корректирует уведомление, связь, расписание или доступ в соответствии с потребностями жильцов. | честное обслуживание |
+| housingops.trades.plumbing_leak | Реакция на утечку водопровода в доме | invariant | Реагирование изолирует утечку, защищает имущество, устраняет источник и документирует ущерб. | остановить повреждение |
+| housingops.trades.electrical_fault | Реакция на электрическую неисправность корпуса | invariant | Реагирование обеспечивает безопасность, тестирует схему, ремонтирует одобренные компоненты и документирует безопасность. | предотвратить шок/пожар |
+| housingops.trades.hvac_outage | Реагирование на отключение систем отопления, вентиляции и кондиционирования жилья | invariant | Реагирование фиксирует температуру, уязвимых жителей, состояние оборудования, ремонт и временные меры. | обитаемость |
+| housingops.trades.appliance_repair | Ремонт бытовой техники | variant | Ремонт отслеживает устройство, симптом, деталь, гарантию, решение о замене и уведомление жильца. | восстановить функцию |
+| housingops.trades.pest_workorder | Порядок работы с вредителями жилья | invariant | В рабочем заказе записан тип вредителя, инструкции по приготовлению, обработке, последующему наблюдению и обучению. | контролировать заражение |
+| housingops.vendor.vendor_dispatch | Отправка продавца жилья | invariant | Отправка отправляет объем, единицу, доступ, страховку, правила безопасности и требования к завершению. | контролируемый аутсорсинг |
+| housingops.vendor.vendor_checkin | Регистрация продавца жилья | variant | При регистрации заезда проверяется прибытие, удостоверение личности, объем, ключи, контакты с жильцами и правила строительства. | контроль сайта |
+| housingops.vendor.invoice_match | Сопоставление счетов-фактур от поставщика жилья | invariant | Match сравнивает счет-фактуру с заказом на работу, расценками, подтверждением завершения и утверждениями. | контроль платежей |
+| housingops.vendor.warranty_callback | Обратный звонок по гарантии на жилье | variant | Маршруты обратного вызова повторяют дефект поставщику по гарантии или проверке качества изготовления. | снизить стоимость |
+| housingops.inspection.unit_inspection | Инспекция государственного жилищного фонда | invariant | Осмотр фиксирует состояние, безопасность, порядок содержания, ремонт, фотографии и уведомления. | надзор за активами |
+| housingops.inspection.moveout_inspection | Проверка выселения жилья | invariant | Осмотр фиксирует повреждения, износ, чистку, ключи, расходы и оборотные задачи. | подготовить подразделение |
+| housingops.inspection.annual_inspection | Ежегодный осмотр жилья | variant | Инспекция проверяет состояние объекта, здоровье, безопасность, детекторы дыма и проблемы жильцов. | согласие |
+| housingops.inspection.quality_control | Контроль качества ремонта жилья | invariant | Контрольные проверки завершенных работ на предмет объема, безопасности, чистоты и воздействия на жильцов. | качество изготовления |
+| housingops.turnover.vacant_unit_scope | Объем вакантного подразделения | invariant | В объем работ входят уборка, покраска, покрытие полов, ремонт, бытовая техника, замки и потребности в проверке. | блок поворота |
+| housingops.turnover.lock_change | Смена замка корпуса | invariant | Измените записи замка, ключей, статуса устройства, персонала, даты и безопасной передачи. | безопасность |
+| housingops.turnover.make_ready_schedule | График сдачи жилья | variant | Запланируйте последовательность сделок, поставщиков, проверку и сроки аренды для вакантной квартиры. | сократить вакансии |
+| housingops.safety.smoke_detector_check | Проверка детектора дыма в доме | invariant | Проверьте записи о наличии устройства, тестировании, аккумуляторе, замене и уведомлении резидента. | безопасность жизни |
+| housingops.safety.mold_moisture | Реакция корпуса на плесень и влажность | invariant | В ходе реагирования исследуются источник, влажность, вентиляция, очистка, ремонт и последующие меры. | охрана здоровья |
+| housingops.safety.lead_safe_work | Корпус, свинцовобезопасный контроль работы | invariant | В целях контроля применяются обученные методы, меры сдерживания, уведомления и разрешения, где это необходимо. | защищать жителей |
+| housingops.safety.incident_report | Отчет о происшествии, связанном с обслуживанием жилья | invariant | Отчет охватывает травмы, материальный ущерб, конфликты, воздействия, безопасность или чрезвычайную ситуацию. | след происшествия |
+| housingops.parts.parts_inventory | Инвентаризация запасных частей для обслуживания жилья | invariant | Инвентаризация отслеживает запасы, точку повторного заказа, выпуск заказа на работу и место хранения. | более быстрый ремонт |
+| housingops.parts.appliance_stock | Запас бытовой техники | variant | Склад управляет холодильниками, плитами, запчастями, серийными номерами, гарантиями и заданиями. | контроль замены |
+| housingops.parts.tool_checkout | Проверка инструментов для ухода за жильем | invariant | Касса записывает инструмент, персонал, работу, состояние, возврат и повреждения. | контроль активов |
+| housingops.reporting.backlog_report | Отчет о невыполненном ремонте жилья | invariant | В отчете суммируются открытые заказы по приоритету, торговле, возрасту, строению и причине. | управлять рабочей нагрузкой |
+| housingops.reporting.compliance_report | Отчет о соблюдении условий содержания жилья | invariant | Отчет отслеживает реагирование на чрезвычайные ситуации, проверки, проверки безопасности и просроченные работы. | надзор |
+| housingops.resident.resident_notice | Уведомление жильцу об алиментах | invariant | Уведомление сообщает о запланированных работах, простоях, входе, задержке, подготовке или завершении. | четкое общение |
+| housingops.resident.complaint_escalation | Рассмотрение жалоб на содержание жилья | variant | Эскалация направляет нерешенную проблему руководителю, в резидентские службы или в службу проверки качества. | восстановить доверие |
+| housingops.metrics.housing_kpi | КПЭ по содержанию государственного жилья | variant | KPI отслеживает время реагирования, срок невыполненной работы, повторные ремонты, отсутствие доступа, дни вакансий и жалобы. | управлять сервисом |
+| housingops.continuity.building_outage | Реагирование на сбой в строительстве жилого дома | invariant | Ответ координирует связь и ремонт при отключении воды, тепла, лифта, электроэнергии или канализации. | защищать жителей |

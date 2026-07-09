@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| faccenterops.activation.trigger | activation trigger | MODEL | Center activates after mass casualty, missing persons surge or major family information need. | Creates organized family support. |
-| faccenterops.activation.authority | activation authority | RECORD | Authority records lead agency, incident command, site and operational period. | Clarifies governance. |
-| faccenterops.activation.site | site selection | METHOD | Site selection considers privacy, security, accessibility, media separation and transport. | Protects families. |
-| faccenterops.activation.layout | layout plan | METHOD | Layout separates registration, waiting, briefing, counseling, interviews and private rooms. | Reduces chaos. |
-| faccenterops.registration.family_id | family record ID | RECORD | Family ID links inquirer, victim/missing person, relationship, contacts and language. | Creates traceable support case. |
-| faccenterops.registration.relationship | relationship verification | METHOD | Relationship is checked before sensitive victim information is shared. | Protects privacy. |
-| faccenterops.registration.group_link | family group link | RECORD | Related family members are linked to avoid duplicate interviews and inconsistent updates. | Keeps communication coherent. |
-| faccenterops.registration.access_badge | access badge | METHOD | Badge or wristband controls entry and family-only areas. | Maintains secure environment. |
-| faccenterops.victim.accounting | victim accounting | RECORD | Accounting links missing, injured, deceased, unidentified and located persons. | Supports accurate updates. |
-| faccenterops.victim.reconciliation | reconciliation process | QUALITY_CHECK | Reconciliation compares hospitals, morgue, shelters, law enforcement and witness lists. | Reduces conflicting information. |
-| faccenterops.victim.unidentified | unidentified person process | SAFETY_RULE | Unidentified persons are handled by medical examiner or authorized officials. | Prevents improper identification. |
-| faccenterops.victim.status_confidence | status confidence | MODEL | Status confidence ranks confirmed, probable, unconfirmed or incorrect information. | Prevents rumor release. |
-| faccenterops.interview.ante_mortem | ante-mortem interview | METHOD | Authorized staff collect identifying details for missing/deceased identification. | Supports victim identification. |
-| faccenterops.interview.evidence_handling | evidence handling | SAFETY_RULE | Photos, dental, DNA or property details follow chain and consent rules. | Protects sensitive evidence. |
-| faccenterops.interview.retrauma | retrauma control | METHOD | Interviews minimize repeated questioning and use trauma-informed practice. | Protects families. |
-| faccenterops.interview.interpreter | interpreter support | METHOD | Interpreters support interviews and briefings without becoming evidence handlers. | Improves accuracy. |
-| faccenterops.briefing.schedule | briefing schedule | RECORD | Briefings occur at predictable times even when updates are limited. | Reduces uncertainty. |
-| faccenterops.briefing.approved_info | approved information | CONSTRAINT | Briefings use only cleared information from incident command and victim accounting. | Avoids false statements. |
-| faccenterops.briefing.private_notice | private notification | SAFETY_RULE | Death or sensitive status is communicated privately by authorized personnel. | Preserves dignity. |
-| faccenterops.briefing.question_log | question log | RECORD | Family questions are logged, assigned and answered when verified. | Keeps concerns visible. |
-| faccenterops.behavioral.support_station | support station | METHOD | Behavioral support offers crisis counseling, spiritual care and quiet spaces. | Supports distressed families. |
-| faccenterops.behavioral.acute_distress | acute distress response | SAFETY_RULE | Severe distress, self-harm risk or medical crisis triggers clinical/emergency help. | Protects safety. |
-| faccenterops.behavioral.staff_support | staff support | METHOD | Staff and volunteers receive breaks, defusing and supervision. | Reduces secondary trauma. |
-| faccenterops.behavioral.children | child support | METHOD | Child-friendly space and safeguarding rules support minors at the center. | Protects children. |
-| faccenterops.privacy.media_boundary | media boundary | SAFETY_RULE | Media are physically and procedurally separated from families. | Prevents exploitation. |
-| faccenterops.privacy.data_minimum | minimum data | CONSTRAINT | Center collects only data needed for identification, notification and support. | Reduces privacy risk. |
-| faccenterops.privacy.confidential_room | confidential room | METHOD | Sensitive conversations occur in private rooms. | Preserves dignity. |
-| faccenterops.privacy.access_log | access log | RECORD | Access to family/victim data is logged. | Detects misuse. |
-| faccenterops.services.food_water | basic services | METHOD | Families receive water, food, restrooms, charging and seating. | Supports long waits. |
-| faccenterops.services.transport | transport support | METHOD | Transport may connect families to hospitals, lodging, reunification or home. | Reduces practical barriers. |
-| faccenterops.services.lodging | lodging support | METHOD | Lodging support coordinates hotels, vouchers or partner shelters. | Helps out-of-area families. |
-| faccenterops.services.documents | document support | METHOD | Families may need letters, death-related instructions or service referrals. | Helps next steps. |
-| faccenterops.security.entry | entry control | METHOD | Entry control screens credentials, threats and unauthorized persons. | Keeps center safe. |
-| faccenterops.security.threat | threat assessment | SAFETY_RULE | Threats, stalking, custody disputes or offender presence trigger security escalation. | Protects vulnerable families. |
-| faccenterops.security.incident | incident report | RECORD | Incidents record facts, response, escalation and follow-up. | Supports safety review. |
-| faccenterops.partners.liaison | partner liaison | METHOD | Liaisons coordinate hospitals, law enforcement, coroner, Red Cross, faith groups and interpreters. | Aligns support network. |
-| faccenterops.partners.role_card | role card | RECORD | Role cards define what each agency can and cannot tell families. | Prevents mixed messages. |
-| faccenterops.records.case_file | case file | RECORD | Case file stores registration, inquiries, updates, services and notifications. | Creates audit trail. |
-| faccenterops.records.retention | retention rule | CONSTRAINT | Records follow incident, privacy, legal and victim services retention rules. | Controls lifecycle. |
-| faccenterops.metrics.family_count | family count | MEASUREMENT | Count tracks families served, active cases, briefings and service needs. | Shows workload. |
-| faccenterops.metrics.information_lag | information lag | MEASUREMENT | Lag measures time from confirmed status to family notification. | Highlights delays. |
-| faccenterops.qa.info_audit | information audit | QUALITY_CHECK | Audit checks whether disclosed information was approved and documented. | Reduces harm. |
-| faccenterops.demobilization.transition | transition plan | METHOD | Transition moves open cases to victim services, medical examiner or case managers. | Prevents abandonment. |
-| faccenterops.demobilization.site_close | site closeout | METHOD | Closeout secures records, returns site, debriefs staff and updates families. | Ends operation responsibly. |
+| faccenterops.activation.trigger | триггер активации | MODEL | Центр активируется после массовых жертв, резкого увеличения числа пропавших без вести или серьезной потребности в информации о семьях. | Создает организованную поддержку семьи. |
+| faccenterops.activation.authority | полномочия активации | RECORD | Орган фиксирует ведущее агентство, командование по ликвидации чрезвычайных ситуаций, место и период эксплуатации. | Уточняет управление. |
+| faccenterops.activation.site | выбор места | METHOD | При выборе места учитываются конфиденциальность, безопасность, доступность, разделение носителей и транспортировка. | Защищает семьи. |
+| faccenterops.activation.layout | план расположения | METHOD | Планировка разделяет регистрацию, ожидание, брифинг, консультации, собеседования и частные комнаты. | Уменьшает хаос. |
+| faccenterops.registration.family_id | идентификатор семейной записи | RECORD | Семейный идентификатор связывает запрашивающего, жертву/пропавшего без вести человека, родство, контакты и язык. | Создает отслеживаемый запрос в службу поддержки. |
+| faccenterops.registration.relationship | проверка отношений | METHOD | Родственность проверяется перед раскрытием конфиденциальной информации о жертве. | Защищает конфиденциальность. |
+| faccenterops.registration.group_link | ссылка на семейную группу | RECORD | Родственные члены семьи связаны, чтобы избежать дублирования интервью и противоречивых обновлений. | Сохраняет связность общения. |
+| faccenterops.registration.access_badge | значок доступа | METHOD | Бейдж или браслет контролируют вход и зоны, предназначенные только для семей. | Поддерживает безопасную среду. |
+| faccenterops.victim.accounting | учет потерпевших | RECORD | Учет связей с пропавшими без вести, пострадавшими, погибшими, неопознанными и обнаруженными лицами. | Поддерживает точные обновления. |
+| faccenterops.victim.reconciliation | процесс примирения | QUALITY_CHECK | При сверке сравниваются больницы, морги, приюты, правоохранительные органы и списки свидетелей. | Уменьшает противоречивую информацию. |
+| faccenterops.victim.unidentified | процесс неизвестного лица | SAFETY_RULE | Неизвестных лиц обслуживают судмедэксперты или уполномоченные должностные лица. | Предотвращает неправильную идентификацию. |
+| faccenterops.victim.status_confidence | уверенность в статусе | MODEL | Статус достоверности ранжирует подтвержденную, вероятную, неподтвержденную или неверную информацию. | Предотвращает распространение слухов. |
+| faccenterops.interview.ante_mortem | предсмертное интервью | METHOD | Уполномоченный персонал собирает идентификационные данные для идентификации пропавшего/умершего. | Поддерживает идентификацию жертвы. |
+| faccenterops.interview.evidence_handling | обработка доказательств | SAFETY_RULE | Фотографии, данные о зубах, ДНК или собственности подчиняются правилам цепочки и согласия. | Защищает конфиденциальные доказательства. |
+| faccenterops.interview.retrauma | контроль повторной травмы | METHOD | Интервью сводят к минимуму повторные допросы и используют практику, основанную на травмах. | Защищает семьи. |
+| faccenterops.interview.interpreter | поддержка переводчика | METHOD | Переводчики поддерживают интервью и брифинги, не становясь при этом специалистами по работе с доказательствами. | Улучшает точность. |
+| faccenterops.briefing.schedule | график брифингов | RECORD | Брифинги проводятся в предсказуемое время, даже если обновления ограничены. | Уменьшает неопределенность. |
+| faccenterops.briefing.approved_info | утвержденная информация | CONSTRAINT | На брифингах используется только проверенная информация, полученная от командования инцидентами и учета жертв. | Избегает ложных заявлений. |
+| faccenterops.briefing.private_notice | личное уведомление | SAFETY_RULE | О смерти или чувствительном статусе сообщается в частном порядке уполномоченным персоналом. | Сохраняет достоинство. |
+| faccenterops.briefing.question_log | журнал вопросов | RECORD | Семейные вопросы регистрируются, назначаются и получают ответы после проверки. | Делает проблемы видимыми. |
+| faccenterops.behavioral.support_station | станция поддержки | METHOD | Поведенческая поддержка предлагает кризисное консультирование, духовную помощь и тихие места. | Поддерживает проблемные семьи. |
+| faccenterops.behavioral.acute_distress | острая реакция на дистресс | SAFETY_RULE | Тяжелый стресс, риск членовредительства или медицинский кризис требуют оказания клинической/неотложной помощи. | Обеспечивает безопасность. |
+| faccenterops.behavioral.staff_support | поддержка персонала | METHOD | Сотрудники и волонтеры получают перерывы, разрядку и наблюдение. | Уменьшает вторичную травму. |
+| faccenterops.behavioral.children | алименты на ребенка | METHOD | Пространство, дружелюбное к детям, и правила безопасности поддерживают несовершеннолетних в центре. | Защищает детей. |
+| faccenterops.privacy.media_boundary | граница СМИ | SAFETY_RULE | СМИ физически и процедурно отделены от семей. | Предотвращает эксплуатацию. |
+| faccenterops.privacy.data_minimum | минимальные данные | CONSTRAINT | Центр собирает только данные, необходимые для идентификации, уведомления и поддержки. | Снижает риск конфиденциальности. |
+| faccenterops.privacy.confidential_room | конфиденциальная комната | METHOD | Чувствительные разговоры происходят в приватных комнатах. | Сохраняет достоинство. |
+| faccenterops.privacy.access_log | журнал доступа | RECORD | Доступ к данным семьи/жертвы протоколируется. | Обнаруживает неправильное использование. |
+| faccenterops.services.food_water | базовые услуги | METHOD | Семьи получают воду, еду, туалеты, зарядку и места. | Поддерживает долгое ожидание. |
+| faccenterops.services.transport | транспортное обеспечение | METHOD | Транспорт может доставить семьи к больницам, жилью, местам воссоединения или дому. | Уменьшает практические барьеры. |
+| faccenterops.services.lodging | поддержка проживания | METHOD | Поддержка по размещению координирует отели, путевки или партнерские приюты. | Помогает иногородним семьям. |
+| faccenterops.services.documents | документальное сопровождение | METHOD | Семьям могут понадобиться письма, инструкции, связанные со смертью, или направления в службу поддержки. | Помогает сделать следующие шаги. |
+| faccenterops.security.entry | входной контроль | METHOD | Контроль входа проверяет учетные данные, угрозы и посторонних лиц. | Обеспечивает безопасность центра. |
+| faccenterops.security.threat | оценка угроз | SAFETY_RULE | Угрозы, преследование, споры об опеке или присутствие преступников вызывают усиление мер безопасности. | Защищает уязвимые семьи. |
+| faccenterops.security.incident | отчет об инциденте | RECORD | Инциденты фиксируют факты, реакцию, эскалацию и последующие действия. | Поддерживает проверку безопасности. |
+| faccenterops.partners.liaison | партнерская связь | METHOD | Связные координируют работу больниц, правоохранительных органов, коронера, Красного Креста, религиозных групп и переводчиков. | Выравнивает сеть поддержки. |
+| faccenterops.partners.role_card | ролевая карта | RECORD | Ролевые карточки определяют, что каждое агентство может и не может рассказывать семьям. | Предотвращает смешанные сообщения. |
+| faccenterops.records.case_file | материалы дела | RECORD | В файле дела хранятся регистрации, запросы, обновления, услуги и уведомления. | Создает контрольный журнал. |
+| faccenterops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют правилам хранения инцидентов, конфиденциальности, юридическим вопросам и услугам потерпевших. | Управляет жизненным циклом. |
+| faccenterops.metrics.family_count | семейный счет | MEASUREMENT | Count отслеживает обслуживаемые семьи, активные случаи, брифинги и потребности в услугах. | Показывает загруженность. |
+| faccenterops.metrics.information_lag | информационное отставание | MEASUREMENT | Задержка измеряет время от подтверждения статуса до уведомления семьи. | Подчеркивает задержки. |
+| faccenterops.qa.info_audit | информационный аудит | QUALITY_CHECK | Аудит проверяет, была ли раскрытая информация одобрена и документирована. | Уменьшает вред. |
+| faccenterops.demobilization.transition | план перехода | METHOD | При переходе открытые дела передаются в службы потерпевших, судмедэксперту или кураторам. | Предотвращает отказ. |
+| faccenterops.demobilization.site_close | закрытие сайта | METHOD | Closeout обеспечивает безопасность записей, возвращает сайт, проводит опрос сотрудников и информирует семьи. | Ответственно завершает работу. |

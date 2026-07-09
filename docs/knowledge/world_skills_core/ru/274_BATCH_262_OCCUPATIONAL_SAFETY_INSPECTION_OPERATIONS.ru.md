@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| oshinsp.complaint.complaint_intake | Occupational safety complaint intake | invariant | Intake records workplace, hazard, workers exposed, timing, complainant status and contact. | start case |
-| oshinsp.complaint.whistleblower_privacy | Safety complainant privacy | invariant | Privacy protects complainant identity and communication limits under applicable rules. | reduce retaliation risk |
-| oshinsp.complaint.imminent_danger | Imminent danger flag | invariant | Flag identifies conditions that may cause death or serious harm before normal processing. | urgent response |
-| oshinsp.complaint.jurisdiction | Safety inspection jurisdiction check | invariant | Check confirms employer, worksite, industry, agency authority and referral needs. | route correctly |
-| oshinsp.plan.inspection_plan | Occupational safety inspection plan | invariant | Plan defines scope, standards, hazards, records, sampling, PPE and team. | prepare inspection |
-| oshinsp.plan.site_entry_strategy | Worksite entry strategy | variant | Strategy covers arrival, credentials, employer representative, union or worker representative. | lawful entry |
-| oshinsp.plan.history_review | Workplace safety history review | invariant | Review checks prior citations, injuries, complaints, programs and abatement. | target risks |
-| oshinsp.entry.opening_conference | Safety inspection opening conference | invariant | Conference explains authority, scope, rights, process, records requested and walkaround. | align parties |
-| oshinsp.entry.representative_selection | Worker representative selection | variant | Selection identifies authorized employee representative or alternate walkaround participant. | worker participation |
-| oshinsp.entry.refusal_entry | Safety inspection entry refusal | invariant | Refusal record captures employer response, reason, legal step and preservation needs. | enforce authority |
-| oshinsp.field.walkaround | Safety inspection walkaround | invariant | Walkaround observes operations, hazards, controls, worker exposure and employer practices. | gather evidence |
-| oshinsp.field.hazard_photo | Occupational hazard photo | invariant | Photo links hazard, location, worker exposure, equipment, controls and timestamp. | evidence |
-| oshinsp.field.worker_interview | Safety worker interview | invariant | Interview gathers task, exposure, training, incidents, controls and retaliation concern. | worker evidence |
-| oshinsp.field.employer_interview | Safety employer interview | variant | Interview captures policies, supervision, controls, training, maintenance and explanations. | management evidence |
-| oshinsp.field.document_request | Safety inspection document request | invariant | Request asks for logs, training, programs, monitoring, maintenance and injury records. | support findings |
-| oshinsp.hazard.machine_guarding | Machine guarding hazard assessment | variant | Assessment reviews pinch points, guards, interlocks, lockout and exposure. | prevent injury |
-| oshinsp.hazard.fall_protection | Fall protection hazard assessment | variant | Assessment checks heights, guardrails, harnesses, anchors, ladders and openings. | prevent falls |
-| oshinsp.hazard.chemical_exposure | Chemical exposure assessment | variant | Assessment reviews labels, SDS, ventilation, PPE, storage, monitoring and symptoms. | reduce exposure |
-| oshinsp.hazard.ergonomic_risk | Ergonomic risk assessment | variant | Assessment reviews force, repetition, posture, lifting, tools and work pace. | reduce strain |
-| oshinsp.hazard.heat_stress | Heat stress hazard assessment | variant | Assessment checks temperature, workload, acclimatization, water, rest, shade and symptoms. | prevent illness |
-| oshinsp.sampling.exposure_sampling | Occupational exposure sampling | invariant | Sampling records contaminant, method, worker, duration, equipment, calibration and chain. | quantify risk |
-| oshinsp.sampling.noise_monitoring | Occupational noise monitoring | variant | Monitoring records dosimeter, area readings, task, duration, protection and results. | hearing risk |
-| oshinsp.sampling.calibration_record | Safety sampling calibration record | invariant | Record documents pre, post, device, standard, time and acceptable range. | defensible data |
-| oshinsp.citation.violation_analysis | Occupational safety violation analysis | invariant | Analysis links hazard, standard, exposure, employer knowledge and severity. | citation basis |
-| oshinsp.citation.serious_classification | Serious violation classification | invariant | Classification records likelihood and severity of death or serious physical harm. | enforcement level |
-| oshinsp.citation.repeat_classification | Repeat violation classification | variant | Classification compares prior final orders, similarity, employer and timeframe. | pattern enforcement |
-| oshinsp.citation.willful_review | Willful violation review | variant | Review assesses intentional disregard, plain indifference, knowledge and evidence. | severe enforcement |
-| oshinsp.abatement.abatement_requirement | Safety abatement requirement | invariant | Requirement states correction, date, proof, interim protection and certification. | remove hazard |
-| oshinsp.abatement.interim_control | Safety interim control | variant | Control reduces exposure before permanent fix through guarding, isolation, PPE or procedure. | temporary protection |
-| oshinsp.abatement.followup_inspection | Safety follow-up inspection | invariant | Inspection verifies abatement, documentation, worker protection and continuing compliance. | close citation |
-| oshinsp.closing.closing_conference | Safety inspection closing conference | invariant | Conference explains findings, rights, abatement, contest process and next steps. | procedural closure |
-| oshinsp.records.case_file | Occupational safety inspection case file | invariant | File stores complaint, notes, interviews, photos, samples, citations and correspondence. | evidence record |
-| oshinsp.records.evidence_index | Safety inspection evidence index | invariant | Index maps evidence items to hazards, standards, dates, locations and witnesses. | organize case |
-| oshinsp.records.confidential_note | Safety inspection confidential note | invariant | Note protects worker identity, whistleblower details or sensitive business information. | privacy |
-| oshinsp.appeal.contest_record | Safety citation contest record | variant | Record tracks employer contest, conference, settlement, hearing, decision and abatement impact. | due process |
-| oshinsp.appeal.informal_conference | Safety informal conference | variant | Conference reviews citation, penalty, abatement, evidence and settlement options. | resolve dispute |
-| oshinsp.communication.worker_notice | Safety inspection worker notice | invariant | Notice communicates complaint outcome, citation, abatement or rights as allowed. | inform workers |
-| oshinsp.communication.employer_notice | Safety inspection employer notice | invariant | Notice communicates findings, citations, penalties, abatement and contest rights. | formal action |
-| oshinsp.quality.supervisor_review | Safety inspection supervisor review | invariant | Review checks jurisdiction, evidence, citation elements, sampling, penalty and closure. | quality control |
-| oshinsp.reporting.program_report | Occupational safety inspection report | variant | Report summarizes complaints, inspections, hazards, citations, abatement and appeals. | oversight |
-| oshinsp.metrics.osha_kpi | Occupational safety inspection KPI | variant | KPI tracks response time, serious hazards, abatement, contested cases and injury trends. | manage program |
-| oshinsp.continuity.fatality_response | Occupational fatality response | invariant | Response secures scene, coordinates agencies, interviews, evidence, family sensitivity and deadlines. | critical investigation |
-| oshinsp.continuity.multiemployer_site | Multi-employer worksite coordination | variant | Coordination identifies controlling, exposing, creating and correcting employers. | assign responsibility |
-| oshinsp.close.case_closure | Occupational safety inspection closure | invariant | Closure records citations, no citation, referral, settlement, abatement or appeal status. | end case |
+| oshinsp.complaint.complaint_intake | Прием жалоб по охране труда | invariant | Приемная комиссия записывает рабочее место, опасность, подвергшихся воздействию работников, время, статус заявителя и контакты. | начать дело |
+| oshinsp.complaint.whistleblower_privacy | Конфиденциальность заявителя по вопросам безопасности | invariant | Конфиденциальность защищает личность заявителя и ограничивает возможности общения в соответствии с применимыми правилами. | снизить риск возмездия |
+| oshinsp.complaint.imminent_danger | Флаг неминуемой опасности | invariant | Флаг указывает на условия, которые могут привести к смерти или серьезному вреду перед нормальной обработкой. | срочный ответ |
+| oshinsp.complaint.jurisdiction | Проверка юрисдикции инспекции безопасности | invariant | Проверка подтверждает работодателя, рабочее место, отрасль, полномочия агентства и потребности в направлениях. | проложить правильный маршрут |
+| oshinsp.plan.inspection_plan | План проверки охраны труда | invariant | План определяет объем, стандарты, опасности, записи, отбор проб, СИЗ и команду. | подготовить проверку |
+| oshinsp.plan.site_entry_strategy | Стратегия входа на рабочее место | variant | Стратегия охватывает прибытие, полномочия, представителя работодателя, профсоюза или работника. | законный въезд |
+| oshinsp.plan.history_review | Анализ истории безопасности на рабочем месте | invariant | Обзор проверяет предыдущие цитаты, травмы, жалобы, программы и меры по снижению выбросов. | целевые риски |
+| oshinsp.entry.opening_conference | Открытие конференции по инспекции безопасности | invariant | Конференция объясняет полномочия, объем, права, процесс, запрошенные записи и обходные пути. | объединить стороны |
+| oshinsp.entry.representative_selection | Выбор представителя работника | variant | Выбор определяет уполномоченного представителя сотрудника или альтернативного участника обхода. | участие работника |
+| oshinsp.entry.refusal_entry | Отказ во въезде в инспекцию безопасности | invariant | Запись об отказе отражает реакцию работодателя, причину, юридические меры и потребности в сохранении. | обеспечивать соблюдение полномочий |
+| oshinsp.field.walkaround | Обход проверки безопасности | invariant | Обход наблюдает за операциями, опасностями, средствами контроля, воздействием на работников и практикой работодателя. | собирать доказательства |
+| oshinsp.field.hazard_photo | Фото профессиональных вредностей | invariant | Фотография связывает опасность, местоположение, воздействие на работника, оборудование, средства управления и временную метку. | доказательство |
+| oshinsp.field.worker_interview | Собеседование с работником службы безопасности | invariant | Интервью собирает информацию о задаче, воздействии, обучении, инцидентах, средствах контроля и опасениях возмездия. | доказательства работника |
+| oshinsp.field.employer_interview | Собеседование по безопасности с работодателем | variant | В интервью описываются политика, надзор, контроль, обучение, обслуживание и объяснения. | доказательства управления |
+| oshinsp.field.document_request | Запрос документов проверки безопасности | invariant | Запрос запрашивает журналы, обучение, программы, мониторинг, техническое обслуживание и записи о травмах. | поддержать выводы |
+| oshinsp.hazard.machine_guarding | Оценка опасности ограждения машин | variant | При оценке рассматриваются точки защемления, ограждения, блокировки, блокировки и воздействия. | предотвратить травмы |
+| oshinsp.hazard.fall_protection | Оценка опасности защиты от падения | variant | При оценке проверяется высота, ограждения, ремни безопасности, анкеры, лестницы и проемы. | предотвратить падения |
+| oshinsp.hazard.chemical_exposure | Оценка химического воздействия | variant | При оценке рассматриваются этикетки, паспорта безопасности, вентиляция, СИЗ, хранение, мониторинг и симптомы. | уменьшить воздействие |
+| oshinsp.hazard.ergonomic_risk | Эргономическая оценка рисков | variant | При оценке оцениваются сила, повторение, поза, подъем, инструменты и темп работы. | уменьшить нагрузку |
+| oshinsp.hazard.heat_stress | Оценка опасности теплового стресса | variant | При оценке проверяется температура, рабочая нагрузка, акклиматизация, вода, отдых, тень и симптомы. | предотвратить болезнь |
+| oshinsp.sampling.exposure_sampling | Отбор проб профессионального воздействия | invariant | Отбор проб записывает загрязняющие вещества, метод, работника, продолжительность, оборудование, калибровку и цепь. | количественно оценить риск |
+| oshinsp.sampling.noise_monitoring | Мониторинг профессионального шума | variant | Мониторинг записей дозиметра, показаний площади, задания, продолжительности, защиты и результатов. | риск слуха |
+| oshinsp.sampling.calibration_record | Протокол калибровки безопасного отбора проб | invariant | Записывайте документы до, после, устройство, стандарт, время и допустимый диапазон. | защищенные данные |
+| oshinsp.citation.violation_analysis | Анализ нарушений охраны труда | invariant | Анализ связывает опасность, стандарт, воздействие, знания работодателя и серьезность. | основа цитирования |
+| oshinsp.citation.serious_classification | Классификация серьезных нарушений | invariant | Классификация фиксирует вероятность и тяжесть смерти или серьезного физического вреда. | уровень правоприменения |
+| oshinsp.citation.repeat_classification | Повторить классификацию нарушений | variant | Классификация сравнивает предыдущие окончательные заказы, сходство, работодателя и сроки. | соблюдение шаблона |
+| oshinsp.citation.willful_review | Рассмотрение умышленного нарушения | variant | Обзор оценивает намеренное игнорирование, простое безразличие, знания и доказательства. | суровое правоприменение |
+| oshinsp.abatement.abatement_requirement | Требование снижения уровня безопасности | invariant | Требование предусматривает исправление, дату, подтверждение, временную защиту и сертификацию. | устранить опасность |
+| oshinsp.abatement.interim_control | Временный контроль безопасности | variant | Контроль снижает воздействие до окончательного устранения посредством охраны, изоляции, СИЗ или процедур. | временная защита |
+| oshinsp.abatement.followup_inspection | Последующая проверка безопасности | invariant | Инспекция проверяет снижение выбросов, документацию, защиту работников и постоянное соблюдение требований. | близкое цитирование |
+| oshinsp.closing.closing_conference | Заключительная конференция инспекции по безопасности | invariant | На конференции объясняются выводы, права, меры по снижению выбросов, процесс конкурса и последующие шаги. | процедурное закрытие |
+| oshinsp.records.case_file | Материалы дела по проверке охраны труда | invariant | В файле хранятся жалобы, заметки, интервью, фотографии, образцы, цитаты и переписка. | запись доказательств |
+| oshinsp.records.evidence_index | Индекс доказательств проверки безопасности | invariant | Указатель сопоставляет элементы доказательств с опасностями, стандартами, датами, местами и свидетелями. | организовать дело |
+| oshinsp.records.confidential_note | Конфиденциальная записка проверки безопасности | invariant | Note защищает личность работника, данные осведомителя или конфиденциальную деловую информацию. | конфиденциальность |
+| oshinsp.appeal.contest_record | Рекорд конкурса цитирования по безопасности | variant | Запись отслеживает споры работодателей, конференции, урегулирования, слушания, решения и последствия снижения налогов. | надлежащая правовая процедура |
+| oshinsp.appeal.informal_conference | Неформальная конференция по безопасности | variant | Конференция рассматривает варианты цитат, штрафов, смягчений, доказательств и урегулирования. | разрешить спор |
+| oshinsp.communication.worker_notice | Уведомление работника инспекции по безопасности | invariant | В уведомлении сообщается о результате жалобы, цитате, уменьшении ущерба или правах, если это разрешено. | информировать работников |
+| oshinsp.communication.employer_notice | Уведомление работодателя о проверке безопасности | invariant | В уведомлении сообщаются выводы, цитаты, штрафы, снижения прав и права на оспаривание. | формальное действие |
+| oshinsp.quality.supervisor_review | Проверка руководителя инспекции по безопасности | invariant | Обзор проверяет юрисдикцию, доказательства, элементы цитирования, выборку, штраф и закрытие дела. | контроль качества |
+| oshinsp.reporting.program_report | Акт проверки охраны труда | variant | В отчете кратко излагаются жалобы, проверки, опасности, цитаты, сокращения и апелляции. | надзор |
+| oshinsp.metrics.osha_kpi | КПИ инспекции по охране труда | variant | KPI отслеживает время реагирования, серьезные опасности, снижение выбросов, спорные случаи и тенденции травматизма. | управлять программой |
+| oshinsp.continuity.fatality_response | Реагирование на профессиональный смертельный исход | invariant | Ответные меры обеспечивают безопасность места происшествия, координируют действия агентств, допросы, доказательства, семейную чувствительность и сроки. | критическое расследование |
+| oshinsp.continuity.multiemployer_site | Координация работ на рабочем месте нескольких работодателей | variant | Координация определяет контроль, разоблачение, создание и исправление работодателей. | распределить ответственность |
+| oshinsp.close.case_closure | Закрытие инспекции по охране труда | invariant | При закрытии фиксируются цитаты, отсутствие цитат, направление, урегулирование, уменьшение или статус апелляции. | конец дела |

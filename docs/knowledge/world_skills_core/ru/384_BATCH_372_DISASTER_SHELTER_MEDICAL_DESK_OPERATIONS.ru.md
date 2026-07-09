@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| sheltermedops.setup.medical_desk | medical desk setup | METHOD | Desk is placed for privacy, access, visibility and emergency exit. | Creates safe care point. |
-| sheltermedops.setup.role_roster | role roster | RECORD | Roster lists nurses, EMTs, public health, mental health and support roles. | Clarifies staffing. |
-| sheltermedops.setup.scope | scope boundary | CONSTRAINT | Shelter medical desk provides basic assessment, support and referral, not full clinic care. | Prevents false capability. |
-| sheltermedops.setup.supplies | medical supplies | RECORD | Supplies include gloves, masks, first aid, forms, sanitizer, BP cuff and thermometer. | Supports basic work. |
-| sheltermedops.intake.visit_id | visit ID | RECORD | Visit ID links resident, complaint, time, staff and disposition. | Tracks medical encounters. |
-| sheltermedops.intake.identity | resident match | METHOD | Resident is matched to registration or temporary ID. | Connects care to shelter record. |
-| sheltermedops.intake.complaint | chief concern | RECORD | Concern is recorded in resident words with onset and severity. | Guides triage. |
-| sheltermedops.intake.consent | consent context | METHOD | Staff explain limits, privacy and referral choices. | Builds trust. |
-| sheltermedops.triage.acuity | acuity level | MODEL | Acuity ranks emergency, urgent, routine, wellness or information-only. | Prioritizes care. |
-| sheltermedops.triage.red_flags | red flags | SAFETY_RULE | Chest pain, stroke signs, severe breathing, trauma or overdose trigger EMS. | Protects life safety. |
-| sheltermedops.triage.vulnerable | vulnerable resident | MODEL | Age, pregnancy, disability, oxygen, dialysis or dependence increases priority. | Supports high-risk residents. |
-| sheltermedops.triage.repeat_visit | repeat visit | QUALITY_CHECK | Repeat visits for same issue prompt review or referral. | Avoids missed deterioration. |
-| sheltermedops.medication.med_list | medication list | RECORD | Medication list records resident-reported meds, storage needs and gaps. | Supports continuity. |
-| sheltermedops.medication.no_dosing | no dosing boundary | SAFETY_RULE | Staff do not improvise dosing outside credentialed scope and orders. | Prevents unsafe care. |
-| sheltermedops.medication.refrigeration | refrigeration support | METHOD | Refrigerated medications use labeled storage and access log. | Preserves medication. |
-| sheltermedops.medication.refill_help | refill help | METHOD | Staff help contact pharmacy, prescriber or assistance program. | Reduces interruption. |
-| sheltermedops.referral.ems | EMS referral | SAFETY_RULE | EMS referral is used for emergency symptoms or unsafe transport need. | Escalates appropriately. |
-| sheltermedops.referral.clinic | clinic referral | METHOD | Clinic referral gives location, hours, eligibility and transport path. | Connects routine care. |
-| sheltermedops.referral.behavioral | behavioral referral | METHOD | Distress, anxiety, grief or crisis routes to mental health support. | Supports shelter wellbeing. |
-| sheltermedops.referral.public_health | public health referral | METHOD | Communicable disease, exposure or outbreak concern routes to public health. | Protects shelter population. |
-| sheltermedops.infection.symptom_screen | symptom screen | METHOD | Screen checks fever, cough, GI symptoms, rash or exposure as relevant. | Detects infection risk. |
-| sheltermedops.infection.isolation | isolation referral | SAFETY_RULE | Symptomatic residents may be moved to isolation area or alternate site. | Reduces spread. |
-| sheltermedops.infection.hand_hygiene | hand hygiene | METHOD | Desk promotes hand hygiene, masks and cleaning. | Lowers transmission. |
-| sheltermedops.infection.line_list | illness line list | RECORD | Line list tracks symptoms, onset, location and action. | Supports outbreak investigation. |
-| sheltermedops.accessibility.functional_needs | functional needs | RECORD | Needs include mobility, oxygen, devices, communication, vision/hearing and caregiver. | Guides shelter support. |
-| sheltermedops.accessibility.device_power | device power | METHOD | Power needs for CPAP, oxygen concentrator or wheelchair are logged. | Prevents device failure. |
-| sheltermedops.accessibility.diet | medical diet | METHOD | Medical diet requests coordinate with food service when possible. | Supports chronic conditions. |
-| sheltermedops.accessibility.transport | medical transport | METHOD | Transport support arranges nonemergency or emergency movement based on acuity. | Reduces access barriers. |
-| sheltermedops.privacy.private_space | private space | SAFETY_RULE | Medical conversations avoid public disclosure in shelter areas. | Protects dignity. |
-| sheltermedops.privacy.record_access | record access | CONSTRAINT | Only authorized health/shelter staff access medical notes. | Limits sensitive data. |
-| sheltermedops.privacy.minimum | minimum necessary | SAFETY_RULE | Shelter operations receive only support needs, not full diagnoses, unless needed. | Balances care and privacy. |
-| sheltermedops.documentation.note | encounter note | RECORD | Note records concern, assessment, action, referral and follow-up. | Creates continuity. |
-| sheltermedops.documentation.incident | medical incident | RECORD | Incidents capture injury, EMS, medication loss, exposure or adverse event. | Supports review. |
-| sheltermedops.documentation.handoff | handoff note | METHOD | Shift handoff lists pending referrals, high-risk residents and infection concerns. | Maintains continuity. |
-| sheltermedops.documentation.retention | retention rule | CONSTRAINT | Medical desk records follow health, emergency and privacy retention rules. | Controls lifecycle. |
-| sheltermedops.supplies.inventory | supply inventory | MEASUREMENT | Inventory tracks first aid, PPE, forms and special items. | Prevents shortages. |
-| sheltermedops.supplies.reorder | reorder trigger | MODEL | Reorder uses burn rate, census, illness activity and delivery time. | Maintains readiness. |
-| sheltermedops.supplies.sharps | sharps control | SAFETY_RULE | Sharps containers and needlestick protocol are available where injections/testing occur. | Protects staff/residents. |
-| sheltermedops.metrics.visit_volume | visit volume | MEASUREMENT | Visits are counted by issue, acuity, referral and time. | Shows medical demand. |
-| sheltermedops.metrics.ems_rate | EMS transfer rate | MEASUREMENT | EMS rate tracks emergency transfers from shelter. | Signals acuity pressure. |
-| sheltermedops.qa.chart_review | chart review | QUALITY_CHECK | Sample notes check privacy, triage, referrals and follow-up. | Improves quality. |
-| sheltermedops.demob.closeout | desk closeout | METHOD | Closeout secures records, returns supplies and transfers open follow-ups. | Ends desk safely. |
-| sheltermedops.demob.resident_handoff | resident handoff | RECORD | High-need residents are handed off to clinic, shelter manager or caseworker before desk closure. | Prevents care gaps. |
-| sheltermedops.review.after_action | after-action review | METHOD | Review captures illness trends, supply gaps, privacy issues and staffing needs. | Improves shelter medical support. |
+| sheltermedops.setup.medical_desk | установка медицинского стола | METHOD | Стол расположен так, чтобы обеспечить конфиденциальность, доступ, видимость и запасной выход. | Создает безопасную точку ухода. |
+| sheltermedops.setup.role_roster | список ролей | RECORD | В реестре перечислены медсестры, врачи скорой помощи, сотрудники общественного здравоохранения, психического здоровья и вспомогательные функции. | Уточняется штатное расписание. |
+| sheltermedops.setup.scope | граница области действия | CONSTRAINT | Медицинский пункт приюта обеспечивает базовую оценку, поддержку и направление, а не полный медицинский уход. | Предотвращает ложные возможности. |
+| sheltermedops.setup.supplies | медицинские принадлежности | RECORD | В комплект поставки входят перчатки, маски, средства первой помощи, бланки, дезинфицирующее средство, манжета для измерения артериального давления и термометр. | Поддерживает базовую работу. |
+| sheltermedops.intake.visit_id | идентификатор посещения | RECORD | Посещение ID связывает жителя, жалобу, время, персонал и расположение. | Отслеживает медицинские встречи. |
+| sheltermedops.intake.identity | резидентный матч | METHOD | Резидент соответствует регистрации или временному удостоверению личности. | Связывает уход с записью в приюте. |
+| sheltermedops.intake.complaint | главная забота | RECORD | Беспокойство фиксируется в резидентных словах с указанием начала и степени тяжести. | Сортировка гидов. |
+| sheltermedops.intake.consent | контекст согласия | METHOD | Сотрудники объясняют ограничения, конфиденциальность и выбор направлений. | Вызывает доверие. |
+| sheltermedops.triage.acuity | уровень остроты | MODEL | Острота ранжирует экстренную, срочную, плановую, оздоровительную или только информацию. | Уход в приоритете. |
+| sheltermedops.triage.red_flags | красные флаги | SAFETY_RULE | Боль в груди, признаки инсульта, тяжелое дыхание, травма или передозировка вызывают экстренную медицинскую помощь. | Обеспечивает безопасность жизни. |
+| sheltermedops.triage.vulnerable | уязвимый житель | MODEL | Возраст, беременность, инвалидность, кислород, диализ или зависимость повышают приоритет. | Поддерживает жителей группы высокого риска. |
+| sheltermedops.triage.repeat_visit | повторный визит | QUALITY_CHECK | Повторные визиты по той же проблеме подскажут обзор или направление. | Предотвращает пропущенное ухудшение. |
+| sheltermedops.medication.med_list | список лекарств | RECORD | В списке лекарств записаны лекарства, о которых сообщили резиденты, потребности в хранении и пробелы. | Поддерживает непрерывность. |
+| sheltermedops.medication.no_dosing | нет границы дозирования | SAFETY_RULE | Персонал не импровизирует дозирование, выходящее за рамки разрешенных полномочиями и предписаниями. | Предотвращает небезопасный уход. |
+| sheltermedops.medication.refrigeration | холодильная поддержка | METHOD | Для охлажденных лекарств используется маркированный журнал хранения и доступа. | Сохраняет лекарства. |
+| sheltermedops.medication.refill_help | помощь по пополнению | METHOD | Персонал помогает связаться с аптекой, врачом, выписавшим рецепт, или с программой помощи. | Уменьшает прерывания. |
+| sheltermedops.referral.ems | направление скорой помощи | SAFETY_RULE | Направление в службу скорой помощи используется при возникновении экстренных симптомов или при небезопасной транспортировке. | Обостряется соответствующим образом. |
+| sheltermedops.referral.clinic | направление в клинику | METHOD | В направлении от клиники указывается место, часы работы, право на участие и маршрут транспортировки. | Подключает рутинный уход. |
+| sheltermedops.referral.behavioral | поведенческое направление | METHOD | Дистресс, тревога, горе или кризис ведут к оказанию психологической помощи. | Поддерживает благополучие приюта. |
+| sheltermedops.referral.public_health | направление общественного здравоохранения | METHOD | Инфекционные заболевания, воздействие или вспышки связаны с путями общественного здравоохранения. | Защищает население приюта. |
+| sheltermedops.infection.symptom_screen | экран симптомов | METHOD | При скрининге проверяются лихорадка, кашель, желудочно-кишечные симптомы, сыпь или воздействие, если это необходимо. | Обнаруживает риск заражения. |
+| sheltermedops.infection.isolation | направление на изоляцию | SAFETY_RULE | Жители с симптомами могут быть переведены в изоляционную зону или альтернативное место. | Уменьшает распространение. |
+| sheltermedops.infection.hand_hygiene | гигиена рук | METHOD | На столе пропагандируется гигиена рук, маски и уборка. | Понижает передачу. |
+| sheltermedops.infection.line_list | список болезней | RECORD | Список строк отслеживает симптомы, начало, местоположение и действие. | Поддерживает расследование вспышек. |
+| sheltermedops.accessibility.functional_needs | функциональные потребности | RECORD | Потребности включают мобильность, кислород, устройства, общение, зрение/слух и лицо, осуществляющее уход. | Поддержка приюта гидов. |
+| sheltermedops.accessibility.device_power | мощность устройства | METHOD | Потребность в электроэнергии для CPAP, кислородного концентратора или инвалидной коляски регистрируется. | Предотвращает выход устройства из строя. |
+| sheltermedops.accessibility.diet | лечебная диета | METHOD | Запросы на медицинскую диету по возможности согласовываются со службой общественного питания. | Поддерживает хронические заболевания. |
+| sheltermedops.accessibility.transport | медицинский транспорт | METHOD | Транспортное обеспечение организует неэкстренное или экстренное перемещение в зависимости от остроты ситуации. | Уменьшает барьеры доступа. |
+| sheltermedops.privacy.private_space | личное пространство | SAFETY_RULE | Медицинские беседы избегают публичного раскрытия информации в приютах. | Защищает достоинство. |
+| sheltermedops.privacy.record_access | доступ к записи | CONSTRAINT | Только уполномоченный персонал здравоохранения/приюта имеет доступ к медицинским записям. | Ограничивает конфиденциальные данные. |
+| sheltermedops.privacy.minimum | минимум необходимый | SAFETY_RULE | Операции по приюту получают только необходимую поддержку, а не полный диагноз, если в этом нет необходимости. | Балансирует заботу и конфиденциальность. |
+| sheltermedops.documentation.note | записка о встрече | RECORD | Обратите внимание на записи о беспокойстве, оценке, действиях, направлении и последующем наблюдении. | Создает преемственность. |
+| sheltermedops.documentation.incident | медицинский инцидент | RECORD | Инциденты охватывают травмы, скорую помощь, потерю лекарств, воздействие или неблагоприятные события. | Поддерживает обзор. |
+| sheltermedops.documentation.handoff | записка о передаче | METHOD | Списки передачи смен, ожидающие направления, жители группы высокого риска и опасения по поводу инфекции. | Сохраняет преемственность. |
+| sheltermedops.documentation.retention | правило хранения | CONSTRAINT | Записи медицинского стола соответствуют правилам охраны здоровья, неотложной помощи и конфиденциальности. | Управляет жизненным циклом. |
+| sheltermedops.supplies.inventory | поставка инвентаря | MEASUREMENT | Инвентаризация отслеживает первую помощь, средства индивидуальной защиты, формы и специальные предметы. | Предотвращает дефицит. |
+| sheltermedops.supplies.reorder | триггер изменения порядка | MODEL | Для повторного заказа используются данные о расходе средств, переписи населения, активности заболеваний и времени доставки. | Поддерживает готовность. |
+| sheltermedops.supplies.sharps | контроль острых предметов | SAFETY_RULE | Там, где проводятся инъекции/тесты, доступны контейнеры для острых предметов и протокол укола иглой. | Защищает персонал/жителей. |
+| sheltermedops.metrics.visit_volume | объем посещений | MEASUREMENT | Посещения учитываются по проблеме, остроте зрения, направлению и времени. | Показывает медицинскую потребность. |
+| sheltermedops.metrics.ems_rate | Скорость перевода EMS | MEASUREMENT | Тариф EMS отслеживает экстренный перевод из приюта. | Сигнализирует остроту давления. |
+| sheltermedops.qa.chart_review | обзор диаграммы | QUALITY_CHECK | Образцы заметок проверяют конфиденциальность, сортировку, направления и последующее наблюдение. | Улучшает качество. |
+| sheltermedops.demob.closeout | распродажа стола | METHOD | Closeout обеспечивает безопасность записей, возвращает расходные материалы и передает открытые последующие действия. | Завершает стол благополучно. |
+| sheltermedops.demob.resident_handoff | передача резидента | RECORD | Пациенты, нуждающиеся в помощи, перед закрытием отделения передаются в клинику, менеджеру приюта или социальному работнику. | Предотвращает пробелы в уходе. |
+| sheltermedops.review.after_action | обзор после действий | METHOD | Обзор отражает тенденции заболеваемости, дефицит поставок, проблемы конфиденциальности и кадровые потребности. | Улучшает медицинскую поддержку приюта. |

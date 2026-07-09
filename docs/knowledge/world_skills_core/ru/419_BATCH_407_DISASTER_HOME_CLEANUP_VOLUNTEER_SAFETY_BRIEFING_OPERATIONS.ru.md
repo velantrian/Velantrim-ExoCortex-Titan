@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| cleanupbriefops.intake.crew_roster | crew roster | RECORD | Roster records volunteers, lead, organization, contact, skills and emergency contact. | Tracks people. |
-| cleanupbriefops.intake.site_summary | site summary | RECORD | Summary captures address, damage type, occupancy, access, known hazards and work limits. | Frames briefing. |
-| cleanupbriefops.intake.permission | permission check | QUALITY_CHECK | Brief confirms resident permission, scope and access before work starts. | Prevents unauthorized work. |
-| cleanupbriefops.intake.briefing_time | briefing time | RECORD | Briefing time records date, location, crew, trainer and materials used. | Creates proof. |
-| cleanupbriefops.hazards.structural | structural hazard | SAFETY_RULE | Volunteers are warned about sagging floors, unstable walls, roofs and stairs. | Prevents collapse injuries. |
-| cleanupbriefops.hazards.electrical | electrical hazard | SAFETY_RULE | Brief covers downed wires, wet outlets, panels and unknown energized equipment. | Prevents shock. |
-| cleanupbriefops.hazards.sharps | sharps hazard | SAFETY_RULE | Broken glass, nails, metal edges and needles require tool handling and disposal rules. | Prevents cuts. |
-| cleanupbriefops.hazards.animals | animal hazard | SAFETY_RULE | Brief covers displaced pets, insects, snakes, rodents and bite reporting. | Reduces exposure. |
-| cleanupbriefops.ppe.gloves | glove selection | METHOD | Gloves are matched to debris, chemicals, wet work and dexterity needs. | Protects hands. |
-| cleanupbriefops.ppe.eye | eye protection | SAFETY_RULE | Eye protection is required for debris, dust, splashing and tool use. | Prevents eye injury. |
-| cleanupbriefops.ppe.respiratory | respiratory protection | SAFETY_RULE | Respiratory guidance distinguishes dust, mold, smoke residue and chemical concern. | Reduces inhalation risk. |
-| cleanupbriefops.ppe.footwear | footwear rule | SAFETY_RULE | Boots or sturdy closed shoes protect from punctures, mud and debris. | Prevents foot injuries. |
-| cleanupbriefops.tools.tool_match | tool match | METHOD | Tools are matched to task, volunteer skill and site conditions. | Reduces misuse. |
-| cleanupbriefops.tools.inspection | tool inspection | QUALITY_CHECK | Tools are checked for damage, guards, cords, batteries and safe handles. | Prevents accidents. |
-| cleanupbriefops.tools.ladder | ladder boundary | SAFETY_RULE | Ladder use follows height, surface, weather and trained-user limits. | Controls fall risk. |
-| cleanupbriefops.tools.power_tool | power tool rule | SAFETY_RULE | Power tools are limited to trained users with PPE and supervisor approval. | Avoids severe injury. |
-| cleanupbriefops.heat.hydration | hydration plan | METHOD | Brief sets water, electrolyte, shade and break expectations. | Reduces heat illness. |
-| cleanupbriefops.heat.symptoms | heat symptoms | SAFETY_RULE | Volunteers learn heat exhaustion and heat stroke warning signs. | Enables early action. |
-| cleanupbriefops.heat.work_rest | work-rest cycle | METHOD | Work-rest timing adapts to temperature, humidity, PPE and volunteer condition. | Controls fatigue. |
-| cleanupbriefops.heat.buddy_check | buddy check | METHOD | Volunteers monitor partners for dizziness, confusion, weakness or overexertion. | Improves safety. |
-| cleanupbriefops.mold.exposure | mold exposure | SAFETY_RULE | Brief explains when mold cleanup is unsuitable for volunteers or sensitive occupants. | Avoids harm. |
-| cleanupbriefops.mold.containment | containment basics | METHOD | Simple containment separates dirty and clean zones where feasible. | Limits spread. |
-| cleanupbriefops.mold.discard | discard guidance | METHOD | Porous contaminated materials are handled according to local cleanup guidance. | Supports safe removal. |
-| cleanupbriefops.mold.stop_trigger | mold stop trigger | SAFETY_RULE | Large growth, respiratory symptoms or hidden moisture can stop volunteer work. | Prevents overreach. |
-| cleanupbriefops.utilities.gas | gas concern | SAFETY_RULE | Smell of gas or damaged gas line triggers evacuation and utility call. | Prevents explosion. |
-| cleanupbriefops.utilities.water | water shutoff | METHOD | Brief identifies when water shutoff or leak reporting is needed. | Reduces damage. |
-| cleanupbriefops.utilities.power_status | power status | RECORD | Crew records whether power is confirmed off, unknown or restricted. | Guides work. |
-| cleanupbriefops.utilities.generator | generator warning | SAFETY_RULE | Generators are kept outdoors and away from openings due to carbon monoxide risk. | Prevents poisoning. |
-| cleanupbriefops.stopwork.stop_authority | stop authority | SAFETY_RULE | Any volunteer can stop work for unsafe condition or unclear scope. | Empowers safety. |
-| cleanupbriefops.stopwork.escalation | escalation path | METHOD | Stop-work issues route to crew lead, coordinator, resident or professional responder. | Resolves hazards. |
-| cleanupbriefops.stopwork.weather | weather stop | SAFETY_RULE | Lightning, high wind, extreme heat, floodwater or smoke can halt work. | Protects crew. |
-| cleanupbriefops.stopwork.conflict | conflict stop | SAFETY_RULE | Aggression, weapons, legal dispute or unsafe access triggers withdrawal. | Protects volunteers. |
-| cleanupbriefops.documentation.attendance | attendance record | RECORD | Attendance captures volunteers present and acknowledgement of safety briefing. | Proves briefing. |
-| cleanupbriefops.documentation.hazard_log | hazard log | RECORD | Hazard log records conditions found, controls used and unresolved risks. | Supports handoff. |
-| cleanupbriefops.documentation.incident | incident report | RECORD | Incident records injury, near miss, illness, property damage or safety stop. | Enables follow-up. |
-| cleanupbriefops.documentation.photo_policy | photo policy | SAFETY_RULE | Photos follow resident consent, privacy and hazard documentation rules. | Prevents misuse. |
-| cleanupbriefops.communication.resident_talk | resident discussion | METHOD | Crew explains scope, safety limits, expected duration and unfinished items to resident. | Sets expectations. |
-| cleanupbriefops.communication.team_radio | team communication | METHOD | Brief defines check-in, emergency call, lost member and regroup procedure. | Keeps crew coordinated. |
-| cleanupbriefops.communication.language | language support | METHOD | Safety briefing uses interpreter, translated sheet or plain visual checklist when needed. | Improves comprehension. |
-| cleanupbriefops.communication.end_brief | end-of-shift brief | METHOD | Crew reviews injuries, hazards, unfinished work, tools and resident follow-up. | Closes shift. |
-| cleanupbriefops.qa.supervisor_observe | supervisor observation | QUALITY_CHECK | Supervisor samples crews for PPE, tool control, heat breaks and scope discipline. | Reinforces safety. |
-| cleanupbriefops.metrics.briefed_count | briefed count | MEASUREMENT | Count tracks volunteers briefed by site, organization and date. | Shows coverage. |
-| cleanupbriefops.metrics.incident_rate | incident rate | MEASUREMENT | Rate tracks incidents or near misses per volunteer shift. | Guides training. |
-| cleanupbriefops.review.after_action | after-action review | METHOD | Review captures hazards, PPE gaps, stop-work events, heat controls and documentation lessons. | Improves future briefings. |
+| cleanupbriefops.intake.crew_roster | состав экипажа | RECORD | В реестре фиксируются волонтеры, лидеры, организация, контакты, навыки и экстренные контакты. | Отслеживает людей. |
+| cleanupbriefops.intake.site_summary | резюме сайта | RECORD | В сводной информации указывается адрес, тип повреждения, размещение, доступ, известные опасности и ограничения работы. | Брифинг по кадрам. |
+| cleanupbriefops.intake.permission | проверка разрешения | QUALITY_CHECK | Краткое описание подтверждает разрешение резидента, объем и доступ до начала работы. | Предотвращает несанкционированную работу. |
+| cleanupbriefops.intake.briefing_time | время брифинга | RECORD | Во время инструктажа указывается дата, место, команда, инструктор и использованные материалы. | Создает доказательства. |
+| cleanupbriefops.hazards.structural | структурная опасность | SAFETY_RULE | Волонтёров предупреждают о провисающих полах, неустойчивых стенах, крышах и лестницах. | Предотвращает травмы при обрушении. |
+| cleanupbriefops.hazards.electrical | опасность поражения электрическим током | SAFETY_RULE | Вкратце описываются оборванные провода, мокрые розетки, панели и неизвестное оборудование, находящееся под напряжением. | Предотвращает шок. |
+| cleanupbriefops.hazards.sharps | опасность острых предметов | SAFETY_RULE | Битое стекло, гвозди, металлические кромки и иголки требуют правил обращения и утилизации инструментов. | Предотвращает порезы. |
+| cleanupbriefops.hazards.animals | опасность для животных | SAFETY_RULE | Краткое описание перемещенных домашних животных, насекомых, змей, грызунов и сообщений об укусах. | Уменьшает воздействие. |
+| cleanupbriefops.ppe.gloves | выбор перчаток | METHOD | Перчатки подходят для работы с мусором, химикатами, влажной работой и маневренностью. | Защищает руки. |
+| cleanupbriefops.ppe.eye | защита глаз | SAFETY_RULE | Требуется защита глаз от мусора, пыли, брызг и использования инструментов. | Предотвращает травмы глаз. |
+| cleanupbriefops.ppe.respiratory | защита органов дыхания | SAFETY_RULE | Дыхательный контроль позволяет распознать пыль, плесень, остатки дыма и химические вещества. | Снижает риск вдыхания. |
+| cleanupbriefops.ppe.footwear | правило обуви | SAFETY_RULE | Ботинки или прочная закрытая обувь защитят от проколов, грязи и мусора. | Предотвращает травмы ног. |
+| cleanupbriefops.tools.tool_match | соответствие инструмента | METHOD | Инструменты подбираются в зависимости от задачи, навыков волонтеров и условий на объекте. | Уменьшает неправильное использование. |
+| cleanupbriefops.tools.inspection | осмотр инструмента | QUALITY_CHECK | Инструменты проверяются на предмет повреждений, ограждений, шнуров, батареек и безопасных ручек. | Предотвращает несчастные случаи. |
+| cleanupbriefops.tools.ladder | граница лестницы | SAFETY_RULE | Использование лестницы зависит от высоты, поверхности, погодных условий и ограничений для обученных пользователей. | Контролирует риск падения. |
+| cleanupbriefops.tools.power_tool | правило электроинструмента | SAFETY_RULE | Электроинструменты могут использовать только обученные пользователи, имеющие СИЗ и одобрение руководителя. | Позволяет избежать серьезных травм. |
+| cleanupbriefops.heat.hydration | план гидратации | METHOD | Кратковременные наборы воды, электролита, тени и нарушения ожиданий. | Уменьшает тепловые заболевания. |
+| cleanupbriefops.heat.symptoms | симптомы жары | SAFETY_RULE | Добровольцы изучают признаки теплового истощения и теплового удара. | Позволяет действовать заранее. |
+| cleanupbriefops.heat.work_rest | цикл работы и отдыха | METHOD | Время работы и отдыха адаптируется к температуре, влажности, средствам индивидуальной защиты и состоянию волонтеров. | Контролирует усталость. |
+| cleanupbriefops.heat.buddy_check | приятель проверяет | METHOD | Добровольцы наблюдают за партнерами на предмет головокружения, спутанности сознания, слабости или перенапряжения. | Повышает безопасность. |
+| cleanupbriefops.mold.exposure | воздействие плесени | SAFETY_RULE | Краткое описание объясняет, когда очистка от плесени не подходит волонтерам или чувствительным жильцам. | Избегает вреда. |
+| cleanupbriefops.mold.containment | основы сдерживания | METHOD | Простая изоляция разделяет грязные и чистые зоны, где это возможно. | Распространение лимитов. |
+| cleanupbriefops.mold.discard | отказаться от руководства | METHOD | С пористыми загрязненными материалами следует обращаться в соответствии с местными инструкциями по очистке. | Поддерживает безопасное удаление. |
+| cleanupbriefops.mold.stop_trigger | триггер остановки формы | SAFETY_RULE | Большой рост, респираторные симптомы или скрытая влага могут остановить волонтерскую работу. | Предотвращает перебор. |
+| cleanupbriefops.utilities.gas | газовый концерн | SAFETY_RULE | Запах газа или повреждение газопровода вызывают эвакуацию и вызов коммунальных служб. | Предотвращает взрыв. |
+| cleanupbriefops.utilities.water | отключение воды | METHOD | Краткое описание определяет, когда необходимо отключение воды или отчет об утечке. | Уменьшает урон. |
+| cleanupbriefops.utilities.power_status | статус питания | RECORD | Экипаж записывает, подтверждено ли отключение электропитания, неизвестно или оно ограничено. | Гиды работают. |
+| cleanupbriefops.utilities.generator | предупреждение генератора | SAFETY_RULE | Генераторы хранятся на открытом воздухе и вдали от отверстий из-за риска угарного газа. | Предотвращает отравление. |
+| cleanupbriefops.stopwork.stop_authority | остановить власть | SAFETY_RULE | Любой волонтер может прекратить работу из-за небезопасного состояния или неясного объема. | Обеспечивает безопасность. |
+| cleanupbriefops.stopwork.escalation | путь эскалации | METHOD | Проблемы с остановкой работы направляются к руководителю бригады, координатору, резиденту или профессиональному спасателю. | Устраняет опасности. |
+| cleanupbriefops.stopwork.weather | погода стоп | SAFETY_RULE | Молния, сильный ветер, сильная жара, паводковая вода или дым могут остановить работу. | Защищает экипаж. |
+| cleanupbriefops.stopwork.conflict | остановка конфликта | SAFETY_RULE | Агрессия, оружие, юридические споры или небезопасный доступ вызывают отказ. | Защищает волонтеров. |
+| cleanupbriefops.documentation.attendance | запись посещаемости | RECORD | Посещаемость фиксирует присутствие волонтеров и подтверждение прохождения инструктажа по технике безопасности. | Доказывает брифинг. |
+| cleanupbriefops.documentation.hazard_log | журнал опасностей | RECORD | В журнале опасностей фиксируются обнаруженные условия, использованные средства контроля и неустраненные риски. | Поддерживает передачу обслуживания. |
+| cleanupbriefops.documentation.incident | отчет об инциденте | RECORD | Инцидент фиксирует травмы, опасные ситуации, болезни, материальный ущерб или остановку безопасности. | Включает дальнейшее наблюдение. |
+| cleanupbriefops.documentation.photo_policy | политика в отношении фотографий | SAFETY_RULE | Фотографии соответствуют правилам согласия жильцов, конфиденциальности и документации об опасностях. | Предотвращает неправильное использование. |
+| cleanupbriefops.communication.resident_talk | резидентская дискуссия | METHOD | Экипаж объясняет резиденту масштабы, пределы безопасности, ожидаемую продолжительность и незавершенные работы. | Устанавливает ожидания. |
+| cleanupbriefops.communication.team_radio | командное общение | METHOD | Краткое описание определяет процедуру регистрации, экстренного вызова, потери участника и процедуры перегруппировки. | Обеспечивает координацию действий экипажа. |
+| cleanupbriefops.communication.language | языковая поддержка | METHOD | При инструктаже по технике безопасности при необходимости используется переводчик, переведенный лист или простой визуальный контрольный список. | Улучшает понимание. |
+| cleanupbriefops.communication.end_brief | заключительная записка в конце смены | METHOD | Бригада проверяет травмы, опасности, незавершенную работу, инструменты и последующие действия жителей. | Закрывает смену. |
+| cleanupbriefops.qa.supervisor_observe | наблюдение супервизора | QUALITY_CHECK | Супервайзер проверяет бригады на предмет СИЗ, контроля инструментов, тепловых перерывов и дисциплины. | Усиливает безопасность. |
+| cleanupbriefops.metrics.briefed_count | проинформированный подсчет | MEASUREMENT | Count отслеживает информацию о волонтерах по местам, организациям и датам. | Показывает покрытие. |
+| cleanupbriefops.metrics.incident_rate | частота инцидентов | MEASUREMENT | Оценка отслеживает инциденты или опасные ситуации за смену волонтеров. | Обучение гидов. |
+| cleanupbriefops.review.after_action | обзор после действий | METHOD | В обзоре фиксируются опасности, недостатки средств индивидуальной защиты, случаи остановки работы, контроль нагрева и уроки документации. | Улучшает будущие брифинги. |

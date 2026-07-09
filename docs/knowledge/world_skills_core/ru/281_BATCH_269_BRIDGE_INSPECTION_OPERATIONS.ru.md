@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| bridgeinsp.inventory.bridge_record | Bridge inventory record | invariant | Record stores bridge ID, location, owner, route, span, material, age and geometry. | know bridge |
-| bridgeinsp.inventory.component_list | Bridge component list | invariant | List identifies deck, superstructure, substructure, bearings, joints, railings and approaches. | inspect system |
-| bridgeinsp.inventory.waterway_flag | Bridge waterway flag | variant | Flag records stream, scour risk, flood history, channel condition and access constraints. | hydraulic awareness |
-| bridgeinsp.schedule.cycle | Bridge inspection cycle | invariant | Cycle sets routine, fracture-critical, underwater, special or interim inspection frequency. | meet requirements |
-| bridgeinsp.schedule.access_plan | Bridge inspection access plan | variant | Plan defines lane closure, snooper truck, boat, rope access, rail coordination or drone. | reach components |
-| bridgeinsp.schedule.traffic_control | Bridge inspection traffic control | invariant | Control protects inspectors and road users with signs, cones, closures or flaggers. | safe inspection |
-| bridgeinsp.field.arrival_safety | Bridge inspection arrival safety | invariant | Safety reviews traffic, fall hazards, water, weather, utilities, wildlife and PPE. | protect crew |
-| bridgeinsp.field.photo_log | Bridge inspection photo log | invariant | Log links photo to component, defect, location, direction and date. | visual evidence |
-| bridgeinsp.field.measurement | Bridge defect measurement | invariant | Measurement records length, width, depth, offset, crack size, section loss or movement. | quantify defect |
-| bridgeinsp.field.soundings | Bridge deck sounding | variant | Sounding identifies delamination, voids or debonded areas by acoustic response. | find hidden damage |
-| bridgeinsp.deck.deck_condition | Bridge deck condition | invariant | Condition rates wearing surface, cracking, spalls, patches, drainage and delamination. | assess deck |
-| bridgeinsp.deck.joint_condition | Bridge joint condition | invariant | Condition checks seals, leakage, debris, armoring, movement and damage. | protect structure |
-| bridgeinsp.deck.drainage_condition | Bridge deck drainage condition | invariant | Condition reviews scuppers, downspouts, ponding, clogging and erosion. | prevent deterioration |
-| bridgeinsp.super.beam_condition | Bridge beam condition | invariant | Condition records corrosion, cracks, section loss, impact damage, distortion and paint. | assess superstructure |
-| bridgeinsp.super.girder_fatigue | Bridge girder fatigue detail | variant | Detail checks fatigue-prone welds, connections, cover plates or distortion. | prevent fracture |
-| bridgeinsp.super.truss_member | Bridge truss member condition | variant | Condition reviews members, gusset plates, pins, pack rust, cracks and deformation. | truss safety |
-| bridgeinsp.sub.pier_condition | Bridge pier condition | invariant | Condition reviews cracking, spalling, scour, settlement, collision damage and reinforcement exposure. | support stability |
-| bridgeinsp.sub.abutment_condition | Bridge abutment condition | invariant | Condition checks cracks, rotation, wingwalls, settlement, backwall and drainage. | end support |
-| bridgeinsp.sub.bearing_condition | Bridge bearing condition | invariant | Condition records alignment, corrosion, frozen movement, displacement and debris. | load transfer |
-| bridgeinsp.scour.scour_observation | Bridge scour observation | variant | Observation records exposed footings, holes, debris, channel migration and erosion. | water risk |
-| bridgeinsp.approach.approach_slab | Bridge approach slab condition | variant | Condition records settlement, bumps, cracks, voids, drainage and pavement transition. | ride safety |
-| bridgeinsp.approach.guardrail_transition | Bridge guardrail transition | invariant | Check reviews approach rail, end treatments, connections, height and damage. | crash protection |
-| bridgeinsp.rating.element_rating | Bridge element rating | invariant | Rating assigns condition state to element using standard definitions and quantities. | compare condition |
-| bridgeinsp.rating.general_condition | Bridge general condition rating | invariant | Rating summarizes deck, superstructure, substructure or culvert condition. | program metric |
-| bridgeinsp.rating.load_posting | Bridge load posting review | invariant | Review evaluates rating, signs, legal loads, restrictions and posting need. | protect bridge |
-| bridgeinsp.defect.critical_finding | Bridge critical finding | invariant | Finding identifies condition needing immediate restriction, closure, repair or engineering review. | prevent failure |
-| bridgeinsp.defect.impact_damage | Bridge impact damage | variant | Damage records vehicle, vessel, debris or equipment strike and urgent assessment. | respond quickly |
-| bridgeinsp.defect.crack_monitor | Bridge crack monitor | variant | Monitor tracks crack size, location, date, gauge, growth and response threshold. | watch progression |
-| bridgeinsp.repair.repair_recommendation | Bridge repair recommendation | invariant | Recommendation states defect, priority, method, quantity, urgency and responsible unit. | plan fix |
-| bridgeinsp.repair.maintenance_referral | Bridge maintenance referral | variant | Referral sends debris, joint cleaning, drainage, sign, guardrail or minor repair to crews. | close small issues |
-| bridgeinsp.repair.capital_project_flag | Bridge capital project flag | variant | Flag identifies rehab, replacement, widening, scour retrofit or major strengthening need. | long-term plan |
-| bridgeinsp.records.inspection_report | Bridge inspection report | invariant | Report documents team, access, ratings, defects, photos, recommendations and restrictions. | official record |
-| bridgeinsp.records.plan_review | Bridge plan review reference | variant | Reference uses prior plans, as-builts, load ratings and repair documents. | understand structure |
-| bridgeinsp.records.data_update | Bridge inventory data update | invariant | Update corrects geometry, material, ownership, traffic, waterway, ratings or status. | current database |
-| bridgeinsp.quality.peer_review | Bridge inspection peer review | invariant | Review checks ratings, critical findings, photos, measurements and recommendations. | consistency |
-| bridgeinsp.quality.certification | Bridge inspector certification record | invariant | Record tracks team leader qualifications, training, experience and expiration. | qualified inspection |
-| bridgeinsp.reporting.program_report | Bridge inspection program report | variant | Report summarizes inspections due, completed, condition, postings, critical findings and backlog. | oversight |
-| bridgeinsp.metrics.bridge_kpi | Bridge inspection KPI | variant | KPI tracks on-time inspections, poor bridges, critical findings, load postings and repair closure. | manage bridges |
-| bridgeinsp.communication.owner_notice | Bridge owner notice | invariant | Notice communicates findings, restrictions, repairs, deadlines and responsibilities. | prompt action |
-| bridgeinsp.communication.public_restriction | Bridge public restriction notice | variant | Notice explains closure, lane limit, load posting, detour and duration. | public safety |
-| bridgeinsp.continuity.emergency_inspection | Bridge emergency inspection | invariant | Inspection responds to flood, earthquake, fire, collision, overload or observed distress. | urgent safety |
-| bridgeinsp.close.finding_closure | Bridge finding closure | invariant | Closure records repair, monitoring, restriction, engineering acceptance or capital project handoff. | close loop |
-| bridgeinsp.audit.audit_trail | Bridge inspection audit trail | invariant | Trail records inspection, rating changes, reports, restrictions, repairs and approvals. | defensible history |
-| bridgeinsp.safety.railroad_coordination | Railroad bridge access coordination | variant | Coordination manages track access, flagging, schedules, safety briefing and permits. | safe rail proximity |
+| bridgeinsp.inventory.bridge_record | Инвентарный учет моста | invariant | Запись хранит идентификатор моста, местоположение, владельца, маршрут, пролет, материал, возраст и геометрию. | знать мост |
+| bridgeinsp.inventory.component_list | Список компонентов моста | invariant | В списке указаны палуба, надстройка, основание, опоры, соединения, перила и подходы. | проверить систему |
+| bridgeinsp.inventory.waterway_flag | Флаг водного моста | variant | Отметьте поток записей, риск размыва, историю наводнений, состояние канала и ограничения доступа. | гидравлическая осведомленность |
+| bridgeinsp.schedule.cycle | Цикл проверки моста | invariant | Цикл устанавливает частоту плановых, критических проверок, подводных, специальных или промежуточных проверок. | соответствовать требованиям |
+| bridgeinsp.schedule.access_plan | План доступа для осмотра моста | variant | План определяет закрытие полосы движения, грузовик-слежку, лодку, веревочный доступ, координацию железнодорожного транспорта или дрон. | достичь компонентов |
+| bridgeinsp.schedule.traffic_control | Контроль дорожного движения по инспекции мостов | invariant | Контроль защищает инспекторов и участников дорожного движения с помощью знаков, конусов, затворов или флажков. | безопасный осмотр |
+| bridgeinsp.field.arrival_safety | Безопасность прибытия при осмотре моста | invariant | Безопасность рассматривает дорожное движение, опасность падения, воду, погоду, коммунальные услуги, дикую природу и СИЗ. | защитить экипаж |
+| bridgeinsp.field.photo_log | Фотожурнал осмотра моста | invariant | Журнал связывает фотографию с компонентом, дефектом, местоположением, направлением и датой. | визуальные доказательства |
+| bridgeinsp.field.measurement | Измерение дефектов моста | invariant | Измерения фиксируют длину, ширину, глубину, смещение, размер трещины, потерю или перемещение секции. | количественно оценить дефект |
+| bridgeinsp.field.soundings | Озвучивание мостовой палубы | variant | При зондировании по акустическому отклику выявляются расслоения, пустоты или отслоившиеся участки. | найти скрытые повреждения |
+| bridgeinsp.deck.deck_condition | Состояние настила моста | invariant | Степень износа поверхности, трещин, сколов, пятен, дренажа и расслоения. | оценить колоду |
+| bridgeinsp.deck.joint_condition | Состояние сустава моста | invariant | Состояние проверяет уплотнения, утечки, мусор, броню, движение и повреждения. | защитить структуру |
+| bridgeinsp.deck.drainage_condition | Состояние дренажа настила моста | invariant | Состояние проверяет шпигаты, водосточные трубы, затопление, засорение и эрозию. | предотвратить ухудшение |
+| bridgeinsp.super.beam_condition | Состояние балки моста | invariant | Состояние фиксирует коррозию, трещины, потерю сечения, повреждения от удара, деформацию и краску. | оценить надстройку |
+| bridgeinsp.super.girder_fatigue | Детали усталости мостовой балки | variant | Детальная проверка подверженных усталости сварных швов, соединений, накладок или деформации. | предотвратить перелом |
+| bridgeinsp.super.truss_member | Состояние элемента фермы моста | variant | Состояние элементов, косынок, штифтов, ржавчины, трещин и деформаций. | безопасность фермы |
+| bridgeinsp.sub.pier_condition | Состояние опор моста | invariant | Состояние проверяет растрескивание, растрескивание, истирание, осадку, повреждения от столкновений и обнажение арматуры. | поддерживать стабильность |
+| bridgeinsp.sub.abutment_condition | Состояние абатмента моста | invariant | Состояние проверяется на трещины, вращение, боковые стенки, осадку, заднюю стенку и дренаж. | прекращение поддержки |
+| bridgeinsp.sub.bearing_condition | Состояние подшипников моста | invariant | Состояние фиксирует выравнивание, коррозию, замороженное движение, смещение и мусор. | передача нагрузки |
+| bridgeinsp.scour.scour_observation | Наблюдение за промывкой моста | variant | Записи наблюдений выявили опоры, ямы, мусор, миграцию каналов и эрозию. | водный риск |
+| bridgeinsp.approach.approach_slab | Состояние плиты подхода к мосту | variant | Состояние фиксирует осадки, неровности, трещины, пустоты, дренаж и переходы дорожного покрытия. | безопасность езды |
+| bridgeinsp.approach.guardrail_transition | Переход ограждения моста | invariant | Проверьте обзоры подходных рельсов, торцевой обработки, соединений, высоты и повреждений. | защита от сбоев |
+| bridgeinsp.rating.element_rating | Рейтинг элемента моста | invariant | Рейтинг присваивает элементу состояние состояния, используя стандартные определения и количества. | сравнить состояние |
+| bridgeinsp.rating.general_condition | Оценка общего состояния моста | invariant | Рейтинг суммирует состояние палубы, надстройки, основания или водопропускной трубы. | метрика программы |
+| bridgeinsp.rating.load_posting | Обзор публикации нагрузки на мост | invariant | В обзоре оценивается рейтинг, знаки, юридические нагрузки, ограничения и необходимость размещения. | защитить мост |
+| bridgeinsp.defect.critical_finding | Критическое заключение моста | invariant | Обнаружение указывает на состояние, требующее немедленного ограничения, закрытия, ремонта или инженерной проверки. | предотвратить неудачу |
+| bridgeinsp.defect.impact_damage | Ущерб от удара моста | variant | Регистрируются повреждения транспортного средства, судна, обломков или оборудования и проводится срочная оценка. | реагировать быстро |
+| bridgeinsp.defect.crack_monitor | Монитор трещин на мосту | variant | Монитор отслеживает размер трещины, ее местоположение, дату, толщину, рост и порог срабатывания. | смотреть прогресс |
+| bridgeinsp.repair.repair_recommendation | Рекомендации по ремонту моста | invariant | В рекомендации указаны дефект, приоритет, метод, количество, срочность и ответственное подразделение. | исправление плана |
+| bridgeinsp.repair.maintenance_referral | Направление на обслуживание моста | variant | Направление отправляет бригадам мусор, средства для очистки швов, дренаж, знаки, ограждения или мелкий ремонт. | закрывать мелкие проблемы |
+| bridgeinsp.repair.capital_project_flag | Флаг капитального проекта моста | variant | Флаг указывает на необходимость восстановления, замены, расширения, модернизации или серьезного укрепления. | долгосрочный план |
+| bridgeinsp.records.inspection_report | Отчет о проверке моста | invariant | Сообщите о документах команды, доступе, рейтингах, дефектах, фотографиях, рекомендациях и ограничениях. | официальный отчет |
+| bridgeinsp.records.plan_review | Справочник по обзору плана моста | variant | В справочных материалах используются предыдущие планы, исполнительные конструкции, номинальная нагрузка и документация по ремонту. | понимать структуру |
+| bridgeinsp.records.data_update | Обновление данных инвентаризации моста | invariant | Обновление исправляет геометрию, материал, принадлежность, трафик, водный путь, рейтинги или статус. | текущая база данных |
+| bridgeinsp.quality.peer_review | Экспертная оценка инспекции моста | invariant | Обзор проверяет рейтинги, важные выводы, фотографии, измерения и рекомендации. | последовательность |
+| bridgeinsp.quality.certification | Запись о сертификации инспектора мостов | invariant | Запись отслеживает квалификацию руководителя группы, обучение, опыт и срок его действия. | квалифицированный осмотр |
+| bridgeinsp.reporting.program_report | Отчет о программе проверки мостов | variant | В отчете суммируются подлежащие, завершенные проверки, состояние, проводки, критические выводы и отставание. | надзор |
+| bridgeinsp.metrics.bridge_kpi | КПИ осмотра моста | variant | KPI отслеживает своевременные проверки, плохие мосты, критические выводы, сообщения о загрузке и закрытие ремонтных работ. | управлять мостами |
+| bridgeinsp.communication.owner_notice | Уведомление владельца моста | invariant | В уведомлении сообщаются выводы, ограничения, ремонт, сроки и ответственность. | быстрое действие |
+| bridgeinsp.communication.public_restriction | Уведомление об ограничении общественного доступа на мосту | variant | В уведомлении поясняется закрытие, ограничение полосы движения, размещение нагрузки, объезд и продолжительность. | общественная безопасность |
+| bridgeinsp.continuity.emergency_inspection | Аварийный осмотр моста | invariant | Инспекция реагирует на наводнение, землетрясение, пожар, столкновение, перегрузку или наблюдаемое бедствие. | срочная безопасность |
+| bridgeinsp.close.finding_closure | Мост находит закрытие | invariant | Закрытие фиксирует ремонт, мониторинг, ограничение, инженерную приемку или передачу капитального проекта. | замкнутый контур |
+| bridgeinsp.audit.audit_trail | Аудиторский след проверки моста | invariant | Следы записывают проверки, изменения рейтингов, отчеты, ограничения, ремонт и одобрения. | защитимая история |
+| bridgeinsp.safety.railroad_coordination | Координация доступа к железнодорожному мосту | variant | Координация управляет доступом к путям, маркировкой, расписаниями, инструктажами по безопасности и разрешениями. | безопасная близость железной дороги |

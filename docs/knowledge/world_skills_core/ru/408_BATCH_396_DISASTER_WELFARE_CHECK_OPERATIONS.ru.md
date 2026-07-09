@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| welfarecheckops.intake.request_source | request source | RECORD | Source records family, hotline, agency, shelter, field crew or digital form origin. | Shows who asked. |
-| welfarecheckops.intake.subject_identity | subject identity | RECORD | Identity captures name, age estimate, address, phone, language and known vulnerabilities. | Defines search target. |
-| welfarecheckops.intake.location_uncertainty | location uncertainty | CONSTRAINT | Intake marks uncertain addresses, evacuated areas, shelters or last known locations. | Guides search planning. |
-| welfarecheckops.intake.consent_note | consent note | RECORD | Consent or legal basis notes explain why information can be used or shared. | Protects privacy. |
-| welfarecheckops.triage.priority_score | priority score | MODEL | Score weighs medical dependence, age, disability, isolation, hazard zone and time since contact. | Sorts workload. |
-| welfarecheckops.triage.life_safety | life safety flag | SAFETY_RULE | Life-safety indicators route immediately to emergency responders. | Prevents delay. |
-| welfarecheckops.triage.duplicate_request | duplicate request check | QUALITY_CHECK | Duplicate check links repeated requests for the same person or address. | Reduces wasted visits. |
-| welfarecheckops.triage.service_boundary | service boundary | CONSTRAINT | Boundary defines when the request belongs to law enforcement, EMS, sheltering or casework. | Routes correctly. |
-| welfarecheckops.assignment.team_assignment | team assignment | RECORD | Assignment lists team, vehicle, route, PPE, communications and check targets. | Deploys field work. |
-| welfarecheckops.assignment.route_batch | route batch | METHOD | Route batch groups checks by geography, priority and access conditions. | Saves time. |
-| welfarecheckops.assignment.safety_brief | safety briefing | SAFETY_RULE | Brief covers hazards, access limits, hostile situations, animals and weather. | Protects teams. |
-| welfarecheckops.assignment.call_before_visit | call-before-visit | METHOD | Teams attempt phone or text before physical visit when appropriate. | Reduces unnecessary dispatch. |
-| welfarecheckops.contact.phone_attempt | phone attempt | RECORD | Phone attempt records number, time, result, voicemail and callback instructions. | Builds contact history. |
-| welfarecheckops.contact.text_attempt | text attempt | RECORD | Text attempt records message type, language, delivery status and response. | Expands reach. |
-| welfarecheckops.contact.door_knock | door knock | METHOD | Door knock follows safety, identification, privacy and no-entry rules. | Checks residence safely. |
-| welfarecheckops.contact.neighbor_info | neighbor information | RECORD | Neighbor information records source, reliability, date and privacy limits. | Adds context. |
-| welfarecheckops.field.access_blocked | access blocked | CONSTRAINT | Blocked access records road closure, damage, security, floodwater or unsafe structure. | Explains incomplete check. |
-| welfarecheckops.field.no_answer | no answer outcome | RECORD | No-answer outcome records evidence observed, attempts made and next action. | Avoids premature closure. |
-| welfarecheckops.field.found_safe | found safe | RECORD | Safe outcome records condition, location, needs, consent and notification permission. | Closes simple cases. |
-| welfarecheckops.field.needs_assistance | needs assistance | RECORD | Assistance outcome captures food, water, medical, transport, shelter or mobility needs. | Starts referral. |
-| welfarecheckops.escalation.medical_referral | medical referral | METHOD | Medical needs are handed to EMS, clinic, shelter medical desk or public health pathway. | Connects care. |
-| welfarecheckops.escalation.shelter_referral | shelter referral | METHOD | Shelter referral notes eligibility, transport need, accessible bed and receiving site. | Moves people to safety. |
-| welfarecheckops.escalation.utility_referral | utility referral | METHOD | Utility needs include oxygen power, heat, cooling, water or critical equipment support. | Reduces service risk. |
-| welfarecheckops.escalation.casework_referral | casework referral | METHOD | Casework referral covers long-term recovery, benefits, documents and unmet needs. | Supports recovery. |
-| welfarecheckops.communication.requester_update | requester update | METHOD | Requester update shares allowed outcome detail, next steps and privacy limits. | Reduces anxiety. |
-| welfarecheckops.communication.command_sitrep | command sitrep | RECORD | Situation report summarizes checks assigned, completed, urgent needs and blocked areas. | Informs operations. |
-| welfarecheckops.communication.language | language support | METHOD | Interpreters or translated scripts support contact attempts and consent. | Improves access. |
-| welfarecheckops.communication.do_not_share | do-not-share flag | SAFETY_RULE | Do-not-share flag restricts location or condition updates when safety requires. | Protects subjects. |
-| welfarecheckops.records.case_log | case log | RECORD | Case log stores intake, triage, attempts, field notes, outcome and referrals. | Creates audit trail. |
-| welfarecheckops.records.photo_note | photo note | RECORD | Photos document access barriers or posted notices only when policy allows. | Supports field evidence. |
-| welfarecheckops.records.map_pin | map pin | RECORD | Map pin represents checked, pending, blocked or escalated locations. | Visualizes workload. |
-| welfarecheckops.records.retention | retention rule | CONSTRAINT | Records follow emergency, privacy, health and public records schedules. | Controls lifecycle. |
-| welfarecheckops.qa.supervisor_review | supervisor review | QUALITY_CHECK | Supervisor reviews high-priority closures, unresolved cases and safety incidents. | Prevents missed risk. |
-| welfarecheckops.qa.outcome_consistency | outcome consistency | QUALITY_CHECK | QA checks that outcomes match attempts, evidence and referrals. | Improves reliability. |
-| welfarecheckops.qa.backlog_review | backlog review | METHOD | Backlog review reprioritizes aging requests and blocked checks. | Keeps cases moving. |
-| welfarecheckops.qa.duplicate_resolution | duplicate resolution | METHOD | Linked duplicate requests inherit the latest verified status and requester updates. | Reduces confusion. |
-| welfarecheckops.metrics.completion_rate | completion rate | MEASUREMENT | Completion rate tracks finished checks versus assigned checks by priority. | Shows throughput. |
-| welfarecheckops.metrics.time_to_contact | time to contact | MEASUREMENT | Time to contact measures intake-to-first-attempt and intake-to-confirmed-outcome. | Exposes delays. |
-| welfarecheckops.metrics.referral_rate | referral rate | MEASUREMENT | Referral rate shows share needing medical, shelter, utility or casework help. | Plans resources. |
-| welfarecheckops.metrics.blocked_area | blocked area count | MEASUREMENT | Blocked count tracks addresses not reachable by reason and geography. | Guides access work. |
-| welfarecheckops.demob.case_closure | case closure | METHOD | Closure requires outcome, requester handling, referral status and unresolved notes. | Ends cases cleanly. |
-| welfarecheckops.demob.transfer | case transfer | RECORD | Transfer moves unresolved welfare checks to recovery, social services or local agency owner. | Maintains continuity. |
-| welfarecheckops.demob.data_archive | data archive | METHOD | Archive stores final logs, maps, exports and privacy restrictions. | Preserves records. |
-| welfarecheckops.review.after_action | after-action review | METHOD | Review captures request surge, prioritization, field safety, referral gaps and privacy lessons. | Improves future checks. |
+| welfarecheckops.intake.request_source | источник запроса | RECORD | Источник записывает происхождение семьи, горячей линии, агентства, приюта, полевой бригады или в цифровой форме. | Показывает, кто спрашивал. |
+| welfarecheckops.intake.subject_identity | личность субъекта | RECORD | Идентификация фиксирует имя, возраст, адрес, телефон, язык и известные уязвимости. | Определяет цель поиска. |
+| welfarecheckops.intake.location_uncertainty | неопределенность местоположения | CONSTRAINT | Прием отмечает неопределенные адреса, районы эвакуации, убежища или последние известные места. | Планирование поиска гидов. |
+| welfarecheckops.intake.consent_note | уведомление о согласии | RECORD | Примечания к согласию или правовому основанию объясняют, почему информация может быть использована или передана. | Защищает конфиденциальность. |
+| welfarecheckops.triage.priority_score | приоритетный балл | MODEL | Оценка учитывает медицинскую зависимость, возраст, инвалидность, изоляцию, опасную зону и время с момента контакта. | Сортирует рабочую нагрузку. |
+| welfarecheckops.triage.life_safety | флаг безопасности жизни | SAFETY_RULE | Индикаторы безопасности жизни немедленно направляются к аварийно-спасательным службам. | Предотвращает задержку. |
+| welfarecheckops.triage.duplicate_request | проверка дубликата запроса | QUALITY_CHECK | Дубликат проверки связывает повторные запросы для одного и того же человека или адреса. | Сокращает количество ненужных посещений. |
+| welfarecheckops.triage.service_boundary | граница обслуживания | CONSTRAINT | Граница определяет, когда запрос принадлежит правоохранительным органам, службе скорой помощи, приютам или работе с делами. | Маршрутизирует правильно. |
+| welfarecheckops.assignment.team_assignment | командное задание | RECORD | В задании указаны команда, транспортное средство, маршрут, средства индивидуальной защиты, средства связи и объекты проверки. | Развертывает полевые работы. |
+| welfarecheckops.assignment.route_batch | маршрутный пакет | METHOD | Маршрутизация групп пакетов проверяется по географическому положению, приоритету и условиям доступа. | Экономит время. |
+| welfarecheckops.assignment.safety_brief | инструктаж по безопасности | SAFETY_RULE | Краткое описание охватывает опасности, ограничения доступа, враждебные ситуации, животных и погоду. | Защищает команды. |
+| welfarecheckops.assignment.call_before_visit | звонок перед визитом | METHOD | Команды пытаются позвонить или отправить текстовое сообщение перед физическим визитом, если это необходимо. | Уменьшает ненужную отправку. |
+| welfarecheckops.contact.phone_attempt | попытка телефона | RECORD | Телефонная попытка записывает номер, время, результат, голосовую почту и инструкции по обратному вызову. | Создает историю контактов. |
+| welfarecheckops.contact.text_attempt | попытка отправки сообщения | RECORD | Попытка отправки текста записывает тип сообщения, язык, статус доставки и ответ. | Расширяет охват. |
+| welfarecheckops.contact.door_knock | стук в дверь | METHOD | Стук в дверь соответствует правилам безопасности, идентификации, конфиденциальности и запрета входа. | Проверяет место жительства безопасно. |
+| welfarecheckops.contact.neighbor_info | информация о соседях | RECORD | Источник информации о соседях, надежность, дата и ограничения конфиденциальности. | Добавляет контекст. |
+| welfarecheckops.field.access_blocked | доступ заблокирован | CONSTRAINT | Блокированный доступ фиксирует перекрытие дорог, повреждения, безопасность, паводковые воды или небезопасные конструкции. | Объясняет неполную проверку. |
+| welfarecheckops.field.no_answer | нет ответа, результат | RECORD | Результат отсутствия ответа записывает наблюдаемые доказательства, предпринятые попытки и следующие действия. | Предотвращает преждевременное закрытие. |
+| welfarecheckops.field.found_safe | найден в безопасности | RECORD | Безопасный результат записывает состояние, местоположение, потребности, согласие и разрешение на уведомление. | Закрывает простые дела. |
+| welfarecheckops.field.needs_assistance | нужна помощь | RECORD | Результат помощи учитывает потребности в еде, воде, медицинских услугах, транспорте, жилье или мобильности. | Запускает реферал. |
+| welfarecheckops.escalation.medical_referral | медицинское направление | METHOD | Медицинские потребности передаются в службу скорой помощи, клинику, медицинский пункт приюта или в службу общественного здравоохранения. | Подключает уход. |
+| welfarecheckops.escalation.shelter_referral | направление в приют | METHOD | В направлении на приют указывается право на получение помощи, потребность в транспорте, доступная койка и место приема. | Перемещает людей в безопасное место. |
+| welfarecheckops.escalation.utility_referral | направление на коммунальные услуги | METHOD | Потребности в коммунальных услугах включают кислородную энергию, тепло, охлаждение, воду или поддержку критически важного оборудования. | Снижает риски обслуживания. |
+| welfarecheckops.escalation.casework_referral | направление на рассмотрение дела | METHOD | Направление на работу с делами охватывает долгосрочное восстановление, льготы, документы и неудовлетворенные потребности. | Поддерживает восстановление. |
+| welfarecheckops.communication.requester_update | обновление запрашивающей стороны | METHOD | Запрашивающая сторона предоставляет доступ к обновлению с подробной информацией о результатах, следующих шагах и ограничениях конфиденциальности. | Уменьшает тревожность. |
+| welfarecheckops.communication.command_sitrep | командный ситреп | RECORD | В отчете о ситуации суммируются назначенные, завершенные проверки, срочные потребности и заблокированные области. | Информирует об операциях. |
+| welfarecheckops.communication.language | языковая поддержка | METHOD | Переводчики или переведенные сценарии поддерживают попытки контакта и согласие. | Улучшает доступ. |
+| welfarecheckops.communication.do_not_share | флаг «не делиться» | SAFETY_RULE | Флаг «Не делиться» ограничивает обновления местоположения или состояния, когда этого требует безопасность. | Защищает предметы. |
+| welfarecheckops.records.case_log | журнал дел | RECORD | В журнале дел хранятся данные о поступлении, сортировке, попытках, заметках на полях, результатах и ​​направлениях. | Создает контрольный журнал. |
+| welfarecheckops.records.photo_note | фото-заметка | RECORD | Фотографии документируют барьеры доступа или размещают уведомления только в том случае, если это разрешено политикой. | Поддерживает полевые доказательства. |
+| welfarecheckops.records.map_pin | булавка на карте | RECORD | Значок на карте обозначает проверенные, ожидающие, заблокированные или эскалированные местоположения. | Визуализирует рабочую нагрузку. |
+| welfarecheckops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам чрезвычайных ситуаций, конфиденциальности, здравоохранения и публичных записей. | Управляет жизненным циклом. |
+| welfarecheckops.qa.supervisor_review | обзор руководителя | QUALITY_CHECK | Супервайзер рассматривает высокоприоритетные закрытия, неразрешенные случаи и инциденты, связанные с безопасностью. | Предотвращает упущенный риск. |
+| welfarecheckops.qa.outcome_consistency | согласованность результатов | QUALITY_CHECK | QA проверяет, соответствуют ли результаты попыткам, доказательствам и направлениям. | Повышает надежность. |
+| welfarecheckops.qa.backlog_review | обзор отставания | METHOD | При просмотре журнала невыполненной работы меняется приоритет устаревших запросов и заблокированных проверок. | Продолжает движение дел. |
+| welfarecheckops.qa.duplicate_resolution | дубликат резолюции | METHOD | Связанные повторяющиеся запросы наследуют последние проверенные состояния и обновления отправителя запроса. | Уменьшает путаницу. |
+| welfarecheckops.metrics.completion_rate | степень завершения | MEASUREMENT | Коэффициент завершения отслеживает завершенные проверки по сравнению с назначенными проверками по приоритету. | Показывает пропускную способность. |
+| welfarecheckops.metrics.time_to_contact | время связаться | MEASUREMENT | Время обращения измеряет время от приема до первой попытки и от приема до подтвержденного результата. | Выявляет задержки. |
+| welfarecheckops.metrics.referral_rate | реферальная ставка | MEASUREMENT | Коэффициент направления показывает долю тех, кто нуждается в медицинской помощи, приюте, коммунальных услугах или помощи в социальной работе. | Планирует ресурсы. |
+| welfarecheckops.metrics.blocked_area | количество заблокированных зон | MEASUREMENT | Подсчет заблокированных адресов отслеживает адреса, недоступные по причинам и географическому положению. | Гиды получают доступ к работе. |
+| welfarecheckops.demob.case_closure | закрытие дела | METHOD | Для закрытия требуется результат, обработка запроса, статус направления и неразрешенные примечания. | Завершает дела чисто. |
+| welfarecheckops.demob.transfer | передача дела | RECORD | При переводе невыплаченные чеки по социальному обеспечению передаются в реабилитационные, социальные службы или владельцу местного агентства. | Сохраняет преемственность. |
+| welfarecheckops.demob.data_archive | архив данных | METHOD | В архиве хранятся окончательные журналы, карты, экспорт и ограничения конфиденциальности. | Сохраняет записи. |
+| welfarecheckops.review.after_action | обзор после действий | METHOD | Обзор фиксирует рост количества запросов, расстановку приоритетов, безопасность на местах, пробелы в направлениях и уроки конфиденциальности. | Улучшает будущие проверки. |

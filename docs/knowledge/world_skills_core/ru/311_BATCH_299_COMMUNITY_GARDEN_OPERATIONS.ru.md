@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| gardenops.inventory.garden_record | Community garden record | invariant | Record stores site, plots, water, tools, compost, members, rules and maintenance history. | manage garden |
-| gardenops.inventory.plot_map | Community garden plot map | invariant | Map identifies plot numbers, paths, accessible beds, common areas, water points and boundaries. | assign plots |
-| gardenops.inventory.accessible_bed | Accessible garden bed | variant | Bed supports reachable height, path width, surface stability and nearby water access. | inclusive gardening |
-| gardenops.membership.member_record | Community garden member record | invariant | Record stores gardener contact, plot assignment, agreement, fees, orientation and status. | manage membership |
-| gardenops.membership.waitlist | Garden plot waitlist | invariant | Waitlist orders applicants by policy, date, priority, residency or special program. | fair assignment |
-| gardenops.membership.orientation | Community garden orientation | invariant | Orientation explains rules, tools, water, compost, safety, harvest, communication and conflict process. | onboard members |
-| gardenops.membership.plot_abandonment | Garden plot abandonment | variant | Abandonment occurs when plot is unused, weedy, unpaid or unresponsive after notice. | reassign space |
-| gardenops.rules.garden_rules | Community garden rules | invariant | Rules define plot care, allowed plants, structures, chemicals, watering, guests and quiet hours. | reduce conflict |
-| gardenops.rules.organic_policy | Garden organic practice policy | variant | Policy limits synthetic pesticides, herbicides, fertilizers or treated materials where required. | protect users |
-| gardenops.rules.harvest_boundary | Garden harvest boundary | invariant | Boundary clarifies personal plots, communal crops, donation beds and unauthorized picking. | prevent disputes |
-| gardenops.water.water_point | Garden water point | invariant | Point includes hose bib, hydrant, rain tank, meter, backflow control and access rules. | supply water |
-| gardenops.water.hose_management | Garden hose management | variant | Management prevents leaks, trip hazards, cross-plot conflicts, broken fittings and wasted water. | keep safe |
-| gardenops.water.irrigation_schedule | Community garden irrigation schedule | variant | Schedule balances water availability, drought rules, plot needs and shared infrastructure. | conserve water |
-| gardenops.water.leak_response | Garden water leak response | invariant | Response shuts valve, reports fault, protects path and repairs hose, pipe or fitting. | stop waste |
-| gardenops.tools.tool_inventory | Community garden tool inventory | invariant | Inventory tracks shovels, rakes, wheelbarrows, hoses, keys, locks and shared supplies. | manage tools |
-| gardenops.tools.tool_checkout | Garden tool checkout | variant | Checkout records borrowed tools, member, date, return condition and missing items. | prevent loss |
-| gardenops.tools.tool_safety | Garden tool safety | invariant | Safety covers storage, sharp edges, gloves, safe lifting, cleaning and damaged tools. | reduce injury |
-| gardenops.compost.compost_area | Community garden compost area | invariant | Area receives allowed plant waste with rules for piles, bins, turning and contamination. | recycle organics |
-| gardenops.compost.contamination | Garden compost contamination | invariant | Contamination includes plastic, meat, pet waste, diseased plants, invasive seeds or chemicals. | protect compost |
-| gardenops.compost.finished_compost_distribution | Finished compost distribution | variant | Distribution shares cured compost by plots, communal beds, season or member rules. | use resource |
-| gardenops.maintenance.path_maintenance | Garden path maintenance | invariant | Maintenance keeps paths level, drained, weeded, wide, accessible and free of trip hazards. | safe movement |
-| gardenops.maintenance.fence_gate | Garden fence and gate maintenance | invariant | Maintenance checks locks, hinges, holes, posts, access codes, signage and security. | protect site |
-| gardenops.maintenance.common_area | Garden common-area maintenance | variant | Maintenance covers shared beds, sheds, gathering areas, notice boards and compost zones. | shared care |
-| gardenops.maintenance.seasonal_cleanup | Community garden seasonal cleanup | invariant | Cleanup removes debris, dead crops, abandoned materials, trash, weeds and unsafe structures. | reset season |
-| gardenops.repairs.raised_bed_repair | Garden raised bed repair | invariant | Repair fixes rotted boards, loose corners, soil loss, sharp edges or unstable bed walls. | keep plots usable |
-| gardenops.repairs.shed_repair | Garden shed repair | variant | Repair addresses roof leaks, locks, shelves, pests, tools, doors and weather damage. | protect supplies |
-| gardenops.repairs.path_surface_repair | Garden path surface repair | variant | Repair adds mulch, gravel, pavers or grading to reduce mud, holes and accessibility barriers. | improve access |
-| gardenops.events.workday | Community garden workday | invariant | Workday organizes member labor, tasks, tools, safety briefing and completion tracking. | maintain site |
-| gardenops.events.education_event | Garden education event | variant | Event covers growing skills, compost, water conservation, seed saving or food preparation. | build skills |
-| gardenops.events.seed_swap | Community garden seed swap | variant | Event exchanges seeds with labels, crop notes, local adaptation guidance and sharing rules. | share varieties |
-| gardenops.events.harvest_donation | Garden harvest donation | variant | Donation manages communal harvest, food safety, weighing, recipients and records. | share food |
-| gardenops.conflict.plot_boundary_dispute | Garden plot boundary dispute | invariant | Dispute involves encroachment, shade, harvest, paths, water, structures or member conduct. | resolve fairly |
-| gardenops.conflict.rule_violation | Garden rule violation | invariant | Violation records behavior, evidence, notice, correction period and possible plot loss. | enforce rules |
-| gardenops.conflict.mediation_process | Garden mediation process | variant | Process brings gardeners and coordinator together to clarify facts, rules and next actions. | reduce escalation |
-| gardenops.safety.chemical_risk | Garden chemical risk | invariant | Risk includes unapproved pesticide, contaminated soil, fertilizer misuse or unsafe storage. | protect users |
-| gardenops.safety.heat_work | Garden heat work safety | variant | Safety encourages water, shade, breaks and task timing during hot weather. | protect volunteers |
-| gardenops.safety.soil_contamination_notice | Garden soil contamination notice | variant | Notice informs users about known soil limits, testing, raised beds or crop restrictions. | manage exposure |
-| gardenops.records.plot_inspection | Garden plot inspection record | invariant | Record captures plot condition, weeds, structures, compliance, notices and photos. | track upkeep |
-| gardenops.records.water_meter_log | Garden water meter log | variant | Log tracks water use, leaks, seasonal patterns, billing and conservation results. | manage costs |
-| gardenops.reporting.membership_report | Community garden membership report | invariant | Report summarizes plots assigned, waitlist, vacancies, rule issues and participation. | manage program |
-| gardenops.metrics.plot_utilization | Garden plot utilization KPI | invariant | KPI measures active plots versus total available plots by season. | improve access |
-| gardenops.metrics.workday_participation | Garden workday participation KPI | variant | KPI tracks member participation in shared maintenance and events. | balance labor |
-| gardenops.coordination.parks_department | Garden parks department coordination | variant | Coordination handles mowing, trash, water, repairs, capital work and site rules. | align support |
-| gardenops.close.season_closeout | Community garden season closeout | invariant | Closeout confirms plots cleared, water winterized, tools stored, records updated and notices sent. | finish season |
+| gardenops.inventory.garden_record | Рекорд общественного сада | invariant | Место хранения записей, участки, вода, инструменты, компост, участники, правила и история обслуживания. | управлять садом |
+| gardenops.inventory.plot_map | Карта общественного садового участка | invariant | На карте указаны номера участков, дорожки, доступные грядки, места общего пользования, точки водоснабжения и границы. | назначать участки |
+| gardenops.inventory.accessible_bed | Доступная садовая грядка | variant | Кровать поддерживает достижимую высоту, ширину дорожки, устойчивость поверхности и близлежащий доступ к воде. | инклюзивное садоводство |
+| gardenops.membership.member_record | Запись участника общественного сада | invariant | Запись хранит контакты садовника, назначение участка, соглашение, сборы, ориентацию и статус. | управлять членством |
+| gardenops.membership.waitlist | Очередь на садовый участок | invariant | Список ожидания упорядочивает кандидатов по политике, дате, приоритету, месту жительства или специальной программе. | справедливое назначение |
+| gardenops.membership.orientation | Ориентация на общественный сад | invariant | Ориентация объясняет правила, инструменты, воду, компост, безопасность, сбор урожая, общение и конфликтный процесс. | бортовые участники |
+| gardenops.membership.plot_abandonment | Заброшенность садового участка | variant | Отказ происходит, когда участок не используется, засорен, не оплачен или не отвечает после уведомления. | переназначить пространство |
+| gardenops.rules.garden_rules | Правила общественного сада | invariant | Правила определяют уход за участком, разрешенные растения, конструкции, химикаты, полив, гостей и часы тишины. | уменьшить конфликт |
+| gardenops.rules.organic_policy | Политика органической практики в саду | variant | Политика ограничивает использование синтетических пестицидов, гербицидов, удобрений или обработанных материалов там, где это необходимо. | защитить пользователей |
+| gardenops.rules.harvest_boundary | Граница урожая сада | invariant | Граница уточняет приусадебные участки, коммунальные посевы, грядки для пожертвований и несанкционированный сбор. | предотвращать споры |
+| gardenops.water.water_point | Садовая точка водоснабжения | invariant | Пункт включает в себя нагрудник для шланга, гидрант, дождевой бак, счетчик, контроль обратного потока и правила доступа. | подавать воду |
+| gardenops.water.hose_management | Управление садовым шлангом | variant | Управление предотвращает утечки, опасности споткнуться, конфликты между участками, поломку арматуры и потерю воды. | берегите себя |
+| gardenops.water.irrigation_schedule | График орошения общественного сада | variant | График учитывает наличие воды, правила засухи, потребности участка и общую инфраструктуру. | экономить воду |
+| gardenops.water.leak_response | Реакция на утечку воды в саду | invariant | Реакция закрывает клапан, сообщает о неисправности, защищает путь и ремонтирует шланг, трубу или фитинг. | остановить трату |
+| gardenops.tools.tool_inventory | Общественный инвентарь садовых инструментов | invariant | Инвентаризация отслеживает лопаты, грабли, тачки, шланги, ключи, замки и общие принадлежности. | управлять инструментами |
+| gardenops.tools.tool_checkout | Касса садового инструмента | variant | Касса записывает заимствованные инструменты, член, дату, условия возврата и недостающие предметы. | предотвратить потерю |
+| gardenops.tools.tool_safety | Безопасность садового инструмента | invariant | Безопасность распространяется на хранение, острые края, перчатки, безопасный подъем, очистку и поврежденные инструменты. | уменьшить травмы |
+| gardenops.compost.compost_area | Компостная площадка в общественном саду | invariant | На территорию принимаются разрешенные растительные отходы с соблюдением правил относительно куч, контейнеров, переворачивания и загрязнения. | перерабатывать органику |
+| gardenops.compost.contamination | Загрязнение садового компоста | invariant | Загрязнение включает пластик, мясо, отходы домашних животных, больные растения, инвазивные семена или химикаты. | защитить компост |
+| gardenops.compost.finished_compost_distribution | Готовая раздача компоста | variant | Распределение долей затвердевшего компоста по участкам, общим грядкам, сезонам или правилам участников. | использовать ресурс |
+| gardenops.maintenance.path_maintenance | Уход за садовыми дорожками | invariant | При обслуживании дорожки остаются ровными, осушенными, прополотыми, широкими, доступными и защищенными от опасности споткнуться. | безопасное движение |
+| gardenops.maintenance.fence_gate | Уход за садовым забором и воротами | invariant | Техническое обслуживание проверяет замки, петли, отверстия, стойки, коды доступа, вывески и систему безопасности. | защитить сайт |
+| gardenops.maintenance.common_area | Уход за общей территорией сада | variant | Обслуживание распространяется на общие грядки, навесы, места для сбора, доски объявлений и зоны компоста. | совместная забота |
+| gardenops.maintenance.seasonal_cleanup | Сезонная уборка общественного сада | invariant | При очистке удаляется мусор, мертвые посевы, брошенные материалы, мусор, сорняки и небезопасные конструкции. | сбросить сезон |
+| gardenops.repairs.raised_bed_repair | Ремонт грядок в саду | invariant | Ремонт устраняет гнилые доски, незакрепленные углы, потери почвы, острые края или нестабильные стенки грядки. | сохранять участки пригодными для использования |
+| gardenops.repairs.shed_repair | Ремонт садового сарая | variant | Ремонт устраняет протечки крыши, замки, полки, вредители, инструменты, двери и повреждения, вызванные погодными условиями. | защитить поставки |
+| gardenops.repairs.path_surface_repair | Ремонт покрытия садовой дорожки | variant | При ремонте добавляется мульча, гравий, брусчатка или выравнивание, чтобы уменьшить количество грязи, ям и препятствий для доступа. | улучшить доступ |
+| gardenops.events.workday | Рабочий день в общественном саду | invariant | Workday организует работу участников, задачи, инструменты, инструктаж по технике безопасности и отслеживание выполнения. | поддерживать сайт |
+| gardenops.events.education_event | Мероприятие по садоводству | variant | Мероприятие охватывает навыки выращивания, компоста, сохранения воды, сохранения семян или приготовления пищи. | развивать навыки |
+| gardenops.events.seed_swap | Обмен семенами в общественном саду | variant | На мероприятии происходит обмен семенами с этикетками, заметками об урожае, местными рекомендациями по адаптации и правилами обмена. | делиться сортами |
+| gardenops.events.harvest_donation | Пожертвование урожая сада | variant | Пожертвование управляет общим урожаем, безопасностью пищевых продуктов, взвешиванием, получателями и записями. | делиться едой |
+| gardenops.conflict.plot_boundary_dispute | Спор о границе садового участка | invariant | Спор связан с посягательством, тенью, сбором урожая, тропинками, водой, сооружениями или поведением участников. | решить справедливо |
+| gardenops.conflict.rule_violation | Нарушение правил сада | invariant | Нарушение фиксирует поведение, доказательства, уведомление, период исправления и возможную потерю сюжета. | обеспечивать соблюдение правил |
+| gardenops.conflict.mediation_process | Процесс посредничества в саду | variant | Процесс объединяет садовников и координатора для разъяснения фактов, правил и дальнейших действий. | уменьшить эскалацию |
+| gardenops.safety.chemical_risk | Химический риск в саду | invariant | Риск включает в себя неутвержденные пестициды, загрязненную почву, неправильное использование удобрений или небезопасное хранение. | защитить пользователей |
+| gardenops.safety.heat_work | Безопасность работы в садовом отоплении | variant | Безопасность поощряет воду, тень, перерывы и выбор времени для выполнения задач в жаркую погоду. | защищать волонтеров |
+| gardenops.safety.soil_contamination_notice | Уведомление о загрязнении садовой почвы | variant | Уведомление информирует пользователей об известных ограничениях на почву, испытаниях, приподнятых грядках или ограничениях на урожай. | управлять воздействием |
+| gardenops.records.plot_inspection | Акт осмотра садового участка | invariant | Запись фиксирует состояние участка, сорняки, конструкции, соответствие требованиям, уведомления и фотографии. | отслеживать содержание |
+| gardenops.records.water_meter_log | Журнал садового счетчика воды | variant | Журнал отслеживает использование воды, утечки, сезонные закономерности, результаты выставления счетов и сохранения. | управлять расходами |
+| gardenops.reporting.membership_report | Отчет о членстве в общественном саду | invariant | Отчет суммирует назначенные участки, список ожидания, вакансии, вопросы правил и участие. | управлять программой |
+| gardenops.metrics.plot_utilization | KPI использования садового участка | invariant | KPI измеряет активные участки по сравнению с общим количеством доступных участков по сезонам. | улучшить доступ |
+| gardenops.metrics.workday_participation | KPI участия в садовом труде | variant | KPI отслеживает участие участников в совместном обслуживании и мероприятиях. | баланс труда |
+| gardenops.coordination.parks_department | Координация отдела садовых парков | variant | Координация занимается покосом, вывозом мусора, поливом, ремонтом, капитальными работами и правилами участка. | согласовать поддержку |
+| gardenops.close.season_closeout | Закрытие сезона общественных садов | invariant | Закрытие подтверждает, что участки расчищены, вода подготовлена ​​к зиме, инструменты сохранены, записи обновлены и уведомления отправлены. | закончить сезон |

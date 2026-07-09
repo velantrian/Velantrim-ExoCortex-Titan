@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| placardops.activation.trigger | placarding trigger | MODEL | Trigger includes earthquake, flood, fire, storm or structural hazard affecting buildings. | Starts safety posting. |
-| placardops.activation.authority | placarding authority | RECORD | Authority records building official, emergency order, jurisdiction and inspection period. | Clarifies legal basis. |
-| placardops.activation.team_roster | team roster | RECORD | Roster lists inspectors, engineers, admin, GIS and safety support. | Assigns capacity. |
-| placardops.activation.priority_area | priority area | METHOD | Priority areas include collapse risk, dense occupancy, critical facilities and public reports. | Sends teams where risk is high. |
-| placardops.inspection.structure_id | structure ID | RECORD | Structure ID links address, parcel, owner, occupancy and inspection history. | Grounds placard decisions. |
-| placardops.inspection.rapid_eval | rapid evaluation | METHOD | Rapid evaluation checks visible hazards, occupancy risk and need for detailed review. | Quickly protects public. |
-| placardops.inspection.detailed_eval | detailed evaluation | METHOD | Detailed evaluation uses qualified specialist for complex damage. | Improves decision confidence. |
-| placardops.inspection.access_limit | access limit | CONSTRAINT | Inspectors may be blocked by utilities, flooding, fire, unsafe entry or owner access. | Explains pending status. |
-| placardops.placard.green | green placard | RECORD | Green placard indicates no restriction from rapid assessment, with caveats. | Allows use while noting limits. |
-| placardops.placard.yellow | yellow placard | RECORD | Yellow placard restricts occupancy or areas until repairs/review. | Communicates limited use. |
-| placardops.placard.red | red placard | SAFETY_RULE | Red placard prohibits entry or occupancy except authorized access. | Protects life safety. |
-| placardops.placard.custom | custom condition | METHOD | Custom condition states specific room, floor, utility or time restriction. | Avoids over/under restriction. |
-| placardops.criteria.structural | structural criteria | MODEL | Criteria consider foundation, walls, roof, connections, settlement and collapse signs. | Supports consistent placards. |
-| placardops.criteria.fire | fire damage criteria | MODEL | Fire criteria include charring, smoke, utilities, roof, stairs and hazardous materials. | Guides safe reentry. |
-| placardops.criteria.flood | flood damage criteria | MODEL | Flood criteria include undermining, contamination, electrical and mold risk. | Handles water damage. |
-| placardops.criteria.utility | utility hazard | SAFETY_RULE | Gas, electrical, water or elevator hazards can drive occupancy restriction. | Prevents secondary injury. |
-| placardops.posting.placement | placard placement | METHOD | Placard is posted visibly at main entrance or safe access point. | Makes status clear. |
-| placardops.posting.photo | posting photo | RECORD | Photo documents placard, building, date and inspector. | Supports enforcement. |
-| placardops.posting.tamper | tamper rule | SAFETY_RULE | Removing or altering placard is prohibited and enforceable. | Maintains control. |
-| placardops.posting.expiry | review date | RECORD | Placard may include review, expiration or reinspection date. | Shows next step. |
-| placardops.owner.notice | owner notice | METHOD | Owner receives placard reason, restrictions, appeal and repair path. | Supports due process. |
-| placardops.owner.tenant | tenant communication | METHOD | Tenants receive safe-entry, belongings, relocation and contact information. | Protects occupants. |
-| placardops.owner.language | language support | METHOD | Notices use plain language and translation where feasible. | Improves compliance. |
-| placardops.owner.entry | limited entry permit | CONSTRAINT | Limited entry may allow retrieval, repairs or inspection under conditions. | Balances safety and needs. |
-| placardops.data.field_form | field form | RECORD | Form records damage, placard, photos, inspector, time and notes. | Standardizes records. |
-| placardops.data.gis_update | GIS update | METHOD | Placard status updates map and dashboard layers. | Gives command visibility. |
-| placardops.data.duplicate | duplicate check | QUALITY_CHECK | Duplicate checks merge repeated inspections for same structure. | Keeps status accurate. |
-| placardops.data.privacy | privacy boundary | CONSTRAINT | Public maps avoid unnecessary personal owner/tenant data. | Protects residents. |
-| placardops.enforcement.restriction | restriction enforcement | SAFETY_RULE | Unsafe occupancy can trigger enforcement, police/fire support or utility action. | Protects public. |
-| placardops.enforcement.contractor_access | contractor access | METHOD | Contractors need permits, safety plan or official permission for restricted buildings. | Controls repair work. |
-| placardops.enforcement.reopen | reopening condition | CONSTRAINT | Reopening requires repair, engineer letter, permit signoff or reinspection. | Prevents premature use. |
-| placardops.enforcement.violation | violation record | RECORD | Violations record illegal entry, placard removal or unsafe occupancy. | Supports action. |
-| placardops.appeal.request | appeal request | RECORD | Appeal records owner/occupant challenge, evidence and desired change. | Starts review. |
-| placardops.appeal.review_panel | review panel | METHOD | Qualified official or panel reviews contested placard. | Provides due process. |
-| placardops.appeal.outcome | appeal outcome | RECORD | Outcome records upheld, modified, removed or pending further inspection. | Closes appeal. |
-| placardops.appeal.timeline | appeal timeline | CONSTRAINT | Timelines define response and reinspection expectations. | Reduces uncertainty. |
-| placardops.repair.permit_link | permit link | RECORD | Placard case links to repair permits and inspections. | Connects safety to repair process. |
-| placardops.repair.engineer_letter | engineer letter | RECORD | Engineer letter may document repair adequacy or temporary shoring. | Supports reclassification. |
-| placardops.repair.reinspection | reinspection | QUALITY_CHECK | Reinspection verifies repairs or changed conditions before placard change. | Maintains safety. |
-| placardops.public.status_map | public status map | METHOD | Public map shows placard category and general location where policy allows. | Informs community. |
-| placardops.public.faq | public FAQ | METHOD | FAQ explains placard colors, entry rules, appeals and resources. | Reduces confusion. |
-| placardops.records.retention | retention rule | CONSTRAINT | Inspection, photos, appeals and permits follow building/legal retention rules. | Preserves evidence. |
-| placardops.metrics.counts | placard counts | MEASUREMENT | Counts track green, yellow, red, pending and cleared structures. | Shows recovery status. |
-| placardops.closeout.clearance | clearance closeout | METHOD | Case closes when placard is removed, replaced by normal permit case, or demolition completed. | Ends emergency status. |
+| placardops.activation.trigger | спусковой крючок для плакатов | MODEL | Триггер включает землетрясение, наводнение, пожар, шторм или структурную опасность, затрагивающую здания. | Начинает публиковать сообщения о безопасности. |
+| placardops.activation.authority | орган по размещению плакатов | RECORD | Орган фиксирует должностное лицо здания, приказ о чрезвычайной ситуации, юрисдикцию и период проверки. | Уточняет правовую основу. |
+| placardops.activation.team_roster | состав команды | RECORD | В реестре перечислены инспекторы, инженеры, администраторы, сотрудники ГИС и службы безопасности. | Назначает емкость. |
+| placardops.activation.priority_area | приоритетная область | METHOD | Приоритетные области включают риск обрушения, плотную заселенность, критически важные объекты и публичные отчеты. | Отправляет команды туда, где риск высок. |
+| placardops.inspection.structure_id | идентификатор структуры | RECORD | Идентификатор структуры связывает адрес, участок, владельца, размещение и историю проверок. | Обосновывает табло решения. |
+| placardops.inspection.rapid_eval | быстрая оценка | METHOD | Быстрая оценка проверяет видимые опасности, риски присутствия и необходимость детального анализа. | Быстро защищает общественность. |
+| placardops.inspection.detailed_eval | детальная оценка | METHOD | Детальная оценка проводится квалифицированным специалистом при сложных повреждениях. | Повышает уверенность в принятии решений. |
+| placardops.inspection.access_limit | ограничение доступа | CONSTRAINT | Инспекторы могут быть заблокированы из-за коммунальных услуг, наводнения, пожара, небезопасного входа или доступа владельца. | Объясняет статус ожидания. |
+| placardops.placard.green | зеленый плакат | RECORD | Зеленый плакат указывает на отсутствие ограничений для быстрой оценки, но с оговорками. | Позволяет использовать с учетом ограничений. |
+| placardops.placard.yellow | желтый плакат | RECORD | Желтый плакат ограничивает размещение или зоны до ремонта/проверки. | Сообщает об ограниченном использовании. |
+| placardops.placard.red | красный плакат | SAFETY_RULE | Красный плакат запрещает вход или проживание, за исключением разрешенного доступа. | Обеспечивает безопасность жизни. |
+| placardops.placard.custom | индивидуальное состояние | METHOD | Пользовательское условие указывает конкретную комнату, этаж, служебное помещение или ограничение по времени. | Избегает чрезмерного/недостаточного ограничения. |
+| placardops.criteria.structural | структурные критерии | MODEL | Критерии учитывают фундамент, стены, крышу, соединения, признаки осадки и обрушения. | Поддерживает последовательные плакаты. |
+| placardops.criteria.fire | критерии ущерба от пожара | MODEL | Критерии пожара включают обугливание, дым, коммуникации, крышу, лестницы и опасные материалы. | Направляет безопасный вход в атмосферу. |
+| placardops.criteria.flood | критерии ущерба от наводнения | MODEL | Критерии наводнения включают подрыв, загрязнение, риск поражения электрическим током и плесенью. | Справляется с уроном от воды. |
+| placardops.criteria.utility | коммунальная опасность | SAFETY_RULE | Опасности, связанные с газом, электричеством, водой или лифтом, могут привести к ограничению занятости. | Предотвращает вторичные травмы. |
+| placardops.posting.placement | размещение плаката | METHOD | Плакат вывешивается на видном месте у главного входа или в безопасном месте. | Проясняет статус. |
+| placardops.posting.photo | размещение фото | RECORD | Фотодокументы: табличка, здание, дата и инспектор. | Поддерживает принудительное исполнение. |
+| placardops.posting.tamper | правило вмешательства | SAFETY_RULE | Удаление или изменение табло запрещено и подлежит принудительному исполнению. | Сохраняет контроль. |
+| placardops.posting.expiry | дата рассмотрения | RECORD | На табличке может быть указана дата проверки, истечения срока действия или повторной проверки. | Показывает следующий шаг. |
+| placardops.owner.notice | уведомление владельца | METHOD | Владелец получает табличку причины, ограничений, апелляции и пути исправления. | Поддерживает надлежащую правовую процедуру. |
+| placardops.owner.tenant | связь с арендатором | METHOD | Арендаторы получают безопасный вход, вещи, переезд и контактную информацию. | Защищает жильцов. |
+| placardops.owner.language | языковая поддержка | METHOD | В уведомлениях используются простой язык и перевод, где это возможно. | Улучшает соответствие. |
+| placardops.owner.entry | ограниченное разрешение на въезд | CONSTRAINT | Ограниченный доступ может разрешить извлечение, ремонт или проверку при определенных условиях. | Балансирует безопасность и потребности. |
+| placardops.data.field_form | форма поля | RECORD | Форма записи повреждений, табличка, фотографии, инспектор, время и примечания. | Стандартизирует записи. |
+| placardops.data.gis_update | Обновление ГИС | METHOD | Статус табло обновляет слои карты и информационной панели. | Обеспечивает видимость команд. |
+| placardops.data.duplicate | дубликат чека | QUALITY_CHECK | Дубликаты проверок объединяют повторные проверки одной и той же структуры. | Сохраняет статус точным. |
+| placardops.data.privacy | граница конфиденциальности | CONSTRAINT | Публичные карты позволяют избежать ненужных личных данных владельца/арендатора. | Защищает жильцов. |
+| placardops.enforcement.restriction | соблюдение ограничений | SAFETY_RULE | Небезопасное размещение может стать причиной принятия мер правоохранительными органами, полицией/пожарной поддержкой или действиями коммунальных служб. | Защищает общественность. |
+| placardops.enforcement.contractor_access | доступ подрядчика | METHOD | Подрядчикам необходимы разрешения, план безопасности или официальное разрешение на строительство зданий с ограниченным доступом. | Контролирует ремонтные работы. |
+| placardops.enforcement.reopen | условие повторного открытия | CONSTRAINT | Для повторного открытия требуется ремонт, письмо инженера, подписание разрешения или повторная проверка. | Предотвращает преждевременное использование. |
+| placardops.enforcement.violation | запись о нарушении | RECORD | Нарушения фиксируют незаконный проникновение, снятие табло или небезопасное размещение. | Поддерживает действие. |
+| placardops.appeal.request | запрос на апелляцию | RECORD | В апелляции фиксируются возражения владельца/жильца, доказательства и желаемые изменения. | Начинает обзор. |
+| placardops.appeal.review_panel | панель обзора | METHOD | Квалифицированное должностное лицо или комиссия рассматривает оспариваемый плакат. | Обеспечивает надлежащую правовую процедуру. |
+| placardops.appeal.outcome | результат апелляции | RECORD | Записи о результатах сохранены, изменены, удалены или ожидаются дальнейшей проверки. | Закрывает апелляцию. |
+| placardops.appeal.timeline | сроки апелляции | CONSTRAINT | Сроки определяют ожидания реагирования и повторной проверки. | Уменьшает неопределенность. |
+| placardops.repair.permit_link | разрешить ссылку | RECORD | На табло указаны разрешения на ремонт и проверки. | Связывает безопасность с процессом ремонта. |
+| placardops.repair.engineer_letter | письмо инженера | RECORD | В письме инженера может быть документально подтверждена адекватность ремонта или временное крепление. | Поддерживает реклассификацию. |
+| placardops.repair.reinspection | повторная проверка | QUALITY_CHECK | Повторная проверка проверяет ремонт или измененные условия перед заменой таблички. | Сохраняет безопасность. |
+| placardops.public.status_map | карта общественного статуса | METHOD | На общедоступной карте показаны категория табло и общее местоположение, если это разрешено политикой. | Информирует сообщество. |
+| placardops.public.faq | общедоступные часто задаваемые вопросы | METHOD | Часто задаваемые вопросы объясняют цвета плакатов, правила входа, апелляции и ресурсы. | Уменьшает путаницу. |
+| placardops.records.retention | правило хранения | CONSTRAINT | Осмотр, фотографии, апелляции и разрешения соответствуют правилам строительства/законного хранения. | Сохраняет доказательства. |
+| placardops.metrics.counts | Плакат имеет значение | MEASUREMENT | Подсчеты отслеживают зеленые, желтые, красные, ожидающие и очищенные структуры. | Показывает статус восстановления. |
+| placardops.closeout.clearance | распродажа | METHOD | Дело закрывается, когда табличка удаляется, заменяется обычным ящиком с разрешением или завершается снос. | Завершает аварийный статус. |

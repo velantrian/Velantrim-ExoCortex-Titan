@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| infokioskops.activation.site_selection | kiosk site selection | METHOD | Site selection checks foot traffic, shelter proximity, accessibility, shade, security and power. | Places help where useful. |
-| infokioskops.activation.service_scope | service scope | CONSTRAINT | Scope defines information, referrals, maps, forms and excluded advice topics. | Prevents overpromising. |
-| infokioskops.activation.operating_hours | operating hours | RECORD | Hours record open times, peak periods, closures and backup coverage. | Sets public expectation. |
-| infokioskops.activation.command_link | command link | RECORD | Kiosk links to public information, operations, logistics and partner liaisons. | Keeps messages aligned. |
-| infokioskops.staffing.roster | staffing roster | RECORD | Roster lists greeters, referral staff, interpreter support, runners and supervisor. | Maintains coverage. |
-| infokioskops.staffing.role_brief | role brief | METHOD | Brief defines greeting, triage, referral, rumor logging and escalation duties. | Aligns staff. |
-| infokioskops.staffing.volunteer_boundary | volunteer boundary | CONSTRAINT | Volunteers give approved information and route complex cases to qualified staff. | Controls risk. |
-| infokioskops.staffing.shift_handoff | shift handoff | METHOD | Handoff covers updates, shortages, rumors, difficult cases and material status. | Preserves continuity. |
-| infokioskops.scripts.core_script | core script | RECORD | Script covers greeting, needs triage, available services, privacy and next steps. | Standardizes service. |
-| infokioskops.scripts.rumor_response | rumor response | METHOD | Rumor script uses verified facts, uncertainty language and source referral. | Reduces misinformation. |
-| infokioskops.scripts.sensitive_topic | sensitive topic routing | SAFETY_RULE | Medical, legal, immigration, benefits and safety topics route to qualified channels. | Protects residents. |
-| infokioskops.scripts.language_plain | plain language | METHOD | Scripts use short sentences, local terms and nontechnical service names. | Improves comprehension. |
-| infokioskops.maps.service_map | service map | RECORD | Map shows shelters, food, water, charging, clinics, transport and assistance centers. | Guides movement. |
-| infokioskops.maps.route_update | route update | METHOD | Routes update for closures, hazards, transit changes and access restrictions. | Prevents bad directions. |
-| infokioskops.maps.accessibility_layer | accessibility layer | RECORD | Map notes wheelchair access, quiet space, interpreters, restrooms and transport options. | Supports equity. |
-| infokioskops.maps.print_version | printed map version | RECORD | Printed maps carry version date, source and update warning. | Avoids stale maps. |
-| infokioskops.referrals.directory | referral directory | RECORD | Directory lists providers, hours, eligibility, contacts, capacity and language access. | Supports accurate referral. |
-| infokioskops.referrals.warm_referral | warm referral | METHOD | Warm referral confirms receiving service, needed documents and next contact. | Reduces drop-off. |
-| infokioskops.referrals.closed_loop | closed-loop referral | QUALITY_CHECK | Closed-loop check verifies urgent residents reached the referred service where feasible. | Confirms help. |
-| infokioskops.referrals.unavailable | unavailable service | RECORD | Unavailable services record reason, alternative, update time and requester impact. | Maintains honesty. |
-| infokioskops.materials.flyer_master | flyer master | RECORD | Master tracks approved flyers, versions, languages, source and expiration. | Controls printed info. |
-| infokioskops.materials.form_packet | form packet | RECORD | Packets group applications, checklists, maps and instruction sheets by need. | Speeds handout. |
-| infokioskops.materials.restock | restock trigger | METHOD | Restock uses daily counts, peak use and minimum stock thresholds. | Prevents shortages. |
-| infokioskops.materials.removal | stale material removal | QUALITY_CHECK | Old flyers and superseded maps are pulled from display. | Prevents misinformation. |
-| infokioskops.updates.update_source | update source | RECORD | Updates record source agency, timestamp, approver and affected materials. | Creates traceability. |
-| infokioskops.updates.bulletin_cycle | bulletin cycle | METHOD | Bulletin cycle schedules checks for service status, closures and new resources. | Keeps current. |
-| infokioskops.updates.emergency_notice | emergency notice | SAFETY_RULE | Urgent warnings supersede routine materials and require command confirmation. | Protects public. |
-| infokioskops.updates.version_board | version board | RECORD | Board shows last update time and high-change items. | Signals freshness. |
-| infokioskops.feedback.feedback_card | feedback card | RECORD | Card captures unanswered questions, bad referrals, access barriers and suggestions. | Finds gaps. |
-| infokioskops.feedback.rumor_log | rumor log | RECORD | Rumor log records claim, source area, frequency and response given. | Guides public information. |
-| infokioskops.feedback.unmet_need | unmet need | RECORD | Unmet need log captures request, barrier, location and possible partner. | Informs planning. |
-| infokioskops.feedback.complaint_route | complaint route | METHOD | Complaints route to supervisor, partner agency or formal process. | Handles issues. |
-| infokioskops.privacy.minimum_data | minimum data | SAFETY_RULE | Kiosk avoids collecting personal data unless needed for referral or follow-up. | Reduces exposure. |
-| infokioskops.privacy.private_issue | private issue handling | METHOD | Sensitive conversations move away from public line or to qualified desk. | Preserves dignity. |
-| infokioskops.safety.site_safety | site safety | SAFETY_RULE | Site safety covers heat, crowding, trip hazards, lighting, security and weather. | Protects staff/public. |
-| infokioskops.safety.conflict_deescalation | conflict de-escalation | METHOD | Staff use calm scripts, supervisor handoff and security route for conflict. | Reduces escalation. |
-| infokioskops.reporting.daily_summary | daily summary | MEASUREMENT | Summary reports visitors, referrals, materials used, rumors, gaps and incidents. | Informs command. |
-| infokioskops.reporting.partner_gap | partner gap report | RECORD | Gap report shows services missing, unavailable or repeatedly requested. | Drives resource action. |
-| infokioskops.metrics.visitor_count | visitor count | MEASUREMENT | Count tracks visitors by time, need category and language when feasible. | Shows demand. |
-| infokioskops.metrics.referral_count | referral count | MEASUREMENT | Count tracks referrals by provider, topic and completion status. | Shows output. |
-| infokioskops.metrics.material_usage | material usage | MEASUREMENT | Usage tracks flyers, maps and packets distributed by type. | Guides printing. |
-| infokioskops.qa.mystery_check | mystery check | QUALITY_CHECK | Supervisor samples kiosk accuracy, courtesy, referral quality and material freshness. | Improves service. |
-| infokioskops.demob.closeout | kiosk closeout | METHOD | Closeout removes materials, archives logs, transfers open issues and restores site. | Ends cleanly. |
-| infokioskops.review.after_action | after-action review | METHOD | Review captures staffing, scripts, maps, referral gaps, rumors and feedback lessons. | Improves future kiosks. |
+| infokioskops.activation.site_selection | выбор места для киоска | METHOD | При выборе места учитывается пешеходное движение, близость укрытия, доступность, тень, безопасность и электроснабжение. | Места помогают там, где это полезно. |
+| infokioskops.activation.service_scope | объем услуги | CONSTRAINT | Область действия определяет информацию, направления, карты, формы и исключенные темы советов. | Предотвращает чрезмерные обещания. |
+| infokioskops.activation.operating_hours | часы работы | RECORD | В часах фиксируются часы работы, периоды пиковой нагрузки, закрытия и резервное покрытие. | Устанавливает общественные ожидания. |
+| infokioskops.activation.command_link | командная ссылка | RECORD | Киоск обеспечивает связь с общественностью, операциями, логистикой и связями с партнерами. | Обеспечивает выравнивание сообщений. |
+| infokioskops.staffing.roster | штатное расписание | RECORD | В реестре указаны встречающие, направляющий персонал, поддержка переводчиков, бегунов и супервайзер. | Сохраняет покрытие. |
+| infokioskops.staffing.role_brief | краткое описание роли | METHOD | Краткое описание определяет обязанности по приветствию, сортировке, направлению, регистрации слухов и эскалации. | Выравнивает персонал. |
+| infokioskops.staffing.volunteer_boundary | добровольная граница | CONSTRAINT | Добровольцы предоставляют утвержденную информацию и направляют сложные случаи квалифицированному персоналу. | Контролирует риск. |
+| infokioskops.staffing.shift_handoff | передача смены | METHOD | Передача охватывает обновления, нехватку, слухи, сложные случаи и материальное состояние. | Сохраняет преемственность. |
+| infokioskops.scripts.core_script | основной сценарий | RECORD | Сценарий описывает приветствие, необходимость сортировки, доступные услуги, конфиденциальность и следующие действия. | Стандартизирует обслуживание. |
+| infokioskops.scripts.rumor_response | ответ на слух | METHOD | Сценарий слухов использует проверенные факты, язык неопределенности и ссылку на источник. | Уменьшает дезинформацию. |
+| infokioskops.scripts.sensitive_topic | маршрутизация деликатных тем | SAFETY_RULE | Вопросы медицины, права, иммиграции, льгот и безопасности направляются по квалифицированным каналам. | Защищает жильцов. |
+| infokioskops.scripts.language_plain | простой язык | METHOD | В сценариях используются короткие предложения, местные термины и имена нетехнических служб. | Улучшает понимание. |
+| infokioskops.maps.service_map | карта услуг | RECORD | На карте показаны приюты, еда, вода, зарядка, клиники, транспорт и центры помощи. | Направляет движение. |
+| infokioskops.maps.route_update | обновление маршрута | METHOD | Обновление маршрутов с учетом закрытий, опасностей, изменений транзита и ограничений доступа. | Предотвращает плохие направления. |
+| infokioskops.maps.accessibility_layer | уровень доступности | RECORD | На карте отмечен доступ для инвалидных колясок, тихое место, переводчики, туалеты и транспортные средства. | Поддерживает справедливость. |
+| infokioskops.maps.print_version | печатная версия карты | RECORD | На распечатанных картах указана дата версии, источник и предупреждение об обновлении. | Избегает устаревших карт. |
+| infokioskops.referrals.directory | реферальный каталог | RECORD | В каталоге перечислены поставщики, часы работы, право на участие, контакты, возможности и языковой доступ. | Поддерживает точное направление. |
+| infokioskops.referrals.warm_referral | теплый отзыв | METHOD | Теплое направление подтверждает получение услуги, необходимые документы и следующий контакт. | Уменьшает выпадение. |
+| infokioskops.referrals.closed_loop | направление по замкнутому циклу | QUALITY_CHECK | Проверка по замкнутому циклу проверяет, насколько это возможно, срочные жители обратились в указанную службу. | Подтверждает помощь. |
+| infokioskops.referrals.unavailable | недоступная услуга | RECORD | Недоступные службы записывают причину, альтернативу, время обновления и влияние отправителя запроса. | Сохраняет честность. |
+| infokioskops.materials.flyer_master | мастер флаеров | RECORD | Master отслеживает утвержденные листовки, версии, языки, источник и срок действия. | Управляет печатной информацией. |
+| infokioskops.materials.form_packet | сформировать пакет | RECORD | Пакеты группируют приложения, контрольные списки, карты и инструкции по необходимости. | Раздача скоростей. |
+| infokioskops.materials.restock | триггер пополнения запасов | METHOD | Пополнение запасов использует ежедневный подсчет, пиковое использование и минимальные пороговые значения запасов. | Предотвращает дефицит. |
+| infokioskops.materials.removal | удаление залежавшегося материала | QUALITY_CHECK | Старые листовки и замененные карты убираются с показа. | Предотвращает дезинформацию. |
+| infokioskops.updates.update_source | источник обновления | RECORD | Обновления записывают исходное агентство, метку времени, утверждающего и затронутые материалы. | Обеспечивает прослеживаемость. |
+| infokioskops.updates.bulletin_cycle | цикл бюллетеней | METHOD | В цикле бюллетеней планируются проверки статуса обслуживания, закрытия и новых ресурсов. | Держит актуальность. |
+| infokioskops.updates.emergency_notice | экстренное уведомление | SAFETY_RULE | Срочные предупреждения заменяют обычные материалы и требуют подтверждения команды. | Защищает общественность. |
+| infokioskops.updates.version_board | доска версий | RECORD | Доска показывает время последнего обновления и часто меняющиеся элементы. | Сигнализирует о свежести. |
+| infokioskops.feedback.feedback_card | карточка обратной связи | RECORD | В карточке отражены вопросы, оставшиеся без ответа, плохие рекомендации, препятствия доступа и предложения. | Находит пробелы. |
+| infokioskops.feedback.rumor_log | журнал слухов | RECORD | В журнале слухов фиксируются заявления, район источника, частота и ответы. | Направляет общественную информацию. |
+| infokioskops.feedback.unmet_need | неудовлетворенная потребность | RECORD | Неудовлетворенные потребности записывают в журнал запрос, барьер, местоположение и возможного партнера. | Информирует планирование. |
+| infokioskops.feedback.complaint_route | маршрут подачи жалобы | METHOD | Жалобы направляются руководителю, партнерскому агентству или официальному процессу. | Справляется с проблемами. |
+| infokioskops.privacy.minimum_data | минимальные данные | SAFETY_RULE | Киоск избегает сбора личных данных, за исключением случаев, когда они необходимы для направления или последующего наблюдения. | Уменьшает воздействие. |
+| infokioskops.privacy.private_issue | решение частных вопросов | METHOD | Деликатные разговоры переходят от общественной линии к квалифицированному столу. | Сохраняет достоинство. |
+| infokioskops.safety.site_safety | безопасность сайта | SAFETY_RULE | Безопасность на объекте включает жару, скопление людей, опасность спотыкания, освещение, охрану и погодные условия. | Защищает персонал/общественность. |
+| infokioskops.safety.conflict_deescalation | деэскалация конфликта | METHOD | Сотрудники используют спокойные сценарии, передачу функций супервизору и безопасный маршрут для конфликтов. | Уменьшает эскалацию. |
+| infokioskops.reporting.daily_summary | ежедневная сводка | MEASUREMENT | Сводные отчеты о посетителях, рефералах, использованных материалах, слухах, пробелах и инцидентах. | Информирует командование. |
+| infokioskops.reporting.partner_gap | отчет о разрыве между партнерами | RECORD | Отчет о пробелах показывает, что услуги отсутствуют, недоступны или неоднократно запрашивались. | Стимулирует действие ресурсов. |
+| infokioskops.metrics.visitor_count | количество посетителей | MEASUREMENT | Count отслеживает посетителей по времени, если это возможно, необходима категория и язык. | Показывает спрос. |
+| infokioskops.metrics.referral_count | количество рефералов | MEASUREMENT | Count отслеживает направления по поставщикам, темам и статусу завершения. | Показывает вывод. |
+| infokioskops.metrics.material_usage | использование материала | MEASUREMENT | Использование отслеживает листовки, карты и пакеты, распределенные по типам. | Печать путеводителей. |
+| infokioskops.qa.mystery_check | тайный чек | QUALITY_CHECK | Руководитель проверяет точность киоска, вежливость, качество рекомендаций и свежесть материалов. | Улучшает сервис. |
+| infokioskops.demob.closeout | киоск распродажа | METHOD | Closeout удаляет материалы, архивирует логи, переносит открытые проблемы и восстанавливает сайт. | Заканчивается чисто. |
+| infokioskops.review.after_action | обзор после действий | METHOD | Обзор охватывает кадровое обеспечение, сценарии, карты, пробелы в рефералах, слухи и уроки обратной связи. | Улучшает будущие киоски. |

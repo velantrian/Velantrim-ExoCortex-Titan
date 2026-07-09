@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| generatordeployops.request.request_id | generator request ID | RECORD | Request ID links site, requester, load, urgency, duration and status. | Tracks generator demand. |
-| generatordeployops.request.mission | mission need | RECORD | Mission describes critical function such as shelter, water, medical, traffic or communications. | Justifies deployment. |
-| generatordeployops.request.priority | priority level | MODEL | Priority considers life safety, service outage, vulnerable population and alternatives. | Allocates scarce units. |
-| generatordeployops.request.site_contact | site contact | RECORD | Site contact provides access, electrical, fuel and security details. | Enables deployment. |
-| generatordeployops.sizing.load_list | load list | RECORD | Load list records equipment, watts/kW, startup surge and critical/noncritical status. | Sizes generator correctly. |
-| generatordeployops.sizing.capacity_match | capacity match | METHOD | Generator is matched to load, phase, voltage, runtime and connection type. | Prevents overload. |
-| generatordeployops.sizing.electrician_review | electrician review | SAFETY_RULE | Qualified electrical review is required for facility connection. | Prevents backfeed and fire. |
-| generatordeployops.sizing.substitution | substitution | METHOD | Substitution uses load shedding or different unit when exact size unavailable. | Keeps mission running. |
-| generatordeployops.inventory.unit_id | generator unit ID | RECORD | Unit ID links model, capacity, fuel type, hours, owner and status. | Controls assets. |
-| generatordeployops.inventory.availability | availability status | RECORD | Status shows available, deployed, maintenance, reserved or out of service. | Supports dispatch. |
-| generatordeployops.inventory.accessories | accessory kit | RECORD | Kit includes cables, camlocks, grounding, transfer gear, oil and tools. | Enables installation. |
-| generatordeployops.inventory.test_run | test run | QUALITY_CHECK | Units are test-run before deployment where feasible. | Reduces field failure. |
-| generatordeployops.dispatch.dispatch_order | dispatch order | RECORD | Order lists unit, destination, driver, route, accessories and ETA. | Moves equipment. |
-| generatordeployops.dispatch.transport | transport method | METHOD | Transport uses trailer, flatbed, forklift or tow vehicle by unit size. | Prevents damage. |
-| generatordeployops.dispatch.route_check | route check | METHOD | Route checks road closures, weight, access, turning and security. | Improves delivery. |
-| generatordeployops.dispatch.handoff | handoff proof | RECORD | Handoff records site contact, condition, time and accessories delivered. | Closes delivery loop. |
-| generatordeployops.install.site_assessment | site assessment | SAFETY_RULE | Site checks ventilation, exhaust, carbon monoxide, weather, flood, grounding and clearance. | Prevents fatal hazards. |
-| generatordeployops.install.connection | connection process | METHOD | Connection follows transfer switch, manual interlock or approved temporary setup. | Avoids unsafe backfeed. |
-| generatordeployops.install.grounding | grounding check | SAFETY_RULE | Grounding/bonding follows electrical code and unit configuration. | Reduces shock risk. |
-| generatordeployops.install.load_test | load test | QUALITY_CHECK | Load test verifies voltage, frequency, load balance and equipment startup. | Confirms function. |
-| generatordeployops.fuel.fuel_type | fuel type | RECORD | Fuel type records diesel, gasoline, propane or natural gas need. | Coordinates fuel supply. |
-| generatordeployops.fuel.burn_rate | burn rate | MEASUREMENT | Burn rate estimates fuel per hour at expected load. | Plans refueling. |
-| generatordeployops.fuel.refuel_schedule | refuel schedule | METHOD | Schedule uses tank size, burn rate, access, weather and mission priority. | Prevents shutdown. |
-| generatordeployops.fuel.spill_control | spill control | SAFETY_RULE | Fueling uses containment, no ignition, PPE and spill reporting. | Protects site. |
-| generatordeployops.operation.operator_brief | operator briefing | METHOD | Site staff learn start/stop, alarms, load limits, refueling and emergency contacts. | Reduces misuse. |
-| generatordeployops.operation.run_log | run log | RECORD | Log records hours, load, fuel, alarms and maintenance. | Supports service and cost. |
-| generatordeployops.operation.load_shedding | load shedding | METHOD | Noncritical loads are removed when capacity or fuel is limited. | Protects critical function. |
-| generatordeployops.operation.noise | noise control | CONSTRAINT | Noise and placement consider residents, shelters and ordinances where possible. | Reduces conflict. |
-| generatordeployops.maintenance.daily_check | daily check | QUALITY_CHECK | Check covers fuel, oil, coolant, leaks, cables, exhaust and alarms. | Prevents failure. |
-| generatordeployops.maintenance.service_interval | service interval | CONSTRAINT | Service follows run hours, manufacturer guidance and field conditions. | Keeps unit reliable. |
-| generatordeployops.maintenance.failure | failure response | METHOD | Failure triggers troubleshooting, replacement, repair or load transfer. | Restores power. |
-| generatordeployops.maintenance.parts | spare parts | RECORD | Parts include oil, filters, belts, fuses, cables and connectors. | Supports field maintenance. |
-| generatordeployops.safety.co_monitor | carbon monoxide control | SAFETY_RULE | Generators stay outdoors away from intakes, with CO awareness and monitors where needed. | Prevents poisoning. |
-| generatordeployops.safety.weather | weather protection | SAFETY_RULE | Placement protects unit from flood, wind, rain and overheating without blocking ventilation. | Maintains safe operation. |
-| generatordeployops.safety.security | security | METHOD | Units may need fencing, locks, lighting or patrols. | Prevents theft and tampering. |
-| generatordeployops.safety.incident | incident report | RECORD | Incidents record shock, fire, spill, CO alarm, theft or equipment damage. | Supports corrective action. |
-| generatordeployops.finance.cost_code | cost code | RECORD | Costs link rental, fuel, transport, maintenance and labor to incident mission. | Supports reimbursement. |
-| generatordeployops.finance.rental_terms | rental terms | CONSTRAINT | Rental terms define rates, damage, fuel, service and return condition. | Controls cost. |
-| generatordeployops.records.deployment_file | deployment file | RECORD | File stores request, sizing, dispatch, installation, run logs, fuel and return. | Creates audit trail. |
-| generatordeployops.records.retention | retention rule | CONSTRAINT | Records follow emergency, asset, finance and safety schedules. | Preserves evidence. |
-| generatordeployops.return.demob_request | demob request | METHOD | Return starts when utility restored, mission ends or replacement arrives. | Avoids idle rental cost. |
-| generatordeployops.return.inspection | return inspection | QUALITY_CHECK | Inspection checks hours, damage, accessories, fuel and service need. | Restores inventory. |
-| generatordeployops.metrics.uptime | uptime | MEASUREMENT | Uptime tracks generator availability during mission. | Shows reliability. |
-| generatordeployops.review.after_action | after-action review | METHOD | Review captures sizing errors, fuel gaps, safety issues and maintenance lessons. | Improves future deployments. |
+| generatordeployops.request.request_id | идентификатор запроса генератора | RECORD | Идентификатор запроса связывает сайт, отправителя запроса, нагрузку, срочность, продолжительность и статус. | Отслеживает спрос генератора. |
+| generatordeployops.request.mission | необходимость миссии | RECORD | Миссия описывает критически важные функции, такие как жилье, водоснабжение, медицина, движение или связь. | Оправдывает развертывание. |
+| generatordeployops.request.priority | уровень приоритета | MODEL | Приоритетными являются безопасность жизни, перебои в обслуживании, уязвимое население и альтернативы. | Выделяет дефицитные единицы. |
+| generatordeployops.request.site_contact | контакт сайта | RECORD | Контактное лицо на объекте предоставляет информацию о доступе, электричестве, топливе и безопасности. | Включает развертывание. |
+| generatordeployops.sizing.load_list | список загрузки | RECORD | В списке нагрузки фиксируется оборудование, Вт/кВт, скачок напряжения при запуске и критическое/некритическое состояние. | Правильно определите размеры генератора. |
+| generatordeployops.sizing.capacity_match | соответствие мощности | METHOD | Генератор подбирается по нагрузке, фазе, напряжению, времени работы и типу подключения. | Предотвращает перегрузку. |
+| generatordeployops.sizing.electrician_review | обзор электрика | SAFETY_RULE | Для подключения объекта необходима квалифицированная электротехническая экспертиза. | Предотвращает обратную подачу и возгорание. |
+| generatordeployops.sizing.substitution | замена | METHOD | При замене используется разгрузка нагрузки или другая единица измерения, если точный размер недоступен. | Поддерживает выполнение миссии. |
+| generatordeployops.inventory.unit_id | идентификатор генераторной установки | RECORD | Идентификатор устройства связывает модель, мощность, тип топлива, часы работы, владельца и статус. | Контролирует активы. |
+| generatordeployops.inventory.availability | статус доступности | RECORD | Статус показывает: доступен, развернут, обслуживается, зарезервирован или не работает. | Поддерживает отправку. |
+| generatordeployops.inventory.accessories | комплект аксессуаров | RECORD | В комплект входят кабели, эксцентрики, заземление, раздаточный механизм, масло и инструменты. | Включает установку. |
+| generatordeployops.inventory.test_run | тестовый запуск | QUALITY_CHECK | Перед развертыванием, где это возможно, агрегаты тестируются. | Уменьшает отказ поля. |
+| generatordeployops.dispatch.dispatch_order | заказ на отправку | RECORD | В заказе указаны единица измерения, пункт назначения, водитель, маршрут, аксессуары и расчетное время прибытия. | Перемещает оборудование. |
+| generatordeployops.dispatch.transport | метод транспортировки | METHOD | Транспортировка осуществляется прицепом, бортовой платформой, вилочным погрузчиком или тягачом в зависимости от размера единицы. | Предотвращает повреждение. |
+| generatordeployops.dispatch.route_check | проверка маршрута | METHOD | Маршрут проверяет перекрытие дорог, вес, доступ, поворот и безопасность. | Улучшает доставку. |
+| generatordeployops.dispatch.handoff | доказательство передачи | RECORD | Передача фиксирует контакт с объектом, состояние, время и доставленные аксессуары. | Замыкает цикл доставки. |
+| generatordeployops.install.site_assessment | оценка объекта | SAFETY_RULE | На объекте проверяется вентиляция, вытяжка, оксид углерода, погода, наводнение, заземление и зазоры. | Предотвращает смертельные опасности. |
+| generatordeployops.install.connection | процесс подключения | METHOD | Соединение осуществляется через безобрывный переключатель, ручную блокировку или одобренную временную установку. | Позволяет избежать небезопасной обратной подачи. |
+| generatordeployops.install.grounding | проверка заземления | SAFETY_RULE | Заземление/подключение соответствует электрическим нормам и конфигурации устройства. | Снижает риск шока. |
+| generatordeployops.install.load_test | нагрузочный тест | QUALITY_CHECK | Нагрузочный тест проверяет напряжение, частоту, баланс нагрузки и запуск оборудования. | Подтверждает функцию. |
+| generatordeployops.fuel.fuel_type | тип топлива | RECORD | Тип топлива учитывает потребность в дизельном топливе, бензине, пропане или природном газе. | Координирует подачу топлива. |
+| generatordeployops.fuel.burn_rate | скорость горения | MEASUREMENT | Скорость сгорания оценивает количество топлива в час при ожидаемой нагрузке. | В планах дозаправка. |
+| generatordeployops.fuel.refuel_schedule | график дозаправки | METHOD | В расписании учитываются размер резервуара, скорость горения, доступ, погода и приоритет миссии. | Предотвращает выключение. |
+| generatordeployops.fuel.spill_control | контроль разливов | SAFETY_RULE | При заправке используются меры локализации, отсутствие возгорания, средства индивидуальной защиты и уведомление о разливах. | Защищает сайт. |
+| generatordeployops.operation.operator_brief | брифинг оператора | METHOD | Персонал объекта изучает запуск/остановку, сигналы тревоги, ограничения нагрузки, заправку и контакты для экстренных случаев. | Уменьшает неправильное использование. |
+| generatordeployops.operation.run_log | запустить журнал | RECORD | В журнале фиксируются часы работы, нагрузка, топливо, сигналы тревоги и техническое обслуживание. | Поддерживает сервис и стоимость. |
+| generatordeployops.operation.load_shedding | сброс нагрузки | METHOD | Некритические нагрузки отключаются, когда мощность или топливо ограничены. | Защищает критически важные функции. |
+| generatordeployops.operation.noise | контроль шума | CONSTRAINT | Шум и размещение учитывают жильцов, приюты и постановления, где это возможно. | Уменьшает конфликтность. |
+| generatordeployops.maintenance.daily_check | ежедневная проверка | QUALITY_CHECK | Проверка охватывает топливо, масло, охлаждающую жидкость, утечки, кабели, выхлопную систему и сигналы тревоги. | Предотвращает неудачи. |
+| generatordeployops.maintenance.service_interval | интервал обслуживания | CONSTRAINT | Обслуживание осуществляется в соответствии с часами работы, рекомендациями производителя и условиями эксплуатации. | Обеспечивает надежность агрегата. |
+| generatordeployops.maintenance.failure | реакция на отказ | METHOD | Неисправность приводит к поиску и устранению неисправностей, замене, ремонту или перераспределению нагрузки. | Восстанавливает силу. |
+| generatordeployops.maintenance.parts | запчасти | RECORD | Детали включают масло, фильтры, ремни, предохранители, кабели и разъемы. | Поддерживает полевое обслуживание. |
+| generatordeployops.safety.co_monitor | контроль угарного газа | SAFETY_RULE | Генераторы располагаются на открытом воздухе, вдали от водозаборов, при необходимости отслеживая выбросы CO и контролируя их. | Предотвращает отравление. |
+| generatordeployops.safety.weather | защита от непогоды | SAFETY_RULE | Размещение защищает устройство от наводнений, ветра, дождя и перегрева, не блокируя при этом вентиляцию. | Обеспечивает безопасную эксплуатацию. |
+| generatordeployops.safety.security | безопасность | METHOD | Подразделениям могут потребоваться ограждения, замки, освещение или патрулирование. | Предотвращает кражу и фальсификацию. |
+| generatordeployops.safety.incident | отчет об инциденте | RECORD | Инциденты фиксируют шок, пожар, разлив, сигнал тревоги CO, кражу или повреждение оборудования. | Поддерживает корректирующие действия. |
+| generatordeployops.finance.cost_code | код стоимости | RECORD | Затраты связаны с арендой, топливом, транспортом, техническим обслуживанием и рабочей силой, связанными с миссией в случае инцидента. | Поддерживает возмещение. |
+| generatordeployops.finance.rental_terms | условия аренды | CONSTRAINT | Условия аренды определяют ставки, ущерб, топливо, обслуживание и условия возврата. | Контролирует стоимость. |
+| generatordeployops.records.deployment_file | файл развертывания | RECORD | В файлах хранятся запросы, размеры, отправка, установка, журналы пробега, топливо и возврат. | Создает контрольный журнал. |
+| generatordeployops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам чрезвычайных ситуаций, активов, финансов и безопасности. | Сохраняет доказательства. |
+| generatordeployops.return.demob_request | запрос на дембель | METHOD | Возвращение начинается после восстановления инженерных сетей, завершения миссии или прибытия замены. | Позволяет избежать затрат на аренду в режиме ожидания. |
+| generatordeployops.return.inspection | возвратная инспекция | QUALITY_CHECK | В ходе проверки проверяются часы работы, наличие повреждений, аксессуары, топливо и необходимость обслуживания. | Восстанавливает инвентарь. |
+| generatordeployops.metrics.uptime | время безотказной работы | MEASUREMENT | Время безотказной работы отслеживает доступность генератора во время миссии. | Показывает надежность. |
+| generatordeployops.review.after_action | обзор после действий | METHOD | В обзоре отражены ошибки в размерах, нехватка топлива, проблемы безопасности и уроки по техническому обслуживанию. | Улучшает будущие развертывания. |

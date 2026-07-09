@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| petgroom.booking.groom_booking | Pet grooming booking | invariant | Booking records pet, owner, service, coat, temperament, time, add-ons and contact. | reserve groomer time |
-| petgroom.booking.service_menu | Grooming service menu | invariant | Menu defines bath, brush, clip, trim, nails, ears, de-shed, sanitary trim or add-ons. | sell clear service |
-| petgroom.booking.duration_estimate | Grooming duration estimate | variant | Estimate considers breed, coat, size, matting, behavior and service scope. | schedule realistically |
-| petgroom.booking.vaccine_policy | Grooming vaccine policy | variant | Policy defines proof or screening needed before appointment. | reduce disease risk |
-| petgroom.booking.no_show_policy | Grooming no-show policy | invariant | Policy manages late arrivals, cancellations, deposits and rebooking. | protect capacity |
-| petgroom.intake.pet_identity | Grooming pet identity | invariant | Identity check confirms pet name, species, breed, color, owner and photo if used. | avoid mix-up |
-| petgroom.intake.health_note | Grooming health note | invariant | Note records visible lumps, skin, ears, mobility, age, medical warnings and owner disclosures. | handle carefully |
-| petgroom.intake.coat_assessment | Coat assessment | invariant | Assessment checks length, matting, shedding, fleas, moisture, skin and desired result. | choose workflow |
-| petgroom.intake.behavior_assessment | Grooming behavior assessment | invariant | Assessment notes fear, biting, handling limits, leash manners and stress signals. | staff safety |
-| petgroom.intake.owner_instruction | Owner grooming instruction | invariant | Instruction captures haircut preference, restrictions, allergies, products and pickup timing. | expectation control |
-| petgroom.bath.prebrush | Pre-bath brushing | invariant | Brushing removes loose hair, tangles and debris before wetting where appropriate. | easier bath |
-| petgroom.bath.shampoo_selection | Pet shampoo selection | variant | Selection considers coat, skin sensitivity, odor, parasite policy and owner request. | product fit |
-| petgroom.bath.bathing | Pet bathing | invariant | Bathing wets, shampoos, rinses and checks skin while managing stress and temperature. | core clean |
-| petgroom.bath.drying | Pet drying | invariant | Drying uses towel, air, cage dryer or hand dryer according to safety and coat. | finish safely |
-| petgroom.bath.ear_protection | Grooming ear protection | variant | Protection avoids excess water, pressure or product entering ear canal. | reduce irritation |
-| petgroom.clip.clip_style | Grooming clip style | invariant | Style defines blade, guard, length, breed pattern, owner preference and practical limits. | haircut target |
-| petgroom.clip.blade_selection | Clipper blade selection | invariant | Selection matches coat, length, matting, skin risk and finish. | avoid injury |
-| petgroom.clip.scissor_work | Grooming scissor work | variant | Work shapes face, feet, tail, furnishings or detail areas with controlled handling. | detail finish |
-| petgroom.clip.sanitary_trim | Sanitary trim | variant | Trim shortens hair around hygiene areas under service policy and pet tolerance. | cleanliness |
-| petgroom.clip.mat_removal | Mat removal | invariant | Removal chooses brushing, clipping, dematting limit or shave-down based on welfare and safety. | mats hurt |
-| petgroom.nails.nail_trim | Pet nail trim | invariant | Trim shortens nails while avoiding quick and stress escalation. | paw comfort |
-| petgroom.nails.nail_grind | Nail grinding | variant | Grinding smooths nail edges after or instead of clipping if pet tolerates it. | smoother finish |
-| petgroom.nails.quick_incident | Quick incident | invariant | Incident records accidental quick nick, control action, owner notice and monitoring. | transparency |
-| petgroom.nails.paw_pad_trim | Paw pad trim | variant | Trim removes excess hair between pads where safe and requested. | traction and hygiene |
-| petgroom.nails.paw_condition_note | Paw condition note | invariant | Note records cracks, swelling, foreign object, overgrown nail or sensitivity. | alert owner |
-| petgroom.safety.restraint_method | Grooming restraint method | invariant | Method uses loop, table, helper or low-stress handling appropriate to pet and task. | prevent falls |
-| petgroom.safety.table_safety | Grooming table safety | invariant | Safety checks height, loop, surface, weight limit, pet position and supervision. | fall prevention |
-| petgroom.safety.heat_stress | Grooming heat stress risk | invariant | Risk comes from dryers, stress, age, breed, coat, humidity or health condition. | watch closely |
-| petgroom.safety.bite_prevention | Grooming bite prevention | invariant | Prevention uses signals, muzzles if allowed, breaks, owner notice or stop-work decision. | protect staff |
-| petgroom.safety.stop_groom | Stop-groom decision | invariant | Decision pauses or ends service when pet welfare, behavior, injury or health risk rises. | welfare first |
-| petgroom.cleaning.tub_sanitation | Grooming tub sanitation | invariant | Sanitation cleans hair, residue, drains, surfaces and contact areas between pets. | infection control |
-| petgroom.cleaning.tool_disinfection | Grooming tool disinfection | invariant | Disinfection covers blades, combs, brushes, nail tools and table contact surfaces. | prevent spread |
-| petgroom.cleaning.hair_disposal | Grooming hair disposal | invariant | Disposal manages hair, mats, waste, bags, drains and pests. | keep shop clean |
-| petgroom.cleaning.laundry_flow | Grooming laundry flow | variant | Flow separates clean and soiled towels, loops, smocks and bedding. | hygiene |
-| petgroom.cleaning.flea_protocol | Flea protocol | variant | Protocol isolates, treats environment per policy, notifies owner and cleans area. | limit infestation |
-| petgroom.checkout.final_review | Grooming final review | invariant | Review checks haircut, nails, ears, cleanliness, notes, bows or accessories. | quality gate |
-| petgroom.checkout.owner_handoff | Grooming owner handoff | invariant | Handoff explains completed service, concerns, incidents, recommendations and next booking. | close communication |
-| petgroom.checkout.payment | Grooming payment | invariant | Payment records service, add-ons, discounts, tips, refunds and receipt. | close money |
-| petgroom.checkout.rebook_prompt | Grooming rebook prompt | variant | Prompt suggests interval based on coat, service and owner preference. | continuity |
-| petgroom.checkout.late_pickup | Grooming late pickup | invariant | Process manages pet care, fees, staff time and owner communication after agreed pickup. | handle delay |
-| petgroom.records.grooming_card | Grooming record card | invariant | Card stores coat notes, blades, behavior, products, incidents and owner preferences. | next visit memory |
-| petgroom.records.incident_report | Grooming incident report | invariant | Report documents injury, bite, stress event, escape, product reaction or customer complaint. | safety learning |
-| petgroom.metrics.grooming_kpi | Pet grooming KPI | variant | KPI tracks appointments, rebooks, incidents, duration, complaints, revenue and groomer utilization. | manage shop |
-| petgroom.continuity.power_water_outage | Grooming power or water outage | invariant | Outage plan pauses baths, protects pets, informs owners and reschedules. | keep pets safe |
+| petgroom.booking.groom_booking | Запись на стрижку домашних животных | invariant | Бронирование записывает домашнее животное, владельца, услуги, шерсть, темперамент, время, дополнения и контакт. | резервировать время грумера |
+| petgroom.booking.service_menu | Меню услуг груминга | invariant | Меню определяет ванну, щетку, зажим, стрижку, когти, уши, удаление навеса, санитарную стрижку или дополнительные приспособления. | продавать понятную услугу |
+| petgroom.booking.duration_estimate | Оценка продолжительности ухода | variant | При оценке учитываются порода, шерсть, размер, шерсть, поведение и объем услуг. | планировать реалистично |
+| petgroom.booking.vaccine_policy | Политика вакцинации по уходу | variant | Политика определяет доказательства или проверку, необходимые перед назначением. | снизить риск заболеваний |
+| petgroom.booking.no_show_policy | Политика неявки по уходу | invariant | Политика регулирует опоздания, отмены, депозиты и перебронирование. | защитить емкость |
+| petgroom.intake.pet_identity | Уход за домашним животным | invariant | Проверка личности подтверждает имя домашнего животного, вид, породу, цвет, владельца и фотографию, если она использовалась. | избежать путаницы |
+| petgroom.intake.health_note | Уход за здоровьем | invariant | В заметках фиксируются видимые шишки, кожа, уши, подвижность, возраст, медицинские предупреждения и сведения владельца. | обращаться осторожно |
+| petgroom.intake.coat_assessment | Оценка шерсти | invariant | При оценке проверяется длина, спутывание, линька, наличие блох, влажность, кожа и желаемый результат. | выбрать рабочий процесс |
+| petgroom.intake.behavior_assessment | Оценка ухода за поведением | invariant | При оценке отмечаются страх, укусы, ограничения в обращении, поведение на поводке и сигналы стресса. | безопасность персонала |
+| petgroom.intake.owner_instruction | Инструкция по уходу за владельцем | invariant | В инструкции указаны предпочтения по стрижке, ограничения, аллергии, продукты и время получения. | контроль ожиданий |
+| petgroom.bath.prebrush | Расчесывание перед купанием | invariant | Расчесывание удаляет распущенные волосы, спутанные волосы и мусор перед смачиванием, где это необходимо. | более легкая ванна |
+| petgroom.bath.shampoo_selection | Выбор шампуня для домашних животных | variant | При выборе учитывается шерсть, чувствительность кожи, запах, паразитарная политика и пожелания владельца. | продукт подходит |
+| petgroom.bath.bathing | Купание домашних животных | invariant | При купании смачивает, моет, ополаскивает и проверяет кожу, одновременно контролируя стресс и температуру. | ядро чистое |
+| petgroom.bath.drying | Сушка домашних животных | invariant | Для сушки используется полотенце, воздух, сушилка в клетке или сушилка для рук в зависимости от безопасности и шерсти. | закончить безопасно |
+| petgroom.bath.ear_protection | Уход за ушами | variant | Защита предотвращает попадание избыточной воды, давления или продукта в ушной канал. | уменьшить раздражение |
+| petgroom.clip.clip_style | Стиль клипа для ухода за собой | invariant | Стиль определяет лезвие, гарду, длину, породу, предпочтения владельца и практические ограничения. | цель стрижки |
+| petgroom.clip.blade_selection | Выбор лезвия машинки для стрижки | invariant | Выбор соответствует шерсти, длине, колтунению, риску повреждения кожи и отделке. | избегать травм |
+| petgroom.clip.scissor_work | Работа груминговыми ножницами | variant | Работайте над формой лица, ступней, хвоста, мебели или деталей с помощью контролируемого манипулирования. | Детальная отделка |
+| petgroom.clip.sanitary_trim | Санитарная отделка | variant | Trim укорачивает волосы вокруг гигиенических зон в соответствии с политикой обслуживания и терпимостью к домашним животным. | чистота |
+| petgroom.clip.mat_removal | Удаление коврика | invariant | При удалении выбираются чистка, стрижка, ограничение удаления колтунов или бритье в зависимости от благополучия и безопасности. | коврики болят |
+| petgroom.nails.nail_trim | Обрезание когтей домашних животных | invariant | Трим укорачивает ногти, избегая при этом быстрого обострения стресса. | комфорт лапы |
+| petgroom.nails.nail_grind | Шлифовка ногтей | variant | Шлифовка сглаживает края когтей после стрижки или вместо нее, если животное это переносит. | более гладкая поверхность |
+| petgroom.nails.quick_incident | Быстрый инцидент | invariant | Инцидент фиксирует случайное быстрое вмешательство, контрольные действия, уведомление владельца и мониторинг. | прозрачность |
+| petgroom.nails.paw_pad_trim | Отделка подушечек лап | variant | Trim удаляет лишние волосы между подушечками там, где это безопасно и необходимо. | тяга и гигиена |
+| petgroom.nails.paw_condition_note | Примечание о состоянии лап | invariant | Отмечайте трещины, отеки, посторонние предметы, заросший ноготь или чувствительность. | оповещение владельца |
+| petgroom.safety.restraint_method | Метод ограничения ухода за грумингом | invariant | Метод использует цикл, таблицу, вспомогательную обработку или обработку с низким уровнем стресса, соответствующую питомцу и задаче. | предотвратить падения |
+| petgroom.safety.table_safety | Безопасность стола для груминга | invariant | Безопасность проверяет высоту, петлю, поверхность, предел веса, положение животного и контроль. | предотвращение падения |
+| petgroom.safety.heat_stress | Риск теплового стресса при уходе | invariant | Риск возникает из-за сушки, стресса, возраста, породы, шерсти, влажности или состояния здоровья. | внимательно следить |
+| petgroom.safety.bite_prevention | Уход за профилактикой укусов | invariant | В целях профилактики используются сигналы, намордники, если это разрешено, перерывы, уведомление владельца или решение о прекращении работы. | защитить персонал |
+| petgroom.safety.stop_groom | Решение «стоп-жених» | invariant | Решение приостанавливает или прекращает обслуживание, когда повышается риск благополучия, поведения, травм или здоровья домашних животных. | благосостояние прежде всего |
+| petgroom.cleaning.tub_sanitation | Санитарная обработка ванны | invariant | Санитарная обработка очищает волосы, остатки, стоки, поверхности и места контакта между домашними животными. | инфекционный контроль |
+| petgroom.cleaning.tool_disinfection | Дезинфекция инструментов для ухода | invariant | Дезинфекция распространяется на лезвия, расчески, щетки, маникюрные инструменты и поверхности, контактирующие со столом. | предотвратить распространение |
+| petgroom.cleaning.hair_disposal | Уход за волосами | invariant | При утилизации удаляются волосы, коврики, отходы, мешки, стоки и вредители. | содержать магазин в чистоте |
+| petgroom.cleaning.laundry_flow | Уход за потоком белья | variant | Поток разделяет чистые и грязные полотенца, петли, халаты и постельное белье. | гигиена |
+| petgroom.cleaning.flea_protocol | Протокол от блох | variant | Протокол изолирует, обрабатывает окружающую среду в соответствии с политикой, уведомляет владельца и очищает территорию. | ограничить заражение |
+| petgroom.checkout.final_review | Заключительный обзор ухода | invariant | Обзор проверяет стрижку, ногти, уши, чистоту, заметки, бантики или аксессуары. | качественные ворота |
+| petgroom.checkout.owner_handoff | Передача владельцу груминга | invariant | Handoff объясняет завершенное обслуживание, проблемы, инциденты, рекомендации и следующее бронирование. | тесное общение |
+| petgroom.checkout.payment | Оплата груминга | invariant | Сервис учета платежей, дополнения, скидки, советы, возвраты и квитанции. | закрыть деньги |
+| petgroom.checkout.rebook_prompt | Подсказка о перебронировании ухода | variant | Подсказка предлагает интервал в зависимости от шерсти, обслуживания и предпочтений владельца. | преемственность |
+| petgroom.checkout.late_pickup | Уход за поздним забором | invariant | Процесс управляет уходом за домашними животными, оплатой, временем персонала и общением с владельцем после согласованного получения. | обрабатывать задержку |
+| petgroom.records.grooming_card | Карточка учета ухода | invariant | Карточные магазины содержат заметки, лезвия, поведение, продукты, происшествия и предпочтения владельцев. | воспоминание о следующем посещении |
+| petgroom.records.incident_report | Отчет о происшествии, связанном с уходом | invariant | В отчете документируются травмы, укусы, стрессовые ситуации, побеги, реакция на продукт или жалобы клиентов. | обучение безопасности |
+| petgroom.metrics.grooming_kpi | KPI по уходу за домашними животными | variant | KPI отслеживает встречи, повторные записи, инциденты, продолжительность, жалобы, доходы и использование грумеров. | управлять магазином |
+| petgroom.continuity.power_water_outage | Отключение электричества или воды | invariant | План отключения приостанавливает купание, защищает домашних животных, информирует владельцев и переносит график работы. | держать домашних животных в безопасности |

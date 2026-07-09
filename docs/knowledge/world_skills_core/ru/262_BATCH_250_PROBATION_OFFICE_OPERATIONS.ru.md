@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| probationops.intake.case_intake | Probation case intake | invariant | Intake records person, court order, offense, conditions, sentence and supervision start. | open supervision |
-| probationops.intake.order_review | Probation order review | invariant | Review identifies reporting, treatment, restitution, testing, travel and no-contact conditions. | know duties |
-| probationops.intake.risk_assessment | Probation risk assessment | variant | Assessment estimates supervision level, criminogenic needs, protective factors and responsivity. | tailor supervision |
-| probationops.intake.orientation | Probation orientation | invariant | Orientation explains conditions, appointments, violations, rights, fees and contact rules. | set expectations |
-| probationops.intake.contact_info | Probation contact information | invariant | Information records residence, phone, email, employer, emergency contact and approved contacts. | maintain reach |
-| probationops.plan.supervision_plan | Probation supervision plan | invariant | Plan links risks, needs, goals, conditions, appointments, referrals and monitoring level. | guide casework |
-| probationops.plan.goal_step | Probation goal step | variant | Step breaks employment, housing, treatment, education or restitution goal into actions. | support compliance |
-| probationops.plan.case_note | Probation case note | invariant | Note records contact, progress, concerns, instructions, referrals and officer observations. | supervision record |
-| probationops.plan.review_cycle | Probation plan review cycle | invariant | Cycle updates plan after assessment, violation, progress, court order or life change. | adapt supervision |
-| probationops.appointment.office_visit | Probation office visit | invariant | Visit records attendance, identity, condition review, updates, documents and next date. | routine supervision |
-| probationops.appointment.missed_visit | Missed probation visit | invariant | Record captures absence, reason, attempted contact, officer response and escalation. | monitor compliance |
-| probationops.appointment.home_visit | Probation home visit | variant | Visit documents residence verification, household concerns, safety, contacts and observations. | field supervision |
-| probationops.appointment.virtual_checkin | Probation virtual check-in | variant | Check-in verifies identity, location, privacy, updates and documentation. | remote contact |
-| probationops.compliance.condition_check | Probation condition check | invariant | Check reviews court conditions against reported behavior, records and officer observations. | assess compliance |
-| probationops.compliance.employment_verify | Probation employment verification | variant | Verification confirms employer, schedule, pay, attendance and job change. | stability check |
-| probationops.compliance.residence_verify | Probation residence verification | invariant | Verification confirms address, move request, household limits and contact. | locate person |
-| probationops.compliance.travel_request | Probation travel request | variant | Request records destination, purpose, dates, contacts, restrictions and approval. | manage movement |
-| probationops.compliance.no_contact_monitor | No-contact condition monitor | invariant | Monitor tracks protected parties, addresses, calls, messages, social media and alleged contact. | protect victims |
-| probationops.testing.drug_test_order | Probation drug test order | variant | Order records required test, schedule, collection site, result route and missed-test rules. | monitor substance use |
-| probationops.testing.test_result | Probation test result | invariant | Result records negative, positive, diluted, missed, refused or pending status. | compliance evidence |
-| probationops.testing.confirmation_review | Probation test confirmation review | variant | Review handles disputed, lab-confirmed, prescription or chain-of-custody issues. | fair response |
-| probationops.referral.treatment_referral | Probation treatment referral | invariant | Referral links condition, provider, appointment, releases, attendance and progress reports. | support change |
-| probationops.referral.education_program | Probation education program | variant | Program referral covers classes, certificates, attendance, completion and fees. | meet condition |
-| probationops.referral.employment_service | Probation employment service referral | variant | Referral connects person to job search, training, documents, transportation or placement. | improve stability |
-| probationops.referral.housing_support | Probation housing support referral | variant | Referral addresses shelter, lease, transitional housing, restrictions and safety. | reduce risk |
-| probationops.violation.violation_report | Probation violation report | invariant | Report documents alleged violation, evidence, history, response, recommendation and court notice. | escalate formally |
-| probationops.violation.technical_violation | Technical violation response | variant | Response handles missed meeting, fee, travel, testing, curfew or paperwork issue. | proportional action |
-| probationops.violation.new_arrest | Probation new arrest alert | invariant | Alert records arrest, charges, custody, court date, conditions and officer response. | update risk |
-| probationops.violation.graduated_sanction | Graduated sanction | variant | Sanction records warning, increased reporting, program, service hours or court referral. | respond proportionally |
-| probationops.violation.incentive_record | Probation incentive record | variant | Record notes reduced reporting, praise, certificate, fee waiver or early review. | reinforce progress |
-| probationops.court.status_report | Probation court status report | invariant | Report summarizes compliance, violations, payments, treatment, risk and recommendation. | inform judge |
-| probationops.court.hearing_preparation | Probation hearing preparation | invariant | Preparation gathers reports, notices, evidence, witnesses, recommendations and client status. | ready court |
-| probationops.court.order_update | Probation court order update | invariant | Update changes conditions, term, fees, supervision level or termination date. | keep current |
-| probationops.victim.victim_notification | Probation victim notification | variant | Notification follows allowed rules for hearings, violations, release, no-contact or restitution. | victim rights |
-| probationops.victim.restitution_tracking | Probation restitution tracking | invariant | Tracking records amount, payments, arrears, distribution, court changes and completion. | financial accountability |
-| probationops.fees.fee_schedule | Probation fee schedule | variant | Schedule records supervision, testing, program, restitution or court-ordered payment obligations. | payment clarity |
-| probationops.fees.payment_record | Probation payment record | invariant | Record links payment, obligation, date, receipt, allocation and balance. | financial trail |
-| probationops.quality.case_audit | Probation case audit | invariant | Audit checks order, contacts, notes, assessments, violations, referrals and court reports. | supervision quality |
-| probationops.quality.safety_plan | Probation officer safety plan | invariant | Plan covers field visit risk, partner officer, check-in, location and emergency path. | protect staff |
-| probationops.reporting.caseload_report | Probation caseload report | invariant | Report summarizes active cases, risk levels, contacts due, violations and closures. | manage workload |
-| probationops.reporting.outcome_report | Probation outcome report | variant | Report tracks completions, revocations, new arrests, treatment completion and restitution. | program insight |
-| probationops.metrics.probation_kpi | Probation office KPI | variant | KPI tracks contact timeliness, violations, completions, revocations, referrals and caseload balance. | manage office |
-| probationops.close.case_closure | Probation case closure | invariant | Closure records term completion, early discharge, revocation, transfer or death. | end supervision |
-| probationops.continuity.office_closure | Probation office closure response | variant | Response shifts reporting, testing, court notices, field safety and emergency contact. | maintain supervision |
+| probationops.intake.case_intake | Приём дел на испытательный срок | invariant | Прием записей о личности, постановлении суда, правонарушении, условиях, приговоре и начале надзора. | открытый надзор |
+| probationops.intake.order_review | Рассмотрение приказа об испытательном сроке | invariant | В обзоре определяются отчетность, лечение, реституция, тестирование, поездки и условия отсутствия контактов. | знать обязанности |
+| probationops.intake.risk_assessment | Оценка рисков испытательного срока | variant | Оценка оценивает уровень надзора, криминогенные потребности, защитные факторы и оперативность. | швейный надзор |
+| probationops.intake.orientation | Ориентация на испытательный срок | invariant | Ориентация объясняет условия, назначения, нарушения, права, сборы и правила контакта. | устанавливать ожидания |
+| probationops.intake.contact_info | Контактная информация испытательного срока | invariant | Информация записывает место жительства, телефон, электронную почту, работодателя, экстренный контакт и утвержденные контакты. | поддерживать охват |
+| probationops.plan.supervision_plan | План надзора за испытательным сроком | invariant | План связывает риски, потребности, цели, условия, назначения, направления и уровень мониторинга. | руководство делами |
+| probationops.plan.goal_step | Этап цели испытательного срока | variant | Шаг разбивает цели трудоустройства, жилья, лечения, образования или реституции на действия. | поддержка соответствия |
+| probationops.plan.case_note | Справка по делу об испытательном сроке | invariant | В записях фиксируются контакты, прогресс, проблемы, инструкции, направления и наблюдения офицеров. | запись о надзоре |
+| probationops.plan.review_cycle | Цикл рассмотрения плана испытательного срока | invariant | План циклических обновлений после оценки, нарушения, прогресса, постановления суда или изменения жизни. | адаптировать надзор |
+| probationops.appointment.office_visit | Посещение офиса пробации | invariant | Посещения записывают посещаемость, личность, обзор состояния, обновления, документы и следующую дату. | текущий надзор |
+| probationops.appointment.missed_visit | Пропущенный испытательный визит | invariant | Запись фиксирует отсутствие, причину, попытку контакта, реакцию офицера и эскалацию. | контролировать соблюдение |
+| probationops.appointment.home_visit | Посещение дома с испытательным сроком | variant | Посещение документов, проверка места жительства, бытовые заботы, безопасность, контакты и наблюдения. | авторский надзор |
+| probationops.appointment.virtual_checkin | Виртуальная регистрация на испытательный срок | variant | При регистрации проверяется личность, местоположение, конфиденциальность, обновления и документация. | удаленный контакт |
+| probationops.compliance.condition_check | Проверка условий испытательного срока | invariant | Сравните условия суда с сообщениями о поведении, записями и наблюдениями офицеров. | оценить соответствие |
+| probationops.compliance.employment_verify | Проверка трудоустройства на испытательном сроке | variant | Проверка подтверждает работодателя, график, оплату, посещаемость и смену работы. | проверка стабильности |
+| probationops.compliance.residence_verify | Проверка места жительства на испытательном сроке | invariant | Проверка подтверждает адрес, запрос на переезд, семейные ограничения и контакт. | найти человека |
+| probationops.compliance.travel_request | Запрос на поездку на испытательный срок | variant | Запросите записи о назначении, цели, датах, контактах, ограничениях и одобрении. | управлять движением |
+| probationops.compliance.no_contact_monitor | Бесконтактный монитор состояния | invariant | Монитор отслеживает защищенные стороны, адреса, звонки, сообщения, социальные сети и предполагаемые контакты. | защищать жертв |
+| probationops.testing.drug_test_order | Порядок проверки на наркотики на испытательном сроке | variant | Закажите записи о необходимых тестах, графике, месте сбора, маршруте результатов и правилах пропущенных тестов. | следить за употреблением психоактивных веществ |
+| probationops.testing.test_result | Результат испытательного теста | invariant | Результат записывает отрицательный, положительный, разбавленный, пропущенный, отклоненный или ожидающий статус. | доказательства соответствия |
+| probationops.testing.confirmation_review | Проверка подтверждения испытательного теста | variant | Обзор рассматривает спорные, лабораторно подтвержденные вопросы, вопросы, связанные с рецептами или цепочкой поставок. | справедливый ответ |
+| probationops.referral.treatment_referral | Направление на испытательное лечение | invariant | Состояние реферальных ссылок, поставщик, назначение, выпуски, отчеты о посещаемости и прогрессе. | поддержка изменений |
+| probationops.referral.education_program | Программа стажировки | variant | Направление по программе покрывает занятия, сертификаты, посещаемость, завершение обучения и оплату. | соответствовать условию |
+| probationops.referral.employment_service | Направление в службу пробационного трудоустройства | variant | Направление связывает человека с поиском работы, обучением, документами, транспортировкой или трудоустройством. | улучшить стабильность |
+| probationops.referral.housing_support | Направление на жилищную поддержку на испытательном сроке | variant | Направление касается приюта, аренды, временного жилья, ограничений и безопасности. | снизить риск |
+| probationops.violation.violation_report | Отчет о нарушении условий испытательного срока | invariant | Отчет документирует предполагаемое нарушение, доказательства, историю, ответ, рекомендацию и уведомление суда. | формально обострить ситуацию |
+| probationops.violation.technical_violation | Реагирование на техническое нарушение | variant | Response решает проблемы с пропущенной встречей, оплатой, поездкой, тестированием, комендантским часом или оформлением документов. | пропорциональное действие |
+| probationops.violation.new_arrest | Предупреждение о новом аресте на испытательном сроке | invariant | Оповещение фиксирует арест, обвинения, содержание под стражей, дату суда, условия и реакцию офицера. | обновить риск |
+| probationops.violation.graduated_sanction | Градуированная санкция | variant | В санкциях фиксируются предупреждения, повышенная отчетность, программа, часы работы или направление в суд. | реагировать пропорционально |
+| probationops.violation.incentive_record | Запись о поощрении испытательного срока | variant | Записывайте примечания об уменьшении количества отчетов, похвал, сертификатов, отказа от уплаты сборов или досрочного рассмотрения. | усилить прогресс |
+| probationops.court.status_report | Отчет суда о статусе пробационного суда | invariant | В отчете представлены сведения о соблюдении требований, нарушениях, платежах, лечении, рисках и рекомендациях. | сообщить судье |
+| probationops.court.hearing_preparation | Подготовка к испытательному слушанию | invariant | Подготовка собирает отчеты, уведомления, доказательства, свидетелей, рекомендации и статус клиента. | готовый суд |
+| probationops.court.order_update | Обновление постановления суда об условно-досрочном освобождении | invariant | Обновление изменяет условия, срок, сборы, уровень надзора или дату прекращения действия. | быть в курсе |
+| probationops.victim.victim_notification | Уведомление потерпевшего на испытательном сроке | variant | Уведомление соответствует разрешенным правилам слушаний, нарушений, освобождения, отсутствия контактов или возмещения ущерба. | права жертвы |
+| probationops.victim.restitution_tracking | Отслеживание возмещения испытательного срока | invariant | Отслеживание суммы, платежей, задолженности, распределения, судебных изменений и пополнения. | финансовая ответственность |
+| probationops.fees.fee_schedule | График оплаты испытательного срока | variant | Запланируйте надзор за записями, тестирование, программу, возмещение или платежные обязательства по решению суда. | прозрачность оплаты |
+| probationops.fees.payment_record | Справка об оплате испытательного срока | invariant | Запись связывает платеж, обязательство, дату, получение, распределение и баланс. | финансовый след |
+| probationops.quality.case_audit | Аудит дела об испытательном сроке | invariant | Аудит проверяет порядок, контакты, записи, оценки, нарушения, направления и судебные протоколы. | качество надзора |
+| probationops.quality.safety_plan | План безопасности сотрудника службы пробации | invariant | План охватывает риски выезда на место, сотрудника-партнера, регистрацию, местоположение и путь экстренной помощи. | защитить персонал |
+| probationops.reporting.caseload_report | Отчет о количестве дел на испытательном сроке | invariant | В отчете суммируются активные случаи, уровни риска, ожидаемые контакты, нарушения и закрытия. | управлять рабочей нагрузкой |
+| probationops.reporting.outcome_report | Отчет о результатах испытательного срока | variant | Отчет отслеживает завершение, отзыв, новые аресты, завершение лечения и реституцию. | понимание программы |
+| probationops.metrics.probation_kpi | Служба пробации КПИ | variant | KPI отслеживает своевременность обращений, нарушения, завершения, отзыв, направления и баланс нагрузки. | управлять офисом |
+| probationops.close.case_closure | Закрытие дела с испытательным сроком | invariant | Закрытие регистрирует завершение срока, досрочное увольнение, отзыв, перевод или смерть. | окончание надзора |
+| probationops.continuity.office_closure | Реакция на закрытие офиса пробации | variant | Отчеты о сменах реагирования, тестирование, судебные уведомления, безопасность на местах и ​​контакты при чрезвычайных ситуациях. | поддерживать надзор |

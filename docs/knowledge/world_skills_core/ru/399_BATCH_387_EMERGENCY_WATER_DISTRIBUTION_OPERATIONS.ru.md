@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| waterdistops.activation.trigger | activation trigger | MODEL | Trigger includes water outage, contamination, drought, shelter demand or infrastructure damage. | Starts controlled water supply. |
-| waterdistops.activation.water_cell | water coordination cell | RECORD | Cell names utility, public health, logistics, finance and distribution leads. | Centralizes decisions. |
-| waterdistops.activation.priority_policy | priority policy | CONSTRAINT | Policy ranks hospitals, shelters, dialysis, schools, vulnerable groups and general public. | Allocates limited water fairly. |
-| waterdistops.activation.safety_brief | safety briefing | SAFETY_RULE | Brief covers lifting, traffic, heat, sanitation, tanker safety and public crowding. | Protects staff and public. |
-| waterdistops.request.request_id | water request ID | RECORD | Request ID links requester, location, population, quantity, urgency and status. | Tracks demand. |
-| waterdistops.request.need_type | need type | RECORD | Need type distinguishes drinking, cooking, hygiene, medical, animal or operational water. | Matches source and packaging. |
-| waterdistops.request.population | population estimate | MEASUREMENT | Population estimate includes households, shelter residents, workers or facility users. | Sizes deliveries. |
-| waterdistops.request.validation | request validation | QUALITY_CHECK | Validation checks need, duplication, current stock, source and distribution method. | Prevents waste. |
-| waterdistops.source.approved_source | approved source | SAFETY_RULE | Emergency drinking water comes from public health/utility-approved source. | Protects health. |
-| waterdistops.source.bulk_water | bulk water source | RECORD | Bulk source records hydrant, plant, well, supplier, tanker fill point and approval. | Enables traceability. |
-| waterdistops.source.bottled_supplier | bottled supplier | RECORD | Supplier record stores vendor, lot, quantity, delivery time and storage needs. | Controls bottled water. |
-| waterdistops.source.contamination | contamination concern | FAILURE_MODE | Suspected contamination requires isolation, testing and public health review. | Prevents unsafe distribution. |
-| waterdistops.tanker.tanker_id | tanker ID | RECORD | Tanker ID links vehicle, tank, capacity, operator, cleaning and approval status. | Controls bulk deliveries. |
-| waterdistops.tanker.sanitation | tanker sanitation | SAFETY_RULE | Tankers for potable water require sanitary history, cleaning and approved fittings. | Prevents contamination. |
-| waterdistops.tanker.fill_log | fill log | RECORD | Fill log records source, time, volume, operator and seal if used. | Tracks custody. |
-| waterdistops.tanker.delivery_log | delivery log | RECORD | Delivery log records destination, volume, time, receiver and condition. | Closes delivery loop. |
-| waterdistops.pod.site_selection | POD site selection | METHOD | Site checks access, traffic, shade, security, storage and population reach. | Makes distribution workable. |
-| waterdistops.pod.layout | POD layout | METHOD | Layout separates entry, queue, loading, walk-up, staff, pallets and exit. | Reduces congestion. |
-| waterdistops.pod.household_limit | household limit | CONSTRAINT | Limits define units per household or vehicle by supply and need. | Extends scarce stock. |
-| waterdistops.pod.accessibility | accessibility support | METHOD | Walk-up, disability, delivery or language support improves access. | Reaches vulnerable users. |
-| waterdistops.inventory.stock_count | stock count | MEASUREMENT | Stock count tracks pallets, bottles, gallons, bulk tanks and losses. | Shows available supply. |
-| waterdistops.inventory.lot_trace | lot trace | RECORD | Lot trace links bottled water to supplier and distribution sites. | Supports recall. |
-| waterdistops.inventory.storage | storage condition | SAFETY_RULE | Water is stored away from heat, chemicals, pests and tampering. | Protects quality. |
-| waterdistops.inventory.reorder | reorder trigger | MODEL | Reorder uses burn rate, population, delivery time and reserve level. | Prevents stockout. |
-| waterdistops.testing.field_test | field test | QUALITY_CHECK | Chlorine, turbidity or other required checks confirm bulk water acceptability. | Supports safe release. |
-| waterdistops.testing.lab_sample | lab sample | METHOD | Samples route to lab when contamination, source change or public health rule requires. | Adds verification. |
-| waterdistops.testing.hold_release | hold and release | SAFETY_RULE | Questionable water is held until approved. | Prevents unsafe use. |
-| waterdistops.testing.result_record | test result record | RECORD | Result stores source, sample, method, time, result and reviewer. | Creates evidence. |
-| waterdistops.communication.public_notice | public notice | METHOD | Notice states sites, hours, limits, containers, delivery options and safety guidance. | Guides residents. |
-| waterdistops.communication.boil_link | boil notice link | METHOD | Distribution messaging aligns with boil water or do-not-use notices. | Avoids contradictory advice. |
-| waterdistops.communication.partner_update | partner update | METHOD | Partners receive stock, site, delivery, vulnerable needs and closure updates. | Aligns operations. |
-| waterdistops.communication.language | language support | METHOD | Core notices are translated for affected communities where possible. | Improves access. |
-| waterdistops.security.crowd | crowd control | METHOD | Staff manage queues, vehicle flow, conflict and site safety. | Keeps distribution orderly. |
-| waterdistops.security.tamper | tamper control | SAFETY_RULE | Pallets, tanks and valves are monitored for tampering. | Protects water quality. |
-| waterdistops.security.theft | theft flag | MODEL | Unexpected losses or unauthorized pickups trigger review. | Protects scarce supply. |
-| waterdistops.records.daily_log | daily log | RECORD | Log records sites, deliveries, stock, incidents, staff and issues. | Summarizes operation. |
-| waterdistops.records.cost | cost record | RECORD | Costs track purchase, delivery, labor, equipment, storage and security. | Supports reimbursement. |
-| waterdistops.records.retention | retention rule | CONSTRAINT | Records follow public health, finance, emergency and grant schedules. | Preserves audit trail. |
-| waterdistops.metrics.gallons_served | gallons served | MEASUREMENT | Gallons served by site and population show reach. | Tracks service. |
-| waterdistops.metrics.stockout | stockout event | MEASUREMENT | Stockout events record site, time, cause and unmet demand. | Improves planning. |
-| waterdistops.qa.reconciliation | reconciliation | QUALITY_CHECK | Stock, deliveries and distribution counts reconcile daily. | Detects loss/error. |
-| waterdistops.demob.site_close | site closeout | METHOD | Closeout removes stock, cleans site, returns equipment and notifies public. | Ends operation cleanly. |
-| waterdistops.demob.final_inventory | final inventory | QUALITY_CHECK | Final inventory reconciles remaining bottles, bulk water, tanks and losses. | Prevents unresolved stock gaps. |
-| waterdistops.review.after_action | after-action review | METHOD | Review captures source, access, testing, stock and communication lessons. | Improves next response. |
+| waterdistops.activation.trigger | триггер активации | MODEL | Триггером может быть отключение воды, загрязнение окружающей среды, засуха, потребность в жилье или повреждение инфраструктуры. | Запускает контролируемую подачу воды. |
+| waterdistops.activation.water_cell | координационная группа по водным ресурсам | RECORD | Ячейки называют лидерами коммунальных предприятий, общественного здравоохранения, логистики, финансов и распределения. | Централизует решения. |
+| waterdistops.activation.priority_policy | приоритетная политика | CONSTRAINT | Политика ранжирует больницы, приюты, диализные учреждения, школы, уязвимые группы и широкую общественность. | Справедливо распределяет ограниченное количество воды. |
+| waterdistops.activation.safety_brief | инструктаж по безопасности | SAFETY_RULE | Краткое описание охватывает подъем, движение транспорта, отопление, санитарию, безопасность танкеров и скопление людей. | Защищает персонал и общественность. |
+| waterdistops.request.request_id | идентификатор запроса воды | RECORD | Идентификатор запроса связывает отправителя запроса, местоположение, численность населения, количество, срочность и статус. | Треки востребованы. |
+| waterdistops.request.need_type | нужен тип | RECORD | По типу потребности различают питьевую, кулинарную, гигиеническую, медицинскую, животную или эксплуатационную воду. | Соответствует источнику и упаковке. |
+| waterdistops.request.population | оценка численности населения | MEASUREMENT | Оценка численности населения включает домохозяйства, жителей приютов, рабочих или пользователей объектов. | Размеры поставок. |
+| waterdistops.request.validation | запросить проверку | QUALITY_CHECK | Необходимость проверки, дублирование, текущий запас, источник и метод распространения. | Предотвращает отходы. |
+| waterdistops.source.approved_source | одобренный источник | SAFETY_RULE | Аварийная питьевая вода поступает из источника, одобренного общественным здравоохранением или коммунальными предприятиями. | Защищает здоровье. |
+| waterdistops.source.bulk_water | объемный источник воды | RECORD | Массовый источник записывает гидрант, завод, скважину, поставщика, точку наполнения цистерн и одобрение. | Обеспечивает возможность отслеживания. |
+| waterdistops.source.bottled_supplier | поставщик бутылок | RECORD | В учетных записях поставщиков указывается поставщик, партия, количество, время доставки и потребности в складских помещениях. | Контролирует бутилированную воду. |
+| waterdistops.source.contamination | проблема загрязнения | FAILURE_MODE | Подозрение на заражение требует изоляции, тестирования и проверки общественного здравоохранения. | Предотвращает небезопасное распространение. |
+| waterdistops.tanker.tanker_id | идентификатор танкера | RECORD | Идентификатор танкера связывает транспортное средство, резервуар, вместимость, оператора, статус очистки и утверждения. | Контролирует оптовые поставки. |
+| waterdistops.tanker.sanitation | танкер санитарный | SAFETY_RULE | Цистерны для питьевой воды требуют санитарной истории, очистки и одобренного оборудования. | Предотвращает загрязнение. |
+| waterdistops.tanker.fill_log | заполнить журнал | RECORD | Заполните источник записей журнала, время, объем, оператора и печать, если используется. | Отслеживает опеку. |
+| waterdistops.tanker.delivery_log | журнал доставки | RECORD | В журнале доставки фиксируются пункт назначения, объем, время, получатель и состояние. | Замыкает цикл доставки. |
+| waterdistops.pod.site_selection | Выбор места POD | METHOD | На объекте проверяется доступ, трафик, тень, безопасность, хранилище и охват населения. | Делает распространение работоспособным. |
+| waterdistops.pod.layout | Компоновка POD | METHOD | Планировка разделяет вход, очередь, погрузку, проход, персонал, поддоны и выход. | Уменьшает заторы. |
+| waterdistops.pod.household_limit | семейный лимит | CONSTRAINT | Пределы определяют количество единиц на домохозяйство или транспортное средство в зависимости от предложения и потребности. | Расширяет дефицитный запас. |
+| waterdistops.pod.accessibility | поддержка доступности | METHOD | Поддержка, поддержка при родах, помощь при родах или языковая поддержка улучшают доступ. | Достигает уязвимых пользователей. |
+| waterdistops.inventory.stock_count | инвентаризация | MEASUREMENT | Подсчет запасов отслеживает поддоны, бутылки, галлоны, цистерны и потери. | Показывает доступный запас. |
+| waterdistops.inventory.lot_trace | трассировка партии | RECORD | Многочисленные следы связывают бутилированную воду с поставщиками и местами распространения. | Поддерживает отзыв. |
+| waterdistops.inventory.storage | условия хранения | SAFETY_RULE | Вода хранится вдали от тепла, химикатов, вредителей и вмешательства. | Защищает качество. |
+| waterdistops.inventory.reorder | триггер изменения порядка | MODEL | При повторном заказе учитываются скорость сжигания ресурсов, численность населения, время доставки и уровень резерва. | Предотвращает дефицит. |
+| waterdistops.testing.field_test | полевые испытания | QUALITY_CHECK | Хлор, мутность или другие необходимые проверки подтверждают приемлемость объемной воды. | Поддерживает безопасный выпуск. |
+| waterdistops.testing.lab_sample | лабораторный образец | METHOD | Пробы направляются в лабораторию, когда этого требует загрязнение, смена источника или правила общественного здравоохранения. | Добавляет проверку. |
+| waterdistops.testing.hold_release | удержать и отпустить | SAFETY_RULE | Сомнительная вода удерживается до одобрения. | Предотвращает небезопасное использование. |
+| waterdistops.testing.result_record | запись результатов теста | RECORD | В результатах хранятся источник, образец, метод, время, результат и рецензент. | Создает доказательства. |
+| waterdistops.communication.public_notice | публичное уведомление | METHOD | В уведомлении указаны места, часы работы, ограничения, контейнеры, варианты доставки и рекомендации по безопасности. | Проводники жителей. |
+| waterdistops.communication.boil_link | ссылка на уведомление о кипячении | METHOD | Сообщения о распространении совпадают с предупреждениями о кипячении воды или неиспользовании. | Избегает противоречивых советов. |
+| waterdistops.communication.partner_update | обновление партнера | METHOD | Партнеры получают информацию о наличии товара, сайте, доставке, уязвимых потребностях и закрытии. | Выравнивает операции. |
+| waterdistops.communication.language | языковая поддержка | METHOD | Основные уведомления по возможности переводятся для затронутых сообществ. | Улучшает доступ. |
+| waterdistops.security.crowd | контроль толпы | METHOD | Персонал управляет очередями, потоком транспортных средств, конфликтами и безопасностью на объекте. | Поддерживает порядок распределения. |
+| waterdistops.security.tamper | тамперный контроль | SAFETY_RULE | Поддоны, резервуары и клапаны контролируются на предмет взлома. | Защищает качество воды. |
+| waterdistops.security.theft | флаг кражи | MODEL | Неожиданные потери или несанкционированные изъятия вызывают проверку. | Защищает дефицитные запасы. |
+| waterdistops.records.daily_log | ежедневник | RECORD | Журнал записывает сайты, поставки, запасы, инциденты, персонал и проблемы. | Подводит итоги работы. |
+| waterdistops.records.cost | запись затрат | RECORD | Затраты учитывают покупку, доставку, рабочую силу, оборудование, хранение и безопасность. | Поддерживает возмещение. |
+| waterdistops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам общественного здравоохранения, финансов, чрезвычайных ситуаций и грантов. | Сохраняет контрольный журнал. |
+| waterdistops.metrics.gallons_served | галлонов обслужено | MEASUREMENT | Галлоны, обслуживаемые по объектам и численности населения, показывают охват. | Сервис треков. |
+| waterdistops.metrics.stockout | событие дефицита | MEASUREMENT | События дефицита фиксируют место, время, причину и неудовлетворенный спрос. | Улучшает планирование. |
+| waterdistops.qa.reconciliation | примирение | QUALITY_CHECK | Данные о запасах, поставках и распределении сверяются ежедневно. | Обнаруживает потерю/ошибку. |
+| waterdistops.demob.site_close | закрытие сайта | METHOD | Closeout удаляет запасы, очищает территорию, возвращает оборудование и уведомляет общественность. | Завершает работу чисто. |
+| waterdistops.demob.final_inventory | окончательная инвентаризация | QUALITY_CHECK | Окончательная инвентаризация сверяет оставшиеся бутылки, воду, резервуары и потери. | Предотвращает нерешенные пробелы в запасах. |
+| waterdistops.review.after_action | обзор после действий | METHOD | В обзоре отражены уроки по источникам, доступу, тестированию, запасам и коммуникации. | Улучшает следующий ответ. |

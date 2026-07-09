@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| ivrops.design.call_reason | call reason map | MODEL | IVR design maps common reasons such as outage, billing, payment, move, appointment and emergency. | Builds menus around customer demand. |
-| ivrops.design.menu_depth | menu depth | CONSTRAINT | Menu depth limits how many levels a caller must navigate. | Reduces abandonment. |
-| ivrops.design.plain_language | plain language prompt | METHOD | Prompts use short familiar language and avoid internal utility jargon. | Helps stressed callers understand options. |
-| ivrops.design.language_choice | language choice | METHOD | Language choice is offered early and supports required service languages. | Improves accessibility. |
-| ivrops.design.accessibility | accessibility route | SAFETY_RULE | IVR offers operator or accessible route for callers unable to use menus. | Protects service access. |
-| ivrops.authentication.account_lookup | account lookup | METHOD | Caller can identify account by account number, phone, address or other approved path. | Speeds routing to account-specific service. |
-| ivrops.authentication.risk_level | authentication risk level | MODEL | Risk level determines what actions require stronger authentication. | Keeps low-risk updates easy and sensitive tasks protected. |
-| ivrops.authentication.pin | PIN verification | SAFETY_RULE | PIN or shared secret may verify caller for billing or profile actions. | Reduces unauthorized access. |
-| ivrops.authentication.failed_attempt | failed attempt control | CONSTRAINT | Failed authentication attempts trigger retry limits or live-agent transfer. | Prevents brute-force and caller frustration. |
-| ivrops.outage.outage_prompt | outage prompt | METHOD | Outage prompt lets callers report outage or hear known outage status. | Reduces agent load during events. |
-| ivrops.outage.known_outage_match | known outage match | MODEL | Caller address or phone can match known outage records. | Gives relevant restoration information. |
-| ivrops.outage.new_report | new outage report | RECORD | New outage report captures account, location, symptoms, hazards and callback number. | Feeds outage management. |
-| ivrops.outage.hazard_transfer | hazard transfer | SAFETY_RULE | Wires down, gas smell, flooding or medical risk can route immediately to live/emergency handling. | Protects life safety. |
-| ivrops.outage.etr_prompt | ETR prompt | METHOD | Estimated restoration prompt states confidence and last update time. | Avoids stale or over-precise promises. |
-| ivrops.billing.balance_prompt | balance prompt | METHOD | Balance prompt states amount due, due date, payment status and dispute route. | Enables simple self-service. |
-| ivrops.billing.high_bill_route | high bill route | METHOD | High bill callers route to leak, meter, usage or dispute options. | Sends exceptions to suitable workflow. |
-| ivrops.payments.payment_flow | payment flow | METHOD | Payment flow confirms account, amount, method, fee, date and confirmation number. | Prevents misapplied payments. |
-| ivrops.payments.pci_boundary | PCI boundary | SAFETY_RULE | Card entry and recording controls keep payment data out of agent and call recordings. | Reduces compliance risk. |
-| ivrops.payments.failed_payment | failed payment | FAILURE_MODE | Failed IVR payment reports reason category and next action without exposing sensitive data. | Helps caller recover. |
-| ivrops.payments.arrangement_route | arrangement route | METHOD | Payment arrangement route checks eligibility or transfers to specialist queue. | Supports delinquency management. |
-| ivrops.callback.callback_offer | callback offer | METHOD | Callback is offered when wait time or queue rules qualify. | Reduces hold time burden. |
-| ivrops.callback.number_confirm | number confirmation | QUALITY_CHECK | Callback number is repeated or confirmed before saving. | Avoids missed return calls. |
-| ivrops.callback.priority | callback priority | MODEL | Callback priority uses queue, customer risk, service type and time sensitivity. | Manages scarce agent capacity. |
-| ivrops.callback.expiry | callback expiry | CONSTRAINT | Callback requests expire after defined attempts or time window. | Keeps queues accurate. |
-| ivrops.recording.recording_policy | recording policy | CONSTRAINT | Recording policy states which calls are recorded and which data is masked. | Supports compliance and quality. |
-| ivrops.recording.consent_prompt | consent prompt | METHOD | Consent or notification prompt plays where required. | Meets jurisdictional rules. |
-| ivrops.recording.retention | recording retention | CONSTRAINT | Recordings are retained by category, risk and legal hold status. | Controls evidence and privacy. |
-| ivrops.recording.search | recording search | METHOD | Search uses call ID, account, time, ANI, agent or queue metadata. | Supports disputes and QA. |
-| ivrops.routing.skill_queue | skill queue | METHOD | Routing sends callers to billing, outage, move service, language or specialist skills. | Improves first contact resolution. |
-| ivrops.routing.after_hours | after-hours route | METHOD | After-hours routing separates emergency, outage, payment and callback options. | Maintains service outside business hours. |
-| ivrops.routing.overflow | overflow route | METHOD | Overflow route sends calls to backup queue, contractor or message service. | Protects service during surges. |
-| ivrops.routing.vip_sensitive | sensitive customer route | METHOD | Sensitive accounts can route with additional care while preserving policy fairness. | Supports critical customer handling. |
-| ivrops.failover.provider_failover | provider failover | METHOD | IVR has backup carrier, hosted platform or manual message plan. | Keeps phone service during outages. |
-| ivrops.failover.power_network | power network dependency | FAILURE_MODE | Phone system depends on power, network, carrier and contact-center tools. | Helps continuity planning. |
-| ivrops.failover.emergency_message | emergency message | METHOD | Prebuilt emergency message can be activated when systems are degraded. | Gives callers minimal guidance fast. |
-| ivrops.failover.manual_transfer | manual transfer | METHOD | Manual transfer plan lists numbers and queues for degraded IVR states. | Keeps calls moving. |
-| ivrops.content.prompt_library | prompt library | RECORD | Prompt library stores approved messages, owners, dates and use cases. | Prevents improvised wording. |
-| ivrops.content.prompt_update | prompt update | METHOD | Prompt changes go through draft, review, publish and test. | Reduces broken call flows. |
-| ivrops.content.seasonal_message | seasonal message | METHOD | Seasonal prompts cover storms, conservation, shutoff moratoriums or billing cycles. | Keeps IVR aligned with current operations. |
-| ivrops.qa.test_call | test call | QUALITY_CHECK | Test calls verify menu path, transfers, payment, outage status and language options. | Catches failures before customers. |
-| ivrops.qa.transcript_review | transcript review | QUALITY_CHECK | Speech recognition transcripts are reviewed for frequent misunderstood phrases. | Improves menu recognition. |
-| ivrops.metrics.containment | containment rate | MEASUREMENT | Containment rate measures calls resolved without agent transfer. | Shows self-service value. |
-| ivrops.metrics.abandonment | abandonment rate | MEASUREMENT | Abandonment rate tracks callers leaving before completion or agent contact. | Signals friction and staffing mismatch. |
-| ivrops.metrics.failure_reason | failure reason | MEASUREMENT | Failure reasons classify authentication, transfer, payment, speech or system errors. | Guides IVR improvement. |
+| ivrops.design.call_reason | карта причин звонка | MODEL | Дизайн IVR отображает общие причины, такие как отключение электроэнергии, выставление счетов, оплата, переезд, встреча и чрезвычайная ситуация. | Составляет меню исходя из потребностей клиентов. |
+| ivrops.design.menu_depth | глубина меню | CONSTRAINT | Глубина меню ограничивает количество уровней, по которым абонент должен перемещаться. | Уменьшает заброшенность. |
+| ivrops.design.plain_language | подсказка простым языком | METHOD | В подсказках используйте короткий знакомый язык и избегайте внутреннего служебного жаргона. | Помогает звонящим в стрессе понять варианты. |
+| ivrops.design.language_choice | выбор языка | METHOD | Выбор языка предлагается заранее и поддерживает необходимые языки обслуживания. | Улучшает доступность. |
+| ivrops.design.accessibility | маршрут доступности | SAFETY_RULE | IVR предлагает операторский или доступный маршрут для звонящих, которые не могут использовать меню. | Защищает доступ к сервису. |
+| ivrops.authentication.account_lookup | поиск аккаунта | METHOD | Вызывающий абонент может идентифицировать учетную запись по номеру учетной записи, телефону, адресу или другому утвержденному пути. | Ускоряет маршрутизацию к службе, специфичной для учетной записи. |
+| ivrops.authentication.risk_level | уровень риска аутентификации | MODEL | Уровень риска определяет, какие действия требуют более строгой аутентификации. | Обеспечивает простоту обновлений с низким уровнем риска и защиту конфиденциальных задач. |
+| ivrops.authentication.pin | Проверка PIN-кода | SAFETY_RULE | PIN-код или общий секрет могут проверять звонящего при выставлении счетов или действиях профиля. | Уменьшает несанкционированный доступ. |
+| ivrops.authentication.failed_attempt | контроль неудачных попыток | CONSTRAINT | Неудачные попытки аутентификации приводят к ограничению повторных попыток или передаче живого агента. | Предотвращает грубую силу и разочарование вызывающего абонента. |
+| ivrops.outage.outage_prompt | подсказка о сбое | METHOD | Подсказка об отключении позволяет вызывающим абонентам сообщить об отключении или услышать известный статус отключения. | Снижает нагрузку на агентов во время мероприятий. |
+| ivrops.outage.known_outage_match | известное совпадение с отключением | MODEL | Адрес или телефон вызывающего абонента могут совпадать с известными записями об отключении электроэнергии. | Дает соответствующую информацию о восстановлении. |
+| ivrops.outage.new_report | новый отчет об отключении | RECORD | В новом отчете о сбоях указывается учетная запись, местоположение, симптомы, опасности и номер обратного вызова. | Управление отключением каналов. |
+| ivrops.outage.hazard_transfer | передача опасности | SAFETY_RULE | Обрыв проводов, запах газа, затопление или опасность для здоровья могут привести к немедленному обращению в службу экстренной помощи. | Обеспечивает безопасность жизни. |
+| ivrops.outage.etr_prompt | Подсказка ETR | METHOD | В подсказке о предполагаемом восстановлении указывается достоверность и время последнего обновления. | Избегает устаревших или слишком точных обещаний. |
+| ivrops.billing.balance_prompt | подсказка баланса | METHOD | В подсказке о балансе указывается сумма к оплате, дата платежа, статус платежа и способ оспаривания. | Обеспечивает простое самообслуживание. |
+| ivrops.billing.high_bill_route | дорогой маршрут | METHOD | Звонящие с высокими счетами направляются к вариантам утечки, счетчика, использования или спора. | Отправляет исключения в подходящий рабочий процесс. |
+| ivrops.payments.payment_flow | поток платежей | METHOD | Поток платежей подтверждает счет, сумму, метод, комиссию, дату и номер подтверждения. | Предотвращает неправильную оплату. |
+| ivrops.payments.pci_boundary | Граница PCI | SAFETY_RULE | Элементы управления вводом карт и записью не допускают попадания платежных данных в записи разговоров и агентов. | Снижает риск несоответствия. |
+| ivrops.payments.failed_payment | неудавшийся платеж | FAILURE_MODE | Неудачная оплата IVR сообщает о категории причины и следующем действии без раскрытия конфиденциальных данных. | Помогает звонящему восстановиться. |
+| ivrops.payments.arrangement_route | маршрут договоренности | METHOD | Маршрут организации платежа проверяет соответствие требованиям или переводит в очередь специалиста. | Поддерживает управление просрочками. |
+| ivrops.callback.callback_offer | предложение обратного звонка | METHOD | Обратный вызов предлагается, когда время ожидания или правила очереди соответствуют требованиям. | Уменьшает нагрузку на время удержания. |
+| ivrops.callback.number_confirm | подтверждение номера | QUALITY_CHECK | Номер обратного вызова повторяется или подтверждается перед сохранением. | Избегает пропущенных обратных звонков. |
+| ivrops.callback.priority | приоритет обратного вызова | MODEL | Приоритет обратного вызова учитывает очередь, риск клиента, тип услуги и чувствительность ко времени. | Управляет дефицитными возможностями агентов. |
+| ivrops.callback.expiry | истечение срока обратного вызова | CONSTRAINT | Срок действия запросов обратного вызова истекает после определенных попыток или временного окна. | Обеспечивает четкость очередей. |
+| ivrops.recording.recording_policy | политика записи | CONSTRAINT | Политика записи определяет, какие вызовы записываются, а какие данные маскируются. | Поддерживает соответствие и качество. |
+| ivrops.recording.consent_prompt | запрос согласия | METHOD | При необходимости воспроизводится запрос согласия или уведомления. | Соответствует юрисдикционным правилам. |
+| ivrops.recording.retention | сохранение записи | CONSTRAINT | Записи сохраняются по категориям, рискам и статусу юридического хранения. | Контролирует доказательства и конфиденциальность. |
+| ivrops.recording.search | поиск записи | METHOD | Для поиска используются идентификатор вызова, учетная запись, время, ANI, метаданные агента или очереди. | Поддерживает споры и контроль качества. |
+| ivrops.routing.skill_queue | очередь навыков | METHOD | Маршрутизация направляет вызывающих абонентов к вопросам выставления счетов, отключений, услуг по переезду, языкам или специальным навыкам. | Улучшает разрешение первого контакта. |
+| ivrops.routing.after_hours | маршрут в нерабочее время | METHOD | Маршрутизация в нерабочее время разделяет варианты экстренной помощи, простоя, оплаты и обратного вызова. | Обеспечивает обслуживание в нерабочее время. |
+| ivrops.routing.overflow | маршрут переполнения | METHOD | Маршрут переполнения отправляет вызовы в резервную очередь, подрядчику или службе сообщений. | Защищает сервис во время скачков напряжения. |
+| ivrops.routing.vip_sensitive | чувствительный маршрут клиента | METHOD | Конфиденциальные учетные записи могут маршрутизироваться с особой осторожностью, сохраняя при этом справедливость политики. | Поддерживает работу с критически важными клиентами. |
+| ivrops.failover.provider_failover | аварийное переключение провайдера | METHOD | IVR имеет резервного оператора связи, размещенную платформу или план сообщений вручную. | Сохраняет телефонную связь во время сбоев. |
+| ivrops.failover.power_network | зависимость от электросети | FAILURE_MODE | Телефонная система зависит от мощности, сети, оператора связи и инструментов контакт-центра. | Помогает планировать непрерывность. |
+| ivrops.failover.emergency_message | экстренное сообщение | METHOD | Готовое экстренное сообщение можно активировать при выходе из строя систем. | Быстро дает вызывающим абонентам минимальные инструкции. |
+| ivrops.failover.manual_transfer | ручная передача | METHOD | В плане ручной передачи перечислены номера и очереди для ухудшенных состояний IVR. | Обеспечивает движение звонков. |
+| ivrops.content.prompt_library | подсказка библиотеки | RECORD | Библиотека подсказок хранит утвержденные сообщения, владельцев, даты и варианты использования. | Предотвращает импровизированные формулировки. |
+| ivrops.content.prompt_update | быстрое обновление | METHOD | Оперативные изменения проходят черновой вариант, проверку, публикацию и тестирование. | Уменьшает нарушенные потоки вызовов. |
+| ivrops.content.seasonal_message | сезонное сообщение | METHOD | Сезонные подсказки касаются ураганов, охраны окружающей среды, мораториев на отключение или циклов выставления счетов. | Обеспечивает соответствие IVR текущим операциям. |
+| ivrops.qa.test_call | тестовый звонок | QUALITY_CHECK | Тестовые звонки проверяют путь к меню, переводы, оплату, статус отключения и языковые параметры. | Выявляет сбои раньше клиентов. |
+| ivrops.qa.transcript_review | обзор стенограммы | QUALITY_CHECK | Транскрипты распознавания речи проверяются на предмет частых неправильно понятых фраз. | Улучшает распознавание меню. |
+| ivrops.metrics.containment | уровень сдерживания | MEASUREMENT | Уровень сдерживания позволяет определить, что вызовы разрешены без перевода агента. | Показывает ценность самообслуживания. |
+| ivrops.metrics.abandonment | процент отказов | MEASUREMENT | Коэффициент отказа отслеживает абонентов, ушедших до завершения разговора или контакта с агентом. | Сигнализирует о разногласиях и кадровом несоответствии. |
+| ivrops.metrics.failure_reason | причина отказа | MEASUREMENT | Причины сбоя классифицируют ошибки аутентификации, перевода, оплаты, речи или системы. | Руководства по улучшению IVR. |

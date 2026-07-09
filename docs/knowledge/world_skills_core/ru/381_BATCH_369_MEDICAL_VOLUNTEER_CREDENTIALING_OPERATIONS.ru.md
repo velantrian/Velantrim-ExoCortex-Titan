@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| medvolcredops.intake.volunteer_id | volunteer ID | RECORD | Volunteer ID links person, profession, credentials, availability and assignments. | Creates controlled roster. |
-| medvolcredops.intake.application | application | RECORD | Application captures identity, contact, license, skills, language and emergency contact. | Starts screening. |
-| medvolcredops.intake.affiliation | affiliation | RECORD | Affiliation records employer, reserve corps, NGO, school or unaffiliated status. | Guides trust level. |
-| medvolcredops.intake.availability | availability | RECORD | Availability records dates, shift limits, location and remote capability. | Supports deployment planning. |
-| medvolcredops.identity.id_check | identity check | SAFETY_RULE | Identity is verified before credential approval. | Prevents impersonation. |
-| medvolcredops.identity.background | background screen | CONSTRAINT | Background screening applies by role, site and vulnerable population exposure. | Reduces safeguarding risk. |
-| medvolcredops.identity.reference | reference check | METHOD | References or affiliation confirm professional standing where required. | Adds confidence. |
-| medvolcredops.identity.duplicate | duplicate profile | FAILURE_MODE | Duplicate profiles split credentials and assignment history. | Requires merge control. |
-| medvolcredops.license.primary_source | primary source verification | QUALITY_CHECK | License is verified from official board or approved registry. | Confirms legal authority. |
-| medvolcredops.license.status | license status | RECORD | Status records active, expired, suspended, restricted or out-of-state. | Guides eligibility. |
-| medvolcredops.license.expiry | license expiry alert | MEASUREMENT | Expiry alerts flag credentials needing renewal before deployment. | Prevents stale rosters. |
-| medvolcredops.license.compact | compact or reciprocity | CONSTRAINT | Interstate practice depends on emergency orders, compacts or reciprocity rules. | Keeps practice lawful. |
-| medvolcredops.scope.scope_map | scope map | RECORD | Scope maps profession, license, training and permitted tasks. | Prevents unsafe assignment. |
-| medvolcredops.scope.restriction | restriction | CONSTRAINT | Restrictions include supervision, procedure limits, prescribing limits or population limits. | Protects patients. |
-| medvolcredops.scope.training_gap | training gap | MODEL | Gap identifies tasks needing orientation before assignment. | Targets briefing. |
-| medvolcredops.scope.nonclinical | nonclinical option | METHOD | Volunteers outside clinical scope may support logistics, education or admin. | Uses capacity safely. |
-| medvolcredops.training.orientation | orientation | METHOD | Orientation covers incident structure, privacy, safety, documentation and site workflow. | Aligns volunteers. |
-| medvolcredops.training.justintime | just-in-time training | METHOD | Short training covers site-specific tasks and hazards. | Enables rapid deployment. |
-| medvolcredops.training.competency | competency attestation | RECORD | Volunteer attests or demonstrates competence for assigned task. | Supports accountability. |
-| medvolcredops.training.ppe | PPE training | SAFETY_RULE | PPE training matches task and infectious or physical hazards. | Protects volunteer and patient. |
-| medvolcredops.assignment.request | assignment request | RECORD | Request states role, site, shift, supervisor, scope and number needed. | Defines demand. |
-| medvolcredops.assignment.match | match process | METHOD | Matching uses credential, scope, availability, language, distance and risk. | Sends suitable volunteers. |
-| medvolcredops.assignment.supervisor | supervisor link | RECORD | Each volunteer has assigned supervisor or clinical lead. | Maintains oversight. |
-| medvolcredops.assignment.badge | badge credential | METHOD | Badge shows identity, role, site and dates. | Controls access. |
-| medvolcredops.liability.coverage | liability coverage | CONSTRAINT | Coverage depends on agency status, emergency order, employer and role. | Reduces legal ambiguity. |
-| medvolcredops.liability.waiver | waiver | RECORD | Waiver or agreement records risks, conduct and data use. | Documents terms. |
-| medvolcredops.liability.workers_comp | injury coverage | CONSTRAINT | Injury coverage route is clarified before field work. | Protects volunteers. |
-| medvolcredops.liability.privacy_duty | privacy duty | SAFETY_RULE | Volunteers must follow health privacy and confidentiality rules. | Protects patient data. |
-| medvolcredops.tracking.checkin | check-in | METHOD | Check-in confirms arrival, badge, assignment and readiness. | Starts accountability. |
-| medvolcredops.tracking.checkout | checkout | METHOD | Checkout records hours, incidents, equipment and next availability. | Closes shift. |
-| medvolcredops.tracking.hours | hours tracking | MEASUREMENT | Hours are tracked by role, site and funding category. | Supports reporting. |
-| medvolcredops.tracking.exposure | exposure tracking | SAFETY_RULE | Occupational exposures are documented and referred for follow-up. | Protects health. |
-| medvolcredops.performance.issue | performance issue | RECORD | Issue records unsafe practice, conduct concern, no-show or documentation gap. | Supports corrective action. |
-| medvolcredops.performance.removal | removal process | SAFETY_RULE | Unsafe volunteers can be removed from assignment and roster. | Protects operations. |
-| medvolcredops.performance.feedback | feedback | METHOD | Supervisors provide performance feedback and future suitability notes. | Improves roster quality. |
-| medvolcredops.communication.alert | deployment alert | METHOD | Alert provides role, time, location, supervisor, PPE and response instructions. | Mobilizes clearly. |
-| medvolcredops.communication.update | status update | METHOD | Updates communicate shift changes, demobilization, hazards and unmet needs. | Keeps roster aligned. |
-| medvolcredops.records.roster | credentialed roster | RECORD | Roster stores approved volunteers, scope, status and availability. | Enables quick activation. |
-| medvolcredops.records.audit | audit trail | RECORD | Audit trail logs credential checks, approvals, assignments and removals. | Supports review. |
-| medvolcredops.records.retention | retention rule | CONSTRAINT | Records follow volunteer, medical, emergency and privacy retention rules. | Controls lifecycle. |
-| medvolcredops.metrics.fill_rate | fill rate | MEASUREMENT | Fill rate measures roles filled by credential type and time. | Shows staffing readiness. |
-| medvolcredops.metrics.no_show | no-show rate | MEASUREMENT | No-show rate tracks accepted assignments not worked. | Improves reliability planning. |
-| medvolcredops.demob.release | release process | METHOD | Release returns badges/equipment and records final hours/status. | Ends service cleanly. |
-| medvolcredops.review.after_action | after-action review | METHOD | Review captures credential bottlenecks, scope issues, liability gaps and training needs. | Improves next activation. |
+| medvolcredops.intake.volunteer_id | удостоверение волонтера | RECORD | Идентификатор волонтера связывает человека, профессию, полномочия, доступность и назначения. | Создает контролируемый реестр. |
+| medvolcredops.intake.application | приложение | RECORD | Приложение фиксирует личность, контакт, лицензию, навыки, язык и экстренный контакт. | Начинает проверку. |
+| medvolcredops.intake.affiliation | принадлежность | RECORD | Принадлежность регистрирует работодателя, резервный корпус, НПО, школу или статус неаффилированного лица. | Уровень доверия гидов. |
+| medvolcredops.intake.availability | доступность | RECORD | Доступность записывает даты, пределы смен, местоположение и возможность удаленного доступа. | Поддерживает планирование развертывания. |
+| medvolcredops.identity.id_check | проверка личности | SAFETY_RULE | Личность проверяется перед утверждением учетных данных. | Предотвращает выдачу себя за другое лицо. |
+| medvolcredops.identity.background | фоновый экран | CONSTRAINT | Проверка биографических данных применяется в зависимости от роли, места и уязвимого населения. | Снижает охранный риск. |
+| medvolcredops.identity.reference | проверка рекомендаций | METHOD | Рекомендации или принадлежность подтверждают профессиональный статус, где это необходимо. | Добавляет уверенности. |
+| medvolcredops.identity.duplicate | дубликат профиля | FAILURE_MODE | Дублирующиеся профили разделяют учетные данные и историю назначений. | Требуется контроль слияния. |
+| medvolcredops.license.primary_source | проверка первоисточника | QUALITY_CHECK | Лицензия проверяется официальным советом или утвержденным реестром. | Подтверждает юридические полномочия. |
+| medvolcredops.license.status | статус лицензии | RECORD | Записи состояния активны, истекли, приостановлены, ограничены или находятся за пределами штата. | Право на участие в программе гидов. |
+| medvolcredops.license.expiry | уведомление об истечении срока действия лицензии | MEASUREMENT | Предупреждения об истечении срока действия указывают на необходимость обновления учетных данных перед развертыванием. | Предотвращает устаревшие списки. |
+| medvolcredops.license.compact | компактность или взаимность | CONSTRAINT | Межгосударственная практика зависит от чрезвычайных распоряжений, договоров или правил взаимности. | Сохраняет практику законной. |
+| medvolcredops.scope.scope_map | карта области действия | RECORD | Область применения карты профессий, лицензий, обучения и разрешенных задач. | Предотвращает небезопасное назначение. |
+| medvolcredops.scope.restriction | ограничение | CONSTRAINT | Ограничения включают надзор, ограничения по процедурам, ограничения по назначению или ограничения по численности населения. | Защищает пациентов. |
+| medvolcredops.scope.training_gap | разрыв в обучении | MODEL | Пробел определяет задачи, требующие ориентации перед назначением. | Брифинг по целям. |
+| medvolcredops.scope.nonclinical | доклинический вариант | METHOD | Добровольцы, не входящие в сферу клинической деятельности, могут поддерживать логистику, образование или администрирование. | Безопасно использует емкость. |
+| medvolcredops.training.orientation | ориентация | METHOD | Ориентация охватывает структуру инцидентов, конфиденциальность, безопасность, документацию и рабочий процесс на объекте. | Объединяет волонтеров. |
+| medvolcredops.training.justintime | обучение точно в срок | METHOD | Кратковременное обучение охватывает задачи и опасности, характерные для конкретной площадки. | Обеспечивает быстрое развертывание. |
+| medvolcredops.training.competency | аттестация компетентности | RECORD | Доброволец подтверждает или демонстрирует компетентность для выполнения поставленной задачи. | Поддерживает ответственность. |
+| medvolcredops.training.ppe | Обучение СИЗ | SAFETY_RULE | Обучение средствам индивидуальной защиты соответствует выполняемым задачам и инфекционным или физическим опасностям. | Защищает волонтеров и пациентов. |
+| medvolcredops.assignment.request | запрос на назначение | RECORD | В запросе указывается роль, участок, смена, руководитель, объем и необходимое количество. | Определяет спрос. |
+| medvolcredops.assignment.match | процесс сопоставления | METHOD | При сопоставлении используются учетные данные, объем, доступность, язык, расстояние и риск. | Отправляет подходящих добровольцев. |
+| medvolcredops.assignment.supervisor | ссылка супервизора | RECORD | За каждым волонтером закреплен руководитель или клинический руководитель. | Сохраняет надзор. |
+| medvolcredops.assignment.badge | удостоверение личности | METHOD | Значок показывает личность, роль, место и даты. | Контролирует доступ. |
+| medvolcredops.liability.coverage | покрытие ответственности | CONSTRAINT | Покрытие зависит от статуса агентства, чрезвычайного приказа, работодателя и должности. | Уменьшает юридическую двусмысленность. |
+| medvolcredops.liability.waiver | отказ | RECORD | В отказе или соглашении фиксируются риски, поведение и использование данных. | Условия документов. |
+| medvolcredops.liability.workers_comp | страхование травм | CONSTRAINT | Маршрут покрытия травм уточняется до начала полевых работ. | Защищает волонтеров. |
+| medvolcredops.liability.privacy_duty | обязанность конфиденциальности | SAFETY_RULE | Добровольцы должны соблюдать правила конфиденциальности и конфиденциальности в отношении здоровья. | Защищает данные пациентов. |
+| medvolcredops.tracking.checkin | регистрироваться | METHOD | Регистрация подтверждает прибытие, бейдж, назначение и готовность. | Начинается ответственность. |
+| medvolcredops.tracking.checkout | проверить | METHOD | Касса записывает часы работы, инциденты, оборудование и информацию о его доступности. | Закрывает смену. |
+| medvolcredops.tracking.hours | отслеживание часов | MEASUREMENT | Часы отслеживаются по роли, сайту и категории финансирования. | Поддерживает отчетность. |
+| medvolcredops.tracking.exposure | отслеживание воздействия | SAFETY_RULE | Профессиональное облучение документируется и направляется для последующего наблюдения. | Защищает здоровье. |
+| medvolcredops.performance.issue | проблема с производительностью | RECORD | Выдавайте записи о небезопасных действиях, проблемах с поведением, неявках или пробелах в документации. | Поддерживает корректирующие действия. |
+| medvolcredops.performance.removal | процесс удаления | SAFETY_RULE | Небезопасные волонтеры могут быть исключены из назначения и списка. | Защищает операции. |
+| medvolcredops.performance.feedback | обратная связь | METHOD | Руководители предоставляют отзывы о производительности и примечания к будущей пригодности. | Улучшает качество состава. |
+| medvolcredops.communication.alert | оповещение о развертывании | METHOD | В оповещении указаны роль, время, местоположение, руководитель, средства индивидуальной защиты и инструкции по реагированию. | Мобилизуется четко. |
+| medvolcredops.communication.update | обновление статуса | METHOD | Обновления сообщают об изменениях смен, демобилизации, опасностях и неудовлетворенных потребностях. | Поддерживает состав в порядке. |
+| medvolcredops.records.roster | сертифицированный список | RECORD | В реестре хранятся утвержденные волонтеры, объем, статус и доступность. | Обеспечивает быструю активацию. |
+| medvolcredops.records.audit | аудиторский след | RECORD | Журнал аудита фиксирует проверки учетных данных, утверждения, назначения и удаления. | Поддерживает обзор. |
+| medvolcredops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют правилам волонтеров, медицинских работников, неотложной помощи и соблюдения конфиденциальности. | Управляет жизненным циклом. |
+| medvolcredops.metrics.fill_rate | скорость заполнения | MEASUREMENT | Коэффициент заполнения измеряет роли, заполненные по типу учетных данных и времени. | Показывает готовность кадров. |
+| medvolcredops.metrics.no_show | процент неявок | MEASUREMENT | Неявка не отслеживает принятые задания, которые не работают. | Улучшает планирование надежности. |
+| medvolcredops.demob.release | процесс выпуска | METHOD | Релиз возвращает значки/оборудование и записывает последние часы/статус. | Заканчивает обслуживание чисто. |
+| medvolcredops.review.after_action | обзор после действий | METHOD | В обзоре выявляются узкие места, связанные с учетными данными, проблемы объема, пробелы в ответственности и потребности в обучении. | Улучшает следующую активацию. |

@@ -449,4 +449,3 @@ PRACTICAL CIVILIZATION CORE
 ```
 
 Это и есть правильная карта для 20 000+ units.
-

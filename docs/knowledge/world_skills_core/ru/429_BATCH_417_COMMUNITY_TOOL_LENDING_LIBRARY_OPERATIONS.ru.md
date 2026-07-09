@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| toollibraryops.activation.service_model | service model | RECORD | Model defines fixed library, mobile checkout, recovery center desk or partner cache. | Defines operation. |
-| toollibraryops.activation.partner | partner roster | RECORD | Roster lists nonprofits, makerspaces, hardware stores, libraries and volunteer repair groups. | Coordinates capacity. |
-| toollibraryops.activation.scope | tool scope | CONSTRAINT | Scope defines allowed tool categories, prohibited tools and user groups. | Controls risk. |
-| toollibraryops.activation.command_link | command link | RECORD | Operation reports to donations, logistics, recovery, safety and finance leads. | Maintains oversight. |
-| toollibraryops.inventory.item_master | item master | RECORD | Master lists tool ID, type, condition, owner, accessories and restrictions. | Standardizes stock. |
-| toollibraryops.inventory.label | label method | METHOD | Labels attach unique ID, category, return point and safety marker. | Tracks tools. |
-| toollibraryops.inventory.receiving | receiving check | QUALITY_CHECK | Receiving checks donations for condition, completeness, safety and suitability. | Blocks unsafe tools. |
-| toollibraryops.inventory.stock_count | stock count | MEASUREMENT | Count tracks available, checked out, maintenance, lost and retired tools. | Shows inventory. |
-| toollibraryops.membership.user_registration | user registration | RECORD | Registration captures borrower identity, contact, address area, agreement and eligibility. | Enables checkout. |
-| toollibraryops.membership.eligibility | eligibility rule | CONSTRAINT | Eligibility defines disaster-affected users, age, residency, project type or partner referral. | Preserves fairness. |
-| toollibraryops.membership.agreement | borrower agreement | RECORD | Agreement covers safe use, return date, liability, damage and privacy. | Sets expectations. |
-| toollibraryops.membership.privacy | privacy rule | SAFETY_RULE | Borrower data is limited to checkout, contact and audit needs. | Reduces exposure. |
-| toollibraryops.checkout.request | checkout request | RECORD | Request records tool, borrower, project, pickup time, due date and accessories. | Starts loan. |
-| toollibraryops.checkout.availability | availability check | QUALITY_CHECK | Check confirms tool is available, safe, complete and appropriate. | Prevents bad loan. |
-| toollibraryops.checkout.issue | checkout issue | RECORD | Issue records tool ID, condition, accessories, due date, staff and borrower. | Creates trail. |
-| toollibraryops.checkout.limit | checkout limit | CONSTRAINT | Limits define loan duration, quantity, high-risk tools and renewal rules. | Extends access. |
-| toollibraryops.safety.briefing | safety briefing | METHOD | Brief covers PPE, tool limits, hazards, power, ladders and stop-use triggers. | Reduces injury. |
-| toollibraryops.safety.skill_boundary | skill boundary | SAFETY_RULE | High-risk tools require training, referral or exclusion. | Controls risk. |
-| toollibraryops.safety.ppe | PPE note | METHOD | Staff recommend or issue PPE tied to tool and task. | Improves safe use. |
-| toollibraryops.safety.manual | manual access | RECORD | Manual, checklist or QR guide is linked to each tool category. | Supports correct use. |
-| toollibraryops.returns.return_check | return check | QUALITY_CHECK | Return checks tool ID, condition, cleanliness, accessories and damage. | Restores stock. |
-| toollibraryops.returns.late_return | late return | RECORD | Late return records contact attempts, extension, lost status or fee policy. | Controls availability. |
-| toollibraryops.returns.cleaning | cleaning process | METHOD | Returned tools are cleaned, dried and staged before reissue. | Preserves tools. |
-| toollibraryops.returns.restock | restock method | METHOD | Safe complete tools move back to available inventory. | Keeps library usable. |
-| toollibraryops.damage.damage_report | damage report | RECORD | Report captures broken, missing, dull, unsafe or incomplete tool condition. | Starts repair. |
-| toollibraryops.damage.borrower_note | borrower note | RECORD | Borrower note records incident, misuse, normal wear or pre-existing issue. | Clarifies cause. |
-| toollibraryops.damage.loss | loss record | RECORD | Loss records missing tool, replacement path, owner and financial handling. | Explains variance. |
-| toollibraryops.damage.retirement | retirement rule | METHOD | Unsafe or uneconomic tools are retired, recycled or used for parts. | Protects users. |
-| toollibraryops.maintenance.maintenance_queue | maintenance queue | RECORD | Queue tracks tools needing sharpening, repair, battery, calibration or inspection. | Organizes work. |
-| toollibraryops.maintenance.repair_assignment | repair assignment | METHOD | Assignment sends tool to volunteer, vendor or staff with due date. | Restores stock. |
-| toollibraryops.maintenance.preventive | preventive maintenance | METHOD | Preventive schedule covers blades, batteries, cords, lubrication and fasteners. | Extends life. |
-| toollibraryops.maintenance.post_repair_check | post-repair check | QUALITY_CHECK | Repaired tools are tested before return to circulation. | Confirms safety. |
-| toollibraryops.logistics.pickup_site | pickup site | RECORD | Site record captures hours, storage, signage, staff, security and access. | Organizes service. |
-| toollibraryops.logistics.mobile_route | mobile route | METHOD | Route delivers tool access to recovery areas by demand and inventory. | Expands reach. |
-| toollibraryops.logistics.storage | storage rule | SAFETY_RULE | Storage separates sharp, powered, fuel, battery and heavy tools. | Prevents accidents. |
-| toollibraryops.logistics.security | security control | SAFETY_RULE | High-value tools use locked storage, signout and periodic count. | Reduces loss. |
-| toollibraryops.communication.public_notice | public notice | METHOD | Notice states tool types, hours, eligibility, safety rules and return expectations. | Guides residents. |
-| toollibraryops.communication.shortage | shortage message | METHOD | Shortage message explains waitlist, substitutions and donation needs. | Manages demand. |
-| toollibraryops.reporting.daily_summary | daily summary | MEASUREMENT | Summary reports checkouts, returns, late items, damage, inventory and demand. | Informs managers. |
-| toollibraryops.metrics.utilization | utilization rate | MEASUREMENT | Utilization tracks tool use by category and time. | Guides stock. |
-| toollibraryops.metrics.damage_rate | damage rate | MEASUREMENT | Damage rate tracks damage by tool type, borrower class and cause. | Improves safety. |
-| toollibraryops.metrics.turnaround | turnaround time | MEASUREMENT | Turnaround measures return to available or repair completion. | Reveals bottleneck. |
-| toollibraryops.qa.audit_count | audit count | QUALITY_CHECK | Periodic audit reconciles physical tools with checkout and maintenance records. | Controls inventory. |
-| toollibraryops.review.after_action | after-action review | METHOD | Review captures inventory mix, safety brief quality, returns, damage and maintenance lessons. | Improves future library. |
+| toollibraryops.activation.service_model | модель обслуживания | RECORD | Модель определяет фиксированную библиотеку, мобильную кассу, центр восстановления или кэш партнера. | Определяет операцию. |
+| toollibraryops.activation.partner | список партнеров | RECORD | В реестре перечислены некоммерческие организации, мастерские, хозяйственные магазины, библиотеки и волонтерские ремонтные группы. | Координирует мощность. |
+| toollibraryops.activation.scope | объем инструмента | CONSTRAINT | Область определяет разрешенные категории инструментов, запрещенные инструменты и группы пользователей. | Контролирует риск. |
+| toollibraryops.activation.command_link | командная ссылка | RECORD | Отчеты об операциях направляются руководителям отделов пожертвований, логистики, восстановления, безопасности и финансов. | Сохраняет надзор. |
+| toollibraryops.inventory.item_master | мастер предметов | RECORD | В основном списке указаны идентификатор инструмента, тип, состояние, владелец, аксессуары и ограничения. | Стандартизирует запасы. |
+| toollibraryops.inventory.label | метод метки | METHOD | На этикетках указан уникальный идентификатор, категория, точка возврата и маркер безопасности. | Инструменты отслеживания. |
+| toollibraryops.inventory.receiving | получение чека | QUALITY_CHECK | Прием чеков пожертвований на состояние, комплектность, сохранность и пригодность. | Блокирует небезопасные инструменты. |
+| toollibraryops.inventory.stock_count | инвентаризация | MEASUREMENT | Подсчитайте доступные, проверенные, обслуживаемые, потерянные и списанные инструменты. | Показывает инвентарь. |
+| toollibraryops.membership.user_registration | регистрация пользователя | RECORD | Регистрация фиксирует личность заемщика, его контакт, адрес, соглашение и право на получение кредита. | Включает оформление заказа. |
+| toollibraryops.membership.eligibility | правило приемлемости | CONSTRAINT | Право на участие определяет пользователей, пострадавших от стихийного бедствия, их возраст, место жительства, тип проекта или направление партнера. | Сохраняет справедливость. |
+| toollibraryops.membership.agreement | соглашение заемщика | RECORD | Соглашение охватывает безопасное использование, дату возврата, ответственность, ущерб и конфиденциальность. | Устанавливает ожидания. |
+| toollibraryops.membership.privacy | правило конфиденциальности | SAFETY_RULE | Данные заемщика ограничиваются проверками, контактами и аудитом. | Уменьшает воздействие. |
+| toollibraryops.checkout.request | запрос на оформление заказа | RECORD | Запрос инструмента записи, заемщика, проекта, времени получения, срока и аксессуаров. | Начинается кредит. |
+| toollibraryops.checkout.availability | проверка доступности | QUALITY_CHECK | Проверка подтверждает, что инструмент доступен, безопасен, укомплектован и подходит. | Предотвращает плохой кредит. |
+| toollibraryops.checkout.issue | проблема с оформлением заказа | RECORD | Записи о выпуске: идентификатор инструмента, состояние, аксессуары, срок оплаты, персонал и заемщик. | Создает след. |
+| toollibraryops.checkout.limit | лимит оформления заказа | CONSTRAINT | Лимиты определяют продолжительность кредита, его количество, инструменты высокого риска и правила продления. | Расширяет доступ. |
+| toollibraryops.safety.briefing | инструктаж по безопасности | METHOD | Краткое описание охватывает средства индивидуальной защиты, ограничения на инструменты, опасности, мощность, лестницы и триггеры прекращения использования. | Уменьшает травматизм. |
+| toollibraryops.safety.skill_boundary | граница навыков | SAFETY_RULE | Инструменты высокого риска требуют обучения, направления или исключения. | Контролирует риск. |
+| toollibraryops.safety.ppe | Примечание по средствам индивидуальной защиты | METHOD | Персонал рекомендует или выдает СИЗ, привязанные к инструменту и задаче. | Улучшает безопасное использование. |
+| toollibraryops.safety.manual | ручной доступ | RECORD | Руководство, контрольный список или QR-руководство связаны с каждой категорией инструментов. | Поддерживает правильное использование. |
+| toollibraryops.returns.return_check | возврат чека | QUALITY_CHECK | При возврате проверяется идентификатор инструмента, его состояние, чистота, принадлежности и наличие повреждений. | Восстанавливает запас. |
+| toollibraryops.returns.late_return | позднее возвращение | RECORD | Поздний возврат фиксирует попытки контакта, продление, потерю статуса или политику оплаты. | Контролирует доступность. |
+| toollibraryops.returns.cleaning | процесс очистки | METHOD | Возвращенные инструменты очищаются, сушатся и укладываются перед повторной отправкой. | Сохраняет инструменты. |
+| toollibraryops.returns.restock | метод пополнения запасов | METHOD | Безопасные комплектные инструменты возвращаются в доступный инвентарь. | Обеспечивает удобство использования библиотеки. |
+| toollibraryops.damage.damage_report | отчет о повреждениях | RECORD | В отчете указывается сломанный, отсутствующий, затупившийся, небезопасный или неполный инструмент. | Приступает к ремонту. |
+| toollibraryops.damage.borrower_note | вексель заемщика | RECORD | В заметках заемщика фиксируются инциденты, неправильное использование, нормальный износ или ранее существовавшие проблемы. | Уточняет причину. |
+| toollibraryops.damage.loss | запись о потерях | RECORD | В отчете о потерях указывается отсутствующий инструмент, способ замены, владелец и финансовые операции. | Объясняет дисперсию. |
+| toollibraryops.damage.retirement | правило выхода на пенсию | METHOD | Небезопасные или нерентабельные инструменты списываются, перерабатываются или используются на запчасти. | Защищает пользователей. |
+| toollibraryops.maintenance.maintenance_queue | очередь обслуживания | RECORD | Очередь отслеживает инструменты, требующие заточки, ремонта, зарядки аккумулятора, калибровки или проверки. | Организует работу. |
+| toollibraryops.maintenance.repair_assignment | задание на ремонт | METHOD | При назначении инструмент отправляется волонтеру, поставщику или персоналу с указанием срока выполнения. | Восстанавливает запас. |
+| toollibraryops.maintenance.preventive | профилактическое обслуживание | METHOD | График профилактических мероприятий охватывает лезвия, аккумуляторы, шнуры, смазку и крепежные детали. | Продлевает жизнь. |
+| toollibraryops.maintenance.post_repair_check | проверка после ремонта | QUALITY_CHECK | Отремонтированные инструменты проходят испытания перед возвращением в обращение. | Подтверждает безопасность. |
+| toollibraryops.logistics.pickup_site | место выдачи | RECORD | Запись на объекте фиксирует часы работы, хранение, вывески, персонал, безопасность и доступ. | Организует обслуживание. |
+| toollibraryops.logistics.mobile_route | мобильный маршрут | METHOD | Маршрут обеспечивает доступ инструментов к областям восстановления в зависимости от спроса и наличия запасов. | Расширяет охват. |
+| toollibraryops.logistics.storage | правило хранения | SAFETY_RULE | В хранилище раздельно хранятся острые, электрические, топливные, аккумуляторные и тяжелые инструменты. | Предотвращает несчастные случаи. |
+| toollibraryops.logistics.security | контроль безопасности | SAFETY_RULE | Ценные инструменты используют заблокированное хранилище, выход из системы и периодический подсчет. | Уменьшает потери. |
+| toollibraryops.communication.public_notice | публичное уведомление | METHOD | В уведомлении указаны типы инструментов, часы работы, право на участие, правила безопасности и ожидаемый возврат. | Проводники жителей. |
+| toollibraryops.communication.shortage | сообщение о нехватке | METHOD | Сообщение о нехватке объясняет список ожидания, замены и потребности в пожертвованиях. | Управляет спросом. |
+| toollibraryops.reporting.daily_summary | ежедневная сводка | MEASUREMENT | Сводные отчеты о проверках, возвратах, просроченных товарах, повреждениях, запасах и спросе. | Информирует менеджеров. |
+| toollibraryops.metrics.utilization | коэффициент использования | MEASUREMENT | Использование отслеживает использование инструментов по категориям и времени. | Направляющие в наличии. |
+| toollibraryops.metrics.damage_rate | уровень урона | MEASUREMENT | Коэффициент ущерба отслеживает ущерб по типу инструмента, классу заемщика и причине. | Повышает безопасность. |
+| toollibraryops.metrics.turnaround | время выполнения заказа | MEASUREMENT | Ремонтные мероприятия возвращаются в доступное состояние или ремонт завершается. | Выявляет узкое место. |
+| toollibraryops.qa.audit_count | количество аудитов | QUALITY_CHECK | Периодический аудит сверяет физические инструменты с записями о проверке и техническом обслуживании. | Контролирует запасы. |
+| toollibraryops.review.after_action | обзор после действий | METHOD | В обзоре учитываются состав инвентаря, качество краткого описания техники безопасности, возвраты, повреждения и уроки по техническому обслуживанию. | Улучшает будущую библиотеку. |

@@ -154,4 +154,3 @@ Stage 50K начинается с:
 ```text
 13_BATCH_001_AGRO_FOOD_TEXTILE.ru.md
 ```
-

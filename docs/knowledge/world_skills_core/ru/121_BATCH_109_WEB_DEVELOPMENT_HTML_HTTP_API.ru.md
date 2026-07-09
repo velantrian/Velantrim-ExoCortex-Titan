@@ -11,34 +11,34 @@
 | webdev.html.accessibility | Доступность (a11y) | variant | alt, ARIA, контраст для всех пользователей | инклюзия |
 | webdev.css.role | CSS | invariant | язык оформления (цвет, размер, расположение) | внешний вид |
 | webdev.css.selectors | Селекторы | invariant | выбор элементов по тегу/классу/id | применение стилей |
-| webdev.css.box_model | Блочная модель | invariant | content + padding + border + margin | вёрстка |
-| webdev.css.flexbox_grid | Flexbox и Grid | variant | современная раскладка элементов | адаптивная вёрстка |
+| webdev.css.box_model | Блочная модель | invariant | содержимое + отступ + граница + поле | вёрстка |
+| webdev.css.flexbox_grid | Флексбокс и сетка | variant | современная раскладка элементов | адаптивная вёрстка |
 | webdev.css.responsive | Адаптивный дизайн | invariant | страница подстраивается под экран | мобильные устройства |
 | webdev.js.role | JavaScript | invariant | язык интерактивности в браузере | динамика страницы |
-| webdev.js.dom | DOM | invariant | дерево объектов страницы для манипуляции | изменение контента |
+| webdev.js.dom | ДОМ | invariant | дерево объектов страницы для манипуляции | изменение контента |
 | webdev.js.events | События | invariant | реакция на клик, ввод, загрузку | интерактивность |
 | webdev.js.async | Асинхронность (fetch, promises) | variant | загрузка данных без перезагрузки | динамические приложения |
 | webdev.http.protocol | HTTP | invariant | протокол запрос-ответ между клиентом и сервером | основа веба |
-| webdev.http.methods | HTTP-методы | invariant | GET, POST, PUT, DELETE, PATCH | CRUD-операции |
+| webdev.http.methods | HTTP-методы | invariant | ПОЛУЧИТЬ, ОТПРАВИТЬ, ПОСТАВИТЬ, УДАЛИТЬ, ПАТЧИТЬ | CRUD-операции |
 | webdev.http.status | Коды статуса | invariant | 2xx успех, 3xx редирект, 4xx ошибка клиента, 5xx сервера | диагностика |
 | webdev.http.headers | Заголовки | variant | метаданные запроса/ответа (тип, авторизация) | управление обменом |
-| webdev.http.https | HTTPS / TLS | invariant | шифрование трафика | безопасность |
+| webdev.http.https | HTTPS/TLS | invariant | шифрование трафика | безопасность |
 | webdev.http.cookies | Куки и сессии | variant | хранение состояния между запросами | авторизация, корзина |
 | webdev.http.stateless | HTTP без состояния | invariant | каждый запрос независим | нужны куки/токены для состояния |
-| webdev.api.rest | REST API | invariant | ресурсы + HTTP-методы + представления | стандарт веб-API |
+| webdev.api.rest | ОТДЫХ API | invariant | ресурсы + HTTP-методы + представления | стандарт веб-API |
 | webdev.api.json | JSON | invariant | формат обмена данными (ключ-значение) | API, конфиги |
 | webdev.api.endpoint | Эндпоинт | invariant | URL-адрес ресурса/операции API | точка обращения |
 | webdev.api.auth | Аутентификация API | invariant | API-ключи, токены (JWT), OAuth | контроль доступа |
 | webdev.api.rate_limit | Ограничение запросов | variant | защита API от перегрузки | стабильность |
 | webdev.api.versioning | Версионирование API | variant | /v1/, /v2/ — обратная совместимость | эволюция без поломок |
-| webdev.api.graphql | GraphQL | variant | клиент запрашивает ровно нужные данные | альтернатива REST |
+| webdev.api.graphql | ГрафQL | variant | клиент запрашивает ровно нужные данные | альтернатива REST |
 | webdev.arch.client_server | Клиент-сервер | invariant | браузер ↔ сервер | архитектура веба |
 | webdev.arch.frontend_backend | Фронтенд и бэкенд | invariant | интерфейс vs логика и данные | разделение ответственности |
-| webdev.arch.spa | SPA (одностраничные приложения) | variant | контент обновляется без перезагрузки | React/Vue/Angular |
+| webdev.arch.spa | SPA (одностраничные приложения) | variant | контент обновляется без перезагрузки | Реагировать/Vue/Угловой |
 | webdev.arch.ssr | Серверный рендеринг (SSR) | variant | страница собирается на сервере | скорость, SEO |
 | webdev.arch.cdn | CDN | variant | раздача контента с ближних серверов | скорость загрузки |
 | webdev.data.database | База данных веб-приложения | invariant | хранение данных (SQL/NoSQL) | персистентность |
-| webdev.data.orm | ORM | variant | объекты ↔ таблицы БД | работа с данными в коде |
+| webdev.data.orm | ОРМ | variant | объекты ↔ таблицы БД | работа с данными в коде |
 | webdev.sec.xss | XSS | invariant | внедрение скрипта; защита — экранирование | безопасность клиента |
 | webdev.sec.csrf | CSRF | invariant | подделка запроса от имени пользователя; токены защищают | безопасность форм |
 | webdev.sec.injection | Инъекции | invariant | непроверенный ввод → SQL/команды; параметризация | защита сервера |

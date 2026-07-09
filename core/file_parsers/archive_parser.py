@@ -240,11 +240,30 @@ class ArchiveParser(FileParser):
     def _extract_rar(self, file_path: str, tmpdir: str, result: ParseResult) -> list[str]:
         import rarfile
         files: list[str] = []
+        total_size = 0
+        safe_dir = os.path.realpath(tmpdir)
         with rarfile.RarFile(file_path) as rf:
             for member in rf.namelist():
                 if len(files) >= self.MAX_FILES:
+                    result.warnings.append(f"max_files_reached: {self.MAX_FILES}")
                     break
-                if ".." in member or member.startswith("/"):
+                # FIX #21 (Claude audit): добавить MAX_EXTRACTED_SIZE guard
+                # (как в _extract_zip/_extract_tar) — защита от zip-bomb
+                try:
+                    info = rf.getinfo(member)
+                    total_size += info.file_size
+                except Exception:
+                    total_size += 1024 * 1024  # консервативная оценка
+                if total_size > self.MAX_EXTRACTED_SIZE:
+                    result.warnings.append("rar_max_extracted_size_reached")
+                    break
+                # Path traversal protection
+                member_path = os.path.normpath(member)
+                if ".." in member_path.split(os.sep) or member_path.startswith("/"):
+                    continue
+                full = os.path.realpath(os.path.join(tmpdir, member_path))
+                if not full.startswith(safe_dir + os.sep) and full != safe_dir:
+                    result.warnings.append(f"rar_path_traversal_blocked: {member}")
                     continue
                 rf.extract(member, tmpdir)
                 out = os.path.join(tmpdir, member)

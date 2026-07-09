@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| poolops.admit.admission_check | Pool admission check | invariant | Check verifies ticket, pass, age rule, capacity, waiver and facility status before entry. | control access |
-| poolops.admit.wristband | Pool wristband | variant | Wristband shows paid entry, swim level, session, group or age category. | visible entitlement |
-| poolops.admit.capacity_count | Pool capacity count | invariant | Count tracks bathers, spectators, staff and occupancy limits. | avoid overcrowding |
-| poolops.admit.swim_test | Swim test workflow | variant | Workflow evaluates swimmer ability for deep water, slide or program access under local rules. | match risk |
-| poolops.admit.rule_briefing | Pool rule briefing | invariant | Briefing communicates running, diving, food, supervision, toys, hygiene and emergency rules. | set behavior |
-| poolops.lifeguard.zone_assignment | Lifeguard zone assignment | invariant | Assignment maps guard to water zone, blind spots, equipment and rotation time. | active surveillance |
-| poolops.lifeguard.scanning_pattern | Lifeguard scanning pattern | invariant | Pattern keeps eyes moving over surface, bottom, edges and high-risk users. | detect trouble |
-| poolops.lifeguard.rotation | Lifeguard rotation | invariant | Rotation changes positions and breaks to maintain attention and coverage. | reduce fatigue |
-| poolops.lifeguard.whistle_signal | Pool whistle signal | invariant | Signal communicates rule correction, attention, emergency or all-clear by code. | fast communication |
-| poolops.lifeguard.rescue_equipment | Rescue equipment check | invariant | Check covers tube, backboard, reaching pole, ring, first aid and communication device. | ready response |
-| poolops.water.chemical_test | Pool chemical test | invariant | Test records disinfectant, pH and other required water readings by schedule. | water safety evidence |
-| poolops.water.test_log | Pool water test log | invariant | Log captures time, result, staff, corrective action and reopening decision. | audit trail |
-| poolops.water.fecal_incident | Pool contamination incident | invariant | Incident triggers closure, treatment, cleaning, documentation and communication per protocol. | protect swimmers |
-| poolops.water.turbidity_check | Pool clarity check | invariant | Check confirms bottom visibility and safe observation conditions. | see swimmers |
-| poolops.water.mechanical_room | Pool mechanical room check | invariant | Check observes pumps, filters, valves, feeders, alarms, leaks and access restrictions. | keep system running |
-| poolops.program.swim_lesson_roster | Swim lesson roster | invariant | Roster lists participants, level, instructor, guardian contact, attendance and skill notes. | organize lessons |
-| poolops.program.lane_assignment | Pool lane assignment | variant | Assignment allocates lanes for lap swim, lessons, teams, therapy or public use. | share water |
-| poolops.program.pool_party | Pool party booking | variant | Booking coordinates capacity, room, lifeguards, food rules, timing and cleanup. | event control |
-| poolops.program.aquatics_class | Aquatics class setup | variant | Setup prepares instructor, equipment, lane, music, attendance and safety plan. | run class |
-| poolops.program.weather_program_change | Weather program change | variant | Change cancels, delays or relocates outdoor pool activity due to lightning, heat or air quality. | environment response |
-| poolops.facility.deck_inspection | Pool deck inspection | invariant | Inspection checks wet surfaces, drains, ladders, rails, furniture and trip hazards. | prevent injury |
-| poolops.facility.locker_room_check | Pool locker room check | invariant | Check covers cleanliness, showers, toilets, floors, lockers, privacy and supplies. | user hygiene |
-| poolops.facility.gate_fence | Pool gate and fence check | invariant | Check confirms barriers, latches, signs and unauthorized access controls. | prevent unsupervised entry |
-| poolops.facility.slide_check | Pool slide check | variant | Check covers height rule, water flow, landing zone, stairs and attendant position. | attraction safety |
-| poolops.facility.diving_board_check | Diving board check | variant | Check covers surface, fulcrum, rails, depth, rules and restricted use. | high-risk feature |
-| poolops.safety.incident_report | Pool incident report | invariant | Report documents rescue, injury, rule violation, contamination, missing child or conflict. | formal record |
-| poolops.safety.first_aid_response | Pool first aid response | invariant | Response records assessment, care within role, EMS call, guardian notice and follow-up. | emergency evidence |
-| poolops.safety.missing_child | Missing child protocol | invariant | Protocol locks down exits, alerts staff, searches water first and documents timeline. | seconds matter |
-| poolops.safety.thunder_closure | Thunder or lightning closure | invariant | Closure clears water and deck according to weather policy before reopening. | avoid strike risk |
-| poolops.safety.guard_debrief | Lifeguard incident debrief | variant | Debrief reviews rescue, communication, equipment, documentation and improvement actions. | learn quickly |
-| poolops.cleaning.deck_cleaning | Pool deck cleaning | invariant | Cleaning removes water, debris, sunscreen residue, food, glass hazards and algae. | safe surface |
-| poolops.cleaning.restroom_sanitation | Pool restroom sanitation | invariant | Sanitation follows schedule for wet, high-traffic bathrooms and changing areas. | hygiene |
-| poolops.cleaning.trash_round | Pool trash round | invariant | Round removes waste from deck, concessions, locker rooms and entrances. | cleanliness |
-| poolops.cleaning.lost_found | Pool lost and found | invariant | Process tags, stores, claims and disposes towels, goggles, phones or clothing. | return property |
-| poolops.cleaning.blood_cleanup | Pool blood cleanup | invariant | Cleanup isolates area, uses PPE, disinfects and documents exposure risk. | biohazard control |
-| poolops.staff.opening_round | Pool opening round | invariant | Round checks water, guards, equipment, gates, deck, locker rooms and admissions. | open safely |
-| poolops.staff.closing_round | Pool closing round | invariant | Round clears patrons, secures chemicals, locks gates, checks water and records issues. | end safely |
-| poolops.staff.certification_record | Lifeguard certification record | invariant | Record tracks lifeguard credentials, expiry, in-service training and skills checks. | qualified coverage |
-| poolops.staff.inservice_training | Pool in-service training | invariant | Training practices scanning, rescue, CPR/AED, spinal response, communication and scenarios. | readiness |
-| poolops.staff.staffing_shortage | Pool staffing shortage | invariant | Shortage reduces capacity, closes feature, cancels session or triggers replacement staff. | no guard, no swim |
-| poolops.billing.pass_sale | Pool pass sale | variant | Sale records day pass, season pass, resident rate, discount or refund rule. | revenue control |
-| poolops.metrics.pool_kpi | Pool operations KPI | variant | KPI tracks attendance, incidents, water closures, guard coverage, complaints and maintenance issues. | manage pool |
-| poolops.continuity.pump_failure | Pool pump failure response | invariant | Response closes affected water, notifies maintenance, protects equipment and documents reopening criteria. | system outage |
-| poolops.continuity.chemical_alarm | Pool chemical alarm response | invariant | Response isolates chemical area, protects staff, escalates and records corrective action. | hazardous materials |
+| poolops.admit.admission_check | Проверка входа в бассейн | invariant | Перед входом проверяется билет, пропуск, возрастное правило, вместимость, отказ и статус объекта. | контроль доступа |
+| poolops.admit.wristband | Браслет для бассейна | variant | На браслете указан платный вход, уровень плавания, сессия, группа или возрастная категория. | видимое право |
+| poolops.admit.capacity_count | Подсчет емкости пула | invariant | Count отслеживает купающихся, зрителей, персонал и ограничения по количеству посетителей. | избегать переполненности |
+| poolops.admit.swim_test | Рабочий процесс теста плавания | variant | Рабочий процесс оценивает способности пловца к глубокой воде, спуску или доступу к программе в соответствии с местными правилами. | риск матча |
+| poolops.admit.rule_briefing | Брифинг по правилам пула | invariant | На инструктаже рассказывается о беге, дайвинге, еде, присмотре, игрушках, правилах гигиены и чрезвычайных ситуациях. | установить поведение |
+| poolops.lifeguard.zone_assignment | Назначение зоны спасателя | invariant | Назначения охраны составляют карту водной зоны, слепых зон, техники и времени ротации. | активное наблюдение |
+| poolops.lifeguard.scanning_pattern | Схема сканирования спасателя | invariant | Рисунок заставляет взгляд перемещаться по поверхности, дну, краям и пользователям из группы высокого риска. | обнаружить проблему |
+| poolops.lifeguard.rotation | Ротация спасателей | invariant | Вращение меняет позиции и делает перерывы для поддержания внимания и охвата. | уменьшить усталость |
+| poolops.lifeguard.whistle_signal | Сигнал свистка бассейна | invariant | Сигнал сообщает об исправлении правил, внимании, чрезвычайной ситуации или полной отбоя с помощью кода. | быстрая связь |
+| poolops.lifeguard.rescue_equipment | Проверка спасательного оборудования | invariant | Проверьте крышки трубки, щита, шеста, кольца, устройства первой помощи и связи. | готовый ответ |
+| poolops.water.chemical_test | Химический тест бассейна | invariant | Тестирование записывает дезинфицирующее средство, pH и другие необходимые показания воды по графику. | доказательства безопасности воды |
+| poolops.water.test_log | Журнал испытаний воды в бассейне | invariant | В журнале фиксируются время, результат, персонал, корректирующие действия и решение о повторном открытии. | аудиторский след |
+| poolops.water.fecal_incident | Инцидент с загрязнением бассейна | invariant | Инцидент требует закрытия, лечения, очистки, документирования и связи в соответствии с протоколом. | защищать пловцов |
+| poolops.water.turbidity_check | Проверка прозрачности бассейна | invariant | Проверка подтверждает видимость дна и безопасные условия наблюдения. | увидеть пловцов |
+| poolops.water.mechanical_room | Проверка механического помещения бассейна | invariant | Проверьте насосы, фильтры, клапаны, питатели, сигнализацию, утечки и ограничения доступа. | поддерживать работу системы |
+| poolops.program.swim_lesson_roster | Список занятий по плаванию | invariant | В списке перечислены участники, уровень, инструктор, контактные лица-опекуны, посещаемость и примечания к навыкам. | организовывать уроки |
+| poolops.program.lane_assignment | Назначение дорожек у бассейна | variant | При назначении выделяются дорожки для плавания на коленях, уроков, команд, терапии или общественного пользования. | поделиться водой |
+| poolops.program.pool_party | Бронирование вечеринки у бассейна | variant | При бронировании согласовываются вместимость, номер, спасатели, правила питания, время и уборка. | контроль событий |
+| poolops.program.aquatics_class | Организация занятий по водным видам спорта | variant | Установка готовит инструктора, оборудование, дорожку, музыку, план посещаемости и безопасности. | бегать по классу |
+| poolops.program.weather_program_change | Изменение программы погоды | variant | Изменение отменяет, задерживает или переносит занятия в открытом бассейне из-за молнии, жары или качества воздуха. | реакция окружающей среды |
+| poolops.facility.deck_inspection | Осмотр террасы у бассейна | invariant | Инспекция проверяет влажные поверхности, водостоки, лестницы, перила, мебель и опасности спотыкания. | предотвратить травмы |
+| poolops.facility.locker_room_check | Проверка раздевалки у бассейна | invariant | Проверьте чистоту, душевых, туалетов, полов, шкафчиков, уединения и расходных материалов. | гигиена пользователя |
+| poolops.facility.gate_fence | Проверка ворот и ограждения бассейна | invariant | Проверка подтверждает наличие барьеров, замков, знаков и средств контроля несанкционированного доступа. | предотвратить несанкционированный вход |
+| poolops.facility.slide_check | Проверка горок в бассейне | variant | Проверка охватывает правила высоты, расход воды, зону приземления, лестницу и положение сопровождающего. | безопасность аттракциона |
+| poolops.facility.diving_board_check | Проверка трамплина для прыжков в воду | variant | Проверьте поверхности, точки опоры, направляющие, глубину, правила и ограничения на использование. | функция высокого риска |
+| poolops.safety.incident_report | Отчет об инциденте в бассейне | invariant | Сообщите о спасении, травме, нарушении правил, заражении, пропаже ребенка или конфликте. | официальная запись |
+| poolops.safety.first_aid_response | Первая помощь бассейну | invariant | Оценка записей ответов, уход в рамках роли, вызов скорой помощи, уведомление опекуна и последующее наблюдение. | экстренные доказательства |
+| poolops.safety.missing_child | Отсутствует дочерний протокол | invariant | Протокол блокирует выходы, предупреждает персонал, сначала проверяет воду и документирует сроки. | секунды имеют значение |
+| poolops.safety.thunder_closure | Закрытие грома или молнии | invariant | Перед повторным открытием при закрытии очищается вода и палуба в соответствии с погодными условиями. | избежать риска забастовки |
+| poolops.safety.guard_debrief | Отчет о происшествии со спасателем | variant | В отчете рассматриваются спасательные операции, связь, оборудование, документация и действия по улучшению. | учиться быстро |
+| poolops.cleaning.deck_cleaning | Уборка террасы у бассейна | invariant | При очистке удаляются вода, мусор, остатки солнцезащитного крема, продукты питания, осколки стекла и водоросли. | безопасная поверхность |
+| poolops.cleaning.restroom_sanitation | Санитария в туалете у бассейна | invariant | Санитарные условия соответствуют графику для влажных, часто посещаемых туалетов и раздевалок. | гигиена |
+| poolops.cleaning.trash_round | Круглый бассейн для мусора | invariant | Раунд убирает мусор с палубы, концессий, раздевалок и входов. | чистота |
+| poolops.cleaning.lost_found | Бассейн потерян и найден | invariant | Обрабатывайте бирки, храните, рекламируйте и утилизируйте полотенца, очки, телефоны или одежду. | вернуть имущество |
+| poolops.cleaning.blood_cleanup | Очистка бассейна от крови | invariant | При уборке зона изолируется, используются средства индивидуальной защиты, дезинфицируется и документируется риск заражения. | контроль биологической опасности |
+| poolops.staff.opening_round | Открытие бассейна | invariant | Круглый проверяет воду, охрану, оборудование, ворота, палубу, раздевалки и входы. | открыть безопасно |
+| poolops.staff.closing_round | Закрытие бассейна | invariant | Раунд очищает посетителей, обеспечивает безопасность химикатов, запирает ворота, проверяет воду и записывает проблемы. | закончиться благополучно |
+| poolops.staff.certification_record | Сертификат спасателя | invariant | Запись отслеживает полномочия спасателей, срок их действия, обучение без отрыва от работы и проверки навыков. | квалифицированное покрытие |
+| poolops.staff.inservice_training | Обучение в бассейне без отрыва от производства | invariant | Обучение практикам сканирования, спасения, СЛР/АВД, реакции позвоночника, общения и сценариев. | готовность |
+| poolops.staff.staffing_shortage | Нехватка кадров в бассейне | invariant | Нехватка снижает емкость, закрывает функцию, отменяет сеанс или вызывает замену персонала. | нет охраны, нет плавания |
+| poolops.billing.pass_sale | Продажа билетов в бассейн | variant | В распродаже учитываются дневной абонемент, сезонный абонемент, тариф для резидентов, правила скидок или возврата средств. | контроль доходов |
+| poolops.metrics.pool_kpi | KPI операций пула | variant | KPI отслеживает посещаемость, инциденты, закрытие воды, охрану, жалобы и проблемы с техническим обслуживанием. | управлять пулом |
+| poolops.continuity.pump_failure | Реакция на неисправность насоса бассейна | invariant | Реагирование закрывает пострадавшую воду, уведомляет об обслуживании, защищает оборудование и документирует критерии повторного открытия. | сбой системы |
+| poolops.continuity.chemical_alarm | Реакция на химическую тревогу в бассейне | invariant | Реагирование изолирует химическую зону, защищает персонал, эскалирует и записывает корректирующие действия. | опасные материалы |

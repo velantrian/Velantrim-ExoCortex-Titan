@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| watermeter.read.route_schedule | Water meter read route schedule | invariant | Schedule assigns meter route, reader, cycle, service area and expected count. | organize reads |
-| watermeter.read.read_capture | Water meter read capture | invariant | Capture records meter ID, reading, date, method, reader and exception code. | billing input |
-| watermeter.read.remote_read | Remote meter read | variant | Read collects AMR or AMI value, signal, timestamp, battery and communication status. | automated data |
-| watermeter.read.manual_read | Manual meter read | variant | Read captures visual dial or register value with access and condition notes. | fallback data |
-| watermeter.read.high_low_exception | Water read high-low exception | invariant | Exception flags unusual consumption versus history, season, occupancy or prior read. | prevent bad bills |
-| watermeter.install.new_meter_order | Water meter install order | invariant | Order records account, address, meter size, service type, appointment and parts. | start install |
-| watermeter.install.meter_set | Water meter set | invariant | Set records meter serial, register, endpoint, location, size, reading and installer. | asset activation |
-| watermeter.install.exchange_order | Water meter exchange order | variant | Order replaces old meter for age, failure, upgrade, test, damage or size change. | maintain accuracy |
-| watermeter.install.endpoint_pairing | Meter endpoint pairing | variant | Pairing links radio endpoint, meter, account, location and network test. | data connectivity |
-| watermeter.install.install_photo | Water meter install photo | variant | Photo documents meter, register, valves, location, seal and access condition. | field evidence |
-| watermeter.leak.continuous_flow_alert | Continuous water flow alert | invariant | Alert flags possible leak from interval data, threshold, duration and account history. | catch leaks |
-| watermeter.leak.customer_leak_notice | Customer leak notice | variant | Notice communicates abnormal use, checking guidance, contact path and billing rules. | reduce loss |
-| watermeter.leak.field_leak_check | Water meter field leak check | invariant | Check inspects meter, indicator, service line signs, box, valves and visible usage. | verify issue |
-| watermeter.leak.utility_side_leak | Utility-side leak referral | variant | Referral routes suspected main, service, valve or meter-box leak to repair crew. | stop system loss |
-| watermeter.tamper.tamper_flag | Water meter tamper flag | invariant | Flag records broken seal, bypass, reversed meter, magnet, cut wire or unauthorized use. | protect revenue |
-| watermeter.tamper.investigation_case | Water meter tamper investigation | variant | Case records evidence, photos, account history, field findings and enforcement route. | resolve tamper |
-| watermeter.tamper.seal_control | Water meter seal control | invariant | Control tracks seal number, installation, removal, staff, reason and inventory. | chain of custody |
-| watermeter.billing.estimated_bill | Estimated water bill | invariant | Estimate uses rules for missing, failed, inaccessible or questionable read. | keep billing cycle |
-| watermeter.billing.billing_exception | Water billing exception | invariant | Exception holds bill for high use, zero use, rollover, wrong meter or account issue. | billing accuracy |
-| watermeter.billing.adjustment_review | Water bill adjustment review | variant | Review evaluates leak credit, meter error, misread, vacancy or policy exception. | fair correction |
-| watermeter.billing.final_read | Water account final read | invariant | Read closes account for move-out, ownership change, shutoff or transfer. | settle account |
-| watermeter.billing.consumption_history | Water consumption history | variant | History compares usage by period, meter, account, weather and occupancy signal. | explain bills |
-| watermeter.service.appointment_window | Water meter service appointment | invariant | Appointment records customer contact, access, window, technician, task and notes. | coordinate visit |
-| watermeter.service.no_access | Water meter no-access record | invariant | Record captures locked gate, dog, buried box, absent customer or unsafe condition. | reschedule evidence |
-| watermeter.service.meter_box_cleanout | Water meter box cleanout | variant | Cleanout removes dirt, water, roots, insects or debris for safe access. | restore access |
-| watermeter.service.valve_operation | Water meter valve operation | invariant | Operation records curb stop, angle valve, meter valve action and condition. | control water |
-| watermeter.service.customer_contact | Water meter customer contact | invariant | Contact logs notice, door tag, phone, email, complaint or appointment confirmation. | communication trail |
-| watermeter.shutoff.nonpay_shutoff | Water nonpayment shutoff | variant | Shutoff records eligibility, notice, field action, meter status and restoration requirements. | enforce billing |
-| watermeter.shutoff.emergency_shutoff | Water emergency shutoff | invariant | Shutoff responds to leak, damage, contamination risk, fire support or safety hazard. | protect system |
-| watermeter.shutoff.reconnect_order | Water reconnect order | invariant | Order records payment, authorization, field reconnect, read, seal and customer notice. | restore service |
-| watermeter.shutoff.wrongful_shutoff | Water wrongful shutoff review | invariant | Review checks address, account, notice, field proof and corrective action. | prevent harm |
-| watermeter.asset.meter_inventory | Water meter inventory | invariant | Inventory tracks meters, registers, endpoints, sizes, serials, status and storage. | asset control |
-| watermeter.asset.test_bench | Water meter test bench | variant | Test records meter accuracy, flow points, result, calibration and disposition. | verify accuracy |
-| watermeter.asset.retired_meter | Retired water meter | invariant | Retirement records removal, final read, reason, scrap, test or storage action. | lifecycle control |
-| watermeter.asset.size_change | Water meter size change | variant | Change updates meter size for demand, service type, billing class or policy. | proper billing |
-| watermeter.quality.read_audit | Water meter read audit | invariant | Audit compares field reads, photos, remote data, route exceptions and billing holds. | data quality |
-| watermeter.quality.gps_verification | Meter location GPS verification | variant | Verification updates coordinates, address, pit location and route notes. | find meter |
-| watermeter.quality.device_alarm | Water meter device alarm | invariant | Alarm flags reverse flow, cut wire, low battery, leak, burst or communication loss. | targeted response |
-| watermeter.field.safety_hazard | Water meter field safety hazard | invariant | Hazard records traffic, confined access, animals, insects, needles, ice or electrical risk. | protect workers |
-| watermeter.field.traffic_control | Water meter traffic control | variant | Control protects technician working near road, sidewalk or driveway. | safe access |
-| watermeter.reporting.route_completion | Water meter route completion report | invariant | Report summarizes reads completed, estimates, exceptions, no-access and device issues. | operational visibility |
-| watermeter.reporting.revenue_protection | Water utility revenue protection report | variant | Report tracks tamper, stopped meters, zero usage, estimates and recoveries. | protect revenue |
-| watermeter.metrics.water_meter_kpi | Water meter operations KPI | variant | KPI tracks read rate, estimate rate, leaks, tamper cases, no-access and bill holds. | manage utility |
-| watermeter.continuity.ami_outage | AMI network outage response | invariant | Response switches to estimates, manual reads, vendor repair and customer communication. | billing continuity |
+| watermeter.read.route_schedule | График движения счетчиков воды | invariant | Расписание назначает маршрут счетчика, считыватель, цикл, зону обслуживания и ожидаемый счетчик. | организовывать чтения |
+| watermeter.read.read_capture | Сбор показаний счетчика воды | invariant | Собирайте записи идентификатора счетчика, показаний, даты, метода, считывателя и кода исключения. | ввод биллинга |
+| watermeter.read.remote_read | Удаленное считывание показаний счетчика | variant | Чтение собирает значение AMR или AMI, сигнал, временную метку, состояние батареи и связи. | автоматизированные данные |
+| watermeter.read.manual_read | Ручное считывание показаний счетчика | variant | Чтение фиксирует визуальное значение набора или регистра с примечаниями о доступе и состоянии. | резервные данные |
+| watermeter.read.high_low_exception | Исключение чтения воды с высоким и низким уровнем | invariant | Исключение отмечает необычное потребление в зависимости от истории, сезона, занятости или предыдущего чтения. | предотвратить плохие счета |
+| watermeter.install.new_meter_order | Порядок установки счетчика воды | invariant | В заказе указывается счет, адрес, размер счетчика, вид услуги, назначение и детали. | начать установку |
+| watermeter.install.meter_set | Комплект счетчиков воды | invariant | Установите серийный номер счетчика, регистр, конечную точку, местоположение, размер, показания и установщика. | активация актива |
+| watermeter.install.exchange_order | Порядок замены счетчика воды | variant | Заказ заменяет старый счетчик на предмет его возраста, неисправности, модернизации, испытаний, повреждений или изменения размера. | сохранять точность |
+| watermeter.install.endpoint_pairing | Сопряжение конечных точек счетчика | variant | Сопряжение связывает конечную точку радиосвязи, счетчик, учетную запись, местоположение и проверку сети. | возможность передачи данных |
+| watermeter.install.install_photo | Фото установки счетчика воды | variant | Фото документов счетчика, регистра, клапанов, местонахождения, состояния пломбы и доступа. | полевые доказательства |
+| watermeter.leak.continuous_flow_alert | Постоянное оповещение о потоке воды | invariant | Оповещение сигнализирует о возможной утечке данных за интервал, пороговое значение, продолжительность и историю учетной записи. | ловить утечки |
+| watermeter.leak.customer_leak_notice | Уведомление об утечке информации о клиенте | variant | В уведомлении сообщается о ненормальном использовании, инструкциях по проверке, контактной информации и правилах выставления счетов. | уменьшить потери |
+| watermeter.leak.field_leak_check | Проверка герметичности полевого счетчика воды | invariant | Проверка проверяет счетчик, индикатор, знаки сервисных линий, коробку, клапаны и видимые признаки использования. | проверить проблему |
+| watermeter.leak.utility_side_leak | Направление по утечке на стороне коммунального предприятия | variant | Маршруты направления ремонтной бригаде при подозрении на утечку в магистрали, сервисном клапане или измерительной коробке. | остановить потерю системы |
+| watermeter.tamper.tamper_flag | Флаг тампера счетчика воды | invariant | Пометка фиксирует сломанную пломбу, обходной канал, перевернутый счетчик, магнит, обрезанный провод или несанкционированное использование. | защитить доходы |
+| watermeter.tamper.investigation_case | Расследование вскрытия счетчика воды | variant | В протоколе дела записываются доказательства, фотографии, история счетов, результаты полевых исследований и порядок применения санкций. | разрешить вмешательство |
+| watermeter.tamper.seal_control | Контроль пломб счетчика воды | invariant | Контроль отслеживает номер пломбы, установку, снятие, штат, причину и опись. | цепочка поставок |
+| watermeter.billing.estimated_bill | Ориентировочный счет за воду | invariant | В оценке используются правила для отсутствующего, неудачного, недоступного или сомнительного чтения. | продолжать платежный цикл |
+| watermeter.billing.billing_exception | Исключение из расчета за воду | invariant | Исключение составляет счет за интенсивное использование, нулевое использование, пролонгацию, неправильный счетчик или проблемы со счетом. | точность выставления счетов |
+| watermeter.billing.adjustment_review | Обзор корректировки счета за воду | variant | При проверке оценивается вероятность утечки, ошибка счетчика, неправильное считывание, вакансия или исключение из правил. | справедливая коррекция |
+| watermeter.billing.final_read | Окончательное чтение счета воды | invariant | Чтение закрывает счет при выселении, смене владельца, закрытии или передаче. | рассчитаться по счету |
+| watermeter.billing.consumption_history | История потребления воды | variant | История сравнивает использование по периоду, счетчику, учетной записи, погоде и сигналу о занятости. | объяснить счета |
+| watermeter.service.appointment_window | Запись на обслуживание счетчиков воды | invariant | В записи о встречах фиксируются контакты с клиентом, доступ, окна, технические специалисты, задачи и примечания. | координировать визит |
+| watermeter.service.no_access | Запись об отсутствии доступа к счетчику воды | invariant | Запись фиксирует запертые ворота, собаку, закопанный ящик, отсутствие клиента или небезопасное состояние. | перенести доказательства |
+| watermeter.service.meter_box_cleanout | Чистка короба счетчика воды | variant | Очистка удаляет грязь, воду, корни, насекомых и мусор, обеспечивая безопасный доступ. | восстановить доступ |
+| watermeter.service.valve_operation | Работа клапана счетчика воды | invariant | В процессе эксплуатации регистрируется остановка бордюра, угловой клапан, действие и состояние измерительного клапана. | контролировать воду |
+| watermeter.service.customer_contact | Контакт с клиентом счетчика воды | invariant | Уведомление в журналах контактов, дверная бирка, телефон, электронная почта, жалоба или подтверждение встречи. | коммуникационный маршрут |
+| watermeter.shutoff.nonpay_shutoff | Отключение неплатежей за воду | variant | При отключении фиксируются право на участие, уведомления, действия на месте, состояние счетчика и требования к восстановлению. | принудительное выставление счетов |
+| watermeter.shutoff.emergency_shutoff | Аварийное отключение воды | invariant | Отключение осуществляется в случае утечки, повреждения, риска загрязнения, пожарной поддержки или угрозы безопасности. | защитить систему |
+| watermeter.shutoff.reconnect_order | Порядок повторного подключения воды | invariant | Заказ фиксирует оплату, авторизацию, повторное подключение, чтение, печать и уведомление клиента. | восстановить сервис |
+| watermeter.shutoff.wrongful_shutoff | Рассмотрение незаконного отключения воды | invariant | Просмотрите адрес проверки, учетную запись, уведомление, проверку на местах и ​​корректирующие действия. | предотвратить вред |
+| watermeter.asset.meter_inventory | Инвентаризация счетчиков воды | invariant | Инвентаризация отслеживает счетчики, регистры, конечные точки, размеры, серийные номера, состояние и хранилище. | контроль активов |
+| watermeter.asset.test_bench | Стенд для проверки счетчиков воды | variant | В ходе испытаний фиксируются точность расходомера, точки расхода, результаты, калибровка и расположение. | проверить точность |
+| watermeter.asset.retired_meter | Устаревший счетчик воды | invariant | Удаление записей об удалении, окончательное чтение, причина, отказ, проверка или действие по хранению. | контроль жизненного цикла |
+| watermeter.asset.size_change | Изменение размера счетчика воды | variant | Измените размер счетчика обновлений в зависимости от спроса, типа услуги, класса выставления счетов или политики. | правильный выставление счетов |
+| watermeter.quality.read_audit | Аудит показаний счетчика воды | invariant | Аудит сравнивает считывания полей, фотографии, удаленные данные, исключения маршрутов и удержания счетов. | качество данных |
+| watermeter.quality.gps_verification | GPS-проверка местоположения счетчика | variant | При проверке обновляются координаты, адрес, расположение ямы и примечания к маршруту. | найти счетчик |
+| watermeter.quality.device_alarm | Сигнализация устройства счетчика воды | invariant | Сигналы тревоги сигнализируют об обратном потоке, обрыве провода, низком заряде батареи, утечке, взрыве или потере связи. | целенаправленный ответ |
+| watermeter.field.safety_hazard | Опасность для безопасности на месте использования счетчика воды | invariant | Риски, связанные с дорожным движением, ограниченным доступом, животными, насекомыми, иголками, льдом или электрическим током. | защитить работников |
+| watermeter.field.traffic_control | Контроль движения счетчиков воды | variant | Система управления защищает технического специалиста, работающего вблизи дороги, тротуара или подъездной дороги. | безопасный доступ |
+| watermeter.reporting.route_completion | Отчет о завершении трассы счетчика воды | invariant | В отчете суммируются выполненные чтения, оценки, исключения, проблемы с доступом и устройствами. | оперативная видимость |
+| watermeter.reporting.revenue_protection | Отчет о защите доходов водоканала | variant | Отчет отслеживает несанкционированное вмешательство, остановку счетчиков, нулевое использование, оценки и возвраты. | защитить доходы |
+| watermeter.metrics.water_meter_kpi | KPI работы счетчиков воды | variant | KPI отслеживает скорость чтения, скорость оценки, утечки, случаи несанкционированного доступа, отсутствие доступа и удержание счетов. | управлять утилитой |
+| watermeter.continuity.ami_outage | Реакция на сбой в сети AMI | invariant | Ответ переключается на оценки, чтение инструкций, ремонт поставщиков и общение с клиентами. | непрерывность выставления счетов |

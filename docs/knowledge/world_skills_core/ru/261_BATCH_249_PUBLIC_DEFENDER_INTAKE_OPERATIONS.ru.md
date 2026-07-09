@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| pdintake.eligibility.application_intake | Public defender application intake | invariant | Intake records applicant, case, charges, court, custody status and contact. | start representation review |
-| pdintake.eligibility.financial_screen | Public defender financial screen | invariant | Screen captures income, assets, household, obligations and allowed eligibility factors. | determine qualification |
-| pdintake.eligibility.custody_priority | Public defender custody priority | variant | Priority flags detained clients, imminent hearings, juveniles or urgent deadlines. | triage quickly |
-| pdintake.eligibility.incomplete_application | Incomplete defender application | invariant | Record tracks missing financial, identity, case or signature information and deadline. | complete file |
-| pdintake.eligibility.fee_order | Public defender fee order | variant | Order records court fee, contribution, waiver or reimbursement requirement. | financial compliance |
-| pdintake.conflict.conflict_check | Public defender conflict check | invariant | Check searches clients, witnesses, victims, codefendants, prior cases and staff conflicts. | avoid conflict |
-| pdintake.conflict.codefendant_flag | Codefendant conflict flag | invariant | Flag identifies multiple defendants needing separate counsel or conflict review. | protect loyalty |
-| pdintake.conflict.witness_match | Witness conflict match | variant | Match compares witnesses, victims or informants against current and former client lists. | ethical review |
-| pdintake.conflict.conflict_waiver | Conflict waiver record | variant | Record captures approved waiver process when permitted by law and ethics. | document exception |
-| pdintake.conflict.outside_panel | Outside counsel panel referral | variant | Referral sends conflict case to assigned outside counsel with case packet. | maintain representation |
-| pdintake.case.case_open | Public defender case open | invariant | Case open creates matter, client, charges, court dates, assigned unit and deadlines. | start file |
-| pdintake.case.charge_record | Defender charge record | invariant | Record captures statute, count, severity, arrest date, docket and charging document. | know case |
-| pdintake.case.court_date | Public defender court date | invariant | Date records hearing type, court, judge, time, transport and notice status. | avoid missed hearings |
-| pdintake.case.deadline_tickler | Defender deadline tickler | invariant | Tickler tracks discovery, motions, bail, plea, trial, appeal or filing deadlines. | protect rights |
-| pdintake.case.detainer_flag | Client detainer flag | variant | Flag records warrants, holds, immigration, probation or other custody constraints. | plan defense |
-| pdintake.assignment.assignment_rule | Public defender assignment rule | invariant | Rule routes case by court, charge type, unit, workload, language and conflicts. | fair assignment |
-| pdintake.assignment.attorney_assignment | Public defender attorney assignment | invariant | Assignment links attorney, investigator, social worker, supervisor and support staff. | representation team |
-| pdintake.assignment.workload_check | Public defender workload check | invariant | Check compares caseload, complexity, custody, deadlines and attorney availability. | avoid overload |
-| pdintake.assignment.reassignment | Public defender reassignment | variant | Reassignment records conflict, workload, specialty, leave, client issue or court change. | continuity |
-| pdintake.client.initial_contact | Public defender initial client contact | invariant | Contact explains representation status, confidentiality, next court date and urgent facts. | build connection |
-| pdintake.client.jail_contact | Public defender jail contact | variant | Contact schedules visit, phone, video or message through facility rules. | reach detained client |
-| pdintake.client.language_need | Public defender language need | invariant | Need records interpreter, translated documents, preferred language and communication accommodations. | effective communication |
-| pdintake.client.contact_update | Client contact update | invariant | Update records phone, address, email, alternate contact and custody transfer. | maintain reach |
-| pdintake.client.safety_concern | Defender client safety concern | variant | Concern notes mental health crisis, threats, medical need or urgent social service referral. | protect client |
-| pdintake.documents.charging_document | Charging document intake | invariant | Intake stores complaint, indictment, information, citation or petition in case file. | know allegations |
-| pdintake.documents.discovery_request | Public defender discovery request | invariant | Request asks prosecution or agency for reports, media, lab, witness and evidence materials. | prepare defense |
-| pdintake.documents.release_form | Client release form | variant | Form authorizes records, medical, school, employment or service information where appropriate. | gather mitigation |
-| pdintake.documents.document_scan | Defender document scan | invariant | Scan indexes court notices, orders, applications, correspondence and discovery by case. | retrievable file |
-| pdintake.court.court_notification | Public defender court notification | invariant | Notification sends assignment, appearance, eligibility or conflict information to court. | coordinate docket |
-| pdintake.court.calendar_sync | Defender calendar sync | variant | Sync updates hearings, deadlines, attorney availability and reminders. | avoid conflicts |
-| pdintake.court.bail_review_flag | Bail review flag | variant | Flag identifies custody, bail amount, risk, conditions and hearing need. | early advocacy |
-| pdintake.court.appearance_record | Public defender appearance record | invariant | Record tracks attorney appearance, waiver, substitution or withdrawal. | official representation |
-| pdintake.services.investigator_request | Defender investigator request | variant | Request records facts to investigate, witnesses, locations, deadlines and priority. | support defense |
-| pdintake.services.social_work_referral | Defender social work referral | variant | Referral captures housing, treatment, benefits, family, mitigation or reentry need. | holistic defense |
-| pdintake.services.expert_request | Defender expert request | variant | Request records forensic, mental health, language, technical or mitigation expertise need. | specialized support |
-| pdintake.quality.intake_review | Public defender intake review | invariant | Review checks eligibility, conflicts, assignment, documents, contact and deadlines. | prevent errors |
-| pdintake.quality.confidentiality_check | Defender confidentiality check | invariant | Check limits access, conversations, files and communications to authorized staff. | protect privilege |
-| pdintake.reporting.intake_backlog | Defender intake backlog report | invariant | Report shows pending applications, conflict checks, assignments, contacts and deadlines. | manage office |
-| pdintake.reporting.court_coverage | Public defender court coverage report | variant | Report tracks calendars, assigned attorneys, unrepresented cases and coverage gaps. | staff courts |
-| pdintake.metrics.pd_intake_kpi | Public defender intake KPI | variant | KPI tracks time to assignment, conflict rate, detained contacts, workload and missed deadlines. | manage intake |
-| pdintake.continuity.mass_arrest | Public defender mass arrest response | variant | Response triages custody, eligibility, conflicts, court coverage, client contact and records. | surge capacity |
-| pdintake.continuity.system_outage | Defender intake system outage | invariant | Outage plan uses paper forms, conflict fallback, assignment log and later entry. | continue service |
-| pdintake.ethics.withdrawal_route | Defender withdrawal route | invariant | Route documents conflict, eligibility, client request or court-approved withdrawal steps. | ethical exit |
-| pdintake.communication.family_inquiry | Public defender family inquiry | variant | Inquiry response respects confidentiality while giving general court or contact guidance. | handle calls |
+| pdintake.eligibility.application_intake | Прием заявлений на государственного защитника | invariant | Приемные записи заявителя, дела, обвинений, суда, статуса содержания под стражей и контактов. | начать проверку представления |
+| pdintake.eligibility.financial_screen | Финансовый экран общественного защитника | invariant | На экране отображаются доходы, активы, домохозяйство, обязательства и разрешенные факторы соответствия. | определить квалификацию |
+| pdintake.eligibility.custody_priority | Приоритет опеки над общественным защитником | variant | Флаги приоритета: задержанные клиенты, предстоящие слушания, несовершеннолетние или срочные сроки. | сортировать быстро |
+| pdintake.eligibility.incomplete_application | Неполное заявление защитника | invariant | Запишите отсутствующую финансовую информацию, информацию о личности, деле или подписи, а также крайний срок. | полный файл |
+| pdintake.eligibility.fee_order | Порядок оплаты услуг общественного защитника | variant | В постановлении фиксируются судебные издержки, взносы, требования об отказе или возмещении. | финансовое соответствие |
+| pdintake.conflict.conflict_check | Проверка конфликта общественного защитника | invariant | Проверка обысков клиентов, свидетелей, потерпевших, сообвиняемых, предыдущих дел и конфликтов между сотрудниками. | избегать конфликта |
+| pdintake.conflict.codefendant_flag | Флаг конфликта со ответчиком | invariant | Флаг указывает на нескольких обвиняемых, нуждающихся в отдельном адвокате или рассмотрении конфликта. | защищать лояльность |
+| pdintake.conflict.witness_match | Станьте свидетелем конфликта в матче | variant | Match сравнивает свидетелей, жертв или информаторов со списками нынешних и бывших клиентов. | этическая экспертиза |
+| pdintake.conflict.conflict_waiver | Запись об отказе от конфликта | variant | Запись фиксирует утвержденный процесс отказа, если это разрешено законом и этикой. | исключение документа |
+| pdintake.conflict.outside_panel | Направление комиссии внешнего адвоката | variant | При передаче дело о конфликте направляется назначенному внешнему адвокату вместе с пакетом дела. | поддерживать представительство |
+| pdintake.case.case_open | Дело общественного защитника открыто | invariant | Открытое дело создает дело, клиента, обвинения, даты суда, назначенное подразделение и сроки. | стартовый файл |
+| pdintake.case.charge_record | Рекорд обвинений защитника | invariant | В записи указывается статут, количество, тяжесть, дата ареста, протокол и обвинительный документ. | знаю дело |
+| pdintake.case.court_date | Дата суда над общественным защитником | invariant | В дате указывается тип слушания, суд, судья, время, транспорт и статус уведомления. | избежать пропущенных слушаний |
+| pdintake.case.deadline_tickler | Дедлайн для защитника | invariant | Tickler отслеживает раскрытие информации, ходатайства, освобождение под залог, признание вины, судебное разбирательство, апелляцию или сроки подачи документов. | защищать права |
+| pdintake.case.detainer_flag | Флаг задержания клиента | variant | Ордера на регистрацию флагов, задержания, иммиграционные ограничения, испытательный срок или другие ограничения содержания под стражей. | планировать оборону |
+| pdintake.assignment.assignment_rule | Правило назначения общественного защитника | invariant | Правила распределения дел по судам, тип обвинения, подразделение, рабочая нагрузка, язык и конфликты. | справедливое назначение |
+| pdintake.assignment.attorney_assignment | Назначение адвоката общественного защитника | invariant | Назначение связывает адвоката, следователя, социального работника, руководителя и вспомогательный персонал. | представительская группа |
+| pdintake.assignment.workload_check | Проверка загруженности общественного защитника | invariant | Проверка позволяет сравнить нагрузку, сложность, содержание под стражей, сроки и доступность адвоката. | избегать перегрузки |
+| pdintake.assignment.reassignment | Переназначение общественного защитника | variant | При переназначении фиксируются конфликты, рабочая нагрузка, специальность, отпуск, проблема клиента или смена суда. | преемственность |
+| pdintake.client.initial_contact | Первоначальный контакт общественного защитника с клиентом | invariant | Контакт объясняет статус представительства, конфиденциальность, дату следующего суда и неотложные факты. | построить соединение |
+| pdintake.client.jail_contact | Контакты общественного защитника в тюрьме | variant | Контактное расписание посещения, телефон, видео или сообщение через правила объекта. | добраться до задержанного клиента |
+| pdintake.client.language_need | Языковые потребности общественного защитника | invariant | Нужен переводчик документов, переведенные документы, предпочитаемый язык и условия общения. | эффективное общение |
+| pdintake.client.contact_update | Обновление контактов клиента | invariant | Обновите записи телефона, адреса, электронной почты, альтернативного контакта и передачи ответственности. | поддерживать охват |
+| pdintake.client.safety_concern | Забота о безопасности клиента Defender | variant | Вызывает обеспокоенность кризис психического здоровья, угрозы, необходимость в медицинской помощи или срочное обращение в социальную службу. | защитить клиента |
+| pdintake.documents.charging_document | Прием документов на оплату | invariant | Intake хранит жалобы, обвинительные заключения, информацию, цитаты или ходатайства в материалах дела. | знать обвинения |
+| pdintake.documents.discovery_request | Запрос на открытие общественного защитника | invariant | Запрос требует от обвинения или агентства предоставить отчеты, материалы средств массовой информации, лаборатории, свидетелей и доказательства. | подготовить защиту |
+| pdintake.documents.release_form | Форма выпуска клиента | variant | В форме разрешены записи, медицинская, школьная, трудовая или служебная информация, где это необходимо. | собрать меры по смягчению последствий |
+| pdintake.documents.document_scan | Скан документа Защитника | invariant | Сканирование индексирует судебные уведомления, постановления, заявления, корреспонденцию и материалы по делу. | извлекаемый файл |
+| pdintake.court.court_notification | Уведомление общественного защитника в суд | invariant | Уведомление отправляет в суд информацию о назначении, явке, правомочности или конфликтной информации. | координатный список |
+| pdintake.court.calendar_sync | Синхронизация календаря Защитника | variant | Синхронизация обновляет информацию о слушаниях, сроках, доступности адвокатов и напоминаниях. | избегать конфликтов |
+| pdintake.court.bail_review_flag | Флаг проверки залога | variant | Флаг определяет содержание под стражей, сумму залога, риск, условия и необходимость проведения слушания. | ранняя пропаганда |
+| pdintake.court.appearance_record | Рекорд явок общественного защитника | invariant | Запись отслеживает появление, отказ, замену или отзыв адвоката. | официальное представительство |
+| pdintake.services.investigator_request | Запрос следователя защитника | variant | Запрос записывает факты для расследования, свидетелей, места, сроки и приоритет. | поддержка защиты |
+| pdintake.services.social_work_referral | Направление защитника от социальной работы | variant | Направление учитывает потребности в жилье, лечении, льготах, семье, смягчении последствий или возвращении в страну. | целостная защита |
+| pdintake.services.expert_request | Запрос эксперта защитника | variant | Запросите записи о необходимости судебно-медицинской, психиатрической, языковой, технической экспертизы или экспертизы по смягчению последствий. | специализированная поддержка |
+| pdintake.quality.intake_review | Рассмотрение приема государственного защитника | invariant | Обзор проверяет соответствие требованиям, конфликты, назначение, документы, контакты и сроки. | предотвращать ошибки |
+| pdintake.quality.confidentiality_check | Проверка конфиденциальности защитника | invariant | Проверьте, ограничивает ли доступ, разговоры, файлы и сообщения только уполномоченный персонал. | защищать привилегию |
+| pdintake.reporting.intake_backlog | Отчет о невыполненной работе по приему защитников | invariant | В отчете отображаются ожидающие рассмотрения заявки, проверки на конфликты, задания, контакты и сроки. | управлять офисом |
+| pdintake.reporting.court_coverage | Отчет об освещении суда общественным защитником | variant | В отчете отслеживаются календари, назначенные адвокаты, непредставленные дела и пробелы в освещении. | штатные суды |
+| pdintake.metrics.pd_intake_kpi | KPI приема общественного защитника | variant | KPI отслеживает время выполнения задания, частоту конфликтов, задержанные контакты, рабочую нагрузку и пропущенные сроки. | управлять потреблением |
+| pdintake.continuity.mass_arrest | Ответ на массовый арест общественного защитника | variant | Ответные меры сортируют содержание под стражей, право на участие, конфликты, освещение судебных заседаний, контакты с клиентами и записи. | пиковая мощность |
+| pdintake.continuity.system_outage | Отказ системы впуска Defender | invariant | В плане отключения используются бумажные формы, резервный вариант при возникновении конфликтов, журнал назначений и последующий ввод. | продолжить обслуживание |
+| pdintake.ethics.withdrawal_route | Путь отхода защитника | invariant | Конфликт в маршрутных документах, право на участие, запрос клиента или одобренные судом шаги по выводу средств. | этический выход |
+| pdintake.communication.family_inquiry | Расследование семьи общественного защитника | variant | Ответ на запрос соблюдает конфиденциальность, но при этом дает общие рекомендации для суда или контакта. | обрабатывать звонки |

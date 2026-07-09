@@ -6,48 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| moveutilityops.application.service_request | service request | RECORD | Request captures customer, service address, start/stop date, contact, class and requested action. | Creates official handoff between customer service, billing and field work. |
-| moveutilityops.application.required_fields | required fields | QUALITY_CHECK | Application is checked for missing identity, date, address, meter and billing data. | Prevents incomplete account setup. |
-| moveutilityops.application.tenant_owner | tenant-owner distinction | RECORD | Account role records owner, tenant, property manager or authorized agent. | Determines deposits, notices and responsibility. |
-| moveutilityops.application.service_class | service class | DECISION_RULE | Residential, commercial, irrigation and fire-service accounts follow different setup rules. | Keeps billing and operations aligned. |
-| moveutilityops.identity.id_check | identity check | SAFETY_RULE | Applicant identity is verified before opening or transferring service. | Reduces fraud and mistaken accounts. |
-| moveutilityops.identity.authorized_agent | authorized agent | RECORD | Agent authority is documented through lease, management agreement, power or portal permissions. | Prevents unauthorized changes. |
-| moveutilityops.identity.privacy_notice | privacy notice | CONSTRAINT | Customer data collection follows privacy and retention rules. | Protects sensitive account information. |
-| moveutilityops.identity.fraud_flag | fraud flag | DECISION_RULE | Suspicious identity, repeated unpaid accounts or document mismatch trigger supervisor review. | Controls account-opening risk. |
-| moveutilityops.dates.start_date | start date | RECORD | Start date determines billing responsibility and activation timing. | Avoids overlap or gap between occupants. |
-| moveutilityops.dates.stop_date | stop date | RECORD | Stop date ends customer responsibility after final read and policy checks. | Prevents billing old occupant after move-out. |
-| moveutilityops.dates.same_day | same-day transfer | METHOD | Same-day move-out/move-in coordinates final and initial reads on one service. | Reduces field trips and billing disputes. |
-| moveutilityops.dates.backdate | backdate rule | CONSTRAINT | Backdated service changes require evidence and approval. | Prevents manipulation of billing responsibility. |
-| moveutilityops.reads.final_read | final read | RECORD | Final read captures meter value at stop date or field visit. | Anchors final bill. |
-| moveutilityops.reads.initial_read | initial read | RECORD | Initial read becomes opening balance for new customer usage. | Prevents inherited consumption. |
-| moveutilityops.reads.estimated_move | estimated move read | METHOD | If actual read is unavailable, estimate method and true-up rule are recorded. | Keeps account moving while preserving correction path. |
-| moveutilityops.reads.read_dispute | read dispute | QUALITY_CHECK | Move read disputes compare AMI, photo, field read and usage pattern. | Protects both departing and incoming customer. |
-| moveutilityops.deposits.deposit_rule | deposit rule | CONSTRAINT | Deposit requirement depends on credit policy, account class, prior history and risk. | Sets consistent financial security. |
-| moveutilityops.deposits.deposit_waiver | deposit waiver | DECISION_RULE | Waiver may apply for good history, assistance status, landlord guarantee or regulation. | Allows fair exceptions. |
-| moveutilityops.deposits.refund | deposit refund | METHOD | Deposit is refunded or applied to final bill after account closure conditions are met. | Closes financial obligation cleanly. |
-| moveutilityops.deposits.transfer | deposit transfer | METHOD | Existing deposit can transfer to new service if policy permits. | Reduces customer friction. |
-| moveutilityops.transfers.account_transfer | account transfer | METHOD | Transfer moves customer from old premise to new premise with dates, reads and balance handling. | Maintains continuity without duplicate profiles. |
-| moveutilityops.transfers.balance_rule | balance transfer rule | CONSTRAINT | Prior balances may block, transfer or require payment arrangement. | Prevents arrears hiding behind address changes. |
-| moveutilityops.transfers.landlord_rollover | landlord rollover | METHOD | Service may revert to owner between tenants under agreement. | Keeps water active for cleaning and showing property. |
-| moveutilityops.transfers.multi_unit | multi-unit transfer | METHOD | Apartment or commercial multi-unit moves require unit, meter and landlord verification. | Avoids cross-unit billing. |
-| moveutilityops.field.turn_on | turn-on order | RECORD | Field order lists meter, valve, address, date, access and safety notes. | Gives crew clear activation instructions. |
-| moveutilityops.field.turn_off | turn-off order | RECORD | Stop service may create shutoff, lock, read or no-field-needed order. | Matches field work to policy and customer request. |
-| moveutilityops.field.access_issue | access issue | FAILURE_MODE | Locked gates, pits, dogs or missing meters are logged as exceptions. | Keeps application from falsely completing. |
-| moveutilityops.field.leak_check | activation leak check | INSPECTION | Crew checks visible leaks when restoring service. | Prevents damage after move-in. |
-| moveutilityops.billing.final_bill | final bill | RECORD | Final bill includes usage, fees, deposits, credits and forwarding address. | Settles departing customer's account. |
-| moveutilityops.billing.first_bill | first bill | QUALITY_CHECK | First bill is checked for correct dates, rate, read and service address. | Catches setup errors early. |
-| moveutilityops.billing.proration | proration | METHOD | Partial periods are prorated by service dates and rate rules. | Fairly allocates charges. |
-| moveutilityops.billing.forwarding | forwarding address | RECORD | Move-out captures forwarding email/mail address for final bill and refund. | Allows final communication. |
-| moveutilityops.communication.confirmation | service confirmation | METHOD | Customer receives confirmation number, dates, requirements and contact path. | Reduces uncertainty. |
-| moveutilityops.communication.access_instruction | access instruction | METHOD | Customer receives instructions for meter access, appointment window or valve location. | Improves field completion. |
-| moveutilityops.communication.denial | denial notice | RECORD | Denial explains reason, missing proof, deposit, debt or policy barrier. | Makes negative outcome reviewable. |
-| moveutilityops.records.case_file | case file | RECORD | Application, identity proof, reads, field orders, billing and notes are linked. | Creates audit trail. |
-| moveutilityops.records.crm_note | CRM note | RECORD | Staff notes summarize decision, exceptions, promises and next steps. | Keeps call center aligned. |
-| moveutilityops.records.document_retention | document retention | CONSTRAINT | Move records are retained by billing and privacy policy. | Supports disputes and audits. |
-| moveutilityops.qa.duplicate_account | duplicate account check | QUALITY_CHECK | System checks whether customer or premise already has active account. | Prevents duplicate billing. |
-| moveutilityops.qa.address_match | address match | QUALITY_CHECK | GIS, meter, parcel and postal address are compared. | Avoids wrong-premise service. |
-| moveutilityops.qa.pending_orders | pending order check | QUALITY_CHECK | Staff checks open shutoff, repair, meter or complaint orders before move completion. | Prevents conflicting workflows. |
-| moveutilityops.reporting.move_volume | move volume report | MEASUREMENT | Reports track starts, stops, transfers, exceptions and aging. | Shows workload and seasonal demand. |
-| moveutilityops.reporting.error_trend | error trend | MODEL | Trends reveal address, read, deposit or identity process weaknesses. | Turns move errors into process fixes. |
-| moveutilityops.review.process_improvement | process improvement | METHOD | Regular review updates forms, portal prompts, scripts and field routing. | Reduces repeat move-service defects. |
-
+| moveutilityops.application.service_request | запрос на обслуживание | RECORD | Запрос фиксирует клиента, адрес обслуживания, дату начала/окончания, контакт, класс и запрошенное действие. | Обеспечивает официальную передачу обслуживания клиентов, выставления счетов и работы на местах. |
+| moveutilityops.application.required_fields | обязательные поля | QUALITY_CHECK | Приложение проверяется на предмет отсутствия личности, даты, адреса, счетчика и платежных данных. | Предотвращает неполную настройку учетной записи. |
+| moveutilityops.application.tenant_owner | различие между арендатором и собственником | RECORD | Роль учетной записи записывает владельца, арендатора, управляющего недвижимостью или уполномоченного агента. | Определяет депозиты, уведомления и ответственность. |
+| moveutilityops.application.service_class | класс обслуживания | DECISION_RULE | Для учетных записей жилых, коммерческих, ирригационных и пожарных служб действуют разные правила настройки. | Обеспечивает согласованность выставления счетов и операций. |
+| moveutilityops.identity.id_check | проверка личности | SAFETY_RULE | Личность заявителя проверяется перед открытием или передачей услуги. | Уменьшает мошенничество и ошибочные счета. |
+| moveutilityops.identity.authorized_agent | уполномоченный агент | RECORD | Полномочия агента документируются посредством аренды, соглашения об управлении, полномочий или разрешений на портал. | Предотвращает несанкционированные изменения. |
+| moveutilityops.identity.privacy_notice | уведомление о конфиденциальности | CONSTRAINT | Сбор данных клиентов осуществляется в соответствии с правилами конфиденциальности и хранения. | Защищает конфиденциальную информацию учетной записи. |
+| moveutilityops.identity.fraud_flag | флаг мошенничества | DECISION_RULE | Подозрительная личность, повторяющиеся неоплаченные счета или несоответствие документов вызывают проверку со стороны руководителя. | Контролирует риск открытия счета. |
+| moveutilityops.dates.start_date | Дата начала | RECORD | Дата начала определяет ответственность за выставление счетов и время активации. | Позволяет избежать перекрытия или разрыва между жильцами. |
+| moveutilityops.dates.stop_date | дата остановки | RECORD | Дата остановки прекращает ответственность клиента после окончательного прочтения и проверки политики. | Предотвращает выставление счетов старому жильцу после выезда. |
+| moveutilityops.dates.same_day | трансфер в тот же день | METHOD | Координаты окончательного и первоначального считывания данных о выезде/заезде в тот же день в рамках одной услуги. | Сокращает количество поездок на места и споров по счетам. |
+| moveutilityops.dates.backdate | правило задним числом | CONSTRAINT | Изменения в услугах, произошедшие задним числом, требуют доказательств и одобрения. | Предотвращает манипулирование ответственностью за выставление счетов. |
+| moveutilityops.reads.final_read | последнее чтение | RECORD | Окончательное считывание фиксирует значение счетчика на дату остановки или посещения поля. | Прикрепляет окончательный счет. |
+| moveutilityops.reads.initial_read | первоначальное чтение | RECORD | Первоначальное чтение становится начальным балансом для использования новыми клиентами. | Предотвращает наследственное потребление. |
+| moveutilityops.reads.estimated_move | предполагаемый ход читать | METHOD | Если фактическое чтение недоступно, записываются метод оценки и правило сверки. | Сохраняет движение счета, сохраняя путь коррекции. |
+| moveutilityops.reads.read_dispute | читать спор | QUALITY_CHECK | Переместите споры о чтении, сравните AMI, фотографию, чтение полей и шаблон использования. | Защищает как уходящих, так и входящих клиентов. |
+| moveutilityops.deposits.deposit_rule | правило депозита | CONSTRAINT | Требование к депозиту зависит от кредитной политики, класса счета, предыдущей истории и риска. | Обеспечивает постоянную финансовую безопасность. |
+| moveutilityops.deposits.deposit_waiver | отказ от депозита | DECISION_RULE | Отказ может применяться при наличии хорошей истории, статуса помощи, гарантии или регулирования арендодателя. | Допускает справедливые исключения. |
+| moveutilityops.deposits.refund | возврат депозита | METHOD | Депозит возвращается или включается в окончательный счет после выполнения условий закрытия счета. | Чисто закрывает финансовые обязательства. |
+| moveutilityops.deposits.transfer | депозитный перевод | METHOD | Существующий депозит может быть переведен на новую услугу, если это разрешено политикой. | Уменьшает трения клиентов. |
+| moveutilityops.transfers.account_transfer | перенос счета | METHOD | При переводе клиент перемещается из старого помещения в новое с указанием дат, считываний и обработки баланса. | Поддерживает непрерывность без дублирования профилей. |
+| moveutilityops.transfers.balance_rule | правило переноса баланса | CONSTRAINT | Предыдущие остатки могут быть заблокированы, переведены или потребовать договоренности об оплате. | Предотвращает скрытие задолженностей за сменой адреса. |
+| moveutilityops.transfers.landlord_rollover | смена арендодателя | METHOD | Услуга может быть возвращена собственнику между арендаторами по соглашению. | Сохраняет воду активной для очистки и демонстрации имущества. |
+| moveutilityops.transfers.multi_unit | многоединичный трансфер | METHOD | Для переезда квартир или коммерческих помещений требуется проверка единицы, счетчика и арендодателя. | Позволяет избежать выставления счетов между подразделениями. |
+| moveutilityops.field.turn_on | порядок включения | RECORD | В полевом заказе указаны счетчик, клапан, адрес, дата, доступ и примечания по технике безопасности. | Дает экипажу четкие инструкции по активации. |
+| moveutilityops.field.turn_off | приказ о выключении | RECORD | Служба остановки может создавать команды на отключение, блокировку, чтение или отсутствие необходимости в полях. | Сопоставляет полевые работы с политикой и запросами клиентов. |
+| moveutilityops.field.access_issue | проблема доступа | FAILURE_MODE | Запертые ворота, ямы, собаки или недостающие счетчики регистрируются как исключения. | Предохраняет приложение от ошибочного завершения. |
+| moveutilityops.field.leak_check | проверка утечки активации | INSPECTION | При восстановлении работоспособности экипаж проверяет видимые утечки. | Предотвращает повреждения после заселения. |
+| moveutilityops.billing.final_bill | окончательный счет | RECORD | Окончательный счет включает использование, сборы, депозиты, кредиты и адрес пересылки. | Оплачивает счет уходящего клиента. |
+| moveutilityops.billing.first_bill | первый счет | QUALITY_CHECK | Первый счет проверяется на правильность дат, тарифа, прочтения и адреса обслуживания. | Заблаговременно обнаруживает ошибки настройки. |
+| moveutilityops.billing.proration | пропорциональное распределение | METHOD | Неполные периоды распределяются пропорционально датам обслуживания и правилам тарифов. | Справедливо распределяет расходы. |
+| moveutilityops.billing.forwarding | адрес пересылки | RECORD | При выезде фиксируется переадресация электронной почты/адреса почты для окончательного счета и возврата средств. | Позволяет окончательное общение. |
+| moveutilityops.communication.confirmation | подтверждение услуги | METHOD | Клиент получает номер подтверждения, даты, требования и путь для связи. | Уменьшает неопределенность. |
+| moveutilityops.communication.access_instruction | инструкция доступа | METHOD | Клиент получает инструкции по доступу к счетчику, окну назначения или расположению клапана. | Улучшает заполнение поля. |
+| moveutilityops.communication.denial | уведомление об отказе | RECORD | Отрицание объясняет причину отсутствия доказательств, депозита, долга или политического барьера. | Делает отрицательный результат доступным для рассмотрения. |
+| moveutilityops.records.case_file | материалы дела | RECORD | Приложение, подтверждение личности, чтение, заказы на полях, выставление счетов и примечания связаны между собой. | Создает контрольный журнал. |
+| moveutilityops.records.crm_note | Примечание CRM | RECORD | В записках персонала кратко излагаются решения, исключения, обещания и последующие шаги. | Обеспечивает согласованность колл-центра. |
+| moveutilityops.records.document_retention | хранение документов | CONSTRAINT | Записи о перемещении сохраняются в соответствии с политикой выставления счетов и конфиденциальности. | Сопровождение споров и проверок. |
+| moveutilityops.qa.duplicate_account | дубликат проверки счета | QUALITY_CHECK | Система проверяет, есть ли у клиента или помещения активная учетная запись. | Предотвращает дублирование счетов. |
+| moveutilityops.qa.address_match | совпадение адресов | QUALITY_CHECK | Сравниваются ГИС, счетчик, посылка и почтовый адрес. | Избегает обслуживания в неправильном помещении. |
+| moveutilityops.qa.pending_orders | ожидающая проверка заказа | QUALITY_CHECK | Перед завершением переезда персонал проверяет заказы на открытое отключение, ремонт, счетчики или рекламации. | Предотвращает конфликтующие рабочие процессы. |
+| moveutilityops.reporting.move_volume | отчет об объеме перемещения | MEASUREMENT | Отчеты отслеживают запуски, остановки, передачи, исключения и устаревание. | Показывает рабочую нагрузку и сезонный спрос. |
+| moveutilityops.reporting.error_trend | тенденция ошибки | MODEL | Тенденции выявляют недостатки процессов адресации, чтения, внесения депозита или идентификации. | Превращает ошибки перемещения в исправления процесса. |
+| moveutilityops.review.process_improvement | улучшение процесса | METHOD | Регулярное рассмотрение обновлений форм, подсказок портала, сценариев и маршрутизации полей. | Уменьшает число повторных дефектов обслуживания при переезде. |

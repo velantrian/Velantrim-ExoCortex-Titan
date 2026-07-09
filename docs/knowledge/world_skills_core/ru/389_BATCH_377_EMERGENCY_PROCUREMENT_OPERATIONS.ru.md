@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| emergprocops.intake.requisition_id | requisition ID | RECORD | Requisition ID links request, incident, item, requester, funding and status. | Tracks urgent buying. |
-| emergprocops.intake.mission_need | mission need | RECORD | Need describes operational problem, quantity, delivery deadline and consequence. | Justifies urgency. |
-| emergprocops.intake.priority | priority level | MODEL | Priority reflects life safety, continuity, scarcity, deadline and command direction. | Orders scarce procurement work. |
-| emergprocops.intake.specification | specification | RECORD | Specification defines acceptable product/service, standards and substitution limits. | Reduces wrong purchases. |
-| emergprocops.authority.emergency_declaration | emergency authority | CONSTRAINT | Emergency procurement relies on declared authority or policy trigger. | Keeps purchases lawful. |
-| emergprocops.authority.approval_path | approval path | METHOD | Approval path states requester, finance, procurement, legal and incident command roles. | Speeds controlled action. |
-| emergprocops.authority.threshold | threshold rule | CONSTRAINT | Dollar thresholds define quote, competition, waiver and signature requirements. | Controls risk. |
-| emergprocops.authority.documentation | authority documentation | RECORD | File records why normal process could not meet mission need. | Supports audit. |
-| emergprocops.vendor.vendor_id | vendor ID | RECORD | Vendor ID links supplier, contacts, tax, banking, certifications and performance. | Creates vendor trace. |
-| emergprocops.vendor.responsibility | responsibility check | QUALITY_CHECK | Check reviews sanctions, debarment, license, insurance and conflict where feasible. | Avoids bad vendors. |
-| emergprocops.vendor.capacity | capacity check | METHOD | Capacity checks inventory, staffing, delivery ability and lead time. | Prevents empty promises. |
-| emergprocops.vendor.conflict | conflict disclosure | SAFETY_RULE | Conflicts of interest are documented and escalated. | Protects integrity. |
-| emergprocops.sourcing.quote | quote process | METHOD | Quotes are obtained when time and market allow. | Preserves value. |
-| emergprocops.sourcing.single_source | single-source justification | RECORD | Justification explains why only one vendor is practical. | Makes exception reviewable. |
-| emergprocops.sourcing.market_scan | market scan | METHOD | Fast market scan checks availability, price reasonableness and alternatives. | Reduces price abuse. |
-| emergprocops.sourcing.substitution | substitution | METHOD | Substitutions are approved when equivalent and mission-safe. | Keeps response moving. |
-| emergprocops.contract.purchase_order | purchase order | RECORD | PO records vendor, item, price, terms, funding, delivery and approver. | Controls obligation. |
-| emergprocops.contract.emergency_terms | emergency terms | CONSTRAINT | Terms cover delivery, cancellation, liability, insurance and inspection. | Reduces dispute. |
-| emergprocops.contract.verbal_order | verbal order control | METHOD | Verbal emergency orders are documented and converted to written record quickly. | Handles speed without losing control. |
-| emergprocops.contract.change_order | change order | METHOD | Changes record scope, price, time, reason and approval. | Prevents uncontrolled growth. |
-| emergprocops.finance.funding_source | funding source | RECORD | Funding source links budget, grant, disaster code or reimbursement category. | Supports finance. |
-| emergprocops.finance.cost_reasonable | cost reasonableness | QUALITY_CHECK | Price is checked against quotes, catalog, history or market constraint. | Reduces overpayment. |
-| emergprocops.finance.advance | advance payment | CONSTRAINT | Advance payment requires higher review and risk controls. | Protects funds. |
-| emergprocops.finance.tax_exempt | tax exemption | METHOD | Tax exemption or public status is applied where appropriate. | Avoids unnecessary cost. |
-| emergprocops.delivery.delivery_proof | delivery proof | RECORD | Proof records item, quantity, condition, time, receiver and location. | Confirms receipt. |
-| emergprocops.delivery.partial | partial delivery | METHOD | Partial delivery records backorder, substitutions and remaining need. | Keeps mission aware. |
-| emergprocops.delivery.inspection | inspection | QUALITY_CHECK | Inspection checks quantity, quality, damage, expiration and specification. | Prevents bad acceptance. |
-| emergprocops.delivery.discrepancy | discrepancy | RECORD | Discrepancy logs shortage, overage, damage, wrong item or late delivery. | Starts correction. |
-| emergprocops.inventory.handoff | inventory handoff | METHOD | Received goods hand off to logistics, warehouse or using department. | Avoids lost supplies. |
-| emergprocops.inventory.asset_tag | asset tag | RECORD | Durable equipment receives asset tag or control number. | Supports property control. |
-| emergprocops.inventory.consumable | consumable issue | RECORD | Consumables record issue location, quantity and mission use where needed. | Supports reimbursement. |
-| emergprocops.compliance.waiver | procurement waiver | RECORD | Waiver cites policy section, reason, approver and duration. | Makes exception auditable. |
-| emergprocops.compliance.debarment | debarment check | SAFETY_RULE | Debarment or sanctions check is completed before or promptly after emergency award. | Protects grant eligibility. |
-| emergprocops.compliance.small_business | socioeconomic note | METHOD | Emergency buying may still record local, small or disadvantaged vendor use. | Supports policy reporting. |
-| emergprocops.compliance.record_retention | record retention | CONSTRAINT | Records follow procurement, finance, grant and disaster retention rules. | Preserves audit trail. |
-| emergprocops.risk.fraud_flag | fraud flag | MODEL | Red flags include inflated price, shell vendor, conflict, duplicate invoice or false delivery. | Targets review. |
-| emergprocops.risk.vendor_failure | vendor failure | FAILURE_MODE | Failure includes non-delivery, poor quality, unsafe goods or abandoned work. | Triggers contingency. |
-| emergprocops.risk.contingency | contingency supplier | METHOD | Backup suppliers are identified for critical goods. | Reduces mission failure. |
-| emergprocops.audit.file_complete | file completeness | QUALITY_CHECK | File includes need, authority, vendor, price, PO, delivery, invoice and payment. | Prepares audit. |
-| emergprocops.audit.invoice_match | three-way match | QUALITY_CHECK | Invoice is matched to PO and receipt before payment. | Prevents improper payment. |
-| emergprocops.metrics.cycle_time | procurement cycle time | MEASUREMENT | Cycle time measures requisition-to-delivery. | Shows responsiveness. |
-| emergprocops.metrics.spend | emergency spend | MEASUREMENT | Spend tracks category, vendor, funding and mission. | Supports oversight. |
-| emergprocops.closeout.contract_close | contract closeout | METHOD | Closeout confirms delivery, payment, disputes, warranties and records. | Ends purchase cleanly. |
-| emergprocops.review.after_action | after-action review | METHOD | Review captures bottlenecks, vendor issues, pricing and policy gaps. | Improves emergency buying. |
+| emergprocops.intake.requisition_id | идентификатор заявки | RECORD | Идентификатор заявки связывает запрос, инцидент, элемент, запрашивающую сторону, финансирование и статус. | Отслеживает срочные покупки. |
+| emergprocops.intake.mission_need | необходимость миссии | RECORD | Потребность описывает операционную проблему, количество, срок поставки и последствия. | Оправдывает срочность. |
+| emergprocops.intake.priority | уровень приоритета | MODEL | Приоритет отражает безопасность жизни, непрерывность, дефицит, сроки и направление командования. | Заказывает дефицитные закупочные работы. |
+| emergprocops.intake.specification | спецификация | RECORD | Спецификация определяет приемлемый продукт/услугу, стандарты и пределы замены. | Уменьшает количество ошибочных покупок. |
+| emergprocops.authority.emergency_declaration | орган по чрезвычайным ситуациям | CONSTRAINT | Экстренные закупки зависят от заявленных полномочий или политического триггера. | Делает покупки законными. |
+| emergprocops.authority.approval_path | путь утверждения | METHOD | Путь утверждения определяет роли запрашивающей стороны, финансов, закупок, юридических вопросов и управления инцидентами. | Скорость контролируемого действия. |
+| emergprocops.authority.threshold | правило порога | CONSTRAINT | Пороговые значения в долларах определяют требования к котировкам, конкуренции, отказу от обязательств и подписи. | Контролирует риск. |
+| emergprocops.authority.documentation | разрешительная документация | RECORD | В файле указывается, почему обычный процесс не может удовлетворить потребности миссии. | Поддерживает аудит. |
+| emergprocops.vendor.vendor_id | идентификатор поставщика | RECORD | Идентификатор поставщика связывает поставщика, контакты, налоговую, банковскую деятельность, сертификаты и производительность. | Создает трассировку поставщика. |
+| emergprocops.vendor.responsibility | проверка ответственности | QUALITY_CHECK | Проверьте обзоры санкций, отстранения, лицензий, страхования и конфликтов, где это возможно. | Избегает плохих продавцов. |
+| emergprocops.vendor.capacity | проверка емкости | METHOD | Производительность проверяет наличие запасов, укомплектованность персоналом, возможность доставки и время выполнения заказа. | Предотвращает пустые обещания. |
+| emergprocops.vendor.conflict | раскрытие конфликта | SAFETY_RULE | Конфликты интересов документируются и обостряются. | Защищает целостность. |
+| emergprocops.sourcing.quote | процесс котировки | METHOD | Котировки получаются, когда позволяют время и рынок. | Сохраняет ценность. |
+| emergprocops.sourcing.single_source | обоснование из одного источника | RECORD | Обоснование объясняет, почему практичным является только один поставщик. | Делает исключение доступным для просмотра. |
+| emergprocops.sourcing.market_scan | сканирование рынка | METHOD | Быстрое сканирование рынка проверяет наличие, разумность цен и альтернативы. | Уменьшает злоупотребление ценами. |
+| emergprocops.sourcing.substitution | замена | METHOD | Замены утверждаются, если они эквивалентны и безопасны для выполнения миссии. | Продолжает реакцию. |
+| emergprocops.contract.purchase_order | заказ на покупку | RECORD | В заказе на заказ фиксируются поставщик, товар, цена, условия, финансирование, доставка и утверждающее лицо. | Контролирует обязательства. |
+| emergprocops.contract.emergency_terms | чрезвычайные условия | CONSTRAINT | Условия охватывают доставку, отмену, ответственность, страхование и проверку. | Уменьшает спор. |
+| emergprocops.contract.verbal_order | устный контроль заказа | METHOD | Устные чрезвычайные приказы документируются и быстро преобразуются в письменные записи. | Контролирует скорость, не теряя контроля. |
+| emergprocops.contract.change_order | изменить порядок | METHOD | Объём записи изменений, цена, время, причина и одобрение. | Предотвращает неконтролируемый рост. |
+| emergprocops.finance.funding_source | источник финансирования | RECORD | Источник финансирования связывает бюджет, грант, код стихийного бедствия или категорию возмещения. | Поддерживает финансы. |
+| emergprocops.finance.cost_reasonable | разумность затрат | QUALITY_CHECK | Цена сверяется с котировками, каталогом, историей или рыночными ограничениями. | Уменьшает переплату. |
+| emergprocops.finance.advance | авансовый платеж | CONSTRAINT | Авансовый платеж требует более тщательного рассмотрения и контроля рисков. | Защищает средства. |
+| emergprocops.finance.tax_exempt | освобождение от налогов | METHOD | При необходимости применяется освобождение от налогов или общественный статус. | Позволяет избежать ненужных затрат. |
+| emergprocops.delivery.delivery_proof | подтверждение доставки | RECORD | В доказательстве фиксируются предмет, количество, состояние, время, получатель и местонахождение. | Подтверждает получение. |
+| emergprocops.delivery.partial | частичная доставка | METHOD | При частичной поставке фиксируются отставшие заказы, замены и оставшиеся потребности. | Держит миссию в курсе. |
+| emergprocops.delivery.inspection | инспекция | QUALITY_CHECK | Инспекция проверяет количество, качество, наличие повреждений, срок годности и спецификацию. | Предотвращает плохое принятие. |
+| emergprocops.delivery.discrepancy | несоответствие | RECORD | Несоответствия регистрируют нехватку, избыток, повреждение, неправильный товар или задержку доставки. | Начинает коррекцию. |
+| emergprocops.inventory.handoff | передача инвентаря | METHOD | Полученный товар передается в отдел логистики, склад или отдел использования. | Избегает потери поставок. |
+| emergprocops.inventory.asset_tag | тег актива | RECORD | Оборудование длительного пользования получает бирку актива или контрольный номер. | Поддерживает контроль собственности. |
+| emergprocops.inventory.consumable | проблема с расходными материалами | RECORD | При необходимости в расходных материалах фиксируется место возникновения, количество и использование в задании. | Поддерживает возмещение. |
+| emergprocops.compliance.waiver | отказ от закупок | RECORD | В отказе указывается раздел политики, причина, утверждающее лицо и срок действия. | Делает исключение проверяемым. |
+| emergprocops.compliance.debarment | чек отстранения | SAFETY_RULE | Проверка отстранения или санкций завершается до или сразу после экстренного присуждения. | Защищает право на получение гранта. |
+| emergprocops.compliance.small_business | социально-экономическая справка | METHOD | Экстренные закупки могут по-прежнему отражать использование местными, мелкими или находящимися в невыгодном положении поставщиками. | Поддерживает отчетность по политике. |
+| emergprocops.compliance.record_retention | хранение записей | CONSTRAINT | Записи соответствуют правилам закупок, финансов, грантов и хранения в случае стихийных бедствий. | Сохраняет контрольный журнал. |
+| emergprocops.risk.fraud_flag | флаг мошенничества | MODEL | К тревожным сигналам относятся завышенная цена, наличие поставщика подложки, конфликт, дублирующий счет-фактура или ложная поставка. | Обзор целей. |
+| emergprocops.risk.vendor_failure | сбой поставщика | FAILURE_MODE | Отказ включает непоставку, низкое качество, небезопасные товары или отказ от работы. | Вызывает непредвиденные обстоятельства. |
+| emergprocops.risk.contingency | резервный поставщик | METHOD | Для критически важных товаров определяются резервные поставщики. | Уменьшает количество неудачных миссий. |
+| emergprocops.audit.file_complete | полнота файла | QUALITY_CHECK | Файл включает в себя потребность, полномочия, поставщика, цену, заказ на поставку, доставку, счет-фактуру и оплату. | Готовит аудит. |
+| emergprocops.audit.invoice_match | трехсторонний матч | QUALITY_CHECK | Счет-фактура сопоставляется с заказом на поставку и квитанцией перед оплатой. | Предотвращает неправомерную оплату. |
+| emergprocops.metrics.cycle_time | время цикла закупок | MEASUREMENT | Время цикла измеряет период от заявки до поставки. | Проявляет отзывчивость. |
+| emergprocops.metrics.spend | чрезвычайные расходы | MEASUREMENT | Расходы отслеживают категорию, поставщика, финансирование и миссию. | Поддерживает надзор. |
+| emergprocops.closeout.contract_close | закрытие контракта | METHOD | Распродажа подтверждает доставку, оплату, споры, гарантии и записи. | Заканчивается покупка чисто. |
+| emergprocops.review.after_action | обзор после действий | METHOD | В обзоре выявляются узкие места, проблемы с поставщиками, ценообразование и пробелы в политике. | Улучшает экстренные покупки. |

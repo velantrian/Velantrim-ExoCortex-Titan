@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| interpops.request.language_request | Court interpreter language request | invariant | Request records language, dialect, case, party, proceeding, date and urgency. | start assignment |
-| interpops.request.source_channel | Interpreter request source channel | variant | Channel identifies judge, clerk, attorney, self-represented party, agency or portal. | route request |
-| interpops.request.dialect_detail | Court interpreter dialect detail | variant | Detail captures regional dialect, sign language mode, relay need or special terminology. | match accurately |
-| interpops.request.case_context | Interpreter case context | invariant | Context lists case type, proceeding, expected duration, parties and confidentiality level. | prepare interpreter |
-| interpops.request.priority_flag | Interpreter scheduling priority flag | invariant | Flag marks custody, protection order, emergency, juvenile, trial or statutory deadline matter. | triage coverage |
-| interpops.credentials.certification_check | Court interpreter certification check | invariant | Check verifies credential, language pair, court authorization, expiration and standing. | qualified service |
-| interpops.credentials.roster_profile | Court interpreter roster profile | invariant | Profile stores languages, credentials, availability, remote capacity, rates and restrictions. | assignment pool |
-| interpops.credentials.conflict_history | Interpreter conflict history | variant | History records prior party contact, case involvement, employment or personal conflict. | avoid bias |
-| interpops.credentials.oath_record | Interpreter oath record | invariant | Record confirms oath, confidentiality, accuracy duty and proceeding-specific requirements. | lawful interpretation |
-| interpops.calendar.availability_block | Interpreter availability block | invariant | Block records date, time, location, language, remote status and travel constraints. | schedule work |
-| interpops.calendar.assignment_hold | Interpreter assignment hold | variant | Hold reserves interpreter while court time, party need or funding approval is confirmed. | avoid double booking |
-| interpops.calendar.double_booking_check | Interpreter double-booking check | invariant | Check compares calendar, travel time, remote sessions and backup coverage. | prevent conflict |
-| interpops.calendar.continuance_update | Interpreter continuance update | invariant | Update cancels or reschedules interpreter after hearing date changes. | reduce waste |
-| interpops.calendar.backup_interpreter | Backup interpreter plan | variant | Plan names alternate interpreter for trial, rare language, custody or long proceeding. | continuity |
-| interpops.remote.remote_platform | Remote interpreting platform | variant | Platform record lists video link, phone bridge, security, test status and access details. | connect session |
-| interpops.remote.tech_check | Interpreter remote tech check | invariant | Check verifies audio, video, headset, bandwidth, privacy and backup phone. | reliable session |
-| interpops.remote.private_channel | Remote interpreting private channel | variant | Channel supports confidential attorney-client or party consultation when allowed. | preserve privacy |
-| interpops.remote.failed_connection | Interpreter connection failure | invariant | Failure log records time, cause, participants, workaround and proceeding impact. | troubleshoot |
-| interpops.assignment.matching_rule | Court interpreter matching rule | invariant | Rule matches language, credential, conflict status, location, gender if required and availability. | assign correctly |
-| interpops.assignment.confirmation_notice | Interpreter confirmation notice | invariant | Notice sends assignment, court, room, time, case, contact and cancellation rule. | clear assignment |
-| interpops.assignment.party_notice | Interpreter party notice | variant | Notice informs party or counsel that language access support is arranged. | reduce uncertainty |
-| interpops.assignment.last_minute_request | Last-minute interpreter request | variant | Request triggers emergency roster, remote fallback, continuance note and supervisor review. | cover urgent need |
-| interpops.conflict.conflict_screen | Court interpreter conflict screen | invariant | Screen checks party, attorney, witness, prior work, employment and personal relationships. | neutrality |
-| interpops.conflict.conflict_disclosure | Interpreter conflict disclosure | invariant | Disclosure records issue, reviewer, decision, substitution or waiver if permitted. | transparent process |
-| interpops.conflict.recusal_record | Interpreter recusal record | variant | Record captures interpreter withdrawal due to conflict, competence, fatigue or impartiality concern. | ethical action |
-| interpops.billing.service_time | Interpreter service time | invariant | Time records arrival, start, end, waiting, travel and remote connection duration. | pay accurately |
-| interpops.billing.rate_code | Interpreter rate code | variant | Code applies credential, language, in-person, remote, cancellation or overtime rate. | billing control |
-| interpops.billing.invoice_review | Interpreter invoice review | invariant | Review compares assignment, timesheet, rate, cancellation, mileage and approval. | avoid overpayment |
-| interpops.billing.grant_tracking | Language access grant tracking | variant | Tracking tags interpreter expense to grant, court program, case type or fund. | reporting |
-| interpops.quality.feedback_note | Interpreter quality feedback | invariant | Note records clarity, punctuality, professionalism, complaints, technical issues and reviewer. | improve roster |
-| interpops.quality.complaint_process | Interpreter complaint process | invariant | Process receives complaint, gathers facts, notifies reviewer and records outcome. | accountability |
-| interpops.quality.competence_issue | Interpreter competence issue | variant | Issue flags terminology difficulty, dialect mismatch, ethical concern or performance problem. | protect record |
-| interpops.quality.training_need | Interpreter training need | variant | Need identifies courtroom protocol, ethics, remote tools, trauma-informed or terminology training. | develop roster |
-| interpops.records.assignment_log | Interpreter assignment log | invariant | Log records request, match, confirmation, attendance, changes, billing and notes. | audit trail |
-| interpops.records.confidentiality_control | Interpreter confidentiality control | invariant | Control restricts access to sealed cases, minors, protected parties and sensitive notes. | protect privacy |
-| interpops.records.record_retention | Interpreter scheduling record retention | invariant | Retention defines how long requests, invoices, rosters and complaints are kept. | compliance |
-| interpops.operations.daily_docket_review | Interpreter daily docket review | invariant | Review checks next-day cases, languages, rooms, custody, remote links and gaps. | prevent misses |
-| interpops.operations.courtroom_change | Interpreter courtroom change | variant | Change updates interpreter, clerk, courtroom, remote link and affected parties. | keep alignment |
-| interpops.operations.rare_language_search | Rare language interpreter search | variant | Search contacts regional rosters, remote vendors, agencies and qualified backups. | cover uncommon need |
-| interpops.reporting.coverage_report | Interpreter coverage report | invariant | Report summarizes requests, filled, unfilled, continuances, languages and costs. | manage access |
-| interpops.reporting.unfilled_request | Unfilled interpreter request report | invariant | Report records reason, impact, alternatives attempted and corrective action. | expose gap |
-| interpops.metrics.interpreter_kpi | Court interpreter scheduling KPI | variant | KPI tracks fill rate, late requests, cancellations, costs, complaints and remote failures. | manage program |
-| interpops.continuity.interpreter_no_show | Interpreter no-show response | invariant | Response contacts backup, informs court, logs impact and updates roster review. | keep court moving |
-| interpops.continuity.system_outage | Interpreter scheduling system outage | invariant | Outage plan uses manual docket, phone confirmations, paper logs and later entry. | maintain coverage |
+| interpops.request.language_request | Запрос на языковой переводчик в суде | invariant | Запрос записывает язык, диалект, дело, сторону, судебное разбирательство, дату и срочность. | начать задание |
+| interpops.request.source_channel | Исходный канал запроса переводчика | variant | Канал идентифицирует судью, секретаря, адвоката, самопредставительную сторону, агентство или портал. | запрос маршрута |
+| interpops.request.dialect_detail | Детали диалекта судебного переводчика | variant | Подробности отражают региональный диалект, режим языка жестов, необходимость ретрансляции или специальную терминологию. | точно соответствовать |
+| interpops.request.case_context | Контекст дела переводчика | invariant | В контексте перечислены тип дела, судебное разбирательство, ожидаемая продолжительность, стороны и уровень конфиденциальности. | подготовить переводчика |
+| interpops.request.priority_flag | Флаг приоритета планирования интерпретатора | invariant | Флаг отмечает опеку, охранный приказ, чрезвычайную ситуацию, несовершеннолетних, судебный процесс или установленный законом срок. | покрытие сортировки |
+| interpops.credentials.certification_check | Сертификационная проверка судебного переводчика | invariant | Проверка проверяет полномочия, языковую пару, разрешение суда, срок действия и статус. | квалифицированное обслуживание |
+| interpops.credentials.roster_profile | Реестр судебных переводчиков | invariant | В профиле хранятся языки, учетные данные, доступность, удаленные возможности, тарифы и ограничения. | пул назначений |
+| interpops.credentials.conflict_history | История конфликта переводчиков | variant | В анамнезе фиксируются предыдущие контакты между сторонами, участие в деле, трудоустройство или личный конфликт. | избегать предвзятости |
+| interpops.credentials.oath_record | Запись присяги переводчика | invariant | Запись подтверждает присягу, конфиденциальность, точность и требования, предъявляемые к конкретному процессуальному делу. | законное толкование |
+| interpops.calendar.availability_block | Блок доступности переводчика | invariant | Блокируйте записи даты, времени, местоположения, языка, удаленного статуса и ограничений на поездки. | планировать работу |
+| interpops.calendar.assignment_hold | Задание переводчика приостановлено | variant | Придержите резервного переводчика на время подтверждения судебного заседания, необходимости участия сторон или одобрения финансирования. | избегайте двойного бронирования |
+| interpops.calendar.double_booking_check | Проверка двойного бронирования переводчика | invariant | Проверка сравнивает календарь, время в пути, удаленные сеансы и резервное покрытие. | предотвратить конфликт |
+| interpops.calendar.continuance_update | Обновление переводчика | invariant | Обновление отменяет или переносит работу переводчика после изменения даты слушания. | сократить отходы |
+| interpops.calendar.backup_interpreter | План резервного переводчика | variant | План назначает альтернативного переводчика для суда, редкого языка, содержания под стражей или длительного судебного разбирательства. | преемственность |
+| interpops.remote.remote_platform | Платформа дистанционного перевода | variant | В записи платформы указаны видеосвязь, телефонный мост, безопасность, статус тестирования и сведения о доступе. | подключить сеанс |
+| interpops.remote.tech_check | Переводчик удаленной технической проверки | invariant | Проверка проверяет аудио, видео, гарнитуру, пропускную способность, конфиденциальность и резервный телефон. | надежный сеанс |
+| interpops.remote.private_channel | Удаленный перевод на частном канале | variant | Канал поддерживает конфиденциальные консультации адвоката с клиентом или стороной, если это разрешено. | сохранять конфиденциальность |
+| interpops.remote.failed_connection | Ошибка подключения переводчика | invariant | В журнале сбоев фиксируются время, причина, участники, обходные пути и последствия. | устранять неполадки |
+| interpops.assignment.matching_rule | Правило соответствия судебного переводчика | invariant | Правило соответствует языку, учетным данным, статусу конфликта, местоположению, полу, если требуется, и доступности. | назначить правильно |
+| interpops.assignment.confirmation_notice | Уведомление о подтверждении переводчика | invariant | Уведомление отправляет назначение, суд, комнату, время, дело, контакт и правила отмены. | четкое задание |
+| interpops.assignment.party_notice | Уведомление о вечеринке переводчика | variant | Уведомление информирует сторону или адвоката о том, что организована языковая поддержка. | уменьшить неопределенность |
+| interpops.assignment.last_minute_request | Запрос переводчика в последнюю минуту | variant | Запрос запускает аварийный список, удаленный резервный режим, уведомление о продолжении и проверку супервизора. | покрыть острую потребность |
+| interpops.conflict.conflict_screen | Экран конфликта с судебным переводчиком | invariant | Скрининг проверяет сторону, адвоката, свидетеля, предыдущую работу, занятость и личные отношения. | нейтралитет |
+| interpops.conflict.conflict_disclosure | Раскрытие конфликта переводчиков | invariant | Раскрытие информации фиксирует проблему, рецензента, решение, замену или отказ, если это разрешено. | прозрачный процесс |
+| interpops.conflict.recusal_record | Протокол об отводе переводчика | variant | Запись фиксирует уход переводчика из-за конфликта, компетентности, усталости или беспокойства о беспристрастности. | этическое действие |
+| interpops.billing.service_time | Время работы переводчика | invariant | Время фиксирует прибытие, начало, окончание, ожидание, перемещение и продолжительность удаленного соединения. | плати точно |
+| interpops.billing.rate_code | Код тарифа переводчика | variant | В коде применяются учетные данные, язык, личное, удаленное обслуживание, оплата за отмену или сверхурочную работу. | контроль выставления счетов |
+| interpops.billing.invoice_review | Проверка счета переводчика | invariant | В обзоре сравниваются назначение, расписание, ставка, отмена, пробег и утверждение. | избежать переплаты |
+| interpops.billing.grant_tracking | Отслеживание предоставления языкового доступа | variant | Отслеживание тегов расходов на переводчика для гранта, судебной программы, типа дела или фонда. | отчетность |
+| interpops.quality.feedback_note | Отзывы о качестве переводчика | invariant | Обратите внимание на ясность записей, пунктуальность, профессионализм, жалобы, технические вопросы и рецензента. | улучшить состав |
+| interpops.quality.complaint_process | Процедура подачи жалобы на переводчика | invariant | Процесс получает жалобу, собирает факты, уведомляет рецензента и записывает результат. | подотчетность |
+| interpops.quality.competence_issue | Вопрос компетентности переводчика | variant | Проблема указывает на трудность терминологии, несоответствие диалекта, этические проблемы или проблемы с производительностью. | защитить запись |
+| interpops.quality.training_need | Требуется обучение переводчика | variant | Потребность определяет протокол зала суда, этику, дистанционные инструменты, обучение травмам или терминологии. | составить список |
+| interpops.records.assignment_log | Журнал заданий переводчика | invariant | Регистрируйте запросы, совпадения, подтверждения, посещаемость, изменения, выставление счетов и примечания. | аудиторский след |
+| interpops.records.confidentiality_control | Контроль конфиденциальности переводчика | invariant | Контроль ограничивает доступ к закрытым делам, несовершеннолетним, защищенным лицам и конфиденциальным заметкам. | защищать конфиденциальность |
+| interpops.records.record_retention | Переводчик планирует сохранение записей | invariant | Срок хранения определяет, как долго хранятся запросы, счета, реестры и жалобы. | согласие |
+| interpops.operations.daily_docket_review | Ежедневный обзор списка устных переводчиков | invariant | Обзор проверяет дела на следующий день, языки, помещения, содержание под стражей, удаленные связи и пробелы. | предотвратить промахи |
+| interpops.operations.courtroom_change | Переводчик смена зала суда | variant | Изменения обновляют переводчика, секретаря, зал суда, удаленную связь и затронутых сторон. | держать выравнивание |
+| interpops.operations.rare_language_search | Поиск переводчика редкого языка | variant | Найдите контакты в региональных реестрах, удаленных поставщиках, агентствах и квалифицированных резервных копиях. | покрыть редкую потребность |
+| interpops.reporting.coverage_report | Отчет о работе переводчиков | invariant | В отчете суммируются запросы, выполненные и невыполненные, продолжения, языки и затраты. | управлять доступом |
+| interpops.reporting.unfilled_request | Отчет о незаполненном запросе переводчика | invariant | В отчете фиксируются причины, последствия, предпринятые альтернативы и корректирующие действия. | выявить пробел |
+| interpops.metrics.interpreter_kpi | График работы судебного переводчика КПИ | variant | KPI отслеживает уровень заполнения, просроченные запросы, отмены, затраты, жалобы и удаленные сбои. | управлять программой |
+| interpops.continuity.interpreter_no_show | Ответ переводчика о неявке | invariant | Ответ связывается с резервной копией, информирует суд, записывает результаты и обновляет список. | продолжайте суд двигаться |
+| interpops.continuity.system_outage | Отказ системы расписания переводчиков | invariant | В плане отключения электроэнергии используется запись вручную, подтверждение по телефону, бумажные журналы и последующий ввод. | поддерживать покрытие |

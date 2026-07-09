@@ -6,48 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| acctverifyops.auth.account_match | account match | QUALITY_CHECK | Caller identity is matched to account name, address, phone, email or portal credential. | Prevents disclosure to wrong person. |
-| acctverifyops.auth.knowledge_factor | knowledge factor | METHOD | Staff may ask non-public account facts such as last payment or meter location. | Adds verification beyond caller ID. |
-| acctverifyops.auth.portal_login | portal login | METHOD | Secure portal authentication can authorize self-service changes. | Reduces call-center exposure. |
-| acctverifyops.auth.failed_auth | failed authentication | DECISION_RULE | Failed verification limits information and routes to document or supervisor process. | Protects privacy under uncertainty. |
-| acctverifyops.authorized.primary_holder | primary holder | RECORD | Primary account holder has default authority for billing and service changes. | Defines baseline permission. |
-| acctverifyops.authorized.additional_user | additional user | RECORD | Authorized users are listed with scope, dates and verification basis. | Allows family or staff help without full account transfer. |
-| acctverifyops.authorized.property_manager | property manager | RECORD | Property manager authority is tied to owner authorization or management agreement. | Prevents unauthorized tenant account changes. |
-| acctverifyops.authorized.remove_user | remove authorized user | METHOD | Removal records requester, date, affected user and scope. | Keeps access current. |
-| acctverifyops.privacy.minimum_disclosure | minimum disclosure | SAFETY_RULE | Staff share only data needed for the verified purpose. | Reduces privacy leakage. |
-| acctverifyops.privacy.sensitive_fields | sensitive fields | CONSTRAINT | SSN, ID copies, bank data and medical flags have restricted handling. | Protects high-risk information. |
-| acctverifyops.privacy.call_recording | call recording notice | CONSTRAINT | Call recording and consent notices follow policy. | Keeps service channel compliant. |
-| acctverifyops.privacy.public_records | public records boundary | CONSTRAINT | Some utility data may be public, but personal account details remain protected. | Balances transparency and privacy. |
-| acctverifyops.documents.id_document | ID document | RECORD | Accepted ID types, expiration and review result are recorded without unnecessary copies where possible. | Supports high-assurance verification. |
-| acctverifyops.documents.lease_deed | lease or deed | RECORD | Occupancy or ownership documents prove authority for service. | Useful for move-in disputes. |
-| acctverifyops.documents.business_authority | business authority | RECORD | Business accounts may require officer, tax, license or authorization proof. | Prevents employee misuse. |
-| acctverifyops.documents.document_rejection | document rejection | RECORD | Rejection reason is documented when proof is unreadable, mismatched or expired. | Gives customer correction path. |
-| acctverifyops.fraud.red_flags | fraud red flags | MODEL | Red flags include rapid address changes, mismatched documents, unusual payment requests or prior tamper. | Helps staff slow risky actions. |
-| acctverifyops.fraud.account_takeover | account takeover | FAILURE_MODE | Fraudster attempts to change contact, autopay or service using stolen details. | Requires stronger verification. |
-| acctverifyops.fraud.synthetic_identity | synthetic identity | FAILURE_MODE | Fake identity combines real and invented data to open service. | Creates bad debt and privacy risk. |
-| acctverifyops.fraud.supervisor_review | supervisor review | DECISION_RULE | Fraud flags route to supervisor before service, refund or contact change. | Adds control at high-risk steps. |
-| acctverifyops.call.balance_request | balance request | DECISION_RULE | Balance and due date may require lower verification than service changes. | Matches verification level to risk. |
-| acctverifyops.call.service_change | service change request | DECISION_RULE | Start/stop, shutoff, mailing address or authorized user changes require stronger verification. | Protects account control. |
-| acctverifyops.call.payment_method | payment method handling | SAFETY_RULE | Staff avoid reading full bank or card data and follow secure payment channel rules. | Reduces financial data exposure. |
-| acctverifyops.call.third_party | third-party caller | METHOD | Third parties receive only permitted information unless authorization is verified. | Handles family, landlord and agency calls safely. |
-| acctverifyops.field.field_identity | field identity | METHOD | Field staff verify customer on site through work order, address and account notes. | Prevents unauthorized field actions. |
-| acctverifyops.field.door_contact | door contact | SAFETY_RULE | Crews avoid discussing sensitive billing details at door without verification. | Protects privacy in shared spaces. |
-| acctverifyops.field.badge_check | employee badge check | METHOD | Customers can verify utility employee identity through badge and call-back number. | Reduces impersonation risk. |
-| acctverifyops.audit.auth_log | authentication log | RECORD | System logs method, result, user, date and action authorized. | Creates evidence for audits. |
-| acctverifyops.audit.override_log | override log | RECORD | Manual overrides capture reason, approver and risk basis. | Controls exceptions. |
-| acctverifyops.audit.access_review | access review | QUALITY_CHECK | Periodic review checks staff access and unusual account lookups. | Detects insider misuse. |
-| acctverifyops.audit.failed_attempts | failed attempts | MEASUREMENT | Repeated failed authentication attempts are tracked. | Identifies fraud or training issues. |
-| acctverifyops.training.script | verification script | METHOD | Scripts guide staff through allowed questions and escalation. | Makes verification consistent. |
-| acctverifyops.training.privacy_training | privacy training | METHOD | Staff learn data minimization, fraud signs and safe disclosure. | Reduces accidental exposure. |
-| acctverifyops.training.social_engineering | social engineering | MODEL | Attackers use urgency, sympathy or insider-sounding details to bypass checks. | Staff recognize manipulation. |
-| acctverifyops.exceptions.emergency | emergency exception | DECISION_RULE | Public safety or leak emergencies may allow limited action while preserving privacy. | Balances safety and account control. |
-| acctverifyops.exceptions.deceased_customer | deceased customer | METHOD | Deceased account-holder cases require estate, surviving occupant or legal documents. | Handles sensitive transition. |
-| acctverifyops.exceptions.domestic_safety | domestic safety flag | SAFETY_RULE | Address or contact disclosure may be restricted for safety-sensitive accounts. | Protects vulnerable customers. |
-| acctverifyops.records.data_update | data update | METHOD | Verified contact changes update CRM, billing, portal and notification systems. | Keeps channels aligned. |
-| acctverifyops.records.source_of_truth | source of truth | RECORD | One system is designated authoritative for authorized users and contact data. | Avoids conflicting permissions. |
-| acctverifyops.reporting.verification_rate | verification rate | MEASUREMENT | Reports show passed, failed, overridden and escalated authentications. | Measures process health. |
-| acctverifyops.reporting.fraud_cases | fraud cases | RECORD | Confirmed fraud and attempted fraud are tracked by type and channel. | Guides controls. |
-| acctverifyops.reporting.training_gap | training gap | MODEL | Error patterns indicate script, system or staff training gaps. | Improves program design. |
-| acctverifyops.review.policy_review | policy review | METHOD | Verification rules are reviewed after fraud events, privacy complaints or regulation changes. | Keeps controls current. |
-| acctverifyops.closeout.case_close | verification case close | RECORD | Document-based verification closes with result, scope and expiry if applicable. | Prevents open-ended access assumptions. |
-
+| acctverifyops.auth.account_match | совпадение аккаунтов | QUALITY_CHECK | Идентификация вызывающего абонента сопоставляется с именем учетной записи, адресом, телефоном, электронной почтой или учетными данными портала. | Предотвращает раскрытие информации не тому человеку. |
+| acctverifyops.auth.knowledge_factor | фактор знаний | METHOD | Сотрудники могут запросить закрытые сведения о счете, такие как последний платеж или местонахождение счетчика. | Добавляет проверку помимо идентификатора вызывающего абонента. |
+| acctverifyops.auth.portal_login | вход на портал | METHOD | Безопасная аутентификация на портале может разрешить изменения самообслуживания. | Уменьшает воздействие на колл-центр. |
+| acctverifyops.auth.failed_auth | неудачная аутентификация | DECISION_RULE | Неудачная проверка ограничивает информацию и маршруты к документу или процессу супервизора. | Защищает конфиденциальность в условиях неопределенности. |
+| acctverifyops.authorized.primary_holder | основной держатель | RECORD | Владелец основного аккаунта имеет право по умолчанию вносить изменения в выставление счетов и услуги. | Определяет базовое разрешение. |
+| acctverifyops.authorized.additional_user | дополнительный пользователь | RECORD | Авторизованные пользователи перечислены с указанием объема, дат и основы проверки. | Позволяет членам семьи или сотрудникам оказывать помощь без полной передачи учетной записи. |
+| acctverifyops.authorized.property_manager | управляющий недвижимостью | RECORD | Полномочия управляющего недвижимостью привязаны к разрешению владельца или соглашению об управлении. | Предотвращает несанкционированное изменение учетной записи арендатора. |
+| acctverifyops.authorized.remove_user | удалить авторизованного пользователя | METHOD | Инициатор запроса на удаление записей, дата, затронутый пользователь и область действия. | Поддерживает доступ в актуальном состоянии. |
+| acctverifyops.privacy.minimum_disclosure | минимальное раскрытие информации | SAFETY_RULE | Сотрудники делятся только данными, необходимыми для проверенной цели. | Уменьшает утечку конфиденциальной информации. |
+| acctverifyops.privacy.sensitive_fields | чувствительные поля | CONSTRAINT | SSN, копии удостоверений личности, банковские данные и медицинские флажки подлежат ограниченному обращению. | Защищает информацию высокого риска. |
+| acctverifyops.privacy.call_recording | уведомление о записи разговора | CONSTRAINT | Запись разговоров и уведомления о согласии соответствуют политике. | Обеспечивает соответствие канала обслуживания. |
+| acctverifyops.privacy.public_records | граница публичных записей | CONSTRAINT | Некоторые данные коммунальных предприятий могут быть общедоступными, но данные личной учетной записи остаются защищенными. | Балансирует прозрачность и конфиденциальность. |
+| acctverifyops.documents.id_document | документ, удостоверяющий личность | RECORD | Принятые типы идентификаторов, срок действия и результаты проверки записываются без ненужных копий, где это возможно. | Поддерживает высоконадежную проверку. |
+| acctverifyops.documents.lease_deed | аренда или сделка | RECORD | Документы о проживании или владении подтверждают право на обслуживание. | Полезно для споров о заселении. |
+| acctverifyops.documents.business_authority | деловой авторитет | RECORD | Для бизнес-счетов могут потребоваться документы, подтверждающие должностное лицо, налоговые органы, лицензию или разрешение. | Предотвращает злоупотребления со стороны сотрудников. |
+| acctverifyops.documents.document_rejection | отклонение документа | RECORD | Причина отклонения документируется, если доказательство нечитабельно, не соответствует действительности или срок его действия истек. | Указывает путь исправления клиента. |
+| acctverifyops.fraud.red_flags | красные флажки мошенничества | MODEL | К тревожным сигналам относятся быстрая смена адреса, несовпадающие документы, необычные запросы на оплату или предварительные попытки взлома. | Помогает персоналу замедлить рискованные действия. |
+| acctverifyops.fraud.account_takeover | захват аккаунта | FAILURE_MODE | Мошенник пытается изменить контакт, автоплатеж или услугу, используя украденные данные. | Требует более строгой проверки. |
+| acctverifyops.fraud.synthetic_identity | синтетическая идентичность | FAILURE_MODE | Поддельная личность объединяет реальные и вымышленные данные для открытия сервиса. | Создает безнадежную задолженность и риск для конфиденциальности. |
+| acctverifyops.fraud.supervisor_review | обзор руководителя | DECISION_RULE | Сигналы о мошенничестве передаются руководителю перед обслуживанием, возвратом средств или сменой контакта. | Добавляет контроль на этапах с высоким риском. |
+| acctverifyops.call.balance_request | запрос баланса | DECISION_RULE | Баланс и срок оплаты могут потребовать меньше проверки, чем изменения в услугах. | Сопоставляет уровень проверки с риском. |
+| acctverifyops.call.service_change | запрос на изменение услуги | DECISION_RULE | Запуск/остановка, отключение, изменение почтового адреса или авторизованного пользователя требуют более строгой проверки. | Защищает контроль учетных записей. |
+| acctverifyops.call.payment_method | обработка способа оплаты | SAFETY_RULE | Сотрудники избегают чтения полных данных банка или карты и соблюдают правила безопасного канала оплаты. | Уменьшает раскрытие финансовых данных. |
+| acctverifyops.call.third_party | сторонний абонент | METHOD | Третьи лица получают только разрешенную информацию, если авторизация не подтверждена. | Безопасно обрабатывает звонки родственников, арендодателей и агентств. |
+| acctverifyops.field.field_identity | идентификатор поля | METHOD | Сотрудники на местах проверяют клиента на месте по заказу на работу, адресу и примечаниям к счету. | Предотвращает несанкционированные действия на местах. |
+| acctverifyops.field.door_contact | дверной контакт | SAFETY_RULE | Бригады избегают обсуждать конфиденциальные платежные реквизиты у дверей без проверки. | Защищает конфиденциальность в общих пространствах. |
+| acctverifyops.field.badge_check | проверка бейджа сотрудника | METHOD | Клиенты могут подтвердить личность сотрудника коммунального предприятия с помощью бейджа и номера обратного вызова. | Снижает риск выдачи себя за другое лицо. |
+| acctverifyops.audit.auth_log | журнал аутентификации | RECORD | Метод системных журналов, результат, пользователь, дата и авторизованное действие. | Создает доказательства для проверок. |
+| acctverifyops.audit.override_log | переопределить журнал | RECORD | Ручное переопределение фиксирует причину, утверждающего и основу риска. | Управляет исключениями. |
+| acctverifyops.audit.access_review | проверка доступа | QUALITY_CHECK | Периодическая проверка проверяет доступ сотрудников и необычные проверки учетных записей. | Обнаруживает злоупотребления инсайдерской информацией. |
+| acctverifyops.audit.failed_attempts | неудачные попытки | MEASUREMENT | Отслеживаются повторные неудачные попытки аутентификации. | Выявляет проблемы мошенничества или обучения. |
+| acctverifyops.training.script | сценарий проверки | METHOD | Сценарии помогают сотрудникам задавать разрешенные вопросы и повышать их уровень. | Делает проверку последовательной. |
+| acctverifyops.training.privacy_training | обучение конфиденциальности | METHOD | Сотрудники изучают минимизацию данных, признаки мошенничества и безопасное раскрытие информации. | Уменьшает случайное воздействие. |
+| acctverifyops.training.social_engineering | социальная инженерия | MODEL | Злоумышленники используют срочность, сочувствие или инсайдерские подробности, чтобы обойти проверки. | Персонал признает манипуляцию. |
+| acctverifyops.exceptions.emergency | аварийное исключение | DECISION_RULE | Чрезвычайные ситуации, связанные с общественной безопасностью или утечкой информации, могут позволить ограничить действия при сохранении конфиденциальности. | Балансирует безопасность и контроль учетных записей. |
+| acctverifyops.exceptions.deceased_customer | умерший клиент | METHOD | В делах об умерших владельцах счетов требуются документы о наследстве, оставшихся в живых жильцах или юридические документы. | Обрабатывает чувствительный переход. |
+| acctverifyops.exceptions.domestic_safety | Флаг внутренней безопасности | SAFETY_RULE | Раскрытие адреса или контактов может быть ограничено для учетных записей, чувствительных к безопасности. | Защищает уязвимых клиентов. |
+| acctverifyops.records.data_update | обновление данных | METHOD | Подтвержденные изменения контактов обновляют CRM, биллинг, портал и системы уведомлений. | Сохраняет соответствие каналов. |
+| acctverifyops.records.source_of_truth | источник истины | RECORD | Одна система назначена авторитетной для авторизованных пользователей и контактных данных. | Избегает противоречивых разрешений. |
+| acctverifyops.reporting.verification_rate | скорость проверки | MEASUREMENT | Отчеты показывают пройденные, неудачные, переопределенные и повышенные проверки подлинности. | Измеряет состояние процесса. |
+| acctverifyops.reporting.fraud_cases | дела о мошенничестве | RECORD | Подтвержденное мошенничество и попытки мошенничества отслеживаются по типу и каналу. | Направляющие элементы управления. |
+| acctverifyops.reporting.training_gap | разрыв в обучении | MODEL | Типичные ошибки указывают на пробелы в сценарии, системе или обучении персонала. | Улучшает дизайн программы. |
+| acctverifyops.review.policy_review | обзор политики | METHOD | Правила проверки пересматриваются после случаев мошенничества, жалоб на конфиденциальность или изменений в правилах. | Поддерживает контроль в актуальном состоянии. |
+| acctverifyops.closeout.case_close | дело о проверке закрыто | RECORD | Проверка на основе документов завершается указанием результата, объема и срока действия, если применимо. | Предотвращает предположения об открытом доступе. |

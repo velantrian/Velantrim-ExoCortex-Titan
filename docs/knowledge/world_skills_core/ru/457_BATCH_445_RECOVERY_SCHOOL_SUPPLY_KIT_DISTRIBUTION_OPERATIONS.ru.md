@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| schoolsupplykitops.intake.request_source | request source | RECORD | Source records school liaison, shelter desk, caseworker, family center, teacher, hotline or self-referral. | Shows entry path. |
-| schoolsupplykitops.intake.student_profile | student profile | RECORD | Profile captures grade band, school, language, caregiver contact, displacement status and access needs. | Defines kit need. |
-| schoolsupplykitops.intake.household_count | household count | RECORD | Count records number of students, grade levels and duplicate household requests. | Prevents gaps and duplication. |
-| schoolsupplykitops.intake.urgency_score | urgency score | MODEL | Score weighs school start date, lost supplies, transportation barrier, special need and caregiver availability. | Prioritizes distribution. |
-| schoolsupplykitops.eligibility.recovery_link | recovery link | CONTROL | Link verifies supplies are needed because of displacement, damage, lost backpack or school disruption. | Targets aid. |
-| schoolsupplykitops.eligibility.school_confirmation | school confirmation | CONTROL | Confirmation checks enrollment, temporary enrollment, McKinney-style displacement support or school liaison note. | Validates need. |
-| schoolsupplykitops.eligibility.duplicate_check | duplicate check | CONTROL | Check compares student, caregiver, school, grade band, pickup site and prior kit issue. | Avoids double issue. |
-| schoolsupplykitops.grade.kit_band | kit band | MODEL | Band separates early elementary, upper elementary, middle, high school and special program supply needs. | Fits age. |
-| schoolsupplykitops.grade.teacher_addon | teacher addon | RECORD | Addon captures calculators, binders, art tools, lab notebooks or course-specific items. | Handles exceptions. |
-| schoolsupplykitops.grade.accessibility_item | accessibility item | RECORD | Item records adaptive grips, large-print notebooks, headphones, visual supports or sensory tools. | Supports inclusion. |
-| schoolsupplykitops.grade.language_insert | language insert | PROCESS | Insert includes multilingual school contacts, schedule basics, bus help and family support notes. | Helps caregivers. |
-| schoolsupplykitops.inventory.item_master | item master | RECORD | Master lists notebooks, pencils, pens, folders, backpack, hygiene items, calculator and grade-specific items. | Defines stock. |
-| schoolsupplykitops.inventory.stock_count | stock count | RECORD | Count tracks on-hand, reserved, packed, issued, damaged, expired or donated items. | Maintains control. |
-| schoolsupplykitops.inventory.substitution_rule | substitution rule | CONTROL | Rule permits equivalent items when exact brand, size or color is unavailable. | Keeps distribution moving. |
-| schoolsupplykitops.inventory.donation_sort | donation sorting | PROCESS | Sorting separates usable, unsafe, damaged, age-inappropriate, duplicate and surplus supplies. | Protects students. |
-| schoolsupplykitops.packing.pack_list | pack list | RECORD | List defines required items by grade band, optional add-ons and language inserts. | Standardizes kits. |
-| schoolsupplykitops.packing.quality_check | quality check | PROCESS | Check verifies full contents, correct band, safe items, backpack condition and label. | Prevents bad kits. |
-| schoolsupplykitops.packing.family_bundle | family bundle | PROCESS | Bundle groups multiple student kits by caregiver, pickup site and delivery need. | Speeds handoff. |
-| schoolsupplykitops.packing.label_code | label code | CONTROL | Code uses non-stigmatizing identifiers and avoids public display of displacement status. | Protects dignity. |
-| schoolsupplykitops.pickup.site_schedule | site schedule | RECORD | Schedule records school, shelter, community center, mobile stop, hours and staff contact. | Organizes pickup. |
-| schoolsupplykitops.pickup.identity_check | identity check | CONTROL | Check confirms caregiver, student, liaison or authorized pickup without excessive documentation. | Balances access. |
-| schoolsupplykitops.pickup.queue_plan | queue plan | PROCESS | Plan handles lines, shade, seating, language help, privacy and traffic. | Improves experience. |
-| schoolsupplykitops.pickup.handoff_proof | handoff proof | RECORD | Proof records kit band, count, recipient role, date and exception notes. | Supports audit. |
-| schoolsupplykitops.delivery.delivery_route | delivery route | PROCESS | Route delivers to shelters, temporary housing, schools or homebound families when pickup is impossible. | Reaches barriers. |
-| schoolsupplykitops.delivery.failed_delivery | failed delivery | STATE | Failed delivery logs no contact, moved household, school mismatch, unsafe access or returned kit. | Triggers follow-up. |
-| schoolsupplykitops.delivery.accessible_handoff | accessible handoff | PROCESS | Handoff supports mobility barriers, caregiver limits, sensory needs and safe contact instructions. | Includes vulnerable families. |
-| schoolsupplykitops.communication.family_notice | family notice | PROCESS | Notice explains pickup time, kit contents, documents if any, delivery option and school contacts. | Reduces confusion. |
-| schoolsupplykitops.communication.school_update | school update | PROCESS | Update informs liaisons about kit availability, unmet grade bands, special requests and distribution counts. | Aligns partners. |
-| schoolsupplykitops.communication.referral_note | referral note | RECORD | Note routes uniforms, devices, transportation, meals, counseling or enrollment needs to proper support. | Extends help. |
-| schoolsupplykitops.records.case_file | case file | RECORD | File links intake, eligibility, kit band, pickup or delivery, proof and follow-up. | Supports audit. |
-| schoolsupplykitops.records.inventory_log | inventory log | RECORD | Log records donations, purchases, packing, transfers, issues, damage and remaining stock. | Controls supplies. |
-| schoolsupplykitops.records.exception_log | exception log | RECORD | Log captures stockout, duplicate request, wrong grade, failed pickup, privacy issue or damaged kit. | Enables review. |
-| schoolsupplykitops.records.consent_note | consent note | RECORD | Note records caregiver permission for pickup, delivery, school liaison coordination and follow-up. | Documents consent. |
-| schoolsupplykitops.accessibility.language_support | language support | PROCESS | Support provides translated notices, interpreters, bilingual staff or pictorial instructions. | Improves access. |
-| schoolsupplykitops.accessibility.stigma_control | stigma control | CONTROL | Control avoids visible labels or separate lines that identify disaster-affected students. | Protects dignity. |
-| schoolsupplykitops.accessibility.special_request | special request | PROCESS | Request handles adaptive supplies, sensory items, uniforms, assistive tech referral or extra materials. | Meets real needs. |
-| schoolsupplykitops.reporting.daily_summary | daily summary | RECORD | Summary reports kits issued, grade bands, sites, unmet demand, stockouts and referrals. | Briefs partners. |
-| schoolsupplykitops.reporting.donor_report | donor report | RECORD | Report summarizes aggregate distribution, needs and acknowledgments without exposing student data. | Supports funding. |
-| schoolsupplykitops.metrics.fill_rate | fill rate | METRIC | Rate compares eligible requests with complete kits issued. | Measures service. |
-| schoolsupplykitops.metrics.grade_stock_gap | grade stock gap | METRIC | Gap tracks shortages by grade band and item type. | Guides procurement. |
-| schoolsupplykitops.metrics.pickup_completion | pickup completion | METRIC | Completion compares scheduled pickups, completed pickups, no-shows and deliveries. | Improves operations. |
-| schoolsupplykitops.closeout.family_confirmation | family confirmation | PROCESS | Confirmation checks kit received, correct grade, missing items and remaining school barriers. | Closes loop. |
-| schoolsupplykitops.closeout.stock_reconciliation | stock reconciliation | PROCESS | Reconciliation compares purchased, donated, packed, issued, damaged and remaining supplies. | Finds errors. |
-| schoolsupplykitops.closeout.after_action | after-action note | RECORD | Note captures grade demand, access barriers, partner issues, privacy concerns and procurement lessons. | Improves next cycle. |
+| schoolsupplykitops.intake.request_source | источник запроса | RECORD | Источник указывает на связь со школой, отделом приюта, социальным работником, семейным центром, учителем, горячей линией или самообращением. | Показывает путь входа. |
+| schoolsupplykitops.intake.student_profile | профиль студента | RECORD | В профиле указаны классы, школа, язык, контакты с лицами, осуществляющими уход, статус перемещения и потребности в доступе. | Определяет потребность в комплекте. |
+| schoolsupplykitops.intake.household_count | подсчет домохозяйств | RECORD | Подсчет записывает количество учащихся, уровни классов и повторяющиеся запросы домохозяйств. | Предотвращает пробелы и дублирование. |
+| schoolsupplykitops.intake.urgency_score | оценка срочности | MODEL | Оценка учитывает дату начала школы, потерянные принадлежности, транспортные препятствия, особые потребности и наличие опекуна. | Отдает приоритет распространению. |
+| schoolsupplykitops.eligibility.recovery_link | ссылка для восстановления | CONTROL | Линк подтверждает, что расходные материалы необходимы в связи с перемещением, повреждением, потерей рюкзака или нарушением работы школы. | Целевая помощь. |
+| schoolsupplykitops.eligibility.school_confirmation | подтверждение школы | CONTROL | Подтверждение проверяет зачисление, временное зачисление, поддержку при перемещении в стиле Мак-Кинни или записку о связи со школой. | Подтверждает необходимость. |
+| schoolsupplykitops.eligibility.duplicate_check | дубликат чека | CONTROL | При проверке сравниваются учащийся, опекун, школа, класс, место получения и предыдущий выпуск комплекта. | Избегает двойной проблемы. |
+| schoolsupplykitops.grade.kit_band | комплект группы | MODEL | Группа разделяет потребности в поставках для начальной, старшей, средней, старшей школы и специальных программ. | Соответствует возрасту. |
+| schoolsupplykitops.grade.teacher_addon | аддон для учителей | RECORD | Аддон включает в себя калькуляторы, папки для переплета, художественные инструменты, лабораторные тетради или предметы для конкретных курсов. | Обрабатывает исключения. |
+| schoolsupplykitops.grade.accessibility_item | элемент доступности | RECORD | В предмете учитываются адаптивные ручки, блокноты с крупным шрифтом, наушники, визуальные подставки или сенсорные инструменты. | Поддерживает включение. |
+| schoolsupplykitops.grade.language_insert | языковая вставка | PROCESS | Вставка включает в себя многоязычные школьные контакты, основные сведения о расписании, помощь на автобусе и заметки о поддержке семьи. | Помогает воспитателям. |
+| schoolsupplykitops.inventory.item_master | мастер предметов | RECORD | Мастер перечисляет тетради, карандаши, ручки, папки, рюкзак, предметы гигиены, калькулятор и предметы для каждого класса. | Определяет запас. |
+| schoolsupplykitops.inventory.stock_count | инвентаризация | RECORD | Подсчитайте треки в наличии, зарезервированные, упакованные, выданные, поврежденные, просроченные или переданные в дар предметы. | Сохраняет контроль. |
+| schoolsupplykitops.inventory.substitution_rule | правило замены | CONTROL | Правило разрешает эквивалентные товары, если точная марка, размер или цвет недоступны. | Продолжает распространение. |
+| schoolsupplykitops.inventory.donation_sort | сортировка пожертвований | PROCESS | Сортировка позволяет отделить годные к употреблению, небезопасные, поврежденные, несоответствующие возрасту, дубликаты и излишки. | Защищает студентов. |
+| schoolsupplykitops.packing.pack_list | список пакетов | RECORD | Список определяет необходимые элементы по классам, дополнительным надстройкам и языковым вставкам. | Стандартизирует комплекты. |
+| schoolsupplykitops.packing.quality_check | проверка качества | PROCESS | При проверке проверяется полное содержимое, правильный ремешок, безопасные предметы, состояние рюкзака и этикетка. | Предотвращает появление плохих комплектов. |
+| schoolsupplykitops.packing.family_bundle | семейный пакет | PROCESS | В пакете группируются несколько комплектов для учащихся по лицам, осуществляющим уход, месту получения и необходимости доставки. | Ускоряет передачу обслуживания. |
+| schoolsupplykitops.packing.label_code | код этикетки | CONTROL | Кодекс использует нестигматизирующие идентификаторы и избегает публичного показа статуса перемещения. | Защищает достоинство. |
+| schoolsupplykitops.pickup.site_schedule | расписание сайта | RECORD | Расписание записывает школу, приют, общественный центр, мобильную остановку, часы работы и контакты с персоналом. | Организует самовывоз. |
+| schoolsupplykitops.pickup.identity_check | проверка личности | CONTROL | Проверка подтверждает, что опекун, студент, связное лицо или уполномоченный забрать без излишней документации. | Доступ к балансу. |
+| schoolsupplykitops.pickup.queue_plan | план очереди | PROCESS | План учитывает линии, тень, места для сидения, языковую поддержку, конфиденциальность и движение транспорта. | Улучшает опыт. |
+| schoolsupplykitops.pickup.handoff_proof | доказательство передачи | RECORD | В доказательстве записывается группа комплекта, количество, роль получателя, дата и примечания об исключениях. | Поддерживает аудит. |
+| schoolsupplykitops.delivery.delivery_route | маршрут доставки | PROCESS | Маршрут доставляет в приюты, временное жилье, школы или семьи, которые не могут забрать товар. | Достигает барьеров. |
+| schoolsupplykitops.delivery.failed_delivery | неудачная доставка | STATE | Неудачная доставка регистрирует отсутствие контакта, переезд семьи, несоответствие школы, небезопасный доступ или возврат комплекта. | Запускает дальнейшее наблюдение. |
+| schoolsupplykitops.delivery.accessible_handoff | доступная передача обслуживания | PROCESS | Handoff поддерживает барьеры мобильности, ограничения для лиц, осуществляющих уход, сенсорные потребности и инструкции по безопасному контакту. | Включает уязвимые семьи. |
+| schoolsupplykitops.communication.family_notice | семейное уведомление | PROCESS | В уведомлении указано время получения, содержимое комплекта, документы, если таковые имеются, способ доставки и контакты школы. | Уменьшает путаницу. |
+| schoolsupplykitops.communication.school_update | школьное обновление | PROCESS | Обновление информирует контактных лиц о наличии комплектов, неудовлетворенных классах, особых запросах и количестве раздач. | Выравнивает партнеров. |
+| schoolsupplykitops.communication.referral_note | направление | RECORD | Обратите внимание на то, что униформа, устройства, транспорт, питание, консультации или регистрация требуют надлежащей поддержки. | Расширяет помощь. |
+| schoolsupplykitops.records.case_file | материалы дела | RECORD | Прием файловых ссылок, право на участие, комплект поставки, получение или доставка, подтверждение и последующие действия. | Поддерживает аудит. |
+| schoolsupplykitops.records.inventory_log | журнал инвентаризации | RECORD | В журнале фиксируются пожертвования, покупки, упаковка, передача, проблемы, повреждения и остатки товаров. | Контролирует поставки. |
+| schoolsupplykitops.records.exception_log | журнал исключений | RECORD | В журнале регистрируются нехватка товара, дублирующийся запрос, неправильный сорт, неудачный прием, проблемы с конфиденциальностью или поврежденный комплект. | Включает обзор. |
+| schoolsupplykitops.records.consent_note | уведомление о согласии | RECORD | В записях фиксируются разрешения опекуна на завоз, роды, координацию взаимодействия со школой и последующее наблюдение. | Согласие документов. |
+| schoolsupplykitops.accessibility.language_support | языковая поддержка | PROCESS | Служба поддержки предоставляет переведенные уведомления, переводчиков, двуязычный персонал или графические инструкции. | Улучшает доступ. |
+| schoolsupplykitops.accessibility.stigma_control | контроль стигмы | CONTROL | Контроль избегает видимых надписей или отдельных строк, идентифицирующих учащихся, пострадавших от стихийного бедствия. | Защищает достоинство. |
+| schoolsupplykitops.accessibility.special_request | специальный запрос | PROCESS | Запрос касается адаптивных принадлежностей, сенсорных предметов, униформы, рекомендаций по вспомогательным технологиям или дополнительных материалов. | Отвечает реальным потребностям. |
+| schoolsupplykitops.reporting.daily_summary | ежедневная сводка | RECORD | Сводные отчеты о выпущенных комплектах, группах оценок, площадках, неудовлетворенном спросе, дефиците и рефералах. | Партнеры по трусам. |
+| schoolsupplykitops.reporting.donor_report | отчет донора | RECORD | В отчете обобщаются общие сведения о распределении, потребностях и благодарностях, не раскрывая данные об учащихся. | Поддерживает финансирование. |
+| schoolsupplykitops.metrics.fill_rate | скорость заполнения | METRIC | Ставка сравнивает соответствующие запросы с выданными полными комплектами. | Меры обслуживания. |
+| schoolsupplykitops.metrics.grade_stock_gap | разрыв в запасах сортов | METRIC | Gap отслеживает дефицит по классам и типам товаров. | Руководства по закупкам. |
+| schoolsupplykitops.metrics.pickup_completion | завершение вывоза | METRIC | Завершение сравнивает запланированные, завершенные, неявки и поставки. | Улучшает операции. |
+| schoolsupplykitops.closeout.family_confirmation | семейное подтверждение | PROCESS | В подтверждении проверяется полученный комплект, правильная оценка, недостающие предметы и оставшиеся школьные барьеры. | Замыкает цикл. |
+| schoolsupplykitops.closeout.stock_reconciliation | сверка запасов | PROCESS | При сверке сравниваются купленные, подаренные, упакованные, выданные, поврежденные и оставшиеся запасы. | Находит ошибки. |
+| schoolsupplykitops.closeout.after_action | записка после действия | RECORD | В заметке отражены требования к классам, барьеры доступа, проблемы с партнерами, проблемы конфиденциальности и уроки закупок. | Улучшается в следующем цикле. |

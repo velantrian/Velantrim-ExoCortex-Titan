@@ -1,8 +1,9 @@
 # 🌍 World Skills Core — English Folder
 
 **Language:** English  
-**Status:** prepared translation folder  
-**Canonical source for now:** Russian files in `../ru/`
+**Status:** архив английской версии (снимок до русификации, 2026-06-08)  
+**Canonical source:** Russian files in `../ru/`  
+**Files:** 1075 `.en.md` — зеркало батчей до перевода
 
 ---
 

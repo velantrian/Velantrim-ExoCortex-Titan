@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| petmedsupportops.intake.request_source | request source | RECORD | Source records pet shelter, owner hotline, veterinary clinic, caseworker, rescue group or outreach team. | Shows entry path. |
-| petmedsupportops.intake.owner_contact | owner contact | RECORD | Contact captures safe phone, current location, pickup option, language and alternate handler. | Enables coordination. |
-| petmedsupportops.intake.animal_profile | animal profile | RECORD | Profile records species, name, approximate age, size, identifying details and current shelter location. | Identifies animal. |
-| petmedsupportops.intake.medication_need | medication need | RECORD | Need describes lost medication, refill barrier, evacuation delay, storage issue or administration support. | Frames request. |
-| petmedsupportops.eligibility.crisis_link | crisis link | CONTROL | Link verifies the medication support need is caused by displacement, damage, pharmacy closure or access loss. | Targets aid. |
-| petmedsupportops.eligibility.owner_authority | owner authority | CONTROL | Authority confirms owner, foster, shelter manager or rescue representative can request support. | Prevents misuse. |
-| petmedsupportops.eligibility.duplicate_check | duplicate check | CONTROL | Check compares owner, animal, clinic, medication class and prior support records. | Avoids duplicate fills. |
-| petmedsupportops.vet.proof_source | veterinary proof source | RECORD | Source records prescription, vet confirmation, discharge paper, shelter medical note or medication label. | Establishes basis. |
-| petmedsupportops.vet.clinic_contact | clinic contact | PROCESS | Contact requests confirmation, refill approval or clinical guidance through authorized staff. | Solves blockers. |
-| petmedsupportops.vet.expiry_review | expiry review | CONTROL | Review flags expired prescriptions, unclear labels, species mismatch or missing dosage authority. | Protects safety. |
-| petmedsupportops.vet.escalation | vet escalation | PROCESS | Escalation sends urgent illness, adverse effects or unclear medication questions to a veterinarian. | Avoids unsafe decisions. |
-| petmedsupportops.species.species_match | species match | CONTROL | Match verifies medication is intended for the recorded species and animal. | Prevents cross-species errors. |
-| petmedsupportops.species.weight_class | weight class | RECORD | Class records weight range when relevant for veterinary confirmation and supply selection. | Supports accuracy. |
-| petmedsupportops.species.contra_flag | contraindication flag | STATE | Flag marks known allergy, pregnancy, age risk, concurrent medication or condition requiring vet review. | Prevents harm. |
-| petmedsupportops.pharmacy.vendor_roster | pharmacy roster | RECORD | Roster lists veterinary pharmacies, clinics, compounding options, open hours and emergency contacts. | Guides sourcing. |
-| petmedsupportops.pharmacy.stock_check | stock check | PROCESS | Check confirms medication availability, substitute policy, pickup time, price and storage need. | Sets expectations. |
-| petmedsupportops.pharmacy.release_log | release log | RECORD | Log captures release person, package count, time, storage note and exception. | Creates custody trail. |
-| petmedsupportops.pharmacy.compound_order | compound order | RECORD | Order records compound request, vet approval, expected turnaround and pickup or shipping method. | Handles special meds. |
-| petmedsupportops.storage.temperature_need | temperature need | RECORD | Need marks refrigeration, no-freeze, light protection, dry storage or short stability window. | Protects quality. |
-| petmedsupportops.storage.packout | packout process | PROCESS | Packout selects cooler, label, separation, temperature indicator and route limit when needed. | Maintains handling. |
-| petmedsupportops.storage.expiry_check | expiry check | CONTROL | Check reviews expiration, beyond-use date and damaged packaging before release. | Prevents bad supply. |
-| petmedsupportops.delivery.pickup_plan | pickup plan | PROCESS | Plan sets owner pickup, shelter desk pickup, clinic pickup, courier or rescue transport. | Moves medication. |
-| petmedsupportops.delivery.identity_match | identity match | CONTROL | Match confirms owner or authorized handler using approved details and animal record. | Prevents wrong handoff. |
-| petmedsupportops.delivery.handoff_proof | handoff proof | RECORD | Proof records recipient, animal, package count, time and signature or alternate confirmation. | Closes custody. |
-| petmedsupportops.delivery.failed_handoff | failed handoff | STATE | Failed handoff logs no contact, moved animal, owner unavailable, unsafe site or returned package. | Triggers next action. |
-| petmedsupportops.cost.funding_source | funding source | RECORD | Source records donation, grant, clinic discount, rescue fund, owner copay or emergency voucher. | Tracks resources. |
-| petmedsupportops.cost.price_cap | price cap | CONTROL | Cap limits covered medication, exam, compounding, shipping and emergency fees. | Protects budget. |
-| petmedsupportops.cost.invoice_match | invoice match | CONTROL | Match compares approval, pharmacy invoice, release proof and payment request. | Prevents overpayment. |
-| petmedsupportops.cost.denial_reason | denial reason | RECORD | Reason records ineligible request, missing proof, clinical issue, duplicate support or cost limit. | Explains outcome. |
-| petmedsupportops.privacy.minimum_data | minimum data | CONTROL | Minimum data limits shared owner and animal details to service need. | Reduces exposure. |
-| petmedsupportops.privacy.shelter_board | shelter board privacy | CONTROL | Board privacy avoids public display of owner contact, medication details or sensitive case notes. | Protects clients. |
-| petmedsupportops.privacy.consent_note | consent note | RECORD | Note records permission to coordinate with clinic, pharmacy, shelter or rescue partner. | Supports lawful sharing. |
-| petmedsupportops.records.case_file | case file | RECORD | File links intake, proof, vet contact, sourcing, funding, handoff and closure. | Supports audit. |
-| petmedsupportops.records.status_board | status board | RECORD | Board tracks proof pending, vet contacted, ordered, ready, delivered, returned and closed. | Shows workflow. |
-| petmedsupportops.records.exception_log | exception log | RECORD | Log captures missing proof, stockout, clinical review, temperature issue, failed handoff and payment exception. | Enables review. |
-| petmedsupportops.communication.owner_update | owner update | PROCESS | Update explains proof needs, pickup window, cost support, delays and safe next step. | Reduces anxiety. |
-| petmedsupportops.communication.shelter_update | shelter update | PROCESS | Update informs authorized shelter staff about status, storage needs and pickup instructions. | Keeps animal care aligned. |
-| petmedsupportops.communication.referral_note | referral note | RECORD | Note routes animal illness, worsening symptoms or emergency needs to veterinary care. | Avoids admin-only response. |
-| petmedsupportops.metrics.fulfillment_rate | fulfillment rate | METRIC | Rate tracks approved requests that receive medication support. | Measures service. |
-| petmedsupportops.metrics.proof_delay | proof delay | METRIC | Delay measures time lost to missing veterinary proof or unreachable clinic. | Shows bottleneck. |
-| petmedsupportops.metrics.cost_per_case | cost per case | METRIC | Cost compares medication, compounding, shipping, discounts and subsidies. | Guides funding. |
-| petmedsupportops.closeout.owner_confirmation | owner confirmation | PROCESS | Confirmation verifies receipt, remaining barriers and whether veterinary follow-up is needed. | Closes loop. |
-| petmedsupportops.closeout.return_process | return process | PROCESS | Return process sends unclaimed or unusable medication to approved pharmacy, clinic or disposal pathway. | Protects custody. |
-| petmedsupportops.closeout.after_action | after-action note | RECORD | Note captures vendor gaps, proof delays, species risks and funding needs. | Improves next activation. |
+| petmedsupportops.intake.request_source | источник запроса | RECORD | Источник указывает приют для домашних животных, горячую линию владельца, ветеринарную клинику, социального работника, спасательную группу или аутрич-команду. | Показывает путь входа. |
+| petmedsupportops.intake.owner_contact | контакт владельца | RECORD | Контакт фиксирует безопасный телефон, текущее местоположение, вариант ответа, язык и альтернативного оператора связи. | Обеспечивает координацию. |
+| petmedsupportops.intake.animal_profile | профиль животного | RECORD | В профиле записан вид, имя, приблизительный возраст, размер, идентификационные данные и текущее местоположение убежища. | Определяет животное. |
+| petmedsupportops.intake.medication_need | потребность в лекарствах | RECORD | Потребность описывает потерю лекарства, барьер для пополнения, задержку эвакуации, проблемы с хранением или административной поддержкой. | Запрос кадров. |
+| petmedsupportops.eligibility.crisis_link | кризисная ссылка | CONTROL | Link подтверждает, что потребность в лекарственной поддержке вызвана перемещением, повреждением, закрытием аптеки или потерей доступа. | Целевая помощь. |
+| petmedsupportops.eligibility.owner_authority | полномочия владельца | CONTROL | Администрация подтверждает, что владелец, приемная семья, менеджер приюта или представитель службы спасения могут запросить поддержку. | Предотвращает неправильное использование. |
+| petmedsupportops.eligibility.duplicate_check | дубликат чека | CONTROL | При проверке сравниваются записи о владельце, животном, клинике, классе лекарства и предыдущей поддержке. | Избегает дублирования заливок. |
+| petmedsupportops.vet.proof_source | источник ветеринарного подтверждения | RECORD | В источниках указаны рецепт, подтверждение от ветеринара, выписной лист, медицинская справка из приюта или этикетка с лекарством. | Устанавливает основу. |
+| petmedsupportops.vet.clinic_contact | контакты клиники | PROCESS | Контакт запрашивает подтверждение, одобрение пополнения запаса или клиническое руководство через уполномоченного персонала. | Решает блокировщики. |
+| petmedsupportops.vet.expiry_review | проверка истечения срока действия | CONTROL | Проверьте наличие просроченных рецептов, нечеткие этикетки, несоответствие видов или отсутствие разрешений на дозировку. | Обеспечивает безопасность. |
+| petmedsupportops.vet.escalation | ветеринарная эскалация | PROCESS | При эскалации ветеринарному врачу направляются неотложные заболевания, побочные эффекты или неясные вопросы о лекарствах. | Избегает небезопасных решений. |
+| petmedsupportops.species.species_match | видовое совпадение | CONTROL | Сопоставление подтверждает, что лекарство предназначено для зарегистрированного вида и животного. | Предотвращает межвидовые ошибки. |
+| petmedsupportops.species.weight_class | весовая категория | RECORD | Класс записывает диапазон веса, когда это необходимо для ветеринарного подтверждения и выбора поставок. | Поддерживает точность. |
+| petmedsupportops.species.contra_flag | флаг противопоказания | STATE | Флаг отмечает известные аллергии, беременность, возрастной риск, одновременное лечение или состояние, требующее осмотра ветеринара. | Предотвращает вред. |
+| petmedsupportops.pharmacy.vendor_roster | реестр аптек | RECORD | В реестре перечислены ветеринарные аптеки, клиники, варианты приготовления рецептов, часы работы и контакты для экстренных случаев. | Поиск гидов. |
+| petmedsupportops.pharmacy.stock_check | проверка запасов | PROCESS | Проверка подтверждает наличие лекарства, политику замены, время получения, цену и необходимость хранения. | Устанавливает ожидания. |
+| petmedsupportops.pharmacy.release_log | журнал релизов | RECORD | В журнале фиксируются сведения о лице выпуска, количестве пакетов, времени, примечаниях к хранению и исключениях. | Создает след задержания. |
+| petmedsupportops.pharmacy.compound_order | сложный ордер | RECORD | В заказе регистрируется сложный запрос, одобрение ветеринара, ожидаемый оборот и способ получения или доставки. | Работает со специальными лекарствами. |
+| petmedsupportops.storage.temperature_need | потребность в температуре | RECORD | Потребность в охлаждении, незамерзании, светозащите, сухом хранении или коротком окне стабильности. | Защищает качество. |
+| petmedsupportops.storage.packout | процесс упаковки | PROCESS | Packout выбирает охладитель, этикетку, разделение, индикатор температуры и ограничение маршрута, когда это необходимо. | Сохраняет управляемость. |
+| petmedsupportops.storage.expiry_check | чек на срок действия | CONTROL | Перед выпуском проверьте срок годности отзывов, дату прекращения использования и наличие поврежденной упаковки. | Предотвращает плохое снабжение. |
+| petmedsupportops.delivery.pickup_plan | план пикапа | PROCESS | Плановые наборы: пикап от владельца, пикап из приюта, пикап из клиники, курьер или спасательный транспорт. | Перемещает лекарства. |
+| petmedsupportops.delivery.identity_match | совпадение личности | CONTROL | Совпадение подтверждает владельца или уполномоченного хендлера с использованием утвержденных данных и записей о животных. | Предотвращает неправильную передачу обслуживания. |
+| petmedsupportops.delivery.handoff_proof | доказательство передачи | RECORD | В доказательстве указывается получатель, животное, количество посылок, время и подпись или альтернативное подтверждение. | Закрывает опеку. |
+| petmedsupportops.delivery.failed_handoff | неудачная передача обслуживания | STATE | Неудачная передача регистрирует отсутствие контакта, перемещение животного, отсутствие владельца, небезопасное место или возвращенную посылку. | Запускает следующее действие. |
+| petmedsupportops.cost.funding_source | источник финансирования | RECORD | В источниках указаны пожертвования, гранты, скидки клиники, фонд спасения, доплата владельцу или ваучер на экстренную помощь. | Отслеживает ресурсы. |
+| petmedsupportops.cost.price_cap | ценовой предел | CONTROL | Максимальные лимиты охватывают расходы на лекарства, экзамены, рецептуры, доставку и неотложную помощь. | Защищает бюджет. |
+| petmedsupportops.cost.invoice_match | совпадение счетов | CONTROL | Сопоставление сравнивает одобрение, счет из аптеки, подтверждение выпуска и запрос на оплату. | Предотвращает переплату. |
+| petmedsupportops.cost.denial_reason | причина отказа | RECORD | Причина фиксирует неправомочный запрос, отсутствие доказательств, клиническую проблему, дублирующую поддержку или ограничение стоимости. | Объясняет результат. |
+| petmedsupportops.privacy.minimum_data | минимальные данные | CONTROL | Минимальный объем данных ограничивает общую информацию о владельце и животном потребностями в обслуживании. | Уменьшает воздействие. |
+| petmedsupportops.privacy.shelter_board | конфиденциальность приюта | CONTROL | Конфиденциальность совета директоров позволяет избежать публичного показа контактов владельца, подробностей о лекарствах или конфиденциальных записей о случаях заболевания. | Защищает клиентов. |
+| petmedsupportops.privacy.consent_note | уведомление о согласии | RECORD | Обратите внимание на разрешение на координацию действий с клиникой, аптекой, приютом или спасательным партнером. | Поддерживает законное разделение. |
+| petmedsupportops.records.case_file | материалы дела | RECORD | Прием файловых ссылок, подтверждение, контакты с ветеринаром, поиск источников, финансирование, передача и закрытие. | Поддерживает аудит. |
+| petmedsupportops.records.status_board | статусная доска | RECORD | Доска ожидает подтверждения следов, с ветеринаром связались, заказали, готово, доставлено, возвращено и закрыто. | Показывает рабочий процесс. |
+| petmedsupportops.records.exception_log | журнал исключений | RECORD | В журнале фиксируются отсутствующие доказательства, дефицит, клинические проверки, проблемы с температурой, неудачная передача и исключение оплаты. | Включает обзор. |
+| petmedsupportops.communication.owner_update | обновление владельца | PROCESS | Обновление объясняет необходимость подтверждения, окно получения, поддержку затрат, задержки и безопасный следующий шаг. | Уменьшает тревожность. |
+| petmedsupportops.communication.shelter_update | обновление приюта | PROCESS | Обновление информирует уполномоченный персонал приюта о статусе, потребностях в хранении и инструкциях по вывозу. | Соблюдает порядок ухода за животными. |
+| petmedsupportops.communication.referral_note | направление | RECORD | Обратите внимание на пути заболевания животных, ухудшение симптомов или необходимость неотложной ветеринарной помощи. | Избегает ответа только администратора. |
+| petmedsupportops.metrics.fulfillment_rate | скорость выполнения | METRIC | Оценка отслеживает одобренные запросы, которые получают поддержку лекарствами. | Меры обслуживания. |
+| petmedsupportops.metrics.proof_delay | задержка доказательства | METRIC | Задержка измеряет время, потерянное из-за отсутствия ветеринарного подтверждения или недоступности клиники. | Показывает узкое место. |
+| petmedsupportops.metrics.cost_per_case | стоимость за случай | METRIC | В стоимости сравниваются лекарства, рецептура, доставка, скидки и субсидии. | Направляет финансирование. |
+| petmedsupportops.closeout.owner_confirmation | подтверждение владельца | PROCESS | Подтверждение подтверждает получение, оставшиеся барьеры и необходимость ветеринарного наблюдения. | Замыкает цикл. |
+| petmedsupportops.closeout.return_process | процесс возврата | PROCESS | В процессе возврата невостребованные или непригодные для использования лекарства отправляются в утвержденную аптеку, клинику или в пункт утилизации. | Защищает опеку. |
+| petmedsupportops.closeout.after_action | записка после действия | RECORD | В примечании отражены пробелы в поставщиках, задержки с доказательствами, видовые риски и потребности в финансировании. | Улучшает следующую активацию. |

@@ -16,8 +16,10 @@ Go/No-Go критерии по F1:
 """
 from __future__ import annotations
 
-import re
+import logging
 from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
 
 # ── Rule-based словари ─────────────────────────────────────────────────────────
 
@@ -146,13 +148,7 @@ class AffordanceLinker:
         Args:
             use_morphology: использовать pymorphy2 если доступен.
         """
-        self._morph = None
-        if use_morphology:
-            try:
-                import pymorphy2
-                self._morph = pymorphy2.MorphAnalyzer()
-            except ImportError:
-                pass  # pymorphy2 не установлен — работаем без лемматизации
+        self._use_morphology = use_morphology and _morph_available()
 
     def extract(self, fact_id: str, text: str) -> AffordanceResult:
         """
@@ -168,7 +164,12 @@ class AffordanceLinker:
         if not text:
             return AffordanceResult(fact_id=fact_id)
 
-        tokens = self._tokenize(text)
+        # FIX (v8.7 audit): используем единый токенизатор из utils/text_utils.py
+        # вместо дублированной реализации. Лемматизация — через общий MorphAnalyzer.
+        from utils.text_utils import tokenize, tokenize_lemmatized
+
+        token_func = tokenize_lemmatized if self._use_morphology else tokenize
+        tokens = token_func(text)
         token_set = set(tokens)
 
         affordances: list[str] = []
@@ -178,8 +179,11 @@ class AffordanceLinker:
         # Ищем affordances
         for canonical, keywords in AFFORDANCE_KEYWORDS.items():
             for kw in keywords:
-                kw_lemma = self._lemmatize(kw)
-                if any(kw_lemma == t or kw == t for t in token_set):
+                # FIX (v8.7 audit): токенизируем kw единообразно через utils.text_utils,
+                # а не через отдельный _lemmatize(). Токены в token_set уже лемматизированы
+                # если включена морфология — достаточно проверить вхождение любого токена kw.
+                kw_tokens = token_func(kw)
+                if any(kt in token_set for kt in kw_tokens):
                     if canonical not in affordances:
                         affordances.append(canonical)
                     break
@@ -187,8 +191,8 @@ class AffordanceLinker:
         # Ищем products
         for canonical, keywords in PRODUCT_KEYWORDS.items():
             for kw in keywords:
-                kw_lemma = self._lemmatize(kw)
-                if any(kw_lemma == t or kw == t for t in token_set):
+                kw_tokens = token_func(kw)
+                if any(kt in token_set for kt in kw_tokens):
                     if canonical not in products:
                         products.append(canonical)
                     break
@@ -196,8 +200,8 @@ class AffordanceLinker:
         # Ищем agents
         for canonical, keywords in AGENT_KEYWORDS.items():
             for kw in keywords:
-                kw_lemma = self._lemmatize(kw)
-                if any(kw_lemma == t or kw == t for t in token_set):
+                kw_tokens = token_func(kw)
+                if any(kt in token_set for kt in kw_tokens):
                     if canonical not in agents:
                         agents.append(canonical)
                     break
@@ -280,19 +284,29 @@ class AffordanceLinker:
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
-    def _tokenize(self, text: str) -> list[str]:
-        """Токенизация + нижний регистр."""
-        tokens = re.findall(r'\b[а-яёa-z]{2,}\b', text.lower())
-        return [self._lemmatize(t) for t in tokens]
+    @staticmethod
+    def _lemmatize_keywords(keywords: dict[str, list[str]]) -> dict[str, list[str]]:
+        """Предлемматизировать ключевые слова (вызывается один раз при инициализации)."""
+        result = {}
+        for canonical, words in keywords.items():
+            lemmatized = []
+            for w in words:
+                try:
+                    from utils.text_utils import tokenize_lemmatized
+                    lemmatized.extend(tokenize_lemmatized(w))
+                except Exception:
+                    lemmatized.append(w.lower())
+            result[canonical] = lemmatized
+        return result
 
-    def _lemmatize(self, word: str) -> str:
-        """Лемматизация через pymorphy2 (если доступен)."""
-        if self._morph:
-            try:
-                return self._morph.parse(word)[0].normal_form
-            except Exception:
-                pass
-        return word.lower()
+
+def _morph_available() -> bool:
+    """Проверка доступности pymorphy2 через единый модуль."""
+    try:
+        from utils.text_utils import is_morphology_available
+        return is_morphology_available()
+    except ImportError:
+        return False
 
 
 # ── Store integration ──────────────────────────────────────────────────────────
@@ -312,43 +326,38 @@ def index_fact_affordances(
         (fact_id,),
     )
 
+    # F-02: раньше каждая ошибка INSERT молча проглатывалась (except: pass), а commit()
+    # всё равно выполнялся → частично заполненный индекс рапортовал об успехе. Поведение
+    # сохранено (INSERT OR IGNORE + commit), но сбои теперь считаются и логируются.
+    failed = 0
+    last_err: Exception | None = None
+
+    def _insert(token: str, field_name: str) -> None:
+        nonlocal failed, last_err
+        try:
+            db_conn.execute(
+                "INSERT OR IGNORE INTO fact_affordance_tokens "
+                "(fact_id, token, field) VALUES (?, ?, ?)",
+                (fact_id, token, field_name),
+            )
+        except Exception as exc:  # noqa: BLE001
+            failed += 1
+            last_err = exc
+
     for affordance in result.affordances:
         for token in affordance.lower().split():
-            try:
-                db_conn.execute(
-                    """
-                    INSERT OR IGNORE INTO fact_affordance_tokens
-                    (fact_id, token, field) VALUES (?, ?, 'affordance')
-                    """,
-                    (fact_id, token),
-                )
-            except Exception:
-                pass
-
+            _insert(token, "affordance")
     for product in result.products:
         for token in product.lower().split():
-            try:
-                db_conn.execute(
-                    """
-                    INSERT OR IGNORE INTO fact_affordance_tokens
-                    (fact_id, token, field) VALUES (?, ?, 'product')
-                    """,
-                    (fact_id, token),
-                )
-            except Exception:
-                pass
-
+            _insert(token, "product")
     for agent in result.agents:
         for token in agent.lower().split():
-            try:
-                db_conn.execute(
-                    """
-                    INSERT OR IGNORE INTO fact_affordance_tokens
-                    (fact_id, token, field) VALUES (?, ?, 'agent')
-                    """,
-                    (fact_id, token),
-                )
-            except Exception:
-                pass
+            _insert(token, "agent")
 
     db_conn.commit()
+    if failed:
+        logger.warning(
+            "index_fact_affordances(%s): %d token insert(s) failed (last: %r); "
+            "affordance index may be incomplete",
+            fact_id, failed, last_err,
+        )

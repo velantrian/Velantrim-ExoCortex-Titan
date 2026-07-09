@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| shoulderops.inventory.shoulder_segment | Road shoulder segment record | invariant | Record stores shoulder type, width, surface, slope, route, side and maintenance history. | manage asset |
-| shoulderops.inventory.paved_shoulder | Paved shoulder record | invariant | Record captures asphalt or concrete shoulder condition, width, edge line and drainage features. | maintain pavement |
-| shoulderops.inventory.gravel_shoulder | Gravel shoulder record | variant | Record captures aggregate type, depth, grading condition, edge drop and replenishment history. | maintain gravel |
-| shoulderops.inventory.safety_priority | Shoulder safety priority | variant | Priority ranks shoulders near curves, hills, bike routes, narrow lanes, schools or crash sites. | choose work |
-| shoulderops.inspection.routine_shoulder_patrol | Routine shoulder patrol | invariant | Patrol checks drop-offs, ruts, erosion, vegetation, debris, drainage, signs and edge condition. | find defects |
-| shoulderops.inspection.post_storm_shoulder_check | Post-storm shoulder check | variant | Check looks for washouts, sediment, blocked ditches, fallen limbs and soft shoulders. | restore road |
-| shoulderops.inspection.complaint_inspection | Shoulder complaint inspection | invariant | Inspection responds to reports of drop-off, rutting, ponding, debris or unsafe edge. | verify complaint |
-| shoulderops.defect.edge_dropoff | Road shoulder edge drop-off | invariant | Drop-off is vertical difference between travel lane and shoulder that can affect vehicle control. | repair hazard |
-| shoulderops.defect.shoulder_rutting | Shoulder rutting | invariant | Rutting forms wheel depressions from traffic, soft material, drainage failure or repeated parking. | restore profile |
-| shoulderops.defect.shoulder_erosion | Shoulder erosion | invariant | Erosion removes shoulder material through runoff, ditch flow, wave action or slope failure. | protect edge |
-| shoulderops.defect.soft_shoulder | Soft shoulder condition | variant | Condition means shoulder cannot support vehicle due to saturation, weak base or loose material. | warn drivers |
-| shoulderops.defect.vegetation_encroachment | Shoulder vegetation encroachment | variant | Encroachment narrows shoulder, hides signs, blocks drainage or reduces sight distance. | clear edge |
-| shoulderops.grading.shoulder_blading | Shoulder blading | invariant | Blading reshapes unpaved shoulder to remove ruts, restore slope and move material. | improve drainage |
-| shoulderops.grading.cross_slope | Shoulder cross slope | invariant | Slope carries water away from pavement toward ditch or roadside drainage. | prevent ponding |
-| shoulderops.grading.material_pullup | Shoulder material pull-up | variant | Pull-up recovers displaced aggregate from edge or ditch line back onto shoulder. | conserve material |
-| shoulderops.grading.washboarding_control | Gravel shoulder washboarding control | variant | Control grades corrugations from traffic, braking, speed or loose aggregate. | smooth surface |
-| shoulderops.materials.aggregate_replenishment | Shoulder aggregate replenishment | invariant | Replenishment adds gravel or crushed stone where shoulder material is lost or thin. | restore support |
-| shoulderops.materials.shoulder_stabilization | Shoulder stabilization | variant | Stabilization uses aggregate, geotextile, binder or drainage improvement to resist rutting. | strengthen shoulder |
-| shoulderops.materials.recycled_asphalt_shoulder | Recycled asphalt shoulder | variant | Recycled asphalt can improve shoulder stability and dust control where allowed. | reuse material |
-| shoulderops.drainage.shoulder_ponding | Shoulder ponding | invariant | Ponding indicates poor slope, blocked ditch, settlement, rutting or inlet problem. | fix drainage |
-| shoulderops.drainage.ditch_relation | Shoulder ditch relation | invariant | Shoulder performance depends on ditch capacity, flow line, vegetation and outlet condition. | coordinate drainage |
-| shoulderops.drainage.washout_repair | Shoulder washout repair | invariant | Repair replaces lost material, restores slope, controls runoff and checks culvert or ditch. | prevent recurrence |
-| shoulderops.edge.pavement_edge_support | Pavement edge support | invariant | Shoulder supports pavement edge and reduces cracking, breakoff or edge raveling. | protect road |
-| shoulderops.edge.edge_line_visibility | Shoulder edge line visibility | variant | Visibility helps drivers identify pavement edge, especially at night or in wet conditions. | improve guidance |
-| shoulderops.edge.edge_patch | Road edge patch | variant | Patch repairs broken pavement edge before shoulder work or resurfacing. | restore transition |
-| shoulderops.workorders.dropoff_repair_order | Shoulder drop-off repair order | invariant | Order specifies location, severity, material, traffic control, grading and completion evidence. | correct hazard |
-| shoulderops.workorders.grading_order | Shoulder grading work order | invariant | Order assigns route, equipment, material, ditch care, safety controls and priority. | schedule crew |
-| shoulderops.workorders.debris_removal_order | Shoulder debris removal order | variant | Order removes tire pieces, cargo, rocks, litter, crash debris or dumped material. | clear recovery area |
-| shoulderops.safety.traffic_control | Shoulder work traffic control | invariant | Control protects maintenance crews with signs, cones, shadow vehicles and lane encroachment limits. | worker safety |
-| shoulderops.safety.recovery_area | Roadside recovery area | invariant | Shoulder provides space for stopped vehicles, emergency maneuvers, breakdowns and enforcement. | road safety |
-| shoulderops.safety.bicycle_shoulder_use | Bicycle shoulder use | variant | Shoulder condition affects cyclists where shoulder functions as bike accommodation. | protect cyclists |
-| shoulderops.safety.mailbox_fixed_object | Shoulder fixed-object concern | variant | Concern includes mailbox, post, guardrail end, sign or utility near shoulder edge. | reduce hazards |
-| shoulderops.signage.soft_shoulder_sign | Soft shoulder warning sign | variant | Sign warns drivers where shoulder cannot safely support stopping, recovery or heavy vehicles. | communicate hazard |
-| shoulderops.complaints.edge_drop_complaint | Shoulder edge-drop complaint | invariant | Complaint reports unsafe pavement edge, vehicle pull, bike hazard or tire damage. | respond quickly |
-| shoulderops.complaints.dust_complaint | Gravel shoulder dust complaint | variant | Complaint identifies dust from traffic, dry material, grading or roadside activity. | manage nuisance |
-| shoulderops.complaints.debris_complaint | Shoulder debris complaint | variant | Complaint reports objects, trash, glass, dead animals, fallen limbs or spill material. | dispatch cleanup |
-| shoulderops.reporting.shoulder_condition_report | Shoulder condition report | invariant | Report summarizes defects, drop-offs, rutting, erosion, complaints and completed work. | manage network |
-| shoulderops.reporting.material_usage_report | Shoulder material usage report | variant | Report tracks aggregate, asphalt, stabilizer, labor, equipment and route quantities. | control cost |
-| shoulderops.metrics.dropoff_response_time | Shoulder drop-off response time KPI | invariant | KPI measures time from hazard report to make-safe or repair. | improve safety |
-| shoulderops.metrics.gravel_loss_rate | Shoulder gravel loss rate KPI | variant | KPI estimates aggregate loss by route, storm, traffic, slope and maintenance cycle. | plan material |
-| shoulderops.coordination.paving_program_link | Shoulder paving program link | variant | Link coordinates shoulder rebuilding with resurfacing, edge line, drainage and guardrail work. | avoid rework |
-| shoulderops.coordination.vegetation_program_link | Shoulder vegetation coordination | variant | Coordination aligns mowing, brush cutting and shoulder grading to maintain clear zone. | improve access |
-| shoulderops.continuity.emergency_shoulder_repair | Emergency shoulder repair | variant | Repair responds to washout, crash damage, sinkhole, flood erosion or severe drop-off. | restore safety |
-| shoulderops.close.work_closeout | Road shoulder work closeout | invariant | Closeout confirms defect corrected, materials recorded, photos stored and complaint resolved. | finish work |
+| shoulderops.inventory.shoulder_segment | Рекорд на участке обочины | invariant | Запись хранит тип обочины, ширину, поверхность, уклон, маршрут, сторону и историю обслуживания. | управлять активом |
+| shoulderops.inventory.paved_shoulder | Рекорд на плечах с твердым покрытием | invariant | Запись фиксирует состояние асфальтовой или бетонной обочины, ширину, линию края и особенности дренажа. | поддерживать тротуар |
+| shoulderops.inventory.gravel_shoulder | Рекорд гравийного плеча | variant | Запись фиксирует тип заполнителя, глубину, состояние планировки, падение кромки и историю пополнения. | поддерживать гравий |
+| shoulderops.inventory.safety_priority | Приоритет безопасности плеч | variant | Приоритет отдается обочинам вблизи поворотов, холмов, велосипедных маршрутов, узких переулков, школ или мест аварий. | выбрать работу |
+| shoulderops.inspection.routine_shoulder_patrol | Обычный плечевой патруль | invariant | Патруль проверяет обрывы, колеи, эрозию, растительность, мусор, дренаж, знаки и состояние краев. | найти дефекты |
+| shoulderops.inspection.post_storm_shoulder_check | Проверка плеч после урагана | variant | Проверьте, нет ли размывов, отложений, засоренных канав, упавших конечностей и мягких плеч. | восстановить дорогу |
+| shoulderops.inspection.complaint_inspection | Осмотр жалоб на плечо | invariant | Инспекция реагирует на сообщения об обвале, колейности, затоплении, обломках или небезопасных краях. | проверить жалобу |
+| shoulderops.defect.edge_dropoff | Спад края обочины дороги | invariant | Сброс – это разница по вертикали между полосой движения и обочиной, которая может повлиять на управление транспортным средством. | опасность ремонта |
+| shoulderops.defect.shoulder_rutting | Колея в плечах | invariant | Колея образует впадины на колесах из-за движения транспорта, мягкого материала, отсутствия дренажа или частой парковки. | восстановить профиль |
+| shoulderops.defect.shoulder_erosion | Эрозия плеча | invariant | Эрозия удаляет материал обочин в результате стока, потока канав, воздействия волн или обрушения склона. | защитить край |
+| shoulderops.defect.soft_shoulder | Состояние мягкого плеча | variant | Состояние означает, что плечо не может поддерживать автомобиль из-за насыщения, слабого основания или рыхлого материала. | предупреждать водителей |
+| shoulderops.defect.vegetation_encroachment | Посягательство растительности на плечах | variant | Вторжение сужает обочину, скрывает знаки, блокирует дренаж или уменьшает расстояние обзора. | чистый край |
+| shoulderops.grading.shoulder_blading | лопатки | invariant | Отвал меняет форму грунтовой обочины, устраняя колеи, восстанавливая уклон и перемещая материал. | улучшить дренаж |
+| shoulderops.grading.cross_slope | Поперечный наклон плеча | invariant | Наклон отводит воду от тротуара к канаве или придорожному дренажу. | предотвратить размышления |
+| shoulderops.grading.material_pullup | Подтягивание материала плеч | variant | Подтягивание возвращает смещенный заполнитель с края или линии канавы обратно на обочину. | экономить материал |
+| shoulderops.grading.washboarding_control | Контроль стиральной доски на гравийной обочине | variant | Система контроля сортирует гофры в зависимости от движения транспорта, торможения, скорости или рыхлого заполнителя. | гладкая поверхность |
+| shoulderops.materials.aggregate_replenishment | Пополнение плечевого агрегата | invariant | Пополнение добавляет гравий или щебень там, где материал уступов потерян или истончен. | восстановить поддержку |
+| shoulderops.materials.shoulder_stabilization | Стабилизация плеч | variant | Для стабилизации используются заполнители, геотекстиль, связующее или дренажные улучшения для предотвращения образования колеи. | укрепить плечо |
+| shoulderops.materials.recycled_asphalt_shoulder | Обочина из переработанного асфальта | variant | Переработанный асфальт может улучшить устойчивость обочин и снизить уровень пыли там, где это разрешено. | повторно использовать материал |
+| shoulderops.drainage.shoulder_ponding | Плечо размышляет | invariant | Затопление указывает на плохой уклон, заблокированную канаву, осадку, колею или проблему с водозабором. | исправить дренаж |
+| shoulderops.drainage.ditch_relation | Отношение плечевой канавы | invariant | Производительность плеча зависит от емкости канавы, линии потока, растительности и состояния водоотвода. | координировать дренаж |
+| shoulderops.drainage.washout_repair | Ремонт вымывания плеча | invariant | При ремонте заменяется потерянный материал, восстанавливается уклон, контролируется сток и проверяется водопропускная труба или канава. | предотвратить повторение |
+| shoulderops.edge.pavement_edge_support | Поддержка края тротуара | invariant | Плечо поддерживает край дорожного покрытия и предотвращает образование трещин, отломов или расползание края. | защитить дорогу |
+| shoulderops.edge.edge_line_visibility | Видимость линии края плеча | variant | Обзорность помогает водителям распознавать край тротуара, особенно ночью или во влажную погоду. | улучшить наведение |
+| shoulderops.edge.edge_patch | Заплатка на краю дороги | variant | Заплатка ремонтирует сломанный край тротуара перед работой по обочине или заменой покрытия. | восстановить переход |
+| shoulderops.workorders.dropoff_repair_order | Порядок ремонта плечевого пояса | invariant | В приказе указываются местоположение, тяжесть, материал, контроль движения, классификация и доказательства завершения. | исправить опасность |
+| shoulderops.workorders.grading_order | Порядок работы по оценке плеч | invariant | Приказ определяет маршрут, оборудование, материалы, уход за канавами, меры безопасности и приоритеты. | расписание бригады |
+| shoulderops.workorders.debris_removal_order | Порядок удаления мусора с плеча | variant | При заказе удаляются куски шин, груз, камни, мусор, обломки после аварии или выброшенный материал. | очистить зону восстановления |
+| shoulderops.safety.traffic_control | Контроль движения плечевой работы | invariant | Контроль защищает обслуживающий персонал с помощью знаков, конусов, теневых транспортных средств и ограничений на выезд за пределы полосы движения. | безопасность работников |
+| shoulderops.safety.recovery_area | Придорожная зона восстановления | invariant | Плечо обеспечивает пространство для остановившихся транспортных средств, экстренных маневров, поломок и правоприменения. | безопасность дорожного движения |
+| shoulderops.safety.bicycle_shoulder_use | Использование велосипедного плеча | variant | Состояние плеч влияет на велосипедистов, поскольку плечо выполняет функцию приспособления для велосипеда. | защитить велосипедистов |
+| shoulderops.safety.mailbox_fixed_object | Проблема фиксированного объекта в плече | variant | Речь идет о почтовом ящике, почте, конце ограждения, знаке или инженерном сооружении возле края обочины. | уменьшить опасности |
+| shoulderops.signage.soft_shoulder_sign | Мягкий предупреждающий знак на плече | variant | Знак предупреждает водителей, что плечо не может безопасно поддерживать остановку, подъем или тяжелые транспортные средства. | сообщить об опасности |
+| shoulderops.complaints.edge_drop_complaint | Жалобы на опущение края плеча | invariant | В жалобе сообщается о небезопасном движении по краю тротуара, тяге автомобиля, опасности для велосипеда или повреждении шин. | реагировать быстро |
+| shoulderops.complaints.dust_complaint | Жалоба на пыль на гравийном обочине | variant | Жалоба указывает на наличие пыли от транспорта, сухого материала, профилирования или придорожной деятельности. | справляться с неприятностями |
+| shoulderops.complaints.debris_complaint | Жалоба на мусор в плече | variant | В жалобе сообщается о предметах, мусоре, стекле, мертвых животных, упавших конечностях или разлитом материале. | диспетчерская очистка |
+| shoulderops.reporting.shoulder_condition_report | Отчет о состоянии плеча | invariant | В отчете суммируются дефекты, осадки, колеи, эрозии, рекламации и выполненные работы. | управлять сетью |
+| shoulderops.reporting.material_usage_report | Отчет об использовании материала плечевого пояса | variant | Отчет отслеживает количество агрегатов, асфальта, стабилизатора, рабочей силы, оборудования и маршрутов. | контролировать стоимость |
+| shoulderops.metrics.dropoff_response_time | KPI времени отклика на опускание плеча | invariant | KPI измеряет время от сообщения об опасности до обеспечения безопасности или ремонта. | повысить безопасность |
+| shoulderops.metrics.gravel_loss_rate | Коэффициент потерь гравия на плечах, KPI | variant | KPI оценивает совокупные потери в зависимости от маршрута, шторма, движения транспорта, уклона и цикла технического обслуживания. | план материала |
+| shoulderops.coordination.paving_program_link | Ссылка на программу укладки обочин | variant | Линк координирует восстановление обочины с заменой покрытия, линией края, дренажем и работами по ограждению. | избегать переделок |
+| shoulderops.coordination.vegetation_program_link | Координация растительности плеч | variant | Координация позволяет согласовывать скашивание, стрижку кустарника и выравнивание обочин для сохранения чистой зоны. | улучшить доступ |
+| shoulderops.continuity.emergency_shoulder_repair | Экстренный ремонт плеча | variant | Ремонт осуществляется в случае размыва, повреждения в результате аварии, провала, эрозии в результате наводнения или сильного падения. | восстановить безопасность |
+| shoulderops.close.work_closeout | Завершение работ на обочине дороги | invariant | Раскрытие подтверждает, что дефект исправлен, материалы записаны, фотографии сохранены, а жалоба решена. | закончить работу |

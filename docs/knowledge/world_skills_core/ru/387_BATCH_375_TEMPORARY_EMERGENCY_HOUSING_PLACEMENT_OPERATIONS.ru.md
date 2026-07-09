@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| temphousingops.intake.placement_id | placement ID | RECORD | Placement ID links household, disaster, referral, unit, dates and status. | Tracks temporary housing lifecycle. |
-| temphousingops.intake.household_profile | household profile | RECORD | Profile records members, pets, accessibility, location preference and contact. | Supports unit matching. |
-| temphousingops.intake.displacement_reason | displacement reason | RECORD | Reason distinguishes destroyed home, unsafe access, utility outage, evacuation or health order. | Clarifies eligibility. |
-| temphousingops.intake.priority | priority level | MODEL | Priority considers homelessness, disability, children, medical need and unsafe shelter stay. | Allocates scarce units. |
-| temphousingops.eligibility.disaster_link | disaster link | CONSTRAINT | Household must connect to eligible incident or program rule. | Keeps program in scope. |
-| temphousingops.eligibility.identity | identity verification | SAFETY_RULE | Applicant identity and household authority are checked before placement. | Prevents fraud and unsafe release. |
-| temphousingops.eligibility.duplication | duplication check | QUALITY_CHECK | Check compares shelter, hotel, rental aid, insurance and other assistance. | Avoids duplicate benefits. |
-| temphousingops.eligibility.income_rule | income or need rule | CONSTRAINT | Some programs require income, uninsured loss, or unmet need criteria. | Applies funding rules. |
-| temphousingops.unit.inventory | unit inventory | RECORD | Inventory lists hotels, rentals, trailers, dorms or host sites with availability. | Makes options visible. |
-| temphousingops.unit.accessibility | accessibility feature | RECORD | Features include ramps, roll-in shower, elevator, power, service animals and proximity. | Matches functional needs. |
-| temphousingops.unit.pet_policy | pet policy | CONSTRAINT | Unit pet rules affect placement and animal shelter coordination. | Prevents failed move-ins. |
-| temphousingops.unit.suitability | suitability check | QUALITY_CHECK | Unit is checked for safety, utilities, habitability and household fit. | Avoids unsafe placement. |
-| temphousingops.matching.match_rule | match rule | METHOD | Matching uses priority, household size, accessibility, pets, school/work and availability. | Places households fairly. |
-| temphousingops.matching.waitlist | waitlist | RECORD | Waitlist records priority, eligible date, preferences and contact attempts. | Manages scarcity. |
-| temphousingops.matching.offer | placement offer | METHOD | Offer states unit, rules, costs covered, move-in date and response deadline. | Lets household decide. |
-| temphousingops.matching.decline | decline record | RECORD | Decline records reason and whether household remains eligible. | Keeps queue accurate. |
-| temphousingops.inspection.preoccupancy | pre-occupancy inspection | QUALITY_CHECK | Inspection checks safety, sanitation, utilities, locks and damage. | Protects residents and program. |
-| temphousingops.inspection.photo | inspection photos | RECORD | Photos document condition before move-in. | Reduces damage disputes. |
-| temphousingops.inspection.defect | defect log | RECORD | Defects are logged, assigned and resolved before or during occupancy. | Maintains habitability. |
-| temphousingops.inspection.reinspection | reinspection | METHOD | Reinspection confirms repairs or recurring concerns. | Keeps units safe. |
-| temphousingops.agreement.occupancy | occupancy agreement | RECORD | Agreement states dates, rules, covered costs, responsibilities and termination. | Defines placement terms. |
-| temphousingops.agreement.lease | lease or contract | RECORD | Lease links owner, agency, unit, rent, deposits and service period. | Controls payments. |
-| temphousingops.agreement.rules | resident rules | CONSTRAINT | Rules cover guests, pets, damage, conduct, utilities and reporting changes. | Prevents misunderstandings. |
-| temphousingops.agreement.extension | extension process | METHOD | Extension checks continued need, unit availability, funding and compliance. | Manages temporary duration. |
-| temphousingops.case.support_plan | support plan | RECORD | Plan lists recovery tasks, documents, benefits, repairs and move-out target. | Moves household toward stability. |
-| temphousingops.case.checkin | resident check-in | METHOD | Check-ins monitor safety, needs, complaints, eligibility and next steps. | Prevents abandonment. |
-| temphousingops.case.referral | service referral | METHOD | Referrals connect to benefits, legal aid, repairs, health, transport or school support. | Addresses barriers. |
-| temphousingops.case.noncompliance | noncompliance response | METHOD | Issues are handled with notice, support, correction and escalation before termination. | Balances rules and recovery. |
-| temphousingops.payments.rent | rent payment | RECORD | Rent payment records amount, period, vendor, funding source and approval. | Controls public funds. |
-| temphousingops.payments.deposit | deposit handling | CONSTRAINT | Deposits and damages follow contract and funding rules. | Reduces finance disputes. |
-| temphousingops.payments.invoice_review | invoice review | QUALITY_CHECK | Invoices are checked against occupancy, rate, dates and contract. | Prevents overpayment. |
-| temphousingops.payments.exception | payment exception | RECORD | Exceptions capture late invoice, disputed charge, damage or duplicate claim. | Keeps issues visible. |
-| temphousingops.communication.movein | move-in instructions | METHOD | Instructions include address, time, keys, rules, contact and required items. | Supports smooth placement. |
-| temphousingops.communication.landlord | landlord communication | METHOD | Landlord receives approved household status, payment path and maintenance contact. | Aligns property owner. |
-| temphousingops.communication.language | language support | METHOD | Placement documents and calls use preferred language where possible. | Improves access. |
-| temphousingops.communication.notice | notice process | METHOD | Notices cover extension, termination, move-out, rule issues and program changes. | Protects due process. |
-| temphousingops.records.case_file | case file | RECORD | File stores eligibility, match, inspection, agreement, payments and communications. | Creates audit trail. |
-| temphousingops.records.privacy | privacy rule | SAFETY_RULE | Household location and personal data are protected by role and need. | Protects survivors. |
-| temphousingops.records.retention | retention rule | CONSTRAINT | Records follow disaster, housing, finance and privacy schedules. | Supports audits. |
-| temphousingops.metrics.occupancy | occupancy metric | MEASUREMENT | Occupancy tracks occupied, vacant, unavailable and ending units. | Shows housing capacity. |
-| temphousingops.metrics.length_stay | length of stay | MEASUREMENT | Length of stay measures placement duration by household and program. | Guides recovery planning. |
-| temphousingops.qa.case_audit | case audit | QUALITY_CHECK | Audit checks eligibility, inspections, payments, notices and closure. | Improves integrity. |
-| temphousingops.closeout.moveout | move-out closeout | METHOD | Move-out confirms destination, keys, condition, final payment and referrals. | Ends placement cleanly. |
-| temphousingops.review.lessons | lessons learned | METHOD | Review captures bottlenecks, unit gaps, equity and vendor issues. | Improves future housing response. |
+| temphousingops.intake.placement_id | идентификатор места размещения | RECORD | Идентификатор места размещения связывает домохозяйство, стихийное бедствие, направление, подразделение, даты и статус. | Отслеживает жизненный цикл временного жилья. |
+| temphousingops.intake.household_profile | профиль домохозяйства | RECORD | В профиле записываются участники, домашние животные, доступность, предпочтения местоположения и контакты. | Поддерживает сопоставление единиц измерения. |
+| temphousingops.intake.displacement_reason | причина перемещения | RECORD | Разум различает разрушенный дом, небезопасный доступ, отключение коммунальных услуг, эвакуацию или санитарный порядок. | Уточняет право на участие. |
+| temphousingops.intake.priority | уровень приоритета | MODEL | Приоритетными считаются бездомность, инвалидность, дети, медицинские потребности и небезопасное пребывание в приюте. | Выделяет дефицитные единицы. |
+| temphousingops.eligibility.disaster_link | ссылка на катастрофу | CONSTRAINT | Домохозяйство должно подключиться к соответствующему инциденту или правилу программы. | Сохраняет программу в объеме. |
+| temphousingops.eligibility.identity | проверка личности | SAFETY_RULE | Перед размещением проверяются личность заявителя и полномочия семьи. | Предотвращает мошенничество и небезопасный выпуск. |
+| temphousingops.eligibility.duplication | проверка дублирования | QUALITY_CHECK | Проверьте сравнение приюта, гостиницы, помощи в аренде, страховки и другой помощи. | Избегает дублирования преимуществ. |
+| temphousingops.eligibility.income_rule | Правило дохода или потребности | CONSTRAINT | Некоторые программы требуют критериев дохода, незастрахованных потерь или неудовлетворенных потребностей. | Применяет правила финансирования. |
+| temphousingops.unit.inventory | инвентарь единицы | RECORD | В инвентаре перечислены отели, пункты аренды, трейлеры, общежития или принимающие места с наличием мест. | Делает параметры видимыми. |
+| temphousingops.unit.accessibility | функция доступности | RECORD | В число удобств входят пандусы, безбарьерный душ, лифт, электричество, животные-поводыри и близость. | Соответствует функциональным потребностям. |
+| temphousingops.unit.pet_policy | политика в отношении домашних животных | CONSTRAINT | Правила содержания домашних животных влияют на их размещение и координацию приюта для животных. | Предотвращает неудачные заселения. |
+| temphousingops.unit.suitability | проверка пригодности | QUALITY_CHECK | Квартира проверяется на безопасность, коммунальные услуги, пригодность для проживания и пригодность для проживания. | Избегает небезопасного размещения. |
+| temphousingops.matching.match_rule | правило соответствия | METHOD | При сопоставлении используются приоритет, размер семьи, доступность, домашние животные, школа/работа и доступность. | Размещает домохозяйства справедливо. |
+| temphousingops.matching.waitlist | список ожидания | RECORD | В списке ожидания фиксируются приоритет, подходящая дата, предпочтения и попытки контакта. | Управляет дефицитом. |
+| temphousingops.matching.offer | предложение о размещении | METHOD | В предложении указывается единица измерения, правила, покрываемые расходы, дата въезда и срок ответа. | Пусть домочадцы решают. |
+| temphousingops.matching.decline | снижение записи | RECORD | Причина отклонения записи и вопрос о том, сохраняет ли семья право на получение пособия. | Очередь держит четко. |
+| temphousingops.inspection.preoccupancy | осмотр перед заселением | QUALITY_CHECK | Инспекция проверяет безопасность, санитарию, коммунальные услуги, замки и повреждения. | Защищает жителей и программу. |
+| temphousingops.inspection.photo | инспекционные фотографии | RECORD | Фотографии подтверждают состояние до заселения. | Уменьшает количество споров о возмещении ущерба. |
+| temphousingops.inspection.defect | журнал дефектов | RECORD | Дефекты регистрируются, назначаются и устраняются до или во время заселения. | Сохраняет обитаемость. |
+| temphousingops.inspection.reinspection | повторная проверка | METHOD | Повторная проверка подтверждает ремонт или повторяющиеся проблемы. | Обеспечивает безопасность юнитов. |
+| temphousingops.agreement.occupancy | договор аренды | RECORD | В соглашении указаны даты, правила, покрываемые расходы, ответственность и прекращение действия. | Определяет условия размещения. |
+| temphousingops.agreement.lease | аренда или контракт | RECORD | Договор аренды связывает владельца, агентство, квартиру, арендную плату, депозиты и период обслуживания. | Контролирует выплаты. |
+| temphousingops.agreement.rules | правила проживания | CONSTRAINT | Правила касаются гостей, домашних животных, ущерба, поведения, коммунальных услуг и уведомления об изменениях. | Предотвращает недоразумения. |
+| temphousingops.agreement.extension | процесс продления | METHOD | Расширение проверяет постоянную необходимость, наличие подразделений, финансирование и соответствие требованиям. | Управляет временной продолжительностью. |
+| temphousingops.case.support_plan | план поддержки | RECORD | В плане перечислены задачи по восстановлению, документы, льготы, ремонт и цель выселения. | Приводит семью к стабильности. |
+| temphousingops.case.checkin | регистрация резидента | METHOD | В ходе проверок отслеживаются безопасность, потребности, жалобы, право на участие и последующие шаги. | Предотвращает отказ. |
+| temphousingops.case.referral | направление на обслуживание | METHOD | Направления связаны с льготами, юридической помощью, ремонтом, здравоохранением, транспортом или школьной поддержкой. | Устраняет препятствия. |
+| temphousingops.case.noncompliance | ответ о несоблюдении требований | METHOD | Проблемы решаются с уведомлением, поддержкой, исправлением и эскалацией до прекращения действия. | Балансирует правила и восстановление. |
+| temphousingops.payments.rent | арендная плата | RECORD | Арендная плата записывает сумму, период, поставщика, источник финансирования и одобрение. | Контролирует государственные средства. |
+| temphousingops.payments.deposit | обработка депозитов | CONSTRAINT | Депозиты и возмещение ущерба соответствуют правилам контракта и финансирования. | Уменьшает финансовые споры. |
+| temphousingops.payments.invoice_review | проверка счета | QUALITY_CHECK | Счета проверяются на соответствие занятости, тарифам, датам и договору. | Предотвращает переплату. |
+| temphousingops.payments.exception | исключение платежа | RECORD | Исключениями являются просроченный счет, оспариваемая плата, ущерб или дублирующая претензия. | Делает проблемы видимыми. |
+| temphousingops.communication.movein | инструкции по заселению | METHOD | Инструкции включают адрес, время, ключи, правила, контакты и необходимые предметы. | Поддерживает плавное размещение. |
+| temphousingops.communication.landlord | связь с арендодателем | METHOD | Арендодатель получает утвержденный статус домохозяйства, способ оплаты и контактную информацию по обслуживанию. | Выравнивает владельца недвижимости. |
+| temphousingops.communication.language | языковая поддержка | METHOD | В документах о размещении и звонках, где это возможно, используется предпочтительный язык. | Улучшает доступ. |
+| temphousingops.communication.notice | процесс уведомления | METHOD | Уведомления охватывают продление, прекращение действия, выход из программы, проблемы с правилами и изменения в программе. | Защищает надлежащую правовую процедуру. |
+| temphousingops.records.case_file | материалы дела | RECORD | Файл хранит право на участие, совпадение, проверку, соглашение, платежи и коммуникации. | Создает контрольный журнал. |
+| temphousingops.records.privacy | правило конфиденциальности | SAFETY_RULE | Местоположение домохозяйства и личные данные защищены ролью и необходимостью. | Защищает выживших. |
+| temphousingops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам стихийных бедствий, жилья, финансов и конфиденциальности. | Поддерживает аудиты. |
+| temphousingops.metrics.occupancy | показатель занятости | MEASUREMENT | Занятость отслеживает занятые, свободные, недоступные и заканчивающиеся единицы. | Показывает вместимость жилья. |
+| temphousingops.metrics.length_stay | продолжительность пребывания | MEASUREMENT | Продолжительность пребывания измеряет продолжительность пребывания в зависимости от домохозяйства и программы. | Направляет планирование восстановления. |
+| temphousingops.qa.case_audit | аудит дела | QUALITY_CHECK | Аудит проверяет соответствие требованиям, проверки, платежи, уведомления и закрытие. | Улучшает целостность. |
+| temphousingops.closeout.moveout | закрытие переезда | METHOD | При выезде подтверждается место назначения, ключи, состояние, окончательный платеж и рекомендации. | Завершает размещение чисто. |
+| temphousingops.review.lessons | извлеченные уроки | METHOD | В обзоре выявляются узкие места, пробелы в подразделениях, проблемы справедливости и поставщиков. | Улучшает будущую жилищную реакцию. |

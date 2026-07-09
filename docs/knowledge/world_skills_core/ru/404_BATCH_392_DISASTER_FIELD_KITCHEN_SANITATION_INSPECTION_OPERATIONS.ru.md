@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| fieldkitcheninspectops.activation.trigger | inspection trigger | MODEL | Trigger includes mass feeding, mobile kitchen setup, complaints, illness signal or new site. | Starts food safety oversight. |
-| fieldkitcheninspectops.activation.inspector | inspector assignment | RECORD | Assignment names inspector, site, shift, authority and contact. | Clarifies responsibility. |
-| fieldkitcheninspectops.activation.risk_level | risk level | MODEL | Risk level considers meal volume, vulnerable diners, menu, temperature and water. | Sets inspection frequency. |
-| fieldkitcheninspectops.activation.checklist | checklist | RECORD | Checklist covers receiving, storage, prep, cooking, holding, service and waste. | Standardizes inspection. |
-| fieldkitcheninspectops.site.water | water supply | SAFETY_RULE | Kitchen uses approved potable water or safe alternate method. | Prevents contamination. |
-| fieldkitcheninspectops.site.wastewater | wastewater disposal | CONSTRAINT | Wastewater drains to approved sewer, tank or disposal route. | Protects environment. |
-| fieldkitcheninspectops.site.pest_control | pest control | QUALITY_CHECK | Food, waste and openings are checked for pest attraction. | Protects food. |
-| fieldkitcheninspectops.site.layout | layout check | METHOD | Layout separates raw, cooked, waste, handwash and service flows. | Reduces cross-contamination. |
-| fieldkitcheninspectops.receiving.source | approved source | SAFETY_RULE | Food must come from approved supplier, donation pathway or inspected source. | Reduces unsafe food entry. |
-| fieldkitcheninspectops.receiving.condition | receiving condition | QUALITY_CHECK | Inspector checks temperature, packaging, spoilage, labels and dates. | Blocks unsafe supplies. |
-| fieldkitcheninspectops.receiving.lot_trace | lot trace | RECORD | Lot/source data is kept for high-risk foods. | Enables recall. |
-| fieldkitcheninspectops.receiving.rejection | rejection record | RECORD | Rejected food records item, reason, quantity and disposal/return. | Supports accountability. |
-| fieldkitcheninspectops.temperature.cooking | cooking temperature | SAFETY_RULE | Critical foods must reach required internal temperature. | Prevents foodborne illness. |
-| fieldkitcheninspectops.temperature.hot_hold | hot holding | SAFETY_RULE | Hot held foods remain above required threshold or are discarded. | Keeps meals safe. |
-| fieldkitcheninspectops.temperature.cold_hold | cold holding | SAFETY_RULE | Cold foods remain below required threshold or corrective action begins. | Prevents bacterial growth. |
-| fieldkitcheninspectops.temperature.cooling | cooling control | SAFETY_RULE | Cooling follows time/temperature limits when leftovers are retained. | Prevents unsafe reuse. |
-| fieldkitcheninspectops.temperature.temp_log | temperature log | RECORD | Logs record food, time, reading, staff and corrective action. | Provides evidence. |
-| fieldkitcheninspectops.temperature.thermometer | thermometer check | QUALITY_CHECK | Thermometers are available, clean and checked for accuracy. | Ensures valid readings. |
-| fieldkitcheninspectops.hygiene.handwash | handwashing station | SAFETY_RULE | Handwashing has water, soap, towels and waste container. | Enables hygiene. |
-| fieldkitcheninspectops.hygiene.glove_use | glove use | METHOD | Gloves are used with handwashing and changed between tasks. | Reduces contamination. |
-| fieldkitcheninspectops.hygiene.ill_worker | ill worker exclusion | SAFETY_RULE | Ill or symptomatic food workers are excluded or reassigned. | Prevents outbreaks. |
-| fieldkitcheninspectops.hygiene.personal_items | personal item control | METHOD | Personal items are kept away from food prep and service. | Maintains sanitation. |
-| fieldkitcheninspectops.crosscontam.raw_separation | raw separation | SAFETY_RULE | Raw animal foods are separated from ready-to-eat foods. | Prevents cross-contamination. |
-| fieldkitcheninspectops.crosscontam.utensil | utensil control | METHOD | Utensils, boards and pans are separated, cleaned or sanitized by task. | Reduces transfer. |
-| fieldkitcheninspectops.crosscontam.allergen | allergen check | SAFETY_RULE | Allergen foods are labeled and handled to limit cross-contact where feasible. | Protects diners. |
-| fieldkitcheninspectops.crosscontam.chemical | chemical storage | SAFETY_RULE | Chemicals are labeled and stored away from food and utensils. | Prevents poisoning. |
-| fieldkitcheninspectops.waste.trash | trash handling | METHOD | Trash is covered, removed and kept away from prep areas. | Reduces pests. |
-| fieldkitcheninspectops.waste.grease | grease handling | CONSTRAINT | Grease is collected and disposed through approved route. | Prevents spills and sewer issues. |
-| fieldkitcheninspectops.waste.spoiled_food | spoiled food disposal | SAFETY_RULE | Spoiled or temperature-abused food is discarded and recorded. | Prevents service. |
-| fieldkitcheninspectops.waste.waste_log | waste log | RECORD | Waste log records discarded food, reason and quantity. | Shows loss and safety action. |
-| fieldkitcheninspectops.corrective.violation | violation record | RECORD | Violation records finding, rule, severity, corrective action and deadline. | Creates follow-up. |
-| fieldkitcheninspectops.corrective.immediate | immediate correction | METHOD | Critical violations are corrected during inspection or service stops. | Protects diners. |
-| fieldkitcheninspectops.corrective.reinspection | reinspection | QUALITY_CHECK | Reinspection verifies correction of major issues. | Confirms safety. |
-| fieldkitcheninspectops.corrective.closure | closure authority | SAFETY_RULE | Unsafe kitchen can be closed or restricted under authority. | Prevents harm. |
-| fieldkitcheninspectops.communication.manager_brief | manager briefing | METHOD | Inspector explains findings, corrections and documentation to kitchen lead. | Improves compliance. |
-| fieldkitcheninspectops.communication.command_update | command update | METHOD | Command receives critical violations, closures, illness signals and resource needs. | Maintains situational awareness. |
-| fieldkitcheninspectops.communication.public_risk | public risk message | METHOD | Public notice may be needed for recall, illness or service change. | Protects consumers. |
-| fieldkitcheninspectops.records.inspection_form | inspection form | RECORD | Form stores site, findings, temperatures, photos, actions and signatures. | Preserves evidence. |
-| fieldkitcheninspectops.records.photo | photo record | RECORD | Photos document violations, corrections, layout and equipment issues. | Supports review. |
-| fieldkitcheninspectops.records.retention | retention rule | CONSTRAINT | Inspection records follow health, emergency and legal schedules. | Keeps audit trail. |
-| fieldkitcheninspectops.metrics.violation_rate | violation rate | MEASUREMENT | Rate tracks violations by site, severity and category. | Targets training. |
-| fieldkitcheninspectops.metrics.inspection_coverage | inspection coverage | MEASUREMENT | Coverage shows inspected kitchens versus active feeding sites. | Finds oversight gaps. |
-| fieldkitcheninspectops.demob.final_inspection | final inspection | QUALITY_CHECK | Final inspection checks food disposition, cleaning, waste and equipment. | Closes site safely. |
-| fieldkitcheninspectops.review.after_action | after-action review | METHOD | Review captures water, temperature, staffing, donations and correction lessons. | Improves future feeding. |
+| fieldkitcheninspectops.activation.trigger | триггер проверки | MODEL | Триггер включает массовое кормление, установку мобильной кухни, жалобы, сигнал о болезни или новое место. | Начинается надзор за безопасностью пищевых продуктов. |
+| fieldkitcheninspectops.activation.inspector | назначение инспектора | RECORD | В назначении называются инспектор, участок, смена, орган и контактное лицо. | Уточняет ответственность. |
+| fieldkitcheninspectops.activation.risk_level | уровень риска | MODEL | Уровень риска учитывает объем еды, уязвимых посетителей, меню, температуру и воду. | Устанавливает частоту проверки. |
+| fieldkitcheninspectops.activation.checklist | контрольный список | RECORD | Контрольный список охватывает получение, хранение, подготовку, приготовление пищи, хранение, обслуживание и отходы. | Стандартизирует проверку. |
+| fieldkitcheninspectops.site.water | водоснабжение | SAFETY_RULE | На кухне используется одобренная питьевая вода или безопасный альтернативный метод. | Предотвращает загрязнение. |
+| fieldkitcheninspectops.site.wastewater | удаление сточных вод | CONSTRAINT | Сточные воды сбрасываются в утвержденную канализацию, резервуар или маршрут утилизации. | Защищает окружающую среду. |
+| fieldkitcheninspectops.site.pest_control | борьба с вредителями | QUALITY_CHECK | Продукты питания, отходы и отверстия проверяются на предмет привлечения вредителей. | Защищает еду. |
+| fieldkitcheninspectops.site.layout | проверка макета | METHOD | Планировка разделяет потоки сырья, приготовления, отходов, мытья рук и обслуживания. | Уменьшает перекрестное загрязнение. |
+| fieldkitcheninspectops.receiving.source | одобренный источник | SAFETY_RULE | Продукты питания должны поступать от утвержденного поставщика, донорского канала или проверенного источника. | Уменьшает проникновение небезопасных продуктов питания. |
+| fieldkitcheninspectops.receiving.condition | состояние получения | QUALITY_CHECK | Инспектор проверяет температуру, упаковку, наличие порчи, этикетки и даты. | Блокирует небезопасные поставки. |
+| fieldkitcheninspectops.receiving.lot_trace | трассировка партии | RECORD | Данные о партии/источнике сохраняются для пищевых продуктов высокого риска. | Включает отзыв. |
+| fieldkitcheninspectops.receiving.rejection | запись об отказе | RECORD | Отклоненные пищевые продукты записывают товар, причину, количество и утилизацию/возврат. | Поддерживает ответственность. |
+| fieldkitcheninspectops.temperature.cooking | температура приготовления | SAFETY_RULE | Критически важные продукты должны достичь необходимой внутренней температуры. | Предотвращает болезни пищевого происхождения. |
+| fieldkitcheninspectops.temperature.hot_hold | горячий холдинг | SAFETY_RULE | Горячие продукты остаются выше требуемого порога или выбрасываются. | Сохраняет еду в безопасности. |
+| fieldkitcheninspectops.temperature.cold_hold | холодная выдержка | SAFETY_RULE | Холодные продукты остаются ниже требуемого порога, или начинаются корректирующие действия. | Предотвращает рост бактерий. |
+| fieldkitcheninspectops.temperature.cooling | контроль охлаждения | SAFETY_RULE | Охлаждение осуществляется в соответствии с ограничениями по времени/температуре, когда остатки сохраняются. | Предотвращает небезопасное повторное использование. |
+| fieldkitcheninspectops.temperature.temp_log | журнал температуры | RECORD | Журналы записывают еду, время, чтение, персонал и корректирующие действия. | Предоставляет доказательства. |
+| fieldkitcheninspectops.temperature.thermometer | проверка термометра | QUALITY_CHECK | Термометры имеются в наличии, чистые и проверены на точность. | Обеспечивает достоверность показаний. |
+| fieldkitcheninspectops.hygiene.handwash | станция для мытья рук | SAFETY_RULE | Для мытья рук есть вода, мыло, полотенца и контейнер для мусора. | Обеспечивает гигиену. |
+| fieldkitcheninspectops.hygiene.glove_use | использование перчаток | METHOD | Перчатки используются при мытье рук и меняются между работами. | Уменьшает загрязнение. |
+| fieldkitcheninspectops.hygiene.ill_worker | исключение больного работника | SAFETY_RULE | Работники пищевой промышленности с заболеваниями или симптомами исключаются или переназначаются. | Предотвращает вспышки. |
+| fieldkitcheninspectops.hygiene.personal_items | контроль личных вещей | METHOD | Личные вещи хранятся вдали от приготовления пищи и обслуживания. | Соблюдает санитарию. |
+| fieldkitcheninspectops.crosscontam.raw_separation | необработанное разделение | SAFETY_RULE | Сырые продукты животного происхождения отделяют от готовых к употреблению продуктов. | Предотвращает перекрестное загрязнение. |
+| fieldkitcheninspectops.crosscontam.utensil | контроль посуды | METHOD | Посуда, доски и кастрюли разделяются, моются или дезинфицируются в зависимости от задачи. | Уменьшает передачу. |
+| fieldkitcheninspectops.crosscontam.allergen | проверка на аллергены | SAFETY_RULE | Продукты, содержащие аллергены, маркируются и обрабатываются так, чтобы ограничить перекрестный контакт, где это возможно. | Защищает посетителей. |
+| fieldkitcheninspectops.crosscontam.chemical | химическое хранилище | SAFETY_RULE | Химические вещества маркируются и хранятся отдельно от продуктов питания и посуды. | Предотвращает отравление. |
+| fieldkitcheninspectops.waste.trash | обработка мусора | METHOD | Мусор накрывают, вывозят и хранят вдали от мест подготовки. | Уменьшает количество вредителей. |
+| fieldkitcheninspectops.waste.grease | обработка смазки | CONSTRAINT | Жир собирается и утилизируется утвержденным маршрутом. | Предотвращает разливы и проблемы с канализацией. |
+| fieldkitcheninspectops.waste.spoiled_food | утилизация испорченных продуктов | SAFETY_RULE | Испорченные продукты или продукты питания, подвергшиеся неправильной температуре, выбрасываются и регистрируются. | Мешает обслуживанию. |
+| fieldkitcheninspectops.waste.waste_log | журнал отходов | RECORD | Журнал отходов записывает выброшенные продукты питания, причину и количество. | Показывает потери и меры безопасности. |
+| fieldkitcheninspectops.corrective.violation | запись о нарушении | RECORD | При обнаружении нарушений фиксируются правила, серьезность, корректирующие действия и сроки. | Создает сопровождение. |
+| fieldkitcheninspectops.corrective.immediate | немедленная коррекция | METHOD | Критические нарушения исправляются во время осмотра или остановки сервиса. | Защищает посетителей. |
+| fieldkitcheninspectops.corrective.reinspection | повторная проверка | QUALITY_CHECK | Повторная проверка проверяет исправление основных проблем. | Подтверждает безопасность. |
+| fieldkitcheninspectops.corrective.closure | орган закрытия | SAFETY_RULE | Небезопасная кухня может быть закрыта или ограничена властями. | Предотвращает вред. |
+| fieldkitcheninspectops.communication.manager_brief | брифинг менеджера | METHOD | Инспектор объясняет выводы, исправления и документацию руководителю кухни. | Улучшает соответствие. |
+| fieldkitcheninspectops.communication.command_update | обновление команды | METHOD | Командование получает информацию о критических нарушениях, закрытиях, сигналах о заболеваниях и потребностях в ресурсах. | Сохраняет ситуационную осведомленность. |
+| fieldkitcheninspectops.communication.public_risk | сообщение об общественной опасности | METHOD | Публичное уведомление может потребоваться в случае отзыва, болезни или изменения в услугах. | Защищает потребителей. |
+| fieldkitcheninspectops.records.inspection_form | форма проверки | RECORD | Форма хранит сайт, выводы, температуру, фотографии, действия и подписи. | Сохраняет доказательства. |
+| fieldkitcheninspectops.records.photo | фотозапись | RECORD | На фотографиях документированы нарушения, исправления, проблемы с планировкой и оборудованием. | Поддерживает обзор. |
+| fieldkitcheninspectops.records.retention | правило хранения | CONSTRAINT | Записи о проверках соответствуют графикам здравоохранения, чрезвычайных ситуаций и законодательным нормам. | Сохраняет контрольный журнал. |
+| fieldkitcheninspectops.metrics.violation_rate | уровень нарушений | MEASUREMENT | Оценка отслеживает нарушения по сайтам, серьезности и категориям. | Обучение мишеням. |
+| fieldkitcheninspectops.metrics.inspection_coverage | инспекционное покрытие | MEASUREMENT | В обзоре показаны проверенные кухни и места активного кормления. | Находит пробелы в надзоре. |
+| fieldkitcheninspectops.demob.final_inspection | окончательная проверка | QUALITY_CHECK | Заключительная проверка проверяет размещение продуктов питания, уборку, отходы и оборудование. | Безопасно закрывает сайт. |
+| fieldkitcheninspectops.review.after_action | обзор после действий | METHOD | Обзор охватывает воду, температуру, персонал, пожертвования и уроки коррекции. | Улучшает будущее кормление. |

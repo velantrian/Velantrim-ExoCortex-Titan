@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| iamops.identity.identity_record | Identity record | invariant | Identity record links person, account, employee ID, role, manager, status and lifecycle dates. | one person, many systems |
-| iamops.identity.unique_identifier | Unique identity identifier | invariant | Unique identifier prevents confusion between people with similar names or reused accounts. | identity anchor |
-| iamops.identity.source_of_truth | Identity source of truth | invariant | Source of truth provides authoritative data for joiner, mover, leaver and access decisions. | HR or directory authority |
-| iamops.identity.identity_proofing | Identity proofing | variant | Proofing verifies that requester is the claimed person before account or credential issuance. | trust before access |
-| iamops.identity.name_change | Identity name change | variant | Name change updates display, legal, email or directory attributes while preserving identity continuity. | do not create duplicate |
-| iamops.identity.contractor_identity | Contractor identity | variant | Contractor identity needs sponsor, expiry date, company, role and access scope. | temporary workforce control |
-| iamops.joiner.joiner_ticket | Joiner ticket | invariant | Joiner ticket requests accounts and access for new worker based on approved start data. | onboarding access |
-| iamops.joiner.birthright_access | Birthright access | variant | Birthright access automatically grants baseline tools for role, department or location. | standard access bundle |
-| iamops.joiner.account_provisioning | Account provisioning | invariant | Provisioning creates account, mailbox, groups, MFA and required application access. | worker can start |
-| iamops.joiner.manager_approval | Access manager approval | invariant | Manager approval confirms business need and responsibility for requested access. | owner accountability |
-| iamops.joiner.seg_duty_check | Segregation-of-duty check | invariant | SoD check detects conflicting access combinations before approval. | prevent toxic combination |
-| iamops.joiner.first_login | First login control | variant | First login may require password change, MFA enrollment and policy acknowledgment. | secure activation |
-| iamops.mover.role_change | Role change access review | invariant | Role change reviews old and new access when employee changes job, team or location. | mover risk |
-| iamops.mover.access_add | Access addition request | invariant | Request documents system, role, reason, owner, approver and duration. | explicit grant |
-| iamops.mover.access_remove | Access removal request | invariant | Removal closes access no longer needed because of role, project, risk or departure. | least privilege |
-| iamops.mover.temporary_access | Temporary access | variant | Temporary access has expiration date, justification and review path. | avoid permanent exception |
-| iamops.mover.emergency_access | Emergency access | variant | Emergency access grants urgent privilege with time limit, monitoring and retrospective approval. | break-glass control |
-| iamops.mover.access_transfer | Access transfer | invariant | Transfer must not blindly copy all access from one user without review of need and conflicts. | avoid cloning risk |
-| iamops.leaver.termination_feed | Termination feed | invariant | Feed notifies IAM of departure date, time, type and required deprovisioning urgency. | offboarding trigger |
-| iamops.leaver.account_disable | Account disable | invariant | Disable stops login while preserving data, mailbox or records as policy requires. | fast access stop |
-| iamops.leaver.session_revocation | Session revocation | invariant | Revocation invalidates active tokens or sessions after departure or compromise. | access already open |
-| iamops.leaver.asset_handoff | Access asset handoff | variant | Handoff transfers shared mailboxes, files, groups, keys or ownership from departing user. | business continuity |
-| iamops.leaver.orphan_account | Orphan account | invariant | Orphan account remains active without valid owner and creates security risk. | find abandoned access |
-| iamops.leaver.deprovisioning_evidence | Deprovisioning evidence | invariant | Evidence records disabled systems, dates, exceptions and reviewer. | prove removal |
-| iamops.review.access_certification | Access certification | invariant | Certification asks owners or managers to confirm users still need access. | periodic cleanup |
-| iamops.review.entitlement_owner | Entitlement owner | invariant | Owner is accountable for approving, reviewing and defining access meaning. | business ownership |
-| iamops.review.review_campaign | Access review campaign | variant | Campaign schedules scope, reviewers, deadlines, reminders and escalations. | review operation |
-| iamops.review.revocation_tracking | Revocation tracking | invariant | Tracking ensures rejected access is actually removed and verified. | review must produce action |
-| iamops.review.exception_acceptance | Access exception acceptance | variant | Acceptance documents why risky access remains, who accepted risk and review date. | controlled risk |
-| iamops.review.stale_access | Stale access | invariant | Stale access belongs to inactive users, old roles, expired projects or unused accounts. | remove drift |
-| iamops.privileged.pam_vault | Privileged access vault | variant | Vault stores, rotates and controls privileged credentials or sessions. | protect admin power |
-| iamops.privileged.privileged_session | Privileged session monitoring | variant | Monitoring records or logs administrative sessions for accountability. | admin actions visible |
-| iamops.privileged.just_in_time | Just-in-time privilege | variant | JIT grants elevated access only for approved time and task. | reduce standing privilege |
-| iamops.privileged.break_glass | Break-glass account | invariant | Break-glass account provides emergency access under strict storage, monitoring and review. | last-resort access |
-| iamops.privileged.service_account | Service account ownership | invariant | Service account needs owner, purpose, credential rotation and usage monitoring. | nonhuman identity |
-| iamops.privileged.password_rotation | Privileged credential rotation | invariant | Rotation changes credentials after use, schedule, incident or administrator departure. | limit credential exposure |
-| iamops.auth.mfa_enrollment | MFA enrollment | invariant | Enrollment binds user to second factor and recovery method according to policy. | stronger login |
-| iamops.auth.mfa_reset | MFA reset | invariant | Reset verifies identity before changing factor, device or recovery method. | high-risk helpdesk action |
-| iamops.auth.conditional_access | Conditional access policy | variant | Policy changes access based on device, location, risk, app, user or authentication strength. | context-aware control |
-| iamops.auth.password_reset | Password reset workflow | invariant | Reset verifies requester, changes credential and records event. | common identity operation |
-| iamops.auth.failed_login_monitor | Failed login monitoring | invariant | Monitoring detects attack, lockout, forgotten password or automation issue. | signal in authentication |
-| iamops.control.access_request_audit | Access request audit | invariant | Audit checks approval, SoD, implementation, expiration and business justification. | verify process |
-| iamops.control.iam_metrics | IAM operations metrics | variant | Metrics track joiner time, leaver completion, review closure, orphan accounts and privileged use. | manage IAM health |
-| iamops.control.policy_violation | IAM policy violation | invariant | Violation records unauthorized sharing, excessive access, bypass or delayed deprovisioning. | control failure |
+| iamops.identity.identity_record | Личностная запись | invariant | Запись личности связывает человека, учетную запись, идентификатор сотрудника, роль, менеджера, статус и даты жизненного цикла. | один человек, множество систем |
+| iamops.identity.unique_identifier | Уникальный идентификационный идентификатор | invariant | Уникальный идентификатор предотвращает путаницу между людьми со схожими именами или повторно используемыми учетными записями. | идентификационный якорь |
+| iamops.identity.source_of_truth | Личностный источник истины | invariant | Источник истины предоставляет авторитетные данные для принятия решений о присоединении, переходе, выходе и доступе. | Отдел кадров или директория |
+| iamops.identity.identity_proofing | Проверка личности | variant | Проверка подтверждает, что запрашивающая сторона является заявленным лицом до выдачи учетной записи или учетных данных. | доверие перед доступом |
+| iamops.identity.name_change | Изменение идентификационного имени | variant | Обновления при изменении имени отображают юридические атрибуты, атрибуты электронной почты или каталога, сохраняя при этом целостность личности. | не создавайте дубликат |
+| iamops.identity.contractor_identity | Личность подрядчика | variant | Для идентификации подрядчика требуется спонсор, дата истечения срока действия, компания, роль и область доступа. | временный контроль рабочей силы |
+| iamops.joiner.joiner_ticket | Столярный билет | invariant | Билет участника запрашивает учетные записи и доступ для нового работника на основе утвержденных стартовых данных. | входной доступ |
+| iamops.joiner.birthright_access | Доступ по праву рождения | variant | Доступ по праву рождения автоматически предоставляет базовые инструменты для должности, отдела или местоположения. | стандартный пакет доступа |
+| iamops.joiner.account_provisioning | Предоставление учетной записи | invariant | При подготовке создаются учетная запись, почтовый ящик, группы, MFA и необходимый доступ к приложениям. | работник может начать |
+| iamops.joiner.manager_approval | Одобрение менеджера доступа | invariant | Утверждение менеджера подтверждает деловую необходимость и ответственность за запрошенный доступ. | ответственность владельца |
+| iamops.joiner.seg_duty_check | Проверка разделения обязанностей | invariant | Проверка SoD обнаруживает конфликтующие комбинации доступа перед утверждением. | предотвратить токсичное сочетание |
+| iamops.joiner.first_login | Первый контроль входа в систему | variant | При первом входе в систему может потребоваться смена пароля, регистрация MFA и подтверждение политики. | безопасная активация |
+| iamops.mover.role_change | Проверка доступа к изменению роли | invariant | Изменение роли проверяет старый и новый доступ, когда сотрудник меняет работу, команду или местоположение. | риск перевозчика |
+| iamops.mover.access_add | Запрос на добавление доступа | invariant | Система документов запроса, роль, причина, владелец, утверждающий орган и продолжительность. | явное предоставление |
+| iamops.mover.access_remove | Запрос на удаление доступа | invariant | Удаление закрывает доступ, который больше не нужен из-за роли, проекта, риска или ухода. | наименьшая привилегия |
+| iamops.mover.temporary_access | Временный доступ | variant | Временный доступ имеет срок действия, обоснование и путь проверки. | избежать постоянного исключения |
+| iamops.mover.emergency_access | Экстренный доступ | variant | Экстренный доступ предоставляет срочную привилегию с ограничением по времени, контролем и ретроспективным одобрением. | контроль разбития стекла |
+| iamops.mover.access_transfer | Передача доступа | invariant | Передача не должна слепо копировать весь доступ одного пользователя без рассмотрения необходимости и конфликтов. | избежать риска клонирования |
+| iamops.leaver.termination_feed | Завершение канала | invariant | Лента уведомляет IAM о дате, времени, типе отправления и необходимой срочности деинициализации. | триггер отключения |
+| iamops.leaver.account_disable | Отключить аккаунт | invariant | Отключение останавливает вход в систему с сохранением данных, почтового ящика или записей в соответствии с требованиями политики. | остановка быстрого доступа |
+| iamops.leaver.session_revocation | Отзыв сеанса | invariant | Отзыв делает недействительными активные токены или сеансы после выхода или компрометации. | доступ уже открыт |
+| iamops.leaver.asset_handoff | Передача доступа к активам | variant | Handoff передает общие почтовые ящики, файлы, группы, ключи или право собственности от уходящего пользователя. | непрерывность бизнеса |
+| iamops.leaver.orphan_account | Сиротский аккаунт | invariant | Учетная запись-сирота остается активной без действующего владельца и создает угрозу безопасности. | найти заброшенный доступ |
+| iamops.leaver.deprovisioning_evidence | Отмена предоставления доказательств | invariant | Доказательства записывают отключенные системы, даты, исключения и проверяющего. | доказать удаление |
+| iamops.review.access_certification | Сертификация доступа | invariant | При сертификации владельцам или менеджерам предлагается подтвердить, что пользователям по-прежнему нужен доступ. | периодическая очистка |
+| iamops.review.entitlement_owner | Владелец прав | invariant | Владелец несет ответственность за утверждение, проверку и определение значения доступа. | владение бизнесом |
+| iamops.review.review_campaign | Доступ к кампании обзора | variant | В расписании кампании указаны масштабы, рецензенты, сроки, напоминания и эскалации. | проверка операции |
+| iamops.review.revocation_tracking | Отслеживание отзыва | invariant | Отслеживание гарантирует, что отклоненный доступ действительно будет удален и проверен. | проверка должна привести к действию |
+| iamops.review.exception_acceptance | Принятие исключения доступа | variant | Документы о приемке, почему остается рискованный доступ, кто принял риск и дату проверки. | контролируемый риск |
+| iamops.review.stale_access | Устаревший доступ | invariant | Устаревший доступ принадлежит неактивным пользователям, старым ролям, проектам с истекшим сроком действия или неиспользуемым учетным записям. | удалить дрейф |
+| iamops.privileged.pam_vault | Хранилище привилегированного доступа | variant | Хранилище хранит, меняет и контролирует привилегированные учетные данные или сеансы. | защитить административную власть |
+| iamops.privileged.privileged_session | Мониторинг привилегированных сессий | variant | Мониторинг записей или журналов административных сеансов для обеспечения подотчетности. | действия администратора видны |
+| iamops.privileged.just_in_time | Привилегия «точно в срок» | variant | JIT предоставляет повышенный доступ только в течение утвержденного времени и задачи. | уменьшить привилегию процессуальной правоспособности |
+| iamops.privileged.break_glass | Разбитый стеклянный счет | invariant | Учетная запись «Разбитое стекло» обеспечивает экстренный доступ при строгом хранении, мониторинге и проверке. | доступ в последнюю очередь |
+| iamops.privileged.service_account | Владение сервисным аккаунтом | invariant | Учетной записи службы требуется владелец, цель, ротация учетных данных и мониторинг использования. | нечеловеческая идентичность |
+| iamops.privileged.password_rotation | Ротация привилегированных учетных данных | invariant | Ротация меняет учетные данные после использования, расписания, инцидента или ухода администратора. | ограничить доступ к учетным данным |
+| iamops.auth.mfa_enrollment | зачисление в МИД | invariant | Регистрация привязывает пользователя ко второму фактору и методу восстановления в соответствии с политикой. | более надежный вход |
+| iamops.auth.mfa_reset | Сброс MFA | invariant | Сброс проверяет личность перед изменением фактора, устройства или метода восстановления. | действие службы поддержки высокого риска |
+| iamops.auth.conditional_access | Политика условного доступа | variant | Политика изменяет доступ в зависимости от устройства, местоположения, риска, приложения, пользователя или силы аутентификации. | контекстно-зависимое управление |
+| iamops.auth.password_reset | Процедура сброса пароля | invariant | Сброс проверяет отправителя запроса, изменяет учетные данные и записывает событие. | общая операция идентификации |
+| iamops.auth.failed_login_monitor | Не удалось контролировать вход в систему | invariant | Мониторинг обнаруживает атаки, блокировки, забытый пароль или проблемы автоматизации. | сигнал при аутентификации |
+| iamops.control.access_request_audit | Аудит запросов на доступ | invariant | Аудит проверяет утверждение, SoD, реализацию, срок действия и бизнес-обоснование. | проверить процесс |
+| iamops.control.iam_metrics | Показатели операций IAM | variant | Метрики отслеживают время присоединения, завершение выхода, закрытие проверки, потерянные учетные записи и привилегированное использование. | управлять здоровьем IAM |
+| iamops.control.policy_violation | Нарушение политики IAM | invariant | Нарушение фиксирует несанкционированное совместное использование, чрезмерный доступ, обход или задержку деинициализации. | отказ управления |

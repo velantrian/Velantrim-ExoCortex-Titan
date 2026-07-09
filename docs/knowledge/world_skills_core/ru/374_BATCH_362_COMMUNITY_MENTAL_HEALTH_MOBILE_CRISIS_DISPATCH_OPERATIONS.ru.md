@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| mobilecrisisops.intake.call_id | dispatch call ID | RECORD | Call ID links caller, subject, time, location, risk and assigned response. | Creates traceable dispatch record. |
-| mobilecrisisops.intake.referral_source | referral source | RECORD | Source distinguishes hotline, 911, clinic, family, school, police or self-referral. | Guides response context. |
-| mobilecrisisops.intake.presenting_issue | presenting issue | RECORD | Presenting issue summarizes distress, behavior, needs and caller concern. | Frames triage. |
-| mobilecrisisops.intake.location | location assessment | METHOD | Location captures address, access, safety hazards and whether subject is present. | Supports team deployment. |
-| mobilecrisisops.triage.risk_level | risk level | MODEL | Risk level considers harm risk, psychosis, substance use, medical need, weapons and support. | Determines response urgency. |
-| mobilecrisisops.triage.imminent_danger | imminent danger | SAFETY_RULE | Imminent danger routes to emergency services or co-response per policy. | Protects life safety. |
-| mobilecrisisops.triage.medical_screen | medical screen | SAFETY_RULE | Medical symptoms, overdose, injury or altered consciousness trigger medical response. | Avoids wrong responder. |
-| mobilecrisisops.triage.weapon_check | weapon check | SAFETY_RULE | Weapon or violence risk changes staging, law enforcement coordination or response type. | Protects teams. |
-| mobilecrisisops.triage.consent_context | consent context | CONSTRAINT | Voluntary engagement is preferred, but legal emergency rules may apply. | Balances rights and safety. |
-| mobilecrisisops.dispatch.team_match | team match | METHOD | Team assignment considers risk, location, language, age, clinical need and availability. | Sends suitable responders. |
-| mobilecrisisops.dispatch.response_time | response time target | MEASUREMENT | Target time depends on urgency, geography and program rules. | Sets operational expectation. |
-| mobilecrisisops.dispatch.staging | staging location | METHOD | High-risk calls may stage nearby before approach. | Improves safety. |
-| mobilecrisisops.dispatch.status_update | status update | METHOD | Dispatch records en route, arrived, contact made, cleared and follow-up states. | Maintains situational awareness. |
-| mobilecrisisops.team.roles | team roles | RECORD | Team roles may include clinician, peer, EMT, caseworker or supervisor. | Clarifies responsibilities. |
-| mobilecrisisops.team.equipment | field equipment | RECORD | Equipment includes phone, radio, PPE, forms, resource list and safety kit. | Supports field work. |
-| mobilecrisisops.team.briefing | pre-arrival briefing | METHOD | Briefing covers risk, history, caller details, safety plan and engagement approach. | Aligns team. |
-| mobilecrisisops.team.fatigue | fatigue control | SAFETY_RULE | Teams need breaks and backup after intense or long calls. | Maintains judgment. |
-| mobilecrisisops.engagement.initial_contact | initial contact | METHOD | Contact uses calm identification, consent, respect and space. | Reduces escalation. |
-| mobilecrisisops.engagement.deescalation | de-escalation | METHOD | De-escalation uses listening, grounding, choices and reduced stimulation. | Improves safety. |
-| mobilecrisisops.engagement.family | family engagement | METHOD | Family or bystanders are engaged when helpful and safe. | Builds support network. |
-| mobilecrisisops.engagement.cultural | cultural response | METHOD | Response considers language, culture, disability and prior trauma. | Improves trust. |
-| mobilecrisisops.assessment.safety | safety assessment | METHOD | Assessment checks current risk, protective factors, needs and willingness for help. | Guides disposition. |
-| mobilecrisisops.assessment.substance | substance use screen | METHOD | Substance use screen informs safety, medical need and referral path. | Avoids misclassification. |
-| mobilecrisisops.assessment.housing | social needs screen | METHOD | Housing, food, benefits, transport and caregiving needs are noted. | Connects crisis to practical support. |
-| mobilecrisisops.assessment.legal | legal status check | CONSTRAINT | Holds, warrants or court orders are handled by authorized agencies. | Keeps roles lawful. |
-| mobilecrisisops.plan.safety_plan | safety plan | RECORD | Safety plan lists warning signs, coping steps, contacts, means reduction and follow-up. | Supports stabilization. |
-| mobilecrisisops.plan.least_restrictive | least restrictive option | MODEL | Disposition seeks least restrictive safe care setting. | Protects autonomy. |
-| mobilecrisisops.plan.transport | transport plan | METHOD | Transport to clinic, crisis center, shelter or hospital follows safety and consent rules. | Moves person to care. |
-| mobilecrisisops.plan.no_transport | no transport plan | METHOD | If no transport, plan records supports, follow-up and safety conditions. | Avoids empty closure. |
-| mobilecrisisops.handoff.warm | warm handoff | METHOD | Warm handoff connects person to receiving provider with context and consent. | Reduces drop-off. |
-| mobilecrisisops.handoff.ems | EMS handoff | METHOD | EMS handoff communicates risk, medical observations and scene safety. | Supports emergency care. |
-| mobilecrisisops.handoff.law_enforcement | law enforcement handoff | SAFETY_RULE | Law enforcement handoff is limited to safety/legal need and documented. | Avoids unnecessary criminalization. |
-| mobilecrisisops.handoff.provider | provider referral | METHOD | Provider referral includes eligibility, appointment, records and follow-up task. | Continues care. |
-| mobilecrisisops.documentation.note | crisis note | RECORD | Note records risk, interventions, plan, disposition and consent. | Supports continuity. |
-| mobilecrisisops.documentation.rationale | disposition rationale | RECORD | Rationale explains why team chose home, referral, crisis center, hospital or emergency route. | Makes decision reviewable. |
-| mobilecrisisops.documentation.privacy | privacy boundary | SAFETY_RULE | Sensitive behavioral health information is shared only as allowed and needed. | Protects clients. |
-| mobilecrisisops.documentation.retention | retention rule | CONSTRAINT | Dispatch and clinical records follow privacy and program retention rules. | Controls lifecycle. |
-| mobilecrisisops.followup.callback | follow-up callback | METHOD | Follow-up confirms safety, appointments, barriers and resource needs. | Reduces recurrence. |
-| mobilecrisisops.followup.missed | missed follow-up | METHOD | Missed follow-up triggers retry, partner check or escalation based on risk. | Keeps high-risk cases visible. |
-| mobilecrisisops.metrics.diversion | diversion metric | MEASUREMENT | Diversion tracks avoided ED, jail or involuntary transport when safely resolved. | Shows program value. |
-| mobilecrisisops.metrics.response | response metric | MEASUREMENT | Metrics track response time, outcomes, repeat calls, demographics and geography. | Guides improvement. |
-| mobilecrisisops.qa.case_review | case review | QUALITY_CHECK | Supervisors review high-risk, adverse, repeat or unusual cases. | Improves safety. |
-| mobilecrisisops.qa.partner_feedback | partner feedback | METHOD | Feedback from hotline, EMS, police and providers identifies handoff gaps. | Improves coordination. |
-| mobilecrisisops.closeout.scene_clear | scene clear | METHOD | Scene clear records team safety, disposition, transport and pending follow-up. | Ends dispatch responsibly. |
+| mobilecrisisops.intake.call_id | идентификатор вызова диспетчера | RECORD | Идентификатор вызова связывает вызывающего абонента, тему, время, местоположение, риск и назначенный ответ. | Создает отслеживаемую запись об отправке. |
+| mobilecrisisops.intake.referral_source | источник рефералов | RECORD | Источник различает горячую линию, 911, клинику, семью, школу, полицию или самостоятельное обращение. | Управляет контекстом ответа. |
+| mobilecrisisops.intake.presenting_issue | представляя проблему | RECORD | Представление проблемы обобщает дистресс, поведение, потребности и беспокойство звонящего. | Сортировка кадров. |
+| mobilecrisisops.intake.location | оценка местоположения | METHOD | Местоположение фиксирует адрес, доступ, угрозы безопасности и наличие субъекта. | Поддерживает командное развертывание. |
+| mobilecrisisops.triage.risk_level | уровень риска | MODEL | Уровень риска учитывает риск причинения вреда, психоза, употребления психоактивных веществ, медицинских потребностей, оружия и поддержки. | Определяет срочность ответа. |
+| mobilecrisisops.triage.imminent_danger | неминуемая опасность | SAFETY_RULE | Неизбежная опасность направляется в службы экстренной помощи или совместное реагирование в соответствии с политикой. | Обеспечивает безопасность жизни. |
+| mobilecrisisops.triage.medical_screen | медицинский экран | SAFETY_RULE | Медицинские симптомы, передозировка, травма или изменение сознания вызывают медицинскую реакцию. | Избегает неправильного ответа. |
+| mobilecrisisops.triage.weapon_check | проверка оружия | SAFETY_RULE | Риск применения оружия или насилия меняет инсценировку, координацию правоохранительных органов или тип реагирования. | Защищает команды. |
+| mobilecrisisops.triage.consent_context | контекст согласия | CONSTRAINT | Добровольное участие является предпочтительным, но могут применяться чрезвычайные правовые нормы. | Баланс прав и безопасности. |
+| mobilecrisisops.dispatch.team_match | командный матч | METHOD | Назначение группы учитывает риск, местоположение, язык, возраст, клиническую потребность и доступность. | Отправляет подходящих ответчиков. |
+| mobilecrisisops.dispatch.response_time | целевое время ответа | MEASUREMENT | Целевое время зависит от срочности, географии и правил программы. | Устанавливает операционные ожидания. |
+| mobilecrisisops.dispatch.staging | место плацдарма | METHOD | Звонки с высоким риском могут произойти поблизости еще до приближения. | Повышает безопасность. |
+| mobilecrisisops.dispatch.status_update | обновление статуса | METHOD | Записи об отправке в пути, прибытии, установлении контакта, очистке и последующих состояниях. | Сохраняет ситуационную осведомленность. |
+| mobilecrisisops.team.roles | командные роли | RECORD | Роли в команде могут включать врача, коллегу, врача скорой помощи, социального работника или руководителя. | Уточняет обязанности. |
+| mobilecrisisops.team.equipment | полевое оборудование | RECORD | Оборудование включает телефон, радио, средства индивидуальной защиты, формы, список ресурсов и комплект безопасности. | Поддерживает полевые работы. |
+| mobilecrisisops.team.briefing | брифинг перед прибытием | METHOD | Брифинг охватывает риски, историю, сведения о звонящем, план безопасности и подход к взаимодействию. | Выравнивает команду. |
+| mobilecrisisops.team.fatigue | контроль усталости | SAFETY_RULE | Командам нужны перерывы и поддержка после напряженных или долгих разговоров. | Сохраняет суждение. |
+| mobilecrisisops.engagement.initial_contact | первоначальный контакт | METHOD | Контакт использует спокойную идентификацию, согласие, уважение и пространство. | Уменьшает эскалацию. |
+| mobilecrisisops.engagement.deescalation | деэскалация | METHOD | Деэскалация использует слушание, заземление, выбор и снижение стимуляции. | Повышает безопасность. |
+| mobilecrisisops.engagement.family | семейное участие | METHOD | Семья или прохожие участвуют, когда они полезны и безопасны. | Создает сеть поддержки. |
+| mobilecrisisops.engagement.cultural | культурный отклик | METHOD | Ответ учитывает язык, культуру, инвалидность и предыдущую травму. | Улучшает доверие. |
+| mobilecrisisops.assessment.safety | оценка безопасности | METHOD | Оценка проверяет текущий риск, защитные факторы, потребности и готовность помочь. | Расположение гидов. |
+| mobilecrisisops.assessment.substance | экран употребления психоактивных веществ | METHOD | Экран об употреблении психоактивных веществ информирует о безопасности, медицинской необходимости и пути направления. | Избегает неправильной классификации. |
+| mobilecrisisops.assessment.housing | экран социальных потребностей | METHOD | Отмечаются потребности в жилье, питании, льготах, транспорте и уходе. | Связывает кризис с практической поддержкой. |
+| mobilecrisisops.assessment.legal | проверка правового статуса | CONSTRAINT | Задержания, ордера или постановления суда рассматриваются уполномоченными органами. | Сохраняет роли законными. |
+| mobilecrisisops.plan.safety_plan | план безопасности | RECORD | В плане безопасности перечислены предупреждающие знаки, меры по преодолению последствий, контакты, сокращение средств и последующие действия. | Поддерживает стабилизацию. |
+| mobilecrisisops.plan.least_restrictive | наименее ограничительный вариант | MODEL | Диспозиция ищет наименее ограничительные безопасные условия ухода. | Защищает автономность. |
+| mobilecrisisops.plan.transport | транспортный план | METHOD | Транспортировка в клинику, кризисный центр, приют или больницу осуществляется с соблюдением правил безопасности и согласия. | Побуждает человека проявить заботу. |
+| mobilecrisisops.plan.no_transport | нет транспортного плана | METHOD | Если транспортировка отсутствует, в плане запишите поддержку, последующие действия и условия безопасности. | Избегает пустого закрытия. |
+| mobilecrisisops.handoff.warm | теплая передача | METHOD | Теплая передача соединяет человека с принимающим поставщиком услуг с учетом контекста и согласия. | Уменьшает выпадение. |
+| mobilecrisisops.handoff.ems | Передача скорой помощи | METHOD | Передача скорой помощи сообщает о рисках, медицинских наблюдениях и безопасности на месте происшествия. | Поддерживает неотложную помощь. |
+| mobilecrisisops.handoff.law_enforcement | передача правоохранительных органов | SAFETY_RULE | Передача полномочий правоохранительным органам ограничивается требованиями безопасности/юридическими требованиями и документируется. | Избегает ненужной криминализации. |
+| mobilecrisisops.handoff.provider | направление поставщика | METHOD | Направление поставщика включает право на участие, назначение, записи и последующие задачи. | Продолжает уход. |
+| mobilecrisisops.documentation.note | кризисная записка | RECORD | В записях фиксируются риски, вмешательства, план, решение и согласие. | Поддерживает непрерывность. |
+| mobilecrisisops.documentation.rationale | обоснование диспозиции | RECORD | Обоснование объясняет, почему команда выбрала дом, направление, кризисный центр, больницу или маршрут экстренной помощи. | Делает решение подлежащим пересмотру. |
+| mobilecrisisops.documentation.privacy | граница конфиденциальности | SAFETY_RULE | Конфиденциальная информация о поведенческом здоровье передается только в случаях, когда это разрешено и необходимо. | Защищает клиентов. |
+| mobilecrisisops.documentation.retention | правило хранения | CONSTRAINT | Отправка и клинические записи соответствуют правилам конфиденциальности и хранения программы. | Управляет жизненным циклом. |
+| mobilecrisisops.followup.callback | последующий обратный звонок | METHOD | Последующее наблюдение подтверждает безопасность, назначения, препятствия и потребности в ресурсах. | Уменьшает рецидивы. |
+| mobilecrisisops.followup.missed | пропущенное продолжение | METHOD | Пропущенное последующее наблюдение приводит к повторной попытке, проверке партнера или эскалации в зависимости от риска. | Делает случаи высокого риска видимыми. |
+| mobilecrisisops.metrics.diversion | показатель отклонения | MEASUREMENT | При безопасном устранении отвлекающих путей удалось избежать неотложной помощи, тюремного заключения или принудительной транспортировки. | Показывает ценность программы. |
+| mobilecrisisops.metrics.response | метрика ответа | MEASUREMENT | Метрики отслеживают время ответа, результаты, повторные звонки, демографию и географию. | Улучшение направляющих. |
+| mobilecrisisops.qa.case_review | рассмотрение дела | QUALITY_CHECK | Руководители рассматривают случаи высокого риска, неблагоприятные, повторяющиеся или необычные случаи. | Повышает безопасность. |
+| mobilecrisisops.qa.partner_feedback | отзывы партнеров | METHOD | Отзывы с горячей линии, службы скорой помощи, полиции и поставщиков услуг выявляют пробелы в передаче помощи. | Улучшает координацию. |
+| mobilecrisisops.closeout.scene_clear | сцена ясна | METHOD | Четкое место происшествия фиксирует безопасность команды, расположение, транспортировку и ожидаемые последующие действия. | Завершает отправку ответственно. |

@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| qisupportops.intake.support_id | support ID | RECORD | Support ID links person, disease event, need, dates and assigned worker. | Tracks assistance. |
-| qisupportops.intake.referral_source | referral source | RECORD | Source distinguishes investigator, clinic, shelter, hotline, employer or self-referral. | Shows entry path. |
-| qisupportops.intake.need_summary | need summary | RECORD | Summary captures food, medicine, housing, income, caregiving, transport or communication need. | Guides support plan. |
-| qisupportops.intake.urgency | urgency level | MODEL | Urgency reflects medical risk, lack of supplies, unsafe housing or dependent care. | Prioritizes service. |
-| qisupportops.eligibility.order_status | order status | RECORD | Status records recommended, required, voluntary or completed isolation/quarantine. | Defines support window. |
-| qisupportops.eligibility.residency | residency check | CONSTRAINT | Program may require jurisdiction, exposure link or case status. | Keeps service in scope. |
-| qisupportops.eligibility.household | household assessment | METHOD | Household assessment checks ability to separate, share bathroom and protect vulnerable people. | Determines practical feasibility. |
-| qisupportops.eligibility.duplicate_support | duplicate support check | QUALITY_CHECK | Check prevents overlapping aid from multiple programs unless allowed. | Controls resources. |
-| qisupportops.plan.support_plan | support plan | RECORD | Plan lists needs, actions, providers, delivery dates and follow-up cadence. | Turns guidance into practical help. |
-| qisupportops.plan.end_date | end date | RECORD | End date follows public health guidance, symptom status and test rules. | Clarifies when support changes. |
-| qisupportops.plan.contingency | contingency plan | METHOD | Contingency covers worsening symptoms, housing loss, supply delay or caregiver failure. | Prevents crisis escalation. |
-| qisupportops.plan.language | language preference | RECORD | Preferred language is used for instructions and wellness calls. | Improves comprehension. |
-| qisupportops.wellness.check_call | wellness check | METHOD | Check asks about symptoms, needs, adherence barriers and safety. | Maintains contact. |
-| qisupportops.wellness.medical_escalation | medical escalation | SAFETY_RULE | Severe symptoms trigger medical advice line, clinic or emergency response. | Protects health. |
-| qisupportops.wellness.missed_contact | missed contact | FAILURE_MODE | Missed contact triggers retry, alternate contact or field/partner check by risk. | Avoids silent deterioration. |
-| qisupportops.wellness.behavioral | behavioral support | METHOD | Isolation distress can route to crisis line or mental health support. | Reduces harm. |
-| qisupportops.supplies.food | food support | METHOD | Food support arranges delivery, pantry referral, vouchers or prepared meals. | Makes isolation possible. |
-| qisupportops.supplies.medicine | medicine access | METHOD | Medicine support coordinates pharmacy delivery or refill assistance without dosing advice. | Maintains treatment continuity. |
-| qisupportops.supplies.hygiene | hygiene kit | RECORD | Hygiene kit may include masks, sanitizer, cleaning supplies and thermometers. | Supports infection control. |
-| qisupportops.supplies.delivery | contactless delivery | SAFETY_RULE | Delivery protects staff, privacy and infection control. | Reduces exposure. |
-| qisupportops.housing.safe_room | safe room assessment | METHOD | Assessment checks separate room, ventilation, bathroom and household risks. | Determines home feasibility. |
-| qisupportops.housing.alternate_site | alternate housing | METHOD | Hotel, shelter isolation unit or medical respite may be arranged when home is unsafe. | Protects household and community. |
-| qisupportops.housing.site_rules | site rules | CONSTRAINT | Alternate site has rules for visitors, meals, monitoring, transport and exit. | Maintains safety. |
-| qisupportops.housing.discharge | housing discharge | METHOD | Discharge aligns with end date, transport and destination plan. | Prevents abandonment. |
-| qisupportops.income.work_note | work note | METHOD | Work note confirms restriction dates without unnecessary diagnosis detail. | Helps employment compliance. |
-| qisupportops.income.school_note | school note | METHOD | School note supports absence, remote learning or return date. | Reduces penalty. |
-| qisupportops.income.benefit_referral | benefit referral | METHOD | Referral connects to paid leave, unemployment, food, rent or utility aid. | Reduces economic barrier. |
-| qisupportops.income.employer_contact | employer contact | CONSTRAINT | Employer contact occurs only with consent or legal authority. | Protects privacy. |
-| qisupportops.caregiving.dependent_plan | dependent care plan | METHOD | Plan addresses children, elders, animals or disabled dependents. | Makes isolation realistic. |
-| qisupportops.caregiving.caregiver_ppe | caregiver precautions | SAFETY_RULE | Caregiver guidance covers PPE, hygiene, distance and symptom monitoring. | Reduces household spread. |
-| qisupportops.caregiving.backup | backup caregiver | METHOD | Backup caregiver is identified when primary caregiver becomes ill or unavailable. | Protects dependents. |
-| qisupportops.communication.daily_script | daily script | METHOD | Script provides clear guidance, rights, responsibilities and support options. | Keeps messaging consistent. |
-| qisupportops.communication.end_notice | end notice | METHOD | End notice explains end date, return precautions and ongoing symptoms guidance. | Closes uncertainty. |
-| qisupportops.communication.conflict | nonadherence conflict | METHOD | Nonadherence is addressed with barrier-solving before enforcement escalation. | Improves cooperation. |
-| qisupportops.records.case_note | case note | RECORD | Note records needs, contacts, deliveries, guidance and escalations. | Supports continuity. |
-| qisupportops.records.privacy | privacy rule | SAFETY_RULE | Health and support records are restricted by role and need. | Protects sensitive data. |
-| qisupportops.records.retention | retention rule | CONSTRAINT | Records follow public health, grant and privacy retention rules. | Controls lifecycle. |
-| qisupportops.logistics.vendor | vendor coordination | METHOD | Vendors or nonprofits deliver food, housing or transport under agreement. | Extends capacity. |
-| qisupportops.logistics.inventory | support inventory | MEASUREMENT | Inventory tracks kits, supplies, vouchers and delivery capacity. | Prevents shortages. |
-| qisupportops.metrics.completion | completion rate | MEASUREMENT | Completion rate tracks support cases closed with end guidance delivered. | Shows follow-through. |
-| qisupportops.metrics.unmet_need | unmet need | MEASUREMENT | Unmet need records unavailable housing, supplies, income support or language access. | Guides resource gaps. |
-| qisupportops.qa.case_review | case review | QUALITY_CHECK | Sample reviews check eligibility, privacy, timeliness and support accuracy. | Improves program quality. |
-| qisupportops.closeout.closure_reason | closure reason | RECORD | Closure states completed, transferred, unreachable, declined, ineligible or deceased. | Makes outcome explicit. |
-| qisupportops.review.lessons | lessons learned | METHOD | Program review captures barriers, partner gaps and equity issues. | Improves future support. |
+| qisupportops.intake.support_id | идентификатор поддержки | RECORD | Идентификатор поддержки связывает человека, событие заболевания, потребность, даты и назначенного работника. | Отслеживает помощь. |
+| qisupportops.intake.referral_source | источник рефералов | RECORD | Источник различает следователя, клинику, приют, горячую линию, работодателя или самостоятельное обращение. | Показывает путь входа. |
+| qisupportops.intake.need_summary | нужно резюме | RECORD | Краткое описание отражает потребности в еде, лекарствах, жилье, доходе, уходе, транспорте или связи. | План поддержки гидов. |
+| qisupportops.intake.urgency | уровень срочности | MODEL | Срочность отражает медицинский риск, нехватку расходных материалов, небезопасное жилье или уход за иждивенцами. | Приоритетное обслуживание. |
+| qisupportops.eligibility.order_status | статус заказа | RECORD | Записи о состоянии: рекомендуемая, обязательная, добровольная или завершенная изоляция/карантин. | Определяет окно поддержки. |
+| qisupportops.eligibility.residency | проверка места жительства | CONSTRAINT | Программа может потребовать юрисдикцию, ссылку на разоблачение или статус дела. | Сохраняет объем обслуживания. |
+| qisupportops.eligibility.household | оценка домохозяйства | METHOD | Оценка домохозяйства проверяет способность отделяться, пользоваться общей ванной комнатой и защищать уязвимых людей. | Определяет практическую целесообразность. |
+| qisupportops.eligibility.duplicate_support | дубликат проверки поддержки | QUALITY_CHECK | Этот флажок предотвращает дублирование помощи нескольких программ, если это не разрешено. | Контролирует ресурсы. |
+| qisupportops.plan.support_plan | план поддержки | RECORD | В плане перечислены потребности, действия, поставщики, даты доставки и периодичность последующих действий. | Превращает руководство в практическую помощь. |
+| qisupportops.plan.end_date | дата окончания | RECORD | Дата окончания соответствует рекомендациям общественного здравоохранения, статусу симптомов и правилам тестирования. | Уточняет, когда меняется поддержка. |
+| qisupportops.plan.contingency | план действий на случай непредвиденных обстоятельств | METHOD | Непредвиденные обстоятельства включают ухудшение симптомов, потерю жилья, задержку поставок или неспособность лица, осуществляющего уход. | Предотвращает эскалацию кризиса. |
+| qisupportops.plan.language | языковые предпочтения | RECORD | Предпочтительный язык используется для инструкций и звонков по вопросам здоровья. | Улучшает понимание. |
+| qisupportops.wellness.check_call | проверка здоровья | METHOD | При проверке задаются вопросы о симптомах, потребностях, барьерах приверженности и безопасности. | Поддерживает контакт. |
+| qisupportops.wellness.medical_escalation | медицинская эскалация | SAFETY_RULE | Тяжелые симптомы вызывают необходимость обращения к врачу, в клинику или в службу экстренной помощи. | Защищает здоровье. |
+| qisupportops.wellness.missed_contact | пропущенный контакт | FAILURE_MODE | Пропущенный контакт вызывает повторную попытку, альтернативный контакт или проверку поля/партнера по риску. | Предотвращает бесшумное ухудшение. |
+| qisupportops.wellness.behavioral | поведенческая поддержка | METHOD | Дистресс, вызванный изоляцией, может привести к обращению в службу экстренной помощи или в службу поддержки психического здоровья. | Уменьшает вред. |
+| qisupportops.supplies.food | продовольственная поддержка | METHOD | Продовольственная поддержка организует доставку, направление в кладовую, ваучеры или готовые блюда. | Делает возможной изоляцию. |
+| qisupportops.supplies.medicine | доступ к лекарствам | METHOD | Служба поддержки лекарств координирует доставку лекарств или помощь в пополнении запасов лекарств без рекомендаций по дозировке. | Сохраняет преемственность лечения. |
+| qisupportops.supplies.hygiene | гигиенический набор | RECORD | Гигиенический набор может включать маски, дезинфицирующее средство, чистящие средства и термометры. | Поддерживает инфекционный контроль. |
+| qisupportops.supplies.delivery | бесконтактная доставка | SAFETY_RULE | Доставка защищает персонал, конфиденциальность и инфекционный контроль. | Уменьшает воздействие. |
+| qisupportops.housing.safe_room | оценка безопасной комнаты | METHOD | При оценке проверяются отдельные помещения, вентиляция, ванная комната и бытовые риски. | Определяет целесообразность дома. |
+| qisupportops.housing.alternate_site | альтернативное жилье | METHOD | Если дома небезопасно, можно организовать гостиницу, изолятор в приюте или медицинскую передышку. | Защищает дом и общество. |
+| qisupportops.housing.site_rules | правила сайта | CONSTRAINT | На альтернативной площадке есть правила для посетителей, питания, наблюдения, транспорта и выхода. | Сохраняет безопасность. |
+| qisupportops.housing.discharge | выписка из жилья | METHOD | Выписка соответствует дате окончания, плану транспортировки и пункта назначения. | Предотвращает отказ. |
+| qisupportops.income.work_note | рабочая записка | METHOD | Рабочая записка подтверждает даты ограничений без ненужных подробностей диагноза. | Помогает соблюдать правила трудоустройства. |
+| qisupportops.income.school_note | школьная записка | METHOD | Заметка о школе поддерживает отсутствие, дистанционное обучение или дату возвращения. | Снижает штраф. |
+| qisupportops.income.benefit_referral | направление на получение пособия | METHOD | Направление связано с оплачиваемым отпуском, безработицей, питанием, арендой или коммунальной помощью. | Снижает экономический барьер. |
+| qisupportops.income.employer_contact | контакт работодателя | CONSTRAINT | Контакт с работодателем происходит только с согласия или законных полномочий. | Защищает конфиденциальность. |
+| qisupportops.caregiving.dependent_plan | план ухода за иждивенцами | METHOD | План адресован детям, пожилым людям, животным или иждивенцам с ограниченными возможностями. | Делает изоляцию реалистичной. |
+| qisupportops.caregiving.caregiver_ppe | меры предосторожности для лица, осуществляющего уход | SAFETY_RULE | Руководство для лиц, осуществляющих уход, охватывает средства индивидуальной защиты, гигиену, дистанцию ​​и мониторинг симптомов. | Уменьшает распространение по домохозяйствам. |
+| qisupportops.caregiving.backup | запасной опекун | METHOD | Резервный опекун назначается, когда основной опекун заболевает или недоступен. | Защищает иждивенцев. |
+| qisupportops.communication.daily_script | ежедневный сценарий | METHOD | Сценарий обеспечивает четкое руководство, права, обязанности и варианты поддержки. | Обеспечивает единообразие обмена сообщениями. |
+| qisupportops.communication.end_notice | уведомление об окончании | METHOD | В уведомлении об окончании содержится информация о дате окончания, мерах предосторожности при возврате и текущих указаниях по симптомам. | Закрывает неопределенность. |
+| qisupportops.communication.conflict | конфликт несоблюдения | METHOD | Несоблюдение требований устраняется путем устранения барьеров до эскалации мер правоприменения. | Улучшает сотрудничество. |
+| qisupportops.records.case_note | примечание по делу | RECORD | Отмечайте потребности, контакты, поставки, рекомендации и эскалацию. | Поддерживает непрерывность. |
+| qisupportops.records.privacy | правило конфиденциальности | SAFETY_RULE | Записи о состоянии здоровья и поддержке ограничены ролью и потребностями. | Защищает конфиденциальные данные. |
+| qisupportops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют правилам общественного здравоохранения, грантов и сохранения конфиденциальности. | Управляет жизненным циклом. |
+| qisupportops.logistics.vendor | координация поставщиков | METHOD | Продавцы или некоммерческие организации доставляют еду, жилье или транспорт по договоренности. | Расширяет емкость. |
+| qisupportops.logistics.inventory | поддержка инвентаря | MEASUREMENT | Инвентаризация отслеживает комплекты, расходные материалы, ваучеры и возможности доставки. | Предотвращает дефицит. |
+| qisupportops.metrics.completion | степень завершения | MEASUREMENT | Показатель завершения отслеживает закрытые обращения в службу поддержки с предоставлением окончательных рекомендаций. | Показывает продолжение. |
+| qisupportops.metrics.unmet_need | неудовлетворенная потребность | MEASUREMENT | Неудовлетворенные потребности фиксируют отсутствие жилья, предметов снабжения, поддержки доходов или языкового доступа. | Устраняет дефицит ресурсов. |
+| qisupportops.qa.case_review | рассмотрение дела | QUALITY_CHECK | Примеры проверок проверяют право на участие, конфиденциальность, своевременность и точность поддержки. | Улучшает качество программы. |
+| qisupportops.closeout.closure_reason | причина закрытия | RECORD | Статусы закрытия: завершено, передано, недостижимо, отклонено, не соответствует требованиям или прекращено. | Делает результат явным. |
+| qisupportops.review.lessons | извлеченные уроки | METHOD | Обзор программы отражает барьеры, пробелы в партнерстве и проблемы равенства. | Улучшает будущую поддержку. |

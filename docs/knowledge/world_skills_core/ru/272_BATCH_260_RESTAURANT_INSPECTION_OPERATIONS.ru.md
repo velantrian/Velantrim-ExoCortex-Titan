@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| restinsp.schedule.routine_cycle | Restaurant routine inspection cycle | invariant | Cycle schedules facility by risk class, history, permit type and due date. | plan inspections |
-| restinsp.schedule.complaint_assignment | Restaurant complaint inspection assignment | invariant | Assignment links complaint, facility, priority, inspector, protocol and response target. | investigate promptly |
-| restinsp.schedule.followup_due | Restaurant follow-up due date | invariant | Due date tracks correction deadline, reinspection need and enforcement status. | verify fixes |
-| restinsp.prep.facility_history | Restaurant inspection history review | invariant | Review checks prior violations, closures, ownership, menu, equipment and complaints. | inspect intelligently |
-| restinsp.entry.entry_conference | Restaurant inspection entry conference | invariant | Conference identifies person in charge, purpose, scope, authority and inspection flow. | set expectations |
-| restinsp.entry.person_in_charge | Restaurant person-in-charge check | invariant | Check verifies knowledgeable responsible person is present and accountable. | management control |
-| restinsp.food.temperature_check | Restaurant food temperature check | invariant | Check records hot, cold, cooling, reheating and holding temperatures. | control pathogen risk |
-| restinsp.food.cooling_process | Restaurant cooling process review | invariant | Review checks time, temperature, containers, depth, labels and logs. | prevent growth |
-| restinsp.food.cook_reheat | Restaurant cook and reheat check | invariant | Check verifies required cooking or reheating control points and documentation. | safe preparation |
-| restinsp.food.cross_contamination | Restaurant cross-contamination check | invariant | Check reviews raw and ready-to-eat separation, utensils, storage and workflow. | prevent contamination |
-| restinsp.food.date_marking | Restaurant date marking check | invariant | Check reviews prepared food labels, discard dates, opening dates and rotation. | control shelf life |
-| restinsp.hygiene.handwashing | Restaurant handwashing check | invariant | Check verifies sinks, soap, towels, access, employee practice and timing. | reduce illness |
-| restinsp.hygiene.employee_health | Restaurant employee health policy check | invariant | Check reviews illness reporting, exclusions, restrictions and manager knowledge. | prevent outbreaks |
-| restinsp.hygiene.bare_hand_contact | Bare-hand contact check | variant | Check reviews ready-to-eat handling, gloves, utensils and approved alternatives. | food protection |
-| restinsp.sanitation.dishwasher_check | Restaurant dish machine check | invariant | Check records sanitizer, temperature, pressure, test strips and ware condition. | clean utensils |
-| restinsp.sanitation.surface_sanitizer | Food-contact surface sanitizer check | invariant | Check verifies concentration, contact time, cloth storage and solution age. | sanitize surfaces |
-| restinsp.sanitation.cleaning_schedule | Restaurant cleaning schedule review | variant | Review checks frequency, responsible staff, hard-to-clean areas and verification. | maintain hygiene |
-| restinsp.facility.equipment_condition | Restaurant equipment condition check | invariant | Check reviews refrigeration, hot holding, prep tables, thermometers and maintenance. | reliable controls |
-| restinsp.facility.plumbing_check | Restaurant plumbing check | invariant | Check verifies hot water, backflow prevention, sewage, leaks and mop sink. | facility safety |
-| restinsp.facility.pest_activity | Restaurant pest activity check | invariant | Check records droppings, insects, doors, traps, contractor logs and harborage. | pest control |
-| restinsp.storage.food_source | Restaurant approved source review | invariant | Review checks invoices, suppliers, shellstock tags, labels and traceability. | safe sourcing |
-| restinsp.storage.chemical_storage | Restaurant chemical storage check | invariant | Check verifies labeling, separation, sanitizer, toxic materials and employee access. | prevent poisoning |
-| restinsp.storage.allergen_control | Restaurant allergen control review | variant | Review checks menu communication, ingredient knowledge, cross-contact and staff training. | protect diners |
-| restinsp.violation.priority_violation | Restaurant priority violation | invariant | Violation directly relates to foodborne illness risk and needs rapid correction. | urgent fix |
-| restinsp.violation.core_violation | Restaurant core violation | variant | Violation concerns sanitation, facility, maintenance or management support systems. | improve baseline |
-| restinsp.violation.repeat_violation | Restaurant repeat violation | invariant | Violation repeats previous issue and may affect scoring or enforcement. | address pattern |
-| restinsp.scoring.inspection_score | Restaurant inspection score | variant | Score aggregates violation severity, points, grade, risk or compliance status. | public rating |
-| restinsp.scoring.grade_posting | Restaurant grade posting | variant | Posting displays required grade, placard, permit status or inspection result. | public information |
-| restinsp.corrective.onsite_correction | Restaurant onsite correction | invariant | Correction fixes violation during inspection with inspector verification and notation. | immediate improvement |
-| restinsp.corrective.corrective_plan | Restaurant corrective action plan | invariant | Plan states root cause, action, staff training, deadline and proof needed. | durable fix |
-| restinsp.corrective.reinspection | Restaurant reinspection | invariant | Reinspection verifies prior violations, new hazards, documentation and compliance status. | close follow-up |
-| restinsp.closure.imminent_hazard | Restaurant imminent health hazard | invariant | Hazard includes sewage, no water, fire, pest infestation, illness outbreak or unsafe food. | closure trigger |
-| restinsp.closure.closure_order | Restaurant closure order | invariant | Order stops operation, lists hazards, reopening criteria and appeal rights. | protect public |
-| restinsp.closure.reopening_check | Restaurant reopening check | invariant | Check verifies hazard removal, cleaning, food disposition, equipment and manager readiness. | resume safely |
-| restinsp.outbreak.illness_complaint | Restaurant illness complaint | invariant | Complaint records symptoms, meal, timing, party, foods, contact and sample possibility. | outbreak signal |
-| restinsp.outbreak.food_history | Restaurant food history investigation | variant | Investigation links menu items, ingredients, staff, preparation logs and exposed guests. | trace source |
-| restinsp.outbreak.exclusion_notice | Restaurant employee exclusion notice | invariant | Notice restricts ill employee according to approved public health criteria. | reduce spread |
-| restinsp.records.inspection_report | Restaurant inspection report | invariant | Report documents observations, violations, corrections, score, photos and signatures. | official record |
-| restinsp.records.operator_signature | Restaurant operator signature | invariant | Signature acknowledges receipt, not agreement, and records person-in-charge. | service proof |
-| restinsp.records.photo_evidence | Restaurant inspection photo evidence | variant | Evidence links photo to violation, location, time, inspector and report. | support finding |
-| restinsp.quality.supervisor_review | Restaurant inspection supervisor review | invariant | Review checks violation coding, scoring, enforcement, closure and report clarity. | consistency |
-| restinsp.reporting.public_portal | Restaurant inspection public portal update | variant | Update publishes grade, inspection date, violations and closure status as allowed. | transparency |
-| restinsp.metrics.restaurant_kpi | Restaurant inspection KPI | variant | KPI tracks inspection timeliness, critical violations, closures, repeat findings and complaints. | manage program |
-| restinsp.continuity.mass_event_food | Mass event food inspection surge | variant | Surge coordinates temporary food booths, staffing, sampling, complaints and closures. | protect event diners |
+| restinsp.schedule.routine_cycle | Цикл плановой проверки ресторана | invariant | Графики циклов объекта по классу риска, истории, типу разрешения и сроку выполнения. | планировать проверки |
+| restinsp.schedule.complaint_assignment | Задача по проверке жалоб в ресторане | invariant | Назначение связывает жалобу, объект, приоритет, инспектора, протокол и цель реагирования. | немедленно расследовать |
+| restinsp.schedule.followup_due | Срок выполнения отчета о ресторане | invariant | Срок выполнения отслеживает крайний срок исправления, необходимость повторной проверки и статус исполнения. | проверить исправления |
+| restinsp.prep.facility_history | Обзор истории проверок ресторана | invariant | Проверка проверяет предыдущие нарушения, закрытия, право собственности, меню, оборудование и жалобы. | проверять разумно |
+| restinsp.entry.entry_conference | Конференция по входу в ресторанную инспекцию | invariant | Конференция определяет ответственное лицо, цель, объем, полномочия и порядок проверки. | устанавливать ожидания |
+| restinsp.entry.person_in_charge | Проверка ответственного лица ресторана | invariant | Проверка подтверждает присутствие компетентного ответственного лица и его подотчетность. | управленческий контроль |
+| restinsp.food.temperature_check | Проверка температуры блюд в ресторане | invariant | Проверьте записи температур горячего, холодного, охлаждения, повторного нагрева и выдерживания. | контролировать риск возникновения патогенов |
+| restinsp.food.cooling_process | Обзор процесса охлаждения ресторана | invariant | Обзор проверяет время, температуру, контейнеры, глубину, этикетки и журналы. | предотвратить рост |
+| restinsp.food.cook_reheat | Повар ресторана и проверка разогрева | invariant | Проверка проверяет необходимые контрольные точки приготовления или разогрева и документацию. | безопасная подготовка |
+| restinsp.food.cross_contamination | Проверка перекрестного загрязнения в ресторане | invariant | Проверьте обзоры разделения сырых и готовых к употреблению продуктов, посуды, хранения и рабочего процесса. | предотвратить загрязнение |
+| restinsp.food.date_marking | Проверка маркировки даты в ресторане | invariant | Проверьте обзоры этикеток готовых продуктов питания, даты выбраковки, даты открытия и ротацию. | контролировать срок годности |
+| restinsp.hygiene.handwashing | Проверка мытья рук в ресторане | invariant | Проверка проверяет раковины, мыло, полотенца, доступ, практику и график работы сотрудников. | уменьшить болезнь |
+| restinsp.hygiene.employee_health | Проверка политики здоровья сотрудников ресторана | invariant | Проверьте отчеты о заболеваниях, исключения, ограничения и знания менеджеров. | предотвращать вспышки |
+| restinsp.hygiene.bare_hand_contact | Проверка контакта голыми руками | variant | Ознакомьтесь с обзорами обращения с готовыми блюдами, перчатками, посудой и одобренными альтернативами. | защита пищевых продуктов |
+| restinsp.sanitation.dishwasher_check | Проверка посудомоечной машины в ресторане | invariant | Проверьте записи о дезинфицирующем средстве, температуре, давлении, тест-полосках и состоянии посуды. | чистая посуда |
+| restinsp.sanitation.surface_sanitizer | Проверка дезинфицирующего средства для поверхностей, контактирующих с пищевыми продуктами | invariant | Проверка проверяет концентрацию, время контакта, хранение ткани и срок годности раствора. | дезинфицировать поверхности |
+| restinsp.sanitation.cleaning_schedule | Обзор графика уборки ресторана | variant | Проверьте частоту проверок, ответственный персонал, трудноубираемые места и проверки. | поддерживать гигиену |
+| restinsp.facility.equipment_condition | Проверка состояния оборудования ресторана | invariant | Проверьте обзоры холодильного оборудования, горячего хранения, столов для приготовления, термометров и технического обслуживания. | надежный контроль |
+| restinsp.facility.plumbing_check | Проверка сантехники в ресторане | invariant | Проверка проверяет горячую воду, предотвращение обратного потока, канализацию, утечки и раковину. | безопасность объекта |
+| restinsp.facility.pest_activity | Проверка активности вредителей в ресторане | invariant | Проверьте записи помета, насекомых, дверей, ловушек, бревен подрядчиков и гавани. | борьба с вредителями |
+| restinsp.storage.food_source | Обзор источника, одобренного рестораном | invariant | Просмотрите счета-фактуры, поставщиков, бирки ракушечника, этикетки и отслеживаемость. | безопасный поиск |
+| restinsp.storage.chemical_storage | Проверка хранения химикатов в ресторане | invariant | Проверка проверяет маркировку, разделение, дезинфицирующее средство, токсичные материалы и доступ сотрудников. | предотвратить отравление |
+| restinsp.storage.allergen_control | Обзор контроля аллергенов в ресторане | variant | Обзор проверяет коммуникацию меню, знание ингредиентов, перекрестный контакт и обучение персонала. | защитить посетителей |
+| restinsp.violation.priority_violation | Нарушение приоритета ресторана | invariant | Нарушение напрямую связано с риском заболеваний пищевого происхождения и требует быстрого исправления. | срочное исправление |
+| restinsp.violation.core_violation | Нарушение основных правил ресторана | variant | Нарушение касается систем санитарии, помещений, технического обслуживания или поддержки управления. | улучшить базовый уровень |
+| restinsp.violation.repeat_violation | Повторное нарушение в ресторане | invariant | Нарушение повторяет предыдущую проблему и может повлиять на подсчет очков или исполнение. | шаблон адреса |
+| restinsp.scoring.inspection_score | Оценка проверки ресторана | variant | Оценка объединяет серьезность нарушения, баллы, степень, риск или статус соответствия. | публичный рейтинг |
+| restinsp.scoring.grade_posting | Публикация рейтинга ресторана | variant | Публикация отображает требуемую оценку, табличку, статус разрешения или результат проверки. | общественная информация |
+| restinsp.corrective.onsite_correction | Коррекция на месте в ресторане | invariant | Исправление фиксирует нарушение при проверке с инспекторской проверкой и отметкой. | немедленное улучшение |
+| restinsp.corrective.corrective_plan | План корректирующих действий ресторана | invariant | В плане указываются основная причина, действия, обучение персонала, сроки и необходимые доказательства. | надежное исправление |
+| restinsp.corrective.reinspection | Реинспекция ресторана | invariant | Повторная проверка проверяет предыдущие нарушения, новые опасности, документацию и статус соответствия. | близкое наблюдение |
+| restinsp.closure.imminent_hazard | Непосредственная угроза здоровью в ресторане | invariant | Опасность включает сточные воды, отсутствие воды, пожар, заражение вредителями, вспышку болезни или небезопасную пищу. | триггер закрытия |
+| restinsp.closure.closure_order | Приказ о закрытии ресторана | invariant | Приказ останавливает работу, перечисляет опасности, критерии повторного открытия и права на апелляцию. | защищать общественность |
+| restinsp.closure.reopening_check | Проверка открытия ресторана | invariant | Проверка проверяет устранение опасностей, уборку, размещение продуктов питания, готовность оборудования и менеджера. | безопасно возобновить работу |
+| restinsp.outbreak.illness_complaint | Жалоба на болезнь в ресторане | invariant | В жалобе фиксируются симптомы, прием пищи, время приема, вечеринка, еда, контакт и возможность взятия проб. | сигнал вспышки |
+| restinsp.outbreak.food_history | Расследование истории еды в ресторане | variant | Расследование связывает пункты меню, ингредиенты, персонал, журналы приготовления и разоблаченных гостей. | источник трассировки |
+| restinsp.outbreak.exclusion_notice | Уведомление об исключении сотрудника ресторана | invariant | Уведомление ограничивает больных сотрудников в соответствии с утвержденными критериями общественного здравоохранения. | уменьшить распространение |
+| restinsp.records.inspection_report | Отчет о проверке ресторана | invariant | Отчет документирует наблюдения, нарушения, исправления, оценки, фотографии и подписи. | официальный отчет |
+| restinsp.records.operator_signature | Подпись оператора ресторана | invariant | Подпись подтверждает получение, а не согласие, и указывает ответственное лицо. | доказательство обслуживания |
+| restinsp.records.photo_evidence | Фотодоказательства осмотра ресторана | variant | Доказательства связывают фотографию с нарушением, местом, временем, инспектором и отчетом. | поддержка поиска |
+| restinsp.quality.supervisor_review | Отзыв руководителя инспекции ресторана | invariant | Проверка проверяет кодирование нарушений, оценку, обеспечение соблюдения, закрытие и ясность отчета. | последовательность |
+| restinsp.reporting.public_portal | Обновление публичного портала инспекции ресторана | variant | Обновление публикует оценку, дату проверки, нарушения и статус закрытия, если это разрешено. | прозрачность |
+| restinsp.metrics.restaurant_kpi | Инспекция ресторана KPI | variant | KPI отслеживает своевременность проверок, критические нарушения, закрытия, повторные выводы и жалобы. | управлять программой |
+| restinsp.continuity.mass_event_food | Всплеск проверок продуктов питания на массовых мероприятиях | variant | Surge координирует работу временных киосков с едой, укомплектование персоналом, отбор проб, жалобы и закрытие. | защитить посетителей мероприятия |

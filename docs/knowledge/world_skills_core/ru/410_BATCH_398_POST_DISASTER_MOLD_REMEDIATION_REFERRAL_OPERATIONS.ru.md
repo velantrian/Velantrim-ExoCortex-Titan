@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| moldreferralops.intake.request_source | request source | RECORD | Source records resident, hotline, caseworker, inspector, health provider or community group. | Shows entry path. |
-| moldreferralops.intake.property_info | property information | RECORD | Property record captures address, occupancy, ownership, flood depth, materials and access. | Defines work context. |
-| moldreferralops.intake.household_risk | household risk | RECORD | Risk notes asthma, immune concerns, age, disability and displacement status. | Prioritizes support. |
-| moldreferralops.intake.consent | consent record | RECORD | Consent documents permission to share property details with referral partners. | Enables referral. |
-| moldreferralops.screening.visible_mold | visible mold screen | QUALITY_CHECK | Screen records visible growth, odor, moisture, affected rooms and photos if allowed. | Estimates severity. |
-| moldreferralops.screening.moisture_source | moisture source | MODEL | Source distinguishes floodwater, roof leak, plumbing leak, humidity or HVAC problem. | Guides remediation. |
-| moldreferralops.screening.structural_risk | structural risk | SAFETY_RULE | Structural damage or unsafe utilities route to building safety before cleanup. | Prevents injury. |
-| moldreferralops.screening.medical_risk | medical risk | SAFETY_RULE | Health symptoms or high-risk occupants are referred to medical/public health guidance. | Protects residents. |
-| moldreferralops.priority.priority_score | priority score | MODEL | Score weighs occupancy, vulnerable residents, severity, recurrence and lack of resources. | Orders referrals. |
-| moldreferralops.priority.habitability | habitability flag | CONSTRAINT | Habitability flag identifies homes unsuitable for occupancy pending repair or inspection. | Supports sheltering decisions. |
-| moldreferralops.priority.self_help_fit | self-help suitability | MODEL | Suitability considers area size, materials, PPE access, resident capacity and hazards. | Selects pathway. |
-| moldreferralops.priority.urgent_escalation | urgent escalation | METHOD | Urgent cases route to housing, health, code enforcement or emergency repair pathways. | Speeds critical help. |
-| moldreferralops.referral.contractor_roster | contractor roster | RECORD | Roster lists vetted contractors, nonprofits, capabilities, insurance, licenses and service area. | Matches providers. |
-| moldreferralops.referral.matching_rule | matching rule | METHOD | Matching considers severity, funding, language, availability, accessibility and conflict checks. | Improves fit. |
-| moldreferralops.referral.warm_handoff | warm handoff | METHOD | Warm handoff confirms resident contact, scope summary and next appointment. | Reduces drop-off. |
-| moldreferralops.referral.decline_reason | decline reason | RECORD | Declines record capacity, eligibility, unsafe site, cost or resident refusal. | Shows barriers. |
-| moldreferralops.supplies.ppe_kit | PPE kit | SAFETY_RULE | PPE kit may include gloves, eye protection, respirator guidance and disposable coveralls. | Reduces exposure. |
-| moldreferralops.supplies.cleaning_kit | cleaning kit | RECORD | Cleaning kit lists bags, detergent, brushes, disinfectant, towels and instructions. | Supports self-help. |
-| moldreferralops.supplies.dehumidifier | drying equipment | RECORD | Drying equipment records dehumidifier, fan, moisture meter or rental referral. | Helps moisture control. |
-| moldreferralops.supplies.issue_log | supply issue log | RECORD | Issue log stores household, kit contents, date, staff and safety instruction confirmation. | Tracks distribution. |
-| moldreferralops.education.safe_work | safe work education | METHOD | Education covers ventilation, PPE, containment, wet material removal and stop-work triggers. | Prevents risky cleanup. |
-| moldreferralops.education.disposal | disposal guidance | METHOD | Guidance explains bagging, debris pickup rules, contaminated materials and local disposal options. | Keeps cleanup compliant. |
-| moldreferralops.education.moisture_control | moisture control | METHOD | Education stresses drying, fixing leaks and monitoring humidity after cleanup. | Prevents recurrence. |
-| moldreferralops.education.scam_warning | scam warning | METHOD | Warning explains red flags for predatory contractors and payment pressure. | Protects residents. |
-| moldreferralops.finance.assistance_check | assistance check | METHOD | Check links household to grants, insurance, nonprofit repair funds or case management. | Finds payment path. |
-| moldreferralops.finance.estimate_record | estimate record | RECORD | Estimate records scope, price, assumptions, exclusions and funding status. | Supports decisions. |
-| moldreferralops.finance.insurance_note | insurance note | RECORD | Insurance note tracks claim status, adjuster contact and documentation needs. | Coordinates funding. |
-| moldreferralops.finance.no_cost_path | no-cost path | CONSTRAINT | No-cost pathway uses volunteer, nonprofit or public assistance resources where eligible. | Helps low-resource homes. |
-| moldreferralops.records.case_log | case log | RECORD | Case log stores intake, screening, referrals, supplies, education and closeout. | Creates continuity. |
-| moldreferralops.records.photo_control | photo control | SAFETY_RULE | Photos follow consent, privacy, metadata and storage rules. | Protects households. |
-| moldreferralops.records.document_packet | document packet | RECORD | Packet includes instructions, referrals, estimates, receipts and follow-up notes. | Organizes case. |
-| moldreferralops.records.retention | retention rule | CONSTRAINT | Records follow housing, health, grant, privacy and public records requirements. | Preserves audit. |
-| moldreferralops.followup.appointment_check | appointment check | METHOD | Follow-up confirms contractor contact, scheduled visit, no-show or resident cancellation. | Keeps referral alive. |
-| moldreferralops.followup.work_started | work started | RECORD | Work-start record captures provider, date, scope and resident concerns. | Tracks progress. |
-| moldreferralops.followup.work_complete | work complete | QUALITY_CHECK | Completion verifies cleanup done, moisture source addressed or next repair step identified. | Supports closeout. |
-| moldreferralops.followup.recurrence | recurrence report | RECORD | Recurrence report captures new growth, moisture return or failed repair. | Reopens support. |
-| moldreferralops.communication.public_info | public information | METHOD | Public messaging explains mold risks, referral channels, eligibility and documentation. | Guides community. |
-| moldreferralops.communication.language | language access | METHOD | Materials and calls use common languages and plain housing terms. | Improves access. |
-| moldreferralops.communication.partner_update | partner update | METHOD | Partners receive demand, backlog, supply needs, contractor capacity and barriers. | Coordinates response. |
-| moldreferralops.communication.caseworker_note | caseworker note | RECORD | Caseworker note summarizes status and next step for recovery coordination. | Aligns support. |
-| moldreferralops.metrics.referral_completion | referral completion | MEASUREMENT | Metric tracks referred, contacted, accepted, completed and unresolved cases. | Measures throughput. |
-| moldreferralops.metrics.supply_usage | supply usage | MEASUREMENT | Supply usage counts PPE, cleaning kits and drying equipment issued. | Guides restock. |
-| moldreferralops.metrics.backlog_age | backlog age | MEASUREMENT | Backlog age measures open cases by priority and days waiting. | Reveals bottlenecks. |
-| moldreferralops.review.after_action | after-action review | METHOD | Review captures screening, safety, contractor capacity, education and funding lessons. | Improves future referrals. |
+| moldreferralops.intake.request_source | источник запроса | RECORD | Источник записывает жителя, горячую линию, социального работника, инспектора, поставщика медицинских услуг или общественную группу. | Показывает путь входа. |
+| moldreferralops.intake.property_info | информация о недвижимости | RECORD | В записи о собственности фиксируются адрес, размещение, право собственности, глубина затопления, материалы и доступ. | Определяет контекст работы. |
+| moldreferralops.intake.household_risk | бытовой риск | RECORD | Риск указывает на астму, проблемы с иммунитетом, возраст, инвалидность и статус перемещения. | Отдает приоритет поддержке. |
+| moldreferralops.intake.consent | запись о согласии | RECORD | Согласие документирует разрешение делиться информацией об объекте недвижимости с реферальными партнерами. | Включает реферал. |
+| moldreferralops.screening.visible_mold | видимый экран формы | QUALITY_CHECK | Экран записывает видимый рост, запах, влажность, пораженные помещения и фотографии, если это разрешено. | Оценивает тяжесть. |
+| moldreferralops.screening.moisture_source | источник влаги | MODEL | Источник различает паводковую воду, протечку крыши, протечку водопровода, влажность или проблемы с системой отопления, вентиляции и кондиционирования. | Направляет исправление. |
+| moldreferralops.screening.structural_risk | структурный риск | SAFETY_RULE | Структурные повреждения или небезопасные инженерные коммуникации направляются в безопасное здание перед очисткой. | Предотвращает травмы. |
+| moldreferralops.screening.medical_risk | медицинский риск | SAFETY_RULE | Симптомы здоровья или пассажиры, находящиеся в группе высокого риска, должны быть направлены на рассмотрение медицинских/общественных рекомендаций. | Защищает жильцов. |
+| moldreferralops.priority.priority_score | приоритетный балл | MODEL | Оценка учитывает занятость, уязвимость жителей, тяжесть ситуации, рецидивы и нехватку ресурсов. | Заказывает рефералов. |
+| moldreferralops.priority.habitability | Флаг обитаемости | CONSTRAINT | Флаг пригодности для проживания обозначает дома, непригодные для проживания в ожидании ремонта или проверки. | Поддерживает решения о приюте. |
+| moldreferralops.priority.self_help_fit | пригодность для самопомощи | MODEL | Пригодность учитывает размер территории, материалы, доступ к СИЗ, количество проживающих и опасности. | Выбирает путь. |
+| moldreferralops.priority.urgent_escalation | срочная эскалация | METHOD | Срочные дела направляются в жилищные, медицинские, правоохранительные или аварийные ремонтные службы. | Ускоряет критическую помощь. |
+| moldreferralops.referral.contractor_roster | список подрядчиков | RECORD | В реестре перечислены проверенные подрядчики, некоммерческие организации, возможности, страховка, лицензии и территория обслуживания. | Поставщики совпадений. |
+| moldreferralops.referral.matching_rule | правило соответствия | METHOD | При сопоставлении учитываются проверка серьезности, финансирования, языка, наличия, доступности и конфликтов. | Улучшает посадку. |
+| moldreferralops.referral.warm_handoff | теплая передача | METHOD | Теплая передача подтверждает контакт с резидентом, краткий обзор объема работ и следующую встречу. | Уменьшает выпадение. |
+| moldreferralops.referral.decline_reason | причина отклонения | RECORD | Отклоняет рекордную емкость, право на участие, небезопасное место, стоимость или отказ резидента. | Показывает барьеры. |
+| moldreferralops.supplies.ppe_kit | комплект СИЗ | SAFETY_RULE | В комплект СИЗ могут входить перчатки, средства защиты глаз, инструкция по использованию респиратора и одноразовые комбинезоны. | Уменьшает воздействие. |
+| moldreferralops.supplies.cleaning_kit | набор для чистки | RECORD | В комплект для чистки входят мешки, моющее средство, щетки, дезинфицирующее средство, полотенца и инструкции. | Поддерживает самопомощь. |
+| moldreferralops.supplies.dehumidifier | сушильное оборудование | RECORD | Сушильное оборудование записывает осушитель, вентилятор, влагомер или направление на аренду. | Помогает контролировать влажность. |
+| moldreferralops.supplies.issue_log | журнал проблем с поставками | RECORD | В журнале выдачи записано домашнее хозяйство, содержимое комплекта, дата, персонал и подтверждение инструкций по технике безопасности. | Распространение треков. |
+| moldreferralops.education.safe_work | обучение безопасному труду | METHOD | Обучение охватывает вентиляцию, СИЗ, локализацию, удаление влажных материалов и причины прекращения работы. | Предотвращает рискованную очистку. |
+| moldreferralops.education.disposal | руководство по утилизации | METHOD | В руководстве разъясняются правила упаковки в мешки, правила сбора мусора, загрязненные материалы и местные варианты утилизации. | Обеспечивает очистку в соответствии с требованиями. |
+| moldreferralops.education.moisture_control | контроль влажности | METHOD | В обучении особое внимание уделяется сушке, устранению утечек и контролю влажности после очистки. | Предотвращает рецидив. |
+| moldreferralops.education.scam_warning | предупреждение о мошенничестве | METHOD | Предупреждение объясняет тревожные сигналы для хищнических подрядчиков и давления на оплату. | Защищает жильцов. |
+| moldreferralops.finance.assistance_check | проверка помощи | METHOD | Проверьте связи домохозяйства с грантами, страхованием, некоммерческими фондами ремонта или ведением дел. | Находит путь оплаты. |
+| moldreferralops.finance.estimate_record | оценка записи | RECORD | Оцените объем записей, цену, предположения, исключения и статус финансирования. | Поддерживает решения. |
+| moldreferralops.finance.insurance_note | страховой чек | RECORD | В страховом сообщении отслеживается статус претензии, контакт с оценщиком и потребности в документации. | Координирует финансирование. |
+| moldreferralops.finance.no_cost_path | бесплатный путь | CONSTRAINT | При бесплатном подходе используются ресурсы волонтеров, некоммерческих организаций или государственной помощи, если это соответствует критериям. | Помогает малообеспеченным домам. |
+| moldreferralops.records.case_log | журнал дел | RECORD | В журнале случаев регистрируются прием, проверка, направления, расходные материалы, обучение и закрытие. | Создает преемственность. |
+| moldreferralops.records.photo_control | фото контроль | SAFETY_RULE | Фотографии соответствуют правилам согласия, конфиденциальности, метаданных и хранения. | Защищает домочадцев. |
+| moldreferralops.records.document_packet | пакет документов | RECORD | Пакет включает в себя инструкции, рекомендации, оценки, квитанции и последующие заметки. | Организует дело. |
+| moldreferralops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют требованиям к жилищным, медицинским, грантовым, конфиденциальным и публичным записям. | Сохраняет аудит. |
+| moldreferralops.followup.appointment_check | проверка встречи | METHOD | Последующие действия подтверждают контакт с подрядчиком, запланированное посещение, неявку или отказ от проживания. | Сохраняет реферал живым. |
+| moldreferralops.followup.work_started | работа началась | RECORD | В записи о начале работ указывается поставщик, дата, объем и проблемы жителей. | Отслеживает прогресс. |
+| moldreferralops.followup.work_complete | работа завершена | QUALITY_CHECK | Завершение подтверждает завершение очистки, устранение источника влаги или определение следующего этапа ремонта. | Поддерживает закрытие. |
+| moldreferralops.followup.recurrence | отчет о повторении | RECORD | Отчет о повторении фиксирует новый рост, возврат влаги или неудачное восстановление. | Возобновляет поддержку. |
+| moldreferralops.communication.public_info | общественная информация | METHOD | В публичных сообщениях разъясняются риски, связанные с плесенью, каналы направления, право на участие и документация. | Сообщество гидов. |
+| moldreferralops.communication.language | языковой доступ | METHOD | В материалах и звонках используются общие языки и простые жилищные термины. | Улучшает доступ. |
+| moldreferralops.communication.partner_update | обновление партнера | METHOD | Партнеры получают информацию о спросе, отставании, потребностях в поставках, возможностях подрядчиков и барьерах. | Координирует ответ. |
+| moldreferralops.communication.caseworker_note | записка соцработника | RECORD | В записке социального работника кратко изложен статус и следующий шаг по координации восстановления. | Выравнивает поддержку. |
+| moldreferralops.metrics.referral_completion | завершение направления | MEASUREMENT | Метрика отслеживает переданные, контактные, принятые, завершенные и неразрешенные дела. | Измеряет пропускную способность. |
+| moldreferralops.metrics.supply_usage | использование поставок | MEASUREMENT | Использование запасов учитывает выданные СИЗ, комплекты для чистки и сушильное оборудование. | Гиды пополняют запасы. |
+| moldreferralops.metrics.backlog_age | возраст отставания | MEASUREMENT | Возраст невыполненной работы измеряет открытые дела по приоритету и дням ожидания. | Выявляет узкие места. |
+| moldreferralops.review.after_action | обзор после действий | METHOD | В обзоре учитываются уроки проверки, безопасности, возможностей подрядчиков, обучения и финансирования. | Улучшает будущие рекомендации. |

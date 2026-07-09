@@ -1,0 +1,13 @@
+# BATCH 725: Skylight — Installation & Flashing
+
+**KnowledgeUnits:** 50
+**Namespace:** `skylight.ops.*`
+**Scope:** curb_mount, deck_mount, tubular, flashing_kit, condensation, shading
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| skylight.ops.curb_construction_site | Curb — Site-Built Frame | METHOD | Изготовление постамента под зенитный фонарь. Frame: 2×6 или 2×8 деревянный каркас (double). Высота: минимум 10 см над крышей (снег). Углы: reinforced (plywood gussets). Flashing: step flashing по бокам, saddle flashing сверху. Уклон: top curb горизонтален (skylight sits level). Waterproofing: ice & water shield завёрнут на curb. Крепление skylight к curb: screws через frame в curb. | Curb должен быть прочно прикреплён к roof framing. |
+| skylight.ops.deck_mount_flashing_kit | Deck Mount — Flashing Kit | METHOD | Установка безрамочного окна прямо на кровлю. Flashing kit: алюминиевый оклад (head, sill, side flashing). Интеграция с roofing: step flashing под shingles, верхняя часть заходит под roofing выше. Sealant: butyl tape между flashing и skylight frame. Уклон: минимальный 3:12 (14°) для deck mount (water runoff). Не для плоских крыш (curb mount для плоских). | Deck mount: экономичнее (без curb), проще установка. |
+| skylight.ops.tubular_reflective_tube | Tubular — Reflective Tube | METHOD | Солнечный туннель (световод). Dome на крыше (акриловый, UV-protected) собирает свет. Reflective tube: rigid aluminium (коэффициент отражения 99.7%, Alanod-MIRO) или flex tube (меньше отражение). Диффузор на потолке: рассеивает свет в комнату. Диаметр: 25-35 см (освещает 10-20 м²). Установка: между rafters (не требуют structural changes). Изоляция: tube окружена insulation. | Tubular: отлично для коридоров, ванных, кладовок. |
+| skylight.ops.condensation_gutter_channel | Condensation — Gutter Channel | METHOD | Предотвращение конденсата на skylight. Тёплый воздух внутри → холодное стекло → конденсат. Weep holes: в frame для drainage конденсата наружу. Condensation channel: встроенный gutter в раме (собирает и отводит). Теплоизоляция: curb изолирован (минимизация thermal bridge). Low-E glass: снижает теплопотери, уменьшает конденсат. Вентиляция: operable skylight для проветривания. | Капающий конденсат: портит потолок. |
+| skylight.ops.solar_heat_gain_shade | SHGC — Shading Control | METHOD | Контроль солнечного тепла. SHGC (Solar Heat Gain Coefficient): 0.2-0.6. Low SHGC для южного климата. Low-E coating: на внутреннем стекле (отражает ИК). Тонировка: grey, bronze (снижает светопропускание). Внешние blinds: жалюзи или roller shade (более эффективны чем внутренние). Electrochromic glass: затемняется от электричества (дорого). | Жаркое лето: skylight без shade = печка. |

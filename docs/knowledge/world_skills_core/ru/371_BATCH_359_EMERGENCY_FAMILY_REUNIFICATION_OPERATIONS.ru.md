@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| familyreunifyops.intake.inquiry_id | inquiry ID | RECORD | Inquiry ID links requester, missing person, event, time, channel and status. | Creates traceable reunification case. |
-| familyreunifyops.intake.requester_info | requester information | RECORD | Requester record captures contact, relationship, language and urgency. | Enables safe follow-up. |
-| familyreunifyops.intake.missing_profile | missing person profile | RECORD | Profile records name, age, description, last known place and special needs. | Supports matching. |
-| familyreunifyops.intake.event_link | event link | RECORD | Case links to shelter, evacuation, hospital, school, disaster zone or incident. | Narrows search context. |
-| familyreunifyops.identity.requester_check | requester identity check | SAFETY_RULE | Requester identity and relationship are checked before private information release. | Protects evacuees and survivors. |
-| familyreunifyops.identity.subject_check | subject identity check | METHOD | Subject identity is matched with name, date, photo, documents or trusted witness. | Reduces false matches. |
-| familyreunifyops.identity.proxy | proxy requester | CONSTRAINT | Attorneys, agencies or friends need lawful basis or consent for sensitive data. | Avoids unauthorized disclosure. |
-| familyreunifyops.identity.minor_guard | minor safeguard | SAFETY_RULE | Minor inquiries require extra guardianship and safeguarding checks. | Protects children. |
-| familyreunifyops.privacy.consent | consent to notify | RECORD | Located person consent is recorded before sharing location unless law requires otherwise. | Respects autonomy. |
-| familyreunifyops.privacy.safe_contact | safe contact screen | SAFETY_RULE | Staff screen for domestic violence, stalking, custody or trafficking risk before notification. | Prevents harmful disclosure. |
-| familyreunifyops.privacy.minimum | minimum disclosure | CONSTRAINT | Notifications disclose only needed facts, not full shelter or medical details unless approved. | Limits privacy exposure. |
-| familyreunifyops.privacy.confidential_site | confidential site | CONSTRAINT | Some shelters, hospitals or protection sites cannot be disclosed publicly. | Protects vulnerable people. |
-| familyreunifyops.matching.match_queue | match queue | METHOD | Cases enter queue by urgency, age, vulnerability and available clues. | Prioritizes scarce staff time. |
-| familyreunifyops.matching.name_variants | name variants | METHOD | Matching checks spelling, aliases, transliteration and nicknames. | Avoids missed matches. |
-| familyreunifyops.matching.demographic_match | demographic match | MODEL | Match considers age, gender, description, language, address and companions. | Improves confidence. |
-| familyreunifyops.matching.location_match | location match | MODEL | Last known location is compared with shelter rosters, transport logs and facility lists. | Narrows search. |
-| familyreunifyops.matching.photo_match | photo match | METHOD | Photo comparison is used with consent and human review. | Helps when names are uncertain. |
-| familyreunifyops.matching.false_positive | false positive | FAILURE_MODE | False positive occurs when similar identity details lead to wrong match. | Requires verification before release. |
-| familyreunifyops.sources.shelter_roster | shelter roster | RECORD | Shelter roster can confirm presence, party, needs and consent status. | Connects inquiries to shelter data. |
-| familyreunifyops.sources.hospital_liaison | hospital liaison | METHOD | Hospital liaison follows medical privacy rules while checking patient status. | Handles health-related searches. |
-| familyreunifyops.sources.school_list | school list | METHOD | School or childcare lists support child reunification under safeguarding rules. | Protects minors during evacuation. |
-| familyreunifyops.sources.transport_manifest | transport manifest | RECORD | Transport manifests show evacuation buses, pickup points and destinations. | Tracks movement. |
-| familyreunifyops.welfare.welfare_call | welfare call | METHOD | Welfare call verifies safety and preferred contact route of located person. | Confirms status before notification. |
-| familyreunifyops.welfare.unreachable | unreachable subject | METHOD | Unreachable status triggers repeat checks, field referral or partner query. | Keeps search active. |
-| familyreunifyops.welfare.vulnerable | vulnerable person flag | MODEL | Disability, age, medical need or isolation increases follow-up priority. | Focuses protective action. |
-| familyreunifyops.welfare.deceased_protocol | deceased protocol | SAFETY_RULE | Death notification follows coroner, law enforcement or official family liaison rules. | Prevents improper notification. |
-| familyreunifyops.notification.match_notice | match notification | METHOD | Match notice gives approved contact path and next steps. | Helps family reconnect safely. |
-| familyreunifyops.notification.no_match | no-match update | METHOD | No-match update states search continues and requests additional useful details. | Maintains communication. |
-| familyreunifyops.notification.language | language support | METHOD | Notifications use requester language or interpreter when available. | Improves comprehension. |
-| familyreunifyops.notification.documented | notification record | RECORD | Record stores who was notified, when, by whom and what was disclosed. | Supports audit. |
-| familyreunifyops.escalation.law_enforcement | law enforcement escalation | METHOD | Escalation occurs for missing children, suspected crime, threats or welfare danger. | Uses proper authority. |
-| familyreunifyops.escalation.child_welfare | child welfare escalation | SAFETY_RULE | Child protection agency is engaged when custody or abuse concerns appear. | Protects minors. |
-| familyreunifyops.escalation.embassy | consular escalation | METHOD | Foreign nationals may need consular or embassy contact under policy. | Supports international families. |
-| familyreunifyops.escalation.mass_casualty | mass casualty link | METHOD | Mass casualty incidents coordinate with family assistance center and official lists. | Avoids fragmented notification. |
-| familyreunifyops.records.case_file | case file | RECORD | File stores inquiry, checks, sources, match rationale, consent and notifications. | Creates single evidence trail. |
-| familyreunifyops.records.retention | retention rule | CONSTRAINT | Records follow emergency, privacy and legal retention schedules. | Controls sensitive data. |
-| familyreunifyops.records.access | access control | SAFETY_RULE | Only authorized reunification staff can view sensitive cases. | Protects privacy. |
-| familyreunifyops.records.audit_log | audit log | RECORD | Audit log tracks searches, views and disclosures. | Detects misuse. |
-| familyreunifyops.communication.public_form | public inquiry form | METHOD | Public form asks for useful details without overcollecting sensitive data. | Improves intake quality. |
-| familyreunifyops.communication.hotline_script | hotline script | METHOD | Script explains process, privacy limits and expected update cadence. | Reduces panic and confusion. |
-| familyreunifyops.metrics.open_cases | open cases | MEASUREMENT | Open cases track unmatched, pending consent, matched and closed inquiries. | Shows workload. |
-| familyreunifyops.metrics.match_time | match time | MEASUREMENT | Match time measures inquiry-to-confirmed outcome. | Indicates system speed. |
-| familyreunifyops.qa.match_review | match review | QUALITY_CHECK | Sensitive matches receive second-person review before disclosure. | Reduces harmful errors. |
-| familyreunifyops.closeout.closure_reason | closure reason | RECORD | Closure reason records reunited, safe-notified, withdrawn, duplicate, referred or unresolved. | Makes outcome explicit. |
+| familyreunifyops.intake.inquiry_id | идентификатор запроса | RECORD | Идентификатор запроса связывает отправителя запроса, пропавшего человека, событие, время, канал и статус. | Создает отслеживаемое дело о воссоединении. |
+| familyreunifyops.intake.requester_info | информация запрашивающего | RECORD | В записи запрашивающего фиксируются контакты, взаимоотношения, язык и срочность. | Обеспечивает безопасное наблюдение. |
+| familyreunifyops.intake.missing_profile | профиль пропавшего человека | RECORD | В профиле записано имя, возраст, описание, последнее известное место и особые потребности. | Поддерживает сопоставление. |
+| familyreunifyops.intake.event_link | ссылка на событие | RECORD | Случай связан с убежищем, эвакуацией, больницей, школой, зоной бедствия или происшествием. | Сужает контекст поиска. |
+| familyreunifyops.identity.requester_check | проверка личности запрашивающего | SAFETY_RULE | Личность и родство запрашивающего проверяются перед раскрытием личной информации. | Защищает эвакуированных и выживших. |
+| familyreunifyops.identity.subject_check | проверка личности субъекта | METHOD | Личность субъекта сопоставляется с именем, датой, фотографией, документами или доверенным свидетелем. | Уменьшает количество ложных совпадений. |
+| familyreunifyops.identity.proxy | инициатор запроса прокси | CONSTRAINT | Адвокатам, агентствам или друзьям необходимы законные основания или согласие на использование конфиденциальных данных. | Избегает несанкционированного раскрытия. |
+| familyreunifyops.identity.minor_guard | незначительная гарантия | SAFETY_RULE | Незначительные запросы требуют дополнительных проверок опеки и обеспечения безопасности. | Защищает детей. |
+| familyreunifyops.privacy.consent | согласие на уведомление | RECORD | Согласие обнаруженного лица записывается до того, как он сообщит о своем местоположении, если закон не требует иного. | Уважает автономию. |
+| familyreunifyops.privacy.safe_contact | безопасный контактный экран | SAFETY_RULE | Перед уведомлением сотрудники проверяют на предмет домашнего насилия, преследования, задержания или торговли людьми. | Предотвращает вредоносное раскрытие информации. |
+| familyreunifyops.privacy.minimum | минимальное раскрытие информации | CONSTRAINT | В уведомлениях раскрываются только необходимые факты, а не полная информация о жилье или медицинских данных, если они не одобрены. | Ограничивает раскрытие конфиденциальности. |
+| familyreunifyops.privacy.confidential_site | конфиденциальный сайт | CONSTRAINT | Некоторые приюты, больницы или защитные объекты не могут быть раскрыты публично. | Защищает уязвимых людей. |
+| familyreunifyops.matching.match_queue | очередь совпадений | METHOD | Дела помещаются в очередь по срочности, возрасту, уязвимости и имеющимся подсказкам. | Отдает приоритет дефициту рабочего времени персонала. |
+| familyreunifyops.matching.name_variants | варианты названия | METHOD | Сопоставление проверяет орфографию, псевдонимы, транслитерацию и псевдонимы. | Избегает пропущенных матчей. |
+| familyreunifyops.matching.demographic_match | демографическое соответствие | MODEL | При сопоставлении учитываются возраст, пол, описание, язык, адрес и спутники. | Улучшает уверенность. |
+| familyreunifyops.matching.location_match | совпадение местоположения | MODEL | Последнее известное местоположение сравнивается со списками убежищ, транспортными журналами и списками объектов. | Сужает поиск. |
+| familyreunifyops.matching.photo_match | фото совпадение | METHOD | Сравнение фотографий используется с согласия и после проверки человеком. | Помогает, когда имена неясны. |
+| familyreunifyops.matching.false_positive | ложное срабатывание | FAILURE_MODE | Ложное срабатывание происходит, когда схожие идентификационные данные приводят к неправильному совпадению. | Требуется проверка перед выпуском. |
+| familyreunifyops.sources.shelter_roster | список приютов | RECORD | Список приютов может подтвердить присутствие, группу, потребности и статус согласия. | Связывает запросы с данными приюта. |
+| familyreunifyops.sources.hospital_liaison | больничная связь | METHOD | Сотрудники больницы соблюдают правила медицинской конфиденциальности при проверке статуса пациента. | Обрабатывает запросы, связанные со здоровьем. |
+| familyreunifyops.sources.school_list | список школ | METHOD | Списки школ или учреждений по уходу за детьми поддерживают воссоединение детей в соответствии с защитными правилами. | Защищает несовершеннолетних во время эвакуации. |
+| familyreunifyops.sources.transport_manifest | транспортный манифест | RECORD | В транспортных манифестах указаны эвакуационные автобусы, пункты посадки и пункты назначения. | Отслеживает движение. |
+| familyreunifyops.welfare.welfare_call | звонок в благосостояние | METHOD | Вызов службы социального обеспечения подтверждает безопасность и предпочтительный маршрут контакта с обнаруженным человеком. | Подтверждает статус перед уведомлением. |
+| familyreunifyops.welfare.unreachable | недостижимый предмет | METHOD | Статус «Недоступен» вызывает повторные проверки, направление на место или запрос партнера. | Поддерживает поиск активным. |
+| familyreunifyops.welfare.vulnerable | Флаг уязвимого человека | MODEL | Инвалидность, возраст, медицинская необходимость или изоляция повышают приоритетность последующего наблюдения. | Фокусирует защитное действие. |
+| familyreunifyops.welfare.deceased_protocol | протокол умершего | SAFETY_RULE | Уведомление о смерти осуществляется в соответствии с правилами коронера, правоохранительных органов или официальных семейных связей. | Предотвращает ненадлежащее уведомление. |
+| familyreunifyops.notification.match_notice | уведомление о матче | METHOD | В уведомлении о матче указан утвержденный путь связи и следующие шаги. | Помогает семье безопасно воссоединиться. |
+| familyreunifyops.notification.no_match | несовпадающее обновление | METHOD | Поиск состояний несоответствующих обновлений продолжается и запрашивает дополнительную полезную информацию. | Сохраняет связь. |
+| familyreunifyops.notification.language | языковая поддержка | METHOD | В уведомлениях используется язык запрашивающей стороны или переводчик, если он доступен. | Улучшает понимание. |
+| familyreunifyops.notification.documented | запись уведомления | RECORD | Записывает, кто был уведомлен, когда, кем и что было раскрыто. | Поддерживает аудит. |
+| familyreunifyops.escalation.law_enforcement | эскалация правоохранительных органов | METHOD | Эскалация происходит в случае пропажи детей, подозреваемого преступления, угроз или угрозы благополучию. | Пользуется надлежащими полномочиями. |
+| familyreunifyops.escalation.child_welfare | повышение благосостояния детей | SAFETY_RULE | Агентство по защите детей привлекается, когда возникают проблемы опеки или жестокого обращения. | Защищает несовершеннолетних. |
+| familyreunifyops.escalation.embassy | консульская эскалация | METHOD | Иностранным гражданам может потребоваться контакт с консульством или посольством в соответствии с политикой. | Поддерживает международные семьи. |
+| familyreunifyops.escalation.mass_casualty | ссылка на массовые жертвы | METHOD | Инциденты с массовыми жертвами согласовываются с центром помощи семьям и официальными списками. | Избегает фрагментированных уведомлений. |
+| familyreunifyops.records.case_file | материалы дела | RECORD | В файлах хранятся запросы, проверки, источники, обоснование совпадений, согласие и уведомления. | Создает единый след доказательств. |
+| familyreunifyops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам хранения в чрезвычайных ситуациях, конфиденциальности и законным требованиям. | Контролирует конфиденциальные данные. |
+| familyreunifyops.records.access | контроль доступа | SAFETY_RULE | Только авторизованный персонал по воссоединению может просматривать деликатные дела. | Защищает конфиденциальность. |
+| familyreunifyops.records.audit_log | журнал аудита | RECORD | Журнал аудита отслеживает поиски, просмотры и раскрытия информации. | Обнаруживает неправильное использование. |
+| familyreunifyops.communication.public_form | форма публичного запроса | METHOD | Публичная форма запрашивает полезную информацию без чрезмерного сбора конфиденциальных данных. | Улучшает качество приема. |
+| familyreunifyops.communication.hotline_script | сценарий горячей линии | METHOD | Сценарий объясняет процесс, ограничения конфиденциальности и ожидаемую частоту обновлений. | Уменьшает панику и растерянность. |
+| familyreunifyops.metrics.open_cases | открытые дела | MEASUREMENT | Открытые дела отслеживают несопоставленные, ожидающие согласия, сопоставленные и закрытые запросы. | Показывает загруженность. |
+| familyreunifyops.metrics.match_time | время матча | MEASUREMENT | Время сопоставления измеряет соотношение запроса к подтвержденному результату. | Указывает скорость системы. |
+| familyreunifyops.qa.match_review | обзор матча | QUALITY_CHECK | Конфиденциальные совпадения перед раскрытием проверяются вторым лицом. | Уменьшает вредные ошибки. |
+| familyreunifyops.closeout.closure_reason | причина закрытия | RECORD | Записи о причинах закрытия воссоединены, безопасно уведомлены, отозваны, дублированы, переданы или не разрешены. | Делает результат явным. |

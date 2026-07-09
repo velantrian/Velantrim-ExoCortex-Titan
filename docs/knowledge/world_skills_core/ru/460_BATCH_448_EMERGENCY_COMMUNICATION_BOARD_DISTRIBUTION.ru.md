@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| commboardops.intake.request_source | request source | RECORD | Source records shelter desk, disability advocate, clinic, school, caregiver, interpreter team or outreach worker. | Shows entry path. |
-| commboardops.intake.user_profile | user profile | RECORD | Profile captures age group, communication method, language, disability need, caregiver and current site. | Defines support. |
-| commboardops.intake.communication_barrier | communication barrier | RECORD | Barrier notes speech loss, hearing barrier, language gap, cognitive access, stress response or device loss. | Frames need. |
-| commboardops.intake.urgency_score | urgency score | MODEL | Score weighs medical triage, shelter navigation, food needs, safety, caregiver absence and language isolation. | Prioritizes distribution. |
-| commboardops.eligibility.emergency_link | emergency link | CONTROL | Link verifies communication board need is tied to emergency access, displacement or service disruption. | Targets supplies. |
-| commboardops.eligibility.use_context | use context | RECORD | Context records shelter, clinic, feeding site, field outreach, school, family reunification or transport. | Selects board type. |
-| commboardops.eligibility.duplicate_check | duplicate check | CONTROL | Check compares user, site, board type, language, caregiver and prior issue records. | Avoids duplication. |
-| commboardops.board.board_type | board type | MODEL | Type separates picture board, alphabet board, pain scale, needs board, translation board or low-vision board. | Matches barrier. |
-| commboardops.board.symbol_set | symbol set | RECORD | Set lists symbols for food, water, pain, restroom, medicine, family, danger, transport and help. | Supports quick expression. |
-| commboardops.board.language_set | language set | RECORD | Set records printed languages, pictograms, plain language, braille add-on or interpreter note. | Improves access. |
-| commboardops.board.low_vision_format | low-vision format | CONTROL | Format uses high contrast, large print, tactile cues or glare control where needed. | Supports visibility. |
-| commboardops.board.durable_format | durable format | CONTROL | Format uses lamination, wipeable surface, tether, pocket size or wall mount. | Survives field use. |
-| commboardops.inventory.asset_record | asset record | RECORD | Record captures board type, language, quantity, site, condition and issue status. | Tracks inventory. |
-| commboardops.inventory.stock_threshold | stock threshold | CONTROL | Threshold flags low supply by language, board type, site and user group. | Prevents stockouts. |
-| commboardops.inventory.print_batch | print batch | RECORD | Batch records version, date, printer, paper, lamination and quality check. | Supports consistency. |
-| commboardops.inventory.version_control | version control | CONTROL | Control avoids mixing outdated symbols, wrong translations or unapproved layouts. | Prevents confusion. |
-| commboardops.training.staff_orientation | staff orientation | PROCESS | Orientation shows how to offer choices, wait for response, confirm meaning and avoid rushing. | Makes boards useful. |
-| commboardops.training.caregiver_brief | caregiver brief | PROCESS | Brief explains board layout, yes/no method, pointing support and cleaning. | Extends use. |
-| commboardops.training.user_demo | user demo | PROCESS | Demo lets user practice needs, pain, location, family, refusal and emergency messages. | Confirms usability. |
-| commboardops.training.misuse_warning | misuse warning | CONTROL | Warning prevents staff from assuming answers, forcing choices or replacing interpreters when needed. | Protects autonomy. |
-| commboardops.delivery.site_distribution | site distribution | PROCESS | Distribution places boards at intake, medical desk, feeding line, dorm area, transport and information desk. | Makes access visible. |
-| commboardops.delivery.individual_issue | individual issue | RECORD | Issue records user, board type, language, caregiver, date and follow-up need. | Personalizes support. |
-| commboardops.delivery.mobile_delivery | mobile delivery | PROCESS | Delivery routes boards to homebound clients, field teams, clinics, schools or temporary housing. | Reaches barriers. |
-| commboardops.delivery.handoff_proof | handoff proof | RECORD | Proof records recipient, quantity, location, board version and instruction given. | Closes custody. |
-| commboardops.cleaning.cleaning_rule | cleaning rule | CONTROL | Rule defines wipeable surfaces, cleaning frequency, shared-use handling and damaged-board removal. | Reduces infection risk. |
-| commboardops.cleaning.damage_check | damage check | PROCESS | Check removes torn, unreadable, contaminated, outdated or missing boards from use. | Maintains quality. |
-| commboardops.accessibility.interpreter_link | interpreter link | PROCESS | Link routes complex, legal, medical or emotional communication to interpreter or specialist support. | Avoids overreliance. |
-| commboardops.accessibility.cultural_check | cultural check | CONTROL | Check reviews symbols, gestures, translations and sensitive images for local appropriateness. | Reduces misunderstanding. |
-| commboardops.accessibility.literacy_support | literacy support | PROCESS | Support uses pictograms, plain wording, pointing, color cues and staff facilitation. | Helps low-literacy users. |
-| commboardops.records.case_file | case file | RECORD | File links intake, board selection, issue, training, follow-up and closure. | Supports audit. |
-| commboardops.records.site_log | site log | RECORD | Log tracks board counts, locations, staff trained, missing boards and restock needs. | Manages sites. |
-| commboardops.records.exception_log | exception log | RECORD | Log captures wrong language, lost board, misunderstanding, interpreter need, damage or refusal. | Enables review. |
-| commboardops.records.version_note | version note | RECORD | Note records board edition, symbol source, language review and approved use setting. | Prevents wrong versions. |
-| commboardops.privacy.minimum_data | minimum data | CONTROL | Minimum data limits disability, language and medical details to support need. | Protects users. |
-| commboardops.privacy.public_display | public display privacy | CONTROL | Display avoids exposing names, diagnoses, immigration status or sensitive needs. | Preserves dignity. |
-| commboardops.communication.site_notice | site notice | PROCESS | Notice tells staff where boards are available and how to request more. | Promotes use. |
-| commboardops.communication.user_update | user update | PROCESS | Update explains board purpose, return or keep rule, cleaning and where to get help. | Clarifies expectations. |
-| commboardops.communication.partner_request | partner request | PROCESS | Request asks disability groups, translators, printers or clinics for board versions and advice. | Expands capacity. |
-| commboardops.metrics.distribution_count | distribution count | METRIC | Count tracks boards issued by type, language, site and user group. | Measures reach. |
-| commboardops.metrics.training_coverage | training coverage | METRIC | Coverage tracks staff or caregiver orientation sessions and sites covered. | Shows readiness. |
-| commboardops.metrics.followup_success | follow-up success | METRIC | Success records whether board helped communication or needed replacement or referral. | Measures usefulness. |
-| commboardops.metrics.replacement_rate | replacement rate | METRIC | Rate tracks damaged, lost, outdated or wrong-language boards needing replacement. | Guides stock planning. |
-| commboardops.closeout.user_confirmation | user confirmation | PROCESS | Confirmation checks board usability, language fit, damage and remaining communication barriers. | Closes loop. |
-| commboardops.closeout.after_action | after-action note | RECORD | Note captures language gaps, symbol issues, training needs and stock lessons. | Improves next activation. |
+| commboardops.intake.request_source | источник запроса | RECORD | Исходные записи: отдел приюта, защитник инвалидов, клиника, школа, опекун, группа переводчиков или аутрич-работник. | Показывает путь входа. |
+| commboardops.intake.user_profile | профиль пользователя | RECORD | В профиле указывается возрастная группа, метод общения, язык, потребности с ограниченными возможностями, лицо, осуществляющее уход, и текущее местонахождение. | Определяет поддержку. |
+| commboardops.intake.communication_barrier | коммуникационный барьер | RECORD | Барьер отмечает потерю речи, слуховой барьер, языковой разрыв, когнитивный доступ, реакцию на стресс или потерю устройства. | Рамки нужны. |
+| commboardops.intake.urgency_score | оценка срочности | MODEL | Оценка учитывает медицинскую сортировку, навигацию по приюту, потребности в еде, безопасность, отсутствие опекуна и языковую изоляцию. | Отдает приоритет распространению. |
+| commboardops.eligibility.emergency_link | аварийная связь | CONTROL | Link подтверждает, что потребность в плате связи связана с экстренным доступом, перемещением или нарушением обслуживания. | Целевые поставки. |
+| commboardops.eligibility.use_context | использовать контекст | RECORD | Контекст фиксирует приют, клинику, место кормления, выездную работу, школу, воссоединение семьи или транспорт. | Выбор типа платы. |
+| commboardops.eligibility.duplicate_check | дубликат чека | CONTROL | При проверке сравниваются записи пользователя, сайта, типа доски, языка, лица, осуществляющего уход, и предыдущих проблем. | Избегает дублирования. |
+| commboardops.board.board_type | тип платы | MODEL | Тип разделяет доску с картинками, доску с алфавитом, шкалу боли, доску потребностей, доску перевода или доску для слабовидящих. | Соответствует барьеру. |
+| commboardops.board.symbol_set | набор символов | RECORD | Набор списков символов для еды, воды, боли, туалета, медицины, семьи, опасности, транспорта и помощи. | Поддерживает быстрое выражение. |
+| commboardops.board.language_set | языковой набор | RECORD | Установите записи на печатных языках, пиктограммах, простом языке, надстройках Брайля или примечаниях переводчика. | Улучшает доступ. |
+| commboardops.board.low_vision_format | формат для слабовидящих | CONTROL | Формат использует высокую контрастность, крупный шрифт, тактильные сигналы или контроль бликов, где это необходимо. | Поддерживает видимость. |
+| commboardops.board.durable_format | прочный формат | CONTROL | В формате используется ламинирование, протираемая поверхность, ремень, карманный размер или настенное крепление. | Выдерживает использование в полевых условиях. |
+| commboardops.inventory.asset_record | запись об активах | RECORD | Запись фиксирует тип платы, язык, количество, местоположение, состояние и статус проблемы. | Отслеживает инвентарь. |
+| commboardops.inventory.stock_threshold | порог запаса | CONTROL | Пороговое значение указывает на низкий уровень предложения по языку, типу форума, сайту и группе пользователей. | Предотвращает дефицит. |
+| commboardops.inventory.print_batch | пакет печати | RECORD | Пакетная запись версии, даты, принтера, бумаги, ламинации и проверки качества. | Поддерживает последовательность. |
+| commboardops.inventory.version_control | контроль версий | CONTROL | Контроль позволяет избежать смешивания устаревших символов, неправильных переводов или неутвержденных макетов. | Предотвращает путаницу. |
+| commboardops.training.staff_orientation | ориентация персонала | PROCESS | Ориентация показывает, как предлагать выбор, ждать ответа, подтверждать смысл и избегать спешки. | Делает доски полезными. |
+| commboardops.training.caregiver_brief | краткое содержание лица, осуществляющего уход | PROCESS | В кратком описании объясняется расположение платы, метод «да/нет», поддержка наведения и очистка. | Расширяет использование. |
+| commboardops.training.user_demo | пользовательская демо-версия | PROCESS | Демо-версия позволяет пользователю попрактиковаться в потребностях, боли, местоположении, семье, отказе и сообщениях о чрезвычайных ситуациях. | Подтверждает удобство использования. |
+| commboardops.training.misuse_warning | предупреждение о неправильном использовании | CONTROL | Предупреждение не позволяет персоналу предполагать ответы, принуждать к выбору или заменять переводчиков, когда это необходимо. | Защищает автономность. |
+| commboardops.delivery.site_distribution | распространение сайта | PROCESS | Раздаточные таблички на приеме, медицинском столе, линии кормления, общежитии, транспортном и информационном бюро. | Делает доступ видимым. |
+| commboardops.delivery.individual_issue | индивидуальный вопрос | RECORD | В проблеме записываются пользователь, тип доски, язык, лицо, осуществляющее уход, дата и необходимость последующего наблюдения. | Персонализирует поддержку. |
+| commboardops.delivery.mobile_delivery | мобильная доставка | PROCESS | Маршруты доставки досок клиентам, которые находятся на дому, полевым группам, клиникам, школам или временному жилью. | Достигает барьеров. |
+| commboardops.delivery.handoff_proof | доказательство передачи | RECORD | В подтверждении указывается получатель, количество, местоположение, версия платы и предоставленные инструкции. | Закрывает опеку. |
+| commboardops.cleaning.cleaning_rule | правило уборки | CONTROL | Правило определяет поверхности, которые можно протирать, частоту очистки, совместное использование и удаление поврежденной доски. | Снижает риск заражения. |
+| commboardops.cleaning.damage_check | проверка повреждений | PROCESS | Проверка удаляет из использования порванные, нечитаемые, загрязненные, устаревшие или отсутствующие платы. | Сохраняет качество. |
+| commboardops.accessibility.interpreter_link | ссылка переводчика | PROCESS | Свяжите сложные, юридические, медицинские или эмоциональные коммуникации с поддержкой переводчика или специалиста. | Избегает чрезмерной уверенности. |
+| commboardops.accessibility.cultural_check | культурная проверка | CONTROL | Проверьте символы, жесты, переводы и конфиденциальные изображения отзывов на предмет соответствия местным условиям. | Уменьшает непонимание. |
+| commboardops.accessibility.literacy_support | поддержка грамотности | PROCESS | Служба поддержки использует пиктограммы, простые тексты, указатели, цветовые подсказки и помощь со стороны персонала. | Помогает малограмотным пользователям. |
+| commboardops.records.case_file | материалы дела | RECORD | Прием файловых ссылок, выбор доски, выпуск, обучение, последующие действия и закрытие. | Поддерживает аудит. |
+| commboardops.records.site_log | журнал сайта | RECORD | В журнале отслеживаются количество досок, их расположение, обученный персонал, недостающие доски и потребности в пополнении запасов. | Управляет сайтами. |
+| commboardops.records.exception_log | журнал исключений | RECORD | В журнале фиксируются неправильные формулировки, потеря доски, недопонимание, потребность в переводчике, повреждение или отказ. | Включает обзор. |
+| commboardops.records.version_note | примечание к версии | RECORD | Примечание записывает версию платы, источник символов, проверку языка и утвержденные настройки использования. | Предотвращает неправильные версии. |
+| commboardops.privacy.minimum_data | минимальные данные | CONTROL | Минимальные данные ограничивают инвалидность, языковые и медицинские данные для удовлетворения потребностей. | Защищает пользователей. |
+| commboardops.privacy.public_display | конфиденциальность публичного показа | CONTROL | Демонстрация позволяет избежать раскрытия имен, диагнозов, иммиграционного статуса или деликатных потребностей. | Сохраняет достоинство. |
+| commboardops.communication.site_notice | уведомление на сайте | PROCESS | В уведомлении сообщается сотрудникам, где можно приобрести доски и как запросить дополнительные. | Способствует использованию. |
+| commboardops.communication.user_update | обновление пользователя | PROCESS | Обновление объясняет назначение доски, правила возврата или сохранения, уборку и место, где можно получить помощь. | Уточняет ожидания. |
+| commboardops.communication.partner_request | запрос партнера | PROCESS | Запрос просит группы с ограниченными возможностями, переводчиков, принтеров или клиники предоставить версии для совета и советы. | Расширяет емкость. |
+| commboardops.metrics.distribution_count | количество распределений | METRIC | Подсчет отслеживает доски, выпущенные по типу, языку, сайту и группе пользователей. | Меры достигают. |
+| commboardops.metrics.training_coverage | покрытие обучения | METRIC | Охват отслеживает ознакомительные занятия для персонала или лиц, осуществляющих уход, и охваченные сайты. | Показывает готовность. |
+| commboardops.metrics.followup_success | последующий успех | METRIC | Успех фиксирует, помогло ли правление общению или потребовалось его замена или направление. | Измеряет полезность. |
+| commboardops.metrics.replacement_rate | коэффициент замещения | METRIC | Оцените поврежденные, утерянные, устаревшие или неправильно написанные таблички, требующие замены. | Руководства по планированию запасов. |
+| commboardops.closeout.user_confirmation | подтверждение пользователя | PROCESS | При подтверждении проверяется удобство использования доски, соответствие языка, наличие повреждений и оставшиеся коммуникационные барьеры. | Замыкает цикл. |
+| commboardops.closeout.after_action | записка после действия | RECORD | В примечании отражены языковые пробелы, проблемы с символами, потребности в обучении и основные уроки. | Улучшает следующую активацию. |

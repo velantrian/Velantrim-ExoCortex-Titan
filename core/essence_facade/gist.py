@@ -99,8 +99,7 @@ class GistSynthesizer:
         # Hypothesis — что система знает из essence
         if facts and mode == "essence":
             try:
-                from core.essence import EssenceLayer
-                # Используем существующий essence как детерминированный анализатор
+                # FIX #10 (Claude audit): EssenceLayer не существует
                 gist.current_hypothesis = self._extract_hypothesis(facts)
             except Exception:
                 pass

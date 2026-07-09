@@ -1,0 +1,13 @@
+# BATCH 710: Grain Bin — Storage & Aeration
+
+**KnowledgeUnits:** 5
+**Namespace:** `grainbin.ops.*`
+**Scope:** aeration_fan, moisture_cable, sweep_auger, unloading, safety, bin_jacking, sealing
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| grainbin.ops.aeration_fan_sizing_cfm | Вентилятор аэрации — определение размеров CFM | METHOD | Расчёт вентиляции зернового бункера. Airflow: 0.1-0.2 CFM/bu (куб футов в минуту на бушель). Static pressure: зависит от глубины зерна и типа (пшеница > кукуруза). Fan selection: axial (низкое давление, высокий flow) или centrifugal (высокое давление). Horsepower: по кривой fan performance. Цель: охладить зерно после harvest до <15°C (suppress insects/mold). | Under-sized fan: не может продуть всю массу зерна (hot spots). |
+| grainbin.ops.temperature_cable_placement | Температурный кабель — размещение | METHOD | Установка термоподвесок (thermocouple cables). Cables: 6-12 шт., подвешены с крыши, опускаются в зерно на всю глубину. Датчики через каждые 1.2-2 м по высоте. Считывание: handheld digital reader или automatic controller. Порог тревоги: >5°C выше ambient (признак самосогревания). Проверка: еженедельно во время хранения. | Hot spot в центре bin: может достичь 60-80°C за дни. |
+| grainbin.ops.sweep_auger_operation | Подметальный шнек — Разгрузка | METHOD | Разгрузка остатков зерна (sweep auger). После gravity discharge (центральная воронка) остаётся 10-15% зерна по периметру. Sweep auger: вращается вокруг центра, скребёт зерно к центру. Powered by: PTO или electric motor. Безопасность: НИКОГДА не входить в bin пока sweep работает! (затянет и закопает в зерне за секунды). Lock-out перед entry. Bin entry: permit-required confined space (OSHA). | GRAIN ENTRAPMENT: главная причина смерти в grain bins. |
+| grainbin.ops.bin_jacking_leveling | Подъём бункера — выравнивание | METHOD | Установка бункера на фундамент. Jacks: гидравлические по периметру. Level: laser, подкладки (shims). Анкеровка: anchor bolts в бетонный фундамент. Важно: неравномерная осадка = bin может разрушиться. После заполнения: bin оседает (settlement). Проверка: ежегодно (отклонение от вертикали). | Bin settling: особенно на слабых грунтах. |
+| grainbin.ops.roof_sealing_watertight | Крыша — Герметизация | METHOD | Обеспечение водонепроницаемости. Roof seams: sealant (бутиловая лента, silicone). Hatch: rubber gasket (замена при износе). Eave: overhang достаточный для предотвращения water entry. Вентиляция: roof vent с screened opening (от птиц/насекомых). Конденсат: inside surfaces — temperature fluctuations вызывают sweating (плесень на зерне). Insulation: roof spray foam (снижает конденсат). | Вода в bin = спойленное зерно + микотоксины. |

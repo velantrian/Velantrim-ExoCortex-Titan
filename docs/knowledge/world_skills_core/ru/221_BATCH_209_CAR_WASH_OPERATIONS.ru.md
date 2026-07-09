@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| carwash.queue.vehicle_queue | Car wash vehicle queue | invariant | Queue manages arrival order, lane choice, payment status and vehicle readiness. | keep line moving |
-| carwash.queue.package_selection | Wash package selection | invariant | Selection maps customer choice to wash steps, chemicals, extras and price. | sell correct service |
-| carwash.queue.vehicle_precheck | Vehicle precheck | invariant | Precheck notes damage, loose items, racks, antennas, mirrors and special risks before wash. | avoid disputes |
-| carwash.queue.membership_scan | Car wash membership scan | variant | Scan validates subscription, plate, barcode, account status and included package. | automate repeat customers |
-| carwash.queue.wait_time_notice | Car wash wait notice | variant | Notice communicates delay, lane closure or service time to customers. | set expectations |
-| carwash.tunnel.conveyor_entry | Conveyor entry | variant | Entry aligns vehicle, neutral gear, brake release, spacing and driver instruction. | safe tunnel start |
-| carwash.tunnel.tunnel_controller | Tunnel controller | invariant | Controller sequences sensors, conveyor, arches, brushes, blowers and safety stops. | wash choreography |
-| carwash.tunnel.vehicle_spacing | Vehicle spacing | invariant | Spacing prevents collision and gives equipment time to reset between vehicles. | protect cars |
-| carwash.tunnel.emergency_stop | Tunnel emergency stop | invariant | Stop halts conveyor or equipment when unsafe condition appears. | immediate safety |
-| carwash.tunnel.exit_signal | Car wash exit signal | invariant | Signal tells driver when to shift, steer and leave safely. | avoid exit mishap |
-| carwash.chemical.presoak | Presoak application | invariant | Presoak loosens soil before friction or rinse steps. | start cleaning |
-| carwash.chemical.detergent_dilution | Detergent dilution | invariant | Dilution ratio controls cleaning, cost, equipment compatibility and finish safety. | chemistry balance |
-| carwash.chemical.wax_application | Wax application | variant | Wax or protectant is applied by package and surface compatibility. | value add |
-| carwash.chemical.spot_free_rinse | Spot-free rinse | variant | Rinse uses treated water to reduce mineral spotting after wash. | better finish |
-| carwash.chemical.chemical_sds | Car wash chemical SDS | invariant | SDS provides hazard, PPE, storage, spill and first-aid information for products. | staff safety |
-| carwash.equipment.brush_inspection | Brush inspection | invariant | Inspection checks wear, debris, alignment, rotation and vehicle-contact risk. | prevent scratches |
-| carwash.equipment.nozzle_check | Spray nozzle check | invariant | Check confirms nozzles are unclogged, aimed and producing correct pattern. | even coverage |
-| carwash.equipment.blower_alignment | Blower alignment | variant | Alignment directs air to dry vehicle without striking or stressing parts. | dry safely |
-| carwash.equipment.water_reclaim | Water reclaim system | variant | System filters and reuses wash water where quality and regulation allow. | reduce water use |
-| carwash.equipment.preventive_maintenance | Car wash preventive maintenance | invariant | PM covers conveyor, pumps, sensors, brushes, valves, reclaim, blowers and controls. | uptime |
-| carwash.detail.interior_vacuum | Interior vacuum service | variant | Service removes loose debris from floors, seats, mats and trunk by package. | detail add-on |
-| carwash.detail.window_cleaning | Car wash window cleaning | variant | Cleaning handles interior or exterior glass streaks, residue and edges. | finish visibility |
-| carwash.detail.tire_dressing | Tire dressing | variant | Dressing applies finish to tires while avoiding tread, brakes or slippery overspray. | appearance extra |
-| carwash.detail.mat_cleaning | Floor mat cleaning | variant | Cleaning washes, dries and returns mats without soaking interior. | customer-visible detail |
-| carwash.detail.quality_walkaround | Detail quality walkaround | invariant | Walkaround checks missed spots, damage, wet areas, loose items and customer requests. | final gate |
-| carwash.safety.driver_instruction | Driver instruction | invariant | Instruction tells customer gear, brakes, steering, windows, wipers and exit behavior. | prevent incidents |
-| carwash.safety.slip_control | Car wash slip control | invariant | Control manages wet floors, hoses, mats, signage and drainage. | worker and customer safety |
-| carwash.safety.electrical_water_risk | Electrical and water risk | invariant | Risk control protects panels, cords, pumps and staff around wet electrical systems. | dangerous combination |
-| carwash.safety.confined_trench | Conveyor pit or trench safety | variant | Safety controls access, lockout, ventilation and fall risk when servicing pits. | maintenance hazard |
-| carwash.safety.vehicle_damage_claim | Vehicle damage claim | invariant | Claim records customer report, photos, video review, precheck and resolution path. | dispute evidence |
-| carwash.customer.point_of_sale | Car wash point of sale | invariant | POS captures package, discounts, payment, membership, receipt and upsell. | revenue point |
-| carwash.customer.membership_admin | Membership administration | variant | Administration handles signup, billing, plate changes, cancellation and failed payments. | subscription control |
-| carwash.customer.complaint_rewash | Rewash request | invariant | Request evaluates missed cleaning, package promise, timing and approval for rewash. | service recovery |
-| carwash.customer.lost_item | Lost item report | variant | Report documents item, vehicle, time, search, video if allowed and customer contact. | handle belongings |
-| carwash.customer.weather_policy | Car wash weather policy | variant | Policy controls closures, rain guarantees, freezing conditions and rescheduling. | weather affects service |
-| carwash.environment.drain_screen | Car wash drain screen | invariant | Screen captures debris before wastewater system or reclaim process. | protect plumbing |
-| carwash.environment.wastewater_compliance | Car wash wastewater compliance | invariant | Compliance follows discharge, reclaim, separator and chemical handling requirements. | avoid violations |
-| carwash.environment.chemical_inventory | Car wash chemical inventory | invariant | Inventory tracks containers, usage, storage, reorder, leaks and expired products. | control consumables |
-| carwash.environment.freeze_protection | Freeze protection | variant | Protection drains, heats or shuts down lines and equipment during freezing weather. | prevent damage |
-| carwash.environment.noise_control | Car wash noise control | variant | Control manages blower, vacuum, traffic and operating-hour impacts. | neighbor relation |
-| carwash.admin.shift_open | Car wash shift opening | invariant | Opening verifies equipment, chemicals, cash, lanes, safety checks and staffing. | day starts ready |
-| carwash.admin.shift_close | Car wash shift close | invariant | Close reconciles sales, cleans site, secures chemicals, logs faults and prepares next day. | reset site |
-| carwash.metrics.carwash_kpi | Car wash KPI | variant | KPI tracks cars per hour, chemical cost, downtime, claims, memberships and rewash rate. | manage wash |
-| carwash.continuity.tunnel_downtime | Car wash tunnel downtime | invariant | Downtime procedure stops sales, redirects customers, logs fault and coordinates repair. | recover service |
+| carwash.queue.vehicle_queue | Очередь на автомойку | invariant | Очередь управляет порядком прибытия, выбором полосы движения, статусом оплаты и готовностью автомобиля. | продолжайте движение линии |
+| carwash.queue.package_selection | Выбор пакета стирки | invariant | Выбор отображает выбор клиента в отношении этапов мойки, химикатов, дополнительных принадлежностей и цены. | продать правильный сервис |
+| carwash.queue.vehicle_precheck | Предварительная проверка автомобиля | invariant | Перед стиркой проверьте наличие повреждений, незакрепленных предметов, стоек, антенн, зеркал и особых рисков. | избегать споров |
+| carwash.queue.membership_scan | Скан членства в автомойке | variant | Сканирование подтверждает подписку, номерной знак, штрих-код, статус учетной записи и включенный пакет. | автоматизировать постоянных клиентов |
+| carwash.queue.wait_time_notice | Уведомление об ожидании автомойки | variant | Уведомление сообщает клиентам о задержке, закрытии полосы движения или времени обслуживания. | устанавливать ожидания |
+| carwash.tunnel.conveyor_entry | Вход конвейера | variant | При вводе выравниваются транспортное средство, нейтральная передача, отпускание тормозов, расстояние и инструкции водителя. | безопасный старт туннеля |
+| carwash.tunnel.tunnel_controller | Туннельный контроллер | invariant | Контроллер управляет датчиками, конвейером, арками, щетками, вентиляторами и стопорами безопасности. | мыть хореографию |
+| carwash.tunnel.vehicle_spacing | Расстояние между транспортными средствами | invariant | Расстояние предотвращает столкновение и дает оборудованию время для перезапуска между транспортными средствами. | защищать автомобили |
+| carwash.tunnel.emergency_stop | Аварийная остановка туннеля | invariant | Функция Stop останавливает конвейер или оборудование при возникновении небезопасного состояния. | немедленная безопасность |
+| carwash.tunnel.exit_signal | Сигнал выхода из автомойки | invariant | Сигнал сообщает водителю, когда нужно переключиться, повернуть и безопасно покинуть автомобиль. | избежать неудачного выхода |
+| carwash.chemical.presoak | Предварительное замачивание | invariant | Предварительное замачивание разрыхляет почву перед этапами трения или полоскания. | начать уборку |
+| carwash.chemical.detergent_dilution | Разбавление моющего средства | invariant | Коэффициент разбавления контролирует очистку, стоимость, совместимость оборудования и безопасность отделки. | химический баланс |
+| carwash.chemical.wax_application | Применение воска | variant | Воск или защитное средство наносится в зависимости от совместимости упаковки и поверхности. | добавленная стоимость |
+| carwash.chemical.spot_free_rinse | Полоскание без пятен | variant | Для полоскания используется очищенная вода, чтобы уменьшить появление минеральных пятен после стирки. | лучший конец |
+| carwash.chemical.chemical_sds | Химия для мойки автомобилей SDS | invariant | Паспорт безопасности предоставляет информацию об опасностях, средствах индивидуальной защиты, хранении, разливах и первой помощи для продуктов. | безопасность персонала |
+| carwash.equipment.brush_inspection | Проверка щеток | invariant | Осмотр проверяет износ, наличие мусора, выравнивание, вращение и риск контакта с транспортным средством. | предотвратить царапины |
+| carwash.equipment.nozzle_check | Проверка форсунки | invariant | Проверка подтверждает, что форсунки незасорены, направлены и создают правильную форму. | равномерное покрытие |
+| carwash.equipment.blower_alignment | Выравнивание вентилятора | variant | При выравнивании воздух направляется к сухому автомобилю, не ударяя и не напрягая детали. | сушить безопасно |
+| carwash.equipment.water_reclaim | Система рекуперации воды | variant | Система фильтрует и повторно использует промывную воду там, где это позволяют качество и нормативные требования. | сократить потребление воды |
+| carwash.equipment.preventive_maintenance | Профилактическое обслуживание автомойки | invariant | PM охватывает конвейер, насосы, датчики, щетки, клапаны, рекуперацию, воздуходувки и элементы управления. | время безотказной работы |
+| carwash.detail.interior_vacuum | Услуга вакуумирования салона | variant | Сервис убирает мусор с полов, сидений, ковриков и багажника упаковками. | подробное дополнение |
+| carwash.detail.window_cleaning | Мытье окон автомойки | variant | Очистка позволяет удалить внутренние или внешние полосы, остатки и края стекла. | закончить видимость |
+| carwash.detail.tire_dressing | Правка шин | variant | Правка придает шинам законченный вид, избегая при этом протектора, тормозов и скользких брызг. | внешний вид дополнительный |
+| carwash.detail.mat_cleaning | Чистка напольного коврика | variant | Чистка моет, сушит и возвращает коврики, не замачивая салон. | деталь, видимая клиенту |
+| carwash.detail.quality_walkaround | Проверка качества детализации | invariant | Обход проверяет пропущенные места, повреждения, влажные зоны, незакрепленные предметы и запросы клиентов. | последние ворота |
+| carwash.safety.driver_instruction | Инструкция водителя | invariant | Инструкция рассказывает клиенту о переключении передач, тормозах, рулевом управлении, окнах, дворниках и поведении при выходе. | предотвращать инциденты |
+| carwash.safety.slip_control | Контроль скольжения на автомойке | invariant | Система управления управляет мокрыми полами, шлангами, ковриками, вывесками и дренажем. | безопасность работников и клиентов |
+| carwash.safety.electrical_water_risk | Электрический и водный риск | invariant | Контроль рисков защищает панели, шнуры, насосы и персонал, работающий рядом с мокрыми электрическими системами. | опасная комбинация |
+| carwash.safety.confined_trench | Безопасность конвейерной ямы или траншеи | variant | Безопасность контролирует доступ, блокировку, вентиляцию и риск падения при обслуживании ям. | опасность при обслуживании |
+| carwash.safety.vehicle_damage_claim | Претензия о повреждении транспортного средства | invariant | В претензии записываются отчет клиента, фотографии, видеообзор, предварительная проверка и путь решения. | оспаривать доказательства |
+| carwash.customer.point_of_sale | Точка продажи автомойки | invariant | POS фиксирует упаковку, скидки, оплату, членство, квитанцию ​​и дополнительные продажи. | точка дохода |
+| carwash.customer.membership_admin | Управление членством | variant | Администрация занимается регистрацией, выставлением счетов, сменой номеров, отменой и неудачными платежами. | контроль подписки |
+| carwash.customer.complaint_rewash | Запрос на повторную стирку | invariant | Запрос оценивает пропущенную чистку, обещание на упаковке, время и одобрение повторной стирки. | восстановление службы |
+| carwash.customer.lost_item | Отчет о потерянной вещи | variant | Отчет документирует предмет, транспортное средство, время, поиск, видео, если разрешено, и контакт с клиентом. | обращаться с вещами |
+| carwash.customer.weather_policy | Погода на автомойке | variant | Политика контролирует закрытие, гарантии дождя, заморозки и перенос графика. | погода влияет на обслуживание |
+| carwash.environment.drain_screen | Сливная сетка автомойки | invariant | Экран улавливает мусор перед системой сточных вод или процессом утилизации. | защитить сантехнику |
+| carwash.environment.wastewater_compliance | Соблюдение требований по очистке сточных вод автомойки | invariant | Соответствие требованиям к сбросу, утилизации, сепарированию и обращению с химикатами. | избегать нарушений |
+| carwash.environment.chemical_inventory | Химический инвентарь для автомойки | invariant | Инвентаризация отслеживает контейнеры, использование, хранение, повторный заказ, утечки и продукты с истекшим сроком годности. | контроль расходных материалов |
+| carwash.environment.freeze_protection | Защита от замерзания | variant | Защита осушает, нагревает или отключает линии и оборудование в морозную погоду. | предотвратить повреждение |
+| carwash.environment.noise_control | Контроль шума автомойки | variant | Система управления контролирует влияние вентилятора, вакуума, трафика и часов работы. | соседские отношения |
+| carwash.admin.shift_open | Открытие смены автомойки | invariant | При открытии проверяется оборудование, химикаты, наличные деньги, проходы, проверки безопасности и укомплектование персоналом. | день начинается, готов |
+| carwash.admin.shift_close | Закрытие смены автомойки | invariant | Компания Close согласовывает продажи, убирает территорию, обеспечивает безопасность химикатов, регистрирует неисправности и готовится к следующему дню. | сбросить сайт |
+| carwash.metrics.carwash_kpi | Автомойка КПИ | variant | KPI отслеживает количество автомобилей в час, стоимость химикатов, время простоя, претензии, членство и частоту повторной мойки. | управлять стиркой |
+| carwash.continuity.tunnel_downtime | Простой туннеля автомойки | invariant | Процедура простоя останавливает продажи, перенаправляет клиентов, регистрирует неисправности и координирует ремонт. | восстановить сервис |

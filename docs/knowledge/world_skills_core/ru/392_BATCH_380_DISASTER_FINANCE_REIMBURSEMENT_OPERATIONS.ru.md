@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| disasterfinanceops.intake.project_id | project ID | RECORD | Project ID links incident, applicant, damage, scope, costs and funding source. | Tracks reimbursement package. |
-| disasterfinanceops.intake.damage_link | damage link | RECORD | Project links to damage assessment, photos, maps and work orders. | Connects cost to event. |
-| disasterfinanceops.intake.applicant | applicant record | RECORD | Applicant record stores legal entity, contacts, identifiers and authority. | Establishes who claims funds. |
-| disasterfinanceops.intake.program | program type | RECORD | Program distinguishes public assistance, hazard mitigation, insurance, grant or donor fund. | Different rules apply. |
-| disasterfinanceops.eligibility.incident_period | incident period | CONSTRAINT | Eligible work must connect to declared incident and approved dates. | Protects claim validity. |
-| disasterfinanceops.eligibility.work_category | work category | CONSTRAINT | Work category separates emergency protective measures, debris, repair or mitigation. | Routes documentation. |
-| disasterfinanceops.eligibility.ownership | ownership check | QUALITY_CHECK | Ownership or legal responsibility is confirmed before claiming repair costs. | Prevents ineligible claims. |
-| disasterfinanceops.eligibility.duplication | duplication of benefits | QUALITY_CHECK | Insurance, other grants and donations are checked against claimed costs. | Avoids duplicate reimbursement. |
-| disasterfinanceops.scope.scope_statement | scope statement | RECORD | Scope describes work performed or planned, location and standard. | Defines reimbursable work. |
-| disasterfinanceops.scope.version | scope version | RECORD | Scope versions track changes, approvals and cost impact. | Controls amendments. |
-| disasterfinanceops.scope.improved_project | improved project | CONSTRAINT | Improved or alternate work requires approval and cost limits. | Keeps funding compliant. |
-| disasterfinanceops.scope.mitigation | mitigation add-on | METHOD | Mitigation measures are documented separately with benefit and eligibility. | Supports resilient repair. |
-| disasterfinanceops.cost.labor | labor cost | RECORD | Labor records employee, hours, rate, fringe, work performed and location. | Supports payroll claim. |
-| disasterfinanceops.cost.equipment | equipment cost | RECORD | Equipment records asset, hours, rate, operator and task. | Supports force account cost. |
-| disasterfinanceops.cost.materials | material cost | RECORD | Materials record item, quantity, price, vendor and use. | Links purchases to project. |
-| disasterfinanceops.cost.contract | contract cost | RECORD | Contract costs include procurement file, invoice, proof and scope. | Supports external work. |
-| disasterfinanceops.documentation.photo | photo evidence | RECORD | Photos show damage, work progress and completion. | Proves necessity and result. |
-| disasterfinanceops.documentation.invoice | invoice package | RECORD | Invoice package includes PO/contract, receipt, approval and payment proof. | Supports reimbursement. |
-| disasterfinanceops.documentation.timesheet | timesheet support | QUALITY_CHECK | Timesheets match incident codes, work dates and supervisor approvals. | Reduces labor audit risk. |
-| disasterfinanceops.documentation.map | map documentation | RECORD | Maps identify project sites, routes, facilities or debris zones. | Clarifies geography. |
-| disasterfinanceops.tracking.cost_code | cost code | RECORD | Cost codes separate incident, project, funding source and category. | Enables clean accounting. |
-| disasterfinanceops.tracking.budget | project budget | MEASUREMENT | Budget tracks estimate, obligations, expenditures and remaining balance. | Controls spend. |
-| disasterfinanceops.tracking.match | local match | RECORD | Match records cost share, source and eligible amount. | Supports funding plan. |
-| disasterfinanceops.tracking.unresolved | unresolved item | RECORD | Unresolved items include missing docs, eligibility questions or disputed costs. | Keeps blockers visible. |
-| disasterfinanceops.drawdown.request | drawdown request | METHOD | Request packages eligible costs, certification and supporting records. | Converts costs to cash. |
-| disasterfinanceops.drawdown.certification | certification | SAFETY_RULE | Authorized official certifies costs are true, eligible and not duplicated. | Protects public funds. |
-| disasterfinanceops.drawdown.cash_timing | cash timing | MODEL | Drawdown timing balances reimbursement, cash flow and documentation readiness. | Improves liquidity. |
-| disasterfinanceops.drawdown.receipt | reimbursement receipt | RECORD | Receipt records amount, date, fund and project allocation. | Closes finance loop. |
-| disasterfinanceops.audit.file_complete | file completeness | QUALITY_CHECK | File contains eligibility, scope, costs, procurement, proof and approvals. | Prepares audit. |
-| disasterfinanceops.audit.procurement | procurement audit | QUALITY_CHECK | Procurement is checked for competition, emergency justification and vendor responsibility. | Protects grant eligibility. |
-| disasterfinanceops.audit.site_visit | site visit | METHOD | Site visit verifies work location, completion and documentation. | Supports claim confidence. |
-| disasterfinanceops.audit.finding | audit finding | RECORD | Finding records issue, questioned cost, response and corrective action. | Manages audit risk. |
-| disasterfinanceops.insurance.claim | insurance claim | RECORD | Insurance claim records coverage, deductible, proceeds and denial. | Supports duplication analysis. |
-| disasterfinanceops.insurance.proceeds | proceeds offset | METHOD | Insurance proceeds offset eligible reimbursement where required. | Avoids overpayment. |
-| disasterfinanceops.insurance.appeal | insurance appeal | METHOD | Denials or underpayments may be appealed before final funding position. | Maximizes proper recovery. |
-| disasterfinanceops.reporting.status_report | status report | RECORD | Report summarizes projects, costs, reimbursements, issues and deadlines. | Informs leadership. |
-| disasterfinanceops.reporting.deadline | deadline tracking | MEASUREMENT | Deadlines track application, documentation, appeals, closeout and retention. | Prevents lost funding. |
-| disasterfinanceops.reporting.dashboard | finance dashboard | MEASUREMENT | Dashboard shows obligation, expenditure, reimbursement and match by project. | Guides decisions. |
-| disasterfinanceops.records.retention | retention rule | CONSTRAINT | Records are retained for grant, audit and legal periods after closeout. | Preserves evidence. |
-| disasterfinanceops.security.access | access control | SAFETY_RULE | Finance records with payroll, vendor and survivor data use restricted access. | Protects sensitive data. |
-| disasterfinanceops.closeout.final_report | final report | METHOD | Closeout submits final costs, scope, insurance, payments and certifications. | Ends grant process. |
-| disasterfinanceops.closeout.deobligation | deobligation | METHOD | Unused or ineligible funds are returned or reduced. | Keeps accounts accurate. |
-| disasterfinanceops.closeout.lessons | lessons learned | METHOD | Review captures documentation gaps, cost coding, procurement and cash-flow issues. | Improves future recovery. |
-| disasterfinanceops.governance.finance_owner | finance owner | RECORD | Finance owner coordinates departments, grants, procurement and auditors. | Keeps reimbursement disciplined. |
+| disasterfinanceops.intake.project_id | идентификатор проекта | RECORD | Идентификатор проекта связывает инцидент, заявителя, ущерб, объем, затраты и источник финансирования. | Отслеживает пакет возмещения. |
+| disasterfinanceops.intake.damage_link | ссылка на повреждение | RECORD | Ссылки проекта на оценку ущерба, фотографии, карты и рабочие задания. | Связывает стоимость с событием. |
+| disasterfinanceops.intake.applicant | запись заявителя | RECORD | В записи заявителя хранятся сведения о юридическом лице, контактах, идентификаторах и полномочиях. | Устанавливает, кто претендует на средства. |
+| disasterfinanceops.intake.program | тип программы | RECORD | Программа различает государственную помощь, смягчение последствий опасности, страхование, грант или донорский фонд. | Применяются другие правила. |
+| disasterfinanceops.eligibility.incident_period | период инцидента | CONSTRAINT | Приемлемые работы должны быть связаны с заявленным происшествием и утвержденными датами. | Защищает обоснованность претензий. |
+| disasterfinanceops.eligibility.work_category | категория работы | CONSTRAINT | Категория работ разделяет аварийные защитные меры, мусор, ремонт или смягчение последствий. | Документация маршрутов. |
+| disasterfinanceops.eligibility.ownership | проверка права собственности | QUALITY_CHECK | Право собственности или юридическая ответственность подтверждается до предъявления требования о расходах на ремонт. | Предотвращает необоснованные претензии. |
+| disasterfinanceops.eligibility.duplication | дублирование льгот | QUALITY_CHECK | Страхование, другие гранты и пожертвования сверяются с заявленными расходами. | Позволяет избежать двойного возмещения. |
+| disasterfinanceops.scope.scope_statement | заявление о сфере применения | RECORD | Объем описывает выполненную или запланированную работу, местоположение и стандарт. | Определяет возмещаемый труд. |
+| disasterfinanceops.scope.version | версия области действия | RECORD | Версии содержания отслеживают изменения, утверждения и влияние на стоимость. | Контролирует поправки. |
+| disasterfinanceops.scope.improved_project | улучшенный проект | CONSTRAINT | Улучшенная или альтернативная работа требует одобрения и ограничения затрат. | Обеспечивает соответствие финансирования. |
+| disasterfinanceops.scope.mitigation | дополнение для смягчения последствий | METHOD | Меры по смягчению последствий документируются отдельно с указанием льгот и соответствия критериям. | Поддерживает устойчивое восстановление. |
+| disasterfinanceops.cost.labor | стоимость рабочей силы | RECORD | Трудовая документация записывает сотрудника, часы работы, ставку, надбавку, выполненную работу и местоположение. | Поддерживает заявление о выплате заработной платы. |
+| disasterfinanceops.cost.equipment | стоимость оборудования | RECORD | Оборудование записывает активы, часы, скорость, оператора и задачу. | Поддерживает форсированную стоимость аккаунта. |
+| disasterfinanceops.cost.materials | стоимость материала | RECORD | В материалах указывается позиция, количество, цена, поставщик и использование. | Связывает покупки с проектом. |
+| disasterfinanceops.cost.contract | стоимость контракта | RECORD | Затраты по контракту включают файл закупок, счет-фактуру, доказательства и объем. | Поддерживает внешнюю работу. |
+| disasterfinanceops.documentation.photo | фотодоказательства | RECORD | На фотографиях показаны повреждения, ход работ и завершение. | Доказывает необходимость и результат. |
+| disasterfinanceops.documentation.invoice | пакет счетов | RECORD | Пакет счетов-фактур включает заказ на поставку/контракт, квитанцию, одобрение и подтверждение оплаты. | Поддерживает возмещение. |
+| disasterfinanceops.documentation.timesheet | поддержка расписания | QUALITY_CHECK | В табелях учета рабочего времени указаны коды инцидентов, даты работы и разрешения руководителя. | Снижает риск аудита труда. |
+| disasterfinanceops.documentation.map | документация карты | RECORD | На картах обозначены места реализации проектов, маршруты, объекты или зоны завалов. | Уточняет географию. |
+| disasterfinanceops.tracking.cost_code | код стоимости | RECORD | Коды затрат разделяют инцидент, проект, источник финансирования и категорию. | Включает чистый учет. |
+| disasterfinanceops.tracking.budget | бюджет проекта | MEASUREMENT | Бюджет отслеживает смету, обязательства, расходы и остаток. | Контролирует расходы. |
+| disasterfinanceops.tracking.match | местный матч | RECORD | Сопоставление записей о доле затрат, источнике и приемлемой сумме. | Поддерживает план финансирования. |
+| disasterfinanceops.tracking.unresolved | нерешенный вопрос | RECORD | Нерешенные вопросы включают недостающие документы, вопросы о праве на участие или спорные расходы. | Делает блокировщики видимыми. |
+| disasterfinanceops.drawdown.request | запрос на просадку | METHOD | Запросите пакеты приемлемых расходов, сертификацию и подтверждающие записи. | Преобразует затраты в денежные средства. |
+| disasterfinanceops.drawdown.certification | сертификация | SAFETY_RULE | Уполномоченное должностное лицо удостоверяет, что расходы верны, приемлемы и не дублируются. | Защищает государственные средства. |
+| disasterfinanceops.drawdown.cash_timing | время наличных | MODEL | Сроки просадки, возмещение остатков, движение денежных средств и готовность документации. | Улучшает ликвидность. |
+| disasterfinanceops.drawdown.receipt | квитанция о возмещении | RECORD | В квитанции указывается сумма, дата, фонд и распределение проекта. | Замыкает финансовый цикл. |
+| disasterfinanceops.audit.file_complete | полнота файла | QUALITY_CHECK | В файле указаны право на участие, объем работ, затраты, закупки, доказательства и одобрения. | Готовит аудит. |
+| disasterfinanceops.audit.procurement | аудит закупок | QUALITY_CHECK | Закупки проверяются на предмет конкуренции, обоснованности нештатных ситуаций и ответственности поставщиков. | Защищает право на получение гранта. |
+| disasterfinanceops.audit.site_visit | посещение сайта | METHOD | Посещение объекта проверяет местонахождение работ, завершение работ и документацию. | Поддерживает уверенность в своих силах. |
+| disasterfinanceops.audit.finding | вывод аудита | RECORD | Выявление проблем с записями, сомнительных затрат, реагирования и корректирующих действий. | Управляет аудиторским риском. |
+| disasterfinanceops.insurance.claim | страховое возмещение | RECORD | В страховом возмещении фиксируются покрытие, франшиза, выручка и отказ. | Поддерживает анализ дублирования. |
+| disasterfinanceops.insurance.proceeds | зачет выручки | METHOD | Страховые поступления компенсируют право на возмещение, где это необходимо. | Позволяет избежать переплаты. |
+| disasterfinanceops.insurance.appeal | страховая апелляция | METHOD | Отказы или недоплаты могут быть обжалованы до принятия окончательного решения о финансировании. | Максимизирует правильное восстановление. |
+| disasterfinanceops.reporting.status_report | отчет о состоянии | RECORD | В отчете кратко излагаются проекты, затраты, возмещения, проблемы и сроки. | Информирует руководство. |
+| disasterfinanceops.reporting.deadline | отслеживание сроков | MEASUREMENT | Крайние сроки отслеживают подачу заявок, документацию, апелляции, закрытие и сохранение. | Предотвращает потерю финансирования. |
+| disasterfinanceops.reporting.dashboard | финансовая панель | MEASUREMENT | На информационной панели показаны обязательства, расходы, возмещение и соответствие по проектам. | Направляет решения. |
+| disasterfinanceops.records.retention | правило хранения | CONSTRAINT | Записи сохраняются в течение грантового, аудиторского и юридического периодов после закрытия. | Сохраняет доказательства. |
+| disasterfinanceops.security.access | контроль доступа | SAFETY_RULE | Финансовые записи с данными о заработной плате, поставщиках и оставшихся в живых имеют ограниченный доступ. | Защищает конфиденциальные данные. |
+| disasterfinanceops.closeout.final_report | окончательный отчет | METHOD | Closeout сообщает окончательную стоимость, объем, страхование, платежи и сертификаты. | Завершает процесс предоставления гранта. |
+| disasterfinanceops.closeout.deobligation | освобождение от обязательств | METHOD | Неиспользованные или неприемлемые средства возвращаются или уменьшаются. | Сохраняет точность счетов. |
+| disasterfinanceops.closeout.lessons | извлеченные уроки | METHOD | Проверка выявляет пробелы в документации, кодирование затрат, проблемы с закупками и движением денежных средств. | Улучшает будущее восстановление. |
+| disasterfinanceops.governance.finance_owner | владелец финансов | RECORD | Владелец финансов координирует отделы, гранты, закупки и аудиторов. | Обеспечивает дисциплинированность возмещения расходов. |

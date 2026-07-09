@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| pollops.setup.site_access | Polling place site access | invariant | Access confirms keys, entry time, parking, utilities, restrooms and emergency exits. | open site |
-| pollops.setup.room_layout | Polling place room layout | invariant | Layout places check-in, voting booths, ballot scanner, accessible route and observer area. | orderly voting |
-| pollops.setup.signage_posting | Polling place signage posting | invariant | Posting displays required notices, directions, hours, rights, prohibited conduct and accessibility signs. | inform voters |
-| pollops.setup.equipment_start | Election equipment startup | invariant | Startup verifies power, seals, zero reports, paper, privacy screens and test status. | ready equipment |
-| pollops.setup.supply_check | Polling place supply check | invariant | Check confirms ballots, forms, envelopes, pens, seals, logs, PPE and emergency materials. | avoid shortages |
-| pollops.checkin.voter_lookup | Voter check-in lookup | invariant | Lookup finds voter registration, precinct, ballot style, status and required next step. | correct ballot |
-| pollops.checkin.identity_rule | Polling place identity rule | variant | Rule applies jurisdiction-specific identity or affirmation process without partisan discretion. | lawful check-in |
-| pollops.checkin.address_update | Voter address update at polls | variant | Update records allowed address change, precinct impact, form and ballot path. | handle movers |
-| pollops.checkin.provisional_route | Provisional ballot route | invariant | Route sends unresolved eligibility, precinct or registration issues to provisional process. | preserve vote |
-| pollops.checkin.line_management | Polling place line management | variant | Management tracks queue length, wait time, accessibility needs, closing-time voters and calm flow. | reduce bottlenecks |
-| pollops.ballot.ballot_style | Ballot style control | invariant | Control matches voter precinct, district, party if applicable and language format. | prevent wrong ballot |
-| pollops.ballot.ballot_issue | Ballot issue log | invariant | Log records ballot given, voter sequence, spoiled ballot, replacement and initials. | custody |
-| pollops.ballot.spoiled_ballot | Spoiled ballot process | invariant | Process voids damaged or mistaken ballot, records count and issues replacement if allowed. | protect count |
-| pollops.ballot.assisted_voting | Assisted voting record | variant | Record captures voter-requested assistance while preserving privacy and legal requirements. | accessible voting |
-| pollops.ballot.language_ballot | Language ballot support | variant | Support provides translated ballot, interpreter, notice or language assistance as authorized. | language access |
-| pollops.accessibility.accessible_route | Polling accessible route | invariant | Route keeps parking, entrance, path, check-in, booth and scanner barrier-free. | inclusive access |
-| pollops.accessibility.accessible_device | Accessible voting device | invariant | Device setup verifies audio, tactile controls, privacy, ballot style and printer if used. | independent voting |
-| pollops.accessibility.curbside_voting | Curbside voting workflow | variant | Workflow brings check-in, ballot, privacy and custody process to eligible voter outside. | serve mobility needs |
-| pollops.accessibility.accommodation_note | Polling accommodation note | variant | Note records assistance, seating, priority access or communication need without exposing choice. | respectful service |
-| pollops.observers.observer_checkin | Poll observer check-in | invariant | Check-in records authorized observer, affiliation if required, rules and location. | controlled observation |
-| pollops.observers.challenge_process | Voter challenge process | variant | Process records challenge, basis, official response, voter rights and documentation. | orderly dispute |
-| pollops.observers.conduct_boundary | Poll observer conduct boundary | invariant | Boundary prevents intimidation, interference, photographing ballots or handling materials. | protect voters |
-| pollops.security.ballot_security | Polling place ballot security | invariant | Security protects blank, voted, spoiled and provisional ballots with logs and seals. | custody |
-| pollops.security.seal_log | Election seal log | invariant | Log records seal numbers, equipment, ballot containers, changes, witnesses and time. | tamper evidence |
-| pollops.security.incident_escalation | Polling place incident escalation | invariant | Escalation routes intimidation, disorder, equipment failure, emergency or legal issue to officials. | keep polls open |
-| pollops.security.no_campaign_zone | No-campaign zone control | invariant | Control enforces distance, signage, apparel, materials and complaints under local rule. | neutral site |
-| pollops.operations.voter_privacy | Polling voter privacy | invariant | Privacy keeps booths shielded, screens angled, assistance limited and ballots hidden. | secret ballot |
-| pollops.operations.equipment_jam | Ballot scanner jam response | variant | Response pauses use, preserves ballots, follows procedure, logs issue and resumes. | avoid loss |
-| pollops.operations.power_outage | Polling place power outage | variant | Outage plan uses backup lights, paper process, equipment preservation and authority contact. | continue voting |
-| pollops.operations.emergency_closure | Polling emergency closure | variant | Closure records reason, voters present, materials secured, notices and relocation direction. | protect election |
-| pollops.incident.voter_complaint | Polling voter complaint | invariant | Complaint records issue, voter contact if given, official response and escalation. | accountability |
-| pollops.incident.worker_issue | Poll worker issue | variant | Issue records absence, role confusion, misconduct, illness or replacement. | staff control |
-| pollops.incident.accessibility_issue | Polling accessibility issue | invariant | Issue records barrier, temporary fix, voter impact, notification and follow-up. | compliance |
-| pollops.incident.media_contact | Polling media contact | variant | Contact routes press questions, filming boundaries and spokesperson escalation. | protect process |
-| pollops.close.closing_time_rule | Poll closing time rule | invariant | Rule allows voters in line at closing to vote and records line status. | protect rights |
-| pollops.close.ballot_accounting | Polling place ballot accounting | invariant | Accounting reconciles issued, voted, spoiled, provisional, unused and total ballots. | count control |
-| pollops.close.equipment_shutdown | Election equipment shutdown | invariant | Shutdown prints reports, secures memory, seals equipment and records totals. | close equipment |
-| pollops.close.material_packout | Polling material packout | invariant | Packout separates ballots, logs, forms, seals, supplies and return bags by instruction. | return materials |
-| pollops.custody.chain_transfer | Election chain-of-custody transfer | invariant | Transfer records materials, seal numbers, couriers, time, location and signatures. | custody evidence |
-| pollops.custody.results_delivery | Polling results delivery | variant | Delivery sends media, reports or tabulation materials through authorized route. | official results |
-| pollops.reporting.pollbook_reconciliation | Pollbook reconciliation | invariant | Reconciliation compares check-ins, ballots issued, provisional count and scanner totals. | detect variance |
-| pollops.reporting.incident_summary | Polling incident summary | invariant | Summary aggregates incidents, complaints, equipment issues, accessibility and worker notes. | improve next election |
-| pollops.metrics.polling_kpi | Polling place KPI | variant | KPI tracks wait times, check-ins, provisional rate, incidents, equipment downtime and accessibility issues. | manage elections |
-| pollops.continuity.site_relocation | Polling place relocation response | variant | Response directs voters, secures materials, informs officials and documents continuity. | preserve voting |
+| pollops.setup.site_access | Доступ к сайту избирательного участка | invariant | Доступ подтверждает ключи, время входа, парковку, коммунальные услуги, туалеты и запасные выходы. | открыть сайт |
+| pollops.setup.room_layout | Планировка помещения избирательного участка | invariant | Планировка мест регистрации, кабин для голосования, сканера бюллетеней, доступного маршрута и зоны наблюдения. | упорядоченное голосование |
+| pollops.setup.signage_posting | Размещение указателей на избирательном участке | invariant | Публикация отображает необходимые уведомления, указания, часы работы, права, запрещенное поведение и знаки доступности. | информировать избирателей |
+| pollops.setup.equipment_start | Запуск избирательного оборудования | invariant | Запуск проверяет питание, пломбы, нулевые отчеты, бумагу, экраны конфиденциальности и статус испытаний. | готовое оборудование |
+| pollops.setup.supply_check | Проверка снабжения избирательного участка | invariant | Проверка подтверждает бюллетени, бланки, конверты, ручки, печати, журналы, СИЗ и материалы для чрезвычайной ситуации. | избегать дефицита |
+| pollops.checkin.voter_lookup | Поиск регистрации избирателей | invariant | Поиск находит регистрацию избирателей, избирательный участок, стиль бюллетеня, статус и необходимый следующий шаг. | правильный бюллетень |
+| pollops.checkin.identity_rule | Правило идентификации избирательного участка | variant | Правило применяет процедуру идентификации или подтверждения, специфичную для юрисдикции, без какого-либо пристрастного усмотрения. | законная регистрация |
+| pollops.checkin.address_update | Обновление адреса избирателя на избирательных участках | variant | Обновление записей позволило изменить адрес, влияние на избирательный участок, форму и путь голосования. | ручки грузчиков |
+| pollops.checkin.provisional_route | Предварительный маршрут голосования | invariant | Route отправляет нерешенные вопросы, связанные с правом на участие, избирательным округом или регистрацией, на временную обработку. | сохранить голос |
+| pollops.checkin.line_management | Управление линией избирательного участка | variant | Руководство отслеживает длину очереди, время ожидания, потребности в доступности, избирателей во время закрытия и спокойный поток. | уменьшить узкие места |
+| pollops.ballot.ballot_style | Контроль стиля голосования | invariant | Контрольные данные соответствуют избирательному участку, округу, партии, если применимо, и языковому формату. | предотвратить неправильное голосование |
+| pollops.ballot.ballot_issue | Журнал выдачи бюллетеней | invariant | В журнале регистрируются поданные бюллетени, последовательность избирателей, испорченные бюллетени, замена и инициалы. | попечение |
+| pollops.ballot.spoiled_ballot | Испорченный процесс голосования | invariant | Процесс аннулирует поврежденный или ошибочный бюллетень, подсчитывает записи и выдает замену, если это разрешено. | защитить счет |
+| pollops.ballot.assisted_voting | Вспомогательный протокол голосования | variant | Запись фиксирует помощь, запрошенную избирателями, сохраняя при этом конфиденциальность и требования законодательства. | доступное голосование |
+| pollops.ballot.language_ballot | Поддержка языкового голосования | variant | Служба поддержки предоставляет переведенные бюллетени, услуги переводчика, уведомления или языковую помощь в соответствии с разрешением. | языковой доступ |
+| pollops.accessibility.accessible_route | Доступный маршрут для опроса | invariant | Маршрут обеспечивает безбарьерную доступность парковки, входа, дорожек, регистрации, киоска и сканера. | инклюзивный доступ |
+| pollops.accessibility.accessible_device | Доступное устройство для голосования | invariant | При настройке устройства проверяется звук, тактильные элементы управления, конфиденциальность, стиль бюллетеня и принтер, если он используется. | независимое голосование |
+| pollops.accessibility.curbside_voting | Порядок голосования на обочине | variant | Рабочий процесс обеспечивает регистрацию, голосование, конфиденциальность и хранение для имеющего право голоса избирателя снаружи. | удовлетворять потребности в мобильности |
+| pollops.accessibility.accommodation_note | Примечание о размещении для голосования | variant | Записывайте записи о помощи, размещении, приоритетном доступе или необходимости общения, не раскрывая выбора. | уважительное обслуживание |
+| pollops.observers.observer_checkin | Регистрация наблюдателя за опросом | invariant | Регистрация регистрирует уполномоченного наблюдателя, его принадлежность, если необходимо, правила и местонахождение. | контролируемое наблюдение |
+| pollops.observers.challenge_process | Процесс вызова избирателей | variant | Записи процесса оспаривания, основания, официальный ответ, права избирателей и документация. | упорядоченный спор |
+| pollops.observers.conduct_boundary | Граница проведения наблюдателя за опросом | invariant | Граница предотвращает запугивание, вмешательство, фотографирование избирательных бюллетеней или обращение с материалами. | защищать избирателей |
+| pollops.security.ballot_security | Безопасность избирательных бюллетеней | invariant | Охрана защищает пустые, проголосовавшие, испорченные и предварительные бюллетени журналами и печатями. | попечение |
+| pollops.security.seal_log | Журнал печати выборов | invariant | В журнале фиксируются номера печатей, оборудование, урны для голосования, изменения, свидетели и время. | подделка доказательств |
+| pollops.security.incident_escalation | Обострение инцидента на избирательном участке | invariant | Эскалация ведет к запугиванию, беспорядкам, отказу оборудования, экстренным или юридическим вопросам должностным лицам. | держать опросы открытыми |
+| pollops.security.no_campaign_zone | Контроль зоны без кампании | invariant | Контроль обеспечивает соблюдение дистанции, вывесок, одежды, материалов и жалоб в соответствии с местными правилами. | нейтральный сайт |
+| pollops.operations.voter_privacy | Конфиденциальность избирателя при опросе | invariant | Конфиденциальность позволяет кабинам быть экранированными, экраны расположены под углом, помощь ограничена, а бюллетени скрыты. | тайное голосование |
+| pollops.operations.equipment_jam | Реакция на застревание сканера бюллетеней | variant | Ответ приостанавливает использование, сохраняет бюллетени, следует процедуре, регистрирует проблемы и возобновляет работу. | избежать потерь |
+| pollops.operations.power_outage | Отключение электроэнергии на избирательном участке | variant | План отключения включает резервное освещение, бумажный процесс, консервацию оборудования и контакты с властями. | продолжить голосование |
+| pollops.operations.emergency_closure | Аварийное закрытие опроса | variant | В протоколе указывается причина закрытия, присутствующие избиратели, обеспеченность материалами, уведомления и указания о переселении. | защищать выборы |
+| pollops.incident.voter_complaint | Жалоба избирателя на опросе | invariant | Запись о жалобах, контакт с избирателями, если таковой имеется, официальный ответ и эскалация. | подотчетность |
+| pollops.incident.worker_issue | Проблема с рабочим опросом | variant | Отсутствие записей о проблемах, путаница ролей, неправомерное поведение, болезнь или замена. | контроль персонала |
+| pollops.incident.accessibility_issue | Проблема с доступностью опроса | invariant | Барьер записей проблем, временное исправление, влияние на избирателей, уведомление и последующие действия. | согласие |
+| pollops.incident.media_contact | Контакт со СМИ для опроса | variant | Маршруты контактов, вопросы прессы, границы съемок и эскалация пресс-секретаря. | защитить процесс |
+| pollops.close.closing_time_rule | Правило времени закрытия опроса | invariant | Правило позволяет избирателям стоять в очереди при закрытии голосования и фиксирует состояние очереди. | защищать права |
+| pollops.close.ballot_accounting | Учет избирательных бюллетеней на избирательном участке | invariant | В бухгалтерском учете сверяются выданные, проголосованные, испорченные, предварительные, неиспользованные и итоговые бюллетени. | контроль подсчета |
+| pollops.close.equipment_shutdown | Отключение избирательного оборудования | invariant | Функция Shutdown печатает отчеты, защищает память, опечатывает оборудование и записывает итоговые данные. | близкое оборудование |
+| pollops.close.material_packout | Упаковка материалов для голосования | invariant | В упаковке по инструкции разделяются бюллетени, журналы, бланки, печати, расходные материалы и пакеты для возврата. | возврат материалов |
+| pollops.custody.chain_transfer | Передача избирательной цепочки | invariant | Передача фиксирует материалы, номера печатей, курьеров, время, место и подписи. | доказательства содержания под стражей |
+| pollops.custody.results_delivery | Доставка результатов голосования | variant | Доставка отправляет средства массовой информации, отчеты или табличные материалы по авторизованному маршруту. | официальные результаты |
+| pollops.reporting.pollbook_reconciliation | сверка опросов | invariant | При сверке сравниваются регистрации, выданные бюллетени, предварительный подсчет и итоговые данные сканера. | обнаружить дисперсию |
+| pollops.reporting.incident_summary | Краткое изложение инцидента с опросом | invariant | В сводке собраны инциденты, жалобы, проблемы с оборудованием, доступность и заметки работников. | улучшить следующие выборы |
+| pollops.metrics.polling_kpi | Избирательный участок КПИ | variant | KPI отслеживает время ожидания, регистрации, предварительные ставки, инциденты, простои оборудования и проблемы с доступом. | управлять выборами |
+| pollops.continuity.site_relocation | Реакция на переезд избирательного участка | variant | Реагирование направляет избирателей, обеспечивает безопасность материалов, информирует должностных лиц и документирует непрерывность. | сохранить голосование |

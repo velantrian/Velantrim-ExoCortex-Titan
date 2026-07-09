@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| datarequestops.intake.request_id | request ID | RECORD | Request ID links requester, date, scope, channel, deadline and owner. | Creates controlled tracking. |
-| datarequestops.intake.request_type | request type | RECORD | Type distinguishes public records, customer data, legal subpoena, media or internal request. | Different rules apply. |
-| datarequestops.intake.scope_text | scope text | RECORD | Request wording is preserved exactly and clarified if needed. | Prevents later disputes about scope. |
-| datarequestops.intake.deadline | statutory deadline | CONSTRAINT | Public records deadlines are calculated by jurisdiction and request type. | Keeps compliance visible. |
-| datarequestops.identity.customer_auth | customer authorization | SAFETY_RULE | Customer-specific data requires verified identity or valid authorization. | Protects private utility records. |
-| datarequestops.identity.third_party | third-party release | CONSTRAINT | Third parties need written consent, legal authority or approved disclosure route. | Prevents improper data sharing. |
-| datarequestops.identity.business_request | business request | METHOD | Business data requests verify officer, agent or account authority. | Protects commercial accounts. |
-| datarequestops.scope.clarification | clarification | METHOD | Staff clarify broad, ambiguous or impossible requests before search. | Reduces wasted search and disputes. |
-| datarequestops.scope.narrowing | narrowing offer | METHOD | Requester may be offered date, topic or record-type narrowing. | Helps deliver useful records faster. |
-| datarequestops.scope.search_plan | search plan | RECORD | Plan lists systems, custodians, keywords, dates and likely record types. | Makes search reproducible. |
-| datarequestops.search.systems | system search | METHOD | Billing, CRM, GIS, work orders, email, SCADA reports and archives may be searched. | Utility data is spread across systems. |
-| datarequestops.search.custodian | custodian search | METHOD | Staff custodians search local files, email and project folders. | Captures records outside central databases. |
-| datarequestops.search.search_log | search log | RECORD | Log records where searched, by whom, when and results. | Defends adequacy of search. |
-| datarequestops.exemptions.privacy | privacy exemption | CONSTRAINT | Personal identifiers, contact details, medical flags or payment data may be exempt. | Protects customers. |
-| datarequestops.exemptions.security | security exemption | CONSTRAINT | Critical infrastructure details, vulnerabilities or security procedures may be withheld. | Protects utility assets. |
-| datarequestops.exemptions.privilege | legal privilege | CONSTRAINT | Attorney-client, litigation or deliberative materials may require legal review. | Avoids privileged disclosure. |
-| datarequestops.exemptions.trade_secret | trade secret | CONSTRAINT | Vendor or customer confidential business data may be protected. | Balances openness with commercial harm. |
-| datarequestops.redaction.redaction_review | redaction review | METHOD | Records are reviewed and redacted before release. | Allows partial disclosure safely. |
-| datarequestops.redaction.redaction_log | redaction log | RECORD | Log identifies withheld portions and legal basis. | Supports appeal and audit. |
-| datarequestops.redaction.quality_check | redaction QA | QUALITY_CHECK | Redacted files are checked for hidden text, metadata and missed fields. | Prevents accidental release. |
-| datarequestops.fees.fee_estimate | fee estimate | METHOD | Staff estimate search, copy, redaction or delivery fees where allowed. | Sets expectations before large work. |
-| datarequestops.fees.deposit | deposit | DECISION_RULE | Large requests may require deposit before processing. | Controls unfunded workload. |
-| datarequestops.fees.waiver | fee waiver | DECISION_RULE | Fee waiver may apply for public interest, small cost or policy. | Supports access. |
-| datarequestops.delivery.format | delivery format | RECORD | Delivery format includes portal, email, paper, export, spreadsheet or inspection. | Matches requester need and security. |
-| datarequestops.delivery.secure_link | secure link | METHOD | Sensitive customer data is delivered through secure channel with expiry. | Reduces privacy risk. |
-| datarequestops.delivery.partial_release | partial release | METHOD | Rolling releases provide available records while complex review continues. | Improves timeliness. |
-| datarequestops.delivery.no_records | no-records response | RECORD | Response documents search performed and no responsive records found. | Closes request defensibly. |
-| datarequestops.appeal.appeal_path | appeal path | RECORD | Denial or redaction response includes appeal or review process. | Supports due process. |
-| datarequestops.appeal.reconsideration | reconsideration | METHOD | Staff may re-review scope, search or exemptions after challenge. | Corrects mistakes without litigation. |
-| datarequestops.legal.subpoena | subpoena handling | METHOD | Subpoenas route to legal with deadline, scope and service validity. | Separates legal compulsion from ordinary request. |
-| datarequestops.legal.litigation_hold | litigation hold | CONSTRAINT | Related records may be preserved under legal hold. | Prevents deletion during dispute. |
-| datarequestops.customer.usage_data | usage data request | METHOD | Customers can request usage history, reads, bills or interval data under policy. | Supports customer analysis. |
-| datarequestops.customer.landlord_tenant | landlord tenant data | CONSTRAINT | Tenant and landlord access to usage/billing data follows privacy law and account authority. | Prevents improper disclosure. |
-| datarequestops.customer.data_correction | data correction request | METHOD | Customer may request correction of contact, account or meter data. | Keeps records accurate. |
-| datarequestops.records.case_file | case file | RECORD | File stores request, search log, records, redactions, delivery and correspondence. | Single audit trail. |
-| datarequestops.records.retention | retention | CONSTRAINT | Request files are retained under records schedule. | Supports later appeals. |
-| datarequestops.records.version_control | version control | QUALITY_CHECK | Released file versions are labeled and preserved. | Shows exactly what was disclosed. |
-| datarequestops.qa.deadline_monitor | deadline monitor | QUALITY_CHECK | Dashboard flags requests near deadline or waiting on custodian/legal. | Prevents missed deadlines. |
-| datarequestops.qa.scope_creep | scope creep check | QUALITY_CHECK | Staff distinguish new requests from clarifications. | Keeps workload controlled. |
-| datarequestops.qa.training | staff training | METHOD | Custodians learn search duties, exemptions, privacy and preservation. | Improves compliance. |
-| datarequestops.reporting.volume | request volume | MEASUREMENT | Reports track count, type, age, fees, pages and outcomes. | Shows public-record workload. |
-| datarequestops.reporting.exemption_trend | exemption trend | MODEL | Frequent exemptions reveal data-design or policy issues. | Helps improve transparency. |
-| datarequestops.review.after_issue | after-issue review | METHOD | Controversial or late requests trigger process review. | Prevents repeat failures. |
-| datarequestops.governance.owner | program owner | RECORD | Public records owner coordinates legal, IT, departments and customer service. | Avoids fragmented responsibility. |
+| datarequestops.intake.request_id | идентификатор запроса | RECORD | Идентификатор запроса связывает отправителя запроса, дату, объем, канал, крайний срок и владельца. | Создает контролируемое отслеживание. |
+| datarequestops.intake.request_type | тип запроса | RECORD | Тип различает общедоступные записи, данные клиентов, судебную повестку, средства массовой информации или внутренний запрос. | Применяются другие правила. |
+| datarequestops.intake.scope_text | текст области действия | RECORD | Формулировка запроса сохраняется в точности и при необходимости уточняется. | Предотвращает последующие споры по поводу объема. |
+| datarequestops.intake.deadline | установленный законом срок | CONSTRAINT | Сроки подачи публичных отчетов рассчитываются в зависимости от юрисдикции и типа запроса. | Делает соответствие видимым. |
+| datarequestops.identity.customer_auth | авторизация клиента | SAFETY_RULE | Данные, специфичные для клиента, требуют подтверждения личности или действительного разрешения. | Защищает частные коммунальные записи. |
+| datarequestops.identity.third_party | сторонняя версия | CONSTRAINT | Третьим лицам необходимо письменное согласие, юридические полномочия или утвержденный способ раскрытия информации. | Предотвращает неправильный обмен данными. |
+| datarequestops.identity.business_request | бизнес-запрос | METHOD | Запросы бизнес-данных проверяют полномочия сотрудника, агента или учетной записи. | Защищает коммерческие аккаунты. |
+| datarequestops.scope.clarification | разъяснение | METHOD | Перед поиском сотрудники уточняют широкие, неоднозначные или невыполнимые запросы. | Уменьшает напрасные поиски и споры. |
+| datarequestops.scope.narrowing | сужение предложения | METHOD | Запрашивающему может быть предложено сузить дату, тему или тип записи. | Помогает быстрее доставлять полезные записи. |
+| datarequestops.scope.search_plan | план поиска | RECORD | В плане перечислены системы, хранители, ключевые слова, даты и вероятные типы записей. | Делает поиск воспроизводимым. |
+| datarequestops.search.systems | системный поиск | METHOD | Можно осуществлять поиск по счетам, CRM, ГИС, рабочим заданиям, электронной почте, отчетам SCADA и архивам. | Коммунальные данные распределены по системам. |
+| datarequestops.search.custodian | поиск хранителя | METHOD | Сотрудники-хранители выполняют поиск в локальных файлах, электронной почте и папках проектов. | Захватывает записи за пределами центральных баз данных. |
+| datarequestops.search.search_log | журнал поиска | RECORD | Записи журнала о том, где был выполнен поиск, кем, когда и результаты. | Защищает адекватность поиска. |
+| datarequestops.exemptions.privacy | освобождение от конфиденциальности | CONSTRAINT | Персональные идентификаторы, контактные данные, медицинские данные или платежные данные могут быть освобождены от налога. | Защищает клиентов. |
+| datarequestops.exemptions.security | освобождение от безопасности | CONSTRAINT | Детали критической инфраструктуры, уязвимости или процедуры безопасности могут быть скрыты. | Защищает коммунальные активы. |
+| datarequestops.exemptions.privilege | юридическая привилегия | CONSTRAINT | Адвокат-клиент, судебные или совещательные материалы могут потребовать юридической экспертизы. | Избегает привилегированного раскрытия. |
+| datarequestops.exemptions.trade_secret | коммерческая тайна | CONSTRAINT | Конфиденциальные деловые данные поставщика или клиента могут быть защищены. | Балансирует открытость с коммерческим ущербом. |
+| datarequestops.redaction.redaction_review | обзор редакции | METHOD | Перед выпуском записи проверяются и редактируются. | Обеспечивает безопасное частичное раскрытие. |
+| datarequestops.redaction.redaction_log | журнал изменений | RECORD | В журнале указаны удержанные части и правовая основа. | Поддерживает апелляцию и аудит. |
+| datarequestops.redaction.quality_check | контроль качества редактирования | QUALITY_CHECK | Отредактированные файлы проверяются на наличие скрытого текста, метаданных и пропущенных полей. | Предотвращает случайное высвобождение. |
+| datarequestops.fees.fee_estimate | оценка гонорара | METHOD | Персонал оценивает расходы на поиск, копирование, редактирование или доставку, если это разрешено. | Устанавливает ожидания перед большой работой. |
+| datarequestops.fees.deposit | депозит | DECISION_RULE | Большие запросы могут потребовать внесения депозита перед обработкой. | Контролирует нефинансируемую рабочую нагрузку. |
+| datarequestops.fees.waiver | отказ от платы | DECISION_RULE | Отказ от платы может применяться в общественных интересах, небольших затратах или в соответствии с политикой. | Поддерживает доступ. |
+| datarequestops.delivery.format | формат доставки | RECORD | Формат доставки включает портал, электронную почту, бумагу, экспорт, электронную таблицу или проверку. | Соответствует потребностям и безопасности запрашивающего. |
+| datarequestops.delivery.secure_link | безопасная ссылка | METHOD | Конфиденциальные данные клиентов доставляются по защищенному каналу с истекающим сроком действия. | Снижает риск конфиденциальности. |
+| datarequestops.delivery.partial_release | частичное освобождение | METHOD | В скользящих выпусках доступны записи, в то время как комплексная проверка продолжается. | Улучшает своевременность. |
+| datarequestops.delivery.no_records | ответ без записей | RECORD | Выполнен поиск ответных документов, но соответствующие записи не найдены. | Закрывает запрос защищенно. |
+| datarequestops.appeal.appeal_path | путь апелляции | RECORD | Ответ на отказ или редактирование включает в себя процесс апелляции или проверки. | Поддерживает надлежащую правовую процедуру. |
+| datarequestops.appeal.reconsideration | пересмотр | METHOD | После оспаривания сотрудники могут пересмотреть объем, поиск или исключения. | Исправляет ошибки без судебных разбирательств. |
+| datarequestops.legal.subpoena | обработка повесток в суд | METHOD | Повестки направляются в юридический отдел с указанием срока, объема и срока действия услуги. | Отделяет юридическое принуждение от обычного требования. |
+| datarequestops.legal.litigation_hold | судебное разбирательство приостановлено | CONSTRAINT | Связанные записи могут храниться на законном основании. | Предотвращает удаление во время спора. |
+| datarequestops.customer.usage_data | запрос данных об использовании | METHOD | Клиенты могут запрашивать историю использования, чтения, счета или данные за интервалы в соответствии с политикой. | Поддерживает анализ клиентов. |
+| datarequestops.customer.landlord_tenant | данные арендодателя и арендатора | CONSTRAINT | Доступ арендаторов и арендодателей к данным об использовании/выставлении счетов соответствует закону о конфиденциальности и полномочиям учетной записи. | Предотвращает неправомерное раскрытие информации. |
+| datarequestops.customer.data_correction | запрос на исправление данных | METHOD | Клиент может запросить исправление контактных данных, данных счета или счетчика. | Сохраняет точность записей. |
+| datarequestops.records.case_file | материалы дела | RECORD | Файловые хранилища запросов, журнал поиска, записи, исправления, доставка и переписка. | Единый контрольный журнал. |
+| datarequestops.records.retention | удержание | CONSTRAINT | Файлы запросов сохраняются в соответствии с графиком записи. | Поддерживает последующие апелляции. |
+| datarequestops.records.version_control | контроль версий | QUALITY_CHECK | Выпущенные версии файлов помечаются и сохраняются. | Показывает именно то, что было раскрыто. |
+| datarequestops.qa.deadline_monitor | монитор сроков | QUALITY_CHECK | Панель мониторинга помечает запросы, приближающиеся к крайнему сроку, или ожидающие ответственного/юридического лица. | Предотвращает срыв сроков. |
+| datarequestops.qa.scope_creep | проверка ползучести прицела | QUALITY_CHECK | Сотрудники отличают новые запросы от уточнений. | Контролирует рабочую нагрузку. |
+| datarequestops.qa.training | обучение персонала | METHOD | Хранители изучают обязанности по поиску, исключения, конфиденциальность и сохранение. | Улучшает соответствие. |
+| datarequestops.reporting.volume | объем запроса | MEASUREMENT | Отчеты отслеживают количество, тип, возраст, сборы, страницы и результаты. | Показывает общедоступную рабочую нагрузку. |
+| datarequestops.reporting.exemption_trend | тенденция освобождения от налогов | MODEL | Частые исключения указывают на проблемы с структурой данных или политикой. | Помогает улучшить прозрачность. |
+| datarequestops.review.after_issue | послевыпускная проверка | METHOD | Спорные или поздние запросы требуют пересмотра процесса. | Предотвращает повторные сбои. |
+| datarequestops.governance.owner | владелец программы | RECORD | Владелец публичных записей координирует юридические, ИТ-отделы и службу поддержки клиентов. | Избегает фрагментированной ответственности. |

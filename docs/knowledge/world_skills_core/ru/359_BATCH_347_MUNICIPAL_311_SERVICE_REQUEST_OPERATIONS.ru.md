@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| muni311ops.intake.request_id | request ID | RECORD | Request ID links resident, channel, location, category, time and status. | Creates traceable service work. |
-| muni311ops.intake.channel | intake channel | RECORD | Channel distinguishes phone, web, app, email, walk-in, council referral or social media. | Helps manage demand by source. |
-| muni311ops.intake.location | location capture | METHOD | Location captures address, parcel, intersection, asset ID or map point. | Routes work to the right crew. |
-| muni311ops.intake.description | issue description | RECORD | Description preserves resident wording and key observable facts. | Prevents loss of field detail. |
-| muni311ops.intake.photo | photo evidence | RECORD | Photo attachments show condition, context and urgency. | Improves triage and reduces revisits. |
-| muni311ops.category.taxonomy | service taxonomy | MODEL | Taxonomy maps request types to responsible departments and workflows. | Keeps routing consistent. |
-| muni311ops.category.duplicate_check | duplicate check | QUALITY_CHECK | Duplicate check matches nearby location, category and open case. | Prevents repeated work orders. |
-| muni311ops.category.emergency_filter | emergency filter | SAFETY_RULE | Life safety, active hazards or crimes route outside routine 311. | Protects urgent response. |
-| muni311ops.category.private_property | private property boundary | CONSTRAINT | Some issues are private property, utility, county, state or contractor responsibility. | Avoids false city commitments. |
-| muni311ops.routing.department | department routing | METHOD | Requests route to sanitation, streets, parks, code, traffic, utilities or police non-emergency. | Sends work to accountable owner. |
-| muni311ops.routing.queue | queue assignment | METHOD | Queue assignment uses category, geography, priority and crew availability. | Improves workload control. |
-| muni311ops.routing.escalation | escalation path | METHOD | Escalation sends stuck or high-risk cases to supervisors or interdepartmental review. | Prevents unattended issues. |
-| muni311ops.routing.external | external referral | METHOD | External referral forwards issue to utility, transit, county, state or private owner. | Closes responsibility gaps. |
-| muni311ops.sla.priority | priority level | MODEL | Priority level reflects hazard, legal deadline, service impact and visibility. | Drives response time. |
-| muni311ops.sla.target_date | target date | RECORD | Target date is calculated from SLA calendar, priority and department rules. | Sets measurable expectation. |
-| muni311ops.sla.pause_reason | pause reason | RECORD | Case may pause for weather, access, parts, owner contact or external dependency. | Explains SLA exceptions. |
-| muni311ops.sla.breach | SLA breach | FAILURE_MODE | Breach occurs when target passes without accepted status reason. | Signals management attention. |
-| muni311ops.field.work_order | work order link | RECORD | Service request links to field work order, inspection or enforcement case. | Connects resident report to action. |
-| muni311ops.field.dispatch_note | dispatch note | RECORD | Dispatch note includes access, hazards, asset details and resident contact limits. | Helps crews act safely. |
-| muni311ops.field.status_update | field status update | METHOD | Crews update status as assigned, inspected, completed, referred or no issue found. | Keeps back office informed. |
-| muni311ops.field.no_issue_found | no issue found | METHOD | No-issue closure records inspection evidence and reason. | Prevents unexplained denial. |
-| muni311ops.field.revisit | revisit trigger | METHOD | Revisit triggers when work fails, resident disputes, weather changes or hazard remains. | Improves closure quality. |
-| muni311ops.communication.acknowledgment | acknowledgment | METHOD | Acknowledgment gives case number, category and expected response path. | Confirms receipt to resident. |
-| muni311ops.communication.status_message | status message | METHOD | Status message translates internal workflow into public wording. | Reduces confusion. |
-| muni311ops.communication.delay_notice | delay notice | METHOD | Delay notice explains cause, new target or external dependency. | Maintains trust when work slips. |
-| muni311ops.communication.closure_notice | closure notice | METHOD | Closure notice states outcome, date, evidence and follow-up route. | Completes resident loop. |
-| muni311ops.communication.language | language support | METHOD | Communications use preferred language when available. | Improves equitable service. |
-| muni311ops.records.case_file | case file | RECORD | Case file stores intake, routing, notes, photos, field updates and communications. | Enables audit and public record response. |
-| muni311ops.records.privacy | privacy filter | CONSTRAINT | Personal data is hidden from public maps and open data where required. | Protects residents. |
-| muni311ops.records.retention | retention rule | CONSTRAINT | 311 records are retained by case type and legal schedule. | Supports transparency and cleanup. |
-| muni311ops.analytics.hotspot | hotspot analysis | MEASUREMENT | Repeated cases by location reveal asset, enforcement or service design problems. | Turns complaints into planning data. |
-| muni311ops.analytics.demand_trend | demand trend | MEASUREMENT | Volume by category, season and channel shows service demand. | Supports staffing and budget decisions. |
-| muni311ops.analytics.first_close | first-close quality | MEASUREMENT | First-close quality measures cases completed without reopen or duplicate. | Shows resolution accuracy. |
-| muni311ops.analytics.equity | equity review | QUALITY_CHECK | Response time and closure rates are reviewed by neighborhood and request type. | Detects service inequity. |
-| muni311ops.qa.category_audit | category audit | QUALITY_CHECK | Sampled cases check whether category and routing were correct. | Improves intake accuracy. |
-| muni311ops.qa.closure_audit | closure audit | QUALITY_CHECK | Closure audit checks evidence, wording and actual completion. | Prevents cosmetic closure. |
-| muni311ops.qa.script_update | script update | METHOD | Intake scripts update after recurring misroutes or resident confusion. | Makes front office smarter. |
-| muni311ops.integration.asset_system | asset system integration | METHOD | 311 links to asset inventory for signs, trees, hydrants, lights or roads. | Grounds requests in real assets. |
-| muni311ops.integration.gis_layer | GIS layer | METHOD | GIS layers show jurisdiction, wards, districts and service boundaries. | Reduces routing mistakes. |
-| muni311ops.integration.open_data | open data feed | METHOD | Nonprivate 311 data may publish category, status, geography and date. | Supports public transparency. |
-| muni311ops.governance.owner | service owner | RECORD | Each category has owner, SLA rule, closure rule and escalation contact. | Avoids orphan queues. |
-| muni311ops.governance.change_control | taxonomy change control | METHOD | Category and SLA changes are reviewed before deployment. | Prevents breaking reports and routing. |
-| muni311ops.closeout.reopen | reopen process | METHOD | Reopen process accepts disputes, failed work or changed conditions. | Keeps closure honest. |
-| muni311ops.closeout.lessons | service lesson | METHOD | Patterns from 311 feed maintenance planning, code strategy or communication improvements. | Converts resident reports into better services. |
+| muni311ops.intake.request_id | идентификатор запроса | RECORD | Идентификатор запроса связывает резидента, канал, местоположение, категорию, время и статус. | Создает отслеживаемую работу по обслуживанию. |
+| muni311ops.intake.channel | впускной канал | RECORD | Канал различает телефон, Интернет, приложение, электронную почту, личный кабинет, рекомендации совета или социальные сети. | Помогает управлять спросом по источникам. |
+| muni311ops.intake.location | захват местоположения | METHOD | Местоположение фиксирует адрес, участок, перекресток, идентификатор актива или точку на карте. | Маршруты работают до нужного экипажа. |
+| muni311ops.intake.description | описание проблемы | RECORD | В описании сохранены местные формулировки и ключевые наблюдаемые факты. | Предотвращает потерю детализации поля. |
+| muni311ops.intake.photo | фотодоказательства | RECORD | Прикрепленные фотографии показывают состояние, контекст и срочность. | Улучшает сортировку и уменьшает количество повторных посещений. |
+| muni311ops.category.taxonomy | таксономия услуг | MODEL | Таксономия сопоставляет типы запросов с ответственными отделами и рабочими процессами. | Обеспечивает согласованность маршрутизации. |
+| muni311ops.category.duplicate_check | дубликат чека | QUALITY_CHECK | Повторная проверка соответствует ближайшему местоположению, категории и открытому обращению. | Предотвращает повторные заказы на работу. |
+| muni311ops.category.emergency_filter | аварийный фильтр | SAFETY_RULE | Безопасность жизни, активные опасности или преступления выходят за рамки программы 311. | Защищает срочное реагирование. |
+| muni311ops.category.private_property | граница частной собственности | CONSTRAINT | Некоторые проблемы связаны с ответственностью частной собственности, коммунальных предприятий, округа, штата или подрядчика. | Избегает ложных городских обязательств. |
+| muni311ops.routing.department | маршрутизация отдела | METHOD | Запрашивает маршрут к канализации, улицам, паркам, коду, дорожному движению, коммунальным службам или полиции нечрезвычайных ситуаций. | Отправляет работу ответственному владельцу. |
+| muni311ops.routing.queue | назначение очереди | METHOD | При назначении очереди используются категория, географическое положение, приоритет и доступность экипажа. | Улучшает контроль рабочей нагрузки. |
+| muni311ops.routing.escalation | путь эскалации | METHOD | При эскалации дела, застрявшие или имеющие высокий риск, направляются руководителям или на межведомственное рассмотрение. | Предотвращает неконтролируемые проблемы. |
+| muni311ops.routing.external | внешнее направление | METHOD | Внешнее направление передает проблему коммунальному предприятию, транспортному предприятию, округу, штату или частному владельцу. | Закрывает пробелы в ответственности. |
+| muni311ops.sla.priority | уровень приоритета | MODEL | Уровень приоритета отражает опасность, установленный законом срок, влияние на обслуживание и видимость. | Увеличивает время отклика. |
+| muni311ops.sla.target_date | расчетная дата | RECORD | Целевая дата рассчитывается на основе календаря SLA, правил приоритета и отдела. | Устанавливает измеримые ожидания. |
+| muni311ops.sla.pause_reason | причина паузы | RECORD | Дело может быть приостановлено из-за погоды, доступа, запчастей, контакта с владельцем или внешней зависимости. | Объясняет исключения из SLA. |
+| muni311ops.sla.breach | Нарушение соглашения об уровне обслуживания | FAILURE_MODE | Нарушение происходит, когда цель проходит без причины принятого статуса. | Сигнализирует руководство о внимании. |
+| muni311ops.field.work_order | ссылка на заказ на работу | RECORD | Запрос на обслуживание связан с приказом о выездных работах, инспекцией или правоприменительным делом. | Связывает отчет резидента с действием. |
+| muni311ops.field.dispatch_note | накладная | RECORD | В записке об отправке указаны сведения о доступе, опасностях, сведениях об активах и ограничениях на контакты с жителями. | Помогает экипажам действовать безопасно. |
+| muni311ops.field.status_update | обновление статуса поля | METHOD | Бригады обновляют статус: назначено, проверено, завершено, передано или проблема не обнаружена. | Держит бэк-офис в курсе. |
+| muni311ops.field.no_issue_found | проблем не обнаружено | METHOD | Закрытие без проблем записывает доказательства и причины проверки. | Предотвращает необъяснимое отрицание. |
+| muni311ops.field.revisit | триггер повторного посещения | METHOD | Повторное посещение происходит в случае сбоя в работе, споров между жильцами, изменения погоды или сохранения опасности. | Улучшает качество закрытия. |
+| muni311ops.communication.acknowledgment | признание | METHOD | В подтверждении указывается номер обращения, категория и ожидаемый путь ответа. | Подтверждает получение жильцом. |
+| muni311ops.communication.status_message | сообщение о состоянии | METHOD | Сообщение о состоянии переводит внутренний рабочий процесс в публичную формулировку. | Уменьшает путаницу. |
+| muni311ops.communication.delay_notice | уведомление о задержке | METHOD | В уведомлении о задержке объясняется причина, новая цель или внешняя зависимость. | Сохраняет доверие, когда работа идет на спад. |
+| muni311ops.communication.closure_notice | уведомление о закрытии | METHOD | В уведомлении о закрытии указываются результат, дата, доказательства и маршрут последующих действий. | Завершает резидентный цикл. |
+| muni311ops.communication.language | языковая поддержка | METHOD | При общении используется предпочтительный язык, если он доступен. | Улучшает справедливое обслуживание. |
+| muni311ops.records.case_file | материалы дела | RECORD | В файле дела хранятся сведения о приеме, маршрутизации, заметках, фотографиях, обновлениях на местах и ​​сообщениях. | Включает аудит и реагирование на публичные записи. |
+| muni311ops.records.privacy | фильтр конфиденциальности | CONSTRAINT | Персональные данные скрыты от публичных карт и открытых данных там, где это необходимо. | Защищает жильцов. |
+| muni311ops.records.retention | правило хранения | CONSTRAINT | Сохранено 311 записей по типу дела и юридическому графику. | Поддерживает прозрачность и очистку. |
+| muni311ops.analytics.hotspot | анализ горячих точек | MEASUREMENT | Повторяющиеся случаи в зависимости от местоположения выявляют проблемы с активами, правоприменением или дизайном услуг. | Превращает жалобы в данные для планирования. |
+| muni311ops.analytics.demand_trend | тенденция спроса | MEASUREMENT | Объем по категориям, сезонам и каналам показывает спрос на услуги. | Поддерживает кадровые и бюджетные решения. |
+| muni311ops.analytics.first_close | качество первого закрытия | MEASUREMENT | Дела, связанные с мерами качества в порядке первого закрытия, завершены без повторного открытия или дублирования. | Показывает точность разрешения. |
+| muni311ops.analytics.equity | обзор акций | QUALITY_CHECK | Время ответа и скорость закрытия проверяются в зависимости от района и типа запроса. | Обнаруживает неравенство в обслуживании. |
+| muni311ops.qa.category_audit | категорийный аудит | QUALITY_CHECK | Выборочные случаи проверяют правильность категории и маршрутизации. | Улучшает точность всасывания. |
+| muni311ops.qa.closure_audit | заключительный аудит | QUALITY_CHECK | Завершающий аудит проверяет доказательства, формулировки и фактическое завершение. | Предотвращает косметическое закрытие. |
+| muni311ops.qa.script_update | обновление сценария | METHOD | Сценарии приема обновляются после повторяющихся ошибок в маршрутах или путаницы жителей. | Делает фронт-офис умнее. |
+| muni311ops.integration.asset_system | интеграция системы активов | METHOD | 311 ссылок на опись активов: знаки, деревья, гидранты, фонари или дороги. | Обосновывает запросы реальными активами. |
+| muni311ops.integration.gis_layer | Слой ГИС | METHOD | Слои ГИС показывают юрисдикцию, округа, округа и границы служб. | Уменьшает ошибки маршрутизации. |
+| muni311ops.integration.open_data | открытый канал данных | METHOD | Неличные данные 311 могут публиковать категорию, статус, географию и дату. | Поддерживает общественную прозрачность. |
+| muni311ops.governance.owner | владелец сервиса | RECORD | У каждой категории есть владелец, правило SLA, правило закрытия и контактное лицо для эскалации. | Избегает бесхозных очередей. |
+| muni311ops.governance.change_control | контроль изменений таксономии | METHOD | Изменения категорий и соглашений об уровне обслуживания проверяются перед развертыванием. | Предотвращает нарушение отчетов и маршрутизации. |
+| muni311ops.closeout.reopen | повторно открыть процесс | METHOD | В процессе повторного открытия принимаются споры, неудачная работа или измененные условия. | Делает закрытие честным. |
+| muni311ops.closeout.lessons | урок обслуживания | METHOD | Шаблоны планирования обслуживания ленты 311, стратегии кода или улучшения коммуникации. | Преобразует отчеты жителей в более качественные услуги. |

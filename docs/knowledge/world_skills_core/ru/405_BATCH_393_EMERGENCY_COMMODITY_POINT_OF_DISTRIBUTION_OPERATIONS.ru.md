@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| commoditypodops.activation.trigger | POD trigger | MODEL | Trigger includes broad need for water, food, tarps, kits, ice or other commodities. | Starts public distribution. |
-| commoditypodops.activation.pod_type | POD type | RECORD | Type distinguishes drive-through, walk-up, mobile, neighborhood or bulk partner model. | Defines operations. |
-| commoditypodops.activation.site_selection | site selection | METHOD | Site checks access, traffic capacity, storage, safety, shade and population reach. | Chooses workable location. |
-| commoditypodops.activation.command_link | command link | RECORD | POD reports to logistics, operations, public information and safety. | Keeps command aligned. |
-| commoditypodops.layout.entry | entry lane | METHOD | Entry lane separates public vehicles, deliveries, staff and emergency access. | Prevents congestion. |
-| commoditypodops.layout.registration | registration point | METHOD | Registration or count point captures household, vehicle or anonymous tally as policy requires. | Supports fair issue. |
-| commoditypodops.layout.loading | loading zone | METHOD | Loading zone positions pallets, staff and vehicles for safe handoff. | Speeds distribution. |
-| commoditypodops.layout.exit | exit route | METHOD | Exit route prevents cross-traffic with incoming vehicles or pedestrians. | Reduces crashes. |
-| commoditypodops.traffic.queue_plan | queue plan | METHOD | Queue plan defines lanes, cones, signs, overflow and law enforcement needs. | Manages demand. |
-| commoditypodops.traffic.pedestrian | pedestrian flow | SAFETY_RULE | Walk-up users have safe route away from vehicles. | Protects people without cars. |
-| commoditypodops.traffic.accessibility | accessibility lane | METHOD | Accessibility support handles disability, elders, language or no-vehicle needs. | Improves equity. |
-| commoditypodops.traffic.cutoff | queue cutoff | METHOD | Cutoff rules stop new entries when stock, daylight or safety limit is reached. | Prevents conflict. |
-| commoditypodops.inventory.item_master | item master | RECORD | Item master lists commodity, unit, package, source and handling rules. | Standardizes stock. |
-| commoditypodops.inventory.receiving | receiving | QUALITY_CHECK | Receiving checks quantity, condition, lot, delivery time and source. | Protects inventory. |
-| commoditypodops.inventory.stock_count | stock count | MEASUREMENT | Count tracks starting stock, deliveries, issued units and remaining stock. | Shows availability. |
-| commoditypodops.inventory.pallet_control | pallet control | METHOD | Pallets are labeled by item, count, lot and lane. | Speeds loading. |
-| commoditypodops.issue.issue_rule | issue rule | CONSTRAINT | Rule defines units per household, vehicle, person or referral. | Extends supply fairly. |
-| commoditypodops.issue.standard_load | standard load | METHOD | Standard load packages common set of commodities for quick handoff. | Improves throughput. |
-| commoditypodops.issue.exception | exception issue | RECORD | Exceptions record extra need, disability, large household or agency pickup. | Keeps fairness visible. |
-| commoditypodops.issue.proof | issue proof | RECORD | Proof captures count, lane, time, staff and optional household/vehicle data. | Supports reporting. |
-| commoditypodops.staffing.roster | staffing roster | RECORD | Roster covers site lead, inventory, traffic, loaders, safety, registration and runners. | Maintains coverage. |
-| commoditypodops.staffing.briefing | shift briefing | METHOD | Briefing covers stock, issue rules, safety, communication and expected demand. | Aligns staff. |
-| commoditypodops.staffing.loader_safety | loader safety | SAFETY_RULE | Loaders use safe lifting, hydration, PPE and vehicle awareness. | Reduces injury. |
-| commoditypodops.staffing.volunteer | volunteer role | CONSTRAINT | Volunteers work within assigned roles and supervision. | Keeps operation controlled. |
-| commoditypodops.safety.heat | heat safety | SAFETY_RULE | Heat plan includes water, shade, breaks and medical escalation. | Protects staff/public. |
-| commoditypodops.safety.conflict | conflict management | METHOD | Conflict over shortages or limits routes to supervisor and security. | Reduces escalation. |
-| commoditypodops.safety.incident | incident report | RECORD | Incidents record injury, crash, threat, lost child, theft or medical event. | Supports review. |
-| commoditypodops.safety.weather | weather action | METHOD | Weather action covers lightning, wind, smoke, flood or closure thresholds. | Keeps site safe. |
-| commoditypodops.communication.public_notice | public notice | METHOD | Notice states location, hours, items, limits, access, documents and transport. | Guides residents. |
-| commoditypodops.communication.site_update | site update | METHOD | Updates announce stockouts, wait times, closure or relocation. | Reduces frustration. |
-| commoditypodops.communication.language | language support | METHOD | Signs and scripts use common local languages and icons. | Improves access. |
-| commoditypodops.communication.partner | partner coordination | METHOD | Partners receive stock, demand, access and special population needs. | Aligns distribution. |
-| commoditypodops.records.daily_log | daily log | RECORD | Log stores staff, weather, stock, counts, incidents and issues. | Summarizes operation. |
-| commoditypodops.records.sitrep | POD situation report | RECORD | Situation report summarizes hours, households served, stock status, safety issues and needs. | Informs command. |
-| commoditypodops.records.cost | cost record | RECORD | Costs track commodities, transport, labor, equipment and security. | Supports finance. |
-| commoditypodops.records.retention | retention rule | CONSTRAINT | Records follow emergency, grant, finance and privacy schedules. | Preserves audit. |
-| commoditypodops.qa.reconciliation | reconciliation | QUALITY_CHECK | Inventory reconciles deliveries, issues, losses and remaining stock. | Detects errors. |
-| commoditypodops.qa.lane_observation | lane observation | QUALITY_CHECK | Supervisors observe lanes for rule compliance and safety. | Improves consistency. |
-| commoditypodops.metrics.throughput | throughput | MEASUREMENT | Throughput tracks households/vehicles served per hour. | Shows capacity. |
-| commoditypodops.metrics.unmet_demand | unmet demand | MEASUREMENT | Unmet demand captures turnaways, stockouts and requests not filled. | Guides resupply. |
-| commoditypodops.demob.site_close | site closeout | METHOD | Closeout removes stock, cones, trash and signs; restores site. | Ends operation cleanly. |
-| commoditypodops.demob.stock_transfer | stock transfer | METHOD | Remaining commodities transfer to another POD, shelter, cache or partner. | Avoids waste. |
-| commoditypodops.review.after_action | after-action review | METHOD | Review captures site layout, demand, traffic, shortages and public messaging lessons. | Improves next POD. |
-| commoditypodops.governance.site_owner | site owner | RECORD | Site owner coordinates logistics, safety, public information and partners. | Keeps accountability clear. |
+| commoditypodops.activation.trigger | Триггер POD | MODEL | Триггер включает широкую потребность в воде, пище, брезенте, аптечках, льду или других товарах. | Начинается публичное распространение. |
+| commoditypodops.activation.pod_type | Тип POD | RECORD | Тип различает модели для проезда, для пешеходов, для мобильных, по соседству или для оптовых партнеров. | Определяет операции. |
+| commoditypodops.activation.site_selection | выбор места | METHOD | На объекте проверяется доступ, пропускная способность, хранилище, безопасность, тень и охват населения. | Выбирает подходящее место. |
+| commoditypodops.activation.command_link | командная ссылка | RECORD | POD подчиняется логистике, операциям, общественной информации и безопасности. | Сохраняет согласованность команд. |
+| commoditypodops.layout.entry | въездная полоса | METHOD | Въездная полоса разделяет общественный транспорт, средства доставки, персонал и доступ для экстренных случаев. | Предотвращает заторы. |
+| commoditypodops.layout.registration | пункт регистрации | METHOD | В пункте регистрации или подсчета фиксируются данные о домохозяйствах, транспортных средствах или анонимах, как того требует политика. | Поддерживает справедливый вопрос. |
+| commoditypodops.layout.loading | Зона загрузки | METHOD | Зона погрузки размещает поддоны, персонал и транспортные средства для безопасной передачи. | Распределение скоростей. |
+| commoditypodops.layout.exit | маршрут выхода | METHOD | Маршрут выхода предотвращает перекрестное движение с приближающимися транспортными средствами или пешеходами. | Уменьшает сбои. |
+| commoditypodops.traffic.queue_plan | план очереди | METHOD | План очереди определяет полосы движения, конусы, знаки, переполнение и потребности правоохранительных органов. | Управляет спросом. |
+| commoditypodops.traffic.pedestrian | пешеходный поток | SAFETY_RULE | Пользователи пешеходов имеют безопасный маршрут вдали от транспортных средств. | Защищает людей без машин. |
+| commoditypodops.traffic.accessibility | полоса доступности | METHOD | Поддержка доступности учитывает потребности инвалидов, пожилых людей, языковых потребностей или отсутствия транспортных средств. | Улучшает справедливость. |
+| commoditypodops.traffic.cutoff | ограничение очереди | METHOD | Правила ограничения останавливают новые записи при достижении запаса, дневного света или безопасного предела. | Предотвращает конфликт. |
+| commoditypodops.inventory.item_master | мастер предметов | RECORD | В основной записи товара перечислены товар, единица измерения, упаковка, источник и правила обработки. | Стандартизирует запасы. |
+| commoditypodops.inventory.receiving | получение | QUALITY_CHECK | Прием чеков на количество, состояние, партию, время доставки и источник. | Защищает инвентарь. |
+| commoditypodops.inventory.stock_count | инвентаризация | MEASUREMENT | Подсчет отслеживает начальный запас, поставки, выпущенные единицы и оставшийся запас. | Показывает наличие. |
+| commoditypodops.inventory.pallet_control | управление паллетами | METHOD | Поддоны маркируются по позициям, количествам, партиям и полосам. | Ускоряет загрузку. |
+| commoditypodops.issue.issue_rule | правило выпуска | CONSTRAINT | Правило определяет единицы на домохозяйство, транспортное средство, человека или направление. | Достаточно расширяет предложение. |
+| commoditypodops.issue.standard_load | стандартная нагрузка | METHOD | Стандартные пакеты загрузки, общий набор товаров для быстрой передачи. | Улучшает пропускную способность. |
+| commoditypodops.issue.exception | проблема исключения | RECORD | Исключениями являются дополнительные потребности, инвалидность, крупный семейный или агентствоный пикап. | Делает справедливость видимой. |
+| commoditypodops.issue.proof | выдать доказательство | RECORD | Доказательство фиксирует количество, полосу движения, время, персонал и дополнительные данные о доме/транспортном средстве. | Поддерживает отчетность. |
+| commoditypodops.staffing.roster | штатное расписание | RECORD | Реестр охватывает руководство сайта, инвентарь, трафик, грузчиков, безопасность, регистрацию и бегунов. | Сохраняет покрытие. |
+| commoditypodops.staffing.briefing | инструктаж по смене | METHOD | Брифинг охватывает запасы, правила выпуска, безопасность, коммуникацию и ожидаемый спрос. | Выравнивает персонал. |
+| commoditypodops.staffing.loader_safety | безопасность погрузчика | SAFETY_RULE | Погрузчики используют безопасный подъем, гидратацию, средства индивидуальной защиты и осведомленность о транспортном средстве. | Уменьшает травматизм. |
+| commoditypodops.staffing.volunteer | роль волонтера | CONSTRAINT | Волонтёры работают в рамках отведенных им ролей и под контролем. | Держит работу под контролем. |
+| commoditypodops.safety.heat | тепловая безопасность | SAFETY_RULE | План жары включает воду, тень, перерывы и медицинскую помощь. | Защищает персонал/общественность. |
+| commoditypodops.safety.conflict | управление конфликтами | METHOD | Конфликт по поводу нехватки или ограничения маршрутов к руководителю и службе безопасности. | Уменьшает эскалацию. |
+| commoditypodops.safety.incident | отчет об инциденте | RECORD | Инциденты фиксируют травмы, аварии, угрозы, потерю ребенка, кражу или медицинское событие. | Поддерживает обзор. |
+| commoditypodops.safety.weather | погодные действия | METHOD | Погодные воздействия охватывают пороги молний, ​​ветра, дыма, наводнения или закрытия. | Обеспечивает безопасность сайта. |
+| commoditypodops.communication.public_notice | публичное уведомление | METHOD | В уведомлении указывается местоположение, часы работы, предметы, ограничения, доступ, документы и транспорт. | Проводники жителей. |
+| commoditypodops.communication.site_update | обновление сайта | METHOD | В обновлениях сообщается о дефиците товаров, времени ожидания, закрытии или переезде. | Уменьшает разочарование. |
+| commoditypodops.communication.language | языковая поддержка | METHOD | В знаках и надписях используются распространенные местные языки и значки. | Улучшает доступ. |
+| commoditypodops.communication.partner | координация партнеров | METHOD | Партнеры получают запасы, спрос, доступ и особые потребности населения. | Выравнивает распределение. |
+| commoditypodops.records.daily_log | ежедневник | RECORD | Журнал хранит информацию о персонале, погоде, запасах, количестве, происшествиях и проблемах. | Подводит итоги работы. |
+| commoditypodops.records.sitrep | Отчет о ситуации с POD | RECORD | В отчете о ситуации суммируются часы работы, обслуживаемые домохозяйства, состояние запасов, вопросы безопасности и потребности. | Информирует командование. |
+| commoditypodops.records.cost | запись затрат | RECORD | Затраты учитывают товары, транспорт, рабочую силу, оборудование и безопасность. | Поддерживает финансы. |
+| commoditypodops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам чрезвычайных ситуаций, грантов, финансов и конфиденциальности. | Сохраняет аудит. |
+| commoditypodops.qa.reconciliation | примирение | QUALITY_CHECK | Инвентаризация сверяет поставки, проблемы, потери и остатки на складе. | Обнаруживает ошибки. |
+| commoditypodops.qa.lane_observation | наблюдение за полосой движения | QUALITY_CHECK | Контролеры наблюдают за полосами движения на предмет соблюдения правил и безопасности. | Улучшает консистенцию. |
+| commoditypodops.metrics.throughput | пропускная способность | MEASUREMENT | Пропускная способность отслеживает количество обслуживаемых домохозяйств/транспортных средств в час. | Показывает емкость. |
+| commoditypodops.metrics.unmet_demand | неудовлетворенный спрос | MEASUREMENT | Неудовлетворенный спрос включает отказы, дефицит и невыполненные заявки. | Пополнение запасов гидов. |
+| commoditypodops.demob.site_close | закрытие сайта | METHOD | Распродажа убирает запасы, конусы, мусор и вывески; восстанавливает сайт. | Завершает работу чисто. |
+| commoditypodops.demob.stock_transfer | перемещение запасов | METHOD | Оставшиеся товары передаются в другой ПОД, убежище, тайник или партнера. | Избегает отходов. |
+| commoditypodops.review.after_action | обзор после действий | METHOD | В обзоре отражены планировка сайта, спрос, трафик, дефицит и уроки публичного обмена сообщениями. | Улучшает следующий POD. |
+| commoditypodops.governance.site_owner | владелец сайта | RECORD | Владелец сайта координирует логистику, безопасность, общественную информацию и партнеров. | Обеспечивает четкую подотчетность. |

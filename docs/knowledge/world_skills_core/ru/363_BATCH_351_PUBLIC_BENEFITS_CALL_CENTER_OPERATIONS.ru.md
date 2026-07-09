@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| benefitcallops.intake.call_id | call ID | RECORD | Call ID links caller, time, program, queue, agent and outcome. | Creates traceable service contact. |
-| benefitcallops.intake.reason_code | reason code | RECORD | Reason code classifies eligibility, documents, notices, payments, appeals or technical help. | Shows demand drivers. |
-| benefitcallops.intake.account_match | account match | METHOD | Caller is matched to case or application through approved identifiers. | Speeds assistance without guessing. |
-| benefitcallops.intake.vulnerability_flag | vulnerability flag | MODEL | Flag notes urgent housing, food, utility, disability or safety risk. | Helps prioritize response. |
-| benefitcallops.privacy.identity_verify | identity verification | SAFETY_RULE | Identity is verified before discussing private benefit data. | Protects applicant information. |
-| benefitcallops.privacy.minimum_needed | minimum necessary | CONSTRAINT | Agents disclose only information needed for the call purpose. | Limits privacy exposure. |
-| benefitcallops.privacy.third_party | third-party caller | CONSTRAINT | Representatives need documented authority before receiving case details. | Prevents unauthorized disclosure. |
-| benefitcallops.privacy.recording_notice | recording notice | METHOD | Recording notice or consent plays where required. | Meets call compliance rules. |
-| benefitcallops.eligibility.general_info | general eligibility info | METHOD | Agents can explain general rules without making unsupported determinations. | Avoids misleading approvals. |
-| benefitcallops.eligibility.rule_boundary | rule boundary | CONSTRAINT | Complex eligibility decisions route to caseworker or specialist. | Keeps call center within authority. |
-| benefitcallops.eligibility.pre_screen | pre-screen | METHOD | Pre-screen identifies likely programs, missing facts and next application step. | Helps callers act. |
-| benefitcallops.eligibility.change_report | change report guidance | METHOD | Agents explain which household, income or address changes must be reported. | Supports accurate benefits. |
-| benefitcallops.documents.status_lookup | document status lookup | METHOD | Agent checks whether submitted documents were received, indexed and reviewed. | Reduces repeat submissions. |
-| benefitcallops.documents.missing_list | missing document list | RECORD | Missing list names specific item, due date and accepted submission routes. | Makes next action clear. |
-| benefitcallops.documents.upload_help | upload help | METHOD | Agents guide portal, mail, fax or drop-off steps without handling secrets improperly. | Reduces access barriers. |
-| benefitcallops.documents.misindexed | misindexed document | FAILURE_MODE | Misindexed documents appear missing because case, person or program link is wrong. | Prevents wrongful delays. |
-| benefitcallops.notices.notice_explain | notice explanation | METHOD | Agents translate notice language into plain meaning and deadlines. | Helps callers understand decisions. |
-| benefitcallops.notices.deadline_warning | deadline warning | SAFETY_RULE | Agents warn about appeal, renewal and document deadlines when visible. | Protects due process. |
-| benefitcallops.notices.reissue | notice reissue | METHOD | Missing or inaccessible notices can be reissued through approved channel. | Restores communication. |
-| benefitcallops.payments.payment_status | payment status | METHOD | Agents explain issued, pending, held, returned or corrected payments. | Reduces uncertainty. |
-| benefitcallops.payments.card_issue | card issue route | METHOD | Benefit card problems route to replacement, PIN, vendor or fraud process. | Directs caller correctly. |
-| benefitcallops.payments.overpayment_call | overpayment call | METHOD | Overpayment calls explain notice, repayment route and appeal boundary. | Handles sensitive debt issues. |
-| benefitcallops.language.language_match | language match | METHOD | Caller language is identified early and interpreter route is offered. | Improves equitable access. |
-| benefitcallops.language.interpreter_bridge | interpreter bridge | METHOD | Interpreter bridge connects agent, caller and interpreter with privacy reminder. | Keeps multilingual calls usable. |
-| benefitcallops.language.translated_script | translated script | RECORD | Approved translated scripts cover common program phrases and warnings. | Reduces inconsistent explanations. |
-| benefitcallops.accessibility.tty | TTY relay | METHOD | TTY or relay options support callers with hearing or speech needs. | Maintains access. |
-| benefitcallops.accessibility.callback | callback accommodation | METHOD | Callback can support long waits, disabilities or dropped calls. | Reduces service burden. |
-| benefitcallops.scripts.script_library | script library | RECORD | Script library stores approved opening, verification, program and closure wording. | Keeps answers consistent. |
-| benefitcallops.scripts.knowledge_article | knowledge article | RECORD | Article links policy, workflow, examples and escalation route. | Helps agents answer accurately. |
-| benefitcallops.scripts.update_control | script update control | METHOD | Script changes require owner, approval, publish date and retirement of old text. | Prevents outdated guidance. |
-| benefitcallops.escalation.caseworker | caseworker escalation | METHOD | Escalation sends case-specific issues to assigned worker or unit. | Resolves beyond-call authority. |
-| benefitcallops.escalation.supervisor | supervisor escalation | METHOD | Supervisors handle complaints, threats, policy uncertainty and service failures. | Protects callers and agents. |
-| benefitcallops.escalation.emergency_referral | emergency referral | SAFETY_RULE | Imminent hunger, homelessness, violence or medical danger triggers emergency referral path. | Addresses acute risk. |
-| benefitcallops.escalation.tech_ticket | technical ticket | METHOD | Portal or system failures create IT ticket with screenshots, error and caller impact. | Fixes access problems. |
-| benefitcallops.quality.call_monitor | call monitoring | QUALITY_CHECK | Sample calls are reviewed for accuracy, privacy, tone and completeness. | Improves service quality. |
-| benefitcallops.quality.error_correction | error correction | METHOD | Incorrect advice triggers correction, retraining and possible case follow-up. | Limits harm from bad guidance. |
-| benefitcallops.quality.coaching | coaching plan | METHOD | Coaching targets repeated gaps in policy, systems or communication. | Builds agent capability. |
-| benefitcallops.metrics.wait_time | wait time | MEASUREMENT | Wait time tracks queue delay by program, language and time. | Guides staffing. |
-| benefitcallops.metrics.abandonment | abandonment rate | MEASUREMENT | Abandonment shows callers leaving before service. | Signals access problems. |
-| benefitcallops.metrics.first_contact | first contact resolution | MEASUREMENT | First contact resolution tracks calls solved without repeat or escalation. | Measures usefulness. |
-| benefitcallops.records.call_note | call note | RECORD | Note records verified facts, advice given, tasks and next steps. | Supports case continuity. |
-| benefitcallops.records.retention | retention rule | CONSTRAINT | Notes and recordings follow program privacy, retention and legal hold rules. | Controls sensitive records. |
-| benefitcallops.continuity.outage_plan | outage plan | METHOD | Outage plan covers phone, eligibility system, portal or payment system downtime. | Keeps service during disruption. |
-| benefitcallops.closeout.summary | call closeout summary | METHOD | Agent ends with action items, deadlines, reference number and support route. | Leaves caller with clear next steps. |
+| benefitcallops.intake.call_id | идентификатор вызова | RECORD | Идентификатор вызова связывает вызывающего абонента, время, программу, очередь, агента и результат. | Создает отслеживаемый контакт со службой поддержки. |
+| benefitcallops.intake.reason_code | код причины | RECORD | Код причины классифицирует право на участие, документы, уведомления, платежи, апелляции или техническую помощь. | Показывает драйверы спроса. |
+| benefitcallops.intake.account_match | совпадение аккаунтов | METHOD | Вызывающий абонент сопоставляется с обращением или приложением посредством утвержденных идентификаторов. | Ускоряет помощь без догадок. |
+| benefitcallops.intake.vulnerability_flag | флаг уязвимости | MODEL | Флаг отмечает необходимость срочного жилья, еды, коммунальных услуг, инвалидности или риска для безопасности. | Помогает расставить приоритеты в реагировании. |
+| benefitcallops.privacy.identity_verify | проверка личности | SAFETY_RULE | Личность проверяется перед обсуждением данных о частных выгодах. | Защищает информацию заявителя. |
+| benefitcallops.privacy.minimum_needed | минимум необходимый | CONSTRAINT | Агенты раскрывают только информацию, необходимую для цели звонка. | Ограничивает раскрытие конфиденциальности. |
+| benefitcallops.privacy.third_party | сторонний абонент | CONSTRAINT | Прежде чем получить подробную информацию о деле, представителям необходимы документально подтвержденные полномочия. | Предотвращает несанкционированное раскрытие. |
+| benefitcallops.privacy.recording_notice | уведомление о записи | METHOD | Уведомление о записи или согласие воспроизводится там, где это необходимо. | Соответствует правилам соответствия вызовов. |
+| benefitcallops.eligibility.general_info | общая информация о приемлемости | METHOD | Агенты могут объяснять общие правила, не делая необоснованных выводов. | Избегает вводящих в заблуждение утверждений. |
+| benefitcallops.eligibility.rule_boundary | граница правила | CONSTRAINT | Сложные решения о приемлемости помощи направляются к социальному работнику или специалисту. | Держит колл-центр в пределах полномочий. |
+| benefitcallops.eligibility.pre_screen | предварительный просмотр | METHOD | Предварительная проверка определяет вероятные программы, недостающие факты и следующий шаг подачи заявления. | Помогает звонящим действовать. |
+| benefitcallops.eligibility.change_report | руководство по отчету об изменениях | METHOD | Агенты объясняют, о каких изменениях в домохозяйстве, доходе или адресе необходимо сообщать. | Поддерживает точные преимущества. |
+| benefitcallops.documents.status_lookup | поиск статуса документа | METHOD | Агент проверяет, были ли предоставленные документы получены, проиндексированы и проверены. | Уменьшает количество повторных заявок. |
+| benefitcallops.documents.missing_list | список недостающих документов | RECORD | В отсутствующем списке указаны конкретные элементы, срок выполнения и принятые маршруты отправки. | Делает ясное следующее действие. |
+| benefitcallops.documents.upload_help | загрузить помощь | METHOD | Агенты управляют действиями по порталу, почте, факсу или отправке, не обрабатывая секреты должным образом. | Уменьшает барьеры доступа. |
+| benefitcallops.documents.misindexed | неправильно проиндексированный документ | FAILURE_MODE | Неправильно проиндексированные документы отсутствуют, поскольку ссылка на дело, лицо или программу неверна. | Предотвращает неправомерные задержки. |
+| benefitcallops.notices.notice_explain | уведомление, объяснение | METHOD | Агенты переводят язык уведомлений в простой смысл и сроки. | Помогает звонящим понять решения. |
+| benefitcallops.notices.deadline_warning | предупреждение о крайнем сроке | SAFETY_RULE | Агенты предупреждают о сроках апелляции, продления и подачи документов, когда они видны. | Защищает надлежащую правовую процедуру. |
+| benefitcallops.notices.reissue | уведомление о переиздании | METHOD | Отсутствующие или недоступные уведомления могут быть повторно отправлены по утвержденному каналу. | Восстанавливает общение. |
+| benefitcallops.payments.payment_status | статус платежа | METHOD | Агенты объясняют выданные, ожидающие, задержанные, возвращенные или исправленные платежи. | Уменьшает неопределенность. |
+| benefitcallops.payments.card_issue | маршрут выдачи карты | METHOD | Проблемы с картой льгот приводят к замене PIN-кода, поставщику или процессу мошенничества. | Правильно направляет звонящего. |
+| benefitcallops.payments.overpayment_call | звонок о переплате | METHOD | В звонках по поводу переплаты разъясняются уведомление, способ погашения и сроки апелляции. | Решает деликатные долговые вопросы. |
+| benefitcallops.language.language_match | языковое соответствие | METHOD | Язык вызывающего абонента определяется заранее, и предлагается маршрут переводчика. | Улучшает справедливый доступ. |
+| benefitcallops.language.interpreter_bridge | мост переводчика | METHOD | Мост переводчика соединяет агента, звонящего и переводчика с помощью напоминания о конфиденциальности. | Обеспечивает возможность использования многоязычных вызовов. |
+| benefitcallops.language.translated_script | переведенный сценарий | RECORD | Утвержденные переведенные сценарии охватывают распространенные программные фразы и предупреждения. | Уменьшает противоречивые объяснения. |
+| benefitcallops.accessibility.tty | реле телетайпа | METHOD | Опции телетайпа или ретрансляции поддерживают звонящих с нарушениями слуха или речи. | Сохраняет доступ. |
+| benefitcallops.accessibility.callback | обратный звонок | METHOD | Обратный вызов может поддерживать длительное ожидание, блокировку или сброс вызовов. | Уменьшает нагрузку на обслуживание. |
+| benefitcallops.scripts.script_library | библиотека сценариев | RECORD | Библиотека сценариев хранит утвержденные формулировки открытия, проверки, программы и закрытия. | Сохраняет последовательность ответов. |
+| benefitcallops.scripts.knowledge_article | статья знаний | RECORD | В статье описаны политика, рабочий процесс, примеры и пути эскалации. | Помогает агентам отвечать точно. |
+| benefitcallops.scripts.update_control | контроль обновления скрипта | METHOD | Для внесения изменений в сценарий требуется наличие владельца, одобрение, дата публикации и удаление старого текста. | Предотвращает устаревшие рекомендации. |
+| benefitcallops.escalation.caseworker | эскалация соцработника | METHOD | При эскалации проблемы, связанные с конкретным случаем, отправляются назначенному работнику или подразделению. | Решает полномочия, выходящие за пределы вызова. |
+| benefitcallops.escalation.supervisor | Эскалация руководителя | METHOD | Руководители рассматривают жалобы, угрозы, неопределенность политики и сбои в обслуживании. | Защищает звонящих и агентов. |
+| benefitcallops.escalation.emergency_referral | экстренное направление | SAFETY_RULE | Неизбежный голод, бездомность, насилие или медицинская опасность вызывают необходимость направления в неотложную помощь. | Устраняет острый риск. |
+| benefitcallops.escalation.tech_ticket | технический билет | METHOD | Сбои портала или системы создают ИТ-запрос со скриншотами, ошибками и влиянием вызывающего абонента. | Исправляет проблемы с доступом. |
+| benefitcallops.quality.call_monitor | мониторинг звонков | QUALITY_CHECK | Примеры звонков проверяются на предмет точности, конфиденциальности, тональности и полноты. | Улучшает качество обслуживания. |
+| benefitcallops.quality.error_correction | исправление ошибок | METHOD | Неправильный совет приводит к исправлению, переподготовке и возможному последующему рассмотрению дела. | Ограничивает вред от плохого руководства. |
+| benefitcallops.quality.coaching | план тренировок | METHOD | Коучинг нацелен на повторяющиеся пробелы в политике, системах или коммуникации. | Повышает возможности агента. |
+| benefitcallops.metrics.wait_time | время ожидания | MEASUREMENT | Время ожидания отслеживает задержку очереди по программе, языку и времени. | Кадровое обеспечение гидов. |
+| benefitcallops.metrics.abandonment | процент отказов | MEASUREMENT | Отказ означает, что вызывающие абоненты уходят до обслуживания. | Проблемы с доступом к сигналам. |
+| benefitcallops.metrics.first_contact | разрешение первого контакта | MEASUREMENT | Разрешение первого контакта отслеживает решенные вызовы без повторения или эскалации. | Измеряет полезность. |
+| benefitcallops.records.call_note | заметка о вызове | RECORD | В записях фиксируются проверенные факты, данные советы, задачи и последующие шаги. | Поддерживает непрерывность дела. |
+| benefitcallops.records.retention | правило хранения | CONSTRAINT | Примечания и записи соответствуют правилам конфиденциальности, хранения и юридического хранения программы. | Контролирует конфиденциальные записи. |
+| benefitcallops.continuity.outage_plan | план отключения | METHOD | План отключения покрывает простои телефона, системы определения соответствия, портала или платежной системы. | Сохраняет обслуживание во время сбоев. |
+| benefitcallops.closeout.summary | сводка закрытия звонка | METHOD | В конце агента указываются действия, сроки, ссылочный номер и маршрут поддержки. | Предоставляет звонящему ясное представление о следующих шагах. |

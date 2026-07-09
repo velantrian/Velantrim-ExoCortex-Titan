@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| portalops.registration.account_lookup | account lookup | METHOD | Registration matches customer name, account number, service address or meter data. | Links users to the right utility account. |
-| portalops.registration.identity_check | identity check | SAFETY_RULE | Portal registration verifies identity with approved data and fraud controls. | Protects customer records. |
-| portalops.registration.email_verify | email verification | METHOD | Email verification confirms a reachable contact before full account access. | Reduces bad login and alert records. |
-| portalops.registration.phone_verify | phone verification | METHOD | Phone verification supports alerts, MFA or recovery where policy allows. | Improves account recovery and notification accuracy. |
-| portalops.registration.duplicate_profile | duplicate profile | FAILURE_MODE | Duplicate profiles split alerts, payments and account links. | Causes service confusion. |
-| portalops.login.mfa | multi-factor authentication | SAFETY_RULE | MFA is required or risk-triggered for sensitive account actions. | Lowers account takeover risk. |
-| portalops.login.password_reset | password reset | METHOD | Reset flow verifies contact channel and rate limits attempts. | Restores access without exposing accounts. |
-| portalops.login.lockout | lockout control | CONSTRAINT | Failed attempts trigger lockout, cooldown or review. | Balances security and support load. |
-| portalops.login.session_timeout | session timeout | SAFETY_RULE | Sensitive sessions expire after inactivity or risk signals. | Protects unattended devices. |
-| portalops.account_link.primary_account | primary account link | RECORD | Primary account link stores user, account, role and authorization basis. | Enables controlled self-service. |
-| portalops.account_link.multiple_accounts | multiple account support | METHOD | Customers may link several service addresses or business accounts under one profile. | Supports landlords and multi-site users. |
-| portalops.account_link.authorized_user | authorized user | CONSTRAINT | Authorized users receive only permitted view or action rights. | Keeps privacy boundaries clear. |
-| portalops.account_link.unlink | unlink workflow | METHOD | Account unlinking removes access without deleting billing records. | Handles move-outs and role changes. |
-| portalops.profile.contact_update | contact update | METHOD | Customers can update email, phone, mailing address or communication preferences. | Keeps operational contact data current. |
-| portalops.profile.preference_center | preference center | METHOD | Preference center controls paperless billing, alerts, language and channel choices. | Reduces unwanted messages. |
-| portalops.profile.language | language preference | RECORD | Language preference is stored for portal display and outbound notifications. | Improves customer accessibility. |
-| portalops.profile.audit_trail | profile audit trail | RECORD | Sensitive profile changes record user, time, IP/device and field changed. | Supports fraud investigation. |
-| portalops.payments.payment_method | payment method | RECORD | Payment method token stores type, provider, status and customer authorization. | Enables secure recurring and one-time payments. |
-| portalops.payments.one_time | one-time payment | METHOD | One-time payment confirms amount, account, fee, date and receipt. | Reduces misapplied payments. |
-| portalops.payments.autopay | autopay enrollment | METHOD | Autopay enrollment records authorization, start date, limit and cancellation path. | Prevents unauthorized drafts. |
-| portalops.payments.failed_payment | failed payment | FAILURE_MODE | Failed payments generate clear status, retry rule, fee notice and support path. | Avoids silent delinquency. |
-| portalops.payments.refund_request | refund request | METHOD | Portal can route refund or overpayment questions to billing review. | Keeps financial exceptions controlled. |
-| portalops.billing.bill_view | bill view | METHOD | Bill view shows current, past, due, adjusted and final bills with document links. | Lets customers inspect charges. |
-| portalops.billing.usage_chart | usage chart | MEASUREMENT | Usage chart shows meter reads, estimates, intervals and comparison periods. | Helps customers understand consumption. |
-| portalops.billing.leak_hint | leak hint | MODEL | Usage anomaly hints point to possible leak or meter exception without diagnosing cause. | Encourages timely customer action. |
-| portalops.billing.dispute_link | dispute link | METHOD | Billing dispute link captures issue type, bill, evidence and desired resolution. | Routes exceptions to the right queue. |
-| portalops.alerts.outage_alert | outage alert opt-in | METHOD | Portal offers outage notification preferences by account and channel. | Improves event communication. |
-| portalops.alerts.billing_alert | billing alert | METHOD | Billing alerts notify due date, high usage, payment failure or arrangement status. | Reduces avoidable delinquency. |
-| portalops.alerts.service_notice | service notice | METHOD | Service notices inform planned work, shutoff risk, conservation or water quality issues. | Uses portal as communication hub. |
-| portalops.alerts.suppression | suppression rule | CONSTRAINT | Suppression blocks duplicate, opted-out or legally restricted messages. | Prevents notification abuse. |
-| portalops.support.ticket_create | support ticket | METHOD | Portal support ticket records category, account, description, attachments and priority. | Creates traceable self-service help. |
-| portalops.support.chat_handoff | chat handoff | METHOD | Chat or bot handoff sends transcript and account context to support staff. | Avoids customers repeating details. |
-| portalops.support.knowledge_base | knowledge base link | METHOD | Portal points customers to approved articles for common tasks. | Deflects routine support demand. |
-| portalops.support.escalation | escalation path | METHOD | Failed self-service actions route to billing, field service, IT or call center. | Prevents dead ends. |
-| portalops.failure.outage_banner | portal outage banner | METHOD | Portal outage banner announces degraded login, payment, usage or alert features. | Keeps customers informed during platform incidents. |
-| portalops.failure.payment_provider | payment provider failure | FAILURE_MODE | Payment provider failure separates portal problem from bank or processor issue. | Guides troubleshooting and reconciliation. |
-| portalops.failure.data_latency | data latency | FAILURE_MODE | Usage and payment data may lag source systems and needs visible timestamp. | Prevents false customer assumptions. |
-| portalops.security.privacy_notice | privacy notice | CONSTRAINT | Portal explains data use, retention, cookies and customer rights. | Supports legal and trust requirements. |
-| portalops.security.access_review | access review | QUALITY_CHECK | Admin and support access to portal data is reviewed periodically. | Limits insider risk. |
-| portalops.integration.billing_sync | billing sync | METHOD | Portal synchronizes payments, balances and profile changes with CIS/billing system. | Keeps customer-facing data aligned. |
-| portalops.integration.ami_sync | AMI sync | METHOD | Meter usage sync records source, interval, delay and missing-data status. | Makes usage display reliable. |
-| portalops.metrics.task_completion | task completion | MEASUREMENT | Metrics track completed registrations, payments, profile updates and tickets. | Shows self-service effectiveness. |
-| portalops.metrics.error_rate | error rate | MEASUREMENT | Error rate tracks failed login, payment, sync and page flows. | Identifies platform problems. |
-| portalops.closeout.release_review | release review | QUALITY_CHECK | Portal feature releases check security, accessibility, support scripts and rollback. | Reduces customer-impacting defects. |
+| portalops.registration.account_lookup | поиск аккаунта | METHOD | Регистрация соответствует имени клиента, номеру счета, адресу обслуживания или данным счетчика. | Связывает пользователей с нужной учетной записью утилиты. |
+| portalops.registration.identity_check | проверка личности | SAFETY_RULE | Регистрация на портале подтверждает личность с помощью утвержденных данных и контроля мошенничества. | Защищает записи клиентов. |
+| portalops.registration.email_verify | проверка электронной почты | METHOD | Проверка электронной почты подтверждает доступность контакта перед полным доступом к учетной записи. | Уменьшает количество неверных входов в систему и записей предупреждений. |
+| portalops.registration.phone_verify | проверка телефона | METHOD | Проверка телефона поддерживает оповещения, MFA или восстановление, если это разрешено политикой. | Улучшает восстановление учетной записи и точность уведомлений. |
+| portalops.registration.duplicate_profile | дубликат профиля | FAILURE_MODE | Дублирующиеся профили разделяют оповещения, платежи и ссылки на учетные записи. | Вызывает путаницу в обслуживании. |
+| portalops.login.mfa | многофакторная аутентификация | SAFETY_RULE | MFA требуется или активируется в зависимости от риска для действий с конфиденциальной учетной записью. | Снижает риск захвата аккаунта. |
+| portalops.login.password_reset | сброс пароля | METHOD | Поток сброса проверяет канал контакта и попытки ограничения скорости. | Восстанавливает доступ без раскрытия учетных записей. |
+| portalops.login.lockout | контроль блокировки | CONSTRAINT | Неудачные попытки вызывают блокировку, восстановление или просмотр. | Балансирует безопасность и нагрузку на поддержку. |
+| portalops.login.session_timeout | тайм-аут сеанса | SAFETY_RULE | Срок действия конфиденциальных сессий истекает после бездействия или сигналов риска. | Защищает оставленные без присмотра устройства. |
+| portalops.account_link.primary_account | ссылка на основной аккаунт | RECORD | Ссылка на основную учетную запись хранит пользователя, учетную запись, роль и основу авторизации. | Обеспечивает контролируемое самообслуживание. |
+| portalops.account_link.multiple_accounts | поддержка нескольких учетных записей | METHOD | Клиенты могут связать несколько адресов обслуживания или бизнес-аккаунтов в один профиль. | Поддерживает арендодателей и пользователей нескольких сайтов. |
+| portalops.account_link.authorized_user | авторизованный пользователь | CONSTRAINT | Авторизованные пользователи получают только разрешенные права просмотра или действия. | Сохраняет границы конфиденциальности ясными. |
+| portalops.account_link.unlink | отсоединить рабочий процесс | METHOD | Отмена привязки учетной записи удаляет доступ без удаления платежных записей. | Осуществляет переезды и смену ролей. |
+| portalops.profile.contact_update | обновление контактов | METHOD | Клиенты могут обновить электронную почту, телефон, почтовый адрес или настройки связи. | Поддерживает оперативные контактные данные в актуальном состоянии. |
+| portalops.profile.preference_center | центр преференций | METHOD | Центр предпочтений контролирует безбумажное выставление счетов, оповещения, выбор языка и канала. | Уменьшает количество нежелательных сообщений. |
+| portalops.profile.language | языковые предпочтения | RECORD | Языковые предпочтения сохраняются для отображения портала и исходящих уведомлений. | Улучшает доступность для клиентов. |
+| portalops.profile.audit_trail | контрольный журнал профиля | RECORD | Чувствительные изменения профиля записывают пользователя, время, IP/устройство и измененное поле. | Поддерживает расследование мошенничества. |
+| portalops.payments.payment_method | способ оплаты | RECORD | Тип хранилища токенов способа оплаты, поставщик, статус и авторизация клиента. | Обеспечивает безопасные регулярные и разовые платежи. |
+| portalops.payments.one_time | единовременный платеж | METHOD | Единовременный платеж подтверждает сумму, счет, комиссию, дату и квитанцию. | Сокращает количество неправомерных платежей. |
+| portalops.payments.autopay | регистрация автоплатежа | METHOD | Регистрация автоплатежа записывает авторизацию, дату начала, лимит и путь отмены. | Предотвращает несанкционированные сквозняки. |
+| portalops.payments.failed_payment | неудавшийся платеж | FAILURE_MODE | Неудачные платежи генерируют четкий статус, правило повторной попытки, уведомление о комиссии и путь поддержки. | Избегает молчаливого правонарушения. |
+| portalops.payments.refund_request | запрос на возврат средств | METHOD | Портал может направлять вопросы о возврате или переплате на рассмотрение счетов. | Контролирует финансовые исключения. |
+| portalops.billing.bill_view | просмотр счета | METHOD | Просмотр счетов показывает текущие, просроченные, подлежащие оплате, скорректированные и окончательные счета со ссылками на документы. | Позволяет клиентам проверять расходы. |
+| portalops.billing.usage_chart | диаграмма использования | MEASUREMENT | Диаграмма использования показывает показания счетчиков, оценки, интервалы и периоды сравнения. | Помогает клиентам понять потребление. |
+| portalops.billing.leak_hint | подсказка об утечке | MODEL | Подсказки об аномалиях использования указывают на возможную утечку или неисправность счетчика без диагностики причины. | Поощряет своевременные действия клиента. |
+| portalops.billing.dispute_link | ссылка на спор | METHOD | Ссылка на спор по счетам фиксирует тип проблемы, счет, доказательства и желаемое решение. | Направляет исключения в нужную очередь. |
+| portalops.alerts.outage_alert | подписка на оповещение об отключении электроэнергии | METHOD | Портал предлагает настройки уведомлений о сбоях по учетной записи и каналу. | Улучшает коммуникацию событий. |
+| portalops.alerts.billing_alert | уведомление о платеже | METHOD | Оповещения о выставлении счетов сообщают о дате платежа, высокой нагрузке, сбое платежа или статусе соглашения. | Снижает предотвратимую просрочку. |
+| portalops.alerts.service_notice | уведомление об обслуживании | METHOD | Уведомления об обслуживании информируют о запланированных работах, рисках отключения, проблемах сохранения или качества воды. | Использует портал как коммуникационный центр. |
+| portalops.alerts.suppression | правило подавления | CONSTRAINT | Подавление блокирует дублирующиеся, отключенные или юридически ограниченные сообщения. | Предотвращает злоупотребление уведомлениями. |
+| portalops.support.ticket_create | билет поддержки | METHOD | Заявки на поддержку портала записывают категорию, учетную запись, описание, вложения и приоритет. | Создает отслеживаемую справку самообслуживания. |
+| portalops.support.chat_handoff | передача чата | METHOD | При передаче чата или бота сотрудники службы поддержки отправляют стенограмму и контекст учетной записи. | Избегает повторения деталей клиентами. |
+| portalops.support.knowledge_base | ссылка на базу знаний | METHOD | Портал направляет клиентов к утвержденным статьям для решения общих задач. | Отклоняет стандартный спрос на поддержку. |
+| portalops.support.escalation | путь эскалации | METHOD | Неудачные действия по самообслуживанию направляются в отдел выставления счетов, выездную службу, ИТ-отдел или колл-центр. | Предотвращает тупики. |
+| portalops.failure.outage_banner | Баннер о сбое портала | METHOD | Баннер о сбое на портале сообщает об ухудшении функций входа, оплаты, использования или оповещений. | Держит клиентов в курсе инцидентов на платформе. |
+| portalops.failure.payment_provider | сбой платежного провайдера | FAILURE_MODE | Сбой поставщика платежей отделяет проблему портала от проблемы банка или процессора. | Руководства по устранению неполадок и согласованию. |
+| portalops.failure.data_latency | задержка данных | FAILURE_MODE | Данные об использовании и платежах могут отставать от исходных систем и требуют видимой отметки времени. | Предотвращает ложные предположения клиентов. |
+| portalops.security.privacy_notice | уведомление о конфиденциальности | CONSTRAINT | Портал объясняет использование, хранение данных, файлы cookie и права клиентов. | Поддерживает юридические и доверительные требования. |
+| portalops.security.access_review | проверка доступа | QUALITY_CHECK | Доступ администратора и службы поддержки к данным портала периодически проверяется. | Ограничивает инсайдерский риск. |
+| portalops.integration.billing_sync | синхронизация платежей | METHOD | Портал синхронизирует платежи, балансы и изменения профиля с CIS/биллинговой системой. | Обеспечивает согласованность данных, касающихся клиентов. |
+| portalops.integration.ami_sync | AMI-синхронизация | METHOD | Синхронизация использования счетчика записывает источник, интервал, задержку и статус отсутствующих данных. | Обеспечивает надежность отображения использования. |
+| portalops.metrics.task_completion | завершение задачи | MEASUREMENT | Метрики отслеживают завершенные регистрации, платежи, обновления профиля и билеты. | Показывает эффективность самообслуживания. |
+| portalops.metrics.error_rate | частота ошибок | MEASUREMENT | Частота ошибок отслеживает неудачные входы в систему, оплату, синхронизацию и потоки страниц. | Выявляет проблемы платформы. |
+| portalops.closeout.release_review | обзор выпуска | QUALITY_CHECK | Выпуски функций портала проверяют безопасность, доступность, поддержку сценариев и откат. | Уменьшает дефекты, влияющие на клиента. |

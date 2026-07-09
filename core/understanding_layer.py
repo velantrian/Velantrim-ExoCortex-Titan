@@ -19,12 +19,10 @@ from core.living_context import LivingContext, LivingContextStore
 if TYPE_CHECKING:
     pass
 
-# Все типы из Patch 13 + дополнительные из Living Context
-ALL_RELATION_TYPES = list(VALID_RELATION_TYPES) + [
-    "becomes",       # трансформация (дерево → дрова)
-    "affords",       # прямая affordance связь
-    "inhabited_by",  # кто там живёт
-]
+# Все типы из Patch 13 + дополнительные из Living Context.
+# FIX (v8.7 audit): becomes/affords/inhabited_by уже в FORWARD_RELATION_TYPES,
+# а значит и в VALID_RELATION_TYPES. Убрали дублирование.
+ALL_RELATION_TYPES = list(VALID_RELATION_TYPES)
 
 # Типы в causal summary (FIX: все 12 + 3 дополнительных)
 CAUSAL_SUMMARY_TYPES = [

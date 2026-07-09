@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| shelterregdqops.intake.required_fields | required fields | RECORD | Required fields define minimum household, contact, accessibility, language and consent data. | Standardizes registration. |
-| shelterregdqops.intake.optional_fields | optional fields | CONSTRAINT | Optional fields are separated from eligibility-critical data. | Reduces intake burden. |
-| shelterregdqops.intake.field_help | field help text | METHOD | Field guidance explains how staff should enter names, dates, addresses and special needs. | Reduces inconsistent data. |
-| shelterregdqops.intake.paper_form | paper fallback form | RECORD | Paper form mirrors digital fields and captures time, staff and shelter site. | Supports outages. |
-| shelterregdqops.identity.name_standard | name standard | METHOD | Name entry standard handles nicknames, suffixes, hyphens and transliteration. | Improves matching. |
-| shelterregdqops.identity.birthdate | birthdate quality | QUALITY_CHECK | Birthdate entries check impossible dates, missing year and inconsistent format. | Catches errors early. |
-| shelterregdqops.identity.household_link | household link | RECORD | Household link connects members, head/contact person and shared service needs. | Prevents fragmented cases. |
-| shelterregdqops.identity.anonymous_entry | anonymous entry | CONSTRAINT | Anonymous or privacy-protected entry follows policy when identity cannot be collected. | Maintains access. |
-| shelterregdqops.duplicate.match_rule | duplicate match rule | MODEL | Duplicate rule compares name, birthdate, phone, prior address, household and shelter history. | Finds repeated records. |
-| shelterregdqops.duplicate.probable_match | probable match queue | RECORD | Probable matches are queued for human review before merging. | Avoids wrong merges. |
-| shelterregdqops.duplicate.confirm_merge | confirmed merge | METHOD | Merge keeps source IDs, audit note, reviewer and reason. | Preserves traceability. |
-| shelterregdqops.duplicate.false_match | false match flag | RECORD | False match flag prevents repeatedly proposing the same nonduplicate pair. | Saves reviewer time. |
-| shelterregdqops.missing.missing_report | missing field report | MEASUREMENT | Report counts missing required and high-value fields by site, shift and form source. | Targets cleanup. |
-| shelterregdqops.missing.followup_queue | follow-up queue | RECORD | Queue lists records needing contact, staff correction or supervisor review. | Organizes remediation. |
-| shelterregdqops.missing.bulk_cleanup | bulk cleanup | METHOD | Bulk cleanup corrects safe format errors without changing substantive household facts. | Improves quality. |
-| shelterregdqops.missing.unreachable | unreachable record | RECORD | Unreachable records document contact attempts and unresolved missing information. | Keeps uncertainty visible. |
-| shelterregdqops.privacy.minimum | data minimization | SAFETY_RULE | Registration collects only operationally justified data for shelter and assistance functions. | Reduces privacy risk. |
-| shelterregdqops.privacy.consent | consent record | RECORD | Consent records data sharing choices, explanation, date and staff member. | Supports lawful sharing. |
-| shelterregdqops.privacy.role_access | role-based access | SAFETY_RULE | Access differs for intake, medical desk, logistics, casework, security and reporting roles. | Limits exposure. |
-| shelterregdqops.privacy.sensitive_flags | sensitive flag control | SAFETY_RULE | Domestic violence, medical and minor-related flags are visible only to authorized roles. | Protects residents. |
-| shelterregdqops.dashboard.occupancy | occupancy dashboard | MEASUREMENT | Dashboard shows registered residents, households, beds used and special accommodation needs. | Guides shelter operations. |
-| shelterregdqops.dashboard.data_quality | data quality dashboard | MEASUREMENT | Dashboard tracks duplicates, missing fields, stale records and unresolved corrections. | Shows cleanup progress. |
-| shelterregdqops.dashboard.site_compare | site comparison | MEASUREMENT | Site comparison highlights intake error rates across shelters and shifts. | Directs training. |
-| shelterregdqops.dashboard.refresh_time | refresh timestamp | RECORD | Refresh timestamp shows when the dashboard last loaded validated data. | Prevents stale decisions. |
-| shelterregdqops.audit.audit_log | audit log | RECORD | Audit log records create, view, edit, merge, export and delete events. | Enables accountability. |
-| shelterregdqops.audit.export_review | export review | QUALITY_CHECK | Exports are checked for purpose, fields, recipients, approvals and secure transfer. | Controls data leakage. |
-| shelterregdqops.audit.sample_check | sample check | QUALITY_CHECK | Sample audit compares source forms, digital records and correction notes. | Tests reliability. |
-| shelterregdqops.audit.issue_register | issue register | RECORD | Register tracks data quality findings, owner, deadline, fix and verification. | Manages remediation. |
-| shelterregdqops.reporting.daily_count | daily count report | MEASUREMENT | Daily count reconciles registrations, check-ins, departures and overnight census. | Supports command updates. |
-| shelterregdqops.reporting.demographics | demographics report | MEASUREMENT | Demographic reporting aggregates age bands, language and accessibility without exposing individuals. | Supports planning. |
-| shelterregdqops.reporting.partner_share | partner sharing file | RECORD | Partner file includes only agreed fields and documented sharing basis. | Coordinates services safely. |
-| shelterregdqops.reporting.discrepancy | discrepancy note | RECORD | Discrepancy notes explain differences between shelter counts, meal counts and registrations. | Prevents false precision. |
-| shelterregdqops.workflow.shift_handoff | shift handoff | METHOD | Handoff lists unresolved merges, missing-field queues, system issues and privacy concerns. | Maintains continuity. |
-| shelterregdqops.workflow.training_tip | training tip | METHOD | Training tips address common intake mistakes found in quality review. | Improves next shift. |
-| shelterregdqops.workflow.supervisor_review | supervisor review | QUALITY_CHECK | Supervisor reviews high-risk edits, merge disputes and sensitive access concerns. | Adds control. |
-| shelterregdqops.workflow.closeout | record closeout | METHOD | Closeout marks departure, destination category, referrals and unresolved data issues. | Completes record lifecycle. |
-| shelterregdqops.system.offline_sync | offline sync | METHOD | Offline sync reconciles paper, spreadsheet or mobile records after connectivity returns. | Prevents lost intakes. |
-| shelterregdqops.system.validation_rule | validation rule | QUALITY_CHECK | Validation rules flag impossible values, blank required fields and invalid codes. | Improves entry quality. |
-| shelterregdqops.system.code_set | code set | RECORD | Code sets standardize shelter sites, services, languages, accommodations and referral outcomes. | Enables clean reporting. |
-| shelterregdqops.system.backup | backup procedure | SAFETY_RULE | Backups protect registration data from loss while following access and retention rules. | Preserves continuity. |
-| shelterregdqops.metrics.duplicate_rate | duplicate rate | MEASUREMENT | Duplicate rate tracks duplicate records per registrations by site and period. | Measures cleanup burden. |
-| shelterregdqops.metrics.completeness | completeness rate | MEASUREMENT | Completeness rate measures required fields present and verified. | Shows readiness. |
-| shelterregdqops.metrics.correction_age | correction age | MEASUREMENT | Correction age measures time from data issue creation to closure. | Reveals backlog. |
-| shelterregdqops.review.after_action | after-action review | METHOD | Review captures intake design, privacy issues, dashboard use and audit lessons. | Improves future shelters. |
+| shelterregdqops.intake.required_fields | обязательные поля | RECORD | Обязательные поля определяют минимальные данные о домохозяйстве, контактах, доступности, языке и согласии. | Стандартизирует регистрацию. |
+| shelterregdqops.intake.optional_fields | необязательные поля | CONSTRAINT | Необязательные поля отделены от критически важных данных. | Снижает нагрузку на организм. |
+| shelterregdqops.intake.field_help | текст справки по полю | METHOD | Руководство на местах объясняет, как сотрудники должны вводить имена, даты, адреса и особые потребности. | Уменьшает противоречивые данные. |
+| shelterregdqops.intake.paper_form | резервная форма бумаги | RECORD | Бумажная форма отражает цифровые поля и фиксирует время, персонал и место приюта. | Поддерживает отключения. |
+| shelterregdqops.identity.name_standard | стандарт имени | METHOD | Стандарт ввода имени обрабатывает псевдонимы, суффиксы, дефисы и транслитерацию. | Улучшает соответствие. |
+| shelterregdqops.identity.birthdate | качество даты рождения | QUALITY_CHECK | Записи о дате рождения проверяют невозможные даты, отсутствующий год и несовместимый формат. | Выявляет ошибки заранее. |
+| shelterregdqops.identity.household_link | бытовая связь | RECORD | Семейная связь объединяет участников, руководителя/контактное лицо и общие потребности в услугах. | Предотвращает фрагментированные случаи. |
+| shelterregdqops.identity.anonymous_entry | анонимная запись | CONSTRAINT | Анонимный или защищенный конфиденциальностью вход соответствует политике, когда личность не может быть собрана. | Сохраняет доступ. |
+| shelterregdqops.duplicate.match_rule | правило дублирования совпадений | MODEL | Повторяющееся правило сравнивает имя, дату рождения, телефон, предыдущий адрес, историю семьи и приюта. | Находит повторяющиеся записи. |
+| shelterregdqops.duplicate.probable_match | вероятная очередь совпадений | RECORD | Перед объединением вероятные совпадения ставятся в очередь на проверку человеком. | Избегает неправильных слияний. |
+| shelterregdqops.duplicate.confirm_merge | подтвержденное слияние | METHOD | При слиянии сохраняются идентификаторы источников, заметки аудита, рецензент и причина. | Сохраняет отслеживаемость. |
+| shelterregdqops.duplicate.false_match | ложный флаг совпадения | RECORD | Флаг ложного совпадения предотвращает повторное предложение одной и той же неповторяющейся пары. | Экономит время рецензента. |
+| shelterregdqops.missing.missing_report | отсутствующий полевой отчет | MEASUREMENT | В отчете подсчитывается количество пропущенных обязательных и важных полей по сайтам, сменам и источникам форм. | Очистка целей. |
+| shelterregdqops.missing.followup_queue | последующая очередь | RECORD | В очереди перечислены записи, требующие контакта, исправления сотрудниками или проверки руководителем. | Организует ремонт. |
+| shelterregdqops.missing.bulk_cleanup | массовая очистка | METHOD | Массовая очистка исправляет ошибки безопасного формата, не меняя существенных фактов в быту. | Улучшает качество. |
+| shelterregdqops.missing.unreachable | недостижимая запись | RECORD | Недоступные записи документируют попытки контакта и неразрешенную недостающую информацию. | Делает неопределённость видимой. |
+| shelterregdqops.privacy.minimum | минимизация данных | SAFETY_RULE | При регистрации собираются только оперативно обоснованные данные для функций предоставления жилья и помощи. | Снижает риск конфиденциальности. |
+| shelterregdqops.privacy.consent | запись о согласии | RECORD | В согласии фиксируются варианты обмена данными, объяснение, дата и сотрудник. | Поддерживает законное разделение. |
+| shelterregdqops.privacy.role_access | доступ на основе ролей | SAFETY_RULE | Доступ различается для ролей приема, медицинского стола, логистики, работы с пациентами, безопасности и отчетности. | Ограничивает воздействие. |
+| shelterregdqops.privacy.sensitive_flags | чувствительный контроль флага | SAFETY_RULE | Пометки о домашнем насилии, медицинских фактах и ​​несовершеннолетних видны только авторизованным ролям. | Защищает жильцов. |
+| shelterregdqops.dashboard.occupancy | информационная панель занятости | MEASUREMENT | На информационной панели показаны зарегистрированные жители, домохозяйства, использованные кровати и особые потребности в размещении. | Руководит работой приюта. |
+| shelterregdqops.dashboard.data_quality | панель мониторинга качества данных | MEASUREMENT | Панель мониторинга отслеживает дубликаты, отсутствующие поля, устаревшие записи и неразрешенные исправления. | Показывает ход очистки. |
+| shelterregdqops.dashboard.site_compare | сравнение сайтов | MEASUREMENT | Сравнение мест показывает уровень ошибок при приеме в приюты и смены. | Руководит обучением. |
+| shelterregdqops.dashboard.refresh_time | обновить временную метку | RECORD | Временная метка обновления показывает, когда панель мониторинга в последний раз загружала проверенные данные. | Предотвращает принятие устаревших решений. |
+| shelterregdqops.audit.audit_log | журнал аудита | RECORD | Записи журнала аудита создают, просматривают, редактируют, объединяют, экспортируют и удаляют события. | Включает подотчетность. |
+| shelterregdqops.audit.export_review | обзор экспорта | QUALITY_CHECK | Экспорт проверяется на предмет цели, полей, получателей, утверждений и безопасной передачи. | Контролирует утечку данных. |
+| shelterregdqops.audit.sample_check | образец проверки | QUALITY_CHECK | Выборочный аудит сравнивает исходные формы, цифровые записи и примечания к исправлениям. | Тестирует надежность. |
+| shelterregdqops.audit.issue_register | реестр выпуска | RECORD | Реестр отслеживает результаты качества данных, владельца, сроки, исправления и проверки. | Управляет исправлением. |
+| shelterregdqops.reporting.daily_count | отчет о ежедневном подсчете | MEASUREMENT | Ежедневный подсчет сверяет регистрации, приезды, отъезды и ночную перепись. | Поддерживает обновления команд. |
+| shelterregdqops.reporting.demographics | демографический отчет | MEASUREMENT | Демографическая отчетность объединяет возрастные группы, язык и доступность, не раскрывая отдельных лиц. | Поддерживает планирование. |
+| shelterregdqops.reporting.partner_share | файл для совместного использования партнеров | RECORD | Партнерский файл включает только согласованные поля и документированную основу для совместного использования. | Координирует услуги безопасно. |
+| shelterregdqops.reporting.discrepancy | примечание о несоответствии | RECORD | Примечания о расхождениях объясняют различия между количеством приютов, количеством еды и регистрацией. | Предотвращает ложную точность. |
+| shelterregdqops.workflow.shift_handoff | передача смены | METHOD | Передача перечня перечисляет неразрешенные слияния, очереди с отсутствующими полями, системные проблемы и проблемы конфиденциальности. | Сохраняет преемственность. |
+| shelterregdqops.workflow.training_tip | совет по тренировке | METHOD | Советы по обучению касаются распространенных ошибок при приеме пищи, обнаруженных при проверке качества. | Улучшает следующую смену. |
+| shelterregdqops.workflow.supervisor_review | обзор руководителя | QUALITY_CHECK | Supervisor просматривает правки с высоким риском, споры о слияниях и проблемы с конфиденциальным доступом. | Добавляет контроль. |
+| shelterregdqops.workflow.closeout | закрытие записи | METHOD | В распродаже отмечаются отправление, категория назначения, направления и нерешенные проблемы с данными. | Завершает жизненный цикл записи. |
+| shelterregdqops.system.offline_sync | автономная синхронизация | METHOD | Автономная синхронизация согласовывает бумажные, электронные таблицы или мобильные записи после восстановления подключения. | Предотвращает потерю поступления пищи. |
+| shelterregdqops.system.validation_rule | правило проверки | QUALITY_CHECK | Правила проверки отмечают невозможные значения, пустые обязательные поля и недопустимые коды. | Улучшает качество входа. |
+| shelterregdqops.system.code_set | кодовый набор | RECORD | Наборы кодов стандартизируют места приютов, услуги, языки, условия проживания и результаты направления. | Включает чистую отчетность. |
+| shelterregdqops.system.backup | процедура резервного копирования | SAFETY_RULE | Резервные копии защищают регистрационные данные от потери при соблюдении правил доступа и хранения. | Сохраняет преемственность. |
+| shelterregdqops.metrics.duplicate_rate | дублирующая ставка | MEASUREMENT | Коэффициент дублирования отслеживает повторяющиеся записи для каждой регистрации по сайту и периоду. | Измеряет нагрузку на очистку. |
+| shelterregdqops.metrics.completeness | степень полноты | MEASUREMENT | Степень полноты измеряет наличие и проверку необходимых полей. | Показывает готовность. |
+| shelterregdqops.metrics.correction_age | коррекционный возраст | MEASUREMENT | Возраст коррекции измеряет время от создания проблемы с данными до ее закрытия. | Выявляет отставание. |
+| shelterregdqops.review.after_action | обзор после действий | METHOD | В обзоре отражены дизайн входа, вопросы конфиденциальности, использование информационной панели и уроки аудита. | Улучшает будущие убежища. |

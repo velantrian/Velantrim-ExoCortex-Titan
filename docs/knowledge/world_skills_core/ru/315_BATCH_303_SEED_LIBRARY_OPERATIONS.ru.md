@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| seedlibops.inventory.seed_lot | Seed library seed lot | invariant | Lot groups one crop, variety, source, year, quantity and storage condition. | trace seeds |
-| seedlibops.inventory.variety_record | Seed variety record | invariant | Record stores crop, variety, traits, days, source, notes and local adaptation status. | catalog variety |
-| seedlibops.inventory.accession_number | Seed accession number | invariant | Number uniquely identifies seed lot across donation, storage, borrowing and return records. | avoid mixups |
-| seedlibops.inventory.packet_count | Seed packet count | variant | Count tracks packets prepared, borrowed, reserved, expired, returned and discarded. | manage stock |
-| seedlibops.donations.donation_intake | Seed donation intake | invariant | Intake records donor, crop, variety, harvest year, growing method, quantity and condition. | accept seeds |
-| seedlibops.donations.donor_declaration | Seed donor declaration | invariant | Declaration states seed source, isolation if known, treatment, GMO status if relevant and risks. | assess quality |
-| seedlibops.donations.donation_screen | Seed donation screen | variant | Screen rejects moldy, unknown, treated, invasive, illegal or poorly labeled seeds. | protect library |
-| seedlibops.cataloging.taxonomy_check | Seed taxonomy check | invariant | Check confirms crop species, common name, variety name and naming consistency. | improve catalog |
-| seedlibops.cataloging.trait_notes | Seed trait notes | variant | Notes capture color, flavor, growth habit, disease tolerance, climate fit and user observations. | guide borrowers |
-| seedlibops.cataloging.local_adaptation_tag | Local adaptation tag | variant | Tag marks seeds grown and saved locally for multiple seasons or climate conditions. | value resilience |
-| seedlibops.storage.cool_dry_storage | Cool dry seed storage | invariant | Storage limits heat, humidity, light and pests to preserve viability. | extend life |
-| seedlibops.storage.container_label | Seed container label | invariant | Label shows accession, crop, variety, year, quantity, source and handling notes. | identify stock |
-| seedlibops.storage.humidity_control | Seed storage humidity control | invariant | Control uses sealed containers, desiccant, monitoring and dry handling to reduce moisture. | prevent mold |
-| seedlibops.storage.pest_protection | Seed storage pest protection | variant | Protection prevents rodents, insects and pantry pests from damaging seed stock. | preserve inventory |
-| seedlibops.viability.germination_test | Seed germination test | invariant | Test estimates viability by sprouting sample under controlled moisture and temperature. | check quality |
-| seedlibops.viability.test_sample_size | Seed viability sample size | variant | Sample size balances accuracy with limited seed quantity. | conserve stock |
-| seedlibops.viability.expiration_review | Seed expiration review | invariant | Review flags old lots by crop, year, storage history and germination result. | rotate seeds |
-| seedlibops.borrowing.borrower_record | Seed borrower record | invariant | Record links patron, seed lot, packet count, date, expectations and education notes. | track loans |
-| seedlibops.borrowing.checkout_limit | Seed checkout limit | variant | Limit caps packets per person, crop type or season to preserve shared stock. | fair access |
-| seedlibops.borrowing.beginner_seed | Beginner seed category | variant | Category offers easy crops with clear instructions for new gardeners. | support success |
-| seedlibops.returns.seed_return | Seed return | invariant | Return receives saved seed from borrower with crop, variety, harvest year and growing notes. | replenish stock |
-| seedlibops.returns.return_quality_review | Seed return quality review | invariant | Review checks labeling, cleanliness, dryness, pest signs, off-types and donor information. | protect collection |
-| seedlibops.returns.growout_feedback | Growout feedback | variant | Feedback records borrower experience, germination, yield, flavor, pests and adaptation notes. | improve knowledge |
-| seedlibops.packets.packet_preparation | Seed packet preparation | invariant | Preparation divides seed into labeled packets with enough seed and basic planting guidance. | ready lending |
-| seedlibops.packets.planting_instruction | Seed packet planting instruction | variant | Instruction gives sowing depth, spacing, season, days, seed-saving note and caution. | help growers |
-| seedlibops.packets.language_access | Seed packet language access | variant | Access adds translated labels or icons for common crops and instructions. | broaden use |
-| seedlibops.education.seed_saving_class | Seed saving class | invariant | Class teaches isolation, harvest timing, drying, cleaning, labeling and storage. | build skill |
-| seedlibops.education.crop_isolation | Crop isolation education | invariant | Education explains cross-pollination risk and distance or timing controls for seed purity. | improve returns |
-| seedlibops.education.seed_cleaning_demo | Seed cleaning demo | variant | Demo shows threshing, winnowing, wet processing, drying and safe handling. | practical learning |
-| seedlibops.events.seed_swap_event | Seed swap event | variant | Event exchanges seeds with labeling rules, education table and unsuitable seed screening. | share diversity |
-| seedlibops.events.planting_season_display | Planting season seed display | variant | Display highlights seeds appropriate for current local season and climate. | guide choices |
-| seedlibops.records.catalog_database | Seed catalog database | invariant | Database stores lots, quantities, sources, tests, loans, returns and notes. | manage data |
-| seedlibops.records.donor_log | Seed donor log | invariant | Log tracks donors, donations, accepted lots, rejected lots and follow-up. | acknowledge support |
-| seedlibops.records.discard_log | Seed discard log | variant | Log records mold, pests, age, failed viability or policy reason for removal. | audit losses |
-| seedlibops.safety.toxic_seed_warning | Toxic seed warning | invariant | Warning flags seeds or plants unsafe for ingestion, pets or children if relevant. | reduce risk |
-| seedlibops.safety.invasive_species_check | Seed invasive species check | invariant | Check prevents distributing prohibited or locally invasive plants. | protect ecology |
-| seedlibops.safety.treated_seed_exclusion | Treated seed exclusion | invariant | Exclusion avoids pesticide-treated or chemically coated seeds in shared library. | protect users |
-| seedlibops.reporting.collection_report | Seed library collection report | invariant | Report summarizes lots, crop diversity, viability, loans, returns and gaps. | manage program |
-| seedlibops.reporting.borrowing_report | Seed borrowing report | variant | Report tracks popular crops, seasonal demand, low stock and community reach. | plan supply |
-| seedlibops.metrics.return_rate | Seed return rate KPI | invariant | KPI measures borrowed lots that produce usable returned seed. | evaluate cycle |
-| seedlibops.metrics.viability_pass_rate | Seed viability pass rate KPI | variant | KPI tracks lots passing germination thresholds by crop, age and storage. | monitor quality |
-| seedlibops.coordination.library_branch | Seed library branch coordination | variant | Coordination aligns displays, storage, staff training and local outreach across branches. | scale service |
-| seedlibops.continuity.backup_collection | Seed library backup collection | variant | Backup protects important local lots through duplicate storage or partner exchange. | reduce loss |
-| seedlibops.close.season_closeout | Seed library season closeout | invariant | Closeout reconciles inventory, returns, test needs, discards, reports and next season gaps. | finish season |
+| seedlibops.inventory.seed_lot | Семенная партия библиотеки семян | invariant | Лот группирует одну культуру, сорт, источник, год, количество и условия хранения. | следы семян |
+| seedlibops.inventory.variety_record | Рекорд сорта семян | invariant | Запись хранит урожай, сорт, признаки, дни, источник, примечания и статус местной адаптации. | разнообразие каталога |
+| seedlibops.inventory.accession_number | Инвентарный номер семян | invariant | Номер уникально идентифицирует партию семян в записях о дарении, хранении, заимствовании и возврате. | избегайте путаницы |
+| seedlibops.inventory.packet_count | Количество пакетов с семенами | variant | Подсчет отслеживает подготовленные, заимствованные, зарезервированные, истекшие, возвращенные и отброшенные пакеты. | управлять запасами |
+| seedlibops.donations.donation_intake | Прием донорских семян | invariant | Приемка записывает донора, урожай, сорт, год сбора урожая, метод выращивания, количество и состояние. | принимать семена |
+| seedlibops.donations.donor_declaration | Декларация донора семян | invariant | В декларации указывается источник семян, изоляция, если она известна, обработка, статус ГМО, если применимо, и риски. | оценить качество |
+| seedlibops.donations.donation_screen | Экран донорства семян | variant | Скрининг отклоняет заплесневелые, неизвестные, обработанные, инвазивные, незаконные или плохо маркированные семена. | защитить библиотеку |
+| seedlibops.cataloging.taxonomy_check | Проверка таксономии семян | invariant | Проверка подтверждает вид сельскохозяйственной культуры, общее название, название сорта и последовательность названий. | улучшить каталог |
+| seedlibops.cataloging.trait_notes | Примечания по характеристикам семян | variant | Примечания отражают цвет, вкус, особенности роста, устойчивость к болезням, соответствие климатическим условиям и наблюдения пользователей. | направлять заемщиков |
+| seedlibops.cataloging.local_adaptation_tag | Местный тег адаптации | variant | Маркировка отмечает семена, выращенные и сохраненные на месте в течение нескольких сезонов или климатических условий. | ценить устойчивость |
+| seedlibops.storage.cool_dry_storage | Прохладное сухое хранилище семян | invariant | Хранение ограничивает тепло, влажность, свет и вредителей, чтобы сохранить жизнеспособность. | продлить жизнь |
+| seedlibops.storage.container_label | Этикетка на контейнере для семян | invariant | На этикетке указаны образец, урожай, сорт, год, количество, источник и примечания по обращению. | определить запас |
+| seedlibops.storage.humidity_control | Контроль влажности при хранении семян | invariant | Контроль использует герметичные контейнеры, осушитель, мониторинг и сухое обращение для снижения влажности. | предотвратить плесень |
+| seedlibops.storage.pest_protection | Защита от вредителей при хранении семян | variant | Защита предотвращает повреждение семенного материала грызунами, насекомыми и вредителями кладовых. | сохранять инвентарь |
+| seedlibops.viability.germination_test | Тест на всхожесть семян | invariant | Тест оценивает жизнеспособность путем проращивания образца при контролируемой влажности и температуре. | проверить качество |
+| seedlibops.viability.test_sample_size | Размер выборки жизнеспособности семян | variant | Размер выборки обеспечивает баланс между точностью и ограниченным количеством семян. | сохранять запасы |
+| seedlibops.viability.expiration_review | Проверка срока годности семян | invariant | Просмотрите пометки старых партий по культуре, году, истории хранения и результату прорастания. | вращать семена |
+| seedlibops.borrowing.borrower_record | Запись о заемщике семян | invariant | Запись связывает патрона, исходную партию, количество пакетов, дату, ожидания и учебные примечания. | отслеживать кредиты |
+| seedlibops.borrowing.checkout_limit | Ограничение на выдачу семян | variant | Ограничьте количество пакетов на человека, тип культуры или сезон, чтобы сохранить общий запас. | справедливый доступ |
+| seedlibops.borrowing.beginner_seed | Категория семян для начинающих | variant | Категория предлагает простые культуры с четкими инструкциями для начинающих садоводов. | поддерживать успех |
+| seedlibops.returns.seed_return | Возврат семян | invariant | Возврат получает сохраненные семена от заемщика с указанием урожая, сорта, года сбора урожая и примечаний о выращивании. | пополнить запасы |
+| seedlibops.returns.return_quality_review | Проверка качества возврата семян | invariant | Проверьте маркировку проверок, чистоту, сухость, наличие признаков вредителей, нетипичность и информацию о донорах. | защитить коллекцию |
+| seedlibops.returns.growout_feedback | Отзывы о росте | variant | Обратная связь записывает опыт заемщика, всхожесть, урожайность, вкус, вредителей и примечания по адаптации. | улучшить знания |
+| seedlibops.packets.packet_preparation | Подготовка пакетов с семенами | invariant | При подготовке семена распределяются по маркированным пакетам с достаточным количеством семян и основными рекомендациями по посадке. | готовое кредитование |
+| seedlibops.packets.planting_instruction | Инструкция по посадке пакетов с семенами | variant | В инструкции указаны глубина посева, интервалы, время года, дни, указания по экономии семян и меры предосторожности. | помочь производителям |
+| seedlibops.packets.language_access | Доступ к языку начального пакета | variant | Access добавляет переведенные метки или значки для распространенных культур и инструкций. | расширить использование |
+| seedlibops.education.seed_saving_class | Класс экономии семян | invariant | В классе обучают изоляции, срокам сбора урожая, сушке, очистке, маркировке и хранению. | развивать навыки |
+| seedlibops.education.crop_isolation | Обучение изоляции культур | invariant | Образование объясняет риск перекрестного опыления и контроль расстояния или времени для чистоты семян. | улучшить прибыль |
+| seedlibops.education.seed_cleaning_demo | Демонстрация очистки семян | variant | Демонстрация показывает обмолот, веяние, мокрую обработку, сушку и безопасное обращение. | практическое обучение |
+| seedlibops.events.seed_swap_event | Мероприятие по обмену семян | variant | На мероприятии проводится обмен семенами с соблюдением правил маркировки, таблицы образования и проверки неподходящих семян. | делиться разнообразием |
+| seedlibops.events.planting_season_display | Выставка семян сезона посадки | variant | На дисплее отображаются семена, соответствующие текущему сезону и климату. | руководство по выбору |
+| seedlibops.records.catalog_database | База данных каталога семян | invariant | В базе данных хранятся партии, количества, источники, тесты, займы, возвраты и примечания. | управлять данными |
+| seedlibops.records.donor_log | Журнал доноров семян | invariant | Журнал отслеживает доноров, пожертвования, принятые лоты, отклоненные лоты и последующие действия. | признать поддержку |
+| seedlibops.records.discard_log | Журнал выбрасывания семян | variant | В журнале регистрируются плесень, вредители, возраст, утрата жизнеспособности или причина удаления. | аудиторские потери |
+| seedlibops.safety.toxic_seed_warning | Предупреждение о токсичных семенах | invariant | Предупреждающие пометки указывают на то, что семена или растения небезопасны для проглатывания, а также для домашних животных или детей, если это необходимо. | снизить риск |
+| seedlibops.safety.invasive_species_check | Проверка семян на инвазивные виды | invariant | Проверка предотвращает распространение запрещенных или локально инвазивных растений. | защищать экологию |
+| seedlibops.safety.treated_seed_exclusion | Исключение обработанных семян | invariant | Исключение позволяет избежать семян, обработанных пестицидами или химически покрытых, в общей библиотеке. | защитить пользователей |
+| seedlibops.reporting.collection_report | Отчет о коллекции библиотеки семян | invariant | В отчете суммируются лоты, разнообразие сельскохозяйственных культур, жизнеспособность, кредиты, доходы и пробелы. | управлять программой |
+| seedlibops.reporting.borrowing_report | Отчет о заимствовании семян | variant | В отчете отслеживаются популярные культуры, сезонный спрос, низкие запасы и охват населения. | планировать поставки |
+| seedlibops.metrics.return_rate | KPI возврата семян | invariant | Показатели KPI заимствовали партии, из которых производятся возвращаемые семена, пригодные для использования. | оценить цикл |
+| seedlibops.metrics.viability_pass_rate | KPI по жизнеспособности семян | variant | KPI отслеживает партии, проходящие порог всхожести, по культурам, возрасту и хранению. | контролировать качество |
+| seedlibops.coordination.library_branch | Координация работы филиала семенной библиотеки | variant | Координация позволяет согласовывать дисплеи, хранение, обучение персонала и работу на местном уровне между филиалами. | масштабируемый сервис |
+| seedlibops.continuity.backup_collection | Резервная коллекция библиотеки семян | variant | Резервное копирование защищает важные локальные лоты посредством дублированного хранения или обмена партнерами. | уменьшить потери |
+| seedlibops.close.season_closeout | Закрытие сезона библиотеки семян | invariant | Closeout сверяет запасы, возвраты, потребности в тестировании, брак, отчеты и пробелы в следующем сезоне. | закончить сезон |

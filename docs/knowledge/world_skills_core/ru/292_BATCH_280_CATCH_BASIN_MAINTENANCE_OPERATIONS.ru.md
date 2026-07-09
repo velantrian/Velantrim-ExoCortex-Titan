@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| catchbasinops.inventory.basin_record | Catch basin asset record | invariant | Record stores basin ID, location, grate type, sump depth, outlet, condition and ownership. | manage asset |
-| catchbasinops.inventory.drainage_area | Catch basin drainage area | invariant | Area identifies streets, parcels, slopes and surfaces contributing runoff to the basin. | understand load |
-| catchbasinops.inventory.outlet_connection | Catch basin outlet connection | invariant | Connection links basin to storm pipe, combined sewer, ditch, pond or outfall. | trace flow |
-| catchbasinops.inventory.priority_basin | Priority catch basin | variant | Priority basin has flood history, heavy debris, steep approach, school route or critical facility nearby. | rank work |
-| catchbasinops.inspection.routine_basin_inspection | Routine catch basin inspection | invariant | Inspection checks grate, frame, sump sediment, standing water, outlet, odor and structural condition. | find needs |
-| catchbasinops.inspection.prestorm_check | Pre-storm basin check | variant | Check clears high-risk basins before forecast heavy rain or snowmelt. | prevent flooding |
-| catchbasinops.inspection.poststorm_check | Post-storm basin check | variant | Check reviews clogged grates, ponding, washout, sediment movement and new damage after storm. | verify recovery |
-| catchbasinops.inspection.confined_space_screen | Catch basin confined-space screen | invariant | Screen determines entry risk, atmospheric hazards, access limits and permit requirements. | protect workers |
-| catchbasinops.condition.clogged_grate | Clogged catch basin grate | invariant | Clog blocks surface inflow with leaves, trash, sediment, snow, ice or debris. | restore intake |
-| catchbasinops.condition.sediment_sump | Catch basin sediment sump | invariant | Sump stores sand, grit and solids that must be removed before reducing capacity. | maintain storage |
-| catchbasinops.condition.standing_water | Catch basin standing water | variant | Standing water may indicate blocked outlet, flat grade, sump design, sediment or pipe obstruction. | diagnose drainage |
-| catchbasinops.condition.frame_settlement | Catch basin frame settlement | invariant | Settlement creates pavement dip, trip hazard, ponding or grate misalignment around structure. | repair frame |
-| catchbasinops.condition.broken_grate | Broken catch basin grate | invariant | Broken grate creates vehicle, bicycle, pedestrian and debris-entry hazards. | replace grate |
-| catchbasinops.condition.structural_crack | Catch basin structural crack | variant | Crack in wall, frame or lid may indicate load damage, settlement or deterioration. | plan repair |
-| catchbasinops.cleaning.vacuum_cleaning | Catch basin vacuum cleaning | invariant | Cleaning removes sediment, water and debris using vacuum truck and proper disposal. | restore capacity |
-| catchbasinops.cleaning.hand_clear_grate | Catch basin hand grate clearing | invariant | Clearing removes surface debris without full vacuum cleaning when sump capacity remains. | quick fix |
-| catchbasinops.cleaning.jetting_outlet | Catch basin outlet jetting | variant | Jetting clears lateral blockage, sediment, roots or grease-like deposits from outlet pipe. | restore flow |
-| catchbasinops.cleaning.leaf_season_cleaning | Leaf season basin cleaning | variant | Cleaning targets basins before and during heavy leaf fall to reduce flooding. | seasonal control |
-| catchbasinops.repairs.frame_reset | Catch basin frame reset | invariant | Reset adjusts frame and grate to pavement elevation with stable support and patching. | remove dip |
-| catchbasinops.repairs.grate_replacement | Catch basin grate replacement | invariant | Replacement uses correct size, load rating, bicycle-safe pattern and seating. | restore safety |
-| catchbasinops.repairs.masonry_repair | Catch basin masonry repair | variant | Repair fixes brick, block, mortar, concrete wall or chimney deterioration. | preserve structure |
-| catchbasinops.repairs.outlet_repair | Catch basin outlet repair | variant | Repair addresses broken pipe, offset joint, root intrusion or collapsed connection. | restore drainage |
-| catchbasinops.flooding.local_ponding | Local ponding complaint | invariant | Complaint records water depth, duration, storm intensity, blocked basin and affected property. | triage flooding |
-| catchbasinops.flooding.repeat_flood_location | Repeat flood location | variant | Location has recurring ponding requiring drainage review beyond simple cleaning. | root cause |
-| catchbasinops.flooding.emergency_basin_response | Emergency catch basin response | invariant | Response clears blocked basin during active flooding with traffic and crew safety controls. | reduce damage |
-| catchbasinops.environment.sediment_disposal | Catch basin sediment disposal | invariant | Disposal follows rules for wet sediment, contamination, dewatering, transport and documentation. | legal handling |
-| catchbasinops.environment.illicit_discharge_sign | Illicit discharge sign | invariant | Sign includes unusual odor, color, sheen, sewage, chemicals or dry-weather flow. | trigger investigation |
-| catchbasinops.environment.floatable_trash | Catch basin floatable trash | variant | Trash retained at inlet or sump can enter waterways if not removed. | reduce pollution |
-| catchbasinops.equipment.vac_truck_setup | Vacuum truck setup | invariant | Setup positions truck, cones, hose, boom, water supply and safe work zone. | clean safely |
-| catchbasinops.equipment.nozzle_selection | Jetting nozzle selection | variant | Nozzle choice depends on pipe size, blockage type, distance, roots and sediment load. | clear blockage |
-| catchbasinops.equipment.hose_decontamination | Basin cleaning hose decontamination | variant | Decontamination removes contaminated material before transport, storage or maintenance. | hygiene |
-| catchbasinops.safety.traffic_control | Catch basin traffic control | invariant | Control protects crews working at curb, lane, intersection or bike lane inlets. | worker safety |
-| catchbasinops.safety.grate_lifting | Catch basin grate lifting safety | invariant | Safety covers heavy grates, pinch points, hooks, ergonomics and unstable frames. | avoid injury |
-| catchbasinops.safety.atmospheric_hazard | Catch basin atmospheric hazard | invariant | Hazard includes low oxygen, toxic gas, flammable vapor or sewer gas near structure. | prevent exposure |
-| catchbasinops.data.cleaning_record | Catch basin cleaning record | invariant | Record stores date, crew, sediment quantity, condition, photos, defects and disposal. | maintenance history |
-| catchbasinops.data.gis_update | Catch basin GIS update | variant | Update corrects location, attributes, connection, inspection status or missing asset. | improve map |
-| catchbasinops.reporting.flooding_report | Catch basin flooding report | invariant | Report summarizes ponding calls, blocked basins, response actions, damage and follow-up work. | manage risk |
-| catchbasinops.reporting.sediment_report | Catch basin sediment report | variant | Report tracks removed sediment volume, hotspots, disposal weights and cleaning frequency. | plan service |
-| catchbasinops.metrics.cleaning_cycle | Catch basin cleaning cycle KPI | invariant | KPI measures time or interval between cleanings for priority and normal basins. | schedule work |
-| catchbasinops.metrics.clog_recurrence | Catch basin clog recurrence KPI | variant | KPI tracks repeated clogs by basin, debris type, season and upstream source. | target prevention |
-| catchbasinops.coordination.street_sweeping_link | Catch basin street sweeping link | variant | Link coordinates inlet cleaning with sweeping routes to reduce sediment and leaf load. | prevent clogs |
-| catchbasinops.coordination.utility_conflict | Catch basin utility conflict | variant | Conflict involves underground utilities, road work or private drainage connected to basin. | avoid damage |
-| catchbasinops.continuity.winter_inlet_blockage | Winter catch basin blockage | variant | Blockage comes from snow windrows, ice, frozen grates or meltwater refreeze. | winter drainage |
-| catchbasinops.close.work_order_closeout | Catch basin work order closeout | invariant | Closeout confirms cleaning or repair, photos, disposal record, map update and complaint response. | finish work |
+| catchbasinops.inventory.basin_record | Запись об активах водосборника | invariant | Запись хранит идентификатор бассейна, местоположение, тип решетки, глубину отстойника, выпускное отверстие, состояние и принадлежность. | управлять активом |
+| catchbasinops.inventory.drainage_area | Площадь дренажа водосборника | invariant | Район определяет улицы, участки, склоны и поверхности, способствующие стоку в бассейн. | понять нагрузку |
+| catchbasinops.inventory.outlet_connection | Выходное соединение для водосборника | invariant | Соединение соединяет бассейн с ливневой трубой, комбинированной канализацией, канавой, прудом или водостоком. | трассировка потока |
+| catchbasinops.inventory.priority_basin | Приоритетный водосборник | variant | Приоритетный бассейн имеет историю наводнений, тяжелые завалы, крутой подход, школьный маршрут или критически важный объект поблизости. | ранговая работа |
+| catchbasinops.inspection.routine_basin_inspection | Регулярный осмотр водосборника | invariant | При осмотре проверяются решетка, рама, отстойник, стоячая вода, выпускное отверстие, запах и состояние конструкции. | найти потребности |
+| catchbasinops.inspection.prestorm_check | Предштормовая проверка бассейна | variant | Проверка очищает бассейны с высоким риском до того, как прогнозируется сильный дождь или таяние снега. | предотвратить наводнение |
+| catchbasinops.inspection.poststorm_check | Проверка бассейна после урагана | variant | Проверьте обзоры засоренных решеток, луж, размывов, движения отложений и новых повреждений после урагана. | проверить восстановление |
+| catchbasinops.inspection.confined_space_screen | Экран для замкнутого пространства водосборника | invariant | Экран определяет риск входа, атмосферные опасности, ограничения доступа и требования к разрешениям. | защитить работников |
+| catchbasinops.condition.clogged_grate | Засоренная решетка водосборника | invariant | Засор блокирует поверхностный приток листьев, мусора, отложений, снега, льда или мусора. | восстановить потребление |
+| catchbasinops.condition.sediment_sump | Отстойник водосборника | invariant | В отстойнике хранится песок, гравий и твердые частицы, которые необходимо удалить перед уменьшением производительности. | поддерживать хранение |
+| catchbasinops.condition.standing_water | Уловитель стоячей воды в бассейне | variant | Стоячая вода может указывать на засорение выпускного отверстия, ровную поверхность, конструкцию отстойника, наличие отложений или засорение труб. | диагностировать дренаж |
+| catchbasinops.condition.frame_settlement | Осадка каркаса водосборника | invariant | Осадка приводит к провалу тротуара, опасности споткнуться, затоплению или смещению решетки вокруг конструкции. | ремонт рамы |
+| catchbasinops.condition.broken_grate | Сломанная решетка водосборника | invariant | Сломанная решетка создает опасность для транспортных средств, велосипедов, пешеходов и попадания мусора. | заменить решетку |
+| catchbasinops.condition.structural_crack | Структурная трещина водосборника | variant | Трещина в стене, раме или крышке может указывать на повреждение груза, осадку или износ. | план ремонта |
+| catchbasinops.cleaning.vacuum_cleaning | Вакуумная очистка водосборника | invariant | Очистка удаляет осадок, воду и мусор с помощью вакуумной машины и надлежащей утилизации. | восстановить емкость |
+| catchbasinops.cleaning.hand_clear_grate | Очистка ручной решетки водосборника | invariant | Очистка удаляет поверхностный мусор без полной вакуумной очистки, когда емкость отстойника остается. | быстрое решение |
+| catchbasinops.cleaning.jetting_outlet | Промывка выпускного отверстия уловителя | variant | Промывка очищает боковые засоры, отложения, корни или жироподобные отложения из выпускной трубы. | восстановить поток |
+| catchbasinops.cleaning.leaf_season_cleaning | Очистка бассейна в сезон листьев | variant | Очистка целевых бассейнов до и во время сильного листопада, чтобы уменьшить наводнение. | сезонный контроль |
+| catchbasinops.repairs.frame_reset | Сброс рамы водосборника | invariant | Сброс настраивает раму и решетку на высоту тротуара, обеспечивая стабильную поддержку и исправления. | удалить провал |
+| catchbasinops.repairs.grate_replacement | Замена решетки уловителя | invariant | При замене используются правильный размер, номинальная нагрузка, конструкция, безопасная для велосипеда, и сиденья. | восстановить безопасность |
+| catchbasinops.repairs.masonry_repair | Ремонт кладки водосборника | variant | Ремонт устраняет повреждения кирпича, блока, раствора, бетонной стены или дымохода. | сохранить структуру |
+| catchbasinops.repairs.outlet_repair | Ремонт сливного отверстия в уловителе | variant | Ремонт устраняет сломанную трубу, смещенное соединение, проникновение корня или разрушенное соединение. | восстановить дренаж |
+| catchbasinops.flooding.local_ponding | Местная жалоба на затопление | invariant | В жалобе указывается глубина воды, продолжительность, интенсивность шторма, заблокированный бассейн и затронутое имущество. | сортировочное наводнение |
+| catchbasinops.flooding.repeat_flood_location | Повторить место затопления | variant | На этом месте периодически возникают пруды, требующие проверки дренажа, помимо простой очистки. | первопричина |
+| catchbasinops.flooding.emergency_basin_response | Аварийное реагирование на водосборник | invariant | Реагирование очищает заблокированный бассейн во время активного наводнения с контролем дорожного движения и безопасности экипажа. | уменьшить ущерб |
+| catchbasinops.environment.sediment_disposal | Утилизация отложений в водосборнике | invariant | Утилизация осуществляется в соответствии с правилами в отношении влажных осадков, загрязнения, обезвоживания, транспортировки и документации. | юридическое оформление |
+| catchbasinops.environment.illicit_discharge_sign | Знак незаконного выброса | invariant | Знак включает в себя необычный запах, цвет, блеск, сточные воды, химикаты или потоки в сухую погоду. | инициировать расследование |
+| catchbasinops.environment.floatable_trash | Уловитель плавучего мусора | variant | Мусор, оставшийся на входе или в отстойнике, может попасть в водные пути, если его не убрать. | уменьшить загрязнение |
+| catchbasinops.equipment.vac_truck_setup | Установка вакуумной машины | invariant | Настройте положение грузовика, конусов, шланга, стрелы, источника воды и безопасной рабочей зоны. | чистить безопасно |
+| catchbasinops.equipment.nozzle_selection | Выбор форсунки | variant | Выбор насадки зависит от размера трубы, типа засора, расстояния, корней и нагрузки наносов. | устранить засор |
+| catchbasinops.equipment.hose_decontamination | Обеззараживание шланга для очистки раковины | variant | При обеззараживании удаляются загрязненные материалы перед транспортировкой, хранением или обслуживанием. | гигиена |
+| catchbasinops.safety.traffic_control | Контроль движения водосборника | invariant | Система Control защищает бригады, работающие на тротуарах, полосах движения, перекрестках или въездах в велосипедные дорожки. | безопасность работников |
+| catchbasinops.safety.grate_lifting | Безопасность подъема решетки уловителя | invariant | Безопасность распространяется на тяжелые решетки, точки защемления, крючки, эргономику и нестабильные рамы. | избегать травм |
+| catchbasinops.safety.atmospheric_hazard | Атмосферная опасность водосборника | invariant | Опасность включает низкий уровень кислорода, токсичный газ, легковоспламеняющиеся пары или канализационный газ вблизи конструкции. | предотвратить воздействие |
+| catchbasinops.data.cleaning_record | Протокол очистки водосборника | invariant | Запишите дату хранения, экипаж, количество осадков, состояние, фотографии, дефекты и утилизацию. | история обслуживания |
+| catchbasinops.data.gis_update | Обновление ГИС водосборника | variant | Обновление исправляет местоположение, атрибуты, соединение, статус проверки или отсутствующий актив. | улучшить карту |
+| catchbasinops.reporting.flooding_report | Отчет о затоплении водосборника | invariant | В отчете кратко излагаются звонки, заблокированные бассейны, ответные действия, ущерб и последующие работы. | управлять риском |
+| catchbasinops.reporting.sediment_report | Отчет об отложениях водосборника | variant | В отчетах были удалены объем отложений, горячие точки, вес утилизируемых отходов и частота очистки. | планировать обслуживание |
+| catchbasinops.metrics.cleaning_cycle | Цикл очистки водосборника KPI | invariant | KPI измеряет время или интервал между чистками приоритетных и обычных бассейнов. | планировать работу |
+| catchbasinops.metrics.clog_recurrence | KPI повторения засорения водосборника | variant | KPI отслеживает повторяющиеся засоры по бассейнам, типам мусора, сезонам и источникам выше по течению. | целевое предотвращение |
+| catchbasinops.coordination.street_sweeping_link | Навеска для подметания улиц с водосборником | variant | Link координирует очистку входного отверстия с маршрутами подметания, чтобы уменьшить нагрузку на осадок и листья. | предотвратить засоры |
+| catchbasinops.coordination.utility_conflict | Конфликт с коммунальными предприятиями водосборника | variant | Конфликт затрагивает подземные коммуникации, дорожные работы или частную канализацию, подведенную к бассейну. | избежать повреждений |
+| catchbasinops.continuity.winter_inlet_blockage | Засор водосборника зимой | variant | Засорение происходит из-за снежных валков, льда, замерзших решеток или повторного замерзания талой воды. | зимний дренаж |
+| catchbasinops.close.work_order_closeout | Закрытие заказа на работу по водосборнику | invariant | Closeout подтверждает чистку или ремонт, фотографии, запись об утилизации, обновление карты и ответ на жалобу. | закончить работу |

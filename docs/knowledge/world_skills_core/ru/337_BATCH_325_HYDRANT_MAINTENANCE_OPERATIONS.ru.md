@@ -6,48 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| hydrantops.inventory.hydrant_id | hydrant ID | RECORD | Hydrant record includes ID, location, make, model, size, year, valve and pressure zone. | Links inspections, fire use and repairs. |
-| hydrantops.inventory.barrel_type | barrel type | RECORD | Dry-barrel and wet-barrel hydrants have different freeze and drainage behavior. | Maintenance method depends on climate and design. |
-| hydrantops.inventory.fire_district | fire district link | RECORD | Hydrant is linked to fire response area, station and dispatch map. | Fire crews need accurate hydrant data. |
-| hydrantops.inspection.visibility | visibility check | INSPECTION | Hydrant must be visible from road and clear of vegetation, snow, signs or parked obstruction. | Hidden hydrants delay fire response. |
-| hydrantops.inspection.clearance | clearance | INSPECTION | Clearance around hydrant is checked for hose connection and wrench access. | Firefighters need working space. |
-| hydrantops.inspection.damage | physical damage | INSPECTION | Crews check for traffic damage, tilted barrel, cracked bonnet and broken flanges. | Damage can make hydrant unusable or leaking. |
-| hydrantops.inspection.leak | leak check | INSPECTION | Leakage at nozzles, bonnet, stem or base is recorded. | Leaks waste water and can undermine pavement. |
-| hydrantops.inspection.nozzle_threads | nozzle threads | INSPECTION | Threads and seats are checked for damage, debris and compatibility. | Hose connections must work under pressure. |
-| hydrantops.caps.cap_condition | cap condition | INSPECTION | Caps, gaskets and chains are checked for corrosion, fit and missing parts. | Missing caps allow debris and thread damage. |
-| hydrantops.caps.outlet_size | outlet size | RECORD | Steamer and side outlet sizes are recorded and compared with fire department needs. | Ensures equipment compatibility. |
-| hydrantops.operation.slow_open | slow opening | SAFETY_RULE | Hydrants are opened slowly and fully where design requires. | Prevents water hammer and drain-port leakage. |
-| hydrantops.operation.slow_close | slow closing | SAFETY_RULE | Hydrants are closed slowly to avoid pressure surge. | Protects mains, services and valves. |
-| hydrantops.operation.main_valve | main valve condition | INSPECTION | Operating nut turns, stiffness and full closure are checked. | Shows whether hydrant can be controlled. |
-| hydrantops.operation.aux_valve | auxiliary valve | RECORD | Hydrant isolation valve location and operability are tracked. | Allows repair without large shutdown. |
-| hydrantops.flow.static_pressure | static pressure | MEASUREMENT | Static pressure is measured before flow test. | Establishes baseline system pressure. |
-| hydrantops.flow.residual_pressure | residual pressure | MEASUREMENT | Residual pressure during flow shows system capacity under demand. | Supports fire-flow evaluation. |
-| hydrantops.flow.pitot | pitot reading | MEASUREMENT | Pitot reading estimates discharge from nozzle flow. | Converts field flow into usable fire-flow data. |
-| hydrantops.flow.diffuser | diffuser | SAFETY_RULE | Diffuser controls discharge direction, velocity and erosion. | Protects traffic, property and workers. |
-| hydrantops.flow.dechlorination | dechlorination | CONSTRAINT | Flow water may need dechlorination before entering storm drains or streams. | Prevents environmental harm. |
-| hydrantops.drainage.drain_check | drain check | INSPECTION | Dry-barrel hydrants are checked for proper barrel drainage after closure. | Prevents freezing and barrel damage. |
-| hydrantops.drainage.plugged_drain | plugged drain | FAILURE_MODE | Water standing in barrel indicates plugged drains or groundwater intrusion. | Requires repair before freeze season. |
-| hydrantops.drainage.pump_out | pump-out | METHOD | Standing water may be pumped out during winter maintenance. | Temporary mitigation until repair. |
-| hydrantops.lubrication.stem | stem lubrication | METHOD | Stem and operating nut are lubricated per manufacturer guidance. | Reduces stiffness and breakage. |
-| hydrantops.lubrication.nozzle | nozzle lubrication | METHOD | Nozzle caps and threads receive appropriate anti-seize or lubricant. | Keeps caps removable by fire crews. |
-| hydrantops.paint.color_code | color coding | RECORD | Paint color may indicate flow class, ownership or status under local standard. | Fire crews can quickly interpret hydrant capacity. |
-| hydrantops.paint.surface_prep | surface preparation | METHOD | Painting requires rust removal, cleaning and compatible coating. | Paint protects asset and improves visibility. |
-| hydrantops.paint.reflective_marker | reflective marker | METHOD | Markers or flags help locate hydrants at night or in snow. | Speeds emergency access. |
-| hydrantops.repairs.breakaway | breakaway flange | INSPECTION | Traffic-hit hydrants are checked at breakaway flange and barrel alignment. | Ensures impact protection worked correctly. |
-| hydrantops.repairs.seat_repair | seat repair | METHOD | Leaking main seats may need disassembly, parts and isolation. | Stops hidden water loss. |
-| hydrantops.repairs.rebuild | rebuild | METHOD | Rebuild replaces gaskets, seals, stems, nozzles or internal parts. | Extends hydrant life without full replacement. |
-| hydrantops.repairs.replace | replacement trigger | DECISION_RULE | Replacement is considered for age, unavailable parts, severe corrosion, repeated leaks or poor location. | Prevents endless repair on obsolete hydrants. |
-| hydrantops.firecoord.map_update | fire map update | METHOD | Hydrant status changes are sent to fire department and dispatch maps. | Fire crews avoid out-of-service hydrants. |
-| hydrantops.firecoord.out_of_service | out-of-service tag | RECORD | OOS hydrants are tagged, logged and communicated with expected repair date. | Prevents reliance during fire response. |
-| hydrantops.firecoord.training_use | training use | METHOD | Fire training use is coordinated with utility to avoid pressure and water-quality problems. | Balances emergency readiness and system operation. |
-| hydrantops.firecoord.private_hydrant | private hydrant | CONSTRAINT | Private hydrants may have owner maintenance duties and utility/fire inspection coordination. | Clarifies responsibility. |
-| hydrantops.safety.traffic | traffic safety | SAFETY_RULE | Cones, signs, vests and safe truck positioning protect hydrant crews. | Hydrants often sit in roadside zones. |
-| hydrantops.safety.ice | ice hazard | FAILURE_MODE | Winter flushing or leaks can create road and sidewalk ice. | Maintenance must control runoff in freezing weather. |
-| hydrantops.safety.pressure | pressure hazard | SAFETY_RULE | Caps are not removed from pressurized or damaged outlets without care. | Prevents injury from sudden release. |
-| hydrantops.records.inspection | inspection record | RECORD | Record includes condition, turns, leaks, drainage, caps, paint, flow and photos. | Standardizes maintenance history. |
-| hydrantops.records.work_order | work order | RECORD | Repairs use work orders with defect, parts, labor, isolation and closeout. | Tracks backlog and cost. |
-| hydrantops.records.flow_history | flow history | RECORD | Flow test values are stored by date and conditions. | Shows capacity trends and system changes. |
-| hydrantops.reporting.program_summary | program summary | RECORD | Summary reports inspected, flowed, repaired, OOS and replaced hydrants. | Gives managers and fire partners system view. |
-| hydrantops.reporting.priority | repair priority | MODEL | Priority uses fire criticality, defect severity, flow capacity and location risk. | Directs crews to most important hydrants. |
-| hydrantops.review.post_fire | post-fire review | METHOD | After major fire, hydrant performance and water system impacts are reviewed. | Improves maps, maintenance and coordination. |
-
+| hydrantops.inventory.hydrant_id | идентификатор гидранта | RECORD | Запись о гидранте включает идентификатор, местоположение, марку, модель, размер, год, клапан и зону давления. | Связывает проверки, пожарную эксплуатацию и ремонт. |
+| hydrantops.inventory.barrel_type | тип ствола | RECORD | Гидранты с сухим и мокрым стволом имеют разные характеристики замерзания и дренажа. | Способ обслуживания зависит от климата и конструкции. |
+| hydrantops.inventory.fire_district | ссылка на пожарный район | RECORD | Гидрант связан с зоной пожаротушения, станцией и картой диспетчерской. | Пожарным необходимы точные данные о гидрантах. |
+| hydrantops.inspection.visibility | проверка видимости | INSPECTION | Гидрант должен быть виден с дороги и свободен от растительности, снега, знаков или припаркованных препятствий. | Скрытые гидранты задерживают реагирование на пожар. |
+| hydrantops.inspection.clearance | оформление | INSPECTION | Проверяется свободное пространство вокруг гидранта на предмет подсоединения шланга и доступа к гаечному ключу. | Пожарным необходимо рабочее пространство. |
+| hydrantops.inspection.damage | физический ущерб | INSPECTION | Экипажи проверяют повреждения от дорожно-транспортных происшествий, наклон ствола, трещину на капоте и сломанные фланцы. | Повреждение может привести к тому, что гидрант станет непригодным для использования или протечет. |
+| hydrantops.inspection.leak | проверка утечки | INSPECTION | Регистрируются утечки на соплах, крышке, штоке или основании. | Утечка сточных вод и может подорвать дорожное покрытие. |
+| hydrantops.inspection.nozzle_threads | резьба сопла | INSPECTION | Резьба и седла проверяются на наличие повреждений, мусора и совместимость. | Шланговые соединения должны работать под давлением. |
+| hydrantops.caps.cap_condition | состояние крышки | INSPECTION | Колпачки, прокладки и цепи проверяются на наличие коррозии, наличие и отсутствие деталей. | Отсутствие колпачков может привести к повреждению резьбы и мусора. |
+| hydrantops.caps.outlet_size | размер розетки | RECORD | Размеры пароварки и боковых выпускных отверстий фиксируются и сравниваются с потребностями пожарных служб. | Обеспечивает совместимость оборудования. |
+| hydrantops.operation.slow_open | медленное открытие | SAFETY_RULE | Гидранты открываются медленно и полностью там, где этого требует конструкция. | Предотвращает гидравлический удар и утечку через дренажное отверстие. |
+| hydrantops.operation.slow_close | медленное закрытие | SAFETY_RULE | Гидранты закрываются медленно, чтобы избежать скачка давления. | Защищает сеть, оборудование и клапаны. |
+| hydrantops.operation.main_valve | состояние главного клапана | INSPECTION | Проверяются обороты рабочих гаек, жесткость и полное закрытие. | Показывает, можно ли управлять гидрантом. |
+| hydrantops.operation.aux_valve | вспомогательный клапан | RECORD | Отслеживается расположение и работоспособность запорного клапана гидранта. | Позволяет ремонтировать без больших остановок. |
+| hydrantops.flow.static_pressure | статическое давление | MEASUREMENT | Статическое давление измеряется перед испытанием на расход. | Устанавливает базовое давление в системе. |
+| hydrantops.flow.residual_pressure | остаточное давление | MEASUREMENT | Остаточное давление во время потока показывает производительность системы при необходимости. | Поддерживает оценку пожарного потока. |
+| hydrantops.flow.pitot | чтение Пито | MEASUREMENT | Показания Пито оценивают расход из сопла. | Преобразует полевой поток в полезные данные о пожарном потоке. |
+| hydrantops.flow.diffuser | диффузор | SAFETY_RULE | Диффузор контролирует направление, скорость и эрозию разряда. | Защищает дорожное движение, имущество и работников. |
+| hydrantops.flow.dechlorination | дехлорирование | CONSTRAINT | Проточная вода может нуждаться в дехлорировании перед попаданием в ливневые стоки или ручьи. | Предотвращает вред окружающей среде. |
+| hydrantops.drainage.drain_check | проверка слива | INSPECTION | Гидранты с сухим стволом проверяются на предмет надлежащего дренажа ствола после закрытия. | Предотвращает замерзание и повреждение ствола. |
+| hydrantops.drainage.plugged_drain | засоренная канализация | FAILURE_MODE | Стоящая в бочке вода указывает на засорение канализации или проникновение грунтовых вод. | Требует ремонта перед сезоном заморозков. |
+| hydrantops.drainage.pump_out | откачка | METHOD | Стоячую воду можно откачивать во время зимнего ремонта. | Временное смягчение до ремонта. |
+| hydrantops.lubrication.stem | смазка штока | METHOD | Шток и рабочая гайка смазываются согласно рекомендациям производителя. | Уменьшает жесткость и ломкость. |
+| hydrantops.lubrication.nozzle | смазка форсунок | METHOD | Крышки форсунок и резьба обработаны соответствующим противозадирным составом или смазкой. | Позволяет пожарным командам снимать колпаки. |
+| hydrantops.paint.color_code | цветовое кодирование | RECORD | Цвет краски может указывать на класс текучести, право собственности или статус согласно местному стандарту. | Пожарные расчеты могут быстро оценить мощность гидранта. |
+| hydrantops.paint.surface_prep | подготовка поверхности | METHOD | Покраска требует удаления ржавчины, очистки и нанесения совместимого покрытия. | Краска защищает имущество и улучшает видимость. |
+| hydrantops.paint.reflective_marker | светоотражающий маркер | METHOD | Маркеры или флажки помогают найти гидранты ночью или в снегу. | Ускоряет экстренный доступ. |
+| hydrantops.repairs.breakaway | отрывной фланец | INSPECTION | Поврежденные транспортом гидранты проверяются на отрыв фланца и соосность ствола. | Обеспечивает правильную работу защиты от ударов. |
+| hydrantops.repairs.seat_repair | ремонт сидений | METHOD | Протекающие основные сиденья могут потребовать разборки, замены деталей и изоляции. | Останавливает скрытую потерю воды. |
+| hydrantops.repairs.rebuild | перестроить | METHOD | При восстановлении заменяются прокладки, уплотнения, штоки, сопла или внутренние детали. | Продлевает срок службы гидранта без полной замены. |
+| hydrantops.repairs.replace | замена триггера | DECISION_RULE | Замена рассматривается в случае возраста, отсутствия деталей, сильной коррозии, повторяющихся утечек или неудачного расположения. | Предотвращает бесконечный ремонт устаревших гидрантов. |
+| hydrantops.firecoord.map_update | обновление карты пожаров | METHOD | Изменения статуса гидранта передаются в пожарную часть и на диспетчерские карты. | Пожарные избегают вышедших из строя гидрантов. |
+| hydrantops.firecoord.out_of_service | тег неработоспособности | RECORD | Гидранты ООС маркируются, регистрируются и сообщаются с ожидаемой датой ремонта. | Предотвращает надежность во время реагирования на пожар. |
+| hydrantops.firecoord.training_use | обучение использованию | METHOD | Использование пожарной подготовки координируется с коммунальными предприятиями, чтобы избежать проблем с давлением и качеством воды. | Балансирует аварийную готовность и работу системы. |
+| hydrantops.firecoord.private_hydrant | частный гидрант | CONSTRAINT | Частные гидранты могут выполнять функции владельца по техническому обслуживанию и координировать работу коммунальных предприятий и пожарной инспекции. | Уточняет ответственность. |
+| hydrantops.safety.traffic | безопасность дорожного движения | SAFETY_RULE | Конусы, знаки, жилеты и безопасное расположение грузовиков защищают бригады гидрантов. | Гидранты часто располагаются в придорожных зонах. |
+| hydrantops.safety.ice | ледовая опасность | FAILURE_MODE | Зимние промывки или протечки могут привести к образованию льда на дорогах и тротуарах. | Техническое обслуживание должно контролировать сток в морозную погоду. |
+| hydrantops.safety.pressure | опасность давления | SAFETY_RULE | Не снимайте крышки с находящихся под давлением или поврежденных розеток без осторожности. | Предотвращает травмы в результате внезапного выброса. |
+| hydrantops.records.inspection | протокол проверки | RECORD | Запись включает состояние, повороты, утечки, дренаж, колпачки, краску, расход и фотографии. | Стандартизирует историю обслуживания. |
+| hydrantops.records.work_order | заказ на работу | RECORD | При ремонте используются рабочие задания с дефектами, деталями, работой, изоляцией и закрытием. | Отслеживает отставание и стоимость. |
+| hydrantops.records.flow_history | история потока | RECORD | Значения теста расхода сохраняются по дате и условиям. | Показывает тенденции емкости и изменения в системе. |
+| hydrantops.reporting.program_summary | резюме программы | RECORD | Сводные отчеты о осмотре, течении, ремонте, ООС и замене гидрантов. | Предоставляет менеджерам и партнерам представление о системе. |
+| hydrantops.reporting.priority | приоритет ремонта | MODEL | Приоритет учитывает критичность пожара, серьезность дефекта, пропускную способность и риск местоположения. | Направляет бригады к наиболее важным гидрантам. |
+| hydrantops.review.post_fire | обзор после пожара | METHOD | После крупного пожара проверяются характеристики гидрантов и воздействие на систему водоснабжения. | Улучшает карты, обслуживание и координацию. |

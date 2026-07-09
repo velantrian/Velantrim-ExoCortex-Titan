@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| propops.listing.unit_listing | Unit listing | invariant | Listing records unit features, rent, availability, photos, restrictions, amenities and showing instructions. | объект готов к рынку |
-| propops.listing.rent_comparison | Rent comparison | variant | Comparison reviews similar units, vacancy, seasonality and concessions before pricing. | price with context |
-| propops.listing.photo_standard | Listing photo standard | invariant | Photo standard keeps images accurate, current, well-lit and not misleading. | trust before showing |
-| propops.listing.vacancy_status | Vacancy status | invariant | Status tracks occupied, notice-given, vacant, make-ready, listed, application pending or leased. | pipeline visibility |
-| propops.listing.showing_schedule | Showing schedule | variant | Schedule coordinates prospect access, occupied-unit notice, staff availability and key control. | tours without chaos |
-| propops.listing.concession_record | Leasing concession record | variant | Concession record documents discount, free rent, waived fee, condition and approval. | discount with audit trail |
-| propops.application.application_intake | Rental application intake | invariant | Intake collects applicant identity, household, income, rental history, consent and required documents. | start screening |
-| propops.application.application_fee | Application fee record | variant | Fee record tracks charge, waiver, refund rule and payment status for application processing. | money tied to application |
-| propops.application.document_checklist | Applicant document checklist | invariant | Checklist tracks missing or received ID, income proof, references and required forms. | complete file |
-| propops.application.screening_criteria | Screening criteria | invariant | Criteria define objective factors for approval, denial or conditional approval. | consistent decisions |
-| propops.application.adverse_action | Adverse action notice | invariant | Notice explains denial or conditional terms when screening result requires disclosure. | fairness and compliance |
-| propops.application.waitlist | Rental waitlist | variant | Waitlist orders applicants by priority, date, unit type and eligibility. | manage scarce units |
-| propops.lease.lease_draft | Lease draft | invariant | Draft prepares rent, term, parties, unit, deposits, rules, utilities and addenda for review. | contract package |
-| propops.lease.addendum_tracking | Lease addendum tracking | invariant | Tracking ensures pet, parking, storage, lead, rules or local addenda are included when needed. | avoid missing terms |
-| propops.lease.signature_status | Lease signature status | invariant | Status shows who has signed, pending, declined or needs correction. | execution control |
-| propops.lease.movein_funds | Move-in funds | invariant | Funds include rent, deposit, fees or credits required before possession under policy. | keys after money |
-| propops.lease.key_release | Key release control | invariant | Key release confirms lease, funds, ID, insurance and move-in condition before handover. | possession gate |
-| propops.lease.lease_renewal | Lease renewal workflow | variant | Renewal workflow sets offer, rent change, deadline, negotiation, signature and nonrenewal path. | keep tenancy current |
-| propops.movein.condition_report | Move-in condition report | invariant | Report records unit state, photos, meters, keys, appliances and existing damage at possession. | deposit baseline |
-| propops.movein.utility_transfer | Utility transfer tracking | variant | Tracking confirms required utilities are placed in tenant or owner name by move-in date. | avoid service gaps |
-| propops.movein.welcome_packet | Resident welcome packet | variant | Packet explains rules, contacts, portals, trash, maintenance requests, emergency and payment methods. | reduce first-week confusion |
-| propops.movein.parking_assignment | Parking assignment | variant | Assignment links space, permit, vehicle, fee and restrictions to tenant record. | manage parking asset |
-| propops.movein.access_device | Access device inventory | invariant | Inventory tracks keys, fobs, remotes, mailbox keys and returns. | control physical access |
-| propops.movein.pet_registration | Pet registration | variant | Registration records pet approval, fees, restrictions, vaccination proof if required and rules. | animal policy control |
-| propops.maintenance.work_order | Property work order | invariant | Work order records issue, location, tenant, priority, vendor, status and completion. | maintenance memory |
-| propops.maintenance.emergency_repair | Emergency repair workflow | invariant | Workflow triages urgent leaks, no heat, lockouts, electrical hazards or safety issues for rapid response. | protect habitability |
-| propops.maintenance.vendor_dispatch | Vendor dispatch | variant | Dispatch sends approved vendor with scope, access, limit, photos and tenant contact rules. | contractor control |
-| propops.maintenance.preventive_schedule | Preventive maintenance schedule | invariant | Schedule covers HVAC, gutters, alarms, pest, roofs, plumbing and inspections. | prevent expensive failure |
-| propops.maintenance.tenant_chargeback | Tenant chargeback | variant | Chargeback records repair cost attributed to tenant-caused damage with evidence and approval. | fair cost recovery |
-| propops.maintenance.completion_verification | Maintenance completion verification | invariant | Verification confirms work done, tenant satisfaction, photos, invoice and closeout code. | close correctly |
-| propops.inspection.periodic_inspection | Periodic property inspection | invariant | Inspection checks condition, safety, lease compliance, deferred maintenance and unauthorized changes. | know asset state |
-| propops.inspection.moveout_inspection | Move-out inspection | invariant | Inspection compares unit condition with baseline and documents cleaning, damage, keys and meter readings. | deposit decision evidence |
-| propops.inspection.notice_to_enter | Notice to enter | invariant | Notice informs tenant of planned entry according to rules, purpose and time window. | access with respect |
-| propops.inspection.violation_notice | Lease violation notice | invariant | Notice records observed issue, lease basis, correction required, deadline and consequences. | formal compliance path |
-| propops.financial.rent_roll | Rent roll | invariant | Rent roll lists units, tenants, rents, deposits, balances, lease dates and status. | property financial snapshot |
-| propops.financial.ledger | Tenant ledger | invariant | Ledger records charges, payments, credits, fees, adjustments and balance. | account truth |
-| propops.financial.deposit_accounting | Security deposit accounting | invariant | Accounting tracks deposit receipt, allowable deductions, interest if applicable and return deadline. | money held in trust |
-| propops.financial.delinquency_workflow | Rent delinquency workflow | invariant | Workflow tracks late notices, promises, payment plans, fees, legal handoff and communication. | structured arrears handling |
-| propops.financial.owner_statement | Owner statement | variant | Statement reports income, expenses, reserves, fees, distributions and property notes to owner. | investor visibility |
-| propops.closeout.nonrenewal | Nonrenewal workflow | variant | Nonrenewal records decision, notice, dates, tenant communication and make-ready planning. | end tenancy intentionally |
-| propops.closeout.eviction_handoff | Eviction handoff | variant | Handoff sends case file, ledger, notices, lease and communication history to authorized legal process. | organized escalation |
-| propops.closeout.unit_turn | Unit turn | invariant | Turn coordinates cleaning, repairs, paint, inspection, pricing and listing after vacancy. | vacant to rentable |
-| propops.closeout.records_retention | Property records retention | invariant | Retention covers leases, ledgers, notices, inspections, applications, invoices and communications. | records after tenancy |
-| propops.closeout.kpi_vacancy_loss | Vacancy loss KPI | invariant | Vacancy loss measures rent not earned while unit is unrented or not ready. | empty unit cost |
+| propops.listing.unit_listing | Список единиц | invariant | Перечисление характеристик устройства, аренда, наличие, фотографии, ограничения, удобства и инструкции по показу. | объект готов к рынку |
+| propops.listing.rent_comparison | Сравнение арендной платы | variant | При сравнении проверяются аналогичные объекты, вакантность, сезонность и уступки перед ценообразованием. | цена с контекстом |
+| propops.listing.photo_standard | Стандарт фотографии листинга | invariant | Фотостандарт сохраняет изображения точными, актуальными, хорошо освещенными и не вводящими в заблуждение. | доверяй, прежде чем показывать |
+| propops.listing.vacancy_status | Статус вакансии | invariant | Статус отслеживается: занято, отправлено уведомление, вакантно, готово, внесено в список, заявка ожидает рассмотрения или сдана в аренду. | видимость трубопровода |
+| propops.listing.showing_schedule | Показываю расписание | variant | График координирует доступ потенциальных клиентов, уведомление о занятости квартир, наличие персонала и контроль ключей. | туры без хаоса |
+| propops.listing.concession_record | Реестр лизинговых концессий | variant | Скидка на документы по учету концессии, бесплатная арендная плата, отказ от платы, состояние и одобрение. | скидка с аудиторским следом |
+| propops.application.application_intake | Прием заявок на аренду | invariant | Intake собирает данные о личности заявителя, его семье, доходе, истории аренды, согласии и необходимых документах. | начать проверку |
+| propops.application.application_fee | Запись о вступительном взносе | variant | Запись о сборах отслеживает взимание платы, отказ от оплаты, правила возврата и статус платежа при обработке заявки. | деньги привязаны к заявке |
+| propops.application.document_checklist | Контрольный список документов заявителя | invariant | Контрольный список отслеживает недостающее или полученное удостоверение личности, подтверждение дохода, рекомендации и необходимые формы. | полный файл |
+| propops.application.screening_criteria | Критерии отбора | invariant | Критерии определяют объективные факторы одобрения, отказа или условного одобрения. | последовательные решения |
+| propops.application.adverse_action | Уведомление о нежелательных действиях | invariant | В уведомлении разъясняются условия отказа или условные условия, когда результаты проверки требуют раскрытия. | справедливость и соответствие |
+| propops.application.waitlist | Лист ожидания аренды | variant | Список ожидания упорядочивает кандидатов по приоритету, дате, типу объекта и критериям участия. | управлять дефицитными подразделениями |
+| propops.lease.lease_draft | Проект аренды | invariant | В проекте готовятся к рассмотрению арендная плата, срок, стороны, квартира, депозиты, правила, коммунальные услуги и дополнения. | контрактный пакет |
+| propops.lease.addendum_tracking | Отслеживание дополнительных условий аренды | invariant | Отслеживание гарантирует, что при необходимости будут включены сведения о домашних животных, парковке, хранилище, зацепках, правилах или местных дополнениях. | избегайте пропущенных терминов |
+| propops.lease.signature_status | Статус подписи договора аренды | invariant | Статус показывает, кто подписал, ожидает, отклонил или требует исправления. | контроль исполнения |
+| propops.lease.movein_funds | Средства на заселение | invariant | Средства включают арендную плату, депозит, сборы или кредиты, необходимые перед владением по полису. | ключи после денег |
+| propops.lease.key_release | Управление выпуском ключа | invariant | Выдача ключа подтверждает аренду, наличие средств, удостоверение личности, страховку и состояние заселения перед передачей. | ворота владения |
+| propops.lease.lease_renewal | Рабочий процесс продления аренды | variant | Рабочий процесс продления устанавливает предложение, изменение арендной платы, крайний срок, переговоры, подпись и путь отказа от продления. | поддерживать аренду в актуальном состоянии |
+| propops.movein.condition_report | Отчет о состоянии заселения | invariant | В отчете фиксируется состояние квартиры, фотографии, счетчики, ключи, бытовая техника и имеющиеся повреждения. | базовый уровень депозита |
+| propops.movein.utility_transfer | Отслеживание передачи коммунальных услуг | variant | Отслеживание подтверждает, что необходимые коммунальные услуги указаны на имя арендатора или владельца к дате въезда. | избегать пробелов в обслуживании |
+| propops.movein.welcome_packet | Приветственный пакет для резидента | variant | Пакет объясняет правила, контакты, порталы, мусор, запросы на обслуживание, экстренные ситуации и способы оплаты. | уменьшить путаницу в первую неделю |
+| propops.movein.parking_assignment | Назначение парковки | variant | Назначение связывает площадь, разрешение, транспортное средство, плату и ограничения с записью арендатора. | управлять парковочным активом |
+| propops.movein.access_device | Доступ к инвентарю устройств | invariant | Инвентаризация отслеживает ключи, брелоки, пульты дистанционного управления, ключи от почтовых ящиков и возвраты. | контролировать физический доступ |
+| propops.movein.pet_registration | Регистрация домашних животных | variant | При регистрации фиксируются одобрение домашних животных, сборы, ограничения, доказательства вакцинации, если это необходимо, и правила. | контроль политики в отношении животных |
+| propops.maintenance.work_order | Порядок работы с недвижимостью | invariant | В заказе на работу фиксируются выпуск, местоположение, арендатор, приоритет, поставщик, статус и завершение. | память обслуживания |
+| propops.maintenance.emergency_repair | Порядок действий при аварийном ремонте | invariant | Рабочий процесс сортирует срочные утечки, отсутствие перегрева, блокировки, опасности поражения электрическим током или проблемы безопасности для быстрого реагирования. | защитить обитаемость |
+| propops.maintenance.vendor_dispatch | Отправка поставщику | variant | Dispatch отправляет утвержденному поставщику информацию об объемах работ, доступе, лимитах, фотографиях и правилах связи с арендаторами. | контроль подрядчика |
+| propops.maintenance.preventive_schedule | График профилактического обслуживания | invariant | График охватывает системы отопления, вентиляции и кондиционирования, желоба, сигнализацию, защиту от вредителей, крышу, сантехнику и проверки. | предотвратить дорогостоящий отказ |
+| propops.maintenance.tenant_chargeback | Возврат арендатора | variant | В возвратном платеже фиксируются затраты на ремонт, отнесенные к ущербу, причиненному арендатором, с подтверждением и одобрением. | справедливое возмещение затрат |
+| propops.maintenance.completion_verification | Проверка завершения технического обслуживания | invariant | Проверка подтверждает выполненную работу, удовлетворенность арендатора, фотографии, счет-фактуру и код закрытия. | закрыть правильно |
+| propops.inspection.periodic_inspection | Периодический осмотр недвижимости | invariant | Инспекция проверяет состояние, безопасность, соблюдение условий аренды, отложенное техническое обслуживание и несанкционированные изменения. | знать состояние активов |
+| propops.inspection.moveout_inspection | Инспекция при выезде | invariant | В ходе проверки состояние агрегата сравнивается с базовым состоянием, а также документируется чистка, повреждения, ключи и показания счетчиков. | доказательство решения о депозите |
+| propops.inspection.notice_to_enter | Уведомление о входе | invariant | Уведомление информирует арендатора о запланированном входе в соответствии с правилами, целью и временным интервалом. | доступ с уважением |
+| propops.inspection.violation_notice | Уведомление о нарушении договора аренды | invariant | В уведомлении фиксируются обнаруженные проблемы, основания аренды, необходимые исправления, сроки и последствия. | формальный путь соответствия |
+| propops.financial.rent_roll | Аренда рулона | invariant | В списке арендной платы указаны квартиры, арендаторы, арендная плата, депозиты, остатки, даты аренды и статус. | Финансовый снимок недвижимости |
+| propops.financial.tenant_ledger | Книга арендаторов | invariant | В книге регистрируются расходы, платежи, кредиты, сборы, корректировки и баланс. | правда аккаунта |
+| propops.financial.deposit_accounting | Учет залога | invariant | Бухгалтерский учет отслеживает получение депозита, допустимые вычеты, проценты, если применимо, и срок возврата. | деньги, находящиеся в доверительном управлении |
+| propops.financial.delinquency_workflow | Рабочий процесс по просрочкам по аренде | invariant | Рабочий процесс отслеживает просроченные уведомления, обещания, планы платежей, сборы, юридические передачи и общение. | структурированная работа с просроченной задолженностью |
+| propops.financial.owner_statement | Заявление владельца | variant | Отчет сообщает владельцу о доходах, расходах, резервах, сборах, распределениях и примечаниях к имуществу. | видимость инвестора |
+| propops.closeout.nonrenewal | Рабочий процесс без продления | variant | Решение о непродлении фиксируется, уведомление, даты, общение с арендаторами и планирование подготовки. | намеренно прекратить аренду |
+| propops.closeout.eviction_handoff | Передача выселения | variant | Handoff отправляет материалы дела, бухгалтерскую книгу, уведомления, историю аренды и связи в уполномоченный судебный процесс. | организованная эскалация |
+| propops.closeout.unit_turn | Ход единицы | invariant | Координаты поворота: уборка, ремонт, покраска, осмотр, расценки и объявление после вакансии. | свободный для сдачи в аренду |
+| propops.closeout.records_retention | Хранение документации по имуществу | invariant | Хранение распространяется на договоры аренды, бухгалтерские книги, уведомления, проверки, заявки, счета-фактуры и сообщения. | записи после аренды |
+| propops.closeout.kpi_vacancy_loss | KPI потери вакансий | invariant | Потери вакансий измеряют арендную плату, не полученную, пока помещение не сдано в аренду или не готово. | пустая стоимость единицы |

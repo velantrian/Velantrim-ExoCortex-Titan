@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| accessmodops.intake.request_source | request source | RECORD | Source records caseworker, survivor center, disability advocate, clinic, shelter desk or self-referral. | Shows entry path. |
-| accessmodops.intake.household_profile | household profile | RECORD | Profile captures residents, disability needs, caregiver support, language, contact limits and return timeline. | Defines support. |
-| accessmodops.intake.barrier_description | barrier description | RECORD | Description notes stairs, narrow door, bathroom hazard, missing rail, threshold, path surface or entry slope. | Frames modification. |
-| accessmodops.intake.damage_context | damage context | RECORD | Context separates preexisting barrier, disaster damage, temporary displacement and repair access issue. | Clarifies eligibility. |
-| accessmodops.eligibility.disaster_link | disaster link | CONTROL | Link verifies the modification is needed for safe disaster recovery, return home or temporary occupancy. | Targets assistance. |
-| accessmodops.eligibility.ownership_status | ownership status | RECORD | Status records owner, renter, landlord contact, public housing, temporary unit or shared property. | Guides permissions. |
-| accessmodops.eligibility.permission_check | permission check | CONTROL | Check confirms landlord, owner, HOA or public agency approval before physical work. | Prevents disputes. |
-| accessmodops.assessment.site_visit | site visit | PROCESS | Visit observes entry, bathroom, bedroom access, route surfaces, lighting, drainage and immediate hazards. | Grounds scope. |
-| accessmodops.assessment.photo_record | photo record | RECORD | Photo record captures barriers, measurements, damage and completed work with privacy controls. | Supports decisions. |
-| accessmodops.assessment.measurement_set | measurement set | RECORD | Measurements include rise, run, doorway width, threshold height, wall backing and fixture location. | Enables design. |
-| accessmodops.assessment.priority_score | priority score | MODEL | Score weighs mobility dependence, fall risk, caregiver absence, medical access and return-home deadline. | Orders cases. |
-| accessmodops.ramp.temporary_ramp | temporary ramp | MODEL | Temporary ramp identifies modular, portable or threshold ramp options for short-term access. | Speeds return. |
-| accessmodops.ramp.slope_check | slope check | CONTROL | Check reviews ramp slope, landing, handrail, surface, drainage and load rating. | Reduces fall risk. |
-| accessmodops.ramp.path_clearance | path clearance | PROCESS | Clearance removes debris, mud, cords, loose boards and blocked approach routes. | Makes ramp usable. |
-| accessmodops.grabbar.location_plan | grab bar location plan | RECORD | Plan identifies shower, toilet, hallway or entry points based on user transfer pattern. | Improves safety. |
-| accessmodops.grabbar.wall_support | wall support check | CONTROL | Check verifies studs, backing, anchors and surface condition before installation. | Prevents failure. |
-| accessmodops.grabbar.install_record | install record | RECORD | Record captures bar type, location, installer, date, fasteners and user confirmation. | Supports accountability. |
-| accessmodops.bathroom.transfer_path | transfer path | MODEL | Path maps toilet, tub, shower, sink and mobility-device movement constraints. | Finds practical fixes. |
-| accessmodops.bathroom.non_slip_control | non-slip control | CONTROL | Control adds mats, strips, drainage attention or temporary surface treatment when appropriate. | Reduces slips. |
-| accessmodops.entry.threshold_solution | threshold solution | MODEL | Solution covers beveled threshold, mini-ramp, door adjustment or temporary plate. | Solves common barrier. |
-| accessmodops.entry.door_clearance | door clearance | CONTROL | Clearance checks swing, width, hardware reach, storm door conflict and latch height. | Ensures access. |
-| accessmodops.contractor.roster | contractor roster | RECORD | Roster lists vetted contractors, volunteer rebuild teams, accessibility specialists and availability. | Enables referral. |
-| accessmodops.contractor.scope_packet | scope packet | RECORD | Packet includes measurements, photos, permissions, priority, safety constraints and funding rules. | Reduces rework. |
-| accessmodops.contractor.license_check | license check | CONTROL | Check reviews license, insurance, background requirements and program eligibility. | Reduces fraud risk. |
-| accessmodops.contractor.site_safety | site safety briefing | PROCESS | Briefing covers utilities, mold, unstable surfaces, pets, residents and stop-work triggers. | Protects crews. |
-| accessmodops.funding.funding_source | funding source | RECORD | Source records grant, donation, insurance gap, public benefit, volunteer labor or client contribution. | Tracks resources. |
-| accessmodops.funding.cost_cap | cost cap | CONTROL | Cap limits materials, labor, travel, permits and change orders by program rule. | Protects budget. |
-| accessmodops.funding.quote_review | quote review | PROCESS | Review compares scope, unit cost, urgency, accessibility impact and available alternatives. | Supports approval. |
-| accessmodops.funding.payment_proof | payment proof | RECORD | Proof links invoice, approval, completion photo, client acceptance and exception notes. | Supports audit. |
-| accessmodops.safety.stop_work | stop-work trigger | CONTROL | Trigger pauses work for structural danger, electrical exposure, mold, violence, missing permission or unsafe weather. | Prevents harm. |
-| accessmodops.safety.user_trial | user trial | PROCESS | Trial lets the resident or caregiver test the modification under supervision when feasible. | Confirms usability. |
-| accessmodops.safety.code_boundary | code boundary | CONTROL | Boundary flags when work needs permit, licensed professional or formal inspection. | Avoids unsafe shortcuts. |
-| accessmodops.records.case_file | case file | RECORD | File links intake, eligibility, assessment, permissions, scope, funding, work proof and closeout. | Creates traceability. |
-| accessmodops.records.status_board | status board | RECORD | Board tracks requested, assessed, permission pending, funded, assigned, installed, inspected and closed. | Shows pipeline. |
-| accessmodops.records.exception_log | exception log | RECORD | Log captures denied permission, unsafe site, no access, cost overrun, missed appointment or failed work. | Enables follow-up. |
-| accessmodops.communication.client_update | client update | PROCESS | Update explains status, needed documents, appointment window, safety limits and expected next step. | Reduces uncertainty. |
-| accessmodops.communication.landlord_notice | landlord notice | PROCESS | Notice requests approval, explains temporary or permanent work and records response. | Clears permission. |
-| accessmodops.communication.referral_handoff | referral handoff | PROCESS | Handoff sends cases beyond program capacity to housing repair, disability services or legal aid. | Keeps support moving. |
-| accessmodops.metrics.time_to_assessment | time to assessment | METRIC | Metric measures request date to completed site assessment. | Shows access speed. |
-| accessmodops.metrics.install_completion | install completion | METRIC | Completion tracks approved modifications installed and accepted by residents. | Measures outcome. |
-| accessmodops.metrics.denial_reason_mix | denial reason mix | METRIC | Mix groups permission denial, funding gap, unsafe structure, ineligible request and no contact. | Reveals bottlenecks. |
-| accessmodops.closeout.acceptance_note | acceptance note | RECORD | Note records user confirmation, remaining limits, maintenance instructions and referral needs. | Closes case. |
-| accessmodops.closeout.followup_check | follow-up check | PROCESS | Check verifies continued usability, safety concerns, repair needs and changed household status. | Catches failures. |
-| accessmodops.closeout.after_action | after-action note | RECORD | Note captures contractor performance, funding gaps, common barriers and process improvements. | Improves next cycle. |
+| accessmodops.intake.request_source | источник запроса | RECORD | Источник записывает соцработника, центр помощи пострадавшим, адвоката по вопросам инвалидности, клинику, отдел приюта или самостоятельное обращение. | Показывает путь входа. |
+| accessmodops.intake.household_profile | профиль домохозяйства | RECORD | В профиле указаны жители, потребности людей с ограниченными возможностями, поддержка лиц, осуществляющих уход, язык, ограничения контактов и сроки возвращения. | Определяет поддержку. |
+| accessmodops.intake.barrier_description | описание барьера | RECORD | В описании отмечается лестница, узкая дверь, опасность в ванной, отсутствие перил, порог, поверхность дорожки или уклон входа. | Модификация кадров. |
+| accessmodops.intake.damage_context | контекст повреждения | RECORD | Контекст разделяет ранее существовавший барьер, ущерб от стихийного бедствия, временное перемещение и проблему доступа к ремонту. | Уточняет право на участие. |
+| accessmodops.eligibility.disaster_link | ссылка на катастрофу | CONTROL | Ссылка подтверждает, что модификация необходима для безопасного аварийного восстановления, возвращения домой или временного проживания. | Целевая помощь. |
+| accessmodops.eligibility.ownership_status | статус собственности | RECORD | Статус записывает владельца, арендатора, контактного лица арендодателя, государственного жилья, временной квартиры или совместной собственности. | Разрешения гидов. |
+| accessmodops.eligibility.permission_check | проверка разрешения | CONTROL | Проверка подтверждает одобрение арендодателя, владельца, ТСЖ или государственного органа перед физической работой. | Предотвращает споры. |
+| accessmodops.assessment.site_visit | посещение сайта | PROCESS | Посетитель наблюдает за входом, ванной комнатой, доступом в спальню, поверхностями маршрутов, освещением, канализацией и непосредственными опасностями. | Объем территории. |
+| accessmodops.assessment.photo_record | фотозапись | RECORD | Фотозапись фиксирует барьеры, измерения, повреждения и завершенные работы с контролем конфиденциальности. | Поддерживает решения. |
+| accessmodops.assessment.measurement_set | измерительный набор | RECORD | Измерения включают высоту, длину, ширину дверного проема, высоту порога, основу стены и расположение крепления. | Включает дизайн. |
+| accessmodops.assessment.priority_score | приоритетный балл | MODEL | Оценка учитывает зависимость от мобильности, риск падения, отсутствие лица, осуществляющего уход, доступ к медицинской помощи и крайний срок возвращения домой. | Дела заказов. |
+| accessmodops.ramp.temporary_ramp | временный пандус | MODEL | Временный пандус определяет модульные, портативные или пороговые варианты пандуса для кратковременного доступа. | Скорости возвращаются. |
+| accessmodops.ramp.slope_check | проверка уклона | CONTROL | Проверьте уклон пандуса, площадку, перила, поверхность, дренаж и номинальную нагрузку. | Снижает риск падения. |
+| accessmodops.ramp.path_clearance | просвет пути | PROCESS | Очистка позволяет удалить мусор, грязь, шнуры, незакрепленные доски и заблокированные подъездные пути. | Делает рампу пригодной для использования. |
+| accessmodops.grabbar.location_plan | план расположения поручней | RECORD | План определяет душ, туалет, коридор или точки входа на основе схемы перемещения пользователя. | Повышает безопасность. |
+| accessmodops.grabbar.wall_support | проверка поддержки стены | CONTROL | Перед установкой проверьте шпильки, подложку, анкеры и состояние поверхности. | Предотвращает неудачи. |
+| accessmodops.grabbar.install_record | установить запись | RECORD | Запись фиксирует тип стержня, местоположение, установщика, дату, крепеж и подтверждение пользователя. | Поддерживает ответственность. |
+| accessmodops.bathroom.transfer_path | путь передачи | MODEL | Маршрут отображает ограничения на перемещение туалета, ванны, душа, раковины и мобильных устройств. | Находит практические решения. |
+| accessmodops.bathroom.non_slip_control | нескользящий контроль | CONTROL | При необходимости контроль добавляет маты, полосы, дренаж или временную обработку поверхности. | Уменьшает проскальзывания. |
+| accessmodops.entry.threshold_solution | пороговое решение | MODEL | Решение включает в себя скошенный порог, мини-пандус, регулировку двери или временную пластину. | Решает общий барьер. |
+| accessmodops.entry.door_clearance | дверной зазор | CONTROL | Зазор проверяет поворот, ширину, вылет оборудования, конфликт штормовых дверей и высоту защелки. | Обеспечивает доступ. |
+| accessmodops.contractor.roster | список подрядчиков | RECORD | В реестре перечислены проверенные подрядчики, волонтерские группы по восстановлению, специалисты по обеспечению доступности и доступности. | Включает реферал. |
+| accessmodops.contractor.scope_packet | пакет области | RECORD | Пакет включает размеры, фотографии, разрешения, приоритет, ограничения безопасности и правила финансирования. | Уменьшает количество переделок. |
+| accessmodops.contractor.license_check | проверка лицензии | CONTROL | Проверьте лицензию, страховку, предварительные требования и право на участие в программе. | Снижает риск мошенничества. |
+| accessmodops.contractor.site_safety | инструктаж по безопасности на объекте | PROCESS | В инструктаже рассматриваются коммунальные услуги, плесень, нестабильные поверхности, домашние животные, жильцы и причины прекращения работы. | Защищает экипажи. |
+| accessmodops.funding.funding_source | источник финансирования | RECORD | В исходных данных указывается грант, пожертвование, страховой разрыв, общественная выгода, волонтерский труд или вклад клиента. | Отслеживает ресурсы. |
+| accessmodops.funding.cost_cap | ограничение затрат | CONTROL | Ограничение ограничивает материалы, рабочую силу, поездки, разрешения и заказы на изменения в соответствии с правилами программы. | Защищает бюджет. |
+| accessmodops.funding.quote_review | обзор цитаты | PROCESS | В обзоре сравниваются объем, стоимость единицы, срочность, влияние доступности и доступные альтернативы. | Поддерживает одобрение. |
+| accessmodops.funding.payment_proof | подтверждение оплаты | RECORD | Счет-доказательство, одобрение, фотография завершения, примечания о принятии клиента и исключения. | Поддерживает аудит. |
+| accessmodops.safety.stop_work | триггер остановки работы | CONTROL | Триггер приостанавливает работу из-за структурной опасности, воздействия электрического тока, плесени, насилия, отсутствия разрешения или небезопасной погоды. | Предотвращает вред. |
+| accessmodops.safety.user_trial | пользовательская пробная версия | PROCESS | Испытание позволяет резиденту или лицу, осуществляющему уход, протестировать модификацию под наблюдением, если это возможно. | Подтверждает удобство использования. |
+| accessmodops.safety.code_boundary | граница кода | CONTROL | Граничные флажки, когда работа требует разрешения, лицензированного специалиста или формальной проверки. | Избегает небезопасных ярлыков. |
+| accessmodops.records.case_file | материалы дела | RECORD | Прием файловых ссылок, право на участие, оценка, разрешения, объем, финансирование, подтверждение работы и закрытие. | Обеспечивает прослеживаемость. |
+| accessmodops.records.status_board | статусная доска | RECORD | Совет директоров запрашивает, оценивает, ожидает разрешения, финансирует, назначает, устанавливает, проверяет и закрывает. | Показывает трубопровод. |
+| accessmodops.records.exception_log | журнал исключений | RECORD | Журнал записывает отказ в разрешении, небезопасный сайт, отсутствие доступа, перерасход средств, пропущенную встречу или неудачную работу. | Включает дальнейшее наблюдение. |
+| accessmodops.communication.client_update | обновление клиента | PROCESS | Обновление объясняет статус, необходимые документы, окно встречи, ограничения безопасности и ожидаемый следующий шаг. | Уменьшает неопределенность. |
+| accessmodops.communication.landlord_notice | уведомление арендодателя | PROCESS | Уведомление требует одобрения, объясняет временную или постоянную работу и записывает ответ. | Очищает разрешение. |
+| accessmodops.communication.referral_handoff | передача реферала | PROCESS | Handoff передает дела, выходящие за рамки возможностей программы, на ремонт жилья, услуги по оказанию помощи инвалидам или юридическую помощь. | Поддержка продолжает двигаться. |
+| accessmodops.metrics.time_to_assessment | время для оценки | METRIC | Дата запроса метрических показателей для завершения оценки объекта. | Показывает скорость доступа. |
+| accessmodops.metrics.install_completion | завершение установки | METRIC | Завершение отслеживает одобренные модификации, установленные и принятые жильцами. | Измеряет результат. |
+| accessmodops.metrics.denial_reason_mix | сочетание причин отрицания | METRIC | Отказ в разрешении смешанным группам, дефицит финансирования, небезопасная структура, неприемлемый запрос и отсутствие контакта. | Выявляет узкие места. |
+| accessmodops.closeout.acceptance_note | акт приема-передачи | RECORD | В заметках фиксируются подтверждения пользователя, оставшиеся лимиты, инструкции по техническому обслуживанию и потребности в рефералах. | Закрывает дело. |
+| accessmodops.closeout.followup_check | последующая проверка | PROCESS | Проверка проверяет дальнейшее удобство использования, безопасность, необходимость ремонта и изменение статуса домохозяйства. | Ловит неудачи. |
+| accessmodops.closeout.after_action | записка после действия | RECORD | В примечании отражены результаты работы подрядчиков, пробелы в финансировании, общие препятствия и улучшения процессов. | Улучшается в следующем цикле. |

@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| shelteraccessops.intake.need_screen | need screen | RECORD | Screen captures mobility, sensory, cognitive, medical, language and caregiver needs. | Starts accommodation tracking. |
-| shelteraccessops.intake.self_report | self-report rule | METHOD | Residents can report needs without diagnostic proof unless policy requires escalation. | Keeps access humane. |
-| shelteraccessops.intake.caregiver | caregiver link | RECORD | Caregiver record links helper, contact, role, overnight status and privacy permission. | Supports daily care. |
-| shelteraccessops.intake.service_animal | service animal note | RECORD | Service animal note records animal presence, handler needs and relief area guidance. | Protects access. |
-| shelteraccessops.privacy.minimum_data | minimum data | SAFETY_RULE | Accommodation records collect only information needed for placement, support and safety. | Reduces privacy risk. |
-| shelteraccessops.privacy.visible_flag | visible flag control | SAFETY_RULE | Public-facing flags avoid medical detail and use operational accommodation labels. | Prevents stigma. |
-| shelteraccessops.privacy.consent_share | consent to share | RECORD | Consent records whether needs can be shared with medical, transport or partner staff. | Enables coordination. |
-| shelteraccessops.privacy.private_discussion | private discussion | METHOD | Sensitive needs are discussed away from lines, dorms and public registration desks. | Preserves dignity. |
-| shelteraccessops.devices.device_request | device request | RECORD | Request lists wheelchair, walker, cane, hearing device, charger, cot rail or other support. | Defines supply need. |
-| shelteraccessops.devices.inventory_match | inventory match | METHOD | Available devices are matched by size, safety condition, duration and priority. | Issues useful equipment. |
-| shelteraccessops.devices.loan_log | loan log | RECORD | Loan log records device ID, resident, issue time, condition and return status. | Tracks assets. |
-| shelteraccessops.devices.maintenance | device maintenance | QUALITY_CHECK | Devices are checked for brakes, tips, batteries, cleanliness and safe operation. | Prevents injury. |
-| shelteraccessops.beds.accessible_bed | accessible bed placement | METHOD | Placement considers mobility path, restroom distance, caregiver, medical desk and quiet needs. | Improves usability. |
-| shelteraccessops.beds.cot_height | cot height need | RECORD | Cot height need records low/high cot, bariatric cot, rail or transfer support. | Prevents falls. |
-| shelteraccessops.beds.quiet_area | quiet area | METHOD | Quiet area placement supports sensory, cognitive, sleep or behavioral needs. | Reduces distress. |
-| shelteraccessops.beds.family_unit | family unit preservation | CONSTRAINT | Accommodation planning tries to keep household or caregiver units together. | Protects support network. |
-| shelteraccessops.transport.arrival_support | arrival support | METHOD | Arrival support coordinates ramp, wheelchair, staff escort or accessible drop-off. | Makes entry possible. |
-| shelteraccessops.transport.local_transfer | local transfer | RECORD | Transfer record captures accessible vehicle need, destination, time and escort needs. | Supports movement. |
-| shelteraccessops.transport.medical_trip | medical trip | METHOD | Medical trips route through approved transport and care coordination process. | Prevents missed care. |
-| shelteraccessops.transport.evacuated_equipment | equipment transport | RECORD | Equipment transport records oxygen, wheelchair, charger or mobility device moved with resident. | Prevents separation. |
-| shelteraccessops.communication.language_access | language access | METHOD | Language support identifies interpreter, translated forms or communication board needs. | Improves understanding. |
-| shelteraccessops.communication.visual_alert | visual alert | METHOD | Visual alerts support people who cannot hear announcements or alarms. | Improves safety. |
-| shelteraccessops.communication.plain_script | plain script | METHOD | Staff use plain scripts for routines, rules, meals, transport and closures. | Reduces confusion. |
-| shelteraccessops.communication.resident_update | resident update | METHOD | Updates explain request status, delay reason, alternatives and next check time. | Reduces uncertainty. |
-| shelteraccessops.workflow.request_queue | request queue | RECORD | Queue tracks accommodation requests, priority, owner, status and due time. | Manages workload. |
-| shelteraccessops.workflow.priority_rule | priority rule | MODEL | Priority weighs life safety, mobility, medical dependence, caregiver absence and wait time. | Orders support. |
-| shelteraccessops.workflow.shift_handoff | shift handoff | METHOD | Handoff lists pending requests, device loans, bed moves, transport and privacy cautions. | Maintains continuity. |
-| shelteraccessops.workflow.escalation | escalation path | METHOD | Unmet needs escalate to shelter manager, medical desk, disability coordinator or logistics. | Resolves blockers. |
-| shelteraccessops.safety.fall_risk | fall risk control | SAFETY_RULE | Fall risk controls include pathways, lighting, cot placement, escort and device checks. | Reduces injury. |
-| shelteraccessops.safety.power_dependence | power dependence | SAFETY_RULE | Power-dependent devices require charging access, backup plan and monitoring. | Protects health. |
-| shelteraccessops.safety.oxygen_support | oxygen support | SAFETY_RULE | Oxygen support tracks cylinders, concentrators, fire separation and refill pathway. | Controls risk. |
-| shelteraccessops.safety.evacuation_assist | evacuation assistance | RECORD | Evacuation assistance note identifies residents needing help during alarm or relocation. | Speeds evacuation. |
-| shelteraccessops.reporting.daily_summary | daily summary | RECORD | Summary reports requests open, filled, delayed, device stock and critical gaps. | Informs command. |
-| shelteraccessops.reporting.unmet_needs | unmet needs count | MEASUREMENT | Count groups unmet needs by category, reason and site. | Guides resources. |
-| shelteraccessops.reporting.access_issue | access issue log | RECORD | Log captures barriers such as inaccessible restroom, doorway, ramp, signage or transport. | Drives fixes. |
-| shelteraccessops.reporting.partner_request | partner request | RECORD | Partner requests describe supply, staff, interpreter, transport or specialized care need. | Gets outside help. |
-| shelteraccessops.qa.case_review | case review | QUALITY_CHECK | Review checks if request, decision, action and follow-up are documented. | Improves reliability. |
-| shelteraccessops.qa.placement_check | placement check | QUALITY_CHECK | Staff verify that bed or area placement actually works for the resident. | Confirms usefulness. |
-| shelteraccessops.qa.device_reconciliation | device reconciliation | QUALITY_CHECK | Loaned devices reconcile with inventory, returns, transfers and losses. | Protects stock. |
-| shelteraccessops.qa.privacy_audit | privacy audit | QUALITY_CHECK | Audit checks access to accommodation details and improper disclosure risks. | Protects residents. |
-| shelteraccessops.metrics.fulfillment_time | fulfillment time | MEASUREMENT | Metric measures request intake to accommodation delivered. | Shows delay. |
-| shelteraccessops.metrics.request_volume | request volume | MEASUREMENT | Volume tracks accommodation requests by type, site and shift. | Plans staffing. |
-| shelteraccessops.closeout.departure_note | departure note | RECORD | Departure note captures returned devices, referral needs and destination constraints. | Closes record. |
-| shelteraccessops.review.after_action | after-action review | METHOD | Review captures access barriers, device stock, staffing, privacy and transport lessons. | Improves future shelters. |
+| shelteraccessops.intake.need_screen | нужен экран | RECORD | Экран фиксирует подвижность, сенсорные, когнитивные, медицинские, языковые потребности и потребности лица, осуществляющего уход. | Запускает отслеживание размещения. |
+| shelteraccessops.intake.self_report | правило самоотчета | METHOD | Жители могут сообщать о потребностях без диагностических доказательств, если политика не требует эскалации. | Сохраняет доступ гуманным. |
+| shelteraccessops.intake.caregiver | ссылка на сиделку | RECORD | Запись лица, осуществляющего уход, связывает помощника, контакт, роль, статус на ночь и разрешение на конфиденциальность. | Поддерживает ежедневный уход. |
+| shelteraccessops.intake.service_animal | записка о служебном животном | RECORD | В заметке о служебных животных указывается присутствие животных, потребности обслуживающего персонала и указания по месту оказания помощи. | Защищает доступ. |
+| shelteraccessops.privacy.minimum_data | минимальные данные | SAFETY_RULE | Записи о размещении собирают только информацию, необходимую для размещения, поддержки и безопасности. | Снижает риск конфиденциальности. |
+| shelteraccessops.privacy.visible_flag | видимый контроль флага | SAFETY_RULE | Флаги, обращенные к обществу, избегают медицинских подробностей и используют бирки с оперативными приспособлениями. | Предотвращает стигму. |
+| shelteraccessops.privacy.consent_share | согласие поделиться | RECORD | В согласии указывается, можно ли сообщить о потребностях медицинскому, транспортному персоналу или сотрудникам партнеров. | Обеспечивает координацию. |
+| shelteraccessops.privacy.private_discussion | частное обсуждение | METHOD | Деликатные потребности обсуждаются вне очередей, общежитий и общественных регистрационных стоек. | Сохраняет достоинство. |
+| shelteraccessops.devices.device_request | запрос устройства | RECORD | В запросе перечислены инвалидная коляска, ходунки, трость, слуховой аппарат, зарядное устройство, перила для детской кроватки или другая поддержка. | Определяет потребность в поставках. |
+| shelteraccessops.devices.inventory_match | совпадение инвентаря | METHOD | Доступные устройства подбираются по размеру, состоянию безопасности, продолжительности и приоритету. | Выдает полезное оборудование. |
+| shelteraccessops.devices.loan_log | журнал кредитов | RECORD | В журнале кредитов фиксируются идентификатор устройства, резидент, время выдачи, состояние и статус возврата. | Отслеживает активы. |
+| shelteraccessops.devices.maintenance | обслуживание устройства | QUALITY_CHECK | Устройства проверяются на наличие тормозов, наконечников, аккумуляторов, чистоту и безопасную работу. | Предотвращает травмы. |
+| shelteraccessops.beds.accessible_bed | доступное размещение кровати | METHOD | При размещении учитываются пути передвижения, расстояние до туалета, лицо, осуществляющее уход, медицинский стол и потребность в тишине. | Улучшает удобство использования. |
+| shelteraccessops.beds.cot_height | нужная высота детской кроватки | RECORD | Высота детской кроватки требует записи низкой/высокой кроватки, бариатрической кроватки, поручня или опоры для переноски. | Предотвращает падения. |
+| shelteraccessops.beds.quiet_area | тихий район | METHOD | Размещение в тихом месте удовлетворяет сенсорные, когнитивные, сонные или поведенческие потребности. | Уменьшает страдания. |
+| shelteraccessops.beds.family_unit | сохранение семейной ячейки | CONSTRAINT | При планировании размещения делается попытка сохранить единство домохозяйств или лиц, осуществляющих уход. | Защищает сеть поддержки. |
+| shelteraccessops.transport.arrival_support | поддержка прибытия | METHOD | Поддержка по прибытии координирует пандус, инвалидную коляску, сопровождение персонала или доступную зону высадки. | Делает вход возможным. |
+| shelteraccessops.transport.local_transfer | местный трансфер | RECORD | В протоколе трансфера фиксируются потребности в доступных транспортных средствах, пункт назначения, время и потребности в сопровождении. | Поддерживает движение. |
+| shelteraccessops.transport.medical_trip | медицинская поездка | METHOD | Медицинские поездки проходят через утвержденный процесс координации транспорта и ухода. | Предотвращает отсутствие ухода. |
+| shelteraccessops.transport.evacuated_equipment | транспортировка оборудования | RECORD | Транспортное оборудование записывает кислород, инвалидную коляску, зарядное устройство или мобильное устройство, перемещаемое вместе с жильцом. | Предотвращает разлуку. |
+| shelteraccessops.communication.language_access | языковой доступ | METHOD | Языковая поддержка определяет потребности в переводчике, переведенных формах или средствах связи. | Улучшает понимание. |
+| shelteraccessops.communication.visual_alert | визуальное оповещение | METHOD | Визуальные оповещения предназначены для людей, которые не могут слышать объявления или сигналы тревоги. | Повышает безопасность. |
+| shelteraccessops.communication.plain_script | простой сценарий | METHOD | Персонал использует простые сценарии для распорядка дня, правил, питания, транспорта и закрытия. | Уменьшает путаницу. |
+| shelteraccessops.communication.resident_update | обновление резидента | METHOD | В обновлениях поясняется статус запроса, причина задержки, альтернативы и время следующей проверки. | Уменьшает неопределенность. |
+| shelteraccessops.workflow.request_queue | очередь запросов | RECORD | Очередь отслеживает запросы на размещение, приоритет, владельца, статус и время выполнения. | Управляет рабочей нагрузкой. |
+| shelteraccessops.workflow.priority_rule | правило приоритета | MODEL | В приоритете безопасность жизни, мобильность, медицинская зависимость, отсутствие лица, осуществляющего уход, и время ожидания. | Поддержка заказов. |
+| shelteraccessops.workflow.shift_handoff | передача смены | METHOD | Передача содержит список ожидающих запросов, кредитов на устройства, переездов, транспорта и мер по обеспечению конфиденциальности. | Сохраняет преемственность. |
+| shelteraccessops.workflow.escalation | путь эскалации | METHOD | Неудовлетворенные потребности передаются менеджеру приюта, медицинскому персоналу, координатору по вопросам инвалидности или логистике. | Разрешает блокировщики. |
+| shelteraccessops.safety.fall_risk | контроль риска падения | SAFETY_RULE | Средства контроля риска падения включают в себя дорожки, освещение, размещение детских кроваток, сопровождение и проверку устройств. | Уменьшает травматизм. |
+| shelteraccessops.safety.power_dependence | энергетическая зависимость | SAFETY_RULE | Энергозависимым устройствам требуется доступ к зарядке, план резервного копирования и мониторинг. | Защищает здоровье. |
+| shelteraccessops.safety.oxygen_support | кислородная поддержка | SAFETY_RULE | Кислородная поддержка отслеживает баллоны, концентраторы, противопожарное отделение и пути заправки. | Контролирует риск. |
+| shelteraccessops.safety.evacuation_assist | помощь в эвакуации | RECORD | В записке о помощи при эвакуации указаны жители, нуждающиеся в помощи во время тревоги или переселения. | Ускоряет эвакуацию. |
+| shelteraccessops.reporting.daily_summary | ежедневная сводка | RECORD | Сводные отчеты об открытых, заполненных, задержанных запросах, наличии устройств и критических пробелах. | Информирует командование. |
+| shelteraccessops.reporting.unmet_needs | неудовлетворенные потребности имеют значение | MEASUREMENT | Подсчитайте группы неудовлетворенных потребностей по категориям, причинам и местам. | Путеводители по ресурсам. |
+| shelteraccessops.reporting.access_issue | доступ к журналу проблем | RECORD | Журнал фиксирует такие препятствия, как недоступный туалет, дверной проем, пандус, вывески или транспорт. | Исправления дисков. |
+| shelteraccessops.reporting.partner_request | запрос партнера | RECORD | В запросах партнеров описываются потребности в снабжении, персонале, переводчике, транспорте или специализированном уходе. | Получает постороннюю помощь. |
+| shelteraccessops.qa.case_review | рассмотрение дела | QUALITY_CHECK | Проверьте, документированы ли запросы, решения, действия и последующие действия. | Повышает надежность. |
+| shelteraccessops.qa.placement_check | проверка размещения | QUALITY_CHECK | Персонал проверяет, действительно ли размещение койки или места подходит жильцу. | Подтверждает полезность. |
+| shelteraccessops.qa.device_reconciliation | согласование устройств | QUALITY_CHECK | Сданные в аренду устройства сверяются с запасами, возвратами, перемещениями и потерями. | Защищает запас. |
+| shelteraccessops.qa.privacy_audit | аудит конфиденциальности | QUALITY_CHECK | Аудит проверяет доступ к сведениям о размещении и риски ненадлежащего раскрытия. | Защищает жильцов. |
+| shelteraccessops.metrics.fulfillment_time | время выполнения | MEASUREMENT | Метрические меры требуют поступления в предоставленное жилье. | Показывает задержку. |
+| shelteraccessops.metrics.request_volume | объем запроса | MEASUREMENT | Volume отслеживает запросы на размещение по типу, месту и смене. | Планирует штатное расписание. |
+| shelteraccessops.closeout.departure_note | записка об отъезде | RECORD | В записке об отправке указаны возвращенные устройства, потребности в направлениях и ограничения пункта назначения. | Закрывает запись. |
+| shelteraccessops.review.after_action | обзор после действий | METHOD | В обзоре отражены барьеры доступа, количество устройств, кадровое обеспечение, конфиденциальность и уроки транспорта. | Улучшает будущие убежища. |

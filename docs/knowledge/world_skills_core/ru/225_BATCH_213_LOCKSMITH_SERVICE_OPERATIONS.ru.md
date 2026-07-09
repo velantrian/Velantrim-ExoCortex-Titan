@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| lockops.intake.service_call | Locksmith service call | invariant | Call records customer, location, lock type, urgency, access issue, authorization and contact. | open secure job |
-| lockops.intake.identity_authorization | Locksmith authorization check | invariant | Check verifies customer has right to request entry, rekey or key work. | prevent misuse |
-| lockops.intake.property_permission | Property permission evidence | invariant | Evidence may include ID, lease, ownership, manager approval or vehicle registration. | lawful service |
-| lockops.intake.emergency_lockout | Emergency lockout | variant | Lockout request prioritizes access need, safety, identity and dispatch speed. | urgent entry |
-| lockops.intake.risk_screen | Locksmith risk screen | invariant | Screen flags domestic dispute, eviction, law enforcement, unsafe site or suspicious request. | do not enable harm |
-| lockops.dispatch.technician_dispatch | Locksmith technician dispatch | invariant | Dispatch assigns tech, vehicle, skill, tools, ETA and job notes. | route expert |
-| lockops.dispatch.route_eta | Locksmith route ETA | variant | ETA accounts for traffic, emergency priority, parts and location. | customer expectation |
-| lockops.dispatch.after_hours | After-hours locksmith process | variant | Process handles premium pricing, safety check-in, limited parts and escalation. | night work control |
-| lockops.dispatch.cancel_arrival | Cancel-on-arrival | invariant | Record documents customer canceled, gained entry, no authorization or unsafe condition. | explain no work |
-| lockops.dispatch.work_order | Locksmith work order | invariant | Work order captures scope, labor, parts, authorization, photos and completion notes. | job record |
-| lockops.key.key_blank_identification | Key blank identification | invariant | Identification matches profile, length, shoulder, blade and manufacturer reference. | cut right key |
-| lockops.key.key_cutting | Key cutting | invariant | Cutting duplicates or originates key using machine, code, depth and quality check. | produce working key |
-| lockops.key.key_control | Locksmith key control | invariant | Control tracks customer keys, blanks, restricted keys, custody and disposal. | protect security |
-| lockops.key.restricted_keyway | Restricted keyway | variant | Keyway limits duplication to authorized parties and controlled blanks. | access governance |
-| lockops.key.master_key_record | Master key record | variant | Record documents hierarchy, changes, issued keys and authorization. | high-risk system |
-| lockops.lock.rekey | Rekey service | invariant | Rekey changes cylinder pinning or coding so old key no longer operates. | reset access |
-| lockops.lock.cylinder_service | Cylinder service | invariant | Service cleans, repairs, repins, replaces or tests lock cylinder. | restore operation |
-| lockops.lock.lock_install | Lock installation | invariant | Installation fits hardware, strike, latch, alignment, fasteners and function. | physical security |
-| lockops.lock.lock_repair | Lock repair | invariant | Repair addresses sticking, misalignment, broken latch, worn parts or damaged hardware. | keep door working |
-| lockops.lock.hardware_grade | Hardware grade | variant | Grade indicates durability or security rating suitable for use context. | choose appropriate lock |
-| lockops.access.non_destructive_entry | Non-destructive entry | variant | Entry attempts lawful opening with minimal damage before destructive methods. | preserve hardware |
-| lockops.access.destructive_entry | Destructive entry | variant | Entry damages lock or hardware when authorized and necessary. | last resort |
-| lockops.access.vehicle_lockout | Vehicle lockout service | variant | Service opens vehicle using authorized method while protecting airbags, glass, weather seals and electronics. | avoid damage |
-| lockops.access.safe_opening | Safe opening workflow | variant | Workflow verifies authorization, safe type, lock, contents sensitivity and documentation. | high-security job |
-| lockops.access.exit_device | Exit device service | variant | Service checks panic hardware, latch, dogging, alarm interface and code requirements. | life safety |
-| lockops.electronic.access_control_reader | Access control reader | variant | Reader installation or service checks credentials, wiring, controller, door hardware and logs. | electronic entry |
-| lockops.electronic.electrified_lock | Electrified lock | variant | Lock integrates power, fail-safe or fail-secure behavior, fire alarm and access rules. | door logic |
-| lockops.electronic.keypad_programming | Keypad programming | variant | Programming manages codes, users, schedules, master code and audit needs. | code governance |
-| lockops.electronic.battery_check | Electronic lock battery check | invariant | Check verifies battery status, replacement, date and low-battery alerts. | avoid lockout |
-| lockops.electronic.audit_log | Electronic lock audit log | variant | Log records access events, programming changes, failed attempts and time settings. | trace access |
-| lockops.safe.security_seal | Locksmith security seal | variant | Seal indicates whether container, safe, key cabinet or hardware was opened or altered. | tamper evidence |
-| lockops.safe.customer_presence | Customer presence rule | invariant | Rule defines when authorized customer must be present during opening, keying or safe work. | accountability |
-| lockops.safe.evidence_handling | Locksmith evidence handling | variant | Handling protects keys, locks, photos and parts involved in investigation or dispute. | preserve facts |
-| lockops.safe.drill_point_record | Safe drill point record | variant | Record documents destructive opening location, reason and repair recommendation. | transparency |
-| lockops.safe.resecure | Re-secure after entry | invariant | Re-secure restores lock, temporary closure or replacement after entry work. | do not leave vulnerable |
-| lockops.inventory.lock_hardware_stock | Lock hardware stock | invariant | Stock tracks cylinders, locks, strikes, closers, blanks, batteries and specialty parts. | ready van |
-| lockops.inventory.tool_control | Locksmith tool control | invariant | Control protects picks, decoders, programmers, key machines and restricted tools. | sensitive equipment |
-| lockops.inventory.part_serial | Lock part serial record | variant | Record tracks serialized or restricted hardware issued to customer. | trace controlled parts |
-| lockops.billing.service_invoice | Locksmith service invoice | invariant | Invoice lists trip, labor, parts, emergency fee, authorization and payment. | close job |
-| lockops.billing.price_quote | Locksmith price quote | invariant | Quote states service call, labor range, parts and conditions before work. | avoid surprise |
-| lockops.quality.function_test | Lock function test | invariant | Test checks key operation, latch, strike, deadbolt throw, door close and user instruction. | prove security |
-| lockops.quality.customer_signature | Locksmith customer signature | invariant | Signature confirms work completed, keys returned, site secured and charges accepted. | handoff evidence |
-| lockops.metrics.locksmith_kpi | Locksmith KPI | variant | KPI tracks response time, first-visit completion, callbacks, authorization issues and parts use. | manage service |
-| lockops.continuity.lost_key_incident | Lost key incident process | invariant | Process documents lost controlled key, affected doors, rekey need and notifications. | contain exposure |
+| lockops.intake.service_call | Вызов слесарной службы | invariant | Записывает звонки клиента, местоположение, тип блокировки, срочность, проблему доступа, авторизацию и контакт. | открыть защищенную вакансию |
+| lockops.intake.identity_authorization | Проверка полномочий слесаря | invariant | Проверка подтверждает, что клиент имеет право запросить ввод, смену ключа или работу с ключом. | предотвратить неправильное использование |
+| lockops.intake.property_permission | Доказательства разрешения на собственность | invariant | Доказательства могут включать удостоверение личности, аренду, право собственности, одобрение менеджера или регистрацию транспортного средства. | законная служба |
+| lockops.intake.emergency_lockout | Аварийная блокировка | variant | При запросе блокировки приоритет отдается необходимости доступа, безопасности, идентификации и скорости отправки. | срочный вход |
+| lockops.intake.risk_screen | Экран риска слесаря | invariant | На экране отмечаются семейный спор, выселение, правоохранительные органы, небезопасное место или подозрительный запрос. | не допускайте вреда |
+| lockops.dispatch.technician_dispatch | Выезд слесаря-техника | invariant | Диспетчер назначает технологию, транспортное средство, навыки, инструменты, расчетное время прибытия и записи о задании. | эксперт по маршруту |
+| lockops.dispatch.route_eta | Маршрут слесаря ​​ETA | variant | ETA учитывает трафик, приоритет экстренной помощи, детали и местоположение. | ожидания клиентов |
+| lockops.dispatch.after_hours | Слесарный процесс в нерабочее время | variant | Процесс обеспечивает премиальное ценообразование, безопасную регистрацию, ограниченное количество деталей и эскалацию. | контроль работы в ночное время |
+| lockops.dispatch.cancel_arrival | Отмена по прибытии | invariant | Учетные документы, клиент аннулировал, получил доступ, нет авторизации или небезопасное состояние. | объясни нет работы |
+| lockops.dispatch.work_order | Порядок работы слесаря | invariant | В рабочем заказе указаны объем работ, трудозатраты, детали, разрешения, фотографии и заметки о завершении. | запись о работе |
+| lockops.key.key_blank_identification | Идентификация ключа | invariant | Идентификация соответствует профилю, длине, плечу, лезвию и номеру производителя. | вырезать правый ключ |
+| lockops.key.key_cutting | Изготовление ключей | invariant | Вырезание дубликатов или исходных ключей с использованием станка, проверка кода, глубины и качества. | изготовить рабочий ключ |
+| lockops.key.key_control | Слесарный контроль ключей | invariant | Система управления отслеживает ключи клиентов, бланки, ключи с ограниченным доступом, хранение и утилизацию. | защищать безопасность |
+| lockops.key.restricted_keyway | Ограниченный шпоночный паз | variant | Keyway ограничивает дублирование авторизованными сторонами и контролируемыми заготовками. | управление доступом |
+| lockops.key.master_key_record | Запись мастер-ключа | variant | Фиксируйте иерархию документов, изменения, выданные ключи и авторизацию. | система высокого риска |
+| lockops.lock.rekey | Услуга смены ключей | invariant | При смене ключа меняется крепление или кодировка цилиндра, поэтому старый ключ больше не работает. | сбросить доступ |
+| lockops.lock.cylinder_service | Сервис цилиндров | invariant | Сервисная служба чистит, ремонтирует, переустанавливает, заменяет или проверяет цилиндр замка. | восстановить работу |
+| lockops.lock.lock_install | Установка замка | invariant | Установка соответствует фурнитуре, защелке, защелке, выравниванию, крепежу и функциям. | физическая безопасность |
+| lockops.lock.lock_repair | Ремонт замка | invariant | Устраните залипание, перекос, сломанную защелку, изношенные детали или поврежденное оборудование. | держать дверь работающей |
+| lockops.lock.hardware_grade | Уровень оборудования | variant | Класс указывает на долговечность или рейтинг безопасности, подходящий для контекста использования. | выбрать подходящий замок |
+| lockops.access.non_destructive_entry | Неразрушающий ввод | variant | Попытки проникновения законным путем с минимальным ущербом перед деструктивными методами. | сохранить оборудование |
+| lockops.access.destructive_entry | Разрушительный вход | variant | Вход повреждает замок или фурнитуру, когда это разрешено и необходимо. | последнее средство |
+| lockops.access.vehicle_lockout | Услуга блокировки автомобиля | variant | Сервисная служба открывает автомобиль разрешенным способом, защищая при этом подушки безопасности, стекла, герметики и электронику. | избежать повреждений |
+| lockops.access.safe_opening | Процедура безопасного открытия | variant | Рабочий процесс проверяет авторизацию, тип безопасности, блокировку, конфиденциальность содержимого и документацию. | работа с высоким уровнем безопасности |
+| lockops.access.exit_device | Выйти из службы устройства | variant | Служба проверяет аппаратное обеспечение паники, защелки, фиксацию, интерфейс сигнализации и требования к коду. | безопасность жизни |
+| lockops.electronic.access_control_reader | Считыватель контроля доступа | variant | При установке или обслуживании считывателя проверяются учетные данные, проводка, контроллер, дверная фурнитура и журналы. | электронная запись |
+| lockops.electronic.electrified_lock | Электрифицированный замок | variant | Замок объединяет питание, отказоустойчивое или безопасное поведение, пожарную сигнализацию и правила доступа. | дверная логика |
+| lockops.electronic.keypad_programming | Программирование клавиатуры | variant | Программирование управляет кодами, пользователями, расписаниями, основным кодом и потребностями аудита. | управление кодом |
+| lockops.electronic.battery_check | Проверка батареи электронного замка | invariant | Проверка проверяет состояние батареи, замену, дату и предупреждения о низком заряде батареи. | избежать локаута |
+| lockops.electronic.audit_log | Журнал проверки электронных замков | variant | Журнал записывает события доступа, изменения программирования, неудачные попытки и настройки времени. | доступ к трассировке |
+| lockops.safe.security_seal | Слесарная охранная печать | variant | Пломба указывает, был ли контейнер, сейф, шкаф для ключей или оборудование открыты или изменены. | подделка доказательств |
+| lockops.safe.customer_presence | Правило присутствия клиента | invariant | Правило определяет, когда авторизованный клиент должен присутствовать при открытии, вводе ключей или безопасных работах. | подотчетность |
+| lockops.safe.evidence_handling | Обработка доказательств слесарем | variant | Обработка защищает ключи, замки, фотографии и детали, участвующие в расследовании или споре. | сохранять факты |
+| lockops.safe.drill_point_record | Безопасная запись точек сверления | variant | Зафиксируйте в документах место деструктивного вскрытия, причину и рекомендации по ремонту. | прозрачность |
+| lockops.safe.resecure | Повторная охрана после входа | invariant | Повторная защита восстанавливает замок, временное закрытие или замену после входных работ. | не оставляй уязвимым |
+| lockops.inventory.lock_hardware_stock | Блокировка аппаратного обеспечения | invariant | На складе можно найти цилиндры, замки, защелки, доводчики, заготовки, аккумуляторы и специальные детали. | готовый фургон |
+| lockops.inventory.tool_control | Контроль слесарного инструмента | invariant | Control защищает отмычки, декодеры, программисты, ключевые машины и инструменты с ограниченным доступом. | чувствительное оборудование |
+| lockops.inventory.part_serial | Заблокировать запись серийного номера детали | variant | Запись треков серийного или ограниченного оборудования, выданного клиенту. | отслеживание контролируемых деталей |
+| lockops.billing.service_invoice | Счет за услуги слесаря | invariant | В счете-фактуре указаны поездка, работа, запчасти, плата за неотложную помощь, авторизация и оплата. | закрыть работу |
+| lockops.billing.price_quote | Стоимость слесарного дела | invariant | В предложении указывается вызов сервисной службы, объем работ, детали и условия перед работой. | избегать неожиданностей |
+| lockops.quality.function_test | Проверка функции блокировки | invariant | При тестировании проверяется работа ключа, защелка, защелкивание, ход засова, закрытие двери и инструкции пользователя. | доказать безопасность |
+| lockops.quality.customer_signature | Подпись клиента слесаря | invariant | Подпись подтверждает завершение работы, возврат ключей, охрану объекта и принятие платежей. | передача доказательств |
+| lockops.metrics.locksmith_kpi | Слесарь КПИ | variant | KPI отслеживает время ответа, завершение первого визита, обратные вызовы, проблемы с авторизацией и использование деталей. | управлять сервисом |
+| lockops.continuity.lost_key_incident | Процесс инцидента с потерей ключа | invariant | Документы процесса потеряли контролируемый ключ, затронули двери, необходимость смены ключей и уведомления. | сдерживать воздействие |

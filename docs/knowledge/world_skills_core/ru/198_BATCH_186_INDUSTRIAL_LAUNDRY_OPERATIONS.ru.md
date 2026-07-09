@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| laundryops.intake.soil_sort | Soil sorting | invariant | Soil sorting separates textiles by customer, fabric, color, soil level, infection risk and process route. | dirty side begins right |
-| laundryops.intake.bag_opening | Laundry bag opening | invariant | Bag opening checks for sharps, foreign objects, counts and special handling labels. | protect workers and machines |
-| laundryops.intake.weight_capture | Load weight capture | invariant | Weight capture sets wash formula, machine loading, productivity and customer billing data. | kilograms drive process |
-| laundryops.intake.customer_lot | Customer lot tracking | invariant | Lot tracking links textiles to customer, pickup, batch, process and delivery. | avoid mix-up |
-| laundryops.intake.rewash_flag | Rewash flag | variant | Flag marks items needing second process because of stain, odor, reject or contamination. | quality loop |
-| laundryops.intake.repair_flag | Textile repair flag | variant | Flag routes damaged items to mending, replacement, discard or customer approval. | extend linen life |
-| laundryops.wash.wash_formula | Wash formula | invariant | Formula defines water level, temperature, chemistry, mechanical action and time by textile type. | recipe for cleaning |
-| laundryops.wash.detergent_dose | Detergent dosing | invariant | Dosing must match soil, load weight, water quality and formula. | chemistry control |
-| laundryops.wash.alkalinity_control | Alkalinity control | variant | Alkalinity affects soil removal and textile life and must be balanced by formula. | clean without damage |
-| laundryops.wash.disinfection_step | Laundry disinfection step | invariant | Disinfection step uses validated time, temperature or chemistry where hygiene requirement applies. | infection control |
-| laundryops.wash.rinse_quality | Rinse quality | invariant | Rinse removes soils and residual chemicals that could irritate users or damage textiles. | finish the wash |
-| laundryops.wash.water_hardness | Laundry water hardness | variant | Hardness affects detergent performance, scaling and textile feel. | water changes chemistry |
-| laundryops.machine.tunnel_washer | Tunnel washer | variant | Tunnel washer moves loads through sequential zones for high-volume continuous washing. | industrial throughput |
-| laundryops.machine.washer_extractor | Washer-extractor | invariant | Washer-extractor washes and spins batches before drying or finishing. | batch workhorse |
-| laundryops.machine.load_balance | Load balance | invariant | Balanced load protects machine bearings, spin performance and safety. | avoid vibration damage |
-| laundryops.machine.preventive_maintenance | Laundry preventive maintenance | invariant | PM covers belts, bearings, pumps, valves, lint, sensors, chemicals and safety devices. | uptime protection |
-| laundryops.machine.lint_control | Lint control | invariant | Lint removal reduces fire risk, airflow restriction and product contamination. | small fibers, big risk |
-| laundryops.machine.energy_recovery | Laundry heat recovery | variant | Heat recovery reuses wastewater or exhaust heat where system economics and hygiene allow. | reduce utility cost |
-| laundryops.dry.dryer_loading | Dryer loading | invariant | Dryer load size affects drying time, wrinkles, energy, fire risk and textile wear. | do not overload |
-| laundryops.dry.moisture_target | Moisture target | invariant | Target residual moisture supports ironing, folding or storage without overdrying. | finish quality |
-| laundryops.dry.cooldown_cycle | Dryer cooldown cycle | invariant | Cooldown reduces heat retention and fire risk before unloading or cart storage. | hot linen risk |
-| laundryops.dry.fire_risk | Laundry fire risk | invariant | Fire risk increases with lint, heat, oils, overdrying, blocked airflow and hot storage. | prevention critical |
-| laundryops.dry.tumbler_alarm | Dryer alarm response | invariant | Alarm response checks heat, airflow, door, sensor, lint and load before restart. | do not ignore alarm |
-| laundryops.finish.ironing_line | Flatwork ironing line | invariant | Ironing line dries, presses and folds sheets or table linen using heat, pressure and speed control. | smooth flatwork |
-| laundryops.finish.feeder | Ironer feeder | variant | Feeder aligns linen into ironer to reduce wrinkles, jams and unsafe hand placement. | quality and safety |
-| laundryops.finish.folding | Laundry folding | invariant | Folding standardizes size, count, presentation and packing for delivery. | usable output |
-| laundryops.finish.garment_press | Garment pressing | variant | Pressing shapes uniforms or garments while controlling heat, fabric, finish and identification. | professional appearance |
-| laundryops.finish.stack_count | Stack count | invariant | Count verifies finished bundles match customer order, packing slip or route requirement. | avoid shortages |
-| laundryops.finish.reject_station | Laundry reject station | invariant | Reject station removes stained, torn, wet, misfolded or wrong items from clean flow. | quality gate |
-| laundryops.hygiene.clean_dirty_separation | Clean-dirty separation | invariant | Separation prevents soiled textiles, carts, air or staff from contaminating clean output. | core hygiene barrier |
-| laundryops.hygiene.hand_hygiene_point | Laundry hand hygiene point | invariant | Hygiene stations support transitions between soil side and clean side. | worker behavior control |
-| laundryops.hygiene.cart_sanitization | Laundry cart sanitization | invariant | Sanitization prevents dirty carts from contaminating clean textiles. | transport surface matters |
-| laundryops.hygiene.barrier_washer | Barrier washer | variant | Barrier washer loads from dirty side and unloads clean side through physical separation. | built-in segregation |
-| laundryops.hygiene.infection_control_linen | Infection-control linen | variant | High-risk linen follows special bagging, sorting, washing and PPE procedures. | protect staff and users |
-| laundryops.hygiene.clean_storage | Clean linen storage | invariant | Storage protects clean textiles from dust, moisture, pests, traffic and dirty items. | preserve clean status |
-| laundryops.delivery.route_manifest | Laundry route manifest | invariant | Manifest lists customer, bags, carts, counts, products, pickups and deliveries. | route accountability |
-| laundryops.delivery.cart_label | Laundry cart label | invariant | Label identifies customer, contents, clean/dirty status, route and delivery point. | prevent wrong drop |
-| laundryops.delivery.linen_shortage | Linen shortage report | invariant | Report documents missing quantity, cause, customer impact and corrective action. | service recovery |
-| laundryops.delivery.customer_par | Customer par level | invariant | Par level defines expected linen quantity at customer site and in laundry cycle. | inventory balance |
-| laundryops.delivery.delivery_exception | Laundry delivery exception | variant | Exception records late, missing, damaged, contaminated or rejected delivery item. | close issue |
-| laundryops.quality.stain_trend | Stain trend analysis | variant | Trend analysis identifies recurring stain types, customers, textiles or process failures. | improve wash |
-| laundryops.quality.textile_life | Textile life tracking | invariant | Tracking monitors uses, losses, repairs and discard to manage replacement cost. | linen is capital |
-| laundryops.quality.customer_complaint | Laundry customer complaint | invariant | Complaint records quality, count, delivery, odor, damage or billing issue and response. | feedback loop |
-| laundryops.quality.process_audit | Laundry process audit | invariant | Audit checks sorting, formula, machine settings, hygiene separation, counts and records. | verify operation |
+| laundryops.intake.soil_sort | Сортировка почвы | invariant | При сортировке почвы текстиль разделяется по клиенту, ткани, цвету, уровню загрязнения, риску заражения и маршруту обработки. | грязная сторона начинается справа |
+| laundryops.intake.bag_opening | Открытие мешка для белья | invariant | Проверка вскрытия сумок на наличие острых предметов, посторонних предметов, количеств и этикеток об особом обращении. | защитить рабочих и машины |
+| laundryops.intake.weight_capture | Учет веса груза | invariant | Регистрация веса устанавливает формулу стирки, загрузку машины, производительность и данные о счетах клиентов. | килограммы процесса езды |
+| laundryops.intake.customer_lot | Отслеживание партии клиентов | invariant | Отслеживание партии связывает текстиль с клиентом, получением, партией, обработкой и доставкой. | избежать путаницы |
+| laundryops.intake.rewash_flag | Перемыть флаг | variant | Флагом отмечаются предметы, требующие повторной обработки из-за пятен, запаха, брака или загрязнения. | цикл качества |
+| laundryops.intake.repair_flag | Флаг ремонта текстиля | variant | Флаг направляет поврежденные предметы на починку, замену, утилизацию или одобрение клиента. | продлить срок службы белья |
+| laundryops.wash.wash_formula | Формула стирки | invariant | Формула определяет уровень воды, температуру, химический состав, механическое воздействие и время в зависимости от типа ткани. | рецепт для чистки |
+| laundryops.wash.detergent_dose | Дозирование моющего средства | invariant | Дозировка должна соответствовать почве, весу груза, качеству воды и формуле. | химический контроль |
+| laundryops.wash.alkalinity_control | Контроль щелочности | variant | Щелочность влияет на удаление загрязнений и срок службы ткани и должна быть сбалансирована с помощью формулы. | чистый без повреждений |
+| laundryops.wash.disinfection_step | Этап дезинфекции белья | invariant | На этапе дезинфекции используются проверенные время, температура или химический состав, если применяются гигиенические требования. | инфекционный контроль |
+| laundryops.wash.rinse_quality | Качество полоскания | invariant | Полоскание удаляет загрязнения и остатки химикатов, которые могут раздражать пользователей или повредить текстиль. | закончить стирку |
+| laundryops.wash.water_hardness | Жесткость воды для стирки | variant | Твердость влияет на эффективность моющего средства, образование накипи и ощущение ткани. | вода меняет химию |
+| laundryops.machine.tunnel_washer | Туннельная шайба | variant | Туннельная моечная машина перемещает грузы через последовательные зоны для непрерывной мойки больших объемов. | промышленная пропускная способность |
+| laundryops.machine.washer_extractor | Стиральная машина-отжимка | invariant | Стиральная машина с отжимом стирает и отжимает изделия перед сушкой или финишной отделкой. | пакетная рабочая лошадка |
+| laundryops.machine.load_balance | Баланс нагрузки | invariant | Сбалансированная нагрузка защищает подшипники машины, производительность вращения и безопасность. | избежать повреждений, вызванных вибрацией |
+| laundryops.machine.preventive_maintenance | Профилактический уход за стиркой | invariant | PM охватывает ремни, подшипники, насосы, клапаны, ворс, датчики, химикаты и защитные устройства. | защита безотказной работы |
+| laundryops.machine.lint_control | Контроль ворса | invariant | Удаление ворса снижает риск возгорания, ограничения воздушного потока и загрязнения продукта. | маленькие волокна, большой риск |
+| laundryops.machine.energy_recovery | Рекуперация тепла в прачечной | variant | При рекуперации тепла повторно используются сточные воды или выхлопное тепло, если это позволяют экономика и гигиена системы. | сократить расходы на коммунальные услуги |
+| laundryops.dry.dryer_loading | Загрузка сушилки | invariant | Размер загрузки сушильной машины влияет на время сушки, образование складок, энергопотребление, риск возгорания и износ текстиля. | не перегружайте |
+| laundryops.dry.moisture_target | Цель по влажности | invariant | Целевая остаточная влажность позволяет гладить, складывать или хранить вещи без пересушивания. | качество отделки |
+| laundryops.dry.cooldown_cycle | Цикл охлаждения сушилки | invariant | Охлаждение снижает удержание тепла и риск возгорания перед разгрузкой или хранением тележки. | риск горячего белья |
+| laundryops.dry.fire_risk | Риск пожара в прачечной | invariant | Риск возгорания увеличивается из-за ворса, тепла, масел, пересушивания, блокировки воздушного потока и горячего хранения. | профилактика имеет решающее значение |
+| laundryops.dry.tumbler_alarm | Реакция на сигнал тревоги сушильной машины | invariant | В ответ на сигнал тревоги перед перезапуском проверяется нагрев, поток воздуха, дверь, датчик, ворс и нагрузка. | не игнорируй тревогу |
+| laundryops.finish.ironing_line | Гладильная линия для плоских изделий | invariant | Гладильная линия сушит, прессует и сгибает простыни или столовое белье, используя контроль температуры, давления и скорости. | гладкая гладкая поверхность |
+| laundryops.finish.feeder | Гладильный питатель | variant | Устройство подачи выравнивает белье в гладильной машине, чтобы избежать складок, застреваний и небезопасного размещения рук. | качество и безопасность |
+| laundryops.finish.folding | Прачечная складная | invariant | Складывание стандартизирует размер, количество, презентацию и упаковку для доставки. | полезный выход |
+| laundryops.finish.garment_press | Прессование одежды | variant | Прессование формирует униформу или одежду, контролируя температуру, ткань, отделку и идентификацию. | профессиональный внешний вид |
+| laundryops.finish.stack_count | Количество стеков | invariant | Count проверяет соответствие готовых комплектов заказу клиента, упаковочной накладной или требованиям маршрута. | избегать дефицита |
+| laundryops.finish.reject_station | Станция отбраковки белья | invariant | Станция отбраковки удаляет из чистого потока испачканные, порванные, мокрые, неправильно сложенные или неправильно сложенные предметы. | качественные ворота |
+| laundryops.hygiene.clean_dirty_separation | Разделение «чистое-грязное» | invariant | Сепарация предотвращает загрязнение чистой продукции загрязненными тканями, тележками, воздухом или персоналом. | основной гигиенический барьер |
+| laundryops.hygiene.hand_hygiene_point | Пункт гигиены рук в прачечной | invariant | Гигиенические станции обеспечивают переход между почвенной и чистой стороной. | контроль поведения работников |
+| laundryops.hygiene.cart_sanitization | Дезинфекция тележек для белья | invariant | Санитарная обработка предотвращает загрязнение чистого текстиля грязными тележками. | транспортные наземные вопросы |
+| laundryops.hygiene.barrier_washer | Барьерная шайба | variant | Барьерная шайба загружает грязную сторону и выгружает чистую сторону посредством физического разделения. | встроенная сегрегация |
+| laundryops.hygiene.infection_control_linen | Белье инфекционное | variant | Белье высокого риска подвергается специальной упаковке, сортировке, стирке и использованию средств индивидуальной защиты. | защитить персонал и пользователей |
+| laundryops.hygiene.clean_storage | Чистое хранение белья | invariant | Хранение защищает чистый текстиль от пыли, влаги, вредителей, движения и грязных предметов. | сохранять чистый статус |
+| laundryops.delivery.route_manifest | Манифест маршрута прачечной | invariant | В манифесте перечислены клиенты, сумки, тележки, количества, продукты, самовывозы и поставки. | подотчетность маршрута |
+| laundryops.delivery.cart_label | Этикетка для тележки для белья | invariant | Этикетка идентифицирует клиента, содержимое, статус чистоты/грязности, маршрут и место доставки. | предотвратить неправильное падение |
+| laundryops.delivery.linen_shortage | Отчет о нехватке белья | invariant | Сообщите о недостающем количестве, причине, влиянии на клиента и корректирующих действиях. | восстановление службы |
+| laundryops.delivery.customer_par | Уровень номинала клиента | invariant | Уровень номинала определяет ожидаемое количество белья на территории клиента и в цикле стирки. | баланс запасов |
+| laundryops.delivery.delivery_exception | Исключение для доставки белья | variant | Исключения регистрируют просроченные, отсутствующие, поврежденные, загрязненные или отклоненные предметы поставки. | закрыть вопрос |
+| laundryops.quality.stain_trend | Анализ тенденций появления пятен | variant | Анализ тенденций выявляет повторяющиеся типы пятен, клиентов, текстиль или сбои процессов. | улучшить стирку |
+| laundryops.quality.textile_life | Отслеживание текстильной жизни | invariant | Отслеживание отслеживает использование, потери, ремонт и выбросы для управления стоимостью замены. | белье - это капитал |
+| laundryops.quality.customer_complaint | Жалоба клиента прачечной | invariant | В жалобе фиксируются качество, количество, доставка, запах, ущерб или проблема с выставлением счетов и ответ. | петля обратной связи |
+| laundryops.quality.process_audit | Аудит процесса стирки | invariant | Аудит проверяет сортировку, формулу, настройки машины, гигиеническое разделение, подсчеты и записи. | проверить работу |

@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| vitalfeeops.intake.request_source | request source | RECORD | Source records survivor center, legal clinic, caseworker, shelter desk, benefits office, school or hotline. | Shows entry path. |
-| vitalfeeops.intake.client_profile | client profile | RECORD | Profile captures contact, safe contact, language, current location, household role and deadline. | Defines support. |
-| vitalfeeops.intake.record_need | record need | RECORD | Need records birth, death, marriage, divorce, adoption, name-change or amended record request. | Frames document path. |
-| vitalfeeops.intake.urgency_score | urgency score | MODEL | Score weighs ID replacement, benefits, school, housing, probate, funeral, employment and court deadlines. | Prioritizes cases. |
-| vitalfeeops.eligibility.crisis_link | crisis link | CONTROL | Link verifies records or fee support need is tied to disaster loss, displacement, death or urgent recovery. | Targets aid. |
-| vitalfeeops.eligibility.fee_waiver_rule | fee waiver rule | CONTROL | Rule maps agency criteria for fee waiver, indigence, disaster declaration or partner payment. | Guides eligibility. |
-| vitalfeeops.eligibility.relationship_check | relationship check | CONTROL | Check verifies requester relationship or authority for restricted vital records. | Prevents rejection. |
-| vitalfeeops.eligibility.duplicate_check | duplicate check | CONTROL | Check compares client, record type, agency, submitted form and prior payment support. | Avoids duplicate requests. |
-| vitalfeeops.document.document_type | document type | RECORD | Type separates certified copy, informational copy, amendment, search letter or delayed registration. | Routes correctly. |
-| vitalfeeops.document.jurisdiction | jurisdiction | RECORD | Jurisdiction records state, county, municipality, country, agency office and filing location. | Finds correct agency. |
-| vitalfeeops.document.quantity_needed | quantity needed | RECORD | Quantity records required copies, mailing needs, filing purpose and fee impact. | Controls costs. |
-| vitalfeeops.proof.identity_proof | identity proof | RECORD | Proof records accepted ID, temporary ID, witness, notarized statement or agency exception. | Prepares submission. |
-| vitalfeeops.proof.relationship_proof | relationship proof | RECORD | Proof captures parent, spouse, child, representative, executor or court-authorized status. | Supports access. |
-| vitalfeeops.proof.disaster_proof | disaster proof | RECORD | Proof records loss statement, FEMA-style letter, shelter record, police report or caseworker attestation. | Supports waiver. |
-| vitalfeeops.proof.missing_proof | missing proof state | STATE | State flags missing ID, inconsistent names, no relationship proof, foreign record or damaged documents. | Triggers referral. |
-| vitalfeeops.forms.form_selection | form selection | PROCESS | Selection chooses correct agency form, waiver form, affidavit, mailing form and payment form. | Prevents rejection. |
-| vitalfeeops.forms.completeness_check | completeness check | CONTROL | Check confirms fields, signatures, dates, copy quality, notarization and attachments. | Reduces returns. |
-| vitalfeeops.forms.signature_rule | signature rule | CONTROL | Rule states which signatures must be wet, notarized, witnessed or agency-present. | Avoids invalid submission. |
-| vitalfeeops.forms.translation_need | translation need | RECORD | Need records translated documents, certified translation requirement and deadline. | Supports complex cases. |
-| vitalfeeops.fees.fee_amount | fee amount | RECORD | Amount records search, copy, amendment, expedite, mailing, notary and card processing fees. | Shows cost. |
-| vitalfeeops.fees.waiver_packet | waiver packet | RECORD | Packet links fee waiver form, proof, hardship note, disaster proof and approval path. | Builds waiver request. |
-| vitalfeeops.fees.partner_payment | partner payment | PROCESS | Payment coordinates nonprofit voucher, agency account, money order, card payment or reimbursement. | Removes barrier. |
-| vitalfeeops.fees.receipt_match | receipt match | CONTROL | Match compares payment approval, receipt, agency, record type, quantity and submission. | Prevents overpayment. |
-| vitalfeeops.submission.submission_method | submission method | MODEL | Method separates in-person, mail, online, drop box, consulate, court clerk or partner handoff. | Selects workflow. |
-| vitalfeeops.submission.packet_scan | packet scan | PROCESS | Scan records submitted documents, redactions, receipt, tracking and client copy where allowed. | Preserves proof. |
-| vitalfeeops.submission.mail_tracking | mail tracking | RECORD | Tracking captures carrier, address, date, tracking number, return envelope and delivery status. | Tracks mailed cases. |
-| vitalfeeops.submission.agency_receipt | agency receipt | RECORD | Receipt records agency confirmation, file number, expected processing time and contact route. | Enables status checks. |
-| vitalfeeops.status.status_board | status board | RECORD | Board tracks proof pending, waiver pending, submitted, agency review, returned, issued, mailed and closed. | Shows pipeline. |
-| vitalfeeops.status.status_check | status check | PROCESS | Check follows agency timeline, reference number, mail tracking and escalation rules. | Prevents forgotten cases. |
-| vitalfeeops.status.returned_packet | returned packet | STATE | State records reason for return such as missing proof, wrong fee, bad form, signature or jurisdiction. | Triggers correction. |
-| vitalfeeops.status.expedite_request | expedite request | PROCESS | Request documents urgent deadline, agency criteria, fee support and escalation contact. | Speeds critical cases. |
-| vitalfeeops.privacy.minimum_data | minimum data | CONTROL | Minimum data limits sensitive identity, family and legal details to required processing. | Reduces exposure. |
-| vitalfeeops.privacy.safe_contact | safe contact | CONTROL | Safe contact defines whether calls, texts, email or voicemail may mention vital records. | Protects clients. |
-| vitalfeeops.privacy.document_storage | document storage | CONTROL | Storage defines secure copies, redaction, retention, destruction and access permissions. | Protects records. |
-| vitalfeeops.records.case_file | case file | RECORD | File links intake, eligibility, proof, waiver, submission, payment, status and closeout. | Supports audit. |
-| vitalfeeops.records.exception_log | exception log | RECORD | Log captures missing proof, rejected waiver, returned packet, payment issue, wrong agency or mail loss. | Enables review. |
-| vitalfeeops.communication.client_update | client update | PROCESS | Update explains proof needs, waiver status, submission date, expected timeline and next step. | Reduces uncertainty. |
-| vitalfeeops.communication.agency_contact | agency contact | PROCESS | Contact asks agency about requirements, status, correction options or disaster exceptions. | Solves blockers. |
-| vitalfeeops.communication.referral_handoff | referral handoff | PROCESS | Handoff routes complex legal status, amendment, foreign record, custody or probate issue to specialists. | Keeps scope safe. |
-| vitalfeeops.metrics.waiver_approval_rate | waiver approval rate | METRIC | Rate compares waiver requests, approvals, denials and pending cases. | Measures access. |
-| vitalfeeops.metrics.processing_time | processing time | METRIC | Time measures submission to issued record or final agency response. | Shows delay. |
-| vitalfeeops.metrics.return_reason_mix | return reason mix | METRIC | Mix groups proof gap, fee issue, wrong form, wrong agency, signature and identity mismatch. | Reveals bottlenecks. |
-| vitalfeeops.closeout.client_receipt | client receipt | PROCESS | Receipt confirms client received record, denial, refund, correction request or next referral. | Closes loop. |
-| vitalfeeops.closeout.after_action | after-action note | RECORD | Note captures agency barriers, waiver lessons, proof needs and funding gaps. | Improves next cycle. |
+| vitalfeeops.intake.request_source | источник запроса | RECORD | Исходные данные включают центр помощи пострадавшим, юридическую клинику, социального работника, отдел приюта, отдел пособий, школу или горячую линию. | Показывает путь входа. |
+| vitalfeeops.intake.client_profile | профиль клиента | RECORD | Профиль фиксирует контакт, безопасный контакт, язык, текущее местоположение, роль в семье и крайний срок. | Определяет поддержку. |
+| vitalfeeops.intake.record_need | запись необходимости | RECORD | Нужны записи о рождении, смерти, браке, разводе, усыновлении, изменении имени или запрос на внесение поправок в записи. | Путь к документу фреймов. |
+| vitalfeeops.intake.urgency_score | оценка срочности | MODEL | Оценка учитывает замену удостоверения личности, льготы, школу, жилье, завещание, похороны, трудоустройство и сроки в суде. | Расставляет приоритеты по делам. |
+| vitalfeeops.eligibility.crisis_link | кризисная ссылка | CONTROL | Ссылка подтверждает, что записи или потребность в финансовой поддержке связаны с потерями в результате стихийного бедствия, перемещением, смертью или срочным восстановлением. | Целевая помощь. |
+| vitalfeeops.eligibility.fee_waiver_rule | правило отказа от платы | CONTROL | Правила обозначают критерии агентства для отказа от гонораров, бедности, объявления о стихийном бедствии или партнерских выплат. | Право на участие в программе гидов. |
+| vitalfeeops.eligibility.relationship_check | проверка отношений | CONTROL | Проверка проверяет связь или полномочия запрашивающей стороны в отношении ограниченных записей актов гражданского состояния. | Предотвращает отторжение. |
+| vitalfeeops.eligibility.duplicate_check | дубликат чека | CONTROL | При проверке сравниваются клиент, тип записи, агентство, отправленная форма и поддержка предварительного платежа. | Избегает дублирования запросов. |
+| vitalfeeops.document.document_type | тип документа | RECORD | Тип разделяет заверенную копию, информационную копию, поправку, письмо о поиске или отложенную регистрацию. | Маршрутизирует правильно. |
+| vitalfeeops.document.jurisdiction | юрисдикция | RECORD | В юрисдикции указывается штат, округ, муниципалитет, страна, офис агентства и место подачи заявки. | Находит правильное агентство. |
+| vitalfeeops.document.quantity_needed | необходимое количество | RECORD | Укажите количество требуемых копий, потребности в рассылке, цель подачи и влияние пошлин. | Контролирует затраты. |
+| vitalfeeops.proof.identity_proof | удостоверение личности | RECORD | В качестве доказательства фиксируются принятые удостоверения личности, временные удостоверения личности, свидетели, нотариально заверенные заявления или исключения агентства. | Готовит подачу. |
+| vitalfeeops.proof.relationship_proof | доказательство отношений | RECORD | Доказательства фиксируют статус родителя, супруга, ребенка, представителя, исполнителя или уполномоченного судом статуса. | Поддерживает доступ. |
+| vitalfeeops.proof.disaster_proof | доказательство стихийных бедствий | RECORD | Доказательства включают заявление об убытках, письмо в стиле FEMA, запись в приюте, полицейский отчет или аттестацию социального работника. | Поддерживает отказ. |
+| vitalfeeops.proof.missing_proof | состояние отсутствия доказательства | STATE | Государственные флаги: отсутствие удостоверения личности, противоречивые имена, отсутствие доказательств родства, иностранная запись или поврежденные документы. | Запускает реферал. |
+| vitalfeeops.forms.form_selection | выбор формы | PROCESS | Выбор выбирает правильную форму агентства, форму отказа, аффидевит, форму почтовой рассылки и форму оплаты. | Предотвращает отторжение. |
+| vitalfeeops.forms.completeness_check | проверка комплектности | CONTROL | Проверка подтверждает поля, подписи, даты, качество копии, нотариальное заверение и вложения. | Снижает доходность. |
+| vitalfeeops.forms.signature_rule | правило подписи | CONTROL | Правило определяет, какие подписи должны быть мокрыми, нотариально заверенными, засвидетельствованными или присутствующими в агентстве. | Избегает недействительной отправки. |
+| vitalfeeops.forms.translation_need | необходимость перевода | RECORD | Нужны записи переведенных документов, требования к заверенному переводу и сроки. | Поддерживает сложные случаи. |
+| vitalfeeops.fees.fee_amount | сумма комиссии | RECORD | Сумма записывает поиск, копирование, изменение, ускорение, почтовые расходы, нотариальные сборы и сборы за обработку карт. | Показывает стоимость. |
+| vitalfeeops.fees.waiver_packet | пакет отказа | RECORD | Форма отказа от платы за пакетные каналы, подтверждение, примечание о трудностях, защита от стихийных бедствий и путь утверждения. | Создает запрос на отказ. |
+| vitalfeeops.fees.partner_payment | партнерский платеж | PROCESS | Координаты оплаты: некоммерческий ваучер, счет агентства, денежный перевод, оплата картой или возмещение. | Убирает барьер. |
+| vitalfeeops.fees.receipt_match | совпадение квитанции | CONTROL | Сопоставление сравнивает утверждение платежа, квитанцию, агентство, тип записи, количество и отправку. | Предотвращает переплату. |
+| vitalfeeops.submission.submission_method | метод подачи | MODEL | Метод разделяет передачу лично, по почте, через Интернет, через почтовый ящик, через консульство, клерку суда или партнеру. | Выбирает рабочий процесс. |
+| vitalfeeops.submission.packet_scan | сканирование пакетов | PROCESS | Сканирование фиксирует отправленные документы, исправления, квитанции, отслеживание и клиентские копии, если это разрешено. | Сохраняет доказательства. |
+| vitalfeeops.submission.mail_tracking | отслеживание почты | RECORD | Отслеживание фиксирует перевозчика, адрес, дату, номер отслеживания, обратный конверт и статус доставки. | Отслеживает отправленные по почте дела. |
+| vitalfeeops.submission.agency_receipt | агентская квитанция | RECORD | В квитанции записано подтверждение агентства, номер файла, ожидаемое время обработки и маршрут связи. | Включает проверку статуса. |
+| vitalfeeops.status.status_board | статусная доска | RECORD | Совет отслеживает ожидающие подтверждения, ожидающие отказа, отправленные, проверенные агентством, возвращенные, выданные, отправленные по почте и закрытые. | Показывает трубопровод. |
+| vitalfeeops.status.status_check | проверка статуса | PROCESS | Проверка соответствует графику агентства, ссылочному номеру, правилам отслеживания почты и эскалации. | Предотвращает забытые случаи. |
+| vitalfeeops.status.returned_packet | возвращенный пакет | STATE | Причина возврата государственных записей, например отсутствие доказательств, неправильный размер оплаты, неправильная форма, подпись или юрисдикция. | Вызывает коррекцию. |
+| vitalfeeops.status.expedite_request | ускорить запрос | PROCESS | Срочный срок запроса документов, критерии агентства, поддержка по оплате и контакт для эскалации. | Ускоряет критические случаи. |
+| vitalfeeops.privacy.minimum_data | минимальные данные | CONTROL | Минимум данных ограничивает конфиденциальные личные, семейные и юридические данные необходимой обработкой. | Уменьшает воздействие. |
+| vitalfeeops.privacy.safe_contact | безопасный контакт | CONTROL | Безопасный контакт определяет, могут ли звонки, текстовые сообщения, электронная или голосовая почта касаться важных записей. | Защищает клиентов. |
+| vitalfeeops.privacy.document_storage | хранение документов | CONTROL | Хранилище определяет безопасные копии, редактирование, хранение, уничтожение и права доступа. | Защищает записи. |
+| vitalfeeops.records.case_file | материалы дела | RECORD | Прием файловых ссылок, право на участие, подтверждение, отказ, подача, оплата, статус и закрытие. | Поддерживает аудит. |
+| vitalfeeops.records.exception_log | журнал исключений | RECORD | В журнале фиксируются недостающие доказательства, отклоненный отказ, возвращенный пакет, проблема с оплатой, неправильное агентство или потеря почты. | Включает обзор. |
+| vitalfeeops.communication.client_update | обновление клиента | PROCESS | Обновление объясняет необходимость подтверждения, статус отказа, дату подачи, ожидаемые сроки и следующий шаг. | Уменьшает неопределенность. |
+| vitalfeeops.communication.agency_contact | контакт агентства | PROCESS | Контактное лицо спрашивает агентство о требованиях, статусе, вариантах исправления или исключениях в случае стихийных бедствий. | Решает блокировщики. |
+| vitalfeeops.communication.referral_handoff | передача реферала | PROCESS | Передача сложного правового статуса, внесения поправок, иностранных записей, опеки или выдачи завещания специалистам. | Обеспечивает безопасность прицела. |
+| vitalfeeops.metrics.waiver_approval_rate | процент одобрения отказа | METRIC | В рейтинге сравниваются запросы на отказ, одобрения, отказы и дела, находящиеся на рассмотрении. | Измеряет доступ. |
+| vitalfeeops.metrics.processing_time | время обработки | METRIC | Время измеряет представление выданной записи или окончательного ответа агентства. | Показывает задержку. |
+| vitalfeeops.metrics.return_reason_mix | сочетание причин возврата | METRIC | Недочет в доказательствах смешанных групп, проблема с оплатой, неправильная форма, неправильное агентство, несоответствие подписи и личности. | Выявляет узкие места. |
+| vitalfeeops.closeout.client_receipt | клиентская квитанция | PROCESS | Квитанция подтверждает, что клиент получил запись, отказ, возврат средств, запрос на исправление или следующее направление. | Замыкает цикл. |
+| vitalfeeops.closeout.after_action | записка после действия | RECORD | В примечании отражены барьеры агентств, уроки отказа от прав, потребности в доказательствах и пробелы в финансировании. | Улучшается в следующем цикле. |

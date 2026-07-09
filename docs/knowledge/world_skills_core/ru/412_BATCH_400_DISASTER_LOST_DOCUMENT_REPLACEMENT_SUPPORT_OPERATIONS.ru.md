@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| lostdocops.intake.request_source | request source | RECORD | Source records survivor center, hotline, shelter, caseworker, legal aid or outreach entry. | Shows referral path. |
-| lostdocops.intake.document_type | document type | RECORD | Type distinguishes ID, birth record, title, deed, benefits card, immigration document or school record. | Routes request. |
-| lostdocops.intake.loss_cause | loss cause | RECORD | Loss cause records fire, flood, evacuation, theft, displacement or inaccessible property. | Supports waiver. |
-| lostdocops.intake.urgency | urgency level | MODEL | Urgency weighs shelter access, benefits, employment, travel, medical care and legal deadlines. | Prioritizes help. |
-| lostdocops.identity.primary_proof | primary proof | RECORD | Primary proof captures available government ID, passport, license or certified record. | Supports replacement. |
-| lostdocops.identity.secondary_proof | secondary proof | RECORD | Secondary proof uses bills, school records, employer letters, medical records or affidavits. | Helps no-ID cases. |
-| lostdocops.identity.affidavit | affidavit pathway | METHOD | Affidavit pathway documents witness, notary, relationship and limits. | Handles missing proof. |
-| lostdocops.identity.name_variation | name variation | RECORD | Name variation records former names, transliteration, marriage name and spelling differences. | Reduces rejections. |
-| lostdocops.agency.directory | agency directory | RECORD | Directory lists issuing agencies, forms, hours, fees, contacts and disaster procedures. | Guides staff. |
-| lostdocops.agency.vital_records | vital records referral | METHOD | Vital records path covers birth, death, marriage and divorce record replacement. | Restores core documents. |
-| lostdocops.agency.motor_vehicle | motor vehicle referral | METHOD | Motor vehicle path covers license, vehicle title, registration and disability placard. | Restores mobility/legal status. |
-| lostdocops.agency.benefits_card | benefits card referral | METHOD | Benefits path covers SNAP, Medicaid, social security, unemployment or local assistance cards. | Restores aid access. |
-| lostdocops.forms.form_packet | form packet | RECORD | Packet includes correct forms, instructions, required proof, fees and mailing/upload options. | Reduces errors. |
-| lostdocops.forms.prefill | prefill support | METHOD | Staff help prefill non-sensitive fields while resident confirms accuracy. | Speeds applications. |
-| lostdocops.forms.translation | translation need | METHOD | Translation support identifies language, interpreter and document translation requirements. | Improves acceptance. |
-| lostdocops.forms.signature | signature control | SAFETY_RULE | Applicants sign their own forms unless legal representative authority is documented. | Prevents fraud. |
-| lostdocops.fees.waiver_eligibility | fee waiver eligibility | MODEL | Eligibility checks disaster declaration, income, agency policy and document type. | Reduces cost. |
-| lostdocops.fees.waiver_form | waiver form | RECORD | Waiver form records basis, supporting proof, agency and submission date. | Documents relief. |
-| lostdocops.fees.payment_assist | payment assistance | METHOD | Payment support routes to nonprofit funds, vouchers or case management where allowed. | Helps low-resource residents. |
-| lostdocops.fees.receipt | fee receipt | RECORD | Receipt stores amount, payer, document type, agency and reimbursement status. | Supports audit. |
-| lostdocops.appointments.slot_search | appointment search | METHOD | Staff search agency slots by location, accessibility, urgency and document requirements. | Gets service time. |
-| lostdocops.appointments.booking | booking record | RECORD | Booking records date, agency, confirmation, documents needed and transport needs. | Tracks next step. |
-| lostdocops.appointments.reminder | reminder process | METHOD | Reminders use preferred contact, language, time and backup contact. | Reduces no-shows. |
-| lostdocops.appointments.no_show | no-show handling | METHOD | No-show handling records reason, reschedule need and barrier. | Keeps case active. |
-| lostdocops.status.case_status | case status | RECORD | Status distinguishes intake, proof gathering, submitted, appointment booked, issued, denied or closed. | Shows progress. |
-| lostdocops.status.submission_proof | submission proof | RECORD | Proof includes receipt, tracking number, upload confirmation or agency note. | Verifies action. |
-| lostdocops.status.denial_reason | denial reason | RECORD | Denial records missing proof, mismatch, fee issue, ineligible document or agency hold. | Guides correction. |
-| lostdocops.status.reopen | reopen rule | METHOD | Case reopens when denial, lost mail, new proof or urgent need appears. | Prevents dead ends. |
-| lostdocops.privacy.data_minimum | data minimum | SAFETY_RULE | Staff avoid storing full IDs, images or sensitive numbers unless required and protected. | Reduces exposure. |
-| lostdocops.privacy.secure_copy | secure copy | SAFETY_RULE | Copies are encrypted, locked, redacted or returned according to policy. | Protects identity. |
-| lostdocops.privacy.authorized_release | authorized release | RECORD | Release records permission to speak with agency, legal aid or caseworker. | Enables follow-up. |
-| lostdocops.privacy.fraud_flag | fraud flag | RECORD | Fraud concerns are recorded and escalated without blocking legitimate aid unfairly. | Balances safety. |
-| lostdocops.communication.script | resident script | METHOD | Script explains steps, proof options, expected time, costs and limits. | Sets expectations. |
-| lostdocops.communication.partner_update | partner update | METHOD | Partners receive aggregate demand, barriers, agency delays and fee-waiver needs. | Coordinates support. |
-| lostdocops.communication.accessibility | accessibility support | METHOD | Support covers mobility, language, internet access, phone access and cognitive assistance. | Improves equity. |
-| lostdocops.communication.deadline_alert | deadline alert | METHOD | Alerts flag court, benefits, school, employment or housing deadlines tied to documents. | Prevents harm. |
-| lostdocops.records.case_log | case log | RECORD | Log stores request, proof, forms, appointments, submissions, outcomes and referrals. | Creates continuity. |
-| lostdocops.records.document_checklist | document checklist | RECORD | Checklist tracks which proof and forms are ready, missing or not applicable. | Organizes work. |
-| lostdocops.records.audit_note | audit note | RECORD | Audit note explains fee support, waiver basis, staff action and resident consent. | Supports review. |
-| lostdocops.records.retention | retention rule | CONSTRAINT | Records follow privacy, legal aid, emergency and grant retention schedules. | Controls lifecycle. |
-| lostdocops.metrics.completion_rate | completion rate | MEASUREMENT | Completion measures requests ending with replacement issued or verified path completed. | Shows effectiveness. |
-| lostdocops.metrics.time_to_submit | time to submit | MEASUREMENT | Time to submit measures intake to agency submission. | Shows bottlenecks. |
-| lostdocops.metrics.barrier_count | barrier count | MEASUREMENT | Barriers count missing proof, fees, appointments, language, transport and agency delay. | Guides fixes. |
-| lostdocops.review.after_action | after-action review | METHOD | Review captures agency procedures, proof barriers, waiver success, privacy and appointment lessons. | Improves future support. |
+| lostdocops.intake.request_source | источник запроса | RECORD | Источник записывает центр для пострадавших, горячую линию, приют, соцработника, юридическую помощь или аутрич-центр. | Показывает реферальный путь. |
+| lostdocops.intake.document_type | тип документа | RECORD | Тип различает удостоверение личности, запись о рождении, титул, документ, карту льгот, иммиграционный документ или школьную запись. | Запрос маршрутов. |
+| lostdocops.intake.loss_cause | причина потери | RECORD | Причиной потери записей является пожар, наводнение, эвакуация, кража, перемещение или недоступность имущества. | Поддерживает отказ. |
+| lostdocops.intake.urgency | уровень срочности | MODEL | Срочность учитывает доступ к жилью, льготам, трудоустройству, поездкам, медицинскому обслуживанию и юридическим срокам. | Отдает приоритет помощи. |
+| lostdocops.identity.primary_proof | первичное доказательство | RECORD | Первичное доказательство включает в себя доступное государственное удостоверение личности, паспорт, лицензию или сертифицированную запись. | Поддерживает замену. |
+| lostdocops.identity.secondary_proof | вторичное доказательство | RECORD | Вторичные доказательства включают счета, школьные записи, письма работодателя, медицинские записи или письменные показания. | Помогает в случаях отсутствия удостоверения личности. |
+| lostdocops.identity.affidavit | путь под присягой | METHOD | Путь аффидевита документирует свидетеля, нотариуса, отношения и ограничения. | Обрабатывает недостающие доказательства. |
+| lostdocops.identity.name_variation | вариант имени | RECORD | Вариация имени записывает прежние имена, транслитерацию, фамилию брака и различия в написании. | Снижает количество отказов. |
+| lostdocops.agency.directory | каталог агентств | RECORD | В справочнике перечислены выдающие агентства, формы, часы работы, сборы, контакты и процедуры в случае стихийных бедствий. | Персонал гидов. |
+| lostdocops.agency.vital_records | направление на записи актов гражданского состояния | METHOD | Путь записи актов гражданского состояния охватывает замену записей о рождении, смерти, браке и разводе. | Восстанавливает базовые документы. |
+| lostdocops.agency.motor_vehicle | направление на автомобиль | METHOD | Путь автотранспортного средства включает в себя права, название транспортного средства, регистрацию и табличку об инвалидности. | Восстанавливает мобильность/легальный статус. |
+| lostdocops.agency.benefits_card | направление на карту льгот | METHOD | Путь льгот включает карты SNAP, Medicaid, социального обеспечения, карты по безработице или местную помощь. | Восстанавливает доступ к помощи. |
+| lostdocops.forms.form_packet | сформировать пакет | RECORD | Пакет включает в себя правильные формы, инструкции, необходимые доказательства, сборы и варианты рассылки/загрузки. | Уменьшает ошибки. |
+| lostdocops.forms.prefill | поддержка предварительного заполнения | METHOD | Персонал помогает предварительно заполнить неконфиденциальные поля, а резидент подтверждает точность. | Ускоряет приложения. |
+| lostdocops.forms.translation | необходимость перевода | METHOD | Поддержка перевода определяет требования к языку, устному переводчику и переводу документов. | Улучшает принятие. |
+| lostdocops.forms.signature | контроль подписи | SAFETY_RULE | Заявители подписывают свои собственные формы, если не подтверждены документально полномочия законного представителя. | Предотвращает мошенничество. |
+| lostdocops.fees.waiver_eligibility | право на освобождение от уплаты пошлины | MODEL | Право на участие проверяет декларацию о стихийном бедствии, доход, политику агентства и тип документа. | Снижает стоимость. |
+| lostdocops.fees.waiver_form | форма отказа | RECORD | Основа записи формы отказа, подтверждающие доказательства, агентство и дата подачи. | Облегчение документов. |
+| lostdocops.fees.payment_assist | помощь в оплате | METHOD | Маршруты поддержки платежей в некоммерческие фонды, ваучеры или ведение дел, где это разрешено. | Помогает малообеспеченным жителям. |
+| lostdocops.fees.receipt | квитанция о гонораре | RECORD | В квитанции хранится сумма, плательщик, тип документа, агентство и статус возмещения. | Поддерживает аудит. |
+| lostdocops.appointments.slot_search | поиск встречи | METHOD | Слоты агентств по поиску персонала по местоположению, доступности, срочности и требованиям к документам. | Получает время обслуживания. |
+| lostdocops.appointments.booking | запись бронирования | RECORD | Дата записи бронирования, агентство, подтверждение, необходимые документы и транспортные потребности. | Отслеживает следующий шаг. |
+| lostdocops.appointments.reminder | процесс напоминания | METHOD | В напоминаниях используются предпочитаемый контакт, язык, время и резервный контакт. | Снижает количество неявок. |
+| lostdocops.appointments.no_show | обработка неявки | METHOD | Причина неявки, необходимость переноса записи и барьер. | Сохраняет дело активным. |
+| lostdocops.status.case_status | статус дела | RECORD | Статус различает прием, сбор доказательств, отправление, запись на прием, выдачу, отказ или закрытие. | Показывает прогресс. |
+| lostdocops.status.submission_proof | подтверждение подачи | RECORD | Доказательство включает квитанцию, номер отслеживания, подтверждение загрузки или примечание агентства. | Проверяет действие. |
+| lostdocops.status.denial_reason | причина отказа | RECORD | В отказе указываются отсутствие доказательств, несоответствие, проблема с оплатой, неприемлемый документ или задержка со стороны агентства. | Коррекция направляющих. |
+| lostdocops.status.reopen | правило повторного открытия | METHOD | Дело возобновляется, когда появляется отрицание, потеря почты, новые доказательства или срочная необходимость. | Предотвращает тупики. |
+| lostdocops.privacy.data_minimum | минимум данных | SAFETY_RULE | Сотрудники избегают хранить полные удостоверения личности, изображения или конфиденциальные номера, если это не требуется и не защищено. | Уменьшает воздействие. |
+| lostdocops.privacy.secure_copy | защищенная копия | SAFETY_RULE | Копии шифруются, блокируются, редактируются или возвращаются в соответствии с политикой. | Защищает личность. |
+| lostdocops.privacy.authorized_release | санкционированный выпуск | RECORD | Опубликовать разрешение на разговор с агентством, юридической помощью или соцработником. | Включает дальнейшее наблюдение. |
+| lostdocops.privacy.fraud_flag | флаг мошенничества | RECORD | Проблемы мошенничества фиксируются и обостряются без несправедливого блокирования законной помощи. | Балансирует безопасность. |
+| lostdocops.communication.script | резидентный сценарий | METHOD | Сценарий объясняет шаги, варианты проверки, ожидаемое время, затраты и ограничения. | Устанавливает ожидания. |
+| lostdocops.communication.partner_update | обновление партнера | METHOD | Партнеры получают информацию о совокупном спросе, барьерах, агентских задержках и необходимости освобождения от комиссий. | Поддержка координат. |
+| lostdocops.communication.accessibility | поддержка доступности | METHOD | Поддержка охватывает мобильность, язык, доступ в Интернет, доступ к телефону и когнитивную помощь. | Улучшает справедливость. |
+| lostdocops.communication.deadline_alert | предупреждение о крайнем сроке | METHOD | Предупреждает о сроках суда, пособий, учебы, трудоустройства или жилья, привязанных к документам. | Предотвращает вред. |
+| lostdocops.records.case_log | журнал дел | RECORD | Журнал хранит запросы, доказательства, формы, встречи, материалы, результаты и направления. | Создает преемственность. |
+| lostdocops.records.document_checklist | контрольный список документов | RECORD | Контрольный список отслеживает, какие доказательства и формы готовы, отсутствуют или неприменимы. | Организует работу. |
+| lostdocops.records.audit_note | аудиторская записка | RECORD | В аудиторской записке разъясняются поддержка в виде платы, основания для отказа, действия персонала и согласие резидента. | Поддерживает обзор. |
+| lostdocops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам конфиденциальности, юридической помощи, чрезвычайных ситуаций и хранения грантов. | Управляет жизненным циклом. |
+| lostdocops.metrics.completion_rate | степень завершения | MEASUREMENT | Запросы на меры по завершению заканчиваются выдачей замены или завершением проверенного пути. | Показывает эффективность. |
+| lostdocops.metrics.time_to_submit | пора отправлять | MEASUREMENT | Пришло время представить принятые меры на рассмотрение агентства. | Показывает узкие места. |
+| lostdocops.metrics.barrier_count | количество барьеров | MEASUREMENT | Барьеры включают отсутствие доказательств, сборы, встречи, языковые, транспортные и агентские задержки. | Исправления в руководствах. |
+| lostdocops.review.after_action | обзор после действий | METHOD | В обзоре отражены процедуры агентства, барьеры доказательства, успешность отказа, конфиденциальность и уроки назначения. | Улучшает будущую поддержку. |

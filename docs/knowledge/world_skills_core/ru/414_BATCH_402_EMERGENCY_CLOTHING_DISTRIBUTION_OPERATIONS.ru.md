@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| clothingdistops.activation.trigger | distribution trigger | MODEL | Trigger includes displacement, fire, flood, evacuation, sheltering or loss of personal belongings. | Starts clothing support. |
-| clothingdistops.activation.partner | partner roster | RECORD | Roster lists donation centers, shelters, nonprofits, retailers, laundry and transport partners. | Coordinates help. |
-| clothingdistops.activation.service_model | service model | RECORD | Model distinguishes closet, voucher, mobile delivery, shelter table or appointment pickup. | Defines operation. |
-| clothingdistops.activation.command_link | command link | RECORD | Operation reports to donations, sheltering, logistics and public information leads. | Keeps oversight. |
-| clothingdistops.intake.household | household intake | RECORD | Intake captures household members, sizes, urgent needs, language and pickup/delivery constraints. | Defines demand. |
-| clothingdistops.intake.item_need | item need | RECORD | Need lists shirts, pants, underwear, socks, coats, shoes, baby items or work clothing. | Guides selection. |
-| clothingdistops.intake.priority | priority level | MODEL | Priority weighs no clothing, weather exposure, children, medical needs and work/school deadlines. | Orders service. |
-| clothingdistops.intake.privacy | privacy rule | SAFETY_RULE | Clothing needs and sizes are handled discreetly with minimal personal data. | Preserves dignity. |
-| clothingdistops.sizing.size_profile | size profile | RECORD | Profile records size range, shoe size, gender preference, child age and fit notes. | Improves match. |
-| clothingdistops.sizing.substitution | substitution rule | METHOD | Substitution uses acceptable alternatives when exact size or style is unavailable. | Keeps service moving. |
-| clothingdistops.sizing.tryon_policy | try-on policy | CONSTRAINT | Try-on rules define hygiene, privacy, returns and fitting space. | Prevents discomfort. |
-| clothingdistops.sizing.special_need | special need | RECORD | Special need covers adaptive clothing, maternity, uniforms, steel-toe shoes or sensory concerns. | Supports real use. |
-| clothingdistops.inventory.item_master | item master | RECORD | Item master classifies garment type, size, condition, season, gender-neutral use and restrictions. | Standardizes stock. |
-| clothingdistops.inventory.receiving | receiving check | QUALITY_CHECK | Receiving checks cleanliness, damage, appropriateness, size labels and bag condition. | Protects quality. |
-| clothingdistops.inventory.sorting | sorting method | METHOD | Sorting groups items by type, size, season, condition and priority category. | Speeds selection. |
-| clothingdistops.inventory.stock_count | stock count | MEASUREMENT | Count tracks units received, issued, discarded, laundered and remaining. | Shows availability. |
-| clothingdistops.donations.acceptance | acceptance criteria | CONSTRAINT | Criteria reject dirty, damaged, unsafe or unsuitable clothing. | Reduces burden. |
-| clothingdistops.donations.unsolicited | unsolicited goods | METHOD | Unsolicited clothing is routed to sorting, storage, partner transfer or disposal. | Controls overflow. |
-| clothingdistops.donations.retail_donation | retail donation | RECORD | Retail donation records donor, new items, sizes, restrictions and receipt needs. | Maintains accountability. |
-| clothingdistops.donations.shortage_request | shortage request | METHOD | Requests target specific sizes, coats, shoes, underwear, socks or baby items. | Fills gaps. |
-| clothingdistops.hygiene.laundering | laundering pathway | METHOD | Used clothing needing cleaning is routed to laundry before issue. | Protects recipients. |
-| clothingdistops.hygiene.contamination | contamination rule | SAFETY_RULE | Smoke, mold, floodwater, pest or chemical contamination requires rejection or specialized handling. | Prevents harm. |
-| clothingdistops.hygiene.new_underwear | new underwear rule | SAFETY_RULE | Underwear and socks are issued new where policy requires. | Maintains hygiene. |
-| clothingdistops.hygiene.storage_clean | clean storage | SAFETY_RULE | Clean clothing is stored dry, pest-free and separated from rejected goods. | Preserves quality. |
-| clothingdistops.issue.pick_list | pick list | RECORD | Pick list converts household needs into items, sizes, quantities and substitutions. | Guides staff. |
-| clothingdistops.issue.dignity_choice | dignity choice | METHOD | Residents can choose among available options where feasible. | Preserves autonomy. |
-| clothingdistops.issue.issue_limit | issue limit | CONSTRAINT | Limits define quantity per person, category or time period. | Extends supply. |
-| clothingdistops.issue.receipt | issue receipt | RECORD | Receipt records household, items, sizes, quantities, date and staff. | Supports inventory. |
-| clothingdistops.pickup.appointment | pickup appointment | RECORD | Appointment records time, location, household, prepared package and access needs. | Organizes handoff. |
-| clothingdistops.pickup.queue | pickup queue | METHOD | Queue handles walk-ins, appointments, urgent cases and privacy-sensitive requests. | Manages demand. |
-| clothingdistops.pickup.return_exchange | exchange policy | CONSTRAINT | Exchange rules define wrong size, unsuitable item, hygiene and inventory update process. | Improves fit. |
-| clothingdistops.pickup.site_setup | site setup | METHOD | Setup provides sorting tables, private area, signage, staff flow and security. | Improves service. |
-| clothingdistops.delivery.delivery_request | delivery request | RECORD | Request captures address, sizes, access, contact window and mobility barriers. | Enables outreach. |
-| clothingdistops.delivery.route_plan | route plan | METHOD | Route groups deliveries by area, urgency and package readiness. | Saves time. |
-| clothingdistops.delivery.no_contact | no-contact policy | METHOD | Policy defines doorstep leave, retry, hold or return based on safety and privacy. | Controls loss. |
-| clothingdistops.delivery.confirmation | delivery confirmation | RECORD | Confirmation records recipient, time, items delivered and unresolved needs. | Closes handoff. |
-| clothingdistops.communication.public_notice | public notice | METHOD | Notice states available items, hours, eligibility, donation rules and shortage needs. | Guides community. |
-| clothingdistops.communication.partner_update | partner update | METHOD | Partners receive inventory gaps, demand, service hours and referral instructions. | Aligns support. |
-| clothingdistops.communication.language | language access | METHOD | Signs and scripts use common local languages and simple size terms. | Improves access. |
-| clothingdistops.communication.weather_alert | weather alert | METHOD | Alerts emphasize coats, rain gear, heat clothing or footwear during weather risk. | Prioritizes safety. |
-| clothingdistops.metrics.households_served | households served | MEASUREMENT | Metric counts households and people served by item category and site. | Shows reach. |
-| clothingdistops.metrics.size_stockout | size stockout | MEASUREMENT | Stockout tracks missing sizes, shoe sizes and seasonal categories. | Guides donations. |
-| clothingdistops.metrics.discard_rate | discard rate | MEASUREMENT | Discard rate tracks unusable donations by reason. | Improves donor guidance. |
-| clothingdistops.review.after_action | after-action review | METHOD | Review captures sizing, dignity, laundering, donation quality, delivery and reporting lessons. | Improves future distribution. |
+| clothingdistops.activation.trigger | триггер распределения | MODEL | Триггер включает перемещение, пожар, наводнение, эвакуацию, укрытие или потерю личных вещей. | Начинается поддержка одежды. |
+| clothingdistops.activation.partner | список партнеров | RECORD | В реестре перечислены центры пожертвований, приюты, некоммерческие организации, розничные торговцы, прачечные и транспортные партнеры. | Координаты в помощь. |
+| clothingdistops.activation.service_model | модель обслуживания | RECORD | Модель различает шкаф, ваучер, мобильную доставку, стол для приюта или самовывоз. | Определяет операцию. |
+| clothingdistops.activation.command_link | командная ссылка | RECORD | Отчеты о ходе операций направляются руководителям отделов пожертвований, жилья, логистики и общественной информации. | Сохраняет надзор. |
+| clothingdistops.intake.household | потребление домохозяйств | RECORD | При приеме учитываются члены домохозяйства, размеры, неотложные потребности, язык и ограничения на получение/доставку. | Определяет спрос. |
+| clothingdistops.intake.item_need | потребность в товаре | RECORD | Нужен список рубашек, брюк, нижнего белья, носков, пальто, обуви, детских вещей или рабочей одежды. | Выбор гидов. |
+| clothingdistops.intake.priority | уровень приоритета | MODEL | Приоритет отдается отказу от одежды, воздействию погодных условий, детям, медицинским потребностям и срокам работы/учебы. | Обслуживание заказов. |
+| clothingdistops.intake.privacy | правило конфиденциальности | SAFETY_RULE | Потребности и размеры одежды обрабатываются конфиденциально с минимальным использованием личных данных. | Сохраняет достоинство. |
+| clothingdistops.sizing.size_profile | размер профиля | RECORD | В профиле записан диапазон размеров, размер обуви, гендерные предпочтения, возраст ребенка и примечания по размеру. | Улучшает соответствие. |
+| clothingdistops.sizing.substitution | правило замены | METHOD | При замене используются приемлемые альтернативы, когда точный размер или стиль недоступны. | Обеспечивает движение сервиса. |
+| clothingdistops.sizing.tryon_policy | политика примерки | CONSTRAINT | Правила примерки определяют гигиену, конфиденциальность, возврат и пространство для примерки. | Предотвращает дискомфорт. |
+| clothingdistops.sizing.special_need | особая потребность | RECORD | Особые потребности охватывают адаптивную одежду, одежду для беременных, униформу, обувь со стальным носком или сенсорные проблемы. | Поддерживает реальное использование. |
+| clothingdistops.inventory.item_master | мастер предметов | RECORD | Мастер предметов классифицирует тип одежды, размер, состояние, время года, гендерно-нейтральное использование и ограничения. | Стандартизирует запасы. |
+| clothingdistops.inventory.receiving | получение чека | QUALITY_CHECK | При приеме проверяется чистота, наличие повреждений, соответствие, размерные этикетки и состояние сумки. | Защищает качество. |
+| clothingdistops.inventory.sorting | метод сортировки | METHOD | Сортировка группирует вещи по типу, размеру, сезону, состоянию и категории приоритета. | Выбор скоростей. |
+| clothingdistops.inventory.stock_count | инвентаризация | MEASUREMENT | Подсчет отслеживает полученные, выданные, выброшенные, отмытые и оставшиеся единицы. | Показывает наличие. |
+| clothingdistops.donations.acceptance | критерии приемки | CONSTRAINT | Критерии отбраковки грязной, поврежденной, небезопасной или неподходящей одежды. | Снижает нагрузку. |
+| clothingdistops.donations.unsolicited | нежелательные товары | METHOD | Незатребованная одежда направляется на сортировку, хранение, передачу партнерам или утилизацию. | Контролирует переполнение. |
+| clothingdistops.donations.retail_donation | розничное пожертвование | RECORD | В розничных пожертвованиях регистрируются доноры, новые предметы, размеры, ограничения и потребности в получении. | Сохраняет ответственность. |
+| clothingdistops.donations.shortage_request | запрос на недостачу | METHOD | Запросы ориентированы на определенные размеры, пальто, обувь, нижнее белье, носки или детские товары. | Заполняет пробелы. |
+| clothingdistops.hygiene.laundering | путь отмывания денег | METHOD | Использованную одежду, нуждающуюся в чистке, перед выдачей отправляют в прачечную. | Защищает получателей. |
+| clothingdistops.hygiene.contamination | правило загрязнения | SAFETY_RULE | Дым, плесень, паводковые воды, вредители или химическое загрязнение требуют утилизации или специального обращения. | Предотвращает вред. |
+| clothingdistops.hygiene.new_underwear | новое правило нижнего белья | SAFETY_RULE | Нижнее белье и носки выдаются новыми, если этого требует политика. | Соблюдает гигиену. |
+| clothingdistops.hygiene.storage_clean | чистое хранилище | SAFETY_RULE | Чистую одежду хранят сухой, свободной от вредителей и отдельно от бракованного товара. | Сохраняет качество. |
+| clothingdistops.issue.pick_list | список выбора | RECORD | Список выбора преобразует домашние потребности в предметы, размеры, количества и замены. | Персонал гидов. |
+| clothingdistops.issue.dignity_choice | выбор достоинства | METHOD | Жители могут выбирать среди доступных вариантов, где это возможно. | Сохраняет автономность. |
+| clothingdistops.issue.issue_limit | лимит эмиссии | CONSTRAINT | Лимиты определяют количество на человека, категорию или период времени. | Расширяет поставки. |
+| clothingdistops.issue.receipt | выдать квитанцию | RECORD | В квитанции указывается дом, предметы, размеры, количество, дата и персонал. | Поддерживает инвентарь. |
+| clothingdistops.pickup.appointment | Встреча встречи | RECORD | При встрече фиксируются время, место, домохозяйство, подготовленный пакет и потребности в доступе. | Организует передачу. |
+| clothingdistops.pickup.queue | очередь на получение | METHOD | Очередь обрабатывает входы, встречи, срочные дела и запросы, чувствительные к конфиденциальности. | Управляет спросом. |
+| clothingdistops.pickup.return_exchange | политика обмена | CONSTRAINT | Правила обмена определяют неправильный размер, неподходящий предмет, гигиену и процесс обновления инвентаря. | Улучшает посадку. |
+| clothingdistops.pickup.site_setup | настройка сайта | METHOD | Установка обеспечивает сортировочные столы, приватную зону, вывески, поток персонала и безопасность. | Улучшает сервис. |
+| clothingdistops.delivery.delivery_request | запрос на доставку | RECORD | Запрос фиксирует адрес, размеры, доступ, окно контактов и барьеры мобильности. | Обеспечивает охват. |
+| clothingdistops.delivery.route_plan | план маршрута | METHOD | Маршрутизируйте доставку по регионам, срочности и готовности посылки. | Экономит время. |
+| clothingdistops.delivery.no_contact | политика отсутствия контактов | METHOD | Политика определяет выход из дома, повторную попытку, удержание или возврат с учетом требований безопасности и конфиденциальности. | Контролирует потери. |
+| clothingdistops.delivery.confirmation | подтверждение доставки | RECORD | В подтверждении указывается получатель, время, доставленные товары и нерешенные потребности. | Закрывает передачу. |
+| clothingdistops.communication.public_notice | публичное уведомление | METHOD | В уведомлении указаны доступные предметы, часы работы, право на участие, правила пожертвований и потребности в нехватке. | Сообщество гидов. |
+| clothingdistops.communication.partner_update | обновление партнера | METHOD | Партнеры получают информацию о недостающих запасах, спросе, часах обслуживания и инструкции по направлениям. | Выравнивает поддержку. |
+| clothingdistops.communication.language | языковой доступ | METHOD | В знаках и надписях используются общепринятые местные языки и простые обозначения размеров. | Улучшает доступ. |
+| clothingdistops.communication.weather_alert | оповещение о погоде | METHOD | В предупреждениях особое внимание уделяется пальто, дождевикам, теплой одежде или обуви во время погодных рисков. | Отдает приоритет безопасности. |
+| clothingdistops.metrics.households_served | обслуживаемые домохозяйства | MEASUREMENT | Метрика учитывает домохозяйства и людей, обслуживаемых по категориям товаров и сайтам. | Показывает охват. |
+| clothingdistops.metrics.size_stockout | дефицит размеров | MEASUREMENT | Stockout отслеживает недостающие размеры, размеры обуви и сезонные категории. | Пожертвования гидов. |
+| clothingdistops.metrics.discard_rate | процент сброса | MEASUREMENT | Коэффициент сброса отслеживает непригодные для использования пожертвования по причине. | Улучшает руководство доноров. |
+| clothingdistops.review.after_action | обзор после действий | METHOD | Обзор отражает размеры, достоинство, отмывание денег, качество пожертвований, уроки доставки и отчетности. | Улучшает будущее распространение. |

@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| moveops.sales.move_inquiry | Moving inquiry | invariant | Inquiry records origin, destination, date, volume, stairs, access, services and constraints. | start estimate |
-| moveops.sales.survey | Moving survey | invariant | Survey estimates inventory, weight or volume, packing needs, risks and access limits. | price realistically |
-| moveops.sales.estimate_type | Moving estimate type | invariant | Type defines binding, nonbinding, hourly, flat-rate or not-to-exceed pricing. | customer expectation |
-| moveops.sales.service_scope | Move service scope | invariant | Scope covers packing, loading, transport, storage, unpacking, disposal and exclusions. | define job |
-| moveops.sales.date_hold | Move date hold | variant | Hold reserves crew, truck and slot pending deposit or confirmation. | capacity promise |
-| moveops.planning.move_plan | Move plan | invariant | Plan maps crew, truck, timing, access, inventory, packing, route and special items. | operational blueprint |
-| moveops.planning.crew_assignment | Moving crew assignment | invariant | Assignment matches crew size, skill, hours, driver, helper and supervisor to move. | staff the job |
-| moveops.planning.truck_assignment | Moving truck assignment | invariant | Assignment chooses truck size, liftgate, equipment and route suitability. | fit load |
-| moveops.planning.access_check | Move access check | invariant | Check confirms parking, elevators, loading docks, stairs, permits and time windows. | avoid day-of blockers |
-| moveops.planning.weather_plan | Moving weather plan | variant | Plan adapts protection, timing and safety for rain, snow, heat or wind. | weather-proof move |
-| moveops.pack.packing_order | Packing order | invariant | Order lists rooms, materials, fragile items, owner-packed items and labeling rules. | pack systematically |
-| moveops.pack.carton_label | Carton label | invariant | Label identifies room, contents, handling, destination and priority. | find items later |
-| moveops.pack.fragile_pack | Fragile packing | invariant | Packing protects glass, dishes, art, electronics or delicate items with suitable materials. | reduce breakage |
-| moveops.pack.wardrobe_box | Wardrobe box | variant | Box transports hanging garments with less folding and handling. | clothing care |
-| moveops.pack.owner_packed | Owner-packed box note | variant | Note identifies boxes packed by customer and condition limitations. | claim clarity |
-| moveops.inventory.inventory_list | Moving inventory list | invariant | List records items, condition, tag, room and handling notes. | custody record |
-| moveops.inventory.condition_code | Item condition code | invariant | Code documents scratches, dents, wear, cracks or prior damage before move. | baseline |
-| moveops.inventory.high_value_item | High-value item declaration | variant | Declaration identifies valuable, fragile or special-liability property needing extra controls. | risk focus |
-| moveops.inventory.photo_record | Move photo record | variant | Photos document condition, packing, loading, damage risk or access issues. | visual evidence |
-| moveops.inventory.exception_item | Moving exception item | invariant | Exception covers prohibited, hazardous, oversized, unprepared or disputed item. | decide before loading |
-| moveops.load.floor_protection | Move floor protection | invariant | Protection uses runners, pads, corner guards or door jamb protectors. | protect property |
-| moveops.load.furniture_pad | Furniture padding | invariant | Padding protects surfaces, corners, glass and upholstery during handling and transport. | prevent damage |
-| moveops.load.load_sequence | Truck load sequence | invariant | Sequence balances weight, protects fragile items and supports unload order. | stable load |
-| moveops.load.strapping | Load strapping | invariant | Strapping secures tiers, heavy items and shifting risks inside truck. | transport safety |
-| moveops.load.lift_team | Heavy item lift team | variant | Team handles pianos, safes, appliances or oversized furniture with planning and equipment. | avoid injury |
-| moveops.transport.route_plan | Moving route plan | invariant | Plan chooses route, tolls, restrictions, parking, fuel and timing. | move between sites |
-| moveops.transport.driver_log | Moving driver log | invariant | Log records vehicle, driver, mileage, hours, fuel, inspections and incidents. | transport accountability |
-| moveops.transport.vehicle_inspection | Moving truck inspection | invariant | Inspection checks tires, lights, liftgate, straps, pads, fluids and damage. | road readiness |
-| moveops.transport.delay_notice | Move delay notice | invariant | Notice informs customer about traffic, weather, breakdown, access or crew delay. | reduce uncertainty |
-| moveops.transport.storage_in_transit | Storage-in-transit | variant | Storage holds goods temporarily with inventory, location, access and billing records. | pause move safely |
-| moveops.unload.delivery_check | Delivery check | invariant | Check verifies address, access, inventory, room labels and customer instructions. | unload right place |
-| moveops.unload.room_placement | Room placement | invariant | Placement puts items in requested rooms or zones according to labels and customer direction. | useful delivery |
-| moveops.unload.reassembly | Furniture reassembly | variant | Reassembly restores beds, tables, desks or fixtures within agreed scope. | finish service |
-| moveops.unload.debris_removal | Packing debris removal | variant | Removal collects cartons, wrap and pads where service includes cleanup. | leave cleaner |
-| moveops.unload.final_walkthrough | Move final walkthrough | invariant | Walkthrough checks inventory, rooms, damages, missing items and remaining tasks with customer. | close job |
-| moveops.claim.damage_claim | Moving damage claim | invariant | Claim records damaged item, evidence, inventory tag, valuation, review and resolution. | handle loss fairly |
-| moveops.claim.missing_item | Missing item claim | invariant | Claim investigates inventory, load, unload, truck, storage and customer report. | find or compensate |
-| moveops.claim.valuation_option | Moving valuation option | variant | Option defines carrier liability level or customer-selected protection plan. | claim basis |
-| moveops.claim.claim_deadline | Moving claim deadline | invariant | Deadline sets time window and submission requirements for loss or damage claim. | procedural control |
-| moveops.claim.customer_dispute | Moving customer dispute | invariant | Dispute records estimate, charges, service issue, claim and communication trail. | structured resolution |
-| moveops.safety.safe_lifting | Moving safe lifting | invariant | Safe lifting uses team coordination, equipment, path clearing and body mechanics. | reduce injury |
-| moveops.safety.prohibited_items | Moving prohibited items | invariant | Prohibition covers hazardous, illegal, perishable, live, valuable or restricted items by policy. | avoid liability |
-| moveops.metrics.move_kpi | Moving company KPI | variant | KPI tracks on-time arrival, claims, estimate accuracy, crew hours, damage rate and reviews. | manage operation |
-| moveops.continuity.truck_breakdown | Moving truck breakdown plan | invariant | Plan covers roadside safety, alternate truck, customer update, crew time and cargo security. | recover move |
+| moveops.sales.move_inquiry | Переезд запрос | invariant | Запрос фиксирует происхождение, пункт назначения, дату, объем, лестницу, доступ, услуги и ограничения. | начать смету |
+| moveops.sales.survey | Перемещение опроса | invariant | Исследование оценивает запасы, вес или объем, потребности в упаковке, риски и ограничения доступа. | цена реалистичная |
+| moveops.sales.estimate_type | Тип движущейся оценки | invariant | Тип определяет обязательную, необязательную, почасовую, фиксированную или непревышаемую цену. | ожидания клиентов |
+| moveops.sales.service_scope | Переместить объем услуги | invariant | Область применения охватывает упаковку, погрузку, транспортировку, хранение, распаковку, утилизацию и исключения. | определить работу |
+| moveops.sales.date_hold | Переместить удержание даты | variant | Оставьте резервную команду, грузовик и место до внесения депозита или подтверждения. | обещание мощности |
+| moveops.planning.move_plan | План перемещения | invariant | Планируйте карты экипажа, грузовика, времени, доступа, инвентаря, упаковки, маршрута и специальных предметов. | оперативный план |
+| moveops.planning.crew_assignment | Назначение переездной бригады | invariant | Назначение соответствует размеру экипажа, навыкам, часам, водителю, помощнику и руководителю по переезду. | укомплектовать работу |
+| moveops.planning.truck_assignment | Задание на переезд грузовика | invariant | При назначении выбираются размер грузовика, задняя дверь, оборудование и пригодность маршрута. | подходящая нагрузка |
+| moveops.planning.access_check | Переместить проверку доступа | invariant | Проверка подтверждает парковку, лифты, погрузочные платформы, лестницы, разрешения и временные окна. | избегайте блокировщиков дня |
+| moveops.planning.weather_plan | Движущийся план погоды | variant | План адаптирует защиту, время и безопасность для дождя, снега, жары или ветра. | устойчивый к непогоде ход |
+| moveops.pack.packing_order | Порядок упаковки | invariant | В заказе перечислены помещения, материалы, хрупкие предметы, предметы, упакованные владельцем, а также правила маркировки. | систематически упаковывать вещи |
+| moveops.pack.carton_label | Картонная этикетка | invariant | Этикетка идентифицирует помещение, содержимое, обработку, назначение и приоритет. | найти предметы позже |
+| moveops.pack.fragile_pack | Хрупкая упаковка | invariant | Упаковка защищает стекло, посуду, предметы искусства, электронику или деликатные предметы с помощью подходящих материалов. | уменьшить поломку |
+| moveops.pack.wardrobe_box | Гардеробная коробка | variant | В ящике можно перевозить висящую одежду, требуя меньше усилий при складывании и обращении. | уход за одеждой |
+| moveops.pack.owner_packed | Примечание в упаковке владельца | variant | В примечании указаны коробки, упакованные в соответствии с требованиями заказчика и ограничениями по состоянию. | требовать ясности |
+| moveops.inventory.inventory_list | Перемещение списка инвентаря | invariant | Список записывает элементы, состояние, теги, помещения и примечания по обращению. | запись об опеке |
+| moveops.inventory.condition_code | Код состояния товара | invariant | Перед переездом задокументируйте царапины, вмятины, износ, трещины или предыдущие повреждения. | базовый уровень |
+| moveops.inventory.high_value_item | Декларация о дорогостоящих предметах | variant | В декларации указывается ценное, хрупкое имущество или имущество, находящееся под особой ответственностью, требующее дополнительного контроля. | фокус на риске |
+| moveops.inventory.photo_record | Переместить фотозапись | variant | Фотографии документируют состояние, упаковку, погрузку, риск повреждения или проблемы с доступом. | визуальные доказательства |
+| moveops.inventory.exception_item | Перемещение элемента исключения | invariant | Исключение распространяется на запрещенные, опасные, негабаритные, неподготовленные или спорные предметы. | решить перед загрузкой |
+| moveops.load.floor_protection | Переместить защиту пола | invariant | Для защиты используются полозья, накладки, угловые ограждения или накладки на дверные косяки. | защищать собственность |
+| moveops.load.furniture_pad | Обивка мебели | invariant | Набивка защищает поверхности, углы, стекло и обивку во время погрузочно-разгрузочных работ и транспортировки. | предотвратить повреждение |
+| moveops.load.load_sequence | Последовательность загрузки грузовика | invariant | Sequence уравновешивает вес, защищает хрупкие предметы и поддерживает порядок разгрузки. | стабильная нагрузка |
+| moveops.load.strapping | Грузовая обвязка | invariant | Ремни фиксируют ярусы, тяжелые предметы и риски перемещения внутри грузовика. | транспортная безопасность |
+| moveops.load.lift_team | Бригада по подъему тяжелых предметов | variant | Команда занимается планированием и оборудованием пианино, сейфов, бытовой техники или негабаритной мебели. | избегать травм |
+| moveops.transport.route_plan | План маршрута переезда | invariant | План выбирает маршрут, сборы, ограничения, парковку, топливо и время. | перемещаться между сайтами |
+| moveops.transport.driver_log | Перемещение журнала водителя | invariant | Журнал записывает транспортное средство, водителя, пробег, часы, топливо, проверки и происшествия. | транспортная ответственность |
+| moveops.transport.vehicle_inspection | Осмотр движущегося грузовика | invariant | При осмотре проверяются шины, фары, задняя дверь, ремни, колодки, жидкости и повреждения. | готовность к дороге |
+| moveops.transport.delay_notice | Уведомление о задержке переноса | invariant | Уведомление информирует клиента о дорожном движении, погоде, поломке, доступе или задержке экипажа. | уменьшить неопределенность |
+| moveops.transport.storage_in_transit | Хранение в пути | variant | В хранилище временно хранятся товары с записями об инвентаре, местоположении, доступе и счетах. | пауза, двигайся безопасно |
+| moveops.unload.delivery_check | Проверка доставки | invariant | Проверка проверяет адрес, доступ, инвентарь, этикетки помещений и инструкции для клиентов. | разгрузить в нужном месте |
+| moveops.unload.room_placement | Размещение комнаты | invariant | При размещении предметы размещаются в требуемых комнатах или зонах в соответствии с этикетками и указаниями покупателя. | полезная доставка |
+| moveops.unload.reassembly | Сборка мебели | variant | При повторной сборке восстанавливаются кровати, столы, столы или приспособления в согласованном объеме. | закончить обслуживание |
+| moveops.unload.debris_removal | Удаление упаковочного мусора | variant | При вывозе собираются картонные коробки, упаковка и прокладки, при этом услуга включает в себя очистку. | оставь чище |
+| moveops.unload.final_walkthrough | Переместить финальное прохождение | invariant | Пошаговое руководство проверяет вместе с клиентом инвентарь, помещения, повреждения, недостающие предметы и оставшиеся задачи. | закрыть работу |
+| moveops.claim.damage_claim | Претензия о возмещении ущерба при переезде | invariant | В претензии указываются поврежденный предмет, доказательства, инвентарная бирка, оценка, проверка и решение. | справедливо относиться к потерям |
+| moveops.claim.missing_item | Претензия на недостающий товар | invariant | Претензия исследует запасы, погрузку, разгрузку, грузовик, хранение и отчет клиента. | найти или компенсировать |
+| moveops.claim.valuation_option | Перенос варианта оценки | variant | Опция определяет уровень ответственности перевозчика или план защиты, выбираемый клиентом. | основание претензии |
+| moveops.claim.claim_deadline | Срок подачи заявления на переезд | invariant | Крайний срок устанавливает временной интервал и требования к подаче претензий о потере или повреждении. | процессуальный контроль |
+| moveops.claim.customer_dispute | Перенос спора с клиентом | invariant | Записи о спорах: смета, расходы, проблемы с обслуживанием, претензии и коммуникация. | структурированное разрешение |
+| moveops.safety.safe_lifting | Перемещение безопасного подъема | invariant | Безопасный подъем требует координации команды, оборудования, расчистки пути и механики тела. | уменьшить травмы |
+| moveops.safety.prohibited_items | Перемещение запрещенных предметов | invariant | Запрет распространяется на опасные, незаконные, скоропортящиеся, живые, ценные или запрещенные в соответствии с политикой предметы. | избежать ответственности |
+| moveops.metrics.move_kpi | Переездная компания КПИ | variant | KPI отслеживает своевременное прибытие, претензии, точность оценок, часы работы бригады, уровень ущерба и отзывы. | управлять операцией |
+| moveops.continuity.truck_breakdown | План поломки движущегося грузовика | invariant | План охватывает безопасность на дороге, альтернативный грузовик, обновление информации для клиентов, время работы бригады и безопасность груза. | восстановить ход |

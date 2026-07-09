@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| energymgmt.meter.meter_register | Energy meter register | invariant | Register lists meters, utility accounts, locations, fuels, multipliers, owners and data source. | know what is measured |
-| energymgmt.meter.manual_read | Manual meter read | invariant | Manual read records date, value, unit, reader and anomalies when automated data is unavailable. | basic evidence |
-| energymgmt.meter.interval_data | Interval energy data | invariant | Interval data shows usage by time blocks and reveals peaks, schedules and equipment behavior. | see when energy is used |
-| energymgmt.meter.submeter | Energy submeter | variant | Submeter separates building, tenant, system or process loads for more precise management. | isolate consumption |
-| energymgmt.meter.meter_fault | Energy meter fault | invariant | Fault may show flatline, impossible spike, missing data or multiplier error needing investigation. | bad data misleads |
-| energymgmt.meter.weather_normalization | Weather normalization | variant | Normalization adjusts energy use for heating or cooling weather differences. | fair comparison |
-| energymgmt.baseline.energy_baseline | Energy baseline | invariant | Baseline represents expected energy use before project, operation change or performance period. | compare against reference |
-| energymgmt.baseline.energy_use_intensity | Energy use intensity | invariant | EUI divides building energy by area or relevant activity metric. | compare buildings |
-| energymgmt.baseline.load_profile | Load profile | invariant | Profile shows demand pattern over time and helps identify occupancy, equipment or control issues. | fingerprint of building |
-| energymgmt.baseline.peak_demand | Peak demand | invariant | Peak demand is highest power draw over billing or measurement interval. | drives demand charges |
-| energymgmt.baseline.degree_day | Degree day | variant | Degree days estimate heating or cooling need based on outdoor temperature. | weather context |
-| energymgmt.baseline.operating_hours | Operating hours | invariant | Hours explain when building should be conditioned, lit or operating. | schedule drives usage |
-| energymgmt.controls.setpoint | HVAC setpoint | invariant | Setpoint defines target temperature or control value for system operation. | small changes matter |
-| energymgmt.controls.schedule_control | Building schedule control | invariant | Schedule control turns systems on or off based on occupancy and operational need. | stop running empty |
-| energymgmt.controls.night_setback | Night setback | variant | Setback reduces heating or cooling intensity outside occupied hours where appropriate. | comfort versus savings |
-| energymgmt.controls.optimum_start | Optimum start | variant | Control starts HVAC just early enough to meet comfort at occupancy time. | avoid excessive preheat |
-| energymgmt.controls.simultaneous_heat_cool | Simultaneous heating and cooling | invariant | Simultaneous heat and cool wastes energy when zones or controls fight each other. | common building fault |
-| energymgmt.controls.bms_alarm | BMS energy alarm | invariant | Alarm flags abnormal temperature, runtime, valve position, sensor or energy condition. | automation needs attention |
-| energymgmt.utility.bill_audit | Utility bill audit | invariant | Audit checks rates, meter reads, demand, taxes, fees, dates, multipliers and anomalies. | bills can be wrong |
-| energymgmt.utility.tariff_review | Tariff review | variant | Review compares rate options, demand structure, time-of-use and eligibility. | price structure matters |
-| energymgmt.utility.demand_charge | Demand charge | invariant | Demand charge bills peak power capacity rather than total energy. | peaks cost money |
-| energymgmt.utility.power_factor | Power factor charge | variant | Poor power factor can create charges or equipment inefficiency in some tariffs. | electrical quality cost |
-| energymgmt.utility.tenant_rebill | Tenant energy rebilling | variant | Rebilling allocates utility cost by lease, submeter, formula or agreed method. | cost allocation |
-| energymgmt.utility.budget_variance | Energy budget variance | invariant | Variance compares actual cost or use to budget and investigates weather, price or operation causes. | explain overspend |
-| energymgmt.audit.walkthrough | Energy walkthrough audit | invariant | Walkthrough observes schedules, equipment, envelope, lighting, controls and obvious waste. | first-pass savings |
-| energymgmt.audit.level_two_audit | Detailed energy audit | variant | Detailed audit quantifies measures, costs, savings, payback, risks and measurement plan. | investment basis |
-| energymgmt.audit.ecm | Energy conservation measure | invariant | ECM is an action that reduces energy use, demand or cost while maintaining required service. | named improvement |
-| energymgmt.audit.no_cost_measure | No-cost measure | variant | No-cost measure uses schedule, setpoint, behavior or control adjustment without capital project. | quick wins |
-| energymgmt.audit.retrocommissioning | Retrocommissioning | variant | Retrocommissioning tunes existing systems back to intended or optimized operation. | fix drift |
-| energymgmt.audit.opportunity_register | Energy opportunity register | invariant | Register tracks measures, owner, status, estimate, evidence and approval path. | manage pipeline |
-| energymgmt.project.led_retrofit | LED retrofit | variant | Retrofit replaces lighting with efficient fixtures while checking levels, controls, compatibility and disposal. | common project |
-| energymgmt.project.vfd | Variable frequency drive | variant | VFD saves energy when motors can reduce speed under variable load. | speed control |
-| energymgmt.project.economizer | Air-side economizer | variant | Economizer uses outdoor air for cooling when conditions are suitable. | free cooling |
-| energymgmt.project.insulation_upgrade | Insulation upgrade | variant | Upgrade reduces heat transfer where envelope or piping losses justify work. | reduce load |
-| energymgmt.project.controls_tuning | Controls tuning | invariant | Tuning adjusts sequences, sensors, deadbands and schedules to reduce waste. | software savings |
-| energymgmt.project.project_closeout | Energy project closeout | invariant | Closeout confirms installation, commissioning, documentation, training and baseline updates. | project becomes operation |
-| energymgmt.mv.measurement_verification | Measurement and verification | invariant | M&V compares actual performance to baseline with agreed adjustments and method. | prove savings |
-| energymgmt.mv.savings_calculation | Energy savings calculation | invariant | Calculation subtracts adjusted actual use from baseline use for same conditions. | quantify benefit |
-| energymgmt.mv.persistence_check | Savings persistence check | variant | Check confirms savings continue after occupancy, weather, controls or maintenance changes. | savings can fade |
-| energymgmt.mv.rebound_effect | Rebound effect | variant | Rebound occurs when efficiency gain is partly offset by higher use or comfort changes. | behavior matters |
-| energymgmt.reporting.energy_dashboard | Energy dashboard | variant | Dashboard shows use, cost, demand, targets, anomalies and project savings. | visibility for action |
-| energymgmt.reporting.carbon_factor | Carbon factor | invariant | Carbon factor converts energy consumption into emissions estimate by fuel or grid factor. | climate accounting |
-| energymgmt.reporting.energy_kpi | Facilities energy KPI | invariant | KPI tracks intensity, demand, cost, emissions, savings or comfort complaints. | measure operations |
-| energymgmt.reporting.management_review | Energy management review | invariant | Review evaluates performance, projects, budgets, risks, comfort, compliance and next actions. | governance rhythm |
+| energymgmt.meter.meter_register | Реестр счетчиков электроэнергии | invariant | В реестре перечислены счетчики, счета за коммунальные услуги, местоположения, топливо, множители, владельцы и источники данных. | знать, что измеряется |
+| energymgmt.meter.manual_read | Ручное считывание показаний счетчика | invariant | Ручное чтение записей, дата, значение, единица измерения, считыватель и аномалии, когда автоматические данные недоступны. | основные доказательства |
+| energymgmt.meter.interval_data | Интервальные данные об энергии | invariant | Интервальные данные показывают использование по временным блокам, а также пиковые нагрузки, графики и поведение оборудования. | посмотреть, когда используется энергия |
+| energymgmt.meter.submeter | Энергетический субметр | variant | Submeter разделяет нагрузку на здание, арендатора, систему или процесс для более точного управления. | изолировать потребление |
+| energymgmt.meter.meter_fault | Неисправность счетчика электроэнергии | invariant | Неисправность может показывать плоскую линию, невозможный пик, отсутствие данных или ошибку множителя, требующую расследования. | неверные данные вводят в заблуждение |
+| energymgmt.meter.weather_normalization | Нормализация погоды | variant | Нормализация корректирует потребление энергии с учетом погодных различий в отоплении или охлаждении. | справедливое сравнение |
+| energymgmt.baseline.energy_baseline | Базовый уровень энергопотребления | invariant | Базовый уровень представляет собой ожидаемое потребление энергии до начала проекта, изменения операции или периода производительности. | сравнить с эталоном |
+| energymgmt.baseline.energy_use_intensity | Интенсивность энергопотребления | invariant | EUI делит энергию здания по площади или соответствующему показателю активности. | сравнивать здания |
+| energymgmt.baseline.load_profile | Профиль нагрузки | invariant | Профиль показывает динамику спроса и помогает выявить проблемы с занятостью, оборудованием или контролем. | отпечаток здания |
+| energymgmt.baseline.peak_demand | Пиковый спрос | invariant | Пиковая нагрузка — это наибольшее потребление электроэнергии за интервал выставления счетов или измерения. | стимулирует сборы за спрос |
+| energymgmt.baseline.degree_day | Градусный день | variant | Градусо-дни позволяют оценить потребность в отоплении или охлаждении в зависимости от температуры наружного воздуха. | контекст погоды |
+| energymgmt.baseline.operating_hours | Часы работы | invariant | Часы объясняют, когда здание должно кондиционироваться, освещаться или работать. | расписание использования дисков |
+| energymgmt.controls.setpoint | Уставка системы отопления, вентиляции и кондиционирования воздуха | invariant | Уставка определяет целевую температуру или контрольное значение для работы системы. | небольшие изменения имеют значение |
+| energymgmt.controls.schedule_control | Контроль графика строительства | invariant | Управление по расписанию включает и выключает системы в зависимости от занятости и эксплуатационных потребностей. | перестань бежать пустым |
+| energymgmt.controls.night_setback | Ночная неудача | variant | Понижение снижает интенсивность обогрева или охлаждения вне часов работы, где это необходимо. | комфорт против экономии |
+| energymgmt.controls.optimum_start | Оптимальный старт | variant | Система управления включает систему отопления, вентиляции и кондиционирования воздуха достаточно рано, чтобы обеспечить комфорт во время присутствия людей. | избегайте чрезмерного предварительного нагрева |
+| energymgmt.controls.simultaneous_heat_cool | Одновременный нагрев и охлаждение | invariant | Одновременное нагрев и охлаждение тратят энергию, когда зоны или элементы управления борются друг с другом. | обычная строительная ошибка |
+| energymgmt.controls.bms_alarm | Энергетическая сигнализация BMS | invariant | Сигнализация сигнализирует об аномальной температуре, времени работы, положении клапана, состоянии датчика или энергопотребления. | автоматизация требует внимания |
+| energymgmt.utility.bill_audit | Аудит счетов за коммунальные услуги | invariant | Аудит проверяет тарифы, показания счетчиков, спрос, налоги, сборы, даты, множители и аномалии. | счета могут быть неправильными |
+| energymgmt.utility.tariff_review | Обзор тарифов | variant | В обзоре сравниваются варианты тарифов, структура спроса, время использования и право на участие. | структура цен имеет значение |
+| energymgmt.utility.demand_charge | Плата за спрос | invariant | Плата за потребление учитывает пиковую мощность, а не полную энергию. | вершины стоят денег |
+| energymgmt.utility.power_factor | Плата за коэффициент мощности | variant | Низкий коэффициент мощности может привести к расходам или неэффективности оборудования в некоторых тарифах. | стоимость качества электротехники |
+| energymgmt.utility.tenant_rebill | Перевыставление счетов арендаторам за электроэнергию | variant | При перевыставлении счетов стоимость коммунальных услуг распределяется по аренде, субметру, формуле или согласованному методу. | распределение затрат |
+| energymgmt.utility.budget_variance | Отклонение энергетического бюджета | invariant | Отклонение сравнивает фактическую стоимость или использование с бюджетом и исследует погодные, ценовые или эксплуатационные причины. | объяснить перерасход |
+| energymgmt.audit.walkthrough | Энергетический аудит | invariant | В ходе обхода учитываются графики, оборудование, оболочка, освещение, элементы управления и очевидные отходы. | экономия на первом этапе |
+| energymgmt.audit.level_two_audit | Детальный энергоаудит | variant | Детальный аудит дает количественную оценку мер, затрат, экономии, окупаемости, рисков и плана измерений. | инвестиционная основа |
+| energymgmt.audit.ecm | Меры по энергосбережению | invariant | ECM — это действие, которое снижает потребление энергии, спрос или затраты при сохранении необходимого обслуживания. | названное улучшение |
+| energymgmt.audit.no_cost_measure | Бесплатная мера | variant | Бесплатная мера использует график, заданное значение, поведение или корректировку управления без капитального проекта. | быстрые победы |
+| energymgmt.audit.retrocommissioning | Ретро ввод в эксплуатацию | variant | Ретро-ввод в эксплуатацию настраивает существующие системы обратно на запланированную или оптимизированную работу. | исправить дрейф |
+| energymgmt.audit.opportunity_register | Реестр энергетических возможностей | invariant | Реестр отслеживает меры, владельца, статус, оценку, доказательства и путь утверждения. | управлять конвейером |
+| energymgmt.project.led_retrofit | Светодиодная модернизация | variant | Модернизация заменяет освещение эффективными светильниками, одновременно проверяя уровни, элементы управления, совместимость и утилизацию. | общий проект |
+| energymgmt.project.vfd | Частотно-регулируемый привод | variant | ЧРП экономит энергию, когда двигатели могут снижать скорость при переменной нагрузке. | контроль скорости |
+| energymgmt.project.economizer | Воздушный экономайзер | variant | Экономайзер использует наружный воздух для охлаждения при подходящих условиях. | естественное охлаждение |
+| energymgmt.project.insulation_upgrade | Обновление изоляции | variant | Модернизация снижает теплопередачу там, где потери в оболочке или трубопроводах оправдывают работу. | уменьшить нагрузку |
+| energymgmt.project.controls_tuning | Настройка управления | invariant | Настройка регулирует последовательности, датчики, зоны нечувствительности и графики для сокращения потерь. | экономия на программном обеспечении |
+| energymgmt.project.project_closeout | Закрытие энергетического проекта | invariant | Closeout подтверждает установку, ввод в эксплуатацию, документацию, обучение и базовые обновления. | проект становится операцией |
+| energymgmt.mv.measurement_verification | Измерение и проверка | invariant | M&V сравнивает фактическую производительность с базовым уровнем с согласованными корректировками и методом. | доказать экономию |
+| energymgmt.mv.savings_calculation | Расчет энергосбережения | invariant | При расчете скорректированное фактическое использование вычитается из базового использования для тех же условий. | количественно оценить выгоду |
+| energymgmt.mv.persistence_check | Проверка постоянства сбережений | variant | Проверка подтверждает, что экономия сохраняется после изменений в условиях занятости, погодных условий, управления или технического обслуживания. | сбережения могут исчезнуть |
+| energymgmt.mv.rebound_effect | Эффект отскока | variant | Отскок происходит, когда повышение эффективности частично компенсируется более высоким уровнем использования или изменениями комфорта. | поведение имеет значение |
+| energymgmt.reporting.energy_dashboard | Энергетическая панель | variant | Панель мониторинга показывает использование, стоимость, спрос, цели, аномалии и экономию по проекту. | наглядность для действий |
+| energymgmt.reporting.carbon_factor | Углеродный фактор | invariant | Коэффициент углерода преобразует потребление энергии в оценку выбросов по топливу или коэффициенту сети. | климатический учет |
+| energymgmt.reporting.energy_kpi | Энергетика объектов KPI | invariant | KPI отслеживает интенсивность, спрос, затраты, выбросы, экономию или жалобы на комфорт. | измерения операций |
+| energymgmt.reporting.management_review | Обзор энергоменеджмента | invariant | Обзор оценивает производительность, проекты, бюджеты, риски, комфорт, соответствие требованиям и следующие действия. | ритм управления |

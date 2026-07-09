@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| laundryvoucherops.intake.request_source | request source | RECORD | Source records shelter, hotline, caseworker, outreach, clinic or walk-in request. | Shows entry path. |
-| laundryvoucherops.intake.household | household profile | RECORD | Profile captures household size, location, contact, language and laundry barrier. | Sizes support. |
-| laundryvoucherops.intake.need_reason | need reason | RECORD | Reason records displacement, flood contamination, utility loss, shelter stay or income shock. | Explains need. |
-| laundryvoucherops.intake.urgency | urgency model | MODEL | Urgency weighs hygiene risk, infants, medical needs, work/school clothing and weather. | Prioritizes cases. |
-| laundryvoucherops.eligibility.criteria | eligibility criteria | CONSTRAINT | Criteria define disaster impact, service area, household need and frequency limits. | Preserves fairness. |
-| laundryvoucherops.eligibility.verification | verification method | METHOD | Verification may use self-attestation, shelter roster, caseworker referral or address impact. | Keeps access workable. |
-| laundryvoucherops.eligibility.frequency | frequency limit | CONSTRAINT | Limit defines vouchers per household per period or by load count. | Extends funds. |
-| laundryvoucherops.eligibility.exception | exception record | RECORD | Exception records medical, infant, contamination or large household need and approval. | Allows flexibility. |
-| laundryvoucherops.voucher.voucher_type | voucher type | RECORD | Type distinguishes laundromat credit, wash/dry card, pickup service or mobile laundry slot. | Defines service. |
-| laundryvoucherops.voucher.value | voucher value | MEASUREMENT | Value records amount, loads, expiration and eligible services. | Controls cost. |
-| laundryvoucherops.voucher.issue_record | issue record | RECORD | Issue record captures recipient, voucher ID, value, date, staff and restrictions. | Creates audit trail. |
-| laundryvoucherops.voucher.expiration | expiration rule | CONSTRAINT | Expiration controls unused voucher liability and reissue timing. | Manages funds. |
-| laundryvoucherops.vendor.vendor_roster | vendor roster | RECORD | Roster lists laundromats, mobile laundry, pickup providers, hours and capacity. | Coordinates vendors. |
-| laundryvoucherops.vendor.agreement | vendor agreement | RECORD | Agreement defines eligible services, rates, billing, fraud controls and reporting. | Sets terms. |
-| laundryvoucherops.vendor.capacity | vendor capacity | MEASUREMENT | Capacity tracks machines, pickup slots, staff, water and power availability. | Avoids overload. |
-| laundryvoucherops.vendor.status_update | vendor status update | METHOD | Vendors report closures, queue length, equipment failure and supply shortages. | Keeps referrals current. |
-| laundryvoucherops.pickup.pickup_request | pickup request | RECORD | Request records laundry quantity, address, contact, bag count and access constraints. | Starts pickup. |
-| laundryvoucherops.pickup.bag_label | bag label | METHOD | Bags are labeled with code, household, count and privacy-safe identifier. | Prevents mixups. |
-| laundryvoucherops.pickup.route_plan | route plan | METHOD | Route groups pickups by geography, urgency, bag volume and provider capacity. | Saves time. |
-| laundryvoucherops.pickup.no_contact | no-contact handling | METHOD | No-contact rules define retry, hold, cancel or safe pickup alternative. | Controls loss. |
-| laundryvoucherops.hygiene.contamination | contamination rule | SAFETY_RULE | Floodwater, mold, chemicals or pest-contaminated items may require special handling or rejection. | Protects workers. |
-| laundryvoucherops.hygiene.bagging | bagging guidance | METHOD | Residents receive instructions for bagging, separating and labeling laundry. | Improves processing. |
-| laundryvoucherops.hygiene.detergent | detergent need | RECORD | Detergent, hypoallergenic, bleach or sanitizer needs are recorded where service supports them. | Improves fit. |
-| laundryvoucherops.hygiene.clean_return | clean return | QUALITY_CHECK | Clean return checks bag count, dryness, obvious mixups and delivery condition. | Protects dignity. |
-| laundryvoucherops.fraud.unique_id | unique voucher ID | SAFETY_RULE | Each voucher has non-reusable ID, issue log and redemption record. | Reduces misuse. |
-| laundryvoucherops.fraud.duplicate_check | duplicate check | QUALITY_CHECK | Staff compare household, voucher ID, redemption and frequency before new issue. | Prevents double use. |
-| laundryvoucherops.fraud.vendor_anomaly | vendor anomaly | QUALITY_CHECK | Anomaly check flags unusual redemptions, repeated voids or inflated load counts. | Detects fraud. |
-| laundryvoucherops.fraud.lost_voucher | lost voucher process | METHOD | Lost voucher process voids old ID before reissue where possible. | Controls leakage. |
-| laundryvoucherops.reconcile.redemption | redemption record | RECORD | Redemption records voucher ID, vendor, date, amount, service and receipt. | Supports payment. |
-| laundryvoucherops.reconcile.invoice | invoice reconciliation | QUALITY_CHECK | Invoice matches vouchers, rates, receipts, voids and approved services. | Prevents overpayment. |
-| laundryvoucherops.reconcile.fund_balance | fund balance | MEASUREMENT | Balance tracks issued, redeemed, expired, voided and remaining funds. | Controls budget. |
-| laundryvoucherops.reconcile.dispute | dispute record | RECORD | Dispute records rejected charge, duplicate, missing receipt or customer complaint. | Resolves billing. |
-| laundryvoucherops.communication.public_notice | public notice | METHOD | Notice states eligibility, locations, voucher limits, pickup option and hygiene rules. | Guides residents. |
-| laundryvoucherops.communication.resident_update | resident update | METHOD | Update explains voucher status, pickup time, vendor change or missing laundry issue. | Reduces uncertainty. |
-| laundryvoucherops.communication.partner_update | partner update | METHOD | Partners receive capacity, shortages, demand and voucher rules. | Aligns referrals. |
-| laundryvoucherops.privacy.minimum_data | minimum data | SAFETY_RULE | Laundry program stores only data needed for voucher and follow-up. | Reduces exposure. |
-| laundryvoucherops.records.case_log | case log | RECORD | Log stores intake, eligibility, voucher, pickup, redemption and closeout. | Creates continuity. |
-| laundryvoucherops.records.retention | retention rule | CONSTRAINT | Voucher, pickup, redemption and vendor records follow finance and privacy retention schedules. | Preserves audit. |
-| laundryvoucherops.metrics.households_served | households served | MEASUREMENT | Count tracks households and people served by area and vendor. | Shows reach. |
-| laundryvoucherops.metrics.voucher_use | voucher use rate | MEASUREMENT | Use rate compares issued and redeemed vouchers. | Shows uptake. |
-| laundryvoucherops.metrics.cost_per_household | cost per household | MEASUREMENT | Cost metric divides redeemed value by households served. | Supports budgeting. |
-| laundryvoucherops.qa.sample_review | sample review | QUALITY_CHECK | Review checks eligibility, issue logs, vendor receipts and fraud controls. | Improves reliability. |
-| laundryvoucherops.demob.closeout | closeout | METHOD | Closeout voids unused vouchers, reconciles vendors, archives logs and transfers cases. | Ends operation. |
-| laundryvoucherops.review.after_action | after-action review | METHOD | Review captures vendor capacity, fraud controls, pickup issues, dignity and billing lessons. | Improves future laundry support. |
+| laundryvoucherops.intake.request_source | источник запроса | RECORD | Источник записывает приют, горячую линию, социального работника, аутрич-службу, клинику или запрос на личное обращение. | Показывает путь входа. |
+| laundryvoucherops.intake.household | профиль домохозяйства | RECORD | В профиле указаны размер домохозяйства, местоположение, контакты, языковой барьер и барьер для стирки. | Поддержка размеров. |
+| laundryvoucherops.intake.need_reason | нужна причина | RECORD | Причина фиксирует перемещение, затопление, потерю коммунальных услуг, пребывание в убежище или шок дохода. | Объясняет необходимость. |
+| laundryvoucherops.intake.urgency | модель срочности | MODEL | Срочность учитывает гигиенический риск, младенцев, медицинские потребности, рабочую/школьную одежду и погоду. | Расставляет приоритеты по делам. |
+| laundryvoucherops.eligibility.criteria | критерии приемлемости | CONSTRAINT | Критерии определяют воздействие стихийного бедствия, зону обслуживания, потребности домохозяйств и пределы частоты. | Сохраняет справедливость. |
+| laundryvoucherops.eligibility.verification | метод проверки | METHOD | Для проверки может использоваться самоаттестация, список приютов, направление соцработника или воздействие по адресу. | Обеспечивает работоспособность доступа. |
+| laundryvoucherops.eligibility.frequency | предел частоты | CONSTRAINT | Лимит определяет количество ваучеров на семью за период или по количеству загрузки. | Расширяет средства. |
+| laundryvoucherops.eligibility.exception | запись об исключении | RECORD | Исключением являются медицинские, детские, контаминационные или крупные бытовые потребности и одобрение. | Обеспечивает гибкость. |
+| laundryvoucherops.voucher.voucher_type | тип ваучера | RECORD | Тип различает кредит прачечной, карту стирки/сушки, услугу самовывоза или мобильную прачечную. | Определяет сервис. |
+| laundryvoucherops.voucher.value | стоимость ваучера | MEASUREMENT | Значение записывает сумму, нагрузки, срок действия и соответствующие услуги. | Контролирует стоимость. |
+| laundryvoucherops.voucher.issue_record | выпустить запись | RECORD | Запись о выпуске фиксирует получателя, идентификатор ваучера, стоимость, дату, персонал и ограничения. | Создает контрольный журнал. |
+| laundryvoucherops.voucher.expiration | правило истечения срока действия | CONSTRAINT | Срок действия контролирует ответственность за неиспользованный ваучер и время его повторного выпуска. | Управляет средствами. |
+| laundryvoucherops.vendor.vendor_roster | список поставщиков | RECORD | В реестре перечислены прачечные самообслуживания, мобильные прачечные, службы самовывоза, часы работы и вместимость. | Координирует поставщиков. |
+| laundryvoucherops.vendor.agreement | соглашение с поставщиком | RECORD | Соглашение определяет приемлемые услуги, тарифы, выставление счетов, средства борьбы с мошенничеством и отчетность. | Устанавливает условия. |
+| laundryvoucherops.vendor.capacity | мощность поставщика | MEASUREMENT | Емкость отслеживает машины, места для пикапов, персонал, доступность воды и электроэнергии. | Избегает перегрузок. |
+| laundryvoucherops.vendor.status_update | обновление статуса поставщика | METHOD | Продавцы сообщают о закрытиях, длине очередей, сбоях оборудования и нехватке поставок. | Поддерживает рефералов в актуальном состоянии. |
+| laundryvoucherops.pickup.pickup_request | запрос на самовывоз | RECORD | Запрос записывает количество белья, адрес, контакт, количество сумок и ограничения доступа. | Начинает прием. |
+| laundryvoucherops.pickup.bag_label | этикетка для сумки | METHOD | На сумках указан код, домохозяйство, количество и идентификатор, безопасный для конфиденциальности. | Предотвращает путаницу. |
+| laundryvoucherops.pickup.route_plan | план маршрута | METHOD | Маршрутизируйте получение заказов по географическому положению, срочности, объему багажа и возможностям поставщика. | Экономит время. |
+| laundryvoucherops.pickup.no_contact | бесконтактное обращение | METHOD | Правила отсутствия контактов определяют повторную попытку, удержание, отмену или вариант безопасного получения. | Контролирует потери. |
+| laundryvoucherops.hygiene.contamination | правило загрязнения | SAFETY_RULE | Паводковая вода, плесень, химикаты или предметы, зараженные вредителями, могут потребовать особого обращения или отказа. | Защищает рабочих. |
+| laundryvoucherops.hygiene.bagging | руководство по упаковке | METHOD | Жители получают инструкции по упаковке, сортировке и маркировке белья. | Улучшает обработку. |
+| laundryvoucherops.hygiene.detergent | потребность в моющем средстве | RECORD | Потребности в моющих, гипоаллергенных, отбеливающих или дезинфицирующих средствах регистрируются там, где их поддерживает служба. | Улучшает посадку. |
+| laundryvoucherops.hygiene.clean_return | чистый возврат | QUALITY_CHECK | Чистый возврат проверяет количество пакетов, сухость, наличие очевидных путаниц и состояние доставки. | Защищает достоинство. |
+| laundryvoucherops.fraud.unique_id | уникальный идентификатор ваучера | SAFETY_RULE | Каждый ваучер имеет одноразовый идентификатор, журнал выдачи и запись об использовании. | Уменьшает неправильное использование. |
+| laundryvoucherops.fraud.duplicate_check | дубликат чека | QUALITY_CHECK | Перед новым выпуском сотрудники сравнивают домохозяйство, идентификатор ваучера, порядок погашения и частоту. | Предотвращает двойное использование. |
+| laundryvoucherops.fraud.vendor_anomaly | аномалия поставщика | QUALITY_CHECK | Проверка аномалий выявляет необычные погашения, повторяющиеся аннулирования или завышенное количество загрузок. | Обнаруживает мошенничество. |
+| laundryvoucherops.fraud.lost_voucher | процесс потери ваучера | METHOD | В процессе утери ваучера старое удостоверение личности аннулируется перед его повторной выдачей, если это возможно. | Контролирует утечку. |
+| laundryvoucherops.reconcile.redemption | запись о погашении | RECORD | Погашение записывает идентификатор ваучера, поставщика, дату, сумму, услугу и квитанцию. | Поддерживает оплату. |
+| laundryvoucherops.reconcile.invoice | сверка счетов | QUALITY_CHECK | Счет-фактура соответствует ваучерам, тарифам, квитанциям, аннулированию и утвержденным услугам. | Предотвращает переплату. |
+| laundryvoucherops.reconcile.fund_balance | баланс фонда | MEASUREMENT | Баланс отслеживает выданные, погашенные, истекшие, аннулированные и оставшиеся средства. | Контролирует бюджет. |
+| laundryvoucherops.reconcile.dispute | запись о споре | RECORD | В записях о спорах были отклонены платежи, дубликаты, недостающие квитанции или жалобы клиентов. | Решает биллинг. |
+| laundryvoucherops.communication.public_notice | публичное уведомление | METHOD | В уведомлении указаны право на участие, местонахождение, лимиты ваучеров, возможность получения и правила гигиены. | Проводники жителей. |
+| laundryvoucherops.communication.resident_update | обновление резидента | METHOD | Обновление объясняет статус ваучера, время получения, смену поставщика или проблему с отсутствующим бельем. | Уменьшает неопределенность. |
+| laundryvoucherops.communication.partner_update | обновление партнера | METHOD | Партнеры получают информацию о мощности, дефиците, спросе и правилах ваучеров. | Выравнивает рефералов. |
+| laundryvoucherops.privacy.minimum_data | минимальные данные | SAFETY_RULE | Программа прачечной сохраняет только данные, необходимые для ваучера и последующих действий. | Уменьшает воздействие. |
+| laundryvoucherops.records.case_log | журнал дел | RECORD | Регистрируйте поступления в магазины, право на участие, ваучер, получение, погашение и закрытие. | Создает преемственность. |
+| laundryvoucherops.records.retention | правило хранения | CONSTRAINT | Записи о ваучерах, получении, погашении и поставщиках соответствуют графикам сохранения финансов и конфиденциальности. | Сохраняет аудит. |
+| laundryvoucherops.metrics.households_served | обслуживаемые домохозяйства | MEASUREMENT | Count отслеживает домохозяйства и людей, обслуживаемых по регионам и поставщикам. | Показывает охват. |
+| laundryvoucherops.metrics.voucher_use | скорость использования ваучера | MEASUREMENT | Коэффициент использования сравнивает выданные и погашенные ваучеры. | Показывает понимание. |
+| laundryvoucherops.metrics.cost_per_household | стоимость на семью | MEASUREMENT | Показатель стоимости делит погашенную стоимость на обслуживаемые домохозяйства. | Поддерживает бюджетирование. |
+| laundryvoucherops.qa.sample_review | образец обзора | QUALITY_CHECK | Просмотрите правомерность проверок, журналы проблем, квитанции поставщиков и средства контроля мошенничества. | Повышает надежность. |
+| laundryvoucherops.demob.closeout | распродажа | METHOD | Closeout аннулирует неиспользованные ваучеры, сверяет поставщиков, архивирует журналы и передает дела. | Завершает операцию. |
+| laundryvoucherops.review.after_action | обзор после действий | METHOD | В обзоре отражаются возможности поставщиков, меры борьбы с мошенничеством, проблемы с получением заказов, достоинство и уроки выставления счетов. | Улучшает будущую поддержку стирки. |

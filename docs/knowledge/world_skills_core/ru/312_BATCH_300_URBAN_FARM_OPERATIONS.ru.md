@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| urbanfarmops.planning.farm_plan | Urban farm plan | invariant | Plan defines crops, beds, soil, irrigation, volunteers, harvest, distribution and records. | organize season |
-| urbanfarmops.planning.crop_calendar | Urban farm crop calendar | invariant | Calendar schedules seeding, transplanting, succession planting, harvest and bed turnover. | time work |
-| urbanfarmops.planning.bed_layout | Urban farm bed layout | invariant | Layout maps beds, paths, irrigation lines, compost, wash area, storage and access. | use space |
-| urbanfarmops.planning.production_target | Urban farm production target | variant | Target estimates harvest volume by crop, bed, season, donation or sales channel. | plan output |
-| urbanfarmops.soil.soil_test | Urban farm soil test | invariant | Test checks nutrients, pH, organic matter, texture, salts and potential contaminants. | guide amendments |
-| urbanfarmops.soil.amendment_plan | Urban farm amendment plan | invariant | Plan adds compost, lime, fertilizer or organic matter based on soil test and crop needs. | improve soil |
-| urbanfarmops.soil.compaction_management | Urban farm compaction management | variant | Management uses paths, broadforking, mulch, cover crops and restricted traffic. | protect beds |
-| urbanfarmops.soil.contamination_control | Urban farm soil contamination control | invariant | Control uses raised beds, clean soil, testing, crop restrictions or barriers where needed. | food safety |
-| urbanfarmops.irrigation.irrigation_zone | Urban farm irrigation zone | invariant | Zone groups beds by crop water need, valve, pressure, hose or drip line. | water efficiently |
-| urbanfarmops.irrigation.drip_line_check | Urban farm drip line check | invariant | Check finds clogs, leaks, pressure problems, missing emitters and damaged tubing. | maintain irrigation |
-| urbanfarmops.irrigation.water_schedule | Urban farm watering schedule | variant | Schedule adjusts timing by weather, crop stage, soil moisture and water rules. | prevent stress |
-| urbanfarmops.irrigation.rainwater_use | Urban farm rainwater use | variant | Use manages tanks, first flush, screens, pumps, irrigation limits and safety. | conserve water |
-| urbanfarmops.crops.seed_starting | Urban farm seed starting | invariant | Starting controls tray media, moisture, temperature, light, labels and hardening before transplant. | produce seedlings |
-| urbanfarmops.crops.transplanting | Urban farm transplanting | invariant | Transplanting sets spacing, depth, watering, timing, weather and plant handling. | establish crops |
-| urbanfarmops.crops.succession_planting | Succession planting | variant | Planting staggers sowing dates to maintain continuous harvest. | smooth supply |
-| urbanfarmops.crops.cover_crop | Urban farm cover crop | variant | Cover crop protects soil, adds biomass, suppresses weeds and supports fertility. | improve beds |
-| urbanfarmops.pests.scouting | Urban farm pest scouting | invariant | Scouting checks insects, disease, weeds, animal damage and stress by crop. | detect early |
-| urbanfarmops.pests.ipm_action | Urban farm IPM action | invariant | Action uses prevention, monitoring, thresholds, physical controls and approved treatments. | manage pests |
-| urbanfarmops.pests.exclusion_netting | Urban farm exclusion netting | variant | Netting protects crops from insects, birds or small mammals while allowing growth. | reduce damage |
-| urbanfarmops.harvest.harvest_window | Urban farm harvest window | invariant | Window defines crop maturity, weather, distribution deadline and staff availability. | harvest quality |
-| urbanfarmops.harvest.harvest_log | Urban farm harvest log | invariant | Log records crop, quantity, bed, date, destination, quality and handler. | track yield |
-| urbanfarmops.harvest.postharvest_handling | Urban farm postharvest handling | invariant | Handling includes cooling, washing if appropriate, sorting, packing and shade. | preserve quality |
-| urbanfarmops.harvest.cull_management | Urban farm cull management | variant | Culls are composted, donated if safe, fed to approved use or discarded. | reduce waste |
-| urbanfarmops.foodsafety.wash_station | Urban farm wash station | invariant | Station separates dirty harvest, potable water, clean surfaces, drainage and tools. | reduce contamination |
-| urbanfarmops.foodsafety.wash_water_disposal | Urban farm wash water disposal | variant | Disposal routes produce wash water away from clean areas, crops and storm drains. | prevent contamination |
-| urbanfarmops.foodsafety.tool_sanitation | Urban farm tool sanitation | invariant | Sanitation cleans knives, bins, tables and harvest containers between uses. | food safety |
-| urbanfarmops.foodsafety.traceability | Urban farm produce traceability | invariant | Traceability links produce to bed, harvest date, handler and distribution destination. | recall readiness |
-| urbanfarmops.foodsafety.worker_hygiene | Urban farm worker hygiene | invariant | Hygiene includes handwashing, illness policy, gloves if used, toilets and training. | protect produce |
-| urbanfarmops.volunteers.volunteer_shift | Urban farm volunteer shift | invariant | Shift assigns tasks, supervisor, tools, safety briefing, sign-in and closeout. | organize help |
-| urbanfarmops.volunteers.skill_task_match | Urban farm skill-task match | variant | Match assigns volunteers to seeding, weeding, harvest, wash, delivery or maintenance by ability. | work safely |
-| urbanfarmops.volunteers.youth_program | Urban farm youth program | variant | Program adapts tools, supervision, tasks, consent and learning goals for youth participants. | safe education |
-| urbanfarmops.distribution.donation_delivery | Urban farm donation delivery | invariant | Delivery records recipient, crop, weight, time, food safety condition and confirmation. | feed community |
-| urbanfarmops.distribution.market_box | Urban farm market box | variant | Box combines crops for sale or share with packing list and quality check. | distribute produce |
-| urbanfarmops.distribution.cold_handoff | Urban farm cold handoff | variant | Handoff maintains shade, cooling, time control and clean containers until recipient receives produce. | preserve quality |
-| urbanfarmops.infrastructure.tool_storage | Urban farm tool storage | invariant | Storage keeps tools clean, dry, secure, labeled and safe to access. | protect assets |
-| urbanfarmops.infrastructure.fence_gate | Urban farm fence and gate | invariant | Fence and gate manage security, animals, hours, deliveries and emergency access. | protect site |
-| urbanfarmops.infrastructure.shade_structure | Urban farm shade structure | variant | Structure supports workers, wash station, seedlings or harvest staging. | reduce heat |
-| urbanfarmops.records.input_record | Urban farm input record | invariant | Record tracks seeds, compost, amendments, treatments, suppliers, dates and beds. | trace inputs |
-| urbanfarmops.records.crop_failure_record | Urban farm crop failure record | variant | Record captures cause, weather, pest, soil issue, planting date and lesson. | improve plan |
-| urbanfarmops.reporting.production_report | Urban farm production report | invariant | Report summarizes harvest totals, crop performance, volunteer hours, distribution and losses. | evaluate season |
-| urbanfarmops.metrics.yield_per_bed | Urban farm yield per bed KPI | invariant | KPI compares harvest weight or count to bed area and crop plan. | improve productivity |
-| urbanfarmops.metrics.volunteer_retention | Urban farm volunteer retention KPI | variant | KPI tracks repeat participation, training completion and task reliability. | manage people |
-| urbanfarmops.coordination.food_bank_link | Urban farm food bank coordination | variant | Coordination aligns crop preferences, delivery times, packaging and food safety needs. | match demand |
-| urbanfarmops.close.season_closeout | Urban farm season closeout | invariant | Closeout clears crops, plants cover, stores tools, winterizes water and updates records. | finish season |
+| urbanfarmops.planning.farm_plan | План городской фермы | invariant | План определяет посевы, грядки, почву, орошение, волонтеров, сбор урожая, распределение и учет. | организовать сезон |
+| urbanfarmops.planning.crop_calendar | Календарь урожая городской фермы | invariant | В календаре расписаны посев, рассадка, сукцессионный посев, сбор урожая и оборот грядок. | время работы |
+| urbanfarmops.planning.bed_layout | Расположение кровати на городской ферме | invariant | Планировка грядок, дорожек, ирригационных линий, компоста, места для мытья, хранения и доступа. | использовать пространство |
+| urbanfarmops.planning.production_target | Цель производства городских ферм | variant | Target оценивает объем урожая по культурам, грядкам, сезону, пожертвованиям или каналам продаж. | планировать выход |
+| urbanfarmops.soil.soil_test | Тест почвы на городской ферме | invariant | Тест проверяет питательные вещества, pH, органические вещества, текстуру, соли и потенциальные загрязнения. | поправки к руководству |
+| urbanfarmops.soil.amendment_plan | План внесения изменений в городские фермы | invariant | План добавляет компост, известь, удобрения или органические вещества в зависимости от анализа почвы и потребностей урожая. | улучшить почву |
+| urbanfarmops.soil.compaction_management | Управление уплотнением городских ферм | variant | Руководство использует тропинки, развилки, мульчу, покровные культуры и ограничение движения транспорта. | защитить кровати |
+| urbanfarmops.soil.contamination_control | Контроль загрязнения почвы городских ферм | invariant | Для борьбы используются приподнятые грядки, чистая почва, тестирование, ограничения посевов или барьеры, где это необходимо. | безопасность пищевых продуктов |
+| urbanfarmops.irrigation.irrigation_zone | Зона орошения городской фермы | invariant | Грядки группируются по зонам по потребности сельскохозяйственных культур в воде, клапану, давлению, шлангу или капельной линии. | эффективно использовать воду |
+| urbanfarmops.irrigation.drip_line_check | Проверка капельной линии городской фермы | invariant | Проверка обнаруживает засоры, утечки, проблемы с давлением, отсутствие эмиттеров и повреждение трубок. | поддерживать орошение |
+| urbanfarmops.irrigation.water_schedule | График полива городской фермы | variant | График корректирует сроки в зависимости от погоды, стадии урожая, влажности почвы и правил полива. | предотвратить стресс |
+| urbanfarmops.irrigation.rainwater_use | Использование дождевой воды на городских фермах | variant | Использование управляет резервуарами, первой промывкой, сетками, насосами, пределами орошения и безопасностью. | экономить воду |
+| urbanfarmops.crops.seed_starting | Начало посева городских ферм | invariant | При запуске контролируется материал лотка, влажность, температура, освещение, этикетки и затвердевание перед пересадкой. | производить рассаду |
+| urbanfarmops.crops.transplanting | Пересадка городской фермы | invariant | Пересадка устанавливает интервал, глубину, полив, время, погоду и уход за растениями. | выращивать урожай |
+| urbanfarmops.crops.succession_planting | Посадка сукцессии | variant | При посадке сроки посева сдвигаются, чтобы обеспечить непрерывный сбор урожая. | бесперебойная поставка |
+| urbanfarmops.crops.cover_crop | Покровная культура городской фермы | variant | Покровная культура защищает почву, увеличивает биомассу, подавляет сорняки и поддерживает плодородие. | улучшить кровати |
+| urbanfarmops.pests.scouting | Обнаружение вредителей на городских фермах | invariant | Разведка проверяет насекомых, болезни, сорняки, повреждения животных и стресс в зависимости от урожая. | обнаружить на ранней стадии |
+| urbanfarmops.pests.ipm_action | Действия IPM в городских фермах | invariant | В действиях используются профилактика, мониторинг, пороговые значения, физический контроль и одобренные методы лечения. | бороться с вредителями |
+| urbanfarmops.pests.exclusion_netting | Сетка исключения городских ферм | variant | Сетка защищает посевы от насекомых, птиц и мелких млекопитающих, одновременно обеспечивая рост. | уменьшить ущерб |
+| urbanfarmops.harvest.harvest_window | Окно сбора урожая на городской ферме | invariant | Окно определяет зрелость урожая, погоду, сроки распределения и доступность персонала. | качество урожая |
+| urbanfarmops.harvest.harvest_log | Журнал урожая городской фермы | invariant | В журнале фиксируются урожай, количество, грядка, дата, место назначения, качество и обработчик. | отслеживать доходность |
+| urbanfarmops.harvest.postharvest_handling | Послеуборочная обработка городских ферм | invariant | Обработка включает охлаждение, промывку, если необходимо, сортировку, упаковку и затенение. | сохранить качество |
+| urbanfarmops.harvest.cull_management | Управление выбраковкой городских ферм | variant | Отбраковку компостируют, передают в дар, если она безопасна, скармливают разрешенному использованию или выбрасывают. | сократить отходы |
+| urbanfarmops.foodsafety.wash_station | Моечная станция городской фермы | invariant | Станция отделяет грязный урожай, питьевую воду, чистые поверхности, дренаж и инструменты. | уменьшить загрязнение |
+| urbanfarmops.foodsafety.wash_water_disposal | Удаление промывной воды на городских фермах | variant | Маршруты утилизации производят промывную воду вдали от чистых территорий, посевов и ливневых стоков. | предотвратить загрязнение |
+| urbanfarmops.foodsafety.tool_sanitation | Санитарная обработка городских ферм | invariant | Санитарная служба очищает ножи, мусорные ведра, столы и контейнеры для сбора урожая между использованиями. | безопасность пищевых продуктов |
+| urbanfarmops.foodsafety.traceability | Отслеживаемость продукции городских ферм | invariant | Прослеживаемость продукции связана с грядкой, датой сбора урожая, перевозчиком и пунктом распределения. | напомнить о готовности |
+| urbanfarmops.foodsafety.worker_hygiene | Гигиена городских фермеров | invariant | Гигиена включает в себя мытье рук, правила профилактики заболеваний, перчатки, если они используются, посещение туалетов и обучение. | защищать продукцию |
+| urbanfarmops.volunteers.volunteer_shift | Волонтерская смена городской фермы | invariant | Смена назначает задачи, руководителя, инструменты, инструктаж по технике безопасности, вход в систему и закрытие. | организовать помощь |
+| urbanfarmops.volunteers.skill_task_match | Сопоставление навыков и задач городской фермы | variant | Матч распределяет добровольцев по посеву, прополке, сбору урожая, стирке, доставке или обслуживанию в зависимости от способностей. | работать безопасно |
+| urbanfarmops.volunteers.youth_program | Молодежная программа городских ферм | variant | Программа адаптирует инструменты, контроль, задачи, согласие и цели обучения для молодых участников. | безопасное образование |
+| urbanfarmops.distribution.donation_delivery | Доставка пожертвований на городскую ферму | invariant | В записи о доставке указывается получатель, урожай, вес, время, состояние безопасности пищевых продуктов и подтверждение. | кормить сообщество |
+| urbanfarmops.distribution.market_box | Коробка городского фермерского рынка | variant | В коробке собраны культуры для продажи или обмена с упаковочным листом и проверкой качества. | распределять продукцию |
+| urbanfarmops.distribution.cold_handoff | Холодная передача городской фермы | variant | Передача обеспечивает тень, охлаждение, контроль времени и чистоту контейнеров до тех пор, пока получатель не получит продукцию. | сохранить качество |
+| urbanfarmops.infrastructure.tool_storage | Хранение инструментов для городской фермы | invariant | Хранение сохраняет инструменты чистыми, сухими, безопасными, маркированными и безопасными для доступа. | защищать активы |
+| urbanfarmops.infrastructure.fence_gate | Забор и ворота городской фермы | invariant | Забор и ворота контролируют безопасность, животных, часы работы, доставку и экстренный доступ. | защитить сайт |
+| urbanfarmops.infrastructure.shade_structure | Структура тени городской фермы | variant | Конструкция поддерживает рабочих, промывочную станцию, рассаду или сбор урожая. | уменьшить тепло |
+| urbanfarmops.records.input_record | Запись ввода ресурсов городской фермы | invariant | Запись отслеживает семена, компост, поправки, обработки, поставщиков, даты и грядки. | трассировка входных данных |
+| urbanfarmops.records.crop_failure_record | Рекорд неурожая городских ферм | variant | Записывайте причины, погоду, вредителей, проблемы с почвой, дату посадки и урок. | улучшить план |
+| urbanfarmops.reporting.production_report | Отчет о производстве городских ферм | invariant | В отчете приводятся общие сведения об урожае, продуктивности урожая, часах работы волонтеров, распределении и потерях. | оценить сезон |
+| urbanfarmops.metrics.yield_per_bed | Урожайность городских ферм на койку KPI | invariant | KPI сравнивает вес или количество урожая с площадью грядок и планом посева. | повысить производительность |
+| urbanfarmops.metrics.volunteer_retention | KPI по удержанию волонтеров в городских фермах | variant | KPI отслеживает повторное участие, завершение обучения и надежность задач. | управлять людьми |
+| urbanfarmops.coordination.food_bank_link | Координация продовольственных банков городских ферм | variant | Координация позволяет согласовать предпочтения культур, сроки доставки, упаковку и потребности в безопасности пищевых продуктов. | соответствие спросу |
+| urbanfarmops.close.season_closeout | Закрытие сезона городских ферм | invariant | Closeout очищает посевы, укрывает растения, хранит инструменты, готовит воду к зиме и обновляет записи. | закончить сезон |

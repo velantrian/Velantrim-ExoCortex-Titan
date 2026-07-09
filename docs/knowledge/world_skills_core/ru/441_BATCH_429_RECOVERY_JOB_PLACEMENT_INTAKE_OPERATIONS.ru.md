@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| jobplacementops.intake.request_source | request source | RECORD | Source records workforce center, shelter, benefits desk, employer, school or outreach. | Shows entry path. |
-| jobplacementops.intake.applicant_profile | applicant profile | RECORD | Profile captures contact, work status, language, location and safe-contact limits. | Defines participant. |
-| jobplacementops.intake.disaster_impact | disaster impact | RECORD | Impact records job loss, reduced hours, relocation, business closure or caregiving disruption. | Explains need. |
-| jobplacementops.intake.urgency | urgency model | MODEL | Urgency weighs income gap, housing risk, family needs, deadline and available openings. | Prioritizes help. |
-| jobplacementops.skills.skill_inventory | skill inventory | RECORD | Inventory captures occupations, certifications, tools, languages, software and soft skills. | Matches jobs. |
-| jobplacementops.skills.transferable | transferable skills | METHOD | Staff map prior experience to adjacent roles and recovery jobs. | Expands options. |
-| jobplacementops.skills.training_need | training need | RECORD | Need records license renewal, safety card, digital skill or short course. | Starts training referral. |
-| jobplacementops.skills.work_preferences | work preferences | RECORD | Preferences capture schedule, location, wage, physical limits and remote options. | Improves fit. |
-| jobplacementops.documents.resume | resume support | METHOD | Staff help update resume, work history and disaster employment gap. | Improves applications. |
-| jobplacementops.documents.id_work_auth | work document check | QUALITY_CHECK | Check identifies ID, authorization, certifications and missing documents. | Avoids hiring delay. |
-| jobplacementops.documents.reference | reference list | RECORD | References record contacts, role, permission and availability. | Supports applications. |
-| jobplacementops.documents.missing_doc | missing document | RECORD | Missing document logs source, replacement path, owner and deadline. | Drives completion. |
-| jobplacementops.barriers.transport | transport barrier | RECORD | Barrier captures commute, vehicle loss, fuel, transit, accessible ride or route gap. | Routes support. |
-| jobplacementops.barriers.childcare | childcare barrier | RECORD | Barrier captures hours, age, provider need, school schedule and voucher referral. | Enables work. |
-| jobplacementops.barriers.equipment | equipment barrier | RECORD | Barrier records clothing, tools, phone, internet, laptop or PPE needs. | Supports readiness. |
-| jobplacementops.barriers.health | health limitation | RECORD | Limitation records safe work constraints and referral needs without medical overcollection. | Protects applicant. |
-| jobplacementops.employer.employer_roster | employer roster | RECORD | Roster lists hiring employers, roles, wages, location, schedule and requirements. | Builds openings. |
-| jobplacementops.employer.job_order | job order | RECORD | Job order captures duties, pay, hours, start date, screening and contact. | Defines referral. |
-| jobplacementops.employer.recovery_job | recovery job tag | RECORD | Recovery jobs are tagged for cleanup, logistics, caregiving, construction or public service. | Matches disaster context. |
-| jobplacementops.employer.quality_check | employer quality check | QUALITY_CHECK | Check screens legitimacy, wage, safety, discrimination risk and contact accuracy. | Protects applicants. |
-| jobplacementops.matching.match_score | match score | MODEL | Score compares skills, documents, barriers, preferences and employer requirements. | Prioritizes referrals. |
-| jobplacementops.matching.referral | employer referral | RECORD | Referral records applicant, job, employer, date, documents sent and next step. | Creates trail. |
-| jobplacementops.matching.warm_handoff | warm handoff | METHOD | Staff confirm employer contact, interview time and applicant readiness. | Reduces drop-off. |
-| jobplacementops.matching.not_fit | not-fit reason | RECORD | Reason captures skill gap, schedule, transport, wage, documentation or preference. | Improves matching. |
-| jobplacementops.support.transport_referral | transport referral | METHOD | Transport support connects applicant to voucher, route planning or ride program. | Enables interview/work. |
-| jobplacementops.support.childcare_referral | childcare referral | METHOD | Childcare support connects applicant to provider, subsidy or emergency care path. | Enables attendance. |
-| jobplacementops.support.clothing_referral | clothing referral | METHOD | Clothing support covers interview clothes, work boots, uniforms or PPE. | Improves readiness. |
-| jobplacementops.support.digital_access | digital access | METHOD | Digital support covers email, applications, scans, phone and internet access. | Completes applications. |
-| jobplacementops.followup.interview_check | interview check | METHOD | Follow-up confirms interview attended, outcome, barriers and next steps. | Maintains momentum. |
-| jobplacementops.followup.placement_status | placement status | RECORD | Status records hired, pending, rejected, no-show, withdrew or training referral. | Tracks outcome. |
-| jobplacementops.followup.retention_check | retention check | METHOD | Staff check after start for schedule, transport, childcare and workplace issues. | Supports retention. |
-| jobplacementops.followup.reopen | reopen rule | METHOD | Case reopens for job loss, failed match, new documents or changed barrier. | Handles change. |
-| jobplacementops.privacy.minimum_data | minimum data | SAFETY_RULE | Intake stores only job placement, eligibility and follow-up data needed. | Reduces exposure. |
-| jobplacementops.privacy.consent_share | consent to share | RECORD | Consent records what can be shared with employers and partners. | Protects applicant. |
-| jobplacementops.communication.applicant_update | applicant update | METHOD | Update explains referrals, documents, barriers, deadlines and employer responses. | Reduces uncertainty. |
-| jobplacementops.communication.partner_update | partner update | METHOD | Partners receive aggregate skill needs, barriers, openings and placement outcomes. | Coordinates workforce. |
-| jobplacementops.records.case_log | case log | RECORD | Log stores intake, skills, barriers, referrals, follow-ups and outcomes. | Creates continuity. |
-| jobplacementops.records.retention | retention rule | CONSTRAINT | Workforce, privacy, grant and employer referral records follow schedules. | Preserves audit. |
-| jobplacementops.metrics.applicants_served | applicants served | MEASUREMENT | Count tracks applicants by status, sector interest and barrier type. | Shows demand. |
-| jobplacementops.metrics.referral_rate | referral rate | MEASUREMENT | Rate tracks applicants referred to employers or training. | Shows output. |
-| jobplacementops.metrics.placement_rate | placement rate | MEASUREMENT | Rate tracks confirmed hires among active applicants. | Measures outcome. |
-| jobplacementops.qa.case_review | case review | QUALITY_CHECK | Review checks skills, consent, referrals, barriers and follow-up completeness. | Improves reliability. |
-| jobplacementops.demob.transfer | transfer plan | METHOD | Ongoing cases transfer to workforce center or partner agency. | Maintains support. |
-| jobplacementops.review.after_action | after-action review | METHOD | Review captures skill gaps, employer quality, transport, childcare and retention lessons. | Improves future placement. |
+| jobplacementops.intake.request_source | источник запроса | RECORD | Источник записывает центр рабочей силы, приют, отдел пособий, работодателя, школу или информационно-пропагандистскую организацию. | Показывает путь входа. |
+| jobplacementops.intake.applicant_profile | профиль заявителя | RECORD | В профиле фиксируются контакты, рабочий статус, язык, местоположение и пределы безопасного контакта. | Определяет участника. |
+| jobplacementops.intake.disaster_impact | воздействие стихийного бедствия | RECORD | Влияние фиксирует потерю работы, сокращение рабочего времени, переезд, закрытие бизнеса или перерывы в уходе. | Объясняет необходимость. |
+| jobplacementops.intake.urgency | модель срочности | MODEL | Срочность учитывает разницу в доходах, жилищный риск, потребности семьи, сроки и доступные вакансии. | Отдает приоритет помощи. |
+| jobplacementops.skills.skill_inventory | инвентарь навыков | RECORD | Инвентаризация включает профессии, сертификаты, инструменты, языки, программное обеспечение и навыки общения. | Соответствует вакансии. |
+| jobplacementops.skills.transferable | передаваемые навыки | METHOD | Сотрудники сопоставляют предыдущий опыт со смежными должностями и работами по восстановлению. | Расширяет возможности. |
+| jobplacementops.skills.training_need | потребность в обучении | RECORD | Необходимо продлить лицензию на запись, карту безопасности, цифровые навыки или краткий курс. | Начинает обучение по направлениям. |
+| jobplacementops.skills.work_preferences | предпочтения в работе | RECORD | Предпочтения включают график, местоположение, заработную плату, физические ограничения и удаленные возможности. | Улучшает посадку. |
+| jobplacementops.documents.resume | возобновить поддержку | METHOD | Сотрудники помогают обновлять резюме, историю работы и устранять пробелы в работе в случае стихийных бедствий. | Улучшает приложения. |
+| jobplacementops.documents.id_work_auth | проверка рабочих документов | QUALITY_CHECK | Проверка идентифицирует удостоверение личности, авторизацию, сертификаты и недостающие документы. | Позволяет избежать задержек при приеме на работу. |
+| jobplacementops.documents.reference | список литературы | RECORD | Ссылки фиксируют контакты, роль, разрешения и доступность. | Поддерживает приложения. |
+| jobplacementops.documents.missing_doc | недостающий документ | RECORD | Отсутствует источник журналов документов, путь замены, владелец и крайний срок. | Завершение приводов. |
+| jobplacementops.barriers.transport | транспортный барьер | RECORD | Барьер фиксирует поездки на работу, потерю транспортного средства, расход топлива, транзит, доступную поездку или пробелы в маршруте. | Поддержка маршрутов. |
+| jobplacementops.barriers.childcare | барьер для ухода за детьми | RECORD | Barrier фиксирует часы работы, возраст, потребности в поставщиках услуг, расписание занятий и направление на ваучер. | Позволяет работать. |
+| jobplacementops.barriers.equipment | барьер оборудования | RECORD | Barrier записывает потребности в одежде, инструментах, телефоне, Интернете, ноутбуке или СИЗ. | Поддерживает готовность. |
+| jobplacementops.barriers.health | ограничение здоровья | RECORD | Ограничения фиксируют ограничения безопасной работы и потребности в направлениях без чрезмерного медицинского сбора. | Защищает заявителя. |
+| jobplacementops.employer.employer_roster | список работодателей | RECORD | В реестре перечислены нанимающие работодатели, должности, заработная плата, местоположение, график и требования. | Создает проемы. |
+| jobplacementops.employer.job_order | заказ на работу | RECORD | В приказе о приеме на работу указаны обязанности, оплата, часы, дата начала, проверка и контакт. | Определяет направление. |
+| jobplacementops.employer.recovery_job | тег задания восстановления | RECORD | Работы по восстановлению отмечены для уборки, логистики, ухода, строительства или общественных услуг. | Соответствует контексту катастрофы. |
+| jobplacementops.employer.quality_check | проверка качества работодателя | QUALITY_CHECK | Проверьте на экранах легитимность, заработную плату, безопасность, риск дискриминации и точность контактов. | Защищает заявителей. |
+| jobplacementops.matching.match_score | счет матча | MODEL | Оценка сравнивает навыки, документы, барьеры, предпочтения и требования работодателя. | Отдает приоритет рефералам. |
+| jobplacementops.matching.referral | направление работодателя | RECORD | Направление записывает заявителя, место работы, работодателя, дату, отправленные документы и следующий шаг. | Создает след. |
+| jobplacementops.matching.warm_handoff | теплая передача | METHOD | Сотрудники подтверждают контакт с работодателем, время собеседования и готовность заявителя. | Уменьшает выпадение. |
+| jobplacementops.matching.not_fit | неподходящая причина | RECORD | Разум учитывает пробелы в навыках, графике, транспорте, заработной плате, документации или предпочтениях. | Улучшает соответствие. |
+| jobplacementops.support.transport_referral | транспортное направление | METHOD | Транспортная поддержка позволяет заявителю получить ваучер, составить маршрут или программу поездок. | Позволяет пройти собеседование/работу. |
+| jobplacementops.support.childcare_referral | направление по уходу за детьми | METHOD | Поддержка по уходу за детьми связывает заявителя с поставщиком услуг, субсидией или каналом неотложной помощи. | Включает посещаемость. |
+| jobplacementops.support.clothing_referral | направление одежды | METHOD | Поддержка одеждой включает в себя одежду для собеседования, рабочую обувь, униформу или средства индивидуальной защиты. | Улучшает готовность. |
+| jobplacementops.support.digital_access | цифровой доступ | METHOD | Цифровая поддержка охватывает электронную почту, приложения, сканирование, доступ к телефону и Интернету. | Заполняет заявки. |
+| jobplacementops.followup.interview_check | проверка на собеседовании | METHOD | Последующие действия подтверждают участие в собеседовании, его результаты, препятствия и следующие шаги. | Сохраняет темп. |
+| jobplacementops.followup.placement_status | статус размещения | RECORD | Записи о состоянии принятых на работу, ожидающих рассмотрения, отклоненных, неявочных, отозванных или направленных на обучение. | Отслеживает результат. |
+| jobplacementops.followup.retention_check | проверка хранения | METHOD | После начала сотрудники проверяют расписание, транспорт, уход за детьми и проблемы на рабочем месте. | Поддерживает сохранение. |
+| jobplacementops.followup.reopen | правило повторного открытия | METHOD | Дело возобновляется в случае потери работы, неудачного совпадения, новых документов или изменения барьера. | Ручки меняются. |
+| jobplacementops.privacy.minimum_data | минимальные данные | SAFETY_RULE | Intake хранит только необходимые данные о трудоустройстве, праве на участие и последующих данных. | Уменьшает воздействие. |
+| jobplacementops.privacy.consent_share | согласие поделиться | RECORD | В согласии указывается, чем можно поделиться с работодателями и партнерами. | Защищает заявителя. |
+| jobplacementops.communication.applicant_update | обновление заявителя | METHOD | Обновление объясняет направления, документы, барьеры, сроки и ответы работодателя. | Уменьшает неопределенность. |
+| jobplacementops.communication.partner_update | обновление партнера | METHOD | Партнеры получают совокупные потребности в навыках, барьеры, возможности и результаты трудоустройства. | Координирует рабочую силу. |
+| jobplacementops.records.case_log | журнал дел | RECORD | В журнале хранятся данные о приеме, навыках, барьерах, направлениях, последующих действиях и результатах. | Создает преемственность. |
+| jobplacementops.records.retention | правило хранения | CONSTRAINT | Записи о рабочей силе, конфиденциальности, грантах и ​​​​рекомендациях работодателей следуют графикам. | Сохраняет аудит. |
+| jobplacementops.metrics.applicants_served | заявители обслужены | MEASUREMENT | Count отслеживает кандидатов по статусу, интересам отрасли и типу барьера. | Показывает спрос. |
+| jobplacementops.metrics.referral_rate | реферальная ставка | MEASUREMENT | Рейтинг отслеживает кандидатов, направленных к работодателям или на обучение. | Показывает вывод. |
+| jobplacementops.metrics.placement_rate | ставка размещения | MEASUREMENT | Оценка ставок подтвердила прием на работу среди активных кандидатов. | Измеряет результат. |
+| jobplacementops.qa.case_review | рассмотрение дела | QUALITY_CHECK | Обзор проверяет навыки, согласие, направления, препятствия и полноту последующего наблюдения. | Повышает надежность. |
+| jobplacementops.demob.transfer | план трансфера | METHOD | Текущие дела передаются в кадровый центр или партнерское агентство. | Сохраняет поддержку. |
+| jobplacementops.review.after_action | обзор после действий | METHOD | Обзор отражает пробелы в навыках, качество работодателей, транспорт, уход за детьми и уроки удержания сотрудников. | Улучшает будущее размещение. |

@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| vaxclinicops.planning.clinic_id | clinic ID | RECORD | Clinic ID links site, date, vaccine type, staff, target group and reporting unit. | Creates operational reference. |
-| vaxclinicops.planning.site_layout | site layout | METHOD | Layout separates entry, registration, screening, vaccination, observation and exit. | Keeps flow safe. |
-| vaxclinicops.planning.capacity | capacity model | MODEL | Capacity uses vaccinators, observation seats, registration desks, supply and hours. | Prevents overbooking. |
-| vaxclinicops.planning.accessibility | accessibility plan | METHOD | Plan covers ramps, seating, language, sensory needs, mobility and transport. | Keeps clinic inclusive. |
-| vaxclinicops.appointment.slot | appointment slot | RECORD | Slot records person, vaccine, time, dose need and status. | Manages demand. |
-| vaxclinicops.appointment.walkin | walk-in rule | CONSTRAINT | Walk-ins are accepted only if supply, eligibility and staffing allow. | Protects scheduled flow. |
-| vaxclinicops.appointment.reminder | reminder | METHOD | Reminder includes time, site, ID, consent, contraindication warning and reschedule path. | Reduces no-shows. |
-| vaxclinicops.appointment.no_show | no-show process | METHOD | No-show frees slot, triggers waitlist or follow-up. | Reduces wasted supply. |
-| vaxclinicops.eligibility.target_group | target group | CONSTRAINT | Eligibility may depend on age, risk, occupation, residence or outbreak exposure. | Applies public health rules. |
-| vaxclinicops.eligibility.dose_interval | dose interval | CONSTRAINT | Dose interval and prior vaccine history are checked before administration. | Prevents wrong timing. |
-| vaxclinicops.eligibility.contra_screen | contraindication screen | SAFETY_RULE | Screening checks allergy, illness, prior reaction and product-specific warnings. | Protects patients. |
-| vaxclinicops.eligibility.deferral | deferral | METHOD | Deferral records reason, guidance and future eligibility path. | Handles not-yet cases. |
-| vaxclinicops.consent.consent_form | consent form | RECORD | Consent records patient/guardian agreement, vaccine, date and required acknowledgments. | Documents authorization. |
-| vaxclinicops.consent.guardian | guardian consent | SAFETY_RULE | Minors or dependent adults require proper guardian or legal authority. | Protects legal validity. |
-| vaxclinicops.consent.language | language support | METHOD | Consent information is provided in understandable language where possible. | Supports informed choice. |
-| vaxclinicops.consent.decline | decline record | RECORD | Decline records refusal if required without coercive pressure. | Supports reporting and follow-up. |
-| vaxclinicops.coldchain.receiving | vaccine receiving | METHOD | Receiving records lot, quantity, temperature, time and condition. | Starts cold-chain custody. |
-| vaxclinicops.coldchain.storage | storage condition | SAFETY_RULE | Storage follows product temperature, light and handling rules. | Preserves potency. |
-| vaxclinicops.coldchain.transport | transport log | RECORD | Transport logs cooler, probes, route, times and temperature. | Supports mobile clinics. |
-| vaxclinicops.coldchain.excursion | temperature excursion | FAILURE_MODE | Excursion quarantines doses until viability decision. | Prevents compromised vaccine use. |
-| vaxclinicops.inventory.lot_control | lot control | RECORD | Lot, expiration and dose count are linked to every administered dose. | Enables recall and reporting. |
-| vaxclinicops.inventory.open_vial | open vial rule | CONSTRAINT | Open vial handling follows product time limit and wastage rule. | Reduces unsafe use. |
-| vaxclinicops.inventory.wastage | wastage record | RECORD | Wastage records reason, lot, quantity and approver. | Supports supply accountability. |
-| vaxclinicops.inventory.reconciliation | reconciliation | QUALITY_CHECK | End-of-day doses reconcile received, administered, wasted and transferred. | Detects inventory errors. |
-| vaxclinicops.registration.checkin | check-in | METHOD | Check-in verifies appointment, identity, eligibility and contact details. | Starts patient flow. |
-| vaxclinicops.registration.data_minimum | minimum data | CONSTRAINT | Clinic collects only required demographic, eligibility and reporting fields. | Reduces privacy burden. |
-| vaxclinicops.registration.insurance | insurance capture | METHOD | Insurance may be captured for administration billing where allowed. | Supports finance without blocking access. |
-| vaxclinicops.registration.queue | queue control | METHOD | Queue control uses signs, staff, appointments and accessibility priority. | Prevents crowding. |
-| vaxclinicops.administration.vaccinator | vaccinator credential | SAFETY_RULE | Vaccinator must have authorized scope, training and supervision. | Ensures safe administration. |
-| vaxclinicops.administration.product_check | product check | QUALITY_CHECK | Product, dose, route, lot and patient are checked before administration. | Prevents wrong vaccine errors. |
-| vaxclinicops.administration.site | administration site | RECORD | Administration site and route are documented when required. | Supports clinical record. |
-| vaxclinicops.administration.sharps | sharps safety | SAFETY_RULE | Sharps disposal and needlestick protocol are active onsite. | Protects staff and public. |
-| vaxclinicops.observation.wait_period | observation period | CONSTRAINT | Observation time follows product and risk guidance. | Detects immediate reactions. |
-| vaxclinicops.observation.reaction | adverse reaction | SAFETY_RULE | Reaction protocol routes to first aid, EMS and reporting. | Protects patient safety. |
-| vaxclinicops.observation.seating | observation seating | METHOD | Seating keeps observed patients visible and accessible. | Improves monitoring. |
-| vaxclinicops.observation.release | release process | METHOD | Release provides vaccine record, next-dose guidance and side-effect information. | Completes visit. |
-| vaxclinicops.documentation.registry | registry entry | RECORD | Dose is reported to immunization registry or required public health system. | Maintains official record. |
-| vaxclinicops.documentation.card | vaccination card | RECORD | Patient receives proof with product, lot, date and next action. | Supports continuity. |
-| vaxclinicops.documentation.correction | correction process | METHOD | Data errors are corrected through controlled registry or record workflow. | Keeps records accurate. |
-| vaxclinicops.reporting.daily | daily report | MEASUREMENT | Daily report counts administered, wasted, demographics, inventory and incidents. | Supports public health management. |
-| vaxclinicops.qa.chart_audit | chart audit | QUALITY_CHECK | Sample records check eligibility, consent, lot, registry and observation fields. | Improves compliance. |
-| vaxclinicops.security.crowd | crowd safety | SAFETY_RULE | Security plan covers crowding, disruptive visitors, traffic and emergency exits. | Keeps site safe. |
-| vaxclinicops.closeout.site_close | site closeout | METHOD | Closeout reconciles inventory, cleans site, secures records and briefs staff. | Ends clinic safely. |
-| vaxclinicops.review.after_action | after-action review | METHOD | Review captures throughput, equity, wastage, incidents and access barriers. | Improves next clinic. |
+| vaxclinicops.planning.clinic_id | идентификатор клиники | RECORD | Идентификатор клиники связывает сайт, дату, тип вакцины, персонал, целевую группу и отчетную единицу. | Создает оперативную ссылку. |
+| vaxclinicops.planning.site_layout | макет сайта | METHOD | Планировка разделяет вход, регистрацию, осмотр, вакцинацию, наблюдение и выезд. | Обеспечивает безопасность потока. |
+| vaxclinicops.planning.capacity | модель мощности | MODEL | В мощности используются вакцинаторы, наблюдательные места, регистрационные стойки, запасы и часы. | Предотвращает овербукинг. |
+| vaxclinicops.planning.accessibility | план доступности | METHOD | План охватывает пандусы, места для сидения, язык, сенсорные потребности, мобильность и транспорт. | Сохраняет клинику инклюзивной. |
+| vaxclinicops.appointment.slot | интервал встречи | RECORD | В слоте фиксируются данные о человеке, вакцине, времени, необходимой дозе и статусе. | Управляет спросом. |
+| vaxclinicops.appointment.walkin | правило входа | CONSTRAINT | Приходы принимаются только в том случае, если это позволяют наличие, право на участие и кадровое обеспечение. | Защищает запланированный поток. |
+| vaxclinicops.appointment.reminder | напоминание | METHOD | Напоминание включает время, место, идентификатор, согласие, предупреждение о противопоказаниях и путь изменения расписания. | Снижает количество неявок. |
+| vaxclinicops.appointment.no_show | процесс неявки | METHOD | Неявка освобождает место, запускает список ожидания или последующие действия. | Уменьшает потери впустую. |
+| vaxclinicops.eligibility.target_group | целевая группа | CONSTRAINT | Право на участие может зависеть от возраста, риска, профессии, места жительства или воздействия вспышки. | Применяет правила общественного здравоохранения. |
+| vaxclinicops.eligibility.dose_interval | интервал дозы | CONSTRAINT | Перед введением проверяются интервал введения дозы и предыдущая история вакцинации. | Предотвращает неправильное время. |
+| vaxclinicops.eligibility.contra_screen | экран противопоказаний | SAFETY_RULE | При скрининге проверяются аллергия, заболевание, предыдущая реакция и предупреждения, относящиеся к конкретному продукту. | Защищает пациентов. |
+| vaxclinicops.eligibility.deferral | отсрочка | METHOD | В отсрочке указывается причина, рекомендации и будущий путь получения права на участие. | Обрабатывает еще не реализованные дела. |
+| vaxclinicops.consent.consent_form | форма согласия | RECORD | В согласии указывается соглашение пациента/опекуна, вакцина, дата и необходимые подтверждения. | Авторизация документов. |
+| vaxclinicops.consent.guardian | согласие опекуна | SAFETY_RULE | Несовершеннолетним или взрослым-иждивенцам требуется надлежащий опекун или юридические полномочия. | Защищает юридическую силу. |
+| vaxclinicops.consent.language | языковая поддержка | METHOD | Информация о согласии по возможности предоставляется на понятном языке. | Поддерживает осознанный выбор. |
+| vaxclinicops.consent.decline | снижение записи | RECORD | Отказ фиксирует отказ, если это необходимо, без принуждения. | Поддерживает отчетность и последующие действия. |
+| vaxclinicops.coldchain.receiving | получение вакцины | METHOD | Прием записей о партии, количестве, температуре, времени и состоянии. | Начинается хранение в холодовой цепи. |
+| vaxclinicops.coldchain.storage | условия хранения | SAFETY_RULE | При хранении следует соблюдать температуру продукта, освещение и правила обращения. | Сохраняет потенцию. |
+| vaxclinicops.coldchain.transport | транспортный журнал | RECORD | Транспортировка бревен в холодильнике, датчиках, маршруте, времени и температуре. | Поддерживает мобильные клиники. |
+| vaxclinicops.coldchain.excursion | температурный скачок | FAILURE_MODE | Экскурсионные карантины дозируются до принятия решения о жизнеспособности. | Предотвращает несанкционированное использование вакцин. |
+| vaxclinicops.inventory.lot_control | контроль лота | RECORD | Партия, срок годности и количество доз привязаны к каждой введенной дозе. | Включает отзыв и отчетность. |
+| vaxclinicops.inventory.open_vial | правило открытого флакона | CONSTRAINT | Обращение с открытыми флаконами соответствует ограничениям по времени использования и правилам утилизации. | Уменьшает небезопасное использование. |
+| vaxclinicops.inventory.wastage | запись об отходах | RECORD | Причина, партия, количество и утверждающее лицо указываются в отходах. | Поддерживает подотчетность поставок. |
+| vaxclinicops.inventory.reconciliation | примирение | QUALITY_CHECK | Дозы на конец дня согласовывают полученные, введенные, потраченные впустую и переданные дозы. | Обнаруживает ошибки инвентаризации. |
+| vaxclinicops.registration.checkin | регистрироваться | METHOD | При регистрации проверяется встреча, личность, право на участие и контактные данные. | Начинает поток пациентов. |
+| vaxclinicops.registration.data_minimum | минимальные данные | CONSTRAINT | Клиника собирает только необходимые поля демографической информации, соответствия требованиям и отчетности. | Уменьшает нагрузку на конфиденциальность. |
+| vaxclinicops.registration.insurance | страховой захват | METHOD | Если это разрешено, страховка может быть использована для выставления административных счетов. | Поддерживает финансы без блокировки доступа. |
+| vaxclinicops.registration.queue | контроль очереди | METHOD | Управление очередями использует знаки, персонал, записи и приоритет доступности. | Предотвращает скопление людей. |
+| vaxclinicops.administration.vaccinator | удостоверение вакцинатора | SAFETY_RULE | Вакцинатор должен иметь разрешенную сферу деятельности, обучение и надзор. | Обеспечивает безопасное администрирование. |
+| vaxclinicops.administration.product_check | проверка продукта | QUALITY_CHECK | Перед введением проверяются продукт, доза, способ введения, партия и пациент. | Предотвращает неправильные ошибки вакцинации. |
+| vaxclinicops.administration.site | сайт администрирования | RECORD | Место администрирования и маршрут документируются при необходимости. | Поддерживает историю болезни. |
+| vaxclinicops.administration.sharps | безопасность острых предметов | SAFETY_RULE | На месте действует протокол утилизации острых предметов и уколов иглами. | Защищает персонал и общественность. |
+| vaxclinicops.observation.wait_period | период наблюдения | CONSTRAINT | Время наблюдения соответствует рекомендациям по продукту и рискам. | Обнаруживает немедленные реакции. |
+| vaxclinicops.observation.reaction | побочная реакция | SAFETY_RULE | Протокол реагирования на маршруты оказания первой помощи, скорой помощи и отчетности. | Обеспечивает безопасность пациентов. |
+| vaxclinicops.observation.seating | место для наблюдения | METHOD | Сиденья позволяют наблюдаемым пациентам быть видимыми и доступными. | Улучшает мониторинг. |
+| vaxclinicops.observation.release | процесс выпуска | METHOD | В выпуске содержится информация о вакцине, рекомендации по следующей дозе и информация о побочных эффектах. | Завершает визит. |
+| vaxclinicops.documentation.registry | запись в реестре | RECORD | О дозе сообщается в реестр иммунизации или в необходимую систему общественного здравоохранения. | Ведет официальную запись. |
+| vaxclinicops.documentation.card | карта вакцинации | RECORD | Пациент получает подтверждение с указанием продукта, партии, даты и следующих действий. | Поддерживает непрерывность. |
+| vaxclinicops.documentation.correction | процесс коррекции | METHOD | Ошибки данных исправляются посредством контролируемого реестра или рабочего процесса записи. | Сохраняет точность записей. |
+| vaxclinicops.reporting.daily | ежедневный отчет | MEASUREMENT | В ежедневных отчетах учитываются административные расходы, демографические данные, инвентарь и инциденты. | Поддерживает управление общественным здравоохранением. |
+| vaxclinicops.qa.chart_audit | аудит диаграммы | QUALITY_CHECK | Образцы записей проверяют соответствие критериям, согласие, партию, реестр и поля наблюдения. | Улучшает соответствие. |
+| vaxclinicops.security.crowd | безопасность толпы | SAFETY_RULE | План безопасности охватывает скопление людей, мешающих посетителям, движение транспорта и запасные выходы. | Обеспечивает безопасность сайта. |
+| vaxclinicops.closeout.site_close | закрытие сайта | METHOD | Closeout сверяет инвентарь, очищает территорию, обеспечивает безопасность записей и инструктирует персонал. | Заканчивается клиника благополучно. |
+| vaxclinicops.review.after_action | обзор после действий | METHOD | Обзор фиксирует пропускную способность, справедливость, потери, инциденты и барьеры доступа. | Улучшает следующую клинику. |

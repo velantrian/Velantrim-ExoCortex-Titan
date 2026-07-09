@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| venueops.ticketing.ticket_manifest | Ticket manifest | invariant | Manifest lists tickets, sections, seats, prices, holds, comps and sales status. | seat inventory truth |
-| venueops.ticketing.scan_gate | Ticket scan gate | invariant | Scan gate validates barcode, pass, credential or wristband and records entry event. | access proof |
-| venueops.ticketing.duplicate_scan | Duplicate scan | invariant | Duplicate scan indicates ticket already used or copied and requires exception handling. | fraud or mistake |
-| venueops.ticketing.will_call | Will-call pickup | variant | Will-call verifies identity and releases reserved tickets or credentials at venue. | controlled pickup |
-| venueops.ticketing.box_office_reconciliation | Box office reconciliation | invariant | Reconciliation compares sales, refunds, cash, card, comps and ticket inventory. | money and seats align |
-| venueops.ticketing.accessible_seating | Accessible seating management | invariant | Accessible seating protects suitable locations, companion seats and conversion rules. | inclusive access |
-| venueops.access.credential_zone | Event credential zone | invariant | Credential zones restrict backstage, production, media, VIP, vendor or staff areas. | not every pass opens all |
-| venueops.access.bag_check | Bag check operation | variant | Bag check screens items according to policy while managing privacy, speed and prohibited goods. | safety at entry |
-| venueops.access.reentry_policy | Re-entry policy | variant | Re-entry policy defines whether guests can leave and return using stamp, scan or credential. | control perimeter |
-| venueops.access.queue_management | Entry queue management | invariant | Queue management uses lanes, signage, staff, barriers and information to control arrival flow. | first crowd bottleneck |
-| venueops.access.gate_rate | Gate throughput rate | invariant | Gate rate measures guests processed per gate per time under current screening rules. | entry capacity |
-| venueops.access.prohibited_item_log | Prohibited item log | invariant | Log records confiscated, returned or refused items with policy basis and incident details. | accountable screening |
-| venueops.crowd.crowd_flow_plan | Crowd flow plan | invariant | Plan maps guest movement between gates, concourses, seating, toilets, concessions and exits. | people as flow |
-| venueops.crowd.capacity_limit | Venue capacity limit | invariant | Capacity limit defines maximum occupancy by permit, layout, exits, seating or event configuration. | never exceed safe capacity |
-| venueops.crowd.pinching_point | Crowd pinch point | invariant | Pinch point is a narrow or conflicting area where crowd density and delay can increase risk. | find bottlenecks |
-| venueops.crowd.egress_plan | Event egress plan | invariant | Egress plan manages how audience exits after event using routes, staff, lighting and transport coordination. | leaving is also operation |
-| venueops.crowd.front_of_stage_barrier | Front-of-stage barrier | variant | Barrier separates audience from stage and creates controlled access for security and medical response. | high-energy crowd zone |
-| venueops.crowd.crowd_density_monitor | Crowd density monitor | variant | Monitoring estimates crowd density by observation, cameras, counters or reports. | risk before crush |
-| venueops.production.stage_changeover | Stage changeover | invariant | Changeover moves equipment, instruments, scenery or setup between acts under timing and safety constraints. | show keeps moving |
-| venueops.production.load_in | Event load-in | invariant | Load-in brings production, vendor and event equipment into venue with dock, labor, lift and schedule controls. | build the event |
-| venueops.production.load_out | Event load-out | invariant | Load-out removes equipment after event while managing fatigue, traffic, inventory and damage risk. | teardown safely |
-| venueops.production.power_drop | Temporary power drop | invariant | Power drop provides event power with load, cable routing, protection and authorized connection. | electricity for show |
-| venueops.production.sound_check | Sound check | variant | Sound check verifies audio routing, levels, monitors, microphones and room response before doors or show. | technical readiness |
-| venueops.production.run_of_show | Run of show | invariant | Run of show sequences cues, times, speakers, performances, breaks and operational notes. | shared event script |
-| venueops.vendor.vendor_checkin | Vendor check-in | invariant | Check-in verifies vendor identity, space, permits, insurance, load-in time and rules. | controlled marketplace |
-| venueops.vendor.food_vendor_inspection | Food vendor inspection | variant | Inspection checks permit, temperature, hygiene, setup, allergen information and waste controls. | food safety at venue |
-| venueops.vendor.merch_inventory | Merchandise inventory | variant | Merch inventory tracks items, starting count, sales, comps, returns and settlement. | product plus money |
-| venueops.vendor.settlement_sheet | Vendor settlement sheet | invariant | Settlement sheet records sales, fees, commissions, taxes, cash, card and payout. | close financials |
-| venueops.vendor.waste_plan | Event waste plan | invariant | Waste plan sets bins, streams, pickup, staff, signage and post-event cleaning. | cleanup built in |
-| venueops.vendor.water_station | Water station | variant | Water station supports hydration, crowd welfare and reduced medical incidents during event. | simple welfare control |
-| venueops.safety.safety_briefing | Event safety briefing | invariant | Briefing aligns staff on risks, roles, communications, evacuation, medical and incident reporting. | everyone knows response |
-| venueops.safety.incident_log | Venue incident log | invariant | Incident log records injuries, ejections, disturbances, hazards, lost children or property damage. | event memory |
-| venueops.safety.medical_post | Event medical post | variant | Medical post provides visible first-response location and escalation path for guest health incidents. | care access |
-| venueops.safety.weather_watch | Event weather watch | variant | Weather watch tracks lightning, wind, heat, rain or cold that may affect outdoor event safety. | sky changes plan |
-| venueops.safety.evacuation_trigger | Evacuation trigger | invariant | Trigger defines conditions requiring partial or full evacuation and authority to initiate it. | decision before panic |
-| venueops.safety.radio_channel_plan | Radio channel plan | invariant | Plan assigns channels for security, production, operations, medical, guest services and command. | avoid radio chaos |
-| venueops.guest.lost_child_protocol | Lost child protocol | invariant | Protocol protects child, verifies guardian, controls information and records reunification. | sensitive incident |
-| venueops.guest.lost_property | Event lost property | invariant | Lost property workflow records item, finder, location, storage, claim and disposal. | trust after event |
-| venueops.guest.accessibility_service | Event accessibility service | invariant | Accessibility service supports entry, seating, toilets, viewing, communication and assistance routes. | inclusive event |
-| venueops.guest.complaint_resolution | Event complaint resolution | variant | Resolution handles guest issue through listening, correction, relocation, refund path or escalation. | recover experience |
-| venueops.guest.information_point | Guest information point | invariant | Info point answers wayfinding, schedules, policies, lost items and service questions. | reduce confusion |
-| venueops.close.post_event_report | Post-event report | invariant | Report summarizes attendance, incidents, revenue notes, staffing, complaints, timings and lessons. | improve next event |
-| venueops.close.damage_walkthrough | Damage walkthrough | invariant | Walkthrough records venue damage, missing assets, cleaning issues and chargeback evidence. | protect venue asset |
-| venueops.close.staff_debrief | Staff debrief | variant | Debrief captures operational issues, safety concerns, guest feedback and improvement actions. | learn while fresh |
+| venueops.ticketing.ticket_manifest | Манифест билетов | invariant | В манифесте перечислены билеты, секции, места, цены, остановки, акции и статус продаж. | правда о инвентаре сидений |
+| venueops.ticketing.scan_gate | ворота сканирования билетов | invariant | Сканирующие ворота проверяют штрих-код, пропуск, удостоверение или браслет и записывают событие входа. | доказательство доступа |
+| venueops.ticketing.duplicate_scan | Дублировать сканирование | invariant | Сканирование дубликатов указывает на то, что билет уже использован или скопирован, и требует обработки исключений. | обман или ошибка |
+| venueops.ticketing.will_call | Перехват вызова | variant | Will-call проверяет личность и выдает зарезервированные билеты или учетные данные на месте проведения мероприятия. | контролируемый пикап |
+| venueops.ticketing.box_office_reconciliation | Согласование кассовых сборов | invariant | При сверке сравниваются продажи, возвраты, наличные, карты, бонусы и инвентарь билетов. | деньги и места совпадают |
+| venueops.ticketing.accessible_seating | Доступное управление сиденьями | invariant | Доступные сиденья защищают подходящие места, сопутствующие места и правила переоборудования. | инклюзивный доступ |
+| venueops.access.credential_zone | Зона учетных данных мероприятия | invariant | Зоны учетных данных ограничивают пространство за кулисами, производство, средства массовой информации, VIP-персон, поставщиков или сотрудников. | не каждый проход открывает все |
+| venueops.access.bag_check | Операция проверки сумки | variant | Проверка багажа проверяет предметы в соответствии с политикой, обеспечивая при этом конфиденциальность, скорость и наличие запрещенных товаров. | безопасность на входе |
+| venueops.access.reentry_policy | Политика повторного въезда | variant | Политика повторного входа определяет, могут ли гости выходить и возвращаться с использованием штампа, сканирования или учетных данных. | периметр контроля |
+| venueops.access.queue_management | Управление очередью на вход | invariant | Управление очередями использует полосы движения, указатели, персонал, барьеры и информацию для контроля потока прибытия. | первое узкое место в толпе |
+| venueops.access.gate_rate | Пропускная способность ворот | invariant | Коэффициент пропуска измеряет количество гостей, обработанных за один выход за раз в соответствии с действующими правилами досмотра. | пропускная способность |
+| venueops.access.prohibited_item_log | Журнал запрещенных предметов | invariant | В журнале регистрируются конфискованные, возвращенные или отклоненные предметы с указанием политики и подробностями инцидента. | ответственная проверка |
+| venueops.crowd.crowd_flow_plan | План движения толпы | invariant | План отображает перемещение гостей между воротами, вестибюлями, местами для сидения, туалетами, проходами и выходами. | люди как поток |
+| venueops.crowd.capacity_limit | Ограничение вместимости площадки | invariant | Ограничение вместимости определяет максимальную вместимость в зависимости от разрешения, планировки, выходов, посадочных мест или конфигурации мероприятия. | никогда не превышайте безопасную мощность |
+| venueops.crowd.pinching_point | Точка защемления толпы | invariant | Точка защемления — это узкая или конфликтная зона, где плотность толпы и задержки могут увеличить риск. | найти узкие места |
+| venueops.crowd.egress_plan | План выхода из мероприятия | invariant | План выхода определяет, как аудитория выйдет после мероприятия, используя маршруты, персонал, освещение и координацию транспорта. | уход - это тоже операция |
+| venueops.crowd.front_of_stage_barrier | Барьер перед сценой | variant | Барьер отделяет публику от сцены и создает контролируемый доступ для обеспечения безопасности и медицинского реагирования. | зона высокоэнергетической толпы |
+| venueops.crowd.crowd_density_monitor | Монитор плотности скопления людей | variant | Мониторинг оценивает плотность толпы с помощью наблюдения, камер, счетчиков или отчетов. | риск перед разгромом |
+| venueops.production.stage_changeover | Переключение стадий | invariant | При переключении оборудование, инструменты, декорации или декорации перемещаются между действиями в соответствии с ограничениями по времени и безопасности. | шоу продолжает двигаться |
+| venueops.production.load_in | Загрузка событий | invariant | При погрузке производственное оборудование, оборудование для поставщиков и оборудование для проведения мероприятий доставляются на площадку с контролем дока, рабочей силы, подъема и расписания. | построить мероприятие |
+| venueops.production.load_out | Разгрузка мероприятия | invariant | При выгрузке оборудование удаляется после мероприятия, одновременно управляя рисками усталости, дорожного движения, запасов и повреждений. | безопасный демонтаж |
+| venueops.production.power_drop | Временное падение мощности | invariant | Падение мощности обеспечивает питание событий с нагрузкой, прокладкой кабеля, защитой и авторизованным подключением. | электричество для шоу |
+| venueops.production.sound_check | Проверка звука | variant | Звуковая проверка проверяет маршрутизацию звука, уровни, мониторы, микрофоны и реакцию помещения перед дверями или шоу. | техническая готовность |
+| venueops.production.run_of_show | Запуск шоу | invariant | Реплики последовательностей шоу, время, выступающие, выступления, перерывы и оперативные примечания. | сценарий общего события |
+| venueops.vendor.vendor_checkin | Регистрация продавца | invariant | При регистрации проверяется личность поставщика, место, разрешения, страховка, время и правила загрузки. | контролируемый рынок |
+| venueops.vendor.food_vendor_inspection | Проверка поставщиков продуктов питания | variant | Разрешение на инспекционные проверки, температура, гигиена, настройка, информация об аллергенах и контроль отходов. | безопасность пищевых продуктов на месте |
+| venueops.vendor.merch_inventory | Товарный запас | variant | Инвентаризация товаров отслеживает товары, начальный счет, продажи, скидки, возвраты и расчеты. | продукт плюс деньги |
+| venueops.vendor.settlement_sheet | Расчетный лист поставщика | invariant | В расчетном листе регистрируются продажи, сборы, комиссии, налоги, наличные, карты и выплаты. | закрыть финансовые отчеты |
+| venueops.vendor.waste_plan | План отходов мероприятия | invariant | В плане сбора мусора указаны контейнеры, потоки, вывоз, персонал, вывески и уборка после мероприятия. | очистка встроена |
+| venueops.vendor.water_station | Водная станция | variant | Станция водоснабжения обеспечивает гидратацию, благосостояние зрителей и снижает количество медицинских происшествий во время мероприятия. | простой контроль благосостояния |
+| venueops.safety.safety_briefing | Инструктаж по безопасности мероприятия | invariant | Брифинг согласовывает персонал с рисками, ролями, коммуникацией, эвакуацией, медицинским обслуживанием и отчетностью об инцидентах. | все знают ответ |
+| venueops.safety.incident_log | Журнал инцидентов на объекте | invariant | В журнале происшествий фиксируются травмы, выбросы, беспорядки, опасности, потеря детей или материальный ущерб. | память событий |
+| venueops.safety.medical_post | Медицинский пост мероприятия | variant | Медицинский пост обеспечивает видимое место оказания первой помощи и путь эскалации в случае инцидентов, связанных со здоровьем гостей. | доступ к медицинской помощи |
+| venueops.safety.weather_watch | Часы погоды для событий | variant | Часы погоды отслеживают молнии, ветер, жару, дождь или холод, которые могут повлиять на безопасность мероприятий на открытом воздухе. | небо меняет план |
+| venueops.safety.evacuation_trigger | Триггер эвакуации | invariant | Триггер определяет условия, требующие частичной или полной эвакуации, а также полномочия на ее инициирование. | решение до паники |
+| venueops.safety.radio_channel_plan | План радиоканалов | invariant | План определяет каналы для обеспечения безопасности, производства, операций, медицины, обслуживания гостей и управления. | избежать радиохаоса |
+| venueops.guest.lost_child_protocol | Протокол о потерянном ребенке | invariant | Протокол защищает ребенка, проверяет опекуна, контролирует информацию и записывает воссоединение. | деликатный инцидент |
+| venueops.guest.lost_property | Событие утраты имущества | invariant | Рабочий процесс потерянного имущества фиксирует предмет, его местонахождение, местонахождение, хранение, претензию и утилизацию. | доверие после события |
+| venueops.guest.accessibility_service | Служба доступности мероприятий | invariant | Служба доступности поддерживает вход, места для сидения, туалеты, смотровые площадки, маршруты связи и помощи. | инклюзивное мероприятие |
+| venueops.guest.complaint_resolution | Разрешение жалоб на мероприятие | variant | Разрешение решает проблему гостя посредством прослушивания, исправления, перемещения, возврата средств или эскалации. | восстановить опыт |
+| venueops.guest.information_point | Информационный пункт для гостей | invariant | Информационная точка отвечает на вопросы о маршруте, расписаниях, правилах, потерянных вещах и сервисных вопросах. | уменьшить путаницу |
+| venueops.close.post_event_report | Отчет после мероприятия | invariant | Отчет суммирует посещаемость, инциденты, отчеты о доходах, штатное расписание, жалобы, сроки и уроки. | улучшить следующее мероприятие |
+| venueops.close.damage_walkthrough | Прохождение повреждений | invariant | В пошаговом руководстве фиксируются повреждения объекта, пропавшие активы, проблемы с уборкой и доказательства возврата платежей. | защитить актив объекта |
+| venueops.close.staff_debrief | Подведение итогов персонала | variant | В отчете отражаются эксплуатационные проблемы, проблемы безопасности, отзывы гостей и действия по улучшению. | учись пока свеж |

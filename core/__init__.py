@@ -23,12 +23,31 @@ AUDIT-FIX v8.4.0: до этого релиза core/__init__.py был пуст�
 from importlib.metadata import PackageNotFoundError as _PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 
-try:
-    __version__ = _pkg_version("velantrim-exocortex-crystal")
-except _PackageNotFoundError:
-    # Fallback для случая когда пакет не установлен (development clone)
-    # Должно совпадать с pyproject.toml — но обычно использует metadata выше.
-    __version__ = "8.4.0+dev"
+
+def _resolve_version() -> str:
+    """Resolve the version from the SINGLE source of truth: pyproject.toml.
+
+    Installed package → importlib.metadata (distribution name as declared in
+    pyproject.toml [project].name = "velantrim-v8-7-titan"). Dev clone (not
+    pip-installed) → read pyproject.toml directly, so a checkout never reports a
+    stale hardcoded version. Never raises.
+    """
+    try:
+        return _pkg_version("velantrim-v8-7-titan")
+    except _PackageNotFoundError:
+        pass
+    # Development clone: read straight from pyproject.toml (the single source).
+    try:
+        import tomllib
+        from pathlib import Path
+        _pp = Path(__file__).resolve().parent.parent / "pyproject.toml"
+        with _pp.open("rb") as _fh:
+            return tomllib.load(_fh)["project"]["version"]
+    except Exception:
+        return "0.0.0+unknown"
+
+
+__version__ = _resolve_version()
 
 __all__ = [
     "__version__",

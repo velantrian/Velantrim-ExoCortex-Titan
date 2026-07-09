@@ -1,0 +1,13 @@
+# BATCH 693: Gutter — Installation & Maintenance
+
+**KnowledgeUnits:** 50
+**Namespace:** `gutter.ops.*`
+**Scope:** seamless, k_style, half_round, hanger, downspout, leaf_guard, slope, drip_edge
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| gutter.ops.seamless_machine_forming | Seamless Gutter — Machine Forming | METHOD | Изготовление бесшовных водостоков на месте. K-Style machine (5"/6"): рулон алюминия (0.027" thickness) подаётся в machine, профилируется и выходит готовая gutter нужной длины. Преимущество: нет стыков (кроме углов), меньше течей. Цвет: pre-painted aluminium coil. Downspout: 2×3" или 3×4". Elbows: A-style (front), B-style (side). | Длина gutter: ограничена длиной coil (30-50 м). |
+| gutter.ops.slope_hanger_spacing | Slope — Hanger Spacing | METHOD | Установка кронштейнов для правильного уклона. Уклон: 1-2 см на 10 м (к downspout). Слишком мало: стоячая вода. Слишком много: water runs over. Hangers: hidden bracket (скрытый, clip-in) или external (ferrule + spike — устаревший). Расстояние между hangers: 60-90 см (север — 60 см для снеговой нагрузки). Крепление: screw в fascia board (не только в soffit!). Разметка laser/chalk line. | Неправильный уклон = застой воды. |
+| gutter.ops.downspout_outlet_routing | Downspout — Outlet & Splash Block | METHOD | Установка водосточной трубы. Drop outlet: отверстие в gutter, outlet вставляется и crimps. Downspout: через elbows крепится к стене straps через каждые 1.5-2 м. Нижний elbow: направляет воду Away от фундамента (минимум 1.5-2 м). Splash block (бетонный/пластиковый водоотбой) или underground drain (connect to drain tile). Не допустить эрозию почвы у фундамента. | Слив рядом с фундаментом = вода в basement. |
+| gutter.ops.leaf_guard_types | Leaf Guard — Types | METHOD | Защита от листьев. Screen (сетка): stainless micro-mesh (мелкая — и хвоя не проходит), устанавливается поверх gutter. Reverse curve (лист сгибается, вода по кривой затекает, листья падают). Foam insert (поролон): вода проходит сквозь, листья остаются сверху (нуждается в замене). Brush (ёрш): укладывается в gutter. Оценка: mesh лучший, но дороже. Установка: на существующие gutter retrofit. | Даже с guard: мелкий мусор может накапливаться. |
+| gutter.ops.winter_ice_dam_prevention | Ice Dam — Prevention | METHOD | Предотвращение ледяных заторов. Ice dam: снег тает от тепла чердака → стекает к холодному краю крыши → замерзает → вода под кровлю. Решения: улучшить вентиляцию чердака (soffit+ridge), insulation (больше на чердаке чтобы тепло не проходило). Heat cable: нагревательный кабель zigzag в gutter и на нижнем краю кровли (растапливает лёд). Установка: cable clips на shingle. Термостат + таймер. | Ice dam может сорвать gutter весом льда. |

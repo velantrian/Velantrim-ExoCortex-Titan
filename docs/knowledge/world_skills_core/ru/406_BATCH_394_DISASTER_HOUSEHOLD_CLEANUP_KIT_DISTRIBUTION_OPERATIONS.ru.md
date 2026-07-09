@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| cleanupkitops.activation.trigger | kit trigger | MODEL | Trigger includes flood, smoke, mold, sewage, wind debris or household contamination. | Starts cleanup kit support. |
-| cleanupkitops.activation.kit_standard | kit standard | RECORD | Standard defines contents, quantities, safety notes and eligible use. | Keeps kits consistent. |
-| cleanupkitops.activation.partner | partner roles | RECORD | Partners include public health, nonprofits, donations, logistics and waste services. | Coordinates support. |
-| cleanupkitops.activation.risk_review | risk review | SAFETY_RULE | Public health/safety reviews whether cleanup should be resident-safe or professional-only. | Prevents dangerous self-cleanup. |
-| cleanupkitops.contents.gloves | gloves | RECORD | Gloves are sized and chosen for chemical, debris or hygiene risks. | Protects hands. |
-| cleanupkitops.contents.masks | respiratory protection | CONSTRAINT | Masks are included with clear limits and escalation for heavy mold/asbestos/smoke. | Avoids false protection. |
-| cleanupkitops.contents.cleaner | cleaner | RECORD | Cleaner/disinfectant item includes label, dilution and hazard instructions. | Supports safe use. |
-| cleanupkitops.contents.tools | hand tools | RECORD | Tools may include scrub brush, bucket, trash bags, squeegee or shovel. | Enables basic cleanup. |
-| cleanupkitops.assembly.work_order | assembly work order | RECORD | Work order lists kit type, quantity, contents, staff and date. | Controls production. |
-| cleanupkitops.assembly.line_setup | assembly line | METHOD | Line setup stages items in sequence with count checks. | Speeds packing. |
-| cleanupkitops.assembly.quality_check | kit quality check | QUALITY_CHECK | Sample kits are checked for missing, damaged or wrong items. | Prevents bad distribution. |
-| cleanupkitops.assembly.label | kit label | METHOD | Label shows kit type, language, safety warnings and contact. | Helps users. |
-| cleanupkitops.eligibility.affected_area | affected area | CONSTRAINT | Eligibility may depend on address in impacted zone or damage report. | Targets limited supplies. |
-| cleanupkitops.eligibility.household_limit | household limit | CONSTRAINT | Limits define number of kits per household or structure. | Extends stock. |
-| cleanupkitops.eligibility.priority | priority | MODEL | Priority considers elderly, disability, low income, flood depth and health risk. | Improves equity. |
-| cleanupkitops.eligibility.exception | exception approval | METHOD | Exceptions document special household size, shared housing or severe damage. | Adds flexibility. |
-| cleanupkitops.inventory.item_stock | item stock | MEASUREMENT | Stock tracks components, completed kits, damaged goods and reserve. | Shows capacity. |
-| cleanupkitops.inventory.lot_trace | lot trace | RECORD | Cleaner/disinfectant lots are tracked for recall or safety alert. | Supports traceability. |
-| cleanupkitops.inventory.reorder | reorder trigger | MODEL | Reorder uses demand, assembly rate, supplier lead time and reserve. | Prevents kit gaps. |
-| cleanupkitops.inventory.storage | storage condition | SAFETY_RULE | Chemicals and PPE are stored away from heat, children, food and incompatibles. | Prevents accidents. |
-| cleanupkitops.distribution.site | distribution site | METHOD | Site uses queue, signage, stock area, safety table and loading path. | Makes pickup orderly. |
-| cleanupkitops.distribution.delivery | delivery route | METHOD | Delivery supports homebound, isolated or high-priority households. | Reaches vulnerable residents. |
-| cleanupkitops.distribution.proof | issue proof | RECORD | Proof records household/address or count, kit type, date and staff. | Supports accountability. |
-| cleanupkitops.distribution.partner_pickup | partner pickup | METHOD | Partners can receive kits for assigned neighborhoods with logs. | Expands reach. |
-| cleanupkitops.safety.instructions | safety instructions | SAFETY_RULE | Instructions warn about electricity, gas, structural damage, mold, chemicals and PPE limits. | Prevents injury. |
-| cleanupkitops.safety.chemical | chemical mixing warning | SAFETY_RULE | Instructions warn not to mix bleach, ammonia, acids or unknown cleaners. | Prevents toxic gas. |
-| cleanupkitops.safety.mold_limit | mold limit | CONSTRAINT | Heavy mold, sewage, asbestos or structural hazard requires professional guidance. | Avoids unsafe DIY. |
-| cleanupkitops.safety.child_pet | child and pet warning | SAFETY_RULE | Chemicals, sharp debris and contaminated items are kept from children and animals. | Protects households. |
-| cleanupkitops.communication.public_notice | public notice | METHOD | Notice states kit sites, eligibility, contents, limits and safety warnings. | Guides residents. |
-| cleanupkitops.communication.language | language support | METHOD | Instructions use translated sheets, icons or hotline support. | Improves safe use. |
-| cleanupkitops.communication.hotline | hotline route | METHOD | Questions route to public health, cleanup help or disaster assistance line. | Supports correct use. |
-| cleanupkitops.communication.feedback | feedback channel | METHOD | Users report missing items, safety concerns or unmet needs. | Improves kits. |
-| cleanupkitops.records.assembly_log | assembly log | RECORD | Log records quantities built, staff, component lots and quality checks. | Creates evidence. |
-| cleanupkitops.records.issue_log | issue log | RECORD | Issue log tracks sites, deliveries, partner pickups and remaining stock. | Controls distribution. |
-| cleanupkitops.records.cost | cost record | RECORD | Costs track components, labor, transport, donations and storage. | Supports finance. |
-| cleanupkitops.records.retention | retention rule | CONSTRAINT | Records follow donation, finance, public health and emergency schedules. | Preserves audit trail. |
-| cleanupkitops.qa.safety_review | safety review | QUALITY_CHECK | Public health reviews instructions after incidents or questions. | Improves harm prevention. |
-| cleanupkitops.qa.inventory_reconcile | inventory reconciliation | QUALITY_CHECK | Components, completed kits and issued kits reconcile. | Detects loss/error. |
-| cleanupkitops.metrics.kits_issued | kits issued | MEASUREMENT | Kits issued by area and household type show reach. | Guides resupply. |
-| cleanupkitops.metrics.unmet_need | unmet need | MEASUREMENT | Unmet need records turnaways, delivery requests and missing items. | Reveals gaps. |
-| cleanupkitops.demob.remaining_stock | remaining stock | METHOD | Remaining kits transfer to cache, partner, future program or disposal. | Avoids waste. |
-| cleanupkitops.demob.site_close | site closeout | METHOD | Site closeout removes materials, cleans area and updates public notice. | Ends distribution responsibly. |
-| cleanupkitops.review.after_action | after-action review | METHOD | Review captures kit contents, safety clarity, demand and delivery issues. | Improves future cleanup support. |
-| cleanupkitops.governance.kit_owner | kit owner | RECORD | Owner coordinates public health, logistics, donations and finance for cleanup kits. | Keeps accountability clear. |
+| cleanupkitops.activation.trigger | комплект триггера | MODEL | Триггером могут быть наводнение, дым, плесень, сточные воды, мусор от ветра или бытовое загрязнение. | Запускает поддержку комплекта очистки. |
+| cleanupkitops.activation.kit_standard | стандартный комплект | RECORD | Стандарт определяет содержание, количество, примечания по безопасности и разрешенное использование. | Обеспечивает единообразие комплектов. |
+| cleanupkitops.activation.partner | партнерские роли | RECORD | В число партнеров входят организации общественного здравоохранения, некоммерческие организации, организации пожертвований, логистики и службы по утилизации отходов. | Поддержка координат. |
+| cleanupkitops.activation.risk_review | обзор рисков | SAFETY_RULE | Общественное здравоохранение/безопасность проверяет, должна ли уборка быть безопасной для жителей или только для профессионалов. | Предотвращает опасную самоочистку. |
+| cleanupkitops.contents.gloves | перчатки | RECORD | Перчатки подбираются по размеру и с учетом рисков, связанных с химическими веществами, мусором или гигиеническими рисками. | Защищает руки. |
+| cleanupkitops.contents.masks | защита органов дыхания | CONSTRAINT | В комплект входят маски с четкими ограничениями и повышенным уровнем защиты от сильной плесени/асбеста/дыма. | Избегает ложной защиты. |
+| cleanupkitops.contents.cleaner | чище | RECORD | Чистящее/дезинфицирующее средство включает этикетку, инструкции по разведению и опасности. | Поддерживает безопасное использование. |
+| cleanupkitops.contents.tools | ручные инструменты | RECORD | Инструменты могут включать в себя щетку, ведро, мешки для мусора, скребок или лопату. | Включает базовую очистку. |
+| cleanupkitops.assembly.work_order | заказ на сборку | RECORD | В заказе на работу указан тип комплекта, количество, содержимое, персонал и дата. | Контролирует производство. |
+| cleanupkitops.assembly.line_setup | сборочная линия | METHOD | Настройка линии последовательно распределяет элементы с проверкой количества. | Ускоряет упаковку. |
+| cleanupkitops.assembly.quality_check | проверка качества комплекта | QUALITY_CHECK | Образцы комплектов проверяются на отсутствие отсутствующих, поврежденных или неправильных элементов. | Предотвращает плохое распространение. |
+| cleanupkitops.assembly.label | этикетка комплекта | METHOD | На этикетке указан тип комплекта, язык, предупреждения о безопасности и контактная информация. | Помогает пользователям. |
+| cleanupkitops.eligibility.affected_area | зона поражения | CONSTRAINT | Право на получение помощи может зависеть от адреса в зоне воздействия или отчета об ущербе. | Нацелены на ограниченные поставки. |
+| cleanupkitops.eligibility.household_limit | семейный лимит | CONSTRAINT | Ограничения определяют количество комплектов на домохозяйство или строение. | Расширяет запас. |
+| cleanupkitops.eligibility.priority | приоритет | MODEL | Приоритетными являются пожилые люди, инвалидность, низкий доход, глубина наводнения и риск для здоровья. | Улучшает справедливость. |
+| cleanupkitops.eligibility.exception | утверждение исключения | METHOD | Исключениями являются случаи особого размера домохозяйства, совместного проживания или серьезного ущерба. | Добавляет гибкости. |
+| cleanupkitops.inventory.item_stock | запас товара | MEASUREMENT | На складе отслеживаются компоненты, готовые комплекты, поврежденные товары и резерв. | Показывает емкость. |
+| cleanupkitops.inventory.lot_trace | трассировка партии | RECORD | Партии чистящих/дезинфицирующих средств отслеживаются на предмет отзыва или предупреждения о безопасности. | Поддерживает отслеживаемость. |
+| cleanupkitops.inventory.reorder | триггер изменения порядка | MODEL | При повторном заказе учитываются спрос, скорость сборки, время выполнения заказа поставщиком и резерв. | Предотвращает разрывы комплекта. |
+| cleanupkitops.inventory.storage | условия хранения | SAFETY_RULE | Химические вещества и СИЗ хранятся вдали от источников тепла, детей, продуктов питания и несовместимых предметов. | Предотвращает несчастные случаи. |
+| cleanupkitops.distribution.site | сайт распространения | METHOD | На территории используются очередь, указатели, складская зона, стол безопасности и путь погрузки. | Делает самовывоз организованным. |
+| cleanupkitops.distribution.delivery | маршрут доставки | METHOD | Доставка поддерживает домохозяйства, не выходящие из дома, изолированные или высокоприоритетные домохозяйства. | Охватывает уязвимых жителей. |
+| cleanupkitops.distribution.proof | выдать доказательство | RECORD | В доказательстве указывается домохозяйство/адрес или количество, тип комплекта, дата и персонал. | Поддерживает ответственность. |
+| cleanupkitops.distribution.partner_pickup | пикап партнера | METHOD | Партнеры могут получать комплекты для закрепленных кварталов с бревнами. | Расширяет охват. |
+| cleanupkitops.safety.instructions | инструкции по безопасности | SAFETY_RULE | Инструкции предупреждают об ограничениях по электричеству, газу, структурным повреждениям, плесени, химикатам и средствам индивидуальной защиты. | Предотвращает травмы. |
+| cleanupkitops.safety.chemical | предупреждение о смешивании химических веществ | SAFETY_RULE | Инструкции предупреждают, что нельзя смешивать отбеливатель, аммиак, кислоты или неизвестные чистящие средства. | Предотвращает появление токсичных газов. |
+| cleanupkitops.safety.mold_limit | предел плесени | CONSTRAINT | Наличие тяжелой плесени, сточных вод, асбеста или структурных опасностей требует профессионального руководства. | Избегает небезопасных DIY. |
+| cleanupkitops.safety.child_pet | предупреждение о детях и домашних животных | SAFETY_RULE | Химические вещества, острые предметы и загрязненные предметы беречь от детей и животных. | Защищает домочадцев. |
+| cleanupkitops.communication.public_notice | публичное уведомление | METHOD | В уведомлении указаны места комплектования, право на участие, содержание, ограничения и предупреждения о безопасности. | Проводники жителей. |
+| cleanupkitops.communication.language | языковая поддержка | METHOD | В инструкциях используются переведенные листы, значки или служба поддержки по горячей линии. | Улучшает безопасное использование. |
+| cleanupkitops.communication.hotline | маршрут горячей линии | METHOD | Вопросы направляются в органы общественного здравоохранения, в службу помощи по уборке или на линию помощи при стихийных бедствиях. | Поддерживает правильное использование. |
+| cleanupkitops.communication.feedback | канал обратной связи | METHOD | Пользователи сообщают о недостающих предметах, проблемах безопасности или неудовлетворенных потребностях. | Улучшает комплекты. |
+| cleanupkitops.records.assembly_log | журнал сборки | RECORD | В журнале фиксируются объемы производства, персонал, партии компонентов и проверки качества. | Создает доказательства. |
+| cleanupkitops.records.issue_log | журнал проблем | RECORD | В журнале проблем отслеживаются сайты, поставки, получение от партнеров и остатки на складе. | Контролирует распространение. |
+| cleanupkitops.records.cost | запись затрат | RECORD | Затраты отслеживают компоненты, рабочую силу, транспорт, пожертвования и хранение. | Поддерживает финансы. |
+| cleanupkitops.records.retention | правило хранения | CONSTRAINT | Записи следуют графикам пожертвований, финансов, общественного здравоохранения и чрезвычайных ситуаций. | Сохраняет контрольный журнал. |
+| cleanupkitops.qa.safety_review | обзор безопасности | QUALITY_CHECK | Общественное здравоохранение пересматривает инструкции после инцидентов или вопросов. | Улучшает предотвращение вреда. |
+| cleanupkitops.qa.inventory_reconcile | сверка запасов | QUALITY_CHECK | Компоненты, готовые комплекты и выпущенные комплекты сверяются. | Обнаруживает потерю/ошибку. |
+| cleanupkitops.metrics.kits_issued | выпущены комплекты | MEASUREMENT | Наборы, выпущенные по районам и типам домохозяйств, показывают охват. | Пополнение запасов гидов. |
+| cleanupkitops.metrics.unmet_need | неудовлетворенная потребность | MEASUREMENT | Неудовлетворенные потребности фиксируют отказы, запросы на доставку и недостающие предметы. | Выявляет пробелы. |
+| cleanupkitops.demob.remaining_stock | оставшийся запас | METHOD | Оставшиеся комплекты передаются в тайник, партнеру, в будущую программу или на утилизацию. | Избегает отходов. |
+| cleanupkitops.demob.site_close | закрытие сайта | METHOD | Закрытие сайта удаляет материалы, очищает территорию и обновляет публичное уведомление. | Заканчивает распространение ответственно. |
+| cleanupkitops.review.after_action | обзор после действий | METHOD | В обзоре отражено содержимое комплекта, ясность в вопросах безопасности, вопросы спроса и доставки. | Улучшает поддержку будущей очистки. |
+| cleanupkitops.governance.kit_owner | владелец комплекта | RECORD | Владелец координирует здравоохранение, логистику, пожертвования и финансирование комплектов для уборки. | Обеспечивает четкую подотчетность. |

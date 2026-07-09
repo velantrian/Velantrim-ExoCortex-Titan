@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| budgetcounselops.intake.request_source | request source | RECORD | Source records benefits desk, caseworker, shelter, legal clinic, lender or self-referral. | Shows entry path. |
-| budgetcounselops.intake.household | household profile | RECORD | Profile captures household size, contact, language, housing status and safe-contact limits. | Defines case. |
-| budgetcounselops.intake.financial_goal | financial goal | RECORD | Goal records rent stability, debt plan, benefits access, savings or rebuilding budget. | Frames counseling. |
-| budgetcounselops.intake.urgency | urgency model | MODEL | Urgency weighs eviction, shutoff, debt collection, benefit deadline and cash gap. | Prioritizes help. |
-| budgetcounselops.income.income_sources | income sources | RECORD | Sources capture wages, benefits, insurance, gifts, self-employment and expected changes. | Builds budget. |
-| budgetcounselops.income.income_timing | income timing | RECORD | Timing records pay dates, benefit dates, delays and one-time payments. | Plans cashflow. |
-| budgetcounselops.income.income_gap | income gap | MEASUREMENT | Gap compares expected income to basic monthly needs. | Shows shortfall. |
-| budgetcounselops.income.verification | income verification | METHOD | Verification uses paystub, benefit notice, bank record or self-attestation where allowed. | Supports referrals. |
-| budgetcounselops.expenses.essential | essential expenses | RECORD | Essentials include housing, utilities, food, transport, medical, childcare and communications. | Prioritizes spending. |
-| budgetcounselops.expenses.disaster_cost | disaster cost | RECORD | Disaster costs include lodging, repairs, storage, cleanup, replacement and travel. | Shows recovery burden. |
-| budgetcounselops.expenses.variable | variable expense | RECORD | Variable expenses are tracked separately from fixed obligations. | Finds flexibility. |
-| budgetcounselops.expenses.bill_calendar | bill calendar | METHOD | Calendar maps due dates, grace periods, late fees and shutoff/eviction risk. | Prevents surprises. |
-| budgetcounselops.debt.debt_list | debt list | RECORD | List captures creditor, balance, payment, status, secured/unsecured and collection stage. | Organizes obligations. |
-| budgetcounselops.debt.priority_debt | priority debt | MODEL | Priority distinguishes housing, utilities, vehicle, court, tax and high-risk debts. | Focuses action. |
-| budgetcounselops.debt.collection_notice | collection notice | RECORD | Notice records collector, deadline, dispute rights and legal referral need. | Protects rights. |
-| budgetcounselops.debt.payment_plan | payment plan | METHOD | Plan aligns realistic payments with income timing and essential expenses. | Reduces default. |
-| budgetcounselops.benefits.benefit_screen | benefit screen | MODEL | Screen checks food, cash, health, unemployment, rent, utility and childcare supports. | Finds resources. |
-| budgetcounselops.benefits.document_gap | document gap | RECORD | Gap records missing proof, replacement path and deadline. | Supports applications. |
-| budgetcounselops.benefits.referral | benefits referral | METHOD | Referral routes household to appropriate program or navigator. | Expands income. |
-| budgetcounselops.benefits.status | benefit status | RECORD | Status tracks applied, pending, approved, denied, appealed or closed. | Monitors progress. |
-| budgetcounselops.plan.spending_plan | spending plan | RECORD | Plan allocates income to essentials, debts, recovery costs and reserves. | Guides decisions. |
-| budgetcounselops.plan.cashflow_plan | cashflow plan | METHOD | Cashflow sequences payments by due date, income date and risk. | Prevents crises. |
-| budgetcounselops.plan.cut_option | cost reduction option | METHOD | Options include bill negotiation, plan change, assistance, substitution or pause. | Finds relief. |
-| budgetcounselops.plan.emergency_reserve | emergency reserve | METHOD | Reserve goal sets small realistic buffer where possible. | Builds resilience. |
-| budgetcounselops.referrals.legal | legal referral | METHOD | Legal referral handles eviction, garnishment, debt suit, fraud or benefit appeal. | Adds expertise. |
-| budgetcounselops.referrals.credit | credit counseling referral | METHOD | Credit referral handles complex debt, credit report and consolidation questions. | Adds support. |
-| budgetcounselops.referrals.employment | employment referral | METHOD | Employment referral addresses income gaps and job placement needs. | Improves recovery. |
-| budgetcounselops.referrals.behavioral | stress support referral | METHOD | Financial stress routes to peer, counseling or crisis support when needed. | Supports wellbeing. |
-| budgetcounselops.followup.next_check | next check | RECORD | Next check records date, task, owner, documents and contact method. | Maintains continuity. |
-| budgetcounselops.followup.action_status | action status | RECORD | Status tracks bill call, application, payment plan, document or referral outcome. | Shows progress. |
-| budgetcounselops.followup.revision | budget revision | METHOD | Budget updates for new income, denial, repair cost or family change. | Keeps plan real. |
-| budgetcounselops.followup.closeout | closeout | RECORD | Closure records stabilized, referred, unreachable, declined or transferred status. | Ends support. |
-| budgetcounselops.privacy.consent | consent record | RECORD | Consent explains financial data use, referrals and sharing limits. | Protects household. |
-| budgetcounselops.privacy.minimum_data | minimum data | SAFETY_RULE | Records avoid unnecessary account numbers or sensitive details. | Reduces exposure. |
-| budgetcounselops.communication.plain_summary | plain summary | METHOD | Household receives simple next steps, dates, calls and documents needed. | Supports action. |
-| budgetcounselops.communication.partner_update | partner update | METHOD | Partners receive aggregate barriers, not individual budgets without consent. | Preserves privacy. |
-| budgetcounselops.records.case_log | case log | RECORD | Log stores intake, income, expenses, plan, referrals, follow-up and outcome. | Creates continuity. |
-| budgetcounselops.records.retention | retention rule | CONSTRAINT | Financial counseling, privacy and referral records follow retention schedules. | Preserves audit. |
-| budgetcounselops.metrics.households_served | households served | MEASUREMENT | Count tracks households served by need, referral source and status. | Shows demand. |
-| budgetcounselops.metrics.plan_completion | plan completion | MEASUREMENT | Metric tracks households leaving with a documented plan. | Shows output. |
-| budgetcounselops.metrics.referral_outcome | referral outcome | MEASUREMENT | Outcome tracks completed referrals to benefits, legal, credit or employment. | Shows linkage. |
-| budgetcounselops.qa.case_review | case review | QUALITY_CHECK | Review checks consent, plan realism, referral fit and follow-up completeness. | Improves reliability. |
-| budgetcounselops.demob.transfer | transfer plan | METHOD | Ongoing cases transfer to financial counselor, case manager or partner agency. | Maintains support. |
-| budgetcounselops.review.after_action | after-action review | METHOD | Review captures income gaps, debt patterns, benefits barriers and counseling workflow lessons. | Improves future intake. |
+| budgetcounselops.intake.request_source | источник запроса | RECORD | Исходные записи о пособиях, социальном работнике, приюте, юридической клинике, кредиторе или самостоятельном обращении. | Показывает путь входа. |
+| budgetcounselops.intake.household | профиль домохозяйства | RECORD | Профиль отражает размер домохозяйства, контакты, язык, жилищный статус и пределы безопасного контакта. | Определяет случай. |
+| budgetcounselops.intake.financial_goal | финансовая цель | RECORD | Цель записывает стабильность арендной платы, план долга, доступ к льготам, экономию или восстановление бюджета. | Консультирование по фреймам. |
+| budgetcounselops.intake.urgency | модель срочности | MODEL | Срочность учитывает выселение, закрытие дома, взыскание долгов, срок выплаты пособий и дефицит денежных средств. | Отдает приоритет помощи. |
+| budgetcounselops.income.income_sources | источники дохода | RECORD | Источники включают заработную плату, льготы, страхование, подарки, самозанятость и ожидаемые изменения. | Строит бюджет. |
+| budgetcounselops.income.income_timing | время получения дохода | RECORD | В графике фиксируются даты выплат, даты пособий, задержки и единовременные выплаты. | Планирует движение денежных средств. |
+| budgetcounselops.income.income_gap | разрыв в доходах | MEASUREMENT | Gap сравнивает ожидаемый доход с основными ежемесячными потребностями. | Показывает дефицит. |
+| budgetcounselops.income.verification | подтверждение дохода | METHOD | Для проверки используются квитанции о заработной плате, уведомление о льготах, банковская выписка или самозаверение, если это разрешено. | Поддерживает рефералов. |
+| budgetcounselops.expenses.essential | существенные расходы | RECORD | В число предметов первой необходимости входят жилье, коммунальные услуги, питание, транспорт, медицина, уход за детьми и связь. | Расставляет приоритеты в расходах. |
+| budgetcounselops.expenses.disaster_cost | стоимость катастрофы | RECORD | Затраты в случае стихийного бедствия включают проживание, ремонт, хранение, очистку, замену и проезд. | Показывает бремя восстановления. |
+| budgetcounselops.expenses.variable | переменные расходы | RECORD | Переменные расходы учитываются отдельно от постоянных обязательств. | Находит гибкость. |
+| budgetcounselops.expenses.bill_calendar | календарь счетов | METHOD | В календаре указаны сроки выполнения, льготные периоды, штрафы за просрочку платежа и риск отключения/выселения. | Предотвращает сюрпризы. |
+| budgetcounselops.debt.debt_list | список долгов | RECORD | В списке указаны кредиторы, баланс, платеж, статус, обеспеченный/необеспеченный и этап взыскания. | Организует обязательства. |
+| budgetcounselops.debt.priority_debt | приоритетный долг | MODEL | В приоритете выделяют жилищные, коммунальные, транспортные, судебные, налоговые и высокорисковые долги. | Фокусирует действие. |
+| budgetcounselops.debt.collection_notice | уведомление о сборе | RECORD | Уведомите сборщика записей, крайние сроки, права на спор и необходимость обращения к юристу. | Защищает права. |
+| budgetcounselops.debt.payment_plan | план оплаты | METHOD | План увязывает реалистичные выплаты со сроками получения доходов и основными расходами. | Уменьшает значение по умолчанию. |
+| budgetcounselops.benefits.benefit_screen | экран преимуществ | MODEL | Скрининг проверяет еду, наличные деньги, здоровье, безработицу, аренду, коммунальные услуги и помощь по уходу за детьми. | Находит ресурсы. |
+| budgetcounselops.benefits.document_gap | пробел в документе | RECORD | В отчетах о пробелах указываются недостающие доказательства, способ замены и крайний срок. | Поддерживает приложения. |
+| budgetcounselops.benefits.referral | направление на льготы | METHOD | Направление домашних хозяйств к соответствующей программе или навигатору. | Расширяет доход. |
+| budgetcounselops.benefits.status | статус пособия | RECORD | Статусы применяются, ожидаются, одобрены, отклонены, обжалованы или закрыты. | Отслеживает прогресс. |
+| budgetcounselops.plan.spending_plan | план расходов | RECORD | План распределяет доходы на предметы первой необходимости, долги, затраты на восстановление и резервы. | Направляет решения. |
+| budgetcounselops.plan.cashflow_plan | план движения денежных средств | METHOD | Денежный поток распределяет платежи по дате платежа, дате получения дохода и риску. | Предотвращает кризисы. |
+| budgetcounselops.plan.cut_option | возможность снижения затрат | METHOD | Варианты включают обсуждение счета, изменение плана, помощь, замену или паузу. | Находит облегчение. |
+| budgetcounselops.plan.emergency_reserve | аварийный резерв | METHOD | Цель резерва устанавливает небольшой реалистичный буфер, где это возможно. | Повышает устойчивость. |
+| budgetcounselops.referrals.legal | юридическое направление | METHOD | Юридическое направление занимается вопросами выселения, наложения ареста, долгового иска, мошенничества или апелляции по выплате пособий. | Добавляет экспертности. |
+| budgetcounselops.referrals.credit | направление на консультацию по кредиту | METHOD | Кредитное направление занимается сложными вопросами задолженности, кредитного отчета и консолидации. | Добавляет поддержку. |
+| budgetcounselops.referrals.employment | направление на работу | METHOD | Направление по трудоустройству устраняет разницу в доходах и потребности в трудоустройстве. | Улучшает восстановление. |
+| budgetcounselops.referrals.behavioral | направление на помощь при стрессе | METHOD | Финансовый стресс направляет к коллегам, консультированию или кризисной поддержке, когда это необходимо. | Поддерживает хорошее самочувствие. |
+| budgetcounselops.followup.next_check | следующая проверка | RECORD | Затем проверьте дату записи, задание, владельца, документы и способ связи. | Сохраняет преемственность. |
+| budgetcounselops.followup.action_status | статус действия | RECORD | Статус отслеживает вызов счета, заявку, план платежей, документ или результат направления. | Показывает прогресс. |
+| budgetcounselops.followup.revision | пересмотр бюджета | METHOD | Обновления бюджета для новых доходов, отказа, стоимости ремонта или смены семьи. | Соблюдает план. |
+| budgetcounselops.followup.closeout | распродажа | RECORD | Записи о закрытии стабилизировались, были переданы, недоступны, отклонены или переведены. | Заканчивается поддержка. |
+| budgetcounselops.privacy.consent | запись о согласии | RECORD | В согласии объясняется использование финансовых данных, рекомендации и ограничения на обмен. | Защищает домочадцев. |
+| budgetcounselops.privacy.minimum_data | минимальные данные | SAFETY_RULE | В записях избегаются ненужные номера счетов или конфиденциальные данные. | Уменьшает воздействие. |
+| budgetcounselops.communication.plain_summary | простое резюме | METHOD | Семья получает простые следующие шаги, даты, звонки и необходимые документы. | Поддерживает действие. |
+| budgetcounselops.communication.partner_update | обновление партнера | METHOD | Партнеры получают совокупные барьеры, а не отдельные бюджеты без согласия. | Сохраняет конфиденциальность. |
+| budgetcounselops.records.case_log | журнал дел | RECORD | Журнал хранит поступления, доходы, расходы, план, рекомендации, последующие действия и результаты. | Создает преемственность. |
+| budgetcounselops.records.retention | правило хранения | CONSTRAINT | Записи о финансовых консультациях, конфиденциальности и направлениях следуют графикам хранения. | Сохраняет аудит. |
+| budgetcounselops.metrics.households_served | обслуживаемые домохозяйства | MEASUREMENT | Count отслеживает обслуживаемые домохозяйства по потребностям, источнику направления и статусу. | Показывает спрос. |
+| budgetcounselops.metrics.plan_completion | завершение плана | MEASUREMENT | Метрика отслеживает домохозяйства, выезжающие по документально оформленному плану. | Показывает вывод. |
+| budgetcounselops.metrics.referral_outcome | результат направления | MEASUREMENT | Результат отслеживает выполненные направления на получение пособий, юридических услуг, кредитов или трудоустройства. | Показывает связь. |
+| budgetcounselops.qa.case_review | рассмотрение дела | QUALITY_CHECK | Обзор проверяет согласие, реалистичность плана, соответствие направления и полноту последующего наблюдения. | Повышает надежность. |
+| budgetcounselops.demob.transfer | план трансфера | METHOD | Текущие дела передаются финансовому консультанту, менеджеру по делу или партнерскому агентству. | Сохраняет поддержку. |
+| budgetcounselops.review.after_action | обзор после действий | METHOD | В обзоре отражены различия в доходах, структура долга, барьеры в области льгот и уроки рабочего процесса консультирования. | Улучшает будущее потребление. |

@@ -9,14 +9,14 @@
 | mathd2.number.euclid | Алгоритм Евклида | invariant | быстрый НОД через остатки | криптография, дроби |
 | mathd2.number.prime_factorization | Разложение на простые | invariant | каждое число — произведение простых (единственно) | основная теорема арифметики |
 | mathd2.number.modular | Модульная арифметика | invariant | арифметика остатков (часы, mod n) | криптография, хеширование |
-| mathd2.number.congruence | Сравнения по модулю | invariant | a ≡ b (mod n) | теория чисел, коды |
+| mathd2.number.congruence | Сравнения по модулю | invariant | а ≡ б (по модулю n) | теория чисел, коды |
 | mathd2.number.fermat | Малая теорема Ферма | variant | a^(p-1) ≡ 1 (mod p) для простого p | проверка простоты, RSA |
 | mathd2.number.infinitude_primes | Бесконечность простых (Евклид) | invariant | простых чисел бесконечно много | классическое доказательство |
 | mathd2.discrete.set | Множества | invariant | объединение, пересечение, разность, дополнение | основа дискретной математики |
 | mathd2.discrete.relation | Отношения | invariant | связи между элементами; рефлексивность, симметрия, транзитивность | базы данных, графы |
 | mathd2.discrete.function_types | Виды отображений | invariant | инъекция, сюръекция, биекция | теория множеств |
 | mathd2.discrete.combinatorics | Комбинаторика | invariant | перестановки, сочетания, размещения | подсчёт вариантов |
-| mathd2.discrete.permutation | Перестановки и сочетания | invariant | n! и C(n,k) | вероятность, подсчёт |
+| mathd2.discrete.permutation | Перестановки и сочетания | invariant | н! и C(n,k) | вероятность, подсчёт |
 | mathd2.discrete.pigeonhole | Принцип Дирихле | invariant | n+1 предмет в n ящиках → хотя бы два вместе | доказательства существования |
 | mathd2.discrete.induction | Доказательство по индукции | invariant | база + шаг → верно для всех n | строгие доказательства |
 | mathd2.discrete.recurrence | Рекуррентные соотношения | variant | задание последовательности через предыдущие члены (Фибоначчи) | анализ алгоритмов |

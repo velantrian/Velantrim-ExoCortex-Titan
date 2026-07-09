@@ -10,72 +10,72 @@
 
 | ID | Тип | Суть | Условия / границы | Связи |
 |---|---|---|---|---|
-| `electronics.device.resistor` | COMPONENT | Резистор ограничивает ток и задаёт падение напряжения. | Мощность и допуск важны. | circuits |
-| `electronics.device.capacitor` | COMPONENT | Конденсатор хранит заряд и фильтрует изменения напряжения. | ESR, напряжение и полярность важны. | circuits |
-| `electronics.device.inductor` | COMPONENT | Индуктивность хранит энергию в магнитном поле. | Насыщение сердечника ограничивает ток. | power |
-| `electronics.device.diode` | COMPONENT | Диод проводит ток преимущественно в одном направлении. | Имеет падение напряжения и пределы. | circuits |
-| `electronics.device.led` | COMPONENT | LED излучает свет при прямом токе. | Требует ограничения тока. | lighting |
-| `electronics.device.bjt` | COMPONENT | BJT управляет током через ток базы. | Используется в усилении и переключении. | semiconductors |
-| `electronics.device.mosfet` | COMPONENT | MOSFET управляет током через напряжение затвора. | Gate charge и heating важны. | power |
-| `electronics.device.opamp` | COMPONENT | Операционный усилитель усиливает разность входов. | Реальные op-amp имеют offset, bandwidth, rails. | analog |
-| `electronics.device.regulator_linear` | COMPONENT | Электроника: Линейный регулятор снижает напряжение, рассеивая лишнюю энергию теплом. | Неэффективен при большом падении напряжения. | power |
-| `electronics.device.buck_converter` | POWER_TOPOLOGY | Buck converter понижает напряжение импульсным способом. | Требует индуктивности, диода/ключа, feedback. | power |
-| `electronics.device.boost_converter` | POWER_TOPOLOGY | Boost converter повышает напряжение через накопление энергии в индуктивности. | Токи и ripple важны. | power |
-| `electronics.device.hbridge` | CIRCUIT | H-bridge меняет направление тока через мотор. | Shoot-through опасен. | robotics |
-| `electronics.sensor.thermistor` | SENSOR | Термистор меняет сопротивление с температурой. | Нелинейность требует калибровки. | sensing |
-| `electronics.sensor.rtd` | SENSOR | RTD измеряет температуру через сопротивление металла. | Точнее, но дороже термистора. | measurement |
-| `electronics.sensor.photodiode` | SENSOR | Электроника: Фотодиод преобразует свет в ток. | Нужна схема усиления. | optics |
-| `electronics.sensor.imu` | SENSOR | IMU измеряет ускорение и угловую скорость. | Drift требует фильтрации. | robotics |
-| `electronics.sensor.encoder` | SENSOR | Энкодер измеряет положение или скорость вращения. | Абсолютный и инкрементальный отличаются. | motors |
-| `electronics.sensor.ultrasonic` | SENSOR | Ультразвуковой датчик измеряет расстояние по времени эха. | Плохо работает с мягкими/наклонными поверхностями. | robotics |
-| `electronics.sensor.lidar` | SENSOR | LiDAR измеряет расстояние лазером. | Дороже, чувствителен к среде. | robotics |
-| `electronics.sensor.camera` | SENSOR | Камера даёт 2D/видео данные для наблюдения и vision. | Требует света, optics, processing. | computer_vision |
-| `electronics.actuator.dc_motor` | ACTUATOR | DC motor создаёт вращение от постоянного тока. | Скорость зависит от напряжения и нагрузки. | motors |
-| `electronics.actuator.stepper` | ACTUATOR | Шаговый мотор двигается дискретными шагами. | Может терять шаги без feedback. | robotics |
-| `electronics.actuator.servo` | ACTUATOR | Серво содержит мотор, редуктор и feedback для положения. | Диапазон и момент ограничены. | robotics |
-| `electronics.actuator.solenoid` | ACTUATOR | Соленоид создаёт линейное движение электромагнитом. | Потребляет ток и нагревается. | automation |
-| `electronics.actuator.piezo` | ACTUATOR | Piezo меняет форму под напряжением или генерирует заряд при деформации. | Малый ход, высокая точность. | devices |
-| `embedded.microcontroller` | SYSTEM | Микроконтроллер объединяет CPU, память и периферию на одном чипе. | Подходит для управления устройствами. | embedded |
-| `embedded.gpio` | INTERFACE | GPIO — цифровые входы/выходы общего назначения. | Ток и напряжение ограничены. | embedded |
-| `embedded.adc` | COMPONENT | ADC переводит аналоговый сигнал в цифровое число. | Разрешение и шум важны. | sensing |
-| `embedded.pwm` | METHOD | PWM управляет средней мощностью через ширину импульса. | Частота влияет на шум и нагрев. | control |
-| `embedded.interrupt` | MECHANISM | Interrupt прерывает основной код для срочного события. | Плохая ISR ломает timing. | firmware |
-| `embedded.watchdog` | SAFETY_SYSTEM | Watchdog перезапускает систему при зависании. | Нужно правильно обслуживать. | reliability |
-| `embedded.bootloader` | SYSTEM | Bootloader запускает прошивку и может обновлять её. | Ошибка обновления может brick устройство. | firmware |
-| `embedded.rtos` | SYSTEM | RTOS управляет задачами с предсказуемым временем. | Требует дисциплины приоритетов. | embedded |
-| `embedded.i2c` | BUS | I2C соединяет микросхемы двумя линиями с адресами. | Ограничен скоростью и длиной. | electronics |
-| `embedded.spi` | BUS | SPI быстро соединяет master и peripherals несколькими линиями. | Требует chip select. | electronics |
-| `embedded.uart` | BUS | Встраиваемые системы: UART передаёт последовательные данные без общего clock. | Нужно согласовать baud rate. | electronics |
-| `embedded.can_bus` | BUS | CAN используется в автомобилях и промышленности для устойчивой связи. | Имеет arbitration и termination. | automotive |
-| `embedded.firmware_ota` | PROCESS | OTA обновляет прошивку удалённо. | Нужны подпись, rollback и питание. | security |
-| `pcb.stackup` | DESIGN | PCB stackup задаёт слои меди, диэлектрика, земли и питания. | Важен для EMI и impedance. | PCB |
-| `pcb.ground_plane` | DESIGN_PRINCIPLE | Сплошная земля снижает шум и возвращает токи. | Разрывы создают проблемы EMI. | electronics |
-| `pcb.decoupling` | DESIGN_METHOD | Decoupling capacitors сглаживают питание возле микросхем. | Размещение важнее только номинала. | PCB |
-| `pcb.trace_width` | DESIGN_CONSTRAINT | Ширина дорожки зависит от тока, нагрева и производства. | High-current требует расчёта. | PCB |
-| `pcb.impedance_control` | DESIGN_CONSTRAINT | Контроль impedance нужен для быстрых сигналов. | Требует stackup и правил трассировки. | high_speed |
-| `pcb.dfm` | METHOD | DFM делает плату пригодной для производства. | Минимальные зазоры зависят от фабрики. | manufacturing |
-| `pcb.soldermask` | COMPONENT | Паяльная маска защищает медь и ограничивает припой. | Повреждения могут создавать коррозию/short. | PCB |
-| `pcb.reflow_soldering` | PROCESS | Reflow плавит пасту для пайки SMD компонентов. | Профиль температуры критичен. | assembly |
-| `pcb.hand_soldering` | PROCESS | Ручная пайка соединяет компоненты припоем и флюсом. | Перегрев повреждает pad/component. | repair |
-| `pcb.esd_control` | SAFETY_RULE | PCB: ESD control защищает чувствительные компоненты от статического разряда. | Требует браслетов, ковриков, packaging. | QA |
-| `semiconductor.wafer` | MATERIAL | Wafer — пластина полупроводника для изготовления микросхем. | Чистота и дефекты критичны. | microchips |
-| `semiconductor.photolithography` | PROCESS | Фотолитография переносит рисунок на wafer через свет и resist. | Resolution зависит от wavelength, optics, resist. | microchips |
-| `semiconductor.doping` | PROCESS | Легирование вводит примеси для изменения проводимости. | Профиль dopant задаёт свойства транзистора. | microchips |
-| `semiconductor.etching` | PROCESS | Травление удаляет материал по рисунку. | Бывает wet/dry, isotropic/anisotropic. | microfabrication |
-| `semiconductor.deposition` | PROCESS | Осаждение наносит тонкие слои материала. | Толщина и uniformity критичны. | microchips |
-| `semiconductor.cleanroom` | INFRA | Cleanroom снижает частицы, загрязнения и дефекты. | Класс чистоты зависит от процесса. | manufacturing |
-| `semiconductor.yield` | METRIC | Yield — доля годных чипов на wafer. | Дефекты и дизайн влияют на стоимость. | manufacturing |
-| `semiconductor.packaging` | PROCESS | Packaging защищает die и соединяет его с внешней платой. | Тепло и signal integrity важны. | electronics |
-| `robotics.kinematics` | MODEL | Кинематика описывает положение и движение без сил. | Нужна для манипуляторов и мобильных роботов. | robotics |
-| `robotics.dynamics` | MODEL | Динамика учитывает силы, массы и ускорения. | Важна для контроля и безопасности. | robotics |
-| `robotics.forward_kinematics` | METHOD | Forward kinematics вычисляет положение end-effector из суставов. | Зависит от модели робота. | robotics |
-| `robotics.inverse_kinematics` | METHOD | Inverse kinematics ищет суставы для нужной позиции. | Может иметь много решений или ни одного. | robotics |
-| `robotics.pid_control` | CONTROL | PID управляет ошибкой через proportional, integral, derivative компоненты. | Нужна настройка и anti-windup. | control |
-| `robotics.slam` | METHOD | SLAM строит карту и оценивает положение одновременно. | Ошибки датчиков накапливаются. | autonomy |
-| `robotics.path_planning` | METHOD | Path planning ищет безопасный маршрут через ограничения. | Динамические препятствия усложняют. | autonomy |
-| `robotics.gripper` | END_EFFECTOR | Захват удерживает объект через форму, трение, вакуум или магнит. | Объекты разные по хрупкости и форме. | automation |
-| `robotics.safety_e_stop` | SAFETY_SYSTEM | Emergency stop быстро переводит робота в безопасное состояние. | Должен быть доступен и проверен. | safety |
-| `robotics.cobot_force_limit` | SAFETY_METHOD | Cobot ограничивает силу/скорость для работы рядом с людьми. | Не делает любую задачу безопасной. | safety |
+| `electronics.device.resistor` | КОМПОНЕНТ | Резистор ограничивает ток и задаёт падение напряжения. | Мощность и допуск важны. | схемы |
+| `electronics.device.capacitor` | КОМПОНЕНТ | Конденсатор хранит заряд и фильтрует изменения напряжения. | ESR, напряжение и полярность важны. | схемы |
+| `electronics.device.inductor` | КОМПОНЕНТ | Индуктивность хранит энергию в магнитном поле. | Насыщение сердечника ограничивает ток. | власть |
+| `electronics.device.diode` | КОМПОНЕНТ | Диод проводит ток преимущественно в одном направлении. | Имеет падение напряжения и пределы. | схемы |
+| `electronics.device.led` | КОМПОНЕНТ | LED излучает свет при прямом токе. | Требует ограничения тока. | освещение |
+| `electronics.device.bjt` | КОМПОНЕНТ | BJT управляет током через ток базы. | Используется в усилении и переключении. | полупроводники |
+| `electronics.device.mosfet` | КОМПОНЕНТ | MOSFET управляет током через напряжение затвора. | Gate charge и heating важны. | власть |
+| `electronics.device.opamp` | КОМПОНЕНТ | Операционный усилитель усиливает разность входов. | Реальные op-amp имеют offset, bandwidth, rails. | аналоговый |
+| `electronics.device.regulator_linear` | КОМПОНЕНТ | Электроника: Линейный регулятор снижает напряжение, рассеивая лишнюю энергию теплом. | Неэффективен при большом падении напряжения. | власть |
+| `electronics.device.buck_converter` | POWER_TOPOLOGY | Buck converter понижает напряжение импульсным способом. | Требует индуктивности, диода/ключа, feedback. | власть |
+| `electronics.device.boost_converter` | POWER_TOPOLOGY | Boost converter повышает напряжение через накопление энергии в индуктивности. | Токи и ripple важны. | власть |
+| `electronics.device.hbridge` | СХЕМА | H-bridge меняет направление тока через мотор. | Shoot-through опасен. | робототехника |
+| `electronics.sensor.thermistor` | ДАТЧИК | Термистор меняет сопротивление с температурой. | Нелинейность требует калибровки. | ощущение |
+| `electronics.sensor.rtd` | ДАТЧИК | RTD измеряет температуру через сопротивление металла. | Точнее, но дороже термистора. | измерение |
+| `electronics.sensor.photodiode` | ДАТЧИК | Электроника: Фотодиод преобразует свет в ток. | Нужна схема усиления. | оптика |
+| `electronics.sensor.imu` | ДАТЧИК | IMU измеряет ускорение и угловую скорость. | Drift требует фильтрации. | робототехника |
+| `electronics.sensor.encoder` | ДАТЧИК | Энкодер измеряет положение или скорость вращения. | Абсолютный и инкрементальный отличаются. | моторы |
+| `electronics.sensor.ultrasonic` | ДАТЧИК | Ультразвуковой датчик измеряет расстояние по времени эха. | Плохо работает с мягкими/наклонными поверхностями. | робототехника |
+| `electronics.sensor.lidar` | ДАТЧИК | LiDAR измеряет расстояние лазером. | Дороже, чувствителен к среде. | робототехника |
+| `electronics.sensor.camera` | ДАТЧИК | Камера даёт 2D/видео данные для наблюдения и vision. | Требует света, optics, processing. | компьютер_видение |
+| `electronics.actuator.dc_motor` | ПРИВОД | DC motor создаёт вращение от постоянного тока. | Скорость зависит от напряжения и нагрузки. | моторы |
+| `electronics.actuator.stepper` | ПРИВОД | Шаговый мотор двигается дискретными шагами. | Может терять шаги без feedback. | робототехника |
+| `electronics.actuator.servo` | ПРИВОД | Серво содержит мотор, редуктор и feedback для положения. | Диапазон и момент ограничены. | робототехника |
+| `electronics.actuator.solenoid` | ПРИВОД | Соленоид создаёт линейное движение электромагнитом. | Потребляет ток и нагревается. | автоматизация |
+| `electronics.actuator.piezo` | ПРИВОД | Piezo меняет форму под напряжением или генерирует заряд при деформации. | Малый ход, высокая точность. | устройства |
+| `embedded.microcontroller` | СИСТЕМА | Микроконтроллер объединяет CPU, память и периферию на одном чипе. | Подходит для управления устройствами. | встроенный |
+| `embedded.gpio` | ИНТЕРФЕЙС | GPIO — цифровые входы/выходы общего назначения. | Ток и напряжение ограничены. | встроенный |
+| `embedded.adc` | КОМПОНЕНТ | ADC переводит аналоговый сигнал в цифровое число. | Разрешение и шум важны. | ощущение |
+| `embedded.pwm` | МЕТОД | PWM управляет средней мощностью через ширину импульса. | Частота влияет на шум и нагрев. | контроль |
+| `embedded.interrupt` | МЕХАНИЗМ | Interrupt прерывает основной код для срочного события. | Плохая ISR ломает timing. | прошивка |
+| `embedded.watchdog` | БЕЗОПАСНОСТЬ_СИСТЕМА | Watchdog перезапускает систему при зависании. | Нужно правильно обслуживать. | надежность |
+| `embedded.bootloader` | СИСТЕМА | Bootloader запускает прошивку и может обновлять её. | Ошибка обновления может brick устройство. | прошивка |
+| `embedded.rtos` | СИСТЕМА | RTOS управляет задачами с предсказуемым временем. | Требует дисциплины приоритетов. | встроенный |
+| `embedded.i2c` | АВТОБУС | I2C соединяет микросхемы двумя линиями с адресами. | Ограничен скоростью и длиной. | электроника |
+| `embedded.spi` | АВТОБУС | SPI быстро соединяет master и peripherals несколькими линиями. | Требует chip select. | электроника |
+| `embedded.uart` | АВТОБУС | Встраиваемые системы: UART передаёт последовательные данные без общего clock. | Нужно согласовать baud rate. | электроника |
+| `embedded.can_bus` | АВТОБУС | CAN используется в автомобилях и промышленности для устойчивой связи. | Имеет arbitration и termination. | автомобильный |
+| `embedded.firmware_ota` | ПРОЦЕСС | OTA обновляет прошивку удалённо. | Нужны подпись, rollback и питание. | безопасность |
+| `pcb.stackup` | ДИЗАЙН | PCB stackup задаёт слои меди, диэлектрика, земли и питания. | Важен для EMI и impedance. | печатная плата |
+| `pcb.ground_plane` | ДИЗАЙН_ПРИНЦИПЛЕ | Сплошная земля снижает шум и возвращает токи. | Разрывы создают проблемы EMI. | электроника |
+| `pcb.decoupling` | ДИЗАЙН_МЕТОД | Decoupling capacitors сглаживают питание возле микросхем. | Размещение важнее только номинала. | печатная плата |
+| `pcb.trace_width` | ДИЗАЙН_CONSTRAINT | Ширина дорожки зависит от тока, нагрева и производства. | High-current требует расчёта. | печатная плата |
+| `pcb.impedance_control` | ДИЗАЙН_CONSTRAINT | Контроль impedance нужен для быстрых сигналов. | Требует stackup и правил трассировки. | высокоскоростной |
+| `pcb.dfm` | МЕТОД | DFM делает плату пригодной для производства. | Минимальные зазоры зависят от фабрики. | производство |
+| `pcb.soldermask` | КОМПОНЕНТ | Паяльная маска защищает медь и ограничивает припой. | Повреждения могут создавать коррозию/short. | печатная плата |
+| `pcb.reflow_soldering` | ПРОЦЕСС | Reflow плавит пасту для пайки SMD компонентов. | Профиль температуры критичен. | сборка |
+| `pcb.hand_soldering` | ПРОЦЕСС | Ручная пайка соединяет компоненты припоем и флюсом. | Перегрев повреждает pad/component. | ремонт |
+| `pcb.esd_control` | БЕЗОПАСНОСТЬ_ПРАВИЛО | PCB: ESD control защищает чувствительные компоненты от статического разряда. | Требует браслетов, ковриков, packaging. | контроль качества |
+| `semiconductor.wafer` | МАТЕРИАЛ | Wafer — пластина полупроводника для изготовления микросхем. | Чистота и дефекты критичны. | микрочипы |
+| `semiconductor.photolithography` | ПРОЦЕСС | Фотолитография переносит рисунок на wafer через свет и resist. | Resolution зависит от wavelength, optics, resist. | микрочипы |
+| `semiconductor.doping` | ПРОЦЕСС | Легирование вводит примеси для изменения проводимости. | Профиль dopant задаёт свойства транзистора. | микрочипы |
+| `semiconductor.etching` | ПРОЦЕСС | Травление удаляет материал по рисунку. | Бывает wet/dry, isotropic/anisotropic. | микрообработка |
+| `semiconductor.deposition` | ПРОЦЕСС | Осаждение наносит тонкие слои материала. | Толщина и uniformity критичны. | микрочипы |
+| `semiconductor.cleanroom` | ИНФРА | Cleanroom снижает частицы, загрязнения и дефекты. | Класс чистоты зависит от процесса. | производство |
+| `semiconductor.yield` | МЕТРИЧЕСКИЕ | Yield — доля годных чипов на wafer. | Дефекты и дизайн влияют на стоимость. | производство |
+| `semiconductor.packaging` | ПРОЦЕСС | Packaging защищает die и соединяет его с внешней платой. | Тепло и signal integrity важны. | электроника |
+| `robotics.kinematics` | МОДЕЛЬ | Кинематика описывает положение и движение без сил. | Нужна для манипуляторов и мобильных роботов. | робототехника |
+| `robotics.dynamics` | МОДЕЛЬ | Динамика учитывает силы, массы и ускорения. | Важна для контроля и безопасности. | робототехника |
+| `robotics.forward_kinematics` | МЕТОД | Forward kinematics вычисляет положение end-effector из суставов. | Зависит от модели робота. | робототехника |
+| `robotics.inverse_kinematics` | МЕТОД | Inverse kinematics ищет суставы для нужной позиции. | Может иметь много решений или ни одного. | робототехника |
+| `robotics.pid_control` | КОНТРОЛЬ | PID управляет ошибкой через proportional, integral, derivative компоненты. | Нужна настройка и anti-windup. | контроль |
+| `robotics.slam` | МЕТОД | SLAM строит карту и оценивает положение одновременно. | Ошибки датчиков накапливаются. | автономия |
+| `robotics.path_planning` | МЕТОД | Path planning ищет безопасный маршрут через ограничения. | Динамические препятствия усложняют. | автономия |
+| `robotics.gripper` | END_EFFECTOR | Захват удерживает объект через форму, трение, вакуум или магнит. | Объекты разные по хрупкости и форме. | автоматизация |
+| `robotics.safety_e_stop` | БЕЗОПАСНОСТЬ_СИСТЕМА | Emergency stop быстро переводит робота в безопасное состояние. | Должен быть доступен и проверен. | безопасность |
+| `robotics.cobot_force_limit` | БЕЗОПАСНОСТЬ_МЕТОД | Cobot ограничивает силу/скорость для работы рядом с людьми. | Не делает любую задачу безопасной. | безопасность |
 
 ---
 

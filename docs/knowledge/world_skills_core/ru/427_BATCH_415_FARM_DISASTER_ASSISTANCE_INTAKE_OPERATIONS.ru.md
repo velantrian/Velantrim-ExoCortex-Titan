@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| farmassistops.intake.request_source | request source | RECORD | Source records farmer, extension office, hotline, agency, cooperative or lender referral. | Shows entry path. |
-| farmassistops.intake.producer_profile | producer profile | RECORD | Profile captures operator, farm location, contacts, entity type and language. | Defines applicant. |
-| farmassistops.intake.operation_type | operation type | RECORD | Type distinguishes crop, livestock, dairy, orchard, nursery, aquaculture or mixed operation. | Routes expertise. |
-| farmassistops.intake.urgency | urgency model | MODEL | Urgency weighs animal welfare, planting window, cashflow, perishability and safety risk. | Prioritizes cases. |
-| farmassistops.crop.damage_type | crop damage type | RECORD | Type records flood, drought, hail, freeze, wind, smoke, pest or disease impact. | Describes loss. |
-| farmassistops.crop.acreage | acreage record | MEASUREMENT | Acreage captures affected acres, planted acres, harvested acres and location. | Quantifies impact. |
-| farmassistops.crop.growth_stage | growth stage | RECORD | Stage records planting, emergence, flowering, harvest or storage phase. | Supports loss context. |
-| farmassistops.crop.yield_estimate | yield estimate | MEASUREMENT | Estimate compares expected, actual and damaged yield where available. | Supports assistance. |
-| farmassistops.livestock.herd_count | herd count | MEASUREMENT | Count records species, class, headcount, losses and at-risk animals. | Quantifies need. |
-| farmassistops.livestock.mortality | mortality record | RECORD | Mortality records species, count, cause, date, disposal and evidence. | Supports claims. |
-| farmassistops.livestock.welfare | welfare need | SAFETY_RULE | Welfare flags feed, water, shelter, veterinary, transport or carcass disposal need. | Protects animals. |
-| farmassistops.livestock.facility_damage | facility damage | RECORD | Damage records barns, fencing, pens, wells, pumps, milking or handling equipment. | Defines repairs. |
-| farmassistops.insurance.policy | insurance policy | RECORD | Policy captures carrier, crop/livestock coverage, agent, claim number and deductible. | Coordinates claim. |
-| farmassistops.insurance.claim_status | claim status | RECORD | Status records not filed, filed, adjuster visit, paid, denied or appealed. | Tracks path. |
-| farmassistops.insurance.agent_contact | agent contact | METHOD | Staff help producer contact agent and gather claim requirements. | Moves claim forward. |
-| farmassistops.insurance.duplication | duplication check | QUALITY_CHECK | Check compares insurance, grants, loans, indemnity and donations. | Prevents overlap. |
-| farmassistops.documents.farm_id | farm ID | RECORD | Farm, tract, parcel or producer numbers are captured where relevant. | Supports agency lookup. |
-| farmassistops.documents.photo_evidence | photo evidence | RECORD | Photos document fields, livestock, facilities, equipment and timestamp context. | Supports proof. |
-| farmassistops.documents.production_records | production records | RECORD | Records include planting, sales, milk, herd, feed, tax or inventory documents. | Proves operation. |
-| farmassistops.documents.missing_doc | missing document | RECORD | Missing document tracks source, owner, deadline and workaround. | Drives completion. |
-| farmassistops.agency.extension_referral | extension referral | METHOD | Extension referral supports assessment, technical advice and program navigation. | Adds expertise. |
-| farmassistops.agency.fsa_referral | farm agency referral | METHOD | Farm service referral covers loss notice, program eligibility and appointment needs. | Connects aid. |
-| farmassistops.agency.conservation_referral | conservation referral | METHOD | Conservation referral handles erosion, debris, fencing, waterway and soil concerns. | Supports recovery. |
-| farmassistops.agency.veterinary_referral | veterinary referral | METHOD | Veterinary referral addresses animal health, mortality, movement or quarantine concerns. | Protects herds. |
-| farmassistops.appointment.booking | appointment booking | RECORD | Booking records agency, date, location, documents, language and transport needs. | Secures next step. |
-| farmassistops.appointment.reminder | reminder process | METHOD | Reminder includes deadline, documents, location and contact details. | Reduces no-shows. |
-| farmassistops.appointment.no_show | no-show handling | METHOD | No-show records reason, reschedule path and deadline risk. | Keeps case active. |
-| farmassistops.appointment.deadline | deadline alert | SAFETY_RULE | Program notice and application deadlines are flagged for escalation. | Prevents missed aid. |
-| farmassistops.status.case_status | case status | RECORD | Status distinguishes intake, documents, referred, appointment, submitted, approved, denied or closed. | Shows progress. |
-| farmassistops.status.followup_queue | follow-up queue | RECORD | Queue tracks open tasks, owner, due date and next contact. | Maintains continuity. |
-| farmassistops.status.outcome | outcome record | RECORD | Outcome captures funded, insured, referred, denied, withdrawn, unreachable or unresolved. | Closes loop. |
-| farmassistops.status.reopen | reopen rule | METHOD | Case reopens for new loss, denial, missing payment or new program. | Handles change. |
-| farmassistops.communication.producer_update | producer update | METHOD | Update explains documents, referrals, deadlines, claim status and next steps. | Reduces uncertainty. |
-| farmassistops.communication.partner_update | partner update | METHOD | Partners receive aggregate crop, livestock, document and program barriers. | Coordinates response. |
-| farmassistops.communication.language | language support | METHOD | Interpreters or translated agricultural forms support intake and appointments. | Improves access. |
-| farmassistops.communication.public_notice | public notice | METHOD | Notice explains intake channels, documents, deadlines and eligible loss categories. | Guides producers. |
-| farmassistops.privacy.minimum_data | minimum data | SAFETY_RULE | Intake stores only data needed for farm assistance and referrals. | Reduces exposure. |
-| farmassistops.privacy.financial_data | financial data control | SAFETY_RULE | Tax, sales and insurance documents use restricted access and secure storage. | Protects producers. |
-| farmassistops.reporting.daily_summary | daily summary | MEASUREMENT | Summary reports farms assisted, acres affected, animals affected, referrals and barriers. | Informs recovery. |
-| farmassistops.metrics.acres_reported | acres reported | MEASUREMENT | Metric totals damaged acreage by crop, geography and disaster type. | Shows scale. |
-| farmassistops.metrics.livestock_reported | livestock reported | MEASUREMENT | Metric totals affected livestock by species and need category. | Guides resources. |
-| farmassistops.metrics.time_to_referral | time to referral | MEASUREMENT | Time measures intake to agency referral or appointment. | Reveals delay. |
-| farmassistops.qa.case_review | case review | QUALITY_CHECK | Review checks loss records, documents, referrals, deadlines and status notes. | Improves reliability. |
-| farmassistops.review.after_action | after-action review | METHOD | Review captures program routing, document gaps, insurance coordination and producer feedback. | Improves future intake. |
+| farmassistops.intake.request_source | источник запроса | RECORD | Источник записывает информацию о фермере, офисе распространения информации, горячей линии, агентстве, кооперативе или рекомендации кредитора. | Показывает путь входа. |
+| farmassistops.intake.producer_profile | профиль продюсера | RECORD | В профиле указаны оператор, местоположение фермы, контакты, тип объекта и язык. | Определяет заявителя. |
+| farmassistops.intake.operation_type | тип операции | RECORD | Тип различает растениеводство, животноводство, молочное хозяйство, садоводство, питомник, аквакультуру или смешанную деятельность. | Экспертиза маршрутов. |
+| farmassistops.intake.urgency | модель срочности | MODEL | Срочность учитывает благополучие животных, окно для посадки, денежный поток, скоропортящийся товар и риск безопасности. | Расставляет приоритеты по делам. |
+| farmassistops.crop.damage_type | тип повреждения урожая | RECORD | Введите данные о наводнении, засухе, граде, заморозках, ветре, дыме, воздействии вредителей или болезней. | Описывает потери. |
+| farmassistops.crop.acreage | рекорд по площади | MEASUREMENT | Площадь включает затронутые акры, посевные площади, убранные площади и местоположение. | Количественно оценивает воздействие. |
+| farmassistops.crop.growth_stage | стадия роста | RECORD | Стадии фиксируют этапы посадки, всходов, цветения, сбора урожая или хранения. | Поддерживает контекст потери. |
+| farmassistops.crop.yield_estimate | оценка доходности | MEASUREMENT | При оценке сравнивается ожидаемый, фактический и поврежденный урожай, если таковой имеется. | Поддерживает помощь. |
+| farmassistops.livestock.herd_count | подсчет стада | MEASUREMENT | Подсчет фиксирует виды, классы, поголовье, потери и животных, находящихся в группе риска. | Количественно определяет потребность. |
+| farmassistops.livestock.mortality | запись о смертности | RECORD | Смертность регистрирует виды, количество, причину, дату, захоронение и доказательства. | Поддерживает претензии. |
+| farmassistops.livestock.welfare | потребность в благосостоянии | SAFETY_RULE | Флаги благосостояния: потребность в корме, воде, укрытии, ветеринарии, транспорте или утилизации туш. | Защищает животных. |
+| farmassistops.livestock.facility_damage | повреждение объекта | RECORD | Учет повреждений сараев, ограждений, загонов, колодцев, насосов, доильного или погрузочно-разгрузочного оборудования. | Определяет ремонт. |
+| farmassistops.insurance.policy | страховой полис | RECORD | В полисе указаны перевозчик, покрытие урожая/животноводства, агент, номер претензии и франшиза. | Координаты утверждают. |
+| farmassistops.insurance.claim_status | статус претензии | RECORD | Записи о состоянии не поданы, поданы, визит аджастера, оплачены, отклонены или обжалованы. | Отслеживает путь. |
+| farmassistops.insurance.agent_contact | контакт агента | METHOD | Сотрудники помогают производителю связаться с агентом и собрать требования по претензиям. | Продвигает иск вперед. |
+| farmassistops.insurance.duplication | проверка дублирования | QUALITY_CHECK | Проверка сравнивает страхование, гранты, кредиты, возмещение и пожертвования. | Предотвращает перекрытие. |
+| farmassistops.documents.farm_id | идентификатор фермы | RECORD | Там, где это необходимо, регистрируются номера ферм, участков, участков или производителей. | Поддерживает поиск агентств. |
+| farmassistops.documents.photo_evidence | фотодоказательства | RECORD | Фотографии документируют поля, домашний скот, помещения, оборудование и временные метки. | Поддерживает доказательства. |
+| farmassistops.documents.production_records | производственные записи | RECORD | Записи включают документы о посадке, продажах, молоке, стаде, кормах, налогах или инвентаризации. | Доказывает работоспособность. |
+| farmassistops.documents.missing_doc | недостающий документ | RECORD | Отсутствующий документ отслеживает источник, владельца, крайний срок и обходной путь. | Завершение приводов. |
+| farmassistops.agency.extension_referral | расширение реферала | METHOD | Направление на продление поддерживает оценку, технические консультации и навигацию по программе. | Добавляет экспертности. |
+| farmassistops.agency.fsa_referral | направление от фермерского агентства | METHOD | Направление на обслуживание фермы покрывает уведомление о потере, право на участие в программе и необходимость записи на прием. | Подключает помощь. |
+| farmassistops.agency.conservation_referral | направление на сохранение | METHOD | Направления по охране природы решают проблемы эрозии, мусора, ограждений, водных путей и почвы. | Поддерживает восстановление. |
+| farmassistops.agency.veterinary_referral | ветеринарное направление | METHOD | Ветеринарное направление решает проблемы, связанные со здоровьем животных, смертностью, перемещением или карантином. | Защищает стада. |
+| farmassistops.appointment.booking | запись на прием | RECORD | Агентство записи бронирования, дата, местонахождение, документы, язык и транспортные потребности. | Обеспечивает следующий шаг. |
+| farmassistops.appointment.reminder | процесс напоминания | METHOD | Напоминание включает в себя крайний срок, документы, местонахождение и контактные данные. | Снижает количество неявок. |
+| farmassistops.appointment.no_show | обработка неявки | METHOD | Причина неявки, путь переноса и риск крайнего срока. | Сохраняет дело активным. |
+| farmassistops.appointment.deadline | предупреждение о крайнем сроке | SAFETY_RULE | Уведомление о программе и сроки подачи заявок помечены для эскалации. | Предотвращает пропущенную помощь. |
+| farmassistops.status.case_status | статус дела | RECORD | Статус различает прием, документы, направление, назначение, представлено, одобрено, отклонено или закрыто. | Показывает прогресс. |
+| farmassistops.status.followup_queue | последующая очередь | RECORD | Очередь отслеживает открытые задачи, владельца, дату выполнения и следующий контакт. | Сохраняет преемственность. |
+| farmassistops.status.outcome | запись о результате | RECORD | Результаты фиксируются: профинансировано, застраховано, направлено, отклонено, отозвано, недостижимо или нерешено. | Замыкает цикл. |
+| farmassistops.status.reopen | правило повторного открытия | METHOD | Дело возобновляется в случае новой потери, отказа, отсутствия платежа или новой программы. | Ручки меняются. |
+| farmassistops.communication.producer_update | обновление продюсера | METHOD | Обновление объясняет документы, направления, сроки, статус претензии и следующие шаги. | Уменьшает неопределенность. |
+| farmassistops.communication.partner_update | обновление партнера | METHOD | Партнеры получают совокупные барьеры по выращиванию урожая, животноводству, документам и программам. | Координирует ответ. |
+| farmassistops.communication.language | языковая поддержка | METHOD | Устные переводчики или переведенные сельскохозяйственные формы поддерживают прием и запись на прием. | Улучшает доступ. |
+| farmassistops.communication.public_notice | публичное уведомление | METHOD | В уведомлении разъясняются каналы приема, документы, сроки и приемлемые категории убытков. | Продюсеры гидов. |
+| farmassistops.privacy.minimum_data | минимальные данные | SAFETY_RULE | Intake хранит только данные, необходимые для помощи фермерам и направлениям. | Уменьшает воздействие. |
+| farmassistops.privacy.financial_data | контроль финансовых данных | SAFETY_RULE | Налоговые, торговые и страховые документы имеют ограниченный доступ и безопасное хранение. | Защищает производителей. |
+| farmassistops.reporting.daily_summary | ежедневная сводка | MEASUREMENT | Сводные отчеты о фермах, которым была оказана помощь, о затронутых акрах, пострадавших животных, направлениях и препятствиях. | Сообщает о восстановлении. |
+| farmassistops.metrics.acres_reported | зарегистрировано акров | MEASUREMENT | Показательные итоги представляют собой поврежденные площади по культурам, географическому положению и типу стихийного бедствия. | Показывает масштаб. |
+| farmassistops.metrics.livestock_reported | сообщается о домашнем скоте | MEASUREMENT | Итоговые показатели повлияли на поголовье скота по видам и категориям потребностей. | Путеводители по ресурсам. |
+| farmassistops.metrics.time_to_referral | пора обращаться | MEASUREMENT | Время измеряет время поступления в агентство или на прием. | Выявляет задержку. |
+| farmassistops.qa.case_review | рассмотрение дела | QUALITY_CHECK | Просмотрите записи о потерях, документы, направления, сроки и примечания о состоянии. | Повышает надежность. |
+| farmassistops.review.after_action | обзор после действий | METHOD | Обзор фиксирует маршрут программы, пробелы в документах, координацию страхования и отзывы производителей. | Улучшает будущее потребление. |

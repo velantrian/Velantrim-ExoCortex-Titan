@@ -706,3 +706,111 @@ MemArchitect-подобно:
 
 **Что уже покрывает в V8.7:**
 `sleep_time_worker.py` — таймерная консолидация. `consolidation_engine.py` — micro-batch. Но без entropy-triggered механизма.
+
+---
+
+## 🔀 Quality-Gated Retrieval — двухуровневый retrieval с контролем качества (D-Mem)
+
+**Что это:** две системы памяти — быстрая векторная (System 1) + медленная exhaustive (System 2). Quality Gate проверяет retrieved-контекст по трём осям перед ответом. Если контекст некачественный → fallback к полному чтению истории.
+
+**Источник:** D-Mem (март 2026). arXiv:2603.18631. F1=53.5 на LoCoMo.
+
+```
+Quality Gate (3 оси):
+    Relevance       — retrieved-факты релевантны запросу?
+    Faithfulness    — retrieved-факты подтверждены источниками?
+    Completeness    — retrieved-контекст покрывает запрос полностью?
+
+Если любая ось < порог:
+    System 1 (fast) → System 2 (exhaustive) — читаем сырую историю
+```
+
+**Где применить:**
+- `pipeline.py` — Quality Gate после FactsPack, перед TruthGate
+- `hybrid_retriever.py` — двухуровневый retrieval: fast (BM25+Dense) → quality check → exhaustive (full scan)
+
+**Когда понадобится:**
+При 500+ фактов когда retrieval иногда возвращает неполный контекст. Quality Gate предотвращает ответы на основе некачественного retrieval.
+
+**Что уже покрывает в V8.7:**
+`output_faithfulness.py` — проверяет ответ ПОСЛЕ генерации. `response_guardian.py` — Guardian ПОСЛЕ LLM. Но нет проверки качества retrieved-контекста ДО генерации.
+
+---
+
+## 📐 Hierarchical Attention Routing — динамическая маршрутизация L1→L2→L3 (MKA)
+
+**Что это:** иерархический KV-кэш с тремя уровнями. L1 (local — текущий диалог), L2 (session — сессия), L3 (long-term — вся история). Запрос динамически маршрутизируется: простые вопросы → L1, сложные → L1+L2+L3. До 5× быстрее обучения чем MLA.
+
+**Источник:** MKA (март 2026). arXiv:2603.20586. FastMKA — broadcast routing.
+
+```
+Запрос «привет» → Router → L1 (local) → ответ за 2ms
+Запрос «что мы обсуждали про архитектуру в прошлый вторник?» → Router → L1+L2+L3 → ответ за 50ms
+```
+
+**Где применить:**
+- `hybrid_retriever.py` — добавить hierarchical routing: local → session → long-term
+- `attention_router.py` — динамическое решение какой уровень retrieval использовать
+
+**Когда понадобится:**
+При 20+ диалогах когда каждый запрос сканирует все факты — неэффективно. MKA снижает latency на 80% для простых запросов.
+
+**Что уже покрывает в V8.7:**
+`NGramIndex` — pre-filter. `hybrid_retriever.py` — BM25+Dense+RRF. Но без иерархической маршрутизации между уровнями памяти.
+
+---
+
+## 🧠 TMS Downstream Invalidation — авто-инвалидация зависимых фактов (Doyle 1979 + Atlas)
+
+**Что это:** когда premise-факт отозван (Contradicted/Deprecated) — ВСЕ downstream-факты, которые от него зависели, автоматически инвалидируются. Truth Maintenance System (TMS) отслеживает зависимости между убеждениями. Классика AI (Doyle, 1979). Atlas (2026) реализовал на property graph.
+
+**Источник:** Doyle (1979) + Atlas (июнь 2026, open-source). 49/49 AGM-постулатов + Ripple propagation.
+
+```
+Факт A → Contradicted
+    → TMS проверяет: какие факты зависят от A?
+        Факт B: depends_on [A] → автоматически → Contradicted
+        Факт C: depends_on [A, D] → confidence снижен на 50%
+        Факт D: не зависит от A → без изменений
+```
+
+**Отличие от Ripple:** Ripple пересчитывает confidence. TMS делает жёсткую инвалидацию — если основание рухнуло, зависимый факт тоже рушится.
+
+**Где применить:**
+- `truth_maintenance.py` — добавить TMS-слой над supersede/contradict
+- `causal_graph.py` — dependency tracking с автоматической инвалидацией
+
+**Когда понадобится:**
+При первом же противоречии в графе. Без TMS зависимые факты остаются «живыми» хотя их основание рухнуло.
+
+**Что уже покрывает в V8.7:**
+`truth_maintenance.py` — supersede/contradict/reinforce. `causal_graph.py` — 15 типов связей с knowledge_status. Но без автоматической downstream-инвалидации.
+
+---
+
+## 🌐 7-Channel Cognitive Retrieval — 7 параллельных каналов поиска (SuperLocalMemory)
+
+**Что это:** вместо 3 каналов (BM25 + Dense + RRF) — 7: semantic, keyword, entity graph, temporal, spreading activation, consolidation replay, Hopfield associative. Zero-LLM Mode A. 70.4% на LoCoMo. 215 source modules.
+
+**Источник:** SuperLocalMemory V3.3 (апрель 2026). arXiv:2604.04514. Fisher-Rao квантованные эмбеддинги.
+
+```
+7 каналов:
+    1. Semantic       — dense vector (как сейчас)
+    2. Keyword        — BM25/FTS5 (как сейчас)
+    3. Entity Graph   — traversal по causal_graph
+    4. Temporal       — bi-temporal search (I96)
+    5. Spreading Activation — Etir-like priming
+    6. Consolidation Replay — experience_replay.py результаты
+    7. Hopfield Associative — pattern completion из partial match
+```
+
+**Где применить:**
+- `hybrid_retriever.py` — расширить с 3 до 7 каналов
+- `retrieve_5stage()` — добавить temporal + spreading + Hopfield этапы
+
+**Когда понадобится:**
+При 5000+ фактов когда 3 канала не дают достаточного recall. 7 каналов поднимают LoCoMo с ~50% до 70%.
+
+**Что уже покрывает в V8.7:**
+Каналы 1-3 уже работают (BM25 + Dense + RRF). Канал 4 частично (bi-temporal I96). Каналы 5-7 — нет.

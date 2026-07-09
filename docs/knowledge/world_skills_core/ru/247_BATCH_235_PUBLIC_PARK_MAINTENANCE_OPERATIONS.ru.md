@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| parkops.workorder.request_intake | Park maintenance request intake | invariant | Intake records location, asset, issue, reporter, priority, photos and safety concern. | start work |
-| parkops.workorder.priority_triage | Park work order priority triage | invariant | Triage ranks hazards, service disruption, event impact, routine care and backlog. | focus crews |
-| parkops.workorder.route_batch | Park maintenance route batch | variant | Batch groups nearby tasks by crew, equipment, season and travel time. | efficient routes |
-| parkops.workorder.status_update | Park work order status update | invariant | Update records assigned, in progress, waiting, completed, deferred or cancelled status. | visible progress |
-| parkops.workorder.closeout_photo | Park work order closeout photo | variant | Photo documents repair completion, cleanup, hazard removal or condition change. | proof of work |
-| parkops.turf.mowing_schedule | Park turf mowing schedule | invariant | Schedule assigns fields, lawns, slopes, frequency, weather limits and crew. | maintain grounds |
-| parkops.turf.irrigation_check | Park irrigation check | variant | Check reviews heads, leaks, timers, coverage, pressure and water restrictions. | healthy turf |
-| parkops.turf.field_lining | Athletic field lining | variant | Lining marks sport field boundaries, goals, safety buffers and event timing. | playable fields |
-| parkops.turf.soil_compaction | Park soil compaction note | variant | Note records hardpan, drainage, aeration need and turf recovery plan. | improve surfaces |
-| parkops.turf.pesticide_notice | Park pesticide notice | invariant | Notice records product, area, timing, restrictions, signage and applicator credentials. | public safety |
-| parkops.playground.daily_inspection | Playground daily inspection | invariant | Inspection checks surfacing, swings, slides, climbers, hardware, sharp edges and debris. | child safety |
-| parkops.playground.surface_depth | Playground surface depth check | invariant | Check verifies loose-fill or impact surface depth in fall zones. | reduce injury |
-| parkops.playground.defect_lockout | Playground defect lockout | invariant | Lockout removes unsafe equipment from use with barriers, signs and repair order. | prevent use |
-| parkops.playground.repair_log | Playground repair log | invariant | Log tracks parts, labor, inspection result, reopening approval and warranty. | repair evidence |
-| parkops.playground.safety_standard_review | Playground safety standard review | variant | Review compares equipment and surfacing against applicable inspection checklist. | risk control |
-| parkops.trees.tree_inventory | Park tree inventory | variant | Inventory records species, location, size, condition, risk rating and maintenance history. | urban forest control |
-| parkops.trees.limb_hazard | Park limb hazard response | invariant | Response secures area, evaluates branch risk, assigns pruning and documents closure. | prevent injury |
-| parkops.trees.storm_damage | Park storm tree damage | invariant | Damage log captures downed limbs, blocked paths, power risk and cleanup priority. | restore access |
-| parkops.trees.planting_plan | Park tree planting plan | variant | Plan selects species, site, watering, protection and establishment schedule. | durable planting |
-| parkops.trees.invasive_species | Park invasive species control | variant | Control maps invasive plants, treatment method, timing, disposal and follow-up. | protect habitat |
-| parkops.litter.litter_route | Park litter collection route | invariant | Route covers bins, picnic areas, trails, parking, fields and problem hotspots. | clean park |
-| parkops.litter.bin_overflow | Park bin overflow response | invariant | Response records full bin, extra pickup, cause, event link and capacity adjustment. | reduce complaints |
-| parkops.litter.illegal_dumping | Park illegal dumping record | invariant | Record captures dumped items, location, photos, cleanup cost and enforcement referral. | manage abuse |
-| parkops.litter.sharps_found | Park sharps found response | invariant | Response uses trained pickup, container, location record and supervisor notice. | protect public |
-| parkops.litter.graffiti_removal | Park graffiti removal | variant | Removal records surface, content severity, method, timing and repeat location. | restore assets |
-| parkops.restroom.restroom_round | Park restroom round | invariant | Round checks supplies, fixtures, locks, odors, floors, vandalism and accessibility. | public hygiene |
-| parkops.restroom.plumbing_issue | Park restroom plumbing issue | invariant | Issue records clog, leak, fixture failure, closure and plumber dispatch. | restore service |
-| parkops.restroom.cleaning_supply | Park restroom supply stock | invariant | Stock tracks paper, soap, sanitizer, bags, chemicals and refill frequency. | avoid outages |
-| parkops.restroom.seasonal_opening | Park restroom seasonal opening | variant | Opening checks water, drains, heat, ventilation, locks, cleaning and signage. | start season |
-| parkops.restroom.winterization | Park restroom winterization | variant | Winterization drains lines, protects fixtures, closes valves and posts closure. | prevent freeze damage |
-| parkops.events.event_site_prep | Park event site preparation | variant | Preparation covers turf, power, barricades, waste, restrooms, access and restoration. | ready event |
-| parkops.events.permit_condition | Park event permit condition | invariant | Condition records capacity, hours, amplified sound, vendors, cleanup and insurance. | enforce permit |
-| parkops.events.post_event_walk | Park post-event walk | invariant | Walk notes trash, turf damage, utilities, fees, deposits and repair needs. | recover site |
-| parkops.events.vendor_vehicle_route | Park vendor vehicle route | variant | Route controls load-in, pedestrian areas, turf protection and emergency access. | safe movement |
-| parkops.safety.trail_hazard | Park trail hazard report | invariant | Report captures washout, ice, fallen tree, erosion, bridge issue or blocked path. | protect users |
-| parkops.safety.lighting_check | Park lighting check | invariant | Check verifies paths, courts, parking, timers, outages and dark spots. | night safety |
-| parkops.safety.water_feature_check | Park water feature check | variant | Check reviews fountains, ponds, splash pads, pumps, barriers and water quality notices. | reduce risk |
-| parkops.safety.incident_report | Park incident report | invariant | Report records injury, conflict, damage, wildlife, weather or emergency response. | incident evidence |
-| parkops.safety.closure_notice | Park closure notice | invariant | Notice explains closed area, cause, duration, alternative route and contact. | clear communication |
-| parkops.assets.bench_table_repair | Park bench and table repair | invariant | Repair logs damaged seating, hardware, surface, paint, replacement and reopening. | usable amenities |
-| parkops.assets.signage_check | Park signage check | invariant | Check covers rules, maps, wayfinding, hazards, hours and accessibility signs. | orient visitors |
-| parkops.assets.irrigation_asset | Park irrigation asset record | variant | Record links valves, controllers, zones, repairs, parts and seasonal settings. | asset memory |
-| parkops.reporting.park_maintenance_report | Park maintenance report | invariant | Report summarizes completed work, hazards, closures, costs, backlog and complaints. | accountable care |
-| parkops.metrics.park_kpi | Park maintenance KPI | variant | KPI tracks response time, open hazards, restroom scores, litter, turf condition and event recovery. | manage parks |
+| parkops.workorder.request_intake | Прием заявок на обслуживание парка | invariant | Приемные записи записывают местоположение, актив, проблему, репортера, приоритет, фотографии и проблемы безопасности. | начать работу |
+| parkops.workorder.priority_triage | Приоритетная сортировка заказов на работу в парке | invariant | В сортировке ранжируются опасности, сбои в обслуживании, влияние событий, плановый уход и отставание. | фокус-группы |
+| parkops.workorder.route_batch | Пакет маршрутов обслуживания парка | variant | Пакетная группировка ближайших задач по экипажу, оборудованию, сезону и времени в пути. | эффективные маршруты |
+| parkops.workorder.status_update | Обновление статуса заказа на работу в парке | invariant | Записи обновления назначены, находятся в процессе, ожидают, завершены, отложены или отменены. | видимый прогресс |
+| parkops.workorder.closeout_photo | Завершение заказа на работу в парке | variant | Фотодокументы завершения ремонта, уборки, устранения опасностей или изменения состояния. | доказательство работы |
+| parkops.turf.mowing_schedule | График стрижки газона в парке | invariant | Расписание назначает поля, газоны, склоны, частоту, погодные ограничения и команду. | поддерживать территорию |
+| parkops.turf.irrigation_check | Проверка орошения парка | variant | Проверьте головки, утечки, таймеры, покрытие, давление и ограничения на воду. | здоровый газон |
+| parkops.turf.field_lining | Обшивка спортивного поля | variant | Подкладка отмечает границы спортивного поля, цели, буферы безопасности и время проведения соревнований. | игровые поля |
+| parkops.turf.soil_compaction | Указание по уплотнению почвы в парке | variant | Запишите твердый настил, дренаж, необходимость аэрации и план восстановления газона. | улучшить поверхности |
+| parkops.turf.pesticide_notice | Уведомление о парковых пестицидах | invariant | В уведомлении указывается продукт, территория, время, ограничения, вывески и учетные данные аппликатора. | общественная безопасность |
+| parkops.playground.daily_inspection | Ежедневный осмотр детской площадки | invariant | Инспекция проверяет поверхности, качели, горки, альпинисты, оборудование, острые края и мусор. | безопасность детей |
+| parkops.playground.surface_depth | Проверка глубины поверхности игровой площадки | invariant | Проверка проверяет глубину насыпи или ударной поверхности в зонах падения. | уменьшить травмы |
+| parkops.playground.defect_lockout | Блокировка дефектов детской площадки | invariant | Блокировка исключает использование небезопасного оборудования вместе с барьерами, знаками и заказами на ремонт. | предотвратить использование |
+| parkops.playground.repair_log | Журнал ремонта детской площадки | invariant | В журнале отслеживаются детали, трудозатраты, результаты проверок, одобрение повторного открытия и гарантия. | восстановить доказательства |
+| parkops.playground.safety_standard_review | Обзор стандартов безопасности игровых площадок | variant | В обзоре сравнивается оборудование и покрытие с применимым контрольным списком проверок. | контроль рисков |
+| parkops.trees.tree_inventory | Инвентаризация парковых деревьев | variant | В инвентаре фиксируются виды, местоположение, размер, состояние, рейтинг риска и история обслуживания. | городской лесной контроль |
+| parkops.trees.limb_hazard | Реагирование на опасность для конечностей при парковке | invariant | Служба реагирования обеспечивает безопасность территории, оценивает риск филиала, назначает сокращение и документирует закрытие. | предотвратить травмы |
+| parkops.trees.storm_damage | Повреждение деревьев ураганом в парке | invariant | В журнале повреждений фиксируются упавшие конечности, заблокированные пути, риск электропитания и приоритет очистки. | восстановить доступ |
+| parkops.trees.planting_plan | План посадки деревьев в парке | variant | В плане выбираются виды, место, полив, защита и график выращивания. | долговечные насаждения |
+| parkops.trees.invasive_species | Контроль инвазивных видов парка | variant | Карты контроля инвазивных растений, методы лечения, сроки, удаление и последующее наблюдение. | защищать среду обитания |
+| parkops.litter.litter_route | Маршрут сбора мусора в парке | invariant | Маршрут охватывает мусорные баки, места для пикников, тропы, парковки, поля и проблемные точки. | чистый парк |
+| parkops.litter.bin_overflow | Реакция на переполнение парковочного контейнера | invariant | В ответе фиксируются полный бункер, дополнительный прием, причина, связь с событием и корректировка мощности. | уменьшить жалобы |
+| parkops.litter.illegal_dumping | Рекорд по незаконной свалке в парке | invariant | Записывайте выброшенные предметы, их местонахождение, фотографии, стоимость уборки и направления в правоохранительные органы. | управлять злоупотреблениями |
+| parkops.litter.sharps_found | Парковые острые предметы нашли отклик | invariant | Ответ использует обученный пикап, контейнер, запись о местоположении и уведомление руководителя. | защищать общественность |
+| parkops.litter.graffiti_removal | Удаление граффити в парке | variant | Поверхность записей удаления, серьезность содержимого, метод, время и место повтора. | восстановить активы |
+| parkops.restroom.restroom_round | Парковый туалет круглый | invariant | Круговая проверка расходных материалов, сантехники, замков, запахов, полов, вандализма и доступности. | общественная гигиена |
+| parkops.restroom.plumbing_issue | Проблема с сантехникой в ​​туалете в парке | invariant | Выпуск регистрирует засоры, утечки, неисправности арматуры, закрытие и отправку сантехника. | восстановить сервис |
+| parkops.restroom.cleaning_supply | Запас товаров для туалетов в парке | invariant | На складе отслеживается бумага, мыло, дезинфицирующие средства, пакеты, химикаты и частота пополнения запасов. | избежать перебоев в работе |
+| parkops.restroom.seasonal_opening | Сезонное открытие туалета в парке | variant | При открытии проверяются вода, канализация, отопление, вентиляция, замки, уборка и вывески. | начало сезона |
+| parkops.restroom.winterization | Подготовка туалета в парке к зиме | variant | Подготовка к зиме осушает трубопроводы, защищает арматуру, закрывает клапаны и обеспечивает закрытие. | предотвратить повреждение от замерзания |
+| parkops.events.event_site_prep | Подготовка площадки для проведения мероприятий в парке | variant | Подготовка охватывает территорию, электроэнергию, баррикады, мусор, туалеты, доступ и восстановление. | готовое мероприятие |
+| parkops.events.permit_condition | Условия разрешения на проведение мероприятий в парке | invariant | Состояние записей мощности, часов работы, усиления звука, продавцов, очистки и страховки. | обеспечить соблюдение разрешения |
+| parkops.events.post_event_walk | Прогулка в парке после мероприятия | invariant | Прогулка отмечает мусор, повреждение газона, коммунальные услуги, сборы, депозиты и потребности в ремонте. | восстановить сайт |
+| parkops.events.vendor_vehicle_route | Маршрут транспортного средства продавца парка | variant | Маршрут контролирует погрузку, пешеходные зоны, защиту газона и аварийный доступ. | безопасное движение |
+| parkops.safety.trail_hazard | Отчет об опасностях на парковой тропе | invariant | В отчете отражены размывы, лед, упавшие деревья, эрозия, проблемы с мостами или заблокированные пути. | защитить пользователей |
+| parkops.safety.lighting_check | Проверка паркового освещения | invariant | Проверка проверяет дорожки, площадки, парковку, таймеры, отключения электроэнергии и темные пятна. | ночная безопасность |
+| parkops.safety.water_feature_check | Проверка водных объектов парка | variant | Проверьте обзоры фонтанов, прудов, брызговиков, насосов, барьеров и уведомлений о качестве воды. | снизить риск |
+| parkops.safety.incident_report | Отчет о происшествии в парке | invariant | В отчете фиксируются травмы, конфликты, ущерб, дикая природа, погода или реагирование на чрезвычайные ситуации. | доказательства происшествия |
+| parkops.safety.closure_notice | Уведомление о закрытии парка | invariant | В уведомлении поясняется закрытая зона, причина, продолжительность, альтернативный маршрут и контакт. | четкое общение |
+| parkops.assets.bench_table_repair | Ремонт парковых скамеек и столов | invariant | Ремонт журналов, поврежденных сидений, оборудования, поверхности, краски, замена и повторное открытие. | полезные удобства |
+| parkops.assets.signage_check | Проверка указателей парка | invariant | Проверка охватывает правила, карты, навигацию, опасности, часы работы и знаки доступности. | ориентировать посетителей |
+| parkops.assets.irrigation_asset | Реестр ирригационных активов в парке | variant | Записывайте ссылки на клапаны, контроллеры, зоны, ремонты, детали и сезонные настройки. | память активов |
+| parkops.reporting.park_maintenance_report | Отчет об обслуживании парка | invariant | В отчете суммируются выполненные работы, опасности, закрытия, затраты, отставание и жалобы. | ответственная забота |
+| parkops.metrics.park_kpi | KPI по содержанию парка | variant | KPI отслеживает время реагирования, открытые опасности, оценки туалетов, мусор, состояние газона и восстановление после событий. | управлять парками |

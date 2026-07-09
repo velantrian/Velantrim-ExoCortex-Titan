@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| subbill.catalog.plan_catalog | Subscription plan catalog | invariant | Plan catalog defines products, prices, billing periods, entitlements, currencies and eligibility. | source of billing truth |
-| subbill.catalog.price_version | Price version | invariant | Price version preserves historical pricing while allowing new offers or changes for future customers. | do not overwrite past |
-| subbill.catalog.addon | Subscription add-on | variant | Add-on grants extra feature, seat, usage or service alongside base plan. | modular revenue |
-| subbill.catalog.trial_plan | Trial plan | variant | Trial plan gives temporary access with defined duration, conversion rule and billing trigger. | controlled free access |
-| subbill.catalog.discount_code | Discount code | variant | Discount code applies approved price reduction by amount, percent, duration or eligibility. | promotion control |
-| subbill.catalog.entitlement_map | Entitlement map | invariant | Entitlement map links paid plan or add-on to actual product access. | billing drives access |
-| subbill.lifecycle.subscription_start | Subscription start | invariant | Start date sets access, billing cycle, renewal schedule and revenue period. | clock begins |
-| subbill.lifecycle.renewal_event | Renewal event | invariant | Renewal creates next billing period, invoice or charge attempt according to subscription terms. | recurring cycle |
-| subbill.lifecycle.plan_upgrade | Plan upgrade | variant | Upgrade increases service level and may trigger proration, entitlement change and immediate charge. | mid-cycle change |
-| subbill.lifecycle.plan_downgrade | Plan downgrade | variant | Downgrade reduces service level and may apply now or next renewal depending on policy. | avoid surprise access loss |
-| subbill.lifecycle.seat_change | Seat quantity change | variant | Seat change adjusts billable quantity, entitlements and possible proration. | quantity as billing input |
-| subbill.lifecycle.subscription_pause | Subscription pause | variant | Pause temporarily stops billing or access under defined eligibility and restart rule. | controlled interruption |
-| subbill.proration.proration_rule | Proration rule | invariant | Rule calculates partial-period charge or credit when subscription changes mid-cycle. | fair partial billing |
-| subbill.proration.credit_balance | Customer credit balance | invariant | Credit balance stores unused value to apply to future invoices or refund workflow. | value not lost |
-| subbill.proration.midcycle_invoice | Mid-cycle invoice | variant | Mid-cycle invoice bills immediate changes outside normal renewal invoice. | charge now |
-| subbill.proration.effective_date | Billing effective date | invariant | Effective date determines when price, plan or quantity change affects invoice and entitlement. | date controls math |
-| subbill.invoice.invoice_generation | Subscription invoice generation | invariant | Generation creates invoice lines from plan, usage, discounts, taxes, credits and period. | bill from rules |
-| subbill.invoice.invoice_line_item | Invoice line item | invariant | Line item shows charge, credit, tax, period, quantity or adjustment separately. | explain amount |
-| subbill.invoice.tax_calculation | Subscription tax calculation | variant | Tax calculation depends on product, customer location, exemption, jurisdiction and tax engine. | compliance complexity |
-| subbill.invoice.invoice_finalization | Invoice finalization | invariant | Finalization locks invoice for payment, delivery and accounting handoff. | stop changing draft |
-| subbill.invoice.invoice_void | Invoice void | variant | Void cancels invoice before or after issue according to accounting and policy rules. | remove invalid bill |
-| subbill.invoice.credit_note | Credit note | invariant | Credit note documents approved reduction or reversal of billed amount. | auditable correction |
-| subbill.payment.payment_attempt | Payment attempt | invariant | Attempt submits charge to payment method, gateway or processor and records outcome. | collect cash |
-| subbill.payment.payment_failure | Payment failure | invariant | Failure records decline reason, gateway code, retry eligibility and customer notification. | start recovery |
-| subbill.payment.retry_schedule | Payment retry schedule | variant | Retry schedule spaces charge attempts to recover failed payments without excessive attempts. | dunning rhythm |
-| subbill.payment.payment_method_update | Payment method update | invariant | Update replaces card, bank or wallet details with secure tokenized handling. | keep billing active |
-| subbill.payment.chargeback | Subscription chargeback | invariant | Chargeback disputes a collected payment and requires evidence, service status and accounting handling. | revenue at risk |
-| subbill.payment.refund | Subscription refund | variant | Refund returns collected funds with reason, approval, amount and link to invoice or payment. | controlled reversal |
-| subbill.dunning.dunning_notice | Dunning notice | invariant | Notice tells customer payment failed, action needed, deadline and service consequence. | recover without surprise |
-| subbill.dunning.grace_period | Billing grace period | variant | Grace period allows access or payment recovery before suspension or cancellation. | customer-friendly buffer |
-| subbill.dunning.suspension | Service suspension | invariant | Suspension restricts access after failed payment or policy trigger while preserving account record. | access follows payment status |
-| subbill.dunning.reactivation | Subscription reactivation | invariant | Reactivation restores access after payment, approval or issue resolution. | recover customer |
-| subbill.cancel.cancel_request | Cancellation request | invariant | Request records customer intent, date, reason, effective date and retention offer status. | start churn workflow |
-| subbill.cancel.end_of_term_cancel | End-of-term cancellation | variant | Cancellation at renewal prevents future billing while keeping service through paid term. | predictable end |
-| subbill.cancel.immediate_cancel | Immediate cancellation | variant | Immediate cancel stops access now and may trigger credit or refund review. | fast stop |
-| subbill.cancel.winback_offer | Winback offer | variant | Winback offer attempts retention with discount, plan change or support path under policy. | reduce churn |
-| subbill.reporting.mrr | Monthly recurring revenue | invariant | MRR normalizes recurring subscription revenue to monthly value. | subscription KPI |
-| subbill.reporting.churn_rate | Subscription churn rate | invariant | Churn rate measures lost customers or recurring revenue over period. | retention signal |
-| subbill.reporting.expansion_revenue | Expansion revenue | variant | Expansion revenue comes from upgrades, add-ons, seats or usage growth in existing accounts. | growth inside base |
-| subbill.reporting.deferred_revenue_handoff | Deferred revenue handoff | invariant | Handoff sends billing period, invoice, service dates and credits to revenue accounting. | accounting boundary |
-| subbill.reporting.billing_exception | Billing exception report | invariant | Report flags failed invoices, tax errors, stuck renewals, uncollected payments and manual overrides. | operations control |
-| subbill.control.manual_override | Billing manual override | invariant | Override changes price, invoice, credit or status and needs reason, approval and audit trail. | high-risk action |
-| subbill.control.audit_trail | Subscription billing audit trail | invariant | Audit trail records plan changes, invoices, payments, cancellations, credits and user actions. | explain history |
-| subbill.control.reconciliation | Billing reconciliation | invariant | Reconciliation compares billing system, payment processor, bank, GL and revenue reports. | systems agree |
+| subbill.catalog.plan_catalog | Каталог планов подписки | invariant | В каталоге планов указаны продукты, цены, расчетные периоды, права, валюты и право на участие. | источник правдивой информации о счетах |
+| subbill.catalog.price_version | Цена версии | invariant | Версия цены сохраняет исторические цены, но при этом допускает новые предложения или изменения для будущих клиентов. | не перезаписывай прошлое |
+| subbill.catalog.addon | Дополнение к подписке | variant | Надстройка предоставляет дополнительные функции, места, возможности использования или услуги наряду с базовым планом. | модульный доход |
+| subbill.catalog.trial_plan | Пробный план | variant | Пробный план предоставляет временный доступ с определенной продолжительностью, правилом преобразования и триггером выставления счетов. | контролируемый свободный доступ |
+| subbill.catalog.discount_code | Код скидки | variant | Код скидки применяет утвержденное снижение цены в зависимости от суммы, процента, продолжительности или права на участие. | контроль продвижения |
+| subbill.catalog.entitlement_map | Карта прав | invariant | Карта прав связывает платный план или дополнение с фактическим доступом к продукту. | биллинг обеспечивает доступ |
+| subbill.lifecycle.subscription_start | Начало подписки | invariant | Дата начала устанавливает доступ, цикл выставления счетов, график продления и период получения дохода. | часы начинаются |
+| subbill.lifecycle.renewal_event | Событие продления | invariant | При продлении создается следующий расчетный период, счет или попытка списания средств в соответствии с условиями подписки. | повторяющийся цикл |
+| subbill.lifecycle.plan_upgrade | План обновления | variant | Обновление повышает уровень обслуживания и может привести к пропорциональному распределению, изменению прав и немедленному взиманию платы. | изменение в середине цикла |
+| subbill.lifecycle.plan_downgrade | Понизить план | variant | Переход на более раннюю версию снижает уровень обслуживания и может применяться сейчас или при следующем продлении в зависимости от политики. | избежать неожиданной потери доступа |
+| subbill.lifecycle.seat_change | Изменение количества мест | variant | При смене места корректируются подлежащие оплате суммы, льготы и возможное пропорциональное распределение. | количество как входные данные для расчета |
+| subbill.lifecycle.subscription_pause | Приостановка подписки | variant | Пауза временно останавливает выставление счетов или доступ в соответствии с определенными критериями и перезапускает правило. | контролируемое прерывание |
+| subbill.proration.proration_rule | Правило пропорционального распределения | invariant | Правило рассчитывает плату или кредит за неполный период при изменении подписки в середине цикла. | справедливый частичный биллинг |
+| subbill.proration.credit_balance | Кредитный баланс клиента | invariant | Кредитный баланс сохраняет неиспользованную стоимость, которую можно применить к будущим счетам или рабочему процессу возврата. | ценность не потеряна |
+| subbill.proration.midcycle_invoice | Счет-фактура в середине цикла | variant | В счет-фактуру в середине цикла вносятся немедленные изменения, выходящие за рамки обычного счета-фактуры за продление. | зарядите сейчас |
+| subbill.proration.effective_date | Дата вступления в силу платежа | invariant | Дата вступления в силу определяет, когда изменение цены, плана или количества повлияет на счет и право. | математические элементы управления датой |
+| subbill.invoice.invoice_generation | Формирование счета за подписку | invariant | Генерация создает строки счета-фактуры на основе плана, использования, скидок, налогов, кредитов и периода. | счет из правил |
+| subbill.invoice.invoice_line_item | Позиция счета-фактуры | invariant | В отдельной позиции отдельно отображаются расходы, кредит, налог, период, количество или корректировка. | объяснить сумму |
+| subbill.invoice.tax_calculation | Расчет налога на подписку | variant | Расчет налога зависит от продукта, местоположения клиента, освобождения, юрисдикции и системы налогообложения. | сложность соответствия |
+| subbill.invoice.invoice_finalization | Завершение счета-фактуры | invariant | Завершение блокирует счет для оплаты, доставки и передачи учета. | прекрати менять черновик |
+| subbill.invoice.invoice_void | Счет-фактура недействителен | variant | Void отменяет счет-фактуру до или после выставления в соответствии с правилами бухгалтерского учета и политики. | удалить недействительный счет |
+| subbill.invoice.credit_note | Кредит-нота | invariant | Кредит-нота документирует одобренное уменьшение или отмену суммы счета. | проверяемая коррекция |
+| subbill.payment.payment_attempt | Попытка оплаты | invariant | Попытка отправляет оплату методу оплаты, шлюзу или процессору и записывает результат. | собирать наличные |
+| subbill.payment.payment_failure | Ошибка платежа | invariant | Записи об ошибках отклоняют причину, код шлюза, право на повторную попытку и уведомление клиента. | начать восстановление |
+| subbill.payment.retry_schedule | График повторов платежей | variant | В расписании повторных попыток количество попыток списания средств сохраняется для восстановления неудачных платежей без чрезмерных попыток. | напоминающий ритм |
+| subbill.payment.payment_method_update | Обновление способа оплаты | invariant | Обновление заменяет данные карты, банка или кошелька безопасной токенизированной обработкой. | продолжать выставление счетов активным |
+| subbill.payment.chargeback | Возвратный платеж за подписку | invariant | Возвратный платеж оспаривает полученный платеж и требует доказательств, статуса услуги и ведения бухгалтерского учета. | доход под угрозой |
+| subbill.payment.refund | Возврат подписки | variant | Возврат возвращает собранные средства с указанием причины, одобрения, суммы и ссылки на счет или оплату. | контролируемый разворот |
+| subbill.dunning.dunning_notice | Уведомление о напоминании | invariant | В уведомлении сообщается, что платеж клиента не был выполнен, необходимо принять меры, крайний срок и последствия оказания услуги. | выздоравливать без сюрпризов |
+| subbill.dunning.grace_period | Льготный период выставления счетов | variant | Льготный период позволяет получить доступ или восстановить платеж до приостановки или отмены. | удобный для клиента буфер |
+| subbill.dunning.suspension | Приостановка обслуживания | invariant | Приостановка ограничивает доступ после неудачного платежа или срабатывания политики, сохраняя при этом запись учетной записи. | доступ соответствует статусу платежа |
+| subbill.dunning.reactivation | Повторная активация подписки | invariant | Повторная активация восстанавливает доступ после оплаты, одобрения или решения проблемы. | восстановить клиента |
+| subbill.cancel.cancel_request | Запрос на отмену | invariant | В запросе фиксируются намерения клиента, дата, причина, дата вступления в силу и статус предложения по сохранению. | начать рабочий процесс оттока |
+| subbill.cancel.end_of_term_cancel | Отмена в конце срока | variant | Отмена при продлении предотвращает выставление счетов в будущем, сохраняя при этом обслуживание в течение оплаченного срока. | предсказуемый конец |
+| subbill.cancel.immediate_cancel | Немедленная отмена | variant | Немедленная отмена прекращает доступ и может привести к проверке кредита или возврата средств. | быстрая остановка |
+| subbill.cancel.winback_offer | Предложение отыгрыша | variant | Предложение Winback пытается сохранить со скидкой, изменением плана или способом поддержки в соответствии с политикой. | уменьшить отток |
+| subbill.reporting.mrr | Ежемесячный регулярный доход | invariant | MRR нормализует регулярный доход от подписки до ежемесячного значения. | KPI подписки |
+| subbill.reporting.churn_rate | Отток подписок | invariant | Коэффициент оттока измеряет потерянных клиентов или регулярный доход за период. | сигнал удержания |
+| subbill.reporting.expansion_revenue | Доход от расширения | variant | Доход от расширения поступает от обновлений, дополнений, рабочих мест или роста использования существующих учетных записей. | рост внутри базы |
+| subbill.reporting.deferred_revenue_handoff | Передача отложенного дохода | invariant | Handoff отправляет расчетный период, счет-фактуру, даты обслуживания и кредиты в систему учета доходов. | граница учета |
+| subbill.reporting.billing_exception | Отчет об исключениях при выставлении счетов | invariant | В отчетах отмечаются невыставленные счета, налоговые ошибки, зависшие продления, неполученные платежи и изменения вручную. | операционный контроль |
+| subbill.control.manual_override | Ручное переопределение выставления счетов | invariant | Переопределение изменяет цену, счет, кредит или статус и требует обоснования, одобрения и аудита. | действие с высоким риском |
+| subbill.control.audit_trail | Аудит выставления счетов за подписку | invariant | Журнал аудита фиксирует изменения плана, счета, платежи, отмены, кредиты и действия пользователей. | объяснить историю |
+| subbill.control.reconciliation | Сверка счетов | invariant | При сверке сравниваются платежная система, платежная система, банк, GL и отчеты о доходах. | системы согласны |

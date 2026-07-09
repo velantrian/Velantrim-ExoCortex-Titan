@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| recoverycaseops.intake.case_id | recovery case ID | RECORD | Case ID links household, disaster, needs, case manager and status. | Tracks long-term recovery work. |
-| recoverycaseops.intake.referral_source | referral source | RECORD | Source distinguishes assistance center, hotline, nonprofit, government or self-referral. | Shows entry path. |
-| recoverycaseops.intake.household | household record | RECORD | Household record stores members, damage, displacement, income and contacts. | Grounds the recovery plan. |
-| recoverycaseops.intake.consent | consent to serve | SAFETY_RULE | Consent defines services and information sharing with partners. | Protects survivor autonomy. |
-| recoverycaseops.assessment.unmet_need | unmet need | RECORD | Unmet need records gap after insurance, aid, savings and community resources. | Targets real recovery gaps. |
-| recoverycaseops.assessment.damage | damage assessment | RECORD | Damage record includes home, vehicle, medical, job, documents or tools. | Supports recovery priorities. |
-| recoverycaseops.assessment.vulnerability | vulnerability score | MODEL | Score considers age, disability, income, housing status, caregiving and trauma. | Prioritizes limited resources. |
-| recoverycaseops.assessment.barrier | barrier record | RECORD | Barriers include documents, transport, language, landlord, contractor or health issues. | Makes obstacles explicit. |
-| recoverycaseops.plan.recovery_goal | recovery goal | RECORD | Goal defines safe housing, income restoration, repairs, documents or stability milestone. | Gives direction. |
-| recoverycaseops.plan.action_plan | action plan | METHOD | Plan assigns tasks, owner, deadline, funding and required documents. | Turns needs into work. |
-| recoverycaseops.plan.priority | priority sequence | METHOD | Sequence orders urgent safety, housing, health, income and rebuilding tasks. | Prevents scattered effort. |
-| recoverycaseops.plan.revision | plan revision | METHOD | Plan changes when funding, household status or damage facts change. | Keeps plan current. |
-| recoverycaseops.documents.document_gap | document gap | RECORD | Missing IDs, deeds, leases, insurance or estimates are tracked. | Enables applications. |
-| recoverycaseops.documents.replacement | document replacement | METHOD | Caseworker routes replacement of IDs, vital records, titles or permits. | Restores eligibility. |
-| recoverycaseops.documents.estimate | repair estimate | RECORD | Estimates document scope, cost, contractor and funding assumptions. | Supports funding requests. |
-| recoverycaseops.documents.file_security | file security | SAFETY_RULE | Documents with personal/financial data are secured. | Protects survivors. |
-| recoverycaseops.referral.housing | housing referral | METHOD | Housing referral covers repair, rental, rebuild, relocation or legal help. | Stabilizes home situation. |
-| recoverycaseops.referral.financial | financial referral | METHOD | Financial referral connects grants, loans, insurance, benefits or charitable aid. | Fills funding gaps. |
-| recoverycaseops.referral.health | health referral | METHOD | Health referral covers medical, behavioral, disability or medication needs. | Supports wellbeing. |
-| recoverycaseops.referral.legal | legal referral | METHOD | Legal referral covers landlord, contractor, insurance, title or fraud issues. | Handles complex barriers. |
-| recoverycaseops.funding.source_matrix | funding matrix | RECORD | Matrix lists possible public, nonprofit, insurance and private sources. | Shows resource stack. |
-| recoverycaseops.funding.duplication | duplication check | QUALITY_CHECK | Funding requests check prior aid and insurance. | Prevents duplicate benefits. |
-| recoverycaseops.funding.gap_request | gap request | METHOD | Gap request packages need, proof, estimate and remaining shortfall. | Helps committees decide. |
-| recoverycaseops.funding.award_tracking | award tracking | RECORD | Awards record amount, source, purpose, conditions and payment status. | Keeps finances visible. |
-| recoverycaseops.contractor.contractor_check | contractor check | SAFETY_RULE | Contractor credentials, insurance and complaint history are reviewed where possible. | Reduces exploitation. |
-| recoverycaseops.contractor.scope_review | scope review | QUALITY_CHECK | Scope is checked against damage, estimate and funding rules. | Avoids over/under repair. |
-| recoverycaseops.contractor.progress | repair progress | RECORD | Progress records milestones, photos, invoices and issues. | Tracks recovery. |
-| recoverycaseops.contractor.dispute | contractor dispute | METHOD | Disputes route to legal aid, consumer protection or funder review. | Protects household. |
-| recoverycaseops.followup.checkin | case check-in | METHOD | Check-ins track action items, barriers, wellbeing and changed needs. | Maintains momentum. |
-| recoverycaseops.followup.missed | missed contact | FAILURE_MODE | Missed contacts trigger retry, alternate contact or partner check. | Avoids silent loss. |
-| recoverycaseops.followup.milestone | milestone review | METHOD | Milestones verify documents, funding, repairs, housing or closure readiness. | Shows progress. |
-| recoverycaseops.followup.warm_handoff | warm handoff | METHOD | Open tasks are handed to partner agency when outside case manager scope. | Keeps services connected. |
-| recoverycaseops.records.case_note | case note | RECORD | Notes record facts, decisions, referrals, consent and next steps. | Supports continuity. |
-| recoverycaseops.records.confidentiality | confidentiality rule | SAFETY_RULE | Sensitive household data is shared only by consent and need. | Protects survivors. |
-| recoverycaseops.records.retention | retention rule | CONSTRAINT | Records follow grant, disaster, privacy and nonprofit schedules. | Supports audit. |
-| recoverycaseops.records.outcome | outcome record | RECORD | Outcome records housed, repaired, relocated, stabilized, withdrawn or unresolved. | Measures recovery. |
-| recoverycaseops.metrics.caseload | caseload metric | MEASUREMENT | Caseload tracks active, pending, high-risk and closed households. | Manages workload. |
-| recoverycaseops.metrics.unmet_gap | unmet gap metric | MEASUREMENT | Gap metric sums remaining needs by category and geography. | Guides fundraising. |
-| recoverycaseops.metrics.time_to_close | time to close | MEASUREMENT | Time to close measures intake-to-resolution duration. | Shows process speed. |
-| recoverycaseops.qa.supervision | case supervision | QUALITY_CHECK | Supervisors review high-risk, high-dollar or stalled cases. | Improves quality. |
-| recoverycaseops.qa.equity | equity review | QUALITY_CHECK | Service and funding outcomes are reviewed by geography and vulnerability. | Detects inequity. |
-| recoverycaseops.closeout.criteria | closure criteria | CONSTRAINT | Closure requires resolved plan, transfer, client withdrawal or unreachable rule. | Prevents premature ending. |
-| recoverycaseops.closeout.final_summary | final summary | RECORD | Summary records needs addressed, referrals, funds, outcomes and remaining risks. | Ends case transparently. |
-| recoverycaseops.review.lessons | recovery lessons | METHOD | Review captures unmet resources, policy gaps, partner delays and survivor feedback. | Improves future recovery. |
+| recoverycaseops.intake.case_id | идентификатор дела о восстановлении | RECORD | Идентификатор дела связывает домохозяйство, стихийное бедствие, потребности, ведущего дело и статус. | Отслеживает долгосрочную восстановительную работу. |
+| recoverycaseops.intake.referral_source | источник рефералов | RECORD | Источник различает центр помощи, горячую линию, некоммерческую организацию, правительство или самостоятельное обращение. | Показывает путь входа. |
+| recoverycaseops.intake.household | домохозяйство | RECORD | В домашних записях хранятся данные об участниках, ущербе, перемещении, доходах и контактах. | Обосновывает план восстановления. |
+| recoverycaseops.intake.consent | согласие служить | SAFETY_RULE | Согласие определяет услуги и обмен информацией с партнерами. | Защищает автономию выжившего. |
+| recoverycaseops.assessment.unmet_need | неудовлетворенная потребность | RECORD | Неудовлетворенные потребности регистрируют пробел после страхования, помощи, сбережений и общественных ресурсов. | Ориентирован на реальные пробелы в восстановлении. |
+| recoverycaseops.assessment.damage | оценка ущерба | RECORD | Запись о повреждениях включает дом, транспортное средство, медицинские, рабочие места, документы или инструменты. | Поддерживает приоритеты восстановления. |
+| recoverycaseops.assessment.vulnerability | оценка уязвимости | MODEL | Оценка учитывает возраст, инвалидность, доход, жилищный статус, уход и травмы. | Отдает приоритет ограниченным ресурсам. |
+| recoverycaseops.assessment.barrier | барьерная запись | RECORD | Препятствия включают документы, транспорт, язык, арендодателя, подрядчика или проблемы со здоровьем. | Делает препятствия явными. |
+| recoverycaseops.plan.recovery_goal | цель восстановления | RECORD | Цель определяет безопасное жилье, восстановление дохода, ремонт, документы или стабильность. | Дает направление. |
+| recoverycaseops.plan.action_plan | план действий | METHOD | План назначает задачи, владельца, сроки, финансирование и необходимые документы. | Превращает потребности в работу. |
+| recoverycaseops.plan.priority | последовательность приоритетов | METHOD | Последовательность задает срочные задачи по безопасности, жилью, здоровью, доходам и восстановлению. | Предотвращает распыление усилий. |
+| recoverycaseops.plan.revision | пересмотр плана | METHOD | План меняется при изменении финансирования, статуса семьи или фактов ущерба. | Поддерживает план в актуальном состоянии. |
+| recoverycaseops.documents.document_gap | пробел в документе | RECORD | Отсутствующие удостоверения личности, документы, договоры аренды, страховки или оценки отслеживаются. | Включает приложения. |
+| recoverycaseops.documents.replacement | замена документа | METHOD | Соцработник осуществляет замену удостоверений личности, записей актов гражданского состояния, титулов или разрешений. | Восстанавливает годность. |
+| recoverycaseops.documents.estimate | смета на ремонт | RECORD | В сметном документе указаны объем, стоимость, предположения о подрядчике и финансировании. | Поддерживает запросы на финансирование. |
+| recoverycaseops.documents.file_security | безопасность файлов | SAFETY_RULE | Документы с личными/финансовыми данными находятся под защитой. | Защищает выживших. |
+| recoverycaseops.referral.housing | направление на жилье | METHOD | Направление на жилье охватывает ремонт, аренду, перестройку, переезд или юридическую помощь. | Стабилизирует домашнюю ситуацию. |
+| recoverycaseops.referral.financial | финансовое направление | METHOD | Финансовое направление объединяет гранты, кредиты, страхование, льготы или благотворительную помощь. | Заполняет пробелы в финансировании. |
+| recoverycaseops.referral.health | медицинское направление | METHOD | Медицинские направления покрывают медицинские, поведенческие потребности, потребности в лечении инвалидности или лекарства. | Поддерживает хорошее самочувствие. |
+| recoverycaseops.referral.legal | юридическое направление | METHOD | Юридическое направление охватывает арендодателя, подрядчика, страхование, право собственности или вопросы мошенничества. | Справляется со сложными барьерами. |
+| recoverycaseops.funding.source_matrix | матрица финансирования | RECORD | В матрице перечислены возможные государственные, некоммерческие, страховые и частные источники. | Показывает стек ресурсов. |
+| recoverycaseops.funding.duplication | проверка дублирования | QUALITY_CHECK | Запросы на финансирование проверяют предварительную помощь и страховку. | Предотвращает дублирование льгот. |
+| recoverycaseops.funding.gap_request | запрос на разрыв | METHOD | Необходимость пакетов запросов на пробелы, подтверждение, оценка и оставшаяся нехватка. | Помогает комитетам принимать решения. |
+| recoverycaseops.funding.award_tracking | отслеживание наград | RECORD | Награды фиксируют сумму, источник, цель, условия и статус выплаты. | Делает финансы видимыми. |
+| recoverycaseops.contractor.contractor_check | проверка подрядчика | SAFETY_RULE | Полномочия подрядчика, страховка и история жалоб проверяются, где это возможно. | Уменьшает эксплуатацию. |
+| recoverycaseops.contractor.scope_review | обзор объема | QUALITY_CHECK | Объем проверяется на предмет ущерба, правил оценки и финансирования. | Избегает чрезмерного/недостаточного ремонта. |
+| recoverycaseops.contractor.progress | ход ремонта | RECORD | Прогресс записывает основные этапы, фотографии, счета и проблемы. | Отслеживает восстановление. |
+| recoverycaseops.contractor.dispute | спор с подрядчиком | METHOD | Споры направлены на юридическую помощь, защиту потребителей или проверку спонсоров. | Защищает домочадцев. |
+| recoverycaseops.followup.checkin | регистрация дела | METHOD | Регистрация отслеживает действия, препятствия, благополучие и изменившиеся потребности. | Сохраняет темп. |
+| recoverycaseops.followup.missed | пропущенный контакт | FAILURE_MODE | Пропущенные контакты вызывают повторную попытку, проверку альтернативного контакта или партнера. | Избегает молчаливых потерь. |
+| recoverycaseops.followup.milestone | обзорный этап | METHOD | Вехи проверяют документы, финансирование, ремонт, готовность жилья или закрытия. | Показывает прогресс. |
+| recoverycaseops.followup.warm_handoff | теплая передача | METHOD | Открытые задачи передаются партнерскому агентству, когда они выходят за рамки кейс-менеджера. | Обеспечивает подключение служб. |
+| recoverycaseops.records.case_note | примечание по делу | RECORD | В заметках фиксируются факты, решения, направления, согласие и последующие шаги. | Поддерживает непрерывность. |
+| recoverycaseops.records.confidentiality | правило конфиденциальности | SAFETY_RULE | Конфиденциальные данные о домохозяйствах передаются только по согласию и необходимости. | Защищает выживших. |
+| recoverycaseops.records.retention | правило хранения | CONSTRAINT | Записи соответствуют графикам грантов, стихийных бедствий, конфиденциальности и некоммерческих организаций. | Поддерживает аудит. |
+| recoverycaseops.records.outcome | запись о результате | RECORD | Записи о результатах размещены, отремонтированы, перемещены, стабилизированы, изъяты или не решены. | Меры восстановления. |
+| recoverycaseops.metrics.caseload | показатель загруженности дел | MEASUREMENT | Загрузка дел отслеживает активные, ожидающие рассмотрения, домохозяйства с высоким уровнем риска и закрытые домохозяйства. | Управляет рабочей нагрузкой. |
+| recoverycaseops.metrics.unmet_gap | показатель неудовлетворенного разрыва | MEASUREMENT | Показатель разрыва суммирует оставшиеся потребности по категориям и географическим регионам. | Руководства по сбору средств. |
+| recoverycaseops.metrics.time_to_close | пора закрывать | MEASUREMENT | Время закрытия измеряет продолжительность приема до разрешения. | Показывает скорость процесса. |
+| recoverycaseops.qa.supervision | надзор за делом | QUALITY_CHECK | Надзорные органы рассматривают дела с высоким риском, дорогостоящими или застопорившимися делами. | Улучшает качество. |
+| recoverycaseops.qa.equity | обзор акций | QUALITY_CHECK | Результаты обслуживания и финансирования рассматриваются с учетом географического положения и уязвимости. | Обнаруживает неравенство. |
+| recoverycaseops.closeout.criteria | критерии закрытия | CONSTRAINT | Закрытие требует решения плана, перевода, вывода клиента или недоступного правила. | Предотвращает преждевременное завершение. |
+| recoverycaseops.closeout.final_summary | окончательное резюме | RECORD | Сводные записи о потребностях, направлениях, средствах, результатах и ​​оставшихся рисках. | Заканчивается дело прозрачно. |
+| recoverycaseops.review.lessons | уроки восстановления | METHOD | В обзоре отражаются неиспользованные ресурсы, пробелы в политике, задержки партнеров и отзывы пострадавших. | Улучшает будущее восстановление. |

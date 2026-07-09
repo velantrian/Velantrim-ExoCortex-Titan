@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| jailbook.intake.arrival_record | Jail booking arrival record | invariant | Record captures person, agency, time, location, charges, warrants and transport officer. | start custody |
-| jailbook.intake.custody_handoff | Jail custody handoff | invariant | Handoff records restraints, property, documents, medical concerns and officer signatures. | custody continuity |
-| jailbook.intake.booking_number | Jail booking number | invariant | Number links arrest, person, charges, property, housing, court and release records. | case control |
-| jailbook.intake.arrest_document | Arrest document intake | invariant | Intake verifies arrest report, warrant, court order, citation or commitment paperwork. | legal basis |
-| jailbook.identity.identity_check | Jail identity check | invariant | Check compares name, birthdate, identifiers, fingerprints, photo and prior records. | avoid misidentification |
-| jailbook.identity.fingerprint_capture | Jail fingerprint capture | invariant | Capture records prints, device, operator, quality, submission and response. | identity evidence |
-| jailbook.identity.mugshot_capture | Jail booking photo | invariant | Photo captures face, profile if required, booking ID, date and quality. | visual identification |
-| jailbook.identity.alias_record | Jail alias record | variant | Record links aliases, prior names, spelling variants and identifiers. | search history |
-| jailbook.property.property_inventory | Jail property inventory | invariant | Inventory lists clothing, cash, cards, phone, jewelry, medication and personal items. | protect property |
-| jailbook.property.cash_count | Jail cash count | invariant | Count records currency, coins, cards, receipt, witness and deposit route. | financial custody |
-| jailbook.property.contraband_find | Jail booking contraband finding | invariant | Finding records prohibited item, location, officer, evidence route and incident. | facility safety |
-| jailbook.property.property_release | Jail property release | variant | Release records authorized recipient, items, ID, signature and retained exceptions. | return property |
-| jailbook.medical.medical_screen | Jail medical screen | invariant | Screen identifies urgent symptoms, medications, injuries, intoxication and care referral. | health triage |
-| jailbook.medical.mental_health_screen | Jail mental health screen | invariant | Screen flags self-harm risk, crisis, history, behavior and mental health referral. | suicide prevention |
-| jailbook.medical.medication_record | Jail medication record | invariant | Record captures reported medication, verification status, storage and clinician review. | care continuity |
-| jailbook.medical.injury_documentation | Jail injury documentation | invariant | Documentation records visible injury, statement, photos, care and notifications. | protect person |
-| jailbook.medical.detox_watch | Jail detox watch flag | variant | Flag routes intoxication or withdrawal concern to observation and medical protocol. | reduce harm |
-| jailbook.classification.risk_screen | Jail classification risk screen | invariant | Screen evaluates charges, behavior, history, separation needs and vulnerability. | housing decision |
-| jailbook.classification.separation_alert | Jail separation alert | invariant | Alert separates enemies, codefendants, victims, juveniles, protective custody or special status. | prevent conflict |
-| jailbook.classification.housing_assignment | Jail housing assignment | invariant | Assignment links classification, bed, unit, restrictions, gender policy and availability. | place safely |
-| jailbook.classification.special_watch | Jail special watch | variant | Watch records suicide, medical, detox, assault, escape or protective observation level. | monitor risk |
-| jailbook.housing.bed_move | Jail bed move | invariant | Move records old bed, new bed, reason, time, officer and restrictions. | location accuracy |
-| jailbook.housing.orientation | Jail intake orientation | invariant | Orientation explains rules, rights, requests, grievances, phones, mail and safety. | inform detainee |
-| jailbook.housing.clothing_issue | Jail clothing issue | variant | Issue records uniform, bedding, hygiene kit, sizes and replacement needs. | basic supplies |
-| jailbook.court.court_date_entry | Jail court date entry | invariant | Entry records court, date, time, judge, transport need and notice. | ensure appearance |
-| jailbook.court.bail_bond_record | Jail bail or bond record | variant | Record captures amount, conditions, authority, payer, receipt and release eligibility. | release control |
-| jailbook.court.hold_record | Jail hold record | invariant | Hold records warrant, agency, detainer, sentence, probation or immigration notice. | custody constraints |
-| jailbook.court.transport_list | Jail court transport list | variant | List groups detainees by court, time, custody level, restraints and medical needs. | transport planning |
-| jailbook.records.case_file | Jail booking case file | invariant | File stores booking sheet, charges, property, screens, classification and release documents. | official record |
-| jailbook.records.data_correction | Jail booking data correction | invariant | Correction fixes name, charge, date, property or housing error with audit reason. | accurate records |
-| jailbook.records.notification_log | Jail booking notification log | variant | Log records attorney, consulate, guardian, victim, agency or court notice when required. | compliance |
-| jailbook.release.release_eligibility | Jail release eligibility check | invariant | Check reviews holds, court order, bail, sentence, fees, identity and property. | lawful release |
-| jailbook.release.release_packet | Jail release packet | invariant | Packet includes property, instructions, court dates, conditions, referrals and receipts. | complete exit |
-| jailbook.release.time_served | Jail time-served release | variant | Release calculates sentence credit, order, holds, approval and discharge time. | close custody |
-| jailbook.release.transfer_release | Jail transfer release | variant | Release transfers person to another agency, court, hospital or facility with custody logs. | custody handoff |
-| jailbook.safety.use_of_force_note | Jail booking force note | invariant | Note documents force, restraints, injuries, witnesses, review and reporting. | accountability |
-| jailbook.safety.booking_area_check | Jail booking area check | invariant | Check reviews cameras, panic alarms, cells, benches, restraints, sanitation and hazards. | safe intake |
-| jailbook.safety.language_access | Jail booking language access | invariant | Access provides interpreter, translated rights, forms and communication support. | understand process |
-| jailbook.quality.audit | Jail booking audit | invariant | Audit checks legal basis, identity, property, medical screen, classification and release. | reduce errors |
-| jailbook.reporting.daily_booking_report | Daily jail booking report | invariant | Report summarizes bookings, releases, holds, medical flags, incidents and population impact. | operational awareness |
-| jailbook.reporting.population_update | Jail population update | variant | Update tracks booked, housed, released, transfers, capacity and classification mix. | capacity control |
-| jailbook.metrics.booking_kpi | Jail booking KPI | variant | KPI tracks booking time, release time, property variances, medical flags, incidents and errors. | manage booking |
-| jailbook.continuity.system_outage | Jail booking system outage | invariant | Outage plan uses paper logs, manual numbering, later entry and custody safeguards. | keep custody legal |
-| jailbook.continuity.surge_intake | Jail booking surge intake | variant | Surge plan adds staff, triage, holding space, medical screening and court coordination. | handle volume |
+| jailbook.intake.arrival_record | Запись о прибытии в тюрьму | invariant | В записи фиксируются лицо, агентство, время, место, обвинения, ордера и транспортный офицер. | начать опеку |
+| jailbook.intake.custody_handoff | Передача содержания под стражей в тюрьме | invariant | При передаче регистрируются ограничения, имущество, документы, медицинские проблемы и подписи офицеров. | непрерывность опеки |
+| jailbook.intake.booking_number | Номер бронирования в тюрьме | invariant | Числовые связи с арестом, лицом, обвинением, имуществом, жильем, протоколами суда и освобождения. | контроль дела |
+| jailbook.intake.arrest_document | Приём документов на арест | invariant | Intake проверяет отчет об аресте, ордер, постановление суда, справки или документы о обязательствах. | правовая основа |
+| jailbook.identity.identity_check | Проверка личности в тюрьме | invariant | При проверке сравниваются имя, дата рождения, идентификаторы, отпечатки пальцев, фотографии и предыдущие записи. | избежать ошибочной идентификации |
+| jailbook.identity.fingerprint_capture | Снятие отпечатков пальцев в тюрьме | invariant | Записывайте отпечатки, устройство, оператора, качество, отправку и ответ. | удостоверение личности |
+| jailbook.identity.mugshot_capture | Фото бронирования в тюрьме | invariant | На фотографии запечатлено лицо, профиль, если требуется, идентификатор бронирования, дата и качество. | визуальная идентификация |
+| jailbook.identity.alias_record | Запись псевдонима в тюрьме | variant | Записывайте псевдонимы ссылок, предыдущие имена, варианты написания и идентификаторы. | история поиска |
+| jailbook.property.property_inventory | Опись тюремного имущества | invariant | В инвентаре указаны одежда, наличные, карты, телефон, ювелирные изделия, лекарства и личные вещи. | защищать собственность |
+| jailbook.property.cash_count | Подсчет денежных средств в тюрьме | invariant | Подсчет записывает валюту, монеты, карты, квитанцию, свидетельство и маршрут депозита. | финансовое хранение |
+| jailbook.property.contraband_find | Бронирование тюрьмы, обнаружение контрабанды | invariant | Поиск записей о запрещенном предмете, местоположении, офицере, маршруте следования и происшествии. | безопасность объекта |
+| jailbook.property.property_release | Освобождение имущества из тюрьмы | variant | В релизе регистрируются авторизованный получатель, элементы, идентификатор, подпись и сохраненные исключения. | вернуть имущество |
+| jailbook.medical.medical_screen | Медицинский осмотр в тюрьме | invariant | Скрининг выявляет неотложные симптомы, принимаемые лекарства, травмы, интоксикацию и направление на лечение. | медицинская сортировка |
+| jailbook.medical.mental_health_screen | Проверка психического здоровья в тюрьме | invariant | На экране отмечаются риск членовредительства, кризис, анамнез, поведение и направление к психиатру. | предотвращение самоубийств |
+| jailbook.medical.medication_record | Запись о приеме лекарств в тюрьме | invariant | Запись фиксирует сообщения о приеме лекарств, статус проверки, хранение и проверку врачом. | непрерывность ухода |
+| jailbook.medical.injury_documentation | Документация о травмах в тюрьме | invariant | В документации фиксируются видимые травмы, заявления, фотографии, уход и уведомления. | защитить человека |
+| jailbook.medical.detox_watch | Флаг тюремной детоксикации | variant | Отметьте маршруты интоксикации или абстиненции для наблюдения и медицинского протокола. | уменьшить вред |
+| jailbook.classification.risk_screen | Проверка риска классификации тюрьмы | invariant | Экран оценивает обвинения, поведение, историю, потребности в разлуке и уязвимость. | жилищное решение |
+| jailbook.classification.separation_alert | Оповещение об отделении тюрьмы | invariant | Оповещение разделяет врагов, сообвиняемых, жертв, несовершеннолетних, охранное заключение или особый статус. | предотвратить конфликт |
+| jailbook.classification.housing_assignment | Назначение жилья в тюрьме | invariant | Назначение связывает классификацию, койку, отделение, ограничения, гендерную политику и доступность. | разместить безопасно |
+| jailbook.classification.special_watch | Специальные часы для тюрьмы | variant | Наблюдайте за записями самоубийств, медицинских, детоксикационных, нападений, побегов или уровня защитного наблюдения. | контролировать риск |
+| jailbook.housing.bed_move | Перенос тюремной койки | invariant | Переместите записи: старая кровать, новая кровать, причина, время, офицер и ограничения. | точность определения местоположения |
+| jailbook.housing.orientation | Ориентация на поступление в тюрьму | invariant | Ориентация объясняет правила, права, запросы, жалобы, телефоны, почту и безопасность. | сообщить задержанному |
+| jailbook.housing.clothing_issue | Проблема с тюремной одеждой | variant | Учет выдачи униформы, постельного белья, гигиенического набора, размеров и необходимости замены. | основные поставки |
+| jailbook.court.court_date_entry | Запись о дате тюремного суда | invariant | При входе записываются суд, дата, время, судья, потребность в транспорте и уведомление. | обеспечить внешний вид |
+| jailbook.court.bail_bond_record | Залог в тюрьме или запись под залог | variant | Запись фиксирует сумму, условия, полномочия, плательщика, получение и право на выпуск. | контроль выпуска |
+| jailbook.court.hold_record | Тюрьма держит рекорд | invariant | Ордер на хранение записей, агентство, задержание, приговор, испытательный срок или уведомление об иммиграции. | ограничения по хранению |
+| jailbook.court.transport_list | Список транспорта для суда в тюрьме | variant | Перечислите группы задержанных по суду, времени, степени содержания под стражей, ограничениям и медицинским потребностям. | транспортное планирование |
+| jailbook.records.case_file | Материалы дела о заключении в тюрьму | invariant | Файл хранит лист бронирования, расходы, имущество, экраны, классификационные и выпускные документы. | официальный отчет |
+| jailbook.records.data_correction | Исправление данных бронирования тюрьмы | invariant | Исправление исправляет имя, обвинение, дату, имущественную или жилищную ошибку с указанием причины проверки. | точные записи |
+| jailbook.records.notification_log | Журнал уведомлений о бронировании тюрьмы | variant | При необходимости записывайте в журнал записи адвоката, консульства, опекуна, потерпевшего, агентства или уведомления суда. | согласие |
+| jailbook.release.release_eligibility | Проверка права на освобождение из тюрьмы | invariant | Проверьте наличие проверок, постановление суда, залог, приговор, сборы, личность и имущество. | законное освобождение |
+| jailbook.release.release_packet | Пакет освобождения из тюрьмы | invariant | Пакет включает в себя имущество, инструкции, даты суда, условия, направления и квитанции. | полный выход |
+| jailbook.release.time_served | Освобождение с отбыванием срока тюремного заключения | variant | Release рассчитывает кредит предложения, порядок, время удержания, утверждения и выписки. | строгая стража |
+| jailbook.release.transfer_release | Освобождение от перевода в тюрьму | variant | Освобождение переводит человека в другое учреждение, суд, больницу или учреждение с журналами содержания под стражей. | передача опеки |
+| jailbook.safety.use_of_force_note | Примечание о принудительном бронировании тюрьмы | invariant | Учитывайте силу документов, ограничения, травмы, свидетелей, осмотр и отчетность. | подотчетность |
+| jailbook.safety.booking_area_check | Проверка зоны бронирования в тюрьме | invariant | Проверьте камеры обзора, тревожную сигнализацию, камеры, скамейки, ограничители, санитарные условия и опасности. | безопасный прием |
+| jailbook.safety.language_access | Языковой доступ к тюремному бронированию | invariant | Доступ предоставляет переводчика, права перевода, формы и коммуникационную поддержку. | понять процесс |
+| jailbook.quality.audit | Аудит тюремного бронирования | invariant | Аудит проверяет правовую основу, личность, имущество, медицинский осмотр, классификацию и выпуск. | уменьшить количество ошибок |
+| jailbook.reporting.daily_booking_report | Ежедневный отчет о бронировании тюрем | invariant | В отчете приводятся сведения о бронированиях, освобождениях, приостановках, медицинских признаках, инцидентах и ​​воздействии на население. | оперативная осведомленность |
+| jailbook.reporting.population_update | Обновление численности заключенных | variant | Обновление забронированных, размещенных, освобожденных треков, переводов, емкости и классификации. | контроль производительности |
+| jailbook.metrics.booking_kpi | KPI бронирования тюрьмы | variant | KPI отслеживает время бронирования, время выпуска, отклонения в свойствах, медицинские отметки, инциденты и ошибки. | управлять бронированием |
+| jailbook.continuity.system_outage | Сбой в системе бронирования тюрем | invariant | В плане отключения используются бумажные журналы, ручная нумерация, последующий ввод и меры защиты. | сохранять опеку законной |
+| jailbook.continuity.surge_intake | Всплеск количества заказов в тюрьму | variant | В план увеличения штата добавлен персонал, сортировка, помещения для содержания, медицинский осмотр и координация работы суда. | ручка объема |

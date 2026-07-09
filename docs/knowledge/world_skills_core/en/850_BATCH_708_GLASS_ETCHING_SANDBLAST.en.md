@@ -1,0 +1,13 @@
+# BATCH 708: Glass Etching — Sandblasting & Acid
+
+**KnowledgeUnits:** 50
+**Namespace:** `glassetch.ops.*`
+**Scope:** sandblasting, acid_etch, stencil, shading, cream, frosting, abrasive, polishing
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| glassetch.ops.sandblasting_stencil_masking | Blasting — Stencil Masking | METHOD | Пескоструйное матирование стекла. Stencil (трафарет): self-adhesive rubber resist (Anchor 116, Hartco). Резка: plotter (сфотографировать вектор), weed вручную. Нанесение на стекло: transfer tape, squeegee. Бластинг: aluminium oxide 120-150 grit, давление 2-4 бар, nozzle расстояние 15-25 см. Глубина: 0.1-0.5 мм (зависит от grit и давления). После бластинга: снять stencil, wash. | Неравномерный blast: stencil отклеивается от heat. |
+| glassetch.ops.stage_carving_shading | Stage Carving — Shading | METHOD | Многослойная резьба (stage blasting). Stencil layers: фон (deepest blast), средний тон (medium), highlights (shallow). Последовательность: blast layer 1 → remove some stencil → blast layer 2 → remove more → blast layer 3. Результат: 3D эффект. Время: часы на сложное изображение. Shading: blasting под углом для мягких переходов. | Deep blasting: снижает прочность стекла. |
+| glassetch.ops.acid_etching_cream_safety | Acid Etching — Cream Safety | METHOD | Химическое матирование (acid etch cream). Cream: ammonium bifluoride + sulphuric acid (или hydrofluoric acid — более опасная). PPE: резиновые перчатки (neoprene), goggles, respirator (acid gas filter). Stencil: vinyl (устойчивый к кислоте). Нанесение: brush, thick layer, равномерно. Время: 2-5 мин. Смыв: вода обильно. Результат: ровное белое матирование. Отходы: neutralise с baking soda перед disposal. | Кислота разъедает стекло + кожу + кости (calcium fluoride). |
+| glassetch.ops.sandblast_cabinet_glass | Cabinet Blasting — Glass | METHOD | Пескоструйная камера для стекла. Cabinet: достаточно большой для стекла, lighting внутри, dust extraction. Media: aluminium oxide 150-180 grit для тонкого матирования. Gloves: длинные резиновые (оператор снаружи). Процесс: foot pedal actuate, sweep nozzle равномерно. Просмотр: through glass lid. Преимущества: contained dust, recycling media. Ограничения: размер стекла ограничен cabinet. | Для больших окон: open blasting снаружи (suit + hood). |
+| glassetch.ops.polishing_edges_radius | Edge Polishing — Radius | METHOD | Обработка кромок матированного стекла. Belt sander: diamond или силикон-карбидная лента. Прогрессия: 60-120-400 grit. Затем polishing pad (cerium oxide slurry + felt wheel). Кромка: flat polish, или radius (скруглённая). | После etching: кромка часто тоже матирована (нужно заполировать для безопасности и эстетики). |

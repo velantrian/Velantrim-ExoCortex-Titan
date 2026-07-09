@@ -1,0 +1,13 @@
+# BATCH 698: Dock — Pier & Marina Construction
+
+**KnowledgeUnits:** 5
+**Namespace:** `dock.ops.*`
+**Scope:** piling, framing, decking, float, ramp, electrical, cleat, bumper
+
+| ID | KnowledgeUnit | Тип | Суть | Практический смысл |
+|---|---|---|---|---|
+| dock.ops.pile_driving_water_jet | Забивка свай — гидроструйная очистка | METHOD | Установка свай в дно водоёма. Методы: pile hammer (гидравлический вибромолот), water jetting (вода под давлением размывает грунт вокруг pile — свая опускается под своим весом). Refusal (отказ): когда pile перестаёт заглубляться (bearing capacity). Защита: pile wrap (ПВХ/полиэтилен) против marine borers. Материал: treated wood (CCA — запрещено в некоторых штатах), или composite (фибергласс). Pile cap: соединяет верхушки. | Jetting: запрещено в некоторых зонах (turbidity). |
+| dock.ops.floating_dock_anchoring | Плавучий док — Якорная система | METHOD | Якорение плавучего пирса. Anchor: concrete block (500-1000 кг) или helix screw. Chain (гальванизированная) от anchor к dock (длина = 3-5× глубина). Gangway (сходня): шарнирная, длина достаточная для колебаний уровня воды. Flotation: EPS foam (encased in polyethylene) под deck. Без поплавков: barrels (пластиковые) дешёвый вариант. | Шторм: floating dock должен выдержать волны и ветер. |
+| dock.ops.decking_marine_grade | Настил — морской класс | METHOD | Настил пирса. Материалы: IPÉ (экзотическое дерево — долговечное, дорогое), pressure treated pine, composite (Trex, TimberTech — нескользкое). Зазоры: 5-8 мм (дренаж дождевой воды). Крепление: stainless steel screws (316 marine grade — не 304!). Plug (заглушка) для закрытия шурупов. | Обычные оцинкованные screws ржавеют за 1-2 года у воды. |
+| dock.ops.boat_lift_bunk_adjustment | Подъемник для лодки — регулировка койки | METHOD | Настройка подъёмника для лодки. Bunk boards: carpeted, поддерживают hull лодки в правильных местах (stringers). Регулировка: ширина между bunks = расстояние между chines (изгибами днища). Угол: параллельно V-hull. Высота: чтобы лодка не касалась frame при подъёме. Крепление: U-bolts. Электрический lift motor (110V или 220V) с remote control. Maintenance: grease lift screws annually. | Неправильные bunks: деформация hull (hook). |
+| dock.ops.shore_power_pedestal | Береговое питание — установка на пьедестале | METHOD | Береговое электропитание для лодки. Pedestal: 30A 125V (для малых яхт), 50A 125/250V (для крупных). УЗО (УЗО (GFCI)) обязательно. Расстояние от воды: по code. Cord (shore power cord): twist-lock connectors (L5-30, SS2-50). Zinc anode на prop shaft: защита от электролитической коррозии (stray current). ELCI (Equipment Leakage Circuit Interrupter): для всего dock (30 mA). | Вода + электричество смертельно (ESD — Electric Shock Drowning). |

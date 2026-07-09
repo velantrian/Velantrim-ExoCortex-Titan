@@ -6,48 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| outagecommsops.intake.outage_case | outage case | RECORD | Outage case links calls, SCADA alarms, field tickets, affected area and start time. | Keeps customer reports and operations in one incident record. |
-| outagecommsops.intake.first_report | first report | RECORD | First report captures address, symptom, time, customer type and safety concern. | Helps detect outage before full system confirmation. |
-| outagecommsops.intake.duplicate_calls | duplicate calls | METHOD | Similar calls are grouped by area, symptom and time window. | Prevents inflated workload and reveals clusters. |
-| outagecommsops.intake.safety_screen | safety screen | DECISION_RULE | Downed wires, sewage backup, no water, gas odor or medical dependency trigger priority routing. | Separates routine outage from life-safety response. |
-| outagecommsops.map.outage_polygon | outage polygon | RECORD | Map polygon estimates affected customers from assets, valves, circuits or pressure zone. | Shows who should receive alerts. |
-| outagecommsops.map.confidence | map confidence | MODEL | Confidence reflects field confirmation, telemetry quality and asset model accuracy. | Prevents overpromising map precision. |
-| outagecommsops.map.customer_count | affected customer count | MEASUREMENT | Count is derived from accounts, meters, circuits or parcels inside affected area. | Supports staffing and public messaging. |
-| outagecommsops.map.boundary_update | boundary update | METHOD | Boundary changes as crews isolate, restore or discover new failure points. | Keeps notifications aligned with reality. |
-| outagecommsops.etr.initial_etr | initial ETR | RECORD | Initial estimated restoration time is based on known cause, crew dispatch and standard repair class. | Gives customers a first expectation. |
-| outagecommsops.etr.uncertainty | ETR uncertainty | MODEL | Unknown cause, unsafe access, parts or weather increase uncertainty. | Explains why some ETRs are broad. |
-| outagecommsops.etr.revision | ETR revision | METHOD | ETR is updated when field diagnosis, parts, switching or repair progress changes. | Prevents stale promises. |
-| outagecommsops.etr.no_etr | no ETR condition | DECISION_RULE | If cause is unknown or site unsafe, message says assessment underway instead of guessing. | Protects trust. |
-| outagecommsops.alert.channels | alert channels | METHOD | Alerts use SMS, email, phone, portal, app, website, social and media where appropriate. | Reaches customers through redundant paths. |
-| outagecommsops.alert.opt_in | opt-in records | RECORD | Customer notification preferences and language are stored. | Improves delivery and consent compliance. |
-| outagecommsops.alert.template | alert template | RECORD | Template includes outage type, area, safety note, ETR and update link. | Keeps messages fast and consistent. |
-| outagecommsops.alert.failed_delivery | failed delivery | RECORD | Bounced calls, bad emails or failed SMS are tracked. | Improves contact data quality. |
-| outagecommsops.sensitive.medical_flag | medical flag | RECORD | Sensitive customers with medical needs or critical services are flagged under policy. | Supports targeted outreach. |
-| outagecommsops.sensitive.facility_list | critical facility list | RECORD | Hospitals, schools, shelters, treatment plants and major employers are listed. | Coordinates high-impact communication. |
-| outagecommsops.sensitive.manual_call | manual call | METHOD | High-risk accounts may receive manual confirmation or welfare referral. | Adds care beyond mass alert. |
-| outagecommsops.sensitive.privacy | sensitive privacy | SAFETY_RULE | Sensitive status is shared only with authorized staff and responders. | Protects private customer data. |
-| outagecommsops.updates.cadence | update cadence | DECISION_RULE | Update frequency depends on incident severity, ETR length and customer impact. | Keeps customers informed without noise. |
-| outagecommsops.updates.field_sync | field sync | METHOD | Communications staff sync with incident command or crew lead before updates. | Prevents conflicting messages. |
-| outagecommsops.updates.cause_message | cause message | METHOD | Cause is described only when confirmed and useful. | Avoids speculation. |
-| outagecommsops.updates.restoration_phase | restoration phase | RECORD | Updates distinguish assessing, isolating, repairing, testing, restoring and closed. | Customers understand progress. |
-| outagecommsops.water.boil_notice_link | boil notice link | DECISION_RULE | Water outages with pressure loss may trigger advisory workflow. | Keeps public health messaging integrated. |
-| outagecommsops.water.distribution_site | water distribution site | RECORD | If emergency water is provided, site, hours, limits and eligibility are announced. | Turns communication into practical relief. |
-| outagecommsops.power.cooling_warming | cooling/warming referral | METHOD | Long outages may refer customers to shelters or community resources. | Supports vulnerable customers. |
-| outagecommsops.social.media_post | social media post | METHOD | Public posts use approved facts, area, ETR and safety guidance. | Broadens reach during large events. |
-| outagecommsops.social.rumor_control | rumor control | METHOD | Staff correct common rumors with concise verified updates. | Reduces misinformation. |
-| outagecommsops.callcenter.script | call center script | RECORD | Agents receive outage script, known area, ETR, safety notes and escalation triggers. | Keeps answers consistent. |
-| outagecommsops.callcenter.surge | call surge mode | METHOD | Surge mode routes calls to IVR, callbacks, web updates or extra staff. | Prevents queue collapse. |
-| outagecommsops.callcenter.special_case | special case escalation | DECISION_RULE | Medical, trapped, flood or repeated no-service cases escalate beyond script. | Protects outliers. |
-| outagecommsops.closeout.restored_notice | restored notice | METHOD | Customers receive restoration notice with any required flushing, reset or safety steps. | Confirms closure and next action. |
-| outagecommsops.closeout.confirmation_window | confirmation window | METHOD | Customers can report still-out within defined window after restored notice. | Catches nested or missed outages. |
-| outagecommsops.closeout.final_cause | final cause | RECORD | Final cause, duration, affected count and communication timeline are recorded. | Supports after-action review. |
-| outagecommsops.closeout.customer_credit | customer credit trigger | DECISION_RULE | Long or regulated outages may trigger credit or claims workflow. | Connects communications with customer relief. |
-| outagecommsops.qa.message_review | message review | QUALITY_CHECK | Outage messages are reviewed for accuracy, clarity, language and safety. | Reduces harmful ambiguity. |
-| outagecommsops.qa.timestamp_check | timestamp check | QUALITY_CHECK | Public updates show current timestamp and avoid stale ETRs. | Customers know freshness of information. |
-| outagecommsops.qa.channel_consistency | channel consistency | QUALITY_CHECK | Website, IVR, social and agent scripts are compared for conflicting details. | Prevents credibility loss. |
-| outagecommsops.records.timeline | communication timeline | RECORD | Timeline logs alert sends, updates, scripts, media posts and closeout. | Creates auditable communication record. |
-| outagecommsops.reporting.metrics | communication metrics | MEASUREMENT | Metrics include delivery rate, call volume, ETR changes, complaints and closeout lag. | Shows performance under stress. |
-| outagecommsops.reporting.after_action | after-action review | METHOD | Review covers speed, accuracy, ETR quality, sensitive outreach and customer feedback. | Improves next outage response. |
-| outagecommsops.training.drill | outage communication drill | METHOD | Staff rehearse templates, escalation, map updates and field sync. | Builds readiness before real events. |
-| outagecommsops.governance.approval | message approval | CONSTRAINT | High-impact messages require authorized approval path. | Balances speed and accountability. |
-
+| outagecommsops.intake.outage_case | случай отключения | RECORD | Случай отключения связывает вызовы, сигналы тревоги SCADA, заявки на выезд, затронутую зону и время начала. | Сохраняет отчеты клиентов и операции в одной записи об инцидентах. |
+| outagecommsops.intake.first_report | первый отчет | RECORD | В первом отчете указывается адрес, симптом, время, тип клиента и проблема безопасности. | Помогает обнаружить сбой до полного подтверждения системы. |
+| outagecommsops.intake.duplicate_calls | повторяющиеся вызовы | METHOD | Подобные вызовы сгруппированы по регионам, симптомам и временным окнам. | Предотвращает завышенную рабочую нагрузку и выявляет кластеры. |
+| outagecommsops.intake.safety_screen | защитный экран | DECISION_RULE | Оборванные провода, резервная канализация, отсутствие воды, запаха газа или медицинской зависимости вызывают приоритетную маршрутизацию. | Отделяет плановые отключения от мер по обеспечению безопасности жизни. |
+| outagecommsops.map.outage_polygon | полигон отключения | RECORD | Оценки полигонов карты повлияли на клиентов из активов, клапанов, контуров или зоны давления. | Показывает, кто должен получать оповещения. |
+| outagecommsops.map.confidence | карта уверенности | MODEL | Доверие отражает подтверждение на местах, качество телеметрии и точность модели активов. | Предотвращает завышенную точность карты. |
+| outagecommsops.map.customer_count | количество затронутых клиентов | MEASUREMENT | Подсчет производится на основе счетов, счетчиков, цепей или участков внутри пострадавшей зоны. | Поддерживает кадровое обеспечение и публичные сообщения. |
+| outagecommsops.map.boundary_update | обновление границы | METHOD | Границы меняются по мере того, как бригады изолируют, восстанавливают или обнаруживают новые точки отказа. | Сохраняет уведомления в соответствии с реальностью. |
+| outagecommsops.etr.initial_etr | первоначальный ETR | RECORD | Первоначальное расчетное время восстановления основано на известной причине, отправке бригады и стандартном классе ремонта. | Дает клиентам первое ожидание. |
+| outagecommsops.etr.uncertainty | Неопределённость ЭТР | MODEL | Неизвестная причина, небезопасный доступ, детали или погодные условия увеличивают неопределенность. | Объясняет, почему некоторые ETR являются широкими. |
+| outagecommsops.etr.revision | пересмотр ЭТР | METHOD | ETR обновляется при изменении хода диагностики, деталей, переключения или ремонта. | Предотвращает неактуальные обещания. |
+| outagecommsops.etr.no_etr | нет условия ETR | DECISION_RULE | Если причина неизвестна или сайт небезопасен, в сообщении вместо предположений будет указано, что проводится оценка. | Защищает доверие. |
+| outagecommsops.alert.channels | каналы оповещения | METHOD | При необходимости для оповещений используются SMS, электронная почта, телефон, портал, приложение, веб-сайт, социальные сети и средства массовой информации. | Достигает клиентов через дублирующие пути. |
+| outagecommsops.alert.opt_in | записи о согласии | RECORD | Настройки и язык уведомлений клиентов сохраняются. | Улучшает доставку и соответствие согласию. |
+| outagecommsops.alert.template | шаблон оповещения | RECORD | Шаблон включает тип отключения, зону, примечания по безопасности, ETR и ссылку на обновление. | Сохраняет сообщения быстрыми и последовательными. |
+| outagecommsops.alert.failed_delivery | неудачная доставка | RECORD | Отслеживаются отклоненные вызовы, неверные электронные письма или неудавшиеся SMS. | Улучшает качество контактных данных. |
+| outagecommsops.sensitive.medical_flag | медицинский флаг | RECORD | В соответствии с политикой помечаются чувствительные клиенты с медицинскими потребностями или критически важными услугами. | Поддерживает целенаправленную работу. |
+| outagecommsops.sensitive.facility_list | список критически важных объектов | RECORD | В списке перечислены больницы, школы, приюты, очистные сооружения и основные работодатели. | Координирует высокоэффективное общение. |
+| outagecommsops.sensitive.manual_call | ручной вызов | METHOD | Счета с высоким риском могут получить ручное подтверждение или направление на социальное обеспечение. | Добавляет заботы, выходящей за рамки массового оповещения. |
+| outagecommsops.sensitive.privacy | деликатная конфиденциальность | SAFETY_RULE | О конфиденциальном статусе сообщается только уполномоченному персоналу и службам реагирования. | Защищает личные данные клиентов. |
+| outagecommsops.updates.cadence | обновлять частоту | DECISION_RULE | Частота обновлений зависит от серьезности инцидента, длины ETR и влияния на клиента. | Держит клиентов в курсе без шума. |
+| outagecommsops.updates.field_sync | полевая синхронизация | METHOD | Перед получением обновлений сотрудники связи синхронизируются с командованием по ликвидации чрезвычайных ситуаций или руководителем бригады. | Предотвращает противоречивые сообщения. |
+| outagecommsops.updates.cause_message | вызвать сообщение | METHOD | Причина описывается только в том случае, если она подтверждена и полезна. | Избегает спекуляций. |
+| outagecommsops.updates.restoration_phase | этап восстановления | RECORD | Обновления различают оценку, изоляцию, исправление, тестирование, восстановление и закрытие. | Клиенты понимают прогресс. |
+| outagecommsops.water.boil_notice_link | ссылка на уведомление о кипячении | DECISION_RULE | Отключения воды с потерей давления могут вызвать консультативный рабочий процесс. | Обеспечивает интеграцию сообщений общественного здравоохранения. |
+| outagecommsops.water.distribution_site | участок водораспределения | RECORD | Если предоставляется аварийная вода, объявляются место, часы, лимиты и право на получение воды. | Превращает общение в практическое облегчение. |
+| outagecommsops.power.cooling_warming | направление на охлаждение/согревание | METHOD | Длительные отключения могут направить клиентов в приюты или общественные ресурсы. | Поддерживает уязвимых клиентов. |
+| outagecommsops.social.media_post | пост в социальных сетях | METHOD | Публичные публикации используют утвержденные факты, территорию, ETR и рекомендации по безопасности. | Расширяет охват во время крупных мероприятий. |
+| outagecommsops.social.rumor_control | контроль слухов | METHOD | Сотрудники исправляют распространенные слухи краткими проверенными обновлениями. | Уменьшает дезинформацию. |
+| outagecommsops.callcenter.script | скрипт колл-центра | RECORD | Агенты получают сценарий отключения, известную зону, ETR, примечания по безопасности и триггеры эскалации. | Сохраняет последовательность ответов. |
+| outagecommsops.callcenter.surge | режим пульсации вызова | METHOD | Режим Surge перенаправляет вызовы на IVR, обратные вызовы, веб-обновления или дополнительный персонал. | Предотвращает коллапс очереди. |
+| outagecommsops.callcenter.special_case | эскалация особого случая | DECISION_RULE | Медицинские случаи, случаи затопления, наводнения или неоднократного отсутствия обслуживания выходят за рамки сценария. | Защищает выбросы. |
+| outagecommsops.closeout.restored_notice | восстановленное уведомление | METHOD | Клиенты получают уведомление о восстановлении с указанием всех необходимых мер по промывке, сбросу или обеспечению безопасности. | Подтверждает закрытие и следующее действие. |
+| outagecommsops.closeout.confirmation_window | окно подтверждения | METHOD | Клиенты могут сообщить о прекращении поставок в течение определенного периода времени после восстановления уведомления. | Обнаруживает вложенные или пропущенные сбои. |
+| outagecommsops.closeout.final_cause | конечная причина | RECORD | Записываются окончательная причина, продолжительность, количество затронутых проблем и график связи. | Поддерживает обзор после действий. |
+| outagecommsops.closeout.customer_credit | кредитный триггер клиента | DECISION_RULE | Длительные или регулируемые простои могут инициировать рабочий процесс по кредитам или претензиям. | Связывает коммуникации с оказанием помощи клиентам. |
+| outagecommsops.qa.message_review | обзор сообщения | QUALITY_CHECK | Сообщения о сбоях проверяются на точность, ясность, язык и безопасность. | Уменьшает вредную двусмысленность. |
+| outagecommsops.qa.timestamp_check | проверка временной метки | QUALITY_CHECK | Публичные обновления показывают текущую временную метку и позволяют избежать устаревших ETR. | Клиенты знают свежесть информации. |
+| outagecommsops.qa.channel_consistency | согласованность каналов | QUALITY_CHECK | Скрипты веб-сайтов, IVR, социальных сетей и агентов сравниваются на предмет противоречивых деталей. | Предотвращает потерю доверия. |
+| outagecommsops.records.timeline | график связи | RECORD | Временная шкала записывает отправку предупреждений, обновления, сценарии, публикации в СМИ и закрытие. | Создает проверяемую запись общения. |
+| outagecommsops.reporting.metrics | коммуникационные метрики | MEASUREMENT | Метрики включают скорость доставки, объем звонков, изменения ETR, жалобы и задержку закрытия. | Показывает работоспособность в условиях стресса. |
+| outagecommsops.reporting.after_action | обзор после действий | METHOD | Обзор охватывает скорость, точность, качество ETR, деликатный охват и отзывы клиентов. | Улучшает реакцию на следующий сбой. |
+| outagecommsops.training.drill | учения по связи при отключении связи | METHOD | Персонал репетирует шаблоны, эскалацию, обновление карт и синхронизацию полей. | Формирует готовность перед реальными событиями. |
+| outagecommsops.governance.approval | утверждение сообщения | CONSTRAINT | Для важных сообщений требуется авторизованный путь утверждения. | Балансирует скорость и ответственность. |

@@ -6,47 +6,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |---|---|---|---|---|
-| shelterops.activation.trigger | activation trigger | MODEL | Trigger includes evacuation, extreme weather, fire, flood, power outage or public safety order. | Defines when shelter opens. |
-| shelterops.activation.authority | activation authority | RECORD | Authority records agency, incident command, time and shelter type. | Clarifies command responsibility. |
-| shelterops.activation.site_selection | site selection | METHOD | Site selection checks location, capacity, accessibility, utilities, safety and ownership. | Chooses usable shelter space. |
-| shelterops.activation.site_agreement | site agreement | RECORD | Agreement covers facility use, responsibilities, insurance, costs and restoration. | Prevents disputes. |
-| shelterops.activation.opening_check | opening checklist | QUALITY_CHECK | Checklist verifies power, water, toilets, exits, communications and staffing. | Avoids unsafe opening. |
-| shelterops.registration.intake | resident registration | METHOD | Registration records name, party size, contact, needs and consent limits. | Supports accountability and services. |
-| shelterops.registration.privacy | privacy boundary | SAFETY_RULE | Registration protects sensitive location, health and identity information. | Keeps evacuees safe. |
-| shelterops.registration.family_unit | family unit | RECORD | Family unit record keeps household members linked while respecting individual needs. | Reduces separation. |
-| shelterops.registration.badge | wristband or badge | METHOD | Badge or wristband may support access, meals and reunification. | Helps manage occupancy. |
-| shelterops.registration.unaccompanied | unaccompanied person | SAFETY_RULE | Unaccompanied minors or dependent adults trigger safeguarding protocol. | Protects vulnerable people. |
-| shelterops.capacity.occupancy_count | occupancy count | MEASUREMENT | Occupancy count tracks residents, staff, volunteers and pets where applicable. | Prevents overcrowding. |
-| shelterops.capacity.space_plan | space plan | METHOD | Space plan separates sleeping, meals, medical, pets, quiet areas and logistics. | Makes shelter livable. |
-| shelterops.capacity.overflow | overflow plan | METHOD | Overflow plan identifies alternate sites and transport if capacity is reached. | Maintains continuity. |
-| shelterops.capacity.demographic_needs | demographic needs | RECORD | Needs include children, elders, disability, language, medication, mobility and dietary requirements. | Guides support resources. |
-| shelterops.supplies.inventory | supply inventory | RECORD | Inventory tracks cots, blankets, food, water, hygiene, PPE, batteries and cleaning supplies. | Keeps logistics visible. |
-| shelterops.supplies.reorder | reorder trigger | MODEL | Reorder trigger uses burn rate, occupancy and delivery lead time. | Prevents shortages. |
-| shelterops.supplies.donation_control | donation control | METHOD | Donations are accepted, sorted or declined by current needs and safety. | Prevents clutter and unsafe goods. |
-| shelterops.supplies.chain | supply chain handoff | RECORD | Handoff records source, quantity, condition, time and recipient. | Supports reimbursement and accountability. |
-| shelterops.accessibility.ada_check | accessibility check | QUALITY_CHECK | Accessibility check covers entrances, restrooms, routes, signage and sleeping areas. | Keeps shelter inclusive. |
-| shelterops.accessibility.functional_needs | functional needs support | METHOD | Support includes mobility aids, charging, refrigeration, quiet space or personal assistance coordination. | Helps people remain safely sheltered. |
-| shelterops.accessibility.language | language access | METHOD | Interpretation and translated signage cover core shelter information. | Reduces confusion. |
-| shelterops.accessibility.service_animals | service animal handling | SAFETY_RULE | Service animals remain with handlers under policy while pets may use separate process. | Protects access rights. |
-| shelterops.health.health_screen | health screening | METHOD | Screening identifies urgent illness, injury, medication needs or infection risk. | Routes support without replacing medical care. |
-| shelterops.health.isolation_area | isolation area | METHOD | Isolation area separates symptomatic or exposed people when public health guidance requires. | Reduces spread. |
-| shelterops.health.medication_support | medication support | METHOD | Staff help coordinate refrigeration, replacement or pharmacy contact without unsafe dosing advice. | Maintains continuity of care. |
-| shelterops.health.behavioral_support | behavioral health support | METHOD | Behavioral support offers crisis referral, calm space and trained responders. | Reduces distress and incidents. |
-| shelterops.security.access_control | access control | METHOD | Access control manages entry, visitor policy, restricted areas and credentials. | Protects residents and supplies. |
-| shelterops.security.incident_report | incident report | RECORD | Incidents record time, people, facts, action and escalation. | Supports safety review. |
-| shelterops.security.law_enforcement | law enforcement liaison | METHOD | Liaison coordinates threats, missing persons, traffic and public order. | Keeps shelter connected to response system. |
-| shelterops.security.conflict_deescalation | de-escalation | METHOD | Staff use de-escalation and referral before removal where safe. | Maintains dignity and safety. |
-| shelterops.food.meal_plan | meal plan | METHOD | Meal plan estimates counts, dietary restrictions, service times and sanitation. | Provides reliable feeding. |
-| shelterops.food.food_safety | food safety | SAFETY_RULE | Food storage, temperature, handwashing and disposal follow public health rules. | Prevents foodborne illness. |
-| shelterops.pets.pet_area | pet area | METHOD | Pet area handles registration, crates, feeding, cleaning and separation from sleeping areas. | Supports evacuees with animals. |
-| shelterops.pets.animal_records | animal records | RECORD | Animal records link pet, owner, vaccination status if available and care notes. | Prevents loss and conflict. |
-| shelterops.staffing.roster | staff roster | RECORD | Roster tracks roles, shifts, credentials, contacts and fatigue risk. | Maintains operational coverage. |
-| shelterops.staffing.volunteer_check | volunteer check | SAFETY_RULE | Volunteers are registered, assigned, briefed and supervised. | Reduces safeguarding and liability risk. |
-| shelterops.staffing.shift_brief | shift briefing | METHOD | Briefing covers occupancy, incidents, supplies, weather, safety and priorities. | Keeps teams aligned. |
-| shelterops.communication.public_update | public update | METHOD | Public update states shelter location, eligibility, transport, pets, supplies and hours. | Guides evacuees. |
-| shelterops.communication.resident_notice | resident notice | METHOD | Resident notices explain rules, meals, services, safety and next briefing time. | Reduces rumor and anxiety. |
-| shelterops.communication.family_reunification | family reunification | METHOD | Reunification process logs inquiries and respects privacy and safeguarding. | Helps families reconnect. |
-| shelterops.records.situation_report | situation report | RECORD | Sitrep summarizes occupancy, needs, incidents, supplies and resource requests. | Feeds emergency management. |
-| shelterops.finance.cost_tracking | cost tracking | RECORD | Costs track labor, supplies, facility damage, contracts and donations. | Supports reimbursement. |
-| shelterops.demobilization.close_decision | close decision | METHOD | Closure decision considers hazard status, alternative housing, transport and notice time. | Avoids unsafe demobilization. |
-| shelterops.demobilization.site_restore | site restoration | METHOD | Site restoration cleans, repairs, inventories and returns facility to owner. | Completes shelter lifecycle. |
+| shelterops.activation.trigger | триггер активации | MODEL | Триггер включает эвакуацию, экстремальные погодные условия, пожар, наводнение, отключение электроэнергии или приказ общественной безопасности. | Определяет, когда открывается убежище. |
+| shelterops.activation.authority | полномочия активации | RECORD | Орган фиксирует агентство, команду по происшествию, время и тип убежища. | Уточняется ответственность командования. |
+| shelterops.activation.site_selection | выбор места | METHOD | Выбор места проверяет местоположение, мощность, доступность, коммунальные услуги, безопасность и право собственности. | Выбирает полезное пространство для укрытия. |
+| shelterops.activation.site_agreement | соглашение о площадке | RECORD | Соглашение охватывает использование объекта, ответственность, страхование, затраты и восстановление. | Предотвращает споры. |
+| shelterops.activation.opening_check | вступительный контрольный список | QUALITY_CHECK | Контрольный список проверяет электроэнергию, воду, туалеты, выходы, коммуникации и персонал. | Предотвращает небезопасное открытие. |
+| shelterops.registration.intake | регистрация резидента | METHOD | При регистрации фиксируются имя, размер группы, контакты, потребности и пределы согласия. | Поддерживает подотчетность и услуги. |
+| shelterops.registration.privacy | граница конфиденциальности | SAFETY_RULE | Регистрация защищает конфиденциальную информацию о местонахождении, состоянии здоровья и личности. | Обеспечивает безопасность эвакуированных. |
+| shelterops.registration.family_unit | семейная ячейка | RECORD | Запись о семейной ячейке обеспечивает связь между членами домохозяйства, сохраняя при этом индивидуальные потребности. | Уменьшает разделение. |
+| shelterops.registration.badge | браслет или значок | METHOD | Бейдж или браслет могут способствовать доступу, питанию и воссоединению. | Помогает управлять заполняемостью. |
+| shelterops.registration.unaccompanied | лицо без сопровождения | SAFETY_RULE | Несопровождаемые несовершеннолетние или взрослые-иждивенцы активируют протокол безопасности. | Защищает уязвимых людей. |
+| shelterops.capacity.occupancy_count | количество мест | MEASUREMENT | Подсчет заполняемости отслеживает жильцов, персонал, волонтеров и домашних животных, где это применимо. | Предотвращает перенаселение. |
+| shelterops.capacity.space_plan | космический план | METHOD | План помещения разделяет спальные места, приемы пищи, медицинские помещения, домашних животных, тихие зоны и логистику. | Делает убежище пригодным для жизни. |
+| shelterops.capacity.overflow | план переполнения | METHOD | План переполнения определяет альтернативные площадки и транспортировку, если пропускная способность достигнута. | Сохраняет преемственность. |
+| shelterops.capacity.demographic_needs | демографические потребности | RECORD | Потребности включают детей, пожилых людей, инвалидность, язык, лекарства, мобильность и диетические потребности. | Руководства поддерживают ресурсы. |
+| shelterops.supplies.inventory | поставка инвентаря | RECORD | Инвентаризация отслеживает детские кроватки, одеяла, еду, воду, средства гигиены, средства индивидуальной защиты, батарейки и чистящие средства. | Делает логистику видимой. |
+| shelterops.supplies.reorder | триггер изменения порядка | MODEL | Триггер повторного заказа учитывает скорость горения, занятость и время доставки. | Предотвращает дефицит. |
+| shelterops.supplies.donation_control | контроль пожертвований | METHOD | Пожертвования принимаются, сортируются или отклоняются в зависимости от текущих потребностей и безопасности. | Предотвращает беспорядок и небезопасные товары. |
+| shelterops.supplies.chain | передача цепочки поставок | RECORD | Передача записывает источник, количество, состояние, время и получателя. | Поддерживает возмещение и подотчетность. |
+| shelterops.accessibility.ada_check | проверка доступности | QUALITY_CHECK | Проверка доступности охватывает входы, туалеты, маршруты, указатели и спальные зоны. | Сохраняет приют инклюзивным. |
+| shelterops.accessibility.functional_needs | поддержка функциональных потребностей | METHOD | Поддержка включает в себя средства передвижения, зарядку, охлаждение, тихое место или координацию личной помощи. | Помогает людям оставаться в безопасности. |
+| shelterops.accessibility.language | языковой доступ | METHOD | Устный перевод и переведенные указатели содержат основную информацию о приюте. | Уменьшает путаницу. |
+| shelterops.accessibility.service_animals | обращение со служебными животными | SAFETY_RULE | В соответствии с правилами, животные-поводыри остаются под контролем проводников, в то время как домашние животные могут использовать отдельный процесс. | Защищает права доступа. |
+| shelterops.health.health_screen | медицинский осмотр | METHOD | Скрининг выявляет неотложное заболевание, травму, потребность в лекарствах или риск заражения. | Поддержка маршрутов без замены медицинской помощи. |
+| shelterops.health.isolation_area | зона изоляции | METHOD | Зона изоляции изолирует людей с симптомами или подвергшихся воздействию, когда этого требуют рекомендации общественного здравоохранения. | Уменьшает распространение. |
+| shelterops.health.medication_support | медикаментозная поддержка | METHOD | Персонал помогает координировать охлаждение, замену или обращение в аптеку, не давая советов по небезопасной дозировке. | Обеспечивает непрерывность ухода. |
+| shelterops.health.behavioral_support | поддержка поведенческого здоровья | METHOD | Поведенческая поддержка предлагает направление к специалистам в кризисных ситуациях, спокойное пространство и обученных специалистов по реагированию. | Уменьшает страдания и инциденты. |
+| shelterops.security.access_control | контроль доступа | METHOD | Контроль доступа управляет входом, политикой посетителей, зонами ограниченного доступа и учетными данными. | Защищает жителей и припасы. |
+| shelterops.security.incident_report | отчет об инциденте | RECORD | Инциденты фиксируют время, людей, факты, действия и эскалацию. | Поддерживает проверку безопасности. |
+| shelterops.security.law_enforcement | связь с правоохранительными органами | METHOD | Связь координирует угрозы, пропавших без вести людей, дорожное движение и общественный порядок. | Обеспечивает связь убежища с системой реагирования. |
+| shelterops.security.conflict_deescalation | деэскалация | METHOD | Персонал использует деэскалацию и направление перед удалением, где это безопасно. | Сохраняет достоинство и безопасность. |
+| shelterops.food.meal_plan | план питания | METHOD | В плане питания указано количество, диетические ограничения, время обслуживания и санитарные условия. | Обеспечивает надежное питание. |
+| shelterops.food.food_safety | безопасность пищевых продуктов | SAFETY_RULE | Хранение продуктов питания, температура, мытье рук и утилизация соответствуют правилам общественного здравоохранения. | Предотвращает болезни пищевого происхождения. |
+| shelterops.pets.pet_area | зона для домашних животных | METHOD | Зона для домашних животных занимается регистрацией, клетками, кормлением, уборкой и отделением от спальных зон. | Поддерживает эвакуированных с животными. |
+| shelterops.pets.animal_records | записи о животных | RECORD | В записях о животных указаны домашнее животное, владелец, статус вакцинации, если таковой имеется, и примечания по уходу. | Предотвращает потери и конфликты. |
+| shelterops.staffing.roster | штатное расписание | RECORD | Реестр отслеживает роли, смены, полномочия, контакты и риск усталости. | Поддерживает оперативное покрытие. |
+| shelterops.staffing.volunteer_check | волонтерский чек | SAFETY_RULE | Добровольцы регистрируются, назначаются, инструктируются и контролируются. | Снижает риск защиты и ответственности. |
+| shelterops.staffing.shift_brief | инструктаж по смене | METHOD | Брифинг охватывает занятость, происшествия, поставки, погоду, безопасность и приоритеты. | Обеспечивает согласованность команд. |
+| shelterops.communication.public_update | публичное обновление | METHOD | В публичной информации указано местонахождение приюта, право на участие, транспорт, домашние животные, принадлежности и часы работы. | Проводники эвакуированных. |
+| shelterops.communication.resident_notice | уведомление резидента | METHOD | В уведомлениях для жителей разъясняются правила, питание, услуги, безопасность и время следующего инструктажа. | Уменьшает слухи и беспокойство. |
+| shelterops.communication.family_reunification | воссоединение семьи | METHOD | В процессе воссоединения запросы регистрируются и соблюдаются конфиденциальность и защита. | Помогает семьям воссоединиться. |
+| shelterops.records.situation_report | отчет о ситуации | RECORD | Sitrep суммирует занятость, потребности, происшествия, поставки и запросы на ресурсы. | Подает управление в чрезвычайных ситуациях. |
+| shelterops.finance.cost_tracking | отслеживание затрат | RECORD | Затраты отслеживают рабочую силу, расходные материалы, ущерб объектам, контракты и пожертвования. | Поддерживает возмещение. |
+| shelterops.demobilization.close_decision | близкое решение | METHOD | Решение о закрытии учитывает статус опасности, альтернативное жилье, транспорт и время уведомления. | Позволяет избежать небезопасной демобилизации. |
+| shelterops.demobilization.site_restore | восстановление сайта | METHOD | Реставрация объекта очищает, ремонтирует, проводит инвентаризацию и возвращает объект владельцу. | Завершает жизненный цикл убежища. |

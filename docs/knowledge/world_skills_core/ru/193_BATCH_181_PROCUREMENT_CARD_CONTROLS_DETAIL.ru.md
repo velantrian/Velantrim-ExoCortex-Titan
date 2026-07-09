@@ -4,47 +4,47 @@
 
 | ID | KnowledgeUnit | Тип | Суть | Практический смысл |
 |----|---------------|-----|------|--------------------|
-| pcardops.setup.card_issuance | Procurement card issuance | invariant | Issuance assigns card to approved employee with role, limits, training and policy acknowledgment. | controlled purchasing access |
-| pcardops.setup.cardholder_agreement | Cardholder agreement | invariant | Agreement states allowed use, receipt duties, prohibited purchases, security and consequences. | rules accepted |
-| pcardops.setup.credit_limit | P-card credit limit | invariant | Limit caps spending per transaction, day, month or cycle according to role and risk. | reduce exposure |
-| pcardops.setup.merchant_category | Merchant category control | variant | MCC control blocks or allows supplier categories based on policy and card purpose. | prevent wrong suppliers |
-| pcardops.setup.single_purchase_limit | Single purchase limit | invariant | Limit prevents splitting large purchases or bypassing procurement thresholds. | transaction guard |
-| pcardops.setup.card_activation | Card activation control | invariant | Activation confirms cardholder identity, training completion and system setup before use. | no silent card |
-| pcardops.transaction.receipt_required | Receipt required | invariant | Receipt proves vendor, date, amount, tax, items and business purpose. | purchase evidence |
-| pcardops.transaction.business_purpose | Business purpose | invariant | Purpose explains why purchase was necessary for organization activity. | not just what was bought |
-| pcardops.transaction.tax_review | Sales tax review | variant | Review checks whether tax was charged correctly or exemption should apply. | avoid tax leakage |
-| pcardops.transaction.split_purchase | Split purchase detection | invariant | Detection identifies multiple related transactions used to avoid limits or approval. | anti-circumvention |
-| pcardops.transaction.personal_use | Personal use flag | invariant | Flag marks transaction appearing unrelated to business or policy. | misuse control |
-| pcardops.transaction.emergency_purchase | Emergency purchase note | variant | Note documents urgent purchase justification, approver and follow-up after normal process. | exception with record |
-| pcardops.reconcile.monthly_reconciliation | Monthly card reconciliation | invariant | Reconciliation matches statement, receipts, coding, approvals and disputed items. | close billing cycle |
-| pcardops.reconcile.statement_review | Statement review | invariant | Review checks all posted card transactions against supporting documents and limits. | cardholder accountability |
-| pcardops.reconcile.cost_center_coding | Cost center coding | invariant | Coding assigns purchase to correct department, project, grant or account. | accounting accuracy |
-| pcardops.reconcile.missing_receipt | Missing receipt affidavit | variant | Affidavit documents lost receipt, purchase details and cardholder certification. | fallback evidence |
-| pcardops.reconcile.approver_signoff | Approver signoff | invariant | Signoff confirms supervisor or budget owner reviewed transaction legitimacy. | independent review |
-| pcardops.reconcile.late_reconciliation | Late reconciliation | invariant | Late reconciliation indicates cardholder or approver missed deadline and may trigger escalation. | control timeliness |
-| pcardops.dispute.charge_dispute | Card charge dispute | invariant | Dispute challenges incorrect, duplicate, fraudulent or undelivered charge with issuer or vendor. | recover money |
-| pcardops.dispute.fraud_report | P-card fraud report | invariant | Fraud report records unauthorized transaction, card status, issuer contact and investigation. | act quickly |
-| pcardops.dispute.temporary_credit | Temporary credit | variant | Credit may appear while dispute is reviewed and must be tracked until final resolution. | avoid false close |
-| pcardops.dispute.vendor_credit | Vendor credit tracking | invariant | Credit tracking ensures returned goods or billing corrections appear on statement. | close refund loop |
-| pcardops.dispute.duplicate_charge | Duplicate charge review | invariant | Review compares same vendor, amount, date, receipt and description to detect double billing. | common error |
-| pcardops.dispute.card_replacement | Card replacement workflow | invariant | Replacement controls lost, stolen, compromised or damaged card with cancellation and reissue. | protect account |
-| pcardops.policy.prohibited_purchase | Prohibited purchase list | invariant | List defines items or services not allowed on card regardless of limit. | clear boundaries |
-| pcardops.policy.gift_card_control | Gift card purchase control | variant | Gift cards require extra controls because they are cash-like and hard to trace. | high misuse risk |
-| pcardops.policy.travel_overlap | Travel and p-card overlap | variant | Overlap rules clarify whether travel, meals, lodging or fuel belong on travel card or p-card. | avoid policy conflict |
-| pcardops.policy.grant_restriction | Grant-funded purchase restriction | invariant | Grant restriction checks allowability, period, budget line and documentation before charge. | funder compliance |
-| pcardops.policy.asset_threshold | Asset threshold rule | invariant | Rule blocks or flags purchases that should enter fixed asset or inventory process. | asset visibility |
-| pcardops.policy.contract_leakage | Contract leakage | variant | Leakage occurs when cardholders buy outside preferred contracts or negotiated suppliers. | procurement value loss |
-| pcardops.audit.audit_sampling | P-card audit sampling | invariant | Sampling selects transactions by risk, amount, MCC, cardholder, lateness or random method. | focused review |
-| pcardops.audit.exception_report | P-card exception report | invariant | Report flags missing receipts, blocked attempts, split purchases, late approvals and unusual vendors. | monitor patterns |
-| pcardops.audit.cardholder_review | Cardholder periodic review | invariant | Review verifies cardholder still needs card, has proper limits and completed training. | access lifecycle |
-| pcardops.audit.inactive_card | Inactive card review | variant | Inactive review may cancel or lower limits on unused cards to reduce exposure. | remove dormant risk |
-| pcardops.audit.high_risk_vendor | High-risk vendor flag | variant | Flag marks vendors associated with cash-like goods, personal benefit, sanctions or policy concerns. | stronger review |
-| pcardops.audit.corrective_action | P-card corrective action | invariant | Action addresses policy breach through repayment, training, warning, suspension or investigation. | enforce controls |
-| pcardops.admin.limit_change | Card limit change | invariant | Limit change requires documented business need, approval, effective date and review. | controlled flexibility |
-| pcardops.admin.card_suspension | Card suspension | invariant | Suspension stops card use due to missing reconciliation, misuse, employment change or investigation. | stop risk |
-| pcardops.admin.employee_departure | Departing employee card closure | invariant | Closure cancels card, collects receipts, resolves transactions and removes system access. | offboarding control |
-| pcardops.admin.training_record | P-card training record | invariant | Training record confirms cardholder and approver understand policies and tools. | competence evidence |
-| pcardops.admin.policy_update | P-card policy update | variant | Update communicates rule changes, system changes and effective date to cardholders. | keep behavior current |
-| pcardops.admin.records_retention | P-card records retention | invariant | Retention defines how long statements, receipts, approvals, disputes and audits are kept. | audit trail |
-| pcardops.metrics.spend_by_category | P-card spend by category | invariant | Category report shows spending by MCC, supplier, department and purpose. | spend visibility |
-| pcardops.metrics.decline_analysis | P-card decline analysis | variant | Declines reveal blocked vendors, wrong limits, fraud attempts or training issues. | control signal |
+| pcardops.setup.card_issuance | Выдача закупочной карты | invariant | При выпуске карта назначается утвержденному сотруднику с указанием роли, ограничений, обучения и подтверждения политики. | контролируемый доступ к закупкам |
+| pcardops.setup.cardholder_agreement | Соглашение держателя карты | invariant | В соглашении указаны разрешенное использование, пошлины за получение, запрещенные покупки, безопасность и последствия. | правила приняты |
+| pcardops.setup.credit_limit | Кредитный лимит P-карты | invariant | Ограничьте расходы на транзакцию, день, месяц или цикл в зависимости от роли и риска. | уменьшить воздействие |
+| pcardops.setup.merchant_category | Контроль категорий торговцев | variant | Управление MCC блокирует или разрешает категории поставщиков в зависимости от политики и назначения карты. | предотвратить неправильных поставщиков |
+| pcardops.setup.single_purchase_limit | Лимит одной покупки | invariant | Лимит предотвращает дробление крупных закупок или обход пороговых значений закупок. | охрана транзакции |
+| pcardops.setup.card_activation | Контроль активации карты | invariant | Активация подтверждает личность владельца карты, прохождение обучения и настройку системы перед использованием. | нет бесшумной карты |
+| pcardops.transaction.receipt_required | Требуется квитанция | invariant | Квитанция подтверждает поставщика, дату, сумму, налог, товары и деловую цель. | доказательства покупки |
+| pcardops.transaction.business_purpose | Деловая цель | invariant | Цель объясняет, почему покупка была необходима для деятельности организации. | не только то, что было куплено |
+| pcardops.transaction.tax_review | Проверка налога с продаж | variant | Проверка проверяет, правильно ли был начислен налог или должно ли применяться освобождение от налога. | избежать утечки налогов |
+| pcardops.transaction.split_purchase | Обнаружение разделенной покупки | invariant | Обнаружение идентифицирует несколько связанных транзакций, используемых для обхода ограничений или одобрения. | борьба с обходом |
+| pcardops.transaction.personal_use | Флаг личного использования | invariant | Флаг отмечает, что транзакция не связана с бизнесом или политикой. | контроль неправомерного использования |
+| pcardops.transaction.emergency_purchase | Примечание о срочной покупке | variant | Обратите внимание на документальное обоснование срочной покупки, утверждение и последующие действия после обычного процесса. | исключение с записью |
+| pcardops.reconcile.monthly_reconciliation | Ежемесячная сверка карт | invariant | Сверка соответствует выписке, квитанциям, кодированию, одобрениям и спорным позициям. | закрыть платежный цикл |
+| pcardops.reconcile.statement_review | Обзор заявления | invariant | Проверка проверяет все проведенные операции по картам на соответствие подтверждающим документам и лимитам. | ответственность держателя карты |
+| pcardops.reconcile.cost_center_coding | Кодирование центра затрат | invariant | Кодирование назначает покупку правильному отделу, проекту, гранту или счету. | точность учета |
+| pcardops.reconcile.missing_receipt | Отсутствует подтверждение получения | variant | В письменных показаниях утеряна квитанция, данные о покупке и сертификат владельца карты. | запасное доказательство |
+| pcardops.reconcile.approver_signoff | Подписание утверждающего | invariant | Signoff подтверждает, что надзорный орган или владелец бюджета проверил законность транзакции. | независимая проверка |
+| pcardops.reconcile.late_reconciliation | Позднее примирение | invariant | Поздняя сверка указывает на пропущенный срок держателем карты или утверждающим лицом и может спровоцировать эскалацию. | контролировать своевременность |
+| pcardops.dispute.charge_dispute | Спор о списании средств с карты | invariant | Спор касается неправильного, дублированного, мошеннического или недоставленного платежа эмитенту или поставщику. | вернуть деньги |
+| pcardops.dispute.fraud_report | Сообщение о мошенничестве с P-картой | invariant | В отчете о мошенничестве фиксируются несанкционированные транзакции, статус карты, контакты с эмитентом и расследование. | действовать быстро |
+| pcardops.dispute.temporary_credit | Временный кредит | variant | Кредит может появиться во время рассмотрения спора, и его необходимо отслеживать до окончательного разрешения. | избежать ложного закрытия |
+| pcardops.dispute.vendor_credit | Отслеживание кредитов поставщиков | invariant | Отслеживание кредита гарантирует, что возвращенные товары или исправления в счете появятся в выписке. | закрыть цикл возврата средств |
+| pcardops.dispute.duplicate_charge | Повторная проверка платежа | invariant | При проверке сравнивается один и тот же поставщик, сумма, дата, квитанция и описание для выявления двойного выставления счетов. | распространенная ошибка |
+| pcardops.dispute.card_replacement | Процедура замены карты | invariant | Замена контролирует утерянную, украденную, скомпрометированную или поврежденную карту с аннулированием и перевыпуском. | защитить аккаунт |
+| pcardops.policy.prohibited_purchase | Список запрещенных покупок | invariant | Список определяет товары или услуги, которые не разрешены к использованию на карте независимо от лимита. | четкие границы |
+| pcardops.policy.gift_card_control | Контроль покупки подарочных карт | variant | Подарочные карты требуют дополнительного контроля, поскольку они аналогичны наличным деньгам и их трудно отследить. | высокий риск неправильного использования |
+| pcardops.policy.travel_overlap | Путешествие и p-карта совпадают | variant | Правила дублирования уточняют, относятся ли проезд, питание, проживание или топливо к проездному или p-card. | избежать политического конфликта |
+| pcardops.policy.grant_restriction | Ограничение покупки за счет гранта | invariant | Ограничение по гранту проверяет допустимость, период, бюджетную статью и документацию перед начислением средств. | соблюдение требований спонсора |
+| pcardops.policy.asset_threshold | Правило порога актива | invariant | Правило блокирует или помечает покупки, которые должны быть включены в процесс инвентаризации или основных средств. | видимость активов |
+| pcardops.policy.contract_leakage | Утечка контракта | variant | Утечка происходит, когда держатели карт покупают товары по предпочтительным контрактам или у поставщиков, не согласованных с поставщиками. | потеря стоимости закупки |
+| pcardops.audit.audit_sampling | Выборка аудита P-card | invariant | При выборке транзакции отбираются по риску, сумме, MCC, владельцу карты, времени задержки или случайному методу. | целенаправленный обзор |
+| pcardops.audit.exception_report | Отчет об исключении P-карты | invariant | В отчетах отмечаются отсутствующие квитанции, заблокированные попытки, разделенные покупки, поздние утверждения и необычные поставщики. | шаблоны монитора |
+| pcardops.audit.cardholder_review | Периодическая проверка держателя карты | invariant | Проверка подтверждает, что владельцу карты по-прежнему нужна карта, имеются соответствующие лимиты и он прошел обучение. | жизненный цикл доступа |
+| pcardops.audit.inactive_card | Неактивный обзор карты | variant | Неактивный просмотр может отменить или снизить лимиты на неиспользованные карты, чтобы уменьшить риски. | устранить скрытый риск |
+| pcardops.audit.high_risk_vendor | Флаг поставщика высокого риска | variant | Флагом отмечены продавцы, связанные с товарами, похожими на наличные, личной выгодой, санкциями или политическими проблемами. | более сильный обзор |
+| pcardops.audit.corrective_action | Корректирующие действия P-карты | invariant | Действия направлены на устранение нарушений политики посредством погашения, обучения, предупреждения, приостановки или расследования. | обеспечивать контроль |
+| pcardops.admin.limit_change | Изменение лимита карты | invariant | Изменение лимита требует документированной бизнес-потребности, утверждения, даты вступления в силу и проверки. | контролируемая гибкость |
+| pcardops.admin.card_suspension | Приостановка карты | invariant | Приостановка использования карты прекращается из-за отсутствия сверки, неправильного использования, смены места работы или расследования. | остановить риск |
+| pcardops.admin.employee_departure | Закрытие карты увольняющегося сотрудника | invariant | Закрытие аннулирует карту, собирает квитанции, разрешает транзакции и удаляет доступ к системе. | выездной контроль |
+| pcardops.admin.training_record | P-карта записи обучения | invariant | Записи об обучении подтверждают, что владелец карты и утверждающее лицо понимают политики и инструменты. | свидетельство компетентности |
+| pcardops.admin.policy_update | Обновление политики P-card | variant | Обновление сообщает владельцам карт об изменениях в правилах, системных изменениях и дате вступления в силу. | поддерживать поведение в актуальном состоянии |
+| pcardops.admin.records_retention | Хранение записей P-card | invariant | Срок хранения определяет, как долго хранятся заявления, квитанции, утверждения, споры и проверки. | аудиторский след |
+| pcardops.metrics.spend_by_category | Расходы P-card по категориям | invariant | Отчет по категориям показывает расходы по MCC, поставщикам, отделам и целям. | тратить видимость |
+| pcardops.metrics.decline_analysis | Анализ отклонения P-карты | variant | Отказы указывают на заблокированных поставщиков, неправильные лимиты, попытки мошенничества или проблемы с обучением. | сигнал управления |
