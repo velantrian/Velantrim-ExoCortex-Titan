@@ -1838,18 +1838,46 @@ async def query_with_roles(req: _QueryRolesRequest):
     """
     role_list = [r.strip().upper() for r in (req.roles or "").split(",") if r.strip()] or None
     try:
+        import time
         from core.branch_manager import get_branch_manager
         bm = get_branch_manager()
-        # FIX P1 (v8.7 audit): asyncio.to_thread + get_event_loop + run_until_complete
-        # создавало новый event loop в треде → «no current event loop in thread».
-        # branch_manager.reason() — async, вызываем напрямую из async-обработчика.
+        t0 = time.perf_counter()
         synthesis = await bm.reason(query=req.query, roles=role_list)
+        latency = (time.perf_counter() - t0) * 1000.0
+
+        all_facts: list[dict] = []
+        seen_ids: set[str] = set()
+        for branch in synthesis.branches:
+            for fact in branch.facts:
+                fid = fact.get("fact_id")
+                if fid and fid in seen_ids:
+                    continue
+                if fid:
+                    seen_ids.add(fid)
+                all_facts.append(fact)
+
+        roles_used = [b.role.role_id for b in synthesis.branches]
+
         return QueryResponse(
-            answer=synthesis.response,
-            facts=synthesis.facts,
             query=req.query,
-            confidence=synthesis.confidence,
-            roles_used=[r.role_id for r in (synthesis.roles_used or [])],
+            answer=synthesis.response,
+            llm_answer=synthesis.response,
+            facts=all_facts,
+            total_facts=len(all_facts),
+            mode="multi_perspective",
+            error=None,
+            latency_ms=latency,
+            lens_context={
+                "roles_used": roles_used,
+                "confidence": synthesis.confidence,
+                "dominant_role": synthesis.dominant_role,
+                "branches": [b.to_dict() for b in synthesis.branches],
+            },
+            effective_params={
+                "cognitive_mode": req.cognitive_mode,
+                "domain": req.domain,
+                "roles": roles_used,
+            },
         )
     except Exception as exc:
         logger.exception("query/roles failed: %s", exc)

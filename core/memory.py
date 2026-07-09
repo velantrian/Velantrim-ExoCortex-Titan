@@ -279,12 +279,22 @@ class SQLiteGraphStore(GraphStore):
             # GDPR Art. 17/30: content-free erasure tombstones (right to be forgotten).
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS erasure_log (
-                    fact_id      TEXT PRIMARY KEY,
+                    erasure_id   TEXT PRIMARY KEY,
+                    fact_id      TEXT NOT NULL,
+                    user_id      TEXT NOT NULL DEFAULT 'default',
+                    reason       TEXT NOT NULL DEFAULT 'user_request',
+                    claim_hash   TEXT NOT NULL,
                     erased_at    TEXT NOT NULL,
-                    reason       TEXT,
-                    actor        TEXT,
-                    content_hash TEXT
+                    request_ref  TEXT DEFAULT NULL
                 )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_erasure_user
+                ON erasure_log(user_id, erased_at)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_erasure_fact
+                ON erasure_log(fact_id)
             """)
             # TASK-09: derived_from на facts (указывает на l0_raw_memory.raw_id)
             if "derived_from" not in existing_cols:
@@ -422,36 +432,59 @@ class SQLiteGraphStore(GraphStore):
         self, fact_id: str, *, reason: str, actor: str,
         content_hash: str | None,
     ) -> None:
-        """Record a content-free erasure tombstone (GDPR Art. 30). Immutable:
-        the first tombstone for a fact_id wins (INSERT OR IGNORE)."""
+        """Record a content-free erasure tombstone (GDPR Art. 30)."""
+        import uuid
         self._release_stray_locks()
         with self._db() as conn:
             conn.execute(
                 "INSERT OR IGNORE INTO erasure_log "
-                "(fact_id, erased_at, reason, actor, content_hash) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (fact_id, _now(), reason, actor, content_hash),
+                "(erasure_id, fact_id, user_id, reason, claim_hash, erased_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    f"era_{uuid.uuid4().hex[:12]}",
+                    fact_id,
+                    actor,
+                    reason,
+                    content_hash or "",
+                    _now(),
+                ),
             )
 
     def get_tombstone(self, fact_id: str) -> dict | None:
         with self._db() as conn:
             row = conn.execute(
-                "SELECT fact_id, erased_at, reason, actor, content_hash "
-                "FROM erasure_log WHERE fact_id = ?", (fact_id,)
+                "SELECT erasure_id, fact_id, user_id, reason, claim_hash, erased_at "
+                "FROM erasure_log WHERE fact_id = ? ORDER BY erased_at DESC LIMIT 1",
+                (fact_id,),
             ).fetchone()
         if row is None:
             return None
-        return {"fact_id": row[0], "erased_at": row[1], "reason": row[2],
-                "actor": row[3], "content_hash": row[4]}
+        return {
+            "erasure_id": row[0],
+            "fact_id": row[1],
+            "user_id": row[2],
+            "reason": row[3],
+            "claim_hash": row[4],
+            "erased_at": row[5],
+        }
 
     def get_tombstones(self) -> list[dict]:
         with self._db() as conn:
             rows = conn.execute(
-                "SELECT fact_id, erased_at, reason, actor, content_hash "
+                "SELECT erasure_id, fact_id, user_id, reason, claim_hash, erased_at "
                 "FROM erasure_log ORDER BY erased_at"
             ).fetchall()
-        return [{"fact_id": r[0], "erased_at": r[1], "reason": r[2],
-                 "actor": r[3], "content_hash": r[4]} for r in rows]
+        return [
+            {
+                "erasure_id": r[0],
+                "fact_id": r[1],
+                "user_id": r[2],
+                "reason": r[3],
+                "claim_hash": r[4],
+                "erased_at": r[5],
+            }
+            for r in rows
+        ]
 
     def set_restricted(self, fact_id: str, restricted: bool) -> bool:
         """Mark/unmark a fact's processing restriction (GDPR Art. 18).

@@ -193,7 +193,7 @@ def contradict(fact_id: str, source_id: str, reason: str = "") -> bool:
                     from_fact_id=fact_id,
                     to_fact_id=source_id,
                     relation_type=REL_CONTRADICTS,
-                    weight=0.95,
+                    confidence=0.95,
                 )
         except Exception:
             pass

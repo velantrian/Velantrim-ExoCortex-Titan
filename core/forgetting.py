@@ -27,6 +27,7 @@ import re
 import sqlite3
 import uuid
 from dataclasses import dataclass, field
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
@@ -35,7 +36,28 @@ logger = logging.getLogger("velantrim.forgetting")
 
 SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
 
-# ─── Конфигурация ─────────────────────────────────────────────────────────────
+_FACT_DELETE_TRIGGER_SQL = """
+CREATE TRIGGER prevent_fact_delete
+BEFORE DELETE ON facts
+BEGIN
+    SELECT CASE
+        WHEN OLD.epistemic_state NOT IN ('Collapsed', 'Deprecated')
+        THEN RAISE(ABORT, 'VELANTRIM: Cannot DELETE facts directly. Transition to Collapsed or Deprecated first.')
+    END;
+END;
+"""
+
+
+@contextmanager
+def _without_fact_delete_guard(conn: sqlite3.Connection):
+    """Временно снимает truth-kernel триггер; гарантирует восстановление."""
+    conn.execute("DROP TRIGGER IF EXISTS prevent_fact_delete")
+    try:
+        yield conn
+    finally:
+        conn.execute("DROP TRIGGER IF EXISTS prevent_fact_delete")
+        conn.execute(_FACT_DELETE_TRIGGER_SQL)
+
 
 # Базовые PII-паттерны (RU + EN)
 _PII_PATTERNS = [
@@ -187,12 +209,12 @@ class ForgettingEngine:
             return verdict
 
         # Даже с зависимостями — удаляем (пользователь предупреждён)
+        conn = None
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA foreign_keys = ON")
 
-            # Прочитать claim ДО удаления (для erasure_log)
             claim_row = conn.execute(
                 "SELECT claim FROM facts WHERE fact_id = ?", (fact_id,)
             ).fetchone()
@@ -200,58 +222,32 @@ class ForgettingEngine:
                 hashlib.sha256((claim_row[0] if claim_row else "").encode()).hexdigest()
             )
 
-            # FIX P1 (v8.7 audit): триггер prevent_fact_delete (миграция 009)
-            # блокирует DELETE фактов вне состояния Collapsed/Deprecated.
-            conn.execute("DROP TRIGGER IF EXISTS prevent_fact_delete")
-
-            # Удалить fact_mentions перед удалением факта (CASCADE может не сработать)
-            conn.execute("DELETE FROM fact_mentions WHERE fact_id = ?", (fact_id,))
-
-            # FIX #4 (Claude audit): GDPR-утечка — чистить fact_versions и
-            # l0_raw_memory при удалении факта. Без этого raw-текст остаётся
-            # в БД после GDPR-удаления, что нарушает Article 17.
-            try:
-                conn.execute("DELETE FROM fact_versions WHERE fact_id = ?", (fact_id,))
-            except Exception:
-                pass
-            try:
+            with _without_fact_delete_guard(conn):
+                conn.execute("DELETE FROM fact_mentions WHERE fact_id = ?", (fact_id,))
+                try:
+                    conn.execute("DELETE FROM fact_versions WHERE fact_id = ?", (fact_id,))
+                except Exception:
+                    pass
+                try:
+                    conn.execute(
+                        "DELETE FROM l0_fact_provenance WHERE fact_id = ?", (fact_id,)
+                    )
+                except Exception:
+                    pass
+                conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
+                now = datetime.now(timezone.utc).isoformat()
+                erasure_id = f"era_{uuid.uuid4().hex[:12]}"
                 conn.execute(
-                    "DELETE FROM l0_fact_provenance WHERE fact_id = ?", (fact_id,)
+                    """INSERT INTO erasure_log
+                       (erasure_id, fact_id, user_id, reason, claim_hash, erased_at)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (erasure_id, fact_id, user_id, reason, claim_hash, now),
                 )
-            except Exception:
-                pass
-
-            # Удалить факт
-            conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
-
-            # Восстановить триггер
-            conn.execute("""
-                CREATE TRIGGER prevent_fact_delete
-                BEFORE DELETE ON facts
-                BEGIN
-                    SELECT CASE
-                        WHEN OLD.epistemic_state NOT IN ('Collapsed', 'Deprecated')
-                        THEN RAISE(ABORT, 'VELANTRIM: Cannot DELETE facts directly. Transition to Collapsed or Deprecated first.')
-                    END;
-                END;
-            """)
-
-            # GDPR tombstone (Crystal-фича): запись в erasure_log
-            # для аудита — доказательство что факт был удалён
-            now = datetime.now(timezone.utc).isoformat()
-            erasure_id = f"era_{uuid.uuid4().hex[:12]}"
-            conn.execute(
-                """INSERT INTO erasure_log
-                   (erasure_id, fact_id, user_id, reason, claim_hash, erased_at)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
-                (erasure_id, fact_id, user_id, reason, claim_hash, now),
-            )
-
-            # Записать в provenance_chain
-            self._log_forgetting(conn, fact_id, reason, user_id)
+                self._log_forgetting(conn, fact_id, reason, user_id)
 
             conn.commit()
             conn.close()
+            conn = None
 
             logger.info("Forgetting: удалён %s (reason=%s, user=%s)", fact_id, reason, user_id)
             return ForgetVerdict(
@@ -267,6 +263,12 @@ class ForgettingEngine:
                 reason=f"store_error: {exc}",
                 details=[f"❌ Ошибка при удалении {fact_id}: {exc}"],
             )
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     # ── FORGET_ALL (GDPR) ─────────────────────────────────────────────────
 
@@ -334,60 +336,41 @@ class ForgettingEngine:
                     ],
                 )
 
-            # Удалить — FIX P1: отключаем prevent_fact_delete на время GDPR-удаления
-            conn.execute("DROP TRIGGER IF EXISTS prevent_fact_delete")
+            with _without_fact_delete_guard(conn):
+                fact_claims: dict[str, str] = {}
+                claim_rows = conn.execute(
+                    f"SELECT fact_id, claim FROM facts WHERE fact_id IN ({','.join('?'*len(to_delete))})",
+                    [f["fact_id"] for f in to_delete],
+                ).fetchall()
+                for (fid, claim) in claim_rows:
+                    fact_claims[fid] = claim
 
-            # Читаем claim каждого факта для erasure_log
-            fact_claims: dict[str, str] = {}
-            claim_rows = conn.execute(
-                f"SELECT fact_id, claim FROM facts WHERE fact_id IN ({','.join('?'*len(to_delete))})",
-                [f["fact_id"] for f in to_delete],
-            ).fetchall()
-            for (fid, claim) in claim_rows:
-                fact_claims[fid] = claim
+                for fact in to_delete:
+                    fid = fact["fact_id"]
+                    conn.execute("DELETE FROM fact_mentions WHERE fact_id = ?", (fid,))
+                    conn.execute("DELETE FROM facts WHERE fact_id = ?", (fid,))
+                    now = datetime.now(timezone.utc).isoformat()
+                    claim_hash = hashlib.sha256(
+                        fact_claims.get(fid, "").encode()
+                    ).hexdigest()
+                    conn.execute(
+                        """INSERT INTO erasure_log
+                           (erasure_id, fact_id, user_id, reason, claim_hash, erased_at, request_ref)
+                           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                        (
+                            f"era_{uuid.uuid4().hex[:12]}",
+                            fid, user_id, reason, claim_hash, now,
+                            f"gdpr_batch_{now[:10]}",
+                        ),
+                    )
 
-            for fact in to_delete:
-                fid = fact["fact_id"]
-                # Удалить fact_mentions (каскадное удаление)
-                conn.execute("DELETE FROM fact_mentions WHERE fact_id = ?", (fid,))
-                # Удалить факт
-                conn.execute("DELETE FROM facts WHERE fact_id = ?", (fid,))
-                # GDPR tombstone
-                now = datetime.now(timezone.utc).isoformat()
-                claim_hash = hashlib.sha256(
-                    fact_claims.get(fid, "").encode()
-                ).hexdigest()
-                conn.execute(
-                    """INSERT INTO erasure_log
-                       (erasure_id, fact_id, user_id, reason, claim_hash, erased_at, request_ref)
-                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                    (
-                        f"era_{uuid.uuid4().hex[:12]}",
-                        fid, user_id, reason, claim_hash, now,
-                        f"gdpr_batch_{now[:10]}",
-                    ),
+                self._log_forgetting(
+                    conn,
+                    "FORGET_ALL",
+                    reason,
+                    user_id,
+                    extra={"count": len(to_delete), "immutable_skipped": immutable_skipped},
                 )
-
-            # Восстановить триггер
-            conn.execute("""
-                CREATE TRIGGER prevent_fact_delete
-                BEFORE DELETE ON facts
-                BEGIN
-                    SELECT CASE
-                        WHEN OLD.epistemic_state NOT IN ('Collapsed', 'Deprecated')
-                        THEN RAISE(ABORT, 'VELANTRIM: Cannot DELETE facts directly. Transition to Collapsed or Deprecated first.')
-                    END;
-                END;
-            """)
-
-            # Audit trail
-            self._log_forgetting(
-                conn,
-                "FORGET_ALL",
-                reason,
-                user_id,
-                extra={"count": len(to_delete), "immutable_skipped": immutable_skipped},
-            )
 
             conn.commit()
             conn.close()

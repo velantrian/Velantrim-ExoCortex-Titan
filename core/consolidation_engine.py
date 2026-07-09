@@ -190,12 +190,12 @@ class ConsolidationEngine:
     def _count_relations(self, fact_id: str) -> int:
         """Число рёбер для факта."""
         try:
-            conn = self._store._db()
-            row = conn.execute(
-                "SELECT COUNT(*) FROM relations WHERE from_fact_id = ? OR to_fact_id = ?",
-                (fact_id, fact_id),
-            ).fetchone()
-            return row[0] if row else 0
+            with self._store._db() as conn:
+                row = conn.execute(
+                    "SELECT COUNT(*) FROM relations WHERE from_fact_id = ? OR to_fact_id = ?",
+                    (fact_id, fact_id),
+                ).fetchone()
+                return int(row[0]) if row else 0
         except Exception:
             return 0
 

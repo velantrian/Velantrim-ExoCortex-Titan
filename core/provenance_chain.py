@@ -284,10 +284,13 @@ class ProvenanceChain:
         prev_hash: str,
         event_type: str,
         fact_id: str,
-        from_state: Optional[str],
-        to_state: Optional[str],
-        payload_str: str,
-        created_at: str,
+        *,
+        actor: str = "system",
+        reason: str = "",
+        from_state: Optional[str] = None,
+        to_state: Optional[str] = None,
+        payload_str: str = "",
+        created_at: str = "",
     ) -> str:
         # FIX #6/#7 (Claude audit): включаем actor, reason в хеш-цепь.
         # Раньше хеш не зависел от того КТО сделал изменение и ПОЧЕМУ —

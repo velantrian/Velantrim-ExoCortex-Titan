@@ -37,6 +37,7 @@ MIGRATIONS = [
     (9,  BASE_DIR / "migrations" / "009_truth_kernel.sql"),
     (10, BASE_DIR / "migrations" / "010_raw_memory.sql"),
     (11, BASE_DIR / "migrations" / "011_claim_type_modality.sql"),
+    (12, BASE_DIR / "migrations" / "012_crystal_memory.sql"),
 ]
 
 LATEST_VERSION = max(v for v, _ in MIGRATIONS)
