@@ -70,10 +70,15 @@ Google: gemini-3.5-flash | Llama: llama-4-maverick
 
 ### 🌐 Онлайн (GitHub Pages — ПК и смартфон PWA)
 
+> **Если видите «There isn't a GitHub Pages site here»** — один раз включите Pages:  
+> [docs/GITHUB_PAGES_ENABLE.ru.md](docs/GITHUB_PAGES_ENABLE.ru.md) →  
+> https://github.com/velantrian/Velantrim-ExoCortex-Titan/settings/pages → ветка **`gh-pages`**, папка **`/ (root)`**
+
 | Страница | Ссылка |
 |----------|--------|
 | **Портал** | https://velantrian.github.io/Velantrim-ExoCortex-Titan/ |
 | **Research PWA** (работает без сервера) | https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/research-app.html |
+| **UI полной консоли** (нужен API на ПК/VPS) | https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/ |
 | **PWA Roadmap** | https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/research-roadmap.html |
 
 На телефоне: откройте Research PWA → «Добавить на главный экран» / «Установить приложение».

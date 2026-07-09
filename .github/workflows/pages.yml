@@ -4,27 +4,26 @@ on:
   push:
     branches: [main, master]
     paths:
-      - "docs/**"
+      - "site/**"
+      - "docs/index.html"
+      - "docs/manifest.webmanifest"
+      - "docs/sw.js"
+      - "docs/icon.svg"
       - "static/console/**"
       - "scripts/prepare_gh_pages.py"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -36,14 +35,10 @@ jobs:
       - name: Build static site
         run: python scripts/prepare_gh_pages.py
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to gh-pages branch
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          path: docs
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          folder: site
+          branch: gh-pages
+          single-commit: true
+          clean: true
