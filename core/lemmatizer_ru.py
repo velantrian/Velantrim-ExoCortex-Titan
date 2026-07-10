@@ -158,7 +158,9 @@ def patch_bm25_tokenizer():
                 return tokenize_ru(text)
             return _original(self, text)
 
-        BM25Retriever._tokenize = _ru_tokenize
+        # Intentional monkey-patch (valid at runtime): mypy can't verify method
+        # reassignment safety in general, hence method-assign.
+        BM25Retriever._tokenize = _ru_tokenize  # type: ignore[method-assign]
         logger.info("BM25Retriever._tokenize пропатчен для русского языка")
     except ImportError:
         logger.debug("HybridRetriever не загружен — пропатчить BM25 невозможно")

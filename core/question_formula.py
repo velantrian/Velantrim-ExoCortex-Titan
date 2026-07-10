@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class ReasoningDepth(Enum):
@@ -457,7 +457,7 @@ class QuestionFormulaNormalizer:
         strategy = self.get_strategy(intent_id)
         return _STRATEGY_HINTS.get(strategy, _STRATEGY_HINTS["basic_lookup"])
 
-    def list_formulas(self) -> List[Dict[str, str]]:
+    def list_formulas(self) -> List[Dict[str, Any]]:
         """Список всех 29 формул (для API/консоли)."""
         return [
             {

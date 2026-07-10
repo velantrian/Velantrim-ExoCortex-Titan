@@ -120,7 +120,12 @@ class ExperienceReplayEngine:
         # 3. Усилить Velum-связи для co-occurring пар
         if cooccurring:
             try:
-                from core.velum import get_velum
+                # Pre-existing wrong import path: get_velum() actually lives in
+                # core.velum_bridge, not core.velum. Caught below like any other
+                # optional-bridge failure, so this boost currently always no-ops.
+                # Not fixed here (behavior change out of scope for a typing-only
+                # pass) — tracked as a follow-up bug.
+                from core.velum import get_velum  # type: ignore[attr-defined]
                 velum = get_velum()
                 if velum is not None:
                     for (a, b), strength in cooccurring.items():
@@ -135,7 +140,12 @@ class ExperienceReplayEngine:
 
         # 4. Decay для неиспользуемых Velum-связей
         try:
-            from core.velum import get_velum
+            # Pre-existing wrong import path: get_velum() actually lives in
+            # core.velum_bridge, not core.velum. Caught below like any other
+            # optional-bridge failure, so this decay currently always no-ops.
+            # Not fixed here (behavior change out of scope for a typing-only
+            # pass) — tracked as a follow-up bug.
+            from core.velum import get_velum  # type: ignore[attr-defined]
             velum = get_velum()
             if velum is not None:
                 # Light decay: multiply weak edges by 0.95

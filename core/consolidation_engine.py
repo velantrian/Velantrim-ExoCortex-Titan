@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from core.storage import GraphStore
+    from core.memory import SQLiteGraphStore
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ class ConsolidationEngine:
 
     def __init__(
         self,
-        store: GraphStore,
+        store: SQLiteGraphStore,
         *,
         min_confidence: float | None = None,
         min_claim_len: int = 8,
@@ -265,7 +265,7 @@ class ConsolidationEngine:
         self._store.store_fact(fact)
 
 
-def run_consolidation(store: GraphStore | None = None) -> Any:
+def run_consolidation(store: SQLiteGraphStore | None = None) -> Any:
     """
     Синхронный запуск (SleepTimeWorker, API).
 
