@@ -794,10 +794,23 @@ class SQLiteGraphStore(GraphStore):
             # Примечание: drift protection возможна только при claim != new_claim,
             # поэтому условие record[epistemic_state] != Contradicted эквивалентно
             # claim == existing[claim] в этом контексте — safe to check напрямую.
+            # SECURITY (review finding on PR #6): metadata must be part of the
+            # no-op check. claim/source/confidence/epistemic_state are all
+            # deterministic inputs to attach_integrity_metadata() (checksum,
+            # episode_hash, dedup_key) and are unchanged whenever the checks
+            # above hold, so a genuine identical re-post still compares equal
+            # here — but a caller supplying new metadata (e.g. fresh
+            # evidence_refs) now correctly falls through to the real upsert
+            # below instead of being silently dropped: this branch performs
+            # no SQL write at all, so treating a metadata change as a no-op
+            # meant it never reached the durable row (only L0), and
+            # validate_and_promote() reads L1 directly (see
+            # _get_fact_durable()) — it would never see that fresh evidence.
             _is_noop = (
                 existing["claim"]  == new_claim
                 and existing["source"] == fact.get("source", "unknown")
                 and abs(existing["confidence"] - confidence) < 1e-9
+                and existing.get("metadata") == record["metadata"]
                 and record["epistemic_state"] != "Contradicted"
             )
             if _is_noop:
@@ -945,6 +958,15 @@ class SQLiteGraphStore(GraphStore):
         and CAS token) must read L1 directly, never L0, or it can act on a
         divergent value. Ordinary reads (get_fact) still prefer L0 for speed —
         only the validation boundary needs this stronger guarantee.
+
+        Deliberately does NOT publish the result to L0 (review finding on
+        PR #6): this snapshot is taken before the CAS-guarded write, so if
+        that write later loses the race, caching here would leave L0
+        holding a now-stale pre-race row for every other reader in this
+        process until the next real write or eviction. The only caller
+        (validate_and_promote) always re-reads durably on every call, so it
+        gets no benefit from populating this cache and shouldn't poison it
+        for everyone else.
         """
         with self._db() as conn:
             row = conn.execute(
@@ -955,8 +977,7 @@ class SQLiteGraphStore(GraphStore):
             result = dict(row)
             result["metadata"] = json.loads(result["metadata"])
             result["history"]  = json.loads(result.get("history") or "[]")
-        self._l0_put(fact_id, result)
-        return copy.deepcopy(result)
+        return result
 
     def find_fact_id_by_episode_hash(self, episode_hash: str) -> str | None:
         """Pattern separation: найти факт с тем же episode_hash в metadata."""
@@ -1456,22 +1477,29 @@ class SQLiteGraphStore(GraphStore):
                       fact_id, expected_state, expected_updated_at))
                 committed = cur.rowcount == 1
             else:
+                # SECURITY (review finding on PR #6): "committed" must reflect
+                # the guarded UPDATE's own rowcount, not this preceding SELECT
+                # — another connection can change/delete the row in the gap
+                # between them (the SELECT takes no write lock), and this
+                # fallback path is otherwise the only one that would report
+                # success based on a stale read instead of the actual write.
                 row = conn.execute(
                     "SELECT history FROM facts "
                     "WHERE fact_id = ? AND epistemic_state = ? AND updated_at = ?",
                     (fact_id, expected_state, expected_updated_at),
                 ).fetchone()
-                committed = row is not None
-                if committed:
+                committed = False
+                if row is not None:
                     history_l1 = json.loads(row[0] or "[]")
                     history_l1.append(history_entry)
-                    conn.execute(f"""
+                    cur = conn.execute(f"""
                         UPDATE facts
                         SET epistemic_state = ?, updated_at = ?,
                             {bump}history = ?
                         WHERE fact_id = ? AND epistemic_state = ? AND updated_at = ?
                     """, (new_state, now, json.dumps(history_l1),
                           fact_id, expected_state, expected_updated_at))
+                    committed = cur.rowcount == 1
 
             if not committed:
                 return False

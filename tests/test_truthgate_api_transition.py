@@ -55,6 +55,29 @@ issues, all addressed here):
      Validated; POST /query's pipeline path can also promote facts (under
      its own, uncorrelated policy). Docs corrected to state this precisely.
 
+Follow-up fix #3 (second independent Codex re-review of fix #2 found 3 more
+issues, all addressed here):
+  1. store_fact()'s no-op check (fix #2 item 1) didn't compare metadata, so
+     a re-POST with the same claim/source/confidence but NEW evidence_refs
+     still took the no-op branch — which performs no SQL write at all. Since
+     validate_and_promote() now reads L1 directly (fix #2 item 1), it never
+     saw that freshly supplied evidence, and a legitimate promotion was
+     wrongly rejected as insufficient_evidence. Fixed: metadata is now part
+     of the no-op comparison — a metadata difference falls through to the
+     real upsert, which persists it and bumps updated_at like any other
+     real change.
+  2. _get_fact_durable() published its snapshot to L0 before the CAS-guarded
+     write ran. If that write then lost the race, L0 was left caching a
+     now-stale pre-race row for every other reader in the process until the
+     next real write or eviction. Fixed: _get_fact_durable() no longer
+     publishes to L0 at all — its only caller always re-reads durably on
+     every call and gets no benefit from populating the cache.
+  3. The use_json_insert=False fallback branch of _promote_to_validated_cas()
+     judged success from the preceding SELECT, not the guarded UPDATE's own
+     rowcount — a race between those two statements could report a false
+     success. Fixed: success is now judged from the UPDATE's rowcount, same
+     as the use_json_insert=True branch already did correctly.
+
 This file is the adversarial regression suite for all of the above:
   - a fact that does not satisfy TruthGate cannot reach Validated via the API;
   - a fact that DOES satisfy TruthGate can reach Validated via the API;
@@ -542,6 +565,39 @@ class TestValidateAndPromoteConcurrencyGuard:
             f"have created its own misleading audit record on top."
         )
 
+    def test_get_fact_durable_does_not_populate_l0(self, tmp_path):
+        """Regression for the 2nd independent Codex re-review, finding #2:
+        _get_fact_durable() must not cache its result. In a multi-worker
+        deployment, each worker has its own in-process L0 — populating it
+        from a pre-CAS snapshot that then loses its guarded-write race
+        would leave THIS worker's cache holding a now-stale row for every
+        other reader until an unrelated write or eviction touches it. The
+        fix removes the cache-publish entirely, so this checks that
+        directly: an uncached fact_id stays uncached in L0 after a durable
+        read, regardless of what the guarded write that follows does."""
+        from core.memory import SQLiteGraphStore
+
+        store = SQLiteGraphStore(str(tmp_path / "l0_no_populate.db"))
+        store.store_fact({
+            "fact_id": "durable_fact", "claim": "durable claim",
+            "source": "integration-test", "confidence": 0.9, "metadata": {},
+        })
+        # store_fact() itself populates L0 on write (expected, unrelated
+        # behavior) — evict it explicitly to isolate _get_fact_durable()'s
+        # own caching behavior from that.
+        store._l0_del("durable_fact")
+        assert store._l0_get("durable_fact") is None, "setup: expected uncached"
+
+        result = store._get_fact_durable("durable_fact")
+
+        assert result is not None
+        assert result["confidence"] == 0.9
+        assert store._l0_get("durable_fact") is None, (
+            "_get_fact_durable() populated L0 — a pre-CAS snapshot that "
+            "later loses its guarded-write race would leave this cached "
+            "indefinitely for every other reader in this process."
+        )
+
     def test_concurrent_deletion_reports_409_not_false_success(self, tmp_path):
         """Review finding #2 (PR #6): if the fact is deleted between the
         TruthGate pass and the guarded write, the API must never report
@@ -632,3 +688,161 @@ class TestValidateAndPromoteConcurrencyGuard:
         # The other actor's legitimate promotion must stand.
         final = store.get_fact("race_fact")
         assert final["epistemic_state"] == "Validated"
+
+
+class TestStoreFactMetadataNoOpFix:
+    """Regression for the 2nd independent Codex re-review, finding #1: a
+    metadata-only re-post (same claim/source/confidence, new evidence_refs)
+    used to take store_fact()'s no-op branch, which performs no SQL write —
+    so the fresh evidence never reached the durable row validate_and_promote()
+    reads via _get_fact_durable()."""
+
+    def test_metadata_only_repost_persists_new_evidence_before_validation(self, tmp_path):
+        from core.memory import SQLiteGraphStore
+
+        store = SQLiteGraphStore(str(tmp_path / "metadata_repost.db"))
+        fact = {
+            "fact_id":    "meta_fact",
+            "claim":      "meta claim",
+            "source":     "integration-test",
+            "confidence": 0.8,
+            "metadata":   {"evidence_refs": ["a"]},  # 1 ref: fails BALANCED (min_evidence=2)
+        }
+        store.store_fact(fact)
+        store.transition_esm("meta_fact", "Hypothesized")
+        store.transition_esm("meta_fact", "Supported")
+
+        # Sanity: not enough evidence yet.
+        verdict_before = store.validate_and_promote("meta_fact", by="test")
+        assert verdict_before.passed is False
+        assert verdict_before.reason == "insufficient_evidence"
+
+        # Metadata-only re-post: identical claim/source/confidence, but a
+        # second evidence_ref — must NOT be treated as a no-op.
+        is_new = store.store_fact({**fact, "metadata": {"evidence_refs": ["a", "b"]}})
+        assert is_new is False, "setup: expected an upsert of an existing fact"
+
+        verdict_after = store.validate_and_promote("meta_fact", by="test")
+        assert verdict_after.passed is True, (
+            f"Freshly supplied evidence via a metadata-only re-post was not "
+            f"persisted/visible to validation: reason={verdict_after.reason!r} "
+            f"justification={verdict_after.justification!r}"
+        )
+        assert store.get_fact("meta_fact")["epistemic_state"] == "Validated"
+
+    def test_true_noop_repost_still_skips_sql_write(self, tmp_path):
+        """Guardrail: an actually-identical re-post (same claim/source/
+        confidence/metadata) must still take the no-op fast path — the fix
+        must not regress TASK-04/05's no-op optimization for genuine no-ops."""
+        from core.memory import SQLiteGraphStore
+
+        store = SQLiteGraphStore(str(tmp_path / "true_noop.db"))
+        fact = {
+            "fact_id":    "noop_fact",
+            "claim":      "noop claim",
+            "source":     "integration-test",
+            "confidence": 0.8,
+            "metadata":   {"evidence_refs": ["a", "b"]},
+        }
+        store.store_fact(fact)
+        before = store.get_fact("noop_fact")
+
+        is_new = store.store_fact(dict(fact))
+        assert is_new is False
+
+        after = store.get_fact("noop_fact")
+        assert after["updated_at"] == before["updated_at"], (
+            "A truly identical re-post bumped updated_at — the no-op fast "
+            "path should not have fallen through to a real write."
+        )
+
+
+class TestPromoteToValidatedCasFallbackPath:
+    """Regression for the 2nd independent Codex re-review, finding #3: the
+    use_json_insert=False fallback branch of _promote_to_validated_cas()
+    judged success from the preceding SELECT instead of the guarded UPDATE's
+    own rowcount."""
+
+    def test_fallback_cas_checks_final_update_rowcount_not_select(self, tmp_path):
+        import sqlite3
+
+        from core.memory import SQLiteGraphStore
+
+        db_path = str(tmp_path / "fallback_cas.db")
+        store = SQLiteGraphStore(db_path)
+        store.use_json_insert = False  # force the fallback branch under test
+
+        store.store_fact({
+            "fact_id":    "fallback_fact",
+            "claim":      "fallback claim",
+            "source":     "integration-test",
+            "confidence": 0.85,
+            "metadata":   {"evidence_refs": ["a", "b"]},
+        })
+        store.transition_esm("fallback_fact", "Hypothesized")
+        store.transition_esm("fallback_fact", "Supported")
+
+        fact = store.get_fact("fallback_fact")
+        expected_updated_at = fact["updated_at"]
+
+        # sqlite3.Connection is an immutable C type — its methods can't be
+        # patched on an instance or the class directly. Subclass it instead,
+        # and force the store to open a *fresh* connection (through a
+        # patched sqlite3.connect) so it picks up our subclass as its
+        # factory. The store's existing connection (opened by the setup
+        # calls above) is discarded first.
+        triggered = {"done": False}
+
+        class _RacyConnection(sqlite3.Connection):
+            def execute(self, sql, params=()):
+                result = super().execute(sql, params)
+                if not triggered["done"] and isinstance(sql, str) and sql.strip().startswith(
+                    "SELECT history FROM facts"
+                ):
+                    triggered["done"] = True
+                    # Simulate a concurrent writer (a separate connection)
+                    # racing in right after our SELECT reads the row, but
+                    # before our own guarded UPDATE runs against the same
+                    # WHERE clause.
+                    side_conn = sqlite3.connect(db_path)
+                    side_conn.execute(
+                        "UPDATE facts SET confidence = ?, updated_at = ? WHERE fact_id = ?",
+                        (0.1, "raced-away-timestamp", "fallback_fact"),
+                    )
+                    side_conn.commit()
+                    side_conn.close()
+                return result
+
+        if store._sqlite_conn is not None:
+            store._sqlite_conn.close()
+            store._sqlite_conn = None
+
+        original_connect = sqlite3.connect
+
+        def patched_connect(*args, **kwargs):
+            kwargs.setdefault("factory", _RacyConnection)
+            return original_connect(*args, **kwargs)
+
+        sqlite3.connect = patched_connect
+        try:
+            committed = store._promote_to_validated_cas(
+                "fallback_fact",
+                expected_state="Supported",
+                expected_updated_at=expected_updated_at,
+                durable_snapshot=fact,
+                by="test",
+            )
+        finally:
+            sqlite3.connect = original_connect
+
+        assert triggered["done"], "setup: race injection point was never hit"
+        assert committed is False, (
+            "BYPASS: fallback CAS reported success even though the row "
+            "changed between the SELECT and the guarded UPDATE."
+        )
+        # Read durably (bypass L0): the side connection wrote straight to
+        # SQL and never touched this store's in-process cache, so a plain
+        # get_fact() here would just show the stale pre-race L0 entry.
+        final = store._get_fact_durable("fallback_fact")
+        assert final["epistemic_state"] == "Supported"
+        assert final["confidence"] == 0.1
