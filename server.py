@@ -95,7 +95,6 @@ if not API_KEY:
 from core import __version__ as VELANTRIM_VERSION
 from core.memory import (
     _GLOBAL_STORE,
-    ConcurrentModificationError,
     ImmutableStateError,
     SQLiteGraphStore,
     find_fact_id_by_episode_hash,
@@ -2574,11 +2573,6 @@ async def transition_fact(
                 raise HTTPException(status_code=404, detail=f"Факт '{fact_id}' не найден")
     except ImmutableStateError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
-    except ConcurrentModificationError as exc:
-        # Defense-in-depth: validate_and_promote() already turns this into a
-        # verdict (handled above), but any future direct CAS-guarded call
-        # from this handler maps to 409, not a generic 400/500.
-        raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
