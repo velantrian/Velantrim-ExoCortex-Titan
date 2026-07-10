@@ -1344,6 +1344,85 @@ class SQLiteGraphStore(GraphStore):
         """Каноническая цепочка Observed → Hypothesized → Supported → Validated."""
         return self.promote_esm_to(fact_id, "Validated", by=by)
 
+    def validate_and_promote(
+        self,
+        fact_id: str,
+        by: str = "truth_gate",
+        mode: "Any" = None,
+    ) -> "Any":
+        """
+        SECURITY (I68): единственная канонical-функция для перевода факта в
+        'Validated' по запросу внешнего/недоверенного вызывающего (например,
+        PATCH /facts/{fact_id}/transition). В отличие от promote_to_validated()/
+        promote_esm_to()/transition_esm() — которые используются внутренними
+        путями (pipeline.run(), ConsolidationEngine, graduated promotion),
+        уже применяющими СОБСТВЕННУЮ pre-vetting policy до вызова — эта функция
+        сама прогоняет факт через TruthGate.evaluate() и мутирует состояние
+        ТОЛЬКО если вердикт passed.
+
+        Атомарность: если TruthGate отклоняет факт — get_fact()/history/
+        snapshot/update_state() не вызываются вообще. Никакой мутации,
+        никакой частичной записи в history, никакой audit-записи о
+        несостоявшемся переходе.
+
+        Returns:
+            TruthGateVerdict. verdict.passed говорит, состоялся ли переход.
+            reason == "not_found", если факт не существует (verdict.passed
+            всегда False в этом случае — переход не выполняется).
+
+        Не вызывает LLM. Не дублирует TruthGate policy — вся логика внутри
+        core.truth_gate.TruthGate; эта функция только оркестрирует
+        evaluate() → transition_esm() атомарно.
+        """
+        from core.truth_gate import CognitiveMode, TruthGate, TruthGateVerdict
+
+        if mode is None:
+            mode = CognitiveMode.BALANCED
+        elif isinstance(mode, str):
+            try:
+                mode = CognitiveMode(mode.upper())
+            except ValueError:
+                mode = CognitiveMode.BALANCED
+
+        # Ring Zero проверяется здесь так же строго, как в transition_esm():
+        # по fact_id, до любого чтения/gate — не зависит от того, существует
+        # ли факт в БД. Сохраняет 403 (не 404/422) для Ring Zero ID.
+        if fact_id in IMMUTABLE_FACT_IDS:
+            raise ImmutableStateError(
+                f"validate_and_promote: факт '{fact_id}' защищён Ring Zero"
+            )
+
+        fact = self.get_fact(fact_id)
+        if fact is None:
+            return TruthGateVerdict(
+                passed=False,
+                fact_id=fact_id,
+                reason="not_found",
+                justification=f"Факт '{fact_id}' не найден.",
+                by=by,
+                mode=mode,
+            )
+
+        current_state = fact.get("epistemic_state", "Observed")
+        if current_state == "Validated":
+            # Идемпотентность: уже Validated — вердикт passed, без повторной мутации.
+            return TruthGateVerdict(
+                passed=True,
+                fact_id=fact_id,
+                reason="already_validated",
+                justification="Факт уже в состоянии Validated.",
+                by=by,
+                mode=mode,
+                confidence=float(fact.get("confidence", 0.0) or 0.0),
+            )
+
+        verdict = TruthGate(self).evaluate(fact, mode=mode, by=by)
+        if verdict.passed:
+            # Мутация ТОЛЬКО после успешного вердикта. transition_esm() сам
+            # перепроверит ESM-легальность и Ring Zero/ImmutableCore.
+            self.transition_esm(fact_id, "Validated", by=by)
+        return verdict
+
     # ── Bi-temporal операции (I96) ──────────────────────────────────────────
 
     def get_fact_at(
@@ -1750,6 +1829,11 @@ def promote_to_validated(fact_id: str, by: str = "promote_to_validated") -> bool
 
 def promote_esm_to(fact_id: str, target: str, by: str = "promote_esm") -> bool:
     return _GLOBAL_STORE.promote_esm_to(fact_id, target, by=by)
+
+
+def validate_and_promote(fact_id: str, by: str = "truth_gate", mode: Any = None) -> Any:
+    """Обёртка над SQLiteGraphStore.validate_and_promote() — см. класс для деталей."""
+    return _GLOBAL_STORE.validate_and_promote(fact_id, by=by, mode=mode)
 
 def get_all_facts(
     epistemic_state: str | None = None,

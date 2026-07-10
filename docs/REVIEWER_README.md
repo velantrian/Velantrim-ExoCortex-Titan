@@ -128,6 +128,21 @@ Verdicts returned by the Truth Gate are one of `allow`, `gap_notice`, or `reject
 `gap_notice` is the system's way of saying "I don't have enough evidence for this,"
 rather than answering with unsupported confidence.
 
+**API-level enforcement (tested):** `PATCH /facts/{fact_id}/transition` is the only
+public HTTP endpoint that can move a fact into `Validated`. When the requested target
+is `Validated`, `server.py` routes the request through
+`core.memory.SQLiteGraphStore.validate_and_promote()` — the single canonical function
+that runs `TruthGate.evaluate()` (mode `BALANCED`) against the fact's stored source,
+confidence, and evidence, and only mutates state on a passing verdict. A rejected
+verdict returns `422` with the reason, leaves the fact's epistemic state and history
+untouched, and never calls an LLM. All other ESM targets on that endpoint (e.g.
+`Hypothesized`, `Supported`, `Contradicted`, `Deprecated`) are unaffected. See
+`tests/test_truthgate_api_transition.py` for the adversarial coverage this claim rests
+on. Internal, non-API promotion paths (pipeline ingestion, `ConsolidationEngine`,
+graduated promotion) apply their own pre-vetting policy before calling the lower-level
+ESM primitives — this section describes the API boundary specifically, not a claim
+that every code path uses byte-identical TruthGate policy.
+
 ## 7. Security map
 
 See [`SECURITY.md`](../SECURITY.md) for the full write-up. Short version, with pointers:

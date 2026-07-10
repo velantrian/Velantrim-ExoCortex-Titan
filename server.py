@@ -107,6 +107,7 @@ from core.memory import (
     store_facts_batch,
     store_raw_text,
     transition_esm,
+    validate_and_promote,
 )
 from core.mhi import MHICalculator, MHIStatus, check_mhi
 from core.pipeline import run as pipeline_run
@@ -2502,13 +2503,20 @@ async def transition_fact(
     AUDIT-FIX v8.4.0: req.by игнорируется. Actor подставляется серверный
     (по hash API-ключа) — защита от подделки audit trail клиентом.
 
-    Разрешённые переходы:
-    - Observed → Hypothesized, Supported, Validated, Collapsed
-    - Hypothesized → Supported, Validated, Collapsed
-    - Supported → Validated, Collapsed
-    - Validated → Contradicted, ImmutableCore, Collapsed
-    - Contradicted → Deprecated, Collapsed
+    Легальные ESM-переходы (см. core.memory.ESM_TRANSITIONS — единственный
+    источник истины; список ниже — просто для читаемости):
+    - Observed → Hypothesized
+    - Hypothesized → Supported, Contradicted, Deprecated
+    - Supported → Validated, Contradicted, Hypothesized
+    - Validated → Contradicted, ImmutableCore, Deprecated
+    - Contradicted → Hypothesized, Collapsed, Deprecated
     - Deprecated → Collapsed
+
+    SECURITY (I68): переход в 'Validated' дополнительно обязан пройти
+    TruthGate.evaluate() (core.truth_gate) — недостаточно evidence/confidence
+    или наличие противоречий блокирует переход (422), состояние факта не
+    меняется. Это единственный путь: core.memory.validate_and_promote() —
+    вся policy там, здесь её нет и дублировать её нельзя.
     """
     # AUDIT-FIX v8.4.0: actor = "api:" + первые 8 hex-символов sha256(api_key)
     # Клиент не может подделать историю — req.by игнорируется.
@@ -2519,9 +2527,30 @@ async def transition_fact(
         actor_id = f"api:{digest}"
 
     try:
-        ok = await asyncio.to_thread(transition_esm, fact_id, req.new_state, actor_id)
-        if not ok:
-            raise HTTPException(status_code=404, detail=f"Факт '{fact_id}' не найден")
+        if req.new_state == "Validated":
+            # SECURITY (I68): единственный API-путь в 'Validated' — обязан
+            # пройти TruthGate. См. core.memory.validate_and_promote().
+            verdict = await asyncio.to_thread(
+                validate_and_promote, fact_id, actor_id
+            )
+            if verdict.reason == "not_found":
+                raise HTTPException(status_code=404, detail=verdict.justification)
+            if not verdict.passed:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": "truth_gate_rejected",
+                        "reason": verdict.reason,
+                        "justification": verdict.justification,
+                        "mode": verdict.mode.value,
+                        "confidence": verdict.confidence,
+                        "evidence_count": verdict.evidence_count,
+                    },
+                )
+        else:
+            ok = await asyncio.to_thread(transition_esm, fact_id, req.new_state, actor_id)
+            if not ok:
+                raise HTTPException(status_code=404, detail=f"Факт '{fact_id}' не найден")
     except ImmutableStateError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
     except ValueError as exc:

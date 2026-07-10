@@ -63,10 +63,18 @@ Ranked by what would actually hurt someone relying on this in production:
 4. **Observability is metrics + logs, not a persisted long-term trace store.** You can
    see current latency/health, but reconstructing "why did the system answer this way"
    for a request from last week is not yet a first-class capability.
-5. **Contract testing is thin in places.** For example, "Truth Gate is always called
-   before a fact is marked Validated" is true by code inspection and by the invariant
-   suite, but does not yet have a dedicated adversarial contract test that tries to
-   bypass it.
+5. **Contract testing is thin in places, but improving.** A prior version of this
+   document claimed "Truth Gate is always called before a fact is marked Validated" was
+   true by code inspection — that claim was wrong: `PATCH /facts/{fact_id}/transition`
+   called `transition_esm()` directly and could walk a fact to `Validated` with zero
+   evidence gating. This is now fixed (`core.memory.validate_and_promote()` is the
+   single canonical, TruthGate-backed entry point for that endpoint's `Validated`
+   target), with an adversarial regression suite in
+   `tests/test_truthgate_api_transition.py`. What remains thin: internal promotion
+   paths (pipeline ingestion, `ConsolidationEngine`, graduated promotion) each apply
+   their own pre-vetting policy before calling the lower-level ESM primitives — these
+   are not yet unified under one contract-tested policy, so "some evidence check always
+   runs before Validated" is true, but "the same TruthGate policy always runs" is not.
 6. **Version/branding drift risk.** Recently unified to Titan 9.0 across public
    entrypoints (`README.md`, `pyproject.toml`, `server.py`, Docker); historical docs and
    code comments intentionally retain old version numbers (V8.6/V8.7) as history — see
@@ -84,9 +92,12 @@ parentheses for traceability.
 - **GDPR-grade hardening** (Phase 1): extend `core/forgetting.py` into an actual
   compliance surface — erasure across all storage layers (L0/L1/L3), Records of
   Processing Activities, consent tracking, PII redaction on ingest by default.
-- **Contract + concurrency test-gate** (Phase 3): an explicit adversarial contract test
-  that a write cannot bypass the Truth Gate, a concurrency stress test (100+ concurrent
-  INSERT/UPDATE), and an explicit, verified SQLite WAL configuration. CI coverage gate
+- **Contract + concurrency test-gate** (Phase 3): ✅ the API-level piece is done — an
+  adversarial contract test now proves `PATCH /facts/{fact_id}/transition` cannot
+  bypass the Truth Gate (`tests/test_truthgate_api_transition.py`). Still open: a
+  concurrency stress test (100+ concurrent INSERT/UPDATE), an explicit, verified SQLite
+  WAL configuration, and unifying the internal (non-API) promotion paths under one
+  contract-tested policy. CI coverage gate
   (`--cov-fail-under`) enforced, not just configured.
 - **Independent security review** before any deployment that will hold real users'
   sensitive data on the public internet.
