@@ -177,8 +177,22 @@ def link_entity(
 
 
 def validate_fact(fact_id: str, *, by: str = "tool:validate_fact") -> dict[str, Any]:
-    ok = memory_api.promote_to_validated(fact_id, by=by)
-    return {"fact_id": fact_id, "validated": ok, "epistemic_state": "Validated" if ok else None}
+    """
+    SECURITY (confirmed Codex finding): promote_to_validated() is an internal
+    path with no TruthGate/I68 check — server.py's PATCH /facts/{fact_id}/transition
+    deliberately routes external Validated transitions through
+    validate_and_promote() instead so a weak fact (missing evidence, low
+    confidence) can't reach Validated. An MCP guardian/admin caller is exactly
+    such an external/untrusted caller, so this handler must use the same path.
+    """
+    verdict = memory_api.validate_and_promote(fact_id, by=by)
+    return {
+        "fact_id": fact_id,
+        "validated": verdict.passed,
+        "epistemic_state": "Validated" if verdict.passed else None,
+        "reason": verdict.reason,
+        "justification": verdict.justification,
+    }
 
 
 def contradict_fact(fact_id: str, *, by: str = "tool:contradict_fact") -> dict[str, Any]:

@@ -63,6 +63,13 @@ MAX_NAMESPACE_NEIGHBORS = 1          # не более одного namespace-ne
 CAUSAL_EDGE_BASES = frozenset({
     "curated_explicit",
     "explicit_tag",
+    # CONFIRMED (Codex review): link_by_fact_references()/link_by_causal_claims()
+    # emit these edge_basis values for claim-text-derived causal edges — without
+    # admitting them here, relation_is_causal_for_essence() silently discarded
+    # every edge these newly-ported linkers produce from Essence/graph-expansion
+    # causal reasoning, defeating the whole point of porting them.
+    "claim_reference",
+    "heuristic_causal_claim",
 })
 
 # Структурные/семантические — не доказывают причинность.
@@ -272,7 +279,14 @@ def link_by_fact_references(
             if normalize_type(by_id[ref].get("type")) == "failure_mode":
                 rel = "causes"
             if normalize_type(by_id[fid].get("type")) in {"safety_rule", "control"}:
+                # CONFIRMED (Codex review): failure_mode and safety_rule/control
+                # share the same type-tier, so _orient() above leaves `ref`
+                # (the failure) first regardless. "prevents" must flow FROM
+                # the preventer TO the failure it prevents — swap direction
+                # here or this emits failure_mode --prevents--> safety_rule,
+                # backwards from the intended safety_rule --prevents--> failure_mode.
                 rel = "prevents"
+                src, tgt = tgt, src
             key = (src, tgt, rel)
             if key in seen:
                 continue

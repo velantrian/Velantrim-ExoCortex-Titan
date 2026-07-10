@@ -3,6 +3,7 @@ MCP Gateway — StreamableHTTP + SSE transport (RFC 05, Phase 5).
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any, Callable
@@ -17,6 +18,7 @@ logger = logging.getLogger("velantrim.mcp.gateway")
 _handler = McpHandler()
 CAPABILITY_HEADER = "X-MCP-Capability"
 SESSION_HEADER = "Mcp-Session-Id"
+SSE_HEARTBEAT_INTERVAL_SECONDS = 15
 
 
 def get_mcp_handler() -> McpHandler:
@@ -66,6 +68,25 @@ def _dispatch(
     session_id: str | None,
 ) -> dict[str, Any] | None:
     return _handler.handle(payload, capability=capability, session_id=session_id)
+
+
+async def sse_event_stream(request: Request, sid: str):
+    """
+    CONFIRMED (Codex review): yielding once then returning let Starlette
+    close the response immediately after connect, despite advertising
+    Connection: keep-alive — clients using this transport never got a live
+    channel. Keep it open with periodic heartbeat comments until the client
+    disconnects. A module-level function (not a closure) so it's directly
+    unit-testable against a fake Request without needing a full ASGI/
+    middleware round-trip.
+    """
+    endpoint = json.dumps({"uri": "/mcp", "sessionId": sid})
+    yield f"event: endpoint\ndata: {endpoint}\n\n"
+    while not await request.is_disconnected():
+        await asyncio.sleep(SSE_HEARTBEAT_INTERVAL_SECONDS)
+        if await request.is_disconnected():
+            break
+        yield ": heartbeat\n\n"
 
 
 def register_mcp_routes(
@@ -141,12 +162,8 @@ def register_mcp_routes(
         sid = session_id or _handler.sessions.create(capability)
         _handler.sessions.bind(sid, capability)
 
-        async def event_stream():
-            endpoint = json.dumps({"uri": "/mcp", "sessionId": sid})
-            yield f"event: endpoint\ndata: {endpoint}\n\n"
-
         return StreamingResponse(
-            event_stream(),
+            sse_event_stream(request, sid),
             media_type="text/event-stream",
             headers={
                 SESSION_HEADER: sid,

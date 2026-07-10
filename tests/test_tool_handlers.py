@@ -81,6 +81,48 @@ def test_living_context_store_raises_on_unmigrated_table_directly(tmp_path):
         LivingContextStore(conn).get("anything.at.all")
 
 
+# ─── Codex finding: validate_fact must go through TruthGate ─────────────────
+
+def _store_weak_fact_at_supported(fact_id: str) -> None:
+    """A fact with confidence/evidence too low to pass BALANCED TruthGate
+    (min_confidence=0.7, min_evidence=2), promoted to Supported — the only
+    state Validated is a legal ESM transition from."""
+    memory.store_fact({
+        "fact_id": fact_id,
+        "claim": "a weak unverified claim",
+        "source": "test",
+        "confidence": 0.5,
+    })
+    memory.transition_esm(fact_id, "Hypothesized", by="test")
+    memory.transition_esm(fact_id, "Supported", by="test")
+
+
+def test_validate_fact_rejects_weak_fact_via_truth_gate():
+    fact_id = f"weak.{uuid.uuid4().hex[:12]}"
+    _store_weak_fact_at_supported(fact_id)
+
+    result = tool_handlers.validate_fact(fact_id)
+
+    assert result["validated"] is False
+    assert result["epistemic_state"] is None
+    stored = memory.get_fact(fact_id)
+    assert stored["epistemic_state"] == "Supported"
+
+
+def test_promote_to_validated_bypasses_truth_gate_for_the_same_weak_fact():
+    """Negative control: proves *why* the fix is needed — promote_to_validated()
+    has no TruthGate check at all and would happily validate the exact same
+    weak fact validate_fact() (correctly) rejects."""
+    fact_id = f"weak.{uuid.uuid4().hex[:12]}"
+    _store_weak_fact_at_supported(fact_id)
+
+    ok = memory.promote_to_validated(fact_id, by="test")
+
+    assert ok is True
+    stored = memory.get_fact(fact_id)
+    assert stored["epistemic_state"] == "Validated"
+
+
 def test_get_living_context_returns_context_when_present(tmp_path, monkeypatch):
     fresh_store = SQLiteGraphStore(str(tmp_path / "migrated.db"))
     fresh_store.store_fact({

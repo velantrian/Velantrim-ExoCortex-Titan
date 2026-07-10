@@ -396,6 +396,43 @@ def test_link_by_fact_references_finds_explicit_claim_mentions():
     assert all(e["edge_basis"] == "claim_reference" for e in edges)
 
 
+def test_link_by_fact_references_prevention_edge_points_from_safety_to_failure():
+    """Confirmed Codex finding: safety_rule/control and failure_mode share the
+    same type-tier, so _orient() alone leaves the failure_mode first — the
+    "prevents" override must swap direction too, or this emits
+    failure_mode --prevents--> safety_rule (backwards)."""
+    facts = [
+        {
+            "fact_id": "electric.safety.gfci_required",
+            "type": "safety_rule",
+            "claim": "electric.ops.shock_hazard must be mitigated by GFCI protection.",
+        },
+        {
+            "fact_id": "electric.ops.shock_hazard",
+            "type": "failure_mode",
+            "claim": "Shock hazard occurs without proper grounding.",
+        },
+    ]
+    edges = link_by_fact_references(facts)
+    prevents_edges = [e for e in edges if e["relation_type"] == "prevents"]
+    assert prevents_edges
+    assert prevents_edges[0]["source_id"] == "electric.safety.gfci_required"
+    assert prevents_edges[0]["target_id"] == "electric.ops.shock_hazard"
+
+
+def test_claim_reference_and_heuristic_causal_claim_bases_are_causal_for_essence():
+    """Confirmed Codex finding: link_by_fact_references()/link_by_causal_claims()
+    emit edge_basis values that relation_is_causal_for_essence()/
+    is_causal_for_essence() must recognize, or these newly-ported causal
+    edges are silently dropped from Essence/graph-expansion reasoning."""
+    ref_edge = {"relation_type": "prevents", "edge_basis": "claim_reference"}
+    causal_claim_edge = {"relation_type": "causes", "edge_basis": "heuristic_causal_claim"}
+    assert is_causal_for_essence(ref_edge)
+    assert is_causal_for_essence(causal_claim_edge)
+    assert relation_is_causal_for_essence("prevents", {"edge_basis": "claim_reference"})
+    assert relation_is_causal_for_essence("causes", {"edge_basis": "heuristic_causal_claim"})
+
+
 def test_link_by_causal_claims_uses_autolinker_never_kb_heuristic():
     """Confirmed issue #9 regression guard: the ported master version of this
     exact function used inference_source='kb_heuristic' (schema-invalid) —
