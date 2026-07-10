@@ -28,8 +28,9 @@ def _require_ladybug():
 class LadybugGraphStore(CypherGraphStore):
     def __init__(self, db_path: str | Path) -> None:
         self._lb = _require_ladybug()
-        self._db = None
-        self._conn = None
+        # ladybug is an untyped third-party package (no stubs) — Any reflects that honestly.
+        self._db: Any = None
+        self._conn: Any = None
         super().__init__(db_path)
 
     def _init_db(self) -> None:

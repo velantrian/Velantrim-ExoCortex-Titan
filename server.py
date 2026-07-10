@@ -1,6 +1,5 @@
 # server.py
-# VELANTRIM V8.7 Titan — HTTP API Server
-# v8.7.0
+# Velantrim Titan 9.0 — HTTP API Server
 #
 # Запуск:
 #   pip install fastapi uvicorn[standard] python-dotenv httpx
@@ -93,6 +92,7 @@ if not API_KEY:
     )
 
 # ─── Импорт Velantrim ─────────────────────────────────────────────────────────
+from core import __version__ as VELANTRIM_VERSION
 from core.memory import (
     _GLOBAL_STORE,
     ImmutableStateError,
@@ -412,7 +412,7 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.warning("   ExoCortex init: %s", exc)
 
-    # V8.7 Titan: Multilingual router — auto-detect RU/EN, lemmatize, dual-index
+    # Titan 9.0: Multilingual router — auto-detect RU/EN, lemmatize, dual-index
     try:
         from core.multilingual_router import is_multilingual_enabled, patch_pipeline_retrieval
         if is_multilingual_enabled():
@@ -439,7 +439,7 @@ async def lifespan(app: FastAPI):
         else:
             logger.error("   LLM API: %s ❌ не зарегистрирован", _llm_path)
 
-    logger.info("✅ VELANTRIM V8.7 Titan готов")
+    logger.info("✅ Velantrim Titan 9.0 готов")
     yield
 
     # Shutdown
@@ -455,12 +455,12 @@ async def lifespan(app: FastAPI):
 # Включить для разработки: ENABLE_API_DOCS=true.
 _API_DOCS = os.getenv("ENABLE_API_DOCS", "false").lower() == "true"
 app = FastAPI(
-    title="VELANTRIM V8.7 Titan API",
+    title="Velantrim Titan 9.0 API",
     description=(
-        "Долговременная память для AI-агентов с каузальным графом.\n\n"
+        "Local-first verifiable memory runtime для AI-агентов с каузальным графом.\n\n"
         "**Принципы:** Graph = Truth · LLM = Language · Memory = Physiology"
     ),
-    version="8.7.0",
+    version=VELANTRIM_VERSION,
     lifespan=lifespan,
     docs_url="/docs" if _API_DOCS else None,
     redoc_url="/redoc" if _API_DOCS else None,
@@ -1242,8 +1242,8 @@ async def root():
     if _console_available():
         return RedirectResponse(url="/console/")
     return {
-        "name": "VELANTRIM V8.7 Titan",
-        "version": "8.7.0",
+        "name": "Velantrim Titan 9.0",
+        "version": VELANTRIM_VERSION,
         "console": "/console/",
         "api_docs": "/docs",
         "error": "static/console/index.html не найден — проверьте каталог запуска",
@@ -1254,8 +1254,8 @@ async def root():
 async def api_info():
     """JSON-информация о сервере (для скриптов)."""
     return {
-        "name":     "VELANTRIM V8.7 Titan",
-        "version":  "8.7.0",
+        "name":     "Velantrim Titan 9.0",
+        "version":  VELANTRIM_VERSION,
         "status":   "running",
         "uptime_s": round(time.time() - _startup_time, 1),
         "llm":      LLM_PROVIDER,
@@ -1811,9 +1811,9 @@ async def chat_stream_endpoint(req: ChatRequest):
     )
 
 
-# ─── V8.7 Titan — Новые эндпоинты ─────────────────────────────────────────────
+# ─── Titan 9.0 — Новые эндпоинты ──────────────────────────────────────────────
 
-# Модели для V8.7
+# Модели для Titan 9.0
 from pydantic import BaseModel as _PydanticBaseModel
 
 
@@ -1824,7 +1824,7 @@ class _QueryRolesRequest(_PydanticBaseModel):
     domain: str | None = None
 
 
-@app.post("/query/roles", tags=["V8.7 Titan"],
+@app.post("/query/roles", tags=["Titan 9.0"],
           response_model=QueryResponse, dependencies=[Depends(require_api_key)])
 async def query_with_roles(req: _QueryRolesRequest):
     """
@@ -1886,7 +1886,7 @@ async def query_with_roles(req: _QueryRolesRequest):
         raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
-@app.get("/system/epigenetic", tags=["V8.7 Titan"])
+@app.get("/system/epigenetic", tags=["Titan 9.0"])
 async def epigenetic_state():
     """Текущее эпигенетическое состояние системы."""
     try:
@@ -1898,7 +1898,7 @@ async def epigenetic_state():
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
-@app.get("/metrics/eval", tags=["V8.7 Titan"],
+@app.get("/metrics/eval", tags=["Titan 9.0"],
           dependencies=[Depends(require_api_key)])
 async def eval_metrics():
     """

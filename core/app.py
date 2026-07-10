@@ -225,7 +225,15 @@ def _create_causal_graph():
     # Передаём соединение от store (SQLiteGraphStore открывает своё).
     from core.memory import _GLOBAL_STORE
     if _GLOBAL_STORE is not None:
-        conn = _GLOBAL_STORE._conn()
+        # Pre-existing bug: SQLiteGraphStore has no _conn() — the real method is
+        # _db(), a @contextmanager whose connection is closed on exit (unsuitable for
+        # handing to a long-lived CausalGraph anyway). This raises AttributeError
+        # whenever ENABLE_CAUSAL_GRAPH triggers this factory; not caught here. Not
+        # fixed here (wiring a real persistent connection needs a store-level API
+        # change, out of scope for a typing-only pass) — tracked as a follow-up bug;
+        # flagged prominently since, unlike the other pre-existing bridge bugs, this
+        # one is NOT silently swallowed.
+        conn = _GLOBAL_STORE._conn()  # type: ignore[attr-defined]
         return CausalGraph(conn)
     # Fallback: прямой connect к БД (для тестов без store)
     import sqlite3

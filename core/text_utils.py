@@ -225,7 +225,7 @@ def split_into_semantic_chunks(
         chunks.append(current_chunk.strip())
     
     # Filter out chunks that are too small (merge with previous if possible)
-    final_chunks = []
+    final_chunks: List[str] = []
     for chunk in chunks:
         if len(chunk) < min_chunk_size and final_chunks:
             # Merge with previous chunk if it won't exceed max

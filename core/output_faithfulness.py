@@ -137,10 +137,9 @@ __all__ = [
 
 # ─── V8.7 Titan: GCR Programmable Filter ────────────────────────────────────
 
-import json as _json
 import re as _re
 from dataclasses import dataclass as _dataclass, field as _field
-from typing import List as _List, Dict as _Dict, Any as _Any, Optional as _Optional
+from typing import List as _List, Dict as _Dict, Any as _Any
 
 @_dataclass
 class GCRResult:

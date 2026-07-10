@@ -28,12 +28,12 @@ def _resolve_version() -> str:
     """Resolve the version from the SINGLE source of truth: pyproject.toml.
 
     Installed package → importlib.metadata (distribution name as declared in
-    pyproject.toml [project].name = "velantrim-v8-7-titan"). Dev clone (not
+    pyproject.toml [project].name = "velantrim-titan"). Dev clone (not
     pip-installed) → read pyproject.toml directly, so a checkout never reports a
     stale hardcoded version. Never raises.
     """
     try:
-        return _pkg_version("velantrim-v8-7-titan")
+        return _pkg_version("velantrim-titan")
     except _PackageNotFoundError:
         pass
     # Development clone: read straight from pyproject.toml (the single source).

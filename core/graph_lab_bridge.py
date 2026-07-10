@@ -30,6 +30,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 from typing import Any
 
@@ -99,9 +100,7 @@ def analyze_graph(
     db = db_path or os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
 
     # NetworkX check
-    try:
-        import networkx as nx
-    except ImportError:
+    if importlib.util.find_spec("networkx") is None:
         return {"available": False, "reason": "networkx not installed"}
 
     # GraphLab check
@@ -112,7 +111,13 @@ def analyze_graph(
 
     # Запустить анализ
     try:
-        result = gl_analyze(
+        # Pre-existing signature mismatch: core.graph_lab.analyze() takes
+        # seed_fact_ids/top_k/max_nodes/conn — it has no db_path parameter. Caught
+        # below like any other analysis failure, so this currently always degrades
+        # to available=False. Not fixed here (wiring a real sqlite3.Connection from
+        # db_path is a behavior change out of scope for a typing-only pass) —
+        # tracked as a follow-up bug.
+        result = gl_analyze(  # type: ignore[call-arg]
             db_path=db,
             max_nodes=max_nodes,
             top_k=top_k,

@@ -89,7 +89,11 @@ class GistSynthesizer:
 
         # Constraints — из working_notebook
         try:
-            from core.working_notebook import get_working_notebook
+            # Pre-existing API drift: core.working_notebook exposes get_notebook(session_id),
+            # not get_working_notebook(). Caught below like any other optional-bridge failure,
+            # so this bridge currently always no-ops. Not fixed here (behavior change out of
+            # scope for a typing-only pass) — tracked as a follow-up bug.
+            from core.working_notebook import get_working_notebook  # type: ignore[attr-defined]
             nb = get_working_notebook()
             if nb:
                 gist.constraints = nb.get_active_constraints()
@@ -142,7 +146,6 @@ class GistSynthesizer:
         topics: List[str] = []
         for f in facts[:5]:
             claim = f.get("claim", "")
-            source = f.get("source", "")
             if claim:
                 topics.append(claim[:80])
         return "; ".join(topics[:3]) if topics else ""

@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "velantrim-v8-7-titan"
-version = "8.7.0"
-description = "VELANTRIM V8.7 Titan — long-term memory for AI agents with causal graph, immune layer, and identity axis"
+name = "velantrim-titan"
+version = "9.0.0"
+description = "Velantrim Titan 9.0 — local-first verifiable memory runtime for AI agents with causal graph, immune layer, and identity axis"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }

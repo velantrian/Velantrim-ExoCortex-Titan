@@ -32,10 +32,13 @@ core/hybrid_retriever.py — Velantrim v8.3.0
 from __future__ import annotations
 
 import logging
-import math
 import os
 from dataclasses import dataclass, field
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
+    from sentence_transformers.cross_encoder import CrossEncoder
 
 logger = logging.getLogger(__name__)
 
@@ -158,14 +161,14 @@ class DenseRetriever:
     def __init__(self, facts: list[dict], model_name: str = _DEFAULT_EMBEDDING_MODEL) -> None:
         self._facts      = facts
         self._model_name = model_name
-        self._embeddings = None
-        self._model      = None
+        # Any: encode() may return an ndarray or a Tensor depending on backend.
+        self._embeddings: Any = None
+        self._model: SentenceTransformer | None = None
         self._load()
 
     def _load(self) -> None:
         try:
             from sentence_transformers import SentenceTransformer
-            import numpy as np
             self._model = SentenceTransformer(self._model_name)
             claims = [f.get("claim", "") for f in self._facts]
             self._embeddings = self._model.encode(claims, normalize_embeddings=True)
@@ -190,7 +193,7 @@ class DenseRetriever:
         if not self.available:
             return []
         try:
-            import numpy as np
+            assert self._model is not None  # guaranteed by self.available above
             q_emb = self._model.encode([query], normalize_embeddings=True)[0]
             sims  = self._embeddings @ q_emb          # dot product = cosine (нормализовано)
             indexed = sorted(enumerate(sims), key=lambda x: x[1], reverse=True)
@@ -255,7 +258,7 @@ class CrossEncoderReranker:
     """
 
     def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2") -> None:
-        self._model = None
+        self._model: CrossEncoder | None = None
         try:
             from sentence_transformers.cross_encoder import CrossEncoder
             self._model = CrossEncoder(model_name)
@@ -279,8 +282,12 @@ class CrossEncoderReranker:
         if not self.available or not facts:
             return facts[:top_k]
         try:
+            assert self._model is not None  # guaranteed by self.available above
             pairs  = [(query, f.claim) for f in facts]
-            scores = self._model.predict(pairs)
+            # CrossEncoder.predict()'s stub covers a much broader multimodal signature
+            # (text/image/audio/video) than our plain text-pair usage; list[tuple[str,
+            # str]] is the standard, valid cross-encoder call shape at runtime.
+            scores = self._model.predict(pairs)  # type: ignore[arg-type]
             for fact, score in zip(facts, scores):
                 fact.final_score = float(score)
             return sorted(facts, key=lambda f: f.final_score, reverse=True)[:top_k]
@@ -497,10 +504,7 @@ class HybridRetriever:
         if not seed_ids:
             return []
 
-        # Собрать соседей (BFS на depth уровней)
-        visited: set[str] = set(seed_ids)
-        frontier: set[str] = set(seed_ids)
-        # BFS на depth уровней с учётом весов рёбер (V8.8)
+        # Собрать соседей (BFS на depth уровней с учётом весов рёбер, V8.8)
         visited: set[str] = set(seed_ids)
         frontier: set[str] = set(seed_ids)
 

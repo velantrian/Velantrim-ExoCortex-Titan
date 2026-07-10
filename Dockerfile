@@ -1,5 +1,5 @@
-# Velantrim Exo-Cortex V8.7 Titan — Dockerfile
-# Запуск: docker build -t velantrim-v8.7 . && docker run -p 8000:8000 velantrim-v8.7
+# Velantrim Titan 9.0 — Dockerfile
+# Запуск: docker build -t velantrim-titan . && docker run -p 8000:8000 velantrim-titan
 
 FROM python:3.11-slim
 
@@ -18,7 +18,7 @@ WORKDIR /app
 COPY pyproject.toml requirements-dev.txt ./
 RUN pip install --no-cache-dir -e ".[server,dev,parsers,retrieval,embeddings,audio,graph-lab]"
 
-# Дополнительные инструменты V8.7
+# Дополнительные инструменты (русская лемматизация)
 RUN pip install --no-cache-dir \
     pymorphy3 \
     && python -c "import pymorphy3; pymorphy3.MorphAnalyzer(lang='ru')" || echo "pymorphy3 ready"

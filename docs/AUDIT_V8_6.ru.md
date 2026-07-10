@@ -1,5 +1,9 @@
 # Полный аудит VELANTRIM V8.6 Complex
 
+> ⚠️ **LEGACY:** исторический аудит версии V8.6. Актуальный продукт — **Velantrim Titan 9.0**
+> (см. [README.md](../README.md), [CHANGELOG.md](../CHANGELOG.md)). Документ сохранён как
+> историческая база для [MIGRATION_V8.6_TO_CANON.ru.md](MIGRATION_V8.6_TO_CANON.ru.md).
+
 > **Дата:** 23 мая 2026 (ревизия после спринтов 1–3 и V10 MVP)  
 > **Репозиторий:** `VELANTRIM_ExoCortex_V8.6` (папка переименована)  
 > **Продукт:** VELANTRIM V8.6 Complex · `server.py` v8.6.0  

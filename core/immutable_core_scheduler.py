@@ -287,7 +287,6 @@ class ImmutableCoreScheduler:
                 return False, "snapshot_not_found"
 
             stored_hash = row[0]
-            fact_count = row[1]
 
             # Пересчитать хеш из текущих фактов
             store = self._store

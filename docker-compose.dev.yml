@@ -1,21 +1,21 @@
-# Velantrim Titan 9.0 — docker-compose.yml (production)
-# Запуск: docker-compose up -d
-# Остановка: docker-compose down
+# Velantrim Titan 9.0 — docker-compose.dev.yml (local development only)
+# Запуск: docker-compose -f docker-compose.dev.yml up -d
+# Остановка: docker-compose -f docker-compose.dev.yml down
 #
-# Требует VELANTRIM_API_KEY в окружении/`.env` — без него контейнер не стартует.
-# Для локальной разработки с dev-ключом по умолчанию используйте:
-#   docker-compose -f docker-compose.dev.yml up -d
+# ⚠️ Не для production: VELANTRIM_API_KEY по умолчанию — публично известный
+# dev-ключ. Для production используйте docker-compose.yml, который требует
+# явный VELANTRIM_API_KEY.
 
 version: "3.9"
 
 services:
   velantrim:
     build: .
-    container_name: velantrim-titan
+    container_name: velantrim-titan-dev
     ports:
       - "8000:8000"
     environment:
-      - VELANTRIM_API_KEY=${VELANTRIM_API_KEY:?VELANTRIM_API_KEY is required}
+      - VELANTRIM_API_KEY=${VELANTRIM_API_KEY:-dev-key-change-me}
       - STORAGE_BACKEND=${STORAGE_BACKEND:-sqlite}
       # Docker intentionally uses an isolated named volume, not the host ./data folder.
       - VELANTRIM_DB_PATH=/app/data/velantrim.db
@@ -37,7 +37,7 @@ services:
       - ENABLE_GRAPH_LAB=1
       - ENABLE_ESSENCE=1
     volumes:
-      - velantrim_data:/app/data
+      - velantrim_data_dev:/app/data
       - ./docs:/app/docs:ro
     restart: unless-stopped
     healthcheck:
@@ -48,5 +48,5 @@ services:
       start_period: 10s
 
 volumes:
-  velantrim_data:
+  velantrim_data_dev:
     driver: local

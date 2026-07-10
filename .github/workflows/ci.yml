@@ -1,4 +1,4 @@
-name: CI — Velantrim V8.7 Titan
+name: CI — Velantrim Titan 9.0
 
 on:
   push:
@@ -41,5 +41,6 @@ jobs:
         continue-on-error: false
         env:
           PYTHONUNBUFFERED: 1
-          VELANTRIM_DB_PATH: ":memory:"
-          VELANTRIM_NGRAM_DB: ":memory:"
+          VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-ci.db"
+          VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-ngram-ci.db"
+          VELANTRIM_API_KEY: "ci-test-key"

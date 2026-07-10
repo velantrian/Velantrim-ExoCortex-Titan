@@ -31,7 +31,7 @@ import math
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, FrozenSet, List, Optional
+from typing import FrozenSet, List, Optional
 
 logger = logging.getLogger("velantrim.contradiction_registry")
 

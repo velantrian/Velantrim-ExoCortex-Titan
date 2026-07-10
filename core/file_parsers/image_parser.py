@@ -15,6 +15,7 @@ CHANGELOG v2.0:
 import logging
 import os
 import time
+from typing import Any
 
 from .base import FileParser, ParseResult
 
@@ -69,7 +70,7 @@ class ImageParser(FileParser):
             from PIL.ExifTags import TAGS
 
             with Image.open(file_path) as img:
-                metadata = {
+                metadata: dict[str, Any] = {
                     "width": img.size[0],
                     "height": img.size[1],
                     "format": img.format,
@@ -80,7 +81,9 @@ class ImageParser(FileParser):
                 # EXIF metadata (v2.0 new)
                 exif_data = {}
                 try:
-                    exif = img._getexif() or {}
+                    # _getexif() is a real, stable Pillow API but intentionally not part
+                    # of the public typed surface (only on some Image subclasses).
+                    exif = img._getexif() or {}  # type: ignore[attr-defined]
                     for tag_id, value in exif.items():
                         tag_name = TAGS.get(tag_id, tag_id)
                         # Pickle-safe values only
@@ -150,7 +153,7 @@ class ImageParser(FileParser):
         languages = os.getenv("VELANTRIM_OCR_LANG", "rus+eng")
         use_osd = os.getenv("VELANTRIM_OCR_OSD", "true").lower() == "true"
 
-        img = Image.open(file_path)
+        img: Image.Image = Image.open(file_path)
 
         # OSD — auto-detect rotation and rotate before OCR
         if use_osd:
