@@ -61,6 +61,40 @@ correctly post-commit, without depending on core.causal_graph's own relation-
 type whitelist (SUPERSEDED_BY is not currently a member of
 FORWARD_RELATION_TYPES there — a pre-existing, separate issue in
 core/causal_graph.py, explicitly out of scope for this PR).
+
+Follow-up fix (Codex review on PR #11 found 5 more issues, all addressed
+here — the atomic CAS transaction from the section above is unchanged):
+
+1. old_id was never checked against IMMUTABLE_FACT_IDS before mutation — the
+   generic ESM_TRANSITIONS matrix alone allows Validated -> Deprecated, so
+   supersede() could deprecate a protected VALUES_CORE/RING_ZERO fact and
+   insert a replacement, bypassing the same guard transition_esm()/
+   validate_and_promote() already enforce. Fixed: same check, same
+   ImmutableStateError, before any read or mutation.
+2. The new fact's INSERT never consulted core.memory_budget's
+   check_before_write(is_new_insert=True) the way store_fact() does, so a
+   store already at its hard limit could still grow via supersede(). Fixed:
+   the same canonical helper now runs before the atomic transaction; a
+   rejection leaves both facts untouched.
+3. An omitted claim_type/origin_type defaulted straight to 'UNKNOWN' instead
+   of running store_fact()'s deterministic classify_claim()/normalizers, so
+   a superseded external world fact could become Validated but
+   claim_type=UNKNOWN — losing VERIFIED truth-policy semantics under
+   ENABLE_TRUTH_POLICY. Fixed: the exact same classification logic
+   store_fact() runs is now reused (not routed through store_fact() itself).
+4. The atomic insert never applied core.domain_tags' domain-metadata
+   preparation (ENABLE_DOMAIN_TAGS, default ON) the way store_fact() does,
+   so a superseded fact silently lost domain/content_domain and dropped out
+   of domain-scoped reads. Fixed: the same apply_domain_to_metadata() call
+   now runs before the candidate is built; explicit metadata.domain is
+   preserved.
+5. WriteGate (ENABLE_WRITE_GATE) was never consulted, so a WORLD_FACT with
+   source='unknown' — which TruthGate alone does not reject, since it only
+   checks the source string is non-empty — could reach Validated through
+   supersede() even though an equivalent store_fact() call would have been
+   rejected. Fixed: the same admit_fact() check now runs before TruthGate
+   and before any durable mutation, honoring the existing feature flag
+   exactly as store_fact() does (not made globally mandatory here).
 """
 
 from __future__ import annotations
@@ -573,3 +607,356 @@ class TestSupersedeCallerInputImmutability:
 
         assert result is None
         assert candidate == frozen, "supersede() mutated the caller's dict"
+
+
+# ─── 13. Ring Zero protection (Codex review on PR #11, finding #1) ─────────
+
+class TestSupersedeRingZeroProtection:
+    @pytest.mark.parametrize("ring_zero_id", ["VALUES_CORE", "RING_ZERO"])
+    def test_ring_zero_old_id_rejected(
+        self, store, fake_causal_graph, fake_provenance_chain, ring_zero_id,
+    ):
+        from core.memory import ImmutableStateError
+        from core.truth_maintenance import supersede
+
+        store.store_fact({
+            "fact_id": ring_zero_id, "claim": "protected core claim",
+            "source": "system", "confidence": 0.99,
+            "epistemic_state": "Validated",
+        })
+        before = store._get_fact_durable(ring_zero_id)
+
+        with pytest.raises(ImmutableStateError):
+            supersede(ring_zero_id, _strong_candidate(f"new_from_{ring_zero_id}"))
+
+        after = store._get_fact_durable(ring_zero_id)
+        assert after == before, "Ring Zero fact must be completely unchanged"
+        assert store.get_fact(f"new_from_{ring_zero_id}") is None
+        assert fake_causal_graph.calls == []
+        assert fake_provenance_chain.events == []
+
+    def test_ring_zero_check_precedes_durable_read(
+        self, store, fake_causal_graph, fake_provenance_chain,
+    ):
+        """The guard must fire even when no row exists yet at the Ring Zero
+        ID — transition_esm()/validate_and_promote() check the ID string
+        itself, not the row, and supersede() must match that."""
+        from core.memory import ImmutableStateError
+        from core.truth_maintenance import supersede
+
+        with pytest.raises(ImmutableStateError):
+            supersede("VALUES_CORE", _strong_candidate("new_no_row"))
+        assert store.get_fact("new_no_row") is None
+
+
+# ─── 14. Memory budget parity (Codex review on PR #11, finding #2) ─────────
+
+class TestSupersedeMemoryBudgetParity:
+    def test_budget_disabled_allows_supersede(
+        self, store, fake_causal_graph, fake_provenance_chain, monkeypatch,
+    ):
+        import core.memory_budget as mb
+        from core.truth_maintenance import supersede
+
+        monkeypatch.setattr(mb, "is_memory_budget_enabled", lambda: False)
+        _make_old_fact(store, "old_14a", final_state="Validated")
+
+        result = supersede("old_14a", _strong_candidate("new_14a"))
+        assert result == "new_14a"
+
+    def test_budget_enabled_and_allowed(
+        self, store, fake_causal_graph, fake_provenance_chain, monkeypatch,
+    ):
+        import core.memory_budget as mb
+        from core.truth_maintenance import supersede
+
+        monkeypatch.setattr(mb, "is_memory_budget_enabled", lambda: True)
+        monkeypatch.setattr(
+            mb, "evaluate_budget",
+            lambda: mb.BudgetStatus(
+                fact_count=1, limit=100_000, utilization=0.00001, action="allow",
+            ),
+        )
+        _make_old_fact(store, "old_14b", final_state="Validated")
+
+        result = supersede("old_14b", _strong_candidate("new_14b"))
+        assert result == "new_14b"
+
+    def test_hard_limit_rejects_with_no_partial_state(
+        self, store, fake_causal_graph, fake_provenance_chain, monkeypatch,
+    ):
+        import core.memory_budget as mb
+        from core.truth_maintenance import supersede
+
+        before = _make_old_fact(store, "old_14c", final_state="Validated")
+        monkeypatch.setattr(mb, "is_memory_budget_enabled", lambda: True)
+        monkeypatch.setattr(
+            mb, "evaluate_budget",
+            lambda: mb.BudgetStatus(
+                fact_count=100_000, limit=100_000, utilization=1.0,
+                action="hard_limit",
+            ),
+        )
+
+        result = supersede("old_14c", _strong_candidate("new_14c"))
+
+        assert result is None
+        after = store._get_fact_durable("old_14c")
+        assert after["epistemic_state"] == before["epistemic_state"]
+        assert after["updated_at"] == before["updated_at"]
+        assert store.get_fact("new_14c") is None
+        assert fake_causal_graph.calls == []
+        assert fake_provenance_chain.events == []
+
+    def test_hard_limit_checked_before_atomic_transaction(
+        self, store, fake_causal_graph, fake_provenance_chain, monkeypatch,
+    ):
+        """The budget gate must run before supersede_fact_cas() is ever
+        called — not merely reject via a rollback after partial writes."""
+        import core.memory as memory_mod
+        import core.memory_budget as mb
+        from core.truth_maintenance import supersede
+
+        _make_old_fact(store, "old_14d", final_state="Validated")
+        monkeypatch.setattr(mb, "is_memory_budget_enabled", lambda: True)
+        monkeypatch.setattr(
+            mb, "evaluate_budget",
+            lambda: mb.BudgetStatus(
+                fact_count=100_000, limit=100_000, utilization=1.0,
+                action="hard_limit",
+            ),
+        )
+
+        called = {"n": 0}
+        original = memory_mod.SQLiteGraphStore.supersede_fact_cas
+
+        def _counting_cas(self, *args, **kwargs):
+            called["n"] += 1
+            return original(self, *args, **kwargs)
+
+        monkeypatch.setattr(
+            memory_mod.SQLiteGraphStore, "supersede_fact_cas", _counting_cas,
+        )
+
+        result = supersede("old_14d", _strong_candidate("new_14d"))
+
+        assert result is None
+        assert called["n"] == 0, "atomic transaction must not run when budget is exceeded"
+
+
+# ─── 15. Claim classification parity (Codex review on PR #11, finding #3) ──
+
+class TestSupersedeClaimClassificationParity:
+    def test_omitted_claim_type_classified_as_world_fact(
+        self, store, fake_causal_graph, fake_provenance_chain,
+    ):
+        """An external world claim with no explicit claim_type/origin_type
+        must classify the same way store_fact() would — WORLD_FACT/EXTERNAL
+        — not default to UNKNOWN."""
+        from core.truth_maintenance import supersede
+
+        _make_old_fact(store, "old_15a", final_state="Validated")
+        candidate = {
+            "fact_id": "new_15a",
+            "claim": "Вода кипит при 100°C",
+            "source": "physics.thermo",
+            "confidence": 0.95,
+            "metadata": {"evidence_refs": ["a", "b", "c", "d", "e"]},
+        }
+
+        result = supersede("old_15a", candidate)
+
+        assert result == "new_15a"
+        new_fact = store._get_fact_durable("new_15a")
+        assert new_fact["claim_type"] == "WORLD_FACT"
+        assert new_fact["origin_type"] == "EXTERNAL"
+
+    def test_verified_truth_policy_precondition_preserved(
+        self, store, fake_causal_graph, fake_provenance_chain,
+    ):
+        """core/pipeline.py's ENABLE_TRUTH_POLICY branch marks a fact
+        VERIFIED iff epistemic_state == 'Validated' and claim_type ==
+        'WORLD_FACT' (see pipeline.py's ESM-promotion step). A superseded
+        external world fact must still satisfy both, not silently regress
+        to claim_type=UNKNOWN and lose VERIFIED semantics."""
+        from core.truth_maintenance import supersede
+
+        _make_old_fact(store, "old_15b", final_state="Validated")
+        candidate = {
+            "fact_id": "new_15b",
+            "claim": "Дерево горит на воздухе",
+            "source": "chemistry.combustion",
+            "confidence": 0.95,
+            "metadata": {"evidence_refs": ["a", "b", "c", "d", "e"]},
+        }
+
+        result = supersede("old_15b", candidate)
+        assert result == "new_15b"
+
+        new_fact = store._get_fact_durable("new_15b")
+        would_be_verified = (
+            new_fact["epistemic_state"] == "Validated"
+            and new_fact.get("claim_type") == "WORLD_FACT"
+        )
+        assert would_be_verified, (
+            f"superseded fact would be UNVERIFIED under ENABLE_TRUTH_POLICY: "
+            f"epistemic_state={new_fact['epistemic_state']!r}, "
+            f"claim_type={new_fact.get('claim_type')!r}"
+        )
+
+    def test_explicit_claim_type_preserved(
+        self, store, fake_causal_graph, fake_provenance_chain,
+    ):
+        """An explicit, valid claim_type/origin_type must win over the
+        classifier (classify_claim()'s own contract, reused as-is)."""
+        from core.truth_maintenance import supersede
+
+        _make_old_fact(store, "old_15c", final_state="Validated")
+        candidate = _strong_candidate("new_15c")
+        candidate["claim_type"] = "OPINION"
+        candidate["origin_type"] = "USER_REPORTED"
+
+        result = supersede("old_15c", candidate)
+
+        assert result == "new_15c"
+        new_fact = store._get_fact_durable("new_15c")
+        assert new_fact["claim_type"] == "OPINION"
+        assert new_fact["origin_type"] == "USER_REPORTED"
+
+
+# ─── 16. Domain tagging parity (Codex review on PR #11, finding #4) ────────
+
+class TestSupersedeDomainTaggingParity:
+    def test_replacement_gets_domain_metadata_and_is_domain_readable(
+        self, store, fake_causal_graph, fake_provenance_chain,
+    ):
+        """With ENABLE_DOMAIN_TAGS (default ON), a replacement with no
+        explicit metadata.domain must still be tagged the same way
+        store_fact() would tag it, and remain visible to domain-scoped
+        reads such as get_all_facts(domain=...)."""
+        from core.truth_maintenance import supersede
+
+        _make_old_fact(store, "old_16a", final_state="Validated")
+        candidate = _strong_candidate("new_16a")
+        assert "domain" not in candidate["metadata"]
+
+        result = supersede("old_16a", candidate)
+        assert result == "new_16a"
+
+        new_fact = store._get_fact_durable("new_16a")
+        assert new_fact["metadata"].get("domain"), (
+            "replacement fact is missing domain metadata store_fact() would "
+            "have attached"
+        )
+        assert new_fact["metadata"].get("content_domain") == new_fact["metadata"].get("domain")
+
+        domain = new_fact["metadata"]["domain"]
+        domain_facts = store.get_all_facts(domain=domain)
+        assert any(f["fact_id"] == "new_16a" for f in domain_facts), (
+            "replacement fact is not visible to a domain-scoped read"
+        )
+
+    def test_explicit_domain_preserved(
+        self, store, fake_causal_graph, fake_provenance_chain,
+    ):
+        from core.truth_maintenance import supersede
+
+        _make_old_fact(store, "old_16b", final_state="Validated")
+        candidate = _strong_candidate("new_16b")
+        candidate["metadata"]["domain"] = "science"
+
+        result = supersede("old_16b", candidate)
+        assert result == "new_16b"
+
+        new_fact = store._get_fact_durable("new_16b")
+        assert new_fact["metadata"]["domain"] == "science"
+        domain_facts = store.get_all_facts(domain="science")
+        assert any(f["fact_id"] == "new_16b" for f in domain_facts)
+
+
+# ─── 17. WriteGate parity (Codex review on PR #11, finding #5) ─────────────
+
+class TestSupersedeWriteGateParity:
+    def test_gate_disabled_world_fact_without_source_still_promotes(
+        self, store, fake_causal_graph, fake_provenance_chain, monkeypatch,
+    ):
+        import core.write_gate as wg
+        from core.truth_maintenance import supersede
+
+        monkeypatch.setattr(wg, "is_write_gate_enabled", lambda: False)
+        _make_old_fact(store, "old_17a", final_state="Validated")
+        candidate = _strong_candidate("new_17a")
+        candidate["claim_type"] = "WORLD_FACT"
+        candidate["origin_type"] = "EXTERNAL"
+        candidate["source"] = "unknown"
+
+        result = supersede("old_17a", candidate)
+        assert result == "new_17a"
+
+    def test_gate_enabled_valid_candidate_accepted(
+        self, store, fake_causal_graph, fake_provenance_chain, monkeypatch,
+    ):
+        import core.write_gate as wg
+        from core.truth_maintenance import supersede
+
+        monkeypatch.setattr(wg, "is_write_gate_enabled", lambda: True)
+        _make_old_fact(store, "old_17b", final_state="Validated")
+        candidate = _strong_candidate("new_17b")
+        candidate["claim_type"] = "WORLD_FACT"
+        candidate["origin_type"] = "EXTERNAL"
+
+        result = supersede("old_17b", candidate)
+        assert result == "new_17b"
+
+    def test_gate_enabled_world_fact_unknown_source_rejected(
+        self, store, fake_causal_graph, fake_provenance_chain, monkeypatch,
+    ):
+        import core.write_gate as wg
+        from core.truth_maintenance import supersede
+
+        monkeypatch.setattr(wg, "is_write_gate_enabled", lambda: True)
+        before = _make_old_fact(store, "old_17c", final_state="Validated")
+        candidate = _strong_candidate("new_17c")
+        candidate["claim_type"] = "WORLD_FACT"
+        candidate["origin_type"] = "EXTERNAL"
+        candidate["source"] = "unknown"
+
+        result = supersede("old_17c", candidate)
+
+        assert result is None
+        after = store._get_fact_durable("old_17c")
+        assert after["epistemic_state"] == before["epistemic_state"]
+        assert after["updated_at"] == before["updated_at"]
+        assert store.get_fact("new_17c") is None
+        assert fake_causal_graph.calls == []
+        assert fake_provenance_chain.events == []
+
+    def test_gate_enabled_runs_before_truthgate(
+        self, store, fake_causal_graph, fake_provenance_chain, monkeypatch,
+    ):
+        """WriteGate must run before TruthGate.evaluate() — a rejected
+        candidate must never reach the TruthGate call at all."""
+        import core.write_gate as wg
+        from core.truth_gate import TruthGate
+        from core.truth_maintenance import supersede
+
+        monkeypatch.setattr(wg, "is_write_gate_enabled", lambda: True)
+        _make_old_fact(store, "old_17d", final_state="Validated")
+        candidate = _strong_candidate("new_17d")
+        candidate["claim_type"] = "WORLD_FACT"
+        candidate["origin_type"] = "EXTERNAL"
+        candidate["source"] = "unknown"
+
+        called = {"n": 0}
+        original_evaluate = TruthGate.evaluate
+
+        def _counting_evaluate(self, *args, **kwargs):
+            called["n"] += 1
+            return original_evaluate(self, *args, **kwargs)
+
+        monkeypatch.setattr(TruthGate, "evaluate", _counting_evaluate)
+
+        result = supersede("old_17d", candidate)
+
+        assert result is None
+        assert called["n"] == 0, "TruthGate.evaluate() must not run when WriteGate rejects"

@@ -95,8 +95,11 @@ def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
     меняются вместе, либо не меняется ничего.
 
     Успех репортится ТОЛЬКО когда:
+    - old_id не защищён Ring Zero (I6);
     - старый durable-снимок всё ещё актуален (CAS на fact_id+epistemic_state+
       updated_at, взятый ДО TruthGate.evaluate());
+    - memory budget (если включён) допускает ещё один INSERT;
+    - WriteGate (если включён) допускает кандидата;
     - новый кандидат проходит TruthGate (mode=PRECISION, без LLM, без
       дублирования пороговой логики — вся она внутри core.truth_gate);
     - guarded facts-transaction реально закоммитилась.
@@ -109,10 +112,12 @@ def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
 
     Invalid programmer input (пустой old_id/new_fact_id, new_fact_id ==
     old_id, явно заданный initial epistemic_state отличный от Observed,
-    нелегальный ESM-переход старого состояния в Deprecated) → ValueError.
-    Ordinary operational failures (старый факт не найден, TruthGate
-    отклонил, коллизия по new_fact_id, конкурентная гонка, любая иная
-    неожиданная ошибка внутри атомарной транзакции) → None, fail-closed.
+    old_id защищён Ring Zero, нелегальный ESM-переход старого состояния в
+    Deprecated) → ValueError/ImmutableStateError. Ordinary operational
+    failures (старый факт не найден, memory budget исчерпан, WriteGate
+    отклонил, TruthGate отклонил, коллизия по new_fact_id, конкурентная
+    гонка, любая иная неожиданная ошибка внутри атомарной транзакции) →
+    None, fail-closed.
 
     Ограничение согласованности (см. docs/PROJECT_STATUS.md): facts-
     транзакция (evidence gate + CAS) атомарна; causal_graph/
@@ -127,6 +132,17 @@ def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
 
     if not old_id:
         raise ValueError("supersede: old_id обязателен")
+
+    # SECURITY (Codex review finding #1 on PR #11): Ring Zero fact IDs are
+    # immutable (I6). The generic ESM_TRANSITIONS matrix alone allows
+    # Validated -> Deprecated, which would let this new path deprecate a
+    # protected VALUES_CORE/RING_ZERO fact and insert a replacement —
+    # bypassing the guard transition_esm()/validate_and_promote() already
+    # enforce. Same check, same exception, before any read or mutation.
+    if old_id in _mem.IMMUTABLE_FACT_IDS:
+        raise _mem.ImmutableStateError(
+            f"supersede: факт '{old_id}' защищён Ring Zero (I6) — supersede запрещён"
+        )
 
     new_fact = _copy.deepcopy(new_fact)  # никогда не мутируем аргумент вызывающего
     new_id = new_fact.get("fact_id")
@@ -155,13 +171,98 @@ def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
             f"для '{old_id}' — матрица ESM_TRANSITIONS этого не разрешает"
         )
 
+    # SECURITY (Codex review finding #2 on PR #11): supersede() inserts one
+    # new facts-table row — a genuine new INSERT, same as store_fact()'s own
+    # is_new_insert=True path — so it must honor the same hard-limit gate
+    # instead of bypassing it through this custom transaction. Reuses the
+    # canonical helper; no budget policy duplicated here. Must run before
+    # the atomic SQL mutation, so a rejection leaves both facts untouched.
+    from core.memory_budget import MemoryBudgetExceededError, check_before_write
+    try:
+        check_before_write(is_new_insert=True)
+    except MemoryBudgetExceededError:
+        logger.warning(
+            "TruthMaintenance.supersede: memory budget исчерпан — %s → %s "
+            "отклонено без мутации", old_id, new_id,
+        )
+        return None
+
     metadata = new_fact.get("metadata")
     if not isinstance(metadata, dict):
         metadata = {}
+    new_claim = new_fact.get("claim", "")
+    source_val = new_fact.get("source", "unknown")
+
+    # SECURITY (Codex review finding #3 on PR #11): reuse store_fact()'s own
+    # deterministic claim_type/origin_type classification instead of
+    # defaulting an omitted value straight to UNKNOWN — otherwise a
+    # superseded external world fact becomes Validated but claim_type=
+    # UNKNOWN, and loses VERIFIED truth-policy semantics under
+    # ENABLE_TRUTH_POLICY. Explicit caller-supplied values still win
+    # (classify_claim()'s own contract) — this is the exact logic
+    # store_fact() runs, just not routed through store_fact() itself.
+    from core.validators import normalize_claim_type, normalize_origin_type
+    _raw_ct = new_fact.get("claim_type")
+    _raw_ot = new_fact.get("origin_type")
+    if not _raw_ct or _raw_ct == "UNKNOWN":
+        try:
+            from core.claim_classifier import classify_claim as _classify
+            _ct, _ot, _ = _classify(
+                new_claim, source_val,
+                explicit_claim_type=_raw_ct,
+                explicit_origin_type=_raw_ot,
+            )
+        except Exception:
+            _ct = normalize_claim_type(_raw_ct)
+            _ot = normalize_origin_type(_raw_ot)
+    else:
+        _ct = normalize_claim_type(_raw_ct)
+        _ot = (
+            normalize_origin_type(_raw_ot)
+            if not _raw_ot or _raw_ot == "UNKNOWN"
+            else normalize_origin_type(_raw_ot)
+        )
+
+    # SECURITY (Codex review finding #5 on PR #11): WriteGate must run
+    # before TruthGate and before any durable mutation — honoring
+    # ENABLE_WRITE_GATE exactly as store_fact() does, not making it globally
+    # mandatory. Without this, a WORLD_FACT with source='unknown' (which
+    # TruthGate alone does not reject — it only checks the source string is
+    # non-empty) could reach Validated through supersede() even though an
+    # equivalent store_fact() call would have been rejected outright.
+    from core.write_gate import admit_fact, is_write_gate_enabled
+    if is_write_gate_enabled():
+        _wg_refs = (metadata or {}).get("evidence_refs") or []
+        _wg_ok, _wg_reason = admit_fact(
+            claim_type=_ct, origin_type=_ot,
+            source=source_val, has_evidence=bool(_wg_refs),
+        )
+        if not _wg_ok:
+            logger.warning(
+                "TruthMaintenance.supersede: WriteGate отклонил %s → %s: %s",
+                old_id, new_id, _wg_reason,
+            )
+            return None
+
+    # SECURITY (Codex review finding #4 on PR #11): apply the same canonical
+    # domain-metadata preparation store_fact() applies (ENABLE_DOMAIN_TAGS,
+    # default ON) — otherwise a superseded fact silently loses domain/
+    # content_domain and drops out of domain-scoped reads
+    # (get_all_facts(domain=...), cognitive-store queries) even though an
+    # equivalent store_fact() write would be tagged. Explicit
+    # metadata.domain is preserved (apply_domain_to_metadata()'s contract).
+    from core.domain_tags import apply_domain_to_metadata, is_domain_tags_enabled
+    if is_domain_tags_enabled():
+        explicit_domain = metadata.get("domain")
+        metadata = apply_domain_to_metadata(
+            metadata, claim=new_claim, source=source_val,
+            explicit_domain=explicit_domain, infer=True,
+        )
+
     candidate = {
         "fact_id":    new_id,
-        "claim":      new_fact.get("claim", ""),
-        "source":     new_fact.get("source", "unknown"),
+        "claim":      new_claim,
+        "source":     source_val,
         "confidence": new_fact.get("confidence", 0.0),
         "metadata":   metadata,
     }
@@ -196,8 +297,8 @@ def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
         "source":      candidate["source"],
         "confidence":  float(candidate["confidence"]),
         "metadata":    metadata,
-        "claim_type":  new_fact.get("claim_type", "UNKNOWN"),
-        "origin_type": new_fact.get("origin_type", "UNKNOWN"),
+        "claim_type":  _ct,
+        "origin_type": _ot,
         "memory_type": new_fact.get("memory_type", "semantic"),
         "derived_from": new_fact.get("derived_from"),
     }
