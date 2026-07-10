@@ -166,7 +166,7 @@
   /** Тест ключа LLM (как /console/llm/test на сервере). */
   function testLLMKey(provider, apiKey, model) {
     var msgs = [{ role: "user", content: "Ответь одним словом: OK" }];
-    return callLLM(msgs, { provider: provider, model: model || undefined }).then(function (data) {
+    return callLLM(msgs, { provider: provider, api_key: apiKey, model: model || undefined }).then(function (data) {
       var preview = "";
       try { preview = (data.choices[0].message.content || "").slice(0, 120); } catch (_) {}
       return {

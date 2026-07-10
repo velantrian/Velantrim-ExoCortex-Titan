@@ -92,7 +92,9 @@ def relation_is_causal_for_essence(
 ) -> bool:
     """Runtime-проверка Relation из CausalGraph для Essence."""
     if not metadata:
-        return False
+        # Existing runtime/manual relations predate edge_basis metadata.  Keep
+        # their explicitly causal types usable while filtering tagged KB edges.
+        return relation_type in {"causes", "enables", "requires", "prevents", "precedes"}
     basis = str(metadata.get("edge_basis", ""))
     if basis == "namespace" or basis == "semantic_similarity":
         return False
