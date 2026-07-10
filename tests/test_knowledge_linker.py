@@ -184,6 +184,11 @@ def test_russian_types_are_normalized_for_orientation():
     assert normalize_type("СРОК") == "term"
 
 
+def test_metadata_less_runtime_causal_relation_is_kept_for_essence():
+    assert relation_is_causal_for_essence("causes", None)
+    assert not relation_is_causal_for_essence("analogous_to", None)
+
+
 def test_practical_semantics_builds_foundation_bridge_with_audit_terms():
     facts = [
         {

@@ -42,6 +42,15 @@ def test_delete_kb_generated_edges_keeps_manual_relations():
     assert remaining == [("manual",)]
 
 
+def test_delete_kb_generated_edges_initializes_fresh_relations_table():
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE facts (fact_id TEXT PRIMARY KEY)")
+    assert delete_kb_generated_edges(conn) == 0
+    assert conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='relations'"
+    ).fetchone() == ("relations",)
+
+
 def test_inverse_edge_preserves_edge_basis():
     conn = _relations_db()
     result = batch_insert_edges(conn, [{

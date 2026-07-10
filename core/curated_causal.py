@@ -74,7 +74,9 @@ def parse_curated_relations_table(text: str, source_file: str = "") -> list[dict
         if len(cells) < 3:
             continue
         low = [c.lower().strip("` ").strip() for c in cells]
-        if "source" in low and "target" in low:
+        if ("source" in low or "source_id" in low) and (
+            "target" in low or "target_id" in low
+        ) and "relation" in low:
             col_map = {name: low.index(name) for name in (
                 "source", "relation", "target", "evidence", "confidence",
             ) if name in low}

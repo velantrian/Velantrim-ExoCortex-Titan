@@ -19,6 +19,34 @@ KB_BUILD_META_KEY = "kb_build"
 KB_BUILD_TAG = "world_skills_core_v1"
 
 
+def ensure_relations_table(conn: sqlite3.Connection) -> None:
+    """Create the causal storage required by a fresh KB graph build."""
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS relations (
+            relation_id TEXT PRIMARY KEY,
+            from_fact_id TEXT NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
+            to_fact_id TEXT NOT NULL REFERENCES facts(fact_id) ON DELETE CASCADE,
+            relation_type TEXT NOT NULL,
+            confidence REAL NOT NULL DEFAULT 0.8,
+            knowledge_status TEXT NOT NULL DEFAULT 'known',
+            inference_source TEXT DEFAULT NULL,
+            truth_status TEXT DEFAULT 'validated',
+            review_state TEXT DEFAULT 'approved',
+            evidence_ref TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            valid_from TEXT NOT NULL DEFAULT (datetime('now')),
+            valid_to TEXT,
+            metadata TEXT,
+            CHECK (from_fact_id != to_fact_id),
+            UNIQUE (from_fact_id, to_fact_id, relation_type, inference_source)
+        );
+        CREATE INDEX IF NOT EXISTS idx_relations_from
+            ON relations(from_fact_id, relation_type);
+        CREATE INDEX IF NOT EXISTS idx_relations_to
+            ON relations(to_fact_id, relation_type);
+    """)
+
+
 def edge_metadata(edge: dict[str, Any]) -> dict[str, Any]:
     """Нормализовать metadata ребра для SQLite."""
     meta: dict[str, Any] = {
@@ -44,6 +72,7 @@ def delete_kb_generated_edges(conn: sqlite3.Connection, *, wipe_all: bool = Fals
 
     wipe_all=True — очистить всю таблицу relations (только для выделенных KB-БД).
     """
+    ensure_relations_table(conn)
     if wipe_all:
         cur = conn.execute("DELETE FROM relations")
         conn.commit()
