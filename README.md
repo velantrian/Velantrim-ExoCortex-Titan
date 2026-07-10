@@ -66,28 +66,44 @@ DeepSeek: deepseek-v4-flash · deepseek-v4-pro | Qwen: qwen3.7-max · qwen3.7-pl
 Google: gemini-3.5-flash | Llama: llama-4-maverick
 ```
 
-## 🖥️ Веб-консоль + LLM (тест в браузере)
+## 🖥️ Веб-консоль + LLM — два режима
 
-### 🌐 Онлайн (GitHub Pages — ПК и смартфон PWA)
+Velantrim работает и на ПК с сервером, и на телефоне без сервера:
 
-> **Если видите «There isn't a GitHub Pages site here»** — один раз включите Pages:  
-> [docs/GITHUB_PAGES_ENABLE.ru.md](docs/GITHUB_PAGES_ENABLE.ru.md) →  
-> https://github.com/velantrian/Velantrim-ExoCortex-Titan/settings/pages → ветка **`gh-pages`**, папка **`/ (root)`**
+```text
+┌─ Режим 1: ПК (полный) ─────────────────────────────┐
+│  Python FastAPI + SQLite + LLM провайдеры + TTS/STT │
+│  Запуск: .\scripts\start_console.ps1                │
+│  Адрес: http://127.0.0.1:8755/console/              │
+└─────────────────────────────────────────────────────┘
+┌─ Режим 2: PWA (телефон/ПК, без сервера) ───────────┐
+│  IndexedDB + прямые API DeepSeek/OpenAI/Gemini      │
+│  TTS/STT через Web Speech API                       │
+│  Установка на телефон как приложение (manifest)     │
+│  Адрес: https://velantrian.github.io/Velantrim-...  │
+└─────────────────────────────────────────────────────┘
+```
+
+### 🌐 PWA — телефон и ПК без сервера
 
 | Страница | Ссылка |
 |----------|--------|
 | **Портал** | https://velantrian.github.io/Velantrim-ExoCortex-Titan/ |
-| **Research PWA** (работает без сервера) | https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/research-app.html |
-| **UI полной консоли** (нужен API на ПК/VPS) | https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/ |
-| **PWA Roadmap** | https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/research-roadmap.html |
+| **Консоль + LLM** (PWA) | https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/ |
+| **Research PWA** | https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/research-app.html |
+| **Roadmap** | https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/research-roadmap.html |
 
-На телефоне: откройте Research PWA → «Добавить на главный экран» / «Установить приложение».
+> ⚡ **PWA-консоль**: введите API-ключ DeepSeek/OpenAI/Gemini в панели сверху — чат работает напрямую с LLM, без сервера.  
+> Память чатов и фактов — в **IndexedDB** браузера.  
+> **Установка на телефон**: Chrome → ⋮ → «Установить приложение». iPhone: «Поделиться» → «На экран Домой».
 
-### 💻 Локально (полная консоль + LLM)
+> ⚠️ Если «There isn't a GitHub Pages site here» — [включите Pages один раз](docs/GITHUB_PAGES_ENABLE.ru.md).
 
-Экспериментальный стенд V8.7 Titan: чат, блок памяти в **localStorage**, поиск по сообщениям, вкладка **🔗 Эссенция**.
+### 💻 Локально — полная консоль + LLM + SQLite
 
-**Обзор (красиво, с путями и переносом):** [docs/CONSOLE_OVERVIEW.ru.md](docs/CONSOLE_OVERVIEW.ru.md)
+Экспериментальный стенд V8.7 Titan: чат, память, эссенция, TTS/STT, все провайдеры.
+
+**Обзор:** [docs/CONSOLE_OVERVIEW.ru.md](docs/CONSOLE_OVERVIEW.ru.md)
 
 **Документация:** [docs/CONSOLE_BROWSER_TEST.ru.md](docs/CONSOLE_BROWSER_TEST.ru.md) · [http://127.0.0.1:8755/console/help](http://127.0.0.1:8755/console/help) · [roadmap](http://127.0.0.1:8755/console/roadmap)
 

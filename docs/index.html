@@ -28,34 +28,35 @@
 <body>
   <div class="wrap">
     <h1>🔱 VELANTRIM — Web & PWA</h1>
-    <p class="lead">Откройте в браузере на ПК или установите на смартфон как приложение (PWA). Research App работает без сервера; полная консоль с LLM — через локальный запуск.</p>
+    <p class="lead">Два режима: PWA на телефоне/ПК без сервера (LLM через API-ключ) — или полная консоль локально с Python-сервером.</p>
 
     <div class="grid">
       <section class="card">
-        <span class="tag ok">📱 PWA · ПК · телефон</span>
-        <h2>Research App</h2>
-        <p style="color:var(--muted);line-height:1.5;font-size:.92rem">Память в браузере: факты, ESM, TRACE, Truth Gate. Работает офлайн после первой загрузки.</p>
-        <a class="btn" href="console/research-app.html">🧪 Открыть Research PWA</a>
-        <a class="btn secondary" href="console/research-roadmap.html">🗺 Roadmap</a>
+        <span class="tag ok">📱 PWA · без сервера · телефон</span>
+        <h2>Консоль + LLM (PWA)</h2>
+        <p style="color:var(--muted);line-height:1.5;font-size:.92rem">Чат с DeepSeek/OpenAI/Gemini напрямую из браузера. Память — IndexedDB. Установите как приложение.</p>
+        <a class="btn" href="console/index.html">💬 Открыть PWA-консоль</a>
+        <a class="btn secondary" href="console/research-app.html">🧪 Research App</a>
       </section>
 
       <section class="card">
         <span class="tag">💻 ПК · нужен сервер</span>
-        <h2>Полная консоль + LLM</h2>
-        <p style="color:var(--muted);line-height:1.5;font-size:.92rem">Чат, эссенция, провайдеры LLM. Запустите <code>scripts\start_console.ps1</code> на своём ПК.</p>
+        <h2>Полная консоль (локально)</h2>
+        <p style="color:var(--muted);line-height:1.5;font-size:.92rem">Python-сервер, SQLite, TTS/STT, все LLM-провайдеры. Запустите <code>scripts\start_console.ps1</code>.</p>
         <a class="btn" href="http://127.0.0.1:8755/console/?v=41">💬 Локальная консоль</a>
-        <a class="btn secondary" href="console/index.html">🖥 UI-оболочка (GitHub)</a>
+        <a class="btn secondary" href="console/research-roadmap.html">🗺 Roadmap</a>
       </section>
     </div>
 
     <section class="card" style="margin-top:1rem">
-      <h2>📲 Установить на смартфон (PWA)</h2>
+      <h2>📲 Как установить PWA на телефон</h2>
       <ol>
-        <li>Откройте <strong>Research PWA</strong> в Chrome (Android) или Safari (iPhone).</li>
-        <li>Android: меню ⋮ → <strong>Установить приложение</strong> / <strong>Добавить на главный экран</strong>.</li>
+        <li>Откройте <strong>Консоль + LLM (PWA)</strong> в Chrome (Android) или Safari (iPhone).</li>
+        <li>Android: меню ⋮ → <strong>Установить приложение</strong>.</li>
         <li>iPhone: кнопка «Поделиться» → <strong>На экран «Домой»</strong>.</li>
+        <li>В открывшемся приложении введите API-ключ DeepSeek/OpenAI/Gemini в панели сверху.</li>
       </ol>
-      <p style="color:var(--muted);font-size:.88rem;margin:.6rem 0 0">После установки иконка откроет приложение в полноэкранном режиме.</p>
+      <p style="color:var(--muted);font-size:.88rem;margin:.6rem 0 0">После установки — полноэкранный режим, офлайн-кэш, IndexedDB-память.</p>
     </section>
 
     <footer>

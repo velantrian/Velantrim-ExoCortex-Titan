@@ -10,6 +10,7 @@ data/*.lbug
 *.db-journal
 *.sqlite-shm
 *.sqlite-wal
+site/
 
 # Окружение
 .env

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Собрать полный статический сайт в site/ для GitHub Pages."""
+"""Собрать полный статический сайт в site/ для GitHub Pages.
+
+Сайт работает в двух режимах:
+  1. На localhost:8755 — полная консоль с Python-сервером (LLM, SQLite)
+  2. На GitHub Pages — PWA: IndexedDB + прямые API-вызовы к LLM (без сервера)
+"""
 
 from __future__ import annotations
 
@@ -11,6 +16,7 @@ SRC = ROOT / "static" / "console"
 SITE = ROOT / "site"
 PORTAL = ROOT / "docs"
 
+# Карта перезаписи путей: абсолютные URL FastAPI → относительные файлы
 PATH_MAP = {
     "/console/research-app.js": "research-app.js",
     "/console/research-app": "research-app.html",
@@ -18,31 +24,55 @@ PATH_MAP = {
     "/console/research-mode": "research-mode.html",
     "/console/research": "research.html",
     "/console/roadmap": "roadmap.html",
-    "/console/help": "https://github.com/velantrian/Velantrim-ExoCortex-Titan/blob/master/docs/CONSOLE_BROWSER_TEST.ru.md",
-    "/console/research-roadmap.md": "https://github.com/velantrian/Velantrim-ExoCortex-Titan/blob/master/docs/EITI_PWA_RESEARCH_ROADMAP.ru.md",
+    "/console/help": (
+        "https://github.com/velantrian/Velantrim-ExoCortex-Titan"
+        "/blob/master/docs/CONSOLE_BROWSER_TEST.ru.md"
+    ),
+    "/console/research-roadmap.md": (
+        "https://github.com/velantrian/Velantrim-ExoCortex-Titan"
+        "/blob/master/docs/EITI_PWA_RESEARCH_ROADMAP.ru.md"
+    ),
     "/console/": "index.html",
     "/console": "index.html",
 }
 
-API_BOOTSTRAP = """
+# Внедряется в <head> консольного index.html — PWA-мост
+PWA_MODE_SCRIPT = """
 <script>
-(function () {
-  var key = "velantrim_remote_api_base";
-  var def = "http://127.0.0.1:8755";
-  var base = localStorage.getItem(key) || def;
-  if (!/^https?:\\/\\//i.test(base)) base = def;
-  window.VELANTRIM_API_BASE = base.replace(/\\/$/, "");
-  var host = location.hostname;
-  var onGh = host.endsWith("github.io");
-  if (onGh && !localStorage.getItem(key)) {
-    var bar = document.createElement("div");
-    bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#3d1f1f;border-bottom:1px solid #f56565;padding:.55rem .8rem;font:13px/1.45 Segoe UI,system-ui,sans-serif;color:#ffe8e8;text-align:center";
-    bar.innerHTML = "⚠️ GitHub Pages — только UI. Для LLM укажите URL вашего сервера Velantrim (ПК/VPS/Docker) в настройках консоли или запустите <code style='color:#ffd28a'>scripts\\\\start_console.ps1</code> локально.";
-    document.addEventListener("DOMContentLoaded", function () { document.body.prepend(bar); });
-  }
-})();
+(function(){var h=window.location.hostname||"";
+if(h.endsWith("github.io")||h==="velantrian.github.io"){
+document.write('<script src="./pwa-mode.js?v=3"><\\/script>');
+}})();
 </script>
 """
+
+# Баннер внизу — только на GitHub Pages
+PWA_BANNER = """
+<div id="gh-pages-banner" style="position:fixed;bottom:0;left:0;right:0;z-index:9999;
+background:#1a2332;border-top:1px solid #3d8bfd;padding:.55rem .9rem;
+font:13px/1.4 Segoe UI,system-ui,sans-serif;color:#e7ecf3;text-align:center">
+⚡ PWA-режим: память в IndexedDB · LLM через прямые API (ключ в панели сверху).
+<a href="http://127.0.0.1:8755/console/" style="color:#3d8bfd">Локальный сервер</a> —
+полная консоль с SQLite и всеми провайдерами.
+</div>
+"""
+
+# PWA-теги в research-app.html
+PWA_HEAD = (
+    '<link rel="manifest" href="../manifest.webmanifest" />\n'
+    '  <link rel="icon" href="../icon.svg" type="image/svg+xml" />\n'
+    '  <meta name="theme-color" content="#3d8bfd" />\n'
+    '  <meta name="apple-mobile-web-app-capable" content="yes" />\n'
+    '  <meta name="apple-mobile-web-app-title" content="VELANTRIM" />\n'
+    '  <link rel="apple-touch-icon" href="../icon.svg" />'
+)
+
+PWA_SW_SCRIPT = (
+    '  <script>'
+    'if("serviceWorker"in navigator)'
+    'navigator.serviceWorker.register("../sw.js").catch(function(){});'
+    "</script>\n</body>"
+)
 
 
 def _rewrite(text: str) -> str:
@@ -67,6 +97,7 @@ def _build_console() -> None:
         shutil.rmtree(dst)
     dst.mkdir(parents=True)
 
+    # Копируем все файлы консоли
     for path in SRC.iterdir():
         if not path.is_file():
             continue
@@ -75,40 +106,25 @@ def _build_console() -> None:
             data = _rewrite(data)
         (dst / path.name).write_text(data, encoding="utf-8")
 
+    # ── index.html: внедряем PWA-мост и баннер ──
     index = dst / "index.html"
     if index.is_file():
         html = index.read_text(encoding="utf-8")
-        if "VELANTRIM_API_BASE" not in html:
-            html = html.replace("<head>", "<head>\n" + API_BOOTSTRAP, 1)
-            html = html.replace("</body>", (
-                '<div id="gh-pages-banner" style="position:fixed;bottom:0;left:0;right:0;z-index:9999;'
-                'background:#1a2332;border-top:1px solid #3d8bfd;padding:.55rem .9rem;font:13px/1.4 '
-                'Segoe UI,system-ui,sans-serif;color:#e7ecf3;text-align:center">'
-                '🌐 Статическая консоль на GitHub Pages. Сервер API: '
-                '<a href="http://127.0.0.1:8755/console/" style="color:#3d8bfd">локально</a> '
-                'или ваш VPS/Docker. Research App работает без сервера.'
-                '</div>\n</body>'
-            ))
-            index.write_text(html, encoding="utf-8")
+        if "pwa-mode.js" not in html:
+            html = html.replace("<head>", "<head>\n" + PWA_MODE_SCRIPT.strip(), 1)
+        if "gh-pages-banner" not in html:
+            html = html.replace("</body>", PWA_BANNER.strip() + "\n</body>")
+        index.write_text(html, encoding="utf-8")
 
-    pwa_head = (
-        '<link rel="manifest" href="../manifest.webmanifest" />\n'
-        '  <link rel="icon" href="../icon.svg" type="image/svg+xml" />\n'
-        '  <meta name="theme-color" content="#3d8bfd" />\n'
-        '  <meta name="apple-mobile-web-app-capable" content="yes" />\n'
-        '  <meta name="apple-mobile-web-app-title" content="VELANTRIM" />\n'
-        '  <link rel="apple-touch-icon" href="../icon.svg" />'
-    )
+    # ── research-app.html: PWA-теги + service worker ──
     research = dst / "research-app.html"
     if research.is_file():
         html = research.read_text(encoding="utf-8")
         if "manifest.webmanifest" not in html:
-            html = html.replace("</title>", "</title>\n  " + pwa_head)
-            html = html.replace(
-                "</body>",
-                '  <script>if("serviceWorker"in navigator)navigator.serviceWorker.register("../sw.js").catch(()=>{});</script>\n</body>',
-            )
-            research.write_text(html, encoding="utf-8")
+            html = html.replace("</title>", "</title>\n  " + PWA_HEAD)
+        if "serviceWorker" not in html:
+            html = html.replace("</body>", PWA_SW_SCRIPT)
+        research.write_text(html, encoding="utf-8")
 
 
 def main() -> None:

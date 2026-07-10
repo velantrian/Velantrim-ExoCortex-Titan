@@ -4,12 +4,12 @@ on:
   push:
     branches: [main, master]
     paths:
+      - "static/console/**"
       - "site/**"
       - "docs/index.html"
       - "docs/manifest.webmanifest"
       - "docs/sw.js"
       - "docs/icon.svg"
-      - "static/console/**"
       - "scripts/prepare_gh_pages.py"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
