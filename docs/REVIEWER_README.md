@@ -187,6 +187,39 @@ ESM primitives, and do **not** have this CAS protection — this section describ
 `PATCH` boundary specifically, not a claim that every code path uses byte-identical
 TruthGate policy or the same concurrency guarantee.
 
+**`core.truth_maintenance.supersede()`** is a separate, narrower fix in the same
+family, but not unified with `validate_and_promote()` above — it is an internal
+maintenance operation (a new fact replacing an old one), not a public HTTP endpoint.
+Before this fix it constructed `TruthGate` with the wrong signature and unpacked
+`evaluate()`'s return value as a legacy `(ok, msg)` tuple; both always raised, were
+swallowed by a broad `except Exception`, and the function silently fell through to
+deprecating the old fact and reporting success with **no evidence check having run at
+all**. `supersede()` now:
+- evaluates the new candidate with the real `TruthGate(store,
+  contradiction_detector="none").evaluate(candidate, mode=CognitiveMode.PRECISION, ...)`
+  API before any durable write — no threshold-logic duplication, no LLM call;
+- treats any exception here, including `ImportError`, as fail-closed (returns `None`) —
+  never as "gate unavailable, promote anyway" (the exact defect being fixed);
+- commits the entire state change — the new fact's `Observed → Hypothesized →
+  Supported → Validated` ladder *and* the old fact's `→ Deprecated` transition — as one
+  atomic facts-table transaction, `core.memory.SQLiteGraphStore.supersede_fact_cas()`,
+  guarded by a CAS on the old fact's `(fact_id, epistemic_state, updated_at)` taken from
+  the same durable snapshot TruthGate evaluated against. A rejected verdict, a
+  `new_fact_id` collision (checked via the `INSERT`'s own `PRIMARY KEY` violation, not a
+  separate check-then-insert race), or the old fact changing/vanishing concurrently all
+  leave the store completely untouched and return `None` — never a new fact with no
+  verification, never an old fact deprecated with nothing to replace it.
+- the causal-graph `SUPERSEDED_BY` relation and the provenance `fact_superseded` event
+  are written *after* that transaction commits, on their own separate connections/files
+  — same best-effort, non-atomic relationship the `PATCH` boundary above has with
+  `fact_versions`, not something this fix changes or claims to close.
+
+This does **not** unify `supersede()` with `validate_and_promote()`, nor with
+`reinforce()`/`contradict()` (untouched), nor with the internal pipeline/
+`ConsolidationEngine`/`promotion_policy` paths above — it closes one specific function's
+TruthGate bypass and non-atomicity. See
+`tests/test_truth_maintenance_supersede.py` for the regression coverage.
+
 ## 7. Security map
 
 See [`SECURITY.md`](../SECURITY.md) for the full write-up. Short version, with pointers:

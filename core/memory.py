@@ -24,6 +24,7 @@ import sqlite3
 import threading
 from collections import OrderedDict
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -68,6 +69,21 @@ SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
 
 class ImmutableStateError(Exception):
     pass
+
+
+@dataclass
+class SupersedeCasResult:
+    """Результат SQLiteGraphStore.supersede_fact_cas() — см. класс для деталей.
+
+    committed=False всегда означает: ничего не изменилось в facts (ни новый
+    факт, ни старый) — reason объясняет почему ("concurrent_modification"
+    или "new_id_collision"). committed=True — оба факта закоммичены атомарно,
+    new_record/old_record несут финальные (Validated/Deprecated) снимки.
+    """
+    committed:  bool
+    reason:     str
+    new_record: dict[str, Any] | None = None
+    old_record: dict[str, Any] | None = None
 
 
 def _validate_confidence(c: float) -> float:
@@ -979,6 +995,16 @@ class SQLiteGraphStore(GraphStore):
             result["history"]  = json.loads(result.get("history") or "[]")
         return result
 
+    def get_fact_durable(self, fact_id: str) -> dict | None:
+        """
+        Публичная обёртка над _get_fact_durable() для других модулей core,
+        которым нужно durable (в обход L0) чтение — например,
+        core.truth_maintenance.supersede(), которому нужен снимок старого
+        факта под тем же требованием, что и validate_and_promote(): решение
+        с последствиями для безопасности не должно опираться на L0.
+        """
+        return self._get_fact_durable(fact_id)
+
     def find_fact_id_by_episode_hash(self, episode_hash: str) -> str | None:
         """Pattern separation: найти факт с тем же episode_hash в metadata."""
         if not episode_hash:
@@ -1517,6 +1543,283 @@ class SQLiteGraphStore(GraphStore):
         )
         self._l0_put(fact_id, new_record)
         return True
+
+    def supersede_fact_cas(
+        self,
+        old_id: str,
+        new_fact_id: str,
+        new_record_seed: dict[str, Any],
+        expected_old_state: str,
+        expected_old_updated_at: str,
+        old_durable_snapshot: dict[str, Any],
+        by: str = "truth_maintenance.supersede",
+    ) -> "SupersedeCasResult":
+        """
+        Единственная мутация, которую делает core.truth_maintenance.supersede():
+        один атомарный facts-transaction, который либо целиком проводит новый
+        факт Observed→Hypothesized→Supported→Validated и переводит старый в
+        Deprecated, либо не меняет ничего вообще.
+
+        НАРОЧНО не использует store_fact()/promote_to_validated()/
+        transition_esm(): каждый из них открывает СВОЙ _db()-контекст (своя
+        транзакция, свой commit) — последовательность таких вызовов оставляла
+        бы окно, где новый факт уже закоммичен, а старый ещё нет (или
+        наоборот). Здесь все SQL-мутации идут через один conn внутри одного
+        `with self._db() as conn:` — либо все коммитятся вместе, либо (при
+        любой ошибке/CAS-мисс) транзакция откатывается целиком.
+
+        CAS: старый факт мутируется ТОЛЬКО guarded UPDATE-ом —
+        WHERE fact_id = ? AND epistemic_state = ? AND updated_at = ?, оба
+        значения взяты из durable-снимка, на котором TruthGate уже вынес
+        вердикт (см. TruthGate.evaluate() в core.truth_maintenance.supersede,
+        ДО вызова этого метода). Если WHERE не совпал — факт изменился или
+        был удалён конкурентно между снимком и этой записью; уже сделанные в
+        этой же транзакции insert/ladder нового факта откатываются вместе с
+        ним (rollback), результат — committed=False, reason=
+        "concurrent_modification". Коллизия по new_fact_id (PRIMARY KEY)
+        детектируется тем же способом — попыткой INSERT без ON CONFLICT;
+        sqlite3.IntegrityError → committed=False, reason="new_id_collision",
+        без каких-либо иных мутаций в этой попытке.
+
+        VersionStore-снимок (для old_id), L0-публикация обоих фактов и
+        FTS-индекс нового факта происходят СТРОГО после подтверждённого
+        успеха — ничего не публикуется для отклонённой/раскэшированной
+        попытки (тот же принцип, что и в _promote_to_validated_cas()).
+
+        Ограничение согласованности (см. docs/PROJECT_STATUS.md): сама
+        facts-транзакция атомарна, но VersionStore, causal_graph и
+        provenance_chain (последний вызывается уровнем выше, в
+        core.truth_maintenance.supersede, ПОСЛЕ успешного commit) — это
+        отдельные соединения/файлы. Падение процесса между commit'ом этой
+        транзакции и этими вторичными записями оставит успешный supersede
+        БЕЗ соответствующих audit/relation-артефактов. Это не решается
+        здесь и не является предметом этого PR (тот же паттерн, что и везде
+        в кодовой базе).
+        """
+        from core.fact_integrity import attach_integrity_metadata
+
+        now = _now()
+        claim      = new_record_seed.get("claim", "")
+        source     = new_record_seed.get("source", "unknown")
+        confidence = float(new_record_seed.get("confidence", 0.5))
+        raw_metadata = dict(new_record_seed.get("metadata") or {})
+
+        initial_metadata = attach_integrity_metadata(
+            raw_metadata, claim=claim, source=source,
+            confidence=confidence, epistemic_state="Observed",
+        )
+        insert_record = {
+            "fact_id":             new_fact_id,
+            "claim":               claim,
+            "source":              source,
+            "confidence":          confidence,
+            "epistemic_state":     "Observed",
+            "created_at":          now,
+            "updated_at":          now,
+            "metadata":            json.dumps(initial_metadata),
+            "history":             json.dumps([]),
+            "t_event_valid_start": now,
+            "t_event_valid_end":   None,
+            "t_ingestion_start":   now,
+            "t_ingestion_end":     None,
+            "derived_from":        new_record_seed.get("derived_from"),
+            "claim_type":          new_record_seed.get("claim_type", "UNKNOWN"),
+            "origin_type":         new_record_seed.get("origin_type", "UNKNOWN"),
+            "memory_type":         new_record_seed.get("memory_type", "semantic"),
+        }
+
+        with self._db() as conn:
+            # 1) Fail-fast recheck of the old fact's CAS snapshot — cheap,
+            # avoids doing the insert+ladder work below when the snapshot is
+            # already stale. Not itself the authoritative guard (see the
+            # guarded UPDATE at the end); a plain SELECT takes no write lock.
+            precheck = conn.execute(
+                "SELECT 1 FROM facts WHERE fact_id = ? AND epistemic_state = ? "
+                "AND updated_at = ?",
+                (old_id, expected_old_state, expected_old_updated_at),
+            ).fetchone()
+            if precheck is None:
+                return SupersedeCasResult(
+                    committed=False, reason="concurrent_modification",
+                )
+
+            # 2) + 3) Insert the new fact as Observed. No ON CONFLICT clause:
+            # a pre-existing row at new_fact_id raises IntegrityError (PK),
+            # which is the authoritative, race-proof collision check — there
+            # is no separate SELECT-then-INSERT window to lose.
+            try:
+                conn.execute("""
+                    INSERT INTO facts
+                        (fact_id, claim, source, confidence, epistemic_state,
+                         created_at, updated_at, metadata, history,
+                         t_event_valid_start, t_event_valid_end,
+                         t_ingestion_start,   t_ingestion_end,
+                         derived_from, claim_type, origin_type, memory_type)
+                    VALUES
+                        (:fact_id, :claim, :source, :confidence, :epistemic_state,
+                         :created_at, :updated_at, :metadata, :history,
+                         :t_event_valid_start, :t_event_valid_end,
+                         :t_ingestion_start,   :t_ingestion_end,
+                         :derived_from, :claim_type, :origin_type, :memory_type)
+                """, insert_record)
+            except sqlite3.IntegrityError:
+                return SupersedeCasResult(
+                    committed=False, reason="new_id_collision",
+                )
+
+            bump = self._fact_version_bump_sql(conn)
+
+            # 4) + 5) Ladder Observed → Hypothesized → Supported → Validated,
+            # each step its own history entry. The row is invisible to any
+            # other connection until this transaction commits, so no CAS
+            # guard is needed here beyond the defensive epistemic_state match.
+            new_history: list[dict[str, Any]] = []
+            cur_state = "Observed"
+            for target_state in ("Hypothesized", "Supported", "Validated"):
+                entry_at = _now()
+                entry = {
+                    "state": target_state, "from": cur_state,
+                    "at": entry_at, "by": by,
+                }
+                new_history.append(entry)
+                if self.use_json_insert:
+                    conn.execute(f"""
+                        UPDATE facts
+                        SET epistemic_state = ?, updated_at = ?,
+                            {bump}history = json_insert(history, '$[#]', json(?))
+                        WHERE fact_id = ? AND epistemic_state = ?
+                    """, (target_state, entry_at, json.dumps(entry),
+                          new_fact_id, cur_state))
+                else:
+                    row = conn.execute(
+                        "SELECT history FROM facts WHERE fact_id = ?",
+                        (new_fact_id,),
+                    ).fetchone()
+                    hist = json.loads((row[0] if row else None) or "[]")
+                    hist.append(entry)
+                    conn.execute(f"""
+                        UPDATE facts
+                        SET epistemic_state = ?, updated_at = ?, {bump}history = ?
+                        WHERE fact_id = ? AND epistemic_state = ?
+                    """, (target_state, entry_at, json.dumps(hist),
+                          new_fact_id, cur_state))
+                cur_state = target_state
+
+            # 6) The authoritative CAS guard: old fact → Deprecated, WHERE
+            # still matches the exact snapshot TruthGate scored. rowcount==0
+            # means the fact changed or vanished concurrently — roll back
+            # everything written above (new insert + ladder) and report
+            # concurrent_modification, never a partial success.
+            old_deprecated_at = _now()
+            old_history_entry = {
+                "state": "Deprecated", "from": expected_old_state,
+                "at": old_deprecated_at, "by": by,
+            }
+            if self.use_json_insert:
+                cur = conn.execute(f"""
+                    UPDATE facts
+                    SET epistemic_state = ?, updated_at = ?,
+                        {bump}history = json_insert(history, '$[#]', json(?))
+                    WHERE fact_id = ? AND epistemic_state = ? AND updated_at = ?
+                """, ("Deprecated", old_deprecated_at, json.dumps(old_history_entry),
+                      old_id, expected_old_state, expected_old_updated_at))
+                old_committed = cur.rowcount == 1
+            else:
+                row = conn.execute(
+                    "SELECT history FROM facts "
+                    "WHERE fact_id = ? AND epistemic_state = ? AND updated_at = ?",
+                    (old_id, expected_old_state, expected_old_updated_at),
+                ).fetchone()
+                old_committed = False
+                if row is not None:
+                    hist = json.loads(row[0] or "[]")
+                    hist.append(old_history_entry)
+                    cur = conn.execute(f"""
+                        UPDATE facts
+                        SET epistemic_state = ?, updated_at = ?, {bump}history = ?
+                        WHERE fact_id = ? AND epistemic_state = ? AND updated_at = ?
+                    """, ("Deprecated", old_deprecated_at, json.dumps(hist),
+                          old_id, expected_old_state, expected_old_updated_at))
+                    old_committed = cur.rowcount == 1
+
+            if not old_committed:
+                # 10) Roll back the whole transaction explicitly — the new
+                # fact's insert+ladder above must not survive a CAS miss on
+                # the old fact. conn.commit() below is then a no-op (nothing
+                # left pending); no exception needed for this expected race.
+                conn.rollback()
+                return SupersedeCasResult(
+                    committed=False, reason="concurrent_modification",
+                )
+
+            # 7) + 8) Final integrity metadata/checksums — new fact at
+            # Validated, old fact at Deprecated. Checksums are a function of
+            # (claim, source, confidence, epistemic_state), so each needs
+            # its own recompute for its final state.
+            new_final_metadata = attach_integrity_metadata(
+                json.loads(insert_record["metadata"]),
+                claim=claim, source=source, confidence=confidence,
+                epistemic_state="Validated",
+            )
+            conn.execute(
+                "UPDATE facts SET metadata = ? WHERE fact_id = ?",
+                (json.dumps(new_final_metadata), new_fact_id),
+            )
+
+            old_final_metadata = attach_integrity_metadata(
+                dict(old_durable_snapshot.get("metadata") or {}),
+                claim=old_durable_snapshot.get("claim", ""),
+                source=old_durable_snapshot.get("source", "unknown"),
+                confidence=float(old_durable_snapshot.get("confidence", 0.5)),
+                epistemic_state="Deprecated",
+            )
+            conn.execute(
+                "UPDATE facts SET metadata = ? WHERE fact_id = ?",
+                (json.dumps(old_final_metadata), old_id),
+            )
+
+            # 9) FTS index for the new fact — best-effort secondary index,
+            # same convention as store_fact()'s own FTS sync.
+            try:
+                conn.execute(
+                    "INSERT OR REPLACE INTO facts_fts(rowid, fact_id, claim, source) "
+                    "VALUES ((SELECT rowid FROM facts WHERE fact_id=?), ?, ?, ?)",
+                    (new_fact_id, new_fact_id, claim, source),
+                )
+            except sqlite3.OperationalError:
+                pass  # FTS5 not available in this SQLite build
+
+            new_final_record = {
+                **insert_record,
+                "epistemic_state": "Validated",
+                "updated_at":      new_history[-1]["at"],
+                "metadata":        new_final_metadata,
+                "history":         new_history,
+            }
+            old_final_record = {
+                **copy.deepcopy(old_durable_snapshot),
+                "epistemic_state": "Deprecated",
+                "updated_at":      old_deprecated_at,
+                "metadata":        old_final_metadata,
+                "history":         [*old_durable_snapshot.get("history", []), old_history_entry],
+            }
+
+        # 10) Only now, with the transaction committed, do the two
+        # process-local side effects the caller depends on: the VersionStore
+        # pre-image of the OLD fact (its state right before Deprecation —
+        # mirrors _promote_to_validated_cas()'s convention), and L0 refresh
+        # for both fact_ids so subsequent reads see the committed truth
+        # rather than a stale or absent cache entry.
+        self._snapshot_before_change(
+            old_id, old_durable_snapshot,
+            caused_by=f"memory.supersede_fact_cas:{by}",
+        )
+        self._l0_put(new_fact_id, new_final_record)
+        self._l0_put(old_id, old_final_record)
+        return SupersedeCasResult(
+            committed=True, reason="ok",
+            new_record=new_final_record, old_record=old_final_record,
+        )
 
     def validate_and_promote(
         self,
@@ -2082,6 +2385,26 @@ def promote_esm_to(fact_id: str, target: str, by: str = "promote_esm") -> bool:
 def validate_and_promote(fact_id: str, by: str = "truth_gate", mode: Any = None) -> Any:
     """Обёртка над SQLiteGraphStore.validate_and_promote() — см. класс для деталей."""
     return _GLOBAL_STORE.validate_and_promote(fact_id, by=by, mode=mode)
+
+def get_fact_durable(fact_id: str) -> dict | None:
+    """Обёртка над SQLiteGraphStore.get_fact_durable() — durable read, в обход L0."""
+    return _GLOBAL_STORE.get_fact_durable(fact_id)
+
+def supersede_fact_cas(
+    old_id: str,
+    new_fact_id: str,
+    new_record_seed: dict[str, Any],
+    expected_old_state: str,
+    expected_old_updated_at: str,
+    old_durable_snapshot: dict[str, Any],
+    by: str = "truth_maintenance.supersede",
+) -> SupersedeCasResult:
+    """Обёртка над SQLiteGraphStore.supersede_fact_cas() — см. класс для деталей."""
+    return _GLOBAL_STORE.supersede_fact_cas(
+        old_id, new_fact_id, new_record_seed,
+        expected_old_state, expected_old_updated_at,
+        old_durable_snapshot, by=by,
+    )
 
 def get_all_facts(
     epistemic_state: str | None = None,

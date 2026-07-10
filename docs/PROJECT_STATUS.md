@@ -98,7 +98,29 @@ Ranked by what would actually hurt someone relying on this in production:
    primitives — these are not yet unified under one contract-tested policy, so "some
    evidence check always runs before Validated" is true, but "the same TruthGate policy
    always runs" is not, and they don't have the same CAS protection against concurrent
-   modification.
+   modification. `core.truth_maintenance.supersede()` was a second, separate instance of
+   this same gap: it called `TruthGate` with the wrong constructor signature and
+   unpacked `evaluate()`'s return value as a legacy `(ok, msg)` tuple (`evaluate()`
+   actually returns a single `TruthGateVerdict`) — both always raised, were swallowed by
+   a broad `except Exception`, and the function fell through to deprecating the old fact
+   and reporting success regardless of whether the new fact had any evidence at all.
+   Fixed: `supersede()` now evaluates the candidate with the real `TruthGate` API
+   (`mode=PRECISION`, `contradiction_detector="none"`, no threshold-logic duplication,
+   fail-closed on any exception including `ImportError`) before any durable write, and
+   the state change itself — new fact `Observed→Validated` plus old fact `→Deprecated`
+   — commits through a single new atomic primitive,
+   `core.memory.SQLiteGraphStore.supersede_fact_cas()`, guarded by a CAS on the old
+   fact's `(fact_id, epistemic_state, updated_at)` taken from the same durable snapshot
+   TruthGate evaluated. Either both facts change together or neither does; a rejected
+   verdict, a `new_fact_id` collision, or a concurrent modification of the old fact all
+   leave the store completely untouched and return `None`. This is still a narrow,
+   separate fix for one function — it does not unify `supersede()` with
+   `validate_and_promote()` or with the internal pipeline/`ConsolidationEngine`/
+   `promotion_policy` paths above, and the causal-graph relation (`SUPERSEDED_BY`) and
+   provenance event it writes afterward remain best-effort, on separate connections,
+   after the atomic facts-transaction commits — a crash in that narrow window leaves a
+   correctly-committed supersede without its audit/relation artifacts. Regression suite:
+   `tests/test_truth_maintenance_supersede.py`.
 6. **Version/branding drift risk.** Recently unified to Titan 9.0 across public
    entrypoints (`README.md`, `pyproject.toml`, `server.py`, Docker); historical docs and
    code comments intentionally retain old version numbers (V8.6/V8.7) as history — see
