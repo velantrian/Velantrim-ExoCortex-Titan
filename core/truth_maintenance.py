@@ -114,10 +114,19 @@ def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
     # (требование верификации перед Validated).
     try:
         from core.truth_gate import TruthGate, CognitiveMode
-        tg = TruthGate(mode=CognitiveMode.PRECISION)
-        ok, msg = tg.evaluate(new_fact)
-        if not ok:
-            logger.warning("TruthMaintenance.supersede: TruthGate отклонил новый факт: %s", msg)
+        # Pre-existing bug: TruthGate.__init__(store, contradiction_detector=...) takes
+        # no `mode` kwarg (mode belongs to .evaluate()), and .evaluate() returns a
+        # TruthGateVerdict, not an (ok, msg) tuple. Both raise here and are caught by
+        # the broad `except Exception` below, so — despite the FIX #14 comment above —
+        # this TruthGate check currently never actually runs; supersede() falls through
+        # without promoting new_id. Not fixed here (constructing a real GraphStore/
+        # verdict-based branch is a behavior change out of scope for a typing-only
+        # pass) — tracked as a follow-up bug; flagged prominently since it's the
+        # invariant I68 enforcement the comment above describes.
+        tg = TruthGate(mode=CognitiveMode.PRECISION)  # type: ignore[call-arg]
+        ok, msg = tg.evaluate(new_fact)  # type: ignore[misc]
+        if not ok:  # type: ignore[has-type]
+            logger.warning("TruthMaintenance.supersede: TruthGate отклонил новый факт: %s", msg)  # type: ignore[has-type]
         else:
             promote_to_validated(new_id)
     except ImportError:

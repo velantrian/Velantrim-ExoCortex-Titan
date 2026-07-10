@@ -240,7 +240,7 @@ def reset_metrics() -> None:
 
 def healthcheck(store=None) -> Dict[str, Any]:
     """Быстрый healthcheck — состояние всех компонентов."""
-    status = {
+    status: Dict[str, Any] = {
         "status": "ok",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": os.getenv("VELANTRIM_VERSION", "8.7.0"),

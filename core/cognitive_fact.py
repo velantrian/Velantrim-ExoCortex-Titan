@@ -24,7 +24,7 @@ class MemoryType(str, Enum):
     PROCEDURAL = "procedural"  # навыки, workflows, алгоритмы
 
 
-def classify_memory_type(content: str, tags: list = None) -> MemoryType:
+def classify_memory_type(content: str, tags: Optional[list] = None) -> MemoryType:
     """
     Rule-based классификация без LLM. Вызывается при store_fact.
     0 токенов. Backward compatible.
