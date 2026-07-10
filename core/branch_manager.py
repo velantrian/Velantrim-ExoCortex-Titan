@@ -228,7 +228,12 @@ class BranchManager:
             from core.llm_router import chat_complete
             from core.llm_router import LlmCallConfig
             prompt = self._build_prompt(query, facts, role)
-            cfg = LlmCallConfig(max_tokens=500)
+            # Pre-existing bug: LlmCallConfig requires provider/api_key (no defaults);
+            # this call always raises, caught below like any other LLM-path failure, so
+            # this branch currently always falls through to essence/absolute fallback.
+            # Not fixed here (choosing provider/api_key is a behavior change out of
+            # scope for a typing-only pass) — tracked as a follow-up bug.
+            cfg = LlmCallConfig(max_tokens=500)  # type: ignore[call-arg]
             response = await chat_complete(cfg, prompt)
             if response:
                 return response, 0.8
@@ -238,8 +243,14 @@ class BranchManager:
         # Fallback: детерминированный ответ через essence
         try:
             from core.essence import compose_essence
-            result = compose_essence(query=query, facts=facts)
-            return str(result.get("gist", "")), 0.6
+            # Pre-existing bug: compose_essence(facts, relations=None) has no `query`
+            # kwarg and returns an Essence object, not a dict — .get() doesn't exist on
+            # it either. Caught below like any other fallback failure, so this branch
+            # currently always falls through to the absolute fallback. Not fixed here
+            # (behavior change out of scope for a typing-only pass) — tracked as a
+            # follow-up bug.
+            result = compose_essence(query=query, facts=facts)  # type: ignore[call-arg]
+            return str(result.get("gist", "")), 0.6  # type: ignore[attr-defined]
         except Exception:
             pass
 
