@@ -89,59 +89,147 @@ def reinforce(fact_id: str, agreement: bool = True) -> Optional[float]:
 
 def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
     """
-    Новый факт замещает старый. Старый → Deprecated. Новый → Validated.
+    Новый факт замещает старый: атомарно Observed→Hypothesized→Supported→
+    Validated для нового и →Deprecated для старого, в ОДНОЙ facts-транзакции
+    (core.memory.SQLiteGraphStore.supersede_fact_cas()) — либо оба факта
+    меняются вместе, либо не меняется ничего.
 
-    Создаёт ребро old -SUPERSEDED_BY→ new в causal_graph (если доступен).
-    Возвращает fact_id нового факта или None.
+    Успех репортится ТОЛЬКО когда:
+    - старый durable-снимок всё ещё актуален (CAS на fact_id+epistemic_state+
+      updated_at, взятый ДО TruthGate.evaluate());
+    - новый кандидат проходит TruthGate (mode=PRECISION, без LLM, без
+      дублирования пороговой логики — вся она внутри core.truth_gate);
+    - guarded facts-transaction реально закоммитилась.
+
+    Rejected/raced/failed → None, без частичного состояния: ни новый факт,
+    ни ложное ребро SUPERSEDED_BY, ни ложная provenance-запись, ни мутация
+    старого факта. reinforce()/contradict() не тронуты этим фиксом.
+
+    Не мутирует переданный new_fact — работает на defensive copy.
+
+    Invalid programmer input (пустой old_id/new_fact_id, new_fact_id ==
+    old_id, явно заданный initial epistemic_state отличный от Observed,
+    нелегальный ESM-переход старого состояния в Deprecated) → ValueError.
+    Ordinary operational failures (старый факт не найден, TruthGate
+    отклонил, коллизия по new_fact_id, конкурентная гонка, любая иная
+    неожиданная ошибка внутри атомарной транзакции) → None, fail-closed.
+
+    Ограничение согласованности (см. docs/PROJECT_STATUS.md): facts-
+    транзакция (evidence gate + CAS) атомарна; causal_graph/
+    provenance_chain/VersionStore — отдельные соединения/файлы, пишутся
+    ПОСЛЕ успешного commit, best-effort. Падение процесса между commit'ом
+    facts и этими вторичными записями оставит успешный supersede без
+    соответствующих audit/relation-артефактов — это не решается здесь.
     """
-    from core.memory import get_fact, store_fact, promote_to_validated, transition_esm
+    import copy as _copy
 
-    old = get_fact(old_id)
+    import core.memory as _mem
+
+    if not old_id:
+        raise ValueError("supersede: old_id обязателен")
+
+    new_fact = _copy.deepcopy(new_fact)  # никогда не мутируем аргумент вызывающего
+    new_id = new_fact.get("fact_id")
+    if not new_id:
+        raise ValueError("supersede: new_fact['fact_id'] обязателен")
+    if new_id == old_id:
+        raise ValueError("supersede: new_fact['fact_id'] должен отличаться от old_id")
+
+    requested_state = new_fact.get("epistemic_state")
+    if requested_state not in (None, "Observed"):
+        raise ValueError(
+            "supersede: новый факт может создаваться только в 'Observed' "
+            f"(получено epistemic_state={requested_state!r})"
+        )
+
+    old = _mem.get_fact_durable(old_id)
     if old is None:
         logger.warning("TruthMaintenance.supersede: старый факт %s не найден", old_id)
         return None
 
-    # Сохранить новый факт
-    new_fact.setdefault("epistemic_state", "Observed")
-    new_fact.setdefault("created_at", _now())
-    new_fact.setdefault("updated_at", _now())
+    current_state = old.get("epistemic_state", "Observed")
+    allowed = _mem.ESM_TRANSITIONS.get(current_state, set())
+    if "Deprecated" not in allowed:
+        raise ValueError(
+            f"supersede: переход '{current_state}' → 'Deprecated' недопустим "
+            f"для '{old_id}' — матрица ESM_TRANSITIONS этого не разрешает"
+        )
 
-    store_fact(new_fact)
-    new_id = new_fact.get("fact_id", "")
+    metadata = new_fact.get("metadata")
+    if not isinstance(metadata, dict):
+        metadata = {}
+    candidate = {
+        "fact_id":    new_id,
+        "claim":      new_fact.get("claim", ""),
+        "source":     new_fact.get("source", "unknown"),
+        "confidence": new_fact.get("confidence", 0.0),
+        "metadata":   metadata,
+    }
 
-    # Промоут нового → Validated — FIX #14 (Claude audit):
-    # прогоняем через TruthGate перед переходом. Без этого обходится I68
-    # (требование верификации перед Validated).
+    # SECURITY (I68 — narrow re-fix of this function): реальный TruthGate,
+    # не (ok, msg)-заглушка. Никогда не промоутим без прохождения гейта —
+    # ImportError/любое неожиданное исключение здесь означает fail-closed
+    # (return None), а не старое поведение "гейт недоступен → промоутим
+    # всё равно".
     try:
-        from core.truth_gate import TruthGate, CognitiveMode
-        # Pre-existing bug: TruthGate.__init__(store, contradiction_detector=...) takes
-        # no `mode` kwarg (mode belongs to .evaluate()), and .evaluate() returns a
-        # TruthGateVerdict, not an (ok, msg) tuple. Both raise here and are caught by
-        # the broad `except Exception` below, so — despite the FIX #14 comment above —
-        # this TruthGate check currently never actually runs; supersede() falls through
-        # without promoting new_id. Not fixed here (constructing a real GraphStore/
-        # verdict-based branch is a behavior change out of scope for a typing-only
-        # pass) — tracked as a follow-up bug; flagged prominently since it's the
-        # invariant I68 enforcement the comment above describes.
-        tg = TruthGate(mode=CognitiveMode.PRECISION)  # type: ignore[call-arg]
-        ok, msg = tg.evaluate(new_fact)  # type: ignore[misc]
-        if not ok:  # type: ignore[has-type]
-            logger.warning("TruthMaintenance.supersede: TruthGate отклонил новый факт: %s", msg)  # type: ignore[has-type]
-        else:
-            promote_to_validated(new_id)
-    except ImportError:
-        # TruthGate недоступен — fallback без проверки (старое поведение)
-        promote_to_validated(new_id)
-    except Exception as exc:
-        logger.warning("TruthMaintenance.supersede: ESM-переход нового: %s", exc)
+        from core.truth_gate import CognitiveMode, TruthGate
 
-    # Старый → Deprecated
+        verdict = TruthGate(_mem._GLOBAL_STORE, contradiction_detector="none").evaluate(
+            candidate, mode=CognitiveMode.PRECISION, by="truth_maintenance.supersede",
+        )
+    except Exception:
+        logger.exception(
+            "TruthMaintenance.supersede: TruthGate недоступен или упал — "
+            "отклоняем без промоушена (fail-closed)"
+        )
+        return None
+
+    if not verdict.passed:
+        logger.info(
+            "TruthMaintenance.supersede: TruthGate отклонил новый факт %s: %s",
+            new_id, verdict.justification,
+        )
+        return None
+
+    seed_record = {
+        "claim":       candidate["claim"],
+        "source":      candidate["source"],
+        "confidence":  float(candidate["confidence"]),
+        "metadata":    metadata,
+        "claim_type":  new_fact.get("claim_type", "UNKNOWN"),
+        "origin_type": new_fact.get("origin_type", "UNKNOWN"),
+        "memory_type": new_fact.get("memory_type", "semantic"),
+        "derived_from": new_fact.get("derived_from"),
+    }
+
     try:
-        transition_esm(old_id, "Deprecated")
-    except Exception as exc:
-        logger.warning("TruthMaintenance.supersede: ESM-переход старого: %s", exc)
+        result = _mem.supersede_fact_cas(
+            old_id=old_id,
+            new_fact_id=new_id,
+            new_record_seed=seed_record,
+            expected_old_state=current_state,
+            expected_old_updated_at=old["updated_at"],
+            old_durable_snapshot=old,
+            by="truth_maintenance.supersede",
+        )
+    except Exception:
+        logger.exception(
+            "TruthMaintenance.supersede: атомарная facts-транзакция упала "
+            "неожиданно для %s → %s — fail-closed", old_id, new_id,
+        )
+        return None
 
-    # Ребро в causal graph
+    if not result.committed:
+        logger.warning(
+            "TruthMaintenance.supersede: %s → %s отклонено (%s)",
+            old_id, new_id, result.reason,
+        )
+        return None
+
+    # Пост-commit best-effort: ребро в causal graph + provenance. Отдельные
+    # соединения/файлы от facts-транзакции выше — сбой здесь НЕ откатывает
+    # уже успешный supersede, но и не должен маскироваться под полную
+    # кросс-хранилищную атомарность (см. docstring и docs/PROJECT_STATUS.md).
     try:
         from core.causal_graph import get_causal_graph
         cg = get_causal_graph()
@@ -153,18 +241,23 @@ def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
                 confidence=0.95,
             )
     except Exception:
-        logger.debug("supersede: causal edge not added")
+        logger.warning(
+            "TruthMaintenance.supersede: causal edge %s -SUPERSEDED_BY→ %s "
+            "not added", old_id, new_id, exc_info=True,
+        )
 
-    # Лог
     try:
         from core.provenance_chain import get_provenance_chain
         get_provenance_chain().append(
             old_id, event_type="fact_superseded",
-            actor="truth_maintenance",
+            actor="truth_maintenance.supersede",
             reason=f"superseded_by={new_id}",
         )
     except Exception:
-        pass
+        logger.warning(
+            "TruthMaintenance.supersede: provenance event not recorded for %s",
+            old_id, exc_info=True,
+        )
 
     logger.info("TruthMaintenance.supersede: %s → %s", old_id, new_id)
     return new_id
