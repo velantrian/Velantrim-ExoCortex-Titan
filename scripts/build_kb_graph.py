@@ -141,6 +141,14 @@ def main() -> int:
                         :claim_type, :origin_type, :memory_type
                     )
                 """, records)
+                try:
+                    conn.executemany(
+                        "INSERT OR REPLACE INTO facts_fts(rowid, fact_id, claim, source) "
+                        "VALUES ((SELECT rowid FROM facts WHERE fact_id=?), ?, ?, ?)",
+                        [(r["fact_id"], r["fact_id"], r["claim"], r["source"]) for r in records],
+                    )
+                except sqlite3.OperationalError:
+                    pass  # FTS5 is optional in the local SQLite build
             print(f"  факты в store: stored={len(records)} errors=0 (fast-fresh)")
         else:
             totals = {"stored": 0, "updated": 0, "errors": 0}
