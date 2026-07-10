@@ -1,4 +1,8 @@
-"""Schema compatibility for generated World Skills heuristic relations."""
+"""Schema compatibility for generated World Skills heuristic relations.
+
+The migration-level insert test prevents future drift between generated edge
+metadata and the canonical SQLite CHECK constraint.
+"""
 from __future__ import annotations
 
 import sqlite3
