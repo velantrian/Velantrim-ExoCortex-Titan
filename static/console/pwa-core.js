@@ -103,8 +103,8 @@
       endpoint: "https://api.openai.com/v1/chat/completions",
       authHeader: function (key) { return "Bearer " + key; },
     },
-    google: {
-      id: "google",
+    gemini: {
+      id: "gemini",
       name: "Gemini (Google)",
       models: ["gemini-2.5-flash", "gemini-2.5-pro"],
       endpoint: function (model) {
@@ -148,12 +148,42 @@
     return "deepseek";
   }
 
+  /** Список провайдеров в формате консоли (для левой панели). */
+  function getProvidersForConsole() {
+    var keys = getLLMKeys();
+    return Object.keys(PROVIDERS).map(function (pid) {
+      var p = PROVIDERS[pid];
+      return {
+        id: p.id,
+        title: p.name,
+        default_model: p.models[0],
+        models: p.models.slice(),
+        configured: !!keys[pid],
+      };
+    });
+  }
+
+  /** Тест ключа LLM (как /console/llm/test на сервере). */
+  function testLLMKey(provider, apiKey, model) {
+    var msgs = [{ role: "user", content: "Ответь одним словом: OK" }];
+    return callLLM(msgs, { provider: provider, model: model || undefined }).then(function (data) {
+      var preview = "";
+      try { preview = (data.choices[0].message.content || "").slice(0, 120); } catch (_) {}
+      return {
+        provider: provider,
+        model: model || PROVIDERS[provider].models[0],
+        reply_preview: preview || "OK",
+        mode: "pwa",
+      };
+    });
+  }
+
   function callLLM(messages, opts) {
     opts = opts || {};
     var pid = opts.provider || getActiveProvider();
     var prov = PROVIDERS[pid];
     var keys = getLLMKeys();
-    var key = keys[pid] || "";
+    var key = opts.api_key || keys[pid] || "";
     if (!key) {
       return Promise.reject(new Error("API-ключ для " + (prov ? prov.name : pid) + " не задан. Нажмите ⚙️ → Ключи LLM."));
     }
@@ -200,9 +230,9 @@
     var pid = opts.provider || getActiveProvider();
     var prov = PROVIDERS[pid];
     var keys = getLLMKeys();
-    var key = keys[pid] || "";
+    var key = opts.api_key || keys[pid] || "";
     if (!key) {
-      if (onError) onError(new Error("API-ключ для " + (prov ? prov.name : pid) + " не задан. Нажмите ⚙️ → Ключи LLM."));
+      if (onError) onError(new Error("API-ключ для " + (prov ? prov.name : pid) + " не задан. Вставьте ключ в блок «API LLM» слева."));
       return;
     }
 
@@ -215,7 +245,7 @@
       stream: true,
     };
 
-    if (pid === "google") {
+    if (pid === "gemini") {
       // Gemini streaming differs — fallback to non-streaming
       callLLM(messages, opts).then(function (data) {
         var text = "";
@@ -483,11 +513,11 @@
     });
   }
 
-  function pwaChatStream(query, history, provider, onDelta, onDone, onError) {
+  function pwaChatStream(query, history, provider, onDelta, onDone, onError, apiKey, model) {
     provider = provider || getActiveProvider();
     var msgs = history || [];
     msgs = msgs.concat([{ role: "user", content: query }]);
-    callLLMStream(msgs, { provider: provider }, onDelta, onDone, onError);
+    callLLMStream(msgs, { provider: provider, api_key: apiKey, model: model }, onDelta, onDone, onError);
   }
 
   // ──────────────────────── TTS (Web Speech API) ─────────────────────
@@ -541,6 +571,8 @@
     deleteNote: deleteNote,
     getLLMKeys: getLLMKeys,
     saveLLMKeys: saveLLMKeys,
+    getProvidersForConsole: getProvidersForConsole,
+    testLLMKey: testLLMKey,
     providers: PROVIDERS,
     ttsSpeak: pwaTtsSpeak,
     sttListen: pwaSttListen,

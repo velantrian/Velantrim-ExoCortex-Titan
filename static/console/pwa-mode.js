@@ -13,7 +13,7 @@
   // ── Загрузка pwa-core.js (только в PWA-режиме) ──
   if (isPWA) {
     var script = document.createElement("script");
-    script.src = "./pwa-core.js?v=2";
+    script.src = "./pwa-core.js?v=3";
     script.onload = function () { initPWAMode(); };
     script.onerror = function () {
       console.warn("VELANTRIM PWA: не удалось загрузить pwa-core.js — работаем как статическая витрина");
@@ -131,14 +131,66 @@
       });
     }
 
-    // ── PWA Chat Handler (не-стриминг) ──
-    // Патчим прямой fetch к /chat/stream для PWA
+    // ── Патч fetch: чат, TTS/STT, LLM-провайдеры и тест ключа ──
     var _realFetch = window.fetch;
     window.fetch = function (url, opts) {
       var urlStr = String(url);
+      opts = opts || {};
 
       if (urlStr.indexOf("/chat/stream") >= 0 || urlStr.indexOf("/console/chat") >= 0) {
         return pwaChatFetch(urlStr, opts);
+      }
+
+      if (urlStr.indexOf("/console/llm/providers") >= 0 || urlStr.indexOf("/llm/providers") >= 0) {
+        var provs = PWA.getProvidersForConsole();
+        return Promise.resolve(new Response(
+          JSON.stringify({ providers: provs, catalog_build_id: "pwa-v2", mode: "pwa" }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        ));
+      }
+
+      if (urlStr.indexOf("/console/llm/test") >= 0 || urlStr.indexOf("/llm/test") >= 0) {
+        try {
+          var body = JSON.parse(opts.body || "{}");
+          return PWA.testLLMKey(body.provider, body.api_key, body.model).then(function (res) {
+            return new Response(JSON.stringify(res), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
+          }).catch(function (err) {
+            return new Response(JSON.stringify({ error: err.message }), {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            });
+          });
+        } catch (e) {
+          return Promise.resolve(new Response(
+            JSON.stringify({ error: e.message }),
+            { status: 400, headers: { "Content-Type": "application/json" } }
+          ));
+        }
+      }
+
+      if (urlStr.indexOf("/console/bootstrap") >= 0) {
+        return Promise.resolve(new Response(
+          JSON.stringify({
+            auth_required: false,
+            allow_open: true,
+            mode: "pwa",
+            hint: "PWA: ключ LLM — в блоке слева «API LLM».",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        ));
+      }
+
+      if (urlStr.indexOf("/debug/console") >= 0) {
+        return Promise.resolve(new Response(
+          JSON.stringify({
+            mode: "pwa",
+            features: { chat_endpoint: true },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        ));
       }
 
       if (urlStr.indexOf("/console/tts/") >= 0) {
@@ -154,41 +206,64 @@
 
     function pwaChatFetch(url, opts) {
       var body = JSON.parse(opts.body || "{}");
-      var query = body.query || body.message || "";
-      var history = body.history || body.messages || [];
-      var provider = body.provider || "deepseek";
+      var query = body.message || body.query || "";
+      var history = body.chat_history || body.history || body.messages || [];
+      var provider = body.llm_provider || body.provider || "deepseek";
+      var apiKey = body.llm_api_key || body.api_key || "";
+      var model = body.llm_model || body.model || "";
 
-      return PWA.openDB().then(function () {
-        return new Promise(function (resolve, reject) {
+      // Нормализуем историю в формат {role, content}
+      var msgs = [];
+      for (var i = 0; i < history.length; i++) {
+        var h = history[i];
+        if (!h) continue;
+        var role = h.role || (h.from === "user" ? "user" : "assistant");
+        var content = h.content || h.text || h.message || "";
+        if (content) msgs.push({ role: role, content: content });
+      }
+
+      var stream = new ReadableStream({
+        start: function (controller) {
+          var encoder = new TextEncoder();
           var fullText = "";
-          var aborted = false;
-          var reader = {
-            read: function () { return new Promise(function () {}); },
-            cancel: function () { aborted = true; },
-            getReader: function () { return reader; },
-          };
 
-          PWA.chatStream(query, history, provider,
+          function push(ev) {
+            controller.enqueue(encoder.encode("data: " + JSON.stringify(ev) + "\n\n"));
+          }
+
+          PWA.chatStream(
+            query,
+            msgs,
+            provider,
             function (delta) {
               fullText += delta;
+              push({ type: "token", text: delta });
             },
             function () {
-              var resp = new Response(
-                'data: ' + JSON.stringify({ choices: [{ delta: { content: fullText }, finish_reason: "stop" }] }) + '\n\ndata: [DONE]\n',
-                { status: 200, headers: { "Content-Type": "text/event-stream" } }
-              );
-              resolve(resp);
+              push({ type: "done", reply: fullText });
+              push({
+                type: "final",
+                reply: fullText,
+                from_llm: true,
+                llm_provider: provider,
+                llm_model: model,
+              });
+              controller.close();
             },
             function (err) {
-              var resp = new Response(
-                JSON.stringify({ error: err.message }),
-                { status: 500, headers: { "Content-Type": "application/json" } }
-              );
-              resolve(resp);
-            }
+              push({ type: "error", message: err.message || String(err) });
+              controller.close();
+            },
+            apiKey,
+            model
           );
-        });
+        },
       });
+
+      return Promise.resolve(new Response(stream, {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      }));
     }
 
     function pwaTtsFetch(url, opts) {
@@ -245,72 +320,58 @@
       });
     }
 
-    // ── UI: LLM Keys Panel ──
-    function injectLLMKeysUI() {
-      var banner = document.createElement("div");
-      banner.id = "pwa-llm-panel";
-      banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#1a2332;border-bottom:1px solid #3d8bfd;padding:.6rem .9rem;font:13px/1.4 Segoe UI,system-ui,sans-serif;color:#e7ecf3;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;justify-content:center";
-      banner.innerHTML =
-        '<span style="color:#3d8bfd;font-weight:700">⚡ PWA</span>' +
-        '<select id="pwa-provider" style="font:inherit;border:1px solid #2d3a4f;border-radius:6px;background:#0f1419;color:var(--text);padding:.35rem .5rem">' +
-          '<option value="deepseek">DeepSeek</option>' +
-          '<option value="openai">OpenAI</option>' +
-          '<option value="google">Gemini</option>' +
-        '</select>' +
-        '<input id="pwa-apikey" type="password" placeholder="API-ключ LLM..." style="font:inherit;border:1px solid #2d3a4f;border-radius:6px;background:#0f1419;color:var(--text);padding:.35rem .5rem;width:260px">' +
-        '<button id="pwa-save-key" style="font:inherit;border:1px solid #3d8bfd;border-radius:6px;background:#3d8bfd;color:#fff;padding:.35rem .65rem;cursor:pointer;font-weight:650">💾 Сохранить</button>' +
-        '<button id="pwa-toggle-panel" style="font:inherit;border:1px solid #2d3a4f;border-radius:6px;background:transparent;color:#8b9cb3;padding:.35rem .65rem;cursor:pointer">−</button>';
+    // ── UI: левая панель (без верхней полосы) ──
+    function adaptSidebarForPWA() {
+      document.documentElement.setAttribute("data-pwa-mode", "1");
 
-      document.body.insertBefore(banner, document.body.firstChild);
+      var serverBlock = document.getElementById("serverKeyBlock");
+      if (serverBlock) serverBlock.style.display = "none";
 
-      // Загрузка сохранённых ключей
-      var keys = PWA.getLLMKeys();
-      var activeProv = Object.keys(keys)[0] || "deepseek";
-      var sel = document.getElementById("pwa-provider");
-      if (sel) sel.value = activeProv;
-      var inp = document.getElementById("pwa-apikey");
-      if (inp) inp.value = keys[activeProv] || "";
+      var llmBlock = document.getElementById("llmSettingsBlock");
+      if (llmBlock) {
+        var title = llmBlock.querySelector(".section-title");
+        if (title) title.textContent = "🤖 2. API LLM (DeepSeek, Gemini, …)";
+      }
 
-      // Сохранение
-      document.getElementById("pwa-save-key").onclick = function () {
-        var prov = sel.value;
-        var key = inp.value.trim();
-        var allKeys = PWA.getLLMKeys();
-        allKeys[prov] = key;
-        PWA.saveLLMKeys(allKeys);
-        showToast("Ключ " + prov + " сохранён ✓");
-      };
+      var hint = document.getElementById("llmHint");
+      if (hint) {
+        hint.innerHTML =
+          "Ключ хранится в браузере. Выберите провайдера, вставьте API-ключ ниже, нажмите «Подтвердить ключ», затем «LLM включён». " +
+          "Полная консоль с SQLite — через <code>scripts\\start_console.ps1</code> на ПК.";
+      }
 
-      // Смена провайдера
-      sel.onchange = function () {
-        var allKeys = PWA.getLLMKeys();
-        inp.value = allKeys[sel.value] || "";
-      };
-
-      // Свернуть панель
-      var expanded = true;
-      document.getElementById("pwa-toggle-panel").onclick = function () {
-        expanded = !expanded;
-        this.textContent = expanded ? "−" : "+";
-        [sel, inp, document.getElementById("pwa-save-key")].forEach(function (el) {
-          if (el) el.style.display = expanded ? "" : "none";
+      // Синхронизация ключей: при сохранении в форме консоли → PWA storage
+      var llmKeyInput = document.getElementById("llmApiKey");
+      if (llmKeyInput) {
+        llmKeyInput.addEventListener("change", function () {
+          var provSel = document.getElementById("llmProviderSelect");
+          var pid = provSel ? provSel.value : "deepseek";
+          var key = llmKeyInput.value.trim();
+          if (key) {
+            var all = PWA.getLLMKeys();
+            all[pid] = key;
+            PWA.saveLLMKeys(all);
+          }
         });
-      };
+      }
     }
 
     function showToast(msg) {
       var t = document.createElement("div");
-      t.style.cssText = "position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);z-index:99999;background:#1a2332;border:1px solid #3d8bfd;color:#e7ecf3;padding:.5rem 1rem;border-radius:8px;font:13px Segoe UI,system-ui,sans-serif";
+      t.style.cssText =
+        "position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);z-index:99999;" +
+        "background:var(--panel,#1a2332);border:1px solid var(--accent,#3d8bfd);" +
+        "color:var(--text,#e7ecf3);padding:.5rem 1rem;border-radius:8px;" +
+        "font:13px Segoe UI,system-ui,sans-serif";
       t.textContent = msg;
       document.body.appendChild(t);
       setTimeout(function () { t.remove(); }, 2500);
     }
 
-    // Внедряем UI после загрузки DOM
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", injectLLMKeysUI);
+      document.addEventListener("DOMContentLoaded", adaptSidebarForPWA);
     } else {
-      injectLLMKeysUI();
+      adaptSidebarForPWA();
     }
   }
 })();
