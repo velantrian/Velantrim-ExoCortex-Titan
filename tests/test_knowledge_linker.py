@@ -5,9 +5,14 @@
 """
 from core.knowledge_linker import (
     DEFAULT_RELATION,
+    graph_quality_report,
+    is_causal_for_essence,
     link_by_tags,
     link_facts,
+    link_practical_semantics,
+    normalize_type,
     parse_tags,
+    relation_is_causal_for_essence,
 )
 
 # ── parse_tags ────────────────────────────────────────────────────────────────
@@ -126,7 +131,8 @@ def test_same_process_tier_uses_precedes():
     assert edges[0]["relation_type"] == "precedes"
 
 
-def test_causal_cue_uses_causes():
+def test_autolinker_does_not_infer_causes_from_claim_text():
+    """Autolinker не выводит causes из текста claim — только curated_explicit."""
     facts = [
         {"fact_id": "phys.water.freeze.expand", "type": "MECHANISM",
          "claim": "Замерзание расширяет воду", "links": ""},
@@ -134,32 +140,27 @@ def test_causal_cue_uses_causes():
          "claim": "Расширение льда вызывает трещины в дороге", "links": "freeze"},
     ]
     edges = link_by_tags(facts)
-    assert len(edges) == 1
-    assert edges[0]["relation_type"] == "causes"
+    assert edges
+    assert all(e["relation_type"] != "causes" for e in edges)
 
 
 # ── ③ namespace-линковщик: связность (F-01 регрессия-гард) ──────────────────────
 
-def test_namespace_linker_eliminates_isolation():
-    """F-01: link_by_tags оставлял ~80% фактов изолированными (нечего матчить по тегам).
-    link_facts добавляет структурные namespace-рёбра из иерархии id → изолированных
-    не остаётся. Гард против регрессии связности (live: 20%→99.96%)."""
+def test_namespace_linker_provides_minimal_structure_not_full_mesh():
+    """Namespace: ≤1 сосед на узел — структурная подсказка, не полная связность."""
     facts = [
         {"fact_id": f"{domain}.{sub}.{term}", "links": ""}
         for domain in ("agro", "phys", "food")
         for sub in ("alpha", "beta", "gamma")
         for term in ("one", "two", "three")
-    ]  # 27 фактов, без тег-связей
-    assert link_by_tags(facts) == []          # по тегам — 0 рёбер (всё было бы изолировано)
-
+    ]
+    assert link_by_tags(facts) == []
     edges = link_facts(facts)
-    nodes = {f["fact_id"] for f in facts}
+    ns = [e for e in edges if e.get("edge_basis") == "namespace"]
+    assert ns
+    assert all(e["relation_type"] == "analogous_to" for e in ns)
     touched = {e["source_id"] for e in edges} | {e["target_id"] for e in edges}
-    isolated = nodes - touched
-    connectivity = len(touched) / len(nodes)
-    assert connectivity >= 0.99, (
-        f"namespace linker оставил {len(isolated)} изолированных: {sorted(isolated)}"
-    )
+    assert len(touched) < len(facts)  # намеренно не 100% coverage
 
 
 def test_link_facts_no_duplicate_pairs():
@@ -175,3 +176,146 @@ def test_link_facts_no_duplicate_pairs():
     assert len(pairs) == len(set(pairs)), "дублирующиеся пары source/target в link_facts"
     # namespace добавил рёбра сверх тег-рёбер (agro.wheat.grain↔gluten не связаны тегом)
     assert len(edges) > len(link_by_tags(facts))
+
+
+def test_russian_types_are_normalized_for_orientation():
+    assert normalize_type("МЕТОД") == "method"
+    assert normalize_type("БЕЗОПАСНОСТЬ_ПРАВИЛО") == "safety_rule"
+    assert normalize_type("СРОК") == "term"
+
+
+def test_practical_semantics_builds_foundation_bridge_with_audit_terms():
+    facts = [
+        {
+            "fact_id": "chemistry.surfactant.action",
+            "type": "PRINCIPLE",
+            "knowledge_unit": "Поверхностно-активные вещества",
+            "claim": "Моющее средство с ПАВ отделяет жир и грязь от поверхности.",
+            "practical": "Подбор средства зависит от поверхности.",
+        },
+        {
+            "fact_id": "pressurewash.ops.detergent_dwell",
+            "type": "METHOD",
+            "knowledge_unit": "Выдержка моющего средства",
+            "claim": "Моющее средство отделяет жир и грязь от поверхности после выдержки.",
+            "practical": "Подбирать средство по типу поверхности.",
+        },
+    ]
+    edges = link_practical_semantics(facts)
+    bridge = next(e for e in edges if e["edge_basis"] == "practical_foundation")
+    assert bridge["source_id"] == "chemistry.surfactant.action"
+    assert bridge["target_id"] == "pressurewash.ops.detergent_dwell"
+    assert bridge["relation_type"] == "enables"
+    assert len(bridge["matched_terms"]) >= 2
+    assert bridge["confidence"] > 0.56
+
+
+def test_practical_semantics_types_method_to_quality_as_requires():
+    facts = [
+        {
+            "fact_id": "pressurewash.ops.concrete_cleaning",
+            "type": "METHOD",
+            "claim": "Очистка бетонной поверхности удаляет масло и грязь.",
+            "practical": "Проверить бетонную поверхность после очистки.",
+        },
+        {
+            "fact_id": "pressurewash.ops.concrete_quality_check",
+            "type": "QUALITY_CHECK",
+            "claim": "Проверка бетонной поверхности выявляет остатки масла и грязи.",
+            "practical": "Контроль поверхности выполняют после очистки.",
+        },
+    ]
+    edges = link_practical_semantics(facts)
+    edge = next(e for e in edges if e["edge_basis"] == "semantic_similarity")
+    assert edge["source_id"] == "pressurewash.ops.concrete_cleaning"
+    assert edge["target_id"] == "pressurewash.ops.concrete_quality_check"
+    assert edge["relation_type"] == "requires"
+
+
+def test_namespace_edges_are_structural_not_fake_causality():
+    facts = [
+        {"fact_id": "domain.topic.alpha", "type": "METHOD", "claim": "Alpha unique"},
+        {"fact_id": "domain.topic.beta", "type": "METHOD", "claim": "Beta unique"},
+    ]
+    edges = link_facts(facts)
+    assert len(edges) == 1
+    assert edges[0]["edge_basis"] == "namespace"
+    assert edges[0]["relation_type"] == "analogous_to"
+    assert edges[0]["confidence"] == 0.35
+
+
+def test_graph_quality_report_separates_structure_and_semantics():
+    facts = [
+        {"fact_id": "theory.surface.cleaning", "type": "PRINCIPLE"},
+        {"fact_id": "cleaning.ops.surface_method", "type": "METHOD"},
+        {"fact_id": "cleaning.ops.surface_check", "type": "QUALITY_CHECK"},
+    ]
+    edges = [
+        {
+            "source_id": "theory.surface.cleaning",
+            "target_id": "cleaning.ops.surface_method",
+            "relation_type": "enables",
+            "edge_basis": "practical_foundation",
+        },
+        {
+            "source_id": "cleaning.ops.surface_method",
+            "target_id": "cleaning.ops.surface_check",
+            "relation_type": "requires",
+            "edge_basis": "semantic_similarity",
+        },
+    ]
+    report = graph_quality_report(facts, edges)
+    assert report["coverage_pct"] == 100.0
+    assert report["practical_nodes"] == 2
+    assert report["practical_bridge_edges"] == 1
+    assert report["by_edge_basis"]["practical_foundation"] == 1
+
+
+def test_namespace_edge_not_causal_for_essence():
+    edge = {
+        "source_id": "a.x.one",
+        "target_id": "a.x.two",
+        "relation_type": "analogous_to",
+        "edge_basis": "namespace",
+    }
+    assert not is_causal_for_essence(edge)
+    assert not relation_is_causal_for_essence("analogous_to", {"edge_basis": "namespace"})
+
+
+def test_curated_edge_is_causal_for_essence():
+    edge = {
+        "source_id": "electric.ops.gfci_afci_operation_test",
+        "target_id": "electric.ops.residential_wiring_basics",
+        "relation_type": "requires",
+        "edge_basis": "curated_explicit",
+    }
+    assert is_causal_for_essence(edge)
+    assert relation_is_causal_for_essence("requires", {"edge_basis": "curated_explicit"})
+
+
+def test_link_facts_marks_generated_ops_sequence_as_inferred():
+    facts = [
+        {"fact_id": "electric.ops.step_one", "type": "METHOD",
+         "metadata": {"knowledge_file": "651_BATCH_901_ELECTRICAL_INSTALLATION_OPERATIONS.ru.md"}},
+        {"fact_id": "electric.ops.step_two", "type": "METHOD",
+         "metadata": {"knowledge_file": "651_BATCH_901_ELECTRICAL_INSTALLATION_OPERATIONS.ru.md"}},
+    ]
+    edges = link_facts(facts)
+    heuristic = [e for e in edges if e.get("edge_basis") == "heuristic_ops_sequence"]
+    assert heuristic
+    assert all(e["knowledge_status"] == "inferred" for e in heuristic)
+    assert all(not is_causal_for_essence(e) for e in heuristic)
+
+
+def test_namespace_limited_to_one_neighbor_per_node():
+    facts = [
+        {"fact_id": f"domain.topic.node{i}", "type": "METHOD", "claim": f"Claim {i}"}
+        for i in range(6)
+    ]
+    edges = link_facts(facts)
+    ns = [e for e in edges if e.get("edge_basis") == "namespace"]
+    degree: dict[str, int] = {}
+    for e in ns:
+        degree[e["source_id"]] = degree.get(e["source_id"], 0) + 1
+        degree[e["target_id"]] = degree.get(e["target_id"], 0) + 1
+    assert all(v <= 1 for v in degree.values())

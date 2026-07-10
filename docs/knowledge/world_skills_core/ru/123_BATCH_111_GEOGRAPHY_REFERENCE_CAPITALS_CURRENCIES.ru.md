@@ -30,14 +30,14 @@
 | georef.smallest.country | Наименьшее государство | variant | Ватикан (~0.44 км²) | справка |
 | georef.longest.river | Длиннейшие реки | invariant | Нил и Амазонка (спор о первенстве) | справка |
 | georef.highest.mountain | Высочайшая гора | invariant | Эверест (8849 м) | справка |
-| georef.largest.ocean | Крупнейший океан | invariant | Тихий | справка |
-| georef.largest.desert | Крупнейшая жаркая пустыня | invariant | Сахара | справка |
+| georef.largest.ocean | Крупнейший океан | invariant | Тихий океан — крупнейший океан Земли. | справка |
+| georef.largest.desert | Крупнейшая жаркая пустыня | invariant | Сахара — крупнейшая жаркая пустыня Земли. | справка |
 | georef.deepest.lake | Глубочайшее озеро | invariant | Байкал (~1642 м) | справка |
 | georef.largest.lake | Крупнейшее озеро по площади | invariant | Каспийское море | справка |
-| georef.continent.largest | Крупнейший континент | invariant | Евразия | справка |
+| georef.continent.largest | Крупнейший континент | invariant | Евразия — крупнейший континент Земли. | справка |
 | georef.timezone.utc | UTC и часовые пояса | invariant | отсчёт от Гринвича; смещения по долготе | время, координация |
 | georef.line.equator | Экватор | invariant | 0° широты, делит на полушария | климат |
-| georef.line.greenwich | Гринвичский меридиан | invariant | 0° долготы | долгота, время |
+| georef.line.greenwich | Гринвичский меридиан | invariant | Гринвичский меридиан проходит по 0° долготы. | долгота, время |
 | georef.org.un | ООН | variant | 193 страны-члена | международные отношения |
 | georef.org.eu | Евросоюз | variant | 27 стран, общий рынок | торговля, политика |
 | georef.flag.concept | Государственные флаги | variant | символы стран; цвета и эмблемы | идентификация |

@@ -41,21 +41,13 @@ PWA_MODE_SCRIPT = """
 <script>
 (function(){var h=window.location.hostname||"";
 if(h.endsWith("github.io")||h==="velantrian.github.io"){
-document.write('<script src="./pwa-mode.js?v=3"><\\/script>');
+document.write('<script src="./pwa-mode.js?v=4"><\\/script>');
 }})();
 </script>
 """
 
-# Баннер внизу — только на GitHub Pages
-PWA_BANNER = """
-<div id="gh-pages-banner" style="position:fixed;bottom:0;left:0;right:0;z-index:9999;
-background:#1a2332;border-top:1px solid #3d8bfd;padding:.55rem .9rem;
-font:13px/1.4 Segoe UI,system-ui,sans-serif;color:#e7ecf3;text-align:center">
-⚡ PWA-режим: память в IndexedDB · LLM через прямые API (ключ в панели сверху).
-<a href="http://127.0.0.1:8755/console/" style="color:#3d8bfd">Локальный сервер</a> —
-полная консоль с SQLite и всеми провайдерами.
-</div>
-"""
+# Нижний баннер не вставляем — ключи в левой панели консоли.
+PWA_BANNER = ""
 
 # PWA-теги в research-app.html
 PWA_HEAD = (
@@ -112,7 +104,7 @@ def _build_console() -> None:
         html = index.read_text(encoding="utf-8")
         if "pwa-mode.js" not in html:
             html = html.replace("<head>", "<head>\n" + PWA_MODE_SCRIPT.strip(), 1)
-        if "gh-pages-banner" not in html:
+        if PWA_BANNER.strip() and "gh-pages-banner" not in html:
             html = html.replace("</body>", PWA_BANNER.strip() + "\n</body>")
         index.write_text(html, encoding="utf-8")
 

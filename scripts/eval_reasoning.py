@@ -79,10 +79,10 @@ def main() -> int:
     # Связность KB (доля фактов хотя бы с одним ребром) — второй ключевой показатель.
     conn_pct = -1
     try:
-        from core.knowledge_linker import link_by_tags
+        from core.knowledge_linker import link_facts
         from core.world_skills_ingest import parse_knowledge_dir
         kb = parse_knowledge_dir()
-        edges = link_by_tags(kb)
+        edges = link_facts(kb)
         connected: set = set()
         for e in edges:
             connected.add(e["source_id"]); connected.add(e["target_id"])
