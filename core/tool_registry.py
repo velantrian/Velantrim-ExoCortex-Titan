@@ -320,7 +320,31 @@ def register_velantrim_tools(registry: ToolRegistry) -> None:
 
     registry.register(
         "supersede_fact", h.supersede_fact, capability="guardian",
-        description="Заменить факт новым (старый → Deprecated, указатель на новый)",
+        description=(
+            "Атомарно заменить факт новым (core.truth_maintenance.supersede): "
+            "новый кандидат проходит TruthGate, старый факт переходит в "
+            "Deprecated ТОЛЬКО вместе с успешной вставкой нового — либо оба "
+            "меняются, либо ничего"
+        ),
+        params={
+            "type": "object",
+            "properties": {
+                "old_fact_id": {"type": "string", "description": "ID заменяемого факта"},
+                "new_fact": {
+                    "type": "object",
+                    "description": "Полный новый факт (fact_id обязателен; claim/source/confidence/metadata — как в store_fact)",
+                    "properties": {
+                        "fact_id": {"type": "string"},
+                        "claim": {"type": "string"},
+                        "source": {"type": "string"},
+                        "confidence": {"type": "number"},
+                        "metadata": {"type": "object"},
+                    },
+                    "required": ["fact_id"],
+                },
+            },
+            "required": ["old_fact_id", "new_fact"],
+        },
         audit=True,
     )
 

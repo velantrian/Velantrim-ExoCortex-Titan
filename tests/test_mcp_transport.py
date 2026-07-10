@@ -5,6 +5,8 @@ the server-side ceiling (VELANTRIM_MCP_MAX_CAPABILITY, default "reader").
 """
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from core.mcp_transport import (
@@ -80,3 +82,58 @@ def test_handler_tools_call_rejects_clamped_destructive_tool():
         capability="admin",
     )
     assert resp["error"]["code"] == -32602
+
+
+def test_handler_tools_call_supersede_fact_atomic_flow_end_to_end(monkeypatch, tmp_path):
+    """Confirmed Codex finding: supersede_fact's (old_fact_id, new_fact dict)
+    contract must work all the way through the MCP JSON-RPC tools/call path,
+    not just as a direct Python call — routes through the atomic
+    core.truth_maintenance.supersede() CAS flow built in PR #11."""
+    import core.memory as memory_mod
+
+    # Default server ceiling is "reader" (confirmed issue #1) — a real
+    # deployment must opt in to "guardian" for this guardian-capability tool
+    # to even be visible, same as any other MCP caller would need to.
+    monkeypatch.setenv("VELANTRIM_MCP_MAX_CAPABILITY", "guardian")
+
+    fresh = memory_mod.make_store(str(tmp_path / "mcp_supersede.db"))
+    monkeypatch.setattr(memory_mod, "_GLOBAL_STORE", fresh)
+
+    old_id, new_id = "old.mcp.fact", "new.mcp.fact"
+    memory_mod.store_fact({
+        "fact_id": old_id, "claim": "old", "source": "test", "confidence": 0.9,
+        "metadata": {"evidence_refs": ["a", "b", "c", "d", "e"]},
+    })
+    memory_mod.transition_esm(old_id, "Hypothesized", by="test")
+    memory_mod.transition_esm(old_id, "Supported", by="test")
+    memory_mod.transition_esm(old_id, "Validated", by="test")
+
+    handler = McpHandler()
+    resp = handler.handle(
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "tools/call",
+            "params": {
+                "name": "supersede_fact",
+                "arguments": {
+                    "old_fact_id": old_id,
+                    "new_fact": {
+                        "fact_id": new_id,
+                        "claim": "new",
+                        "source": "test",
+                        "confidence": 0.95,
+                        "metadata": {"evidence_refs": ["a", "b", "c", "d", "e"]},
+                    },
+                },
+            },
+        },
+        capability="guardian",
+    )
+
+    assert resp["result"]["isError"] is False
+    payload = json.loads(resp["result"]["content"][0]["text"])
+    assert payload["superseded"] is True
+    assert payload["new_fact_id"] == new_id
+    assert memory_mod.get_fact(old_id)["epistemic_state"] == "Deprecated"
+    assert memory_mod.get_fact(new_id)["epistemic_state"] == "Validated"

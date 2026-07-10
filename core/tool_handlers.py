@@ -200,17 +200,43 @@ def contradict_fact(fact_id: str, *, by: str = "tool:contradict_fact") -> dict[s
     return {"fact_id": fact_id, "contradicted": ok, "epistemic_state": "Contradicted" if ok else None}
 
 
-def supersede_fact(
-    old_fact_id: str,
-    new_fact_id: str,
-    *,
-    by: str = "tool:supersede_fact",
-) -> dict[str, Any]:
-    ok = memory_api.transition_esm(old_fact_id, "Deprecated", by=by)
+def supersede_fact(old_fact_id: str, new_fact: dict[str, Any]) -> dict[str, Any]:
+    """
+    SECURITY (confirmed Codex finding): must route through the atomic
+    core.truth_maintenance.supersede() CAS flow built in PR #11 — it
+    validates the replacement through TruthGate and commits old (Deprecated)
+    + new (Validated) together in one transaction. The previous version only
+    transitioned old_fact_id to Deprecated and never validated, created, or
+    linked new_fact_id at all — it could report success even when the
+    replacement never existed.
+    """
+    if not isinstance(new_fact, dict) or not str(new_fact.get("fact_id") or "").strip():
+        return {
+            "old_fact_id": old_fact_id,
+            "new_fact_id": None,
+            "superseded": False,
+            "error": "invalid_new_fact",
+            "message": "new_fact must be an object with a non-empty 'fact_id'",
+        }
+
+    from core.truth_maintenance import supersede as _supersede
+
+    new_fact_id = new_fact["fact_id"]
+    try:
+        result = _supersede(old_fact_id, new_fact)
+    except ValueError as exc:
+        return {
+            "old_fact_id": old_fact_id,
+            "new_fact_id": new_fact_id,
+            "superseded": False,
+            "error": "invalid_request",
+            "message": str(exc),
+        }
+
     return {
         "old_fact_id": old_fact_id,
         "new_fact_id": new_fact_id,
-        "deprecated": ok,
+        "superseded": result is not None,
     }
 
 
