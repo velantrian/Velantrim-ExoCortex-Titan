@@ -107,6 +107,7 @@ from core.memory import (
     store_facts_batch,
     store_raw_text,
     transition_esm,
+    validate_and_promote,
 )
 from core.mhi import MHICalculator, MHIStatus, check_mhi
 from core.pipeline import run as pipeline_run
@@ -2502,13 +2503,28 @@ async def transition_fact(
     AUDIT-FIX v8.4.0: req.by игнорируется. Actor подставляется серверный
     (по hash API-ключа) — защита от подделки audit trail клиентом.
 
-    Разрешённые переходы:
-    - Observed → Hypothesized, Supported, Validated, Collapsed
-    - Hypothesized → Supported, Validated, Collapsed
-    - Supported → Validated, Collapsed
-    - Validated → Contradicted, ImmutableCore, Collapsed
-    - Contradicted → Deprecated, Collapsed
+    Легальные ESM-переходы (см. core.memory.ESM_TRANSITIONS — единственный
+    источник истины; список ниже — просто для читаемости):
+    - Observed → Hypothesized
+    - Hypothesized → Supported, Contradicted, Deprecated
+    - Supported → Validated, Contradicted, Hypothesized
+    - Validated → Contradicted, ImmutableCore, Deprecated
+    - Contradicted → Hypothesized, Collapsed, Deprecated
     - Deprecated → Collapsed
+
+    SECURITY (I68): переход в 'Validated' дополнительно обязан пройти
+    TruthGate.evaluate() (core.truth_gate) — недостаточное evidence/confidence
+    блокирует переход (422), состояние факта не меняется. (TruthGate здесь
+    вызывается с contradiction_detector="none" — проверка активных
+    противоречий НЕ выполняется, пока не подключён NLI-детектор; не
+    заявляем enforcement, которого нет.) Это единственный путь:
+    core.memory.validate_and_promote() — вся policy там, здесь её нет и
+    дублировать её нельзя.
+
+    SECURITY (TOCTOU): validate_and_promote() использует opt-in CAS на
+    updated_at, поэтому конкурентное изменение факта между оценкой TruthGate
+    и записью перехода отменяет промоушен (409), а не молча проходит на
+    основании устаревшего снимка.
     """
     # AUDIT-FIX v8.4.0: actor = "api:" + первые 8 hex-символов sha256(api_key)
     # Клиент не может подделать историю — req.by игнорируется.
@@ -2519,9 +2535,42 @@ async def transition_fact(
         actor_id = f"api:{digest}"
 
     try:
-        ok = await asyncio.to_thread(transition_esm, fact_id, req.new_state, actor_id)
-        if not ok:
-            raise HTTPException(status_code=404, detail=f"Факт '{fact_id}' не найден")
+        if req.new_state == "Validated":
+            # SECURITY (I68): единственный API-путь в 'Validated' — обязан
+            # пройти TruthGate. См. core.memory.validate_and_promote().
+            verdict = await asyncio.to_thread(
+                validate_and_promote, fact_id, actor_id
+            )
+            if verdict.reason == "not_found":
+                raise HTTPException(status_code=404, detail=verdict.justification)
+            if verdict.reason == "concurrent_modification":
+                # SECURITY (TOCTOU): факт изменился между оценкой TruthGate и
+                # записью — не 422 (truth_gate_rejected), т.к. это не был
+                # ложный вердикт, а гонка. Клиент должен просто повторить.
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "error": "concurrent_modification",
+                        "reason": verdict.reason,
+                        "justification": verdict.justification,
+                    },
+                )
+            if not verdict.passed:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "error": "truth_gate_rejected",
+                        "reason": verdict.reason,
+                        "justification": verdict.justification,
+                        "mode": verdict.mode.value,
+                        "confidence": verdict.confidence,
+                        "evidence_count": verdict.evidence_count,
+                    },
+                )
+        else:
+            ok = await asyncio.to_thread(transition_esm, fact_id, req.new_state, actor_id)
+            if not ok:
+                raise HTTPException(status_code=404, detail=f"Факт '{fact_id}' не найден")
     except ImmutableStateError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
     except ValueError as exc:

@@ -794,13 +794,34 @@ class SQLiteGraphStore(GraphStore):
             # Примечание: drift protection возможна только при claim != new_claim,
             # поэтому условие record[epistemic_state] != Contradicted эквивалентно
             # claim == existing[claim] в этом контексте — safe to check напрямую.
+            # SECURITY (review finding on PR #6): metadata must be part of the
+            # no-op check. claim/source/confidence/epistemic_state are all
+            # deterministic inputs to attach_integrity_metadata() (checksum,
+            # episode_hash, dedup_key) and are unchanged whenever the checks
+            # above hold, so a genuine identical re-post still compares equal
+            # here — but a caller supplying new metadata (e.g. fresh
+            # evidence_refs) now correctly falls through to the real upsert
+            # below instead of being silently dropped: this branch performs
+            # no SQL write at all, so treating a metadata change as a no-op
+            # meant it never reached the durable row (only L0), and
+            # validate_and_promote() reads L1 directly (see
+            # _get_fact_durable()) — it would never see that fresh evidence.
             _is_noop = (
                 existing["claim"]  == new_claim
                 and existing["source"] == fact.get("source", "unknown")
                 and abs(existing["confidence"] - confidence) < 1e-9
+                and existing.get("metadata") == record["metadata"]
                 and record["epistemic_state"] != "Contradicted"
             )
             if _is_noop:
+                # SECURITY (review finding on PR #6): the SQL row is untouched
+                # below (no-op — nothing durable changed), so the cached copy
+                # must not claim a fresher `updated_at` than L1 actually has —
+                # that divergence is what let a stale L0 timestamp leak into
+                # a CAS decision (see _get_fact_durable()). record["updated_at"]
+                # was set to a new now() unconditionally above; restore the
+                # durable value before publishing to L0.
+                record["updated_at"] = existing["updated_at"]
                 self._l0_put(fact_id, record)
                 return False  # TASK-04: не новый факт, retriever актуален
 
@@ -924,6 +945,39 @@ class SQLiteGraphStore(GraphStore):
                 self._l0_put(fact_id, result)
                 return copy.deepcopy(result)
         return None
+
+    def _get_fact_durable(self, fact_id: str) -> dict | None:
+        """
+        Читает факт напрямую из L1 (SQLite), в обход L0-кэша.
+
+        SECURITY (review finding on PR #6): store_fact()'s no-op upsert path
+        publishes a fresh `updated_at` to L0 without touching the durable SQL
+        row (see the no-op branch below) — an idempotent POST /facts can leave
+        L0 pointing at a timestamp the DB row doesn't have. Any decision that
+        has security consequences (validate_and_promote's TruthGate snapshot
+        and CAS token) must read L1 directly, never L0, or it can act on a
+        divergent value. Ordinary reads (get_fact) still prefer L0 for speed —
+        only the validation boundary needs this stronger guarantee.
+
+        Deliberately does NOT publish the result to L0 (review finding on
+        PR #6): this snapshot is taken before the CAS-guarded write, so if
+        that write later loses the race, caching here would leave L0
+        holding a now-stale pre-race row for every other reader in this
+        process until the next real write or eviction. The only caller
+        (validate_and_promote) always re-reads durably on every call, so it
+        gets no benefit from populating this cache and shouldn't poison it
+        for everyone else.
+        """
+        with self._db() as conn:
+            row = conn.execute(
+                "SELECT * FROM facts WHERE fact_id = ?", (fact_id,)
+            ).fetchone()
+            if row is None:
+                return None
+            result = dict(row)
+            result["metadata"] = json.loads(result["metadata"])
+            result["history"]  = json.loads(result.get("history") or "[]")
+        return result
 
     def find_fact_id_by_episode_hash(self, episode_hash: str) -> str | None:
         """Pattern separation: найти факт с тем же episode_hash в metadata."""
@@ -1344,6 +1398,279 @@ class SQLiteGraphStore(GraphStore):
         """Каноническая цепочка Observed → Hypothesized → Supported → Validated."""
         return self.promote_esm_to(fact_id, "Validated", by=by)
 
+    def _promote_to_validated_cas(
+        self,
+        fact_id: str,
+        expected_state: str,
+        expected_updated_at: str,
+        durable_snapshot: dict,
+        by: str,
+    ) -> bool:
+        """
+        Единственная мутация, которую делает validate_and_promote(): один
+        атомарный conditional UPDATE прямо против снимка, на котором TruthGate
+        вынес вердикт — WHERE fact_id = ? AND epistemic_state = ? AND
+        updated_at = ?, оба значения приходят от вызывающего (durable-снимок),
+        никакого нового чтения внутри.
+
+        Это НАРОЧНО не transition_esm(): тот делает свежий self.get_fact()
+        и легальность проверяет по ЭТОМУ свежему состоянию — если факт успел
+        измениться (например, конкурентный переход в другое состояние), это
+        может кинуть ValueError (нелегальный переход) вместо честного
+        concurrent_modification. Здесь легальность уже проверена в
+        validate_and_promote() против исходного снимка; единственный
+        оставшийся вопрос — совпадает ли ещё этот снимок с БД, и на него
+        отвечает сам WHERE.
+
+        Возвращает True только если UPDATE реально затронул строку (rowcount
+        == 1) — т.е. факт был именно там, где его видел TruthGate. Возвращает
+        False без какой-либо мутации, если WHERE не совпал (факт изменился
+        ИЛИ был удалён конкурентно) — оба случая одинаково означают
+        "снимок больше не действителен", и вызывающий обязан трактовать это
+        как concurrent_modification, а не как success.
+
+        VersionStore-снимок и публикация L0 происходят СТРОГО после
+        подтверждённого успеха (rowcount == 1) — снимок больше не пишется
+        для отклонённой попытки (см. review finding на PR #6: раньше
+        _snapshot_before_change() вызывался до CAS и оставлял pre-image для
+        перехода, который на самом деле не состоялся).
+
+        Ограничение согласованности: сам факт (в SQLite) и VersionStore
+        (core/version_store.py) — РАЗНЫЕ соединения/файлы. Между commit'ом
+        основной мутации и записью в VersionStore нет общей транзакции —
+        падение процесса именно в этом окне оставит успешный переход БЕЗ
+        version-снимка. Это не хуже поведения transition_esm() везде
+        в остальной кодовой базе (тот же паттерн), и explicitly не решается
+        здесь — не относится к TruthGate-обходу, который чинит этот PR.
+        """
+        now = _now()
+        new_state = "Validated"
+        history_entry = {
+            "state": new_state, "from": expected_state, "at": now, "by": by,
+        }
+
+        from core.fact_integrity import attach_integrity_metadata
+
+        new_record = copy.deepcopy(durable_snapshot)
+        new_record["epistemic_state"] = new_state
+        new_record["updated_at"] = now
+        new_record.setdefault("history", []).append(history_entry)
+        new_record["metadata"] = attach_integrity_metadata(
+            new_record.get("metadata") or {},
+            claim=new_record.get("claim", ""),
+            source=new_record.get("source", "unknown"),
+            confidence=float(new_record.get("confidence", 0.5)),
+            epistemic_state=new_state,
+        )
+        new_metadata_json = json.dumps(new_record["metadata"])
+
+        with self._db() as conn:
+            bump = self._fact_version_bump_sql(conn)
+            if self.use_json_insert:
+                cur = conn.execute(f"""
+                    UPDATE facts
+                    SET epistemic_state = ?,
+                        updated_at      = ?,
+                        {bump}history         = json_insert(history, '$[#]', json(?))
+                    WHERE fact_id = ? AND epistemic_state = ? AND updated_at = ?
+                """, (new_state, now, json.dumps(history_entry),
+                      fact_id, expected_state, expected_updated_at))
+                committed = cur.rowcount == 1
+            else:
+                # SECURITY (review finding on PR #6): "committed" must reflect
+                # the guarded UPDATE's own rowcount, not this preceding SELECT
+                # — another connection can change/delete the row in the gap
+                # between them (the SELECT takes no write lock), and this
+                # fallback path is otherwise the only one that would report
+                # success based on a stale read instead of the actual write.
+                row = conn.execute(
+                    "SELECT history FROM facts "
+                    "WHERE fact_id = ? AND epistemic_state = ? AND updated_at = ?",
+                    (fact_id, expected_state, expected_updated_at),
+                ).fetchone()
+                committed = False
+                if row is not None:
+                    history_l1 = json.loads(row[0] or "[]")
+                    history_l1.append(history_entry)
+                    cur = conn.execute(f"""
+                        UPDATE facts
+                        SET epistemic_state = ?, updated_at = ?,
+                            {bump}history = ?
+                        WHERE fact_id = ? AND epistemic_state = ? AND updated_at = ?
+                    """, (new_state, now, json.dumps(history_l1),
+                          fact_id, expected_state, expected_updated_at))
+                    committed = cur.rowcount == 1
+
+            if not committed:
+                return False
+
+            conn.execute(
+                "UPDATE facts SET metadata = ? WHERE fact_id = ?",
+                (new_metadata_json, fact_id),
+            )
+
+        # Только теперь, когда CAS подтверждённо прошёл и закоммичен: audit
+        # pre-image (снимок ДО мутации — durable_snapshot, который у нас уже
+        # есть, повторное чтение не нужно) и публикация L0.
+        self._snapshot_before_change(
+            fact_id, durable_snapshot, caused_by=f"memory.validate_and_promote:{by}",
+        )
+        self._l0_put(fact_id, new_record)
+        return True
+
+    def validate_and_promote(
+        self,
+        fact_id: str,
+        by: str = "truth_gate",
+        mode: "Any" = None,
+    ) -> "Any":
+        """
+        SECURITY (I68): единственная канонical-функция для перевода факта в
+        'Validated' по запросу внешнего/недоверенного вызывающего (например,
+        PATCH /facts/{fact_id}/transition). В отличие от promote_to_validated()/
+        promote_esm_to()/transition_esm() — которые используются внутренними
+        путями (pipeline.run(), ConsolidationEngine, graduated promotion),
+        уже применяющими СОБСТВЕННУЮ pre-vetting policy до вызова — эта функция
+        сама прогоняет факт через TruthGate.evaluate() и мутирует состояние
+        ТОЛЬКО если вердикт passed И последующий CAS-write реально закоммитился.
+
+        Атомарность: если TruthGate отклоняет факт — никакая запись не
+        вызывается вообще. Никакой мутации, никакой частичной записи в
+        history, никакой audit-записи о несостоявшемся переходе.
+
+        SECURITY (durable read, review finding on PR #6): и снимок для
+        TruthGate, и CAS-токен читаются через _get_fact_durable() — НАПРЯМУЮ
+        из L1 SQLite, в обход L0-кэша. store_fact()'s no-op upsert path может
+        опубликовать в L0 свежий updated_at, не трогая саму строку в БД
+        (идемпотентный повторный POST /facts) — если бы CAS-токен брался
+        оттуда, легитимный промоушен мог бы получать перманентный 409. Решение
+        с реальными последствиями для безопасности обязано читать источник
+        истины (L1), не кэш.
+
+        SECURITY (TOCTOU): между этим durable-чтением (снимок, который видит
+        TruthGate) и финальной записью факт может измениться конкурентно —
+        другой запрос делает POST /facts upsert (меняя confidence/source/
+        metadata/evidence_refs) или другой переход (меняя epistemic_state).
+        Оба случая ловятся ОДНИМ conditional UPDATE в _promote_to_validated_cas()
+        — WHERE fact_id = ? AND epistemic_state = ? AND updated_at = ?, оба
+        значения из этого самого снимка, без какого-либо промежуточного
+        свежего чтения. Если WHERE не совпал — 0 строк, никакой мутации,
+        result False; validate_and_promote() трактует это как
+        concurrent_modification, НЕ как success (raньше игнорировавшийся bool
+        от transition_esm() позволял вернуть passed=True даже когда переход
+        физически не состоялся — например, факт удалили между TruthGate и
+        записью; это исправлено — CAS-write result проверяется явно).
+
+        ESM-легальность (I50) проверяется ЗДЕСЬ, против ИСХОДНОГО durable-
+        снимка, до TruthGate.evaluate() и до какой-либо повторной проверки —
+        прямой Observed→Validated обязан вернуть ValueError/400 независимо от
+        силы confidence/evidence, и независимо от того, что произошло с
+        фактом ПОСЛЕ этого снимка (конкурентные гонки после легального
+        снимка всегда concurrent_modification/409, никогда 400 — см.
+        _promote_to_validated_cas()).
+
+        Returns:
+            TruthGateVerdict. verdict.passed говорит, состоялся ли переход.
+            reason == "not_found", если факт не существует на момент
+            исходного durable-чтения (verdict.passed всегда False).
+            reason == "concurrent_modification", если факт изменился
+            (включая удаление) между снимком для TruthGate и записью —
+            независимо от того, существовал ли факт в момент снимка.
+
+        Не вызывает LLM. Не дублирует TruthGate policy — вся логика внутри
+        core.truth_gate.TruthGate; эта функция только оркестрирует
+        evaluate() → guarded write атомарно.
+        """
+        from core.truth_gate import CognitiveMode, TruthGate, TruthGateVerdict
+
+        if mode is None:
+            mode = CognitiveMode.BALANCED
+        elif isinstance(mode, str):
+            try:
+                mode = CognitiveMode(mode.upper())
+            except ValueError:
+                mode = CognitiveMode.BALANCED
+
+        # Ring Zero проверяется здесь так же строго, как в transition_esm():
+        # по fact_id, до любого чтения/gate — не зависит от того, существует
+        # ли факт в БД. Сохраняет 403 (не 404/422) для Ring Zero ID.
+        if fact_id in IMMUTABLE_FACT_IDS:
+            raise ImmutableStateError(
+                f"validate_and_promote: факт '{fact_id}' защищён Ring Zero"
+            )
+
+        fact = self._get_fact_durable(fact_id)
+        if fact is None:
+            return TruthGateVerdict(
+                passed=False,
+                fact_id=fact_id,
+                reason="not_found",
+                justification=f"Факт '{fact_id}' не найден.",
+                by=by,
+                mode=mode,
+            )
+
+        current_state = fact.get("epistemic_state", "Observed")
+        if current_state == "Validated":
+            # Идемпотентность: уже Validated — вердикт passed, без повторной мутации.
+            return TruthGateVerdict(
+                passed=True,
+                fact_id=fact_id,
+                reason="already_validated",
+                justification="Факт уже в состоянии Validated.",
+                by=by,
+                mode=mode,
+                confidence=float(fact.get("confidence", 0.0) or 0.0),
+            )
+
+        # ESM-легальность ПЕРЕД TruthGate (см. docstring): нелегальный прыжок
+        # (например, прямой Observed→Validated) всегда ValueError/400,
+        # независимо от confidence/evidence — TruthGate не может "простить"
+        # нелегальный переход, и слабый факт не должен получать 422 там,
+        # где сильный факт получил бы 400.
+        allowed = ESM_TRANSITIONS.get(current_state)
+        if allowed is not None and "Validated" not in allowed:
+            raise ValueError(
+                f"validate_and_promote: переход '{current_state}' → 'Validated' "
+                "недопустим"
+            )
+
+        # Снимок, на котором основан вердикт — CAS-токен для финальной записи.
+        # updated_at NOT NULL в схеме facts — индексируем, а не .get(), чтобы
+        # тип был str, а не str | None (для _promote_to_validated_cas ниже).
+        expected_updated_at: str = fact["updated_at"]
+
+        verdict = TruthGate(self).evaluate(fact, mode=mode, by=by)
+        if not verdict.passed:
+            return verdict
+
+        # Мутация ТОЛЬКО после успешного вердикта, и ТОЛЬКО если guarded write
+        # реально закоммитился против исходного снимка — иначе (факт изменился
+        # или был удалён конкурентно) это concurrent_modification, не success.
+        committed = self._promote_to_validated_cas(
+            fact_id,
+            expected_state=current_state,
+            expected_updated_at=expected_updated_at,
+            durable_snapshot=fact,
+            by=by,
+        )
+        if not committed:
+            return TruthGateVerdict(
+                passed=False,
+                fact_id=fact_id,
+                reason="concurrent_modification",
+                justification=(
+                    f"Факт '{fact_id}' изменился (или был удалён) между "
+                    "проверкой TruthGate и записью перехода — промоушен "
+                    "отменён, повторите запрос."
+                ),
+                by=by,
+                mode=mode,
+                confidence=verdict.confidence,
+                evidence_count=verdict.evidence_count,
+            )
+        return verdict
+
     # ── Bi-temporal операции (I96) ──────────────────────────────────────────
 
     def get_fact_at(
@@ -1750,6 +2077,11 @@ def promote_to_validated(fact_id: str, by: str = "promote_to_validated") -> bool
 
 def promote_esm_to(fact_id: str, target: str, by: str = "promote_esm") -> bool:
     return _GLOBAL_STORE.promote_esm_to(fact_id, target, by=by)
+
+
+def validate_and_promote(fact_id: str, by: str = "truth_gate", mode: Any = None) -> Any:
+    """Обёртка над SQLiteGraphStore.validate_and_promote() — см. класс для деталей."""
+    return _GLOBAL_STORE.validate_and_promote(fact_id, by=by, mode=mode)
 
 def get_all_facts(
     epistemic_state: str | None = None,

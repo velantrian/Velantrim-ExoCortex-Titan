@@ -59,14 +59,46 @@ Ranked by what would actually hurt someone relying on this in production:
    not Records of Processing Activities, consent management, or legal sign-off.
 3. **Concurrency is not stress-tested.** The default storage path is synchronous SQLite
    with a per-operation connection; there is no automated 100+ concurrent-writer test
-   yet, and WAL mode is not yet an explicit, verified contract.
+   yet, and WAL mode is not yet an explicit, verified contract. One specific race *is*
+   closed and regression-tested: `validate_and_promote()` (item 5 below) reads its
+   TruthGate snapshot and CAS token from durable L1 storage (never the L0 cache, which
+   an idempotent upsert can leave pointing at a fresher timestamp than the DB row) and
+   commits with a single atomic conditional write guarded on both `epistemic_state` and
+   `updated_at` matching that snapshot — so a concurrent weakening upsert, a competing
+   state transition, or even the fact being deleted outright all correctly produce
+   `409 concurrent_modification` instead of a false success. That is a single guarded
+   write path, not a general concurrency guarantee for the rest of the store.
 4. **Observability is metrics + logs, not a persisted long-term trace store.** You can
    see current latency/health, but reconstructing "why did the system answer this way"
    for a request from last week is not yet a first-class capability.
-5. **Contract testing is thin in places.** For example, "Truth Gate is always called
-   before a fact is marked Validated" is true by code inspection and by the invariant
-   suite, but does not yet have a dedicated adversarial contract test that tries to
-   bypass it.
+5. **Contract testing is thin in places, but improving.** A prior version of this
+   document claimed "Truth Gate is always called before a fact is marked Validated" was
+   true by code inspection — that claim was wrong: `PATCH /facts/{fact_id}/transition`
+   called `transition_esm()` directly and could walk a fact to `Validated` with zero
+   evidence gating. This is now fixed — but note `PATCH` is the *direct* transition
+   endpoint, not the only public path to `Validated`: `POST /query` can still promote
+   facts via `pipeline.run()`'s own (uncorrelated) policy, see below.
+   `core.memory.validate_and_promote()` is the single canonical, TruthGate-backed entry
+   point for `PATCH`'s `Validated` target, with an adversarial regression suite in
+   `tests/test_truthgate_api_transition.py` (including deterministic
+   `threading.Barrier`-pinned concurrency/deletion races). The gate runs with
+   `contradiction_detector="none"` — it enforces source/confidence/evidence, not active
+   contradictions (that stage is skipped until an NLI detector exists); ESM-transition
+   legality is checked once, against the durable snapshot, before TruthGate runs, so an
+   illegal direct jump (e.g. `Observed → Validated`) is always a `400`, never a `422`,
+   regardless of evidence strength or what happens to the fact afterward; the
+   check-then-write window is closed by reading the snapshot from durable L1 storage
+   and committing with one atomic conditional write against that same snapshot (state
+   + timestamp, not a fresh re-read) — any concurrent change, including the fact being
+   deleted, aborts the promotion with `409` instead of a false `200` or a misdirected
+   `400`; and a rejected/raced attempt writes no audit (version-history) record, so the
+   audit trail never shows a promotion that didn't actually happen. What remains thin:
+   internal promotion paths (pipeline ingestion, `ConsolidationEngine`, graduated
+   promotion) each apply their own pre-vetting policy before calling the lower-level ESM
+   primitives — these are not yet unified under one contract-tested policy, so "some
+   evidence check always runs before Validated" is true, but "the same TruthGate policy
+   always runs" is not, and they don't have the same CAS protection against concurrent
+   modification.
 6. **Version/branding drift risk.** Recently unified to Titan 9.0 across public
    entrypoints (`README.md`, `pyproject.toml`, `server.py`, Docker); historical docs and
    code comments intentionally retain old version numbers (V8.6/V8.7) as history — see
@@ -84,9 +116,15 @@ parentheses for traceability.
 - **GDPR-grade hardening** (Phase 1): extend `core/forgetting.py` into an actual
   compliance surface — erasure across all storage layers (L0/L1/L3), Records of
   Processing Activities, consent tracking, PII redaction on ingest by default.
-- **Contract + concurrency test-gate** (Phase 3): an explicit adversarial contract test
-  that a write cannot bypass the Truth Gate, a concurrency stress test (100+ concurrent
-  INSERT/UPDATE), and an explicit, verified SQLite WAL configuration. CI coverage gate
+- **Contract + concurrency test-gate** (Phase 3): ✅ the API-level piece is done — an
+  adversarial contract test now proves `PATCH /facts/{fact_id}/transition` cannot
+  bypass the Truth Gate, and a deterministic `threading.Barrier` regression test proves
+  the endpoint's TOCTOU race (fact weakened between the TruthGate check and the write)
+  is closed via an optimistic CAS (`tests/test_truthgate_api_transition.py`). Still
+  open: a concurrency stress test (100+ concurrent INSERT/UPDATE) across the store more
+  broadly, an explicit, verified SQLite WAL configuration, and unifying the internal
+  (non-API) promotion paths under one contract-tested policy with the same CAS
+  protection. CI coverage gate
   (`--cov-fail-under`) enforced, not just configured.
 - **Independent security review** before any deployment that will hold real users'
   sensitive data on the public internet.

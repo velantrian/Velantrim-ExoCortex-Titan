@@ -128,6 +128,65 @@ Verdicts returned by the Truth Gate are one of `allow`, `gap_notice`, or `reject
 `gap_notice` is the system's way of saying "I don't have enough evidence for this,"
 rather than answering with unsupported confidence.
 
+**API-level enforcement (tested):** `PATCH /facts/{fact_id}/transition` is the direct
+transition endpoint protected by this boundary — it is **not** the only public HTTP
+path that can move a fact into `Validated`. `POST /query` also can: it runs
+`pipeline_run()`, whose legacy promotion branch calls `promote_to_validated()` per
+retrieved fact under the pipeline's own batch-level `truth_gate()` pre-check, not the
+per-fact CAS/TruthGate wrapper described below. That pipeline path is intentionally
+out of scope for this section (see the "Internal, non-API promotion paths" note at the
+end).
+
+When `PATCH /facts/{fact_id}/transition`'s requested target is `Validated`,
+`server.py` routes the request through
+`core.memory.SQLiteGraphStore.validate_and_promote()` — the single canonical function
+for that endpoint's `Validated` target. It:
+- reads the fact directly from durable L1 SQLite storage (`_get_fact_durable()`),
+  never from the L0 cache — an idempotent `POST /facts` upsert can publish a fresher
+  `updated_at` to L0 without touching the SQL row, and a cache-derived security
+  decision would be wrong in that case;
+- runs `TruthGate.evaluate()` (mode `BALANCED`, `contradiction_detector="none"` — the
+  active-contradiction check is skipped until an NLI detector is wired in; only
+  source/confidence/evidence are enforced today) against that durable snapshot, and
+  only proceeds to write on a passing verdict — a rejected verdict returns `422` with
+  the reason, leaves the fact's epistemic state and history untouched, and never calls
+  an LLM;
+- checks ESM-transition legality (invariant I50) against that same durable snapshot,
+  before TruthGate runs, so an illegal jump (e.g. a direct `Observed → Validated`
+  request) always returns `400`, regardless of how strong or weak the fact's evidence
+  is — and regardless of what happens to the fact afterward (see next point);
+- commits the write with a single atomic conditional `UPDATE` guarded on both
+  `epistemic_state` and `updated_at` matching the durable snapshot TruthGate scored —
+  not a fresh re-read — so any concurrent change (a weakening `POST /facts` upsert,
+  a competing state transition, or the fact being deleted entirely) makes that `UPDATE`
+  match zero rows. The verdict is only reported as `passed=True` if the write actually
+  committed; any zero-row outcome is reported as `409 concurrent_modification`, never
+  as a false `200` and never mis-reported as the `400`/`422` that would apply to the
+  *original* snapshot;
+- only writes the version-history (audit) snapshot after the conditional write commits
+  — a rejected/raced promotion attempt leaves no `fact_versions` record, so the audit
+  trail never shows an attempt that didn't actually happen.
+
+All other ESM targets on that endpoint (e.g. `Hypothesized`, `Supported`,
+`Contradicted`, `Deprecated`) are unaffected — they go straight through the unchanged
+`transition_esm()`. See `tests/test_truthgate_api_transition.py` for the adversarial
+coverage this section rests on, including deterministic `threading.Barrier`-pinned
+races (concurrent weakening, concurrent state change, concurrent deletion, and an
+idempotent re-`POST` that must **not** cause a false `409`).
+
+**Remaining crash-consistency limitation:** the fact table and the separate
+`fact_versions` audit store (`core/version_store.py`) are different SQLite
+connections/files with no shared transaction. A process crash between the guarded
+write's commit and the version-history write would leave a successful transition with
+no audit snapshot. This is the same pre-existing limitation `transition_esm()` already
+has everywhere else in the codebase — not something this PR introduces or resolves.
+
+Internal, non-API promotion paths (`pipeline.run()`'s legacy branch, `ConsolidationEngine`,
+graduated promotion) apply their own pre-vetting policy before calling the lower-level
+ESM primitives, and do **not** have this CAS protection — this section describes the
+`PATCH` boundary specifically, not a claim that every code path uses byte-identical
+TruthGate policy or the same concurrency guarantee.
+
 ## 7. Security map
 
 See [`SECURITY.md`](../SECURITY.md) for the full write-up. Short version, with pointers:
