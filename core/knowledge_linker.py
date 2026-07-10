@@ -30,7 +30,9 @@
 """
 from __future__ import annotations
 
+import math
 import re
+from collections import Counter, defaultdict
 from collections.abc import Sequence
 from typing import Any
 
@@ -40,6 +42,70 @@ DEFAULT_STATUS = "inferred"           # валидный knowledge_status
 MIN_TOKEN_LEN = 3
 MAX_INCOMING_PER_FACT = 8             # защита от взрыва рёбер на широких тегах
 MAX_SEGMENT_FANOUT = 4               # токен, совпадающий с >N фактами = категория (не связь) → скип
+
+# Семантический practical-linker работает precision-first: общие редкие термины,
+# не более одного соседа внутри practical-кластера и двух мостов к фундаментам.
+MAX_SEMANTIC_TOKEN_FANOUT = 64
+MAX_PRACTICAL_NEIGHBORS = 1
+MAX_FOUNDATION_BRIDGES = 2
+MIN_SEMANTIC_SHARED_TOKENS = 2
+MIN_SEMANTIC_SCORE = 0.16
+MIN_FOUNDATION_SCORE = 0.18
+STRONG_FOUNDATION_SCORE = 0.26
+MAX_NAMESPACE_NEIGHBORS = 1          # не более одного namespace-neighbor на узел
+
+# Основы рёбер, допустимые для сильного causal reasoning в Essence.
+CAUSAL_EDGE_BASES = frozenset({
+    "curated_explicit",
+    "explicit_tag",
+    "practical_foundation",
+})
+
+# Структурные/семантические — не доказывают причинность.
+STRUCTURAL_EDGE_BASES = frozenset({
+    "namespace",
+    "semantic_similarity",
+})
+
+
+def is_causal_edge_basis(edge_basis: str | None) -> bool:
+    """Ребро может участвовать в causal chain (не structural-only)."""
+    return str(edge_basis or "") in CAUSAL_EDGE_BASES
+
+
+def is_causal_for_essence(edge: dict[str, Any]) -> bool:
+    """Сильное причинное ребро для Essence: curated, tag, foundation с score."""
+    basis = str(edge.get("edge_basis", ""))
+    if basis == "curated_explicit":
+        return True
+    if basis == "explicit_tag":
+        return True
+    if basis == "practical_foundation":
+        score = float(edge.get("semantic_score") or 0)
+        return score >= MIN_FOUNDATION_SCORE
+    return False
+
+
+def relation_is_causal_for_essence(
+    relation_type: str,
+    metadata: dict[str, Any] | None,
+) -> bool:
+    """Runtime-проверка Relation из CausalGraph для Essence."""
+    if not metadata:
+        return False
+    basis = str(metadata.get("edge_basis", ""))
+    if basis == "namespace" or basis == "semantic_similarity":
+        return False
+    if basis == "analogous_to":
+        return False
+    if basis in CAUSAL_EDGE_BASES:
+        return relation_type in {"causes", "enables", "requires", "prevents", "precedes"}
+    if basis == "practical_foundation":
+        score = float(metadata.get("semantic_score") or 0)
+        return score >= MIN_FOUNDATION_SCORE and relation_type in {
+            "enables", "requires", "prevents", "precedes",
+        }
+    return False
 
 
 def parse_tags(value: Any) -> list[str]:
@@ -56,6 +122,7 @@ _TYPE_TIER = {
     # 0 — источники/основания (причина)
     "material_source": 0, "dye_source": 0, "law": 0, "axiom": 0, "theorem": 0,
     "formula": 0, "principle": 0, "definition": 0, "concept": 0, "fact": 0, "model": 0,
+    "material": 0,
     # 1 — свойства/ограничения
     "property": 1, "constraint": 1,
     # 2 — процессы/механизмы/методы
@@ -70,12 +137,52 @@ _TYPE_TIER = {
     "quality_check": 3, "control": 3,                                    # проверки/митигация
 }
 
+_TYPE_ALIASES = {
+    "срок": "term",                 # историческая опечатка/перевод TERM в seed-паках
+    "термин": "term",
+    "закон": "law",
+    "аксиома": "axiom",
+    "теорема": "theorem",
+    "формула": "formula",
+    "принцип": "principle",
+    "определение": "definition",
+    "концепт": "concept",
+    "факт": "fact",
+    "модель": "model",
+    "материал": "material",
+    "свойство": "property",
+    "ограничение": "constraint",
+    "механизм": "mechanism",
+    "процесс": "process",
+    "метод": "method",
+    "практический": "practical",
+    "практика": "practical",
+    "эвристика": "heuristic",
+    "режим_отказа": "failure_mode",
+    "отказ": "failure_mode",
+    "безопасность_правило": "safety_rule",
+    "правило_безопасности": "safety_rule",
+    "проверка_качества": "quality_check",
+    "контроль": "control",
+    "измерение": "measurement",
+    "компонент": "component",
+    "система": "system",
+    "состояние": "state",
+    "вариант": "variant",
+}
+
 # Явные причинные cue в тексте claim (ru+en) → отношение "causes".
 _CAUSE_RE = re.compile(r"(вызыва|приводит к|из-за|причин|causes|leads to|because)", re.I)
 
 
+def normalize_type(fact_type: Any) -> str:
+    """Нормализовать смешанную RU/EN и разнорегистровую типологию World Skills."""
+    raw = str(fact_type or "").strip().lower().replace(" ", "_")
+    return _TYPE_ALIASES.get(raw, raw)
+
+
 def _tier(fact_type: Any) -> int:
-    return _TYPE_TIER.get(str(fact_type or "").strip().lower(), 1)
+    return _TYPE_TIER.get(normalize_type(fact_type), 1)
 
 
 def _orient(aid: str, bid: str, by_id: dict[str, dict[str, Any]]) -> tuple:
@@ -86,13 +193,14 @@ def _orient(aid: str, bid: str, by_id: dict[str, dict[str, Any]]) -> tuple:
 
 
 def _relation(src_fact: dict[str, Any], tgt_fact: dict[str, Any], default: str) -> str:
-    """Тип ребра по типам и текстовым cue (детерминированно, без LLM)."""
+    """Тип ребра по типам (детерминированно, без LLM).
+
+    Autolinker НЕ выводит causes из текста claim — только curated_explicit.
+    """
     ts, tt = _tier(src_fact.get("type")), _tier(tgt_fact.get("type"))
     if ts == 2 and tt == 2:
-        return "precedes"                                   # процесс → процесс = последовательность
-    if _CAUSE_RE.search(str(tgt_fact.get("claim", "") or "")):
-        return "causes"                                     # явная причинность в downstream-факте
-    return default                                          # по умолчанию enables (материал питает процесс)
+        return "precedes"
+    return default
 
 
 def _concept_segments(fact_id: str) -> list[str]:
@@ -168,6 +276,7 @@ def link_by_tags(
                     "confidence": confidence,
                     "knowledge_status": knowledge_status,
                     "inference_source": "autolinker",  # FIX #12 (Claude audit)
+                    "edge_basis": "explicit_tag",
                 })
     return edges
 
@@ -193,10 +302,8 @@ def link_by_tags(
 # Кросс-доменные связи здесь НЕ создаются — домены остаются отдельными компонентами,
 # пока их не свяжет тег-матч или (следующий тиер) семантика по эмбеддингам.
 
-NAMESPACE_CONFIDENCE = 0.5          # структурная связь внутри подтемы — слабее тег-матча (0.6)
-# FIX #17 (Claude audit): bridge_confidence был 0.4 — multi-hop reasoning не пересекал
-# подразделы на дефолтном пороге (0.5). Поднято до 0.5.
-NAMESPACE_BRIDGE_CONFIDENCE = 0.5   # связь-мост между подтемами домена — равно внутри-подтеме
+NAMESPACE_CONFIDENCE = 0.35         # таксономическая близость, не причинность
+NAMESPACE_BRIDGE_CONFIDENCE = 0.30  # ещё более слабый мост между подтемами домена
 NAMESPACE_INFERENCE_SOURCE = "autolinker"
 STAR_MAX = 24                       # группа крупнее → цепочка вместо звезды (ограничить степень)
 
@@ -240,19 +347,26 @@ def link_by_namespace(
 
     edges: list[dict[str, Any]] = []
     seen: set = set()
+    neighbor_count: dict[str, int] = defaultdict(int)
 
     def _emit(src: str, tgt: str, conf: float) -> None:
         if src == tgt:
             return
-        s, t = _orient(src, tgt, by_id)           # low-tier → high-tier (фундамент → следствие)
+        if neighbor_count[src] >= MAX_NAMESPACE_NEIGHBORS:
+            return
+        if neighbor_count[tgt] >= MAX_NAMESPACE_NEIGHBORS:
+            return
+        s, t = src, tgt
         if s == t or (s, t) in seen:
             return
         seen.add((s, t))
-        rel = _relation(by_id.get(s, {}), by_id.get(t, {}), DEFAULT_RELATION)
+        neighbor_count[s] += 1
+        neighbor_count[t] += 1
         edges.append({
-            "source_id": s, "target_id": t, "relation_type": rel,
+            "source_id": s, "target_id": t, "relation_type": "analogous_to",
             "confidence": conf, "knowledge_status": knowledge_status,
             "inference_source": inference_source,
+            "edge_basis": "namespace",
         })
 
     def _connect_group(members: list[str], conf: float) -> str:
@@ -281,13 +395,248 @@ def link_by_namespace(
     return edges
 
 
-def link_facts(facts: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Полный набор рёбер: тег-матч (точные, conf 0.6) ∪ namespace-структура (покрытие,
-    conf 0.4–0.5). Namespace-ребро добавляется, только если такой ПАРЫ ещё нет среди
-    тег-рёбер (в любом направлении) — точные тег-связи приоритетны и не дублируются."""
+# ═══════════════════════════════════════════════════════════════════════════════
+# Смысловые practical-связи: редкие общие термины + типовая ориентация
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_TOKEN_RE = re.compile(r"[a-zа-яё][a-zа-яё0-9_\-]{2,}", re.I)
+_STOPWORDS = frozenset({
+    "более", "будет", "быть", "если", "когда", "который", "между", "может",
+    "нужно", "после", "перед", "при", "также", "требует", "через", "чтобы",
+    "этого", "этот", "этой", "использовать", "используется", "проверить",
+    "для", "или", "без", "под", "над", "как", "это", "the", "and", "with",
+    "from", "that", "this", "into", "after", "before", "using", "used",
+})
+_STOP_STEMS = frozenset({
+    "данн", "компан", "метод", "операц", "практическ", "процесс", "работ",
+    "результат", "систем", "способ", "технолог",
+})
+_RU_SUFFIXES = (
+    "иями", "ями", "ами", "ого", "ему", "ому", "ыми", "ими", "ение", "ений",
+    "ания", "аний", "остью", "остям", "овых", "евым", "ным", "ных", "ая", "яя",
+    "ое", "ее", "ые", "ие", "ый", "ий", "ой", "ам", "ям", "ах", "ях", "ов",
+    "ев", "ом", "ем", "ою", "ею", "у", "ю", "а", "я", "ы", "и", "е", "ь",
+)
+
+
+def _token_key(token: str) -> str:
+    """Схлопнуть очевидные RU-окончания, не превращая линковщик в морфологический NLP."""
+    if not re.search(r"[а-яё]", token) or len(token) < 7:
+        return token
+    for suffix in _RU_SUFFIXES:
+        if token.endswith(suffix) and len(token) - len(suffix) >= 4:
+            return token[:-len(suffix)]
+    return token
+
+
+def _semantic_tokens(fact: dict[str, Any]) -> set[str]:
+    text = " ".join(
+        str(fact.get(field, "") or "")
+        for field in ("fact_id", "knowledge_unit", "claim", "conditions", "practical")
+    ).lower()
+    out: set[str] = set()
+    for token in _TOKEN_RE.findall(text):
+        for part in re.split(r"[_\-]+", token):
+            key = _token_key(part)
+            if (
+                len(key) >= 4
+                and part not in _STOPWORDS
+                and key not in _STOP_STEMS
+                and not key.isdigit()
+            ):
+                out.add(key)
+    return out
+
+
+def _is_practical_fact(fact: dict[str, Any]) -> bool:
+    fid = str(fact.get("fact_id", "")).lower()
+    ftype = normalize_type(fact.get("type"))
+    namespace_parts = [part for part in fid.split(".") if part]
+    return (
+        any(part == "ops" or part.endswith("ops") for part in namespace_parts)
+        or fid.startswith("practical.")
+        or ftype in {"practical", "process_step"}
+        or bool((fact.get("metadata") or {}).get("practical_domain"))
+    )
+
+
+_FOUNDATION_TYPES = frozenset({
+    "law", "axiom", "theorem", "formula", "principle", "definition", "concept",
+    "fact", "model", "invariant", "term", "material", "material_source", "property",
+    "constraint", "mechanism",
+})
+
+
+def _is_foundation_fact(fact: dict[str, Any]) -> bool:
+    return not _is_practical_fact(fact) and normalize_type(fact.get("type")) in _FOUNDATION_TYPES
+
+
+def _semantic_relation(
+    aid: str,
+    bid: str,
+    by_id: dict[str, dict[str, Any]],
+) -> tuple[str, str, str]:
+    """Выбрать честную ориентацию для сильной лексико-типовой связи."""
+    at = normalize_type(by_id[aid].get("type"))
+    bt = normalize_type(by_id[bid].get("type"))
+    safety = {"safety_rule", "control", "quality_check"}
+    failures = {"failure_mode"}
+    actions = {"method", "process", "practical", "process_step", "mechanism"}
+
+    if at in safety and bt in failures:
+        return aid, bid, "prevents"
+    if bt in safety and at in failures:
+        return bid, aid, "prevents"
+    if at in actions and bt in safety:
+        return aid, bid, "requires"
+    if bt in actions and at in safety:
+        return bid, aid, "requires"
+    return aid, bid, "analogous_to"
+
+
+def link_practical_semantics(
+    facts: Sequence[dict[str, Any]],
+    *,
+    max_token_fanout: int = MAX_SEMANTIC_TOKEN_FANOUT,
+) -> list[dict[str, Any]]:
+    """Связать practical-узлы по смыслу и построить мосты к фундаментам.
+
+    Алгоритм не использует сеть/LLM: TF-IDF-подобный score по редким общим терминам.
+    Внутри practical-домена добавляется максимум один смысловой сосед, к непрактическим
+    фундаментам — максимум два моста. Совпавшие термины сохраняются для аудита.
+    """
+    by_id = {str(f.get("fact_id", "")): f for f in facts if f.get("fact_id")}
+    tokens = {fid: _semantic_tokens(f) for fid, f in by_id.items()}
+    df = Counter(token for values in tokens.values() for token in values)
+    informative = {
+        token for token, count in df.items()
+        if 2 <= count <= max_token_fanout
+    }
+    index: dict[str, list[str]] = defaultdict(list)
+    for fid, values in tokens.items():
+        for token in values & informative:
+            index[token].append(fid)
+
+    total = max(1, len(by_id))
+    idf = {
+        token: math.log((total + 1) / (df[token] + 1)) + 1.0
+        for token in informative
+    }
+    norms = {
+        fid: math.sqrt(sum(idf[t] ** 2 for t in values & informative))
+        for fid, values in tokens.items()
+    }
+
+    practical_ids = sorted(fid for fid, fact in by_id.items() if _is_practical_fact(fact))
+    practical_set = set(practical_ids)
+    seen: set[frozenset[str]] = set()
+    edges: list[dict[str, Any]] = []
+
+    def ranked_candidates(pid: str) -> list[tuple[float, str, list[str]]]:
+        shared_weight: dict[str, float] = defaultdict(float)
+        shared_terms: dict[str, set[str]] = defaultdict(set)
+        for token in tokens[pid] & informative:
+            weight = idf[token] ** 2
+            for cid in index[token]:
+                if cid == pid:
+                    continue
+                shared_weight[cid] += weight
+                shared_terms[cid].add(token)
+        out: list[tuple[float, str, list[str]]] = []
+        for cid, weight in shared_weight.items():
+            terms = sorted(shared_terms[cid])
+            denom = norms[pid] * norms[cid]
+            if len(terms) < MIN_SEMANTIC_SHARED_TOKENS or denom <= 0:
+                continue
+            score = weight / denom
+            if score >= MIN_SEMANTIC_SCORE:
+                out.append((score, cid, terms))
+        return sorted(out, key=lambda item: (-item[0], item[1]))
+
+    def emit(
+        src: str,
+        tgt: str,
+        relation: str,
+        score: float,
+        terms: list[str],
+        basis: str,
+    ) -> None:
+        pair = frozenset((src, tgt))
+        if src == tgt or pair in seen:
+            return
+        seen.add(pair)
+        base = 0.52 if basis == "semantic_similarity" else 0.56
+        confidence = round(min(0.72, base + score * 0.30), 3)
+        edges.append({
+            "source_id": src,
+            "target_id": tgt,
+            "relation_type": relation,
+            "confidence": confidence,
+            "knowledge_status": "inferred",
+            "inference_source": "autolinker",
+            "edge_basis": basis,
+            "matched_terms": terms[:8],
+            "semantic_score": round(score, 3),
+        })
+
+    for pid in practical_ids:
+        ranked = ranked_candidates(pid)
+        domain = pid.split(".", 1)[0]
+
+        local = [
+            item for item in ranked
+            if item[1] in practical_set and item[1].split(".", 1)[0] == domain
+        ][:MAX_PRACTICAL_NEIGHBORS]
+        for score, cid, terms in local:
+            src, tgt, relation = _semantic_relation(pid, cid, by_id)
+            emit(src, tgt, relation, score, terms, "semantic_similarity")
+
+        foundations = [
+            item for item in ranked
+            if (
+                item[1] not in practical_set
+                and _is_foundation_fact(by_id[item[1]])
+                and (
+                    item[0] >= STRONG_FOUNDATION_SCORE
+                    or (item[0] >= MIN_FOUNDATION_SCORE and len(item[2]) >= 3)
+                )
+            )
+        ][:MAX_FOUNDATION_BRIDGES]
+        for score, cid, terms in foundations:
+            emit(cid, pid, "enables", score, terms, "practical_foundation")
+
+    return edges
+
+
+def link_facts(
+    facts: Sequence[dict[str, Any]],
+    *,
+    include_curated: bool = True,
+) -> list[dict[str, Any]]:
+    """Полный набор рёбер по убыванию качества.
+
+    0. Курируемые causal relations (curated_explicit).
+    1. Явные теги источника (explicit_tag).
+    2. Редкие общие термины practical↔practical/theory (semantic_*).
+    3. Namespace-каркас (analogous_to, ≤1 сосед/узел) только для покрытия.
+    """
+    curated_edges: list[dict[str, Any]] = []
+    if include_curated:
+        try:
+            from core.curated_causal import link_curated_relations
+            curated_edges = link_curated_relations(facts)
+        except Exception:  # noqa: BLE001
+            curated_edges = []
     tag_edges = link_by_tags(facts)
-    pairs: set = {frozenset((e["source_id"], e["target_id"])) for e in tag_edges}
-    out: list[dict[str, Any]] = list(tag_edges)
+    semantic_edges = link_practical_semantics(facts)
+    pairs: set[frozenset[str]] = set()
+    out: list[dict[str, Any]] = []
+    for e in [*curated_edges, *tag_edges, *semantic_edges]:
+        pair = frozenset((e["source_id"], e["target_id"]))
+        if pair in pairs:
+            continue
+        pairs.add(pair)
+        out.append(e)
     for e in link_by_namespace(facts):
         pair = frozenset((e["source_id"], e["target_id"]))
         if pair in pairs:
@@ -295,6 +644,65 @@ def link_facts(facts: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
         pairs.add(pair)
         out.append(e)
     return dedup_edges(out)
+
+
+def graph_quality_report(
+    facts: Sequence[dict[str, Any]],
+    edges: Sequence[dict[str, Any]],
+) -> dict[str, Any]:
+    """Компактные проверяемые метрики качества экспортируемого KB-графа."""
+    by_id = {str(f.get("fact_id", "")): f for f in facts if f.get("fact_id")}
+    node_ids = set(by_id)
+    degrees: Counter[str] = Counter()
+    valid_edges: list[dict[str, Any]] = []
+    for edge in edges:
+        src = str(edge.get("source_id", ""))
+        tgt = str(edge.get("target_id", ""))
+        if src not in node_ids or tgt not in node_ids or src == tgt:
+            continue
+        valid_edges.append(edge)
+        degrees[src] += 1
+        degrees[tgt] += 1
+
+    practical_ids = {fid for fid, fact in by_id.items() if _is_practical_fact(fact)}
+    practical_touch = 0
+    practical_bridge = 0
+    cross_domain = 0
+    for edge in valid_edges:
+        src, tgt = str(edge["source_id"]), str(edge["target_id"])
+        src_practical, tgt_practical = src in practical_ids, tgt in practical_ids
+        if src_practical or tgt_practical:
+            practical_touch += 1
+        if src_practical != tgt_practical:
+            practical_bridge += 1
+        if src.split(".", 1)[0] != tgt.split(".", 1)[0]:
+            cross_domain += 1
+
+    connected = sum(1 for fid in node_ids if degrees[fid] > 0)
+    edge_count = len(valid_edges)
+    curated = sum(1 for e in valid_edges if e.get("edge_basis") == "curated_explicit")
+    inferred = sum(1 for e in valid_edges if e.get("knowledge_status") == "inferred")
+    return {
+        "nodes": len(node_ids),
+        "edges": edge_count,
+        "connected_nodes": connected,
+        "isolated_nodes": len(node_ids) - connected,
+        "coverage_pct": round(100.0 * connected / max(1, len(node_ids)), 2),
+        "average_degree": round(2.0 * edge_count / max(1, len(node_ids)), 2),
+        "by_relation_type": dict(Counter(str(e.get("relation_type", "")) for e in valid_edges)),
+        "by_edge_basis": dict(Counter(str(e.get("edge_basis", "unknown")) for e in valid_edges)),
+        "curated_edges": curated,
+        "inferred_edges": inferred,
+        "curated_ratio_pct": round(100.0 * curated / max(1, edge_count), 2),
+        "cross_domain_edges": cross_domain,
+        "cross_domain_pct": round(100.0 * cross_domain / max(1, edge_count), 2),
+        "practical_nodes": len(practical_ids),
+        "practical_touch_edges": practical_touch,
+        "practical_bridge_edges": practical_bridge,
+        "practical_bridge_pct": round(
+            100.0 * practical_bridge / max(1, practical_touch), 2
+        ),
+    }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -358,7 +766,15 @@ __all__ = [
     "parse_tags",
     "link_by_tags",
     "link_by_namespace",
+    "link_practical_semantics",
     "link_facts",
+    "graph_quality_report",
     "dedup_edges",
+    "normalize_type",
+    "is_causal_edge_basis",
+    "is_causal_for_essence",
+    "relation_is_causal_for_essence",
+    "CAUSAL_EDGE_BASES",
+    "STRUCTURAL_EDGE_BASES",
     "DEFAULT_RELATION",
 ]

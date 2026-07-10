@@ -36,16 +36,45 @@ ID_RE = re.compile(r"^[a-z0-9_]+(?:\.[a-z0-9_]+)+$")
 
 # Meta/organizational files (maps, plans, rules) — not KnowledgeUnit sources.
 # Match complete filename tokens so domain words like FOOD_PLANT are not skipped.
-META_KEYWORDS = {"MAP", "PLAN", "PROTOCOL", "RULES", "SCOPE", "README"}
+META_KEYWORDS = {"MAP", "PLAN", "PROTOCOL", "RULES", "SCOPE", "README", "CURATED"}
 
 
 def _is_unit_file(path: Path) -> bool:
     tokens = {t for t in re.split(r"[^A-Z0-9]+", path.stem.upper()) if t}
     return not bool(tokens & META_KEYWORDS)
 
+
+def _split_markdown_table_row(line: str) -> list[str]:
+    """Split a markdown row without treating code-span or escaped pipes as columns."""
+    row = line.strip()
+    if not row.startswith("|"):
+        return []
+    cells: list[str] = []
+    current: list[str] = []
+    in_code = False
+    escaped = False
+    for char in row[1:]:
+        if escaped:
+            current.append(char)
+            escaped = False
+        elif char == "\\":
+            escaped = True
+        elif char == "`":
+            in_code = not in_code
+            current.append(char)
+        elif char == "|" and not in_code:
+            cells.append("".join(current).strip())
+            current = []
+        else:
+            current.append(char)
+    if current:
+        cells.append("".join(current).strip())
+    return cells
+
 ROOT = Path(__file__).resolve().parents[1]
 KB_DIR = ROOT / "docs" / "knowledge" / "world_skills_core"
 RU_DIR = KB_DIR / "ru"
+EN_DIR = KB_DIR / "en"
 STATE_FILE = KB_DIR / "WORLD_SKILLS_CORE_STATE.ru.json"
 
 
@@ -54,10 +83,10 @@ def _first_cell(line: str) -> str | None:
     s = line.strip()
     if not s.startswith("|"):
         return None
-    parts = s.split("|")          # ['', ' c1 ', ' c2 ', ..., '']
-    if len(parts) < 3:
+    cells = _split_markdown_table_row(s)
+    if len(cells) < 2:
         return None
-    cell = parts[1].strip().strip("`").strip()
+    cell = cells[0].strip().strip("`").strip()
     return cell or None
 
 
@@ -94,12 +123,12 @@ def extract_units(path: Path) -> list[tuple[str, str, int]]:
         s = line.strip()
         if not s.startswith("|"):
             continue
-        cells = [c.strip().strip("`").strip() for c in s.split("|")[1:-1]]
+        cells = [c.strip().strip("`").strip() for c in _split_markdown_table_row(s)]
         if len(cells) < 2:
             continue
         low = [c.lower() for c in cells]
-        if "id" in low and "суть" in low:
-            claim_idx = low.index("суть")
+        if "id" in low and ("суть" in low or "claim" in low):
+            claim_idx = low.index("суть") if "суть" in low else low.index("claim")
             continue
         fid = cells[0]
         if not fid or fid.lower() == "id" or not ID_RE.match(fid):
@@ -108,6 +137,41 @@ def extract_units(path: Path) -> list[tuple[str, str, int]]:
         claim = cells[ci] if ci < len(cells) else ""
         out.append((fid, claim, n))
     return out
+
+
+def collect_ids_from_dir(directory: Path) -> set[str]:
+    ids: set[str] = set()
+    if not directory.is_dir():
+        return ids
+    globber = directory.glob("*.ru.md") if directory.name == "ru" else directory.glob("*.en.md")
+    if directory.name not in {"ru", "en"}:
+        globber = directory.glob("*.md")
+    for path in sorted(globber):
+        if not _is_unit_file(path):
+            continue
+        for fid, _claim, _ln in extract_units(path):
+            ids.add(fid)
+        for fid, _ln in extract_ids(path):
+            ids.add(fid)
+    return ids
+
+
+def check_bilingual_ids() -> dict:
+    """Сверка ID между RU и EN корпусами."""
+    ru_ids = collect_ids_from_dir(RU_DIR)
+    en_ids = collect_ids_from_dir(EN_DIR)
+    missing_en = sorted(ru_ids - en_ids)
+    missing_ru = sorted(en_ids - ru_ids)
+    return {
+        "ru_ids": len(ru_ids),
+        "en_ids": len(en_ids),
+        "intersection": len(ru_ids & en_ids),
+        "missing_en": len(missing_en),
+        "missing_ru": len(missing_ru),
+        "missing_en_sample": missing_en[:20],
+        "missing_ru_sample": missing_ru[:20],
+        "parity_pct": round(100.0 * len(ru_ids & en_ids) / max(1, len(ru_ids)), 2),
+    }
 
 
 def scan() -> dict:
@@ -141,7 +205,7 @@ def scan() -> dict:
         for line in path.read_text(encoding="utf-8").splitlines():
             cell = _first_cell(line)
             if cell and "." in cell and not ID_RE.match(cell) and cell.lower() != "id":
-                if " " not in cell and len(cell) < 80:
+                if len(cell) < 80:
                     malformed.append(f"{rel}: {cell!r}")
 
     duplicates = {fid: locs for fid, locs in id_locations.items() if len(locs) > 1}
@@ -184,6 +248,8 @@ def main(argv=None) -> int:
     ap.add_argument("--quiet", action="store_true", help="summary only")
     ap.add_argument("--strict-claims", action="store_true",
                     help="fail (exit 1) on duplicate/generic claims, not just duplicate IDs")
+    ap.add_argument("--bilingual", action="store_true",
+                    help="report RU↔EN ID parity (exit 1 on missing EN translations)")
     args = ap.parse_args(argv)
 
     if not RU_DIR.is_dir():
@@ -192,6 +258,7 @@ def main(argv=None) -> int:
 
     r = scan()
     dup_units = sum(len(v) - 1 for v in r["duplicates"].values())
+    bilingual = check_bilingual_ids()
 
     if not args.quiet:
         print(f"📂 files scanned:    {r['files']}")
@@ -202,6 +269,10 @@ def main(argv=None) -> int:
         print(f"🔁 duplicate claims: {len(r['duplicate_claims'])} (одна «Суть» у ≥2 ID — generic/неразличимы)")
         print(f"✂️  short claims:     {len(r['short_claims'])} (<{_MIN_CLAIM_LEN} симв.)  "
               f"| generic-prefix claims: {len(r['generic_claims'])}")
+        print(f"🌐 bilingual RU/EN:  {bilingual.get('intersection', 0)} shared / "
+              f"RU {bilingual.get('ru_ids', 0)} EN {bilingual.get('en_ids', 0)} "
+              f"| missing EN {bilingual.get('missing_en', 0)} "
+              f"| parity {bilingual.get('parity_pct', 0)}%")
         if r["duplicates"]:
             print("\n--- DUPLICATE IDs ---")
             for fid, locs in sorted(r["duplicates"].items()):
@@ -231,6 +302,8 @@ def main(argv=None) -> int:
     if r["duplicates"]:
         return 1
     if args.strict_claims and claim_issues:
+        return 1
+    if args.bilingual and bilingual.get("missing_en", 0) > 0:
         return 1
     return 0
 
