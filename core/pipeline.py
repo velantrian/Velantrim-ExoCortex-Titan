@@ -218,7 +218,8 @@ def _get_causal_graph() -> Optional["CausalGraph"]:
 
     import core.memory as _mem
 
-    current_path = getattr(_mem.get_store(), "db_path", "")
+    # Tests monkeypatch memory._GLOBAL_STORE; keep CausalGraph on the same SQLite file.
+    current_path = getattr(_mem._GLOBAL_STORE, "db_path", "")
     if _CAUSAL_GRAPH is not None and _CAUSAL_GRAPH_DB_PATH == current_path:
         return _CAUSAL_GRAPH
 

@@ -103,13 +103,18 @@ def is_causal_for_essence(edge: dict[str, Any]) -> bool:
     return False
 
 
+_ESSENCE_CAUSAL_TYPES = frozenset(
+    {"causes", "enables", "requires", "prevents", "precedes"}
+)
+
+
 def relation_is_causal_for_essence(
     relation_type: str,
     metadata: dict[str, Any] | None,
 ) -> bool:
     """Runtime-проверка Relation из CausalGraph для Essence."""
     if not metadata:
-        return False
+        return relation_type in _ESSENCE_CAUSAL_TYPES
     basis = str(metadata.get("edge_basis", ""))
     if basis in ("namespace", "semantic_similarity", "analogous_to"):
         return False
