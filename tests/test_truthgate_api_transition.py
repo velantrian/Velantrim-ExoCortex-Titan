@@ -15,13 +15,33 @@ Fix: PATCH /facts/{fact_id}/transition now routes any transition targeting
 canonical function that runs TruthGate.evaluate() and only mutates state
 on a passing verdict. All other targets are unaffected.
 
-This file is the adversarial regression suite for that fix:
+Follow-up fix (review finding on PR #6, TOCTOU race): validate_and_promote()
+read a fact, evaluated TruthGate against that snapshot, and only then wrote
+'Validated' — with no DB-level guard against the fact changing in between.
+A concurrent POST /facts upsert that weakened confidence/evidence (while
+leaving epistemic_state alone, e.g. Supported -> Supported) could slip a
+fact that no longer passed TruthGate into 'Validated'. Fixed with an
+opt-in optimistic CAS on `updated_at`, threaded through
+transition_esm()/update_state(): the write only commits if the fact's
+updated_at still matches the snapshot TruthGate scored; otherwise it
+raises ConcurrentModificationError, which validate_and_promote() turns
+into a passed=False verdict with reason="concurrent_modification" (mapped
+to HTTP 409). Same fix also moved the ESM-transition-legality check (I50)
+to run *before* TruthGate.evaluate(), so an illegal direct
+Observed -> Validated jump is always 400, never 422, regardless of how
+strong or weak the fact's evidence is.
+
+This file is the adversarial regression suite for both fixes:
   - a fact that does not satisfy TruthGate cannot reach Validated via the API;
   - a fact that DOES satisfy TruthGate can reach Validated via the API;
   - ordinary non-validation ESM transitions remain functional;
   - Ring Zero / ImmutableCore protections are unchanged;
   - authenticated access is still required;
-  - a rejected validation is atomic (no state mutation, no partial history).
+  - a rejected validation is atomic (no state mutation, no partial history);
+  - an illegal ESM jump is 400 regardless of evidence strength (strong AND weak);
+  - a fact concurrently weakened between the TruthGate check and the write
+    (threading.Barrier-pinned) cannot be promoted, and the promotion attempt
+    leaves no partial mutation.
 """
 from __future__ import annotations
 
@@ -214,6 +234,20 @@ class TestTruthGateApiBypassClosed:
         r = client.get("/facts/jump_fact")
         assert r.json()["epistemic_state"] == "Observed"
 
+    def test_illegal_esm_jump_still_rejected_with_weak_evidence(self, test_client):
+        """Same illegal direct Observed -> Validated jump, but with evidence
+        that would ALSO fail TruthGate on its own. Must still be 400
+        (illegal ESM transition), never 422 (truth_gate_rejected) — ESM
+        legality is checked before TruthGate runs, so a weak fact doesn't
+        get a different status code than a strong one for the same illegal
+        jump."""
+        client, _ = test_client
+        _create_fact(client, fact_id="weak_jump_fact", confidence=0.2)
+        r = _patch_transition(client, "weak_jump_fact", "Validated")
+        assert r.status_code == 400, r.text
+        r = client.get("/facts/weak_jump_fact")
+        assert r.json()["epistemic_state"] == "Observed"
+
     def test_authentication_still_required(self, test_client):
         """The endpoint must still require a valid API key — the fix must not
         weaken or bypass the pre-existing auth dependency."""
@@ -247,3 +281,113 @@ class TestTruthGateApiBypassClosed:
         client, _ = test_client
         r = _patch_transition(client, "does_not_exist_at_all", "Validated")
         assert r.status_code == 404, r.text
+
+
+class TestValidateAndPromoteConcurrencyGuard:
+    """
+    TOCTOU regression (review finding on PR #6): validate_and_promote() reads
+    a fact, evaluates TruthGate against that snapshot, then writes
+    'Validated'. Without a DB-level CAS, a concurrent POST /facts upsert
+    that weakens confidence/evidence (while leaving epistemic_state alone)
+    between the read and the write could slip a fact that no longer passes
+    TruthGate into 'Validated'. This is a plain store-level test (not
+    API-level) so the race can be pinned deterministically with
+    threading.Barrier/Event around the exact read -> evaluate -> write
+    window, independent of TestClient/event-loop threading behavior.
+    """
+
+    def test_concurrent_weakening_blocks_promotion(self, tmp_path):
+        import threading
+
+        from core.memory import SQLiteGraphStore
+        from core.truth_gate import CognitiveMode
+
+        store = SQLiteGraphStore(str(tmp_path / "toctou.db"))
+
+        store.store_fact({
+            "fact_id":    "race_fact",
+            "claim":      "race claim",
+            "source":     "integration-test",
+            "confidence": 0.85,
+            "metadata":   {"evidence_refs": ["src1", "src2"]},
+        })
+        store.transition_esm("race_fact", "Hypothesized")
+        store.transition_esm("race_fact", "Supported")
+
+        # Sanity: the snapshot the validator will read genuinely passes
+        # BALANCED (confidence=0.85 >= 0.7, evidence=2 >= 2).
+        assert store.get_fact("race_fact")["epistemic_state"] == "Supported"
+
+        rendezvous = threading.Barrier(2, timeout=5)
+        writer_done = threading.Event()
+        results: dict = {}
+        errors: list = []
+
+        original_transition_esm = store.transition_esm
+
+        def instrumented_transition_esm(fact_id, new_state, by="transition_esm",
+                                         expected_updated_at=None):
+            # This is called by validate_and_promote() right after
+            # TruthGate.evaluate() passed the strong snapshot — i.e. exactly
+            # the TOCTOU window under test. Block here until the concurrent
+            # writer has weakened the fact in the DB.
+            rendezvous.wait(timeout=5)
+            writer_done.wait(timeout=5)
+            return original_transition_esm(
+                fact_id, new_state, by=by, expected_updated_at=expected_updated_at,
+            )
+
+        store.transition_esm = instrumented_transition_esm
+
+        def run_validator():
+            try:
+                results["verdict"] = store.validate_and_promote(
+                    "race_fact", by="validator-thread", mode=CognitiveMode.BALANCED,
+                )
+            except Exception as exc:  # noqa: BLE001
+                errors.append(exc)
+
+        def run_writer():
+            try:
+                rendezvous.wait(timeout=5)
+                # Concurrently weaken confidence/evidence while preserving
+                # epistemic_state ("Supported") — the exact race an
+                # epistemic_state-only CAS guard does not catch.
+                store.store_fact({
+                    "fact_id":    "race_fact",
+                    "claim":      "race claim",
+                    "source":     "integration-test",
+                    "confidence": 0.1,
+                    "metadata":   {"evidence_refs": []},
+                })
+            except Exception as exc:  # noqa: BLE001
+                errors.append(exc)
+            finally:
+                writer_done.set()
+
+        t_validator = threading.Thread(target=run_validator)
+        t_writer = threading.Thread(target=run_writer)
+        t_validator.start()
+        t_writer.start()
+        t_validator.join(timeout=10)
+        t_writer.join(timeout=10)
+
+        assert not errors, f"unexpected thread errors: {errors!r}"
+
+        verdict = results.get("verdict")
+        assert verdict is not None, "validator thread did not produce a verdict"
+        assert verdict.passed is False, (
+            "BYPASS: promotion succeeded despite the fact being weakened "
+            "concurrently between the TruthGate check and the write."
+        )
+        assert verdict.reason == "concurrent_modification", verdict.reason
+
+        # Atomicity: the fact must be exactly what the writer left it as —
+        # not Validated, and no misleading 'Validated' history entry.
+        final = store.get_fact("race_fact")
+        assert final["epistemic_state"] == "Supported"
+        assert final["confidence"] == 0.1
+        assert not any(h.get("state") == "Validated" for h in final.get("history", [])), (
+            "History contains a 'Validated' entry despite the concurrent-"
+            "modification rejection — not atomic."
+        )

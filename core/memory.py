@@ -70,6 +70,16 @@ class ImmutableStateError(Exception):
     pass
 
 
+class ConcurrentModificationError(Exception):
+    """
+    SECURITY (TOCTOU): факт изменился между чтением-для-проверки и записью.
+    Поднимается update_state()/transition_esm() только когда вызывающий
+    явно передал expected_updated_at (opt-in CAS) — остальные вызовы
+    (без этого параметра) ведут себя как раньше.
+    """
+    pass
+
+
 def _validate_confidence(c: float) -> float:
     """
     Валидирует confidence для хранения в БД.
@@ -1186,11 +1196,21 @@ class SQLiteGraphStore(GraphStore):
         new_state: str,
         history_entry: dict[str, Any],
         now: str,
+        expected_updated_at: str | None = None,
     ) -> bool:
         """
         Атомарно обновить epistemic_state + history.
         При переходе в терминальное состояние (Collapsed, Contradicted)
         устанавливает t_ingestion_end = now (система перестала верить факту).
+
+        SECURITY (TOCTOU, opt-in): если expected_updated_at передан, WHERE
+        дополнительно требует updated_at = expected_updated_at — любое
+        изменение факта (store_fact upsert ИЛИ другой transition_esm) между
+        чтением-для-проверки вызывающего и этим UPDATE меняет updated_at и
+        обнуляет CAS-совпадение. В этом случае UPDATE не затрагивает ни одной
+        строки — по rowcount поднимается ConcurrentModificationError ДО
+        публикации в L0 и без частичной записи history. Вызовы без этого
+        параметра ведут себя как раньше (rowcount не проверяется).
         """
         set_ingestion_end = new_state in _TERMINAL_BELIEF_STATES
         # FIX #19 (Claude audit): запоминаем текущее состояние до UPDATE для CAS-guard
@@ -1226,25 +1246,33 @@ class SQLiteGraphStore(GraphStore):
         # ── Шаг 2: state + history (+ t_ingestion_end) + metadata — В ОДНОЙ
         # транзакции. FIX #19 (Claude audit): CAS-guard — WHERE epistemic_state = ?
         # предотвращает check-then-act гонку при параллельных transition_esm вызовах.
+        # opt-in CAS: доп. условие + параметр добавляются только если вызывающий
+        # передал expected_updated_at — иначе SQL и поведение идентичны прежним.
+        cas_clause = ""
+        cas_params: tuple = ()
+        if expected_updated_at is not None:
+            cas_clause = " AND updated_at = ?"
+            cas_params = (expected_updated_at,)
+
         with self._db() as conn:
             bump = self._fact_version_bump_sql(conn)
             if self.use_json_insert:
                 if set_ingestion_end:
-                    conn.execute(f"""
+                    cur = conn.execute(f"""
                         UPDATE facts
                         SET epistemic_state = ?,
                             updated_at      = ?,
                             {bump}history         = json_insert(history, '$[#]', json(?)),
                             t_ingestion_end = COALESCE(t_ingestion_end, ?)
-                        WHERE fact_id = ? AND epistemic_state = ?
-                    """, (new_state, now, json.dumps(history_entry), now, fact_id, old_state))
+                        WHERE fact_id = ? AND epistemic_state = ?{cas_clause}
+                    """, (new_state, now, json.dumps(history_entry), now, fact_id, old_state) + cas_params)
                 else:
-                    conn.execute(f"""
+                    cur = conn.execute(f"""
                         UPDATE facts
                         SET epistemic_state = ?,
                             updated_at      = ?,    {bump}history         = json_insert(history, '$[#]', json(?))
-                        WHERE fact_id = ? AND epistemic_state = ?
-                    """, (new_state, now, json.dumps(history_entry), fact_id, old_state))
+                        WHERE fact_id = ? AND epistemic_state = ?{cas_clause}
+                    """, (new_state, now, json.dumps(history_entry), fact_id, old_state) + cas_params)
             else:
                 row = conn.execute(
                     "SELECT history FROM facts WHERE fact_id = ?", (fact_id,)
@@ -1254,20 +1282,30 @@ class SQLiteGraphStore(GraphStore):
                 history_l1 = json.loads(row[0] or "[]")
                 history_l1.append(history_entry)
                 if set_ingestion_end:
-                    conn.execute(f"""
+                    cur = conn.execute(f"""
                         UPDATE facts
                         SET epistemic_state = ?, updated_at = ?,
                             {bump}history = ?,
                             t_ingestion_end = COALESCE(t_ingestion_end, ?)
-                        WHERE fact_id = ? AND epistemic_state = ?
-                    """, (new_state, now, json.dumps(history_l1), now, fact_id, old_state))
+                        WHERE fact_id = ? AND epistemic_state = ?{cas_clause}
+                    """, (new_state, now, json.dumps(history_l1), now, fact_id, old_state) + cas_params)
                 else:
-                    conn.execute(f"""
+                    cur = conn.execute(f"""
                         UPDATE facts
                         SET epistemic_state = ?, updated_at = ?,
                             {bump}history = ?
-                        WHERE fact_id = ? AND epistemic_state = ?
-                    """, (new_state, now, json.dumps(history_l1), fact_id, old_state))
+                        WHERE fact_id = ? AND epistemic_state = ?{cas_clause}
+                    """, (new_state, now, json.dumps(history_l1), fact_id, old_state) + cas_params)
+
+            if expected_updated_at is not None and cur.rowcount == 0:
+                # Ничего не изменилось — факт был модифицирован конкурентно
+                # (store_fact upsert или другой transition_esm) между чтением
+                # вызывающего и этим UPDATE. Транзакция ниже (metadata) не
+                # выполняется — commit контекст-менеджера ничего не запишет.
+                raise ConcurrentModificationError(
+                    f"update_state: факт '{fact_id}' изменился конкурентно "
+                    f"(ожидался updated_at={expected_updated_at!r})"
+                )
 
             # metadata/checksum — в ТОЙ ЖЕ транзакции (а не отдельной)
             if new_metadata_json is not None:
@@ -1284,8 +1322,18 @@ class SQLiteGraphStore(GraphStore):
     # ── transition_esm ──────────────────────────────────────────────────────
 
     def transition_esm(
-        self, fact_id: str, new_state: str, by: str = "transition_esm"
+        self,
+        fact_id: str,
+        new_state: str,
+        by: str = "transition_esm",
+        expected_updated_at: str | None = None,
     ) -> bool:
+        """
+        expected_updated_at: opt-in CAS token (см. update_state()). Передаётся
+        только validate_and_promote() — остальные вызывающие (pipeline,
+        ConsolidationEngine, promotion_policy, ...) не передают его и
+        поведение для них не меняется.
+        """
         if new_state not in ESM_STATES:
             raise ValueError(f"transition_esm: недопустимое состояние '{new_state}'")
         if fact_id in IMMUTABLE_FACT_IDS:
@@ -1315,7 +1363,10 @@ class SQLiteGraphStore(GraphStore):
             fact,
             caused_by=f"memory.transition_esm:{by}",
         )
-        return self.update_state(fact_id, new_state, history_entry, now)
+        return self.update_state(
+            fact_id, new_state, history_entry, now,
+            expected_updated_at=expected_updated_at,
+        )
 
     _ESM_LADDER = ("Observed", "Hypothesized", "Supported", "Validated")
 
@@ -1365,10 +1416,32 @@ class SQLiteGraphStore(GraphStore):
         никакой частичной записи в history, никакой audit-записи о
         несостоявшемся переходе.
 
+        SECURITY (TOCTOU): между этим get_fact() (снимок, который видит
+        TruthGate) и финальным transition_esm() факт может измениться
+        конкурентно (например, другой запрос делает POST /facts upsert,
+        меняя confidence/source/metadata/evidence_refs, но НЕ epistemic_state
+        — старая CAS-проверка по epistemic_state этого не ловит). Поэтому
+        updated_at снимка передаётся в transition_esm() как opt-in CAS-токен
+        (expected_updated_at); финальный UPDATE в БД проверяет его атомарно
+        в той же транзакции. Если он не совпал — факт изменился между
+        оценкой и записью, промоушен НЕ происходит (см. reason
+        "concurrent_modification" ниже), и никакой мутации/history-записи
+        не остаётся, т.к. WHERE не находит подходящую строку.
+
+        ESM-легальность (I50) проверяется ЗДЕСЬ, до TruthGate.evaluate() —
+        прямой Observed→Validated (в обход Hypothesized/Supported) обязан
+        вернуть ValueError независимо от силы confidence/evidence; иначе
+        сильный факт с нелегальным прыжком дошёл бы до transition_esm() и
+        получил бы ValueError только там (тоже верно), а слабый факт был бы
+        отклонён TruthGate раньше, чем проверка легальности вообще
+        выполнится — маскируя нелегальный переход под truth_gate_rejected.
+
         Returns:
             TruthGateVerdict. verdict.passed говорит, состоялся ли переход.
             reason == "not_found", если факт не существует (verdict.passed
             всегда False в этом случае — переход не выполняется).
+            reason == "concurrent_modification", если факт изменился между
+            снимком для TruthGate и финальной атомарной записью.
 
         Не вызывает LLM. Не дублирует TruthGate policy — вся логика внутри
         core.truth_gate.TruthGate; эта функция только оркестрирует
@@ -1416,11 +1489,46 @@ class SQLiteGraphStore(GraphStore):
                 confidence=float(fact.get("confidence", 0.0) or 0.0),
             )
 
+        # ESM-легальность ПЕРЕД TruthGate (см. docstring): нелегальный прыжок
+        # (например, прямой Observed→Validated) всегда ValueError/400,
+        # независимо от confidence/evidence — TruthGate не может "простить"
+        # нелегальный переход, и слабый факт не должен получать 422 там,
+        # где сильный факт получил бы 400.
+        allowed = ESM_TRANSITIONS.get(current_state)
+        if allowed is not None and "Validated" not in allowed:
+            raise ValueError(
+                f"validate_and_promote: переход '{current_state}' → 'Validated' "
+                "недопустим"
+            )
+
+        # Снимок, на котором основан вердикт — CAS-токен для финальной записи.
+        expected_updated_at = fact.get("updated_at")
+
         verdict = TruthGate(self).evaluate(fact, mode=mode, by=by)
         if verdict.passed:
             # Мутация ТОЛЬКО после успешного вердикта. transition_esm() сам
-            # перепроверит ESM-легальность и Ring Zero/ImmutableCore.
-            self.transition_esm(fact_id, "Validated", by=by)
+            # перепроверит ESM-легальность и Ring Zero/ImmutableCore, и
+            # атомарно проверит, что факт не изменился с момента снимка выше.
+            try:
+                self.transition_esm(
+                    fact_id, "Validated", by=by,
+                    expected_updated_at=expected_updated_at,
+                )
+            except ConcurrentModificationError:
+                return TruthGateVerdict(
+                    passed=False,
+                    fact_id=fact_id,
+                    reason="concurrent_modification",
+                    justification=(
+                        f"Факт '{fact_id}' изменился между проверкой TruthGate "
+                        "и записью перехода — промоушен отменён, повторите "
+                        "запрос."
+                    ),
+                    by=by,
+                    mode=mode,
+                    confidence=verdict.confidence,
+                    evidence_count=verdict.evidence_count,
+                )
         return verdict
 
     # ── Bi-temporal операции (I96) ──────────────────────────────────────────

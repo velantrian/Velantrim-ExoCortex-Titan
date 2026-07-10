@@ -132,16 +132,26 @@ rather than answering with unsupported confidence.
 public HTTP endpoint that can move a fact into `Validated`. When the requested target
 is `Validated`, `server.py` routes the request through
 `core.memory.SQLiteGraphStore.validate_and_promote()` — the single canonical function
-that runs `TruthGate.evaluate()` (mode `BALANCED`) against the fact's stored source,
+that runs `TruthGate.evaluate()` (mode `BALANCED`, `contradiction_detector="none"` — the
+active-contradiction check is skipped until an NLI detector is wired in; only
+source/confidence/evidence are enforced today) against the fact's stored source,
 confidence, and evidence, and only mutates state on a passing verdict. A rejected
 verdict returns `422` with the reason, leaves the fact's epistemic state and history
-untouched, and never calls an LLM. All other ESM targets on that endpoint (e.g.
-`Hypothesized`, `Supported`, `Contradicted`, `Deprecated`) are unaffected. See
+untouched, and never calls an LLM. ESM-transition legality (invariant I50) is checked
+before TruthGate runs, so an illegal jump (e.g. a direct `Observed → Validated` request)
+always returns `400`, regardless of how strong the fact's evidence is. All other ESM
+targets on that endpoint (e.g. `Hypothesized`, `Supported`, `Contradicted`,
+`Deprecated`) are unaffected. The function also closes a TOCTOU race: the fact snapshot
+`TruthGate.evaluate()` scores is pinned via an optimistic `updated_at` compare-and-swap
+at write time, so a concurrent `POST /facts` upsert that weakens the fact's
+confidence/evidence between the check and the write aborts the promotion (`409
+concurrent_modification`) instead of silently validating a now-weak fact. See
 `tests/test_truthgate_api_transition.py` for the adversarial coverage this claim rests
 on. Internal, non-API promotion paths (pipeline ingestion, `ConsolidationEngine`,
 graduated promotion) apply their own pre-vetting policy before calling the lower-level
 ESM primitives — this section describes the API boundary specifically, not a claim
-that every code path uses byte-identical TruthGate policy.
+that every code path uses byte-identical TruthGate policy or has the same CAS
+protection.
 
 ## 7. Security map
 

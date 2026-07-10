@@ -95,6 +95,7 @@ if not API_KEY:
 from core import __version__ as VELANTRIM_VERSION
 from core.memory import (
     _GLOBAL_STORE,
+    ConcurrentModificationError,
     ImmutableStateError,
     SQLiteGraphStore,
     find_fact_id_by_episode_hash,
@@ -2513,10 +2514,18 @@ async def transition_fact(
     - Deprecated → Collapsed
 
     SECURITY (I68): переход в 'Validated' дополнительно обязан пройти
-    TruthGate.evaluate() (core.truth_gate) — недостаточно evidence/confidence
-    или наличие противоречий блокирует переход (422), состояние факта не
-    меняется. Это единственный путь: core.memory.validate_and_promote() —
-    вся policy там, здесь её нет и дублировать её нельзя.
+    TruthGate.evaluate() (core.truth_gate) — недостаточное evidence/confidence
+    блокирует переход (422), состояние факта не меняется. (TruthGate здесь
+    вызывается с contradiction_detector="none" — проверка активных
+    противоречий НЕ выполняется, пока не подключён NLI-детектор; не
+    заявляем enforcement, которого нет.) Это единственный путь:
+    core.memory.validate_and_promote() — вся policy там, здесь её нет и
+    дублировать её нельзя.
+
+    SECURITY (TOCTOU): validate_and_promote() использует opt-in CAS на
+    updated_at, поэтому конкурентное изменение факта между оценкой TruthGate
+    и записью перехода отменяет промоушен (409), а не молча проходит на
+    основании устаревшего снимка.
     """
     # AUDIT-FIX v8.4.0: actor = "api:" + первые 8 hex-символов sha256(api_key)
     # Клиент не может подделать историю — req.by игнорируется.
@@ -2535,6 +2544,18 @@ async def transition_fact(
             )
             if verdict.reason == "not_found":
                 raise HTTPException(status_code=404, detail=verdict.justification)
+            if verdict.reason == "concurrent_modification":
+                # SECURITY (TOCTOU): факт изменился между оценкой TruthGate и
+                # записью — не 422 (truth_gate_rejected), т.к. это не был
+                # ложный вердикт, а гонка. Клиент должен просто повторить.
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "error": "concurrent_modification",
+                        "reason": verdict.reason,
+                        "justification": verdict.justification,
+                    },
+                )
             if not verdict.passed:
                 raise HTTPException(
                     status_code=422,
@@ -2553,6 +2574,11 @@ async def transition_fact(
                 raise HTTPException(status_code=404, detail=f"Факт '{fact_id}' не найден")
     except ImmutableStateError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
+    except ConcurrentModificationError as exc:
+        # Defense-in-depth: validate_and_promote() already turns this into a
+        # verdict (handled above), but any future direct CAS-guarded call
+        # from this handler maps to 409, not a generic 400/500.
+        raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
