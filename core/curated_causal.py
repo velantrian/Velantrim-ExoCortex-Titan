@@ -9,7 +9,6 @@
 """
 from __future__ import annotations
 
-import glob
 import os
 import re
 from collections.abc import Sequence
@@ -20,7 +19,6 @@ from core.world_skills_ingest import (
     DEFAULT_KNOWLEDGE_DIR,
     FACT_ID_RE,
     split_markdown_table_row,
-    _NON_FACT_FILES,
 )
 
 CURATED_RELATIONS_BASENAME = "00_CURATED_CAUSAL_RELATIONS.ru.md"
