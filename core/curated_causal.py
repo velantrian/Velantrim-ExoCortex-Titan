@@ -149,7 +149,7 @@ def _heuristic_edge(
         "relation_type": relation_type,
         "confidence": confidence,
         "knowledge_status": "inferred",
-        "inference_source": "kb_heuristic",
+        "inference_source": "autolinker",
         "edge_basis": edge_basis,
         "evidence": evidence,
         "source_file": source_file,
