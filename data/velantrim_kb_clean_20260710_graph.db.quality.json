@@ -1,0 +1,46 @@
+{
+  "nodes": 32302,
+  "edges": 56345,
+  "connected_nodes": 32294,
+  "isolated_nodes": 8,
+  "coverage_pct": 99.98,
+  "average_degree": 3.49,
+  "by_relation_type": {
+    "enables": 4367,
+    "requires": 12221,
+    "prevents": 609,
+    "precedes": 19442,
+    "causes": 144,
+    "analogous_to": 19562
+  },
+  "by_edge_basis": {
+    "curated_explicit": 15,
+    "heuristic_ops_sequence": 18884,
+    "heuristic_safety": 12787,
+    "heuristic_causal_claim": 140,
+    "explicit_tag": 3241,
+    "semantic_similarity": 9290,
+    "practical_foundation": 1680,
+    "namespace": 10308
+  },
+  "curated_edges": 31826,
+  "causal_edges_essence": 36747,
+  "causal_ratio_pct": 65.22,
+  "causes_edges": 144,
+  "inferred_edges": 56330,
+  "curated_ratio_pct": 56.48,
+  "cross_domain_edges": 4905,
+  "cross_domain_pct": 8.71,
+  "practical_nodes": 23421,
+  "practical_touch_edges": 49962,
+  "practical_bridge_edges": 3305,
+  "practical_bridge_pct": 6.62,
+  "generated_at": "2026-07-10T19:10:25",
+  "db": "data/velantrim_kb_clean_20260710_graph.db",
+  "edge_insert_stats": {
+    "attempted": 56345,
+    "inserted": 56345,
+    "skipped": 0
+  },
+  "deleted_and_rebuilt": true
+}

@@ -17,6 +17,14 @@ import time
 
 sys.path.insert(0, os.getcwd())
 
+CURATED_EDGE_BASES = frozenset({
+    "curated_explicit",
+    "heuristic_ops_sequence",
+    "heuristic_safety",
+    "heuristic_causal_claim",
+    "claim_reference",
+})
+
 
 def _parse_meta(raw: str | None) -> dict:
     if not raw:
@@ -63,7 +71,7 @@ def audit_db(db_path: str, sample_size: int = 50) -> dict:
         by_basis[basis] = by_basis.get(basis, 0) + 1
         if row["knowledge_status"] == "inferred":
             inferred += 1
-        if basis == "curated_explicit":
+        if basis in CURATED_EDGE_BASES:
             curated += 1
         if src == tgt:
             self_edges += 1
@@ -168,6 +176,11 @@ def main() -> int:
     print(f"   coverage: {report['coverage_pct']}%  isolated: {report['isolated_nodes']}")
     print(f"   dangling/self/dup: {report['dangling_edges']}/{report['self_edges']}/{report['duplicate_edge_keys']}")
     print(f"   bilingual missing EN: {report['bilingual'].get('missing_en', '?')}  missing RU: {report['bilingual'].get('missing_ru', '?')}")
+    cq = report.get("computed_quality", {})
+    print(
+        f"   causal (Essence): {cq.get('causal_edges_essence', '?')} "
+        f"({cq.get('causal_ratio_pct', '?')}%)  causes: {cq.get('causes_edges', '?')}"
+    )
     print(f"   PASS: {'✅' if report['pass'] else '❌'}  → {out}")
     return 0 if report["pass"] else 1
 

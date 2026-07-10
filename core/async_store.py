@@ -77,7 +77,7 @@ class AsyncSQLiteStore:
             use_native_async if use_native_async is not None
             else is_async_db_enabled()
         )
-        self._db_path = getattr(sync_store, "db_path", "./data/velantrim.db")
+        self._db_path = getattr(sync_store, "db_path", "./data/velantrim_house.db")
         logger.info(
             "AsyncSQLiteStore: native=%s path=%s", self._native, self._db_path
         )

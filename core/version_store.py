@@ -42,7 +42,7 @@ from typing import Any
 
 def get_db_path() -> str:
     """V8.6 uses VELANTRIM_DB_PATH as the canonical SQLite env var."""
-    return os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+    return os.getenv("VELANTRIM_DB_PATH", "./data/velantrim_house.db")
 
 
 def _metadata_json(value: Any) -> str:

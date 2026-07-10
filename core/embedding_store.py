@@ -6,7 +6,7 @@
 Актуально при >5 000 фактов (холодный старт retrieval = 30-60 сек без кэша).
 
 Использование:
-    store = EmbeddingStore(db_path="./data/velantrim.db")
+    store = EmbeddingStore(db_path="./data/velantrim_house.db")
     store.ensure_table()                     # один раз при старте
 
     # При ingest факта:

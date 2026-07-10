@@ -48,3 +48,4 @@
 | propops.closeout.unit_turn | Unit turn | invariant | Turn coordinates cleaning, repairs, paint, inspection, pricing and listing after vacancy. | vacant to rentable |
 | propops.closeout.records_retention | Property records retention | invariant | Retention covers leases, ledgers, notices, inspections, applications, invoices and communications. | records after tenancy |
 | propops.closeout.kpi_vacancy_loss | Vacancy loss KPI | invariant | Vacancy loss measures rent not earned while unit is unrented or not ready. | empty unit cost |
+| propops.financial.tenant_ledger | Книга арендаторов | invariant | В книге регистрируются расходы, платежи, кредиты, сборы, корректировки и баланс. | правда аккаунта |

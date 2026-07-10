@@ -113,7 +113,13 @@ def _insert_one(
         inverse_type = INVERSE_RELATIONS.get(relation_type)
         if inverse_type and inverse_type in VALID_RELATION_TYPES:
             inverse_id = f"rel_{uuid.uuid4().hex[:12]}"
-            inv_meta = {**metadata, "inverse_of": relation_id}
+            inv_meta = {
+                **metadata,
+                "inverse_of": relation_id,
+                "edge_basis": metadata.get("edge_basis", "unknown"),
+                KB_BUILD_META_KEY: True,
+                "kb_build_tag": KB_BUILD_TAG,
+            }
             conn.execute(
                 """
                 INSERT OR IGNORE INTO relations (

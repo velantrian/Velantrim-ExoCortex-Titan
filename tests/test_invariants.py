@@ -225,6 +225,20 @@ def test_I_MS3_safe_mode_on_critical_mhi():
     assert ms.writes_blocked, "I-MS3: SAFE_MODE должен блокировать запись"
 
 
+def test_I_MS4_budget_from_evaluate_budget(monkeypatch):
+    """I-MS4: MetaSupervisor читает budget pressure из evaluate_budget().utilization."""
+    from core.memory_budget import BudgetStatus
+    from core.meta_supervisor import MetaSupervisor
+
+    ms = MetaSupervisor()
+    monkeypatch.setattr(
+        "core.memory_budget.evaluate_budget",
+        lambda: BudgetStatus(fact_count=4500, limit=10000, utilization=0.45, action="ok"),
+    )
+    ms._collect_mhi()
+    assert ms._budget_cache == 0.45
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # I-IC1/2: ImmutableCore Scheduler
 # ═══════════════════════════════════════════════════════════════════════════════

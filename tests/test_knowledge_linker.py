@@ -7,6 +7,9 @@ from core.knowledge_linker import (
     DEFAULT_RELATION,
     graph_quality_report,
     is_causal_for_essence,
+    link_by_causal_claims,
+    link_by_fact_references,
+    link_by_namespace,
     link_by_tags,
     link_facts,
     link_practical_semantics,
@@ -155,12 +158,14 @@ def test_namespace_linker_provides_minimal_structure_not_full_mesh():
         for term in ("one", "two", "three")
     ]
     assert link_by_tags(facts) == []
-    edges = link_facts(facts)
-    ns = [e for e in edges if e.get("edge_basis") == "namespace"]
-    assert ns
-    assert all(e["relation_type"] == "analogous_to" for e in ns)
-    touched = {e["source_id"] for e in edges} | {e["target_id"] for e in edges}
-    assert len(touched) < len(facts)  # намеренно не 100% coverage
+    ns_only = link_by_namespace(facts)
+    assert ns_only
+    assert all(e["relation_type"] == "analogous_to" for e in ns_only)
+    touched = {e["source_id"] for e in ns_only} | {e["target_id"] for e in ns_only}
+    assert len(touched) < len(facts)  # namespace без fallback — не 100% coverage
+    full = link_facts(facts)
+    full_touched = {e["source_id"] for e in full} | {e["target_id"] for e in full}
+    assert len(full_touched) == len(facts)  # fallback подключает изолированные узлы
 
 
 def test_link_facts_no_duplicate_pairs():
@@ -296,15 +301,79 @@ def test_curated_edge_is_causal_for_essence():
 def test_link_facts_marks_generated_ops_sequence_as_inferred():
     facts = [
         {"fact_id": "electric.ops.step_one", "type": "METHOD",
-         "metadata": {"knowledge_file": "651_BATCH_901_ELECTRICAL_INSTALLATION_OPERATIONS.ru.md"}},
+         "metadata": {"knowledge_file": "651_BATCH_901_ELECTRICAL_INSTALLATION_OPERATIONS.ru.md",
+                      "practical_domain": True}},
         {"fact_id": "electric.ops.step_two", "type": "METHOD",
-         "metadata": {"knowledge_file": "651_BATCH_901_ELECTRICAL_INSTALLATION_OPERATIONS.ru.md"}},
+         "metadata": {"knowledge_file": "651_BATCH_901_ELECTRICAL_INSTALLATION_OPERATIONS.ru.md",
+                      "practical_domain": True}},
     ]
     edges = link_facts(facts)
     heuristic = [e for e in edges if e.get("edge_basis") == "heuristic_ops_sequence"]
     assert heuristic
     assert all(e["knowledge_status"] == "inferred" for e in heuristic)
-    assert all(not is_causal_for_essence(e) for e in heuristic)
+    assert all(is_causal_for_essence(e) for e in heuristic)
+
+
+def test_link_by_causal_claims_from_claim_text():
+    facts = [
+        {
+            "fact_id": "streetlightops.electrical.photocell_fault",
+            "type": "INVARIANT",
+            "claim": "Fault causes dayburner, night outage, cycling or wrong switching time.",
+            "metadata": {"knowledge_file": "289_BATCH_277_STREETLIGHT_MAINTENANCE_OPERATIONS.en.md"},
+        },
+        {
+            "fact_id": "streetlightops.outage.dayburner",
+            "type": "INVARIANT",
+            "claim": "Dayburner remains on during daylight because of photocell fault.",
+            "metadata": {"knowledge_file": "289_BATCH_277_STREETLIGHT_MAINTENANCE_OPERATIONS.en.md"},
+        },
+    ]
+    edges = link_by_causal_claims(facts)
+    assert len(edges) == 1
+    e = edges[0]
+    assert e["source_id"] == "streetlightops.electrical.photocell_fault"
+    assert e["target_id"] == "streetlightops.outage.dayburner"
+    assert e["relation_type"] == "causes"
+    assert e["edge_basis"] == "heuristic_causal_claim"
+    assert is_causal_for_essence(e)
+
+
+def test_link_by_fact_references_from_claim_text():
+    facts = [
+        {
+            "fact_id": "plumb.system.shutoff_main",
+            "type": "SYSTEM",
+            "claim": "Главный запорный клапан.",
+        },
+        {
+            "fact_id": "emergplumb.ops.water_main_shutoff",
+            "type": "METHOD",
+            "claim": "Перед работой закройте plumb.system.shutoff_main.",
+            "practical": "",
+        },
+    ]
+    edges = link_by_fact_references(facts)
+    assert len(edges) == 1
+    e = edges[0]
+    assert e["source_id"] == "plumb.system.shutoff_main"
+    assert e["target_id"] == "emergplumb.ops.water_main_shutoff"
+    assert e["edge_basis"] == "claim_reference"
+    assert is_causal_for_essence(e)
+
+
+def test_practical_column_feeds_tag_linker():
+    facts = [
+        {"fact_id": "agro.crop.wheat.grain", "links": "", "practical": ""},
+        {
+            "fact_id": "food.process.milling",
+            "links": "",
+            "practical": "использует wheat при помоле",
+        },
+    ]
+    edges = link_by_tags(facts)
+    assert len(edges) == 1
+    assert edges[0]["edge_basis"] == "explicit_tag"
 
 
 def test_namespace_limited_to_one_neighbor_per_node():
@@ -312,8 +381,7 @@ def test_namespace_limited_to_one_neighbor_per_node():
         {"fact_id": f"domain.topic.node{i}", "type": "METHOD", "claim": f"Claim {i}"}
         for i in range(6)
     ]
-    edges = link_facts(facts)
-    ns = [e for e in edges if e.get("edge_basis") == "namespace"]
+    ns = link_by_namespace(facts)
     degree: dict[str, int] = {}
     for e in ns:
         degree[e["source_id"]] = degree.get(e["source_id"], 0) + 1

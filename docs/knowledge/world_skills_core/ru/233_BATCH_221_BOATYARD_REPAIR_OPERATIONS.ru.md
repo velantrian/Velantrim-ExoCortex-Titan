@@ -47,3 +47,4 @@
 | boatyard.quality.callback | Обратный звонок на верфи | invariant | Обратный вызов фиксирует проблемы после поставки, ссылку на ремонт, ответственность и корректирующие действия. | цикл качества |
 | boatyard.metrics.boatyard_kpi | Верфь КПИ | variant | KPI отслеживает простои, дни работы, переделки, события, связанные с безопасностью, запас материала и задержки запуска. | управлять двором |
 | boatyard.continuity.lift_outage | План отключения лифта | invariant | Планируйте изменение последовательности работ, сообщайте о задержках и организуйте ремонт или альтернативный подъем. | восстановить емкость |
+| boatyard.admin.subcontractor_coordination | Boatyard subcontractor coordination | variant | Coordination controls outside riggers, mechanics, electricians, painters or surveyors working in yard. | align external work |

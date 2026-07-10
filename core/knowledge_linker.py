@@ -59,6 +59,19 @@ CAUSAL_EDGE_BASES = frozenset({
     "curated_explicit",
     "explicit_tag",
     "practical_foundation",
+    "heuristic_ops_sequence",
+    "heuristic_safety",
+    "heuristic_causal_claim",
+    "claim_reference",
+})
+
+# Для отчётов качества: «курируемые/эвристические причинные» vs чистый autolink.
+CURATED_QUALITY_BASES = frozenset({
+    "curated_explicit",
+    "heuristic_ops_sequence",
+    "heuristic_safety",
+    "heuristic_causal_claim",
+    "claim_reference",
 })
 
 # Структурные/семантические — не доказывают причинность.
@@ -74,12 +87,16 @@ def is_causal_edge_basis(edge_basis: str | None) -> bool:
 
 
 def is_causal_for_essence(edge: dict[str, Any]) -> bool:
-    """Сильное причинное ребро для Essence: curated, tag, foundation с score."""
+    """Сильное причинное ребро для Essence: curated, tag, foundation, SOP/safety, claim refs."""
     basis = str(edge.get("edge_basis", ""))
-    if basis == "curated_explicit":
-        return True
-    if basis == "explicit_tag":
-        return True
+    rtype = str(edge.get("relation_type", ""))
+    if basis in {
+        "curated_explicit", "explicit_tag", "heuristic_ops_sequence",
+        "heuristic_causal_claim", "claim_reference",
+    }:
+        return rtype in {"causes", "enables", "requires", "prevents", "precedes"}
+    if basis == "heuristic_safety":
+        return rtype in {"requires", "prevents"}
     if basis == "practical_foundation":
         score = float(edge.get("semantic_score") or 0)
         return score >= MIN_FOUNDATION_SCORE
@@ -94,10 +111,10 @@ def relation_is_causal_for_essence(
     if not metadata:
         return False
     basis = str(metadata.get("edge_basis", ""))
-    if basis == "namespace" or basis == "semantic_similarity":
+    if basis in ("namespace", "semantic_similarity", "analogous_to"):
         return False
-    if basis == "analogous_to":
-        return False
+    if basis == "heuristic_safety":
+        return relation_type in {"requires", "prevents"}
     if basis in CAUSAL_EDGE_BASES:
         return relation_type in {"causes", "enables", "requires", "prevents", "precedes"}
     if basis == "practical_foundation":
@@ -171,8 +188,18 @@ _TYPE_ALIASES = {
     "вариант": "variant",
 }
 
-# Явные причинные cue в тексте claim (ru+en) → отношение "causes".
+# Явные причинные cue в тексте claim (ru+en).
 _CAUSE_RE = re.compile(r"(вызыва|приводит к|из-за|причин|causes|leads to|because)", re.I)
+_CAUSE_FORWARD_RE = re.compile(r"(вызыва|приводит к|causes|leads to)", re.I)
+_EFFECT_RE = re.compile(r"(в результате|следств|therefore|поэтому|results in)", re.I)
+_PREVENT_RE = re.compile(r"(предотвращ|prevent|блокир|mitigat)", re.I)
+_REQUIRE_RE = re.compile(r"(требует|необходим|requires|must|перед тем как|before)", re.I)
+_FACT_ID_REF_RE = re.compile(r"\b([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+)\b")
+
+CLAIM_REFERENCE_CONFIDENCE = 0.72
+MAX_CLAIM_REFS_PER_FACT = 4
+CAUSAL_CLAIM_CONFIDENCE = 0.78
+MAX_CAUSAL_TARGETS_PER_FACT = 3
 
 
 def normalize_type(fact_type: Any) -> str:
@@ -201,6 +228,156 @@ def _relation(src_fact: dict[str, Any], tgt_fact: dict[str, Any], default: str) 
     if ts == 2 and tt == 2:
         return "precedes"
     return default
+
+
+def _tag_sources(fact: dict[str, Any]) -> list[str]:
+    """Теги из колонки «Связи» + короткие токены из «Практический смысл»."""
+    tags = list(parse_tags(fact.get("links", fact.get("tags", ""))))
+    practical = str(fact.get("practical", "")).strip().lower()
+    if practical:
+        for match in _FACT_ID_REF_RE.finditer(practical):
+            ref = match.group(1)
+            if ref.count(".") >= 2:
+                continue
+            tags.extend(parse_tags(ref))
+        if not tags:
+            tags.extend(parse_tags(practical))
+    return tags
+
+
+def _infer_relation_from_text(text: str, default: str = "enables") -> str:
+    """Выбрать тип ребра по лингвистическим cue в claim/practical."""
+    if _CAUSE_RE.search(text):
+        return "causes"
+    if _PREVENT_RE.search(text):
+        return "prevents"
+    if _REQUIRE_RE.search(text):
+        return "requires"
+    if _EFFECT_RE.search(text):
+        return "enables"
+    return default
+
+
+def link_by_fact_references(
+    facts: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Связи по явным упоминаниям fact_id в claim/practical/conditions."""
+    by_id = {str(f.get("fact_id", "")): f for f in facts if f.get("fact_id")}
+    node_ids = set(by_id)
+    edges: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+
+    for fact in facts:
+        fid = str(fact.get("fact_id", ""))
+        if not fid:
+            continue
+        blob = " ".join(
+            str(fact.get(field, ""))
+            for field in ("claim", "practical", "conditions")
+        ).lower()
+        refs_found = 0
+        for match in _FACT_ID_REF_RE.finditer(blob):
+            ref = match.group(1)
+            if ref == fid or ref not in node_ids:
+                continue
+            src, tgt = _orient(ref, fid, by_id)
+            if src == tgt:
+                continue
+            rel = _infer_relation_from_text(blob, default="enables")
+            if normalize_type(by_id[ref].get("type")) == "failure_mode":
+                rel = "causes"
+            if normalize_type(by_id[fid].get("type")) in {"safety_rule", "control"}:
+                rel = "prevents"
+            key = (src, tgt, rel)
+            if key in seen:
+                continue
+            seen.add(key)
+            edges.append({
+                "source_id": src,
+                "target_id": tgt,
+                "relation_type": rel,
+                "confidence": CLAIM_REFERENCE_CONFIDENCE,
+                "knowledge_status": "inferred",
+                "inference_source": "autolinker",
+                "edge_basis": "claim_reference",
+                "evidence": f"claim ref: {ref}",
+            })
+            refs_found += 1
+            if refs_found >= MAX_CLAIM_REFS_PER_FACT:
+                break
+    return edges
+
+
+def _target_matches_causal_claim(src_blob: str, tgt_fact: dict[str, Any]) -> bool:
+    """Целевой факт — вероятное следствие из текста с causal cue."""
+    tgt_id = str(tgt_fact.get("fact_id", ""))
+    if not tgt_id:
+        return False
+    src_low = src_blob.lower()
+    tgt_leaf = tgt_id.rsplit(".", 1)[-1]
+    if tgt_leaf in src_low or tgt_leaf.replace("_", " ") in src_low:
+        return True
+    tgt_blob = " ".join(
+        str(tgt_fact.get(field, "")) for field in ("claim", "practical", "conditions")
+    ).lower()
+    src_words = set(re.findall(r"[a-z]{5,}", src_low))
+    tgt_words = set(re.findall(r"[a-z]{5,}", tgt_blob))
+    if len(src_words & tgt_words) >= 2:
+        return True
+    return normalize_type(tgt_fact.get("type")) == "failure_mode"
+
+
+def link_by_causal_claims(
+    facts: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Связи causes: claim с causal cue → effect-факты в том же батче/подтеме."""
+    by_file: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for fact in facts:
+        fn = str((fact.get("metadata") or {}).get("knowledge_file", ""))
+        if fn:
+            by_file[fn].append(fact)
+
+    edges: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+
+    for fn, group in by_file.items():
+        for src in group:
+            src_id = str(src.get("fact_id", ""))
+            if not src_id:
+                continue
+            blob = " ".join(
+                str(src.get(field, "")) for field in ("claim", "practical", "conditions")
+            )
+            if not _CAUSE_FORWARD_RE.search(blob):
+                continue
+            src_domain = src_id.split(".", 1)[0]
+            targets_found = 0
+            for tgt in group:
+                tgt_id = str(tgt.get("fact_id", ""))
+                if not tgt_id or tgt_id == src_id:
+                    continue
+                if tgt_id.split(".", 1)[0] != src_domain:
+                    continue
+                if not _target_matches_causal_claim(blob, tgt):
+                    continue
+                key = (src_id, tgt_id, "causes")
+                if key in seen:
+                    continue
+                seen.add(key)
+                edges.append({
+                    "source_id": src_id,
+                    "target_id": tgt_id,
+                    "relation_type": "causes",
+                    "confidence": CAUSAL_CLAIM_CONFIDENCE,
+                    "knowledge_status": DEFAULT_STATUS,
+                    "inference_source": "kb_heuristic",
+                    "edge_basis": "heuristic_causal_claim",
+                    "evidence": f"causal claim match in {fn}",
+                })
+                targets_found += 1
+                if targets_found >= MAX_CAUSAL_TARGETS_PER_FACT:
+                    break
+    return edges
 
 
 def _concept_segments(fact_id: str) -> list[str]:
@@ -247,7 +424,7 @@ def link_by_tags(
         bid = str(f.get("fact_id", ""))
         if not bid:
             continue
-        tags = parse_tags(f.get("links", f.get("tags", "")))
+        tags = _tag_sources(f)
         for tag in tags:
             sources = seg_index.get(tag, ())
             # слишком широкий токен (категория вроде «food»/«oil») → не специфичная связь
@@ -608,6 +785,79 @@ def link_practical_semantics(
     return edges
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Fallback: подключение изолированных узлов к якорю подтемы/домена (P0-fix, 2026-07-10)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# MAX_NAMESPACE_NEIGHBORS=1 намеренно ограничивает namespace-звезду одним ребром на якорь,
+# из-за чего ~22% узлов остаются без рёбер. Этот проход добавляет по одному
+# структурному ребру analogous_to для каждого изолированного узла.
+
+ISOLATED_FALLBACK_CONFIDENCE = 0.25
+
+
+def link_isolated_fallback(
+    facts: Sequence[dict[str, Any]],
+    existing_edges: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Подключить изолированные узлы к якорю подтемы или домена."""
+    by_id = {str(f.get("fact_id", "")): f for f in facts if f.get("fact_id")}
+    node_ids = set(by_id)
+    degrees: Counter[str] = Counter()
+    seen_pairs: set[frozenset[str]] = set()
+    for edge in existing_edges:
+        src = str(edge.get("source_id", ""))
+        tgt = str(edge.get("target_id", ""))
+        if src not in node_ids or tgt not in node_ids or src == tgt:
+            continue
+        degrees[src] += 1
+        degrees[tgt] += 1
+        seen_pairs.add(frozenset((src, tgt)))
+
+    isolated = sorted(fid for fid in node_ids if degrees[fid] == 0)
+    if not isolated:
+        return []
+
+    domains: dict[str, dict[str, list[str]]] = {}
+    for fid in node_ids:
+        domain, sub = _subdomain_key(fid)
+        domains.setdefault(domain, {}).setdefault(sub, []).append(fid)
+
+    subdomain_anchor: dict[tuple[str, str], str] = {}
+    domain_anchors: dict[str, list[str]] = defaultdict(list)
+    for domain, subs in domains.items():
+        for sub, members in subs.items():
+            anchor = _anchor(members, by_id)
+            subdomain_anchor[(domain, sub)] = anchor
+            domain_anchors[domain].append(anchor)
+
+    edges: list[dict[str, Any]] = []
+    for fid in isolated:
+        domain, sub = _subdomain_key(fid)
+        anchor = subdomain_anchor.get((domain, sub), fid)
+        if anchor == fid:
+            candidates = sorted(a for a in domain_anchors.get(domain, []) if a != fid)
+            if not candidates:
+                continue
+            anchor = candidates[0]
+        if anchor == fid:
+            continue
+        pair = frozenset((anchor, fid))
+        if pair in seen_pairs:
+            continue
+        seen_pairs.add(pair)
+        edges.append({
+            "source_id": anchor,
+            "target_id": fid,
+            "relation_type": "analogous_to",
+            "confidence": ISOLATED_FALLBACK_CONFIDENCE,
+            "knowledge_status": DEFAULT_STATUS,
+            "inference_source": NAMESPACE_INFERENCE_SOURCE,
+            "edge_basis": "namespace",
+        })
+    return edges
+
+
 def link_facts(
     facts: Sequence[dict[str, Any]],
     *,
@@ -627,17 +877,25 @@ def link_facts(
             curated_edges = link_curated_relations(facts)
         except Exception:  # noqa: BLE001
             curated_edges = []
+    ref_edges = link_by_fact_references(facts)
+    causal_claim_edges = link_by_causal_claims(facts)
     tag_edges = link_by_tags(facts)
     semantic_edges = link_practical_semantics(facts)
     pairs: set[frozenset[str]] = set()
     out: list[dict[str, Any]] = []
-    for e in [*curated_edges, *tag_edges, *semantic_edges]:
+    for e in [*curated_edges, *ref_edges, *causal_claim_edges, *tag_edges, *semantic_edges]:
         pair = frozenset((e["source_id"], e["target_id"]))
         if pair in pairs:
             continue
         pairs.add(pair)
         out.append(e)
     for e in link_by_namespace(facts):
+        pair = frozenset((e["source_id"], e["target_id"]))
+        if pair in pairs:
+            continue
+        pairs.add(pair)
+        out.append(e)
+    for e in link_isolated_fallback(facts, out):
         pair = frozenset((e["source_id"], e["target_id"]))
         if pair in pairs:
             continue
@@ -680,7 +938,17 @@ def graph_quality_report(
 
     connected = sum(1 for fid in node_ids if degrees[fid] > 0)
     edge_count = len(valid_edges)
-    curated = sum(1 for e in valid_edges if e.get("edge_basis") == "curated_explicit")
+    curated = sum(
+        1 for e in valid_edges
+        if str(e.get("edge_basis", "")) in CURATED_QUALITY_BASES
+    )
+    causal = sum(
+        1 for e in valid_edges
+        if is_causal_for_essence(e)
+    )
+    causes_count = sum(
+        1 for e in valid_edges if str(e.get("relation_type", "")) == "causes"
+    )
     inferred = sum(1 for e in valid_edges if e.get("knowledge_status") == "inferred")
     return {
         "nodes": len(node_ids),
@@ -692,6 +960,9 @@ def graph_quality_report(
         "by_relation_type": dict(Counter(str(e.get("relation_type", "")) for e in valid_edges)),
         "by_edge_basis": dict(Counter(str(e.get("edge_basis", "unknown")) for e in valid_edges)),
         "curated_edges": curated,
+        "causal_edges_essence": causal,
+        "causal_ratio_pct": round(100.0 * causal / max(1, edge_count), 2),
+        "causes_edges": causes_count,
         "inferred_edges": inferred,
         "curated_ratio_pct": round(100.0 * curated / max(1, edge_count), 2),
         "cross_domain_edges": cross_domain,
@@ -765,9 +1036,13 @@ def dedup_edges(
 __all__ = [
     "parse_tags",
     "link_by_tags",
+    "link_by_fact_references",
+    "link_by_causal_claims",
     "link_by_namespace",
+    "link_isolated_fallback",
     "link_practical_semantics",
     "link_facts",
+    "CURATED_QUALITY_BASES",
     "graph_quality_report",
     "dedup_edges",
     "normalize_type",

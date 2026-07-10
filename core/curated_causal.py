@@ -74,15 +74,21 @@ def parse_curated_relations_table(text: str, source_file: str = "") -> list[dict
         if len(cells) < 3:
             continue
         low = [c.lower().strip("` ").strip() for c in cells]
-        if "source" in low and "target" in low:
-            col_map = {name: low.index(name) for name in (
-                "source", "relation", "target", "evidence", "confidence",
-            ) if name in low}
-            # альтернативные заголовки
-            if "source_id" in low:
+        has_src = "source" in low or "source_id" in low
+        has_tgt = "target" in low or "target_id" in low
+        if has_src and has_tgt and "relation" in low:
+            col_map = {}
+            if "source" in low:
+                col_map["source"] = low.index("source")
+            elif "source_id" in low:
                 col_map["source"] = low.index("source_id")
-            if "target_id" in low:
+            if "target" in low:
+                col_map["target"] = low.index("target")
+            elif "target_id" in low:
                 col_map["target"] = low.index("target_id")
+            for name in ("relation", "evidence", "confidence"):
+                if name in low:
+                    col_map[name] = low.index(name)
             continue
         if all(set(c) <= set("-: ") for c in cells if c):
             continue
@@ -184,12 +190,18 @@ def _is_priority_ops_file(filename: str) -> bool:
     return any(marker in upper for marker in PRIORITY_OPS_MARKERS)
 
 
+def _is_practical_ops_file(fact: dict[str, Any]) -> bool:
+    meta = fact.get("metadata") or {}
+    fn = str(meta.get("knowledge_file", ""))
+    return bool(meta.get("practical_domain")) or _is_priority_ops_file(fn)
+
+
 def build_ops_sequence_edges(facts: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
-    """OPS SOP: precedes между соседними строками в приоритетных батчах."""
+    """OPS SOP: precedes между соседними строками во всех practical/OPS батчах."""
     by_file: dict[str, list[dict[str, Any]]] = {}
     for fact in facts:
         fn = str((fact.get("metadata") or {}).get("knowledge_file", ""))
-        if fn and _is_priority_ops_file(fn):
+        if fn and _is_practical_ops_file(fact):
             by_file.setdefault(fn, []).append(fact)
     edges: list[dict[str, Any]] = []
     for fn, group in sorted(by_file.items()):
@@ -220,11 +232,11 @@ def build_safety_edges(facts: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
             src, tgt, rel, evidence, conf, "heuristic_safety",
         ))
 
-    # 1) Внутри каждого приоритетного OPS-файла — локальные safety-связи.
+    # 1) Внутри каждого practical/OPS-файла — локальные safety-связи.
     by_file: dict[str, list[dict[str, Any]]] = {}
     for fact in facts:
         fn = str((fact.get("metadata") or {}).get("knowledge_file", ""))
-        if fn and _is_priority_ops_file(fn):
+        if fn and _is_practical_ops_file(fact):
             by_file.setdefault(fn, []).append(fact)
     for fn, group in by_file.items():
         safety = [f for f in group if normalize_type(f.get("type")) in {"safety_rule", "control", "quality_check"}]

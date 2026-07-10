@@ -92,7 +92,7 @@ def build_situation(
             import sqlite3
             from core.living_context import LivingContextStore
             # FIX #10 (Claude audit): get_living_store не существует
-            db_path = os.environ.get("VELANTRIM_DB_PATH", "./data/velantrim.db")
+            db_path = os.environ.get("VELANTRIM_DB_PATH", "./data/velantrim_house.db")
             conn = sqlite3.connect(db_path, timeout=10.0)
             store = LivingContextStore(conn)
             ctx = store.get(fact_id)

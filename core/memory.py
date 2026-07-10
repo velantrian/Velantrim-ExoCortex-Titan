@@ -63,7 +63,8 @@ MEMORY_TYPES = frozenset({"episodic", "semantic", "procedural", "system"})
 
 IMMUTABLE_FACT_IDS = {"VALUES_CORE", "RING_ZERO"}
 L0_CAP = 128
-SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+DEFAULT_SQLITE_PATH = "./data/velantrim_house.db"
+SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", DEFAULT_SQLITE_PATH)
 
 
 class ImmutableStateError(Exception):

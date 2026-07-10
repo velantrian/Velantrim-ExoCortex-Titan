@@ -1,0 +1,527 @@
+{
+  "db": "data/velantrim_kb_clean_20260710_graph.db",
+  "generated_at": "2026-07-10T19:24:03",
+  "facts_in_db": 32302,
+  "facts_validated": 32302,
+  "facts_in_corpus": 32302,
+  "edges_in_db": 112690,
+  "edges_computed": 56345,
+  "connected_nodes": 32294,
+  "isolated_nodes": 8,
+  "coverage_pct": 99.9752,
+  "average_degree": 6.98,
+  "by_relation_type": {
+    "enables": 4367,
+    "enabled_by": 4367,
+    "requires": 12221,
+    "required_by": 12221,
+    "prevents": 609,
+    "prevented_by": 609,
+    "precedes": 19442,
+    "follows": 19442,
+    "causes": 144,
+    "caused_by": 144,
+    "analogous_to": 39124
+  },
+  "by_edge_basis": {
+    "curated_explicit": 30,
+    "heuristic_ops_sequence": 37768,
+    "heuristic_safety": 25574,
+    "heuristic_causal_claim": 280,
+    "explicit_tag": 6482,
+    "semantic_similarity": 18580,
+    "practical_foundation": 3360,
+    "namespace": 20616
+  },
+  "curated_edges_db": 63652,
+  "inferred_edges_db": 112660,
+  "curated_ratio_pct": 56.48,
+  "dangling_edges": 0,
+  "self_edges": 0,
+  "duplicate_edge_keys": 0,
+  "missing_edge_basis": 0,
+  "computed_quality": {
+    "nodes": 32302,
+    "edges": 56345,
+    "connected_nodes": 32294,
+    "isolated_nodes": 8,
+    "coverage_pct": 99.98,
+    "average_degree": 3.49,
+    "by_relation_type": {
+      "enables": 4367,
+      "requires": 12221,
+      "prevents": 609,
+      "precedes": 19442,
+      "causes": 144,
+      "analogous_to": 19562
+    },
+    "by_edge_basis": {
+      "curated_explicit": 15,
+      "heuristic_ops_sequence": 18884,
+      "heuristic_safety": 12787,
+      "heuristic_causal_claim": 140,
+      "explicit_tag": 3241,
+      "semantic_similarity": 9290,
+      "practical_foundation": 1680,
+      "namespace": 10308
+    },
+    "curated_edges": 31826,
+    "causal_edges_essence": 36747,
+    "causal_ratio_pct": 65.22,
+    "causes_edges": 144,
+    "inferred_edges": 56330,
+    "curated_ratio_pct": 56.48,
+    "cross_domain_edges": 4905,
+    "cross_domain_pct": 8.71,
+    "practical_nodes": 23421,
+    "practical_touch_edges": 49962,
+    "practical_bridge_edges": 3305,
+    "practical_bridge_pct": 6.62
+  },
+  "top_namespace_domains": [
+    [
+      "physics",
+      472
+    ],
+    [
+      "cs",
+      352
+    ],
+    [
+      "chemistry",
+      346
+    ],
+    [
+      "medicine",
+      256
+    ],
+    [
+      "math",
+      232
+    ],
+    [
+      "logic",
+      228
+    ],
+    [
+      "engineering",
+      196
+    ],
+    [
+      "biology",
+      176
+    ],
+    [
+      "education",
+      138
+    ],
+    [
+      "philosophy",
+      128
+    ],
+    [
+      "home",
+      124
+    ],
+    [
+      "eng",
+      118
+    ],
+    [
+      "agro",
+      110
+    ],
+    [
+      "food",
+      110
+    ],
+    [
+      "history",
+      108
+    ]
+  ],
+  "inferred_edge_sample": [
+    {
+      "source_id": "homecare.billing.authorization_units",
+      "target_id": "homecare.visit.missed_visit",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.288
+    },
+    {
+      "source_id": "budgetcounselops.referrals.employment",
+      "target_id": "budgetcounselops.metrics.referral_outcome",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.362
+    },
+    {
+      "source_id": "waterops.irrigation.sprinkler",
+      "target_id": "waterops.irrigation.salinity",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.167
+    },
+    {
+      "source_id": "swops.devops.canary",
+      "target_id": "swops.devops.definition",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.341
+    },
+    {
+      "source_id": "shelterregdqops.duplicate.false_match",
+      "target_id": "shelterregdqops.duplicate.probable_match",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.236
+    },
+    {
+      "source_id": "loanserv.payments.payment_processing",
+      "target_id": "loanserv.customer.statement",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.394
+    },
+    {
+      "source_id": "geocore.resource.sand_gravel",
+      "target_id": "geocore.resource.aggregate_quality",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.275
+    },
+    {
+      "source_id": "livestock.quarantine",
+      "target_id": "livestock.animal_welfare",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "fieldkitcheninspectops.temperature.cooling",
+      "target_id": "fieldkitcheninspectops.receiving.lot_trace",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.508
+    },
+    {
+      "source_id": "technology_history.bronze_age",
+      "target_id": "technology_history.iron_metallurgy",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "physics.mechanics.continuity_equation",
+      "target_id": "physics.mechanics.conservation_of_momentum",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "carwash.customer.point_of_sale",
+      "target_id": "carwash.metrics.carwash_kpi",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.512
+    },
+    {
+      "source_id": "campops.sanitation.graywater_policy",
+      "target_id": "campops.sanitation.potable_water_test",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.46
+    },
+    {
+      "source_id": "foodservice.safety.pest",
+      "target_id": "foodservice.kitchen.flow",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.379
+    },
+    {
+      "source_id": "seniorvisitops.metrics.visits_completed",
+      "target_id": "seniorvisitops.records.visit_log",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.407
+    },
+    {
+      "source_id": "snowiceops.materials.brine_production",
+      "target_id": "snowiceops.planning.storm_forecast_review",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.259
+    },
+    {
+      "source_id": "culture.identity",
+      "target_id": "culture.tradition",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "calibsvc.procedure.test_point",
+      "target_id": "calibsvc.intake.equipment_intake",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.342
+    },
+    {
+      "source_id": "mfgchg.quality.golden_sample",
+      "target_id": "mfgchg.quality.first_off",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "pwasset.condition.inspection_cycle",
+      "target_id": "pwasset.continuity.emergency_asset_update",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.415
+    },
+    {
+      "source_id": "linguistics.morphology_inflectional",
+      "target_id": "linguistics.phoneme_allophone",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "philosophy.science.holism",
+      "target_id": "philosophy.science.falsifiability",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "servicedisconnectops.order.cancel_update",
+      "target_id": "servicedisconnectops.reporting.volume",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.233
+    },
+    {
+      "source_id": "signlang.ops.deaf_culture_norms",
+      "target_id": "signlang.ops.asl_grammar_structure",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "stats.chart.bar",
+      "target_id": "stats.chart.scatter",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "weldinsp.ops.welder_continuity_maintenance",
+      "target_id": "weldinsp.ops.welding_positions_codes",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.278
+    },
+    {
+      "source_id": "appdeliv.route.truck_capacity",
+      "target_id": "appdeliv.continuity.truck_breakdown",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.324
+    },
+    {
+      "source_id": "moving.ops.matress_protection_wrap",
+      "target_id": "moving.ops.disassembly_bed_frame",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.187
+    },
+    {
+      "source_id": "physics.mechanics.longitudinal_wave",
+      "target_id": "physics.mechanics.mass_vs_weight",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "ecomp.diode.function",
+      "target_id": "ecomp.diode.led",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "weldinsp.ops.magnetic_particle_testing",
+      "target_id": "weldinsp.ops.peening_limitations",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.182
+    },
+    {
+      "source_id": "miningops.ground.support",
+      "target_id": "miningops.method.longwall",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.217
+    },
+    {
+      "source_id": "sauna.ops.heater_clearance_guards",
+      "target_id": "sauna.ops.heater_sauna_stones_selection",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.439
+    },
+    {
+      "source_id": "donationhotlineops.services.service_offer",
+      "target_id": "donationhotlineops.services.liability",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "geocore.geotech.cpt",
+      "target_id": "geocore.geotech.borehole_log",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.262
+    },
+    {
+      "source_id": "fooddistops.activation.weather",
+      "target_id": "fooddistops.queue.walk_in",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.383
+    },
+    {
+      "source_id": "irrigation.ops.head_adjustment_arc",
+      "target_id": "irrigation.ops.head_height_grade",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "fueltank.ops.fuel_delivery_ticket",
+      "target_id": "fueltank.ops.water_removal_fuel",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.188
+    },
+    {
+      "source_id": "food.process.sugar.cane_crushing",
+      "target_id": "food.process.sugar.extraction_beet",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "elevops.inspection.door_operation",
+      "target_id": "elevops.inspection.brake_test",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "urbanmob.ops.gtfs_data_structure",
+      "target_id": "urbanmob.ops.transit_equity_map",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.223
+    },
+    {
+      "source_id": "coffee.ops.tasting_cupping_form",
+      "target_id": "coffee.ops.coffee_blending_purpose",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.252
+    },
+    {
+      "source_id": "tempidapptops.transport.failed_transport",
+      "target_id": "tempidapptops.transport.pickup_window",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "industrial.fire_triangle",
+      "target_id": "industrial.maintenance_predictive",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "ivrops.recording.recording_policy",
+      "target_id": "ivrops.recording.retention",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.488
+    },
+    {
+      "source_id": "infraroad.traffic_count",
+      "target_id": "infraroad.traffic_calming",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "epidataops.definition.probable",
+      "target_id": "epidataops.metrics.duplicate_rate",
+      "relation_type": "analogous_to",
+      "edge_basis": "semantic_similarity",
+      "confidence": 0.312
+    },
+    {
+      "source_id": "math.geometry.area_circle",
+      "target_id": "math.geometry.triangle_sum",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "astrocore.space_weather.solar_flare",
+      "target_id": "astrocore.space_weather.geomagnetic_storm",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    },
+    {
+      "source_id": "fueltank.ops.annual_reporting_compliance",
+      "target_id": "fueltank.ops.ast_pipe_grounding",
+      "relation_type": "analogous_to",
+      "edge_basis": "namespace",
+      "confidence": null
+    }
+  ],
+  "bilingual": {
+    "ru_ids": 32302,
+    "en_ids": 32260,
+    "intersection": 32260,
+    "missing_en": 42,
+    "missing_ru": 0,
+    "missing_en_sample": [
+      "engsci.ops.beam_bending_moment",
+      "engsci.ops.bernoulli_eq_flow",
+      "engsci.ops.boundary_layer_separation",
+      "engsci.ops.buckling_euler_critical",
+      "engsci.ops.calibration_traceability",
+      "engsci.ops.carnot_rankine_cycle",
+      "engsci.ops.cavitation_damage_prevention",
+      "engsci.ops.ceramic_properties_brittle",
+      "engsci.ops.composite_rule_of_mixtures",
+      "engsci.ops.corrosion_types_prevention",
+      "engsci.ops.creep_rupture_time",
+      "engsci.ops.design_of_experiments",
+      "engsci.ops.dfma_principles",
+      "engsci.ops.dimensional_analysis_pi",
+      "engsci.ops.failure_theories_combined",
+      "engsci.ops.fatigue_sn_curve",
+      "engsci.ops.fem_basics_stiffness",
+      "engsci.ops.fmea_risk_priority",
+      "engsci.ops.fourier_series_signal",
+      "engsci.ops.gdt_symbols"
+    ],
+    "missing_ru_sample": [],
+    "parity_pct": 99.87
+  },
+  "pass": false
+}

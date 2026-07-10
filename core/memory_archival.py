@@ -30,7 +30,7 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("velantrim.memory_archival")
 
-SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim_house.db")
 ARCHIVE_PATH = os.getenv("VELANTRIM_ARCHIVE_PATH", "./data/archive")
 ARCHIVE_AGE_DAYS = int(os.getenv("VELANTRIM_ARCHIVE_AGE", "90"))
 

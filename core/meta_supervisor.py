@@ -284,17 +284,11 @@ class MetaSupervisor:
             except Exception:
                 self._dlq_cache = 0
 
-            # Budget pressure (упрощённо: факты / capacity)
+            # Budget pressure: факты / hard limit (memory_budget.evaluate_budget)
             try:
-                # Pre-existing dead reference: get_budget_planner() / a "planner" object
-                # with .fill_ratio was never implemented in core.memory_budget (only
-                # function-based helpers exist there). Caught below like any other
-                # optional-metric failure, so budget pressure currently always reads 0.
-                # Not fixed here (behavior change out of scope for a typing-only pass)
-                # — tracked as a follow-up bug.
-                from core.memory_budget import get_budget_planner  # type: ignore[attr-defined]
-                planner = get_budget_planner()
-                self._budget_cache = planner.fill_ratio
+                from core.memory_budget import evaluate_budget
+
+                self._budget_cache = evaluate_budget().utilization
             except Exception:
                 self._budget_cache = 0.0
 

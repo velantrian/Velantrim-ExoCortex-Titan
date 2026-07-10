@@ -286,8 +286,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Velantrim SQLite migration runner v8.5.3"
     )
-    parser.add_argument("--db", default="./data/velantrim.db",
-                        help="Путь к БД (default: ./data/velantrim.db)")
+    parser.add_argument("--db", default="./data/velantrim_house.db",
+                        help="Путь к БД (default: ./data/velantrim_house.db)")
     parser.add_argument("--check", action="store_true",
                         help="Только проверить версию, не применять")
     parser.add_argument("--dry-run", action="store_true",

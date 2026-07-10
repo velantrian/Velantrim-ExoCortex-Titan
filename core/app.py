@@ -237,7 +237,7 @@ def _create_causal_graph():
         return CausalGraph(conn)
     # Fallback: прямой connect к БД (для тестов без store)
     import sqlite3
-    conn = sqlite3.connect(os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db"))
+    conn = sqlite3.connect(os.getenv("VELANTRIM_DB_PATH", "./data/velantrim_house.db"))
     conn.execute("PRAGMA foreign_keys = ON")
     return CausalGraph(conn)
 
