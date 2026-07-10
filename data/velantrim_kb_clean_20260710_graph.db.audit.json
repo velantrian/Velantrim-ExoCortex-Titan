@@ -1,6 +1,6 @@
 {
   "db": "data/velantrim_kb_clean_20260710_graph.db",
-  "generated_at": "2026-07-10T19:24:03",
+  "generated_at": "2026-07-10T19:50:17",
   "facts_in_db": 32302,
   "facts_validated": 32302,
   "facts_in_corpus": 32302,
@@ -494,34 +494,13 @@
   ],
   "bilingual": {
     "ru_ids": 32302,
-    "en_ids": 32260,
-    "intersection": 32260,
-    "missing_en": 42,
+    "en_ids": 32302,
+    "intersection": 32302,
+    "missing_en": 0,
     "missing_ru": 0,
-    "missing_en_sample": [
-      "engsci.ops.beam_bending_moment",
-      "engsci.ops.bernoulli_eq_flow",
-      "engsci.ops.boundary_layer_separation",
-      "engsci.ops.buckling_euler_critical",
-      "engsci.ops.calibration_traceability",
-      "engsci.ops.carnot_rankine_cycle",
-      "engsci.ops.cavitation_damage_prevention",
-      "engsci.ops.ceramic_properties_brittle",
-      "engsci.ops.composite_rule_of_mixtures",
-      "engsci.ops.corrosion_types_prevention",
-      "engsci.ops.creep_rupture_time",
-      "engsci.ops.design_of_experiments",
-      "engsci.ops.dfma_principles",
-      "engsci.ops.dimensional_analysis_pi",
-      "engsci.ops.failure_theories_combined",
-      "engsci.ops.fatigue_sn_curve",
-      "engsci.ops.fem_basics_stiffness",
-      "engsci.ops.fmea_risk_priority",
-      "engsci.ops.fourier_series_signal",
-      "engsci.ops.gdt_symbols"
-    ],
+    "missing_en_sample": [],
     "missing_ru_sample": [],
-    "parity_pct": 99.87
+    "parity_pct": 100.0
   },
-  "pass": false
+  "pass": true
 }

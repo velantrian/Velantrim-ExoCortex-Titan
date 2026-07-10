@@ -35,7 +35,7 @@
   "practical_touch_edges": 49962,
   "practical_bridge_edges": 3305,
   "practical_bridge_pct": 6.62,
-  "generated_at": "2026-07-10T19:10:25",
+  "generated_at": "2026-07-10T19:48:55",
   "db": "data/velantrim_kb_clean_20260710_graph.db",
   "edge_insert_stats": {
     "attempted": 56345,
