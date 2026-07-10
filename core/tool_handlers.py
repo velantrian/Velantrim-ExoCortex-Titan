@@ -83,9 +83,9 @@ def get_facts_for_entity(entity_name: str, *, limit: int = 50) -> list[str]:
 
 def get_living_context(fact_id: str) -> dict[str, Any] | None:
     from core.living_context import LivingContextStore
-    from core.memory import _GLOBAL_STORE
+    from core.memory import get_store
 
-    with _GLOBAL_STORE._db() as conn:
+    with get_store()._db() as conn:
         ctx = LivingContextStore(conn).get(fact_id)
     if ctx is None:
         return None

@@ -1722,6 +1722,19 @@ _L0           = _GLOBAL_STORE._l0
 _DDL_INITIALIZED = _GLOBAL_STORE._ddl_initialized_paths
 
 
+def get_store() -> SQLiteGraphStore:
+    """Preferred store accessor: VelantrimApp DI with _GLOBAL_STORE fallback."""
+    try:
+        from core.app import get_app
+
+        app = get_app()
+        if "store" in app._lazy or "store" in app._components:
+            return app.store
+    except Exception:
+        pass
+    return _GLOBAL_STORE
+
+
 def store_fact(fact: dict) -> bool:
     """Обёртка над SQLiteGraphStore.store_fact(). Возвращает True если новый INSERT."""
     return _GLOBAL_STORE.store_fact(fact)

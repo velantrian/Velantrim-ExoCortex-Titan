@@ -468,6 +468,8 @@ app = FastAPI(
 )
 
 from api.llm_routes import register_llm_routes
+from api.mcp_gateway import register_mcp_routes
+from api.server_middleware import register_server_middleware
 from api.web_console import console_available as _console_available
 from api.web_console import register_console_routes
 from core.provider_catalog import CATALOG_BUILD_ID, catalog_debug_info, list_providers
@@ -503,12 +505,14 @@ async def require_api_key(x_api_key: str = Header(default="")):
 # AUDIT-FIX P1: secure_router (outbound LLM/STT/TTS routes that consume a provider
 # api_key) now requires VELANTRIM_API_KEY — closes the unauth key-oracle + quota burn.
 register_llm_routes(app, auth_dependency=require_api_key)
+register_mcp_routes(app, auth_dependency=require_api_key)
 logger.info(
     "LLM API: POST /console/llm/test, catalog_build_id=%s",
     CATALOG_BUILD_ID,
 )
 
 _CONSOLE_OK = register_console_routes(app)
+register_server_middleware(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -520,46 +524,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["X-Api-Key", "Content-Type", "Authorization"],
 )
-
-
-# ─── Security headers (always-on; safe, no behavior change) ─────────────────────
-@app.middleware("http")
-async def _security_headers_mw(request, call_next):
-    response = await call_next(request)
-    response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("X-Frame-Options", "DENY")
-    response.headers.setdefault("Referrer-Policy", "no-referrer")
-    response.headers.setdefault("X-XSS-Protection", "0")
-    host = (request.client.host if request.client else "") or ""
-    if host not in ("127.0.0.1", "::1", "localhost"):
-        response.headers.setdefault(
-            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
-        )
-    return response
-
-
-# ─── Rate limiting (per-IP token bucket; gated by ENABLE_RATE_LIMIT, default off) ─
-@app.middleware("http")
-async def _rate_limit_mw(request, call_next):
-    try:
-        from core.runtime_flags import is_rate_limit_enabled
-    except Exception:  # noqa: BLE001
-        return await call_next(request)
-    if not is_rate_limit_enabled():
-        return await call_next(request)
-    from core.rate_limit import check_rate_limit
-
-    host = (request.client.host if request.client else "") or "unknown"
-    allowed, retry_after = check_rate_limit(host)
-    if not allowed:
-        from fastapi.responses import JSONResponse
-
-        return JSONResponse(
-            status_code=429,
-            content={"error": "rate_limited", "retry_after": retry_after},
-            headers={"Retry-After": str(retry_after)},
-        )
-    return await call_next(request)
 
 
 # ─── Export endpoints registration ─────────────────────────────────────────────

@@ -48,8 +48,8 @@ try:
 except ImportError:
     _FACTS_PACK_BUILDER_AVAILABLE = False
 from core.memory import (
-    _GLOBAL_STORE,
     get_fact,
+    get_store,
     get_fact_ids,
     get_facts_by_ids,
     promote_esm_to,
@@ -218,7 +218,7 @@ def _get_causal_graph() -> Optional["CausalGraph"]:
 
     import core.memory as _mem
 
-    current_path = getattr(_mem._GLOBAL_STORE, "db_path", "")
+    current_path = getattr(_mem.get_store(), "db_path", "")
     if _CAUSAL_GRAPH is not None and _CAUSAL_GRAPH_DB_PATH == current_path:
         return _CAUSAL_GRAPH
 
@@ -921,7 +921,7 @@ def truth_gate(
             use_real_gate = False
 
     if use_real_gate:
-        gate = TruthGate(_GLOBAL_STORE)
+        gate = TruthGate(get_store())
         failed_verdicts = []
         for fact in facts:
             verdict = gate.evaluate(fact, mode=cognitive_mode)

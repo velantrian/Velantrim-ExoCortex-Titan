@@ -271,11 +271,12 @@ def create_async_store(
     """
     Создать async-обёртку над хранилищем.
 
-    Если sync_store=None → создаётся из _GLOBAL_STORE (обратная совместимость).
+    Если sync_store=None → создаётся из get_store() (DI + fallback).
     """
     if sync_store is None:
-        from core.memory import _GLOBAL_STORE
-        sync_store = _GLOBAL_STORE
+        from core.memory import get_store
+
+        sync_store = get_store()
     return AsyncSQLiteStore(sync_store, use_native_async=use_native)
 
 
