@@ -125,7 +125,7 @@ __all__ = [
 # ─── V8.7 Titan: PAD-модель эмоций (непрерывное трёхмерное пространство) ────
 
 import math as _math
-from dataclasses import dataclass as _dataclass, field as _field
+from dataclasses import dataclass as _dataclass
 
 @_dataclass
 class PADState:

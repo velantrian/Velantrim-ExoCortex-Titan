@@ -55,7 +55,6 @@ from core.memory import (
     promote_esm_to,
     promote_to_validated,
     store_fact,
-    transition_esm,
 )
 
 # ── Sprint 2a: новые импорты ──────────────────────────────────────────────────
@@ -1486,7 +1485,6 @@ def run(
 
 import asyncio as _asyncio
 import concurrent.futures as _cf
-import time as _time_module
 
 def _fire_and_forget(fn):
     """Запустить функцию в фоне не блокируя pipeline."""

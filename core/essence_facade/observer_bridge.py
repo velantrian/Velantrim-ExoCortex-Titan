@@ -1,6 +1,5 @@
 """👁️ core/essence/observer_bridge.py — Observer bridge"""
 from __future__ import annotations
-from typing import Any, Dict, Optional
 
 
 def get_observer_bridge():

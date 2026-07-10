@@ -134,7 +134,7 @@ def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
 
     # Ребро в causal graph
     try:
-        from core.causal_graph import get_causal_graph, FORWARD_RELATION_TYPES
+        from core.causal_graph import get_causal_graph
         cg = get_causal_graph()
         if cg is not None:
             cg.add_relation(

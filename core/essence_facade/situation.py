@@ -88,7 +88,8 @@ def build_situation(
     try:
         fact_id = facts[0].get("fact_id", "") if facts else ""
         if fact_id:
-            import sqlite3, os
+            import os
+            import sqlite3
             from core.living_context import LivingContextStore
             # FIX #10 (Claude audit): get_living_store не существует
             db_path = os.environ.get("VELANTRIM_DB_PATH", "./data/velantrim.db")

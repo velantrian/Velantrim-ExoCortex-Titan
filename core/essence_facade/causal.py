@@ -42,9 +42,6 @@ def explain_path(
 
     from core.causal_graph import ChainResult
 
-    # BFS поиск пути A → B
-    from collections import deque
-
     # Найти все цепочки от A
     chains: List[ChainResult] = bridge.causal_chain(
         fact_a, max_depth=max_depth, min_confidence=min_confidence,

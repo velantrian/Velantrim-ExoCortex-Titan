@@ -142,7 +142,6 @@ class GistSynthesizer:
         topics: List[str] = []
         for f in facts[:5]:
             claim = f.get("claim", "")
-            source = f.get("source", "")
             if claim:
                 topics.append(claim[:80])
         return "; ".join(topics[:3]) if topics else ""
