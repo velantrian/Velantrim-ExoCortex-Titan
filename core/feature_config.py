@@ -248,9 +248,22 @@ class FeatureConfig:
 
     @classmethod
     def from_env(cls) -> FeatureConfig:
+        # SECURITY/CORRECTNESS (confirmed issue: canonical DB path): this used
+        # to default to its own literal ("./data/exocortex_graph.db") via
+        # SQLITE_GRAPH_PATH, completely independent of core.memory.SQLITE_PATH
+        # (VELANTRIM_DB_PATH). core.app.get_app()'s singleton builds app.store
+        # from this value — so with two unrelated defaults, app.store and
+        # core.memory._GLOBAL_STORE (and get_store()'s fallback) could silently
+        # point at two different SQLite files. Default now derives from the
+        # SAME canonical path core.memory.SQLITE_PATH resolves to; SQLITE_GRAPH_PATH
+        # remains available as an explicit opt-in override for a genuinely
+        # separate graph DB (e.g. isolated tests constructing their own
+        # VelantrimApp with a custom FeatureConfig).
+        from core.memory import SQLITE_PATH
+
         db = DatabaseSettings(
             storage_backend=(os.getenv("STORAGE_BACKEND", "sqlite") or "sqlite").strip().lower(),
-            sqlite_graph_path=os.getenv("SQLITE_GRAPH_PATH", "./data/exocortex_graph.db"),
+            sqlite_graph_path=os.getenv("SQLITE_GRAPH_PATH", SQLITE_PATH),
         )
         return cls(app=AppSettings.from_env(), db=db)
 

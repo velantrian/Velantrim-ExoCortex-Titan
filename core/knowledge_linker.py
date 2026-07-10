@@ -55,17 +55,24 @@ STRONG_FOUNDATION_SCORE = 0.26
 MAX_NAMESPACE_NEIGHBORS = 1          # не более одного namespace-neighbor на узел
 
 # Основы рёбер, допустимые для сильного causal reasoning в Essence.
+# NOTE (confirmed issues #7/#8): "practical_foundation" is deliberately NOT a
+# member here — it has its own dedicated semantic-score-threshold branch below
+# in both is_causal_for_essence/relation_is_causal_for_essence. Including it in
+# this blanket membership set made that dedicated branch dead code (the
+# membership check above it always returned True first, regardless of score).
 CAUSAL_EDGE_BASES = frozenset({
     "curated_explicit",
     "explicit_tag",
-    "practical_foundation",
 })
 
 # Структурные/семантические — не доказывают причинность.
 STRUCTURAL_EDGE_BASES = frozenset({
     "namespace",
     "semantic_similarity",
+    "analogous_to",
 })
+
+_ESSENCE_CAUSAL_TYPES = frozenset({"causes", "enables", "requires", "prevents", "precedes"})
 
 
 def is_causal_edge_basis(edge_basis: str | None) -> bool:
@@ -75,14 +82,20 @@ def is_causal_edge_basis(edge_basis: str | None) -> bool:
 
 def is_causal_for_essence(edge: dict[str, Any]) -> bool:
     """Сильное причинное ребро для Essence: curated, tag, foundation с score."""
-    basis = str(edge.get("edge_basis", ""))
-    if basis == "curated_explicit":
-        return True
-    if basis == "explicit_tag":
+    basis = str(edge.get("edge_basis", "") or "")
+    if basis in CAUSAL_EDGE_BASES:
         return True
     if basis == "practical_foundation":
         score = float(edge.get("semantic_score") or 0)
         return score >= MIN_FOUNDATION_SCORE
+    if basis in STRUCTURAL_EDGE_BASES:
+        return False
+    if not basis:
+        # CONFIRMED ISSUE #7: an edge with edge_basis missing entirely (not
+        # just present-and-empty) predates edge_basis metadata — treat it
+        # like the metadata-less runtime-relation case below rather than
+        # silently dropping it from Essence causal reasoning.
+        return str(edge.get("relation_type", "")) in _ESSENCE_CAUSAL_TYPES
     return False
 
 
@@ -91,22 +104,24 @@ def relation_is_causal_for_essence(
     metadata: dict[str, Any] | None,
 ) -> bool:
     """Runtime-проверка Relation из CausalGraph для Essence."""
-    if not metadata:
-        # Existing runtime/manual relations predate edge_basis metadata.  Keep
-        # their explicitly causal types usable while filtering tagged KB edges.
-        return relation_type in {"causes", "enables", "requires", "prevents", "precedes"}
-    basis = str(metadata.get("edge_basis", ""))
-    if basis == "namespace" or basis == "semantic_similarity":
-        return False
-    if basis == "analogous_to":
+    meta = metadata or {}
+    basis = str(meta.get("edge_basis", "") or "")
+    if basis in STRUCTURAL_EDGE_BASES:
         return False
     if basis in CAUSAL_EDGE_BASES:
-        return relation_type in {"causes", "enables", "requires", "prevents", "precedes"}
+        return relation_type in _ESSENCE_CAUSAL_TYPES
     if basis == "practical_foundation":
-        score = float(metadata.get("semantic_score") or 0)
+        score = float(meta.get("semantic_score") or 0)
         return score >= MIN_FOUNDATION_SCORE and relation_type in {
             "enables", "requires", "prevents", "precedes",
         }
+    if not basis:
+        # Existing runtime/manual relations predate edge_basis metadata (or
+        # carry it present-but-empty) — keep their explicitly causal types
+        # usable while filtering tagged KB edges with a known non-causal
+        # basis (confirmed issue #7: missing edge_basis is not "not causal",
+        # it falls back to relation_type).
+        return relation_type in _ESSENCE_CAUSAL_TYPES
     return False
 
 
@@ -175,6 +190,16 @@ _TYPE_ALIASES = {
 
 # Явные причинные cue в тексте claim (ru+en) → отношение "causes".
 _CAUSE_RE = re.compile(r"(вызыва|приводит к|из-за|причин|causes|leads to|because)", re.I)
+_CAUSE_FORWARD_RE = re.compile(r"(вызыва|приводит к|causes|leads to)", re.I)
+_EFFECT_RE = re.compile(r"(в результате|следств|therefore|поэтому|results in)", re.I)
+_PREVENT_RE = re.compile(r"(предотвращ|prevent|блокир|mitigat)", re.I)
+_REQUIRE_RE = re.compile(r"(требует|необходим|requires|must|перед тем как|before)", re.I)
+_FACT_ID_REF_RE = re.compile(r"\b([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+)\b")
+
+CLAIM_REFERENCE_CONFIDENCE = 0.72
+MAX_CLAIM_REFS_PER_FACT = 4
+CAUSAL_CLAIM_CONFIDENCE = 0.78
+MAX_CAUSAL_TARGETS_PER_FACT = 3
 
 
 def normalize_type(fact_type: Any) -> str:
@@ -203,6 +228,146 @@ def _relation(src_fact: dict[str, Any], tgt_fact: dict[str, Any], default: str) 
     if ts == 2 and tt == 2:
         return "precedes"
     return default
+
+
+def _infer_relation_from_text(text: str, default: str = "enables") -> str:
+    """Выбрать тип ребра по лингвистическим cue в claim/practical."""
+    if _CAUSE_RE.search(text):
+        return "causes"
+    if _PREVENT_RE.search(text):
+        return "prevents"
+    if _REQUIRE_RE.search(text):
+        return "requires"
+    if _EFFECT_RE.search(text):
+        return "enables"
+    return default
+
+
+def link_by_fact_references(
+    facts: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Связи по явным упоминаниям fact_id в claim/practical/conditions."""
+    by_id = {str(f.get("fact_id", "")): f for f in facts if f.get("fact_id")}
+    node_ids = set(by_id)
+    edges: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+
+    for fact in facts:
+        fid = str(fact.get("fact_id", ""))
+        if not fid:
+            continue
+        blob = " ".join(
+            str(fact.get(field, ""))
+            for field in ("claim", "practical", "conditions")
+        ).lower()
+        refs_found = 0
+        for match in _FACT_ID_REF_RE.finditer(blob):
+            ref = match.group(1)
+            if ref == fid or ref not in node_ids:
+                continue
+            src, tgt = _orient(ref, fid, by_id)
+            if src == tgt:
+                continue
+            rel = _infer_relation_from_text(blob, default="enables")
+            if normalize_type(by_id[ref].get("type")) == "failure_mode":
+                rel = "causes"
+            if normalize_type(by_id[fid].get("type")) in {"safety_rule", "control"}:
+                rel = "prevents"
+            key = (src, tgt, rel)
+            if key in seen:
+                continue
+            seen.add(key)
+            edges.append({
+                "source_id": src,
+                "target_id": tgt,
+                "relation_type": rel,
+                "confidence": CLAIM_REFERENCE_CONFIDENCE,
+                "knowledge_status": "inferred",
+                "inference_source": "autolinker",
+                "edge_basis": "claim_reference",
+                "evidence": f"claim ref: {ref}",
+            })
+            refs_found += 1
+            if refs_found >= MAX_CLAIM_REFS_PER_FACT:
+                break
+    return edges
+
+
+def _target_matches_causal_claim(src_blob: str, tgt_fact: dict[str, Any]) -> bool:
+    """Целевой факт — вероятное следствие из текста с causal cue."""
+    tgt_id = str(tgt_fact.get("fact_id", ""))
+    if not tgt_id:
+        return False
+    src_low = src_blob.lower()
+    tgt_leaf = tgt_id.rsplit(".", 1)[-1]
+    if tgt_leaf in src_low or tgt_leaf.replace("_", " ") in src_low:
+        return True
+    tgt_blob = " ".join(
+        str(tgt_fact.get(field, "")) for field in ("claim", "practical", "conditions")
+    ).lower()
+    src_words = set(re.findall(r"[a-z]{5,}", src_low))
+    tgt_words = set(re.findall(r"[a-z]{5,}", tgt_blob))
+    if len(src_words & tgt_words) >= 2:
+        return True
+    return normalize_type(tgt_fact.get("type")) == "failure_mode"
+
+
+def link_by_causal_claims(
+    facts: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Связи causes: claim с causal cue → effect-факты в том же батче (knowledge_file)."""
+    by_file: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for fact in facts:
+        fn = str((fact.get("metadata") or {}).get("knowledge_file", ""))
+        if fn:
+            by_file[fn].append(fact)
+
+    edges: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+
+    for fn, group in by_file.items():
+        for src in group:
+            src_id = str(src.get("fact_id", ""))
+            if not src_id:
+                continue
+            blob = " ".join(
+                str(src.get(field, "")) for field in ("claim", "practical", "conditions")
+            )
+            if not _CAUSE_FORWARD_RE.search(blob):
+                continue
+            src_domain = src_id.split(".", 1)[0]
+            targets_found = 0
+            for tgt in group:
+                tgt_id = str(tgt.get("fact_id", ""))
+                if not tgt_id or tgt_id == src_id:
+                    continue
+                if tgt_id.split(".", 1)[0] != src_domain:
+                    continue
+                if not _target_matches_causal_claim(blob, tgt):
+                    continue
+                key = (src_id, tgt_id, "causes")
+                if key in seen:
+                    continue
+                seen.add(key)
+                edges.append({
+                    "source_id": src_id,
+                    "target_id": tgt_id,
+                    "relation_type": "causes",
+                    "confidence": CAUSAL_CLAIM_CONFIDENCE,
+                    "knowledge_status": DEFAULT_STATUS,
+                    # CONFIRMED ISSUE #9: never "kb_heuristic" — master's PR#14
+                    # version of this exact function used that non-schema-valid
+                    # value (fixed elsewhere in FIX #12 for link_by_tags, but
+                    # this new function reintroduced it). "autolinker" is the
+                    # only inference_source this deterministic linker may emit.
+                    "inference_source": "autolinker",
+                    "edge_basis": "heuristic_causal_claim",
+                    "evidence": f"causal claim match in {fn}",
+                })
+                targets_found += 1
+                if targets_found >= MAX_CAUSAL_TARGETS_PER_FACT:
+                    break
+    return edges
 
 
 def _concept_segments(fact_id: str) -> list[str]:
@@ -619,8 +784,10 @@ def link_facts(
 
     0. Курируемые causal relations (curated_explicit).
     1. Явные теги источника (explicit_tag).
-    2. Редкие общие термины practical↔practical/theory (semantic_*).
-    3. Namespace-каркас (analogous_to, ≤1 сосед/узел) только для покрытия.
+    2. Явные ссылки на fact_id в тексте claim/practical/conditions (claim_reference).
+    3. Причинные claim-cue → effect-факты того же батча (heuristic_causal_claim).
+    4. Редкие общие термины practical↔practical/theory (semantic_*).
+    5. Namespace-каркас (analogous_to, ≤1 сосед/узел) только для покрытия.
     """
     curated_edges: list[dict[str, Any]] = []
     if include_curated:
@@ -630,10 +797,12 @@ def link_facts(
         except Exception:  # noqa: BLE001
             curated_edges = []
     tag_edges = link_by_tags(facts)
+    ref_edges = link_by_fact_references(facts)
+    causal_claim_edges = link_by_causal_claims(facts)
     semantic_edges = link_practical_semantics(facts)
     pairs: set[frozenset[str]] = set()
     out: list[dict[str, Any]] = []
-    for e in [*curated_edges, *tag_edges, *semantic_edges]:
+    for e in [*curated_edges, *tag_edges, *ref_edges, *causal_claim_edges, *semantic_edges]:
         pair = frozenset((e["source_id"], e["target_id"]))
         if pair in pairs:
             continue
@@ -767,6 +936,8 @@ def dedup_edges(
 __all__ = [
     "parse_tags",
     "link_by_tags",
+    "link_by_fact_references",
+    "link_by_causal_claims",
     "link_by_namespace",
     "link_practical_semantics",
     "link_facts",

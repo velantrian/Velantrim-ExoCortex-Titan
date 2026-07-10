@@ -222,103 +222,104 @@ def register_velantrim_tools(registry: ToolRegistry) -> None:
     """
     # GDPR Art. 17 erasure handler (lazy import → no circular import at module load).
     from core.erasure import erase_fact as _erase_fact
+    from core import tool_handlers as h
 
     # ─── reader ───────────────────────────────────────────────────────────
 
     # Поиск фактов
     registry.register(
-        "search_facts", lambda: None, capability="reader",
+        "search_facts", h.search_facts, capability="reader",
         description="Поиск фактов в базе знаний (гибридный: BM25 + dense + граф)",
     )
 
     # Получение факта
     registry.register(
-        "get_fact", lambda: None, capability="reader",
+        "get_fact", h.get_fact, capability="reader",
         description="Получить факт по ID",
     )
 
     # Каузальные цепочки
     registry.register(
-        "causal_chain", lambda: None, capability="reader",
+        "causal_chain", h.causal_chain, capability="reader",
         description="Найти причинно-следственные цепочки от факта",
     )
 
     # Backward reasoning
     registry.register(
-        "explain_fact", lambda: None, capability="reader",
+        "explain_fact", h.explain_fact, capability="reader",
         description="Объяснить почему факт верен (backward reasoning: caused_by/required_by)",
     )
 
     # Путь в графе
     registry.register(
-        "explain_path", lambda: None, capability="reader",
+        "explain_path", h.explain_path, capability="reader",
         description="Объяснить как связаны два факта в графе (BFS-путь с весами рёбер)",
     )
 
     # Статистика графа
     registry.register(
-        "graph_stats", lambda: None, capability="reader",
+        "graph_stats", h.graph_stats, capability="reader",
         description="Статистика графа: число рёбер, типы, статусы, сироты",
     )
 
     # Сущности
     registry.register(
-        "get_entities_for_fact", lambda: None, capability="reader",
+        "get_entities_for_fact", h.get_entities_for_fact, capability="reader",
         description="Все сущности, связанные с фактом",
     )
 
     registry.register(
-        "get_facts_for_entity", lambda: None, capability="reader",
+        "get_facts_for_entity", h.get_facts_for_entity, capability="reader",
         description="Все факты, упоминающие сущность",
     )
 
     # Living Context
     registry.register(
-        "get_living_context", lambda: None, capability="reader",
+        "get_living_context", h.get_living_context, capability="reader",
         description="Живой контекст факта: WHERE/WHO/HOW/WHAT/FEEL/ROLE/TIME/DEEP",
     )
 
     # ─── researcher ───────────────────────────────────────────────────────
 
     registry.register(
-        "propose_hypothesis", lambda: None, capability="researcher",
+        "propose_hypothesis", h.propose_hypothesis, capability="researcher",
         description="Предложить гипотезу (сохраняется как Hypothesized, требует проверки)",
     )
 
     registry.register(
-        "find_analogies", lambda: None, capability="researcher",
+        "find_analogies", h.find_analogies, capability="researcher",
         description="Найти структурные аналогии между фактами (Jaccard similarity по типам рёбер)",
     )
 
     # ─── ingester ─────────────────────────────────────────────────────────
 
     registry.register(
-        "store_fact", lambda: None, capability="ingester",
+        "store_fact", h.store_fact, capability="ingester",
         description="Сохранить новый факт (epistemic_state=Observed, пройдёт TruthGate)",
         audit=True,
     )
 
     registry.register(
-        "link_entity", lambda: None, capability="ingester",
+        "link_entity", h.link_entity, capability="ingester",
         description="Связать факт с сущностью (entity-centric retrieval)",
     )
 
     # ─── guardian ─────────────────────────────────────────────────────────
 
     registry.register(
-        "validate_fact", lambda: None, capability="guardian",
+        "validate_fact", h.validate_fact, capability="guardian",
         description="Валидировать факт (переход ESM: Hypothesized/Supported → Validated)",
         audit=True,
     )
 
     registry.register(
-        "contradict_fact", lambda: None, capability="guardian",
+        "contradict_fact", h.contradict_fact, capability="guardian",
         description="Пометить факт как противоречащий (transition → Contradicted)",
         audit=True,
     )
 
     registry.register(
-        "supersede_fact", lambda: None, capability="guardian",
+        "supersede_fact", h.supersede_fact, capability="guardian",
         description="Заменить факт новым (старый → Deprecated, указатель на новый)",
         audit=True,
     )
@@ -326,19 +327,19 @@ def register_velantrim_tools(registry: ToolRegistry) -> None:
     # ─── admin ────────────────────────────────────────────────────────────
 
     registry.register(
-        "forget_fact", lambda fact_id, **kw: _erase_fact(fact_id, **kw), capability="admin",
+        "forget_fact", _erase_fact, capability="admin",
         description="Удалить факт (GDPR Art. 17: физическое стирание L0+L1 + tombstone)",
         destructive=True, audit=True,
     )
 
     registry.register(
-        "forget_all", lambda: None, capability="admin",
+        "forget_all", h.forget_all, capability="admin",
         description="Удалить все факты пользователя (GDPR Article 17)",
         destructive=True, audit=True,
     )
 
     registry.register(
-        "reset_graph", lambda: None, capability="admin",
+        "reset_graph", h.reset_graph, capability="admin",
         description="Сбросить граф (полная очистка relations)",
         destructive=True, audit=True,
     )

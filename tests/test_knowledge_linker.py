@@ -5,8 +5,11 @@
 """
 from core.knowledge_linker import (
     DEFAULT_RELATION,
+    MIN_FOUNDATION_SCORE,
     graph_quality_report,
     is_causal_for_essence,
+    link_by_causal_claims,
+    link_by_fact_references,
     link_by_tags,
     link_facts,
     link_practical_semantics,
@@ -324,3 +327,94 @@ def test_namespace_limited_to_one_neighbor_per_node():
         degree[e["source_id"]] = degree.get(e["source_id"], 0) + 1
         degree[e["target_id"]] = degree.get(e["target_id"], 0) + 1
     assert all(v <= 1 for v in degree.values())
+
+
+# ── confirmed issue #7: missing edge_basis falls back to relation_type ───────
+
+def test_missing_edge_basis_falls_back_to_relation_type():
+    causal_edge = {"relation_type": "causes"}
+    assert is_causal_for_essence(causal_edge)
+    assert relation_is_causal_for_essence("causes", {})
+    assert relation_is_causal_for_essence("causes", None)
+
+    non_causal_edge = {"relation_type": "analogous_to"}
+    assert not is_causal_for_essence(non_causal_edge)
+    assert not relation_is_causal_for_essence("analogous_to", {})
+
+
+def test_explicitly_structural_edge_basis_is_never_causal_even_with_causal_relation_type():
+    """A relation_type that LOOKS causal must still be rejected when edge_basis
+    explicitly names it structural (namespace/semantic_similarity/analogous_to) —
+    missing edge_basis is the ONLY case that falls back to relation_type."""
+    edge = {"relation_type": "causes", "edge_basis": "namespace"}
+    assert not is_causal_for_essence(edge)
+    assert not relation_is_causal_for_essence("causes", {"edge_basis": "namespace"})
+
+
+# ── confirmed issue #8: practical_foundation threshold is not dead code ──────
+
+def test_practical_foundation_below_threshold_is_not_causal():
+    edge = {
+        "edge_basis": "practical_foundation",
+        "semantic_score": MIN_FOUNDATION_SCORE - 0.05,
+    }
+    assert not is_causal_for_essence(edge)
+    assert not relation_is_causal_for_essence(
+        "enables", {"edge_basis": "practical_foundation", "semantic_score": MIN_FOUNDATION_SCORE - 0.05}
+    )
+
+
+def test_practical_foundation_at_or_above_threshold_is_causal():
+    edge = {
+        "edge_basis": "practical_foundation",
+        "semantic_score": MIN_FOUNDATION_SCORE + 0.05,
+    }
+    assert is_causal_for_essence(edge)
+    assert relation_is_causal_for_essence(
+        "enables", {"edge_basis": "practical_foundation", "semantic_score": MIN_FOUNDATION_SCORE + 0.05}
+    )
+
+
+# ── link_by_fact_references / link_by_causal_claims (ported PR#14 features) ──
+
+def test_link_by_fact_references_finds_explicit_claim_mentions():
+    facts = [
+        {"fact_id": "chemistry.acid.ph_scale", "type": "concept", "claim": "pH measures acidity."},
+        {
+            "fact_id": "cleaning.ops.acid_wash",
+            "type": "practical",
+            "claim": "Uses chemistry.acid.ph_scale to select the right acid concentration.",
+        },
+    ]
+    edges = link_by_fact_references(facts)
+    assert any(
+        e["source_id"] == "chemistry.acid.ph_scale"
+        and e["target_id"] == "cleaning.ops.acid_wash"
+        for e in edges
+    )
+    assert all(e["inference_source"] == "autolinker" for e in edges)
+    assert all(e["edge_basis"] == "claim_reference" for e in edges)
+
+
+def test_link_by_causal_claims_uses_autolinker_never_kb_heuristic():
+    """Confirmed issue #9 regression guard: the ported master version of this
+    exact function used inference_source='kb_heuristic' (schema-invalid) —
+    this must never reappear."""
+    facts = [
+        {
+            "fact_id": "electric.ops.overload_cause",
+            "type": "concept",
+            "claim": "Circuit overload causes breaker trip.",
+            "metadata": {"knowledge_file": "651_BATCH_ELECTRICAL.ru.md"},
+        },
+        {
+            "fact_id": "electric.ops.breaker_trip",
+            "type": "failure_mode",
+            "claim": "Breaker trip disconnects the circuit.",
+            "metadata": {"knowledge_file": "651_BATCH_ELECTRICAL.ru.md"},
+        },
+    ]
+    edges = link_by_causal_claims(facts)
+    assert edges
+    assert all(e["inference_source"] == "autolinker" for e in edges)
+    assert all(e["relation_type"] == "causes" for e in edges)

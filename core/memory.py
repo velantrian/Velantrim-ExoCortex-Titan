@@ -2351,6 +2351,30 @@ _L0           = _GLOBAL_STORE._l0
 _DDL_INITIALIZED = _GLOBAL_STORE._ddl_initialized_paths
 
 
+def get_store() -> SQLiteGraphStore:
+    """
+    Предпочтительный accessor стора: core.app.get_app()'s VelantrimApp DI,
+    с fallback на _GLOBAL_STORE.
+
+    По умолчанию оба указывают на ОДИН и тот же файл: core.app.FeatureConfig.
+    from_env() берёт sqlite_graph_path из этого же SQLITE_PATH (см. fix в
+    core/feature_config.py), поэтому get_app()'s singleton app.store и
+    _GLOBAL_STORE больше не могут молча разойтись на две разные БД. Явно
+    сконструированный VelantrimApp (тесты, per-instance изоляция) может
+    по-прежнему указывать на свой собственный путь — это не баг, это
+    предназначение DI.
+    """
+    try:
+        from core.app import get_app
+
+        app = get_app()
+        if "store" in app._lazy or "store" in app._components:
+            return app.store
+    except Exception:
+        pass
+    return _GLOBAL_STORE
+
+
 def store_fact(fact: dict) -> bool:
     """Обёртка над SQLiteGraphStore.store_fact(). Возвращает True если новый INSERT."""
     return _GLOBAL_STORE.store_fact(fact)

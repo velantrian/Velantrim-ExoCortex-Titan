@@ -519,48 +519,18 @@ app.add_middleware(
     allow_credentials=CORS_ALLOW_CREDENTIALS,
     # AUDIT-FIX (security tail): explicit method/header allowlists instead of "*".
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["X-Api-Key", "Content-Type", "Authorization"],
+    # SECURITY/CORRECTNESS (confirmed issue #5): MCP gateway clients send
+    # X-MCP-Capability and read back Mcp-Session-Id — without these, a
+    # browser-based MCP client is blocked by CORS from doing either.
+    allow_headers=["X-Api-Key", "Content-Type", "Authorization", "X-MCP-Capability", "Mcp-Session-Id"],
+    expose_headers=["Mcp-Session-Id"],
 )
 
 
-# ─── Security headers (always-on; safe, no behavior change) ─────────────────────
-@app.middleware("http")
-async def _security_headers_mw(request, call_next):
-    response = await call_next(request)
-    response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("X-Frame-Options", "DENY")
-    response.headers.setdefault("Referrer-Policy", "no-referrer")
-    response.headers.setdefault("X-XSS-Protection", "0")
-    host = (request.client.host if request.client else "") or ""
-    if host not in ("127.0.0.1", "::1", "localhost"):
-        response.headers.setdefault(
-            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
-        )
-    return response
+# ─── Security headers + rate limiting (extracted; api/server_middleware.py) ─────
+from api.server_middleware import register_server_middleware
 
-
-# ─── Rate limiting (per-IP token bucket; gated by ENABLE_RATE_LIMIT, default off) ─
-@app.middleware("http")
-async def _rate_limit_mw(request, call_next):
-    try:
-        from core.runtime_flags import is_rate_limit_enabled
-    except Exception:  # noqa: BLE001
-        return await call_next(request)
-    if not is_rate_limit_enabled():
-        return await call_next(request)
-    from core.rate_limit import check_rate_limit
-
-    host = (request.client.host if request.client else "") or "unknown"
-    allowed, retry_after = check_rate_limit(host)
-    if not allowed:
-        from fastapi.responses import JSONResponse
-
-        return JSONResponse(
-            status_code=429,
-            content={"error": "rate_limited", "retry_after": retry_after},
-            headers={"Retry-After": str(retry_after)},
-        )
-    return await call_next(request)
+register_server_middleware(app)
 
 
 # ─── Export endpoints registration ─────────────────────────────────────────────
@@ -577,6 +547,19 @@ except Exception as exc:
     # Не критично для основной функциональности — логируем и продолжаем.
     # Это нужно изолировать, потому что export — опциональная фича.
     logger.warning("   Export endpoints: ⚠️ не подключены: %s", exc)
+
+
+# MCP gateway (StreamableHTTP + SSE). Same require_api_key gate as other
+# authenticated routers above — an unauthenticated caller cannot reach any
+# MCP tool regardless of which capability header it sends; the capability
+# clamp in core.mcp_transport.resolve_authorized_capability (confirmed
+# issue #1) is a second, independent line of defense on top of this auth gate.
+try:
+    from api.mcp_gateway import register_mcp_routes
+    register_mcp_routes(app, auth_dependency=require_api_key)
+    logger.info("   MCP gateway: ✅ подключён с auth")
+except Exception as exc:
+    logger.warning("   MCP gateway: ⚠️ не подключён: %s", exc)
 
 
 # ─── Pydantic модели ──────────────────────────────────────────────────────────
