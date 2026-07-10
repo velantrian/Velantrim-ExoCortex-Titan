@@ -311,6 +311,8 @@ def _build_chain(
     targets: set = set()
     for rel in relations:
         src, tgt, rtype = _rel_endpoints(rel)
+        if rtype == "analogous_to":
+            continue
         if src in claim_by_id and tgt in claim_by_id:
             if src not in forward:
                 forward[src] = (tgt, rtype)

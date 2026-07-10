@@ -48,3 +48,4 @@
 | propops.closeout.unit_turn | Ход единицы | invariant | Координаты поворота: уборка, ремонт, покраска, осмотр, расценки и объявление после вакансии. | свободный для сдачи в аренду |
 | propops.closeout.records_retention | Хранение документации по имуществу | invariant | Хранение распространяется на договоры аренды, бухгалтерские книги, уведомления, проверки, заявки, счета-фактуры и сообщения. | записи после аренды |
 | propops.closeout.kpi_vacancy_loss | KPI потери вакансий | invariant | Потери вакансий измеряют арендную плату, не полученную, пока помещение не сдано в аренду или не готово. | пустая стоимость единицы |
+| propops.financial.ledger | Tenant ledger | invariant | Ledger records charges, payments, credits, fees, adjustments and balance. | account truth |

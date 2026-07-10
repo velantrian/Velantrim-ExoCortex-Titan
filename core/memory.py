@@ -63,7 +63,8 @@ MEMORY_TYPES = frozenset({"episodic", "semantic", "procedural", "system"})
 
 IMMUTABLE_FACT_IDS = {"VALUES_CORE", "RING_ZERO"}
 L0_CAP = 128
-SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+DEFAULT_SQLITE_PATH = "./data/velantrim_house.db"
+SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", DEFAULT_SQLITE_PATH)
 
 
 class ImmutableStateError(Exception):
@@ -1719,6 +1720,19 @@ def make_store(db_path: str = SQLITE_PATH, l0_cap: int = L0_CAP) -> SQLiteGraphS
 _GLOBAL_STORE = SQLiteGraphStore(SQLITE_PATH)
 _L0           = _GLOBAL_STORE._l0
 _DDL_INITIALIZED = _GLOBAL_STORE._ddl_initialized_paths
+
+
+def get_store() -> SQLiteGraphStore:
+    """Preferred store accessor: VelantrimApp DI with _GLOBAL_STORE fallback."""
+    try:
+        from core.app import get_app
+
+        app = get_app()
+        if "store" in app._lazy or "store" in app._components:
+            return app.store
+    except Exception:
+        pass
+    return _GLOBAL_STORE
 
 
 def store_fact(fact: dict) -> bool:

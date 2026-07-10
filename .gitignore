@@ -46,8 +46,16 @@ build/
 logs/
 *.log
 tmp_*
+_tmp_*
 *-last.txt
 *_last.txt
+/_run_*.py
+/_run_*.bat
+/_audit_*.txt
+/_pipeline_*.txt
+/_build_*.txt
+/_final_*.txt
+/_run_diag_*
 pytest-full-last.txt
 test_run_last.txt
 

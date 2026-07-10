@@ -48,8 +48,8 @@ try:
 except ImportError:
     _FACTS_PACK_BUILDER_AVAILABLE = False
 from core.memory import (
-    _GLOBAL_STORE,
     get_fact,
+    get_store,
     get_fact_ids,
     get_facts_by_ids,
     promote_esm_to,
@@ -218,6 +218,7 @@ def _get_causal_graph() -> Optional["CausalGraph"]:
 
     import core.memory as _mem
 
+    # Tests monkeypatch memory._GLOBAL_STORE; keep CausalGraph on the same SQLite file.
     current_path = getattr(_mem._GLOBAL_STORE, "db_path", "")
     if _CAUSAL_GRAPH is not None and _CAUSAL_GRAPH_DB_PATH == current_path:
         return _CAUSAL_GRAPH
@@ -921,7 +922,7 @@ def truth_gate(
             use_real_gate = False
 
     if use_real_gate:
-        gate = TruthGate(_GLOBAL_STORE)
+        gate = TruthGate(get_store())
         failed_verdicts = []
         for fact in facts:
             verdict = gate.evaluate(fact, mode=cognitive_mode)
@@ -1003,20 +1004,28 @@ def _essence_relations_for(
         return []
     rels: list[dict[str, Any]] = []
     seen: set = set()
+    from core.knowledge_linker import relation_is_causal_for_essence
     for fid in ids:
         try:
             for r in cg.get_relations_from(fid):
                 tgt = str(getattr(r, "to_fact_id", ""))
-                if tgt in ids and r.is_reliable():
-                    key = (fid, tgt, r.relation_type)
-                    if key in seen:
-                        continue
-                    seen.add(key)
-                    rels.append({
-                        "source_id": fid,
-                        "target_id": tgt,
-                        "relation_type": r.relation_type,
-                    })
+                if tgt not in ids or not r.is_reliable():
+                    continue
+                meta = getattr(r, "metadata", None) or {}
+                if not relation_is_causal_for_essence(r.relation_type, meta):
+                    continue
+                key = (fid, tgt, r.relation_type)
+                if key in seen:
+                    continue
+                seen.add(key)
+                rels.append({
+                    "source_id": fid,
+                    "target_id": tgt,
+                    "relation_type": r.relation_type,
+                    "edge_basis": meta.get("edge_basis"),
+                    "confidence": getattr(r, "confidence", None),
+                    "evidence": meta.get("evidence"),
+                })
         except Exception:  # noqa: BLE001
             continue
     return rels
@@ -1120,6 +1129,10 @@ def _expand_with_graph_neighbors(
                     continue
                 try:
                     if not rel.is_reliable():
+                        continue
+                    meta = getattr(rel, "metadata", None) or {}
+                    from core.knowledge_linker import relation_is_causal_for_essence
+                    if not relation_is_causal_for_essence(rel.relation_type, meta):
                         continue
                 except Exception:  # noqa: BLE001
                     continue

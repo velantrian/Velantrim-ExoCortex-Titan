@@ -220,24 +220,15 @@ def _create_event_bus():
 
 
 def _create_causal_graph():
+    from core.pipeline import _get_causal_graph
+
+    graph = _get_causal_graph()
+    if graph is not None:
+        return graph
     from core.causal_graph import CausalGraph
-    # FIX P1 (v8.7 audit): CausalGraph требует db_conn, а не db_path.
-    # Передаём соединение от store (SQLiteGraphStore открывает своё).
-    from core.memory import _GLOBAL_STORE
-    if _GLOBAL_STORE is not None:
-        # Pre-existing bug: SQLiteGraphStore has no _conn() — the real method is
-        # _db(), a @contextmanager whose connection is closed on exit (unsuitable for
-        # handing to a long-lived CausalGraph anyway). This raises AttributeError
-        # whenever ENABLE_CAUSAL_GRAPH triggers this factory; not caught here. Not
-        # fixed here (wiring a real persistent connection needs a store-level API
-        # change, out of scope for a typing-only pass) — tracked as a follow-up bug;
-        # flagged prominently since, unlike the other pre-existing bridge bugs, this
-        # one is NOT silently swallowed.
-        conn = _GLOBAL_STORE._conn()  # type: ignore[attr-defined]
-        return CausalGraph(conn)
-    # Fallback: прямой connect к БД (для тестов без store)
     import sqlite3
-    conn = sqlite3.connect(os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db"))
+
+    conn = sqlite3.connect(os.getenv("VELANTRIM_DB_PATH", "./data/velantrim_house.db"))
     conn.execute("PRAGMA foreign_keys = ON")
     return CausalGraph(conn)
 

@@ -8,7 +8,7 @@
 Задача: превратить «Ньютон», «Newton», «Исаак Ньютон» → одна сущность.
 
 Использование:
-    resolver = EntityResolver(db_path="./data/velantrim.db")
+    resolver = EntityResolver(db_path="./data/velantrim_house.db")
     resolver.ensure_entity("Исаак Ньютон", entity_type="person",
                            aliases=["Ньютон", "Newton", "Isaac Newton"])
 
@@ -37,7 +37,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 logger = logging.getLogger("velantrim.entity_resolver")
 
-SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim_house.db")
 
 # ─── Нормализация имён ──────────────────────────────────────────────────────
 

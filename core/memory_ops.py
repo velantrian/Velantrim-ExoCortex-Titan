@@ -23,7 +23,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim_house.db")
 
 INBOX_STATUSES = {"pending", "accepted", "rejected", "promoted", "archived"}
 

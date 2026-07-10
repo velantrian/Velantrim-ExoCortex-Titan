@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("velantrim.conversation_consolidation")
 
-SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim_house.db")
 
 _CC_DDL = """
 CREATE TABLE IF NOT EXISTS conversation_notebooks (

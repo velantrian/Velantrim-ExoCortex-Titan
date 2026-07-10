@@ -17,12 +17,14 @@ from __future__ import annotations
 import glob
 import logging
 import os
+import re
 from collections.abc import Sequence
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_KNOWLEDGE_DIR = "docs/knowledge/world_skills_core/ru"
+FACT_ID_RE = re.compile(r"^[a-z0-9_]+(?:\.[a-z0-9_]+)+$")
 
 # Не-факт документы (карты/охват/протокол) — у них нет таблицы `| ID | … | Суть | …`.
 # Всё остальное в каталоге — таблицы фактов, включая seed-паки 01–09 (P0/P1: формальная
@@ -30,11 +32,40 @@ DEFAULT_KNOWLEDGE_DIR = "docs/knowledge/world_skills_core/ru"
 # фильтра `*BATCH*` и уносили самые структурированные научные единицы (formal_notation/limits).
 _NON_FACT_FILES = frozenset({
     "00_WORLD_SKILLS_CORE_MAP.ru.md",
+    "00_CURATED_CAUSAL_RELATIONS.ru.md",
     "10_PRACTICAL_FULL_SCOPE_MAP.ru.md",
     "11_AGRO_TEXTILE_INDUSTRY_ECONOMY_SCOPE.ru.md",
     "12_50K_COLLECTION_PROTOCOL.ru.md",
     "99_SOURCE_RULES_AND_COLLECTION_PLAN.ru.md",
 })
+
+
+def split_markdown_table_row(line: str) -> list[str]:
+    """Split a markdown row without treating code-span or escaped pipes as columns."""
+    row = line.strip()
+    if not row.startswith("|"):
+        return []
+    cells: list[str] = []
+    current: list[str] = []
+    in_code = False
+    escaped = False
+    for char in row[1:]:
+        if escaped:
+            current.append(char)
+            escaped = False
+        elif char == "\\":
+            escaped = True
+        elif char == "`":
+            in_code = not in_code
+            current.append(char)
+        elif char == "|" and not in_code:
+            cells.append("".join(current).strip())
+            current = []
+        else:
+            current.append(char)
+    if current:
+        cells.append("".join(current).strip())
+    return cells
 
 
 def parse_batch_markdown(text: str) -> list[dict[str, Any]]:
@@ -50,17 +81,60 @@ def parse_batch_markdown(text: str) -> list[dict[str, Any]]:
     seen: set = set()
     claim_idx: int = 2          # fallback к старому формату, если заголовок не найден
     type_idx: int = 1
+    unit_idx: int | None = None
+    conditions_idx: int | None = 3
+    links_idx: int | None = 4
+    practical_idx: int | None = None
+    causes_idx: int | None = None
+    enables_idx: int | None = None
+    requires_idx: int | None = None
+    prevents_idx: int | None = None
+    depends_idx: int | None = None
+    evidence_idx: int | None = None
+    rel_conf_idx: int | None = None
+    header_width: int | None = None
     for line in text.splitlines():
         if not line.lstrip().startswith("|"):
             continue
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        cells = split_markdown_table_row(line)
         if len(cells) < 3:
             continue
         low = [c.lower().strip("` ").strip() for c in cells]
         # строка-заголовок → запоминаем индексы колонок
-        if "id" in low and "суть" in low:
-            claim_idx = low.index("суть")
+        claim_header_idx = next(
+            (i for i, cell in enumerate(low) if "суть" in cell),
+            None,
+        )
+        if "id" in low and claim_header_idx is not None:
+            header_width = len(cells)
+            claim_idx = claim_header_idx
             type_idx = low.index("тип") if "тип" in low else 1
+            unit_idx = low.index("knowledgeunit") if "knowledgeunit" in low else None
+            conditions_idx = next(
+                (i for i, cell in enumerate(low) if "услов" in cell or "границ" in cell),
+                None,
+            )
+            links_idx = next(
+                (i for i, cell in enumerate(low) if cell in {"связи", "links"}),
+                None,
+            )
+            practical_idx = next(
+                (i for i, cell in enumerate(low) if "практическ" in cell),
+                None,
+            )
+            causes_idx = next((i for i, cell in enumerate(low) if cell == "causes"), None)
+            enables_idx = next((i for i, cell in enumerate(low) if cell == "enables"), None)
+            requires_idx = next((i for i, cell in enumerate(low) if cell == "requires"), None)
+            prevents_idx = next((i for i, cell in enumerate(low) if cell == "prevents"), None)
+            depends_idx = next(
+                (i for i, cell in enumerate(low) if cell in {"dependson", "depends_on", "depends on"}),
+                None,
+            )
+            evidence_idx = next((i for i, cell in enumerate(low) if cell == "evidence"), None)
+            rel_conf_idx = next(
+                (i for i, cell in enumerate(low) if cell in {"relationconfidence", "relation_confidence"}),
+                None,
+            )
             continue
         # строка-разделитель таблицы (---|---)
         if all(set(c) <= set("-: ") for c in cells if c):
@@ -68,29 +142,63 @@ def parse_batch_markdown(text: str) -> list[dict[str, Any]]:
         fid = cells[0].strip("` ").strip()
         if not fid or fid.lower() == "id" or set(fid) <= set("-: "):
             continue
+        if not FACT_ID_RE.fullmatch(fid):
+            logger.warning("Skipping malformed World Skills fact ID: %s", fid)
+            continue
         ci = claim_idx if claim_idx < len(cells) else (2 if len(cells) > 2 else len(cells) - 1)
-        claim = cells[ci].strip()
+        overflow = header_width is not None and len(cells) > header_width
+        # A raw `|` inside legacy prose is malformed Markdown. Preserve every token in
+        # the claim rather than silently shifting conditions/practical text into columns.
+        claim = " | ".join(cells[ci:]).strip() if overflow else cells[ci].strip()
         if len(claim) < 8 or fid in seen:
             continue
         seen.add(fid)
         ftype = cells[type_idx].strip() if type_idx < len(cells) else ""
         domain = fid.split(".")[0] if "." in fid else fid
+
+        def _cell(idx: int | None) -> str:
+            return cells[idx].strip() if idx is not None and idx < len(cells) else ""
+
         facts.append({
             "fact_id": fid,
+            "knowledge_unit": _cell(unit_idx),
             "type": ftype,
             "claim": claim,
-            "conditions": cells[3].strip() if len(cells) > 3 else "",
-            "links": cells[4].strip() if len(cells) > 4 else "",
+            "conditions": "" if overflow else _cell(conditions_idx),
+            "links": "" if overflow else _cell(links_idx),
+            "practical": "" if overflow else _cell(practical_idx),
+            "causes": "" if overflow else _cell(causes_idx),
+            "enables": "" if overflow else _cell(enables_idx),
+            "requires": "" if overflow else _cell(requires_idx),
+            "prevents": "" if overflow else _cell(prevents_idx),
+            "depends_on": "" if overflow else _cell(depends_idx),
+            "evidence": "" if overflow else _cell(evidence_idx),
+            "relation_confidence": "" if overflow else _cell(rel_conf_idx),
             "source": f"wsc:{ftype or 'unknown'}",   # контракт source неизменён
             "confidence": 0.85,
-            "metadata": {"domain": domain, "type": ftype},   # домен для D4 — в metadata
+            "metadata": {
+                "domain": domain,
+                "type": ftype,
+                "table_overflow_repaired": overflow,
+            },
         })
     return facts
 
 
 def parse_batch_file(path: str) -> list[dict[str, Any]]:
     with open(path, encoding="utf-8") as fh:
-        return parse_batch_markdown(fh.read())
+        facts = parse_batch_markdown(fh.read())
+    filename = os.path.basename(path)
+    upper_name = filename.upper()
+    practical_domain = any(
+        marker in upper_name
+        for marker in ("_OPS", "_OPERATIONS", "_PRACTICAL", "_MAINTENANCE", "_REPAIR")
+    )
+    for fact in facts:
+        metadata = fact.setdefault("metadata", {})
+        metadata["knowledge_file"] = filename
+        metadata["practical_domain"] = practical_domain
+    return facts
 
 
 def parse_knowledge_dir(knowledge_dir: str = DEFAULT_KNOWLEDGE_DIR) -> list[dict[str, Any]]:
@@ -164,10 +272,10 @@ def ingest_world_skills(
     facts = parse_knowledge_dir(knowledge_dir)
     rep = ingest_facts(store, facts, validate=validate)
     try:
-        from core.knowledge_linker import link_by_tags
-        edges = link_by_tags(facts)
+        from core.knowledge_linker import link_facts
+        edges = link_facts(facts)
     except Exception as exc:  # noqa: BLE001
-        logger.debug("link_by_tags: %s", exc)
+        logger.debug("link_facts: %s", exc)
         edges = []
     rep["edges"] = len(edges)
     return rep, facts, edges
@@ -180,4 +288,5 @@ __all__ = [
     "parse_batch_file",
     "parse_batch_markdown",
     "parse_knowledge_dir",
+    "split_markdown_table_row",
 ]

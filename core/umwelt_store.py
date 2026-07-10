@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim_house.db")
 UMWELT_LAYER = 99
 DEFAULT_SEED_PATH = Path(__file__).resolve().parents[1] / "docs" / "seed" / "umwelt_mvp_seed.json"
 

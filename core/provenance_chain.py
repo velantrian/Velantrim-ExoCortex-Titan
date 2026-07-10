@@ -34,7 +34,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("velantrim.provenance_chain")
 
-SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim_house.db")
 FALLBACK_JSON = "[]"
 
 _PC_DDL = """

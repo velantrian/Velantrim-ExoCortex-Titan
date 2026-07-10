@@ -34,7 +34,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("velantrim.immutable_core")
 
-SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim_house.db")
 
 
 def _now() -> str:

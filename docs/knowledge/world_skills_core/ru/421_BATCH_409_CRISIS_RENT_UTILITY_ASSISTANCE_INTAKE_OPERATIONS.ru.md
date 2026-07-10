@@ -1,6 +1,6 @@
 # BATCH 409: Crisis Rent and Utility Assistance Intake Operations
 
-**KnowledgeUnits:** 44  
+**KnowledgeUnits:** 45  
 **Namespace:** `rentutilityintakeops.*`  
 **Scope:** screening, documents, landlord/utility contact, pledges, payments, denials and follow-up.
 
@@ -50,3 +50,4 @@
 | rentutilityintakeops.metrics.time_to_payment | время оплаты | MEASUREMENT | Время измеряет получение средств до их выплаты или отказа. | Выявляет узкие места. |
 | rentutilityintakeops.metrics.funds_remaining | оставшиеся средства | MEASUREMENT | Оставшиеся средства отслеживают зафиксированные, оплаченные, просроченные и доступные остатки. | Контролирует бюджет. |
 | rentutilityintakeops.review.after_action | обзор после действий | METHOD | Проверка фиксирует барьеры в документах, координацию между арендодателем и коммунальными предприятиями, задержки платежей и справедливость отказа. | Улучшает будущее потребление. |
+| rentutilityintakeops.landlord.ledger | rent ledger | RECORD | Ledger captures months owed, fees, credits, court costs and payment deadline. | Verifies arrears. |

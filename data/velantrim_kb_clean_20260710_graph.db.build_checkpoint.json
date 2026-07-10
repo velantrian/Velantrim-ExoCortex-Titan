@@ -1,0 +1,10 @@
+{
+  "total_edges": 56345,
+  "next_offset": 56345,
+  "db": "data/velantrim_kb_clean_20260710_graph.db",
+  "facts": 32302,
+  "edges_cache": "data/velantrim_kb_clean_20260710_graph.db.edges_cache.json",
+  "last_inserted": 56345,
+  "last_skipped": 0,
+  "completed": true
+}
