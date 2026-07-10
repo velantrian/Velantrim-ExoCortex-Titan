@@ -25,9 +25,6 @@ def cd_causal_db(tmp_path, monkeypatch):
     clear_config_cache()
     store = mem.make_store(db)
     monkeypatch.setattr(mem, "_GLOBAL_STORE", store)
-    import core.pipeline as pipe
-
-    monkeypatch.setattr(pipe, "_GLOBAL_STORE", store)
     from core.domain_tags import apply_domain_to_metadata
     from core.memory import store_fact
 
