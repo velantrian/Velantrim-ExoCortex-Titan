@@ -61,7 +61,12 @@ jobs:
 
       - name: Import smoke test
         run: |
-          docker run --rm velantrim-titan:ci python -c "import core; import server; print('import OK')"
+          # server.py enforces VELANTRIM_API_KEY at import time (module-level
+          # guard, server.py:85), not only at request time, so importing it
+          # needs a key present just like a real boot would.
+          docker run --rm \
+            -e VELANTRIM_API_KEY="ci-import-smoke-key" \
+            velantrim-titan:ci python -c "import core; import server; print('import OK')"
 
       - name: Confirm non-root UID
         run: |
