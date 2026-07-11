@@ -63,9 +63,19 @@ kb_graph.json
 
 # --- Not needed to run the server ---
 tests/
-docs/
 benchmarks/
 node_modules/
+
+# docs/ is excluded wholesale EXCEPT the three files api/web_console.py
+# actually serves at runtime (/console/help, /console/research-mode.md,
+# /console/research-roadmap.md). Excluding docs/* (rather than docs/)
+# keeps the negations below working — a directory-level "docs/" match
+# would shadow them (Docker does not descend into an excluded directory
+# to re-include files inside it).
+docs/*
+!docs/CONSOLE_BROWSER_TEST.ru.md
+!docs/RESEARCH_MODE.ru.md
+!docs/EITI_PWA_RESEARCH_ROADMAP.ru.md
 
 # --- IDE / OS cruft ---
 .idea/

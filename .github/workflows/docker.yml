@@ -16,6 +16,9 @@ on:
       - "localmind/**"
       - "core/**"
       - "api/**"
+      - "docs/CONSOLE_BROWSER_TEST.ru.md"
+      - "docs/RESEARCH_MODE.ru.md"
+      - "docs/EITI_PWA_RESEARCH_ROADMAP.ru.md"
       - ".github/workflows/docker.yml"
   pull_request:
     branches: [main, master]
@@ -32,6 +35,9 @@ on:
       - "localmind/**"
       - "core/**"
       - "api/**"
+      - "docs/CONSOLE_BROWSER_TEST.ru.md"
+      - "docs/RESEARCH_MODE.ru.md"
+      - "docs/EITI_PWA_RESEARCH_ROADMAP.ru.md"
       - ".github/workflows/docker.yml"
 
 jobs:
@@ -104,6 +110,40 @@ jobs:
           echo "--- /health response ---"
           cat /tmp/health.json
 
+      - name: Check /console and its docs endpoints
+        run: |
+          # Regression coverage for the wheel-packaging bug fixed in this PR:
+          # api/web_console.py used to resolve static/console/* and docs/*
+          # relative to __file__, which pointed into site-packages once api/
+          # was installed as a non-editable wheel — /console 404'd even
+          # though the Dockerfile copies the assets to /app. VELANTRIM_APP_ROOT
+          # (set in the Dockerfile) fixes that; these checks prove it holds
+          # in the actual built image, not just in unit tests.
+          fail=0
+
+          console_body="$(curl --fail --silent --max-time 5 http://localhost:18000/console)" || {
+            echo "::error::GET /console failed"
+            fail=1
+          }
+          if [ "${fail}" -eq 0 ] && ! grep -q "VELANTRIM Titan — console" <<< "${console_body}"; then
+            echo "::error::/console body is missing its expected <title> marker — served the wrong content or a stub"
+            fail=1
+          fi
+
+          for path in /console/help /console/research-mode.md /console/research-roadmap.md; do
+            if ! curl --fail --silent --max-time 5 "http://localhost:18000${path}" > /dev/null; then
+              echo "::error::GET ${path} failed"
+              fail=1
+            fi
+          done
+
+          if [ "${fail}" -ne 0 ]; then
+            echo "--- container logs ---"
+            docker logs velantrim-ci || true
+            exit 1
+          fi
+          echo "/console and its docs endpoints all responded"
+
       - name: Stop server
         if: always()
         run: docker rm -f velantrim-ci || true
@@ -138,7 +178,6 @@ jobs:
             '\.db-shm$'
             'kb_graph\.json$'
             '(^|/)tests($|/)'
-            '(^|/)docs($|/)'
           )
           fail=0
           for pattern in "${forbidden_patterns[@]}"; do
@@ -170,6 +209,28 @@ jobs:
           fi
           echo "canary secret not found in image contents"
 
+      - name: Check exactly the three console docs are present under app/docs/
+        run: |
+          # docs/ is dockerignored except the 3 files api/web_console.py
+          # serves (see .dockerignore) — assert both that these 3 made it in
+          # AND that nothing else from docs/ (33MB, ~hundreds of files) did.
+          expected_docs=(
+            "app/docs/CONSOLE_BROWSER_TEST.ru.md"
+            "app/docs/RESEARCH_MODE.ru.md"
+            "app/docs/EITI_PWA_RESEARCH_ROADMAP.ru.md"
+          )
+          actual_docs="$(grep '^app/docs/' image_filelist.txt | sort)"
+          expected_sorted="$(printf '%s\n' "${expected_docs[@]}" | sort)"
+          if [ "${actual_docs}" != "${expected_sorted}" ]; then
+            echo "::error::app/docs/ contents don't match the expected 3-file allowlist"
+            echo "--- expected ---"
+            echo "${expected_sorted}"
+            echo "--- actual ---"
+            echo "${actual_docs}"
+            exit 1
+          fi
+          echo "app/docs/ contains exactly the 3 expected console docs, nothing else"
+
       - name: Check required runtime assets are present
         run: |
           required_paths=(
@@ -178,6 +239,9 @@ jobs:
             "app/scripts/apply_migrations.py"
             "app/migrations/012_crystal_memory.sql"
             "app/static/console/index.html"
+            "app/docs/CONSOLE_BROWSER_TEST.ru.md"
+            "app/docs/RESEARCH_MODE.ru.md"
+            "app/docs/EITI_PWA_RESEARCH_ROADMAP.ru.md"
           )
           missing=0
           for p in "${required_paths[@]}"; do

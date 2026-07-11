@@ -9,8 +9,13 @@
 #   2. "runtime" — copies the finished virtualenv and the small set of
 #      source files that are not part of the installable package
 #      (server.py, server_patch/, scripts/apply_migrations.py, migrations/,
-#      static/, app/, localmind/) into a clean, non-root, compiler-free
-#      image.
+#      static/, app/, localmind/, and the 3 docs/ files the web console
+#      serves) into a clean, non-root, compiler-free image.
+#
+# VELANTRIM_APP_ROOT tells api/web_console.py where static/ and docs/
+# actually live at runtime (see api/web_console.py:_resolve_app_root) —
+# needed because installing api/ as a non-editable wheel decouples
+# __file__ from this directory.
 #
 # RUNTIME_EXTRAS controls which optional pyproject.toml extras are
 # installed. Default is the minimal set server.py actually imports at
@@ -70,7 +75,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PATH="/opt/venv/bin:${PATH}" \
-    HOME=/app
+    HOME=/app \
+    VELANTRIM_APP_ROOT=/app
 
 # Fixed, non-root UID/GID (not 0, not the first free host UID) so bind
 # mounts and multi-host deployments get stable ownership.
@@ -95,6 +101,11 @@ COPY migrations ./migrations
 COPY static ./static
 COPY app ./app
 COPY localmind ./localmind
+
+# The three docs/ files api/web_console.py actually serves at runtime
+# (/console/help, /console/research-mode.md, /console/research-roadmap.md).
+# .dockerignore excludes the rest of docs/ — do not widen this to `COPY docs .`.
+COPY docs/CONSOLE_BROWSER_TEST.ru.md docs/RESEARCH_MODE.ru.md docs/EITI_PWA_RESEARCH_ROADMAP.ru.md ./docs/
 
 # Writable runtime state. VELANTRIM_DB_PATH/NGRAM_DB/KUZU_DB_PATH etc.
 # default under /app/data (see docker-compose.yml); pymorphy3/huggingface
