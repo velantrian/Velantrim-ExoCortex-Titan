@@ -14,10 +14,19 @@ import httpx
 from fastapi import APIRouter, Header, HTTPException, Request, status
 from fastapi.responses import FileResponse, RedirectResponse
 
+from core.app_paths import resolve_app_root as _resolve_app_root_base
+
 logger = logging.getLogger(__name__)
 
-# api/web_console.py → repo root
-_REPO_ROOT = Path(__file__).resolve().parents[1]
+
+def _resolve_app_root() -> Path:
+    """Root directory that holds static/console/* and the console's docs/*.
+    See core/app_paths.resolve_app_root for why this can't just be
+    Path(__file__).resolve().parents[1] once api/ is a wheel."""
+    return _resolve_app_root_base(__file__)
+
+
+_REPO_ROOT = _resolve_app_root()
 _CONSOLE_INDEX = _REPO_ROOT / "static" / "console" / "index.html"
 _CONSOLE_ROADMAP = _REPO_ROOT / "static" / "console" / "roadmap.html"
 _CONSOLE_RESEARCH = _REPO_ROOT / "static" / "console" / "research.html"

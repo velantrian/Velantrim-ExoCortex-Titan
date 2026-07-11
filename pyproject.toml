@@ -17,7 +17,11 @@ dependencies = []
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["core*", "api*"]
+# utils* added for PR-A: core/affordance_linker.py and core/living_context.py
+# import utils.text_utils at runtime, but it was never part of the wheel
+# (packages.find only matched core*/api*) — ModuleNotFoundError in any
+# non-editable install (Docker) that reached that code path.
+include = ["core*", "api*", "utils*"]
 exclude = ["tests*", "scripts*", ".venv*"]
 
 [project.optional-dependencies]

@@ -58,6 +58,42 @@ curl -X POST http://localhost:8000/query \
 
 ---
 
+## Docker
+
+```bash
+# Сборка (multi-stage: builder компилирует wheel, runtime — без dev/gcc)
+docker build -t velantrim-titan .
+
+# Опционально — более широкий runtime-набор extras (по умолчанию только "server"):
+docker build --build-arg RUNTIME_EXTRAS=server,parsers,retrieval,embeddings -t velantrim-titan:full .
+
+# Запуск
+docker run -d -p 8000:8000 \
+  -e VELANTRIM_API_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))") \
+  -v velantrim_data:/app/data \
+  velantrim-titan
+
+curl http://localhost:8000/health
+```
+
+Через docker-compose (см. `docker-compose.yml` / `docker-compose.dev.yml`):
+
+```bash
+export VELANTRIM_API_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+docker-compose up -d
+```
+
+Заметки:
+- Образ работает от фиксированного non-root пользователя (uid/gid `10001`), не от root.
+- `RUNTIME_EXTRAS` (build arg) по умолчанию ставит только `server` extra
+  (fastapi/uvicorn/pydantic/httpx/aiosqlite) — `dev` (pytest/ruff/mypy) и
+  `audio` (openai-whisper) в runtime-образ никогда не попадают неявно.
+- `.github/workflows/docker.yml` — CI job, который собирает образ
+  `--no-cache`, проверяет `/health`, non-root uid и отсутствие
+  `.git`/`.env`/кешей/БД в итоговом образе на каждый relevant PR/push.
+
+---
+
 ## Production деплой
 
 ### systemd сервис

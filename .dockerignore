@@ -1,0 +1,107 @@
+# Velantrim Titan 9.0 — Docker build context exclusions
+#
+# Goal: keep the build context small and make sure nothing from source
+# control, local secrets, caches, or runtime-generated data ever reaches
+# the Docker daemon (and therefore can never end up in an image layer).
+#
+# The Dockerfile does NOT use `COPY . .` — it copies only the explicit
+# runtime assets it needs. This file is still authoritative because it
+# governs the entire build context, including any wildcard COPY of a
+# directory (e.g. `COPY core ./core` must not accidentally pick up a
+# stray __pycache__/.env dropped inside core/).
+
+# --- Version control ---
+.git
+.gitattributes
+.github
+
+# --- Secrets / credentials ---
+.env
+.env.*
+!.env.example
+config/*.env
+!config/*.example.env
+# core/deployment_profiles.py's "developer" profile reads this one at
+# runtime (VELANTRIM_PROFILE=developer) — see Dockerfile COPY.
+!config/exocortex-dev.env
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# --- Python virtualenvs / caches ---
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- Build artifacts ---
+dist/
+build/
+*.egg-info/
+
+# --- Runtime data / generated artifacts (not needed to build or run) ---
+# Local databases are created fresh at container startup under /app/data
+# (see docker-compose.yml volumes); none of the checked-in sample/dev DBs
+# or the generated knowledge-graph export belong in the image.
+data/
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+kb_graph.json
+
+# --- Not needed to run the server ---
+tests/
+benchmarks/
+node_modules/
+
+# docs/ is excluded wholesale EXCEPT the three files api/web_console.py
+# actually serves at runtime (/console/help, /console/research-mode.md,
+# /console/research-roadmap.md). Excluding docs/* (rather than docs/)
+# keeps the negations below working — a directory-level "docs/" match
+# would shadow them (Docker does not descend into an excluded directory
+# to re-include files inside it).
+docs/*
+!docs/CONSOLE_BROWSER_TEST.ru.md
+!docs/RESEARCH_MODE.ru.md
+!docs/EITI_PWA_RESEARCH_ROADMAP.ru.md
+# core/umwelt_store.py's default seed (auto-loaded at startup when
+# ENABLE_UMWELT_STORE + ENABLE_UMWELT_AUTO_SEED are on, both default "1").
+# A file negation alone can't reach into an already-excluded directory
+# (docs/seed matched "docs/*" above), so the directory itself must be
+# re-included first, then re-excluded one level down, then the one file
+# re-included again — the standard "allowlist one nested file" pattern.
+!docs/seed
+docs/seed/*
+!docs/seed/umwelt_mvp_seed.json
+
+# --- IDE / OS cruft ---
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Misc project temp/log artifacts ---
+.claude/
+.audit_tmp_*/
+logs/
+*.log
+tmp_*
+*-last.txt
+*_last.txt

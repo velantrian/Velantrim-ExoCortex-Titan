@@ -34,6 +34,54 @@ def umwelt_db(tmp_path, monkeypatch):
     clear_config_cache()
 
 
+# ── PR-A follow-up: VELANTRIM_APP_ROOT path resolution ─────────────────────
+# core/umwelt_store.py computed DEFAULT_SEED_PATH as Path(__file__).parents[1],
+# which broke once core/ is installed as a non-editable wheel (Docker):
+# docs/seed/umwelt_mvp_seed.json is copied to /app/docs/seed/, but __file__
+# pointed into site-packages, so the default (ENABLE_UMWELT_AUTO_SEED=1)
+# auto-seed at startup silently failed in the container. See core/app_paths.
+
+
+def test_default_seed_path_falls_back_to_source_checkout(monkeypatch):
+    import core.umwelt_store as store_mod
+
+    monkeypatch.delenv("VELANTRIM_APP_ROOT", raising=False)
+    from core.app_paths import resolve_app_root
+
+    expected = resolve_app_root(store_mod.__file__) / "docs" / "seed" / "umwelt_mvp_seed.json"
+    assert expected.is_file()
+
+
+def test_load_seed_file_uses_app_root_override(tmp_path, umwelt_db):
+    """Simulated Docker layout: docs/seed/ lives under a directory that
+    has nothing to do with core/umwelt_store.py's own location."""
+    from core.umwelt_store import get_umwelt_store, load_seed_file
+
+    fake_root = tmp_path / "app"
+    seed_dir = fake_root / "docs" / "seed"
+    seed_dir.mkdir(parents=True)
+    seed_path = seed_dir / "umwelt_mvp_seed.json"
+    seed_path.write_text(
+        '{"perceptions": [{"object": "rock", "perceiver_id": "agent:tester", '
+        '"perceiver": "tester", "statement": "a rock is hard"}]}',
+        encoding="utf-8",
+    )
+
+    # load_seed_file(path=...) takes an explicit path — this is the same
+    # resolution DEFAULT_SEED_PATH does at import time via VELANTRIM_APP_ROOT,
+    # exercised directly here without needing to reload the module.
+    r = load_seed_file(path=seed_path)
+    assert r["loaded"] == 1
+    assert get_umwelt_store().count() == 1
+
+
+def test_load_seed_file_missing_path_raises_cleanly(tmp_path, umwelt_db):
+    from core.umwelt_store import load_seed_file
+
+    with pytest.raises(FileNotFoundError):
+        load_seed_file(path=tmp_path / "does-not-exist.json")
+
+
 class TestUmweltStore:
     def test_load_seed(self, umwelt_db):
         from core.umwelt_store import get_umwelt_store, load_seed_file

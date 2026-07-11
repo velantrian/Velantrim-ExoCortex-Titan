@@ -13,7 +13,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+from core.app_paths import resolve_app_root as _resolve_app_root
+
+
+def _root() -> Path:
+    """Root that holds config/profiles/*.env. See core/app_paths — this is
+    the same fix as api/web_console.py's _resolve_app_root: __file__-based
+    resolution breaks once core/ is installed as a non-editable wheel."""
+    return _resolve_app_root(__file__)
+
+
+ROOT = _root()
 PROFILES_DIR = ROOT / "config" / "profiles"
 
 # Заводские значения QueryRequest — для «явного» переопределения полей

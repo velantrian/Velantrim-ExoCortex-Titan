@@ -13,9 +13,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from core.app_paths import resolve_app_root as _resolve_app_root
+
 SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
 UMWELT_LAYER = 99
-DEFAULT_SEED_PATH = Path(__file__).resolve().parents[1] / "docs" / "seed" / "umwelt_mvp_seed.json"
+# See core/app_paths — same __file__-based-path fix as api/web_console.py
+# and core/deployment_profiles.py, for the same reason (non-editable wheel
+# install decouples __file__ from the runtime root that holds docs/seed/).
+DEFAULT_SEED_PATH = _resolve_app_root(__file__) / "docs" / "seed" / "umwelt_mvp_seed.json"
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS umwelt_perceptions (
