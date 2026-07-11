@@ -219,7 +219,10 @@ jobs:
             "app/docs/RESEARCH_MODE.ru.md"
             "app/docs/EITI_PWA_RESEARCH_ROADMAP.ru.md"
           )
-          actual_docs="$(grep '^app/docs/' image_filelist.txt | sort)"
+          # tar -tf lists the app/docs/ directory entry itself (trailing
+          # slash) alongside the files inside it — exclude directory
+          # entries so the comparison is files-only.
+          actual_docs="$(grep '^app/docs/' image_filelist.txt | grep -v '/$' | sort)"
           expected_sorted="$(printf '%s\n' "${expected_docs[@]}" | sort)"
           if [ "${actual_docs}" != "${expected_sorted}" ]; then
             echo "::error::app/docs/ contents don't match the expected 3-file allowlist"
