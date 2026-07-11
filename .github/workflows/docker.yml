@@ -19,6 +19,12 @@ on:
       - "docs/CONSOLE_BROWSER_TEST.ru.md"
       - "docs/RESEARCH_MODE.ru.md"
       - "docs/EITI_PWA_RESEARCH_ROADMAP.ru.md"
+      - "docs/seed/umwelt_mvp_seed.json"
+      - "utils/**"
+      - "config/profiles/**"
+      - "config/exocortex-dev.env"
+      - "docker-compose.yml"
+      - "docker-compose.dev.yml"
       - ".github/workflows/docker.yml"
   pull_request:
     branches: [main, master]
@@ -38,6 +44,12 @@ on:
       - "docs/CONSOLE_BROWSER_TEST.ru.md"
       - "docs/RESEARCH_MODE.ru.md"
       - "docs/EITI_PWA_RESEARCH_ROADMAP.ru.md"
+      - "docs/seed/umwelt_mvp_seed.json"
+      - "utils/**"
+      - "config/profiles/**"
+      - "config/exocortex-dev.env"
+      - "docker-compose.yml"
+      - "docker-compose.dev.yml"
       - ".github/workflows/docker.yml"
 
 jobs:
@@ -73,6 +85,25 @@ jobs:
           docker run --rm \
             -e VELANTRIM_API_KEY="ci-import-smoke-key" \
             velantrim-titan:ci python -c "import core; import server; print('import OK')"
+
+      - name: Check utils/ (packaging regression) is importable and usable
+        run: |
+          # utils/ is a top-level module (not core*/api*) that
+          # core/affordance_linker.py and core/living_context.py import as
+          # utils.text_utils at runtime. It had no __init__.py and wasn't
+          # in pyproject.toml's packages.find include list, so it was
+          # silently absent from this wheel — ModuleNotFoundError the
+          # moment affordance extraction actually ran in the container.
+          docker run --rm \
+            -e VELANTRIM_API_KEY="ci-import-smoke-key" \
+            velantrim-titan:ci python -c "
+from utils.text_utils import tokenize
+from core.affordance_linker import AffordanceLinker
+assert tokenize('Дерево растёт в лесу') == ['дерево', 'растёт', 'лесу']
+r = AffordanceLinker().extract('fact-1', 'Дерево растёт в лесу')
+assert r.fact_id == 'fact-1'
+print('utils.text_utils + affordance_linker OK')
+"
 
       - name: Confirm non-root UID
         run: |
@@ -148,6 +179,44 @@ jobs:
         if: always()
         run: docker rm -f velantrim-ci || true
 
+      - name: Boot with VELANTRIM_PROFILE and confirm the profile env loads
+        run: |
+          # Regression coverage: core/deployment_profiles.py resolved
+          # config/profiles/*.env relative to __file__, which broke the
+          # same way api/web_console.py's static/console/* did once core/
+          # is installed as a non-editable wheel — server.py logs
+          # "VELANTRIM_PROFILE=... не загружен" (server.py:81) and silently
+          # continues without the profile's env, instead of failing loudly.
+          docker run -d --name velantrim-ci-profile \
+            -p 18001:8000 \
+            -e VELANTRIM_API_KEY="ci-profile-check-key" \
+            -e VELANTRIM_PROFILE="citizen" \
+            velantrim-titan:ci
+
+          ok=""
+          for i in $(seq 1 30); do
+            if curl --fail --silent --max-time 3 http://localhost:18001/health > /dev/null; then
+              ok=1
+              break
+            fi
+            sleep 1
+          done
+
+          logs="$(docker logs velantrim-ci-profile 2>&1)"
+          docker rm -f velantrim-ci-profile || true
+
+          if [ -z "${ok}" ]; then
+            echo "::error::server with VELANTRIM_PROFILE=citizen never became healthy"
+            echo "${logs}"
+            exit 1
+          fi
+          if grep -q "не загружен" <<< "${logs}"; then
+            echo "::error::VELANTRIM_PROFILE=citizen failed to load (config/profiles/citizen.env not found at runtime)"
+            echo "${logs}"
+            exit 1
+          fi
+          echo "VELANTRIM_PROFILE=citizen loaded without error"
+
       - name: Export image filesystem for content checks
         run: |
           cid="$(docker create velantrim-titan:ci)"
@@ -209,30 +278,58 @@ jobs:
           fi
           echo "canary secret not found in image contents"
 
-      - name: Check exactly the three console docs are present under app/docs/
+      - name: Check exactly the expected docs/ files are present under app/docs/
         run: |
-          # docs/ is dockerignored except the 3 files api/web_console.py
-          # serves (see .dockerignore) — assert both that these 3 made it in
-          # AND that nothing else from docs/ (33MB, ~hundreds of files) did.
+          # docs/ is dockerignored except the files api/web_console.py and
+          # core/umwelt_store.py actually serve/read at runtime — assert
+          # both that these made it in AND that nothing else from docs/
+          # (33MB, ~hundreds of files) did.
           expected_docs=(
             "app/docs/CONSOLE_BROWSER_TEST.ru.md"
             "app/docs/RESEARCH_MODE.ru.md"
             "app/docs/EITI_PWA_RESEARCH_ROADMAP.ru.md"
+            "app/docs/seed/umwelt_mvp_seed.json"
           )
-          # tar -tf lists the app/docs/ directory entry itself (trailing
-          # slash) alongside the files inside it — exclude directory
-          # entries so the comparison is files-only.
+          # tar -tf lists directory entries themselves (trailing slash)
+          # alongside the files inside them — exclude those so the
+          # comparison is files-only.
           actual_docs="$(grep '^app/docs/' image_filelist.txt | grep -v '/$' | sort)"
           expected_sorted="$(printf '%s\n' "${expected_docs[@]}" | sort)"
           if [ "${actual_docs}" != "${expected_sorted}" ]; then
-            echo "::error::app/docs/ contents don't match the expected 3-file allowlist"
+            echo "::error::app/docs/ contents don't match the expected file allowlist"
             echo "--- expected ---"
             echo "${expected_sorted}"
             echo "--- actual ---"
             echo "${actual_docs}"
             exit 1
           fi
-          echo "app/docs/ contains exactly the 3 expected console docs, nothing else"
+          echo "app/docs/ contains exactly the expected files, nothing else"
+
+      - name: Check exactly the expected config/ files are present under app/config/
+        run: |
+          # config/ is never bulk-copied — only the profile env files
+          # core/deployment_profiles.py reads at runtime (VELANTRIM_PROFILE=...).
+          expected_config=(
+            "app/config/profiles/citizen.env"
+            "app/config/profiles/cognitive.env"
+            "app/config/profiles/company.env"
+            "app/config/profiles/education.env"
+            "app/config/profiles/personal.env"
+            "app/config/profiles/research.env"
+            "app/config/profiles/science.env"
+            "app/config/exocortex-dev.env"
+          )
+          actual_config="$(grep '^app/config/' image_filelist.txt | grep -v '/$' | sort)"
+          expected_sorted="$(printf '%s\n' "${expected_config[@]}" | sort)"
+          if [ "${actual_config}" != "${expected_sorted}" ]; then
+            echo "::error::app/config/ contents don't match the expected file allowlist"
+            echo "--- expected ---"
+            echo "${expected_sorted}"
+            echo "--- actual ---"
+            echo "${actual_config}"
+            exit 1
+          fi
+          echo "app/config/ contains exactly the expected profile env files, nothing else"
 
       - name: Check required runtime assets are present
         run: |
@@ -259,6 +356,34 @@ jobs:
             exit 1
           fi
           echo "all required runtime assets present"
+
+      - name: Check utils/ made it into the installed wheel (not just importable at runtime)
+        run: |
+          if ! grep -Eq "^opt/venv/lib/python3\.[0-9]+/site-packages/utils/text_utils\.py$" image_filelist.txt; then
+            echo "::error::utils/text_utils.py missing from the installed wheel in /opt/venv"
+            grep -E "site-packages/utils/" image_filelist.txt || echo "(no utils/ under site-packages at all)"
+            exit 1
+          fi
+          echo "utils/ is part of the installed wheel"
+
+      - name: Check default docker-compose files don't advertise GraphLab
+        run: |
+          # ENABLE_GRAPH_LAB needs the "graph-lab" build extra (networkx),
+          # which RUNTIME_EXTRAS defaults to *not* installing. Static check
+          # (no docker-compose run needed): the recommended compose files
+          # must not hardcode ENABLE_GRAPH_LAB=1 — it has to come from an
+          # override (${ENABLE_GRAPH_LAB:-0}) so the default stays honest.
+          fail=0
+          for f in docker-compose.yml docker-compose.dev.yml; do
+            if grep -E '^\s*-\s*ENABLE_GRAPH_LAB=1\s*$' "${f}"; then
+              echo "::error::${f} hardcodes ENABLE_GRAPH_LAB=1 but the default image has no networkx"
+              fail=1
+            fi
+          done
+          if [ "${fail}" -ne 0 ]; then
+            exit 1
+          fi
+          echo "docker-compose.yml / docker-compose.dev.yml default GraphLab off"
 
       - name: Clean up local secret fixtures
         if: always()

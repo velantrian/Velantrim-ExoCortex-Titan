@@ -21,6 +21,9 @@
 !.env.example
 config/*.env
 !config/*.example.env
+# core/deployment_profiles.py's "developer" profile reads this one at
+# runtime (VELANTRIM_PROFILE=developer) — see Dockerfile COPY.
+!config/exocortex-dev.env
 *.pem
 *.key
 *.crt
@@ -76,6 +79,15 @@ docs/*
 !docs/CONSOLE_BROWSER_TEST.ru.md
 !docs/RESEARCH_MODE.ru.md
 !docs/EITI_PWA_RESEARCH_ROADMAP.ru.md
+# core/umwelt_store.py's default seed (auto-loaded at startup when
+# ENABLE_UMWELT_STORE + ENABLE_UMWELT_AUTO_SEED are on, both default "1").
+# A file negation alone can't reach into an already-excluded directory
+# (docs/seed matched "docs/*" above), so the directory itself must be
+# re-included first, then re-excluded one level down, then the one file
+# re-included again — the standard "allowlist one nested file" pattern.
+!docs/seed
+docs/seed/*
+!docs/seed/umwelt_mvp_seed.json
 
 # --- IDE / OS cruft ---
 .idea/

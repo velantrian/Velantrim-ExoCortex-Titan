@@ -5,12 +5,22 @@
 # Требует VELANTRIM_API_KEY в окружении/`.env` — без него контейнер не стартует.
 # Для локальной разработки с dev-ключом по умолчанию используйте:
 #   docker-compose -f docker-compose.dev.yml up -d
+#
+# GraphLab (ENABLE_GRAPH_LAB) needs the "graph-lab" build extra (networkx),
+# which the default image (RUNTIME_EXTRAS=server) does not install — it
+# degrades gracefully (networkx_not_installed) rather than crashing, but
+# stays off by default here so the recommended compose deploy doesn't
+# silently advertise a feature the default image can't serve. To use it:
+#   RUNTIME_EXTRAS=server,graph-lab ENABLE_GRAPH_LAB=1 docker-compose up -d --build
 
 version: "3.9"
 
 services:
   velantrim:
-    build: .
+    build:
+      context: .
+      args:
+        RUNTIME_EXTRAS: ${RUNTIME_EXTRAS:-server}
     container_name: velantrim-titan
     ports:
       - "8000:8000"
@@ -34,7 +44,7 @@ services:
       - ENABLE_EVENT_BUS=1
       - ENABLE_COGNITIVE_RUNTIME=1
       - ENABLE_VELUM=1
-      - ENABLE_GRAPH_LAB=1
+      - ENABLE_GRAPH_LAB=${ENABLE_GRAPH_LAB:-0}
       - ENABLE_ESSENCE=1
     volumes:
       - velantrim_data:/app/data

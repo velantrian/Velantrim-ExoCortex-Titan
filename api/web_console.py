@@ -14,25 +14,16 @@ import httpx
 from fastapi import APIRouter, Header, HTTPException, Request, status
 from fastapi.responses import FileResponse, RedirectResponse
 
+from core.app_paths import resolve_app_root as _resolve_app_root_base
+
 logger = logging.getLogger(__name__)
 
-def _resolve_app_root() -> Path:
-    """
-    Root directory that holds static/console/* and the console's docs/*.
 
-    In a source checkout, api/web_console.py lives at <root>/api/, so
-    parents[1] is <root>. That relationship breaks once api/ is installed
-    as a wheel into site-packages (PR-A): __file__ then points inside
-    site-packages, which has no static/ or docs/ next to it — those are
-    copied to /app by the Dockerfile instead. VELANTRIM_APP_ROOT makes the
-    real runtime root explicit instead of guessing from __file__ or (worse)
-    the current working directory, which a request handler must not
-    silently depend on.
-    """
-    env_root = os.getenv("VELANTRIM_APP_ROOT", "").strip()
-    if env_root:
-        return Path(env_root).resolve()
-    return Path(__file__).resolve().parents[1]
+def _resolve_app_root() -> Path:
+    """Root directory that holds static/console/* and the console's docs/*.
+    See core/app_paths.resolve_app_root for why this can't just be
+    Path(__file__).resolve().parents[1] once api/ is a wheel."""
+    return _resolve_app_root_base(__file__)
 
 
 _REPO_ROOT = _resolve_app_root()

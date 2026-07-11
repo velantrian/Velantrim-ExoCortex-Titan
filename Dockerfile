@@ -3,19 +3,22 @@
 # Run:   docker run -p 8000:8000 --env-file .env velantrim-titan
 #
 # Multi-stage build:
-#   1. "builder" — compiles a wheel for this package and installs it (plus
-#      chosen runtime extras) into a throwaway virtualenv. Any compiler
-#      toolchain needed by a dependency lives ONLY in this stage.
+#   1. "builder" — compiles a wheel for this package (core/, api/, utils/)
+#      and installs it (plus chosen runtime extras) into a throwaway
+#      virtualenv. Any compiler toolchain needed by a dependency lives
+#      ONLY in this stage.
 #   2. "runtime" — copies the finished virtualenv and the small set of
 #      source files that are not part of the installable package
 #      (server.py, server_patch/, scripts/apply_migrations.py, migrations/,
-#      static/, app/, localmind/, and the 3 docs/ files the web console
-#      serves) into a clean, non-root, compiler-free image.
+#      static/, app/, localmind/, the 3 docs/ files the web console
+#      serves, the umwelt seed, and the deployment-profile env files)
+#      into a clean, non-root, compiler-free image.
 #
-# VELANTRIM_APP_ROOT tells api/web_console.py where static/ and docs/
-# actually live at runtime (see api/web_console.py:_resolve_app_root) —
-# needed because installing api/ as a non-editable wheel decouples
-# __file__ from this directory.
+# VELANTRIM_APP_ROOT tells api/web_console.py, core/deployment_profiles.py,
+# and core/umwelt_store.py where static/, docs/, and config/ actually live
+# at runtime (see core/app_paths.resolve_app_root) — needed because
+# installing core/api as a non-editable wheel decouples __file__ from
+# this directory.
 #
 # RUNTIME_EXTRAS controls which optional pyproject.toml extras are
 # installed. Default is the minimal set server.py actually imports at
@@ -51,6 +54,7 @@ WORKDIR /src
 COPY pyproject.toml README.md LICENSE ./
 COPY core ./core
 COPY api ./api
+COPY utils ./utils
 
 RUN pip install --upgrade pip build \
     && python -m build --wheel --outdir /wheels
@@ -106,6 +110,18 @@ COPY localmind ./localmind
 # (/console/help, /console/research-mode.md, /console/research-roadmap.md).
 # .dockerignore excludes the rest of docs/ — do not widen this to `COPY docs .`.
 COPY docs/CONSOLE_BROWSER_TEST.ru.md docs/RESEARCH_MODE.ru.md docs/EITI_PWA_RESEARCH_ROADMAP.ru.md ./docs/
+
+# core/umwelt_store.py's default seed, loaded automatically at startup
+# when ENABLE_UMWELT_STORE + ENABLE_UMWELT_AUTO_SEED are on (both default
+# "1"). Only this one file from docs/seed/ — see .dockerignore.
+COPY docs/seed/umwelt_mvp_seed.json ./docs/seed/umwelt_mvp_seed.json
+
+# core/deployment_profiles.py's VELANTRIM_PROFILE=<id> env files. Only
+# config/profiles/*.env and the "developer" profile's exocortex-dev.env —
+# not the rest of config/ (see .dockerignore for exocortex-dev.env, which
+# is otherwise excluded like every other top-level config/*.env).
+COPY config/profiles ./config/profiles
+COPY config/exocortex-dev.env ./config/exocortex-dev.env
 
 # Writable runtime state. VELANTRIM_DB_PATH/NGRAM_DB/KUZU_DB_PATH etc.
 # default under /app/data (see docker-compose.yml); pymorphy3/huggingface
