@@ -1,0 +1,186 @@
+name: Docker — build and runtime hardening checks
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "pyproject.toml"
+      - "server.py"
+      - "server_patch/**"
+      - "scripts/apply_migrations.py"
+      - "migrations/**"
+      - "static/**"
+      - "app/**"
+      - "localmind/**"
+      - "core/**"
+      - "api/**"
+      - ".github/workflows/docker.yml"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "pyproject.toml"
+      - "server.py"
+      - "server_patch/**"
+      - "scripts/apply_migrations.py"
+      - "migrations/**"
+      - "static/**"
+      - "app/**"
+      - "localmind/**"
+      - "core/**"
+      - "api/**"
+      - ".github/workflows/docker.yml"
+
+jobs:
+  docker-build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Prove .dockerignore/COPY hygiene: plant a synthetic secret that
+      # would exist in a naive `COPY . .` build, then assert below that it
+      # never makes it into the image. Never a real credential.
+      - name: Plant synthetic canary secret
+        id: canary
+        run: |
+          token="canary-$(date +%s)-${{ github.run_id }}"
+          echo "token=${token}" >> "$GITHUB_OUTPUT"
+          echo "VELANTRIM_API_KEY=${token}" > .env
+          echo "SUPER_SECRET=${token}" > config/leaked.env
+
+      - name: Build image (no cache)
+        run: |
+          docker build --no-cache \
+            --build-arg RUNTIME_EXTRAS=server \
+            -t velantrim-titan:ci .
+
+      - name: Import smoke test
+        run: |
+          docker run --rm velantrim-titan:ci python -c "import core; import server; print('import OK')"
+
+      - name: Confirm non-root UID
+        run: |
+          uid="$(docker run --rm velantrim-titan:ci id -u)"
+          echo "container uid: ${uid}"
+          if [ "${uid}" = "0" ]; then
+            echo "::error::container runs as root (uid 0)"
+            exit 1
+          fi
+
+      - name: Boot server and check /health
+        run: |
+          docker run -d --name velantrim-ci \
+            -p 18000:8000 \
+            -e VELANTRIM_API_KEY="ci-health-check-key" \
+            -e VELANTRIM_ALLOW_OPEN=false \
+            velantrim-titan:ci
+
+          ok=""
+          for i in $(seq 1 30); do
+            if curl --fail --silent --max-time 3 http://localhost:18000/health > /tmp/health.json; then
+              ok=1
+              break
+            fi
+            sleep 1
+          done
+
+          echo "--- container logs ---"
+          docker logs velantrim-ci || true
+
+          if [ -z "${ok}" ]; then
+            echo "::error::/health never became reachable"
+            exit 1
+          fi
+          echo "--- /health response ---"
+          cat /tmp/health.json
+
+      - name: Stop server
+        if: always()
+        run: docker rm -f velantrim-ci || true
+
+      - name: Export image filesystem for content checks
+        run: |
+          cid="$(docker create velantrim-titan:ci)"
+          docker export "$cid" -o image.tar
+          docker rm "$cid"
+          tar -tf image.tar > image_filelist.txt
+          wc -l image_filelist.txt
+
+      - name: Check forbidden paths are absent from the image
+        run: |
+          forbidden_patterns=(
+            '(^|/)\.git($|/)'
+            '(^|/)\.env$'
+            '(^|/)\.env\.'
+            '(^|/)\.coverage$'
+            '(^|/)\.pytest_cache($|/)'
+            '(^|/)\.ruff_cache($|/)'
+            '(^|/)\.mypy_cache($|/)'
+            '\.db$'
+            '\.db-wal$'
+            '\.db-shm$'
+            'kb_graph\.json$'
+            '(^|/)tests($|/)'
+            '(^|/)docs($|/)'
+            'venv\.bin\.(pytest|ruff|mypy)$'
+          )
+          fail=0
+          for pattern in "${forbidden_patterns[@]}"; do
+            if grep -E "${pattern}" image_filelist.txt; then
+              echo "::error::forbidden path matched pattern: ${pattern}"
+              fail=1
+            fi
+          done
+          # dev-only console scripts must not be installed in the default
+          # (RUNTIME_EXTRAS=server) image
+          for tool in pytest ruff mypy; do
+            if grep -E "opt/venv/bin/${tool}$" image_filelist.txt; then
+              echo "::error::dev tool '${tool}' present in default runtime image"
+              fail=1
+            fi
+          done
+          if [ "${fail}" -ne 0 ]; then
+            exit 1
+          fi
+          echo "no forbidden paths found"
+
+      - name: Check canary secret content did not leak into the image
+        run: |
+          token="${{ steps.canary.outputs.token }}"
+          if tar -xf image.tar -O 2>/dev/null | grep -q -- "${token}"; then
+            echo "::error::synthetic canary secret leaked into image contents"
+            exit 1
+          fi
+          echo "canary secret not found in image contents"
+
+      - name: Check required runtime assets are present
+        run: |
+          required_paths=(
+            "app/server.py"
+            "app/server_patch/export_endpoints.py"
+            "app/scripts/apply_migrations.py"
+            "app/migrations/012_crystal_memory.sql"
+            "app/static/console/index.html"
+          )
+          missing=0
+          for p in "${required_paths[@]}"; do
+            if ! grep -qx "${p}" image_filelist.txt; then
+              echo "::error::expected runtime asset missing from image: ${p}"
+              missing=1
+            fi
+          done
+          if [ "${missing}" -ne 0 ]; then
+            echo "--- filelist (app/ subset) ---"
+            grep '^app/' image_filelist.txt
+            exit 1
+          fi
+          echo "all required runtime assets present"
+
+      - name: Clean up local secret fixtures
+        if: always()
+        run: rm -f .env config/leaked.env image.tar image_filelist.txt /tmp/health.json
