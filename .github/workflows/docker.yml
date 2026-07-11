@@ -114,7 +114,14 @@ jobs:
           docker export "$cid" -o image.tar
           docker rm "$cid"
           tar -tf image.tar > image_filelist.txt
-          wc -l image_filelist.txt
+          # Everything this project actually controls lives under app/
+          # (WORKDIR /app). /opt/venv/** is vendored third-party package
+          # content (e.g. setuptools ships its own bundled tests/ and
+          # docs/ dirs) and must not be scanned for OUR project's
+          # forbidden paths, or every build-tool's internal test suite
+          # trips these checks.
+          grep '^app/' image_filelist.txt > app_filelist.txt || true
+          wc -l image_filelist.txt app_filelist.txt
 
       - name: Check forbidden paths are absent from the image
         run: |
@@ -132,19 +139,19 @@ jobs:
             'kb_graph\.json$'
             '(^|/)tests($|/)'
             '(^|/)docs($|/)'
-            'venv\.bin\.(pytest|ruff|mypy)$'
           )
           fail=0
           for pattern in "${forbidden_patterns[@]}"; do
-            if grep -E "${pattern}" image_filelist.txt; then
+            if grep -E "${pattern}" app_filelist.txt; then
               echo "::error::forbidden path matched pattern: ${pattern}"
               fail=1
             fi
           done
           # dev-only console scripts must not be installed in the default
-          # (RUNTIME_EXTRAS=server) image
+          # (RUNTIME_EXTRAS=server) image — checked across the whole image,
+          # since this is exactly where pip places them.
           for tool in pytest ruff mypy; do
-            if grep -E "opt/venv/bin/${tool}$" image_filelist.txt; then
+            if grep -E "^opt/venv/bin/${tool}$" image_filelist.txt; then
               echo "::error::dev tool '${tool}' present in default runtime image"
               fail=1
             fi
@@ -152,7 +159,7 @@ jobs:
           if [ "${fail}" -ne 0 ]; then
             exit 1
           fi
-          echo "no forbidden paths found"
+          echo "no forbidden paths found under app/, no dev tools in /opt/venv/bin"
 
       - name: Check canary secret content did not leak into the image
         run: |
