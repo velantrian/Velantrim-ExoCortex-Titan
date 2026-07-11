@@ -96,14 +96,7 @@ jobs:
           # moment affordance extraction actually ran in the container.
           docker run --rm \
             -e VELANTRIM_API_KEY="ci-import-smoke-key" \
-            velantrim-titan:ci python -c "
-from utils.text_utils import tokenize
-from core.affordance_linker import AffordanceLinker
-assert tokenize('Дерево растёт в лесу') == ['дерево', 'растёт', 'лесу']
-r = AffordanceLinker().extract('fact-1', 'Дерево растёт в лесу')
-assert r.fact_id == 'fact-1'
-print('utils.text_utils + affordance_linker OK')
-"
+            velantrim-titan:ci python -c "from utils.text_utils import tokenize; from core.affordance_linker import AffordanceLinker; assert tokenize('Дерево растёт в лесу') == ['дерево', 'растёт', 'лесу']; r = AffordanceLinker().extract('fact-1', 'Дерево растёт в лесу'); assert r.fact_id == 'fact-1'; print('utils.text_utils + affordance_linker OK')"
 
       - name: Confirm non-root UID
         run: |
