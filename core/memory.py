@@ -2495,3 +2495,116 @@ def get_tombstones() -> list[dict]:
 def set_restricted(fact_id: str, restricted: bool) -> bool:
     """GDPR Art. 18: mark/unmark a fact's processing restriction."""
     return _GLOBAL_STORE.set_restricted(fact_id, restricted)
+
+
+# ── Recall Policy функции (P0-1 Fix) ──────────────────────────────────────
+
+def get_facts_for_recall(
+    epistemic_state: str | None = None,
+    domain: str | None = None,
+) -> list[dict]:
+    """
+    Получить факты для recall с применением политики фильтрации.
+    
+    Исключает факты, которые не должны быть доступны для:
+    - пользовательского recall
+    - answer-generation
+    - chat/stream fallbacks
+    - console fallback
+    
+    Фильтрация основана на:
+    - metadata.restricted == true
+    - erasure_status != active (если есть)
+    - epistemic_state в [Collapsed, Deprecated]
+    
+    Args:
+        epistemic_state: Фильтр по эпистемическому состоянию
+        domain: Фильтр по домену
+        
+    Returns:
+        Список фактов, разрешенных для recall
+    """
+    all_facts = get_all_facts(epistemic_state=epistemic_state, domain=domain)
+    
+    # Применяем фильтрацию RecallPolicy
+    filtered_facts = []
+    for fact in all_facts:
+        metadata = fact.get("metadata", {})
+        
+        # 1. Проверяем restricted flag
+        if metadata and metadata.get("restricted"):
+            continue
+        
+        # 2. Проверяем erasure_status
+        erasure_status = metadata.get("erasure_status")
+        if erasure_status and erasure_status != "active":
+            continue
+        
+        # 3. Проверяем epistemic_state
+        state = fact.get("epistemic_state", "Observed")
+        if state in {"Collapsed", "Deprecated"}:
+            continue
+        
+        filtered_facts.append(fact)
+    
+    return filtered_facts
+
+
+def list_facts_for_recall(
+    epistemic_state: str | None = None,
+    domain: str | None = None,
+) -> list[dict]:
+    """
+    Алиас для get_facts_for_recall для совместимости.
+    """
+    return get_facts_for_recall(epistemic_state=epistemic_state, domain=domain)
+
+
+def search_facts_for_recall(
+    query: str,
+    top_k: int = 5,
+    domain: str | None = None,
+) -> list[dict]:
+    """
+    Поиск фактов для recall с применением политики фильтрации.
+    """
+    all_facts = get_all_facts(domain=domain)
+    
+    # Применяем фильтрацию RecallPolicy
+    filtered_facts = []
+    for fact in all_facts:
+        metadata = fact.get("metadata", {})
+        
+        # Фильтрация по политике
+        if metadata and metadata.get("restricted"):
+            continue
+        
+        erasure_status = metadata.get("erasure_status")
+        if erasure_status and erasure_status != "active":
+            continue
+        
+        state = fact.get("epistemic_state", "Observed")
+        if state in {"Collapsed", "Deprecated"}:
+            continue
+        
+        filtered_facts.append(fact)
+    
+    # Теперь выполняем поиск по отфильтрованным фактам
+    try:
+        from core.hybrid_retriever import HybridRetriever
+        if filtered_facts:
+            retriever = HybridRetriever(filtered_facts)
+            results = retriever.retrieve(query, top_k=top_k)
+            return [r.to_dict() for r in results[:top_k]]
+        return []
+    except Exception:
+        # Fallback: простой текстовый поиск
+        query_lower = query.lower()
+        matches = []
+        for fact in filtered_facts:
+            claim = fact.get("claim", "").lower()
+            if query_lower in claim:
+                matches.append(fact)
+                if len(matches) >= top_k:
+                    break
+        return matches
