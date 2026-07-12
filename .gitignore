@@ -28,8 +28,9 @@ __pycache__/
 *.swp
 *.swo
 
-# Тесты
+# Тесты и статический анализ
 .pytest_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 coverage.xml
