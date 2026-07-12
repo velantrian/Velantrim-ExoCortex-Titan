@@ -1,4 +1,4 @@
-name: Debug MetaSupervisor budget test
+name: Debug full-suite failure
 
 on:
   pull_request:
@@ -9,34 +9,39 @@ on:
       - ".github/workflows/debug-meta-budget.yml"
 
 jobs:
-  focused-test:
+  full-suite-diagnostic:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install focused test dependencies
-        run: pip install -e ".[server,dev]"
-      - name: Run focused test and capture output
-        id: focused
+      - name: Install CI dependencies
+        run: pip install -e ".[server,dev,parsers,retrieval,embeddings,graph-lab]"
+      - name: Run full suite and capture first failure
+        id: suite
         shell: bash
+        env:
+          PYTHONUNBUFFERED: 1
+          VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-debug.db"
+          VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-ngram-debug.db"
+          VELANTRIM_API_KEY: "ci-test-key"
         run: |
           set +e
-          python -m pytest tests/test_meta_supervisor_budget.py -vv --tb=long > meta-budget-debug.txt 2>&1
+          python -m pytest tests/ -v --tb=long --timeout=300 -x > full-suite-debug.txt 2>&1
           rc=$?
           echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
-          cat meta-budget-debug.txt
+          tail -n 250 full-suite-debug.txt
           exit 0
       - name: Upload diagnostic output
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: meta-budget-debug
-          path: meta-budget-debug.txt
+          name: full-suite-debug
+          path: full-suite-debug.txt
           if-no-files-found: error
           retention-days: 1
-      - name: Preserve test result
-        if: steps.focused.outputs.exit_code != '0'
+      - name: Preserve suite result
+        if: steps.suite.outputs.exit_code != '0'
         run: exit 1
