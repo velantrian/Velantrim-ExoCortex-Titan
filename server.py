@@ -27,6 +27,7 @@ from contextlib import asynccontextmanager
 from typing import Any, Optional
 
 import httpx
+from core.recall_policy import filter_facts_for_recall, get_facts_for_recall
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -895,6 +896,47 @@ def _console_observed_memory_fallback(
             logger.debug("console observed fallback failed (domain=%s): %s", dom, exc)
             retrieved = []
 
+    # Apply RecallPolicy filtering
+    from core.recall_policy import filter_facts_for_recall
+    retrieved = filter_facts_for_recall(retrieved)
+
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in retrieved[:limit]:
+        fact_id = str(item.get("fact_id") or item.get("id") or "").strip()
+        claim = str(item.get("claim") or item.get("text") or "").strip()
+        if not claim:
+            continue
+        dedupe_key = fact_id or claim.lower()
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        meta = item.get("metadata") or {}
+        if not isinstance(meta, dict):
+            meta = {}
+        out.append(
+            {
+                "fact_id": fact_id,
+                "claim": claim,
+                "source": item.get("source", "memory"),
+                "confidence": float(item.get("confidence") or 0),
+                "retrieval_score": item.get("retrieval_score") or item.get("score") or 0,
+                "epistemic_state": item.get("epistemic_state") or "Observed",
+                "metadata": {**meta, "console_observed_fallback": True},
+            }
+        )
+    return out
+
+    retrieved: list[dict[str, Any]] = []
+    for dom in (domain, None):
+        if retrieved:
+            break
+        try:
+            retrieved = retrieve(message, k=limit, domain=dom)
+        except Exception as exc:
+            logger.debug("console observed fallback failed (domain=%s): %s", dom, exc)
+            retrieved = []
+
     out: list[dict[str, Any]] = []
     seen: set[str] = set()
     for item in retrieved[:limit]:
@@ -926,12 +968,15 @@ def _console_observed_memory_fallback(
 def _console_all_memory(limit: int = 80) -> list[dict[str, Any]]:
     try:
         from core.memory import get_all_facts
+        from core.recall_policy import filter_facts_for_recall
 
         facts = get_all_facts()
     except Exception as exc:
         logger.debug("console all memory failed: %s", exc)
         return []
-    return list(facts or [])[: max(1, min(limit, 500))]
+    # Apply RecallPolicy filtering
+    filtered_facts = filter_facts_for_recall(facts)
+    return list(filtered_facts or [])[: max(1, min(limit, 500))]
 
 
 def _console_recent_notes(limit: int = 50) -> list[dict[str, Any]]:
