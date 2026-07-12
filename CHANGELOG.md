@@ -5,6 +5,50 @@
 
 ---
 
+## [9.0.0] — 2026-07-12 — Titan 9.0 version/branding unification (completed)
+
+Аудит показал, что запись от 2026-07-09 (ниже) объявила ребрендинг Titan 9.0
+завершённым, а фактически несколько активных поверхностей ещё показывали
+V8.7. Эта запись закрывает пробелы; runtime-версия и имя пакета (`9.0.0` /
+`velantrim-titan`) уже были верны — изменения функционально нейтральны.
+
+### Изменено
+- `README.md` — заголовок, разделы "V8.7 Titan", путь запуска
+  (`VELANTRIM_ExoCortex_V8.7_Titan` → нейтральный путь) и блок версии
+  обновлены на Titan 9.0.
+- `core/metrics.py` — `healthcheck()` больше не использует hardcoded fallback
+  `"8.7.0"`; fallback теперь `core.__version__` (единый источник истины).
+- `api/web_console.py` — сообщение об ошибке 404 больше не требует, чтобы
+  папка называлась `VELANTRIM_ExoCortex_V8.7_Titan`.
+- `scripts/start_console.ps1`, `.env.example`, `docs/CONSOLE_OVERVIEW.ru.md`,
+  `docs/CONSOLE_BROWSER_TEST.ru.md`, `requirements-dev.txt`,
+  `SYSTEM_OVERVIEW.md`, `SYSTEM_OVERVIEW.en.md` — текущий бренд обновлён на
+  Titan 9.0; захардкоженные пути со старым именем папки заменены нейтральными
+  инструкциями.
+- `SYSTEM_OVERVIEW.md`, `SYSTEM_OVERVIEW.en.md` — ошибочная строка
+  `velantrim-exocortex-crystal (sandbox clone "Duan")` в карте проекта
+  исправлена на реальное имя репозитория `Velantrim-ExoCortex-Titan`.
+- `uv.lock` — самоссылающийся editable-пакет обновлён с устаревшего
+  `velantrim-v8-7-titan==8.7.0` на `velantrim-titan==9.0.0` (зависимости не
+  тронуты; `uv lock --check` подтверждает консистентность).
+- Удалён закоммиченный build-артефакт `velantrim_v8_7_titan.egg-info/`.
+- Добавлены `scripts/check_version_branding.py` и
+  `tests/test_version_branding.py` — regression-guard против повторного
+  появления бренда V8.7 в активных entrypoint-файлах; подключён к CI.
+
+### Намеренно не изменено
+- Исторические упоминания V8.7 в `CHANGELOG.md` (запись ниже), `ROADMAP.md`,
+  `WORK_LOG.md`, `COLLAB_JOURNAL.md`, `AUDIT_ACTION_ITEMS.md`,
+  `AUDIT_DEEP_2026-06-06.md`, `research/DEPRECATIONS.md`,
+  `research/ARCHITECTURE_AXES.md`, `migrations/012_crystal_memory.sql` —
+  документируют прошлое, а не текущий продукт.
+- Атрибуционные комментарии-заголовки модулей вида `(V8.7 Titan)` в
+  `core/*.py`, `core/validators.py` и `tests/test_invariants.py` — объясняют
+  происхождение кода, а не бренд.
+- `tests/test_v87_new_modules.py` — имя файла и докстринг сохранены как есть
+  (регресс-тесты для модулей, введённых в V8.7); включён в allowlist guard'а.
+- `core/crypto.py` `_KDF_SALT` — не менялась (см. запись ниже).
+
 ## [9.0.0] — 2026-07-09 — VELANTRIM TITAN 9.0 (version unification)
 
 Публичный ребрендинг: продукт называется и выглядит как **Velantrim Titan 9.0** во всех

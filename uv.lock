@@ -2714,8 +2714,8 @@ wheels = [
 ]
 
 [[package]]
-name = "velantrim-v8-7-titan"
-version = "8.7.0"
+name = "velantrim-titan"
+version = "9.0.0"
 source = { editable = "." }
 
 [package.optional-dependencies]

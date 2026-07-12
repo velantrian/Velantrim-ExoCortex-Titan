@@ -1,4 +1,4 @@
-# 🖥️ VELANTRIM V8.7 Titan — обзор веб-консоли
+# 🖥️ VELANTRIM TITAN 9.0 — обзор веб-консоли
 
 > Живой стенд для чата, памяти в браузере, поиска по сообщениям и теста LLM — без отдельного фронтенд-сборщика.
 
@@ -7,7 +7,7 @@
 ## 📍 Где лежит проект
 
 ```
-C:\Users\VELAN\Documents\Research Velantrim\VELANTRIM_ExoCortex_V8.7_Titan\
+C:\path\to\Velantrim-ExoCortex-Titan\
 ├── static\console\index.html    ← главная страница консоли
 ├── scripts\start_console.ps1      ← запуск одной командой
 ├── api\web_console.py             ← маршруты /console/
@@ -41,7 +41,7 @@ VELANTRIM_API_KEY=ваш_секретный_ключ
 ### 2. Запуск
 
 ```powershell
-cd "C:\Users\VELAN\Documents\Research Velantrim\VELANTRIM_ExoCortex_V8.7_Titan"
+cd "C:\path\to\Velantrim-ExoCortex-Titan"
 .\scripts\start_console.ps1
 ```
 
@@ -79,7 +79,7 @@ cd "C:\Users\VELAN\Documents\Research Velantrim\VELANTRIM_ExoCortex_V8.7_Titan"
 
 ## 📦 Перенос на другой компьютер или в другую папку
 
-**Да, можно.** Скопируйте **всю папку** `VELANTRIM_ExoCortex_V8.7_Titan` целиком:
+**Да, можно.** Скопируйте **всю папку** проекта (`Velantrim-ExoCortex-Titan`) целиком:
 
 - ✅ `.env`, `data\`, `static\`, `scripts\` — всё переносится
 - ✅ Запуск из **нового** пути: `.\scripts\start_console.ps1`
@@ -114,4 +114,4 @@ cd "C:\Users\VELAN\Documents\Research Velantrim\VELANTRIM_ExoCortex_V8.7_Titan"
 
 ---
 
-*VELANTRIM V8.7 Titan · веб-консоль · Research Velantrim*
+*VELANTRIM TITAN 9.0 · веб-консоль · Research Velantrim*

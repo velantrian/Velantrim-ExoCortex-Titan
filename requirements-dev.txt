@@ -1,4 +1,4 @@
-# Dev / CI — VELANTRIM V8.7 Titan
+# Dev / CI — Velantrim Titan 9.0
 pytest>=8.0,<9
 pytest-asyncio>=0.23,<1
 pytest-cov>=4.0,<8
