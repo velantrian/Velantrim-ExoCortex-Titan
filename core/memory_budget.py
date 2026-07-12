@@ -34,6 +34,19 @@ class BudgetStatus:
         }
 
 
+@dataclass(frozen=True)
+class BudgetPlannerSnapshot:
+    """Compatibility view consumed by MetaSupervisor.
+
+    The former supervisor integration expected a planner object exposing
+    ``fill_ratio``. Titan's budget implementation is function-based, so this
+    immutable snapshot adapts the live ``evaluate_budget()`` result without
+    introducing a second source of truth.
+    """
+
+    fill_ratio: float
+
+
 def is_memory_budget_enabled() -> bool:
     return get_config().app.enable_memory_budget
 
@@ -100,11 +113,24 @@ def evaluate_budget() -> BudgetStatus:
     return BudgetStatus(fact_count=n, limit=hard, utilization=utilization, action=action)
 
 
+def get_budget_planner() -> BudgetPlannerSnapshot:
+    """Return the live budget pressure expected by MetaSupervisor.
+
+    This compatibility adapter intentionally delegates to ``evaluate_budget``
+    on every call so the supervisor never reads a stale or duplicated counter.
+    """
+
+    status = evaluate_budget()
+    return BudgetPlannerSnapshot(fill_ratio=status.utilization)
+
+
 __all__ = [
+    "BudgetPlannerSnapshot",
     "BudgetStatus",
     "MemoryBudgetExceededError",
     "check_before_write",
     "count_facts",
     "evaluate_budget",
+    "get_budget_planner",
     "is_memory_budget_enabled",
 ]
