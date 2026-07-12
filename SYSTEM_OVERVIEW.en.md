@@ -22,7 +22,7 @@ In simple words:
 ## 🗺️ Full Project Map
 
 ```text
-🔱 velantrim-exocortex-crystal  (sandbox clone "Duan")
+🔱 Velantrim-ExoCortex-Titan
 │
 │  ┌─────────────────────────────────────────────────────────────────────┐
 │  │  🧠 SYSTEM CORE — what actually works right now                    │

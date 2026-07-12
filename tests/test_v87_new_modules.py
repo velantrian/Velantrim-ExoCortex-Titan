@@ -1,6 +1,8 @@
 """
 tests/test_v87_new_modules.py — Тесты для новых модулей V8.7 Titan
 
+Regression tests for modules originally introduced in V8.7 and retained in Titan 9.0.
+
 Покрытие:
     1. PAD-детектор — эмоциональный анализ
     2. GCR-фильтр — программный контракт Graph=Truth

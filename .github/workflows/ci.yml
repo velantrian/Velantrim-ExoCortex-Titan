@@ -30,6 +30,9 @@ jobs:
           pip install --upgrade pip
           pip install -e ".[server,dev,parsers,retrieval,embeddings,graph-lab]"
 
+      - name: Version/branding guard
+        run: python scripts/check_version_branding.py
+
       - name: Ruff check (lint)
         run: ruff check core/ --output-format=github
 

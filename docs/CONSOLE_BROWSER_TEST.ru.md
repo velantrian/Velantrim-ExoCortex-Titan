@@ -9,7 +9,7 @@
 2. Запустите сервер с консолью:
 
 ```powershell
-cd VELANTRIM_ExoCortex_V8.7_Titan
+cd "C:\path\to\Velantrim-ExoCortex-Titan"
 .\scripts\start_console.ps1
 ```
 
@@ -100,4 +100,4 @@ Raw Markdown: `GET /console/research-mode.md`.
 
 ---
 
-*VELANTRIM V8.7 Titan — веб-консоль. Обзор: [CONSOLE_OVERVIEW.ru.md](CONSOLE_OVERVIEW.ru.md).*
+*VELANTRIM TITAN 9.0 — веб-консоль. Обзор: [CONSOLE_OVERVIEW.ru.md](CONSOLE_OVERVIEW.ru.md).*

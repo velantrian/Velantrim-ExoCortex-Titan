@@ -24,6 +24,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from core import __version__
+
 logger = logging.getLogger("velantrim.metrics")
 
 # ─── Проверка prometheus_client ──────────────────────────────────────────────
@@ -243,7 +245,7 @@ def healthcheck(store=None) -> Dict[str, Any]:
     status: Dict[str, Any] = {
         "status": "ok",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "version": os.getenv("VELANTRIM_VERSION", "8.7.0"),
+        "version": os.getenv("VELANTRIM_VERSION", __version__),
     }
 
     # Проверить store

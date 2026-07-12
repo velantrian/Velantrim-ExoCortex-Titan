@@ -1,4 +1,4 @@
-# 🔱 VELANTRIM V8.7 TITAN
+# 🔱 VELANTRIM TITAN 9.0
 
 Долговременная память для AI-агентов с каузальным пониманием, иммунной системой и осью идентичности.
 
@@ -10,9 +10,11 @@
 > 🏛️ **4 оси архитектуры:** [research/ARCHITECTURE_AXES.md](research/ARCHITECTURE_AXES.md)
 > 🔬 **Будущие компоненты:** [research/FUTURE_COMPONENTS.md](research/FUTURE_COMPONENTS.md)
 
-## 🆕 V8.7 Titan — Иммунная система + Identity Axis + Production-ready (3 июня 2026)
+## 🆕 Titan 9.0 — Иммунная система + Identity Axis + Production-ready
 
-**199 модулей · 91 тестовый файл · 18 инвариантов в CI · docker-compose up**
+> Модули ниже впервые появились в релизе V8.7 (3 июня 2026) и сохранены аддитивно в Titan 9.0.
+
+**Модули `core/` · полный pytest-набор проходит в CI · 18 инвариантов в CI · docker-compose up**
 
 ### 🛡️ Новая иммунная система
 | Модуль | Назначение |
@@ -40,7 +42,7 @@
 | `core/rate_limit.py` | Token-bucket per-IP |
 | `.github/workflows/ci.yml` | CI/CD: mypy strict + ruff + pytest. BLOCKING |
 
-### 🧠 Когнитивные модули V8.7
+### 🧠 Когнитивные модули Titan 9.0
 | Модуль | Назначение |
 |--------|-----------|
 | `core/perspectives.py` | 9 ролей: ENGINEER/SCIENTIST/ANALYST/CRITIC/ADVISOR/FRIEND/PHILOSOPHER/CREATIVE/CHILD |
@@ -101,14 +103,14 @@ Velantrim работает и на ПК с сервером, и на телеф�
 
 ### 💻 Локально — полная консоль + LLM + SQLite
 
-Экспериментальный стенд V8.7 Titan: чат, память, эссенция, TTS/STT, все провайдеры.
+Экспериментальный стенд Titan 9.0: чат, память, эссенция, TTS/STT, все провайдеры.
 
 **Обзор:** [docs/CONSOLE_OVERVIEW.ru.md](docs/CONSOLE_OVERVIEW.ru.md)
 
 **Документация:** [docs/CONSOLE_BROWSER_TEST.ru.md](docs/CONSOLE_BROWSER_TEST.ru.md) · [http://127.0.0.1:8755/console/help](http://127.0.0.1:8755/console/help) · [roadmap](http://127.0.0.1:8755/console/roadmap)
 
 ```powershell
-cd "C:\Users\VELAN\Documents\Research Velantrim\VELANTRIM_ExoCortex_V8.7_Titan"
+cd "C:\path\to\Velantrim-ExoCortex-Titan"
 # 1. .env: VELANTRIM_API_KEY=...  (+ LLM из config/llm.example.env)
 .\scripts\start_console.ps1
 # 2. Браузер: http://127.0.0.1:8755/console/?v=40
@@ -161,8 +163,8 @@ ENABLE_EVENT_BUS=1
 - `docs/EITI_PWA_RESEARCH_ROADMAP.ru.md` — T1–T12 roadmap для браузерной Research PWA
 - `docs/Velantrim_V9_Final_Audited.md` — спека V9
 
-## Версия
+## 🧭 Версия
 
-**8.7.0 Titan** — продукт **VELANTRIM V8.7 TITAN** (3 июня 2026).  
-199 модулей в `core/` · 1212 тестов · Docker + CI/CD.  
-Исходный код V8.6 сохранён нетронутым в папке `VELANTRIM_ExoCortex_V8.6`.
+**9.0.0** — продукт **VELANTRIM TITAN 9.0**.  
+Модули `core/` · полный pytest-набор проходит в CI · Docker + CI/CD.  
+История версий (V8.6 → V8.7 → V9.0) сохранена в [CHANGELOG.md](CHANGELOG.md) и `docs/archive/legacy/`.
