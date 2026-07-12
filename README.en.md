@@ -274,3 +274,5 @@ For now, side-by-side files make comparison simple.
 
 **9.0.0** — product **VELANTRIM TITAN 9.0**.
 Version history (V8.6 → V8.7 → V9.0) is preserved in [CHANGELOG.md](CHANGELOG.md) and `docs/archive/legacy/`.
+
+📦 **Production database** (32K facts, Ladybug L3) is not stored in git — see [docs/DATABASE_RELEASE.ru.md](docs/DATABASE_RELEASE.ru.md) and GitHub Releases.
