@@ -29,6 +29,12 @@ from datetime import UTC, datetime
 from typing import Any
 
 from core.storage import GraphStore
+from core.recall_policy import (
+    filter_facts_for_recall,
+    get_facts_for_recall as _get_facts_for_recall,
+    list_facts_for_recall as _list_facts_for_recall,
+    search_facts_for_recall as _search_facts_for_recall,
+)
 
 # ─── ESM: матрицы и константы ─────────────────────────────────────────────────
 ESM_STATES = {
@@ -2497,7 +2503,10 @@ def set_restricted(fact_id: str, restricted: bool) -> bool:
     return _GLOBAL_STORE.set_restricted(fact_id, restricted)
 
 
-# ── Recall Policy функции (P0-1 Fix) ──────────────────────────────────────
+
+
+# ── Recall Policy функции (делегируем в recall_policy.py) ─────────
+
 
 def get_facts_for_recall(
     epistemic_state: str | None = None,
@@ -2506,48 +2515,9 @@ def get_facts_for_recall(
     """
     Получить факты для recall с применением политики фильтрации.
     
-    Исключает факты, которые не должны быть доступны для:
-    - пользовательского recall
-    - answer-generation
-    - chat/stream fallbacks
-    - console fallback
-    
-    Фильтрация основана на:
-    - metadata.restricted == true
-    - erasure_status != active (если есть)
-    - epistemic_state в [Collapsed, Deprecated]
-    
-    Args:
-        epistemic_state: Фильтр по эпистемическому состоянию
-        domain: Фильтр по домену
-        
-    Returns:
-        Список фактов, разрешенных для recall
+    Делегирует фильтрацию в core.recall_policy.
     """
-    all_facts = get_all_facts(epistemic_state=epistemic_state, domain=domain)
-    
-    # Применяем фильтрацию RecallPolicy
-    filtered_facts = []
-    for fact in all_facts:
-        metadata = fact.get("metadata", {})
-        
-        # 1. Проверяем restricted flag
-        if metadata and metadata.get("restricted"):
-            continue
-        
-        # 2. Проверяем erasure_status
-        erasure_status = metadata.get("erasure_status")
-        if erasure_status and erasure_status != "active":
-            continue
-        
-        # 3. Проверяем epistemic_state
-        state = fact.get("epistemic_state", "Observed")
-        if state in {"Collapsed", "Deprecated"}:
-            continue
-        
-        filtered_facts.append(fact)
-    
-    return filtered_facts
+    return _get_facts_for_recall(get_all_facts, epistemic_state=epistemic_state, domain=domain)
 
 
 def list_facts_for_recall(
@@ -2557,7 +2527,7 @@ def list_facts_for_recall(
     """
     Алиас для get_facts_for_recall для совместимости.
     """
-    return get_facts_for_recall(epistemic_state=epistemic_state, domain=domain)
+    return _list_facts_for_recall(get_all_facts, epistemic_state=epistemic_state, domain=domain)
 
 
 def search_facts_for_recall(
@@ -2567,44 +2537,7 @@ def search_facts_for_recall(
 ) -> list[dict]:
     """
     Поиск фактов для recall с применением политики фильтрации.
+    
+    Делегирует фильтрацию в core.recall_policy.
     """
-    all_facts = get_all_facts(domain=domain)
-    
-    # Применяем фильтрацию RecallPolicy
-    filtered_facts = []
-    for fact in all_facts:
-        metadata = fact.get("metadata", {})
-        
-        # Фильтрация по политике
-        if metadata and metadata.get("restricted"):
-            continue
-        
-        erasure_status = metadata.get("erasure_status")
-        if erasure_status and erasure_status != "active":
-            continue
-        
-        state = fact.get("epistemic_state", "Observed")
-        if state in {"Collapsed", "Deprecated"}:
-            continue
-        
-        filtered_facts.append(fact)
-    
-    # Теперь выполняем поиск по отфильтрованным фактам
-    try:
-        from core.hybrid_retriever import HybridRetriever
-        if filtered_facts:
-            retriever = HybridRetriever(filtered_facts)
-            results = retriever.retrieve(query, top_k=top_k)
-            return [r.to_dict() for r in results[:top_k]]
-        return []
-    except Exception:
-        # Fallback: простой текстовый поиск
-        query_lower = query.lower()
-        matches = []
-        for fact in filtered_facts:
-            claim = fact.get("claim", "").lower()
-            if query_lower in claim:
-                matches.append(fact)
-                if len(matches) >= top_k:
-                    break
-        return matches
+    return _search_facts_for_recall(search, query=query, top_k=top_k, domain=domain)
