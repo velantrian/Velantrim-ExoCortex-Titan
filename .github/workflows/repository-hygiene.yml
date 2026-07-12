@@ -13,4 +13,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Reject tracked runtime/cache artifacts
-        run: python scripts/check_tracked_artifacts.py
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/check_tracked_artifacts.py | tee tracked-artifacts.txt
+      - name: Upload forbidden artifact inventory
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tracked-artifacts
+          path: tracked-artifacts.txt
+          if-no-files-found: error
+          retention-days: 1
