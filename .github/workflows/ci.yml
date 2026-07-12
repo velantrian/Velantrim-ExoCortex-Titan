@@ -47,3 +47,47 @@ jobs:
           VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-ci.db"
           VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-ngram-ci.db"
           VELANTRIM_API_KEY: "ci-test-key"
+
+  coverage:
+    name: Coverage ratchet (core ≥59%)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[server,dev,parsers,retrieval,embeddings,graph-lab]"
+
+      - name: Run full core coverage
+        run: |
+          python -m coverage run -m pytest tests/ -q --tb=short --timeout=300
+          python -m coverage report --show-missing
+          python -m coverage xml -o coverage.xml
+        env:
+          PYTHONUNBUFFERED: 1
+          VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-coverage.db"
+          VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-ngram-coverage.db"
+          VELANTRIM_API_KEY: "ci-test-key"
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: titan-core-coverage
+          path: coverage.xml
+          if-no-files-found: warn
+          retention-days: 14
