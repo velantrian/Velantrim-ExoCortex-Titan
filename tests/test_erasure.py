@@ -1,4 +1,7 @@
-"""GDPR Art. 17 erasure — physical deletion across Titan memory + tombstone."""
+"""GDPR Art. 17 erasure — legacy core.erasure shim, delegating to
+core.erasure_coordinator (see tests/test_erasure_coordinator.py for the
+coordinator's own job/step/resumability/residual test suite).
+"""
 import pytest
 
 from core import memory
@@ -8,7 +11,17 @@ from core import erasure
 
 @pytest.fixture
 def store(tmp_path, monkeypatch):
-    """Isolated SQLite store per test (Titan has no autouse isolated-db fixture)."""
+    """Isolated SQLite store per test (Titan has no autouse isolated-db fixture).
+
+    erasure.erase_fact() delegates to core.erasure_coordinator.get_coordinator(),
+    which (deliberately, see erasure_coordinator.py) builds a fresh
+    ErasureCoordinator from the current `memory._GLOBAL_STORE` on every call
+    rather than caching one — so patching `_GLOBAL_STORE` here is all that's
+    needed for facts-layer isolation. The embeddings/ngram side of that fresh
+    coordinator still defaults to bare EmbeddingStore()/NGramIndex(); those
+    are redirected away from the real ./data/*.db files for the whole test
+    session by tests/conftest.py (SQLITE_GRAPH_PATH / VELANTRIM_NGRAM_DB).
+    """
     st = make_store(str(tmp_path / "erase.db"))
     monkeypatch.setattr(memory, "_GLOBAL_STORE", st)
     monkeypatch.setattr(memory, "_L0", st._l0)
@@ -86,3 +99,16 @@ def test_ring_zero_not_erasable(store):
         erasure.erase_fact("RING_ZERO")
     # No tombstone written for a refused erasure.
     assert erasure.is_erased("RING_ZERO") is False
+
+
+def test_erase_fact_is_deprecated_and_delegates_to_coordinator(store):
+    store_fact(_fact("f_dep"))
+
+    with pytest.deprecated_call():
+        receipt = erasure.erase_fact("f_dep")
+
+    # The shim narrows the coordinator's full job report — but it's the
+    # SAME report, not a re-implementation: outcome/residual carry through.
+    assert receipt["outcome"] == "COMPLETE"
+    assert receipt["residual"] == "none"
+    assert receipt["erased_now"] is True

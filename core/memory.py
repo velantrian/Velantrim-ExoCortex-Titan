@@ -450,54 +450,100 @@ class SQLiteGraphStore(GraphStore):
             except Exception:  # noqa: BLE001 — best-effort lock release
                 pass
 
-    def delete_fact_l1(self, fact_id: str) -> bool:
-        """Physically delete a fact from L0 cache + L1 SQLite and every dependent
-        row (relations both directions, living context, affordances, L0
-        provenance links, FTS index).
+    # Canonical text of migrations/009_truth_kernel.sql's `prevent_fact_delete`
+    # guard — kept in sync so the erasure coordinator can prove it always
+    # restores exactly the production guard, not an approximation of it.
+    _PREVENT_FACT_DELETE_TRIGGER_SQL = """
+        CREATE TRIGGER IF NOT EXISTS prevent_fact_delete
+        BEFORE DELETE ON facts
+        BEGIN
+            SELECT CASE
+                WHEN OLD.epistemic_state NOT IN ('Collapsed', 'Deprecated')
+                THEN RAISE(ABORT, 'VELANTRIM: Cannot DELETE facts directly. Transition to Collapsed or Deprecated first.')
+            END;
+        END;
+    """
 
-        Returns True if a `facts` row was removed. Ring Zero / VALUES_CORE are
-        protected (I6) → ImmutableStateError. The append-only L0 raw store
-        (l0_raw_memory) is intentionally NOT touched (anti-drift trigger); see
-        core/erasure.py for the GDPR note on raw originals.
+    @staticmethod
+    def _table_exists(conn: sqlite3.Connection, table: str) -> bool:
+        return conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?",
+            (table,),
+        ).fetchone() is not None
+
+    def erase_fact_dependents_atomic(self, fact_id: str) -> dict[str, Any]:
+        """Physically delete `fact_id` and every dependent row in THIS SQLite
+        file (relations both directions, living context, affordances, L0
+        provenance links, mentions, bi-temporal fact_versions, FTS index),
+        as ONE atomic transaction, with an honest per-table result.
+
+        Unlike a bare try/except-pass sweep, table absence ("applicable":
+        False — an older DB without that migration applied) and a real
+        delete failure are never conflated: a missing table is fine, but a
+        present table whose DELETE raises aborts the whole transaction —
+        the erasure coordinator must never report a clean sweep it cannot
+        prove. `prevent_fact_delete` (migration 009) is lifted for the
+        duration of this transaction only; on rollback it is restored as
+        part of the same DDL rollback (SQLite DDL is transactional), and on
+        commit it is explicitly recreated before this method returns.
+
+        Returns {"fact_present_before": bool, "tables": {table: {"applicable":
+        bool, "deleted": int}}}. Ring Zero / VALUES_CORE are protected (I6) →
+        ImmutableStateError. The append-only L0 raw store (l0_raw_memory) is
+        intentionally NOT touched (anti-drift trigger); see core/erasure.py
+        for the GDPR note on raw originals.
         """
         if fact_id in IMMUTABLE_FACT_IDS:
             raise ImmutableStateError(
-                f"delete_fact_l1: '{fact_id}' is Ring Zero (I6) — deletion forbidden"
+                f"erase_fact_dependents_atomic: '{fact_id}' is Ring Zero (I6) — deletion forbidden"
             )
         self._release_stray_locks()
+        tables: dict[str, dict[str, Any]] = {}
         with self._db() as conn:
+            conn.execute("DROP TRIGGER IF EXISTS prevent_fact_delete")
+
             present = conn.execute(
                 "SELECT 1 FROM facts WHERE fact_id = ?", (fact_id,)
             ).fetchone() is not None
+
+            def _purge(table: str, where_sql: str, params: tuple) -> None:
+                if not self._table_exists(conn, table):
+                    tables[table] = {"applicable": False, "deleted": 0}
+                    return
+                cur = conn.execute(f"DELETE FROM {table} WHERE {where_sql}", params)  # noqa: S608
+                tables[table] = {"applicable": True, "deleted": cur.rowcount}
+
             # FK ON DELETE CASCADE is not relied upon — PRAGMA foreign_keys is OFF
-            # on the runtime connection, so dependents are removed explicitly.
-            # These tables come from SQL migrations (008/010/...), so they may be
-            # absent on a store without migrations applied — guard every delete.
-            try:
-                conn.execute(
-                    "DELETE FROM relations WHERE from_fact_id = ? OR to_fact_id = ?",
-                    (fact_id, fact_id),
-                )
-            except sqlite3.OperationalError:
-                pass  # relations table (migration 008) not present
-            for _tbl, _col in (
-                ("l0_fact_provenance", "fact_id"),
-                ("raw_derivation_chain", "derived_fact_id"),
-                ("fact_living_context", "fact_id"),
-                ("fact_affordances", "fact_id"),
-                ("fact_affordance_tokens", "fact_id"),
+            # on the runtime connection, so every dependent is removed explicitly.
+            _purge("relations", "from_fact_id = ? OR to_fact_id = ?", (fact_id, fact_id))
+            for _tbl in (
+                "l0_fact_provenance",
+                "fact_living_context",
+                "fact_affordances",
+                "fact_affordance_tokens",
+                "fact_mentions",
+                "fact_versions",
             ):
-                try:
-                    conn.execute(f"DELETE FROM {_tbl} WHERE {_col} = ?", (fact_id,))
-                except sqlite3.OperationalError:
-                    pass  # optional/legacy table absent in this DB
-            try:
-                conn.execute("DELETE FROM facts_fts WHERE fact_id = ?", (fact_id,))
-            except sqlite3.OperationalError:
-                pass  # FTS5 not available in this SQLite build
-            conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
+                _purge(_tbl, "fact_id = ?", (fact_id,))
+            _purge("raw_derivation_chain", "derived_fact_id = ?", (fact_id,))
+            _purge("facts_fts", "fact_id = ?", (fact_id,))
+
+            cur = conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
+            tables["facts"] = {"applicable": True, "deleted": cur.rowcount}
+
+            conn.execute(self._PREVENT_FACT_DELETE_TRIGGER_SQL)
         self._l0_del(fact_id)
-        return present
+        return {"fact_present_before": present, "tables": tables}
+
+    def delete_fact_l1(self, fact_id: str) -> bool:
+        """Legacy bool-returning wrapper.
+
+        See erase_fact_dependents_atomic() for the erasure coordinator's
+        honest, per-table, error-propagating result — this method exists
+        only for callers that predate it and just need the old bool
+        contract (True if a `facts` row was removed).
+        """
+        return self.erase_fact_dependents_atomic(fact_id)["fact_present_before"]
 
     def write_tombstone(
         self, fact_id: str, *, reason: str, actor: str,
@@ -2503,6 +2549,15 @@ def invalidate_edge(
 def delete_fact_l1(fact_id: str) -> bool:
     """GDPR Art. 17: physically delete a fact from L0+L1 and dependent rows."""
     return _GLOBAL_STORE.delete_fact_l1(fact_id)
+
+
+def erase_fact_dependents_atomic(fact_id: str) -> dict[str, Any]:
+    """GDPR Art. 17: same-DB atomic erasure with an honest per-table result.
+
+    See SQLiteGraphStore.erase_fact_dependents_atomic() — the primitive used
+    by core.erasure_coordinator, the single enforced erasure entrypoint.
+    """
+    return _GLOBAL_STORE.erase_fact_dependents_atomic(fact_id)
 
 
 def write_tombstone(fact_id: str, *, reason: str, actor: str,
