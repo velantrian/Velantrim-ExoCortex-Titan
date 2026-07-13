@@ -18,6 +18,7 @@ from core.erasure_coordinator import (
     FAILED,
     NOT_FOUND,
     PARTIAL,
+    RESIDUAL_IMMUTABLE_DATA,
     ErasureCoordinator,
 )
 from core.memory import make_store
@@ -151,7 +152,14 @@ def test_residual_none_when_fact_has_no_raw_origin(rig):
     assert report["outcome"] == COMPLETE
 
 
-def test_residual_raw_original_present_still_reaches_complete(rig):
+def test_residual_raw_original_present_yields_residual_immutable_data_not_complete(rig):
+    """Review finding: a raw L0 origin means personal data is known to
+    still exist (l0_raw_memory is immutable, never deleted) — reporting
+    COMPLETE here would claim "provably, completely erased" while that
+    isn't true. The derived layer IS fully erased, but the outcome must be
+    the distinct terminal state RESIDUAL_IMMUTABLE_DATA: no completion
+    tombstone, is_erased() stays False.
+    """
     coordinator, store, _, _ = rig
     raw_id = store.store_raw_text("the original raw text", source_type="user_input")
     store.store_fact(_fact("f5"))
@@ -159,16 +167,30 @@ def test_residual_raw_original_present_still_reaches_complete(rig):
 
     report = coordinator.erase_fact_durable("f5")
 
-    # Derived layer is erased; the immutable raw origin is an intentional,
-    # documented residual — never hidden, but also not a failure.
-    assert report["outcome"] == COMPLETE
+    assert report["outcome"] == RESIDUAL_IMMUTABLE_DATA
     assert report["residual"] == "raw_original_present"
+    assert report["erased_now"] is False
+    assert report["content_hash"] is None
+    assert report["erased_at"] is None
+    # Derived layer IS erased — only the immutable raw origin remains.
     assert store.get_fact("f5") is None
+    # No completion tombstone: this must never look "completely erased".
+    assert coordinator.is_erased("f5") is False
+    assert len(coordinator.erasure_log()) == 0
     # l0_raw_memory itself is untouched (append-only by design).
     with store._db() as conn:
         assert conn.execute(
             "SELECT 1 FROM l0_raw_memory WHERE raw_id = ?", (raw_id,)
         ).fetchone() is not None
+
+    # Idempotent: re-calling doesn't re-run steps or flip the outcome.
+    again = coordinator.erase_fact_durable("f5")
+    assert again["outcome"] == RESIDUAL_IMMUTABLE_DATA
+    assert again["job_id"] == report["job_id"]
+
+    # resume_incomplete_jobs() must not treat this as something to retry
+    # forever — it's a terminal, permanent fact about this record.
+    assert not any(r["fact_id"] == "f5" for r in coordinator.resume_incomplete_jobs())
 
 
 def test_undetermined_residual_can_never_reach_complete(rig, monkeypatch):
