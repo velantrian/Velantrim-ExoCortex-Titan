@@ -220,8 +220,12 @@ def register_velantrim_tools(registry: ToolRegistry) -> None:
     admin видит всё. Инструменты, недоступные роли, физически отсутствуют
     в её наборе — модель не может их вызвать даже случайно.
     """
-    # GDPR Art. 17 erasure handler (lazy import → no circular import at module load).
-    from core.erasure import erase_fact as _erase_fact
+    # GDPR Art. 17 erasure handler (lazy import → no circular import at module
+    # load). Production tools call the durable coordinator directly — NOT
+    # core.erasure.erase_fact(), which is a deprecated compatibility shim
+    # that cannot prove deletion across the embeddings/ngram stores or
+    # survive a crash mid-erasure. See core/erasure_coordinator.py.
+    from core.erasure_coordinator import erase_fact_durable as _erase_fact_durable
     from core import tool_handlers as h
 
     # ─── reader ───────────────────────────────────────────────────────────
@@ -351,8 +355,30 @@ def register_velantrim_tools(registry: ToolRegistry) -> None:
     # ─── admin ────────────────────────────────────────────────────────────
 
     registry.register(
-        "forget_fact", _erase_fact, capability="admin",
-        description="Удалить факт (GDPR Art. 17: физическое стирание L0+L1 + tombstone)",
+        "forget_fact", _erase_fact_durable, capability="admin",
+        description=(
+            "Удалить факт (GDPR Art. 17): durable erasure saga через "
+            "core.erasure_coordinator — атомарное same-DB удаление + "
+            "проверенная очистка embeddings/ngram, honest outcome "
+            "(COMPLETE/PARTIAL/FAILED/NOT_FOUND) + tombstone только при COMPLETE"
+        ),
+        params={
+            "type": "object",
+            "properties": {
+                "fact_id": {"type": "string", "description": "ID факта для удаления"},
+                "reason": {
+                    "type": "string",
+                    "description": "Причина удаления (для Art. 30 audit trail)",
+                    "default": "data_subject_request",
+                },
+                "actor": {
+                    "type": "string",
+                    "description": "Кто инициировал удаление",
+                    "default": "operator",
+                },
+            },
+            "required": ["fact_id"],
+        },
         destructive=True, audit=True,
     )
 

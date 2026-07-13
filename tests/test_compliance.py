@@ -10,6 +10,12 @@ from core import compliance, erasure
 
 @pytest.fixture
 def store(tmp_path, monkeypatch):
+    """erasure.erase_fact() delegates to core.erasure_coordinator.get_coordinator(),
+    which builds a fresh ErasureCoordinator from `memory._GLOBAL_STORE` on
+    every call (see erasure_coordinator.py) — patching it here is enough for
+    facts-layer isolation. embeddings/ngram default paths are redirected away
+    from ./data/*.db for the whole session by tests/conftest.py.
+    """
     st = make_store(str(tmp_path / "comp.db"))
     monkeypatch.setattr(memory, "_GLOBAL_STORE", st)
     monkeypatch.setattr(memory, "_L0", st._l0)

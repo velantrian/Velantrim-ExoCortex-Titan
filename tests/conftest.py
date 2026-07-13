@@ -20,6 +20,7 @@ and use it; only cross-test leakage is prevented.
 from __future__ import annotations
 
 import os
+import tempfile
 
 import pytest
 
@@ -29,6 +30,17 @@ import pytest
 # явный VELANTRIM_SQLITE_SYNCHRONOUS, если он задан в окружении.
 os.environ.setdefault("VELANTRIM_SQLITE_SYNCHRONOUS", "NORMAL")
 os.environ.setdefault("VELANTRIM_VERSION_SNAPSHOTS", "true")
+
+# core.embedding_store.EXOCORTEX_DB / core.ngram_index.NGRAM_DB_PATH are
+# module-level constants read once via os.getenv() at import time, then bound
+# as default constructor arguments — so they can only be redirected here,
+# before either module is first imported anywhere in the session. Without
+# this, any test that builds a bare EmbeddingStore()/NGramIndex() (directly,
+# or transitively via core.erasure_coordinator.get_coordinator()) would
+# write into the real ./data/exocortex_graph.db / ./data/velantrim_ngram.db.
+_TEST_STORES_DIR = tempfile.mkdtemp(prefix="velantrim-test-stores-")
+os.environ.setdefault("SQLITE_GRAPH_PATH", os.path.join(_TEST_STORES_DIR, "exocortex_graph.db"))
+os.environ.setdefault("VELANTRIM_NGRAM_DB", os.path.join(_TEST_STORES_DIR, "ngram.db"))
 
 
 @pytest.fixture(autouse=True)
@@ -40,3 +52,24 @@ def _preserve_global_store():
         yield
     finally:
         _mem._GLOBAL_STORE = saved
+
+
+@pytest.fixture(autouse=True)
+def _preserve_erasure_coordinator():
+    """Same leakage guard as _preserve_global_store, for the erasure
+    coordinator singleton (core.erasure_coordinator._default_coordinator).
+
+    A test that binds it to a temp-file-backed coordinator (so
+    core.erasure.erase_fact()/erase_fact_durable() don't touch the real
+    ./data/exocortex_graph.db or ./data/velantrim_ngram.db) via
+    monkeypatch.setattr is already auto-restored by pytest; this fixture
+    only protects against a test that assigns the module attribute
+    directly and forgets to reset it.
+    """
+    from core import erasure_coordinator as _ec
+
+    saved = _ec._default_coordinator
+    try:
+        yield
+    finally:
+        _ec._default_coordinator = saved

@@ -622,16 +622,22 @@ class TestValidateAndPromoteConcurrencyGuard:
         assert store.get_fact("race_fact") is None, (
             "Fact should remain deleted, not resurrected by the guarded write."
         )
-        # Review finding #4 (PR #6): delete_fact_l1() creates no VersionStore
-        # snapshot of its own, so unlike the weakening race above, the count
-        # here must stay exactly flat — any growth means the rejected CAS
-        # attempt wrote a misleading audit record for a promotion that
-        # never happened (against a fact that no longer even exists).
+        # Review finding #4 (PR #6) still holds — the rejected CAS attempt
+        # itself creates no VersionStore snapshot of its own. But P0-B
+        # (GDPR Art. 17) extended delete_fact_l1() to ALSO purge the fact's
+        # existing fact_versions rows as part of complete erasure (leaving
+        # version history behind for a "deleted" fact would itself be an
+        # incomplete erasure) — so the racer's own delete_it() now drops the
+        # count to 0, not "unchanged". versions_before > 0 here (from the
+        # setup's Hypothesized/Supported transitions) is exactly what proves
+        # delete_fact_l1() did the purging, not the rejected CAS attempt.
+        assert versions_before > 0
         versions_after = VersionStore(store.db_path).count_versions("race_fact")
-        assert versions_after == versions_before, (
-            f"fact_versions grew ({versions_before} -> {versions_after}) for "
-            "a rejected CAS attempt against a deleted fact — misleading "
-            "audit record."
+        assert versions_after == 0, (
+            f"fact_versions not fully purged by delete_fact_l1() "
+            f"({versions_before} -> {versions_after}) — the rejected CAS "
+            "attempt must not be the one adding or leaving behind version "
+            "rows for a fact that no longer exists."
         )
 
     def test_concurrent_state_change_to_hypothesized_reports_409_not_400(self, tmp_path):

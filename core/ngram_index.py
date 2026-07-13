@@ -145,6 +145,37 @@ class NGramIndex:
         finally:
             conn.close()
 
+    def purge(self, doc_id: str) -> bool:
+        """GDPR Art. 17: delete `doc_id` from the index, without swallowing
+        errors. Returns False only when FTS5 trigram is genuinely
+        unavailable in this SQLite build (a legitimate "not applicable" —
+        the feature never stored anything for anyone). Any other failure
+        (locked DB, disk error, ...) raises, so the erasure coordinator
+        never mistakes a real failure for a clean, empty index.
+        """
+        if not self._available:
+            return False
+        conn = sqlite3.connect(self.db_path)
+        try:
+            conn.execute("DELETE FROM ngram_index WHERE doc_id = ?", (doc_id,))
+            conn.commit()
+            return True
+        finally:
+            conn.close()
+
+    def contains(self, doc_id: str) -> bool:
+        """True if `doc_id` is still present in the index."""
+        if not self._available:
+            return False
+        conn = sqlite3.connect(self.db_path)
+        try:
+            row = conn.execute(
+                "SELECT 1 FROM ngram_index WHERE doc_id = ? LIMIT 1", (doc_id,)
+            ).fetchone()
+            return row is not None
+        finally:
+            conn.close()
+
     # ── Запрос ──────────────────────────────────────────────────────────────
 
     def query(self, text: str, limit: int = 50) -> list[str]:
