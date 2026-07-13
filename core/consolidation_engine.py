@@ -47,6 +47,13 @@ class ConsolidationReport:
     skipped_low_confidence: int = 0
     skipped_short_claim: int = 0
     errors: int = 0
+    # P0-D: a candidate that cleared this engine's own confidence/utility
+    # gate but was rejected by validate_and_promote()'s TruthGate (e.g. too
+    # few evidence_refs) — counted separately so scanned == promoted_total +
+    # skipped_* + errors + rejected_by_truthgate always holds. The fact is
+    # left at 'Supported' (see run()'s Supported rescan) and re-attempted
+    # on the next run, not stranded.
+    rejected_by_truthgate: int = 0
     fact_ids: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -58,6 +65,7 @@ class ConsolidationReport:
             "skipped_low_confidence": self.skipped_low_confidence,
             "skipped_short_claim": self.skipped_short_claim,
             "errors": self.errors,
+            "rejected_by_truthgate": self.rejected_by_truthgate,
             "fact_ids": self.fact_ids[:50],
         }
 
@@ -107,8 +115,24 @@ class ConsolidationEngine:
             report.errors += 1
             return report
 
-        report.scanned = len(observed)
-        batch = observed[: self.max_batch]
+        candidates = observed
+        if self.prefer_validated:
+            # P0-D (review finding): _promote_to_validated_via_truthgate()
+            # durably advances a fact to 'Supported' via promote_esm_to()
+            # BEFORE validate_and_promote() runs — if TruthGate then rejects
+            # it (e.g. no evidence_refs yet), the fact is no longer Observed
+            # and this scan would never see it again even after evidence is
+            # added later. Rescanning Supported facts every run gives those
+            # candidates a retry path instead of stranding them.
+            try:
+                stuck_supported = self._store.get_all_facts(epistemic_state="Supported")
+            except Exception as exc:  # noqa: BLE001
+                logger.error("ConsolidationEngine: Supported rescan failed: %s", exc)
+                stuck_supported = []
+            candidates = observed + stuck_supported
+
+        report.scanned = len(candidates)
+        batch = candidates[: self.max_batch]
 
         # V8.8: corroboration boost — несколько независимых наблюдений
         # одного и того же → взаимное усиление confidence
@@ -149,6 +173,8 @@ class ConsolidationEngine:
                         report.promoted_hypothesized += 1
                     report.fact_ids.append(fact_id)
                     self._refresh_checksum(fact_id)
+                elif target == "Validated":
+                    report.rejected_by_truthgate += 1
             except ValueError:
                 try:
                     ok = self._store.transition_esm(

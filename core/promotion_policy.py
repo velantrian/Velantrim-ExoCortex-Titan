@@ -187,6 +187,12 @@ class PromotionReport:
     demoted: int = 0
     unchanged: int = 0
     errors: int = 0
+    # P0-D: a candidate that cleared this module's own bar but was rejected
+    # by validate_and_promote()'s TruthGate (e.g. too few evidence_refs) —
+    # counted separately so scanned == promoted_total + unchanged + errors +
+    # rejected_by_truthgate always holds; the fact stays at 'Supported',
+    # still scanned and re-evaluated on the next run.
+    rejected_by_truthgate: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -196,6 +202,7 @@ class PromotionReport:
             "demoted": self.demoted,
             "unchanged": self.unchanged,
             "errors": self.errors,
+            "rejected_by_truthgate": self.rejected_by_truthgate,
         }
 
 
@@ -257,6 +264,8 @@ def run_graduated_promotion(
                 # TruthGate's (e.g. too few evidence_refs for its
                 # CognitiveMode) stays at Supported, not silently promoted.
                 ok = store.validate_and_promote(fid, by="graduated_promotion").passed
+                if not ok:
+                    report.rejected_by_truthgate += 1
             else:
                 ok = store.transition_esm(fid, target, by="graduated_promotion")
             if ok:

@@ -51,7 +51,33 @@ def test_graduated_promotion_candidate_without_evidence_stays_supported(store):
 
     assert store.get_fact("t1")["epistemic_state"] == "Supported"
     assert "Supported->Validated" not in report.promoted
-    assert report.unchanged >= 1 or report.errors == 0  # rejected, not crashed
+    # Review finding (Copilot): the previous assertion here
+    # (`unchanged >= 1 or errors == 0`) could pass even if the rejection
+    # were silently mis-accounted as an error. Assert the rejection is
+    # counted explicitly, and that nothing crashed.
+    assert report.errors == 0
+    assert report.rejected_by_truthgate == 1
+
+
+def test_graduated_promotion_rejected_candidate_is_retried_after_evidence_added(store):
+    """A TruthGate rejection must not strand the fact — run_graduated_promotion
+    already rescans 'Supported' facts every run (unlike the naive
+    ConsolidationEngine before its own fix below), so adding evidence_refs
+    later and re-running must reach Validated without any special retry API.
+    """
+    store.store_fact(_trusted_fact("t1b"))
+    cfg = PromotionConfig(validate_min_age_s=0)
+    run_graduated_promotion(store, cfg=cfg)
+    run_graduated_promotion(store, cfg=cfg)
+    rejected = run_graduated_promotion(store, cfg=cfg)
+    assert store.get_fact("t1b")["epistemic_state"] == "Supported"
+    assert rejected.rejected_by_truthgate == 1
+
+    store.store_fact(_trusted_fact("t1b", evidence_refs=["src1", "src2"]))
+    retried = run_graduated_promotion(store, cfg=cfg)
+
+    assert store.get_fact("t1b")["epistemic_state"] == "Validated"
+    assert retried.promoted.get("Supported->Validated") == 1
 
 
 def test_graduated_promotion_candidate_with_evidence_reaches_validated(store):
@@ -112,6 +138,40 @@ def test_consolidation_candidate_without_evidence_stays_supported(store):
     assert store.get_fact("c1")["epistemic_state"] == "Supported"
     assert report.promoted_validated == 0
     assert report.errors == 0
+    assert report.rejected_by_truthgate == 1
+
+
+def test_consolidation_rejected_candidate_is_retried_after_evidence_added(store):
+    """Review finding (chatgpt-codex-connector): _promote_to_validated_via_truthgate()
+    durably advances the fact to 'Supported' before validate_and_promote()
+    runs. Since ConsolidationEngine.run() used to scan Observed only, a
+    TruthGate rejection stranded the fact at 'Supported' forever, even
+    after evidence was added later. run() now also rescans 'Supported'
+    facts (when prefer_validated=True), so this must reach Validated
+    without needing a special retry API.
+    """
+    store.store_fact({
+        "fact_id": "c1b",
+        "claim": "Some claim entered by hand",
+        "source": "manual",
+        "confidence": 0.9,
+    })
+    engine = ConsolidationEngine(store, min_confidence=0.7)
+    rejected = engine.run()
+    assert store.get_fact("c1b")["epistemic_state"] == "Supported"
+    assert rejected.rejected_by_truthgate == 1
+
+    store.store_fact({
+        "fact_id": "c1b",
+        "claim": "Some claim entered by hand",
+        "source": "manual",
+        "confidence": 0.9,
+        "metadata": {"evidence_refs": ["src1", "src2"]},
+    })
+    retried = engine.run()
+
+    assert store.get_fact("c1b")["epistemic_state"] == "Validated"
+    assert retried.promoted_validated == 1
 
 
 def test_consolidation_candidate_with_evidence_reaches_validated(store):
