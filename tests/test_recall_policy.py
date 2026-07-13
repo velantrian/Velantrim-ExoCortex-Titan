@@ -12,10 +12,6 @@
 6. unrestricted-факты продолжают работать.
 """
 
-import pytest
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
-
 from core.recall_policy import (
     _EXCLUDED_EPISTEMIC_STATES,
     is_fact_allowed_for_recall,
@@ -259,6 +255,101 @@ class TestSearchFactsForRecall:
         result = search_facts_for_recall(mock_search, "test query", top_k=5)
         assert len(result) == 1
         assert result[0]["fact_id"] == "fact_001"
+
+
+class TestFailClosedSemantics:
+    """Тесты fail-closed поведения: отсутствующие/неизвестные/повреждённые данные."""
+
+    def test_missing_epistemic_state_excluded(self):
+        """Тест: отсутствующий epistemic_state НЕ подставляется как Observed — факт исключается."""
+        fact = {
+            "fact_id": "fact_missing_state",
+            "metadata": {},
+        }
+        assert is_fact_allowed_for_recall(fact) is False
+
+    def test_unknown_epistemic_state_excluded(self):
+        """Тест: неизвестное (не входящее в ESM_STATES) значение epistemic_state исключается."""
+        fact = {
+            "fact_id": "fact_unknown_state",
+            "epistemic_state": "TotallyMadeUpState",
+            "metadata": {},
+        }
+        assert is_fact_allowed_for_recall(fact) is False
+
+    def test_non_string_epistemic_state_excluded(self):
+        """Тест: epistemic_state не-строкового типа исключается."""
+        fact = {
+            "fact_id": "fact_bad_state_type",
+            "epistemic_state": 123,
+            "metadata": {},
+        }
+        assert is_fact_allowed_for_recall(fact) is False
+
+    def test_malformed_metadata_type_excluded(self):
+        """Тест: metadata не-Mapping типа (например, строка) исключается."""
+        fact = {
+            "fact_id": "fact_bad_metadata",
+            "epistemic_state": "Validated",
+            "metadata": "not-a-dict",
+        }
+        assert is_fact_allowed_for_recall(fact) is False
+
+    def test_top_level_erasure_status_inactive_excluded(self):
+        """Тест: erasure_status на ВЕРХНЕМ уровне факта (не в metadata) != active исключается."""
+        fact = {
+            "fact_id": "fact_top_erased",
+            "epistemic_state": "Validated",
+            "erasure_status": "erased",
+            "metadata": {},
+        }
+        assert is_fact_allowed_for_recall(fact) is False
+
+    def test_top_level_erasure_status_active_allowed(self):
+        """Тест: erasure_status="active" на верхнем уровне разрешён (без других причин исключения)."""
+        fact = {
+            "fact_id": "fact_top_active",
+            "epistemic_state": "Validated",
+            "erasure_status": "active",
+            "metadata": {},
+        }
+        assert is_fact_allowed_for_recall(fact) is True
+
+    def test_erasure_status_case_and_whitespace_normalized(self):
+        """Тест: erasure_status="  ACTIVE  " (регистр/пробелы) нормализуется и разрешается."""
+        fact = {
+            "fact_id": "fact_active_messy",
+            "epistemic_state": "Validated",
+            "metadata": {"erasure_status": "  ACTIVE  "},
+        }
+        assert is_fact_allowed_for_recall(fact) is True
+
+    def test_erasure_status_non_string_type_excluded(self):
+        """Тест: erasure_status не-строкового типа (например, число) исключается fail-closed."""
+        fact_metadata = {
+            "fact_id": "fact_erasure_bad_type_meta",
+            "epistemic_state": "Validated",
+            "metadata": {"erasure_status": 1},
+        }
+        assert is_fact_allowed_for_recall(fact_metadata) is False
+
+        fact_top_level = {
+            "fact_id": "fact_erasure_bad_type_top",
+            "epistemic_state": "Validated",
+            "erasure_status": 1,
+            "metadata": {},
+        }
+        assert is_fact_allowed_for_recall(fact_top_level) is False
+
+    def test_both_erasure_locations_checked_independently(self):
+        """Тест: если metadata.erasure_status активен, но top-level erasure_status не активен — факт всё равно исключается."""
+        fact = {
+            "fact_id": "fact_mixed_erasure",
+            "epistemic_state": "Validated",
+            "erasure_status": "erased",
+            "metadata": {"erasure_status": "active"},
+        }
+        assert is_fact_allowed_for_recall(fact) is False
 
 
 class TestEdgeCases:

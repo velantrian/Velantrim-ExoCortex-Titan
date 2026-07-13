@@ -1,256 +1,185 @@
 """
-🧪 tests/test_recall_policy_integration.py — Integration Tests for Recall Policy (P0-1 Fix)
+🧪 tests/test_recall_policy_integration.py — Storage-layer integration tests
+for Recall Policy (P0-1 Fix).
 
-Интеграционные тесты для проверки RecallPolicy с реальными компонентами:
-- SQLiteGraphStore
-- FastAPI TestClient
-- Полный поток данных от БД до API
+Проверяет RecallPolicy против настоящего SQLiteGraphStore:
+- legal ESM transitions (через store.transition_esm(), не прямой update_state
+  с произвольным целевым состоянием);
+- реальный store.set_restricted(True) / set_restricted(False);
+- явное разделение raw/admin (store.get_all_facts()) от recall-policy view;
+- malformed/edge-case данные, персистентные через реальный store.
+
+FastAPI/server-layer тесты (реальные /chat, /chat/stream, console fallback,
+BranchManager corpus) — в tests/test_recall_policy_server.py, не здесь.
 """
 
 import os
 import tempfile
+
 import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import patch
 
 from core.memory import SQLiteGraphStore
-from core.recall_policy import (
-    is_fact_allowed_for_recall,
-    filter_facts_for_recall,
-    get_facts_for_recall,
-    list_facts_for_recall,
-    search_facts_for_recall,
-)
+from core.recall_policy import filter_facts_for_recall, get_facts_for_recall
 
 
-# ─── Fixtures ─────────────────────────────────────────────────────────────────
+# ─── Fixtures ───────────────────────────────────────────────────────────────
 
 @pytest.fixture
 def temp_db_path():
     """Создать временный путь для БД."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        db_path = os.path.join(tmpdir, "test_recall.db")
-        yield db_path
+        yield os.path.join(tmpdir, "test_recall.db")
 
 
 @pytest.fixture
 def sqlite_store(temp_db_path):
-    """Создать SQLiteGraphStore для тестов."""
+    """Создать SQLiteGraphStore для тестов, закрыть соединение после теста."""
     store = SQLiteGraphStore(db_path=temp_db_path, l0_cap=10)
     yield store
-    # Cleanup happens automatically when temp directory is removed
+    store.close()
 
 
-@pytest.fixture
-def test_client():
-    """Создать FastAPI TestClient."""
-    from server import app
-    with TestClient(app) as client:
-        yield client
+def _store(store: SQLiteGraphStore, fact_id: str, claim: str, **overrides) -> None:
+    """store_fact() takes ONE dict argument and returns bool (new-insert flag),
+    not the fact_id — the fact_id must be supplied by the caller."""
+    fact = {
+        "fact_id": fact_id,
+        "claim": claim,
+        "source": "test",
+        "confidence": 0.9,
+        "metadata": {},
+    }
+    fact.update(overrides)
+    store.store_fact(fact)
 
 
-# ─── SQLiteGraphStore Integration Tests ────────────────────────────────────────
+def _to_deprecated(store: SQLiteGraphStore, fact_id: str) -> None:
+    """Legal ESM chain: Observed -> Hypothesized -> Deprecated."""
+    assert store.transition_esm(fact_id, "Hypothesized") is True
+    assert store.transition_esm(fact_id, "Deprecated") is True
+
+
+def _to_collapsed(store: SQLiteGraphStore, fact_id: str) -> None:
+    """Legal ESM chain: Observed -> Hypothesized -> Deprecated -> Collapsed."""
+    _to_deprecated(store, fact_id)
+    assert store.transition_esm(fact_id, "Collapsed") is True
+
+
+# ─── SQLiteGraphStore Integration Tests ─────────────────────────────────────
 
 class TestRecallPolicyWithSQLiteGraphStore:
-    """Интеграционные тесты RecallPolicy с SQLiteGraphStore."""
-    
     def test_filter_facts_with_sqlite_store(self, sqlite_store):
-        """Тест: фильтрация фактов из реального SQLiteGraphStore."""
-        # Добавляем факты в хранилище
-        valid_fact_id = sqlite_store.store_fact(
-            claim="Valid test fact",
-            source="test",
-            confidence=0.9,
-            metadata={"domain": "test"}
-        )
-        
-        restricted_fact_id = sqlite_store.store_fact(
-            claim="Restricted test fact",
-            source="test",
-            confidence=0.9,
-            metadata={"domain": "test", "restricted": "2026-07-12T10:00:00Z"}
-        )
-        
-        collapsed_fact_id = sqlite_store.store_fact(
-            claim="Collapsed test fact",
-            source="test",
-            confidence=0.9,
-            metadata={"domain": "test"}
-        )
-        
-        # Обновляем состояние collapsed факта
-        sqlite_store.update_state(collapsed_fact_id, "Collapsed")
-        
-        # Получаем все факты
+        """restricted/Collapsed факты, полученные через реальный store, отфильтрованы."""
+        _store(sqlite_store, "valid_fact", "Valid test fact", metadata={"domain": "test"})
+        _store(sqlite_store, "restricted_fact", "Restricted test fact", metadata={"domain": "test"})
+        _store(sqlite_store, "collapsed_fact", "Collapsed test fact", metadata={"domain": "test"})
+
+        assert sqlite_store.set_restricted("restricted_fact", True) is True
+        _to_collapsed(sqlite_store, "collapsed_fact")
+
         all_facts = sqlite_store.get_all_facts()
-        
-        # Фильтруем через RecallPolicy
         filtered = filter_facts_for_recall(all_facts)
-        
-        # Проверяем, что только valid_fact остался
-        assert len(filtered) == 1
-        assert filtered[0]["fact_id"] == valid_fact_id
-        
-        # Проверяем, что restricted и collapsed факты исключены
+
         fact_ids = [f["fact_id"] for f in filtered]
-        assert restricted_fact_id not in fact_ids
-        assert collapsed_fact_id not in fact_ids
-    
+        assert "valid_fact" in fact_ids
+        assert "restricted_fact" not in fact_ids
+        assert "collapsed_fact" not in fact_ids
+        assert len(filtered) == 1
+
     def test_get_facts_for_recall_with_sqlite_store(self, sqlite_store):
-        """Тест: get_facts_for_recall с реальным хранилищем."""
-        # Добавляем факты
-        sqlite_store.store_fact(
-            claim="Valid fact",
-            source="test",
-            confidence=0.9,
-            metadata={}
-        )
-        
-        sqlite_store.store_fact(
-            claim="Restricted fact",
-            source="test",
-            confidence=0.9,
-            metadata={"restricted": True}
-        )
-        
-        # Используем get_facts_for_recall с функцией хранилища
+        """get_facts_for_recall() с реальным хранилищем + реальным set_restricted()."""
+        _store(sqlite_store, "valid_fact", "Valid fact")
+        _store(sqlite_store, "restricted_fact", "Restricted fact")
+        assert sqlite_store.set_restricted("restricted_fact", True) is True
+
         result = get_facts_for_recall(sqlite_store.get_all_facts)
-        
-        # Должен вернуть только не-restricted факты
+
         assert len(result) == 1
         assert result[0]["claim"] == "Valid fact"
-    
+
     def test_recall_policy_with_erasure_status(self, sqlite_store):
-        """Тест: фильтрация по erasure_status."""
-        # Добавляем факты с разными erasure_status
-        active_fact_id = sqlite_store.store_fact(
-            claim="Active fact",
-            source="test",
-            confidence=0.9,
-            metadata={"erasure_status": "active"}
-        )
-        
-        erased_fact_id = sqlite_store.store_fact(
-            claim="Erased fact",
-            source="test",
-            confidence=0.9,
-            metadata={"erasure_status": "erased"}
-        )
-        
-        # Получаем и фильтруем
-        all_facts = sqlite_store.get_all_facts()
-        filtered = filter_facts_for_recall(all_facts)
-        
-        # Только active факт должен остаться
+        """Фильтрация по erasure_status (metadata) через реальный store."""
+        _store(sqlite_store, "active_fact", "Active fact", metadata={"erasure_status": "active"})
+        _store(sqlite_store, "erased_fact", "Erased fact", metadata={"erasure_status": "erased"})
+
+        filtered = filter_facts_for_recall(sqlite_store.get_all_facts())
+
         assert len(filtered) == 1
-        assert filtered[0]["fact_id"] == active_fact_id
-    
+        assert filtered[0]["fact_id"] == "active_fact"
+
     def test_recall_policy_with_epistemic_states(self, sqlite_store):
-        """Тест: фильтрация по эпистемическим состояниям."""
-        # Добавляем факты с разными состояниями
-        validated_id = sqlite_store.store_fact(
-            claim="Validated fact",
-            source="test",
-            confidence=0.9
-        )
-        
-        deprecated_id = sqlite_store.store_fact(
-            claim="Deprecated fact",
-            source="test",
-            confidence=0.9
-        )
-        sqlite_store.update_state(deprecated_id, "Deprecated")
-        
-        collapsed_id = sqlite_store.store_fact(
-            claim="Collapsed fact",
-            source="test",
-            confidence=0.9
-        )
-        sqlite_store.update_state(collapsed_id, "Collapsed")
-        
-        # Получаем и фильтруем
-        all_facts = sqlite_store.get_all_facts()
-        filtered = filter_facts_for_recall(all_facts)
-        
-        # Только Validated факт должен остаться
+        """Deprecated/Collapsed через ЗАКОННЫЕ ESM-переходы исключены из recall."""
+        _store(sqlite_store, "validated_fact", "Validated fact")
+        _store(sqlite_store, "deprecated_fact", "Deprecated fact")
+        _store(sqlite_store, "collapsed_fact", "Collapsed fact")
+
+        _to_deprecated(sqlite_store, "deprecated_fact")
+        _to_collapsed(sqlite_store, "collapsed_fact")
+
+        filtered = filter_facts_for_recall(sqlite_store.get_all_facts())
+
         assert len(filtered) == 1
-        assert filtered[0]["fact_id"] == validated_id
+        assert filtered[0]["fact_id"] == "validated_fact"
+
+    def test_illegal_esm_transition_raises(self, sqlite_store):
+        """Observed -> Deprecated (пропуская Hypothesized) недопустимо и должно бросать."""
+        _store(sqlite_store, "f1", "some claim")
+        with pytest.raises(ValueError):
+            sqlite_store.transition_esm("f1", "Deprecated")
+        with pytest.raises(ValueError):
+            sqlite_store.transition_esm("f1", "Collapsed")
 
 
-# ─── FastAPI Endpoint Integration Tests ───────────────────────────────────────
+# ─── Raw/admin separation ────────────────────────────────────────────────────
 
-class TestRecallPolicyWithFastAPI:
-    """Интеграционные тесты RecallPolicy с FastAPI endpointами."""
-    
-    def test_console_all_memory_excludes_restricted(self, test_client):
-        """Тест: _console_all_memory не возвращает restricted факты через API."""
-        # Этот тест проверяет, что консольные эндпоинты не возвращают restricted факты
-        # Поскольку у нас нет доступа к внутреннему состоянию через API,
-        # мы проверяем через эндпоинты, которые используют _console_all_memory
-        
-        # Создаем тестовые данные через API
-        # (Предполагается, что API имеет эндпоинты для создания фактов)
-        
-        # Для простоты, проверяем, что эндпоинты не ломаются
-        # и возвращают данные в ожидаемом формате
-        response = test_client.get("/health")
-        assert response.status_code == 200
-    
-    def test_recall_policy_integration_smoke(self, test_client):
-        """Smoke тест: API работает с RecallPolicy интеграцией."""
-        # Простой smoke тест, что API доступен
-        response = test_client.get("/health")
-        assert response.status_code == 200
+class TestRawAdminSeparation:
+    def test_set_restricted_true_then_false_round_trip(self, sqlite_store):
+        """set_restricted(True) removes from recall but not from raw storage;
+        set_restricted(False) reverses it — the fact reappears in recall."""
+        _store(sqlite_store, "toggle_fact", "Toggle fact")
+
+        assert sqlite_store.set_restricted("toggle_fact", True) is True
+
+        raw = sqlite_store.get_all_facts()
+        assert any(f["fact_id"] == "toggle_fact" for f in raw), (
+            "raw get_all_facts() must still see a restricted fact (admin/raw contract)"
+        )
+
+        recall_view = filter_facts_for_recall(sqlite_store.get_all_facts())
+        assert not any(f["fact_id"] == "toggle_fact" for f in recall_view), (
+            "policy-aware recall must NOT see a restricted fact"
+        )
+
+        assert sqlite_store.set_restricted("toggle_fact", False) is True
+
+        recall_view_after = filter_facts_for_recall(sqlite_store.get_all_facts())
+        assert any(f["fact_id"] == "toggle_fact" for f in recall_view_after), (
+            "un-restricting must make the fact recall-visible again"
+        )
+
+    def test_set_restricted_unknown_fact_returns_false(self, sqlite_store):
+        assert sqlite_store.set_restricted("does_not_exist", True) is False
 
 
-# ─── Edge Cases Integration Tests ──────────────────────────────────────────────
+# ─── Edge Cases Integration Tests ───────────────────────────────────────────
 
 class TestRecallPolicyEdgeCasesIntegration:
-    """Интеграционные тесты для крайних случаев."""
-    
     def test_empty_store(self, sqlite_store):
-        """Тест: фильтрация пустого хранилища."""
-        all_facts = sqlite_store.get_all_facts()
-        filtered = filter_facts_for_recall(all_facts)
-        
-        assert filtered == []
-    
+        assert filter_facts_for_recall(sqlite_store.get_all_facts()) == []
+
     def test_all_facts_restricted(self, sqlite_store):
-        """Тест: все факты restricted."""
-        sqlite_store.store_fact(
-            claim="Restricted 1",
-            source="test",
-            confidence=0.9,
-            metadata={"restricted": True}
-        )
-        
-        sqlite_store.store_fact(
-            claim="Restricted 2",
-            source="test",
-            confidence=0.9,
-            metadata={"restricted": "2026-07-12"}
-        )
-        
-        all_facts = sqlite_store.get_all_facts()
-        filtered = filter_facts_for_recall(all_facts)
-        
-        assert len(filtered) == 0
-    
-    def test_malformed_metadata_handling(self, sqlite_store):
-        """Тест: обработка поврежденной metadata."""
-        # SQLiteGraphStore всегда возвращает валидную metadata как dict
-        # Но проверяем, что RecallPolicy правильно обрабатывает edge cases
-        
-        # Добавляем факт с пустой metadata
-        fact_id = sqlite_store.store_fact(
-            claim="Normal fact",
-            source="test",
-            confidence=0.9
-        )
-        
-        all_facts = sqlite_store.get_all_facts()
-        filtered = filter_facts_for_recall(all_facts)
-        
-        # Должен правильно обработать
+        _store(sqlite_store, "r1", "Restricted 1")
+        _store(sqlite_store, "r2", "Restricted 2")
+        assert sqlite_store.set_restricted("r1", True) is True
+        assert sqlite_store.set_restricted("r2", True) is True
+
+        filtered = filter_facts_for_recall(sqlite_store.get_all_facts())
+        assert filtered == []
+
+    def test_normal_fact_roundtrips_through_real_store(self, sqlite_store):
+        """A newly-stored fact (Observed, no restriction/erasure) is recall-visible."""
+        _store(sqlite_store, "normal_fact", "Normal fact")
+
+        filtered = filter_facts_for_recall(sqlite_store.get_all_facts())
         assert len(filtered) == 1
-        assert filtered[0]["fact_id"] == fact_id
+        assert filtered[0]["fact_id"] == "normal_fact"
