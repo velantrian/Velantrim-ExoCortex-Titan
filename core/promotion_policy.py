@@ -16,7 +16,12 @@ ESM НЕ по одному числу `confidence`, а по реальным с�
 Дисциплина (как Essence):
   • аддитивно, за флагом `ENABLE_GRADUATED_PROMOTION` (по умолчанию ВЫКЛ);
   • без LLM, stdlib-only; не трогает stable `/query` и существующий ConsolidationEngine;
-  • все переходы — ТОЛЬКО через матрицу ESM (`transition_esm`) → нелегальных скачков нет.
+  • переходы в Hypothesized/Supported/Contradicted — через матрицу ESM
+    (`transition_esm`) → нелегальных скачков нет;
+  • P0-D: финальный переход в Validated — ТОЛЬКО через `validate_and_promote()`
+    (TruthGate + CAS). Пороги этого модуля (corroboration/age/confidence) —
+    pre-vetting: они решают, что факт СТАЛ КАНДИДАТОМ на Validated, но не
+    заменяют TruthGate. Кандидат, не прошедший TruthGate, остаётся Supported.
 
 Контраст с наивным ConsolidationEngine: тот делает Observed→Validated при
 `confidence>=0.75` — одиночный непроверенный факт «random_blog» мгновенно становится
@@ -241,7 +246,19 @@ def run_graduated_promotion(
             report.unchanged += 1
             continue
         try:
-            ok = store.transition_esm(fid, target, by="graduated_promotion")
+            if target == "Validated":
+                # P0-D (belt-and-suspenders): this module's own thresholds
+                # (corroboration/age/confidence) are pre-vetting only — they
+                # decide whether a fact is a CANDIDATE for Validated, not
+                # whether it becomes Validated. The actual write to
+                # 'Validated' must go through validate_and_promote(), the
+                # one function that also enforces TruthGate + CAS. A
+                # candidate that clears this module's bar but not
+                # TruthGate's (e.g. too few evidence_refs for its
+                # CognitiveMode) stays at Supported, not silently promoted.
+                ok = store.validate_and_promote(fid, by="graduated_promotion").passed
+            else:
+                ok = store.transition_esm(fid, target, by="graduated_promotion")
             if ok:
                 key = f"{state}->{target}"
                 report.promoted[key] = report.promoted.get(key, 0) + 1

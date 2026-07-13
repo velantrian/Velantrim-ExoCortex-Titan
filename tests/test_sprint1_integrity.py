@@ -86,6 +86,11 @@ def test_consolidation_promotes_high_confidence(mem_db):
             "claim": "Длинный факт для консолидации в Validated",
             "source": "manual",
             "confidence": 0.88,
+            # P0-D: the final Supported -> Validated hop now also goes
+            # through validate_and_promote() (TruthGate + CAS) on top of
+            # ConsolidationEngine's own confidence/utility gate — needs
+            # evidence_refs to clear TruthGate's BALANCED mode (min_evidence=2).
+            "metadata": {"evidence_refs": ["src1", "src2"]},
         }
     )
     report = run_consolidation(mem_db)

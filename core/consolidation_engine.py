@@ -2,6 +2,14 @@
 ConsolidationEngine — ночная/micro-batch консолидация Observed → Validated.
 
 Спринт 1 (system docx v2). Вызывается из SleepTimeWorker и POST /memory/consolidate.
+
+P0-D (belt-and-suspenders): confidence/claim-length/utility-gate ниже — это
+pre-vetting этого движка, они решают, что факт СТАЛ КАНДИДАТОМ на Validated.
+Финальный переход Supported → Validated идёт ТОЛЬКО через
+store.validate_and_promote() (TruthGate + CAS) — см.
+_promote_to_validated_via_truthgate(). Кандидат, прошедший локальные пороги,
+но не TruthGate (например, недостаточно evidence_refs для своего
+CognitiveMode), остаётся Supported, а не молча становится Validated.
 """
 
 from __future__ import annotations
@@ -129,9 +137,7 @@ class ConsolidationEngine:
             target = "Validated" if self.prefer_validated else "Hypothesized"
             try:
                 if target == "Validated":
-                    ok = self._store.promote_to_validated(
-                        fact_id, by="consolidation_engine"
-                    )
+                    ok = self._promote_to_validated_via_truthgate(fact_id)
                 else:
                     ok = self._store.transition_esm(
                         fact_id, target, by="consolidation_engine"
@@ -161,6 +167,25 @@ class ConsolidationEngine:
 
         logger.info("ConsolidationEngine: %s", report.to_dict())
         return report
+
+    def _promote_to_validated_via_truthgate(self, fact_id: str) -> bool:
+        """P0-D: reach 'Validated' with the final hop enforced by TruthGate
+        + CAS, not a bare ESM-legality transition.
+
+        promote_esm_to(..., "Supported") walks Observed -> Hypothesized ->
+        Supported exactly as before (pre-vetting only — this engine's own
+        confidence/utility gate already decided the fact is a candidate).
+        The last, security-sensitive hop into 'Validated' goes through
+        store.validate_and_promote() instead of store.promote_to_validated()
+        — a candidate that fails TruthGate (e.g. too little evidence for
+        its CognitiveMode) is left at 'Supported', not silently promoted.
+        Raises ValueError exactly like the old path did on an illegal jump
+        (e.g. a concurrent transition moved the fact somewhere the ladder
+        can't reach Supported from) — callers already handle that.
+        """
+        if not self._store.promote_esm_to(fact_id, "Supported", by="consolidation_engine"):
+            return False
+        return self._store.validate_and_promote(fact_id, by="consolidation_engine").passed
 
     def _passes_utility_gate(self, fact: dict) -> bool:
         """
