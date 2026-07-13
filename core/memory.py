@@ -30,7 +30,6 @@ from typing import Any
 
 from core.storage import GraphStore
 from core.recall_policy import (
-    filter_facts_for_recall,
     get_facts_for_recall as _get_facts_for_recall,
     list_facts_for_recall as _list_facts_for_recall,
     search_facts_for_recall as _search_facts_for_recall,
@@ -2446,6 +2445,17 @@ def get_all_facts(
     if dom == "general":
         dom = None
     return _GLOBAL_STORE.get_all_facts(epistemic_state, domain=dom)
+
+
+def search(query: str, top_k: int = 5, domain: str | None = None) -> list[dict]:
+    """Обёртка над SQLiteGraphStore.search() для search_facts_for_recall().
+
+    Pre-existing bug fix (найден Ruff F821): раньше search_facts_for_recall()
+    ссылался на неопределённое имя `search` и падал бы NameError при любом
+    вызове. SQLiteGraphStore.search() не поддерживает domain-фильтрацию —
+    параметр принимается для совместимости сигнатуры, но не применяется.
+    """
+    return _GLOBAL_STORE.search(query, limit=top_k)
 
 def store_raw_text(text: str, source: str | None = None, source_type: str = "user_input") -> str:
     """TASK-09: Сохранить оригинальный текст в L0 Raw Memory. Возвращает raw_id."""
