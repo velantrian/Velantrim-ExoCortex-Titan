@@ -24,6 +24,14 @@
 #     "undetermined" — a real DB error, not "no raw text exists") can NEVER
 #     reach outcome COMPLETE. "I don't know" must never be reported as
 #     "erased."
+#   - A fact whose raw L0 origin is KNOWN to exist (residual =
+#     "raw_original_present") also never reaches COMPLETE — it resolves to
+#     the distinct terminal outcome RESIDUAL_IMMUTABLE_DATA instead. The
+#     derived fact layer is fully, provably erased, but l0_raw_memory still
+#     holds the original text by design (see core/erasure.py); no
+#     completion tombstone is written and is_erased() stays False, because
+#     the record is not "provably, completely erased" while a raw copy is
+#     known to remain.
 #
 # See core/erasure.py for the Ring Zero (I6) invariant and the documented,
 # intentional limitation that l0_raw_memory (immutable, append-only) is not
@@ -49,6 +57,22 @@ COMPLETE = "COMPLETE"
 PARTIAL = "PARTIAL"
 FAILED = "FAILED"
 NOT_FOUND = "NOT_FOUND"
+# Every same-DB/embeddings/ngram step succeeded and the derived fact layer
+# is provably gone, but the fact had a raw L0 origin (residual =
+# "raw_original_present") — l0_raw_memory is immutable by design (see
+# core/erasure.py) and is never deleted by any erasure path. This is a
+# terminal, non-error outcome, but it is NOT "completely erased": no
+# completion tombstone is written and is_erased() stays False, because the
+# original text is known to still exist. Review finding: reporting this as
+# COMPLETE would let the system claim "provably, completely erased" while
+# personal data physically remains.
+RESIDUAL_IMMUTABLE_DATA = "RESIDUAL_IMMUTABLE_DATA"
+
+# Terminal job statuses that resume_incomplete_jobs() should never re-pick
+# up — COMPLETE because there's nothing left to do, RESIDUAL_IMMUTABLE_DATA
+# because the residual is a permanent fact about the record (re-running
+# would just recompute the identical outcome forever).
+_TERMINAL_STATUSES = (COMPLETE, RESIDUAL_IMMUTABLE_DATA)
 
 _STEP_NAMES = ("determine_raw", "l1_same_db", "embeddings", "ngram")
 
@@ -359,7 +383,7 @@ class ErasureCoordinator:
         residual = job["residual"]
 
         tombstone = None
-        if all_complete and residual != "undetermined":
+        if all_complete and residual == "none":
             outcome = COMPLETE
             # Tombstone is written BEFORE the job row is marked COMPLETE —
             # if the process dies in between, erase_fact_durable()'s
@@ -376,6 +400,16 @@ class ErasureCoordinator:
                 content_hash=job["content_hash"],
             )
             tombstone = self._store.get_tombstone(job["fact_id"])
+        elif all_complete and residual == "raw_original_present":
+            # Review finding: the derived layer is provably gone, but
+            # l0_raw_memory still holds the original text by design — this
+            # must never be reported as COMPLETE, and no completion
+            # tombstone is written. is_erased() stays False: the record is
+            # not "provably, completely erased" while a raw copy is known
+            # to exist. residual == "undetermined" falls through to the
+            # PARTIAL branch below — "I don't know" is a transient/resumable
+            # state, not this permanent one.
+            outcome = RESIDUAL_IMMUTABLE_DATA
         else:
             outcome = PARTIAL if any_complete else FAILED
 
@@ -422,12 +456,12 @@ class ErasureCoordinator:
     ) -> dict[str, Any]:
         """The one enforced GDPR Art. 17 erasure entrypoint.
 
-        Idempotent: a fact already proven COMPLETE returns the cached
-        report without re-attempting anything. A PENDING/RUNNING/PARTIAL/
-        FAILED prior job for the same fact_id is resumed in place — steps
-        already COMPLETE are not re-run, so a crash between storage
-        backends never repeats already-proven work (nor claims success it
-        hasn't re-verified).
+        Idempotent: a fact already proven COMPLETE, or already resolved to
+        RESIDUAL_IMMUTABLE_DATA, returns the cached report without
+        re-attempting anything. A PENDING/RUNNING/PARTIAL/FAILED prior job
+        for the same fact_id is resumed in place — steps already COMPLETE
+        are not re-run, so a crash between storage backends never repeats
+        already-proven work (nor claims success it hasn't re-verified).
         """
         if fact_id in memory.IMMUTABLE_FACT_IDS:
             raise memory.ImmutableStateError(
@@ -446,7 +480,18 @@ class ErasureCoordinator:
             report["erased_now"] = False  # already erased BEFORE this call
             return report
 
-        if self._peek_job_row(fact_id) is None:
+        existing_job = self._peek_job_row(fact_id)
+        if existing_job is not None and existing_job["status"] == RESIDUAL_IMMUTABLE_DATA:
+            # Terminal and permanent — residual won't change from a re-run,
+            # so skip straight to the cached report instead of redoing work.
+            steps = self._load_steps(existing_job["job_id"])
+            report = self._report(
+                existing_job, outcome=RESIDUAL_IMMUTABLE_DATA, tombstone=None, steps=steps
+            )
+            report["erased_now"] = False
+            return report
+
+        if existing_job is None:
             try:
                 fact_exists = self._store.get_fact_durable(fact_id) is not None
             except sqlite3.OperationalError:
@@ -472,16 +517,20 @@ class ErasureCoordinator:
         return self._run_job(job_id)
 
     def resume_incomplete_jobs(self) -> list[dict[str, Any]]:
-        """Crash recovery sweep: re-run every job not yet COMPLETE.
+        """Crash recovery sweep: re-run every job not in a terminal state.
 
         Safe to call repeatedly (e.g. at server startup) — steps already
-        COMPLETE are never re-attempted, and a job that resolves to COMPLETE
-        on this pass simply won't be picked up again.
+        COMPLETE are never re-attempted, and a job that resolves to a
+        terminal outcome (COMPLETE, or RESIDUAL_IMMUTABLE_DATA — a
+        permanent fact about the record, not a transient failure) on this
+        pass simply won't be picked up again.
         """
         with self._jobs_db() as conn:
+            placeholders = ", ".join("?" for _ in _TERMINAL_STATUSES)
             rows = conn.execute(
-                "SELECT job_id FROM erasure_jobs WHERE status != ? ORDER BY created_at",
-                (COMPLETE,),
+                f"SELECT job_id FROM erasure_jobs WHERE status NOT IN ({placeholders}) "  # noqa: S608
+                "ORDER BY created_at",
+                _TERMINAL_STATUSES,
             ).fetchall()
         return [self._run_job(row["job_id"]) for row in rows]
 
@@ -568,4 +617,5 @@ __all__ = [
     "PARTIAL",
     "FAILED",
     "NOT_FOUND",
+    "RESIDUAL_IMMUTABLE_DATA",
 ]
