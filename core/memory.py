@@ -29,6 +29,11 @@ from datetime import UTC, datetime
 from typing import Any
 
 from core.storage import GraphStore
+from core.recall_policy import (
+    get_facts_for_recall as _get_facts_for_recall,
+    list_facts_for_recall as _list_facts_for_recall,
+    search_facts_for_recall as _search_facts_for_recall,
+)
 
 # ─── ESM: матрицы и константы ─────────────────────────────────────────────────
 ESM_STATES = {
@@ -2441,6 +2446,17 @@ def get_all_facts(
         dom = None
     return _GLOBAL_STORE.get_all_facts(epistemic_state, domain=dom)
 
+
+def search(query: str, top_k: int = 5, domain: str | None = None) -> list[dict]:
+    """Обёртка над SQLiteGraphStore.search() для search_facts_for_recall().
+
+    Pre-existing bug fix (найден Ruff F821): раньше search_facts_for_recall()
+    ссылался на неопределённое имя `search` и падал бы NameError при любом
+    вызове. SQLiteGraphStore.search() не поддерживает domain-фильтрацию —
+    параметр принимается для совместимости сигнатуры, но не применяется.
+    """
+    return _GLOBAL_STORE.search(query, limit=top_k)
+
 def store_raw_text(text: str, source: str | None = None, source_type: str = "user_input") -> str:
     """TASK-09: Сохранить оригинальный текст в L0 Raw Memory. Возвращает raw_id."""
     return _GLOBAL_STORE.store_raw_text(text, source=source, source_type=source_type)
@@ -2495,3 +2511,43 @@ def get_tombstones() -> list[dict]:
 def set_restricted(fact_id: str, restricted: bool) -> bool:
     """GDPR Art. 18: mark/unmark a fact's processing restriction."""
     return _GLOBAL_STORE.set_restricted(fact_id, restricted)
+
+
+
+
+# ── Recall Policy функции (делегируем в recall_policy.py) ─────────
+
+
+def get_facts_for_recall(
+    epistemic_state: str | None = None,
+    domain: str | None = None,
+) -> list[dict]:
+    """
+    Получить факты для recall с применением политики фильтрации.
+    
+    Делегирует фильтрацию в core.recall_policy.
+    """
+    return _get_facts_for_recall(get_all_facts, epistemic_state=epistemic_state, domain=domain)
+
+
+def list_facts_for_recall(
+    epistemic_state: str | None = None,
+    domain: str | None = None,
+) -> list[dict]:
+    """
+    Алиас для get_facts_for_recall для совместимости.
+    """
+    return _list_facts_for_recall(get_all_facts, epistemic_state=epistemic_state, domain=domain)
+
+
+def search_facts_for_recall(
+    query: str,
+    top_k: int = 5,
+    domain: str | None = None,
+) -> list[dict]:
+    """
+    Поиск фактов для recall с применением политики фильтрации.
+    
+    Делегирует фильтрацию в core.recall_policy.
+    """
+    return _search_facts_for_recall(search, query=query, top_k=top_k, domain=domain)

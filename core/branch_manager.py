@@ -203,7 +203,9 @@ class BranchManager:
             if store is None:
                 return []
 
-            facts = store.get_all_facts() or []
+            from core.recall_policy import filter_facts_for_recall
+            all_facts = store.get_all_facts() or []
+            facts = filter_facts_for_recall(all_facts)
 
             if not facts:
                 return []
