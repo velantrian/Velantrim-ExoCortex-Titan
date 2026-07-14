@@ -319,8 +319,8 @@ class ConsolidationEngine:
             confidence=float(fact.get("confidence", 0.5)),
             epistemic_state=fact.get("epistemic_state", "Observed"),
         )
-        self._store.update_fact_metadata(fact_id, meta)
-
+        if not self._store.update_fact_metadata(fact_id, meta):
+            logger.debug("_refresh_checksum: факт %s не найден при обновлении metadata", fact_id)
 
 def run_consolidation(store: SQLiteGraphStore | None = None) -> Any:
     """
