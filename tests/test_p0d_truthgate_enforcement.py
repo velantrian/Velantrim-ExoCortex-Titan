@@ -212,3 +212,92 @@ def test_consolidation_never_calls_transition_esm_for_validated(store, monkeypat
 
     assert store.get_fact("c3")["epistemic_state"] == "Validated"
     assert report.promoted_validated == 1
+
+
+# ── accounting invariant: no candidate is ever silently lost ────────────────
+
+def test_graduated_promotion_report_accounting_has_no_lost_candidates(store):
+    """scanned must equal the sum of every outcome bucket — a candidate
+    rejected by TruthGate is exactly as accounted-for as one that's
+    promoted, unchanged, or errored. (`demoted` is a subset annotation of
+    `promoted` for target=="Contradicted", not an independent bucket, so it
+    is deliberately excluded from this sum.)
+    """
+    store.store_fact({
+        "fact_id": "m1", "claim": "tiny", "source": "x", "confidence": 0.9,
+    })  # too short -> unchanged
+    store.store_fact({
+        "fact_id": "m2", "claim": "a normal length claim about something",
+        "source": "x", "confidence": 0.9,
+    })  # Observed -> Hypothesized (promoted)
+    store.store_fact(_trusted_fact("m3"))  # will reach Supported, no evidence -> rejected
+    store.transition_esm("m3", "Hypothesized")
+    store.transition_esm("m3", "Supported")
+    store.store_fact(_trusted_fact("m4", evidence_refs=["src1", "src2"]))  # -> promoted
+    store.transition_esm("m4", "Hypothesized")
+    store.transition_esm("m4", "Supported")
+
+    cfg = PromotionConfig(validate_min_age_s=0)
+    report = run_graduated_promotion(store, cfg=cfg)
+
+    assert report.scanned == 4
+    accounted = sum(report.promoted.values()) + report.unchanged + report.errors + report.rejected_by_truthgate
+    assert accounted == report.scanned
+    assert store.get_fact("m1")["epistemic_state"] == "Observed"
+    assert store.get_fact("m2")["epistemic_state"] == "Hypothesized"
+    assert store.get_fact("m3")["epistemic_state"] == "Supported"
+    assert store.get_fact("m4")["epistemic_state"] == "Validated"
+
+
+def test_consolidation_report_accounting_has_no_lost_candidates(store):
+    """scanned must equal the sum of every ConsolidationReport bucket, for
+    the paths P0-D touches: skipped (pre-existing gates) and
+    rejected_by_truthgate (new).
+
+    NOTE: deliberately does NOT include a fact that reaches a *successful*
+    promotion (Hypothesized or Validated) in this sum-invariant check.
+    ConsolidationEngine._refresh_checksum() — pre-existing, unrelated to
+    P0-D, not touched by this PR — re-fetches the fact (now in its new,
+    non-Observed state) and calls store_fact() on it; store_fact() rejects
+    any non-Observed epistemic_state on a upsert unconditionally (except
+    the Ring Zero Validated seed), so _refresh_checksum() always raises
+    ValueError after every successful promotion. That's caught by the
+    surrounding `except ValueError` fallback (which then also fails, since
+    the fact is no longer eligible to demote to 'Hypothesized'), landing in
+    `except Exception: report.errors += 1` — spuriously incrementing
+    `errors` by 1 for every successful promotion, on top of the correct
+    promoted_validated/promoted_hypothesized increment. This makes `errors`
+    unreliable as a health signal for ConsolidationEngine today, on `main`
+    as well as on this branch — confirmed present with a plain
+    Hypothesized-only promotion on `main` with no TruthGate involved at
+    all. Reported as a separate, pre-existing, out-of-scope issue; not
+    fixed here (see PR #25 review notes).
+    """
+    store.store_fact({
+        "fact_id": "n1", "claim": "tiny", "source": "manual", "confidence": 0.9,
+    })  # too short -> skipped_short_claim
+    store.store_fact({
+        "fact_id": "n2", "claim": "a normal length claim about something",
+        "source": "manual", "confidence": 0.1,
+    })  # low confidence -> skipped_low_confidence
+    store.store_fact({
+        "fact_id": "n3", "claim": "a normal length claim about something else",
+        "source": "some_untrusted_source", "confidence": 0.9,
+    })  # clears confidence, fails utility gate (unused, isolated, not manual) -> skipped_low_confidence
+    store.store_fact({
+        "fact_id": "n4", "claim": "a normal length claim needing evidence",
+        "source": "manual", "confidence": 0.9,
+    })  # clears all gates, no evidence_refs -> rejected_by_truthgate
+
+    engine = ConsolidationEngine(store, min_confidence=0.7)
+    report = engine.run()
+
+    assert report.scanned == 4
+    assert report.errors == 0
+    accounted = (
+        report.promoted_validated + report.promoted_hypothesized
+        + report.skipped_low_confidence + report.skipped_short_claim
+        + report.errors + report.rejected_by_truthgate
+    )
+    assert accounted == report.scanned
+    assert store.get_fact("n4")["epistemic_state"] == "Supported"
