@@ -1,50 +1,38 @@
 # core/erasure.py
 # VELANTRIM Titan — Right to Erasure (GDPR Art. 17)
 #
-# Physical deletion of a fact across Titan's memory fabrics + accountability.
-# Adapted from the Crystal open core to Titan's SQLite storage layer.
+# DEPRECATED (P0-B): this module's erase_fact() used to run its own
+# single-pass, single-DB deletion and unconditionally write a tombstone
+# regardless of whether that deletion actually succeeded — it could not
+# prove anything once a fact's data spans three independent SQLite files
+# (facts, embeddings, ngram) and could not recover from a crash mid-erasure.
 #
-# Principle: deletion must be COMPLETE and PROVABLE at the same time.
-#   Complete — the fact disappears from L0 (LRU cache) and L1 (SQLite `facts`)
-#             together with every dependent row: relations (both directions),
-#             living context, affordances, L0 provenance links, and the FTS
-#             index. No personal data or dangling references remain.
-#   Provable — a content-free tombstone is written to `erasure_log`: fact_id,
-#             time, reason, actor and sha256(claim) — never the claim itself.
-#             This is a record of processing (Art. 30): one can prove WHAT and
-#             WHEN was deleted without recreating what was erased.
+# The enforced entrypoint is now core.erasure_coordinator.erase_fact_durable()
+# — a durable, resumable saga (erasure_jobs / erasure_job_steps) that proves
+# deletion per dependent table and per storage backend, and only ever writes
+# the completion tombstone when every step is provably COMPLETE. See
+# core/erasure_coordinator.py for the full design rationale.
+#
+# The functions below are kept ONLY so pre-existing callers/imports don't
+# break at import time; every one of them delegates to the coordinator — none
+# of them re-implements deletion logic. ToolRegistry does NOT register these;
+# it registers core.erasure_coordinator.erase_fact_durable directly, so no
+# production tool call can reach this shim.
 #
 # Ring Zero / VALUES_CORE are NOT deletable (invariant I6): they are system
 # values, not personal data.
 #
-# LIMITATION (honest, Phase-1 follow-up): the immutable L0 raw store
+# LIMITATION (honest, tracked separately): the immutable L0 raw store
 # (l0_raw_memory) is append-only by design — anti-drift triggers forbid DELETE.
-# Raw originals are therefore NOT physically erased in this version; the derived
-# (interpreted) fact layer IS fully erased. Full raw erasure needs an explicit,
-# audited invariant exception and is tracked separately. See docs/LIMITATIONS.md.
+# Raw originals are therefore NOT physically erased by this or any erasure
+# path; the derived (interpreted) fact layer IS fully erased. See
+# docs/LIMITATIONS.md. The coordinator surfaces this as `residual` on its
+# report ("raw_original_present") rather than silently reporting COMPLETE.
 
-import hashlib
-from datetime import datetime, timezone
-from typing import Dict, Any, List
+import warnings
+from typing import Any, Dict, List
 
-from core.memory import (
-    get_fact,
-    delete_fact_l1,
-    write_tombstone,
-    get_tombstone,
-    get_tombstones,
-    IMMUTABLE_FACT_IDS,
-    ImmutableStateError,
-)
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def _hash_claim(claim: str) -> str:
-    """Hash of the erased claim — proof of WHAT was erased without storing it."""
-    return "sha256:" + hashlib.sha256(claim.encode("utf-8")).hexdigest()
+from core.erasure_coordinator import erase_fact_durable, erasure_log as _erasure_log, is_erased as _is_erased
 
 
 def erase_fact(
@@ -53,49 +41,37 @@ def erase_fact(
     reason: str = "data_subject_request",
     actor: str = "operator",
 ) -> Dict[str, Any]:
+    """DEPRECATED — delegates to core.erasure_coordinator.erase_fact_durable().
+
+    Kept for backward compatibility only. New code (and all production
+    tools) must call erase_fact_durable() directly to get the full job
+    report (outcome/residual/steps); this shim narrows that down to the
+    legacy result shape.
     """
-    Physically and irreversibly delete a fact (GDPR Art. 17, right to be forgotten).
-
-    Removes the fact from L0 + L1 and all dependent rows, then writes a
-    content-free tombstone to erasure_log.
-
-    Ring Zero / VALUES_CORE are non-deletable (I6) → ImmutableStateError.
-
-    Idempotent: re-erasing an already-erased fact returns erased_now=False and
-    does not duplicate the tombstone (the first erasure is the record).
-    """
-    if fact_id in IMMUTABLE_FACT_IDS:
-        raise ImmutableStateError(
-            f"erase_fact: '{fact_id}' is protected by Ring Zero (I6) and cannot be deleted"
-        )
-
-    fact = get_fact(fact_id)
-    content_hash = _hash_claim(fact["claim"]) if fact and fact.get("claim") else None
-
-    erased_now = delete_fact_l1(fact_id)
-
-    # Immutable tombstone: first erasure wins, hash preserved on repeats.
-    write_tombstone(fact_id, reason=reason, actor=actor, content_hash=content_hash)
-    tombstone = get_tombstone(fact_id)
-
+    warnings.warn(
+        "core.erasure.erase_fact() is deprecated — use "
+        "core.erasure_coordinator.erase_fact_durable() directly.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    report = erase_fact_durable(fact_id, reason=reason, actor=actor)
     return {
-        "fact_id": fact_id,
-        "erased_now": erased_now,
-        "reason": reason,
-        "actor": actor,
-        "content_hash": (tombstone or {}).get("content_hash"),
-        "erased_at": (tombstone or {}).get("erased_at", _now()),
+        "fact_id": report["fact_id"],
+        "erased_now": report["erased_now"],
+        "reason": report["reason"],
+        "actor": report["actor"],
+        "content_hash": report["content_hash"],
+        "erased_at": report["erased_at"],
+        "outcome": report["outcome"],
+        "residual": report["residual"],
     }
 
 
 def is_erased(fact_id: str) -> bool:
-    """True if a tombstone exists for the fact (it was erased)."""
-    return get_tombstone(fact_id) is not None
+    """DEPRECATED — delegates to core.erasure_coordinator.is_erased()."""
+    return _is_erased(fact_id)
 
 
 def erasure_log() -> List[Dict[str, Any]]:
-    """
-    Log of all erasures (Art. 30, record of processing). Content-free:
-    fact_id / time / reason / actor / hash — no personal data.
-    """
-    return get_tombstones()
+    """DEPRECATED — delegates to core.erasure_coordinator.erasure_log()."""
+    return _erasure_log()

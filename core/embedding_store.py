@@ -267,6 +267,33 @@ class EmbeddingStore:
         except Exception:
             return False
 
+    def purge_node(self, node_id: str) -> int:
+        """GDPR Art. 17: delete every embedding for `node_id` (all models).
+
+        Unlike invalidate_node(), this does NOT swallow errors — the erasure
+        coordinator needs an honest signal (row count or a raised exception)
+        to prove a fact's vectors are actually gone, not a best-effort True.
+        """
+        self.ensure_table()
+        conn = sqlite3.connect(self._db_path, timeout=10.0)
+        try:
+            cur = conn.execute("DELETE FROM gs_vectors WHERE node_id = ?", (node_id,))
+            conn.commit()
+            return cur.rowcount
+        finally:
+            conn.close()
+
+    def has_any(self, node_id: str) -> bool:
+        """True if `node_id` still has an embedding under ANY model."""
+        conn = sqlite3.connect(self._db_path, timeout=10.0)
+        try:
+            row = conn.execute(
+                "SELECT 1 FROM gs_vectors WHERE node_id = ? LIMIT 1", (node_id,)
+            ).fetchone()
+            return row is not None
+        finally:
+            conn.close()
+
     def is_cached(self, node_id: str, model_name: str = "default") -> bool:
         """Проверить, есть ли эмбеддинг в кэше."""
         try:

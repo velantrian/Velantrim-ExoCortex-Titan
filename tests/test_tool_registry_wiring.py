@@ -29,7 +29,7 @@ def test_all_registered_tools_are_real_handlers_not_stubs():
         assert tool.fn is not None
         # A bare `lambda: None` stub takes zero required arguments and is
         # anonymous; every real handler is either a named function from
-        # core.tool_handlers or core.erasure.erase_fact.
+        # core.tool_handlers or core.erasure_coordinator.erase_fact_durable.
         assert tool.fn.__name__ != "<lambda>", f"{name} is still a stub lambda"
 
 
@@ -43,3 +43,15 @@ def test_propose_hypothesis_tool_resolves_to_real_handler():
     registry = ToolRegistry()
     register_velantrim_tools(registry)
     assert registry.get_tool("propose_hypothesis").fn is _handlers().propose_hypothesis
+
+
+def test_forget_fact_tool_resolves_to_durable_coordinator_not_legacy_shim():
+    """P0-B: production tools must never reach core.erasure.erase_fact() (the
+    deprecated, non-atomic, non-resumable shim) — only the enforced saga
+    entrypoint, core.erasure_coordinator.erase_fact_durable().
+    """
+    from core.erasure_coordinator import erase_fact_durable
+
+    registry = ToolRegistry()
+    register_velantrim_tools(registry)
+    assert registry.get_tool("forget_fact").fn is erase_fact_durable
