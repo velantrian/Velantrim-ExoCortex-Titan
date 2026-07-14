@@ -42,6 +42,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import time
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -89,7 +90,17 @@ CREATE TABLE IF NOT EXISTS erasure_jobs (
     created_at    TEXT NOT NULL,
     updated_at    TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_erasure_jobs_fact   ON erasure_jobs(fact_id);
+-- One durable erasure saga per fact_id, globally (across processes, via a
+-- real SQLite constraint — not a process-local lock): concurrent callers
+-- racing to create a job for the same fact_id have exactly one INSERT
+-- succeed; the loser's INSERT raises IntegrityError, which
+-- _get_or_create_job() catches and turns into loading the winner's job_id,
+-- so both callers converge on the SAME saga instead of each running a
+-- private, diverging one. "IF NOT EXISTS" keeps this statement itself safe
+-- to race — this schema is applied fresh by every ErasureCoordinator()
+-- construction (see _ensure_schema()), so concurrent constructions must
+-- never raise on a plain re-apply.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_jobs_fact ON erasure_jobs(fact_id);
 CREATE INDEX IF NOT EXISTS idx_erasure_jobs_status ON erasure_jobs(status);
 
 CREATE TABLE IF NOT EXISTS erasure_job_steps (
@@ -195,28 +206,69 @@ class ErasureCoordinator:
         return row["status"] if row else PENDING
 
     def _get_or_create_job(self, fact_id: str, reason: str, actor: str) -> str:
-        # Re-running an already-COMPLETE job is safe (every step is a no-op
-        # replay and _finalize()/write_tombstone() are both idempotent), so
-        # any existing job for this fact_id — regardless of status — is
-        # resumed rather than duplicated.
+        """Get the one durable job for `fact_id`, creating it if none exists.
+
+        There must be exactly one erasure saga per fact_id, enforced by a
+        real SQLite constraint (the UNIQUE index on erasure_jobs.fact_id —
+        see _SCHEMA_SQL), not merely by this method's own check-then-insert
+        ordering. The initial `_peek_job_row` check below is only a fast
+        path for the common case (no job yet, or one already exists and this
+        is a plain resume); it does NOT by itself prevent two concurrent
+        callers (different threads, or different processes/connections)
+        from both observing "no job yet" and both proceeding to insert.
+
+        The actual safety comes from wrapping the create in one explicit
+        `BEGIN IMMEDIATE` transaction (the job row and all four step rows
+        are one atomic unit — a crash between them cannot leave a job with
+        only some of its steps present) and catching the IntegrityError a
+        concurrent loser's INSERT raises against the UNIQUE index: the loser
+        does not error out or invent a second, diverging job for the same
+        fact_id — it looks up and adopts the winner's job_id instead, so
+        every concurrent caller ends up working the SAME saga.
+
+        Re-running an already-COMPLETE job is safe (every step is a no-op
+        replay and _finalize()/write_tombstone() are both idempotent), so
+        any existing job for this fact_id — regardless of status — is
+        resumed rather than duplicated.
+        """
         existing = self._peek_job_row(fact_id)
         if existing is not None:
             return existing["job_id"]
+
         job_id = f"erj_{uuid.uuid4().hex[:16]}"
         now = _now()
         with self._jobs_db() as conn:
-            conn.execute(
-                "INSERT INTO erasure_jobs "
-                "(job_id, fact_id, reason, actor, status, created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (job_id, fact_id, reason, actor, PENDING, now, now),
-            )
-            for step_name in _STEP_NAMES:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
                 conn.execute(
-                    "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
-                    "VALUES (?, ?, ?, ?)",
-                    (f"{job_id}_{step_name}", job_id, step_name, PENDING),
+                    "INSERT INTO erasure_jobs "
+                    "(job_id, fact_id, reason, actor, status, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (job_id, fact_id, reason, actor, PENDING, now, now),
                 )
+                for step_name in _STEP_NAMES:
+                    conn.execute(
+                        "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                        "VALUES (?, ?, ?, ?)",
+                        (f"{job_id}_{step_name}", job_id, step_name, PENDING),
+                    )
+            except sqlite3.IntegrityError:
+                # Lost the create race: a concurrent caller's INSERT into
+                # erasure_jobs committed first and now owns the UNIQUE
+                # fact_id slot. Discard this attempt's (partial) insert and
+                # adopt the winner's job_id — never create a second job for
+                # the same fact_id.
+                conn.rollback()
+                row = conn.execute(
+                    "SELECT job_id FROM erasure_jobs WHERE fact_id = ?", (fact_id,)
+                ).fetchone()
+                if row is None:
+                    # Not actually a lost create-race (no winner row exists) —
+                    # a genuinely unexpected IntegrityError. Do not mask it.
+                    raise
+                return row["job_id"]
+            else:
+                conn.commit()
         return job_id
 
     def _set_job_status(self, job_id: str, status: str) -> None:
@@ -357,8 +409,74 @@ class ErasureCoordinator:
 
     # ── orchestration ─────────────────────────────────────────────────────
 
-    def _run_job(self, job_id: str) -> dict[str, Any]:
-        self._set_job_status(job_id, RUNNING)
+    def _claim_job_for_running(self, job_id: str) -> bool:
+        """Atomically claim `job_id` for execution.
+
+        A single `UPDATE ... WHERE status NOT IN (...)` is its own implicit
+        SQLite transaction (Python's sqlite3 auto-begins before DML) and is
+        serialized against every other writer to the same jobs DB file by
+        SQLite's own locking — a real cross-process mechanism, not a
+        process-local `threading.Lock`. Exactly one concurrent caller's
+        UPDATE matches and transitions the row to RUNNING; every other
+        caller's UPDATE matches zero rows (rowcount == 0) because the
+        winner's write already moved the status out of the claimable set.
+
+        Returns False if another caller already holds the claim (status is
+        already RUNNING) or the job already reached a terminal outcome
+        (COMPLETE / RESIDUAL_IMMUTABLE_DATA — nothing left to run).
+        """
+        with self._jobs_db() as conn:
+            cur = conn.execute(
+                "UPDATE erasure_jobs SET status = ?, updated_at = ? "
+                "WHERE job_id = ? AND status NOT IN (?, ?, ?)",
+                (RUNNING, _now(), job_id, RUNNING, COMPLETE, RESIDUAL_IMMUTABLE_DATA),
+            )
+        return cur.rowcount > 0
+
+    def _wait_for_job_completion(
+        self, job_id: str, timeout_s: float = 30.0
+    ) -> dict[str, Any]:
+        """Another live caller already holds the RUNNING claim for `job_id`
+        (a concurrent erase_fact_durable() call for the same fact_id) —
+        poll for it to reach a terminal status instead of redundantly
+        re-running the same steps (which could observe a fact already
+        deleted by the other runner and report a false PARTIAL/undetermined
+        for a fact that is, in truth, about to be — or already — COMPLETE).
+
+        This is what makes concurrent callers' final reports consistent:
+        both end up reading the SAME persisted terminal state rather than
+        each computing (and returning) their own, possibly stale, view.
+        """
+        deadline = time.monotonic() + timeout_s
+        job = self._load_job(job_id)
+        while job["status"] in (PENDING, RUNNING) and time.monotonic() < deadline:
+            time.sleep(0.05)
+            job = self._load_job(job_id)
+        steps = self._load_steps(job_id)
+        tombstone = (
+            self._store.get_tombstone(job["fact_id"]) if job["status"] == COMPLETE else None
+        )
+        return self._report(job, outcome=job["status"], tombstone=tombstone, steps=steps)
+
+    def _run_job(self, job_id: str, *, wait_if_running: bool = True) -> dict[str, Any]:
+        """Run every not-yet-COMPLETE step for `job_id` and finalize.
+
+        `wait_if_running=True` (the default — used by the live
+        `erase_fact_durable()` path) claims the job atomically first; a
+        concurrent caller that loses the claim waits for the winner to
+        finish instead of racing it. `wait_if_running=False` is used only by
+        `resume_incomplete_jobs()`: its whole premise is recovering jobs no
+        other live caller is currently processing (e.g. a crash-recovery
+        sweep at startup), so it force-claims unconditionally exactly like
+        this method always did before — it must never block waiting for a
+        runner that no longer exists.
+        """
+        if wait_if_running:
+            if not self._claim_job_for_running(job_id):
+                return self._wait_for_job_completion(job_id)
+        else:
+            self._set_job_status(job_id, RUNNING)
+
         job = self._load_job(job_id)
         fact_id = job["fact_id"]
 
@@ -532,7 +650,7 @@ class ErasureCoordinator:
                 "ORDER BY created_at",
                 _TERMINAL_STATUSES,
             ).fetchall()
-        return [self._run_job(row["job_id"]) for row in rows]
+        return [self._run_job(row["job_id"], wait_if_running=False) for row in rows]
 
     def get_job_report(self, fact_id: str) -> dict[str, Any] | None:
         """Introspection: the latest job's report for `fact_id`, or None if

@@ -8,6 +8,9 @@ querying that file afterwards, not by trusting the coordinator's own report.
 """
 from __future__ import annotations
 
+import threading
+import time
+
 import numpy as np
 import pytest
 
@@ -320,3 +323,305 @@ def test_prevent_fact_delete_trigger_is_restored_after_erasure(rig):
         with store._db() as conn:
             conn.execute("DELETE FROM facts WHERE fact_id = 'still_guarded'")
     assert store.get_fact("still_guarded") is not None
+
+
+def _install_real_failure_trigger(store, *, table: str, fact_id: str) -> None:
+    """Install a REAL SQLite trigger that raises on DELETE from `table` for
+    `fact_id` — a genuine DB-level failure (RAISE(ABORT, ...)), not a mock,
+    exercising the exact code path erase_fact_dependents_atomic()'s
+    docstring describes: "a present table whose DELETE raises aborts the
+    whole transaction"."""
+    trigger_name = f"simulate_{table}_delete_failure"
+    with store._db() as conn:
+        conn.execute(f"""
+            CREATE TRIGGER IF NOT EXISTS {trigger_name}
+            BEFORE DELETE ON {table}
+            WHEN OLD.fact_id = '{fact_id}'
+            BEGIN
+                SELECT RAISE(ABORT, 'SIMULATED: real DB failure mid-transaction');
+            END;
+        """)
+
+
+def test_prevent_fact_delete_trigger_restored_after_real_delete_failure(rig):
+    """Security fix: erase_fact_dependents_atomic() opens an explicit
+    BEGIN IMMEDIATE before DROP TRIGGER, so a real failure partway through
+    the dependent-table deletes rolls back BOTH the data changes AND the
+    DROP TRIGGER — not just the data. Before this fix, DROP TRIGGER
+    auto-committed standalone (Python sqlite3 does not implicitly open a
+    transaction before DDL), so conn.rollback() could not undo it, leaving
+    the whole facts table without its anti-accidental-deletion guard after
+    any transient delete failure."""
+    coordinator, store, _, _ = rig
+    store.store_fact(_fact("trig_fail", epistemic_state="Observed"))
+    with store._db() as conn:
+        conn.execute(
+            "INSERT INTO fact_versions (fact_id, version_num, claim, recorded_at) "
+            "VALUES (?, ?, ?, ?)",
+            ("trig_fail", 1, "user contact is a@b.com", "2026-01-01T00:00:00Z"),
+        )
+    _install_real_failure_trigger(store, table="fact_versions", fact_id="trig_fail")
+
+    with pytest.raises(Exception):  # sqlite3.IntegrityError from our RAISE(ABORT, ...)
+        store.erase_fact_dependents_atomic("trig_fail")
+
+    # Rollback must have restored BOTH the data ...
+    assert store.get_fact("trig_fail") is not None
+    with store._db() as conn:
+        fv_count = conn.execute(
+            "SELECT COUNT(*) FROM fact_versions WHERE fact_id = ?", ("trig_fail",)
+        ).fetchone()[0]
+    assert fv_count == 1
+
+    # ... AND the prevent_fact_delete guard, verified via sqlite_master (not
+    # merely assumed), and proven enforcing against a DIFFERENT fact.
+    with store._db() as conn:
+        row = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='trigger' "
+            "AND name='prevent_fact_delete'"
+        ).fetchone()
+    assert row is not None, "prevent_fact_delete missing after a failed erasure transaction"
+
+    store.store_fact(_fact("still_guarded_after_failure", epistemic_state="Observed"))
+    store._release_stray_locks()
+    with pytest.raises(Exception):
+        with store._db() as conn:
+            conn.execute("DELETE FROM facts WHERE fact_id = 'still_guarded_after_failure'")
+    assert store.get_fact("still_guarded_after_failure") is not None
+
+    # Retry after the failed attempt must still work cleanly.
+    with store._db() as conn:
+        conn.execute("DROP TRIGGER IF EXISTS simulate_fact_versions_delete_failure")
+    result = store.erase_fact_dependents_atomic("trig_fail")
+    assert result["tables"]["facts"]["deleted"] == 1
+    assert result["tables"]["fact_versions"]["deleted"] == 1
+    assert store.get_fact("trig_fail") is None
+    with store._db() as conn:
+        row = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='trigger' "
+            "AND name='prevent_fact_delete'"
+        ).fetchone()
+    assert row is not None
+
+
+def test_prevent_fact_delete_trigger_restored_after_failure_in_other_dependent_table(rig):
+    """The fix must not be special-cased to fact_versions — any dependent
+    table's failure must leave the trigger correctly restored."""
+    coordinator, store, _, _ = rig
+    store.store_fact(_fact("trig_fail_prov", epistemic_state="Observed"))
+    raw_id = store.store_raw_text("some raw text", source_type="user_input")
+    with store._db() as conn:
+        conn.execute(
+            "INSERT INTO l0_fact_provenance (id, raw_id, fact_id) VALUES (?, ?, ?)",
+            ("prov1", raw_id, "trig_fail_prov"),
+        )
+    _install_real_failure_trigger(store, table="l0_fact_provenance", fact_id="trig_fail_prov")
+
+    with pytest.raises(Exception):
+        store.erase_fact_dependents_atomic("trig_fail_prov")
+
+    assert store.get_fact("trig_fail_prov") is not None
+    with store._db() as conn:
+        row = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='trigger' "
+            "AND name='prevent_fact_delete'"
+        ).fetchone()
+    assert row is not None
+
+
+def test_prevent_fact_delete_trigger_sql_matches_canonical_guard_after_failure(rig):
+    """Not just present — the restored trigger's SQL must match migration
+    009's canonical guard exactly, not an approximation."""
+    coordinator, store, _, _ = rig
+    store.store_fact(_fact("trig_fail_sql", epistemic_state="Observed"))
+    with store._db() as conn:
+        conn.execute(
+            "INSERT INTO fact_versions (fact_id, version_num, claim, recorded_at) "
+            "VALUES (?, ?, ?, ?)",
+            ("trig_fail_sql", 1, "user contact is a@b.com", "2026-01-01T00:00:00Z"),
+        )
+    _install_real_failure_trigger(store, table="fact_versions", fact_id="trig_fail_sql")
+
+    with pytest.raises(Exception):
+        store.erase_fact_dependents_atomic("trig_fail_sql")
+
+    with store._db() as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='trigger' "
+            "AND name='prevent_fact_delete'"
+        ).fetchone()
+    assert row is not None
+    # sqlite_master.sql echoes back the statement without "IF NOT EXISTS"
+    # and without a trailing semicolon — normalize both sides the same way
+    # before comparing so this only fails on a REAL guard-body mismatch.
+    def _normalize(sql: str) -> str:
+        return " ".join(sql.replace("IF NOT EXISTS", "").split()).rstrip(";").strip()
+
+    canonical = _normalize(memory.SQLiteGraphStore._PREVENT_FACT_DELETE_TRIGGER_SQL)
+    actual = _normalize(row["sql"])
+    assert actual == canonical
+
+
+def test_ring_zero_protection_not_weakened_by_trigger_fix(rig):
+    """The explicit-transaction trigger fix must not touch Ring Zero (I6)
+    protection — still refused before any transaction is even opened."""
+    coordinator, store, _, _ = rig
+    with pytest.raises(memory.ImmutableStateError):
+        store.erase_fact_dependents_atomic("RING_ZERO")
+    with pytest.raises(memory.ImmutableStateError):
+        coordinator.erase_fact_durable("RING_ZERO")
+
+
+# ── concurrency: one durable saga per fact_id, even under a real race ──────
+
+def _seed_one(store, embeddings, ngram, fact_id):
+    _seed_all_layers(store, embeddings, ngram, fact_id, "a fact erased under a concurrent race")
+
+
+def test_concurrent_erase_fact_durable_calls_converge_on_one_job(rig):
+    """Security fix: erasure_jobs.fact_id has a UNIQUE index, and
+    _get_or_create_job() recovers from a lost create-race by adopting the
+    winner's job_id — so two callers racing for the SAME fact_id end up
+    with exactly one job row, one job_id, and (thanks to the RUNNING claim
+    in _run_job()) the SAME final, consistent outcome."""
+    coordinator, store, embeddings, ngram = rig
+    _seed_one(store, embeddings, ngram, "race1")
+
+    # Widen the race window deterministically: force both callers to
+    # observe "no existing job" before either one proceeds to create it.
+    orig_peek = coordinator._peek_job_row
+
+    def slow_peek(fact_id):
+        result = orig_peek(fact_id)
+        if result is None:
+            time.sleep(0.15)
+        return result
+
+    coordinator._peek_job_row = slow_peek
+
+    results: dict[str, dict] = {}
+
+    def call(name):
+        results[name] = coordinator.erase_fact_durable("race1", reason="test", actor=name)
+
+    t1 = threading.Thread(target=call, args=("A",))
+    t2 = threading.Thread(target=call, args=("B",))
+    t1.start()
+    time.sleep(0.02)
+    t2.start()
+    t1.join(timeout=10)
+    t2.join(timeout=10)
+
+    assert "A" in results and "B" in results
+    assert results["A"]["job_id"] == results["B"]["job_id"]
+    assert results["A"]["outcome"] == results["B"]["outcome"] == COMPLETE
+
+    with coordinator._jobs_db() as conn:
+        job_rows = conn.execute(
+            "SELECT job_id FROM erasure_jobs WHERE fact_id = ?", ("race1",)
+        ).fetchall()
+        step_rows = conn.execute(
+            "SELECT step_name FROM erasure_job_steps WHERE job_id = ?",
+            (results["A"]["job_id"],),
+        ).fetchall()
+    assert len(job_rows) == 1, f"expected exactly 1 job row, got {len(job_rows)}"
+    step_names = {r["step_name"] for r in step_rows}
+    assert len(step_rows) == 4
+    assert len(step_names) == 4
+
+    # No zombie PARTIAL/FAILED job left over after a successful concurrent
+    # COMPLETE — the resume sweep must find nothing left to do.
+    assert coordinator.resume_incomplete_jobs() == []
+    assert coordinator.is_erased("race1") is True
+
+
+def test_concurrent_erase_fact_durable_across_two_coordinator_instances(rig):
+    """Repeat the race with two SEPARATE ErasureCoordinator instances
+    sharing one jobs DB file — simulating two processes, not just two
+    threads of one coordinator object — to prove the protection is a real
+    SQLite constraint/transaction, not an in-process object lock."""
+    coordinator, store, embeddings, ngram = rig
+    _seed_one(store, embeddings, ngram, "race2")
+
+    coordinator2 = ErasureCoordinator(
+        store=make_store(store.db_path),
+        embedding_store=EmbeddingStore(embeddings._db_path),
+        ngram_index=NGramIndex(ngram.db_path),
+        jobs_db_path=coordinator.jobs_db_path,
+    )
+
+    for c in (coordinator, coordinator2):
+        orig_peek = c._peek_job_row
+
+        def make_slow(orig):
+            def slow_peek(fact_id):
+                result = orig(fact_id)
+                if result is None:
+                    time.sleep(0.15)
+                return result
+            return slow_peek
+
+        c._peek_job_row = make_slow(orig_peek)
+
+    results: dict[str, dict] = {}
+
+    def call(c, name):
+        results[name] = c.erase_fact_durable("race2", reason="test", actor=name)
+
+    t1 = threading.Thread(target=call, args=(coordinator, "coord1"))
+    t2 = threading.Thread(target=call, args=(coordinator2, "coord2"))
+    t1.start()
+    time.sleep(0.02)
+    t2.start()
+    t1.join(timeout=10)
+    t2.join(timeout=10)
+
+    assert results["coord1"]["job_id"] == results["coord2"]["job_id"]
+    assert results["coord1"]["outcome"] == results["coord2"]["outcome"] == COMPLETE
+
+    with coordinator._jobs_db() as conn:
+        job_rows = conn.execute(
+            "SELECT job_id FROM erasure_jobs WHERE fact_id = ?", ("race2",)
+        ).fetchall()
+    assert len(job_rows) == 1
+
+    assert coordinator.resume_incomplete_jobs() == []
+    assert coordinator2.resume_incomplete_jobs() == []
+    assert coordinator.is_erased("race2") is True
+
+
+def test_get_or_create_job_after_complete_returns_existing_job(rig):
+    """A retry after COMPLETE must adopt the same job, not create a second
+    one — even calling the internal method directly."""
+    coordinator, store, embeddings, ngram = rig
+    _seed_one(store, embeddings, ngram, "retry_complete")
+
+    first = coordinator.erase_fact_durable("retry_complete", reason="test", actor="A")
+    assert first["outcome"] == COMPLETE
+
+    job_id_again = coordinator._get_or_create_job("retry_complete", "test", "B")
+    assert job_id_again == first["job_id"]
+    with coordinator._jobs_db() as conn:
+        count = conn.execute(
+            "SELECT COUNT(*) FROM erasure_jobs WHERE fact_id = ?", ("retry_complete",)
+        ).fetchone()[0]
+    assert count == 1
+
+
+def test_get_or_create_job_after_residual_immutable_data_returns_existing_job(rig):
+    """Same guarantee for the RESIDUAL_IMMUTABLE_DATA terminal outcome."""
+    coordinator, store, embeddings, ngram = rig
+    raw_id = store.store_raw_text("the original raw text", source_type="user_input")
+    store.store_fact(_fact("retry_residual"))
+    store.link_raw_to_fact(raw_id, "retry_residual")
+
+    first = coordinator.erase_fact_durable("retry_residual", reason="test", actor="A")
+    assert first["outcome"] == RESIDUAL_IMMUTABLE_DATA
+
+    job_id_again = coordinator._get_or_create_job("retry_residual", "test", "B")
+    assert job_id_again == first["job_id"]
+    with coordinator._jobs_db() as conn:
+        count = conn.execute(
+            "SELECT COUNT(*) FROM erasure_jobs WHERE fact_id = ?", ("retry_residual",)
+        ).fetchone()[0]
+    assert count == 1

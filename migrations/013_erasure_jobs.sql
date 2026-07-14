@@ -15,10 +15,19 @@
 -- attempt look, from `is_erased()`, like a successful one.
 --
 -- `erasure_job_steps` records one row per storage backend touched
--- (l1_same_db / embeddings / ngram / raw_check), each independently
+-- (determine_raw / l1_same_db / embeddings / ngram), each independently
 -- PENDING → RUNNING → COMPLETE | FAILED, so a crash between backends
 -- leaves an accurate, resumable record of exactly what has and has
 -- not been proven deleted.
+--
+-- SECURITY FIX (post-review): erasure_jobs.fact_id carries a UNIQUE index —
+-- there must be exactly one durable erasure saga per fact_id, enforced by
+-- a real SQLite constraint (works across processes, not just threads
+-- within one), not by application-level check-then-insert timing.
+-- core.erasure_coordinator.ErasureCoordinator._get_or_create_job() relies
+-- on this: a concurrent caller that loses the create race gets an
+-- IntegrityError on its INSERT and adopts the winner's job_id instead of
+-- creating a second, diverging job for the same fact.
 
 CREATE TABLE IF NOT EXISTS erasure_jobs (
     job_id        TEXT PRIMARY KEY,
@@ -34,7 +43,7 @@ CREATE TABLE IF NOT EXISTS erasure_jobs (
     updated_at    TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_erasure_jobs_fact   ON erasure_jobs(fact_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_jobs_fact ON erasure_jobs(fact_id);
 CREATE INDEX IF NOT EXISTS idx_erasure_jobs_status ON erasure_jobs(status);
 
 CREATE TABLE IF NOT EXISTS erasure_job_steps (

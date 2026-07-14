@@ -76,6 +76,16 @@ class ImmutableStateError(Exception):
     pass
 
 
+class TriggerReconstructionError(RuntimeError):
+    """Raised when the `prevent_fact_delete` safety guard is missing after a
+    failed erasure transaction AND the emergency in-place reconstruction of
+    the canonical trigger also failed. Distinct from the original DELETE
+    error it is chained from (`raise ... from original_exc`) — the two must
+    never be conflated, since this one means the anti-accidental-deletion
+    guard is verifiably absent from the database, not just that one erasure
+    attempt failed."""
+
+
 @dataclass
 class SupersedeCasResult:
     """Результат SQLiteGraphStore.supersede_fact_cas() — см. класс для деталей.
@@ -471,21 +481,91 @@ class SQLiteGraphStore(GraphStore):
             (table,),
         ).fetchone() is not None
 
+    @staticmethod
+    def _prevent_fact_delete_trigger_exists(conn: sqlite3.Connection) -> bool:
+        return conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'trigger' "
+            "AND name = 'prevent_fact_delete'",
+        ).fetchone() is not None
+
+    def _reconstruct_prevent_fact_delete_or_raise(
+        self, conn: sqlite3.Connection, *, original_exc: Exception
+    ) -> None:
+        """Emergency path: `prevent_fact_delete` is missing after a rolled-back
+        erasure transaction (should not happen once callers issue an explicit
+        `BEGIN` before `DROP TRIGGER`, but this is the last line of defense
+        against any SQLite/driver edge case that could still leave it absent).
+        Recreates the canonical guard in its OWN, separate transaction — never
+        inside the transaction that just failed. If this also fails, the
+        surfaced error is a distinct `TriggerReconstructionError`, chained from
+        (never replacing/hiding) the original DELETE failure, so callers can
+        never mistake "the DELETE step you asked about failed" for "and also
+        the DB-wide deletion guard is gone."
+        """
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute(self._PREVENT_FACT_DELETE_TRIGGER_SQL)
+            conn.commit()
+        except Exception as reconstruct_exc:
+            try:
+                conn.rollback()
+            except Exception:  # noqa: BLE001 — best-effort, we're already raising
+                pass
+            raise TriggerReconstructionError(
+                "CRITICAL: prevent_fact_delete guard is missing after a failed "
+                "erasure transaction AND emergency reconstruction also failed "
+                f"({reconstruct_exc!r}). The database has NO protection against "
+                "direct DELETE of non-Collapsed/Deprecated facts until this is "
+                f"manually repaired. Original erasure failure: {original_exc!r}."
+            ) from original_exc
+        if not self._prevent_fact_delete_trigger_exists(conn):
+            raise TriggerReconstructionError(
+                "CRITICAL: prevent_fact_delete guard is still missing after "
+                "emergency reconstruction reported success — sqlite_master "
+                "does not show it. Original erasure failure: "
+                f"{original_exc!r}."
+            ) from original_exc
+
     def erase_fact_dependents_atomic(self, fact_id: str) -> dict[str, Any]:
         """Physically delete `fact_id` and every dependent row in THIS SQLite
         file (relations both directions, living context, affordances, L0
         provenance links, mentions, bi-temporal fact_versions, FTS index),
-        as ONE atomic transaction, with an honest per-table result.
+        as ONE explicit, atomic transaction, with an honest per-table result.
 
         Unlike a bare try/except-pass sweep, table absence ("applicable":
         False — an older DB without that migration applied) and a real
         delete failure are never conflated: a missing table is fine, but a
         present table whose DELETE raises aborts the whole transaction —
         the erasure coordinator must never report a clean sweep it cannot
-        prove. `prevent_fact_delete` (migration 009) is lifted for the
-        duration of this transaction only; on rollback it is restored as
-        part of the same DDL rollback (SQLite DDL is transactional), and on
-        commit it is explicitly recreated before this method returns.
+        prove.
+
+        `prevent_fact_delete` (migration 009) lifecycle — the mechanism, not
+        an assumption: Python's `sqlite3` module does NOT implicitly open a
+        transaction before a DDL statement (`CREATE`/`DROP TRIGGER`), so a
+        bare `conn.execute("DROP TRIGGER ...")` as the first statement would
+        autocommit standalone, outside any transaction `conn.rollback()`
+        could later undo — "SQLite DDL is transactional" is true at the
+        engine level but does NOT protect a lone auto-committed statement
+        from an earlier version of this method. This method therefore opens
+        an EXPLICIT `BEGIN IMMEDIATE` before `DROP TRIGGER`, so the drop, every
+        dependent-table delete, the `facts` delete, and the trigger's
+        recreation are all genuinely one transaction:
+
+          - On any exception: `conn.rollback()`, then verify via
+            `sqlite_master` that `prevent_fact_delete` exists again. It
+            should, since it was dropped inside the same now-rolled-back
+            transaction — but if it is somehow still missing, an emergency
+            reconstruction runs in its own separate transaction. If THAT also
+            fails, a distinct `TriggerReconstructionError` is raised (chained
+            from, never replacing, the original error) rather than letting
+            the DELETE failure imply a false "and the guard is fine" — this
+            method never returns or lets an exception escape while the
+            trigger's presence is unproven.
+          - On success: `conn.commit()`, then the same `sqlite_master` check
+            runs again — this method does not return a result implying
+            success unless `prevent_fact_delete`'s presence is verified,
+            not merely assumed from having executed a `CREATE TRIGGER`
+            statement.
 
         Returns {"fact_present_before": bool, "tables": {table: {"applicable":
         bool, "deleted": int}}}. Ring Zero / VALUES_CORE are protected (I6) →
@@ -500,38 +580,56 @@ class SQLiteGraphStore(GraphStore):
         self._release_stray_locks()
         tables: dict[str, dict[str, Any]] = {}
         with self._db() as conn:
-            conn.execute("DROP TRIGGER IF EXISTS prevent_fact_delete")
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                conn.execute("DROP TRIGGER IF EXISTS prevent_fact_delete")
 
-            present = conn.execute(
-                "SELECT 1 FROM facts WHERE fact_id = ?", (fact_id,)
-            ).fetchone() is not None
+                present = conn.execute(
+                    "SELECT 1 FROM facts WHERE fact_id = ?", (fact_id,)
+                ).fetchone() is not None
 
-            def _purge(table: str, where_sql: str, params: tuple) -> None:
-                if not self._table_exists(conn, table):
-                    tables[table] = {"applicable": False, "deleted": 0}
-                    return
-                cur = conn.execute(f"DELETE FROM {table} WHERE {where_sql}", params)  # noqa: S608
-                tables[table] = {"applicable": True, "deleted": cur.rowcount}
+                def _purge(table: str, where_sql: str, params: tuple) -> None:
+                    if not self._table_exists(conn, table):
+                        tables[table] = {"applicable": False, "deleted": 0}
+                        return
+                    cur = conn.execute(f"DELETE FROM {table} WHERE {where_sql}", params)  # noqa: S608
+                    tables[table] = {"applicable": True, "deleted": cur.rowcount}
 
-            # FK ON DELETE CASCADE is not relied upon — PRAGMA foreign_keys is OFF
-            # on the runtime connection, so every dependent is removed explicitly.
-            _purge("relations", "from_fact_id = ? OR to_fact_id = ?", (fact_id, fact_id))
-            for _tbl in (
-                "l0_fact_provenance",
-                "fact_living_context",
-                "fact_affordances",
-                "fact_affordance_tokens",
-                "fact_mentions",
-                "fact_versions",
-            ):
-                _purge(_tbl, "fact_id = ?", (fact_id,))
-            _purge("raw_derivation_chain", "derived_fact_id = ?", (fact_id,))
-            _purge("facts_fts", "fact_id = ?", (fact_id,))
+                # FK ON DELETE CASCADE is not relied upon — PRAGMA foreign_keys is
+                # OFF on the runtime connection, so every dependent is removed
+                # explicitly.
+                _purge("relations", "from_fact_id = ? OR to_fact_id = ?", (fact_id, fact_id))
+                for _tbl in (
+                    "l0_fact_provenance",
+                    "fact_living_context",
+                    "fact_affordances",
+                    "fact_affordance_tokens",
+                    "fact_mentions",
+                    "fact_versions",
+                ):
+                    _purge(_tbl, "fact_id = ?", (fact_id,))
+                _purge("raw_derivation_chain", "derived_fact_id = ?", (fact_id,))
+                _purge("facts_fts", "fact_id = ?", (fact_id,))
 
-            cur = conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
-            tables["facts"] = {"applicable": True, "deleted": cur.rowcount}
+                cur = conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
+                tables["facts"] = {"applicable": True, "deleted": cur.rowcount}
 
-            conn.execute(self._PREVENT_FACT_DELETE_TRIGGER_SQL)
+                conn.execute(self._PREVENT_FACT_DELETE_TRIGGER_SQL)
+            except Exception as exc:  # noqa: BLE001 — must inspect, then re-raise
+                conn.rollback()
+                if not self._prevent_fact_delete_trigger_exists(conn):
+                    self._reconstruct_prevent_fact_delete_or_raise(conn, original_exc=exc)
+                raise
+            else:
+                conn.commit()
+                if not self._prevent_fact_delete_trigger_exists(conn):
+                    raise TriggerReconstructionError(
+                        "CRITICAL: erase_fact_dependents_atomic committed "
+                        f"successfully for '{fact_id}' but prevent_fact_delete "
+                        "is not present in sqlite_master afterward — refusing "
+                        "to report a result while the deletion guard's "
+                        "presence is unproven."
+                    )
         self._l0_del(fact_id)
         return {"fact_present_before": present, "tables": tables}
 
