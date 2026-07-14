@@ -1405,7 +1405,18 @@ class SQLiteGraphStore(GraphStore):
     _ESM_LADDER = ("Observed", "Hypothesized", "Supported", "Validated")
 
     def promote_esm_to(self, fact_id: str, target: str, by: str = "promote_esm") -> bool:
-        """Пошагово повышает факт до target по канонической лестнице ESM."""
+        """Пошагово повышает факт до target по канонической лестнице ESM.
+
+        P0-D scope note: this generic ladder-walker is used by call sites
+        outside graduated-promotion/consolidation (world_skills_ingest,
+        CognitiveStore.transition, test fixtures) purely as an ESM-legality
+        helper, so it intentionally still ends its walk with a plain
+        transition_esm() into 'Validated' — NOT validate_and_promote().
+        Routing every one of those callers through TruthGate is out of
+        scope here (that would be variant B's global lockdown); only
+        core/promotion_policy.py and core/consolidation_engine.py were
+        named for this fix and are handled at their own call sites instead.
+        """
         if target not in ESM_STATES:
             raise ValueError(f"promote_esm_to: недопустимое состояние '{target}'")
         fact = self.get_fact(fact_id)

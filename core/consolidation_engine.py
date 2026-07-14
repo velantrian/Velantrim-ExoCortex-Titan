@@ -2,6 +2,14 @@
 ConsolidationEngine — ночная/micro-batch консолидация Observed → Validated.
 
 Спринт 1 (system docx v2). Вызывается из SleepTimeWorker и POST /memory/consolidate.
+
+P0-D (belt-and-suspenders): confidence/claim-length/utility-gate ниже — это
+pre-vetting этого движка, они решают, что факт СТАЛ КАНДИДАТОМ на Validated.
+Финальный переход Supported → Validated идёт ТОЛЬКО через
+store.validate_and_promote() (TruthGate + CAS) — см.
+_promote_to_validated_via_truthgate(). Кандидат, прошедший локальные пороги,
+но не TruthGate (например, недостаточно evidence_refs для своего
+CognitiveMode), остаётся Supported, а не молча становится Validated.
 """
 
 from __future__ import annotations
@@ -39,6 +47,13 @@ class ConsolidationReport:
     skipped_low_confidence: int = 0
     skipped_short_claim: int = 0
     errors: int = 0
+    # P0-D: a candidate that cleared this engine's own confidence/utility
+    # gate but was rejected by validate_and_promote()'s TruthGate (e.g. too
+    # few evidence_refs) — counted separately so scanned == promoted_total +
+    # skipped_* + errors + rejected_by_truthgate always holds. The fact is
+    # left at 'Supported' (see run()'s Supported rescan) and re-attempted
+    # on the next run, not stranded.
+    rejected_by_truthgate: int = 0
     fact_ids: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -50,6 +65,7 @@ class ConsolidationReport:
             "skipped_low_confidence": self.skipped_low_confidence,
             "skipped_short_claim": self.skipped_short_claim,
             "errors": self.errors,
+            "rejected_by_truthgate": self.rejected_by_truthgate,
             "fact_ids": self.fact_ids[:50],
         }
 
@@ -99,8 +115,24 @@ class ConsolidationEngine:
             report.errors += 1
             return report
 
-        report.scanned = len(observed)
-        batch = observed[: self.max_batch]
+        candidates = observed
+        if self.prefer_validated:
+            # P0-D (review finding): _promote_to_validated_via_truthgate()
+            # durably advances a fact to 'Supported' via promote_esm_to()
+            # BEFORE validate_and_promote() runs — if TruthGate then rejects
+            # it (e.g. no evidence_refs yet), the fact is no longer Observed
+            # and this scan would never see it again even after evidence is
+            # added later. Rescanning Supported facts every run gives those
+            # candidates a retry path instead of stranding them.
+            try:
+                stuck_supported = self._store.get_all_facts(epistemic_state="Supported")
+            except Exception as exc:  # noqa: BLE001
+                logger.error("ConsolidationEngine: Supported rescan failed: %s", exc)
+                stuck_supported = []
+            candidates = observed + stuck_supported
+
+        report.scanned = len(candidates)
+        batch = candidates[: self.max_batch]
 
         # V8.8: corroboration boost — несколько независимых наблюдений
         # одного и того же → взаимное усиление confidence
@@ -129,9 +161,7 @@ class ConsolidationEngine:
             target = "Validated" if self.prefer_validated else "Hypothesized"
             try:
                 if target == "Validated":
-                    ok = self._store.promote_to_validated(
-                        fact_id, by="consolidation_engine"
-                    )
+                    ok = self._promote_to_validated_via_truthgate(fact_id)
                 else:
                     ok = self._store.transition_esm(
                         fact_id, target, by="consolidation_engine"
@@ -143,6 +173,8 @@ class ConsolidationEngine:
                         report.promoted_hypothesized += 1
                     report.fact_ids.append(fact_id)
                     self._refresh_checksum(fact_id)
+                elif target == "Validated":
+                    report.rejected_by_truthgate += 1
             except ValueError:
                 try:
                     ok = self._store.transition_esm(
@@ -161,6 +193,25 @@ class ConsolidationEngine:
 
         logger.info("ConsolidationEngine: %s", report.to_dict())
         return report
+
+    def _promote_to_validated_via_truthgate(self, fact_id: str) -> bool:
+        """P0-D: reach 'Validated' with the final hop enforced by TruthGate
+        + CAS, not a bare ESM-legality transition.
+
+        promote_esm_to(..., "Supported") walks Observed -> Hypothesized ->
+        Supported exactly as before (pre-vetting only — this engine's own
+        confidence/utility gate already decided the fact is a candidate).
+        The last, security-sensitive hop into 'Validated' goes through
+        store.validate_and_promote() instead of store.promote_to_validated()
+        — a candidate that fails TruthGate (e.g. too little evidence for
+        its CognitiveMode) is left at 'Supported', not silently promoted.
+        Raises ValueError exactly like the old path did on an illegal jump
+        (e.g. a concurrent transition moved the fact somewhere the ladder
+        can't reach Supported from) — callers already handle that.
+        """
+        if not self._store.promote_esm_to(fact_id, "Supported", by="consolidation_engine"):
+            return False
+        return self._store.validate_and_promote(fact_id, by="consolidation_engine").passed
 
     def _passes_utility_gate(self, fact: dict) -> bool:
         """
