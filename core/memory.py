@@ -1668,6 +1668,36 @@ class SQLiteGraphStore(GraphStore):
             self._l0_put(fact_id, cached)
         return True
 
+    # ── update_fact_metadata ─────────────────────────────────────────────────
+
+    def update_fact_metadata(self, fact_id: str, metadata: dict) -> bool:
+        """Обновить только поле metadata для существующего факта.
+
+        Не затрагивает epistemic_state, history или другие поля.
+        Используется _refresh_checksum() после успешного ESM-перехода,
+        чтобы записать обновлённый content_checksum без попытки создать
+        новый факт через store_fact() (которая отклоняет не-Observed состояния).
+
+        Возвращает True если строка найдена и обновлена, False если нет.
+        """
+        metadata_json = json.dumps(metadata)
+        with self._db() as conn:
+            cur = conn.execute(
+                "UPDATE facts SET metadata = ? WHERE fact_id = ?",
+                (metadata_json, fact_id),
+            )
+            updated = cur.rowcount > 0
+
+        if updated:
+            # Синхронизируем L0-кеш, чтобы следующий get_fact вернул свежие данные
+            cached = self._l0_get(fact_id)
+            if cached is not None:
+                cached = copy.deepcopy(cached)
+                cached["metadata"] = metadata
+                self._l0_put(fact_id, cached)
+
+        return updated
+
     # ── transition_esm ──────────────────────────────────────────────────────
 
     def transition_esm(

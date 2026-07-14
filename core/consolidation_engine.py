@@ -299,7 +299,14 @@ class ConsolidationEngine:
         return result
 
     def _refresh_checksum(self, fact_id: str) -> None:
-        """Обновить content_checksum после смены epistemic_state."""
+        """Обновить content_checksum после смены epistemic_state.
+
+        Использует store.update_fact_metadata() вместо store.store_fact(),
+        чтобы обновить только поле metadata, не затрагивая epistemic_state.
+        store_fact() отклоняет любой факт не в состоянии 'Observed' (кроме
+        Ring Zero), что приводило к ложным report.errors после каждого
+        успешного перевода.
+        """
         from core.fact_integrity import attach_integrity_metadata
 
         fact = self._store.get_fact(fact_id)
@@ -312,8 +319,7 @@ class ConsolidationEngine:
             confidence=float(fact.get("confidence", 0.5)),
             epistemic_state=fact.get("epistemic_state", "Observed"),
         )
-        fact["metadata"] = meta
-        self._store.store_fact(fact)
+        self._store.update_fact_metadata(fact_id, meta)
 
 
 def run_consolidation(store: SQLiteGraphStore | None = None) -> Any:
