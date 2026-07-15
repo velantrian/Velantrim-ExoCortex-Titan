@@ -348,10 +348,26 @@ class SQLiteGraphStore(GraphStore):
                         reason       TEXT NOT NULL DEFAULT 'user_request',
                         claim_hash   TEXT NOT NULL,
                         erased_at    TEXT NOT NULL,
-                        request_ref  TEXT DEFAULT NULL
+                        request_ref  TEXT DEFAULT NULL,
+                        job_id       TEXT DEFAULT NULL
                     )
                 """)
                 _upgrade_erasure_log_schema(conn)
+                # Post-review hotfix (migration 014): job_id scopes
+                # write_tombstone()'s idempotency check to a specific
+                # erasure_jobs generation instead of "any tombstone ever
+                # recorded for this fact_id" — a fact_id that gets
+                # recreated and durably re-erased needs its OWN new
+                # tombstone row, not a silent no-op because an earlier
+                # generation already has one. NULL for legacy rows written
+                # before this column existed.
+                erasure_log_cols = {
+                    r[1] for r in conn.execute("PRAGMA table_info(erasure_log)").fetchall()
+                }
+                if "job_id" not in erasure_log_cols:
+                    conn.execute(
+                        "ALTER TABLE erasure_log ADD COLUMN job_id TEXT DEFAULT NULL"
+                    )
                 conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_erasure_user
                     ON erasure_log(user_id, erased_at)
@@ -359,6 +375,10 @@ class SQLiteGraphStore(GraphStore):
                 conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_erasure_fact
                     ON erasure_log(fact_id)
+                """)
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_erasure_job
+                    ON erasure_log(job_id)
                 """)
                 # TASK-09: derived_from на facts (указывает на l0_raw_memory.raw_id)
                 if "derived_from" not in existing_cols:
@@ -645,22 +665,40 @@ class SQLiteGraphStore(GraphStore):
 
     def write_tombstone(
         self, fact_id: str, *, reason: str, actor: str,
-        content_hash: str | None,
+        content_hash: str | None, job_id: str | None = None,
     ) -> None:
-        """Record a content-free erasure tombstone (GDPR Art. 30)."""
+        """Record a content-free erasure tombstone (GDPR Art. 30).
+
+        Idempotency is scoped to `job_id` when the caller provides one (the
+        erasure coordinator always does, since migration 014 / post-review
+        hotfix): only a tombstone already recorded for THIS specific
+        durable job/generation is treated as "already written". A fact_id
+        that was durably erased, later recreated, and durably re-erased
+        under a NEW generation's job_id gets its OWN new tombstone row —
+        the old idempotency check ("any tombstone ever for this fact_id")
+        would have silently skipped it, leaving Art. 30's audit trail
+        wrongly frozen on the first generation. `job_id=None` (legacy
+        callers) preserves the original fact_id-wide idempotency.
+        """
         import uuid
         self._release_stray_locks()
         claim_hash = content_hash or ""
         with self._db() as conn:
-            exists = conn.execute(
-                "SELECT 1 FROM erasure_log WHERE fact_id = ? LIMIT 1", (fact_id,)
-            ).fetchone()
+            if job_id is not None:
+                exists = conn.execute(
+                    "SELECT 1 FROM erasure_log WHERE fact_id = ? AND job_id = ? LIMIT 1",
+                    (fact_id, job_id),
+                ).fetchone()
+            else:
+                exists = conn.execute(
+                    "SELECT 1 FROM erasure_log WHERE fact_id = ? LIMIT 1", (fact_id,)
+                ).fetchone()
             if exists:
                 return
             conn.execute(
                 "INSERT INTO erasure_log "
-                "(erasure_id, fact_id, user_id, reason, claim_hash, erased_at) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
+                "(erasure_id, fact_id, user_id, reason, claim_hash, erased_at, job_id) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (
                     f"era_{uuid.uuid4().hex[:12]}",
                     fact_id,
@@ -668,6 +706,7 @@ class SQLiteGraphStore(GraphStore):
                     reason,
                     claim_hash,
                     _now(),
+                    job_id,
                 ),
             )
 
@@ -2659,9 +2698,9 @@ def erase_fact_dependents_atomic(fact_id: str) -> dict[str, Any]:
 
 
 def write_tombstone(fact_id: str, *, reason: str, actor: str,
-                    content_hash: str | None) -> None:
+                    content_hash: str | None, job_id: str | None = None) -> None:
     _GLOBAL_STORE.write_tombstone(
-        fact_id, reason=reason, actor=actor, content_hash=content_hash)
+        fact_id, reason=reason, actor=actor, content_hash=content_hash, job_id=job_id)
 
 
 def get_tombstone(fact_id: str) -> dict | None:

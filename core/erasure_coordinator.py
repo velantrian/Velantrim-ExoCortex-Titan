@@ -46,11 +46,19 @@ import time
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from core import memory
-from core.embedding_store import EmbeddingStore
-from core.ngram_index import NGramIndex
+from core.ngram_index import NGramIndex, get_global_ngram
+
+if TYPE_CHECKING:
+    # core.embedding_store depends on numpy — an optional dependency for
+    # base/server installs that don't need embeddings. Only imported here
+    # for static type-checking (mypy); never evaluated at runtime because
+    # `from __future__ import annotations` (above) makes every annotation a
+    # string. The real, lazy runtime import lives in
+    # ErasureCoordinator._get_embeddings().
+    from core.embedding_store import EmbeddingStore
 
 PENDING = "PENDING"
 RUNNING = "RUNNING"
@@ -81,6 +89,7 @@ _SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS erasure_jobs (
     job_id        TEXT PRIMARY KEY,
     fact_id       TEXT NOT NULL,
+    generation    INTEGER NOT NULL DEFAULT 1,
     reason        TEXT NOT NULL,
     actor         TEXT NOT NULL,
     status        TEXT NOT NULL DEFAULT 'PENDING',
@@ -90,18 +99,6 @@ CREATE TABLE IF NOT EXISTS erasure_jobs (
     created_at    TEXT NOT NULL,
     updated_at    TEXT NOT NULL
 );
--- One durable erasure saga per fact_id, globally (across processes, via a
--- real SQLite constraint — not a process-local lock): concurrent callers
--- racing to create a job for the same fact_id have exactly one INSERT
--- succeed; the loser's INSERT raises IntegrityError, which
--- _get_or_create_job() catches and turns into loading the winner's job_id,
--- so both callers converge on the SAME saga instead of each running a
--- private, diverging one. "IF NOT EXISTS" keeps this statement itself safe
--- to race — this schema is applied fresh by every ErasureCoordinator()
--- construction (see _ensure_schema()), so concurrent constructions must
--- never raise on a plain re-apply.
-CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_jobs_fact ON erasure_jobs(fact_id);
-CREATE INDEX IF NOT EXISTS idx_erasure_jobs_status ON erasure_jobs(status);
 
 CREATE TABLE IF NOT EXISTS erasure_job_steps (
     step_id       TEXT PRIMARY KEY,
@@ -113,6 +110,35 @@ CREATE TABLE IF NOT EXISTS erasure_job_steps (
     finished_at   TEXT,
     UNIQUE(job_id, step_name)
 );
+"""
+
+# Index/constraint DDL is kept separate from _SCHEMA_SQL and applied AFTER
+# the generation-column upgrade in _ensure_schema() — idx_erasure_jobs_fact_
+# generation references the `generation` column, which a legacy (pre-014)
+# DB won't have until the ALTER TABLE right before this runs.
+#
+# Post-review hotfix (migration 014): a fact_id can be erased, then
+# recreated (re-ingested under the same ID) and erased again — this must
+# be possible any number of times, with the full history preserved. The
+# OLD, unconditional UNIQUE(fact_id) index (migration 013) made that
+# impossible: it permitted exactly one erasure_jobs row per fact_id, ever.
+#
+#   - idx_erasure_jobs_fact_active: a PARTIAL unique index, scoped to
+#     non-terminal statuses only, enforces "at most one ACTIVE saga per
+#     fact_id at a time" (the same concurrency guarantee migration 013
+#     provided) while allowing multiple TERMINAL (COMPLETE /
+#     RESIDUAL_IMMUTABLE_DATA) rows — one per generation — to coexist as
+#     immutable history.
+#   - idx_erasure_jobs_fact_generation: UNIQUE(fact_id, generation) is a
+#     data-integrity backstop against two rows ever claiming the same
+#     generation number for the same fact_id.
+_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_erasure_jobs_status ON erasure_jobs(status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_jobs_fact_active
+    ON erasure_jobs(fact_id)
+    WHERE status NOT IN ('COMPLETE', 'RESIDUAL_IMMUTABLE_DATA');
+CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_jobs_fact_generation
+    ON erasure_jobs(fact_id, generation);
 CREATE INDEX IF NOT EXISTS idx_erasure_job_steps_job ON erasure_job_steps(job_id);
 """
 
@@ -143,10 +169,43 @@ class ErasureCoordinator:
         jobs_db_path: str | None = None,
     ) -> None:
         self._store = store or memory._GLOBAL_STORE
-        self._embeddings = embedding_store or EmbeddingStore()
-        self._ngram = ngram_index or NGramIndex()
+        # Lazy: core.embedding_store depends on numpy, which is optional for
+        # base/server installs — see _get_embeddings(). Explicit injection
+        # (tests, or a caller that already has one) is used immediately;
+        # otherwise the real EmbeddingStore is constructed on first actual
+        # use, not at construction time.
+        self._embeddings = embedding_store
+        # Use the SAME configured global NGramIndex instance the running
+        # server/pipeline already registered via set_global_ngram() — e.g.
+        # server.py points VELANTRIM_NGRAM_DB at ./data/ngram_house.db and
+        # registers that instance. Constructing a bare NGramIndex() here
+        # would silently default to core.ngram_index's OWN module-level
+        # default path (./data/velantrim_ngram.db) instead, and "clean up"
+        # a completely different, unrelated ngram file — never actually
+        # touching what the running server is really using.
+        self._ngram = ngram_index or get_global_ngram()
         self.jobs_db_path = jobs_db_path or self._store.db_path
         self._ensure_schema()
+
+    def _get_embeddings(self) -> EmbeddingStore:
+        """Construct the embeddings backend on first actual use.
+
+        core.embedding_store imports numpy at module level — an optional
+        dependency not every install needs. Deferring the import to here
+        (instead of importing EmbeddingStore at the top of this module)
+        means `import core.erasure_coordinator` — and therefore
+        `core.erasure` and ToolRegistry, which both transitively import
+        this module — succeeds even where numpy isn't installed. The cost
+        of numpy genuinely being absent is deferred to the one place that
+        would need it: if the import fails here, the caller (_run_embeddings)
+        catches it like any other step failure and reports an honest FAILED
+        step, never a hard crash and never a silent, unproven
+        "applicable: false".
+        """
+        if self._embeddings is None:
+            from core.embedding_store import EmbeddingStore
+            self._embeddings = EmbeddingStore()
+        return self._embeddings
 
     # ── schema / low-level job ledger (own connection — same DB file as
     #    `facts`, but independent of SQLiteGraphStore's connection cache) ──
@@ -168,14 +227,34 @@ class ErasureCoordinator:
     def _ensure_schema(self) -> None:
         with self._jobs_db() as conn:
             conn.executescript(_SCHEMA_SQL)
+            # Upgrade a legacy (pre-014) DB in place: it has erasure_jobs
+            # without a `generation` column and the OLD, unconditional
+            # UNIQUE(fact_id) index. A fresh DB already has the column from
+            # _SCHEMA_SQL above, so the ALTER TABLE below is a no-op
+            # (caught as "duplicate column") — this must run in this exact
+            # order, since idx_erasure_jobs_fact_generation references the
+            # `generation` column.
+            try:
+                conn.execute(
+                    "ALTER TABLE erasure_jobs ADD COLUMN generation "
+                    "INTEGER NOT NULL DEFAULT 1"
+                )
+            except sqlite3.OperationalError:
+                pass
+            conn.execute("DROP INDEX IF EXISTS idx_erasure_jobs_fact")
+            conn.executescript(_INDEX_SQL)
 
     # ── job ledger helpers ───────────────────────────────────────────────
 
     def _peek_job_row(self, fact_id: str) -> dict[str, Any] | None:
+        """The latest-generation erasure_jobs row for `fact_id`, or None if
+        no erasure was ever attempted. Ordered by `generation` first (the
+        authoritative sequence — see migration 014) with `created_at` only
+        as a tie-breaker."""
         with self._jobs_db() as conn:
             row = conn.execute(
                 "SELECT * FROM erasure_jobs WHERE fact_id = ? "
-                "ORDER BY created_at DESC LIMIT 1",
+                "ORDER BY generation DESC, created_at DESC LIMIT 1",
                 (fact_id,),
             ).fetchone()
         return dict(row) if row else None
@@ -206,35 +285,47 @@ class ErasureCoordinator:
         return row["status"] if row else PENDING
 
     def _get_or_create_job(self, fact_id: str, reason: str, actor: str) -> str:
-        """Get the one durable job for `fact_id`, creating it if none exists.
+        """Get the one ACTIVE durable job for `fact_id`, opening a new
+        generation if none is active.
 
-        There must be exactly one erasure saga per fact_id, enforced by a
-        real SQLite constraint (the UNIQUE index on erasure_jobs.fact_id —
-        see _SCHEMA_SQL), not merely by this method's own check-then-insert
-        ordering. The initial `_peek_job_row` check below is only a fast
-        path for the common case (no job yet, or one already exists and this
-        is a plain resume); it does NOT by itself prevent two concurrent
-        callers (different threads, or different processes/connections)
-        from both observing "no job yet" and both proceeding to insert.
+        At most one ACTIVE (non-terminal) saga per fact_id may exist at a
+        time, enforced by a real SQLite constraint (the partial UNIQUE
+        index on erasure_jobs.fact_id, scoped to non-terminal statuses —
+        see _SCHEMA_SQL/_INDEX_SQL and migration 014), not merely by this
+        method's own check-then-insert ordering. The initial
+        `_peek_job_row` check below is only a fast path for the common case
+        (no job yet, or an active one already exists and this is a plain
+        resume); it does NOT by itself prevent two concurrent callers
+        (different threads, or different processes/connections) from both
+        observing "no active job" and both proceeding to insert.
 
-        The actual safety comes from wrapping the create in one explicit
-        `BEGIN IMMEDIATE` transaction (the job row and all four step rows
-        are one atomic unit — a crash between them cannot leave a job with
-        only some of its steps present) and catching the IntegrityError a
-        concurrent loser's INSERT raises against the UNIQUE index: the loser
-        does not error out or invent a second, diverging job for the same
-        fact_id — it looks up and adopts the winner's job_id instead, so
-        every concurrent caller ends up working the SAME saga.
+        A PRIOR generation that already reached a terminal outcome
+        (COMPLETE / RESIDUAL_IMMUTABLE_DATA) is never adopted or reused —
+        erase_fact_durable() only calls this once it has already decided a
+        NEW generation is actually needed (no active job existed, or the
+        latest one is terminal and the underlying data has reappeared).
+        That prior row is immutable history and is left untouched; the new
+        row gets `generation = prior_generation + 1` (or 1 if none exists).
 
-        Re-running an already-COMPLETE job is safe (every step is a no-op
+        The actual concurrency safety comes from wrapping the create in one
+        explicit `BEGIN IMMEDIATE` transaction (the job row and all four
+        step rows are one atomic unit) and catching the IntegrityError a
+        concurrent loser's INSERT raises against the partial UNIQUE index:
+        the loser does not error out or invent a second, diverging active
+        job for the same fact_id — it looks up and adopts the winner's
+        (new-generation) job_id instead, so every concurrent caller ends up
+        working the SAME saga.
+
+        Re-running an already-active job is safe (every step is a no-op
         replay and _finalize()/write_tombstone() are both idempotent), so
-        any existing job for this fact_id — regardless of status — is
-        resumed rather than duplicated.
+        an existing ACTIVE job for this fact_id is resumed rather than
+        duplicated.
         """
         existing = self._peek_job_row(fact_id)
-        if existing is not None:
+        if existing is not None and existing["status"] not in _TERMINAL_STATUSES:
             return existing["job_id"]
 
+        next_generation = (existing["generation"] + 1) if existing is not None else 1
         job_id = f"erj_{uuid.uuid4().hex[:16]}"
         now = _now()
         with self._jobs_db() as conn:
@@ -242,9 +333,9 @@ class ErasureCoordinator:
             try:
                 conn.execute(
                     "INSERT INTO erasure_jobs "
-                    "(job_id, fact_id, reason, actor, status, created_at, updated_at) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (job_id, fact_id, reason, actor, PENDING, now, now),
+                    "(job_id, fact_id, generation, reason, actor, status, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (job_id, fact_id, next_generation, reason, actor, PENDING, now, now),
                 )
                 for step_name in _STEP_NAMES:
                     conn.execute(
@@ -254,17 +345,42 @@ class ErasureCoordinator:
                     )
             except sqlite3.IntegrityError:
                 # Lost the create race: a concurrent caller's INSERT into
-                # erasure_jobs committed first and now owns the UNIQUE
-                # fact_id slot. Discard this attempt's (partial) insert and
-                # adopt the winner's job_id — never create a second job for
-                # the same fact_id.
+                # erasure_jobs committed first. Two distinct unique indexes
+                # can be the one that tripped — either is a lost race, never
+                # a reason to invent a second job for this fact_id:
+                #
+                #   idx_erasure_jobs_fact_generation (fact_id, generation):
+                #   both callers read the same prior `existing` row and
+                #   computed the same candidate generation number. The
+                #   winner's row is identified by generation = next_generation
+                #   regardless of its CURRENT status — by the time this
+                #   loser's rollback + recovery SELECT run, the winner may
+                #   already have finished `_run_job()` end-to-end and be
+                #   COMPLETE (a fast saga on a small DB easily completes
+                #   within the microseconds this loser spends handling its
+                #   own failed INSERT + rollback). A recovery query that
+                #   filtered out COMPLETE/RESIDUAL_IMMUTABLE_DATA rows here
+                #   would find nothing and wrongly re-raise — this was a
+                #   genuine, reproducible race exposed by concurrent-erasure
+                #   regression tests on a recreated fact_id.
+                #
+                #   idx_erasure_jobs_fact_active (fact_id, partial on
+                #   non-terminal status): the winner used a DIFFERENT
+                #   generation number than ours (a staler `existing` read on
+                #   our side) but is still non-terminal — matched by the
+                #   status filter.
                 conn.rollback()
                 row = conn.execute(
-                    "SELECT job_id FROM erasure_jobs WHERE fact_id = ?", (fact_id,)
+                    "SELECT job_id FROM erasure_jobs WHERE fact_id = ? "
+                    "AND (generation = ? OR status NOT IN (?, ?)) "
+                    "ORDER BY generation DESC LIMIT 1",
+                    (fact_id, next_generation, COMPLETE, RESIDUAL_IMMUTABLE_DATA),
                 ).fetchone()
                 if row is None:
-                    # Not actually a lost create-race (no winner row exists) —
-                    # a genuinely unexpected IntegrityError. Do not mask it.
+                    # Not actually a lost create-race (no winner row exists
+                    # at the generation we attempted, and no other active
+                    # row either) — a genuinely unexpected IntegrityError.
+                    # Do not mask it.
                     raise
                 return row["job_id"]
             else:
@@ -374,9 +490,13 @@ class ErasureCoordinator:
     def _run_embeddings(self, job_id: str, fact_id: str) -> None:
         self._step_start(job_id, "embeddings")
         try:
-            deleted = self._embeddings.purge_node(fact_id)
-            still_present = self._embeddings.has_any(fact_id)
-        except Exception as exc:  # noqa: BLE001
+            embeddings = self._get_embeddings()
+            deleted = embeddings.purge_node(fact_id)
+            still_present = embeddings.has_any(fact_id)
+        except Exception as exc:  # noqa: BLE001 — includes the embeddings
+            # backend being genuinely unavailable (e.g. numpy not
+            # installed): an honest FAILED step (-> PARTIAL job), never a
+            # crash and never a silent, unproven "applicable: false".
             self._step_finish(job_id, "embeddings", FAILED, {"error": str(exc)})
             self._set_job_error(job_id, f"embeddings: {exc}")
             return
@@ -516,6 +636,7 @@ class ErasureCoordinator:
                 reason=job["reason"],
                 actor=job["actor"],
                 content_hash=job["content_hash"],
+                job_id=job["job_id"],
             )
             tombstone = self._store.get_tombstone(job["fact_id"])
         elif all_complete and residual == "raw_original_present":
@@ -565,6 +686,42 @@ class ErasureCoordinator:
 
     # ── public API ────────────────────────────────────────────────────────
 
+    def _residual_data_present(self, fact_id: str) -> bool:
+        """True if data this saga is responsible for erasing has (re)appeared
+        for `fact_id` — a `facts` row exists again, or the embeddings/ngram
+        indexes still (or again) hold an entry.
+
+        Used to decide whether a durable job's terminal outcome (COMPLETE /
+        RESIDUAL_IMMUTABLE_DATA) can still be trusted as "genuinely,
+        currently erased", or whether the underlying data has been
+        recreated since (e.g. the fact_id was re-ingested) and a NEW
+        generation's saga must run instead of returning a stale cached
+        report — post-review hotfix for both the legacy-tombstone
+        short-circuit and the fact_id-reuse gap.
+
+        If a backend cannot even be checked, this fails toward "residual
+        might be present" (never toward silently trusting a stale terminal
+        report) — "can't verify absence" is not the same as "verified
+        absent", the same principle already applied to the raw-origin
+        tri-state (residual="undetermined").
+        """
+        try:
+            if self._store.get_fact_durable(fact_id) is not None:
+                return True
+        except sqlite3.OperationalError:
+            return True
+        try:
+            if self._get_embeddings().has_any(fact_id):
+                return True
+        except Exception:  # noqa: BLE001 — includes the backend being unavailable
+            return True
+        try:
+            if self._ngram.contains(fact_id):
+                return True
+        except Exception:  # noqa: BLE001
+            return True
+        return False
+
     def erase_fact_durable(
         self,
         fact_id: str,
@@ -574,12 +731,34 @@ class ErasureCoordinator:
     ) -> dict[str, Any]:
         """The one enforced GDPR Art. 17 erasure entrypoint.
 
-        Idempotent: a fact already proven COMPLETE, or already resolved to
-        RESIDUAL_IMMUTABLE_DATA, returns the cached report without
-        re-attempting anything. A PENDING/RUNNING/PARTIAL/FAILED prior job
-        for the same fact_id is resumed in place — steps already COMPLETE
-        are not re-run, so a crash between storage backends never repeats
-        already-proven work (nor claims success it hasn't re-verified).
+        Idempotent: a fact whose LATEST durable generation already proved
+        COMPLETE, or resolved to RESIDUAL_IMMUTABLE_DATA, returns that
+        cached report without re-attempting anything — but ONLY once
+        _residual_data_present() confirms the underlying data has not
+        reappeared since. Two post-review security fixes hinge on this:
+
+          - A bare `erasure_log` tombstone is never, by itself, treated as
+            proof of a durable COMPLETE. It must be corroborated by a
+            durable erasure_jobs row that itself reached COMPLETE — a
+            legacy tombstone (written by the pre-coordinator
+            core.erasure.erase_fact() shim, or any other path this
+            coordinator didn't run) with no matching durable job is a
+            legacy/unverified receipt, not proof. Falling through to a real
+            job (re-)cleans any residual embeddings/ngram entries and
+            returns an honest, typically non-COMPLETE outcome, WITHOUT
+            overwriting the original legacy tombstone (write_tombstone() is
+            scoped per job_id — see core.memory.SQLiteGraphStore).
+          - A fact_id that was durably erased, then recreated (re-ingested
+            under the same ID) and given new embeddings/ngram entries, is
+            NOT permanently shielded by its old, terminal generation. A NEW
+            generation's job is created and run (see _get_or_create_job()
+            and migration 014's generation-aware schema), and the prior
+            generation's row is left untouched as immutable history.
+
+        A PENDING/RUNNING/PARTIAL/FAILED active job for the same fact_id is
+        resumed in place — steps already COMPLETE are not re-run, so a
+        crash between storage backends never repeats already-proven work
+        (nor claims success it hasn't re-verified).
         """
         if fact_id in memory.IMMUTABLE_FACT_IDS:
             raise memory.ImmutableStateError(
@@ -587,37 +766,41 @@ class ErasureCoordinator:
                 "(I6) and cannot be deleted"
             )
 
-        tombstone = self._store.get_tombstone(fact_id)
-        if tombstone is not None:
-            job_row = self._peek_job_row(fact_id)
-            job = job_row or {
-                "fact_id": fact_id, "job_id": None, "reason": tombstone.get("reason"),
-                "actor": tombstone.get("actor"), "residual": None,
-            }
-            report = self._report(job, outcome=COMPLETE, tombstone=tombstone)
-            report["erased_now"] = False  # already erased BEFORE this call
-            return report
+        latest_job = self._peek_job_row(fact_id)
 
-        existing_job = self._peek_job_row(fact_id)
-        if existing_job is not None and existing_job["status"] == RESIDUAL_IMMUTABLE_DATA:
-            # Terminal and permanent — residual won't change from a re-run,
-            # so skip straight to the cached report instead of redoing work.
-            steps = self._load_steps(existing_job["job_id"])
-            report = self._report(
-                existing_job, outcome=RESIDUAL_IMMUTABLE_DATA, tombstone=None, steps=steps
-            )
-            report["erased_now"] = False
-            return report
+        if latest_job is not None and latest_job["status"] in _TERMINAL_STATUSES:
+            steps = self._load_steps(latest_job["job_id"])
+            steps_genuinely_complete = all(s["status"] == COMPLETE for s in steps)
+            if steps_genuinely_complete and not self._residual_data_present(fact_id):
+                tombstone = (
+                    self._store.get_tombstone(fact_id)
+                    if latest_job["status"] == COMPLETE else None
+                )
+                if latest_job["status"] == COMPLETE and tombstone is None:
+                    # A job row claims COMPLETE but no tombstone actually
+                    # exists — the report must never claim erased_now=False
+                    # (already erased) without a real tombstone to point to.
+                    # Treat exactly like "residual reappeared": open a new
+                    # generation rather than assert an unproven COMPLETE.
+                    pass
+                else:
+                    report = self._report(
+                        latest_job, outcome=latest_job["status"],
+                        tombstone=tombstone, steps=steps,
+                    )
+                    report["erased_now"] = False  # already erased BEFORE this call
+                    return report
+            # Either residual data has reappeared under this fact_id since
+            # the last generation's terminal outcome, or that generation's
+            # own record doesn't hold up to re-verification — fall through
+            # to open/run a new generation below.
 
-        if existing_job is None:
-            try:
-                fact_exists = self._store.get_fact_durable(fact_id) is not None
-            except sqlite3.OperationalError:
-                # Can't even tell if it exists — do NOT fabricate NOT_FOUND.
-                # Fall through to a real job; determine_raw() will hit the
-                # same error and honestly record residual="undetermined".
-                fact_exists = True
-            if not fact_exists:
+        if latest_job is None or latest_job["status"] in _TERMINAL_STATUSES:
+            # About to (maybe) open a brand new generation — confirm there
+            # is actually something to erase first (a fresh facts row, or
+            # residual embeddings/ngram entries with no facts row at all,
+            # e.g. the P1-A legacy-tombstone scenario).
+            if not self._residual_data_present(fact_id):
                 return {
                     "fact_id": fact_id,
                     "job_id": None,
@@ -665,9 +848,19 @@ class ErasureCoordinator:
         return self._report(job, outcome=job["status"], tombstone=tombstone, steps=steps)
 
     def is_erased(self, fact_id: str) -> bool:
-        """True only if a COMPLETE erasure tombstone exists — an attempt
-        receipt (PENDING/RUNNING/PARTIAL/FAILED) is never enough."""
-        return self._store.get_tombstone(fact_id) is not None
+        """True only if the LATEST durable generation for `fact_id` reached
+        COMPLETE (a real tombstone exists) AND no residual data has
+        reappeared since. A bare `erasure_log` tombstone is never, by
+        itself, sufficient — see erase_fact_durable()'s docstring for why:
+        a legacy tombstone with no corroborating durable COMPLETE job, or a
+        real-but-stale tombstone left over from a fact_id that was later
+        recreated, must not report True here either."""
+        latest_job = self._peek_job_row(fact_id)
+        if latest_job is None or latest_job["status"] != COMPLETE:
+            return False
+        if self._store.get_tombstone(fact_id) is None:
+            return False
+        return not self._residual_data_present(fact_id)
 
     def erasure_log(self) -> list[dict[str, Any]]:
         """Art. 30 record of processing — content-free completion

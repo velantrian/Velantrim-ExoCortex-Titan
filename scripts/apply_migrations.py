@@ -39,6 +39,7 @@ MIGRATIONS = [
     (11, BASE_DIR / "migrations" / "011_claim_type_modality.sql"),
     (12, BASE_DIR / "migrations" / "012_crystal_memory.sql"),
     (13, BASE_DIR / "migrations" / "013_erasure_jobs.sql"),
+    (14, BASE_DIR / "migrations" / "014_erasure_job_generations.sql"),
 ]
 
 LATEST_VERSION = max(v for v, _ in MIGRATIONS)
@@ -155,6 +156,17 @@ def dry_run_on_copy(db_path: Path, migrations: list[tuple[int, Path]]) -> bool:
                     filtered = [l for l in raw_sql.split("\n")
                                 if "ALTER TABLE facts ADD COLUMN derived_from" not in l]
                     raw_sql = "\n".join(filtered)
+                if version == 14:
+                    if column_exists(conn, "erasure_jobs", "generation"):
+                        raw_sql = "\n".join(
+                            l for l in raw_sql.split("\n")
+                            if "ALTER TABLE erasure_jobs ADD COLUMN generation" not in l
+                        )
+                    if column_exists(conn, "erasure_log", "job_id"):
+                        raw_sql = "\n".join(
+                            l for l in raw_sql.split("\n")
+                            if "ALTER TABLE erasure_log ADD COLUMN job_id" not in l
+                        )
 
                 conn.executescript(raw_sql)
                 conn.execute(f"PRAGMA user_version = {version}")
@@ -261,6 +273,27 @@ def apply_migrations(
                         line for line in raw_sql.split("\n")
                         if f"ADD COLUMN {col}" not in line
                     )
+
+        # 014: erasure_jobs.generation / erasure_log.job_id may already
+        # exist if ErasureCoordinator's own runtime schema self-healing
+        # (core/erasure_coordinator.py::_ensure_schema()) added them to this
+        # DB before the operator got around to running this migration —
+        # same non-idempotent-ALTER problem as 010/011 above.
+        if version == 14:
+            if column_exists(conn, "erasure_jobs", "generation"):
+                print("   ℹ️  Колонка erasure_jobs.generation уже существует — "
+                      "пропускаю ALTER")
+                raw_sql = "\n".join(
+                    line for line in raw_sql.split("\n")
+                    if "ALTER TABLE erasure_jobs ADD COLUMN generation" not in line
+                )
+            if column_exists(conn, "erasure_log", "job_id"):
+                print("   ℹ️  Колонка erasure_log.job_id уже существует — "
+                      "пропускаю ALTER")
+                raw_sql = "\n".join(
+                    line for line in raw_sql.split("\n")
+                    if "ALTER TABLE erasure_log ADD COLUMN job_id" not in line
+                )
 
         try:
             conn.executescript(raw_sql)

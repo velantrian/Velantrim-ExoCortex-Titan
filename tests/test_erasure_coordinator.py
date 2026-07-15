@@ -590,17 +590,20 @@ def test_concurrent_erase_fact_durable_across_two_coordinator_instances(rig):
     assert coordinator.is_erased("race2") is True
 
 
-def test_get_or_create_job_after_complete_returns_existing_job(rig):
-    """A retry after COMPLETE must adopt the same job, not create a second
-    one — even calling the internal method directly."""
+def test_public_retry_after_complete_returns_cached_job_without_new_generation(rig):
+    """The PUBLIC entrypoint, erase_fact_durable(), must adopt the cached
+    COMPLETE report and never open a new generation when nothing has
+    changed (no residual data reappeared) — this is the idempotency
+    contract callers actually rely on."""
     coordinator, store, embeddings, ngram = rig
     _seed_one(store, embeddings, ngram, "retry_complete")
 
     first = coordinator.erase_fact_durable("retry_complete", reason="test", actor="A")
     assert first["outcome"] == COMPLETE
 
-    job_id_again = coordinator._get_or_create_job("retry_complete", "test", "B")
-    assert job_id_again == first["job_id"]
+    again = coordinator.erase_fact_durable("retry_complete", reason="test", actor="B")
+    assert again["job_id"] == first["job_id"]
+    assert again["outcome"] == COMPLETE
     with coordinator._jobs_db() as conn:
         count = conn.execute(
             "SELECT COUNT(*) FROM erasure_jobs WHERE fact_id = ?", ("retry_complete",)
@@ -608,7 +611,7 @@ def test_get_or_create_job_after_complete_returns_existing_job(rig):
     assert count == 1
 
 
-def test_get_or_create_job_after_residual_immutable_data_returns_existing_job(rig):
+def test_public_retry_after_residual_immutable_data_returns_cached_job(rig):
     """Same guarantee for the RESIDUAL_IMMUTABLE_DATA terminal outcome."""
     coordinator, store, embeddings, ngram = rig
     raw_id = store.store_raw_text("the original raw text", source_type="user_input")
@@ -618,10 +621,278 @@ def test_get_or_create_job_after_residual_immutable_data_returns_existing_job(ri
     first = coordinator.erase_fact_durable("retry_residual", reason="test", actor="A")
     assert first["outcome"] == RESIDUAL_IMMUTABLE_DATA
 
-    job_id_again = coordinator._get_or_create_job("retry_residual", "test", "B")
-    assert job_id_again == first["job_id"]
+    again = coordinator.erase_fact_durable("retry_residual", reason="test", actor="B")
+    assert again["job_id"] == first["job_id"]
+    assert again["outcome"] == RESIDUAL_IMMUTABLE_DATA
     with coordinator._jobs_db() as conn:
         count = conn.execute(
             "SELECT COUNT(*) FROM erasure_jobs WHERE fact_id = ?", ("retry_residual",)
         ).fetchone()[0]
     assert count == 1
+
+
+def test_internal_get_or_create_job_opens_new_generation_after_terminal(rig):
+    """Post-review hotfix: _get_or_create_job() is an internal primitive
+    that always opens the NEXT generation when the latest one is terminal
+    — it is erase_fact_durable() (the public entrypoint), not this method,
+    that decides whether a new generation is actually warranted (via
+    _residual_data_present()). Calling it directly after a COMPLETE job
+    must NOT return the same job_id — that was the exact P1-B bug
+    (fact_id reuse permanently blocked by the old unconditional
+    UNIQUE(fact_id) index)."""
+    coordinator, store, embeddings, ngram = rig
+    _seed_one(store, embeddings, ngram, "direct_call_new_gen")
+
+    first = coordinator.erase_fact_durable("direct_call_new_gen", reason="test", actor="A")
+    assert first["outcome"] == COMPLETE
+
+    second_job_id = coordinator._get_or_create_job("direct_call_new_gen", "test", "B")
+    assert second_job_id != first["job_id"]
+    with coordinator._jobs_db() as conn:
+        rows = conn.execute(
+            "SELECT job_id, generation, status FROM erasure_jobs "
+            "WHERE fact_id = ? ORDER BY generation",
+            ("direct_call_new_gen",),
+        ).fetchall()
+    assert len(rows) == 2
+    assert rows[0]["generation"] == 1
+    assert rows[0]["job_id"] == first["job_id"]
+    assert rows[1]["generation"] == 2
+    assert rows[1]["job_id"] == second_job_id
+
+
+# ── P0-B post-merge hotfix: mandatory regression tests (Section 6) ──────────
+#
+# P1-A / P1-B / P1-C / P2 were all found in production review after PR #24
+# merged. Each test below reproduces the exact failure shape via the public
+# API (or, where the bug is about process wiring / import-time behavior,
+# via a real subprocess) and asserts the fixed, honest behavior.
+
+def test_legacy_tombstone_with_residual_data_is_not_trusted_as_complete(rig):
+    """P1-A regression: a bare `erasure_log` tombstone with NO corresponding
+    durable `erasure_jobs` row (written by a pre-coordinator path, e.g. the
+    deprecated core.erasure.erase_fact() shim) must never be trusted as
+    proof of a durable COMPLETE. erase_fact_durable() must re-verify and
+    re-clean any residual embeddings/ngram data instead of returning a false
+    early COMPLETE, and must never overwrite the original legacy tombstone."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "legacy_tombstone_fact"
+
+    # Legacy tombstone: job_id=None, no erasure_jobs row exists at all.
+    store.write_tombstone(
+        fact_id, reason="legacy_shim", actor="legacy", content_hash="deadbeef",
+    )
+    legacy_tombstone = store.get_tombstone(fact_id)
+    assert legacy_tombstone is not None
+    with coordinator._jobs_db() as conn:
+        job_count = conn.execute(
+            "SELECT COUNT(*) FROM erasure_jobs WHERE fact_id = ?", (fact_id,)
+        ).fetchone()[0]
+    assert job_count == 0
+
+    # The legacy shim never touched embeddings/ngram — residual entries
+    # remain, with no `facts` row (exactly the P1-A repro shape).
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "residual claim text")
+    assert embeddings.has_any(fact_id) is True
+    assert ngram.contains(fact_id) is True
+
+    report = coordinator.erase_fact_durable(fact_id)
+
+    # The bug was returning COMPLETE immediately with residuals untouched.
+    # The fix must actually clean the residuals before this call returns.
+    assert embeddings.has_any(fact_id) is False
+    assert ngram.contains(fact_id) is False
+    assert report["outcome"] in (COMPLETE, PARTIAL, FAILED, RESIDUAL_IMMUTABLE_DATA)
+
+    # A NEW durable job now exists for this fact_id, distinct from the
+    # legacy tombstone's (nonexistent) job_id.
+    with coordinator._jobs_db() as conn:
+        job_count = conn.execute(
+            "SELECT COUNT(*) FROM erasure_jobs WHERE fact_id = ?", (fact_id,)
+        ).fetchone()[0]
+    assert job_count == 1
+
+    # The original legacy tombstone row is preserved untouched — append-only
+    # Art. 30 audit trail, never overwritten.
+    with coordinator._jobs_db() as conn:
+        legacy_rows = conn.execute(
+            "SELECT erasure_id FROM erasure_log WHERE fact_id = ? AND job_id IS NULL",
+            (fact_id,),
+        ).fetchall()
+    assert len(legacy_rows) == 1
+    assert legacy_rows[0]["erasure_id"] == legacy_tombstone["erasure_id"]
+
+
+def test_fact_recreated_under_same_fact_id_gets_new_generation_via_public_api(rig):
+    """P1-B regression, exercised end-to-end through the PUBLIC API (not the
+    internal _get_or_create_job() primitive): once a fact_id is durably
+    erased, recreated with new data, and durably re-erased, the SECOND call
+    must open and complete a NEW generation — deleting the new fact row and
+    new embeddings/ngram entries — while the FIRST generation's job row and
+    tombstone remain untouched as immutable history."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "reused_fact_public_api"
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "user phone is 555-1234")
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == COMPLETE
+    first_tombstone = store.get_tombstone(fact_id)
+    assert first_tombstone is not None
+
+    # Fact re-created under the SAME fact_id, with fresh embeddings/ngram.
+    _seed_all_layers(store, embeddings, ngram, fact_id, "user phone is 555-9999 (new)")
+    assert store.get_fact(fact_id) is not None
+    assert embeddings.has_any(fact_id) is True
+    assert ngram.contains(fact_id) is True
+
+    second = coordinator.erase_fact_durable(fact_id, reason="test", actor="B")
+
+    assert second["outcome"] == COMPLETE
+    assert second["job_id"] != first["job_id"]
+    assert store.get_fact(fact_id) is None
+    assert embeddings.has_any(fact_id) is False
+    assert ngram.contains(fact_id) is False
+
+    with coordinator._jobs_db() as conn:
+        rows = conn.execute(
+            "SELECT job_id, generation, status FROM erasure_jobs "
+            "WHERE fact_id = ? ORDER BY generation", (fact_id,),
+        ).fetchall()
+    assert len(rows) == 2
+    assert rows[0]["job_id"] == first["job_id"] and rows[0]["status"] == COMPLETE
+    assert rows[1]["job_id"] == second["job_id"] and rows[1]["status"] == COMPLETE
+
+    # Both generations get their OWN tombstone row — the first is preserved,
+    # not overwritten by the second.
+    with coordinator._jobs_db() as conn:
+        tombstone_job_ids = {
+            r["job_id"] for r in conn.execute(
+                "SELECT job_id FROM erasure_log WHERE fact_id = ?", (fact_id,)
+            ).fetchall()
+        }
+    assert tombstone_job_ids == {first["job_id"], second["job_id"]}
+
+
+def test_concurrent_erase_calls_on_recreated_fact_id_converge_on_one_new_generation(rig):
+    """Combine the P1-B fix with the existing concurrency guarantee: two
+    threads racing erase_fact_durable() on a fact_id whose PRIOR generation
+    is already COMPLETE, but whose data was just recreated, must converge on
+    exactly ONE new generation's job_id — not two, and not the stale first
+    generation's."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "reused_fact_race"
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "first generation data")
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="setup")
+    assert first["outcome"] == COMPLETE
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "second generation data")
+
+    orig_peek = coordinator._peek_job_row
+
+    def slow_peek(fid):
+        result = orig_peek(fid)
+        if result is not None and result["job_id"] == first["job_id"]:
+            time.sleep(0.15)
+        return result
+
+    coordinator._peek_job_row = slow_peek
+
+    results: dict[str, dict] = {}
+
+    def call(name):
+        results[name] = coordinator.erase_fact_durable(fact_id, reason="test", actor=name)
+
+    t1 = threading.Thread(target=call, args=("A",))
+    t2 = threading.Thread(target=call, args=("B",))
+    t1.start()
+    time.sleep(0.02)
+    t2.start()
+    t1.join(timeout=10)
+    t2.join(timeout=10)
+
+    assert "A" in results and "B" in results
+    assert results["A"]["job_id"] == results["B"]["job_id"]
+    assert results["A"]["job_id"] != first["job_id"]
+    assert results["A"]["outcome"] == results["B"]["outcome"] == COMPLETE
+
+    with coordinator._jobs_db() as conn:
+        rows = conn.execute(
+            "SELECT job_id, generation FROM erasure_jobs WHERE fact_id = ? ORDER BY generation",
+            (fact_id,),
+        ).fetchall()
+    assert len(rows) == 2, f"expected exactly 2 generations, got {len(rows)}"
+    assert rows[1]["generation"] == 2
+    assert rows[1]["job_id"] == results["A"]["job_id"]
+    assert store.get_fact(fact_id) is None
+    assert embeddings.has_any(fact_id) is False
+    assert ngram.contains(fact_id) is False
+
+
+def test_production_wiring_cleans_the_server_registered_ngram_instance(tmp_path, monkeypatch):
+    """P1-C regression: ErasureCoordinator(), constructed the PRODUCTION way
+    (no explicit ngram_index=), must clean the SAME NGramIndex instance the
+    running server registered via set_global_ngram() — not a second,
+    independently-defaulted instance pointing at a different SQLite file.
+
+    core.ngram_index and core.erasure_coordinator are resolved dynamically
+    via importlib here, rather than via this file's top-level imports:
+    other test modules in this suite (e.g. test_server_integration.py)
+    delete and re-import `core.*` modules mid-session to get a clean
+    server startup, which would otherwise leave this test comparing a
+    stale generation's ErasureCoordinator class against the current
+    generation's global ngram instance — a test-isolation hazard, not a
+    product bug, but one this test must not be sensitive to.
+    """
+    import importlib
+
+    ngram_mod = importlib.import_module("core.ngram_index")
+    ec_mod = importlib.import_module("core.erasure_coordinator")
+
+    server_ngram = ngram_mod.NGramIndex(str(tmp_path / "server_ngram.db"))
+    ngram_mod.set_global_ngram(server_ngram)
+    try:
+        assert ngram_mod.get_global_ngram() is server_ngram
+
+        store = make_store(str(tmp_path / "facts.db"))
+        fact_id = "prod_wiring_fact"
+        store.store_fact(_fact(fact_id, claim="the quick brown fox"))
+        server_ngram.index(fact_id, "the quick brown fox")
+        assert server_ngram.contains(fact_id) is True
+
+        # Production construction: no explicit ngram_index kwarg.
+        coordinator = ec_mod.ErasureCoordinator(store=store)
+        assert coordinator._ngram is server_ngram
+        assert coordinator._ngram.db_path == server_ngram.db_path
+
+        report = coordinator.erase_fact_durable(fact_id)
+        assert report["outcome"] == ec_mod.COMPLETE
+        assert server_ngram.contains(fact_id) is False
+    finally:
+        # Restore the module's own default global instance so this test
+        # cannot leak state into any test that runs after it.
+        ngram_mod.set_global_ngram(ngram_mod.NGramIndex())
+
+
+def test_embeddings_backend_unavailable_does_not_claim_false_complete(rig, monkeypatch):
+    """P2 corollary: if the optional embeddings backend cannot be reached at
+    all (e.g. numpy/embedding_store unavailable in a base/server install),
+    that must surface as an honest PARTIAL/FAILED outcome for the
+    `embeddings` step — never as `applicable=false` silently folded into a
+    false COMPLETE."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "embeddings_unavailable_fact"
+    store.store_fact(_fact(fact_id))
+
+    def _broken_get_embeddings():
+        raise ImportError("embeddings backend unavailable (numpy not installed)")
+
+    monkeypatch.setattr(coordinator, "_get_embeddings", _broken_get_embeddings)
+
+    report = coordinator.erase_fact_durable(fact_id)
+
+    assert report["outcome"] != COMPLETE
+    assert report["outcome"] == PARTIAL
+    assert report["steps"]["embeddings"]["status"] == FAILED
+    assert coordinator.is_erased(fact_id) is False
