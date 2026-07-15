@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
 import time
 import uuid
@@ -84,6 +85,17 @@ RESIDUAL_IMMUTABLE_DATA = "RESIDUAL_IMMUTABLE_DATA"
 _TERMINAL_STATUSES = (COMPLETE, RESIDUAL_IMMUTABLE_DATA)
 
 _STEP_NAMES = ("determine_raw", "l1_same_db", "embeddings", "ngram")
+
+# Mirrors core.embedding_store.EXOCORTEX_DB's env var + default literal —
+# duplicated here (rather than imported) specifically so this module never
+# has to import core.embedding_store (and therefore numpy) just to resolve
+# a path string. Used ONLY as a fallback for the numpy-unavailable case in
+# _run_embeddings(), to check via stdlib sqlite3 whether the embeddings
+# feature has ever been used in this deployment at all — see
+# _embeddings_store_exists(). Keep in sync if EXOCORTEX_DB's definition
+# ever changes.
+_EMBEDDINGS_DB_PATH_ENV = "SQLITE_GRAPH_PATH"
+_EMBEDDINGS_DB_PATH_DEFAULT = "./data/exocortex_graph.db"
 
 _SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS erasure_jobs (
@@ -198,14 +210,57 @@ class ErasureCoordinator:
         this module — succeeds even where numpy isn't installed. The cost
         of numpy genuinely being absent is deferred to the one place that
         would need it: if the import fails here, the caller (_run_embeddings)
-        catches it like any other step failure and reports an honest FAILED
-        step, never a hard crash and never a silent, unproven
-        "applicable: false".
+        catches it like any other step failure. It reports an honest FAILED
+        step UNLESS it can also prove, via stdlib sqlite3 alone (see
+        _embeddings_store_exists()), that the embeddings feature has never
+        been used in this deployment at all — a silent, UNPROVEN
+        "applicable: false" is still never acceptable, but a PROVEN one is.
         """
         if self._embeddings is None:
             from core.embedding_store import EmbeddingStore
             self._embeddings = EmbeddingStore()
         return self._embeddings
+
+    def _resolve_embeddings_db_path(self) -> str:
+        """Best-effort path to the embeddings DB file, without importing
+        core.embedding_store (numpy). Prefers an already-injected store's
+        real path; falls back to the same env var + default
+        core.embedding_store.EXOCORTEX_DB itself resolves, for the case
+        where no store is injected and constructing a real one just failed
+        (numpy unavailable)."""
+        if self._embeddings is not None:
+            return getattr(self._embeddings, "_db_path", _EMBEDDINGS_DB_PATH_DEFAULT)
+        return os.getenv(_EMBEDDINGS_DB_PATH_ENV, _EMBEDDINGS_DB_PATH_DEFAULT)
+
+    @staticmethod
+    def _embeddings_store_exists(db_path: str) -> bool:
+        """Stdlib sqlite3 only — no numpy import. True if the embeddings DB
+        file AND its gs_vectors table both exist, meaning this deployment
+        has used the embeddings feature at some point (there is something
+        that could hold residual data for ANY fact, this one included).
+        False is a PROVEN absence: no file, or a file with no gs_vectors
+        table — the embeddings feature has never been used here, so there
+        is nothing this step could possibly need to clean up, regardless of
+        whether numpy/the real backend is currently reachable.
+
+        Fails toward "might exist" on any error opening/querying the file —
+        the same "can't verify absence is not verified absence" principle
+        already applied to _residual_data_present() and the raw-origin
+        tri-state.
+        """
+        if not os.path.exists(db_path):
+            return False
+        try:
+            conn = sqlite3.connect(db_path, timeout=5.0)
+            try:
+                row = conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='gs_vectors'"
+                ).fetchone()
+                return row is not None
+            finally:
+                conn.close()
+        except sqlite3.Error:
+            return True
 
     # ── schema / low-level job ledger (own connection — same DB file as
     #    `facts`, but independent of SQLiteGraphStore's connection cache) ──
@@ -371,7 +426,7 @@ class ErasureCoordinator:
                 #   status filter.
                 conn.rollback()
                 row = conn.execute(
-                    "SELECT job_id FROM erasure_jobs WHERE fact_id = ? "
+                    "SELECT * FROM erasure_jobs WHERE fact_id = ? "
                     "AND (generation = ? OR status NOT IN (?, ?)) "
                     "ORDER BY generation DESC LIMIT 1",
                     (fact_id, next_generation, COMPLETE, RESIDUAL_IMMUTABLE_DATA),
@@ -382,10 +437,31 @@ class ErasureCoordinator:
                     # row either) — a genuinely unexpected IntegrityError.
                     # Do not mask it.
                     raise
-                return row["job_id"]
+                winner = dict(row)
             else:
                 conn.commit()
-        return job_id
+                return job_id
+
+        # Reached only via the IntegrityError branch above (a normal
+        # winning INSERT already returned). `winner` is the row that
+        # blocked our insert.
+        if winner["status"] in _TERMINAL_STATUSES and self._residual_data_present(fact_id):
+            # Security review round 2, risk 4: the winner's generation
+            # already resolved to a terminal outcome, but fact_id was
+            # recreated AGAIN after that — possibly before we even got here
+            # (this loser lost the create-race, then a THIRD event
+            # re-ingested data under the same fact_id before this recovery
+            # ran). Blindly adopting the winner's job_id here would let
+            # _run_job()/_finalize() short-circuit through already-COMPLETE
+            # steps and return a stale COMPLETE report while the
+            # newly-recreated data sits unerased — the exact class of bug
+            # this hotfix's generation model exists to prevent, one layer
+            # removed (inside the race-recovery path itself). Recurse to
+            # open the NEXT generation instead of trusting a terminal
+            # report that no longer reflects current reality.
+            return self._get_or_create_job(fact_id, reason, actor)
+
+        return winner["job_id"]
 
     def _set_job_status(self, job_id: str, status: str) -> None:
         with self._jobs_db() as conn:
@@ -491,12 +567,33 @@ class ErasureCoordinator:
         self._step_start(job_id, "embeddings")
         try:
             embeddings = self._get_embeddings()
+        except Exception as exc:  # noqa: BLE001 — the embeddings backend
+            # being genuinely unavailable (e.g. numpy not installed).
+            # Distinguish two states before giving up:
+            #   - the embeddings feature has NEVER been used in this
+            #     deployment at all (no DB file / no gs_vectors table) —
+            #     provable via stdlib sqlite3 alone, no numpy required.
+            #     There is nothing this step could possibly need to clean
+            #     up, for ANY fact_id, so an honest COMPLETE with a proven
+            #     applicable=False is correct here.
+            #   - the table DOES exist (this deployment has used embeddings
+            #     at some point) but the real backend can't be reached
+            #     right now — an honest FAILED (-> PARTIAL job), never a
+            #     silent, unproven "applicable: false".
+            db_path = self._resolve_embeddings_db_path()
+            if not self._embeddings_store_exists(db_path):
+                self._step_finish(
+                    job_id, "embeddings", COMPLETE,
+                    {"applicable": False, "reason": "embeddings_store_absent"},
+                )
+                return
+            self._step_finish(job_id, "embeddings", FAILED, {"error": str(exc)})
+            self._set_job_error(job_id, f"embeddings: {exc}")
+            return
+        try:
             deleted = embeddings.purge_node(fact_id)
             still_present = embeddings.has_any(fact_id)
-        except Exception as exc:  # noqa: BLE001 — includes the embeddings
-            # backend being genuinely unavailable (e.g. numpy not
-            # installed): an honest FAILED step (-> PARTIAL job), never a
-            # crash and never a silent, unproven "applicable: false".
+        except Exception as exc:  # noqa: BLE001
             self._step_finish(job_id, "embeddings", FAILED, {"error": str(exc)})
             self._set_job_error(job_id, f"embeddings: {exc}")
             return
@@ -574,7 +671,7 @@ class ErasureCoordinator:
             job = self._load_job(job_id)
         steps = self._load_steps(job_id)
         tombstone = (
-            self._store.get_tombstone(job["fact_id"]) if job["status"] == COMPLETE else None
+            self._get_tombstone_for(job) if job["status"] == COMPLETE else None
         )
         return self._report(job, outcome=job["status"], tombstone=tombstone, steps=steps)
 
@@ -638,7 +735,7 @@ class ErasureCoordinator:
                 content_hash=job["content_hash"],
                 job_id=job["job_id"],
             )
-            tombstone = self._store.get_tombstone(job["fact_id"])
+            tombstone = self._store.get_tombstone_for_job(job["fact_id"], job["job_id"])
         elif all_complete and residual == "raw_original_present":
             # Review finding: the derived layer is provably gone, but
             # l0_raw_memory still holds the original text by design — this
@@ -714,13 +811,55 @@ class ErasureCoordinator:
             if self._get_embeddings().has_any(fact_id):
                 return True
         except Exception:  # noqa: BLE001 — includes the backend being unavailable
-            return True
+            # Same tri-state distinction as _run_embeddings(): a proven
+            # absence of the embeddings store itself (stdlib sqlite3, no
+            # numpy) means there is genuinely nothing there to reappear —
+            # returning True unconditionally here would make a base/server
+            # install without numpy AND without embeddings ever having been
+            # used would forever think residual might be present and open a
+            # new generation on every repeat call, even though
+            # _run_embeddings() would just re-prove the identical
+            # applicable=False COMPLETE each time. Only fail toward "might
+            # be present" when the store's existence itself can't be ruled
+            # out.
+            if self._embeddings_store_exists(self._resolve_embeddings_db_path()):
+                return True
         try:
             if self._ngram.contains(fact_id):
                 return True
         except Exception:  # noqa: BLE001
             return True
         return False
+
+    def _get_tombstone_for(self, job: dict[str, Any]) -> dict[str, Any] | None:
+        """The tombstone that corroborates THIS SPECIFIC job's COMPLETE
+        outcome — never another generation's tombstone for the same
+        fact_id. `get_tombstone(fact_id)` (core.memory) returns the LATEST
+        tombstone for a fact_id regardless of which job wrote it; with
+        generation-aware erasure_jobs (migration 014) a fact_id can have
+        several jobs/tombstones over its history, so that is never safe to
+        use here — a later generation whose own tombstone write was lost
+        (e.g. a crash between write_tombstone() and the job-status COMPLETE
+        update) must not silently borrow an EARLIER generation's tombstone
+        and be reported as corroborated when it isn't.
+
+        Compatibility: a pre-014 durable job (a real erasure_jobs row that
+        reached COMPLETE before job-scoped tombstones existed) recorded its
+        own completion tombstone with job_id=NULL — migration 014 backfills
+        `generation = 1` for every job that already existed, so generation 1
+        is the only generation number a job_id=NULL tombstone can validly
+        correspond to. This is deliberately NOT a blanket "any legacy
+        tombstone corroborates any job" fallback (that would resurrect the
+        exact P1-A bug this hotfix fixed) — it only ever applies to
+        generation 1, and only after the caller has already verified a real,
+        genuinely-COMPLETE erasure_jobs row exists for this job.
+        """
+        tombstone = self._store.get_tombstone_for_job(job["fact_id"], job["job_id"])
+        if tombstone is not None:
+            return tombstone
+        if job.get("generation", 1) == 1:
+            return self._store.get_tombstone_for_job(job["fact_id"], None)
+        return None
 
     def erase_fact_durable(
         self,
@@ -773,7 +912,7 @@ class ErasureCoordinator:
             steps_genuinely_complete = all(s["status"] == COMPLETE for s in steps)
             if steps_genuinely_complete and not self._residual_data_present(fact_id):
                 tombstone = (
-                    self._store.get_tombstone(fact_id)
+                    self._get_tombstone_for(latest_job)
                     if latest_job["status"] == COMPLETE else None
                 )
                 if latest_job["status"] == COMPLETE and tombstone is None:
@@ -843,22 +982,23 @@ class ErasureCoordinator:
             return None
         steps = self._load_steps(job["job_id"])
         tombstone = (
-            self._store.get_tombstone(fact_id) if job["status"] == COMPLETE else None
+            self._get_tombstone_for(job) if job["status"] == COMPLETE else None
         )
         return self._report(job, outcome=job["status"], tombstone=tombstone, steps=steps)
 
     def is_erased(self, fact_id: str) -> bool:
         """True only if the LATEST durable generation for `fact_id` reached
-        COMPLETE (a real tombstone exists) AND no residual data has
-        reappeared since. A bare `erasure_log` tombstone is never, by
-        itself, sufficient — see erase_fact_durable()'s docstring for why:
-        a legacy tombstone with no corroborating durable COMPLETE job, or a
-        real-but-stale tombstone left over from a fact_id that was later
-        recreated, must not report True here either."""
+        COMPLETE AND that SPECIFIC generation's own tombstone exists (see
+        _get_tombstone_for() — never a stale/earlier generation's tombstone)
+        AND no residual data has reappeared since. A bare `erasure_log`
+        tombstone is never, by itself, sufficient — see erase_fact_durable()'s
+        docstring for why: a legacy tombstone with no corroborating durable
+        COMPLETE job, or a real-but-stale tombstone left over from an
+        earlier generation, must not report True here either."""
         latest_job = self._peek_job_row(fact_id)
         if latest_job is None or latest_job["status"] != COMPLETE:
             return False
-        if self._store.get_tombstone(fact_id) is None:
+        if self._get_tombstone_for(latest_job) is None:
             return False
         return not self._residual_data_present(fact_id)
 

@@ -55,6 +55,34 @@
 -- job_id = NULL and are never touched or overwritten — erasure_log is
 -- still append-only (migration 012's triggers are unaffected) and the
 -- full historical audit trail is preserved, exactly as Art. 30 requires.
+--
+-- Security review round 2: idx_erasure_job_unique is a real DB-level
+-- constraint (a partial UNIQUE index on job_id, excluding NULL) backing
+-- that job-scoped idempotency — the SELECT-then-INSERT check in
+-- write_tombstone() is not atomic across connections, so two concurrent
+-- callers finalizing the same job_id (a live erase_fact_durable() racing
+-- resume_incomplete_jobs()'s crash-recovery sweep) could otherwise both
+-- pass the check and insert two tombstone rows for one job_id. SQLite
+-- treats each NULL as distinct in a UNIQUE index, so legacy job_id=NULL
+-- rows are unaffected and can still accumulate per the old fact_id-wide
+-- semantics.
+--
+-- Security review round 2 (risk 5): the whole body below is wrapped in an
+-- explicit BEGIN/COMMIT. sqlite3.Connection.executescript() does NOT give
+-- the script atomicity by itself — each DDL statement effectively commits
+-- as it runs, so a failure partway through (e.g. after DROP INDEX
+-- idx_erasure_jobs_fact but before the new indexes are created) could
+-- otherwise leave the DB in an inconsistent intermediate state: the OLD
+-- unique-fact_id constraint gone, the NEW ones not yet in place, with NO
+-- active-saga uniqueness protection until an operator notices and
+-- re-runs the migration. An explicit BEGIN/COMMIT makes SQLite treat the
+-- whole block as one real transaction — confirmed empirically: a
+-- deliberately-broken mid-script statement, run without this wrapper,
+-- left the DROP INDEX committed and the new index created despite an
+-- explicit rollback(); with the wrapper, the same failure left the
+-- original index fully intact and nothing new created.
+
+BEGIN;
 
 ALTER TABLE erasure_jobs ADD COLUMN generation INTEGER NOT NULL DEFAULT 1;
 
@@ -71,9 +99,16 @@ ALTER TABLE erasure_log ADD COLUMN job_id TEXT DEFAULT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_erasure_job ON erasure_log(job_id);
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_job_unique
+    ON erasure_log(job_id)
+    WHERE job_id IS NOT NULL;
+
+COMMIT;
+
 -- ── Проверка после применения ─────────────────────────────────────────────────
 -- PRAGMA table_info(erasure_jobs);  -- ожидать колонку generation
 -- PRAGMA table_info(erasure_log);   -- ожидать колонку job_id
 -- SELECT sql FROM sqlite_master WHERE name IN
---   ('idx_erasure_jobs_fact_active', 'idx_erasure_jobs_fact_generation');
--- Ожидаемые объекты: обе строки присутствуют, idx_erasure_jobs_fact отсутствует.
+--   ('idx_erasure_jobs_fact_active', 'idx_erasure_jobs_fact_generation',
+--    'idx_erasure_job_unique');
+-- Ожидаемые объекты: все три строки присутствуют, idx_erasure_jobs_fact отсутствует.

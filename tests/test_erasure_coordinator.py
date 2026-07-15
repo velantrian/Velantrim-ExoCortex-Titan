@@ -8,6 +8,9 @@ querying that file afterwards, not by trusting the coordinator's own report.
 """
 from __future__ import annotations
 
+import os
+import sqlite3
+import tempfile
 import threading
 import time
 
@@ -21,6 +24,7 @@ from core.erasure_coordinator import (
     FAILED,
     NOT_FOUND,
     PARTIAL,
+    PENDING,
     RESIDUAL_IMMUTABLE_DATA,
     ErasureCoordinator,
 )
@@ -896,3 +900,391 @@ def test_embeddings_backend_unavailable_does_not_claim_false_complete(rig, monke
     assert report["outcome"] == PARTIAL
     assert report["steps"]["embeddings"]["status"] == FAILED
     assert coordinator.is_erased(fact_id) is False
+
+
+# ── Security review round 2: job-scoped tombstone corroboration ────────────
+
+def test_stale_generation_tombstone_does_not_corroborate_newer_generation(rig):
+    """A generation's COMPLETE outcome must only be corroborated by ITS OWN
+    tombstone — never an earlier generation's tombstone for the same
+    fact_id. Simulates generation 2's own tombstone write being lost (e.g.
+    a crash between write_tombstone() and the job-status COMPLETE update)
+    while generation 1's real tombstone still exists: get_job_report() and
+    is_erased() must not silently borrow generation 1's tombstone and
+    report generation 2 as corroborated when it isn't."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "stale_tombstone_fact"
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "gen1 data")
+    gen1 = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert gen1["outcome"] == COMPLETE
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "gen2 data")
+    gen2 = coordinator.erase_fact_durable(fact_id, reason="test", actor="B")
+    assert gen2["outcome"] == COMPLETE
+    assert gen2["job_id"] != gen1["job_id"]
+
+    # Simulate generation 2's own tombstone having been lost/corrupted —
+    # generation 1's tombstone is untouched.
+    with coordinator._jobs_db() as conn:
+        deleted = conn.execute(
+            "DELETE FROM erasure_log WHERE fact_id = ? AND job_id = ?",
+            (fact_id, gen2["job_id"]),
+        ).rowcount
+    assert deleted == 1
+    assert store.get_tombstone(fact_id) is not None  # gen1's tombstone remains
+
+    report = coordinator.get_job_report(fact_id)
+    assert report["job_id"] == gen2["job_id"]
+    assert report["content_hash"] is None
+    assert report["erased_at"] is None
+
+    assert coordinator.is_erased(fact_id) is False
+
+
+def test_pre_014_generation_1_tombstone_with_null_job_id_still_honored(rig):
+    """Compatibility: a durable job that reached COMPLETE before migration
+    014 introduced job-scoped tombstones recorded its own completion
+    tombstone with job_id=NULL. Since migration 014 backfills generation=1
+    for every pre-existing job, a job_id=NULL tombstone is a valid
+    corroboration for generation 1 specifically — this must keep working,
+    it is not the same as the P1-A bug (an arbitrary legacy tombstone with
+    NO corroborating durable job at all)."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "pre014_compat_fact"
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "pre014 data")
+    gen1 = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert gen1["outcome"] == COMPLETE
+
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "UPDATE erasure_log SET job_id = NULL WHERE fact_id = ? AND job_id = ?",
+            (fact_id, gen1["job_id"]),
+        )
+        conn.commit()
+
+    assert coordinator.is_erased(fact_id) is True
+    report = coordinator.get_job_report(fact_id)
+    assert report["outcome"] == COMPLETE
+    assert report["content_hash"] is not None
+
+    again = coordinator.erase_fact_durable(fact_id, reason="test", actor="B")
+    assert again["outcome"] == COMPLETE
+    assert again["erased_now"] is False
+    assert again["job_id"] == gen1["job_id"]
+
+
+def test_concurrent_write_tombstone_for_same_job_id_leaves_exactly_one_row():
+    """Security review round 2, risk 2: write_tombstone()'s SELECT-then-
+    INSERT idempotency check is not atomic across connections — two
+    concurrent callers finalizing the SAME job_id (e.g. a live
+    erase_fact_durable() racing resume_incomplete_jobs()'s crash-recovery
+    sweep) could both pass the existence check before either commits. A
+    real DB-level constraint (idx_erasure_job_unique, a partial UNIQUE
+    index on erasure_log(job_id) WHERE job_id IS NOT NULL) is the actual
+    source of truth, and write_tombstone() must swallow the resulting
+    IntegrityError as "someone else already wrote it" rather than let it
+    surface — exactly one row must exist afterward, from either caller's
+    perspective, and neither call may raise."""
+    tmp_dir = tempfile.mkdtemp()
+    db_path = os.path.join(tmp_dir, "facts.db")
+
+    store_a = make_store(db_path)
+    store_b = make_store(db_path)
+    # Pre-warm both connections so each instance's own DDL bootstrap runs
+    # BEFORE the race below — otherwise an unrelated bootstrap-DDL race
+    # (two instances initializing the same fresh file for the first time)
+    # could mask the actual thing under test.
+    store_a.get_fact("__warm__")
+    store_b.get_fact("__warm__")
+
+    fact_id = "race_tombstone_fact"
+    job_id = "erj_shared_race_job"
+
+    barrier = threading.Barrier(2)
+
+    def synced_release(orig):
+        def _inner():
+            orig()
+            barrier.wait(timeout=5)
+        return _inner
+
+    store_a._release_stray_locks = synced_release(store_a._release_stray_locks)
+    store_b._release_stray_locks = synced_release(store_b._release_stray_locks)
+
+    errors: dict[str, Exception] = {}
+
+    def call(store, name):
+        try:
+            store.write_tombstone(
+                fact_id, reason="test", actor=name, content_hash="deadbeef", job_id=job_id
+            )
+        except Exception as e:  # noqa: BLE001
+            errors[name] = e
+
+    t1 = threading.Thread(target=call, args=(store_a, "A"))
+    t2 = threading.Thread(target=call, args=(store_b, "B"))
+    t1.start()
+    t2.start()
+    t1.join(timeout=10)
+    t2.join(timeout=10)
+
+    assert errors == {}, f"write_tombstone() must never raise on a lost race: {errors}"
+
+    with sqlite3.connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT erasure_id FROM erasure_log WHERE job_id = ?", (job_id,)
+        ).fetchall()
+    assert len(rows) == 1, f"expected exactly 1 tombstone row for job_id, got {len(rows)}"
+
+    # Both stores must read back the SAME proven receipt.
+    receipt_a = store_a.get_tombstone_for_job(fact_id, job_id)
+    receipt_b = store_b.get_tombstone_for_job(fact_id, job_id)
+    assert receipt_a is not None and receipt_b is not None
+    assert receipt_a["erasure_id"] == receipt_b["erasure_id"] == rows[0][0]
+
+
+# ── Security review round 2: embeddings tri-state honesty (risk 3) ─────────
+
+def test_embeddings_store_genuinely_absent_reaches_honest_complete(rig, monkeypatch):
+    """State A: the embeddings feature has never been used in this
+    deployment (no DB file at all — provable via stdlib sqlite3, no numpy
+    needed). Even if the real backend can't be constructed (numpy
+    unavailable), there is nothing for this step to possibly need to clean
+    up, so an honest COMPLETE with a PROVEN applicable=False is correct —
+    not a silent guess, and not a false PARTIAL/FAILED either."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "state_a_fact"
+    store.store_fact(_fact(fact_id))
+
+    # Simulate "no embedding_store was ever injected and numpy is missing":
+    # force _get_embeddings() to fail, and point the existence check at a
+    # path that genuinely has no file.
+    missing_path = os.path.join(tempfile.mkdtemp(), "never_used_embeddings.db")
+    monkeypatch.setattr(coordinator, "_resolve_embeddings_db_path", lambda: missing_path)
+    monkeypatch.setattr(
+        coordinator, "_get_embeddings",
+        lambda: (_ for _ in ()).throw(ModuleNotFoundError("No module named 'numpy'")),
+    )
+
+    assert not os.path.exists(missing_path)
+
+    report = coordinator.erase_fact_durable(fact_id)
+
+    assert report["outcome"] == COMPLETE
+    assert report["steps"]["embeddings"]["status"] == COMPLETE
+    assert report["steps"]["embeddings"]["detail"]["applicable"] is False
+    assert coordinator.is_erased(fact_id) is True
+
+
+def test_embeddings_store_exists_but_backend_unavailable_is_not_complete(rig, monkeypatch):
+    """State B: the embeddings DB file and gs_vectors table DO exist (this
+    deployment has used the embeddings feature at some point), but the
+    real backend can't be reached (numpy unavailable). This must NOT be
+    silently folded into applicable=False — the table's mere existence
+    proves the feature is/was in use, so an inability to verify this
+    fact_id's absence must surface as an honest FAILED/PARTIAL, never a
+    false COMPLETE."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "state_b_fact"
+    store.store_fact(_fact(fact_id))
+
+    # A real gs_vectors table exists (created via raw sqlite3 — no numpy
+    # needed to set this up, mirroring what a real EmbeddingStore would
+    # have created before numpy became unavailable).
+    existing_path = os.path.join(tempfile.mkdtemp(), "used_embeddings.db")
+    conn = sqlite3.connect(existing_path)
+    conn.execute("""
+        CREATE TABLE gs_vectors (
+            node_id TEXT NOT NULL, model_name TEXT NOT NULL,
+            embedding_blob BLOB NOT NULL, dims INTEGER NOT NULL,
+            computed_at REAL NOT NULL, content_hash TEXT,
+            PRIMARY KEY (node_id, model_name)
+        )
+    """)
+    conn.execute(
+        "INSERT INTO gs_vectors (node_id, model_name, embedding_blob, dims, computed_at) "
+        "VALUES (?, ?, ?, ?, ?)",
+        ("some_other_fact", "default", b"\x00\x00\x80?", 1, 0.0),
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setattr(coordinator, "_resolve_embeddings_db_path", lambda: existing_path)
+    monkeypatch.setattr(
+        coordinator, "_get_embeddings",
+        lambda: (_ for _ in ()).throw(ModuleNotFoundError("No module named 'numpy'")),
+    )
+
+    report = coordinator.erase_fact_durable(fact_id)
+
+    assert report["outcome"] != COMPLETE
+    assert report["outcome"] == PARTIAL
+    assert report["steps"]["embeddings"]["status"] == FAILED
+    assert coordinator.is_erased(fact_id) is False
+
+
+# ── Security review round 2: post-winner recreation race (risk 4) ──────────
+
+def test_get_or_create_job_reopens_generation_when_winner_is_stale(rig):
+    """A loser's IntegrityError recovery (_get_or_create_job()) may find a
+    winner row that has ALREADY reached a terminal outcome — by the time
+    the loser rolls back its own failed INSERT and runs its recovery
+    SELECT, a fast saga on a small DB can easily have finished end-to-end.
+    If fact_id was recreated AGAIN in that same window (a third actor
+    re-ingesting under the same ID before the loser's recovery runs),
+    blindly adopting the winner's stale-COMPLETE job_id would let
+    _run_job()/_finalize() short-circuit through already-COMPLETE steps
+    and return a COMPLETE report while the newly-recreated data sits
+    completely unerased. The recovery path must re-check residual data and
+    open the NEXT generation instead.
+
+    Deterministic reproduction (no thread timing): capture a stale
+    pre-race snapshot, directly insert an ALREADY-COMPLETE "winner" row at
+    the generation the stale snapshot would compute next, recreate data
+    under fact_id, then force _get_or_create_job() to compute its
+    candidate generation from the stale snapshot — this reliably drives it
+    into the exact IntegrityError-recovery-finds-a-terminal-winner branch
+    under test, without depending on real wall-clock races."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "risk4_fact"
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "gen1 data")
+    gen1 = coordinator.erase_fact_durable(fact_id, reason="test", actor="setup")
+    assert gen1["outcome"] == COMPLETE
+
+    stale_existing = coordinator._peek_job_row(fact_id)
+    assert stale_existing["job_id"] == gen1["job_id"]
+
+    # Directly insert an ALREADY-COMPLETE "winner" gen2 row + steps,
+    # bypassing the normal saga machinery — simulates a concurrent winner
+    # that already finished this generation by the time our loser's
+    # recovery SELECT runs.
+    winner_job_id = "erj_winner_gen2_test"
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, status, "
+            "residual, content_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (winner_job_id, fact_id, 2, "test", "winner", COMPLETE, "none", "somehash", now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, ?, ?, ?)",
+                (f"{winner_job_id}_{step_name}", winner_job_id, step_name, COMPLETE),
+            )
+    store.write_tombstone(
+        fact_id, reason="test", actor="winner", content_hash="somehash", job_id=winner_job_id
+    )
+
+    # Recreate data under fact_id — the event that must NOT be left
+    # unerased.
+    _seed_all_layers(store, embeddings, ngram, fact_id, "gen3 data (recreated after winner)")
+    assert coordinator._residual_data_present(fact_id) is True
+
+    # Force the candidate-generation computation to use the STALE
+    # pre-winner snapshot exactly once (as a real concurrent loser would
+    # have read it before the winner's gen2 committed), then fall back to
+    # the real implementation for any further (recursive) calls.
+    orig_peek = coordinator._peek_job_row
+    call_count = {"n": 0}
+
+    def lie_once(fid):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            return dict(stale_existing)
+        return orig_peek(fid)
+
+    coordinator._peek_job_row = lie_once
+    try:
+        result_job_id = coordinator._get_or_create_job(fact_id, "test", "loser")
+    finally:
+        coordinator._peek_job_row = orig_peek
+
+    assert result_job_id != winner_job_id, (
+        "must not blindly adopt a stale-COMPLETE winner when data reappeared"
+    )
+
+    with coordinator._jobs_db() as conn:
+        rows = conn.execute(
+            "SELECT job_id, generation, status FROM erasure_jobs WHERE fact_id = ? "
+            "ORDER BY generation",
+            (fact_id,),
+        ).fetchall()
+    assert [r["generation"] for r in rows] == [1, 2, 3]
+    assert rows[2]["job_id"] == result_job_id
+    assert rows[2]["status"] == PENDING
+
+    # Running the newly-opened generation must actually clean the
+    # recreated data.
+    final = coordinator._run_job(result_job_id)
+    assert final["outcome"] == COMPLETE
+    assert store.get_fact(fact_id) is None
+    assert embeddings.has_any(fact_id) is False
+    assert ngram.contains(fact_id) is False
+
+
+# ── Security review round 2: full checklist — misc coverage ────────────────
+
+def test_concurrent_resume_and_live_erase_converge_safely(rig, monkeypatch):
+    """resume_incomplete_jobs() (wait_if_running=False — its whole premise
+    is crash recovery when no other live caller is processing the job) is
+    documented as not intended to run concurrently with live traffic on
+    the SAME job. Verify that if it happens anyway (a startup sweep
+    overlapping a live erase_fact_durable() call for the same fact_id),
+    the two converge safely: every underlying operation (delete, tombstone
+    write) is idempotent, so no exception, no data corruption, no
+    duplicate tombstone, and the final state is genuinely COMPLETE."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "resume_vs_live_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "resume vs live data")
+
+    real_purge = embeddings.purge_node
+    calls = {"n": 0}
+
+    def flaky_purge(node_id):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("simulated failure — leaves job PARTIAL")
+        return real_purge(node_id)
+
+    monkeypatch.setattr(embeddings, "purge_node", flaky_purge)
+    partial = coordinator.erase_fact_durable(fact_id)
+    assert partial["outcome"] == PARTIAL
+    monkeypatch.setattr(embeddings, "purge_node", real_purge)
+
+    errors: dict[str, Exception] = {}
+    results: dict[str, object] = {}
+
+    def run_live():
+        try:
+            results["live"] = coordinator.erase_fact_durable(fact_id)
+        except Exception as e:  # noqa: BLE001
+            errors["live"] = e
+
+    def run_resume():
+        try:
+            results["resume"] = coordinator.resume_incomplete_jobs()
+        except Exception as e:  # noqa: BLE001
+            errors["resume"] = e
+
+    t1 = threading.Thread(target=run_live)
+    t2 = threading.Thread(target=run_resume)
+    t1.start()
+    t2.start()
+    t1.join(timeout=10)
+    t2.join(timeout=10)
+
+    assert errors == {}, f"unexpected exceptions: {errors}"
+    assert coordinator.is_erased(fact_id) is True
+    assert store.get_fact(fact_id) is None
+    assert embeddings.has_any(fact_id) is False
+    assert ngram.contains(fact_id) is False
+
+    with coordinator._jobs_db() as conn:
+        tombstone_count = conn.execute(
+            "SELECT COUNT(*) FROM erasure_log WHERE fact_id = ?", (fact_id,)
+        ).fetchone()[0]
+    assert tombstone_count == 1

@@ -380,6 +380,24 @@ class SQLiteGraphStore(GraphStore):
                     CREATE INDEX IF NOT EXISTS idx_erasure_job
                     ON erasure_log(job_id)
                 """)
+                # Post-review hotfix (round 2): the fact_id/job_id
+                # check-then-insert in write_tombstone() below is a
+                # necessary but not sufficient guard — two concurrent
+                # callers finalizing the SAME job_id (e.g. a live
+                # erase_fact_durable() racing resume_incomplete_jobs()'s
+                # crash-recovery sweep for the same job) can both pass the
+                # SELECT check before either commits its INSERT. A real
+                # DB-level constraint is the actual source of truth: at
+                # most one tombstone row may ever exist for a given
+                # non-NULL job_id. NULL is excluded (SQLite treats NULL as
+                # distinct from every other NULL in a UNIQUE index) so
+                # legacy job_id=NULL rows are unaffected and can still
+                # accumulate per the old fact_id-wide semantics.
+                conn.execute("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_job_unique
+                    ON erasure_log(job_id)
+                    WHERE job_id IS NOT NULL
+                """)
                 # TASK-09: derived_from на facts (указывает на l0_raw_memory.raw_id)
                 if "derived_from" not in existing_cols:
                     conn.execute(
@@ -695,25 +713,50 @@ class SQLiteGraphStore(GraphStore):
                 ).fetchone()
             if exists:
                 return
-            conn.execute(
-                "INSERT INTO erasure_log "
-                "(erasure_id, fact_id, user_id, reason, claim_hash, erased_at, job_id) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (
-                    f"era_{uuid.uuid4().hex[:12]}",
-                    fact_id,
-                    actor,
-                    reason,
-                    claim_hash,
-                    _now(),
-                    job_id,
-                ),
-            )
+            try:
+                conn.execute(
+                    "INSERT INTO erasure_log "
+                    "(erasure_id, fact_id, user_id, reason, claim_hash, erased_at, job_id) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        f"era_{uuid.uuid4().hex[:12]}",
+                        fact_id,
+                        actor,
+                        reason,
+                        claim_hash,
+                        _now(),
+                        job_id,
+                    ),
+                )
+            except sqlite3.IntegrityError:
+                # Lost a race against a concurrent write_tombstone() call for
+                # the SAME job_id (e.g. a live erase_fact_durable() and a
+                # crash-recovery resume_incomplete_jobs() sweep finalizing
+                # the same job at once): the SELECT-then-INSERT check above
+                # is not atomic across connections, but
+                # idx_erasure_job_unique (a real DB constraint) guarantees
+                # at most one row for this job_id ever commits. The winner's
+                # row IS the proven receipt — swallow this exception rather
+                # than let it surface as an unhandled write_tombstone()
+                # failure; callers read the result back via
+                # get_tombstone_for_job(), so both racers converge on the
+                # identical row regardless of which one's INSERT won.
+                if job_id is None:
+                    raise
+                conn.rollback()
 
     def get_tombstone(self, fact_id: str) -> dict | None:
+        """Latest tombstone for `fact_id`, regardless of which job/generation
+        wrote it — for legacy/public history callers only (e.g. reporting
+        "has this fact_id EVER been erased, in any generation"). Never use
+        this to corroborate a SPECIFIC job's COMPLETE outcome: with
+        generation-aware erasure_jobs (migration 014), a fact_id can have
+        multiple jobs/tombstones over time, and this method has no way to
+        tell you which one belongs to which job. Use get_tombstone_for_job()
+        for that."""
         with self._db() as conn:
             row = conn.execute(
-                "SELECT erasure_id, fact_id, user_id, reason, claim_hash, erased_at "
+                "SELECT erasure_id, fact_id, user_id, reason, claim_hash, erased_at, job_id "
                 "FROM erasure_log WHERE fact_id = ? ORDER BY erased_at DESC LIMIT 1",
                 (fact_id,),
             ).fetchone()
@@ -721,10 +764,36 @@ class SQLiteGraphStore(GraphStore):
             return None
         return self._row_to_tombstone(row)
 
+    def get_tombstone_for_job(self, fact_id: str, job_id: str | None) -> dict | None:
+        """The tombstone written for THIS SPECIFIC job/generation, or None if
+        no such tombstone exists — never another generation's tombstone for
+        the same fact_id. `job_id=None` looks up a legacy tombstone (written
+        with no job_id at all, e.g. by the deprecated core.erasure shim, or
+        by a durable job that completed before migration 014 introduced
+        job-scoped tombstones)."""
+        with self._db() as conn:
+            if job_id is not None:
+                row = conn.execute(
+                    "SELECT erasure_id, fact_id, user_id, reason, claim_hash, erased_at, job_id "
+                    "FROM erasure_log WHERE fact_id = ? AND job_id = ? "
+                    "ORDER BY erased_at DESC LIMIT 1",
+                    (fact_id, job_id),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT erasure_id, fact_id, user_id, reason, claim_hash, erased_at, job_id "
+                    "FROM erasure_log WHERE fact_id = ? AND job_id IS NULL "
+                    "ORDER BY erased_at DESC LIMIT 1",
+                    (fact_id,),
+                ).fetchone()
+        if row is None:
+            return None
+        return self._row_to_tombstone(row)
+
     def get_tombstones(self) -> list[dict]:
         with self._db() as conn:
             rows = conn.execute(
-                "SELECT erasure_id, fact_id, user_id, reason, claim_hash, erased_at "
+                "SELECT erasure_id, fact_id, user_id, reason, claim_hash, erased_at, job_id "
                 "FROM erasure_log ORDER BY erased_at"
             ).fetchall()
         return [self._row_to_tombstone(r) for r in rows]
@@ -741,6 +810,7 @@ class SQLiteGraphStore(GraphStore):
             "claim_hash": claim_hash,
             "content_hash": claim_hash,
             "erased_at": row[5],
+            "job_id": row[6],
         }
 
     def set_restricted(self, fact_id: str, restricted: bool) -> bool:
@@ -2705,6 +2775,10 @@ def write_tombstone(fact_id: str, *, reason: str, actor: str,
 
 def get_tombstone(fact_id: str) -> dict | None:
     return _GLOBAL_STORE.get_tombstone(fact_id)
+
+
+def get_tombstone_for_job(fact_id: str, job_id: str | None) -> dict | None:
+    return _GLOBAL_STORE.get_tombstone_for_job(fact_id, job_id)
 
 
 def get_tombstones() -> list[dict]:
