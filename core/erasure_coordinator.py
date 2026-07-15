@@ -102,6 +102,32 @@ SUPERSEDED = "SUPERSEDED"
 # above.
 _TERMINAL_STATUSES = (COMPLETE, RESIDUAL_IMMUTABLE_DATA, SUPERSEDED)
 
+# Codex re-review finding (P2): _claim_job_for_running() used to gate its
+# CAS with a hardcoded NEGATIVE predicate (`status NOT IN (RUNNING,
+# COMPLETE, RESIDUAL_IMMUTABLE_DATA)`) — when SUPERSEDED was introduced
+# above, that list was not updated, silently leaving SUPERSEDED claimable
+# and letting a superseded (now-replaced-by-a-new-generation) job be
+# resurrected into RUNNING. A POSITIVE allowlist is safe by construction
+# against this whole class of bug: any future terminal status is simply
+# absent from it by default, with no claim-site edit required.
+#
+# _RUNNABLE_STATUSES is the set a NEW live caller (erase_fact_durable(),
+# via _run_job(wait_if_running=True)) may claim FROM — deliberately
+# excludes RUNNING: if the job is already RUNNING, another live caller
+# holds it right now, and this caller must wait for it
+# (_wait_for_job_completion()), never race it into a second concurrent run.
+_RUNNABLE_STATUSES = (PENDING, PARTIAL, FAILED)
+
+# _RESUMABLE_STATUSES is the broader set the crash-recovery sweep
+# (resume_incomplete_jobs(), via _run_job(wait_if_running=False)) may
+# SELECT and claim FROM — includes RUNNING, because a job stuck in RUNNING
+# is exactly the signature of a process that died mid-saga (no live caller
+# is left holding it). The claim itself is still a real CAS (`status IN
+# _RESUMABLE_STATUSES -> RUNNING`), so a job that raced to SUPERSEDED
+# between the SELECT and the claim is correctly excluded — SUPERSEDED is
+# in neither allowlist.
+_RESUMABLE_STATUSES = (PENDING, RUNNING, PARTIAL, FAILED)
+
 _STEP_NAMES = ("determine_raw", "l1_same_db", "embeddings", "ngram")
 
 # Mirrors core.embedding_store.EXOCORTEX_DB's env var + default literal —
@@ -475,19 +501,36 @@ class ErasureCoordinator:
         see _run_determine_raw()) is a special case: _run_job() has
         nothing left to execute for it, so if fact_id was recreated since,
         blindly resuming it would silently skip re-erasing the new data.
-        Before adopting ANY non-terminal job, this checks whether residual
-        data has (re)appeared; if it has AND every step already shows
-        COMPLETE, the old job is transitioned to the terminal SUPERSEDED
-        status (its own step receipts are never rewritten — still
-        immutable history) and a NEW generation is opened instead, in the
-        SAME atomic transaction as the new generation's INSERT.
+
+        Codex RE-REVIEW finding (P1): checking "are ALL FOUR steps
+        COMPLETE, and is ANY residual data present anywhere" was still not
+        enough — a job with l1_same_db/ngram COMPLETE but embeddings
+        FAILED (a single flaky backend, still legitimately retryable) is
+        NOT all-steps-done, so the old blanket check would resume it in
+        place even after the fact row and ngram entry were recreated,
+        silently letting that recreated data escape l1_same_db/ngram
+        re-verification — a real data-retention violation. The fix is
+        backend-specific staleness correlation
+        (_completed_step_receipts_stale()): each step's OWN COMPLETE
+        receipt is checked ONLY against its OWN domain (facts/same-DB
+        dependents for determine_raw+l1_same_db, the embeddings backend
+        for embeddings, the ngram index for ngram) — a step that is still
+        FAILED/PENDING never marks the job stale by itself, which is what
+        prevents a repeatedly-failing single backend from opening a new
+        generation on every retry (unbounded generation growth). If AT
+        least one already-COMPLETE step's domain has reappeared data, the
+        old job is transitioned to the terminal SUPERSEDED status (its own
+        step receipts are never rewritten — still immutable history) and a
+        NEW generation is opened instead, in the SAME atomic transaction
+        as the new generation's INSERT. Otherwise (no COMPLETE step is
+        stale — including the "some step FAILED/PENDING and its own
+        residual reappeared" case), the existing job is honestly resumed
+        in place with no new generation.
         """
         existing = self._peek_job_row(fact_id)
         supersede_job_id = None
         if existing is not None and existing["status"] not in _TERMINAL_STATUSES:
-            steps = self._load_steps(existing["job_id"])
-            all_steps_done = bool(steps) and all(s["status"] == COMPLETE for s in steps)
-            if not (all_steps_done and self._residual_data_present(fact_id)):
+            if not self._completed_step_receipts_stale(existing["job_id"], fact_id):
                 return existing["job_id"]
             supersede_job_id = existing["job_id"]
 
@@ -507,7 +550,8 @@ class ErasureCoordinator:
                         "WHERE job_id = ?",
                         (
                             SUPERSEDED,
-                            "superseded: residual data reappeared after all steps completed",
+                            "superseded: residual data reappeared under an "
+                            "already-completed step's domain",
                             now,
                             supersede_job_id,
                         ),
@@ -759,10 +803,13 @@ class ErasureCoordinator:
 
     # ── orchestration ─────────────────────────────────────────────────────
 
-    def _claim_job_for_running(self, job_id: str) -> bool:
-        """Atomically claim `job_id` for execution.
+    def _claim_job_for_running(
+        self, job_id: str, *, from_statuses: tuple[str, ...] = _RUNNABLE_STATUSES
+    ) -> bool:
+        """Atomically claim `job_id` for execution via a CAS FROM one of
+        `from_statuses` INTO RUNNING.
 
-        A single `UPDATE ... WHERE status NOT IN (...)` is its own implicit
+        A single `UPDATE ... WHERE status IN (...)` is its own implicit
         SQLite transaction (Python's sqlite3 auto-begins before DML) and is
         serialized against every other writer to the same jobs DB file by
         SQLite's own locking — a real cross-process mechanism, not a
@@ -771,15 +818,32 @@ class ErasureCoordinator:
         caller's UPDATE matches zero rows (rowcount == 0) because the
         winner's write already moved the status out of the claimable set.
 
-        Returns False if another caller already holds the claim (status is
-        already RUNNING) or the job already reached a terminal outcome
-        (COMPLETE / RESIDUAL_IMMUTABLE_DATA — nothing left to run).
+        Codex RE-REVIEW finding (P2): this used to be a NEGATIVE
+        `status NOT IN (RUNNING, COMPLETE, RESIDUAL_IMMUTABLE_DATA)` gate —
+        when SUPERSEDED was introduced as a new terminal status, that list
+        was never updated, so a SUPERSEDED job (already replaced by a new
+        generation) could be silently reclaimed back into RUNNING. A
+        POSITIVE allowlist (`from_statuses`, defaulting to
+        `_RUNNABLE_STATUSES`) is safe by construction: SUPERSEDED, and any
+        future terminal status, is simply absent from it, with no claim-site
+        edit ever required again. `_run_job()` passes the broader
+        `_RESUMABLE_STATUSES` (which additionally allows claiming FROM
+        RUNNING) for the crash-recovery sweep — see there.
+
+        Returns False if the job's CURRENT status is not one of
+        `from_statuses` — e.g. another caller already holds the claim
+        (still RUNNING, when claiming with the default `_RUNNABLE_STATUSES`
+        which excludes it), the job already reached ANY terminal outcome
+        (COMPLETE / RESIDUAL_IMMUTABLE_DATA / SUPERSEDED — none of which
+        are ever in `from_statuses`), or it raced into one of those between
+        being selected by a caller and this claim attempt.
         """
         with self._jobs_db() as conn:
+            placeholders = ", ".join("?" for _ in from_statuses)
             cur = conn.execute(
-                "UPDATE erasure_jobs SET status = ?, updated_at = ? "
-                "WHERE job_id = ? AND status NOT IN (?, ?, ?)",
-                (RUNNING, _now(), job_id, RUNNING, COMPLETE, RESIDUAL_IMMUTABLE_DATA),
+                f"UPDATE erasure_jobs SET status = ?, updated_at = ? "  # noqa: S608
+                f"WHERE job_id = ? AND status IN ({placeholders})",
+                (RUNNING, _now(), job_id, *from_statuses),
             )
         return cur.rowcount > 0
 
@@ -808,24 +872,46 @@ class ErasureCoordinator:
         )
         return self._report(job, outcome=job["status"], tombstone=tombstone, steps=steps)
 
-    def _run_job(self, job_id: str, *, wait_if_running: bool = True) -> dict[str, Any]:
+    def _run_job(
+        self, job_id: str, *, wait_if_running: bool = True
+    ) -> dict[str, Any] | None:
         """Run every not-yet-COMPLETE step for `job_id` and finalize.
 
         `wait_if_running=True` (the default — used by the live
-        `erase_fact_durable()` path) claims the job atomically first; a
-        concurrent caller that loses the claim waits for the winner to
-        finish instead of racing it. `wait_if_running=False` is used only by
-        `resume_incomplete_jobs()`: its whole premise is recovering jobs no
-        other live caller is currently processing (e.g. a crash-recovery
-        sweep at startup), so it force-claims unconditionally exactly like
-        this method always did before — it must never block waiting for a
-        runner that no longer exists.
+        `erase_fact_durable()` path) claims the job atomically first, FROM
+        `_RUNNABLE_STATUSES` (never FROM RUNNING itself — that means
+        another live caller holds it right now); a concurrent caller that
+        loses the claim first tries `_reconcile_completed_job_from_tombstone()`
+        (Codex RE-REVIEW finding, P2: a job stuck RUNNING because the
+        process died between writing its completion tombstone and flipping
+        its own status to COMPLETE must resolve immediately, not force
+        every subsequent caller through the full poll timeout below), then
+        falls back to waiting for the winner to finish
+        (`_wait_for_job_completion()`) instead of racing it. This path
+        never returns None.
+
+        `wait_if_running=False` is used only by `resume_incomplete_jobs()`:
+        its whole premise is recovering jobs no other live caller is
+        currently processing (e.g. a crash-recovery sweep at startup), so
+        it claims FROM the broader `_RESUMABLE_STATUSES` (which additionally
+        allows claiming FROM RUNNING — a job left RUNNING by a dead
+        process). Codex RE-REVIEW finding (P2): this used to force-set
+        RUNNING unconditionally with no CAS at all, which is exactly what
+        let a job that raced to SUPERSEDED between the sweep's SELECT and
+        this call be resurrected back into RUNNING. Now it is a real CAS
+        like the live path; losing it (the job moved to a terminal status
+        — e.g. a concurrent supersede — in that window) returns None rather
+        than proceeding, and the caller must treat None as "nothing to do
+        for this job".
         """
-        if wait_if_running:
-            if not self._claim_job_for_running(job_id):
+        from_statuses = _RUNNABLE_STATUSES if wait_if_running else _RESUMABLE_STATUSES
+        if not self._claim_job_for_running(job_id, from_statuses=from_statuses):
+            reconciled = self._reconcile_completed_job_from_tombstone(job_id)
+            if reconciled is not None:
+                return reconciled
+            if wait_if_running:
                 return self._wait_for_job_completion(job_id)
-        else:
-            self._set_job_status(job_id, RUNNING)
+            return None
 
         job = self._load_job(job_id)
         fact_id = job["fact_id"]
@@ -977,6 +1063,172 @@ class ErasureCoordinator:
             return True
         return False
 
+    def _completed_step_receipts_stale(self, job_id: str, fact_id: str) -> bool:
+        """Codex RE-REVIEW finding (P1): backend-specific staleness
+        correlation for an existing non-terminal job's ALREADY-COMPLETE
+        steps.
+
+        The old check treated a job as possibly stale only when ALL FOUR
+        steps were COMPLETE (`all_steps_done`). That misses the far more
+        common case: some backend genuinely, transiently failed (e.g.
+        embeddings) while OTHER steps (l1_same_db, ngram) already proved
+        their own domain deleted — and after that, fact_id's facts row and
+        ngram entry are recreated. `all_steps_done` is False (embeddings is
+        FAILED, not COMPLETE), so the old code just resumed the job in
+        place, re-ran the still-failing embeddings step, and reported
+        whatever _finalize() computes from CURRENT step statuses — without
+        ever re-verifying that l1_same_db/ngram's OLD COMPLETE receipts
+        still describe reality. The recreated facts row and ngram entry
+        would never be touched again: a genuine GDPR Art. 17 data-retention
+        violation hiding behind an honest-looking PARTIAL/FAILED report.
+
+        The fix: check EACH step's OWN domain of responsibility, but ONLY
+        for steps already recorded COMPLETE on `job_id` — a step that is
+        still FAILED/PENDING is a known-incomplete, legitimately retryable
+        step; its own residual data reappearing (or persisting) is not
+        evidence of staleness, since _run_job() is going to re-attempt that
+        exact step anyway on this same job. Gating on COMPLETE is also what
+        prevents unbounded generation growth from a single repeatedly-
+        failing backend: every retry that finds "same fact_id, same
+        residual, same FAILED step" leaves this method returning False and
+        the SAME job/generation gets reused, exactly as required.
+
+        determine_raw and l1_same_db share one domain: whether the `facts`
+        row or a same-DB dependent exists right now — see
+        _run_determine_raw() (reads/persists from the `facts` row) and
+        erase_fact_dependents_atomic() (deletes it plus same-DB
+        dependents). A COMPLETE receipt for EITHER is stale iff that data
+        is back, regardless of whether the OTHER of the two is also
+        COMPLETE.
+
+        embeddings/ngram are each staled only by their OWN backend gaining
+        an entry for fact_id again — independent of each other and of the
+        facts-row domain.
+
+        Fails closed exactly like _residual_data_present(): a backend that
+        cannot even be checked right now is treated as "the receipt might
+        be stale", never silently trusted as "still valid" — "can't verify
+        it still holds" must never collapse into "still holds".
+        """
+        steps = self._load_steps(job_id)
+        status_by_step = {s["step_name"]: s["status"] for s in steps}
+
+        facts_domain_checked = False
+        facts_domain_present = False
+
+        def _facts_or_same_db_dependents_present() -> bool:
+            nonlocal facts_domain_checked, facts_domain_present
+            if not facts_domain_checked:
+                present = False
+                try:
+                    if self._store.get_fact_durable(fact_id) is not None:
+                        present = True
+                except sqlite3.OperationalError:
+                    present = True
+                if not present:
+                    try:
+                        if self._store.same_db_dependents_present(fact_id):
+                            present = True
+                    except sqlite3.Error:
+                        present = True
+                facts_domain_present = present
+                facts_domain_checked = True
+            return facts_domain_present
+
+        if status_by_step.get("determine_raw") == COMPLETE and _facts_or_same_db_dependents_present():
+            return True
+        if status_by_step.get("l1_same_db") == COMPLETE and _facts_or_same_db_dependents_present():
+            return True
+
+        if status_by_step.get("embeddings") == COMPLETE:
+            try:
+                if self._get_embeddings().has_any(fact_id):
+                    return True
+            except Exception:  # noqa: BLE001 — includes the backend being unavailable
+                if self._embeddings_row_present_for(
+                    fact_id, self._resolve_embeddings_db_path()
+                ):
+                    return True
+
+        if status_by_step.get("ngram") == COMPLETE:
+            try:
+                if self._ngram.contains(fact_id):
+                    return True
+            except Exception:  # noqa: BLE001
+                return True
+
+        return False
+
+    def _reconcile_completed_job_from_tombstone(self, job_id: str) -> dict[str, Any] | None:
+        """Codex RE-REVIEW finding (P2): repair the crash window between
+        write_tombstone() and the job-status COMPLETE update in
+        _finalize() (see there — the tombstone is deliberately written
+        BEFORE the status flip, precisely so this reconciliation is
+        possible). If the process died in that exact window, `job_id`'s
+        row is left indefinitely in a non-terminal status even though the
+        fact is genuinely, durably erased — without this, a repeat caller
+        would either re-run already-COMPLETE steps for nothing or, worse,
+        sit through _wait_for_job_completion()'s ~30s poll timeout for a
+        runner that no longer exists.
+
+        Uses ONLY the exact job-scoped tombstone
+        (get_tombstone_for_job(fact_id, job_id) — never the fact_id-wide
+        get_tombstone()) as proof: a legacy tombstone or one belonging to a
+        DIFFERENT generation never corroborates THIS job_id's completion,
+        so it can never satisfy this check.
+
+        Returns the reconciled COMPLETE report if repair applied (or the
+        job was already COMPLETE by the time of this call — idempotent and
+        safe under concurrent callers, see below). Returns None if
+        reconciliation does not apply: the job is already in some OTHER
+        terminal status, not every step is COMPLETE yet (a tombstone alone
+        never proves full completion), no exact tombstone exists, or
+        residual data has reappeared since the tombstone was written (a
+        new generation must handle that, never a resurrected stale
+        COMPLETE) — in every such case the caller must fall through to its
+        own normal handling.
+
+        The status UPDATE is itself a CAS (`status NOT IN
+        _TERMINAL_STATUSES -> COMPLETE`), so two concurrent callers
+        reconciling the same job_id never race destructively: exactly one
+        UPDATE matches and commits COMPLETE; the loser's UPDATE matches
+        zero rows, but its subsequent re-read of the row sees the SAME
+        COMPLETE the winner just wrote, so both callers return the
+        identical reconciled report.
+        """
+        job = self._load_job(job_id)
+        if job["status"] in _TERMINAL_STATUSES:
+            return None
+        steps = self._load_steps(job_id)
+        if not steps or not all(s["status"] == COMPLETE for s in steps):
+            return None
+        if job.get("residual") != "none":
+            return None
+        tombstone = self._store.get_tombstone_for_job(job["fact_id"], job_id)
+        if tombstone is None:
+            return None
+        if self._residual_data_present(job["fact_id"]):
+            # The tombstone genuinely proved this generation's completion
+            # at the time it was written, but data has reappeared since —
+            # resurrecting a stale COMPLETE here would be the exact
+            # data-retention bug this whole hotfix exists to prevent, one
+            # layer removed. Let the caller fall through to
+            # _get_or_create_job(), which will open a new generation.
+            return None
+        with self._jobs_db() as conn:
+            placeholders = ", ".join("?" for _ in _TERMINAL_STATUSES)
+            conn.execute(
+                f"UPDATE erasure_jobs SET status = ?, updated_at = ? "  # noqa: S608
+                f"WHERE job_id = ? AND status NOT IN ({placeholders})",
+                (COMPLETE, _now(), job_id, *_TERMINAL_STATUSES),
+            )
+        job = self._load_job(job_id)
+        if job["status"] != COMPLETE:
+            # Lost the race to some OTHER terminal transition entirely
+            # (e.g. a concurrent supersede) — do not claim COMPLETE.
+            return None
+        return self._report(job, outcome=COMPLETE, tombstone=tombstone, steps=steps)
+
     def _get_tombstone_for(self, job: dict[str, Any]) -> dict[str, Any] | None:
         """The tombstone that corroborates THIS SPECIFIC job's COMPLETE
         outcome — never another generation's tombstone for the same
@@ -1053,6 +1305,25 @@ class ErasureCoordinator:
 
         latest_job = self._peek_job_row(fact_id)
 
+        if latest_job is not None and latest_job["status"] not in _TERMINAL_STATUSES:
+            # Codex RE-REVIEW finding (P2): before doing anything else with
+            # an active (non-terminal) job, try to reconcile it from its own
+            # exact tombstone — this is the crash window between
+            # write_tombstone() and the job-status COMPLETE update in
+            # _finalize(). Without this, a repeat call here would resume
+            # the job in place (harmless but wasteful — every step is
+            # already COMPLETE, nothing to re-run) or, if some OTHER live
+            # caller now holds the RUNNING claim, sit through
+            # _wait_for_job_completion()'s ~30s poll timeout for a runner
+            # that no longer exists. Returns None (falls through to the
+            # normal resume/supersede path below) if reconciliation does
+            # not apply — e.g. not every step is COMPLETE yet, no exact
+            # tombstone exists, or residual data has reappeared since.
+            reconciled = self._reconcile_completed_job_from_tombstone(latest_job["job_id"])
+            if reconciled is not None:
+                reconciled["erased_now"] = False  # already erased BEFORE this call
+                return reconciled
+
         if latest_job is not None and latest_job["status"] in _TERMINAL_STATUSES:
             steps = self._load_steps(latest_job["job_id"])
             steps_genuinely_complete = all(s["status"] == COMPLETE for s in steps)
@@ -1100,7 +1371,14 @@ class ErasureCoordinator:
                 }
 
         job_id = self._get_or_create_job(fact_id, reason, actor)
-        return self._run_job(job_id)
+        # _run_job(job_id) with the default wait_if_running=True never
+        # returns None — that is only possible for the
+        # wait_if_running=False crash-recovery-sweep path (see
+        # resume_incomplete_jobs()). The assert documents that invariant
+        # for mypy without loosening this method's own return type.
+        result = self._run_job(job_id)
+        assert result is not None
+        return result
 
     def resume_incomplete_jobs(self) -> list[dict[str, Any]]:
         """Crash recovery sweep: re-run every job not in a terminal state.
@@ -1110,15 +1388,38 @@ class ErasureCoordinator:
         terminal outcome (COMPLETE, or RESIDUAL_IMMUTABLE_DATA — a
         permanent fact about the record, not a transient failure) on this
         pass simply won't be picked up again.
+
+        Codex RE-REVIEW finding (P2): the SELECT now uses the POSITIVE
+        `_RESUMABLE_STATUSES` allowlist rather than `status NOT IN
+        _TERMINAL_STATUSES` — the same safe-by-construction reasoning as
+        `_claim_job_for_running()` (see there). For each selected job,
+        `_reconcile_completed_job_from_tombstone()` is tried first (a job
+        left RUNNING because the process died right after writing its
+        completion tombstone resolves immediately, without re-running
+        anything); if that doesn't apply, `_run_job(wait_if_running=False)`
+        performs a real CAS claim (not the old unconditional
+        `_set_job_status(RUNNING)`) before running — if a job raced to a
+        terminal status (e.g. a concurrent supersede) between this SELECT
+        and its claim attempt, the CAS simply fails and `_run_job()`
+        returns None, which is skipped rather than resurrecting it.
         """
         with self._jobs_db() as conn:
-            placeholders = ", ".join("?" for _ in _TERMINAL_STATUSES)
+            placeholders = ", ".join("?" for _ in _RESUMABLE_STATUSES)
             rows = conn.execute(
-                f"SELECT job_id FROM erasure_jobs WHERE status NOT IN ({placeholders}) "  # noqa: S608
+                f"SELECT job_id FROM erasure_jobs WHERE status IN ({placeholders}) "  # noqa: S608
                 "ORDER BY created_at",
-                _TERMINAL_STATUSES,
+                _RESUMABLE_STATUSES,
             ).fetchall()
-        return [self._run_job(row["job_id"], wait_if_running=False) for row in rows]
+        results = []
+        for row in rows:
+            reconciled = self._reconcile_completed_job_from_tombstone(row["job_id"])
+            if reconciled is not None:
+                results.append(reconciled)
+                continue
+            result = self._run_job(row["job_id"], wait_if_running=False)
+            if result is not None:
+                results.append(result)
+        return results
 
     def get_job_report(self, fact_id: str) -> dict[str, Any] | None:
         """Introspection: the latest job's report for `fact_id`, or None if

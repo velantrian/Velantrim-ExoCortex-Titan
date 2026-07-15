@@ -28,6 +28,8 @@ from core.erasure_coordinator import (
     RESIDUAL_IMMUTABLE_DATA,
     SUPERSEDED,
     ErasureCoordinator,
+    _now,
+    _RESUMABLE_STATUSES,
 )
 from core.memory import make_store
 from core.ngram_index import NGramIndex
@@ -1728,3 +1730,560 @@ def test_ensure_schema_rolls_back_fully_on_index_creation_failure(tmp_path, monk
     assert "idx_erasure_jobs_fact" in indexes, "old index must survive a failed upgrade"
     assert "idx_erasure_jobs_fact_active" not in indexes
     assert "idx_erasure_jobs_fact_generation" not in indexes
+
+
+# ── Codex RE-REVIEW fix 1: backend-specific staleness correlation (P1) ──────
+
+def test_single_backend_failure_then_recreate_supersedes_and_erases_new_data(rig):
+    """The exact Codex re-review reproduction: l1_same_db and ngram reach
+    COMPLETE, embeddings genuinely fails (still retryable — NOT
+    all_steps_done). The fact and ngram entry are then recreated. The next
+    erase call must supersede the old job, open a new generation, delete
+    the new fact + ngram entry, and must NOT report a false COMPLETE
+    (embeddings is still broken)."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix1_single_backend_then_recreate"
+
+    store.store_fact(_fact(fact_id, claim="original"))
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "original")
+
+    def failing_purge(_fid):
+        raise RuntimeError("simulated transient embeddings backend failure")
+
+    embeddings.purge_node = failing_purge
+
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == PARTIAL
+    assert first["steps"]["l1_same_db"]["status"] == COMPLETE
+    assert first["steps"]["ngram"]["status"] == COMPLETE
+    assert first["steps"]["embeddings"]["status"] == FAILED
+    assert store.get_fact(fact_id) is None
+    assert ngram.contains(fact_id) is False
+
+    store.store_fact(_fact(fact_id, claim="recreated after single-backend failure"))
+    ngram.index(fact_id, "recreated after single-backend failure")
+
+    second = coordinator.erase_fact_durable(fact_id, reason="test", actor="B")
+
+    assert second["job_id"] != first["job_id"], "must open a NEW generation"
+    assert second["outcome"] != COMPLETE, "embeddings is still broken — must not be a false COMPLETE"
+    assert store.get_fact(fact_id) is None, "the NEW fact must be deleted, not left behind"
+    assert ngram.contains(fact_id) is False, "the NEW ngram entry must be deleted, not left behind"
+
+    with coordinator._jobs_db() as conn:
+        first_status = conn.execute(
+            "SELECT status FROM erasure_jobs WHERE job_id = ?", (first["job_id"],)
+        ).fetchone()["status"]
+    assert first_status == SUPERSEDED
+
+
+def test_embeddings_complete_then_new_embedding_row_opens_new_generation(rig):
+    """embeddings reaches COMPLETE; a new embedding row for the SAME
+    fact_id appears afterward (e.g. re-ingestion path only wrote
+    embeddings back before the other backends). The next erase call must
+    detect the embeddings-domain staleness specifically and open a new
+    generation, even though nothing else changed."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix1_embeddings_complete_then_new_row"
+
+    store.store_fact(_fact(fact_id, claim="original"))
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "original")
+
+    def failing_ngram_purge(_fid):
+        raise RuntimeError("simulated transient ngram backend failure")
+
+    orig_ngram_purge = ngram.purge
+    ngram.purge = failing_ngram_purge
+
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == PARTIAL
+    assert first["steps"]["embeddings"]["status"] == COMPLETE
+    assert first["steps"]["ngram"]["status"] == FAILED
+    assert embeddings.has_any(fact_id) is False
+
+    ngram.purge = orig_ngram_purge  # let ngram succeed on the next generation
+
+    # Only the embeddings domain gets new data — nothing else changed.
+    embeddings.store(fact_id, np.array([0.4, 0.5, 0.6], dtype=np.float32), model_name="test-model")
+
+    second = coordinator.erase_fact_durable(fact_id, reason="test", actor="B")
+
+    assert second["job_id"] != first["job_id"], "a COMPLETE embeddings receipt going stale must open a new generation"
+    assert embeddings.has_any(fact_id) is False, "the new embedding row must be purged"
+
+    with coordinator._jobs_db() as conn:
+        first_status = conn.execute(
+            "SELECT status FROM erasure_jobs WHERE job_id = ?", (first["job_id"],)
+        ).fetchone()["status"]
+    assert first_status == SUPERSEDED
+
+
+def test_l1_same_db_complete_then_new_orphaned_dependent_opens_new_generation(migrated_rig):
+    """l1_same_db reaches COMPLETE (facts row + dependents gone); a new
+    same-DB dependent row for the SAME fact_id appears afterward (with no
+    facts row — the classic orphaned-dependent shape). The next erase call
+    must detect l1_same_db-domain staleness and open a new generation."""
+    coordinator, store, embeddings, ngram = migrated_rig
+    fact_id = "fix1_l1_complete_then_new_dependent"
+    other_fact_id = "fix1_l1_complete_then_new_dependent_other"
+    store.store_fact(_fact(other_fact_id, claim="other fact"))
+
+    store.store_fact(_fact(fact_id, claim="original"))
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "original")
+
+    def failing_embeddings_purge(_fid):
+        raise RuntimeError("simulated transient embeddings backend failure")
+
+    embeddings.purge_node = failing_embeddings_purge
+
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == PARTIAL
+    assert first["steps"]["l1_same_db"]["status"] == COMPLETE
+    assert first["steps"]["embeddings"]["status"] == FAILED
+    assert store.get_fact(fact_id) is None
+
+    with store._db() as conn:
+        conn.execute(
+            "INSERT INTO relations (from_fact_id, to_fact_id, relation_type) VALUES (?, ?, ?)",
+            (fact_id, other_fact_id, "supports"),
+        )
+        conn.commit()
+    assert store.same_db_dependents_present(fact_id) is True
+
+    second = coordinator.erase_fact_durable(fact_id, reason="test", actor="B")
+
+    assert second["job_id"] != first["job_id"], "a COMPLETE l1_same_db receipt going stale must open a new generation"
+    assert store.same_db_dependents_present(fact_id) is False, "the new orphaned dependent must be cleaned"
+
+    with coordinator._jobs_db() as conn:
+        first_status = conn.execute(
+            "SELECT status FROM erasure_jobs WHERE job_id = ?", (first["job_id"],)
+        ).fetchone()["status"]
+    assert first_status == SUPERSEDED
+
+
+def test_only_failed_backend_residual_with_no_complete_step_stale_resumes_same_job(rig):
+    """Only embeddings is FAILED and residual embeddings data remains, but
+    NO already-COMPLETE step's domain changed. This must resume the SAME
+    job (no new generation) — repeated retries of one flaky backend must
+    never grow the generation count."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix1_no_explosion_fact"
+
+    store.store_fact(_fact(fact_id, claim="original"))
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "original")
+
+    def failing_purge(_fid):
+        raise RuntimeError("simulated transient embeddings backend failure")
+
+    embeddings.purge_node = failing_purge
+
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == PARTIAL
+    assert first["steps"]["embeddings"]["status"] == FAILED
+
+    # Retry several times with nothing changing except the still-failing
+    # backend — every retry must land on the exact same job/generation.
+    for i in range(3):
+        again = coordinator.erase_fact_durable(fact_id, reason="test", actor=f"retry{i}")
+        assert again["job_id"] == first["job_id"], "must not open a new generation on a bare retry"
+        assert again["outcome"] == PARTIAL
+
+    with coordinator._jobs_db() as conn:
+        generations = conn.execute(
+            "SELECT COUNT(*) AS n FROM erasure_jobs WHERE fact_id = ?", (fact_id,)
+        ).fetchone()["n"]
+    assert generations == 1, "no generation explosion from repeated single-backend retries"
+
+    del embeddings.purge_node  # restore the real bound method
+    final = coordinator.erase_fact_durable(fact_id, reason="test", actor="final")
+    assert final["job_id"] == first["job_id"]
+    assert final["outcome"] == COMPLETE
+    assert embeddings.has_any(fact_id) is False
+
+
+def test_concurrent_erase_calls_on_single_backend_failure_recreate_converge_on_one_new_generation(rig):
+    """Two threads racing erase_fact_durable() on a fact_id whose latest
+    generation has SOME (not all) steps COMPLETE and reappeared data under
+    one of those COMPLETE steps must converge on exactly ONE new
+    generation — never two."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix1_concurrent_partial_stale_fact"
+
+    store.store_fact(_fact(fact_id, claim="original"))
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "original")
+
+    def failing_purge(_fid):
+        raise RuntimeError("simulated transient embeddings backend failure")
+
+    embeddings.purge_node = failing_purge
+
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="setup")
+    assert first["outcome"] == PARTIAL
+    assert first["steps"]["l1_same_db"]["status"] == COMPLETE
+    assert first["steps"]["embeddings"]["status"] == FAILED
+
+    store.store_fact(_fact(fact_id, claim="recreated for race"))
+    ngram.index(fact_id, "recreated for race")
+
+    orig_peek = coordinator._peek_job_row
+
+    def slow_peek(fid):
+        result = orig_peek(fid)
+        if result is not None and result["job_id"] == first["job_id"]:
+            time.sleep(0.15)
+        return result
+
+    coordinator._peek_job_row = slow_peek
+
+    results: dict[str, dict] = {}
+
+    def call(name):
+        results[name] = coordinator.erase_fact_durable(fact_id, reason="test", actor=name)
+
+    t1 = threading.Thread(target=call, args=("A",))
+    t2 = threading.Thread(target=call, args=("B",))
+    t1.start()
+    time.sleep(0.02)
+    t2.start()
+    t1.join(timeout=10)
+    t2.join(timeout=10)
+
+    coordinator._peek_job_row = orig_peek
+
+    assert "A" in results and "B" in results
+    assert results["A"]["job_id"] == results["B"]["job_id"]
+    assert results["A"]["job_id"] != first["job_id"]
+
+    with coordinator._jobs_db() as conn:
+        rows = conn.execute(
+            "SELECT job_id, generation, status FROM erasure_jobs WHERE fact_id = ? ORDER BY generation",
+            (fact_id,),
+        ).fetchall()
+    assert len(rows) == 2, f"expected exactly 2 generations, got {len(rows)}"
+    assert rows[0]["status"] == SUPERSEDED
+
+
+def test_superseded_via_single_backend_staleness_preserves_original_step_receipts(rig):
+    """Superseding via the NEW backend-specific staleness path (not all
+    steps COMPLETE) must still never rewrite the old job's step receipts —
+    only its own status/error change."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix1_receipts_unchanged_fact"
+
+    store.store_fact(_fact(fact_id, claim="original"))
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "original")
+
+    def failing_purge(_fid):
+        raise RuntimeError("simulated transient embeddings backend failure")
+
+    embeddings.purge_node = failing_purge
+
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == PARTIAL
+
+    with coordinator._jobs_db() as conn:
+        before = {
+            r["step_name"]: (r["status"], r["detail"]) for r in conn.execute(
+                "SELECT step_name, status, detail FROM erasure_job_steps WHERE job_id = ?",
+                (first["job_id"],),
+            ).fetchall()
+        }
+
+    store.store_fact(_fact(fact_id, claim="recreated"))
+    ngram.index(fact_id, "recreated")
+    coordinator.erase_fact_durable(fact_id, reason="test", actor="B")
+
+    with coordinator._jobs_db() as conn:
+        after = {
+            r["step_name"]: (r["status"], r["detail"]) for r in conn.execute(
+                "SELECT step_name, status, detail FROM erasure_job_steps WHERE job_id = ?",
+                (first["job_id"],),
+            ).fetchall()
+        }
+        job_row = conn.execute(
+            "SELECT status FROM erasure_jobs WHERE job_id = ?", (first["job_id"],)
+        ).fetchone()
+
+    assert before == after, "step receipts must be byte-for-byte unchanged after superseding"
+    assert job_row["status"] == SUPERSEDED
+
+
+# ── Codex RE-REVIEW fix 2: positive runnable-status allowlist (P2) ──────────
+
+def test_claim_job_for_running_never_reclaims_a_superseded_job(rig):
+    """A stale caller holding a SUPERSEDED job_id must never be able to
+    claim it back into RUNNING via _claim_job_for_running()."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix2_stale_caller_superseded_fact"
+
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "legacy residual claim")
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == PARTIAL
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "recreated")
+    second = coordinator.erase_fact_durable(fact_id, reason="test", actor="B")
+    assert second["outcome"] == COMPLETE
+
+    with coordinator._jobs_db() as conn:
+        status = conn.execute(
+            "SELECT status FROM erasure_jobs WHERE job_id = ?", (first["job_id"],)
+        ).fetchone()["status"]
+    assert status == SUPERSEDED
+
+    claimed = coordinator._claim_job_for_running(first["job_id"])
+    assert claimed is False
+
+    with coordinator._jobs_db() as conn:
+        status_after = conn.execute(
+            "SELECT status FROM erasure_jobs WHERE job_id = ?", (first["job_id"],)
+        ).fetchone()["status"]
+    assert status_after == SUPERSEDED, "a failed claim must never mutate the job's status"
+
+
+@pytest.mark.parametrize("status", [COMPLETE, RESIDUAL_IMMUTABLE_DATA, SUPERSEDED])
+def test_terminal_statuses_never_transition_to_running_under_any_claim(rig, status):
+    """COMPLETE / RESIDUAL_IMMUTABLE_DATA / SUPERSEDED must never
+    transition to RUNNING under ANY claim attempt (live-caller allowlist
+    or the broader resume-sweep allowlist)."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = f"fix2_terminal_never_running_{status.lower()}"
+    now = _now()
+
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs "
+            "(job_id, fact_id, generation, reason, actor, status, created_at, updated_at) "
+            "VALUES (?, ?, 1, 'test', 'test', ?, ?, ?)",
+            (f"erj_{status.lower()}_test", fact_id, status, now, now),
+        )
+
+    job_id = f"erj_{status.lower()}_test"
+    assert coordinator._claim_job_for_running(job_id) is False
+    assert coordinator._claim_job_for_running(job_id, from_statuses=_RESUMABLE_STATUSES) is False
+
+    with coordinator._jobs_db() as conn:
+        final_status = conn.execute(
+            "SELECT status FROM erasure_jobs WHERE job_id = ?", (job_id,)
+        ).fetchone()["status"]
+    assert final_status == status
+
+
+def test_resume_sweep_race_with_concurrent_supersede_does_not_resurrect_job(rig):
+    """resume_incomplete_jobs() selects a job, but another thread
+    supersedes it before the claim completes — the job must remain
+    SUPERSEDED (never get resurrected to RUNNING)."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix2_resume_race_fact"
+
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "legacy residual claim")
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == PARTIAL
+
+    orig_claim = coordinator._claim_job_for_running
+
+    def racing_claim(job_id, **kwargs):
+        if job_id == first["job_id"]:
+            # Simulate a concurrent erase_fact_durable() superseding this
+            # exact job in the window between resume's SELECT and its
+            # claim attempt.
+            with coordinator._jobs_db() as conn:
+                conn.execute(
+                    "UPDATE erasure_jobs SET status = ? WHERE job_id = ?",
+                    (SUPERSEDED, job_id),
+                )
+        return orig_claim(job_id, **kwargs)
+
+    coordinator._claim_job_for_running = racing_claim
+    try:
+        resumed = coordinator.resume_incomplete_jobs()
+    finally:
+        coordinator._claim_job_for_running = orig_claim
+
+    assert first["job_id"] not in [r["job_id"] for r in resumed]
+    with coordinator._jobs_db() as conn:
+        status = conn.execute(
+            "SELECT status FROM erasure_jobs WHERE job_id = ?", (first["job_id"],)
+        ).fetchone()["status"]
+    assert status == SUPERSEDED, "must remain SUPERSEDED, never resurrected to RUNNING"
+
+
+# ── Codex RE-REVIEW fix 3: reconcile crash between tombstone write and ──────
+# ── COMPLETE status update (P2) ──────────────────────────────────────────────
+
+def test_reconcile_crash_after_tombstone_before_status_update_returns_complete_immediately(rig):
+    """All steps COMPLETE, an exact tombstone is written, but the job is
+    manually left in RUNNING (simulating a crash between write_tombstone()
+    and the job-status COMPLETE update). The next erase_fact_durable()
+    call must reconcile to COMPLETE, return the SAME job_id, not create a
+    new generation, and not wait for the ~30s timeout."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix3_reconcile_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "c1")
+
+    result = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert result["outcome"] == COMPLETE
+    job_id = result["job_id"]
+
+    with coordinator._jobs_db() as conn:
+        conn.execute("UPDATE erasure_jobs SET status = 'RUNNING' WHERE job_id = ?", (job_id,))
+
+    t0 = time.monotonic()
+    reconciled = coordinator.erase_fact_durable(fact_id, reason="test", actor="B")
+    elapsed = time.monotonic() - t0
+
+    assert reconciled["job_id"] == job_id, "must reconcile the SAME job, not open a new generation"
+    assert reconciled["outcome"] == COMPLETE
+    assert elapsed < 5.0, "must not wait through _wait_for_job_completion()'s ~30s timeout"
+
+    with coordinator._jobs_db() as conn:
+        rows = conn.execute(
+            "SELECT COUNT(*) AS n FROM erasure_jobs WHERE fact_id = ?", (fact_id,)
+        ).fetchone()["n"]
+    assert rows == 1, "no new generation must have been created"
+
+    with coordinator._jobs_db() as conn:
+        status = conn.execute(
+            "SELECT status FROM erasure_jobs WHERE job_id = ?", (job_id,)
+        ).fetchone()["status"]
+    assert status == COMPLETE
+
+
+def test_reconcile_rejects_tombstone_from_a_different_generation(rig):
+    """A tombstone belonging to a DIFFERENT generation must never qualify
+    for reconciliation of the CURRENT (crash-stuck) job."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix3_wrong_generation_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "c1")
+
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == COMPLETE
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "c2 recreated")
+    second = coordinator.erase_fact_durable(fact_id, reason="test", actor="B")
+    assert second["outcome"] == COMPLETE
+    assert second["job_id"] != first["job_id"]
+
+    # Fabricate a THIRD job row that pretends to be crash-stuck in RUNNING
+    # with all steps COMPLETE but has NO tombstone of its own — the only
+    # tombstone that exists for this fact_id belongs to `first`/`second`,
+    # a different generation each.
+    reconciled = coordinator._reconcile_completed_job_from_tombstone(first["job_id"])
+    assert reconciled is None, "generation 1's job is already COMPLETE, nothing to reconcile"
+
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "UPDATE erasure_jobs SET status = 'RUNNING' WHERE job_id = ?", (second["job_id"],)
+        )
+    # second's OWN tombstone (job-scoped) still exists and matches, so this
+    # must reconcile successfully — proving the helper is scoped correctly,
+    # not merely "any tombstone for fact_id".
+    reconciled_second = coordinator._reconcile_completed_job_from_tombstone(second["job_id"])
+    assert reconciled_second is not None
+    assert reconciled_second["job_id"] == second["job_id"]
+
+
+def test_reconcile_with_recreated_data_does_not_resurrect_stale_complete(rig):
+    """An exact tombstone plus recreated data must NOT reconcile a stale
+    COMPLETE — a new generation must be opened instead."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix3_recreated_data_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "c1")
+
+    result = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert result["outcome"] == COMPLETE
+    job_id = result["job_id"]
+
+    with coordinator._jobs_db() as conn:
+        conn.execute("UPDATE erasure_jobs SET status = 'RUNNING' WHERE job_id = ?", (job_id,))
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "c2 recreated")
+
+    reconciled = coordinator._reconcile_completed_job_from_tombstone(job_id)
+    assert reconciled is None, "residual data has reappeared — must not reconcile"
+
+    second = coordinator.erase_fact_durable(fact_id, reason="test", actor="B")
+    assert second["job_id"] != job_id, "must open a new generation instead"
+    assert second["outcome"] == COMPLETE
+    assert store.get_fact(fact_id) is None
+    assert embeddings.has_any(fact_id) is False
+    assert ngram.contains(fact_id) is False
+
+
+def test_concurrent_reconcile_calls_converge_on_the_same_complete_result(rig):
+    """Two concurrent callers reconciling the same crash-stuck job must
+    consistently converge on the SAME reconciled COMPLETE result."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix3_concurrent_reconcile_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "c1")
+
+    result = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert result["outcome"] == COMPLETE
+    job_id = result["job_id"]
+
+    with coordinator._jobs_db() as conn:
+        conn.execute("UPDATE erasure_jobs SET status = 'RUNNING' WHERE job_id = ?", (job_id,))
+
+    results: dict[str, dict] = {}
+
+    def call(name):
+        results[name] = coordinator._reconcile_completed_job_from_tombstone(job_id)
+
+    t1 = threading.Thread(target=call, args=("A",))
+    t2 = threading.Thread(target=call, args=("B",))
+    t1.start()
+    t2.start()
+    t1.join(timeout=10)
+    t2.join(timeout=10)
+
+    assert results["A"] is not None and results["B"] is not None
+    assert results["A"]["job_id"] == results["B"]["job_id"] == job_id
+    assert results["A"]["outcome"] == results["B"]["outcome"] == COMPLETE
+
+
+def test_crash_before_tombstone_written_remains_recoverable_without_false_complete(rig, monkeypatch):
+    """A crash occurring BEFORE the tombstone was ever written must remain
+    recoverable via the normal resume path, but must NOT receive a false
+    COMPLETE from reconciliation (no tombstone exists yet to prove it)."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix3_crash_before_tombstone_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "c1")
+
+    orig_write_tombstone = store.write_tombstone
+
+    def no_op_write_tombstone(*args, **kwargs):
+        return None  # simulate: process died before the tombstone write landed
+
+    monkeypatch.setattr(store, "write_tombstone", no_op_write_tombstone)
+
+    result = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    # _finalize() sees all_complete + residual == "none" but write_tombstone()
+    # never actually wrote anything, so get_tombstone_for_job() finds
+    # nothing and _run_job/_finalize proceeds to set the status regardless
+    # of tombstone success in this simulated crash — assert reconciliation
+    # specifically cannot fabricate a COMPLETE without a real tombstone.
+    monkeypatch.setattr(store, "write_tombstone", orig_write_tombstone)
+
+    with coordinator._jobs_db() as conn:
+        conn.execute("UPDATE erasure_jobs SET status = 'RUNNING' WHERE job_id = ?", (result["job_id"],))
+
+    reconciled = coordinator._reconcile_completed_job_from_tombstone(result["job_id"])
+    assert reconciled is None, "no tombstone exists — must not fabricate a COMPLETE"
+
+    # The normal resume path must still pick this job up and finish it
+    # honestly (steps are already COMPLETE, so resuming just re-finalizes
+    # and this time write_tombstone() runs for real).
+    resumed = coordinator.resume_incomplete_jobs()
+    resumed_ids = [r["job_id"] for r in resumed]
+    assert result["job_id"] in resumed_ids
+    final = [r for r in resumed if r["job_id"] == result["job_id"]][0]
+    assert final["outcome"] == COMPLETE
+    assert store.get_tombstone_for_job(fact_id, result["job_id"]) is not None
