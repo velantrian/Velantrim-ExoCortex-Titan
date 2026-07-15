@@ -2287,3 +2287,192 @@ def test_crash_before_tombstone_written_remains_recoverable_without_false_comple
     final = [r for r in resumed if r["job_id"] == result["job_id"]][0]
     assert final["outcome"] == COMPLETE
     assert store.get_tombstone_for_job(fact_id, result["job_id"]) is not None
+
+
+# ── Codex RE-REVIEW ROUND 2: 3 fresh findings on the round-1 fix itself ─────
+
+def test_l1_same_db_incomplete_facts_row_present_by_design_is_not_stale(rig, monkeypatch):
+    """Codex finding: determine_raw COMPLETE + l1_same_db FAILED/incomplete
+    with the facts row still present (by design — l1_same_db hasn't run
+    yet) must NOT be treated as staleness. Gating the facts-domain check
+    on determine_raw as well as l1_same_db caused every retry during an
+    l1_same_db outage to open a brand-new generation while the SAME fact
+    stayed unerased forever. l1_same_db alone must gate this check."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix_l1_gate_only_fact"
+    store.store_fact(_fact(fact_id, claim="c1"))
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "c1")
+
+    def failing_l1(_fid):
+        raise RuntimeError("simulated same-DB backend outage")
+
+    monkeypatch.setattr(store, "erase_fact_dependents_atomic", failing_l1)
+
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == PARTIAL
+    assert first["steps"]["determine_raw"]["status"] == COMPLETE
+    assert first["steps"]["l1_same_db"]["status"] == FAILED
+    assert store.get_fact(fact_id) is not None, "facts row is expected to still be present"
+
+    # Retry several times while the outage continues and nothing else
+    # changes — every retry must land on the exact same job/generation,
+    # never opening a new one just because determine_raw is COMPLETE and
+    # the (expectedly still-present) facts row "looks" stale.
+    for i in range(3):
+        again = coordinator.erase_fact_durable(fact_id, reason="test", actor=f"retry{i}")
+        assert again["job_id"] == first["job_id"], "l1_same_db outage must not open a new generation"
+        assert again["outcome"] == PARTIAL
+
+    with coordinator._jobs_db() as conn:
+        generations = conn.execute(
+            "SELECT COUNT(*) AS n FROM erasure_jobs WHERE fact_id = ?", (fact_id,)
+        ).fetchone()["n"]
+    assert generations == 1
+
+    monkeypatch.undo()
+    final = coordinator.erase_fact_durable(fact_id, reason="test", actor="final")
+    assert final["job_id"] == first["job_id"]
+    assert final["outcome"] == COMPLETE
+    assert store.get_fact(fact_id) is None
+
+
+def test_running_job_is_never_superseded_by_a_second_live_caller(rig):
+    """Codex finding: a job that is currently RUNNING might be actively
+    worked by another live caller right now — _get_or_create_job() must
+    never evaluate staleness/supersede against it (that could race the
+    live runner's own writes). It is returned as-is; the caller's
+    _run_job() is responsible for waiting on it."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix_running_not_superseded_fact"
+
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "legacy residual claim")
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == PARTIAL
+
+    # Recreate data (would normally trigger staleness/supersede) and then
+    # simulate a genuinely live runner: RUNNING, with steps NOT all
+    # COMPLETE yet and no tombstone at all — this must never be provably
+    # "finished", so it cannot be treated as terminal.
+    _seed_all_layers(store, embeddings, ngram, fact_id, "recreated while live")
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "UPDATE erasure_jobs SET status = 'RUNNING' WHERE job_id = ?", (first["job_id"],)
+        )
+        conn.execute(
+            "UPDATE erasure_job_steps SET status = 'PENDING' WHERE job_id = ? AND step_name = 'ngram'",
+            (first["job_id"],),
+        )
+
+    returned_job_id = coordinator._get_or_create_job(fact_id, "test", "B")
+    assert returned_job_id == first["job_id"], "a RUNNING, not-provably-finished job must never be superseded"
+
+    with coordinator._jobs_db() as conn:
+        status = conn.execute(
+            "SELECT status FROM erasure_jobs WHERE job_id = ?", (first["job_id"],)
+        ).fetchone()["status"]
+        count = conn.execute(
+            "SELECT COUNT(*) AS n FROM erasure_jobs WHERE fact_id = ?", (fact_id,)
+        ).fetchone()["n"]
+    assert status == "RUNNING", "status must be left untouched, not superseded"
+    assert count == 1, "no new generation must have been created"
+
+
+def test_supersede_cas_does_not_overwrite_a_job_completed_during_the_race(rig):
+    """Codex finding: the supersede UPDATE must be a CAS on the exact
+    status observed when the decision was made. If the job races to a
+    different status (e.g. another runner finishes it to COMPLETE) in the
+    gap between that decision and this transaction's write lock, the
+    UPDATE must match zero rows and this attempt must be abandoned rather
+    than overwriting a possibly now-valid COMPLETE outcome."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "fix_supersede_cas_fact"
+
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "legacy residual claim")
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == PARTIAL
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "recreated for cas race")
+
+    orig_load_steps = coordinator._load_steps
+    raced_once = {"done": False}
+
+    def racing_load_steps(job_id):
+        result = orig_load_steps(job_id)
+        if job_id == first["job_id"] and not raced_once["done"]:
+            raced_once["done"] = True
+            # Simulate another runner completing this exact job (e.g. an
+            # earlier, still-in-flight retry of a transient failure that
+            # finally succeeded) in the gap between the staleness decision
+            # and the supersede transaction's write lock.
+            with coordinator._jobs_db() as conn:
+                conn.execute(
+                    "UPDATE erasure_jobs SET status = 'COMPLETE' WHERE job_id = ?",
+                    (first["job_id"],),
+                )
+        return result
+
+    coordinator._load_steps = racing_load_steps
+    try:
+        second_job_id = coordinator._get_or_create_job(fact_id, "test", "B")
+    finally:
+        coordinator._load_steps = orig_load_steps
+
+    with coordinator._jobs_db() as conn:
+        first_status = conn.execute(
+            "SELECT status FROM erasure_jobs WHERE job_id = ?", (first["job_id"],)
+        ).fetchone()["status"]
+    assert first_status == "COMPLETE", "the race winner's COMPLETE must never be overwritten to SUPERSEDED"
+    assert second_job_id != first["job_id"], "residual is still present, so a new generation must still open"
+
+
+def test_run_job_on_a_superseded_job_id_redirects_to_the_replacement_generation(rig):
+    """Stress testing under concurrent load caught a real bug: a caller
+    can be handed a job_id by _get_or_create_job() that gets SUPERSEDED by
+    a concurrent caller's own new generation before this caller's
+    _run_job() ever claims it. SUPERSEDED is internal bookkeeping/history,
+    never a legitimate erase_fact_durable() outcome — _run_job() must
+    redirect to whichever generation actually replaced it, never report
+    the stale SUPERSEDED status as-is."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "run_job_superseded_redirect_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "current data")
+
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs "
+            "(job_id, fact_id, generation, reason, actor, status, created_at, updated_at) "
+            "VALUES ('erj_superseded_stale', ?, 1, 'test', 'test', 'SUPERSEDED', ?, ?)",
+            (fact_id, now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, 'erj_superseded_stale', ?, 'COMPLETE')",
+                (f"erj_superseded_stale_{step_name}", step_name),
+            )
+        conn.execute(
+            "INSERT INTO erasure_jobs "
+            "(job_id, fact_id, generation, reason, actor, status, created_at, updated_at) "
+            "VALUES ('erj_replacement', ?, 2, 'test', 'test', 'PENDING', ?, ?)",
+            (fact_id, now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, 'erj_replacement', ?, 'PENDING')",
+                (f"erj_replacement_{step_name}", step_name),
+            )
+
+    result = coordinator._run_job("erj_superseded_stale")
+
+    assert result is not None
+    assert result["outcome"] != SUPERSEDED, "SUPERSEDED must never be reported as a run outcome"
+    assert result["job_id"] == "erj_replacement", "must redirect to the actual replacement generation"
+    assert result["outcome"] == COMPLETE
+    assert store.get_fact(fact_id) is None
+    assert embeddings.has_any(fact_id) is False
+    assert ngram.contains(fact_id) is False

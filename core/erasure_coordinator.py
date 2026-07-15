@@ -459,9 +459,28 @@ class ErasureCoordinator:
             ).fetchone()
         return row["status"] if row else PENDING
 
-    def _get_or_create_job(self, fact_id: str, reason: str, actor: str) -> str:
+    def _get_or_create_job(
+        self, fact_id: str, reason: str, actor: str, *, _retry: bool = False
+    ) -> str:
         """Get the one ACTIVE durable job for `fact_id`, opening a new
         generation if none is active.
+
+        `_retry` is for this method's OWN internal recursive self-calls
+        only (see the CAS-failure and IntegrityError-winner recovery
+        paths below) — never pass it from the outside. It exists because
+        this method's "existing is terminal -> always open the next
+        generation, no residual check" contract (see the NOTE further
+        down) is only safe for its INTENDED caller, erase_fact_durable(),
+        which has already verified residual presence itself before ever
+        invoking this method fresh. An internal retry has no such
+        external guarantee — the SAME "terminal" observation it is now
+        re-evaluating may simply be this fact_id's already fully-cleaned
+        winner generation, discovered only because a concurrent race
+        moved the row out from under an earlier attempt in THIS SAME
+        call chain. Blindly reapplying the "no residual check" contract
+        there would open a wasted extra generation on every such race
+        (a real, reproducible bug caught by concurrency stress testing
+        under load — see test_concurrent_erase_calls_on_superseded_candidate_converge_on_one_generation).
 
         At most one ACTIVE (non-terminal) saga per fact_id may exist at a
         time, enforced by a real SQLite constraint (the partial UNIQUE
@@ -513,26 +532,113 @@ class ErasureCoordinator:
         backend-specific staleness correlation
         (_completed_step_receipts_stale()): each step's OWN COMPLETE
         receipt is checked ONLY against its OWN domain (facts/same-DB
-        dependents for determine_raw+l1_same_db, the embeddings backend
-        for embeddings, the ngram index for ngram) — a step that is still
-        FAILED/PENDING never marks the job stale by itself, which is what
-        prevents a repeatedly-failing single backend from opening a new
-        generation on every retry (unbounded generation growth). If AT
-        least one already-COMPLETE step's domain has reappeared data, the
-        old job is transitioned to the terminal SUPERSEDED status (its own
-        step receipts are never rewritten — still immutable history) and a
-        NEW generation is opened instead, in the SAME atomic transaction
-        as the new generation's INSERT. Otherwise (no COMPLETE step is
-        stale — including the "some step FAILED/PENDING and its own
-        residual reappeared" case), the existing job is honestly resumed
-        in place with no new generation.
+        dependents for l1_same_db, the embeddings backend for embeddings,
+        the ngram index for ngram) — a step that is still FAILED/PENDING
+        never marks the job stale by itself, which is what prevents a
+        repeatedly-failing single backend from opening a new generation on
+        every retry (unbounded generation growth). If at least one
+        already-COMPLETE step's domain has reappeared data, the old job is
+        transitioned to the terminal SUPERSEDED status (its own step
+        receipts are never rewritten — still immutable history) and a NEW
+        generation is opened instead, in the SAME atomic transaction as the
+        new generation's INSERT. Otherwise (no COMPLETE step is stale —
+        including the "some step FAILED/PENDING and its own residual
+        reappeared" case), the existing job is honestly resumed in place
+        with no new generation.
+
+        Codex RE-REVIEW finding #2 (P1): a job currently RUNNING is being
+        actively worked by another live caller RIGHT NOW — its step
+        statuses can change out from under this check at any moment, and
+        that runner (not this caller) is the sole authority over it until
+        it finishes or crashes. Evaluating staleness/supersede against a
+        RUNNING job is unsafe: superseding it here could race the live
+        runner's own writes (e.g. it might finish and call
+        `_set_job_status()` moments later, colliding with — or being
+        silently overwritten by — the supersede this caller just
+        performed). A RUNNING job is therefore returned as-is, WITHOUT any
+        staleness check; the caller's `_run_job(wait_if_running=True)` will
+        either wait for that runner to finish, or reconcile it from its own
+        exact tombstone if it crashed (`_reconcile_completed_job_from_tombstone()`).
+
+        Codex RE-REVIEW finding #3 (P1): the supersede UPDATE is a CAS on
+        the EXACT status this method observed and decided to supersede
+        (`status = ?` bound to that snapshot, not just "still non-
+        terminal") — if the job reached ANY different status in the gap
+        between that decision and this transaction acquiring the write
+        lock (e.g. another live runner finished it to COMPLETE, or a
+        concurrent resume claimed it into RUNNING), the UPDATE matches zero
+        rows, the whole attempt is abandoned (rolled back, no new
+        generation inserted), and this method recurses to re-evaluate
+        against current reality rather than blindly overwriting a possibly
+        now-valid terminal outcome.
         """
         existing = self._peek_job_row(fact_id)
         supersede_job_id = None
+        if existing is not None and existing["status"] == RUNNING:
+            # A live runner might genuinely still be executing this job
+            # right now — do not evaluate staleness/supersede against it
+            # (Codex RE-REVIEW finding #2, see docstring). The ONE
+            # exception: if this job's own EXACT tombstone already exists,
+            # that is proof its real work already finished — _finalize()
+            # writes the tombstone as the LAST thing it does before
+            # marking the job terminal (see there), so a live runner
+            # cannot still be mid-flight once its own tombstone is on
+            # disk. In that provable case only, repair the bookkeeping
+            # (CAS RUNNING -> COMPLETE) — safe here because we KNOW this
+            # job is done, not merely suspected-crashed.
+            steps = self._load_steps(existing["job_id"])
+            provably_finished = (
+                bool(steps)
+                and all(s["status"] == COMPLETE for s in steps)
+                and existing.get("residual") == "none"
+                and self._store.get_tombstone_for_job(fact_id, existing["job_id"]) is not None
+            )
+            if not provably_finished:
+                return existing["job_id"]
+            with self._jobs_db() as conn:
+                conn.execute(
+                    "UPDATE erasure_jobs SET status = ?, updated_at = ? "
+                    "WHERE job_id = ? AND status = ?",
+                    (COMPLETE, _now(), existing["job_id"], RUNNING),
+                )
+            existing = dict(existing, status=COMPLETE)
+            # Unlike the general "existing is terminal" fallthrough below
+            # (which intentionally never checks residual on its own — see
+            # the NOTE there — because ITS callers, erase_fact_durable()
+            # and the IntegrityError-recovery winner-check, have already
+            # verified residual presence themselves), this bookkeeping
+            # repair has no such external verification: we just
+            # discovered, ourselves, one level in, that this generation
+            # finished. Skipping this check would blindly open a wasted
+            # extra generation on every repair, even when nothing
+            # residual is actually left.
+            if not self._residual_data_present(fact_id):
+                return existing["job_id"]
+        supersede_from_status: str | None = None
         if existing is not None and existing["status"] not in _TERMINAL_STATUSES:
             if not self._completed_step_receipts_stale(existing["job_id"], fact_id):
                 return existing["job_id"]
             supersede_job_id = existing["job_id"]
+            supersede_from_status = existing["status"]
+        # NOTE: an `existing` row that is already terminal is, by default
+        # (`_retry=False`, the only way an external caller ever reaches
+        # this method), intentionally NOT checked against
+        # `_residual_data_present()` here — this method is a "dumb"
+        # internal primitive that always opens the next generation once
+        # the latest one is terminal (see
+        # test_internal_get_or_create_job_opens_new_generation_after_terminal).
+        # Deciding WHETHER a new generation is actually warranted for a
+        # terminal existing job is erase_fact_durable()'s job alone (its own
+        # residual/reconciliation checks run before it ever calls this
+        # method) — duplicating that decision here would just be a second,
+        # independently-racing source of truth for the same question.
+        #
+        # An internal retry (`_retry=True`) has no such external
+        # guarantee — see the docstring — so it DOES check residual before
+        # accepting the "always open next gen" fallthrough.
+        elif existing is not None and existing["status"] in _TERMINAL_STATUSES and _retry:
+            if not self._residual_data_present(fact_id):
+                return existing["job_id"]
 
         next_generation = (existing["generation"] + 1) if existing is not None else 1
         job_id = f"erj_{uuid.uuid4().hex[:16]}"
@@ -545,17 +651,48 @@ class ErasureCoordinator:
                     # status/error change, step receipts are untouched.
                     # error is a technical marker only, never PII/claim
                     # content.
-                    conn.execute(
+                    #
+                    # Codex RE-REVIEW finding #3 (P1): this is a CAS on the
+                    # EXACT status this method observed when it decided to
+                    # supersede (`supersede_from_status`, snapshotted above —
+                    # by construction always PENDING/PARTIAL/FAILED here,
+                    # since RUNNING and every terminal status already
+                    # returned earlier). If the row moved to any OTHER
+                    # status in the gap between that decision and this
+                    # transaction's write lock — another live runner
+                    # finished it (COMPLETE/RESIDUAL_IMMUTABLE_DATA), a
+                    # concurrent resume claimed it (RUNNING), or another
+                    # caller already superseded it — the UPDATE matches
+                    # zero rows and this whole attempt is abandoned rather
+                    # than blindly overwriting a possibly now-valid outcome
+                    # or inserting an orphaned new generation on top of it.
+                    cas = conn.execute(
                         "UPDATE erasure_jobs SET status = ?, error = ?, updated_at = ? "
-                        "WHERE job_id = ?",
+                        "WHERE job_id = ? AND status = ?",
                         (
                             SUPERSEDED,
                             "superseded: residual data reappeared under an "
                             "already-completed step's domain",
                             now,
                             supersede_job_id,
+                            supersede_from_status,
                         ),
                     )
+                    if cas.rowcount == 0:
+                        # The row moved out from under us — recurse with
+                        # `_retry=True` so the fresh re-evaluation (whatever
+                        # it finds: RUNNING now claimed elsewhere, ANOTHER
+                        # caller's own supersede, or a fully-COMPLETE
+                        # generation with nothing residual left) checks
+                        # residual before ever accepting the "terminal ->
+                        # always open next gen" fallthrough — see the
+                        # docstring's `_retry` note. A plain recursion
+                        # (implicitly `_retry=False`) would blindly open
+                        # yet ANOTHER generation on top of a job that may
+                        # have already, genuinely finished cleaning
+                        # everything.
+                        conn.rollback()
+                        return self._get_or_create_job(fact_id, reason, actor, _retry=True)
                 conn.execute(
                     "INSERT INTO erasure_jobs "
                     "(job_id, fact_id, generation, reason, actor, status, created_at, updated_at) "
@@ -627,10 +764,13 @@ class ErasureCoordinator:
             # steps and return a stale COMPLETE report while the
             # newly-recreated data sits unerased — the exact class of bug
             # this hotfix's generation model exists to prevent, one layer
-            # removed (inside the race-recovery path itself). Recurse to
-            # open the NEXT generation instead of trusting a terminal
-            # report that no longer reflects current reality.
-            return self._get_or_create_job(fact_id, reason, actor)
+            # removed (inside the race-recovery path itself). Recurse
+            # (with `_retry=True`, in case residual is no longer present
+            # by the time of the recursive call's own fresh peek — the
+            # same defense-in-depth as the CAS-failure path above) to open
+            # the NEXT generation instead of trusting a terminal report
+            # that no longer reflects current reality.
+            return self._get_or_create_job(fact_id, reason, actor, _retry=True)
 
         return winner["job_id"]
 
@@ -903,12 +1043,28 @@ class ErasureCoordinator:
         — e.g. a concurrent supersede — in that window) returns None rather
         than proceeding, and the caller must treat None as "nothing to do
         for this job".
+
+        A claim can also lose because `job_id` itself was SUPERSEDED by a
+        concurrent caller's OWN new generation in the gap between
+        `_get_or_create_job()` handing this job_id back and this claim
+        attempt — a real, reproducible race under concurrency stress
+        testing. SUPERSEDED is internal bookkeeping/history, never a
+        legitimate `erase_fact_durable()` outcome, so `job_id` is never
+        just polled/reported as-is in that case: this redirects to
+        whichever generation actually replaced it (always present — a job
+        transitions to SUPERSEDED in the SAME atomic transaction that
+        creates its replacement) and continues there instead.
         """
         from_statuses = _RUNNABLE_STATUSES if wait_if_running else _RESUMABLE_STATUSES
         if not self._claim_job_for_running(job_id, from_statuses=from_statuses):
             reconciled = self._reconcile_completed_job_from_tombstone(job_id)
             if reconciled is not None:
                 return reconciled
+            current = self._load_job(job_id)
+            if current["status"] == SUPERSEDED:
+                latest = self._peek_job_row(current["fact_id"])
+                if latest is not None and latest["job_id"] != job_id:
+                    return self._run_job(latest["job_id"], wait_if_running=wait_if_running)
             if wait_if_running:
                 return self._wait_for_job_completion(job_id)
             return None
@@ -1093,13 +1249,26 @@ class ErasureCoordinator:
         residual, same FAILED step" leaves this method returning False and
         the SAME job/generation gets reused, exactly as required.
 
-        determine_raw and l1_same_db share one domain: whether the `facts`
-        row or a same-DB dependent exists right now — see
-        _run_determine_raw() (reads/persists from the `facts` row) and
-        erase_fact_dependents_atomic() (deletes it plus same-DB
-        dependents). A COMPLETE receipt for EITHER is stale iff that data
-        is back, regardless of whether the OTHER of the two is also
-        COMPLETE.
+        Codex RE-REVIEW finding #1 (P2): l1_same_db — never determine_raw —
+        is the ONLY step that gates the facts-row/same-DB-dependents
+        domain. determine_raw merely READS the `facts` row to determine
+        raw-origin residual (see _run_determine_raw()); it never deletes
+        anything, so the row being present after determine_raw is COMPLETE
+        proves nothing by itself — that is precisely what l1_same_db
+        (erase_fact_dependents_atomic()) is responsible for, and still
+        may not have run yet (PENDING) or may have genuinely, transiently
+        FAILED. Gating this check on determine_raw as well as l1_same_db
+        was a real bug: during an l1_same_db outage, the facts row stays
+        present BY DESIGN (l1_same_db hasn't deleted it yet, not because
+        data "reappeared"), yet determine_raw is COMPLETE — the old check
+        would treat every single retry as stale and open a brand new
+        generation each time, all while the SAME fact remains unerased
+        forever (unbounded generation growth masking a stuck outage,
+        exactly what this whole staleness-gating mechanism exists to
+        prevent). Any case where the facts row genuinely, meaningfully
+        reappears AFTER a real deletion is still caught: that deletion is
+        l1_same_db's job, so l1_same_db's own COMPLETE receipt is the one
+        that goes stale.
 
         embeddings/ngram are each staled only by their OWN backend gaining
         an entry for fact_id again — independent of each other and of the
@@ -1113,32 +1282,21 @@ class ErasureCoordinator:
         steps = self._load_steps(job_id)
         status_by_step = {s["step_name"]: s["status"] for s in steps}
 
-        facts_domain_checked = False
-        facts_domain_present = False
-
-        def _facts_or_same_db_dependents_present() -> bool:
-            nonlocal facts_domain_checked, facts_domain_present
-            if not facts_domain_checked:
-                present = False
-                try:
-                    if self._store.get_fact_durable(fact_id) is not None:
-                        present = True
-                except sqlite3.OperationalError:
+        if status_by_step.get("l1_same_db") == COMPLETE:
+            present = False
+            try:
+                if self._store.get_fact_durable(fact_id) is not None:
                     present = True
-                if not present:
-                    try:
-                        if self._store.same_db_dependents_present(fact_id):
-                            present = True
-                    except sqlite3.Error:
+            except sqlite3.OperationalError:
+                present = True
+            if not present:
+                try:
+                    if self._store.same_db_dependents_present(fact_id):
                         present = True
-                facts_domain_present = present
-                facts_domain_checked = True
-            return facts_domain_present
-
-        if status_by_step.get("determine_raw") == COMPLETE and _facts_or_same_db_dependents_present():
-            return True
-        if status_by_step.get("l1_same_db") == COMPLETE and _facts_or_same_db_dependents_present():
-            return True
+                except sqlite3.Error:
+                    present = True
+            if present:
+                return True
 
         if status_by_step.get("embeddings") == COMPLETE:
             try:
