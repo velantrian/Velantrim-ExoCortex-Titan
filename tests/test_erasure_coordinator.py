@@ -26,6 +26,7 @@ from core.erasure_coordinator import (
     PARTIAL,
     PENDING,
     RESIDUAL_IMMUTABLE_DATA,
+    SUPERSEDED,
     ErasureCoordinator,
 )
 from core.memory import make_store
@@ -48,6 +49,48 @@ def rig(tmp_path):
         store=store, embedding_store=embeddings, ngram_index=ngram
     )
     return coordinator, store, embeddings, ngram
+
+
+@pytest.fixture
+def migrated_rig(tmp_path):
+    """Same as `rig`, but the facts DB has gone through the REAL migration
+    chain (008-014), so same-DB dependent tables (relations, fact_mentions,
+    l0_fact_provenance, ...) genuinely exist — `rig`'s bare make_store()
+    DB only has the runtime-bootstrapped tables (facts, l0_raw_memory,
+    l0_fact_provenance, erasure_log), not the migration-only ones."""
+    import subprocess
+    import sys as _sys
+
+    db_path = str(tmp_path / "facts.db")
+    subprocess.run(
+        [_sys.executable, os.path.join(os.path.dirname(__file__), "..", "scripts", "apply_migrations.py"),
+         "--db", db_path],
+        check=True, capture_output=True,
+    )
+    store = make_store(db_path)
+    embeddings = EmbeddingStore(str(tmp_path / "embeddings.db"))
+    embeddings.ensure_table()
+    ngram = NGramIndex(str(tmp_path / "ngram.db"))
+    coordinator = ErasureCoordinator(
+        store=store, embedding_store=embeddings, ngram_index=ngram
+    )
+    return coordinator, store, embeddings, ngram
+
+
+def _orphan_fact_with_dependent(store, fact_id, insert_dependent):
+    """Simulate a legacy/out-of-band deletion: store a fact, let
+    `insert_dependent(conn, fact_id)` create a same-DB dependent row for
+    it, then remove ONLY the `facts` row directly (bypassing
+    erase_fact_dependents_atomic(), which would have cleaned the
+    dependent too) — mirroring the exact P1-A "legacy tombstone" shape,
+    but for a same-DB dependent table instead of embeddings/ngram."""
+    store.store_fact(_fact(fact_id, claim="will be legacy-erased"))
+    with store._db() as conn:
+        insert_dependent(conn, fact_id)
+        conn.execute("DROP TRIGGER IF EXISTS prevent_fact_delete")
+        conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
+        conn.execute(store._PREVENT_FACT_DELETE_TRIGGER_SQL)
+        conn.commit()
 
 
 def _seed_all_layers(store, embeddings, ngram, fact_id, claim):
@@ -884,10 +927,13 @@ def test_embeddings_backend_unavailable_does_not_claim_false_complete(rig, monke
     all (e.g. numpy/embedding_store unavailable in a base/server install),
     that must surface as an honest PARTIAL/FAILED outcome for the
     `embeddings` step — never as `applicable=false` silently folded into a
-    false COMPLETE."""
+    false COMPLETE. fact_id genuinely HAS an embeddings row here (state B
+    — see Codex review fix 5): mere table existence is not the signal,
+    a row for THIS fact_id is."""
     coordinator, store, embeddings, ngram = rig
     fact_id = "embeddings_unavailable_fact"
     store.store_fact(_fact(fact_id))
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
 
     def _broken_get_embeddings():
         raise ImportError("embeddings backend unavailable (numpy not installed)")
@@ -1078,23 +1124,8 @@ def test_embeddings_store_genuinely_absent_reaches_honest_complete(rig, monkeypa
     assert coordinator.is_erased(fact_id) is True
 
 
-def test_embeddings_store_exists_but_backend_unavailable_is_not_complete(rig, monkeypatch):
-    """State B: the embeddings DB file and gs_vectors table DO exist (this
-    deployment has used the embeddings feature at some point), but the
-    real backend can't be reached (numpy unavailable). This must NOT be
-    silently folded into applicable=False — the table's mere existence
-    proves the feature is/was in use, so an inability to verify this
-    fact_id's absence must surface as an honest FAILED/PARTIAL, never a
-    false COMPLETE."""
-    coordinator, store, embeddings, ngram = rig
-    fact_id = "state_b_fact"
-    store.store_fact(_fact(fact_id))
-
-    # A real gs_vectors table exists (created via raw sqlite3 — no numpy
-    # needed to set this up, mirroring what a real EmbeddingStore would
-    # have created before numpy became unavailable).
-    existing_path = os.path.join(tempfile.mkdtemp(), "used_embeddings.db")
-    conn = sqlite3.connect(existing_path)
+def _make_gs_vectors_db(path, rows=()):
+    conn = sqlite3.connect(path)
     conn.execute("""
         CREATE TABLE gs_vectors (
             node_id TEXT NOT NULL, model_name TEXT NOT NULL,
@@ -1103,25 +1134,108 @@ def test_embeddings_store_exists_but_backend_unavailable_is_not_complete(rig, mo
             PRIMARY KEY (node_id, model_name)
         )
     """)
-    conn.execute(
-        "INSERT INTO gs_vectors (node_id, model_name, embedding_blob, dims, computed_at) "
-        "VALUES (?, ?, ?, ?, ?)",
-        ("some_other_fact", "default", b"\x00\x00\x80?", 1, 0.0),
-    )
+    for node_id in rows:
+        conn.execute(
+            "INSERT INTO gs_vectors (node_id, model_name, embedding_blob, dims, computed_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (node_id, "default", b"\x00\x00\x80?", 1, 0.0),
+        )
     conn.commit()
     conn.close()
 
-    monkeypatch.setattr(coordinator, "_resolve_embeddings_db_path", lambda: existing_path)
+
+def _break_embeddings(coordinator, monkeypatch, db_path, exc_message="No module named 'numpy'"):
+    monkeypatch.setattr(coordinator, "_resolve_embeddings_db_path", lambda: db_path)
     monkeypatch.setattr(
         coordinator, "_get_embeddings",
-        lambda: (_ for _ in ()).throw(ModuleNotFoundError("No module named 'numpy'")),
+        lambda: (_ for _ in ()).throw(ModuleNotFoundError(exc_message)),
     )
 
-    report = coordinator.erase_fact_durable(fact_id)
 
+def test_embeddings_gs_vectors_table_empty_is_honest_complete(rig, monkeypatch):
+    """Codex review fix 5, state: gs_vectors table exists but has NO rows
+    at all — an empty table is not proof of use for ANY fact_id, must
+    reach a proven COMPLETE/applicable=false."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "empty_gs_vectors_fact"
+    store.store_fact(_fact(fact_id))
+
+    db_path = os.path.join(tempfile.mkdtemp(), "empty.db")
+    _make_gs_vectors_db(db_path, rows=())
+    _break_embeddings(coordinator, monkeypatch, db_path)
+
+    report = coordinator.erase_fact_durable(fact_id)
+    assert report["outcome"] == COMPLETE
+    assert report["steps"]["embeddings"]["detail"]["applicable"] is False
+
+
+def test_embeddings_gs_vectors_only_has_other_fact_id_is_honest_complete(rig, monkeypatch):
+    """Codex review fix 5, state: gs_vectors table exists with rows, but
+    NONE for this fact_id — mere table existence must never be treated as
+    proof of use for a DIFFERENT fact_id; must still reach a proven
+    COMPLETE/applicable=false for this one."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "state_b_fact"
+    store.store_fact(_fact(fact_id))
+
+    db_path = os.path.join(tempfile.mkdtemp(), "used_embeddings.db")
+    _make_gs_vectors_db(db_path, rows=("some_other_fact",))
+    _break_embeddings(coordinator, monkeypatch, db_path)
+
+    report = coordinator.erase_fact_durable(fact_id)
+    assert report["outcome"] == COMPLETE
+    assert report["steps"]["embeddings"]["detail"]["applicable"] is False
+
+
+def test_embeddings_target_fact_id_row_present_without_numpy_is_not_complete(rig, monkeypatch):
+    """Codex review fix 5, state: a row for THIS fact_id exists, but the
+    real backend can't be reached (numpy unavailable) — must surface as
+    an honest FAILED/PARTIAL, never a false COMPLETE."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "target_row_present_fact"
+    store.store_fact(_fact(fact_id))
+
+    db_path = os.path.join(tempfile.mkdtemp(), "used_embeddings.db")
+    _make_gs_vectors_db(db_path, rows=(fact_id, "some_other_fact"))
+    _break_embeddings(coordinator, monkeypatch, db_path)
+
+    report = coordinator.erase_fact_durable(fact_id)
     assert report["outcome"] != COMPLETE
     assert report["outcome"] == PARTIAL
     assert report["steps"]["embeddings"]["status"] == FAILED
+    assert coordinator.is_erased(fact_id) is False
+
+
+def test_embeddings_target_present_with_backend_available_purges_normally(rig):
+    """Codex review fix 5, state: backend available — the normal
+    purge_node() + has_any() path runs unchanged."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "target_present_backend_ok_fact"
+    store.store_fact(_fact(fact_id))
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+
+    report = coordinator.erase_fact_durable(fact_id)
+    assert report["outcome"] == COMPLETE
+    assert report["steps"]["embeddings"]["status"] == COMPLETE
+    assert embeddings.has_any(fact_id) is False
+
+
+def test_embeddings_corrupted_db_fails_closed_not_complete(rig, monkeypatch):
+    """Codex review fix 5, state: the embeddings DB file exists but is not
+    a readable SQLite database (corrupted) — the existence/row check must
+    fail CLOSED (residual might be present), never toward a false
+    COMPLETE."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "corrupted_db_fact"
+    store.store_fact(_fact(fact_id))
+
+    db_path = os.path.join(tempfile.mkdtemp(), "corrupted.db")
+    with open(db_path, "wb") as f:
+        f.write(b"this is not a valid sqlite file, just garbage bytes")
+    _break_embeddings(coordinator, monkeypatch, db_path)
+
+    report = coordinator.erase_fact_durable(fact_id)
+    assert report["outcome"] != COMPLETE
     assert coordinator.is_erased(fact_id) is False
 
 
@@ -1288,3 +1402,329 @@ def test_concurrent_resume_and_live_erase_converge_safely(rig, monkeypatch):
             "SELECT COUNT(*) FROM erasure_log WHERE fact_id = ?", (fact_id,)
         ).fetchone()[0]
     assert tombstone_count == 1
+
+
+# ── Codex review fix 1: same-DB dependents checked before NOT_FOUND ─────────
+
+def test_orphaned_relation_triggers_saga_and_is_cleaned(migrated_rig):
+    coordinator, store, embeddings, ngram = migrated_rig
+    fact_id = "orphan_relation_fact"
+    other_fact_id = "orphan_relation_other_fact"
+    store.store_fact(_fact(other_fact_id, claim="other fact"))
+
+    def insert_relation(conn, fid):
+        conn.execute(
+            "INSERT INTO relations (from_fact_id, to_fact_id, relation_type) VALUES (?, ?, ?)",
+            (fid, other_fact_id, "supports"),
+        )
+
+    _orphan_fact_with_dependent(store, fact_id, insert_relation)
+
+    assert coordinator._residual_data_present(fact_id) is True
+    report = coordinator.erase_fact_durable(fact_id)
+    assert report["outcome"] != NOT_FOUND
+
+    with store._db() as conn:
+        remaining = conn.execute(
+            "SELECT COUNT(*) FROM relations WHERE from_fact_id = ? OR to_fact_id = ?",
+            (fact_id, fact_id),
+        ).fetchone()[0]
+    assert remaining == 0
+
+
+def test_orphaned_fact_mentions_triggers_saga_and_is_cleaned(migrated_rig):
+    coordinator, store, embeddings, ngram = migrated_rig
+    fact_id = "orphan_mentions_fact"
+
+    def insert_mention(conn, fid):
+        conn.execute(
+            "INSERT INTO entities (entity_id, canonical_name, first_seen, last_seen) "
+            "VALUES (?, ?, ?, ?)",
+            ("ent_1", "Test Entity", "t0", "t0"),
+        )
+        conn.execute(
+            "INSERT INTO fact_mentions (mention_id, fact_id, entity_id, extracted_at) "
+            "VALUES (?, ?, ?, ?)",
+            ("mention_1", fid, "ent_1", "t0"),
+        )
+
+    _orphan_fact_with_dependent(store, fact_id, insert_mention)
+
+    assert coordinator._residual_data_present(fact_id) is True
+    report = coordinator.erase_fact_durable(fact_id)
+    assert report["outcome"] != NOT_FOUND
+
+    with store._db() as conn:
+        remaining = conn.execute(
+            "SELECT COUNT(*) FROM fact_mentions WHERE fact_id = ?", (fact_id,)
+        ).fetchone()[0]
+    assert remaining == 0
+
+
+def test_orphaned_provenance_triggers_saga_and_is_cleaned(migrated_rig):
+    coordinator, store, embeddings, ngram = migrated_rig
+    fact_id = "orphan_provenance_fact"
+
+    def insert_provenance(conn, fid):
+        conn.execute(
+            "INSERT INTO l0_raw_memory (raw_id, original_text, content_hash, source_type) "
+            "VALUES (?, ?, ?, ?)",
+            ("raw_1", "original raw text", "hash_raw_1", "user_input"),
+        )
+        conn.execute(
+            "INSERT INTO l0_fact_provenance (id, raw_id, fact_id, linked_at) "
+            "VALUES (?, ?, ?, ?)",
+            ("prov_1", "raw_1", fid, "t0"),
+        )
+
+    _orphan_fact_with_dependent(store, fact_id, insert_provenance)
+
+    assert coordinator._residual_data_present(fact_id) is True
+    report = coordinator.erase_fact_durable(fact_id)
+    assert report["outcome"] != NOT_FOUND
+
+    with store._db() as conn:
+        remaining = conn.execute(
+            "SELECT COUNT(*) FROM l0_fact_provenance WHERE fact_id = ?", (fact_id,)
+        ).fetchone()[0]
+    assert remaining == 0
+
+
+def test_dependent_check_error_fails_closed_not_not_found(rig, monkeypatch):
+    """If checking same-DB dependents itself raises, _residual_data_present()
+    must fail CLOSED (residual might be present) — never silently proceed
+    to NOT_FOUND."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "dependent_check_error_fact"
+
+    def broken_check(fid):
+        raise sqlite3.OperationalError("simulated disk error checking dependents")
+
+    monkeypatch.setattr(store, "same_db_dependents_present", broken_check)
+
+    assert coordinator._residual_data_present(fact_id) is True
+    report = coordinator.erase_fact_durable(fact_id)
+    assert report["outcome"] != NOT_FOUND
+
+
+# ── Codex review fix 2: SUPERSEDED terminal status for stale active jobs ────
+
+def test_legacy_partial_job_superseded_when_data_recreated(rig):
+    """A P1-A legacy-tombstone job (no facts row, residual embeddings/ngram
+    only) always lands PARTIAL with residual='undetermined' — all four
+    steps COMPLETE, but the overall job non-terminal. If fact_id is then
+    recreated, erase_fact_durable() must supersede the old job (not
+    silently reuse it) and open a new generation that actually cleans the
+    new data."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "legacy_partial_recreate_fact"
+
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "legacy residual claim")
+
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == PARTIAL
+    with coordinator._jobs_db() as conn:
+        first_steps = {
+            r["step_name"]: r["status"] for r in conn.execute(
+                "SELECT step_name, status FROM erasure_job_steps WHERE job_id = ?",
+                (first["job_id"],),
+            ).fetchall()
+        }
+    assert all(s == COMPLETE for s in first_steps.values())
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "recreated after PARTIAL job")
+
+    second = coordinator.erase_fact_durable(fact_id, reason="test", actor="B")
+
+    assert second["job_id"] != first["job_id"]
+    assert second["outcome"] == COMPLETE
+    assert store.get_fact(fact_id) is None
+    assert embeddings.has_any(fact_id) is False
+    assert ngram.contains(fact_id) is False
+
+
+def test_superseded_job_preserves_original_step_receipts(rig):
+    """The old job's step receipts must never be rewritten when it is
+    superseded — only its own status/error change. This is the historical
+    audit trail; resetting steps back to PENDING would destroy it."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "superseded_preserves_receipts_fact"
+
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "legacy residual claim")
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == PARTIAL
+
+    with coordinator._jobs_db() as conn:
+        before = {
+            r["step_name"]: (r["status"], r["detail"]) for r in conn.execute(
+                "SELECT step_name, status, detail FROM erasure_job_steps WHERE job_id = ?",
+                (first["job_id"],),
+            ).fetchall()
+        }
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "recreated data")
+    coordinator.erase_fact_durable(fact_id, reason="test", actor="B")
+
+    with coordinator._jobs_db() as conn:
+        after = {
+            r["step_name"]: (r["status"], r["detail"]) for r in conn.execute(
+                "SELECT step_name, status, detail FROM erasure_job_steps WHERE job_id = ?",
+                (first["job_id"],),
+            ).fetchall()
+        }
+        job_row = conn.execute(
+            "SELECT status FROM erasure_jobs WHERE job_id = ?", (first["job_id"],)
+        ).fetchone()
+
+    assert before == after, "step receipts must be byte-for-byte unchanged after superseding"
+    assert job_row["status"] == SUPERSEDED
+
+
+def test_concurrent_erase_calls_on_superseded_candidate_converge_on_one_generation(rig):
+    """Two threads racing erase_fact_durable() on a fact_id whose latest
+    generation is a stale PARTIAL/all-steps-COMPLETE job with reappeared
+    data must converge on exactly ONE new generation — never two, and
+    never silently adopting the stale job."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "superseded_race_fact"
+
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "legacy residual claim")
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="setup")
+    assert first["outcome"] == PARTIAL
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "recreated for race")
+
+    orig_peek = coordinator._peek_job_row
+
+    def slow_peek(fid):
+        result = orig_peek(fid)
+        if result is not None and result["job_id"] == first["job_id"]:
+            time.sleep(0.15)
+        return result
+
+    coordinator._peek_job_row = slow_peek
+
+    results: dict[str, dict] = {}
+
+    def call(name):
+        results[name] = coordinator.erase_fact_durable(fact_id, reason="test", actor=name)
+
+    t1 = threading.Thread(target=call, args=("A",))
+    t2 = threading.Thread(target=call, args=("B",))
+    t1.start()
+    time.sleep(0.02)
+    t2.start()
+    t1.join(timeout=10)
+    t2.join(timeout=10)
+
+    coordinator._peek_job_row = orig_peek
+
+    assert "A" in results and "B" in results
+    assert results["A"]["job_id"] == results["B"]["job_id"]
+    assert results["A"]["job_id"] != first["job_id"]
+    assert results["A"]["outcome"] == results["B"]["outcome"] == COMPLETE
+
+    with coordinator._jobs_db() as conn:
+        rows = conn.execute(
+            "SELECT job_id, generation, status FROM erasure_jobs WHERE fact_id = ? ORDER BY generation",
+            (fact_id,),
+        ).fetchall()
+    assert len(rows) == 2, f"expected exactly 2 generations, got {len(rows)}"
+    assert rows[0]["status"] == SUPERSEDED
+    assert rows[1]["status"] == COMPLETE
+    assert rows[1]["job_id"] == results["A"]["job_id"]
+    assert store.get_fact(fact_id) is None
+    assert embeddings.has_any(fact_id) is False
+    assert ngram.contains(fact_id) is False
+
+
+def test_resume_incomplete_jobs_does_not_repick_superseded_job(rig):
+    """resume_incomplete_jobs() must never re-pick a SUPERSEDED job — its
+    generation has already been replaced, re-running it would just
+    recompute the identical stale outcome forever."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "resume_skips_superseded_fact"
+
+    embeddings.store(fact_id, np.array([0.1, 0.2, 0.3], dtype=np.float32), model_name="test-model")
+    ngram.index(fact_id, "legacy residual claim")
+    first = coordinator.erase_fact_durable(fact_id, reason="test", actor="A")
+    assert first["outcome"] == PARTIAL
+
+    _seed_all_layers(store, embeddings, ngram, fact_id, "recreated data")
+    second = coordinator.erase_fact_durable(fact_id, reason="test", actor="B")
+    assert second["outcome"] == COMPLETE
+
+    with coordinator._jobs_db() as conn:
+        status = conn.execute(
+            "SELECT status FROM erasure_jobs WHERE job_id = ?", (first["job_id"],)
+        ).fetchone()["status"]
+    assert status == SUPERSEDED
+
+    resumed = coordinator.resume_incomplete_jobs()
+    assert first["job_id"] not in [r["job_id"] for r in resumed]
+
+
+# ── Codex review fix 4: atomic runtime index swap in _ensure_schema() ───────
+
+def test_ensure_schema_rolls_back_fully_on_index_creation_failure(tmp_path, monkeypatch):
+    """A legacy (pre-014) DB has erasure_jobs with the OLD, unconditional
+    idx_erasure_jobs_fact index and no `generation` column.
+    ErasureCoordinator._ensure_schema() upgrades it in place (add column,
+    drop the old index, create the new generation-aware ones) inside one
+    explicit transaction. If index creation fails partway through, the
+    WHOLE upgrade must roll back — the DB must be left exactly as it was
+    (old index intact, no generation column, no new indexes), never in an
+    intermediate state with neither uniqueness constraint."""
+    import core.erasure_coordinator as ec_mod
+
+    db_path = str(tmp_path / "legacy.db")
+    conn = sqlite3.connect(db_path)
+    conn.executescript("""
+        CREATE TABLE erasure_jobs (
+            job_id TEXT PRIMARY KEY, fact_id TEXT NOT NULL,
+            reason TEXT NOT NULL, actor TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'PENDING',
+            residual TEXT, content_hash TEXT, error TEXT,
+            created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX idx_erasure_jobs_fact ON erasure_jobs(fact_id);
+        CREATE INDEX idx_erasure_jobs_status ON erasure_jobs(status);
+        CREATE TABLE erasure_job_steps (
+            step_id TEXT PRIMARY KEY, job_id TEXT NOT NULL,
+            step_name TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'PENDING',
+            detail TEXT, started_at TEXT, finished_at TEXT,
+            UNIQUE(job_id, step_name)
+        );
+    """)
+    conn.commit()
+    conn.close()
+
+    broken_index_sql = ec_mod._INDEX_SQL.replace(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_jobs_fact_generation",
+        "INSERT INTO this_table_does_not_exist VALUES (1);\n"
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_jobs_fact_generation",
+    )
+    monkeypatch.setattr(ec_mod, "_INDEX_SQL", broken_index_sql)
+
+    store = make_store(str(tmp_path / "facts.db"))
+    with pytest.raises(Exception):  # noqa: B017 — sqlite3.OperationalError, deliberately broad
+        ec_mod.ErasureCoordinator(store=store, jobs_db_path=db_path)
+
+    conn = sqlite3.connect(db_path)
+    try:
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_jobs)").fetchall()}
+        indexes = {
+            r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'erasure_jobs'"
+            ).fetchall()
+        }
+    finally:
+        conn.close()
+
+    assert "generation" not in cols, "ALTER TABLE must have been rolled back too"
+    assert "idx_erasure_jobs_fact" in indexes, "old index must survive a failed upgrade"
+    assert "idx_erasure_jobs_fact_active" not in indexes
+    assert "idx_erasure_jobs_fact_generation" not in indexes

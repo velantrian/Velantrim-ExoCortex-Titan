@@ -81,16 +81,26 @@
 -- left the DROP INDEX committed and the new index created despite an
 -- explicit rollback(); with the wrapper, the same failure left the
 -- original index fully intact and nothing new created.
+--
+-- Codex review finding (P1): SUPERSEDED is a new terminal job status (see
+-- core/erasure_coordinator.py) for a job that finished all four steps but
+-- landed non-terminal (residual='undetermined') — resume_incomplete_jobs()
+-- must never re-pick it, and it must coexist with other generations the
+-- same way COMPLETE/RESIDUAL_IMMUTABLE_DATA do. idx_erasure_jobs_fact_active
+-- is dropped and recreated with SUPERSEDED added to the exclusion list —
+-- CREATE ... IF NOT EXISTS alone would be a no-op against a same-named
+-- index from an earlier run of this migration with the OLD definition.
 
 BEGIN;
 
 ALTER TABLE erasure_jobs ADD COLUMN generation INTEGER NOT NULL DEFAULT 1;
 
 DROP INDEX IF EXISTS idx_erasure_jobs_fact;
+DROP INDEX IF EXISTS idx_erasure_jobs_fact_active;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_jobs_fact_active
     ON erasure_jobs(fact_id)
-    WHERE status NOT IN ('COMPLETE', 'RESIDUAL_IMMUTABLE_DATA');
+    WHERE status NOT IN ('COMPLETE', 'RESIDUAL_IMMUTABLE_DATA', 'SUPERSEDED');
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_jobs_fact_generation
     ON erasure_jobs(fact_id, generation);

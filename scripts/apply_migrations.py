@@ -156,6 +156,24 @@ def dry_run_on_copy(db_path: Path, migrations: list[tuple[int, Path]]) -> bool:
                     filtered = [l for l in raw_sql.split("\n")
                                 if "ALTER TABLE facts ADD COLUMN derived_from" not in l]
                     raw_sql = "\n".join(filtered)
+                if version == 13 and column_exists(conn, "erasure_jobs", "generation"):
+                    # Codex review finding (P2): the coordinator's own
+                    # runtime _ensure_schema() can self-heal a v12 DB into
+                    # the generation-aware shape (allowing multiple
+                    # terminal rows per fact_id) before an operator ever
+                    # runs this script. Migration 013's obsolete,
+                    # unconditional UNIQUE(fact_id) index would then fail
+                    # with a genuine UNIQUE constraint violation as soon as
+                    # any fact_id has more than one terminal generation —
+                    # neutralize ONLY that one obsolete statement; the rest
+                    # of 013 (CREATE TABLE IF NOT EXISTS, idx_erasure_jobs_
+                    # status) is harmless and still applied normally, and
+                    # 014 runs next exactly as it would on a fresh DB.
+                    raw_sql = "\n".join(
+                        l for l in raw_sql.split("\n")
+                        if "CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_jobs_fact "
+                           "ON erasure_jobs(fact_id)" not in l
+                    )
                 if version == 14:
                     if column_exists(conn, "erasure_jobs", "generation"):
                         raw_sql = "\n".join(
@@ -261,6 +279,25 @@ def apply_migrations(
                 if "ALTER TABLE facts ADD COLUMN derived_from" not in line
             ]
             raw_sql = "\n".join(filtered_lines)
+
+        # 013 (Codex review finding, P2): the coordinator's own runtime
+        # _ensure_schema() self-heal can add erasure_jobs.generation
+        # before an operator ever runs this script (e.g. the server
+        # started against a v12 DB before migrations were applied). If a
+        # fact_id has already accumulated more than one terminal
+        # generation by then, migration 013's obsolete unconditional
+        # UNIQUE(fact_id) index fails outright with a genuine constraint
+        # violation — neutralize ONLY that one statement; the rest of 013
+        # (CREATE TABLE IF NOT EXISTS, idx_erasure_jobs_status) is
+        # harmless and still runs, and 014 proceeds normally next.
+        if version == 13 and column_exists(conn, "erasure_jobs", "generation"):
+            print("   ℹ️  erasure_jobs уже generation-aware (runtime self-heal) — "
+                  "пропускаю obsolete UNIQUE(fact_id) индекс")
+            raw_sql = "\n".join(
+                line for line in raw_sql.split("\n")
+                if "CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_jobs_fact "
+                   "ON erasure_jobs(fact_id)" not in line
+            )
 
         # 011: claim_type/origin_type часто уже созданы DDL в core/memory.py
         # (на свежей БД). ALTER ADD COLUMN не идемпотентен в SQLite → отфильтровываем

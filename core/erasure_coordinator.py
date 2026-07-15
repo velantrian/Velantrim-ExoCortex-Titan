@@ -77,12 +77,30 @@ NOT_FOUND = "NOT_FOUND"
 # COMPLETE would let the system claim "provably, completely erased" while
 # personal data physically remains.
 RESIDUAL_IMMUTABLE_DATA = "RESIDUAL_IMMUTABLE_DATA"
+# Codex review finding (P1): a job can finish all four of its steps yet
+# still land in a NON-terminal overall status (PARTIAL, when residual=
+# "undetermined" because the facts row was already gone when
+# determine_raw ran — see _run_determine_raw()). Such a job is "done" in
+# the sense that _run_job() has nothing left to execute, but it is NOT
+# safe to keep adopting forever: if fact_id is recreated afterward,
+# _get_or_create_job()'s old fast path would return this same job_id,
+# _run_job() would skip every already-COMPLETE step, and the
+# newly-recreated data would never be touched. SUPERSEDED is the terminal
+# status such a job is transitioned to once residual data is confirmed to
+# have reappeared — its own step receipts are NEVER rewritten (still
+# immutable history, exactly like a COMPLETE/RESIDUAL_IMMUTABLE_DATA
+# generation), only its own `status`/`error` change, and a NEW generation
+# is opened to actually erase the reappeared data. `error` records a
+# technical marker only (never PII/claim content) — see _supersede_job().
+SUPERSEDED = "SUPERSEDED"
 
 # Terminal job statuses that resume_incomplete_jobs() should never re-pick
 # up — COMPLETE because there's nothing left to do, RESIDUAL_IMMUTABLE_DATA
 # because the residual is a permanent fact about the record (re-running
-# would just recompute the identical outcome forever).
-_TERMINAL_STATUSES = (COMPLETE, RESIDUAL_IMMUTABLE_DATA)
+# would just recompute the identical outcome forever), SUPERSEDED because
+# a NEW generation already exists to handle the reappeared data — see
+# above.
+_TERMINAL_STATUSES = (COMPLETE, RESIDUAL_IMMUTABLE_DATA, SUPERSEDED)
 
 _STEP_NAMES = ("determine_raw", "l1_same_db", "embeddings", "ngram")
 
@@ -90,9 +108,9 @@ _STEP_NAMES = ("determine_raw", "l1_same_db", "embeddings", "ngram")
 # duplicated here (rather than imported) specifically so this module never
 # has to import core.embedding_store (and therefore numpy) just to resolve
 # a path string. Used ONLY as a fallback for the numpy-unavailable case in
-# _run_embeddings(), to check via stdlib sqlite3 whether the embeddings
-# feature has ever been used in this deployment at all — see
-# _embeddings_store_exists(). Keep in sync if EXOCORTEX_DB's definition
+# _run_embeddings(), to check via stdlib sqlite3 whether fact_id
+# specifically has an embeddings row — see
+# _embeddings_row_present_for(). Keep in sync if EXOCORTEX_DB's definition
 # ever changes.
 _EMBEDDINGS_DB_PATH_ENV = "SQLITE_GRAPH_PATH"
 _EMBEDDINGS_DB_PATH_DEFAULT = "./data/exocortex_graph.db"
@@ -139,8 +157,8 @@ CREATE TABLE IF NOT EXISTS erasure_job_steps (
 #     non-terminal statuses only, enforces "at most one ACTIVE saga per
 #     fact_id at a time" (the same concurrency guarantee migration 013
 #     provided) while allowing multiple TERMINAL (COMPLETE /
-#     RESIDUAL_IMMUTABLE_DATA) rows — one per generation — to coexist as
-#     immutable history.
+#     RESIDUAL_IMMUTABLE_DATA / SUPERSEDED) rows — one per generation — to
+#     coexist as immutable history.
 #   - idx_erasure_jobs_fact_generation: UNIQUE(fact_id, generation) is a
 #     data-integrity backstop against two rows ever claiming the same
 #     generation number for the same fact_id.
@@ -148,7 +166,7 @@ _INDEX_SQL = """
 CREATE INDEX IF NOT EXISTS idx_erasure_jobs_status ON erasure_jobs(status);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_jobs_fact_active
     ON erasure_jobs(fact_id)
-    WHERE status NOT IN ('COMPLETE', 'RESIDUAL_IMMUTABLE_DATA');
+    WHERE status NOT IN ('COMPLETE', 'RESIDUAL_IMMUTABLE_DATA', 'SUPERSEDED');
 CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_jobs_fact_generation
     ON erasure_jobs(fact_id, generation);
 CREATE INDEX IF NOT EXISTS idx_erasure_job_steps_job ON erasure_job_steps(job_id);
@@ -212,9 +230,9 @@ class ErasureCoordinator:
         would need it: if the import fails here, the caller (_run_embeddings)
         catches it like any other step failure. It reports an honest FAILED
         step UNLESS it can also prove, via stdlib sqlite3 alone (see
-        _embeddings_store_exists()), that the embeddings feature has never
-        been used in this deployment at all — a silent, UNPROVEN
-        "applicable: false" is still never acceptable, but a PROVEN one is.
+        _embeddings_row_present_for()), that fact_id specifically has no
+        embeddings row — a silent, UNPROVEN "applicable: false" is still
+        never acceptable, but a PROVEN one is.
         """
         if self._embeddings is None:
             from core.embedding_store import EmbeddingStore
@@ -233,30 +251,41 @@ class ErasureCoordinator:
         return os.getenv(_EMBEDDINGS_DB_PATH_ENV, _EMBEDDINGS_DB_PATH_DEFAULT)
 
     @staticmethod
-    def _embeddings_store_exists(db_path: str) -> bool:
-        """Stdlib sqlite3 only — no numpy import. True if the embeddings DB
-        file AND its gs_vectors table both exist, meaning this deployment
-        has used the embeddings feature at some point (there is something
-        that could hold residual data for ANY fact, this one included).
-        False is a PROVEN absence: no file, or a file with no gs_vectors
-        table — the embeddings feature has never been used here, so there
-        is nothing this step could possibly need to clean up, regardless of
-        whether numpy/the real backend is currently reachable.
+    def _embeddings_row_present_for(fact_id: str, db_path: str) -> bool:
+        """Stdlib sqlite3 only — no numpy import, and deliberately never
+        calls EmbeddingStore.ensure_table() (which would itself CREATE
+        gs_vectors as a side effect of merely checking, and does elsewhere
+        as a no-op purge_node() side effect — table existence alone is not
+        proof this fact_id ever had embeddings; see Codex review finding).
 
-        Fails toward "might exist" on any error opening/querying the file —
-        the same "can't verify absence is not verified absence" principle
-        already applied to _residual_data_present() and the raw-origin
-        tri-state.
+        True only if the embeddings DB file, its gs_vectors table, AND a
+        row for THIS SPECIFIC fact_id all exist — meaning there is
+        something that could hold residual data for fact_id specifically.
+        False is a PROVEN absence in any of these cases: no file, a file
+        with no gs_vectors table, or a table with rows for OTHER facts but
+        none for this one — there is nothing this step could possibly need
+        to clean up for fact_id, regardless of whether numpy/the real
+        backend is currently reachable.
+
+        Fails toward "might be present" on any error opening/querying the
+        file (e.g. a corrupted/unreadable DB) — the same "can't verify
+        absence is not verified absence" principle already applied to
+        _residual_data_present() and the raw-origin tri-state.
         """
         if not os.path.exists(db_path):
             return False
         try:
             conn = sqlite3.connect(db_path, timeout=5.0)
             try:
-                row = conn.execute(
+                table_row = conn.execute(
                     "SELECT 1 FROM sqlite_master WHERE type='table' AND name='gs_vectors'"
                 ).fetchone()
-                return row is not None
+                if table_row is None:
+                    return False
+                fact_row = conn.execute(
+                    "SELECT 1 FROM gs_vectors WHERE node_id = ? LIMIT 1", (fact_id,)
+                ).fetchone()
+                return fact_row is not None
             finally:
                 conn.close()
         except sqlite3.Error:
@@ -282,22 +311,87 @@ class ErasureCoordinator:
     def _ensure_schema(self) -> None:
         with self._jobs_db() as conn:
             conn.executescript(_SCHEMA_SQL)
-            # Upgrade a legacy (pre-014) DB in place: it has erasure_jobs
-            # without a `generation` column and the OLD, unconditional
-            # UNIQUE(fact_id) index. A fresh DB already has the column from
-            # _SCHEMA_SQL above, so the ALTER TABLE below is a no-op
-            # (caught as "duplicate column") — this must run in this exact
-            # order, since idx_erasure_jobs_fact_generation references the
-            # `generation` column.
+            # Codex review finding (P2): the legacy-DB upgrade below (add
+            # `generation`, drop the obsolete unconditional unique index,
+            # create the new generation-aware ones) must be ONE atomic
+            # transaction. sqlite3.Connection.executescript()/individual
+            # DDL statements do NOT autocommit-wrap themselves as a unit —
+            # confirmed empirically (mirrors the exact hazard already fixed
+            # in migrations/014_erasure_job_generations.sql): a failure
+            # partway through could otherwise leave the DB with NEITHER the
+            # old nor the new uniqueness constraint, letting concurrent
+            # erasures create duplicate active sagas until a later
+            # successful startup repairs it. An explicit BEGIN IMMEDIATE +
+            # COMMIT/ROLLBACK here gives the same real transactional
+            # guarantee the migration file already has.
+            conn.execute("BEGIN IMMEDIATE")
             try:
-                conn.execute(
-                    "ALTER TABLE erasure_jobs ADD COLUMN generation "
-                    "INTEGER NOT NULL DEFAULT 1"
-                )
-            except sqlite3.OperationalError:
-                pass
-            conn.execute("DROP INDEX IF EXISTS idx_erasure_jobs_fact")
-            conn.executescript(_INDEX_SQL)
+                # Upgrade a legacy (pre-014) DB in place: it has
+                # erasure_jobs without a `generation` column and the OLD,
+                # unconditional UNIQUE(fact_id) index. A fresh DB already
+                # has the column from _SCHEMA_SQL above, so the ALTER TABLE
+                # below is a no-op (caught as "duplicate column") — this
+                # must run in this exact order, since
+                # idx_erasure_jobs_fact_generation references the
+                # `generation` column.
+                try:
+                    conn.execute(
+                        "ALTER TABLE erasure_jobs ADD COLUMN generation "
+                        "INTEGER NOT NULL DEFAULT 1"
+                    )
+                except sqlite3.OperationalError:
+                    pass
+                conn.execute("DROP INDEX IF EXISTS idx_erasure_jobs_fact")
+                # idx_erasure_jobs_fact_active's WHERE clause changed when
+                # SUPERSEDED was added to the terminal-status exclusion
+                # list — CREATE ... IF NOT EXISTS is a no-op against a
+                # same-named index with a STALE definition, so it must be
+                # explicitly dropped first to stay in sync with
+                # _INDEX_SQL below (a DB that already ran an earlier
+                # version of this method would otherwise keep the old
+                # definition forever).
+                conn.execute("DROP INDEX IF EXISTS idx_erasure_jobs_fact_active")
+                # conn.executescript() implicitly COMMITs any pending
+                # transaction before it runs its own statements (a Python
+                # sqlite3 module quirk, confirmed empirically) — calling it
+                # here would silently commit the ALTER TABLE/DROP INDEX
+                # above before this method's own explicit transaction ever
+                # reaches its intended COMMIT/ROLLBACK, defeating the whole
+                # point of wrapping this sequence atomically. Each
+                # statement is executed individually via conn.execute()
+                # instead, all within the SAME explicit transaction.
+                for _stmt in _INDEX_SQL.strip().split(";"):
+                    _stmt = _stmt.strip()
+                    if _stmt:
+                        conn.execute(_stmt)
+
+                names = {
+                    r[0] for r in conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type = 'index' "
+                        "AND tbl_name = 'erasure_jobs'"
+                    ).fetchall()
+                }
+                if "idx_erasure_jobs_fact" in names:
+                    raise RuntimeError(
+                        "_ensure_schema: obsolete idx_erasure_jobs_fact "
+                        "still present after upgrade — refusing to proceed "
+                        "with an unproven schema"
+                    )
+                for required in (
+                    "idx_erasure_jobs_fact_active",
+                    "idx_erasure_jobs_fact_generation",
+                ):
+                    if required not in names:
+                        raise RuntimeError(
+                            f"_ensure_schema: {required} missing after "
+                            "upgrade — refusing to proceed with an "
+                            "unproven schema"
+                        )
+            except Exception:
+                conn.rollback()
+                raise
+            else:
+                conn.commit()
 
     # ── job ledger helpers ───────────────────────────────────────────────
 
@@ -375,10 +469,27 @@ class ErasureCoordinator:
         replay and _finalize()/write_tombstone() are both idempotent), so
         an existing ACTIVE job for this fact_id is resumed rather than
         duplicated.
+
+        Codex review finding (P1): an existing NON-terminal job whose steps
+        have ALL already finished (PARTIAL with residual="undetermined" —
+        see _run_determine_raw()) is a special case: _run_job() has
+        nothing left to execute for it, so if fact_id was recreated since,
+        blindly resuming it would silently skip re-erasing the new data.
+        Before adopting ANY non-terminal job, this checks whether residual
+        data has (re)appeared; if it has AND every step already shows
+        COMPLETE, the old job is transitioned to the terminal SUPERSEDED
+        status (its own step receipts are never rewritten — still
+        immutable history) and a NEW generation is opened instead, in the
+        SAME atomic transaction as the new generation's INSERT.
         """
         existing = self._peek_job_row(fact_id)
+        supersede_job_id = None
         if existing is not None and existing["status"] not in _TERMINAL_STATUSES:
-            return existing["job_id"]
+            steps = self._load_steps(existing["job_id"])
+            all_steps_done = bool(steps) and all(s["status"] == COMPLETE for s in steps)
+            if not (all_steps_done and self._residual_data_present(fact_id)):
+                return existing["job_id"]
+            supersede_job_id = existing["job_id"]
 
         next_generation = (existing["generation"] + 1) if existing is not None else 1
         job_id = f"erj_{uuid.uuid4().hex[:16]}"
@@ -386,6 +497,21 @@ class ErasureCoordinator:
         with self._jobs_db() as conn:
             conn.execute("BEGIN IMMEDIATE")
             try:
+                if supersede_job_id is not None:
+                    # Preserve the old saga as immutable history: only
+                    # status/error change, step receipts are untouched.
+                    # error is a technical marker only, never PII/claim
+                    # content.
+                    conn.execute(
+                        "UPDATE erasure_jobs SET status = ?, error = ?, updated_at = ? "
+                        "WHERE job_id = ?",
+                        (
+                            SUPERSEDED,
+                            "superseded: residual data reappeared after all steps completed",
+                            now,
+                            supersede_job_id,
+                        ),
+                    )
                 conn.execute(
                     "INSERT INTO erasure_jobs "
                     "(job_id, fact_id, generation, reason, actor, status, created_at, updated_at) "
@@ -425,11 +551,12 @@ class ErasureCoordinator:
                 #   our side) but is still non-terminal — matched by the
                 #   status filter.
                 conn.rollback()
+                placeholders = ", ".join("?" for _ in _TERMINAL_STATUSES)
                 row = conn.execute(
-                    "SELECT * FROM erasure_jobs WHERE fact_id = ? "
-                    "AND (generation = ? OR status NOT IN (?, ?)) "
+                    f"SELECT * FROM erasure_jobs WHERE fact_id = ? "  # noqa: S608
+                    f"AND (generation = ? OR status NOT IN ({placeholders})) "
                     "ORDER BY generation DESC LIMIT 1",
-                    (fact_id, next_generation, COMPLETE, RESIDUAL_IMMUTABLE_DATA),
+                    (fact_id, next_generation, *_TERMINAL_STATUSES),
                 ).fetchone()
                 if row is None:
                     # Not actually a lost create-race (no winner row exists
@@ -570,21 +697,27 @@ class ErasureCoordinator:
         except Exception as exc:  # noqa: BLE001 — the embeddings backend
             # being genuinely unavailable (e.g. numpy not installed).
             # Distinguish two states before giving up:
-            #   - the embeddings feature has NEVER been used in this
-            #     deployment at all (no DB file / no gs_vectors table) —
-            #     provable via stdlib sqlite3 alone, no numpy required.
-            #     There is nothing this step could possibly need to clean
-            #     up, for ANY fact_id, so an honest COMPLETE with a proven
-            #     applicable=False is correct here.
-            #   - the table DOES exist (this deployment has used embeddings
-            #     at some point) but the real backend can't be reached
-            #     right now — an honest FAILED (-> PARTIAL job), never a
-            #     silent, unproven "applicable: false".
+            #   - fact_id has NO row in gs_vectors — either the embeddings
+            #     feature has never been used in this deployment at all
+            #     (no DB file / no table), or it has been used for OTHER
+            #     facts but never this one. Either way, provable via
+            #     stdlib sqlite3 alone (no numpy, no
+            #     EmbeddingStore.ensure_table() side effect — mere table
+            #     existence is not proof of use for THIS fact_id, since
+            #     e.g. a no-op purge_node() elsewhere creates the table as
+            #     a side effect even for a fact that never had
+            #     embeddings). There is nothing this step could possibly
+            #     need to clean up for fact_id, so an honest COMPLETE with
+            #     a proven applicable=False is correct here.
+            #   - fact_id DOES have a row (this specific fact has/had
+            #     embeddings) but the real backend can't be reached right
+            #     now — an honest FAILED (-> PARTIAL job), never a silent,
+            #     unproven "applicable: false".
             db_path = self._resolve_embeddings_db_path()
-            if not self._embeddings_store_exists(db_path):
+            if not self._embeddings_row_present_for(fact_id, db_path):
                 self._step_finish(
                     job_id, "embeddings", COMPLETE,
-                    {"applicable": False, "reason": "embeddings_store_absent"},
+                    {"applicable": False, "reason": "no_embeddings_row_for_fact"},
                 )
                 return
             self._step_finish(job_id, "embeddings", FAILED, {"error": str(exc)})
@@ -785,8 +918,10 @@ class ErasureCoordinator:
 
     def _residual_data_present(self, fact_id: str) -> bool:
         """True if data this saga is responsible for erasing has (re)appeared
-        for `fact_id` — a `facts` row exists again, or the embeddings/ngram
-        indexes still (or again) hold an entry.
+        for `fact_id` — a `facts` row exists again, a same-DB dependent row
+        (relations, provenance, fact_mentions, etc. — everything
+        l1_same_db/erase_fact_dependents_atomic() purges) still exists, or
+        the embeddings/ngram indexes still (or again) hold an entry.
 
         Used to decide whether a durable job's terminal outcome (COMPLETE /
         RESIDUAL_IMMUTABLE_DATA) can still be trusted as "genuinely,
@@ -795,6 +930,12 @@ class ErasureCoordinator:
         generation's saga must run instead of returning a stale cached
         report — post-review hotfix for both the legacy-tombstone
         short-circuit and the fact_id-reuse gap.
+
+        Also gates whether erase_fact_durable() may report NOT_FOUND at
+        all (Codex review finding): a legacy/out-of-band deletion that
+        removed the `facts` row but left a same-DB dependent row orphaned
+        must never be reported NOT_FOUND — that dependent row still needs
+        a real saga (l1_same_db) to clean it up.
 
         If a backend cannot even be checked, this fails toward "residual
         might be present" (never toward silently trusting a stale terminal
@@ -808,21 +949,26 @@ class ErasureCoordinator:
         except sqlite3.OperationalError:
             return True
         try:
+            if self._store.same_db_dependents_present(fact_id):
+                return True
+        except sqlite3.Error:
+            return True
+        try:
             if self._get_embeddings().has_any(fact_id):
                 return True
         except Exception:  # noqa: BLE001 — includes the backend being unavailable
             # Same tri-state distinction as _run_embeddings(): a proven
-            # absence of the embeddings store itself (stdlib sqlite3, no
-            # numpy) means there is genuinely nothing there to reappear —
-            # returning True unconditionally here would make a base/server
-            # install without numpy AND without embeddings ever having been
-            # used would forever think residual might be present and open a
-            # new generation on every repeat call, even though
+            # absence of a row for fact_id specifically (stdlib sqlite3,
+            # no numpy) means there is genuinely nothing there to
+            # reappear — returning True unconditionally here would make a
+            # base/server install without numpy think residual might be
+            # present forever for a fact_id that never had embeddings
+            # (even if OTHER facts' embeddings exist), and open a new
+            # generation on every repeat call, even though
             # _run_embeddings() would just re-prove the identical
             # applicable=False COMPLETE each time. Only fail toward "might
-            # be present" when the store's existence itself can't be ruled
-            # out.
-            if self._embeddings_store_exists(self._resolve_embeddings_db_path()):
+            # be present" when a row for fact_id itself can't be ruled out.
+            if self._embeddings_row_present_for(fact_id, self._resolve_embeddings_db_path()):
                 return True
         try:
             if self._ngram.contains(fact_id):

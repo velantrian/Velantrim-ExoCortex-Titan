@@ -71,6 +71,26 @@ IMMUTABLE_FACT_IDS = {"VALUES_CORE", "RING_ZERO"}
 L0_CAP = 128
 SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
 
+# Same-DB tables erase_fact_dependents_atomic() purges for a fact_id,
+# shared with same_db_dependents_present() (a read-only residual check —
+# see core/erasure_coordinator.py's _residual_data_present()) so the two
+# can never drift apart: whatever this saga's l1_same_db step deletes is
+# exactly what the residual check looks for. `where_sql`'s `?` count
+# determines how many times fact_id is repeated in its params tuple (2 for
+# `relations`, which matches on either direction of the edge; 1 for
+# everything else).
+_SAME_DB_DEPENDENT_TABLES: tuple[tuple[str, str], ...] = (
+    ("relations", "from_fact_id = ? OR to_fact_id = ?"),
+    ("l0_fact_provenance", "fact_id = ?"),
+    ("fact_living_context", "fact_id = ?"),
+    ("fact_affordances", "fact_id = ?"),
+    ("fact_affordance_tokens", "fact_id = ?"),
+    ("fact_mentions", "fact_id = ?"),
+    ("fact_versions", "fact_id = ?"),
+    ("raw_derivation_chain", "derived_fact_id = ?"),
+    ("facts_fts", "fact_id = ?"),
+)
+
 
 class ImmutableStateError(Exception):
     pass
@@ -635,19 +655,10 @@ class SQLiteGraphStore(GraphStore):
 
                 # FK ON DELETE CASCADE is not relied upon — PRAGMA foreign_keys is
                 # OFF on the runtime connection, so every dependent is removed
-                # explicitly.
-                _purge("relations", "from_fact_id = ? OR to_fact_id = ?", (fact_id, fact_id))
-                for _tbl in (
-                    "l0_fact_provenance",
-                    "fact_living_context",
-                    "fact_affordances",
-                    "fact_affordance_tokens",
-                    "fact_mentions",
-                    "fact_versions",
-                ):
-                    _purge(_tbl, "fact_id = ?", (fact_id,))
-                _purge("raw_derivation_chain", "derived_fact_id = ?", (fact_id,))
-                _purge("facts_fts", "fact_id = ?", (fact_id,))
+                # explicitly. Table list is shared with
+                # same_db_dependents_present() — see _SAME_DB_DEPENDENT_TABLES.
+                for _tbl, _where in _SAME_DB_DEPENDENT_TABLES:
+                    _purge(_tbl, _where, (fact_id,) * _where.count("?"))
 
                 cur = conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
                 tables["facts"] = {"applicable": True, "deleted": cur.rowcount}
@@ -670,6 +681,44 @@ class SQLiteGraphStore(GraphStore):
                     )
         self._l0_del(fact_id)
         return {"fact_present_before": present, "tables": tables}
+
+    def same_db_dependents_present(self, fact_id: str) -> bool:
+        """Read-only residual check (Codex review finding, P1): True if any
+        same-DB dependent table erase_fact_dependents_atomic() would purge
+        still holds a row for `fact_id` — even if the `facts` row itself is
+        already gone (e.g. a legacy/out-of-band deletion that never went
+        through the atomic erasure path, exactly the P1-A tombstone shape).
+
+        Used by core.erasure_coordinator._residual_data_present(): without
+        this check, a fact_id whose `facts` row is gone but whose
+        `relations`/`fact_mentions`/provenance/etc. rows survived, with no
+        embeddings/ngram residual either, would make
+        _residual_data_present() return False — causing erase_fact_durable()
+        to report NOT_FOUND without ever creating a job, so l1_same_db never
+        runs and the orphaned dependent rows are never cleaned.
+
+        An optional table that doesn't exist in this DB (an older install
+        missing a later migration) is simply not applicable — never treated
+        as "residual present". Any DB-level error checking a table that DOES
+        exist fails CLOSED (returns True, "residual might be present") —
+        the same "can't verify absence is not verified absence" principle
+        already applied throughout this saga's tri-state checks.
+        """
+        with self._db() as conn:
+            for table, where_sql in _SAME_DB_DEPENDENT_TABLES:
+                if not self._table_exists(conn, table):
+                    continue
+                try:
+                    params = (fact_id,) * where_sql.count("?")
+                    row = conn.execute(
+                        f"SELECT 1 FROM {table} WHERE {where_sql} LIMIT 1",  # noqa: S608
+                        params,
+                    ).fetchone()
+                except sqlite3.Error:
+                    return True
+                if row is not None:
+                    return True
+        return False
 
     def delete_fact_l1(self, fact_id: str) -> bool:
         """Legacy bool-returning wrapper.
@@ -2765,6 +2814,11 @@ def erase_fact_dependents_atomic(fact_id: str) -> dict[str, Any]:
     by core.erasure_coordinator, the single enforced erasure entrypoint.
     """
     return _GLOBAL_STORE.erase_fact_dependents_atomic(fact_id)
+
+
+def same_db_dependents_present(fact_id: str) -> bool:
+    """Read-only residual check — see SQLiteGraphStore.same_db_dependents_present()."""
+    return _GLOBAL_STORE.same_db_dependents_present(fact_id)
 
 
 def write_tombstone(fact_id: str, *, reason: str, actor: str,
