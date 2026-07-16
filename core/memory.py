@@ -1718,13 +1718,25 @@ class SQLiteGraphStore(GraphStore):
         "not_found" honestly, instead of reporting success for a write
         that never really landed.
 
-        Returns "success" if the fact exists — including a genuine no-op
-        where the freshly recomputed metadata is already byte-identical
-        to what's stored (no write is even attempted in that case, but it
-        is still success, never confused with "not_found") — or
+        This CAS guard applies uniformly to a genuine no-op (the freshly
+        recomputed metadata already equals what's stored) too — `_db()`
+        opens no explicit transaction before the SELECT above, so a
+        no-op branch that returned early right after that SELECT would
+        have the same read-then-act race as the write path: another
+        instance could mutate or delete the row in the gap, and the
+        early return would report success against a snapshot that's
+        already stale. Instead the no-op is written through the same
+        guarded UPDATE (SQLite reports rowcount == 1 for a matching
+        same-value UPDATE exactly as for a real change), so it is
+        re-verified against the live row at write time and retried on a
+        CAS miss exactly like any other attempt.
+
+        Returns "success" if the fact exists — including a genuine no-op,
+        proven live at write time, never a stale read alone — or
         "not_found" if no fact with this id currently exists. The L0
-        cache is synced only with the exact metadata that was actually
-        committed, and only after that commit succeeds.
+        cache is invalidated only after that outcome is durably proven:
+        on a committed write (no-op or real change) or on a proven-absent
+        read, never speculatively before either.
         """
         from core.fact_integrity import attach_integrity_metadata
 
@@ -1755,22 +1767,24 @@ class SQLiteGraphStore(GraphStore):
                     confidence=float(confidence if confidence is not None else 0.5),
                     epistemic_state=epistemic_state or "Observed",
                 )
-                if new_metadata == current_metadata:
-                    # Genuine no-op: this SELECT already proved the row
-                    # exists, and the freshly recomputed metadata is
-                    # exactly what's already stored — success, no write
-                    # needed, nothing to retry. Still invalidate L0: this
-                    # SELECT is a fresh, definitely-current L1 read, and
-                    # L0 may be stale relative to it (e.g. another
-                    # SQLiteGraphStore instance changed epistemic_state
-                    # and, as part of that same transition, already wrote
-                    # metadata identical to what we'd compute here — the
-                    # metadata comparison alone can't see that).
-                    with self._l0_lock:
-                        if fact_id in self._l0:
-                            del self._l0[fact_id]
-                    return "success"
 
+                # A genuine no-op (new_metadata == current_metadata) is
+                # deliberately NOT special-cased with an early return
+                # here. `_db()` doesn't open an explicit transaction
+                # before this SELECT, so between this read and any
+                # early-return, another SQLiteGraphStore instance can
+                # freely mutate or delete this row — a "the SELECT
+                # already proved it" no-op return would then report
+                # stale-snapshot success. Instead, the no-op is routed
+                # through the SAME CAS-guarded UPDATE as a real change,
+                # writing new_metadata_json even when it's byte-identical
+                # to what's already stored: the guard's WHERE clause
+                # re-checks the row at write time, and SQLite reports
+                # rowcount == 1 for a matching same-value UPDATE just as
+                # for a genuine change, so a true no-op is proven exactly
+                # as atomically as a write, and a concurrent mutation or
+                # deletion between this read and the write below is
+                # caught by the same rowcount == 0 retry path.
                 new_metadata_json = json.dumps(new_metadata)
                 cur = conn.execute(
                     "UPDATE facts SET metadata = ? "

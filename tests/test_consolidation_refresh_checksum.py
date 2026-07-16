@@ -139,6 +139,96 @@ def test_refresh_is_idempotent_true_noop(store):
     assert fact_after_second["history"] == fact_after_first["history"]
 
 
+def test_refresh_noop_cas_retries_on_concurrent_metadata_change(store, monkeypatch):
+    """The no-op branch (new_metadata == current_metadata as of the read)
+    must be CAS-protected exactly like the write branch. `_db()` opens no
+    explicit transaction before the SELECT, so a second SQLiteGraphStore
+    instance can mutate the row in the gap between that SELECT and an
+    early no-op return — an early return there would report success
+    against a snapshot that's already stale. This asserts the method
+    instead re-reads a fresh snapshot and writes on top of the fresh
+    data, never silently discarding the concurrent change."""
+    store2 = SQLiteGraphStore(db_path=store.db_path)
+    store.store_fact(_basic_fact("cas_noop1"))
+    store.transition_esm("cas_noop1", "Hypothesized", by="test")
+    # Metadata is already correct for the current (Hypothesized) state —
+    # a refresh right now would be a genuine no-op.
+
+    import core.fact_integrity as fi
+
+    real_attach = fi.attach_integrity_metadata
+    calls = {"n": 0}
+
+    def _racy_attach(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            # Land a real concurrent metadata mutation between this
+            # attempt's SELECT (already done) and its no-op CAS write.
+            with store2._db() as conn:
+                conn.execute(
+                    "UPDATE facts SET metadata = ? WHERE fact_id = ?",
+                    ('{"tampered": true}', "cas_noop1"),
+                )
+        return real_attach(*args, **kwargs)
+
+    monkeypatch.setattr(fi, "attach_integrity_metadata", _racy_attach)
+
+    result = store.refresh_fact_integrity_metadata("cas_noop1")
+
+    assert result == "success"
+    assert calls["n"] >= 2, "the first (now-stale) no-op attempt must retry, not return early"
+
+    fact = store._get_fact_durable("cas_noop1")
+    assert fact["metadata"]["tampered"] is True, (
+        "the concurrent metadata change must survive — the retry must "
+        "compute from the FRESH snapshot, not silently overwrite it"
+    )
+    assert fact["metadata"]["content_checksum"] == compute_content_checksum(
+        fact["claim"], fact["source"], fact["confidence"], fact["epistemic_state"]
+    ), "the retried attempt must still attach correct integrity fields on top of the fresh data"
+
+
+def test_refresh_noop_delete_race_returns_not_found(store, monkeypatch):
+    """The no-op branch must not report a stale 'success' when the row is
+    deleted between the SELECT and the (would-be) no-op write — the
+    guarded UPDATE proves this via rowcount == 0, forcing a retry whose
+    fresh SELECT then honestly reports 'not_found'."""
+    store2 = SQLiteGraphStore(db_path=store.db_path)
+    store.store_fact(_basic_fact("cas_noop2"))
+    store.get_fact("cas_noop2")  # pre-warm L0
+    assert "cas_noop2" in store._l0
+    # Metadata is already correct for the current state — a refresh right
+    # now would be a genuine no-op.
+
+    import core.fact_integrity as fi
+
+    real_attach = fi.attach_integrity_metadata
+    calls = {"n": 0}
+
+    def _racy_attach(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            # Delete the row via a second instance right between this
+            # attempt's SELECT (already done) and its no-op CAS write.
+            with store2._db() as conn:
+                conn.execute("DELETE FROM facts WHERE fact_id = ?", ("cas_noop2",))
+        return real_attach(*args, **kwargs)
+
+    monkeypatch.setattr(fi, "attach_integrity_metadata", _racy_attach)
+
+    result = store.refresh_fact_integrity_metadata("cas_noop2")
+
+    # The first attempt's no-op CAS write is proven stale (rowcount == 0,
+    # since the row is gone) and retried; the retry's SELECT finds no row
+    # and returns "not_found" immediately, without needing to recompute
+    # metadata again — so calls["n"] staying at 1 is expected here, unlike
+    # the metadata-mutation race above.
+    assert result == "not_found"
+    assert calls["n"] == 1
+    assert "cas_noop2" not in store._l0
+    assert store.get_fact("cas_noop2") is None
+
+
 # ── D. Missing fact ───────────────────────────────────────────────────────────
 
 def test_refresh_missing_fact_returns_not_found_without_creating_it(store):
