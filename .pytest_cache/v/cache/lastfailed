@@ -1,6 +1,1 @@
-{
-  "tests/test_console_security.py": true,
-  "tests/test_llm_api_routes.py": true,
-  "tests/test_mcp_cors.py": true,
-  "tests/test_security_mw.py": true
-}
+{}

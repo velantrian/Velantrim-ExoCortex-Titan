@@ -41,6 +41,16 @@ def _int_env(name: str, default: int) -> int:
 
 @dataclass
 class ConsolidationReport:
+    # PR #27 (issue #26 accounting hardening): `discovered` is the RAW
+    # candidate count BEFORE max_batch truncation; `scanned` is how many
+    # were ACTUALLY processed this run (== len(batch)). The old code set
+    # scanned = len(candidates) but only ever classified candidates[:max_batch]
+    # — whenever a run had more candidates than max_batch, scanned silently
+    # exceeded the sum of every outcome bucket below, breaking the
+    # invariant this dataclass exists to guarantee. Untouched candidates
+    # beyond max_batch are neither errors nor skipped — they simply weren't
+    # scanned this run, and `discovered` is where that fact is visible.
+    discovered: int = 0
     scanned: int = 0
     promoted_validated: int = 0
     promoted_hypothesized: int = 0
@@ -54,10 +64,18 @@ class ConsolidationReport:
     # left at 'Supported' (see run()'s Supported rescan) and re-attempted
     # on the next run, not stranded.
     rejected_by_truthgate: int = 0
+    # PR #27: post-promotion integrity-metadata refresh (checksum/episode
+    # hash/dedup key) is maintenance, not part of the promotion outcome —
+    # see run()'s separate _refresh_checksum_after_promotion() step. A
+    # fact that fails this maintenance step is STILL counted as promoted
+    # above; this is a diagnostic-only counter, deliberately NOT part of
+    # the scanned invariant sum (a promoted fact is never ALSO an error).
+    checksum_refresh_errors: int = 0
     fact_ids: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "discovered": self.discovered,
             "scanned": self.scanned,
             "promoted_validated": self.promoted_validated,
             "promoted_hypothesized": self.promoted_hypothesized,
@@ -66,6 +84,7 @@ class ConsolidationReport:
             "skipped_short_claim": self.skipped_short_claim,
             "errors": self.errors,
             "rejected_by_truthgate": self.rejected_by_truthgate,
+            "checksum_refresh_errors": self.checksum_refresh_errors,
             "fact_ids": self.fact_ids[:50],
         }
 
@@ -131,16 +150,27 @@ class ConsolidationEngine:
                 stuck_supported = []
             candidates = observed + stuck_supported
 
-        report.scanned = len(candidates)
+        report.discovered = len(candidates)
         batch = candidates[: self.max_batch]
 
         # V8.8: corroboration boost — несколько независимых наблюдений
         # одного и того же → взаимное усиление confidence
         batch = self._apply_corroboration(batch)
 
+        # PR #27 accounting hardening: `scanned` is what this run ACTUALLY
+        # processed (== len(batch)), not the pre-truncation candidate count
+        # (`discovered`, above) — see ConsolidationReport's docstring for
+        # why conflating the two broke the scanned == sum(outcomes)
+        # invariant whenever discovered > max_batch.
+        report.scanned = len(batch)
+
         for fact in batch:
             fact_id = fact.get("fact_id")
             if not fact_id:
+                # Malformed candidate (no fact_id) — still one scanned
+                # item that must land in exactly one bucket, never silently
+                # dropped from the invariant.
+                report.errors += 1
                 continue
             claim = (fact.get("claim") or "").strip()
             conf = float(fact.get("confidence", 0.0))
@@ -159,40 +189,116 @@ class ConsolidationEngine:
                 continue
 
             target = "Validated" if self.prefer_validated else "Hypothesized"
-            try:
-                if target == "Validated":
-                    ok = self._promote_to_validated_via_truthgate(fact_id)
-                else:
-                    ok = self._store.transition_esm(
-                        fact_id, target, by="consolidation_engine"
-                    )
-                if ok:
-                    if target == "Validated":
-                        report.promoted_validated += 1
-                    else:
-                        report.promoted_hypothesized += 1
-                    report.fact_ids.append(fact_id)
-                    self._refresh_checksum(fact_id)
-                elif target == "Validated":
-                    report.rejected_by_truthgate += 1
-            except ValueError:
-                try:
-                    ok = self._store.transition_esm(
-                        fact_id, "Hypothesized", by="consolidation_engine"
-                    )
-                    if ok:
-                        report.promoted_hypothesized += 1
-                        report.fact_ids.append(fact_id)
-                        self._refresh_checksum(fact_id)
-                except Exception as exc2:  # noqa: BLE001
-                    logger.debug("consolidation %s: %s", fact_id, exc2)
-                    report.errors += 1
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("consolidation %s: %s", fact_id, exc)
-                report.errors += 1
+            # PR #27: promotion outcome (exactly one of promoted_validated /
+            # promoted_hypothesized / rejected_by_truthgate / errors) is
+            # decided and recorded HERE, fully separate from the checksum
+            # maintenance step below — see _promote_one()'s docstring for
+            # why that separation is the actual fix for issue #26.
+            promoted_as = self._promote_one(fact_id, target, report)
+            if promoted_as is not None:
+                report.fact_ids.append(fact_id)
+                self._refresh_checksum_after_promotion(fact_id, report)
 
         logger.info("ConsolidationEngine: %s", report.to_dict())
         return report
+
+    def _promote_one(
+        self, fact_id: str, target: str, report: ConsolidationReport
+    ) -> str | None:
+        """Decide and record exactly one promotion outcome for one fact.
+
+        This is ONLY the promotion decision (Validated via TruthGate+CAS,
+        or a bare Hypothesized ESM transition) — issue #26's root cause
+        was that checksum/integrity-metadata maintenance used to run
+        INSIDE this same try/except, so a checksum-refresh failure after
+        an already-successful promotion could get misclassified as a
+        promotion error, or even trigger a bogus Hypothesized fallback
+        attempt on a fact that had already been promoted. Checksum
+        refresh now happens in _refresh_checksum_after_promotion(),
+        called by run() only after this method has already returned a
+        non-None outcome — see that method's docstring.
+
+        Returns "Validated" / "Hypothesized" on a successful promotion
+        (having already incremented the matching report counter), or
+        None otherwise (having already incremented exactly one of
+        report.rejected_by_truthgate / report.errors itself), so that
+        every scanned fact lands in exactly one outcome bucket.
+        """
+        try:
+            if target == "Validated":
+                ok = self._promote_to_validated_via_truthgate(fact_id)
+            else:
+                ok = self._store.transition_esm(fact_id, target, by="consolidation_engine")
+            if ok:
+                if target == "Validated":
+                    report.promoted_validated += 1
+                else:
+                    report.promoted_hypothesized += 1
+                return target
+            if target == "Validated":
+                report.rejected_by_truthgate += 1
+            else:
+                # A bare Hypothesized transition returning False (e.g. the
+                # fact was concurrently deleted or moved out from under
+                # this scan) is not a TruthGate rejection — it still must
+                # land in exactly one bucket per the scanned invariant.
+                # The old code left this case uncounted entirely.
+                report.errors += 1
+            return None
+        except ValueError:
+            # Illegal ESM jump (e.g. a concurrent transition already
+            # moved the fact somewhere this ladder can't reach "Supported"
+            # / target from) — fall back to a plain Hypothesized
+            # transition, exactly as the pre-PR#27 code did.
+            try:
+                ok = self._store.transition_esm(
+                    fact_id, "Hypothesized", by="consolidation_engine"
+                )
+            except Exception as exc2:  # noqa: BLE001
+                logger.debug("consolidation %s: %s", fact_id, exc2)
+                report.errors += 1
+                return None
+            if ok:
+                report.promoted_hypothesized += 1
+                return "Hypothesized"
+            # Fallback transition itself returned False (e.g. the fact
+            # was concurrently deleted) — previously silent; now counted
+            # so scanned stays exactly equal to the sum of every bucket.
+            report.errors += 1
+            return None
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("consolidation %s: %s", fact_id, exc)
+            report.errors += 1
+            return None
+
+    def _refresh_checksum_after_promotion(
+        self, fact_id: str, report: ConsolidationReport
+    ) -> None:
+        """Post-promotion integrity-metadata maintenance.
+
+        Structurally separate from, and unable to affect, the promotion
+        outcome _promote_one() already recorded above. issue #26: the old
+        _refresh_checksum() called store_fact() with an already-non-
+        Observed fact, which store_fact()'s Observed-only guard rejects
+        with ValueError — and because that call used to happen INSIDE the
+        promotion try/except, a successful promotion could still end up
+        counted as report.errors, or even trigger a bogus Hypothesized
+        fallback attempt on a fact that was already promoted.
+        refresh_fact_integrity_metadata() (a narrow, atomic, metadata-only
+        write — see core/memory.py) is called from here, entirely outside
+        that try/except: whatever happens in this method can only ever
+        increment report.checksum_refresh_errors, never report.errors,
+        and never undoes or retries the promotion itself.
+        """
+        try:
+            result = self._store.refresh_fact_integrity_metadata(fact_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("_refresh_checksum_after_promotion %s: %s", fact_id, exc)
+            report.checksum_refresh_errors += 1
+            return
+        if result != "success":
+            logger.debug("_refresh_checksum_after_promotion %s: %s", fact_id, result)
+            report.checksum_refresh_errors += 1
 
     def _promote_to_validated_via_truthgate(self, fact_id: str) -> bool:
         """P0-D: reach 'Validated' with the final hop enforced by TruthGate
@@ -297,30 +403,6 @@ class ConsolidationEngine:
                     result[idx]["confidence"] = min(1.0, old_conf + 0.1)
 
         return result
-
-    def _refresh_checksum(self, fact_id: str) -> None:
-        """Обновить content_checksum после смены epistemic_state.
-
-        Использует store.update_fact_metadata() вместо store.store_fact(),
-        чтобы обновить только поле metadata, не затрагивая epistemic_state.
-        store_fact() отклоняет любой факт не в состоянии 'Observed' (кроме
-        Ring Zero), что приводило к ложным report.errors после каждого
-        успешного перевода.
-        """
-        from core.fact_integrity import attach_integrity_metadata
-
-        fact = self._store.get_fact(fact_id)
-        if not fact:
-            return
-        meta = attach_integrity_metadata(
-            fact.get("metadata") or {},
-            claim=fact.get("claim", ""),
-            source=fact.get("source", "unknown"),
-            confidence=float(fact.get("confidence", 0.5)),
-            epistemic_state=fact.get("epistemic_state", "Observed"),
-        )
-        if not self._store.update_fact_metadata(fact_id, meta):
-            logger.debug("_refresh_checksum: факт %s не найден при обновлении metadata", fact_id)
 
 def run_consolidation(store: SQLiteGraphStore | None = None) -> Any:
     """
