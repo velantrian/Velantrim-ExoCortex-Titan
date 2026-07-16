@@ -148,6 +148,27 @@ def test_refresh_missing_fact_returns_not_found_without_creating_it(store):
     assert store.get_fact_ids() == [] or "does-not-exist" not in store.get_fact_ids()
 
 
+def test_refresh_not_found_invalidates_stale_l0_entry(store):
+    """Codex review finding on refresh_fact_integrity_metadata's not_found
+    branch: if a fact was L0-cached by this instance and then durably
+    deleted (e.g. by another SQLiteGraphStore instance, or an erasure
+    path) before this call's SELECT, the SELECT proves the row absent —
+    that proof must evict the stale L0 entry too, or get_fact() keeps
+    serving a fact this call just proved gone."""
+    store2 = SQLiteGraphStore(db_path=store.db_path)
+    store.store_fact(_basic_fact("d2"))
+    store.get_fact("d2")  # pre-warm L0 on `store`
+    assert "d2" in store._l0
+
+    with store2._db() as conn:
+        conn.execute("DELETE FROM facts WHERE fact_id = ?", ("d2",))
+
+    result = store.refresh_fact_integrity_metadata("d2")
+    assert result == "not_found"
+    assert "d2" not in store._l0
+    assert store.get_fact("d2") is None
+
+
 # ── E. Post-promotion refresh failure must not undo / misclassify promotion ──
 
 def test_checksum_refresh_error_after_promotion_does_not_undo_it(store, monkeypatch):

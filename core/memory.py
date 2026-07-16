@@ -1736,6 +1736,15 @@ class SQLiteGraphStore(GraphStore):
                     (fact_id,),
                 ).fetchone()
                 if row is None:
+                    # This SELECT just proved the row absent from L1 — if
+                    # another SQLiteGraphStore instance (or an erasure
+                    # path) removed it after this instance's L0 cached an
+                    # earlier read, that cached entry is now provably
+                    # stale. Drop it so the next get_fact() doesn't keep
+                    # serving a fact this call just proved gone.
+                    with self._l0_lock:
+                        if fact_id in self._l0:
+                            del self._l0[fact_id]
                     return "not_found"
                 claim, source, confidence, epistemic_state, updated_at, metadata_json = row
                 current_metadata = json.loads(metadata_json or "{}")
