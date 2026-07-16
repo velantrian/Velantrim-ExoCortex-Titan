@@ -1668,6 +1668,161 @@ class SQLiteGraphStore(GraphStore):
             self._l0_put(fact_id, cached)
         return True
 
+    # ── refresh_fact_integrity_metadata ──────────────────────────────────────
+
+    def refresh_fact_integrity_metadata(
+        self, fact_id: str, *, max_attempts: int = 5
+    ) -> str:
+        """Atomically recompute and persist an EXISTING fact's integrity
+        metadata (content_checksum, episode_hash, claim_dedup_key) from its
+        OWN current claim/source/confidence/epistemic_state.
+
+        Replaces the old ConsolidationEngine._refresh_checksum() ->
+        store_fact() path (issue #26 / PR #27): store_fact() rejects any
+        fact whose epistemic_state isn't 'Observed' (Ring Zero aside), so
+        calling it right after a successful promotion always raised
+        ValueError, which run()'s fallback handler misread as a failed
+        promotion — incrementing report.errors on the happy path. It also
+        replaces the narrower update_fact_metadata(fact_id, metadata) this
+        PR originally added, and the Copilot review finding against it:
+        that method took a CALLER-computed metadata dict (so the caller
+        had to read some earlier snapshot to build it — exactly the
+        "compute on one snapshot, write to a possibly different one"
+        hazard) and used `cursor.rowcount > 0` to infer whether the row
+        existed. A genuinely different fact_id correctly gives rowcount
+        0 not-found; nothing here otherwise depends on that (see the CAS
+        guard below, which is what actually decides success/failure —
+        rowcount is only ever consulted on the guarded UPDATE, never as
+        a stand-in existence probe on an unconditional one).
+
+        This method computes the new metadata itself, from a read it took
+        moments before, inside the SAME retry attempt — there is no
+        caller-supplied snapshot to go stale.
+
+        Never touches epistemic_state, claim, confidence, source, history,
+        versions, or provenance — only `metadata`. Never creates a fact
+        that doesn't exist.
+
+        Atomicity / no lost update: mirrors _promote_to_validated_cas()'s
+        convention — a guarded UPDATE whose WHERE clause pins fact_id AND
+        the exact (epistemic_state, updated_at, metadata) this attempt
+        read. If ANY of those changed (a concurrent ESM transition, a
+        concurrent store_fact() upsert, or another concurrent metadata
+        write) between the read and this write, the UPDATE matches zero
+        rows — proving the snapshot this attempt computed FROM is no
+        longer current — and the method re-reads a fresh snapshot and
+        retries, up to `max_attempts` times, rather than either silently
+        overwriting a newer value or reporting a false success. A fact
+        that is deleted between the read and the write is caught the
+        same way: the next attempt's read finds no row and returns
+        "not_found" honestly, instead of reporting success for a write
+        that never really landed.
+
+        This CAS guard applies uniformly to a genuine no-op (the freshly
+        recomputed metadata already equals what's stored) too — `_db()`
+        opens no explicit transaction before the SELECT above, so a
+        no-op branch that returned early right after that SELECT would
+        have the same read-then-act race as the write path: another
+        instance could mutate or delete the row in the gap, and the
+        early return would report success against a snapshot that's
+        already stale. Instead the no-op is written through the same
+        guarded UPDATE (SQLite reports rowcount == 1 for a matching
+        same-value UPDATE exactly as for a real change), so it is
+        re-verified against the live row at write time and retried on a
+        CAS miss exactly like any other attempt.
+
+        Returns "success" if the fact exists — including a genuine no-op,
+        proven live at write time, never a stale read alone — or
+        "not_found" if no fact with this id currently exists. The L0
+        cache is invalidated only after that outcome is durably proven:
+        on a committed write (no-op or real change) or on a proven-absent
+        read, never speculatively before either.
+        """
+        from core.fact_integrity import attach_integrity_metadata
+
+        for _attempt in range(max_attempts):
+            with self._db() as conn:
+                row = conn.execute(
+                    "SELECT claim, source, confidence, epistemic_state, "
+                    "updated_at, metadata FROM facts WHERE fact_id = ?",
+                    (fact_id,),
+                ).fetchone()
+                if row is None:
+                    # This SELECT just proved the row absent from L1 — if
+                    # another SQLiteGraphStore instance (or an erasure
+                    # path) removed it after this instance's L0 cached an
+                    # earlier read, that cached entry is now provably
+                    # stale. Drop it so the next get_fact() doesn't keep
+                    # serving a fact this call just proved gone.
+                    with self._l0_lock:
+                        if fact_id in self._l0:
+                            del self._l0[fact_id]
+                    return "not_found"
+                claim, source, confidence, epistemic_state, updated_at, metadata_json = row
+                current_metadata = json.loads(metadata_json or "{}")
+                new_metadata = attach_integrity_metadata(
+                    current_metadata,
+                    claim=claim or "",
+                    source=source or "unknown",
+                    confidence=float(confidence if confidence is not None else 0.5),
+                    epistemic_state=epistemic_state or "Observed",
+                )
+
+                # A genuine no-op (new_metadata == current_metadata) is
+                # deliberately NOT special-cased with an early return
+                # here. `_db()` doesn't open an explicit transaction
+                # before this SELECT, so between this read and any
+                # early-return, another SQLiteGraphStore instance can
+                # freely mutate or delete this row — a "the SELECT
+                # already proved it" no-op return would then report
+                # stale-snapshot success. Instead, the no-op is routed
+                # through the SAME CAS-guarded UPDATE as a real change,
+                # writing new_metadata_json even when it's byte-identical
+                # to what's already stored: the guard's WHERE clause
+                # re-checks the row at write time, and SQLite reports
+                # rowcount == 1 for a matching same-value UPDATE just as
+                # for a genuine change, so a true no-op is proven exactly
+                # as atomically as a write, and a concurrent mutation or
+                # deletion between this read and the write below is
+                # caught by the same rowcount == 0 retry path.
+                new_metadata_json = json.dumps(new_metadata)
+                cur = conn.execute(
+                    "UPDATE facts SET metadata = ? "
+                    "WHERE fact_id = ? AND epistemic_state = ? "
+                    "AND updated_at = ? AND metadata = ?",
+                    (
+                        new_metadata_json,
+                        fact_id,
+                        epistemic_state,
+                        updated_at,
+                        metadata_json,
+                    ),
+                )
+                committed = cur.rowcount == 1
+
+            if committed:
+                # Invalidate rather than patch: this attempt only proved
+                # `metadata` (guarded by the CAS clause above); it does
+                # NOT prove no OTHER field drifted between an earlier L0
+                # read and this commit (e.g. a concurrent writer using a
+                # different SQLiteGraphStore instance, whose own writes
+                # this instance's L0 has no way to observe). Patching a
+                # stale cached dict's metadata field in place would leave
+                # every other field silently wrong; dropping the entry
+                # forces the next get_fact() to re-read the durably
+                # committed row instead.
+                with self._l0_lock:
+                    if fact_id in self._l0:
+                        del self._l0[fact_id]
+                return "success"
+            # CAS miss: the row changed (or was deleted) between the read
+            # above and this write — retry against a fresh snapshot.
+
+        raise RuntimeError(
+            f"refresh_fact_integrity_metadata: too much contention on "
+            f"'{fact_id}' after {max_attempts} attempts"
+        )
+
     # ── transition_esm ──────────────────────────────────────────────────────
 
     def transition_esm(
