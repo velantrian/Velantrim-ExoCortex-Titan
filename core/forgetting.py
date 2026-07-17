@@ -15,6 +15,20 @@
 Архитектура:
     Не заменяет удаление в SQLite. Добавляет проверки ДО удаления.
     Все операции логируются в provenance_chain (если доступен).
+
+DEPRECATED (batch erasure hardening): ForgettingEngine.forget_all() used to
+run its own single-pass, non-durable delete with no snapshot of which
+fact_ids it decided to erase before deleting them, and treated ANY fact in
+epistemic_state='ImmutableCore' as an automatic, silent GDPR exemption. It
+now delegates to core.erasure_batch_coordinator.forget_all_durable() — a
+durable, resumable batch saga (erasure_batches / erasure_batch_items) that
+snapshots its full fact_id membership before touching anything, erases each
+fact through the existing per-fact P0-B saga
+(core.erasure_coordinator.erase_fact_durable()), and reports a CRITICAL
+compliance finding — never a silent skip or a false success — when a
+personal fact is found inside ImmutableCore. See
+core/erasure_batch_coordinator.py for the full design rationale.
+FORGET_ONE and REDACT_PII are unaffected by this change.
 """
 
 from __future__ import annotations
@@ -25,6 +39,7 @@ import os
 import re
 import sqlite3
 import uuid
+import warnings
 from dataclasses import dataclass, field
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -278,121 +293,88 @@ class ForgettingEngine:
         reason: str = "gdpr_request",
         dry_run: bool = False,
         force: bool = False,
+        actor: str = "operator",
+        actor_capability: str = "reader",
+        scope: str | None = None,
+        idempotency_key: str | None = None,
     ) -> ForgetVerdict:
+        """DEPRECATED — delegates to
+        core.erasure_batch_coordinator.forget_all_durable().
+
+        This used to run its own single-pass, single-transaction delete
+        with no durable record of which fact_ids it decided to erase
+        before deleting them, and treated any fact whose epistemic_state
+        was 'ImmutableCore' as an automatic, silent GDPR exemption. The
+        enforced entrypoint is now the durable, resumable batch saga in
+        core.erasure_batch_coordinator — see there for the full batch
+        state machine, the durable snapshot/idempotency-key/resumability
+        model, and why ImmutableCore is treated as a CRITICAL compliance
+        finding (not an exemption) when it holds data matched by a
+        user_id filter.
+
+        Kept for backward compatibility only — new code (and the
+        registered `forget_all` MCP tool) should call
+        core.erasure_batch_coordinator.forget_all_durable() directly to
+        get the full batch report (items/outcome/critical items); this
+        shim narrows that down to the legacy ForgetVerdict shape.
         """
-        Удалить ВСЕ факты для user_id.
+        warnings.warn(
+            "core.forgetting.ForgettingEngine.forget_all() is deprecated — "
+            "use core.erasure_batch_coordinator.forget_all_durable() directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        from core.erasure_batch_coordinator import forget_all_durable
 
-        dry_run=True → только подсчёт (не удаляет).
-        ImmutableCore факты НЕ трогает.
-        """
-        # Найти все факты пользователя (по source contains user_id)
-        try:
-            conn = sqlite3.connect(self._db_path, timeout=10.0)
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.row_factory = sqlite3.Row
+        report = forget_all_durable(
+            user_id,
+            reason=reason,
+            actor=actor,
+            actor_capability=actor_capability,
+            force=force,
+            scope=scope,
+            dry_run=dry_run,
+            idempotency_key=idempotency_key,
+        )
 
-            # FIX #5 (Claude audit): убрать substring-LIKE %user_id% —
-            # матчит слишком широко (user_id='default' → все факты).
-            # Структурный матч: по source ИЛИ metadata.user_id.
-            # Отклонять пустой/«default» user_id без force-флага.
-            if not user_id or user_id == "default":
-                if not force:
-                    return ForgetVerdict(
-                        allowed=False,
-                        reason="ambiguous_user_id",
-                        details=[
-                            "user_id='default' или пустой — отказ от массового удаления. "
-                            "Укажите явный user_id или используйте force=True."
-                        ],
-                    )
-
-            rows = conn.execute(
-                """SELECT fact_id, epistemic_state FROM facts
-                   WHERE source = ?
-                      OR json_extract(metadata, '$.user_id') = ?""",
-                (user_id, user_id),
-            ).fetchall()
-
-            # Фильтруем: ImmutableCore — пропускаем
-            to_delete = [
-                dict(r) for r in rows
-                if r["epistemic_state"] not in ("ImmutableCore",)
-                and r["fact_id"] not in _IMMUTABLE_FACT_IDS
-            ]
-
-            immutable_skipped = len(rows) - len(to_delete)
-
-            if dry_run:
-                conn.close()
-                return ForgetVerdict(
-                    allowed=True,
-                    reason="dry_run",
-                    affected_facts=len(to_delete),
-                    details=[
-                        f"🔍 Dry run: будет удалено {len(to_delete)} фактов.",
-                        f"🛡️ Пропущено (ImmutableCore): {immutable_skipped}",
-                        f"Пользователь: {user_id}",
-                    ],
-                )
-
-            with _without_fact_delete_guard(conn):
-                fact_claims: dict[str, str] = {}
-                claim_rows = conn.execute(
-                    f"SELECT fact_id, claim FROM facts WHERE fact_id IN ({','.join('?'*len(to_delete))})",
-                    [f["fact_id"] for f in to_delete],
-                ).fetchall()
-                for (fid, claim) in claim_rows:
-                    fact_claims[fid] = claim
-
-                for fact in to_delete:
-                    fid = fact["fact_id"]
-                    conn.execute("DELETE FROM fact_mentions WHERE fact_id = ?", (fid,))
-                    conn.execute("DELETE FROM facts WHERE fact_id = ?", (fid,))
-                    now = datetime.now(timezone.utc).isoformat()
-                    claim_hash = hashlib.sha256(
-                        fact_claims.get(fid, "").encode()
-                    ).hexdigest()
-                    conn.execute(
-                        """INSERT INTO erasure_log
-                           (erasure_id, fact_id, user_id, reason, claim_hash, erased_at, request_ref)
-                           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                        (
-                            f"era_{uuid.uuid4().hex[:12]}",
-                            fid, user_id, reason, claim_hash, now,
-                            f"gdpr_batch_{now[:10]}",
-                        ),
-                    )
-
-                self._log_forgetting(
-                    conn,
-                    "FORGET_ALL",
-                    reason,
-                    user_id,
-                    extra={"count": len(to_delete), "immutable_skipped": immutable_skipped},
-                )
-
-            conn.commit()
-            conn.close()
-
-            msg = f"✅ GDPR: удалено {len(to_delete)} фактов для {user_id}"
-            if immutable_skipped:
-                msg += f" (пропущено {immutable_skipped} ImmutableCore)"
-            logger.warning(msg)
-
-            return ForgetVerdict(
-                allowed=True,
-                reason="gdpr_completed",
-                affected_facts=len(to_delete),
-                details=[msg],
-            )
-
-        except Exception as exc:
-            logger.error("Forgetting.forget_all: %s", exc)
+        if report["outcome"] == "REFUSED":
             return ForgetVerdict(
                 allowed=False,
-                reason=f"store_error: {exc}",
-                details=[f"❌ Ошибка GDPR-удаления: {exc}"],
+                reason=report["reason"],
+                details=[f"❌ FORGET_ALL отклонён: {report['reason']}"],
             )
+
+        if report.get("dry_run"):
+            return ForgetVerdict(
+                allowed=True,
+                reason="dry_run",
+                affected_facts=report["would_erase"],
+                details=[
+                    f"🔍 Dry run: будет удалено {report['would_erase']} фактов.",
+                    f"🛡️ Ring Zero пропущено: {len(report['ring_zero_skipped_items'])}",
+                    f"⚠️ Потенциальные CRITICAL (ImmutableCore): "
+                    f"{len(report['would_be_critical_items'])}",
+                    f"Пользователь: {user_id}",
+                ],
+            )
+
+        details = [
+            f"Batch {report['batch_id']}: outcome={report['outcome']}, "
+            f"items_total={report['items_total']}",
+        ]
+        if report["critical_compliance_violation"]:
+            details.append(
+                f"🚨 CRITICAL: {len(report['critical_items'])} персональных "
+                f"фактов обнаружено в ImmutableCore — требуется ручная проверка. "
+                f"fact_id: {report['critical_items']}"
+            )
+
+        return ForgetVerdict(
+            allowed=report["success"] or report["outcome"] == "PARTIAL",
+            reason=report["outcome"].lower(),
+            affected_facts=report["items_total"],
+            details=details,
+        )
 
     # ── REDACT_PII ────────────────────────────────────────────────────────
 

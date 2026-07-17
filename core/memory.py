@@ -720,6 +720,32 @@ class SQLiteGraphStore(GraphStore):
                     return True
         return False
 
+    def list_fact_ids_by_user_durable(self, user_id: str) -> list[dict[str, Any]]:
+        """Read-only, durable (bypasses L0/caches) selection of every fact
+        currently matching a GDPR data-subject filter: `source = user_id`
+        OR `metadata.user_id = user_id` — the same structural match
+        core.forgetting.ForgettingEngine.forget_all() has always used, kept
+        here as a real DB read rather than a substring LIKE (which would
+        match far too broadly, e.g. user_id='default' matching every fact
+        whose source merely CONTAINS the word).
+
+        Used by core.erasure_batch_coordinator to take the durable batch
+        SNAPSHOT before any deletion is attempted — this must be one atomic
+        read, never re-run mid-batch (a fact ingested for the same user_id
+        AFTER the snapshot is out of scope for that batch by construction).
+
+        Returns `[{"fact_id": ..., "epistemic_state": ...}, ...]`, ordered
+        by fact_id for a deterministic snapshot ordering.
+        """
+        with self._db() as conn:
+            rows = conn.execute(
+                "SELECT fact_id, epistemic_state FROM facts "
+                "WHERE source = ? OR json_extract(metadata, '$.user_id') = ? "
+                "ORDER BY fact_id",
+                (user_id, user_id),
+            ).fetchall()
+        return [{"fact_id": r[0], "epistemic_state": r[1]} for r in rows]
+
     def delete_fact_l1(self, fact_id: str) -> bool:
         """Legacy bool-returning wrapper.
 
@@ -2974,6 +3000,12 @@ def erase_fact_dependents_atomic(fact_id: str) -> dict[str, Any]:
 def same_db_dependents_present(fact_id: str) -> bool:
     """Read-only residual check — see SQLiteGraphStore.same_db_dependents_present()."""
     return _GLOBAL_STORE.same_db_dependents_present(fact_id)
+
+
+def list_fact_ids_by_user_durable(user_id: str) -> list[dict[str, Any]]:
+    """GDPR Art. 17 batch erasure: durable snapshot selection — see
+    SQLiteGraphStore.list_fact_ids_by_user_durable()."""
+    return _GLOBAL_STORE.list_fact_ids_by_user_durable(user_id)
 
 
 def write_tombstone(fact_id: str, *, reason: str, actor: str,

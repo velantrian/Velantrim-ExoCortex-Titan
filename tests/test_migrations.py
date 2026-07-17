@@ -25,14 +25,14 @@ def _run_apply(db_path: str) -> subprocess.CompletedProcess:
     )
 
 
-def test_fresh_apply_reaches_v14_with_expected_schema(tmp_path):
+def test_fresh_apply_reaches_latest_version_with_expected_schema(tmp_path):
     db_path = str(tmp_path / "fresh.db")
     result = _run_apply(db_path)
     assert result.returncode == 0, result.stderr
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 14
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 15
         job_cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_jobs)").fetchall()}
         assert "generation" in job_cols
         log_cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_log)").fetchall()}
@@ -51,6 +51,21 @@ def test_fresh_apply_reaches_v14_with_expected_schema(tmp_path):
             ).fetchall()
         }
         assert "idx_erasure_job_unique" in log_indexes
+        # migrations/015_erasure_batches.sql — FORGET_ALL durable batch registry.
+        batch_tables = {
+            r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'erasure_batch%'"
+            ).fetchall()
+        }
+        assert batch_tables == {
+            "erasure_batches", "erasure_batch_items", "erasure_batch_force_receipts",
+        }
+        batch_indexes = {
+            r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='erasure_batches'"
+            ).fetchall()
+        }
+        assert "idx_erasure_batches_idempotency" in batch_indexes
     finally:
         conn.close()
 
@@ -101,7 +116,7 @@ def test_v13_to_v14_upgrade_preserves_existing_jobs_and_legacy_tombstones(tmp_pa
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 14
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 15
         jobs = dict(conn.execute("SELECT job_id, status FROM erasure_jobs").fetchall())
         assert jobs == {"erj_complete1": "COMPLETE", "erj_partial1": "PARTIAL"}
         tombstones = {
@@ -175,7 +190,7 @@ def test_v12_self_healed_schema_does_not_block_migration_013(tmp_path):
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 14
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 15
         indexes = {
             r[0] for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='erasure_jobs'"

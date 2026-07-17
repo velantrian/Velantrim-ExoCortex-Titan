@@ -384,7 +384,50 @@ def register_velantrim_tools(registry: ToolRegistry) -> None:
 
     registry.register(
         "forget_all", h.forget_all, capability="admin",
-        description="Удалить все факты пользователя (GDPR Article 17)",
+        description=(
+            "Удалить все факты пользователя (GDPR Article 17): durable, "
+            "resumable batch erasure saga через core.erasure_batch_coordinator "
+            "— снимок затрагиваемых fact_id фиксируется до удаления, каждый "
+            "факт удаляется через существующую per-fact saga (forget_fact), "
+            "ImmutableCore с персональными данными сообщается как CRITICAL "
+            "(не пропускается молча)"
+        ),
+        params={
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "ID пользователя, чьи факты удаляются",
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Причина удаления (для Art. 30 audit trail)",
+                    "default": "gdpr_request",
+                },
+                "dry_run": {
+                    "type": "boolean",
+                    "description": "Только предпросмотр — ничего не удаляет и не создаёт batch",
+                    "default": False,
+                },
+                "force": {
+                    "type": "boolean",
+                    "description": (
+                        "Разрешить удаление при пустом/'default' user_id. "
+                        "Требует scope и доступен только admin-capability"
+                    ),
+                    "default": False,
+                },
+                "scope": {
+                    "type": "string",
+                    "description": "Явное описание масштаба удаления — обязателен при force=True",
+                },
+                "idempotency_key": {
+                    "type": "string",
+                    "description": "Повторный вызов с тем же ключом возобновляет тот же batch, не создаёт новый",
+                },
+            },
+            "required": ["user_id"],
+        },
         destructive=True, audit=True,
     )
 

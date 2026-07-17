@@ -246,16 +246,32 @@ def forget_all(
     reason: str = "gdpr_request",
     dry_run: bool = False,
     force: bool = False,
+    scope: str | None = None,
+    idempotency_key: str | None = None,
+    actor: str = "operator",
 ) -> dict[str, Any]:
-    from core.forgetting import get_forgetting_engine
+    """GDPR Art. 17 batch erasure (FORGET_ALL): durable, resumable batch
+    saga via core.erasure_batch_coordinator — see there for the full
+    state machine. This handler is only reachable through the
+    `forget_all` tool, which core.tool_registry gates to capability=
+    "admin"; `actor_capability="admin"` below is asserted explicitly here
+    too (defense in depth — this function must never trust that gate
+    alone, since it is also callable directly by non-tool-registry
+    callers), so force=True is only ever honored for a caller this
+    handler itself has confirmed is admin-level.
+    """
+    from core.erasure_batch_coordinator import forget_all_durable
 
-    verdict = get_forgetting_engine().forget_all(
-        user_id=user_id,
+    return forget_all_durable(
+        user_id,
         reason=reason,
-        dry_run=dry_run,
+        actor=actor,
+        actor_capability="admin",
         force=force,
+        scope=scope,
+        dry_run=dry_run,
+        idempotency_key=idempotency_key,
     )
-    return verdict.to_dict()
 
 
 def reset_graph(*, confirm: bool = False) -> dict[str, Any]:
