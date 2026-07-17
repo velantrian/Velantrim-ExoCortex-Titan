@@ -10,11 +10,14 @@ coordinator's own report alone.
 from __future__ import annotations
 
 import sqlite3
+import threading
+import time
 
 import pytest
 
 from core import memory
 from core.embedding_store import EmbeddingStore
+import core.erasure_batch_coordinator as ebc_module
 from core.erasure_batch_coordinator import (
     COMPLETE,
     COMPLETE_WITH_RESIDUAL,
@@ -22,6 +25,7 @@ from core.erasure_batch_coordinator import (
     FAILED,
     IDEMPOTENCY_CONFLICT,
     PARTIAL,
+    PENDING,
     REFUSED,
     RESIDUAL_IMMUTABLE_DATA,
     RUNNING,
@@ -443,6 +447,176 @@ def test_two_recovery_workers_never_both_win_the_same_stale_lease(rig):
     assert final["runner_id"] == "recovery-worker-A"
 
 
+def test_item_slower_than_ttl_heartbeat_prevents_reclaim(rig, monkeypatch):
+    """Round-2 blocker #1: the lease used to be renewed only AFTER
+    _process_item() returned, so a single item slower than
+    _LEASE_TTL_SECONDS could let the batch lease go stale mid-item even
+    though the runner is genuinely still alive. _BatchLeaseHeartbeat now
+    renews continuously in the background for as long as items are being
+    processed — a recovery sweep running concurrently, well past the TTL,
+    must still find nothing to reclaim."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1"))
+
+    monkeypatch.setattr(ebc_module, "_LEASE_TTL_SECONDS", 0.3)
+
+    orig_run_l1 = coordinator._run_l1_same_db
+
+    def slow_l1(job_id, fact_id):
+        time.sleep(0.8)  # deliberately longer than the lease TTL above
+        return orig_run_l1(job_id, fact_id)
+
+    monkeypatch.setattr(coordinator, "_run_l1_same_db", slow_l1)
+
+    result_holder = {}
+
+    def run_live():
+        result_holder["report"] = batch.forget_all_durable("userA", reason="dsr")
+
+    t = threading.Thread(target=run_live)
+    t.start()
+    try:
+        time.sleep(0.5)  # well past the 0.3s TTL, while f1 is still mid-sleep
+
+        recovery_worker = BatchErasureCoordinator(store=store, coordinator=coordinator)
+        recovered = recovery_worker.resume_incomplete_batches()
+
+        assert recovered == []  # heartbeat kept the lease alive -- nothing stale
+    finally:
+        t.join(timeout=5.0)
+
+    assert result_holder["report"]["outcome"] == COMPLETE
+    assert store.get_fact("f1") is None
+
+
+def test_stale_runner_cannot_overwrite_item_status_after_losing_ownership(rig):
+    """Round-2 blocker #2: an item's status write is an ownership CAS on
+    item_runner_id — a runner whose result arrives AFTER a newer runner has
+    already re-claimed the same item must have its write silently
+    discarded, never overwrite the current owner's result."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1"))
+
+    batch_id = batch._create_batch_snapshot(
+        user_id="userA", reason="dsr", actor="tester", force=False, scope=None,
+        idempotency_key=None, actor_capability="reader",
+        request_fingerprint="fp-stale-item-ownership",
+    )
+
+    batch._claim_item(batch_id, "f1", "runner-old")
+    # A newer runner (e.g. after a crash-recovery reclaim of the BATCH)
+    # re-claims the SAME item before runner-old's own write ever lands.
+    batch._claim_item(batch_id, "f1", "runner-new")
+
+    stale_write_won = batch._set_item_status(
+        batch_id, "f1", COMPLETE, runner_id="runner-old", detail={"stale": True},
+    )
+    assert stale_write_won is False
+
+    untouched = batch._load_items(batch_id)[0]
+    assert untouched["status"] == PENDING
+    assert untouched["item_runner_id"] == "runner-new"
+
+    current_write_won = batch._set_item_status(
+        batch_id, "f1", COMPLETE, runner_id="runner-new", detail={"stale": False},
+    )
+    assert current_write_won is True
+    assert batch._load_items(batch_id)[0]["status"] == COMPLETE
+
+
+def test_compliance_flag_visible_immediately_after_critical_item_before_finalize(rig):
+    """Round-2 blocker #3: compliance_status must be written atomically
+    WITH the critical item's own row, not deferred to _finalize_batch() —
+    a crash right after that write (before finalize ever runs) must still
+    leave compliance_status durably visible on the batch row, and
+    _report() must also derive it directly from item rows as a fail-closed
+    backstop."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1"))
+    _force_epistemic_state(store, "f1", "ImmutableCore")
+
+    batch_id = batch._create_batch_snapshot(
+        user_id="userA", reason="dsr", actor="tester", force=False, scope=None,
+        idempotency_key=None, actor_capability="reader",
+        request_fingerprint="fp-crash-before-finalize",
+    )
+    loaded_batch = batch._load_batch(batch_id)
+    item = batch._load_items(batch_id)[0]
+
+    # Exactly one item processed, then simulate a crash: _finalize_batch()
+    # is never called.
+    won = batch._process_item(loaded_batch, item, "runner-crash")
+    assert won is True
+
+    raw = batch._load_batch(batch_id)
+    assert raw["compliance_status"] == CRITICAL_COMPLIANCE_VIOLATION
+    assert raw["status"] == PENDING  # execution status untouched -- finalize never ran
+
+    report = batch.get_batch_report(batch_id)
+    assert report["compliance_status"] == CRITICAL_COMPLIANCE_VIOLATION
+    assert report["critical_compliance_violation"] is True
+
+    # Fail-closed backstop: even if the batch column had somehow stayed
+    # NULL, _report() independently scans item rows and still reports
+    # critical=True.
+    with sqlite3.connect(store.db_path) as conn:
+        conn.execute(
+            "UPDATE erasure_batches SET compliance_status = NULL WHERE batch_id = ?",
+            (batch_id,),
+        )
+        conn.commit()
+    report_after_wipe = batch.get_batch_report(batch_id)
+    assert report_after_wipe["compliance_status"] == CRITICAL_COMPLIANCE_VIOLATION
+    assert report_after_wipe["critical_compliance_violation"] is True
+
+
+def test_two_real_recovery_workers_separate_connections_race_exactly_one_winner(rig):
+    """Round-2 required test: two GENUINELY concurrent recovery workers,
+    each its own BatchErasureCoordinator instance (separate connections),
+    synchronized with a barrier so they attempt the claim as close to
+    simultaneously as real threads allow. Exactly one must process the
+    batch to completion; the other must find nothing to do."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1"))
+
+    batch_id = batch._create_batch_snapshot(
+        user_id="userA", reason="dsr", actor="tester", force=False, scope=None,
+        idempotency_key=None, actor_capability="reader",
+        request_fingerprint="fp-real-two-workers",
+    )
+    with sqlite3.connect(store.db_path) as conn:
+        conn.execute(
+            "UPDATE erasure_batches SET status = ?, runner_id = ?, "
+            "lease_expires_at = ? WHERE batch_id = ?",
+            (RUNNING, "dead-runner", "2000-01-01T00:00:00+00:00", batch_id),
+        )
+        conn.commit()
+
+    worker_a = BatchErasureCoordinator(store=store, coordinator=coordinator)
+    worker_b = BatchErasureCoordinator(store=store, coordinator=coordinator)
+    barrier = threading.Barrier(2)
+    results: dict[str, list] = {}
+
+    def run(name, worker):
+        barrier.wait(timeout=5.0)
+        results[name] = worker.resume_incomplete_batches()
+
+    t1 = threading.Thread(target=run, args=("A", worker_a))
+    t2 = threading.Thread(target=run, args=("B", worker_b))
+    t1.start()
+    t2.start()
+    t1.join(timeout=10.0)
+    t2.join(timeout=10.0)
+
+    a_won = any(r["batch_id"] == batch_id for r in results["A"])
+    b_won = any(r["batch_id"] == batch_id for r in results["B"])
+    assert a_won != b_won  # exactly one of the two processed it
+
+    final = batch._load_batch(batch_id)
+    assert final["status"] == COMPLETE
+    assert store.get_fact("f1") is None
+
+
 # ── Idempotency ──────────────────────────────────────────────────────────
 
 def test_idempotency_key_reuse_resumes_same_batch_no_duplicate_snapshot(rig, monkeypatch):
@@ -524,6 +698,37 @@ def test_same_idempotency_key_different_request_is_conflict_not_reuse(rig):
         "userA", reason="different_reason", idempotency_key="shared-key",
     )
     assert conflict_reason["outcome"] == IDEMPOTENCY_CONFLICT
+
+
+def test_get_batch_report_by_idempotency_key_requires_matching_fingerprint(rig):
+    """Additional hardening: the key string ALONE must never be enough to
+    read back a batch's contents (user_id, per-item outcomes, compliance
+    findings) — the caller must prove it knows the original request by
+    supplying the SAME fingerprint compute_request_fingerprint() would
+    produce for it. A wrong/missing fingerprint is indistinguishable from
+    'not found', so a leaked/guessed key alone discloses nothing."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1"))
+
+    report = batch.forget_all_durable("userA", reason="dsr", idempotency_key="lookup-key")
+    assert report["outcome"] == COMPLETE
+
+    correct_fingerprint = ebc_module.compute_request_fingerprint(
+        user_id="userA", reason="dsr", actor="operator", force=False, scope=None,
+    )
+    found = batch.get_batch_report_by_idempotency_key(
+        "lookup-key", request_fingerprint=correct_fingerprint,
+    )
+    assert found is not None
+    assert found["batch_id"] == report["batch_id"]
+
+    wrong_fingerprint = ebc_module.compute_request_fingerprint(
+        user_id="someone_else", reason="dsr", actor="operator", force=False, scope=None,
+    )
+    not_found = batch.get_batch_report_by_idempotency_key(
+        "lookup-key", request_fingerprint=wrong_fingerprint,
+    )
+    assert not_found is None
 
 
 # ── Concurrent addition of a new fact mid-batch ─────────────────────────────
@@ -655,6 +860,38 @@ def test_orphan_force_receipt_insert_is_rejected(rig):
             )
 
 
+def test_force_receipts_are_genuinely_append_only(rig):
+    """Additional hardening: erasure_batch_force_receipts is enforced
+    append-only by real BEFORE DELETE/UPDATE triggers (mirroring
+    migration 012's erasure_log triggers) — not just a docstring claim."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1", source="default"))
+
+    report = batch.forget_all_durable(
+        "default", actor="tester", actor_capability="admin",
+        force=True, scope="cleanup",
+    )
+    assert report["outcome"] == COMPLETE
+
+    with sqlite3.connect(store.db_path) as conn:
+        receipt_id = conn.execute(
+            "SELECT receipt_id FROM erasure_batch_force_receipts WHERE batch_id = ?",
+            (report["batch_id"],),
+        ).fetchone()[0]
+
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "DELETE FROM erasure_batch_force_receipts WHERE receipt_id = ?",
+                (receipt_id,),
+            )
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "UPDATE erasure_batch_force_receipts SET actor = 'tampered' "
+                "WHERE receipt_id = ?",
+                (receipt_id,),
+            )
+
+
 # ── Blocker #4: no fake defense-in-depth / real PrincipalContext ──────────
 
 def test_tool_handlers_forget_all_requires_explicit_principal(rig, monkeypatch):
@@ -671,7 +908,7 @@ def test_tool_handlers_forget_all_requires_explicit_principal(rig, monkeypatch):
 
     store.store_fact(_fact("f1", source="default"))
 
-    non_admin = PrincipalContext(capability="guardian", actor_id="api:deadbeef")
+    non_admin = PrincipalContext(capability="guardian", credential_fingerprint="api:deadbeef")
     result = tool_handlers.forget_all(
         user_id="default", principal=non_admin, force=True, scope="whole_db_cleanup",
     )
@@ -679,7 +916,7 @@ def test_tool_handlers_forget_all_requires_explicit_principal(rig, monkeypatch):
     assert result["reason"] == "force_requires_admin_capability"
     assert store.get_fact("f1") is not None
 
-    admin = PrincipalContext(capability="admin", actor_id="api:cafebabe")
+    admin = PrincipalContext(capability="admin", credential_fingerprint="api:cafebabe")
     ok = tool_handlers.forget_all(
         user_id="default", principal=admin, force=True, scope="whole_db_cleanup",
     )

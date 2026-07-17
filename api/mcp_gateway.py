@@ -52,12 +52,15 @@ def _resolve_capability(
     return cap, sid
 
 
-def _derive_actor_id(x_api_key: str) -> str:
-    """Pseudonymous, server-derived caller identity — mirrors server.py's
-    existing PATCH /facts/{fact_id}/transition precedent
+def _derive_credential_fingerprint(x_api_key: str) -> str:
+    """Pseudonymous, server-derived value — mirrors server.py's existing
+    PATCH /facts/{fact_id}/transition precedent
     ("api:" + sha256(api_key)[:8]) instead of trusting any client-supplied
-    identity field. Only ever fed to tools registered with
-    needs_principal=True (see core.tool_registry.PrincipalContext)."""
+    identity field. Deliberately NOT called "actor_id"/"user_id": a single
+    shared API key is not a per-user credential, so this only proves "the
+    same caller who holds this key again" — see
+    core.tool_registry.PrincipalContext. Only ever fed to tools registered
+    with needs_principal=True."""
     if not x_api_key:
         return "api:anon"
     digest = hashlib.sha256(x_api_key.encode("utf-8")).hexdigest()[:8]
@@ -79,10 +82,11 @@ def _dispatch(
     *,
     capability: str,
     session_id: str | None,
-    actor_id: str | None = None,
+    credential_fingerprint: str | None = None,
 ) -> dict[str, Any] | None:
     return _handler.handle(
-        payload, capability=capability, session_id=session_id, actor_id=actor_id,
+        payload, capability=capability, session_id=session_id,
+        credential_fingerprint=credential_fingerprint,
     )
 
 
@@ -120,7 +124,7 @@ def register_mcp_routes(
         x_api_key: str = Header(default=""),
     ):
         capability, session_id = cap_sid
-        actor_id = _derive_actor_id(x_api_key)
+        credential_fingerprint = _derive_credential_fingerprint(x_api_key)
         body = await _read_json_body(request)
 
         if isinstance(body, list):
@@ -129,7 +133,8 @@ def register_mcp_routes(
                 if not isinstance(item, dict):
                     continue
                 resp = _dispatch(
-                    item, capability=capability, session_id=session_id, actor_id=actor_id,
+                    item, capability=capability, session_id=session_id,
+                    credential_fingerprint=credential_fingerprint,
                 )
                 if resp is not None:
                     responses.append(resp)
@@ -139,7 +144,8 @@ def register_mcp_routes(
             raise HTTPException(status_code=400, detail="Expected JSON object or array")
 
         resp = _dispatch(
-            body, capability=capability, session_id=session_id, actor_id=actor_id,
+            body, capability=capability, session_id=session_id,
+            credential_fingerprint=credential_fingerprint,
         )
         if resp is None:
             return JSONResponse(content={}, status_code=202)

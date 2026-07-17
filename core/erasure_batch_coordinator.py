@@ -22,48 +22,58 @@
 #     would NOT be atomic with the write.
 #   - erasure_batch_items is the durable SNAPSHOT — one row per fact_id
 #     selected by the batch's filter. This is the one and only
-#     membership list this batch will ever process: a resume (crash
-#     recovery, or a repeat call with the same idempotency_key) replays
-#     exactly these rows and NEVER re-queries `facts` by user_id again. A
-#     fact ingested for the same user_id AFTER the snapshot was taken is
-#     out of scope for THIS batch by construction. `snapshot_hash` (over
+#     membership list this batch will ever process. `snapshot_hash` (over
 #     the ordered (fact_id, epistemic_state) pairs) is checked before
-#     every processing pass — a mismatch (e.g. an out-of-band row
-#     inserted/removed directly against erasure_batch_items) fails the
-#     batch closed (FAILED) rather than silently processing a tampered
-#     membership list.
+#     every processing pass — a mismatch fails the batch closed (FAILED)
+#     rather than silently processing a tampered membership list.
 #   - Each item is erased by handing its fact_id to the existing,
 #     unmodified core.erasure_coordinator.erase_fact_durable() — per-fact
 #     durability/resumability/residual-detection/idempotency is inherited,
 #     never re-implemented.
-#   - ImmutableCore is NOT an automatic GDPR exemption: erase_fact_durable()
-#     itself only refuses the two true Ring Zero literals
-#     (memory.IMMUTABLE_FACT_IDS — VALUES_CORE/RING_ZERO). A fact matched
-#     by the user_id filter (i.e. associated with a data subject) whose
-#     epistemic_state is 'ImmutableCore' but whose fact_id is NOT one of
-#     those literals is either a genuine upstream architectural violation
-#     (a P0-D/ESM enforcement gap this CR does not touch) or a residual
-#     write from before that enforcement existed. Either way, silently
-#     skipping it — the old core.forgetting behavior — could hide personal
-#     data forever with no alarm. This coordinator flags it as a
-#     COMPLIANCE finding instead of deleting OR silently skipping it.
-#
+#   - ImmutableCore is NOT an automatic GDPR exemption — see
+#     _process_item() below; flagged as a COMPLIANCE finding, never
+#     silently deleted or skipped.
 #   - EXECUTION status (`erasure_batches.status`) and COMPLIANCE status
-#     (`erasure_batches.compliance_status`) are two INDEPENDENT columns —
-#     a compliance violation must never block retryable items from being
-#     retried, and a batch with retryable work left must never look
-#     "done" just because a violation was already found. See "Batch state
-#     machine" below.
-#   - idempotency_key is bound to a canonical request fingerprint (over
-#     user_id/reason/actor/force/scope). Reusing a key with a DIFFERENT
-#     fingerprint returns IDEMPOTENCY_CONFLICT — it never runs, resumes,
-#     or reveals the existing batch's contents.
-#   - Crash-recovery reclaims a RUNNING batch ONLY via a real lease CAS
-#     (`runner_id` + `lease_expires_at`), never a bare RUNNING->RUNNING
-#     status write — see _claim_batch_for_running(). A live runner
-#     renews its lease after every processed item; losing the lease mid-
-#     run stops processing immediately rather than finalizing over
-#     another runner's concurrent work.
+#     (`erasure_batches.compliance_status`) are two INDEPENDENT columns.
+#   - idempotency_key is bound to a canonical request fingerprint
+#     (compute_request_fingerprint()); reusing a key with a different
+#     fingerprint returns IDEMPOTENCY_CONFLICT.
+#
+# ── Two-level ownership: BATCH lease + ITEM ownership ─────────────────────
+#
+# A batch's RUNNING claim (`runner_id` + `lease_expires_at`) proves ONE
+# runner is currently responsible for it; crash-recovery only reclaims a
+# RUNNING batch once that lease has genuinely expired (see
+# _claim_batch_for_running()). But a single item's underlying
+# erase_fact_durable() call is a black box this coordinator cannot inject
+# a mid-call renewal hook into, and can legitimately take longer than the
+# lease TTL. Two independent mechanisms close that gap:
+#
+#   - _BatchLeaseHeartbeat runs on its OWN background thread (and its own
+#     sqlite3 connection, opened fresh per renewal like every other write
+#     in this module) for the ENTIRE duration items are being processed —
+#     not just between items — so the batch lease never goes stale purely
+#     because ONE item is slow. If the heartbeat ever fails to renew (lost
+#     the lease to a genuine reclaim), it stops the run immediately rather
+#     than letting `_finalize_batch()` overwrite a new owner's work.
+#   - Each erasure_batch_items row separately records `item_runner_id`
+#     (+ `item_lease_expires_at`, informational). `_set_item_status()` is
+#     an ownership CAS scoped to `item_runner_id` — a runner whose
+#     erase_fact_durable() call finally returns AFTER it has already lost
+#     the batch (and a new runner has re-claimed the same item) has its
+#     late write silently discarded rather than clobbering the current
+#     owner's result.
+#
+# ── Compliance status is durable the moment it is found ──────────────────
+#
+# A CRITICAL_COMPLIANCE_VIOLATION is written to `erasure_batches.
+# compliance_status` in the SAME transaction as the item's own status row
+# (see _set_item_status()) — not deferred to `_finalize_batch()` — so a
+# crash between finding the violation and ever reaching finalize still
+# leaves it durably visible. `_report()` additionally recomputes
+# compliance directly from the CURRENT item rows and ORs it with the
+# batch column (fail-closed: either signal finding a critical item is
+# enough), rather than trusting the batch column alone.
 #
 # See migrations/015_erasure_batches.sql for the schema and rationale, and
 # the "Batch state machine" section below for the full status model.
@@ -113,6 +123,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import threading
 import time
 import uuid
 from contextlib import contextmanager
@@ -151,6 +162,9 @@ _TERMINAL_BATCH_STATUSES = (COMPLETE, COMPLETE_WITH_RESIDUAL)
 _RUNNABLE_BATCH_STATUSES = (PENDING, PARTIAL, FAILED)
 _ITEM_RETRYABLE_STATUSES = (PENDING, PARTIAL, FAILED)
 
+# Read fresh (never captured as a stale function-default) by every lease
+# computation, specifically so tests can monkeypatch this module attribute
+# and have it take effect immediately — see _lease_expiry().
 _LEASE_TTL_SECONDS = 60
 
 _SCHEMA_SQL = """
@@ -181,6 +195,8 @@ CREATE TABLE IF NOT EXISTS erasure_batch_items (
     fact_id                       TEXT NOT NULL,
     epistemic_state_at_snapshot   TEXT NOT NULL,
     status                        TEXT NOT NULL DEFAULT 'PENDING',
+    item_runner_id                TEXT,
+    item_lease_expires_at         TEXT,
     job_id                        TEXT,
     detail                        TEXT,
     created_at                    TEXT NOT NULL,
@@ -198,6 +214,21 @@ CREATE TABLE IF NOT EXISTS erasure_batch_force_receipts (
     reason           TEXT NOT NULL,
     authorized_at    TEXT NOT NULL
 );
+
+-- Genuinely append-only, enforced by the engine — not just a naming
+-- convention. Mirrors migrations/012_crystal_memory.sql's
+-- prevent_erasure_delete/prevent_erasure_update triggers on erasure_log.
+CREATE TRIGGER IF NOT EXISTS prevent_erasure_batch_force_receipts_delete
+BEFORE DELETE ON erasure_batch_force_receipts
+BEGIN
+    SELECT RAISE(ABORT, 'VELANTRIM: erasure_batch_force_receipts is append-only. Cannot delete audit records.');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_erasure_batch_force_receipts_update
+BEFORE UPDATE ON erasure_batch_force_receipts
+BEGIN
+    SELECT RAISE(ABORT, 'VELANTRIM: erasure_batch_force_receipts is append-only. Cannot modify audit records.');
+END;
 """
 
 _INDEX_SQL = """
@@ -217,24 +248,76 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _lease_expiry(ttl_seconds: int = _LEASE_TTL_SECONDS) -> str:
-    return (datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)).isoformat()
+def _lease_expiry(ttl_seconds: float | None = None) -> str:
+    """Never bind `_LEASE_TTL_SECONDS` as a function-default (that would
+    capture its value once at import time) — read the module attribute
+    fresh on every call so tests can monkeypatch it and have it take
+    effect immediately."""
+    ttl = _LEASE_TTL_SECONDS if ttl_seconds is None else ttl_seconds
+    return (datetime.now(timezone.utc) + timedelta(seconds=ttl)).isoformat()
 
 
-def _request_fingerprint(
+def compute_request_fingerprint(
     *, user_id: str, reason: str, actor: str, force: bool, scope: str | None,
 ) -> str:
     """Canonical identity of a logical FORGET_ALL request. Two calls with the
     SAME idempotency_key but a DIFFERENT fingerprint are different requests
     that happen to share a key — resumed as one and the same batch would
     silently let one caller's request (e.g. a different user_id or scope)
-    run/resume/reveal another's. See forget_all_durable()."""
+    run/resume/reveal another's. See forget_all_durable().
+
+    Public (not `_`-prefixed) so a caller of get_batch_report_by_idempotency_
+    key() can compute the SAME value to prove it knows the original
+    request — see there for why the key string alone is not sufficient
+    authorization to read a batch's contents back.
+    """
     payload = {
         "user_id": user_id, "reason": reason, "actor": actor,
         "force": bool(force), "scope": scope,
     }
     encoded = json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+class _BatchLeaseHeartbeat:
+    """Keeps a batch's lease alive on a background thread while items are
+    being processed — including while the current item's
+    core.erasure_coordinator.erase_fact_durable() call is blocked for
+    longer than `_LEASE_TTL_SECONDS` (a black-box, unmodified P0-B call
+    this coordinator has no mid-call hook into). Renews roughly 3x per
+    TTL window, on its own connection (see
+    BatchErasureCoordinator._renew_lease()) so it never contends with
+    whatever the main thread is doing.
+
+    If a renewal ever fails (the lease was genuinely lost — reclaimed by
+    a crash-recovery sweep, or an old lease's writer somehow lost its own
+    row), `lease_lost` is set and the main thread must stop processing
+    immediately rather than let `_finalize_batch()` overwrite the new
+    owner's concurrent work.
+    """
+
+    def __init__(self, renew_fn, interval_seconds: float) -> None:
+        self._renew_fn = renew_fn
+        self._interval = max(0.01, interval_seconds)
+        self._stop_event = threading.Event()
+        self.lease_lost = threading.Event()
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def _loop(self) -> None:
+        while not self._stop_event.wait(self._interval):
+            if not self._renew_fn():
+                self.lease_lost.set()
+                return
+
+    def stop(self) -> bool:
+        """Stop the heartbeat; returns False if the lease was ever lost
+        while it was running — the caller must not finalize in that case."""
+        self._stop_event.set()
+        self._thread.join(timeout=self._interval + 10.0)
+        return not self.lease_lost.is_set()
 
 
 class BatchErasureCoordinator:
@@ -323,26 +406,69 @@ class BatchErasureCoordinator:
             ).fetchone()
         return dict(row) if row else None
 
+    def _claim_item(self, batch_id: str, fact_id: str, runner_id: str) -> None:
+        """Record `runner_id` as the current owner of this item, right
+        before processing it. Unconditional (not itself a CAS) — the real
+        protection is _set_item_status()'s ownership CAS on
+        `item_runner_id` below, which is what determines whose RESULT
+        actually sticks. `item_lease_expires_at` is informational only
+        (nothing currently reads/expires it at the item level — batch-
+        level reclaim is what resume_incomplete_batches() actually gates
+        on, see _claim_batch_for_running())."""
+        with self._jobs_db() as conn:
+            conn.execute(
+                "UPDATE erasure_batch_items SET item_runner_id = ?, "
+                "item_lease_expires_at = ?, updated_at = ? "
+                "WHERE batch_id = ? AND fact_id = ?",
+                (runner_id, _lease_expiry(), _now(), batch_id, fact_id),
+            )
+
     def _set_item_status(
         self,
         batch_id: str,
         fact_id: str,
         status: str,
         *,
+        runner_id: str,
         job_id: str | None = None,
         detail: dict[str, Any] | None = None,
-    ) -> None:
+        compliance_status: str | None = None,
+    ) -> bool:
+        """Ownership CAS: only writes if `runner_id` still owns this item's
+        claim (see _claim_item()) — a runner whose erase_fact_durable()
+        call returns AFTER a newer runner has already re-claimed the SAME
+        item (e.g. it lost the batch lease and a crash-recovery worker
+        took over) has its late write silently discarded here, rather than
+        clobbering the current owner's result.
+
+        When `compliance_status` is given (CRITICAL_COMPLIANCE_VIOLATION),
+        the batch's OWN compliance_status is set in the SAME transaction —
+        durable the instant the critical item is recorded, not deferred to
+        `_finalize_batch()`. A crash between this call and finalize still
+        leaves compliance_status visible on the batch row.
+
+        Returns True iff this runner's write actually took effect.
+        """
         with self._jobs_db() as conn:
-            conn.execute(
+            cur = conn.execute(
                 "UPDATE erasure_batch_items SET status = ?, "
                 "job_id = COALESCE(?, job_id), detail = ?, updated_at = ? "
-                "WHERE batch_id = ? AND fact_id = ?",
+                "WHERE batch_id = ? AND fact_id = ? AND item_runner_id = ?",
                 (
                     status, job_id,
                     json.dumps(detail) if detail is not None else None,
-                    _now(), batch_id, fact_id,
+                    _now(), batch_id, fact_id, runner_id,
                 ),
             )
+            won = cur.rowcount > 0
+            if won and compliance_status is not None:
+                conn.execute(
+                    "UPDATE erasure_batches SET "
+                    "compliance_status = COALESCE(compliance_status, ?), "
+                    "updated_at = ? WHERE batch_id = ?",
+                    (compliance_status, _now(), batch_id),
+                )
+        return won
 
     @staticmethod
     def _compute_snapshot_hash(items: list[dict[str, Any]]) -> str:
@@ -450,18 +576,23 @@ class BatchErasureCoordinator:
 
     # ── per-item processing ───────────────────────────────────────────────
 
-    def _process_item(self, batch: dict[str, Any], item: dict[str, Any]) -> None:
+    def _process_item(self, batch: dict[str, Any], item: dict[str, Any], runner_id: str) -> bool:
+        """Claim then process one item. Returns True iff THIS runner's
+        result write actually took effect (see _set_item_status()) — False
+        means a newer runner has already superseded us on this exact item,
+        which is also a reliable signal that we no longer own the batch."""
         fact_id = item["fact_id"]
         epistemic_state = item["epistemic_state_at_snapshot"]
+
+        self._claim_item(batch["batch_id"], fact_id, runner_id)
 
         if fact_id in memory.IMMUTABLE_FACT_IDS:
             # True Ring Zero literal (I6) — structurally never personal
             # data, never deletable. The one legitimate "not applicable".
-            self._set_item_status(
-                batch["batch_id"], fact_id, SKIPPED_RING_ZERO,
+            return self._set_item_status(
+                batch["batch_id"], fact_id, SKIPPED_RING_ZERO, runner_id=runner_id,
                 detail={"reason": "ring_zero_literal_never_personal_data"},
             )
-            return
 
         if epistemic_state == "ImmutableCore":
             # Matched the user_id/source filter -> associated with a data
@@ -472,20 +603,22 @@ class BatchErasureCoordinator:
             # skipping it (the old behavior) or deleting it (a second,
             # independent invariant violation this CR does not attempt to
             # adjudicate — see core/erasure.py, P0-D/ESM are out of scope).
-            self._set_item_status(
-                batch["batch_id"], fact_id, CRITICAL_COMPLIANCE_VIOLATION,
+            # compliance_status is written atomically WITH this item row —
+            # durable immediately, never deferred to _finalize_batch().
+            return self._set_item_status(
+                batch["batch_id"], fact_id, CRITICAL_COMPLIANCE_VIOLATION, runner_id=runner_id,
                 detail={
                     "reason": "personal_fact_in_immutable_core",
                     "epistemic_state": epistemic_state,
                 },
+                compliance_status=CRITICAL_COMPLIANCE_VIOLATION,
             )
-            return
 
         report = self._coordinator.erase_fact_durable(
             fact_id, reason=batch["reason"], actor=batch["actor"],
         )
-        self._set_item_status(
-            batch["batch_id"], fact_id, report["outcome"],
+        return self._set_item_status(
+            batch["batch_id"], fact_id, report["outcome"], runner_id=runner_id,
             job_id=report.get("job_id"), detail=report,
         )
 
@@ -512,7 +645,9 @@ class BatchErasureCoordinator:
         turn, so the FIRST winner's write extends lease_expires_at into
         the future, and every LOSING caller's own (already-serialized)
         UPDATE then sees a lease that is no longer stale and matches zero
-        rows.
+        rows. A genuinely live runner's lease is kept fresh throughout
+        item processing by _BatchLeaseHeartbeat, so it is never mistaken
+        for stale merely because one item is slow.
         """
         now = _now()
         lease = _lease_expiry()
@@ -540,11 +675,13 @@ class BatchErasureCoordinator:
         return cur.rowcount > 0
 
     def _renew_lease(self, batch_id: str, runner_id: str) -> bool:
-        """Heartbeat: called after every processed item so a genuinely-alive
-        runner's lease never goes stale mid-run. Returns False if this
-        runner no longer owns the row (lost the lease, or someone else
-        already reclaimed it) — the caller must stop processing immediately
-        rather than risk finalizing over a concurrent owner's writes."""
+        """Called continuously by _BatchLeaseHeartbeat while items are
+        being processed (NOT just once per item — see module docstring for
+        why point-in-time-between-items renewal is insufficient). Returns
+        False if this runner no longer owns the row (lost the lease, or
+        someone else already reclaimed it) — the caller must stop
+        processing immediately rather than risk finalizing over a
+        concurrent owner's writes."""
         with self._jobs_db() as conn:
             cur = conn.execute(
                 "UPDATE erasure_batches SET lease_expires_at = ?, updated_at = ? "
@@ -629,14 +766,34 @@ class BatchErasureCoordinator:
             )
             return self._report(self._load_batch(batch_id), self._load_items(batch_id))
 
-        for item in items:
-            if item["status"] in _ITEM_RETRYABLE_STATUSES:
-                self._process_item(batch, item)
-                if not self._renew_lease(batch_id, runner_id):
-                    # Lost ownership mid-processing — stop immediately. Do
-                    # NOT finalize: the current owner (if any) may be
-                    # concurrently writing its own results right now.
-                    return self._report(self._load_batch(batch_id), self._load_items(batch_id))
+        # Keeps the batch lease fresh for the ENTIRE processing pass —
+        # including while a single item's erase_fact_durable() call is
+        # blocked for longer than _LEASE_TTL_SECONDS — not just at the
+        # (potentially far apart) boundaries between items.
+        heartbeat = _BatchLeaseHeartbeat(
+            lambda: self._renew_lease(batch_id, runner_id),
+            interval_seconds=_LEASE_TTL_SECONDS / 3,
+        )
+        heartbeat.start()
+        lease_held = True
+        try:
+            for item in items:
+                if item["status"] in _ITEM_RETRYABLE_STATUSES:
+                    won = self._process_item(batch, item, runner_id)
+                    if not won:
+                        # Lost the item-ownership race — a newer runner has
+                        # already re-claimed it, which only happens if it
+                        # also re-claimed the BATCH. Stop immediately.
+                        lease_held = False
+                        break
+        finally:
+            heartbeat_held = heartbeat.stop()
+        lease_held = lease_held and heartbeat_held
+
+        if not lease_held:
+            # Do NOT finalize: the current owner (if any) may be
+            # concurrently writing its own results right now.
+            return self._report(self._load_batch(batch_id), self._load_items(batch_id))
 
         return self._finalize_batch(batch_id, runner_id)
 
@@ -664,6 +821,11 @@ class BatchErasureCoordinator:
         else:
             outcome = COMPLETE
 
+        # This is a backstop, not the primary write — _set_item_status()
+        # already set compliance_status the instant a critical item was
+        # found (see there), atomically with that item's own row. COALESCE
+        # here just re-affirms it (idempotent) in case that earlier write
+        # somehow didn't happen.
         compliance_status = CRITICAL_COMPLIANCE_VIOLATION if critical else None
         self._cas_batch_status(
             batch_id, runner_id, outcome, compliance_status=compliance_status,
@@ -676,7 +838,15 @@ class BatchErasureCoordinator:
         critical_items = [
             i["fact_id"] for i in items if i["status"] == CRITICAL_COMPLIANCE_VIOLATION
         ]
-        compliance_status = batch.get("compliance_status")
+        # Fail-closed: derive compliance from the batch column OR a direct
+        # scan of the CURRENT item rows — never trust the batch column
+        # alone. Covers the (should-be-impossible, but not assumed-
+        # impossible) case where the atomic item+batch write in
+        # _set_item_status() didn't happen but a critical item row exists
+        # regardless (e.g. hand-edited/restored from a partial backup).
+        compliance_status = batch.get("compliance_status") or (
+            CRITICAL_COMPLIANCE_VIOLATION if critical_items else None
+        )
         operation_finished = batch["status"] in _TERMINAL_BATCH_STATUSES
         erasure_complete = (
             operation_finished
@@ -856,7 +1026,7 @@ class BatchErasureCoordinator:
         if dry_run:
             return self._preview(user_id)
 
-        fingerprint = _request_fingerprint(
+        fingerprint = compute_request_fingerprint(
             user_id=user_id, reason=reason, actor=actor, force=force, scope=scope,
         )
 
@@ -892,7 +1062,8 @@ class BatchErasureCoordinator:
 
         A batch left RUNNING is only re-claimed once its lease has expired
         (see _claim_batch_for_running()) — a genuinely still-alive live
-        runner is never preempted."""
+        runner (its lease kept fresh by _BatchLeaseHeartbeat even through a
+        single slow item) is never preempted."""
         now = _now()
         with self._jobs_db() as conn:
             rows = conn.execute(
@@ -916,9 +1087,18 @@ class BatchErasureCoordinator:
             return None
         return self._report(batch, self._load_items(batch_id))
 
-    def get_batch_report_by_idempotency_key(self, key: str) -> dict[str, Any] | None:
+    def get_batch_report_by_idempotency_key(
+        self, key: str, *, request_fingerprint: str,
+    ) -> dict[str, Any] | None:
+        """Requires proof of the ORIGINAL request (the same fingerprint
+        compute_request_fingerprint() would produce for it) — the
+        idempotency_key string ALONE is not sufficient authorization to
+        read back a batch's contents (user_id, reason, per-item outcomes,
+        compliance findings). A missing/mismatched fingerprint is
+        indistinguishable from "not found", so this can never be used as
+        an existence oracle for a key the caller didn't originate."""
         existing = self._find_batch_by_idempotency_key(key)
-        if existing is None:
+        if existing is None or existing["request_fingerprint"] != request_fingerprint:
             return None
         return self._report(existing, self._load_items(existing["batch_id"]))
 
@@ -958,8 +1138,12 @@ def get_batch_report(batch_id: str) -> dict[str, Any] | None:
     return get_batch_coordinator().get_batch_report(batch_id)
 
 
-def get_batch_report_by_idempotency_key(key: str) -> dict[str, Any] | None:
-    return get_batch_coordinator().get_batch_report_by_idempotency_key(key)
+def get_batch_report_by_idempotency_key(
+    key: str, *, request_fingerprint: str,
+) -> dict[str, Any] | None:
+    return get_batch_coordinator().get_batch_report_by_idempotency_key(
+        key, request_fingerprint=request_fingerprint,
+    )
 
 
 __all__ = [
@@ -969,6 +1153,7 @@ __all__ = [
     "resume_incomplete_batches",
     "get_batch_report",
     "get_batch_report_by_idempotency_key",
+    "compute_request_fingerprint",
     "PENDING",
     "RUNNING",
     "COMPLETE",

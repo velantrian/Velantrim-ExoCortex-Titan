@@ -71,20 +71,26 @@ class PrincipalContext:
     server-side ceiling) — a tool receiving this can trust it, unlike a
     hardcoded literal or a client-supplied field.
 
-    `actor_id` is a pseudonymous, server-derived identity
-    ("api:" + sha256(api_key)[:8]) — mirrors the existing precedent in
-    server.py's PATCH /facts/{fact_id}/transition (`req.by` is ignored the
-    same way for the same reason: a client must never be able to forge who
-    performed a sensitive action just by naming themselves in a JSON body).
+    `credential_fingerprint` is a pseudonymous, server-derived value
+    ("api:" + sha256(api_key)[:8]) — deliberately NOT named "actor_id"/
+    "user_id": a single shared API key is not a per-user credential, so
+    this fingerprint identifies "the same caller who holds this key
+    again", never a verified individual. Mirrors the existing precedent
+    in server.py's PATCH /facts/{fact_id}/transition (`req.by` is ignored
+    the same way for the same reason: a client must never be able to
+    forge who performed a sensitive action just by naming themselves in
+    a JSON body) — that endpoint's local variable is itself named
+    `actor_id`, which is a pre-existing, un-renamed instance of the same
+    imprecision; not touched here since it's outside this CR's scope.
 
     This is intentionally NOT a general identity/session system — this
     codebase has no authenticated-user concept (a single shared API key
-    grants one server-wide capability ceiling to every caller); it is only
-    a way to stop a handler from having to pretend it verified something
-    the dispatch layer already verified for real.
+    grants one server-wide capability ceiling to every caller holding
+    it); it is only a way to stop a handler from having to pretend it
+    verified something the dispatch layer already verified for real.
     """
     capability: str
-    actor_id: str
+    credential_fingerprint: str
 
 
 # ─── Tool descriptor ─────────────────────────────────────────────────────────

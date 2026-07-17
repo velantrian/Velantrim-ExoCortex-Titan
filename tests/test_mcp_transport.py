@@ -146,15 +146,19 @@ def test_tools_call_injects_real_principal_for_needs_principal_tools(monkeypatch
     """A tool registered with needs_principal=True must receive a
     PrincipalContext whose `capability` is the value THIS call's
     resolve_authorized_capability() actually computed (never a hardcoded
-    literal), and whose `actor_id` is whatever the transport passed through
-    — never something the handler invents or assumes for itself."""
+    literal), and whose `credential_fingerprint` is whatever the transport
+    passed through — never something the handler invents or assumes for
+    itself."""
     monkeypatch.setenv("VELANTRIM_MCP_MAX_CAPABILITY", "admin")
 
     captured: dict = {}
 
     def _echo_principal(*, principal: PrincipalContext):
         captured["principal"] = principal
-        return {"capability": principal.capability, "actor_id": principal.actor_id}
+        return {
+            "capability": principal.capability,
+            "credential_fingerprint": principal.credential_fingerprint,
+        }
 
     registry = ToolRegistry()
     registry.register(
@@ -169,13 +173,13 @@ def test_tools_call_injects_real_principal_for_needs_principal_tools(monkeypatch
             "params": {"name": "echo_principal", "arguments": {}},
         },
         capability="admin",
-        actor_id="api:realcallerhash",
+        credential_fingerprint="api:realcallerhash",
     )
 
     assert resp["result"]["isError"] is False
     payload = json.loads(resp["result"]["content"][0]["text"])
     assert payload["capability"] == "admin"
-    assert payload["actor_id"] == "api:realcallerhash"
+    assert payload["credential_fingerprint"] == "api:realcallerhash"
     assert isinstance(captured["principal"], PrincipalContext)
 
 
@@ -204,7 +208,7 @@ def test_tools_call_clamps_principal_capability_to_real_ceiling(monkeypatch):
             "params": {"name": "echo_principal", "arguments": {}},
         },
         capability="admin",
-        actor_id="api:someone",
+        credential_fingerprint="api:someone",
     )
 
     assert resp["result"]["isError"] is False
@@ -212,13 +216,14 @@ def test_tools_call_clamps_principal_capability_to_real_ceiling(monkeypatch):
     assert payload["capability"] == "reader"
 
 
-def test_actor_id_defaults_to_anon_when_not_supplied():
+def test_credential_fingerprint_defaults_to_anon_when_not_supplied():
     """A caller of McpHandler.handle() (e.g. a future non-HTTP transport)
-    that doesn't pass actor_id must not crash or silently invent a fake
-    identity — it gets the same 'api:anon' fallback api/mcp_gateway.py
-    itself uses for a request with no API key configured."""
+    that doesn't pass credential_fingerprint must not crash or silently
+    invent a fake identity — it gets the same 'api:anon' fallback
+    api/mcp_gateway.py itself uses for a request with no API key
+    configured."""
     def _echo_principal(*, principal: PrincipalContext):
-        return {"actor_id": principal.actor_id}
+        return {"credential_fingerprint": principal.credential_fingerprint}
 
     registry = ToolRegistry()
     registry.register(
@@ -235,22 +240,23 @@ def test_actor_id_defaults_to_anon_when_not_supplied():
     )
 
     payload = json.loads(resp["result"]["content"][0]["text"])
-    assert payload["actor_id"] == "api:anon"
+    assert payload["credential_fingerprint"] == "api:anon"
 
 
-def test_gateway_derives_actor_id_from_api_key_hash_not_client_claim():
-    """api/mcp_gateway.py._derive_actor_id() mirrors server.py's existing
-    PATCH /facts/{fact_id}/transition precedent: a pseudonymous identity
-    derived server-side from the API key, never a client-suppliable value.
-    Same key -> same actor_id (deterministic); different keys -> different
-    actor_ids; no key -> the same 'api:anon' fallback used elsewhere."""
+def test_gateway_derives_credential_fingerprint_from_api_key_hash_not_client_claim():
+    """api/mcp_gateway.py._derive_credential_fingerprint() mirrors
+    server.py's existing PATCH /facts/{fact_id}/transition precedent: a
+    pseudonymous value derived server-side from the API key, never a
+    client-suppliable value. Same key -> same fingerprint (deterministic);
+    different keys -> different fingerprints; no key -> the same
+    'api:anon' fallback used elsewhere."""
     import hashlib
 
-    from api.mcp_gateway import _derive_actor_id
+    from api.mcp_gateway import _derive_credential_fingerprint
 
-    assert _derive_actor_id("") == "api:anon"
-    a = _derive_actor_id("secret-key-one")
-    b = _derive_actor_id("secret-key-two")
+    assert _derive_credential_fingerprint("") == "api:anon"
+    a = _derive_credential_fingerprint("secret-key-one")
+    b = _derive_credential_fingerprint("secret-key-two")
     assert a != b
-    assert a == _derive_actor_id("secret-key-one")
+    assert a == _derive_credential_fingerprint("secret-key-one")
     assert a == "api:" + hashlib.sha256(b"secret-key-one").hexdigest()[:8]

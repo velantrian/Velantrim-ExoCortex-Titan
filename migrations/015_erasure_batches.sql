@@ -48,7 +48,11 @@
 --     via a bare "status='RUNNING' -> status='RUNNING'" write, which
 --     would let two concurrent recovery workers (or a recovery worker
 --     racing a still-alive live runner) both believe they won the claim.
---     A live runner renews its own lease after every processed item.
+--     A background heartbeat (core/erasure_batch_coordinator.py's
+--     _BatchLeaseHeartbeat) keeps this lease fresh for the ENTIRE
+--     processing pass — including while a single item's
+--     erase_fact_durable() call runs longer than the lease TTL — not
+--     merely at the (potentially far apart) boundaries between items.
 --
 -- erasure_batch_items — the durable SNAPSHOT: one row per fact_id
 -- selected by the batch's filter, captured atomically WITH the batch row
@@ -59,13 +63,33 @@
 -- replays exactly these rows and NEVER re-queries `facts` by user_id
 -- again. A fact ingested for the same user_id AFTER the snapshot was
 -- taken is out of scope for this batch by construction.
+--   - item_runner_id / item_lease_expires_at: per-ITEM ownership. Every
+--     item status write is an ownership CAS scoped to item_runner_id
+--     (BatchErasureCoordinator._set_item_status()) — a runner whose
+--     erase_fact_durable() call finally returns AFTER a newer runner has
+--     already re-claimed the SAME item (it lost the batch lease and a
+--     crash-recovery worker took over) has its late write silently
+--     discarded rather than clobbering the current owner's result.
+--     item_lease_expires_at is informational only; nothing reclaims an
+--     item on a timer the way the batch-level lease above does.
 --
 -- erasure_batch_force_receipts — a separate, append-only audit receipt
+-- (genuinely enforced by BEFORE DELETE/UPDATE triggers below, mirroring
+-- migration 012's erasure_log triggers — not merely a naming convention)
 -- written ONLY when a batch is authorized with force=1 (admin capability
 -- + explicit scope, enforced in core/erasure_batch_coordinator.py) —
 -- distinct from the batch row itself so a compliance reviewer can query
 -- "every force-authorized batch erasure ever run" without depending on
--- the batch's own, possibly-superseded status.
+-- the batch's own, possibly-superseded status. `actor` here holds a
+-- pseudonymous, server-derived credential fingerprint
+-- (sha256(api_key)[:8]) — not a verified individual identity; this
+-- codebase has no per-user authentication, only a single shared API key
+-- per deployment (see core.tool_registry.PrincipalContext).
+--
+-- compliance_status (above) is written in the SAME transaction as the
+-- CRITICAL item's own row (_set_item_status()), not deferred to
+-- finalization — a crash between finding the violation and ever reaching
+-- _finalize_batch() still leaves it durably visible on the batch row.
 --
 -- Both erasure_batch_items and erasure_batch_force_receipts declare a
 -- REFERENCES erasure_batches(batch_id) foreign key — enforced only when
@@ -122,6 +146,8 @@ CREATE TABLE IF NOT EXISTS erasure_batch_items (
     -- PENDING -> COMPLETE | RESIDUAL_IMMUTABLE_DATA | NOT_FOUND |
     -- CRITICAL_COMPLIANCE_VIOLATION | SKIPPED_RING_ZERO | PARTIAL | FAILED
     status                        TEXT NOT NULL DEFAULT 'PENDING',
+    item_runner_id                TEXT,
+    item_lease_expires_at         TEXT,
     job_id                        TEXT,
     detail                        TEXT,
     created_at                    TEXT NOT NULL,
@@ -145,6 +171,21 @@ CREATE TABLE IF NOT EXISTS erasure_batch_force_receipts (
 
 CREATE INDEX IF NOT EXISTS idx_erasure_batch_force_receipts_batch
     ON erasure_batch_force_receipts(batch_id);
+
+-- Genuinely append-only, enforced by the engine — mirrors migration
+-- 012_crystal_memory.sql's prevent_erasure_delete/prevent_erasure_update
+-- triggers on erasure_log.
+CREATE TRIGGER IF NOT EXISTS prevent_erasure_batch_force_receipts_delete
+BEFORE DELETE ON erasure_batch_force_receipts
+BEGIN
+    SELECT RAISE(ABORT, 'VELANTRIM: erasure_batch_force_receipts is append-only. Cannot delete audit records.');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_erasure_batch_force_receipts_update
+BEFORE UPDATE ON erasure_batch_force_receipts
+BEGIN
+    SELECT RAISE(ABORT, 'VELANTRIM: erasure_batch_force_receipts is append-only. Cannot modify audit records.');
+END;
 
 -- ── Проверка после применения ─────────────────────────────────────────────────
 -- SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'erasure_batch%';

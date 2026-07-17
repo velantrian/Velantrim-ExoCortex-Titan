@@ -258,7 +258,7 @@ def forget_all(
     `principal` is REQUIRED and is never something this function invents
     or assumes: core.tool_registry registers this tool with
     `needs_principal=True`, so core.mcp_transport injects the REAL
-    server-verified capability/actor_id for THIS call (see
+    server-verified capability/credential_fingerprint for THIS call (see
     core.tool_registry.PrincipalContext) — this handler has no
     "actor_capability='admin'" literal of its own to fake a check with.
     A caller that invokes this function directly (bypassing the MCP
@@ -271,7 +271,7 @@ def forget_all(
     return forget_all_durable(
         user_id,
         reason=reason,
-        actor=principal.actor_id,
+        actor=principal.credential_fingerprint,
         actor_capability=principal.capability,
         force=force,
         scope=scope,
