@@ -4,6 +4,7 @@ MCP Gateway — StreamableHTTP + SSE transport (RFC 05, Phase 5).
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 from typing import Any, Callable
@@ -51,6 +52,18 @@ def _resolve_capability(
     return cap, sid
 
 
+def _derive_actor_id(x_api_key: str) -> str:
+    """Pseudonymous, server-derived caller identity — mirrors server.py's
+    existing PATCH /facts/{fact_id}/transition precedent
+    ("api:" + sha256(api_key)[:8]) instead of trusting any client-supplied
+    identity field. Only ever fed to tools registered with
+    needs_principal=True (see core.tool_registry.PrincipalContext)."""
+    if not x_api_key:
+        return "api:anon"
+    digest = hashlib.sha256(x_api_key.encode("utf-8")).hexdigest()[:8]
+    return f"api:{digest}"
+
+
 async def _read_json_body(request: Request) -> Any:
     raw = await request.body()
     if not raw:
@@ -66,8 +79,11 @@ def _dispatch(
     *,
     capability: str,
     session_id: str | None,
+    actor_id: str | None = None,
 ) -> dict[str, Any] | None:
-    return _handler.handle(payload, capability=capability, session_id=session_id)
+    return _handler.handle(
+        payload, capability=capability, session_id=session_id, actor_id=actor_id,
+    )
 
 
 async def sse_event_stream(request: Request, sid: str):
@@ -101,8 +117,10 @@ def register_mcp_routes(
     async def mcp_post(
         request: Request,
         cap_sid: tuple[str, str | None] = Depends(_resolve_capability),
+        x_api_key: str = Header(default=""),
     ):
         capability, session_id = cap_sid
+        actor_id = _derive_actor_id(x_api_key)
         body = await _read_json_body(request)
 
         if isinstance(body, list):
@@ -110,7 +128,9 @@ def register_mcp_routes(
             for item in body:
                 if not isinstance(item, dict):
                     continue
-                resp = _dispatch(item, capability=capability, session_id=session_id)
+                resp = _dispatch(
+                    item, capability=capability, session_id=session_id, actor_id=actor_id,
+                )
                 if resp is not None:
                     responses.append(resp)
             return JSONResponse(content=responses)
@@ -118,7 +138,9 @@ def register_mcp_routes(
         if not isinstance(body, dict):
             raise HTTPException(status_code=400, detail="Expected JSON object or array")
 
-        resp = _dispatch(body, capability=capability, session_id=session_id)
+        resp = _dispatch(
+            body, capability=capability, session_id=session_id, actor_id=actor_id,
+        )
         if resp is None:
             return JSONResponse(content={}, status_code=202)
 

@@ -337,11 +337,11 @@ class ForgettingEngine:
             idempotency_key=idempotency_key,
         )
 
-        if report["outcome"] == "REFUSED":
+        if report["outcome"] in ("REFUSED", "IDEMPOTENCY_CONFLICT"):
             return ForgetVerdict(
                 allowed=False,
-                reason=report["reason"],
-                details=[f"❌ FORGET_ALL отклонён: {report['reason']}"],
+                reason=report.get("reason") or report["outcome"].lower(),
+                details=[f"❌ FORGET_ALL отклонён: {report.get('reason') or report['outcome']}"],
             )
 
         if report.get("dry_run"):
@@ -370,7 +370,11 @@ class ForgettingEngine:
             )
 
         return ForgetVerdict(
-            allowed=report["success"] or report["outcome"] == "PARTIAL",
+            # operation_finished (COMPLETE or COMPLETE_WITH_RESIDUAL — the
+            # execution status, independent of any compliance flag) mirrors
+            # this shim's historical "allowed" meaning; PARTIAL is still
+            # legitimately resumable, not a refusal.
+            allowed=report["operation_finished"] or report["outcome"] == "PARTIAL",
             reason=report["outcome"].lower(),
             affected_facts=report["items_total"],
             details=details,

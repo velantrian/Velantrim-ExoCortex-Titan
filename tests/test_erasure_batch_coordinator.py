@@ -20,6 +20,7 @@ from core.erasure_batch_coordinator import (
     COMPLETE_WITH_RESIDUAL,
     CRITICAL_COMPLIANCE_VIOLATION,
     FAILED,
+    IDEMPOTENCY_CONFLICT,
     PARTIAL,
     REFUSED,
     RESIDUAL_IMMUTABLE_DATA,
@@ -30,6 +31,7 @@ from core.erasure_batch_coordinator import (
 from core.erasure_coordinator import ErasureCoordinator
 from core.memory import make_store
 from core.ngram_index import NGramIndex
+from core.tool_registry import PrincipalContext
 
 
 def _fact(fid, claim="user contact is a@b.com", source="userA", **extra):
@@ -173,6 +175,11 @@ def test_dry_run_does_not_create_batch_or_delete(rig):
 # ── Requirement #4: ImmutableCore is not an automatic GDPR exemption ───────
 
 def test_immutable_core_personal_fact_flagged_critical_never_reports_success(rig):
+    """Requirement #3/#4: EXECUTION status and COMPLIANCE status are two
+    independent fields — a critical item is terminal-for-itself, so the
+    batch's execution status still reaches COMPLETE (nothing retryable is
+    left), but compliance_status stays CRITICAL_COMPLIANCE_VIOLATION and
+    `success`/`erasure_complete` must never be True while it does."""
     batch, coordinator, store, *_ = rig
     store.store_fact(_fact("f1"))
     _force_epistemic_state(store, "f1", "ImmutableCore")
@@ -180,8 +187,11 @@ def test_immutable_core_personal_fact_flagged_critical_never_reports_success(rig
 
     report = batch.forget_all_durable("userA", reason="dsr", actor="tester")
 
-    assert report["outcome"] == CRITICAL_COMPLIANCE_VIOLATION
+    assert report["outcome"] == COMPLETE
+    assert report["operation_finished"] is True
     assert report["success"] is False
+    assert report["erasure_complete"] is False
+    assert report["compliance_status"] == CRITICAL_COMPLIANCE_VIOLATION
     assert report["critical_compliance_violation"] is True
     assert report["critical_items"] == ["f1"]
     items = {i["fact_id"]: i["status"] for i in report["items"]}
@@ -196,12 +206,56 @@ def test_immutable_core_personal_fact_flagged_critical_never_reports_success(rig
     # Re-running (e.g. an operator retry) reaches the identical verdict —
     # it is not a transient failure that quietly clears itself.
     again = batch.get_batch_report(report["batch_id"])
-    assert again["outcome"] == CRITICAL_COMPLIANCE_VIOLATION
+    assert again["compliance_status"] == CRITICAL_COMPLIANCE_VIOLATION
+    assert again["success"] is False
+
+
+def test_critical_item_alongside_partial_item_stays_resumable_then_stays_flagged(rig, monkeypatch):
+    """Requirement #3: a CRITICAL compliance finding must NOT block retryable
+    items from being retried — the batch stays PARTIAL (resumable) while f2
+    is still failing, even though f1 is already flagged critical. Once f2
+    is fixed and resumed, execution reaches COMPLETE, but compliance_status
+    stays CRITICAL forever (sticky) — success is never True."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1"))
+    _force_epistemic_state(store, "f1", "ImmutableCore")
+    store.store_fact(_fact("f2"))
+
+    orig_run_l1 = coordinator._run_l1_same_db
+
+    def fail_f2(job_id, fact_id):
+        if fact_id == "f2":
+            coordinator._step_start(job_id, "l1_same_db")
+            coordinator._step_finish(job_id, "l1_same_db", FAILED, {"error": "down"})
+            coordinator._set_job_error(job_id, "l1_same_db: down")
+            return
+        return orig_run_l1(job_id, fact_id)
+
+    monkeypatch.setattr(coordinator, "_run_l1_same_db", fail_f2)
+    first = batch.forget_all_durable("userA", reason="dsr")
+
+    assert first["outcome"] == PARTIAL  # f2 still retryable
+    assert first["compliance_status"] == CRITICAL_COMPLIANCE_VIOLATION  # surfaced immediately
+    assert first["success"] is False
+
+    monkeypatch.setattr(coordinator, "_run_l1_same_db", orig_run_l1)
+    resumed = _resume_specific_batch(batch, first["batch_id"])
+
+    assert resumed["outcome"] == COMPLETE  # f2 now resolved, nothing retryable
+    assert resumed["compliance_status"] == CRITICAL_COMPLIANCE_VIOLATION  # never auto-clears
+    assert resumed["success"] is False
+    assert store.get_fact("f1") is not None  # critical item still untouched
+    assert store.get_fact("f2") is None
 
 
 # ── L0 residual (raw original present) ─────────────────────────────────────
 
 def test_l0_residual_item_yields_complete_with_residual_not_plain_complete(rig):
+    """Requirement #5: COMPLETE_WITH_RESIDUAL is a real, tracked, accepted
+    outcome (the derived layer IS fully erased) — but it must never be
+    reported as plain success=True, since the L0 raw origin (personal data)
+    is known to still exist. operation_finished is True (nothing left to
+    retry); success/erasure_complete are False."""
     batch, coordinator, store, *_ = rig
     raw_id = store.store_raw_text("the original raw text", source_type="user_input")
     store.store_fact(_fact("f1"))
@@ -211,7 +265,10 @@ def test_l0_residual_item_yields_complete_with_residual_not_plain_complete(rig):
     report = batch.forget_all_durable("userA", reason="dsr")
 
     assert report["outcome"] == COMPLETE_WITH_RESIDUAL
-    assert report["success"] is True
+    assert report["operation_finished"] is True
+    assert report["success"] is False
+    assert report["erasure_complete"] is False
+    assert report["compliance_status"] is None
     items = {i["fact_id"]: i["status"] for i in report["items"]}
     assert items["f1"] == RESIDUAL_IMMUTABLE_DATA
     assert items["f2"] == COMPLETE
@@ -287,13 +344,14 @@ def test_resume_incomplete_batches_crash_recovery(rig, monkeypatch):
     first = batch.forget_all_durable("userA", reason="dsr")
     assert first["outcome"] == PARTIAL
 
-    # Simulate a crash mid-batch: force the row back to RUNNING, as a dead
-    # process would have left it (no live caller ever set it back to a
-    # resumable status).
+    # Simulate a crash mid-batch: force the row back to RUNNING with an
+    # EXPIRED lease, as a dead process would eventually look like (no live
+    # caller ever renews the lease past its TTL once the process is gone).
     with sqlite3.connect(store.db_path) as conn:
         conn.execute(
-            "UPDATE erasure_batches SET status = ? WHERE batch_id = ?",
-            (RUNNING, first["batch_id"]),
+            "UPDATE erasure_batches SET status = ?, lease_expires_at = ? "
+            "WHERE batch_id = ?",
+            (RUNNING, "2000-01-01T00:00:00+00:00", first["batch_id"]),
         )
         conn.commit()
 
@@ -308,6 +366,81 @@ def test_resume_incomplete_batches_crash_recovery(rig, monkeypatch):
     assert any(r["batch_id"] == first["batch_id"] and r["outcome"] == COMPLETE for r in results)
     assert store.get_fact("f1") is None
     assert store.get_fact("f2") is None
+
+
+# ── Blocker #2: lease-based crash-recovery ownership ────────────────────────
+
+def test_live_running_batch_with_fresh_lease_is_never_reclaimed_by_recovery(rig, monkeypatch):
+    """A batch that is genuinely still RUNNING (a live runner holds a
+    NOT-yet-expired lease) must be left completely alone by
+    resume_incomplete_batches() — reclaiming it would let a crash-recovery
+    sweep race a still-alive process's in-flight writes."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1"))
+
+    def never_finishes(job_id, fact_id):
+        raise AssertionError("must not be processed while lease is fresh")
+
+    monkeypatch.setattr(coordinator, "_run_l1_same_db", never_finishes)
+
+    # Claim it live ourselves (simulating a runner mid-flight) — do NOT
+    # call forget_all_durable() (it would run to completion synchronously);
+    # instead go through the real snapshot + claim primitives directly.
+    batch_id = batch._create_batch_snapshot(
+        user_id="userA", reason="dsr", actor="tester", force=False, scope=None,
+        idempotency_key=None, actor_capability="reader",
+        request_fingerprint="fp-live-test",
+    )
+    claimed = batch._claim_batch_for_running(
+        batch_id, allow_stale_running=False, runner_id="live-runner-1",
+    )
+    assert claimed is True
+    before = batch._load_batch(batch_id)
+    assert before["status"] == RUNNING
+
+    results = batch.resume_incomplete_batches()
+
+    assert all(r["batch_id"] != batch_id for r in results)
+    after = batch._load_batch(batch_id)
+    assert after["status"] == RUNNING
+    assert after["runner_id"] == "live-runner-1"
+    assert store.get_fact("f1") is not None  # never touched
+
+
+def test_two_recovery_workers_never_both_win_the_same_stale_lease(rig):
+    """Two concurrent crash-recovery claims against the SAME stale RUNNING
+    batch must not both succeed — the CAS on lease_expires_at means the
+    first winner's write extends the lease, so the second (even though it
+    observed the same 'stale' snapshot) loses when its own UPDATE actually
+    runs against current state."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1"))
+
+    batch_id = batch._create_batch_snapshot(
+        user_id="userA", reason="dsr", actor="tester", force=False, scope=None,
+        idempotency_key=None, actor_capability="reader",
+        request_fingerprint="fp-two-workers",
+    )
+    # Force it into a stale-RUNNING state, as a crashed process would leave it.
+    with sqlite3.connect(store.db_path) as conn:
+        conn.execute(
+            "UPDATE erasure_batches SET status = ?, runner_id = ?, "
+            "lease_expires_at = ? WHERE batch_id = ?",
+            (RUNNING, "dead-runner", "2000-01-01T00:00:00+00:00", batch_id),
+        )
+        conn.commit()
+
+    first_claim = batch._claim_batch_for_running(
+        batch_id, allow_stale_running=True, runner_id="recovery-worker-A",
+    )
+    second_claim = batch._claim_batch_for_running(
+        batch_id, allow_stale_running=True, runner_id="recovery-worker-B",
+    )
+
+    assert first_claim is True
+    assert second_claim is False
+    final = batch._load_batch(batch_id)
+    assert final["runner_id"] == "recovery-worker-A"
 
 
 # ── Idempotency ──────────────────────────────────────────────────────────
@@ -362,6 +495,35 @@ def test_idempotency_key_repeat_after_complete_is_pure_readback(rig):
     with sqlite3.connect(store.db_path) as conn:
         job_count_after = conn.execute("SELECT COUNT(*) FROM erasure_jobs").fetchone()[0]
     assert job_count_after == job_count_before
+
+
+def test_same_idempotency_key_different_request_is_conflict_not_reuse(rig):
+    """Blocker #1: reusing an idempotency_key with a DIFFERENT canonical
+    request (here: a different user_id) must return IDEMPOTENCY_CONFLICT —
+    it must never run, resume, or reveal the first request's batch."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1", source="userA"))
+    store.store_fact(_fact("f2", source="userB"))
+
+    first = batch.forget_all_durable("userA", reason="dsr", idempotency_key="shared-key")
+    assert first["outcome"] == COMPLETE
+    assert store.get_fact("f1") is None
+
+    conflict = batch.forget_all_durable("userB", reason="dsr", idempotency_key="shared-key")
+
+    assert conflict["outcome"] == IDEMPOTENCY_CONFLICT
+    assert conflict["batch_id"] is None
+    assert conflict["items"] == []
+    assert conflict["items_total"] == 0
+    # userB's facts were never touched — the conflicting call never ran.
+    assert store.get_fact("f2") is not None
+
+    # Also conflicts on a different `reason`/`force`/`scope` for the SAME
+    # user_id — fingerprint covers all five fields, not just user_id.
+    conflict_reason = batch.forget_all_durable(
+        "userA", reason="different_reason", idempotency_key="shared-key",
+    )
+    assert conflict_reason["outcome"] == IDEMPOTENCY_CONFLICT
 
 
 # ── Concurrent addition of a new fact mid-batch ─────────────────────────────
@@ -419,6 +581,119 @@ def test_resume_never_requeries_facts_for_new_membership(rig, monkeypatch):
     assert {i["fact_id"] for i in resumed["items"]} == {"f1"}
     assert store.get_fact("f1") is None
     assert store.get_fact("f_late") is not None
+
+
+# ── Blocker #7: snapshot_hash fail-closed ───────────────────────────────────
+
+def test_snapshot_hash_mismatch_fails_closed_without_processing(rig):
+    """If erasure_batch_items no longer matches what was hashed at snapshot
+    time (e.g. an out-of-band row change), the batch must refuse to process
+    rather than silently run against a membership list that cannot be
+    proven intact."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1"))
+    store.store_fact(_fact("f2"))
+
+    report = batch.forget_all_durable("userA", reason="dsr")
+    assert report["outcome"] == COMPLETE
+    assert report["snapshot_integrity_ok"] is True
+
+    # Create a SECOND batch and tamper with its item snapshot directly,
+    # bypassing the coordinator entirely.
+    store.store_fact(_fact("f3"))
+    store.store_fact(_fact("f4"))
+    batch_id = batch._create_batch_snapshot(
+        user_id="userA", reason="dsr", actor="tester", force=False, scope=None,
+        idempotency_key=None, actor_capability="reader",
+        request_fingerprint="fp-tamper-test",
+    )
+    with sqlite3.connect(store.db_path) as conn:
+        conn.execute(
+            "UPDATE erasure_batch_items SET epistemic_state_at_snapshot = 'TAMPERED' "
+            "WHERE batch_id = ? AND fact_id = 'f3'",
+            (batch_id,),
+        )
+        conn.commit()
+
+    tampered_report = _resume_specific_batch(batch, batch_id)
+
+    assert tampered_report["outcome"] == FAILED
+    assert tampered_report["error"] == "snapshot_integrity_check_failed"
+    assert tampered_report["snapshot_integrity_ok"] is False
+    # Fail closed: nothing was erased under the unproven membership list.
+    assert store.get_fact("f3") is not None
+    assert store.get_fact("f4") is not None
+
+
+# ── Blocker #8: orphan protection (PRAGMA foreign_keys=ON) ──────────────────
+
+def test_orphan_batch_item_insert_is_rejected(rig):
+    batch, coordinator, store, *_ = rig
+    with sqlite3.connect(store.db_path) as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO erasure_batch_items "
+                "(item_id, batch_id, fact_id, epistemic_state_at_snapshot, "
+                "status, created_at, updated_at) "
+                "VALUES ('orphan_item', 'nonexistent_batch', 'f1', 'Observed', "
+                "'PENDING', 'now', 'now')"
+            )
+
+
+def test_orphan_force_receipt_insert_is_rejected(rig):
+    batch, coordinator, store, *_ = rig
+    with sqlite3.connect(store.db_path) as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO erasure_batch_force_receipts "
+                "(receipt_id, batch_id, actor, actor_capability, scope, "
+                "user_id, reason, authorized_at) "
+                "VALUES ('orphan_receipt', 'nonexistent_batch', 'a', 'admin', "
+                "'s', 'u', 'r', 'now')"
+            )
+
+
+# ── Blocker #4: no fake defense-in-depth / real PrincipalContext ──────────
+
+def test_tool_handlers_forget_all_requires_explicit_principal(rig, monkeypatch):
+    """core.tool_handlers.forget_all() must NOT hardcode/assume admin
+    capability — a direct call with a non-admin PrincipalContext must be
+    refused exactly like any other non-admin caller, proving there is no
+    hidden 'this handler is always admin' shortcut."""
+    from core import tool_handlers
+
+    batch, coordinator, store, *_ = rig
+    import core.erasure_batch_coordinator as _ebc
+    monkeypatch.setattr(memory, "_GLOBAL_STORE", store)
+    monkeypatch.setattr(_ebc, "_default_batch_coordinator", batch)
+
+    store.store_fact(_fact("f1", source="default"))
+
+    non_admin = PrincipalContext(capability="guardian", actor_id="api:deadbeef")
+    result = tool_handlers.forget_all(
+        user_id="default", principal=non_admin, force=True, scope="whole_db_cleanup",
+    )
+    assert result["outcome"] == REFUSED
+    assert result["reason"] == "force_requires_admin_capability"
+    assert store.get_fact("f1") is not None
+
+    admin = PrincipalContext(capability="admin", actor_id="api:cafebabe")
+    ok = tool_handlers.forget_all(
+        user_id="default", principal=admin, force=True, scope="whole_db_cleanup",
+    )
+    assert ok["outcome"] == COMPLETE
+    assert store.get_fact("f1") is None
+    # The force receipt records the REAL principal, not a client-suppliable
+    # "operator" literal.
+    with sqlite3.connect(store.db_path) as conn:
+        row = conn.execute(
+            "SELECT actor, actor_capability FROM erasure_batch_force_receipts "
+            "WHERE batch_id = ?",
+            (ok["batch_id"],),
+        ).fetchone()
+    assert row == ("api:cafebabe", "admin")
 
 
 # ── Legacy shim (core.forgetting.ForgettingEngine.forget_all) ─────────────
