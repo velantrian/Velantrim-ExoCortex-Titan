@@ -32,9 +32,12 @@ def test_fresh_apply_reaches_latest_version_with_expected_schema(tmp_path):
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 15
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 16
         job_cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_jobs)").fetchall()}
         assert "generation" in job_cols
+        # migrations/016_erasure_job_subject.sql — Round 5 Codex fix:
+        # preserve the data-subject user_id separately from operator/actor.
+        assert "subject_user_id" in job_cols
         log_cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_log)").fetchall()}
         assert "job_id" in log_cols
         indexes = {
@@ -116,7 +119,9 @@ def test_v13_to_v14_upgrade_preserves_existing_jobs_and_legacy_tombstones(tmp_pa
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 15
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 16
+        job_cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_jobs)").fetchall()}
+        assert "subject_user_id" in job_cols
         jobs = dict(conn.execute("SELECT job_id, status FROM erasure_jobs").fetchall())
         assert jobs == {"erj_complete1": "COMPLETE", "erj_partial1": "PARTIAL"}
         tombstones = {
@@ -190,7 +195,7 @@ def test_v12_self_healed_schema_does_not_block_migration_013(tmp_path):
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 15
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 16
         indexes = {
             r[0] for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='erasure_jobs'"
@@ -199,6 +204,8 @@ def test_v12_self_healed_schema_does_not_block_migration_013(tmp_path):
         assert "idx_erasure_jobs_fact" not in indexes
         assert "idx_erasure_jobs_fact_active" in indexes
         assert "idx_erasure_jobs_fact_generation" in indexes
+        job_cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_jobs)").fetchall()}
+        assert "subject_user_id" in job_cols
         # Both self-healed generations must have survived the migration.
         remaining = conn.execute(
             "SELECT COUNT(*) FROM erasure_jobs WHERE fact_id = ?", (fact_id,)

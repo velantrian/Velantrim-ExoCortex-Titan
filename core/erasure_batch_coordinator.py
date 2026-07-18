@@ -732,8 +732,16 @@ class BatchErasureCoordinator:
                 compliance_status=CRITICAL_COMPLIANCE_VIOLATION,
             )
 
+        # Round 5 fix (Codex P2): `batch["actor"]` is the operator/credential
+        # fingerprint that authorized this batch — it must stay recorded
+        # for operator provenance (erasure_batches.actor), but it is NOT the
+        # data subject. `subject_user_id=batch["user_id"]` is what actually
+        # ends up in erasure_log.user_id (see ErasureCoordinator._finalize()),
+        # so get_erasure_log(user_id="userA") finds this erasure even when
+        # the batch was run by a different operator/API credential.
         report = self._coordinator.erase_fact_durable(
             fact_id, reason=batch["reason"], actor=batch["actor"],
+            subject_user_id=batch["user_id"],
         )
         return self._set_item_status(
             batch["batch_id"], fact_id, report["outcome"],

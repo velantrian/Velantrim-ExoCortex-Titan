@@ -313,10 +313,29 @@ class ForgettingEngine:
         user_id filter.
 
         Kept for backward compatibility only — new code (and the
-        registered `forget_all` MCP tool) should call
+        registered `forget_all` MCP tool, which keeps its own global
+        application wiring via forget_all_durable()/get_batch_coordinator()
+        unchanged) should call
         core.erasure_batch_coordinator.forget_all_durable() directly to
         get the full batch report (items/outcome/critical items); this
         shim narrows that down to the legacy ForgetVerdict shape.
+
+        Round 5 fix (Codex P2): this shim used to delegate to the
+        module-level forget_all_durable()/get_batch_coordinator() — those
+        always operate on the process-global memory._GLOBAL_STORE,
+        regardless of the `db_path` this ForgettingEngine was constructed
+        with. A caller doing ForgettingEngine(db_path="tenant.db").
+        forget_all(...) therefore ran the operation against the GLOBAL
+        store, silently ignoring "tenant.db" — reporting success (or zero
+        matching items) while the actually-configured database was never
+        touched. This method now builds its own db_path-bound
+        SQLiteGraphStore/ErasureCoordinator/BatchErasureCoordinator (mirrors
+        core.erasure_batch_coordinator.BatchErasureCoordinator's own
+        dependency-injection design) instead of touching the global
+        singleton at all, so a custom db_path is honored for real, for both
+        dry-run and actual erasure — and closes its own temporary store
+        afterward (never the shared global one, since it's never assigned
+        to memory._GLOBAL_STORE).
         """
         warnings.warn(
             "core.forgetting.ForgettingEngine.forget_all() is deprecated — "
@@ -324,18 +343,28 @@ class ForgettingEngine:
             DeprecationWarning,
             stacklevel=2,
         )
-        from core.erasure_batch_coordinator import forget_all_durable
+        from core.erasure_batch_coordinator import BatchErasureCoordinator
+        from core.erasure_coordinator import ErasureCoordinator
+        from core.memory import SQLiteGraphStore
 
-        report = forget_all_durable(
-            user_id,
-            reason=reason,
-            actor=actor,
-            actor_capability=actor_capability,
-            force=force,
-            scope=scope,
-            dry_run=dry_run,
-            idempotency_key=idempotency_key,
-        )
+        store = SQLiteGraphStore(self._db_path)
+        try:
+            coordinator = ErasureCoordinator(store=store)
+            batch_coordinator = BatchErasureCoordinator(
+                store=store, coordinator=coordinator, jobs_db_path=self._db_path,
+            )
+            report = batch_coordinator.forget_all_durable(
+                user_id,
+                reason=reason,
+                actor=actor,
+                actor_capability=actor_capability,
+                force=force,
+                scope=scope,
+                dry_run=dry_run,
+                idempotency_key=idempotency_key,
+            )
+        finally:
+            store.close()
 
         if report["outcome"] in ("REFUSED", "IDEMPOTENCY_CONFLICT"):
             return ForgetVerdict(

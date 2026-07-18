@@ -1070,23 +1070,22 @@ def test_tool_handlers_forget_all_requires_explicit_principal(rig, monkeypatch):
 
 # ── Legacy shim (core.forgetting.ForgettingEngine.forget_all) ─────────────
 
-def test_forgetting_engine_forget_all_is_deprecated_and_delegates(rig, monkeypatch):
+def test_forgetting_engine_forget_all_is_deprecated_and_delegates(rig):
+    """Round 5 fix (Codex P2): the shim builds its OWN db_path-bound
+    SQLiteGraphStore/BatchErasureCoordinator (see
+    test_forgetting.py for the full db_path-isolation regression suite) —
+    it no longer delegates to the module-level get_batch_coordinator()
+    singleton, so there is nothing left to monkeypatch here. Read the
+    result back via a FRESH SQLiteGraphStore against the same file rather
+    than the original `store` object: that object's own in-process L0
+    read-cache (core.memory.SQLiteGraphStore._l0) has no way to know
+    about a DELETE committed through the shim's separate store instance —
+    a pre-existing, per-instance-cache characteristic of this codebase,
+    not something this fix's db_path-isolation scope touches."""
     from core import forgetting as forgetting_mod
 
     batch, coordinator, store, embeddings, ngram = rig
     store.store_fact(_fact("f1"))
-
-    import core.erasure_batch_coordinator as _ebc
-
-    monkeypatch.setattr(memory, "_GLOBAL_STORE", store)
-    # NOTE: patch via the imported module OBJECT, not a dotted string — a
-    # string target re-resolves "core.erasure_batch_coordinator" through
-    # import machinery, which is not guaranteed to hand back the exact
-    # module object core.forgetting's own `from core.erasure_batch_coordinator
-    # import forget_all_durable` closed over once enough of the suite's
-    # other modules have been collected/imported first (observed to only
-    # reproduce inside the full test session, never in isolation).
-    monkeypatch.setattr(_ebc, "_default_batch_coordinator", batch)
 
     engine = forgetting_mod.ForgettingEngine(db_path=store.db_path)
     with pytest.deprecated_call():
@@ -1094,4 +1093,62 @@ def test_forgetting_engine_forget_all_is_deprecated_and_delegates(rig, monkeypat
 
     assert verdict.allowed is True
     assert verdict.affected_facts == 1
-    assert store.get_fact("f1") is None
+    assert memory.make_store(store.db_path).get_fact("f1") is None
+
+
+# ── Round 5 fix (Codex P2): batch tombstones keyed to the data subject ──────
+
+def test_batch_tombstones_keyed_to_data_subject_not_operator_actor(rig):
+    """A + E: a FORGET_ALL batch run by a different operator than the data
+    subject must tombstone under the data subject (batch's user_id), not
+    the operator/API credential fingerprint that authorized it — otherwise
+    user-scoped GDPR Art. 30 audit queries (erasure_log.user_id) silently
+    miss real erasures. coordinator.erasure_log() is the Art. 30 record of
+    processing this reads back through (mirrors
+    ForgettingEngine.get_erasure_log(), which filters the same column via
+    the erasure_audit view — not exercised here since this rig's bare
+    make_store() DB doesn't run the full migration chain that view needs)."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f1"))
+    store.store_fact(_fact("f2"))
+
+    report = batch.forget_all_durable("userA", reason="dsr", actor="api:deadbeef")
+    assert report["outcome"] == COMPLETE
+
+    log = coordinator.erasure_log()
+    log_for_user_a = [row for row in log if row["user_id"] == "userA"]
+    assert {row["fact_id"] for row in log_for_user_a} == {"f1", "f2"}
+
+    # The operator credential must never itself be discoverable as a data
+    # subject in the audit log.
+    assert [row for row in log if row["user_id"] == "api:deadbeef"] == []
+
+    # Operator provenance is still available, per-fact, on the durable job.
+    for fid in ("f1", "f2"):
+        job_report = coordinator.get_job_report(fid)
+        assert job_report["actor"] == "api:deadbeef"
+        assert job_report["subject_user_id"] == "userA"
+
+
+def test_batch_force_erasure_receipt_records_operator_tombstone_keeps_subject(rig):
+    """B: force=True's append-only receipt records the operator's
+    credential fingerprint — the erasure tombstone itself must still be
+    associated with the data subject, not that operator fingerprint."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f1", source="userA"))
+
+    report = batch.forget_all_durable(
+        "userA", reason="dsr", actor="api:deadbeef",
+        actor_capability="admin", force=True, scope="cleanup",
+    )
+    assert report["outcome"] == COMPLETE
+
+    with sqlite3.connect(store.db_path) as conn:
+        receipt_actor = conn.execute(
+            "SELECT actor FROM erasure_batch_force_receipts WHERE batch_id = ?",
+            (report["batch_id"],),
+        ).fetchone()[0]
+    assert receipt_actor == "api:deadbeef"
+
+    tombstone = store.get_tombstone("f1")
+    assert tombstone["user_id"] == "userA"

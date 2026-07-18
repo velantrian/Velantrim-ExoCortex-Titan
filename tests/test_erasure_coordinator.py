@@ -2476,3 +2476,91 @@ def test_run_job_on_a_superseded_job_id_redirects_to_the_replacement_generation(
     assert store.get_fact(fact_id) is None
     assert embeddings.has_any(fact_id) is False
     assert ngram.contains(fact_id) is False
+
+
+# ── Round 5 fix (Codex P2): preserve data-subject user_id in tombstones ──────
+#
+# erase_fact_durable()'s `actor` argument is the operator/credential
+# fingerprint that authorized the call — SQLiteGraphStore.write_tombstone()
+# stores whatever it's given in erasure_log.user_id, which user-scoped GDPR
+# audit queries (ForgettingEngine.get_erasure_log(user_id=...)) filter on.
+# Conflating the two meant a batch erasure for user_id="userA" run by
+# actor="api:deadbeef" tombstoned under "api:deadbeef" instead of "userA".
+# `subject_user_id` is the fix: a separate, explicit, durable column.
+
+def test_subject_user_id_recorded_separately_from_operator_actor(rig):
+    """A and part of E: subject/operator differ -> the tombstone is keyed to
+    the data subject, never the operator, and operator provenance survives
+    on the durable job report."""
+    coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_subject"))
+
+    report = coordinator.erase_fact_durable(
+        "f_subject", actor="api:deadbeef", subject_user_id="userA",
+    )
+    assert report["outcome"] == COMPLETE
+    assert report["subject_user_id"] == "userA"
+    assert report["actor"] == "api:deadbeef"
+
+    tombstone = store.get_tombstone("f_subject")
+    assert tombstone["user_id"] == "userA"
+    assert tombstone["user_id"] != "api:deadbeef"
+
+    # Operator provenance is preserved separately — never lost.
+    job_report = coordinator.get_job_report("f_subject")
+    assert job_report["actor"] == "api:deadbeef"
+    assert job_report["subject_user_id"] == "userA"
+
+
+def test_crash_and_resume_preserves_subject_user_id(rig, monkeypatch):
+    """C: subject_user_id must be stored durably in the per-fact job and
+    survive a crash — a resumed erasure must tombstone under the SAME data
+    subject as the original attempt, even when the resume call itself
+    doesn't re-supply subject_user_id."""
+    coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_resume"))
+    embeddings.store("f_resume", np.array([1.0], dtype=np.float32))
+
+    real_purge = embeddings.purge_node
+    calls = {"n": 0}
+
+    def _flaky_purge_node(node_id):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("simulated crash mid-erasure")
+        return real_purge(node_id)
+
+    monkeypatch.setattr(embeddings, "purge_node", _flaky_purge_node)
+
+    first = coordinator.erase_fact_durable(
+        "f_resume", actor="api:deadbeef", subject_user_id="userA",
+    )
+    assert first["outcome"] == PARTIAL
+    assert first["subject_user_id"] == "userA"
+
+    monkeypatch.setattr(embeddings, "purge_node", real_purge)
+    # Resume WITHOUT re-passing subject_user_id — the durable job row, not
+    # the caller, must be what carries it through.
+    second = coordinator.erase_fact_durable("f_resume")
+
+    assert second["outcome"] == COMPLETE
+    assert second["job_id"] == first["job_id"]  # same generation, resumed
+    assert second["subject_user_id"] == "userA"
+
+    tombstone = store.get_tombstone("f_resume")
+    assert tombstone["user_id"] == "userA"
+
+
+def test_legacy_call_without_subject_user_id_keeps_historical_actor_fallback(rig):
+    """D: legacy per-fact callers (core.erasure.erase_fact()'s shim, the
+    forget_fact MCP tool) never supply subject_user_id — the tombstone must
+    keep falling back to `actor`, exactly as before this parameter existed."""
+    coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_legacy"))
+
+    report = coordinator.erase_fact_durable("f_legacy", actor="operator")
+    assert report["outcome"] == COMPLETE
+    assert report["subject_user_id"] is None
+
+    tombstone = store.get_tombstone("f_legacy")
+    assert tombstone["user_id"] == "operator"

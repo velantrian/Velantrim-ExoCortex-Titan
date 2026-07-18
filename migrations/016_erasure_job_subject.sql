@@ -1,0 +1,48 @@
+-- migrations/016_erasure_job_subject.sql
+-- Round 5 Codex finding (P2): preserve the data-subject user_id in erasure
+-- tombstones, separately from the operator/credential fingerprint.
+-- ==================================================================
+-- PROBLEM: BatchErasureCoordinator._process_item() called
+-- core.erasure_coordinator.erase_fact_durable(fact_id, reason=batch["reason"],
+-- actor=batch["actor"]) — `batch["actor"]` is the operator/API credential
+-- fingerprint that authorized the FORGET_ALL batch, not the person whose
+-- data is being erased. ErasureCoordinator._finalize() passed that same
+-- `actor` value straight into SQLiteGraphStore.write_tombstone(), which
+-- stores it in erasure_log.user_id. An erasure for user_id="userA" run by
+-- actor="api:deadbeef" therefore created a tombstone keyed to
+-- "api:deadbeef" — ForgettingEngine.get_erasure_log(user_id="userA") (and
+-- any other user-scoped GDPR Art. 17/Art. 30 audit query) found no record,
+-- even though userA's data really was erased. A real audit-trail defect.
+--
+-- SOLUTION: erasure_jobs gains a nullable `subject_user_id` column —
+-- separate from the existing `actor` column (which keeps recording the
+-- operator/credential fingerprint; operator provenance is never lost).
+-- core.erasure_coordinator.erase_fact_durable() accepts an explicit
+-- `subject_user_id` keyword argument and stores it durably on the job row
+-- (survives crashes/retries/resume — a resumed erasure reads the SAME
+-- row and therefore produces the SAME subject-scoped tombstone as the
+-- original attempt). _finalize() now writes the completion tombstone with
+-- `actor=job["subject_user_id"] or job["actor"]` — i.e. erasure_log.user_id
+-- is the real data subject when one was provided, falling back to the
+-- historical `actor` behavior for every legacy caller that doesn't provide
+-- one (core.erasure.erase_fact()'s deprecated shim, the `forget_fact` MCP
+-- tool — both remain fully backward-compatible, unchanged output).
+-- BatchErasureCoordinator._process_item() is the one caller updated to
+-- pass both explicitly: actor=batch["actor"], subject_user_id=batch["user_id"].
+--
+-- This is a single-fact-job-scoped column (erasure_jobs, migrations
+-- 013/014), not a batch-scoped one — migrations/015_erasure_batches.sql
+-- (erasure_batches/erasure_batch_items/erasure_batch_force_receipts) is a
+-- different table family and is not touched by this migration.
+--
+-- Mirrors migration 014's own pattern: core.erasure_coordinator.
+-- ErasureCoordinator._ensure_schema() can self-heal this column onto an
+-- existing DB at runtime (same ALTER, guarded the same way) before an
+-- operator ever runs this migration script — scripts/apply_migrations.py
+-- detects that via column_exists() and skips the (non-idempotent) ALTER
+-- in that case, exactly like it already does for erasure_jobs.generation.
+
+ALTER TABLE erasure_jobs ADD COLUMN subject_user_id TEXT;
+
+-- ── Проверка после применения ─────────────────────────────────────────────────
+-- PRAGMA table_info(erasure_jobs);  -- ожидать колонку subject_user_id

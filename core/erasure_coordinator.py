@@ -143,17 +143,18 @@ _EMBEDDINGS_DB_PATH_DEFAULT = "./data/exocortex_graph.db"
 
 _SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS erasure_jobs (
-    job_id        TEXT PRIMARY KEY,
-    fact_id       TEXT NOT NULL,
-    generation    INTEGER NOT NULL DEFAULT 1,
-    reason        TEXT NOT NULL,
-    actor         TEXT NOT NULL,
-    status        TEXT NOT NULL DEFAULT 'PENDING',
-    residual      TEXT,
-    content_hash  TEXT,
-    error         TEXT,
-    created_at    TEXT NOT NULL,
-    updated_at    TEXT NOT NULL
+    job_id           TEXT PRIMARY KEY,
+    fact_id          TEXT NOT NULL,
+    generation       INTEGER NOT NULL DEFAULT 1,
+    reason           TEXT NOT NULL,
+    actor            TEXT NOT NULL,
+    subject_user_id  TEXT,
+    status           TEXT NOT NULL DEFAULT 'PENDING',
+    residual         TEXT,
+    content_hash     TEXT,
+    error            TEXT,
+    created_at       TEXT NOT NULL,
+    updated_at       TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS erasure_job_steps (
@@ -367,6 +368,19 @@ class ErasureCoordinator:
                     )
                 except sqlite3.OperationalError:
                     pass
+                # Round 5 fix (Codex P2): a legacy (pre-subject_user_id) DB
+                # has erasure_jobs.actor doing double duty as both the
+                # operator/credential fingerprint AND (via write_tombstone())
+                # the erasure_log.user_id data-subject column — see
+                # migrations/016_erasure_job_subject.sql. A fresh DB already
+                # has this column from _SCHEMA_SQL above, so this is a no-op
+                # "duplicate column" on those.
+                try:
+                    conn.execute(
+                        "ALTER TABLE erasure_jobs ADD COLUMN subject_user_id TEXT"
+                    )
+                except sqlite3.OperationalError:
+                    pass
                 conn.execute("DROP INDEX IF EXISTS idx_erasure_jobs_fact")
                 # idx_erasure_jobs_fact_active's WHERE clause changed when
                 # SUPERSEDED was added to the terminal-status exclusion
@@ -460,7 +474,13 @@ class ErasureCoordinator:
         return row["status"] if row else PENDING
 
     def _get_or_create_job(
-        self, fact_id: str, reason: str, actor: str, *, _retry: bool = False
+        self,
+        fact_id: str,
+        reason: str,
+        actor: str,
+        subject_user_id: str | None = None,
+        *,
+        _retry: bool = False,
     ) -> str:
         """Get the one ACTIVE durable job for `fact_id`, opening a new
         generation if none is active.
@@ -692,12 +712,16 @@ class ErasureCoordinator:
                         # have already, genuinely finished cleaning
                         # everything.
                         conn.rollback()
-                        return self._get_or_create_job(fact_id, reason, actor, _retry=True)
+                        return self._get_or_create_job(fact_id, reason, actor, subject_user_id, _retry=True)
                 conn.execute(
                     "INSERT INTO erasure_jobs "
-                    "(job_id, fact_id, generation, reason, actor, status, created_at, updated_at) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    (job_id, fact_id, next_generation, reason, actor, PENDING, now, now),
+                    "(job_id, fact_id, generation, reason, actor, subject_user_id, "
+                    "status, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        job_id, fact_id, next_generation, reason, actor,
+                        subject_user_id, PENDING, now, now,
+                    ),
                 )
                 for step_name in _STEP_NAMES:
                     conn.execute(
@@ -770,7 +794,7 @@ class ErasureCoordinator:
             # same defense-in-depth as the CAS-failure path above) to open
             # the NEXT generation instead of trusting a terminal report
             # that no longer reflects current reality.
-            return self._get_or_create_job(fact_id, reason, actor, _retry=True)
+            return self._get_or_create_job(fact_id, reason, actor, subject_user_id, _retry=True)
 
         return winner["job_id"]
 
@@ -1103,10 +1127,21 @@ class ErasureCoordinator:
             # row. The reverse order would let job.status=COMPLETE exist
             # with no tombstone ever written — an unrecoverable false claim
             # of erasure that no resume could detect or repair.
+            # Round 5 fix (Codex P2): the tombstone's `actor` argument is
+            # stored as erasure_log.user_id (see SQLiteGraphStore.
+            # write_tombstone()) — that column means the DATA SUBJECT, not
+            # the operator. Use subject_user_id when the job has one
+            # (batch erasures always set it — see
+            # BatchErasureCoordinator._process_item()); fall back to `actor`
+            # for every legacy job created before this column existed, or
+            # by a caller (core.erasure.erase_fact(), the forget_fact MCP
+            # tool) that never had a separate data-subject identity to
+            # provide — this is the explicit, documented compatibility
+            # fallback, not a behavior change for them.
             self._store.write_tombstone(
                 job["fact_id"],
                 reason=job["reason"],
-                actor=job["actor"],
+                actor=job.get("subject_user_id") or job["actor"],
                 content_hash=job["content_hash"],
                 job_id=job["job_id"],
             )
@@ -1145,6 +1180,7 @@ class ErasureCoordinator:
             "residual": job.get("residual"),
             "reason": job["reason"],
             "actor": job["actor"],
+            "subject_user_id": job.get("subject_user_id"),
             "content_hash": (tombstone or {}).get("content_hash"),
             "erased_at": (tombstone or {}).get("erased_at"),
             "steps": {
@@ -1423,8 +1459,22 @@ class ErasureCoordinator:
         *,
         reason: str = "data_subject_request",
         actor: str = "operator",
+        subject_user_id: str | None = None,
     ) -> dict[str, Any]:
         """The one enforced GDPR Art. 17 erasure entrypoint.
+
+        `actor` is the authenticated operator/credential fingerprint that
+        authorized this call — it is recorded on the durable job for
+        operator provenance, but it is NOT the data subject. `subject_user_id`
+        (Round 5, Codex P2) is the person whose data is being erased; when
+        provided, it — not `actor` — is what gets recorded as
+        `erasure_log.user_id` (see _finalize()), so `get_erasure_log(user_id=...)`
+        audit queries find the erasure under the actual data subject rather
+        than under the operator who ran it. `subject_user_id=None` (every
+        legacy caller — core.erasure.erase_fact()'s shim, the `forget_fact`
+        MCP tool) preserves the original behavior exactly: the tombstone's
+        `user_id` falls back to `actor`, unchanged from before this
+        parameter existed.
 
         Idempotent: a fact whose LATEST durable generation already proved
         COMPLETE, or resolved to RESIDUAL_IMMUTABLE_DATA, returns that
@@ -1523,12 +1573,13 @@ class ErasureCoordinator:
                     "residual": None,
                     "reason": reason,
                     "actor": actor,
+                    "subject_user_id": subject_user_id,
                     "content_hash": None,
                     "erased_at": None,
                     "steps": {},
                 }
 
-        job_id = self._get_or_create_job(fact_id, reason, actor)
+        job_id = self._get_or_create_job(fact_id, reason, actor, subject_user_id)
         # _run_job(job_id) with the default wait_if_running=True never
         # returns None — that is only possible for the
         # wait_if_running=False crash-recovery-sweep path (see
@@ -1639,8 +1690,11 @@ def erase_fact_durable(
     *,
     reason: str = "data_subject_request",
     actor: str = "operator",
+    subject_user_id: str | None = None,
 ) -> dict[str, Any]:
-    return get_coordinator().erase_fact_durable(fact_id, reason=reason, actor=actor)
+    return get_coordinator().erase_fact_durable(
+        fact_id, reason=reason, actor=actor, subject_user_id=subject_user_id,
+    )
 
 
 def resume_incomplete_jobs() -> list[dict[str, Any]]:
