@@ -3343,3 +3343,119 @@ def test_batch_encountering_live_unbound_running_job_stays_retryable(rig):
     )
     assert result["outcome"] == PARTIAL
     assert result["outcome"] != COMPLETE
+
+
+# ── Round 5.4 second-order Codex findings (P2), from the fresh re-review ───
+# of the Round 5.4 fixes themselves.
+
+def test_legacy_tombstone_does_not_corroborate_a_still_active_job(rig):
+    """Finding: 'Skip legacy tombstone checks for active jobs'. A
+    job_id=NULL legacy tombstone left over from an unrelated, earlier
+    historical erasure of the SAME fact_id must never corroborate a
+    generation-1 job that is still genuinely ACTIVE (PENDING/PARTIAL/
+    FAILED/RUNNING) — the legacy fallback only ever proves a COMPLETE
+    outcome. Binding the caller's own matching subject onto the active
+    job must succeed normally, not raise a false SUBJECT_CONFLICT."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "active_job_legacy_tombstone_fact"
+    store.store_fact(_fact(fact_id))
+
+    # An unrelated historical tombstone for the SAME fact_id, job_id=NULL,
+    # under a DIFFERENT actor — simulates a genuinely earlier erasure era.
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_log "
+            "(erasure_id, fact_id, user_id, reason, claim_hash, erased_at, job_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, NULL)",
+            ("era_unrelated_legacy", fact_id, "someoneElse", "legacy", "deadbeef", _now()),
+        )
+        conn.commit()
+
+    job_id = f"erj_active_{fact_id}"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "dsr", "api:op", None, PENDING, now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, ?, ?, ?)",
+                (f"{job_id}_{step_name}", job_id, step_name, PENDING),
+            )
+        conn.commit()
+
+    job = coordinator._load_job(job_id)
+    assert coordinator._get_tombstone_for(job) is None
+
+    result = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:op", subject_user_id="userA",
+    )
+    assert result["outcome"] == COMPLETE
+    assert result["subject_user_id"] == "userA"
+
+
+def test_bind_subject_user_id_reevaluates_after_stale_snapshot_races_to_running(rig):
+    """Finding: 'Gate subject binding on the current job status'. If the
+    `job` dict passed in is stale (read as PENDING) but the row has
+    ALREADY moved to RUNNING with subject_user_id still NULL by the time
+    the CAS runs, the CAS's own `status != RUNNING` guard must catch it —
+    never silently bind based on the stale snapshot."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "stale_snapshot_races_to_running_fact"
+    job_id = f"erj_stale_{fact_id}"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "dsr", "api:op", None, PENDING, now, now),
+        )
+        conn.commit()
+
+    stale_job = coordinator._load_job(job_id)  # snapshot: status=PENDING
+    assert stale_job["status"] == PENDING
+
+    # The row itself has since moved to RUNNING (a live runner claimed it).
+    with coordinator._jobs_db() as conn:
+        conn.execute("UPDATE erasure_jobs SET status = ? WHERE job_id = ?", (RUNNING, job_id))
+        conn.commit()
+
+    with pytest.raises(LiveJobPendingError):
+        coordinator._bind_subject_user_id(stale_job, "userA")
+
+    with coordinator._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", (job_id,),
+        ).fetchone()
+    assert row["subject_user_id"] is None
+
+
+def test_bind_subject_user_id_reevaluates_after_stale_snapshot_races_to_complete(rig):
+    """Same stale-snapshot race, but the row raced all the way to COMPLETE
+    (with a real tombstone) instead of RUNNING — the bounded reload/retry
+    must re-run the tombstone check against current reality rather than
+    blindly trusting the stale (pre-completion) snapshot."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "stale_snapshot_races_to_complete_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "data")
+
+    real = coordinator.erase_fact_durable(fact_id, reason="dsr", actor="operatorReal")
+    assert real["outcome"] == COMPLETE
+    job_id = real["job_id"]
+
+    # A deliberately stale snapshot claiming the job is still PENDING.
+    stale_job = dict(coordinator._load_job(job_id), status=PENDING)
+
+    with pytest.raises(SubjectConflictError):
+        coordinator._bind_subject_user_id(stale_job, "userDifferent")
+
+    with coordinator._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", (job_id,),
+        ).fetchone()
+    assert row["subject_user_id"] is None

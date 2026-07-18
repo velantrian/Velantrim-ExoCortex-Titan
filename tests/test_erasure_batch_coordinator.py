@@ -1467,3 +1467,89 @@ def test_conflict_report_replay_cannot_restore_success(rig):
     assert replay["batch_id"] == first["batch_id"]
     assert replay["success"] is False
     assert replay["erasure_complete"] is False
+
+
+# ── Round 5.4 second-order Codex finding (P2): preserve PARTIAL outcome ─────
+# when a subject conflict coexists with a genuinely still-retryable item.
+# _report() must never report the terminal SUBJECT_CONFLICT outcome while
+# OTHER items remain PENDING/PARTIAL/FAILED — that would look terminal to
+# a caller and could stop it from retrying items that are still erasable.
+
+def test_conflict_does_not_override_a_still_retryable_batch(rig):
+    """A batch row whose stored status claims a terminal outcome
+    (SUBJECT_CONFLICT) while its OWN item rows still contain a retryable
+    (PENDING) item alongside the conflicting one must report PARTIAL, not
+    SUBJECT_CONFLICT — the conflict is visible via conflict_items/
+    subject_conflict, but never promoted to the effective outcome while
+    other work remains."""
+    batch, coordinator, store, embeddings, ngram = rig
+    batch_id = "eb_mixed_conflict_retryable"
+    now = _now()
+    with batch._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_batches (batch_id, user_id, reason, actor, force, "
+            "scope, idempotency_key, request_fingerprint, status, compliance_status, "
+            "items_total, snapshot_hash, snapshot_at, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, 0, NULL, NULL, ?, ?, NULL, ?, ?, ?, ?, ?)",
+            (batch_id, "userA", "dsr", "tester", "fp_mixed", SUBJECT_CONFLICT,
+             2, "hash_mixed", now, now, now),
+        )
+        conn.execute(
+            "INSERT INTO erasure_batch_items (item_id, batch_id, fact_id, "
+            "epistemic_state_at_snapshot, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (f"{batch_id}_item1", batch_id, "f_conflict", "Observed", SUBJECT_CONFLICT, now, now),
+        )
+        conn.execute(
+            "INSERT INTO erasure_batch_items (item_id, batch_id, fact_id, "
+            "epistemic_state_at_snapshot, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (f"{batch_id}_item2", batch_id, "f_pending", "Observed", PENDING, now, now),
+        )
+        conn.commit()
+
+    report = batch.get_batch_report(batch_id)
+    assert report["stored_status"] == SUBJECT_CONFLICT
+    assert report["outcome"] == PARTIAL
+    assert report["operation_finished"] is False
+    assert report["success"] is False
+    assert report["erasure_complete"] is False
+    assert report["subject_conflict"] is True
+    assert report["conflict_items"] == ["f_conflict"]
+
+
+def test_conflict_alone_with_no_retryable_items_still_reports_subject_conflict(rig):
+    """The companion case: once the OTHER item genuinely reaches a
+    terminal state (no longer retryable), the conflict DOES become the
+    effective outcome — the fix narrows to "not while still retryable",
+    not "never report SUBJECT_CONFLICT again"."""
+    batch, coordinator, store, embeddings, ngram = rig
+    batch_id = "eb_conflict_only_terminal"
+    now = _now()
+    with batch._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_batches (batch_id, user_id, reason, actor, force, "
+            "scope, idempotency_key, request_fingerprint, status, compliance_status, "
+            "items_total, snapshot_hash, snapshot_at, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, 0, NULL, NULL, ?, ?, NULL, ?, ?, ?, ?, ?)",
+            (batch_id, "userA", "dsr", "tester", "fp_terminal", SUBJECT_CONFLICT,
+             2, "hash_terminal", now, now, now),
+        )
+        conn.execute(
+            "INSERT INTO erasure_batch_items (item_id, batch_id, fact_id, "
+            "epistemic_state_at_snapshot, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (f"{batch_id}_item1", batch_id, "f_conflict", "Observed", SUBJECT_CONFLICT, now, now),
+        )
+        conn.execute(
+            "INSERT INTO erasure_batch_items (item_id, batch_id, fact_id, "
+            "epistemic_state_at_snapshot, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (f"{batch_id}_item2", batch_id, "f_done", "Observed", COMPLETE, now, now),
+        )
+        conn.commit()
+
+    report = batch.get_batch_report(batch_id)
+    assert report["outcome"] == SUBJECT_CONFLICT
+    assert report["operation_finished"] is True
+    assert report["success"] is False

@@ -1011,6 +1011,7 @@ class BatchErasureCoordinator:
     # ── reporting ─────────────────────────────────────────────────────────
 
     def _report(self, batch: dict[str, Any], items: list[dict[str, Any]]) -> dict[str, Any]:
+        statuses = [i["status"] for i in items]
         critical_items = [
             i["fact_id"] for i in items if i["status"] == CRITICAL_COMPLIANCE_VIOLATION
         ]
@@ -1019,6 +1020,10 @@ class BatchErasureCoordinator:
         conflict_items = [
             i["fact_id"] for i in items if i["status"] == SUBJECT_CONFLICT
         ]
+        retryable_items = [
+            i["fact_id"] for i in items if i["status"] in _ITEM_RETRYABLE_STATUSES
+        ]
+        residual_present = any(s == RESIDUAL_IMMUTABLE_DATA for s in statuses)
         # Fail-closed: derive compliance from the batch column OR a direct
         # scan of the CURRENT item rows — never trust the batch column
         # alone. Covers the (should-be-impossible, but not assumed-
@@ -1030,28 +1035,54 @@ class BatchErasureCoordinator:
         )
         stored_status = batch["status"]
         # Round 5.4 fix (Codex P2): _finalize_batch() always keeps
-        # stored_status and the item rows in sync for anything IT writes
-        # (SUBJECT_CONFLICT items -> stored_status == SUBJECT_CONFLICT,
-        # never COMPLETE) — but _report() must never simply TRUST that
-        # invariant. A restored/hand-repaired/pre-Round-5.3 batch row can
-        # have stored_status == COMPLETE while its OWN item rows still
-        # carry SUBJECT_CONFLICT; re-scanning conflict_items here, every
-        # time, independently of stored_status, is what makes the public
-        # report fail closed regardless of how the durable row got that
-        # way — exactly like critical_items already does for compliance.
-        subject_conflict = stored_status == SUBJECT_CONFLICT or bool(conflict_items)
-        operation_finished = stored_status in _TERMINAL_BATCH_STATUSES
+        # stored_status and the item rows in sync for anything IT writes —
+        # but _report() must never simply TRUST that invariant. A
+        # restored/hand-repaired/pre-Round-5.3 batch row can disagree with
+        # its OWN item rows (e.g. stored_status == COMPLETE while an item
+        # is SUBJECT_CONFLICT). This is only ever second-guessed when
+        # stored_status itself CLAIMS a terminal, success-implying outcome
+        # (COMPLETE / COMPLETE_WITH_RESIDUAL / SUBJECT_CONFLICT) — in that
+        # case, `effective_outcome` is recomputed from the CURRENT item
+        # statuses using the EXACT SAME precedence _finalize_batch() uses
+        # (retryable > conflict > residual > complete), so a bogus/stale
+        # terminal claim can never survive a re-read.
+        #
+        # A stored_status that is ALREADY an honest "not (yet) a
+        # successful completion" signal — RUNNING (still in progress,
+        # lease-tracked separately), or FAILED (e.g. a structural refusal
+        # like a snapshot-integrity mismatch, not necessarily "items still
+        # pending") — is trusted as-is and never overridden by an items
+        # snapshot: overriding it here would misreport a live/failed batch
+        # as PARTIAL just because some items happen to still be
+        # PENDING/FAILED, which is not the invariant this fix protects.
+        #
+        # Round 5.4 second-order fix (Codex P2): even within the
+        # terminal-claim recomputation, a conflict item does NOT override
+        # a batch that (per the fresh item scan) is actually still
+        # retryable — SUBJECT_CONFLICT is only ever the effective outcome
+        # once nothing else remains retryable, exactly like
+        # _finalize_batch()'s own precedence order.
+        if stored_status in _TERMINAL_BATCH_STATUSES:
+            if retryable_items:
+                effective_outcome = PARTIAL
+            elif conflict_items:
+                effective_outcome = SUBJECT_CONFLICT
+            elif residual_present:
+                effective_outcome = COMPLETE_WITH_RESIDUAL
+            else:
+                effective_outcome = COMPLETE
+        else:
+            effective_outcome = stored_status
+        subject_conflict = bool(conflict_items) or effective_outcome == SUBJECT_CONFLICT
+        operation_finished = effective_outcome in _TERMINAL_BATCH_STATUSES
         erasure_complete = (
             operation_finished
-            and stored_status == COMPLETE
+            and effective_outcome == COMPLETE
             and compliance_status is None
-            and not subject_conflict
         )
-        # The EFFECTIVE outcome a caller should trust — never the raw
-        # stored status when the item-level evidence contradicts it.
         # `stored_status` is exposed separately, unmodified, for
-        # diagnostics/self-heal tooling only.
-        effective_outcome = SUBJECT_CONFLICT if subject_conflict else stored_status
+        # diagnostics/self-heal tooling only — never trusted as the
+        # effective result.
         return {
             "batch_id": batch["batch_id"],
             "user_id": batch["user_id"],

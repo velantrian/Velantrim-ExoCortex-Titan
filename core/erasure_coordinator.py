@@ -516,7 +516,7 @@ class ErasureCoordinator:
         return row["status"] if row else PENDING
 
     def _bind_subject_user_id(
-        self, job: dict[str, Any], subject_user_id: str
+        self, job: dict[str, Any], subject_user_id: str, *, _reloaded: bool = False
     ) -> None:
         """Round 5.2 fix (Codex P2): atomically bind `subject_user_id`
         onto an ADOPTED (already-existing) job whose own subject_user_id
@@ -577,6 +577,23 @@ class ErasureCoordinator:
         LiveJobPendingError. A job already bound to ANY subject (RUNNING
         or not) is unaffected: that path is a pure identity CHECK, never
         a mutating write, so it cannot race a live runner's own write.
+
+        Round 5.4 second-order fix (Codex P2): the RUNNING check above
+        only inspects the `job` snapshot the CALLER already had in hand —
+        which can go stale between that check and the UPDATE below (e.g.
+        `job` was read as PENDING/PARTIAL/FAILED, but a live runner claims
+        it into RUNNING in the gap before this method's own UPDATE runs).
+        The UPDATE's WHERE clause therefore ALSO requires `status !=
+        RUNNING` directly against the CURRENT row, not the stale snapshot
+        — a real CAS guard, not just a pre-check. If the UPDATE fails to
+        match for that reason (subject_user_id is still NULL, but the row
+        moved), the row is reloaded fully fresh and this method recurses
+        ONCE (`_reloaded` guards against looping): the tombstone check
+        above then re-runs against current reality too, so a job that
+        raced all the way to COMPLETE (and therefore now has a real
+        tombstone written by _finalize() BEFORE that status flip) is
+        correctly re-evaluated for a match/conflict rather than blindly
+        bound.
         """
         if job["status"] == RUNNING and job.get("subject_user_id") is None:
             raise LiveJobPendingError(job["job_id"])
@@ -587,17 +604,28 @@ class ErasureCoordinator:
         with self._jobs_db() as conn:
             cur = conn.execute(
                 "UPDATE erasure_jobs SET subject_user_id = ?, updated_at = ? "
-                "WHERE job_id = ? AND subject_user_id IS NULL",
-                (subject_user_id, _now(), job_id),
+                "WHERE job_id = ? AND subject_user_id IS NULL AND status != ?",
+                (subject_user_id, _now(), job_id, RUNNING),
             )
             if cur.rowcount > 0:
                 return
             row = conn.execute(
-                "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?",
+                "SELECT subject_user_id, status FROM erasure_jobs WHERE job_id = ?",
                 (job_id,),
             ).fetchone()
-        if row is None or row["subject_user_id"] != subject_user_id:
+        if row is None:
             raise SubjectConflictError(job_id)
+        if row["subject_user_id"] is not None:
+            if row["subject_user_id"] != subject_user_id:
+                raise SubjectConflictError(job_id)
+            return
+        if row["status"] == RUNNING:
+            raise LiveJobPendingError(job_id)
+        if _reloaded:
+            # Defensive backstop only — should not recur in practice.
+            raise LiveJobPendingError(job_id)
+        fresh_job = self._load_job(job_id)
+        self._bind_subject_user_id(fresh_job, subject_user_id, _reloaded=True)
 
     def _get_or_create_job(
         self,
@@ -1652,10 +1680,28 @@ class ErasureCoordinator:
         shared by every caller that needs to know whether (and under what
         effective subject) a job has already been durably tombstoned —
         _bind_subject_user_id() (Round 5.4) included.
+
+        Round 5.4 second-order fix (Codex P2): the fallback is ALSO
+        restricted to `job["status"] == COMPLETE` — this docstring always
+        said it applies "only after the caller has already verified a
+        real, genuinely-COMPLETE erasure_jobs row exists for this job",
+        but once `_bind_subject_user_id()` started calling this helper for
+        EVERY adoption (including still-active PENDING/PARTIAL/FAILED/
+        RUNNING jobs — see there), that precondition was silently
+        violated: a job merely being RESUMED (not yet finished) could
+        wrongly "corroborate" itself via an unrelated PRIOR generation's
+        (or even a totally unrelated historical erasure's) legacy NULL-job
+        tombstone for the same fact_id, raising a false SUBJECT_CONFLICT
+        (or a false match) for a job that hasn't reached any real outcome
+        yet. The legacy fallback's entire purpose is corroborating a
+        COMPLETE result — it was never meant to apply to a job still being
+        actively processed.
         """
         tombstone = self._store.get_tombstone_for_job(job["fact_id"], job["job_id"])
         if tombstone is not None:
             return tombstone
+        if job["status"] != COMPLETE:
+            return None
         if job.get("generation", 1) != 1:
             return None
         if self._store.count_null_job_tombstones(job["fact_id"]) != 1:
