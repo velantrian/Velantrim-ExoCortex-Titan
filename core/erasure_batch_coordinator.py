@@ -1066,6 +1066,16 @@ class BatchErasureCoordinator:
         This NEVER runs, resumes, or reveals the existing batch's contents
         — not even its batch_id — since the caller has proven nothing about
         their relationship to whatever request originally claimed this key.
+
+        Round 5.1 fix (Copilot): `force`/`scope` are still included as
+        explicit `None` placeholders, matching the structural key set every
+        other forget_all_durable() outcome (_report()/_refused()) returns —
+        a caller treating the report as a stable schema must never hit a
+        KeyError just because this outcome is IDEMPOTENCY_CONFLICT. `None`
+        here is a placeholder, never the REAL force/scope belonging to the
+        conflicting existing request — the non-disclosure guarantee (no
+        batch_id/user_id/actor/force/scope of the original request) is
+        unchanged.
         """
         return {
             "batch_id": None,
@@ -1078,6 +1088,8 @@ class BatchErasureCoordinator:
             "compliance_status": None,
             "critical_compliance_violation": False,
             "critical_items": [],
+            "force": None,
+            "scope": None,
             "idempotency_key": idempotency_key,
             "items_total": 0,
             "items": [],

@@ -835,6 +835,42 @@ def test_same_idempotency_key_different_request_is_conflict_not_reuse(rig):
     assert conflict_reason["outcome"] == IDEMPOTENCY_CONFLICT
 
 
+def test_idempotency_conflict_report_has_stable_schema_without_disclosure(rig):
+    """Round 5.1 fix (Copilot): IDEMPOTENCY_CONFLICT's report dict must
+    contain the same structural keys (`force`/`scope`) every other
+    forget_all_durable() outcome returns — a caller treating the report
+    schema as stable must never hit a KeyError just because this
+    particular outcome is IDEMPOTENCY_CONFLICT. The placeholder values
+    must still be non-disclosing: never the real force/scope/batch_id/
+    user_id/actor belonging to the conflicting EXISTING request."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1", source="userA"))
+    store.store_fact(_fact("f2", source="userB"))
+
+    first = batch.forget_all_durable(
+        "userA", reason="dsr", actor="original-actor", force=False,
+        scope=None, idempotency_key="shared-key-2",
+    )
+    assert first["outcome"] == COMPLETE
+
+    conflict = batch.forget_all_durable(
+        "userB", reason="dsr", actor="conflicting-actor",
+        actor_capability="admin", force=True, scope="whole_db_cleanup",
+        idempotency_key="shared-key-2",
+    )
+
+    assert conflict["outcome"] == IDEMPOTENCY_CONFLICT
+    # Schema stability: these keys must exist (no KeyError for a caller
+    # that expects every outcome to have them), as plain None placeholders.
+    assert conflict["force"] is None
+    assert conflict["scope"] is None
+    # Non-disclosure: nothing about either the original OR the conflicting
+    # request's identity/parameters leaks through.
+    assert conflict["batch_id"] is None
+    assert conflict["user_id"] is None
+    assert "actor" not in conflict
+
+
 def test_get_batch_report_by_idempotency_key_requires_matching_fingerprint(rig):
     """Additional hardening: the key string ALONE must never be enough to
     read back a batch's contents (user_id, per-item outcomes, compliance
