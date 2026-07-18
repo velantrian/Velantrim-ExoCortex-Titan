@@ -667,21 +667,31 @@ am.apply_migrations(Path({db_path!r}), skip_backup=True)
         assert conn.execute("PRAGMA user_version").fetchone()[0] == 15
         cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_jobs)").fetchall()}
         assert "subject_user_id" not in cols
-        has_corrections_table = conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' "
-            "AND name='erasure_log_subject_corrections'"
+        # The corrections table/view themselves may already exist — Round
+        # 5.3's runtime-schema-parity fix means SQLiteGraphStore's own DDL
+        # bootstrap (invoked unconditionally at the top of apply_migrations(),
+        # same as it always has for erasure_log itself) creates them
+        # idempotently regardless of migration version, exactly like it
+        # already did for erasure_log/its indexes pre-Round-5.3. What
+        # atomicity actually requires is that migration 016's OWN unique
+        # work — the backfill correction row for THIS historical erasure —
+        # was never committed.
+        no_correction_row = conn.execute(
+            "SELECT 1 FROM erasure_log_subject_corrections WHERE erasure_id = ?",
+            ("era_atomic",),
         ).fetchone()
-        assert has_corrections_table is None
-        # erasure_audit must still be the ORIGINAL (pre-016) view definition.
-        view_sql = conn.execute(
-            "SELECT sql FROM sqlite_master WHERE name = 'erasure_audit'"
-        ).fetchone()[0]
-        assert "erasure_log_subject_corrections" not in view_sql
+        assert no_correction_row is None
         # The historical row seeded above is exactly as seeded — untouched.
         raw = conn.execute(
             "SELECT user_id FROM erasure_log WHERE erasure_id = ?", ("era_atomic",)
         ).fetchone()
         assert raw[0] == "api:deadbeef"
+        # erasure_audit resolves to the ORIGINAL value too — no correction
+        # was ever applied for this row, so COALESCE falls through.
+        audited = conn.execute(
+            "SELECT user_id FROM erasure_audit WHERE erasure_id = ?", ("era_atomic",)
+        ).fetchone()
+        assert audited[0] == "api:deadbeef"
         assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     finally:
         conn.close()

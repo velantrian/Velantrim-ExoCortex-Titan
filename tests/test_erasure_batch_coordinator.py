@@ -30,6 +30,7 @@ from core.erasure_batch_coordinator import (
     RESIDUAL_IMMUTABLE_DATA,
     RUNNING,
     SKIPPED_RING_ZERO,
+    SUBJECT_CONFLICT,
     BatchErasureCoordinator,
 )
 from core.erasure_coordinator import ErasureCoordinator, _now
@@ -1228,3 +1229,129 @@ def test_batch_adopts_pending_job_and_binds_subject_before_processing(rig):
 
     tombstone = store.get_tombstone(fact_id)
     assert tombstone["user_id"] == "userA"
+
+
+# ── Round 5.3 fix (Codex P1): SUBJECT_CONFLICT must never report success ───
+
+def _insert_conflicting_job(coordinator, *, fact_id, subject_user_id, actor="other-operator"):
+    """Pre-create a durable PENDING erasure_jobs row already bound to
+    `subject_user_id` — simulates a fact_id whose per-fact job belongs to
+    a DIFFERENT data subject than the batch about to process it."""
+    job_id = f"erj_conflict_{fact_id}"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "legacy", actor, subject_user_id, PENDING, now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, ?, ?, ?)",
+                (f"{job_id}_{step_name}", job_id, step_name, PENDING),
+            )
+    return job_id
+
+
+def test_subject_conflict_prevents_batch_complete_success(rig):
+    """1: a one-item batch whose only item hits SUBJECT_CONFLICT must
+    never be reported as COMPLETE/successful."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    report = batch.forget_all_durable("userA", reason="dsr", actor="api:newoperator")
+
+    assert report["outcome"] == SUBJECT_CONFLICT
+    assert report["success"] is False
+    assert report["erasure_complete"] is False
+    assert report["operation_finished"] is True
+    assert report["subject_conflict"] is True
+    assert report["conflict_items"] == ["f_conflict"]
+
+
+def test_mixed_batch_with_subject_conflict_is_not_erasure_complete(rig):
+    """2: a mixed batch (one item genuinely erased, one blocked by a
+    subject conflict) must still be reported as non-successful overall —
+    the genuinely-erased item's own outcome is unaffected."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_ok", source="userA"))
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    report = batch.forget_all_durable("userA", reason="dsr", actor="api:newoperator")
+
+    assert report["outcome"] == SUBJECT_CONFLICT
+    assert report["success"] is False
+    assert report["erasure_complete"] is False
+    items = {i["fact_id"]: i["status"] for i in report["items"]}
+    assert items["f_ok"] == COMPLETE
+    assert items["f_conflict"] == SUBJECT_CONFLICT
+    assert store.get_fact("f_ok") is None
+    assert "f_conflict" in report["conflict_items"]
+
+
+def test_subject_conflict_report_remains_non_successful_on_replay(rig):
+    """3: reading the durable report back (get_batch_report) must
+    preserve the same non-successful result, not just the live return
+    value from the original call."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    first = batch.forget_all_durable("userA", reason="dsr", actor="api:newoperator")
+    assert first["outcome"] == SUBJECT_CONFLICT
+
+    reread = batch.get_batch_report(first["batch_id"])
+    assert reread["outcome"] == SUBJECT_CONFLICT
+    assert reread["success"] is False
+    assert reread["erasure_complete"] is False
+    assert reread["operation_finished"] is True
+
+
+def test_subject_conflict_idempotent_replay_stays_non_successful(rig):
+    """4: repeating the same idempotent request (same idempotency_key)
+    must not convert a subject conflict into a successful outcome —
+    resume_incomplete_batches()'s own exclusion of SUBJECT_CONFLICT from
+    _RUNNABLE_BATCH_STATUSES means this also proves it never auto-retries
+    into a false success."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    first = batch.forget_all_durable(
+        "userA", reason="dsr", actor="api:newoperator", idempotency_key="conflict-key",
+    )
+    assert first["outcome"] == SUBJECT_CONFLICT
+
+    second = batch.forget_all_durable(
+        "userA", reason="dsr", actor="api:newoperator", idempotency_key="conflict-key",
+    )
+    assert second["batch_id"] == first["batch_id"]
+    assert second["outcome"] == SUBJECT_CONFLICT
+    assert second["success"] is False
+    assert second["erasure_complete"] is False
+
+    # A crash-recovery style sweep must also never resurrect this into success.
+    resumed = batch.resume_incomplete_batches()
+    assert first["batch_id"] not in {r["batch_id"] for r in resumed}
+
+
+def test_subject_conflict_distinct_from_compliance_and_residual(rig):
+    """5: SUBJECT_CONFLICT must not be confused with
+    CRITICAL_COMPLIANCE_VIOLATION or RESIDUAL_IMMUTABLE_DATA — both keep
+    their own pre-existing, distinct semantics (a batch with only one of
+    those still reaches COMPLETE/COMPLETE_WITH_RESIDUAL); only a genuine
+    subject conflict blocks batch success."""
+    batch, coordinator, store, embeddings, ngram = rig
+
+    store.store_fact(_fact("f_critical"))
+    _force_epistemic_state(store, "f_critical", "ImmutableCore")
+
+    critical_report = batch.forget_all_durable("userA", reason="dsr", actor="tester")
+    assert critical_report["outcome"] == COMPLETE
+    assert critical_report["critical_compliance_violation"] is True
+    assert critical_report["subject_conflict"] is False
+    assert critical_report["conflict_items"] == []

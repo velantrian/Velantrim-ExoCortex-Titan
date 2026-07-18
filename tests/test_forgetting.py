@@ -271,6 +271,127 @@ def test_forget_all_virgin_database_closes_temporary_store(two_dbs, monkeypatch)
     assert closed_paths == [virgin_path]
 
 
+# ── Round 5.3 Codex finding (P2): runtime schema parity for tenant DBs ──────
+# SQLiteGraphStore.ensure_schema()/_db() only ever created the bare
+# erasure_log table + its plain indexes. It never created the append-only
+# triggers (migration 012), the erasure_log_subject_corrections table
+# (migration 016), or the correction-aware erasure_audit VIEW (migration
+# 016) — so a virgin/tenant DB initialized ONLY through this runtime path
+# (no scripts/apply_migrations.py ever run against it) supported durable
+# tombstone writes but NOT durable, correction-aware audit reads: querying
+# erasure_audit raised OperationalError: no such view, and the append-only
+# guarantee was unenforced. These tests prove parity with a fully migrated
+# database.
+
+def test_virgin_tenant_schema_contains_erasure_audit_view(tmp_path):
+    """A brand-new tenant DB, initialized only via ensure_schema() (no
+    migration runner), must already have the erasure_audit view — not just
+    the raw erasure_log table."""
+    virgin_path = str(tmp_path / "virgin_audit.db")
+    store = make_store(virgin_path)
+    store.ensure_schema()
+
+    with sqlite3.connect(virgin_path) as conn:
+        view_row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='view' AND name='erasure_audit'"
+        ).fetchone()
+        corrections_row = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='erasure_log_subject_corrections'"
+        ).fetchone()
+
+    assert view_row is not None
+    assert "corrected_user_id" in view_row[0]
+    assert corrections_row is not None
+
+
+def test_virgin_tenant_erasure_is_immediately_auditable(tmp_path):
+    """A tombstone written on a virgin tenant DB must be readable through
+    erasure_audit immediately — the same query core.forgetting.
+    ForgettingEngine.get_erasure_log() runs — with no migration step in
+    between."""
+    virgin_path = str(tmp_path / "virgin_readable.db")
+    store = make_store(virgin_path)
+    store.write_tombstone(
+        "f1", reason="dsr", actor="userA", content_hash="deadbeef"
+    )
+
+    with sqlite3.connect(virgin_path) as conn:
+        rows = conn.execute(
+            "SELECT user_id FROM erasure_audit WHERE user_id = ?", ("userA",)
+        ).fetchall()
+
+    assert rows == [("userA",)]
+
+
+def test_runtime_and_migrated_erasure_audit_schema_are_equivalent(tmp_path):
+    """The set of columns exposed by erasure_audit, and the append-only
+    trigger names guarding erasure_log/erasure_log_subject_corrections,
+    must be identical whether the DB was built by the runtime DDL path or
+    by running scripts/apply_migrations.py from scratch."""
+    import scripts.apply_migrations as am
+
+    runtime_path = str(tmp_path / "runtime.db")
+    make_store(runtime_path).ensure_schema()
+
+    migrated_path = tmp_path / "migrated.db"
+    am.apply_migrations(migrated_path)
+    migrated_path = str(migrated_path)
+
+    def _schema_fingerprint(db_path):
+        with sqlite3.connect(db_path) as conn:
+            view_cols = tuple(r[1] for r in conn.execute("PRAGMA table_info(erasure_audit)"))
+            triggers = frozenset(
+                r[0] for r in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='trigger' "
+                    "AND name IN ("
+                    "'prevent_erasure_delete', 'prevent_erasure_update', "
+                    "'prevent_erasure_log_subject_corrections_delete', "
+                    "'prevent_erasure_log_subject_corrections_update')"
+                )
+            )
+        return view_cols, triggers
+
+    runtime_cols, runtime_triggers = _schema_fingerprint(runtime_path)
+    migrated_cols, migrated_triggers = _schema_fingerprint(migrated_path)
+    assert (runtime_cols, runtime_triggers) == (migrated_cols, migrated_triggers)
+    assert len(runtime_triggers) == 4
+
+
+def test_tenant_correction_table_is_append_only(tmp_path):
+    """The runtime-created erasure_log_subject_corrections table must
+    enforce the same append-only guarantee as the migrated one — direct
+    UPDATE/DELETE must raise, not silently succeed."""
+    virgin_path = str(tmp_path / "virgin_guard.db")
+    store = make_store(virgin_path)
+    store.write_tombstone(
+        "f1", reason="dsr", actor="userA", content_hash="deadbeef"
+    )
+
+    with sqlite3.connect(virgin_path) as conn:
+        erasure_id = conn.execute(
+            "SELECT erasure_id FROM erasure_log WHERE fact_id = 'f1'"
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO erasure_log_subject_corrections "
+            "(correction_id, erasure_id, job_id, batch_id, corrected_user_id, "
+            "original_user_id, created_at) "
+            "VALUES ('c1', ?, NULL, 'b1', 'userB', 'userA', datetime('now'))",
+            (erasure_id,),
+        )
+        conn.commit()
+
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "UPDATE erasure_log_subject_corrections SET corrected_user_id = 'hacked' "
+                "WHERE correction_id = 'c1'"
+            )
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "DELETE FROM erasure_log_subject_corrections WHERE correction_id = 'c1'"
+            )
+
+
 def test_forget_all_does_not_mask_corrupt_tenant_database(two_dbs):
     """5: a genuinely malformed/corrupt database file must surface its
     real sqlite3 error — never be silently treated as "zero facts"."""

@@ -75,3 +75,37 @@ def test_record_of_processing_is_content_free(store):
     assert ropa["erasure_count"] >= 1
     # No personal data (claim text) leaks into the RoPA.
     assert "secret personal data here" not in json.dumps(ropa)
+
+
+# ── Round 5.3 Codex finding (P2): unified correction-aware audit readers ───
+# record_of_processing() calls core.memory.get_tombstones() directly — the
+# same reader ErasureCoordinator.erasure_log() uses. Before this fix, that
+# raw read bypassed erasure_log_subject_corrections entirely, so a
+# corrected batch-erasure subject (see migrations/016) was invisible to the
+# Art. 30 record even though get_erasure_log()/erasure_audit reported it
+# correctly — the two "same audit" surfaces disagreed.
+
+def test_record_of_processing_reports_corrected_subject(store):
+    import sqlite3
+
+    store_fact(_fact("e2"))
+    erasure.erase_fact("e2", actor="api:deadbeef")
+
+    with sqlite3.connect(store.db_path) as conn:
+        erasure_id = conn.execute(
+            "SELECT erasure_id FROM erasure_log WHERE fact_id = 'e2'"
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO erasure_log_subject_corrections "
+            "(correction_id, erasure_id, job_id, batch_id, corrected_user_id, "
+            "original_user_id, created_at) "
+            "VALUES ('c_ropa', ?, NULL, 'b_ropa', 'realUserA', 'api:deadbeef', "
+            "datetime('now'))",
+            (erasure_id,),
+        )
+        conn.commit()
+
+    ropa = compliance.record_of_processing()
+    subjects = {row["user_id"] for row in ropa["erasure_log"]}
+    assert "realUserA" in subjects
+    assert "api:deadbeef" not in subjects

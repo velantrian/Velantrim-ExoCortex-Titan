@@ -148,6 +148,7 @@ from core.erasure_coordinator import (
     NOT_FOUND,
     PARTIAL,
     RESIDUAL_IMMUTABLE_DATA,
+    SUBJECT_CONFLICT,
 )
 
 logger = logging.getLogger("velantrim.erasure_batch")
@@ -170,7 +171,15 @@ IDEMPOTENCY_CONFLICT = "IDEMPOTENCY_CONFLICT"
 # RESIDUAL_IMMUTABLE_DATA — pass through unchanged as item status ────────────
 SKIPPED_RING_ZERO = "SKIPPED_RING_ZERO"
 
-_TERMINAL_BATCH_STATUSES = (COMPLETE, COMPLETE_WITH_RESIDUAL)
+_TERMINAL_BATCH_STATUSES = (COMPLETE, COMPLETE_WITH_RESIDUAL, SUBJECT_CONFLICT)
+# Round 5.3 fix (Codex P1): SUBJECT_CONFLICT is terminal (operation_finished)
+# but deliberately NOT runnable — resume_incomplete_batches() must never
+# auto-retry a batch stuck on an identity conflict it cannot resolve by
+# itself (the fact_id's job is durably bound to a different subject); an
+# item once marked SUBJECT_CONFLICT is also excluded from
+# _ITEM_RETRYABLE_STATUSES below, so it is never re-processed on any
+# future pass either — an operator must resolve the conflict out-of-band
+# before this fact_id can ever be reprocessed.
 _RUNNABLE_BATCH_STATUSES = (PENDING, PARTIAL, FAILED)
 _ITEM_RETRYABLE_STATUSES = (PENDING, PARTIAL, FAILED)
 
@@ -951,18 +960,38 @@ class BatchErasureCoordinator:
         retryable = [s for s in statuses if s in _ITEM_RETRYABLE_STATUSES]
         critical = any(s == CRITICAL_COMPLIANCE_VIOLATION for s in statuses)
         residual = any(s == RESIDUAL_IMMUTABLE_DATA for s in statuses)
+        # Round 5.3 fix (Codex P1): a SUBJECT_CONFLICT item means THIS
+        # fact_id's job is durably bound to a DIFFERENT subject than this
+        # batch's — erase_fact_durable() never processed/finalized it.
+        # Unlike CRITICAL_COMPLIANCE_VIOLATION/RESIDUAL_IMMUTABLE_DATA
+        # (both real, honest terminal outcomes for their own fact_id that
+        # don't make the OVERALL batch dishonest — the derived data really
+        # is gone, or was correctly refused), a subject conflict means this
+        # fact was NOT erased at all. The batch must never claim COMPLETE
+        # while one is outstanding.
+        conflict = any(s == SUBJECT_CONFLICT for s in statuses)
 
-        # EXECUTION status is computed purely from retryable/residual items
-        # — a CRITICAL_COMPLIANCE_VIOLATION item is terminal-for-itself (it
-        # is never re-processed, see _process_item()) and therefore never
-        # blocks the batch's execution status from reaching a terminal
-        # value, exactly like COMPLETE_WITH_RESIDUAL's `residual`. Whether
-        # ANY item is a compliance violation is tracked entirely separately
-        # below (compliance_status), so a still-PARTIAL batch (other items
+        # EXECUTION status is computed purely from retryable/residual/
+        # conflict items — a CRITICAL_COMPLIANCE_VIOLATION item is
+        # terminal-for-itself (it is never re-processed, see
+        # _process_item()) and therefore never blocks the batch's
+        # execution status from reaching a terminal value, exactly like
+        # COMPLETE_WITH_RESIDUAL's `residual`. Whether ANY item is a
+        # compliance violation is tracked entirely separately below
+        # (compliance_status), so a still-PARTIAL batch (other items
         # genuinely still pending/failed) is not prevented from being
         # resumed just because a violation was also found.
         if retryable:
             outcome = PARTIAL
+        elif conflict:
+            # Terminal (operation_finished=True, see _TERMINAL_BATCH_
+            # STATUSES) but never COMPLETE/COMPLETE_WITH_RESIDUAL — a
+            # caller must never see success=True/erasure_complete=True
+            # while a fact_id in this batch was never actually erased.
+            # Also deliberately excluded from _RUNNABLE_BATCH_STATUSES:
+            # auto-resume must not spin forever retrying an identity
+            # conflict that cannot resolve itself.
+            outcome = SUBJECT_CONFLICT
         elif residual:
             outcome = COMPLETE_WITH_RESIDUAL
         else:
@@ -984,6 +1013,11 @@ class BatchErasureCoordinator:
     def _report(self, batch: dict[str, Any], items: list[dict[str, Any]]) -> dict[str, Any]:
         critical_items = [
             i["fact_id"] for i in items if i["status"] == CRITICAL_COMPLIANCE_VIOLATION
+        ]
+        # Round 5.3 fix (Codex P1): affected fact_ids must remain traceable
+        # in the report, not just in the durable erasure_batch_items rows.
+        conflict_items = [
+            i["fact_id"] for i in items if i["status"] == SUBJECT_CONFLICT
         ]
         # Fail-closed: derive compliance from the batch column OR a direct
         # scan of the CURRENT item rows — never trust the batch column
@@ -1020,6 +1054,8 @@ class BatchErasureCoordinator:
             "compliance_status": compliance_status,
             "critical_compliance_violation": compliance_status == CRITICAL_COMPLIANCE_VIOLATION,
             "critical_items": critical_items,
+            "subject_conflict": batch["status"] == SUBJECT_CONFLICT or bool(conflict_items),
+            "conflict_items": conflict_items,
             "items_total": batch["items_total"],
             "items": [
                 {
@@ -1321,6 +1357,7 @@ __all__ = [
     "FAILED",
     "NOT_FOUND",
     "RESIDUAL_IMMUTABLE_DATA",
+    "SUBJECT_CONFLICT",
     "CRITICAL_COMPLIANCE_VIOLATION",
     "SKIPPED_RING_ZERO",
     "REFUSED",

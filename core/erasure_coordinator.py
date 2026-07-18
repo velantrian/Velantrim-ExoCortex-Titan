@@ -491,7 +491,9 @@ class ErasureCoordinator:
             ).fetchone()
         return row["status"] if row else PENDING
 
-    def _bind_subject_user_id(self, job_id: str, subject_user_id: str) -> None:
+    def _bind_subject_user_id(
+        self, job_id: str, fact_id: str, subject_user_id: str
+    ) -> None:
         """Round 5.2 fix (Codex P2): atomically bind `subject_user_id`
         onto an ADOPTED (already-existing) job whose own subject_user_id
         is still NULL — called from every non-terminal adoption path in
@@ -519,7 +521,26 @@ class ErasureCoordinator:
         if the job is durably bound to a DIFFERENT, non-NULL subject —
         the caller must fail closed and must never disclose that other
         subject's value.
+
+        Round 5.3 fix (Codex P2): a job whose `subject_user_id` column is
+        still NULL is NOT necessarily unclaimed — it may already have a
+        completion tombstone (a pre-Round-5.2 job, or one of this job's
+        own bind call sites that runs on an already-terminal, already-
+        tombstoned job — see the RUNNING-repair and cached-terminal-report
+        paths). Blindly CAS-binding in that case could silently attach a
+        brand-new subject to a job whose real, already-recorded EFFECTIVE
+        subject (resolved through erasure_log_subject_corrections, same
+        as erasure_audit/get_tombstone_for_job()) is someone else entirely.
+        So: if a tombstone already exists for this exact job, its
+        EFFECTIVE subject is checked FIRST — a match falls through to the
+        CAS below (idempotent), a mismatch fails closed immediately,
+        before ever touching the row. Only when no tombstone exists yet
+        (the ordinary in-flight resume case) does this rely solely on the
+        CAS above.
         """
+        tombstone = self._store.get_tombstone_for_job(fact_id, job_id)
+        if tombstone is not None and tombstone["user_id"] != subject_user_id:
+            raise SubjectConflictError(job_id)
         with self._jobs_db() as conn:
             cur = conn.execute(
                 "UPDATE erasure_jobs SET subject_user_id = ?, updated_at = ? "
@@ -681,7 +702,7 @@ class ErasureCoordinator:
                 # will be waited on) — bind the caller's subject BEFORE
                 # returning it for resume/wait, not after.
                 if subject_user_id is not None:
-                    self._bind_subject_user_id(existing["job_id"], subject_user_id)
+                    self._bind_subject_user_id(existing["job_id"], fact_id, subject_user_id)
                 return existing["job_id"]
             with self._jobs_db() as conn:
                 conn.execute(
@@ -710,7 +731,7 @@ class ErasureCoordinator:
                 # own (see the second-order "subject overwrite race"
                 # requirement).
                 if subject_user_id is not None:
-                    self._bind_subject_user_id(existing["job_id"], subject_user_id)
+                    self._bind_subject_user_id(existing["job_id"], fact_id, subject_user_id)
                 return existing["job_id"]
         supersede_from_status: str | None = None
         if existing is not None and existing["status"] not in _TERMINAL_STATUSES:
@@ -722,7 +743,7 @@ class ErasureCoordinator:
                 # runs, so a crash-and-resume still tombstones under the
                 # SAME subject as the original attempt.
                 if subject_user_id is not None:
-                    self._bind_subject_user_id(existing["job_id"], subject_user_id)
+                    self._bind_subject_user_id(existing["job_id"], fact_id, subject_user_id)
                 return existing["job_id"]
             supersede_job_id = existing["job_id"]
             supersede_from_status = existing["status"]
@@ -747,7 +768,7 @@ class ErasureCoordinator:
                 # Round 5.2 fix (Codex P2): same bind-or-conflict
                 # resolution as the other adoption points above.
                 if subject_user_id is not None:
-                    self._bind_subject_user_id(existing["job_id"], subject_user_id)
+                    self._bind_subject_user_id(existing["job_id"], fact_id, subject_user_id)
                 return existing["job_id"]
 
         next_generation = (existing["generation"] + 1) if existing is not None else 1
@@ -899,7 +920,7 @@ class ErasureCoordinator:
         # only succeeds from NULL), so this never rewrites a terminal
         # job's real history; it only ever detects the mismatch.
         if subject_user_id is not None:
-            self._bind_subject_user_id(winner["job_id"], subject_user_id)
+            self._bind_subject_user_id(winner["job_id"], fact_id, subject_user_id)
         return winner["job_id"]
 
     def _set_job_status(self, job_id: str, status: str) -> None:
@@ -1668,7 +1689,7 @@ class ErasureCoordinator:
                 # reconciled report as if it were its own.
                 if subject_user_id is not None:
                     try:
-                        self._bind_subject_user_id(latest_job["job_id"], subject_user_id)
+                        self._bind_subject_user_id(latest_job["job_id"], fact_id, subject_user_id)
                     except SubjectConflictError:
                         return self._no_job_report(
                             fact_id, reason, actor, subject_user_id, SUBJECT_CONFLICT,
@@ -1698,7 +1719,7 @@ class ErasureCoordinator:
                     # silently handed back under the wrong subject.
                     if subject_user_id is not None:
                         try:
-                            self._bind_subject_user_id(latest_job["job_id"], subject_user_id)
+                            self._bind_subject_user_id(latest_job["job_id"], fact_id, subject_user_id)
                         except SubjectConflictError:
                             return self._no_job_report(
                                 fact_id, reason, actor, subject_user_id, SUBJECT_CONFLICT,
