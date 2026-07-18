@@ -32,7 +32,7 @@ from core.erasure_batch_coordinator import (
     SKIPPED_RING_ZERO,
     BatchErasureCoordinator,
 )
-from core.erasure_coordinator import ErasureCoordinator
+from core.erasure_coordinator import ErasureCoordinator, _now
 from core.memory import make_store
 from core.ngram_index import NGramIndex
 from core.tool_registry import PrincipalContext
@@ -1187,4 +1187,44 @@ def test_batch_force_erasure_receipt_records_operator_tombstone_keeps_subject(ri
     assert receipt_actor == "api:deadbeef"
 
     tombstone = store.get_tombstone("f1")
+    assert tombstone["user_id"] == "userA"
+
+
+# ── Round 5.2 fix (Codex P2): batch adoption binds subject_user_id ─────────
+
+def test_batch_adopts_pending_job_and_binds_subject_before_processing(rig):
+    """1: a legacy/crash-left PENDING per-fact job (subject_user_id=NULL,
+    actor="legacy-operator") must be bound to the BATCH's data subject
+    BEFORE it's resumed/finalized — the same job is adopted (no new
+    generation), the tombstone lands under the batch's user_id, and
+    operator provenance (actor) on the pre-existing row is preserved."""
+    batch, coordinator, store, embeddings, ngram = rig
+    fact_id = "f_legacy_pending"
+    store.store_fact(_fact(fact_id, source="userA"))
+
+    job_id = "erj_legacy_pending_batch"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "legacy", "legacy-operator", None, PENDING, now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, ?, ?, ?)",
+                (f"{job_id}_{step_name}", job_id, step_name, PENDING),
+            )
+
+    report = batch.forget_all_durable("userA", reason="dsr", actor="api:deadbeef")
+    assert report["outcome"] == COMPLETE
+
+    job_report = coordinator.get_job_report(fact_id)
+    assert job_report["job_id"] == job_id  # same job adopted, not a new generation
+    assert job_report["subject_user_id"] == "userA"
+    assert job_report["actor"] == "legacy-operator"  # operator provenance preserved
+
+    tombstone = store.get_tombstone(fact_id)
     assert tombstone["user_id"] == "userA"

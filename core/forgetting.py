@@ -336,6 +336,19 @@ class ForgettingEngine:
         dry-run and actual erasure — and closes its own temporary store
         afterward (never the shared global one, since it's never assigned
         to memory._GLOBAL_STORE).
+
+        Round 5.2 fix (Codex P2): SQLiteGraphStore's DDL (the `facts` table
+        included) is initialized LAZILY, on first use via `_db()` — but
+        BatchErasureCoordinator._create_batch_snapshot() queries `facts`
+        through its OWN raw connection, never through this `store` object,
+        so that lazy trigger never fired for a genuinely new/nonexistent
+        `db_path`. A truly virgin tenant database raised
+        `sqlite3.OperationalError: no such table: facts` instead of
+        reporting zero matching facts. `store.ensure_schema()` — one
+        explicit, deterministic call, no fake read/write of real data —
+        forces that initialization up front, before either coordinator is
+        even constructed. A genuinely corrupt/unreadable database file
+        still raises its real sqlite3 error here, unmasked.
         """
         warnings.warn(
             "core.forgetting.ForgettingEngine.forget_all() is deprecated — "
@@ -349,6 +362,7 @@ class ForgettingEngine:
 
         store = SQLiteGraphStore(self._db_path)
         try:
+            store.ensure_schema()
             coordinator = ErasureCoordinator(store=store)
             batch_coordinator = BatchErasureCoordinator(
                 store=store, coordinator=coordinator, jobs_db_path=self._db_path,

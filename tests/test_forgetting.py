@@ -179,3 +179,109 @@ def test_forget_all_closes_temporary_store_even_on_failure(two_dbs, monkeypatch)
 
     assert closed_paths == [tenant_db_path]  # only the shim's own temp store
     assert global_db.db_path not in closed_paths  # never the shared global store
+
+
+# ── Round 5.2 fix (Codex P2): initialize a virgin tenant DB before ──────────
+# snapshotting. SQLiteGraphStore's DDL is lazy (triggered on first _db()
+# use) — but BatchErasureCoordinator._create_batch_snapshot() queries
+# `facts` through its OWN raw connection, never through the `store` object,
+# so a truly new/nonexistent db_path never got that lazy trigger. The fix
+# is store.ensure_schema() — one explicit, deterministic call — invoked by
+# the shim before either coordinator is constructed.
+
+def test_forget_all_initializes_virgin_tenant_database(two_dbs):
+    """1: a db_path pointing to a file that does not yet exist must be
+    initialized (not raise OperationalError), and return a valid
+    zero-item result."""
+    global_db, _ = two_dbs
+    import os
+
+    virgin_path = os.path.join(os.path.dirname(global_db.db_path), "virgin.db")
+    assert not os.path.exists(virgin_path)
+
+    engine = forgetting_mod.ForgettingEngine(db_path=virgin_path)
+    with pytest.deprecated_call():
+        verdict = engine.forget_all(user_id="userA", reason="dsr")
+
+    assert verdict.affected_facts == 0
+    assert os.path.exists(virgin_path)
+    with sqlite3.connect(virgin_path) as conn:
+        has_facts = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='facts'"
+        ).fetchone()
+    assert has_facts is not None
+    # The global store must never have been consulted for this virgin
+    # tenant's request.
+    assert global_db.get_fact("f_global") is None  # nothing stored there either
+
+
+def test_forget_all_dry_run_on_virgin_database_returns_zero(two_dbs):
+    """2: dry_run=True against a virgin (nonexistent-file) tenant database
+    must return zero matching facts and must not raise — and, following
+    the existing dry-run contract (_preview() never touches
+    erasure_batches), must create no durable batch row."""
+    global_db, _ = two_dbs
+    import os
+
+    virgin_path = os.path.join(os.path.dirname(global_db.db_path), "virgin_dry.db")
+    assert not os.path.exists(virgin_path)
+
+    engine = forgetting_mod.ForgettingEngine(db_path=virgin_path)
+    with pytest.deprecated_call():
+        verdict = engine.forget_all(user_id="userA", reason="dsr", dry_run=True)
+
+    assert verdict.allowed is True
+    assert verdict.reason == "dry_run"
+    assert verdict.affected_facts == 0
+
+    with sqlite3.connect(virgin_path) as conn:
+        has_batches_table = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='erasure_batches'"
+        ).fetchone()
+        batch_count = (
+            conn.execute("SELECT COUNT(*) FROM erasure_batches").fetchone()[0]
+            if has_batches_table else 0
+        )
+    assert batch_count == 0
+
+
+def test_forget_all_virgin_database_closes_temporary_store(two_dbs, monkeypatch):
+    """4: the temporary tenant store must still be closed after the virgin-
+    database path, exactly like the pre-existing (non-virgin) case."""
+    import os
+
+    import core.memory as memory_mod
+
+    global_db, _ = two_dbs
+    virgin_path = os.path.join(os.path.dirname(global_db.db_path), "virgin_close.db")
+
+    closed_paths: list[str] = []
+    real_close = memory_mod.SQLiteGraphStore.close
+
+    def _tracking_close(self):
+        closed_paths.append(self.db_path)
+        return real_close(self)
+
+    monkeypatch.setattr(memory_mod.SQLiteGraphStore, "close", _tracking_close)
+
+    engine = forgetting_mod.ForgettingEngine(db_path=virgin_path)
+    with pytest.deprecated_call():
+        engine.forget_all(user_id="userA", reason="dsr")
+
+    assert closed_paths == [virgin_path]
+
+
+def test_forget_all_does_not_mask_corrupt_tenant_database(two_dbs):
+    """5: a genuinely malformed/corrupt database file must surface its
+    real sqlite3 error — never be silently treated as "zero facts"."""
+    global_db, _ = two_dbs
+    import os
+
+    corrupt_path = os.path.join(os.path.dirname(global_db.db_path), "corrupt.db")
+    with open(corrupt_path, "wb") as f:
+        f.write(b"this is not a sqlite database file, just garbage bytes\x00\x01\x02")
+
+    engine = forgetting_mod.ForgettingEngine(db_path=corrupt_path)
+    with pytest.deprecated_call():
+        with pytest.raises(sqlite3.DatabaseError):
+            engine.forget_all(user_id="userA", reason="dsr")

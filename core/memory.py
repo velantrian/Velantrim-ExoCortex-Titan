@@ -221,6 +221,27 @@ class SQLiteGraphStore(GraphStore):
         self._sqlite_conn: sqlite3.Connection | None = None
         self._db_lock = threading.RLock()
 
+    def ensure_schema(self) -> None:
+        """Deterministically trigger the canonical DDL initialization for
+        `self.db_path` (facts/l0_raw_memory/l0_fact_provenance/erasure_log/
+        etc. — see `_db()`) without performing any read or write of actual
+        data.
+
+        `_db()` already does this lazily, guarded by
+        `self._ddl_initialized_paths`, on first use by any real operation —
+        this method exists for callers (e.g.
+        core.forgetting.ForgettingEngine.forget_all()) that must guarantee
+        the schema exists BEFORE handing this store's `db_path` to a
+        DIFFERENT component that queries it via its own raw connection
+        (core.erasure_batch_coordinator.BatchErasureCoordinator's
+        `_create_batch_snapshot()`), where the lazy trigger would otherwise
+        never fire. A genuinely corrupt/unreadable database file still
+        raises its real sqlite3 error here — never silently swallowed or
+        treated as "no data yet".
+        """
+        with self._db():
+            pass
+
     @contextmanager
     def _db(self):
         """Контекст БД: одно переиспользуемое соединение, сериализованное RLock."""
