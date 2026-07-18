@@ -578,22 +578,26 @@ class ErasureCoordinator:
         or not) is unaffected: that path is a pure identity CHECK, never
         a mutating write, so it cannot race a live runner's own write.
 
-        Round 5.4 second-order fix (Codex P2): the RUNNING check above
+        Round 5.4 second-order fix (Codex P1): the RUNNING check above
         only inspects the `job` snapshot the CALLER already had in hand —
-        which can go stale between that check and the UPDATE below (e.g.
-        `job` was read as PENDING/PARTIAL/FAILED, but a live runner claims
-        it into RUNNING in the gap before this method's own UPDATE runs).
-        The UPDATE's WHERE clause therefore ALSO requires `status !=
-        RUNNING` directly against the CURRENT row, not the stale snapshot
-        — a real CAS guard, not just a pre-check. If the UPDATE fails to
-        match for that reason (subject_user_id is still NULL, but the row
-        moved), the row is reloaded fully fresh and this method recurses
-        ONCE (`_reloaded` guards against looping): the tombstone check
-        above then re-runs against current reality too, so a job that
-        raced all the way to COMPLETE (and therefore now has a real
-        tombstone written by _finalize() BEFORE that status flip) is
-        correctly re-evaluated for a match/conflict rather than blindly
-        bound.
+        which can go stale between that check and the UPDATE below. An
+        earlier version of this fix only guarded the CAS with `status !=
+        RUNNING`, which missed the case where the row instead raced all
+        the way to COMPLETE (or any OTHER status) in that same gap:
+        COMPLETE also satisfies `!= RUNNING`, so the UPDATE would still
+        blindly succeed — binding a subject onto a job whose real
+        completion tombstone was JUST written (by the winning runner's
+        `_finalize()`) under the OLD `actor` fallback, with no re-check
+        against it at all. The CAS therefore now requires `status = ?`
+        bound to the EXACT status this method observed (full optimistic
+        concurrency, not a partial exclusion) — ANY status change at all
+        since the read (to RUNNING, COMPLETE, or anything else) makes the
+        UPDATE miss. On a miss, the row is reloaded fully fresh and this
+        method recurses ONCE (`_reloaded` guards against looping): both
+        the RUNNING guard and the tombstone check at the top re-run
+        against current reality, so a job that raced to COMPLETE is
+        correctly re-evaluated for a match/conflict against its
+        just-written tombstone, never blindly bound.
         """
         if job["status"] == RUNNING and job.get("subject_user_id") is None:
             raise LiveJobPendingError(job["job_id"])
@@ -604,8 +608,8 @@ class ErasureCoordinator:
         with self._jobs_db() as conn:
             cur = conn.execute(
                 "UPDATE erasure_jobs SET subject_user_id = ?, updated_at = ? "
-                "WHERE job_id = ? AND subject_user_id IS NULL AND status != ?",
-                (subject_user_id, _now(), job_id, RUNNING),
+                "WHERE job_id = ? AND subject_user_id IS NULL AND status = ?",
+                (subject_user_id, _now(), job_id, job["status"]),
             )
             if cur.rowcount > 0:
                 return
@@ -1334,10 +1338,22 @@ class ErasureCoordinator:
             # tool) that never had a separate data-subject identity to
             # provide — this is the explicit, documented compatibility
             # fallback, not a behavior change for them.
+            #
+            # Round 5.4 second-order fix (Codex P2): an explicit but EMPTY
+            # subject_user_id (e.g. forget_all_durable(..., force=True,
+            # user_id="") — force bypasses the ambiguous-user_id guard for
+            # an empty string) is still a REAL, explicitly-provided
+            # subject — `or` would treat "" as falsy and silently fall
+            # back to `actor`, recreating the exact subject-vs-actor
+            # mismatch this whole fix exists to prevent for that one
+            # forced-empty-user case. An explicit `is not None` check
+            # preserves it; only a genuinely absent (NULL/never-provided)
+            # subject_user_id falls back to `actor`.
+            subject = job.get("subject_user_id")
             self._store.write_tombstone(
                 job["fact_id"],
                 reason=job["reason"],
-                actor=job.get("subject_user_id") or job["actor"],
+                actor=subject if subject is not None else job["actor"],
                 content_hash=job["content_hash"],
                 job_id=job["job_id"],
             )

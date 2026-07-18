@@ -3459,3 +3459,132 @@ def test_bind_subject_user_id_reevaluates_after_stale_snapshot_races_to_complete
             "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", (job_id,),
         ).fetchone()
     assert row["subject_user_id"] is None
+
+
+# ── Round 5.4 third-order Codex findings, from the latest fresh re-review ──
+
+def test_bind_subject_user_id_detects_race_to_complete_during_its_own_cas(rig, monkeypatch):
+    """P1: 'Avoid binding after a job has already completed'. If the job
+    races all the way to COMPLETE (with a real tombstone written under a
+    DIFFERENT subject) in the EXACT window between this method's own
+    tombstone check (which still correctly saw nothing at that moment)
+    and its CAS attempt, the CAS must not blindly bind just because its
+    status guard happened to match something other than RUNNING — the
+    exact-status optimistic-concurrency CAS must catch ANY status change
+    at all and force a fresh re-check."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "race_to_complete_during_cas_fact"
+    job_id = f"erj_race_cas_{fact_id}"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "dsr", "operatorReal", None, PENDING, now, now),
+        )
+        conn.commit()
+
+    job = coordinator._load_job(job_id)
+    assert job["status"] == PENDING
+
+    original_get_tombstone_for = coordinator._get_tombstone_for
+    calls = {"n": 0}
+
+    def racing_get_tombstone_for(j):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            # The exact race: another runner finishes the job RIGHT NOW,
+            # between this (genuinely tombstone-less, at the time)
+            # lookup and the CAS attempt that follows it.
+            store.write_tombstone(
+                fact_id, reason="dsr", actor="operatorReal",
+                content_hash="deadbeef", job_id=job_id,
+            )
+            with coordinator._jobs_db() as conn:
+                conn.execute(
+                    "UPDATE erasure_jobs SET status = ? WHERE job_id = ?",
+                    (COMPLETE, job_id),
+                )
+                conn.commit()
+            return None
+        return original_get_tombstone_for(j)
+
+    monkeypatch.setattr(coordinator, "_get_tombstone_for", racing_get_tombstone_for)
+
+    with pytest.raises(SubjectConflictError):
+        coordinator._bind_subject_user_id(job, "userDifferent")
+
+    with coordinator._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", (job_id,),
+        ).fetchone()
+    assert row["subject_user_id"] is None
+
+
+def test_bind_subject_user_id_matching_subject_survives_race_to_complete(rig, monkeypatch):
+    """Companion case: if the SAME race occurs but the requested subject
+    actually matches what the just-written tombstone shows, the bounded
+    reload/retry must succeed cleanly rather than falsely conflicting."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "race_to_complete_matching_fact"
+    job_id = f"erj_race_cas_match_{fact_id}"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "dsr", "operatorReal", None, PENDING, now, now),
+        )
+        conn.commit()
+
+    job = coordinator._load_job(job_id)
+    original_get_tombstone_for = coordinator._get_tombstone_for
+    calls = {"n": 0}
+
+    def racing_get_tombstone_for(j):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            store.write_tombstone(
+                fact_id, reason="dsr", actor="operatorReal",
+                content_hash="deadbeef", job_id=job_id,
+            )
+            with coordinator._jobs_db() as conn:
+                conn.execute(
+                    "UPDATE erasure_jobs SET status = ? WHERE job_id = ?",
+                    (COMPLETE, job_id),
+                )
+                conn.commit()
+            return None
+        return original_get_tombstone_for(j)
+
+    monkeypatch.setattr(coordinator, "_get_tombstone_for", racing_get_tombstone_for)
+
+    coordinator._bind_subject_user_id(job, "operatorReal")  # must not raise
+
+    with coordinator._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", (job_id,),
+        ).fetchone()
+    assert row["subject_user_id"] == "operatorReal"
+
+
+def test_finalize_preserves_explicit_empty_subject_user_id(rig):
+    """P2: 'Preserve explicitly empty subject ids'. An explicitly-provided
+    EMPTY subject_user_id ("") — allowed past the ambiguous-user_id guard
+    when a caller forces it — must be preserved as the tombstone's
+    effective subject, never silently replaced by `actor` via a
+    falsy-string fallback."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "empty_subject_id_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "data")
+
+    result = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="operatorX", subject_user_id="",
+    )
+    assert result["outcome"] == COMPLETE
+
+    tombstone = store.get_tombstone_for_job(fact_id, result["job_id"])
+    assert tombstone["user_id"] == ""
+    assert tombstone["user_id"] != "operatorX"

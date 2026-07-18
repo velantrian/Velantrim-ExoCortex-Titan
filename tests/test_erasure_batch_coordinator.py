@@ -1552,4 +1552,58 @@ def test_conflict_alone_with_no_retryable_items_still_reports_subject_conflict(r
     report = batch.get_batch_report(batch_id)
     assert report["outcome"] == SUBJECT_CONFLICT
     assert report["operation_finished"] is True
+
+
+# ── Round 5.4 third-order Codex finding (P2): make recomputed PARTIAL ───────
+# batches actually runnable again. Reporting outcome=PARTIAL for a stale
+# terminal row is not enough — _run_batch()/resume_incomplete_batches()
+# both gate on the STORED erasure_batches.status column, so without a
+# self-heal write the batch would report PARTIAL forever without ever
+# being picked up for reprocessing.
+
+def test_recomputed_partial_batch_self_heals_stored_status(rig):
+    """The stored status column itself must be repaired back to PARTIAL
+    (best-effort) when _report() discovers a stale terminal claim with
+    retryable items underneath — so a later resume actually reprocesses
+    them, rather than the batch being stuck reporting PARTIAL forever."""
+    batch, coordinator, store, embeddings, ngram = rig
+    batch_id = "eb_self_heal_partial"
+    now = _now()
+    with batch._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_batches (batch_id, user_id, reason, actor, force, "
+            "scope, idempotency_key, request_fingerprint, status, compliance_status, "
+            "items_total, snapshot_hash, snapshot_at, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, 0, NULL, NULL, ?, ?, NULL, ?, ?, ?, ?, ?)",
+            (batch_id, "userA", "dsr", "tester", "fp_self_heal", COMPLETE,
+             2, "hash_self_heal", now, now, now),
+        )
+        conn.execute(
+            "INSERT INTO erasure_batch_items (item_id, batch_id, fact_id, "
+            "epistemic_state_at_snapshot, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (f"{batch_id}_item1", batch_id, "f_pending", "Observed", PENDING, now, now),
+        )
+        conn.execute(
+            "INSERT INTO erasure_batch_items (item_id, batch_id, fact_id, "
+            "epistemic_state_at_snapshot, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (f"{batch_id}_item2", batch_id, "f_done", "Observed", COMPLETE, now, now),
+        )
+        conn.commit()
+
+    report = batch.get_batch_report(batch_id)
+    assert report["outcome"] == PARTIAL
+    assert report["stored_status"] == COMPLETE  # reflects the value AT READ time
+
+    with batch._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT status FROM erasure_batches WHERE batch_id = ?", (batch_id,),
+        ).fetchone()
+    assert row["status"] == PARTIAL  # the self-heal actually landed
+
+    # Genuinely runnable now — resume_incomplete_batches() must be able to
+    # pick it up, not skip it forever.
+    resumed_ids = {r["batch_id"] for r in batch.resume_incomplete_batches()}
+    assert batch_id in resumed_ids
     assert report["success"] is False

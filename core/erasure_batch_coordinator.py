@@ -1073,6 +1073,34 @@ class BatchErasureCoordinator:
                 effective_outcome = COMPLETE
         else:
             effective_outcome = stored_status
+        # Round 5.4 second-order fix (Codex P2): reporting `PARTIAL` alone
+        # is not enough — _run_batch()/resume_incomplete_batches() both
+        # gate on the STORED erasure_batches.status column, not on this
+        # recomputed report, so a restored/hand-repaired row left at a
+        # stale terminal status would report PARTIAL forever without ever
+        # actually being picked up for reprocessing. Best-effort self-heal
+        # the stored column back in line with what the item evidence
+        # actually shows — a guarded CAS on the EXACT stale value read
+        # above, so a genuinely fresher concurrent write (e.g. a live
+        # runner finishing the batch for real in the meantime) is never
+        # clobbered. This is defense-in-depth only: the report's own
+        # correctness (computed entirely from `effective_outcome` above)
+        # never depends on this write succeeding.
+        if effective_outcome == PARTIAL and stored_status != PARTIAL:
+            try:
+                with self._jobs_db() as conn:
+                    conn.execute(
+                        "UPDATE erasure_batches SET status = ?, updated_at = ? "
+                        "WHERE batch_id = ? AND status = ?",
+                        (PARTIAL, _now(), batch["batch_id"], stored_status),
+                    )
+                    conn.commit()
+            except Exception:  # noqa: BLE001 — best-effort only
+                logger.warning(
+                    "_report: self-heal of stale terminal status to PARTIAL "
+                    "failed for batch %s — report remains correct regardless.",
+                    batch["batch_id"],
+                )
         subject_conflict = bool(conflict_items) or effective_outcome == SUBJECT_CONFLICT
         operation_finished = effective_outcome in _TERMINAL_BATCH_STATUSES
         erasure_complete = (
