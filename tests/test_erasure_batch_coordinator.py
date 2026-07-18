@@ -1355,3 +1355,115 @@ def test_subject_conflict_distinct_from_compliance_and_residual(rig):
     assert critical_report["critical_compliance_violation"] is True
     assert critical_report["subject_conflict"] is False
     assert critical_report["conflict_items"] == []
+
+
+# ── Round 5.4 Codex finding (P2): fold conflict items into effective ────────
+# success reporting. _report() used to derive success/erasure_complete
+# purely from the durable batch row's `status` — a restored/hand-repaired/
+# pre-Round-5.3 row could have status=COMPLETE while its OWN item rows
+# still carried SUBJECT_CONFLICT, and the report would still claim
+# success=true/erasure_complete=true. _report() must re-derive the
+# effective outcome from conflict_items every time, independent of the
+# stored batch status.
+
+def test_report_fails_closed_when_complete_batch_contains_conflict_item(rig):
+    """1-3: a batch row hand-restored to status=COMPLETE whose item rows
+    still contain SUBJECT_CONFLICT must fail closed when read back — the
+    stored status is exposed separately (`stored_status`) but never
+    trusted as the effective result."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    first = batch.forget_all_durable("userA", reason="dsr", actor="api:newoperator")
+    assert first["outcome"] == SUBJECT_CONFLICT
+
+    # Simulate a restored/stale row: the durable STATUS says COMPLETE, but
+    # the item row underneath (never touched) still says SUBJECT_CONFLICT.
+    with batch._jobs_db() as conn:
+        conn.execute(
+            "UPDATE erasure_batches SET status = ? WHERE batch_id = ?",
+            (COMPLETE, first["batch_id"]),
+        )
+        conn.commit()
+
+    reread = batch.get_batch_report(first["batch_id"])
+    assert reread["stored_status"] == COMPLETE
+    assert reread["outcome"] == SUBJECT_CONFLICT
+    assert reread["success"] is False
+    assert reread["erasure_complete"] is False
+    assert reread["subject_conflict"] is True
+    assert reread["conflict_items"] == ["f_conflict"]
+
+
+def test_restored_complete_batch_with_conflict_is_not_erasure_complete(rig):
+    """5: reading a restored/stale report is not just a one-off — repeated
+    reads all fail closed, and no execution path (resume) needs to run for
+    this to hold."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_ok", source="userA"))
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    first = batch.forget_all_durable("userA", reason="dsr", actor="api:newoperator")
+    assert first["outcome"] == SUBJECT_CONFLICT
+
+    with batch._jobs_db() as conn:
+        conn.execute(
+            "UPDATE erasure_batches SET status = ? WHERE batch_id = ?",
+            (COMPLETE, first["batch_id"]),
+        )
+        conn.commit()
+
+    for _ in range(3):
+        reread = batch.get_batch_report(first["batch_id"])
+        assert reread["success"] is False
+        assert reread["erasure_complete"] is False
+
+
+def test_critical_and_subject_conflict_batch_remains_non_successful(rig):
+    """6: a batch with BOTH a critical-compliance item and a subject
+    conflict must preserve critical precedence (compliance_status still
+    set) while also never reporting success — the conflict remains
+    visible in conflict_items regardless."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_critical"))
+    _force_epistemic_state(store, "f_critical", "ImmutableCore")
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    report = batch.forget_all_durable("userA", reason="dsr", actor="tester")
+
+    assert report["critical_compliance_violation"] is True
+    assert report["subject_conflict"] is True
+    assert "f_conflict" in report["conflict_items"]
+    assert report["success"] is False
+    assert report["erasure_complete"] is False
+
+
+def test_conflict_report_replay_cannot_restore_success(rig):
+    """7: idempotent replay of a batch whose durable row was tampered with
+    to look COMPLETE must remain non-successful — replay must never be a
+    way to launder a stale/inconsistent row into a false success."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    first = batch.forget_all_durable(
+        "userA", reason="dsr", actor="api:newoperator", idempotency_key="restored-key",
+    )
+    assert first["outcome"] == SUBJECT_CONFLICT
+
+    with batch._jobs_db() as conn:
+        conn.execute(
+            "UPDATE erasure_batches SET status = ? WHERE batch_id = ?",
+            (COMPLETE, first["batch_id"]),
+        )
+        conn.commit()
+
+    replay = batch.forget_all_durable(
+        "userA", reason="dsr", actor="api:newoperator", idempotency_key="restored-key",
+    )
+    assert replay["batch_id"] == first["batch_id"]
+    assert replay["success"] is False
+    assert replay["erasure_complete"] is False

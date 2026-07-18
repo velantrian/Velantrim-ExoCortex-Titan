@@ -1013,6 +1013,21 @@ class SQLiteGraphStore(GraphStore):
             ).fetchall()
         return [self._row_to_tombstone(r) for r in rows]
 
+    def count_null_job_tombstones(self, fact_id: str) -> int:
+        """Round 5.4 (Codex P2): how many legacy (job_id IS NULL) tombstones
+        exist for `fact_id` — used by ErasureCoordinator to decide whether
+        the narrow pre-014 NULL-job fallback lookup is safe to trust. Two
+        or more is a genuine ambiguity (multiple historical erasures of the
+        same fact_id, predating job-scoped tombstones) that must never be
+        silently resolved by picking "the latest one" — the caller fails
+        closed instead."""
+        with self._db() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM erasure_log WHERE fact_id = ? AND job_id IS NULL",
+                (fact_id,),
+            ).fetchone()
+        return row[0] if row else 0
+
     @staticmethod
     def _row_to_tombstone(row) -> dict:
         claim_hash = row[4] or ""

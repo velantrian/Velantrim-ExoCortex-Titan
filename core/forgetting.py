@@ -110,6 +110,38 @@ class ForgetVerdict:
         }
 
 
+def _batch_report_to_allowed(report: Dict[str, Any]) -> bool:
+    """Round 5.4 fix (Codex P2): the ONE place that converts a
+    BatchErasureCoordinator report into the legacy ForgetVerdict.allowed
+    field — replaces the old ad-hoc `operation_finished or outcome ==
+    "PARTIAL"` mapping.
+
+    `operation_finished` means only that the batch reached a terminal
+    EXECUTION state — SUBJECT_CONFLICT (Round 5.3) is terminal too,
+    precisely so it never auto-retries forever, but a terminal subject
+    conflict is NOT an allowed/successfully-completed erasure. Mapping
+    terminality straight to "allowed" silently claimed success for a
+    batch where the conflicting fact was never actually erased.
+
+    A critical-compliance finding (compliance_status, tracked
+    independently of the execution outcome — see
+    BatchErasureCoordinator._report()) must also never be reported as
+    allowed, even though its execution outcome can itself be COMPLETE.
+
+    COMPLETE_WITH_RESIDUAL keeps its pre-existing, deliberate "allowed"
+    contract (the derived layer really is gone; the raw-original residual
+    is a documented, known limitation, not a failure) — explicitly listed
+    here, not incidentally caught by a "terminal" check.
+
+    Every other outcome (PARTIAL/FAILED/RUNNING/anything still in
+    progress) is not allowed — a caller must resubmit/resume to actually
+    reach completion, exactly like every other still-in-progress state.
+    """
+    if report.get("critical_compliance_violation") or report.get("subject_conflict"):
+        return False
+    return report["outcome"] in ("COMPLETE", "COMPLETE_WITH_RESIDUAL")
+
+
 # ─── PII Redaction ────────────────────────────────────────────────────────────
 
 def redact_pii(text: str) -> str:
@@ -413,11 +445,10 @@ class ForgettingEngine:
             )
 
         return ForgetVerdict(
-            # operation_finished (COMPLETE or COMPLETE_WITH_RESIDUAL — the
-            # execution status, independent of any compliance flag) mirrors
-            # this shim's historical "allowed" meaning; PARTIAL is still
-            # legitimately resumable, not a refusal.
-            allowed=report["operation_finished"] or report["outcome"] == "PARTIAL",
+            # Round 5.4 fix (Codex P2): see _batch_report_to_allowed() —
+            # `operation_finished` alone is never sufficient (SUBJECT_
+            # CONFLICT is terminal too, but not a successful erasure).
+            allowed=_batch_report_to_allowed(report),
             reason=report["outcome"].lower(),
             affected_facts=report["items_total"],
             details=details,

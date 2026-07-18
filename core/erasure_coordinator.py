@@ -226,6 +226,30 @@ class SubjectConflictError(Exception):
     disclosed to the caller (only that a conflict exists)."""
 
 
+class LiveJobPendingError(Exception):
+    """Round 5.4 fix (Codex P2): raised internally by
+    ErasureCoordinator._bind_subject_user_id() when a caller supplies
+    subject_user_id for an existing job that is genuinely still RUNNING
+    (a live runner may hold it right now) AND whose subject_user_id is
+    still NULL.
+
+    _finalize() re-reads the job row fresh immediately before writing the
+    completion tombstone, but that fresh read and the tombstone INSERT are
+    not one atomic unit with a CONCURRENT caller's own CAS-bind — if the
+    bind commits in that narrow window, the live runner's already-loaded
+    `job` local variable still holds the OLD (NULL) subject_user_id, so
+    the tombstone would be written under the fallback `actor` while the
+    row itself now shows the newly-bound subject: divergent evidence.
+    Rather than invent an unproven ownership-fencing/takeover mechanism,
+    this fails closed instead — the row is never touched, and the caller
+    must treat this fact_id as still in-progress/retryable and try again
+    once the live job has actually reached a terminal state (at which
+    point the tombstone-first-reconciliation and cached-terminal-report
+    paths verify the EFFECTIVE tombstone subject before ever binding).
+
+    Always caught inside erase_fact_durable() itself — never escapes it."""
+
+
 class ErasureCoordinator:
     """Durable, resumable GDPR Art. 17 erasure saga.
 
@@ -492,7 +516,7 @@ class ErasureCoordinator:
         return row["status"] if row else PENDING
 
     def _bind_subject_user_id(
-        self, job_id: str, fact_id: str, subject_user_id: str
+        self, job: dict[str, Any], subject_user_id: str
     ) -> None:
         """Round 5.2 fix (Codex P2): atomically bind `subject_user_id`
         onto an ADOPTED (already-existing) job whose own subject_user_id
@@ -537,8 +561,27 @@ class ErasureCoordinator:
         before ever touching the row. Only when no tombstone exists yet
         (the ordinary in-flight resume case) does this rely solely on the
         CAS above.
+
+        Round 5.4 fix (Codex P2): the tombstone lookup now goes through
+        `_get_tombstone_for(job)` — the SAME canonical, correction-aware,
+        legacy-NULL-job-fallback-with-ambiguity-guard helper used by
+        `_get_tombstone_for()`'s other callers (cached terminal
+        reconciliation, tombstone-first recovery) — rather than a bare
+        exact-job lookup, so a pre-014 generation-1 job's real tombstone
+        (recorded with job_id IS NULL) is honored here too, not just
+        exact job_id matches. `job` (the full row, not just job_id/
+        fact_id) is required for this — it carries `generation`.
+
+        Also Round 5.4: a job that is genuinely RUNNING right now with
+        subject_user_id still NULL is NOT safe to CAS-bind at all — see
+        LiveJobPendingError. A job already bound to ANY subject (RUNNING
+        or not) is unaffected: that path is a pure identity CHECK, never
+        a mutating write, so it cannot race a live runner's own write.
         """
-        tombstone = self._store.get_tombstone_for_job(fact_id, job_id)
+        if job["status"] == RUNNING and job.get("subject_user_id") is None:
+            raise LiveJobPendingError(job["job_id"])
+        job_id = job["job_id"]
+        tombstone = self._get_tombstone_for(job)
         if tombstone is not None and tombstone["user_id"] != subject_user_id:
             raise SubjectConflictError(job_id)
         with self._jobs_db() as conn:
@@ -702,7 +745,7 @@ class ErasureCoordinator:
                 # will be waited on) — bind the caller's subject BEFORE
                 # returning it for resume/wait, not after.
                 if subject_user_id is not None:
-                    self._bind_subject_user_id(existing["job_id"], fact_id, subject_user_id)
+                    self._bind_subject_user_id(existing, subject_user_id)
                 return existing["job_id"]
             with self._jobs_db() as conn:
                 conn.execute(
@@ -731,7 +774,7 @@ class ErasureCoordinator:
                 # own (see the second-order "subject overwrite race"
                 # requirement).
                 if subject_user_id is not None:
-                    self._bind_subject_user_id(existing["job_id"], fact_id, subject_user_id)
+                    self._bind_subject_user_id(existing, subject_user_id)
                 return existing["job_id"]
         supersede_from_status: str | None = None
         if existing is not None and existing["status"] not in _TERMINAL_STATUSES:
@@ -743,7 +786,7 @@ class ErasureCoordinator:
                 # runs, so a crash-and-resume still tombstones under the
                 # SAME subject as the original attempt.
                 if subject_user_id is not None:
-                    self._bind_subject_user_id(existing["job_id"], fact_id, subject_user_id)
+                    self._bind_subject_user_id(existing, subject_user_id)
                 return existing["job_id"]
             supersede_job_id = existing["job_id"]
             supersede_from_status = existing["status"]
@@ -768,7 +811,7 @@ class ErasureCoordinator:
                 # Round 5.2 fix (Codex P2): same bind-or-conflict
                 # resolution as the other adoption points above.
                 if subject_user_id is not None:
-                    self._bind_subject_user_id(existing["job_id"], fact_id, subject_user_id)
+                    self._bind_subject_user_id(existing, subject_user_id)
                 return existing["job_id"]
 
         next_generation = (existing["generation"] + 1) if existing is not None else 1
@@ -920,7 +963,7 @@ class ErasureCoordinator:
         # only succeeds from NULL), so this never rewrites a terminal
         # job's real history; it only ever detects the mismatch.
         if subject_user_id is not None:
-            self._bind_subject_user_id(winner["job_id"], fact_id, subject_user_id)
+            self._bind_subject_user_id(winner, subject_user_id)
         return winner["job_id"]
 
     def _set_job_status(self, job_id: str, status: str) -> None:
@@ -1596,13 +1639,28 @@ class ErasureCoordinator:
         exact P1-A bug this hotfix fixed) — it only ever applies to
         generation 1, and only after the caller has already verified a real,
         genuinely-COMPLETE erasure_jobs row exists for this job.
+
+        Round 5.4 fix (Codex P2): the NULL-job fallback is additionally
+        narrowed to require EXACTLY ONE such legacy tombstone for this
+        fact_id. Two or more job_id=NULL tombstones (multiple historical
+        erasures of the same fact_id, predating job-scoped tombstones) is
+        a genuine ambiguity — picking "the latest one" (what
+        get_tombstone_for_job(fact_id, None) alone would do) could
+        corroborate this generation-1 job with a tombstone that was
+        actually written for a DIFFERENT historical erasure. Fail closed
+        (None) instead of guessing. This is the single canonical lookup
+        shared by every caller that needs to know whether (and under what
+        effective subject) a job has already been durably tombstoned —
+        _bind_subject_user_id() (Round 5.4) included.
         """
         tombstone = self._store.get_tombstone_for_job(job["fact_id"], job["job_id"])
         if tombstone is not None:
             return tombstone
-        if job.get("generation", 1) == 1:
-            return self._store.get_tombstone_for_job(job["fact_id"], None)
-        return None
+        if job.get("generation", 1) != 1:
+            return None
+        if self._store.count_null_job_tombstones(job["fact_id"]) != 1:
+            return None
+        return self._store.get_tombstone_for_job(job["fact_id"], None)
 
     def erase_fact_durable(
         self,
@@ -1688,8 +1746,17 @@ class ErasureCoordinator:
                 # handed back this job's (possibly different-subject)
                 # reconciled report as if it were its own.
                 if subject_user_id is not None:
+                    # Round 5.4 fix (Codex P2): `latest_job` is the STALE
+                    # pre-reconciliation snapshot peeked at the top of this
+                    # method — reconciliation just CAS-updated the row to
+                    # COMPLETE out from under it. Binding against the stale
+                    # dict would see status=RUNNING and wrongly trip the
+                    # live-job guard in _bind_subject_user_id() even though
+                    # the job is now provably COMPLETE (reconciled from its
+                    # own exact tombstone). Reload it fresh first.
+                    reconciled_job = self._load_job(latest_job["job_id"])
                     try:
-                        self._bind_subject_user_id(latest_job["job_id"], fact_id, subject_user_id)
+                        self._bind_subject_user_id(reconciled_job, subject_user_id)
                     except SubjectConflictError:
                         return self._no_job_report(
                             fact_id, reason, actor, subject_user_id, SUBJECT_CONFLICT,
@@ -1719,7 +1786,7 @@ class ErasureCoordinator:
                     # silently handed back under the wrong subject.
                     if subject_user_id is not None:
                         try:
-                            self._bind_subject_user_id(latest_job["job_id"], fact_id, subject_user_id)
+                            self._bind_subject_user_id(latest_job, subject_user_id)
                         except SubjectConflictError:
                             return self._no_job_report(
                                 fact_id, reason, actor, subject_user_id, SUBJECT_CONFLICT,
@@ -1756,6 +1823,24 @@ class ErasureCoordinator:
             # no processing happened, nothing to report on.
             return self._no_job_report(
                 fact_id, reason, actor, subject_user_id, SUBJECT_CONFLICT,
+            )
+        except LiveJobPendingError:
+            # Round 5.4 fix (Codex P2): the job this call would have
+            # adopted is genuinely RUNNING right now with subject_user_id
+            # still NULL — binding here would race the live runner's own
+            # tombstone write (see LiveJobPendingError). Rather than wait
+            # on (and silently ride along with) a job whose eventual
+            # subject was never verified against this caller's own
+            # request, fail closed as PARTIAL/retryable: this fact_id is
+            # still in-progress from this caller's point of view, and a
+            # later retry — once the live job has actually reached a
+            # terminal state — will correctly verify the effective
+            # tombstone subject before ever binding (tombstone-first
+            # reconciliation / cached-terminal-report paths). `job_id:
+            # None` mirrors the other early-return reports above — no
+            # decision was made for THIS call, nothing to report on.
+            return self._no_job_report(
+                fact_id, reason, actor, subject_user_id, PARTIAL,
             )
         # _run_job(job_id) with the default wait_if_running=True never
         # returns None — that is only possible for the
@@ -1907,4 +1992,5 @@ __all__ = [
     "RESIDUAL_IMMUTABLE_DATA",
     "SUBJECT_CONFLICT",
     "SubjectConflictError",
+    "LiveJobPendingError",
 ]

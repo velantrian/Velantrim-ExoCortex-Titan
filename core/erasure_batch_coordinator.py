@@ -1028,12 +1028,30 @@ class BatchErasureCoordinator:
         compliance_status = batch.get("compliance_status") or (
             CRITICAL_COMPLIANCE_VIOLATION if critical_items else None
         )
-        operation_finished = batch["status"] in _TERMINAL_BATCH_STATUSES
+        stored_status = batch["status"]
+        # Round 5.4 fix (Codex P2): _finalize_batch() always keeps
+        # stored_status and the item rows in sync for anything IT writes
+        # (SUBJECT_CONFLICT items -> stored_status == SUBJECT_CONFLICT,
+        # never COMPLETE) — but _report() must never simply TRUST that
+        # invariant. A restored/hand-repaired/pre-Round-5.3 batch row can
+        # have stored_status == COMPLETE while its OWN item rows still
+        # carry SUBJECT_CONFLICT; re-scanning conflict_items here, every
+        # time, independently of stored_status, is what makes the public
+        # report fail closed regardless of how the durable row got that
+        # way — exactly like critical_items already does for compliance.
+        subject_conflict = stored_status == SUBJECT_CONFLICT or bool(conflict_items)
+        operation_finished = stored_status in _TERMINAL_BATCH_STATUSES
         erasure_complete = (
             operation_finished
-            and batch["status"] == COMPLETE
+            and stored_status == COMPLETE
             and compliance_status is None
+            and not subject_conflict
         )
+        # The EFFECTIVE outcome a caller should trust — never the raw
+        # stored status when the item-level evidence contradicts it.
+        # `stored_status` is exposed separately, unmodified, for
+        # diagnostics/self-heal tooling only.
+        effective_outcome = SUBJECT_CONFLICT if subject_conflict else stored_status
         return {
             "batch_id": batch["batch_id"],
             "user_id": batch["user_id"],
@@ -1042,19 +1060,21 @@ class BatchErasureCoordinator:
             "force": bool(batch["force"]),
             "scope": batch["scope"],
             "idempotency_key": batch["idempotency_key"],
-            "outcome": batch["status"],
+            "outcome": effective_outcome,
+            "stored_status": stored_status,
             # operation_finished: no more retryable items — independent of
             # compliance. erasure_complete/success: the narrower, honest
             # "fully, provably erased, nothing outstanding at all" signal —
-            # COMPLETE_WITH_RESIDUAL and any compliance violation are BOTH
-            # excluded from this, on purpose (see module docstring).
+            # COMPLETE_WITH_RESIDUAL, any compliance violation, and any
+            # subject conflict are ALL excluded from this, on purpose (see
+            # module docstring).
             "operation_finished": operation_finished,
             "erasure_complete": erasure_complete,
             "success": erasure_complete,
             "compliance_status": compliance_status,
             "critical_compliance_violation": compliance_status == CRITICAL_COMPLIANCE_VIOLATION,
             "critical_items": critical_items,
-            "subject_conflict": batch["status"] == SUBJECT_CONFLICT or bool(conflict_items),
+            "subject_conflict": subject_conflict,
             "conflict_items": conflict_items,
             "items_total": batch["items_total"],
             "items": [

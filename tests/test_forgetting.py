@@ -406,3 +406,123 @@ def test_forget_all_does_not_mask_corrupt_tenant_database(two_dbs):
     with pytest.deprecated_call():
         with pytest.raises(sqlite3.DatabaseError):
             engine.forget_all(user_id="userA", reason="dsr")
+
+
+# ── Round 5.4 Codex finding (P2): keep subject conflicts (and other ─────────
+# non-successful terminal outcomes) out of legacy ForgetVerdict.allowed.
+# The deprecated shim used to map allowed=operation_finished (or
+# outcome=="PARTIAL") — since SUBJECT_CONFLICT is terminal too (so it never
+# auto-retries forever), that mapping reported allowed=True for a batch
+# where the conflicting fact was never actually erased.
+
+def _insert_conflicting_job(store, *, fact_id, subject_user_id, actor="other-operator"):
+    """Pre-create a durable PENDING erasure_jobs row already bound to
+    `subject_user_id` — simulates a fact_id whose per-fact job belongs to
+    a DIFFERENT data subject than the batch about to process it."""
+    import time
+
+    from core.erasure_coordinator import ErasureCoordinator
+
+    ErasureCoordinator(store=store)  # triggers erasure_jobs/_steps DDL
+    job_id = f"erj_conflict_{fact_id}"
+    now = time.strftime("%Y-%m-%dT%H:%M:%S")
+    with store._db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "legacy", actor, subject_user_id, "PENDING", now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, ?, ?, ?)",
+                (f"{job_id}_{step_name}", job_id, step_name, "PENDING"),
+            )
+        conn.commit()
+
+
+def test_legacy_forget_verdict_rejects_terminal_subject_conflict(two_dbs):
+    """1: a SUBJECT_CONFLICT batch must return ForgetVerdict.allowed=False
+    — never True just because the batch reached a terminal state."""
+    _, tenant_db_path = two_dbs
+    tenant_store = make_store(tenant_db_path)
+    tenant_store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(tenant_store, fact_id="f_conflict", subject_user_id="userB")
+
+    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path)
+    with pytest.deprecated_call():
+        verdict = engine.forget_all(user_id="userA", reason="dsr", actor="api:newoperator")
+
+    assert verdict.allowed is False
+    assert verdict.reason == "subject_conflict"
+
+
+def test_legacy_forget_verdict_allows_only_completed_erasure(two_dbs):
+    """2: a fully COMPLETE batch (no conflict, no critical finding) still
+    returns allowed=True — the fix must not regress the ordinary
+    successful path."""
+    _, tenant_db_path = two_dbs
+    tenant_store = make_store(tenant_db_path)
+    tenant_store.store_fact(_fact("f_ok", source="userA"))
+
+    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path)
+    with pytest.deprecated_call():
+        verdict = engine.forget_all(user_id="userA", reason="dsr", actor="tester")
+
+    assert verdict.allowed is True
+    assert verdict.reason == "complete"
+
+
+def test_legacy_forget_verdict_rejects_critical_compliance_violation(two_dbs):
+    """3: a batch whose execution outcome is COMPLETE but whose
+    compliance_status is CRITICAL_COMPLIANCE_VIOLATION must still return
+    allowed=False — terminality (and even a COMPLETE execution outcome)
+    is never enough on its own."""
+    _, tenant_db_path = two_dbs
+    tenant_store = make_store(tenant_db_path)
+    tenant_store.store_fact(_fact("f_critical", source="userA"))
+    with tenant_store._db() as conn:
+        conn.execute(
+            "UPDATE facts SET epistemic_state = 'ImmutableCore' WHERE fact_id = ?",
+            ("f_critical",),
+        )
+        conn.commit()
+
+    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path)
+    with pytest.deprecated_call():
+        verdict = engine.forget_all(user_id="userA", reason="dsr", actor="tester")
+
+    assert verdict.allowed is False
+
+
+def test_legacy_forget_verdict_does_not_equate_terminal_with_allowed(two_dbs):
+    """4: a still-retryable (PARTIAL) batch — here produced by a live
+    RUNNING per-fact job with subject_user_id still NULL (Round 5.4
+    finding 4) — must return allowed=False, never True."""
+    import time
+
+    from core.erasure_coordinator import ErasureCoordinator
+
+    _, tenant_db_path = two_dbs
+    tenant_store = make_store(tenant_db_path)
+    tenant_store.store_fact(_fact("f_running", source="userA"))
+    ErasureCoordinator(store=tenant_store)  # triggers erasure_jobs DDL
+
+    job_id = "erj_running_f_running"
+    now = time.strftime("%Y-%m-%dT%H:%M:%S")
+    with tenant_store._db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, "f_running", 1, "legacy", "legacy-operator", None, "RUNNING", now, now),
+        )
+        conn.commit()
+
+    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path)
+    with pytest.deprecated_call():
+        verdict = engine.forget_all(user_id="userA", reason="dsr", actor="tester")
+
+    assert verdict.allowed is False
+    assert verdict.reason == "partial"
