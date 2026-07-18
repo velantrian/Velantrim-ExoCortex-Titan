@@ -58,6 +58,41 @@ def _accessible_levels(capability: str) -> Set[str]:
     return set(CAPABILITY_CHAIN[idx:])  # от текущего до admin
 
 
+# ─── Principal context (server-verified caller identity) ─────────────────────
+
+@dataclass(frozen=True)
+class PrincipalContext:
+    """Server-verified caller context, injected by core.mcp_transport into
+    any tool registered with `needs_principal=True` — NEVER constructed
+    from client-supplied JSON.
+
+    `capability` is the exact value core.mcp_transport.resolve_authorized_
+    capability() computed for THIS call (already clamped to the deployment's
+    server-side ceiling) — a tool receiving this can trust it, unlike a
+    hardcoded literal or a client-supplied field.
+
+    `credential_fingerprint` is a pseudonymous, server-derived value
+    ("api:" + sha256(api_key)[:8]) — deliberately NOT named "actor_id"/
+    "user_id": a single shared API key is not a per-user credential, so
+    this fingerprint identifies "the same caller who holds this key
+    again", never a verified individual. Mirrors the existing precedent
+    in server.py's PATCH /facts/{fact_id}/transition (`req.by` is ignored
+    the same way for the same reason: a client must never be able to
+    forge who performed a sensitive action just by naming themselves in
+    a JSON body) — that endpoint's local variable is itself named
+    `actor_id`, which is a pre-existing, un-renamed instance of the same
+    imprecision; not touched here since it's outside this CR's scope.
+
+    This is intentionally NOT a general identity/session system — this
+    codebase has no authenticated-user concept (a single shared API key
+    grants one server-wide capability ceiling to every caller holding
+    it); it is only a way to stop a handler from having to pretend it
+    verified something the dispatch layer already verified for real.
+    """
+    capability: str
+    credential_fingerprint: str
+
+
 # ─── Tool descriptor ─────────────────────────────────────────────────────────
 
 @dataclass
@@ -70,6 +105,11 @@ class ToolDef:
     params: Dict[str, Any] = field(default_factory=dict)  # JSON Schema параметров
     destructive: bool = False  # требует admin
     audit: bool = True        # логировать вызов в provenance
+    # True for tools whose handler must receive a real PrincipalContext
+    # (see above) instead of trusting client-supplied params for identity/
+    # capability — core.mcp_transport._tools_call() injects it as a
+    # `principal=` kwarg when this is set.
+    needs_principal: bool = False
 
     def to_manifest(self) -> Dict[str, Any]:
         """MCP-совместимый манифест инструмента."""
@@ -110,6 +150,7 @@ class ToolRegistry:
         params: Dict[str, Any] | None = None,
         destructive: bool = False,
         audit: bool = True,
+        needs_principal: bool = False,
     ) -> Callable:
         """
         Зарегистрировать инструмент. Можно использовать как декоратор.
@@ -122,6 +163,10 @@ class ToolRegistry:
             params: JSON Schema параметров (для MCP-манифеста)
             destructive: True если инструмент необратимо меняет данные
             audit: True если вызов нужно логировать в provenance
+            needs_principal: True если fn должен получить PrincipalContext
+                (см. выше) как kwarg `principal=` — для инструментов, которым
+                нельзя доверять capability/identity, заявленные в клиентском
+                JSON, а нужно то, что реально проверил transport-слой
 
         Returns:
             fn (для использования как декоратор)
@@ -140,6 +185,7 @@ class ToolRegistry:
             params=params or {},
             destructive=destructive,
             audit=audit,
+            needs_principal=needs_principal,
         )
         self._tools[name] = tool
 
@@ -384,7 +430,54 @@ def register_velantrim_tools(registry: ToolRegistry) -> None:
 
     registry.register(
         "forget_all", h.forget_all, capability="admin",
-        description="Удалить все факты пользователя (GDPR Article 17)",
+        description=(
+            "Удалить все факты пользователя (GDPR Article 17): durable, "
+            "resumable batch erasure saga через core.erasure_batch_coordinator "
+            "— снимок затрагиваемых fact_id фиксируется до удаления, каждый "
+            "факт удаляется через существующую per-fact saga (forget_fact), "
+            "ImmutableCore с персональными данными сообщается как CRITICAL "
+            "(не пропускается молча). capability и actor берутся из "
+            "server-verified PrincipalContext (needs_principal=True), а не "
+            "из клиентского JSON — force=True реально требует admin, а не "
+            "жёстко прошитого допущения"
+        ),
+        needs_principal=True,
+        params={
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "ID пользователя, чьи факты удаляются",
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Причина удаления (для Art. 30 audit trail)",
+                    "default": "gdpr_request",
+                },
+                "dry_run": {
+                    "type": "boolean",
+                    "description": "Только предпросмотр — ничего не удаляет и не создаёт batch",
+                    "default": False,
+                },
+                "force": {
+                    "type": "boolean",
+                    "description": (
+                        "Разрешить удаление при пустом/'default' user_id. "
+                        "Требует scope и доступен только admin-capability"
+                    ),
+                    "default": False,
+                },
+                "scope": {
+                    "type": "string",
+                    "description": "Явное описание масштаба удаления — обязателен при force=True",
+                },
+                "idempotency_key": {
+                    "type": "string",
+                    "description": "Повторный вызов с тем же ключом возобновляет тот же batch, не создаёт новый",
+                },
+            },
+            "required": ["user_id"],
+        },
         destructive=True, audit=True,
     )
 

@@ -71,6 +71,20 @@ IMMUTABLE_FACT_IDS = {"VALUES_CORE", "RING_ZERO"}
 L0_CAP = 128
 SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
 
+# GDPR Art. 17 batch erasure (core.erasure_batch_coordinator): the single
+# source of truth for "which facts belong to user_id", shared by
+# SQLiteGraphStore.list_fact_ids_by_user_durable() (used for dry-run
+# previews) and BatchErasureCoordinator._create_batch_snapshot() (which runs
+# this SAME text directly on its own connection, inside the same
+# transaction as the batch/item INSERTs it snapshots for, so the read and
+# the write are genuinely atomic — see there for why a separate connection
+# for the SELECT would NOT be atomic).
+FACTS_BY_USER_FILTER_SQL = (
+    "SELECT fact_id, epistemic_state FROM facts "
+    "WHERE source = ? OR json_extract(metadata, '$.user_id') = ? "
+    "ORDER BY fact_id"
+)
+
 # Same-DB tables erase_fact_dependents_atomic() purges for a fact_id,
 # shared with same_db_dependents_present() (a read-only residual check —
 # see core/erasure_coordinator.py's _residual_data_present()) so the two
@@ -719,6 +733,32 @@ class SQLiteGraphStore(GraphStore):
                 if row is not None:
                     return True
         return False
+
+    def list_fact_ids_by_user_durable(self, user_id: str) -> list[dict[str, Any]]:
+        """Read-only, durable (bypasses L0/caches) selection of every fact
+        currently matching a GDPR data-subject filter: `source = user_id`
+        OR `metadata.user_id = user_id` — the same structural match
+        core.forgetting.ForgettingEngine.forget_all() has always used, kept
+        here as a real DB read rather than a substring LIKE (which would
+        match far too broadly, e.g. user_id='default' matching every fact
+        whose source merely CONTAINS the word).
+
+        Used by core.erasure_batch_coordinator for `dry_run` previews only
+        (a read with no follow-up write, so this connection is fine there).
+        The durable batch SNAPSHOT itself does NOT use this method — it runs
+        `FACTS_BY_USER_FILTER_SQL` directly on its OWN jobs-DB connection, in
+        the SAME transaction as the batch/item INSERTs, so the read and the
+        write are genuinely atomic (see
+        BatchErasureCoordinator._create_batch_snapshot()). This module-level
+        constant is the single source of truth for that filter clause so
+        both call sites can never drift apart.
+
+        Returns `[{"fact_id": ..., "epistemic_state": ...}, ...]`, ordered
+        by fact_id for a deterministic snapshot ordering.
+        """
+        with self._db() as conn:
+            rows = conn.execute(FACTS_BY_USER_FILTER_SQL, (user_id, user_id)).fetchall()
+        return [{"fact_id": r[0], "epistemic_state": r[1]} for r in rows]
 
     def delete_fact_l1(self, fact_id: str) -> bool:
         """Legacy bool-returning wrapper.
@@ -2974,6 +3014,12 @@ def erase_fact_dependents_atomic(fact_id: str) -> dict[str, Any]:
 def same_db_dependents_present(fact_id: str) -> bool:
     """Read-only residual check — see SQLiteGraphStore.same_db_dependents_present()."""
     return _GLOBAL_STORE.same_db_dependents_present(fact_id)
+
+
+def list_fact_ids_by_user_durable(user_id: str) -> list[dict[str, Any]]:
+    """GDPR Art. 17 batch erasure: durable snapshot selection — see
+    SQLiteGraphStore.list_fact_ids_by_user_durable()."""
+    return _GLOBAL_STORE.list_fact_ids_by_user_durable(user_id)
 
 
 def write_tombstone(fact_id: str, *, reason: str, actor: str,

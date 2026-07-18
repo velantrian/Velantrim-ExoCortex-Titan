@@ -9,7 +9,12 @@ import os
 import uuid
 from typing import Any
 
-from core.tool_registry import CAPABILITY_CHAIN, ToolRegistry, get_tool_registry
+from core.tool_registry import (
+    CAPABILITY_CHAIN,
+    PrincipalContext,
+    ToolRegistry,
+    get_tool_registry,
+)
 
 logger = logging.getLogger("velantrim.mcp")
 
@@ -108,6 +113,7 @@ class McpHandler:
         *,
         capability: str,
         session_id: str | None = None,
+        credential_fingerprint: str | None = None,
     ) -> dict[str, Any] | None:
         if payload.get("jsonrpc") != "2.0":
             return make_error(payload.get("id"), -32600, "Invalid Request")
@@ -143,7 +149,9 @@ class McpHandler:
             return make_result(msg_id, {"tools": self._tools_for(capability)})
 
         if method == "tools/call":
-            return self._tools_call(msg_id, capability, params)
+            return self._tools_call(
+                msg_id, capability, params, credential_fingerprint=credential_fingerprint,
+            )
 
         if msg_id is None:
             return None
@@ -159,6 +167,8 @@ class McpHandler:
         msg_id: Any,
         capability: str,
         params: dict[str, Any],
+        *,
+        credential_fingerprint: str | None = None,
     ) -> dict[str, Any]:
         name = params.get("name", "")
         arguments = params.get("arguments") or {}
@@ -175,10 +185,22 @@ class McpHandler:
         if tool.destructive and capability != "admin":
             return make_error(msg_id, -32603, "Destructive tool requires admin capability")
 
+        call_kwargs = dict(arguments)
+        if tool.needs_principal:
+            # A real, server-verified PrincipalContext — `capability` is the
+            # value resolve_authorized_capability() already computed for
+            # THIS call (never a hardcoded literal a handler invents), and
+            # credential_fingerprint is a pseudonymous, server-derived value
+            # a client cannot forge by naming themselves in the JSON body.
+            call_kwargs["principal"] = PrincipalContext(
+                capability=capability,
+                credential_fingerprint=credential_fingerprint or "api:anon",
+            )
+
         try:
             if tool.audit:
                 logger.info("MCP tool call: %s capability=%s", name, capability)
-            result = tool.fn(**arguments) if arguments else tool.fn()
+            result = tool.fn(**call_kwargs)
             text = json.dumps(result, ensure_ascii=False, default=str)
             return make_result(
                 msg_id,

@@ -15,6 +15,7 @@ from core.mcp_transport import (
     normalize_capability,
     resolve_authorized_capability,
 )
+from core.tool_registry import PrincipalContext, ToolRegistry
 
 
 @pytest.fixture(autouse=True)
@@ -137,3 +138,125 @@ def test_handler_tools_call_supersede_fact_atomic_flow_end_to_end(monkeypatch, t
     assert payload["new_fact_id"] == new_id
     assert memory_mod.get_fact(old_id)["epistemic_state"] == "Deprecated"
     assert memory_mod.get_fact(new_id)["epistemic_state"] == "Validated"
+
+
+# ── Blocker #4: real PrincipalContext injection, not a fake handler-side check ──
+
+def test_tools_call_injects_real_principal_for_needs_principal_tools(monkeypatch):
+    """A tool registered with needs_principal=True must receive a
+    PrincipalContext whose `capability` is the value THIS call's
+    resolve_authorized_capability() actually computed (never a hardcoded
+    literal), and whose `credential_fingerprint` is whatever the transport
+    passed through — never something the handler invents or assumes for
+    itself."""
+    monkeypatch.setenv("VELANTRIM_MCP_MAX_CAPABILITY", "admin")
+
+    captured: dict = {}
+
+    def _echo_principal(*, principal: PrincipalContext):
+        captured["principal"] = principal
+        return {
+            "capability": principal.capability,
+            "credential_fingerprint": principal.credential_fingerprint,
+        }
+
+    registry = ToolRegistry()
+    registry.register(
+        "echo_principal", _echo_principal, capability="admin",
+        destructive=True, needs_principal=True,
+    )
+    handler = McpHandler(registry=registry)
+
+    resp = handler.handle(
+        {
+            "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "echo_principal", "arguments": {}},
+        },
+        capability="admin",
+        credential_fingerprint="api:realcallerhash",
+    )
+
+    assert resp["result"]["isError"] is False
+    payload = json.loads(resp["result"]["content"][0]["text"])
+    assert payload["capability"] == "admin"
+    assert payload["credential_fingerprint"] == "api:realcallerhash"
+    assert isinstance(captured["principal"], PrincipalContext)
+
+
+def test_tools_call_clamps_principal_capability_to_real_ceiling(monkeypatch):
+    """A client requesting a higher capability than the server ceiling
+    allows must never let a needs_principal tool see the ELEVATED value —
+    it must see the SAME clamped capability every other gate in this
+    request saw."""
+    monkeypatch.delenv("VELANTRIM_MCP_MAX_CAPABILITY", raising=False)  # ceiling stays "reader"
+
+    def _echo_principal(*, principal: PrincipalContext):
+        return {"capability": principal.capability}
+
+    registry = ToolRegistry()
+    registry.register(
+        "echo_principal", _echo_principal, capability="reader", needs_principal=True,
+    )
+    handler = McpHandler(registry=registry)
+
+    # capability="admin" here mimics a client header BEFORE any transport
+    # clamp; handler.handle() itself re-clamps via resolve_authorized_
+    # capability() (see McpHandler.handle()'s own docstring/comment).
+    resp = handler.handle(
+        {
+            "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+            "params": {"name": "echo_principal", "arguments": {}},
+        },
+        capability="admin",
+        credential_fingerprint="api:someone",
+    )
+
+    assert resp["result"]["isError"] is False
+    payload = json.loads(resp["result"]["content"][0]["text"])
+    assert payload["capability"] == "reader"
+
+
+def test_credential_fingerprint_defaults_to_anon_when_not_supplied():
+    """A caller of McpHandler.handle() (e.g. a future non-HTTP transport)
+    that doesn't pass credential_fingerprint must not crash or silently
+    invent a fake identity — it gets the same 'api:anon' fallback
+    api/mcp_gateway.py itself uses for a request with no API key
+    configured."""
+    def _echo_principal(*, principal: PrincipalContext):
+        return {"credential_fingerprint": principal.credential_fingerprint}
+
+    registry = ToolRegistry()
+    registry.register(
+        "echo_principal", _echo_principal, capability="reader", needs_principal=True,
+    )
+    handler = McpHandler(registry=registry)
+
+    resp = handler.handle(
+        {
+            "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+            "params": {"name": "echo_principal", "arguments": {}},
+        },
+        capability="reader",
+    )
+
+    payload = json.loads(resp["result"]["content"][0]["text"])
+    assert payload["credential_fingerprint"] == "api:anon"
+
+
+def test_gateway_derives_credential_fingerprint_from_api_key_hash_not_client_claim():
+    """api/mcp_gateway.py._derive_credential_fingerprint() mirrors
+    server.py's existing PATCH /facts/{fact_id}/transition precedent: a
+    pseudonymous value derived server-side from the API key, never a
+    client-suppliable value. Same key -> same fingerprint (deterministic);
+    different keys -> different fingerprints; no key -> the same
+    'api:anon' fallback used elsewhere."""
+    import hashlib
+
+    from api.mcp_gateway import _derive_credential_fingerprint
+
+    assert _derive_credential_fingerprint("") == "api:anon"
+    a = _derive_credential_fingerprint("secret-key-one")
+    b = _derive_credential_fingerprint("secret-key-two")
+    assert a != b
+    assert a == _derive_credential_fingerprint("secret-key-one")
+    assert a == "api:" + hashlib.sha256(b"secret-key-one").hexdigest()[:8]

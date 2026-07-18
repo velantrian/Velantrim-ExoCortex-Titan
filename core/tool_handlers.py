@@ -11,6 +11,7 @@ from typing import Any
 
 from core import memory as memory_api
 from core.pipeline import retrieve
+from core.tool_registry import PrincipalContext
 
 
 def search_facts(query: str, *, k: int = 5, domain: str | None = None) -> list[dict[str, Any]]:
@@ -243,19 +244,40 @@ def supersede_fact(old_fact_id: str, new_fact: dict[str, Any]) -> dict[str, Any]
 def forget_all(
     *,
     user_id: str,
+    principal: PrincipalContext,
     reason: str = "gdpr_request",
     dry_run: bool = False,
     force: bool = False,
+    scope: str | None = None,
+    idempotency_key: str | None = None,
 ) -> dict[str, Any]:
-    from core.forgetting import get_forgetting_engine
+    """GDPR Art. 17 batch erasure (FORGET_ALL): durable, resumable batch
+    saga via core.erasure_batch_coordinator — see there for the full
+    state machine.
 
-    verdict = get_forgetting_engine().forget_all(
-        user_id=user_id,
+    `principal` is REQUIRED and is never something this function invents
+    or assumes: core.tool_registry registers this tool with
+    `needs_principal=True`, so core.mcp_transport injects the REAL
+    server-verified capability/credential_fingerprint for THIS call (see
+    core.tool_registry.PrincipalContext) — this handler has no
+    "actor_capability='admin'" literal of its own to fake a check with.
+    A caller that invokes this function directly (bypassing the MCP
+    dispatch entirely) must supply its own PrincipalContext explicitly;
+    there is no way to reach this function without one, and no default
+    that silently grants admin.
+    """
+    from core.erasure_batch_coordinator import forget_all_durable
+
+    return forget_all_durable(
+        user_id,
         reason=reason,
-        dry_run=dry_run,
+        actor=principal.credential_fingerprint,
+        actor_capability=principal.capability,
         force=force,
+        scope=scope,
+        dry_run=dry_run,
+        idempotency_key=idempotency_key,
     )
-    return verdict.to_dict()
 
 
 def reset_graph(*, confirm: bool = False) -> dict[str, Any]:

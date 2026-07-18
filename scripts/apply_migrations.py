@@ -40,6 +40,7 @@ MIGRATIONS = [
     (12, BASE_DIR / "migrations" / "012_crystal_memory.sql"),
     (13, BASE_DIR / "migrations" / "013_erasure_jobs.sql"),
     (14, BASE_DIR / "migrations" / "014_erasure_job_generations.sql"),
+    (15, BASE_DIR / "migrations" / "015_erasure_batches.sql"),
 ]
 
 LATEST_VERSION = max(v for v, _ in MIGRATIONS)
