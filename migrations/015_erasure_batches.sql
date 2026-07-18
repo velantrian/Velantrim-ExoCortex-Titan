@@ -53,6 +53,18 @@
 --     processing pass — including while a single item's
 --     erase_fact_durable() call runs longer than the lease TTL — not
 --     merely at the (potentially far apart) boundaries between items.
+--     Fail-closed: any exception during renewal, or the heartbeat thread
+--     not stopping within its join timeout, is treated as a lost lease.
+--   - claim_generation: a fencing token, incremented on every successful
+--     batch claim (live or crash-recovery). _claim_item()/
+--     _set_item_status() require this EXACT value to still match at
+--     item-claim/write time — a runner that has lost the batch (its
+--     generation is now superseded) can never claim, let alone write to,
+--     ANY item again, even one it never touched before. This closes the
+--     gap a bare runner_id check alone would leave open: without it, a
+--     runner that lost the batch could still move on to its NEXT item,
+--     unconditionally re-claim it, and win the item-level ownership CAS
+--     even though it no longer owns the batch at all.
 --
 -- erasure_batch_items — the durable SNAPSHOT: one row per fact_id
 -- selected by the batch's filter, captured atomically WITH the batch row
@@ -63,15 +75,17 @@
 -- replays exactly these rows and NEVER re-queries `facts` by user_id
 -- again. A fact ingested for the same user_id AFTER the snapshot was
 -- taken is out of scope for this batch by construction.
---   - item_runner_id / item_lease_expires_at: per-ITEM ownership. Every
---     item status write is an ownership CAS scoped to item_runner_id
---     (BatchErasureCoordinator._set_item_status()) — a runner whose
---     erase_fact_durable() call finally returns AFTER a newer runner has
---     already re-claimed the SAME item (it lost the batch lease and a
---     crash-recovery worker took over) has its late write silently
---     discarded rather than clobbering the current owner's result.
---     item_lease_expires_at is informational only; nothing reclaims an
---     item on a timer the way the batch-level lease above does.
+--   - item_runner_id / item_claim_generation / item_lease_expires_at:
+--     per-ITEM ownership. _claim_item() is itself an ownership CAS — it
+--     only claims an item if the caller can currently prove it owns the
+--     BATCH (erasure_batches.runner_id/status/claim_generation all
+--     matching), not an unconditional overwrite. _set_item_status()
+--     re-checks the SAME ownership + fencing token at write time — a
+--     runner whose erase_fact_durable() call finally returns AFTER it
+--     has lost the batch has its late write silently discarded rather
+--     than clobbering the current owner's result. item_lease_expires_at
+--     is informational only; nothing reclaims an item on a timer the way
+--     the batch-level lease above does.
 --
 -- erasure_batch_force_receipts — a separate, append-only audit receipt
 -- (genuinely enforced by BEFORE DELETE/UPDATE triggers below, mirroring
@@ -125,6 +139,8 @@ CREATE TABLE IF NOT EXISTS erasure_batches (
     snapshot_hash        TEXT NOT NULL,
     runner_id           TEXT,
     lease_expires_at    TEXT,
+    -- Fencing token — see rationale above.
+    claim_generation    INTEGER NOT NULL DEFAULT 0,
     error               TEXT,
     snapshot_at         TEXT NOT NULL,
     created_at          TEXT NOT NULL,
@@ -147,6 +163,7 @@ CREATE TABLE IF NOT EXISTS erasure_batch_items (
     -- CRITICAL_COMPLIANCE_VIOLATION | SKIPPED_RING_ZERO | PARTIAL | FAILED
     status                        TEXT NOT NULL DEFAULT 'PENDING',
     item_runner_id                TEXT,
+    item_claim_generation         INTEGER,
     item_lease_expires_at         TEXT,
     job_id                        TEXT,
     detail                        TEXT,

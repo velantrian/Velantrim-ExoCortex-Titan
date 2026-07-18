@@ -489,38 +489,169 @@ def test_item_slower_than_ttl_heartbeat_prevents_reclaim(rig, monkeypatch):
     assert store.get_fact("f1") is None
 
 
-def test_stale_runner_cannot_overwrite_item_status_after_losing_ownership(rig):
-    """Round-2 blocker #2: an item's status write is an ownership CAS on
-    item_runner_id — a runner whose result arrives AFTER a newer runner has
-    already re-claimed the same item must have its write silently
-    discarded, never overwrite the current owner's result."""
+def test_heartbeat_lease_lost_stops_pass_before_next_item_even_starts(rig, monkeypatch):
+    """Round-4 blocker #2 (from _run_batch's loop): once the heartbeat has
+    already flagged lease_lost, the processing loop must not even ATTEMPT
+    the next retryable item (no _claim_item()/erase_fact_durable() call at
+    all) — checked before the DB round-trip, not only after a claim fails."""
     batch, coordinator, store, *_ = rig
     store.store_fact(_fact("f1"))
+    store.store_fact(_fact("f2"))
+
+    monkeypatch.setattr(ebc_module, "_LEASE_TTL_SECONDS", 0.2)
+    # Simulate the lease being genuinely lost (e.g. reclaimed elsewhere)
+    # the very first time the heartbeat tries to renew it.
+    monkeypatch.setattr(batch, "_renew_lease", lambda batch_id, runner_id: False)
+
+    orig_run_l1 = coordinator._run_l1_same_db
+    processed = []
+
+    def slow_first_item(job_id, fact_id):
+        processed.append(fact_id)
+        if fact_id == "f1":
+            time.sleep(0.5)  # long enough for the heartbeat to fire and fail
+        return orig_run_l1(job_id, fact_id)
+
+    monkeypatch.setattr(coordinator, "_run_l1_same_db", slow_first_item)
+
+    report = batch.forget_all_durable("userA", reason="dsr")
+
+    # f1 was already mid-flight when the lease was lost, so it legitimately
+    # finishes (its own DB-level ownership CAS is untouched by the mocked
+    # _renew_lease) -- but f2 must NEVER have been attempted at all.
+    assert "f2" not in processed
+    assert report["outcome"] == RUNNING  # never finalized -- lease was lost
+    items = {i["fact_id"]: i["status"] for i in report["items"]}
+    assert items["f1"] == COMPLETE
+    assert items["f2"] == PENDING
+
+
+def test_renew_lease_raising_operational_error_fails_closed(rig, monkeypatch):
+    """Round-4 blocker #2: an exception from the renewal call (e.g. a
+    transient sqlite3.OperationalError) must be treated exactly like a
+    confirmed lost lease — never silently ignored, never left with
+    lease_lost still False. The item loop stops and finalize never runs."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1"))
+    store.store_fact(_fact("f2"))
+
+    monkeypatch.setattr(ebc_module, "_LEASE_TTL_SECONDS", 0.2)
+
+    def raising_renew(batch_id, runner_id):
+        raise sqlite3.OperationalError("simulated: database is locked")
+
+    monkeypatch.setattr(batch, "_renew_lease", raising_renew)
+
+    orig_run_l1 = coordinator._run_l1_same_db
+    processed = []
+
+    def slow_first_item(job_id, fact_id):
+        processed.append(fact_id)
+        if fact_id == "f1":
+            time.sleep(0.5)
+        return orig_run_l1(job_id, fact_id)
+
+    monkeypatch.setattr(coordinator, "_run_l1_same_db", slow_first_item)
+
+    report = batch.forget_all_durable("userA", reason="dsr")
+
+    assert "f2" not in processed
+    assert report["outcome"] == RUNNING  # never finalized
+
+
+def test_heartbeat_stop_treats_still_alive_thread_as_lease_lost():
+    """Round-4 blocker #2: if the background renewal thread hasn't
+    actually stopped by the join timeout (e.g. wedged inside a slow/hung
+    call), stop() can prove neither that the lease is held nor that
+    lease_lost would have been set in time -- an alive thread past the
+    deadline must be treated as lease lost, not optimistically trusted."""
+    release = threading.Event()
+
+    def hung_renew():
+        release.wait(5.0)  # blocks well past our tiny join timeout below
+        return True
+
+    hb = ebc_module._BatchLeaseHeartbeat(
+        hung_renew, interval_seconds=0.05, join_timeout_seconds=0.2,
+    )
+    hb.start()
+    time.sleep(0.15)  # let it enter hung_renew() at least once
+    try:
+        held = hb.stop()
+        assert held is False
+        assert hb.lease_lost.is_set() is True
+    finally:
+        release.set()  # let the background thread finish so it doesn't leak
+
+
+def test_stale_runner_a_claim_item_rejected_after_runner_b_takes_batch_and_item(rig):
+    """Round-3 blocker #1: _claim_item() is itself an ownership CAS on the
+    BATCH (runner_id/status/claim_generation), not an unconditional
+    overwrite. Runner A claims the batch and an item, then genuinely loses
+    the batch to Runner B (a crash-recovery reclaim); Runner B re-claims
+    the SAME item. Runner A — still holding its OLD (now-superseded)
+    claim_generation — must be REJECTED when it tries to claim ANY item
+    again (even one it never touched, f2), and item_runner_id must stay B."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1"))
+    store.store_fact(_fact("f2"))
 
     batch_id = batch._create_batch_snapshot(
         user_id="userA", reason="dsr", actor="tester", force=False, scope=None,
         idempotency_key=None, actor_capability="reader",
-        request_fingerprint="fp-stale-item-ownership",
+        request_fingerprint="fp-fencing-test",
     )
 
-    batch._claim_item(batch_id, "f1", "runner-old")
-    # A newer runner (e.g. after a crash-recovery reclaim of the BATCH)
-    # re-claims the SAME item before runner-old's own write ever lands.
-    batch._claim_item(batch_id, "f1", "runner-new")
-
-    stale_write_won = batch._set_item_status(
-        batch_id, "f1", COMPLETE, runner_id="runner-old", detail={"stale": True},
+    claimed_a = batch._claim_batch_for_running(
+        batch_id, allow_stale_running=False, runner_id="runner-A",
     )
-    assert stale_write_won is False
+    assert claimed_a is True
+    gen_a = batch._load_batch(batch_id)["claim_generation"]
+    assert batch._claim_item(batch_id, "f1", "runner-A", gen_a) is True
 
-    untouched = batch._load_items(batch_id)[0]
-    assert untouched["status"] == PENDING
-    assert untouched["item_runner_id"] == "runner-new"
-
-    current_write_won = batch._set_item_status(
-        batch_id, "f1", COMPLETE, runner_id="runner-new", detail={"stale": False},
+    # Runner A "loses" the batch: force the lease stale, then Runner B
+    # (crash recovery) reclaims it — a NEW claim_generation.
+    with sqlite3.connect(store.db_path) as conn:
+        conn.execute(
+            "UPDATE erasure_batches SET lease_expires_at = ? WHERE batch_id = ?",
+            ("2000-01-01T00:00:00+00:00", batch_id),
+        )
+        conn.commit()
+    claimed_b = batch._claim_batch_for_running(
+        batch_id, allow_stale_running=True, runner_id="runner-B",
     )
-    assert current_write_won is True
+    assert claimed_b is True
+    gen_b = batch._load_batch(batch_id)["claim_generation"]
+    assert gen_b != gen_a
+    assert batch._claim_item(batch_id, "f1", "runner-B", gen_b) is True
+
+    # Stale Runner A -- still presenting its OLD generation token -- tries
+    # to claim f1 again (already B's) and f2 (never touched by anyone).
+    # Both must be rejected: A no longer owns the batch under ANY generation.
+    assert batch._claim_item(batch_id, "f1", "runner-A", gen_a) is False
+    assert batch._claim_item(batch_id, "f2", "runner-A", gen_a) is False
+
+    items = {i["fact_id"]: i for i in batch._load_items(batch_id)}
+    assert items["f1"]["item_runner_id"] == "runner-B"
+    assert items["f2"]["item_runner_id"] is None  # never claimed by anyone
+
+    # And a stale _set_item_status() write is rejected the same way, even
+    # though item_runner_id superficially still says "runner-B" is not
+    # involved here -- it's the BATCH ownership/generation check that
+    # fails for A regardless.
+    stale_write = batch._set_item_status(
+        batch_id, "f1", COMPLETE, runner_id="runner-A", claim_generation=gen_a,
+        detail={"stale": True},
+    )
+    assert stale_write is False
+    assert batch._load_items(batch_id)[0]["status"] == PENDING
+
+    # Runner B's own write, using its CURRENT generation, succeeds normally.
+    current_write = batch._set_item_status(
+        batch_id, "f1", COMPLETE, runner_id="runner-B", claim_generation=gen_b,
+        detail={"stale": False},
+    )
+    assert current_write is True
     assert batch._load_items(batch_id)[0]["status"] == COMPLETE
 
 
@@ -540,6 +671,10 @@ def test_compliance_flag_visible_immediately_after_critical_item_before_finalize
         idempotency_key=None, actor_capability="reader",
         request_fingerprint="fp-crash-before-finalize",
     )
+    claimed = batch._claim_batch_for_running(
+        batch_id, allow_stale_running=False, runner_id="runner-crash",
+    )
+    assert claimed is True
     loaded_batch = batch._load_batch(batch_id)
     item = batch._load_items(batch_id)[0]
 
@@ -550,7 +685,7 @@ def test_compliance_flag_visible_immediately_after_critical_item_before_finalize
 
     raw = batch._load_batch(batch_id)
     assert raw["compliance_status"] == CRITICAL_COMPLIANCE_VIOLATION
-    assert raw["status"] == PENDING  # execution status untouched -- finalize never ran
+    assert raw["status"] == RUNNING  # execution status untouched -- finalize never ran
 
     report = batch.get_batch_report(batch_id)
     assert report["compliance_status"] == CRITICAL_COMPLIANCE_VIOLATION

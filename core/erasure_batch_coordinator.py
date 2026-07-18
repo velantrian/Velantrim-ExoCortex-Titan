@@ -53,16 +53,25 @@
 #     sqlite3 connection, opened fresh per renewal like every other write
 #     in this module) for the ENTIRE duration items are being processed —
 #     not just between items — so the batch lease never goes stale purely
-#     because ONE item is slow. If the heartbeat ever fails to renew (lost
-#     the lease to a genuine reclaim), it stops the run immediately rather
-#     than letting `_finalize_batch()` overwrite a new owner's work.
-#   - Each erasure_batch_items row separately records `item_runner_id`
-#     (+ `item_lease_expires_at`, informational). `_set_item_status()` is
-#     an ownership CAS scoped to `item_runner_id` — a runner whose
-#     erase_fact_durable() call finally returns AFTER it has already lost
-#     the batch (and a new runner has re-claimed the same item) has its
-#     late write silently discarded rather than clobbering the current
-#     owner's result.
+#     because ONE item is slow. Fail-closed: any exception from the
+#     renewal call, or the thread simply not stopping within its join
+#     timeout, is treated exactly like a confirmed lost lease — never
+#     silently assumed to mean the lease survived. If the lease is ever
+#     lost, the run stops immediately (checked BEFORE claiming each new
+#     item, not only after a claim fails) rather than letting
+#     `_finalize_batch()` overwrite a new owner's work.
+#   - Each erasure_batch_items row separately records `item_runner_id` +
+#     `item_claim_generation`. `_claim_item()` is itself an ownership CAS
+#     — it only claims an item if the caller can CURRENTLY prove it still
+#     owns the batch (`erasure_batches.runner_id`/`status`/
+#     `claim_generation` all matching), not merely an unconditional
+#     overwrite. `claim_generation` is a fencing token, incremented on
+#     every successful batch claim: a runner that has lost the batch (its
+#     generation is now superseded) can never claim — let alone write to
+#     — ANY item again, even one it never touched before, closing the gap
+#     where a stale runner could move on to its NEXT item and silently
+#     re-claim it after losing the batch. `_set_item_status()` re-checks
+#     the SAME ownership + fencing token at write time.
 #
 # ── Compliance status is durable the moment it is found ──────────────────
 #
@@ -122,6 +131,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import sqlite3
 import threading
 import time
@@ -139,6 +149,8 @@ from core.erasure_coordinator import (
     PARTIAL,
     RESIDUAL_IMMUTABLE_DATA,
 )
+
+logger = logging.getLogger("velantrim.erasure_batch")
 
 # ─── batch-level EXECUTION statuses ──────────────────────────────────────────
 PENDING = "PENDING"
@@ -183,6 +195,14 @@ CREATE TABLE IF NOT EXISTS erasure_batches (
     snapshot_hash        TEXT NOT NULL,
     runner_id           TEXT,
     lease_expires_at    TEXT,
+    -- Fencing token: incremented on every successful claim (live or
+    -- crash-recovery). _claim_item()/_set_item_status() require this
+    -- EXACT value to still match erasure_batches.claim_generation at
+    -- write time — a runner holding a stale (superseded) generation can
+    -- never claim an item or write a status, even if its runner_id
+    -- string were somehow reused (fencing is independent of runner_id
+    -- identity, the standard defense against exactly this class of bug).
+    claim_generation    INTEGER NOT NULL DEFAULT 0,
     error               TEXT,
     snapshot_at         TEXT NOT NULL,
     created_at          TEXT NOT NULL,
@@ -196,6 +216,7 @@ CREATE TABLE IF NOT EXISTS erasure_batch_items (
     epistemic_state_at_snapshot   TEXT NOT NULL,
     status                        TEXT NOT NULL DEFAULT 'PENDING',
     item_runner_id                TEXT,
+    item_claim_generation         INTEGER,
     item_lease_expires_at         TEXT,
     job_id                        TEXT,
     detail                        TEXT,
@@ -291,14 +312,30 @@ class _BatchLeaseHeartbeat:
 
     If a renewal ever fails (the lease was genuinely lost — reclaimed by
     a crash-recovery sweep, or an old lease's writer somehow lost its own
-    row), `lease_lost` is set and the main thread must stop processing
-    immediately rather than let `_finalize_batch()` overwrite the new
-    owner's concurrent work.
+    row) OR raises (e.g. a transient sqlite3.OperationalError), `lease_lost`
+    is set and the main thread must stop processing immediately rather
+    than let `_finalize_batch()` overwrite the new owner's concurrent
+    work. Fail-closed throughout: an exception, or the background thread
+    simply not finishing in time, is treated exactly like a confirmed
+    lease loss — never silently assumed to mean the lease is still held.
     """
 
-    def __init__(self, renew_fn, interval_seconds: float) -> None:
+    def __init__(
+        self,
+        renew_fn,
+        interval_seconds: float,
+        *,
+        join_timeout_seconds: float | None = None,
+    ) -> None:
         self._renew_fn = renew_fn
         self._interval = max(0.01, interval_seconds)
+        # Overridable only for tests that need a fast, deterministic
+        # "thread didn't stop in time" scenario without actually waiting
+        # out the production-sized default below.
+        self._join_timeout = (
+            join_timeout_seconds if join_timeout_seconds is not None
+            else self._interval + 10.0
+        )
         self._stop_event = threading.Event()
         self.lease_lost = threading.Event()
         self._thread = threading.Thread(target=self._loop, daemon=True)
@@ -308,15 +345,43 @@ class _BatchLeaseHeartbeat:
 
     def _loop(self) -> None:
         while not self._stop_event.wait(self._interval):
-            if not self._renew_fn():
+            try:
+                renewed = self._renew_fn()
+            except Exception:
+                # Fail-closed: a DB error means we CANNOT prove the lease
+                # is still held — never assume it survived just because
+                # the renewal attempt happened to raise instead of
+                # cleanly returning False.
+                logger.exception(
+                    "_BatchLeaseHeartbeat: lease renewal raised — "
+                    "treating lease as lost"
+                )
+                self.lease_lost.set()
+                return
+            if not renewed:
                 self.lease_lost.set()
                 return
 
     def stop(self) -> bool:
         """Stop the heartbeat; returns False if the lease was ever lost
-        while it was running — the caller must not finalize in that case."""
+        while it was running — the caller must not finalize in that case.
+
+        Fail-closed: if the background thread hasn't actually stopped by
+        the join timeout (e.g. it's wedged inside a slow/hung renewal
+        call), this can prove NEITHER that the lease is held NOR that
+        `lease_lost` would have been set in time — an alive thread after
+        the deadline is treated as lease lost, exactly like a confirmed
+        failure, rather than optimistically trusting whatever
+        `lease_lost` happens to read at this instant."""
         self._stop_event.set()
-        self._thread.join(timeout=self._interval + 10.0)
+        self._thread.join(timeout=self._join_timeout)
+        if self._thread.is_alive():
+            logger.error(
+                "_BatchLeaseHeartbeat: renewal thread did not stop within "
+                "%.1fs — treating lease as lost", self._join_timeout,
+            )
+            self.lease_lost.set()
+            return False
         return not self.lease_lost.is_set()
 
 
@@ -406,22 +471,53 @@ class BatchErasureCoordinator:
             ).fetchone()
         return dict(row) if row else None
 
-    def _claim_item(self, batch_id: str, fact_id: str, runner_id: str) -> None:
-        """Record `runner_id` as the current owner of this item, right
-        before processing it. Unconditional (not itself a CAS) — the real
-        protection is _set_item_status()'s ownership CAS on
-        `item_runner_id` below, which is what determines whose RESULT
-        actually sticks. `item_lease_expires_at` is informational only
-        (nothing currently reads/expires it at the item level — batch-
-        level reclaim is what resume_incomplete_batches() actually gates
-        on, see _claim_batch_for_running())."""
+    def _claim_item(
+        self, batch_id: str, fact_id: str, runner_id: str, claim_generation: int,
+    ) -> bool:
+        """Ownership CAS — claims an item ONLY if the caller can currently
+        prove it owns the BATCH: `erasure_batches.runner_id = runner_id`,
+        `status = RUNNING`, AND `claim_generation` matches the exact
+        generation the caller captured when it claimed the batch (a
+        fencing token: incremented on every successful batch claim, live
+        or crash-recovery — see _claim_batch_for_running()). Also requires
+        the item's own status to still be retryable.
+
+        This closes the gap a plain "always overwrite item_runner_id"
+        claim left open: without the batch-ownership check, a runner that
+        lost the BATCH lease (reclaimed by a crash-recovery worker) could
+        still move on to its next item, silently re-claim it, and win the
+        ownership CAS in _set_item_status() — even though it no longer
+        owns the batch at all. Requiring current, matching batch
+        ownership at CLAIM time (not just later at write time) means a
+        stale runner can never even start "processing" an item again,
+        let alone write to it.
+
+        Returns False if this runner does not (or no longer) owns the
+        batch, or if another runner already claimed/finished this item —
+        the caller must treat this exactly like "lost ownership" and stop
+        its processing pass immediately.
+        """
+        now = _now()
+        lease = _lease_expiry()
         with self._jobs_db() as conn:
-            conn.execute(
+            cur = conn.execute(
                 "UPDATE erasure_batch_items SET item_runner_id = ?, "
-                "item_lease_expires_at = ?, updated_at = ? "
-                "WHERE batch_id = ? AND fact_id = ?",
-                (runner_id, _lease_expiry(), _now(), batch_id, fact_id),
+                "item_claim_generation = ?, item_lease_expires_at = ?, updated_at = ? "
+                "WHERE batch_id = ? AND fact_id = ? AND status IN (?, ?, ?) "
+                "AND EXISTS ("
+                "  SELECT 1 FROM erasure_batches"
+                "  WHERE erasure_batches.batch_id = ?"
+                "  AND erasure_batches.runner_id = ?"
+                "  AND erasure_batches.status = ?"
+                "  AND erasure_batches.claim_generation = ?"
+                ")",
+                (
+                    runner_id, claim_generation, lease, now,
+                    batch_id, fact_id, PENDING, PARTIAL, FAILED,
+                    batch_id, runner_id, RUNNING, claim_generation,
+                ),
             )
+        return cur.rowcount > 0
 
     def _set_item_status(
         self,
@@ -430,16 +526,20 @@ class BatchErasureCoordinator:
         status: str,
         *,
         runner_id: str,
+        claim_generation: int,
         job_id: str | None = None,
         detail: dict[str, Any] | None = None,
         compliance_status: str | None = None,
     ) -> bool:
         """Ownership CAS: only writes if `runner_id` still owns this item's
-        claim (see _claim_item()) — a runner whose erase_fact_durable()
-        call returns AFTER a newer runner has already re-claimed the SAME
-        item (e.g. it lost the batch lease and a crash-recovery worker
-        took over) has its late write silently discarded here, rather than
-        clobbering the current owner's result.
+        claim (`item_runner_id`) AND still currently owns the BATCH itself
+        (`erasure_batches.runner_id`/`status`/`claim_generation` — the SAME
+        fencing token check as _claim_item(), re-verified at write time,
+        not just at claim time) — a runner whose erase_fact_durable() call
+        returns AFTER it has lost the batch (even if, in some unforeseen
+        race, its item-level claim was somehow never superseded) has its
+        late write silently discarded here, rather than clobbering
+        whatever the current owner has since done.
 
         When `compliance_status` is given (CRITICAL_COMPLIANCE_VIOLATION),
         the batch's OWN compliance_status is set in the SAME transaction —
@@ -453,11 +553,19 @@ class BatchErasureCoordinator:
             cur = conn.execute(
                 "UPDATE erasure_batch_items SET status = ?, "
                 "job_id = COALESCE(?, job_id), detail = ?, updated_at = ? "
-                "WHERE batch_id = ? AND fact_id = ? AND item_runner_id = ?",
+                "WHERE batch_id = ? AND fact_id = ? AND item_runner_id = ? "
+                "AND EXISTS ("
+                "  SELECT 1 FROM erasure_batches"
+                "  WHERE erasure_batches.batch_id = ?"
+                "  AND erasure_batches.runner_id = ?"
+                "  AND erasure_batches.status = ?"
+                "  AND erasure_batches.claim_generation = ?"
+                ")",
                 (
                     status, job_id,
                     json.dumps(detail) if detail is not None else None,
                     _now(), batch_id, fact_id, runner_id,
+                    batch_id, runner_id, RUNNING, claim_generation,
                 ),
             )
             won = cur.rowcount > 0
@@ -578,19 +686,28 @@ class BatchErasureCoordinator:
 
     def _process_item(self, batch: dict[str, Any], item: dict[str, Any], runner_id: str) -> bool:
         """Claim then process one item. Returns True iff THIS runner's
-        result write actually took effect (see _set_item_status()) — False
-        means a newer runner has already superseded us on this exact item,
-        which is also a reliable signal that we no longer own the batch."""
+        result write actually took effect. False means either the initial
+        claim was refused (we no longer own the BATCH — see _claim_item())
+        or a newer runner has since superseded us on this exact item; in
+        both cases the caller must stop its processing pass immediately.
+
+        If the claim itself fails, erase_fact_durable() is never even
+        called for this item — a runner that doesn't own the batch must
+        not perform ANY work on its behalf, not just fail to record it.
+        """
         fact_id = item["fact_id"]
         epistemic_state = item["epistemic_state_at_snapshot"]
+        claim_generation = batch["claim_generation"]
 
-        self._claim_item(batch["batch_id"], fact_id, runner_id)
+        if not self._claim_item(batch["batch_id"], fact_id, runner_id, claim_generation):
+            return False
 
         if fact_id in memory.IMMUTABLE_FACT_IDS:
             # True Ring Zero literal (I6) — structurally never personal
             # data, never deletable. The one legitimate "not applicable".
             return self._set_item_status(
-                batch["batch_id"], fact_id, SKIPPED_RING_ZERO, runner_id=runner_id,
+                batch["batch_id"], fact_id, SKIPPED_RING_ZERO,
+                runner_id=runner_id, claim_generation=claim_generation,
                 detail={"reason": "ring_zero_literal_never_personal_data"},
             )
 
@@ -606,7 +723,8 @@ class BatchErasureCoordinator:
             # compliance_status is written atomically WITH this item row —
             # durable immediately, never deferred to _finalize_batch().
             return self._set_item_status(
-                batch["batch_id"], fact_id, CRITICAL_COMPLIANCE_VIOLATION, runner_id=runner_id,
+                batch["batch_id"], fact_id, CRITICAL_COMPLIANCE_VIOLATION,
+                runner_id=runner_id, claim_generation=claim_generation,
                 detail={
                     "reason": "personal_fact_in_immutable_core",
                     "epistemic_state": epistemic_state,
@@ -618,7 +736,8 @@ class BatchErasureCoordinator:
             fact_id, reason=batch["reason"], actor=batch["actor"],
         )
         return self._set_item_status(
-            batch["batch_id"], fact_id, report["outcome"], runner_id=runner_id,
+            batch["batch_id"], fact_id, report["outcome"],
+            runner_id=runner_id, claim_generation=claim_generation,
             job_id=report.get("job_id"), detail=report,
         )
 
@@ -648,6 +767,16 @@ class BatchErasureCoordinator:
         rows. A genuinely live runner's lease is kept fresh throughout
         item processing by _BatchLeaseHeartbeat, so it is never mistaken
         for stale merely because one item is slow.
+
+        Every successful claim increments `claim_generation` — a fencing
+        token _claim_item()/_set_item_status() require to still match at
+        item-claim/write time. This is what stops a runner that loses the
+        batch (its OLD generation is now superseded) from resuming work
+        on a later item and successfully re-claiming it: even though
+        `runner_id` values are practically never reused, claim_generation
+        makes that guarantee independent of runner_id identity entirely —
+        the standard fencing-token defense against exactly this class of
+        stale-writer bug.
         """
         now = _now()
         lease = _lease_expiry()
@@ -655,7 +784,8 @@ class BatchErasureCoordinator:
             if allow_stale_running:
                 cur = conn.execute(
                     "UPDATE erasure_batches SET status = ?, runner_id = ?, "
-                    "lease_expires_at = ?, updated_at = ? "
+                    "lease_expires_at = ?, claim_generation = claim_generation + 1, "
+                    "updated_at = ? "
                     "WHERE batch_id = ? AND ("
                     "  status IN (?, ?, ?) "
                     "  OR (status = ? AND lease_expires_at IS NOT NULL AND lease_expires_at < ?)"
@@ -668,7 +798,8 @@ class BatchErasureCoordinator:
             else:
                 cur = conn.execute(
                     "UPDATE erasure_batches SET status = ?, runner_id = ?, "
-                    "lease_expires_at = ?, updated_at = ? "
+                    "lease_expires_at = ?, claim_generation = claim_generation + 1, "
+                    "updated_at = ? "
                     "WHERE batch_id = ? AND status IN (?, ?, ?)",
                     (RUNNING, runner_id, lease, now, batch_id, PENDING, PARTIAL, FAILED),
                 )
@@ -779,6 +910,14 @@ class BatchErasureCoordinator:
         try:
             for item in items:
                 if item["status"] in _ITEM_RETRYABLE_STATUSES:
+                    if heartbeat.lease_lost.is_set():
+                        # The heartbeat already knows the lease is gone
+                        # (renewal failed/raised, or its thread wedged) —
+                        # don't even attempt to claim/process the next
+                        # item; check this BEFORE the DB round-trip below,
+                        # not only after it fails.
+                        lease_held = False
+                        break
                     won = self._process_item(batch, item, runner_id)
                     if not won:
                         # Lost the item-ownership race — a newer runner has
