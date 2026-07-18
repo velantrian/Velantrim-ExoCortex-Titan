@@ -158,6 +158,7 @@ ENABLE_EVENT_BUS=1
 - `docs/FRACTAL_MEMORY_CANON.ru.md` — Fractal Memory L0–L3, MemTree/recursive retrieval canon
 - `docs/ESSENCE_LAYER_CANON.ru.md` — future-work канон: суть, смысловые цепочки, короткий человеческий ответ
 - `docs/ATTENTION_NOETIC_ORCHESTRATION.ru.md` — P0-контракты: GoalFrame, AttentionRouter, ComputeController, NoeticCore
+- `docs/TITAN_EPISTEMIC_COGNITIVE_RUNTIME.ru.md` — research-spec: абдукция, эпистемические типы, Intention Registry, Executive Control Contract и когнитивные бюджеты
 - `docs/WORLD_KNOWLEDGE_CORE_v1_0.ru.md` — future-work канон: качество знания, время, negative knowledge, contradiction review
 - `docs/RESEARCH_MODE.ru.md` — отдельная experimental-память и Velantrim как API-инструмент
 - `docs/EITI_PWA_RESEARCH_ROADMAP.ru.md` — T1–T12 roadmap для браузерной Research PWA
