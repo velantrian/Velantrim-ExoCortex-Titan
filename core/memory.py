@@ -154,6 +154,23 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+# Round 5.3 Codex finding (P2): every reader of erasure_log must resolve
+# the SAME correction-aware effective subject the erasure_audit VIEW
+# resolves (migration 016) — a raw `SELECT ... FROM erasure_log` bypasses
+# any correction recorded in erasure_log_subject_corrections and reports
+# the original operator/credential fingerprint instead of the real data
+# subject. This is the single shared query fragment behind
+# SQLiteGraphStore.get_tombstone()/get_tombstone_for_job()/get_tombstones()
+# — kept in one place so the COALESCE logic can never drift from the view's.
+_EFFECTIVE_TOMBSTONE_SELECT_SQL = """
+    SELECT el.erasure_id, el.fact_id,
+           COALESCE(c.corrected_user_id, el.user_id) AS user_id,
+           el.reason, el.claim_hash, el.erased_at, el.job_id
+    FROM erasure_log el
+    LEFT JOIN erasure_log_subject_corrections c ON c.erasure_id = el.erasure_id
+"""
+
+
 def _upgrade_erasure_log_schema(conn: sqlite3.Connection) -> None:
     """Миграция legacy erasure_log (fact_id PK, actor/content_hash) → схема 012."""
     rows = conn.execute(
@@ -220,6 +237,27 @@ class SQLiteGraphStore(GraphStore):
         # Одно WAL-соединение + RLock: исключает deadlock пула из 3 conn.
         self._sqlite_conn: sqlite3.Connection | None = None
         self._db_lock = threading.RLock()
+
+    def ensure_schema(self) -> None:
+        """Deterministically trigger the canonical DDL initialization for
+        `self.db_path` (facts/l0_raw_memory/l0_fact_provenance/erasure_log/
+        etc. — see `_db()`) without performing any read or write of actual
+        data.
+
+        `_db()` already does this lazily, guarded by
+        `self._ddl_initialized_paths`, on first use by any real operation —
+        this method exists for callers (e.g.
+        core.forgetting.ForgettingEngine.forget_all()) that must guarantee
+        the schema exists BEFORE handing this store's `db_path` to a
+        DIFFERENT component that queries it via its own raw connection
+        (core.erasure_batch_coordinator.BatchErasureCoordinator's
+        `_create_batch_snapshot()`), where the lazy trigger would otherwise
+        never fire. A genuinely corrupt/unreadable database file still
+        raises its real sqlite3 error here — never silently swallowed or
+        treated as "no data yet".
+        """
+        with self._db():
+            pass
 
     @contextmanager
     def _db(self):
@@ -431,6 +469,77 @@ class SQLiteGraphStore(GraphStore):
                     CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_job_unique
                     ON erasure_log(job_id)
                     WHERE job_id IS NOT NULL
+                """)
+                # Round 5.3 Codex finding (P2): a virgin/tenant DB initialized
+                # ONLY through this runtime DDL path (no migrations/*.sql ever
+                # applied) must expose the SAME durable-erasure audit surface
+                # as a fully-migrated DB — append-only guards, the correction
+                # table, and the correction-aware erasure_audit VIEW — not
+                # just the bare erasure_log table. Mirrors migrations 012 and
+                # 016 verbatim; kept idempotent (IF NOT EXISTS / DROP+CREATE)
+                # for defense-in-depth even though _ddl_initialized_paths
+                # already makes this whole block run once per db_path.
+                conn.execute("""
+                    CREATE TRIGGER IF NOT EXISTS prevent_erasure_delete
+                    BEFORE DELETE ON erasure_log
+                    BEGIN
+                        SELECT RAISE(ABORT, 'VELANTRIM: erasure_log is append-only. Cannot delete audit records.');
+                    END
+                """)
+                conn.execute("""
+                    CREATE TRIGGER IF NOT EXISTS prevent_erasure_update
+                    BEFORE UPDATE ON erasure_log
+                    BEGIN
+                        SELECT RAISE(ABORT, 'VELANTRIM: erasure_log is append-only. Cannot modify audit records.');
+                    END
+                """)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS erasure_log_subject_corrections (
+                        correction_id      TEXT PRIMARY KEY,
+                        erasure_id         TEXT NOT NULL UNIQUE REFERENCES erasure_log(erasure_id),
+                        job_id             TEXT,
+                        batch_id           TEXT NOT NULL REFERENCES erasure_batches(batch_id),
+                        corrected_user_id  TEXT NOT NULL,
+                        original_user_id   TEXT NOT NULL,
+                        created_at         TEXT NOT NULL
+                    )
+                """)
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_erasure_log_subject_corrections_erasure_id
+                    ON erasure_log_subject_corrections(erasure_id)
+                """)
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_erasure_log_subject_corrections_user
+                    ON erasure_log_subject_corrections(corrected_user_id)
+                """)
+                conn.execute("""
+                    CREATE TRIGGER IF NOT EXISTS prevent_erasure_log_subject_corrections_delete
+                    BEFORE DELETE ON erasure_log_subject_corrections
+                    BEGIN
+                        SELECT RAISE(ABORT, 'VELANTRIM: erasure_log_subject_corrections is append-only. Cannot delete audit records.');
+                    END
+                """)
+                conn.execute("""
+                    CREATE TRIGGER IF NOT EXISTS prevent_erasure_log_subject_corrections_update
+                    BEFORE UPDATE ON erasure_log_subject_corrections
+                    BEGIN
+                        SELECT RAISE(ABORT, 'VELANTRIM: erasure_log_subject_corrections is append-only. Cannot modify audit records.');
+                    END
+                """)
+                conn.execute("DROP VIEW IF EXISTS erasure_audit")
+                conn.execute("""
+                    CREATE VIEW erasure_audit AS
+                    SELECT
+                        el.erasure_id,
+                        el.fact_id,
+                        COALESCE(c.corrected_user_id, el.user_id) AS user_id,
+                        el.reason,
+                        el.claim_hash,
+                        el.erased_at,
+                        el.request_ref
+                    FROM erasure_log el
+                    LEFT JOIN erasure_log_subject_corrections c ON c.erasure_id = el.erasure_id
+                    ORDER BY el.erased_at DESC
                 """)
                 # TASK-09: derived_from на facts (указывает на l0_raw_memory.raw_id)
                 if "derived_from" not in existing_cols:
@@ -842,11 +951,16 @@ class SQLiteGraphStore(GraphStore):
         generation-aware erasure_jobs (migration 014), a fact_id can have
         multiple jobs/tombstones over time, and this method has no way to
         tell you which one belongs to which job. Use get_tombstone_for_job()
-        for that."""
+        for that.
+
+        Round 5.3 (Codex P2): `user_id` here is the EFFECTIVE, correction-
+        aware subject — the same value erasure_audit/get_erasure_log()
+        would report for this row — never the raw erasure_log.user_id,
+        so every reader of a tombstone's subject agrees."""
         with self._db() as conn:
             row = conn.execute(
-                "SELECT erasure_id, fact_id, user_id, reason, claim_hash, erased_at, job_id "
-                "FROM erasure_log WHERE fact_id = ? ORDER BY erased_at DESC LIMIT 1",
+                _EFFECTIVE_TOMBSTONE_SELECT_SQL
+                + "WHERE el.fact_id = ? ORDER BY el.erased_at DESC LIMIT 1",
                 (fact_id,),
             ).fetchone()
         if row is None:
@@ -859,20 +973,26 @@ class SQLiteGraphStore(GraphStore):
         the same fact_id. `job_id=None` looks up a legacy tombstone (written
         with no job_id at all, e.g. by the deprecated core.erasure shim, or
         by a durable job that completed before migration 014 introduced
-        job-scoped tombstones)."""
+        job-scoped tombstones).
+
+        Round 5.3 (Codex P2): `user_id` here is the EFFECTIVE, correction-
+        aware subject (see get_tombstone()) — callers that need to know
+        WHOSE data a specific job's tombstone actually corroborates (e.g.
+        ErasureCoordinator._bind_subject_user_id()'s already-tombstoned-job
+        check) get the corrected answer, not the raw operator fingerprint."""
         with self._db() as conn:
             if job_id is not None:
                 row = conn.execute(
-                    "SELECT erasure_id, fact_id, user_id, reason, claim_hash, erased_at, job_id "
-                    "FROM erasure_log WHERE fact_id = ? AND job_id = ? "
-                    "ORDER BY erased_at DESC LIMIT 1",
+                    _EFFECTIVE_TOMBSTONE_SELECT_SQL
+                    + "WHERE el.fact_id = ? AND el.job_id = ? "
+                    "ORDER BY el.erased_at DESC LIMIT 1",
                     (fact_id, job_id),
                 ).fetchone()
             else:
                 row = conn.execute(
-                    "SELECT erasure_id, fact_id, user_id, reason, claim_hash, erased_at, job_id "
-                    "FROM erasure_log WHERE fact_id = ? AND job_id IS NULL "
-                    "ORDER BY erased_at DESC LIMIT 1",
+                    _EFFECTIVE_TOMBSTONE_SELECT_SQL
+                    + "WHERE el.fact_id = ? AND el.job_id IS NULL "
+                    "ORDER BY el.erased_at DESC LIMIT 1",
                     (fact_id,),
                 ).fetchone()
         if row is None:
@@ -880,12 +1000,33 @@ class SQLiteGraphStore(GraphStore):
         return self._row_to_tombstone(row)
 
     def get_tombstones(self) -> list[dict]:
+        """Every tombstone ever recorded, oldest first. Round 5.3 (Codex
+        P2): `user_id` is the EFFECTIVE, correction-aware subject (see
+        get_tombstone()) — this is the reader behind both
+        ErasureCoordinator.erasure_log() and core.compliance.
+        record_of_processing()'s Art. 30 report, so both must (and now do)
+        agree with erasure_audit/get_erasure_log() on who each erasure
+        actually belonged to."""
         with self._db() as conn:
             rows = conn.execute(
-                "SELECT erasure_id, fact_id, user_id, reason, claim_hash, erased_at, job_id "
-                "FROM erasure_log ORDER BY erased_at"
+                _EFFECTIVE_TOMBSTONE_SELECT_SQL + "ORDER BY el.erased_at"
             ).fetchall()
         return [self._row_to_tombstone(r) for r in rows]
+
+    def count_null_job_tombstones(self, fact_id: str) -> int:
+        """Round 5.4 (Codex P2): how many legacy (job_id IS NULL) tombstones
+        exist for `fact_id` — used by ErasureCoordinator to decide whether
+        the narrow pre-014 NULL-job fallback lookup is safe to trust. Two
+        or more is a genuine ambiguity (multiple historical erasures of the
+        same fact_id, predating job-scoped tombstones) that must never be
+        silently resolved by picking "the latest one" — the caller fails
+        closed instead."""
+        with self._db() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM erasure_log WHERE fact_id = ? AND job_id IS NULL",
+                (fact_id,),
+            ).fetchone()
+        return row[0] if row else 0
 
     @staticmethod
     def _row_to_tombstone(row) -> dict:

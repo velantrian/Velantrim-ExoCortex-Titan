@@ -30,9 +30,10 @@ from core.erasure_batch_coordinator import (
     RESIDUAL_IMMUTABLE_DATA,
     RUNNING,
     SKIPPED_RING_ZERO,
+    SUBJECT_CONFLICT,
     BatchErasureCoordinator,
 )
-from core.erasure_coordinator import ErasureCoordinator
+from core.erasure_coordinator import ErasureCoordinator, _now
 from core.memory import make_store
 from core.ngram_index import NGramIndex
 from core.tool_registry import PrincipalContext
@@ -835,6 +836,42 @@ def test_same_idempotency_key_different_request_is_conflict_not_reuse(rig):
     assert conflict_reason["outcome"] == IDEMPOTENCY_CONFLICT
 
 
+def test_idempotency_conflict_report_has_stable_schema_without_disclosure(rig):
+    """Round 5.1 fix (Copilot): IDEMPOTENCY_CONFLICT's report dict must
+    contain the same structural keys (`force`/`scope`) every other
+    forget_all_durable() outcome returns — a caller treating the report
+    schema as stable must never hit a KeyError just because this
+    particular outcome is IDEMPOTENCY_CONFLICT. The placeholder values
+    must still be non-disclosing: never the real force/scope/batch_id/
+    user_id/actor belonging to the conflicting EXISTING request."""
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1", source="userA"))
+    store.store_fact(_fact("f2", source="userB"))
+
+    first = batch.forget_all_durable(
+        "userA", reason="dsr", actor="original-actor", force=False,
+        scope=None, idempotency_key="shared-key-2",
+    )
+    assert first["outcome"] == COMPLETE
+
+    conflict = batch.forget_all_durable(
+        "userB", reason="dsr", actor="conflicting-actor",
+        actor_capability="admin", force=True, scope="whole_db_cleanup",
+        idempotency_key="shared-key-2",
+    )
+
+    assert conflict["outcome"] == IDEMPOTENCY_CONFLICT
+    # Schema stability: these keys must exist (no KeyError for a caller
+    # that expects every outcome to have them), as plain None placeholders.
+    assert conflict["force"] is None
+    assert conflict["scope"] is None
+    # Non-disclosure: nothing about either the original OR the conflicting
+    # request's identity/parameters leaks through.
+    assert conflict["batch_id"] is None
+    assert conflict["user_id"] is None
+    assert "actor" not in conflict
+
+
 def test_get_batch_report_by_idempotency_key_requires_matching_fingerprint(rig):
     """Additional hardening: the key string ALONE must never be enough to
     read back a batch's contents (user_id, per-item outcomes, compliance
@@ -1070,28 +1107,994 @@ def test_tool_handlers_forget_all_requires_explicit_principal(rig, monkeypatch):
 
 # ── Legacy shim (core.forgetting.ForgettingEngine.forget_all) ─────────────
 
-def test_forgetting_engine_forget_all_is_deprecated_and_delegates(rig, monkeypatch):
+def test_forgetting_engine_forget_all_is_deprecated_and_delegates(rig):
+    """Round 5 fix (Codex P2): the shim builds its OWN db_path-bound
+    SQLiteGraphStore/BatchErasureCoordinator (see
+    test_forgetting.py for the full db_path-isolation regression suite) —
+    it no longer delegates to the module-level get_batch_coordinator()
+    singleton, so there is nothing left to monkeypatch here. Read the
+    result back via a FRESH SQLiteGraphStore against the same file rather
+    than the original `store` object: that object's own in-process L0
+    read-cache (core.memory.SQLiteGraphStore._l0) has no way to know
+    about a DELETE committed through the shim's separate store instance —
+    a pre-existing, per-instance-cache characteristic of this codebase,
+    not something this fix's db_path-isolation scope touches."""
     from core import forgetting as forgetting_mod
 
     batch, coordinator, store, embeddings, ngram = rig
     store.store_fact(_fact("f1"))
 
-    import core.erasure_batch_coordinator as _ebc
-
-    monkeypatch.setattr(memory, "_GLOBAL_STORE", store)
-    # NOTE: patch via the imported module OBJECT, not a dotted string — a
-    # string target re-resolves "core.erasure_batch_coordinator" through
-    # import machinery, which is not guaranteed to hand back the exact
-    # module object core.forgetting's own `from core.erasure_batch_coordinator
-    # import forget_all_durable` closed over once enough of the suite's
-    # other modules have been collected/imported first (observed to only
-    # reproduce inside the full test session, never in isolation).
-    monkeypatch.setattr(_ebc, "_default_batch_coordinator", batch)
-
-    engine = forgetting_mod.ForgettingEngine(db_path=store.db_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=store.db_path, embedding_store=embeddings, ngram_index=ngram,
+    )
     with pytest.deprecated_call():
         verdict = engine.forget_all(user_id="userA", reason="dsr")
 
     assert verdict.allowed is True
     assert verdict.affected_facts == 1
-    assert store.get_fact("f1") is None
+    assert memory.make_store(store.db_path).get_fact("f1") is None
+
+
+# ── Round 5 fix (Codex P2): batch tombstones keyed to the data subject ──────
+
+def test_batch_tombstones_keyed_to_data_subject_not_operator_actor(rig):
+    """A + E: a FORGET_ALL batch run by a different operator than the data
+    subject must tombstone under the data subject (batch's user_id), not
+    the operator/API credential fingerprint that authorized it — otherwise
+    user-scoped GDPR Art. 30 audit queries (erasure_log.user_id) silently
+    miss real erasures. coordinator.erasure_log() is the Art. 30 record of
+    processing this reads back through (mirrors
+    ForgettingEngine.get_erasure_log(), which filters the same column via
+    the erasure_audit view — not exercised here since this rig's bare
+    make_store() DB doesn't run the full migration chain that view needs)."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f1"))
+    store.store_fact(_fact("f2"))
+
+    report = batch.forget_all_durable("userA", reason="dsr", actor="api:deadbeef")
+    assert report["outcome"] == COMPLETE
+
+    log = coordinator.erasure_log()
+    log_for_user_a = [row for row in log if row["user_id"] == "userA"]
+    assert {row["fact_id"] for row in log_for_user_a} == {"f1", "f2"}
+
+    # The operator credential must never itself be discoverable as a data
+    # subject in the audit log.
+    assert [row for row in log if row["user_id"] == "api:deadbeef"] == []
+
+    # Operator provenance is still available, per-fact, on the durable job.
+    for fid in ("f1", "f2"):
+        job_report = coordinator.get_job_report(fid)
+        assert job_report["actor"] == "api:deadbeef"
+        assert job_report["subject_user_id"] == "userA"
+
+
+def test_batch_force_erasure_receipt_records_operator_tombstone_keeps_subject(rig):
+    """B: force=True's append-only receipt records the operator's
+    credential fingerprint — the erasure tombstone itself must still be
+    associated with the data subject, not that operator fingerprint."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f1", source="userA"))
+
+    report = batch.forget_all_durable(
+        "userA", reason="dsr", actor="api:deadbeef",
+        actor_capability="admin", force=True, scope="cleanup",
+    )
+    assert report["outcome"] == COMPLETE
+
+    with sqlite3.connect(store.db_path) as conn:
+        receipt_actor = conn.execute(
+            "SELECT actor FROM erasure_batch_force_receipts WHERE batch_id = ?",
+            (report["batch_id"],),
+        ).fetchone()[0]
+    assert receipt_actor == "api:deadbeef"
+
+    tombstone = store.get_tombstone("f1")
+    assert tombstone["user_id"] == "userA"
+
+
+# ── Round 5.2 fix (Codex P2): batch adoption binds subject_user_id ─────────
+
+def test_batch_adopts_pending_job_and_binds_subject_before_processing(rig):
+    """1: a legacy/crash-left PENDING per-fact job (subject_user_id=NULL,
+    actor="legacy-operator") must be bound to the BATCH's data subject
+    BEFORE it's resumed/finalized — the same job is adopted (no new
+    generation), the tombstone lands under the batch's user_id, and
+    operator provenance (actor) on the pre-existing row is preserved."""
+    batch, coordinator, store, embeddings, ngram = rig
+    fact_id = "f_legacy_pending"
+    store.store_fact(_fact(fact_id, source="userA"))
+
+    job_id = "erj_legacy_pending_batch"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "legacy", "legacy-operator", None, PENDING, now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, ?, ?, ?)",
+                (f"{job_id}_{step_name}", job_id, step_name, PENDING),
+            )
+
+    report = batch.forget_all_durable("userA", reason="dsr", actor="api:deadbeef")
+    assert report["outcome"] == COMPLETE
+
+    job_report = coordinator.get_job_report(fact_id)
+    assert job_report["job_id"] == job_id  # same job adopted, not a new generation
+    assert job_report["subject_user_id"] == "userA"
+    assert job_report["actor"] == "legacy-operator"  # operator provenance preserved
+
+    tombstone = store.get_tombstone(fact_id)
+    assert tombstone["user_id"] == "userA"
+
+
+# ── Round 5.3 fix (Codex P1): SUBJECT_CONFLICT must never report success ───
+
+def _insert_conflicting_job(coordinator, *, fact_id, subject_user_id, actor="other-operator"):
+    """Pre-create a durable PENDING erasure_jobs row already bound to
+    `subject_user_id` — simulates a fact_id whose per-fact job belongs to
+    a DIFFERENT data subject than the batch about to process it."""
+    job_id = f"erj_conflict_{fact_id}"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "legacy", actor, subject_user_id, PENDING, now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, ?, ?, ?)",
+                (f"{job_id}_{step_name}", job_id, step_name, PENDING),
+            )
+    return job_id
+
+
+def test_subject_conflict_prevents_batch_complete_success(rig):
+    """1: a one-item batch whose only item hits SUBJECT_CONFLICT must
+    never be reported as COMPLETE/successful."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    report = batch.forget_all_durable("userA", reason="dsr", actor="api:newoperator")
+
+    assert report["outcome"] == SUBJECT_CONFLICT
+    assert report["success"] is False
+    assert report["erasure_complete"] is False
+    assert report["operation_finished"] is True
+    assert report["subject_conflict"] is True
+    assert report["conflict_items"] == ["f_conflict"]
+
+
+def test_mixed_batch_with_subject_conflict_is_not_erasure_complete(rig):
+    """2: a mixed batch (one item genuinely erased, one blocked by a
+    subject conflict) must still be reported as non-successful overall —
+    the genuinely-erased item's own outcome is unaffected."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_ok", source="userA"))
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    report = batch.forget_all_durable("userA", reason="dsr", actor="api:newoperator")
+
+    assert report["outcome"] == SUBJECT_CONFLICT
+    assert report["success"] is False
+    assert report["erasure_complete"] is False
+    items = {i["fact_id"]: i["status"] for i in report["items"]}
+    assert items["f_ok"] == COMPLETE
+    assert items["f_conflict"] == SUBJECT_CONFLICT
+    assert store.get_fact("f_ok") is None
+    assert "f_conflict" in report["conflict_items"]
+
+
+def test_subject_conflict_report_remains_non_successful_on_replay(rig):
+    """3: reading the durable report back (get_batch_report) must
+    preserve the same non-successful result, not just the live return
+    value from the original call."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    first = batch.forget_all_durable("userA", reason="dsr", actor="api:newoperator")
+    assert first["outcome"] == SUBJECT_CONFLICT
+
+    reread = batch.get_batch_report(first["batch_id"])
+    assert reread["outcome"] == SUBJECT_CONFLICT
+    assert reread["success"] is False
+    assert reread["erasure_complete"] is False
+    assert reread["operation_finished"] is True
+
+
+def test_subject_conflict_idempotent_replay_stays_non_successful(rig):
+    """4: repeating the same idempotent request (same idempotency_key)
+    must not convert a subject conflict into a successful outcome —
+    resume_incomplete_batches()'s own exclusion of SUBJECT_CONFLICT from
+    _RUNNABLE_BATCH_STATUSES means this also proves it never auto-retries
+    into a false success."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    first = batch.forget_all_durable(
+        "userA", reason="dsr", actor="api:newoperator", idempotency_key="conflict-key",
+    )
+    assert first["outcome"] == SUBJECT_CONFLICT
+
+    second = batch.forget_all_durable(
+        "userA", reason="dsr", actor="api:newoperator", idempotency_key="conflict-key",
+    )
+    assert second["batch_id"] == first["batch_id"]
+    assert second["outcome"] == SUBJECT_CONFLICT
+    assert second["success"] is False
+    assert second["erasure_complete"] is False
+
+    # A crash-recovery style sweep must also never resurrect this into success.
+    resumed = batch.resume_incomplete_batches()
+    assert first["batch_id"] not in {r["batch_id"] for r in resumed}
+
+
+def test_subject_conflict_distinct_from_compliance_and_residual(rig):
+    """5: SUBJECT_CONFLICT must not be confused with
+    CRITICAL_COMPLIANCE_VIOLATION or RESIDUAL_IMMUTABLE_DATA — both keep
+    their own pre-existing, distinct semantics (a batch with only one of
+    those still reaches COMPLETE/COMPLETE_WITH_RESIDUAL); only a genuine
+    subject conflict blocks batch success."""
+    batch, coordinator, store, embeddings, ngram = rig
+
+    store.store_fact(_fact("f_critical"))
+    _force_epistemic_state(store, "f_critical", "ImmutableCore")
+
+    critical_report = batch.forget_all_durable("userA", reason="dsr", actor="tester")
+    assert critical_report["outcome"] == COMPLETE
+    assert critical_report["critical_compliance_violation"] is True
+    assert critical_report["subject_conflict"] is False
+    assert critical_report["conflict_items"] == []
+
+
+# ── Round 5.4 Codex finding (P2): fold conflict items into effective ────────
+# success reporting. _report() used to derive success/erasure_complete
+# purely from the durable batch row's `status` — a restored/hand-repaired/
+# pre-Round-5.3 row could have status=COMPLETE while its OWN item rows
+# still carried SUBJECT_CONFLICT, and the report would still claim
+# success=true/erasure_complete=true. _report() must re-derive the
+# effective outcome from conflict_items every time, independent of the
+# stored batch status.
+
+def test_report_fails_closed_when_complete_batch_contains_conflict_item(rig):
+    """1-3: a batch row hand-restored to status=COMPLETE whose item rows
+    still contain SUBJECT_CONFLICT must fail closed when read back — the
+    stored status is exposed separately (`stored_status`) but never
+    trusted as the effective result."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    first = batch.forget_all_durable("userA", reason="dsr", actor="api:newoperator")
+    assert first["outcome"] == SUBJECT_CONFLICT
+
+    # Simulate a restored/stale row: the durable STATUS says COMPLETE, but
+    # the item row underneath (never touched) still says SUBJECT_CONFLICT.
+    with batch._jobs_db() as conn:
+        conn.execute(
+            "UPDATE erasure_batches SET status = ? WHERE batch_id = ?",
+            (COMPLETE, first["batch_id"]),
+        )
+        conn.commit()
+
+    reread = batch.get_batch_report(first["batch_id"])
+    assert reread["stored_status"] == COMPLETE
+    assert reread["outcome"] == SUBJECT_CONFLICT
+    assert reread["success"] is False
+    assert reread["erasure_complete"] is False
+    assert reread["subject_conflict"] is True
+    assert reread["conflict_items"] == ["f_conflict"]
+
+
+def test_restored_complete_batch_with_conflict_is_not_erasure_complete(rig):
+    """5: reading a restored/stale report is not just a one-off — repeated
+    reads all fail closed, and no execution path (resume) needs to run for
+    this to hold."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_ok", source="userA"))
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    first = batch.forget_all_durable("userA", reason="dsr", actor="api:newoperator")
+    assert first["outcome"] == SUBJECT_CONFLICT
+
+    with batch._jobs_db() as conn:
+        conn.execute(
+            "UPDATE erasure_batches SET status = ? WHERE batch_id = ?",
+            (COMPLETE, first["batch_id"]),
+        )
+        conn.commit()
+
+    for _ in range(3):
+        reread = batch.get_batch_report(first["batch_id"])
+        assert reread["success"] is False
+        assert reread["erasure_complete"] is False
+
+
+def test_critical_and_subject_conflict_batch_remains_non_successful(rig):
+    """6: a batch with BOTH a critical-compliance item and a subject
+    conflict must preserve critical precedence (compliance_status still
+    set) while also never reporting success — the conflict remains
+    visible in conflict_items regardless."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_critical"))
+    _force_epistemic_state(store, "f_critical", "ImmutableCore")
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    report = batch.forget_all_durable("userA", reason="dsr", actor="tester")
+
+    assert report["critical_compliance_violation"] is True
+    assert report["subject_conflict"] is True
+    assert "f_conflict" in report["conflict_items"]
+    assert report["success"] is False
+    assert report["erasure_complete"] is False
+
+
+def test_conflict_report_replay_cannot_restore_success(rig):
+    """7: idempotent replay of a batch whose durable row was tampered with
+    to look COMPLETE must remain non-successful — replay must never be a
+    way to launder a stale/inconsistent row into a false success."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_conflict", source="userA"))
+    _insert_conflicting_job(coordinator, fact_id="f_conflict", subject_user_id="userB")
+
+    first = batch.forget_all_durable(
+        "userA", reason="dsr", actor="api:newoperator", idempotency_key="restored-key",
+    )
+    assert first["outcome"] == SUBJECT_CONFLICT
+
+    with batch._jobs_db() as conn:
+        conn.execute(
+            "UPDATE erasure_batches SET status = ? WHERE batch_id = ?",
+            (COMPLETE, first["batch_id"]),
+        )
+        conn.commit()
+
+    replay = batch.forget_all_durable(
+        "userA", reason="dsr", actor="api:newoperator", idempotency_key="restored-key",
+    )
+    assert replay["batch_id"] == first["batch_id"]
+    assert replay["success"] is False
+    assert replay["erasure_complete"] is False
+
+
+# ── Round 5.4 second-order Codex finding (P2): preserve PARTIAL outcome ─────
+# when a subject conflict coexists with a genuinely still-retryable item.
+# _report() must never report the terminal SUBJECT_CONFLICT outcome while
+# OTHER items remain PENDING/PARTIAL/FAILED — that would look terminal to
+# a caller and could stop it from retrying items that are still erasable.
+
+def test_conflict_does_not_override_a_still_retryable_batch(rig):
+    """A batch row whose stored status claims a terminal outcome
+    (SUBJECT_CONFLICT) while its OWN item rows still contain a retryable
+    (PENDING) item alongside the conflicting one must report PARTIAL, not
+    SUBJECT_CONFLICT — the conflict is visible via conflict_items/
+    subject_conflict, but never promoted to the effective outcome while
+    other work remains."""
+    batch, coordinator, store, embeddings, ngram = rig
+    batch_id = "eb_mixed_conflict_retryable"
+    now = _now()
+    with batch._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_batches (batch_id, user_id, reason, actor, force, "
+            "scope, idempotency_key, request_fingerprint, status, compliance_status, "
+            "items_total, snapshot_hash, snapshot_at, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, 0, NULL, NULL, ?, ?, NULL, ?, ?, ?, ?, ?)",
+            (batch_id, "userA", "dsr", "tester", "fp_mixed", SUBJECT_CONFLICT,
+             2, "hash_mixed", now, now, now),
+        )
+        conn.execute(
+            "INSERT INTO erasure_batch_items (item_id, batch_id, fact_id, "
+            "epistemic_state_at_snapshot, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (f"{batch_id}_item1", batch_id, "f_conflict", "Observed", SUBJECT_CONFLICT, now, now),
+        )
+        conn.execute(
+            "INSERT INTO erasure_batch_items (item_id, batch_id, fact_id, "
+            "epistemic_state_at_snapshot, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (f"{batch_id}_item2", batch_id, "f_pending", "Observed", PENDING, now, now),
+        )
+        conn.commit()
+
+    report = batch.get_batch_report(batch_id)
+    assert report["stored_status"] == SUBJECT_CONFLICT
+    assert report["outcome"] == PARTIAL
+    assert report["operation_finished"] is False
+    assert report["success"] is False
+    assert report["erasure_complete"] is False
+    assert report["subject_conflict"] is True
+    assert report["conflict_items"] == ["f_conflict"]
+
+
+def test_conflict_alone_with_no_retryable_items_still_reports_subject_conflict(rig):
+    """The companion case: once the OTHER item genuinely reaches a
+    terminal state (no longer retryable), the conflict DOES become the
+    effective outcome — the fix narrows to "not while still retryable",
+    not "never report SUBJECT_CONFLICT again"."""
+    batch, coordinator, store, embeddings, ngram = rig
+    batch_id = "eb_conflict_only_terminal"
+    now = _now()
+    with batch._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_batches (batch_id, user_id, reason, actor, force, "
+            "scope, idempotency_key, request_fingerprint, status, compliance_status, "
+            "items_total, snapshot_hash, snapshot_at, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, 0, NULL, NULL, ?, ?, NULL, ?, ?, ?, ?, ?)",
+            (batch_id, "userA", "dsr", "tester", "fp_terminal", SUBJECT_CONFLICT,
+             2, "hash_terminal", now, now, now),
+        )
+        conn.execute(
+            "INSERT INTO erasure_batch_items (item_id, batch_id, fact_id, "
+            "epistemic_state_at_snapshot, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (f"{batch_id}_item1", batch_id, "f_conflict", "Observed", SUBJECT_CONFLICT, now, now),
+        )
+        conn.execute(
+            "INSERT INTO erasure_batch_items (item_id, batch_id, fact_id, "
+            "epistemic_state_at_snapshot, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (f"{batch_id}_item2", batch_id, "f_done", "Observed", COMPLETE, now, now),
+        )
+        conn.commit()
+
+    report = batch.get_batch_report(batch_id)
+    assert report["outcome"] == SUBJECT_CONFLICT
+    assert report["operation_finished"] is True
+
+
+# ── Round 5.4 third-order Codex finding (P2): make recomputed PARTIAL ───────
+# batches actually runnable again. Reporting outcome=PARTIAL for a stale
+# terminal row is not enough — _run_batch()/resume_incomplete_batches()
+# both gate on the STORED erasure_batches.status column, so without a
+# self-heal write the batch would report PARTIAL forever without ever
+# being picked up for reprocessing.
+
+def test_recomputed_partial_batch_self_heals_stored_status(rig):
+    """The stored status column itself must be repaired back to PARTIAL
+    (best-effort) when _report() discovers a stale terminal claim with
+    retryable items underneath — so a later resume actually reprocesses
+    them, rather than the batch being stuck reporting PARTIAL forever."""
+    batch, coordinator, store, embeddings, ngram = rig
+    batch_id = "eb_self_heal_partial"
+    now = _now()
+    with batch._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_batches (batch_id, user_id, reason, actor, force, "
+            "scope, idempotency_key, request_fingerprint, status, compliance_status, "
+            "items_total, snapshot_hash, snapshot_at, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, 0, NULL, NULL, ?, ?, NULL, ?, ?, ?, ?, ?)",
+            (batch_id, "userA", "dsr", "tester", "fp_self_heal", COMPLETE,
+             2, "hash_self_heal", now, now, now),
+        )
+        conn.execute(
+            "INSERT INTO erasure_batch_items (item_id, batch_id, fact_id, "
+            "epistemic_state_at_snapshot, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (f"{batch_id}_item1", batch_id, "f_pending", "Observed", PENDING, now, now),
+        )
+        conn.execute(
+            "INSERT INTO erasure_batch_items (item_id, batch_id, fact_id, "
+            "epistemic_state_at_snapshot, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (f"{batch_id}_item2", batch_id, "f_done", "Observed", COMPLETE, now, now),
+        )
+        conn.commit()
+
+    report = batch.get_batch_report(batch_id)
+    assert report["outcome"] == PARTIAL
+    assert report["stored_status"] == COMPLETE  # reflects the value AT READ time
+
+    with batch._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT status FROM erasure_batches WHERE batch_id = ?", (batch_id,),
+        ).fetchone()
+    assert row["status"] == PARTIAL  # the self-heal actually landed
+
+    # Genuinely runnable now — resume_incomplete_batches() must be able to
+    # pick it up, not skip it forever.
+    resumed_ids = {r["batch_id"] for r in batch.resume_incomplete_batches()}
+    assert batch_id in resumed_ids
+    assert report["success"] is False
+
+
+# ── Round 5.4 fourth-order Codex finding (P2): crash/startup recovery ───────
+# must discover a stored-TERMINAL batch whose CURRENT item rows still prove
+# retryable work remains, WITHOUT depending on any caller first requesting
+# its report (which is the only thing that previously triggered the
+# self-heal). resume_incomplete_batches() now selects such batches via a
+# targeted EXISTS query and reconciles them itself before claiming.
+
+def _insert_batch_row(
+    batch, *, batch_id, user_id, status, items, created_at=None,
+):
+    """Directly persist a batch + its item rows via raw SQL — mirrors the
+    hand-restored/pre-fix state these tests reproduce. `items` is a list of
+    (fact_id, epistemic_state, item_status) tuples; snapshot_hash is
+    computed for real from (fact_id, epistemic_state) so _run_batch()'s
+    snapshot-integrity check passes and items are genuinely processed."""
+    now = created_at or _now()
+    items_for_hash = [
+        {"fact_id": fid, "epistemic_state_at_snapshot": state}
+        for fid, state, _status in items
+    ]
+    snapshot_hash = BatchErasureCoordinator._compute_snapshot_hash(items_for_hash)
+    with batch._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_batches (batch_id, user_id, reason, actor, force, "
+            "scope, idempotency_key, request_fingerprint, status, compliance_status, "
+            "items_total, snapshot_hash, snapshot_at, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, 0, NULL, NULL, ?, ?, NULL, ?, ?, ?, ?, ?)",
+            (batch_id, user_id, "dsr", "tester", f"fp_{batch_id}", status,
+             len(items), snapshot_hash, now, now, now),
+        )
+        for i, (fid, state, item_status) in enumerate(items):
+            conn.execute(
+                "INSERT INTO erasure_batch_items (item_id, batch_id, fact_id, "
+                "epistemic_state_at_snapshot, status, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (f"{batch_id}_item{i}", batch_id, fid, state, item_status, now, now),
+            )
+        conn.commit()
+
+
+def test_recovery_sweep_discovers_complete_batch_with_retryable_item(rig):
+    """A batch row hand-restored to status=COMPLETE whose item row is still
+    PENDING must be discovered, self-healed, and actually reprocessed by
+    resume_incomplete_batches() alone — no report() call precedes it."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_pending", source="userA"))
+    _insert_batch_row(
+        batch, batch_id="eb_stale_complete_pending", user_id="userA",
+        status=COMPLETE, items=[("f_pending", "Observed", PENDING)],
+    )
+
+    resumed = {r["batch_id"]: r for r in batch.resume_incomplete_batches()}
+    assert "eb_stale_complete_pending" in resumed
+    result = resumed["eb_stale_complete_pending"]
+    assert result["outcome"] == COMPLETE
+    assert result["success"] is True
+    assert store.get_fact("f_pending") is None
+
+    with batch._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT status FROM erasure_batches WHERE batch_id = ?",
+            ("eb_stale_complete_pending",),
+        ).fetchone()
+    assert row["status"] == COMPLETE
+
+
+def test_recovery_sweep_resumes_retryable_items_beside_subject_conflict(rig):
+    """A stored SUBJECT_CONFLICT batch with one FAILED (retryable) item
+    beside the conflicting one: recovery must retry the FAILED item, keep
+    the conflict item visible, and never falsely report COMPLETE."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_ok", source="userA"))
+    _insert_batch_row(
+        batch, batch_id="eb_conflict_plus_retryable", user_id="userA",
+        status=SUBJECT_CONFLICT,
+        items=[
+            ("f_conflict", "Observed", SUBJECT_CONFLICT),
+            ("f_ok", "Observed", FAILED),
+        ],
+    )
+
+    resumed = {r["batch_id"]: r for r in batch.resume_incomplete_batches()}
+    assert "eb_conflict_plus_retryable" in resumed
+    result = resumed["eb_conflict_plus_retryable"]
+
+    assert store.get_fact("f_ok") is None  # the retryable item was reprocessed
+    assert result["subject_conflict"] is True
+    assert "f_conflict" in result["conflict_items"]
+    assert result["outcome"] == SUBJECT_CONFLICT
+    assert result["success"] is False
+
+
+def test_recovery_sweep_does_not_reopen_consistent_terminal_batch(rig):
+    """A genuinely consistent COMPLETE batch (no retryable item rows) must
+    never be reclaimed/mutated by the recovery sweep."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f1"))
+    first = batch.forget_all_durable("userA", reason="dsr", actor="tester")
+    assert first["outcome"] == COMPLETE
+
+    with batch._jobs_db() as conn:
+        before = conn.execute(
+            "SELECT status, updated_at, claim_generation FROM erasure_batches "
+            "WHERE batch_id = ?", (first["batch_id"],),
+        ).fetchone()
+
+    resumed_ids = {r["batch_id"] for r in batch.resume_incomplete_batches()}
+    assert first["batch_id"] not in resumed_ids
+
+    with batch._jobs_db() as conn:
+        after = conn.execute(
+            "SELECT status, updated_at, claim_generation FROM erasure_batches "
+            "WHERE batch_id = ?", (first["batch_id"],),
+        ).fetchone()
+    assert after["status"] == COMPLETE
+    assert after["claim_generation"] == before["claim_generation"]
+    assert after["updated_at"] == before["updated_at"]
+
+
+def test_recovery_sweep_does_not_bypass_critical_compliance_terminal_state(rig):
+    """A CRITICAL_COMPLIANCE_VIOLATION item is terminal-for-itself and is
+    NOT in _ITEM_RETRYABLE_STATUSES — a batch resolved to COMPLETE with only
+    such an item (no other retryable work) must never be reopened by the
+    recovery sweep merely because a compliance violation exists."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_critical"))
+    _force_epistemic_state(store, "f_critical", "ImmutableCore")
+
+    first = batch.forget_all_durable("userA", reason="dsr", actor="tester")
+    assert first["compliance_status"] == CRITICAL_COMPLIANCE_VIOLATION
+    assert first["outcome"] == COMPLETE
+
+    with batch._jobs_db() as conn:
+        before = conn.execute(
+            "SELECT status, claim_generation FROM erasure_batches WHERE batch_id = ?",
+            (first["batch_id"],),
+        ).fetchone()
+
+    resumed_ids = {r["batch_id"] for r in batch.resume_incomplete_batches()}
+    assert first["batch_id"] not in resumed_ids
+
+    with batch._jobs_db() as conn:
+        after = conn.execute(
+            "SELECT status, claim_generation, compliance_status FROM erasure_batches "
+            "WHERE batch_id = ?", (first["batch_id"],),
+        ).fetchone()
+    assert after["status"] == COMPLETE
+    assert after["claim_generation"] == before["claim_generation"]
+    assert after["compliance_status"] == CRITICAL_COMPLIANCE_VIOLATION
+
+
+def test_recovery_terminal_reconciliation_does_not_clobber_concurrent_update(rig):
+    """Reproduces the exact race window resume_incomplete_batches()'s
+    reconcile step is exposed to: it reads a (stale) terminal batch
+    snapshot, then — before its self-heal CAS runs — a concurrent
+    transaction writes a genuinely fresher status. The guarded CAS (bound
+    to the EXACT stale value read) must miss rather than clobber it."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_pending", source="userA"))
+    _insert_batch_row(
+        batch, batch_id="eb_cas_race", user_id="userA",
+        status=COMPLETE, items=[("f_pending", "Observed", PENDING)],
+    )
+
+    # This is exactly what resume_incomplete_batches() does before calling
+    # _report() in its reconcile step: read the (about to become stale)
+    # batch snapshot first.
+    stale_batch = batch._load_batch("eb_cas_race")
+    assert stale_batch["status"] == COMPLETE
+
+    # A concurrent transaction — e.g. a live runner independently finalizing
+    # this batch for real — writes a fresher status in the gap.
+    with batch._jobs_db() as conn:
+        conn.execute(
+            "UPDATE erasure_batches SET status = ?, updated_at = ? WHERE batch_id = ?",
+            (SUBJECT_CONFLICT, _now(), "eb_cas_race"),
+        )
+        conn.commit()
+
+    batch._report(stale_batch, batch._load_items("eb_cas_race"))
+
+    with batch._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT status FROM erasure_batches WHERE batch_id = ?",
+            ("eb_cas_race",),
+        ).fetchone()
+    # The self-heal CAS was bound to status='COMPLETE' (the stale read) —
+    # it must miss against the now-SUBJECT_CONFLICT row, never clobber it.
+    assert row["status"] == SUBJECT_CONFLICT
+
+
+def test_recovery_of_stale_terminal_batch_does_not_require_report_call(rig, monkeypatch):
+    """The SQL EXISTS query alone must discover the candidate. Many
+    consistent terminal batches (no retryable items) coexist with one
+    genuinely stale candidate — _report() must be invoked only for the
+    true candidate, never once per historical terminal batch."""
+    batch, coordinator, store, embeddings, ngram = rig
+
+    for n in range(15):
+        _insert_batch_row(
+            batch, batch_id=f"eb_consistent_{n}", user_id="userA",
+            status=COMPLETE, items=[(f"f_done_{n}", "Observed", COMPLETE)],
+        )
+
+    store.store_fact(_fact("f_pending", source="userA"))
+    _insert_batch_row(
+        batch, batch_id="eb_candidate", user_id="userA",
+        status=COMPLETE, items=[("f_pending", "Observed", PENDING)],
+    )
+
+    call_count = {"n": 0}
+    original_report = BatchErasureCoordinator._report
+
+    def counting_report(self, b, items):
+        call_count["n"] += 1
+        return original_report(self, b, items)
+
+    monkeypatch.setattr(BatchErasureCoordinator, "_report", counting_report)
+
+    resumed_ids = {r["batch_id"] for r in batch.resume_incomplete_batches()}
+    assert resumed_ids == {"eb_candidate"}
+    # Reconcile (1) + _finalize_batch()'s own report (1) for the ONE true
+    # candidate — nowhere near the 15 consistent batches that were never
+    # candidates in the first place.
+    assert call_count["n"] <= 2
+
+
+def test_recovery_terminal_candidate_selection_respects_limit(rig, monkeypatch):
+    """More stale-terminal candidates than the configured sweep limit: the
+    result must be bounded, ordering deterministic (oldest first), and a
+    later sweep must recover whatever the first one left behind."""
+    batch, coordinator, store, embeddings, ngram = rig
+    monkeypatch.setattr(ebc_module, "_RECOVERY_SWEEP_LIMIT", 3)
+
+    batch_ids = []
+    for n in range(5):
+        store.store_fact(_fact(f"f_{n}", source="userA"))
+        bid = f"eb_limit_{n}"
+        batch_ids.append(bid)
+        created = f"2026-01-01T00:00:0{n}+00:00"
+        _insert_batch_row(
+            batch, batch_id=bid, user_id="userA", status=COMPLETE,
+            items=[(f"f_{n}", "Observed", PENDING)], created_at=created,
+        )
+
+    first_sweep_ids = {r["batch_id"] for r in batch.resume_incomplete_batches()}
+    assert len(first_sweep_ids) == 3
+    assert first_sweep_ids == set(batch_ids[:3])  # oldest 3, deterministic
+
+    second_sweep_ids = {r["batch_id"] for r in batch.resume_incomplete_batches()}
+    assert second_sweep_ids == set(batch_ids[3:])
+
+
+# ── Round 5.4 fifth-order Codex finding (P2): the fourth-order fix combined ─
+# the ordinary (PENDING/PARTIAL/FAILED/stale-RUNNING) and the new stale-
+# terminal-with-retryable-items branches into ONE query with ONE global
+# LIMIT — silently capping the ordinary branch, which was always unbounded
+# before, and risking starvation of newer candidates behind a permanently
+# stuck old prefix. The two branches are now selected by two separate
+# queries and combined/deduplicated in Python.
+
+def test_ordinary_recovery_is_not_capped_by_stale_terminal_limit(rig, monkeypatch):
+    """More than _RECOVERY_SWEEP_LIMIT old ORDINARY (FAILED, permanently
+    retryable) batches must never exclude a newer ordinary PENDING batch
+    from being considered — the ordinary branch is unbounded, exactly as
+    before this whole feature existed."""
+    batch, coordinator, store, embeddings, ngram = rig
+    monkeypatch.setattr(ebc_module, "_RECOVERY_SWEEP_LIMIT", 5)
+
+    old_fact_ids = {f"f_ord_old_{n}" for n in range(8)}  # > limit (5)
+    original_erase = coordinator.erase_fact_durable
+
+    def flaky_erase(fact_id, **kwargs):
+        if fact_id in old_fact_ids:
+            return {"outcome": FAILED, "job_id": None}
+        return original_erase(fact_id, **kwargs)
+
+    monkeypatch.setattr(coordinator, "erase_fact_durable", flaky_erase)
+
+    for n, fid in enumerate(sorted(old_fact_ids)):
+        _insert_batch_row(
+            batch, batch_id=f"eb_ord_old_{n}", user_id="userA", status=FAILED,
+            items=[(fid, "Observed", FAILED)],
+            created_at=f"2020-01-01T00:00:{n:02d}+00:00",
+        )
+
+    store.store_fact(_fact("f_ord_new", source="userA"))
+    _insert_batch_row(
+        batch, batch_id="eb_ord_new", user_id="userA", status=PENDING,
+        items=[("f_ord_new", "Observed", PENDING)],
+        created_at="2020-01-02T00:00:00+00:00",
+    )
+
+    resumed = {r["batch_id"]: r for r in batch.resume_incomplete_batches()}
+    # ALL 8 old ordinary batches AND the newer one are considered in the
+    # SAME sweep — the ordinary branch was never limited.
+    assert all(f"eb_ord_old_{n}" in resumed for n in range(8))
+    assert "eb_ord_new" in resumed
+    assert resumed["eb_ord_new"]["outcome"] == COMPLETE
+    assert store.get_fact("f_ord_new") is None
+
+
+def test_stale_terminal_recovery_advances_past_permanent_failing_prefix(rig, monkeypatch):
+    """More than _RECOVERY_SWEEP_LIMIT older stale-terminal candidates whose
+    items are engineered to keep failing forever must not permanently
+    block a newer stale-terminal candidate — it must be reached within a
+    bounded number of subsequent sweeps, without the old prefix ever fully
+    resolving its underlying items."""
+    batch, coordinator, store, embeddings, ngram = rig
+    monkeypatch.setattr(ebc_module, "_RECOVERY_SWEEP_LIMIT", 5)
+
+    old_fact_ids = {f"f_stale_old_{n}" for n in range(8)}  # > limit (5)
+    original_erase = coordinator.erase_fact_durable
+
+    def flaky_erase(fact_id, **kwargs):
+        if fact_id in old_fact_ids:
+            return {"outcome": FAILED, "job_id": None}
+        return original_erase(fact_id, **kwargs)
+
+    monkeypatch.setattr(coordinator, "erase_fact_durable", flaky_erase)
+
+    for n, fid in enumerate(sorted(old_fact_ids)):
+        _insert_batch_row(
+            batch, batch_id=f"eb_stale_old_{n}", user_id="userA", status=COMPLETE,
+            items=[(fid, "Observed", PENDING)],
+            created_at=f"2020-02-01T00:00:{n:02d}+00:00",
+        )
+
+    store.store_fact(_fact("f_stale_new", source="userA"))
+    _insert_batch_row(
+        batch, batch_id="eb_stale_new", user_id="userA", status=COMPLETE,
+        items=[("f_stale_new", "Observed", PENDING)],
+        created_at="2020-02-02T00:00:00+00:00",
+    )
+
+    first_sweep_ids = {r["batch_id"] for r in batch.resume_incomplete_batches()}
+    assert len(first_sweep_ids) == 5  # bounded to the limit
+    assert "eb_stale_new" not in first_sweep_ids  # not yet reached
+
+    second_sweep = {r["batch_id"]: r for r in batch.resume_incomplete_batches()}
+    # The newer candidate is reached WITHOUT the old prefix's items ever
+    # actually resolving (they keep returning FAILED forever) — the batches
+    # graduated out of the stale-terminal bucket (self-healed to PARTIAL)
+    # merely by being reconciled once, vacating the LIMIT window.
+    assert "eb_stale_new" in second_sweep
+    assert second_sweep["eb_stale_new"]["outcome"] == COMPLETE
+    assert store.get_fact("f_stale_new") is None
+
+
+def test_recovery_limit_applies_only_to_stale_terminal_candidates(rig, monkeypatch):
+    """In a single sweep with both classes over-represented: ALL ordinary
+    candidates are considered (unbounded), but only _RECOVERY_SWEEP_LIMIT
+    stale-terminal candidates are."""
+    batch, coordinator, store, embeddings, ngram = rig
+    monkeypatch.setattr(ebc_module, "_RECOVERY_SWEEP_LIMIT", 5)
+
+    for n in range(8):
+        _insert_batch_row(
+            batch, batch_id=f"eb_mix_ord_{n}", user_id="userA", status=FAILED,
+            items=[(f"f_mix_ord_{n}", "Observed", FAILED)],
+            created_at=f"2020-03-01T00:00:{n:02d}+00:00",
+        )
+    for n in range(8):
+        _insert_batch_row(
+            batch, batch_id=f"eb_mix_term_{n}", user_id="userA", status=COMPLETE,
+            items=[(f"f_mix_term_{n}", "Observed", PENDING)],
+            created_at=f"2020-04-01T00:00:{n:02d}+00:00",
+        )
+
+    resumed_ids = {r["batch_id"] for r in batch.resume_incomplete_batches()}
+    ordinary_seen = {bid for bid in resumed_ids if bid.startswith("eb_mix_ord_")}
+    terminal_seen = {bid for bid in resumed_ids if bid.startswith("eb_mix_term_")}
+    assert len(ordinary_seen) == 8
+    assert len(terminal_seen) == 5
+
+
+def test_recovery_candidate_union_deduplicates_batch_ids(rig, monkeypatch):
+    """A batch that (due to a race between the two separate selection
+    reads) appears in BOTH candidate collections must be processed at most
+    once per sweep."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_race", source="userA"))
+    _insert_batch_row(
+        batch, batch_id="eb_race", user_id="userA", status=PENDING,
+        items=[("f_race", "Observed", PENDING)],
+    )
+
+    original_select_terminal = batch._select_stale_terminal_recovery_candidates
+
+    def racing_select_terminal():
+        # Simulate eb_race ALSO surfacing via the stale-terminal query —
+        # e.g. its status flipped and flipped back between the two reads.
+        return list(original_select_terminal()) + [{"batch_id": "eb_race"}]
+
+    monkeypatch.setattr(
+        batch, "_select_stale_terminal_recovery_candidates", racing_select_terminal,
+    )
+
+    run_batch_calls = []
+    original_run_batch = batch._run_batch
+
+    def counting_run_batch(batch_id, **kwargs):
+        run_batch_calls.append(batch_id)
+        return original_run_batch(batch_id, **kwargs)
+
+    monkeypatch.setattr(batch, "_run_batch", counting_run_batch)
+
+    results = batch.resume_incomplete_batches()
+    result_ids = [r["batch_id"] for r in results]
+    assert result_ids.count("eb_race") == 1
+    assert run_batch_calls.count("eb_race") == 1
+    assert store.get_fact("f_race") is None
+
+
+def test_stale_terminal_recovery_cursor_advances_deterministically(rig, monkeypatch):
+    """Repeated sweeps advance deterministically through the stale-terminal
+    candidate set — every candidate is inspected exactly once, across
+    ceil(N / limit) sweeps, never revisited, never skipped."""
+    batch, coordinator, store, embeddings, ngram = rig
+    monkeypatch.setattr(ebc_module, "_RECOVERY_SWEEP_LIMIT", 5)
+
+    total = 12
+    fact_ids = []
+    for n in range(total):
+        fid = f"f_cursor_{n}"
+        fact_ids.append(fid)
+        store.store_fact(_fact(fid, source="userA"))
+        _insert_batch_row(
+            batch, batch_id=f"eb_cursor_{n}", user_id="userA", status=COMPLETE,
+            items=[(fid, "Observed", PENDING)],
+            created_at=f"2020-05-01T00:00:{n:02d}+00:00",
+        )
+
+    seen_order = []
+    for _ in range(3):  # ceil(12 / 5) == 3
+        sweep_ids = [r["batch_id"] for r in batch.resume_incomplete_batches()]
+        seen_order.append(sweep_ids)
+
+    all_seen = [bid for sweep in seen_order for bid in sweep]
+    assert sorted(all_seen) == sorted(f"eb_cursor_{n}" for n in range(total))
+    assert len(all_seen) == len(set(all_seen))  # never revisited
+    assert [len(s) for s in seen_order] == [5, 5, 2]  # deterministic, bounded
+    for fid in fact_ids:
+        assert store.get_fact(fid) is None
+
+
+def test_split_recovery_queries_preserve_concurrent_status_updates(rig, monkeypatch):
+    """A candidate whose status changes between selection and
+    reconciliation (a concurrent transaction finalizing it for real) must
+    not be clobbered back to the stale value, and must not be executed
+    twice."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_split_race", source="userA"))
+    _insert_batch_row(
+        batch, batch_id="eb_split_race", user_id="userA", status=COMPLETE,
+        items=[("f_split_race", "Observed", PENDING)],
+    )
+
+    original_load_batch = batch._load_batch
+    race_done = {"done": False}
+
+    def racing_load_batch(bid):
+        result = original_load_batch(bid)
+        if bid == "eb_split_race" and not race_done["done"]:
+            race_done["done"] = True
+            with batch._jobs_db() as conn:
+                conn.execute(
+                    "UPDATE erasure_batches SET status = ?, updated_at = ? "
+                    "WHERE batch_id = ?",
+                    (SUBJECT_CONFLICT, _now(), bid),
+                )
+                conn.commit()
+        return result
+
+    monkeypatch.setattr(batch, "_load_batch", racing_load_batch)
+
+    results = batch.resume_incomplete_batches()
+    assert [r["batch_id"] for r in results].count("eb_split_race") <= 1
+
+    with batch._jobs_db() as conn:
+        final = conn.execute(
+            "SELECT status FROM erasure_batches WHERE batch_id = ?",
+            ("eb_split_race",),
+        ).fetchone()
+    # The concurrent write is never clobbered back to the stale COMPLETE
+    # this reconciliation started from.
+    assert final["status"] != COMPLETE

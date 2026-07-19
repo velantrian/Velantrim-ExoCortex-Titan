@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import uuid
+from collections.abc import Mapping
 from typing import Any
 
 from core.tool_registry import (
@@ -171,7 +172,7 @@ class McpHandler:
         credential_fingerprint: str | None = None,
     ) -> dict[str, Any]:
         name = params.get("name", "")
-        arguments = params.get("arguments") or {}
+        arguments = params.get("arguments")
 
         available = self.registry.for_capability(capability)
         if name not in available:
@@ -185,7 +186,25 @@ class McpHandler:
         if tool.destructive and capability != "admin":
             return make_error(msg_id, -32603, "Destructive tool requires admin capability")
 
-        call_kwargs = dict(arguments)
+        # Round 5 fix (Codex P2): a malformed JSON-RPC tools/call request can
+        # supply `arguments` as a string/list/int/float/bool. dict(arguments)
+        # on any of those raises TypeError/ValueError OUTSIDE the try/except
+        # below, which used to let it escape handle() as an uncaught
+        # exception (HTTP 500 at the gateway) instead of a JSON-RPC error.
+        # Validate with an explicit Mapping check before ever constructing
+        # call_kwargs — missing/None normalizes to an empty object (matching
+        # the old `or {}` behavior for those two cases), anything else that
+        # isn't a mapping is a real Invalid Params, never a raised exception.
+        if arguments is None:
+            call_kwargs = {}
+        elif isinstance(arguments, Mapping):
+            call_kwargs = dict(arguments)
+        else:
+            return make_error(
+                msg_id,
+                -32602,
+                "Tool arguments must be a JSON object",
+            )
         if tool.needs_principal:
             # A real, server-verified PrincipalContext — `capability` is the
             # value resolve_authorized_capability() already computed for

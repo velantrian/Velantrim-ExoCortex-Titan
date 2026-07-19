@@ -41,6 +41,7 @@ MIGRATIONS = [
     (13, BASE_DIR / "migrations" / "013_erasure_jobs.sql"),
     (14, BASE_DIR / "migrations" / "014_erasure_job_generations.sql"),
     (15, BASE_DIR / "migrations" / "015_erasure_batches.sql"),
+    (16, BASE_DIR / "migrations" / "016_erasure_job_subject.sql"),
 ]
 
 LATEST_VERSION = max(v for v, _ in MIGRATIONS)
@@ -186,6 +187,11 @@ def dry_run_on_copy(db_path: Path, migrations: list[tuple[int, Path]]) -> bool:
                             l for l in raw_sql.split("\n")
                             if "ALTER TABLE erasure_log ADD COLUMN job_id" not in l
                         )
+                if version == 16 and column_exists(conn, "erasure_jobs", "subject_user_id"):
+                    raw_sql = "\n".join(
+                        l for l in raw_sql.split("\n")
+                        if "ALTER TABLE erasure_jobs ADD COLUMN subject_user_id" not in l
+                    )
 
                 conn.executescript(raw_sql)
                 conn.execute(f"PRAGMA user_version = {version}")
@@ -332,6 +338,19 @@ def apply_migrations(
                     line for line in raw_sql.split("\n")
                     if "ALTER TABLE erasure_log ADD COLUMN job_id" not in line
                 )
+
+        # 016: erasure_jobs.subject_user_id may already exist if
+        # ErasureCoordinator's own runtime schema self-healing
+        # (core/erasure_coordinator.py::_ensure_schema()) added it to this
+        # DB before the operator got around to running this migration —
+        # same non-idempotent-ALTER problem as 010/011/014 above.
+        if version == 16 and column_exists(conn, "erasure_jobs", "subject_user_id"):
+            print("   ℹ️  Колонка erasure_jobs.subject_user_id уже существует — "
+                  "пропускаю ALTER")
+            raw_sql = "\n".join(
+                line for line in raw_sql.split("\n")
+                if "ALTER TABLE erasure_jobs ADD COLUMN subject_user_id" not in line
+            )
 
         try:
             conn.executescript(raw_sql)

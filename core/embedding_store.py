@@ -52,6 +52,15 @@ class EmbeddingStore:
     def __init__(self, db_path: str = EXOCORTEX_DB):
         self._db_path = db_path
 
+    def close(self) -> None:
+        """No-op: every method here opens and closes its own sqlite3
+        connection, so no persistent connection is ever held. Provided for
+        API symmetry with SQLiteGraphStore.close() — a caller that owns a
+        tenant-scoped EmbeddingStore's lifecycle (e.g.
+        core.forgetting.ForgettingEngine) has an explicit, safe call to
+        make when it's done, exactly as it does for the facts store."""
+        return None
+
     def ensure_table(self) -> None:
         """Создать таблицу gs_vectors если её нет (идемпотентно)."""
         try:

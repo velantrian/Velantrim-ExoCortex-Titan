@@ -260,3 +260,122 @@ def test_gateway_derives_credential_fingerprint_from_api_key_hash_not_client_cla
     assert a != b
     assert a == _derive_credential_fingerprint("secret-key-one")
     assert a == "api:" + hashlib.sha256(b"secret-key-one").hexdigest()[:8]
+
+
+# ── Round 5 fix (Codex P2): validate tools/call arguments before dict() ─────
+
+def _counting_registry():
+    calls = {"n": 0}
+
+    def _echo(**kwargs):
+        calls["n"] += 1
+        return {"received": kwargs}
+
+    registry = ToolRegistry()
+    registry.register("echo", _echo, capability="reader")
+    return registry, calls
+
+
+@pytest.mark.parametrize(
+    "bad_arguments",
+    ["a string", [1, 2, 3], 5, 1.5, True, False],
+    ids=["string", "list", "int", "float", "bool_true", "bool_false"],
+)
+def test_tools_call_rejects_non_mapping_arguments(bad_arguments):
+    """A malformed JSON-RPC tools/call request supplying `arguments` as a
+    string/list/int/float/bool must get a clean -32602 Invalid Params —
+    never let dict(arguments)'s TypeError/ValueError escape as an uncaught
+    exception, and never invoke the tool."""
+    registry, calls = _counting_registry()
+    handler = McpHandler(registry=registry)
+
+    resp = handler.handle(
+        {
+            "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "echo", "arguments": bad_arguments},
+        },
+        capability="reader",
+    )
+
+    assert resp["error"]["code"] == -32602
+    assert calls["n"] == 0
+
+
+def test_tools_call_arguments_none_normalizes_to_empty_object():
+    registry, calls = _counting_registry()
+    handler = McpHandler(registry=registry)
+
+    resp = handler.handle(
+        {
+            "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "echo", "arguments": None},
+        },
+        capability="reader",
+    )
+
+    assert resp["result"]["isError"] is False
+    assert calls["n"] == 1
+    assert json.loads(resp["result"]["content"][0]["text"]) == {"received": {}}
+
+
+def test_tools_call_arguments_omitted_normalizes_to_empty_object():
+    registry, calls = _counting_registry()
+    handler = McpHandler(registry=registry)
+
+    resp = handler.handle(
+        {
+            "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "echo"},
+        },
+        capability="reader",
+    )
+
+    assert resp["result"]["isError"] is False
+    assert calls["n"] == 1
+    assert json.loads(resp["result"]["content"][0]["text"]) == {"received": {}}
+
+
+def test_tools_call_valid_dict_arguments_still_invokes_tool():
+    registry, calls = _counting_registry()
+    handler = McpHandler(registry=registry)
+
+    resp = handler.handle(
+        {
+            "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "echo", "arguments": {"x": 1}},
+        },
+        capability="reader",
+    )
+
+    assert resp["result"]["isError"] is False
+    assert calls["n"] == 1
+    assert json.loads(resp["result"]["content"][0]["text"]) == {"received": {"x": 1}}
+
+
+def test_mcp_http_post_malformed_arguments_returns_json_rpc_error_not_500():
+    """End-to-end: a real HTTP POST to the MCP endpoint with malformed
+    `arguments` must come back as a JSON-RPC error response — never an
+    HTTP 500, and never a traceback/raw-body leak in the error message."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from api import mcp_gateway
+
+    app = FastAPI()
+    mcp_gateway.register_mcp_routes(app)
+    client = TestClient(app)
+
+    resp = client.post(
+        "/mcp",
+        json={
+            "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "search_facts", "arguments": "not-an-object"},
+        },
+        headers={"X-MCP-Capability": "reader"},
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["error"]["code"] == -32602
+    assert "not-an-object" not in body["error"]["message"]
+    assert "Traceback" not in json.dumps(body)

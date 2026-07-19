@@ -26,8 +26,12 @@ from core.erasure_coordinator import (
     PARTIAL,
     PENDING,
     RESIDUAL_IMMUTABLE_DATA,
+    RUNNING,
+    SUBJECT_CONFLICT,
     SUPERSEDED,
     ErasureCoordinator,
+    LiveJobPendingError,
+    SubjectConflictError,
     _now,
     _RESUMABLE_STATUSES,
 )
@@ -973,8 +977,11 @@ def test_stale_generation_tombstone_does_not_corroborate_newer_generation(rig):
     assert gen2["job_id"] != gen1["job_id"]
 
     # Simulate generation 2's own tombstone having been lost/corrupted —
-    # generation 1's tombstone is untouched.
+    # generation 1's tombstone is untouched. erasure_log is genuinely
+    # append-only (Round 5.3 parity fix), so the trigger must be lifted
+    # to construct this otherwise-impossible fixture state.
     with coordinator._jobs_db() as conn:
+        conn.execute("DROP TRIGGER IF EXISTS prevent_erasure_delete")
         deleted = conn.execute(
             "DELETE FROM erasure_log WHERE fact_id = ? AND job_id = ?",
             (fact_id, gen2["job_id"]),
@@ -1006,6 +1013,9 @@ def test_pre_014_generation_1_tombstone_with_null_job_id_still_honored(rig):
     assert gen1["outcome"] == COMPLETE
 
     with coordinator._jobs_db() as conn:
+        # erasure_log is genuinely append-only (Round 5.3 parity fix); lift
+        # the trigger to construct this pre-migration-014 fixture state.
+        conn.execute("DROP TRIGGER IF EXISTS prevent_erasure_update")
         conn.execute(
             "UPDATE erasure_log SET job_id = NULL WHERE fact_id = ? AND job_id = ?",
             (fact_id, gen1["job_id"]),
@@ -2476,3 +2486,1105 @@ def test_run_job_on_a_superseded_job_id_redirects_to_the_replacement_generation(
     assert store.get_fact(fact_id) is None
     assert embeddings.has_any(fact_id) is False
     assert ngram.contains(fact_id) is False
+
+
+# ── Round 5 fix (Codex P2): preserve data-subject user_id in tombstones ──────
+#
+# erase_fact_durable()'s `actor` argument is the operator/credential
+# fingerprint that authorized the call — SQLiteGraphStore.write_tombstone()
+# stores whatever it's given in erasure_log.user_id, which user-scoped GDPR
+# audit queries (ForgettingEngine.get_erasure_log(user_id=...)) filter on.
+# Conflating the two meant a batch erasure for user_id="userA" run by
+# actor="api:deadbeef" tombstoned under "api:deadbeef" instead of "userA".
+# `subject_user_id` is the fix: a separate, explicit, durable column.
+
+def test_subject_user_id_recorded_separately_from_operator_actor(rig):
+    """A and part of E: subject/operator differ -> the tombstone is keyed to
+    the data subject, never the operator, and operator provenance survives
+    on the durable job report."""
+    coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_subject"))
+
+    report = coordinator.erase_fact_durable(
+        "f_subject", actor="api:deadbeef", subject_user_id="userA",
+    )
+    assert report["outcome"] == COMPLETE
+    assert report["subject_user_id"] == "userA"
+    assert report["actor"] == "api:deadbeef"
+
+    tombstone = store.get_tombstone("f_subject")
+    assert tombstone["user_id"] == "userA"
+    assert tombstone["user_id"] != "api:deadbeef"
+
+    # Operator provenance is preserved separately — never lost.
+    job_report = coordinator.get_job_report("f_subject")
+    assert job_report["actor"] == "api:deadbeef"
+    assert job_report["subject_user_id"] == "userA"
+
+
+def test_crash_and_resume_preserves_subject_user_id(rig, monkeypatch):
+    """C: subject_user_id must be stored durably in the per-fact job and
+    survive a crash — a resumed erasure must tombstone under the SAME data
+    subject as the original attempt, even when the resume call itself
+    doesn't re-supply subject_user_id."""
+    coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_resume"))
+    embeddings.store("f_resume", np.array([1.0], dtype=np.float32))
+
+    real_purge = embeddings.purge_node
+    calls = {"n": 0}
+
+    def _flaky_purge_node(node_id):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("simulated crash mid-erasure")
+        return real_purge(node_id)
+
+    monkeypatch.setattr(embeddings, "purge_node", _flaky_purge_node)
+
+    first = coordinator.erase_fact_durable(
+        "f_resume", actor="api:deadbeef", subject_user_id="userA",
+    )
+    assert first["outcome"] == PARTIAL
+    assert first["subject_user_id"] == "userA"
+
+    monkeypatch.setattr(embeddings, "purge_node", real_purge)
+    # Resume WITHOUT re-passing subject_user_id — the durable job row, not
+    # the caller, must be what carries it through.
+    second = coordinator.erase_fact_durable("f_resume")
+
+    assert second["outcome"] == COMPLETE
+    assert second["job_id"] == first["job_id"]  # same generation, resumed
+    assert second["subject_user_id"] == "userA"
+
+    tombstone = store.get_tombstone("f_resume")
+    assert tombstone["user_id"] == "userA"
+
+
+def test_legacy_call_without_subject_user_id_keeps_historical_actor_fallback(rig):
+    """D: legacy per-fact callers (core.erasure.erase_fact()'s shim, the
+    forget_fact MCP tool) never supply subject_user_id — the tombstone must
+    keep falling back to `actor`, exactly as before this parameter existed."""
+    coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_legacy"))
+
+    report = coordinator.erase_fact_durable("f_legacy", actor="operator")
+    assert report["outcome"] == COMPLETE
+    assert report["subject_user_id"] is None
+
+    tombstone = store.get_tombstone("f_legacy")
+    assert tombstone["user_id"] == "operator"
+
+
+# ── Round 5.2 fix (Codex P2): bind subject_user_id when adopting an ────────
+# existing job. _get_or_create_job() previously only recorded
+# subject_user_id when INSERTing a brand-new job — an adopted existing
+# non-terminal job (a legacy job, a PENDING crash leftover, a partially
+# executed resumable job) kept subject_user_id=NULL, so _finalize() fell
+# back to `actor`, tombstoning under the wrong identity.
+
+def test_existing_job_subject_binding_is_idempotent(rig):
+    """3: an adopted job whose subject_user_id ALREADY equals the supplied
+    value must proceed normally (idempotent) — no conflict, and actor/
+    reason on the pre-existing row are never overwritten."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "idempotent_subject_fact"
+    store.store_fact(_fact(fact_id))
+
+    job_id = "erj_preexisting_idempotent"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "legacy", "legacy-operator", "userA", PENDING, now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, ?, ?, ?)",
+                (f"{job_id}_{step_name}", job_id, step_name, PENDING),
+            )
+
+    result = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:newoperator", subject_user_id="userA",
+    )
+    assert result["outcome"] == COMPLETE
+    assert result["job_id"] == job_id
+    assert result["subject_user_id"] == "userA"
+
+    tombstone = store.get_tombstone(fact_id)
+    assert tombstone["user_id"] == "userA"
+
+    job_report = coordinator.get_job_report(fact_id)
+    assert job_report["actor"] == "legacy-operator"  # never overwritten
+    assert job_report["reason"] == "legacy"  # never overwritten
+
+
+def test_existing_job_rejects_different_subject(rig):
+    """4: an adopted job durably bound to a DIFFERENT subject must never
+    be overwritten, processed, or finalized under the new caller's
+    subject — fail closed with SUBJECT_CONFLICT, and never disclose the
+    job's actual (conflicting) subject."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "conflict_subject_fact"
+    store.store_fact(_fact(fact_id))
+
+    job_id = "erj_preexisting_conflict"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "legacy", "legacy-operator", "userB", PENDING, now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, ?, ?, ?)",
+                (f"{job_id}_{step_name}", job_id, step_name, PENDING),
+            )
+
+    result = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:newoperator", subject_user_id="userA",
+    )
+    assert result["outcome"] == SUBJECT_CONFLICT
+    assert result["job_id"] is None
+    # Only the CALLER's own requested subject is echoed back — never the
+    # conflicting job's actual (userB) subject.
+    assert result["subject_user_id"] == "userA"
+
+    # Fail closed: no processing/finalization occurred at all.
+    assert store.get_fact(fact_id) is not None
+    assert store.get_tombstone(fact_id) is None
+
+    with coordinator._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT subject_user_id, status, actor FROM erasure_jobs WHERE job_id = ?",
+            (job_id,),
+        ).fetchone()
+    assert row["subject_user_id"] == "userB"  # unchanged
+    assert row["status"] == PENDING  # never touched/processed
+    assert row["actor"] == "legacy-operator"  # unchanged
+
+
+def test_batch_resume_binds_subject_on_existing_partial_job(rig, monkeypatch):
+    """2: crash-resume adoption — a job that started with no subject
+    concept (subject_user_id=NULL) and is still PARTIAL must bind the
+    resuming caller's subject before finishing, so the completion
+    tombstone lands under the SAME subject the resume call supplied."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "resume_subject_bind_fact"
+    store.store_fact(_fact(fact_id))
+    embeddings.store(fact_id, np.array([1.0], dtype=np.float32))
+
+    real_purge = embeddings.purge_node
+    calls = {"n": 0}
+
+    def _flaky_purge_node(node_id):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("simulated crash mid-erasure")
+        return real_purge(node_id)
+
+    monkeypatch.setattr(embeddings, "purge_node", _flaky_purge_node)
+
+    # A legacy/crash-recovery caller with no subject concept at all.
+    first = coordinator.erase_fact_durable(fact_id, actor="legacy-operator")
+    assert first["outcome"] == PARTIAL
+    assert first["subject_user_id"] is None
+
+    monkeypatch.setattr(embeddings, "purge_node", real_purge)
+    # Resumed by a caller that DOES know the data subject.
+    second = coordinator.erase_fact_durable(
+        fact_id, actor="legacy-operator", subject_user_id="userA",
+    )
+    assert second["outcome"] == COMPLETE
+    assert second["job_id"] == first["job_id"]
+    assert second["subject_user_id"] == "userA"
+
+    tombstone = store.get_tombstone(fact_id)
+    assert tombstone["user_id"] == "userA"
+
+    job_report = coordinator.get_job_report(fact_id)
+    assert job_report["actor"] == "legacy-operator"  # operator provenance preserved
+
+
+def test_concurrent_subject_binding_has_single_winner(rig):
+    """5: two concurrent callers proposing DIFFERENT subjects for the SAME
+    fact_id (a genuine create-race — neither has a job yet) must converge
+    on exactly ONE bound subject; the loser fails closed with
+    SUBJECT_CONFLICT, and no mixed-subject tombstone is ever produced."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "concurrent_subject_fact"
+    store.store_fact(_fact(fact_id))
+
+    orig_peek = coordinator._peek_job_row
+
+    def slow_peek(fid):
+        result = orig_peek(fid)
+        if fid == fact_id:
+            time.sleep(0.15)
+        return result
+
+    coordinator._peek_job_row = slow_peek
+
+    results: dict[str, dict] = {}
+
+    def call(name, subject):
+        results[name] = coordinator.erase_fact_durable(
+            fact_id, reason="test", actor=f"actor-{name}", subject_user_id=subject,
+        )
+
+    t1 = threading.Thread(target=call, args=("A", "userA"))
+    t2 = threading.Thread(target=call, args=("B", "userB"))
+    t1.start()
+    time.sleep(0.02)
+    t2.start()
+    t1.join(timeout=10)
+    t2.join(timeout=10)
+
+    coordinator._peek_job_row = orig_peek
+
+    assert "A" in results and "B" in results
+    outcomes = {results["A"]["outcome"], results["B"]["outcome"]}
+    assert SUBJECT_CONFLICT in outcomes, f"expected exactly one loser, got {outcomes}"
+
+    winner_name = "A" if results["A"]["outcome"] != SUBJECT_CONFLICT else "B"
+    loser_name = "B" if winner_name == "A" else "A"
+    assert results[winner_name]["outcome"] == COMPLETE
+    assert results[loser_name]["outcome"] == SUBJECT_CONFLICT
+    assert results[loser_name]["job_id"] is None
+
+    winner_subject = "userA" if winner_name == "A" else "userB"
+    tombstone = store.get_tombstone(fact_id)
+    assert tombstone["user_id"] == winner_subject  # no mixed-subject tombstone
+
+    with coordinator._jobs_db() as conn:
+        rows = conn.execute(
+            "SELECT job_id, subject_user_id FROM erasure_jobs WHERE fact_id = ?",
+            (fact_id,),
+        ).fetchall()
+    assert len(rows) == 1, "the race loser must never create a second, diverging job"
+    assert rows[0]["subject_user_id"] == winner_subject
+
+
+# ── Round 5.2 second-order review: tombstone-first / cached-terminal-report ─
+# subject resolution. Both of erase_fact_durable()'s EARLY-RETURN paths
+# (crash-window tombstone reconciliation, and re-reading an already-
+# COMPLETE generation's cached report) bypass _get_or_create_job()
+# entirely — they need their OWN bind-or-conflict check, or a caller
+# asking about a DIFFERENT subject could silently be handed back a
+# different subject's result as if it were its own.
+
+def test_tombstone_first_reconciliation_rejects_different_subject(rig):
+    """A job crash-stuck in RUNNING with its own tombstone already written
+    (the exact write_tombstone()-then-status-update crash window) must
+    still resolve its subject via the bind-or-conflict CAS before handing
+    back the reconciled report — a caller asking about a DIFFERENT
+    subject gets SUBJECT_CONFLICT, never someone else's reconciled data."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "reconcile_subject_conflict_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "c1")
+
+    result = coordinator.erase_fact_durable(
+        fact_id, reason="test", actor="A", subject_user_id="userA",
+    )
+    assert result["outcome"] == COMPLETE
+    job_id = result["job_id"]
+
+    # Simulate the crash window: tombstone already written, status still RUNNING.
+    with coordinator._jobs_db() as conn:
+        conn.execute("UPDATE erasure_jobs SET status = 'RUNNING' WHERE job_id = ?", (job_id,))
+
+    conflict = coordinator.erase_fact_durable(
+        fact_id, reason="test", actor="B", subject_user_id="userB",
+    )
+    assert conflict["outcome"] == SUBJECT_CONFLICT
+    assert conflict["job_id"] is None
+
+    # The SAME subject must still work normally afterward.
+    same_subject = coordinator.erase_fact_durable(
+        fact_id, reason="test", actor="C", subject_user_id="userA",
+    )
+    assert same_subject["outcome"] == COMPLETE
+    assert same_subject["job_id"] == job_id
+
+    tombstone = store.get_tombstone(fact_id)
+    assert tombstone["user_id"] == "userA"
+
+
+def test_cached_terminal_report_rejects_different_subject(rig):
+    """A genuinely already-COMPLETE generation (steps complete, tombstone
+    written, normal flow — no crash simulation) must also resolve its
+    subject via the SAME bind-or-conflict CAS when handing back its
+    cached report on a repeat call."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "cached_terminal_subject_conflict_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "c1")
+
+    result = coordinator.erase_fact_durable(
+        fact_id, reason="test", actor="A", subject_user_id="userA",
+    )
+    assert result["outcome"] == COMPLETE
+    job_id = result["job_id"]
+
+    conflict = coordinator.erase_fact_durable(
+        fact_id, reason="test", actor="B", subject_user_id="userB",
+    )
+    assert conflict["outcome"] == SUBJECT_CONFLICT
+    assert conflict["job_id"] is None
+
+    same_subject = coordinator.erase_fact_durable(
+        fact_id, reason="test", actor="C", subject_user_id="userA",
+    )
+    assert same_subject["outcome"] == COMPLETE
+    assert same_subject["job_id"] == job_id
+    assert same_subject["erased_now"] is False  # already erased before THIS call
+
+    tombstone = store.get_tombstone(fact_id)
+    assert tombstone["user_id"] == "userA"
+
+
+# ── Round 5.3 Codex finding (P2): Case B — binding onto an already-
+# tombstoned job whose subject_user_id column is still NULL (a legacy job
+# from before subject_user_id existed, or one created by a caller that
+# never supplied one) ───────────────────────────────────────────────────
+
+def test_legacy_tombstoned_job_rejects_binding_that_contradicts_its_tombstone(rig):
+    """A COMPLETE job with subject_user_id=NULL is NOT "unclaimed" once it
+    has a real completion tombstone — a later caller proposing a DIFFERENT
+    subject must get SUBJECT_CONFLICT, never silently rebind the job (and
+    thus the tombstone's apparent ownership) to someone new."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "legacy_tombstoned_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "legacy data")
+
+    legacy = coordinator.erase_fact_durable(fact_id, reason="legacy", actor="api:legacyop")
+    assert legacy["outcome"] == COMPLETE
+    assert legacy["subject_user_id"] is None
+    job_id = legacy["job_id"]
+
+    conflict = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:newop", subject_user_id="userReal",
+    )
+    assert conflict["outcome"] == SUBJECT_CONFLICT
+    assert conflict["job_id"] is None
+
+    # Never silently overwritten — the job's own row must stay unbound.
+    job_report = coordinator.get_job_report(fact_id)
+    assert job_report["job_id"] == job_id
+    assert job_report["subject_user_id"] is None
+
+    # The tombstone's real (fallback-to-actor) subject still binds cleanly.
+    same = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:newop", subject_user_id="api:legacyop",
+    )
+    assert same["outcome"] == COMPLETE
+    assert same["job_id"] == job_id
+    assert same["subject_user_id"] == "api:legacyop"
+
+
+def test_legacy_tombstoned_job_binds_using_corrected_effective_subject(rig):
+    """The tombstone's EFFECTIVE (correction-aware) subject is what
+    binding must be checked against — not the raw erasure_log.user_id.
+    A historical batch-linkage correction (migration 016) that already
+    reassigned this row's real subject must be honored: the RAW value no
+    longer binds, and the CORRECTED value does."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "corrected_tombstoned_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "legacy data")
+
+    legacy = coordinator.erase_fact_durable(fact_id, reason="legacy", actor="api:deadbeef")
+    assert legacy["outcome"] == COMPLETE
+    job_id = legacy["job_id"]
+
+    with coordinator._jobs_db() as conn:
+        erasure_id = conn.execute(
+            "SELECT erasure_id FROM erasure_log WHERE fact_id = ? AND job_id = ?",
+            (fact_id, job_id),
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO erasure_log_subject_corrections "
+            "(correction_id, erasure_id, job_id, batch_id, corrected_user_id, "
+            "original_user_id, created_at) "
+            "VALUES ('c_case_b', ?, ?, 'b_case_b', 'realUserA', 'api:deadbeef', "
+            "datetime('now'))",
+            (erasure_id, job_id),
+        )
+        conn.commit()
+
+    # The RAW original value no longer proves ownership.
+    raw_conflict = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:newop", subject_user_id="api:deadbeef",
+    )
+    assert raw_conflict["outcome"] == SUBJECT_CONFLICT
+
+    # The CORRECTED effective value binds cleanly.
+    corrected = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:newop", subject_user_id="realUserA",
+    )
+    assert corrected["outcome"] == COMPLETE
+    assert corrected["job_id"] == job_id
+    assert corrected["subject_user_id"] == "realUserA"
+
+
+def test_non_terminal_job_with_no_tombstone_yet_binds_unconditionally(rig):
+    """Case B's other half: a PENDING/PARTIAL job that has NOT finalized
+    yet has no tombstone at all — the primary resume path must keep
+    binding a first subject onto it exactly as before (nothing to check
+    against yet)."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "pending_no_tombstone_fact"
+    store.store_fact(_fact(fact_id))
+
+    job_id = "erj_pending_no_tombstone"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "legacy", "legacy-operator", None, PENDING, now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, ?, ?, ?)",
+                (f"{job_id}_{step_name}", job_id, step_name, PENDING),
+            )
+
+    result = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:newoperator", subject_user_id="userFirst",
+    )
+    assert result["outcome"] == COMPLETE
+    assert result["job_id"] == job_id
+    assert result["subject_user_id"] == "userFirst"
+
+    tombstone = store.get_tombstone(fact_id)
+    assert tombstone["user_id"] == "userFirst"
+
+
+# ── Round 5.4 Codex finding (P2): honor legacy job_id=NULL tombstones ───────
+# before subject binding. _bind_subject_user_id() used to look up only the
+# EXACT job_id — a pre-014 generation-1 job's real corroborating tombstone
+# (recorded with job_id IS NULL, per migration 014's compatibility rule)
+# was invisible to it, so such a job could be incorrectly treated as
+# "unclaimed" and CAS-bound to a brand-new, unverified subject.
+
+def _make_null_job_tombstone(coordinator, fact_id, job_id):
+    """Rewrite an existing job-scoped tombstone to the pre-014 legacy
+    shape (job_id IS NULL) — erasure_log is genuinely append-only, so the
+    trigger must be lifted to construct this otherwise-impossible fixture
+    state, exactly like the existing pre-014 compatibility test does."""
+    with coordinator._jobs_db() as conn:
+        conn.execute("DROP TRIGGER IF EXISTS prevent_erasure_update")
+        conn.execute(
+            "UPDATE erasure_log SET job_id = NULL WHERE fact_id = ? AND job_id = ?",
+            (fact_id, job_id),
+        )
+        conn.commit()
+
+
+def test_legacy_null_job_tombstone_blocks_contradictory_subject_binding(rig):
+    """1: a generation-1 COMPLETE job with subject_user_id=NULL whose real
+    tombstone is recorded job_id=NULL (the true pre-014 shape) must reject
+    a later request for a DIFFERENT subject — never silently rebind."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "null_job_tombstone_conflict_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "pre014 data")
+
+    gen1 = coordinator.erase_fact_durable(fact_id, reason="legacy", actor="operatorA")
+    assert gen1["outcome"] == COMPLETE
+    assert gen1["subject_user_id"] is None
+    _make_null_job_tombstone(coordinator, fact_id, gen1["job_id"])
+
+    conflict = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:newop", subject_user_id="userA",
+    )
+    assert conflict["outcome"] == SUBJECT_CONFLICT
+    assert conflict["job_id"] is None
+
+    job_report = coordinator.get_job_report(fact_id)
+    assert job_report["job_id"] == gen1["job_id"]
+    assert job_report["subject_user_id"] is None
+
+
+def test_legacy_null_job_tombstone_allows_matching_effective_subject(rig):
+    """2: the SAME legacy shape, but the later request supplies the
+    tombstone's own effective (raw, uncorrected here) subject — this must
+    succeed and may bind."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "null_job_tombstone_match_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "pre014 data")
+
+    gen1 = coordinator.erase_fact_durable(fact_id, reason="legacy", actor="operatorA")
+    assert gen1["outcome"] == COMPLETE
+    _make_null_job_tombstone(coordinator, fact_id, gen1["job_id"])
+
+    same = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:newop", subject_user_id="operatorA",
+    )
+    assert same["outcome"] == COMPLETE
+    assert same["job_id"] == gen1["job_id"]
+    assert same["subject_user_id"] == "operatorA"
+
+
+def test_null_job_tombstone_does_not_bind_newer_generation(rig):
+    """3: a job_id=NULL legacy tombstone must only ever corroborate
+    generation 1 — it must never validate (as match OR conflict) an
+    unrelated NEWER generation's job, even though the fallback lookup
+    would otherwise find it for the same fact_id."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "null_job_tombstone_newer_gen_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "gen1 data")
+
+    gen1 = coordinator.erase_fact_durable(fact_id, reason="legacy", actor="operatorA")
+    assert gen1["outcome"] == COMPLETE
+    _make_null_job_tombstone(coordinator, fact_id, gen1["job_id"])
+
+    fake_gen2 = dict(coordinator._load_job(gen1["job_id"]))
+    fake_gen2["generation"] = 2
+    fake_gen2["job_id"] = "erj_fake_gen2_does_not_exist"
+
+    assert coordinator._get_tombstone_for(fake_gen2) is None
+
+
+def test_ambiguous_legacy_tombstones_fail_closed(rig):
+    """4: two or more job_id=NULL tombstones for the SAME fact_id is a
+    genuine ambiguity — the legacy fallback must fail closed (None)
+    rather than silently trusting "the latest one"."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "ambiguous_null_tombstone_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "gen1 data")
+
+    gen1 = coordinator.erase_fact_durable(fact_id, reason="legacy", actor="operatorA")
+    assert gen1["outcome"] == COMPLETE
+    _make_null_job_tombstone(coordinator, fact_id, gen1["job_id"])
+
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_log "
+            "(erasure_id, fact_id, user_id, reason, claim_hash, erased_at, job_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, NULL)",
+            ("era_second_legacy", fact_id, "operatorB", "legacy2", "deadbeef", _now()),
+        )
+        conn.commit()
+
+    job = coordinator._load_job(gen1["job_id"])
+    assert coordinator._get_tombstone_for(job) is None
+
+
+def test_exact_job_tombstone_binding_behavior_is_unchanged(rig):
+    """5: a job with its OWN exact job-scoped tombstone (the normal,
+    post-014 shape) must keep working exactly as before — the legacy
+    fallback is never even consulted when an exact match exists."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "exact_job_tombstone_unchanged_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "data")
+
+    gen1 = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:op", subject_user_id="userA",
+    )
+    assert gen1["outcome"] == COMPLETE
+
+    same = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:op", subject_user_id="userA",
+    )
+    assert same["outcome"] == COMPLETE
+    assert same["subject_user_id"] == "userA"
+
+    conflict = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:op", subject_user_id="userB",
+    )
+    assert conflict["outcome"] == SUBJECT_CONFLICT
+
+
+# ── Round 5.4 Codex finding (P2): avoid late subject binding on live ────────
+# RUNNING jobs. _bind_subject_user_id() must never CAS-bind a subject onto
+# a job that is genuinely RUNNING (a live runner may hold it right now)
+# while its subject_user_id is still NULL — see LiveJobPendingError.
+
+def _insert_running_job(coordinator, *, fact_id, actor="legacy-operator"):
+    """A durable job stuck RUNNING (simulating a live runner currently
+    processing it, or one that crashed mid-flight) with subject_user_id
+    still NULL and no tombstone yet."""
+    job_id = f"erj_running_{fact_id}"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "legacy", actor, None, RUNNING, now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, ?, ?, ?)",
+                (f"{job_id}_{step_name}", job_id, step_name, PENDING),
+            )
+    return job_id
+
+
+def test_bind_subject_user_id_raises_live_job_pending_for_unbound_running_job(rig):
+    """0 (white-box): _bind_subject_user_id() itself must raise
+    LiveJobPendingError — never silently bind, never SubjectConflictError
+    — for a RUNNING job whose subject_user_id is still NULL."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "direct_live_job_pending_fact"
+    job_id = _insert_running_job(coordinator, fact_id=fact_id)
+
+    job = coordinator._load_job(job_id)
+    with pytest.raises(LiveJobPendingError):
+        coordinator._bind_subject_user_id(job, "userA")
+
+    with coordinator._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", (job_id,),
+        ).fetchone()
+    assert row["subject_user_id"] is None
+
+
+def test_live_running_job_cannot_be_late_bound(rig):
+    """1: a live RUNNING job with subject_user_id=NULL must never be
+    CAS-bound — the caller gets a non-successful/retryable (PARTIAL)
+    result instead, and the job row itself is left untouched."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "live_running_unbound_fact"
+    store.store_fact(_fact(fact_id))
+    job_id = _insert_running_job(coordinator, fact_id=fact_id)
+
+    result = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:newop", subject_user_id="userA",
+    )
+    assert result["outcome"] == PARTIAL
+    assert result["job_id"] is None
+
+    with coordinator._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT subject_user_id, actor, reason, status FROM erasure_jobs WHERE job_id = ?",
+            (job_id,),
+        ).fetchone()
+    assert row["subject_user_id"] is None
+    assert row["actor"] == "legacy-operator"
+    assert row["reason"] == "legacy"
+    assert row["status"] == RUNNING
+
+
+def test_live_runner_and_subject_adopter_cannot_diverge_job_and_tombstone(rig):
+    """2: deterministic race — pause a live runner immediately BEFORE it
+    writes its completion tombstone (the exact narrow window
+    LiveJobPendingError closes), let a concurrent caller attempt to adopt
+    the job, then resume the runner. The job and tombstone must never end
+    in contradictory subject states, and the adopter must never receive a
+    successful erasure report for userA."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "live_race_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "race data")
+    job_id = _insert_running_job(coordinator, fact_id=fact_id, actor="operatorA")
+    # Mark every step COMPLETE so _finalize() (called directly below,
+    # simulating the live runner reaching its own finalize step) writes
+    # the tombstone immediately rather than re-running real work.
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "UPDATE erasure_job_steps SET status = ? WHERE job_id = ?",
+            (COMPLETE, job_id),
+        )
+        conn.execute(
+            "UPDATE erasure_jobs SET residual = 'none' WHERE job_id = ?",
+            (job_id,),
+        )
+        conn.commit()
+
+    adopter_result = {}
+    barrier = threading.Barrier(2)
+
+    def runner_a():
+        barrier.wait(timeout=5)
+        # Give the adopter a moment to attempt its CAS bind first —
+        # deterministic enough for this regression test's purpose: the
+        # assertions below check the FINAL consistent state, not the
+        # interleaving itself.
+        time.sleep(0.05)
+        coordinator._finalize(job_id)
+
+    def caller_b():
+        barrier.wait(timeout=5)
+        adopter_result["report"] = coordinator.erase_fact_durable(
+            fact_id, reason="dsr", actor="api:newop", subject_user_id="userA",
+        )
+
+    t_a = threading.Thread(target=runner_a)
+    t_b = threading.Thread(target=caller_b)
+    t_a.start()
+    t_b.start()
+    t_a.join(timeout=5)
+    t_b.join(timeout=5)
+
+    report = adopter_result["report"]
+    # The adopter must never receive a successful COMPLETE report for
+    # userA out of this race — either PARTIAL (deferred, job still/was
+    # RUNNING when it looked) or SUBJECT_CONFLICT (job settled under the
+    # original operator identity) are both safe outcomes; a COMPLETE
+    # report claiming userA is not.
+    assert not (report["outcome"] == COMPLETE and report.get("subject_user_id") == "userA")
+
+    # The job and its real tombstone must agree with each other.
+    final_job = coordinator._load_job(job_id)
+    tombstone = store.get_tombstone_for_job(fact_id, job_id)
+    if tombstone is not None and final_job["subject_user_id"] is not None:
+        assert tombstone["user_id"] == final_job["subject_user_id"]
+
+    # Subject-scoped audit lookup must never falsely claim userA unless
+    # the job was genuinely, provably bound to userA.
+    if final_job["subject_user_id"] != "userA":
+        assert not any(t["user_id"] == "userA" for t in store.get_tombstones())
+
+
+def test_running_job_same_subject_is_idempotent(rig):
+    """3: a RUNNING job already bound to userA — a repeat request for the
+    SAME subject is a safe, non-mutating identity check, never blocked by
+    the live-job guard."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "running_same_subject_fact"
+    store.store_fact(_fact(fact_id))
+    job_id = f"erj_running_bound_{fact_id}"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "dsr", "api:op", "userA", RUNNING, now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, ?, ?, ?)",
+                (f"{job_id}_{step_name}", job_id, step_name, PENDING),
+            )
+        conn.commit()
+
+    job = coordinator._load_job(job_id)
+    coordinator._bind_subject_user_id(job, "userA")  # must not raise
+
+    with coordinator._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", (job_id,),
+        ).fetchone()
+    assert row["subject_user_id"] == "userA"
+
+
+def test_running_job_different_subject_conflicts(rig):
+    """4: a RUNNING job already bound to userB — a request for userA must
+    get SUBJECT_CONFLICT without mutation, never LiveJobPendingError
+    (identity is already known, no live-adoption ambiguity)."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "running_diff_subject_fact"
+    job_id = f"erj_running_bound2_{fact_id}"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "dsr", "api:op", "userB", RUNNING, now, now),
+        )
+        conn.commit()
+
+    job = coordinator._load_job(job_id)
+    with pytest.raises(SubjectConflictError):
+        coordinator._bind_subject_user_id(job, "userA")
+
+
+def test_non_running_resumable_job_still_allows_safe_subject_binding(rig):
+    """5: PENDING/PARTIAL/FAILED jobs (never RUNNING) must keep supporting
+    normal CAS binding — the live-job guard never applies to them."""
+    coordinator, store, embeddings, ngram = rig
+    for status in (PENDING, PARTIAL, FAILED):
+        fact_id = f"resumable_{status.lower()}_fact"
+        job_id = f"erj_{status.lower()}_{fact_id}"
+        now = _now()
+        with coordinator._jobs_db() as conn:
+            conn.execute(
+                "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+                "subject_user_id, status, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (job_id, fact_id, 1, "legacy", "legacy-operator", None, status, now, now),
+            )
+            conn.commit()
+
+        job = coordinator._load_job(job_id)
+        coordinator._bind_subject_user_id(job, "userA")  # must not raise
+
+        with coordinator._jobs_db() as conn:
+            row = conn.execute(
+                "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", (job_id,),
+            ).fetchone()
+        assert row["subject_user_id"] == "userA"
+
+
+def test_batch_encountering_live_unbound_running_job_stays_retryable(rig):
+    """6: a batch item whose per-fact job is a live unbound RUNNING job
+    must come back PARTIAL/retryable, never a false success — mirrors the
+    equivalent check in tests/test_erasure_batch_coordinator.py at the
+    BatchErasureCoordinator level, exercised here directly against
+    erase_fact_durable()'s own contract."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "batch_live_running_fact"
+    store.store_fact(_fact(fact_id))
+    _insert_running_job(coordinator, fact_id=fact_id)
+
+    result = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="batch-operator", subject_user_id="userA",
+    )
+    assert result["outcome"] == PARTIAL
+    assert result["outcome"] != COMPLETE
+
+
+# ── Round 5.4 second-order Codex findings (P2), from the fresh re-review ───
+# of the Round 5.4 fixes themselves.
+
+def test_legacy_tombstone_does_not_corroborate_a_still_active_job(rig):
+    """Finding: 'Skip legacy tombstone checks for active jobs'. A
+    job_id=NULL legacy tombstone left over from an unrelated, earlier
+    historical erasure of the SAME fact_id must never corroborate a
+    generation-1 job that is still genuinely ACTIVE (PENDING/PARTIAL/
+    FAILED/RUNNING) — the legacy fallback only ever proves a COMPLETE
+    outcome. Binding the caller's own matching subject onto the active
+    job must succeed normally, not raise a false SUBJECT_CONFLICT."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "active_job_legacy_tombstone_fact"
+    store.store_fact(_fact(fact_id))
+
+    # An unrelated historical tombstone for the SAME fact_id, job_id=NULL,
+    # under a DIFFERENT actor — simulates a genuinely earlier erasure era.
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_log "
+            "(erasure_id, fact_id, user_id, reason, claim_hash, erased_at, job_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, NULL)",
+            ("era_unrelated_legacy", fact_id, "someoneElse", "legacy", "deadbeef", _now()),
+        )
+        conn.commit()
+
+    job_id = f"erj_active_{fact_id}"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "dsr", "api:op", None, PENDING, now, now),
+        )
+        for step_name in ("determine_raw", "l1_same_db", "embeddings", "ngram"):
+            conn.execute(
+                "INSERT INTO erasure_job_steps (step_id, job_id, step_name, status) "
+                "VALUES (?, ?, ?, ?)",
+                (f"{job_id}_{step_name}", job_id, step_name, PENDING),
+            )
+        conn.commit()
+
+    job = coordinator._load_job(job_id)
+    assert coordinator._get_tombstone_for(job) is None
+
+    result = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="api:op", subject_user_id="userA",
+    )
+    assert result["outcome"] == COMPLETE
+    assert result["subject_user_id"] == "userA"
+
+
+def test_bind_subject_user_id_reevaluates_after_stale_snapshot_races_to_running(rig):
+    """Finding: 'Gate subject binding on the current job status'. If the
+    `job` dict passed in is stale (read as PENDING) but the row has
+    ALREADY moved to RUNNING with subject_user_id still NULL by the time
+    the CAS runs, the CAS's own `status != RUNNING` guard must catch it —
+    never silently bind based on the stale snapshot."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "stale_snapshot_races_to_running_fact"
+    job_id = f"erj_stale_{fact_id}"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "dsr", "api:op", None, PENDING, now, now),
+        )
+        conn.commit()
+
+    stale_job = coordinator._load_job(job_id)  # snapshot: status=PENDING
+    assert stale_job["status"] == PENDING
+
+    # The row itself has since moved to RUNNING (a live runner claimed it).
+    with coordinator._jobs_db() as conn:
+        conn.execute("UPDATE erasure_jobs SET status = ? WHERE job_id = ?", (RUNNING, job_id))
+        conn.commit()
+
+    with pytest.raises(LiveJobPendingError):
+        coordinator._bind_subject_user_id(stale_job, "userA")
+
+    with coordinator._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", (job_id,),
+        ).fetchone()
+    assert row["subject_user_id"] is None
+
+
+def test_bind_subject_user_id_reevaluates_after_stale_snapshot_races_to_complete(rig):
+    """Same stale-snapshot race, but the row raced all the way to COMPLETE
+    (with a real tombstone) instead of RUNNING — the bounded reload/retry
+    must re-run the tombstone check against current reality rather than
+    blindly trusting the stale (pre-completion) snapshot."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "stale_snapshot_races_to_complete_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "data")
+
+    real = coordinator.erase_fact_durable(fact_id, reason="dsr", actor="operatorReal")
+    assert real["outcome"] == COMPLETE
+    job_id = real["job_id"]
+
+    # A deliberately stale snapshot claiming the job is still PENDING.
+    stale_job = dict(coordinator._load_job(job_id), status=PENDING)
+
+    with pytest.raises(SubjectConflictError):
+        coordinator._bind_subject_user_id(stale_job, "userDifferent")
+
+    with coordinator._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", (job_id,),
+        ).fetchone()
+    assert row["subject_user_id"] is None
+
+
+# ── Round 5.4 third-order Codex findings, from the latest fresh re-review ──
+
+def test_bind_subject_user_id_detects_race_to_complete_during_its_own_cas(rig, monkeypatch):
+    """P1: 'Avoid binding after a job has already completed'. If the job
+    races all the way to COMPLETE (with a real tombstone written under a
+    DIFFERENT subject) in the EXACT window between this method's own
+    tombstone check (which still correctly saw nothing at that moment)
+    and its CAS attempt, the CAS must not blindly bind just because its
+    status guard happened to match something other than RUNNING — the
+    exact-status optimistic-concurrency CAS must catch ANY status change
+    at all and force a fresh re-check."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "race_to_complete_during_cas_fact"
+    job_id = f"erj_race_cas_{fact_id}"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "dsr", "operatorReal", None, PENDING, now, now),
+        )
+        conn.commit()
+
+    job = coordinator._load_job(job_id)
+    assert job["status"] == PENDING
+
+    original_get_tombstone_for = coordinator._get_tombstone_for
+    calls = {"n": 0}
+
+    def racing_get_tombstone_for(j):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            # The exact race: another runner finishes the job RIGHT NOW,
+            # between this (genuinely tombstone-less, at the time)
+            # lookup and the CAS attempt that follows it.
+            store.write_tombstone(
+                fact_id, reason="dsr", actor="operatorReal",
+                content_hash="deadbeef", job_id=job_id,
+            )
+            with coordinator._jobs_db() as conn:
+                conn.execute(
+                    "UPDATE erasure_jobs SET status = ? WHERE job_id = ?",
+                    (COMPLETE, job_id),
+                )
+                conn.commit()
+            return None
+        return original_get_tombstone_for(j)
+
+    monkeypatch.setattr(coordinator, "_get_tombstone_for", racing_get_tombstone_for)
+
+    with pytest.raises(SubjectConflictError):
+        coordinator._bind_subject_user_id(job, "userDifferent")
+
+    with coordinator._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", (job_id,),
+        ).fetchone()
+    assert row["subject_user_id"] is None
+
+
+def test_bind_subject_user_id_matching_subject_survives_race_to_complete(rig, monkeypatch):
+    """Companion case: if the SAME race occurs but the requested subject
+    actually matches what the just-written tombstone shows, the bounded
+    reload/retry must succeed cleanly rather than falsely conflicting."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "race_to_complete_matching_fact"
+    job_id = f"erj_race_cas_match_{fact_id}"
+    now = _now()
+    with coordinator._jobs_db() as conn:
+        conn.execute(
+            "INSERT INTO erasure_jobs (job_id, fact_id, generation, reason, actor, "
+            "subject_user_id, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_id, fact_id, 1, "dsr", "operatorReal", None, PENDING, now, now),
+        )
+        conn.commit()
+
+    job = coordinator._load_job(job_id)
+    original_get_tombstone_for = coordinator._get_tombstone_for
+    calls = {"n": 0}
+
+    def racing_get_tombstone_for(j):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            store.write_tombstone(
+                fact_id, reason="dsr", actor="operatorReal",
+                content_hash="deadbeef", job_id=job_id,
+            )
+            with coordinator._jobs_db() as conn:
+                conn.execute(
+                    "UPDATE erasure_jobs SET status = ? WHERE job_id = ?",
+                    (COMPLETE, job_id),
+                )
+                conn.commit()
+            return None
+        return original_get_tombstone_for(j)
+
+    monkeypatch.setattr(coordinator, "_get_tombstone_for", racing_get_tombstone_for)
+
+    coordinator._bind_subject_user_id(job, "operatorReal")  # must not raise
+
+    with coordinator._jobs_db() as conn:
+        row = conn.execute(
+            "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", (job_id,),
+        ).fetchone()
+    assert row["subject_user_id"] == "operatorReal"
+
+
+def test_finalize_preserves_explicit_empty_subject_user_id(rig):
+    """P2: 'Preserve explicitly empty subject ids'. An explicitly-provided
+    EMPTY subject_user_id ("") — allowed past the ambiguous-user_id guard
+    when a caller forces it — must be preserved as the tombstone's
+    effective subject, never silently replaced by `actor` via a
+    falsy-string fallback."""
+    coordinator, store, embeddings, ngram = rig
+    fact_id = "empty_subject_id_fact"
+    _seed_all_layers(store, embeddings, ngram, fact_id, "data")
+
+    result = coordinator.erase_fact_durable(
+        fact_id, reason="dsr", actor="operatorX", subject_user_id="",
+    )
+    assert result["outcome"] == COMPLETE
+
+    tombstone = store.get_tombstone_for_job(fact_id, result["job_id"])
+    assert tombstone["user_id"] == ""
+    assert tombstone["user_id"] != "operatorX"
