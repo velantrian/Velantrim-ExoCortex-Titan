@@ -44,7 +44,10 @@ from dataclasses import dataclass, field
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.embedding_store import EmbeddingStore
 
 logger = logging.getLogger("velantrim.forgetting")
 
@@ -186,8 +189,28 @@ class ForgettingEngine:
         result = engine.redact_pii_fact("fact_abc123")
     """
 
-    def __init__(self, db_path: str = SQLITE_PATH):
+    def __init__(
+        self,
+        db_path: str = SQLITE_PATH,
+        *,
+        embedding_db_path: str | None = None,
+        embedding_store: EmbeddingStore | None = None,
+    ):
+        """`embedding_db_path`/`embedding_store` (Round 5.4 sixth-order fix,
+        Codex P2): a custom, non-global `db_path` used to leave
+        `forget_all()`'s `ErasureCoordinator` with NO tenant-scoped
+        embeddings backend at all — it would lazily default to the
+        process-global `EmbeddingStore()` (`SQLITE_GRAPH_PATH`/
+        `EXOCORTEX_DB`), completely unrelated to this tenant's own storage.
+        A tenant's real `gs_vectors` row could then survive erasure
+        entirely undetected (checked against the wrong file) while the
+        batch still reported COMPLETE — a GDPR Art. 17 false-success
+        condition. See forget_all() for how these are validated/used;
+        the default (both None) preserves the exact pre-existing global
+        behavior for the default `db_path`."""
         self._db_path = db_path
+        self._embedding_db_path = embedding_db_path
+        self._injected_embedding_store = embedding_store
 
     # ── Проверка ──────────────────────────────────────────────────────────
 
@@ -318,6 +341,56 @@ class ForgettingEngine:
 
     # ── FORGET_ALL (GDPR) ─────────────────────────────────────────────────
 
+    def _bind_tenant_embedding_store(self) -> tuple[EmbeddingStore | None, bool]:
+        """Resolve the embeddings backend forget_all() must bind to
+        ErasureCoordinator, and whether THIS call owns (and must close) it.
+
+        Round 5.4 sixth-order fix (Codex P2): a custom, non-global
+        `db_path` used to leave `ErasureCoordinator` with no embedding_store
+        at all, so it lazily defaulted to the process-global
+        `EmbeddingStore()` — completely unrelated to this tenant's own
+        storage. A tenant's real `gs_vectors` row could then survive
+        erasure entirely undetected (checked against the wrong file) while
+        the batch still reported COMPLETE: a GDPR Art. 17 false-success
+        condition. `core/erasure_coordinator.py`'s own state machine
+        already fails a per-fact job closed (FAILED, never a silent
+        `applicable: false`) whenever the embeddings backend genuinely
+        can't be reached — this fix only ensures the RIGHT backend is the
+        one ever consulted.
+
+        Returns `(None, False)` ONLY for the default/global `db_path`
+        (compared by normalized path against module-level `SQLITE_PATH`)
+        — ErasureCoordinator's own lazy default there is the exact,
+        unchanged pre-existing behavior. For any OTHER (tenant) `db_path`,
+        an explicit `embedding_store=` or `embedding_db_path=` is REQUIRED;
+        silently falling back to the global embeddings store is refused —
+        this raises ValueError instead, BEFORE any facts store is even
+        opened, rather than merely documenting the risk.
+        """
+        if self._injected_embedding_store is not None:
+            return self._injected_embedding_store, False
+        if self._embedding_db_path is not None:
+            from core.embedding_store import EmbeddingStore
+
+            embedding_store = EmbeddingStore(self._embedding_db_path)
+            embedding_store.ensure_table()
+            return embedding_store, True
+        is_global_db_path = (
+            os.path.abspath(self._db_path) == os.path.abspath(SQLITE_PATH)
+        )
+        if is_global_db_path:
+            return None, False
+        raise ValueError(
+            f"ForgettingEngine(db_path={self._db_path!r}) is a custom tenant "
+            "database, but no tenant embedding storage was configured "
+            "(embedding_db_path=... or embedding_store=...). Refusing to "
+            "silently fall back to the process-global embeddings store — "
+            "that would let a tenant's real gs_vectors row survive erasure "
+            "undetected while forget_all() still reports COMPLETE (GDPR "
+            "Art. 17 false success). Pass embedding_db_path=... or "
+            "embedding_store=... to ForgettingEngine()."
+        )
+
     def forget_all(
         self,
         *,
@@ -392,10 +465,16 @@ class ForgettingEngine:
         from core.erasure_coordinator import ErasureCoordinator
         from core.memory import SQLiteGraphStore
 
+        # Round 5.4 sixth-order fix (Codex P2): resolved/validated BEFORE
+        # any facts store is even opened — a misconfigured tenant db_path
+        # must fail closed before touching a single fact, never partway
+        # through a destructive operation.
+        embedding_store, owns_embedding_store = self._bind_tenant_embedding_store()
+
         store = SQLiteGraphStore(self._db_path)
         try:
             store.ensure_schema()
-            coordinator = ErasureCoordinator(store=store)
+            coordinator = ErasureCoordinator(store=store, embedding_store=embedding_store)
             batch_coordinator = BatchErasureCoordinator(
                 store=store, coordinator=coordinator, jobs_db_path=self._db_path,
             )
@@ -411,6 +490,13 @@ class ForgettingEngine:
             )
         finally:
             store.close()
+            # Only ever close an embeddings store THIS call constructed
+            # (owns_embedding_store) — an externally injected embedding_store
+            # (or the global-default None, which never had a store to begin
+            # with) is never touched here; its lifecycle belongs to whoever
+            # created/injected it.
+            if owns_embedding_store and embedding_store is not None:
+                embedding_store.close()
 
         if report["outcome"] in ("REFUSED", "IDEMPOTENCY_CONFLICT"):
             return ForgetVerdict(

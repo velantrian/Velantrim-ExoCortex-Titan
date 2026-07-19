@@ -1124,7 +1124,9 @@ def test_forgetting_engine_forget_all_is_deprecated_and_delegates(rig):
     batch, coordinator, store, embeddings, ngram = rig
     store.store_fact(_fact("f1"))
 
-    engine = forgetting_mod.ForgettingEngine(db_path=store.db_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=store.db_path, embedding_store=embeddings,
+    )
     with pytest.deprecated_call():
         verdict = engine.forget_all(user_id="userA", reason="dsr")
 

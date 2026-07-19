@@ -34,24 +34,31 @@ def _fact(fid, source="userA"):
 def two_dbs(tmp_path, monkeypatch):
     """global_db is wired in as the process-global singleton; tenant_db_path
     is a second, independent SQLite file that only ForgettingEngine's own
-    db_path=... constructor argument should ever touch."""
+    db_path=... constructor argument should ever touch. tenant_embedding_path
+    (Round 5.4 sixth-order fix, Codex P2) is a third, also-tenant-scoped
+    SQLite file for the embeddings backend — a custom db_path now requires
+    an explicit embedding_db_path=/embedding_store=, so every test that
+    constructs a tenant-scoped ForgettingEngine passes this."""
     global_db = make_store(str(tmp_path / "global.db"))
     monkeypatch.setattr(memory, "_GLOBAL_STORE", global_db)
     tenant_db_path = str(tmp_path / "tenant.db")
-    return global_db, tenant_db_path
+    tenant_embedding_path = str(tmp_path / "tenant_embeddings.db")
+    return global_db, tenant_db_path, tenant_embedding_path
 
 
 def test_forget_all_only_touches_configured_tenant_db(two_dbs):
     """C + D: forget_all() on a tenant-scoped engine must erase only
     tenant.db's matching facts — global.db (the process-global store) must
     remain completely unchanged."""
-    global_db, tenant_db_path = two_dbs
+    global_db, tenant_db_path, tenant_embedding_path = two_dbs
     global_db.store_fact(_fact("f_global"))
 
     tenant_store = make_store(tenant_db_path)
     tenant_store.store_fact(_fact("f_tenant"))
 
-    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+    )
     with pytest.deprecated_call():
         verdict = engine.forget_all(user_id="userA", reason="dsr")
 
@@ -70,11 +77,13 @@ def test_forget_all_only_touches_configured_tenant_db(two_dbs):
 def test_forget_all_batch_registry_written_to_tenant_db_only(two_dbs):
     """D: the durable batch registry (erasure_batches) must be written to
     tenant.db — never accidentally created/populated on global.db."""
-    global_db, tenant_db_path = two_dbs
+    global_db, tenant_db_path, tenant_embedding_path = two_dbs
     tenant_store = make_store(tenant_db_path)
     tenant_store.store_fact(_fact("f_tenant"))
 
-    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+    )
     with pytest.deprecated_call():
         engine.forget_all(user_id="userA", reason="dsr")
 
@@ -97,12 +106,14 @@ def test_forget_all_dry_run_sees_only_tenant_db(two_dbs):
     """E: dry_run=True must preview only tenant.db's matching facts and
     must not inspect or act on global.db — and, being a dry run, must not
     delete anything from either."""
-    global_db, tenant_db_path = two_dbs
+    global_db, tenant_db_path, tenant_embedding_path = two_dbs
     global_db.store_fact(_fact("f_global"))
     tenant_store = make_store(tenant_db_path)
     tenant_store.store_fact(_fact("f_tenant"))
 
-    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+    )
     with pytest.deprecated_call():
         verdict = engine.forget_all(user_id="userA", reason="dsr", dry_run=True)
 
@@ -118,14 +129,16 @@ def test_forget_all_empty_tenant_db_reports_zero_and_ignores_global_matches(two_
     """F: an empty tenant DB reports zero tenant items, even though a
     same-user_id-matching fact genuinely exists in the (wrong) global DB —
     it must never be picked up from there."""
-    global_db, tenant_db_path = two_dbs
+    global_db, tenant_db_path, tenant_embedding_path = two_dbs
     global_db.store_fact(_fact("f_global"))  # matches userA, but lives in global.db
     # tenant.db exists (schema bootstrapped) but has no facts rows for userA
     # — mirrors scripts/apply_migrations.py's own DDL-trigger pattern
     # (SQLiteGraphStore's `facts` table is created lazily on first access).
     make_store(tenant_db_path).get_fact("__ddl_trigger__")
 
-    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+    )
     with pytest.deprecated_call():
         verdict = engine.forget_all(user_id="userA", reason="dsr")
 
@@ -155,7 +168,7 @@ def test_forget_all_closes_temporary_store_even_on_failure(two_dbs, monkeypatch)
     import core.erasure_batch_coordinator as ebc_mod
     import core.memory as memory_mod
 
-    global_db, tenant_db_path = two_dbs
+    global_db, tenant_db_path, tenant_embedding_path = two_dbs
     make_store(tenant_db_path)
 
     closed_paths: list[str] = []
@@ -172,7 +185,9 @@ def test_forget_all_closes_temporary_store_even_on_failure(two_dbs, monkeypatch)
 
     monkeypatch.setattr(ebc_mod.BatchErasureCoordinator, "forget_all_durable", _boom)
 
-    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+    )
     with pytest.deprecated_call():
         with pytest.raises(RuntimeError):
             engine.forget_all(user_id="userA", reason="dsr")
@@ -193,13 +208,15 @@ def test_forget_all_initializes_virgin_tenant_database(two_dbs):
     """1: a db_path pointing to a file that does not yet exist must be
     initialized (not raise OperationalError), and return a valid
     zero-item result."""
-    global_db, _ = two_dbs
+    global_db, _, tenant_embedding_path = two_dbs
     import os
 
     virgin_path = os.path.join(os.path.dirname(global_db.db_path), "virgin.db")
     assert not os.path.exists(virgin_path)
 
-    engine = forgetting_mod.ForgettingEngine(db_path=virgin_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=virgin_path, embedding_db_path=tenant_embedding_path,
+    )
     with pytest.deprecated_call():
         verdict = engine.forget_all(user_id="userA", reason="dsr")
 
@@ -220,13 +237,15 @@ def test_forget_all_dry_run_on_virgin_database_returns_zero(two_dbs):
     must return zero matching facts and must not raise — and, following
     the existing dry-run contract (_preview() never touches
     erasure_batches), must create no durable batch row."""
-    global_db, _ = two_dbs
+    global_db, _, tenant_embedding_path = two_dbs
     import os
 
     virgin_path = os.path.join(os.path.dirname(global_db.db_path), "virgin_dry.db")
     assert not os.path.exists(virgin_path)
 
-    engine = forgetting_mod.ForgettingEngine(db_path=virgin_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=virgin_path, embedding_db_path=tenant_embedding_path,
+    )
     with pytest.deprecated_call():
         verdict = engine.forget_all(user_id="userA", reason="dsr", dry_run=True)
 
@@ -252,7 +271,7 @@ def test_forget_all_virgin_database_closes_temporary_store(two_dbs, monkeypatch)
 
     import core.memory as memory_mod
 
-    global_db, _ = two_dbs
+    global_db, _, tenant_embedding_path = two_dbs
     virgin_path = os.path.join(os.path.dirname(global_db.db_path), "virgin_close.db")
 
     closed_paths: list[str] = []
@@ -264,7 +283,9 @@ def test_forget_all_virgin_database_closes_temporary_store(two_dbs, monkeypatch)
 
     monkeypatch.setattr(memory_mod.SQLiteGraphStore, "close", _tracking_close)
 
-    engine = forgetting_mod.ForgettingEngine(db_path=virgin_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=virgin_path, embedding_db_path=tenant_embedding_path,
+    )
     with pytest.deprecated_call():
         engine.forget_all(user_id="userA", reason="dsr")
 
@@ -395,14 +416,16 @@ def test_tenant_correction_table_is_append_only(tmp_path):
 def test_forget_all_does_not_mask_corrupt_tenant_database(two_dbs):
     """5: a genuinely malformed/corrupt database file must surface its
     real sqlite3 error — never be silently treated as "zero facts"."""
-    global_db, _ = two_dbs
+    global_db, _, tenant_embedding_path = two_dbs
     import os
 
     corrupt_path = os.path.join(os.path.dirname(global_db.db_path), "corrupt.db")
     with open(corrupt_path, "wb") as f:
         f.write(b"this is not a sqlite database file, just garbage bytes\x00\x01\x02")
 
-    engine = forgetting_mod.ForgettingEngine(db_path=corrupt_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=corrupt_path, embedding_db_path=tenant_embedding_path,
+    )
     with pytest.deprecated_call():
         with pytest.raises(sqlite3.DatabaseError):
             engine.forget_all(user_id="userA", reason="dsr")
@@ -445,12 +468,14 @@ def _insert_conflicting_job(store, *, fact_id, subject_user_id, actor="other-ope
 def test_legacy_forget_verdict_rejects_terminal_subject_conflict(two_dbs):
     """1: a SUBJECT_CONFLICT batch must return ForgetVerdict.allowed=False
     — never True just because the batch reached a terminal state."""
-    _, tenant_db_path = two_dbs
+    _, tenant_db_path, tenant_embedding_path = two_dbs
     tenant_store = make_store(tenant_db_path)
     tenant_store.store_fact(_fact("f_conflict", source="userA"))
     _insert_conflicting_job(tenant_store, fact_id="f_conflict", subject_user_id="userB")
 
-    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+    )
     with pytest.deprecated_call():
         verdict = engine.forget_all(user_id="userA", reason="dsr", actor="api:newoperator")
 
@@ -462,11 +487,13 @@ def test_legacy_forget_verdict_allows_only_completed_erasure(two_dbs):
     """2: a fully COMPLETE batch (no conflict, no critical finding) still
     returns allowed=True — the fix must not regress the ordinary
     successful path."""
-    _, tenant_db_path = two_dbs
+    _, tenant_db_path, tenant_embedding_path = two_dbs
     tenant_store = make_store(tenant_db_path)
     tenant_store.store_fact(_fact("f_ok", source="userA"))
 
-    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+    )
     with pytest.deprecated_call():
         verdict = engine.forget_all(user_id="userA", reason="dsr", actor="tester")
 
@@ -479,7 +506,7 @@ def test_legacy_forget_verdict_rejects_critical_compliance_violation(two_dbs):
     compliance_status is CRITICAL_COMPLIANCE_VIOLATION must still return
     allowed=False — terminality (and even a COMPLETE execution outcome)
     is never enough on its own."""
-    _, tenant_db_path = two_dbs
+    _, tenant_db_path, tenant_embedding_path = two_dbs
     tenant_store = make_store(tenant_db_path)
     tenant_store.store_fact(_fact("f_critical", source="userA"))
     with tenant_store._db() as conn:
@@ -489,7 +516,9 @@ def test_legacy_forget_verdict_rejects_critical_compliance_violation(two_dbs):
         )
         conn.commit()
 
-    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+    )
     with pytest.deprecated_call():
         verdict = engine.forget_all(user_id="userA", reason="dsr", actor="tester")
 
@@ -504,7 +533,7 @@ def test_legacy_forget_verdict_does_not_equate_terminal_with_allowed(two_dbs):
 
     from core.erasure_coordinator import ErasureCoordinator
 
-    _, tenant_db_path = two_dbs
+    _, tenant_db_path, tenant_embedding_path = two_dbs
     tenant_store = make_store(tenant_db_path)
     tenant_store.store_fact(_fact("f_running", source="userA"))
     ErasureCoordinator(store=tenant_store)  # triggers erasure_jobs DDL
@@ -520,9 +549,221 @@ def test_legacy_forget_verdict_does_not_equate_terminal_with_allowed(two_dbs):
         )
         conn.commit()
 
-    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path)
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+    )
     with pytest.deprecated_call():
         verdict = engine.forget_all(user_id="userA", reason="dsr", actor="tester")
 
     assert verdict.allowed is False
     assert verdict.reason == "partial"
+
+
+# ── Round 5.4 sixth-order Codex finding (P2): bind tenant erasure to the ────
+# tenant embedding store. A custom, non-global db_path left ErasureCoordinator
+# with NO tenant-scoped embeddings backend — it lazily defaulted to the
+# process-global EmbeddingStore(), completely unrelated to the tenant's own
+# storage. A tenant's real gs_vectors row could then survive erasure
+# undetected (checked against the wrong file) while the batch still reported
+# COMPLETE — a GDPR Art. 17 false-success condition.
+
+def test_tenant_forget_all_erases_tenant_facts_and_embeddings(two_dbs):
+    """1: a real tenant fact + its real tenant embedding are BOTH erased,
+    and the global embeddings DB is never touched."""
+    global_db, tenant_db_path, tenant_embedding_path = two_dbs
+    import numpy as np
+
+    from core.embedding_store import EXOCORTEX_DB, EmbeddingStore
+
+    tenant_store = make_store(tenant_db_path)
+    tenant_store.store_fact(_fact("f_tenant"))
+
+    tenant_embeddings = EmbeddingStore(tenant_embedding_path)
+    tenant_embeddings.ensure_table()
+    tenant_embeddings.store("f_tenant", np.array([0.1, 0.2, 0.3], dtype=np.float32))
+    assert tenant_embeddings.has_any("f_tenant") is True
+
+    # tests/conftest.py redirects the real global default (EXOCORTEX_DB) to
+    # an isolated, session-fixed temp path — safe to open directly here.
+    global_embeddings = EmbeddingStore(EXOCORTEX_DB)
+    global_embeddings.ensure_table()
+
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+    )
+    with pytest.deprecated_call():
+        verdict = engine.forget_all(user_id="userA", reason="dsr")
+
+    assert verdict.allowed is True
+    assert verdict.affected_facts == 1
+    assert make_store(tenant_db_path).get_fact("f_tenant") is None
+    assert tenant_embeddings.has_any("f_tenant") is False
+    assert global_embeddings.has_any("f_tenant") is False  # never had it; never touched
+
+
+def test_tenant_erasure_does_not_use_global_embedding_store(two_dbs):
+    """2: the SAME fact_id also has a row in the GLOBAL embeddings store
+    (e.g. a coincidental collision, or a leftover from the bug this fix
+    closes). Erasure must target the real TENANT row — never be satisfied
+    by, and never mutate, the global one."""
+    global_db, tenant_db_path, tenant_embedding_path = two_dbs
+    import numpy as np
+
+    from core.embedding_store import EXOCORTEX_DB, EmbeddingStore
+
+    tenant_store = make_store(tenant_db_path)
+    tenant_store.store_fact(_fact("f_dup"))
+
+    tenant_embeddings = EmbeddingStore(tenant_embedding_path)
+    tenant_embeddings.ensure_table()
+    tenant_embeddings.store("f_dup", np.array([1.0, 2.0], dtype=np.float32))
+
+    global_embeddings = EmbeddingStore(EXOCORTEX_DB)
+    global_embeddings.ensure_table()
+    global_embeddings.store("f_dup", np.array([9.0, 9.0], dtype=np.float32))
+
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+    )
+    with pytest.deprecated_call():
+        verdict = engine.forget_all(user_id="userA", reason="dsr")
+
+    assert verdict.allowed is True
+    assert tenant_embeddings.has_any("f_dup") is False  # the real tenant row purged
+    assert global_embeddings.has_any("f_dup") is True  # the global row untouched
+
+
+def test_custom_tenant_db_requires_explicit_embedding_store(two_dbs):
+    """3: a custom tenant db_path with NO embedding configuration must fail
+    closed — before any fact is touched, before any durable batch row is
+    created — never a silent fall-back to the global embeddings store."""
+    global_db, tenant_db_path, _ = two_dbs
+    tenant_store = make_store(tenant_db_path)
+    tenant_store.store_fact(_fact("f_tenant"))
+
+    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path)  # no embedding config
+    with pytest.deprecated_call():
+        with pytest.raises(ValueError, match="tenant embedding"):
+            engine.forget_all(user_id="userA", reason="dsr")
+
+    # No partial destructive mutation.
+    assert make_store(tenant_db_path).get_fact("f_tenant") is not None
+    with sqlite3.connect(tenant_db_path) as conn:
+        has_table = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='erasure_batches'"
+        ).fetchone()
+        batch_count = (
+            conn.execute("SELECT COUNT(*) FROM erasure_batches").fetchone()[0]
+            if has_table else 0
+        )
+    assert batch_count == 0
+
+
+def test_default_forgetting_engine_preserves_global_store_behavior(tmp_path, monkeypatch):
+    """4: when db_path matches the (global) default, no embedding
+    configuration is required — the pre-existing lazy-default behavior is
+    preserved exactly. Uses a monkeypatched SQLITE_PATH pointed at a safe
+    temp file rather than the real repo default, so this test never risks
+    touching real project data."""
+    safe_default_path = str(tmp_path / "would_be_global.db")
+    monkeypatch.setattr(forgetting_mod, "SQLITE_PATH", safe_default_path)
+
+    make_store(safe_default_path).store_fact(_fact("f1"))
+
+    engine = forgetting_mod.ForgettingEngine(db_path=safe_default_path)
+    with pytest.deprecated_call():
+        verdict = engine.forget_all(user_id="userA", reason="dsr")
+
+    assert verdict.allowed is True
+    assert verdict.affected_facts == 1
+    assert make_store(safe_default_path).get_fact("f1") is None
+
+
+def test_forgetting_engine_does_not_close_injected_embedding_store(two_dbs, tmp_path, monkeypatch):
+    """5a: an externally injected embedding_store must never be closed by
+    forget_all() — its lifecycle belongs to whoever created/injected it."""
+    global_db, tenant_db_path, _ = two_dbs
+    from core.embedding_store import EmbeddingStore
+
+    tenant_store = make_store(tenant_db_path)
+    tenant_store.store_fact(_fact("f1"))
+
+    injected = EmbeddingStore(str(tmp_path / "injected_embeddings.db"))
+    injected.ensure_table()
+
+    closed = {"called": False}
+    monkeypatch.setattr(injected, "close", lambda: closed.__setitem__("called", True))
+
+    engine = forgetting_mod.ForgettingEngine(db_path=tenant_db_path, embedding_store=injected)
+    with pytest.deprecated_call():
+        engine.forget_all(user_id="userA", reason="dsr")
+
+    assert closed["called"] is False
+
+
+def test_forgetting_engine_closes_internal_tenant_embedding_store_on_error(two_dbs, monkeypatch):
+    """5b: an embedding store forget_all() constructed ITSELF (via
+    embedding_db_path=) must still be closed even when forget_all_durable()
+    raises — mirrors the pre-existing facts-store close-on-failure
+    guarantee (test_forget_all_closes_temporary_store_even_on_failure)."""
+    import core.erasure_batch_coordinator as ebc_mod
+    import core.embedding_store as embedding_store_mod
+
+    global_db, tenant_db_path, tenant_embedding_path = two_dbs
+    make_store(tenant_db_path)
+
+    closed_paths: list[str] = []
+    real_close = embedding_store_mod.EmbeddingStore.close
+
+    def _tracking_close(self):
+        closed_paths.append(self._db_path)
+        return real_close(self)
+
+    monkeypatch.setattr(embedding_store_mod.EmbeddingStore, "close", _tracking_close)
+
+    def _boom(self, *args, **kwargs):
+        raise RuntimeError("simulated failure")
+
+    monkeypatch.setattr(ebc_mod.BatchErasureCoordinator, "forget_all_durable", _boom)
+
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+    )
+    with pytest.deprecated_call():
+        with pytest.raises(RuntimeError):
+            engine.forget_all(user_id="userA", reason="dsr")
+
+    assert closed_paths == [tenant_embedding_path]  # only the shim's own temp embedding store
+
+
+def test_tenant_embedding_failure_prevents_complete_erasure(two_dbs, monkeypatch):
+    """6: the tenant embeddings backend genuinely failing to delete must
+    never let the batch report COMPLETE — the surviving vector stays a
+    visible, retryable failure under the existing per-fact state contract,
+    exactly like any other embeddings backend outage."""
+    global_db, tenant_db_path, tenant_embedding_path = two_dbs
+    import numpy as np
+
+    import core.embedding_store as embedding_store_mod
+    from core.embedding_store import EmbeddingStore
+
+    tenant_store = make_store(tenant_db_path)
+    tenant_store.store_fact(_fact("f_tenant"))
+
+    tenant_embeddings = EmbeddingStore(tenant_embedding_path)
+    tenant_embeddings.ensure_table()
+    tenant_embeddings.store("f_tenant", np.array([1.0, 2.0], dtype=np.float32))
+
+    def _flaky_purge_node(self, node_id):
+        raise RuntimeError("simulated embeddings backend failure")
+
+    monkeypatch.setattr(embedding_store_mod.EmbeddingStore, "purge_node", _flaky_purge_node)
+
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+    )
+    with pytest.deprecated_call():
+        verdict = engine.forget_all(user_id="userA", reason="dsr")
+
+    assert verdict.allowed is False
+    assert tenant_embeddings.has_any("f_tenant") is True  # never purged
