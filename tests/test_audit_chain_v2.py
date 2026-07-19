@@ -1026,3 +1026,99 @@ class TestReviewRound3Fixes:
         result = chain.verify_chain()
         assert result["valid"] is False
         assert "invalid payload data" in result["error"]
+
+    @pytest.mark.parametrize("non_finite_confidence", [float("inf"), float("-inf")])
+    def test_v1_row_with_infinite_confidence_fails_closed(
+        self, mutable_db, non_finite_confidence,
+    ):
+        """P2: v1's hash never committed to confidence at all (a
+        documented v1 defect — confidence isn't a compute_audit_hash_v1
+        parameter), so an Infinity/-Infinity stored confidence on a
+        legacy row must still fail closed independently of the hash
+        recompute, since "non-finite numerics fail closed" is a
+        chain-wide invariant."""
+        v1_hash = compute_audit_hash_v1(
+            event_type="legacy", fact_id=None, from_state=None, to_state=None,
+            actor="agent", payload={}, created_at="2020-01-01T00:00:00+00:00",
+            prev_event_hash=None,
+        )
+        mutable_db.execute(
+            "INSERT INTO memory_events (event_id, event_type, actor, payload, "
+            "confidence, event_hash, prev_event_hash, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            ("evt_legacy_inf_conf", "legacy", "agent", "{}", non_finite_confidence,
+             v1_hash, None, "2020-01-01T00:00:00+00:00"),
+        )
+        mutable_db.commit()
+
+        chain = AuditChain(mutable_db)
+        result = chain.verify_chain()
+        assert result["valid"] is False
+        assert "invalid confidence" in result["error"]
+
+    def test_log_reheals_schema_after_caller_transaction_rollback(self, mutable_db):
+        """P2: if this instance was first constructed inside a
+        caller-owned transaction that later rolled back, the
+        constructor-time self-heal (audit_chain_heads, v2 columns) is
+        rolled back too. log() must recheck/re-heal rather than fail on
+        the next append."""
+        mutable_db.execute("BEGIN")
+        chain = AuditChain(mutable_db)  # self-heal participates in this transaction
+        mutable_db.rollback()  # rolls the self-heal back too
+
+        # Schema is back to bare v1 shape at this point; log() must not
+        # raise despite that.
+        evt = chain.log("t1", "a1")
+        assert evt.chain_sequence == 1
+
+        result = chain.verify_chain()
+        assert result["valid"] is True
+
+    def test_v2_null_actor_tamper_detected(self):
+        """P2: compute_audit_hash_v2 must commit to the RAW stored actor
+        value, not `actor or ""` — otherwise a corrupted NULL actor
+        collapses onto the empty string and a v2 tamper goes undetected.
+        Uses a schema without actor's NOT NULL constraint (the scenario
+        AuditChain's additive self-heal explicitly tolerates for callers
+        with a looser existing table shape) to make the tamper
+        constructible at all."""
+        conn = sqlite3.connect(":memory:")
+        conn.executescript("""
+            CREATE TABLE memory_events (
+                event_id        TEXT PRIMARY KEY, event_type TEXT NOT NULL, fact_id TEXT,
+                from_state      TEXT, to_state TEXT, actor TEXT, reason TEXT,
+                payload         TEXT, confidence REAL, event_hash TEXT NOT NULL UNIQUE,
+                prev_event_hash TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+        """)
+        chain = AuditChain(conn)
+        evt = chain.log("t1", "actual_actor")
+        conn.execute(
+            "UPDATE memory_events SET actor = NULL WHERE event_id = ?", (evt.event_id,),
+        )
+        conn.commit()
+        result = chain.verify_chain()
+        assert result["valid"] is False
+
+    def test_verify_chain_reheal_does_not_crash_on_preexisting_duplicate_sequence(
+        self, mutable_db,
+    ):
+        """Regression for a bug introduced by the schema-reheal fix
+        above: re-running _ensure_schema() inside verify_chain() must not
+        raise when the unique (chain_id, chain_sequence) index was
+        dropped AND the table already contains a genuine duplicate (the
+        exact corruption verify_chain() exists to detect and report) —
+        it must tolerate failing to recreate that index rather than
+        crashing the verification it's supposed to run."""
+        chain = AuditChain(mutable_db)
+        chain.log("t1", "a1")
+        e2 = chain.log("t2", "a2")
+        mutable_db.execute("DROP INDEX idx_memory_events_chain_seq")
+        mutable_db.execute(
+            "UPDATE memory_events SET chain_sequence = 1 WHERE event_id = ?",
+            (e2.event_id,),
+        )
+        mutable_db.commit()
+
+        result = chain.verify_chain()  # must not raise
+        assert result["valid"] is False

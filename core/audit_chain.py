@@ -388,10 +388,22 @@ class AuditChain:
                 )
             if "chain_sequence" not in cols:
                 self._add_column_if_missing("memory_events", "chain_sequence", "INTEGER")
-            conn.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_events_chain_seq "
-                "ON memory_events(chain_id, chain_sequence) WHERE chain_sequence IS NOT NULL"
-            )
+            try:
+                conn.execute(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_events_chain_seq "
+                    "ON memory_events(chain_id, chain_sequence) WHERE chain_sequence IS NOT NULL"
+                )
+            except sqlite3.IntegrityError:
+                # The index doesn't exist (e.g. dropped) AND the table
+                # already contains a genuine (chain_id, chain_sequence)
+                # duplicate — creating it would raise, not silently no-op.
+                # This self-heal must never crash verify_chain(): the
+                # duplicate is exactly the kind of corruption
+                # verify_chain()'s own row-by-row sequence check exists to
+                # detect and report, not something schema setup should
+                # mask with an unhandled exception. log()'s CAS-guarded
+                # append still prevents NEW duplicates without this index.
+                pass
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS audit_chain_heads (
@@ -483,6 +495,15 @@ class AuditChain:
         lock up front and retry a bounded number of times on genuine
         concurrent-head contention.
         """
+        # Re-run the (idempotent) schema self-heal before every append: if
+        # this instance was first constructed inside a caller-owned
+        # transaction that later rolled back, our constructor-time
+        # self-heal was rolled back with it — audit_chain_heads or the v2
+        # columns may no longer exist even though this instance thinks
+        # they do. Cheap and safe to repeat (IF NOT EXISTS / column-exists
+        # guarded throughout).
+        self._ensure_schema()
+
         conn = self._conn
         validated_payload = validate_payload(payload)
         validated_confidence = validate_confidence(confidence)
@@ -702,6 +723,12 @@ class AuditChain:
                 f"max_rows exceeds safe upper bound of {MAX_VERIFY_ROWS}: {max_rows!r}"
             )
 
+        # See log()'s identical call for why: a caller-owned transaction
+        # that rolled back after this instance was constructed can take
+        # audit_chain_heads/the v2 columns with it. Re-heal (idempotent)
+        # before reading OR writing the integrity_checks receipt.
+        self._ensure_schema()
+
         conn = self._conn
         # Pin every read (the row count, the row scan, and the chain-head
         # check at the end) to ONE consistent snapshot. Without this, a
@@ -830,6 +857,16 @@ class AuditChain:
             except AuditChainError as exc:
                 return _fail(i, event_id, f"invalid payload data at position {i}: {exc}")
 
+            try:
+                # Same reasoning as the payload check above: the v1 hash
+                # never committed to confidence at all (one of v1's
+                # documented defects), so an Infinity/-Infinity stored
+                # confidence on a legacy row would otherwise sail through
+                # as "valid" — the finite-numerics invariant is chain-wide.
+                validate_confidence(confidence)
+            except AuditChainError as exc:
+                return _fail(i, event_id, f"invalid confidence at position {i}: {exc}")
+
             if hash_version == HASH_VERSION_LEGACY:
                 if seen_v2:
                     return _fail(
@@ -862,7 +899,13 @@ class AuditChain:
                     expected_hash = compute_audit_hash_v2(
                         chain_id=self.chain_id, chain_sequence=chain_sequence,
                         event_id=event_id, event_type=event_type, fact_id=fid,
-                        from_state=from_state, to_state=to_state, actor=actor or "",
+                        from_state=from_state, to_state=to_state,
+                        # v2 is a brand-new hash with no legacy behavior to
+                        # preserve: pass the stored value through exactly
+                        # as-is (never coalesce None/"" into one value) so
+                        # a tampered NULL actor produces a genuine hash
+                        # mismatch instead of silently validating.
+                        actor=actor,
                         reason=reason, payload=payload_data, confidence=confidence,
                         prev_event_hash=stored_prev_hash, created_at=created_at,
                     )
