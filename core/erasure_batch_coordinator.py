@@ -183,18 +183,24 @@ _TERMINAL_BATCH_STATUSES = (COMPLETE, COMPLETE_WITH_RESIDUAL, SUBJECT_CONFLICT)
 _RUNNABLE_BATCH_STATUSES = (PENDING, PARTIAL, FAILED)
 _ITEM_RETRYABLE_STATUSES = (PENDING, PARTIAL, FAILED)
 
-# Round 5.4 fourth-order fix (Codex P2): bounds each resume_incomplete_
-# batches() sweep. The PENDING/PARTIAL/FAILED/stale-RUNNING branch is
-# naturally self-limiting — those are transient statuses a batch leaves as
-# soon as it is processed — but the stored-terminal-with-retryable-items
-# branch it also now selects (see resume_incomplete_batches()) is NOT: a
-# long-lived deployment can accumulate an unbounded number of COMPLETE/
-# COMPLETE_WITH_RESIDUAL/SUBJECT_CONFLICT rows over its history, and
-# nothing about the EXISTS check that narrows that branch caps how many of
-# them could (in a pathological restored/hand-repaired database) still
-# carry a retryable item row. ORDER BY created_at keeps successive sweeps
-# deterministic — whatever one sweep's LIMIT doesn't reach, the next sweep
-# picks up.
+# Round 5.4 fourth-order fix (Codex P2): bounds the stale-terminal-with-
+# retryable-items branch of resume_incomplete_batches() ONLY (see
+# _select_stale_terminal_recovery_candidates()) — a long-lived deployment
+# can accumulate an unbounded number of COMPLETE/COMPLETE_WITH_RESIDUAL/
+# SUBJECT_CONFLICT rows over its history, and nothing about the EXISTS
+# check that narrows that branch caps how many of them could (in a
+# pathological restored/hand-repaired database) still carry a retryable
+# item row.
+#
+# Round 5.4 fifth-order fix (Codex P2): this limit must NEVER be applied to
+# the ordinary PENDING/PARTIAL/FAILED/stale-RUNNING branch
+# (_select_ordinary_recovery_candidates()) — that branch was unbounded
+# before this whole feature existed, and a fourth-order version of this fix
+# that combined both branches into one LIMITed query let a large backlog of
+# stuck ORDINARY batches (e.g. during a prolonged backend outage) silently
+# exclude a newer, genuinely recoverable ordinary batch from every sweep.
+# The two branches are now selected by two separate queries and only ever
+# combined (deduplicated) in Python — see resume_incomplete_batches().
 _RECOVERY_SWEEP_LIMIT = 500
 
 # Read fresh (never captured as a stale function-default) by every lease
@@ -1344,6 +1350,56 @@ class BatchErasureCoordinator:
         assert result is not None
         return result
 
+    def _select_ordinary_recovery_candidates(self) -> list[Any]:
+        """PENDING/PARTIAL/FAILED/stale-RUNNING batches — the ORIGINAL
+        resume_incomplete_batches() selection, unchanged and, critically,
+        UNBOUNDED. This is the pre-Round-5.4-fourth-order guarantee: no
+        volume of stuck ordinary batches (e.g. during a prolonged backend
+        outage) may ever cause a genuinely recoverable ordinary batch to be
+        silently skipped by a sweep. _RECOVERY_SWEEP_LIMIT must never be
+        applied here — see _select_stale_terminal_recovery_candidates()."""
+        now = _now()
+        with self._jobs_db() as conn:
+            return conn.execute(
+                "SELECT batch_id FROM erasure_batches WHERE "
+                "status IN (?, ?, ?) "
+                "OR (status = ? AND lease_expires_at IS NOT NULL AND lease_expires_at < ?) "
+                "ORDER BY created_at, batch_id",
+                (PENDING, PARTIAL, FAILED, RUNNING, now),
+            ).fetchall()
+
+    def _select_stale_terminal_recovery_candidates(self) -> list[Any]:
+        """Round 5.4 fourth-order fix (Codex P2), re-scoped in the fifth
+        order: stored-TERMINAL batches (COMPLETE/COMPLETE_WITH_RESIDUAL/
+        SUBJECT_CONFLICT) whose CURRENT item rows still prove retryable
+        work remains (e.g. a restored/hand-repaired batch row, or one left
+        inconsistent by a pre-Round-5.3 build). Previously such a batch was
+        invisible to any recovery sweep entirely unless some caller
+        happened to request its report first — _report()'s self-heal is a
+        side effect of being called, not something a sweep ever triggered
+        on its own, so crash/startup recovery must not depend on it. A
+        targeted EXISTS subquery (never a _report() call per historical
+        batch) narrows this branch to only batches that actually have a
+        retryable item row, so it is never an unbounded scan of every
+        terminal batch a deployment has ever produced;
+        _RECOVERY_SWEEP_LIMIT bounds it regardless, on its OWN — see
+        resume_incomplete_batches() for why this must be a query separate
+        from the ordinary branch, and for the fairness argument that a
+        fixed (created_at, batch_id) LIMIT window here is not itself a
+        starvation risk.
+        """
+        with self._jobs_db() as conn:
+            return conn.execute(
+                "SELECT batch_id FROM erasure_batches AS b WHERE "
+                "status IN (?, ?, ?) AND EXISTS ("
+                "  SELECT 1 FROM erasure_batch_items AS i "
+                "  WHERE i.batch_id = b.batch_id AND i.status IN (?, ?, ?)"
+                ") "
+                "ORDER BY created_at, batch_id "
+                "LIMIT ?",
+                (*_TERMINAL_BATCH_STATUSES, PENDING, PARTIAL, FAILED, _RECOVERY_SWEEP_LIMIT),
+            ).fetchall()
+
     def resume_incomplete_batches(self) -> list[dict[str, Any]]:
         """Crash recovery sweep: re-run every batch not in a terminal
         EXECUTION state, against its ORIGINAL durable snapshot only.
@@ -1353,60 +1409,83 @@ class BatchErasureCoordinator:
         runner (its lease kept fresh by _BatchLeaseHeartbeat even through a
         single slow item) is never preempted.
 
-        Round 5.4 fourth-order fix (Codex P2): also discovers stored-
-        TERMINAL batches (COMPLETE/COMPLETE_WITH_RESIDUAL/SUBJECT_CONFLICT)
-        whose CURRENT item rows still prove retryable work remains (e.g. a
-        restored/hand-repaired batch row, or one left inconsistent by a
-        pre-Round-5.3 build). Previously such a batch was invisible to this
-        sweep entirely unless some caller happened to request its report
-        first — _report()'s self-heal is a side effect of being called, not
-        something this sweep ever triggered on its own, so crash/startup
-        recovery must not depend on it. A targeted EXISTS subquery (never a
-        _report() call per historical batch — see the loop below) narrows
-        this branch to only batches that actually have a retryable item
-        row, so it is never an unbounded scan of every terminal batch a
-        deployment has ever produced; _RECOVERY_SWEEP_LIMIT bounds the
-        combined candidate set regardless.
+        Round 5.4 fifth-order fix (Codex P2): the fourth-order fix combined
+        the ordinary (PENDING/PARTIAL/FAILED/stale-RUNNING) and
+        stale-terminal-with-retryable-items branches into ONE query with
+        ONE global ORDER BY/LIMIT. That silently capped the ordinary
+        branch, which was always unbounded before — a large, persistently-
+        retryable backlog of ordinary batches could then exclude a newer,
+        genuinely recoverable ordinary (or stale-terminal) batch from every
+        sweep. The two branches are now selected by two SEPARATE queries
+        (_select_ordinary_recovery_candidates() — unbounded, unchanged from
+        the original behavior; _select_stale_terminal_recovery_candidates()
+        — the only one _RECOVERY_SWEEP_LIMIT ever applies to) and combined
+        here, deduplicated by batch_id (a batch CAN legitimately appear in
+        both single-column result sets if its status changed between the
+        two separate reads — the two WHERE clauses are otherwise mutually
+        exclusive on a status column that can only hold one value at a
+        time), preserving the deterministic order each query already
+        produced.
+
+        Fairness within the bounded stale-terminal branch: every genuine
+        candidate it selects gets reconciled via _report() below BEFORE
+        _run_batch() is attempted, and _report()'s self-heal unconditionally
+        fires for a true candidate — it was selected specifically because a
+        retryable item row exists, which always makes the recomputed
+        effective_outcome PARTIAL. A successful self-heal durably flips the
+        batch's stored status OUT of _TERMINAL_BATCH_STATUSES for good —
+        _finalize_batch() itself can never write a terminal status while a
+        retryable item remains, so a real candidate can occupy this
+        branch's LIMIT window for AT MOST one sweep before it permanently
+        graduates into the (unbounded) ordinary branch's domain instead (or,
+        on the rare lost self-heal race — a concurrent fresher write — is
+        safely retried next sweep; see
+        test_recovery_terminal_reconciliation_does_not_clobber_concurrent_
+        update). Deterministic (created_at, batch_id) keyset ordering
+        (never OFFSET, which is unsafe under concurrent insert/update)
+        therefore guarantees every candidate is inspected within
+        ceil(N / _RECOVERY_SWEEP_LIMIT) sweeps: each sweep's window can only
+        ever contain candidates NOT already reconciled by an earlier sweep,
+        so a permanently-failing old prefix vacates the window for the
+        batches it captured as fast as it is ever selected — it can never
+        occupy the same LIMIT slots sweep after sweep the way a naive
+        re-run of an identical, unchanging query would.
         """
-        now = _now()
-        with self._jobs_db() as conn:
-            rows = conn.execute(
-                "SELECT batch_id, status FROM erasure_batches AS b WHERE "
-                "status IN (?, ?, ?) "
-                "OR (status = ? AND lease_expires_at IS NOT NULL AND lease_expires_at < ?) "
-                "OR ("
-                "  status IN (?, ?, ?) AND EXISTS ("
-                "    SELECT 1 FROM erasure_batch_items AS i "
-                "    WHERE i.batch_id = b.batch_id AND i.status IN (?, ?, ?)"
-                "  )"
-                ") "
-                "ORDER BY created_at "
-                "LIMIT ?",
-                (
-                    PENDING, PARTIAL, FAILED,
-                    RUNNING, now,
-                    *_TERMINAL_BATCH_STATUSES,
-                    PENDING, PARTIAL, FAILED,
-                    _RECOVERY_SWEEP_LIMIT,
-                ),
-            ).fetchall()
-        results = []
-        for row in rows:
+        ordinary_rows = self._select_ordinary_recovery_candidates()
+        stale_terminal_rows = self._select_stale_terminal_recovery_candidates()
+
+        seen: set[str] = set()
+        candidates: list[tuple[str, bool]] = []
+        for row in ordinary_rows:
             batch_id = row["batch_id"]
-            if row["status"] in _TERMINAL_BATCH_STATUSES:
+            if batch_id not in seen:
+                seen.add(batch_id)
+                candidates.append((batch_id, False))
+        for row in stale_terminal_rows:
+            batch_id = row["batch_id"]
+            if batch_id not in seen:
+                seen.add(batch_id)
+                candidates.append((batch_id, True))
+
+        results = []
+        for batch_id, needs_reconcile in candidates:
+            if needs_reconcile:
                 # Reconcile BEFORE attempting to claim: recompute the
                 # effective outcome from the CURRENT item rows and — only
                 # when that recompute is genuinely PARTIAL — self-heal the
                 # stored status via _report()'s own guarded CAS (bound to
                 # the EXACT stale value just read, so a concurrent fresher
                 # write is never clobbered; a losing CAS here is a safe
-                # no-op, handled identically to any other lost race in this
-                # module). This reuses the SAME effective-state precedence
+                # no-op). This reuses the SAME effective-state precedence
                 # _finalize_batch()/_report() already use (retryable >
                 # conflict > residual > complete) rather than inventing a
-                # fourth independent interpretation of batch state. Once
-                # self-healed to PARTIAL, the claim/resume call below
-                # proceeds exactly like any other runnable batch.
+                # fourth independent interpretation of batch state. A
+                # candidate that came from the ORDINARY query is never
+                # reconciled here even if it also raced into the
+                # stale-terminal result set — _run_batch()'s own existing
+                # "claim failed, current status is terminal" fallback below
+                # already calls _report() (self-heal included) in that
+                # case, so no candidate can be skipped either way.
                 self._report(self._load_batch(batch_id), self._load_items(batch_id))
             result = self._run_batch(batch_id, wait_if_running=False)
             if result is not None:

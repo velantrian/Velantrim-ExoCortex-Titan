@@ -1860,3 +1860,239 @@ def test_recovery_terminal_candidate_selection_respects_limit(rig, monkeypatch):
 
     second_sweep_ids = {r["batch_id"] for r in batch.resume_incomplete_batches()}
     assert second_sweep_ids == set(batch_ids[3:])
+
+
+# ── Round 5.4 fifth-order Codex finding (P2): the fourth-order fix combined ─
+# the ordinary (PENDING/PARTIAL/FAILED/stale-RUNNING) and the new stale-
+# terminal-with-retryable-items branches into ONE query with ONE global
+# LIMIT — silently capping the ordinary branch, which was always unbounded
+# before, and risking starvation of newer candidates behind a permanently
+# stuck old prefix. The two branches are now selected by two separate
+# queries and combined/deduplicated in Python.
+
+def test_ordinary_recovery_is_not_capped_by_stale_terminal_limit(rig, monkeypatch):
+    """More than _RECOVERY_SWEEP_LIMIT old ORDINARY (FAILED, permanently
+    retryable) batches must never exclude a newer ordinary PENDING batch
+    from being considered — the ordinary branch is unbounded, exactly as
+    before this whole feature existed."""
+    batch, coordinator, store, embeddings, ngram = rig
+    monkeypatch.setattr(ebc_module, "_RECOVERY_SWEEP_LIMIT", 5)
+
+    old_fact_ids = {f"f_ord_old_{n}" for n in range(8)}  # > limit (5)
+    original_erase = coordinator.erase_fact_durable
+
+    def flaky_erase(fact_id, **kwargs):
+        if fact_id in old_fact_ids:
+            return {"outcome": FAILED, "job_id": None}
+        return original_erase(fact_id, **kwargs)
+
+    monkeypatch.setattr(coordinator, "erase_fact_durable", flaky_erase)
+
+    for n, fid in enumerate(sorted(old_fact_ids)):
+        _insert_batch_row(
+            batch, batch_id=f"eb_ord_old_{n}", user_id="userA", status=FAILED,
+            items=[(fid, "Observed", FAILED)],
+            created_at=f"2020-01-01T00:00:{n:02d}+00:00",
+        )
+
+    store.store_fact(_fact("f_ord_new", source="userA"))
+    _insert_batch_row(
+        batch, batch_id="eb_ord_new", user_id="userA", status=PENDING,
+        items=[("f_ord_new", "Observed", PENDING)],
+        created_at="2020-01-02T00:00:00+00:00",
+    )
+
+    resumed = {r["batch_id"]: r for r in batch.resume_incomplete_batches()}
+    # ALL 8 old ordinary batches AND the newer one are considered in the
+    # SAME sweep — the ordinary branch was never limited.
+    assert all(f"eb_ord_old_{n}" in resumed for n in range(8))
+    assert "eb_ord_new" in resumed
+    assert resumed["eb_ord_new"]["outcome"] == COMPLETE
+    assert store.get_fact("f_ord_new") is None
+
+
+def test_stale_terminal_recovery_advances_past_permanent_failing_prefix(rig, monkeypatch):
+    """More than _RECOVERY_SWEEP_LIMIT older stale-terminal candidates whose
+    items are engineered to keep failing forever must not permanently
+    block a newer stale-terminal candidate — it must be reached within a
+    bounded number of subsequent sweeps, without the old prefix ever fully
+    resolving its underlying items."""
+    batch, coordinator, store, embeddings, ngram = rig
+    monkeypatch.setattr(ebc_module, "_RECOVERY_SWEEP_LIMIT", 5)
+
+    old_fact_ids = {f"f_stale_old_{n}" for n in range(8)}  # > limit (5)
+    original_erase = coordinator.erase_fact_durable
+
+    def flaky_erase(fact_id, **kwargs):
+        if fact_id in old_fact_ids:
+            return {"outcome": FAILED, "job_id": None}
+        return original_erase(fact_id, **kwargs)
+
+    monkeypatch.setattr(coordinator, "erase_fact_durable", flaky_erase)
+
+    for n, fid in enumerate(sorted(old_fact_ids)):
+        _insert_batch_row(
+            batch, batch_id=f"eb_stale_old_{n}", user_id="userA", status=COMPLETE,
+            items=[(fid, "Observed", PENDING)],
+            created_at=f"2020-02-01T00:00:{n:02d}+00:00",
+        )
+
+    store.store_fact(_fact("f_stale_new", source="userA"))
+    _insert_batch_row(
+        batch, batch_id="eb_stale_new", user_id="userA", status=COMPLETE,
+        items=[("f_stale_new", "Observed", PENDING)],
+        created_at="2020-02-02T00:00:00+00:00",
+    )
+
+    first_sweep_ids = {r["batch_id"] for r in batch.resume_incomplete_batches()}
+    assert len(first_sweep_ids) == 5  # bounded to the limit
+    assert "eb_stale_new" not in first_sweep_ids  # not yet reached
+
+    second_sweep = {r["batch_id"]: r for r in batch.resume_incomplete_batches()}
+    # The newer candidate is reached WITHOUT the old prefix's items ever
+    # actually resolving (they keep returning FAILED forever) — the batches
+    # graduated out of the stale-terminal bucket (self-healed to PARTIAL)
+    # merely by being reconciled once, vacating the LIMIT window.
+    assert "eb_stale_new" in second_sweep
+    assert second_sweep["eb_stale_new"]["outcome"] == COMPLETE
+    assert store.get_fact("f_stale_new") is None
+
+
+def test_recovery_limit_applies_only_to_stale_terminal_candidates(rig, monkeypatch):
+    """In a single sweep with both classes over-represented: ALL ordinary
+    candidates are considered (unbounded), but only _RECOVERY_SWEEP_LIMIT
+    stale-terminal candidates are."""
+    batch, coordinator, store, embeddings, ngram = rig
+    monkeypatch.setattr(ebc_module, "_RECOVERY_SWEEP_LIMIT", 5)
+
+    for n in range(8):
+        _insert_batch_row(
+            batch, batch_id=f"eb_mix_ord_{n}", user_id="userA", status=FAILED,
+            items=[(f"f_mix_ord_{n}", "Observed", FAILED)],
+            created_at=f"2020-03-01T00:00:{n:02d}+00:00",
+        )
+    for n in range(8):
+        _insert_batch_row(
+            batch, batch_id=f"eb_mix_term_{n}", user_id="userA", status=COMPLETE,
+            items=[(f"f_mix_term_{n}", "Observed", PENDING)],
+            created_at=f"2020-04-01T00:00:{n:02d}+00:00",
+        )
+
+    resumed_ids = {r["batch_id"] for r in batch.resume_incomplete_batches()}
+    ordinary_seen = {bid for bid in resumed_ids if bid.startswith("eb_mix_ord_")}
+    terminal_seen = {bid for bid in resumed_ids if bid.startswith("eb_mix_term_")}
+    assert len(ordinary_seen) == 8
+    assert len(terminal_seen) == 5
+
+
+def test_recovery_candidate_union_deduplicates_batch_ids(rig, monkeypatch):
+    """A batch that (due to a race between the two separate selection
+    reads) appears in BOTH candidate collections must be processed at most
+    once per sweep."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_race", source="userA"))
+    _insert_batch_row(
+        batch, batch_id="eb_race", user_id="userA", status=PENDING,
+        items=[("f_race", "Observed", PENDING)],
+    )
+
+    original_select_terminal = batch._select_stale_terminal_recovery_candidates
+
+    def racing_select_terminal():
+        # Simulate eb_race ALSO surfacing via the stale-terminal query —
+        # e.g. its status flipped and flipped back between the two reads.
+        return list(original_select_terminal()) + [{"batch_id": "eb_race"}]
+
+    monkeypatch.setattr(
+        batch, "_select_stale_terminal_recovery_candidates", racing_select_terminal,
+    )
+
+    run_batch_calls = []
+    original_run_batch = batch._run_batch
+
+    def counting_run_batch(batch_id, **kwargs):
+        run_batch_calls.append(batch_id)
+        return original_run_batch(batch_id, **kwargs)
+
+    monkeypatch.setattr(batch, "_run_batch", counting_run_batch)
+
+    results = batch.resume_incomplete_batches()
+    result_ids = [r["batch_id"] for r in results]
+    assert result_ids.count("eb_race") == 1
+    assert run_batch_calls.count("eb_race") == 1
+    assert store.get_fact("f_race") is None
+
+
+def test_stale_terminal_recovery_cursor_advances_deterministically(rig, monkeypatch):
+    """Repeated sweeps advance deterministically through the stale-terminal
+    candidate set — every candidate is inspected exactly once, across
+    ceil(N / limit) sweeps, never revisited, never skipped."""
+    batch, coordinator, store, embeddings, ngram = rig
+    monkeypatch.setattr(ebc_module, "_RECOVERY_SWEEP_LIMIT", 5)
+
+    total = 12
+    fact_ids = []
+    for n in range(total):
+        fid = f"f_cursor_{n}"
+        fact_ids.append(fid)
+        store.store_fact(_fact(fid, source="userA"))
+        _insert_batch_row(
+            batch, batch_id=f"eb_cursor_{n}", user_id="userA", status=COMPLETE,
+            items=[(fid, "Observed", PENDING)],
+            created_at=f"2020-05-01T00:00:{n:02d}+00:00",
+        )
+
+    seen_order = []
+    for _ in range(3):  # ceil(12 / 5) == 3
+        sweep_ids = [r["batch_id"] for r in batch.resume_incomplete_batches()]
+        seen_order.append(sweep_ids)
+
+    all_seen = [bid for sweep in seen_order for bid in sweep]
+    assert sorted(all_seen) == sorted(f"eb_cursor_{n}" for n in range(total))
+    assert len(all_seen) == len(set(all_seen))  # never revisited
+    assert [len(s) for s in seen_order] == [5, 5, 2]  # deterministic, bounded
+    for fid in fact_ids:
+        assert store.get_fact(fid) is None
+
+
+def test_split_recovery_queries_preserve_concurrent_status_updates(rig, monkeypatch):
+    """A candidate whose status changes between selection and
+    reconciliation (a concurrent transaction finalizing it for real) must
+    not be clobbered back to the stale value, and must not be executed
+    twice."""
+    batch, coordinator, store, embeddings, ngram = rig
+    store.store_fact(_fact("f_split_race", source="userA"))
+    _insert_batch_row(
+        batch, batch_id="eb_split_race", user_id="userA", status=COMPLETE,
+        items=[("f_split_race", "Observed", PENDING)],
+    )
+
+    original_load_batch = batch._load_batch
+    race_done = {"done": False}
+
+    def racing_load_batch(bid):
+        result = original_load_batch(bid)
+        if bid == "eb_split_race" and not race_done["done"]:
+            race_done["done"] = True
+            with batch._jobs_db() as conn:
+                conn.execute(
+                    "UPDATE erasure_batches SET status = ?, updated_at = ? "
+                    "WHERE batch_id = ?",
+                    (SUBJECT_CONFLICT, _now(), bid),
+                )
+                conn.commit()
+        return result
+
+    monkeypatch.setattr(batch, "_load_batch", racing_load_batch)
+
+    results = batch.resume_incomplete_batches()
+    assert [r["batch_id"] for r in results].count("eb_split_race") <= 1
+
+    with batch._jobs_db() as conn:
+        final = conn.execute(
+            "SELECT status FROM erasure_batches WHERE batch_id = ?",
+            ("eb_split_race",),
+        ).fetchone()
+    # The concurrent write is never clobbered back to the stale COMPLETE
+    # this reconciliation started from.
+    assert final["status"] != COMPLETE
