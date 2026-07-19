@@ -818,6 +818,17 @@ class AuditChain:
                 return _fail(
                     i, event_id, f"stored payload is not a JSON object at position {i}"
                 )
+            try:
+                # json.loads accepts the non-standard NaN/Infinity/-Infinity
+                # tokens by default. "non-finite numerics fail closed" is a
+                # chain-wide invariant, not a v2-only one — apply it here,
+                # before the hash_version dispatch, so a v1 row can't pass
+                # verification just because its (v1-only, unvalidated)
+                # hash recompute happens to reproduce a NaN-containing
+                # stored string byte-for-byte.
+                _validate_payload_value(payload_data)
+            except AuditChainError as exc:
+                return _fail(i, event_id, f"invalid payload data at position {i}: {exc}")
 
             if hash_version == HASH_VERSION_LEGACY:
                 if seen_v2:

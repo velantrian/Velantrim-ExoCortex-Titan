@@ -989,3 +989,40 @@ class TestReviewRound2Fixes:
         assert default_stats["total_events"] == 2
         assert other_stats["total_events"] == 1
         assert other_stats["by_event_type"] == {"t3": 1}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Codex review round 3 fixes
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TestReviewRound3Fixes:
+
+    @pytest.mark.parametrize("non_finite_value", [
+        float("nan"), float("inf"), float("-inf"),
+    ])
+    def test_v1_row_with_non_finite_payload_fails_closed(self, mutable_db, non_finite_value):
+        """P2: json.loads accepts the non-standard NaN/Infinity tokens by
+        default; "non-finite numerics fail closed" is a chain-wide
+        invariant, not v2-only. Stores a payload whose v1 hash was
+        computed from (and thus legitimately MATCHES) the exact
+        NaN/Infinity-containing payload — proving the new payload
+        validation is what rejects it, not an incidental hash mismatch."""
+        payload = {"x": non_finite_value}
+        payload_json = json.dumps(payload, sort_keys=True, ensure_ascii=False)
+        v1_hash = compute_audit_hash_v1(
+            event_type="legacy", fact_id=None, from_state=None, to_state=None,
+            actor="agent", payload=payload, created_at="2020-01-01T00:00:00+00:00",
+            prev_event_hash=None,
+        )
+        mutable_db.execute(
+            "INSERT INTO memory_events (event_id, event_type, actor, payload, "
+            "event_hash, prev_event_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ("evt_legacy_nan", "legacy", "agent", payload_json, v1_hash, None,
+             "2020-01-01T00:00:00+00:00"),
+        )
+        mutable_db.commit()
+
+        chain = AuditChain(mutable_db)
+        result = chain.verify_chain()
+        assert result["valid"] is False
+        assert "invalid payload data" in result["error"]
