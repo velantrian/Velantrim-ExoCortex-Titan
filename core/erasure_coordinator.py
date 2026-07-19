@@ -266,6 +266,8 @@ class ErasureCoordinator:
         embedding_store: EmbeddingStore | None = None,
         ngram_index: NGramIndex | None = None,
         jobs_db_path: str | None = None,
+        *,
+        embedding_db_path: str | None = None,
     ) -> None:
         self._store = store or memory._GLOBAL_STORE
         # Lazy: core.embedding_store depends on numpy, which is optional for
@@ -274,6 +276,23 @@ class ErasureCoordinator:
         # otherwise the real EmbeddingStore is constructed on first actual
         # use, not at construction time.
         self._embeddings = embedding_store
+        # Round 5.4 seventh-order fix (Codex P2): a bare PATH override,
+        # decoupled from constructing a real EmbeddingStore — merely
+        # IMPORTING core.embedding_store (even to hold an unused instance)
+        # forces the numpy dependency, since the module does `import numpy`
+        # at its own top level. A caller that wants the RIGHT tenant file
+        # ever consulted, without paying that cost until an actual purge is
+        # attempted (or even for a dry-run/no-embeddings fact, which never
+        # needs it at all), passes embedding_db_path=... instead of a live
+        # object — _get_embeddings() still lazily constructs the real thing,
+        # but only at the point _run_embeddings() actually needs it, and
+        # _resolve_embeddings_db_path()'s stdlib-only no-row proof (see
+        # there) already works from this path alone, no numpy required.
+        # Ignored if a real embedding_store was also injected — that object
+        # always wins.
+        self._embedding_db_path_override = (
+            embedding_db_path if embedding_store is None else None
+        )
         # Use the SAME configured global NGramIndex instance the running
         # server/pipeline already registered via set_global_ngram() — e.g.
         # server.py points VELANTRIM_NGRAM_DB at ./data/ngram_house.db and
@@ -305,18 +324,25 @@ class ErasureCoordinator:
         """
         if self._embeddings is None:
             from core.embedding_store import EmbeddingStore
-            self._embeddings = EmbeddingStore()
+            if self._embedding_db_path_override is not None:
+                self._embeddings = EmbeddingStore(self._embedding_db_path_override)
+            else:
+                self._embeddings = EmbeddingStore()
         return self._embeddings
 
     def _resolve_embeddings_db_path(self) -> str:
         """Best-effort path to the embeddings DB file, without importing
         core.embedding_store (numpy). Prefers an already-injected store's
-        real path; falls back to the same env var + default
+        real path, then an explicit embedding_db_path_override (Round 5.4
+        seventh-order fix — a tenant path given without a real object, see
+        __init__); falls back to the same env var + default
         core.embedding_store.EXOCORTEX_DB itself resolves, for the case
         where no store is injected and constructing a real one just failed
         (numpy unavailable)."""
         if self._embeddings is not None:
             return getattr(self._embeddings, "_db_path", _EMBEDDINGS_DB_PATH_DEFAULT)
+        if self._embedding_db_path_override is not None:
+            return self._embedding_db_path_override
         return os.getenv(_EMBEDDINGS_DB_PATH_ENV, _EMBEDDINGS_DB_PATH_DEFAULT)
 
     @staticmethod

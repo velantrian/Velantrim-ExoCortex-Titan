@@ -48,10 +48,25 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from core.embedding_store import EmbeddingStore
+    from core.ngram_index import NGramIndex
 
 logger = logging.getLogger("velantrim.forgetting")
 
 SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+
+
+def _normalize_tenant_path(path: str | None) -> str | None:
+    """Round 5.4 seventh-order fix (Codex P2): a blank/whitespace-only
+    tenant storage path must be treated exactly like a MISSING one — never
+    silently accepted as "explicitly configured". `sqlite3.connect("")`
+    happily opens a throwaway temporary database, so an unnormalized blank
+    `embedding_db_path`/`ngram_db_path` (e.g. wired from an empty env/config
+    value) would let a tenant's real storage go unchecked while a scratch
+    file reports a clean, empty result."""
+    if path is None:
+        return None
+    stripped = path.strip()
+    return stripped or None
 
 _FACT_DELETE_TRIGGER_SQL = """
 CREATE TRIGGER prevent_fact_delete
@@ -195,22 +210,31 @@ class ForgettingEngine:
         *,
         embedding_db_path: str | None = None,
         embedding_store: EmbeddingStore | None = None,
+        ngram_db_path: str | None = None,
+        ngram_index: NGramIndex | None = None,
     ):
         """`embedding_db_path`/`embedding_store` (Round 5.4 sixth-order fix,
-        Codex P2): a custom, non-global `db_path` used to leave
+        Codex P2) and `ngram_db_path`/`ngram_index` (Round 5.4 seventh-order
+        fix, Codex P2): a custom, non-global `db_path` used to leave
         `forget_all()`'s `ErasureCoordinator` with NO tenant-scoped
-        embeddings backend at all — it would lazily default to the
+        embeddings/ngram backends at all — it would lazily default to the
         process-global `EmbeddingStore()` (`SQLITE_GRAPH_PATH`/
-        `EXOCORTEX_DB`), completely unrelated to this tenant's own storage.
-        A tenant's real `gs_vectors` row could then survive erasure
-        entirely undetected (checked against the wrong file) while the
-        batch still reported COMPLETE — a GDPR Art. 17 false-success
-        condition. See forget_all() for how these are validated/used;
-        the default (both None) preserves the exact pre-existing global
-        behavior for the default `db_path`."""
+        `EXOCORTEX_DB`) and `get_global_ngram()`, completely unrelated to
+        this tenant's own storage. A tenant's real `gs_vectors` row, or a
+        row still present in the tenant's own ngram FTS5 index, could then
+        survive erasure entirely undetected (checked against the wrong
+        file) while the batch still reported COMPLETE — a GDPR Art. 17
+        false-success condition. See forget_all() for how these are
+        validated/used; the defaults (all None) preserve the exact
+        pre-existing global behavior for the default `db_path`. A blank/
+        whitespace-only `embedding_db_path`/`ngram_db_path` is normalized
+        to "not configured" (see `_normalize_tenant_path()`) — never
+        silently treated as an explicit tenant path."""
         self._db_path = db_path
         self._embedding_db_path = embedding_db_path
         self._injected_embedding_store = embedding_store
+        self._ngram_db_path = ngram_db_path
+        self._injected_ngram_index = ngram_index
 
     # ── Проверка ──────────────────────────────────────────────────────────
 
@@ -341,9 +365,15 @@ class ForgettingEngine:
 
     # ── FORGET_ALL (GDPR) ─────────────────────────────────────────────────
 
-    def _bind_tenant_embedding_store(self) -> tuple[EmbeddingStore | None, bool]:
-        """Resolve the embeddings backend forget_all() must bind to
-        ErasureCoordinator, and whether THIS call owns (and must close) it.
+    def _is_global_db_path(self) -> bool:
+        return os.path.abspath(self._db_path) == os.path.abspath(SQLITE_PATH)
+
+    def _bind_tenant_embedding_store(self) -> tuple[EmbeddingStore | None, str | None]:
+        """Resolve what forget_all() must bind to ErasureCoordinator's
+        embeddings backend: either a real, externally-injected
+        `EmbeddingStore` (returned as-is — `forget_all()` never touches
+        its lifecycle), or a bare tenant PATH string (never both — an
+        injected object always wins when both are given).
 
         Round 5.4 sixth-order fix (Codex P2): a custom, non-global
         `db_path` used to leave `ErasureCoordinator` with no embedding_store
@@ -352,34 +382,44 @@ class ForgettingEngine:
         storage. A tenant's real `gs_vectors` row could then survive
         erasure entirely undetected (checked against the wrong file) while
         the batch still reported COMPLETE: a GDPR Art. 17 false-success
-        condition. `core/erasure_coordinator.py`'s own state machine
-        already fails a per-fact job closed (FAILED, never a silent
-        `applicable: false`) whenever the embeddings backend genuinely
-        can't be reached — this fix only ensures the RIGHT backend is the
-        one ever consulted.
+        condition.
 
-        Returns `(None, False)` ONLY for the default/global `db_path`
-        (compared by normalized path against module-level `SQLITE_PATH`)
-        — ErasureCoordinator's own lazy default there is the exact,
-        unchanged pre-existing behavior. For any OTHER (tenant) `db_path`,
-        an explicit `embedding_store=` or `embedding_db_path=` is REQUIRED;
-        silently falling back to the global embeddings store is refused —
-        this raises ValueError instead, BEFORE any facts store is even
-        opened, rather than merely documenting the risk.
+        Round 5.4 seventh-order fix (Codex P2): the sixth-order fix's own
+        first draft eagerly constructed a real `EmbeddingStore` here for
+        the path-only case — but `core.embedding_store` imports numpy at
+        module level, so merely importing it (even to hold an instance
+        whose methods are never called) forced that optional dependency
+        on every tenant caller, including a dry-run or a fact that never
+        had embeddings at all. This method now NEVER imports
+        `core.embedding_store` for the path-only case: the bare path is
+        passed straight through to `ErasureCoordinator(embedding_db_path=
+        ...)`, which defers the numpy-requiring import to
+        `_get_embeddings()`'s first actual use (inside `_run_embeddings()`)
+        — and its stdlib-only no-row proof
+        (`_embeddings_row_present_for()`) already works from that path
+        alone, no numpy required, exactly restoring the graceful-
+        degradation behavior the coordinator's default/global path always
+        had.
+
+        A blank/whitespace-only `embedding_db_path` is normalized to "not
+        configured" (see `_normalize_tenant_path()`) — treated identically
+        to a missing one.
+
+        Returns `(None, None)` ONLY for the default/global `db_path` —
+        ErasureCoordinator's own lazy default there is the exact, unchanged
+        pre-existing behavior. For any OTHER (tenant) `db_path`, an
+        explicit, non-blank `embedding_store=` or `embedding_db_path=` is
+        REQUIRED; silently falling back to the global embeddings store is
+        refused — this raises ValueError instead, BEFORE any facts store
+        is even opened, rather than merely documenting the risk.
         """
         if self._injected_embedding_store is not None:
-            return self._injected_embedding_store, False
-        if self._embedding_db_path is not None:
-            from core.embedding_store import EmbeddingStore
-
-            embedding_store = EmbeddingStore(self._embedding_db_path)
-            embedding_store.ensure_table()
-            return embedding_store, True
-        is_global_db_path = (
-            os.path.abspath(self._db_path) == os.path.abspath(SQLITE_PATH)
-        )
-        if is_global_db_path:
-            return None, False
+            return self._injected_embedding_store, None
+        embedding_db_path = _normalize_tenant_path(self._embedding_db_path)
+        if embedding_db_path is not None:
+            return None, embedding_db_path
+        if self._is_global_db_path():
+            return None, None
         raise ValueError(
             f"ForgettingEngine(db_path={self._db_path!r}) is a custom tenant "
             "database, but no tenant embedding storage was configured "
@@ -389,6 +429,50 @@ class ForgettingEngine:
             "undetected while forget_all() still reports COMPLETE (GDPR "
             "Art. 17 false success). Pass embedding_db_path=... or "
             "embedding_store=... to ForgettingEngine()."
+        )
+
+    def _bind_tenant_ngram_index(self) -> NGramIndex | None:
+        """Round 5.4 seventh-order fix (Codex P2): mirrors
+        _bind_tenant_embedding_store() for the ngram backend — a custom
+        tenant `db_path` also left `ErasureCoordinator`'s `ngram_index`
+        unset, so it fell back to `get_global_ngram()` — the SAME
+        false-success class of bug, just for the ngram FTS5 index instead
+        of embeddings: a tenant fact indexed only in its own `NGramIndex`
+        could remain searchable there after `forget_all()` reports
+        COMPLETE, because only the (empty, unrelated) global index was
+        ever checked/purged.
+
+        Unlike embeddings, `core.ngram_index` has no numpy dependency
+        (pure stdlib `sqlite3` FTS5) — a real `NGramIndex` is constructed
+        directly here; there is no deferred-import concern to preserve.
+
+        A blank/whitespace-only `ngram_db_path` is normalized to "not
+        configured", exactly like `embedding_db_path`.
+
+        Returns `None` ONLY for the default/global `db_path` — the exact,
+        unchanged pre-existing `get_global_ngram()` fallback. For any
+        OTHER (tenant) `db_path`, an explicit, non-blank `ngram_index=` or
+        `ngram_db_path=` is REQUIRED; fails closed with ValueError
+        otherwise, BEFORE any facts store is even opened.
+        """
+        if self._injected_ngram_index is not None:
+            return self._injected_ngram_index
+        ngram_db_path = _normalize_tenant_path(self._ngram_db_path)
+        if ngram_db_path is not None:
+            from core.ngram_index import NGramIndex
+
+            return NGramIndex(ngram_db_path)
+        if self._is_global_db_path():
+            return None
+        raise ValueError(
+            f"ForgettingEngine(db_path={self._db_path!r}) is a custom tenant "
+            "database, but no tenant ngram storage was configured "
+            "(ngram_db_path=... or ngram_index=...). Refusing to silently "
+            "fall back to the process-global ngram index — that would let "
+            "a tenant's real ngram-indexed row survive erasure undetected "
+            "while forget_all() still reports COMPLETE (GDPR Art. 17 false "
+            "success). Pass ngram_db_path=... or ngram_index=... to "
+            "ForgettingEngine()."
         )
 
     def forget_all(
@@ -465,16 +549,24 @@ class ForgettingEngine:
         from core.erasure_coordinator import ErasureCoordinator
         from core.memory import SQLiteGraphStore
 
-        # Round 5.4 sixth-order fix (Codex P2): resolved/validated BEFORE
-        # any facts store is even opened — a misconfigured tenant db_path
-        # must fail closed before touching a single fact, never partway
-        # through a destructive operation.
-        embedding_store, owns_embedding_store = self._bind_tenant_embedding_store()
+        # Round 5.4 sixth/seventh-order fix (Codex P2): resolved/validated
+        # BEFORE any facts store is even opened — a misconfigured tenant
+        # db_path must fail closed before touching a single fact, never
+        # partway through a destructive operation. Neither call here ever
+        # imports core.embedding_store (numpy) for the path-only case — see
+        # _bind_tenant_embedding_store()'s own docstring.
+        embedding_store, embedding_db_path = self._bind_tenant_embedding_store()
+        ngram_index = self._bind_tenant_ngram_index()
 
         store = SQLiteGraphStore(self._db_path)
         try:
             store.ensure_schema()
-            coordinator = ErasureCoordinator(store=store, embedding_store=embedding_store)
+            coordinator = ErasureCoordinator(
+                store=store,
+                embedding_store=embedding_store,
+                embedding_db_path=embedding_db_path,
+                ngram_index=ngram_index,
+            )
             batch_coordinator = BatchErasureCoordinator(
                 store=store, coordinator=coordinator, jobs_db_path=self._db_path,
             )
@@ -489,14 +581,15 @@ class ForgettingEngine:
                 idempotency_key=idempotency_key,
             )
         finally:
+            # Only the facts store's connection is ever explicitly closed
+            # here — it's the only backend this method (or ErasureCoordinator)
+            # ever holds a real persistent connection for. Embeddings/ngram
+            # backends (injected, path-resolved, or lazily constructed deep
+            # inside ErasureCoordinator) each open and close their own
+            # connection per call and are never owned/closed here; an
+            # externally injected embedding_store/ngram_index's lifecycle
+            # always belongs to whoever created/injected it.
             store.close()
-            # Only ever close an embeddings store THIS call constructed
-            # (owns_embedding_store) — an externally injected embedding_store
-            # (or the global-default None, which never had a store to begin
-            # with) is never touched here; its lifecycle belongs to whoever
-            # created/injected it.
-            if owns_embedding_store and embedding_store is not None:
-                embedding_store.close()
 
         if report["outcome"] in ("REFUSED", "IDEMPOTENCY_CONFLICT"):
             return ForgetVerdict(
