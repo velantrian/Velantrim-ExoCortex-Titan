@@ -813,3 +813,121 @@ class TestCompatibility:
         assert stats["total_events"] == 2
         assert stats["by_event_type"]["fact_created"] == 1
         assert stats["by_event_type"]["esm_transition"] == 1
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Codex review round 1 fixes
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TestReviewRound1Fixes:
+
+    def test_get_fact_history_scoped_to_own_chain_id(self, mutable_db):
+        """P3: a chain-scoped AuditChain must never leak another chain's
+        history for the same fact_id."""
+        default_chain = AuditChain(mutable_db)
+        default_chain.log("t1", "a1", fact_id="shared_fact")
+
+        other_chain = AuditChain(mutable_db, chain_id="tenant_other")
+        other_chain.log("t2", "a2", fact_id="shared_fact")
+
+        default_history = default_chain.get_fact_history("shared_fact")
+        other_history = other_chain.get_fact_history("shared_fact")
+
+        assert len(default_history) == 1
+        assert default_history[0]["event_type"] == "t1"
+        assert len(other_history) == 1
+        assert other_history[0]["event_type"] == "t2"
+
+    def test_hash_versions_seen_sort_does_not_crash_on_mixed_types(self, mutable_db):
+        """P2: a tampered non-integer hash_version must still produce a
+        durably-recorded failed verification, not an unhandled TypeError
+        from sorting a set that mixes an int and a str."""
+        chain = AuditChain(mutable_db)
+        chain.log("t1", "a1")
+        e2 = chain.log("t2", "a2")
+        mutable_db.execute(
+            "UPDATE memory_events SET hash_version = 'bogus' WHERE event_id = ?",
+            (e2.event_id,),
+        )
+        mutable_db.commit()
+
+        result = chain.verify_chain()  # must not raise
+        assert result["valid"] is False
+        assert "unknown hash_version" in result["error"]
+        statuses = [
+            r[0] for r in mutable_db.execute(
+                "SELECT status FROM integrity_checks WHERE check_type='audit_chain'"
+            ).fetchall()
+        ]
+        assert "failed" in statuses
+
+    def test_verify_chain_snapshot_consistent_under_concurrent_append(self, tmp_path):
+        """P1: a successful concurrent append that lands between the row
+        scan and the audit_chain_heads check must never make a genuinely
+        valid chain report as diverged (false positive)."""
+        db_path = str(tmp_path / "snapshot.db")
+        setup_conn = sqlite3.connect(db_path)
+        _bare_v1_schema(setup_conn, with_triggers=True)
+        chain = AuditChain(setup_conn)
+        for i in range(20):
+            chain.log(f"t{i}", "a")
+
+        results = []
+
+        def verifier():
+            conn = sqlite3.connect(db_path, timeout=30.0)
+            conn.execute("PRAGMA busy_timeout=30000")
+            local_chain = AuditChain(conn)
+            for _ in range(15):
+                results.append(local_chain.verify_chain(max_rows=10_000))
+            conn.close()
+
+        def writer():
+            conn = sqlite3.connect(db_path, timeout=30.0)
+            conn.execute("PRAGMA busy_timeout=30000")
+            local_chain = AuditChain(conn)
+            for i in range(15):
+                local_chain.log(f"concurrent_{i}", "writer")
+            conn.close()
+
+        t_verify = threading.Thread(target=verifier)
+        t_write = threading.Thread(target=writer)
+        t_verify.start()
+        t_write.start()
+        t_verify.join(timeout=60)
+        t_write.join(timeout=60)
+
+        setup_conn.close()
+        invalid = [r for r in results if r["valid"] is False]
+        assert invalid == [], f"snapshot-inconsistent false failure(s): {invalid}"
+
+    def test_ensure_schema_does_not_commit_callers_pending_work(self, mutable_db):
+        """P2: constructing AuditChain inside a caller-owned transaction
+        must not commit the caller's own prior uncommitted work — only the
+        caller's eventual commit/rollback should decide its fate."""
+        mutable_db.execute("BEGIN")
+        mutable_db.execute(
+            "INSERT INTO memory_events (event_id, event_type, actor, event_hash, created_at) "
+            "VALUES ('evt_pending', 'pending_type', 'actor', 'fake_hash_not_verified', 't0')"
+        )
+        AuditChain(mutable_db)  # constructor must not commit the row above
+        mutable_db.rollback()
+
+        row = mutable_db.execute(
+            "SELECT 1 FROM memory_events WHERE event_id = 'evt_pending'"
+        ).fetchone()
+        assert row is None, "caller's pending insert was committed by AuditChain's constructor"
+
+    def test_add_column_if_missing_tolerates_duplicate_column_race(self, mutable_db):
+        """P2: simulates the benign race where another connection already
+        added the same additive column between our column-existence check
+        and our own ALTER — must not raise."""
+        chain = AuditChain(mutable_db)
+        # hash_version already exists (added by the constructor above) —
+        # calling the raw self-heal primitive again must tolerate it.
+        chain._add_column_if_missing("memory_events", "hash_version", "INTEGER NOT NULL DEFAULT 1")
+        # sanity: the column is still exactly one column, not duplicated
+        cols = [
+            row[1] for row in mutable_db.execute("PRAGMA table_info(memory_events)").fetchall()
+        ]
+        assert cols.count("hash_version") == 1

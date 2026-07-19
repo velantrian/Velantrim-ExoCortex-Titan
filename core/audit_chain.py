@@ -69,6 +69,21 @@ class _StaleHeadError(RuntimeError):
     transaction, since that would require redoing work we don't own."""
 
 
+def _sorted_versions(versions: set) -> list:
+    """Sort a set of stored hash_version values for a report. Normally
+    all ints, sorted numerically — but a tampered row can carry ANY
+    stored value (that's the whole point of a hash chain: a tamperer
+    doesn't ask permission), so a plain `sorted()` would raise TypeError
+    on a set mixing e.g. an int and a str, crashing verify_chain() before
+    it can record the failed-verification receipt it owes. Fall back to
+    sorting by repr() so reporting never crashes, whatever's actually
+    stored."""
+    try:
+        return sorted(versions)
+    except TypeError:
+        return sorted(versions, key=repr)
+
+
 # ── Canonicalization & validation helpers ─────────────────────────────────────
 
 def _validate_payload_value(value: object, *, _depth: int = 0) -> None:
@@ -348,6 +363,7 @@ class AuditChain:
         (metadata only — hash_version/chain_id, not any hashed field).
         """
         conn = self._conn
+        owns_transaction = not conn.in_transaction
         conn.execute("PRAGMA busy_timeout=5000")
 
         has_events_table = bool(conn.execute(
@@ -357,17 +373,16 @@ class AuditChain:
         if has_events_table:
             cols = {row[1] for row in conn.execute("PRAGMA table_info(memory_events)").fetchall()}
             if "hash_version" not in cols:
-                conn.execute(
-                    "ALTER TABLE memory_events ADD COLUMN hash_version "
-                    "INTEGER NOT NULL DEFAULT 1"
+                self._add_column_if_missing(
+                    "memory_events", "hash_version", "INTEGER NOT NULL DEFAULT 1"
                 )
             if "chain_id" not in cols:
-                conn.execute(
-                    "ALTER TABLE memory_events ADD COLUMN chain_id "
-                    f"TEXT NOT NULL DEFAULT '{DEFAULT_CHAIN_ID}'"
+                self._add_column_if_missing(
+                    "memory_events", "chain_id",
+                    f"TEXT NOT NULL DEFAULT '{DEFAULT_CHAIN_ID}'",
                 )
             if "chain_sequence" not in cols:
-                conn.execute("ALTER TABLE memory_events ADD COLUMN chain_sequence INTEGER")
+                self._add_column_if_missing("memory_events", "chain_sequence", "INTEGER")
             conn.execute(
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_events_chain_seq "
                 "ON memory_events(chain_id, chain_sequence) WHERE chain_sequence IS NOT NULL"
@@ -414,7 +429,26 @@ class AuditChain:
                     (self.chain_id, last_seq, last_hash),
                 )
 
-        conn.commit()
+        # Only commit if we opened this work ourselves — a caller that
+        # already had an open transaction owns its own commit/rollback,
+        # and unconditionally committing here would silently finalize
+        # whatever unrelated work the caller had pending before it ever
+        # gets a chance to roll it back.
+        if owns_transaction:
+            conn.commit()
+
+    def _add_column_if_missing(self, table: str, column: str, ddl_suffix: str) -> None:
+        """ALTER TABLE ADD COLUMN, tolerating a benign race: two
+        connections can both see the column missing (via PRAGMA
+        table_info) before either ALTER commits, so the loser's ALTER
+        would otherwise fail with 'duplicate column name' even though the
+        desired end state (column present) was already achieved by the
+        winner."""
+        try:
+            self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl_suffix}")
+        except sqlite3.OperationalError as exc:
+            if "duplicate column name" not in str(exc):
+                raise
 
     # ── Запись событий (atomic append) ────────────────────────────────────────
 
@@ -664,6 +698,33 @@ class AuditChain:
             )
 
         conn = self._conn
+        # Pin every read (the row count, the row scan, and the chain-head
+        # check at the end) to ONE consistent snapshot. Without this, a
+        # concurrent successful append between the row scan and the head
+        # check could make a genuinely valid chain look like it diverged
+        # from its own head (the scan predates the append, the head read
+        # doesn't) — a false-positive failure. If the caller already owns
+        # a transaction we participate in its snapshot instead of nesting
+        # our own (sqlite3 forbids BEGIN inside an active transaction).
+        owns_transaction = not conn.in_transaction
+        if owns_transaction:
+            conn.execute("BEGIN")
+
+        try:
+            return self._verify_chain_locked(
+                fact_id=fact_id, max_rows=max_rows, owns_transaction=owns_transaction,
+            )
+        except Exception:
+            if owns_transaction:
+                conn.rollback()
+            raise
+
+    def _verify_chain_locked(
+        self, *, fact_id: str | None, max_rows: int, owns_transaction: bool,
+    ) -> dict:
+        """The body of verify_chain(), run inside the read snapshot
+        established by its caller."""
+        conn = self._conn
         total_rows = conn.execute(
             "SELECT COUNT(*) FROM memory_events WHERE chain_id = ?",
             (self.chain_id,),
@@ -683,7 +744,7 @@ class AuditChain:
         ).fetchall()
 
         truncated = total_rows > len(rows)
-        hash_versions_seen: set[int] = set()
+        hash_versions_seen: set = set()
         prev_hash: str | None = None
         expected_next_v2_seq = 1
         seen_v2 = False
@@ -693,12 +754,22 @@ class AuditChain:
                 "chain_id": self.chain_id,
                 "fact_id_filter": fact_id,
                 "events_checked": position,
-                "hash_versions_seen": sorted(hash_versions_seen),
+                "hash_versions_seen": _sorted_versions(hash_versions_seen),
                 "broken_at_position": position,
                 "first_broken_event": broken_event_id,
                 "reason": message,
             }
-            self._write_integrity_receipt(status="failed", details=details)
+            # End our own read snapshot BEFORE writing the receipt: the
+            # receipt write doesn't need to share the read's snapshot, and
+            # writing it as a fresh statement (rather than escalating a
+            # still-open reader transaction to a writer) avoids a genuine
+            # SQLITE_BUSY lock-upgrade race against concurrent writers
+            # that busy_timeout alone doesn't reliably cover.
+            if owns_transaction:
+                conn.commit()
+            self._write_integrity_receipt(
+                status="failed", details=details, commit=owns_transaction,
+            )
             return {
                 "valid": False,
                 "complete": True,
@@ -709,7 +780,7 @@ class AuditChain:
                 "error": message,
                 "chain_id": self.chain_id,
                 "fact_id_filter": fact_id,
-                "hash_versions_seen": sorted(hash_versions_seen),
+                "hash_versions_seen": _sorted_versions(hash_versions_seen),
             }
 
         for i, row in enumerate(rows):
@@ -790,11 +861,15 @@ class AuditChain:
                 "chain_id": self.chain_id,
                 "fact_id_filter": fact_id,
                 "events_checked": len(rows),
-                "hash_versions_seen": sorted(hash_versions_seen),
+                "hash_versions_seen": _sorted_versions(hash_versions_seen),
                 "complete": False,
                 "truncated": True,
             }
-            self._write_integrity_receipt(status="partial", details=details)
+            if owns_transaction:
+                conn.commit()  # end the read snapshot before writing the receipt
+            self._write_integrity_receipt(
+                status="partial", details=details, commit=owns_transaction,
+            )
             return {
                 "valid": None,
                 "valid_so_far": True,
@@ -808,7 +883,7 @@ class AuditChain:
                 "error": None,
                 "chain_id": self.chain_id,
                 "fact_id_filter": fact_id,
-                "hash_versions_seen": sorted(hash_versions_seen),
+                "hash_versions_seen": _sorted_versions(hash_versions_seen),
             }
 
         # Full chain scanned with no break — cross-check the durable chain
@@ -839,11 +914,15 @@ class AuditChain:
             "chain_id": self.chain_id,
             "fact_id_filter": fact_id,
             "events_checked": len(rows),
-            "hash_versions_seen": sorted(hash_versions_seen),
+            "hash_versions_seen": _sorted_versions(hash_versions_seen),
             "complete": True,
             "truncated": False,
         }
-        self._write_integrity_receipt(status="passed", details=details)
+        if owns_transaction:
+            conn.commit()  # end the read snapshot before writing the receipt
+        self._write_integrity_receipt(
+            status="passed", details=details, commit=owns_transaction,
+        )
 
         return {
             "valid": True,
@@ -855,25 +934,54 @@ class AuditChain:
             "error": None,
             "chain_id": self.chain_id,
             "fact_id_filter": fact_id,
-            "hash_versions_seen": sorted(hash_versions_seen),
+            "hash_versions_seen": _sorted_versions(hash_versions_seen),
         }
 
-    def _write_integrity_receipt(self, *, status: str, details: dict) -> None:
+    def _write_integrity_receipt(
+        self, *, status: str, details: dict, commit: bool = True,
+    ) -> None:
         """Durably record a verification outcome. Never touches
         memory_events — this is deliberately a separate table so
-        verification can never mutate the chain it is checking."""
-        self._conn.execute(
-            """
+        verification can never mutate the chain it is checking.
+
+        `commit=False` is used when the caller (verify_chain()) is
+        participating in a transaction it doesn't own — committing here
+        would prematurely finalize the caller's unrelated pending work;
+        the caller's own eventual commit/rollback covers this insert too.
+
+        When `commit=True`, this call is writing under the read snapshot
+        verify_chain() opened for itself — the INSERT is the first write
+        in that transaction, so SQLite must upgrade its lock at this
+        exact statement. Under concurrent writers that can transiently
+        contend (SQLITE_BUSY) even with busy_timeout set; retry it a
+        bounded number of times before giving up, mirroring log()'s own
+        contention handling. The INSERT itself hasn't succeeded on a
+        failed attempt, so retrying is safe — never a duplicate row.
+        """
+        sql = """
             INSERT INTO integrity_checks
             (check_id, check_type, status, details, checked_by)
             VALUES (?, 'audit_chain', ?, ?, 'verify_chain()')
-            """,
-            (
-                f"ic_{uuid.uuid4().hex[:12]}",
-                status,
-                json.dumps(details, ensure_ascii=False, default=str),
-            ),
+        """
+        params = (
+            f"ic_{uuid.uuid4().hex[:12]}",
+            status,
+            json.dumps(details, ensure_ascii=False, default=str),
         )
+        if not commit:
+            self._conn.execute(sql, params)
+            return
+
+        max_attempts = 5
+        for attempt in range(max_attempts):
+            try:
+                self._conn.execute(sql, params)
+                break
+            except sqlite3.OperationalError:
+                if attempt < max_attempts - 1:
+                    time.sleep(0.01 * (attempt + 1))
+                    continue
+                raise
         self._conn.commit()
 
     def get_fact_history(self, fact_id: str) -> list[dict]:
@@ -881,16 +989,18 @@ class AuditChain:
 
         Fact-scoped convenience view — NOT a substitute for verify_chain()
         (a filtered subset of an interleaved global chain cannot prove
-        chain integrity on its own)."""
+        chain integrity on its own). Scoped to this instance's chain_id,
+        same as log()/verify_chain(), so a caller using a non-default
+        chain_id never sees another chain's history for the same fact_id."""
         rows = self._conn.execute(
             """
             SELECT event_id, event_type, from_state, to_state,
                    actor, reason, confidence, created_at
             FROM memory_events
-            WHERE fact_id = ?
+            WHERE fact_id = ? AND chain_id = ?
             ORDER BY rowid ASC
             """,
-            (fact_id,),
+            (fact_id, self.chain_id),
         ).fetchall()
         return [
             {
