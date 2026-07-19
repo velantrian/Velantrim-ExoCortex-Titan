@@ -364,7 +364,12 @@ class AuditChain:
         """
         conn = self._conn
         owns_transaction = not conn.in_transaction
-        conn.execute("PRAGMA busy_timeout=5000")
+        # Only raise a floor of 5s — never lower a caller-configured,
+        # longer timeout (e.g. a caller running PRAGMA busy_timeout=30000
+        # before constructing us for a known-long-running writer).
+        current_timeout = conn.execute("PRAGMA busy_timeout").fetchone()[0]
+        if current_timeout < 5000:
+            conn.execute("PRAGMA busy_timeout=5000")
 
         has_events_table = bool(conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='memory_events'"
@@ -800,9 +805,19 @@ class AuditChain:
                 )
 
             try:
-                payload_data = json.loads(payload_str) if payload_str else {}
+                payload_data = json.loads(payload_str)
             except (json.JSONDecodeError, TypeError):
                 return _fail(i, event_id, f"malformed payload JSON at position {i}")
+            if not isinstance(payload_data, dict):
+                # A genuine append always stores a JSON object (json.dumps
+                # of a dict, never NULL/"" and never a bare JSON scalar).
+                # NULL, "", "null", "[]", etc. are only reachable via
+                # tampering with the stored column — treating them as an
+                # implicit {} would silently accept that tamper instead
+                # of detecting it.
+                return _fail(
+                    i, event_id, f"stored payload is not a JSON object at position {i}"
+                )
 
             if hash_version == HASH_VERSION_LEGACY:
                 if seen_v2:
@@ -1017,13 +1032,18 @@ class AuditChain:
         ]
 
     def stats(self) -> dict:
-        """Статистика audit log."""
+        """Статистика audit log — scoped to this instance's chain_id, same
+        as log()/verify_chain()/get_fact_history(), so a non-default chain
+        never reports another chain's event counts."""
         total = self._conn.execute(
-            "SELECT COUNT(*) FROM memory_events"
+            "SELECT COUNT(*) FROM memory_events WHERE chain_id = ?",
+            (self.chain_id,),
         ).fetchone()[0]
         by_type = {}
         for row in self._conn.execute(
-            "SELECT event_type, COUNT(*) FROM memory_events GROUP BY event_type"
+            "SELECT event_type, COUNT(*) FROM memory_events "
+            "WHERE chain_id = ? GROUP BY event_type",
+            (self.chain_id,),
         ):
             by_type[row[0]] = row[1]
         return {

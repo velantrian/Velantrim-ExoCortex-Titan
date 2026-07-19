@@ -931,3 +931,61 @@ class TestReviewRound1Fixes:
             row[1] for row in mutable_db.execute("PRAGMA table_info(memory_events)").fetchall()
         ]
         assert cols.count("hash_version") == 1
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Codex review round 2 fixes
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TestReviewRound2Fixes:
+
+    @pytest.mark.parametrize("tampered_payload", [None, "", "null", "[]", '"a string"', "42"])
+    def test_v2_verification_fails_closed_on_non_dict_payload(
+        self, mutable_db, tampered_payload,
+    ):
+        """P2: NULL/empty/JSON-null/non-object payload storage must never
+        be silently coalesced to {} during verification — that would
+        accept a real tamper of the stored payload column."""
+        chain = AuditChain(mutable_db)
+        e1 = chain.log("t1", "a1", payload={})
+        mutable_db.execute(
+            "UPDATE memory_events SET payload = ? WHERE event_id = ?",
+            (tampered_payload, e1.event_id),
+        )
+        mutable_db.commit()
+        result = chain.verify_chain()
+        assert result["valid"] is False
+
+    def test_ensure_schema_preserves_higher_caller_busy_timeout(self, mutable_db):
+        """P2: a caller-configured busy_timeout longer than our own
+        default floor must never be lowered by construction."""
+        mutable_db.execute("PRAGMA busy_timeout=30000")
+        AuditChain(mutable_db)
+        current = mutable_db.execute("PRAGMA busy_timeout").fetchone()[0]
+        assert current >= 30000
+
+    def test_ensure_schema_raises_low_busy_timeout_to_floor(self, mutable_db):
+        """A lower-than-floor timeout (e.g. explicitly disabled) is raised
+        to the 5s floor, same as before — only the "never lower a higher
+        value" direction changed."""
+        mutable_db.execute("PRAGMA busy_timeout=0")
+        AuditChain(mutable_db)
+        current = mutable_db.execute("PRAGMA busy_timeout").fetchone()[0]
+        assert current >= 5000
+
+    def test_stats_scoped_to_own_chain_id(self, mutable_db):
+        """P2: a chain-scoped AuditChain must not report another chain's
+        event counts via stats()."""
+        default_chain = AuditChain(mutable_db)
+        default_chain.log("t1", "a1")
+        default_chain.log("t2", "a2")
+
+        other_chain = AuditChain(mutable_db, chain_id="tenant_other")
+        other_chain.log("t3", "a3")
+
+        default_stats = default_chain.stats()
+        other_stats = other_chain.stats()
+
+        assert default_stats["total_events"] == 2
+        assert other_stats["total_events"] == 1
+        assert other_stats["by_event_type"] == {"t3": 1}
