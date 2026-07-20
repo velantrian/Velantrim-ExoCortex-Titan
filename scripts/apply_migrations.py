@@ -42,6 +42,7 @@ MIGRATIONS = [
     (14, BASE_DIR / "migrations" / "014_erasure_job_generations.sql"),
     (15, BASE_DIR / "migrations" / "015_erasure_batches.sql"),
     (16, BASE_DIR / "migrations" / "016_erasure_job_subject.sql"),
+    (17, BASE_DIR / "migrations" / "017_audit_chain_hash_v2.sql"),
 ]
 
 LATEST_VERSION = max(v for v, _ in MIGRATIONS)
@@ -192,6 +193,17 @@ def dry_run_on_copy(db_path: Path, migrations: list[tuple[int, Path]]) -> bool:
                         l for l in raw_sql.split("\n")
                         if "ALTER TABLE erasure_jobs ADD COLUMN subject_user_id" not in l
                     )
+                if version == 17:
+                    # Stage B: core.audit_chain.AuditChain._ensure_schema()
+                    # can self-heal these same columns onto memory_events at
+                    # runtime before an operator ever runs this migration —
+                    # same non-idempotent-ALTER problem as 010/011/014/016.
+                    for col in ("hash_version", "chain_id", "chain_sequence"):
+                        if column_exists(conn, "memory_events", col):
+                            raw_sql = "\n".join(
+                                l for l in raw_sql.split("\n")
+                                if f"ALTER TABLE memory_events ADD COLUMN {col}" not in l
+                            )
 
                 conn.executescript(raw_sql)
                 conn.execute(f"PRAGMA user_version = {version}")
@@ -351,6 +363,20 @@ def apply_migrations(
                 line for line in raw_sql.split("\n")
                 if "ALTER TABLE erasure_jobs ADD COLUMN subject_user_id" not in line
             )
+
+        # 017 (Stage B): core.audit_chain.AuditChain._ensure_schema() can
+        # self-heal hash_version/chain_id/chain_sequence onto memory_events
+        # at runtime before an operator ever runs this migration — same
+        # non-idempotent-ALTER problem as 010/011/014/016 above.
+        if version == 17:
+            for col in ("hash_version", "chain_id", "chain_sequence"):
+                if column_exists(conn, "memory_events", col):
+                    print(f"   ℹ️  Колонка memory_events.{col} уже существует — "
+                          "пропускаю ALTER")
+                    raw_sql = "\n".join(
+                        line for line in raw_sql.split("\n")
+                        if f"ALTER TABLE memory_events ADD COLUMN {col}" not in line
+                    )
 
         try:
             conn.executescript(raw_sql)

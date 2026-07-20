@@ -88,7 +88,7 @@ def test_fresh_apply_reaches_latest_version_with_expected_schema(tmp_path):
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 16
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
         job_cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_jobs)").fetchall()}
         assert "generation" in job_cols
         # migrations/016_erasure_job_subject.sql — Round 5 Codex fix:
@@ -125,6 +125,194 @@ def test_fresh_apply_reaches_latest_version_with_expected_schema(tmp_path):
             ).fetchall()
         }
         assert "idx_erasure_batches_idempotency" in batch_indexes
+
+        # migrations/017_audit_chain_hash_v2.sql — Stage B: AuditChain Hash v2.
+        event_cols = {r[1] for r in conn.execute("PRAGMA table_info(memory_events)").fetchall()}
+        assert {"hash_version", "chain_id", "chain_sequence"} <= event_cols
+        event_indexes = {
+            r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='memory_events'"
+            ).fetchall()
+        }
+        assert "idx_memory_events_chain_seq" in event_indexes
+        assert conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='audit_chain_heads'"
+        ).fetchone() is not None
+        head = conn.execute(
+            "SELECT last_sequence, last_event_hash FROM audit_chain_heads "
+            "WHERE chain_id = 'memory_events'"
+        ).fetchone()
+        assert head == (0, None)  # fresh DB, no events yet
+        # append-only triggers from migration 009 remain present
+        triggers = {
+            r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='trigger' AND tbl_name='memory_events'"
+            ).fetchall()
+        }
+        assert {"prevent_audit_update", "prevent_audit_delete"} <= triggers
+    finally:
+        conn.close()
+
+
+def test_v16_to_v17_upgrade_preserves_existing_v1_audit_events(tmp_path):
+    """Stage B: upgrading a real v16 database that already has v1-hashed
+    memory_events rows must add the v2 schema WITHOUT rewriting any
+    existing row's hashed fields, and must seed audit_chain_heads from the
+    actual last v1 event so the first v2 append chains onto it."""
+    db_path = str(tmp_path / "v16_with_history.db")
+    assert _run_apply_upto(db_path, 16).returncode == 0
+
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    from core.audit_chain import compute_audit_hash_v1
+
+    now1 = "2025-01-01T00:00:00+00:00"
+    now2 = "2025-01-02T00:00:00+00:00"
+    h1 = compute_audit_hash_v1(
+        event_type="fact_created", fact_id="f_hist", from_state=None,
+        to_state="Observed", actor="agent:legacy", payload={"claim_preview": "x"},
+        created_at=now1, prev_event_hash=None,
+    )
+    h2 = compute_audit_hash_v1(
+        event_type="esm_transition", fact_id="f_hist", from_state="Observed",
+        to_state="Hypothesized", actor="agent:legacy", payload={},
+        created_at=now2, prev_event_hash=h1,
+    )
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO memory_events (event_id, event_type, fact_id, to_state, actor, "
+        "payload, event_hash, prev_event_hash, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+        ("evt_hist1", "fact_created", "f_hist", "Observed", "agent:legacy",
+         '{"claim_preview": "x"}', h1, None, now1),
+    )
+    conn.execute(
+        "INSERT INTO memory_events (event_id, event_type, fact_id, from_state, to_state, "
+        "actor, payload, event_hash, prev_event_hash, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        ("evt_hist2", "esm_transition", "f_hist", "Observed", "Hypothesized",
+         "agent:legacy", "{}", h2, h1, now2),
+    )
+    conn.commit()
+    conn.close()
+
+    result = _run_apply(db_path)
+    assert result.returncode == 0, result.stderr
+
+    conn = sqlite3.connect(db_path)
+    try:
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
+        rows = conn.execute(
+            "SELECT event_id, event_hash, hash_version, chain_id, chain_sequence "
+            "FROM memory_events WHERE fact_id = 'f_hist' ORDER BY rowid ASC"
+        ).fetchall()
+        assert rows == [
+            ("evt_hist1", h1, 1, "memory_events", None),
+            ("evt_hist2", h2, 1, "memory_events", None),
+        ]
+        head = conn.execute(
+            "SELECT last_sequence, last_event_hash FROM audit_chain_heads "
+            "WHERE chain_id = 'memory_events'"
+        ).fetchone()
+        assert head == (0, h2)  # seeded from the actual last durable event
+    finally:
+        conn.close()
+
+
+def test_v17_backfill_runs_when_columns_were_self_healed(tmp_path):
+    """Starting from a v16 database where memory_events.hash_version/
+    chain_id/chain_sequence ALREADY exist (runtime self-heal via
+    AuditChain._ensure_schema(), mirroring the ErasureCoordinator
+    precedent) — the ALTERs are skipped safely, but user_version still
+    reaches 17 and audit_chain_heads/the unique index still get created."""
+    db_path = str(tmp_path / "v16_selfheal.db")
+    assert _run_apply_upto(db_path, 16).returncode == 0
+
+    conn = sqlite3.connect(db_path)
+    conn.execute("ALTER TABLE memory_events ADD COLUMN hash_version INTEGER NOT NULL DEFAULT 1")
+    conn.execute(
+        "ALTER TABLE memory_events ADD COLUMN chain_id TEXT NOT NULL DEFAULT 'memory_events'"
+    )
+    conn.execute("ALTER TABLE memory_events ADD COLUMN chain_sequence INTEGER")
+    conn.commit()
+    conn.close()
+
+    result = _run_apply(db_path)
+    assert result.returncode == 0, result.stderr
+    assert "уже существует" in result.stdout
+
+    conn = sqlite3.connect(db_path)
+    try:
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
+        assert conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='audit_chain_heads'"
+        ).fetchone() is not None
+        indexes = {
+            r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='memory_events'"
+            ).fetchall()
+        }
+        assert "idx_memory_events_chain_seq" in indexes
+    finally:
+        conn.close()
+
+
+def test_v17_reapply_is_idempotent_noop(tmp_path):
+    """Re-running the full migration chain a second time after reaching
+    v17 makes no further changes (no duplicate audit_chain_heads seed,
+    no error)."""
+    db_path = str(tmp_path / "v17_idem.db")
+    assert _run_apply(db_path).returncode == 0
+    conn = sqlite3.connect(db_path)
+    before = conn.execute("SELECT * FROM audit_chain_heads").fetchall()
+    conn.close()
+
+    second = _run_apply(db_path)
+    assert second.returncode == 0
+
+    conn = sqlite3.connect(db_path)
+    after = conn.execute("SELECT * FROM audit_chain_heads").fetchall()
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
+    conn.close()
+    assert before == after
+
+
+def test_migration_017_failure_is_fully_atomic(tmp_path):
+    """A deliberately-broken migration 017 variant must leave the DB
+    exactly as it was before the run — no partial column add, no
+    audit_chain_heads table, no version bump. Mirrors
+    test_migration_failure_is_fully_atomic's technique for migration 014."""
+    db_path = str(tmp_path / "broken17.db")
+    assert _run_apply_upto(db_path, 16).returncode == 0
+
+    broken_017 = os.path.join(str(tmp_path), "017_broken.sql")
+    original = Path(MIGRATIONS_DIR, "017_audit_chain_hash_v2.sql").read_text(encoding="utf-8")
+    broken = original.replace(
+        "CREATE TABLE IF NOT EXISTS audit_chain_heads",
+        "INSERT INTO this_table_genuinely_does_not_exist VALUES (1);\n"
+        "CREATE TABLE IF NOT EXISTS audit_chain_heads",
+        1,
+    )
+    assert broken != original
+    Path(broken_017).write_text(broken, encoding="utf-8")
+
+    runner_script = f"""
+import sys
+sys.path.insert(0, {SCRIPTS_DIR!r})
+import apply_migrations as am
+from pathlib import Path
+am.MIGRATIONS = [(17, Path({broken_017!r}))]
+am.apply_migrations(Path({db_path!r}), skip_backup=True)
+"""
+    result = subprocess.run([sys.executable, "-c", runner_script], capture_output=True, text=True)
+    assert result.returncode != 0
+
+    conn = sqlite3.connect(db_path)
+    try:
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 16
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(memory_events)").fetchall()}
+        assert "hash_version" not in cols
+        assert conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='audit_chain_heads'"
+        ).fetchone() is None
+        assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     finally:
         conn.close()
 
@@ -175,7 +363,7 @@ def test_v13_to_v14_upgrade_preserves_existing_jobs_and_legacy_tombstones(tmp_pa
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 16
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
         job_cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_jobs)").fetchall()}
         assert "subject_user_id" in job_cols
         jobs = dict(conn.execute("SELECT job_id, status FROM erasure_jobs").fetchall())
@@ -251,7 +439,7 @@ def test_v12_self_healed_schema_does_not_block_migration_013(tmp_path):
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 16
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
         indexes = {
             r[0] for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='erasure_jobs'"
@@ -362,7 +550,7 @@ def test_v16_backfills_completed_batch_subject_and_audit_lookup(tmp_path):
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 16
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
 
         # get_erasure_log(user_id="userA") -> ForgettingEngine queries
         # exactly this view.
@@ -563,7 +751,7 @@ def test_v16_backfill_runs_when_subject_column_was_self_healed(tmp_path):
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 16
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
         job_row = conn.execute(
             "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", ("job_sh",)
         ).fetchone()
