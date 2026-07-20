@@ -42,17 +42,22 @@ class CognitiveFactStore:
         PR-C1: explicit, structured counterpart to save(). Returns a
         core.write_result.WriteResult instead of a bare bool.
 
-        Critically (PR-C1 evidence report): link_raw_to_fact() and the
-        fact-event emission are only performed when the canonical fact
-        actually exists after the write attempt — a WriteGate/budget/
-        validation rejection must not produce phantom provenance or a
-        phantom "fact created" event. The raw L0 entry (if ensure_raw
-        created or reused one) is never touched/removed on rejection — it
-        is immutable input material, not something owned by this attempt.
+        Critically (PR-C1 evidence report, hardened): link_raw_to_fact() and
+        the fact-event emission are only performed when THIS write attempt
+        was itself accepted (`result.status in ACCEPTED_WRITE_STATUSES`) —
+        a WriteGate/budget/validation rejection must not produce phantom
+        provenance or a phantom "fact created" event, even when
+        `result.canonical_exists` is True because an *old* canonical fact
+        already existed under this fact_id before the rejected attempt (a
+        rejected update, not a rejected create). The raw L0 entry (if
+        ensure_raw created or reused one) is never touched/removed on
+        rejection — it is immutable input material, not something owned by
+        this attempt.
 
         Если ensure_raw и есть raw_input без derived_from — создаёт L0 запись.
         """
         from core.memory import link_raw_to_fact, store_fact_result, store_raw_text
+        from core.write_result import ACCEPTED_WRITE_STATUSES
 
         if ensure_raw and fact.raw_input and not fact.derived_from:
             fact.derived_from = store_raw_text(
@@ -63,14 +68,15 @@ class CognitiveFactStore:
 
         payload = fact.to_store_dict()
         result = store_fact_result(payload)
+        accepted = result.status in ACCEPTED_WRITE_STATUSES
 
-        if link_provenance and fact.derived_from and result.canonical_exists:
+        if link_provenance and fact.derived_from and accepted:
             try:
                 link_raw_to_fact(fact.derived_from, fact.id)
             except Exception as exc:  # noqa: BLE001
                 logger.debug("cognitive_store link_raw: %s", exc)
 
-        if result.canonical_exists:
+        if accepted:
             _emit_fact_event(fact.id, is_new=result.created)
 
         return result

@@ -29,7 +29,7 @@ from typing import Any, Optional
 import httpx
 from core.recall_policy import filter_facts_for_recall
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, status
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import (
     JSONResponse,
@@ -1351,14 +1351,19 @@ async def _save_fact_for_console(cand: dict[str, Any]):
 
     PR-C1: returns (WriteResult, fact | None) instead of always returning a
     dict as if the save had succeeded. `fact` is the real canonical/
-    deduplicated fact when result.canonical_exists is True, and None
-    otherwise — the caller must never fall back to the in-memory candidate
-    as if it were a stored fact (that was the false-success bug).
+    deduplicated fact when the write was accepted
+    (`result.status in ACCEPTED_WRITE_STATUSES`), and None otherwise — the
+    caller must never fall back to the in-memory candidate as if it were a
+    stored fact (that was the false-success bug). Gated on accepted status
+    rather than `result.canonical_exists`, which can be True even on a
+    rejected write to a pre-existing fact_id — not reachable via this
+    specific call site today (fact_id here is always freshly generated),
+    but kept consistent with every other PR-C1 call site (PR-C1 hardening).
     """
     import uuid
 
     from core.memory import get_fact, store_fact_result
-    from core.write_result import WriteResult, WriteStatus
+    from core.write_result import ACCEPTED_WRITE_STATUSES, WriteResult, WriteStatus
 
     claim = cand["claim"]
     source = "console_chat"
@@ -1388,7 +1393,7 @@ async def _save_fact_for_console(cand: dict[str, Any]):
         "metadata": meta,
     }
     result = await asyncio.to_thread(store_fact_result, fact)
-    if not result.canonical_exists:
+    if result.status not in ACCEPTED_WRITE_STATUSES:
         return result, None
     stored = await asyncio.to_thread(get_fact, fact_id)
     return result, stored
@@ -1562,7 +1567,7 @@ async def _console_autosave_memory(
 ) -> tuple:
     """Автосохранение фактов из сообщения пользователя (чат / stream)."""
     from core.console_memory import category_emoji, category_label, fact_to_highlight
-    from core.write_result import WriteStatus
+    from core.write_result import ACCEPTED_WRITE_STATUSES, WriteStatus
 
     memory_saved: list[dict[str, Any]] = []
     memory_suggestions: list[dict[str, Any]] = []
@@ -1598,7 +1603,7 @@ async def _console_autosave_memory(
             memory_suggestions.append({**cand, "error": "internal_error"})
             continue
 
-        if not result.canonical_exists:
+        if result.status not in ACCEPTED_WRITE_STATUSES:
             # PR-C1 (evidence report): a WriteGate/budget/validation rejection
             # must land in suggestions with a safe reason, never fabricate a
             # saved item with a phantom fact_id.
@@ -1609,7 +1614,25 @@ async def _console_autosave_memory(
             })
             continue
 
-        assert created is not None  # canonical_exists implies a real fact dict
+        if created is None:
+            # PR-C1 hardening: result says accepted/canonical, but the
+            # readback (get_fact) came back empty — an invariant violation
+            # (e.g. a race with a concurrent erasure), not an expected
+            # rejection. Never crash the request over it, never hand the
+            # client a phantom fact_id — log it server-side and treat it the
+            # same as any other non-save: a suggestion, not a save.
+            logger.error(
+                "console auto-save: canonical readback failed for accepted "
+                "write (status=%s, fact_id=%s) — invariant violation",
+                result.status, result.fact_id,
+            )
+            memory_suggestions.append({
+                **cand,
+                "error": "Fact could not be saved.",
+                "reason_code": "canonical_readback_failed",
+            })
+            continue
+
         hi = fact_to_highlight(created, lang)
         is_dedup = result.status is WriteStatus.NOOP_EXISTING and bool(
             created.get("deduplicated")
@@ -2435,18 +2458,27 @@ async def create_cognitive_fact(req: CognitiveFactCreate):
     }
 
 
-@app.post("/facts", tags=["Facts"], status_code=201,
+@app.post("/facts", tags=["Facts"],
           dependencies=[Depends(require_api_key)])
-async def create_fact(req: FactCreate, background_tasks: BackgroundTasks):
+async def create_fact(
+    req: FactCreate, background_tasks: BackgroundTasks, response: Response
+):
     """
     Создать новый факт в памяти.
     Новые факты всегда начинают в состоянии Observed (I50).
+
+    PR-C1 hardening: HTTP status reflects what actually happened — 201 only
+    for a genuine new INSERT (WriteStatus.CREATED); a content duplicate,
+    NOOP_EXISTING, or a real UPDATED all return 200 with the existing/
+    updated fact. Default status_code is no longer set on the decorator
+    (it defaulted every early-return path, including duplicates, to 201).
     """
     dup = await _find_duplicate_fact(req.claim, req.source)
     if dup:
         logger.info(
             "fact dedup claim → %s", dup.get("fact_id", "?")
         )
+        response.status_code = status.HTTP_200_OK
         return dup
 
     fact_id = req.fact_id or f"fact_{uuid.uuid4().hex[:12]}"
@@ -2534,26 +2566,37 @@ async def create_fact(req: FactCreate, background_tasks: BackgroundTasks):
             status_code=500, detail=result.safe_message or "An internal error occurred."
         )
 
+    # PR-C1 hardening: 201 only for a genuine new INSERT; NOOP_EXISTING and
+    # UPDATED are real, accepted writes but not a *creation* — 200.
+    response.status_code = (
+        status.HTTP_201_CREATED
+        if result.status is WriteStatus.CREATED
+        else status.HTTP_200_OK
+    )
+
     if raw_id and not use_cognitive_store:
         try:
             await asyncio.to_thread(link_raw_to_fact, raw_id, fact_id)
         except Exception as exc:
             logger.warning("L0 provenance link failed (non-blocking): %s", exc)
 
-    # Индексировать в NGram в фоне
-    if _ngram and _ngram.available:
-        background_tasks.add_task(_ngram.index, fact_id, req.claim)
+    # PR-C1 hardening: NGram indexing, the "fact created" log, and the
+    # exocortex observe hook are create-only side effects — they must not
+    # fire for NOOP_EXISTING/UPDATED, which didn't create anything.
+    if result.status is WriteStatus.CREATED:
+        if _ngram and _ngram.available:
+            background_tasks.add_task(_ngram.index, fact_id, req.claim)
+
+        logger.info("fact created: %s (source=%s)", fact_id, req.source)
+
+        try:
+            from core.exocortex_hooks import observe_ingest_chunk
+
+            await observe_ingest_chunk(chunk=req.claim, episode_id=fact_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("exocortex observe fact: %s", exc)
 
     stored = await asyncio.to_thread(get_fact, fact_id)
-    logger.info("fact created: %s (source=%s)", fact_id, req.source)
-
-    try:
-        from core.exocortex_hooks import observe_ingest_chunk
-
-        await observe_ingest_chunk(chunk=req.claim, episode_id=fact_id)
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("exocortex observe fact: %s", exc)
-
     return stored
 
 

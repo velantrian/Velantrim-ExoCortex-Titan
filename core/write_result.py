@@ -37,6 +37,12 @@ class WriteStatus(Enum):
 
 
 # Statuses for which a canonical `facts` row exists after the call returns.
+# NOTE: this is NOT the same question as "did THIS call's write get
+# accepted?" — see ACCEPTED_WRITE_STATUSES below. A rejection of a write to
+# an *existing* fact_id (e.g. REJECTED_WRITE_GATE on an update attempt)
+# leaves a stale-but-real canonical row in place: WriteResult.canonical_exists
+# is True for that call even though the call itself was rejected. Do not use
+# `result.canonical_exists` as a proxy for "this write succeeded".
 CANONICAL_EXISTS_STATUSES = frozenset((
     WriteStatus.CREATED,
     WriteStatus.UPDATED,
@@ -47,6 +53,17 @@ CANONICAL_EXISTS_STATUSES = frozenset((
 DURABLE_WRITE_STATUSES = frozenset((
     WriteStatus.CREATED,
     WriteStatus.UPDATED,
+))
+
+# PR-C1 hardening: statuses for which THIS call's write attempt was accepted
+# (as opposed to rejected/failed). Use `result.status in ACCEPTED_WRITE_STATUSES`
+# to gate provenance linking, event emission, and "promoted"/"created"
+# side effects — never `result.canonical_exists`, which can be True on a
+# rejected call to an existing fact_id (see CANONICAL_EXISTS_STATUSES above).
+ACCEPTED_WRITE_STATUSES = frozenset((
+    WriteStatus.CREATED,
+    WriteStatus.UPDATED,
+    WriteStatus.NOOP_EXISTING,
 ))
 
 

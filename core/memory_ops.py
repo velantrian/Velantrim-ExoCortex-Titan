@@ -418,8 +418,10 @@ class MemoryOpsStore:
             "derived_from": raw_id,
         }
         from core.memory import get_fact, link_raw_to_fact, store_fact_result
+        from core.write_result import ACCEPTED_WRITE_STATUSES
 
         result = store_fact_result(fact)
+        accepted = result.status in ACCEPTED_WRITE_STATUSES
         now = _now()
 
         # PR-C1: raw_id (immutable, append-only L0) is persisted onto the
@@ -434,14 +436,17 @@ class MemoryOpsStore:
                     (raw_id, now, inbox_id),
                 )
 
-        if not result.canonical_exists:
-            # PR-C1 (evidence report): a rejection/failure must NOT mark this
-            # item 'promoted' (the early-return guard above treats any
-            # 'promoted' status as terminal — that would permanently strand
-            # it) and must NOT link provenance to a fact_id that was never
-            # created. status stays whatever it already was (pending) so a
-            # retry is always possible; only a safe diagnostic trail is
-            # recorded.
+        if not accepted:
+            # PR-C1 (evidence report, hardened): a rejection/failure must NOT
+            # mark this item 'promoted' (the early-return guard above treats
+            # any 'promoted' status as terminal — that would permanently
+            # strand it) and must NOT link provenance — even when
+            # result.canonical_exists is True because an *old* canonical
+            # fact already existed under this fid before this rejected
+            # attempt (a rejected update, not a rejected create; gating on
+            # canonical_exists alone would wrongly treat that as accepted).
+            # status stays whatever it already was (pending) so a retry is
+            # always possible; only a safe diagnostic trail is recorded.
             diag_meta = dict(item.get("metadata") or {})
             diag_meta.update({
                 "last_promotion_status": result.status.value,

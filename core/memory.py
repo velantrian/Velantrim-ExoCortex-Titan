@@ -1484,6 +1484,27 @@ class SQLiteGraphStore(GraphStore):
         """
         return self._store_fact_outcome(fact).created
 
+    def _safe_canonical_exists(self, fact_id: str | None) -> bool:
+        """
+        PR-C1 hardening: read whether a canonical `facts` row exists for
+        fact_id, WITHOUT ever raising — used only from store_fact_result()'s
+        except-blocks, where a second exception (e.g. the same storage
+        failure that triggered the except in the first place) must not
+        escape and break the non-raising contract. Any read failure here is
+        logged server-side and treated as "unknown, assume False" — never
+        placed in a client-facing field.
+        """
+        if not fact_id:
+            return False
+        try:
+            return bool(self.get_fact(fact_id))
+        except Exception as exc:
+            logger.warning(
+                "store_fact_result: canonical-exists readback failed for %s: %s",
+                fact_id, exc,
+            )
+            return False
+
     def store_fact_result(self, fact: dict) -> "WriteResult":
         """
         PR-C1: explicit, non-raising counterpart to store_fact().
@@ -1510,7 +1531,7 @@ class SQLiteGraphStore(GraphStore):
                 status=WriteStatus.REJECTED_BUDGET,
                 fact_id=fact_id,
                 created=False,
-                canonical_exists=bool(self.get_fact(fact_id)) if fact_id else False,
+                canonical_exists=self._safe_canonical_exists(fact_id),
                 durable_write=False,
                 safe_reason_code="budget_exceeded",
                 safe_message="Memory budget limit reached; fact was not stored.",
@@ -1523,7 +1544,7 @@ class SQLiteGraphStore(GraphStore):
                 status=WriteStatus.REJECTED_VALIDATION,
                 fact_id=fact_id,
                 created=False,
-                canonical_exists=bool(self.get_fact(fact_id)) if fact_id else False,
+                canonical_exists=self._safe_canonical_exists(fact_id),
                 durable_write=False,
                 safe_reason_code="validation_failed",
                 safe_message="Fact failed validation and was not stored.",
@@ -1536,7 +1557,7 @@ class SQLiteGraphStore(GraphStore):
                 status=WriteStatus.FAILED_STORAGE,
                 fact_id=fact_id,
                 created=False,
-                canonical_exists=bool(self.get_fact(fact_id)) if fact_id else False,
+                canonical_exists=self._safe_canonical_exists(fact_id),
                 durable_write=False,
                 safe_reason_code="storage_error",
                 safe_message="A storage error occurred; fact was not stored.",
@@ -1549,7 +1570,7 @@ class SQLiteGraphStore(GraphStore):
                 status=WriteStatus.FAILED_INTERNAL,
                 fact_id=fact_id,
                 created=False,
-                canonical_exists=bool(self.get_fact(fact_id)) if fact_id else False,
+                canonical_exists=self._safe_canonical_exists(fact_id),
                 durable_write=False,
                 safe_reason_code="internal_error",
                 safe_message="An internal error occurred; fact was not stored.",
