@@ -33,6 +33,9 @@ jobs:
       - name: Version/branding guard
         run: python scripts/check_version_branding.py
 
+      - name: Repo hygiene guard (no tracked runtime/test-cache artifacts)
+        run: python scripts/check_no_tracked_artifacts.py
+
       - name: Ruff check (lint)
         run: ruff check core/ --output-format=github
 
