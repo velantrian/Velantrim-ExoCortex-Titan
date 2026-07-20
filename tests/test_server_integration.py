@@ -492,3 +492,162 @@ class TestCORSConfig:
                     "CORS misconfig: origins='*' + allow_credentials=True. "
                     "v8.4.0 фикс должен был автоматически отключить credentials."
                 )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 6. PR-C1 — truthful write results (no phantom success/provenance over HTTP)
+# ═══════════════════════════════════════════════════════════════════════════════
+# HTTP-level companion to tests/test_write_result.py (unit-level). Reuses the
+# `test_client` fixture above rather than a second, independent TestClient
+# fixture — running two independent FastAPI TestClient bootstraps side by
+# side across the full test suite was observed to destabilize unrelated
+# tests elsewhere in the run (see tests/test_write_result.py's module
+# docstring), even though every test using either fixture passed
+# individually and in small combinations.
+
+def _pr_c1_provenance_row_exists(fact_id: str) -> bool:
+    from core.memory import _GLOBAL_STORE
+
+    with _GLOBAL_STORE._db() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM l0_fact_provenance WHERE fact_id = ?", (fact_id,)
+        ).fetchone()
+    return row is not None
+
+
+class TestConsoleAutoSaveTruthfulness:
+    """RED before the PR-C1 fix: a WriteGate-rejected auto-save candidate
+    ends up in memory_saved with a phantom fact_id instead of
+    memory_suggestions."""
+
+    def test_write_gate_rejection_not_reported_as_saved(self, test_client, monkeypatch):
+        client, _srv = test_client
+        import core.write_gate as wg
+
+        monkeypatch.setattr(wg, "is_write_gate_enabled", lambda: True)
+        monkeypatch.setattr(wg, "admit_fact", lambda **kw: (False, "test_forced_rejection"))
+
+        r = client.post("/chat", json={
+            "message": "remember that pr-c1 write gate rejection test claim",
+            "profile": "citizen",
+            "use_memory": False,
+            "llm_enabled": False,
+            "ui_lang": "en",
+            "auto_save_memory": True,
+            "persist_to_system": True,
+            "block_memory": [],
+            "chat_history": [],
+        })
+        assert r.status_code == 200, r.text
+        data = r.json()
+
+        assert data["memory_saved"] == [], (
+            f"a rejected candidate must not appear in memory_saved: {data['memory_saved']}"
+        )
+        assert len(data["memory_suggestions"]) == 1
+
+        from core.memory import get_all_facts
+
+        claims = [f["claim"] for f in get_all_facts()]
+        assert "pr-c1 write gate rejection test claim" not in claims
+
+    def test_successful_autosave_baseline(self, test_client):
+        """BASELINE: an ordinary auto-save (no rejection) must keep working
+        and land in memory_saved with a real fact_id."""
+        client, _srv = test_client
+
+        r = client.post("/chat", json={
+            "message": "remember that pr-c1 successful autosave baseline claim",
+            "profile": "citizen",
+            "use_memory": False,
+            "llm_enabled": False,
+            "ui_lang": "en",
+            "auto_save_memory": True,
+            "persist_to_system": True,
+            "block_memory": [],
+            "chat_history": [],
+        })
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert len(data["memory_saved"]) == 1
+        fact_id = data["memory_saved"][0]["fact_id"]
+        assert fact_id
+
+        from core.memory import get_fact
+
+        assert get_fact(fact_id) is not None
+
+
+class TestPostFactsTruthfulness:
+    """RED before the PR-C1 fix: POST /facts returned HTTP 201 with a `null`
+    body when store_fact() was rejected by WriteGate, and an uncaught 500
+    when MemoryBudgetExceededError was raised — in both cases the L0 raw
+    text write had already committed before the failure."""
+
+    def test_write_gate_rejection_is_not_201(self, test_client, monkeypatch):
+        client, _srv = test_client
+        import core.write_gate as wg
+
+        monkeypatch.setattr(wg, "is_write_gate_enabled", lambda: True)
+        monkeypatch.setattr(wg, "admit_fact", lambda **kw: (False, "test_forced_rejection"))
+
+        r = client.post("/facts", json={
+            "fact_id": "facts_wg_reject_1",
+            "claim": "pr-c1 post facts write gate rejection",
+            "source": "test",
+            "confidence": 0.9,
+        })
+        assert r.status_code != 201, (
+            f"a rejected write must not return 201 Created (body={r.text!r})"
+        )
+        assert r.status_code < 500
+
+        from core.memory import get_fact
+
+        assert get_fact("facts_wg_reject_1") is None
+        assert not _pr_c1_provenance_row_exists("facts_wg_reject_1")
+
+    def test_budget_rejection_is_controlled_not_uncaught(self, test_client, monkeypatch):
+        client, _srv = test_client
+        from core.feature_config import clear_config_cache
+
+        monkeypatch.setenv("ENABLE_MEMORY_BUDGET", "1")
+        monkeypatch.setenv("MEMORY_BUDGET_FACT_HARD", "0")
+        clear_config_cache()
+
+        r = client.post("/facts", json={
+            "fact_id": "facts_budget_reject_1",
+            "claim": "pr-c1 post facts budget rejection",
+            "source": "test",
+            "confidence": 0.9,
+        })
+        assert r.status_code != 500, (
+            f"a budget rejection must be a controlled response, not an "
+            f"uncaught internal error (body={r.text!r})"
+        )
+        assert r.status_code < 500
+
+        from core.memory import get_fact
+
+        assert get_fact("facts_budget_reject_1") is None
+        assert not _pr_c1_provenance_row_exists("facts_budget_reject_1")
+
+    def test_successful_create_baseline(self, test_client):
+        """BASELINE: an ordinary successful POST /facts must keep working —
+        201, canonical fact exists, provenance linked."""
+        client, _srv = test_client
+
+        r = client.post("/facts", json={
+            "fact_id": "facts_ok_1",
+            "claim": "pr-c1 post facts successful baseline",
+            "source": "test",
+            "confidence": 0.9,
+        })
+        assert r.status_code == 201, r.text
+
+        from core.memory import get_fact
+
+        fact = get_fact("facts_ok_1")
+        assert fact is not None
+        assert fact.get("derived_from")
+        assert _pr_c1_provenance_row_exists("facts_ok_1")

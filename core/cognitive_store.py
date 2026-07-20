@@ -31,19 +31,28 @@ def is_cognitive_store_enabled() -> bool:
 class CognitiveFactStore:
     """Фасад read/write для CognitiveFact поверх L1/L0."""
 
-    def save(
+    def save_result(
         self,
         fact: CognitiveFact,
         *,
         ensure_raw: bool = True,
         link_provenance: bool = True,
-    ) -> bool:
+    ):
         """
-        Сохранить факт. Возвращает True если был новый INSERT.
+        PR-C1: explicit, structured counterpart to save(). Returns a
+        core.write_result.WriteResult instead of a bare bool.
+
+        Critically (PR-C1 evidence report): link_raw_to_fact() and the
+        fact-event emission are only performed when the canonical fact
+        actually exists after the write attempt — a WriteGate/budget/
+        validation rejection must not produce phantom provenance or a
+        phantom "fact created" event. The raw L0 entry (if ensure_raw
+        created or reused one) is never touched/removed on rejection — it
+        is immutable input material, not something owned by this attempt.
 
         Если ensure_raw и есть raw_input без derived_from — создаёт L0 запись.
         """
-        from core.memory import link_raw_to_fact, store_fact, store_raw_text
+        from core.memory import link_raw_to_fact, store_fact_result, store_raw_text
 
         if ensure_raw and fact.raw_input and not fact.derived_from:
             fact.derived_from = store_raw_text(
@@ -53,16 +62,33 @@ class CognitiveFactStore:
             )
 
         payload = fact.to_store_dict()
-        is_new = store_fact(payload)
+        result = store_fact_result(payload)
 
-        if link_provenance and fact.derived_from:
+        if link_provenance and fact.derived_from and result.canonical_exists:
             try:
                 link_raw_to_fact(fact.derived_from, fact.id)
             except Exception as exc:  # noqa: BLE001
                 logger.debug("cognitive_store link_raw: %s", exc)
 
-        _emit_fact_event(fact.id, is_new=is_new)
-        return is_new
+        if result.canonical_exists:
+            _emit_fact_event(fact.id, is_new=result.created)
+
+        return result
+
+    def save(
+        self,
+        fact: CognitiveFact,
+        *,
+        ensure_raw: bool = True,
+        link_provenance: bool = True,
+    ) -> bool:
+        """
+        Legacy bool API — kept for compatibility. Возвращает True если был
+        новый INSERT. Prefer save_result() for new call sites (PR-C1).
+        """
+        return self.save_result(
+            fact, ensure_raw=ensure_raw, link_provenance=link_provenance
+        ).created
 
     def save_many(self, facts: builtins.list[CognitiveFact]) -> dict[str, int]:
         from core.memory import store_facts_batch

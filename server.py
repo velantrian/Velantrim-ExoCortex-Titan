@@ -104,7 +104,7 @@ from core.memory import (
     get_fact_at,
     invalidate_edge,
     link_raw_to_fact,
-    store_fact,
+    store_fact_result,
     store_facts_batch,
     store_raw_text,
     transition_esm,
@@ -1346,17 +1346,34 @@ async def _find_duplicate_fact(claim: str, source: str) -> dict[str, Any] | None
     return None
 
 
-async def _save_fact_for_console(cand: dict[str, Any]) -> dict[str, Any]:
-    """Сохранить факт из консоли (дедуп по содержанию claim + episode_hash)."""
+async def _save_fact_for_console(cand: dict[str, Any]):
+    """Сохранить факт из консоли (дедуп по содержанию claim + episode_hash).
+
+    PR-C1: returns (WriteResult, fact | None) instead of always returning a
+    dict as if the save had succeeded. `fact` is the real canonical/
+    deduplicated fact when result.canonical_exists is True, and None
+    otherwise — the caller must never fall back to the in-memory candidate
+    as if it were a stored fact (that was the false-success bug).
+    """
     import uuid
 
-    from core.memory import get_fact, store_fact
+    from core.memory import get_fact, store_fact_result
+    from core.write_result import WriteResult, WriteStatus
 
     claim = cand["claim"]
     source = "console_chat"
     dup = await _find_duplicate_fact(claim, source)
     if dup:
-        return dup
+        result = WriteResult(
+            status=WriteStatus.NOOP_EXISTING,
+            fact_id=dup.get("fact_id"),
+            created=False,
+            canonical_exists=True,
+            durable_write=False,
+            safe_reason_code="duplicate",
+            safe_message="A matching fact already exists.",
+        )
+        return result, dup
 
     fact_id = f"fact_{uuid.uuid4().hex[:12]}"
     meta = {
@@ -1370,9 +1387,11 @@ async def _save_fact_for_console(cand: dict[str, Any]) -> dict[str, Any]:
         "confidence": float(cand.get("confidence", 0.85)),
         "metadata": meta,
     }
-    await asyncio.to_thread(store_fact, fact)
+    result = await asyncio.to_thread(store_fact_result, fact)
+    if not result.canonical_exists:
+        return result, None
     stored = await asyncio.to_thread(get_fact, fact_id)
-    return stored or fact
+    return result, stored
 
 
 @app.post("/chat", response_model=ChatResponse, tags=["LLM"],
@@ -1543,6 +1562,7 @@ async def _console_autosave_memory(
 ) -> tuple:
     """Автосохранение фактов из сообщения пользователя (чат / stream)."""
     from core.console_memory import category_emoji, category_label, fact_to_highlight
+    from core.write_result import WriteStatus
 
     memory_saved: list[dict[str, Any]] = []
     memory_suggestions: list[dict[str, Any]] = []
@@ -1568,22 +1588,43 @@ async def _console_autosave_memory(
             memory_saved.append(saved_item)
             continue
         try:
-            created = await _save_fact_for_console(cand)
-            hi = fact_to_highlight(created, lang)
-            saved_item = {
-                **cand,
-                "fact_id": created.get("fact_id", ""),
-                "category_label": hi.get("category_label", ""),
-                "emoji": cand.get("emoji") or hi.get("emoji", "💾"),
-                "memory_store": "facts",
-                "deduplicated": bool(created.get("deduplicated")),
-            }
-            memory_saved.append(saved_item)
-            if not created.get("deduplicated"):
-                highlights.insert(0, hi)
+            result, created = await _save_fact_for_console(cand)
         except Exception as exc:
-            logger.warning("console auto-save fact: %s", exc)
-            memory_suggestions.append({**cand, "error": str(exc)})
+            # store_fact_result() itself does not raise (PR-C1) — this is a
+            # last-resort net for a genuinely unexpected failure elsewhere in
+            # the call (e.g. the dedup lookup). Full detail server-side only;
+            # never the raw exception text to the client.
+            logger.warning("console auto-save fact: %s", exc, exc_info=True)
+            memory_suggestions.append({**cand, "error": "internal_error"})
+            continue
+
+        if not result.canonical_exists:
+            # PR-C1 (evidence report): a WriteGate/budget/validation rejection
+            # must land in suggestions with a safe reason, never fabricate a
+            # saved item with a phantom fact_id.
+            memory_suggestions.append({
+                **cand,
+                "error": result.safe_message or "Fact could not be saved.",
+                "reason_code": result.safe_reason_code,
+            })
+            continue
+
+        assert created is not None  # canonical_exists implies a real fact dict
+        hi = fact_to_highlight(created, lang)
+        is_dedup = result.status is WriteStatus.NOOP_EXISTING and bool(
+            created.get("deduplicated")
+        )
+        saved_item = {
+            **cand,
+            "fact_id": result.fact_id or created.get("fact_id", ""),
+            "category_label": hi.get("category_label", ""),
+            "emoji": cand.get("emoji") or hi.get("emoji", "💾"),
+            "memory_store": "facts",
+            "deduplicated": is_dedup,
+        }
+        memory_saved.append(saved_item)
+        if not is_dedup:
+            highlights.insert(0, hi)
 
     if memory_saved:
         status = f"saved_{len(memory_saved)}"
@@ -2431,6 +2472,8 @@ async def create_fact(req: FactCreate, background_tasks: BackgroundTasks):
         "derived_from": raw_id,   # провенанс из L0
     }
 
+    from core.write_result import WriteStatus
+
     try:
         from core.cognitive_store import (
             CognitiveFactStore,
@@ -2438,7 +2481,8 @@ async def create_fact(req: FactCreate, background_tasks: BackgroundTasks):
             is_cognitive_store_enabled,
         )
 
-        if is_cognitive_store_enabled():
+        use_cognitive_store = is_cognitive_store_enabled()
+        if use_cognitive_store:
             cf = CognitiveFactStore.create_observed(
                 req.claim,
                 req.source,
@@ -2450,18 +2494,47 @@ async def create_fact(req: FactCreate, background_tasks: BackgroundTasks):
             )
             if raw_id:
                 cf.raw_input = None
-            await asyncio.to_thread(
-                get_cognitive_store().save,
+            result = await asyncio.to_thread(
+                get_cognitive_store().save_result,
                 cf,
                 ensure_raw=not bool(raw_id),
                 link_provenance=bool(raw_id),
             )
         else:
-            await asyncio.to_thread(store_fact, fact)
+            result = await asyncio.to_thread(store_fact_result, fact)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        # PR-C1: store_fact_result()/save_result() no longer raise ValueError
+        # themselves (they convert it to REJECTED_VALIDATION below) — this
+        # remains only as a safety net for CognitiveFactStore.create_observed()
+        # itself, upstream of the store call.
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if raw_id and not is_cognitive_store_enabled():
+    # PR-C1 (evidence report): a rejected/failed write must return a
+    # controlled error, never HTTP 201 with a `null` body. No provenance
+    # link, no NGram indexing, no "fact created" log, no observe hook for a
+    # fact_id that was never actually created.
+    if result.status is WriteStatus.REJECTED_WRITE_GATE:
+        raise HTTPException(
+            status_code=422, detail=result.safe_message or "Fact rejected by write-protocol gate."
+        )
+    if result.status is WriteStatus.REJECTED_VALIDATION:
+        raise HTTPException(
+            status_code=400, detail=result.safe_message or "Fact failed validation."
+        )
+    if result.status is WriteStatus.REJECTED_BUDGET:
+        raise HTTPException(
+            status_code=409, detail=result.safe_message or "Memory budget limit reached."
+        )
+    if result.status is WriteStatus.FAILED_STORAGE:
+        raise HTTPException(
+            status_code=503, detail=result.safe_message or "A storage error occurred."
+        )
+    if result.status is WriteStatus.FAILED_INTERNAL:
+        raise HTTPException(
+            status_code=500, detail=result.safe_message or "An internal error occurred."
+        )
+
+    if raw_id and not use_cognitive_store:
         try:
             await asyncio.to_thread(link_raw_to_fact, raw_id, fact_id)
         except Exception as exc:

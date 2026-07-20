@@ -1,11 +1,21 @@
 """
-PR-C1 — truthful write results, no phantom provenance/success.
+PR-C1 — truthful write results, no phantom provenance/success (unit level).
 
-This file pins down the current defects described in the PR-C1 evidence
-report (console auto-save false success, POST /facts false success + orphan
-raw, phantom fact_inbox promotion, phantom l0_fact_provenance) as regression
-tests, alongside baseline tests for the happy path and the legacy
+This file covers the unit-level (no HTTP, no FastAPI TestClient) defects
+described in the PR-C1 evidence report: phantom l0_fact_provenance from
+link_raw_to_fact(), phantom fact_inbox promotion, and the legacy
 store_fact() bool contract that the fix must not break.
+
+HTTP-level coverage for the console auto-save and POST /facts false-success
+paths lives in tests/test_server_integration.py instead of here — reusing
+its existing `test_client` TestClient fixture rather than bootstrapping a
+second, independent FastAPI TestClient fixture in this file, which caused
+spurious cross-test failures when the two ran together across the full
+suite (each TestClient boot is expensive; the two independent instances
+appear to have tipped a shared resource — likely process memory/fd/thread-
+pool pressure across ~2000 collected test items — enough to destabilize
+unrelated tests elsewhere in the run, even though every test in this file
+passed individually and in small combinations).
 
 Test classes are marked in their docstrings as either:
   - RED today (demonstrate the bug; must go green after the PR-C1 fix), or
@@ -227,185 +237,3 @@ class TestPromoteInboxItemRejection:
         assert result["inbox_item"]["promoted_fact_id"] == "fact_promo_ok_1"
         assert get_fact("fact_promo_ok_1") is not None
         assert _provenance_row_exists("fact_promo_ok_1")
-
-
-# ─── HTTP-level: console auto-save + POST /facts (RED today) ─────────────────
-
-@pytest.fixture
-def http_client(tmp_path, monkeypatch):
-    """FastAPI TestClient, isolated DB, raise_server_exceptions=False so an
-    uncaught exception in a handler surfaces as a real 500 response instead
-    of propagating as a Python exception into the test — needed to assert
-    on today's (buggy) uncaught-exception behavior and tomorrow's (fixed)
-    controlled-response behavior with the same assertion.
-    """
-    db_path = str(tmp_path / "wr_integration.db")
-    ngram_db_path = str(tmp_path / "wr_integration_ngram.db")
-    blocks_db_path = str(tmp_path / "wr_blocks.db")
-    notebook_db = str(tmp_path / "wr_notebook.db")
-
-    monkeypatch.setenv("VELANTRIM_API_KEY", "test-key")
-    monkeypatch.setenv("VELANTRIM_DB_PATH", db_path)
-    monkeypatch.setenv("VELANTRIM_NGRAM_DB", ngram_db_path)
-    monkeypatch.setenv("CORE_BLOCKS_DB", blocks_db_path)
-    monkeypatch.setenv("NOTEBOOK_DB", notebook_db)
-    monkeypatch.setenv("LLM_PROVIDER", "none")
-    monkeypatch.setenv("SLEEP_WORKER_ENABLED", "false")
-    monkeypatch.setenv("VELANTRIM_ALLOW_OPEN", "false")
-    monkeypatch.setenv("ENABLE_CAUSAL_GRAPH", "0")
-    monkeypatch.setenv("ENABLE_VELUM", "0")
-
-    for mod in list(sys.modules.keys()):
-        if mod.startswith(("server", "core.")):
-            del sys.modules[mod]
-
-    try:
-        from fastapi.testclient import TestClient
-
-        import server as srv
-        from core.feature_config import clear_config_cache
-    except ImportError as exc:
-        pytest.skip(f"Сервер недоступен ({exc})")
-
-    clear_config_cache()
-
-    with TestClient(srv.app, raise_server_exceptions=False) as client:
-        client.headers.update({"X-Api-Key": "test-key"})
-        yield client, srv
-
-
-class TestConsoleAutoSaveTruthfulness:
-    """RED today: a WriteGate-rejected auto-save candidate ends up in
-    memory_saved with a phantom fact_id instead of memory_suggestions."""
-
-    def test_write_gate_rejection_not_reported_as_saved(self, http_client, monkeypatch):
-        client, _srv = http_client
-        import core.write_gate as wg
-
-        monkeypatch.setattr(wg, "is_write_gate_enabled", lambda: True)
-        monkeypatch.setattr(wg, "admit_fact", lambda **kw: (False, "test_forced_rejection"))
-
-        r = client.post("/chat", json={
-            "message": "remember that pr-c1 write gate rejection test claim",
-            "profile": "citizen",
-            "use_memory": False,
-            "llm_enabled": False,
-            "ui_lang": "en",
-            "auto_save_memory": True,
-            "persist_to_system": True,
-            "block_memory": [],
-            "chat_history": [],
-        })
-        assert r.status_code == 200, r.text
-        data = r.json()
-
-        assert data["memory_saved"] == [], (
-            f"a rejected candidate must not appear in memory_saved: {data['memory_saved']}"
-        )
-        assert len(data["memory_suggestions"]) == 1
-
-        from core.memory import get_all_facts
-
-        claims = [f["claim"] for f in get_all_facts()]
-        assert "pr-c1 write gate rejection test claim" not in claims
-
-    def test_successful_autosave_baseline(self, http_client):
-        """BASELINE: an ordinary auto-save (no rejection) must keep working
-        and land in memory_saved with a real fact_id."""
-        client, _srv = http_client
-
-        r = client.post("/chat", json={
-            "message": "remember that pr-c1 successful autosave baseline claim",
-            "profile": "citizen",
-            "use_memory": False,
-            "llm_enabled": False,
-            "ui_lang": "en",
-            "auto_save_memory": True,
-            "persist_to_system": True,
-            "block_memory": [],
-            "chat_history": [],
-        })
-        assert r.status_code == 200, r.text
-        data = r.json()
-        assert len(data["memory_saved"]) == 1
-        fact_id = data["memory_saved"][0]["fact_id"]
-        assert fact_id
-
-        from core.memory import get_fact
-
-        assert get_fact(fact_id) is not None
-
-
-class TestPostFactsTruthfulness:
-    """RED today: POST /facts returns HTTP 201 with a `null` body when
-    store_fact() is rejected by WriteGate, and an uncaught 500 when
-    MemoryBudgetExceededError is raised — in both cases the L0 raw text
-    write already committed before the failure."""
-
-    def test_write_gate_rejection_is_not_201(self, http_client, monkeypatch):
-        client, _srv = http_client
-        import core.write_gate as wg
-
-        monkeypatch.setattr(wg, "is_write_gate_enabled", lambda: True)
-        monkeypatch.setattr(wg, "admit_fact", lambda **kw: (False, "test_forced_rejection"))
-
-        r = client.post("/facts", json={
-            "fact_id": "facts_wg_reject_1",
-            "claim": "pr-c1 post facts write gate rejection",
-            "source": "test",
-            "confidence": 0.9,
-        })
-        assert r.status_code != 201, (
-            f"a rejected write must not return 201 Created (body={r.text!r})"
-        )
-        assert r.status_code < 500
-
-        from core.memory import get_fact
-
-        assert get_fact("facts_wg_reject_1") is None
-        assert not _provenance_row_exists("facts_wg_reject_1")
-
-    def test_budget_rejection_is_controlled_not_uncaught(self, http_client, monkeypatch):
-        client, _srv = http_client
-        from core.feature_config import clear_config_cache
-
-        monkeypatch.setenv("ENABLE_MEMORY_BUDGET", "1")
-        monkeypatch.setenv("MEMORY_BUDGET_FACT_HARD", "0")
-        clear_config_cache()
-
-        r = client.post("/facts", json={
-            "fact_id": "facts_budget_reject_1",
-            "claim": "pr-c1 post facts budget rejection",
-            "source": "test",
-            "confidence": 0.9,
-        })
-        assert r.status_code != 500, (
-            f"a budget rejection must be a controlled response, not an "
-            f"uncaught internal error (body={r.text!r})"
-        )
-        assert r.status_code < 500
-
-        from core.memory import get_fact
-
-        assert get_fact("facts_budget_reject_1") is None
-        assert not _provenance_row_exists("facts_budget_reject_1")
-
-    def test_successful_create_baseline(self, http_client):
-        """BASELINE: an ordinary successful POST /facts must keep working —
-        201, canonical fact exists, provenance linked."""
-        client, _srv = http_client
-
-        r = client.post("/facts", json={
-            "fact_id": "facts_ok_1",
-            "claim": "pr-c1 post facts successful baseline",
-            "source": "test",
-            "confidence": 0.9,
-        })
-        assert r.status_code == 201, r.text
-
-        from core.memory import get_fact
-
-        fact = get_fact("facts_ok_1")
-        assert fact is not None
-        assert fact.get("derived_from")
-        assert _provenance_row_exists("facts_ok_1")
