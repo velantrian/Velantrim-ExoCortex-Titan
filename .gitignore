@@ -33,6 +33,8 @@ __pycache__/
 .coverage
 htmlcov/
 coverage.xml
+.ruff_cache/
+.mypy_cache/
 
 # Сборка
 dist/
