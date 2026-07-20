@@ -14,11 +14,11 @@ import sys
 
 FORBIDDEN_PATTERNS = [
     r"^\.coverage$",
-    r"^\.pytest_cache/",
-    r"^\.ruff_cache/",
-    r"^\.mypy_cache/",
+    r"^\.pytest_cache(/|$)",
+    r"^\.ruff_cache(/|$)",
+    r"^\.mypy_cache(/|$)",
     r"^data/metrics\.jsonl$",
-    r"^data/backups/",
+    r"^data/backups(/|$)",
 ]
 
 
