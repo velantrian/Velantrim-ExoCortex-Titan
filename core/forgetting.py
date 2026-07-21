@@ -655,15 +655,31 @@ class ForgettingEngine:
             )
 
         # Обновить claim
+        # PR-C1b review fix: conn is opened before the try so a finally
+        # block can always close it — a failure between connect() and the
+        # old single conn.close() (on the success path only) leaked the
+        # connection (and its WAL lock) on every exception. rollback() is
+        # attempted first so a half-applied UPDATE never sits uncommitted
+        # on a connection about to be closed anyway.
+        conn = None
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             conn.execute("PRAGMA journal_mode=WAL")
+            # PR-C1b (Issue #37): claim change trips migration 009's
+            # bump_fact_version trigger unless this UPDATE itself increases
+            # fact_version — redaction used to silently no-op on any DB with
+            # migration 009 applied (caught by the except below, reported as
+            # a generic store_error, never actually redacting the PII).
+            from core.memory import facts_table_has_fact_version
+            _bump = (
+                "fact_version = fact_version + 1, "
+                if facts_table_has_fact_version(conn) else ""
+            )
             conn.execute(
-                "UPDATE facts SET claim = ?, updated_at = ? WHERE fact_id = ?",
+                f"UPDATE facts SET {_bump}claim = ?, updated_at = ? WHERE fact_id = ?",
                 (redacted, datetime.now(timezone.utc).isoformat(), fact_id),
             )
             conn.commit()
-            conn.close()
 
             logger.info("PII redacted: %s → %s", fact_id, redacted[:80])
             return ForgetVerdict(
@@ -677,11 +693,22 @@ class ForgettingEngine:
                 ],
             )
         except Exception as exc:
+            if conn is not None:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
             logger.error("Forgetting.redact_pii: %s", exc)
             return ForgetVerdict(allowed=False, reason=f"store_error: {exc}")
+        finally:
+            if conn is not None:
+                conn.close()
 
     def redact_pii_batch(self, limit: int = 100) -> ForgetVerdict:
         """Пакетное обезличивание всех фактов с PII."""
+        # PR-C1b review fix: same conn-always-closed-via-finally fix as
+        # redact_pii_fact() — see its comment for why.
+        conn = None
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             conn.row_factory = sqlite3.Row
@@ -691,19 +718,26 @@ class ForgettingEngine:
                 "SELECT fact_id, claim FROM facts LIMIT ?", (limit,)
             ).fetchall()
 
+            # PR-C1b (Issue #37): same bump_fact_version requirement as
+            # redact_pii_fact() — computed once for the whole batch.
+            from core.memory import facts_table_has_fact_version
+            _bump = (
+                "fact_version = fact_version + 1, "
+                if facts_table_has_fact_version(conn) else ""
+            )
+
             redacted_count = 0
             for row in rows:
                 claim = row["claim"]
                 redacted = redact_pii(claim)
                 if redacted != claim:
                     conn.execute(
-                        "UPDATE facts SET claim = ?, updated_at = ? WHERE fact_id = ?",
+                        f"UPDATE facts SET {_bump}claim = ?, updated_at = ? WHERE fact_id = ?",
                         (redacted, datetime.now(timezone.utc).isoformat(), row["fact_id"]),
                     )
                     redacted_count += 1
 
             conn.commit()
-            conn.close()
 
             return ForgetVerdict(
                 allowed=True,
@@ -712,8 +746,16 @@ class ForgettingEngine:
                 details=[f"✅ Обезличено {redacted_count} фактов из {len(rows)}."],
             )
         except Exception as exc:
+            if conn is not None:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
             logger.error("Forgetting.redact_pii_batch: %s", exc)
             return ForgetVerdict(allowed=False, reason=f"store_error: {exc}")
+        finally:
+            if conn is not None:
+                conn.close()
 
     # ── Вспомогательные ──────────────────────────────────────────────────
 

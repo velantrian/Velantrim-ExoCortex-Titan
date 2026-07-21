@@ -157,6 +157,18 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def facts_table_has_fact_version(conn: sqlite3.Connection) -> bool:
+    """PR-C1b (Issue #37): whether this connection's `facts` table has the
+    `fact_version` column (migrations/009_truth_kernel.sql). Any UPDATE on
+    `facts` that changes claim/confidence/epistemic_state must bump this
+    column or the `bump_fact_version` trigger raises. Shared by
+    SQLiteGraphStore._fact_version_bump_sql() and any other code path that
+    writes to `facts` directly outside that class (core.forgetting PII
+    redaction) — one PRAGMA check, not a duplicated ad-hoc one per caller."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(facts)").fetchall()}
+    return "fact_version" in cols
+
+
 # Round 5.3 Codex finding (P2): every reader of erasure_log must resolve
 # the SAME correction-aware effective subject the erasure_audit VIEW
 # resolves (migration 016) — a raw `SELECT ... FROM erasure_log` bypasses
@@ -1078,8 +1090,7 @@ class SQLiteGraphStore(GraphStore):
     def _fact_version_bump_sql(self, conn) -> str:
         """SET-фрагмент для bump fact_version (миграция 009 / Truth Kernel)."""
         if self._has_fact_version is None:
-            cols = {r[1] for r in conn.execute("PRAGMA table_info(facts)").fetchall()}
-            self._has_fact_version = "fact_version" in cols
+            self._has_fact_version = facts_table_has_fact_version(conn)
         if self._has_fact_version:
             return "fact_version = fact_version + 1, "
         return ""
@@ -1354,13 +1365,6 @@ class SQLiteGraphStore(GraphStore):
                     durable_write=False,
                 )  # TASK-04: не новый факт, retriever актуален
 
-        if existing:
-            self._snapshot_before_change(
-                fact_id,
-                existing,
-                caused_by="memory.store_fact",
-            )
-
         # TASK-09: derived_from — провенанс из L0 Raw Memory
         derived_from = fact.get("derived_from")
         record["derived_from"] = derived_from
@@ -1372,17 +1376,51 @@ class SQLiteGraphStore(GraphStore):
         }
 
         # BUG-FIX v8.3.1: при срабатывании drift protection (TASK-02)
-        # epistemic_state и history меняются в record. SQL ниже по умолчанию
-        # ИХ НЕ ТРОГАЕТ — что приводило к split-brain L0/L1.
-        # Поэтому отдельно сохраняем флаг и обновляем эти поля в SQL.
+        # epistemic_state и history меняются в record. PR-C1b (Issue #37):
+        # раньше это синхронизировалось ОТДЕЛЬНЫМ follow-up UPDATE — но это
+        # значило два UPDATE-стейтмента на одну логическую запись, и второй
+        # тоже подпадает под WHEN-условие триггера bump_fact_version
+        # (migration 009), что дало бы двойной bump. Теперь оба обновления
+        # слиты в один ON CONFLICT DO UPDATE — epistemic_state/history
+        # входят в SET только когда реально меняются (drift), иначе не
+        # трогаются вовсе, как и раньше.
         _drift_detected = (
             existing is not None
             and record["epistemic_state"] == "Contradicted"
             and existing["epistemic_state"] != "Contradicted"
         )
 
+        # PR-C1b (Issue #37): триггер bump_fact_version требует, чтобы любой
+        # UPDATE, меняющий claim/confidence/epistemic_state, сам увеличил
+        # fact_version — store_fact()/store_fact_result() исторически этого
+        # не делали (в отличие от update_state()/CAS-путей), отсюда падения
+        # на существующих фактах. Бампим только когда одно из этих трёх
+        # полей действительно меняется: metadata-only update не обязан
+        # увеличивать fact_version, раз сам триггер этого не требует.
+        #
+        # PR-C1b review fix: confidence сравнивается EXACT (`!=`), не через
+        # epsilon — сам триггер использует `OLD.confidence != NEW.confidence`
+        # (миграция 009), точное сравнение. Epsilon здесь допускал случай,
+        # когда только метаданные меняются (не no-op — см. _is_noop выше,
+        # у него своя, отдельная и намеренно неточная эвристика), а
+        # confidence отличается на величину меньше эпсилон, но не равен
+        # ровно: SQL всё равно пишет `confidence = excluded.confidence`
+        # (новое значение), OLD != NEW технически истинно для триггера, и
+        # UPDATE без бампа падает. Exact-сравнение здесь всегда точно
+        # отражает то, что реально попадёт в SQLite.
+        _content_changed = existing is not None and (
+            existing["claim"] != new_claim
+            or existing["confidence"] != confidence
+            or _drift_detected
+        )
+
         with self._db() as conn:
-            conn.execute("""
+            _bump = self._fact_version_bump_sql(conn) if _content_changed else ""
+            _esm_set = (
+                ", epistemic_state = excluded.epistemic_state, history = excluded.history"
+                if _drift_detected else ""
+            )
+            conn.execute(f"""
                 INSERT INTO facts
                     (fact_id, claim, source, confidence, epistemic_state,
                      created_at, updated_at, metadata, history,
@@ -1398,7 +1436,7 @@ class SQLiteGraphStore(GraphStore):
                      :derived_from,
                      :claim_type, :origin_type, :memory_type)
                 ON CONFLICT(fact_id) DO UPDATE SET
-                    claim       = excluded.claim,
+                    {_bump}claim       = excluded.claim,
                     source      = excluded.source,
                     confidence  = excluded.confidence,
                     updated_at  = excluded.updated_at,
@@ -1413,20 +1451,27 @@ class SQLiteGraphStore(GraphStore):
                     -- v8.8: memory_type обновляем если передан не default
                     memory_type = CASE WHEN excluded.memory_type != 'semantic'
                                   THEN excluded.memory_type
-                                  ELSE facts.memory_type END
-                -- epistemic_state, history, t_*_start, derived_from намеренно исключены:
-                -- управляются только через transition_esm() / invalidate_edge().
+                                  ELSE facts.memory_type END{_esm_set}
+                -- epistemic_state, history, t_*_start, derived_from по умолчанию
+                -- исключены: управляются только через transition_esm() /
+                -- invalidate_edge(). Единственное исключение — drift
+                -- protection выше (_esm_set), легальность которой уже
+                -- проверена через ESM_TRANSITIONS до этого момента.
             """, l1_record)
 
-            # v8.3.1 split-brain fix: если drift привёл к Contradicted —
-            # синхронизируем L1 с L0 (drift protection — единственное
-            # исключение из правила "epistemic_state только через transition_esm").
-            if _drift_detected:
-                conn.execute(
-                    "UPDATE facts SET epistemic_state = ?, history = ? "
-                    "WHERE fact_id = ?",
-                    (record["epistemic_state"], l1_record["history"], fact_id),
-                )
+        # PR-C1b (Issue #37): VersionStore-снимок предыдущего состояния теперь
+        # делается ТОЛЬКО после успешного коммита записи — как уже сделано в
+        # _promote_to_validated_cas()/supersede_fact_cas(). Раньше снимок
+        # снимался ДО UPSERT, до того как известно, удастся ли запись — и
+        # неудачный UPDATE (например, из-за bump_fact_version) оставлял в
+        # fact_versions "superseded"-запись без версии-преемника: фантомную
+        # дыру в истории при том, что сам факт не менялся.
+        if existing:
+            self._snapshot_before_change(
+                fact_id,
+                existing,
+                caused_by="memory.store_fact",
+            )
 
         # SPLIT-BRAIN FIX (audit C-2): L0-кэш пишем ТОЛЬКО ПОСЛЕ успешной записи в L1 (durable).
         # Раньше _l0_put шёл ДО INSERT → при сбое L1 в L0 оставался факт, которого нет в L1.
@@ -2983,8 +3028,8 @@ class SQLiteGraphStore(GraphStore):
             return {"stored": 0, "updated": 0, "drift": 0, "errors": 0}
 
         stats = {"stored": 0, "updated": 0, "drift": 0, "errors": 0}
-        records: list[dict] = []
-        drift_ids: list[tuple] = []  # (fact_id, epistemic_state, history_json)
+        records_bump: list[dict] = []    # existing facts with real claim/confidence/ESM change
+        records_nobump: list[dict] = []  # new facts + metadata-only updates to existing facts
         l0_pending: list[tuple] = []  # C2: (fact_id, l0_record) — в L0 ТОЛЬКО после commit L1
 
         now = _now()
@@ -3045,6 +3090,7 @@ class SQLiteGraphStore(GraphStore):
 
                 # Drift protection: проверяем существующие факты через L0
                 existing = self.get_fact(fact_id)
+                _needs_bump = False
                 if existing:
                     if (existing["claim"] != new_claim and
                             existing["epistemic_state"] in {"Validated", "Supported"}):
@@ -3059,7 +3105,6 @@ class SQLiteGraphStore(GraphStore):
                                 "by":    "store_facts_batch_drift_protection",
                             })
                             record["history"] = json.dumps(history)
-                            drift_ids.append((fact_id, "Contradicted", record["history"]))
                             stats["drift"] += 1
                     else:
                         record["epistemic_state"] = existing["epistemic_state"]
@@ -3071,6 +3116,27 @@ class SQLiteGraphStore(GraphStore):
                     record["t_event_valid_end"]   = existing.get("t_event_valid_end")
                     record["t_ingestion_end"]     = existing.get("t_ingestion_end")
                     stats["updated"] += 1
+
+                    # PR-C1b (Issue #37): триггер bump_fact_version требует,
+                    # чтобы UPDATE, меняющий claim/confidence/epistemic_state,
+                    # сам увеличил fact_version. Бампим только записи, где
+                    # что-то из этих трёх полей действительно меняется —
+                    # metadata-only обновления в batch не должны искусственно
+                    # увеличивать fact_version.
+                    #
+                    # PR-C1b review fix: confidence — EXACT сравнение (`!=`),
+                    # не epsilon. Триггер сравнивает `OLD.confidence !=
+                    # NEW.confidence` точно; epsilon здесь мог направить
+                    # запись с суб-эпсилон, но реально ненулевым изменением
+                    # confidence в records_nobump — SQL всё равно пишет
+                    # confidence = excluded.confidence, OLD != NEW технически
+                    # истинно для триггера, и необампленный UPDATE падает.
+                    _needs_bump = (
+                        existing["claim"] != new_claim
+                        or existing["confidence"] != confidence
+                        or (record["epistemic_state"] == "Contradicted"
+                            and existing["epistemic_state"] != "Contradicted")
+                    )
                 else:
                     stats["stored"] += 1
 
@@ -3079,49 +3145,82 @@ class SQLiteGraphStore(GraphStore):
                              "metadata": metadata_dict,
                              "history":  json.loads(record["history"])}
                 l0_pending.append((fact_id, l0_record))
-                records.append(record)
+                if _needs_bump:
+                    records_bump.append(record)
+                else:
+                    records_nobump.append(record)
 
             except Exception as exc:
                 logger.warning("store_facts_batch: пропущен факт '%s': %s",
                                fact.get("fact_id", "?"), exc)
                 stats["errors"] += 1
 
-        if not records:
+        if not records_bump and not records_nobump:
             return stats
 
-        # Один SQLite transaction на весь batch
+        # Один SQLite transaction на весь batch. PR-C1b (Issue #37): записи,
+        # реально меняющие claim/confidence/epistemic_state, идут через SQL
+        # с bump fact_version + слитым drift-sync (records_bump) — раньше
+        # drift синхронизировался ОТДЕЛЬНЫМ UPDATE, что при наличии колонки
+        # fact_version дало бы двойной bump на одну логическую запись, как и
+        # в store_fact() (см. Issue #37). Новые факты и чисто metadata-only
+        # обновления существующих идут через нетронутый SQL (records_nobump).
         with self._db() as conn:
-            conn.executemany("""
-                INSERT INTO facts
-                    (fact_id, claim, source, confidence, epistemic_state,
-                     created_at, updated_at, metadata, history,
-                     t_event_valid_start, t_event_valid_end,
-                     t_ingestion_start,   t_ingestion_end,
-                     claim_type, origin_type, memory_type)
-                VALUES
-                    (:fact_id, :claim, :source, :confidence, :epistemic_state,
-                     :created_at, :updated_at, :metadata, :history,
-                     :t_event_valid_start, :t_event_valid_end,
-                     :t_ingestion_start,   :t_ingestion_end,
-                     :claim_type, :origin_type, :memory_type)
-                ON CONFLICT(fact_id) DO UPDATE SET
-                    claim      = excluded.claim,
-                    source     = excluded.source,
-                    confidence = excluded.confidence,
-                    updated_at = excluded.updated_at,
-                    metadata   = excluded.metadata
-            """, records)
+            if records_nobump:
+                conn.executemany("""
+                    INSERT INTO facts
+                        (fact_id, claim, source, confidence, epistemic_state,
+                         created_at, updated_at, metadata, history,
+                         t_event_valid_start, t_event_valid_end,
+                         t_ingestion_start,   t_ingestion_end,
+                         claim_type, origin_type, memory_type)
+                    VALUES
+                        (:fact_id, :claim, :source, :confidence, :epistemic_state,
+                         :created_at, :updated_at, :metadata, :history,
+                         :t_event_valid_start, :t_event_valid_end,
+                         :t_ingestion_start,   :t_ingestion_end,
+                         :claim_type, :origin_type, :memory_type)
+                    ON CONFLICT(fact_id) DO UPDATE SET
+                        claim      = excluded.claim,
+                        source     = excluded.source,
+                        confidence = excluded.confidence,
+                        updated_at = excluded.updated_at,
+                        metadata   = excluded.metadata
+                """, records_nobump)
 
-            # BUG-FIX v8.3.1 для drift: синхронизируем epistemic_state в L1
-            for fact_id, new_state, history_json in drift_ids:
-                conn.execute(
-                    "UPDATE facts SET epistemic_state = ?, history = ? WHERE fact_id = ?",
-                    (new_state, history_json, fact_id),
-                )
+            if records_bump:
+                _bump = self._fact_version_bump_sql(conn)
+                conn.executemany(f"""
+                    INSERT INTO facts
+                        (fact_id, claim, source, confidence, epistemic_state,
+                         created_at, updated_at, metadata, history,
+                         t_event_valid_start, t_event_valid_end,
+                         t_ingestion_start,   t_ingestion_end,
+                         claim_type, origin_type, memory_type)
+                    VALUES
+                        (:fact_id, :claim, :source, :confidence, :epistemic_state,
+                         :created_at, :updated_at, :metadata, :history,
+                         :t_event_valid_start, :t_event_valid_end,
+                         :t_ingestion_start,   :t_ingestion_end,
+                         :claim_type, :origin_type, :memory_type)
+                    ON CONFLICT(fact_id) DO UPDATE SET
+                        {_bump}claim      = excluded.claim,
+                        source           = excluded.source,
+                        confidence       = excluded.confidence,
+                        epistemic_state  = excluded.epistemic_state,
+                        history          = excluded.history,
+                        updated_at       = excluded.updated_at,
+                        metadata         = excluded.metadata
+                """, records_bump)
 
         # C2 SPLIT-BRAIN FIX (audit): L0 пишем ТОЛЬКО ПОСЛЕ успешного commit L1.
         # Раньше _l0_put шёл в цикле ДО executemany → при откате батча факты
         # оставались в L0, которых нет в L1 (нарушение инварианта D4, как в store_fact).
+        # PR-C1b (Issue #37): VersionStore-снимки в batch НЕ добавлены —
+        # store_facts_batch() уже не писал в fact_versions (не источник
+        # фантомных snapshot'ов из Issue #37 п.1); это deferred-находка сама
+        # по себе, требующая отдельного дизайна (per-record snapshot вместо
+        # одного executemany), а не части этого узкого fix'а.
         for _fid, _l0_record in l0_pending:
             self._l0_put(_fid, _l0_record)
 
