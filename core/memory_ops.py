@@ -401,10 +401,12 @@ class MemoryOpsStore:
             meta["source_type"] = source["source_type"]
 
         raw_id = item.get("raw_id")
+        raw_created_here = False
         if not raw_id:
             from core.memory import store_raw_text
 
             raw_id = store_raw_text(item["claim"], source_label, "fact_inbox")
+            raw_created_here = True
 
         fact = {
             "fact_id": fid,
@@ -415,13 +417,56 @@ class MemoryOpsStore:
             "metadata": meta,
             "derived_from": raw_id,
         }
-        from core.memory import get_fact, link_raw_to_fact, store_fact
+        from core.memory import get_fact, link_raw_to_fact, store_fact_result
+        from core.write_result import ACCEPTED_WRITE_STATUSES
 
-        created = store_fact(fact)
+        result = store_fact_result(fact)
+        accepted = result.status in ACCEPTED_WRITE_STATUSES
+        now = _now()
+
+        # PR-C1: raw_id (immutable, append-only L0) is persisted onto the
+        # inbox row regardless of the promotion outcome below — it must
+        # never be lost/re-derived, and it is not itself the thing that can
+        # be "rejected".
+        if raw_created_here:
+            with self._db() as conn:
+                conn.execute(
+                    "UPDATE fact_inbox SET raw_id = COALESCE(raw_id, ?), updated_at = ? "
+                    "WHERE inbox_id = ?",
+                    (raw_id, now, inbox_id),
+                )
+
+        if not accepted:
+            # PR-C1 (evidence report, hardened): a rejection/failure must NOT
+            # mark this item 'promoted' (the early-return guard above treats
+            # any 'promoted' status as terminal — that would permanently
+            # strand it) and must NOT link provenance — even when
+            # result.canonical_exists is True because an *old* canonical
+            # fact already existed under this fid before this rejected
+            # attempt (a rejected update, not a rejected create; gating on
+            # canonical_exists alone would wrongly treat that as accepted).
+            # status stays whatever it already was (pending) so a retry is
+            # always possible; only a safe diagnostic trail is recorded.
+            diag_meta = dict(item.get("metadata") or {})
+            diag_meta.update({
+                "last_promotion_status": result.status.value,
+                "last_promotion_reason_code": result.safe_reason_code,
+                "last_promotion_at": now,
+            })
+            with self._db() as conn:
+                conn.execute(
+                    "UPDATE fact_inbox SET metadata = ?, updated_at = ? WHERE inbox_id = ?",
+                    (_json_dump(diag_meta), now, inbox_id),
+                )
+            return {
+                "created": False,
+                "inbox_item": self.get_inbox_item(inbox_id),
+                "fact": None,
+            }
+
         if raw_id:
             link_raw_to_fact(raw_id, fid, derivation_type="fact_inbox_promotion")
 
-        now = _now()
         with self._db() as conn:
             conn.execute(
                 """
@@ -435,7 +480,7 @@ class MemoryOpsStore:
                 (fid, raw_id, now, inbox_id),
             )
         return {
-            "created": created,
+            "created": result.created,
             "inbox_item": self.get_inbox_item(inbox_id),
             "fact": get_fact(fid),
         }

@@ -26,7 +26,10 @@ from collections import OrderedDict
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from core.write_result import WriteResult
 
 from core.storage import GraphStore
 from core.recall_policy import (
@@ -1123,15 +1126,23 @@ class SQLiteGraphStore(GraphStore):
 
     # ── store_fact ──────────────────────────────────────────────────────────
 
-    def store_fact(self, fact: dict) -> bool:
+    def _store_fact_outcome(self, fact: dict) -> "WriteResult":
         """
-        Сохранить факт. Возвращает True если был реальный INSERT (новый факт),
-        False если факт уже существовал (UPSERT или no-op).
+        PR-C1: the detailed implementation behind store_fact()/store_fact_result().
 
-        TASK-04: возвращаемое значение используется pipeline для условного
-        вызова mark_retriever_dirty() — только при реальных изменениях базы.
-        TASK-05: no-op guard пропускает SQL если claim/source/confidence не изменились.
+        Returns a WriteResult distinguishing CREATED / UPDATED / NOOP_EXISTING /
+        REJECTED_WRITE_GATE. Raises exactly the same exceptions store_fact()
+        always has (ValueError, MemoryBudgetExceededError) — this method adds
+        no new try/except; store_fact() and store_fact_result() each handle
+        those differently (see below).
+
+        TASK-04: the CREATED/UPDATED distinction is used by pipeline for
+        conditional mark_retriever_dirty() — only on real database changes.
+        TASK-05: no-op guard skips SQL entirely if claim/source/confidence
+        are unchanged.
         """
+        from core.write_result import WriteResult, WriteStatus
+
         fact_id = fact.get("fact_id")
         if not fact_id:
             raise ValueError("store_fact: fact_id обязателен")
@@ -1194,7 +1205,15 @@ class SQLiteGraphStore(GraphStore):
             )
             if not _wg_ok:
                 logger.warning("WriteProtocolGate отклонил факт %s: %s", fact_id, _wg_reason)
-                return False
+                return WriteResult(
+                    status=WriteStatus.REJECTED_WRITE_GATE,
+                    fact_id=fact_id,
+                    created=False,
+                    canonical_exists=not is_new,
+                    durable_write=False,
+                    safe_reason_code=_wg_reason,
+                    safe_message="Write rejected by write-protocol gate.",
+                )
             if _ot == "UNKNOWN" and _raw_ot:
                 pass  # явное UNKNOWN — оставляем
             elif not _raw_ot:
@@ -1327,7 +1346,13 @@ class SQLiteGraphStore(GraphStore):
                 # durable value before publishing to L0.
                 record["updated_at"] = existing["updated_at"]
                 self._l0_put(fact_id, record)
-                return False  # TASK-04: не новый факт, retriever актуален
+                return WriteResult(
+                    status=WriteStatus.NOOP_EXISTING,
+                    fact_id=fact_id,
+                    created=False,
+                    canonical_exists=True,
+                    durable_write=False,
+                )  # TASK-04: не новый факт, retriever актуален
 
         if existing:
             self._snapshot_before_change(
@@ -1428,9 +1453,128 @@ class SQLiteGraphStore(GraphStore):
         except sqlite3.OperationalError:
             pass  # FTS5 недоступен
 
-        # TASK-04: True = реальный INSERT (новый факт) → retriever нужно обновить
-        #          False = UPSERT существующего → retriever актуален
-        return existing is None
+        # TASK-04: CREATED = реальный INSERT (новый факт) → retriever нужно обновить
+        #          UPDATED = UPSERT существующего → retriever актуален
+        if existing is None:
+            return WriteResult(
+                status=WriteStatus.CREATED,
+                fact_id=fact_id,
+                created=True,
+                canonical_exists=True,
+                durable_write=True,
+            )
+        return WriteResult(
+            status=WriteStatus.UPDATED,
+            fact_id=fact_id,
+            created=False,
+            canonical_exists=True,
+            durable_write=True,
+        )
+
+    def store_fact(self, fact: dict) -> bool:
+        """
+        Сохранить факт. Возвращает True если был реальный INSERT (новый факт),
+        False если факт уже существовал (UPSERT или no-op) — **или** был
+        отклонён Write Protocol Gate. Raises ValueError / MemoryBudgetExceededError
+        exactly as before (unchanged; see _store_fact_outcome()).
+
+        Legacy bool contract — kept byte-for-byte identical for existing
+        callers. Prefer store_fact_result() for new call sites that need to
+        distinguish "rejected" from "already existed" from "updated" (PR-C1).
+        """
+        return self._store_fact_outcome(fact).created
+
+    def _safe_canonical_exists(self, fact_id: str | None) -> bool:
+        """
+        PR-C1 hardening: read whether a canonical `facts` row exists for
+        fact_id, WITHOUT ever raising — used only from store_fact_result()'s
+        except-blocks, where a second exception (e.g. the same storage
+        failure that triggered the except in the first place) must not
+        escape and break the non-raising contract. Any read failure here is
+        logged server-side and treated as "unknown, assume False" — never
+        placed in a client-facing field.
+        """
+        if not fact_id:
+            return False
+        try:
+            return bool(self.get_fact(fact_id))
+        except Exception as exc:
+            logger.warning(
+                "store_fact_result: canonical-exists readback failed for %s: %s",
+                fact_id, exc,
+            )
+            return False
+
+    def store_fact_result(self, fact: dict) -> "WriteResult":
+        """
+        PR-C1: explicit, non-raising counterpart to store_fact().
+
+        Never raises for the failure modes it knows about — converts them to
+        a WriteResult with a safe_reason_code/safe_message instead, so a
+        caller can branch on `result.status` without wrapping every call in
+        its own try/except. Genuinely unexpected exceptions are still caught
+        (FAILED_INTERNAL) rather than propagated, precisely so this is a
+        *non-raising* structured API; the full exception is logged
+        server-side only — never placed in a client-facing field.
+        """
+        from core.memory_budget import MemoryBudgetExceededError
+        from core.write_result import WriteResult, WriteStatus
+
+        fact_id = fact.get("fact_id")
+        try:
+            return self._store_fact_outcome(fact)
+        except MemoryBudgetExceededError as exc:
+            logger.warning(
+                "store_fact_result: budget rejected fact %s: %s", fact_id, exc
+            )
+            return WriteResult(
+                status=WriteStatus.REJECTED_BUDGET,
+                fact_id=fact_id,
+                created=False,
+                canonical_exists=self._safe_canonical_exists(fact_id),
+                durable_write=False,
+                safe_reason_code="budget_exceeded",
+                safe_message="Memory budget limit reached; fact was not stored.",
+            )
+        except ValueError as exc:
+            logger.warning(
+                "store_fact_result: validation rejected fact %s: %s", fact_id, exc
+            )
+            return WriteResult(
+                status=WriteStatus.REJECTED_VALIDATION,
+                fact_id=fact_id,
+                created=False,
+                canonical_exists=self._safe_canonical_exists(fact_id),
+                durable_write=False,
+                safe_reason_code="validation_failed",
+                safe_message="Fact failed validation and was not stored.",
+            )
+        except sqlite3.Error as exc:
+            logger.error(
+                "store_fact_result: storage failure for fact %s: %s", fact_id, exc
+            )
+            return WriteResult(
+                status=WriteStatus.FAILED_STORAGE,
+                fact_id=fact_id,
+                created=False,
+                canonical_exists=self._safe_canonical_exists(fact_id),
+                durable_write=False,
+                safe_reason_code="storage_error",
+                safe_message="A storage error occurred; fact was not stored.",
+            )
+        except Exception:
+            logger.exception(
+                "store_fact_result: unexpected failure for fact %s", fact_id
+            )
+            return WriteResult(
+                status=WriteStatus.FAILED_INTERNAL,
+                fact_id=fact_id,
+                created=False,
+                canonical_exists=self._safe_canonical_exists(fact_id),
+                durable_write=False,
+                safe_reason_code="internal_error",
+                safe_message="An internal error occurred; fact was not stored.",
+            )
 
     # ── get_fact ────────────────────────────────────────────────────────────
 
@@ -1639,14 +1783,32 @@ class SQLiteGraphStore(GraphStore):
         raw_id:  str,
         fact_id: str,
         derivation_type: str = "direct",
-    ) -> None:
+    ) -> bool:
         """
         TASK-09: Связать derived факт с оригинальным raw_id в провенанс-таблице.
         Также устанавливает facts.derived_from = raw_id и инвалидирует L0-кэш.
+
+        PR-C1: raw_id и fact_id проверяются на существование в ОДНОЙ
+        транзакции перед записью — l0_fact_provenance.fact_id ссылается на
+        facts(fact_id) как REFERENCES, но PRAGMA foreign_keys для этого
+        соединения не включена, поэтому без явной проверки INSERT OR IGNORE
+        молча создавал phantom-provenance на fact_id, которого нет в `facts`
+        (см. PR-C1 evidence report). Возвращает False и ничего не пишет,
+        если raw_id или fact_id отсутствуют — существующие вызывающие
+        стороны, игнорирующие возврат, не ломаются (раньше метод возвращал
+        None, тоже falsy).
         """
         prov_id = f"prov_{hashlib.sha256((raw_id+fact_id).encode()).hexdigest()[:16]}"
         now = datetime.now(UTC).isoformat()
         with self._db() as conn:
+            raw_exists = conn.execute(
+                "SELECT 1 FROM l0_raw_memory WHERE raw_id = ?", (raw_id,)
+            ).fetchone()
+            fact_exists = conn.execute(
+                "SELECT 1 FROM facts WHERE fact_id = ?", (fact_id,)
+            ).fetchone()
+            if not raw_exists or not fact_exists:
+                return False
             conn.execute(
                 """INSERT OR IGNORE INTO l0_fact_provenance
                    (id, raw_id, fact_id, derivation_type, linked_at)
@@ -1661,6 +1823,7 @@ class SQLiteGraphStore(GraphStore):
         with self._l0_lock:
             if fact_id in self._l0:
                 del self._l0[fact_id]
+        return True
 
     def get_raw_text_for_fact(self, fact_id: str) -> str | None:
         """TASK-09: Оригинальный L0-текст для derived факта."""
@@ -3033,6 +3196,11 @@ def store_fact(fact: dict) -> bool:
     """Обёртка над SQLiteGraphStore.store_fact(). Возвращает True если новый INSERT."""
     return _GLOBAL_STORE.store_fact(fact)
 
+def store_fact_result(fact: dict):
+    """PR-C1: обёртка над SQLiteGraphStore.store_fact_result() — не бросает
+    исключений, возвращает core.write_result.WriteResult."""
+    return _GLOBAL_STORE.store_fact_result(fact)
+
 def store_facts_batch(facts: list[dict]) -> dict[str, int]:
     """Batch insert: один SQLite transaction на N фактов. ~80% быстрее чем N×store_fact()."""
     return _GLOBAL_STORE.store_facts_batch(facts)
@@ -3110,9 +3278,10 @@ def store_raw_text(text: str, source: str | None = None, source_type: str = "use
     """TASK-09: Сохранить оригинальный текст в L0 Raw Memory. Возвращает raw_id."""
     return _GLOBAL_STORE.store_raw_text(text, source=source, source_type=source_type)
 
-def link_raw_to_fact(raw_id: str, fact_id: str, derivation_type: str = "direct") -> None:
-    """TASK-09: Связать derived факт с оригинальным raw_id в провенанс-таблице."""
-    _GLOBAL_STORE.link_raw_to_fact(raw_id, fact_id, derivation_type)
+def link_raw_to_fact(raw_id: str, fact_id: str, derivation_type: str = "direct") -> bool:
+    """TASK-09: Связать derived факт с оригинальным raw_id в провенанс-таблице.
+    PR-C1: возвращает False (без записи) если raw_id или fact_id не существуют."""
+    return _GLOBAL_STORE.link_raw_to_fact(raw_id, fact_id, derivation_type)
 
 def get_raw_text_for_fact(fact_id: str) -> str | None:
     """TASK-09: Оригинальный L0-текст для факта."""

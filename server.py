@@ -29,7 +29,7 @@ from typing import Any, Optional
 import httpx
 from core.recall_policy import filter_facts_for_recall
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, status
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import (
     JSONResponse,
@@ -104,7 +104,7 @@ from core.memory import (
     get_fact_at,
     invalidate_edge,
     link_raw_to_fact,
-    store_fact,
+    store_fact_result,
     store_facts_batch,
     store_raw_text,
     transition_esm,
@@ -1346,17 +1346,39 @@ async def _find_duplicate_fact(claim: str, source: str) -> dict[str, Any] | None
     return None
 
 
-async def _save_fact_for_console(cand: dict[str, Any]) -> dict[str, Any]:
-    """Сохранить факт из консоли (дедуп по содержанию claim + episode_hash)."""
+async def _save_fact_for_console(cand: dict[str, Any]):
+    """Сохранить факт из консоли (дедуп по содержанию claim + episode_hash).
+
+    PR-C1: returns (WriteResult, fact | None) instead of always returning a
+    dict as if the save had succeeded. `fact` is the real canonical/
+    deduplicated fact when the write was accepted
+    (`result.status in ACCEPTED_WRITE_STATUSES`), and None otherwise — the
+    caller must never fall back to the in-memory candidate as if it were a
+    stored fact (that was the false-success bug). Gated on accepted status
+    rather than `result.canonical_exists`, which can be True even on a
+    rejected write to a pre-existing fact_id — not reachable via this
+    specific call site today (fact_id here is always freshly generated),
+    but kept consistent with every other PR-C1 call site (PR-C1 hardening).
+    """
     import uuid
 
-    from core.memory import get_fact, store_fact
+    from core.memory import get_fact, store_fact_result
+    from core.write_result import ACCEPTED_WRITE_STATUSES, WriteResult, WriteStatus
 
     claim = cand["claim"]
     source = "console_chat"
     dup = await _find_duplicate_fact(claim, source)
     if dup:
-        return dup
+        result = WriteResult(
+            status=WriteStatus.NOOP_EXISTING,
+            fact_id=dup.get("fact_id"),
+            created=False,
+            canonical_exists=True,
+            durable_write=False,
+            safe_reason_code="duplicate",
+            safe_message="A matching fact already exists.",
+        )
+        return result, dup
 
     fact_id = f"fact_{uuid.uuid4().hex[:12]}"
     meta = {
@@ -1370,9 +1392,11 @@ async def _save_fact_for_console(cand: dict[str, Any]) -> dict[str, Any]:
         "confidence": float(cand.get("confidence", 0.85)),
         "metadata": meta,
     }
-    await asyncio.to_thread(store_fact, fact)
+    result = await asyncio.to_thread(store_fact_result, fact)
+    if result.status not in ACCEPTED_WRITE_STATUSES:
+        return result, None
     stored = await asyncio.to_thread(get_fact, fact_id)
-    return stored or fact
+    return result, stored
 
 
 @app.post("/chat", response_model=ChatResponse, tags=["LLM"],
@@ -1543,6 +1567,7 @@ async def _console_autosave_memory(
 ) -> tuple:
     """Автосохранение фактов из сообщения пользователя (чат / stream)."""
     from core.console_memory import category_emoji, category_label, fact_to_highlight
+    from core.write_result import ACCEPTED_WRITE_STATUSES, WriteStatus
 
     memory_saved: list[dict[str, Any]] = []
     memory_suggestions: list[dict[str, Any]] = []
@@ -1568,22 +1593,61 @@ async def _console_autosave_memory(
             memory_saved.append(saved_item)
             continue
         try:
-            created = await _save_fact_for_console(cand)
-            hi = fact_to_highlight(created, lang)
-            saved_item = {
-                **cand,
-                "fact_id": created.get("fact_id", ""),
-                "category_label": hi.get("category_label", ""),
-                "emoji": cand.get("emoji") or hi.get("emoji", "💾"),
-                "memory_store": "facts",
-                "deduplicated": bool(created.get("deduplicated")),
-            }
-            memory_saved.append(saved_item)
-            if not created.get("deduplicated"):
-                highlights.insert(0, hi)
+            result, created = await _save_fact_for_console(cand)
         except Exception as exc:
-            logger.warning("console auto-save fact: %s", exc)
-            memory_suggestions.append({**cand, "error": str(exc)})
+            # store_fact_result() itself does not raise (PR-C1) — this is a
+            # last-resort net for a genuinely unexpected failure elsewhere in
+            # the call (e.g. the dedup lookup). Full detail server-side only;
+            # never the raw exception text to the client.
+            logger.warning("console auto-save fact: %s", exc, exc_info=True)
+            memory_suggestions.append({**cand, "error": "internal_error"})
+            continue
+
+        if result.status not in ACCEPTED_WRITE_STATUSES:
+            # PR-C1 (evidence report): a WriteGate/budget/validation rejection
+            # must land in suggestions with a safe reason, never fabricate a
+            # saved item with a phantom fact_id.
+            memory_suggestions.append({
+                **cand,
+                "error": result.safe_message or "Fact could not be saved.",
+                "reason_code": result.safe_reason_code,
+            })
+            continue
+
+        if created is None:
+            # PR-C1 hardening: result says accepted/canonical, but the
+            # readback (get_fact) came back empty — an invariant violation
+            # (e.g. a race with a concurrent erasure), not an expected
+            # rejection. Never crash the request over it, never hand the
+            # client a phantom fact_id — log it server-side and treat it the
+            # same as any other non-save: a suggestion, not a save.
+            logger.error(
+                "console auto-save: canonical readback failed for accepted "
+                "write (status=%s, fact_id=%s) — invariant violation",
+                result.status, result.fact_id,
+            )
+            memory_suggestions.append({
+                **cand,
+                "error": "Fact could not be saved.",
+                "reason_code": "canonical_readback_failed",
+            })
+            continue
+
+        hi = fact_to_highlight(created, lang)
+        is_dedup = result.status is WriteStatus.NOOP_EXISTING and bool(
+            created.get("deduplicated")
+        )
+        saved_item = {
+            **cand,
+            "fact_id": result.fact_id or created.get("fact_id", ""),
+            "category_label": hi.get("category_label", ""),
+            "emoji": cand.get("emoji") or hi.get("emoji", "💾"),
+            "memory_store": "facts",
+            "deduplicated": is_dedup,
+        }
+        memory_saved.append(saved_item)
+        if not is_dedup:
+            highlights.insert(0, hi)
 
     if memory_saved:
         status = f"saved_{len(memory_saved)}"
@@ -2394,18 +2458,27 @@ async def create_cognitive_fact(req: CognitiveFactCreate):
     }
 
 
-@app.post("/facts", tags=["Facts"], status_code=201,
+@app.post("/facts", tags=["Facts"],
           dependencies=[Depends(require_api_key)])
-async def create_fact(req: FactCreate, background_tasks: BackgroundTasks):
+async def create_fact(
+    req: FactCreate, background_tasks: BackgroundTasks, response: Response
+):
     """
     Создать новый факт в памяти.
     Новые факты всегда начинают в состоянии Observed (I50).
+
+    PR-C1 hardening: HTTP status reflects what actually happened — 201 only
+    for a genuine new INSERT (WriteStatus.CREATED); a content duplicate,
+    NOOP_EXISTING, or a real UPDATED all return 200 with the existing/
+    updated fact. Default status_code is no longer set on the decorator
+    (it defaulted every early-return path, including duplicates, to 201).
     """
     dup = await _find_duplicate_fact(req.claim, req.source)
     if dup:
         logger.info(
             "fact dedup claim → %s", dup.get("fact_id", "?")
         )
+        response.status_code = status.HTTP_200_OK
         return dup
 
     fact_id = req.fact_id or f"fact_{uuid.uuid4().hex[:12]}"
@@ -2431,6 +2504,8 @@ async def create_fact(req: FactCreate, background_tasks: BackgroundTasks):
         "derived_from": raw_id,   # провенанс из L0
     }
 
+    from core.write_result import WriteStatus
+
     try:
         from core.cognitive_store import (
             CognitiveFactStore,
@@ -2438,7 +2513,8 @@ async def create_fact(req: FactCreate, background_tasks: BackgroundTasks):
             is_cognitive_store_enabled,
         )
 
-        if is_cognitive_store_enabled():
+        use_cognitive_store = is_cognitive_store_enabled()
+        if use_cognitive_store:
             cf = CognitiveFactStore.create_observed(
                 req.claim,
                 req.source,
@@ -2450,37 +2526,77 @@ async def create_fact(req: FactCreate, background_tasks: BackgroundTasks):
             )
             if raw_id:
                 cf.raw_input = None
-            await asyncio.to_thread(
-                get_cognitive_store().save,
+            result = await asyncio.to_thread(
+                get_cognitive_store().save_result,
                 cf,
                 ensure_raw=not bool(raw_id),
                 link_provenance=bool(raw_id),
             )
         else:
-            await asyncio.to_thread(store_fact, fact)
+            result = await asyncio.to_thread(store_fact_result, fact)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        # PR-C1: store_fact_result()/save_result() no longer raise ValueError
+        # themselves (they convert it to REJECTED_VALIDATION below) — this
+        # remains only as a safety net for CognitiveFactStore.create_observed()
+        # itself, upstream of the store call.
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if raw_id and not is_cognitive_store_enabled():
+    # PR-C1 (evidence report): a rejected/failed write must return a
+    # controlled error, never HTTP 201 with a `null` body. No provenance
+    # link, no NGram indexing, no "fact created" log, no observe hook for a
+    # fact_id that was never actually created.
+    if result.status is WriteStatus.REJECTED_WRITE_GATE:
+        raise HTTPException(
+            status_code=422, detail=result.safe_message or "Fact rejected by write-protocol gate."
+        )
+    if result.status is WriteStatus.REJECTED_VALIDATION:
+        raise HTTPException(
+            status_code=400, detail=result.safe_message or "Fact failed validation."
+        )
+    if result.status is WriteStatus.REJECTED_BUDGET:
+        raise HTTPException(
+            status_code=409, detail=result.safe_message or "Memory budget limit reached."
+        )
+    if result.status is WriteStatus.FAILED_STORAGE:
+        raise HTTPException(
+            status_code=503, detail=result.safe_message or "A storage error occurred."
+        )
+    if result.status is WriteStatus.FAILED_INTERNAL:
+        raise HTTPException(
+            status_code=500, detail=result.safe_message or "An internal error occurred."
+        )
+
+    # PR-C1 hardening: 201 only for a genuine new INSERT; NOOP_EXISTING and
+    # UPDATED are real, accepted writes but not a *creation* — 200.
+    response.status_code = (
+        status.HTTP_201_CREATED
+        if result.status is WriteStatus.CREATED
+        else status.HTTP_200_OK
+    )
+
+    if raw_id and not use_cognitive_store:
         try:
             await asyncio.to_thread(link_raw_to_fact, raw_id, fact_id)
         except Exception as exc:
             logger.warning("L0 provenance link failed (non-blocking): %s", exc)
 
-    # Индексировать в NGram в фоне
-    if _ngram and _ngram.available:
-        background_tasks.add_task(_ngram.index, fact_id, req.claim)
+    # PR-C1 hardening: NGram indexing, the "fact created" log, and the
+    # exocortex observe hook are create-only side effects — they must not
+    # fire for NOOP_EXISTING/UPDATED, which didn't create anything.
+    if result.status is WriteStatus.CREATED:
+        if _ngram and _ngram.available:
+            background_tasks.add_task(_ngram.index, fact_id, req.claim)
+
+        logger.info("fact created: %s (source=%s)", fact_id, req.source)
+
+        try:
+            from core.exocortex_hooks import observe_ingest_chunk
+
+            await observe_ingest_chunk(chunk=req.claim, episode_id=fact_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("exocortex observe fact: %s", exc)
 
     stored = await asyncio.to_thread(get_fact, fact_id)
-    logger.info("fact created: %s (source=%s)", fact_id, req.source)
-
-    try:
-        from core.exocortex_hooks import observe_ingest_chunk
-
-        await observe_ingest_chunk(chunk=req.claim, episode_id=fact_id)
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("exocortex observe fact: %s", exc)
-
     return stored
 
 
