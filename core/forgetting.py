@@ -658,8 +658,18 @@ class ForgettingEngine:
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             conn.execute("PRAGMA journal_mode=WAL")
+            # PR-C1b (Issue #37): claim change trips migration 009's
+            # bump_fact_version trigger unless this UPDATE itself increases
+            # fact_version — redaction used to silently no-op on any DB with
+            # migration 009 applied (caught by the except below, reported as
+            # a generic store_error, never actually redacting the PII).
+            from core.memory import facts_table_has_fact_version
+            _bump = (
+                "fact_version = fact_version + 1, "
+                if facts_table_has_fact_version(conn) else ""
+            )
             conn.execute(
-                "UPDATE facts SET claim = ?, updated_at = ? WHERE fact_id = ?",
+                f"UPDATE facts SET {_bump}claim = ?, updated_at = ? WHERE fact_id = ?",
                 (redacted, datetime.now(timezone.utc).isoformat(), fact_id),
             )
             conn.commit()
@@ -691,13 +701,21 @@ class ForgettingEngine:
                 "SELECT fact_id, claim FROM facts LIMIT ?", (limit,)
             ).fetchall()
 
+            # PR-C1b (Issue #37): same bump_fact_version requirement as
+            # redact_pii_fact() — computed once for the whole batch.
+            from core.memory import facts_table_has_fact_version
+            _bump = (
+                "fact_version = fact_version + 1, "
+                if facts_table_has_fact_version(conn) else ""
+            )
+
             redacted_count = 0
             for row in rows:
                 claim = row["claim"]
                 redacted = redact_pii(claim)
                 if redacted != claim:
                     conn.execute(
-                        "UPDATE facts SET claim = ?, updated_at = ? WHERE fact_id = ?",
+                        f"UPDATE facts SET {_bump}claim = ?, updated_at = ? WHERE fact_id = ?",
                         (redacted, datetime.now(timezone.utc).isoformat(), row["fact_id"]),
                     )
                     redacted_count += 1
