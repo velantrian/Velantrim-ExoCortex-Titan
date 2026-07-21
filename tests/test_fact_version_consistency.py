@@ -54,7 +54,9 @@ DELIBERATELY NOT TESTED HERE (see Issue #37 / final PR-C1b report for why):
 """
 from __future__ import annotations
 
+import json
 import os
+import sqlite3
 import subprocess
 import sys
 import time
@@ -112,6 +114,41 @@ def _version_count(store, fact_id: str) -> int:
         ).fetchone()[0]
 
 
+class _FlakyUpdateConn:
+    """Transparent sqlite3.Connection proxy that raises on any `UPDATE
+    facts SET ...` statement and forwards everything else untouched.
+    sqlite3.Connection is an immutable C type — its methods can't be
+    monkeypatched directly — so this wraps what sqlite3.connect() returns
+    instead, used to test that core.forgetting's redact_pii_* always closes
+    (and never leaks the WAL lock on) its connection, even when the UPDATE
+    itself fails."""
+
+    def __init__(self, real_conn):
+        object.__setattr__(self, "_real", real_conn)
+
+    def execute(self, sql, *args, **kwargs):
+        if isinstance(sql, str) and sql.strip().upper().startswith("UPDATE FACTS SET"):
+            raise sqlite3.OperationalError("injected failure for leak test")
+        return self._real.execute(sql, *args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._real, name)
+
+    def __setattr__(self, name, value):
+        setattr(self._real, name, value)
+
+
+def _patch_flaky_update(monkeypatch):
+    """Make every subsequent sqlite3.connect() in this test return a
+    _FlakyUpdateConn wrapping a real connection."""
+    real_connect = sqlite3.connect
+
+    def _flaky_connect(*args, **kwargs):
+        return _FlakyUpdateConn(real_connect(*args, **kwargs))
+
+    monkeypatch.setattr(sqlite3, "connect", _flaky_connect)
+
+
 # ─── Scenarios 1-4: single-fact content updates via store_fact_result() ──────
 
 class TestExistingFactContentUpdates:
@@ -162,7 +199,11 @@ class TestExistingFactContentUpdates:
         assert result.status.name == "UPDATED"
 
         row = _raw_row(store, "f3")
-        assert '"tag": "v2"' in row[3]
+        assert json.loads(row[3])["tag"] == "v2", (
+            "PR-C1b review fix: parse and compare the decoded value instead "
+            "of a raw-JSON-text substring check, which is brittle to "
+            "serialization spacing/key order"
+        )
         assert row[4] == 1, "metadata-only update must not bump fact_version"
 
     def test_noop_existing_fact_performs_no_write_and_no_bump(self, migrated_store):
@@ -181,6 +222,53 @@ class TestExistingFactContentUpdates:
         assert _version_count(store, "f4") == 0, (
             "a true no-op must not create a VersionStore snapshot either "
             "— nothing changed, there is nothing to supersede"
+        )
+
+    def test_subepsilon_confidence_change_with_metadata_change_still_bumps(self, migrated_store):
+        """PR-C1b review fix: the bump decision must compare confidence
+        EXACTLY, matching the trigger's `OLD.confidence != NEW.confidence`
+        (migration 009) exactly — not with an epsilon.
+
+        NOTE: through the normal write path, confidence is always rounded
+        to 4 decimals by _validate_confidence() before this comparison ever
+        runs, so two *distinct* confidences reaching it always differ by at
+        least 1e-4 — far above the old 1e-9 epsilon, which is why that
+        epsilon never actually misfired for a value store_fact_result()
+        itself produced. The reachable case is a pre-existing row with
+        higher-precision confidence than the app ever writes today (legacy
+        data, a direct import, a future caller bypassing rounding) —
+        simulated here via a raw SQL seed — compared against a freshly
+        rounded new value that lands suspiciously close to it."""
+        store = migrated_store
+        store.store_fact_result({
+            "fact_id": "eps1", "claim": "c", "source": "s", "confidence": 0.5,
+            "metadata": {"tag": "v1"},
+        })
+        legacy_confidence = 0.5 + 1.23e-10
+        with store._db() as conn:
+            conn.execute(
+                "UPDATE facts SET confidence = ?, fact_version = fact_version + 1 "
+                "WHERE fact_id = ?",
+                (legacy_confidence, "eps1"),
+            )
+        store._l0_del("eps1")  # the raw seed above bypassed the L1->L0 publish
+
+        new_confidence = 0.5
+        assert new_confidence != legacy_confidence, "sanity: genuinely distinct floats"
+        assert abs(new_confidence - legacy_confidence) < 1e-9, "sanity: delta must be sub-epsilon"
+
+        result = store.store_fact_result({
+            "fact_id": "eps1", "claim": "c", "source": "s", "confidence": new_confidence,
+            "metadata": {"tag": "v2"},
+        })
+        assert result.status.name == "UPDATED"
+
+        row = _raw_row(store, "eps1")
+        assert row[1] == new_confidence
+        assert row[4] == 3, (
+            f"a genuine (if tiny) confidence change must bump fact_version "
+            f"by exactly 1 over the seeded state (1 create + 1 seed bump + "
+            f"1 real update), got {row[4]}"
         )
 
 
@@ -337,6 +425,44 @@ class TestBatchUpdateVersioning:
         assert _raw_row(store, "b")[:1] + (_raw_row(store, "b")[4],) == ("CHANGED b", 2)
         assert _raw_row(store, "c")[:1] + (_raw_row(store, "c")[4],) == ("original c", 1)
 
+    def test_batch_subepsilon_confidence_change_bumps_and_does_not_rollback(self, migrated_store):
+        """Same review fix as the single-fact path (see
+        TestExistingFactContentUpdates.test_subepsilon_confidence_change_with_metadata_change_still_bumps)
+        and same reachability caveat: through the normal write path,
+        confidence is always rounded to 4 decimals before this comparison
+        runs, so the reachable case is a pre-existing row with
+        higher-precision confidence than the app writes today — simulated
+        here via a raw SQL seed, same as the single-fact test."""
+        store = migrated_store
+        store.store_fact_result(
+            {"fact_id": "beps1", "claim": "original", "source": "s", "confidence": 0.5}
+        )
+        legacy_confidence = 0.5 + 1.23e-10
+        with store._db() as conn:
+            conn.execute(
+                "UPDATE facts SET confidence = ?, fact_version = fact_version + 1 "
+                "WHERE fact_id = ?",
+                (legacy_confidence, "beps1"),
+            )
+        store._l0_del("beps1")
+
+        new_confidence = 0.5
+        assert new_confidence != legacy_confidence
+        assert abs(new_confidence - legacy_confidence) < 1e-9
+
+        stats = store.store_facts_batch([
+            {"fact_id": "beps1", "claim": "original", "source": "s", "confidence": new_confidence},
+        ])
+        assert stats["errors"] == 0
+        assert stats["updated"] == 1
+
+        row = _raw_row(store, "beps1")
+        assert row[1] == new_confidence
+        assert row[4] == 3, (
+            f"a genuine (if tiny) confidence change must bump fact_version "
+            f"by exactly 1 over the seeded state, got {row[4]}"
+        )
+
     def test_batch_one_conflicting_record_still_rolls_back_whole_transaction(
         self, migrated_store, monkeypatch,
     ):
@@ -352,7 +478,11 @@ class TestBatchUpdateVersioning:
 
         monkeypatch.setattr(store, "_fact_version_bump_sql", lambda conn: "")
 
-        with pytest.raises(Exception):
+        # PR-C1b review fix: assert the precise exception type. The failure
+        # injection specifically targets bump_fact_version's trigger abort
+        # (sqlite3.IntegrityError) — a bare Exception would also pass for
+        # an unrelated bug elsewhere in the batch path.
+        with pytest.raises(sqlite3.IntegrityError):
             store.store_facts_batch([
                 {"fact_id": "x", "claim": "CHANGED x", "source": "s", "confidence": 0.5},
                 {"fact_id": "y", "claim": "CHANGED y", "source": "s", "confidence": 0.5},
@@ -438,3 +568,84 @@ class TestForgettingRedactPiiVersionSafe:
         row3 = _raw_row(store, "pii3")
         assert row3[0] == "no pii in this claim at all"
         assert row3[4] == 1, "a claim with no PII must not be touched or bumped"
+
+
+# ─── PR-C1b review fix: redact_pii_* must never leak its connection ──────────
+
+class TestForgettingConnectionNotLeakedOnFailure:
+    """redact_pii_fact()/redact_pii_batch() must close their SQLite
+    connection (releasing its WAL lock) even when the UPDATE itself fails —
+    the pre-fix code only closed on the success path, so any exception
+    between connect() and that single conn.close() call leaked the
+    connection (and its lock) indefinitely. External contract (a
+    ForgetVerdict, never a raise) must stay unchanged."""
+
+    def test_redact_pii_fact_closes_connection_on_update_failure(self, migrated_store, monkeypatch):
+        store = migrated_store
+        store.store_fact_result({
+            "fact_id": "leak1", "claim": "email leak1@example.com",
+            "source": "s", "confidence": 0.5,
+        })
+
+        _patch_flaky_update(monkeypatch)
+
+        from core.forgetting import ForgettingEngine
+
+        engine = ForgettingEngine(db_path=store.db_path)
+        verdict = engine.redact_pii_fact("leak1")
+
+        assert verdict.allowed is False, (
+            "contract unchanged: a storage failure surfaces as an "
+            "unallowed verdict, not a raise"
+        )
+        assert "store_error" in verdict.reason
+
+        monkeypatch.undo()
+
+        # A brand-new connection must be able to write immediately — if the
+        # failed attempt's connection had leaked, this would raise
+        # "database is locked" against the still-open WAL lock.
+        probe = sqlite3.connect(store.db_path, timeout=2.0)
+        try:
+            probe.execute(
+                "UPDATE facts SET updated_at = ? WHERE fact_id = ?",
+                (datetime.now(UTC).isoformat(), "leak1"),
+            )
+            probe.commit()
+        finally:
+            probe.close()
+
+        assert store.get_fact("leak1")["claim"] == "email leak1@example.com", (
+            "the failed redaction must not have partially applied"
+        )
+
+    def test_redact_pii_batch_closes_connection_on_update_failure(self, migrated_store, monkeypatch):
+        store = migrated_store
+        store.store_fact_result({
+            "fact_id": "leak2", "claim": "email leak2@example.com",
+            "source": "s", "confidence": 0.5,
+        })
+
+        _patch_flaky_update(monkeypatch)
+
+        from core.forgetting import ForgettingEngine
+
+        engine = ForgettingEngine(db_path=store.db_path)
+        verdict = engine.redact_pii_batch(limit=100)
+
+        assert verdict.allowed is False
+        assert "store_error" in verdict.reason
+
+        monkeypatch.undo()
+
+        probe = sqlite3.connect(store.db_path, timeout=2.0)
+        try:
+            probe.execute(
+                "UPDATE facts SET updated_at = ? WHERE fact_id = ?",
+                (datetime.now(UTC).isoformat(), "leak2"),
+            )
+            probe.commit()
+        finally:
+            probe.close()
+
+        assert store.get_fact("leak2")["claim"] == "email leak2@example.com"

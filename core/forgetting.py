@@ -655,6 +655,13 @@ class ForgettingEngine:
             )
 
         # Обновить claim
+        # PR-C1b review fix: conn is opened before the try so a finally
+        # block can always close it — a failure between connect() and the
+        # old single conn.close() (on the success path only) leaked the
+        # connection (and its WAL lock) on every exception. rollback() is
+        # attempted first so a half-applied UPDATE never sits uncommitted
+        # on a connection about to be closed anyway.
+        conn = None
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             conn.execute("PRAGMA journal_mode=WAL")
@@ -673,7 +680,6 @@ class ForgettingEngine:
                 (redacted, datetime.now(timezone.utc).isoformat(), fact_id),
             )
             conn.commit()
-            conn.close()
 
             logger.info("PII redacted: %s → %s", fact_id, redacted[:80])
             return ForgetVerdict(
@@ -687,11 +693,22 @@ class ForgettingEngine:
                 ],
             )
         except Exception as exc:
+            if conn is not None:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
             logger.error("Forgetting.redact_pii: %s", exc)
             return ForgetVerdict(allowed=False, reason=f"store_error: {exc}")
+        finally:
+            if conn is not None:
+                conn.close()
 
     def redact_pii_batch(self, limit: int = 100) -> ForgetVerdict:
         """Пакетное обезличивание всех фактов с PII."""
+        # PR-C1b review fix: same conn-always-closed-via-finally fix as
+        # redact_pii_fact() — see its comment for why.
+        conn = None
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             conn.row_factory = sqlite3.Row
@@ -721,7 +738,6 @@ class ForgettingEngine:
                     redacted_count += 1
 
             conn.commit()
-            conn.close()
 
             return ForgetVerdict(
                 allowed=True,
@@ -730,8 +746,16 @@ class ForgettingEngine:
                 details=[f"✅ Обезличено {redacted_count} фактов из {len(rows)}."],
             )
         except Exception as exc:
+            if conn is not None:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
             logger.error("Forgetting.redact_pii_batch: %s", exc)
             return ForgetVerdict(allowed=False, reason=f"store_error: {exc}")
+        finally:
+            if conn is not None:
+                conn.close()
 
     # ── Вспомогательные ──────────────────────────────────────────────────
 

@@ -1397,9 +1397,20 @@ class SQLiteGraphStore(GraphStore):
         # на существующих фактах. Бампим только когда одно из этих трёх
         # полей действительно меняется: metadata-only update не обязан
         # увеличивать fact_version, раз сам триггер этого не требует.
+        #
+        # PR-C1b review fix: confidence сравнивается EXACT (`!=`), не через
+        # epsilon — сам триггер использует `OLD.confidence != NEW.confidence`
+        # (миграция 009), точное сравнение. Epsilon здесь допускал случай,
+        # когда только метаданные меняются (не no-op — см. _is_noop выше,
+        # у него своя, отдельная и намеренно неточная эвристика), а
+        # confidence отличается на величину меньше эпсилон, но не равен
+        # ровно: SQL всё равно пишет `confidence = excluded.confidence`
+        # (новое значение), OLD != NEW технически истинно для триггера, и
+        # UPDATE без бампа падает. Exact-сравнение здесь всегда точно
+        # отражает то, что реально попадёт в SQLite.
         _content_changed = existing is not None and (
             existing["claim"] != new_claim
-            or abs(existing["confidence"] - confidence) >= 1e-9
+            or existing["confidence"] != confidence
             or _drift_detected
         )
 
@@ -3112,9 +3123,17 @@ class SQLiteGraphStore(GraphStore):
                     # что-то из этих трёх полей действительно меняется —
                     # metadata-only обновления в batch не должны искусственно
                     # увеличивать fact_version.
+                    #
+                    # PR-C1b review fix: confidence — EXACT сравнение (`!=`),
+                    # не epsilon. Триггер сравнивает `OLD.confidence !=
+                    # NEW.confidence` точно; epsilon здесь мог направить
+                    # запись с суб-эпсилон, но реально ненулевым изменением
+                    # confidence в records_nobump — SQL всё равно пишет
+                    # confidence = excluded.confidence, OLD != NEW технически
+                    # истинно для триггера, и необампленный UPDATE падает.
                     _needs_bump = (
                         existing["claim"] != new_claim
-                        or abs(existing["confidence"] - confidence) >= 1e-9
+                        or existing["confidence"] != confidence
                         or (record["epistemic_state"] == "Contradicted"
                             and existing["epistemic_state"] != "Contradicted")
                     )
