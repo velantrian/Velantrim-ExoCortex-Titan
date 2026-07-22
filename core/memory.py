@@ -1100,13 +1100,21 @@ class SQLiteGraphStore(GraphStore):
         fact_id: str,
         fact_data: dict[str, Any],
         caused_by: str,
+        now_iso: str | None = None,
     ) -> None:
         """
-        Transfer Pack 1: write transaction-time history before mutating facts.
+        Transfer Pack 1: record a pre-image snapshot of `fact_data` (the
+        state a change is superseding) into VersionStore.
 
         The main V8.6 table keeps its 4-field bi-temporal contract. VersionStore
         is an additive audit/history layer; failures are logged and do not block
         the existing memory write path.
+
+        PR-C1d: `now_iso`, when given, is forwarded as the snapshot's
+        superseded_at — the SAME "now" the caller already used for its own
+        canonical UPDATE/history entry, instead of a fresh, independently-read
+        timestamp from VersionStore's own (separate) connection. Callers that
+        omit it get the previous behavior unchanged.
         """
         if (os.getenv("VELANTRIM_VERSION_SNAPSHOTS", "true") or "").lower() in {
             "0", "false", "no", "off",
@@ -1131,6 +1139,7 @@ class SQLiteGraphStore(GraphStore):
                 fact_id,
                 fact_data,
                 caused_by=caused_by,
+                now_iso=now_iso,
             )
         except Exception:
             logger.exception("VersionStore snapshot failed for %s", fact_id)
@@ -2306,12 +2315,23 @@ class SQLiteGraphStore(GraphStore):
         history_entry = {
             "state": new_state, "from": current_state, "at": now, "by": by
         }
-        self._snapshot_before_change(
-            fact_id,
-            fact,
-            caused_by=f"memory.transition_esm:{by}",
-        )
-        return self.update_state(fact_id, new_state, history_entry, now)
+        # PR-C1d (Issue #39, part D): snapshot the pre-image only AFTER
+        # update_state() has actually committed — previously this ran
+        # BEFORE the canonical write, so a CAS miss (stale caller), a
+        # missing fact_id, or a forced SQL failure inside update_state()
+        # still left a "superseded" fact_versions row for a transition that
+        # never happened to the canonical facts row. update_state()'s own
+        # exception is not caught here — it must propagate, and it must not
+        # be preceded by a snapshot that would then be phantom.
+        ok = self.update_state(fact_id, new_state, history_entry, now)
+        if ok:
+            self._snapshot_before_change(
+                fact_id,
+                fact,
+                caused_by=f"memory.transition_esm:{by}",
+                now_iso=now,
+            )
+        return ok
 
     _ESM_LADDER = ("Observed", "Hypothesized", "Supported", "Validated")
 
@@ -2946,34 +2966,55 @@ class SQLiteGraphStore(GraphStore):
         """
         Инвалидировать факт без DELETE (принцип V9 §2.1).
         Уже выставленные end-значения не перезаписываются (COALESCE).
+
+        PR-C1d (Issue #39, part D): раньше здесь не было ни CAS-guard'а, ни
+        проверки rowcount — UPDATE ничем не ограничивался кроме fact_id, и
+        метод всегда возвращал True, даже если факта не существовало или
+        строку успела изменить другая запись. Теперь: CAS минимум по
+        durable updated_at (WHERE fact_id = ? AND updated_at = ?); при
+        rowcount == 0 (несуществующий факт ИЛИ конкурентная модификация)
+        возвращается False, stale L0 инвалидируется, ничего не
+        перезаписывается. VersionStore-снимок и публикация L0 происходят
+        строго ПОСЛЕ подтверждённого commit'а — раньше снимок снимался ДО
+        UPDATE и оставался "фантомным" при отклонённой/несуществующей
+        попытке.
         """
         now = _now()
         t_ev_end  = t_event_valid_end or now
         t_ing_end = t_ingestion_end   or now
-        fact = self.get_fact(fact_id)
-        if fact:
-            self._snapshot_before_change(
-                fact_id,
-                fact,
-                caused_by="memory.invalidate_edge",
-            )
+
+        cached = self._l0_get(fact_id)
+        if cached is None:
+            cached = self.get_fact(fact_id)
+        if cached is None:
+            return False
+        expected_updated_at = cached.get("updated_at")
+
         with self._db() as conn:
-            conn.execute("""
+            cur = conn.execute("""
                 UPDATE facts
                 SET t_event_valid_end = COALESCE(t_event_valid_end, ?),
                     t_ingestion_end   = COALESCE(t_ingestion_end,   ?),
                     updated_at        = ?
-                WHERE fact_id = ?
-            """, (t_ev_end, t_ing_end, now, fact_id))
-        # Синхронизировать L0-кэш
-        cached = self._l0_get(fact_id)
-        if cached is not None:
-            if not cached.get("t_event_valid_end"):
-                cached["t_event_valid_end"] = t_ev_end
-            if not cached.get("t_ingestion_end"):
-                cached["t_ingestion_end"] = t_ing_end
-            cached["updated_at"] = now
-            self._l0_put(fact_id, cached)
+                WHERE fact_id = ? AND updated_at = ?
+            """, (t_ev_end, t_ing_end, now, fact_id, expected_updated_at))
+            if cur.rowcount == 0:
+                self._l0_del(fact_id)
+                return False
+
+        self._snapshot_before_change(
+            fact_id,
+            cached,
+            caused_by="memory.invalidate_edge",
+            now_iso=now,
+        )
+        new_cached = copy.deepcopy(cached)
+        if not new_cached.get("t_event_valid_end"):
+            new_cached["t_event_valid_end"] = t_ev_end
+        if not new_cached.get("t_ingestion_end"):
+            new_cached["t_ingestion_end"] = t_ing_end
+        new_cached["updated_at"] = now
+        self._l0_put(fact_id, new_cached)
         return True
 
     def search(
