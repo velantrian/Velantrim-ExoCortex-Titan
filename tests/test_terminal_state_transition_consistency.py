@@ -420,6 +420,46 @@ class TestCasConcurrency:
         )
         assert ok is False
 
+    def test_legacy_fallback_evicts_stale_l0_when_row_vanished(self, migrated_store, monkeypatch):
+        """Suppressed low-confidence Copilot finding on PR #41, confirmed
+        legitimate: the non-JSON-insert fallback branch's own existence
+        check (`if not row: return False`) is symmetric to the CAS-miss
+        path above — a stale L0 entry surviving a concurrent deletion (or
+        just an L0 entry for a fact_id whose row vanished between our
+        cached read and this fallback SELECT) must not be left cached for
+        the next reader."""
+        store = migrated_store
+        monkeypatch.setattr(store, "use_json_insert", False)  # force the legacy fallback branch
+
+        fid = "legacy_vanish"
+        _make_fact_at(store, fid, "Deprecated", claim="original")
+
+        # Seed L0 with a (soon-to-be-stale) cached copy of the fact.
+        stale = dict(store.get_fact(fid))
+        store._l0_put(fid, stale)
+
+        # Concurrent deletion of the canonical row, between the caller's
+        # cached read and update_state()'s own fallback SELECT.
+        # prevent_fact_delete permits DELETE only from Deprecated/Collapsed
+        # — exactly the state _make_fact_at() left this fact in.
+        with store._db() as conn:
+            conn.execute("DELETE FROM facts WHERE fact_id = ?", (fid,))
+
+        ok = store.update_state(
+            fid, "Collapsed",
+            {"state": "Collapsed", "from": "Deprecated", "at": "2026-01-01T00:00:00Z", "by": "test"},
+            "2026-01-01T00:00:00Z",
+        )
+        assert ok is False, "a vanished row must report False, never a false success"
+        assert store._l0_get(fid) is None, (
+            "the stale L0 entry for a now-deleted fact must be evicted, "
+            "not left for the next reader to repeat the same staleness"
+        )
+        assert store.get_fact(fid) is None, (
+            "a fresh read after the fallback miss must see the real "
+            "(deleted) state, not the stale cached copy"
+        )
+
 
 # ─── Scenario 10: both schema modes ───────────────────────────────────────────
 

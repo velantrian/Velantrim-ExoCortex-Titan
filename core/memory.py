@@ -2073,6 +2073,13 @@ class SQLiteGraphStore(GraphStore):
                     "SELECT history FROM facts WHERE fact_id = ?", (fact_id,)
                 ).fetchone()
                 if not row:
+                    # PR-C1c review fixup: symmetric to the CAS-miss path
+                    # below — the row vanishing between our cached read and
+                    # this fallback SELECT (concurrent deletion, or a stale
+                    # L0 entry for an already-gone fact) proves any L0 entry
+                    # for this fact_id is stale. Evict it so the next reader
+                    # doesn't get the same staleness back.
+                    self._l0_del(fact_id)
                     return False
                 history_l1 = json.loads(row[0] or "[]")
                 history_l1.append(history_entry)
