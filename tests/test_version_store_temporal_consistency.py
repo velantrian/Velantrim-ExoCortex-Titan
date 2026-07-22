@@ -606,6 +606,42 @@ class TestSnapshotsDisabled:
         assert row[0] == "claim B"
         assert row[1] == 2, "fact_version bump must not depend on snapshotting"
 
+    def test_current_row_not_returned_before_its_own_updated_at(self, migrated_store, monkeypatch, clock):
+        """Copilot review finding (PR #42): when no fact_versions row bounds
+        current_start (here: snapshots disabled throughout), the current
+        facts row must not be treated as valid all the way back to its
+        frozen t_ingestion_start — that would invent history for the window
+        between creation and the (un-snapshotted) update that actually
+        produced the current contents. current_start must come from
+        updated_at instead."""
+        monkeypatch.setenv("VELANTRIM_VERSION_SNAPSHOTS", "false")
+        store = migrated_store
+        fid = "bound1"
+
+        store.store_fact_result({"fact_id": fid, "claim": "V1", "source": "s", "confidence": 0.5})
+        t_between = clock.tick()
+        store.store_fact_result({"fact_id": fid, "claim": "V2", "source": "s", "confidence": 0.5})
+        t2 = clock.peek()
+
+        assert _version_count(store, fid) == 0, "snapshots disabled — no historical row ever written"
+
+        from core.version_store import VersionStore
+        vs = VersionStore(store.db_path)
+
+        before_update = vs.get_fact_as_of(fid, t_between)
+        assert before_update is None or before_update.claim != "V2", (
+            f"a query strictly before the update that produced V2 (at "
+            f"{t_between}) must not resolve to V2 — got "
+            f"{before_update.claim if before_update else None!r}; this "
+            "would invent history for a window with no snapshot proof"
+        )
+
+        after_update = vs.get_fact_as_of(fid, t2)
+        assert after_update is not None
+        assert after_update.claim == "V2"
+
+        assert _version_count(store, fid) == 0, "no synthetic snapshot may be written by a read"
+
 
 # ─── Scenario 17: verify_versions_integrity() stays green ─────────────────
 

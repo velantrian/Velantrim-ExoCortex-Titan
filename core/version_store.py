@@ -583,11 +583,22 @@ class VersionStore:
             "FROM fact_versions WHERE fact_id = ?",
             (fact_id,),
         ).fetchone()
+        # Review finding (PR #42, Copilot): when no fact_versions row bounds
+        # current_start (snapshots disabled, or none written yet), fall back
+        # to updated_at — the only timestamp proving when the CURRENT row
+        # contents became current — BEFORE t_ingestion_start/created_at.
+        # t_ingestion_start is frozen at the fact's original creation; using
+        # it first would make the current contents appear valid all the way
+        # back to creation, inventing history for any window between
+        # creation and the (un-snapshotted) update that actually produced
+        # them. For a fact that has never been updated, updated_at already
+        # equals created_at/t_ingestion_start, so creation-time behavior is
+        # unaffected.
         current_start = (
             agg["latest_superseded"]
+            or facts_row["updated_at"]
             or facts_row["t_ingestion_start"]
             or facts_row["created_at"]
-            or facts_row["updated_at"]
         )
         current_end = facts_row["t_ingestion_end"]
 
