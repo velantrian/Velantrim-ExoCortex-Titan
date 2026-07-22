@@ -1964,7 +1964,9 @@ class SQLiteGraphStore(GraphStore):
         now: str,
     ) -> bool:
         """
-        Атомарно обновить epistemic_state + history + metadata + fact_version.
+        Атомарно обновить epistemic_state + history + metadata (+ fact_version,
+        если колонка существует — миграция 009; на legacy-схеме без неё это
+        no-op, как и раньше).
         При переходе в терминальное состояние (Collapsed, Contradicted)
         устанавливает t_ingestion_end = now (система перестала верить факту).
 
@@ -2099,7 +2101,14 @@ class SQLiteGraphStore(GraphStore):
                 # between the read above and this write. Nothing was
                 # written by this statement (single merged UPDATE — no
                 # partial effect to roll back); do not publish a stale L0
-                # entry, do not report success.
+                # entry, do not report success. The miss itself proves the
+                # L0 entry this caller read from (or the caller's own
+                # in-hand copy) is stale — evict it so the next reader gets
+                # a fresh row instead of the same staleness (review finding
+                # on PR #41: an un-evicted stale L0 entry could otherwise
+                # cause repeated CAS misses / illegal-transition decisions
+                # downstream).
+                self._l0_del(fact_id)
                 return False
 
         # ── Шаг 3: публикуем L0 ТОЛЬКО после успешной, CAS-подтверждённой записи

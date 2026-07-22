@@ -397,6 +397,20 @@ class TestCasConcurrency:
             "metadata must NOT be corrupted by the stale, rejected attempt"
         )
 
+        # Review finding on PR #41: a CAS miss must evict the stale L0 entry
+        # it just proved wrong, so the NEXT reader gets a fresh row instead
+        # of repeating the same staleness (and potentially the same CAS
+        # miss / illegal-transition decision downstream).
+        assert store._l0_get(fid) is None, (
+            "update_state() must evict L0 on a CAS miss, not leave the "
+            "caller's stale snapshot cached for the next reader"
+        )
+        fresh = store.get_fact(fid)
+        assert fresh["epistemic_state"] == "Hypothesized", (
+            "a fresh read after the CAS miss must see the real (concurrent "
+            "winner's) state, not the stale one the failed caller assumed"
+        )
+
     def test_update_state_on_nonexistent_fact_returns_false(self, migrated_store):
         store = migrated_store
         ok = store.update_state(
