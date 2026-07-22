@@ -1480,6 +1480,7 @@ class SQLiteGraphStore(GraphStore):
                 fact_id,
                 existing,
                 caused_by="memory.store_fact",
+                now_iso=now,
             )
 
         # SPLIT-BRAIN FIX (audit C-2): L0-кэш пишем ТОЛЬКО ПОСЛЕ успешной записи в L1 (durable).
@@ -2487,6 +2488,7 @@ class SQLiteGraphStore(GraphStore):
         # есть, повторное чтение не нужно) и публикация L0.
         self._snapshot_before_change(
             fact_id, durable_snapshot, caused_by=f"memory.validate_and_promote:{by}",
+            now_iso=now,
         )
         self._l0_put(fact_id, new_record)
         return True
@@ -2760,6 +2762,7 @@ class SQLiteGraphStore(GraphStore):
         self._snapshot_before_change(
             old_id, old_durable_snapshot,
             caused_by=f"memory.supersede_fact_cas:{by}",
+            now_iso=old_deprecated_at,
         )
         self._l0_put(new_fact_id, new_final_record)
         self._l0_put(old_id, old_final_record)

@@ -371,42 +371,65 @@ class VersionStore:
     # Selects one fact_versions row per fact_id whose *effective* transaction-
     # time interval contains a given instant. The interval is NOT taken from
     # the row's own `recorded_at` column directly (see PR-C1d/Issue #39) —
-    # a version's effective start is the LATER of the PREVIOUS version's
-    # superseded_at (via the LAG window function over version_num) and this
-    # row's own recorded_at, falling back to recorded_at alone for
-    # version_num == 1 (where there is no previous row).
+    # a version's effective start is the LATER of the chronologically
+    # PREVIOUS version's superseded_at and this row's own recorded_at,
+    # falling back to recorded_at alone when there is no chronological
+    # predecessor.
     #
-    # Both bounds matter:
-    #   - prev_superseded makes selection correct even for legacy rows
-    #     already sitting in a database, written by the old
-    #     snapshot_before_change(), where multiple versions of the same
-    #     fact_id share an identical (frozen, stale) recorded_at — only the
-    #     version_num == 1 row's recorded_at is trustworthy in that data, so
-    #     a stale/duplicate value on a LATER version must not select it too
-    #     early. prev_superseded is always >= a legacy row's stale
-    #     recorded_at, so it wins there.
+    # PR-C1d follow-up (Codex review finding, PR #42): "chronologically
+    # previous" is NOT the same as "previous by version_num". version_num is
+    # only a STORAGE/INSERTION ordinal — it is assigned by
+    # MAX(version_num)+1 at INSERT time, serialized by VersionStore's own
+    # BEGIN IMMEDIATE lock, which is a DIFFERENT lock/connection than the
+    # one serializing the canonical `facts` UPDATE each snapshot's
+    # now_iso/superseded_at is sourced from. Two successful, CAS-protected
+    # transitions on the same fact_id can therefore commit their canonical
+    # mutations in chronological order while their VersionStore INSERTs
+    # land in a DIFFERENT order — e.g. a fast concurrent writer's snapshot
+    # insert can complete (and get a LOWER version_num) before a slower
+    # writer's snapshot insert completes for a transition that actually
+    # happened EARLIER (giving it a HIGHER version_num but an EARLIER
+    # superseded_at). Ordering the LAG window by version_num alone would
+    # then reconstruct the wrong predecessor for both rows.
+    #
+    # The window is therefore ordered by the TEMPORAL keys first —
+    # superseded_at, then recorded_at — with version_num/version_id used
+    # ONLY as deterministic tie-breakers for two rows that (should never
+    # normally happen, but defensively) share the same superseded_at.
+    # version_num/version_id never decide ordering on their own.
+    #
+    # Both effective_start bounds still matter:
+    #   - the chronologically-previous superseded_at makes selection
+    #     correct even for legacy rows already sitting in a database,
+    #     written by the old snapshot_before_change(), where multiple
+    #     versions of the same fact_id share an identical (frozen, stale)
+    #     recorded_at — only the chronologically-first row's recorded_at is
+    #     trustworthy in that data, so a stale/duplicate value on a LATER
+    #     version must not select it too early. The previous superseded_at
+    #     is always >= a legacy row's stale recorded_at, so it wins there.
     #   - recorded_at matters when snapshots were disabled/failed/toggled
     #     off between two REAL snapshots: the later snapshot's recorded_at
     #     (correctly sourced from updated_at — see snapshot_before_change())
-    #     can be strictly AFTER the previous snapshot's superseded_at, and
-    #     using prev_superseded alone (Codex review finding, PR #42) would
-    #     project that later version's content backward into the
-    #     unsnapshotted gap between the two, resolving queries in that gap
-    #     to a version that did not exist yet. Taking the later of the two
-    #     bounds correctly leaves that gap uncovered — a query inside it
-    #     falls through to None (or to the current-row materialization, if
-    #     applicable), the honest answer when no snapshot proves anything
-    #     for that window.
+    #     can be strictly AFTER the chronologically-previous superseded_at,
+    #     and using that alone would project the later version's content
+    #     backward into the unsnapshotted gap between the two, resolving
+    #     queries in that gap to a version that did not exist yet. Taking
+    #     the later of the two bounds correctly leaves that gap uncovered —
+    #     a query inside it falls through to None (or to the current-row
+    #     materialization, if applicable), the honest answer when no
+    #     snapshot proves anything for that window.
     #
-    # In the normal, fully-snapshotted case recorded_at == prev_superseded
-    # exactly (both sourced from the same "now" of the transition that
-    # produced this row), so this is a no-op there. No migration or
-    # backfill of existing rows.
+    # In the normal, fully-snapshotted, non-concurrent case recorded_at ==
+    # the chronologically-previous superseded_at exactly (both sourced from
+    # the same "now" of the transition that produced this row), so this is
+    # a no-op there. No migration or backfill of existing rows.
     _EFFECTIVE_INTERVAL_CTE = """
         WITH ranked AS (
             SELECT v.*,
                    LAG(v.superseded_at) OVER (
-                       PARTITION BY v.fact_id ORDER BY v.version_num
+                       PARTITION BY v.fact_id
+                       ORDER BY v.superseded_at, v.recorded_at,
+                                v.version_num, v.version_id
                    ) AS prev_superseded
             FROM fact_versions v
             {where_fact}
@@ -441,9 +464,15 @@ class VersionStore:
         transaction_time ещё не существовал или уже не действовал.
         """
         with self._db() as conn:
+            # Under well-formed, non-overlapping effective intervals, at most
+            # one row matches — this ORDER BY is a defensive tie-breaker for
+            # malformed data only. Temporal keys (superseded_at, recorded_at)
+            # decide first; version_num/version_id only break an exact tie,
+            # never decide on their own (see _EFFECTIVE_INTERVAL_CTE).
             hist_row = conn.execute(
                 self._EFFECTIVE_INTERVAL_CTE.format(where_fact="WHERE v.fact_id = ?")
-                + " ORDER BY version_num DESC LIMIT 1",
+                + " ORDER BY superseded_at DESC, recorded_at DESC,"
+                  " version_num DESC, version_id DESC LIMIT 1",
                 (fact_id, transaction_time, transaction_time),
             ).fetchone()
             if hist_row is not None:
@@ -492,15 +521,27 @@ class VersionStore:
                 (transaction_time, transaction_time),
             ).fetchall()
 
-            # One row per fact_id: highest version_num wins if more than one
-            # historical row somehow matches (should not happen under a
-            # well-formed, non-overlapping interval invariant, but kept as a
-            # deterministic tie-breaker).
+            # One row per fact_id: the chronologically LATEST matching row
+            # wins if more than one historical row somehow matches (should
+            # not happen under a well-formed, non-overlapping interval
+            # invariant, but kept as a deterministic tie-breaker). Ordered
+            # by temporal keys first (superseded_at, recorded_at) — version_
+            # num/version_id decide only an exact temporal tie, never on
+            # their own (version_num is an insertion ordinal, not a
+            # chronology guarantee — see _EFFECTIVE_INTERVAL_CTE).
+            def _row_sort_key(row: sqlite3.Row) -> tuple:
+                return (
+                    row["superseded_at"] or "",
+                    row["recorded_at"] or "",
+                    row["version_num"],
+                    row["version_id"],
+                )
+
             best_hist: dict[str, sqlite3.Row] = {}
             for row in hist_rows:
                 fid = row["fact_id"]
                 current_best = best_hist.get(fid)
-                if current_best is None or row["version_num"] > current_best["version_num"]:
+                if current_best is None or _row_sort_key(row) > _row_sort_key(current_best):
                     best_hist[fid] = row
 
             results: list[FactVersion] = [
