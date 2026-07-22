@@ -643,6 +643,84 @@ class TestSnapshotsDisabled:
         assert _version_count(store, fid) == 0, "no synthetic snapshot may be written by a read"
 
 
+# ─── Scenario: unsnapshotted gap AFTER a real snapshot already exists ──────
+
+class TestCurrentMaterializationClampedToLastProvenBound:
+    """Copilot review finding (PR #42): _materialize_current()'s
+    current_start previously picked latest_superseded via an `or`-chain
+    whenever it existed, even if facts.updated_at was LATER — e.g. a real
+    snapshot exists from an earlier transition, then a further update
+    happens with snapshots disabled/failed/toggled off. current_start must
+    be the LATER of the two: latest_superseded_at proves when the last
+    snapshotted version ended, updated_at proves when the CURRENT row's
+    actual contents became current, and the later one is provable while the
+    earlier one alone would project the newer contents backward into a gap
+    no snapshot covers."""
+
+    def test_get_fact_as_of_does_not_project_across_unsnapshotted_gap(self, migrated_store, monkeypatch, clock):
+        store = migrated_store
+        fid = "gap1"
+
+        store.store_fact_result({"fact_id": fid, "claim": "V1", "source": "s", "confidence": 0.5})
+        store.store_fact_result({"fact_id": fid, "claim": "V2", "source": "s", "confidence": 0.5})
+        assert _version_count(store, fid) == 1, "V1 -> V2 was snapshotted normally"
+
+        monkeypatch.setenv("VELANTRIM_VERSION_SNAPSHOTS", "false")
+        t_between = clock.tick()
+        store.store_fact_result({"fact_id": fid, "claim": "V3", "source": "s", "confidence": 0.5})
+        t3 = clock.peek()
+
+        assert _version_count(store, fid) == 1, (
+            "the V2 -> V3 update must not add a snapshot while disabled"
+        )
+
+        from core.version_store import VersionStore
+        vs = VersionStore(store.db_path)
+
+        gap_query = vs.get_fact_as_of(fid, t_between)
+        assert gap_query is None or gap_query.claim != "V3", (
+            f"a query inside the unsnapshotted gap (at {t_between}) must "
+            f"not resolve to V3 — got "
+            f"{gap_query.claim if gap_query else None!r}; that would "
+            "project the newer, unsnapshotted contents backward and invent "
+            "history for a window no snapshot covers"
+        )
+
+        after = vs.get_fact_as_of(fid, t3)
+        assert after is not None
+        assert after.claim == "V3"
+
+    def test_get_graph_as_of_does_not_project_across_unsnapshotted_gap(self, migrated_store, monkeypatch, clock):
+        store = migrated_store
+        fid = "gap2"
+
+        store.store_fact_result({"fact_id": fid, "claim": "V1", "source": "s", "confidence": 0.5})
+        store.store_fact_result({"fact_id": fid, "claim": "V2", "source": "s", "confidence": 0.5})
+        assert _version_count(store, fid) == 1
+
+        monkeypatch.setenv("VELANTRIM_VERSION_SNAPSHOTS", "false")
+        t_between = clock.tick()
+        store.store_fact_result({"fact_id": fid, "claim": "V3", "source": "s", "confidence": 0.5})
+        t3 = clock.peek()
+
+        assert _version_count(store, fid) == 1
+
+        from core.version_store import VersionStore
+        vs = VersionStore(store.db_path)
+
+        gap_rows = vs.get_graph_as_of(t_between)
+        gap_matches = [r for r in gap_rows if r.fact_id == fid]
+        assert not gap_matches or gap_matches[0].claim != "V3", (
+            "a graph-wide query inside the unsnapshotted gap must not "
+            "resolve to V3"
+        )
+
+        after_rows = vs.get_graph_as_of(t3)
+        after_matches = [r for r in after_rows if r.fact_id == fid]
+        assert len(after_matches) == 1
+        assert after_matches[0].claim == "V3"
+
+
 # ─── Scenario 17: verify_versions_integrity() stays green ─────────────────
 
 class TestVerifyVersionsIntegrity:

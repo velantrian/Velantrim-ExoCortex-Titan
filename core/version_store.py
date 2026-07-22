@@ -559,19 +559,31 @@ class VersionStore:
         live `facts` row, for a query time that falls after the last closed
         historical snapshot (or when there is no history at all).
 
-        current_start:
-          • the latest historical superseded_at for this fact_id, if any
-            snapshot exists;
-          • else t_ingestion_start, then created_at, then updated_at.
+        current_start: the LATER of (latest historical superseded_at,
+        facts.updated_at), using only whichever of the two is non-null.
+        Only when BOTH are absent does it fall back to t_ingestion_start,
+        then created_at.
+
+          • latest_superseded_at proves when the last snapshotted version
+            ended;
+          • updated_at proves when the current row's actual contents
+            became current;
+          • if snapshots were disabled, failed, or toggled off some time
+            AFTER an earlier snapshot was written, updated_at can be LATER
+            than latest_superseded_at — taking latest_superseded_at alone
+            would project those newer, unsnapshotted contents backward
+            into the gap between the two, inventing history for a window
+            no snapshot actually covers. A query inside that gap correctly
+            gets None (see below), not a reconstructed guess.
 
         current_end:
           • t_ingestion_end, if the fact has reached a terminal belief
             state; otherwise the interval is open-ended (None).
 
         Returns None if transaction_time falls outside
-        [current_start, current_end) — i.e. before the fact existed, or
-        after the system stopped believing it. Never writes to
-        fact_versions; read-time only.
+        [current_start, current_end) — i.e. before the fact existed, in an
+        unsnapshotted gap no evidence covers, or after the system stopped
+        believing it. Never writes to fact_versions; read-time only.
         """
         fact_id = facts_row["fact_id"]
         # Review finding (PR #42, Copilot): fetch both aggregates in one
@@ -583,22 +595,18 @@ class VersionStore:
             "FROM fact_versions WHERE fact_id = ?",
             (fact_id,),
         ).fetchone()
-        # Review finding (PR #42, Copilot): when no fact_versions row bounds
-        # current_start (snapshots disabled, or none written yet), fall back
-        # to updated_at — the only timestamp proving when the CURRENT row
-        # contents became current — BEFORE t_ingestion_start/created_at.
-        # t_ingestion_start is frozen at the fact's original creation; using
-        # it first would make the current contents appear valid all the way
-        # back to creation, inventing history for any window between
-        # creation and the (un-snapshotted) update that actually produced
-        # them. For a fact that has never been updated, updated_at already
-        # equals created_at/t_ingestion_start, so creation-time behavior is
-        # unaffected.
+        # Review finding (PR #42, Copilot): current_start must be the LATER
+        # of latest_superseded and updated_at, not latest_superseded alone —
+        # an `or`-chain would pick latest_superseded whenever it exists even
+        # if a later, unsnapshotted update has since moved updated_at past
+        # it, inventing history for that gap. Only when NEITHER bound
+        # exists do we fall back to t_ingestion_start/created_at (a fact
+        # that has never been updated has updated_at == created_at ==
+        # t_ingestion_start anyway, so creation-time behavior is unaffected).
+        bounds = [b for b in (agg["latest_superseded"], facts_row["updated_at"]) if b]
         current_start = (
-            agg["latest_superseded"]
-            or facts_row["updated_at"]
-            or facts_row["t_ingestion_start"]
-            or facts_row["created_at"]
+            max(bounds) if bounds
+            else facts_row["t_ingestion_start"] or facts_row["created_at"]
         )
         current_end = facts_row["t_ingestion_end"]
 
