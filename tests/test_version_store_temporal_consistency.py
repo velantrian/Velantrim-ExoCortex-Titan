@@ -723,6 +723,126 @@ class TestCurrentMaterializationClampedToLastProvenBound:
         assert after_matches[0].claim == "V3"
 
 
+# ─── Scenario: historical row's effective_start must respect its own ───────
+# ─── recorded_at, not just the previous row's superseded_at ────────────────
+
+class TestHistoricalEffectiveStartRespectsRecordedAt:
+    """Codex P1 finding on PR #42: _EFFECTIVE_INTERVAL_CTE computed
+    effective_start as COALESCE(prev_superseded, recorded_at) — whenever a
+    PREVIOUS historical row existed, its superseded_at was used
+    UNCONDITIONALLY, entirely ignoring THIS row's own recorded_at even when
+    recorded_at was later.
+
+    This happens whenever: a fact is snapshotted normally (V1->V2), then
+    snapshots are disabled and the fact changes again (V2->V3, NOT
+    snapshotted), then snapshots are re-enabled and the fact changes once
+    more (V3->V4, which finally closes V3 with a real snapshot —
+    recorded_at = the moment V3 became current = the V2->V3 update's own
+    timestamp, which is AFTER the V1->V2 snapshot's superseded_at).
+
+    The old CTE's effective_start for that V3-closing row was the V1->V2
+    snapshot's superseded_at (ignoring V3's own later recorded_at) — so a
+    query anywhere in the unsnapshotted V2->V3 gap incorrectly resolved to
+    V3, even though the true (never snapshotted) state there was V2. This
+    projects newer content backward across a gap the fix in
+    TestCurrentMaterializationClampedToLastProvenBound already closed for
+    the CURRENT-row path, but not for this CTE's historical-row path.
+
+    Fix: effective_start is the LATER of (prev_superseded, recorded_at),
+    not prev_superseded alone — recorded_at is now also a genuine lower
+    bound, not merely a fallback for version_num == 1.
+    """
+
+    def test_get_fact_as_of_does_not_project_recorded_at_backward_across_gap(
+        self, migrated_store, monkeypatch, clock,
+    ):
+        store = migrated_store
+        fid = "gap5"
+
+        store.store_fact_result({"fact_id": fid, "claim": "V1", "source": "s", "confidence": 0.5})
+        store.store_fact_result({"fact_id": fid, "claim": "V2", "source": "s", "confidence": 0.5})
+        t1 = clock.peek()
+        assert _version_count(store, fid) == 1, "V1 -> V2 was snapshotted normally"
+
+        monkeypatch.setenv("VELANTRIM_VERSION_SNAPSHOTS", "false")
+        t_probe = clock.tick()
+        store.store_fact_result({"fact_id": fid, "claim": "V3", "source": "s", "confidence": 0.5})
+        t2 = clock.peek()
+        assert t1 < t_probe < t2
+        assert _version_count(store, fid) == 1, "V2 -> V3 must not be snapshotted while disabled"
+
+        monkeypatch.setenv("VELANTRIM_VERSION_SNAPSHOTS", "true")
+        store.store_fact_result({"fact_id": fid, "claim": "V4", "source": "s", "confidence": 0.5})
+        t3 = clock.peek()
+        assert _version_count(store, fid) == 2, "V3 -> V4 finally closes V3 with a real snapshot"
+
+        rows = _version_rows(store, fid)
+        v3_row = rows[1]
+        assert v3_row[1] == "V3"
+        assert v3_row[2] == t2, (
+            f"the V3-closing snapshot's recorded_at must be t2 (when V3 "
+            f"became current), got {v3_row[2]}"
+        )
+        assert v3_row[3] == t3
+
+        from core.version_store import VersionStore
+        vs = VersionStore(store.db_path)
+
+        gap_result = vs.get_fact_as_of(fid, t_probe)
+        assert gap_result is None or gap_result.claim != "V3", (
+            f"query at t_probe ({t_probe}), strictly inside the "
+            f"unsnapshotted V2->V3 gap (t1={t1} < t_probe < t2={t2}), must "
+            f"not resolve to V3 — got "
+            f"{gap_result.claim if gap_result else None!r}; the true state "
+            "there was V2, never snapshotted, so the honest answer is None"
+        )
+
+        at_t2 = vs.get_fact_as_of(fid, t2)
+        assert at_t2 is not None and at_t2.claim == "V3"
+
+        at_t3 = vs.get_fact_as_of(fid, t3)
+        assert at_t3 is not None and at_t3.claim == "V4"
+
+    def test_get_graph_as_of_does_not_project_recorded_at_backward_across_gap(
+        self, migrated_store, monkeypatch, clock,
+    ):
+        store = migrated_store
+        fid = "gap6"
+
+        store.store_fact_result({"fact_id": fid, "claim": "V1", "source": "s", "confidence": 0.5})
+        store.store_fact_result({"fact_id": fid, "claim": "V2", "source": "s", "confidence": 0.5})
+        assert _version_count(store, fid) == 1
+
+        monkeypatch.setenv("VELANTRIM_VERSION_SNAPSHOTS", "false")
+        t_probe = clock.tick()
+        store.store_fact_result({"fact_id": fid, "claim": "V3", "source": "s", "confidence": 0.5})
+        t2 = clock.peek()
+        assert _version_count(store, fid) == 1
+
+        monkeypatch.setenv("VELANTRIM_VERSION_SNAPSHOTS", "true")
+        store.store_fact_result({"fact_id": fid, "claim": "V4", "source": "s", "confidence": 0.5})
+        t3 = clock.peek()
+        assert _version_count(store, fid) == 2
+
+        from core.version_store import VersionStore
+        vs = VersionStore(store.db_path)
+
+        gap_rows = vs.get_graph_as_of(t_probe)
+        gap_matches = [r for r in gap_rows if r.fact_id == fid]
+        assert not gap_matches or gap_matches[0].claim != "V3", (
+            "graph-wide query strictly inside the unsnapshotted gap must "
+            "not resolve to V3"
+        )
+
+        at_t2_rows = vs.get_graph_as_of(t2)
+        at_t2_matches = [r for r in at_t2_rows if r.fact_id == fid]
+        assert len(at_t2_matches) == 1 and at_t2_matches[0].claim == "V3"
+
+        at_t3_rows = vs.get_graph_as_of(t3)
+        at_t3_matches = [r for r in at_t3_rows if r.fact_id == fid]
+        assert len(at_t3_matches) == 1 and at_t3_matches[0].claim == "V4"
+
+
 # ─── Scenario 17: verify_versions_integrity() stays green ─────────────────
 
 class TestVerifyVersionsIntegrity:
