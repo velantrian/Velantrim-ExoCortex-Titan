@@ -2988,7 +2988,13 @@ class SQLiteGraphStore(GraphStore):
             cached = self.get_fact(fact_id)
         if cached is None:
             return False
-        expected_updated_at = cached.get("updated_at")
+        # Review finding (PR #42, Copilot): facts.updated_at is TEXT NOT
+        # NULL — index directly rather than .get(), so a malformed cached
+        # dict raises KeyError immediately instead of silently yielding
+        # None, which would make the CAS guard below compare against NULL
+        # (never matches a real row) and return a permanent false-negative
+        # False for this fact_id.
+        expected_updated_at: str = cached["updated_at"]
 
         with self._db() as conn:
             cur = conn.execute("""
