@@ -106,7 +106,9 @@ def migrated_store(tmp_path, monkeypatch):
     from core import memory
 
     db_path = str(tmp_path / "ts.db")
-    memory.SQLiteGraphStore(db_path).get_fact("__bootstrap__")
+    bootstrap = memory.SQLiteGraphStore(db_path)
+    bootstrap.get_fact("__bootstrap__")
+    bootstrap.close()
     result = _run_apply(db_path)
     assert result.returncode == 0, (
         f"apply_migrations failed:\nstdout={result.stdout}\nstderr={result.stderr}"
