@@ -402,7 +402,7 @@ class VersionStore:
         """
         Получить версию факта какой её знала система в момент `transaction_time`.
 
-        Сначала ищем среди закрытых (superseded) историчских версий по их
+        Сначала ищем среди закрытых (superseded) исторических версий по их
         эффективному transaction-time интервалу (см. _EFFECTIVE_INTERVAL_CTE).
         Если ни одна не подходит, проверяем текущую facts-строку — она могла
         стать актуальной уже ПОСЛЕ последнего snapshot'а (см.
@@ -574,12 +574,17 @@ class VersionStore:
         fact_versions; read-time only.
         """
         fact_id = facts_row["fact_id"]
-        latest_superseded = conn.execute(
-            "SELECT MAX(superseded_at) AS m FROM fact_versions WHERE fact_id = ?",
+        # Review finding (PR #42, Copilot): fetch both aggregates in one
+        # SELECT instead of two — this runs once per fact_id materialized,
+        # and get_graph_as_of() may materialize many.
+        agg = conn.execute(
+            "SELECT MAX(superseded_at) AS latest_superseded, "
+            "MAX(version_num) AS max_version_num "
+            "FROM fact_versions WHERE fact_id = ?",
             (fact_id,),
-        ).fetchone()["m"]
+        ).fetchone()
         current_start = (
-            latest_superseded
+            agg["latest_superseded"]
             or facts_row["t_ingestion_start"]
             or facts_row["created_at"]
             or facts_row["updated_at"]
@@ -591,10 +596,7 @@ class VersionStore:
         if current_end is not None and current_end <= transaction_time:
             return None
 
-        max_version_num = conn.execute(
-            "SELECT MAX(version_num) AS m FROM fact_versions WHERE fact_id = ?",
-            (fact_id,),
-        ).fetchone()["m"] or 0
+        max_version_num = agg["max_version_num"] or 0
 
         try:
             metadata = json.loads(facts_row["metadata"] or "{}")
