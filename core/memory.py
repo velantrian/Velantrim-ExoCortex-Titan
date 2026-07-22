@@ -1964,10 +1964,31 @@ class SQLiteGraphStore(GraphStore):
         now: str,
     ) -> bool:
         """
-        Атомарно обновить epistemic_state + history.
+        Атомарно обновить epistemic_state + history + metadata (+ fact_version,
+        если колонка существует — миграция 009; на legacy-схеме без неё это
+        no-op, как и раньше).
         При переходе в терминальное состояние (Collapsed, Contradicted)
         устанавливает t_ingestion_end = now (система перестала верить факту).
+
+        PR-C1c (Issue #40): direct transition to 'ImmutableCore' is never
+        permitted through this method. There is no production path anywhere
+        that legitimately sets epistemic_state to 'ImmutableCore' today
+        (Ring Zero seeding only ever creates facts directly in 'Observed'
+        or, for a small allowlisted set, 'Validated' — see
+        _store_fact_outcome()'s is_ring_zero_seed check). transition_esm()
+        already blocks this target unconditionally before ever calling
+        update_state() — this guard makes update_state() itself safe to
+        call directly too, rather than relying on
+        prevent_immutablecore_mutation's follow-up self-trip (removed
+        below) as an accidental safety net.
         """
+        if new_state == "ImmutableCore":
+            raise ImmutableStateError(
+                "update_state: direct transition to 'ImmutableCore' is not "
+                "permitted — requires Ring Zero / a special approval "
+                "protocol outside this method."
+            )
+
         set_ingestion_end = new_state in _TERMINAL_BELIEF_STATES
         # FIX #19 (Claude audit): запоминаем текущее состояние до UPDATE для CAS-guard
         old_state: str = "Observed"
@@ -1979,82 +2000,126 @@ class SQLiteGraphStore(GraphStore):
         cached = self._l0_get(fact_id)
         if cached is None:
             cached = self.get_fact(fact_id)
-        new_metadata_json = None
-        if cached is not None:
-            old_state = cached.get("epistemic_state", "Observed")  # FIX #19: сохраняем до мутации
-            cached = copy.deepcopy(cached)
-            cached["epistemic_state"] = new_state
-            cached["updated_at"] = now
-            cached.setdefault("history", []).append(history_entry)
-            if set_ingestion_end and not cached.get("t_ingestion_end"):
-                cached["t_ingestion_end"] = now
-            from core.fact_integrity import attach_integrity_metadata
+        if cached is None:
+            # PR-C1c: fact doesn't exist — nothing to transition. The only
+            # production caller (transition_esm()) already checks this
+            # before calling update_state(), but a direct caller must not
+            # get a false True back (see the CAS-miss fix below for the
+            # matching concurrent-modification case).
+            return False
 
-            cached["metadata"] = attach_integrity_metadata(
-                cached.get("metadata") or {},
-                claim=cached.get("claim", ""),
-                source=cached.get("source", "unknown"),
-                confidence=float(cached.get("confidence", 0.5)),
-                epistemic_state=new_state,
-            )
-            new_metadata_json = json.dumps(cached["metadata"])
+        old_state = cached.get("epistemic_state", "Observed")  # FIX #19: сохраняем до мутации
+        cached = copy.deepcopy(cached)
+        cached["epistemic_state"] = new_state
+        cached["updated_at"] = now
+        cached.setdefault("history", []).append(history_entry)
+        if set_ingestion_end and not cached.get("t_ingestion_end"):
+            cached["t_ingestion_end"] = now
+        from core.fact_integrity import attach_integrity_metadata
 
-        # ── Шаг 2: state + history (+ t_ingestion_end) + metadata — В ОДНОЙ
-        # транзакции. FIX #19 (Claude audit): CAS-guard — WHERE epistemic_state = ?
-        # предотвращает check-then-act гонку при параллельных transition_esm вызовах.
+        cached["metadata"] = attach_integrity_metadata(
+            cached.get("metadata") or {},
+            claim=cached.get("claim", ""),
+            source=cached.get("source", "unknown"),
+            confidence=float(cached.get("confidence", 0.5)),
+            epistemic_state=new_state,
+        )
+        new_metadata_json = json.dumps(cached["metadata"])
+
+        # ── Шаг 2: state + history (+ t_ingestion_end) + metadata + fact_version
+        # — ОДНИМ UPDATE (PR-C1c/Issue #40). Раньше metadata обновлялась
+        # ОТДЕЛЬНЫМ, вторым UPDATE-стейтментом после этого — но
+        # prevent_collapsed_mutation/prevent_immutablecore_mutation (migration
+        # 009) срабатывают на ЛЮБОЙ UPDATE, как только epistemic_state уже
+        # Collapsed/ImmutableCore, так что второй стейтмент всегда падал на
+        # переходе В эти состояния, спотыкаясь сам о себя. Слияние в один
+        # стейтмент устраняет это: триггер видит ровно одно изменение строки,
+        # соответствующее одному логическому переходу.
+        #
+        # FIX #19 (Claude audit) CAS-guard — WHERE epistemic_state = ? —
+        # предотвращает check-then-act гонку при параллельных вызовах.
+        # PR-C1c: rowcount теперь проверяется — раньше, если CAS-guard не
+        # совпадал (конкурентная модификация между чтением old_state выше и
+        # этой записью), первый UPDATE тихо не менял ни одной строки, но
+        # ВТОРОЙ (metadata, без условия на epistemic_state) всё равно
+        # выполнялся и "успешно" перезаписывал metadata под несостоявшийся
+        # переход — false success с рассинхронизацией state/metadata. Слияние
+        # в один стейтмент с проверкой rowcount закрывает и это.
         with self._db() as conn:
             bump = self._fact_version_bump_sql(conn)
             if self.use_json_insert:
                 if set_ingestion_end:
-                    conn.execute(f"""
+                    cur = conn.execute(f"""
                         UPDATE facts
                         SET epistemic_state = ?,
                             updated_at      = ?,
                             {bump}history         = json_insert(history, '$[#]', json(?)),
-                            t_ingestion_end = COALESCE(t_ingestion_end, ?)
+                            t_ingestion_end = COALESCE(t_ingestion_end, ?),
+                            metadata        = ?
                         WHERE fact_id = ? AND epistemic_state = ?
-                    """, (new_state, now, json.dumps(history_entry), now, fact_id, old_state))
+                    """, (new_state, now, json.dumps(history_entry), now,
+                          new_metadata_json, fact_id, old_state))
                 else:
-                    conn.execute(f"""
+                    cur = conn.execute(f"""
                         UPDATE facts
                         SET epistemic_state = ?,
-                            updated_at      = ?,    {bump}history         = json_insert(history, '$[#]', json(?))
+                            updated_at      = ?,    {bump}history         = json_insert(history, '$[#]', json(?)),
+                            metadata        = ?
                         WHERE fact_id = ? AND epistemic_state = ?
-                    """, (new_state, now, json.dumps(history_entry), fact_id, old_state))
+                    """, (new_state, now, json.dumps(history_entry),
+                          new_metadata_json, fact_id, old_state))
             else:
                 row = conn.execute(
                     "SELECT history FROM facts WHERE fact_id = ?", (fact_id,)
                 ).fetchone()
                 if not row:
+                    # PR-C1c review fixup: symmetric to the CAS-miss path
+                    # below — the row vanishing between our cached read and
+                    # this fallback SELECT (concurrent deletion, or a stale
+                    # L0 entry for an already-gone fact) proves any L0 entry
+                    # for this fact_id is stale. Evict it so the next reader
+                    # doesn't get the same staleness back.
+                    self._l0_del(fact_id)
                     return False
                 history_l1 = json.loads(row[0] or "[]")
                 history_l1.append(history_entry)
                 if set_ingestion_end:
-                    conn.execute(f"""
+                    cur = conn.execute(f"""
                         UPDATE facts
                         SET epistemic_state = ?, updated_at = ?,
                             {bump}history = ?,
-                            t_ingestion_end = COALESCE(t_ingestion_end, ?)
+                            t_ingestion_end = COALESCE(t_ingestion_end, ?),
+                            metadata = ?
                         WHERE fact_id = ? AND epistemic_state = ?
-                    """, (new_state, now, json.dumps(history_l1), now, fact_id, old_state))
+                    """, (new_state, now, json.dumps(history_l1), now,
+                          new_metadata_json, fact_id, old_state))
                 else:
-                    conn.execute(f"""
+                    cur = conn.execute(f"""
                         UPDATE facts
                         SET epistemic_state = ?, updated_at = ?,
-                            {bump}history = ?
+                            {bump}history = ?,
+                            metadata = ?
                         WHERE fact_id = ? AND epistemic_state = ?
-                    """, (new_state, now, json.dumps(history_l1), fact_id, old_state))
+                    """, (new_state, now, json.dumps(history_l1),
+                          new_metadata_json, fact_id, old_state))
 
-            # metadata/checksum — в ТОЙ ЖЕ транзакции (а не отдельной)
-            if new_metadata_json is not None:
-                conn.execute(
-                    "UPDATE facts SET metadata = ? WHERE fact_id = ?",
-                    (new_metadata_json, fact_id),
-                )
+            if cur.rowcount == 0:
+                # CAS guard missed: epistemic_state changed concurrently
+                # between the read above and this write. Nothing was
+                # written by this statement (single merged UPDATE — no
+                # partial effect to roll back); do not publish a stale L0
+                # entry, do not report success. The miss itself proves the
+                # L0 entry this caller read from (or the caller's own
+                # in-hand copy) is stale — evict it so the next reader gets
+                # a fresh row instead of the same staleness (review finding
+                # on PR #41: an un-evicted stale L0 entry could otherwise
+                # cause repeated CAS misses / illegal-transition decisions
+                # downstream).
+                self._l0_del(fact_id)
+                return False
 
-        # ── Шаг 3: публикуем L0 ТОЛЬКО после успешного commit L1 (инвариант L1→L0)
-        if cached is not None:
-            self._l0_put(fact_id, cached)
+        # ── Шаг 3: публикуем L0 ТОЛЬКО после успешной, CAS-подтверждённой записи
+        self._l0_put(fact_id, cached)
         return True
 
     # ── refresh_fact_integrity_metadata ──────────────────────────────────────
