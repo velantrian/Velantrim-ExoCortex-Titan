@@ -100,6 +100,16 @@ CREATE INDEX IF NOT EXISTS idx_versions_valid_from ON fact_versions(valid_from);
 
 @dataclass
 class FactVersion:
+    """
+    PR-C1d (Issue #39): `version_id == 0` marks a MATERIALIZED, not-persisted
+    version — the live `facts` row, read-time-projected into this shape by
+    VersionStore._materialize_current() because it was the applicable
+    version at a queried transaction_time that falls after the last closed
+    fact_versions snapshot (or when no snapshot exists at all). It is never
+    inserted into fact_versions; a real historical row always has
+    version_id > 0 (AUTOINCREMENT starts at 1).
+    """
+
     version_id:      int
     fact_id:         str
     version_num:     int
@@ -218,10 +228,19 @@ class VersionStore:
             fact_data.get("valid_to")
             or fact_data.get("t_event_valid_end")
         )
+        # PR-C1d (Issue #39): recorded_at must reflect when THIS version
+        # (the one now being closed) itself became current — that is
+        # fact_data["updated_at"], the timestamp of the write that produced
+        # it. t_ingestion_start is frozen at the fact's ORIGINAL creation and
+        # never advances, so using it here made every historical snapshot of
+        # the same fact_id share an identical recorded_at regardless of how
+        # many updates had actually happened. updated_at equals created_at
+        # at creation time, so version_num==1 is unaffected by this change;
+        # only version_num>1 (previously wrong) is corrected.
         recorded_at = (
-            fact_data.get("t_ingestion_start")
+            fact_data.get("updated_at")
+            or fact_data.get("t_ingestion_start")
             or fact_data.get("created_at")
-            or fact_data.get("updated_at")
             or now
         )
 
@@ -349,6 +368,32 @@ class VersionStore:
 
     # ── TIME-TRAVEL QUERIES ─────────────────────────────────────────────
 
+    # Selects one fact_versions row per fact_id whose *effective* transaction-
+    # time interval contains a given instant. The interval is NOT taken from
+    # the row's own `recorded_at` column directly (see PR-C1d/Issue #39) —
+    # a version's effective start is the PREVIOUS version's superseded_at
+    # (via the LAG window function over version_num), falling back to the
+    # row's own recorded_at only for version_num == 1. This makes selection
+    # correct even for legacy rows already sitting in a database, written
+    # by the old snapshot_before_change(), where multiple versions of the
+    # same fact_id share an identical (frozen) recorded_at: only the
+    # version_num == 1 row's recorded_at is ever consulted directly, so a
+    # stale/duplicate value on a LATER version can no longer cause it to be
+    # selected too early. No migration or backfill of existing rows.
+    _EFFECTIVE_INTERVAL_CTE = """
+        WITH ranked AS (
+            SELECT v.*,
+                   LAG(v.superseded_at) OVER (
+                       PARTITION BY v.fact_id ORDER BY v.version_num
+                   ) AS prev_superseded
+            FROM fact_versions v
+            {where_fact}
+        )
+        SELECT * FROM ranked
+        WHERE COALESCE(prev_superseded, recorded_at) <= ?
+          AND (superseded_at IS NULL OR superseded_at > ?)
+    """
+
     def get_fact_as_of(
         self,
         fact_id:          str,
@@ -357,21 +402,28 @@ class VersionStore:
         """
         Получить версию факта какой её знала система в момент `transaction_time`.
 
-        Логика:
-          • recorded_at <= transaction_time (версия уже была записана)
-          • AND (superseded_at IS NULL OR superseded_at > transaction_time)
-            (версия ещё не была заменена)
+        Сначала ищем среди закрытых (superseded) историчских версий по их
+        эффективному transaction-time интервалу (см. _EFFECTIVE_INTERVAL_CTE).
+        Если ни одна не подходит, проверяем текущую facts-строку — она могла
+        стать актуальной уже ПОСЛЕ последнего snapshot'а (см.
+        _materialize_current()). Возвращает None, если факт на момент
+        transaction_time ещё не существовал или уже не действовал.
         """
         with self._db() as conn:
-            row = conn.execute(
-                """SELECT * FROM fact_versions
-                   WHERE fact_id = ?
-                     AND recorded_at <= ?
-                     AND (superseded_at IS NULL OR superseded_at > ?)
-                   ORDER BY version_num DESC LIMIT 1""",
+            hist_row = conn.execute(
+                self._EFFECTIVE_INTERVAL_CTE.format(where_fact="WHERE v.fact_id = ?")
+                + " ORDER BY version_num DESC LIMIT 1",
                 (fact_id, transaction_time, transaction_time),
             ).fetchone()
-        return self._row_to_version(row) if row else None
+            if hist_row is not None:
+                return self._row_to_version(hist_row)
+
+            row = conn.execute(
+                "SELECT * FROM facts WHERE fact_id = ?", (fact_id,)
+            ).fetchone()
+            if row is None:
+                return None
+            return self._materialize_current(conn, row, transaction_time)
 
     def get_fact_history(self, fact_id: str) -> list[FactVersion]:
         """Полная история версий факта, отсортированная по version_num."""
@@ -391,24 +443,50 @@ class VersionStore:
     ) -> list[FactVersion]:
         """
         Состояние всего графа на момент transaction_time.
-        Возвращает по одной версии на fact_id.
+        Возвращает по одной версии на fact_id — либо закрытую историческую
+        (см. _EFFECTIVE_INTERVAL_CTE), либо, если исторической нет, текущую
+        facts-строку, материализованную по тем же правилам, что и
+        get_fact_as_of() (см. _materialize_current()).
+
+        PR-C1d (Issue #39): limit применяется ПОСЛЕ дедупликации до одной
+        версии на fact_id, а не до неё — раньше LIMIT обрезал результат
+        SQL-запроса напрямую, что могло вернуть меньше уникальных фактов,
+        чем реально подходило под transaction_time. Не открывает отдельное
+        SQLite-соединение на каждый fact_id — обе стадии используют одно
+        соединение `conn`, открытое один раз для всего вызова.
         """
         with self._db() as conn:
-            rows = conn.execute(
-                """SELECT v1.* FROM fact_versions v1
-                   WHERE v1.recorded_at <= ?
-                     AND (v1.superseded_at IS NULL OR v1.superseded_at > ?)
-                     AND v1.version_num = (
-                       SELECT MAX(v2.version_num) FROM fact_versions v2
-                       WHERE v2.fact_id = v1.fact_id
-                         AND v2.recorded_at <= ?
-                         AND (v2.superseded_at IS NULL OR v2.superseded_at > ?)
-                     )
-                   LIMIT ?""",
-                (transaction_time, transaction_time,
-                 transaction_time, transaction_time, limit),
+            hist_rows = conn.execute(
+                self._EFFECTIVE_INTERVAL_CTE.format(where_fact=""),
+                (transaction_time, transaction_time),
             ).fetchall()
-        return [self._row_to_version(r) for r in rows]
+
+            # One row per fact_id: highest version_num wins if more than one
+            # historical row somehow matches (should not happen under a
+            # well-formed, non-overlapping interval invariant, but kept as a
+            # deterministic tie-breaker).
+            best_hist: dict[str, sqlite3.Row] = {}
+            for row in hist_rows:
+                fid = row["fact_id"]
+                current_best = best_hist.get(fid)
+                if current_best is None or row["version_num"] > current_best["version_num"]:
+                    best_hist[fid] = row
+
+            results: list[FactVersion] = [
+                self._row_to_version(row) for row in best_hist.values()
+            ]
+
+            facts_rows = conn.execute("SELECT * FROM facts").fetchall()
+            for row in facts_rows:
+                fid = row["fact_id"]
+                if fid in best_hist:
+                    continue
+                current = self._materialize_current(conn, row, transaction_time)
+                if current is not None:
+                    results.append(current)
+
+        results.sort(key=lambda fv: fv.fact_id)
+        return results[:limit]
 
     def count_versions(self, fact_id: str | None = None) -> int:
         with self._db() as conn:
@@ -467,4 +545,75 @@ class VersionStore:
             superseded_at   = row["superseded_at"],
             caused_by       = row["caused_by"],
             checksum        = row["checksum"],
+        )
+
+    def _materialize_current(
+        self,
+        conn: sqlite3.Connection,
+        facts_row: sqlite3.Row,
+        transaction_time: str,
+    ) -> FactVersion | None:
+        """
+        PR-C1d (Issue #39, part C): build a synthetic, NOT-persisted
+        FactVersion (version_id == 0 — see FactVersion docstring) from the
+        live `facts` row, for a query time that falls after the last closed
+        historical snapshot (or when there is no history at all).
+
+        current_start:
+          • the latest historical superseded_at for this fact_id, if any
+            snapshot exists;
+          • else t_ingestion_start, then created_at, then updated_at.
+
+        current_end:
+          • t_ingestion_end, if the fact has reached a terminal belief
+            state; otherwise the interval is open-ended (None).
+
+        Returns None if transaction_time falls outside
+        [current_start, current_end) — i.e. before the fact existed, or
+        after the system stopped believing it. Never writes to
+        fact_versions; read-time only.
+        """
+        fact_id = facts_row["fact_id"]
+        latest_superseded = conn.execute(
+            "SELECT MAX(superseded_at) AS m FROM fact_versions WHERE fact_id = ?",
+            (fact_id,),
+        ).fetchone()["m"]
+        current_start = (
+            latest_superseded
+            or facts_row["t_ingestion_start"]
+            or facts_row["created_at"]
+            or facts_row["updated_at"]
+        )
+        current_end = facts_row["t_ingestion_end"]
+
+        if current_start is None or current_start > transaction_time:
+            return None
+        if current_end is not None and current_end <= transaction_time:
+            return None
+
+        max_version_num = conn.execute(
+            "SELECT MAX(version_num) AS m FROM fact_versions WHERE fact_id = ?",
+            (fact_id,),
+        ).fetchone()["m"] or 0
+
+        try:
+            metadata = json.loads(facts_row["metadata"] or "{}")
+        except json.JSONDecodeError:
+            metadata = {}
+
+        return FactVersion(
+            version_id      = 0,
+            fact_id         = fact_id,
+            version_num     = max_version_num + 1,
+            claim           = facts_row["claim"] or "",
+            source          = facts_row["source"] or "",
+            confidence      = facts_row["confidence"] if facts_row["confidence"] is not None else 0.5,
+            epistemic_state = facts_row["epistemic_state"] or "Observed",
+            metadata        = metadata,
+            valid_from      = facts_row["t_event_valid_start"],
+            valid_to        = facts_row["t_event_valid_end"],
+            recorded_at     = current_start,
+            superseded_at   = current_end,
+            caused_by       = "facts.current",
+            checksum        = None,
         )
