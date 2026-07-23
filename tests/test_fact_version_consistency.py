@@ -377,10 +377,21 @@ class TestVersionStoreSnapshotConsistency:
 
         vs = VersionStore(store.db_path)
         assert vs.count_versions("f8") == 0
-        assert vs.get_fact_as_of("f8", t_before) is None, (
-            "no snapshot exists yet (nothing has ever been superseded) — "
-            "this is the correct, unaffected answer, not a regression: the "
-            "failed attempt did not add a bogus entry."
+        # PR-C1d (Issue #39, part C): no fact_versions snapshot exists yet
+        # (nothing has ever been superseded), so get_fact_as_of() now falls
+        # through to the CURRENT live facts row — its own provable interval
+        # ([t_ingestion_start, None)) contains t_before, which is exactly
+        # correct: the fact already existed then, unaffected by the failed
+        # attempt. Previously this incorrectly returned None (Issue #39's
+        # documented "current state gap" — a query strictly after creation,
+        # before any snapshot, resolved to nothing rather than the fact
+        # that genuinely existed).
+        unaffected = vs.get_fact_as_of("f8", t_before)
+        assert unaffected is not None
+        assert unaffected.claim == "original", (
+            "the failed attempt did not add a bogus entry — a query before "
+            "the later successful update must resolve to the fact's own "
+            "unaffected current state"
         )
 
         time.sleep(0.01)
