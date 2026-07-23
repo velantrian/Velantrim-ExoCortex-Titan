@@ -474,6 +474,16 @@ class VersionStore:
         стать актуальной уже ПОСЛЕ последнего snapshot'а (см.
         _materialize_current()). Возвращает None, если факт на момент
         transaction_time ещё не существовал или уже не действовал.
+
+        PR-C1d (Codex review finding, PR #42): VersionStore документирован
+        как самостоятельный API (см. docstring класса) и его __init__()
+        создаёт только `fact_versions` — НЕ каноническую таблицу `facts`.
+        На такой standalone-БД (без facts) этот метод обязан возвращать
+        историческую версию как обычно и None, если исторической нет —
+        а не падать с "no such table: facts". Существование `facts`
+        проверяется явно через _table_exists() (sqlite_master), не через
+        подавление sqlite3.OperationalError — это могло бы маскировать
+        настоящие SQL/schema-дефекты.
         """
         with self._db() as conn:
             # Under well-formed, non-overlapping effective intervals, at most
@@ -490,6 +500,9 @@ class VersionStore:
             if hist_row is not None:
                 return self._row_to_version(hist_row)
 
+            if not self._table_exists(conn, "facts"):
+                return None
+
             row = conn.execute(
                 "SELECT * FROM facts WHERE fact_id = ?", (fact_id,)
             ).fetchone()
@@ -498,12 +511,31 @@ class VersionStore:
             return self._materialize_current(conn, row, transaction_time)
 
     def get_fact_history(self, fact_id: str) -> list[FactVersion]:
-        """Полная история версий факта, отсортированная по version_num."""
+        """
+        Полная история закрытых версий факта, в ХРОНОЛОГИЧЕСКОМ порядке.
+
+        PR-C1d (Codex review finding, PR #42): version_num — это ordinal
+        порядка ВСТАВКИ в VersionStore (назначается MAX(version_num)+1 под
+        собственным BEGIN IMMEDIATE лока VersionStore), а не гарантия
+        хронологии. С тех пор как снимок пишется ПОСЛЕ подтверждённого
+        коммита канонической мутации (see _snapshot_before_change()),
+        конкурентная вставка снимков для двух разных переходов может
+        завершиться в порядке, ПРОТИВОПОЛОЖНОМ реальному порядку самих
+        переходов (см. TestSnapshotInsertionOrderDecoupledFromChronology).
+        Сортировка только по version_num вернула бы более позднее
+        состояние раньше более раннего.
+
+        Порядок теперь тот же, что и в _EFFECTIVE_INTERVAL_CTE: сначала
+        temporal-ключи (superseded_at, recorded_at), version_num/version_id —
+        только детерминированный tie-breaker при их точном совпадении, сам
+        по себе порядок никогда не решает.
+        """
         with self._db() as conn:
             rows = conn.execute(
                 """SELECT * FROM fact_versions
                    WHERE fact_id = ?
-                   ORDER BY version_num ASC""",
+                   ORDER BY superseded_at ASC, recorded_at ASC,
+                            version_num ASC, version_id ASC""",
                 (fact_id,),
             ).fetchall()
         return [self._row_to_version(r) for r in rows]
@@ -560,7 +592,15 @@ class VersionStore:
                 self._row_to_version(row) for row in best_hist.values()
             ]
 
-            facts_rows = conn.execute("SELECT * FROM facts").fetchall()
+            # PR-C1d (Codex review finding, PR #42): a standalone VersionStore
+            # (see get_fact_as_of()'s docstring) has no `facts` table at all —
+            # skip current-row materialization entirely rather than raise.
+            # Historical fact_versions rows are still returned as normal.
+            facts_rows = (
+                conn.execute("SELECT * FROM facts").fetchall()
+                if self._table_exists(conn, "facts")
+                else []
+            )
             for row in facts_rows:
                 fid = row["fact_id"]
                 if fid in best_hist:
@@ -606,6 +646,23 @@ class VersionStore:
         return [dict(r) for r in rows]
 
     # ── INTERNAL ────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
+        """
+        PR-C1d (Codex review finding, PR #42): explicit existence check via
+        sqlite_master — NOT a try/except around the real query. VersionStore
+        is a documented standalone API whose __init__() only creates
+        `fact_versions`; the canonical `facts` table may legitimately be
+        absent. Checking existence up front lets read paths tolerate that
+        absence without swallowing unrelated sqlite3.OperationalError that
+        would otherwise mask a genuine SQL/schema defect.
+        """
+        row = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+            (table_name,),
+        ).fetchone()
+        return row is not None
 
     def _row_to_version(self, row: sqlite3.Row) -> FactVersion:
         meta = None

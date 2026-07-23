@@ -82,6 +82,7 @@ reproducible, not dependent on real wall-clock resolution.
 from __future__ import annotations
 
 import os
+import sqlite3
 import subprocess
 import sys
 import threading
@@ -1008,6 +1009,253 @@ class TestSnapshotInsertionOrderDecoupledFromChronology:
         assert matches[0].epistemic_state == "Hypothesized"
 
         assert vs.verify_versions_integrity(fid)["ok"] is True
+
+
+# ─── Scenario: standalone VersionStore (no `facts` table at all) ──────────
+
+class TestStandaloneVersionStoreWithoutFactsTable:
+    """Codex review finding on PR #42: VersionStore is documented as a
+    standalone bi-temporal API ("R50: Standalone bi-temporal VersionStore
+    API") whose __init__() only creates fact_versions, never the canonical
+    `facts` table. PR-C1d's current-row materialization
+    (_materialize_current(), reached from get_fact_as_of()/
+    get_graph_as_of()) added an unconditional dependency on `facts`
+    existing — a standalone VersionStore used on a fresh, version-only
+    database crashed with sqlite3.OperationalError: no such table: facts
+    instead of returning the historical rows/empty result it previously
+    supported. No test here creates `facts` manually — that would defeat
+    the point of testing the standalone contract."""
+
+    def test_standalone_db_has_fact_versions_but_not_facts(self, tmp_path):
+        from core.version_store import VersionStore
+
+        db_path = str(tmp_path / "standalone.db")
+        VersionStore(db_path)  # constructor only — no SQLiteGraphStore involved
+
+        with sqlite3.connect(db_path) as conn:
+            tables = {
+                row[0] for row in
+                conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+            }
+        assert "fact_versions" in tables
+        assert "facts" not in tables
+
+    def test_get_fact_as_of_on_empty_standalone_db_returns_none(self, tmp_path):
+        from core.version_store import VersionStore
+
+        vs = VersionStore(str(tmp_path / "standalone.db"))
+        assert vs.get_fact_as_of("nonexistent", "2026-01-01T00:00:00+00:00") is None
+
+    def test_get_graph_as_of_on_empty_standalone_db_returns_empty_list(self, tmp_path):
+        from core.version_store import VersionStore
+
+        vs = VersionStore(str(tmp_path / "standalone.db"))
+        assert vs.get_graph_as_of("2026-01-01T00:00:00+00:00") == []
+
+    def test_get_fact_as_of_resolves_snapshots_written_standalone(self, tmp_path):
+        from core.version_store import VersionStore
+
+        db_path = str(tmp_path / "standalone.db")
+        vs = VersionStore(db_path)
+        fid = "standalone1"
+        t0 = "2026-01-01T00:00:00+00:00"
+        t1 = "2026-01-01T00:00:01+00:00"
+        t2 = "2026-01-01T00:00:02+00:00"
+
+        vs.snapshot_before_change(
+            fid,
+            {"claim": "V1", "source": "s", "confidence": 0.5,
+             "epistemic_state": "Observed", "updated_at": t0},
+            caused_by="test", now_iso=t1,
+        )
+        vs.snapshot_before_change(
+            fid,
+            {"claim": "V2", "source": "s", "confidence": 0.5,
+             "epistemic_state": "Observed", "updated_at": t1},
+            caused_by="test", now_iso=t2,
+        )
+
+        before_v1v2 = vs.get_fact_as_of(fid, "2026-01-01T00:00:00.5+00:00")
+        assert before_v1v2 is not None
+        assert before_v1v2.claim == "V1"
+
+        between = vs.get_fact_as_of(fid, "2026-01-01T00:00:01.5+00:00")
+        assert between is not None
+        assert between.claim == "V2"
+
+    def test_get_graph_as_of_resolves_snapshots_written_standalone(self, tmp_path):
+        from core.version_store import VersionStore
+
+        db_path = str(tmp_path / "standalone.db")
+        vs = VersionStore(db_path)
+        fid = "standalone2"
+        t0 = "2026-01-01T00:00:00+00:00"
+        t1 = "2026-01-01T00:00:01+00:00"
+
+        vs.snapshot_before_change(
+            fid,
+            {"claim": "V1", "source": "s", "confidence": 0.5,
+             "epistemic_state": "Observed", "updated_at": t0},
+            caused_by="test", now_iso=t1,
+        )
+
+        rows = vs.get_graph_as_of("2026-01-01T00:00:00.5+00:00")
+        matches = [r for r in rows if r.fact_id == fid]
+        assert len(matches) == 1
+        assert matches[0].claim == "V1"
+
+    def test_query_after_final_standalone_snapshot_returns_none_no_facts_row(self, tmp_path):
+        from core.version_store import VersionStore
+
+        db_path = str(tmp_path / "standalone.db")
+        vs = VersionStore(db_path)
+        fid = "standalone3"
+        t0 = "2026-01-01T00:00:00+00:00"
+        t1 = "2026-01-01T00:00:01+00:00"
+
+        vs.snapshot_before_change(
+            fid,
+            {"claim": "V1", "source": "s", "confidence": 0.5,
+             "epistemic_state": "Observed", "updated_at": t0},
+            caused_by="test", now_iso=t1,
+        )
+
+        # After the final closed snapshot, there is no live `facts` row to
+        # materialize (a standalone DB never had one) — the honest answer
+        # is None, not a crash and not an incorrectly-resolved historical row.
+        result = vs.get_fact_as_of(fid, t1)
+        assert result is None
+
+        rows = vs.get_graph_as_of(t1)
+        assert not [r for r in rows if r.fact_id == fid]
+
+
+# ─── Scenario: get_fact_history() must use the same chronology as the ─────
+# ─── as-of queries, not raw version_num ────────────────────────────────────
+
+class TestFactHistoryChronologicalOrdering:
+    """Codex review finding on PR #42: get_fact_history() still ordered by
+    version_num ASC alone — under the exact same insertion-order/chronology
+    divergence proven in TestSnapshotInsertionOrderDecoupledFromChronology,
+    this could return a later canonical state before an earlier one (e.g.
+    Hypothesized before the Observed state that truly preceded it)."""
+
+    def test_returns_chronological_order_despite_reversed_insertion(self, migrated_store):
+        store = migrated_store
+        fid = "hist_race1"
+
+        store.store_fact_result({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.9})
+
+        import core.version_store as version_store_mod
+        orig_snapshot = version_store_mod.VersionStore.snapshot_before_change
+
+        a_paused = threading.Event()
+        b_may_proceed = threading.Event()
+
+        def hooked_snapshot(self_vs, fact_id_, fact_data, caused_by="unknown", now_iso=None):
+            if fact_data.get("epistemic_state") == "Observed":
+                a_paused.set()
+                assert b_may_proceed.wait(timeout=5), "test setup deadlocked"
+            return orig_snapshot(self_vs, fact_id_, fact_data, caused_by=caused_by, now_iso=now_iso)
+
+        version_store_mod.VersionStore.snapshot_before_change = hooked_snapshot
+        try:
+            errors: list[BaseException] = []
+
+            def writer_a():
+                try:
+                    assert store.transition_esm(fid, "Hypothesized", by="A") is True
+                except BaseException as exc:  # noqa: BLE001 — surface to main thread
+                    errors.append(exc)
+
+            t_a = threading.Thread(target=writer_a)
+            t_a.start()
+            assert a_paused.wait(timeout=5), "writer A did not reach its paused snapshot in time"
+
+            assert store.transition_esm(fid, "Supported", by="B") is True
+
+            b_may_proceed.set()
+            t_a.join(timeout=5)
+            assert not t_a.is_alive(), "writer A thread did not finish"
+            assert not errors, f"writer A raised: {errors}"
+        finally:
+            version_store_mod.VersionStore.snapshot_before_change = orig_snapshot
+
+        with store._db() as conn:
+            raw_rows = conn.execute(
+                "SELECT version_num, epistemic_state FROM fact_versions "
+                "WHERE fact_id = ? ORDER BY version_id",
+                (fid,),
+            ).fetchall()
+        assert raw_rows[0]["epistemic_state"] == "Hypothesized", (
+            "sanity check: B's snapshot (closing Hypothesized) must still "
+            "insert first, reproducing the reversed insertion order"
+        )
+        assert raw_rows[1]["epistemic_state"] == "Observed"
+
+        from core.version_store import VersionStore
+        vs = VersionStore(store.db_path)
+        history = vs.get_fact_history(fid)
+        assert len(history) == 2
+        assert history[0].epistemic_state == "Observed", (
+            f"get_fact_history() must return Observed BEFORE Hypothesized "
+            f"despite the reversed insertion order — got "
+            f"{[h.epistemic_state for h in history]}"
+        )
+        assert history[1].epistemic_state == "Hypothesized"
+
+        # Process restart: a fresh VersionStore instance returns the same order.
+        vs2 = VersionStore(store.db_path)
+        history2 = vs2.get_fact_history(fid)
+        assert [h.epistemic_state for h in history2] == [h.epistemic_state for h in history]
+
+        assert vs.verify_versions_integrity(fid)["ok"] is True
+
+    def test_deterministic_tie_break_on_equal_superseded_at(self, migrated_store):
+        store = migrated_store
+        fid = "hist_tie1"
+        store.store_fact_result({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.9})
+
+        tie_at = "2026-06-01T00:00:00+00:00"
+        with store._db() as conn:
+            conn.execute(
+                "INSERT INTO fact_versions (fact_id, version_num, claim, source, "
+                "confidence, epistemic_state, metadata, recorded_at, superseded_at, "
+                "caused_by, checksum) VALUES (?, 1, 'A', 's', 0.5, 'Observed', "
+                "'{}', '2026-01-01T00:00:00+00:00', ?, 'legacy', 'x')",
+                (fid, tie_at),
+            )
+            conn.execute(
+                "INSERT INTO fact_versions (fact_id, version_num, claim, source, "
+                "confidence, epistemic_state, metadata, recorded_at, superseded_at, "
+                "caused_by, checksum) VALUES (?, 2, 'B', 's', 0.5, 'Observed', "
+                "'{}', ?, ?, 'legacy', 'x')",
+                (fid, tie_at, tie_at),
+            )
+
+        from core.version_store import VersionStore
+        vs = VersionStore(store.db_path)
+        history = vs.get_fact_history(fid)
+        assert len(history) == 2
+        # Both rows share superseded_at; recorded_at differs (row A's is
+        # earlier) — recorded_at must decide the tie, not insertion order.
+        assert history[0].claim == "A"
+        assert history[1].claim == "B"
+
+    def test_sequential_non_concurrent_history_unchanged(self, migrated_store):
+        store = migrated_store
+        fid = "hist_seq1"
+        store.store_fact_result({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.9})
+        store.transition_esm(fid, "Hypothesized", by="test")
+        store.transition_esm(fid, "Contradicted", by="test")
+        store.transition_esm(fid, "Deprecated", by="test")
+
+        from core.version_store import VersionStore
+        vs = VersionStore(store.db_path)
+        history = vs.get_fact_history(fid)
+        assert [h.epistemic_state for h in history] == [
+            "Observed", "Hypothesized", "Contradicted",
+        ]
 
 
 # ─── Scenario 17: verify_versions_integrity() stays green ─────────────────
