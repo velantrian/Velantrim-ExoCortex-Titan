@@ -181,7 +181,7 @@ class LearningPatch:
             detail = "; ".join(f"{x.path}: {x.message}" for x in report.findings)
             raise ValueError(f"invalid LearningPatch: {detail}")
 
-    def normalized(self) -> "LearningPatch":
+    def normalized(self) -> LearningPatch:
         associations: dict[tuple[str, str, str, str], LexicalAssociationProposal] = {}
         for item in self.lexical_associations:
             candidate = replace(
@@ -196,7 +196,7 @@ class LearningPatch:
                 associations[key] = candidate
         return replace(self, lexical_associations=tuple(associations.values()))
 
-    def with_shadow_result(self, *, accepted: bool) -> "LearningPatch":
+    def with_shadow_result(self, *, accepted: bool) -> LearningPatch:
         status = PatchStatus.SHADOW_VALID if accepted else PatchStatus.SHADOW_REJECTED
         return replace(self, status=status)
 
