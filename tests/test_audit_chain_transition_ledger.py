@@ -547,3 +547,179 @@ class TestActorCodeAllowlist:
             assert map_actor_code(by) in ACTOR_CODE_ALLOWLIST
         assert map_actor_code(None) == "actor_unmapped"
         assert map_actor_code("") == "actor_unmapped"
+
+
+# ─── validate_and_promote() / _promote_to_validated_cas() (Codex P1 #2) ─────
+#
+# Confirmed by direct code review: this is a SEPARATE production path to
+# 'Validated' that does not call update_state() at all — it is the path
+# server.py's PATCH /facts/{fact_id}/transition route deliberately uses
+# for external Validated promotions specifically to enforce TruthGate
+# (transition_esm()/update_state() has no TruthGate check). It therefore
+# needs its own copy of the identical C1 (atomic, same-transaction) + S2
+# (per-fact chain_id/audit_subject_id) wiring, not inherited "for free".
+
+def _make_validatable_fact(store, fact_id: str) -> None:
+    """Advance a fact to 'Supported' with enough evidence to pass
+    TruthGate's BALANCED mode (>=2 evidence_refs), exactly the shape
+    tests/test_p0d_truthgate_enforcement.py already uses for the same
+    purpose."""
+    store.store_fact({
+        "fact_id": fact_id,
+        "claim": "A trusted seed axiom about the domain",
+        "source": "domain_seed",
+        "confidence": 0.9,
+        "metadata": {"evidence_refs": ["src1", "src2"]},
+    })
+    assert store.transition_esm(fact_id, "Hypothesized", by="truth_gate")
+    assert store.transition_esm(fact_id, "Supported", by="truth_gate")
+
+
+class TestValidateAndPromoteAuditWiring:
+    def test_successful_validated_promotion_logs_exactly_one_event(self, migrated_store):
+        store = migrated_store
+        fid = "f_validate_1"
+        _make_validatable_fact(store, fid)
+
+        verdict = store.validate_and_promote(fid, by="truth_gate")
+        assert verdict.passed is True
+        assert store.get_fact(fid)["epistemic_state"] == "Validated"
+
+        chain_id = _chain_id_for(store, fid)
+        rows = _events(store, chain_id)
+        # 2 prior ESM transitions (Observed->Hypothesized->Supported) + 1
+        # Validated promotion through the separate _promote_to_validated_cas()
+        # path = 3 total, all in the SAME per-fact chain.
+        assert len(rows) == 3
+        last = rows[-1]
+        assert last["event_type"] == "esm_transition"
+        assert last["actor"] == "truth_gate"
+        assert last["reason"] == "cas_guarded_transition"
+        assert last["from_state"] == "Supported"
+        assert last["to_state"] == "Validated"
+        assert last["fact_id"] is None
+        assert last["payload"] == "{}"
+
+    def test_cas_miss_on_validated_promotion_writes_no_event(self, migrated_store):
+        store = migrated_store
+        fid = "f_validate_cas_miss"
+        _make_validatable_fact(store, fid)
+        fact = store.get_fact(fid)
+        chain_id_before = _chain_id_for(store, fid)
+        events_before = len(_events(store, chain_id_before))
+
+        # Call _promote_to_validated_cas() directly with a deliberately
+        # stale expected_updated_at — the guarded UPDATE's WHERE clause
+        # must miss, exactly like a genuine concurrent modification would.
+        committed = store._promote_to_validated_cas(
+            fid,
+            expected_state="Supported",
+            expected_updated_at="1999-01-01T00:00:00+00:00",  # stale on purpose
+            durable_snapshot=fact,
+            by="truth_gate",
+        )
+        assert committed is False
+        assert store.get_fact(fid)["epistemic_state"] == "Supported", (
+            "a CAS miss must not mutate the canonical row"
+        )
+        assert len(_events(store, chain_id_before)) == events_before, (
+            "a CAS miss must not append an AuditChain event either"
+        )
+
+    def test_forced_audit_failure_rolls_back_validated_promotion(self, migrated_store, monkeypatch):
+        store = migrated_store
+        fid = "f_validate_rollback"
+        _make_validatable_fact(store, fid)
+        fact_before = store.get_fact(fid)
+
+        from core import audit_chain
+
+        def _boom(self, *a, **k):
+            raise RuntimeError("forced AuditChain failure for atomicity proof")
+
+        monkeypatch.setattr(audit_chain.AuditChain, "log_in_transaction", _boom)
+
+        with pytest.raises(RuntimeError, match="forced AuditChain failure"):
+            store.validate_and_promote(fid, by="truth_gate")
+
+        fact_after = store.get_fact(fid)
+        assert fact_after["epistemic_state"] == "Supported", (
+            "the canonical UPDATE (epistemic_state + metadata) must be rolled "
+            "back together with the failed AuditChain append"
+        )
+        assert fact_after["updated_at"] == fact_before["updated_at"]
+
+    def test_concurrent_validated_promotions_no_duplicate_event(self, migrated_store):
+        """Two concurrent validate_and_promote() attempts on the same fact
+        (real threads, no time.sleep) — the CAS guard must let exactly one
+        succeed, producing exactly one Validated audit event, never two."""
+        store = migrated_store
+        fid = "f_validate_concurrent"
+        _make_validatable_fact(store, fid)
+        chain_id = _chain_id_for(store, fid)
+        events_before = len(_events(store, chain_id))
+
+        release = threading.Event()
+        start_together = threading.Event()
+        results: dict[str, object] = {}
+
+        from core import audit_chain as ac_module
+        real_append_once = ac_module.AuditChain._append_once
+
+        def _gated_append_once(self, conn, **kwargs):
+            if kwargs.get("to_state") == "Validated":
+                start_together.set()
+                release.wait(timeout=5)
+            return real_append_once(self, conn, **kwargs)
+
+        def racer(key: str) -> None:
+            try:
+                results[key] = store.validate_and_promote(fid, by="truth_gate")
+            except Exception as exc:  # noqa: BLE001 -- capture for assertion below
+                results[key] = exc
+
+        ac_module.AuditChain._append_once = _gated_append_once
+        t_a = threading.Thread(target=racer, args=("a",))
+        t_a.start()
+        assert start_together.wait(timeout=5), "writer A never reached its audit append"
+        t_b = threading.Thread(target=racer, args=("b",))
+        t_b.start()
+        t_b.join(timeout=5)
+        release.set()
+        t_a.join(timeout=5)
+        ac_module.AuditChain._append_once = real_append_once
+
+        # validate_and_promote() is itself idempotent once the fact IS
+        # Validated (reason="already_validated", no new mutation/event) —
+        # exactly one racer must have caused the REAL transition
+        # (reason="passed"); the other must see it already done, not
+        # cause a second commit.
+        reasons = [r.reason for r in results.values() if hasattr(r, "reason")]
+        assert reasons.count("passed") == 1, f"exactly one racer must have actually transitioned: {results}"
+
+        rows = _events(store, chain_id)
+        assert len(rows) == events_before + 1, "exactly one Validated event, no duplicate/fork"
+        assert rows[-1]["to_state"] == "Validated"
+        sequences = [r["chain_sequence"] for r in rows]
+        assert sequences == sorted(set(sequences))
+
+    def test_chain_id_and_audit_subject_id_reused_from_earlier_transitions(self, migrated_store):
+        """_promote_to_validated_cas() is a separate code path from
+        update_state() but must land in the SAME per-fact chain — proving
+        the two independently-wired call sites share facts.audit_subject_id
+        consistently rather than each minting their own."""
+        store = migrated_store
+        fid = "f_validate_chain_reuse"
+        _make_validatable_fact(store, fid)
+        chain_id_before_validate = _chain_id_for(store, fid)
+
+        store.validate_and_promote(fid, by="truth_gate")
+
+        chain_id_after_validate = _chain_id_for(store, fid)
+        assert chain_id_after_validate == chain_id_before_validate, (
+            "validate_and_promote() must reuse the fact's existing "
+            "audit_subject_id, not mint a new one"
+        )
+        rows = _events(store, chain_id_after_validate)
+        assert len(rows) == 3
+        assert [r["to_state"] for r in rows] == ["Hypothesized", "Supported", "Validated"]

@@ -2498,6 +2498,29 @@ class SQLiteGraphStore(GraphStore):
         )
         new_metadata_json = json.dumps(new_record["metadata"])
 
+        # PR-C2: Validated is a first-class ESM transition — the same
+        # tamper-evident audit coverage wired into update_state() (C1:
+        # atomic, same-transaction; S2: per-fact chain via
+        # audit_subject_id/chain_id) applies here too. This method is
+        # deliberately NOT routed through update_state() (see its own
+        # docstring above), so it needs its own copy of the same wiring
+        # rather than getting it "for free". audit_subject_id/chain_id
+        # computation and the pre-transaction readiness check mirror
+        # update_state()'s exactly.
+        import uuid as _uuid
+
+        from core.audit_chain import (
+            AuditChain,
+            EventType,
+            REASON_CODE_CAS_TRANSITION,
+            map_actor_code,
+        )
+
+        audit_subject_id = durable_snapshot.get("audit_subject_id") or _uuid.uuid4().hex
+        chain_id = f"fact-transition:{audit_subject_id}"
+        with self._db() as ready_conn:
+            AuditChain.verify_schema_ready(ready_conn, chain_id=chain_id)
+
         with self._db() as conn:
             bump = self._fact_version_bump_sql(conn)
             if self.use_json_insert:
@@ -2536,11 +2559,28 @@ class SQLiteGraphStore(GraphStore):
                     committed = cur.rowcount == 1
 
             if not committed:
+                # PR-C2: a CAS miss produces NO AuditChain event — nothing
+                # below this point has run yet.
                 return False
 
             conn.execute(
-                "UPDATE facts SET metadata = ? WHERE fact_id = ?",
-                (new_metadata_json, fact_id),
+                "UPDATE facts SET metadata = ?, "
+                "audit_subject_id = COALESCE(audit_subject_id, ?) WHERE fact_id = ?",
+                (new_metadata_json, audit_subject_id, fact_id),
+            )
+
+            # PR-C2: log strictly after the CAS-guard success, still
+            # inside this same transaction, using this same `conn` — any
+            # exception here (including a stale chain-head race) aborts
+            # the whole transaction via _db()'s own rollback, so the
+            # canonical UPDATEs above are undone too.
+            chain = AuditChain(conn, chain_id=chain_id, _skip_schema_check=True)
+            chain.log_in_transaction(
+                event_type=EventType.ESM_TRANSITION,
+                actor=map_actor_code(by),
+                from_state=expected_state,
+                to_state=new_state,
+                reason=REASON_CODE_CAS_TRANSITION,
             )
 
         # Только теперь, когда CAS подтверждённо прошёл и закоммичен: audit
@@ -2550,6 +2590,7 @@ class SQLiteGraphStore(GraphStore):
             fact_id, durable_snapshot, caused_by=f"memory.validate_and_promote:{by}",
             now_iso=now,
         )
+        new_record["audit_subject_id"] = audit_subject_id
         self._l0_put(fact_id, new_record)
         return True
 
