@@ -88,6 +88,16 @@ _ACTOR_CODE_MAP: dict[str, str] = {
     "tool:validate_fact":      "tool_validate_fact",
     "tool:contradict_fact":    "tool_contradict_fact",
     "tool:propose_hypothesis": "tool_propose_hypothesis",
+    # PR-C2 P2 round: re-audited every by="..." literal and every
+    # `by: str = "..."` default reachable through transition_esm()/
+    # promote_esm_to()/promote_to_validated()/validate_and_promote()
+    # (core/pipeline.py:1357,1369; core/cognitive_store.py's own
+    # CognitiveStore.transition() default; core/world_skills_ingest.py:255)
+    # — these three were confirmed missing and recorded as
+    # actor_unmapped instead of stable attribution.
+    "pipeline.run":            "pipeline_run",
+    "cognitive_store":         "cognitive_store",
+    "world_skills_ingest":     "world_skills_ingest",
 }
 
 ACTOR_CODE_ALLOWLIST = frozenset(_ACTOR_CODE_MAP.values()) | {ACTOR_CODE_UNMAPPED}
@@ -861,12 +871,21 @@ class AuditChain:
 
     def list_chain_ids(self, limit: int = 10_000) -> list[str]:
         """Bounded, deterministic enumeration of every distinct chain_id
-        that has ever appended an event — including chains whose owning
-        fact has since been erased (memory_events never references
-        `facts` once fact_id is NULL for these events, so an erased
-        fact's chain remains fully listable and verifiable; only the
-        direct live-database mapping back to which fact it was is gone —
-        see facts.audit_subject_id)."""
+        that has ever appended a REAL event — including chains whose
+        owning fact has since been erased (memory_events never
+        references `facts` once fact_id is NULL for these events, so an
+        erased fact's chain remains fully listable and verifiable; only
+        the direct live-database mapping back to which fact it was is
+        gone — see facts.audit_subject_id).
+
+        Deliberately reads `memory_events` itself, NOT `audit_chain_heads`
+        (Codex P2): `audit_chain_heads` is mutable coordination state that
+        `_ensure_schema()`/`verify_schema_ready()` can seed a row for
+        before any event is ever appended (e.g. a CAS-missed transition
+        still runs the pre-transaction readiness check for its candidate
+        chain_id) — reading it would list "phantom" chains with zero
+        actual ledger entries.
+        """
         if isinstance(limit, bool) or not isinstance(limit, int):
             raise AuditChainError(f"limit must be an int, got {limit!r}")
         if limit <= 0:
@@ -875,8 +894,14 @@ class AuditChain:
             raise AuditChainError(
                 f"limit exceeds safe upper bound of {MAX_LIST_CHAIN_IDS_ROWS}: {limit!r}"
             )
-        rows = self._conn.execute(
-            "SELECT chain_id FROM audit_chain_heads ORDER BY chain_id LIMIT ?",
+        conn = self._conn
+        has_events_table = bool(conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='memory_events'"
+        ).fetchone())
+        if not has_events_table:
+            return []
+        rows = conn.execute(
+            "SELECT DISTINCT chain_id FROM memory_events ORDER BY chain_id LIMIT ?",
             (limit,),
         ).fetchall()
         return [row[0] for row in rows]

@@ -723,3 +723,146 @@ class TestValidateAndPromoteAuditWiring:
         rows = _events(store, chain_id_after_validate)
         assert len(rows) == 3
         assert [r["to_state"] for r in rows] == ["Hypothesized", "Supported", "Validated"]
+
+
+# ─── Codex P2 round (all four deferred findings, now authorized) ───────────
+
+class TestAuditSubjectIdNeverFragments:
+    """Codex P2 #1: a stale L0-cached audit_subject_id must never cause the
+    log call / L0 republish to use a different value than what the guarded
+    UPDATE's COALESCE actually committed — the whole fact's ledger must
+    stay in one chain regardless of L0 staleness."""
+
+    def test_stale_l0_snapshot_does_not_fragment_the_chain(self, migrated_store):
+        from core.memory import SQLiteGraphStore
+
+        store_a = migrated_store
+        fid = "f_frag"
+        store_a.store_fact_result({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.5})
+        store_a.transition_esm(fid, "Hypothesized", by="truth_gate")
+
+        with store_a._db() as conn:
+            real_subject_id = conn.execute(
+                "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (fid,)
+            ).fetchone()[0]
+
+        # A second instance (different worker/request) whose L0 cache still
+        # holds a pre-transition copy — epistemic_state matches the real
+        # row (so the CAS guard succeeds), but audit_subject_id is stale
+        # (None), exactly Codex's described scenario.
+        store_b = SQLiteGraphStore(store_a.db_path)
+        stale_cached = dict(store_b.get_fact(fid))
+        stale_cached["audit_subject_id"] = None
+        stale_cached["epistemic_state"] = "Hypothesized"
+        store_b._l0_put(fid, stale_cached)
+
+        ok = store_b.transition_esm(fid, "Supported", by="truth_gate")
+        assert ok is True
+
+        with store_a._db() as conn:
+            subject_id_after = conn.execute(
+                "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (fid,)
+            ).fetchone()[0]
+            all_events = conn.execute(
+                "SELECT chain_id FROM memory_events ORDER BY rowid"
+            ).fetchall()
+
+        assert subject_id_after == real_subject_id, "COALESCE must still protect the real DB value"
+        chain_ids_used = {r[0] for r in all_events}
+        assert chain_ids_used == {f"fact-transition:{real_subject_id}"}, (
+            f"every event for this fact must land in the ONE real chain, got {chain_ids_used}"
+        )
+        store_b.close()
+
+
+class TestListChainIdsOnlyRealChains:
+    """Codex P2 #2: list_chain_ids() must enumerate chains that actually
+    have events in memory_events, not merely a coordination row in
+    audit_chain_heads that a readiness check or a CAS-missed attempt can
+    create before any event is ever appended."""
+
+    def test_cas_miss_does_not_produce_a_listed_chain(self, migrated_store):
+        store = migrated_store
+        store.store_fact_result({"fact_id": "f1", "claim": "c", "source": "s", "confidence": 0.5})
+
+        with store._db() as conn:
+            conn.execute(
+                "UPDATE facts SET epistemic_state='Hypothesized', "
+                "fact_version=fact_version+1 WHERE fact_id='f1'"
+            )
+
+        ok = store.update_state(
+            "f1", "Supported",
+            {"state": "Supported", "from": "Observed", "at": "2026-01-01T00:00:00+00:00", "by": "truth_gate"},
+            "2026-01-01T00:00:00+00:00",
+        )
+        assert ok is False
+
+        from core.audit_chain import AuditChain
+
+        with store._db() as conn:
+            real_chain_ids = {
+                r[0] for r in conn.execute("SELECT DISTINCT chain_id FROM memory_events").fetchall()
+            }
+            listed = AuditChain(conn).list_chain_ids()
+
+        assert set(listed) == real_chain_ids, (
+            f"list_chain_ids() must only report chains with real events; "
+            f"listed={listed}, real={real_chain_ids}"
+        )
+        assert all(cid.startswith("fact-transition:") is False or cid in real_chain_ids for cid in listed)
+
+
+class TestDeprecatedEventClassification:
+    """Codex P2 #3: a Deprecated transition through update_state() must be
+    classified as fact_deprecated, matching the pre-existing convention
+    already established by AuditChain.log_esm_transition()."""
+
+    def test_deprecated_transition_logs_fact_deprecated(self, migrated_store):
+        store = migrated_store
+        fid = "f_deprecated"
+        store.store_fact_result({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.5})
+        store.transition_esm(fid, "Hypothesized", by="truth_gate")
+        assert store.transition_esm(fid, "Deprecated", by="truth_gate") is True
+
+        chain_id = _chain_id_for(store, fid)
+        rows = _events(store, chain_id)
+        assert rows[-1]["event_type"] == "fact_deprecated"
+        assert rows[-1]["to_state"] == "Deprecated"
+
+
+class TestActorCodeAllowlistCompleteness:
+    """Codex P2 #4: every real production `by` caller must map to a stable
+    actor_code, not fall through to actor_unmapped. Re-audited exhaustively
+    (grep for every `by="..."` literal and every `by: str = "..."` default
+    reachable through transition_esm()/promote_esm_to()/
+    promote_to_validated()/validate_and_promote()) — pipeline.py,
+    cognitive_store.py, and world_skills_ingest.py were confirmed missing."""
+
+    def test_pipeline_run_maps_to_a_stable_code(self):
+        from core.audit_chain import ACTOR_CODE_ALLOWLIST, map_actor_code
+        code = map_actor_code("pipeline.run")
+        assert code != "actor_unmapped"
+        assert code in ACTOR_CODE_ALLOWLIST
+
+    def test_cognitive_store_maps_to_a_stable_code(self):
+        from core.audit_chain import ACTOR_CODE_ALLOWLIST, map_actor_code
+        code = map_actor_code("cognitive_store")
+        assert code != "actor_unmapped"
+        assert code in ACTOR_CODE_ALLOWLIST
+
+    def test_world_skills_ingest_maps_to_a_stable_code(self):
+        from core.audit_chain import ACTOR_CODE_ALLOWLIST, map_actor_code
+        code = map_actor_code("world_skills_ingest")
+        assert code != "actor_unmapped"
+        assert code in ACTOR_CODE_ALLOWLIST
+
+    def test_pipeline_run_actor_code_reaches_the_ledger(self, migrated_store):
+        store = migrated_store
+        fid = "f_pipeline_actor"
+        store.store_fact_result({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.5})
+        store.transition_esm(fid, "Hypothesized", by="pipeline.run")
+
+        chain_id = _chain_id_for(store, fid)
+        rows = _events(store, chain_id)
+        assert rows[-1]["actor"] not in ("actor_unmapped",)

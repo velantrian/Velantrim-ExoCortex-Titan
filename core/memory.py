@@ -2165,6 +2165,24 @@ class SQLiteGraphStore(GraphStore):
                 self._l0_del(fact_id)
                 return False
 
+            # PR-C2 (Codex P2): re-read the audit_subject_id that ACTUALLY
+            # won the COALESCE above, rather than trusting the candidate
+            # this call computed from a possibly-stale `cached` read. If
+            # another writer already assigned a real audit_subject_id
+            # before this call's own (stale-L0) candidate was computed,
+            # COALESCE correctly keeps the real one in the row — but the
+            # local `audit_subject_id`/`chain_id` variables computed above
+            # would still be the discarded candidate. Logging/caching
+            # under that discarded value would fragment this fact's
+            # ledger across two chains, only one of which is reachable
+            # from facts.audit_subject_id. This SELECT sees the value
+            # this same transaction just wrote (read-your-own-write),
+            # never a value from any other, uncommitted transaction.
+            real_audit_subject_id = conn.execute(
+                "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (fact_id,)
+            ).fetchone()[0]
+            real_chain_id = f"fact-transition:{real_audit_subject_id}"
+
             # PR-C2: log strictly after the CAS-guard success, still
             # inside this same transaction, using this same `conn` — any
             # exception here (including a stale chain-head race) aborts
@@ -2176,9 +2194,11 @@ class SQLiteGraphStore(GraphStore):
                 event_type = EventType.FACT_COLLAPSED
             elif new_state == "Contradicted":
                 event_type = EventType.FACT_CONTRADICTED
+            elif new_state == "Deprecated":
+                event_type = EventType.FACT_DEPRECATED
             else:
                 event_type = EventType.ESM_TRANSITION
-            chain = AuditChain(conn, chain_id=chain_id, _skip_schema_check=True)
+            chain = AuditChain(conn, chain_id=real_chain_id, _skip_schema_check=True)
             chain.log_in_transaction(
                 event_type=event_type,
                 actor=map_actor_code(history_entry.get("by")),
@@ -2188,7 +2208,7 @@ class SQLiteGraphStore(GraphStore):
             )
 
         # ── Шаг 3: публикуем L0 ТОЛЬКО после успешной, CAS-подтверждённой записи
-        cached["audit_subject_id"] = audit_subject_id
+        cached["audit_subject_id"] = real_audit_subject_id
         self._l0_put(fact_id, cached)
         return True
 
@@ -2569,12 +2589,23 @@ class SQLiteGraphStore(GraphStore):
                 (new_metadata_json, audit_subject_id, fact_id),
             )
 
+            # PR-C2 (Codex P2): re-read the audit_subject_id that ACTUALLY
+            # won the COALESCE above — see update_state()'s identical
+            # comment for the full rationale (a stale durable_snapshot
+            # could otherwise cause this call to log/cache under a
+            # discarded candidate instead of the real, already-assigned
+            # value, fragmenting the fact's ledger across two chains).
+            real_audit_subject_id = conn.execute(
+                "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (fact_id,)
+            ).fetchone()[0]
+            real_chain_id = f"fact-transition:{real_audit_subject_id}"
+
             # PR-C2: log strictly after the CAS-guard success, still
             # inside this same transaction, using this same `conn` — any
             # exception here (including a stale chain-head race) aborts
             # the whole transaction via _db()'s own rollback, so the
             # canonical UPDATEs above are undone too.
-            chain = AuditChain(conn, chain_id=chain_id, _skip_schema_check=True)
+            chain = AuditChain(conn, chain_id=real_chain_id, _skip_schema_check=True)
             chain.log_in_transaction(
                 event_type=EventType.ESM_TRANSITION,
                 actor=map_actor_code(by),
@@ -2590,7 +2621,7 @@ class SQLiteGraphStore(GraphStore):
             fact_id, durable_snapshot, caused_by=f"memory.validate_and_promote:{by}",
             now_iso=now,
         )
-        new_record["audit_subject_id"] = audit_subject_id
+        new_record["audit_subject_id"] = real_audit_subject_id
         self._l0_put(fact_id, new_record)
         return True
 
