@@ -883,3 +883,64 @@ am.apply_migrations(Path({db_path!r}), skip_backup=True)
         assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     finally:
         conn.close()
+
+
+def test_runtime_created_audit_triggers_do_not_block_migration_009(tmp_path):
+    """PR-C2 (Codex P1): core.audit_chain.AuditChain.verify_schema_ready()
+    can create memory_events + prevent_audit_update/prevent_audit_delete
+    from scratch, at runtime, on a fresh database that has NEVER run any
+    migration (PRAGMA user_version == 0) — this happens the first time
+    core.memory.SQLiteGraphStore.update_state() wires an ESM/terminal
+    transition into the audit ledger. If an operator later runs
+    scripts/apply_migrations.py against that same database from scratch,
+    migration 009's own `CREATE TRIGGER prevent_audit_update`/
+    `prevent_audit_delete` statements are not idempotent (plain
+    `CREATE TRIGGER`, not `CREATE TRIGGER IF NOT EXISTS`) and must not
+    abort with "trigger ... already exists" — the entire migration chain
+    (009 through the latest version) must still complete."""
+    db_path = str(tmp_path / "runtime_first.db")
+
+    # Exercise the real runtime path: a bare SQLiteGraphStore (no
+    # migrations applied at all — PRAGMA user_version stays 0) performing
+    # an ordinary ESM transition, exactly as core/memory.py's own
+    # docstrings describe as the common case for fresh/test databases.
+    from core.memory import SQLiteGraphStore
+
+    store = SQLiteGraphStore(db_path)
+    store.store_fact_result({"fact_id": "f1", "claim": "c", "source": "s", "confidence": 0.5})
+    assert store.transition_esm("f1", "Hypothesized", by="truth_gate") is True
+    store.close()
+
+    conn = sqlite3.connect(db_path)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 0
+    triggers = {
+        r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='trigger'"
+        ).fetchall()
+    }
+    assert "prevent_audit_update" in triggers
+    assert "prevent_audit_delete" in triggers
+    conn.close()
+
+    result = _run_apply(db_path)
+    assert result.returncode == 0, (
+        f"apply_migrations.py must not abort on a runtime-audit-touched "
+        f"DB:\nstdout={result.stdout}\nstderr={result.stderr}"
+    )
+
+    conn = sqlite3.connect(db_path)
+    try:
+        sys.path.insert(0, SCRIPTS_DIR)
+        from apply_migrations import LATEST_VERSION
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == LATEST_VERSION
+        # The append-only guarantee itself must still hold afterwards —
+        # stripping the CREATE TRIGGER statement must not silently leave
+        # the database without real protection.
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "UPDATE memory_events SET actor = 'hacker' WHERE event_id = "
+                "(SELECT event_id FROM memory_events LIMIT 1)"
+            )
+        assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+    finally:
+        conn.close()
