@@ -381,7 +381,8 @@ class SQLiteGraphStore(GraphStore):
                     r[1] for r in conn.execute("PRAGMA table_info(facts)").fetchall()
                 }
                 for col in ("history", "t_event_valid_start", "t_event_valid_end",
-                            "t_ingestion_start", "t_ingestion_end"):
+                            "t_ingestion_start", "t_ingestion_end",
+                            "audit_subject_id"):
                     if col not in existing_cols:
                         conn.execute(
                             f"ALTER TABLE facts ADD COLUMN {col} TEXT DEFAULT NULL"
@@ -2055,6 +2056,35 @@ class SQLiteGraphStore(GraphStore):
         # выполнялся и "успешно" перезаписывал metadata под несостоявшийся
         # переход — false success с рассинхронизацией state/metadata. Слияние
         # в один стейтмент с проверкой rowcount закрывает и это.
+        #
+        # PR-C2: ESM/terminal-state transitions get a tamper-evident
+        # AuditChain event, atomic with this same UPDATE (same connection,
+        # same transaction — C1 design). audit_subject_id is an opaque,
+        # lazily-generated per-fact token (never the real fact_id) used
+        # only to build a per-fact chain_id; it is erased automatically
+        # when the fact itself is erased (facts.audit_subject_id lives on
+        # the same row). memory_events.fact_id is NEVER populated for
+        # these events — confirmed empirically (PR-C2 design gate) that a
+        # real fact_id there would deadlock GDPR erasure the moment
+        # foreign_keys enforcement is ever enabled for this connection,
+        # since memory_events' append-only triggers make the child row
+        # undeletable. Readiness (schema self-heal, never DDL mid-
+        # transaction) is checked on a SEPARATE connection/transaction
+        # before this one opens.
+        import uuid as _uuid
+
+        from core.audit_chain import (
+            AuditChain,
+            EventType,
+            REASON_CODE_CAS_TRANSITION,
+            map_actor_code,
+        )
+
+        audit_subject_id = cached.get("audit_subject_id") or _uuid.uuid4().hex
+        chain_id = f"fact-transition:{audit_subject_id}"
+        with self._db() as ready_conn:
+            AuditChain.verify_schema_ready(ready_conn, chain_id=chain_id)
+
         with self._db() as conn:
             bump = self._fact_version_bump_sql(conn)
             if self.use_json_insert:
@@ -2065,19 +2095,21 @@ class SQLiteGraphStore(GraphStore):
                             updated_at      = ?,
                             {bump}history         = json_insert(history, '$[#]', json(?)),
                             t_ingestion_end = COALESCE(t_ingestion_end, ?),
-                            metadata        = ?
+                            metadata        = ?,
+                            audit_subject_id = COALESCE(audit_subject_id, ?)
                         WHERE fact_id = ? AND epistemic_state = ?
                     """, (new_state, now, json.dumps(history_entry), now,
-                          new_metadata_json, fact_id, old_state))
+                          new_metadata_json, audit_subject_id, fact_id, old_state))
                 else:
                     cur = conn.execute(f"""
                         UPDATE facts
                         SET epistemic_state = ?,
                             updated_at      = ?,    {bump}history         = json_insert(history, '$[#]', json(?)),
-                            metadata        = ?
+                            metadata        = ?,
+                            audit_subject_id = COALESCE(audit_subject_id, ?)
                         WHERE fact_id = ? AND epistemic_state = ?
                     """, (new_state, now, json.dumps(history_entry),
-                          new_metadata_json, fact_id, old_state))
+                          new_metadata_json, audit_subject_id, fact_id, old_state))
             else:
                 row = conn.execute(
                     "SELECT history FROM facts WHERE fact_id = ?", (fact_id,)
@@ -2099,19 +2131,21 @@ class SQLiteGraphStore(GraphStore):
                         SET epistemic_state = ?, updated_at = ?,
                             {bump}history = ?,
                             t_ingestion_end = COALESCE(t_ingestion_end, ?),
-                            metadata = ?
+                            metadata = ?,
+                            audit_subject_id = COALESCE(audit_subject_id, ?)
                         WHERE fact_id = ? AND epistemic_state = ?
                     """, (new_state, now, json.dumps(history_l1), now,
-                          new_metadata_json, fact_id, old_state))
+                          new_metadata_json, audit_subject_id, fact_id, old_state))
                 else:
                     cur = conn.execute(f"""
                         UPDATE facts
                         SET epistemic_state = ?, updated_at = ?,
                             {bump}history = ?,
-                            metadata = ?
+                            metadata = ?,
+                            audit_subject_id = COALESCE(audit_subject_id, ?)
                         WHERE fact_id = ? AND epistemic_state = ?
                     """, (new_state, now, json.dumps(history_l1),
-                          new_metadata_json, fact_id, old_state))
+                          new_metadata_json, audit_subject_id, fact_id, old_state))
 
             if cur.rowcount == 0:
                 # CAS guard missed: epistemic_state changed concurrently
@@ -2125,10 +2159,36 @@ class SQLiteGraphStore(GraphStore):
                 # on PR #41: an un-evicted stale L0 entry could otherwise
                 # cause repeated CAS misses / illegal-transition decisions
                 # downstream).
+                #
+                # PR-C2: a CAS miss produces NO AuditChain event — the log
+                # call below is only reached after this check passes.
                 self._l0_del(fact_id)
                 return False
 
+            # PR-C2: log strictly after the CAS-guard success, still
+            # inside this same transaction, using this same `conn` — any
+            # exception here (including a stale chain-head race) aborts
+            # the whole transaction via _db()'s own rollback, so the
+            # canonical UPDATE above is undone too. No payload, no free
+            # text: only structured, allowlisted actor_code/reason_code
+            # and the plain ESM state names already validated above.
+            if new_state == "Collapsed":
+                event_type = EventType.FACT_COLLAPSED
+            elif new_state == "Contradicted":
+                event_type = EventType.FACT_CONTRADICTED
+            else:
+                event_type = EventType.ESM_TRANSITION
+            chain = AuditChain(conn, chain_id=chain_id, _skip_schema_check=True)
+            chain.log_in_transaction(
+                event_type=event_type,
+                actor=map_actor_code(history_entry.get("by")),
+                from_state=old_state,
+                to_state=new_state,
+                reason=REASON_CODE_CAS_TRANSITION,
+            )
+
         # ── Шаг 3: публикуем L0 ТОЛЬКО после успешной, CAS-подтверждённой записи
+        cached["audit_subject_id"] = audit_subject_id
         self._l0_put(fact_id, cached)
         return True
 

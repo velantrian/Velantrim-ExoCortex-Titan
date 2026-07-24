@@ -43,6 +43,7 @@ MIGRATIONS = [
     (15, BASE_DIR / "migrations" / "015_erasure_batches.sql"),
     (16, BASE_DIR / "migrations" / "016_erasure_job_subject.sql"),
     (17, BASE_DIR / "migrations" / "017_audit_chain_hash_v2.sql"),
+    (18, BASE_DIR / "migrations" / "018_audit_subject_id.sql"),
 ]
 
 LATEST_VERSION = max(v for v, _ in MIGRATIONS)
@@ -204,6 +205,16 @@ def dry_run_on_copy(db_path: Path, migrations: list[tuple[int, Path]]) -> bool:
                                 l for l in raw_sql.split("\n")
                                 if f"ALTER TABLE memory_events ADD COLUMN {col}" not in l
                             )
+                if version == 18 and column_exists(conn, "facts", "audit_subject_id"):
+                    # PR-C2: core.memory.SQLiteGraphStore._db()'s own runtime
+                    # column self-heal (mirrors history/t_event_valid_start/
+                    # etc.) can add facts.audit_subject_id before an operator
+                    # ever runs this migration — same non-idempotent-ALTER
+                    # problem as 010/011/014/016/017 above.
+                    raw_sql = "\n".join(
+                        l for l in raw_sql.split("\n")
+                        if "ALTER TABLE facts ADD COLUMN audit_subject_id" not in l
+                    )
 
                 conn.executescript(raw_sql)
                 conn.execute(f"PRAGMA user_version = {version}")
@@ -377,6 +388,18 @@ def apply_migrations(
                         line for line in raw_sql.split("\n")
                         if f"ALTER TABLE memory_events ADD COLUMN {col}" not in line
                     )
+
+        # 018 (PR-C2): core.memory.SQLiteGraphStore._db()'s own runtime
+        # column self-heal can add facts.audit_subject_id before an
+        # operator ever runs this migration — same non-idempotent-ALTER
+        # problem as 010/011/014/016/017 above.
+        if version == 18 and column_exists(conn, "facts", "audit_subject_id"):
+            print("   ℹ️  Колонка facts.audit_subject_id уже существует — "
+                  "пропускаю ALTER")
+            raw_sql = "\n".join(
+                line for line in raw_sql.split("\n")
+                if "ALTER TABLE facts ADD COLUMN audit_subject_id" not in line
+            )
 
         try:
             conn.executescript(raw_sql)
