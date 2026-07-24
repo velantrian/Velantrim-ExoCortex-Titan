@@ -10,11 +10,11 @@ import re
 from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any
+from typing import Self, cast
 from uuid import uuid4
 
-MODES = frozenset({"hybrid", "bm25", "vector", "graph", "lexical"})
-CHARGE_SIGNALS = frozenset(
+MODES: frozenset[str] = frozenset({"hybrid", "bm25", "vector", "graph", "lexical"})
+CHARGE_SIGNALS: frozenset[str] = frozenset(
     {"REPETITION", "RECENCY", "SUCCESSFUL_USE", "EXPLICIT_PRIORITY", "TASK_RELEVANCE"}
 )
 MAX_ITEMS = 256
@@ -137,8 +137,10 @@ class LearningPatch:
 
         for i, item in enumerate(self.lexical_associations):
             base = f"lexical_associations[{i}]"
-            for name in ("surface", "concept", "language", "domain"):
-                _required(out, f"{base}.{name}", getattr(item, name))
+            _required(out, f"{base}.surface", item.surface)
+            _required(out, f"{base}.concept", item.concept)
+            _required(out, f"{base}.language", item.language)
+            _required(out, f"{base}.domain", item.domain)
             _unit(out, f"{base}.weight", item.weight)
 
         for i, item in enumerate(self.intent_patterns):
@@ -181,7 +183,7 @@ class LearningPatch:
             detail = "; ".join(f"{x.path}: {x.message}" for x in report.findings)
             raise ValueError(f"invalid LearningPatch: {detail}")
 
-    def normalized(self) -> LearningPatch:
+    def normalized(self) -> Self:
         associations: dict[tuple[str, str, str, str], LexicalAssociationProposal] = {}
         for item in self.lexical_associations:
             candidate = replace(
@@ -194,14 +196,14 @@ class LearningPatch:
             key = (candidate.surface, candidate.concept, candidate.language, candidate.domain)
             if key not in associations or candidate.weight > associations[key].weight:
                 associations[key] = candidate
-        return replace(self, lexical_associations=tuple(associations.values()))
+        return cast(Self, replace(self, lexical_associations=tuple(associations.values())))
 
-    def with_shadow_result(self, *, accepted: bool) -> LearningPatch:
+    def with_shadow_result(self, *, accepted: bool) -> Self:
         status = PatchStatus.SHADOW_VALID if accepted else PatchStatus.SHADOW_REJECTED
-        return replace(self, status=status)
+        return cast(Self, replace(self, status=status))
 
-    def to_dict(self) -> dict[str, Any]:
-        payload = asdict(self)
+    def to_dict(self) -> dict[str, object]:
+        payload = cast(dict[str, object], asdict(self))
         payload["status"] = self.status.value
         return payload
 
@@ -216,11 +218,11 @@ def _required(out: list[Finding], path: str, value: object, limit: int = MAX_TEX
 
 
 def _unit(out: list[Finding], path: str, value: object) -> None:
-    if (
-        isinstance(value, bool)
-        or not isinstance(value, (int, float))
-        or not 0.0 <= float(value) <= 1.0
-    ):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        out.append(Finding("LP_UNIT_INTERVAL", path, "number in [0,1] required"))
+        return
+    numeric = float(value)
+    if not 0.0 <= numeric <= 1.0:
         out.append(Finding("LP_UNIT_INTERVAL", path, "number in [0,1] required"))
 
 
