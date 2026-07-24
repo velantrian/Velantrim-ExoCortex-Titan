@@ -196,11 +196,11 @@ class LearningPatch:
             key = (candidate.surface, candidate.concept, candidate.language, candidate.domain)
             if key not in associations or candidate.weight > associations[key].weight:
                 associations[key] = candidate
-        return cast(Self, replace(self, lexical_associations=tuple(associations.values())))
+        return replace(self, lexical_associations=tuple(associations.values()))
 
     def with_shadow_result(self, *, accepted: bool) -> Self:
         status = PatchStatus.SHADOW_VALID if accepted else PatchStatus.SHADOW_REJECTED
-        return cast(Self, replace(self, status=status))
+        return replace(self, status=status)
 
     def to_dict(self) -> dict[str, object]:
         payload = cast(dict[str, object], asdict(self))
