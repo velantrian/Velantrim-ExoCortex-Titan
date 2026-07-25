@@ -1064,28 +1064,108 @@ class SQLiteGraphStore(GraphStore):
 
         The flag lives in the fact's metadata (`restricted` = ISO timestamp).
         A restricted fact stays stored but is excluded from recall
-        (get_facts_by_ids). Returns True if the fact exists.
+        (get_facts_by_ids).
+
+        Issue #50: restriction is a meaningful canonical mutation, not a
+        metadata shortcut. The CAS-guarded facts UPDATE, VersionStore
+        pre-image, and structured AuditChain event share one transaction.
+        Repeating the already-applied state is an idempotent no-op and emits
+        no false version/audit evidence.
+
+        Returns True when the requested state exists after this call, False
+        when the fact is absent or changed concurrently to a different state.
         """
+        from core.write_gate import ensure_writes_allowed
+
+        ensure_writes_allowed()
         self._release_stray_locks()
+
+        durable = self._get_fact_durable(fact_id)
+        if durable is None:
+            self._l0_del(fact_id)
+            return False
+
+        old_meta = dict(durable.get("metadata") or {})
+        currently_restricted = bool(old_meta.get("restricted"))
+        if currently_restricted == restricted:
+            self._l0_put(fact_id, durable)
+            return True
+
+        now = _now()
+        new_meta = dict(old_meta)
+        if restricted:
+            new_meta["restricted"] = now
+        else:
+            new_meta.pop("restricted", None)
+
+        import uuid as _uuid
+
+        from core.audit_chain import (
+            ACTOR_CODE_SET_RESTRICTED,
+            REASON_CODE_CAS_GUARDED_WRITE,
+            AuditChain,
+            EventType,
+        )
+
+        audit_subject_id = durable.get("audit_subject_id") or _uuid.uuid4().hex
+        chain_id = f"fact-transition:{audit_subject_id}"
+        with self._db() as ready_conn:
+            AuditChain.verify_schema_ready(ready_conn, chain_id=chain_id)
+
+        cas_miss = False
         with self._db() as conn:
-            row = conn.execute(
-                "SELECT metadata FROM facts WHERE fact_id = ?", (fact_id,)
-            ).fetchone()
-            if row is None:
-                return False
-            try:
-                meta = json.loads(row["metadata"] or "{}")
-            except (json.JSONDecodeError, TypeError):
-                meta = {}
-            if restricted:
-                meta["restricted"] = _now()
-            else:
-                meta.pop("restricted", None)
-            conn.execute(
-                "UPDATE facts SET metadata = ?, updated_at = ? WHERE fact_id = ?",
-                (json.dumps(meta), _now(), fact_id),
+            cur = conn.execute(
+                "UPDATE facts SET metadata = ?, updated_at = ?, "
+                "audit_subject_id = COALESCE(audit_subject_id, ?) "
+                "WHERE fact_id = ? AND updated_at = ?",
+                (
+                    json.dumps(new_meta),
+                    now,
+                    audit_subject_id,
+                    fact_id,
+                    durable["updated_at"],
+                ),
             )
-        self._l0_del(fact_id)  # invalidate cache so recall re-reads the flag
+            if cur.rowcount == 0:
+                cas_miss = True
+            else:
+                real_audit_subject_id = conn.execute(
+                    "SELECT audit_subject_id FROM facts WHERE fact_id = ?",
+                    (fact_id,),
+                ).fetchone()[0]
+                self._snapshot_before_change_in_transaction(
+                    conn,
+                    fact_id,
+                    durable,
+                    caused_by=(
+                        "memory.set_restricted"
+                        if restricted
+                        else "memory.set_unrestricted"
+                    ),
+                    now_iso=now,
+                )
+                chain = AuditChain(
+                    conn,
+                    chain_id=f"fact-transition:{real_audit_subject_id}",
+                    _skip_schema_check=True,
+                )
+                chain.log_in_transaction(
+                    event_type=(
+                        EventType.FACT_RESTRICTED
+                        if restricted
+                        else EventType.FACT_UNRESTRICTED
+                    ),
+                    actor=ACTOR_CODE_SET_RESTRICTED,
+                    to_state=durable.get("epistemic_state"),
+                    reason=REASON_CODE_CAS_GUARDED_WRITE,
+                )
+
+        self._l0_del(fact_id)  # force the next recall to read committed policy
+        if cas_miss:
+            latest = self._get_fact_durable(fact_id)
+            if latest is None:
+                return False
+            return bool((latest.get("metadata") or {}).get("restricted")) == restricted
         return True
 
     def _fact_version_bump_sql(self, conn) -> str:
@@ -1104,12 +1184,13 @@ class SQLiteGraphStore(GraphStore):
         now_iso: str | None = None,
     ) -> None:
         """
-        Transfer Pack 1: record a pre-image snapshot of `fact_data` (the
-        state a change is superseding) into VersionStore.
+        Legacy standalone snapshot helper.
 
-        The main V8.6 table keeps its 4-field bi-temporal contract. VersionStore
-        is an additive audit/history layer; failures are logged and do not block
-        the existing memory write path.
+        New canonical lifecycle writers MUST use
+        _snapshot_before_change_in_transaction() instead: this helper opens a
+        separate VersionStore connection, cannot share the canonical SQLite
+        transaction, and intentionally remains only for backwards-compatible
+        external/test instrumentation.
 
         PR-C1d: `now_iso`, when given, is forwarded as the snapshot's
         superseded_at — the SAME "now" the caller already used for its own
@@ -1144,6 +1225,44 @@ class SQLiteGraphStore(GraphStore):
             )
         except Exception:
             logger.exception("VersionStore snapshot failed for %s", fact_id)
+
+    def _snapshot_before_change_in_transaction(
+        self,
+        conn: sqlite3.Connection,
+        fact_id: str,
+        fact_data: dict[str, Any],
+        caused_by: str,
+        now_iso: str,
+    ) -> int | None:
+        """Append VersionStore evidence inside a canonical write transaction.
+
+        Issue #50 turns version history from a post-commit, best-effort side
+        effect into part of the write protocol:
+
+            facts mutation + fact_versions pre-image + AuditChain append
+                                == one SQLite transaction
+
+        The legacy ``VELANTRIM_VERSION_SNAPSHOTS=false`` switch is still
+        honoured temporarily for backwards compatibility with historical
+        recovery tests. In the default/production contract, however, errors
+        are never swallowed here: a missing table, integrity failure, or
+        injected storage error propagates through ``_db()`` and rolls the
+        canonical mutation back with its audit append.
+        """
+        if (os.getenv("VELANTRIM_VERSION_SNAPSHOTS", "true") or "").lower() in {
+            "0", "false", "no", "off",
+        }:
+            return None
+
+        from core.version_store import VersionStore
+
+        return VersionStore.snapshot_before_change_in_transaction(
+            conn,
+            fact_id,
+            fact_data,
+            caused_by=caused_by,
+            now_iso=now_iso,
+        )
 
     # ── store_fact ──────────────────────────────────────────────────────────
 
@@ -1519,6 +1638,20 @@ class SQLiteGraphStore(GraphStore):
                 "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (fact_id,)
             ).fetchone()[0]
 
+            # Issue #50: the pre-image is no longer a post-commit,
+            # best-effort side effect.  It shares this exact transaction
+            # with the UPSERT above and AuditChain append below.  A version
+            # failure therefore rolls the canonical write back instead of
+            # leaving an unversioned current row.
+            if existing:
+                self._snapshot_before_change_in_transaction(
+                    conn,
+                    fact_id,
+                    existing,
+                    caused_by="memory.store_fact",
+                    now_iso=now,
+                )
+
             from_state: str | None = None
             if existing is None:
                 event_type = EventType.FACT_CREATED
@@ -1537,21 +1670,6 @@ class SQLiteGraphStore(GraphStore):
             )
 
         record["audit_subject_id"] = real_audit_subject_id
-
-        # PR-C1b (Issue #37): VersionStore-снимок предыдущего состояния теперь
-        # делается ТОЛЬКО после успешного коммита записи — как уже сделано в
-        # _promote_to_validated_cas()/supersede_fact_cas(). Раньше снимок
-        # снимался ДО UPSERT, до того как известно, удастся ли запись — и
-        # неудачный UPDATE (например, из-за bump_fact_version) оставлял в
-        # fact_versions "superseded"-запись без версии-преемника: фантомную
-        # дыру в истории при том, что сам факт не менялся.
-        if existing:
-            self._snapshot_before_change(
-                fact_id,
-                existing,
-                caused_by="memory.store_fact",
-                now_iso=now,
-            )
 
         # SPLIT-BRAIN FIX (audit C-2): L0-кэш пишем ТОЛЬКО ПОСЛЕ успешной записи в L1 (durable).
         # Раньше _l0_put шёл ДО INSERT → при сбое L1 в L0 оставался факт, которого нет в L1.
@@ -2120,6 +2238,7 @@ class SQLiteGraphStore(GraphStore):
             return False
 
         old_state = cached.get("epistemic_state", "Observed")  # FIX #19: сохраняем до мутации
+        preimage = copy.deepcopy(cached)
         cached = copy.deepcopy(cached)
         cached["epistemic_state"] = new_state
         cached["updated_at"] = now
@@ -2282,6 +2401,17 @@ class SQLiteGraphStore(GraphStore):
                 "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (fact_id,)
             ).fetchone()[0]
             real_chain_id = f"fact-transition:{real_audit_subject_id}"
+
+            self._snapshot_before_change_in_transaction(
+                conn,
+                fact_id,
+                preimage,
+                caused_by=(
+                    f"memory.transition_esm:"
+                    f"{history_entry.get('by') or 'update_state'}"
+                ),
+                now_iso=now,
+            )
 
             # PR-C2: log strictly after the CAS-guard success, still
             # inside this same transaction, using this same `conn` — any
@@ -2496,23 +2626,10 @@ class SQLiteGraphStore(GraphStore):
         history_entry = {
             "state": new_state, "from": current_state, "at": now, "by": by
         }
-        # PR-C1d (Issue #39, part D): snapshot the pre-image only AFTER
-        # update_state() has actually committed — previously this ran
-        # BEFORE the canonical write, so a CAS miss (stale caller), a
-        # missing fact_id, or a forced SQL failure inside update_state()
-        # still left a "superseded" fact_versions row for a transition that
-        # never happened to the canonical facts row. update_state()'s own
-        # exception is not caught here — it must propagate, and it must not
-        # be preceded by a snapshot that would then be phantom.
-        ok = self.update_state(fact_id, new_state, history_entry, now)
-        if ok:
-            self._snapshot_before_change(
-                fact_id,
-                fact,
-                caused_by=f"memory.transition_esm:{by}",
-                now_iso=now,
-            )
-        return ok
+        # update_state() owns the full transaction: canonical UPDATE,
+        # VersionStore pre-image, and AuditChain append. A CAS miss produces
+        # none of them; any evidence-write failure rolls all of them back.
+        return self.update_state(fact_id, new_state, history_entry, now)
 
     _ESM_LADDER = ("Observed", "Hypothesized", "Supported", "Validated")
 
@@ -2586,19 +2703,10 @@ class SQLiteGraphStore(GraphStore):
         "снимок больше не действителен", и вызывающий обязан трактовать это
         как concurrent_modification, а не как success.
 
-        VersionStore-снимок и публикация L0 происходят СТРОГО после
-        подтверждённого успеха (rowcount == 1) — снимок больше не пишется
-        для отклонённой попытки (см. review finding на PR #6: раньше
-        _snapshot_before_change() вызывался до CAS и оставлял pre-image для
-        перехода, который на самом деле не состоялся).
-
-        Ограничение согласованности: сам факт (в SQLite) и VersionStore
-        (core/version_store.py) — РАЗНЫЕ соединения/файлы. Между commit'ом
-        основной мутации и записью в VersionStore нет общей транзакции —
-        падение процесса именно в этом окне оставит успешный переход БЕЗ
-        version-снимка. Это не хуже поведения transition_esm() везде
-        в остальной кодовой базе (тот же паттерн), и explicitly не решается
-        здесь — не относится к TruthGate-обходу, который чинит этот PR.
+        VersionStore-снимок записывается только после подтверждённого CAS,
+        но ДО commit — на том же ``conn`` и в той же транзакции, что facts
+        UPDATE и AuditChain. Поэтому отклонённая попытка не создаёт фантом,
+        а сбой version/audit evidence откатывает сам переход.
         """
         from core.write_gate import ensure_writes_allowed
         ensure_writes_allowed()
@@ -2706,6 +2814,14 @@ class SQLiteGraphStore(GraphStore):
             ).fetchone()[0]
             real_chain_id = f"fact-transition:{real_audit_subject_id}"
 
+            self._snapshot_before_change_in_transaction(
+                conn,
+                fact_id,
+                durable_snapshot,
+                caused_by=f"memory.validate_and_promote:{by}",
+                now_iso=now,
+            )
+
             # PR-C2: log strictly after the CAS-guard success, still
             # inside this same transaction, using this same `conn` — any
             # exception here (including a stale chain-head race) aborts
@@ -2720,13 +2836,8 @@ class SQLiteGraphStore(GraphStore):
                 reason=REASON_CODE_CAS_TRANSITION,
             )
 
-        # Только теперь, когда CAS подтверждённо прошёл и закоммичен: audit
-        # pre-image (снимок ДО мутации — durable_snapshot, который у нас уже
-        # есть, повторное чтение не нужно) и публикация L0.
-        self._snapshot_before_change(
-            fact_id, durable_snapshot, caused_by=f"memory.validate_and_promote:{by}",
-            now_iso=now,
-        )
+        # Canonical UPDATE + version pre-image + audit event have committed.
+        # Only the process-local cache publication remains.
         new_record["audit_subject_id"] = real_audit_subject_id
         self._l0_put(fact_id, new_record)
         return True
@@ -2771,20 +2882,11 @@ class SQLiteGraphStore(GraphStore):
         sqlite3.IntegrityError → committed=False, reason="new_id_collision",
         без каких-либо иных мутаций в этой попытке.
 
-        VersionStore-снимок (для old_id), L0-публикация обоих фактов и
-        FTS-индекс нового факта происходят СТРОГО после подтверждённого
-        успеха — ничего не публикуется для отклонённой/раскэшированной
-        попытки (тот же принцип, что и в _promote_to_validated_cas()).
-
-        Ограничение согласованности (см. docs/PROJECT_STATUS.md): сама
-        facts-транзакция атомарна, но VersionStore, causal_graph и
-        provenance_chain (последний вызывается уровнем выше, в
-        core.truth_maintenance.supersede, ПОСЛЕ успешного commit) — это
-        отдельные соединения/файлы. Падение процесса между commit'ом этой
-        транзакции и этими вторичными записями оставит успешный supersede
-        БЕЗ соответствующих audit/relation-артефактов. Это не решается
-        здесь и не является предметом этого PR (тот же паттерн, что и везде
-        в кодовой базе).
+        VersionStore pre-image старого факта и оба AuditChain события
+        записываются после подтверждённого CAS, но до commit — внутри той
+        же facts-транзакции. L0 публикуется только после commit. Внешние
+        causal/provenance projections всё ещё остаются отдельной, явно
+        ограниченной следующим P0-срезом областью.
         """
         from core.fact_integrity import attach_integrity_metadata
         from core.write_gate import ensure_writes_allowed
@@ -3025,6 +3127,14 @@ class SQLiteGraphStore(GraphStore):
                 "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (old_id,)
             ).fetchone()[0]
 
+            self._snapshot_before_change_in_transaction(
+                conn,
+                old_id,
+                old_durable_snapshot,
+                caused_by=f"memory.supersede_fact_cas:{by}",
+                now_iso=old_deprecated_at,
+            )
+
             actor_code = map_actor_code(by)
             new_chain = AuditChain(
                 conn, chain_id=f"fact-transition:{audit_subject_id_new}", _skip_schema_check=True,
@@ -3063,17 +3173,8 @@ class SQLiteGraphStore(GraphStore):
                 "audit_subject_id": real_old_audit_subject_id,
             }
 
-        # 10) Only now, with the transaction committed, do the two
-        # process-local side effects the caller depends on: the VersionStore
-        # pre-image of the OLD fact (its state right before Deprecation —
-        # mirrors _promote_to_validated_cas()'s convention), and L0 refresh
-        # for both fact_ids so subsequent reads see the committed truth
-        # rather than a stale or absent cache entry.
-        self._snapshot_before_change(
-            old_id, old_durable_snapshot,
-            caused_by=f"memory.supersede_fact_cas:{by}",
-            now_iso=old_deprecated_at,
-        )
+        # 10) The durable transaction has committed; only process-local L0
+        # publication remains.
         self._l0_put(new_fact_id, new_final_record)
         self._l0_put(old_id, old_final_record)
         return SupersedeCasResult(
@@ -3287,10 +3388,10 @@ class SQLiteGraphStore(GraphStore):
         durable updated_at (WHERE fact_id = ? AND updated_at = ?); при
         rowcount == 0 (несуществующий факт ИЛИ конкурентная модификация)
         возвращается False, stale L0 инвалидируется, ничего не
-        перезаписывается. VersionStore-снимок и публикация L0 происходят
-        строго ПОСЛЕ подтверждённого commit'а — раньше снимок снимался ДО
-        UPDATE и оставался "фантомным" при отклонённой/несуществующей
-        попытке.
+        перезаписывается. VersionStore-снимок создаётся после успешного CAS,
+        но внутри той же транзакции до commit; L0 публикуется только после
+        commit. Поэтому отклонённая попытка не оставляет фантомной версии,
+        а сбой version/audit evidence откатывает сам UPDATE.
         """
         from core.write_gate import ensure_writes_allowed
         ensure_writes_allowed()
@@ -3378,6 +3479,13 @@ class SQLiteGraphStore(GraphStore):
                 real_audit_subject_id = conn.execute(
                     "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (fact_id,)
                 ).fetchone()[0]
+                self._snapshot_before_change_in_transaction(
+                    conn,
+                    fact_id,
+                    cached,
+                    caused_by="memory.invalidate_edge",
+                    now_iso=now,
+                )
                 chain = AuditChain(
                     conn, chain_id=f"fact-transition:{real_audit_subject_id}", _skip_schema_check=True,
                 )
@@ -3399,12 +3507,6 @@ class SQLiteGraphStore(GraphStore):
                 return True
             return False
 
-        self._snapshot_before_change(
-            fact_id,
-            cached,
-            caused_by="memory.invalidate_edge",
-            now_iso=now,
-        )
         new_cached = copy.deepcopy(cached)
         if not new_cached.get("t_event_valid_end"):
             new_cached["t_event_valid_end"] = t_ev_end
@@ -3539,6 +3641,7 @@ class SQLiteGraphStore(GraphStore):
         records_nobump: list[dict] = []  # new facts + metadata-only updates to existing facts
         l0_pending: list[tuple] = []  # C2: (fact_id, l0_record) — в L0 ТОЛЬКО после commit L1
         audit_pending: list[dict] = []  # PR-C3: one entry per record that reaches the transaction
+        seen_fact_ids: set[str] = set()
 
         now = _now()
 
@@ -3558,6 +3661,12 @@ class SQLiteGraphStore(GraphStore):
                 fact_id = fact.get("fact_id")
                 if not fact_id:
                     raise ValueError("store_facts_batch: fact_id обязателен")
+                if fact_id in seen_fact_ids:
+                    raise ValueError(
+                        f"store_facts_batch: duplicate fact_id '{fact_id}' in one "
+                        "transaction is ambiguous for version/audit evidence"
+                    )
+                seen_fact_ids.add(fact_id)
 
                 requested_state = fact.get("epistemic_state", "Observed")
                 if requested_state not in ESM_STATES:
@@ -3585,8 +3694,40 @@ class SQLiteGraphStore(GraphStore):
                 from core.validators import normalize_claim_type, normalize_origin_type
                 _raw_ct = fact.get("claim_type")
                 _raw_ot = fact.get("origin_type")
-                _ct = normalize_claim_type(_raw_ct)
-                _ot = normalize_origin_type(_raw_ot)
+                if not _raw_ct or _raw_ct == "UNKNOWN":
+                    try:
+                        from core.claim_classifier import classify_claim as _classify
+
+                        _ct, _ot, _ = _classify(
+                            new_claim,
+                            fact.get("source", "unknown"),
+                            explicit_claim_type=_raw_ct,
+                            explicit_origin_type=_raw_ot,
+                        )
+                    except Exception:
+                        _ct = normalize_claim_type(_raw_ct)
+                        _ot = normalize_origin_type(_raw_ot)
+                else:
+                    _ct = normalize_claim_type(_raw_ct)
+                    _ot = normalize_origin_type(_raw_ot)
+
+                # Batch ingestion is not a privileged side door. The exact
+                # WriteProtocolGate used by store_fact() is applied per
+                # record before anything enters the shared transaction.
+                from core.write_gate import admit_fact, is_write_gate_enabled
+
+                if is_write_gate_enabled():
+                    _wg_refs = metadata_dict.get("evidence_refs") or []
+                    _wg_ok, _wg_reason = admit_fact(
+                        claim_type=_ct,
+                        origin_type=_ot,
+                        source=fact.get("source", "unknown"),
+                        has_evidence=bool(_wg_refs),
+                    )
+                    if not _wg_ok:
+                        raise ValueError(
+                            f"WriteProtocolGate rejected '{fact_id}': {_wg_reason}"
+                        )
 
                 record = {
                     "fact_id":             fact_id,
@@ -3682,6 +3823,9 @@ class SQLiteGraphStore(GraphStore):
                         existing is not None and _event_type == EventType.FACT_CONTRADICTED
                     ) else None,
                     "to_state": record["epistemic_state"],
+                    # A batch may create and update different IDs together.
+                    # Only an update has a pre-image to close in VersionStore.
+                    "preimage": copy.deepcopy(existing) if existing else None,
                 })
 
                 # C2 SPLIT-BRAIN FIX: L0 НЕ пишем здесь — только после commit L1 (ниже).
@@ -3786,6 +3930,14 @@ class SQLiteGraphStore(GraphStore):
                     "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (_fid,)
                 ).fetchone()[0]
                 real_subject_ids[_fid] = real_subject_id
+                if _pending["preimage"] is not None:
+                    self._snapshot_before_change_in_transaction(
+                        conn,
+                        _fid,
+                        _pending["preimage"],
+                        caused_by="memory.store_facts_batch",
+                        now_iso=now,
+                    )
                 chain = AuditChain(
                     conn, chain_id=f"fact-transition:{real_subject_id}", _skip_schema_check=True,
                 )
@@ -3800,11 +3952,9 @@ class SQLiteGraphStore(GraphStore):
         # C2 SPLIT-BRAIN FIX (audit): L0 пишем ТОЛЬКО ПОСЛЕ успешного commit L1.
         # Раньше _l0_put шёл в цикле ДО executemany → при откате батча факты
         # оставались в L0, которых нет в L1 (нарушение инварианта D4, как в store_fact).
-        # PR-C1b (Issue #37): VersionStore-снимки в batch НЕ добавлены —
-        # store_facts_batch() уже не писал в fact_versions (не источник
-        # фантомных snapshot'ов из Issue #37 п.1); это deferred-находка сама
-        # по себе, требующая отдельного дизайна (per-record snapshot вместо
-        # одного executemany), а не части этого узкого fix'а.
+        # Issue #50: every updated record's pre-image was appended inside
+        # the same transaction above. New records correctly have no
+        # predecessor snapshot.
         for _fid, _l0_record in l0_pending:
             _l0_record["audit_subject_id"] = real_subject_ids.get(_fid, _l0_record.get("audit_subject_id"))
             self._l0_put(_fid, _l0_record)

@@ -18,14 +18,11 @@ A/B/C. VersionStore.snapshot_before_change() sourced `recorded_at` from
    get_fact_as_of(t_after_last) incorrectly returned None instead of the
    current state.
 
-D. transition_esm() and invalidate_edge() called
-   VersionStore.snapshot_before_change() BEFORE the canonical write
-   (update_state() / the facts UPDATE), not after. A CAS miss, a missing
-   fact_id, or a forced SQL failure still left behind a "superseded"
-   fact_versions row for a transition that never actually committed to the
-   canonical `facts` row — a phantom audit entry. (invalidate_edge() also
-   had no CAS guard and no rowcount check at all — it always returned True,
-   even for a nonexistent fact_id or a concurrently-modified row.)
+D. transition_esm() and invalidate_edge() originally snapshotted before the
+   canonical write, then moved snapshots after commit to avoid phantoms.
+   Issue #50 completes that progression: the snapshot now happens after a
+   successful CAS but before commit, on the same connection/transaction as
+   the canonical mutation and AuditChain append.
 
 Fix (this PR):
 - VersionStore.snapshot_before_change(): recorded_at now prefers
@@ -46,20 +43,18 @@ Fix (this PR):
   ([latest historical superseded_at (or t_ingestion_start/created_at/
   updated_at), t_ingestion_end)) contains the query time. Never inserted
   into fact_versions — read-time only.
-- transition_esm(): snapshot moved to AFTER update_state() returns True.
-  update_state() returning False (CAS miss, missing fact) or raising no
-  longer leaves a phantom fact_versions row.
+- transition_esm(): version pre-image is appended only after update_state()'s
+  guarded UPDATE succeeds, inside that same transaction. CAS miss/failure
+  therefore writes neither fact, version, nor audit evidence.
 - invalidate_edge(): gained a CAS guard (WHERE ... AND updated_at = ?), a
-  rowcount check, stale-L0 eviction on CAS miss, and its snapshot moved to
-  strictly after the guarded UPDATE commits.
+  rowcount check, stale-L0 eviction on CAS miss, and same-transaction
+  version/audit evidence.
 
 NOT in scope for this PR (explicit non-goals — see PR body):
 - No VersionStore schema migration, no backfill of existing rows.
 - No rewrite of historical fact_versions rows.
-- No atomic single-transaction merge of the facts UPDATE and the
-  fact_versions INSERT (still two connections/files — a crash in that
-  narrow window can still leave a successful transition without a version
-  snapshot; unchanged, pre-existing, and out of scope here).
+- No relation/projection transaction redesign; this suite covers the
+  canonical facts + fact_versions boundary only.
 - migrations/009_truth_kernel.sql, AuditChain, the live HTTP time-travel
   endpoint (`GET /facts/{fact_id}/time-travel`, backed by
   SQLiteGraphStore.get_fact_at(), an entirely separate bi-temporal query
@@ -85,7 +80,6 @@ import os
 import sqlite3
 import subprocess
 import sys
-import threading
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -532,7 +526,7 @@ class TestTransitionEsmSnapshotOrdering:
         assert row[1] == "Hypothesized", "canonical state must be fully rolled back"
 
 
-# ─── Scenario 13-15: invalidate_edge() CAS + post-commit snapshot ──────────
+# ─── Scenario 13-15: invalidate_edge() CAS + transactional snapshot ───────
 
 class TestInvalidateEdgeCasAndOrdering:
     def test_success_closes_row_and_creates_exactly_one_pre_image_snapshot(self, migrated_store):
@@ -845,170 +839,47 @@ class TestHistoricalEffectiveStartRespectsRecordedAt:
         assert len(at_t3_matches) == 1 and at_t3_matches[0].claim == "V4"
 
 
-# ─── Scenario: version_num (insertion order) can diverge from ─────────────
-# ─── chronological order (superseded_at) under concurrent snapshotting ────
+# ─── Scenario: canonical versions share the facts transaction ─────────────
 
-class TestSnapshotInsertionOrderDecoupledFromChronology:
-    """Copilot review finding on PR #42: _EFFECTIVE_INTERVAL_CTE's LAG window
-    ordered by version_num implicitly assumed version_num (a storage/
-    insertion ordinal, assigned by MAX(version_num)+1 under VersionStore's
-    own BEGIN IMMEDIATE lock — a DIFFERENT lock/connection than the one
-    serializing the canonical `facts` UPDATE each snapshot's now_iso is
-    sourced from) always matches chronological order (superseded_at).
+class TestCanonicalSnapshotOrdering:
+    """Issue #50 removes the old cross-connection ordering race.
 
-    Two successful, CAS-protected transitions on the same fact_id can
-    commit their canonical mutations in chronological order while their
-    VersionStore snapshot INSERTs land in the OPPOSITE order — e.g. a
-    faster writer's snapshot insert completing before a slower writer's
-    snapshot insert for a transition that actually happened earlier. This
-    reproduces that deterministically with two real threads synchronized
-    via threading.Event (no time.sleep): Writer A's canonical transition
-    (Observed -> Hypothesized) commits first, but its snapshot insert
-    (closing Observed) is paused until Writer B's canonical transition
-    (Hypothesized -> Supported) commits AND inserts its own snapshot
-    (closing Hypothesized) — so the snapshot for the chronologically
-    EARLIER transition (A's) ends up with the HIGHER version_num.
+    A lifecycle mutation now appends its VersionStore pre-image before the
+    same SQLite transaction commits. Therefore version insertion order and
+    canonical mutation order cannot diverge for the instrumented paths.
     """
 
-    def test_reversed_snapshot_insertion_order_still_resolves_correct_chronology(
-        self, migrated_store,
-    ):
+    def test_transition_versions_follow_canonical_commit_order(self, migrated_store):
         store = migrated_store
-        fid = "race1"
+        fid = "atomic_order1"
 
-        store.store_fact_result({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.9})
-        with store._db() as conn:
-            t0 = conn.execute(
-                "SELECT updated_at FROM facts WHERE fact_id = ?", (fid,)
-            ).fetchone()[0]
+        store.store_fact_result({
+            "fact_id": fid,
+            "claim": "c",
+            "source": "s",
+            "confidence": 0.9,
+        })
+        assert store.transition_esm(fid, "Hypothesized", by="A") is True
+        assert store.transition_esm(fid, "Supported", by="B") is True
 
-        import core.version_store as version_store_mod
-        orig_snapshot = version_store_mod.VersionStore.snapshot_before_change
-
-        a_paused = threading.Event()
-        b_may_proceed = threading.Event()
-
-        def hooked_snapshot(self_vs, fact_id_, fact_data, caused_by="unknown", now_iso=None):
-            if fact_data.get("epistemic_state") == "Observed":
-                # Writer A: pause BEFORE inserting the snapshot that closes
-                # "Observed" — simulates A's insert landing later than B's,
-                # even though A's now_iso already captured the true
-                # (chronologically earlier) transition time.
-                a_paused.set()
-                assert b_may_proceed.wait(timeout=5), "test setup deadlocked"
-            return orig_snapshot(self_vs, fact_id_, fact_data, caused_by=caused_by, now_iso=now_iso)
-
-        version_store_mod.VersionStore.snapshot_before_change = hooked_snapshot
-        try:
-            errors: list[BaseException] = []
-
-            def writer_a():
-                try:
-                    ok = store.transition_esm(fid, "Hypothesized", by="A")
-                    assert ok is True
-                except BaseException as exc:  # noqa: BLE001 — surface to main thread
-                    errors.append(exc)
-
-            t_a = threading.Thread(target=writer_a)
-            t_a.start()
-            assert a_paused.wait(timeout=5), "writer A did not reach its paused snapshot in time"
-
-            with store._db() as conn:
-                now_A = conn.execute(
-                    "SELECT updated_at FROM facts WHERE fact_id = ?", (fid,)
-                ).fetchone()[0]
-            assert now_A > t0, "A's canonical transition must have already committed"
-
-            # Writer B: transitions Hypothesized -> Supported while A's
-            # snapshot (closing Observed) is still paused. B's own snapshot
-            # (closing Hypothesized) inserts FIRST as a result.
-            ok_b = store.transition_esm(fid, "Supported", by="B")
-            assert ok_b is True
-
-            with store._db() as conn:
-                now_B = conn.execute(
-                    "SELECT updated_at FROM facts WHERE fact_id = ?", (fid,)
-                ).fetchone()[0]
-            assert now_B > now_A, "B's canonical transition must be chronologically later"
-
-            b_may_proceed.set()
-            t_a.join(timeout=5)
-            assert not t_a.is_alive(), "writer A thread did not finish"
-            assert not errors, f"writer A raised: {errors}"
-        finally:
-            version_store_mod.VersionStore.snapshot_before_change = orig_snapshot
-
-        # --- Prove insertion order actually diverged from chronology ---
         with store._db() as conn:
             rows = conn.execute(
-                "SELECT version_id, version_num, epistemic_state, recorded_at, "
-                "superseded_at FROM fact_versions WHERE fact_id = ? "
-                "ORDER BY version_id",
+                "SELECT version_num, epistemic_state, recorded_at, superseded_at "
+                "FROM fact_versions WHERE fact_id = ? ORDER BY version_num",
                 (fid,),
             ).fetchall()
-        assert len(rows) == 2
 
-        inserted_first, inserted_second = rows[0], rows[1]
-        assert inserted_first["epistemic_state"] == "Hypothesized", (
-            "B's snapshot (closing Hypothesized) must have inserted FIRST"
-        )
-        assert inserted_second["epistemic_state"] == "Observed", (
-            "A's snapshot (closing Observed) must have inserted SECOND, "
-            "despite representing the chronologically EARLIER transition"
-        )
-        assert inserted_first["version_num"] < inserted_second["version_num"], (
-            "insertion order (version_num) must be the OPPOSITE of "
-            "chronological order for this reproduction to be meaningful"
-        )
-        assert inserted_first["superseded_at"] > inserted_second["superseded_at"], (
-            f"the row with the LOWER version_num ({inserted_first['version_num']}) "
-            f"must carry the LATER superseded_at ({inserted_first['superseded_at']}) "
-            f"than the row with the HIGHER version_num "
-            f"({inserted_second['version_num']}, superseded_at="
-            f"{inserted_second['superseded_at']}) — this is the exact "
-            "insertion-order/chronology inversion under test"
-        )
-        assert inserted_second["superseded_at"] == now_A
-        assert inserted_first["superseded_at"] == now_B
-        assert inserted_second["recorded_at"] == t0
-        assert inserted_first["recorded_at"] == now_A
+        assert [row["version_num"] for row in rows] == [1, 2]
+        assert [row["epistemic_state"] for row in rows] == [
+            "Observed",
+            "Hypothesized",
+        ]
+        assert rows[0]["recorded_at"] <= rows[0]["superseded_at"]
+        assert rows[0]["superseded_at"] <= rows[1]["superseded_at"]
 
-        # --- Prove get_fact_as_of()/get_graph_as_of() still resolve the ---
-        # --- TRUE chronology despite the reversed insertion order ---
         from core.version_store import VersionStore
-        vs = VersionStore(store.db_path)
 
-        during_observed = vs.get_fact_as_of(fid, t0)
-        assert during_observed is not None
-        assert during_observed.epistemic_state == "Observed", (
-            f"query at t0 (during Observed's true lifetime) must resolve to "
-            f"Observed, got {during_observed.epistemic_state!r} — the "
-            "reversed insertion order must not corrupt this"
-        )
-
-        during_hypothesized = vs.get_fact_as_of(fid, now_A)
-        assert during_hypothesized is not None
-        assert during_hypothesized.epistemic_state == "Hypothesized", (
-            f"query at now_A (when Hypothesized became current) must "
-            f"resolve to Hypothesized, got "
-            f"{during_hypothesized.epistemic_state!r}"
-        )
-
-        current = vs.get_fact_as_of(fid, now_B)
-        assert current is not None
-        assert current.epistemic_state == "Supported"
-
-        graph_during_observed = vs.get_graph_as_of(t0)
-        matches = [r for r in graph_during_observed if r.fact_id == fid]
-        assert len(matches) == 1
-        assert matches[0].epistemic_state == "Observed"
-
-        graph_during_hypothesized = vs.get_graph_as_of(now_A)
-        matches = [r for r in graph_during_hypothesized if r.fact_id == fid]
-        assert len(matches) == 1
-        assert matches[0].epistemic_state == "Hypothesized"
-
-        assert vs.verify_versions_integrity(fid)["ok"] is True
+        assert VersionStore(store.db_path).verify_versions_integrity(fid)["ok"] is True
 
 
 # ─── Scenario: standalone VersionStore (no `facts` table at all) ──────────
@@ -1134,75 +1005,30 @@ class TestStandaloneVersionStoreWithoutFactsTable:
 # ─── as-of queries, not raw version_num ────────────────────────────────────
 
 class TestFactHistoryChronologicalOrdering:
-    """Codex review finding on PR #42: get_fact_history() still ordered by
-    version_num ASC alone — under the exact same insertion-order/chronology
-    divergence proven in TestSnapshotInsertionOrderDecoupledFromChronology,
-    this could return a later canonical state before an earlier one (e.g.
-    Hypothesized before the Observed state that truly preceded it)."""
+    """History remains chronological after transactional snapshot wiring."""
 
-    def test_returns_chronological_order_despite_reversed_insertion(self, migrated_store):
+    def test_returns_canonical_transition_order(self, migrated_store):
         store = migrated_store
-        fid = "hist_race1"
+        fid = "hist_atomic1"
 
-        store.store_fact_result({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.9})
-
-        import core.version_store as version_store_mod
-        orig_snapshot = version_store_mod.VersionStore.snapshot_before_change
-
-        a_paused = threading.Event()
-        b_may_proceed = threading.Event()
-
-        def hooked_snapshot(self_vs, fact_id_, fact_data, caused_by="unknown", now_iso=None):
-            if fact_data.get("epistemic_state") == "Observed":
-                a_paused.set()
-                assert b_may_proceed.wait(timeout=5), "test setup deadlocked"
-            return orig_snapshot(self_vs, fact_id_, fact_data, caused_by=caused_by, now_iso=now_iso)
-
-        version_store_mod.VersionStore.snapshot_before_change = hooked_snapshot
-        try:
-            errors: list[BaseException] = []
-
-            def writer_a():
-                try:
-                    assert store.transition_esm(fid, "Hypothesized", by="A") is True
-                except BaseException as exc:  # noqa: BLE001 — surface to main thread
-                    errors.append(exc)
-
-            t_a = threading.Thread(target=writer_a)
-            t_a.start()
-            assert a_paused.wait(timeout=5), "writer A did not reach its paused snapshot in time"
-
-            assert store.transition_esm(fid, "Supported", by="B") is True
-
-            b_may_proceed.set()
-            t_a.join(timeout=5)
-            assert not t_a.is_alive(), "writer A thread did not finish"
-            assert not errors, f"writer A raised: {errors}"
-        finally:
-            version_store_mod.VersionStore.snapshot_before_change = orig_snapshot
-
-        with store._db() as conn:
-            raw_rows = conn.execute(
-                "SELECT version_num, epistemic_state FROM fact_versions "
-                "WHERE fact_id = ? ORDER BY version_id",
-                (fid,),
-            ).fetchall()
-        assert raw_rows[0]["epistemic_state"] == "Hypothesized", (
-            "sanity check: B's snapshot (closing Hypothesized) must still "
-            "insert first, reproducing the reversed insertion order"
-        )
-        assert raw_rows[1]["epistemic_state"] == "Observed"
+        store.store_fact_result({
+            "fact_id": fid,
+            "claim": "c",
+            "source": "s",
+            "confidence": 0.9,
+        })
+        assert store.transition_esm(fid, "Hypothesized", by="A") is True
+        assert store.transition_esm(fid, "Supported", by="B") is True
 
         from core.version_store import VersionStore
+
         vs = VersionStore(store.db_path)
         history = vs.get_fact_history(fid)
         assert len(history) == 2
-        assert history[0].epistemic_state == "Observed", (
-            f"get_fact_history() must return Observed BEFORE Hypothesized "
-            f"despite the reversed insertion order — got "
-            f"{[h.epistemic_state for h in history]}"
-        )
-        assert history[1].epistemic_state == "Hypothesized"
+        assert [item.epistemic_state for item in history] == [
+            "Observed",
+            "Hypothesized",
+        ]
 
         # Process restart: a fresh VersionStore instance returns the same order.
         vs2 = VersionStore(store.db_path)

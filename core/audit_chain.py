@@ -41,6 +41,8 @@ class EventType:
     FACT_COLLAPSED            = "fact_collapsed"
     FACT_CONTRADICTED         = "fact_contradicted"
     FACT_INVALIDATED          = "fact_invalidated"
+    FACT_RESTRICTED           = "fact_restricted"
+    FACT_UNRESTRICTED         = "fact_unrestricted"
     TRUTH_GATE_VERDICT        = "truth_gate_verdict"
     OBSERVER_VERDICT          = "observer_verdict"
     IMMUTABLE_ATTEMPT_BLOCKED = "immutable_attempt_blocked"
@@ -114,12 +116,14 @@ _ACTOR_CODE_MAP: dict[str, str] = {
 ACTOR_CODE_STORE_FACT        = "memory_store_fact"
 ACTOR_CODE_STORE_FACTS_BATCH = "memory_store_facts_batch"
 ACTOR_CODE_INVALIDATE_EDGE   = "memory_invalidate_edge"
+ACTOR_CODE_SET_RESTRICTED     = "memory_set_restricted"
 
 ACTOR_CODE_ALLOWLIST = frozenset(_ACTOR_CODE_MAP.values()) | {
     ACTOR_CODE_UNMAPPED,
     ACTOR_CODE_STORE_FACT,
     ACTOR_CODE_STORE_FACTS_BATCH,
     ACTOR_CODE_INVALIDATE_EDGE,
+    ACTOR_CODE_SET_RESTRICTED,
 }
 
 

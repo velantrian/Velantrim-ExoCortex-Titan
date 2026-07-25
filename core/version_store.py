@@ -26,6 +26,9 @@
 #   VS-02: caused_by записывается для каждой версии (audit-friendly)
 #   VS-03: VersionStore не модифицирует facts напрямую — только пишет в fact_versions
 #   VS-04: get_fact_as_of(t) детерминирован: один результат для (fact_id, t)
+#   VS-05: canonical lifecycle writers append the pre-image through
+#          snapshot_before_change_in_transaction() on the SAME sqlite3.Connection
+#          and inside the SAME transaction as the facts mutation + AuditChain event.
 
 from __future__ import annotations
 
@@ -215,22 +218,60 @@ class VersionStore:
         VS-01: снимает pre-image факта — состояние, которое заменяется новым.
         Создаёт версию с superseded_at = now (или now_iso, если передан).
 
-        PR-C1d (Issue #39, part D): вопреки названию, это НЕ обязательно
-        вызов ДО мутации `facts`. Некоторые call sites (transition_esm(),
-        invalidate_edge(), store_fact()) намеренно вызывают этот метод
-        ПОСЛЕ подтверждённого коммита канонической записи — иначе неудачная
-        попытка (CAS miss, отсутствующий fact_id, форс-сбой SQL) оставляла
-        бы фантомную "superseded"-запись для перехода, который на самом
-        деле не состоялся. Контракт: `fact_data` — снимок состояния ДО
-        изменения (не важно, читан ли он до или после коммита), а
-        `now_iso`, если передан, обязан быть той же самой временной меткой,
-        что и канонический UPDATE/history entry вызывающего — не свежим
-        значением, вычисленным в момент этого вызова.
+        This public standalone API owns its own transaction and remains for
+        explicit snapshots/tools. Canonical lifecycle writers must instead
+        call snapshot_before_change_in_transaction() from inside their
+        existing facts transaction. In both APIs ``fact_data`` is the
+        pre-image being closed, and ``now_iso`` must be the same timestamp
+        used by the corresponding logical mutation.
 
         Возвращает version_id созданной snapshot-записи.
         """
-        now = now_iso or datetime.now(UTC).isoformat()
+        with self._db() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            return self.snapshot_before_change_in_transaction(
+                conn,
+                fact_id,
+                fact_data,
+                caused_by=caused_by,
+                now_iso=now_iso,
+            )
 
+    @classmethod
+    def snapshot_before_change_in_transaction(
+        cls,
+        conn: sqlite3.Connection,
+        fact_id: str,
+        fact_data: dict[str, Any],
+        caused_by: str = "unknown",
+        now_iso: str | None = None,
+    ) -> int:
+        """Append a fact pre-image without owning transaction boundaries.
+
+        This is the canonical write-path API introduced for issue #50.
+        ``conn`` must already participate in the caller's transaction that
+        mutates ``facts``.  The method performs no DDL, BEGIN, COMMIT,
+        ROLLBACK, retry, or exception suppression:
+
+        * if the version INSERT succeeds, it is committed together with the
+          canonical mutation and its AuditChain event;
+        * if it fails, the exception reaches the canonical writer and that
+          writer's transaction rolls all three artifacts back;
+        * a caller cannot accidentally use this as a best-effort side effect
+          after the canonical commit.
+
+        Schema readiness is intentionally a precondition. SQLiteGraphStore
+        creates/warms ``fact_versions`` before opening lifecycle-write
+        transactions; silently creating schema here would mix DDL into a
+        security-sensitive mutation transaction.
+        """
+        if not conn.in_transaction:
+            raise RuntimeError(
+                "snapshot_before_change_in_transaction() requires an active "
+                "caller-owned SQLite transaction"
+            )
+
+        now = now_iso or datetime.now(UTC).isoformat()
         metadata_json = _metadata_json(fact_data.get("metadata", {}) or {})
         valid_from = (
             fact_data.get("valid_from")
@@ -256,38 +297,40 @@ class VersionStore:
             or now
         )
 
-        with self._db() as conn:
-            conn.execute("BEGIN IMMEDIATE")
-            row = conn.execute(
-                "SELECT MAX(version_num) as mx FROM fact_versions WHERE fact_id=?",
-                (fact_id,),
-            ).fetchone()
-            next_v = (row["mx"] or 0) + 1
-            checksum = self._checksum(fact_data, next_v, now)
-            cur = conn.execute(
-                """INSERT INTO fact_versions (
-                    fact_id, version_num,
-                    claim, source, confidence, epistemic_state, metadata,
-                    valid_from, valid_to,
-                    recorded_at, superseded_at,
-                    caused_by, checksum
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    fact_id, next_v,
-                    fact_data.get("claim", ""),
-                    fact_data.get("source", ""),
-                    fact_data.get("confidence", 0.5),
-                    fact_data.get("epistemic_state", "Observed"),
-                    metadata_json,
-                    valid_from,
-                    valid_to,
-                    recorded_at,
-                    now,             # ← superseded_at теперь, так как версия заменяется
-                    caused_by,
-                    checksum,
-                ),
-            )
-            return cur.lastrowid
+        row = conn.execute(
+            "SELECT MAX(version_num) as mx FROM fact_versions WHERE fact_id=?",
+            (fact_id,),
+        ).fetchone()
+        max_version = row["mx"] if isinstance(row, sqlite3.Row) else row[0]
+        next_v = (max_version or 0) + 1
+        checksum = cls._checksum(fact_data, next_v, now)
+        cur = conn.execute(
+            """INSERT INTO fact_versions (
+                fact_id, version_num,
+                claim, source, confidence, epistemic_state, metadata,
+                valid_from, valid_to,
+                recorded_at, superseded_at,
+                caused_by, checksum
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                fact_id, next_v,
+                fact_data.get("claim", ""),
+                fact_data.get("source", ""),
+                fact_data.get("confidence", 0.5),
+                fact_data.get("epistemic_state", "Observed"),
+                metadata_json,
+                valid_from,
+                valid_to,
+                recorded_at,
+                now,
+                caused_by,
+                checksum,
+            ),
+        )
+        version_id = cur.lastrowid
+        if version_id is None:
+            raise RuntimeError("VersionStore INSERT completed without a version_id")
+        return version_id
 
     def snapshot_current_fact(
         self,
@@ -312,7 +355,8 @@ class VersionStore:
             now_iso=now_iso,
         )
 
-    def _checksum(self, data: dict[str, Any], version_num: int, ts: str) -> str:
+    @staticmethod
+    def _checksum(data: dict[str, Any], version_num: int, ts: str) -> str:
         """SHA-256 целостности версии."""
         h = hashlib.sha256()
         payload = json.dumps({
@@ -514,16 +558,14 @@ class VersionStore:
         """
         Полная история закрытых версий факта, в ХРОНОЛОГИЧЕСКОМ порядке.
 
-        PR-C1d (Codex review finding, PR #42): version_num — это ordinal
-        порядка ВСТАВКИ в VersionStore (назначается MAX(version_num)+1 под
-        собственным BEGIN IMMEDIATE лока VersionStore), а не гарантия
-        хронологии. С тех пор как снимок пишется ПОСЛЕ подтверждённого
-        коммита канонической мутации (see _snapshot_before_change()),
-        конкурентная вставка снимков для двух разных переходов может
-        завершиться в порядке, ПРОТИВОПОЛОЖНОМ реальному порядку самих
-        переходов (см. TestSnapshotInsertionOrderDecoupledFromChronology).
-        Сортировка только по version_num вернула бы более позднее
-        состояние раньше более раннего.
+        PR-C1d (Codex review finding, PR #42): version_num is a storage
+        insertion ordinal, not a temporal key. Issue #50 now makes
+        instrumented canonical lifecycle snapshots share the facts
+        transaction, so those paths cannot reverse version/commit order.
+        Historical rows written by older Titan versions or by the public
+        standalone VersionStore API may still have a different insertion
+        order, however; readers therefore continue to sort by explicit
+        temporal fields rather than weakening legacy compatibility.
 
         Порядок теперь тот же, что и в _EFFECTIVE_INTERVAL_CTE: сначала
         temporal-ключи (superseded_at, recorded_at), version_num/version_id —
