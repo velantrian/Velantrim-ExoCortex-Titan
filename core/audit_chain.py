@@ -40,6 +40,7 @@ class EventType:
     FACT_DEPRECATED           = "fact_deprecated"
     FACT_COLLAPSED            = "fact_collapsed"
     FACT_CONTRADICTED         = "fact_contradicted"
+    FACT_INVALIDATED          = "fact_invalidated"
     TRUTH_GATE_VERDICT        = "truth_gate_verdict"
     OBSERVER_VERDICT          = "observer_verdict"
     IMMUTABLE_ATTEMPT_BLOCKED = "immutable_attempt_blocked"
@@ -98,9 +99,28 @@ _ACTOR_CODE_MAP: dict[str, str] = {
     "pipeline.run":            "pipeline_run",
     "cognitive_store":         "cognitive_store",
     "world_skills_ingest":     "world_skills_ingest",
+    # PR-C3: supersede_fact_cas()'s own `by` parameter (default and only
+    # production caller, core/truth_maintenance.py:307-314) — same closed
+    # mapping convention as the transition_esm()-family callers above.
+    "truth_maintenance.supersede": "truth_maintenance_supersede",
 }
 
-ACTOR_CODE_ALLOWLIST = frozenset(_ACTOR_CODE_MAP.values()) | {ACTOR_CODE_UNMAPPED}
+# PR-C3: store_fact()/store_fact_result()/store_facts_batch()/
+# invalidate_edge() accept no caller-supplied `by`/actor string at all —
+# unlike the transition_esm() family, there is no free text to map here in
+# the first place, so these are fixed, hardcoded actor_codes rather than
+# _ACTOR_CODE_MAP entries (map_actor_code() is for translating an
+# untrusted caller string; nothing untrusted reaches these call sites).
+ACTOR_CODE_STORE_FACT        = "memory_store_fact"
+ACTOR_CODE_STORE_FACTS_BATCH = "memory_store_facts_batch"
+ACTOR_CODE_INVALIDATE_EDGE   = "memory_invalidate_edge"
+
+ACTOR_CODE_ALLOWLIST = frozenset(_ACTOR_CODE_MAP.values()) | {
+    ACTOR_CODE_UNMAPPED,
+    ACTOR_CODE_STORE_FACT,
+    ACTOR_CODE_STORE_FACTS_BATCH,
+    ACTOR_CODE_INVALIDATE_EDGE,
+}
 
 
 def map_actor_code(by: str | None) -> str:
@@ -110,11 +130,28 @@ def map_actor_code(by: str | None) -> str:
 
 
 # Single structured reason_code for every event produced by the
-# update_state() integration point today — every such event has, by
-# construction (see core.memory.SQLiteGraphStore.update_state()), already
-# passed the CAS guard on facts.epistemic_state before this is ever used.
+# update_state()/_promote_to_validated_cas()/supersede_fact_cas()
+# integration points — every such event has, by construction, already
+# passed a genuine CAS guard on the row's prior state before this is ever
+# used.
 REASON_CODE_CAS_TRANSITION = "cas_guarded_transition"
-REASON_CODE_ALLOWLIST = frozenset({REASON_CODE_CAS_TRANSITION})
+
+# PR-C3: invalidate_edge() is also CAS-guarded (WHERE fact_id=? AND
+# updated_at=?) but never changes epistemic_state — "transition" would be
+# misleading for a temporal-validity write, so it gets its own code.
+REASON_CODE_CAS_GUARDED_WRITE = "cas_guarded_write"
+
+# PR-C3: store_fact()/store_fact_result()/store_facts_batch()'s plain
+# upsert path has no CAS precondition at all (no expected-prior-value
+# check) — protected only by ESM-transition legality (TASK-02 drift
+# protection) and the Write Protocol Gate, not optimistic concurrency.
+REASON_CODE_DIRECT_WRITE = "direct_write"
+
+REASON_CODE_ALLOWLIST = frozenset({
+    REASON_CODE_CAS_TRANSITION,
+    REASON_CODE_CAS_GUARDED_WRITE,
+    REASON_CODE_DIRECT_WRITE,
+})
 
 
 # ── PR-C2: full memory_events + append-only trigger DDL, for
