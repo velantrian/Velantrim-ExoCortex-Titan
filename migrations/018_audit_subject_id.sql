@@ -1,0 +1,30 @@
+-- migrations/018_audit_subject_id.sql
+-- PR-C2 — opaque per-fact audit subject identifier
+-- =====================================================================
+-- ЦЕЛЬ: дать ESM/terminal-state transition событиям AuditChain
+-- (core.audit_chain, memory_events) способ группироваться "по факту" без
+-- хранения настоящего facts.fact_id внутри memory_events.
+--
+-- facts.audit_subject_id — непрозрачный (opaque), лениво генерируемый
+-- идентификатор. Он НИКОГДА не копируется в memory_events.fact_id
+-- (эта колонка остаётся NULL для новых transition-событий — см.
+-- core.memory.SQLiteGraphStore.update_state()). Вместо этого он образует
+-- per-fact chain_id = f"fact-transition:{audit_subject_id}" — уже
+-- hash-covered поле в существующем hash v2 envelope (canonicalize_
+-- audit_event_v2), так что новый hash-формат (v3) не требуется.
+--
+-- Стирание факта (ErasureCoordinator.erase_fact_durable() →
+-- erase_fact_dependents_atomic()) уже безусловно выполняет
+-- `DELETE FROM facts WHERE fact_id = ?` — эта колонка удаляется вместе со
+-- строкой автоматически, без единой новой строки кода в erasure-пути.
+-- Это устраняет ЕДИНСТВЕННУЮ прямую live-DB привязку "chain_id → fact_id";
+-- сами события в memory_events переживают стирание (ledger остаётся
+-- tamper-evident), но связать их обратно с фактом через текущую БД
+-- становится невозможно.
+--
+-- Не требует backfill: NULL означает "ни одного transition ещё не
+-- залогировано для этого факта" — колонка заполняется лениво при первом
+-- вызове update_state() после этой миграции.
+-- =====================================================================
+
+ALTER TABLE facts ADD COLUMN audit_subject_id TEXT DEFAULT NULL;

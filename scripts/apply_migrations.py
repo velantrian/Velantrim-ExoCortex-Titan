@@ -43,6 +43,7 @@ MIGRATIONS = [
     (15, BASE_DIR / "migrations" / "015_erasure_batches.sql"),
     (16, BASE_DIR / "migrations" / "016_erasure_job_subject.sql"),
     (17, BASE_DIR / "migrations" / "017_audit_chain_hash_v2.sql"),
+    (18, BASE_DIR / "migrations" / "018_audit_subject_id.sql"),
 ]
 
 LATEST_VERSION = max(v for v, _ in MIGRATIONS)
@@ -68,6 +69,57 @@ def column_exists(conn: sqlite3.Connection, table: str, column: str) -> bool:
         return any(row[1] == column for row in rows)
     except sqlite3.OperationalError:
         return False
+
+
+def trigger_exists(conn: sqlite3.Connection, trigger_name: str) -> bool:
+    """
+    Проверка существования триггера через sqlite_master.
+    Используется для идемпотентности CREATE TRIGGER — PR-C2 (Codex P1):
+    core.audit_chain.AuditChain.verify_schema_ready() can create
+    memory_events + prevent_audit_update/prevent_audit_delete from
+    scratch, at runtime, before an operator ever runs this script (e.g.
+    the very first ESM/terminal-state transition on a fresh database
+    that has never run any migration). Migration 009's own
+    `CREATE TRIGGER` statements are not idempotent (SQLite has no
+    `CREATE TRIGGER IF NOT EXISTS` guard applied there), so this check
+    lets the runner strip an already-satisfied trigger the same way
+    column_exists() already does for non-idempotent ALTER TABLE ADD
+    COLUMN statements.
+    """
+    try:
+        row = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='trigger' AND name=?",
+            (trigger_name,),
+        ).fetchone()
+        return row is not None
+    except sqlite3.OperationalError:
+        return False
+
+
+def _strip_trigger_block(raw_sql: str, trigger_name: str) -> str:
+    """Remove one full `CREATE TRIGGER <trigger_name> ... END;` block from
+    a migration script's text. CREATE TRIGGER is not idempotent in
+    SQLite — unlike the single-line ALTER TABLE ADD COLUMN statements
+    stripped elsewhere in this file, a trigger definition spans multiple
+    lines, so blindly removing only the `CREATE TRIGGER <name>` line
+    would leave its body (`BEFORE ... BEGIN ... END;`) orphaned as
+    invalid or accidentally-misattached SQL. Matches from the exact
+    `CREATE TRIGGER <trigger_name>` line through the next line that is
+    exactly `END;` — this repository's own migrations always format
+    trigger bodies this way (see migrations/009_truth_kernel.sql)."""
+    lines = raw_sql.split("\n")
+    out: list[str] = []
+    skipping = False
+    for line in lines:
+        if not skipping and line.strip() == f"CREATE TRIGGER {trigger_name}":
+            skipping = True
+            continue
+        if skipping:
+            if line.strip() == "END;":
+                skipping = False
+            continue
+        out.append(line)
+    return "\n".join(out)
 
 
 def integrity_check(db_path: Path) -> bool:
@@ -155,6 +207,17 @@ def dry_run_on_copy(db_path: Path, migrations: list[tuple[int, Path]]) -> bool:
 
             try:
                 raw_sql = mig_path.read_text(encoding="utf-8")
+                if version == 9:
+                    # PR-C2 (Codex P1): core.audit_chain.AuditChain.
+                    # verify_schema_ready() can create memory_events plus
+                    # prevent_audit_update/prevent_audit_delete from
+                    # scratch at runtime before an operator ever runs
+                    # this migration — same non-idempotent-DDL problem as
+                    # the ALTER TABLE ADD COLUMN cases below, but for
+                    # CREATE TRIGGER instead.
+                    for trig in ("prevent_audit_update", "prevent_audit_delete"):
+                        if trigger_exists(conn, trig):
+                            raw_sql = _strip_trigger_block(raw_sql, trig)
                 if version == 10 and column_exists(conn, "facts", "derived_from"):
                     filtered = [l for l in raw_sql.split("\n")
                                 if "ALTER TABLE facts ADD COLUMN derived_from" not in l]
@@ -204,6 +267,16 @@ def dry_run_on_copy(db_path: Path, migrations: list[tuple[int, Path]]) -> bool:
                                 l for l in raw_sql.split("\n")
                                 if f"ALTER TABLE memory_events ADD COLUMN {col}" not in l
                             )
+                if version == 18 and column_exists(conn, "facts", "audit_subject_id"):
+                    # PR-C2: core.memory.SQLiteGraphStore._db()'s own runtime
+                    # column self-heal (mirrors history/t_event_valid_start/
+                    # etc.) can add facts.audit_subject_id before an operator
+                    # ever runs this migration — same non-idempotent-ALTER
+                    # problem as 010/011/014/016/017 above.
+                    raw_sql = "\n".join(
+                        l for l in raw_sql.split("\n")
+                        if "ALTER TABLE facts ADD COLUMN audit_subject_id" not in l
+                    )
 
                 conn.executescript(raw_sql)
                 conn.execute(f"PRAGMA user_version = {version}")
@@ -289,6 +362,23 @@ def apply_migrations(
 
         print(f"📦 Применяю {mig_path.name} (версия {version})...")
         raw_sql = mig_path.read_text(encoding="utf-8")
+
+        if version == 9:
+            # PR-C2 (Codex P1): core.audit_chain.AuditChain.
+            # verify_schema_ready() can create memory_events plus
+            # prevent_audit_update/prevent_audit_delete from scratch at
+            # runtime — e.g. the very first ESM/terminal-state transition
+            # on a fresh, never-migrated database — before an operator
+            # ever runs this migration. CREATE TRIGGER is not idempotent
+            # in SQLite, so a runtime-created trigger with the same name
+            # would otherwise abort this migration outright with
+            # "trigger ... already exists", blocking 009 and therefore
+            # every later migration in the chain.
+            for _trig in ("prevent_audit_update", "prevent_audit_delete"):
+                if trigger_exists(conn, _trig):
+                    print(f"   ℹ️  Триггер {_trig} уже существует (runtime self-heal) — "
+                          "пропускаю CREATE TRIGGER")
+                    raw_sql = _strip_trigger_block(raw_sql, _trig)
 
         if version == 10 and column_exists(conn, "facts", "derived_from"):
             print("   ℹ️  Колонка facts.derived_from уже существует — "
@@ -377,6 +467,18 @@ def apply_migrations(
                         line for line in raw_sql.split("\n")
                         if f"ALTER TABLE memory_events ADD COLUMN {col}" not in line
                     )
+
+        # 018 (PR-C2): core.memory.SQLiteGraphStore._db()'s own runtime
+        # column self-heal can add facts.audit_subject_id before an
+        # operator ever runs this migration — same non-idempotent-ALTER
+        # problem as 010/011/014/016/017 above.
+        if version == 18 and column_exists(conn, "facts", "audit_subject_id"):
+            print("   ℹ️  Колонка facts.audit_subject_id уже существует — "
+                  "пропускаю ALTER")
+            raw_sql = "\n".join(
+                line for line in raw_sql.split("\n")
+                if "ALTER TABLE facts ADD COLUMN audit_subject_id" not in line
+            )
 
         try:
             conn.executescript(raw_sql)

@@ -39,6 +39,7 @@ class EventType:
     ESM_TRANSITION            = "esm_transition"
     FACT_DEPRECATED           = "fact_deprecated"
     FACT_COLLAPSED            = "fact_collapsed"
+    FACT_CONTRADICTED         = "fact_contradicted"
     TRUTH_GATE_VERDICT        = "truth_gate_verdict"
     OBSERVER_VERDICT          = "observer_verdict"
     IMMUTABLE_ATTEMPT_BLOCKED = "immutable_attempt_blocked"
@@ -56,6 +57,105 @@ DEFAULT_CHAIN_ID = "memory_events"
 # Documented safe upper bound for verify_chain(max_rows=...) — protects
 # against unbounded scans; callers needing more must page explicitly.
 MAX_VERIFY_ROWS = 1_000_000
+
+# Same safe upper bound reused for list_chain_ids(limit=...) — no reason
+# for a separate ceiling.
+MAX_LIST_CHAIN_IDS_ROWS = MAX_VERIFY_ROWS
+
+
+# ── PR-C2: structured actor/reason codes for ESM/terminal-transition
+# auditing (core.memory.SQLiteGraphStore.update_state()) ─────────────────────
+#
+# transition_esm()/update_state() callers pass a free-text `by` string
+# today (used only for the in-row, unprotected facts.history JSON). That
+# free text must never reach AuditChain — every production `by` value is
+# mapped through this closed allowlist to a short structured actor_code;
+# anything not in the map (a future caller nobody has updated this table
+# for yet) falls back to ACTOR_CODE_UNMAPPED rather than being rejected
+# (no backwards-compatibility break) or passed through raw (no free text
+# ever reaches memory_events).
+
+ACTOR_CODE_UNMAPPED = "actor_unmapped"
+
+_ACTOR_CODE_MAP: dict[str, str] = {
+    "transition_esm":          "transition_esm",
+    "truth_gate":              "truth_gate",
+    "contradiction_resolver":  "contradiction_resolver",
+    "graduated_promotion":     "graduated_promotion",
+    "consolidation_engine":    "consolidation_engine",
+    "promote_esm":             "promote_esm",
+    "promote_to_validated":    "promote_to_validated",
+    "tool:validate_fact":      "tool_validate_fact",
+    "tool:contradict_fact":    "tool_contradict_fact",
+    "tool:propose_hypothesis": "tool_propose_hypothesis",
+    # PR-C2 P2 round: re-audited every by="..." literal and every
+    # `by: str = "..."` default reachable through transition_esm()/
+    # promote_esm_to()/promote_to_validated()/validate_and_promote()
+    # (core/pipeline.py:1357,1369; core/cognitive_store.py's own
+    # CognitiveStore.transition() default; core/world_skills_ingest.py:255)
+    # — these three were confirmed missing and recorded as
+    # actor_unmapped instead of stable attribution.
+    "pipeline.run":            "pipeline_run",
+    "cognitive_store":         "cognitive_store",
+    "world_skills_ingest":     "world_skills_ingest",
+}
+
+ACTOR_CODE_ALLOWLIST = frozenset(_ACTOR_CODE_MAP.values()) | {ACTOR_CODE_UNMAPPED}
+
+
+def map_actor_code(by: str | None) -> str:
+    """Map a free-text `by` caller identifier to a closed, structured
+    actor_code. Never returns raw input."""
+    return _ACTOR_CODE_MAP.get(by or "", ACTOR_CODE_UNMAPPED)
+
+
+# Single structured reason_code for every event produced by the
+# update_state() integration point today — every such event has, by
+# construction (see core.memory.SQLiteGraphStore.update_state()), already
+# passed the CAS guard on facts.epistemic_state before this is ever used.
+REASON_CODE_CAS_TRANSITION = "cas_guarded_transition"
+REASON_CODE_ALLOWLIST = frozenset({REASON_CODE_CAS_TRANSITION})
+
+
+# ── PR-C2: full memory_events + append-only trigger DDL, for
+# AuditChain.verify_schema_ready()'s "create from scratch if entirely
+# absent" path only. Kept byte-identical to migrations/009_truth_kernel.sql
+# so a readiness-repaired DB matches a migrated one exactly. Never used by
+# _ensure_schema() itself (unchanged) — some test fixtures deliberately
+# build a triggerless memory_events table to exercise hash-layer tamper
+# detection independent of DB-level protection, and _ensure_schema() must
+# keep working unchanged for them.
+_MEMORY_EVENTS_TABLE_DDL = """
+CREATE TABLE IF NOT EXISTS memory_events (
+    event_id        TEXT PRIMARY KEY,
+    event_type      TEXT NOT NULL,
+    fact_id         TEXT,
+    from_state      TEXT,
+    to_state        TEXT,
+    actor           TEXT NOT NULL,
+    reason          TEXT,
+    payload         TEXT,
+    confidence      REAL,
+    event_hash      TEXT NOT NULL UNIQUE,
+    prev_event_hash TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (fact_id) REFERENCES facts(fact_id)
+);
+"""
+
+_AUDIT_TRIGGERS_DDL = """
+CREATE TRIGGER IF NOT EXISTS prevent_audit_update
+BEFORE UPDATE ON memory_events
+BEGIN
+    SELECT RAISE(ABORT, 'VELANTRIM: audit log is append-only — UPDATE is forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_audit_delete
+BEFORE DELETE ON memory_events
+BEGIN
+    SELECT RAISE(ABORT, 'VELANTRIM: audit log is append-only — DELETE is forbidden');
+END;
+"""
 
 
 class AuditChainError(ValueError):
@@ -344,10 +444,25 @@ class AuditChain:
         report = chain.verify_chain()
     """
 
-    def __init__(self, db_conn, chain_id: str = DEFAULT_CHAIN_ID) -> None:
+    def __init__(
+        self,
+        db_conn,
+        chain_id: str = DEFAULT_CHAIN_ID,
+        *,
+        _skip_schema_check: bool = False,
+    ) -> None:
         self._conn = db_conn
         self.chain_id = chain_id
-        self._ensure_schema()
+        # PR-C2: log_in_transaction()'s caller (core.memory.SQLiteGraphStore.
+        # update_state()) constructs this instance from INSIDE its own
+        # already-open canonical transaction, where any DDL/PRAGMA activity
+        # is forbidden (see log_in_transaction()'s docstring). That caller
+        # is required to have already run verify_schema_ready() on a
+        # separate, standalone connection/transaction beforehand, so
+        # skipping the self-heal here is safe — never set this from
+        # anywhere else.
+        if not _skip_schema_check:
+            self._ensure_schema()
 
     # ── Schema self-heal (additive only; never touches existing rows) ────────
 
@@ -522,25 +637,8 @@ class AuditChain:
                     raise
 
             try:
-                # INSERT OR IGNORE is itself a write — issuing it before the
-                # SELECT forces SQLite to upgrade to a write lock even when
-                # we're participating in a caller-owned (possibly DEFERRED)
-                # transaction, closing the read-then-write race without a
-                # separate no-op statement (SQLite has no SELECT ... FOR
-                # UPDATE).
-                conn.execute(
-                    "INSERT OR IGNORE INTO audit_chain_heads "
-                    "(chain_id, last_sequence, last_event_hash) VALUES (?, 0, NULL)",
-                    (self.chain_id,),
-                )
-                last_seq, prev_hash = conn.execute(
-                    "SELECT last_sequence, last_event_hash FROM audit_chain_heads "
-                    "WHERE chain_id = ?",
-                    (self.chain_id,),
-                ).fetchone()
-
-                new_seq = last_seq + 1
-                event = AuditEvent(
+                event = self._append_once(
+                    conn,
                     event_type=event_type,
                     actor=actor,
                     fact_id=fact_id,
@@ -549,43 +647,7 @@ class AuditChain:
                     reason=reason,
                     payload=validated_payload,
                     confidence=validated_confidence,
-                    prev_event_hash=prev_hash,
-                    hash_version=HASH_VERSION_CURRENT,
-                    chain_id=self.chain_id,
-                    chain_sequence=new_seq,
                 )
-
-                conn.execute(
-                    """
-                    INSERT INTO memory_events (
-                        event_id, event_type, fact_id, from_state, to_state,
-                        actor, reason, payload, confidence,
-                        event_hash, prev_event_hash, created_at,
-                        hash_version, chain_id, chain_sequence
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        event.event_id, event.event_type, event.fact_id,
-                        event.from_state, event.to_state,
-                        event.actor, event.reason,
-                        json.dumps(event.payload, ensure_ascii=False),
-                        event.confidence,
-                        event.event_hash, event.prev_event_hash,
-                        event.created_at,
-                        event.hash_version, event.chain_id, event.chain_sequence,
-                    ),
-                )
-
-                cur = conn.execute(
-                    "UPDATE audit_chain_heads SET last_sequence = ?, last_event_hash = ?, "
-                    "updated_at = ? WHERE chain_id = ? AND last_sequence = ?",
-                    (new_seq, event.event_hash, event.created_at, self.chain_id, last_seq),
-                )
-                if cur.rowcount != 1:
-                    raise _StaleHeadError(
-                        f"chain head for {self.chain_id!r} advanced concurrently"
-                    )
-
                 if owns_transaction:
                     conn.commit()
                 return event
@@ -604,6 +666,245 @@ class AuditChain:
         raise AssertionError(
             "unreachable: AuditChain.log() loop exited without returning or raising"
         )
+
+    def _append_once(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        event_type:  str,
+        actor:       str,
+        fact_id:     str | None,
+        from_state:  str | None,
+        to_state:    str | None,
+        reason:      str | None,
+        payload:     dict | None,
+        confidence:  float | None,
+    ) -> AuditEvent:
+        """Exactly one head-read (with lazy bootstrap), one event insert,
+        one CAS head-update. Raises `_StaleHeadError` on a lost head race,
+        `AuditChainError` on invalid input. Never begins, commits, or
+        rolls back a transaction — the caller (`log()` or
+        `log_in_transaction()`) owns that entirely."""
+        # INSERT OR IGNORE is itself a write — issuing it before the
+        # SELECT forces SQLite to upgrade to a write lock even when
+        # we're participating in a caller-owned (possibly DEFERRED)
+        # transaction, closing the read-then-write race without a
+        # separate no-op statement (SQLite has no SELECT ... FOR
+        # UPDATE).
+        conn.execute(
+            "INSERT OR IGNORE INTO audit_chain_heads "
+            "(chain_id, last_sequence, last_event_hash) VALUES (?, 0, NULL)",
+            (self.chain_id,),
+        )
+        last_seq, prev_hash = conn.execute(
+            "SELECT last_sequence, last_event_hash FROM audit_chain_heads "
+            "WHERE chain_id = ?",
+            (self.chain_id,),
+        ).fetchone()
+
+        new_seq = last_seq + 1
+        event = AuditEvent(
+            event_type=event_type,
+            actor=actor,
+            fact_id=fact_id,
+            from_state=from_state,
+            to_state=to_state,
+            reason=reason,
+            payload=payload,
+            confidence=confidence,
+            prev_event_hash=prev_hash,
+            hash_version=HASH_VERSION_CURRENT,
+            chain_id=self.chain_id,
+            chain_sequence=new_seq,
+        )
+
+        conn.execute(
+            """
+            INSERT INTO memory_events (
+                event_id, event_type, fact_id, from_state, to_state,
+                actor, reason, payload, confidence,
+                event_hash, prev_event_hash, created_at,
+                hash_version, chain_id, chain_sequence
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                event.event_id, event.event_type, event.fact_id,
+                event.from_state, event.to_state,
+                event.actor, event.reason,
+                json.dumps(event.payload, ensure_ascii=False),
+                event.confidence,
+                event.event_hash, event.prev_event_hash,
+                event.created_at,
+                event.hash_version, event.chain_id, event.chain_sequence,
+            ),
+        )
+
+        cur = conn.execute(
+            "UPDATE audit_chain_heads SET last_sequence = ?, last_event_hash = ?, "
+            "updated_at = ? WHERE chain_id = ? AND last_sequence = ?",
+            (new_seq, event.event_hash, event.created_at, self.chain_id, last_seq),
+        )
+        if cur.rowcount != 1:
+            raise _StaleHeadError(
+                f"chain head for {self.chain_id!r} advanced concurrently"
+            )
+        return event
+
+    def log_in_transaction(
+        self,
+        event_type: str,
+        actor:      str,
+        *,
+        fact_id:    str | None = None,
+        from_state: str | None = None,
+        to_state:   str | None = None,
+        reason:     str | None = None,
+    ) -> AuditEvent:
+        """Append one event atomically with a transaction the CALLER
+        already owns (PR-C2 design: e.g. core.memory.SQLiteGraphStore.
+        update_state()'s own `with self._db() as conn:` block, after its
+        canonical CAS-guarded UPDATE has already opened an implicit
+        transaction on this same connection).
+
+        Contract — deliberately narrower than log():
+          - the caller must already have an open transaction on this
+            connection (raises AuditChainError otherwise — this is not a
+            general-purpose entry point);
+          - no BEGIN / COMMIT / ROLLBACK of our own;
+          - no retry loop, no sleep (a stale-head race here is the
+            caller's problem to retry at a higher level, exactly like any
+            other exception from inside its transaction);
+          - no schema self-heal (`_ensure_schema()` is never called) —
+            the caller must have already run `verify_schema_ready()` on a
+            SEPARATE, standalone connection/transaction BEFORE opening
+            the one it passes in here, since DDL/PRAGMA activity is not
+            permitted inside an already-open canonical-mutation
+            transaction;
+          - `payload` and `confidence` are not accepted at all — this
+            entry point is reserved for structured, non-free-text
+            transition metadata only (PR-C2 scope: no claim/prompt/actor/
+            reason free text ever reaches AuditChain through this path).
+
+        Any exception (including a stale-head CAS miss) propagates
+        uncaught, so the caller's own transaction management rolls back
+        both the audit append AND whatever canonical mutation shares its
+        transaction — this is what makes the two atomic.
+        """
+        conn = self._conn
+        if not conn.in_transaction:
+            raise AuditChainError(
+                "log_in_transaction() requires the caller to already own an "
+                "active transaction on this connection — none is open. Use "
+                "log() for a standalone (self-managed transaction) append "
+                "instead."
+            )
+        return self._append_once(
+            conn,
+            event_type=event_type,
+            actor=actor,
+            fact_id=fact_id,
+            from_state=from_state,
+            to_state=to_state,
+            reason=reason,
+            payload=None,
+            confidence=None,
+        )
+
+    @staticmethod
+    def verify_schema_ready(
+        conn: sqlite3.Connection, chain_id: str = DEFAULT_CHAIN_ID,
+    ) -> None:
+        """PR-C2 pre-transaction readiness check. Must be called on a
+        connection that is NOT inside a transaction, and BEFORE the
+        caller's own canonical-mutation transaction opens — never from
+        inside it (see log_in_transaction()'s docstring for why).
+
+        Self-heals `memory_events`/`audit_chain_heads`/the v2 columns via
+        the existing, unmodified `_ensure_schema()` self-heal — safe to
+        call repeatedly. If `memory_events` is entirely absent (e.g. a
+        fresh or never-migrated database), it is created from scratch
+        first, byte-identical to migrations/009_truth_kernel.sql,
+        INCLUDING the append-only triggers — `_ensure_schema()` itself
+        deliberately never does this (some test fixtures build a
+        triggerless memory_events table on purpose, to exercise
+        hash-layer tamper detection independent of DB-level protection,
+        and this method must not disturb that).
+
+        Additionally verifies (existence-only, via sqlite_master) that
+        the append-only triggers exist. Deliberately does NOT create them
+        if `memory_events` already existed without them — an already-
+        existing table missing its triggers is a genuine migration/
+        deployment gap that must be fixed by running migrations, not
+        silently papered over by application code; this fails closed
+        (raises AuditChainError) instead, per PR-C2's "never silently
+        disable auditing, never silently downgrade its guarantees"
+        requirement.
+        """
+        owns_transaction = not conn.in_transaction
+        has_events_table = bool(conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name='memory_events'"
+        ).fetchone())
+        if not has_events_table:
+            conn.executescript(_MEMORY_EVENTS_TABLE_DDL + _AUDIT_TRIGGERS_DDL)
+            if owns_transaction:
+                conn.commit()
+
+        # Existing, unmodified self-heal: v2 columns, audit_chain_heads,
+        # integrity_checks.
+        AuditChain(conn, chain_id=chain_id)
+
+        existing_triggers = {
+            row[0] for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='trigger' "
+                "AND name IN ('prevent_audit_update', 'prevent_audit_delete')"
+            ).fetchall()
+        }
+        missing = {"prevent_audit_update", "prevent_audit_delete"} - existing_triggers
+        if missing:
+            raise AuditChainError(
+                f"AuditChain schema not ready: memory_events is missing "
+                f"append-only trigger(s) {sorted(missing)} after the "
+                f"self-heal attempt. Run migrations before wiring "
+                f"transition auditing."
+            )
+
+    def list_chain_ids(self, limit: int = 10_000) -> list[str]:
+        """Bounded, deterministic enumeration of every distinct chain_id
+        that has ever appended a REAL event — including chains whose
+        owning fact has since been erased (memory_events never
+        references `facts` once fact_id is NULL for these events, so an
+        erased fact's chain remains fully listable and verifiable; only
+        the direct live-database mapping back to which fact it was is
+        gone — see facts.audit_subject_id).
+
+        Deliberately reads `memory_events` itself, NOT `audit_chain_heads`
+        (Codex P2): `audit_chain_heads` is mutable coordination state that
+        `_ensure_schema()`/`verify_schema_ready()` can seed a row for
+        before any event is ever appended (e.g. a CAS-missed transition
+        still runs the pre-transaction readiness check for its candidate
+        chain_id) — reading it would list "phantom" chains with zero
+        actual ledger entries.
+        """
+        if isinstance(limit, bool) or not isinstance(limit, int):
+            raise AuditChainError(f"limit must be an int, got {limit!r}")
+        if limit <= 0:
+            raise AuditChainError(f"limit must be positive, got {limit!r}")
+        if limit > MAX_LIST_CHAIN_IDS_ROWS:
+            raise AuditChainError(
+                f"limit exceeds safe upper bound of {MAX_LIST_CHAIN_IDS_ROWS}: {limit!r}"
+            )
+        conn = self._conn
+        has_events_table = bool(conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='memory_events'"
+        ).fetchone())
+        if not has_events_table:
+            return []
+        rows = conn.execute(
+            "SELECT DISTINCT chain_id FROM memory_events ORDER BY chain_id LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [row[0] for row in rows]
 
     # ── Удобные shortcut методы ───────────────────────────────────────────────
 

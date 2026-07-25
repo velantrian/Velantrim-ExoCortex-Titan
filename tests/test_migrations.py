@@ -88,7 +88,7 @@ def test_fresh_apply_reaches_latest_version_with_expected_schema(tmp_path):
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
         job_cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_jobs)").fetchall()}
         assert "generation" in job_cols
         # migrations/016_erasure_job_subject.sql — Round 5 Codex fix:
@@ -198,7 +198,7 @@ def test_v16_to_v17_upgrade_preserves_existing_v1_audit_events(tmp_path):
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
         rows = conn.execute(
             "SELECT event_id, event_hash, hash_version, chain_id, chain_sequence "
             "FROM memory_events WHERE fact_id = 'f_hist' ORDER BY rowid ASC"
@@ -240,7 +240,7 @@ def test_v17_backfill_runs_when_columns_were_self_healed(tmp_path):
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
         assert conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='audit_chain_heads'"
         ).fetchone() is not None
@@ -269,7 +269,7 @@ def test_v17_reapply_is_idempotent_noop(tmp_path):
 
     conn = sqlite3.connect(db_path)
     after = conn.execute("SELECT * FROM audit_chain_heads").fetchall()
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
     conn.close()
     assert before == after
 
@@ -363,7 +363,7 @@ def test_v13_to_v14_upgrade_preserves_existing_jobs_and_legacy_tombstones(tmp_pa
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
         job_cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_jobs)").fetchall()}
         assert "subject_user_id" in job_cols
         jobs = dict(conn.execute("SELECT job_id, status FROM erasure_jobs").fetchall())
@@ -439,7 +439,7 @@ def test_v12_self_healed_schema_does_not_block_migration_013(tmp_path):
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
         indexes = {
             r[0] for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='erasure_jobs'"
@@ -550,7 +550,7 @@ def test_v16_backfills_completed_batch_subject_and_audit_lookup(tmp_path):
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
 
         # get_erasure_log(user_id="userA") -> ForgettingEngine queries
         # exactly this view.
@@ -751,7 +751,7 @@ def test_v16_backfill_runs_when_subject_column_was_self_healed(tmp_path):
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 17
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
         job_row = conn.execute(
             "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", ("job_sh",)
         ).fetchone()
@@ -880,6 +880,67 @@ am.apply_migrations(Path({db_path!r}), skip_backup=True)
             "SELECT user_id FROM erasure_audit WHERE erasure_id = ?", ("era_atomic",)
         ).fetchone()
         assert audited[0] == "api:deadbeef"
+        assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+    finally:
+        conn.close()
+
+
+def test_runtime_created_audit_triggers_do_not_block_migration_009(tmp_path):
+    """PR-C2 (Codex P1): core.audit_chain.AuditChain.verify_schema_ready()
+    can create memory_events + prevent_audit_update/prevent_audit_delete
+    from scratch, at runtime, on a fresh database that has NEVER run any
+    migration (PRAGMA user_version == 0) — this happens the first time
+    core.memory.SQLiteGraphStore.update_state() wires an ESM/terminal
+    transition into the audit ledger. If an operator later runs
+    scripts/apply_migrations.py against that same database from scratch,
+    migration 009's own `CREATE TRIGGER prevent_audit_update`/
+    `prevent_audit_delete` statements are not idempotent (plain
+    `CREATE TRIGGER`, not `CREATE TRIGGER IF NOT EXISTS`) and must not
+    abort with "trigger ... already exists" — the entire migration chain
+    (009 through the latest version) must still complete."""
+    db_path = str(tmp_path / "runtime_first.db")
+
+    # Exercise the real runtime path: a bare SQLiteGraphStore (no
+    # migrations applied at all — PRAGMA user_version stays 0) performing
+    # an ordinary ESM transition, exactly as core/memory.py's own
+    # docstrings describe as the common case for fresh/test databases.
+    from core.memory import SQLiteGraphStore
+
+    store = SQLiteGraphStore(db_path)
+    store.store_fact_result({"fact_id": "f1", "claim": "c", "source": "s", "confidence": 0.5})
+    assert store.transition_esm("f1", "Hypothesized", by="truth_gate") is True
+    store.close()
+
+    conn = sqlite3.connect(db_path)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 0
+    triggers = {
+        r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='trigger'"
+        ).fetchall()
+    }
+    assert "prevent_audit_update" in triggers
+    assert "prevent_audit_delete" in triggers
+    conn.close()
+
+    result = _run_apply(db_path)
+    assert result.returncode == 0, (
+        f"apply_migrations.py must not abort on a runtime-audit-touched "
+        f"DB:\nstdout={result.stdout}\nstderr={result.stderr}"
+    )
+
+    conn = sqlite3.connect(db_path)
+    try:
+        sys.path.insert(0, SCRIPTS_DIR)
+        from apply_migrations import LATEST_VERSION
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == LATEST_VERSION
+        # The append-only guarantee itself must still hold afterwards —
+        # stripping the CREATE TRIGGER statement must not silently leave
+        # the database without real protection.
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "UPDATE memory_events SET actor = 'hacker' WHERE event_id = "
+                "(SELECT event_id FROM memory_events LIMIT 1)"
+            )
         assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     finally:
         conn.close()
