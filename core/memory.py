@@ -1424,6 +1424,28 @@ class SQLiteGraphStore(GraphStore):
             or _drift_detected
         )
 
+        # PR-C3: store_fact()/store_fact_result() get the same tamper-evident
+        # AuditChain event as update_state()/_promote_to_validated_cas()
+        # (PR-C2) — same C1 (atomic, same transaction) + S2 (per-fact
+        # chain_id via audit_subject_id) design, no new architecture.
+        # audit_subject_id is reused from the existing row if already
+        # assigned (by ANY prior mutation path — store_fact, a later
+        # transition_esm(), etc.), else minted lazily here.
+        import uuid as _uuid
+
+        from core.audit_chain import (
+            ACTOR_CODE_STORE_FACT,
+            REASON_CODE_DIRECT_WRITE,
+            AuditChain,
+            EventType,
+        )
+
+        audit_subject_id = (existing.get("audit_subject_id") if existing else None) or _uuid.uuid4().hex
+        chain_id = f"fact-transition:{audit_subject_id}"
+        l1_record["audit_subject_id"] = audit_subject_id
+        with self._db() as ready_conn:
+            AuditChain.verify_schema_ready(ready_conn, chain_id=chain_id)
+
         with self._db() as conn:
             _bump = self._fact_version_bump_sql(conn) if _content_changed else ""
             _esm_set = (
@@ -1437,14 +1459,16 @@ class SQLiteGraphStore(GraphStore):
                      t_event_valid_start, t_event_valid_end,
                      t_ingestion_start,   t_ingestion_end,
                      derived_from,
-                     claim_type, origin_type, memory_type)
+                     claim_type, origin_type, memory_type,
+                     audit_subject_id)
                 VALUES
                     (:fact_id, :claim, :source, :confidence, :epistemic_state,
                      :created_at, :updated_at, :metadata, :history,
                      :t_event_valid_start, :t_event_valid_end,
                      :t_ingestion_start,   :t_ingestion_end,
                      :derived_from,
-                     :claim_type, :origin_type, :memory_type)
+                     :claim_type, :origin_type, :memory_type,
+                     :audit_subject_id)
                 ON CONFLICT(fact_id) DO UPDATE SET
                     {_bump}claim       = excluded.claim,
                     source      = excluded.source,
@@ -1461,13 +1485,45 @@ class SQLiteGraphStore(GraphStore):
                     -- v8.8: memory_type обновляем если передан не default
                     memory_type = CASE WHEN excluded.memory_type != 'semantic'
                                   THEN excluded.memory_type
-                                  ELSE facts.memory_type END{_esm_set}
+                                  ELSE facts.memory_type END{_esm_set},
+                    -- PR-C3: assigned once, then stable across every later
+                    -- mutation of this row (same COALESCE convention as
+                    -- update_state()/_promote_to_validated_cas()).
+                    audit_subject_id = COALESCE(audit_subject_id, excluded.audit_subject_id)
                 -- epistemic_state, history, t_*_start, derived_from по умолчанию
                 -- исключены: управляются только через transition_esm() /
                 -- invalidate_edge(). Единственное исключение — drift
                 -- protection выше (_esm_set), легальность которой уже
                 -- проверена через ESM_TRANSITIONS до этого момента.
             """, l1_record)
+
+            # PR-C3 (same Codex P2 read-your-own-write lesson from PR-C2):
+            # re-read the audit_subject_id that ACTUALLY won the COALESCE
+            # above rather than trusting the locally-computed candidate —
+            # a concurrent writer may have already assigned the real value
+            # before this call's `existing` read.
+            real_audit_subject_id = conn.execute(
+                "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (fact_id,)
+            ).fetchone()[0]
+
+            from_state: str | None = None
+            if existing is None:
+                event_type = EventType.FACT_CREATED
+            elif _drift_detected:
+                event_type = EventType.FACT_CONTRADICTED
+                from_state = existing["epistemic_state"]
+            else:
+                event_type = EventType.FACT_UPDATED
+            chain = AuditChain(conn, chain_id=f"fact-transition:{real_audit_subject_id}", _skip_schema_check=True)
+            chain.log_in_transaction(
+                event_type=event_type,
+                actor=ACTOR_CODE_STORE_FACT,
+                from_state=from_state,
+                to_state=record["epistemic_state"],
+                reason=REASON_CODE_DIRECT_WRITE,
+            )
+
+        record["audit_subject_id"] = real_audit_subject_id
 
         # PR-C1b (Issue #37): VersionStore-снимок предыдущего состояния теперь
         # делается ТОЛЬКО после успешного коммита записи — как уже сделано в
@@ -2709,6 +2765,32 @@ class SQLiteGraphStore(GraphStore):
             "memory_type":         new_record_seed.get("memory_type", "semantic"),
         }
 
+        # PR-C3: supersede_fact_cas() gets the same tamper-evident
+        # AuditChain wiring as the other lifecycle mutation paths — same
+        # C1 (atomic, same transaction) + S2 (per-fact chain_id) design.
+        # new_fact_id is guaranteed brand new here (the IntegrityError
+        # collision check below is the authoritative guard), so its
+        # audit_subject_id is always freshly minted, no COALESCE needed.
+        # old_id may already have one from an earlier mutation.
+        import uuid as _uuid
+
+        from core.audit_chain import (
+            AuditChain,
+            EventType,
+            REASON_CODE_CAS_TRANSITION,
+            map_actor_code,
+        )
+
+        audit_subject_id_new = _uuid.uuid4().hex
+        audit_subject_id_old_candidate = old_durable_snapshot.get("audit_subject_id") or _uuid.uuid4().hex
+        insert_record["audit_subject_id"] = audit_subject_id_new
+        with self._db() as ready_conn:
+            AuditChain.verify_schema_ready(ready_conn, chain_id=f"fact-transition:{audit_subject_id_new}")
+        with self._db() as ready_conn:
+            AuditChain.verify_schema_ready(
+                ready_conn, chain_id=f"fact-transition:{audit_subject_id_old_candidate}",
+            )
+
         with self._db() as conn:
             # 1) Fail-fast recheck of the old fact's CAS snapshot — cheap,
             # avoids doing the insert+ladder work below when the snapshot is
@@ -2735,13 +2817,15 @@ class SQLiteGraphStore(GraphStore):
                          created_at, updated_at, metadata, history,
                          t_event_valid_start, t_event_valid_end,
                          t_ingestion_start,   t_ingestion_end,
-                         derived_from, claim_type, origin_type, memory_type)
+                         derived_from, claim_type, origin_type, memory_type,
+                         audit_subject_id)
                     VALUES
                         (:fact_id, :claim, :source, :confidence, :epistemic_state,
                          :created_at, :updated_at, :metadata, :history,
                          :t_event_valid_start, :t_event_valid_end,
                          :t_ingestion_start,   :t_ingestion_end,
-                         :derived_from, :claim_type, :origin_type, :memory_type)
+                         :derived_from, :claim_type, :origin_type, :memory_type,
+                         :audit_subject_id)
                 """, insert_record)
             except sqlite3.IntegrityError:
                 return SupersedeCasResult(
@@ -2855,8 +2939,9 @@ class SQLiteGraphStore(GraphStore):
                 epistemic_state="Deprecated",
             )
             conn.execute(
-                "UPDATE facts SET metadata = ? WHERE fact_id = ?",
-                (json.dumps(old_final_metadata), old_id),
+                "UPDATE facts SET metadata = ?, "
+                "audit_subject_id = COALESCE(audit_subject_id, ?) WHERE fact_id = ?",
+                (json.dumps(old_final_metadata), audit_subject_id_old_candidate, old_id),
             )
 
             # 9) FTS index for the new fact — best-effort secondary index,
@@ -2870,12 +2955,49 @@ class SQLiteGraphStore(GraphStore):
             except sqlite3.OperationalError:
                 pass  # FTS5 not available in this SQLite build
 
+            # PR-C3: log strictly after both facts' final state is durably
+            # written, still inside this same transaction — any failure
+            # here rolls back BOTH the new fact's ladder and the old
+            # fact's Deprecation together (same C1 atomicity guarantee as
+            # every other wired path). new_fact_id's audit_subject_id was
+            # just freshly inserted by this same transaction (no other
+            # writer could have touched it — read-your-own-write is not
+            # needed there); old_id's candidate goes through the same
+            # Codex P2 read-your-own-write re-read as every other reused
+            # chain_id, since old_durable_snapshot may be a stale caller
+            # snapshot.
+            real_old_audit_subject_id = conn.execute(
+                "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (old_id,)
+            ).fetchone()[0]
+
+            actor_code = map_actor_code(by)
+            new_chain = AuditChain(
+                conn, chain_id=f"fact-transition:{audit_subject_id_new}", _skip_schema_check=True,
+            )
+            new_chain.log_in_transaction(
+                event_type=EventType.FACT_CREATED,
+                actor=actor_code,
+                to_state="Validated",
+                reason=REASON_CODE_CAS_TRANSITION,
+            )
+            old_chain = AuditChain(
+                conn, chain_id=f"fact-transition:{real_old_audit_subject_id}", _skip_schema_check=True,
+            )
+            old_chain.log_in_transaction(
+                event_type=EventType.FACT_DEPRECATED,
+                actor=actor_code,
+                from_state=expected_old_state,
+                to_state="Deprecated",
+                reason=REASON_CODE_CAS_TRANSITION,
+            )
+
             new_final_record = {
                 **insert_record,
                 "epistemic_state": "Validated",
                 "updated_at":      new_history[-1]["at"],
                 "metadata":        new_final_metadata,
                 "history":         new_history,
+                "audit_subject_id": audit_subject_id_new,
             }
             old_final_record = {
                 **copy.deepcopy(old_durable_snapshot),
@@ -2883,6 +3005,7 @@ class SQLiteGraphStore(GraphStore):
                 "updated_at":      old_deprecated_at,
                 "metadata":        old_final_metadata,
                 "history":         [*old_durable_snapshot.get("history", []), old_history_entry],
+                "audit_subject_id": real_old_audit_subject_id,
             }
 
         # 10) Only now, with the transaction committed, do the two
@@ -3131,17 +3254,54 @@ class SQLiteGraphStore(GraphStore):
         # False for this fact_id.
         expected_updated_at: str = cached["updated_at"]
 
+        # PR-C3: invalidate_edge() gets the same tamper-evident AuditChain
+        # event as the other lifecycle mutation paths — same C1 (atomic,
+        # same transaction) + S2 (per-fact chain_id) design. This is a
+        # CAS-guarded write (WHERE ... AND updated_at = ?) but never
+        # changes epistemic_state, so it uses its own reason_code rather
+        # than REASON_CODE_CAS_TRANSITION (which is reserved for genuine
+        # ESM-state transitions).
+        import uuid as _uuid
+
+        from core.audit_chain import (
+            ACTOR_CODE_INVALIDATE_EDGE,
+            REASON_CODE_CAS_GUARDED_WRITE,
+            AuditChain,
+            EventType,
+        )
+
+        audit_subject_id = cached.get("audit_subject_id") or _uuid.uuid4().hex
+        chain_id = f"fact-transition:{audit_subject_id}"
+        with self._db() as ready_conn:
+            AuditChain.verify_schema_ready(ready_conn, chain_id=chain_id)
+
         with self._db() as conn:
             cur = conn.execute("""
                 UPDATE facts
                 SET t_event_valid_end = COALESCE(t_event_valid_end, ?),
                     t_ingestion_end   = COALESCE(t_ingestion_end,   ?),
-                    updated_at        = ?
+                    updated_at        = ?,
+                    audit_subject_id  = COALESCE(audit_subject_id, ?)
                 WHERE fact_id = ? AND updated_at = ?
-            """, (t_ev_end, t_ing_end, now, fact_id, expected_updated_at))
+            """, (t_ev_end, t_ing_end, now, audit_subject_id, fact_id, expected_updated_at))
             if cur.rowcount == 0:
                 self._l0_del(fact_id)
                 return False
+
+            # PR-C3 (same Codex P2 read-your-own-write lesson from PR-C2):
+            # re-read the audit_subject_id that ACTUALLY won the COALESCE.
+            real_audit_subject_id = conn.execute(
+                "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (fact_id,)
+            ).fetchone()[0]
+            chain = AuditChain(
+                conn, chain_id=f"fact-transition:{real_audit_subject_id}", _skip_schema_check=True,
+            )
+            chain.log_in_transaction(
+                event_type=EventType.FACT_INVALIDATED,
+                actor=ACTOR_CODE_INVALIDATE_EDGE,
+                to_state=cached.get("epistemic_state"),
+                reason=REASON_CODE_CAS_GUARDED_WRITE,
+            )
 
         self._snapshot_before_change(
             fact_id,
@@ -3155,6 +3315,7 @@ class SQLiteGraphStore(GraphStore):
         if not new_cached.get("t_ingestion_end"):
             new_cached["t_ingestion_end"] = t_ing_end
         new_cached["updated_at"] = now
+        new_cached["audit_subject_id"] = real_audit_subject_id
         self._l0_put(fact_id, new_cached)
         return True
 
@@ -3278,8 +3439,20 @@ class SQLiteGraphStore(GraphStore):
         records_bump: list[dict] = []    # existing facts with real claim/confidence/ESM change
         records_nobump: list[dict] = []  # new facts + metadata-only updates to existing facts
         l0_pending: list[tuple] = []  # C2: (fact_id, l0_record) — в L0 ТОЛЬКО после commit L1
+        audit_pending: list[dict] = []  # PR-C3: one entry per record that reaches the transaction
 
         now = _now()
+
+        # PR-C3: store_facts_batch() gets the same tamper-evident AuditChain
+        # wiring as store_fact()/store_fact_result() — same C1+S2 design.
+        import uuid as _uuid
+
+        from core.audit_chain import (
+            ACTOR_CODE_STORE_FACTS_BATCH,
+            REASON_CODE_DIRECT_WRITE,
+            AuditChain,
+            EventType,
+        )
 
         for fact in facts:
             try:
@@ -3387,6 +3560,31 @@ class SQLiteGraphStore(GraphStore):
                 else:
                     stats["stored"] += 1
 
+                # PR-C3: audit_subject_id reused from the existing row if
+                # already assigned (any prior mutation path), else minted
+                # lazily. Set on `record` so it flows through the INSERT
+                # below via the same COALESCE convention as store_fact().
+                audit_subject_id = (
+                    (existing.get("audit_subject_id") if existing else None)
+                    or _uuid.uuid4().hex
+                )
+                record["audit_subject_id"] = audit_subject_id
+                if existing is None:
+                    _event_type = EventType.FACT_CREATED
+                elif record["epistemic_state"] == "Contradicted" and existing["epistemic_state"] != "Contradicted":
+                    _event_type = EventType.FACT_CONTRADICTED
+                else:
+                    _event_type = EventType.FACT_UPDATED
+                audit_pending.append({
+                    "fact_id": fact_id,
+                    "chain_id_candidate": f"fact-transition:{audit_subject_id}",
+                    "event_type": _event_type,
+                    "from_state": existing["epistemic_state"] if (
+                        existing is not None and _event_type == EventType.FACT_CONTRADICTED
+                    ) else None,
+                    "to_state": record["epistemic_state"],
+                })
+
                 # C2 SPLIT-BRAIN FIX: L0 НЕ пишем здесь — только после commit L1 (ниже).
                 l0_record = {**record,
                              "metadata": metadata_dict,
@@ -3405,6 +3603,14 @@ class SQLiteGraphStore(GraphStore):
         if not records_bump and not records_nobump:
             return stats
 
+        # PR-C3: readiness check for every candidate chain_id, on a SEPARATE
+        # connection/transaction, BEFORE the batch's own canonical
+        # transaction opens below — same requirement as update_state()/
+        # store_fact(). Idempotent and cheap to repeat per record.
+        for _pending in audit_pending:
+            with self._db() as ready_conn:
+                AuditChain.verify_schema_ready(ready_conn, chain_id=_pending["chain_id_candidate"])
+
         # Один SQLite transaction на весь batch. PR-C1b (Issue #37): записи,
         # реально меняющие claim/confidence/epistemic_state, идут через SQL
         # с bump fact_version + слитым drift-sync (records_bump) — раньше
@@ -3420,19 +3626,22 @@ class SQLiteGraphStore(GraphStore):
                          created_at, updated_at, metadata, history,
                          t_event_valid_start, t_event_valid_end,
                          t_ingestion_start,   t_ingestion_end,
-                         claim_type, origin_type, memory_type)
+                         claim_type, origin_type, memory_type,
+                         audit_subject_id)
                     VALUES
                         (:fact_id, :claim, :source, :confidence, :epistemic_state,
                          :created_at, :updated_at, :metadata, :history,
                          :t_event_valid_start, :t_event_valid_end,
                          :t_ingestion_start,   :t_ingestion_end,
-                         :claim_type, :origin_type, :memory_type)
+                         :claim_type, :origin_type, :memory_type,
+                         :audit_subject_id)
                     ON CONFLICT(fact_id) DO UPDATE SET
                         claim      = excluded.claim,
                         source     = excluded.source,
                         confidence = excluded.confidence,
                         updated_at = excluded.updated_at,
-                        metadata   = excluded.metadata
+                        metadata   = excluded.metadata,
+                        audit_subject_id = COALESCE(audit_subject_id, excluded.audit_subject_id)
                 """, records_nobump)
 
             if records_bump:
@@ -3443,13 +3652,15 @@ class SQLiteGraphStore(GraphStore):
                          created_at, updated_at, metadata, history,
                          t_event_valid_start, t_event_valid_end,
                          t_ingestion_start,   t_ingestion_end,
-                         claim_type, origin_type, memory_type)
+                         claim_type, origin_type, memory_type,
+                         audit_subject_id)
                     VALUES
                         (:fact_id, :claim, :source, :confidence, :epistemic_state,
                          :created_at, :updated_at, :metadata, :history,
                          :t_event_valid_start, :t_event_valid_end,
                          :t_ingestion_start,   :t_ingestion_end,
-                         :claim_type, :origin_type, :memory_type)
+                         :claim_type, :origin_type, :memory_type,
+                         :audit_subject_id)
                     ON CONFLICT(fact_id) DO UPDATE SET
                         {_bump}claim      = excluded.claim,
                         source           = excluded.source,
@@ -3457,8 +3668,35 @@ class SQLiteGraphStore(GraphStore):
                         epistemic_state  = excluded.epistemic_state,
                         history          = excluded.history,
                         updated_at       = excluded.updated_at,
-                        metadata         = excluded.metadata
+                        metadata         = excluded.metadata,
+                        audit_subject_id = COALESCE(audit_subject_id, excluded.audit_subject_id)
                 """, records_bump)
+
+            # PR-C3: log one AuditChain event per record that reached this
+            # transaction, strictly after both executemany() calls succeed,
+            # still inside the same transaction/connection — any failure
+            # here rolls back the WHOLE batch (all facts, not just this
+            # one), same C1 atomicity guarantee as store_fact(). Re-read
+            # each fact's real (COALESCE-resolved) audit_subject_id rather
+            # than trusting the locally-computed candidate (same Codex P2
+            # read-your-own-write lesson from PR-C2).
+            real_subject_ids: dict[str, str] = {}
+            for _pending in audit_pending:
+                _fid = _pending["fact_id"]
+                real_subject_id = conn.execute(
+                    "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (_fid,)
+                ).fetchone()[0]
+                real_subject_ids[_fid] = real_subject_id
+                chain = AuditChain(
+                    conn, chain_id=f"fact-transition:{real_subject_id}", _skip_schema_check=True,
+                )
+                chain.log_in_transaction(
+                    event_type=_pending["event_type"],
+                    actor=ACTOR_CODE_STORE_FACTS_BATCH,
+                    from_state=_pending["from_state"],
+                    to_state=_pending["to_state"],
+                    reason=REASON_CODE_DIRECT_WRITE,
+                )
 
         # C2 SPLIT-BRAIN FIX (audit): L0 пишем ТОЛЬКО ПОСЛЕ успешного commit L1.
         # Раньше _l0_put шёл в цикле ДО executemany → при откате батча факты
@@ -3469,6 +3707,7 @@ class SQLiteGraphStore(GraphStore):
         # по себе, требующая отдельного дизайна (per-record snapshot вместо
         # одного executemany), а не части этого узкого fix'а.
         for _fid, _l0_record in l0_pending:
+            _l0_record["audit_subject_id"] = real_subject_ids.get(_fid, _l0_record.get("audit_subject_id"))
             self._l0_put(_fid, _l0_record)
 
         logger.debug(
