@@ -27,6 +27,35 @@ def is_write_gate_enabled() -> bool:
         return False
 
 
+class WritesBlockedError(RuntimeError):
+    """MetaSupervisor is in SAFE_MODE — L3 writes must not proceed."""
+
+
+def check_writes_allowed() -> tuple[bool, str]:
+    """Проверить, разрешены ли записи в L3 (MetaSupervisor SAFE_MODE).
+
+    Fail-open: если supervisor недоступен / не импортируется — считаем, что
+    SAFE_MODE не активен (writes allowed). Иначе не стартовавший сервис
+    блокировал бы весь write-path.
+    """
+    try:
+        from core.meta_supervisor import get_meta_supervisor
+        if get_meta_supervisor().writes_blocked:
+            return False, "safe_mode_writes_blocked"
+    except Exception:  # noqa: BLE001
+        return True, "ok"
+    return True, "ok"
+
+
+def ensure_writes_allowed() -> None:
+    """Поднять WritesBlockedError, если MetaSupervisor в SAFE_MODE."""
+    ok, reason = check_writes_allowed()
+    if not ok:
+        raise WritesBlockedError(
+            f"SAFE_MODE: writes blocked by MetaSupervisor ({reason})"
+        )
+
+
 def admit_fact(
     *,
     claim_type,
@@ -59,4 +88,10 @@ def admit_fact(
     return True, "ok"
 
 
-__all__ = ["admit_fact", "is_write_gate_enabled"]
+__all__ = [
+    "admit_fact",
+    "is_write_gate_enabled",
+    "check_writes_allowed",
+    "ensure_writes_allowed",
+    "WritesBlockedError",
+]

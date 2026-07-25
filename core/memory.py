@@ -1162,7 +1162,11 @@ class SQLiteGraphStore(GraphStore):
         TASK-05: no-op guard skips SQL entirely if claim/source/confidence
         are unchanged.
         """
+        from core.write_gate import ensure_writes_allowed
         from core.write_result import WriteResult, WriteStatus
+
+        # SAFE_MODE choke: MetaSupervisor.writes_blocked must stop all L3 writes.
+        ensure_writes_allowed()
 
         fact_id = fact.get("fact_id")
         if not fact_id:
@@ -1639,11 +1643,25 @@ class SQLiteGraphStore(GraphStore):
         server-side only — never placed in a client-facing field.
         """
         from core.memory_budget import MemoryBudgetExceededError
+        from core.write_gate import WritesBlockedError
         from core.write_result import WriteResult, WriteStatus
 
         fact_id = fact.get("fact_id")
         try:
             return self._store_fact_outcome(fact)
+        except WritesBlockedError:
+            logger.warning(
+                "store_fact_result: SAFE_MODE blocked write for fact %s", fact_id
+            )
+            return WriteResult(
+                status=WriteStatus.REJECTED_SAFE_MODE,
+                fact_id=fact_id,
+                created=False,
+                canonical_exists=self._safe_canonical_exists(fact_id),
+                durable_write=False,
+                safe_reason_code="safe_mode_writes_blocked",
+                safe_message="System is in SAFE_MODE; writes are blocked.",
+            )
         except MemoryBudgetExceededError as exc:
             logger.warning(
                 "store_fact_result: budget rejected fact %s: %s", fact_id, exc
@@ -1809,6 +1827,20 @@ class SQLiteGraphStore(GraphStore):
                 if normalize_claim_for_dedup(stored_claim or "") == target:
                     return fid
         return None
+
+    # ── count_facts_by_epistemic_state ─────────────────────────────────────
+
+    def count_facts_by_epistemic_state(self) -> dict[str, int]:
+        """Лёгкий COUNT(*) GROUP BY epistemic_state — для /health без full scan."""
+        with self._db() as conn:
+            rows = conn.execute(
+                "SELECT epistemic_state, COUNT(*) AS n FROM facts "
+                "GROUP BY epistemic_state"
+            ).fetchall()
+        return {
+            (row["epistemic_state"] if row["epistemic_state"] is not None else "unknown"): int(row["n"])
+            for row in rows
+        }
 
     # ── get_all_facts ───────────────────────────────────────────────────────
 
@@ -2058,6 +2090,9 @@ class SQLiteGraphStore(GraphStore):
         prevent_immutablecore_mutation's follow-up self-trip (removed
         below) as an accidental safety net.
         """
+        from core.write_gate import ensure_writes_allowed
+        ensure_writes_allowed()
+
         if new_state == "ImmutableCore":
             raise ImmutableStateError(
                 "update_state: direct transition to 'ImmutableCore' is not "
@@ -2532,6 +2567,9 @@ class SQLiteGraphStore(GraphStore):
         updated_at = ?, оба значения приходят от вызывающего (durable-снимок),
         никакого нового чтения внутри.
 
+        SAFE_MODE: ensure_writes_allowed() at entry (this path bypasses
+        update_state()).
+
         Это НАРОЧНО не transition_esm(): тот делает свежий self.get_fact()
         и легальность проверяет по ЭТОМУ свежему состоянию — если факт успел
         измениться (например, конкурентный переход в другое состояние), это
@@ -2562,6 +2600,9 @@ class SQLiteGraphStore(GraphStore):
         в остальной кодовой базе (тот же паттерн), и explicitly не решается
         здесь — не относится к TruthGate-обходу, который чинит этот PR.
         """
+        from core.write_gate import ensure_writes_allowed
+        ensure_writes_allowed()
+
         now = _now()
         new_state = "Validated"
         history_entry = {
@@ -2706,6 +2747,9 @@ class SQLiteGraphStore(GraphStore):
         факт Observed→Hypothesized→Supported→Validated и переводит старый в
         Deprecated, либо не меняет ничего вообще.
 
+        SAFE_MODE: ensure_writes_allowed() at entry (bypasses store_fact /
+        update_state choke points by design).
+
         НАРОЧНО не использует store_fact()/promote_to_validated()/
         transition_esm(): каждый из них открывает СВОЙ _db()-контекст (своя
         транзакция, свой commit) — последовательность таких вызовов оставляла
@@ -2743,6 +2787,8 @@ class SQLiteGraphStore(GraphStore):
         в кодовой базе).
         """
         from core.fact_integrity import attach_integrity_metadata
+        from core.write_gate import ensure_writes_allowed
+        ensure_writes_allowed()
 
         now = _now()
         claim      = new_record_seed.get("claim", "")
@@ -3246,6 +3292,9 @@ class SQLiteGraphStore(GraphStore):
         UPDATE и оставался "фантомным" при отклонённой/несуществующей
         попытке.
         """
+        from core.write_gate import ensure_writes_allowed
+        ensure_writes_allowed()
+
         now = _now()
         t_ev_end  = t_event_valid_end or now
         t_ing_end = t_ingestion_end   or now
@@ -3479,6 +3528,9 @@ class SQLiteGraphStore(GraphStore):
         Returns:
             {"stored": int, "updated": int, "drift": int, "errors": int}
         """
+        from core.write_gate import ensure_writes_allowed
+        ensure_writes_allowed()
+
         if not facts:
             return {"stored": 0, "updated": 0, "drift": 0, "errors": 0}
 

@@ -82,3 +82,52 @@ def test_key_analysis_matches():
     assert _velantrim_key_analysis("", "right-key")["matches_env"] is False
     # No expected key configured → auth not required.
     assert _velantrim_key_analysis("anything", "")["matches_env"] is True
+
+
+# ── 5. console self-probe must not follow Host-header (SSRF) ─────────────────
+
+@pytest.mark.asyncio
+async def test_probe_uses_loopback_not_request_host(monkeypatch):
+    """Host: evil.example must NOT become the probe target."""
+    from unittest.mock import MagicMock
+
+    import httpx
+
+    import api.web_console as wc
+
+    captured: dict = {}
+
+    class _FakeClient:
+        def __init__(self, *a, **k):
+            captured["kwargs"] = k
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def get(self, url, **k):
+            captured["get_url"] = url
+            r = MagicMock()
+            r.status_code = 401
+            return r
+
+        async def post(self, url, **k):
+            captured["post_url"] = url
+            r = MagicMock()
+            r.status_code = 200
+            r.json.return_value = {}
+            return r
+
+    monkeypatch.setattr(httpx, "AsyncClient", _FakeClient)
+    monkeypatch.setenv("PORT", "8755")
+
+    request = MagicMock()
+    request.base_url = "http://evil.example:9999/"
+
+    result = await wc._probe_velantrim_api(request, key="k")
+    assert captured["kwargs"].get("follow_redirects") is False
+    assert captured["get_url"].startswith("http://127.0.0.1:8755/")
+    assert "evil.example" not in captured["get_url"]
+    assert result["status"] == 401

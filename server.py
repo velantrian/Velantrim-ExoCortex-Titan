@@ -2019,17 +2019,16 @@ async def health():
             _mhi_cache["at"]   = now
             http_status = 200 if mhi_report.status != MHIStatus.SAFE_MODE else 503
         except Exception as exc:
-            mhi_data = {"error": str(exc), "cached": False}
+            # Never leak exception text on the public /health surface.
+            logger.exception("MHI calculation failed: %s", exc)
+            mhi_data = {"error": "mhi_unavailable", "cached": False}
             http_status = 500
 
-    # Количество фактов
+    # Количество фактов — COUNT GROUP BY, без full-table materialization.
     try:
-        all_facts = await asyncio.to_thread(get_all_facts)
-        facts_by_state: dict[str, int] = {}
-        for f in all_facts:
-            state = f.get("epistemic_state", "unknown")
-            facts_by_state[state] = facts_by_state.get(state, 0) + 1
+        facts_by_state = await asyncio.to_thread(_store.count_facts_by_epistemic_state)
     except Exception:
+        logger.exception("health facts_by_state count failed")
         facts_by_state = {}
 
     return JSONResponse(

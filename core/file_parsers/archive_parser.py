@@ -160,6 +160,43 @@ class ArchiveParser(FileParser):
 
     # ─── Extract methods (защищены от zip-bomb) ───────────────────────────────
 
+    def _stream_copy_capped(
+        self,
+        src,
+        dest_path: str,
+        total_size: int,
+        result: ParseResult,
+        chunk_size: int = 1024 * 1024,
+    ) -> tuple[int, bool]:
+        """Copy src→dest counting REAL bytes; abort if cap exceeded.
+
+        Returns (new_total_size, ok). On cap breach the partial dest file
+        is removed and result.warnings gets max_extracted_size_reached.
+        Declared archive sizes are NOT trusted — only bytes actually read.
+        """
+        parent = os.path.dirname(dest_path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        written_ok = True
+        with open(dest_path, "wb") as dst:
+            while True:
+                chunk = src.read(chunk_size)
+                if not chunk:
+                    break
+                total_size += len(chunk)
+                if total_size > self.MAX_EXTRACTED_SIZE:
+                    written_ok = False
+                    break
+                dst.write(chunk)
+        if not written_ok:
+            try:
+                os.remove(dest_path)
+            except OSError:
+                pass
+            result.warnings.append("max_extracted_size_reached")
+            return total_size, False
+        return total_size, True
+
     def _extract_zip(self, file_path: str, tmpdir: str, result: ParseResult) -> list[str]:
         import zipfile
         files: list[str] = []
@@ -169,10 +206,10 @@ class ArchiveParser(FileParser):
                 if len(files) >= self.MAX_FILES:
                     result.warnings.append(f"max_files_reached: {self.MAX_FILES}")
                     break
-                # Защита от zip-bomb через сравнение compressed vs uncompressed
+                # Early reject on declared size (cheap); real-byte cap below
+                # is the authoritative zip-bomb guard.
                 info = zf.getinfo(member)
-                total_size += info.file_size
-                if total_size > self.MAX_EXTRACTED_SIZE:
+                if total_size + max(info.file_size, 0) > self.MAX_EXTRACTED_SIZE:
                     result.warnings.append("max_extracted_size_reached")
                     break
                 # Защита от path traversal
@@ -185,9 +222,15 @@ class ArchiveParser(FileParser):
                 if not target_path.startswith(base_target + os.sep) and target_path != base_target:
                     result.warnings.append(f"unsafe_path_skipped: {member}")
                     continue
-                if not member.endswith("/"):  # не директория
-                    out = zf.extract(member, tmpdir)
-                    files.append(out)
+                if member.endswith("/"):  # директория
+                    continue
+                with zf.open(member) as src:
+                    total_size, ok = self._stream_copy_capped(
+                        src, target_path, total_size, result
+                    )
+                if not ok:
+                    break
+                files.append(target_path)
         return files
 
     def _extract_tar(self, file_path: str, tmpdir: str, result: ParseResult) -> list[str]:
@@ -199,8 +242,7 @@ class ArchiveParser(FileParser):
                 if len(files) >= self.MAX_FILES:
                     result.warnings.append(f"max_files_reached: {self.MAX_FILES}")
                     break
-                total_size += member.size
-                if total_size > self.MAX_EXTRACTED_SIZE:
+                if total_size + max(member.size, 0) > self.MAX_EXTRACTED_SIZE:
                     result.warnings.append("max_extracted_size_reached")
                     break
                 # FIX v8.5.3 (Gemini finding): то же что и в zip — abspath-проверка
@@ -209,9 +251,18 @@ class ArchiveParser(FileParser):
                 if not target_path.startswith(base_target + os.sep) and target_path != base_target:
                     result.warnings.append(f"unsafe_path_skipped: {member.name}")
                     continue
-                if member.isfile():
-                    tf.extract(member, tmpdir)
-                    files.append(os.path.join(tmpdir, member.name))
+                if not member.isfile():
+                    continue
+                src = tf.extractfile(member)
+                if src is None:
+                    continue
+                with src:
+                    total_size, ok = self._stream_copy_capped(
+                        src, target_path, total_size, result
+                    )
+                if not ok:
+                    break
+                files.append(target_path)
         return files
 
     def _extract_7z(self, file_path: str, tmpdir: str, result: ParseResult) -> list[str]:
