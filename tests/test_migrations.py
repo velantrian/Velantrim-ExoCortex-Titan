@@ -20,6 +20,10 @@ SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), "..", "scripts")
 APPLY_MIGRATIONS = os.path.join(SCRIPTS_DIR, "apply_migrations.py")
 MIGRATIONS_DIR = os.path.join(os.path.dirname(__file__), "..", "migrations")
 
+# Актуальная версия схемы — не хардкодить число (019_suggested_edges и дальше).
+sys.path.insert(0, SCRIPTS_DIR)
+from apply_migrations import LATEST_VERSION  # noqa: E402
+
 
 def _run_apply(db_path: str) -> subprocess.CompletedProcess:
     return subprocess.run(
@@ -88,7 +92,7 @@ def test_fresh_apply_reaches_latest_version_with_expected_schema(tmp_path):
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == LATEST_VERSION
         job_cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_jobs)").fetchall()}
         assert "generation" in job_cols
         # migrations/016_erasure_job_subject.sql — Round 5 Codex fix:
@@ -150,6 +154,18 @@ def test_fresh_apply_reaches_latest_version_with_expected_schema(tmp_path):
             ).fetchall()
         }
         assert {"prevent_audit_update", "prevent_audit_delete"} <= triggers
+
+        # migrations/019_suggested_edges.sql — EdgeSuggester HITL queue.
+        assert conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='suggested_edges'"
+        ).fetchone() is not None
+        sugg_cols = {
+            r[1] for r in conn.execute("PRAGMA table_info(suggested_edges)").fetchall()
+        }
+        assert {
+            "suggestion_id", "from_fact_id", "to_fact_id", "relation_type",
+            "score", "status",
+        } <= sugg_cols
     finally:
         conn.close()
 
@@ -198,7 +214,7 @@ def test_v16_to_v17_upgrade_preserves_existing_v1_audit_events(tmp_path):
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == LATEST_VERSION
         rows = conn.execute(
             "SELECT event_id, event_hash, hash_version, chain_id, chain_sequence "
             "FROM memory_events WHERE fact_id = 'f_hist' ORDER BY rowid ASC"
@@ -240,7 +256,7 @@ def test_v17_backfill_runs_when_columns_were_self_healed(tmp_path):
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == LATEST_VERSION
         assert conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='audit_chain_heads'"
         ).fetchone() is not None
@@ -269,7 +285,7 @@ def test_v17_reapply_is_idempotent_noop(tmp_path):
 
     conn = sqlite3.connect(db_path)
     after = conn.execute("SELECT * FROM audit_chain_heads").fetchall()
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == LATEST_VERSION
     conn.close()
     assert before == after
 
@@ -363,7 +379,7 @@ def test_v13_to_v14_upgrade_preserves_existing_jobs_and_legacy_tombstones(tmp_pa
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == LATEST_VERSION
         job_cols = {r[1] for r in conn.execute("PRAGMA table_info(erasure_jobs)").fetchall()}
         assert "subject_user_id" in job_cols
         jobs = dict(conn.execute("SELECT job_id, status FROM erasure_jobs").fetchall())
@@ -439,7 +455,7 @@ def test_v12_self_healed_schema_does_not_block_migration_013(tmp_path):
 
     conn = sqlite3.connect(db_path)
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == LATEST_VERSION
         indexes = {
             r[0] for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='erasure_jobs'"
@@ -550,7 +566,7 @@ def test_v16_backfills_completed_batch_subject_and_audit_lookup(tmp_path):
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == LATEST_VERSION
 
         # get_erasure_log(user_id="userA") -> ForgettingEngine queries
         # exactly this view.
@@ -751,7 +767,7 @@ def test_v16_backfill_runs_when_subject_column_was_self_healed(tmp_path):
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 18
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == LATEST_VERSION
         job_row = conn.execute(
             "SELECT subject_user_id FROM erasure_jobs WHERE job_id = ?", ("job_sh",)
         ).fetchone()

@@ -2847,6 +2847,26 @@ class ImmutableSnapshotBody(BaseModel):
     reason: str = "api_snapshot"
 
 
+class EdgeScanBody(BaseModel):
+    limit: int = Field(50, ge=1, le=200)
+    min_shared_tokens: int = Field(2, ge=1, le=20)
+    min_score: float = Field(0.35, ge=0.0, le=1.0)
+    fact_limit: int = Field(200, ge=2, le=2000)
+    relation_type: str = Field("analogous_to", max_length=64)
+
+
+class EdgeResolveBody(BaseModel):
+    by: str = Field("auditor", max_length=128)
+    write_relation: bool = True
+
+
+class XaiExplainBody(BaseModel):
+    query: str = ""
+    answer_preview: str = ""
+    fact_ids: list[str] = Field(default_factory=list)
+    level: str = Field("brief", pattern="^(brief|detailed|full_trace)$")
+
+
 @app.get(
     "/layers/status",
     tags=["Layers", "Horizons"],
@@ -2860,6 +2880,215 @@ async def layers_status_endpoint():
     from api.exocortex_api import full_layers_status
 
     return full_layers_status()
+
+
+@app.get(
+    "/compute-profile",
+    tags=["Profiles", "Layers"],
+    summary="Профиль железа COMPUTE_PROFILE (lite/standard/heavy)",
+    description=(
+        "Local-first рычаг поверх ENABLE_*. Не путать с VELANTRIM_PROFILE "
+        "(аудитория). LLM_PROVIDER профилем не включается."
+    ),
+)
+async def compute_profile_endpoint():
+    from core.compute_profile import describe_compute_profile
+    from core.feature_config import get_config
+
+    cfg = get_config().app
+    desc = describe_compute_profile(cfg.compute_profile)
+    desc["runtime"] = {
+        "enable_velum": cfg.enable_velum,
+        "enable_edge_suggester": cfg.enable_edge_suggester,
+        "enable_xai": cfg.enable_xai,
+        "enable_memory_volition": cfg.enable_memory_volition,
+        "enable_concept_emergence": cfg.enable_concept_emergence,
+        "enable_concept_llm_naming": cfg.enable_concept_llm_naming,
+    }
+    return desc
+
+
+@app.post(
+    "/edges/suggestions/scan",
+    tags=["MemoryOps", "Layers"],
+    summary="EdgeSuggester scan (Slow Path, HITL)",
+    dependencies=[Depends(require_api_key)],
+)
+async def edges_suggestions_scan_endpoint(body: EdgeScanBody):
+    from core.dual_process import DualProcessError, slow_path
+    from core.edge_suggester import get_edge_suggester, is_edge_suggester_enabled
+    from core.memory import get_all_facts
+
+    if not is_edge_suggester_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="EdgeSuggester выключен (ENABLE_EDGE_SUGGESTER=1 или COMPUTE_PROFILE=standard|heavy)",
+        )
+
+    facts = await asyncio.to_thread(get_all_facts)
+    facts = list(facts or [])[: body.fact_limit]
+    suggester = get_edge_suggester()
+
+    def _scan_slow() -> list:
+        # contextvars не наследуются worker-thread'ом — slow_path внутри потока.
+        with slow_path():
+            return suggester.scan(
+                facts,
+                min_shared_tokens=body.min_shared_tokens,
+                min_score=body.min_score,
+                limit=body.limit,
+                relation_type=body.relation_type,
+            )
+
+    try:
+        created = await asyncio.to_thread(_scan_slow)
+    except DualProcessError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"created": len(created), "suggestions": created}
+
+
+@app.get(
+    "/edges/suggestions",
+    tags=["MemoryOps", "Layers"],
+    summary="Список suggested_edges (HITL очередь)",
+    dependencies=[Depends(require_api_key)],
+)
+async def edges_suggestions_list_endpoint(
+    status_filter: str = "pending",
+    limit: int = 50,
+):
+    from core.edge_suggester import get_edge_suggester, is_edge_suggester_enabled
+
+    if not is_edge_suggester_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="EdgeSuggester выключен",
+        )
+    items = await asyncio.to_thread(
+        get_edge_suggester().list_suggestions,
+        status=status_filter,
+        limit=max(1, min(limit, 200)),
+    )
+    return {"total": len(items), "suggestions": items}
+
+
+@app.post(
+    "/edges/suggestions/{suggestion_id}/approve",
+    tags=["MemoryOps", "Layers"],
+    summary="Approve suggested edge → optional hypothetical relation",
+    dependencies=[Depends(require_api_key)],
+)
+async def edges_suggestions_approve_endpoint(
+    suggestion_id: str,
+    body: EdgeResolveBody | None = None,
+):
+    from core.edge_suggester import get_edge_suggester, is_edge_suggester_enabled
+
+    if not is_edge_suggester_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="EdgeSuggester выключен",
+        )
+    body = body or EdgeResolveBody()
+    try:
+        return await asyncio.to_thread(
+            get_edge_suggester().approve,
+            suggestion_id,
+            by=body.by,
+            write_relation=body.write_relation,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="suggestion not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post(
+    "/edges/suggestions/{suggestion_id}/reject",
+    tags=["MemoryOps", "Layers"],
+    summary="Reject suggested edge",
+    dependencies=[Depends(require_api_key)],
+)
+async def edges_suggestions_reject_endpoint(
+    suggestion_id: str,
+    body: EdgeResolveBody | None = None,
+):
+    from core.edge_suggester import get_edge_suggester, is_edge_suggester_enabled
+
+    if not is_edge_suggester_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="EdgeSuggester выключен",
+        )
+    body = body or EdgeResolveBody()
+    try:
+        return await asyncio.to_thread(
+            get_edge_suggester().reject,
+            suggestion_id,
+            by=body.by,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="suggestion not found") from exc
+
+
+@app.get(
+    "/xai/explain/{trace_id}",
+    tags=["MemoryOps", "Layers"],
+    summary="XAI: почему такой ответ (только из TRACE)",
+    dependencies=[Depends(require_api_key)],
+)
+async def xai_explain_trace_endpoint(
+    trace_id: str,
+    level: str = "brief",
+):
+    from core.memory_ops import get_memory_ops
+    from core.xai_explain import explain_reasoning_trace, is_xai_enabled
+
+    if not is_xai_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="XAI выключен (ENABLE_XAI=1 или COMPUTE_PROFILE=standard|heavy)",
+        )
+    if level not in ("brief", "detailed", "full_trace"):
+        raise HTTPException(status_code=400, detail="level must be brief|detailed|full_trace")
+    stored = await asyncio.to_thread(get_memory_ops().get_trace, trace_id)
+    if not stored:
+        raise HTTPException(status_code=404, detail=f"Trace '{trace_id}' не найден")
+    return await asyncio.to_thread(
+        explain_reasoning_trace,
+        stored,
+        level=level,
+        resolve_facts=True,
+    )
+
+
+@app.post(
+    "/xai/explain",
+    tags=["MemoryOps", "Layers"],
+    summary="XAI из fact_ids / ad-hoc TRACE (без LLM)",
+    dependencies=[Depends(require_api_key)],
+)
+async def xai_explain_body_endpoint(body: XaiExplainBody):
+    from core.memory import get_fact
+    from core.xai_explain import explain_from_facts, is_xai_enabled
+
+    if not is_xai_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="XAI выключен",
+        )
+    facts = []
+    for fid in body.fact_ids:
+        f = await asyncio.to_thread(get_fact, fid)
+        if f:
+            facts.append(f)
+    return await asyncio.to_thread(
+        explain_from_facts,
+        facts,
+        query=body.query,
+        answer_preview=body.answer_preview,
+        level=body.level,
+    )
 
 
 @app.get(
