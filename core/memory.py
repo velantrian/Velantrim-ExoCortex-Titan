@@ -1366,6 +1366,15 @@ class SQLiteGraphStore(GraphStore):
                 # was set to a new now() unconditionally above; restore the
                 # durable value before publishing to L0.
                 record["updated_at"] = existing["updated_at"]
+                # PR-C3 hardening: `record` is assembled as a fresh dict and
+                # does not carry durable audit_subject_id. Publishing it to
+                # L0 as-is would clobber a previously assigned subject id —
+                # later invalidate_edge()/transition_esm() would then mint a
+                # NEW candidate, seed a phantom audit_chain_heads row via
+                # verify_schema_ready(), and only recover the real chain via
+                # COALESCE. Preserve the durable subject id on the no-op path.
+                if existing.get("audit_subject_id"):
+                    record["audit_subject_id"] = existing["audit_subject_id"]
                 self._l0_put(fact_id, record)
                 return WriteResult(
                     status=WriteStatus.NOOP_EXISTING,
@@ -3253,6 +3262,13 @@ class SQLiteGraphStore(GraphStore):
         # (never matches a real row) and return a permanent false-negative
         # False for this fact_id.
         expected_updated_at: str = cached["updated_at"]
+
+        # PR-C3 hardening: if both end timestamps are already set, COALESCE
+        # would change nothing durable except bumping updated_at — and that
+        # bump alone must NOT mint a duplicate fact_invalidated event on
+        # retry-after-success. Treat as an idempotent no-op (True).
+        if cached.get("t_event_valid_end") and cached.get("t_ingestion_end"):
+            return True
 
         # PR-C3: invalidate_edge() gets the same tamper-evident AuditChain
         # event as the other lifecycle mutation paths — same C1 (atomic,

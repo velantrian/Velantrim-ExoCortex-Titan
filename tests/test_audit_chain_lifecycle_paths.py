@@ -242,6 +242,41 @@ class TestStoreFactAuditWiring:
         chain_id = _chain_id_for(store, fid)
         assert len(_events(store, chain_id)) == 1, "the failed first attempt must have left no trace"
 
+    def test_noop_preserves_audit_subject_id_in_l0(self, migrated_store):
+        """Regression: no-op store_fact must not clobber L0 audit_subject_id.
+
+        Before this hardening, the no-op branch rebuilt `record` without the
+        durable subject id and published it to L0 — later invalidate_edge /
+        transition_esm then minted a NEW candidate and seeded a phantom
+        audit_chain_heads row via verify_schema_ready().
+        """
+        store = migrated_store
+        fid = "f_noop_l0_subject"
+        store.store_fact({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.5})
+        durable_subject = _audit_subject_id(store, fid)
+        assert durable_subject
+        chain_id = _chain_id_for(store, fid)
+        events_before = len(_events(store, chain_id))
+
+        result = store.store_fact_result(
+            {"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.5}
+        )
+        assert result.status.name == "NOOP_EXISTING"
+
+        l0 = store._l0_get(fid)
+        assert l0 is not None
+        assert l0.get("audit_subject_id") == durable_subject, (
+            "L0 must keep the durable audit_subject_id across a no-op upsert"
+        )
+        assert len(_events(store, chain_id)) == events_before
+
+        # And a later invalidate must stay on the SAME chain (no fork).
+        assert store.invalidate_edge(fid) is True
+        assert _chain_id_for(store, fid) == chain_id
+        rows = _events(store, chain_id)
+        assert len(rows) == events_before + 1
+        assert rows[-1]["event_type"] == "fact_invalidated"
+
     def test_chain_id_stable_from_creation_through_later_esm_transition(self, migrated_store):
         store = migrated_store
         fid = "f_store_chain_stable"
@@ -342,6 +377,35 @@ class TestStoreFactsBatchAuditWiring:
         assert store.get_fact("f_batch_roll_2") is None
         assert _event_count(store) == 0
 
+    def test_retry_after_rollback_logs_exactly_one_event_per_fact(self, migrated_store, monkeypatch):
+        store = migrated_store
+        from core import audit_chain as ac_module
+        real_append_once = ac_module.AuditChain._append_once
+        attempts = {"n": 0}
+
+        def _fail_once(self, conn, **kwargs):
+            attempts["n"] += 1
+            if attempts["n"] == 1:
+                raise RuntimeError("simulated transient failure on first batch attempt")
+            return real_append_once(self, conn, **kwargs)
+
+        monkeypatch.setattr(ac_module.AuditChain, "_append_once", _fail_once)
+
+        facts = [
+            {"fact_id": "f_batch_retry_1", "claim": "c1", "source": "s", "confidence": 0.5},
+            {"fact_id": "f_batch_retry_2", "claim": "c2", "source": "s", "confidence": 0.5},
+        ]
+        with pytest.raises(RuntimeError, match="simulated transient failure"):
+            store.store_facts_batch(facts)
+        assert store.get_fact("f_batch_retry_1") is None
+        assert store.get_fact("f_batch_retry_2") is None
+
+        stats = store.store_facts_batch(facts)
+        assert stats["stored"] == 2
+        for fid in ("f_batch_retry_1", "f_batch_retry_2"):
+            chain_id = _chain_id_for(store, fid)
+            assert len(_events(store, chain_id)) == 1
+
 
 class TestInvalidateEdgeAuditWiring:
     def test_successful_invalidate_logs_exactly_one_event(self, migrated_store):
@@ -405,6 +469,49 @@ class TestInvalidateEdgeAuditWiring:
         fact_after = store.get_fact(fid)
         assert fact_after["t_event_valid_end"] == fact_before["t_event_valid_end"]
         assert fact_after["updated_at"] == fact_before["updated_at"]
+
+    def test_retry_after_success_logs_zero_additional_events(self, migrated_store):
+        store = migrated_store
+        fid = "f_invalidate_retry_success"
+        store.store_fact({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.5})
+        chain_id = _chain_id_for(store, fid)
+
+        assert store.invalidate_edge(fid) is True
+        events_after_first = len(_events(store, chain_id))
+        assert events_after_first >= 2  # fact_created + fact_invalidated
+
+        assert store.invalidate_edge(fid) is True
+        assert len(_events(store, chain_id)) == events_after_first, (
+            "retry after a successful invalidate must be an idempotent no-op "
+            "— no second fact_invalidated event"
+        )
+
+    def test_retry_after_rollback_logs_exactly_one_event(self, migrated_store, monkeypatch):
+        store = migrated_store
+        fid = "f_invalidate_retry_roll"
+        store.store_fact({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.5})
+        chain_id = _chain_id_for(store, fid)
+        events_before = len(_events(store, chain_id))
+
+        from core import audit_chain as ac_module
+        real_append_once = ac_module.AuditChain._append_once
+        attempts = {"n": 0}
+
+        def _fail_once(self, conn, **kwargs):
+            attempts["n"] += 1
+            if attempts["n"] == 1:
+                raise RuntimeError("simulated transient invalidate failure")
+            return real_append_once(self, conn, **kwargs)
+
+        monkeypatch.setattr(ac_module.AuditChain, "_append_once", _fail_once)
+
+        with pytest.raises(RuntimeError, match="simulated transient invalidate failure"):
+            store.invalidate_edge(fid)
+        assert store.get_fact(fid)["t_event_valid_end"] is None
+        assert len(_events(store, chain_id)) == events_before
+
+        assert store.invalidate_edge(fid) is True
+        assert len(_events(store, chain_id)) == events_before + 1
 
 
 def _make_supersede_ready_old_fact(store, fact_id: str) -> None:
@@ -530,6 +637,50 @@ class TestSupersedeFactCasAuditWiring:
         )
         assert fact_after["updated_at"] == old_before["updated_at"]
 
+    def test_retry_after_rollback_logs_exactly_one_event_per_fact(self, migrated_store, monkeypatch):
+        store = migrated_store
+        old_id, new_id = "f_supersede_old_retry", "f_supersede_new_retry"
+        _make_supersede_ready_old_fact(store, old_id)
+        old_before = store.get_fact(old_id)
+        old_events_before = len(_events(store, _chain_id_for(store, old_id)))
+
+        from core import audit_chain as ac_module
+        real_append_once = ac_module.AuditChain._append_once
+        attempts = {"n": 0}
+
+        def _fail_once(self, conn, **kwargs):
+            attempts["n"] += 1
+            if attempts["n"] == 1:
+                raise RuntimeError("simulated transient supersede failure")
+            return real_append_once(self, conn, **kwargs)
+
+        monkeypatch.setattr(ac_module.AuditChain, "_append_once", _fail_once)
+
+        with pytest.raises(RuntimeError, match="simulated transient supersede failure"):
+            store.supersede_fact_cas(
+                old_id=old_id, new_fact_id=new_id,
+                new_record_seed={"claim": "new claim", "source": "s", "confidence": 0.9},
+                expected_old_state=old_before["epistemic_state"],
+                expected_old_updated_at=old_before["updated_at"],
+                old_durable_snapshot=old_before,
+                by="truth_maintenance.supersede",
+            )
+        assert store.get_fact(new_id) is None
+
+        # Re-read durable snapshot after rollback — updated_at/state unchanged.
+        old_after_roll = store.get_fact(old_id)
+        result = store.supersede_fact_cas(
+            old_id=old_id, new_fact_id=new_id,
+            new_record_seed={"claim": "new claim", "source": "s", "confidence": 0.9},
+            expected_old_state=old_after_roll["epistemic_state"],
+            expected_old_updated_at=old_after_roll["updated_at"],
+            old_durable_snapshot=old_after_roll,
+            by="truth_maintenance.supersede",
+        )
+        assert result.committed is True
+        assert len(_events(store, _chain_id_for(store, new_id))) == 1
+        assert len(_events(store, _chain_id_for(store, old_id))) == old_events_before + 1
+
 
 class TestConcurrencyNoForkAcrossLifecyclePaths:
     def test_concurrent_store_fact_writers_no_fork_no_duplicate_chain_tip(self, migrated_store):
@@ -578,14 +729,16 @@ class TestConcurrencyNoForkAcrossLifecyclePaths:
             release_b.set()
 
         ac_module.AuditChain._append_once = _gated_append_once
-        t_a = threading.Thread(target=writer_a)
-        t_a.start()
-        t_b = threading.Thread(target=writer_b)
-        t_b.start()
-        t_a.join(timeout=10)
-        t_b.join(timeout=10)
-        ac_module.AuditChain._append_once = real_append_once
-        store_b.close()
+        try:
+            t_a = threading.Thread(target=writer_a)
+            t_a.start()
+            t_b = threading.Thread(target=writer_b)
+            t_b.start()
+            t_a.join(timeout=10)
+            t_b.join(timeout=10)
+        finally:
+            ac_module.AuditChain._append_once = real_append_once
+            store_b.close()
 
         rows = _events(store_a, chain_id)
         assert len(rows) == 3, f"expected 1 create + 2 updates, got {len(rows)}"
