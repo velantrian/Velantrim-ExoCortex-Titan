@@ -44,6 +44,7 @@ MIGRATIONS = [
     (16, BASE_DIR / "migrations" / "016_erasure_job_subject.sql"),
     (17, BASE_DIR / "migrations" / "017_audit_chain_hash_v2.sql"),
     (18, BASE_DIR / "migrations" / "018_audit_subject_id.sql"),
+    (19, BASE_DIR / "migrations" / "019_suggested_edges.sql"),
 ]
 
 LATEST_VERSION = max(v for v, _ in MIGRATIONS)

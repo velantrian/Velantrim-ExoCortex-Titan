@@ -42,6 +42,13 @@ class DatabaseSettings:
 
 @dataclass
 class AppSettings:
+    # COMPUTE_PROFILE: lite|standard|heavy — единый рычаг железа (см. core/compute_profile.py).
+    # Явный ENABLE_* всегда побеждает профиль. LLM_PROVIDER профилем не трогается.
+    compute_profile: str = "lite"
+    enable_edge_suggester: bool = False
+    enable_xai: bool = False
+    enable_analogy_hints: bool = False
+
     enable_truth_gate: bool = False
     # P2 (T1.4) — explicit truth_policy verdict on the read-path. Temporary scaffolding:
     # canon Definition-of-Done is "strong gates ON by default"; flip this default in a
@@ -151,79 +158,91 @@ class AppSettings:
 
     @classmethod
     def from_env(cls) -> AppSettings:
+        from core.compute_profile import get_compute_profile, resolve_flag
+
         a = cls()
-        a.enable_truth_gate = _flag("ENABLE_TRUTH_GATE")
-        a.enable_truth_policy = _flag("ENABLE_TRUTH_POLICY")
-        a.enable_observer = _flag("ENABLE_OBSERVER")
-        a.enable_graph_expansion = _flag("ENABLE_GRAPH_EXPANSION")
-        a.enable_task_routing = _flag("ENABLE_TASK_ROUTING")
-        a.enable_write_gate = _flag("ENABLE_WRITE_GATE")
-        a.enable_graph_lab = _flag("ENABLE_GRAPH_LAB")
-        a.enable_rate_limit = _flag("ENABLE_RATE_LIMIT")
+        a.compute_profile = get_compute_profile()
+
+        def flag(name: str, default: str = "0") -> bool:
+            return resolve_flag(name, default=default, profile=a.compute_profile)
+
+        a.enable_truth_gate = flag("ENABLE_TRUTH_GATE")
+        a.enable_truth_policy = flag("ENABLE_TRUTH_POLICY")
+        a.enable_observer = flag("ENABLE_OBSERVER")
+        a.enable_graph_expansion = flag("ENABLE_GRAPH_EXPANSION")
+        a.enable_task_routing = flag("ENABLE_TASK_ROUTING")
+        a.enable_write_gate = flag("ENABLE_WRITE_GATE")
+        a.enable_graph_lab = flag("ENABLE_GRAPH_LAB")
+        a.enable_rate_limit = flag("ENABLE_RATE_LIMIT")
         a.rate_limit_capacity = _int("RATE_LIMIT_CAPACITY", 60)
         a.rate_limit_refill_per_sec = _float("RATE_LIMIT_REFILL_PER_SEC", 1.0)
-        a.enable_cognitive_distance = _flag("ENABLE_COGNITIVE_DISTANCE")
-        a.enable_budget_planner = _flag("ENABLE_BUDGET_PLANNER")
+        a.enable_cognitive_distance = flag("ENABLE_COGNITIVE_DISTANCE")
+        a.enable_budget_planner = flag("ENABLE_BUDGET_PLANNER")
         a.truth_gate_mode = os.getenv("TRUTH_GATE_MODE", "BALANCED")
         a.default_fact_confidence = _float("DEFAULT_FACT_CONFIDENCE", 0.8)
 
-        a.enable_velum = _flag("ENABLE_VELUM")
-        a.velum_use_fsrs_decay = _flag("VELUM_USE_FSRS_DECAY")
+        a.enable_velum = flag("ENABLE_VELUM")
+        a.velum_use_fsrs_decay = flag("VELUM_USE_FSRS_DECAY")
         a.velum_hint_min_weight = _float("VELUM_HINT_MIN_WEIGHT", 0.15)
         a.velum_hint_limit_per_entity = _int("VELUM_HINT_LIMIT", 3)
         a.velum_hint_max_seeds = _int("VELUM_HINT_MAX_SEEDS", 5)
-        a.velum_persist = _flag("VELUM_PERSIST")
+        a.velum_persist = flag("VELUM_PERSIST")
 
-        a.enable_concept_emergence = _flag("ENABLE_CONCEPT_EMERGENCE")
+        a.enable_concept_emergence = flag("ENABLE_CONCEPT_EMERGENCE")
         a.emergence_co_occur_min = _int("EMERGENCE_CO_OCCUR_MIN", 5)
         a.emergence_cross_session_min = _int("EMERGENCE_CROSS_SESSION_MIN", 3)
         a.emergence_llm_name_min_confidence = _float("EMERGENCE_LLM_NAME_MIN_CONFIDENCE", 0.7)
         a.emergence_promote_min_confidence = _float("EMERGENCE_PROMOTE_MIN_CONFIDENCE", 0.7)
         a.velum_decay_prune_below = _float("VELUM_DECAY_PRUNE_BELOW", 0.05)
         a.knowledge_group_id = os.getenv("KNOWLEDGE_GROUP_ID", "velantrim_knowledge")
-        a.enable_concept_promote = _flag("ENABLE_CONCEPT_PROMOTE")
-        a.enable_salience = _flag("ENABLE_SALIENCE")
+        a.enable_concept_promote = flag("ENABLE_CONCEPT_PROMOTE")
+        a.enable_salience = flag("ENABLE_SALIENCE")
+        # Никогда не включается профилем — только явный ENV (local-first).
         a.enable_concept_llm_naming = _flag("ENABLE_CONCEPT_LLM_NAMING")
 
-        a.enable_decay_orchestrator = _flag("ENABLE_DECAY_ORCHESTRATOR")
-        a.enable_predictive_fusion = _flag("ENABLE_PREDICTIVE_FUSION")
+        a.enable_decay_orchestrator = flag("ENABLE_DECAY_ORCHESTRATOR")
+        a.enable_predictive_fusion = flag("ENABLE_PREDICTIVE_FUSION")
 
-        a.enable_event_bus = _flag("ENABLE_EVENT_BUS")
-        a.enable_event_bus_background = _flag("ENABLE_EVENT_BUS_BACKGROUND")
-        a.enable_reasoning_bank = _flag("ENABLE_REASONING_BANK")
-        a.enable_causal_graph = _flag("ENABLE_CAUSAL_GRAPH", "1")
-        a.causal_persist = _flag("CAUSAL_PERSIST")
+        a.enable_event_bus = flag("ENABLE_EVENT_BUS")
+        a.enable_event_bus_background = flag("ENABLE_EVENT_BUS_BACKGROUND")
+        a.enable_reasoning_bank = flag("ENABLE_REASONING_BANK")
+        a.enable_causal_graph = flag("ENABLE_CAUSAL_GRAPH", "1")
+        a.causal_persist = flag("CAUSAL_PERSIST")
 
-        a.enable_etir = _flag("ENABLE_ETIR")
+        a.enable_etir = flag("ENABLE_ETIR")
         a.etir_max_hops = _int("ETIR_MAX_HOPS", 2)
         a.etir_top_k = _int("ETIR_TOP_K", 10)
 
-        a.enable_immutable_core = _flag("ENABLE_IMMUTABLE_CORE")
+        a.enable_immutable_core = flag("ENABLE_IMMUTABLE_CORE")
 
-        a.enable_l45 = _flag("ENABLE_L45")
-        a.enable_response_audit = _flag("ENABLE_RESPONSE_AUDIT") or a.enable_l45
-        a.enable_focus_engine = _flag("ENABLE_FOCUS_ENGINE") or a.enable_l45
+        a.enable_l45 = flag("ENABLE_L45")
+        a.enable_response_audit = flag("ENABLE_RESPONSE_AUDIT") or a.enable_l45
+        a.enable_focus_engine = flag("ENABLE_FOCUS_ENGINE") or a.enable_l45
         a.enable_memory_volition = (
-            _flag("ENABLE_MEMORY_VOLITION") or a.enable_l45 or _flag("ENABLE_L6_WELFARE")
+            flag("ENABLE_MEMORY_VOLITION") or a.enable_l45 or flag("ENABLE_L6_WELFARE")
         )
 
-        a.enable_l6_welfare = _flag("ENABLE_L6_WELFARE")
-        a.enable_innenwelt = _flag("ENABLE_INNENWELT", "1")
-        a.enable_mode_router = _flag("ENABLE_MODE_ROUTER", "1")
-        a.enable_umwelt_store = _flag("ENABLE_UMWELT_STORE", "1")
-        a.enable_telegram_ingest = _flag("ENABLE_TELEGRAM_INGEST", "0")
-        a.enable_domain_tags = _flag("ENABLE_DOMAIN_TAGS", "1")
-        a.enable_cognitive_fact = _flag("ENABLE_COGNITIVE_FACT", "1")
-        a.enable_cognitive_store = _flag("ENABLE_COGNITIVE_STORE", "1")
-        a.enable_cognitive_runtime = _flag("ENABLE_COGNITIVE_RUNTIME", "1")
-        a.enable_cross_domain = _flag("ENABLE_CROSS_DOMAIN", "0")
-        a.enable_cross_domain_causal = _flag("ENABLE_CROSS_DOMAIN_CAUSAL", "1")
+        a.enable_edge_suggester = flag("ENABLE_EDGE_SUGGESTER")
+        a.enable_xai = flag("ENABLE_XAI")
+        a.enable_analogy_hints = flag("ENABLE_ANALOGY_HINTS")
+
+        a.enable_l6_welfare = flag("ENABLE_L6_WELFARE")
+        a.enable_innenwelt = flag("ENABLE_INNENWELT", "1")
+        a.enable_mode_router = flag("ENABLE_MODE_ROUTER", "1")
+        a.enable_umwelt_store = flag("ENABLE_UMWELT_STORE", "1")
+        a.enable_telegram_ingest = flag("ENABLE_TELEGRAM_INGEST", "0")
+        a.enable_domain_tags = flag("ENABLE_DOMAIN_TAGS", "1")
+        a.enable_cognitive_fact = flag("ENABLE_COGNITIVE_FACT", "1")
+        a.enable_cognitive_store = flag("ENABLE_COGNITIVE_STORE", "1")
+        a.enable_cognitive_runtime = flag("ENABLE_COGNITIVE_RUNTIME", "1")
+        a.enable_cross_domain = flag("ENABLE_CROSS_DOMAIN", "0")
+        a.enable_cross_domain_causal = flag("ENABLE_CROSS_DOMAIN_CAUSAL", "1")
         a.enable_cross_domain_llm_routing = _flag("ENABLE_CROSS_DOMAIN_LLM_ROUTING", "0")
-        a.enable_output_faithfulness = _flag("ENABLE_OUTPUT_FAITHFULNESS")
-        a.enable_memory_budget = _flag("ENABLE_MEMORY_BUDGET")
-        a.enable_circuit_breaker = _flag("ENABLE_CIRCUIT_BREAKER")
-        a.enable_response_guardian = _flag("ENABLE_RESPONSE_GUARDIAN")
-        a.enable_actr_activation = _flag("ENABLE_ACTR_ACTIVATION")
+        a.enable_output_faithfulness = flag("ENABLE_OUTPUT_FAITHFULNESS")
+        a.enable_memory_budget = flag("ENABLE_MEMORY_BUDGET")
+        a.enable_circuit_breaker = flag("ENABLE_CIRCUIT_BREAKER")
+        a.enable_response_guardian = flag("ENABLE_RESPONSE_GUARDIAN")
+        a.enable_actr_activation = flag("ENABLE_ACTR_ACTIVATION")
         a.memory_budget_fact_hard = _int("MEMORY_BUDGET_FACT_HARD", 100_000)
         a.memory_budget_fact_gc = _int("MEMORY_BUDGET_FACT_GC", 85_000)
         a.memory_budget_fact_warn = _int("MEMORY_BUDGET_FACT_WARN", 80_000)

@@ -12,9 +12,11 @@ from core.horizons_catalog import build_horizons_block
 
 def build_layers_status() -> dict[str, Any]:
     cfg = get_config().app
+    from core.compute_profile import describe_compute_profile
     from core.graphiti_adapter import is_graphiti_backend
     return {
         "product": "VELANTRIM V8.6 Complex",
+        "compute_profile": describe_compute_profile(cfg.compute_profile),
         "legend": {
             "on": "включено в runtime",
             "available_off": "код есть, выключено ENV",
@@ -69,6 +71,21 @@ def build_layers_status() -> dict[str, Any]:
             "L4_5_memory_volition": {
                 "status": "on" if cfg.enable_memory_volition else "available_off",
                 "enabled": cfg.enable_memory_volition,
+            },
+            "edge_suggester_hitl": {
+                "status": "on" if cfg.enable_edge_suggester else "available_off",
+                "enabled": cfg.enable_edge_suggester,
+                "note": "I64: scan→suggested_edges; relations только после approve",
+            },
+            "xai_from_trace": {
+                "status": "on" if cfg.enable_xai else "available_off",
+                "enabled": cfg.enable_xai,
+                "note": "I34: объяснение только из TRACE, без LLM",
+            },
+            "analogy_hints": {
+                "status": "on" if cfg.enable_analogy_hints else "available_off",
+                "enabled": cfg.enable_analogy_hints,
+                "note": "heavy profile hint flag; рёбра analogous_to через EdgeSuggester",
             },
             "L5_5_predictive_fusion": {
                 "status": "on" if cfg.enable_predictive_fusion else "available_off",
