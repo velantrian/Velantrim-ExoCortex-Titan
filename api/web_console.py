@@ -102,14 +102,21 @@ def _velantrim_key_analysis(key: str, expected: str) -> dict:
 
 
 async def _probe_velantrim_api(request: Request, key: str) -> dict:
-    """Реальный запрос к защищённым эндпоинтам (как в чате)."""
-    base = str(request.base_url).rstrip("/")
+    """Реальный запрос к защищённым эндпоинтам (как в чате).
+
+    Security: NEVER use request.base_url / Host header here — that is an
+    SSRF vector (client-controlled Host would make the server call out with
+    the API key). Always probe the local loopback listener.
+    """
+    del request  # explicit: Host/base_url must not influence the probe target
+    port = os.getenv("PORT", "8000")
+    base = f"http://127.0.0.1:{port}"
     headers: dict[str, str] = {}
     if key:
         headers["X-Api-Key"] = key
     t0 = time.perf_counter()
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        async with httpx.AsyncClient(timeout=20.0, follow_redirects=False) as client:
             facts_r = await client.get(
                 f"{base}/facts",
                 headers=headers,

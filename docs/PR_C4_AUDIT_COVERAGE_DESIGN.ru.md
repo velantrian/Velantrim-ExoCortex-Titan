@@ -1,7 +1,7 @@
 # PR-C4 Design Report — полное AuditChain coverage Truth Kernel
 
 > **Статус:** design-only. Код по этому документу **не** писать до явного authorization.  
-> **База:** PR-C2 (#44, merged) + PR-C3 (lifecycle wiring; hardening в Draft).  
+> **База:** PR-C2 (#44, merged) + PR-C3 (#46, merged).  
 > **Архитектура (зафиксирована, не менять):** C1 same-transaction + S2 per-fact `chain_id` via `audit_subject_id` · `memory_events.fact_id = NULL` · hash v2 · без free-text claim/prompt · structured `actor_code` / `reason_code` · ProvenanceChain / VersionStore не трогать без крайней нужды.
 
 ---

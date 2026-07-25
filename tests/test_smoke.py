@@ -211,6 +211,61 @@ class TestArchiveDepthFix:
         from core.file_parsers.archive_parser import ArchiveParser
         assert ArchiveParser.MAX_DEPTH == 3
 
+    def test_zip_bomb_capped_by_actual_bytes_not_declared_size(self, tmp_path):
+        """Declared file_size can lie — real streamed bytes must hit the cap."""
+        import io
+        import zipfile
+        from unittest.mock import patch
+
+        from core.file_parsers.archive_parser import ArchiveParser
+        from core.file_parsers.base import ParseResult
+
+        # Build a tiny zip with a small file, then stream MORE bytes than
+        # MAX_EXTRACTED_SIZE via a patched ZipExtFile.read().
+        zip_path = tmp_path / "bomb.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("payload.bin", b"tiny")
+
+        parser = ArchiveParser()
+        parser.MAX_EXTRACTED_SIZE = 64  # tiny cap for the test
+        result = ParseResult(file_path=str(zip_path), file_type="archive")
+
+        real_open = zipfile.ZipFile.open
+
+        def _bomb_open(self, name, *a, **k):
+            # Return a stream that yields more than MAX_EXTRACTED_SIZE
+            # regardless of the declared central-directory size.
+            class _Bomb:
+                def __init__(self):
+                    self._left = 256
+
+                def read(self, n=-1):
+                    if self._left <= 0:
+                        return b""
+                    take = self._left if n < 0 else min(n, self._left)
+                    self._left -= take
+                    return b"X" * take
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *a):
+                    return False
+
+            return _Bomb()
+
+        with patch.object(zipfile.ZipFile, "open", _bomb_open):
+            out_dir = tmp_path / "out"
+            out_dir.mkdir()
+            files = parser._extract_zip(str(zip_path), str(out_dir), result)
+
+        assert "max_extracted_size_reached" in result.warnings
+        # Cap abort must not keep an oversize payload on disk.
+        on_disk = [p for p in out_dir.rglob("*") if p.is_file()]
+        assert sum(p.stat().st_size for p in on_disk) <= parser.MAX_EXTRACTED_SIZE
+        assert files == []
+        del real_open, io
+
 
 class TestModelSingletonFix:
     """FIX v8.5.1 Gemini Critical: _ModelSingleton thread-safe."""
