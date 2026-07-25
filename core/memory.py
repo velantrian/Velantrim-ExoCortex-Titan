@@ -3250,25 +3250,34 @@ class SQLiteGraphStore(GraphStore):
         t_ev_end  = t_event_valid_end or now
         t_ing_end = t_ingestion_end   or now
 
-        cached = self._l0_get(fact_id)
-        if cached is None:
-            cached = self.get_fact(fact_id)
-        if cached is None:
+        # Codex-style review finding (PR-C3): idempotency (both ends already
+        # set) MUST be decided from durable L1, never L0 alone.
+        # - L0 clearing already-set ends (same updated_at) used to fall
+        #   through to UPDATE + a duplicate fact_invalidated.
+        # - L0 faking both ends set while L1 is still open falsely returned
+        #   True without writing L1.
+        # The CAS token still prefers L0's updated_at when present — that
+        # preserves stale-view / concurrent-modification detection that
+        # PR-C1d installed (tests poison L0.updated_at to force a miss).
+        l0_cached = self._l0_get(fact_id)
+        durable = self._get_fact_durable(fact_id)
+        if durable is None:
+            self._l0_del(fact_id)
             return False
-        # Review finding (PR #42, Copilot): facts.updated_at is TEXT NOT
-        # NULL — index directly rather than .get(), so a malformed cached
-        # dict raises KeyError immediately instead of silently yielding
-        # None, which would make the CAS guard below compare against NULL
-        # (never matches a real row) and return a permanent false-negative
-        # False for this fact_id.
-        expected_updated_at: str = cached["updated_at"]
 
-        # PR-C3 hardening: if both end timestamps are already set, COALESCE
-        # would change nothing durable except bumping updated_at — and that
-        # bump alone must NOT mint a duplicate fact_invalidated event on
-        # retry-after-success. Treat as an idempotent no-op (True).
-        if cached.get("t_event_valid_end") and cached.get("t_ingestion_end"):
+        if durable.get("t_event_valid_end") and durable.get("t_ingestion_end"):
+            self._l0_put(fact_id, durable)
             return True
+
+        # Review finding (PR #42, Copilot): facts.updated_at is TEXT NOT
+        # NULL — index directly rather than .get().
+        if l0_cached is not None:
+            expected_updated_at: str = l0_cached["updated_at"]
+        else:
+            expected_updated_at = durable["updated_at"]
+        # Logging / post-commit L0 publish use durable field values
+        # (epistemic_state, audit_subject_id, prior ends).
+        cached = durable
 
         # PR-C3: invalidate_edge() gets the same tamper-evident AuditChain
         # event as the other lifecycle mutation paths — same C1 (atomic,
@@ -3291,7 +3300,13 @@ class SQLiteGraphStore(GraphStore):
         with self._db() as ready_conn:
             AuditChain.verify_schema_ready(ready_conn, chain_id=chain_id)
 
+        cas_miss = False
+        real_audit_subject_id: str | None = None
         with self._db() as conn:
+            # Also require at least one end still NULL so a concurrent
+            # invalidate that already closed both ends cannot bump
+            # updated_at / append a second fact_invalidated under a
+            # matching CAS token race.
             cur = conn.execute("""
                 UPDATE facts
                 SET t_event_valid_end = COALESCE(t_event_valid_end, ?),
@@ -3299,25 +3314,41 @@ class SQLiteGraphStore(GraphStore):
                     updated_at        = ?,
                     audit_subject_id  = COALESCE(audit_subject_id, ?)
                 WHERE fact_id = ? AND updated_at = ?
+                  AND (t_event_valid_end IS NULL OR t_ingestion_end IS NULL)
             """, (t_ev_end, t_ing_end, now, audit_subject_id, fact_id, expected_updated_at))
             if cur.rowcount == 0:
-                self._l0_del(fact_id)
-                return False
+                # Do NOT call _get_fact_durable() here — it opens nested
+                # _db() on the same re-entrant lock, closes this conn in
+                # its finally, and the outer commit then crashes with
+                # "Cannot operate on a closed database". Re-check after
+                # this context exits.
+                cas_miss = True
+            else:
+                # PR-C3 (same Codex P2 read-your-own-write lesson from PR-C2):
+                # re-read the audit_subject_id that ACTUALLY won the COALESCE.
+                real_audit_subject_id = conn.execute(
+                    "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (fact_id,)
+                ).fetchone()[0]
+                chain = AuditChain(
+                    conn, chain_id=f"fact-transition:{real_audit_subject_id}", _skip_schema_check=True,
+                )
+                chain.log_in_transaction(
+                    event_type=EventType.FACT_INVALIDATED,
+                    actor=ACTOR_CODE_INVALIDATE_EDGE,
+                    to_state=cached.get("epistemic_state"),
+                    reason=REASON_CODE_CAS_GUARDED_WRITE,
+                )
 
-            # PR-C3 (same Codex P2 read-your-own-write lesson from PR-C2):
-            # re-read the audit_subject_id that ACTUALLY won the COALESCE.
-            real_audit_subject_id = conn.execute(
-                "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (fact_id,)
-            ).fetchone()[0]
-            chain = AuditChain(
-                conn, chain_id=f"fact-transition:{real_audit_subject_id}", _skip_schema_check=True,
-            )
-            chain.log_in_transaction(
-                event_type=EventType.FACT_INVALIDATED,
-                actor=ACTOR_CODE_INVALIDATE_EDGE,
-                to_state=cached.get("epistemic_state"),
-                reason=REASON_CODE_CAS_GUARDED_WRITE,
-            )
+        if cas_miss:
+            self._l0_del(fact_id)
+            # Another writer may have completed invalidate between our
+            # durable read and this UPDATE — treat that as idempotent
+            # success (no new audit event from us).
+            again = self._get_fact_durable(fact_id)
+            if again and again.get("t_event_valid_end") and again.get("t_ingestion_end"):
+                self._l0_put(fact_id, again)
+                return True
+            return False
 
         self._snapshot_before_change(
             fact_id,

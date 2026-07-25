@@ -486,6 +486,49 @@ class TestInvalidateEdgeAuditWiring:
             "— no second fact_invalidated event"
         )
 
+    def test_l0_skew_clearing_ends_does_not_duplicate_invalidate_event(self, migrated_store):
+        """Codex-review P2: skewed L0 that clears already-set ends while
+        keeping the durable updated_at must NOT mint a second event."""
+        store = migrated_store
+        fid = "f_invalidate_l0_skew_dup"
+        store.store_fact({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.5})
+        chain_id = _chain_id_for(store, fid)
+        assert store.invalidate_edge(fid) is True
+        events_after_first = len(_events(store, chain_id))
+
+        durable = store._get_fact_durable(fid)
+        assert durable["t_event_valid_end"] and durable["t_ingestion_end"]
+        skew = dict(durable)
+        skew["t_event_valid_end"] = None
+        skew["t_ingestion_end"] = None
+        # Keep updated_at matching L1 so a naive CAS would hit.
+        store._l0_put(fid, skew)
+
+        assert store.invalidate_edge(fid) is True
+        assert len(_events(store, chain_id)) == events_after_first
+
+    def test_l0_skew_fake_ends_does_not_skip_real_invalidate(self, migrated_store):
+        """Codex-review P2: L0 claiming both ends set while L1 is still
+        open must not falsely return success without writing L1."""
+        store = migrated_store
+        fid = "f_invalidate_l0_skew_skip"
+        store.store_fact({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.5})
+        chain_id = _chain_id_for(store, fid)
+        events_before = len(_events(store, chain_id))
+
+        durable = store._get_fact_durable(fid)
+        assert durable["t_event_valid_end"] is None
+        fake = dict(durable)
+        fake["t_event_valid_end"] = "2020-01-01T00:00:00+00:00"
+        fake["t_ingestion_end"] = "2020-01-01T00:00:00+00:00"
+        store._l0_put(fid, fake)
+
+        assert store.invalidate_edge(fid) is True
+        again = store._get_fact_durable(fid)
+        assert again["t_event_valid_end"] is not None
+        assert again["t_ingestion_end"] is not None
+        assert len(_events(store, chain_id)) == events_before + 1
+
     def test_retry_after_rollback_logs_exactly_one_event(self, migrated_store, monkeypatch):
         store = migrated_store
         fid = "f_invalidate_retry_roll"
@@ -684,14 +727,21 @@ class TestSupersedeFactCasAuditWiring:
 
 class TestConcurrencyNoForkAcrossLifecyclePaths:
     def test_concurrent_store_fact_writers_no_fork_no_duplicate_chain_tip(self, migrated_store):
-        """Two independent SQLiteGraphStore instances (genuinely separate
-        connections/locks, same db file — mirrors PR-C2's own
-        TestAuditSubjectIdNeverFragments technique) racing store_fact() on
-        the same fact_id. Both writes are unconditional upserts (no CAS
-        precondition of their own), so both succeed; the property under
-        test is that the audit chain's own head CAS
-        (audit_chain_heads.last_sequence) never forks or loses an append
-        even when two real threads append to the SAME chain_id."""
+        """Two independent SQLiteGraphStore instances racing store_fact() on
+        the same fact_id from a pre-call barrier (no mid-transaction gate).
+
+        Codex-review P2: the previous barrier paused writer A *inside*
+        log_in_transaction while still holding the write txn — writer B
+        then blocked on the SQLite write lock until A's wait timed out,
+        so the test never exercised concurrent appends (false-green).
+
+        Under SQLite's single-writer model the honest property we can
+        prove with real threads is: concurrent callers still land on ONE
+        chain_id, produce contiguous chain_sequence values (no fork /
+        duplicate tip), and leave a verifiable chain — regardless of
+        which writer SQLite serializes first.
+        """
+        from core.audit_chain import AuditChain
         from core.memory import SQLiteGraphStore
 
         store_a = migrated_store
@@ -701,49 +751,57 @@ class TestConcurrencyNoForkAcrossLifecyclePaths:
 
         store_b = SQLiteGraphStore(store_a.db_path)
 
-        release_b = threading.Event()
-        a_entered = threading.Event()
-        paused_once = threading.Event()
+        start = threading.Barrier(2, timeout=5)
         results: dict[str, bool] = {}
-
-        from core import audit_chain as ac_module
-        real_append_once = ac_module.AuditChain._append_once
-
-        def _gated_append_once(self, conn, **kwargs):
-            if kwargs.get("event_type") == "fact_updated" and not paused_once.is_set():
-                paused_once.set()
-                a_entered.set()
-                release_b.wait(timeout=5)
-            return real_append_once(self, conn, **kwargs)
+        errors: dict[str, BaseException] = {}
 
         def writer_a():
-            results["a"] = store_a.store_fact(
-                {"fact_id": fid, "claim": "v1", "source": "s", "confidence": 0.5}
-            )
+            try:
+                start.wait()
+                results["a"] = store_a.store_fact(
+                    {"fact_id": fid, "claim": "v1", "source": "s", "confidence": 0.5}
+                )
+            except BaseException as exc:  # noqa: BLE001 — capture for assertion
+                errors["a"] = exc
 
         def writer_b():
-            assert a_entered.wait(timeout=5), "writer A never reached its audit append"
-            results["b"] = store_b.store_fact(
-                {"fact_id": fid, "claim": "v2", "source": "s", "confidence": 0.5}
-            )
-            release_b.set()
+            try:
+                start.wait()
+                results["b"] = store_b.store_fact(
+                    {"fact_id": fid, "claim": "v2", "source": "s", "confidence": 0.5}
+                )
+            except BaseException as exc:  # noqa: BLE001 — capture for assertion
+                errors["b"] = exc
 
-        ac_module.AuditChain._append_once = _gated_append_once
         try:
             t_a = threading.Thread(target=writer_a)
-            t_a.start()
             t_b = threading.Thread(target=writer_b)
+            t_a.start()
             t_b.start()
             t_a.join(timeout=10)
             t_b.join(timeout=10)
         finally:
-            ac_module.AuditChain._append_once = real_append_once
             store_b.close()
+
+        assert not errors, f"writers must not raise: {errors}"
+        # store_fact() returns created=True only for INSERT; both racers are
+        # updates of an existing row, so the legacy bool is False — that is
+        # success, not failure. Assert they completed without exception and
+        # that a durable row remains.
+        assert "a" in results and "b" in results
+        assert store_a.get_fact(fid) is not None
 
         rows = _events(store_a, chain_id)
         assert len(rows) == 3, f"expected 1 create + 2 updates, got {len(rows)}"
+        assert rows[0]["event_type"] == "fact_created"
+        assert {rows[1]["event_type"], rows[2]["event_type"]} == {"fact_updated"}
         sequences = [r["chain_sequence"] for r in rows]
         assert sequences == sorted(set(sequences)), "chain_sequence must be strictly increasing, no fork"
+        assert sequences == list(range(1, len(sequences) + 1))
+
+        with store_a._db() as conn:
+            report = AuditChain(conn, chain_id=chain_id, _skip_schema_check=True).verify_chain()
+        assert report["valid"] is True, f"chain must verify after concurrent writers: {report}"
 
 
 class TestErasureRegressionForLifecyclePaths:
