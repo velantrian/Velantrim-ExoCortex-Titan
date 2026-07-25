@@ -27,6 +27,7 @@ proof.
 """
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 import subprocess
@@ -100,11 +101,45 @@ def _chain_id_for(store, fact_id: str) -> str:
     return f"fact-transition:{subject_id}"
 
 
+def _seed_fact_bypassing_audit(
+    store, fact_id: str, claim: str = "claim A", source: str = "s",
+    confidence: float = 0.5, metadata: dict | None = None,
+) -> None:
+    """Seed a fact via a raw INSERT, bypassing store_fact()/
+    store_fact_result() entirely.
+
+    PR-C3 wires store_fact()/store_fact_result() through AuditChain too
+    (same per-fact chain design as this file's own update_state()/
+    transition_esm()/validate_and_promote() coverage) — seeding through
+    them here would add an extra fact_created/fact_updated event to every
+    chain this file inspects, breaking this file's event-count assertions
+    for the ESM/terminal-transition concerns it actually tests. Mirrors
+    the raw-SQL bypass convention already used by
+    _force_stale_l0_cas_miss() in this same file — store_fact()'s own
+    audit wiring has its own dedicated coverage in
+    tests/test_audit_chain_lifecycle_paths.py.
+    """
+    now = "2020-01-01T00:00:00+00:00"
+    with store._db() as conn:
+        conn.execute(
+            "INSERT INTO facts (fact_id, claim, source, confidence, "
+            "epistemic_state, created_at, updated_at, metadata) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (fact_id, claim, source, confidence, "Observed", now, now,
+             json.dumps(metadata or {})),
+        )
+    # get_fact() populates L0 as a caching side effect on a DB fallback
+    # read (same as store_fact_result() used to leave behind) — some
+    # tests in this file deliberately mutate the row out-of-band afterward
+    # to create a stale-L0 scenario, and depend on this.
+    store.get_fact(fact_id)
+
+
 class TestSuccessfulTransitionsLogExactlyOneEvent:
     def test_esm_transition_logs_one_structured_event(self, migrated_store):
         store = migrated_store
         fid = "f_esm1"
-        store.store_fact_result({"fact_id": fid, "claim": "claim A", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid)
 
         ok = store.transition_esm(fid, "Hypothesized", by="truth_gate")
         assert ok is True
@@ -126,7 +161,7 @@ class TestSuccessfulTransitionsLogExactlyOneEvent:
     def test_terminal_collapsed_transition_uses_same_path_and_event_type(self, migrated_store):
         store = migrated_store
         fid = "f_term_collapsed"
-        store.store_fact_result({"fact_id": fid, "claim": "claim A", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid)
         assert store.transition_esm(fid, "Hypothesized", by="truth_gate")
         assert store.transition_esm(fid, "Deprecated", by="truth_gate")
         assert store.transition_esm(fid, "Collapsed", by="truth_gate")
@@ -140,7 +175,7 @@ class TestSuccessfulTransitionsLogExactlyOneEvent:
     def test_terminal_contradicted_transition_uses_same_path_and_event_type(self, migrated_store):
         store = migrated_store
         fid = "f_term_contradicted"
-        store.store_fact_result({"fact_id": fid, "claim": "claim A", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid)
         assert store.transition_esm(fid, "Hypothesized", by="contradiction_resolver")
         assert store.transition_esm(fid, "Contradicted", by="contradiction_resolver")
 
@@ -153,7 +188,7 @@ class TestSuccessfulTransitionsLogExactlyOneEvent:
     def test_chain_id_stable_across_multiple_transitions_of_same_fact(self, migrated_store):
         store = migrated_store
         fid = "f_stable_chain"
-        store.store_fact_result({"fact_id": fid, "claim": "claim A", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid)
         store.transition_esm(fid, "Hypothesized", by="truth_gate")
         chain_after_1 = _chain_id_for(store, fid)
         store.transition_esm(fid, "Supported", by="truth_gate")
@@ -186,7 +221,7 @@ class TestCasGuardMissProducesNoEvent:
     def test_stale_l0_cache_precondition_creates_zero_events(self, migrated_store):
         store = migrated_store
         fid = "f_cas_miss"
-        store.store_fact_result({"fact_id": fid, "claim": "claim A", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid)
         store.transition_esm(fid, "Hypothesized", by="truth_gate")
         chain_id = _chain_id_for(store, fid)
         assert len(_events(store, chain_id)) == 1
@@ -211,7 +246,7 @@ class TestAtomicRollbackOnAuditFailure:
     def test_forced_audit_chain_failure_rolls_back_canonical_update(self, migrated_store, monkeypatch):
         store = migrated_store
         fid = "f_rollback"
-        store.store_fact_result({"fact_id": fid, "claim": "claim A", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid)
 
         from core import audit_chain
 
@@ -239,7 +274,7 @@ class TestMissingSchemaFailsClosed:
     ):
         store = migrated_store
         fid = "f_missing_triggers"
-        store.store_fact_result({"fact_id": fid, "claim": "claim A", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid)
 
         # Simulate a corrupted/incomplete deployment: memory_events exists
         # (migration 018 ran) but its append-only triggers were somehow
@@ -267,7 +302,7 @@ class TestConcurrentWritersNoForkNoDuplicate:
     def test_two_real_threads_same_fact_exactly_one_event_each_no_fork(self, migrated_store):
         store = migrated_store
         fid = "f_concurrent"
-        store.store_fact_result({"fact_id": fid, "claim": "claim A", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid)
         store.transition_esm(fid, "Hypothesized", by="truth_gate")
         chain_id = _chain_id_for(store, fid)
 
@@ -332,7 +367,7 @@ class TestRetrySemantics:
     def test_retry_after_rollback_creates_exactly_one_event(self, migrated_store, monkeypatch):
         store = migrated_store
         fid = "f_retry_rollback"
-        store.store_fact_result({"fact_id": fid, "claim": "claim A", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid)
 
         from core import audit_chain as ac_module
         real_append_once = ac_module.AuditChain._append_once
@@ -360,7 +395,7 @@ class TestRetrySemantics:
     def test_retry_after_success_creates_no_second_event(self, migrated_store):
         store = migrated_store
         fid = "f_retry_success"
-        store.store_fact_result({"fact_id": fid, "claim": "claim A", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid)
         assert store.transition_esm(fid, "Hypothesized", by="truth_gate") is True
         chain_id = _chain_id_for(store, fid)
         assert len(_events(store, chain_id)) == 1
@@ -385,7 +420,7 @@ class TestVerifyChainAndTamperDetectionPerFactChain:
     def test_verify_chain_succeeds_for_the_per_fact_chain(self, migrated_store):
         store = migrated_store
         fid = "f_verify"
-        store.store_fact_result({"fact_id": fid, "claim": "claim A", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid)
         store.transition_esm(fid, "Hypothesized", by="truth_gate")
         store.transition_esm(fid, "Supported", by="truth_gate")
         chain_id = _chain_id_for(store, fid)
@@ -398,7 +433,7 @@ class TestVerifyChainAndTamperDetectionPerFactChain:
     def test_tampering_a_transition_ledger_event_is_detected(self, migrated_store):
         store = migrated_store
         fid = "f_tamper"
-        store.store_fact_result({"fact_id": fid, "claim": "claim A", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid)
         store.transition_esm(fid, "Hypothesized", by="truth_gate")
         chain_id = _chain_id_for(store, fid)
 
@@ -456,7 +491,7 @@ class TestErasureRemovesDirectMappingOnly:
     def test_erasure_removes_live_mapping_but_chain_still_verifies(self, migrated_store):
         store = migrated_store
         fid = "f_erase"
-        store.store_fact_result({"fact_id": fid, "claim": "claim A", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid)
         store.transition_esm(fid, "Hypothesized", by="truth_gate")
         chain_id = _chain_id_for(store, fid)
         assert len(_events(store, chain_id)) == 1
@@ -484,7 +519,7 @@ class TestListChainIds:
     def test_list_chain_ids_enumerates_including_erased_fact_chains(self, migrated_store):
         store = migrated_store
         for fid in ("f_list_1", "f_list_2"):
-            store.store_fact_result({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.5})
+            _seed_fact_bypassing_audit(store, fid, claim="c")
             store.transition_esm(fid, "Hypothesized", by="truth_gate")
         chain_1 = _chain_id_for(store, "f_list_1")
         chain_2 = _chain_id_for(store, "f_list_2")
@@ -514,7 +549,7 @@ class TestActorCodeAllowlist:
     def test_unknown_by_value_maps_to_actor_unmapped_never_raises(self, migrated_store):
         store = migrated_store
         fid = "f_unmapped_actor"
-        store.store_fact_result({"fact_id": fid, "claim": "claim A", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid)
 
         # Direct update_state() call with a `by` value not in the
         # allowlist — must not raise, must not store it verbatim.
@@ -564,13 +599,12 @@ def _make_validatable_fact(store, fact_id: str) -> None:
     TruthGate's BALANCED mode (>=2 evidence_refs), exactly the shape
     tests/test_p0d_truthgate_enforcement.py already uses for the same
     purpose."""
-    store.store_fact({
-        "fact_id": fact_id,
-        "claim": "A trusted seed axiom about the domain",
-        "source": "domain_seed",
-        "confidence": 0.9,
-        "metadata": {"evidence_refs": ["src1", "src2"]},
-    })
+    _seed_fact_bypassing_audit(
+        store, fact_id,
+        claim="A trusted seed axiom about the domain",
+        source="domain_seed", confidence=0.9,
+        metadata={"evidence_refs": ["src1", "src2"]},
+    )
     assert store.transition_esm(fact_id, "Hypothesized", by="truth_gate")
     assert store.transition_esm(fact_id, "Supported", by="truth_gate")
 
@@ -738,7 +772,7 @@ class TestAuditSubjectIdNeverFragments:
 
         store_a = migrated_store
         fid = "f_frag"
-        store_a.store_fact_result({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store_a, fid, claim="c")
         store_a.transition_esm(fid, "Hypothesized", by="truth_gate")
 
         with store_a._db() as conn:
@@ -783,7 +817,7 @@ class TestListChainIdsOnlyRealChains:
 
     def test_cas_miss_does_not_produce_a_listed_chain(self, migrated_store):
         store = migrated_store
-        store.store_fact_result({"fact_id": "f1", "claim": "c", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, "f1", claim="c")
 
         with store._db() as conn:
             conn.execute(
@@ -821,7 +855,7 @@ class TestDeprecatedEventClassification:
     def test_deprecated_transition_logs_fact_deprecated(self, migrated_store):
         store = migrated_store
         fid = "f_deprecated"
-        store.store_fact_result({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid, claim="c")
         store.transition_esm(fid, "Hypothesized", by="truth_gate")
         assert store.transition_esm(fid, "Deprecated", by="truth_gate") is True
 
@@ -860,7 +894,7 @@ class TestActorCodeAllowlistCompleteness:
     def test_pipeline_run_actor_code_reaches_the_ledger(self, migrated_store):
         store = migrated_store
         fid = "f_pipeline_actor"
-        store.store_fact_result({"fact_id": fid, "claim": "c", "source": "s", "confidence": 0.5})
+        _seed_fact_bypassing_audit(store, fid, claim="c")
         store.transition_esm(fid, "Hypothesized", by="pipeline.run")
 
         chain_id = _chain_id_for(store, fid)
