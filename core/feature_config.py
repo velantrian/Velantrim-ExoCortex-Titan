@@ -65,10 +65,10 @@ class AppSettings:
     # route reasoning: WHY/HOW/EXPLAIN/SOLVE/COMPARE → graph-expansion (chains), FACT →
     # direct answer. Additive, default OFF.
     enable_task_routing: bool = False
-    # Write Protocol Gate — single epistemic check on the write path: WORLD_FACT must
-    # carry provenance, LLM-output world-facts need evidence. Closes "write path bypasses
-    # the truth engine". Additive, default OFF.
-    enable_write_gate: bool = False
+    # Compatibility/readout field for the mandatory Write Protocol Gate.
+    # Explicit false is ignored by PolicyKernel and logged: a canonical
+    # safety boundary is not a feature that a compute profile may disable.
+    enable_write_gate: bool = True
     # Security tail — per-IP token-bucket rate limiting (default off). zero-dep stdlib.
     enable_rate_limit: bool = False
     rate_limit_capacity: int = 60
@@ -171,7 +171,7 @@ class AppSettings:
         a.enable_observer = flag("ENABLE_OBSERVER")
         a.enable_graph_expansion = flag("ENABLE_GRAPH_EXPANSION")
         a.enable_task_routing = flag("ENABLE_TASK_ROUTING")
-        a.enable_write_gate = flag("ENABLE_WRITE_GATE")
+        a.enable_write_gate = flag("ENABLE_WRITE_GATE", "1")
         a.enable_graph_lab = flag("ENABLE_GRAPH_LAB")
         a.enable_rate_limit = flag("ENABLE_RATE_LIMIT")
         a.rate_limit_capacity = _int("RATE_LIMIT_CAPACITY", 60)

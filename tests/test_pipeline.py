@@ -44,7 +44,7 @@ def seeded_db(isolated_db):
     TASK-07: DATABASE mock fallback убран из production-пути.
     Тесты pipeline теперь явно кладут данные в store.
     """
-    from core.memory import promote_to_validated, store_fact, transition_esm, promote_to_validated
+    from core.memory import promote_to_validated, store_fact
     seed_facts = [
         {"fact_id": "f1", "claim": "Water boils at 100 degrees Celsius",
          "source": "physics", "confidence": 0.99},
@@ -76,11 +76,13 @@ def test_pipeline_happy_path(seeded_db):
         assert f["truth_status"]    == "VERIFIED"
 
 
-def test_pipeline_empty_retrieval_blocks():
+def test_pipeline_empty_retrieval_returns_bounded_answer():
     from core.pipeline import run
     result = run("zxqvbnmqwerty")
-    assert result.get("answer") is None
-    assert "Retrieval" in result.get("error", "")
+    assert result["answer"] == "Недостаточно подтверждённых локальных данных."
+    assert result["error"] is None
+    assert result["insufficient_evidence"] is True
+    assert result["reason_code"] == "no_local_retrieval_results"
 
 
 def test_trace_is_built_for_each_fact():
@@ -99,7 +101,7 @@ def test_pipeline_step6_modality_flag_on(isolated_db, monkeypatch):
     """Флаг ON: EMOTION валидна как модальность, но truth_status=UNVERIFIED;
     WORLD_FACT с evidence → VERIFIED. (Флаг OFF проверяется happy_path = всё VERIFIED.)"""
     from core import pipeline
-    from core.memory import get_fact, promote_to_validated, store_fact, transition_esm
+    from core.memory import get_fact, promote_to_validated, store_fact
     monkeypatch.setattr(pipeline, "_truth_policy_enabled", lambda: True)
 
     store_fact({
@@ -141,7 +143,7 @@ def test_graph_expansion_pulls_reliable_neighbors(isolated_db):
     """_expand_with_graph_neighbors тянет reliable причинных соседей факта из
     causal_graph — основа multi-hop рассуждения (рёбра + соседи → цепочка)."""
     from core import pipeline
-    from core.memory import promote_to_validated, store_fact, transition_esm
+    from core.memory import promote_to_validated, store_fact
     for fid, claim in [("ga", "Лидер молнии начинает разряд"),
                        ("gb", "Лидер создаёт ионизированный канал"),
                        ("gc", "Канал проводит главный разряд молнии")]:
@@ -167,7 +169,7 @@ def test_graph_expansion_pulls_reliable_neighbors(isolated_db):
 def test_graph_expansion_no_graph_is_noop(isolated_db):
     """Без рёбер / соседей — expansion возвращает исходный набор (безопасно)."""
     from core import pipeline
-    from core.memory import promote_to_validated, store_fact, transition_esm
+    from core.memory import promote_to_validated, store_fact
     store_fact({"fact_id": "solo", "claim": "Одинокий факт без связей", "source": "x",
                 "confidence": 0.9, "claim_type": "WORLD_FACT", "origin_type": "EXTERNAL"})
     promote_to_validated("solo")
@@ -203,6 +205,24 @@ def test_pipeline_run_idempotent_three_times(seeded_db):
     answers = [run("quantum entanglement").get("answer") for _ in range(3)]
     assert all(a is not None for a in answers)
     assert len(set(answers)) == 1
+
+
+def test_pipeline_read_does_not_record_actr_access(seeded_db, monkeypatch):
+    """Recall may read ACT-R weights, but it cannot mutate activation history."""
+    from core import actr_activation, pipeline
+
+    calls = []
+    monkeypatch.setenv("ENABLE_ACTR_ACTIVATION", "1")
+    monkeypatch.setattr(
+        actr_activation,
+        "record_fact_access",
+        lambda fact_id, *args, **kwargs: calls.append(fact_id),
+    )
+
+    result = pipeline.run("quantum entanglement")
+
+    assert result["answer"]
+    assert calls == []
 
 
 # ─── tokenize edge cases ──────────────────────────────────────────────────────
@@ -373,9 +393,9 @@ def test_truth_gate_balanced_uses_metadata_evidence_from_pipeline_pack():
     assert ok, f"Ожидался PASS c evidence_refs, но получили BLOCKED: {reason}"
 
 
-# ─── generate_answer fallback path ───────────────────────────────────────────
+# ─── generate_answer bounded-evidence path ───────────────────────────────────
 
-def test_generate_answer_fallback_when_no_validated_facts():
+def test_generate_answer_never_uses_unvalidated_fallback():
     from core.pipeline import generate_answer
     facts_pack = {
         "facts": [
@@ -387,8 +407,35 @@ def test_generate_answer_fallback_when_no_validated_facts():
               "epistemic_state": "Observed", "retrieval_score": 0.5,
               "source_confidence": 0.9, "retrieved_at": "now"}]
     result = generate_answer(facts_pack, trace)
-    assert result["answer"]      == "fallback claim"
-    assert result["total_facts"] == 1
+    assert result["answer"] == "Недостаточно подтверждённых локальных данных."
+    assert result["total_facts"] == 0
+    assert result["facts"] == []
+    assert result["candidate_facts"][0]["claim"] == "fallback claim"
+    assert result["insufficient_evidence"] is True
+
+
+def test_generate_answer_rejects_noncanonical_validated_projection():
+    """A projection cannot self-assert Validated and bypass Canon."""
+    from core.pipeline import generate_answer
+
+    facts_pack = {
+        "facts": [
+            {
+                "fact_id": "projection-spoof",
+                "claim": "untrusted projection payload",
+                "source": "external-index",
+                "confidence": 1.0,
+                "epistemic_state": "Validated",
+                "canonical_record": False,
+            },
+        ],
+    }
+
+    result = generate_answer(facts_pack, [])
+
+    assert result["facts"] == []
+    assert result["insufficient_evidence"] is True
+    assert result["reason_code"] == "insufficient_validated_local_evidence"
 
 
 # ─── TASK-04: mark_retriever_dirty только при новом факте ────────────────────
@@ -403,43 +450,117 @@ def test_store_fact_returns_true_for_new_false_for_existing():
     assert store_fact(fact) is False
 
 
-def test_retriever_not_dirty_for_existing_facts(monkeypatch):
-    """TASK-04: mark_retriever_dirty НЕ вызывается когда build_facts_pack
-    получает факты которые уже есть в store (no-op guard).
-    Тестируем build_facts_pack напрямую — минуем retrieval (BM25 IDF=0
-    для маленьких корпусов делает retrieval ненадёжным в unit-тестах)."""
+def test_build_facts_pack_is_read_only_for_existing_and_new_rows(monkeypatch):
+    """Query packing cannot update Canon or invalidate a projection."""
     import core.pipeline as pl
     dirty_calls = []
     monkeypatch.setattr(pl, "mark_retriever_dirty", lambda: dirty_calls.append(1))
 
-    from core.memory import store_fact
+    from core.memory import get_fact, store_fact
     # Кладём факт заранее в store
     store_fact({"fact_id": "existing_f", "claim": "gravity pulls objects",
                 "source": "physics", "confidence": 0.9})
+    before = get_fact("existing_f")
 
     dirty_calls.clear()  # сбрасываем после предзагрузки
 
-    # build_facts_pack с УЖЕ ИЗВЕСТНЫМ фактом — dirty не должен вызваться
     retrieved_known = [{
         "id": "existing_f", "text": "gravity pulls objects",
         "source": "physics", "confidence": 0.9, "retrieval_score": 0.8,
     }]
-    pl.build_facts_pack(retrieved_known, "gravity test")
-    assert len(dirty_calls) == 0, (
-        f"mark_retriever_dirty вызван {len(dirty_calls)} раз(а) "
-        f"для уже известного факта — TASK-04 регрессия"
-    )
+    pl.build_facts_pack(retrieved_known, "gravity test", cognitive_mode="CREATIVE")
+    assert dirty_calls == []
+    assert get_fact("existing_f") == before
 
-    # build_facts_pack с НОВЫМ фактом — dirty ДОЛЖЕН быть вызван
     retrieved_new = [{
         "id": "brand_new_f", "text": "dark matter exists",
         "source": "cosmology", "confidence": 0.7, "retrieval_score": 0.6,
     }]
-    pl.build_facts_pack(retrieved_new, "dark matter test")
-    assert len(dirty_calls) == 1, (
-        f"mark_retriever_dirty вызван {len(dirty_calls)} раз(а) "
-        f"вместо 1 для нового факта — TASK-04 регрессия"
+    pack = pl.build_facts_pack(
+        retrieved_new, "dark matter test", cognitive_mode="CREATIVE"
     )
+    assert dirty_calls == []
+    assert get_fact("brand_new_f") is None
+    assert pack["facts"][0]["canonical_record"] is False
+
+
+def test_pipeline_does_not_promote_observed_fact(isolated_db):
+    """A read can reject weak evidence, but it cannot change ESM state."""
+    from core.memory import get_fact, store_fact
+    from core.pipeline import run
+
+    store_fact({
+        "fact_id": "observed_only",
+        "claim": "unconfirmed aurora mechanism",
+        "source": "field_note",
+        "confidence": 0.9,
+        "metadata": {"evidence_refs": ["note-1", "note-2"]},
+    })
+    before = get_fact("observed_only")
+
+    result = run("aurora mechanism")
+
+    assert result["insufficient_evidence"] is True
+    assert get_fact("observed_only") == before
+    assert get_fact("observed_only")["epistemic_state"] == "Observed"
+
+
+def test_query_causal_hints_are_proposals_not_relation_writes(isolated_db):
+    """Causal extraction on recall must not create graph projection rows."""
+    import sqlite3
+
+    from core.memory import promote_to_validated, store_fact
+    from core.pipeline import run
+
+    for fid, claim in (
+        ("cause_a", "Heat causes evaporation in the chamber"),
+        ("cause_b", "Evaporation therefore cools the chamber"),
+    ):
+        store_fact({
+            "fact_id": fid,
+            "claim": claim,
+            "source": "physics",
+            "confidence": 0.95,
+        })
+        promote_to_validated(fid)
+
+    def _relation_count() -> int:
+        with sqlite3.connect(isolated_db.db_path) as conn:
+            try:
+                return conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0]
+            except sqlite3.OperationalError:
+                return 0
+
+    before = _relation_count()
+
+    result = run("chamber evaporation")
+
+    after = _relation_count()
+
+    assert after == before
+    assert result.get("causal_hints")
+    assert all(h["disposition"] == "proposal_only" for h in result["causal_hints"])
+    assert all(h["relation_id"] is None for h in result["causal_hints"])
+
+
+def test_unknown_cognitive_mode_fails_closed(seeded_db):
+    from core.pipeline import run
+
+    result = run("quantum entanglement", cognitive_mode="NOT_A_MODE")
+
+    assert result["insufficient_evidence"] is True
+    assert result["reason_code"] == "truth_gate_rejected"
+    assert result["detail"] == "unknown_cognitive_mode:NOT_A_MODE"
+
+
+def test_unavailable_real_truth_gate_fails_closed(seeded_db, monkeypatch):
+    import core.pipeline as pl
+
+    monkeypatch.setattr(pl, "_REAL_TRUTH_GATE_AVAILABLE", False)
+    result = pl.run("quantum entanglement")
+
+    assert result["insufficient_evidence"] is True
+    assert result["detail"] == "real_truth_gate_unavailable"
 
 
 # ─── TASK-06: get_fact_ids + get_facts_by_ids ─────────────────────────────────
@@ -478,7 +599,7 @@ def test_get_facts_by_ids_empty_input():
 
 def test_causal_hints_in_response_for_causal_facts(seeded_db):
     """TASK-08: run() возвращает causal_hints когда факты содержат каузальные паттерны."""
-    from core.memory import promote_to_validated, store_fact, transition_esm
+    from core.memory import promote_to_validated, store_fact
     from core.pipeline import run
 
     # Кладём факты с каузальными паттернами
@@ -535,7 +656,7 @@ def test_causal_hints_are_non_blocking(seeded_db):
 
 def test_conflicts_block_present_when_contradictions_exist(seeded_db):
     """TASK-16: pipeline.run() возвращает conflicts когда в CausalGraph есть contradicts-связи."""
-    from core.memory import promote_to_validated, store_fact, transition_esm
+    from core.memory import promote_to_validated, store_fact
     from core.pipeline import _get_causal_graph, run
 
     # Кладём два противоречивых факта
@@ -597,7 +718,7 @@ def test_no_conflicts_block_for_facts_without_contradictions(seeded_db):
 
 def test_conflicts_extraction_handles_cycles(seeded_db):
     """TASK-16 × TASK-10: при циклах в графе не зависаем (используем cycle protection)."""
-    from core.memory import promote_to_validated, store_fact, transition_esm
+    from core.memory import promote_to_validated, store_fact
     from core.pipeline import _get_causal_graph, run
 
     # Создаём 3 факта с цикличными contradicts (теоретически возможный плохой случай)

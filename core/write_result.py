@@ -31,6 +31,7 @@ class WriteStatus(Enum):
     NOOP_EXISTING = "noop_existing"
     REJECTED_WRITE_GATE = "rejected_write_gate"
     REJECTED_SAFE_MODE = "rejected_safe_mode"
+    REJECTED_POLICY = "rejected_policy"
     REJECTED_BUDGET = "rejected_budget"
     REJECTED_VALIDATION = "rejected_validation"
     FAILED_STORAGE = "failed_storage"

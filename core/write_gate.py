@@ -1,6 +1,5 @@
 """
-🛡️ core/write_gate.py — Write Protocol Gate (P0.5): единый эпистемический контроль
-на write-пути в каноническую память.
+🛡️ core/write_gate.py — mandatory canonical Write Protocol Gate.
 
 Закрывает находку аудита: `store_fact` / server `/facts` писали факты В ПАМЯТЬ БЕЗ
 truth-гейта — то есть «truth-движок построен, но не подключён к записи». Этот гейт
@@ -13,46 +12,50 @@ truth-гейта — то есть «truth-движок построен, но �
   • WORLD_FACT + LLM_OUTPUT без evidence  → reject (LLM сам не верифицирует мир)
   • остальное                             → allow
 
-За флагом ENABLE_WRITE_GATE (default OFF) → по умолчанию поведение прежнее.
+Since Titan's local-first P0 policy, this boundary is mandatory.  The legacy
+ENABLE_WRITE_GATE setting remains readable for compatibility/diagnostics but
+cannot disable canonical admission checks.
 """
 from __future__ import annotations
 
 
 def is_write_gate_enabled() -> bool:
-    """ENABLE_WRITE_GATE (default OFF)."""
-    try:
-        from core.feature_config import get_config
-        return bool(getattr(get_config().app, "enable_write_gate", False))
-    except Exception:  # noqa: BLE001
-        return False
+    """Compatibility readout: the mandatory gate is always enabled."""
+    return True
 
 
 class WritesBlockedError(RuntimeError):
-    """MetaSupervisor is in SAFE_MODE — L3 writes must not proceed."""
+    """PolicyKernel denied a canonical mutation."""
+
+    def __init__(
+        self,
+        reason_code: str,
+        *,
+        snapshot_id: str | None = None,
+    ) -> None:
+        self.reason_code = reason_code
+        self.snapshot_id = snapshot_id
+        label = "SAFE_MODE" if reason_code == "safe_mode_writes_blocked" else "PolicyKernel"
+        super().__init__(f"{label}: canonical writes blocked ({reason_code})")
 
 
 def check_writes_allowed() -> tuple[bool, str]:
-    """Проверить, разрешены ли записи в L3 (MetaSupervisor SAFE_MODE).
+    """Return the current canonical-write decision with a stable reason."""
+    from core.policy_kernel import get_policy_kernel
 
-    Fail-open: если supervisor недоступен / не импортируется — считаем, что
-    SAFE_MODE не активен (writes allowed). Иначе не стартовавший сервис
-    блокировал бы весь write-path.
-    """
-    try:
-        from core.meta_supervisor import get_meta_supervisor
-        if get_meta_supervisor().writes_blocked:
-            return False, "safe_mode_writes_blocked"
-    except Exception:  # noqa: BLE001
-        return True, "ok"
-    return True, "ok"
+    decision = get_policy_kernel().canonical_write_decision()
+    return decision.allowed, decision.reason_code
 
 
 def ensure_writes_allowed() -> None:
-    """Поднять WritesBlockedError, если MetaSupervisor в SAFE_MODE."""
-    ok, reason = check_writes_allowed()
-    if not ok:
+    """Raise when the immutable policy snapshot denies a canonical write."""
+    from core.policy_kernel import get_policy_kernel
+
+    decision = get_policy_kernel().canonical_write_decision()
+    if not decision.allowed:
         raise WritesBlockedError(
-            f"SAFE_MODE: writes blocked by MetaSupervisor ({reason})"
+            decision.reason_code,
+            snapshot_id=decision.snapshot_id,
         )
 
 

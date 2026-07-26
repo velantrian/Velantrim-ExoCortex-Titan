@@ -877,7 +877,7 @@ class TestSupersedeDomainTaggingParity:
 # ─── 17. WriteGate parity (Codex review on PR #11, finding #5) ─────────────
 
 class TestSupersedeWriteGateParity:
-    def test_gate_disabled_world_fact_without_source_still_promotes(
+    def test_legacy_gate_disable_cannot_promote_world_fact_without_source(
         self, store, fake_causal_graph, fake_provenance_chain, monkeypatch,
     ):
         import core.write_gate as wg
@@ -891,7 +891,9 @@ class TestSupersedeWriteGateParity:
         candidate["source"] = "unknown"
 
         result = supersede("old_17a", candidate)
-        assert result == "new_17a"
+        assert result is None
+        assert store.get_fact("new_17a") is None
+        assert store.get_fact("old_17a")["epistemic_state"] == "Validated"
 
     def test_gate_enabled_valid_candidate_accepted(
         self, store, fake_causal_graph, fake_provenance_chain, monkeypatch,

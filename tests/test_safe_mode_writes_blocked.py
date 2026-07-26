@@ -72,11 +72,39 @@ def _force_safe_mode(monkeypatch):
     return ms
 
 
-def test_check_writes_allowed_fail_open_when_healthy():
+def test_check_writes_allowed_when_healthy():
     from core.write_gate import check_writes_allowed
     ok, reason = check_writes_allowed()
     assert ok is True
     assert reason == "ok"
+
+
+def test_policy_dependency_failure_blocks_write(store, monkeypatch):
+    import core.policy_kernel as policy_kernel
+    from core.write_result import WriteStatus
+
+    policy_kernel.reset_policy_kernel()
+
+    def _unavailable() -> str:
+        raise RuntimeError("simulated policy dependency failure")
+
+    monkeypatch.setattr(
+        policy_kernel.PolicyKernel,
+        "_supervisor_mode",
+        staticmethod(_unavailable),
+    )
+
+    result = store.store_fact_result({
+        "fact_id": "f_policy_down",
+        "claim": "must not be written",
+        "source": "test",
+        "confidence": 0.8,
+    })
+
+    assert result.status is WriteStatus.REJECTED_POLICY
+    assert result.safe_reason_code == "policy_dependency_unavailable"
+    assert result.durable_write is False
+    assert store.get_fact("f_policy_down") is None
 
 
 def test_ensure_writes_allowed_raises_in_safe_mode(monkeypatch):
