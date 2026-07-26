@@ -1004,8 +1004,11 @@ def _format_console_memory_reply(
         return offline
     if facts:
         has_observed_fallback = any(
-            isinstance(f.get("metadata") or {}, dict)
-            and (f.get("metadata") or {}).get("console_observed_fallback")
+            bool(f.get("reported_only"))
+            or (
+                isinstance(f.get("metadata") or {}, dict)
+                and (f.get("metadata") or {}).get("console_observed_fallback")
+            )
             for f in facts
         )
         if has_observed_fallback:
@@ -2547,6 +2550,14 @@ async def create_fact(
     if result.status is WriteStatus.REJECTED_WRITE_GATE:
         raise HTTPException(
             status_code=422, detail=result.safe_message or "Fact rejected by write-protocol gate."
+        )
+    if result.status in {
+        WriteStatus.REJECTED_SAFE_MODE,
+        WriteStatus.REJECTED_POLICY,
+    }:
+        raise HTTPException(
+            status_code=503,
+            detail=result.safe_message or "Canonical writes are temporarily unavailable.",
         )
     if result.status is WriteStatus.REJECTED_VALIDATION:
         raise HTTPException(

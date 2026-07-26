@@ -2,7 +2,7 @@
 # Velantrim ExoCortex — Core Pipeline
 # v8.2.0 (Sprint 2a: HybridRetriever + NGramIndex + real TruthGate wired in)
 #
-# Принцип: Graph = Truth · LLM = Language · Memory = Physiology
+# Принцип: Canonical Local Memory = Truth · projections are rebuildable
 # Пайплайн: Query → [NGram pre-filter] → Retrieve → FactsPack → Trace
 #                 → Guardian → TruthGate → Answer
 #
@@ -31,8 +31,10 @@
 # Graceful degradation:
 #   - NGramIndex недоступен (нет FTS5) → пропускаем pre-filter, идём дальше.
 #   - HybridRetriever: Dense недоступен → fallback на BM25 only.
-#   - TruthGate: store недоступен → fallback на MVP confidence-floor.
+#   - TruthGate/policy dependency unavailable → fail closed.
+#   - Query path never writes facts, ESM states, or causal relations.
 
+import hashlib
 import logging
 import math
 import re
@@ -40,7 +42,7 @@ import sqlite3
 from collections import Counter
 from typing import Any, Optional
 
-from core.trace import build_trace, format_trace, promote_trace
+from core.trace import build_trace, format_trace
 
 try:
     from core.facts_pack import COGNITIVE_MODE_POLICIES, FactsPackBuilder
@@ -52,9 +54,6 @@ from core.memory import (
     get_fact,
     get_fact_ids,
     get_facts_by_ids,
-    promote_esm_to,
-    promote_to_validated,
-    store_fact,
 )
 
 # ── Sprint 2a: новые импорты ──────────────────────────────────────────────────
@@ -65,7 +64,7 @@ except ImportError:
     _HYBRID_AVAILABLE = False
 
 try:
-    from core.ngram_index import NGramIndex, ngram_index_fact
+    from core.ngram_index import NGramIndex
     _NGRAM_AVAILABLE = True
 except ImportError:
     _NGRAM_AVAILABLE = False
@@ -107,9 +106,9 @@ DATABASE = _DATABASE_DEV_ONLY
 # До v8.4.0 _retrieve_from_store создавал HybridRetriever на каждом запросе.
 # Каждое создание грузит sentence-transformer (~80MB модель, 1-2 сек) и считает
 # embeddings всей базы. На production это performance bomb.
-# Сейчас держим singleton + признак "грязный" (_HYBRID_DIRTY) который вызывает
-# rebuild при значимых изменениях базы. Pipeline вызывает mark_retriever_dirty()
-# когда store_fact меняет базу.
+# Сейчас держим singleton + признак "грязный" (_HYBRID_DIRTY), который вызывает
+# rebuild при значимых изменениях базы. Authoritative writer вызывает
+# mark_retriever_dirty() после изменения базы; QueryPipeline сам флаг не меняет.
 
 _HYBRID_RETRIEVER: Optional["HybridRetriever"] = None
 _HYBRID_DIRTY: bool = True   # при старте — нужно построить
@@ -164,9 +163,9 @@ _CAUSAL_GRAPH_DB_PATH: str = ""
 
 # Regex для определения каузальных паттернов (EN + RU)
 _CAUSAL_REGEX = re.compile(
-    r"(because|therefore|thus|hence|since|causes|leads to|results in|implies|"
+    r"\b(because|therefore|thus|hence|since|causes|leads to|results in|implies|"
     r"due to|consequently|as a result|"
-    r"потому что|следовательно|из-за|поэтому|благодаря|вызывает|приводит к)",
+    r"потому что|следовательно|из-за|поэтому|благодаря|вызывает|приводит к)\b",
     re.IGNORECASE,
 )
 
@@ -326,18 +325,19 @@ def _extract_conflicts(
 
 def _extract_causal_hints(
     facts: list[dict[str, Any]],
-    graph: "CausalGraph",
+    graph: Optional["CausalGraph"] = None,
 ) -> list[dict[str, Any]]:
     """
-    TASK-08: Лёгкий regex-экстрактор каузальных гипотез.
+    TASK-08/P0: read-only regex extractor for causal proposals.
 
     Логика:
     - Если claim факта содержит каузальный паттерн → он "каузально нагружен"
-    - Каузально нагруженные факты попарно связываются через 'implies'
-      с knowledge_status='hypothetical' — НЕ утверждаем правду, предлагаем гипотезу
-    - Связи pending review — человек (или PRECISION TruthGate) апрувит/отклоняет
+    - Каузально нагруженные факты образуют AnalysisProposal для `implies`
+    - QueryPipeline НИКОГДА не вызывает graph.add_relation()
+    - Отдельный ingestion/review path позже может принять или отклонить proposal
 
-    Не блокирует ответ. Ошибки (дубликаты, петли) игнорируются gracefully.
+    ``graph`` remains an ignored compatibility parameter for callers that used
+    the old helper.  Supplying it cannot grant write authority.
     """
     causal_facts = [
         f for f in facts
@@ -350,35 +350,30 @@ def _extract_causal_hints(
     hints: list[dict[str, Any]] = []
     for i, fa in enumerate(causal_facts):
         for fb in causal_facts[i + 1:]:
-            try:
-                rel_id = graph.add_relation(
-                    from_fact_id=     fa["fact_id"],
-                    to_fact_id=       fb["fact_id"],
-                    relation_type=    "implies",
-                    confidence=       0.35,
-                    knowledge_status= "hypothetical",
-                    inference_source= "autolinker",
-                    review_state=     "pending",
-                    truth_status=     "pending",
-                )
-                hints.append({
-                    "relation_id": rel_id,
-                    "from":        fa["fact_id"],
-                    "from_claim":  fa["claim"][:60],
-                    "to":          fb["fact_id"],
-                    "to_claim":    fb["claim"][:60],
-                    "type":        "implies",
-                    "status":      "hypothetical",
-                    "confidence":  0.35,
-                    "review":      "pending",
-                })
-                logger.debug(
-                    "CausalGraph hint: %s → %s (implies, hypothetical)",
-                    fa["fact_id"], fb["fact_id"],
-                )
-            except Exception as exc:
-                # Дубликаты, петли, ошибки FK — не блокируем ответ
-                logger.debug("CausalGraph hint skipped: %s", exc)
+            proposal_key = "\0".join(
+                (str(fa["fact_id"]), str(fb["fact_id"]), "implies", "autolinker")
+            )
+            proposal_id = (
+                "causal-proposal:"
+                + hashlib.sha256(proposal_key.encode("utf-8")).hexdigest()[:20]
+            )
+            hints.append({
+                "proposal_id": proposal_id,
+                "relation_id": None,
+                "from":        fa["fact_id"],
+                "from_claim":  fa["claim"][:60],
+                "to":          fb["fact_id"],
+                "to_claim":    fb["claim"][:60],
+                "type":        "implies",
+                "status":      "hypothetical",
+                "confidence":  0.35,
+                "review":      "pending",
+                "disposition": "proposal_only",
+            })
+            logger.debug(
+                "Causal proposal: %s → %s (implies, pending)",
+                fa["fact_id"], fb["fact_id"],
+            )
 
     return hints
 
@@ -574,13 +569,6 @@ def _retrieve_from_store(
                 results: list[RetrievedFact] = retriever.retrieve(query, top_k=fetch_k)
                 out = []
                 for r in results:
-                    try:
-                        from core.actr_activation import is_actr_enabled, record_fact_access
-
-                        if is_actr_enabled() and r.fact_id:
-                            record_fact_access(r.fact_id)
-                    except Exception:
-                        pass
                     out.append(
                         {
                             "id":              r.fact_id,
@@ -715,6 +703,23 @@ def _retrieve_from_database(
 
 # ─── FACTS PACK ───────────────────────────────────────────────────────────────
 
+def _is_safe_user_report(fact: dict[str, Any]) -> bool:
+    """Whether an Observed canonical row may be rendered *as reported*.
+
+    This is not truth promotion.  It preserves useful personal recall such as
+    “my name is …” while preventing the old fallback from treating arbitrary
+    Observed WORLD_FACT rows as evidence.  The record must already exist in
+    Canon, originate from the user, and remain explicitly UNVERIFIED.
+    """
+    return bool(
+        fact.get("canonical_record")
+        and fact.get("epistemic_state") == "Observed"
+        and fact.get("origin_type") == "USER_REPORTED"
+        and fact.get("claim_type") != "WORLD_FACT"
+        and str(fact.get("source") or "").strip().lower() not in {"", "unknown"}
+    )
+
+
 def build_facts_pack(
     retrieved: list[dict[str, Any]],
     query: str,
@@ -722,17 +727,21 @@ def build_facts_pack(
     cognitive_mode: str | None = None,
 ) -> dict[str, Any]:
     """
-    Собрать FactsPack из retrieved фактов.
+    Build a read-only FactsPack from retrieval results.
 
     TASK-12: использует FactsPackBuilder (core/facts_pack.py) вместо
     inline-логики. FactsPackBuilder применяет CognitiveMode-политики:
     фильтрует по allowed_states и min_confidence.
 
     Шаги:
-    1. store_fact() + conditional mark_retriever_dirty() (TASK-04/05)
-    2. NGram индексация (Sprint 2a)
-    3. FactsPackBuilder.build() — фильтрация по CognitiveMode
-    4. Конвертация в dict-формат для backward compatibility
+    1. Resolve each result against Canon with read operations only.
+    2. Prefer canonical text/state/provenance over potentially stale projection data.
+    3. FactsPackBuilder.build() — фильтрация по CognitiveMode.
+    4. Конвертация в dict-формат для backward compatibility.
+
+    This function never stores a retrieved item, updates FTS/NGram, promotes
+    ESM state, or writes a relation. Unknown external rows remain non-canonical
+    Observed candidates and require a separate ingestion pipeline.
     """
     raw_facts: list[dict[str, Any]] = []
 
@@ -741,49 +750,49 @@ def build_facts_pack(
         if not fact_id:
             continue
 
-        # TASK-04+05: store_fact возвращает True только при реальном INSERT.
-        # v8.7: при ре-сторе на ретриве СОХРАНЯЕМ уже присвоенную модальность факта —
-        # классификатор не должен «переклассифицировать» EMOTION→WORLD_FACT по тексту
-        # (иначе эмоция тихо станет фактом мира на каждом запросе). Для новых фактов
-        # (existing нет / claim_type=UNKNOWN) классификатор работает как прежде.
-        _existing = get_fact(fact_id)
-        _restore = {
-            "fact_id":    fact_id,
-            "claim":      item.get("text") or item.get("claim", ""),
-            "source":     item.get("source", "unknown"),
-            "confidence": item.get("confidence", 0.5),
-            "metadata":   item.get("metadata", {}),
-        }
-        if _existing and (_existing.get("claim_type") or "UNKNOWN") != "UNKNOWN":
-            _restore["claim_type"] = _existing["claim_type"]
-            _restore["origin_type"] = _existing.get("origin_type") or "UNKNOWN"
-        was_new = store_fact(_restore)
-        if was_new:
-            mark_retriever_dirty()
-
-        # Sprint 2a: индексируем в NGram после store (I99)
-        if _NGRAM_AVAILABLE and _NGRAM_INDEX is not None:
-            try:
-                claim_text = item.get("text") or item.get("claim", "")
-                ngram_index_fact(fact_id, claim_text)
-            except Exception as exc:
-                logger.debug("NGramIndex: не удалось индексировать %s: %s", fact_id, exc)
-
         persisted = get_fact(fact_id) or {}
-        persisted_metadata = persisted.get("metadata", {})
+        canonical_record = bool(persisted)
+        item_metadata = item.get("metadata", {})
+        if not isinstance(item_metadata, dict):
+            item_metadata = {}
+        persisted_metadata = persisted.get("metadata", item_metadata)
         if not isinstance(persisted_metadata, dict):
-            persisted_metadata = {}
+            persisted_metadata = item_metadata
+
+        # Canon wins over a stale lexical/vector/graph projection.  A row that
+        # is not present in Canon remains an external Observed candidate.
+        claim = (
+            persisted.get("claim")
+            if canonical_record
+            else item.get("text") or item.get("claim", "")
+        )
+        source = (
+            persisted.get("source")
+            if canonical_record
+            else item.get("source", "unknown")
+        )
+        confidence = (
+            persisted.get("confidence")
+            if canonical_record
+            else item.get("confidence", 0.5)
+        )
         raw_facts.append({
             "fact_id":         fact_id,
-            "claim":           item.get("text") or item.get("claim", ""),
-            "source":          item.get("source", "unknown"),
-            "confidence":      item.get("confidence", 0.5),
+            "claim":           claim or "",
+            "source":          source or "unknown",
+            "confidence":      confidence,
             "retrieval_score": item.get("retrieval_score", 0.0),
-            "epistemic_state": persisted.get("epistemic_state", "Observed"),
-            # Модальность факта — пробрасываем для honest-labeling и step-6 (оба за флагом)
-            "claim_type":      persisted.get("claim_type", "UNKNOWN"),
-            "origin_type":     persisted.get("origin_type", "UNKNOWN"),
+            "epistemic_state": persisted.get(
+                "epistemic_state", item.get("epistemic_state", "Observed")
+            ),
+            "claim_type":      persisted.get(
+                "claim_type", item.get("claim_type", "UNKNOWN")
+            ),
+            "origin_type":     persisted.get(
+                "origin_type", item.get("origin_type", "UNKNOWN")
+            ),
             "metadata":        persisted_metadata,
+            "canonical_record": canonical_record,
         })
 
     # TASK-12: FactsPackBuilder применяет CognitiveMode-политики
@@ -805,6 +814,11 @@ def build_facts_pack(
                 for f in raw_facts
                 if f.get("fact_id")
             }
+            canonical_by_fact_id = {
+                f.get("fact_id"): bool(f.get("canonical_record"))
+                for f in raw_facts
+                if f.get("fact_id")
+            }
             facts = [
                 {
                     "fact_id":         pf.fact_id,
@@ -816,18 +830,45 @@ def build_facts_pack(
                     "claim_type":      modality_by_fact_id.get(pf.fact_id, ("UNKNOWN", "UNKNOWN"))[0],
                     "origin_type":     modality_by_fact_id.get(pf.fact_id, ("UNKNOWN", "UNKNOWN"))[1],
                     "metadata":        metadata_by_fact_id.get(pf.fact_id, {}),
+                    "canonical_record": canonical_by_fact_id.get(pf.fact_id, False),
                     "truth_status":    "VERIFIED" if pf.epistemic_state == "Validated"
                                        else "UNVERIFIED",
                 }
                 for pf in fp.facts
             ]
-            if fp.warning:
+
+            # BALANCED/PRECISION policies correctly exclude generic Observed
+            # facts.  Canonical USER_REPORTED rows are a distinct class:
+            # they may be recalled with an explicit unverified label, without
+            # being promoted or treated as a world fact.
+            included_ids = {f["fact_id"] for f in facts}
+            reported_added = 0
+            for raw in raw_facts:
+                if raw["fact_id"] in included_ids or not _is_safe_user_report(raw):
+                    continue
+                facts.append({
+                    "fact_id": raw["fact_id"],
+                    "claim": raw["claim"],
+                    "source": raw["source"],
+                    "confidence": raw["confidence"],
+                    "retrieval_score": raw["retrieval_score"],
+                    "epistemic_state": raw["epistemic_state"],
+                    "claim_type": raw["claim_type"],
+                    "origin_type": raw["origin_type"],
+                    "metadata": raw["metadata"],
+                    "canonical_record": True,
+                    "truth_status": "UNVERIFIED",
+                    "reported_only": True,
+                })
+                reported_added += 1
+
+            if fp.warning and not facts:
                 logger.warning("FactsPackBuilder [%s]: %s", mode, fp.warning)
             return {
                 "facts":    facts,
                 "query":    query,
                 "total":    len(facts),
-                "excluded": len(fp.excluded_facts),
+                "excluded": max(0, len(fp.excluded_facts) - reported_added),
                 "mode":     mode,
             }
         except Exception as exc:
@@ -882,10 +923,10 @@ def truth_gate(
     mode: str | None = None,
 ) -> tuple[bool, str | None]:
     """
-    Верифицирует факты перед записью в L3.
+    Проверяет допустимость evidence pack перед использованием в ответе.
     Возвращает (passed: bool, reason: str | None).
 
-    BACKWARD COMPATIBILITY:
+    Compatibility helper:
         mode=None (default) → MVP confidence-floor (легаси, для существующих тестов)
         mode="MVP"          → тот же MVP confidence-floor явно
         mode="BALANCED"/"PRECISION"/"EXPLORATION"/"CREATIVE" → реальный TruthGate
@@ -906,24 +947,37 @@ def truth_gate(
     if not facts:
         return False, "Нет фактов для верификации"
 
-    # Opt-in: реальный TruthGate только если mode — CognitiveMode
-    use_real_gate = (
-        _REAL_TRUTH_GATE_AVAILABLE
-        and mode is not None
-        and mode.upper() != "MVP"
-    )
+    requested_mode = (mode or "MVP").upper()
+    use_real_gate = requested_mode != "MVP"
 
     if use_real_gate:
+        if not _REAL_TRUTH_GATE_AVAILABLE:
+            reason = "real_truth_gate_unavailable"
+            logger.error("TruthGate BLOCKED: %s", reason)
+            return False, reason
         try:
-            cognitive_mode = CognitiveMode((mode or "BALANCED").upper())
+            cognitive_mode = CognitiveMode(requested_mode)
         except ValueError:
-            logger.warning("truth_gate: неизвестный mode '%s' → fallback на MVP", mode)
-            use_real_gate = False
+            reason = f"unknown_cognitive_mode:{requested_mode}"
+            logger.warning("TruthGate BLOCKED: %s", reason)
+            return False, reason
 
     if use_real_gate:
         gate = TruthGate(_GLOBAL_STORE)
         failed_verdicts = []
         for fact in facts:
+            # Canonical Validated/ImmutableCore records already crossed their
+            # ingestion-time promotion gate. Query execution may rely on that
+            # state, but cannot re-promote or rewrite it.
+            if (
+                fact.get("canonical_record")
+                and fact.get("epistemic_state") in {"Validated", "ImmutableCore"}
+            ):
+                continue
+            # A canonical user report may be rendered with an UNVERIFIED
+            # marker. TruthGate is not used to turn it into a world fact.
+            if _is_safe_user_report(fact):
+                continue
             verdict = gate.evaluate(fact, mode=cognitive_mode)
             if not verdict.passed:
                 failed_verdicts.append(f"{fact.get('fact_id')}: {verdict.reason}")
@@ -1044,13 +1098,8 @@ _CLAIM_TYPE_LABELS: dict = {
 }
 
 
-_ESM_RANK: dict = {
-    "Observed": 0, "Hypothesized": 1, "Supported": 2, "Validated": 3, "ImmutableCore": 4,
-}
-
-
 def _truth_policy_enabled() -> bool:
-    """ENABLE_TRUTH_POLICY (default OFF) — включает modality-aware промоушн в шаге 6."""
+    """ENABLE_TRUTH_POLICY — modality-aware answer labels (never promotion)."""
     try:
         from core.feature_config import get_config
         return bool(get_config().app.enable_truth_policy)
@@ -1151,6 +1200,7 @@ def _expand_with_graph_neighbors(
                     "origin_type":     nf.get("origin_type", "UNKNOWN"),
                     "metadata":        meta if isinstance(meta, dict) else {},
                     "truth_status":    "VERIFIED" if nf.get("epistemic_state") == "Validated" else "UNVERIFIED",
+                    "canonical_record": True,
                     "graph_expanded":  True,
                 })
                 next_frontier.append(tgt)
@@ -1183,14 +1233,32 @@ def generate_answer(
     """
     validated_facts = [
         f for f in facts_pack["facts"]
-        if f.get("epistemic_state") in {"Validated", "Supported"}
-    ]
-    if not validated_facts:
-        logger.warning(
-            "generate_answer: нет фактов в Validated/Supported — fallback на все %d",
-            len(facts_pack["facts"]),
+        if (
+            f.get("canonical_record", True)
+            and f.get("epistemic_state") in {"Validated", "Supported"}
         )
-        validated_facts = facts_pack["facts"]
+    ]
+    reported_facts = [
+        f for f in facts_pack["facts"]
+        if _is_safe_user_report(f)
+    ]
+    answer_facts = validated_facts + [
+        f for f in reported_facts if f not in validated_facts
+    ]
+    if not answer_facts:
+        logger.info(
+            "generate_answer: no Validated/Supported evidence; returning bounded answer"
+        )
+        return {
+            "answer": "Недостаточно подтверждённых локальных данных.",
+            "facts": [],
+            "candidate_facts": list(facts_pack["facts"]),
+            "trace": trace,
+            "trace_fmt": format_trace(trace),
+            "total_facts": 0,
+            "insufficient_evidence": True,
+            "reason_code": "insufficient_validated_local_evidence",
+        }
 
     # 🌿 Essence Layer (за флагом ENABLE_ESSENCE): короткий ответ «по сути»
     # вместо склейки. Канон: Truth Gate/БД не трогаем — работаем только с уже
@@ -1209,7 +1277,7 @@ def generate_answer(
             task_type = classify_task_type(facts_pack.get("query", ""))
             do_expand = task_type in REASONING_TYPES
         facts_for_essence = (
-            _expand_with_graph_neighbors(validated_facts) if do_expand else validated_facts
+            _expand_with_graph_neighbors(answer_facts) if do_expand else answer_facts
         )
         relations = _essence_relations_for(facts_for_essence)
         essence = compose_essence(facts_for_essence, relations)
@@ -1228,19 +1296,19 @@ def generate_answer(
     # v8.7 P0: маркируем факты по claim_type для честного ответа.
     # «Вы сообщали, что чувствовали X» ≠ «X верифицировано как факт мира».
     answer = " | ".join(
-        _label_claim_for_answer(f) for f in validated_facts
+        _label_claim_for_answer(f) for f in answer_facts
     )
 
     return {
         "answer":      answer,
-        "facts":       validated_facts,
+        "facts":       answer_facts,
         "trace":       trace,
         "trace_fmt":   format_trace(trace),
-        "total_facts": len(validated_facts),
+        "total_facts": len(answer_facts),
         # Аннотация для клиента: есть ли в ответе субъективные утверждения
         "has_subjective": any(
             f.get("claim_type") not in (None, "UNKNOWN", "WORLD_FACT")
-            for f in validated_facts
+            for f in answer_facts
         ),
     }
 
@@ -1288,13 +1356,14 @@ def run(
 
     Args:
         query: запрос пользователя
-        cognitive_mode: None/MVP (default, backward compat) — confidence-floor.
+        cognitive_mode: None → BALANCED real TruthGate (production default).
+                        MVP is retained only as an explicit compatibility mode.
                         BALANCED/PRECISION/EXPLORATION/CREATIVE — реальный TruthGate
                         с evidence_count и contradiction detection.
 
-    Backward compatibility:
-        run("query") работает как раньше — MVP TruthGate.
-        run("query", "BALANCED") включает реальный TruthGate.
+    Canonical safety:
+        run() never stores retrieval rows, promotes ESM state, or creates
+        causal/cross-domain relations. Model-derived candidates are proposals.
     """
     # 1. Retrieval (NGramIndex + HybridRetriever; опц. CrossDomain)
     cross_plan = None
@@ -1316,10 +1385,19 @@ def run(
         logger.debug("cross_domain retrieve: %s", exc)
         retrieved = retrieve(query, domain=domain)
     if not retrieved:
-        return _blocked("Retrieval вернул 0 результатов.", query)
+        return _insufficient_evidence(
+            query,
+            reason_code="no_local_retrieval_results",
+        )
 
-    # 2. FactsPack (store_fact + NGram + FactsPackBuilder с CognitiveMode — TASK-12)
+    # 2. Read-only FactsPack: Canon resolves projection rows; no ingestion.
     facts_pack = build_facts_pack(retrieved, query, cognitive_mode=cognitive_mode)
+    if not facts_pack.get("facts"):
+        return _insufficient_evidence(
+            query,
+            reason_code="no_policy_eligible_local_evidence",
+            facts_pack=facts_pack,
+        )
 
     # 3. Trace
     trace_input = []
@@ -1338,26 +1416,22 @@ def run(
     if not guardian_ok:
         return _blocked(f"Guardian: {guardian_reason}", query, facts_pack, trace)
 
-    # 5. TruthGate (реальный из truth_gate.py или MVP fallback)
-    gate_ok, gate_reason = truth_gate(facts_pack, mode=cognitive_mode)
+    # 5. Real TruthGate by default. Explicit MVP remains a compatibility API.
+    effective_mode = cognitive_mode or "BALANCED"
+    gate_ok, gate_reason = truth_gate(facts_pack, mode=effective_mode)
     if not gate_ok:
-        return _blocked(f"TruthGate: {gate_reason}", query, facts_pack, trace)
+        return _insufficient_evidence(
+            query,
+            reason_code="truth_gate_rejected",
+            detail=gate_reason,
+            facts_pack=facts_pack,
+            trace=trace,
+        )
 
-    # 6. ESM promotion (идемпотентно).
-    #    Legacy (по умолчанию): Observed→Validated для каждого факта, truth_status=VERIFIED.
-    #    Modality-aware (ENABLE_TRUTH_POLICY): промоутим до recommend_target_state()
-    #    ТОЛЬКО ВПЕРЁД (rank-guard, без демоушна), а VERIFIED ставим лишь Validated-фактам
-    #    с claim_type=WORLD_FACT — EMOTION/OPINION валидны КАК модальность, но не VERIFIED.
+    # 6. Honest labels only. Query execution has no ESM write authority.
     _modality = _truth_policy_enabled()
     for fact in facts_pack["facts"]:
         if _modality:
-            from core.truth_policy import recommend_target_state
-            target, _reason = recommend_target_state(fact)
-            if _ESM_RANK.get(target, -1) > _ESM_RANK.get(fact["epistemic_state"], 99):
-                promote_esm_to(fact["fact_id"], target, by="pipeline.run")
-                updated = get_fact(fact["fact_id"])
-                if updated:
-                    fact["epistemic_state"] = updated["epistemic_state"]
             ct = fact.get("claim_type") or "UNKNOWN"
             fact["truth_status"] = (
                 "VERIFIED"
@@ -1365,31 +1439,26 @@ def run(
                 else "UNVERIFIED"
             )
         else:
-            if fact["epistemic_state"] != "Validated":
-                promote_to_validated(fact["fact_id"], by="pipeline.run")
-                updated = get_fact(fact["fact_id"])
-                if updated:
-                    fact["epistemic_state"] = updated["epistemic_state"]
-            fact["truth_status"] = "VERIFIED"
+            fact["truth_status"] = (
+                "VERIFIED"
+                if fact.get("epistemic_state") == "Validated"
+                else "UNVERIFIED"
+            )
 
-    promote_trace(trace, "Validated")
-
-    # 7. CausalGraph: предлагаем гипотетические рёбра (TASK-08)
-    # НЕ блокирует ответ — добавляет causal_hints как аннотацию.
-    # Только факты с каузальными паттернами получают предложенные связи.
+    # 7. Pure causal proposals + read-only contradiction lookup.
     causal_hints: list[dict[str, Any]] = []
     conflicts: list[dict[str, Any]] = []
+    validated_for_cg = [
+        f for f in facts_pack["facts"]
+        if (
+            f.get("canonical_record")
+            and f.get("epistemic_state") in {"Validated", "Supported"}
+        )
+    ]
+    causal_hints = _extract_causal_hints(validated_for_cg)
     cg = _get_causal_graph()
     if cg is not None:
-        validated_for_cg = [
-            f for f in facts_pack["facts"]
-            if f.get("epistemic_state") in {"Validated", "Supported"}
-        ]
-        causal_hints = _extract_causal_hints(validated_for_cg, cg)
-
-        # 7.5. Contradiction-First (TASK-16): явный показ противоречий
-        # Использует find_contradictions() с cycle protection из TASK-10.
-        # Не создаёт новых связей — только показывает существующие contradicts-рёбра.
+        # Contradiction-First is SELECT-only: show existing projection edges.
         try:
             conflicts = _extract_conflicts(facts_pack["facts"], cg)
         except Exception as exc:
@@ -1449,23 +1518,20 @@ def run(
 
     if cross_plan is not None:
         try:
-            from core.cross_domain import get_cross_domain_layer, sync_cross_domain_edges
+            from core.cross_domain import get_cross_domain_layer
 
             section = get_cross_domain_layer().annotate_facts(
                 facts_pack.get("facts", []),
                 cross_plan,
             )
             if section:
-                links = sync_cross_domain_edges(
-                    facts_pack.get("facts", []),
-                    cross_plan,
-                )
-                section["causal_links"] = links
+                # Cross-domain relations are proposals on the query path.
+                # Persisting them belongs to reviewed ingestion, never recall.
+                section["causal_links"] = []
+                section["relation_disposition"] = "proposal_only"
                 result["cross_domain"] = section
         except Exception as exc:  # noqa: BLE001
             logger.debug("cross_domain annotate: %s", exc)
-
-    # ── V8.7 Titan: Wiring — новые модули (fire-and-forget, не блокируют) ──
 
     # 10. Graph Lab (NetworkX) — структурный анализ для научных запросов
     try:
@@ -1481,69 +1547,34 @@ def run(
     except Exception as exc:  # noqa: BLE001
         logger.debug("graph_lab: %s", exc)
 
-    # 10. Reconsolidation
-    _fire_and_forget(lambda: _reconsolidate_hook(facts_pack.get("facts", [])))
-    # 11. Lightweight Metrics
-    _fire_and_forget(lambda: _metrics_hook(query, facts_pack, trace, result))
-    # 12. Epigenetic Adaptation
-    _fire_and_forget(lambda: _epigenetic_hook(result))
-    # 13. Meta-Cognition
-    _fire_and_forget(lambda: _metacog_hook(query, facts_pack, result))
+    # Reconsolidation, adaptive stress, metacognitive reflection, and durable
+    # metrics are intentionally not fired from QueryPipeline. They mutate
+    # state and must run as separately budgeted/authorized post-query tasks.
 
     return result
 
 
-# ── V8.7 Titan: Hook helpers ──────────────────────────────────────────────────
-
-import asyncio as _asyncio
-import concurrent.futures as _cf
-
-def _fire_and_forget(fn):
-    """Запустить функцию в фоне не блокируя pipeline."""
-    try:
-        _cf.ThreadPoolExecutor(max_workers=1).submit(fn)
-    except Exception:
-        pass
-
-
-def _reconsolidate_hook(facts):
-    from core.reconsolidation import get_reconsolidation_engine, ReconsolidationSignal
-    engine = get_reconsolidation_engine()
-    signals = [ReconsolidationSignal(fact_id=f["fact_id"]) for f in facts if f.get("fact_id")]
-    _asyncio.run(engine.process(signals))
-
-
-def _metrics_hook(query, facts_pack, trace, result):
-    from core.lightweight_metrics import get_lightweight_metrics, EvalReport
-    lm = get_lightweight_metrics()
-    faith = result.get("faithfulness", {})
-    lm.record(EvalReport(
-        query=query,
-        grounding_score=faith.get("score", 0.0) if isinstance(faith, dict) else 0.0,
-        trace_completeness=1.0 if trace else 0.0,
-        unsupported_claim_count=len(faith.get("unsupported", [])) if isinstance(faith, dict) else 0,
-        total_claims=len(facts_pack.get("facts", [])),
-        facts_used=len(facts_pack.get("facts", [])),
-    ))
-
-
-def _epigenetic_hook(result):
-    from core.epigenetic_adaptation import get_epigenetic_engine
-    epi = get_epigenetic_engine()
-    faith = result.get("faithfulness", {})
-    if isinstance(faith, dict) and faith.get("score", 1.0) < 0.5:
-        epi.record_stress(0.7, context="low_faithfulness")
-    else:
-        epi.record_stress(0.2, context="normal")
-
-
-def _metacog_hook(query, facts_pack, result):
-    from core.meta_cognition import get_meta_cognitive_loop
-    get_meta_cognitive_loop().reflect(
-        query=query,
-        facts=facts_pack.get("facts", []),
-        response=result.get("answer", "") or "",
-    )
+def _insufficient_evidence(
+    query: str,
+    *,
+    reason_code: str,
+    detail: str | None = None,
+    facts_pack: dict | None = None,
+    trace: list | None = None,
+) -> dict[str, Any]:
+    """Return an honest, non-error response when local evidence is insufficient."""
+    return {
+        "error": None,
+        "answer": "Недостаточно подтверждённых локальных данных.",
+        "query": query,
+        "facts": [],
+        "candidate_facts": facts_pack.get("facts", []) if facts_pack else [],
+        "trace": trace or [],
+        "total_facts": 0,
+        "insufficient_evidence": True,
+        "reason_code": reason_code,
+        **({"detail": detail} if detail else {}),
+    }
 
 
 def _blocked(

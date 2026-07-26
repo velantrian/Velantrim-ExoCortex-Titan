@@ -248,6 +248,7 @@ class TestPromoteInboxItemRejection:
         ops = get_memory_ops(ops_store.db_path)
         item = ops.enqueue_fact(claim="a claim that will be rejected by write-gate", confidence=0.8)
 
+        original_admit_fact = wg.admit_fact
         monkeypatch.setattr(wg, "is_write_gate_enabled", lambda: True)
         monkeypatch.setattr(wg, "admit_fact", lambda **kw: (False, "test_forced_rejection"))
 
@@ -263,10 +264,9 @@ class TestPromoteInboxItemRejection:
         )
         assert not _provenance_row_exists("fact_promo_reject_1")
 
-        # Retry must be possible — a second promote (write-gate now off)
-        # should succeed instead of hitting the "already promoted" terminal
-        # branch.
-        monkeypatch.setattr(wg, "is_write_gate_enabled", lambda: False)
+        # Retry must be possible once the forced rejection is removed. The
+        # mandatory gate itself is never disabled.
+        monkeypatch.setattr(wg, "admit_fact", original_admit_fact)
         retry = ops.promote_inbox_item(item["inbox_id"], fact_id="fact_promo_reject_1")
         assert retry["created"] is True
         assert retry["inbox_item"]["status"] == "promoted"
@@ -396,6 +396,7 @@ class TestAcceptedStatusNotCanonicalExists:
             claim="a new claim attempting to overwrite the existing fact",
             confidence=0.8,
         )
+        original_admit_fact = wg.admit_fact
         monkeypatch.setattr(wg, "is_write_gate_enabled", lambda: True)
         monkeypatch.setattr(wg, "admit_fact", lambda **kw: (False, "test_forced_rejection"))
 
@@ -415,8 +416,8 @@ class TestAcceptedStatusNotCanonicalExists:
         # to this rejected promotion attempt.
         assert get_fact("fact_promo_existing_1")["claim"] == "original claim"
 
-        # retry must still be possible.
-        monkeypatch.setattr(wg, "is_write_gate_enabled", lambda: False)
+        # retry must still be possible after the forced rejection is removed.
+        monkeypatch.setattr(wg, "admit_fact", original_admit_fact)
         retry = ops.promote_inbox_item(item["inbox_id"], fact_id="fact_promo_new_1")
         assert retry["created"] is True
         assert retry["inbox_item"]["status"] == "promoted"

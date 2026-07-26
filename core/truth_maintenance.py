@@ -209,8 +209,12 @@ def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
             from core.claim_classifier import classify_claim as _classify
             _ct, _ot, _ = _classify(
                 new_claim, source_val,
-                explicit_claim_type=_raw_ct,
-                explicit_origin_type=_raw_ot,
+                explicit_claim_type=(
+                    None if _raw_ct in (None, "", "UNKNOWN") else _raw_ct
+                ),
+                explicit_origin_type=(
+                    None if _raw_ot in (None, "", "UNKNOWN") else _raw_ot
+                ),
             )
         except Exception:
             _ct = normalize_claim_type(_raw_ct)
@@ -223,26 +227,25 @@ def supersede(old_id: str, new_fact: Dict[str, Any]) -> Optional[str]:
             else normalize_origin_type(_raw_ot)
         )
 
-    # SECURITY (Codex review finding #5 on PR #11): WriteGate must run
-    # before TruthGate and before any durable mutation — honoring
-    # ENABLE_WRITE_GATE exactly as store_fact() does, not making it globally
-    # mandatory. Without this, a WORLD_FACT with source='unknown' (which
+    # SECURITY: WriteGate must run before TruthGate and before any durable
+    # mutation. It is now a mandatory PolicyKernel boundary, matching
+    # store_fact(). Without this, a WORLD_FACT with source='unknown' (which
     # TruthGate alone does not reject — it only checks the source string is
     # non-empty) could reach Validated through supersede() even though an
     # equivalent store_fact() call would have been rejected outright.
-    from core.write_gate import admit_fact, is_write_gate_enabled
-    if is_write_gate_enabled():
-        _wg_refs = (metadata or {}).get("evidence_refs") or []
-        _wg_ok, _wg_reason = admit_fact(
-            claim_type=_ct, origin_type=_ot,
-            source=source_val, has_evidence=bool(_wg_refs),
+    from core.write_gate import admit_fact
+
+    _wg_refs = (metadata or {}).get("evidence_refs") or []
+    _wg_ok, _wg_reason = admit_fact(
+        claim_type=_ct, origin_type=_ot,
+        source=source_val, has_evidence=bool(_wg_refs),
+    )
+    if not _wg_ok:
+        logger.warning(
+            "TruthMaintenance.supersede: WriteGate отклонил %s → %s: %s",
+            old_id, new_id, _wg_reason,
         )
-        if not _wg_ok:
-            logger.warning(
-                "TruthMaintenance.supersede: WriteGate отклонил %s → %s: %s",
-                old_id, new_id, _wg_reason,
-            )
-            return None
+        return None
 
     # SECURITY (Codex review finding #4 on PR #11): apply the same canonical
     # domain-metadata preparation store_fact() applies (ENABLE_DOMAIN_TAGS,

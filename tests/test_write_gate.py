@@ -36,14 +36,14 @@ def isolated_db(monkeypatch, tmp_path):
     fresh.close()
 
 
-def test_gate_off_legacy_stores_world_fact_without_source(isolated_db, monkeypatch):
-    """Флаг OFF (дефолт): WORLD_FACT без источника пишется — поведение прежнее."""
+def test_legacy_disable_cannot_bypass_mandatory_gate(isolated_db, monkeypatch):
+    """Even a patched legacy readout cannot disable canonical admission."""
     import core.write_gate as wg
     from core.memory import get_fact, store_fact
     monkeypatch.setattr(wg, "is_write_gate_enabled", lambda: False)
     store_fact({"fact_id": "w1", "claim": "Некое утверждение о мире", "source": "unknown",
                 "claim_type": "WORLD_FACT", "origin_type": "EXTERNAL"})
-    assert get_fact("w1") is not None
+    assert get_fact("w1") is None
 
 
 def test_gate_on_rejects_world_fact_without_source(isolated_db, monkeypatch):

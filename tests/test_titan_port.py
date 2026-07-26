@@ -221,4 +221,8 @@ class TestPipelineIntegration:
         clear_config_cache()
         result = run("тест запрос")
         if result.get("answer"):
-            assert "faithfulness" in result or result.get("error")
+            assert (
+                "faithfulness" in result
+                or result.get("error")
+                or result.get("insufficient_evidence") is True
+            )

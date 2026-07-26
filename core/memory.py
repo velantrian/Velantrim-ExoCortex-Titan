@@ -1321,13 +1321,20 @@ class SQLiteGraphStore(GraphStore):
         _raw_ct = fact.get("claim_type")
         _raw_ot = fact.get("origin_type")
         if not _raw_ct or _raw_ct == "UNKNOWN":
-            # Автоклассификация если явно не задано
+            # Auto-classify missing/placeholder values.  Passing the literal
+            # string "UNKNOWN" as an explicit override would freeze both axes
+            # at UNKNOWN and suppress deterministic source classification
+            # (notably USER_REPORTED for CognitiveFactStore payloads).
             try:
                 from core.claim_classifier import classify_claim as _classify
                 _ct, _ot, _ = _classify(
                     new_claim, source_val,
-                    explicit_claim_type=_raw_ct,
-                    explicit_origin_type=_raw_ot,
+                    explicit_claim_type=(
+                        None if _raw_ct in (None, "", "UNKNOWN") else _raw_ct
+                    ),
+                    explicit_origin_type=(
+                        None if _raw_ot in (None, "", "UNKNOWN") else _raw_ot
+                    ),
                 )
             except Exception:
                 _ct = normalize_claim_type(_raw_ct)
@@ -1336,36 +1343,36 @@ class SQLiteGraphStore(GraphStore):
             _ct = normalize_claim_type(_raw_ct)
             _ot = normalize_origin_type(_raw_ot) if not _raw_ot or _raw_ot == "UNKNOWN" else normalize_origin_type(_raw_ot)
 
-        # v8.7 P0.5: Write Protocol Gate (флаг ENABLE_WRITE_GATE, default OFF) — единый
-        # эпистемический контроль на write-пути: WORLD_FACT обязан нести провенанс,
-        # LLM-world-fact — evidence. Reject → не пишем, лог, return False. Закрывает
-        # «write-путь без truth-гейта». Субъективное/UNKNOWN допускаются (Observed).
-        from core.write_gate import admit_fact, is_write_gate_enabled
-        if is_write_gate_enabled():
-            _wg_refs = (metadata_dict or {}).get("evidence_refs") or []
-            _wg_ok, _wg_reason = admit_fact(
-                claim_type=_ct, origin_type=_ot,
-                source=source_val, has_evidence=bool(_wg_refs),
+        # P0 local-first policy: WriteProtocolGate is a mandatory canonical
+        # boundary, not an optional feature flag. WORLD_FACT requires
+        # provenance; LLM-derived world facts require evidence. Subjective
+        # and UNKNOWN records may still enter as Observed.
+        from core.write_gate import admit_fact
+
+        _wg_refs = (metadata_dict or {}).get("evidence_refs") or []
+        _wg_ok, _wg_reason = admit_fact(
+            claim_type=_ct, origin_type=_ot,
+            source=source_val, has_evidence=bool(_wg_refs),
+        )
+        if not _wg_ok:
+            logger.warning("WriteProtocolGate отклонил факт %s: %s", fact_id, _wg_reason)
+            return WriteResult(
+                status=WriteStatus.REJECTED_WRITE_GATE,
+                fact_id=fact_id,
+                created=False,
+                canonical_exists=not is_new,
+                durable_write=False,
+                safe_reason_code=_wg_reason,
+                safe_message="Write rejected by write-protocol gate.",
             )
-            if not _wg_ok:
-                logger.warning("WriteProtocolGate отклонил факт %s: %s", fact_id, _wg_reason)
-                return WriteResult(
-                    status=WriteStatus.REJECTED_WRITE_GATE,
-                    fact_id=fact_id,
-                    created=False,
-                    canonical_exists=not is_new,
-                    durable_write=False,
-                    safe_reason_code=_wg_reason,
-                    safe_message="Write rejected by write-protocol gate.",
-                )
-            if _ot == "UNKNOWN" and _raw_ot:
-                pass  # явное UNKNOWN — оставляем
-            elif not _raw_ot:
-                try:
-                    from core.claim_classifier import classify_claim as _classify
-                    _, _ot, _ = _classify(new_claim, source_val)
-                except Exception:
-                    _ot = normalize_origin_type(None)
+        if _ot == "UNKNOWN" and _raw_ot:
+            pass  # явное UNKNOWN — оставляем
+        elif not _raw_ot:
+            try:
+                from core.claim_classifier import classify_claim as _classify
+                _, _ot, _ = _classify(new_claim, source_val)
+            except Exception:
+                _ot = normalize_origin_type(None)
 
         existing = self.get_fact(fact_id)
         state_for_checksum = (
@@ -1767,18 +1774,29 @@ class SQLiteGraphStore(GraphStore):
         fact_id = fact.get("fact_id")
         try:
             return self._store_fact_outcome(fact)
-        except WritesBlockedError:
+        except WritesBlockedError as exc:
             logger.warning(
-                "store_fact_result: SAFE_MODE blocked write for fact %s", fact_id
+                "store_fact_result: policy blocked write for fact %s (%s)",
+                fact_id,
+                exc.reason_code,
             )
+            is_safe_mode = exc.reason_code == "safe_mode_writes_blocked"
             return WriteResult(
-                status=WriteStatus.REJECTED_SAFE_MODE,
+                status=(
+                    WriteStatus.REJECTED_SAFE_MODE
+                    if is_safe_mode
+                    else WriteStatus.REJECTED_POLICY
+                ),
                 fact_id=fact_id,
                 created=False,
                 canonical_exists=self._safe_canonical_exists(fact_id),
                 durable_write=False,
-                safe_reason_code="safe_mode_writes_blocked",
-                safe_message="System is in SAFE_MODE; writes are blocked.",
+                safe_reason_code=exc.reason_code,
+                safe_message=(
+                    "System is in SAFE_MODE; writes are blocked."
+                    if is_safe_mode
+                    else "Canonical write policy is unavailable or denied."
+                ),
             )
         except MemoryBudgetExceededError as exc:
             logger.warning(
@@ -3701,8 +3719,16 @@ class SQLiteGraphStore(GraphStore):
                         _ct, _ot, _ = _classify(
                             new_claim,
                             fact.get("source", "unknown"),
-                            explicit_claim_type=_raw_ct,
-                            explicit_origin_type=_raw_ot,
+                            explicit_claim_type=(
+                                None
+                                if _raw_ct in (None, "", "UNKNOWN")
+                                else _raw_ct
+                            ),
+                            explicit_origin_type=(
+                                None
+                                if _raw_ot in (None, "", "UNKNOWN")
+                                else _raw_ot
+                            ),
                         )
                     except Exception:
                         _ct = normalize_claim_type(_raw_ct)
@@ -3714,20 +3740,19 @@ class SQLiteGraphStore(GraphStore):
                 # Batch ingestion is not a privileged side door. The exact
                 # WriteProtocolGate used by store_fact() is applied per
                 # record before anything enters the shared transaction.
-                from core.write_gate import admit_fact, is_write_gate_enabled
+                from core.write_gate import admit_fact
 
-                if is_write_gate_enabled():
-                    _wg_refs = metadata_dict.get("evidence_refs") or []
-                    _wg_ok, _wg_reason = admit_fact(
-                        claim_type=_ct,
-                        origin_type=_ot,
-                        source=fact.get("source", "unknown"),
-                        has_evidence=bool(_wg_refs),
+                _wg_refs = metadata_dict.get("evidence_refs") or []
+                _wg_ok, _wg_reason = admit_fact(
+                    claim_type=_ct,
+                    origin_type=_ot,
+                    source=fact.get("source", "unknown"),
+                    has_evidence=bool(_wg_refs),
+                )
+                if not _wg_ok:
+                    raise ValueError(
+                        f"WriteProtocolGate rejected '{fact_id}': {_wg_reason}"
                     )
-                    if not _wg_ok:
-                        raise ValueError(
-                            f"WriteProtocolGate rejected '{fact_id}': {_wg_reason}"
-                        )
 
                 record = {
                     "fact_id":             fact_id,
