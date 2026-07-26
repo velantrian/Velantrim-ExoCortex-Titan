@@ -2,6 +2,7 @@
 Маршрутизатор LLM для консоли: OpenAI, DeepSeek, Gemini, OpenRouter, Anthropic.
 
 Ключи передаются в запросе (консоль) или из ENV сервера.
+Любой серверный remote-вызов проходит обязательный PolicyKernel egress lease.
 """
 
 from __future__ import annotations
@@ -11,6 +12,11 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
+
+from core.remote_egress import (
+    ensure_remote_egress_allowed,
+    sanitize_remote_system_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +60,11 @@ def _gemini_403_hints(detail: str = "") -> str:
         "(console.cloud.google.com/apis/library/generativelanguage.googleapis.com). "
         "(2) Создайте ключ на https://aistudio.google.com/apikey (Server key, не OAuth). "
         "(3) В ограничениях ключа разрешите только «Generative Language API»; "
-        "для серверных запросов не используйте ограничение HTTP referrer / IP, если клиент не с браузера. "
+        "для серверных запросов не используйте ограничение HTTP referrer / IP, "
+        "если клиент не с браузера. "
         "(4) Для gemini-2.5-pro и gemini-3.1-pro-preview может потребоваться биллинг. "
-        "(5) Модели 2.0 (gemini-2.0-flash) сняты с поддержки — используйте gemini-2.5-flash или gemini-3.5-flash. "
+        "(5) Модели 2.0 (gemini-2.0-flash) сняты с поддержки — "
+        "используйте gemini-2.5-flash или gemini-3.5-flash. "
         "(6) Если регион блокирует Google AI — OpenRouter → google/gemini-3.5-flash."
     )
     return intro + steps
@@ -80,8 +88,9 @@ def _http_error(provider: str, resp: httpx.Response) -> ValueError:
         extra = " — " + _gemini_403_hints(detail)
     return ValueError(f"{provider}: HTTP {resp.status_code}{hint}{extra} — {detail}")
 
+
 # Каталог провайдеров: core/provider_catalog.py (единый источник для API)
-from core.provider_catalog import (  # noqa: F401
+from core.provider_catalog import (  # noqa: E402,F401
     CATALOG_BUILD_ID,
     PROVIDER_CATALOG,
     get_provider_info,
@@ -190,7 +199,10 @@ def _deepseek_request_body(
     return body
 
 
-def _truncate_message_content(text: str, limit: int = _DEEPSEEK_MESSAGE_CHAR_LIMIT) -> str:
+def _truncate_message_content(
+    text: str,
+    limit: int = _DEEPSEEK_MESSAGE_CHAR_LIMIT,
+) -> str:
     value = str(text or "")
     if len(value) <= limit:
         return value
@@ -220,10 +232,21 @@ async def _openai_compatible_chat(
     base_url: str,
     *,
     quick_ping: bool = False,
+    data_mode: str = "raw",
 ) -> str:
+    ensure_remote_egress_allowed(
+        "remote_llm_test" if quick_ping else "remote_llm",
+        provider=cfg.provider,
+        data_mode=data_mode,
+    )
+    safe_system = (
+        system.strip()
+        if data_mode == "none"
+        else sanitize_remote_system_prompt(system)
+    )
     messages: list[dict[str, str]] = []
-    if system:
-        messages.append({"role": "system", "content": system})
+    if safe_system:
+        messages.append({"role": "system", "content": safe_system})
     messages.append({"role": "user", "content": prompt})
     url = base_url.rstrip("/") + "/chat/completions"
     headers = {
@@ -268,7 +291,7 @@ async def _gemini_post(
     model: str,
     body: dict[str, Any],
 ) -> httpx.Response:
-    """POST generateContent: ключ в заголовке x-goog-api-key (рекомендация Google AI Studio)."""
+    """POST generateContent after the caller has acquired an egress lease."""
     url = _gemini_generate_url(api_version, model)
     headers = {
         "Content-Type": "application/json",
@@ -278,25 +301,53 @@ async def _gemini_post(
         return await client.post(url, headers=headers, json=body)
 
 
-async def _gemini_chat(cfg: LlmCallConfig, prompt: str, system: str) -> str:
-    from core.gemini_models import gemini_generation_config, normalize_gemini_model_id
+async def _gemini_chat(
+    cfg: LlmCallConfig,
+    prompt: str,
+    system: str,
+    *,
+    data_mode: str = "raw",
+) -> str:
+    from core.gemini_models import (
+        gemini_generation_config,
+        normalize_gemini_model_id,
+    )
 
+    ensure_remote_egress_allowed(
+        "remote_llm",
+        provider=cfg.provider,
+        data_mode=data_mode,
+    )
+    safe_system = (
+        system.strip()
+        if data_mode == "none"
+        else sanitize_remote_system_prompt(system)
+    )
     model = normalize_gemini_model_id(_resolve_model(cfg))
     parts = [{"text": prompt}]
     body: dict[str, Any] = {
         "contents": [{"role": "user", "parts": parts}],
         "generationConfig": gemini_generation_config(model, cfg.max_tokens),
     }
-    if system:
-        body["systemInstruction"] = {"parts": [{"text": system}]}
+    if safe_system:
+        body["systemInstruction"] = {"parts": [{"text": safe_system}]}
 
     resp: httpx.Response | None = None
     for api_version in ("v1beta", "v1"):
-        resp = await _gemini_post(cfg, api_version=api_version, model=model, body=body)
+        resp = await _gemini_post(
+            cfg,
+            api_version=api_version,
+            model=model,
+            body=body,
+        )
         if resp.status_code < 400:
             break
         if api_version == "v1beta" and resp.status_code in (403, 404):
-            logger.info("Gemini %s вернул HTTP %s, пробуем v1", api_version, resp.status_code)
+            logger.info(
+                "Gemini %s вернул HTTP %s, пробуем v1",
+                api_version,
+                resp.status_code,
+            )
             continue
         break
 
@@ -312,14 +363,30 @@ async def _gemini_chat(cfg: LlmCallConfig, prompt: str, system: str) -> str:
     return "\n".join(texts).strip() or "(пустой ответ Gemini)"
 
 
-async def _anthropic_chat(cfg: LlmCallConfig, prompt: str, system: str) -> str:
+async def _anthropic_chat(
+    cfg: LlmCallConfig,
+    prompt: str,
+    system: str,
+    *,
+    data_mode: str = "raw",
+) -> str:
+    ensure_remote_egress_allowed(
+        "remote_llm",
+        provider=cfg.provider,
+        data_mode=data_mode,
+    )
+    safe_system = (
+        system.strip()
+        if data_mode == "none"
+        else sanitize_remote_system_prompt(system)
+    )
     body: dict[str, Any] = {
         "model": _resolve_model(cfg),
         "max_tokens": cfg.max_tokens,
         "messages": [{"role": "user", "content": prompt}],
     }
-    if system:
-        body["system"] = system
+    if safe_system:
+        body["system"] = safe_system
     async with httpx.AsyncClient(timeout=cfg.timeout) as client:
         resp = await client.post(
             "https://api.anthropic.com/v1/messages",
@@ -336,23 +403,60 @@ async def _anthropic_chat(cfg: LlmCallConfig, prompt: str, system: str) -> str:
         return data["content"][0]["text"]
 
 
-async def chat_complete(cfg: LlmCallConfig, prompt: str, system: str = "") -> str:
-    """Единая точка вызова LLM по провайдеру."""
+async def chat_complete(
+    cfg: LlmCallConfig,
+    prompt: str,
+    system: str = "",
+    *,
+    data_mode: str = "raw",
+) -> str:
+    """Единая точка вызова LLM по провайдеру.
+
+    ``data_mode`` is ``raw`` for normal user/memory prompts and ``none`` for
+    provider connectivity tests that contain no user data.
+    """
     provider = (cfg.provider or "none").strip().lower()
     if not cfg.api_key:
         raise ValueError("LLM API key не задан")
 
     if provider == "openai":
-        return await _openai_compatible_chat(cfg, prompt, system, "https://api.openai.com/v1")
+        return await _openai_compatible_chat(
+            cfg,
+            prompt,
+            system,
+            "https://api.openai.com/v1",
+            data_mode=data_mode,
+        )
     if provider == "deepseek":
-        # Официальный API: POST https://api.deepseek.com/chat/completions (без /v1)
-        return await _openai_compatible_chat(cfg, prompt, system, "https://api.deepseek.com")
+        return await _openai_compatible_chat(
+            cfg,
+            prompt,
+            system,
+            "https://api.deepseek.com",
+            data_mode=data_mode,
+        )
     if provider == "openrouter":
-        return await _openai_compatible_chat(cfg, prompt, system, "https://openrouter.ai/api/v1")
+        return await _openai_compatible_chat(
+            cfg,
+            prompt,
+            system,
+            "https://openrouter.ai/api/v1",
+            data_mode=data_mode,
+        )
     if provider == "gemini":
-        return await _gemini_chat(cfg, prompt, system)
+        return await _gemini_chat(
+            cfg,
+            prompt,
+            system,
+            data_mode=data_mode,
+        )
     if provider == "anthropic":
-        return await _anthropic_chat(cfg, prompt, system)
+        return await _anthropic_chat(
+            cfg,
+            prompt,
+            system,
+            data_mode=data_mode,
+        )
     raise ValueError(f"Неизвестный LLM provider: {provider}")
 
 
@@ -366,6 +470,11 @@ async def transcribe_audio_gemini(
     """Распознавание речи через Gemini (inline audio в generateContent)."""
     import base64
 
+    ensure_remote_egress_allowed(
+        "remote_stt",
+        provider=cfg.provider,
+        data_mode="raw",
+    )
     raw = (audio_base64 or "").strip()
     if not raw:
         raise ValueError("Пустое аудио")
@@ -386,7 +495,12 @@ async def transcribe_audio_gemini(
         model = GEMINI_STT_DEFAULT_MODEL
 
     lang = (language_hint or "ru").split("-")[0].lower()
-    lang_names = {"ru": "Russian", "en": "English", "uk": "Ukrainian", "de": "German"}
+    lang_names = {
+        "ru": "Russian",
+        "en": "English",
+        "uk": "Ukrainian",
+        "de": "German",
+    }
     lang_label = lang_names.get(lang, language_hint or "auto")
 
     prompt = (
@@ -405,7 +519,9 @@ async def transcribe_audio_gemini(
             }
         ],
         "generationConfig": gemini_generation_config(
-            model, 2048, for_stt=True
+            model,
+            2048,
+            for_stt=True,
         ),
     }
 
@@ -420,7 +536,10 @@ async def transcribe_audio_gemini(
             resp: httpx.Response | None = None
             for api_version in ("v1beta", "v1"):
                 resp = await _gemini_post(
-                    cfg, api_version=api_version, model=try_model, body=body
+                    cfg,
+                    api_version=api_version,
+                    model=try_model,
+                    body=body,
                 )
                 if resp.status_code < 400:
                     break
@@ -443,7 +562,11 @@ async def transcribe_audio_gemini(
             last_err = exc
             logger.info("Gemini STT model %s: %s", try_model, exc)
             continue
-    raise ValueError(f"Gemini STT: {last_err}" if last_err else "распознавание не удалось")
+    raise ValueError(
+        f"Gemini STT: {last_err}"
+        if last_err
+        else "распознавание не удалось"
+    )
 
 
 async def transcribe_audio_openai(
@@ -456,6 +579,11 @@ async def transcribe_audio_openai(
     """Распознавание речи через OpenAI Whisper API."""
     import base64
 
+    ensure_remote_egress_allowed(
+        "remote_stt",
+        provider=cfg.provider,
+        data_mode="raw",
+    )
     raw = (audio_base64 or "").strip()
     if not raw:
         raise ValueError("Пустое аудио")
@@ -472,9 +600,29 @@ async def transcribe_audio_openai(
     elif "mp4" in mime_type or "m4a" in mime_type:
         ext = "mp4"
 
-    files = {"file": (f"audio.{ext}", audio_bytes, mime_type or "audio/webm")}
+    files = {
+        "file": (
+            f"audio.{ext}",
+            audio_bytes,
+            mime_type or "audio/webm",
+        )
+    }
     data: dict[str, Any] = {"model": "whisper-1"}
-    if lang in ("ru", "en", "uk", "de", "fr", "es", "it", "pt", "pl", "tr", "zh", "ja", "ko"):
+    if lang in (
+        "ru",
+        "en",
+        "uk",
+        "de",
+        "fr",
+        "es",
+        "it",
+        "pt",
+        "pl",
+        "tr",
+        "zh",
+        "ja",
+        "ko",
+    ):
         data["language"] = lang
 
     async with httpx.AsyncClient(timeout=cfg.timeout) as client:
@@ -503,9 +651,15 @@ async def test_connection(cfg: LlmCallConfig) -> dict[str, Any]:
             "Ты помощник Velantrim.",
             "https://api.deepseek.com",
             quick_ping=True,
+            data_mode="none",
         )
     else:
-        reply = await chat_complete(cfg, "Ответь одним словом: OK", system="Ты помощник Velantrim.")
+        reply = await chat_complete(
+            cfg,
+            "Ответь одним словом: OK",
+            system="Ты помощник Velantrim.",
+            data_mode="none",
+        )
     return {
         "ok": True,
         "provider": cfg.provider,
