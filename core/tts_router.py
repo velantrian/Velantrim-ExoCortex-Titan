@@ -2,7 +2,10 @@
 Озвучка (TTS): OpenAI Audio API и Google Gemini TTS.
 
 OpenAI: потоковый audio/mpeg (stream=True).
-Gemini: generateContent с responseModalities AUDIO (по предложениям для быстрого старта).
+Gemini: generateContent с responseModalities AUDIO.
+
+Every server-side TTS call obtains a mandatory PolicyKernel remote-egress lease
+before any provider connection is opened.
 """
 
 from __future__ import annotations
@@ -16,6 +19,8 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
+
+from core.remote_egress import ensure_remote_egress_allowed
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +80,9 @@ GEMINI_TTS_VOICE_CATALOG: list[dict[str, str]] = [
     {"id": "Sulafat", "style": "Warm"},
 ]
 
-GEMINI_TTS_VOICES: list[str] = [v["id"] for v in GEMINI_TTS_VOICE_CATALOG]
+GEMINI_TTS_VOICES: list[str] = [
+    voice["id"] for voice in GEMINI_TTS_VOICE_CATALOG
+]
 
 OPENAI_TTS_VOICE_CATALOG: list[dict[str, str]] = [
     {"id": "alloy", "style": "Neutral"},
@@ -121,7 +128,10 @@ def tts_catalog() -> dict[str, Any]:
             "default_model": DEFAULT_GEMINI_TTS_MODEL,
             "default_voice": DEFAULT_GEMINI_TTS_VOICE,
             "streaming": False,
-            "note": "30 голосов prebuiltVoiceConfig — документация Google Gemini API Speech",
+            "note": (
+                "30 голосов prebuiltVoiceConfig — документация "
+                "Google Gemini API Speech"
+            ),
             "docs": "https://ai.google.dev/gemini-api/docs/speech-generation",
         },
     }
@@ -135,48 +145,54 @@ def split_tts_chunks(text: str, max_first: int = 220) -> list[str]:
     if len(clean) <= max_first:
         return [clean]
     parts = re.split(r"(?<=[.!?…])\s+|[\n;]+", clean)
-    parts = [p.strip() for p in parts if p.strip()]
+    parts = [part.strip() for part in parts if part.strip()]
     if not parts:
         return [clean[:max_first]]
     out: list[str] = []
     buf = ""
-    for p in parts:
-        if not out and len(buf) + len(p) + 1 <= max_first:
-            buf = (buf + " " + p).strip() if buf else p
+    for part in parts:
+        if not out and len(buf) + len(part) + 1 <= max_first:
+            buf = (buf + " " + part).strip() if buf else part
         else:
             if buf:
                 out.append(buf)
                 buf = ""
-            out.append(p)
+            out.append(part)
     if buf:
         out.append(buf)
     return out or [clean[:max_first]]
 
 
-def pcm16_to_wav(pcm: bytes, rate: int = 24000, channels: int = 1) -> bytes:
+def pcm16_to_wav(
+    pcm: bytes,
+    rate: int = 24000,
+    channels: int = 1,
+) -> bytes:
     buf = io.BytesIO()
-    with wave.open(buf, "wb") as wf:
-        wf.setnchannels(channels)
-        wf.setsampwidth(2)
-        wf.setframerate(rate)
-        wf.writeframes(pcm)
+    with wave.open(buf, "wb") as wave_file:
+        wave_file.setnchannels(channels)
+        wave_file.setsampwidth(2)
+        wave_file.setframerate(rate)
+        wave_file.writeframes(pcm)
     return buf.getvalue()
 
 
-def _mime_to_wav(audio_bytes: bytes, mime: str) -> tuple[bytes, str]:
-    mt = (mime or "").lower()
-    if "wav" in mt:
+def _mime_to_wav(
+    audio_bytes: bytes,
+    mime: str,
+) -> tuple[bytes, str]:
+    media_type = (mime or "").lower()
+    if "wav" in media_type:
         return audio_bytes, "audio/wav"
-    if "mpeg" in mt or "mp3" in mt:
+    if "mpeg" in media_type or "mp3" in media_type:
         return audio_bytes, "audio/mpeg"
-    if "ogg" in mt:
+    if "ogg" in media_type:
         return audio_bytes, "audio/ogg"
-    # Gemini часто отдаёт L16 PCM
-    if "l16" in mt or "pcm" in mt or not mt:
+    if "l16" in media_type or "pcm" in media_type or not media_type:
         rate = 24000
-        m = re.search(r"rate=(\d+)", mt)
-        if m:
-            rate = int(m.group(1))
+        match = re.search(r"rate=(\d+)", media_type)
+        if match:
+            rate = int(match.group(1))
         return pcm16_to_wav(audio_bytes, rate=rate), "audio/wav"
     return audio_bytes, mime or "application/octet-stream"
 
@@ -189,6 +205,11 @@ async def openai_tts_stream(
     model: str = DEFAULT_OPENAI_TTS_MODEL,
     timeout: float = 120.0,
 ) -> AsyncIterator[bytes]:
+    ensure_remote_egress_allowed(
+        "remote_tts",
+        provider="openai",
+        data_mode="raw",
+    )
     url = "https://api.openai.com/v1/audio/speech"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -202,11 +223,19 @@ async def openai_tts_stream(
         "stream": True,
     }
     async with httpx.AsyncClient(timeout=timeout) as client:
-        async with client.stream("POST", url, headers=headers, json=body) as resp:
-            if resp.status_code >= 400:
-                detail = (await resp.aread())[:400]
-                raise ValueError(f"openai TTS: HTTP {resp.status_code} — {detail.decode('utf-8', errors='replace')}")
-            async for chunk in resp.aiter_bytes():
+        async with client.stream(
+            "POST",
+            url,
+            headers=headers,
+            json=body,
+        ) as response:
+            if response.status_code >= 400:
+                detail = (await response.aread())[:400]
+                raise ValueError(
+                    f"openai TTS: HTTP {response.status_code} — "
+                    f"{detail.decode('utf-8', errors='replace')}"
+                )
+            async for chunk in response.aiter_bytes():
                 if chunk:
                     yield chunk
 
@@ -221,7 +250,11 @@ async def openai_tts_bytes(
 ) -> tuple[bytes, str]:
     parts: list[bytes] = []
     async for chunk in openai_tts_stream(
-        api_key, text, voice=voice, model=model, timeout=timeout
+        api_key,
+        text,
+        voice=voice,
+        model=model,
+        timeout=timeout,
     ):
         parts.append(chunk)
     return b"".join(parts), "audio/mpeg"
@@ -235,13 +268,23 @@ async def gemini_tts_bytes(
     model: str = DEFAULT_GEMINI_TTS_MODEL,
     timeout: float = 120.0,
 ) -> tuple[bytes, str]:
+    ensure_remote_egress_allowed(
+        "remote_tts",
+        provider="gemini",
+        data_mode="raw",
+    )
     url = f"{_GEMINI_API_BASE}/v1beta/models/{model}:generateContent"
     headers = {
         "Content-Type": "application/json",
         "x-goog-api-key": api_key,
     }
     body = {
-        "contents": [{"role": "user", "parts": [{"text": text[:4096]}]}],
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": text[:4096]}],
+            }
+        ],
         "generationConfig": {
             "responseModalities": ["AUDIO"],
             "speechConfig": {
@@ -252,13 +295,18 @@ async def gemini_tts_bytes(
         },
     }
     async with httpx.AsyncClient(timeout=timeout) as client:
-        resp = await client.post(url, headers=headers, json=body)
-        if resp.status_code >= 400:
+        response = await client.post(
+            url,
+            headers=headers,
+            json=body,
+        )
+        if response.status_code >= 400:
             raise ValueError(
-                f"gemini TTS: HTTP {resp.status_code} — "
-                f"{(resp.text or '')[:400]}"
+                f"gemini TTS: HTTP {response.status_code} — "
+                f"{(response.text or '')[:400]}"
             )
-        data = resp.json()
+        data = response.json()
+
     candidates = data.get("candidates") or []
     if not candidates:
         raise ValueError("gemini TTS: пустой ответ")
@@ -268,7 +316,11 @@ async def gemini_tts_bytes(
         if not inline:
             continue
         raw_b64 = inline.get("data") or ""
-        mime = inline.get("mimeType") or inline.get("mime_type") or "audio/L16"
+        mime = (
+            inline.get("mimeType")
+            or inline.get("mime_type")
+            or "audio/L16"
+        )
         audio = base64.b64decode(raw_b64)
         return _mime_to_wav(audio, mime)
     raise ValueError("gemini TTS: нет аудио в ответе")
@@ -282,15 +334,15 @@ async def synthesize_chunk(
     voice: str,
     model: str | None = None,
 ) -> tuple[bytes, str]:
-    p = (provider or "").strip().lower()
-    if p == "openai":
+    normalized = (provider or "").strip().lower()
+    if normalized == "openai":
         return await openai_tts_bytes(
             api_key,
             text,
             voice=voice or DEFAULT_OPENAI_TTS_VOICE,
             model=model or DEFAULT_OPENAI_TTS_MODEL,
         )
-    if p == "gemini":
+    if normalized == "gemini":
         return await gemini_tts_bytes(
             api_key,
             text,
@@ -309,28 +361,44 @@ async def test_tts_connection(
     language: str = "ru",
 ) -> dict[str, Any]:
     """Короткая фраза для кнопки «Подтвердить ключ озвучки»."""
-    p = (provider or "").strip().lower()
-    if p == "openai":
-        v = voice or DEFAULT_OPENAI_TTS_VOICE
-        m = model or DEFAULT_OPENAI_TTS_MODEL
-        phrase = "Ключ OpenAI для озвучки подтверждён." if language.startswith("ru") else "OpenAI speech key verified."
-    elif p == "gemini":
-        v = voice or DEFAULT_GEMINI_TTS_VOICE
-        m = model or DEFAULT_GEMINI_TTS_MODEL
-        phrase = "Ключ Gemini для озвучки подтверждён." if language.startswith("ru") else "Gemini speech key verified."
+    normalized = (provider or "").strip().lower()
+    if normalized == "openai":
+        selected_voice = voice or DEFAULT_OPENAI_TTS_VOICE
+        selected_model = model or DEFAULT_OPENAI_TTS_MODEL
+        phrase = (
+            "Ключ OpenAI для озвучки подтверждён."
+            if language.startswith("ru")
+            else "OpenAI speech key verified."
+        )
+    elif normalized == "gemini":
+        selected_voice = voice or DEFAULT_GEMINI_TTS_VOICE
+        selected_model = model or DEFAULT_GEMINI_TTS_MODEL
+        phrase = (
+            "Ключ Gemini для озвучки подтверждён."
+            if language.startswith("ru")
+            else "Gemini speech key verified."
+        )
     else:
         raise ValueError("provider должен быть openai или gemini")
-    audio, mime = await synthesize_chunk(p, api_key, phrase, voice=v, model=m)
+    audio, mime = await synthesize_chunk(
+        normalized,
+        api_key,
+        phrase,
+        voice=selected_voice,
+        model=selected_model,
+    )
     return {
         "ok": True,
         "verified": True,
-        "provider": p,
-        "model": m,
-        "voice": v,
+        "provider": normalized,
+        "model": selected_model,
+        "voice": selected_voice,
         "mime_type": mime,
         "audio_bytes": len(audio),
         "audio_base64": base64.b64encode(audio).decode("ascii"),
-        "hint": f"Ключ {p} для озвучки проверен — TTS API отвечает.",
+        "hint": (
+            f"Ключ {normalized} для озвучки проверен — TTS API отвечает."
+        ),
     }
 
 
