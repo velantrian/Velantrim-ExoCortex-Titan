@@ -19,4 +19,4 @@
 
 ### Atomic writes and rebuildable projections
 
-- Flag canonical changes that can commit without their required version, audit, and outbox records, or that can leave partial batch state. FTS, graph, and vector stores are rebuildable projections only; they must not override canonical restriction, deletion, archive, or visibility state.
+- For the currently implemented canonical write protocol, flag changes that can commit the Canon mutation without its required `VersionStore` pre-image and `AuditChain` event, or that can leave partial batch state. Require an outbox record in the same transaction only for code paths that already implement outbox-backed projection delivery; do not assume a repository-wide outbox exists until that subsystem lands. FTS, graph, and vector stores are rebuildable projections only; they must not override canonical restriction, deletion, archive, or visibility state.
