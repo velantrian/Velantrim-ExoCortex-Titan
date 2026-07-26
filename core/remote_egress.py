@@ -52,7 +52,7 @@ _REMOTE_PREFIX = (
 )
 
 
-class RemoteEgressDenied(RuntimeError):
+class RemoteEgressDeniedError(RuntimeError):
     """PolicyKernel denied a remote network/data capability."""
 
     def __init__(
@@ -103,7 +103,7 @@ def ensure_remote_egress_allowed(
         data_mode=data_mode,
     )
     if not lease.allowed:
-        raise RemoteEgressDenied(
+        raise RemoteEgressDeniedError(
             lease.reason_code,
             capability=capability,
             provider=normalized_provider,
@@ -133,7 +133,7 @@ def sanitize_remote_system_prompt(system: str) -> str:
 
 
 __all__ = [
-    "RemoteEgressDenied",
+    "RemoteEgressDeniedError",
     "RemoteEgressReceipt",
     "ensure_remote_egress_allowed",
     "sanitize_remote_system_prompt",
