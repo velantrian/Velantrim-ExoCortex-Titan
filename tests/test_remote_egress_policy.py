@@ -19,11 +19,11 @@ def _reset_remote_policy(monkeypatch):
 
 def test_remote_egress_is_denied_by_default():
     from core.remote_egress import (
-        RemoteEgressDenied,
+        RemoteEgressDeniedError,
         ensure_remote_egress_allowed,
     )
 
-    with pytest.raises(RemoteEgressDenied) as exc:
+    with pytest.raises(RemoteEgressDeniedError) as exc:
         ensure_remote_egress_allowed(
             "remote_llm",
             provider="openai",
@@ -56,7 +56,7 @@ def test_explicit_network_and_data_policy_allows_raw_remote_call(monkeypatch):
 def test_network_allow_does_not_override_remote_data_never(monkeypatch):
     from core.policy_kernel import reset_policy_kernel
     from core.remote_egress import (
-        RemoteEgressDenied,
+        RemoteEgressDeniedError,
         ensure_remote_egress_allowed,
     )
 
@@ -64,7 +64,7 @@ def test_network_allow_does_not_override_remote_data_never(monkeypatch):
     monkeypatch.setenv("VELANTRIM_REMOTE_DATA_MODE", "never")
     reset_policy_kernel()
 
-    with pytest.raises(RemoteEgressDenied) as exc:
+    with pytest.raises(RemoteEgressDeniedError) as exc:
         ensure_remote_egress_allowed(
             "remote_llm",
             provider="gemini",
@@ -77,7 +77,7 @@ def test_network_allow_does_not_override_remote_data_never(monkeypatch):
 def test_redacted_policy_rejects_raw_but_accepts_redacted(monkeypatch):
     from core.policy_kernel import reset_policy_kernel
     from core.remote_egress import (
-        RemoteEgressDenied,
+        RemoteEgressDeniedError,
         ensure_remote_egress_allowed,
     )
 
@@ -85,7 +85,7 @@ def test_redacted_policy_rejects_raw_but_accepts_redacted(monkeypatch):
     monkeypatch.setenv("VELANTRIM_REMOTE_DATA_MODE", "redacted")
     reset_policy_kernel()
 
-    with pytest.raises(RemoteEgressDenied) as exc:
+    with pytest.raises(RemoteEgressDeniedError) as exc:
         ensure_remote_egress_allowed(
             "remote_llm",
             provider="deepseek",
@@ -104,7 +104,7 @@ def test_redacted_policy_rejects_raw_but_accepts_redacted(monkeypatch):
 def test_ask_mode_fails_closed_without_consent_broker(monkeypatch):
     from core.policy_kernel import reset_policy_kernel
     from core.remote_egress import (
-        RemoteEgressDenied,
+        RemoteEgressDeniedError,
         ensure_remote_egress_allowed,
     )
 
@@ -112,7 +112,7 @@ def test_ask_mode_fails_closed_without_consent_broker(monkeypatch):
     monkeypatch.setenv("VELANTRIM_REMOTE_DATA_MODE", "allowed")
     reset_policy_kernel()
 
-    with pytest.raises(RemoteEgressDenied) as exc:
+    with pytest.raises(RemoteEgressDeniedError) as exc:
         ensure_remote_egress_allowed(
             "remote_llm",
             provider="anthropic",
@@ -142,7 +142,7 @@ def test_no_payload_provider_test_can_run_without_remote_data_permission(monkeyp
 def test_invalid_policy_value_fails_closed(monkeypatch):
     from core.policy_kernel import reset_policy_kernel
     from core.remote_egress import (
-        RemoteEgressDenied,
+        RemoteEgressDeniedError,
         ensure_remote_egress_allowed,
     )
 
@@ -150,7 +150,7 @@ def test_invalid_policy_value_fails_closed(monkeypatch):
     monkeypatch.setenv("VELANTRIM_REMOTE_DATA_MODE", "allowed")
     reset_policy_kernel()
 
-    with pytest.raises(RemoteEgressDenied) as exc:
+    with pytest.raises(RemoteEgressDeniedError) as exc:
         ensure_remote_egress_allowed(
             "remote_llm",
             provider="openai",
@@ -181,7 +181,7 @@ def test_remote_prompt_removes_false_verified_label_and_is_idempotent():
 
 def test_llm_router_blocks_before_http_client_is_opened(monkeypatch):
     from core.llm_router import LlmCallConfig, chat_complete
-    from core.remote_egress import RemoteEgressDenied
+    from core.remote_egress import RemoteEgressDeniedError
 
     class ForbiddenClient:
         def __init__(self, *args, **kwargs):
@@ -189,7 +189,7 @@ def test_llm_router_blocks_before_http_client_is_opened(monkeypatch):
 
     monkeypatch.setattr("core.llm_router.httpx.AsyncClient", ForbiddenClient)
 
-    with pytest.raises(RemoteEgressDenied) as exc:
+    with pytest.raises(RemoteEgressDeniedError) as exc:
         asyncio.run(
             chat_complete(
                 LlmCallConfig(provider="openai", api_key="test-key"),
@@ -202,7 +202,7 @@ def test_llm_router_blocks_before_http_client_is_opened(monkeypatch):
 
 
 def test_tts_router_blocks_before_http_client_is_opened(monkeypatch):
-    from core.remote_egress import RemoteEgressDenied
+    from core.remote_egress import RemoteEgressDeniedError
     from core.tts_router import gemini_tts_bytes
 
     class ForbiddenClient:
@@ -211,7 +211,7 @@ def test_tts_router_blocks_before_http_client_is_opened(monkeypatch):
 
     monkeypatch.setattr("core.tts_router.httpx.AsyncClient", ForbiddenClient)
 
-    with pytest.raises(RemoteEgressDenied) as exc:
+    with pytest.raises(RemoteEgressDeniedError) as exc:
         asyncio.run(gemini_tts_bytes("test-key", "private text"))
 
     assert exc.value.reason_code == "network_denied"
