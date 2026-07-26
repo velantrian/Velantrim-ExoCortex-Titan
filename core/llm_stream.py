@@ -2,10 +2,12 @@
 Потоковые ответы LLM и контекстный кэш (DeepSeek KV / Gemini).
 
 DeepSeek: Context Caching on Disk включён по умолчанию — передаём стабильный
-префикс messages[] (system + история), см. https://api-docs.deepseek.com/guides/kv_cache
+префикс messages[] (system + история).
 
-Gemini 2.5+: implicit caching при повторяющемся префиксе; при длинном system — explicit
-cachedContents, см. https://ai.google.dev/gemini-api/docs/caching
+Gemini 2.5+: implicit caching при повторяющемся префиксе; при длинном system —
+explicit cachedContents.
+
+Every remote execution path acquires a PolicyKernel egress lease first.
 """
 
 from __future__ import annotations
@@ -27,6 +29,10 @@ from core.llm_router import (
     _openai_stream_delta_parts,
     _openai_stream_delta_text,
     _resolve_model,
+)
+from core.remote_egress import (
+    ensure_remote_egress_allowed,
+    sanitize_remote_system_prompt,
 )
 
 logger = logging.getLogger(__name__)
@@ -63,10 +69,11 @@ def build_openai_messages(
     user_message: str,
     history: list[dict[str, str]] | None,
 ) -> list[dict[str, str]]:
-    """Стабильный префикс для DeepSeek KV-cache: system → история → новый user."""
+    """Build a stable and epistemically safe remote messages prefix."""
     messages: list[dict[str, str]] = []
-    if system and system.strip():
-        messages.append({"role": "system", "content": system.strip()})
+    safe_system = sanitize_remote_system_prompt(system)
+    if safe_system:
+        messages.append({"role": "system", "content": safe_system})
     messages.extend(normalize_chat_history(history))
     messages.append({"role": "user", "content": user_message})
     return messages
@@ -95,9 +102,10 @@ def _gemini_cache_key(cfg: LlmCallConfig, system: str) -> str:
 
 
 async def _gemini_ensure_explicit_cache(
-    cfg: LlmCallConfig, system: str
+    cfg: LlmCallConfig,
+    system: str,
 ) -> str | None:
-    """Explicit cache для длинного system (Gemini API cachedContents)."""
+    """Explicit cache для длинного system после успешного egress lease."""
     from core.gemini_models import (
         gemini_explicit_cache_min_chars,
         gemini_model_meta,
@@ -115,11 +123,15 @@ async def _gemini_ensure_explicit_cache(
     if key in _gemini_explicit_cache:
         return _gemini_explicit_cache[key]
 
-    model = normalize_gemini_model_id(_resolve_model(cfg))
     body = {
         "model": f"models/{model}",
         "systemInstruction": {"parts": [{"text": system[:30000]}]},
-        "contents": [{"role": "user", "parts": [{"text": "(Velantrim console context)"}]}],
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": "(Velantrim console context)"}],
+            }
+        ],
         "ttl": "3600s",
         "displayName": "velantrim-console-system",
     }
@@ -132,7 +144,10 @@ async def _gemini_ensure_explicit_cache(
         async with httpx.AsyncClient(timeout=cfg.timeout) as client:
             resp = await client.post(url, headers=headers, json=body)
             if resp.status_code >= 400:
-                logger.info("Gemini explicit cache create: HTTP %s", resp.status_code)
+                logger.info(
+                    "Gemini explicit cache create: HTTP %s",
+                    resp.status_code,
+                )
                 return None
             data = resp.json()
             name = data.get("name")
@@ -145,7 +160,8 @@ async def _gemini_ensure_explicit_cache(
 
 
 def _gemini_contents_from_history(
-    history: list[dict[str, str]], user_message: str
+    history: list[dict[str, str]],
+    user_message: str,
 ) -> list[dict[str, Any]]:
     contents: list[dict[str, Any]] = []
     for turn in history:
@@ -181,9 +197,15 @@ async def chat_complete_messages(
     user_message: str,
     history: list[dict[str, str]] | None = None,
 ) -> tuple[str, dict[str, Any]]:
-    """Нестриминговый вызов с messages[] и метаданными кэша."""
+    """Нестриминговый remote-вызов с обязательным policy lease."""
     provider = (cfg.provider or "").strip().lower()
-    messages = build_openai_messages(system, user_message, history)
+    ensure_remote_egress_allowed(
+        "remote_llm",
+        provider=provider,
+        data_mode="raw",
+    )
+    safe_system = sanitize_remote_system_prompt(system)
+    messages = build_openai_messages(safe_system, user_message, history)
     usage_meta: dict[str, Any] = {}
 
     if provider in ("openai", "deepseek", "openrouter"):
@@ -201,7 +223,11 @@ async def chat_complete_messages(
             headers["HTTP-Referer"] = "https://velantrim.local/console"
             headers["X-Title"] = "VELANTRIM Console"
         if provider == "deepseek":
-            body = _deepseek_request_body(cfg, messages, quick_ping=False)
+            body = _deepseek_request_body(
+                cfg,
+                messages,
+                quick_ping=False,
+            )
         else:
             body = {
                 "model": _resolve_model(cfg),
@@ -221,23 +247,43 @@ async def chat_complete_messages(
             return text, usage_meta
 
     if provider == "gemini":
-        return await _gemini_complete_messages(cfg, system, user_message, history)
+        return await _gemini_complete_messages(
+            cfg,
+            safe_system,
+            user_message,
+            history,
+        )
 
     if provider == "anthropic":
         from core.llm_router import _anthropic_chat
 
         hist_text = ""
-        for t in normalize_chat_history(history):
-            hist_text += f"\n{t['role']}: {t['content']}"
+        for turn in normalize_chat_history(history):
+            hist_text += f"\n{turn['role']}: {turn['content']}"
         prompt = user_message
         if hist_text:
-            prompt = f"История диалога:{hist_text}\n\nТекущий вопрос: {user_message}"
-        text = await _anthropic_chat(cfg, prompt, system)
-        return text, {"cache_note": "Anthropic: история в prompt (без отдельного KV API)"}
+            prompt = (
+                f"История диалога:{hist_text}\n\n"
+                f"Текущий вопрос: {user_message}"
+            )
+        text = await _anthropic_chat(
+            cfg,
+            prompt,
+            safe_system,
+            data_mode="raw",
+        )
+        return text, {
+            "cache_note": "Anthropic: история в prompt (без отдельного KV API)"
+        }
 
     from core.llm_router import chat_complete
 
-    text = await chat_complete(cfg, user_message, system)
+    text = await chat_complete(
+        cfg,
+        user_message,
+        safe_system,
+        data_mode="raw",
+    )
     return text, {}
 
 
@@ -247,14 +293,20 @@ async def _gemini_complete_messages(
     user_message: str,
     history: list[dict[str, str]] | None,
 ) -> tuple[str, dict[str, Any]]:
-    from core.gemini_models import gemini_generation_config, normalize_gemini_model_id
+    from core.gemini_models import (
+        gemini_generation_config,
+        normalize_gemini_model_id,
+    )
 
     model = normalize_gemini_model_id(_resolve_model(cfg))
     hist = normalize_chat_history(history)
     cached_name = await _gemini_ensure_explicit_cache(cfg, system)
     body: dict[str, Any] = {
         "contents": _gemini_contents_from_history(hist, user_message),
-        "generationConfig": gemini_generation_config(model, cfg.max_tokens),
+        "generationConfig": gemini_generation_config(
+            model,
+            cfg.max_tokens,
+        ),
     }
     if cached_name:
         body["cachedContent"] = cached_name
@@ -263,7 +315,12 @@ async def _gemini_complete_messages(
 
     resp: httpx.Response | None = None
     for api_version in ("v1beta", "v1"):
-        resp = await _gemini_post(cfg, api_version=api_version, model=model, body=body)
+        resp = await _gemini_post(
+            cfg,
+            api_version=api_version,
+            model=model,
+            body=body,
+        )
         if resp.status_code < 400:
             break
         if api_version == "v1beta" and resp.status_code in (403, 404):
@@ -276,7 +333,7 @@ async def _gemini_complete_messages(
     if not candidates:
         raise ValueError("Gemini: пустой ответ")
     parts_out = candidates[0].get("content", {}).get("parts") or []
-    texts = [p.get("text", "") for p in parts_out if p.get("text")]
+    texts = [part.get("text", "") for part in parts_out if part.get("text")]
     text = "\n".join(texts).strip() or "(пустой ответ Gemini)"
     return text, _usage_from_gemini_payload(data)
 
@@ -311,19 +368,42 @@ async def stream_chat_events(
       {"type":"error","message":"..."}
     """
     provider = (cfg.provider or "").strip().lower()
-    messages = build_openai_messages(system, user_message, history)
 
     try:
+        ensure_remote_egress_allowed(
+            "remote_llm",
+            provider=provider,
+            data_mode="raw",
+        )
+        safe_system = sanitize_remote_system_prompt(system)
+        messages = build_openai_messages(
+            safe_system,
+            user_message,
+            history,
+        )
+
         if provider in ("openai", "deepseek", "openrouter"):
-            async for ev in _stream_openai_compatible(cfg, messages, provider):
-                yield ev
+            async for event in _stream_openai_compatible(
+                cfg,
+                messages,
+                provider,
+            ):
+                yield event
             return
         if provider == "gemini":
-            async for ev in _stream_gemini(cfg, system, user_message, history):
-                yield ev
+            async for event in _stream_gemini(
+                cfg,
+                safe_system,
+                user_message,
+                history,
+            ):
+                yield event
             return
         text, usage = await chat_complete_messages(
-            cfg, system, user_message, history
+            cfg,
+            safe_system,
+            user_message,
+            history,
         )
         yield {"type": "token", "text": text}
         yield {"type": "done", "reply": text, "usage": usage}
@@ -350,7 +430,12 @@ async def _stream_openai_compatible(
         headers["HTTP-Referer"] = "https://velantrim.local/console"
         headers["X-Title"] = "VELANTRIM Console"
     if provider == "deepseek":
-        body = _deepseek_request_body(cfg, messages, quick_ping=False, stream=True)
+        body = _deepseek_request_body(
+            cfg,
+            messages,
+            quick_ping=False,
+            stream=True,
+        )
     else:
         body = {
             "model": _resolve_model(cfg),
@@ -365,12 +450,22 @@ async def _stream_openai_compatible(
     usage_meta: dict[str, Any] = {}
 
     async with httpx.AsyncClient(timeout=cfg.timeout) as client:
-        async with client.stream("POST", url, headers=headers, json=body) as resp:
+        async with client.stream(
+            "POST",
+            url,
+            headers=headers,
+            json=body,
+        ) as resp:
             if resp.status_code >= 400:
                 err_body = await resp.aread()
                 try:
-                    detail = err_body.decode("utf-8", errors="replace")[:400]
-                    raise ValueError(f"{provider}: HTTP {resp.status_code} — {detail}")
+                    detail = err_body.decode(
+                        "utf-8",
+                        errors="replace",
+                    )[:400]
+                    raise ValueError(
+                        f"{provider}: HTTP {resp.status_code} — {detail}"
+                    )
                 except ValueError:
                     raise
                 except Exception:
@@ -388,14 +483,20 @@ async def _stream_openai_compatible(
                         choices = data.get("choices") or []
                         if choices:
                             delta = choices[0].get("delta") or {}
-                            content_piece, reasoning_piece = _openai_stream_delta_parts(
-                                delta
+                            content_piece, reasoning_piece = (
+                                _openai_stream_delta_parts(delta)
                             )
                             if reasoning_piece:
-                                yield {"type": "thinking", "text": reasoning_piece}
+                                yield {
+                                    "type": "thinking",
+                                    "text": reasoning_piece,
+                                }
                             if content_piece:
                                 full_parts.append(content_piece)
-                                yield {"type": "token", "text": content_piece}
+                                yield {
+                                    "type": "token",
+                                    "text": content_piece,
+                                }
                     except json.JSONDecodeError:
                         continue
 
@@ -409,21 +510,30 @@ async def _stream_gemini(
     user_message: str,
     history: list[dict[str, str]] | None,
 ) -> AsyncIterator[dict[str, Any]]:
-    from core.gemini_models import gemini_generation_config, normalize_gemini_model_id
+    from core.gemini_models import (
+        gemini_generation_config,
+        normalize_gemini_model_id,
+    )
 
     model = normalize_gemini_model_id(_resolve_model(cfg))
     hist = normalize_chat_history(history)
     cached_name = await _gemini_ensure_explicit_cache(cfg, system)
     body: dict[str, Any] = {
         "contents": _gemini_contents_from_history(hist, user_message),
-        "generationConfig": gemini_generation_config(model, cfg.max_tokens),
+        "generationConfig": gemini_generation_config(
+            model,
+            cfg.max_tokens,
+        ),
     }
     if cached_name:
         body["cachedContent"] = cached_name
     elif system:
         body["systemInstruction"] = {"parts": [{"text": system}]}
 
-    url = f"{_GEMINI_API_BASE}/v1beta/models/{model}:streamGenerateContent?alt=sse"
+    url = (
+        f"{_GEMINI_API_BASE}/v1beta/models/"
+        f"{model}:streamGenerateContent?alt=sse"
+    )
     headers = {
         "Content-Type": "application/json",
         "x-goog-api-key": cfg.api_key,
@@ -433,13 +543,25 @@ async def _stream_gemini(
     usage_meta: dict[str, Any] = {}
 
     async with httpx.AsyncClient(timeout=cfg.timeout) as client:
-        async with client.stream("POST", url, headers=headers, json=body) as resp:
+        async with client.stream(
+            "POST",
+            url,
+            headers=headers,
+            json=body,
+        ) as resp:
             if resp.status_code >= 400:
                 text, usage = await _gemini_complete_messages(
-                    cfg, system, user_message, history
+                    cfg,
+                    system,
+                    user_message,
+                    history,
                 )
                 yield {"type": "token", "text": text}
-                yield {"type": "done", "reply": text, "usage": usage}
+                yield {
+                    "type": "done",
+                    "reply": text,
+                    "usage": usage,
+                }
                 return
             async for line in resp.aiter_lines():
                 if not line or not line.startswith("data:"):
@@ -455,9 +577,14 @@ async def _stream_gemini(
                 candidates = data.get("candidates") or []
                 if not candidates:
                     continue
-                parts = candidates[0].get("content", {}).get("parts") or []
-                for p in parts:
-                    piece = p.get("text") or ""
+                parts = (
+                    candidates[0]
+                    .get("content", {})
+                    .get("parts")
+                    or []
+                )
+                for part in parts:
+                    piece = part.get("text") or ""
                     if piece:
                         full_parts.append(piece)
                         yield {"type": "token", "text": piece}
