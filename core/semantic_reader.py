@@ -100,7 +100,9 @@ class ReaderWarning:
         if not isinstance(self.code, str) or not self.code.strip():
             raise ReaderContractError("warning code must be a non-empty string")
         if not isinstance(self.safe_message, str) or not self.safe_message.strip():
-            raise ReaderContractError("warning safe_message must be a non-empty string")
+            raise ReaderContractError(
+                "warning safe_message must be a non-empty string"
+            )
 
 
 @dataclass(frozen=True, slots=True)
