@@ -34,7 +34,9 @@ def test_raw_source_rejects_empty_document_id() -> None:
         RawSource(document_id=" ", text="Alpha.")
 
 
-@pytest.mark.parametrize("field", ["max_source_chars", "max_claims", "max_essence_chars"])
+@pytest.mark.parametrize(
+    "field", ["max_source_chars", "max_claims", "max_essence_chars"]
+)
 def test_budget_requires_positive_integers(field: str) -> None:
     values = {"max_source_chars": 10, "max_claims": 2, "max_essence_chars": 5}
     values[field] = 0
@@ -300,9 +302,15 @@ async def test_reader_does_not_mutate_source_text() -> None:
 
 def test_result_rejects_wrong_payload_types() -> None:
     with pytest.raises(ReaderContractError):
-        ReaderResult(status=ReaderStatus.SUCCESS, capsule=object())  # type: ignore[arg-type]
+        ReaderResult(
+            status=ReaderStatus.SUCCESS,
+            capsule=object(),  # type: ignore[arg-type]
+        )
     with pytest.raises(ReaderContractError):
-        ReaderResult(status=ReaderStatus.REJECTED, failure=object())  # type: ignore[arg-type]
+        ReaderResult(
+            status=ReaderStatus.REJECTED,
+            failure=object(),  # type: ignore[arg-type]
+        )
     with pytest.raises(ReaderContractError):
         ReaderResult(
             status=ReaderStatus.PARTIAL,
