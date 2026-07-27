@@ -24,6 +24,7 @@ from core.semantic_reader import (
     ReaderMode,
     ReaderResult,
     ReaderStatus,
+    ReaderWarning,
 )
 
 _SENTENCE_ENDINGS = frozenset(".!?。！？")
@@ -143,9 +144,17 @@ class ExtractiveReader(BaseSemanticReader):
         selected = candidate_spans[: resolved_budget.max_claims]
         try:
             claims = tuple(self._build_claim(source, start, end) for start, end in selected)
-            essence = _build_essence(
+            essence, essence_budget_exhausted = _build_essence(
                 (claim.text for claim in claims), resolved_budget.max_essence_chars
             )
+            if not essence:
+                return ReaderResult.failed(
+                    ReaderStatus.BUDGET_EXCEEDED,
+                    code="ESSENCE_CHAR_BUDGET_EXCEEDED",
+                    safe_message=(
+                        "Essence budget cannot contain the first complete extracted claim"
+                    ),
+                )
             covered_non_whitespace = sum(
                 sum(not char.isspace() for char in source.text[start:end])
                 for start, end in selected
@@ -163,7 +172,8 @@ class ExtractiveReader(BaseSemanticReader):
                 reader_id=self.reader_id,
                 reader_version=self.reader_version,
                 coverage_score=min(1.0, coverage_score),
-                compression_ratio=len(essence) / len(source.text),
+                # Compression factor: source characters per retained essence character.
+                compression_ratio=len(source.text) / len(essence),
             )
         except CapsuleValidationError:
             return ReaderResult.failed(
@@ -172,11 +182,25 @@ class ExtractiveReader(BaseSemanticReader):
                 safe_message="Extracted capsule failed source-provenance validation",
             )
 
+        warnings: list[ReaderWarning] = []
         if len(candidate_spans) > len(selected):
-            return ReaderResult.partial(
-                capsule,
-                warnings=("CLAIM_BUDGET_EXHAUSTED",),
+            warnings.append(
+                ReaderWarning(
+                    code="CLAIM_BUDGET_EXHAUSTED",
+                    safe_message="Additional source claims were omitted by the claim budget",
+                )
             )
+        if essence_budget_exhausted:
+            warnings.append(
+                ReaderWarning(
+                    code="ESSENCE_BUDGET_EXHAUSTED",
+                    safe_message=(
+                        "Essence contains only complete claims that fit the character budget"
+                    ),
+                )
+            )
+        if warnings:
+            return ReaderResult.partial(capsule, warnings=tuple(warnings))
         return ReaderResult.success(capsule)
 
     def _build_claim(self, source: RawSource, start: int, end: int) -> CapsuleClaim:
@@ -287,20 +311,24 @@ def _extract_conditions(text: str, folded: str) -> tuple[str, ...]:
     return (text.strip(),)
 
 
-def _build_essence(claim_texts: Iterator[str], max_chars: int) -> str:
+def _build_essence(claim_texts: Iterator[str], max_chars: int) -> tuple[str, bool]:
+    """Build an essence from complete claims only.
+
+    Returns the retained essence and whether at least one complete claim was omitted
+    because it did not fit the configured character budget.
+    """
+
     parts: list[str] = []
     current_length = 0
+    budget_exhausted = False
     for text in claim_texts:
         separator = 1 if parts else 0
-        remaining = max_chars - current_length - separator
-        if remaining <= 0:
+        if current_length + separator + len(text) > max_chars:
+            budget_exhausted = True
             break
-        fragment = text if len(text) <= remaining else text[:remaining]
-        parts.append(fragment)
-        current_length += separator + len(fragment)
-        if len(fragment) < len(text):
-            break
-    return " ".join(parts)
+        parts.append(text)
+        current_length += separator + len(text)
+    return " ".join(parts), budget_exhausted
 
 
 __all__ = ["ExtractiveReader"]
