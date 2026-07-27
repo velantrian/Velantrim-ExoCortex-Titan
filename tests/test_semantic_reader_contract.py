@@ -14,6 +14,7 @@ from core.semantic_reader import (
     ReaderMode,
     ReaderResult,
     ReaderStatus,
+    ReaderWarning,
     SemanticReader,
 )
 
@@ -55,6 +56,16 @@ def test_partial_result_requires_warning() -> None:
     failure = ReaderFailure(code="X", safe_message="Safe")
     with pytest.raises(ReaderContractError):
         ReaderResult(status=ReaderStatus.PARTIAL, failure=failure)
+
+
+def test_warning_details_are_structured() -> None:
+    warning = ReaderWarning(code="BUDGET", safe_message="Some content was omitted")
+    assert warning.code == "BUDGET"
+    assert warning.safe_message == "Some content was omitted"
+    with pytest.raises(ReaderContractError):
+        ReaderWarning(code=" ", safe_message="Safe")
+    with pytest.raises(ReaderContractError):
+        ReaderWarning(code="BUDGET", safe_message=" ")
 
 
 @pytest.mark.asyncio
@@ -209,19 +220,40 @@ async def test_claim_budget_returns_partial_capsule() -> None:
     assert result.accepted is True
     assert result.capsule is not None
     assert len(result.capsule.claims) == 2
-    assert result.warnings == ("CLAIM_BUDGET_EXHAUSTED",)
+    assert tuple(warning.code for warning in result.warnings) == (
+        "CLAIM_BUDGET_EXHAUSTED",
+    )
     assert 0.0 < result.capsule.coverage_score < 1.0
 
 
 @pytest.mark.asyncio
-async def test_essence_budget_is_enforced() -> None:
+async def test_essence_budget_keeps_only_complete_claims() -> None:
+    raw = "One. Two."
     result = await ExtractiveReader().extract(
-        RawSource(document_id="essence", text="Long sentence here."),
+        RawSource(document_id="essence", text=raw),
         mode=ReaderMode.FAST,
         budget=ReaderBudget(max_essence_chars=4),
     )
+    assert result.status is ReaderStatus.PARTIAL
     assert result.capsule is not None
-    assert result.capsule.essence == "Long"
+    assert result.capsule.essence == "One."
+    assert tuple(warning.code for warning in result.warnings) == (
+        "ESSENCE_BUDGET_EXHAUSTED",
+    )
+    assert result.capsule.compression_ratio == pytest.approx(len(raw) / len("One."))
+
+
+@pytest.mark.asyncio
+async def test_essence_budget_fails_closed_when_first_claim_does_not_fit() -> None:
+    result = await ExtractiveReader().extract(
+        RawSource(document_id="essence-small", text="Long sentence here."),
+        mode=ReaderMode.FAST,
+        budget=ReaderBudget(max_essence_chars=4),
+    )
+    assert result.status is ReaderStatus.BUDGET_EXCEEDED
+    assert result.capsule is None
+    assert result.failure is not None
+    assert result.failure.code == "ESSENCE_CHAR_BUDGET_EXCEEDED"
 
 
 @pytest.mark.asyncio
@@ -271,6 +303,12 @@ def test_result_rejects_wrong_payload_types() -> None:
         ReaderResult(status=ReaderStatus.SUCCESS, capsule=object())  # type: ignore[arg-type]
     with pytest.raises(ReaderContractError):
         ReaderResult(status=ReaderStatus.REJECTED, failure=object())  # type: ignore[arg-type]
+    with pytest.raises(ReaderContractError):
+        ReaderResult(
+            status=ReaderStatus.PARTIAL,
+            capsule=object(),  # type: ignore[arg-type]
+            warnings=("NOT_STRUCTURED",),  # type: ignore[arg-type]
+        )
 
 
 def test_failure_details_are_structured() -> None:
