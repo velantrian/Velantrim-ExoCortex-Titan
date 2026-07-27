@@ -143,7 +143,9 @@ class ExtractiveReader(BaseSemanticReader):
 
         selected = candidate_spans[: resolved_budget.max_claims]
         try:
-            claims = tuple(self._build_claim(source, start, end) for start, end in selected)
+            claims = tuple(
+                self._build_claim(source, start, end) for start, end in selected
+            )
             essence, essence_budget_exhausted = _build_essence(
                 (claim.text for claim in claims), resolved_budget.max_essence_chars
             )
