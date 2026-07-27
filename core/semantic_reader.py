@@ -90,25 +90,39 @@ class ReaderFailure:
 
 
 @dataclass(frozen=True, slots=True)
+class ReaderWarning:
+    """Safe, structured non-fatal condition attached to a partial result."""
+
+    code: str
+    safe_message: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.code, str) or not self.code.strip():
+            raise ReaderContractError("warning code must be a non-empty string")
+        if not isinstance(self.safe_message, str) or not self.safe_message.strip():
+            raise ReaderContractError("warning safe_message must be a non-empty string")
+
+
+@dataclass(frozen=True, slots=True)
 class ReaderResult:
     """Non-ambiguous extraction result.
 
     ``SUCCESS`` and ``PARTIAL`` always carry a capsule.  All other statuses
     carry a safe failure and never carry a capsule.  ``PARTIAL`` must explain
-    the truncation or omission through at least one warning.
+    every known truncation or omission through at least one structured warning.
     """
 
     status: ReaderStatus
     capsule: KnowledgeCapsule | None = None
     failure: ReaderFailure | None = None
-    warnings: tuple[str, ...] = ()
+    warnings: tuple[ReaderWarning, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.status, ReaderStatus):
             raise ReaderContractError("status must be a ReaderStatus")
         warnings = tuple(self.warnings)
-        if any(not isinstance(item, str) or not item.strip() for item in warnings):
-            raise ReaderContractError("warnings must contain non-empty strings")
+        if any(not isinstance(item, ReaderWarning) for item in warnings):
+            raise ReaderContractError("warnings must contain ReaderWarning values")
         object.__setattr__(self, "warnings", warnings)
         if self.capsule is not None and not isinstance(self.capsule, KnowledgeCapsule):
             raise ReaderContractError("capsule must be a KnowledgeCapsule or None")
@@ -116,8 +130,10 @@ class ReaderResult:
             raise ReaderContractError("failure must be a ReaderFailure or None")
 
         if self.status is ReaderStatus.SUCCESS:
-            if self.capsule is None or self.failure is not None:
-                raise ReaderContractError("SUCCESS requires capsule and forbids failure")
+            if self.capsule is None or self.failure is not None or warnings:
+                raise ReaderContractError(
+                    "SUCCESS requires capsule and forbids failure and warnings"
+                )
             return
         if self.status is ReaderStatus.PARTIAL:
             if self.capsule is None or self.failure is not None or not warnings:
@@ -125,9 +141,9 @@ class ReaderResult:
                     "PARTIAL requires capsule, at least one warning, and no failure"
                 )
             return
-        if self.capsule is not None or self.failure is None:
+        if self.capsule is not None or self.failure is None or warnings:
             raise ReaderContractError(
-                "non-success result requires failure and forbids capsule"
+                "non-success result requires failure and forbids capsule and warnings"
             )
 
     @property
@@ -142,7 +158,7 @@ class ReaderResult:
 
     @classmethod
     def partial(
-        cls, capsule: KnowledgeCapsule, *, warnings: tuple[str, ...]
+        cls, capsule: KnowledgeCapsule, *, warnings: tuple[ReaderWarning, ...]
     ) -> ReaderResult:
         return cls(status=ReaderStatus.PARTIAL, capsule=capsule, warnings=warnings)
 
@@ -197,5 +213,6 @@ __all__ = [
     "ReaderMode",
     "ReaderResult",
     "ReaderStatus",
+    "ReaderWarning",
     "SemanticReader",
 ]
