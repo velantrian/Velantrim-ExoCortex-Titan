@@ -287,10 +287,26 @@ class MetaSupervisor:
             # Budget pressure: доля израсходованного бюджета фактов (0.0..1.0+).
             # evaluate_budget() читает COUNT(*) FROM facts и ничего не пишет —
             # read-only инвариант супервизора сохранён.
+            #
+            # Гейт по is_memory_budget_enabled() обязателен: check_before_write()
+            # при выключенном флаге не блокирует запись, поэтому кормить этим же
+            # числом health-сигнал означало бы, что *отключённая* фича уводит
+            # систему в DEGRADED/SAFE_MODE. Выключено → нейтральный 0.0.
+            #
+            # quiet=True: evaluate_budget() сам логирует WARNING/CRITICAL на
+            # пороге, а heartbeat зовёт его каждые 10 c — это 6 дублей в минуту
+            # на постоянно полном сторе. Пороговое логирование принадлежит
+            # write-пути, здесь нужно только значение.
             try:
-                from core.memory_budget import evaluate_budget
+                from core.memory_budget import (
+                    evaluate_budget,
+                    is_memory_budget_enabled,
+                )
 
-                self._budget_cache = evaluate_budget().utilization
+                if is_memory_budget_enabled():
+                    self._budget_cache = evaluate_budget(quiet=True).utilization
+                else:
+                    self._budget_cache = 0.0
             except Exception as exc:
                 # Метрика опциональна: heartbeat не должен падать. Но молчать
                 # нельзя — именно проглоченный сбой держал этот сигнал на 0.0 и
@@ -327,16 +343,11 @@ class MetaSupervisor:
             return
 
         if self._mode == SystemMode.DEGRADED:
-            # Восстановление
-            if mhi >= cfg.mhi_healthy and dlq < cfg.dlq_warn:
-                self._mode = SystemMode.HEALTHY
-                self._last_action = f"DEGRADED→HEALTHY (MHI={mhi:.2f})"
-                self._transition_count += 1
-                logger.info("✅ DEGRADED → HEALTHY")
-                self._fire_recovery()
-                return
-
-            # Ухудшение → SAFE_MODE
+            # Ухудшение → SAFE_MODE. Проверяется ПЕРЕД восстановлением: иначе
+            # блокирующее давление бюджета никогда не доходит до SAFE_MODE —
+            # recovery-ветка возвращала HEALTHY и делала return, следующий
+            # heartbeat снова видел budget > warn и уводил в DEGRADED, и система
+            # осциллировала HEALTHY↔DEGRADED вместо эскалации.
             if mhi < cfg.mhi_safe_mode or dlq > cfg.dlq_safe_mode or budget > cfg.budget_block:
                 self._mode = SystemMode.SAFE_MODE
                 self._last_action = (
@@ -350,11 +361,27 @@ class MetaSupervisor:
                 self._fire_safe_mode()
                 return
 
+            # Восстановление: все три сигнала должны быть здоровы. Бюджет —
+            # полноправный член условия, иначе стор на 95% «выздоравливает».
+            if mhi >= cfg.mhi_healthy and dlq < cfg.dlq_warn and budget <= cfg.budget_warn:
+                self._mode = SystemMode.HEALTHY
+                self._last_action = (
+                    f"DEGRADED→HEALTHY (MHI={mhi:.2f}, DLQ={dlq}, budget={budget:.2f})"
+                )
+                self._transition_count += 1
+                logger.info("✅ DEGRADED → HEALTHY")
+                self._fire_recovery()
+                return
+
         if self._mode == SystemMode.HEALTHY:
-            # HEALTHY → SAFE_MODE (прямой переход при критической деградации)
-            if mhi < cfg.mhi_safe_mode or dlq > cfg.dlq_safe_mode:
+            # HEALTHY → SAFE_MODE (прямой переход при критической деградации).
+            # budget > budget_block входит сюда: иначе переполненный стор
+            # застревает в DEGRADED при здоровых MHI/DLQ и не эскалирует.
+            if mhi < cfg.mhi_safe_mode or dlq > cfg.dlq_safe_mode or budget > cfg.budget_block:
                 self._mode = SystemMode.SAFE_MODE
-                self._last_action = f"HEALTHY→SAFE_MODE (MHI={mhi:.2f}, DLQ={dlq})"
+                self._last_action = (
+                    f"HEALTHY→SAFE_MODE (MHI={mhi:.2f}, DLQ={dlq}, budget={budget:.2f})"
+                )
                 self._transition_count += 1
                 logger.critical("🔴 SAFE_MODE: критическая деградация")
                 self._fire_safe_mode()

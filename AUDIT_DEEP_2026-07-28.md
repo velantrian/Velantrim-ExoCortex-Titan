@@ -22,6 +22,31 @@
 > (`core/`, `api/`, `server.py`, `migrations/` — пусто в diff), поэтому ни одна находка не закрыта и не
 > регрессировала. Что изменилось — см. врезку «Влияние PR #63/#64» ниже.
 >
+> ---
+>
+> ### 📌 Post-merge заметка, 2026-07-28 (после PR #66) — H1/H2
+>
+> **PR #66 восстановил оба сигнала, но вместе с этим включил небезопасные пути применения.** Post-merge
+> review дал 9 нерешённых замечаний (7×P1, 2×P2):
+>
+> * **H1** — сигнал стал живым, но `_evaluate()` проверял восстановление *раньше* эскалации и не включал
+>   бюджет в условие recovery. Итог: стор выше `budget_block` осциллировал HEALTHY↔DEGRADED каждый heartbeat
+>   и никогда не доходил до SAFE_MODE. Дополнительно: игнорировался `ENABLE_MEMORY_BUDGET=0` (отключённая
+>   фича уводила систему в DEGRADED), а пороговые логи `evaluate_budget()` дублировались 6 раз в минуту.
+> * **H2** — применение нарушало AGENTS.md §«Canonical memory boundary» (background read-путь мутирует
+>   projection state) сразу по трём осям: cross-loop доступ к singleton Velum из worker-потока; запись
+>   `fact_id` в keyspace *имён сущностей*; игнорирование `ENABLE_VELUM=0`. Плюс неограниченное
+>   перечисление пар, квадратичное по числу подходящих фактов.
+>
+> **Corrective PR** (`claude/hotfix-pr66-review-findings`): H1 — семантика переходов доведена до конца
+> (эскалация раньше восстановления, бюджет — полноправный член условия recovery, гейт по флагу, тихое
+> чтение). H2 — **применение убрано, движок переведён в analysis-only**: анализ read-only, отдаётся
+> ограниченный proposal, а отчёт честно сообщает `velum_apply_status` вместо несуществующего подкрепления.
+>
+> **Статус H2: contained, НЕ resolved.** Полноценное применение Velum-replay остаётся нерешённым и требует
+> отдельного PR: маппинг `fact_id` → entity name, исполнение на owning event loop, явный canonical/proposal
+> apply-сервис, тесты на конкурентность.
+>
 > **Итог:** с прошлого аудита (56 коммитов до `b14de02`) закрыта подавляющая часть Critical/High находок — это хороший знак,
 > команда реально фиксит то, что находит аудит. Но: **0 Critical на сегодня, 5 High (H1-H5: 2 старых недобитых + 3 новых), 15 Medium, 15 Low.** Ключевой системный паттерн не изменился: несколько защитных
 > механизмов снова тихо неработоспособны из-за rename-дрейфа (`get_budget_planner`, `get_velum`), но теперь это
@@ -116,9 +141,15 @@ CI на b14de02:       GitHub Actions run 30338484625 lint-and-test ✅ success 
 `core/meta_supervisor.py:289-299` (мёртвый импорт — строка **295**, `planner.fill_ratio` — **297**; ветки `budget_warn`/`budget_block` — **:90-91**, чтение снапшота — **:340**). Перепроверено на `b14de02`. `from core.memory_budget import get_budget_planner` — модуль `core/memory_budget.py` экспортирует только `check_before_write`, `evaluate_budget`, `BudgetStatus`, `is_memory_budget_enabled`, `count_facts`. Каждый heartbeat бросает `ImportError`, пойманный `except Exception: self._budget_cache = 0.0`. Уже честно признано комментарием в коде как known unfixed follow-up к находке #1/#10.
 **Последствие:** ветки `budget > cfg.budget_warn`/`budget_block` (HEALTHY→DEGRADED→SAFE_MODE) в `_evaluate()` никогда не срабатывают — из трёх сигналов иммунной системы памяти живы только MHI и DLQ.
 
-**H2. 🧟 ExperienceReplay: Velum-подкрепление и decay навсегда no-op — импорт из неправильного модуля**
-`core/experience_replay.py:128, 148` (перепроверено на `b14de02` — обе строки на месте). `from core.velum import get_velum` — но `get_velum()` определена в `core/velum_bridge.py:31`, а не в `core/velum.py`. Оба вызова обёрнуты в `except Exception as exc: logger.debug(...)`.
-**Последствие:** усиление Velum-рёбер для совместно реактивированных фактов и decay устаревших рёбер никогда не выполняются; `report["velum_edges_boosted"/"velum_edges_decayed"]` всегда 0. Уже признано комментарием в коде.
+**H2. 🧟 ExperienceReplay: Velum-подкрепление и decay навсегда no-op — три слоя мёртвого пути**
+`core/experience_replay.py:128, 148` (перепроверено на `b14de02` — обе строки на месте). Путь был мёртв **не в одном месте, а в трёх**, и каждый слой маскировал следующий — первая редакция этого отчёта зафиксировала только внешний:
+
+1. **Неверный импорт.** `from core.velum import get_velum`, но `get_velum()` определена в `core/velum_bridge.py:31`. Продублировано в двух блоках, т.е. копии могли расходиться независимо.
+2. **Вызываемых методов не существует.** Даже с исправленным импортом код звал `velum.observe_entities()` и `velum._decay_weak_edges()` — ни того, ни другого у `Velum` нет; реальный API — `observe_episode()` / `on_session_end()`. Починка одного импорта оставила бы путь ровно таким же мёртвым.
+3. **Оба метода async**, а `run()` синхронный (вызывается через `asyncio.to_thread`).
+
+Все три отказа стекались в `logger.debug` или `except: pass`.
+**Последствие:** усиление Velum-рёбер для совместно реактивированных фактов и decay устаревших рёбер никогда не выполняются; `report["velum_edges_boosted"/"velum_edges_decayed"]` всегда 0 — и читается это как «нет подходящих пар», а не «ничего не работает».
 
 **H3. 🧬 GDPR-erasure: crash-recovery (`resume_incomplete_jobs`/`resume_incomplete_batches`) нигде не подключён к продакшену**
 `core/erasure_coordinator.py`, `core/erasure_batch_coordinator.py` — эти функции существуют, корректно реализованы и покрыты тестами, но **ни разу не вызываются** нигде за пределами собственных unit-тестов (перепроверено на `b14de02`: вне `tests/` встречаются только определения, обёртки `:2051`/`:1546`, экспорты в `__all__` и комментарии): нет startup-хука, cron/scheduled job, admin/MCP-инструмента, упоминания в докой как runbook-шага.
@@ -224,7 +255,7 @@ CI на b14de02:       GitHub Actions run 30338484625 lint-and-test ✅ success 
 
 ## Рекомендованный порядок (диагностика — решение о фиксах за вами)
 
-1. **H1/H2** — тривиальные однострочные rename-фиксы (`get_budget_planner`→`evaluate_budget`/`BudgetStatus`; `get_velum`→импорт из `core.velum_bridge`), максимальный эффект/усилие. **В работе:** ветка `claude/fix-budget-velum-dead-paths` (только H1+H2, отдельным PR — этот отчёт остаётся documentation-only).
+1. **H1/H2** — ~~тривиальные однострочные rename-фиксы~~. **Эта оценка оказалась неверной**, и это стоит зафиксировать как урок о самом отчёте: «мёртвый импорт» выглядел как rename на одну строку, а на деле H2 был мёртв в трёх слоях (импорт → несуществующие методы → async/sync), а восстановление сигнала обнажило ещё 9 review-замечаний. Диагностика верно указала *где* сломано, но систематически недооценила *насколько*. **Сделано:** PR #66 (сигналы восстановлены, merged в `afab774`) → corrective PR `claude/hotfix-pr66-review-findings` (H1 — семантика переходов доведена до конца; H2 — переведён в analysis-only, применение отложено). **H2 остаётся contained, не resolved** — см. post-merge заметку выше.
 2. **H3** — подключить `resume_incomplete_jobs()`/`resume_incomplete_batches()` к какому-то периодическому механизму (startup-хук или cron); иначе GDPR-таймер реально может быть пропущен незамеченным.
 3. **H4** — либо реализовать реальный потоковый счётчик для RAR (как в zip/tar), либо явно отключить `.rar` по аналогии с `.7z` до тех пор.
 4. **H5/M5** — навесить `model_allowed_for_provider()` (уже существует, просто не вызывается) на `_gemini_generate_url`.

@@ -1,19 +1,44 @@
 """
 🔄 core/experience_replay.py — Experience Replay (V8.7 Titan)
 
-Биологический механизм: ночная реактивация успешных цепочек retrieval
-для консолидации памяти. Как мозг «переживает» важные события во сне.
+Биологический механизм: ночная реактивация успешных цепочек retrieval.
+Как мозг «переживает» важные события во сне.
+
+⚠️  Статус: ANALYSIS-ONLY. Движок *анализирует* и *предлагает*, но ничего
+не применяет.
 
 Алгоритм:
-    1. Найти факты, confidence которых вырос после использования
+    1. Найти факты, использованные успешно (usage_count > 0, confidence >= 0.6)
     2. Определить какие факты часто используются вместе
-    3. Усилить Velum-связи между такими фактами (co-occurrence boost)
-    4. Ослабить неиспользуемые связи (decay)
+    3. Вернуть ограниченный proposal для co-occurrence-подкрепления
+    4. Применение (Velum boost/decay) НЕ выполняется — см. ниже
+
+Почему применение отложено (post-merge review PR #66):
+    AGENTS.md §«Canonical memory boundary» запрещает background read-пути
+    мутировать Canon, epistemic state, relations, activation history или
+    projection state; безопасный путь — вернуть evidence/AnalysisProposal и
+    требовать явный canonical write service.
+
+    PR #66 включил прямую мутацию Velum отсюда, и это нарушало правило сразу
+    по трём осям:
+      • cross-loop: `run()` живёт в worker-потоке (`asyncio.to_thread`), а
+        singleton Velum принадлежит серверному event loop. Новый loop через
+        `asyncio.run` рядом с чужим `asyncio.Lock` — гонка либо вечный await.
+      • keyspace: в Velum писались `fact_id`, тогда как ingest наполняет граф
+        *именами сущностей*. Получался отдельный namespace UUID-рёбер, который
+        обычный retrieval никогда не посещает.
+      • flag: `ENABLE_VELUM=0` игнорировался, т.е. отключённая фича работала.
+
+    До появления async-owning-loop apply-сервиса и маппинга fact_id → entity
+    name применение остаётся deferred, и отчёт честно это сообщает
+    (`velum_apply_status`), вместо того чтобы рапортовать несуществующее
+    подкрепление.
 
 Инварианты:
     I-ER1: Только Slow Path. Никогда не блокирует ответ.
-    I-ER2: Не меняет truth_status. Только attention_weight и confidence.
+    I-ER2: Не меняет truth_status.
     I-ER3: Не пишет новые факты в граф.
+    I-ER4: Не мутирует projection state (Velum и прочее) — только proposal.
 """
 
 from __future__ import annotations
@@ -21,50 +46,19 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
-from core.async_utils import run_coroutine_sync
-
 logger = logging.getLogger("velantrim.experience_replay")
 
+# Границы разбора. Перечисление пар квадратично по числу успешных фактов, а
+# один общий retrieval-контекст делает почти все факты взаимно co-occurring:
+# n(n-1)/2 пар. Без явного потолка ночной цикл монополизировал бы CPU на
+# большом сторе. Усечение никогда не молчит — см. proposal_truncated + WARNING.
+_MAX_REPLAY_FACTS = 500
+_MAX_PROPOSAL_PAIRS = 256
 
-def _get_velum() -> Any:
-    """Вернуть process-wide Velum singleton.
-
-    Единственная точка импорта моста: `get_velum()` живёт в
-    `core.velum_bridge`, НЕ в `core.velum`. Раньше неверный путь был продублирован
-    в двух блоках ниже, и оба тихо no-op'или. Один helper — чтобы такой дрейф не мог
-    разойтись по копиям.
-
-    Импорт ленивый: `core.velum_bridge` тянет `core.feature_config`, и держать это
-    на уровне модуля означало бы тащить конфиг в любой импорт replay-движка.
-    Исключения не глушатся — вызывающий сам решает, что делать с отказом моста.
-    """
-    from core.velum_bridge import get_velum
-
-    return get_velum()
-
-
-async def _boost_pairs(
-    velum: Any,
-    cooccurring: Dict[Tuple[str, str], int],
-    episode_id: str,
-) -> int:
-    """Усилить рёбра для co-occurring пар. Возвращает число затронутых рёбер.
-
-    Публичный API Velum — `observe_episode()`, async и под внутренним локом
-    (Velum.I77). Раньше здесь вызывался несуществующий `observe_entities()`:
-    AttributeError глушился per-pair `except: pass`, поэтому счётчик
-    `velum_edges_boosted` инкрементировался за *попытку*, а не за реальное ребро.
-
-    Число совпавших контекстов передаётся как `salience_weight`: чем чаще пара
-    использовалась вместе, тем сильнее хеббовское усиление.
-    """
-    boosted = 0
-    for (a, b), strength in cooccurring.items():
-        result = await velum.observe_episode(
-            episode_id, [a, b], salience_weight=float(strength)
-        )
-        boosted += result.edges_touched
-    return boosted
+# Причины, по которым применение не выполнено. Отдельные коды, потому что
+# «фича выключена» и «apply-путь ещё не реализован» — разные состояния.
+_REASON_DEFERRED = "canonical_async_apply_not_implemented"
+_REASON_DISABLED = "velum_disabled"
 
 
 class ExperienceReplayEngine:
@@ -76,21 +70,40 @@ class ExperienceReplayEngine:
 
     def __init__(self):
         self._run_count = 0
+        self._proposal: List[Dict[str, Any]] = []
 
     def run(self) -> Dict[str, Any]:
         """
-        Один полный цикл experience replay.
+        Один полный цикл experience replay — read-only.
 
-        Возвращает отчёт: сколько связей усилено, сколько ослаблено.
+        Возвращает отчёт: сколько фактов реактивировано, какой proposal собран и
+        почему применение отложено. `velum_edges_boosted` / `velum_edges_decayed`
+        остаются нулями by design: ничего не применяется, и отчёт не должен
+        заявлять подкрепление, которого не было.
         """
         self._run_count += 1
-        report = {
+        report: Dict[str, Any] = {
             "run": self._run_count,
             "facts_reactivated": 0,
+            # Всегда 0 в analysis-only режиме. Поля сохранены, чтобы не ломать
+            # существующих читателей отчёта, но они больше ничего не утверждают.
             "velum_edges_boosted": 0,
             "velum_edges_decayed": 0,
+            "velum_apply_status": "deferred",
+            "velum_apply_reason": _REASON_DEFERRED,
+            "candidate_pairs": 0,
+            "proposal_pairs": 0,
+            "proposal_truncated": False,
+            "facts_truncated": False,
             "errors": 0,
         }
+
+        # Флаг читается до любого анализа: при ENABLE_VELUM=0 singleton не
+        # создаётся вообще (см. отсутствие get_velum() в этом модуле), и статус
+        # отражает именно «выключено», а не «отложено».
+        if not self._velum_enabled(report):
+            report["velum_apply_status"] = "skipped"
+            report["velum_apply_reason"] = _REASON_DISABLED
 
         # 1. Найти «успешные» факты — те что использовались и confidence вырос
         try:
@@ -123,6 +136,18 @@ class ExperienceReplayEngine:
             return report
 
         report["facts_reactivated"] = len(successful)
+
+        # Потолок на входе в квадратичное перечисление пар. Берём самые
+        # уверенные факты, а не произвольный префикс выборки.
+        if len(successful) > _MAX_REPLAY_FACTS:
+            successful.sort(key=lambda f: float(f.get("confidence", 0.0)), reverse=True)
+            logger.warning(
+                "ExperienceReplay: %d успешных фактов > потолка %d — "
+                "анализируем top-%d по confidence",
+                len(successful), _MAX_REPLAY_FACTS, _MAX_REPLAY_FACTS,
+            )
+            successful = successful[:_MAX_REPLAY_FACTS]
+            report["facts_truncated"] = True
 
         # 2. Найти пары фактов, часто используемых вместе (из контекстов)
         cooccurring: Dict[Tuple[str, str], int] = {}
@@ -160,46 +185,78 @@ class ExperienceReplayEngine:
                 if overlap > 0:
                     cooccurring[(fact_id, other_id)] = cooccurring.get((fact_id, other_id), 0) + overlap
 
-        # 3. Усилить Velum-связи для co-occurring пар.
-        #
-        # Один replay-прогон = одна граница эпизода для Velum, поэтому все пары
-        # усиливаются под общим episode_id: `_episode_ids` растёт на 1 за прогон,
-        # а не на одну запись за пару.
-        if cooccurring:
-            try:
-                velum = _get_velum()
-                episode_id = f"experience-replay:{self._run_count}"
-                report["velum_edges_boosted"] = run_coroutine_sync(
-                    _boost_pairs(velum, cooccurring, episode_id)
-                )
-            except Exception as exc:
-                # Не фатально (Slow Path, best-effort), но видимо: молчаливый
-                # debug-лог и был причиной, по которой мёртвый мост не замечали.
-                logger.warning("ExperienceReplay: velum boost failed: %s", exc)
-                report["errors"] += 1
-
-        # 4. Decay слабых связей + промоут сильных: конец replay-прогона —
-        # такая же граница «сессии», как конец ingest-документа.
-        #
-        # `use_fsrs_decay` намеренно оставлен по умолчанию (фиксированный
-        # decay_per_session): выбор FSRS-режима принадлежит ingest-пути
-        # (`velum_bridge.finalize_ingest_session`), и тянуть его сюда означало бы
-        # расширять поведение за рамки починки мёртвого сигнала.
-        try:
-            velum = _get_velum()
-            session = run_coroutine_sync(velum.on_session_end())
-            report["velum_edges_decayed"] = session.decayed_edges
-        except Exception as exc:
-            # Тот же контракт, что у boost-ветки выше: не фатально, но видимо и
-            # учтено в report["errors"] — раньше decay-ветка ошибку не считала.
-            logger.warning("ExperienceReplay: velum decay failed: %s", exc)
-            report["errors"] += 1
+        # 3. Собрать ограниченный proposal. Мутации здесь нет и быть не должно:
+        # apply-границу обязан пройти явный canonical write service
+        # (AGENTS.md §«Canonical memory boundary»).
+        report["candidate_pairs"] = len(cooccurring)
+        self._proposal = self._build_proposal(cooccurring, report)
+        report["proposal_pairs"] = len(self._proposal)
 
         logger.info(
-            "ExperienceReplay #%d: %d facts reactivated, %d edges boosted, %d decayed",
-            self._run_count, report["facts_reactivated"], report["velum_edges_boosted"], report["velum_edges_decayed"],
+            "ExperienceReplay #%d: %d фактов реактивировано, "
+            "%d пар-кандидатов → proposal %d, применение %s (%s)",
+            self._run_count,
+            report["facts_reactivated"],
+            report["candidate_pairs"],
+            report["proposal_pairs"],
+            report["velum_apply_status"],
+            report["velum_apply_reason"],
         )
         return report
+
+    # ── Внутреннее ─────────────────────────────────────────────────────────
+
+    def _velum_enabled(self, report: Dict[str, Any]) -> bool:
+        """ENABLE_VELUM без создания singleton.
+
+        Читается только конфиг. `get_velum()` здесь не вызывается сознательно —
+        именно безусловный lookup в PR #66 создавал Velum при выключённом флаге.
+        """
+        try:
+            from core.velum_bridge import is_velum_enabled
+
+            return is_velum_enabled()
+        except Exception as exc:
+            # Не знаем состояние флага → считаем выключенным (fail-closed) и
+            # сообщаем: тихо «включить» отключённую фичу хуже, чем пропустить.
+            logger.warning("ExperienceReplay: не удалось прочитать ENABLE_VELUM: %s", exc)
+            report["errors"] += 1
+            return False
+
+    def _build_proposal(
+        self,
+        cooccurring: Dict[Tuple[str, str], int],
+        report: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        """Ранжированный, усечённый proposal подкрепления.
+
+        `fact_id` НЕ является Velum-идентификатором: ingest наполняет граф
+        именами сущностей. Поэтому пары отдаются как `fact_a` / `fact_b` —
+        маппинг fact_id → entity name принадлежит будущему apply-сервису, и
+        сохранять эту разницу в имени поля важно, чтобы никто снова не отправил
+        UUID-ы в keyspace имён.
+        """
+        if not cooccurring:
+            return []
+
+        ranked = sorted(cooccurring.items(), key=lambda kv: (-kv[1], kv[0]))
+        if len(ranked) > _MAX_PROPOSAL_PAIRS:
+            logger.warning(
+                "ExperienceReplay: %d пар-кандидатов > потолка %d — "
+                "proposal усечён до top-%d по overlap",
+                len(ranked), _MAX_PROPOSAL_PAIRS, _MAX_PROPOSAL_PAIRS,
+            )
+            ranked = ranked[:_MAX_PROPOSAL_PAIRS]
+            report["proposal_truncated"] = True
+
+        return [
+            {"fact_a": a, "fact_b": b, "cooccurrence": strength}
+            for (a, b), strength in ranked
+        ]
+
+    def last_proposal(self) -> List[Dict[str, Any]]:
+        """Proposal последнего прогона. Читатель сам решает, применять ли."""
+        return list(self._proposal)
 
     def stats(self) -> Dict[str, Any]:
         return {"runs": self._run_count}
