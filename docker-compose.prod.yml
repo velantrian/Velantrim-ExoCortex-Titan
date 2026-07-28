@@ -8,16 +8,25 @@
 # unchanged, so development and research workflows keep working exactly as
 # before. See docs/operations/hardened-production-profile.md.
 #
-# Design rule: intentionally boring. Every research, cognitive, autonomous and
-# remote-provider capability is explicitly disabled here, even when the code
-# default already disables it — an explicit ENABLE_X=0 always wins over
-# COMPUTE_PROFILE escalation (core/compute_profile.py::resolve_flag checks the
-# environment before the profile table), so the pins below survive an operator
-# setting COMPUTE_PROFILE=heavy.
+# Design rule: intentionally boring. Every research, cognitive and autonomous
+# capability is explicitly disabled here, even when the code default already
+# disables it — an explicit ENABLE_X=0 always wins over COMPUTE_PROFILE
+# escalation (core/compute_profile.py::resolve_flag checks the environment
+# before the profile table), so the pins below survive an operator setting
+# COMPUTE_PROFILE=heavy.
+#
+# A control is pinned ON here only when it was verified to actually do
+# something in this configuration. Three were pinned on in the original version
+# of this profile and are now corrected (PR #63 review):
+#   ENABLE_TRUTH_POLICY   → 0, its read-path verdict is fail-open;
+#   ENABLE_RESPONSE_AUDIT → 0, unreachable while the event bus is off;
+#   ENABLE_IMMUTABLE_CORE → kept on, but no automatic SHA-256 snapshot is
+#                           claimed, because no scheduler is ever started.
 #
 # What this profile does NOT claim: complete Titan security, complete network
-# egress isolation, complete admission-path unification, or TruthGate coverage
-# of every write path. See the "Known limitations" section of the operations doc.
+# egress isolation, blocked remote providers, complete admission-path
+# unification, or TruthGate coverage of every write path. See the "Known
+# limitations" section of docs/operations/hardened-production-profile.md.
 
 services:
   velantrim:
@@ -77,14 +86,36 @@ services:
       # returns True for is_write_gate_enabled(); this pin is the documented
       # compatibility readout, not an off switch.
       - ENABLE_WRITE_GATE=1
-      # Epistemic gates on the supported admission/read paths.
+      # Epistemic gate on the supported admission path.
       - ENABLE_TRUTH_GATE=1
-      - ENABLE_TRUTH_POLICY=1
-      # Passive read-path meta-monitor and answer-integrity checks.
+      # ENABLE_TRUTH_POLICY is pinned OFF, not on. PR #63 review (P1): the
+      # read-path verdict is FAIL-OPEN. server.py wraps the truth_policy block
+      # in `except Exception` that only logs at DEBUG and leaves
+      # truth_rejects_answer=False, so a policy that raises permits the answer
+      # instead of refusing it — and at LOG_LEVEL=INFO the failure is silent.
+      # Enabling it would advertise a gate that opens exactly when it breaks.
+      # Re-enable only after a reviewed runtime fix makes that path fail closed.
+      - ENABLE_TRUTH_POLICY=0
+      # Passive read-path meta-monitor.
       - ENABLE_OBSERVER=1
+      # Answer-integrity checks. SCOPE: both run inside core/pipeline.py
+      # (apply_response_guardian, check_response_faithfulness), so they cover
+      # the pipeline answer — which IS the returned answer while no provider is
+      # configured. They do NOT inspect an `llm_answer`, which a request that
+      # supplies llm_provider + llm_api_key can still produce (see the provider
+      # section below). Do not describe them as covering all model output.
       - ENABLE_RESPONSE_GUARDIAN=1
       - ENABLE_OUTPUT_FAITHFULNESS=1
-      - ENABLE_RESPONSE_AUDIT=1
+      # ENABLE_RESPONSE_AUDIT is pinned OFF, not on. PR #63 review (P1): the
+      # only non-test caller of core.response_audit.audit_response_generated is
+      # the RESPONSE_GENERATED handler in core/l45_bridge.py, and
+      # register_l45_handlers() returns early unless the event bus is enabled.
+      # With ENABLE_EVENT_BUS=0 the handler is never subscribed, so the flag
+      # produces no audit trail whatsoever. Enabling ENABLE_EVENT_BUS to reach
+      # it would switch on unrelated background dispatch, which this profile
+      # deliberately refuses — so auditing stays off and unclaimed until it can
+      # be invoked independently of the bus.
+      - ENABLE_RESPONSE_AUDIT=0
       # Per-IP token bucket (core/rate_limit.py via api/server_middleware.py).
       - ENABLE_RATE_LIMIT=1
       - RATE_LIMIT_CAPACITY=${RATE_LIMIT_CAPACITY:-60}
@@ -92,12 +123,29 @@ services:
       # Backpressure + bounded memory growth.
       - ENABLE_CIRCUIT_BREAKER=1
       - ENABLE_MEMORY_BUDGET=1
-      # SHA-256 delta snapshots of the immutable core.
+      # Enables the MANUALLY invoked graph-snapshot API in core/immutable_core.py
+      # only. PR #63 review (P1): this profile must NOT claim automatic SHA-256
+      # snapshots — core/immutable_core_scheduler.py::ImmutableCoreScheduler has
+      # no non-test caller, so the server never constructs or starts it and no
+      # scheduled integrity snapshot is produced.
       - ENABLE_IMMUTABLE_CORE=1
 
-      # ── Deny by default: no remote provider ───────────────────────────────
-      # No provider credentials are supplied by this file at all. LLM_PROVIDER
-      # stays "none" unless the operator overrides it together with a key.
+      # ── Remote providers: not configured by default, NOT blocked ──────────
+      # PR #63 review (P1) — read this before treating the profile as offline.
+      #
+      # LLM_PROVIDER=none and the absence of credentials here only mean that no
+      # provider is configured from the ENVIRONMENT. They are NOT an egress
+      # boundary: server.py::_resolve_llm_config_for_request prefers a config
+      # built from the REQUEST over the environment default, so any client that
+      # already holds the API key can pass llm_provider + llm_api_key in a
+      # request body and reach a remote provider — carrying query text and
+      # retrieved memory with it. The LLM/STT/TTS routes are always registered.
+      #
+      # Treat this as "no provider configured", never as "providers blocked".
+      # The executable egress boundary is draft PR #59
+      # (agent/p0-egress-epistemic-boundary); it is not implemented on this
+      # commit and is deliberately not duplicated here. Until it lands, restrict
+      # who holds VELANTRIM_API_KEY and enforce egress at the network layer.
       - LLM_PROVIDER=${LLM_PROVIDER:-none}
       # Never auto-enabled by any compute profile; pinned off regardless.
       - ENABLE_CONCEPT_LLM_NAMING=0

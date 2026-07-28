@@ -6,6 +6,11 @@ pytest-timeout>=2.3,<3
 mypy>=1.10,<2
 ruff>=0.4,<0.5
 types-PyYAML>=6.0.12,<7
+# PyYAML itself (not just its stubs): scripts/validate_production_profile.py and
+# tests/test_production_profile.py parse docker-compose.prod.yml. types-PyYAML is
+# type stubs only, so without this the validator raised ModuleNotFoundError and
+# the production-profile tests silently skipped (PR #63 review).
+pyyaml>=6.0
 fastapi>=0.110
 uvicorn[standard]>=0.27
 python-dotenv>=1.0
