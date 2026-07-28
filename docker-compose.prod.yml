@@ -1,0 +1,245 @@
+# Velantrim Titan 9.0 — docker-compose.prod.yml (hardened, deny-by-default)
+#
+# Start:  docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+# Stop:   docker compose -f docker-compose.prod.yml --env-file .env.prod down
+# Config: docker compose -f docker-compose.prod.yml --env-file .env.prod config
+#
+# This profile is ADDITIVE. docker-compose.yml and docker-compose.dev.yml are
+# unchanged, so development and research workflows keep working exactly as
+# before. See docs/operations/hardened-production-profile.md.
+#
+# Design rule: intentionally boring. Every research, cognitive, autonomous and
+# remote-provider capability is explicitly disabled here, even when the code
+# default already disables it — an explicit ENABLE_X=0 always wins over
+# COMPUTE_PROFILE escalation (core/compute_profile.py::resolve_flag checks the
+# environment before the profile table), so the pins below survive an operator
+# setting COMPUTE_PROFILE=heavy.
+#
+# What this profile does NOT claim: complete Titan security, complete network
+# egress isolation, complete admission-path unification, or TruthGate coverage
+# of every write path. See the "Known limitations" section of the operations doc.
+
+services:
+  velantrim:
+    build:
+      context: .
+      args:
+        # Minimal runtime: exactly what server.py imports at startup. Parsers,
+        # retrieval, embeddings, graph-lab and audio are deliberately absent.
+        RUNTIME_EXTRAS: ${RUNTIME_EXTRAS:-server}
+    image: velantrim-titan:prod
+    container_name: velantrim-titan-prod
+
+    # Defence in depth: the image already declares USER velantrim (uid/gid
+    # 10001, Dockerfile:87-132). Restating it here means a rebuilt or
+    # substituted image cannot silently run as root.
+    user: "10001:10001"
+
+    # Public surface. Loopback-only by default; publishing beyond the host is
+    # an explicit operator decision (set VELANTRIM_BIND_ADDR=0.0.0.0 and put a
+    # TLS-terminating reverse proxy in front). Only this one port is published.
+    ports:
+      - "${VELANTRIM_BIND_ADDR:-127.0.0.1}:${VELANTRIM_PUBLIC_PORT:-8000}:8000"
+
+    environment:
+      # ── Mandatory secret — fail closed, no fallback ────────────────────────
+      # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+      - "VELANTRIM_API_KEY=${VELANTRIM_API_KEY:?VELANTRIM_API_KEY is required}"
+
+      # VELANTRIM_ALLOW_OPEN is deliberately NOT set. server.py:69 reads it as
+      # the unauthenticated development bypass; leaving it unset keeps
+      # require_api_key enforcing (server.py:494-498, hmac.compare_digest).
+
+      # ── Storage: durable, container-local, never a repo bind mount ─────────
+      - STORAGE_BACKEND=sqlite
+      - VELANTRIM_DB_PATH=/app/data/velantrim.db
+      - VELANTRIM_NGRAM_DB=/app/data/ngram.db
+      - SQLITE_GRAPH_PATH=/app/data/exocortex_graph.db
+      # Every other writer also defaults under ./data (= /app/data): metrics,
+      # notes, archive, response-audit, focus-engine, sleep-worker blocks.
+      - VELANTRIM_METRICS_PATH=/app/data/metrics.jsonl
+      - VELANTRIM_NOTES_DB=/app/data/velantrim_notes.db
+      - VELANTRIM_ARCHIVE_PATH=/app/data/archive
+      # Durability: full fsync + version snapshots for provenance.
+      - VELANTRIM_SQLITE_SYNCHRONOUS=FULL
+      - VELANTRIM_VERSION_SNAPSHOTS=true
+      - VELANTRIM_ASYNC_DB=1
+
+      # ── Hardware/feature lever pinned to the local-first minimum ───────────
+      # lite enables nothing beyond the Truth Kernel (core/compute_profile.py).
+      - COMPUTE_PROFILE=lite
+      # VELANTRIM_PROFILE is deliberately NOT set: config/profiles/research.env
+      # and cognitive.env both set SLEEP_WORKER_ENABLED=true and enable large
+      # cognitive stacks (core/deployment_profiles.py loads them at boot).
+
+      # ── Enabled safety / integrity controls ───────────────────────────────
+      # Mandatory canonical admission boundary. core/write_gate.py always
+      # returns True for is_write_gate_enabled(); this pin is the documented
+      # compatibility readout, not an off switch.
+      - ENABLE_WRITE_GATE=1
+      # Epistemic gates on the supported admission/read paths.
+      - ENABLE_TRUTH_GATE=1
+      - ENABLE_TRUTH_POLICY=1
+      # Passive read-path meta-monitor and answer-integrity checks.
+      - ENABLE_OBSERVER=1
+      - ENABLE_RESPONSE_GUARDIAN=1
+      - ENABLE_OUTPUT_FAITHFULNESS=1
+      - ENABLE_RESPONSE_AUDIT=1
+      # Per-IP token bucket (core/rate_limit.py via api/server_middleware.py).
+      - ENABLE_RATE_LIMIT=1
+      - RATE_LIMIT_CAPACITY=${RATE_LIMIT_CAPACITY:-60}
+      - RATE_LIMIT_REFILL_PER_SEC=${RATE_LIMIT_REFILL_PER_SEC:-1.0}
+      # Backpressure + bounded memory growth.
+      - ENABLE_CIRCUIT_BREAKER=1
+      - ENABLE_MEMORY_BUDGET=1
+      # SHA-256 delta snapshots of the immutable core.
+      - ENABLE_IMMUTABLE_CORE=1
+
+      # ── Deny by default: no remote provider ───────────────────────────────
+      # No provider credentials are supplied by this file at all. LLM_PROVIDER
+      # stays "none" unless the operator overrides it together with a key.
+      - LLM_PROVIDER=${LLM_PROVIDER:-none}
+      # Never auto-enabled by any compute profile; pinned off regardless.
+      - ENABLE_CONCEPT_LLM_NAMING=0
+      - ENABLE_CROSS_DOMAIN_LLM_ROUTING=0
+      # LLM-backed file parsing.
+      - VELANTRIM_VISION_LLM=false
+      - VELANTRIM_PDF_USE_MARKER_LLM=false
+
+      # ── Deny by default: no autonomous background cognition ───────────────
+      # server.py:60 defaults SLEEP_WORKER_ENABLED to "true", so this MUST be
+      # set explicitly. The worker self-activates on idle, rewrites
+      # CoreMemoryBlocks/notebook state, and receives a live LLM callable when
+      # LLM_PROVIDER != none (server.py:363-381).
+      - SLEEP_WORKER_ENABLED=false
+      - ENABLE_SLEEP_CONSOLIDATION=0
+      - CONSOLIDATION_ON_SLEEP=0
+      - ENABLE_EVENT_BUS_BACKGROUND=0
+      - ENABLE_DECAY_ORCHESTRATOR=0
+      - CAUSAL_LOAD_ON_STARTUP=0
+
+      # ── Deny by default: no implicit promotion or autonomous ingestion ─────
+      - ENABLE_GRADUATED_PROMOTION=0
+      - ENABLE_CONCEPT_PROMOTE=0
+      - ENABLE_SEMANTIC_DEDUP=0
+      - ENABLE_CONTRADICTION_RESOLVER=0
+      - ENABLE_TELEGRAM_INGEST=0
+      # Auto-seeds docs/seed/umwelt_mvp_seed.json into the store at startup
+      # (core/umwelt_registry.py:127, default "1"). A production deployment
+      # should not silently gain seed perceptions it did not admit.
+      - ENABLE_UMWELT_AUTO_SEED=0
+      - ENABLE_UMWELT_STORE=0
+
+      # ── Deny by default: research / experimental / cognitive modules ───────
+      - ENABLE_CONCEPT_EMERGENCE=0
+      - ENABLE_WORKING_NOTEBOOK=0
+      - ENABLE_VELUM=0
+      - VELUM_PERSIST=0
+      - ENABLE_ETIR=0
+      - ENABLE_ESSENCE=0
+      - ENABLE_L45=0
+      - ENABLE_L6_WELFARE=0
+      - ENABLE_MEMORY_VOLITION=0
+      - ENABLE_FOCUS_ENGINE=0
+      - ENABLE_INNENWELT=0
+      - ENABLE_MODE_ROUTER=0
+      - ENABLE_COGNITIVE_RUNTIME=0
+      - ENABLE_COGNITIVE_STORE=0
+      - ENABLE_COGNITIVE_FACT=0
+      - ENABLE_REASONING_BANK=0
+      - ENABLE_PREDICTIVE_FUSION=0
+      - ENABLE_ACTR_ACTIVATION=0
+      - ENABLE_SALIENCE=0
+      - ENABLE_CROSS_DOMAIN=0
+      - ENABLE_EDGE_SUGGESTER=0
+      - ENABLE_ANALOGY_HINTS=0
+      - ENABLE_XAI=0
+      - ENABLE_GRAPH_LAB=0
+      - ENABLE_COGNITIVE_DISTANCE=0
+      - ENABLE_BUDGET_PLANNER=0
+      - ENABLE_GRAPH_EXPANSION=0
+      - ENABLE_TASK_ROUTING=0
+      # Retained: the causal graph is the default-on relation substrate
+      # (core/feature_config.py flag("ENABLE_CAUSAL_GRAPH", "1")) and the read
+      # path degrades rather than fails without it. Persistence stays off.
+      - ENABLE_CAUSAL_GRAPH=1
+      - CAUSAL_PERSIST=0
+      - ENABLE_EVENT_BUS=0
+
+      # ── Deny by default: development and debug surfaces ───────────────────
+      # Swagger/OpenAPI is an admin surface (server.py:456-458).
+      - ENABLE_API_DOCS=false
+      - VELANTRIM_DEV_MOCK=false
+      # Empty = CORS middleware contributes no permitted origin.
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+    # ── Container hardening ────────────────────────────────────────────────
+    read_only: true
+    tmpfs:
+      # Python/uvicorn scratch space.
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+      # HOME=/app in the image; pymorphy3/HF caches fall back to $HOME/.cache.
+      # uid/gid are required: a tmpfs mount shadows the image's chown, and
+      # Docker creates a non-/tmp tmpfs root-owned with mode 755, which uid
+      # 10001 cannot write to. Verified empirically — without this the cache
+      # directory exists but every write fails with EACCES.
+      - /app/.cache:rw,noexec,nosuid,nodev,size=64m,uid=10001,gid=10001
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # PID 1 reaper so uvicorn's children are collected on shutdown.
+    init: true
+
+    # Only durable state is writable. No repository bind mount: the image
+    # already contains the three docs/*.md files api/web_console.py serves
+    # (Dockerfile:112), so ./docs does not need to be mounted at all.
+    volumes:
+      - velantrim_prod_data:/app/data
+
+    # Bounded resources (Compose non-swarm fields).
+    pids_limit: 512
+    mem_limit: ${VELANTRIM_MEM_LIMIT:-2g}
+    memswap_limit: ${VELANTRIM_MEM_LIMIT:-2g}
+    cpus: ${VELANTRIM_CPUS:-2.0}
+
+    # Bounded log growth.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    restart: unless-stopped
+    # SleepTimeWorker is off here, but shutdown still stops it and closes the
+    # store; give the lifespan handler room to finish.
+    stop_grace_period: 30s
+
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+    networks:
+      - velantrim_prod
+
+networks:
+  # A plain bridge network. It is NOT marked `internal: true`: an internal
+  # network removes the gateway, which also removes published-port
+  # reachability, so it cannot host the API entrypoint. Outbound denial is
+  # therefore NOT claimed here — it rests on LLM_PROVIDER=none and the absence
+  # of provider credentials. See the operations doc for enforcing egress at the
+  # network layer if your environment requires it.
+  velantrim_prod:
+    driver: bridge
+
+volumes:
+  velantrim_prod_data:
+    driver: local
