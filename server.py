@@ -314,6 +314,35 @@ async def lifespan(app: FastAPI):
         logger.error("   Migrations: ❌ FATAL — %s", exc)
         raise
 
+    # GDPR erasure crash-recovery sweep (H3, Claude audit 2026-07-28).
+    # resume_incomplete_jobs()/resume_incomplete_batches() are correct and
+    # tested (CAS claims, lease-aware, explicitly documented as "safe to
+    # call repeatedly, e.g. at server startup") but had zero callers
+    # anywhere in the running system — no startup hook, no cron, no admin
+    # tool. A process killed mid-saga (e.g. after writing its completion
+    # tombstone but before the job row flips to COMPLETE) left a GDPR
+    # Art. 17 erasure request stalled indefinitely with no automatic path
+    # back to completion. Both sweeps are no-ops when nothing is stuck
+    # (idempotent DDL, plain SELECTs against tables migrations already
+    # created above), so this runs unconditionally rather than behind a
+    # new feature flag.
+    try:
+        from core.erasure_batch_coordinator import resume_incomplete_batches
+        from core.erasure_coordinator import resume_incomplete_jobs
+
+        resumed_jobs = await asyncio.to_thread(resume_incomplete_jobs)
+        resumed_batches = await asyncio.to_thread(resume_incomplete_batches)
+        if resumed_jobs or resumed_batches:
+            logger.warning(
+                "   Erasure crash-recovery: восстановлено %d job(s), %d batch(es) "
+                "из незавершённого состояния",
+                len(resumed_jobs), len(resumed_batches),
+            )
+        else:
+            logger.info("   Erasure crash-recovery: восстанавливать нечего")
+    except Exception as exc:
+        logger.warning("   Erasure crash-recovery: ❌ sweep не выполнен: %s", exc)
+
     # Перестроить NGram индекс при старте — только Validated факты
     # AUDIT-FIX v8.4.0: фильтр Validated — раньше индексировались Collapsed/Deprecated
     # тоже, что при миллионе фактов делало startup минутами.

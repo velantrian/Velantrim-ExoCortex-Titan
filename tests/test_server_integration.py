@@ -162,6 +162,88 @@ class TestStartupLifespan:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 1b. Startup lifespan — GDPR erasure crash-recovery sweep (H3, Claude audit 2026-07-28)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestErasureCrashRecoveryStartup:
+    """
+    Regression: resume_incomplete_jobs()/resume_incomplete_batches() were
+    correct and heavily tested at the unit level, but had zero callers
+    anywhere in the running system — a job left non-terminal by a crashed
+    process stayed stuck forever. This proves the server's startup lifespan
+    now actually invokes the sweep, not just that the functions exist.
+    """
+
+    def test_partial_erasure_job_is_completed_by_next_server_boot(
+        self, tmp_path, monkeypatch
+    ):
+        db_path = str(tmp_path / "integration.db")
+        ngram_db_path = str(tmp_path / "integration_ngram.db")
+        monkeypatch.setenv("VELANTRIM_API_KEY", "test-key")
+        monkeypatch.setenv("VELANTRIM_DB_PATH", db_path)
+        monkeypatch.setenv("VELANTRIM_NGRAM_DB", ngram_db_path)
+        monkeypatch.setenv("CORE_BLOCKS_DB", str(tmp_path / "blocks.db"))
+        monkeypatch.setenv("NOTEBOOK_DB", str(tmp_path / "notebook.db"))
+        monkeypatch.setenv("LLM_PROVIDER", "none")
+        monkeypatch.setenv("SLEEP_WORKER_ENABLED", "false")
+        monkeypatch.setenv("VELANTRIM_ALLOW_OPEN", "false")
+        monkeypatch.setenv("ENABLE_CAUSAL_GRAPH", "0")
+        monkeypatch.setenv("ENABLE_VELUM", "0")
+
+        for mod in list(sys.modules.keys()):
+            if mod.startswith(("server", "core.")):
+                del sys.modules[mod]
+
+        try:
+            from fastapi.testclient import TestClient
+
+            import server as srv
+            from core.feature_config import clear_config_cache
+        except ImportError as exc:
+            pytest.skip(f"Сервер недоступен ({exc})")
+
+        clear_config_cache()
+
+        import core.memory as memory_mod
+        from core.erasure_coordinator import erase_fact_durable, is_erased
+
+        memory_mod.store_fact(
+            {"fact_id": "stuck1", "claim": "user contact is a@b.com",
+             "source": "test", "confidence": 0.9}
+        )
+
+        # Force a genuine PARTIAL outcome — same crash-simulation technique
+        # as tests/test_erasure_coordinator.py's own resume regression test
+        # (test_resume_incomplete_jobs_sweeps_partial_jobs_to_complete):
+        # a real backend failure mid-saga, not a mock of resume() itself.
+        store = memory_mod._GLOBAL_STORE
+        real_atomic = store.erase_fact_dependents_atomic
+        monkeypatch.setattr(
+            store, "erase_fact_dependents_atomic",
+            lambda fact_id: (_ for _ in ()).throw(RuntimeError("simulated crash")),
+        )
+        partial = erase_fact_durable("stuck1")
+        assert partial["outcome"] == "PARTIAL"
+        monkeypatch.setattr(store, "erase_fact_dependents_atomic", real_atomic)
+
+        # Confirm it's genuinely stuck before the next boot — otherwise this
+        # test would pass for the wrong reason.
+        assert is_erased("stuck1") is False
+
+        # Boot the server exactly like a restarted process would — this is
+        # the only thing under test: does lifespan now sweep and complete it.
+        with TestClient(srv.app) as client:
+            client.headers.update({"X-Api-Key": "test-key"})
+            r = client.get("/")
+            assert r.status_code == 200
+
+        assert is_erased("stuck1") is True, (
+            "GDPR erasure job stuck in PARTIAL after a server restart — "
+            "the H3 crash-recovery sweep did not run at startup"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 2. NGram coherence: pipeline пишет → server находит
 # ═══════════════════════════════════════════════════════════════════════════════
 
