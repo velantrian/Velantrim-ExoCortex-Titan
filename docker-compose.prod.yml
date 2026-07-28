@@ -130,22 +130,32 @@ services:
       # scheduled integrity snapshot is produced.
       - ENABLE_IMMUTABLE_CORE=1
 
-      # ── Remote providers: not configured by default, NOT blocked ──────────
-      # PR #63 review (P1) — read this before treating the profile as offline.
+      # ── Remote egress: denied by policy, not merely unconfigured ──────────
+      # These two are the executable boundary (core/policy_kernel.py +
+      # core/remote_egress.py). With deny + never, every server-side LLM/STT/TTS
+      # path fails to obtain a capability lease and raises
+      # RemoteEgressDeniedError BEFORE any httpx client is constructed —
+      # including a request that supplies its own llm_provider + llm_api_key.
       #
-      # LLM_PROVIDER=none and the absence of credentials here only mean that no
-      # provider is configured from the ENVIRONMENT. They are NOT an egress
-      # boundary: server.py::_resolve_llm_config_for_request prefers a config
-      # built from the REQUEST over the environment default, so any client that
-      # already holds the API key can pass llm_provider + llm_api_key in a
-      # request body and reach a remote provider — carrying query text and
-      # retrieved memory with it. The LLM/STT/TTS routes are always registered.
+      # They are pinned explicitly even though these are the code defaults:
+      # the whole point of this profile is that a future change to a default
+      # cannot silently widen it. server.py validates both at startup and
+      # refuses to boot on an invalid value.
       #
-      # Treat this as "no provider configured", never as "providers blocked".
-      # The executable egress boundary is draft PR #59
-      # (agent/p0-egress-epistemic-boundary); it is not implemented on this
-      # commit and is deliberately not duplicated here. Until it lands, restrict
-      # who holds VELANTRIM_API_KEY and enforce egress at the network layer.
+      # To deliberately enable remote providers, BOTH must be relaxed — network
+      # alone is not enough. `ask` is fail-closed until a consent broker exists.
+      # See docs/REMOTE_EGRESS_POLICY.ru.md.
+      - VELANTRIM_NETWORK_MODE=deny
+      - VELANTRIM_REMOTE_DATA_MODE=never
+      #
+      # LLM_PROVIDER=none additionally means no provider is configured from the
+      # ENVIRONMENT. On its own that was never a boundary —
+      # server.py::_resolve_llm_config_for_request prefers a config built from
+      # the REQUEST over the environment default, so any client holding the API
+      # key could pass llm_provider + llm_api_key and reach a provider, carrying
+      # query text and retrieved memory with it. The LLM/STT/TTS routes are
+      # always registered. That request path is now gated by the two variables
+      # above; LLM_PROVIDER=none remains as defence in depth.
       - LLM_PROVIDER=${LLM_PROVIDER:-none}
       # Never auto-enabled by any compute profile; pinned off regardless.
       - ENABLE_CONCEPT_LLM_NAMING=0
