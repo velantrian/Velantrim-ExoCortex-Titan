@@ -284,18 +284,18 @@ class MetaSupervisor:
             except Exception:
                 self._dlq_cache = 0
 
-            # Budget pressure (упрощённо: факты / capacity)
+            # Budget pressure: доля израсходованного бюджета фактов (0.0..1.0+).
+            # evaluate_budget() читает COUNT(*) FROM facts и ничего не пишет —
+            # read-only инвариант супервизора сохранён.
             try:
-                # Pre-existing dead reference: get_budget_planner() / a "planner" object
-                # with .fill_ratio was never implemented in core.memory_budget (only
-                # function-based helpers exist there). Caught below like any other
-                # optional-metric failure, so budget pressure currently always reads 0.
-                # Not fixed here (behavior change out of scope for a typing-only pass)
-                # — tracked as a follow-up bug.
-                from core.memory_budget import get_budget_planner  # type: ignore[attr-defined]
-                planner = get_budget_planner()
-                self._budget_cache = planner.fill_ratio
-            except Exception:
+                from core.memory_budget import evaluate_budget
+
+                self._budget_cache = evaluate_budget().utilization
+            except Exception as exc:
+                # Метрика опциональна: heartbeat не должен падать. Но молчать
+                # нельзя — именно проглоченный сбой держал этот сигнал на 0.0 и
+                # делал ветки budget_warn/budget_block недостижимыми.
+                logger.warning("MetaSupervisor: budget pressure недоступен: %s", exc)
                 self._budget_cache = 0.0
 
         except Exception as exc:

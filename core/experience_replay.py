@@ -21,7 +21,50 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
+from core.async_utils import run_coroutine_sync
+
 logger = logging.getLogger("velantrim.experience_replay")
+
+
+def _get_velum() -> Any:
+    """Вернуть process-wide Velum singleton.
+
+    Единственная точка импорта моста: `get_velum()` живёт в
+    `core.velum_bridge`, НЕ в `core.velum`. Раньше неверный путь был продублирован
+    в двух блоках ниже, и оба тихо no-op'или. Один helper — чтобы такой дрейф не мог
+    разойтись по копиям.
+
+    Импорт ленивый: `core.velum_bridge` тянет `core.feature_config`, и держать это
+    на уровне модуля означало бы тащить конфиг в любой импорт replay-движка.
+    Исключения не глушатся — вызывающий сам решает, что делать с отказом моста.
+    """
+    from core.velum_bridge import get_velum
+
+    return get_velum()
+
+
+async def _boost_pairs(
+    velum: Any,
+    cooccurring: Dict[Tuple[str, str], int],
+    episode_id: str,
+) -> int:
+    """Усилить рёбра для co-occurring пар. Возвращает число затронутых рёбер.
+
+    Публичный API Velum — `observe_episode()`, async и под внутренним локом
+    (Velum.I77). Раньше здесь вызывался несуществующий `observe_entities()`:
+    AttributeError глушился per-pair `except: pass`, поэтому счётчик
+    `velum_edges_boosted` инкрементировался за *попытку*, а не за реальное ребро.
+
+    Число совпавших контекстов передаётся как `salience_weight`: чем чаще пара
+    использовалась вместе, тем сильнее хеббовское усиление.
+    """
+    boosted = 0
+    for (a, b), strength in cooccurring.items():
+        result = await velum.observe_episode(
+            episode_id, [a, b], salience_weight=float(strength)
+        )
+        boosted += result.edges_touched
+    return boosted
 
 
 class ExperienceReplayEngine:
@@ -117,53 +160,40 @@ class ExperienceReplayEngine:
                 if overlap > 0:
                     cooccurring[(fact_id, other_id)] = cooccurring.get((fact_id, other_id), 0) + overlap
 
-        # 3. Усилить Velum-связи для co-occurring пар
+        # 3. Усилить Velum-связи для co-occurring пар.
+        #
+        # Один replay-прогон = одна граница эпизода для Velum, поэтому все пары
+        # усиливаются под общим episode_id: `_episode_ids` растёт на 1 за прогон,
+        # а не на одну запись за пару.
         if cooccurring:
             try:
-                # Pre-existing wrong import path: get_velum() actually lives in
-                # core.velum_bridge, not core.velum. Caught below like any other
-                # optional-bridge failure, so this boost currently always no-ops.
-                # Not fixed here (behavior change out of scope for a typing-only
-                # pass) — tracked as a follow-up bug.
-                from core.velum import get_velum  # type: ignore[attr-defined]
-                velum = get_velum()
-                if velum is not None:
-                    for (a, b), strength in cooccurring.items():
-                        try:
-                            velum.observe_entities([a, b])  # one observation
-                            report["velum_edges_boosted"] += 1
-                        except Exception:
-                            pass
+                velum = _get_velum()
+                episode_id = f"experience-replay:{self._run_count}"
+                report["velum_edges_boosted"] = run_coroutine_sync(
+                    _boost_pairs(velum, cooccurring, episode_id)
+                )
             except Exception as exc:
-                logger.debug("ExperienceReplay: velum boost failed: %s", exc)
+                # Не фатально (Slow Path, best-effort), но видимо: молчаливый
+                # debug-лог и был причиной, по которой мёртвый мост не замечали.
+                logger.warning("ExperienceReplay: velum boost failed: %s", exc)
                 report["errors"] += 1
 
-        # 4. Decay для неиспользуемых Velum-связей
+        # 4. Decay слабых связей + промоут сильных: конец replay-прогона —
+        # такая же граница «сессии», как конец ingest-документа.
+        #
+        # `use_fsrs_decay` намеренно оставлен по умолчанию (фиксированный
+        # decay_per_session): выбор FSRS-режима принадлежит ingest-пути
+        # (`velum_bridge.finalize_ingest_session`), и тянуть его сюда означало бы
+        # расширять поведение за рамки починки мёртвого сигнала.
         try:
-            # Pre-existing wrong import path: get_velum() actually lives in
-            # core.velum_bridge, not core.velum. Caught below like any other
-            # optional-bridge failure, so this decay currently always no-ops.
-            # Not fixed here (behavior change out of scope for a typing-only
-            # pass) — tracked as a follow-up bug.
-            from core.velum import get_velum  # type: ignore[attr-defined]
-            velum = get_velum()
-            if velum is not None:
-                # Light decay: multiply weak edges by 0.95
-                edge_count_before = len(getattr(velum, '_edges', {}))
-                try:
-                    velum._decay_weak_edges(decay_factor=0.95, min_weight=0.2)
-                except AttributeError:
-                    # fallback: manual decay
-                    edges = getattr(velum, '_edges', {})
-                    for key, edge in list(edges.items()):
-                        if edge.weight < 0.3:
-                            edge.weight *= 0.95
-                            if edge.weight < 0.05:
-                                del edges[key]
-                edge_count_after = len(getattr(velum, '_edges', {}))
-                report["velum_edges_decayed"] = edge_count_before - edge_count_after
+            velum = _get_velum()
+            session = run_coroutine_sync(velum.on_session_end())
+            report["velum_edges_decayed"] = session.decayed_edges
         except Exception as exc:
-            logger.debug("ExperienceReplay: velum decay failed: %s", exc)
+            # Тот же контракт, что у boost-ветки выше: не фатально, но видимо и
+            # учтено в report["errors"] — раньше decay-ветка ошибку не считала.
+            logger.warning("ExperienceReplay: velum decay failed: %s", exc)
+            report["errors"] += 1
 
         logger.info(
             "ExperienceReplay #%d: %d facts reactivated, %d edges boosted, %d decayed",
