@@ -1,43 +1,39 @@
-"""H2 regression: the ExperienceReplay → Velum bridge must actually be wired.
+"""ExperienceReplay must stay analysis-only (post-merge review of PR #66).
 
-The bridge was dead through three independent layers of drift, each masked by
-the next:
+History, because the shape of these tests only makes sense with it:
 
-1. Both blocks did `from core.velum import get_velum`, but `get_velum()` lives
-   in `core/velum_bridge.py`. The wrong import was duplicated, so the two
-   copies could drift apart independently.
-2. Even with the import fixed, the called methods did not exist: Velum has no
-   `observe_entities()` and no `_decay_weak_edges()`. Its real API is
-   `observe_episode()` / `on_session_end()`.
-3. Both are async, and `run()` is synchronous — invoked via
-   `asyncio.to_thread` from the sleep worker.
+PR #66 fixed a genuinely dead bridge — wrong import, phantom methods, sync/async
+mismatch — but in making it live it activated a path that violates
+AGENTS.md §"Canonical memory boundary": a background read path mutating
+projection state. Review raised four P1s and two P2s against it:
 
-Every failure was funnelled into a `logger.debug` or a bare `except: pass`, so
-`velum_edges_boosted` / `velum_edges_decayed` read 0 forever and looked like
-"no eligible pairs" rather than "nothing works".
+  • cross-loop mutation: `run()` executes in an `asyncio.to_thread` worker while
+    the Velum singleton belongs to the server loop; a second `asyncio.run` loop
+    around a foreign `asyncio.Lock` races or hangs;
+  • `fact_id` values written where ingest writes *entity names*, creating a
+    UUID keyspace retrieval never visits;
+  • `ENABLE_VELUM=0` ignored, so a disabled feature ran;
+  • unbounded pair enumeration, quadratic in eligible facts.
 
-These tests pin: the real singleton is reached, boosting counts real edges,
-decay actually lowers the weight of an existing weak edge, failures stay
-non-fatal but are counted consistently in both branches, nothing is written to
-memory, and no feature default changes.
+The corrective posture is containment: keep the analysis, emit a bounded
+proposal, apply nothing, and say so truthfully in the report. These tests pin
+that containment so the mutation cannot creep back in.
 """
 from __future__ import annotations
 
-import logging
+import ast
+import inspect
 
 import pytest
-
 
 
 def _replay():
     """Return the *live* core.experience_replay module.
 
-    tests/test_cognitive_fact.py purges sys.modules['core.*'], so a module
-    object (or a class) captured at import time can be stale by the time these
-    tests run: patching the reimported module would then silently miss the
-    globals `run()` actually resolves against, and the assertions would pass
-    against the real bridge instead of the stub. Resolving at call time is the
-    convention tests/test_safe_mode_writes_blocked.py already documents.
+    tests/test_cognitive_fact.py purges sys.modules['core.*'], so a module or
+    class captured at import time can be stale by the time these tests run and
+    a stub patched onto it would silently miss. Same convention as
+    tests/test_safe_mode_writes_blocked.py.
     """
     import core.experience_replay as mod
 
@@ -63,107 +59,139 @@ def _fresh_velum():
     reset_velum()
 
 
-# ── the bridge resolves to the real module ──────────────────────────────────
-
-def test_get_velum_resolves_from_velum_bridge():
-    """The resolver must reach core.velum_bridge, not core.velum."""
-    from core.velum_bridge import get_velum as bridge_get_velum
-
-    velum = _replay()._get_velum()
-    assert velum is not None
-    assert velum is bridge_get_velum(), "must return the process-wide singleton"
-
-
-def test_get_velum_is_defined_in_velum_bridge_only():
-    """Guard the actual defect: core.velum must not be the import source."""
-    import core.velum as velum_mod
-    import core.velum_bridge as bridge_mod
-
-    assert hasattr(bridge_mod, "get_velum")
-    assert not hasattr(velum_mod, "get_velum"), (
-        "core.velum unexpectedly exports get_velum — the resolver's assumption changed"
-    )
-
-
-def test_wrong_import_path_is_not_reintroduced():
-    """The duplicated bad import must stay gone, in both blocks."""
-    import inspect
-
-    source = inspect.getsource(_replay())
-    assert "from core.velum import get_velum" not in source
-    # A single resolver, not two copies of the lazy import.
-    assert source.count("from core.velum_bridge import get_velum") == 1
-
-
-def test_replay_calls_only_methods_that_exist_on_velum():
-    """The second layer of drift: the called methods must be real.
-
-    Fixing the import alone was not enough — `observe_entities()` and
-    `_decay_weak_edges()` never existed on `Velum`, so both calls raised
-    AttributeError into a swallowing handler. Pin the real API.
-    """
-    import ast
-    import inspect
-
-    from core.velum import Velum
-
-    # Assert over the AST, not the raw text: the prose above names the phantom
-    # methods deliberately, and a substring check would match its own docstring.
-    tree = ast.parse(inspect.getsource(_replay()))
-    accessed = {
-        node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)
-    }
-
-    for phantom in ("observe_entities", "_decay_weak_edges"):
-        assert phantom not in accessed, f"{phantom}() does not exist on Velum"
-
-    for real in ("observe_episode", "on_session_end"):
-        assert real in accessed, f"replay no longer calls Velum.{real}"
-        assert callable(getattr(Velum, real)), f"Velum.{real} disappeared"
-
-
-# ── boosting reaches the real singleton ─────────────────────────────────────
-
-def test_cooccurring_facts_invoke_the_real_velum_singleton(monkeypatch: pytest.MonkeyPatch):
-    from core.velum import ObserveResult
-    from core.velum_bridge import get_velum
-
-    observed: list[list[str]] = []
-    velum = get_velum()
-
-    async def spy(episode_id, entities, **kwargs):
-        observed.append(list(entities))
-        return ObserveResult(
-            episode_id=episode_id, entities_seen=len(list(entities)), edges_touched=1
-        )
-
-    monkeypatch.setattr(velum, "observe_episode", spy)
-
+def _facts(monkeypatch: pytest.MonkeyPatch, facts: list[dict]) -> None:
     import core.memory as memory_mod
 
-    monkeypatch.setattr(
-        memory_mod,
-        "get_all_facts",
-        lambda *a, **k: [
-            _fact("f_a", contexts=["chat:1", "chat:2"]),
-            _fact("f_b", contexts=["chat:1", "chat:2"]),
-        ],
-    )
+    monkeypatch.setattr(memory_mod, "get_all_facts", lambda *a, **k: facts)
+
+
+def _shared_pair() -> list[dict]:
+    return [
+        _fact("f_a", contexts=["ctx:shared"]),
+        _fact("f_b", contexts=["ctx:shared"]),
+    ]
+
+
+# ── the mutation path is gone, structurally ─────────────────────────────────
+
+def _called_names(mod) -> set[str]:
+    """Every attribute accessed and every bare name called in the module.
+
+    Asserted over the AST rather than the source text: the module docstring
+    necessarily names the very symbols that must not be *called*, so a substring
+    check would match the prose explaining the fix.
+    """
+    tree = ast.parse(inspect.getsource(mod))
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute):
+            names.add(node.attr)
+        elif isinstance(node, ast.Name):
+            names.add(node.id)
+    return names
+
+
+def test_replay_does_not_mutate_velum_anywhere_in_the_module():
+    """No boost, no decay, no sync-bridging of the shared singleton."""
+    forbidden = {
+        "get_velum",              # singleton lookup → would create it
+        "observe_episode",        # boost → projection mutation
+        "on_session_end",         # decay/promote → projection mutation
+        "run_coroutine_sync",     # cross-loop bridge for a foreign lock
+        "observe_entities",       # the original phantom method
+        "_decay_weak_edges",      # the original phantom method
+    }
+    present = _called_names(_replay()) & forbidden
+    assert not present, f"replay still reaches for mutation APIs: {sorted(present)}"
+
+
+def test_replay_does_not_import_the_async_bridge():
+    """run_coroutine_sync must not even be imported."""
+    tree = ast.parse(inspect.getsource(_replay()))
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            imported.update(a.name for a in node.names)
+        elif isinstance(node, ast.Import):
+            imported.update(a.name for a in node.names)
+    assert "run_coroutine_sync" not in imported
+    assert "core.async_utils" not in imported
+
+
+def test_only_the_flag_helper_is_imported_from_velum_bridge():
+    """The bridge is touched for `is_velum_enabled` and nothing else."""
+    tree = ast.parse(inspect.getsource(_replay()))
+    from_bridge: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "core.velum_bridge":
+            from_bridge.update(a.name for a in node.names)
+    assert from_bridge == {"is_velum_enabled"}, from_bridge
+
+
+# ── ENABLE_VELUM is respected ───────────────────────────────────────────────
+
+def test_disabled_velum_creates_no_singleton_and_no_error(monkeypatch: pytest.MonkeyPatch):
+    """ENABLE_VELUM=0: no singleton, no boost, no decay, no mutation, no error."""
+    import core.velum_bridge as bridge
+
+    monkeypatch.setattr(bridge, "is_velum_enabled", lambda: False)
+    _facts(monkeypatch, _shared_pair())
 
     report = _replay().ExperienceReplayEngine().run()
 
-    assert report["facts_reactivated"] == 2
-    assert observed, "the real Velum singleton was never invoked"
+    assert bridge._velum_singleton is None, "Velum was instantiated while disabled"
+    assert report["velum_apply_status"] == "skipped"
+    assert report["velum_apply_reason"] == "velum_disabled"
+    assert report["velum_edges_boosted"] == 0
+    assert report["velum_edges_decayed"] == 0
     assert report["errors"] == 0
 
 
-def test_velum_edges_boosted_is_non_zero_for_eligible_pairs(monkeypatch: pytest.MonkeyPatch):
-    import core.memory as memory_mod
+def test_enabled_velum_still_performs_no_direct_mutation(monkeypatch: pytest.MonkeyPatch):
+    """ENABLE_VELUM=1 may analyse, but must not apply in this contained state."""
+    import core.velum_bridge as bridge
 
-    monkeypatch.setattr(
-        memory_mod,
-        "get_all_facts",
-        lambda *a, **k: [
+    monkeypatch.setattr(bridge, "is_velum_enabled", lambda: True)
+    _facts(monkeypatch, _shared_pair())
+
+    report = _replay().ExperienceReplayEngine().run()
+
+    assert bridge._velum_singleton is None, "enabled must still not touch the singleton"
+    assert report["velum_apply_status"] == "deferred"
+    assert report["velum_apply_reason"] == "canonical_async_apply_not_implemented"
+    assert report["velum_edges_boosted"] == 0
+    assert report["velum_edges_decayed"] == 0
+    # The analysis itself still happened — containment is not a silent no-op.
+    assert report["facts_reactivated"] == 2
+    assert report["proposal_pairs"] == 1
+
+
+def test_unreadable_flag_fails_closed(monkeypatch: pytest.MonkeyPatch):
+    """If the flag cannot be read, treat Velum as off and report it."""
+    import core.velum_bridge as bridge
+
+    def boom() -> bool:
+        raise RuntimeError("config unavailable")
+
+    monkeypatch.setattr(bridge, "is_velum_enabled", boom)
+    _facts(monkeypatch, _shared_pair())
+
+    report = _replay().ExperienceReplayEngine().run()
+
+    assert report["velum_apply_status"] == "skipped"
+    assert report["errors"] >= 1, "a failure to read the flag must be visible"
+
+
+# ── the report tells the truth ──────────────────────────────────────────────
+
+def test_report_never_claims_reinforcement_that_did_not_happen(monkeypatch: pytest.MonkeyPatch):
+    """The two edge counters stay zero and the status explains why."""
+    import core.velum_bridge as bridge
+
+    monkeypatch.setattr(bridge, "is_velum_enabled", lambda: True)
+    _facts(
+        monkeypatch,
+        [
             _fact("f_a", contexts=["ctx:shared"]),
             _fact("f_b", contexts=["ctx:shared"]),
             _fact("f_c", contexts=["ctx:shared"]),
@@ -172,179 +200,212 @@ def test_velum_edges_boosted_is_non_zero_for_eligible_pairs(monkeypatch: pytest.
 
     report = _replay().ExperienceReplayEngine().run()
 
-    assert report["velum_edges_boosted"] > 0, (
-        "boosting still no-ops — the bridge is not reaching Velum"
-    )
-    assert report["errors"] == 0
-
-
-def test_no_boost_when_facts_share_no_context(monkeypatch: pytest.MonkeyPatch):
-    """Absence of overlap must produce zero, not an error."""
-    import core.memory as memory_mod
-
-    monkeypatch.setattr(
-        memory_mod,
-        "get_all_facts",
-        lambda *a, **k: [
-            _fact("f_a", contexts=["ctx:one"]),
-            _fact("f_b", contexts=["ctx:two"]),
-        ],
-    )
-
-    report = _replay().ExperienceReplayEngine().run()
-
     assert report["velum_edges_boosted"] == 0
-    assert report["errors"] == 0
+    assert report["velum_edges_decayed"] == 0
+    assert report["candidate_pairs"] == 3
+    assert report["velum_apply_status"] in {"deferred", "skipped"}
+    assert report["velum_apply_reason"]
 
 
-# ── decay runs against existing weak edges ──────────────────────────────────
+def test_proposal_uses_fact_fields_not_velum_entity_names(monkeypatch: pytest.MonkeyPatch):
+    """fact_id must never be presented as a Velum entity identifier.
 
-def test_decay_executes_against_existing_weak_edges(monkeypatch: pytest.MonkeyPatch):
-    """A weak edge present before the run must actually lose weight."""
-    from core.async_utils import run_coroutine_sync
-    from core.velum_bridge import get_velum
-
-    velum = get_velum()
-    # Seed a genuinely weak edge (one observation → weight 0.12, well below
-    # promote_weight=0.6, so on_session_end() decays rather than promotes it).
-    run_coroutine_sync(velum.observe_episode("seed", ["stale_a", "stale_b"]))
-    seeded = velum._edges[frozenset(("stale_a", "stale_b"))]
-    weight_before = seeded.weight
-    assert weight_before < velum.params.promote_weight
-
-    import core.memory as memory_mod
-
-    monkeypatch.setattr(
-        memory_mod,
-        "get_all_facts",
-        lambda *a, **k: [
-            _fact("f_a", contexts=["ctx:shared"]),
-            _fact("f_b", contexts=["ctx:shared"]),
-        ],
-    )
-
-    report = _replay().ExperienceReplayEngine().run()
-
-    assert report["velum_edges_decayed"] >= 1, "decay never reached Velum"
-    assert seeded.weight < weight_before, "the weak edge was not decayed"
-    assert report["errors"] == 0
-
-
-def test_decay_runs_even_when_no_pairs_co_occur(monkeypatch: pytest.MonkeyPatch):
-    """Decay is not gated on boosting: an unrelated pair still ages edges."""
-    from core.async_utils import run_coroutine_sync
-    from core.velum_bridge import get_velum
-
-    velum = get_velum()
-    run_coroutine_sync(velum.observe_episode("seed", ["stale_a", "stale_b"]))
-    weight_before = velum._edges[frozenset(("stale_a", "stale_b"))].weight
-
-    import core.memory as memory_mod
-
-    monkeypatch.setattr(
-        memory_mod,
-        "get_all_facts",
-        lambda *a, **k: [
-            _fact("f_a", contexts=["ctx:one"]),
-            _fact("f_b", contexts=["ctx:two"]),
-        ],
-    )
-
-    report = _replay().ExperienceReplayEngine().run()
-
-    assert report["velum_edges_boosted"] == 0
-    assert report["velum_edges_decayed"] >= 1
-    assert velum._edges[frozenset(("stale_a", "stale_b"))].weight < weight_before
-
-
-# ── failures stay non-fatal and are counted consistently ────────────────────
-
-@pytest.mark.parametrize("failing_stage", ["boost", "decay"])
-def test_bridge_failure_is_non_fatal_and_counted(
-    monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
-    failing_stage: str,
-):
-    """Both branches must survive a broken bridge and report it identically.
-
-    Before the fix the decay branch logged at DEBUG and did NOT increment
-    errors, while the boost branch did — inconsistent accounting on top of a
-    dead path.
+    Ingest populates Velum with entity *names*; the review found replay writing
+    UUID-like fact ids into that same keyspace. The proposal therefore names its
+    fields `fact_a`/`fact_b`, leaving the mapping to a future apply service.
     """
-    replay_mod = _replay()
-    import core.memory as memory_mod
+    import core.velum_bridge as bridge
 
-    monkeypatch.setattr(
-        memory_mod,
-        "get_all_facts",
-        lambda *a, **k: [
-            _fact("f_a", contexts=["ctx:shared"]),
-            _fact("f_b", contexts=["ctx:shared"]),
+    monkeypatch.setattr(bridge, "is_velum_enabled", lambda: True)
+    _facts(monkeypatch, _shared_pair())
+
+    engine = _replay().ExperienceReplayEngine()
+    engine.run()
+    proposal = engine.last_proposal()
+
+    assert proposal == [{"fact_a": "f_a", "fact_b": "f_b", "cooccurrence": 1}]
+    for entry in proposal:
+        assert "entity" not in " ".join(entry.keys()), (
+            "fact ids must not be labelled as entity names"
+        )
+
+
+def test_last_proposal_is_a_copy(monkeypatch: pytest.MonkeyPatch):
+    """A caller mutating the returned list must not corrupt engine state."""
+    import core.velum_bridge as bridge
+
+    monkeypatch.setattr(bridge, "is_velum_enabled", lambda: True)
+    _facts(monkeypatch, _shared_pair())
+
+    engine = _replay().ExperienceReplayEngine()
+    engine.run()
+    engine.last_proposal().clear()
+
+    assert len(engine.last_proposal()) == 1
+
+
+# ── bounded work ────────────────────────────────────────────────────────────
+
+def test_proposal_is_bounded_and_says_so(monkeypatch: pytest.MonkeyPatch):
+    """Pair enumeration is quadratic; the proposal must cap and admit it."""
+    import core.velum_bridge as bridge
+
+    mod = _replay()
+    monkeypatch.setattr(bridge, "is_velum_enabled", lambda: True)
+    monkeypatch.setattr(mod, "_MAX_PROPOSAL_PAIRS", 5)
+    # 8 facts in one shared context → 28 candidate pairs.
+    _facts(monkeypatch, [_fact(f"f_{i}", contexts=["ctx:shared"]) for i in range(8)])
+
+    report = mod.ExperienceReplayEngine().run()
+
+    assert report["candidate_pairs"] == 28
+    assert report["proposal_pairs"] == 5
+    assert report["proposal_truncated"] is True
+
+
+def test_fact_intake_is_bounded_and_says_so(monkeypatch: pytest.MonkeyPatch):
+    """The fact set feeding the quadratic loop is capped, highest confidence first."""
+    import core.velum_bridge as bridge
+
+    mod = _replay()
+    monkeypatch.setattr(bridge, "is_velum_enabled", lambda: True)
+    monkeypatch.setattr(mod, "_MAX_REPLAY_FACTS", 3)
+    _facts(
+        monkeypatch,
+        [
+            _fact("f_low", contexts=["ctx:shared"], confidence=0.61),
+            _fact("f_hi1", contexts=["ctx:shared"], confidence=0.99),
+            _fact("f_hi2", contexts=["ctx:shared"], confidence=0.98),
+            _fact("f_hi3", contexts=["ctx:shared"], confidence=0.97),
         ],
     )
 
-    calls = {"n": 0}
+    engine = mod.ExperienceReplayEngine()
+    report = engine.run()
 
-    def flaky() -> object:
-        calls["n"] += 1
-        # boost resolves first, decay second
-        if (failing_stage == "boost" and calls["n"] == 1) or (
-            failing_stage == "decay" and calls["n"] == 2
-        ):
-            raise RuntimeError(f"{failing_stage} bridge down")
-        from core.velum_bridge import get_velum
-
-        return get_velum()
-
-    monkeypatch.setattr(replay_mod, "_get_velum", flaky)
-
-    with caplog.at_level(logging.WARNING, logger="velantrim.experience_replay"):
-        report = replay_mod.ExperienceReplayEngine().run()  # must not raise
-
-    assert report["errors"] >= 1, "a bridge failure must be counted in both branches"
-    messages = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
-    assert any(f"{failing_stage} bridge down" in m for m in messages), messages
+    assert report["facts_reactivated"] == 4, "the true eligible count is still reported"
+    assert report["facts_truncated"] is True
+    # 3 kept → 3 pairs, and the least-confident fact is the one dropped.
+    assert report["candidate_pairs"] == 3
+    seen = {f for p in engine.last_proposal() for f in (p["fact_a"], p["fact_b"])}
+    assert "f_low" not in seen
 
 
-# ── invariants that must not change ─────────────────────────────────────────
+def test_no_truncation_flags_when_within_limits(monkeypatch: pytest.MonkeyPatch):
+    import core.velum_bridge as bridge
+
+    monkeypatch.setattr(bridge, "is_velum_enabled", lambda: True)
+    _facts(monkeypatch, _shared_pair())
+
+    report = _replay().ExperienceReplayEngine().run()
+
+    assert report["proposal_truncated"] is False
+    assert report["facts_truncated"] is False
+
+
+def test_proposal_is_ranked_by_cooccurrence(monkeypatch: pytest.MonkeyPatch):
+    """Strongest overlap first, so a cap keeps the most useful candidates."""
+    import core.velum_bridge as bridge
+
+    monkeypatch.setattr(bridge, "is_velum_enabled", lambda: True)
+    _facts(
+        monkeypatch,
+        [
+            _fact("f_a", contexts=["c1", "c2", "c3"]),
+            _fact("f_b", contexts=["c1", "c2", "c3"]),  # overlap 3 with f_a
+            _fact("f_c", contexts=["c1"]),              # overlap 1 with each
+        ],
+    )
+
+    engine = _replay().ExperienceReplayEngine()
+    engine.run()
+    strengths = [p["cooccurrence"] for p in engine.last_proposal()]
+
+    assert strengths == sorted(strengths, reverse=True)
+    assert engine.last_proposal()[0]["cooccurrence"] == 3
+
+
+# ── nothing is written ──────────────────────────────────────────────────────
 
 def test_replay_writes_no_facts_and_no_truth_transitions(monkeypatch: pytest.MonkeyPatch):
-    """Replay is a Slow Path reinforcement pass, not a writer."""
+    """Replay is a Slow Path read, not a writer (I-ER2/I-ER3/I-ER4)."""
     import core.memory as memory_mod
+    import core.velum_bridge as bridge
+
+    monkeypatch.setattr(bridge, "is_velum_enabled", lambda: True)
 
     forbidden: list[str] = []
-    for name in ("store_fact", "store_facts_batch", "transition_esm", "promote_to_validated"):
+    for name in (
+        "store_fact",
+        "store_facts_batch",
+        "store_fact_result",
+        "transition_esm",
+        "promote_to_validated",
+        "invalidate_edge",
+    ):
         if hasattr(memory_mod, name):
             monkeypatch.setattr(
                 memory_mod, name, lambda *a, _n=name, **k: forbidden.append(_n)
             )
 
-    monkeypatch.setattr(
-        memory_mod,
-        "get_all_facts",
-        lambda *a, **k: [
-            _fact("f_a", contexts=["ctx:shared"]),
-            _fact("f_b", contexts=["ctx:shared"]),
-        ],
-    )
+    _facts(monkeypatch, _shared_pair())
 
     _replay().ExperienceReplayEngine().run()
 
     assert forbidden == [], f"replay performed canonical writes: {forbidden}"
 
 
+def test_sleep_worker_invocation_creates_no_event_loop_for_velum(monkeypatch: pytest.MonkeyPatch):
+    """The cross-loop hazard: run() must not start a loop of its own.
+
+    SleepTimeWorker calls `run()` via `asyncio.to_thread`, so any `asyncio.run`
+    inside it builds a second loop in a worker thread — the exact condition that
+    races the server loop's Velum lock. Assert no new loop is created, from the
+    worker-thread context the sleep worker actually uses.
+    """
+    import asyncio
+
+    import core.velum_bridge as bridge
+
+    monkeypatch.setattr(bridge, "is_velum_enabled", lambda: True)
+    _facts(monkeypatch, _shared_pair())
+
+    created: list[object] = []
+    real_new_event_loop = asyncio.new_event_loop
+    real_run = asyncio.run
+
+    def spy_new_event_loop(*a, **k):
+        created.append("new_event_loop")
+        return real_new_event_loop(*a, **k)
+
+    def spy_run(coro, *a, **k):
+        created.append("asyncio.run")
+        return real_run(coro, *a, **k)
+
+    monkeypatch.setattr(asyncio, "new_event_loop", spy_new_event_loop)
+    monkeypatch.setattr(asyncio, "run", spy_run)
+
+    engine = _replay().ExperienceReplayEngine()
+
+    async def as_sleep_worker_does():
+        return await asyncio.to_thread(engine.run)
+
+    report = real_run(as_sleep_worker_does())
+
+    assert created == [], f"replay created an event loop: {created}"
+    assert report["velum_edges_boosted"] == 0
+    assert bridge._velum_singleton is None
+
+
+# ── defaults and the production profile are untouched ───────────────────────
+
 def test_feature_defaults_are_unchanged():
     """The fix must not enable Velum, the sleep worker or replay by default."""
-    import os
-
     from core.feature_config import AppSettings
 
     defaults = AppSettings()
     assert defaults.enable_velum is False
     assert defaults.velum_persist is False
-    # SLEEP_WORKER_ENABLED's code default is read in server.py; assert the env
-    # is not being mutated by importing these modules.
-    assert os.getenv("ENABLE_VELUM") in (None, "0", "false", "")
 
 
 def test_production_profile_still_pins_velum_off():

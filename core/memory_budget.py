@@ -62,7 +62,15 @@ def check_before_write(*, is_new_insert: bool = True) -> BudgetStatus:
     return status
 
 
-def evaluate_budget() -> BudgetStatus:
+def evaluate_budget(*, quiet: bool = False) -> BudgetStatus:
+    """Посчитать текущее состояние бюджета фактов.
+
+    quiet=True подавляет только пороговое логирование, не меняя возвращаемое
+    значение. Нужно для поллеров: пороговые WARNING/CRITICAL написаны для
+    write-пути (один раз на запись), а MetaSupervisor опрашивает бюджет каждые
+    10 c — без этого постоянно полный стор даёт 6 одинаковых сообщений
+    critical-уровня в минуту и заглушает реальные алерты.
+    """
     cfg = get_config().app
     hard = cfg.memory_budget_fact_hard
     gc_at = cfg.memory_budget_fact_gc
@@ -71,28 +79,31 @@ def evaluate_budget() -> BudgetStatus:
     utilization = n / hard if hard > 0 else 0.0
 
     if n >= hard:
-        logger.critical(
-            "MemoryBudget: HARD LIMIT %d/%d (%.1f%%)",
-            n,
-            hard,
-            utilization * 100,
-        )
+        if not quiet:
+            logger.critical(
+                "MemoryBudget: HARD LIMIT %d/%d (%.1f%%)",
+                n,
+                hard,
+                utilization * 100,
+            )
         action = "hard_limit"
     elif n >= gc_at:
-        logger.warning(
-            "MemoryBudget: GC threshold %d/%d (%.1f%%)",
-            n,
-            hard,
-            utilization * 100,
-        )
+        if not quiet:
+            logger.warning(
+                "MemoryBudget: GC threshold %d/%d (%.1f%%)",
+                n,
+                hard,
+                utilization * 100,
+            )
         action = "gc_triggered"
     elif n >= warn_at:
-        logger.warning(
-            "MemoryBudget: WARNING %d/%d (%.1f%%)",
-            n,
-            hard,
-            utilization * 100,
-        )
+        if not quiet:
+            logger.warning(
+                "MemoryBudget: WARNING %d/%d (%.1f%%)",
+                n,
+                hard,
+                utilization * 100,
+            )
         action = "warn"
     else:
         action = "ok"
