@@ -19,3 +19,8 @@ httpx>=0.27
 aiosqlite>=0.19
 # L3 Kuzu (Windows: VC++ Redistributable x64)
 kuzu>=0.7,<0.12
+# core/file_parsers/archive_parser.py's .rar path is optional at runtime
+# (RARFILE_AVAILABLE gate), so without this package its regression tests
+# (incl. the H4 zip-bomb streaming-cap fix) silently skip via
+# pytest.importorskip — same class of gap as the pyyaml case above.
+rarfile>=4.0,<5

@@ -298,14 +298,20 @@ class ArchiveParser(FileParser):
                 if len(files) >= self.MAX_FILES:
                     result.warnings.append(f"max_files_reached: {self.MAX_FILES}")
                     break
-                # FIX #21 (Claude audit): добавить MAX_EXTRACTED_SIZE guard
-                # (как в _extract_zip/_extract_tar) — защита от zip-bomb
-                try:
-                    info = rf.getinfo(member)
-                    total_size += info.file_size
-                except Exception:
-                    total_size += 1024 * 1024  # консервативная оценка
-                if total_size > self.MAX_EXTRACTED_SIZE:
+                info = rf.getinfo(member)
+                if info.isdir():
+                    continue
+                # FIX H4 (Claude audit 2026-07-28): FIX #21 only summed the
+                # *declared* info.file_size from the RAR header — untrusted,
+                # attacker-controlled data — then still called rf.extract()
+                # unbounded. A crafted archive under-reporting its size would
+                # bypass the guard and decompress far past MAX_EXTRACTED_SIZE,
+                # the same class of bomb .7z is disabled for. Early reject on
+                # declared size stays as a cheap first filter; the real,
+                # authoritative guard is streaming actual bytes through
+                # _stream_copy_capped, same as _extract_zip/_extract_tar.
+                declared = max(getattr(info, "file_size", 0) or 0, 0)
+                if total_size + declared > self.MAX_EXTRACTED_SIZE:
                     result.warnings.append("rar_max_extracted_size_reached")
                     break
                 # Path traversal protection
@@ -316,8 +322,9 @@ class ArchiveParser(FileParser):
                 if not full.startswith(safe_dir + os.sep) and full != safe_dir:
                     result.warnings.append(f"rar_path_traversal_blocked: {member}")
                     continue
-                rf.extract(member, tmpdir)
-                out = os.path.join(tmpdir, member)
-                if os.path.isfile(out):
-                    files.append(out)
+                with rf.open(member) as src:
+                    total_size, ok = self._stream_copy_capped(src, full, total_size, result)
+                if not ok:
+                    break
+                files.append(full)
         return files
