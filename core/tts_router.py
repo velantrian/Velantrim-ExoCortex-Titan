@@ -273,7 +273,13 @@ async def gemini_tts_bytes(
         provider="gemini",
         data_mode="raw",
     )
-    url = f"{_GEMINI_API_BASE}/v1beta/models/{model}:generateContent"
+    # TTS-модель тоже подставляется в путь — та же валидация, что у LLM-путей.
+    from core.gemini_models import assert_safe_gemini_model_id
+
+    url = (
+        f"{_GEMINI_API_BASE}/v1beta/models/"
+        f"{assert_safe_gemini_model_id(model)}:generateContent"
+    )
     headers = {
         "Content-Type": "application/json",
         "x-goog-api-key": api_key,

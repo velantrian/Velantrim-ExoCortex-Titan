@@ -29,6 +29,7 @@ from core.llm_router import (
     _openai_stream_delta_parts,
     _openai_stream_delta_text,
     _resolve_model,
+    assert_model_allowed,
 )
 from core.remote_egress import (
     ensure_remote_egress_allowed,
@@ -199,6 +200,7 @@ async def chat_complete_messages(
 ) -> tuple[str, dict[str, Any]]:
     """Нестриминговый remote-вызов с обязательным policy lease."""
     provider = (cfg.provider or "").strip().lower()
+    assert_model_allowed(cfg)
     ensure_remote_egress_allowed(
         "remote_llm",
         provider=provider,
@@ -370,6 +372,7 @@ async def stream_chat_events(
     provider = (cfg.provider or "").strip().lower()
 
     try:
+        assert_model_allowed(cfg)
         ensure_remote_egress_allowed(
             "remote_llm",
             provider=provider,
@@ -530,9 +533,14 @@ async def _stream_gemini(
     elif system:
         body["systemInstruction"] = {"parts": [{"text": system}]}
 
+    # model уходит в путь URL — валидируем структурно перед подстановкой.
+    # Здесь это особенно важно: строка уже несёт "?alt=sse", поэтому '?' или '#'
+    # внутри model перекроили бы query, а не только путь.
+    from core.gemini_models import assert_safe_gemini_model_id
+
     url = (
         f"{_GEMINI_API_BASE}/v1beta/models/"
-        f"{model}:streamGenerateContent?alt=sse"
+        f"{assert_safe_gemini_model_id(model)}:streamGenerateContent?alt=sse"
     )
     headers = {
         "Content-Type": "application/json",

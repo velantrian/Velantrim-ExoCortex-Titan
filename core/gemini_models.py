@@ -394,6 +394,38 @@ def merge_gemini_catalog_with_api(
     return build_gemini_provider_entry(api_ids)
 
 
+_GEMINI_MODEL_ID_RE = re.compile(r"^gemini-[a-z0-9][a-z0-9.-]*$")
+
+
+def assert_safe_gemini_model_id(raw: str) -> str:
+    """Вернуть нормализованный model id, безопасный для подстановки в путь URL.
+
+    Это СТРУКТУРНАЯ проверка, отдельная от политики (`model_allowed_for_provider`
+    решает про deprecation/каталог). Разделены сознательно: изменение списка
+    устаревших моделей не должно начать бросать исключения из глубины сборки URL.
+
+    Зачем вообще: model приходит из тела запроса консоли (`llm_model`) и
+    подставляется в *путь* Gemini-эндпоинта. httpx нормализует URL, и это
+    измеримо опасно — проверено пробником:
+
+        "../../v1beta/tunedModels"   → путь /v1beta/tunedModels:generateContent
+        "gemini-2.5-flash?key=leak"  → query "key=leak:generateContent"
+        "gemini-2.5-flash#"          → суффикс :generateContent отброшен
+
+    Во всех случаях запрос уходит с ключом сервера в заголовке
+    `x-goog-api-key`, т.е. вызывающий рулит credentialed-запросом (confused
+    deputy). Регулярка допускает только один безопасный path-сегмент.
+    """
+    model_id = normalize_gemini_model_id(raw)
+    if not _GEMINI_MODEL_ID_RE.match(model_id):
+        raise ValueError(
+            "Недопустимый Gemini model id "
+            f"{model_id!r}: ожидается ^gemini-[a-z0-9][a-z0-9.-]*$ "
+            "(model подставляется в путь URL, поэтому '/', '?', '#' и ':' запрещены)"
+        )
+    return model_id
+
+
 def model_allowed_for_provider(provider: str, model: str) -> bool:
     if provider != "gemini":
         return True
@@ -403,9 +435,7 @@ def model_allowed_for_provider(provider: str, model: str) -> bool:
     catalog = set(ordered_gemini_model_ids())
     if model_id in catalog:
         return True
-    return bool(
-        re.match(r"^gemini-[a-z0-9][a-z0-9.-]*$", model_id)
-    )
+    return bool(_GEMINI_MODEL_ID_RE.match(model_id))
 
 
 __all__ = [
@@ -414,6 +444,7 @@ __all__ = [
     "GEMINI_MODEL_SPECS",
     "GEMINI_STT_DEFAULT_MODEL",
     "GEMINI_STT_FALLBACK_MODELS",
+    "assert_safe_gemini_model_id",
     "build_gemini_provider_entry",
     "fetch_gemini_models_from_api",
     "gemini_explicit_cache_min_chars",

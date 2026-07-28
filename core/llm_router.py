@@ -280,8 +280,25 @@ async def _openai_compatible_chat(
 _GEMINI_API_BASE = "https://generativelanguage.googleapis.com"
 
 
+_GEMINI_API_VERSIONS = ("v1beta", "v1")
+
+
 def _gemini_generate_url(api_version: str, model: str) -> str:
-    return f"{_GEMINI_API_BASE}/{api_version}/models/{model}:generateContent"
+    """Собрать generateContent URL, провалидировав оба path-сегмента.
+
+    Валидация живёт здесь, а не у вызывающих: это точка, где `model` попадает
+    в путь, и проверка у вызывающего обходится следующим вызывающим. См.
+    `assert_safe_gemini_model_id` о том, что именно и почему запрещено.
+    """
+    from core.gemini_models import assert_safe_gemini_model_id
+
+    if api_version not in _GEMINI_API_VERSIONS:
+        raise ValueError(
+            f"Недопустимая версия Gemini API: {api_version!r} "
+            f"(ожидается одна из {_GEMINI_API_VERSIONS})"
+        )
+    safe_model = assert_safe_gemini_model_id(model)
+    return f"{_GEMINI_API_BASE}/{api_version}/models/{safe_model}:generateContent"
 
 
 async def _gemini_post(
@@ -403,6 +420,25 @@ async def _anthropic_chat(
         return data["content"][0]["text"]
 
 
+def assert_model_allowed(cfg: LlmCallConfig) -> None:
+    """Отклонить устаревшую/некаталожную модель ДО получения egress-lease.
+
+    `model_allowed_for_provider` была написана и экспортирована, но не имела ни
+    одного вызова вне тестов (находка аудита H5) — политика была декоративной.
+    Проверка идёт до lease: незачем брать разрешение на вызов, который мы всё
+    равно отклоняем.
+    """
+    from core.gemini_models import model_allowed_for_provider
+
+    provider = (cfg.provider or "").strip().lower()
+    model = _resolve_model(cfg)
+    if not model_allowed_for_provider(provider, model):
+        raise ValueError(
+            f"Модель {model!r} недопустима для провайдера {provider!r}: "
+            "она устарела либо не проходит проверку идентификатора"
+        )
+
+
 async def chat_complete(
     cfg: LlmCallConfig,
     prompt: str,
@@ -418,6 +454,7 @@ async def chat_complete(
     provider = (cfg.provider or "none").strip().lower()
     if not cfg.api_key:
         raise ValueError("LLM API key не задан")
+    assert_model_allowed(cfg)
 
     if provider == "openai":
         return await _openai_compatible_chat(
