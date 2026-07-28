@@ -77,6 +77,11 @@ class GoalStack:
         keywords: list[str] | None = None,
         goal_id: str | None = None,
     ) -> Goal:
+        # FIX M1 (Claude audit 2026-07-28): SAFE_MODE is documented as
+        # blocking ALL writes — this path never checked.
+        from core.write_gate import ensure_writes_allowed
+
+        ensure_writes_allowed()
         gid = goal_id or f"goal_{uuid.uuid4().hex[:12]}"
         now = _now()
         kw = json.dumps(keywords or [], ensure_ascii=False)
@@ -140,6 +145,10 @@ class GoalStack:
         return self._row_to_goal(row) if row else None
 
     def update_status(self, goal_id: str, status: str) -> Goal | None:
+        # FIX M1 (Claude audit 2026-07-28): see create() above.
+        from core.write_gate import ensure_writes_allowed
+
+        ensure_writes_allowed()
         allowed = {"active", "done", "cancelled"}
         if status not in allowed:
             raise ValueError(f"status должен быть одним из: {allowed}")

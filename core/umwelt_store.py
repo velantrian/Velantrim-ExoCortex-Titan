@@ -83,6 +83,11 @@ class UmweltStore:
             conn.executescript(_DDL)
 
     def upsert(self, p: UmweltPerception) -> UmweltPerception:
+        # FIX M1 (Claude audit 2026-07-28): SAFE_MODE is documented as
+        # blocking ALL writes — this path never checked.
+        from core.write_gate import ensure_writes_allowed
+
+        ensure_writes_allowed()
         now = _now()
         if not p.created_at:
             p.created_at = now

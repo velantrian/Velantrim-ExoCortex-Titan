@@ -74,6 +74,13 @@ class ConsoleNotesStore:
         title: str = "",
         tags: list[str] | None = None,
     ) -> dict[str, Any]:
+        # FIX M1 (Claude audit 2026-07-28): SAFE_MODE is documented (see
+        # core/meta_supervisor.py) as blocking ALL writes — this path never
+        # checked, so notes could still be created during a lockdown meant
+        # to stop exactly that.
+        from core.write_gate import ensure_writes_allowed
+
+        ensure_writes_allowed()
         now = int(time.time() * 1000)
         clean_content = " ".join((content or "").split())
         clean_title = " ".join((title or "").split()) or clean_content[:60] or "Note"
@@ -95,6 +102,10 @@ class ConsoleNotesStore:
         content: str | None = None,
         tags: list[str] | None = None,
     ) -> dict[str, Any] | None:
+        # FIX M1 (Claude audit 2026-07-28): see create_note() above.
+        from core.write_gate import ensure_writes_allowed
+
+        ensure_writes_allowed()
         note = self.get_note(note_id)
         if not note:
             return None
@@ -114,6 +125,10 @@ class ConsoleNotesStore:
         return self.get_note(note_id)
 
     def delete_note(self, note_id: str) -> bool:
+        # FIX M1 (Claude audit 2026-07-28): see create_note() above.
+        from core.write_gate import ensure_writes_allowed
+
+        ensure_writes_allowed()
         with self._connect() as conn:
             cur = conn.execute("DELETE FROM console_notes WHERE note_id = ?", (note_id,))
             return cur.rowcount > 0

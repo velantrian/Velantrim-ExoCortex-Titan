@@ -165,6 +165,11 @@ class MemoryOpsStore:
         metadata: dict[str, Any] | None = None,
         source_id: str | None = None,
     ) -> dict[str, Any]:
+        # FIX M1 (Claude audit 2026-07-28): SAFE_MODE is documented as
+        # blocking ALL writes — this path never checked.
+        from core.write_gate import ensure_writes_allowed
+
+        ensure_writes_allowed()
         if not source_type.strip():
             raise ValueError("source_type is required")
         if not label.strip():
@@ -258,6 +263,10 @@ class MemoryOpsStore:
         raw_id: str | None = None,
         inbox_id: str | None = None,
     ) -> dict[str, Any]:
+        # FIX M1 (Claude audit 2026-07-28): see register_source() above.
+        from core.write_gate import ensure_writes_allowed
+
+        ensure_writes_allowed()
         if not claim.strip():
             raise ValueError("claim is required")
         confidence = _validate_confidence(confidence, "memory_ops.enqueue_fact")
@@ -344,6 +353,10 @@ class MemoryOpsStore:
         *,
         reason: str = "",
     ) -> dict[str, Any] | None:
+        # FIX M1 (Claude audit 2026-07-28): see register_source() above.
+        from core.write_gate import ensure_writes_allowed
+
+        ensure_writes_allowed()
         self._validate_status(status)
         now = _now()
         with self._db() as conn:
@@ -373,6 +386,14 @@ class MemoryOpsStore:
         fact_id: str | None = None,
         epistemic_state: str = "Observed",
     ) -> dict[str, Any]:
+        # FIX M1 (Claude audit 2026-07-28): store_fact_result() below already
+        # enforces this for the canonical fact write, but this method's own
+        # fact_inbox status/raw_id updates (both the early-return branches
+        # and the final promotion below) do not go through that path at all
+        # — gate at entry so none of them can run during SAFE_MODE either.
+        from core.write_gate import ensure_writes_allowed
+
+        ensure_writes_allowed()
         item = self.get_inbox_item(inbox_id)
         if not item:
             raise ValueError(f"inbox item not found: {inbox_id}")
@@ -498,6 +519,10 @@ class MemoryOpsStore:
         metadata: dict[str, Any] | None = None,
         trace_id: str | None = None,
     ) -> dict[str, Any]:
+        # FIX M1 (Claude audit 2026-07-28): see register_source() above.
+        from core.write_gate import ensure_writes_allowed
+
+        ensure_writes_allowed()
         if not query.strip():
             raise ValueError("query is required")
         tid = trace_id or f"trace_{uuid.uuid4().hex[:12]}"

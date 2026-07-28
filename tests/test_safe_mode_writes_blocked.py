@@ -173,6 +173,92 @@ def test_store_facts_batch_blocked_in_safe_mode(store, monkeypatch):
     assert store.get_fact("f_safe_5") is None
 
 
+# ── M1 (Claude audit 2026-07-28): SAFE_MODE is documented as blocking ALL
+# writes, but only core/memory.py's paths (tested above) actually checked.
+# console_notes/goal_stack/memory_ops/umwelt_store never called
+# ensure_writes_allowed() at all — an authorized client could keep creating
+# notes/goals/inbox entries/traces/perceptions during exactly the incident
+# SAFE_MODE exists to contain. None of these stores need the migrated
+# `store` fixture — ensure_writes_allowed() consults PolicyKernel/
+# MetaSupervisor, never the facts DB — so each gets its own tmp_path file.
+
+def test_console_notes_blocked_in_safe_mode(tmp_path, monkeypatch):
+    from core.console_notes import ConsoleNotesStore
+    from core.write_gate import WritesBlockedError
+
+    notes = ConsoleNotesStore(db_path=str(tmp_path / "notes.db"))
+    note = notes.create_note("hello")
+
+    _force_safe_mode(monkeypatch)
+
+    with pytest.raises(WritesBlockedError):
+        notes.create_note("during outage")
+    with pytest.raises(WritesBlockedError):
+        notes.update_note(note["note_id"], title="new title")
+    with pytest.raises(WritesBlockedError):
+        notes.delete_note(note["note_id"])
+    assert notes.get_note(note["note_id"]) is not None
+
+
+def test_goal_stack_blocked_in_safe_mode(tmp_path, monkeypatch):
+    from core.goal_stack import GoalStack
+    from core.write_gate import WritesBlockedError
+
+    goals = GoalStack(db_path=str(tmp_path / "goals.db"))
+    goal = goals.create(title="ship the fix")
+
+    _force_safe_mode(monkeypatch)
+
+    with pytest.raises(WritesBlockedError):
+        goals.create(title="another goal during outage")
+    with pytest.raises(WritesBlockedError):
+        goals.update_status(goal.goal_id, "done")
+    assert goals.get(goal.goal_id).status == "active"
+
+
+def test_memory_ops_blocked_in_safe_mode(tmp_path, monkeypatch):
+    from core.memory_ops import MemoryOpsStore
+    from core.write_gate import WritesBlockedError
+
+    ops = MemoryOpsStore(db_path=str(tmp_path / "memory_ops.db"))
+    source = ops.register_source(source_type="doc", label="test doc")
+    inbox_item = ops.enqueue_fact(claim="a claim", source_id=source["source_id"])
+    trace = ops.save_trace(query="q")
+
+    _force_safe_mode(monkeypatch)
+
+    with pytest.raises(WritesBlockedError):
+        ops.register_source(source_type="doc", label="another during outage")
+    with pytest.raises(WritesBlockedError):
+        ops.enqueue_fact(claim="another during outage")
+    with pytest.raises(WritesBlockedError):
+        ops.set_inbox_status(inbox_item["inbox_id"], "rejected")
+    with pytest.raises(WritesBlockedError):
+        ops.promote_inbox_item(inbox_item["inbox_id"])
+    with pytest.raises(WritesBlockedError):
+        ops.save_trace(query="another during outage")
+
+    assert ops.get_inbox_item(inbox_item["inbox_id"])["status"] == "pending"
+    assert ops.get_trace(trace["trace_id"]) is not None
+
+
+def test_umwelt_store_blocked_in_safe_mode(tmp_path, monkeypatch):
+    from core.umwelt_store import UmweltPerception, UmweltStore
+    from core.write_gate import WritesBlockedError
+
+    store_ = UmweltStore(db_path=str(tmp_path / "umwelt.db"))
+
+    _force_safe_mode(monkeypatch)
+
+    with pytest.raises(WritesBlockedError):
+        store_.upsert(UmweltPerception(
+            perception_id="p1", object_key="obj", object_label_ru="Объект",
+            perceiver_id="user", perceiver="Пользователь", perceiver_category="human",
+            statement="test", knowledge_status="known",
+        ))
+    assert store_.count() == 0
+
+
 def test_ims3_safe_mode_actually_blocks_store(store, monkeypatch):
     """Strengthen I-MS3: flag alone is not enough — write must fail."""
     import core.meta_supervisor as ms_mod
