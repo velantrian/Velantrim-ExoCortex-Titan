@@ -25,6 +25,13 @@ on:
       - "config/exocortex-dev.env"
       - "docker-compose.yml"
       - "docker-compose.dev.yml"
+      # Hardened production profile (PR #63 review): these were not
+      # watched, so a change to the profile skipped the Docker checks.
+      - "docker-compose.prod.yml"
+      - ".env.prod.example"
+      - "scripts/validate_production_profile.py"
+      - "tests/test_production_profile.py"
+      - "docs/operations/hardened-production-profile.md"
       - ".github/workflows/docker.yml"
   pull_request:
     branches: [main, master]
@@ -50,6 +57,13 @@ on:
       - "config/exocortex-dev.env"
       - "docker-compose.yml"
       - "docker-compose.dev.yml"
+      # Hardened production profile (PR #63 review): these were not
+      # watched, so a change to the profile skipped the Docker checks.
+      - "docker-compose.prod.yml"
+      - ".env.prod.example"
+      - "scripts/validate_production_profile.py"
+      - "tests/test_production_profile.py"
+      - "docs/operations/hardened-production-profile.md"
       - ".github/workflows/docker.yml"
 
 jobs:

@@ -46,7 +46,7 @@ pytest tests/test_production_profile.py -q
 |---|------|-----------|----------|
 | A | Experimental features enabled in production | 33 research/experimental/debug variables pinned to `0`/`false`. An explicit `ENABLE_X=0` beats `COMPUTE_PROFILE` escalation (`core/compute_profile.py::resolve_flag` reads the environment first), so the pins hold even under `COMPUTE_PROFILE=heavy` | startup log shows none of Velum / Etir / Welfare / EventBus / CognitiveRuntime / CognitiveFactStore / Umwelt initialising |
 | B | Background cognitive workers start automatically | `SLEEP_WORKER_ENABLED=false`. **This is mandatory, not cosmetic:** `server.py:60` defaults it to `"true"`, so the worker would otherwise self-activate on idle, rewrite CoreMemoryBlocks/notebook state, and receive a live LLM callable | no `SleepTimeWorker: ✅ запущен` line in the startup log |
-| C | External provider traffic without operator action | No provider credential appears in the compose file at all; `LLM_PROVIDER=none`; `ENABLE_CONCEPT_LLM_NAMING=0`, `ENABLE_CROSS_DOMAIN_LLM_ROUTING=0`, `VELANTRIM_VISION_LLM=false`, `VELANTRIM_PDF_USE_MARKER_LLM=false` | log reports `LLM: none`; resolved config contains zero credential variables |
+| C | External provider traffic without operator action | **Partial.** No provider credential appears in the compose file; `LLM_PROVIDER=none`; `ENABLE_CONCEPT_LLM_NAMING=0`, `ENABLE_CROSS_DOMAIN_LLM_ROUTING=0`, `VELANTRIM_VISION_LLM=false`, `VELANTRIM_PDF_USE_MARKER_LLM=false`. This removes the *environment* provider path only — an authenticated client can still supply `llm_provider` + `llm_api_key` per request (§7.1) | log reports `LLM: none`; resolved config contains zero credential variables |
 | D | Ports exposed too broadly | Exactly one published port, bound to `127.0.0.1` by default | `docker port` → `8000/tcp -> 127.0.0.1:8000` |
 | E | Secrets committed | `.env.prod.example` assigns no values; `.gitignore` extended with `.env.*` (the bare `.env` rule did **not** cover `.env.prod`) while keeping `*.example` trackable | `git check-ignore -v .env.prod` matches; a test asserts both directions |
 | F | Container runs as root | `user: "10001:10001"` restated on top of the image's `USER velantrim` | `id` → `uid=10001(velantrim)` |
@@ -66,18 +66,31 @@ pytest tests/test_production_profile.py -q
 |---|---|
 | `ENABLE_WRITE_GATE=1` | canonical write-protocol gate. `core/write_gate.py::is_write_gate_enabled()` always returns `True`; this pin is the documented compatibility readout, not an off switch |
 | `ENABLE_TRUTH_GATE=1` | epistemic admission gate on supported paths |
-| `ENABLE_TRUTH_POLICY=1` | explicit read-path verdict |
 | `ENABLE_OBSERVER=1` | passive read-path meta-monitor |
-| `ENABLE_RESPONSE_GUARDIAN=1` | response guardian |
-| `ENABLE_OUTPUT_FAITHFULNESS=1` | answer/fact faithfulness check |
-| `ENABLE_RESPONSE_AUDIT=1` | audit trail of responses |
-| `ENABLE_IMMUTABLE_CORE=1` | SHA-256 delta snapshots of the immutable core |
+| `ENABLE_RESPONSE_GUARDIAN=1` | response guardian — **scope:** runs inside `core/pipeline.py`, so it covers the pipeline answer (which is the returned answer while no provider is configured), **not** an `llm_answer` |
+| `ENABLE_OUTPUT_FAITHFULNESS=1` | answer/fact faithfulness check — same scope caveat |
+| `ENABLE_IMMUTABLE_CORE=1` | the **manually invoked** graph-snapshot API in `core/immutable_core.py`. No automatic SHA-256 snapshot is produced — `ImmutableCoreScheduler` is never started (§7.4) |
 | `ENABLE_RATE_LIMIT=1` | per-IP token bucket (`core/rate_limit.py`) |
 | `ENABLE_CIRCUIT_BREAKER=1` | backpressure |
 | `ENABLE_MEMORY_BUDGET=1` | bounded memory growth |
 | `VELANTRIM_SQLITE_SYNCHRONOUS=FULL` | durability |
 | `VELANTRIM_VERSION_SNAPSHOTS=true` | provenance pre-images |
 | `COMPUTE_PROFILE=lite` | adds nothing beyond the Truth Kernel |
+
+### Controls deliberately pinned OFF after the PR #63 review
+
+Three controls were pinned on in the first version of this profile. Verification
+against `main` showed each one either fails open or does nothing here, so the
+profile no longer enables them and no longer claims them.
+
+| Variable | Now | Why |
+|---|---|---|
+| `ENABLE_TRUTH_POLICY` | **0** | Fail-open. `server.py` wraps the `truth_policy.decide` call in `except Exception` that logs at DEBUG and leaves `truth_rejects_answer=False`, then generates the answer anyway. The gate opens precisely when the policy breaks, and at `LOG_LEVEL=INFO` the failure is silent. Re-enable only after a reviewed runtime fix makes that path reject. |
+| `ENABLE_RESPONSE_AUDIT` | **0** | Unreachable. The only non-test caller of `core.response_audit.audit_response_generated` is the `RESPONSE_GENERATED` handler in `core/l45_bridge.py`, and `register_l45_handlers()` returns early unless the event bus is on. With `ENABLE_EVENT_BUS=0` no audit record is ever written. Reaching it by enabling the event bus would switch on unrelated background dispatch, which this profile refuses — so auditing stays off and unclaimed. |
+| `ENABLE_IMMUTABLE_CORE` | 1, **claim corrected** | Still enables the manual graph-snapshot API, which is harmless and useful. But `ImmutableCoreScheduler` has no non-test caller, so nothing schedules SHA-256 snapshots. The profile no longer advertises automatic snapshotting. |
+
+Not the fix: turning on `ENABLE_EVENT_BUS` to make auditing reachable. That is why
+`ENABLE_EVENT_BUS` and `ENABLE_EVENT_BUS_BACKGROUND` both stay `0`.
 
 `ENABLE_CAUSAL_GRAPH=1` is deliberately retained: it is the default-on relation
 substrate (`flag("ENABLE_CAUSAL_GRAPH", "1")`), and the read path degrades
@@ -97,62 +110,129 @@ There is no database service and therefore no database port: this profile pins
 
 ## 6. External provider policy
 
-Disabled by default, with no credentials present. Enabling one is a deliberate
-two-step act — choose the provider *and* supply its key:
+**Not configured by default — not blocked.** This distinction is the whole
+section; do not compress it back into "providers are disabled".
 
-```env
-LLM_PROVIDER=anthropic
-ANTHROPIC_API_KEY=<secret>
+What the profile does: no provider credential is referenced by
+`docker-compose.prod.yml`, and `LLM_PROVIDER` resolves to `none`, so **no
+provider is configured from the environment**.
+
+What the profile does **not** do: prevent a provider call.
+`server.py::_resolve_llm_config_for_request` prefers a config built from the
+**request** over the environment default, and the LLM/STT/TTS routes are always
+registered. Any client holding `VELANTRIM_API_KEY` can therefore send
+
+```json
+{"llm_provider": "anthropic", "llm_api_key": "..."}
 ```
 
-A credential alone activates nothing: `server.py:150-176` only builds a provider
-config for the selected `LLM_PROVIDER`.
+and reach a remote provider, carrying query text and retrieved memory off-host,
+while `/health` and the startup log still report `LLM: none`.
 
-> ⚠️ Before enabling a provider, read §7. On this commit the PolicyKernel
-> network/remote-data policy is **declarative only**.
+The executable egress boundary is **draft PR #59**
+(`agent/p0-egress-epistemic-boundary`). It is not implemented on this commit and
+is deliberately not duplicated here. Until it lands, the only effective controls
+are restricting who holds `VELANTRIM_API_KEY` and enforcing egress at a layer
+that can (host firewall, egress proxy, NetworkPolicy).
+
+### Configuring a provider from the environment
+
+⚠️ Putting a credential in `.env.prod` alone does **not** reach the container.
+The compose file declares an explicit `environment:` list and only the variables
+named there are passed in; `--env-file` supplies values for `${...}`
+interpolation and nothing more. `LLM_PROVIDER` **is** interpolated, so setting it
+works — but `ANTHROPIC_API_KEY` and friends are not referenced, so they would be
+silently ignored and the provider would fail to authenticate.
+
+Pass the credential in explicitly with an uncommitted override file:
+
+```yaml
+# docker-compose.provider.yml   (add to .gitignore)
+services:
+  velantrim:
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:?provider key required}
+```
+
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.provider.yml \
+  --env-file .env.prod up -d
+```
+
+Note that the answer-integrity checks do not cover a provider answer — see §7.3.
 
 ## 7. Known limitations and residual gaps
 
-These are real and deliberately not papered over.
+These are real and deliberately not papered over. Items 7.1–7.4 are the
+**unresolved runtime gaps carried over from the PR #63 review**; each is a
+runtime defect that configuration cannot fix, and each needs its own reviewed PR.
 
-1. **No egress enforcement.** `core/policy_kernel.py` returns
-   `EffectivePolicy()` with `network=deny` and `remote_data=never`, but nothing
-   env-configurable resolves it and, per PR #59, the server-side LLM/STT/TTS
-   paths do not acquire a capability lease before opening a connection. Outbound
-   denial here rests on `LLM_PROVIDER=none` and the absence of credentials —
-   **not** on an enforced boundary. PR #59 (`agent/p0-egress-epistemic-boundary`,
-   draft) is the tracked fix.
-2. **The Compose network is not `internal: true`.** An internal network removes
+1. **Remote providers are reachable per request (P1, runtime).**
+   `server.py::_resolve_llm_config_for_request` prefers a request-supplied
+   `llm_provider` + `llm_api_key` over the environment, and the LLM/STT/TTS
+   routes are always registered. `LLM_PROVIDER=none` therefore means "not
+   configured", never "blocked". Compounding this,
+   `core/policy_kernel.py` returns `EffectivePolicy()` with `network=deny` and
+   `remote_data=never`, but nothing env-configurable resolves it and no
+   capability lease is taken before a connection opens. The tracked fix is draft
+   **PR #59** (`agent/p0-egress-epistemic-boundary`), which must be rebased and
+   finished against current `main`. Not duplicated here.
+2. **TruthPolicy is fail-open (P1, runtime).** `server.py` catches any exception
+   from `truth_policy.decide`, logs at DEBUG, leaves `truth_rejects_answer=False`
+   and proceeds to answer generation — so the verdict permits an answer exactly
+   when the policy is unavailable, silently at `LOG_LEVEL=INFO`. This profile
+   sets `ENABLE_TRUTH_POLICY=0` as the safe configuration-only response. The
+   runtime path must be made to reject or fail the request before the flag can be
+   turned back on.
+3. **Answer-integrity checks do not cover a provider answer (P1, runtime).**
+   `apply_response_guardian` and `check_response_faithfulness` run inside
+   `core/pipeline.py`. `server.py` generates `llm_answer` afterwards and returns
+   it; `/chat` returns the provider reply directly. With no provider configured
+   the pipeline answer *is* the returned answer, so the checks apply — but a
+   request-configured provider (7.1) bypasses both. They must be applied to the
+   final selected response.
+4. **No automatic integrity snapshots (P1, runtime).**
+   `core/immutable_core_scheduler.py::ImmutableCoreScheduler` has no non-test
+   caller, so the server never constructs or starts it.
+   `ENABLE_IMMUTABLE_CORE=1` enables only the manually invoked graph-snapshot
+   API. Either the lifespan must start and stop the scheduler, or no automatic
+   SHA-256 snapshot may be claimed — this profile takes the latter position.
+5. **Response auditing is unreachable without the event bus (P1, runtime).**
+   The sole non-test caller of `audit_response_generated` is the
+   `RESPONSE_GENERATED` handler in `core/l45_bridge.py`, whose registration
+   returns early unless the event bus is enabled. `ENABLE_RESPONSE_AUDIT=0` here;
+   auditing needs an invocation path independent of the bus.
+6. **The Compose network is not `internal: true`.** An internal network removes
    the gateway, which also removes published-port reachability, so it cannot
    host the API entrypoint. If your environment requires enforced egress denial,
    apply it at the layer that can actually enforce it (host firewall, egress
    proxy, Kubernetes NetworkPolicy, or a sidecar). This profile does not claim
    complete egress isolation.
-3. **`VELANTRIM_ALLOW_OPEN` still exists in runtime code** (`server.py:69`) as an
+7. **`VELANTRIM_ALLOW_OPEN` still exists in runtime code** (`server.py:69`) as an
    unauthenticated development bypass. This profile does not supply it, and
    `server.py:85` refuses to import without a key, but the code path remains.
    Removing it is a runtime change and out of scope here.
-4. **TruthGate does not cover every write path.** `core/memory.py::promote_esm_to`
+8. **TruthGate does not cover every write path.** `core/memory.py::promote_esm_to`
    ends its ladder walk with a plain `transition_esm()` into `Validated` for
    `world_skills_ingest`, `CognitiveStore.transition` and test fixtures. Setting
    `ENABLE_TRUTH_GATE=1` does not change that. Unifying admission is explicitly
    out of scope.
-5. **Contradiction detection is unavailable.** `core/truth_gate.py` accepts
+9. **Contradiction detection is unavailable.** `core/truth_gate.py` accepts
    `contradiction_detector` of `none` (default), `naive` (documented
    false-positive-prone, development only) or `nli` (raises
    `NotImplementedError`). No production-safe detector exists yet.
-6. **A fresh deployment reports `DEGRADED`.** With zero facts the MHI is 0.375,
+10. **A fresh deployment reports `DEGRADED`.** With zero facts the MHI is 0.375,
    below the 0.50 healthy threshold, so `/health` returns HTTP 200 with
    `status: degraded`. Only MHI < 0.30 produces SAFE_MODE/503. This is expected
    on an empty store, not a deployment fault.
-7. **Pre-existing log error, unrelated to this profile:**
+11. **Pre-existing log error, unrelated to this profile:**
    `LLM API: /console/llm/test ❌ не зарегистрирован` is emitted at ERROR by
    `server.py:438-442`. Reproduced with the unmodified image and default
    environment, so it predates this change. Reported, not fixed here.
-8. **`ENABLE_PROMETHEUS_METRICS` is inert.** Both existing compose files set it,
+12. **`ENABLE_PROMETHEUS_METRICS` is inert.** Both existing compose files set it,
    but no Python code reads it. This profile omits it rather than carry a
    misleading flag.
-9. **No image digest pinning.** The Dockerfile uses the `python:3.11-slim` tag.
+13. **No image digest pinning.** The Dockerfile uses the `python:3.11-slim` tag.
    Digest pinning is tracked in issue #52 and left alone here.
 
 ## 8. Writable paths

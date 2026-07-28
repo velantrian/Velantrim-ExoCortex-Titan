@@ -17,7 +17,12 @@ from pathlib import Path
 
 import pytest
 
-yaml = pytest.importorskip("yaml", reason="PyYAML is required to inspect Compose files")
+# NOT importorskip. PyYAML is a declared verification dependency (requirements-dev
+# .txt and the `dev` extra). Skipping here made every structural production-profile
+# assertion vanish silently whenever the dependency was missing, which is exactly
+# how the original profile shipped unverified (PR #63 review). A missing
+# verification dependency must fail the suite, not quietly disable it.
+import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROD_COMPOSE = REPO_ROOT / "docker-compose.prod.yml"
@@ -217,6 +222,9 @@ def test_database_paths_point_into_the_data_volume(env: dict[str, str]):
     # development / debug surfaces
     "ENABLE_API_DOCS",
     "VELANTRIM_DEV_MOCK",
+    # inert or fail-open controls, corrected after the PR #63 review
+    "ENABLE_TRUTH_POLICY",
+    "ENABLE_RESPONSE_AUDIT",
 ])
 def test_experimental_feature_is_disabled(env: dict[str, str], var: str):
     assert var in env, f"{var} is not pinned in the production profile"
@@ -226,11 +234,9 @@ def test_experimental_feature_is_disabled(env: dict[str, str], var: str):
 @pytest.mark.parametrize("var", [
     "ENABLE_WRITE_GATE",
     "ENABLE_TRUTH_GATE",
-    "ENABLE_TRUTH_POLICY",
     "ENABLE_RATE_LIMIT",
     "ENABLE_RESPONSE_GUARDIAN",
     "ENABLE_OUTPUT_FAITHFULNESS",
-    "ENABLE_RESPONSE_AUDIT",
     "ENABLE_IMMUTABLE_CORE",
     "ENABLE_CIRCUIT_BREAKER",
     "ENABLE_MEMORY_BUDGET",
@@ -336,3 +342,201 @@ def test_validator_script_reports_success():
         cwd=str(REPO_ROOT), capture_output=True, text=True, check=False,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PR #63 review corrections — regression coverage
+#
+# Each test below pins one corrected claim. They exist so a future edit cannot
+# quietly re-enable a control that does not work, or restore a claim the runtime
+# does not support.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _prod_text() -> str:
+    return PROD_COMPOSE.read_text(encoding="utf-8")
+
+
+def _env_template_text() -> str:
+    return PROD_ENV_TEMPLATE.read_text(encoding="utf-8")
+
+
+def test_truth_policy_stays_disabled_until_fail_closed(env: dict[str, str]):
+    """F1: the read-path verdict is fail-open in server.py.
+
+    server.py wraps the truth_policy block in `except Exception` that logs at
+    DEBUG and leaves truth_rejects_answer False, so a raising policy permits the
+    answer. Until a reviewed runtime fix lands, this must not be pinned on.
+    """
+    assert env.get("ENABLE_TRUTH_POLICY", "").strip().lower() in FALSY
+
+
+def test_profile_does_not_call_truth_policy_fail_closed():
+    """The profile must not describe TruthPolicy as fail-closed."""
+    text = _prod_text().lower()
+    window_start = text.find("enable_truth_policy")
+    assert window_start != -1
+    window = text[max(0, window_start - 600):window_start + 600]
+    assert "fail-open" in window, "the fail-open nature must be stated at the pin"
+    assert "fail-closed" not in window, "TruthPolicy must not be called fail-closed"
+
+
+def test_response_audit_stays_disabled_while_event_bus_is_off(env: dict[str, str]):
+    """F2: audit_response_generated is only reachable through the event bus."""
+    assert env.get("ENABLE_RESPONSE_AUDIT", "").strip().lower() in FALSY
+
+
+def test_event_bus_is_not_enabled_to_reach_the_audit_path(env: dict[str, str]):
+    """The fix for F2 must not be 'switch the event bus on'."""
+    assert env.get("ENABLE_EVENT_BUS", "").strip().lower() in FALSY
+    assert env.get("ENABLE_EVENT_BUS_BACKGROUND", "").strip().lower() in FALSY
+
+
+def test_immutable_core_does_not_claim_automatic_snapshots():
+    """F7: ImmutableCoreScheduler has no non-test caller, so nothing is scheduled."""
+    text = _prod_text()
+    marker = text.find("ENABLE_IMMUTABLE_CORE=1")
+    assert marker != -1
+    window = text[max(0, marker - 700):marker]
+    assert "MANUALLY" in window or "manual" in window, (
+        "the manual-only scope of ENABLE_IMMUTABLE_CORE must be stated"
+    )
+    assert "SHA-256 delta snapshots of the immutable core." not in text, (
+        "the original automatic-snapshot claim must be gone"
+    )
+
+
+def test_provider_section_does_not_claim_blocking():
+    """F5: LLM_PROVIDER=none is 'not configured', never 'blocked'."""
+    text = _prod_text()
+    assert "no remote provider" not in text.lower(), (
+        "the profile must not headline providers as absent/blocked"
+    )
+    lowered = text.lower()
+    assert "not blocked" in lowered or "never as \"providers blocked\"" in lowered
+
+
+def test_request_supplied_provider_credentials_are_documented():
+    """F5 must be visible in both the profile and the env template."""
+    for text, label in ((_prod_text(), "compose"), (_env_template_text(), "env template")):
+        lowered = text.lower()
+        assert "llm_api_key" in lowered, f"{label} does not mention llm_api_key"
+        assert "llm_provider" in lowered, f"{label} does not mention llm_provider"
+        assert "#59" in text, f"{label} does not reference the PR #59 egress boundary"
+
+
+def test_env_template_does_not_claim_env_file_injects_credentials():
+    """F4 (docs): --env-file alone does not pass unreferenced vars into the container."""
+    text = _env_template_text()
+    assert "add BOTH lines to `.env.prod` and restart" not in text, (
+        "the false credential-injection instruction must be gone"
+    )
+    lowered = text.lower()
+    assert "does not reach the container" in lowered or "silently ignored" in lowered
+
+
+def test_answer_integrity_scope_is_documented():
+    """F6: guardian/faithfulness run inside core/pipeline.py, not on llm_answer."""
+    lowered = _prod_text().lower()
+    assert "llm_answer" in lowered, (
+        "the profile must state that the integrity checks do not inspect llm_answer"
+    )
+
+
+# ── validator behaviour (F3, F4) ──────────────────────────────────────────────
+
+def test_validator_requires_pyyaml_rather_than_skipping():
+    """F3: PyYAML must be a declared verification dependency."""
+    assert "pyyaml" in REPO_ROOT.joinpath("requirements-dev.txt").read_text(
+        encoding="utf-8"
+    ).lower()
+    assert "pyyaml>=6.0" in REPO_ROOT.joinpath("pyproject.toml").read_text(encoding="utf-8")
+
+
+def test_this_module_does_not_skip_on_missing_yaml():
+    """A missing verification dependency must fail the suite, not disable it.
+
+    Asserted over the AST: yaml must be acquired by a module-level ``import``,
+    not by a skip-on-missing helper. A source substring check cannot be used
+    here — this file names the helper in prose, and the assertion text would
+    match itself.
+    """
+    import ast
+
+    tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
+    module_level_imports = {
+        alias.name
+        for node in tree.body
+        if isinstance(node, ast.Import)
+        for alias in node.names
+    }
+    assert "yaml" in module_level_imports, (
+        "yaml must be a hard module-level import so a missing dependency fails"
+    )
+    # No module-level call may bind the yaml name (that is the skip pattern).
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
+            targets = [t.id for t in node.targets if isinstance(t, ast.Name)]
+            assert "yaml" not in targets, "yaml must not be bound by a call"
+
+
+def _load_validator():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("_prod_validator", VALIDATOR)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.parametrize("raw,expected,certain", [
+    ("${LLM_PROVIDER:-none}", "none", True),
+    ("${VELANTRIM_BIND_ADDR:-127.0.0.1}", "127.0.0.1", True),
+    ("${VELANTRIM_API_KEY:?required}", "${VELANTRIM_API_KEY:?required}", False),
+    ("${SOME_VAR}", "${SOME_VAR}", False),
+    ("lite", "lite", True),
+    ("0", "0", True),
+])
+def test_interpolation_resolution(raw: str, expected: str, certain: bool):
+    """F4: `${VAR:-default}` resolves; a required/no-default var stays uncertain."""
+    module = _load_validator()
+    assert module.resolve_interpolation(raw) == (expected, certain)
+
+
+def test_raw_yaml_fallback_does_not_produce_false_failures():
+    """F4: the documented daemon-free path must not fail an unchanged profile."""
+    module = _load_validator()
+    raw = yaml.safe_load(PROD_COMPOSE.read_text(encoding="utf-8"))
+    env = module.env_map(raw["services"][APP_SERVICE])
+
+    result = module.Result()
+    module.check_providers_and_secrets(result, env)
+    module.check_feature_policy(result, env)
+
+    assert result.failures == [], f"false failures in the fallback path: {result.failures}"
+
+
+def test_validator_passes_in_both_resolution_modes():
+    """Exit 0 with the real Docker CLI and with the raw-YAML fallback alike."""
+    proc = subprocess.run(
+        [sys.executable, str(VALIDATOR)],
+        cwd=str(REPO_ROOT), capture_output=True, text=True, check=False,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+# ── CI wiring (item 6) ────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("path", [
+    "docker-compose.prod.yml",
+    ".env.prod.example",
+    "scripts/validate_production_profile.py",
+    "tests/test_production_profile.py",
+    "docs/operations/hardened-production-profile.md",
+])
+def test_docker_workflow_watches_production_profile_paths(path: str):
+    """The Docker workflow must run when the production profile changes."""
+    workflow = REPO_ROOT / ".github" / "workflows" / "docker.yml"
+    assert f'"{path}"' in workflow.read_text(encoding="utf-8"), (
+        f"{path} is missing from docker.yml path filters"
+    )

@@ -20,13 +20,24 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
-import yaml
+try:
+    import yaml
+except ModuleNotFoundError:  # pragma: no cover - dependency guard
+    print(
+        "error: PyYAML is required by this validator.\n"
+        "       Install the development/verification set:\n"
+        "           pip install -r requirements-dev.txt\n"
+        "       or:  pip install -e '.[dev]'",
+        file=sys.stderr,
+    )
+    raise SystemExit(2) from None
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROD_COMPOSE = REPO_ROOT / "docker-compose.prod.yml"
@@ -92,6 +103,11 @@ MUST_BE_DISABLED = {
     "ENABLE_PREDICTIVE_FUSION": "research: predictive fusion",
     "ENABLE_ACTR_ACTIVATION": "research: ACT-R activation",
     "ENABLE_GRAPH_LAB": "research: NetworkX graph lab",
+    # Controls that look protective but are inert or fail-open in this
+    # configuration (PR #63 review). Pinned off so the profile cannot advertise
+    # a guarantee it does not deliver.
+    "ENABLE_TRUTH_POLICY": "fail-open read-path verdict (server.py catches and continues)",
+    "ENABLE_RESPONSE_AUDIT": "unreachable while ENABLE_EVENT_BUS=0 (core/l45_bridge.py)",
     # Development / debug surfaces.
     "ENABLE_API_DOCS": "Swagger/OpenAPI admin surface",
     "VELANTRIM_DEV_MOCK": "development mock pipeline",
@@ -101,12 +117,12 @@ MUST_BE_DISABLED = {
 MUST_BE_ENABLED = {
     "ENABLE_WRITE_GATE": "canonical write-protocol gate readout",
     "ENABLE_TRUTH_GATE": "epistemic admission gate",
-    "ENABLE_TRUTH_POLICY": "read-path truth verdict",
     "ENABLE_RATE_LIMIT": "per-IP token bucket",
     "ENABLE_RESPONSE_GUARDIAN": "response guardian",
     "ENABLE_OUTPUT_FAITHFULNESS": "answer/fact faithfulness check",
-    "ENABLE_RESPONSE_AUDIT": "response audit trail",
-    "ENABLE_IMMUTABLE_CORE": "immutable-core snapshots",
+    # Manual graph-snapshot API only — no scheduler is ever started, so this
+    # must not be described as automatic SHA-256 snapshotting (PR #63 review).
+    "ENABLE_IMMUTABLE_CORE": "immutable-core manual snapshot API",
     "ENABLE_CIRCUIT_BREAKER": "backpressure circuit breaker",
     "ENABLE_MEMORY_BUDGET": "bounded memory growth",
 }
@@ -150,6 +166,36 @@ def resolve_compose() -> tuple[dict[str, Any], bool]:
         if proc.returncode == 0:
             return yaml.safe_load(proc.stdout), True
     return yaml.safe_load(PROD_COMPOSE.read_text(encoding="utf-8")), False
+
+
+_INTERPOLATION_RE = re.compile(r"^\$\{([A-Za-z_][A-Za-z0-9_]*)(?::([-?])(.*))?\}$")
+
+
+def resolve_interpolation(value: str) -> tuple[str, bool]:
+    """Resolve a bare ``${VAR:-default}`` expression for the daemon-free path.
+
+    Returns ``(value, is_certain)``. When Docker is unavailable the raw YAML
+    still contains uninterpolated expressions; comparing them literally
+    produced a false failure on an unchanged, valid profile (PR #63 review, P2).
+
+    - ``${VAR:-default}`` resolves to ``default``: that is precisely the value a
+      deployment gets when the operator sets nothing, which is what this
+      validator asserts about the profile's defaults. Certain.
+    - ``${VAR:?message}`` is a required variable with no default. Its deployed
+      value is operator-supplied, so nothing can be asserted about it. Not
+      certain.
+    - ``${VAR}`` has no default either. Not certain.
+
+    Anything that is not a single whole-string expression is returned unchanged
+    and treated as certain.
+    """
+    match = _INTERPOLATION_RE.match(value.strip())
+    if match is None:
+        return value, True
+    _, operator, default = match.group(1), match.group(2), match.group(3)
+    if operator == "-":
+        return default, True
+    return value, False
 
 
 def env_map(service: dict[str, Any]) -> dict[str, str]:
@@ -278,27 +324,39 @@ def check_durable_volume(res: Result, svc: dict[str, Any], top: dict[str, Any]) 
     )
 
 
+def env_value(
+    env: dict[str, str], name: str, absent: str | None = None
+) -> tuple[str | None, bool]:
+    """Deployed value of ``name`` plus whether it can be asserted about.
+
+    Certainty is False only for an uninterpolated required/no-default
+    expression in the daemon-free path, whose deployed value is operator-supplied
+    and therefore not a property of this file.
+    """
+    raw = env.get(name)
+    if raw is None:
+        return absent, True
+    return resolve_interpolation(raw)
+
+
+def _add_flag_check(
+    res: Result, label: str, env: dict[str, str], var: str, expected: set[str], why: str
+) -> None:
+    if var not in env:
+        res.add(f"{label}: {var}", False, f"not pinned in the profile ({why})")
+        return
+    value, certain = env_value(env, var)
+    if not certain:
+        res.add(f"{label}: {var}", None, f"operator-supplied ({value!r}); needs resolved config")
+        return
+    res.add(f"{label}: {var}", (value or "").strip().lower() in expected, f"={value!r} ({why})")
+
+
 def check_feature_policy(res: Result, env: dict[str, str]) -> None:
     for var, why in sorted(MUST_BE_DISABLED.items()):
-        value = env.get(var)
-        if value is None:
-            res.add(f"disabled: {var}", False, f"not pinned in the profile ({why})")
-        else:
-            res.add(
-                f"disabled: {var}",
-                value.strip().lower() in FALSY,
-                f"={value!r} ({why})",
-            )
+        _add_flag_check(res, "disabled", env, var, FALSY, why)
     for var, why in sorted(MUST_BE_ENABLED.items()):
-        value = env.get(var)
-        if value is None:
-            res.add(f"enabled: {var}", False, f"not pinned in the profile ({why})")
-        else:
-            res.add(
-                f"enabled: {var}",
-                value.strip().lower() in TRUTHY,
-                f"={value!r} ({why})",
-            )
+        _add_flag_check(res, "enabled", env, var, TRUTHY, why)
 
 
 def check_providers_and_secrets(res: Result, env: dict[str, str]) -> None:
@@ -308,33 +366,40 @@ def check_providers_and_secrets(res: Result, env: dict[str, str]) -> None:
         not present,
         f"present={present}",
     )
+    # LLM_PROVIDER is `${LLM_PROVIDER:-none}`: the `-` default resolves cleanly
+    # even without Docker, so this check stays meaningful in the fallback path.
+    provider, certain = env_value(env, "LLM_PROVIDER", "none")
     res.add(
-        "LLM_PROVIDER defaults to none",
-        env.get("LLM_PROVIDER", "none").strip().lower() == "none",
-        f"={env.get('LLM_PROVIDER')!r}",
+        "LLM_PROVIDER is not configured from the environment",
+        (provider or "").strip().lower() == "none" if certain else None,
+        f"={provider!r}",
     )
     res.add(
         "auth bypass VELANTRIM_ALLOW_OPEN not set",
         "VELANTRIM_ALLOW_OPEN" not in env,
         f"={env.get('VELANTRIM_ALLOW_OPEN')!r}",
     )
-    api_key = env.get("VELANTRIM_API_KEY", "")
     res.add("VELANTRIM_API_KEY is declared", "VELANTRIM_API_KEY" in env)
-    for weak in ("dev-key-change-me", "admin", "changeme", "password", "test"):
-        if api_key and api_key.strip().lower() == weak:
-            res.add("VELANTRIM_API_KEY is not a known weak default", False, api_key)
-            break
-    else:
-        res.add("VELANTRIM_API_KEY is not a known weak default", True)
+    # `${VELANTRIM_API_KEY:?...}` has no default, so its deployed value is
+    # operator-supplied and unknowable here; only assert on a literal.
+    api_key, key_certain = env_value(env, "VELANTRIM_API_KEY", "")
+    weak = {"dev-key-change-me", "admin", "changeme", "password", "test"}
+    res.add(
+        "VELANTRIM_API_KEY is not a known weak default",
+        (api_key or "").strip().lower() not in weak if key_certain else None,
+        "operator-supplied" if not key_certain else f"={api_key!r}",
+    )
+    profile, certain = env_value(env, "COMPUTE_PROFILE", "lite")
     res.add(
         "COMPUTE_PROFILE pinned to lite",
-        env.get("COMPUTE_PROFILE", "lite").strip().lower() == "lite",
-        f"={env.get('COMPUTE_PROFILE')!r}",
+        (profile or "").strip().lower() == "lite" if certain else None,
+        f"={profile!r}",
     )
+    deployment, certain = env_value(env, "VELANTRIM_PROFILE", "")
     res.add(
         "VELANTRIM_PROFILE not pinned to a research profile",
-        env.get("VELANTRIM_PROFILE", "").strip().lower() not in {"research", "cognitive"},
-        f"={env.get('VELANTRIM_PROFILE')!r}",
+        (deployment or "").strip().lower() not in {"research", "cognitive"} if certain else None,
+        f"={deployment!r}",
     )
 
 

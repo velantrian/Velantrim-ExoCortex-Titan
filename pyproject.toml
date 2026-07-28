@@ -95,6 +95,10 @@ dev = [
     "mypy>=1.10,<2",
     "ruff>=0.4,<0.5",
     "types-PyYAML>=6.0.12,<7",
+    # PyYAML itself, not only its stubs: the production-profile validator and
+    # tests parse docker-compose.prod.yml. Without it the validator raised
+    # ModuleNotFoundError and those tests skipped silently (PR #63 review).
+    "pyyaml>=6.0",
 ]
 
 [tool.pytest.ini_options]
