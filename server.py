@@ -26,7 +26,6 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Any, Optional
 
-import httpx
 from core.recall_policy import filter_facts_for_recall
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Response, status
@@ -94,6 +93,20 @@ if not API_KEY:
 
 # ─── Импорт Velantrim ─────────────────────────────────────────────────────────
 from core import __version__ as VELANTRIM_VERSION
+from core.policy_kernel import validate_egress_env
+
+# Egress-политика проверяется на старте, до обслуживания запросов.
+# Без этого опечатка в VELANTRIM_NETWORK_MODE / VELANTRIM_REMOTE_DATA_MODE не
+# валит загрузку: PolicyKernel падает closed, /health отвечает 200, чтение
+# работает — а канонические записи молча отключены, и сервер тихо перестаёт
+# сохранять факты. Для системы памяти это худший режим отказа, поэтому здесь
+# он превращается в явный отказ загрузки (как и для VELANTRIM_API_KEY выше).
+try:
+    validate_egress_env()
+except ValueError as _egress_exc:
+    raise RuntimeError(
+        f"Некорректная конфигурация egress-политики: {_egress_exc}"
+    ) from _egress_exc
 from core.memory import (
     _GLOBAL_STORE,
     ImmutableStateError,
@@ -200,11 +213,14 @@ async def _llm_generate(
 
         return await _with_llm_circuit(_do)
 
-    # legacy fallback (старые ENV anthropic/openai без llm_router)
-    if LLM_PROVIDER == "anthropic" and ANTHROPIC_KEY:
-        return await _anthropic_complete(prompt, system)
-    if LLM_PROVIDER == "openai" and OPENAI_KEY:
-        return await _openai_complete(prompt, system)
+    # Раньше здесь был legacy-путь в _anthropic_complete/_openai_complete,
+    # которые звали провайдеров напрямую — без egress-lease и без санитизации
+    # промпта. Он был недостижим (_env_llm_config() выставляет api_key по тем же
+    # условиям, что проверял fallback, а _llm_config_from_request возвращает
+    # конфиг только при непустом ключе), но оставался рабочей необёрнутой копией
+    # ровно того пути, который ограничивает этот PR. Удалён, чтобы инвариант
+    # «весь egress к провайдеру идёт через core.remote_egress» был структурным,
+    # а не следствием формы control flow.
     raise ValueError(
         "LLM не настроен: укажите llm_provider + llm_api_key в консоли "
         "или задайте LLM_PROVIDER и ключ в .env"
@@ -235,59 +251,6 @@ async def _with_llm_circuit(coro_factory):
         raise
 
 
-async def _anthropic_complete(prompt: str, system: str = "") -> str:
-    async def _do() -> str:
-        messages = [{"role": "user", "content": prompt}]
-        body: dict[str, Any] = {
-            "model":      ANTHROPIC_MODEL,
-            "max_tokens": 1024,
-            "messages":   messages,
-        }
-        if system:
-            body["system"] = system
-
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key":         ANTHROPIC_KEY,
-                    "anthropic-version": "2023-06-01",
-                    "content-type":      "application/json",
-                },
-                json=body,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data["content"][0]["text"]
-
-    return await _with_llm_circuit(_do)
-
-
-async def _openai_complete(prompt: str, system: str = "") -> str:
-    async def _do() -> str:
-        messages = []
-        if system:
-            messages.append({"role": "system", "content": system})
-        messages.append({"role": "user", "content": prompt})
-
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {OPENAI_KEY}",
-                    "Content-Type":  "application/json",
-                },
-                json={
-                    "model":      OPENAI_MODEL,
-                    "messages":   messages,
-                    "max_tokens": 1024,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data["choices"][0]["message"]["content"]
-
-    return await _with_llm_circuit(_do)
 
 
 def _build_system_prompt(

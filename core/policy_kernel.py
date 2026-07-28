@@ -157,6 +157,35 @@ def _normalize_data_mode(value: str) -> str:
     return mode
 
 
+def validate_egress_env() -> EffectivePolicy:
+    """Проверить egress-переменные один раз на старте; мусор → ValueError.
+
+    Почему это нужно отдельно от `capture_snapshot`. `_enum_from_env` бросает,
+    `capture_snapshot` честно падает closed — и на этом всё выглядит нормально:
+    сервер поднимается, `/health` отвечает 200, чтение и retrieval работают, а
+    `canonical_write_decision()` возвращает False. То есть **опечатка в одной
+    ENV-переменной молча переводит систему памяти в read-only**: она кажется
+    здоровой и теряет входящие факты. В логах при этом `logger.error` на каждый
+    lease, но процесс живой, и оркестратор ничего не замечает.
+
+    Плюс радиус: `lease_capability` при `policy_dependency_unavailable`
+    отклоняет вообще все capability, включая локальные, к egress не относящиеся.
+
+    Поэтому конфигурация проверяется на старте и деплой падает громко.
+    """
+    network = _enum_from_env(
+        "VELANTRIM_NETWORK_MODE",
+        NetworkMode,
+        NetworkMode.DENY.value,
+    )
+    remote_data = _enum_from_env(
+        "VELANTRIM_REMOTE_DATA_MODE",
+        RemoteDataMode,
+        RemoteDataMode.NEVER.value,
+    )
+    return EffectivePolicy(network=network, remote_data=remote_data)
+
+
 class PolicyKernel:
     """Resolve strict local policy and issue deterministic decisions."""
 
@@ -384,4 +413,5 @@ __all__ = [
     "RemoteDataMode",
     "get_policy_kernel",
     "reset_policy_kernel",
+    "validate_egress_env",
 ]
