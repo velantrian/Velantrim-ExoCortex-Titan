@@ -343,3 +343,211 @@ def test_data_mode_none_really_bypasses_remote_data_but_not_network(
     )
     assert denied_none.allowed is False
     assert denied_none.reason_code == "network_denied"
+
+
+# ── контракт data_mode="none" ───────────────────────────────────────────────
+
+def test_only_metadata_capabilities_may_declare_data_mode_none():
+    """`none` пропускает проверку remote-data — набор должен быть закрытым.
+
+    Иначе любая новая точка вызова могла бы отказаться от remote-data-измерения,
+    просто объявив `none`; а поскольку `data_mode` объявляется вызывающим и не
+    верифицируется, такой отказ был бы невидим в review.
+    """
+    from core.remote_egress import (
+        _METADATA_ONLY_CAPABILITIES,
+        ensure_remote_egress_allowed,
+    )
+
+    assert _METADATA_ONLY_CAPABILITIES == {
+        "remote_model_discovery",
+        "remote_llm_test",
+    }
+
+    for capability in ("remote_llm", "remote_stt", "remote_tts", "whatever_new"):
+        with pytest.raises(ValueError, match="data_mode='none'"):
+            ensure_remote_egress_allowed(
+                capability, provider="gemini", data_mode="none"
+            )
+
+
+def test_private_payload_capabilities_declare_raw():
+    """STT/TTS несут аудио и пользовательский текст — только `raw`."""
+    import core.llm_router as router
+    import core.llm_stream as stream
+    import core.tts_router as tts
+
+    for module in (router, stream, tts):
+        source = inspect.getsource(module)
+        tree = ast.parse(source)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            name = getattr(node.func, "id", getattr(node.func, "attr", ""))
+            if name != "ensure_remote_egress_allowed":
+                continue
+            cap = node.args[0] if node.args else None
+            mode = next(
+                (kw.value for kw in node.keywords if kw.arg == "data_mode"), None
+            )
+            if not isinstance(cap, ast.Constant) or not isinstance(mode, ast.Constant):
+                continue  # передаётся переменной — покрыто рантайм-проверкой выше
+            if cap.value in ("remote_stt", "remote_tts"):
+                assert mode.value == "raw", (
+                    f"{module.__name__}: {cap.value} объявляет "
+                    f"data_mode={mode.value!r}, а несёт приватную нагрузку"
+                )
+
+
+def test_connectivity_probe_sends_only_a_repository_owned_prompt():
+    """Промпт probe зашит в репозитории, а не приходит от вызывающего."""
+    from core.llm_router import test_connection
+
+    source = inspect.getsource(test_connection)
+    tree = ast.parse(source.strip())
+
+    # Единственные строковые литералы, уходящие наружу, — фиксированные.
+    literals = {
+        n.value for n in ast.walk(tree)
+        if isinstance(n, ast.Constant) and isinstance(n.value, str)
+    }
+    assert "Ответь одним словом: OK" in literals
+
+    # И у функции нет параметра, через который можно подсунуть текст.
+    params = {a.arg for a in tree.body[0].args.args}
+    assert params == {"cfg"}, f"test_connection принимает лишнее: {params}"
+
+
+def test_probe_capability_is_distinct_for_every_provider():
+    """Probe должен звать lease как remote_llm_test у всех провайдеров."""
+    from core.llm_router import _llm_capability
+
+    assert _llm_capability("none") == "remote_llm_test"
+    assert _llm_capability("none", quick_ping=True) == "remote_llm_test"
+    assert _llm_capability("raw", quick_ping=True) == "remote_llm_test"
+    assert _llm_capability("raw") == "remote_llm"
+
+
+@pytest.mark.parametrize(
+    "smuggled",
+    [
+        {"prompt": "секретный вопрос пользователя"},
+        {"text": "текст из памяти"},
+        {"system": "Верифицированные факты: ..."},
+        {"memory": ["fact-1", "fact-2"]},
+        {"messages": [{"role": "user", "content": "leak"}]},
+        {"audio_base64": "AAAA"},
+        {"attachment": "secret.pdf"},
+    ],
+)
+def test_public_llm_probe_rejects_user_payload(smuggled: dict):
+    """Публичный probe-роут не принимает пользовательский prompt или memory.
+
+    Отклонение, а не молчаливое игнорирование: `data_mode="none"` обходит
+    проверку remote-data, поэтому попытка приложить нагрузку должна быть видимой
+    ошибкой, а не полем, которое тихо выбросил pydantic.
+    """
+    from api.llm_routes import LlmTestBody
+
+    with pytest.raises(Exception) as exc:
+        LlmTestBody(provider="gemini", api_key="k" * 8, **smuggled)
+    assert "extra" in str(exc.value).lower() or "forbidden" in str(exc.value).lower()
+
+
+@pytest.mark.parametrize(
+    "smuggled",
+    [{"text": "произнеси это"}, {"prompt": "leak"}, {"memory": "fact"}],
+)
+def test_public_tts_probe_rejects_user_payload(smuggled: dict):
+    from api.llm_routes import TtsTestBody
+
+    with pytest.raises(Exception):
+        TtsTestBody(provider="gemini", api_key="k" * 8, **smuggled)
+
+
+def test_probe_bodies_declare_no_payload_fields():
+    """Даже без extra=forbid в схеме не должно быть полей под нагрузку."""
+    from api.llm_routes import LlmTestBody, TtsTestBody
+
+    payload_names = {
+        "prompt", "text", "system", "memory", "messages", "history",
+        "audio", "audio_base64", "attachment", "context", "query",
+    }
+    for model in (LlmTestBody, TtsTestBody):
+        fields = set(model.model_fields)
+        assert not (fields & payload_names), (
+            f"{model.__name__} объявляет поля под пользовательскую нагрузку: "
+            f"{sorted(fields & payload_names)}"
+        )
+
+
+def test_model_discovery_is_metadata_only():
+    """Discovery не должен принимать пользовательский текст."""
+    from core.gemini_models import fetch_gemini_models_from_api
+
+    params = set(inspect.signature(fetch_gemini_models_from_api).parameters)
+    forbidden = {"prompt", "text", "system", "memory", "messages", "query"}
+    assert not (params & forbidden), f"discovery принимает нагрузку: {params}"
+
+
+def test_env_error_names_the_offending_value():
+    """Оператор видит в логе только эту строку — в ней должно быть значение."""
+    from core.policy_kernel import NetworkMode, _enum_from_env
+
+    import os
+
+    os.environ["VELANTRIM_TEST_MODE_VAR"] = "typo"
+    try:
+        with pytest.raises(ValueError) as exc:
+            _enum_from_env("VELANTRIM_TEST_MODE_VAR", NetworkMode, "deny")
+    finally:
+        del os.environ["VELANTRIM_TEST_MODE_VAR"]
+
+    message = str(exc.value)
+    assert "'typo'" in message, message
+    assert "is invalid" in message, message
+    assert "expected one of: deny, ask, allow" in message, message
+
+
+# ── операционная документация не содержит устаревших утверждений ─────────────
+
+OPS_DOC = REPO / "docs" / "operations" / "hardened-production-profile.md"
+
+
+def test_ops_doc_has_no_stale_boundary_claims():
+    text = OPS_DOC.read_text(encoding="utf-8")
+    stale = [
+        "draft PR #59",
+        "not implemented on this commit",
+        "Not configured by default — not blocked",
+        "the only effective controls",
+        "Until it lands",
+    ]
+    found = [s for s in stale if s in text]
+    assert not found, f"устаревшие утверждения остались: {found}"
+
+
+def test_ops_doc_documents_the_actual_boundary():
+    text = OPS_DOC.read_text(encoding="utf-8")
+    assert "VELANTRIM_NETWORK_MODE=deny" in text
+    assert "VELANTRIM_REMOTE_DATA_MODE=never" in text
+    assert "RemoteEgressDeniedError" in text
+    # И по-прежнему не переобещает: application-layer ≠ сетевая изоляция.
+    lowered = text.lower()
+    assert "not network-level isolation" in lowered or (
+        "application layer still cannot do" in lowered
+    )
+
+
+def test_ops_doc_still_refuses_to_claim_network_isolation():
+    """Честная граница из PR #63/#64 должна сохраниться."""
+    text = OPS_DOC.read_text(encoding="utf-8")
+    assert "complete network isolation or egress denial" in text, (
+        "раздел «не доказывает и не предоставляет» потерял пункт про изоляцию"
+    )
+
+
+def test_ops_doc_marks_the_request_path_gap_resolved():
+    text = OPS_DOC.read_text(encoding="utf-8")
+    assert "RESOLVED" in text
+    assert "data_mode" in text, "остаточное ограничение должно быть названо"

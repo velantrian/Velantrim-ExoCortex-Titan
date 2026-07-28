@@ -85,15 +85,56 @@ class RemoteEgressReceipt:
     policy_version: str
 
 
+#: Capabilities permitted to declare ``data_mode="none"``.
+#:
+#: ``none`` skips the remote-data policy dimension entirely (PolicyKernel checks
+#: it only when ``data_mode != "none"``), so with ``network=allow`` such a call
+#: proceeds even under ``remote_data=never``. That is sound ONLY where the
+#: request provably carries no user content, so the set is closed and asserted
+#: rather than left to each caller's judgement:
+#:
+#: * ``remote_model_discovery`` — metadata only: lists provider model ids.
+#:   No prompt, no memory, no user text of any kind.
+#: * ``remote_llm_test`` — connectivity probe. Sends one fixed,
+#:   repository-owned synthetic prompt defined in ``llm_router.test_connection``.
+#:   The public probe routes (``api/llm_routes.py``) forbid extra fields, so a
+#:   caller cannot attach a prompt, memory, attachment or audio.
+#:
+#: User prompts, retrieved memory, audio and any other private payload are
+#: forbidden under ``none`` and must declare ``raw`` (or ``redacted``). STT and
+#: TTS therefore use ``raw``, audio being private payload.
+_METADATA_ONLY_CAPABILITIES = frozenset(
+    {
+        "remote_model_discovery",
+        "remote_llm_test",
+    }
+)
+
+
 def ensure_remote_egress_allowed(
     capability: str,
     *,
     provider: str,
     data_mode: str = "raw",
 ) -> RemoteEgressReceipt:
-    """Acquire and enforce a least-authority remote capability lease."""
+    """Acquire and enforce a least-authority remote capability lease.
+
+    Raises ``ValueError`` if a capability outside
+    ``_METADATA_ONLY_CAPABILITIES`` declares ``data_mode="none"``. Without this,
+    any new call site could opt out of the remote-data dimension by declaring
+    ``none`` — and since ``data_mode`` is caller-declared and unverifiable, that
+    opt-out would be invisible in review.
+    """
 
     from core.policy_kernel import get_policy_kernel
+
+    if data_mode == "none" and capability not in _METADATA_ONLY_CAPABILITIES:
+        raise ValueError(
+            f"capability {capability!r} may not declare data_mode='none': "
+            "only metadata-only capabilities "
+            f"({', '.join(sorted(_METADATA_ONLY_CAPABILITIES))}) may skip the "
+            "remote-data policy check"
+        )
 
     normalized_provider = (provider or "unknown").strip().lower() or "unknown"
     lease = get_policy_kernel().lease_capability(

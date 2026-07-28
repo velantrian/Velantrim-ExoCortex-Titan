@@ -12,7 +12,7 @@ import json
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # AUDIT-FIX P1: split into two routers.
 #  • public_router  — read-only catalog/diagnostics (GET). No secret, no quota.
@@ -25,6 +25,21 @@ secure_router = APIRouter(tags=["LLM", "Console"])
 
 
 class LlmTestBody(BaseModel):
+    """Connectivity probe. Carries NO user payload — by contract, not by habit.
+
+    The probe runs under an egress lease with ``data_mode="none"``, which skips
+    the remote-data policy check (see docs/REMOTE_EGRESS_POLICY.ru.md). That is
+    only sound while the request genuinely cannot carry user content, so the
+    body admits provider/key/model and nothing else: no prompt, no text, no
+    system, no memory, no attachment. The prompt sent upstream is a fixed
+    repository-owned string in ``core.llm_router.test_connection``.
+
+    ``extra="forbid"`` makes an attempt to smuggle a payload a 422 instead of a
+    silently dropped field — the guarantee should be refusal, not luck.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     provider: str = Field(..., min_length=2)
     api_key:  str = Field(..., min_length=4)
     model:    str | None = None
@@ -331,6 +346,16 @@ async def stt_transcribe(req: SttTranscribeBody):
 
 
 class TtsTestBody(BaseModel):
+    """TTS connectivity probe. Same no-user-payload contract as LlmTestBody.
+
+    The phrase spoken during the probe is built inside
+    ``core.tts_router.test_tts_connection``; the caller cannot supply text.
+    Actual synthesis of user text goes through /tts/speak, which runs under
+    ``data_mode="raw"``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     provider: str = Field(..., min_length=2)
     api_key: str = Field(..., min_length=4)
     voice: str | None = None

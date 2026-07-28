@@ -46,7 +46,7 @@ pytest tests/test_production_profile.py -q
 |---|------|-----------|----------|
 | A | Experimental features enabled in production | 33 research/experimental/debug variables pinned to `0`/`false`. An explicit `ENABLE_X=0` beats `COMPUTE_PROFILE` escalation (`core/compute_profile.py::resolve_flag` reads the environment first), so the pins hold even under `COMPUTE_PROFILE=heavy` | startup log shows none of Velum / Etir / Welfare / EventBus / CognitiveRuntime / CognitiveFactStore / Umwelt initialising |
 | B | Background cognitive workers start automatically | `SLEEP_WORKER_ENABLED=false`. **This is mandatory, not cosmetic:** `server.py:60` defaults it to `"true"`, so the worker would otherwise self-activate on idle, rewrite CoreMemoryBlocks/notebook state, and receive a live LLM callable | no `SleepTimeWorker: ✅ запущен` line in the startup log |
-| C | External provider traffic without operator action | **Partial.** No provider credential appears in the compose file; `LLM_PROVIDER=none`; `ENABLE_CONCEPT_LLM_NAMING=0`, `ENABLE_CROSS_DOMAIN_LLM_ROUTING=0`, `VELANTRIM_VISION_LLM=false`, `VELANTRIM_PDF_USE_MARKER_LLM=false`. This removes the *environment* provider path only — an authenticated client can still supply `llm_provider` + `llm_api_key` per request (§7.1) | log reports `LLM: none`; resolved config contains zero credential variables |
+| C | External provider traffic without operator action | **Enforced at the application layer.** `VELANTRIM_NETWORK_MODE=deny` + `VELANTRIM_REMOTE_DATA_MODE=never` are pinned: every LLM/STT/TTS path is refused a capability lease before any connection opens, including a request that supplies its own `llm_provider` + `llm_api_key`. Defence in depth: no provider credential in the compose file; `LLM_PROVIDER=none`; `ENABLE_CONCEPT_LLM_NAMING=0`, `ENABLE_CROSS_DOMAIN_LLM_ROUTING=0`, `VELANTRIM_VISION_LLM=false`, `VELANTRIM_PDF_USE_MARKER_LLM=false`. Not network-level isolation — see §6 | validator asserts both variables; a denied call raises `RemoteEgressDeniedError` with no client constructed; log reports `LLM: none` |
 | D | Ports exposed too broadly | Exactly one published port, bound to `127.0.0.1` by default | `docker port` → `8000/tcp -> 127.0.0.1:8000` |
 | E | Secrets committed | `.env.prod.example` assigns no values; `.gitignore` extended with `.env.*` (the bare `.env` rule did **not** cover `.env.prod`) while keeping `*.example` trackable | `git check-ignore -v .env.prod` matches; a test asserts both directions |
 | F | Container runs as root | `user: "10001:10001"` restated on top of the image's `USER velantrim` | `id` → `uid=10001(velantrim)` |
@@ -110,30 +110,55 @@ There is no database service and therefore no database port: this profile pins
 
 ## 6. External provider policy
 
-**Not configured by default — not blocked.** This distinction is the whole
-section; do not compress it back into "providers are disabled".
+**Denied by policy, and separately not configured.** Two independent controls;
+keep them distinct, because only one of them is a boundary.
 
-What the profile does: no provider credential is referenced by
-`docker-compose.prod.yml`, and `LLM_PROVIDER` resolves to `none`, so **no
-provider is configured from the environment**.
+**The boundary** is the policy kernel, pinned by this profile:
 
-What the profile does **not** do: prevent a provider call.
-`server.py::_resolve_llm_config_for_request` prefers a config built from the
-**request** over the environment default, and the LLM/STT/TTS routes are always
-registered. Any client holding `VELANTRIM_API_KEY` can therefore send
+```yaml
+- VELANTRIM_NETWORK_MODE=deny
+- VELANTRIM_REMOTE_DATA_MODE=never
+```
+
+Every server-side LLM/STT/TTS path must obtain a capability lease from
+`core/policy_kernel.py` through `core/remote_egress.py` before opening a
+connection. Under `deny` the lease is refused and `RemoteEgressDeniedError` is
+raised **before any HTTP client is constructed** — this is a pre-network block,
+not a response filter. It applies to a request that supplies its own credentials:
 
 ```json
 {"llm_provider": "anthropic", "llm_api_key": "..."}
 ```
 
-and reach a remote provider, carrying query text and retrieved memory off-host,
-while `/health` and the startup log still report `LLM: none`.
+Such a request is now rejected rather than served. Both variables are validated
+at startup; an invalid value refuses to boot rather than degrading a live
+process. Relaxing one is not enough — `network=allow` alone still denies raw
+payloads under `remote_data=never`. `ask` is fail-closed until a consent broker
+exists. See `docs/REMOTE_EGRESS_POLICY.ru.md`.
 
-The executable egress boundary is **draft PR #59**
-(`agent/p0-egress-epistemic-boundary`). It is not implemented on this commit and
-is deliberately not duplicated here. Until it lands, the only effective controls
-are restricting who holds `VELANTRIM_API_KEY` and enforcing egress at a layer
-that can (host firewall, egress proxy, NetworkPolicy).
+**Not a boundary**, but retained as defence in depth: no provider credential is
+referenced by `docker-compose.prod.yml`, and `LLM_PROVIDER` resolves to `none`,
+so no provider is configured from the environment. On its own this never blocked
+anything — `server.py::_resolve_llm_config_for_request` prefers a config built
+from the request, and the LLM/STT/TTS routes are always registered. Do not
+present `LLM_PROVIDER=none` as the control; the two policy variables are.
+
+### What the application layer still cannot do
+
+Enforcement lives in the process that would make the call. It stops Titan's own
+code paths; it does not stop a compromised process, a sidecar, or anything else
+in the network namespace. For enforced egress denial, apply it at a layer that
+can — host firewall, egress proxy, NetworkPolicy. Restricting who holds
+`VELANTRIM_API_KEY` remains worthwhile.
+
+One documented limit: capability leases declaring `data_mode="none"` skip the
+remote-data dimension. That set is closed to two metadata-only capabilities
+(`remote_model_discovery`, `remote_llm_test`) and asserted at the boundary, and
+the public probe routes forbid extra fields so no prompt, memory, audio or
+attachment can ride along. But `data_mode` is caller-declared and unverifiable,
+so `remote_data=never` guarantees "no caller declared a payload", not "no bytes
+could leave". Under `network=deny` the question does not arise — the network
+check runs first and covers metadata too.
 
 ### Configuring a provider from the environment
 
@@ -167,16 +192,18 @@ These are real and deliberately not papered over. Items 7.1–7.4 are the
 **unresolved runtime gaps carried over from the PR #63 review**; each is a
 runtime defect that configuration cannot fix, and each needs its own reviewed PR.
 
-1. **Remote providers are reachable per request (P1, runtime).**
-   `server.py::_resolve_llm_config_for_request` prefers a request-supplied
-   `llm_provider` + `llm_api_key` over the environment, and the LLM/STT/TTS
-   routes are always registered. `LLM_PROVIDER=none` therefore means "not
-   configured", never "blocked". Compounding this,
-   `core/policy_kernel.py` returns `EffectivePolicy()` with `network=deny` and
-   `remote_data=never`, but nothing env-configurable resolves it and no
-   capability lease is taken before a connection opens. The tracked fix is draft
-   **PR #59** (`agent/p0-egress-epistemic-boundary`), which must be rebased and
-   finished against current `main`. Not duplicated here.
+1. ~~**Remote providers are reachable per request (P1, runtime).**~~
+   **RESOLVED.** `core/policy_kernel.py` now resolves `VELANTRIM_NETWORK_MODE`
+   and `VELANTRIM_REMOTE_DATA_MODE` from the environment, and every server-side
+   LLM/STT/TTS path takes a capability lease through `core/remote_egress.py`
+   before opening a connection. A request supplying `llm_provider` +
+   `llm_api_key` is refused pre-network under the pinned `deny` + `never`. This
+   profile pins both explicitly and the validator asserts them (§4).
+
+   Residual, narrower items rather than the original gap: `data_mode` is
+   caller-declared and unverifiable (bounded to two metadata-only capabilities,
+   see §6), and application-layer enforcement cannot bind anything outside this
+   process (see §6, "What the application layer still cannot do").
 2. **TruthPolicy is fail-open (P1, runtime).** `server.py` catches any exception
    from `truth_policy.decide`, logs at DEBUG, leaves `truth_rejects_answer=False`
    and proceeds to answer generation — so the verdict permits an answer exactly

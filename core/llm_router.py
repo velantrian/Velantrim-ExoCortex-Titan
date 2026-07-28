@@ -225,6 +225,21 @@ def compact_messages_for_deepseek(
     return compacted
 
 
+def _llm_capability(data_mode: str, *, quick_ping: bool = False) -> str:
+    """Название capability для lease.
+
+    `data_mode="none"` разрешён только metadata-only capability (см.
+    `remote_egress._METADATA_ONLY_CAPABILITIES`), поэтому connectivity probe
+    обязан называться `remote_llm_test` у ВСЕХ провайдеров, а не только там, где
+    исторически передавался `quick_ping`. Иначе probe уходил бы под именем
+    `remote_llm` с data_mode="none" — то есть обычный чат-путь формально имел бы
+    право пропускать проверку remote-data.
+    """
+    if quick_ping or data_mode == "none":
+        return "remote_llm_test"
+    return "remote_llm"
+
+
 async def _openai_compatible_chat(
     cfg: LlmCallConfig,
     prompt: str,
@@ -235,7 +250,7 @@ async def _openai_compatible_chat(
     data_mode: str = "raw",
 ) -> str:
     ensure_remote_egress_allowed(
-        "remote_llm_test" if quick_ping else "remote_llm",
+        _llm_capability(data_mode, quick_ping=quick_ping),
         provider=cfg.provider,
         data_mode=data_mode,
     )
@@ -331,7 +346,7 @@ async def _gemini_chat(
     )
 
     ensure_remote_egress_allowed(
-        "remote_llm",
+        _llm_capability(data_mode),
         provider=cfg.provider,
         data_mode=data_mode,
     )
@@ -388,7 +403,7 @@ async def _anthropic_chat(
     data_mode: str = "raw",
 ) -> str:
     ensure_remote_egress_allowed(
-        "remote_llm",
+        _llm_capability(data_mode),
         provider=cfg.provider,
         data_mode=data_mode,
     )

@@ -147,7 +147,12 @@ def _enum_from_env(name: str, enum_type, default: str):
         return enum_type(raw)
     except ValueError as exc:
         allowed = ", ".join(item.value for item in enum_type)
-        raise ValueError(f"{name} must be one of: {allowed}") from exc
+        # Отвергнутое значение включается в сообщение: оператор чаще всего видит
+        # только эту строку в логе упавшего деплоя, и без него непонятно, что
+        # именно исправлять — опечатку, регистр или лишний пробел.
+        raise ValueError(
+            f"{name}={raw!r} is invalid; expected one of: {allowed}"
+        ) from exc
 
 
 def _normalize_data_mode(value: str) -> str:
