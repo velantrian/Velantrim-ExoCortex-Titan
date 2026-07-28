@@ -28,17 +28,20 @@ fact through the existing per-fact P0-B saga
 compliance finding — never a silent skip or a false success — when a
 personal fact is found inside ImmutableCore. See
 core/erasure_batch_coordinator.py for the full design rationale.
-FORGET_ONE and REDACT_PII are unaffected by this change.
+
+FIX M2 (Claude audit 2026-07-28): FORGET_ONE (forget_one()) has now been
+migrated the same way — it delegates to
+core.erasure_coordinator.erase_fact_durable() instead of its own
+non-durable delete with swallowed per-table exceptions. REDACT_PII is
+unaffected by either change.
 """
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import os
 import re
 import sqlite3
-import uuid
 import warnings
 from dataclasses import dataclass, field
 from contextlib import contextmanager
@@ -296,72 +299,111 @@ class ForgettingEngine:
         reason: str = "user_request",
         user_id: str = "default",
     ) -> ForgetVerdict:
-        """Удалить один факт с проверками."""
-        verdict = self.check(fact_id)
-        if not verdict.allowed and "immutable" in verdict.reason:
-            return verdict
+        """DEPRECATED — delegates to
+        core.erasure_coordinator.erase_fact_durable().
 
-        # Даже с зависимостями — удаляем (пользователь предупреждён)
-        conn = None
+        FIX M2 (Claude audit 2026-07-28): this method has zero production
+        callers (the registered `forget_fact` MCP tool always went through
+        erase_fact_durable() directly), but was never migrated to the
+        durable path the way forget_all() below was, and had several
+        confirmed defects for exactly the tenant-scoped
+        `ForgettingEngine(db_path=...)` usage its own constructor supports:
+
+          - it never called `store.ensure_schema()` before touching the
+            configured db_path (forget_all() was fixed for this — see its
+            own docstring, "Round 5.2 fix"), so a tenant database that
+            hadn't separately had every migration applied raised a bare
+            `sqlite3.OperationalError: no such table: ...` instead of
+            working, or reported a plausible-looking failure;
+          - a delete of a fact_id that never existed still inserted an
+            `erasure_log` row and returned `allowed=True, reason="deleted"`
+            — confirmed empirically: on a fully-migrated database, forgetting
+            a nonexistent fact_id both reports success AND writes a
+            provenance-free "erasure" record for data that was never there;
+          - embeddings/ngram entries were never touched at all, regardless
+            of schema state;
+          - `fact_versions`/`l0_fact_provenance` deletes were wrapped in
+            bare `except Exception: pass` — a latent risk of the same
+            silent-PII-survival class fixed elsewhere in this module, even
+            though the specific transient failure it would need is harder
+            to trigger in isolation than the schema/false-success bugs above;
+          - the Ring Zero check was the softer `self.check()` heuristic
+            rather than the single enforced `memory.IMMUTABLE_FACT_IDS`
+            guard `erase_fact_durable()` raises on — both correctly refuse
+            deletion today, but as two independent checks they could drift
+            apart, the same class of risk this whole audit is about.
+
+        Left as dead code, this was a landmine for any future direct caller
+        of this class. Migrating it to the same durable, resumable, tested
+        path as forget_all() closes all of the above at once.
+
+        Kept for backward compatibility only — new code should call
+        core.erasure_coordinator.erase_fact_durable() directly to get the
+        full durable report (job_id/outcome/residual/steps); this shim
+        narrows that down to the legacy ForgetVerdict shape.
+        """
+        warnings.warn(
+            "core.forgetting.ForgettingEngine.forget_one() is deprecated — "
+            "use core.erasure_coordinator.erase_fact_durable() directly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        from core.erasure_coordinator import NOT_FOUND, ErasureCoordinator
+        from core.memory import ImmutableStateError, SQLiteGraphStore
+
+        embedding_store, embedding_db_path = self._bind_tenant_embedding_store()
+        ngram_index = self._bind_tenant_ngram_index()
+
+        store = SQLiteGraphStore(self._db_path)
         try:
-            conn = sqlite3.connect(self._db_path, timeout=10.0)
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA foreign_keys = ON")
-
-            claim_row = conn.execute(
-                "SELECT claim FROM facts WHERE fact_id = ?", (fact_id,)
-            ).fetchone()
-            claim_hash = (
-                hashlib.sha256((claim_row[0] if claim_row else "").encode()).hexdigest()
+            store.ensure_schema()
+            coordinator = ErasureCoordinator(
+                store=store,
+                embedding_store=embedding_store,
+                embedding_db_path=embedding_db_path,
+                ngram_index=ngram_index,
             )
-
-            with _without_fact_delete_guard(conn):
-                conn.execute("DELETE FROM fact_mentions WHERE fact_id = ?", (fact_id,))
-                try:
-                    conn.execute("DELETE FROM fact_versions WHERE fact_id = ?", (fact_id,))
-                except Exception:
-                    pass
-                try:
-                    conn.execute(
-                        "DELETE FROM l0_fact_provenance WHERE fact_id = ?", (fact_id,)
-                    )
-                except Exception:
-                    pass
-                conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
-                now = datetime.now(timezone.utc).isoformat()
-                erasure_id = f"era_{uuid.uuid4().hex[:12]}"
-                conn.execute(
-                    """INSERT INTO erasure_log
-                       (erasure_id, fact_id, user_id, reason, claim_hash, erased_at)
-                       VALUES (?, ?, ?, ?, ?, ?)""",
-                    (erasure_id, fact_id, user_id, reason, claim_hash, now),
+            try:
+                report = coordinator.erase_fact_durable(
+                    fact_id, reason=reason, subject_user_id=user_id,
                 )
-                self._log_forgetting(conn, fact_id, reason, user_id)
+            except ImmutableStateError as exc:
+                return ForgetVerdict(
+                    allowed=False,
+                    reason="immutable",
+                    details=[
+                        f"🛡️ {fact_id} защищён Ring Zero (I6) — удаление запрещено: {exc}",
+                    ],
+                )
+        finally:
+            # Mirrors forget_all()'s own finally: only the facts store's
+            # connection is ever explicitly closed here; embeddings/ngram
+            # backends manage their own connection lifecycle per call.
+            store.close()
 
-            conn.commit()
-            conn.close()
-            conn = None
-
-            logger.info("Forgetting: удалён %s (reason=%s, user=%s)", fact_id, reason, user_id)
-            return ForgetVerdict(
-                allowed=True,
-                reason="deleted",
-                affected_facts=verdict.affected_facts + 1,
-                details=[f"✅ Факт {fact_id} удалён."] + verdict.details,
-            )
-        except Exception as exc:
-            logger.error("Forgetting.forget_one: %s", exc)
+        if report["outcome"] == NOT_FOUND:
             return ForgetVerdict(
                 allowed=False,
-                reason=f"store_error: {exc}",
-                details=[f"❌ Ошибка при удалении {fact_id}: {exc}"],
+                reason="not_found",
+                details=[f"ℹ️ Факт {fact_id} не найден — стирать нечего."],
             )
-        finally:
-            if conn is not None:
-                try:
-                    conn.close()
-                except Exception:
-                    pass
+
+        allowed = bool(report["erased_now"])
+        details = [
+            f"Job {report['job_id']}: outcome={report['outcome']}"
+            + (f", residual={report['residual']}" if report.get("residual") else ""),
+        ]
+        if allowed:
+            details.insert(0, f"✅ Факт {fact_id} удалён.")
+        else:
+            details.insert(0, f"⚠️ Факт {fact_id}: удаление не завершено полностью.")
+
+        return ForgetVerdict(
+            allowed=allowed,
+            reason=report["outcome"].lower(),
+            affected_facts=1 if allowed else 0,
+            details=details,
+        )
 
     # ── FORGET_ALL (GDPR) ─────────────────────────────────────────────────
 

@@ -923,3 +923,108 @@ def test_tenant_embedding_failure_prevents_complete_erasure(two_dbs, monkeypatch
 
     assert verdict.allowed is False
     assert tenant_embeddings.has_any("f_tenant") is True  # never purged
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# M2 (Claude audit 2026-07-28): forget_one() migrated to erase_fact_durable()
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# forget_one() had zero production callers, but was never migrated the way
+# forget_all() above was — it kept its own non-durable delete with per-table
+# exceptions swallowed via bare `except: pass`, no embeddings/ngram cleanup,
+# and a false-success report for a fact_id that never existed. These tests
+# exercise the migrated shim the same way the forget_all() tests above
+# exercise theirs.
+
+def test_forget_one_only_touches_configured_tenant_db(two_dbs):
+    """Tenant isolation must hold for forget_one() exactly like forget_all()
+    above — a custom db_path must never reach into the global store."""
+    global_db, tenant_db_path, tenant_embedding_path, tenant_ngram_path = two_dbs
+    global_db.store_fact(_fact("f_global"))
+
+    tenant_store = make_store(tenant_db_path)
+    tenant_store.store_fact(_fact("f_tenant"))
+
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+        ngram_db_path=tenant_ngram_path,
+    )
+    with pytest.deprecated_call():
+        verdict = engine.forget_one("f_tenant", user_id="userA", reason="dsr")
+
+    assert verdict.allowed is True
+    assert verdict.reason == "complete"
+    assert make_store(tenant_db_path).get_fact("f_tenant") is None
+    assert global_db.get_fact("f_global") is not None
+
+
+def test_forget_one_actually_removes_fact_versions_history(two_dbs):
+    """erase_fact_durable() purges fact_versions atomically as part of its
+    erasure — prove the row is actually gone on the migrated path, not just
+    that a truthy verdict came back. (The old code additionally never
+    called ensure_schema() on this exact tenant db_path shape and would
+    raise before even reaching its own — separately swallowed —
+    fact_versions delete; see forget_one()'s docstring.)"""
+    global_db, tenant_db_path, tenant_embedding_path, tenant_ngram_path = two_dbs
+
+    tenant_store = make_store(tenant_db_path)
+    tenant_store.store_fact(_fact("f_tenant", source="userA"))
+    # A content-changing update creates a fact_versions row for the pre-image.
+    tenant_store.store_fact(_fact("f_tenant", source="userA_updated"))
+
+    with sqlite3.connect(tenant_db_path) as conn:
+        before = conn.execute(
+            "SELECT COUNT(*) FROM fact_versions WHERE fact_id = ?", ("f_tenant",)
+        ).fetchone()[0]
+    assert before > 0, "test setup did not actually create a fact_versions row"
+
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+        ngram_db_path=tenant_ngram_path,
+    )
+    with pytest.deprecated_call():
+        verdict = engine.forget_one("f_tenant", user_id="userA", reason="dsr")
+
+    assert verdict.allowed is True
+    with sqlite3.connect(tenant_db_path) as conn:
+        after = conn.execute(
+            "SELECT COUNT(*) FROM fact_versions WHERE fact_id = ?", ("f_tenant",)
+        ).fetchone()[0]
+    assert after == 0, "fact_versions row survived forget_one() — PII still recoverable"
+
+
+def test_forget_one_rejects_ring_zero_immutable_fact(two_dbs):
+    """The old check() heuristic is replaced by the enforced
+    memory.IMMUTABLE_FACT_IDS guard erase_fact_durable() raises on."""
+    _, tenant_db_path, tenant_embedding_path, tenant_ngram_path = two_dbs
+
+    tenant_store = make_store(tenant_db_path)
+    tenant_store.store_fact(_fact("VALUES_CORE", source="system"))
+
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+        ngram_db_path=tenant_ngram_path,
+    )
+    with pytest.deprecated_call():
+        verdict = engine.forget_one("VALUES_CORE", user_id="userA", reason="dsr")
+
+    assert verdict.allowed is False
+    assert verdict.reason == "immutable"
+    assert make_store(tenant_db_path).get_fact("VALUES_CORE") is not None
+
+
+def test_forget_one_reports_not_found_instead_of_false_success(two_dbs):
+    """The old code inserted an erasure_log row and reported
+    allowed=True/reason="deleted" even for a fact_id that never existed —
+    a silent false success. The migrated shim must report it honestly."""
+    _, tenant_db_path, tenant_embedding_path, tenant_ngram_path = two_dbs
+
+    engine = forgetting_mod.ForgettingEngine(
+        db_path=tenant_db_path, embedding_db_path=tenant_embedding_path,
+        ngram_db_path=tenant_ngram_path,
+    )
+    with pytest.deprecated_call():
+        verdict = engine.forget_one("never_existed", user_id="userA", reason="dsr")
+
+    assert verdict.allowed is False
+    assert verdict.reason == "not_found"
