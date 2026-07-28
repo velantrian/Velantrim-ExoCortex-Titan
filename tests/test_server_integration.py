@@ -945,3 +945,81 @@ class TestConsoleAutoSaveReadbackFailure:
         )
         assert len(data["memory_suggestions"]) == 1
         assert data["memory_suggestions"][0].get("reason_code") == "canonical_readback_failed"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 9. Internal error details must not leak to the client (M9, Claude audit 2026-07-28)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestInternalErrorDetailNotLeaked:
+    """
+    Regression: a bare `except Exception` paired with
+    HTTPException(status_code=500, detail=str(exc)) — or the global
+    catch-all handler — can put SQL fragments, file paths, or other
+    internal detail straight into the HTTP response. A prior fix added a
+    stable "error" code to the global handler but left str(exc) in place.
+    Every site now returns a generic detail; the real exception is still
+    logged server-side (asserted separately, not re-tested here).
+    """
+
+    def test_agent_notebook_failure_does_not_leak_exception_text(
+        self, sleep_client, monkeypatch
+    ):
+        client, srv = sleep_client
+        marker = "SECRET_INTERNAL_DETAIL_c0ffee"
+
+        async def _boom():
+            raise RuntimeError(marker)
+
+        monkeypatch.setattr(srv._sleep_worker, "get_notebook", _boom)
+
+        r = client.get("/agent/notebook")
+        assert r.status_code == 500
+        assert marker not in r.text
+        assert r.json()["detail"] == "internal_server_error"
+
+    def test_agent_suggest_failure_does_not_leak_exception_text(
+        self, sleep_client, monkeypatch
+    ):
+        client, srv = sleep_client
+        marker = "SECRET_INTERNAL_DETAIL_deadbeef"
+
+        async def _boom():
+            raise RuntimeError(marker)
+
+        monkeypatch.setattr(srv._sleep_worker, "suggest_next_step", _boom)
+
+        r = client.get("/agent/suggest")
+        assert r.status_code == 500
+        assert marker not in r.text
+        assert r.json()["detail"] == "internal_server_error"
+
+    def test_agent_episode_failure_does_not_leak_exception_text(
+        self, sleep_client, monkeypatch
+    ):
+        client, srv = sleep_client
+        marker = "SECRET_INTERNAL_DETAIL_f00dface"
+
+        async def _boom(_episode):
+            raise RuntimeError(marker)
+
+        monkeypatch.setattr(srv._sleep_worker, "update_from_episode", _boom)
+
+        r = client.post("/agent/episode", json={"content": "hi", "role": "user"})
+        assert r.status_code == 500
+        assert marker not in r.text
+        assert r.json()["detail"] == "internal_server_error"
+
+    def test_generic_exception_handler_does_not_leak_exception_text(self):
+        """Unit-level: the global catch-all itself never echoes str(exc)."""
+        import asyncio
+        import json
+
+        from server import generic_exception_handler
+
+        marker = "SECRET_INTERNAL_DETAIL_1337"
+        resp = asyncio.run(generic_exception_handler(None, RuntimeError(marker)))
+        assert resp.status_code == 500
+        body = json.loads(bytes(resp.body))
+        assert marker not in json.dumps(body)
+        assert body == {"error": "internal_server_error"}

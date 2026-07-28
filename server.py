@@ -1948,8 +1948,11 @@ async def epigenetic_state():
         engine = get_epigenetic_engine()
         return engine.stats()
     except Exception as exc:
+        # FIX M9 (Claude audit 2026-07-28): str(exc) on a bare `except
+        # Exception` can carry SQL fragments, file paths, or other internal
+        # detail — the full exception is still logged server-side above.
         logger.exception("system/epigenetic failed")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="internal_server_error") from exc
 
 
 @app.get("/metrics/eval", tags=["Titan 9.0"],
@@ -1971,8 +1974,9 @@ async def eval_metrics():
             "recent": lm.read_recent(10),
         }
     except Exception as exc:
+        # FIX M9 (Claude audit 2026-07-28): see /system/epigenetic above.
         logger.exception("metrics/eval failed")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="internal_server_error") from exc
 
 
 @app.get("/health", tags=["System"])
@@ -4125,7 +4129,10 @@ async def get_notebook():
         notebook = await _sleep_worker.get_notebook()
         return notebook
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        # FIX M9 (Claude audit 2026-07-28): was leaking str(exc) to the
+        # client with no server-side log at all — added both.
+        logger.exception("agent/notebook failed")
+        raise HTTPException(status_code=500, detail="internal_server_error") from exc
 
 
 @app.get("/agent/suggest", tags=["Agent"], dependencies=[Depends(require_api_key)])
@@ -4139,7 +4146,9 @@ async def suggest_next_step():
         suggestion = await _sleep_worker.suggest_next_step()
         return {"suggestion": suggestion}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        # FIX M9 (Claude audit 2026-07-28): see /agent/notebook above.
+        logger.exception("agent/suggest failed")
+        raise HTTPException(status_code=500, detail="internal_server_error") from exc
 
 
 @app.post("/agent/episode", tags=["Agent"], dependencies=[Depends(require_api_key)])
@@ -4157,17 +4166,24 @@ async def update_episode(episode: EpisodeRequest):
         await _sleep_worker.update_from_episode(episode.model_dump())
         return {"status": "updated"}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        # FIX M9 (Claude audit 2026-07-28): see /agent/notebook above.
+        logger.exception("agent/episode failed")
+        raise HTTPException(status_code=500, detail="internal_server_error") from exc
 
 
 # ── Error handlers ────────────────────────────────────────────────────────────
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request, exc):
+    # FIX M9 (Claude audit 2026-07-28): this catches literally any unhandled
+    # exception in the app, so str(exc) here could be anything — SQL
+    # fragments, file paths, upstream provider error bodies. The stable
+    # "error" code was added by a prior fix; the raw "detail": str(exc) was
+    # left in place and is dropped here. Full exception logged server-side.
     logger.exception("Unhandled exception: %s", exc)
     return JSONResponse(
         status_code=500,
-        content={"error": "internal_server_error", "detail": str(exc)},
+        content={"error": "internal_server_error"},
     )
 
 
