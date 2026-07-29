@@ -192,10 +192,22 @@ class WorkingMemoryPlan:
     def by_disposition(
         self, disposition: GateDisposition
     ) -> tuple[GateDecision, ...]:
-        return tuple(
+        """Return ranked decisions; unranked terminal decisions sort by identity."""
+
+        matching = (
             decision
             for decision in self.decisions
             if decision.disposition is disposition
+        )
+        return tuple(
+            sorted(
+                matching,
+                key=lambda decision: (
+                    decision.rank is None,
+                    decision.rank if decision.rank is not None else 0,
+                    decision.capsule_id,
+                ),
+            )
         )
 
     @property
