@@ -244,15 +244,16 @@ class BranchManager:
 
         # Fallback: детерминированный ответ через essence
         try:
+            # FIX M10 (Claude audit 2026-07-28): compose_essence(facts,
+            # relations=None) has no `query` kwarg and returns an Essence
+            # dataclass, not a dict — the old call always raised (unknown
+            # kwarg) and .get() would have failed anyway, so this branch
+            # always fell through to the generic absolute fallback below.
             from core.essence import compose_essence
-            # Pre-existing bug: compose_essence(facts, relations=None) has no `query`
-            # kwarg and returns an Essence object, not a dict — .get() doesn't exist on
-            # it either. Caught below like any other fallback failure, so this branch
-            # currently always falls through to the absolute fallback. Not fixed here
-            # (behavior change out of scope for a typing-only pass) — tracked as a
-            # follow-up bug.
-            result = compose_essence(query=query, facts=facts)  # type: ignore[call-arg]
-            return str(result.get("gist", "")), 0.6  # type: ignore[attr-defined]
+
+            essence = compose_essence(facts)
+            if essence.gist:
+                return essence.gist, 0.6
         except Exception:
             pass
 
