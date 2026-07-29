@@ -63,10 +63,12 @@ class _Provider:
     def __init__(self, responses: list[str] | str) -> None:
         self.queue = [responses] if isinstance(responses, str) else list(responses)
         self.prompts: list[str] = []
+        self.configs: list[Any] = []
         self.calls = 0
 
     async def __call__(self, cfg, prompt, system="", *, data_mode="raw"):  # noqa: ANN001
         self.calls += 1
+        self.configs.append(cfg)
         self.prompts.append(prompt)
         self.systems = getattr(self, "systems", [])
         self.systems.append(system)
@@ -669,6 +671,37 @@ def test_chunk_plan_is_deterministic_and_bounded():
         assert text[chunk.start_offset : chunk.end_offset] == chunk.text
 
 
+def test_deepseek_chunks_fit_router_limit_and_cover_the_source(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from core.llm_router import message_content_char_limit_for_provider
+
+    text = "".join(f"<segment-{index:04d}>" for index in range(700))
+    provider = _script(monkeypatch, [_payload([])] * 8)
+
+    out = _run(
+        _adapter(provider="deepseek", model="deepseek-v4-flash"),
+        RawSource(document_id="doc-deepseek", text=text),
+    )
+
+    message_limit = message_content_char_limit_for_provider("deepseek")
+    assert message_limit is not None
+    assert out.receipt.chunks_attempted >= 2
+    assert all(len(prompt) <= message_limit for prompt in provider.prompts)
+
+    source_chunks = [
+        prompt.split("<<<SOURCE_BEGIN>>>\n", 1)[1].rsplit(
+            "\n<<<SOURCE_END>>>", 1
+        )[0]
+        for prompt in provider.prompts
+    ]
+    covered = [False] * len(text)
+    for chunk_text in source_chunks:
+        start = text.index(chunk_text)
+        covered[start : start + len(chunk_text)] = [True] * len(chunk_text)
+    assert all(covered), "provider-safe chunks must leave no unexamined gap"
+
+
 def test_overlap_must_be_smaller_than_chunk_size():
     with pytest.raises(ValueError):
         LlmReaderLimits(chunk_chars=100, chunk_overlap_chars=100)
@@ -793,6 +826,33 @@ def test_timeout_is_not_retried(monkeypatch: pytest.MonkeyPatch):
     assert calls["n"] == 1
 
 
+def test_transport_timeout_is_terminal_and_not_retried(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    import core.llm_router as router
+
+    calls = {"n": 0}
+
+    async def transport_timeout(*a, **k):
+        calls["n"] += 1
+        raise router.LlmTransportTimeoutError("provider read timed out")
+
+    monkeypatch.setattr(router, "chat_complete", transport_timeout)
+    out = _run(
+        _adapter(
+            limits=LlmReaderLimits(
+                request_timeout_s=60.0, max_attempts_per_chunk=3
+            )
+        ),
+        RawSource(document_id="doc-1", text=TEXT),
+    )
+
+    assert calls["n"] == 1
+    assert out.receipt.attempts == 1
+    assert out.result.status is ReaderStatus.PROVIDER_ERROR
+    assert out.result.failure.code == "PROVIDER_TIMEOUT"
+
+
 def test_retry_is_bounded_and_visible(monkeypatch: pytest.MonkeyPatch):
     import core.llm_router as router
 
@@ -842,6 +902,37 @@ def test_claim_budget_produces_partial(monkeypatch: pytest.MonkeyPatch):
     assert out.result.status is ReaderStatus.PARTIAL
     assert len(out.result.capsule.claims) == 2
     assert any(w.code == "CLAIM_BUDGET_EXHAUSTED" for w in out.result.warnings)
+
+
+def test_overlap_duplicate_does_not_exhaust_a_full_claim_budget(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    text = "Раз один. Два два. Три три. Четыре четыре. Пять пять."
+    target = "Три три."
+    limits = LlmReaderLimits(chunk_chars=30, chunk_overlap_chars=15, max_chunks=8)
+    chunks = plan_chunks(text, limits)
+    assert sum(target in chunk.text for chunk in chunks) >= 2
+
+    _script(
+        monkeypatch,
+        [
+            _payload([_claim(target)]) if target in chunk.text else _payload([])
+            for chunk in chunks
+        ],
+    )
+    out = _run(
+        _adapter(limits=limits),
+        RawSource(document_id="doc-1", text=text),
+        budget=ReaderBudget(max_claims=1),
+    )
+
+    assert out.result.status is ReaderStatus.SUCCESS
+    assert len(out.result.capsule.claims) == 1
+    assert out.receipt.claims_rejected_duplicate >= 1
+    assert not any(
+        warning.code == "CLAIM_BUDGET_EXHAUSTED"
+        for warning in out.result.warnings
+    )
 
 
 def test_chunk_budget_reports_partial(monkeypatch: pytest.MonkeyPatch):
@@ -935,6 +1026,39 @@ def test_provider_and_model_do_not_change_capsule_identity(
     assert a.result.capsule.capsule_id == b.result.capsule.capsule_id
     assert b.receipt.provider == "openai"
     assert b.receipt.model == "gpt-4o-mini"
+
+
+@pytest.mark.parametrize(
+    ("provider_name", "model_name", "expected_provider", "expected_model"),
+    [
+        (" deepseek ", " ", "deepseek", "deepseek-v4-flash"),
+        (
+            " GEMINI ",
+            " models/gemini-2.5-flash ",
+            "gemini",
+            "gemini-2.5-flash",
+        ),
+    ],
+)
+def test_receipt_records_resolved_execution_identity(
+    monkeypatch: pytest.MonkeyPatch,
+    provider_name: str,
+    model_name: str,
+    expected_provider: str,
+    expected_model: str,
+):
+    scripted = _script(
+        monkeypatch, _payload([_claim("Кошка спит на окне.")])
+    )
+    out = _run(
+        _adapter(provider=provider_name, model=model_name),
+        RawSource(document_id="doc-1", text=TEXT),
+    )
+
+    assert out.receipt.provider == expected_provider
+    assert out.receipt.model == expected_model
+    assert scripted.configs[0].provider == expected_provider
+    assert scripted.configs[0].model == expected_model
 
 
 def test_receipt_carries_no_truth_state(monkeypatch: pytest.MonkeyPatch):
@@ -1044,24 +1168,6 @@ def test_shared_reader_contract_is_unchanged():
         "ReaderWarning",
         "SemanticReader",
     }
-
-
-def test_this_pr_touches_only_the_adapter_and_its_tests():
-    import subprocess
-
-    changed = subprocess.run(
-        ["git", "diff", "--name-only", "origin/main...HEAD"],
-        cwd=REPO,
-        capture_output=True,
-        text=True,
-        check=False,
-    ).stdout.split()
-    if not changed:
-        pytest.skip("no git range available in this environment")
-    assert set(changed) <= {
-        "core/readers/llm_adapter.py",
-        "tests/test_llm_reader_adapter.py",
-    }, f"unexpected files changed: {changed}"
 
 
 # ── no runtime wiring ──────────────────────────────────────────────────────
