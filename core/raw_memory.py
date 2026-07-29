@@ -42,6 +42,57 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+# FIX #25 (Claude audit 2026-07-28): RawMemoryStore had no self-DDL guard —
+# every other stateful class in this codebase that owns its own tables
+# (ProvenanceChain._init_db, AuditChain._ensure_schema) creates them
+# idempotently on construction so it never depends on migrations/010_raw_memory.sql
+# having actually been run first. Mirrors that table/index/trigger DDL
+# exactly (this class owns l0_raw_memory/raw_derivation_chain; facts.derived_from
+# itself is migration 010's job, not this class's — facts is assumed to
+# already exist).
+_RAW_MEMORY_DDL = """
+CREATE TABLE IF NOT EXISTS l0_raw_memory (
+    raw_id          TEXT PRIMARY KEY,
+    original_text   TEXT NOT NULL,
+    content_hash    TEXT NOT NULL UNIQUE,
+    source          TEXT,
+    source_url      TEXT,
+    source_type     TEXT DEFAULT 'unknown',
+    language        TEXT DEFAULT 'unknown',
+    char_count      INTEGER NOT NULL DEFAULT 0,
+    word_count      INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    metadata        TEXT DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_raw_hash    ON l0_raw_memory(content_hash);
+CREATE INDEX IF NOT EXISTS idx_raw_source  ON l0_raw_memory(source, created_at);
+CREATE INDEX IF NOT EXISTS idx_raw_created ON l0_raw_memory(created_at);
+
+CREATE TRIGGER IF NOT EXISTS prevent_raw_update
+BEFORE UPDATE ON l0_raw_memory
+BEGIN
+    SELECT RAISE(ABORT, 'VELANTRIM L0: l0_raw_memory is immutable — UPDATE is forbidden. Create a new raw entry instead.');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_raw_delete
+BEFORE DELETE ON l0_raw_memory
+BEGIN
+    SELECT RAISE(ABORT, 'VELANTRIM L0: l0_raw_memory is immutable — DELETE is forbidden. Deprecate associated facts instead.');
+END;
+
+CREATE TABLE IF NOT EXISTS raw_derivation_chain (
+    step_id         TEXT PRIMARY KEY,
+    raw_id          TEXT NOT NULL REFERENCES l0_raw_memory(raw_id),
+    derived_fact_id TEXT NOT NULL REFERENCES facts(fact_id),
+    derivation_type TEXT NOT NULL DEFAULT 'direct',
+    step_index      INTEGER NOT NULL DEFAULT 0,
+    transformation  TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_chain_raw  ON raw_derivation_chain(raw_id);
+CREATE INDEX IF NOT EXISTS idx_chain_fact ON raw_derivation_chain(derived_fact_id);
+"""
+
 # ── Dataclasses ───────────────────────────────────────────────────────────────
 
 @dataclass
@@ -87,6 +138,8 @@ class RawMemoryStore:
 
     def __init__(self, db_conn) -> None:
         self._conn = db_conn
+        self._conn.executescript(_RAW_MEMORY_DDL)
+        self._conn.commit()
 
     # ── Запись ────────────────────────────────────────────────────────────────
 
