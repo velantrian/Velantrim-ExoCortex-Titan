@@ -935,6 +935,37 @@ def test_overlap_duplicate_does_not_exhaust_a_full_claim_budget(
     )
 
 
+def test_repeated_over_budget_claim_is_counted_as_a_duplicate(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    admitted_text = "Кошка спит на окне."
+    omitted_text = "Собака лает громко."
+    _script(
+        monkeypatch,
+        _payload(
+            [
+                _claim(admitted_text),
+                _claim(omitted_text),
+                _claim(omitted_text),
+            ]
+        ),
+    )
+
+    out = _run(
+        _adapter(),
+        RawSource(document_id="doc-1", text=TEXT),
+        budget=ReaderBudget(max_claims=1),
+    )
+
+    assert out.result.status is ReaderStatus.PARTIAL
+    assert [claim.text for claim in out.result.capsule.claims] == [admitted_text]
+    assert out.receipt.claims_rejected_duplicate == 1
+    assert sum(
+        warning.code == "CLAIM_BUDGET_EXHAUSTED"
+        for warning in out.result.warnings
+    ) == 1
+
+
 def test_chunk_budget_reports_partial(monkeypatch: pytest.MonkeyPatch):
     text = "Кошка спит на окне. " * 40
     limits = LlmReaderLimits(chunk_chars=60, chunk_overlap_chars=10, max_chunks=2)
