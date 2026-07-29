@@ -1,5 +1,11 @@
 # 🔱 Velantrim ExoCortex — How It Works
 
+> ⚠️ **Translation status:** this English companion still preserves the older
+> V8.x walkthrough. For the current evidence-labeled Living System Atlas, use
+> [`SYSTEM_OVERVIEW.md`](SYSTEM_OVERVIEW.md) (Russian) and
+> [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md). Do not treat legacy
+> sections below as current runtime evidence.
+
 **Language:** English  
 **Russian source:** [`SYSTEM_OVERVIEW.md`](SYSTEM_OVERVIEW.md)  
 **Purpose:** visual English companion overview.

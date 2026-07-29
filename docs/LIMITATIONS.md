@@ -1,5 +1,10 @@
 # LIMITATIONS.md — Velantrim V8 Crystal
 
+> ⚠️ **Статус документа:** исторический debt ledger V8.x, полезный для
+> происхождения ограничений, но не являющийся полным current-state Titan 9.0.
+> Актуальные P0/P1/P2-риски и reviewer-safe формулировка находятся в
+> [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+
 > Версия: **v8.6.0** (репозиторий; док актуализирован на v8.4.0) · Production readiness ~35%
 >
 > Это не список стыда — это карта долга. Каждый пункт имеет назначенный Sprint.

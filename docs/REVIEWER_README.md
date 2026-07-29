@@ -68,9 +68,9 @@ In priority order, for someone with limited review time:
 3. **`core/truth_gate.py`** — the gate a fact must pass before it is trusted.
 4. **`core/pipeline.py`** — the orchestration: how a query becomes retrieval → facts →
    gate → trace → answer.
-5. **`tests/test_invariants.py`** — 18 executable invariants that must pass in CI; a
-   failing invariant blocks deployment by design. Read this to see what the project
-   itself considers non-negotiable.
+5. **`tests/test_invariants.py`** — the executable invariant suite that must pass in
+   CI; a failing invariant blocks deployment by design. Read this to see what the
+   project itself considers non-negotiable.
 6. **`docs/TRUTH_AND_RINGZERO_CANON.en.md`** — the canonical spec for the Truth Engine +
    Ring Zero (immutable core), verdicts (`allow`/`gap_notice`/`reject`), and invariants
    I0–I8.
@@ -93,8 +93,9 @@ In priority order, for someone with limited review time:
 
 ## 5. Tests map
 
-- **91 test files** under `tests/`, covering unit, integration, and invariant levels.
-- `tests/test_invariants.py` — the 18 CI-blocking invariants referenced in §3.
+- **137 `test_*.py` files** under `tests/` on the documented repository snapshot,
+  covering unit, integration, and invariant levels.
+- `tests/test_invariants.py` — the CI-blocking invariant suite referenced in §3.
 - `tests/test_truth_gate.py`, `tests/test_write_gate.py` — Truth Gate thresholds and
   the write-time admission gate (source/evidence requirements by claim type).
 - `tests/test_server_integration.py` — end-to-end HTTP behavior, including

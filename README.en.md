@@ -44,7 +44,7 @@ LLM / BAE = Voice
 
 ## 🆕 Titan 9.0 — Immune System + Identity Axis + Production Hardening
 
-**`core/` modules · full pytest suite passes in CI · 18 invariants enforced in CI · docker-compose up**
+**`core/` modules · full pytest suite passes in CI · executable invariants block CI · docker-compose up**
 
 | Area | Module | Purpose |
 |---|---|---|
