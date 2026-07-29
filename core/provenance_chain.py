@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS provenance_chains (
     event_hash  TEXT NOT NULL DEFAULT '',
     prev_hash   TEXT DEFAULT NULL,
     created_at  TEXT NOT NULL,
+    hash_version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (fact_id, seq)
 );
 CREATE INDEX IF NOT EXISTS idx_provenance_fact
@@ -57,6 +58,17 @@ CREATE INDEX IF NOT EXISTS idx_provenance_fact
 """
 
 GENESIS = "VELANTRIM_GENESIS_BLOCK"
+
+# FIX M4 (Claude audit 2026-07-28): _compute_hash's formula was changed
+# in-place to include actor/reason (see FIX #6/#7 below) with no schema
+# versioning, unlike audit_chain.py's hash_version v1/v2 dual-dispatch for
+# the exact same kind of change. Any row hashed under the old (pre-actor/
+# reason) formula would fail verify() with a false hash_mismatch. New rows
+# are tagged HASH_VERSION_CURRENT; verify() dispatches per stored
+# hash_version so old and new rows are each checked against the formula
+# that actually produced their hash.
+HASH_VERSION_LEGACY = 1
+HASH_VERSION_CURRENT = 2
 
 # ─── Типы событий ─────────────────────────────────────────────────────────────
 
@@ -94,6 +106,22 @@ class ProvenanceChain:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             conn.execute("PRAGMA journal_mode=WAL")
             conn.executescript(_PC_DDL)
+            # Additive self-heal for tables created before hash_version
+            # existed (mirrors AuditChain._add_column_if_missing): a table
+            # from before this fix has no hash_version column at all, so
+            # CREATE TABLE IF NOT EXISTS above is a no-op for it.
+            cols = {row[1] for row in conn.execute(
+                "PRAGMA table_info(provenance_chains)"
+            ).fetchall()}
+            if "hash_version" not in cols:
+                try:
+                    conn.execute(
+                        "ALTER TABLE provenance_chains ADD COLUMN "
+                        f"hash_version INTEGER NOT NULL DEFAULT {HASH_VERSION_LEGACY}"
+                    )
+                except sqlite3.OperationalError as exc:
+                    if "duplicate column name" not in str(exc):
+                        raise
             conn.commit()
             conn.close()
         except Exception as exc:
@@ -161,13 +189,15 @@ class ProvenanceChain:
                 conn.execute(
                     """INSERT INTO provenance_chains
                        (fact_id, seq, event_type, actor, from_state, to_state,
-                        reason, payload_json, event_hash, prev_hash, created_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        reason, payload_json, event_hash, prev_hash, created_at,
+                        hash_version)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         fact_id, seq, event_type, actor,
                         from_state, to_state,
                         reason, json.dumps(payload or {}, ensure_ascii=False),
                         event_hash, prev_hash, created_at,
+                        HASH_VERSION_CURRENT,
                     ),
                 )
                 conn.commit()
@@ -209,7 +239,8 @@ class ProvenanceChain:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             rows = conn.execute(
                 """SELECT fact_id, seq, event_type, actor, from_state, to_state,
-                          reason, payload_json, event_hash, prev_hash, created_at
+                          reason, payload_json, event_hash, prev_hash, created_at,
+                          hash_version
                    FROM provenance_chains
                    WHERE fact_id = ?
                    ORDER BY seq""",
@@ -230,6 +261,7 @@ class ProvenanceChain:
                     "event_hash": r[8],
                     "prev_hash": r[9],
                     "created_at": r[10],
+                    "hash_version": r[11],
                 }
                 for r in rows
             ]
@@ -254,17 +286,36 @@ class ProvenanceChain:
         expected_prev = GENESIS
         for i, event in enumerate(chain):
             payload_str = json.dumps(event["payload"], sort_keys=True, ensure_ascii=False)
-            recalc = self._compute_hash(
-                expected_prev,
-                event["event_type"],
-                event["fact_id"],
-                actor=event.get("actor", "system"),
-                reason=event.get("reason", ""),
-                from_state=event.get("from_state"),
-                to_state=event.get("to_state"),
-                payload_str=payload_str,
-                created_at=event["created_at"],
-            )
+            # FIX M4 (Claude audit 2026-07-28): dispatch per stored
+            # hash_version — a row hashed before actor/reason joined the
+            # formula (HASH_VERSION_LEGACY) must be recalculated the same
+            # way it was originally hashed, or every legacy row reports a
+            # false hash_mismatch here.
+            hash_version = event.get("hash_version", HASH_VERSION_LEGACY)
+            if hash_version == HASH_VERSION_CURRENT:
+                recalc = self._compute_hash(
+                    expected_prev,
+                    event["event_type"],
+                    event["fact_id"],
+                    actor=event.get("actor", "system"),
+                    reason=event.get("reason", ""),
+                    from_state=event.get("from_state"),
+                    to_state=event.get("to_state"),
+                    payload_str=payload_str,
+                    created_at=event["created_at"],
+                )
+            elif hash_version == HASH_VERSION_LEGACY:
+                recalc = self._compute_hash_legacy(
+                    expected_prev,
+                    event["event_type"],
+                    event["fact_id"],
+                    from_state=event.get("from_state"),
+                    to_state=event.get("to_state"),
+                    payload_str=payload_str,
+                    created_at=event["created_at"],
+                )
+            else:
+                return False, f"unknown hash_version {hash_version!r} at seq={i}"
 
             if recalc != event["event_hash"]:
                 return False, (
@@ -301,6 +352,32 @@ class ProvenanceChain:
             fact_id,
             actor or "system",
             reason or "",
+            from_state or "",
+            to_state or "",
+            payload_str,
+            created_at,
+        ])
+        return hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _compute_hash_legacy(
+        prev_hash: str,
+        event_type: str,
+        fact_id: str,
+        *,
+        from_state: Optional[str] = None,
+        to_state: Optional[str] = None,
+        payload_str: str = "",
+        created_at: str = "",
+    ) -> str:
+        """HASH_VERSION_LEGACY formula — predates FIX #6/#7 (Claude audit)
+        adding actor/reason to the hash. Kept byte-for-byte identical to
+        the original _compute_hash so verify() can still validate any row
+        hashed before that fix landed (FIX M4, Claude audit 2026-07-28)."""
+        data = "|".join([
+            prev_hash,
+            event_type,
+            fact_id,
             from_state or "",
             to_state or "",
             payload_str,
