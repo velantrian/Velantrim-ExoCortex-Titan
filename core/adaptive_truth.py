@@ -156,8 +156,13 @@ class AdaptiveTruthEngine:
             return th
 
         trust = self.get_domain_trust(domain)
-        # Если пользователь доволен → ещё мягче
-        if satisfaction > 0.7 and trust > 0.6:
+        # FIX (Claude audit 2026-07-28, Low): RED zone (medicine/law/physics/
+        # finance/security) must never be softened by user satisfaction — a
+        # user being happy with a wrong claim in a high-stakes domain is
+        # exactly the signal this zone exists to resist. Dissatisfaction may
+        # still tighten it further (branch below is unaffected).
+        # Если пользователь доволен → ещё мягче (кроме red-зоны)
+        if satisfaction > 0.7 and trust > 0.6 and th.zone != "red":
             th.min_confidence = max(0.35, th.min_confidence - 0.1)
             th.reason += " + пользователь доволен"
         # Если недоволен → жёстче

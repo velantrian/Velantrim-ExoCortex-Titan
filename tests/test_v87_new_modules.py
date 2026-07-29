@@ -244,6 +244,28 @@ def test_conversation_add_insight():
         assert "архитектуру" in nb.key_insights[0].lower()
 
 
+def test_conversation_add_insight_preserves_original_created_at():
+    """FIX (Claude audit 2026-07-28, Low): add_insight()'s UPDATE branch
+    used to reset created_at to "now" on every call — an active notebook
+    always looked freshly created. A second insight must not change it."""
+    import time
+
+    from core.conversation_consolidation import ConversationConsolidator
+    with tempfile.TemporaryDirectory() as tmp:
+        cc = ConversationConsolidator(os.path.join(tmp, "test_cc_created_at.db"))
+        cc.add_insight(chat_id="chat_99", insight="first insight")
+        created_at_1 = cc.get_notebook("chat_99").created_at
+
+        time.sleep(0.01)
+        cc.add_insight(chat_id="chat_99", insight="second insight")
+        created_at_2 = cc.get_notebook("chat_99").created_at
+
+        assert created_at_1 == created_at_2, (
+            "created_at must not change when an insight is appended to an "
+            f"existing notebook: {created_at_1!r} -> {created_at_2!r}"
+        )
+
+
 def test_conversation_finalize():
     """Conversation: finalize создаёт финальный блокнот."""
     from core.conversation_consolidation import ConversationConsolidator

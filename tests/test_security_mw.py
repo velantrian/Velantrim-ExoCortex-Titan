@@ -22,6 +22,22 @@ def test_security_headers_present(client):
     assert "Referrer-Policy" in r.headers
 
 
+def test_csp_header_present_and_locks_down_key_directives(client):
+    """Low finding (Claude audit 2026-07-28): no CSP anywhere. Verified live
+    against the actual console pages (static/console/*.html) with
+    Playwright — zero CSP violations, page fully interactive — before
+    adding this; 'unsafe-inline' is required by the console's existing
+    inline <script>/<style>, so this checks the directives that ARE
+    meaningfully locked down rather than asserting the whole policy string."""
+    r = client.get("/health")
+    csp = r.headers.get("Content-Security-Policy", "")
+    assert "default-src 'self'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "object-src 'none'" in csp
+    assert "base-uri 'self'" in csp
+    assert "form-action 'self'" in csp
+
+
 # ── rate-limit core: token bucket ────────────────────────────────────────────────
 
 def test_rate_limit_core_allows_then_blocks(monkeypatch):
@@ -54,3 +70,49 @@ def test_is_rate_limit_flag_default_off():
     from core.runtime_flags import is_rate_limit_enabled
 
     assert is_rate_limit_enabled() is False
+
+
+# ── XFF-aware client host resolution (Low finding, Claude audit 2026-07-28) ──
+
+class _FakeClient:
+    def __init__(self, host):
+        self.host = host
+
+
+class _FakeRequest:
+    def __init__(self, *, client_host, headers=None):
+        self.client = _FakeClient(client_host) if client_host else None
+        self.headers = headers or {}
+
+
+def test_client_host_ignores_xff_by_default(monkeypatch):
+    """TRUST_PROXY_HEADERS is off by default — the reverse-proxy's own
+    address must never be silently overridden by a client-supplied header
+    (that would let any client bypass rate limiting by spoofing XFF)."""
+    from api.server_middleware import _client_host
+
+    req = _FakeRequest(client_host="10.0.0.1", headers={"x-forwarded-for": "1.2.3.4"})
+    assert _client_host(req) == "10.0.0.1"
+
+
+def test_client_host_honors_xff_when_trust_proxy_headers_enabled(monkeypatch):
+    from api import server_middleware
+    from core import runtime_flags
+
+    monkeypatch.setattr(runtime_flags, "is_trust_proxy_headers_enabled", lambda: True)
+
+    fake_req = _FakeRequest(
+        client_host="10.0.0.1",
+        headers={"x-forwarded-for": "203.0.113.7, 10.0.0.1"},
+    )
+    assert server_middleware._client_host(fake_req) == "203.0.113.7"
+
+
+def test_client_host_falls_back_when_xff_missing_even_if_trusted(monkeypatch):
+    from api import server_middleware
+    from core import runtime_flags
+
+    monkeypatch.setattr(runtime_flags, "is_trust_proxy_headers_enabled", lambda: True)
+
+    fake_req = _FakeRequest(client_host="10.0.0.1", headers={})
+    assert server_middleware._client_host(fake_req) == "10.0.0.1"

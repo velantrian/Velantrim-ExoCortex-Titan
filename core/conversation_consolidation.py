@@ -125,9 +125,15 @@ class ConversationConsolidator:
                 insights = json.loads(row[0] or "[]")
                 insights.append(insight[:300])
                 msg_count = row[1] + 1
+                # FIX (Claude audit 2026-07-28, Low): created_at is meant to
+                # record when this notebook was first created (there's a
+                # separate finalized_at for phase-2 completion, and
+                # idx_cc_created exists for chronological queries) — it was
+                # being reset to "now" on every insight append, so an
+                # active notebook always looked freshly created.
                 conn.execute(
-                    "UPDATE conversation_notebooks SET key_insights = ?, messages_count = ?, created_at = ? WHERE chat_id = ?",
-                    (json.dumps(insights, ensure_ascii=False), msg_count, datetime.now(timezone.utc).isoformat(), chat_id),
+                    "UPDATE conversation_notebooks SET key_insights = ?, messages_count = ? WHERE chat_id = ?",
+                    (json.dumps(insights, ensure_ascii=False), msg_count, chat_id),
                 )
             else:
                 conn.execute(
@@ -230,6 +236,13 @@ class ConversationConsolidator:
                     facts_count=row["facts_count"],
                     messages_count=row["messages_count"],
                     produced_gist=bool(row["finalized_at"]),
+                    # FIX (Claude audit 2026-07-28, Low): none of the three
+                    # read methods passed the stored created_at through —
+                    # ConversationNotebook's dataclass default_factory
+                    # silently fabricated a fresh datetime.now() every time,
+                    # so the column was never actually readable regardless
+                    # of what add_insight()'s SQL wrote.
+                    created_at=row["created_at"],
                     finalized_at=row["finalized_at"],
                 )
         except Exception:
@@ -254,7 +267,7 @@ class ConversationConsolidator:
                     user_goal=r["user_goal"], key_insights=json.loads(r["key_insights"] or "[]"),
                     conclusion=r["conclusion"], facts_count=r["facts_count"],
                     messages_count=r["messages_count"], produced_gist=bool(r["finalized_at"]),
-                    finalized_at=r["finalized_at"],
+                    created_at=r["created_at"], finalized_at=r["finalized_at"],
                 ) for r in rows
             ]
         except Exception:
@@ -276,7 +289,7 @@ class ConversationConsolidator:
                     user_goal=r["user_goal"], key_insights=json.loads(r["key_insights"] or "[]"),
                     conclusion=r["conclusion"], facts_count=r["facts_count"],
                     messages_count=r["messages_count"], produced_gist=True,
-                    finalized_at=r["finalized_at"],
+                    created_at=r["created_at"], finalized_at=r["finalized_at"],
                 ) for r in rows
             ]
         except Exception:

@@ -37,6 +37,10 @@ def is_rate_limit_enabled() -> bool:
     return get_config().app.enable_rate_limit
 
 
+def is_trust_proxy_headers_enabled() -> bool:
+    return get_config().app.trust_proxy_headers
+
+
 def is_cognitive_distance_enabled() -> bool:
     return get_config().app.enable_cognitive_distance
 
@@ -158,6 +162,7 @@ __all__ = [
     "is_graph_lab_enabled",
     "is_observer_enabled",
     "is_rate_limit_enabled",
+    "is_trust_proxy_headers_enabled",
     "is_truth_policy_enabled",
     "use_event_bus_background",
 ]

@@ -73,6 +73,13 @@ class AppSettings:
     enable_rate_limit: bool = False
     rate_limit_capacity: int = 60
     rate_limit_refill_per_sec: float = 1.0
+    # Low finding (Claude audit 2026-07-28): rate limiter and the HSTS-skip
+    # check both key on request.client.host, which is the load balancer's
+    # own address (same bucket for every real client) once deployed behind
+    # a reverse proxy. Default OFF — trusting X-Forwarded-For is only safe
+    # when the proxy is the one actually stripping/overwriting that header
+    # from inbound clients; the operator must opt in deliberately.
+    trust_proxy_headers: bool = False
     # CognitiveDistance re-rank of retrieval (default off; measured via eval ruler).
     enable_cognitive_distance: bool = False
     # BudgetPlanner — adaptive retrieval k/mode by query complexity (default off).
@@ -176,6 +183,7 @@ class AppSettings:
         a.enable_rate_limit = flag("ENABLE_RATE_LIMIT")
         a.rate_limit_capacity = _int("RATE_LIMIT_CAPACITY", 60)
         a.rate_limit_refill_per_sec = _float("RATE_LIMIT_REFILL_PER_SEC", 1.0)
+        a.trust_proxy_headers = flag("TRUST_PROXY_HEADERS")
         a.enable_cognitive_distance = flag("ENABLE_COGNITIVE_DISTANCE")
         a.enable_budget_planner = flag("ENABLE_BUDGET_PLANNER")
         a.truth_gate_mode = os.getenv("TRUTH_GATE_MODE", "BALANCED")
