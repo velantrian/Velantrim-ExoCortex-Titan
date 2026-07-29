@@ -41,3 +41,41 @@ def test_llm_test_route_exists(client):
         json={"provider": "openai", "api_key": "invalid"},
     )
     assert r.status_code in (400, 401, 422)
+
+
+def test_llm_probe_route_rejects_smuggled_payload(client, monkeypatch):
+    """Роут, а не только pydantic-модель, должен отказывать.
+
+    Проверка самой модели не доказывает, что эндпоинт её применяет: FastAPI мог
+    бы, например, принимать другую схему. `data_mode="none"` у probe пропускает
+    проверку remote-data, поэтому отказ должен быть виден на границе HTTP.
+    """
+    monkeypatch.setattr(server, "API_KEY", "test-key")
+    for smuggled in (
+        {"prompt": "секретный вопрос пользователя"},
+        {"system": "Верифицированные факты: ..."},
+        {"memory": ["fact-1"]},
+        {"audio_base64": "AAAA"},
+    ):
+        r = client.post(
+            "/console/llm/test",
+            headers={"X-Api-Key": "test-key"},
+            json={"provider": "gemini", "api_key": "test-key-12345", **smuggled},
+        )
+        assert r.status_code == 422, (
+            f"{smuggled} принят роутом со статусом {r.status_code}"
+        )
+
+
+def test_tts_probe_route_rejects_smuggled_payload(client, monkeypatch):
+    monkeypatch.setattr(server, "API_KEY", "test-key")
+    r = client.post(
+        "/console/tts/test",
+        headers={"X-Api-Key": "test-key"},
+        json={
+            "provider": "gemini",
+            "api_key": "test-key-12345",
+            "text": "произнеси приватный текст",
+        },
+    )
+    assert r.status_code == 422

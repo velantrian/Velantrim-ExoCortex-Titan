@@ -2,32 +2,35 @@
 Local-first policy kernel for Titan.
 
 This module is the small, deterministic authority boundary between runtime
-health/policy state and components that want to use a capability.  It does
-not route work, call providers, or mutate memory.  ADAO will eventually
-consume its immutable snapshots and leases; it must never reinterpret or
-weaken them.
+health/policy state and components that want to use a capability. It does not
+route work, call providers, or mutate memory.
 
 P0 guarantees implemented here:
 
 * canonical writes are local-only;
 * the write-protocol gate is mandatory;
-* network access is denied unless a later, reviewed policy source explicitly
-  grants it;
-* a missing policy dependency is a denial, not an implicit permission;
-* a previously verified local policy may supply restrictions during a
-  dependency failure, but cannot authorize a high-risk canonical write while
-  the current supervisor state is unknown;
+* network access is denied unless explicit local policy grants it;
+* remote data exposure is independently constrained;
+* a missing or malformed policy dependency is a denial, not permission;
 * decisions use stable reason codes and carry a replayable snapshot id.
 
-The current kernel intentionally has no remote-policy dependency.  Future
-configuration sources can be added behind ``PolicyKernel.capture_snapshot``
-without granting them canonical write authority.
+Remote egress is intentionally opt-in:
+
+* ``VELANTRIM_NETWORK_MODE=allow`` permits network-capable leases;
+* ``VELANTRIM_REMOTE_DATA_MODE=allowed`` permits raw user/memory payloads;
+* ``VELANTRIM_REMOTE_DATA_MODE=redacted`` permits only callers that declare
+  ``data_mode="redacted"``;
+* defaults remain ``deny`` and ``never``.
+
+``ask`` is represented in policy but is denied by the non-interactive runtime
+until an explicit consent broker exists.
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import logging
+import os
 import threading
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
@@ -35,7 +38,7 @@ from enum import Enum
 
 logger = logging.getLogger("velantrim.policy_kernel")
 
-POLICY_VERSION = "titan-policy-v1"
+POLICY_VERSION = "titan-policy-v2"
 
 
 class NetworkMode(str, Enum):
@@ -56,7 +59,7 @@ class RemoteDataMode(str, Enum):
 
 @dataclass(frozen=True)
 class EffectivePolicy:
-    """Resolved hard policy.  Optimization preferences do not belong here."""
+    """Resolved hard policy. Optimization preferences do not belong here."""
 
     network: NetworkMode = NetworkMode.DENY
     remote_data: RemoteDataMode = RemoteDataMode.NEVER
@@ -94,9 +97,9 @@ class PolicyDecision:
 class CapabilityLease:
     """A bounded permission token for an execution plan.
 
-    A lease is descriptive in this P0 slice; it does not perform I/O and does
-    not outlive the snapshot that produced it.  Execution engines must reject
-    a lease whose ``snapshot_id`` does not match the active plan.
+    ``data_mode`` records what the caller declared it will expose:
+    ``none`` (no user payload), ``redacted``, or ``raw``. Execution engines
+    must reject a lease whose snapshot id does not match the active plan.
     """
 
     capability: str
@@ -105,6 +108,7 @@ class CapabilityLease:
     reason_code: str
     snapshot_id: str
     policy_version: str
+    data_mode: str = "none"
 
 
 def _snapshot_id(
@@ -131,6 +135,62 @@ def _snapshot_id(
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:24]
 
 
+def _enum_from_env(name: str, enum_type, default: str):
+    """Parse a strict enum from ENV.
+
+    Invalid values are programming/deployment errors. They deliberately raise
+    so ``capture_snapshot`` falls closed instead of silently weakening policy.
+    """
+
+    raw = (os.getenv(name, default) or default).strip().lower()
+    try:
+        return enum_type(raw)
+    except ValueError as exc:
+        allowed = ", ".join(item.value for item in enum_type)
+        # Отвергнутое значение включается в сообщение: оператор чаще всего видит
+        # только эту строку в логе упавшего деплоя, и без него непонятно, что
+        # именно исправлять — опечатку, регистр или лишний пробел.
+        raise ValueError(
+            f"{name}={raw!r} is invalid; expected one of: {allowed}"
+        ) from exc
+
+
+def _normalize_data_mode(value: str) -> str:
+    mode = (value or "none").strip().lower()
+    if mode not in {"none", "redacted", "raw"}:
+        raise ValueError("data_mode must be none, redacted, or raw")
+    return mode
+
+
+def validate_egress_env() -> EffectivePolicy:
+    """Проверить egress-переменные один раз на старте; мусор → ValueError.
+
+    Почему это нужно отдельно от `capture_snapshot`. `_enum_from_env` бросает,
+    `capture_snapshot` честно падает closed — и на этом всё выглядит нормально:
+    сервер поднимается, `/health` отвечает 200, чтение и retrieval работают, а
+    `canonical_write_decision()` возвращает False. То есть **опечатка в одной
+    ENV-переменной молча переводит систему памяти в read-only**: она кажется
+    здоровой и теряет входящие факты. В логах при этом `logger.error` на каждый
+    lease, но процесс живой, и оркестратор ничего не замечает.
+
+    Плюс радиус: `lease_capability` при `policy_dependency_unavailable`
+    отклоняет вообще все capability, включая локальные, к egress не относящиеся.
+
+    Поэтому конфигурация проверяется на старте и деплой падает громко.
+    """
+    network = _enum_from_env(
+        "VELANTRIM_NETWORK_MODE",
+        NetworkMode,
+        NetworkMode.DENY.value,
+    )
+    remote_data = _enum_from_env(
+        "VELANTRIM_REMOTE_DATA_MODE",
+        RemoteDataMode,
+        RemoteDataMode.NEVER.value,
+    )
+    return EffectivePolicy(network=network, remote_data=remote_data)
+
+
 class PolicyKernel:
     """Resolve strict local policy and issue deterministic decisions."""
 
@@ -141,13 +201,12 @@ class PolicyKernel:
 
     def _effective_from_local_config(self) -> EffectivePolicy:
         """Read local configuration without allowing it to weaken P0 rules."""
+
         from core.feature_config import get_config
 
         configured_gate = bool(
             getattr(get_config().app, "enable_write_gate", True)
         )
-        # ENABLE_WRITE_GATE is retained as a compatibility/readout field, but
-        # a false value can no longer switch off a canonical safety boundary.
         if not configured_gate and not self._warned_legacy_disable:
             logger.warning(
                 "ENABLE_WRITE_GATE=0 is ignored: the canonical write gate is "
@@ -155,7 +214,18 @@ class PolicyKernel:
                 POLICY_VERSION,
             )
             self._warned_legacy_disable = True
-        return EffectivePolicy()
+
+        network = _enum_from_env(
+            "VELANTRIM_NETWORK_MODE",
+            NetworkMode,
+            NetworkMode.DENY.value,
+        )
+        remote_data = _enum_from_env(
+            "VELANTRIM_REMOTE_DATA_MODE",
+            RemoteDataMode,
+            RemoteDataMode.NEVER.value,
+        )
+        return EffectivePolicy(network=network, remote_data=remote_data)
 
     @staticmethod
     def _supervisor_mode() -> str:
@@ -196,6 +266,7 @@ class PolicyKernel:
 
     def capture_snapshot(self) -> PolicySnapshot:
         """Capture current policy; dependency failure is always fail-closed."""
+
         with self._lock:
             try:
                 effective = self._effective_from_local_config()
@@ -208,7 +279,7 @@ class PolicyKernel:
                     else "safe_default_fail_closed"
                 )
                 logger.error(
-                    "PolicyKernel dependency unavailable; canonical writes "
+                    "PolicyKernel dependency unavailable; high-risk capabilities "
                     "blocked (%s)",
                     type(exc).__name__,
                 )
@@ -256,9 +327,12 @@ class PolicyKernel:
         *,
         locality: str = "local",
         requires_network: bool = False,
+        data_mode: str = "none",
     ) -> CapabilityLease:
         """Issue a least-authority lease from one immutable snapshot."""
+
         snapshot = self.capture_snapshot()
+        mode = _normalize_data_mode(data_mode)
         allowed = True
         reason = "ok"
 
@@ -283,13 +357,30 @@ class PolicyKernel:
                 reason_code=reason,
                 snapshot_id=snapshot.snapshot_id,
                 policy_version=snapshot.policy_version,
+                data_mode=mode,
             )
-        if requires_network and snapshot.effective.network is NetworkMode.DENY:
+
+        if snapshot.reason_code == "policy_dependency_unavailable":
             allowed = False
-            reason = "network_denied"
-        elif locality == "remote" and snapshot.effective.remote_data is RemoteDataMode.NEVER:
-            allowed = False
-            reason = "remote_data_forbidden"
+            reason = snapshot.reason_code
+        elif requires_network:
+            if snapshot.effective.network is NetworkMode.DENY:
+                allowed = False
+                reason = "network_denied"
+            elif snapshot.effective.network is NetworkMode.ASK:
+                allowed = False
+                reason = "network_consent_required"
+
+        if allowed and locality == "remote" and mode != "none":
+            if snapshot.effective.remote_data is RemoteDataMode.NEVER:
+                allowed = False
+                reason = "remote_data_forbidden"
+            elif (
+                snapshot.effective.remote_data is RemoteDataMode.REDACTED
+                and mode != "redacted"
+            ):
+                allowed = False
+                reason = "remote_data_requires_redaction"
 
         return CapabilityLease(
             capability=capability,
@@ -298,6 +389,7 @@ class PolicyKernel:
             reason_code=reason,
             snapshot_id=snapshot.snapshot_id,
             policy_version=snapshot.policy_version,
+            data_mode=mode,
         )
 
 
@@ -310,6 +402,7 @@ def get_policy_kernel() -> PolicyKernel:
 
 def reset_policy_kernel() -> None:
     """Reset in-memory last-known policy state (primarily for isolated tests)."""
+
     global _POLICY_KERNEL
     _POLICY_KERNEL = PolicyKernel()
 
@@ -325,4 +418,5 @@ __all__ = [
     "RemoteDataMode",
     "get_policy_kernel",
     "reset_policy_kernel",
+    "validate_egress_env",
 ]

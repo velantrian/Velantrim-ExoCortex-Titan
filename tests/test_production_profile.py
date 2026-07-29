@@ -405,23 +405,55 @@ def test_immutable_core_does_not_claim_automatic_snapshots():
     )
 
 
-def test_provider_section_does_not_claim_blocking():
-    """F5: LLM_PROVIDER=none is 'not configured', never 'blocked'."""
+def test_blocking_is_attributed_to_the_policy_boundary_not_to_llm_provider():
+    """F5, updated: the egress boundary now exists — but LLM_PROVIDER isn't it.
+
+    Originally this asserted the profile called providers "not blocked", because
+    at that commit nothing blocked them. The policy boundary
+    (core/policy_kernel.py + core/remote_egress.py) is now implemented and
+    pinned here, so the profile may legitimately claim gating. What must NOT
+    come back is attributing that gating to `LLM_PROVIDER=none`, which never
+    blocked anything on its own.
+    """
     text = _prod_text()
-    assert "no remote provider" not in text.lower(), (
-        "the profile must not headline providers as absent/blocked"
-    )
     lowered = text.lower()
-    assert "not blocked" in lowered or "never as \"providers blocked\"" in lowered
+
+    # The real controls are named.
+    assert "VELANTRIM_NETWORK_MODE=deny" in text
+    assert "VELANTRIM_REMOTE_DATA_MODE=never" in text
+
+    # LLM_PROVIDER is still described as configuration, not as the boundary.
+    assert "no provider is configured from the" in lowered, (
+        "the profile must keep explaining that LLM_PROVIDER=none is only "
+        "'not configured from the environment'"
+    )
+    assert "on its own that was never a boundary" in lowered, (
+        "the profile must keep stating that LLM_PROVIDER=none is not a boundary"
+    )
 
 
 def test_request_supplied_provider_credentials_are_documented():
-    """F5 must be visible in both the profile and the env template."""
+    """The request-override path must stay documented, and named as gated."""
     for text, label in ((_prod_text(), "compose"), (_env_template_text(), "env template")):
         lowered = text.lower()
         assert "llm_api_key" in lowered, f"{label} does not mention llm_api_key"
         assert "llm_provider" in lowered, f"{label} does not mention llm_provider"
-        assert "#59" in text, f"{label} does not reference the PR #59 egress boundary"
+        # The mechanism that actually gates it must be named, so a reader is not
+        # left to infer that holding the API key is still sufficient.
+        assert "VELANTRIM_NETWORK_MODE" in text, (
+            f"{label} does not name the variable that gates the request path"
+        )
+
+
+def test_profile_does_not_describe_the_boundary_as_unimplemented():
+    """The pre-#59 wording must not survive now that the boundary is in place."""
+    for text, label in ((_prod_text(), "compose"), (_env_template_text(), "env template")):
+        assert "not implemented on this commit" not in text, (
+            f"{label} still claims the egress boundary is unimplemented"
+        )
+        assert "draft PR #59" not in text, (
+            f"{label} still describes the boundary as a pending draft"
+        )
 
 
 def test_env_template_does_not_claim_env_file_injects_credentials():

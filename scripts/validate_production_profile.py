@@ -379,6 +379,21 @@ def check_providers_and_secrets(res: Result, env: dict[str, str]) -> None:
         "VELANTRIM_ALLOW_OPEN" not in env,
         f"={env.get('VELANTRIM_ALLOW_OPEN')!r}",
     )
+    # The executable egress boundary. Both dimensions are asserted: relaxing
+    # network alone still denies raw payloads, and relaxing remote_data alone
+    # still denies the connection, so a profile that pins only one is a
+    # configuration error worth failing on.
+    for var, expected in (
+        ("VELANTRIM_NETWORK_MODE", "deny"),
+        ("VELANTRIM_REMOTE_DATA_MODE", "never"),
+    ):
+        res.add(f"{var} is pinned explicitly", var in env)
+        value, certain = env_value(env, var, expected)
+        res.add(
+            f"{var} pinned to {expected}",
+            (value or "").strip().lower() == expected if certain else None,
+            f"={value!r}",
+        )
     res.add("VELANTRIM_API_KEY is declared", "VELANTRIM_API_KEY" in env)
     # `${VELANTRIM_API_KEY:?...}` has no default, so its deployed value is
     # operator-supplied and unknowable here; only assert on a literal.
