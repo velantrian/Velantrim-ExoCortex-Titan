@@ -503,6 +503,11 @@ class LlmReaderAdapter(BaseSemanticReader):
                     # but do not force ReaderStatus.PARTIAL.
                     receipt.claims_rejected_duplicate += 1
                     continue
+                # Record every validated unique proposal before the admission
+                # budget decision. If an omitted over-budget claim is proposed
+                # again, the repeat is a duplicate rather than another unique
+                # omission.
+                seen_identity.add(claim.claim_id)
                 if len(admitted) >= resolved.max_claims:
                     _warn(
                         warnings,
@@ -512,7 +517,6 @@ class LlmReaderAdapter(BaseSemanticReader):
                     # Continue validating later proposals so an overlap duplicate
                     # of an admitted claim cannot masquerade as omitted content.
                     continue
-                seen_identity.add(claim.claim_id)
                 admitted.append(claim)
 
         receipt.claims_admitted = len(admitted)
