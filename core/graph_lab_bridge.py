@@ -97,7 +97,7 @@ def analyze_graph(
     """
     import os
 
-    db = db_path or os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+    db: str = db_path if db_path else os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
 
     # NetworkX check
     if importlib.util.find_spec("networkx") is None:
@@ -110,23 +110,29 @@ def analyze_graph(
         return {"available": False, "reason": "graph_lab not importable"}
 
     # Запустить анализ
+    # FIX M11 (Claude audit 2026-07-28): core.graph_lab.analyze() takes
+    # seed_fact_ids/top_k/max_nodes/conn — it never had a db_path parameter.
+    # The call below always raised TypeError, swallowed by the except
+    # below, so this endpoint always reported available=False regardless
+    # of whether NetworkX/graph_lab were actually usable. Opens a real
+    # connection to `db` and passes it as conn=, closed afterward.
+    import sqlite3
+
+    conn = sqlite3.connect(db)
     try:
-        # Pre-existing signature mismatch: core.graph_lab.analyze() takes
-        # seed_fact_ids/top_k/max_nodes/conn — it has no db_path parameter. Caught
-        # below like any other analysis failure, so this currently always degrades
-        # to available=False. Not fixed here (wiring a real sqlite3.Connection from
-        # db_path is a behavior change out of scope for a typing-only pass) —
-        # tracked as a follow-up bug.
-        result = gl_analyze(  # type: ignore[call-arg]
-            db_path=db,
+        # gl_analyze() already sets "available" correctly in its own
+        # return dict (True on success, False if NetworkX turns out
+        # unavailable inside graph_lab.py's own check) — don't override it.
+        return gl_analyze(
             max_nodes=max_nodes,
             top_k=top_k,
+            conn=conn,
         )
-        result["available"] = True
-        return result
     except Exception as exc:
         logger.debug("NetworkX analysis failed: %s", exc)
         return {"available": False, "reason": str(exc)[:200]}
+    finally:
+        conn.close()
 
 
 def get_bridge_concepts(

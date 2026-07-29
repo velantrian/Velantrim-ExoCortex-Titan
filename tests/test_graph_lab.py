@@ -159,3 +159,39 @@ def test_path_fns_guard_when_networkx_absent(monkeypatch):
     monkeypatch.setattr(graph_lab._NX, "_mod", None)
     assert graph_lab.shortest_why_path("x", "z")["found"] is False
     assert graph_lab.reaches("z")["available"] is False
+
+
+# ── graph_lab_bridge.analyze_graph(): db_path wiring (M11, Claude audit 2026-07-28) ──
+
+def test_bridge_analyze_graph_actually_runs_against_db_path(tmp_path):
+    """core.graph_lab.analyze() has no db_path parameter — it takes conn=.
+    graph_lab_bridge.analyze_graph() used to call it with db_path=, which
+    always raised TypeError (caught, reported as available=False), so this
+    endpoint reported "unavailable" unconditionally regardless of whether
+    NetworkX/graph_lab were actually usable."""
+    from core import graph_lab_bridge
+
+    db_path = str(tmp_path / "bridge.db")
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        """
+        CREATE TABLE relations (
+            relation_id TEXT PRIMARY KEY, from_fact_id TEXT, to_fact_id TEXT,
+            relation_type TEXT, confidence REAL, knowledge_status TEXT
+        )
+        """
+    )
+    conn.executemany(
+        "INSERT INTO relations VALUES (?,?,?,?,?,?)",
+        [
+            ("r1", "h", "a", "causes", 0.9, "known"),
+            ("r2", "h", "b", "causes", 0.9, "known"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    out = graph_lab_bridge.analyze_graph(db_path=db_path)
+    assert out["available"] is True, out
+    assert out["node_count"] == 3
+    assert out["edge_count"] == 2
