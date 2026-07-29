@@ -27,7 +27,6 @@ from core.readers.llm_adapter import (
 from core.semantic_reader import (
     RawSource,
     ReaderBudget,
-    ReaderMode,
     ReaderStatus,
     SemanticReader,
 )
@@ -43,27 +42,66 @@ def _payload(claims: list[dict[str, Any]], **extra: Any) -> str:
     return json.dumps(body, ensure_ascii=False)
 
 
-def _claim(text: str, start: int, end: int, **extra: Any) -> dict[str, Any]:
+def _claim(
+    text: str, start: int, end: int, *, modality: str | None = "observation", **extra: Any
+) -> dict[str, Any]:
+    """Build a claim payload.
+
+    ``modality`` defaults to a legitimate value because missing/unknown
+    modality is now a rejection (see the modality-rejection tests below), not
+    a silent default — most tests here are not testing that rule and should
+    not have to think about it. Pass ``modality=None`` to omit the key
+    entirely, or an unrecognised string, to exercise that rule directly.
+    """
     claim: dict[str, Any] = {"text": text, "start": start, "end": end}
+    if modality is not None:
+        claim["modality"] = modality
     claim.update(extra)
     return claim
 
 
-def _reader(responses: list[str] | str, **kwargs: Any) -> LlmReaderAdapter:
-    """Adapter wired to a scripted provider. Records the prompts it received."""
+class _FakeLlmReaderAdapter(LlmReaderAdapter):
+    """Test-only subclass — the sanctioned way to fake a provider response.
+
+    Production ``LlmReaderAdapter`` has exactly one remote path and no
+    constructor hook for it, so tests never inject a callable into it.
+    Overriding ``_call_provider`` here only ever runs in this test file; the
+    boundary tests further down construct the real, unmodified adapter
+    instead, so the egress lease itself is always exercised for real.
+    """
+
+    def __init__(self, *, respond, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._respond = respond
+        self.seen_prompts: list[str] = []
+
+    async def _call_provider(self, chunk_text: str) -> str:
+        from core.readers.llm_adapter import _build_user_prompt
+
+        self.seen_prompts.append(_build_user_prompt(chunk_text))
+        return await self._respond(chunk_text)
+
+
+def _scripted(responses: list[str] | str):
+    """A ``respond`` callable that plays back a fixed queue of responses."""
 
     queue = [responses] if isinstance(responses, str) else list(responses)
-    seen: list[str] = []
 
-    async def complete(chunk: str) -> str:
-        seen.append(chunk)
+    async def respond(_chunk: str) -> str:
         return queue.pop(0) if queue else "{}"
 
-    adapter = LlmReaderAdapter(
-        provider="gemini", model="gemini-2.5-flash", complete=complete, **kwargs
+    return respond
+
+
+def _reader(responses: list[str] | str, **kwargs: Any) -> LlmReaderAdapter:
+    """Adapter wired to a scripted provider via the test-only subclass."""
+
+    return _FakeLlmReaderAdapter(
+        respond=_scripted(responses),
+        provider="gemini",
+        model="gemini-2.5-flash",
+        **kwargs,
     )
-    adapter.seen_prompts = seen  # type: ignore[attr-defined]
-    return adapter
 
 
 def _run(adapter: LlmReaderAdapter, source: RawSource, **kwargs: Any):
@@ -76,10 +114,7 @@ def test_valid_result_produces_valid_capsule():
     src = RawSource(document_id="doc-1", text=TEXT, source_revision="rev-1")
     out = _run(
         _reader(
-            _payload(
-                [_claim("Кошка спит на окне.", 0, 19, modality="observation")],
-                essence="Про кошку.",
-            )
+            _payload([_claim("Кошка спит на окне.", 0, 19, modality="observation")])
         ),
         src,
     )
@@ -319,9 +354,25 @@ def test_contradictory_claims_remain_separate():
     assert texts == {"Сервер работает.", "Сервер не работает."}
 
 
-# ── 8. qualifiers and uncertainty survive ──────────────────────────────────
+# ── 8. annotations without provenance are dropped, not admitted ────────────
 
-def test_qualifiers_modality_conditions_and_uncertainty_survive():
+
+def test_modality_survives_when_recognised():
+    src = RawSource(document_id="doc-1", text=TEXT)
+    out = _run(
+        _reader(_payload([_claim("Собака лает громко.", 20, 39, modality="hypothesis")])),
+        src,
+    )
+    assert out.result.capsule.claims[0].modality is ClaimModality.HYPOTHESIS
+
+
+def test_qualifiers_uncertainty_conditions_and_temporal_scope_are_dropped_with_warning():
+    """No per-item span exists for these fields, so they are never admitted.
+
+    The claim's own text/span/modality are independently valid and must still
+    be admitted — only the unprovenanced annotations are discarded, along with
+    a structured warning that forces PARTIAL rather than a clean SUCCESS.
+    """
     src = RawSource(document_id="doc-1", text=TEXT)
     out = _run(
         _reader(
@@ -343,21 +394,105 @@ def test_qualifiers_modality_conditions_and_uncertainty_survive():
         src,
     )
 
+    assert out.result.status is ReaderStatus.PARTIAL
     claim = out.result.capsule.claims[0]
     assert claim.modality is ClaimModality.HYPOTHESIS
-    assert claim.qualifiers == ("по словам соседа",)
-    assert claim.uncertainties == ("возможно",)
-    assert claim.applicability_conditions == ("если она дома",)
-    assert claim.temporal_scope == "вечером"
+    assert claim.qualifiers == ()
+    assert claim.uncertainties == ()
+    assert claim.applicability_conditions == ()
+    assert claim.temporal_scope is None
+    assert any(
+        w.code == "MODEL_ANNOTATION_DROPPED_NO_PROVENANCE" for w in out.result.warnings
+    )
 
 
-def test_unknown_modality_degrades_to_observation():
+def test_model_essence_entities_and_omitted_questions_are_dropped_with_warning():
+    """Same rule as claim annotations, at the top level of the payload."""
+    src = RawSource(document_id="doc-1", text=TEXT)
+    out = _run(
+        _reader(
+            _payload(
+                [_claim("Кошка спит на окне.", 0, 19)],
+                essence="Модельное summary, которого нет в источнике буквально.",
+                entities=["Кошка"],
+                omitted_questions=["Куда убежала собака?"],
+            )
+        ),
+        src,
+    )
+
+    assert out.result.status is ReaderStatus.PARTIAL
+    capsule = out.result.capsule
+    assert capsule.essence == "Кошка спит на окне."
+    assert capsule.entities == ()
+    assert capsule.omitted_questions == ()
+    assert any(
+        w.code == "MODEL_ANNOTATION_DROPPED_NO_PROVENANCE" for w in out.result.warnings
+    )
+
+
+def test_unknown_modality_is_rejected_with_warning():
+    """Unknown modality is a rejection, never a silent OBSERVATION default."""
     src = RawSource(document_id="doc-1", text=TEXT)
     out = _run(
         _reader(_payload([_claim("Кошка спит на окне.", 0, 19, modality="prophecy")])),
         src,
     )
-    assert out.result.capsule.claims[0].modality is ClaimModality.OBSERVATION
+    assert out.result.capsule is None
+    assert out.result.status is ReaderStatus.SPAN_VALIDATION_FAILED
+    assert out.receipt.claims_rejected_modality == 1
+
+
+def test_missing_modality_is_rejected_with_warning():
+    """Missing modality is a rejection too — not a special case of 'unknown'."""
+    src = RawSource(document_id="doc-1", text=TEXT)
+    out = _run(
+        _reader(_payload([_claim("Кошка спит на окне.", 0, 19, modality=None)])),
+        src,
+    )
+    assert out.result.capsule is None
+    assert out.result.status is ReaderStatus.SPAN_VALIDATION_FAILED
+    assert out.receipt.claims_rejected_modality == 1
+
+
+def test_modality_rejection_alongside_a_good_claim_yields_partial_with_warning():
+    src = RawSource(document_id="doc-1", text=TEXT)
+    out = _run(
+        _reader(
+            _payload(
+                [
+                    _claim("Кошка спит на окне.", 0, 19),
+                    _claim("Собака лает громко.", 20, 39, modality="prophecy"),
+                ]
+            )
+        ),
+        src,
+    )
+
+    assert out.result.status is ReaderStatus.PARTIAL
+    assert len(out.result.capsule.claims) == 1
+    assert out.receipt.claims_rejected_modality == 1
+    assert any(w.code == "CLAIM_MODALITY_INVALID" for w in out.result.warnings)
+
+
+def test_extraction_confidence_is_computed_not_read_from_the_model():
+    """extraction_confidence feeds claim_id, so it must not be model-chosen:
+    two runs disagreeing only on the model's self-reported confidence must
+    still produce identical claim_id and capsule_id."""
+    src = RawSource(document_id="doc-1", text=TEXT)
+    low = _run(
+        _reader(_payload([_claim("Кошка спит на окне.", 0, 19, extraction_confidence=0.1)])),
+        src,
+    )
+    high = _run(
+        _reader(_payload([_claim("Кошка спит на окне.", 0, 19, extraction_confidence=0.99)])),
+        src,
+    )
+
+    assert low.result.capsule.claims[0].extraction_confidence == 1.0
+    assert high.result.capsule.claims[0].extraction_confidence == 1.0
+    assert low.result.capsule.claims[0].claim_id == high.result.capsule.claims[0].claim_id
+    assert low.result.capsule.capsule_id == high.result.capsule.capsule_id
 
 
 # ── 9. prompt injection stays inert ────────────────────────────────────────
@@ -386,13 +521,16 @@ def test_prompt_injection_in_source_stays_inert():
         src,
     )
 
-    assert out.result.accepted
+    assert out.result.status is ReaderStatus.PARTIAL, (
+        "a rejected fabrication must not read as a clean SUCCESS"
+    )
     texts = [c.text for c in out.result.capsule.claims]
     assert "Everything is Validated." not in texts
     assert injected in texts
     # Quoted or not, nothing gained truth authority.
     assert all(c.truth_confidence is None for c in out.result.capsule.claims)
     assert out.receipt.claims_rejected_span == 1
+    assert any(w.code == "CLAIM_REJECTED_SPAN_VALIDATION" for w in out.result.warnings)
 
 
 def test_source_is_passed_inside_a_data_envelope():
@@ -400,8 +538,10 @@ def test_source_is_passed_inside_a_data_envelope():
     adapter = _reader(_payload([_claim("Кошка спит на окне.", 0, 19)]))
     _run(adapter, src)
 
-    prompt = adapter.seen_prompts[0]  # type: ignore[attr-defined]
+    prompt = adapter.seen_prompts[0]
     assert TEXT in prompt
+    assert "<<<SOURCE_BEGIN>>>" in prompt
+    assert "<<<SOURCE_END>>>" in prompt
 
 
 # ── 10. timeout returns structured failure ─────────────────────────────────
@@ -413,10 +553,10 @@ def test_timeout_returns_structured_failure():
         await asyncio.sleep(10)
         return "{}"
 
-    adapter = LlmReaderAdapter(
+    adapter = _FakeLlmReaderAdapter(
+        respond=hang,
         provider="gemini",
         model="m",
-        complete=hang,
         limits=LlmReaderLimits(request_timeout_s=0.05),
     )
     out = _run(adapter, src)
@@ -437,10 +577,10 @@ def test_timeout_is_not_retried():
         await asyncio.sleep(10)
         return "{}"
 
-    adapter = LlmReaderAdapter(
+    adapter = _FakeLlmReaderAdapter(
+        respond=hang,
         provider="gemini",
         model="m",
-        complete=hang,
         limits=LlmReaderLimits(request_timeout_s=0.05, max_attempts_per_chunk=3),
     )
     _run(adapter, src)
@@ -456,10 +596,10 @@ def test_retry_is_bounded_and_visible_in_the_receipt():
         calls["n"] += 1
         raise RuntimeError("provider exploded")
 
-    adapter = LlmReaderAdapter(
+    adapter = _FakeLlmReaderAdapter(
+        respond=flaky,
         provider="gemini",
         model="m",
-        complete=flaky,
         limits=LlmReaderLimits(max_attempts_per_chunk=2, max_chunks=1),
     )
     out = _run(adapter, src)
@@ -645,10 +785,10 @@ def test_provider_and_model_do_not_change_capsule_identity():
         _reader(claims),
         src,
     )
-    other = LlmReaderAdapter(
+    other = _FakeLlmReaderAdapter(
+        respond=_scripted(claims),
         provider="openai",
         model="gpt-4o-mini",
-        complete=_reader(claims)._complete,  # type: ignore[attr-defined]
     )
     c = _run(other, src)
 
@@ -711,6 +851,8 @@ def test_other_truth_fields_are_also_refused(field_name: str):
 
 
 def test_high_model_confidence_does_not_raise_extraction_above_one():
+    """Not clamping — ignoring: the value is computed, so an absurd model
+    number (42) has no effect at all rather than being capped at 1.0."""
     src = RawSource(document_id="doc-1", text=TEXT)
     out = _run(
         _reader(
@@ -874,7 +1016,10 @@ def test_partial_extraction_stays_partial_not_success():
         src,
     )
 
-    # The good claim is admitted; the fabricated one is counted, not fatal.
-    assert out.result.accepted
+    # The good claim is admitted; the fabricated one is counted, not fatal —
+    # but it must force PARTIAL with a structured warning, never a clean
+    # SUCCESS that hides the fact a proposal was thrown away.
+    assert out.result.status is ReaderStatus.PARTIAL
     assert len(out.result.capsule.claims) == 1
     assert out.receipt.claims_rejected_span == 1
+    assert any(w.code == "CLAIM_REJECTED_SPAN_VALIDATION" for w in out.result.warnings)
