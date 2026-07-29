@@ -59,14 +59,8 @@ def _capsule(
     )
 
 
-def _candidate(
-    text: str,
-    *,
-    score: float = 1.0,
-    essence: str | None = None,
-    **flags: bool,
-) -> WorkingMemoryCandidate:
-    policy = {
+def _policy(**flags: bool) -> dict[str, bool]:
+    result = {
         "recall_allowed": True,
         "eligible": True,
         "restricted": False,
@@ -74,11 +68,34 @@ def _candidate(
         "protected": False,
         "conflict": False,
     }
-    policy.update(flags)
+    result.update(flags)
+    return result
+
+
+def _candidate(
+    text: str,
+    *,
+    score: float = 1.0,
+    essence: str | None = None,
+    **flags: bool,
+) -> WorkingMemoryCandidate:
     return WorkingMemoryCandidate(
         capsule=_capsule(text, essence=essence),
         attention_score=score,
-        **policy,
+        **_policy(**flags),
+    )
+
+
+def _candidate_with_claims(
+    *claim_texts: str,
+    score: float = 1.0,
+    essence: str,
+    **flags: bool,
+) -> WorkingMemoryCandidate:
+    return WorkingMemoryCandidate(
+        capsule=_capsule(*claim_texts, essence=essence),
+        attention_score=score,
+        **_policy(**flags),
     )
 
 
@@ -88,12 +105,7 @@ def _candidate_from_capsule(
     return WorkingMemoryCandidate(
         capsule=capsule,
         attention_score=score,
-        recall_allowed=True,
-        eligible=True,
-        restricted=False,
-        erased=False,
-        protected=False,
-        conflict=False,
+        **_policy(),
     )
 
 
@@ -166,7 +178,7 @@ def test_conflict_is_quarantined_without_consuming_budget() -> None:
 
 
 def test_complete_claim_content_becomes_active_when_it_fits() -> None:
-    candidate = _candidate("complete claim", score=0.9, essence="summary")
+    candidate = _candidate("complete claim", score=0.9)
     budget = WorkingMemoryBudget(max_items=1, max_chars=len("complete claim"))
     plan = WorkingMemoryGate().plan([candidate], budget=budget)
     decision = _decision(plan, candidate)
@@ -176,20 +188,37 @@ def test_complete_claim_content_becomes_active_when_it_fits() -> None:
     assert GateReason.FULL_CONTENT_SELECTED in decision.reasons
 
 
-def test_deterministic_essence_is_used_when_full_content_does_not_fit() -> None:
-    candidate = _candidate("a much longer complete claim", essence="short")
-    budget = WorkingMemoryBudget(max_items=1, max_chars=len("short"))
+def test_source_linked_complete_claim_essence_is_used_under_budget_pressure() -> None:
+    first = "first complete claim"
+    second = "second complete claim"
+    candidate = _candidate_with_claims(first, second, essence=first)
+    budget = WorkingMemoryBudget(max_items=1, max_chars=len(first))
     plan = WorkingMemoryGate().plan([candidate], budget=budget)
     decision = _decision(plan, candidate)
 
     assert decision.disposition is GateDisposition.COMPRESS
-    assert decision.reserved_chars == len("short")
+    assert decision.reserved_chars == len(first)
     assert GateReason.FULL_CONTENT_OVER_BUDGET in decision.reasons
     assert GateReason.ESSENCE_SELECTED in decision.reasons
 
 
+def test_free_summary_prose_cannot_be_used_for_compression() -> None:
+    candidate = _candidate("a much longer complete claim", essence="short")
+    plan = WorkingMemoryGate().plan(
+        [candidate], budget=WorkingMemoryBudget(max_items=1, max_chars=len("short"))
+    )
+    decision = _decision(plan, candidate)
+
+    assert decision.disposition is GateDisposition.DEFER
+    assert GateReason.FULL_CONTENT_OVER_BUDGET in decision.reasons
+    assert GateReason.ESSENCE_NOT_SOURCE_LINKED in decision.reasons
+    assert decision.reserved_chars == 0
+
+
 def test_neither_representation_is_truncated_when_budget_is_too_small() -> None:
-    candidate = _candidate("complete claim", essence="summary")
+    first = "first complete claim"
+    second = "second complete claim"
+    candidate = _candidate_with_claims(first, second, essence=first)
     plan = WorkingMemoryGate().plan(
         [candidate], budget=WorkingMemoryBudget(max_items=1, max_chars=3)
     )
@@ -213,7 +242,7 @@ def test_item_budget_exhaustion_defers_lower_ranked_candidate() -> None:
     assert GateReason.ITEM_BUDGET_EXHAUSTED in second_decision.reasons
 
 
-def test_protection_changes_order_but_cannot_change_safety() -> None:
+def test_protection_changes_order_and_selection_but_cannot_change_safety() -> None:
     protected = _candidate("protected low score", score=0.0, protected=True)
     ordinary = _candidate("ordinary high score", score=1.0)
     excluded = _candidate(
@@ -230,11 +259,15 @@ def test_protection_changes_order_but_cannot_change_safety() -> None:
     assert _decision(plan, excluded).disposition is GateDisposition.EXCLUDE
 
 
-def test_score_below_active_can_compress_only_when_full_content_does_not_fit() -> None:
-    candidate = _candidate("a much longer complete text", score=0.4, essence="short")
+def test_score_below_active_can_compress_only_under_real_budget_pressure() -> None:
+    first = "first complete claim"
+    second = "second complete claim"
+    candidate = _candidate_with_claims(
+        first, second, score=0.4, essence=first
+    )
     plan = WorkingMemoryGate().plan(
         [candidate],
-        budget=WorkingMemoryBudget(max_items=1, max_chars=len("short")),
+        budget=WorkingMemoryBudget(max_items=1, max_chars=len(first)),
     )
     decision = _decision(plan, candidate)
 
@@ -245,7 +278,7 @@ def test_score_below_active_can_compress_only_when_full_content_does_not_fit() -
 
 
 def test_score_below_active_does_not_compress_when_full_content_fits() -> None:
-    candidate = _candidate("complete text", score=0.4, essence="short")
+    candidate = _candidate("complete text", score=0.4)
     decision = _decision(WorkingMemoryGate().plan([candidate]), candidate)
 
     assert decision.disposition is GateDisposition.DEFER
@@ -253,7 +286,7 @@ def test_score_below_active_does_not_compress_when_full_content_fits() -> None:
 
 
 def test_score_below_compress_is_deferred_even_when_space_exists() -> None:
-    candidate = _candidate("complete text", score=0.1, essence="short")
+    candidate = _candidate("complete text", score=0.1)
     decision = _decision(WorkingMemoryGate().plan([candidate]), candidate)
 
     assert decision.disposition is GateDisposition.DEFER
@@ -272,7 +305,7 @@ def test_duplicate_capsule_ids_fail_closed() -> None:
 def test_shuffled_input_produces_identical_plan() -> None:
     candidates = [
         _candidate("one", score=0.9),
-        _candidate("two", score=0.4, essence="2"),
+        _candidate("two", score=0.4),
         _candidate("three", score=0.1),
         _candidate("four", conflict=True),
     ]
@@ -327,13 +360,19 @@ def test_invalid_budgets_fail_closed(kwargs: dict[str, object], message: str) ->
         WorkingMemoryBudget(**kwargs)
 
 
+@pytest.mark.parametrize("invalid", [False, 0, object()])
+def test_plan_rejects_non_budget_values_instead_of_using_defaults(invalid: object) -> None:
+    with pytest.raises(ValueError, match="budget must"):
+        WorkingMemoryGate().plan([], budget=invalid)  # type: ignore[arg-type]
+
+
 def test_invalid_threshold_order_fails_closed() -> None:
     with pytest.raises(ValueError, match="cannot exceed"):
         WorkingMemoryGate(min_active_score=0.2, min_compress_score=0.3)
 
 
 def test_capsules_are_not_mutated() -> None:
-    capsule = _capsule("immutable claim", essence="immutable")
+    capsule = _capsule("immutable claim")
     before = capsule
     candidate = _candidate_from_capsule(capsule, score=1.0)
 
