@@ -18,8 +18,11 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger("velantrim.essence_facade.situation")
 
 
 @dataclass
@@ -85,6 +88,14 @@ def build_situation(
     model = SituationModel(query=query)
 
     # 1. LivingContext — существующие измерения
+    # FIX #26 (Claude audit 2026-07-28): the except below was completely
+    # silent (no log at all) — a real LivingContext lookup failure was
+    # indistinguishable from "no context for this fact", and `conn` was
+    # never closed on the success path either (leaked one connection per
+    # call). LivingContext enrichment stays genuinely best-effort (many
+    # legitimate reasons for a miss: no DB yet, fact never got context),
+    # so the broad except stays, but it's now logged and the connection
+    # is always closed.
     try:
         fact_id = facts[0].get("fact_id", "") if facts else ""
         if fact_id:
@@ -94,18 +105,21 @@ def build_situation(
             # FIX #10 (Claude audit): get_living_store не существует
             db_path = os.environ.get("VELANTRIM_DB_PATH", "./data/velantrim.db")
             conn = sqlite3.connect(db_path, timeout=10.0)
-            store = LivingContextStore(conn)
-            ctx = store.get(fact_id)
-            if ctx:
-                model.where = ctx.locations or []
-                model.who = [a.entity for a in (ctx.agents or [])]
-                model.how = ctx.affordances or []
-                model.what = ctx.products or []
-                model.feel = ctx.qualities or {}
-                model.role = ctx.roles or []
-                model.deep = ctx.to_dict().get("deep", {})
-    except Exception:
-        pass
+            try:
+                store = LivingContextStore(conn)
+                ctx = store.get(fact_id)
+                if ctx:
+                    model.where = ctx.locations or []
+                    model.who = [a.entity for a in (ctx.agents or [])]
+                    model.how = ctx.affordances or []
+                    model.what = ctx.products or []
+                    model.feel = ctx.qualities or {}
+                    model.role = ctx.roles or []
+                    model.deep = ctx.to_dict().get("deep", {})
+            finally:
+                conn.close()
+    except Exception as exc:
+        logger.debug("build_situation: LivingContext enrichment skipped: %s", exc)
 
     # 2. Actors — кто участвует
     model.actors = _detect_actors(query, facts)
