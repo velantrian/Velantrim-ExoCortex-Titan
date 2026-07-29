@@ -138,6 +138,69 @@ def test_approve_creates_hypothetical_relation(store):
     assert row[3] == "analogous_to"
 
 
+def test_approve_of_duplicate_pending_suggestion_does_not_leave_phantom_relation_id(store):
+    """M6 (Claude audit 2026-07-28): two pending suggested_edges rows for
+    the same (from, to, type) pair — e.g. created by a race between two
+    concurrent scan() calls — must not let a second approve() report a
+    relation_id that was never actually written. add_relation() uses
+    INSERT OR IGNORE against the relations UNIQUE constraint, so the second
+    approve() used to generate a fresh uuid, report it as the relation_id,
+    and silently no-op the insert — leaving suggested_edges pointing at a
+    row that doesn't exist in relations."""
+    import sqlite3
+
+    from core.memory import SQLITE_PATH, store_fact
+
+    store_fact(_fact("f1", "neural plasticity memory encoding pathway"))
+    store_fact(_fact("f2", "neural plasticity memory encoding circuit"))
+    suggester = EdgeSuggester(SQLITE_PATH)
+
+    # Simulate the race directly: two pending rows for the identical pair,
+    # as two concurrent scan() calls (each blind to the other's in-flight
+    # insert) would produce — scan() itself de-dupes against a single
+    # snapshot, so this can't be reproduced through scan() alone.
+    conn = sqlite3.connect(SQLITE_PATH)
+    conn.execute(
+        "INSERT INTO suggested_edges "
+        "(suggestion_id, from_fact_id, to_fact_id, relation_type, score, status, created_at) "
+        "VALUES ('dup1', 'f1', 'f2', 'analogous_to', 0.9, 'pending', datetime('now'))"
+    )
+    conn.execute(
+        "INSERT INTO suggested_edges "
+        "(suggestion_id, from_fact_id, to_fact_id, relation_type, score, status, created_at) "
+        "VALUES ('dup2', 'f1', 'f2', 'analogous_to', 0.9, 'pending', datetime('now'))"
+    )
+    conn.commit()
+    conn.close()
+
+    r1 = suggester.approve("dup1", by="tester")
+    r2 = suggester.approve("dup2", by="tester")
+
+    assert r1["relation_id"] and r2["relation_id"]
+
+    conn = sqlite3.connect(SQLITE_PATH)
+    real_ids = {
+        row[0] for row in conn.execute(
+            "SELECT relation_id FROM relations WHERE from_fact_id='f1' AND to_fact_id='f2'"
+        ).fetchall()
+    }
+    suggested_ids = {
+        row[0] for row in conn.execute(
+            "SELECT relation_id FROM suggested_edges WHERE suggestion_id IN ('dup1', 'dup2')"
+        ).fetchall()
+    }
+    conn.close()
+
+    assert real_ids, "no relation row was ever written"
+    assert suggested_ids <= real_ids, (
+        f"suggested_edges references a relation_id that doesn't exist in "
+        f"relations: {suggested_ids - real_ids}"
+    )
+    # Both approvals must converge on the SAME real relation, not two
+    # different (one phantom) ids.
+    assert r1["relation_id"] == r2["relation_id"]
+
+
 def test_reject_keeps_relations_empty(store):
     from core.memory import SQLITE_PATH, store_fact
 

@@ -359,6 +359,26 @@ class EdgeSuggester:
                         "edge_suggester": True,
                     },
                 )
+                # FIX M6 (Claude audit 2026-07-28): add_relation() uses
+                # INSERT OR IGNORE, so approving a second pending
+                # suggestion for the same underlying (from, to, type) pair
+                # — created by a racing scan() before this approval, or two
+                # concurrent approve() calls — silently no-ops against the
+                # relations UNIQUE constraint. relation_id above is then a
+                # freshly generated uuid that was never actually written:
+                # a phantom reference. Detect that and fall back to the
+                # real, already-existing relation_id instead of recording
+                # a dangling one.
+                if cg.get_relation(relation_id) is None:
+                    existing = conn.execute(
+                        """
+                        SELECT relation_id FROM relations
+                        WHERE from_fact_id = ? AND to_fact_id = ?
+                          AND relation_type = ? AND inference_source = 'autolinker'
+                        """,
+                        (row["from_fact_id"], row["to_fact_id"], row["relation_type"]),
+                    ).fetchone()
+                    relation_id = existing["relation_id"] if existing else None
 
             conn.execute(
                 """
