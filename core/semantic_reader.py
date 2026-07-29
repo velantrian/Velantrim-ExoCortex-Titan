@@ -64,9 +64,15 @@ class ReaderBudget:
     max_source_chars: int = 100_000
     max_claims: int = 64
     max_essence_chars: int = 1_000
+    max_chunks: int = 8
 
     def __post_init__(self) -> None:
-        for field_name in ("max_source_chars", "max_claims", "max_essence_chars"):
+        for field_name in (
+            "max_source_chars",
+            "max_claims",
+            "max_essence_chars",
+            "max_chunks",
+        ):
             value = getattr(self, field_name)
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
                 raise ReaderContractError(f"{field_name} must be a positive integer")
@@ -106,18 +112,64 @@ class ReaderWarning:
 
 
 @dataclass(frozen=True, slots=True)
+class ReaderReceipt:
+    """Execution metadata for one extraction attempt.
+
+    Purely observational: it never contributes to claim truth state and is
+    deliberately excluded from ``KnowledgeCapsule`` content identity, so that
+    identical extracted meaning still deduplicates across replaceable
+    providers/models.  ``input_tokens``/``output_tokens`` stay ``None`` when
+    the underlying call path does not expose provider usage.
+    """
+
+    provider: str
+    model: str
+    prompt_version: str
+    parser_version: str
+    chunk_count: int
+    chunks_processed: int
+    chunks_failed: int
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
+    def __post_init__(self) -> None:
+        for field_name in ("provider", "model", "prompt_version", "parser_version"):
+            value = getattr(self, field_name)
+            if not isinstance(value, str) or not value.strip():
+                raise ReaderContractError(f"{field_name} must be a non-empty string")
+        for field_name in ("chunk_count", "chunks_processed", "chunks_failed"):
+            value = getattr(self, field_name)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ReaderContractError(f"{field_name} must be a non-negative integer")
+        if self.chunks_processed > self.chunk_count:
+            raise ReaderContractError("chunks_processed cannot exceed chunk_count")
+        if self.chunks_failed > self.chunk_count:
+            raise ReaderContractError("chunks_failed cannot exceed chunk_count")
+        for field_name in ("input_tokens", "output_tokens"):
+            value = getattr(self, field_name)
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, int) or value < 0
+            ):
+                raise ReaderContractError(
+                    f"{field_name} must be a non-negative integer or None"
+                )
+
+
+@dataclass(frozen=True, slots=True)
 class ReaderResult:
     """Non-ambiguous extraction result.
 
     ``SUCCESS`` and ``PARTIAL`` always carry a capsule.  All other statuses
     carry a safe failure and never carry a capsule.  ``PARTIAL`` must explain
     every known truncation or omission through at least one structured warning.
+    ``receipt`` is optional observability metadata and is independent of status.
     """
 
     status: ReaderStatus
     capsule: KnowledgeCapsule | None = None
     failure: ReaderFailure | None = None
     warnings: tuple[ReaderWarning, ...] = ()
+    receipt: ReaderReceipt | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.status, ReaderStatus):
@@ -130,6 +182,8 @@ class ReaderResult:
             raise ReaderContractError("capsule must be a KnowledgeCapsule or None")
         if self.failure is not None and not isinstance(self.failure, ReaderFailure):
             raise ReaderContractError("failure must be a ReaderFailure or None")
+        if self.receipt is not None and not isinstance(self.receipt, ReaderReceipt):
+            raise ReaderContractError("receipt must be a ReaderReceipt or None")
 
         if self.status is ReaderStatus.SUCCESS:
             if self.capsule is None or self.failure is not None or warnings:
@@ -155,14 +209,25 @@ class ReaderResult:
         return self.status in {ReaderStatus.SUCCESS, ReaderStatus.PARTIAL}
 
     @classmethod
-    def success(cls, capsule: KnowledgeCapsule) -> ReaderResult:
-        return cls(status=ReaderStatus.SUCCESS, capsule=capsule)
+    def success(
+        cls, capsule: KnowledgeCapsule, *, receipt: ReaderReceipt | None = None
+    ) -> ReaderResult:
+        return cls(status=ReaderStatus.SUCCESS, capsule=capsule, receipt=receipt)
 
     @classmethod
     def partial(
-        cls, capsule: KnowledgeCapsule, *, warnings: tuple[ReaderWarning, ...]
+        cls,
+        capsule: KnowledgeCapsule,
+        *,
+        warnings: tuple[ReaderWarning, ...],
+        receipt: ReaderReceipt | None = None,
     ) -> ReaderResult:
-        return cls(status=ReaderStatus.PARTIAL, capsule=capsule, warnings=warnings)
+        return cls(
+            status=ReaderStatus.PARTIAL,
+            capsule=capsule,
+            warnings=warnings,
+            receipt=receipt,
+        )
 
     @classmethod
     def failed(
@@ -172,6 +237,7 @@ class ReaderResult:
         code: str,
         safe_message: str,
         retryable: bool = False,
+        receipt: ReaderReceipt | None = None,
     ) -> ReaderResult:
         if status in {ReaderStatus.SUCCESS, ReaderStatus.PARTIAL}:
             raise ReaderContractError("failed() requires a non-success status")
@@ -182,6 +248,7 @@ class ReaderResult:
                 safe_message=safe_message,
                 retryable=retryable,
             ),
+            receipt=receipt,
         )
 
 
@@ -213,6 +280,7 @@ __all__ = [
     "ReaderContractError",
     "ReaderFailure",
     "ReaderMode",
+    "ReaderReceipt",
     "ReaderResult",
     "ReaderStatus",
     "ReaderWarning",

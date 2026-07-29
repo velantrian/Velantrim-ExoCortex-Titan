@@ -35,10 +35,15 @@ def test_raw_source_rejects_empty_document_id() -> None:
 
 
 @pytest.mark.parametrize(
-    "field", ["max_source_chars", "max_claims", "max_essence_chars"]
+    "field", ["max_source_chars", "max_claims", "max_essence_chars", "max_chunks"]
 )
 def test_budget_requires_positive_integers(field: str) -> None:
-    values = {"max_source_chars": 10, "max_claims": 2, "max_essence_chars": 5}
+    values = {
+        "max_source_chars": 10,
+        "max_claims": 2,
+        "max_essence_chars": 5,
+        "max_chunks": 3,
+    }
     values[field] = 0
     with pytest.raises(ReaderContractError):
         ReaderBudget(**values)
