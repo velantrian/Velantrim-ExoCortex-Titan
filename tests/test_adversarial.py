@@ -263,19 +263,31 @@ class TestMemoryAttacks:
                 pytest.fail(f"Unicode вызвал crash: {exc}")
 
     def test_confidence_boundary_values(self, store):
-        """Граничные значения confidence."""
+        """Граничные значения confidence.
+
+        FIX #28 (Claude audit 2026-07-28): the valid loop used to swallow
+        any exception with a bare `except Exception: pass`, asserting
+        nothing — a completely broken store_fact() for valid confidence
+        values would still pass silently. The invalid loop used
+        `pytest.raises((ValueError, Exception))`, which collapses to bare
+        Exception (ValueError already is one) — any exception at all
+        satisfied it, not specifically confidence validation. Empirically
+        verified (not assumed): every value in `valid`, including the
+        boundary 0.0, is actually accepted and round-trips; every value in
+        `invalid` actually raises ValueError specifically.
+        """
         valid = [0.0, 0.001, 0.5, 0.999, 1.0]
         invalid = [-0.001, -1.0, 1.001, 2.0, float("nan"), float("inf")]
 
         for v in valid:
-            try:
-                store.store_fact({"fact_id": f"v_{v}", "claim": "x",
-                                  "source": "s", "confidence": v})
-            except Exception:
-                pass  # 0.0 может отклоняться — это нормально
+            fid = f"v_{v}"
+            store.store_fact({"fact_id": fid, "claim": "x", "source": "s", "confidence": v})
+            stored = store.get_fact(fid)
+            assert stored is not None, f"confidence={v} was not stored"
+            assert stored["confidence"] == pytest.approx(v)
 
         for v in invalid:
-            with pytest.raises((ValueError, Exception)):
+            with pytest.raises(ValueError):
                 store.store_fact({"fact_id": f"inv_{v}", "claim": "x",
                                   "source": "s", "confidence": v})
 
