@@ -193,7 +193,6 @@ class BranchManager:
     ) -> List[Dict[str, Any]]:
         """Retrieval с подсказками роли."""
         try:
-            from core.hybrid_retriever import HybridRetriever
             from core.memory import _GLOBAL_STORE
 
             k = int(hints.get("retrieval_k", "5"))
@@ -210,7 +209,17 @@ class BranchManager:
             if not facts:
                 return []
 
-            retriever = HybridRetriever(facts)
+            # FIX M15 (Claude audit 2026-07-28, found as #18): HybridRetriever(facts)
+            # reloads the sentence-transformer model and re-encodes the whole
+            # corpus on every call. pipeline.py's _get_hybrid_retriever() already
+            # solves exactly this with a dirty-flagged module singleton
+            # (AUDIT-FIX v8.4.0) — reuse it instead of building a fresh one per
+            # branch per query.
+            from core.pipeline import _get_hybrid_retriever
+
+            retriever = _get_hybrid_retriever(facts)
+            if retriever is None:
+                return []
 
             if use_ego:
                 results = retriever.retrieve_5stage(query, top_k=k, use_ego=True)

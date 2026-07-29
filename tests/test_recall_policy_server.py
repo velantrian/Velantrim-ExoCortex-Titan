@@ -270,6 +270,13 @@ class TestChatEndpointExcludesRestricted:
 
 class TestBranchManagerCorpusExcludesRestricted:
     def test_retrieve_with_hints_filters_corpus(self, monkeypatch):
+        # FIX M15 (Claude audit 2026-07-28): _retrieve_with_hints() now goes
+        # through core.pipeline._get_hybrid_retriever()'s cached singleton
+        # instead of constructing core.hybrid_retriever.HybridRetriever
+        # directly — patch the name pipeline.py actually calls, and force
+        # its singleton to rebuild so this test doesn't get a stale hit from
+        # whatever another test in this session already cached.
+        import core.pipeline as pl
         from core.branch_manager import BranchManager
 
         facts = [
@@ -293,11 +300,21 @@ class TestBranchManagerCorpusExcludesRestricted:
             def retrieve_5stage(self, query, top_k=5, use_ego=False):
                 return []
 
-        monkeypatch.setattr("core.memory._GLOBAL_STORE", _FakeStore())
-        monkeypatch.setattr("core.hybrid_retriever.HybridRetriever", _FakeHybridRetriever)
+        saved_singleton = (pl._HYBRID_RETRIEVER, pl._HYBRID_DIRTY,
+                            pl._HYBRID_FACTS_COUNT, pl._HYBRID_FACT_IDS)
+        pl._HYBRID_RETRIEVER = None
+        pl._HYBRID_DIRTY = True
+        pl._HYBRID_FACTS_COUNT = 0
+        pl._HYBRID_FACT_IDS = frozenset()
+        try:
+            monkeypatch.setattr("core.memory._GLOBAL_STORE", _FakeStore())
+            monkeypatch.setattr(pl, "HybridRetriever", _FakeHybridRetriever)
 
-        manager = BranchManager()
-        manager._retrieve_with_hints("query", {"retrieval_k": "5"})
+            manager = BranchManager()
+            manager._retrieve_with_hints("query", {"retrieval_k": "5"})
+        finally:
+            (pl._HYBRID_RETRIEVER, pl._HYBRID_DIRTY,
+             pl._HYBRID_FACTS_COUNT, pl._HYBRID_FACT_IDS) = saved_singleton
 
         assert "facts" in captured_corpus, "HybridRetriever was never constructed"
         corpus_claims = [f["claim"] for f in captured_corpus["facts"]]
