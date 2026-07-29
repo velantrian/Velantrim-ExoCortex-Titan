@@ -6,10 +6,12 @@
 from core.knowledge_linker import (
     DEFAULT_RELATION,
     MIN_FOUNDATION_SCORE,
+    NAMESPACE_BRIDGE_CONFIDENCE,
     graph_quality_report,
     is_causal_for_essence,
     link_by_causal_claims,
     link_by_fact_references,
+    link_by_namespace,
     link_by_tags,
     link_facts,
     link_practical_semantics,
@@ -455,3 +457,37 @@ def test_link_by_causal_claims_uses_autolinker_never_kb_heuristic():
     assert edges
     assert all(e["inference_source"] == "autolinker" for e in edges)
     assert all(e["relation_type"] == "causes" for e in edges)
+
+
+# ── link_by_namespace: bridge confidence must clear traversal threshold ────────
+# (M14, Claude audit 2026-07-28)
+
+def test_namespace_bridge_edge_meets_default_traversal_threshold():
+    """Bridge edges connect subdomain anchors into one domain-wide connected
+    component — the whole point of the comment above link_by_namespace().
+    But core.causal_graph's default traversal threshold (min_confidence=0.5
+    in causal_chain/propagate_change/is_reliable) silently excludes any edge
+    below it. NAMESPACE_BRIDGE_CONFIDENCE must be >= that threshold, or the
+    bridge edges it produces are structurally present but functionally
+    unreachable by any default-threshold multi-hop reasoning.
+
+    Singleton subdomains here are deliberate: with MAX_NAMESPACE_NEIGHBORS=1,
+    a subdomain anchor that already spent its one neighbor slot on an
+    intra-subdomain edge (any subdomain with 2+ members) cannot also carry
+    the bridge edge — a separate, real connectivity gap noticed while
+    writing this test but out of scope for M14 (which is specifically
+    about the confidence value, not the degree cap)."""
+    facts = [
+        {"fact_id": "dom.sub1.a", "type": "concept"},
+        {"fact_id": "dom.sub2.c", "type": "concept"},
+    ]
+    edges = link_by_namespace(facts)
+    assert edges
+
+    bridge_edges = [e for e in edges if e["confidence"] == NAMESPACE_BRIDGE_CONFIDENCE]
+    assert bridge_edges, "no edge carries the bridge confidence value at all"
+    assert NAMESPACE_BRIDGE_CONFIDENCE >= 0.5, (
+        "NAMESPACE_BRIDGE_CONFIDENCE must clear the default causal_graph "
+        "traversal threshold (min_confidence=0.5) or bridge edges are "
+        "silently unreachable by default-threshold multi-hop reasoning"
+    )
