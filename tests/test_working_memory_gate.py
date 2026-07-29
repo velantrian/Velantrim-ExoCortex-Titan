@@ -66,10 +66,34 @@ def _candidate(
     essence: str | None = None,
     **flags: bool,
 ) -> WorkingMemoryCandidate:
+    policy = {
+        "recall_allowed": True,
+        "eligible": True,
+        "restricted": False,
+        "erased": False,
+        "protected": False,
+        "conflict": False,
+    }
+    policy.update(flags)
     return WorkingMemoryCandidate(
         capsule=_capsule(text, essence=essence),
         attention_score=score,
-        **flags,
+        **policy,
+    )
+
+
+def _candidate_from_capsule(
+    capsule: KnowledgeCapsule, *, score: float
+) -> WorkingMemoryCandidate:
+    return WorkingMemoryCandidate(
+        capsule=capsule,
+        attention_score=score,
+        recall_allowed=True,
+        eligible=True,
+        restricted=False,
+        erased=False,
+        protected=False,
+        conflict=False,
     )
 
 
@@ -238,8 +262,8 @@ def test_score_below_compress_is_deferred_even_when_space_exists() -> None:
 
 def test_duplicate_capsule_ids_fail_closed() -> None:
     capsule = _capsule("same capsule")
-    first = WorkingMemoryCandidate(capsule=capsule, attention_score=0.9)
-    second = WorkingMemoryCandidate(capsule=capsule, attention_score=0.8)
+    first = _candidate_from_capsule(capsule, score=0.9)
+    second = _candidate_from_capsule(capsule, score=0.8)
 
     with pytest.raises(ValueError, match="duplicate capsule_id"):
         WorkingMemoryGate().plan([first, second])
@@ -276,10 +300,17 @@ def test_tie_score_uses_stable_capsule_identity() -> None:
     assert _decision(plan, other).disposition is GateDisposition.DEFER
 
 
+def test_policy_markers_are_required_fail_closed_inputs() -> None:
+    with pytest.raises(TypeError):
+        WorkingMemoryCandidate(  # type: ignore[call-arg]
+            capsule=_capsule("claim"), attention_score=1.0
+        )
+
+
 @pytest.mark.parametrize("score", [float("nan"), float("inf"), -0.1, 1.1, True])
 def test_invalid_attention_scores_fail_closed(score: float) -> None:
     with pytest.raises(ValueError, match="attention_score"):
-        WorkingMemoryCandidate(capsule=_capsule("claim"), attention_score=score)
+        _candidate_from_capsule(_capsule("claim"), score=score)
 
 
 @pytest.mark.parametrize(
@@ -304,7 +335,7 @@ def test_invalid_threshold_order_fails_closed() -> None:
 def test_capsules_are_not_mutated() -> None:
     capsule = _capsule("immutable claim", essence="immutable")
     before = capsule
-    candidate = WorkingMemoryCandidate(capsule=capsule, attention_score=1.0)
+    candidate = _candidate_from_capsule(capsule, score=1.0)
 
     WorkingMemoryGate().plan([candidate])
 
