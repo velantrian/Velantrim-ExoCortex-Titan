@@ -119,38 +119,73 @@ def test_every_gemini_url_construction_site_validates():
     import core.llm_stream as stream
     import core.tts_router as tts
 
-    for module in (router, stream, tts):
-        source = inspect.getsource(module)
-        sites = [
-            line
-            for line in source.splitlines()
-            if "/models/" in line and "{" in line
-        ]
-        assert sites, f"{module.__name__}: точка сборки URL не найдена — тест устарел"
-        tree = ast.parse(source)
-        called = {
-            n.func.attr if isinstance(n.func, ast.Attribute) else getattr(n.func, "id", "")
-            for n in ast.walk(tree)
+    def _validates(fn: ast.AST) -> bool:
+        return any(
+            getattr(n.func, "id", getattr(n.func, "attr", ""))
+            == "assert_safe_gemini_model_id"
+            for n in ast.walk(fn)
             if isinstance(n, ast.Call)
-        }
-        assert "assert_safe_gemini_model_id" in called, (
-            f"{module.__name__} строит Gemini URL, но не валидирует model id"
         )
+
+    def _builds_model_path(fn: ast.AST) -> bool:
+        """f-строка внутри функции, содержащая литерал '/models/'."""
+        for n in ast.walk(fn):
+            if not isinstance(n, ast.JoinedStr):
+                continue
+            literal = "".join(
+                v.value for v in n.values
+                if isinstance(v, ast.Constant) and isinstance(v.value, str)
+            )
+            if "/models/" in literal:
+                return True
+        return False
+
+    checked = 0
+    for module in (router, stream, tts):
+        tree = ast.parse(inspect.getsource(module))
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if not _builds_model_path(node):
+                continue
+            checked += 1
+            # Валидация обязана быть в ТОЙ ЖЕ функции, что собирает путь.
+            # Проверка «где-то в модуле» проходила бы, даже если валидатор
+            # зовётся в одной функции, а URL собирается в другой.
+            assert _validates(node), (
+                f"{module.__name__}.{node.name} собирает Gemini URL, "
+                "но не валидирует model id в этой же функции"
+            )
+    assert checked == 3, (
+        f"ожидалось 3 точки сборки Gemini URL, найдено {checked} — "
+        "появилась новая или тест устарел"
+    )
 
 
 # ── H5: политика (deprecation/каталог) перестала быть декоративной ──────────
 
 def test_model_allowed_for_provider_has_a_production_caller():
-    """Ровно то, что нашёл аудит: 0 вызовов вне тестов."""
-    hits: list[str] = []
+    """Ровно то, что нашёл аудит: 0 вызовов вне тестов.
+
+    Проверка по AST, а не по подстроке. Первая версия этого теста искала имя
+    текстом — и её удовлетворял docstring `assert_model_allowed`, который сам
+    упоминает символ. То есть тест прошёл бы и после удаления реального вызова.
+    """
+    callers: list[str] = []
     for path in (REPO / "core").rglob("*.py"):
-        text = path.read_text(encoding="utf-8")
-        if "model_allowed_for_provider" not in text:
-            continue
         if path.name == "gemini_models.py":
             continue  # определение + __all__
-        hits.append(str(path.relative_to(REPO)))
-    assert hits, "model_allowed_for_provider снова не вызывается из продакшн-кода"
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            name = getattr(node.func, "id", getattr(node.func, "attr", ""))
+            if name == "model_allowed_for_provider":
+                callers.append(str(path.relative_to(REPO)))
+    assert callers, (
+        "model_allowed_for_provider снова не ВЫЗЫВАЕТСЯ из продакшн-кода "
+        "(упоминания в тексте не считаются)"
+    )
 
 
 def test_assert_model_allowed_rejects_deprecated_model():
@@ -551,3 +586,67 @@ def test_ops_doc_marks_the_request_path_gap_resolved():
     text = OPS_DOC.read_text(encoding="utf-8")
     assert "RESOLVED" in text
     assert "data_mode" in text, "остаточное ограничение должно быть названо"
+
+
+# ── дефекты, найденные при самопроверке этого же PR ─────────────────────────
+
+def test_connectivity_probe_checks_the_model_for_every_provider():
+    """deepseek-ветка probe звала _openai_compatible_chat напрямую.
+
+    То есть обходила assert_model_allowed, который стоит в chat_complete —
+    ровно тот паттерн «проверка у вызывающего обходится следующим вызывающим»,
+    против которого и введена валидация в точке сборки URL. Проверка поднята в
+    сам test_connection, до ветвления по провайдеру.
+    """
+    import core.llm_router as router
+
+    tree = ast.parse(inspect.getsource(router.test_connection).strip())
+    fn = tree.body[0]
+    calls = [
+        n for n in ast.walk(fn)
+        if isinstance(n, ast.Call)
+        and getattr(n.func, "id", getattr(n.func, "attr", "")) == "assert_model_allowed"
+    ]
+    assert calls, "test_connection не проверяет модель до вызова провайдера"
+
+    # И проверка должна быть на верхнем уровне тела, а не внутри одной из ветвей.
+    top_level = {
+        getattr(n.value.func, "id", "")
+        for n in fn.body
+        if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call)
+    }
+    assert "assert_model_allowed" in top_level, (
+        "проверка спрятана в ветку — вторая ветка её обойдёт"
+    )
+
+
+def test_tts_probe_lease_is_not_metadata_only():
+    """Документированная асимметрия должна совпадать с кодом.
+
+    TTS-probe остаётся remote_tts/raw. Если кто-то «выровняет» его до
+    metadata-only ради симметрии с LLM-probe, это РАСШИРИТ разрешённое политикой
+    — тест фиксирует текущее, более строгое поведение.
+    """
+    from core.remote_egress import _METADATA_ONLY_CAPABILITIES
+
+    assert "remote_tts" not in _METADATA_ONLY_CAPABILITIES
+    assert "remote_tts_test" not in _METADATA_ONLY_CAPABILITIES
+
+
+def test_llm_and_tts_probes_differ_under_allow_plus_never(monkeypatch: pytest.MonkeyPatch):
+    """Измеренная асимметрия, а не предполагаемая."""
+    from core.policy_kernel import PolicyKernel
+
+    monkeypatch.setenv("VELANTRIM_NETWORK_MODE", "allow")
+    monkeypatch.setenv("VELANTRIM_REMOTE_DATA_MODE", "never")
+    kernel = PolicyKernel()
+
+    llm = kernel.lease_capability(
+        "remote_llm_test", locality="remote", requires_network=True, data_mode="none"
+    )
+    tts = kernel.lease_capability(
+        "remote_tts", locality="remote", requires_network=True, data_mode="raw"
+    )
+    assert llm.allowed is True
+    assert tts.allowed is False
+    assert tts.reason_code == "remote_data_forbidden"

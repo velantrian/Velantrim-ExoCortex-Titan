@@ -346,12 +346,22 @@ async def stt_transcribe(req: SttTranscribeBody):
 
 
 class TtsTestBody(BaseModel):
-    """TTS connectivity probe. Same no-user-payload contract as LlmTestBody.
+    """TTS connectivity probe. No user payload — but NOT a metadata-only lease.
 
     The phrase spoken during the probe is built inside
-    ``core.tts_router.test_tts_connection``; the caller cannot supply text.
-    Actual synthesis of user text goes through /tts/speak, which runs under
-    ``data_mode="raw"``.
+    ``core.tts_router.test_tts_connection``; the caller cannot supply text, and
+    ``extra="forbid"`` refuses an attempt to.
+
+    Deliberately asymmetric with :class:`LlmTestBody`, and the asymmetry is the
+    point: the TTS probe still takes its lease as ``remote_tts`` with
+    ``data_mode="raw"``, because synthesis returns audio and the capability is
+    the same one /tts/speak uses for real user text. Consequence, measured:
+    under ``network=allow`` + ``remote_data=never`` the LLM probe is allowed
+    while this one is denied ``remote_data_forbidden``.
+
+    That is the safe direction, so it is left alone. Adding a metadata-only
+    ``remote_tts_test`` capability purely for symmetry would *widen* what the
+    policy permits — not something to do for tidiness.
     """
 
     model_config = ConfigDict(extra="forbid")

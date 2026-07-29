@@ -694,8 +694,19 @@ async def transcribe_audio_openai(
 
 
 async def test_connection(cfg: LlmCallConfig) -> dict[str, Any]:
-    """Короткий ping для кнопки «Подтвердить ключ» в консоли."""
+    """Короткий ping для кнопки «Подтвердить ключ» в консоли.
+
+    Промпт фиксированный и принадлежит репозиторию: probe работает под
+    `data_mode="none"`, который пропускает проверку remote-data, поэтому нести
+    пользовательскую нагрузку он не имеет права. Публичные probe-роуты
+    (`api/llm_routes.py`) запрещают лишние поля, так что приложить prompt,
+    memory, вложение или аудио нельзя.
+    """
     provider = (cfg.provider or "").strip().lower()
+    # Здесь, а не только в chat_complete: deepseek-ветка ниже зовёт
+    # _openai_compatible_chat напрямую и иначе обошла бы проверку модели — тот
+    # самый паттерн «проверка у вызывающего обходится следующим вызывающим».
+    assert_model_allowed(cfg)
     if provider == "deepseek":
         reply = await _openai_compatible_chat(
             cfg,
