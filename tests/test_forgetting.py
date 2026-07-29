@@ -1028,3 +1028,14 @@ def test_forget_one_reports_not_found_instead_of_false_success(two_dbs):
 
     assert verdict.allowed is False
     assert verdict.reason == "not_found"
+
+
+def test_log_forgetting_helper_was_removed_as_dead_code():
+    """FIX #22 (Claude audit 2026-07-28): _log_forgetting() wrote a
+    provenance_chain event on its own connection, non-atomic with the
+    DELETE — but had zero callers once forget_one()/forget_all() were both
+    migrated to the durable erasure_coordinator/erasure_batch_coordinator
+    paths (whose own erasure_log write is already atomic within their
+    saga). Tripwire so it isn't silently reintroduced without the same
+    scrutiny applied here."""
+    assert not hasattr(forgetting_mod.ForgettingEngine, "_log_forgetting")

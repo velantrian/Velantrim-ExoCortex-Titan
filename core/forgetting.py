@@ -14,7 +14,18 @@
 
 Архитектура:
     Не заменяет удаление в SQLite. Добавляет проверки ДО удаления.
-    Все операции логируются в provenance_chain (если доступен).
+    Audit trail — erasure_log (core/memory.py), не provenance_chain: FORGET_ONE
+    и FORGET_ALL оба делегируют в erasure_coordinator/erasure_batch_coordinator
+    (см. ниже), которые пишут в erasure_log как часть своей саги.
+
+FIX #22 (Claude audit 2026-07-28): removed the dead _log_forgetting() helper
+— it wrote a "fact_forgotten" provenance_chain event on its own separate
+connection, non-atomic with the actual DELETE (the audit's original
+complaint), but had zero callers left after forget_one()/forget_all() were
+both migrated to the durable erasure_coordinator/erasure_batch_coordinator
+paths below, whose own erasure_log write already happens atomically inside
+each saga's transaction. Not "made atomic" — genuinely unreachable, so
+removed rather than fixed in place.
 
 DEPRECATED (batch erasure hardening): ForgettingEngine.forget_all() used to
 run its own single-pass, non-durable delete with no snapshot of which
@@ -857,35 +868,6 @@ class ForgettingEngine:
             return [r[0] for r in rows if r[0]]
         except Exception:
             return []
-
-    def _log_forgetting(
-        self,
-        conn: sqlite3.Connection,
-        fact_id: str,
-        reason: str,
-        user_id: str,
-        extra: Optional[Dict] = None,
-    ) -> None:
-        """
-        Записать событие забывания в provenance_chain.
-
-        FIX #22 (Claude audit): ловить конкретные исключения (не all-except-pass).
-        Провал provenance НЕ молча проглатывается — логируется как WARNING.
-        """
-        try:
-            from core.provenance_chain import get_provenance_chain
-            chain = get_provenance_chain()
-            chain.append(
-                fact_id,
-                event_type="fact_forgotten",
-                actor=user_id,
-                reason=reason,
-                payload=extra or {},
-            )
-        except ImportError:
-            logger.debug("ProvenanceChain не инициализирован — событие забывания не записано")
-        except Exception as exc:
-            logger.warning("ProvenanceChain append failed for %s: %s", fact_id, exc)
 
 
 # ─── Глобальный экземпляр ────────────────────────────────────────────────────
