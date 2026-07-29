@@ -28,6 +28,7 @@ from core.readers.llm_adapter import (
     EXACT_MATCH_CONFIDENCE,
     LlmReaderAdapter,
     LlmReaderLimits,
+    _SYSTEM_PROMPT,
     locate_exact_quote,
     plan_chunks,
 )
@@ -387,6 +388,42 @@ def test_essence_orders_claims_by_source_position(monkeypatch: pytest.MonkeyPatc
     assert forward.result.capsule.capsule_id == reverse.result.capsule.capsule_id
 
 
+def test_essence_fails_when_first_complete_claim_cannot_fit(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    claim_text = "Кошка спит на окне."
+    _script(monkeypatch, _payload([_claim(claim_text)]))
+
+    out = _run(
+        _adapter(),
+        RawSource(document_id="doc-1", text=claim_text),
+        budget=ReaderBudget(max_essence_chars=len(claim_text) - 1),
+    )
+
+    assert out.result.status is ReaderStatus.BUDGET_EXCEEDED
+    assert out.result.capsule is None
+    assert out.result.failure.code == "ESSENCE_CHAR_BUDGET_EXCEEDED"
+
+
+def test_essence_omitting_later_complete_claim_is_partial(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    first = "Кошка спит на окне."
+    second = "Птица поёт тихо."
+    source_text = f"{first} {second}"
+    _script(monkeypatch, _payload([_claim(first), _claim(second)]))
+
+    out = _run(
+        _adapter(),
+        RawSource(document_id="doc-1", text=source_text),
+        budget=ReaderBudget(max_essence_chars=len(first)),
+    )
+
+    assert out.result.status is ReaderStatus.PARTIAL
+    assert out.result.capsule.essence == first
+    assert any(w.code == "ESSENCE_BUDGET_EXHAUSTED" for w in out.result.warnings)
+
+
 def test_adapter_passes_only_empty_annotation_tuples():
     """Structural guard: the refused fields must not be re-wired later."""
     tree = ast.parse(ADAPTER_PATH.read_text(encoding="utf-8"))
@@ -421,7 +458,7 @@ def test_extraction_confidence_is_deterministic_on_exact_match(
 def test_unicode_renormalised_quote_is_rejected_not_approximated(
     monkeypatch: pytest.MonkeyPatch,
 ):
-    """Only byte-exact quotes are admitted — normalisation drift fails closed.
+    """Only character-exact source substrings are admitted — normalisation drift fails closed.
 
     An NFC-tolerant path was written and then removed: matching normalized
     windows inside the one validator the design rests on, and mapping those
@@ -523,9 +560,7 @@ def test_modality_rejection_alongside_a_good_claim_is_partial(
     assert "MODEL_CLAIMS_REJECTED" in codes
 
 
-@pytest.mark.parametrize(
-    "value", ["observation", "hypothesis", "opinion", "instruction", "goal"]
-)
+@pytest.mark.parametrize("value", [item.value for item in ClaimModality])
 def test_every_declared_modality_is_accepted(
     monkeypatch: pytest.MonkeyPatch, value: str
 ):
@@ -534,6 +569,12 @@ def test_every_declared_modality_is_accepted(
 
     assert out.result.accepted
     assert out.result.capsule.claims[0].modality is ClaimModality(value)
+
+
+def test_prompt_advertises_every_contract_modality():
+    expected = "|".join(item.value for item in ClaimModality)
+    assert f'"modality":"{expected}"' in _SYSTEM_PROMPT
+    assert "five values" not in _SYSTEM_PROMPT
 
 
 def test_no_default_modality_constant_remains():
@@ -659,7 +700,8 @@ def test_overlapping_chunks_deduplicate_deterministically(
     assert len(matching) == 1
     assert matching[0].source_spans[0].start_offset == text.index(target)
     assert out.receipt.claims_rejected_duplicate >= 1
-    assert any(w.code == "DUPLICATE_CLAIM_MERGED" for w in out.result.warnings)
+    assert out.result.status is ReaderStatus.SUCCESS
+    assert not any(w.code == "DUPLICATE_CLAIM_MERGED" for w in out.result.warnings)
 
 
 def test_contradictory_claims_remain_separate(monkeypatch: pytest.MonkeyPatch):
