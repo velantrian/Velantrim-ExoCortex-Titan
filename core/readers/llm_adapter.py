@@ -716,7 +716,10 @@ class LlmReaderAdapter(BaseSemanticReader):
             )
             return None
 
-        located = locate_exact_quote(chunk.text, text)
+        # Provenance is document-global: a quote unique inside one chunk may
+        # still occur in another chunk. Searching the complete source prevents
+        # model output from selecting an arbitrary occurrence across chunks.
+        located = locate_exact_quote(source.text, text)
         if located is None:
             receipt.claims_rejected_span += 1
             _warn(
@@ -737,8 +740,21 @@ class LlmReaderAdapter(BaseSemanticReader):
             )
             return None
 
-        abs_start = chunk.start_offset + located
+        abs_start = located
         abs_end = abs_start + len(text)
+        if not (
+            chunk.start_offset <= abs_start
+            and abs_end <= chunk.end_offset
+        ):
+            # Preserve the pre-existing boundary: a provider may only propose
+            # text from the chunk it actually received.
+            receipt.claims_rejected_span += 1
+            _warn(
+                warnings,
+                "SOURCE_QUOTE_OUTSIDE_CHUNK",
+                "A proposed quote is not contained in the provided source chunk",
+            )
+            return None
         if abs_end > len(source.text):
             receipt.claims_rejected_span += 1
             return None
