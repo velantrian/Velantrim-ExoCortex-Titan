@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 import httpx
@@ -126,11 +126,50 @@ class LlmCallConfig:
     deepseek_thinking: str = "off"
 
 
+@dataclass(frozen=True, slots=True)
+class LlmExecutionIdentity:
+    """Provider/model identity after the same normalization used for execution."""
+
+    provider: str
+    model: str
+
+
+class LlmTransportTimeoutError(TimeoutError):
+    """Provider transport exceeded its deadline before returning a response."""
+
+
 def _resolve_model(cfg: LlmCallConfig) -> str:
     if cfg.model and str(cfg.model).strip():
         return str(cfg.model).strip()
-    info = get_provider_info(cfg.provider)
+    provider = (cfg.provider or "").strip().lower()
+    info = get_provider_info(provider)
     return info["default_model"] if info else "chat-latest"
+
+
+def resolve_llm_execution_identity(cfg: LlmCallConfig) -> LlmExecutionIdentity:
+    """Resolve exactly the provider/model pair that a request will execute.
+
+    Receipts and policy checks must call this same pure resolver rather than
+    recording constructor input: blank models select provider defaults, provider
+    names are normalized, and Gemini's ``models/`` API prefix is not part of the
+    executable model identifier.
+    """
+
+    provider = (cfg.provider or "none").strip().lower()
+    model = _resolve_model(replace(cfg, provider=provider))
+    if provider == "gemini":
+        from core.gemini_models import normalize_gemini_model_id
+
+        model = normalize_gemini_model_id(model)
+    return LlmExecutionIdentity(provider=provider, model=model)
+
+
+def message_content_char_limit_for_provider(provider: str) -> int | None:
+    """Return a hard per-message character limit enforced by the router."""
+
+    if (provider or "").strip().lower() == "deepseek":
+        return _DEEPSEEK_MESSAGE_CHAR_LIMIT
+    return None
 
 
 def _openai_message_text(message: dict[str, Any]) -> str:
@@ -445,11 +484,11 @@ def assert_model_allowed(cfg: LlmCallConfig) -> None:
     """
     from core.gemini_models import model_allowed_for_provider
 
-    provider = (cfg.provider or "").strip().lower()
-    model = _resolve_model(cfg)
-    if not model_allowed_for_provider(provider, model):
+    identity = resolve_llm_execution_identity(cfg)
+    if not model_allowed_for_provider(identity.provider, identity.model):
         raise ValueError(
-            f"Модель {model!r} недопустима для провайдера {provider!r}: "
+            f"Модель {identity.model!r} недопустима для провайдера "
+            f"{identity.provider!r}: "
             "она устарела либо не проходит проверку идентификатора"
         )
 
@@ -466,50 +505,57 @@ async def chat_complete(
     ``data_mode`` is ``raw`` for normal user/memory prompts and ``none`` for
     provider connectivity tests that contain no user data.
     """
-    provider = (cfg.provider or "none").strip().lower()
+    identity = resolve_llm_execution_identity(cfg)
+    resolved_cfg = replace(cfg, provider=identity.provider, model=identity.model)
+    provider = identity.provider
     if not cfg.api_key:
         raise ValueError("LLM API key не задан")
-    assert_model_allowed(cfg)
+    assert_model_allowed(resolved_cfg)
 
-    if provider == "openai":
-        return await _openai_compatible_chat(
-            cfg,
-            prompt,
-            system,
-            "https://api.openai.com/v1",
-            data_mode=data_mode,
-        )
-    if provider == "deepseek":
-        return await _openai_compatible_chat(
-            cfg,
-            prompt,
-            system,
-            "https://api.deepseek.com",
-            data_mode=data_mode,
-        )
-    if provider == "openrouter":
-        return await _openai_compatible_chat(
-            cfg,
-            prompt,
-            system,
-            "https://openrouter.ai/api/v1",
-            data_mode=data_mode,
-        )
-    if provider == "gemini":
-        return await _gemini_chat(
-            cfg,
-            prompt,
-            system,
-            data_mode=data_mode,
-        )
-    if provider == "anthropic":
-        return await _anthropic_chat(
-            cfg,
-            prompt,
-            system,
-            data_mode=data_mode,
-        )
-    raise ValueError(f"Неизвестный LLM provider: {provider}")
+    try:
+        if provider == "openai":
+            return await _openai_compatible_chat(
+                resolved_cfg,
+                prompt,
+                system,
+                "https://api.openai.com/v1",
+                data_mode=data_mode,
+            )
+        if provider == "deepseek":
+            return await _openai_compatible_chat(
+                resolved_cfg,
+                prompt,
+                system,
+                "https://api.deepseek.com",
+                data_mode=data_mode,
+            )
+        if provider == "openrouter":
+            return await _openai_compatible_chat(
+                resolved_cfg,
+                prompt,
+                system,
+                "https://openrouter.ai/api/v1",
+                data_mode=data_mode,
+            )
+        if provider == "gemini":
+            return await _gemini_chat(
+                resolved_cfg,
+                prompt,
+                system,
+                data_mode=data_mode,
+            )
+        if provider == "anthropic":
+            return await _anthropic_chat(
+                resolved_cfg,
+                prompt,
+                system,
+                data_mode=data_mode,
+            )
+        raise ValueError(f"Неизвестный LLM provider: {provider}")
+    except httpx.TimeoutException as exc:
+        raise LlmTransportTimeoutError(
+            f"{provider}: provider transport timed out"
+        ) from exc
 
 
 async def transcribe_audio_gemini(
@@ -702,14 +748,16 @@ async def test_connection(cfg: LlmCallConfig) -> dict[str, Any]:
     (`api/llm_routes.py`) запрещают лишние поля, так что приложить prompt,
     memory, вложение или аудио нельзя.
     """
-    provider = (cfg.provider or "").strip().lower()
+    identity = resolve_llm_execution_identity(cfg)
+    resolved_cfg = replace(cfg, provider=identity.provider, model=identity.model)
+    provider = identity.provider
     # Здесь, а не только в chat_complete: deepseek-ветка ниже зовёт
     # _openai_compatible_chat напрямую и иначе обошла бы проверку модели — тот
     # самый паттерн «проверка у вызывающего обходится следующим вызывающим».
-    assert_model_allowed(cfg)
+    assert_model_allowed(resolved_cfg)
     if provider == "deepseek":
         reply = await _openai_compatible_chat(
-            cfg,
+            resolved_cfg,
             "Ответь одним словом: OK",
             "Ты помощник Velantrim.",
             "https://api.deepseek.com",
@@ -718,26 +766,30 @@ async def test_connection(cfg: LlmCallConfig) -> dict[str, Any]:
         )
     else:
         reply = await chat_complete(
-            cfg,
+            resolved_cfg,
             "Ответь одним словом: OK",
             system="Ты помощник Velantrim.",
             data_mode="none",
         )
     return {
         "ok": True,
-        "provider": cfg.provider,
-        "model": _resolve_model(cfg),
+        "provider": identity.provider,
+        "model": identity.model,
         "reply_preview": (reply or "")[:120],
     }
 
 
 __all__ = [
     "LlmCallConfig",
+    "LlmExecutionIdentity",
+    "LlmTransportTimeoutError",
     "chat_complete",
     "get_provider_info",
     "list_providers",
     "llm_timeout_for_max_tokens",
+    "message_content_char_limit_for_provider",
     "normalize_deepseek_thinking",
+    "resolve_llm_execution_identity",
     "test_connection",
     "transcribe_audio_gemini",
     "transcribe_audio_openai",
