@@ -38,6 +38,7 @@ class GateReason(str, Enum):
     FULL_CONTENT_SELECTED = "full_content_selected"
     ESSENCE_SELECTED = "essence_selected"
     ESSENCE_NOT_SOURCE_LINKED = "essence_not_source_linked"
+    COMPRESSED_SEMANTICS_UNSUPPORTED = "compressed_semantics_unsupported"
     SCORE_BELOW_ACTIVE = "score_below_active"
     SCORE_BELOW_COMPRESS = "score_below_compress"
     FULL_CONTENT_OVER_BUDGET = "full_content_over_budget"
@@ -170,11 +171,20 @@ class GateDecision:
         )
 
         if self.disposition is GateDisposition.ACTIVE:
-            if self.rank is None or self.reserved_chars != self.full_char_cost:
+            if (
+                self.rank is None
+                or self.reserved_chars <= 0
+                or self.reserved_chars != self.full_char_cost
+            ):
                 raise ValueError("ACTIVE must reserve full content at a positive rank")
         elif self.disposition is GateDisposition.COMPRESS:
-            if self.rank is None or self.reserved_chars != self.compressed_char_cost:
-                raise ValueError("COMPRESS must reserve essence at a positive rank")
+            if (
+                self.rank is None
+                or self.reserved_chars <= 0
+                or self.reserved_chars != self.compressed_char_cost
+                or self.compressed_char_cost > self.full_char_cost
+            ):
+                raise ValueError("COMPRESS must reserve smaller essence at a positive rank")
         elif self.disposition is GateDisposition.DEFER:
             if self.rank is None or self.reserved_chars != 0:
                 raise ValueError("DEFER must have a positive rank and reserve zero chars")
@@ -315,7 +325,7 @@ def _claims_in_source_order(capsule: KnowledgeCapsule) -> tuple[str, ...]:
         capsule.claims,
         key=lambda claim: (
             min(span.start_offset for span in claim.source_spans),
-            claim.claim_id,
+            claim.text,
         ),
     )
     return tuple(claim.text for claim in ordered)
@@ -334,6 +344,20 @@ def _essence_is_source_linked(capsule: KnowledgeCapsule) -> bool:
                 next_positions.add(position + len(fragment))
         positions = next_positions
     return bool(target) and len(target) in positions
+
+
+def _compressed_semantics_supported(capsule: KnowledgeCapsule) -> bool:
+    """Fail closed until ContextPack defines how compressed metadata is carried."""
+
+    if capsule.entities or capsule.omitted_questions:
+        return False
+    return all(
+        not claim.qualifiers
+        and not claim.uncertainties
+        and not claim.applicability_conditions
+        and claim.temporal_scope is None
+        for claim in capsule.claims
+    )
 
 
 def _pre_budget_decision(candidate: WorkingMemoryCandidate) -> GateDecision | None:
@@ -452,6 +476,9 @@ class WorkingMemoryGate:
             full_cost = _full_char_cost(candidate.capsule)
             compressed_cost = len(candidate.capsule.essence)
             essence_source_linked = _essence_is_source_linked(candidate.capsule)
+            compressed_semantics_supported = _compressed_semantics_supported(
+                candidate.capsule
+            )
             remaining_chars = resolved_budget.max_chars - used_chars
             reasons: list[GateReason] = []
             if candidate.protected:
@@ -492,10 +519,13 @@ class WorkingMemoryGate:
                 reasons.append(GateReason.FULL_CONTENT_OVER_BUDGET)
                 if not essence_source_linked:
                     reasons.append(GateReason.ESSENCE_NOT_SOURCE_LINKED)
+                if not compressed_semantics_supported:
+                    reasons.append(GateReason.COMPRESSED_SEMANTICS_UNSUPPORTED)
 
             if (
                 full_cost > remaining_chars
                 and essence_source_linked
+                and compressed_semantics_supported
                 and compress_eligible
                 and compressed_cost <= remaining_chars
             ):
@@ -513,7 +543,11 @@ class WorkingMemoryGate:
 
             if not compress_eligible:
                 reasons.append(GateReason.SCORE_BELOW_COMPRESS)
-            elif full_cost > remaining_chars and essence_source_linked:
+            elif (
+                full_cost > remaining_chars
+                and essence_source_linked
+                and compressed_semantics_supported
+            ):
                 reasons.append(GateReason.CHAR_BUDGET_EXHAUSTED)
             decisions[candidate.capsule.capsule_id] = _decision(
                 candidate, GateDisposition.DEFER, reasons, rank=rank
