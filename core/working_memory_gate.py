@@ -393,10 +393,14 @@ class WorkingMemoryGate:
 
             if not active_eligible:
                 reasons.append(GateReason.SCORE_BELOW_ACTIVE)
-            elif full_cost > remaining_chars:
+            if full_cost > remaining_chars:
                 reasons.append(GateReason.FULL_CONTENT_OVER_BUDGET)
 
-            if compress_eligible and compressed_cost <= remaining_chars:
+            if (
+                full_cost > remaining_chars
+                and compress_eligible
+                and compressed_cost <= remaining_chars
+            ):
                 reasons.append(GateReason.ESSENCE_SELECTED)
                 decisions[candidate.capsule.capsule_id] = _decision(
                     candidate,
@@ -411,7 +415,7 @@ class WorkingMemoryGate:
 
             if not compress_eligible:
                 reasons.append(GateReason.SCORE_BELOW_COMPRESS)
-            else:
+            elif full_cost > remaining_chars:
                 reasons.append(GateReason.CHAR_BUDGET_EXHAUSTED)
             decisions[candidate.capsule.capsule_id] = _decision(
                 candidate, GateDisposition.DEFER, reasons, rank=rank
