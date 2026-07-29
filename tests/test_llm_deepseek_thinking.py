@@ -1,7 +1,15 @@
 # tests/test_llm_deepseek_thinking.py
+import asyncio
+
+import httpx
+import pytest
+
+import core.llm_router as router
 from core.llm_router import (
     LlmCallConfig,
+    LlmTransportTimeoutError,
     _deepseek_request_body,
+    chat_complete,
     compact_messages_for_deepseek,
     normalize_deepseek_thinking,
 )
@@ -41,3 +49,18 @@ def test_deepseek_message_content_is_compacted_to_provider_limit():
         quick_ping=False,
     )
     assert len(body["messages"][0]["content"]) <= 4000
+
+
+def test_chat_complete_normalizes_httpx_timeout(monkeypatch: pytest.MonkeyPatch):
+    async def read_timeout(*args, **kwargs):
+        raise httpx.ReadTimeout("provider read timed out")
+
+    monkeypatch.setattr(router, "_openai_compatible_chat", read_timeout)
+    cfg = LlmCallConfig(
+        provider="deepseek",
+        api_key="sk-test",
+        model="deepseek-v4-flash",
+    )
+
+    with pytest.raises(LlmTransportTimeoutError):
+        asyncio.run(chat_complete(cfg, "prompt", "system"))

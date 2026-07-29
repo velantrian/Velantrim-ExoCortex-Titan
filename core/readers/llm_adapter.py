@@ -67,7 +67,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from core.knowledge_capsule import (
@@ -91,7 +91,7 @@ logger = logging.getLogger("velantrim.readers.llm")
 
 #: Versioned so a change to boundaries or overlap is visible in the receipt
 #: rather than silently altering which spans a source produces.
-CHUNK_POLICY_VERSION = "chunk-v2"
+CHUNK_POLICY_VERSION = "chunk-v3"
 PROMPT_VERSION = "syn03-extract-v3"
 PARSER_VERSION = "syn03-strict-json-v2"
 
@@ -380,10 +380,17 @@ class LlmReaderAdapter(BaseSemanticReader):
         function. Remote access therefore has exactly one path:
         `core.llm_router.chat_complete`.
         """
-        self._provider = provider
-        self._model = model
+        from core.llm_router import LlmCallConfig, resolve_llm_execution_identity
+
+        identity = resolve_llm_execution_identity(
+            LlmCallConfig(provider=provider, api_key=api_key, model=model)
+        )
+        self._provider = identity.provider
+        self._model = identity.model
         self._api_key = api_key
-        self._limits = limits or LlmReaderLimits()
+        self._limits = _provider_safe_limits(
+            identity.provider, limits or LlmReaderLimits()
+        )
 
     # ── provider access ────────────────────────────────────────────────────
 
@@ -483,13 +490,6 @@ class LlmReaderAdapter(BaseSemanticReader):
 
             for raw_claim in payload["claims"]:
                 receipt.claims_proposed += 1
-                if len(admitted) >= resolved.max_claims:
-                    _warn(
-                        warnings,
-                        "CLAIM_BUDGET_EXHAUSTED",
-                        "Additional proposed claims were omitted by the claim budget",
-                    )
-                    break
                 claim = self._admit_claim(
                     raw_claim, chunk, source, receipt, warnings, refused
                 )
@@ -503,7 +503,20 @@ class LlmReaderAdapter(BaseSemanticReader):
                     # but do not force ReaderStatus.PARTIAL.
                     receipt.claims_rejected_duplicate += 1
                     continue
+                # Record every validated unique proposal before the admission
+                # budget decision. If an omitted over-budget claim is proposed
+                # again, the repeat is a duplicate rather than another unique
+                # omission.
                 seen_identity.add(claim.claim_id)
+                if len(admitted) >= resolved.max_claims:
+                    _warn(
+                        warnings,
+                        "CLAIM_BUDGET_EXHAUSTED",
+                        "Additional unique claims were omitted by the claim budget",
+                    )
+                    # Continue validating later proposals so an overlap duplicate
+                    # of an admitted claim cannot masquerade as omitted content.
+                    continue
                 admitted.append(claim)
 
         receipt.claims_admitted = len(admitted)
@@ -814,6 +827,34 @@ def _build_user_prompt(chunk_text: str) -> str:
         f"{chunk_text}\n"
         "<<<SOURCE_END>>>"
     )
+
+
+def _provider_safe_limits(
+    provider: str, limits: LlmReaderLimits
+) -> LlmReaderLimits:
+    """Keep source chunks below any router-enforced message truncation limit.
+
+    The user envelope consumes part of the provider's per-message allowance.
+    Planning against source size alone would let the router silently truncate a
+    chunk and create an unexamined gap before the next overlapping chunk.
+    """
+
+    from core.llm_router import message_content_char_limit_for_provider
+
+    message_limit = message_content_char_limit_for_provider(provider)
+    if message_limit is None:
+        return limits
+    envelope_chars = len(_build_user_prompt(""))
+    safe_chunk_chars = message_limit - envelope_chars
+    if safe_chunk_chars <= 0:
+        raise ValueError("provider message limit is smaller than the source envelope")
+    if limits.chunk_overlap_chars >= safe_chunk_chars:
+        raise ValueError(
+            "chunk_overlap_chars must be smaller than the provider-safe chunk size"
+        )
+    if limits.chunk_chars <= safe_chunk_chars:
+        return limits
+    return replace(limits, chunk_chars=safe_chunk_chars)
 
 
 def _modality_or_none(value: object) -> ClaimModality | None:
