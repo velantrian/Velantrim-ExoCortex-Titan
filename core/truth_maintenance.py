@@ -390,6 +390,14 @@ def contradict(fact_id: str, source_id: str, reason: str = "") -> bool:
             logger.debug("contradict: ESM skip for %s", fid)
 
     # Ребро
+    # FIX M8 (Claude audit 2026-07-28): both secondary writes below were
+    # silently swallowed (bare `except: pass`, no log at all), so a real
+    # failure here left no trace anywhere — not even a debug line — while
+    # contradict() still reported changed=True from the ESM transition
+    # above. Both now log at WARNING with the actual exception, so a
+    # dropped edge/registry entry is at least visible, even though the
+    # overall return value still reflects the ESM transition (the
+    # operation's primary effect) rather than these best-effort side writes.
     if changed:
         try:
             from core.causal_graph import get_causal_graph
@@ -401,8 +409,11 @@ def contradict(fact_id: str, source_id: str, reason: str = "") -> bool:
                     relation_type=REL_CONTRADICTS,
                     confidence=0.95,
                 )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                "contradict: failed to record CONTRADICTS edge %s→%s: %s",
+                fact_id, source_id, exc,
+            )
 
         # Регистрация в CRISPR-спейсеры
         try:
@@ -411,8 +422,11 @@ def contradict(fact_id: str, source_id: str, reason: str = "") -> bool:
             claim_a = fact_a.get("claim", "") if fact_a else ""
             claim_b = fact_b.get("claim", "") if fact_b else ""
             reg.record(fact_id, claim_a, source_id, claim_b, method="manual")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                "contradict: failed to record contradiction-registry entry %s↔%s: %s",
+                fact_id, source_id, exc,
+            )
 
     logger.info("TruthMaintenance.contradict: %s ↔ %s", fact_id, source_id)
     return changed
