@@ -254,6 +254,42 @@ def test_repeated_quote_is_rejected_as_ambiguous(monkeypatch: pytest.MonkeyPatch
     assert out.receipt.claims_admitted == 0
 
 
+def test_same_quote_in_distant_chunks_is_globally_ambiguous(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """A quote unique per chunk is still ambiguous in the complete document."""
+    target = "Повторяемая цитата."
+    second_offset = 90
+    text = target + ("x" * (second_offset - len(target))) + target
+    limits = LlmReaderLimits(
+        chunk_chars=50,
+        chunk_overlap_chars=5,
+        max_chunks=4,
+    )
+    chunks = plan_chunks(text, limits)
+    matching_chunks = [chunk for chunk in chunks if target in chunk.text]
+
+    assert len(matching_chunks) == 2
+    assert all(chunk.text.count(target) == 1 for chunk in matching_chunks)
+
+    _script(
+        monkeypatch,
+        [
+            _payload([_claim(target)]) if target in chunk.text else _payload([])
+            for chunk in chunks
+        ],
+    )
+    out = _run(
+        _adapter(limits=limits),
+        RawSource(document_id="doc-cross-chunk-ambiguity", text=text),
+    )
+
+    assert out.result.status is ReaderStatus.SPAN_VALIDATION_FAILED
+    assert out.result.capsule is None
+    assert out.receipt.claims_rejected_ambiguous == 2
+    assert out.receipt.claims_admitted == 0
+
+
 def test_ambiguous_quote_alongside_a_good_one_is_partial(monkeypatch: pytest.MonkeyPatch):
     text = "Сервер упал. Диск заполнен. Сервер упал."
     _script(
