@@ -1732,7 +1732,21 @@ class SQLiteGraphStore(GraphStore):
         callers. Prefer store_fact_result() for new call sites that need to
         distinguish "rejected" from "already existed" from "updated" (PR-C1).
         """
-        return self._store_fact_outcome(fact).created
+        try:
+            return self._store_fact_outcome(fact).created
+        except sqlite3.IntegrityError as exc:
+            # FIX M3 (Claude audit 2026-07-28): the UPSERT above has no
+            # `WHERE epistemic_state=?` CAS guard — it relies on the
+            # prevent_collapsed_mutation/prevent_immutablecore_mutation
+            # triggers (migration 009) to fail closed if a concurrent writer
+            # already moved this fact past the state this call's drift
+            # detection read. That's correct (no silent corruption), but this
+            # legacy bool API had no try/except here, so the raw DB trigger
+            # text bubbled out as an unhandled sqlite3.IntegrityError instead
+            # of the ValueError this method's other rejections already use.
+            # store_fact_result() already converts the identical failure into
+            # WriteStatus.FAILED_STORAGE via its own outer try/except.
+            raise ValueError(f"store_fact: конфликт записи (CAS race): {exc}") from exc
 
     def _safe_canonical_exists(self, fact_id: str | None) -> bool:
         """
