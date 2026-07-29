@@ -59,6 +59,67 @@ def test_evidence_ref_structured():
     assert ref is not None and ref.source_id == "doc1" and ref.span == "120-340"
 
 
+# ── modality_guard (M13, Claude audit 2026-07-28) ───────────────────────────────
+#
+# Both branches used to do `refs = (...).get("evidence_refs") or []; if not refs`
+# — bare list-truthiness, so ANY non-empty list passed, including a list of
+# plain strings (canon T1.3: a plain string is a source tag, not a citation).
+# Both now call fact_evidence_ref(), the same structural check
+# fact_admissible(require_evidence=True) already uses above.
+
+def _fact_with_modality(fid, *, claim_type, origin_type, evidence=None):
+    f = _fact(fid, 0.9, evidence=evidence)
+    f["claim_type"] = claim_type
+    f["origin_type"] = origin_type
+    return f
+
+
+def test_modality_guard_llm_output_world_fact_rejects_plain_string_evidence():
+    from core.truth_policy import modality_guard
+
+    fact = _fact_with_modality(
+        "h1", claim_type="WORLD_FACT", origin_type="LLM_OUTPUT",
+        evidence=["i said so"],
+    )
+    ok, reason = modality_guard(fact, "Validated")
+    assert ok is False
+    assert "evidence_refs" in reason
+
+
+def test_modality_guard_llm_output_world_fact_allows_structured_evidence():
+    from core.truth_policy import modality_guard
+
+    fact = _fact_with_modality(
+        "h2", claim_type="WORLD_FACT", origin_type="LLM_OUTPUT",
+        evidence=[{"source_id": "doc1"}],
+    )
+    ok, reason = modality_guard(fact, "Validated")
+    assert ok is True and reason == "ok"
+
+
+def test_modality_guard_unknown_claim_type_rejects_plain_string_evidence():
+    from core.truth_policy import modality_guard
+
+    fact = _fact_with_modality(
+        "h3", claim_type="UNKNOWN", origin_type="UNKNOWN",
+        evidence=["i said so"],
+    )
+    ok, reason = modality_guard(fact, "Validated")
+    assert ok is False
+    assert "evidence_refs" in reason
+
+
+def test_modality_guard_unknown_claim_type_allows_structured_evidence():
+    from core.truth_policy import modality_guard
+
+    fact = _fact_with_modality(
+        "h4", claim_type="UNKNOWN", origin_type="UNKNOWN",
+        evidence=[{"source_id": "doc1"}],
+    )
+    ok, reason = modality_guard(fact, "Validated")
+    assert ok is True and reason == "ok"
+
+
 # ── decide ────────────────────────────────────────────────────────────────────
 
 def test_decide_reject_empty():

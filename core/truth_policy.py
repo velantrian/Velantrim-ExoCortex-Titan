@@ -174,8 +174,13 @@ def modality_guard(
             and target_epistemic_state in ("Validated", "ImmutableCore")):
         # Не блокируем полностью — позволяем Supported (промежуточное)
         # но Validated требует независимого доказательства
-        refs = (fact.get("metadata") or {}).get("evidence_refs") or []
-        if not refs:
+        # FIX M13 (Claude audit 2026-07-28): bare list-truthiness accepted
+        # ANY non-empty list here, including a list of plain strings
+        # (`["i said so"]`) — canon T1.3 requires a structural EvidenceRef
+        # (dict with source_id/source), which fact_evidence_ref() already
+        # enforces and fact_admissible() above already uses for the same
+        # purpose.
+        if fact_evidence_ref(fact) is None:
             return False, (
                 f"WORLD_FACT с origin_type=LLM_OUTPUT не может стать {target_epistemic_state!r} "
                 f"без независимых evidence_refs. LLM-вывод не является верификацией."
@@ -188,8 +193,8 @@ def modality_guard(
     # recommend_target_state(UNKNOWN) → "Observed".
     if (ct == ClaimType.UNKNOWN
             and target_epistemic_state in ("Validated", "ImmutableCore")):
-        refs = (fact.get("metadata") or {}).get("evidence_refs") or []
-        if not refs:
+        # FIX M13 (Claude audit 2026-07-28): see the LLM_OUTPUT check above.
+        if fact_evidence_ref(fact) is None:
             return False, (
                 f"claim_type=UNKNOWN не может стать {target_epistemic_state!r} без "
                 f"реклассификации или evidence_refs: неклассифицированная запись не "
