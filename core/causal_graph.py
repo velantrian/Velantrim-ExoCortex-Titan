@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import sqlite3
 import uuid
 from collections import deque
 from dataclasses import dataclass
@@ -904,14 +905,24 @@ class CausalGraph:
         rows: list[dict],
         *,
         merge: bool = True,
-    ) -> int:
+    ) -> tuple[int, int]:
         """
         Загрузить рёбра из внешнего графа (Neo4j snapshot).
 
         merge=True: пропускать дубликаты по relation_id; merge=False: очистка не делается
         (вызывающий должен reset_causal_graph() до импорта).
+
+        Returns: (imported, failed) — счётчик успешно вставленных рёбер и
+        счётчик тех, что упали (уже залогированы по отдельности выше).
+        FIX M7 (Claude audit 2026-07-28): раньше возвращался только
+        imported — вызывающий код не мог узнать, сколько рёбер потеряно
+        при ре-импорте, даже видя правдоподобный успешный счёт. Заодно
+        `except Exception` сужен до `sqlite3.Error` — реальный класс
+        ошибок self._conn.execute() может бросить (locking/DB-level
+        failures), а не любую программную ошибку в вызывающем коде.
         """
         imported = 0
+        failed = 0
         for row in rows:
             from_id = row.get("from_fact_id")
             to_id = row.get("to_fact_id")
@@ -935,12 +946,14 @@ class CausalGraph:
             except ValueError as exc:
                 logger.warning("import_snapshots: пропущено ребро %s→%s (%s): %s",
                                from_id, to_id, rtype, exc)
+                failed += 1
                 continue
-            except Exception as exc:
-                logger.error("import_snapshots: ошибка при импорте %s→%s: %s",
+            except sqlite3.Error as exc:
+                logger.error("import_snapshots: ошибка БД при импорте %s→%s: %s",
                              from_id, to_id, exc)
+                failed += 1
                 continue
-        return imported
+        return imported, failed
 
     # ── Statistics ─────────────────────────────────────────────────────────────
 

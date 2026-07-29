@@ -88,8 +88,16 @@ async def import_graph_to_causal(graphiti: Any, *, merge: bool = True) -> int:
     if not rows:
         return 0
 
-    n = get_causal_graph().import_snapshots(rows, merge=merge)
-    logger.info("causal_persist: imported %d relations from Neo4j", n)
+    # FIX M7 (Claude audit 2026-07-28): import_snapshots() now also reports
+    # how many rows failed, instead of only a plausible-looking success count.
+    n, failed = get_causal_graph().import_snapshots(rows, merge=merge)
+    if failed:
+        logger.warning(
+            "causal_persist: imported %d relations from Neo4j, %d failed (see above)",
+            n, failed,
+        )
+    else:
+        logger.info("causal_persist: imported %d relations from Neo4j", n)
     return n
 
 

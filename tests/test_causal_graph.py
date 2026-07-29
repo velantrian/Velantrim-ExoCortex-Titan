@@ -540,6 +540,71 @@ class TestRegression:
         assert r_unknown.is_reliable() is False
 
 
+# ─── M7 (Claude audit 2026-07-28): import_snapshots() reports failed count ────
+# and narrows its second except clause from bare Exception to sqlite3.Error.
+
+class TestImportSnapshotsFailedCount:
+
+    def test_returns_imported_and_failed_counts(self, graph, facts):
+        rows = [
+            {"from_fact_id": "f_water", "to_fact_id": "f_life", "relation_type": "causes"},
+            # invalid relation_type -> add_relation raises ValueError -> failed
+            {"from_fact_id": "f_fire", "to_fact_id": "f_heat", "relation_type": "not_a_real_type"},
+        ]
+        imported, failed = graph.import_snapshots(rows)
+        assert imported == 1
+        assert failed == 1
+
+    def test_all_valid_rows_report_zero_failed(self, graph, facts):
+        rows = [
+            {"from_fact_id": "f_water", "to_fact_id": "f_life", "relation_type": "causes"},
+            {"from_fact_id": "f_oxygen", "to_fact_id": "f_fire", "relation_type": "enables"},
+        ]
+        imported, failed = graph.import_snapshots(rows)
+        assert imported == 2
+        assert failed == 0
+
+    def test_sqlite_error_is_caught_and_counted_as_failed(self, graph, facts, monkeypatch):
+        """A real DB-level failure (not a validation ValueError) must still
+        be caught, logged, and counted — not propagated — same as before."""
+        import sqlite3
+
+        real_add_relation = graph.add_relation
+        calls = {"n": 0}
+
+        def _flaky_add_relation(*args, **kwargs):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise sqlite3.OperationalError("simulated DB failure")
+            return real_add_relation(*args, **kwargs)
+
+        monkeypatch.setattr(graph, "add_relation", _flaky_add_relation)
+
+        rows = [
+            {"from_fact_id": "f_water", "to_fact_id": "f_life", "relation_type": "causes"},
+            {"from_fact_id": "f_oxygen", "to_fact_id": "f_fire", "relation_type": "enables"},
+        ]
+        imported, failed = graph.import_snapshots(rows)
+        assert imported == 1
+        assert failed == 1
+
+    def test_non_db_exception_is_no_longer_swallowed(self, graph, facts, monkeypatch):
+        """FIX M7: the second except was `Exception` (anything), now
+        `sqlite3.Error` — a genuine programming bug (e.g. AttributeError)
+        must propagate instead of being silently absorbed as 'one more
+        failed row'."""
+        def _broken_add_relation(*args, **kwargs):
+            raise AttributeError("simulated unrelated bug, not a DB error")
+
+        monkeypatch.setattr(graph, "add_relation", _broken_add_relation)
+
+        rows = [
+            {"from_fact_id": "f_water", "to_fact_id": "f_life", "relation_type": "causes"},
+        ]
+        with pytest.raises(AttributeError):
+            graph.import_snapshots(rows)
+
+
 # ─── TASK-10: cycle protection ────────────────────────────────────────────────
 
 def test_find_contradictions_no_infinite_loop_on_cycle(db, graph):

@@ -74,7 +74,9 @@ class TestRelationsPreview:
         assert len(with_rels.relations) >= 1
 
         cg = get_causal_graph()
-        n = cg.import_snapshots(
+        # import_snapshots() returns (imported, failed) — see M7, Claude
+        # audit 2026-07-28.
+        n, failed = cg.import_snapshots(
             [
                 {
                     "from_fact_id": "fact_a",
@@ -84,6 +86,7 @@ class TestRelationsPreview:
             ],
         )
         assert n >= 0
+        assert failed == 0
 
 
 class TestRelationsAPI:
