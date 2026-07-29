@@ -206,14 +206,26 @@ def test_protection_changes_order_but_cannot_change_safety() -> None:
     assert _decision(plan, excluded).disposition is GateDisposition.EXCLUDE
 
 
-def test_score_below_active_can_select_compressed_representation() -> None:
-    candidate = _candidate("complete text", score=0.4, essence="short")
-    plan = WorkingMemoryGate().plan([candidate])
+def test_score_below_active_can_compress_only_when_full_content_does_not_fit() -> None:
+    candidate = _candidate("a much longer complete text", score=0.4, essence="short")
+    plan = WorkingMemoryGate().plan(
+        [candidate],
+        budget=WorkingMemoryBudget(max_items=1, max_chars=len("short")),
+    )
     decision = _decision(plan, candidate)
 
     assert decision.disposition is GateDisposition.COMPRESS
     assert GateReason.SCORE_BELOW_ACTIVE in decision.reasons
+    assert GateReason.FULL_CONTENT_OVER_BUDGET in decision.reasons
     assert GateReason.ESSENCE_SELECTED in decision.reasons
+
+
+def test_score_below_active_does_not_compress_when_full_content_fits() -> None:
+    candidate = _candidate("complete text", score=0.4, essence="short")
+    decision = _decision(WorkingMemoryGate().plan([candidate]), candidate)
+
+    assert decision.disposition is GateDisposition.DEFER
+    assert decision.reasons == (GateReason.SCORE_BELOW_ACTIVE,)
 
 
 def test_score_below_compress_is_deferred_even_when_space_exists() -> None:
