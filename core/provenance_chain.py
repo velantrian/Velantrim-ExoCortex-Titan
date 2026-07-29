@@ -55,6 +55,22 @@ CREATE TABLE IF NOT EXISTS provenance_chains (
 );
 CREATE INDEX IF NOT EXISTS idx_provenance_fact
     ON provenance_chains(fact_id, seq);
+
+-- FIX (Claude audit 2026-07-28, Low): mirrors memory_events/audit_chain's
+-- prevent_audit_update/prevent_audit_delete (migrations/009_truth_kernel.sql)
+-- — provenance_chains had no DB-level append-only enforcement at all, only
+-- the class-level convention that append() never issues UPDATE/DELETE.
+CREATE TRIGGER IF NOT EXISTS prevent_provenance_update
+BEFORE UPDATE ON provenance_chains
+BEGIN
+    SELECT RAISE(ABORT, 'VELANTRIM: provenance_chains is append-only — UPDATE is forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_provenance_delete
+BEFORE DELETE ON provenance_chains
+BEGIN
+    SELECT RAISE(ABORT, 'VELANTRIM: provenance_chains is append-only — DELETE is forbidden');
+END;
 """
 
 GENESIS = "VELANTRIM_GENESIS_BLOCK"

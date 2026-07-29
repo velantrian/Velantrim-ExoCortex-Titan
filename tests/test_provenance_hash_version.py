@@ -43,7 +43,13 @@ class TestNewRowsAreTaggedCurrentAndVerify:
         chain = ProvenanceChain(db_path)
         chain.append("f2", event_type="fact_created", actor="user")
 
+        # The append-only triggers (this session's own Low fix) correctly
+        # block this UPDATE now — drop them first to simulate a genuine
+        # tamper that bypassed the DB-level guard entirely (e.g. a restored
+        # backup or direct file-level edit), same convention as
+        # test_audit_chain_v2.py's `mutable_db` fixture.
         with sqlite3.connect(db_path) as conn:
+            conn.execute("DROP TRIGGER IF EXISTS prevent_provenance_update")
             conn.execute(
                 "UPDATE provenance_chains SET actor = 'attacker' "
                 "WHERE fact_id = 'f2' AND seq = 0"
@@ -116,7 +122,10 @@ class TestLegacyRowsVerifyWithoutFalseMismatch:
         chain = ProvenanceChain(db_path)
         self._insert_legacy_row(db_path, "legacy-3", from_state="Observed", to_state="Hypothesized")
 
+        # See test_verify_still_detects_actor_tampering_on_current_rows above
+        # for why the trigger is dropped first.
         with sqlite3.connect(db_path) as conn:
+            conn.execute("DROP TRIGGER IF EXISTS prevent_provenance_update")
             conn.execute(
                 "UPDATE provenance_chains SET to_state = 'Validated' "
                 "WHERE fact_id = 'legacy-3' AND seq = 0"
@@ -189,3 +198,27 @@ class TestNextSeqLogsInsteadOfSilentlySwallowing:
 
         assert seq == 0
         assert any("_next_seq failed" in r.message for r in caplog.records)
+
+
+class TestAppendOnlyDBTriggers:
+    """Low finding (Claude audit 2026-07-28): provenance_chains had no
+    DB-level append-only enforcement at all, unlike memory_events/
+    audit_chain's prevent_audit_update/prevent_audit_delete."""
+
+    def test_update_is_rejected_at_the_db_level(self, db_path):
+        chain = ProvenanceChain(db_path)
+        chain.append("t1", event_type="fact_created", actor="user")
+
+        with sqlite3.connect(db_path) as conn:
+            with pytest.raises(sqlite3.IntegrityError, match="append-only"):
+                conn.execute(
+                    "UPDATE provenance_chains SET actor = 'x' WHERE fact_id = 't1'"
+                )
+
+    def test_delete_is_rejected_at_the_db_level(self, db_path):
+        chain = ProvenanceChain(db_path)
+        chain.append("t2", event_type="fact_created", actor="user")
+
+        with sqlite3.connect(db_path) as conn:
+            with pytest.raises(sqlite3.IntegrityError, match="append-only"):
+                conn.execute("DELETE FROM provenance_chains WHERE fact_id = 't2'")
