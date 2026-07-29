@@ -93,12 +93,12 @@ class WorkingMemoryCandidate:
 
     capsule: KnowledgeCapsule
     attention_score: float
-    recall_allowed: bool = True
-    eligible: bool = True
-    restricted: bool = False
-    erased: bool = False
-    protected: bool = False
-    conflict: bool = False
+    recall_allowed: bool
+    eligible: bool
+    restricted: bool
+    erased: bool
+    protected: bool
+    conflict: bool
     metadata: Mapping[str, object] = field(
         default_factory=dict, compare=False, repr=False
     )
