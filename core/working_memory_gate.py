@@ -37,6 +37,7 @@ class GateReason(str, Enum):
     PROTECTED = "protected"
     FULL_CONTENT_SELECTED = "full_content_selected"
     ESSENCE_SELECTED = "essence_selected"
+    ESSENCE_NOT_SOURCE_LINKED = "essence_not_source_linked"
     SCORE_BELOW_ACTIVE = "score_below_active"
     SCORE_BELOW_COMPRESS = "score_below_compress"
     FULL_CONTENT_OVER_BUDGET = "full_content_over_budget"
@@ -137,6 +138,49 @@ class GateDecision:
     compressed_char_cost: int
     reserved_chars: int
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.capsule_id, str) or not self.capsule_id.strip():
+            raise ValueError("capsule_id must be a non-empty string")
+        if not isinstance(self.disposition, GateDisposition):
+            raise ValueError("disposition must be a GateDisposition")
+        reasons = tuple(self.reasons)
+        if not reasons or any(not isinstance(reason, GateReason) for reason in reasons):
+            raise ValueError("reasons must contain at least one GateReason")
+        object.__setattr__(self, "reasons", reasons)
+        object.__setattr__(
+            self, "attention_score", _score(self.attention_score, "attention_score")
+        )
+        object.__setattr__(self, "protected", _strict_bool(self.protected, "protected"))
+        if self.rank is not None:
+            object.__setattr__(self, "rank", _positive_int(self.rank, "rank"))
+        object.__setattr__(
+            self,
+            "full_char_cost",
+            _non_negative_int(self.full_char_cost, "full_char_cost"),
+        )
+        object.__setattr__(
+            self,
+            "compressed_char_cost",
+            _non_negative_int(self.compressed_char_cost, "compressed_char_cost"),
+        )
+        object.__setattr__(
+            self,
+            "reserved_chars",
+            _non_negative_int(self.reserved_chars, "reserved_chars"),
+        )
+
+        if self.disposition is GateDisposition.ACTIVE:
+            if self.rank is None or self.reserved_chars != self.full_char_cost:
+                raise ValueError("ACTIVE must reserve full content at a positive rank")
+        elif self.disposition is GateDisposition.COMPRESS:
+            if self.rank is None or self.reserved_chars != self.compressed_char_cost:
+                raise ValueError("COMPRESS must reserve essence at a positive rank")
+        elif self.disposition is GateDisposition.DEFER:
+            if self.rank is None or self.reserved_chars != 0:
+                raise ValueError("DEFER must have a positive rank and reserve zero chars")
+        elif self.rank is not None or self.reserved_chars != 0:
+            raise ValueError("terminal dispositions must be unranked and reserve zero chars")
+
     def to_dict(self) -> dict[str, object]:
         return {
             "capsule_id": self.capsule_id,
@@ -166,6 +210,7 @@ class WorkingMemoryPlan:
         decisions = tuple(self.decisions)
         if any(not isinstance(item, GateDecision) for item in decisions):
             raise ValueError("every decision must be a GateDecision")
+        decisions = tuple(sorted(decisions, key=lambda item: item.capsule_id))
         if len({item.capsule_id for item in decisions}) != len(decisions):
             raise ValueError("decision capsule_ids must be unique")
         object.__setattr__(self, "decisions", decisions)
@@ -188,12 +233,17 @@ class WorkingMemoryPlan:
             raise ValueError("used_items exceeds max_items")
         if self.used_chars > self.budget.max_chars:
             raise ValueError("used_chars exceeds max_chars")
+        ranks = sorted(item.rank for item in decisions if item.rank is not None)
+        if ranks != list(range(1, len(ranks) + 1)):
+            raise ValueError("ranked decisions must use unique contiguous ranks")
 
     def by_disposition(
         self, disposition: GateDisposition
     ) -> tuple[GateDecision, ...]:
         """Return ranked decisions; unranked terminal decisions sort by identity."""
 
+        if not isinstance(disposition, GateDisposition):
+            raise ValueError("disposition must be a GateDisposition")
         matching = (
             decision
             for decision in self.decisions
@@ -258,6 +308,32 @@ def _full_char_cost(capsule: KnowledgeCapsule) -> int:
         if claim.temporal_scope is not None:
             parts.append(claim.temporal_scope)
     return sum(len(part) for part in parts) + max(0, len(parts) - 1)
+
+
+def _claims_in_source_order(capsule: KnowledgeCapsule) -> tuple[str, ...]:
+    ordered = sorted(
+        capsule.claims,
+        key=lambda claim: (
+            min(span.start_offset for span in claim.source_spans),
+            claim.claim_id,
+        ),
+    )
+    return tuple(claim.text for claim in ordered)
+
+
+def _essence_is_source_linked(capsule: KnowledgeCapsule) -> bool:
+    """Accept only complete claim texts in source order, never free summary prose."""
+
+    target = capsule.essence
+    positions: set[int] = {0}
+    for claim_text in _claims_in_source_order(capsule):
+        next_positions = set(positions)
+        for position in positions:
+            fragment = claim_text if position == 0 else " " + claim_text
+            if target.startswith(fragment, position):
+                next_positions.add(position + len(fragment))
+        positions = next_positions
+    return bool(target) and len(target) in positions
 
 
 def _pre_budget_decision(candidate: WorkingMemoryCandidate) -> GateDecision | None:
@@ -329,7 +405,13 @@ class WorkingMemoryGate:
         *,
         budget: WorkingMemoryBudget | None = None,
     ) -> WorkingMemoryPlan:
-        resolved_budget = budget or WorkingMemoryBudget()
+        if budget is None:
+            resolved_budget = WorkingMemoryBudget()
+        elif isinstance(budget, WorkingMemoryBudget):
+            resolved_budget = budget
+        else:
+            raise ValueError("budget must be a WorkingMemoryBudget or None")
+
         materialized = tuple(candidates)
         if any(
             not isinstance(candidate, WorkingMemoryCandidate)
@@ -369,6 +451,7 @@ class WorkingMemoryGate:
         for rank, candidate in enumerate(ranked, start=1):
             full_cost = _full_char_cost(candidate.capsule)
             compressed_cost = len(candidate.capsule.essence)
+            essence_source_linked = _essence_is_source_linked(candidate.capsule)
             remaining_chars = resolved_budget.max_chars - used_chars
             reasons: list[GateReason] = []
             if candidate.protected:
@@ -407,9 +490,12 @@ class WorkingMemoryGate:
                 reasons.append(GateReason.SCORE_BELOW_ACTIVE)
             if full_cost > remaining_chars:
                 reasons.append(GateReason.FULL_CONTENT_OVER_BUDGET)
+                if not essence_source_linked:
+                    reasons.append(GateReason.ESSENCE_NOT_SOURCE_LINKED)
 
             if (
                 full_cost > remaining_chars
+                and essence_source_linked
                 and compress_eligible
                 and compressed_cost <= remaining_chars
             ):
@@ -427,7 +513,7 @@ class WorkingMemoryGate:
 
             if not compress_eligible:
                 reasons.append(GateReason.SCORE_BELOW_COMPRESS)
-            elif full_cost > remaining_chars:
+            elif full_cost > remaining_chars and essence_source_linked:
                 reasons.append(GateReason.CHAR_BUDGET_EXHAUSTED)
             decisions[candidate.capsule.capsule_id] = _decision(
                 candidate, GateDisposition.DEFER, reasons, rank=rank
