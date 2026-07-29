@@ -185,14 +185,16 @@ pytest tests/test_smoke.py tests/test_invariants.py tests/test_truth_gate.py \
 → 126 passed
 ```
 
-This covers: import/wiring sanity, all 18 CI-blocking invariants, Truth Gate thresholds,
+This covers: import/wiring sanity, all current CI-blocking tests in
+`tests/test_invariants.py`, Truth Gate thresholds,
 the write-time admission gate, LLM provider routing/catalog, console/LLM-proxy auth
 (including the "provider key never leaks" regression test), and end-to-end server
 integration (auth, CORS, sleep worker, console chat memory).
 
 Broader picture (not independently re-verified in full for this document — see
-`README.md` and `docs/LIMITATIONS.md` for the project's own running counts): **91 test
-files** under `tests/`, spanning unit, integration, and invariant levels. Coverage is
+`README.md` and `docs/LIMITATIONS.md` for the project's own running counts): **137
+`test_*.py` files** under `tests/` on the documented repository snapshot, spanning
+unit, integration, and invariant levels. Coverage is
 uneven across layers — the 🟢 stable areas in §1 are the ones actually exercised
 end-to-end; treat 🟡/🔵 areas in §2 as "read the code," per
 [`docs/REVIEWER_README.md`](REVIEWER_README.md) §8–9.

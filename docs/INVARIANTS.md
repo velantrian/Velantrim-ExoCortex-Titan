@@ -1,5 +1,10 @@
 # INVARIANTS.md — Velantrim ExoCortex v8.4.0
 
+> ⚠️ **Статус документа:** исторический реестр части инвариантов V8.x.
+> Текущую исполняемую границу проверяйте по `tests/test_invariants.py`, коду
+> соответствующего контракта и CI. Общая зрелость Titan 9.0 описана в
+> [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+
 > **Версия:** v8.4.0 · Audit-fixed integration layer
 >
 > **Золотое правило:** нарушение любого инварианта — это не баг,
