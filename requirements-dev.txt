@@ -4,7 +4,12 @@ pytest-asyncio>=0.23,<1
 pytest-cov>=4.0,<8
 pytest-timeout>=2.3,<3
 mypy>=1.10,<2
-ruff>=0.4,<0.5
+# Pinned to the exact patch version (Claude audit 2026-07-28, Low): a range
+# lets an ambient newer install silently diverge from CI/what's actually
+# been verified clean — ruff 0.15.8 produced 141 false-positive UP045
+# findings on this same codebase, which reads as "141 new problems" if you
+# don't already know to check the installed version first.
+ruff==0.4.10
 types-PyYAML>=6.0.12,<7
 # PyYAML itself (not just its stubs): scripts/validate_production_profile.py and
 # tests/test_production_profile.py parse docker-compose.prod.yml. types-PyYAML is

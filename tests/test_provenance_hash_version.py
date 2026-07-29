@@ -164,3 +164,28 @@ class TestSchemaSelfHealOnPreExistingTable:
 
         ok, msg = chain.verify("post-heal")
         assert ok, msg
+
+
+class TestNextSeqLogsInsteadOfSilentlySwallowing:
+    def test_next_seq_failure_is_logged_not_silent(self, db_path, monkeypatch, caplog):
+        """Low finding (Claude audit 2026-07-28): _next_seq()'s except
+        branch returned 0 — the SAME value as the legitimate "no prior
+        events" sentinel — with no log at all, so a genuine query failure
+        was indistinguishable from an empty chain. Must still return 0
+        (unchanged fallback), but now visibly."""
+        import logging
+
+        chain = ProvenanceChain(db_path)
+
+        real_connect = sqlite3.connect
+
+        def boom_connect(*a, **k):
+            raise sqlite3.OperationalError("simulated failure")
+
+        monkeypatch.setattr(sqlite3, "connect", boom_connect)
+        with caplog.at_level(logging.WARNING, logger="velantrim.provenance_chain"):
+            seq = chain._next_seq("some-fact")
+        monkeypatch.setattr(sqlite3, "connect", real_connect)
+
+        assert seq == 0
+        assert any("_next_seq failed" in r.message for r in caplog.records)

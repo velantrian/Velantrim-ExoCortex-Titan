@@ -49,8 +49,6 @@ DEFAULT_THRESHOLD = _env_float("SEMANTIC_DEDUP_THRESHOLD", 0.90)
 _MAX_CLUSTER_SIZE = int(_env_float("SEMANTIC_DEDUP_MAX_CLUSTER", 8))
 # Ранг ESM для выбора канонического факта в кластере (выше = каноничнее).
 _ESM_RANK = {"Validated": 3, "Supported": 2, "Hypothesized": 1, "Observed": 0}
-# Ранг ESM для выбора канонического факта в кластере (выше = каноничнее).
-_ESM_RANK = {"Validated": 3, "Supported": 2, "Hypothesized": 1, "Observed": 0}
 
 EmbedFn = Callable[[Sequence[str]], list[Sequence[float]]]
 

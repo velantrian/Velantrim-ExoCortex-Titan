@@ -400,7 +400,14 @@ class ProvenanceChain:
             ).fetchone()
             c.close()
             return (row[0] if row[0] is not None else -1) + 1
-        except Exception:
+        except Exception as exc:
+            # FIX (Claude audit 2026-07-28, Low): this fallback returns the
+            # SAME value (0) as the legitimate "no prior events for this
+            # fact_id" sentinel — a genuine query failure (locked DB, I/O
+            # error) was previously indistinguishable from an empty chain.
+            # Still returns 0 (unchanged, safe default for append()'s
+            # caller), but now at least visible instead of silent.
+            logger.warning("_next_seq failed for %s, falling back to seq=0: %s", fact_id, exc)
             return 0
 
     def _get_event(self, fact_id: str, seq: int) -> Optional[Dict[str, Any]]:

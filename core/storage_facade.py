@@ -36,8 +36,13 @@ def is_local_graph_store() -> bool:
 
 
 def reset_graph_store() -> None:
+    # FIX (Claude audit 2026-07-28, Low): storage_info() is @lru_cache(maxsize=1)
+    # and reads the backend singleton this resets — without clearing it too,
+    # a reset immediately followed by a backend switch (e.g. STORAGE_BACKEND
+    # change) still reports the pre-reset backend/capabilities forever.
     global _backend_singleton
     _backend_singleton = None
+    storage_info.cache_clear()
 
 
 def get_graph_store(force_new: bool = False) -> GraphStoreBackend:

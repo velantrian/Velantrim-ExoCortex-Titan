@@ -93,7 +93,11 @@ dev = [
     "pytest-cov>=4.0,<8",
     "pytest-timeout>=2.3,<3",
     "mypy>=1.10,<2",
-    "ruff>=0.4,<0.5",
+    # Pinned to the exact patch version (Claude audit 2026-07-28, Low): a
+    # range lets an ambient newer install silently diverge from what's
+    # actually been verified clean — ruff 0.15.8 produced 141
+    # false-positive UP045 findings on this same codebase.
+    "ruff==0.4.10",
     "types-PyYAML>=6.0.12,<7",
     # PyYAML itself, not only its stubs: the production-profile validator and
     # tests parse docker-compose.prod.yml. Without it the validator raised

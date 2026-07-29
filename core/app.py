@@ -221,23 +221,21 @@ def _create_event_bus():
 
 def _create_causal_graph():
     from core.causal_graph import CausalGraph
-    # FIX P1 (v8.7 audit): CausalGraph требует db_conn, а не db_path.
-    # Передаём соединение от store (SQLiteGraphStore открывает своё).
-    from core.memory import _GLOBAL_STORE
-    if _GLOBAL_STORE is not None:
-        # Pre-existing bug: SQLiteGraphStore has no _conn() — the real method is
-        # _db(), a @contextmanager whose connection is closed on exit (unsuitable for
-        # handing to a long-lived CausalGraph anyway). This raises AttributeError
-        # whenever ENABLE_CAUSAL_GRAPH triggers this factory; not caught here. Not
-        # fixed here (wiring a real persistent connection needs a store-level API
-        # change, out of scope for a typing-only pass) — tracked as a follow-up bug;
-        # flagged prominently since, unlike the other pre-existing bridge bugs, this
-        # one is NOT silently swallowed.
-        conn = _GLOBAL_STORE._conn()  # type: ignore[attr-defined]
-        return CausalGraph(conn)
-    # Fallback: прямой connect к БД (для тестов без store)
     import sqlite3
-    conn = sqlite3.connect(os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db"))
+    # FIX (Claude audit 2026-07-28, Low): CausalGraph требует db_conn, а не
+    # db_path. Раньше здесь звался несуществующий _GLOBAL_STORE._conn()
+    # (реальный метод — _db(), @contextmanager, чьё соединение закрывается
+    # на выходе — непригодно для долгоживущего CausalGraph в любом случае) —
+    # AttributeError на каждый вызов этой фабрики, пока ENABLE_CAUSAL_GRAPH
+    # включён. Теперь — своё собственное персистентное соединение к ТОМУ ЖЕ
+    # файлу БД, что и store (или к дефолтному пути, если store ещё нет).
+    from core.memory import _GLOBAL_STORE
+
+    db_path = (
+        _GLOBAL_STORE.db_path if _GLOBAL_STORE is not None
+        else os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+    )
+    conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA foreign_keys = ON")
     return CausalGraph(conn)
 

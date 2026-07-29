@@ -31,9 +31,15 @@ class MemoryGraphStore(GraphStoreBackend):
     ) -> None:
         if from_id == to_id:
             return
-        key = (from_id, to_id)
-        self._edges[key] = max(self._edges[key], weight)
-        self._edges[(to_id, from_id)] = max(self._edges[(to_id, from_id)], weight * 0.9)
+        # Cleanup (Claude audit 2026-07-28, Low): the reverse edge previously
+        # stored weight*0.9 — a directional decay that had no effect, since
+        # neither get_neighbors() nor spreading_activation() below ever reads
+        # a stored edge weight (get_neighbors() explicitly discards it as
+        # `_w`; spreading_activation() uses a fixed `decay` parameter
+        # instead). Stored symmetrically now to stop implying a weighting
+        # decision this class doesn't actually make.
+        self._edges[(from_id, to_id)] = max(self._edges[(from_id, to_id)], weight)
+        self._edges[(to_id, from_id)] = max(self._edges[(to_id, from_id)], weight)
         self.upsert_node(from_id)
         self.upsert_node(to_id)
 
