@@ -70,8 +70,13 @@ def _mapping(value: object) -> Mapping[str, object]:
     return value if isinstance(value, Mapping) else {}
 
 
-def _strict_true(value: object) -> bool:
-    return value is True
+def _fail_closed_policy_flag(mapping: Mapping[str, object], name: str) -> bool:
+    """Treat malformed explicit policy markers as restrictive, never permissive."""
+
+    if name not in mapping:
+        return False
+    value = mapping[name]
+    return value if isinstance(value, bool) else True
 
 
 def _bounded_score(*values: object) -> float:
@@ -100,8 +105,8 @@ def _fact_identity(fact: Mapping[str, object]) -> str:
 def _project_fact(
     fact: Mapping[str, object],
 ) -> tuple[KnowledgeCapsule, WorkingMemoryCandidate] | None:
-    claim_text = str(fact.get("claim") or fact.get("text") or "").strip()
-    if not claim_text:
+    claim_text = str(fact.get("claim") or fact.get("text") or "")
+    if not claim_text.strip():
         return None
 
     fact_id = _fact_identity(fact)
@@ -131,15 +136,17 @@ def _project_fact(
     )
 
     metadata = _mapping(fact.get("metadata"))
-    restricted = _strict_true(fact.get("restricted")) or _strict_true(
-        metadata.get("restricted")
+    restricted = _fail_closed_policy_flag(fact, "restricted") or (
+        _fail_closed_policy_flag(metadata, "restricted")
     )
-    erased = _strict_true(fact.get("erased")) or _strict_true(metadata.get("erased"))
-    conflict = _strict_true(fact.get("conflict")) or _strict_true(
-        metadata.get("conflict")
+    erased = _fail_closed_policy_flag(fact, "erased") or _fail_closed_policy_flag(
+        metadata, "erased"
     )
-    protected = _strict_true(fact.get("protected")) or _strict_true(
-        metadata.get("protected")
+    conflict = _fail_closed_policy_flag(fact, "conflict") or (
+        _fail_closed_policy_flag(metadata, "conflict")
+    )
+    protected = _fail_closed_policy_flag(fact, "protected") or (
+        _fail_closed_policy_flag(metadata, "protected")
     )
     attention_score = _bounded_score(
         fact.get("retrieval_score"),
