@@ -189,6 +189,17 @@ def _project_fact(
     return capsule, candidate
 
 
+def _projection_key(capsule: KnowledgeCapsule) -> tuple[str, int, int, str]:
+    claim = capsule.claims[0]
+    span = claim.source_spans[0]
+    return (
+        capsule.source_document_id,
+        span.start_offset,
+        span.end_offset,
+        span.content_hash,
+    )
+
+
 def build_synaptic_shadow_preview(
     facts: Iterable[Mapping[str, object]],
     *,
@@ -196,13 +207,16 @@ def build_synaptic_shadow_preview(
 ) -> dict[str, object]:
     """Build one deterministic preview from legacy retrieval output.
 
-    Exact duplicate capsule identities are deduplicated before the Gate.  This
+    Exact projection identities are deduplicated before the Gate.  This
     function is pure and may raise typed contract errors; HTTP integration must
     isolate those errors from the legacy response.
     """
 
     resolved = config or SynapticShadowConfig()
-    projected: dict[str, tuple[KnowledgeCapsule, WorkingMemoryCandidate]] = {}
+    projected: dict[
+        tuple[str, int, int, str],
+        tuple[KnowledgeCapsule, WorkingMemoryCandidate],
+    ] = {}
     input_facts = 0
     skipped_empty = 0
     duplicate_capsules = 0
@@ -217,16 +231,21 @@ def build_synaptic_shadow_preview(
             skipped_empty += 1
             continue
         capsule, candidate = item
-        current = projected.get(capsule.capsule_id)
+        projection_key = _projection_key(capsule)
+        current = projected.get(projection_key)
         if current is None:
-            projected[capsule.capsule_id] = item
+            projected[projection_key] = item
             continue
         duplicate_capsules += 1
-        current_candidate = current[1]
-        projected[capsule.capsule_id] = (
-            capsule,
+        current_capsule, current_candidate = current
+        semantic_conflict = current_capsule.capsule_id != capsule.capsule_id
+        chosen_capsule = min(
+            (current_capsule, capsule), key=lambda value: value.capsule_id
+        )
+        projected[projection_key] = (
+            chosen_capsule,
             WorkingMemoryCandidate(
-                capsule=capsule,
+                capsule=chosen_capsule,
                 attention_score=max(
                     current_candidate.attention_score, candidate.attention_score
                 ),
@@ -237,11 +256,16 @@ def build_synaptic_shadow_preview(
                 restricted=current_candidate.restricted or candidate.restricted,
                 erased=current_candidate.erased or candidate.erased,
                 protected=current_candidate.protected or candidate.protected,
-                conflict=current_candidate.conflict or candidate.conflict,
+                conflict=(
+                    current_candidate.conflict
+                    or candidate.conflict
+                    or semantic_conflict
+                ),
                 metadata={
                     "projection": SOURCE_MODE,
                     "legacy_fact_id": _fact_identity(raw_fact),
                     "duplicate_policy_merge": True,
+                    "semantic_conflict": semantic_conflict,
                 },
             ),
         )
