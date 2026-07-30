@@ -13,6 +13,7 @@ from core.knowledge_capsule import (
     SourceSpan,
 )
 from core.working_memory_gate import (
+    GateDecision,
     GateDisposition,
     GateReason,
     WorkingMemoryBudget,
@@ -115,6 +116,21 @@ def _decision(plan, candidate: WorkingMemoryCandidate):
         for item in plan.decisions
         if item.capsule_id == candidate.capsule.capsule_id
     )
+
+
+def test_equal_cost_compress_decision_is_rejected() -> None:
+    with pytest.raises(ValueError, match="smaller essence"):
+        GateDecision(
+            capsule_id="capsule-equal-cost",
+            disposition=GateDisposition.COMPRESS,
+            reasons=(GateReason.ESSENCE_SELECTED,),
+            attention_score=1.0,
+            protected=False,
+            rank=1,
+            full_char_cost=5,
+            compressed_char_cost=5,
+            reserved_chars=5,
+        )
 
 
 def test_delete_is_not_a_disposition() -> None:
