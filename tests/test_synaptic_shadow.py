@@ -146,6 +146,61 @@ def test_model_world_fact_requires_source_and_evidence() -> None:
     assert len(preview["context_pack_preview"]["claims"]) == 1
 
 
+def test_world_fact_rejects_malformed_structural_evidence_refs() -> None:
+    malformed_refs = (
+        "doc-1",
+        [{"source_id": ""}],
+        [{"source": "   "}],
+        [{"span": "1-2"}],
+    )
+    for index, refs in enumerate(malformed_refs):
+        fact = _fact(
+            f"malformed-evidence-{index}",
+            "External assertion",
+            metadata={"evidence_refs": refs},
+        )
+        fact["claim_type"] = "WORLD_FACT"
+        fact["origin_type"] = "EXTERNAL"
+        fact["source"] = "documented-source"
+        preview = build_synaptic_shadow_preview([fact])
+
+        assert preview["metrics"]["dispositions"]["exclude"] == 1
+        assert preview["context_pack_preview"]["claims"] == []
+
+
+def test_generic_explicit_provenance_does_not_grant_world_fact_admission() -> None:
+    fact = _fact(
+        "generic-provenance",
+        "External assertion",
+        metadata={
+            "provenance": "unknown",
+            "evidence_refs": [{"source_id": "doc-1"}],
+        },
+    )
+    fact["claim_type"] = "WORLD_FACT"
+    fact["origin_type"] = "EXTERNAL"
+    fact["source"] = "unknown"
+    preview = build_synaptic_shadow_preview([fact])
+
+    assert preview["metrics"]["dispositions"]["exclude"] == 1
+    assert preview["context_pack_preview"]["claims"] == []
+
+
+def test_unknown_origin_world_fact_fails_closed_even_with_evidence() -> None:
+    fact = _fact(
+        "unknown-origin",
+        "Unclassified world assertion",
+        metadata={"evidence_refs": [{"source_id": "doc-1"}]},
+    )
+    fact["claim_type"] = "WORLD_FACT"
+    fact["origin_type"] = "UNKNOWN"
+    fact["source"] = "documented-source"
+    preview = build_synaptic_shadow_preview([fact])
+
+    assert preview["metrics"]["dispositions"]["exclude"] == 1
+    assert preview["context_pack_preview"]["claims"] == []
+
+
 def test_shadow_input_count_and_size_are_hard_bounded() -> None:
     count_config = SynapticShadowConfig(max_input_facts=1)
     try:
