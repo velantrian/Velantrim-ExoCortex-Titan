@@ -10,7 +10,8 @@ The root [`README.md`](../README.md) links to this research directory as the ent
 |---|---|---|
 | [`FUTURE_COMPONENTS.md`](FUTURE_COMPONENTS.md) | current research registry and priorities | index |
 | [`EXTERNAL_ARCHITECTURE_PATTERNS.md`](EXTERNAL_ARCHITECTURE_PATTERNS.md) | neutral Titan-native patterns derived from external prior art | research / prior art |
-| [`EVALUATION_REPLAY_PROTOCOL.md`](EVALUATION_REPLAY_PROTOCOL.md) | fixed-corpus baseline, replay, fork and structural-diff protocol | research / proposed |
+| [`EVALUATION_REPLAY_PROTOCOL.md`](EVALUATION_REPLAY_PROTOCOL.md) | fixed-corpus baseline, replay, fork and structural-diff protocol | partial offline prototype |
+| [`../docs/EVALUATION_REPLAY_QUICKSTART.md`](../docs/EVALUATION_REPLAY_QUICKSTART.md) | command, report classes, critical gates and fixture boundary | PR-ERP-01 implementation guide |
 | [`RAPID_CALIBRATED_ORIENTATION.md`](RAPID_CALIBRATED_ORIENTATION.md) | read-only orientation research | research / proposed |
 | [`D16_EXECUTIVE_CONTROL_CONTRACT.md`](D16_EXECUTIVE_CONTROL_CONTRACT.md) | proposal vocabulary; no active controller authority | research / proposed |
 | [`FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md`](FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md) | failure, lifecycle and reliability boundaries | research / proposed |
@@ -43,4 +44,4 @@ research note
 
 ## Current priority
 
-The first shared foundation is [`EVALUATION_REPLAY_PROTOCOL.md`](EVALUATION_REPLAY_PROTOCOL.md). It is intended to test retrieval, extraction, memory, temporal reasoning, conflict handling and answer support before additional architecture is promoted.
+The first shared foundation is [`EVALUATION_REPLAY_PROTOCOL.md`](EVALUATION_REPLAY_PROTOCOL.md). PR-ERP-01 implements only its offline schemas, canonical digests, local fixture loader and structural diff in [`core/evaluation_replay.py`](../core/evaluation_replay.py). It is not connected to production startup, query routing or Canon writes.
