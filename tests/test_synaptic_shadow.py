@@ -188,8 +188,11 @@ def test_middleware_flag_off_leaves_response_unchanged(monkeypatch) -> None:
 
 def test_middleware_adds_shadow_without_changing_legacy_fields(monkeypatch) -> None:
     with TestClient(_app(monkeypatch, enabled=True)) as client:
-        data = client.post("/query").json()
+        response = client.post("/query")
 
+    data = response.json()
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
     assert data["answer"] == "legacy answer"
     assert data["llm_answer"] is None
     assert data["facts"] == [_fact("f1", "source claim")]
@@ -256,3 +259,21 @@ def test_shadow_runner_has_no_remote_or_persistence_imports() -> None:
         for module in imported
         for prefix in forbidden_prefixes
     )
+
+
+def test_non_200_query_response_is_untouched(monkeypatch) -> None:
+    monkeypatch.setenv("ENABLE_SYNAPTIC_SHADOW", "1")
+    app = FastAPI()
+    register_server_middleware(app)
+
+    @app.post("/query")
+    async def query_error():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(status_code=400, content={"error": "legacy"})
+
+    with TestClient(app) as client:
+        response = client.post("/query")
+
+    assert response.status_code == 400
+    assert response.json() == {"error": "legacy"}
