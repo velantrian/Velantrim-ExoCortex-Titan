@@ -1002,6 +1002,131 @@ def test_repeated_over_budget_claim_is_counted_as_a_duplicate(
     ) == 1
 
 
+def test_claim_budget_winners_ignore_provider_array_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    claims = [
+        _claim("Кошка спит на окне."),
+        _claim("Собака лает громко."),
+        _claim("Птица поёт тихо."),
+    ]
+    source = RawSource(document_id="doc-order", text=TEXT)
+    budget = ReaderBudget(max_claims=2)
+
+    _script(monkeypatch, _payload(list(reversed(claims))))
+    reverse = _run(_adapter(), source, budget=budget)
+    _script(monkeypatch, _payload(claims))
+    forward = _run(_adapter(), source, budget=budget)
+
+    assert [claim.text for claim in reverse.result.capsule.claims] == [
+        "Кошка спит на окне.",
+        "Собака лает громко.",
+    ]
+    assert reverse.result.capsule.capsule_id == forward.result.capsule.capsule_id
+    assert reverse.result.status is ReaderStatus.PARTIAL
+
+
+def test_empty_claim_list_is_not_reported_as_span_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _script(monkeypatch, _payload([]))
+    out = _run(_adapter(), RawSource(document_id="doc-empty", text=TEXT))
+
+    assert out.result.status is ReaderStatus.REJECTED
+    assert out.result.failure.code == "NO_EXTRACTABLE_CLAIMS"
+    assert out.receipt.claims_rejected_span == 0
+
+
+def test_modality_only_rejection_is_invalid_output_not_span_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _script(monkeypatch, _payload([_claim("Кошка спит на окне.", modality="unknown")]))
+    out = _run(_adapter(), RawSource(document_id="doc-modality", text=TEXT))
+
+    assert out.result.status is ReaderStatus.INVALID_OUTPUT
+    assert out.result.failure.code == "MODEL_CLAIMS_REJECTED"
+    assert out.receipt.claims_rejected_span == 0
+
+
+def test_permanent_provider_rejection_is_not_retried(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import core.llm_router as router
+
+    calls = {"n": 0}
+
+    async def reject(*a, **k):
+        calls["n"] += 1
+        raise ValueError("invalid API key")
+
+    monkeypatch.setattr(router, "chat_complete", reject)
+    out = _run(
+        _adapter(limits=LlmReaderLimits(max_attempts_per_chunk=3, max_chunks=1)),
+        RawSource(document_id="doc-permanent", text=TEXT),
+    )
+
+    assert calls["n"] == 1
+    assert out.result.status is ReaderStatus.PROVIDER_ERROR
+    assert out.result.failure.code == "PROVIDER_REQUEST_REJECTED"
+
+
+def test_rate_limit_is_retryable_and_bounded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import core.llm_router as router
+
+    calls = {"n": 0}
+
+    async def rate_limited_once(*a, **k):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise router.LlmProviderRequestError(
+                provider="gemini",
+                status_code=429,
+                detail="slow down",
+                message="gemini: HTTP 429",
+            )
+        return _payload([_claim("Кошка спит на окне.")])
+
+    monkeypatch.setattr(router, "chat_complete", rate_limited_once)
+    out = _run(
+        _adapter(limits=LlmReaderLimits(max_attempts_per_chunk=3, max_chunks=1)),
+        RawSource(document_id="doc-rate-limit", text=TEXT),
+    )
+
+    assert calls["n"] == 2
+    assert out.result.accepted
+    assert "PROVIDER_RATE_LIMITED" in out.receipt.failure_codes
+
+
+def test_aggregate_status_and_failure_code_share_priority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import core.llm_router as router
+
+    calls = {"n": 0}
+
+    async def malformed_then_provider_error(*a, **k):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return "not json"
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr(router, "chat_complete", malformed_then_provider_error)
+    out = _run(
+        _adapter(limits=LlmReaderLimits(max_attempts_per_chunk=2, max_chunks=1)),
+        RawSource(document_id="doc-priority", text=TEXT),
+    )
+
+    assert out.result.status is ReaderStatus.PROVIDER_ERROR
+    assert out.result.failure.code == "PROVIDER_ERROR"
+    assert out.result.failure.code in out.receipt.failure_codes
+
+
+def test_reader_version_marks_global_admission_semantics() -> None:
+    assert LlmReaderAdapter.reader_version == "2.1.0"
+
+
 def test_chunk_budget_reports_partial(monkeypatch: pytest.MonkeyPatch):
     text = "Кошка спит на окне. " * 40
     limits = LlmReaderLimits(chunk_chars=60, chunk_overlap_chars=10, max_chunks=2)
