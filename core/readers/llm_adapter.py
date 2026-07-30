@@ -362,7 +362,7 @@ class LlmReaderAdapter(BaseSemanticReader):
     """LLM-backed reader whose output is admitted only where the source agrees."""
 
     reader_id = "titan.llm"
-    reader_version = "2.0.0"
+    reader_version = "2.1.0"
     supported_modes = frozenset({ReaderMode.FAST, ReaderMode.STANDARD, ReaderMode.DEEP})
 
     def __init__(
@@ -475,7 +475,7 @@ class LlmReaderAdapter(BaseSemanticReader):
                 "Source tail beyond the chunk budget was not examined",
             )
 
-        admitted: list[CapsuleClaim] = []
+        candidates: list[CapsuleClaim] = []
         seen_identity: set[str] = set()
         failures: list[str] = []
 
@@ -508,16 +508,19 @@ class LlmReaderAdapter(BaseSemanticReader):
                 # again, the repeat is a duplicate rather than another unique
                 # omission.
                 seen_identity.add(claim.claim_id)
-                if len(admitted) >= resolved.max_claims:
-                    _warn(
-                        warnings,
-                        "CLAIM_BUDGET_EXHAUSTED",
-                        "Additional unique claims were omitted by the claim budget",
-                    )
-                    # Continue validating later proposals so an overlap duplicate
-                    # of an admitted claim cannot masquerade as omitted content.
-                    continue
-                admitted.append(claim)
+                candidates.append(claim)
+
+        # Provider array order is untrusted execution noise. Validate and
+        # deduplicate the complete candidate set first, then select winners by
+        # source position so equivalent payloads produce the same capsule.
+        candidates.sort(key=_claim_source_order_key)
+        admitted = candidates[: resolved.max_claims]
+        if len(candidates) > resolved.max_claims:
+            _warn(
+                warnings,
+                "CLAIM_BUDGET_EXHAUSTED",
+                "Additional unique claims were omitted by the claim budget",
+            )
 
         receipt.claims_admitted = len(admitted)
         receipt.refused_fields = tuple(sorted(refused))
@@ -539,11 +542,25 @@ class LlmReaderAdapter(BaseSemanticReader):
                 return self._fail(
                     receipt, status, code, "Provider produced no usable output"
                 )
+            if receipt.claims_proposed == 0:
+                return self._fail(
+                    receipt,
+                    ReaderStatus.REJECTED,
+                    "NO_EXTRACTABLE_CLAIMS",
+                    "Provider returned no extractable claims",
+                )
+            if receipt.claims_rejected_span or receipt.claims_rejected_ambiguous:
+                return self._fail(
+                    receipt,
+                    ReaderStatus.SPAN_VALIDATION_FAILED,
+                    "NO_CLAIM_SURVIVED_SPAN_VALIDATION",
+                    "No proposed claim could be located unambiguously in the source",
+                )
             return self._fail(
                 receipt,
-                ReaderStatus.SPAN_VALIDATION_FAILED,
-                "NO_CLAIM_SURVIVED_VALIDATION",
-                "No proposed claim could be located unambiguously in the source",
+                ReaderStatus.INVALID_OUTPUT,
+                "MODEL_CLAIMS_REJECTED",
+                "All proposed claims failed shape or modality validation",
             )
 
         # Any known omission makes the result PARTIAL. A rejected proposal is
@@ -635,8 +652,13 @@ class LlmReaderAdapter(BaseSemanticReader):
             except Exception as exc:
                 code = _provider_failure_code(exc)
                 failures.append(code)
-                if code == "REMOTE_EGRESS_DENIED":
-                    # Policy denial is terminal — retrying cannot change it.
+                if code in {
+                    "REMOTE_EGRESS_DENIED",
+                    "PROVIDER_TIMEOUT",
+                    "PROVIDER_REQUEST_REJECTED",
+                }:
+                    # Policy, elapsed deadline, and permanent request failures
+                    # cannot change during an immediate retry.
                     return None
                 if attempt >= self._limits.max_attempts_per_chunk:
                     return None
@@ -895,6 +917,19 @@ def _coverage(text: str, claims: list[CapsuleClaim]) -> float:
     return min(1.0, covered / total)
 
 
+def _claim_source_order_key(claim: CapsuleClaim) -> tuple[int, int, str, str]:
+    """Stable source order used before every global claim budget."""
+
+    starts = tuple(span.start_offset for span in claim.source_spans)
+    ends = tuple(span.end_offset for span in claim.source_spans)
+    return (
+        min(starts, default=0),
+        min(ends, default=0),
+        claim.text,
+        claim.claim_id,
+    )
+
+
 def _build_essence(
     claims: list[CapsuleClaim], max_chars: int
 ) -> tuple[str, bool]:
@@ -907,13 +942,7 @@ def _build_essence(
     deterministic and the more readable summary.
     """
 
-    ordered = sorted(
-        claims,
-        key=lambda claim: (
-            min((span.start_offset for span in claim.source_spans), default=0),
-            claim.text,
-        ),
-    )
+    ordered = sorted(claims, key=_claim_source_order_key)
     parts: list[str] = []
     length = 0
     budget_exhausted = False
@@ -933,18 +962,32 @@ def _provider_failure_code(exc: BaseException) -> str:
         return "REMOTE_EGRESS_DENIED"
     if isinstance(exc, asyncio.CancelledError):
         return "CANCELLED"
+    if name == "LlmProviderRequestError":
+        return (
+            "PROVIDER_RATE_LIMITED"
+            if bool(getattr(exc, "retryable", False))
+            else "PROVIDER_REQUEST_REJECTED"
+        )
+    if isinstance(exc, ValueError):
+        # Router validation/configuration failures are permanent for this run.
+        return "PROVIDER_REQUEST_REJECTED"
     return "PROVIDER_ERROR"
 
 
 def _status_for_failures(failures: list[str]) -> tuple[ReaderStatus, str]:
-    """Map the first decisive failure to a ReaderStatus."""
+    """Select status and code from one shared, deterministic priority rule."""
 
-    if "REMOTE_EGRESS_DENIED" in failures:
-        return ReaderStatus.PROVIDER_ERROR, "REMOTE_EGRESS_DENIED"
-    if "PROVIDER_TIMEOUT" in failures:
-        return ReaderStatus.PROVIDER_ERROR, "PROVIDER_TIMEOUT"
-    if "PROVIDER_ERROR" in failures or "CANCELLED" in failures:
-        return ReaderStatus.PROVIDER_ERROR, failures[0]
+    priority = (
+        "REMOTE_EGRESS_DENIED",
+        "PROVIDER_TIMEOUT",
+        "PROVIDER_REQUEST_REJECTED",
+        "PROVIDER_RATE_LIMITED",
+        "PROVIDER_ERROR",
+        "CANCELLED",
+    )
+    for code in priority:
+        if code in failures:
+            return ReaderStatus.PROVIDER_ERROR, code
     return ReaderStatus.INVALID_OUTPUT, failures[0]
 
 
