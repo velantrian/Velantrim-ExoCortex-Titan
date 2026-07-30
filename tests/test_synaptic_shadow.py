@@ -89,6 +89,44 @@ def test_malformed_explicit_policy_marker_fails_closed() -> None:
     assert preview["context_pack_preview"]["claims"] == []
 
 
+def test_malformed_protected_marker_never_grants_admission() -> None:
+    preview = build_synaptic_shadow_preview(
+        [_fact("bad-protected", "must stay out", score=0.0, metadata={"protected": "false"})]
+    )
+
+    assert preview["metrics"]["dispositions"]["exclude"] == 1
+    assert preview["context_pack_preview"]["claims"] == []
+
+
+def test_external_world_fact_without_evidence_is_excluded() -> None:
+    fact = _fact("external-world", "A remote model proposed this world fact.")
+    fact["claim_type"] = "WORLD_FACT"
+    fact["origin_type"] = "MODEL_DERIVED"
+
+    preview = build_synaptic_shadow_preview([fact])
+
+    assert preview["metrics"]["dispositions"]["exclude"] == 1
+    assert preview["context_pack_preview"]["claims"] == []
+
+
+def test_external_world_fact_requires_provenance_and_evidence() -> None:
+    fact = _fact(
+        "sourced-world",
+        "A source-linked world fact remains unvalidated.",
+        metadata={"evidence_refs": ["evidence:1"]},
+    )
+    fact["claim_type"] = "WORLD_FACT"
+    fact["origin_type"] = "EXTERNAL_SOURCE"
+    fact["source_document_id"] = "document:source-1"
+
+    preview = build_synaptic_shadow_preview([fact])
+
+    packed = preview["context_pack_preview"]["claims"]
+    assert len(packed) == 1
+    assert packed[0]["modality"] == "world_fact"
+    assert packed[0]["truth_confidence"] is None
+
+
 def test_restricted_projection_never_enters_context_pack() -> None:
     secret = "restricted shadow text"
     preview = build_synaptic_shadow_preview(
@@ -215,6 +253,38 @@ def test_middleware_adds_shadow_without_changing_legacy_fields(monkeypatch) -> N
     assert data["facts"] == [_fact("f1", "source claim")]
     assert data["synaptic_shadow"]["status"] == "ok"
     assert data["synaptic_shadow"]["legacy_answer_authoritative"] is True
+
+
+def test_shadow_augmentation_preserves_repeated_response_headers(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("ENABLE_SYNAPTIC_SHADOW", "1")
+    app = FastAPI()
+    register_server_middleware(app)
+
+    @app.post("/query")
+    async def query_with_cookies():
+        from fastapi.responses import JSONResponse
+
+        response = JSONResponse(
+            content={
+                "answer": "legacy answer",
+                "llm_answer": None,
+                "facts": [],
+            }
+        )
+        response.set_cookie("session_a", "one")
+        response.set_cookie("session_b", "two")
+        return response
+
+    with TestClient(app) as client:
+        response = client.post("/query")
+
+    cookies = response.headers.get_list("set-cookie")
+    assert len(cookies) == 2
+    assert any("session_a=one" in value for value in cookies)
+    assert any("session_b=two" in value for value in cookies)
+    assert response.json()["synaptic_shadow"]["status"] == "ok"
 
 
 def test_shadow_failure_isolated_from_legacy_response(monkeypatch) -> None:
