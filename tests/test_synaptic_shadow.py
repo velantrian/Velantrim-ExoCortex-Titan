@@ -86,6 +86,24 @@ def test_restricted_projection_never_enters_context_pack() -> None:
     assert preview["context_pack_preview"]["meta"]["excluded_count"] == 1
 
 
+def test_recall_policy_erasure_status_fails_closed() -> None:
+    fact = _fact("erased", "erased content must stay out")
+    fact["erasure_status"] = "erased"
+    preview = build_synaptic_shadow_preview([fact])
+
+    assert preview["metrics"]["dispositions"]["exclude"] == 1
+    assert preview["context_pack_preview"]["claims"] == []
+
+
+def test_recall_policy_collapsed_state_fails_closed() -> None:
+    fact = _fact("collapsed", "collapsed content must stay out")
+    fact["epistemic_state"] = "Collapsed"
+    preview = build_synaptic_shadow_preview([fact])
+
+    assert preview["metrics"]["dispositions"]["exclude"] == 1
+    assert preview["context_pack_preview"]["claims"] == []
+
+
 def test_exact_duplicate_projection_is_deduplicated() -> None:
     fact = _fact("same", "One exact claim")
     preview = build_synaptic_shadow_preview([fact, dict(fact)])
