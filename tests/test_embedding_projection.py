@@ -263,11 +263,36 @@ def test_pipeline_still_reaches_truth_gate_regardless_of_projection_state(monkey
     """This module is not wired into pipeline.run() in this PR — proving
     that explicitly is the point: whatever this module's projection state
     says has zero bearing on whether TruthGate runs. truth_gate_bypass_count
-    (per issue #92 / PR #96 acceptance language) is 0 either way."""
+    (per issue #92 / PR #96 acceptance language) is 0 either way.
+
+    core.pipeline imports _GLOBAL_STORE/get_fact/get_fact_ids/get_facts_by_ids
+    directly into its own namespace at whatever time core.pipeline was first
+    imported. Some other tests in this suite purge/reimport core.* modules
+    (see tests/test_tool_handlers.py's module docstring), which can leave
+    core.pipeline holding a *different* core.memory module object than the
+    one this test file's own `import core.memory as mem` is bound to — so
+    patching only `mem._GLOBAL_STORE` is not sufficient; core.pipeline's own
+    bindings must be patched directly, the same pattern test_tool_handlers.py
+    already uses for tool_handlers.memory_api.
+
+    Separately, pipeline.retrieve itself is patchable at runtime by
+    core.multilingual_router.patch_pipeline_retrieval() — a plain module-level
+    attribute assignment, not a pytest monkeypatch — so once any test in the
+    session calls it, pipeline.retrieve stays replaced with a multilingual
+    router path for every later test in the same process. This test restores
+    pipeline.retrieve to the plain store-backed implementation explicitly,
+    for the same reason it stubs _NGRAM_INDEX/_HYBRID_RETRIEVER: this test's
+    subject is TruthGate reachability, not whichever retrieval path another
+    test happened to leave wired in.
+    """
     import core.pipeline as pipeline
 
     real_store = SQLiteGraphStore(str(tmp_path / "t.db"))
     monkeypatch.setattr(mem, "_GLOBAL_STORE", real_store)
+    monkeypatch.setattr(pipeline, "_GLOBAL_STORE", real_store)
+    monkeypatch.setattr(pipeline, "get_fact", real_store.get_fact)
+    monkeypatch.setattr(pipeline, "get_fact_ids", real_store.get_fact_ids)
+    monkeypatch.setattr(pipeline, "get_facts_by_ids", real_store.get_facts_by_ids)
     store_fact({"fact_id": "tg-1", "claim": "вода кипит при ста градусах",
                 "source": "physics", "confidence": 0.95})
     promote_to_validated("tg-1")
@@ -289,6 +314,21 @@ def test_pipeline_still_reaches_truth_gate_regardless_of_projection_state(monkey
     monkeypatch.setattr(pipeline, "_HYBRID_DIRTY", True)
     monkeypatch.setattr(pipeline, "_HYBRID_FACTS_COUNT", 0)
     monkeypatch.setattr(pipeline, "_HYBRID_FACT_IDS", frozenset())
+    # core.multilingual_router.patch_pipeline_retrieval() replaces
+    # pipeline.retrieve with a module-level (non-monkeypatch) assignment when
+    # some other test in the session invokes it, and that replacement is
+    # never reverted — it leaks into every later test in the same process.
+    # Route pipeline.retrieve back to the real, non-multilingual retrieval
+    # path so this test exercises this module's own code, not whatever
+    # another test happened to leave installed.
+    monkeypatch.setattr(
+        pipeline, "retrieve",
+        lambda query, k=3, database=None, domain=None: (
+            pipeline._retrieve_from_database(query, k, database)
+            if database is not None
+            else pipeline._retrieve_from_store(query, k=k, domain=domain)
+        ),
+    )
 
     embedding_backing = EmbeddingStore(str(tmp_path / "emb.db"))
     embedding_backing.ensure_table()
@@ -309,8 +349,8 @@ def test_pipeline_still_reaches_truth_gate_regardless_of_projection_state(monkey
     monkeypatch.setattr(pipeline, "truth_gate", _spy)
 
     result = pipeline.run("вода")
-    assert result.get("error") is None
     truth_gate_bypass_count = 0 if calls["truth_gate"] >= 1 else 1
+    assert result.get("error") is None
     assert truth_gate_bypass_count == 0
     real_store.close()
 
