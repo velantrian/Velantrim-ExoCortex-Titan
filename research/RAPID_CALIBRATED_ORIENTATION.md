@@ -25,8 +25,10 @@ This capability is **not**:
 - an active query-path feature.
 
 The first permitted artifact is a read-only **`OrientationProjection`**. It may
-propose a cognitive route to D16 and emit an auditable receipt. It may not execute
-the route, suppress a user request, mutate memory or promote knowledge.
+emit a route proposal conforming to the D16 research contract and an auditable
+receipt. No D16 runtime controller currently receives or executes that proposal;
+only offline evaluation or an operator may interpret it. The experiment may not
+suppress a user request, mutate memory or promote knowledge.
 
 ```text
 available evidence + GoalFrame + policy-visible context
@@ -89,9 +91,11 @@ A versioned recommendation validated against the
 separates the two behaviours that exist today from proposal-only vocabulary:
 
 ```text
-Observed baseline:
+Authoritative runtime route:
 LEGACY_QUERY
-SYNAPTIC_SHADOW_PREVIEW
+
+Parallel observation attached to LEGACY_QUERY (not a route):
+synaptic_shadow[source_mode=legacy_fact_projection, mode=shadow_only]
 
 Proposal-only:
 FAST_LOCAL
@@ -146,6 +150,7 @@ The schema below is illustrative research notation, not a committed Python API:
 ```text
 OrientationProjection
 ├── projection_version
+├── projection_id
 ├── request_id
 ├── policy_snapshot_id
 ├── policy_version
@@ -171,8 +176,14 @@ OrientationProjection
 
 Required properties:
 
-1. **Deterministic identity where possible.** The same versioned inputs should
-   produce the same projection for deterministic implementations.
+1. **Deterministic identity.** `projection_id` is the SHA-256 digest of
+   canonical JSON containing `projection_version`, `request_id`,
+   `policy_snapshot_id`, `policy_version`, the complete sorted
+   `capability_lease_refs[]` identities, `goal_frame_digest`, sorted
+   `evidence_refs[]`, and `evidence_snapshot_digest`. Canonical JSON uses
+   UTF-8, sorted object keys and compact separators. `generated_at` and all
+   derived output fields are excluded. The same versioned input snapshot must
+   therefore produce the same ID.
 2. **Rebuildable.** Deleting the projection must not delete source knowledge.
 3. **Source-linked.** Every evidence-dependent statement references admitted
    evidence or is labelled as a hypothesis/interpretation.
@@ -207,8 +218,10 @@ rather than forcing one permanent category.
 
 ## Research-mode reasoning cycle
 
-When D16 or an operator selects a research route, the Working Desk may organise
-a bounded investigation:
+Under the current runtime, only an operator may choose to interpret a research
+proposal and organise a bounded Working Desk investigation. A future D16
+controller candidate may do so only after the separate activation gates and
+explicit Operator GO are satisfied:
 
 ```text
 goal and success criteria
@@ -363,7 +376,9 @@ high false-defer or unsafe-fast rate in a critical class.
 
 At minimum compare against:
 
-1. the actual authoritative legacy `/query` path, with the passive `SYNAPTIC_SHADOW_PREVIEW` recorded separately;
+1. the actual authoritative `LEGACY_QUERY` path, with its passive
+   `synaptic_shadow[source_mode=legacy_fact_projection, mode=shadow_only]`
+   attachment recorded separately as an observation, never a route;
 2. a simple deterministic heuristic;
 3. the candidate projection algorithm;
 4. an operator-reviewed subset.
@@ -374,10 +389,13 @@ the simple heuristic at an acceptable cost.
 ## Relationship to PR-SYN-06
 
 PR-SYN-06 is merged and supplies the passive
-`SemanticReader → WorkingMemoryGate → ContextPack` preview. It remains the
-baseline observation contour, not a D16 implementation. Rapid Calibrated
-Orientation is a separate optional experiment and must not retroactively expand
-PR-SYN-06 authority.
+`already-retrieved legacy facts → legacy_fact_projection → WorkingMemoryGate
+→ ContextPack` preview. It does not run `SemanticReader` on the query path and
+does not recover original-document provenance; its source boundary is the exact
+legacy fact returned by the existing pipeline. It remains a parallel observation
+attached after `LEGACY_QUERY`, not a route or D16 implementation. Rapid
+Calibrated Orientation is a separate optional experiment and must not
+retroactively expand PR-SYN-06 authority.
 
 Current sequence:
 
@@ -479,7 +497,8 @@ Rapid Calibrated Orientation may become an
 ```text
 The vision is rapid orientation.
 The engineering artifact is a read-only projection.
-The executive authority remains D16.
+The current executive authority remains the legacy query path plus explicit operator decisions.
+D16 remains a research contract with no runtime authority.
 The truth authority remains explicit admission.
 The first proof is shadow evaluation, not persuasive naming.
 ```
