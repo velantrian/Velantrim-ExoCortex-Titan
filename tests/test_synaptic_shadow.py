@@ -134,6 +134,23 @@ def test_exact_duplicate_projection_is_deduplicated() -> None:
     assert preview["metrics"]["duplicate_capsules"] == 1
 
 
+def test_duplicate_modality_disagreement_quarantines_deterministically() -> None:
+    hypothesis = _fact("same", "One exact claim")
+    hypothesis["claim_type"] = "HYPOTHESIS"
+    opinion = _fact("same", "One exact claim")
+    opinion["claim_type"] = "OPINION"
+
+    first = build_synaptic_shadow_preview([hypothesis, opinion])
+    second = build_synaptic_shadow_preview([opinion, hypothesis])
+
+    assert first == second
+    assert first["metrics"]["projected_capsules"] == 1
+    assert first["metrics"]["duplicate_capsules"] == 1
+    assert first["metrics"]["dispositions"]["quarantine"] == 1
+    assert first["context_pack_preview"]["claims"] == []
+    assert len(first["context_pack_preview"]["conflicts"]) == 1
+
+
 def test_duplicate_policy_merge_is_fail_closed() -> None:
     public = _fact("same", "One exact claim", score=0.9)
     restricted = _fact(
