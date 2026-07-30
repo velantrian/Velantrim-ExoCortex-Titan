@@ -31,6 +31,7 @@ core/hybrid_retriever.py — Velantrim v8.3.0
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from dataclasses import dataclass, field
@@ -161,26 +162,62 @@ class DenseRetriever:
     so a fresh DenseRetriever reloaded the sentence-transformer model AND
     re-encoded every candidate's claim from scratch on every query — the
     model load alone costs ~1-2s. The model and per-fact embeddings are now
-    process-persistent (class-level), keyed by model_name / fact_id, so a
-    fact already embedded once is never re-encoded just because it resurfaces
-    in a differently-shaped candidate set.
+    process-persistent (class-level), so a fact already embedded once is
+    never re-encoded just because it resurfaces in a differently-shaped
+    candidate set.
+
+    AUDIT-FIX (follow-up): the vector cache key is (model_name, fact_id,
+    sha256(claim)), not fact_id alone. Keying on fact_id alone let an edited
+    fact (same fact_id, changed claim) or a runtime model swap silently
+    reuse a stale/wrong-model embedding — a correctness bug, not just a
+    performance one. The cache is also now bounded (_VECTOR_CACHE_MAX_ENTRIES,
+    LRU eviction) so an ever-growing corpus of distinct claims can't leak
+    memory unboundedly.
     """
 
     _AVAILABLE: bool | None = None
     # Persistent across instances/candidate-sets — this is the fix: the model
     # is loaded once per process, and a fact's embedding is computed once ever.
     _MODEL_CACHE: dict[str, SentenceTransformer] = {}
-    _VECTOR_CACHE: dict[str, Any] = {}  # fact_id -> embedding vector
+    # (model_name, fact_id, sha256(claim)) -> embedding vector. Plain dict used
+    # as an LRU: Python dicts are insertion-ordered, so "pop + reinsert" moves
+    # a key to the most-recently-used end and the first key is the
+    # least-recently-used one — no collections.OrderedDict needed.
+    _VECTOR_CACHE: dict[str, Any] = {}
+    _VECTOR_CACHE_MAX_ENTRIES = int(os.getenv("VELANTRIM_DENSE_CACHE_MAX_ENTRIES", "50000"))
 
     def __init__(self, facts: list[dict], model_name: str = _DEFAULT_EMBEDDING_MODEL) -> None:
         self._facts      = facts
         self._model_name = model_name
         # list[Any]: one embedding per self._facts[i], sourced from the
-        # persistent fact_id cache (each vector itself may be an ndarray or a
+        # persistent vector cache (each vector itself may be an ndarray or a
         # Tensor row depending on backend).
         self._embeddings: list[Any] = []
         self._model: SentenceTransformer | None = None
         self._load()
+
+    @staticmethod
+    def _cache_key(model_name: str, fact_id: str, claim: str) -> str:
+        claim_hash = hashlib.sha256(claim.encode("utf-8")).hexdigest()
+        return f"{model_name}\0{fact_id}\0{claim_hash}"
+
+    @staticmethod
+    def _cache_get(key: str) -> Any:
+        """Fetch and mark `key` as most-recently-used."""
+        cache = DenseRetriever._VECTOR_CACHE
+        vec = cache.pop(key)
+        cache[key] = vec  # reinsert at the end == "touch"
+        return vec
+
+    @staticmethod
+    def _cache_put(key: str, vec: Any) -> None:
+        """Insert/update `key` as most-recently-used, then evict LRU overflow."""
+        cache = DenseRetriever._VECTOR_CACHE
+        cache.pop(key, None)
+        cache[key] = vec
+        while len(cache) > DenseRetriever._VECTOR_CACHE_MAX_ENTRIES:
+            oldest_key = next(iter(cache))
+            del cache[oldest_key]
 
     def _load(self) -> None:
         try:
@@ -196,25 +233,30 @@ class DenseRetriever:
             cache = DenseRetriever._VECTOR_CACHE
             # Facts without a fact_id can't be cached safely (no stable key) —
             # they are always (re-)encoded, same as every fact was before this fix.
+            keys: list[str | None] = [
+                self._cache_key(self._model_name, f["fact_id"], f.get("claim", ""))
+                if f.get("fact_id") else None
+                for f in self._facts
+            ]
             missing_idx = [
-                i for i, f in enumerate(self._facts)
-                if not f.get("fact_id") or f["fact_id"] not in cache
+                i for i, key in enumerate(keys)
+                if key is None or key not in cache
             ]
             fresh: dict[int, Any] = {}
             if missing_idx:
                 claims = [self._facts[i].get("claim", "") for i in missing_idx]
                 vectors = model.encode(claims, normalize_embeddings=True)
                 for i, vec in zip(missing_idx, vectors):
-                    fid = self._facts[i].get("fact_id")
-                    if fid:
-                        cache[fid] = vec
+                    key = keys[i]
+                    if key is not None:
+                        DenseRetriever._cache_put(key, vec)
                     else:
                         fresh[i] = vec
 
-            self._embeddings = [
-                fresh[i] if i in fresh else cache[self._facts[i]["fact_id"]]
-                for i in range(len(self._facts))
-            ]
+            embeddings: list[Any] = []
+            for i, key in enumerate(keys):
+                embeddings.append(fresh[i] if key is None else DenseRetriever._cache_get(key))
+            self._embeddings = embeddings
             DenseRetriever._AVAILABLE = True
             logger.debug(
                 "DenseRetriever: %d/%d фактов закодировано заново (%d переиспользовано из кэша)",
