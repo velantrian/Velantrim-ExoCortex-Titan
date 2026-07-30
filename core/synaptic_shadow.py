@@ -33,8 +33,25 @@ from core.working_memory_gate import (
 SHADOW_SCHEMA_VERSION = "synaptic.shadow-preview.v1"
 SOURCE_MODE = "legacy_fact_projection"
 _READER_ID = "legacy-fact-shadow-projector"
-_READER_VERSION = "1.0"
+_READER_VERSION = "1.1"
 _SOURCE_REVISION = "legacy-fact-projection-v1"
+_EVIDENCE_REQUIRED_WORLD_FACT_ORIGINS = frozenset(
+    {
+        "EXTERNAL",
+        "EXTERNAL_SOURCE",
+        "IMPORT",
+        "LLM",
+        "LLM_DERIVED",
+        "LLM_OUTPUT",
+        "MODEL_DERIVED",
+        "MODEL_GENERATED",
+        "REMOTE_PROVIDER",
+        "WEB",
+    }
+)
+_GENERIC_PROVENANCE_VALUES = frozenset(
+    {"", "external", "legacy-memory", "llm", "model", "remote", "unknown"}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,27 +156,76 @@ def _malformed_policy_flag(mapping: Mapping[str, object], name: str) -> bool:
     return name in mapping and not isinstance(mapping[name], bool)
 
 
-def _has_required_world_fact_evidence(
+def _attributable_reference_present(value: object) -> bool:
+    """Accept concrete references, never generic provenance labels."""
+
+    if isinstance(value, str):
+        normalized = value.strip().casefold()
+        return bool(normalized) and normalized not in _GENERIC_PROVENANCE_VALUES
+    if isinstance(value, Mapping):
+        return any(_attributable_reference_present(item) for item in value.values())
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return any(_attributable_reference_present(item) for item in value)
+    return False
+
+
+def _has_structural_evidence_refs(metadata: Mapping[str, object]) -> bool:
+    """Mirror truth_policy: evidence is a list of mappings with a source reference."""
+
+    refs = metadata.get("evidence_refs")
+    if not isinstance(refs, list):
+        return False
+    for ref in refs:
+        if not isinstance(ref, Mapping):
+            continue
+        source_ref = ref.get("source_id") or ref.get("source")
+        if isinstance(source_ref, str) and source_ref.strip():
+            return True
+    return False
+
+
+def _has_attributable_provenance(
+    fact: Mapping[str, object], metadata: Mapping[str, object]
+) -> bool:
+    explicit_keys = (
+        "source_document_id",
+        "source_ref",
+        "source_revision",
+        "source_uri",
+        "source_url",
+        "provenance",
+        "provenance_ref",
+    )
+    if any(
+        _attributable_reference_present(container.get(key))
+        for container in (fact, metadata)
+        for key in explicit_keys
+    ):
+        return True
+    return _attributable_reference_present(
+        fact.get("source") or metadata.get("source") or ""
+    )
+
+
+def _world_fact_evidence_allowed(
     fact: Mapping[str, object],
     metadata: Mapping[str, object],
+    modality: ClaimModality,
 ) -> bool:
-    claim_type = str(fact.get("claim_type") or "").strip().upper()
-    origin_type = str(fact.get("origin_type") or "").strip().upper()
-    if claim_type != "WORLD_FACT" or origin_type not in {"EXTERNAL", "LLM_OUTPUT"}:
-        return True
+    """Fail closed for unknown origins; require evidence for external/model facts."""
 
-    source = fact.get("source")
-    attributable_source = (
-        isinstance(source, str)
-        and bool(source.strip())
-        and source.strip().lower() != "unknown"
-    )
-    evidence_refs = metadata.get("evidence_refs")
-    has_evidence = (
-        isinstance(evidence_refs, (list, tuple, set))
-        and bool(evidence_refs)
-    )
-    return attributable_source and has_evidence
+    if modality is not ClaimModality.WORLD_FACT:
+        return True
+    origin = str(
+        fact.get("origin_type") or metadata.get("origin_type") or ""
+    ).strip().upper()
+    if not origin or origin == "UNKNOWN":
+        return False
+    if origin not in _EVIDENCE_REQUIRED_WORLD_FACT_ORIGINS:
+        return True
+    return _has_attributable_provenance(
+        fact, metadata
+    ) and _has_structural_evidence_refs(metadata)
 
 
 def _bounded_score(*values: object) -> float:
@@ -214,9 +280,10 @@ def _project_fact(
         end_offset=len(claim_text),
         source_revision=_SOURCE_REVISION,
     )
+    modality = _claim_modality(fact)
     claim = CapsuleClaim.create(
         text=claim_text,
-        modality=_claim_modality(fact),
+        modality=modality,
         source_spans=(span,),
         extraction_confidence=1.0,
         truth_confidence=None,
@@ -247,7 +314,9 @@ def _project_fact(
     protected = _privilege_policy_flag(fact, "protected") or (
         _privilege_policy_flag(metadata, "protected")
     )
-    required_world_evidence = _has_required_world_fact_evidence(fact, metadata)
+    world_fact_evidence_allowed = _world_fact_evidence_allowed(
+        fact, metadata, modality
+    )
     attention_score = _bounded_score(
         fact.get("retrieval_score"),
         fact.get("score"),
@@ -261,9 +330,9 @@ def _project_fact(
             and not restricted
             and not erased
             and not malformed_protected
-            and required_world_evidence
+            and world_fact_evidence_allowed
         ),
-        eligible=not malformed_protected and required_world_evidence,
+        eligible=not malformed_protected and world_fact_evidence_allowed,
         restricted=restricted,
         erased=erased,
         protected=protected,
