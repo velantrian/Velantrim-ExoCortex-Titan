@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -113,7 +115,7 @@ def test_external_world_fact_requires_provenance_and_evidence() -> None:
     fact = _fact(
         "sourced-world",
         "A source-linked world fact remains unvalidated.",
-        metadata={"evidence_refs": ["evidence:1"]},
+        metadata={"evidence_refs": [{"source_id": "evidence:1"}]},
     )
     fact["claim_type"] = "WORLD_FACT"
     fact["origin_type"] = "EXTERNAL_SOURCE"
@@ -125,6 +127,61 @@ def test_external_world_fact_requires_provenance_and_evidence() -> None:
     assert len(packed) == 1
     assert packed[0]["modality"] == "world_fact"
     assert packed[0]["truth_confidence"] is None
+
+
+def test_llm_output_world_fact_without_evidence_is_excluded() -> None:
+    fact = _fact("llm-world", "An LLM proposed this world fact.")
+    fact["claim_type"] = "WORLD_FACT"
+    fact["origin_type"] = "LLM_OUTPUT"
+
+    preview = build_synaptic_shadow_preview([fact])
+
+    assert preview["metrics"]["dispositions"]["exclude"] == 1
+    assert preview["context_pack_preview"]["claims"] == []
+
+
+@pytest.mark.parametrize(
+    "evidence_refs",
+    [
+        ["evidence:plain-string"],
+        [{"source_id": ""}],
+        [{"source": "   "}],
+        [{"chunk_id": "chunk-without-source"}],
+    ],
+)
+def test_external_world_fact_rejects_malformed_evidence_refs(
+    evidence_refs: object,
+) -> None:
+    fact = _fact(
+        "malformed-evidence",
+        "Malformed evidence must not unlock a world fact.",
+        metadata={"evidence_refs": evidence_refs},
+    )
+    fact["claim_type"] = "WORLD_FACT"
+    fact["origin_type"] = "EXTERNAL"
+    fact["source_document_id"] = "document:source-1"
+
+    preview = build_synaptic_shadow_preview([fact])
+
+    assert preview["metrics"]["dispositions"]["exclude"] == 1
+    assert preview["context_pack_preview"]["claims"] == []
+
+
+def test_external_world_fact_rejects_generic_explicit_provenance() -> None:
+    fact = _fact(
+        "generic-provenance",
+        "Generic provenance must not count as attribution.",
+        metadata={"evidence_refs": [{"source_id": "evidence:1"}]},
+    )
+    fact["claim_type"] = "WORLD_FACT"
+    fact["origin_type"] = "MODEL_DERIVED"
+    fact["source"] = "legacy-memory"
+    fact["provenance"] = "unknown"
+
+    preview = build_synaptic_shadow_preview([fact])
+
+    assert preview["metrics"]["dispositions"]["exclude"] == 1
+    assert preview["context_pack_preview"]["claims"] == []
 
 
 def test_restricted_projection_never_enters_context_pack() -> None:
