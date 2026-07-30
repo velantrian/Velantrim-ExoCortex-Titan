@@ -49,6 +49,25 @@ def test_preview_is_deterministic_and_non_authoritative() -> None:
     )
 
 
+def test_projection_preserves_exact_legacy_claim_whitespace() -> None:
+    claim = "  exact legacy claim  "
+    preview = build_synaptic_shadow_preview([_fact("spaced", claim)])
+
+    packed = preview["context_pack_preview"]["claims"]
+    assert packed[0]["text"] == claim
+    assert packed[0]["evidence"][0]["start_offset"] == 0
+    assert packed[0]["evidence"][0]["end_offset"] == len(claim)
+
+
+def test_malformed_explicit_policy_marker_fails_closed() -> None:
+    preview = build_synaptic_shadow_preview(
+        [_fact("bad-policy", "must stay out", metadata={"restricted": "false"})]
+    )
+
+    assert preview["metrics"]["dispositions"]["exclude"] == 1
+    assert preview["context_pack_preview"]["claims"] == []
+
+
 def test_restricted_projection_never_enters_context_pack() -> None:
     secret = "restricted shadow text"
     preview = build_synaptic_shadow_preview(
@@ -163,3 +182,38 @@ def test_non_query_response_is_untouched(monkeypatch) -> None:
         data = client.post("/other").json()
 
     assert data == {"answer": "unchanged"}
+
+
+def test_shadow_runner_has_no_remote_or_persistence_imports() -> None:
+    import ast
+    from pathlib import Path
+
+    tree = ast.parse(
+        Path("core/synaptic_shadow.py").read_text(encoding="utf-8")
+    )
+    imported = {
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+    }
+    imported.update(
+        node.module or ""
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom)
+    )
+    forbidden_prefixes = (
+        "core.llm_router",
+        "core.remote_egress",
+        "core.memory",
+        "core.truth_gate",
+        "httpx",
+        "requests",
+        "sqlite3",
+    )
+
+    assert not any(
+        module == prefix or module.startswith(prefix + ".")
+        for module in imported
+        for prefix in forbidden_prefixes
+    )
