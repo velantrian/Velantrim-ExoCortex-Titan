@@ -13,6 +13,7 @@ from core.context_pack import (
     ContextPackBuilder,
     ContextPackError,
     ContextPackWarningCode,
+    _claims_for_exact_essence,
     conservative_token_upper_bound,
 )
 from core.knowledge_capsule import (
@@ -224,6 +225,32 @@ def test_compressed_capsule_includes_only_complete_essence_claims() -> None:
     assert pack.claims[0].disposition is GateDisposition.COMPRESS
     assert pack.claims[0].evidence[0].start_offset == 0
     assert "Beta" not in pack.to_prompt_json()
+
+
+def test_compressed_claims_use_gate_source_order_for_equal_offsets() -> None:
+    raw = "AlphaBeta"
+    whole = _claim(
+        document_id="doc-nested",
+        raw_text=raw,
+        text="AlphaBeta",
+        start=0,
+    )
+    prefix = _claim(
+        document_id="doc-nested",
+        raw_text=raw,
+        text="Alpha",
+        start=0,
+    )
+    capsule = _capsule(
+        document_id="doc-nested",
+        raw_text=raw,
+        claims=(whole, prefix),
+        essence="Alpha AlphaBeta",
+    )
+
+    resolved = _claims_for_exact_essence(capsule)
+
+    assert [claim.text for claim in resolved] == ["Alpha", "AlphaBeta"]
 
 
 def test_ambiguous_compressed_essence_provenance_fails_closed() -> None:
