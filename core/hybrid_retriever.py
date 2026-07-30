@@ -31,8 +31,10 @@ core/hybrid_retriever.py — Velantrim v8.3.0
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
+import threading
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -50,6 +52,35 @@ logger = logging.getLogger(__name__)
 _DEFAULT_EMBEDDING_MODEL = os.getenv(
     "VELANTRIM_EMBEDDING_MODEL", "paraphrase-multilingual-MiniLM-L12-v2"
 )
+
+
+def _parse_positive_int_env(name: str, default: int) -> int:
+    """Read `name` from the environment as a positive int. Never raises.
+
+    Runs at class-definition (import) time, where an exception would take
+    down the whole module — so every failure mode degrades to a logged
+    warning and a safe fallback instead:
+      - unset                -> `default`
+      - not a valid integer  -> `default`
+      - < 1                  -> clamped to 1 (a cache that could hold zero
+                                 or a negative number of entries makes no
+                                 sense and would otherwise wedge the
+                                 eviction loop in an infinite/degenerate spin)
+    """
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        logger.warning(
+            "%s=%r is not a valid integer; falling back to default %d", name, raw, default
+        )
+        return default
+    if value < 1:
+        logger.warning("%s=%d is below the minimum of 1; clamping to 1", name, value)
+        return 1
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -161,26 +192,86 @@ class DenseRetriever:
     so a fresh DenseRetriever reloaded the sentence-transformer model AND
     re-encoded every candidate's claim from scratch on every query — the
     model load alone costs ~1-2s. The model and per-fact embeddings are now
-    process-persistent (class-level), keyed by model_name / fact_id, so a
-    fact already embedded once is never re-encoded just because it resurfaces
-    in a differently-shaped candidate set.
+    process-persistent (class-level), so a fact already embedded once is
+    never re-encoded just because it resurfaces in a differently-shaped
+    candidate set.
+
+    AUDIT-FIX (follow-up): the vector cache key is (model_name, fact_id,
+    sha256(claim)), not fact_id alone. Keying on fact_id alone let an edited
+    fact (same fact_id, changed claim) or a runtime model swap silently
+    reuse a stale/wrong-model embedding — a correctness bug, not just a
+    performance one. The cache is also now bounded (_VECTOR_CACHE_MAX_ENTRIES,
+    LRU eviction) so an ever-growing corpus of distinct claims can't leak
+    memory unboundedly.
+
+    AUDIT-FIX (thread safety): _VECTOR_CACHE is a process-wide class
+    attribute, and pipeline._get_hybrid_retriever() can be reached from
+    concurrent requests. Every lookup+touch and insert+evict sequence below
+    runs under a single _VECTOR_CACHE_LOCK acquisition each — never a
+    membership check in one lock scope followed by a mutation in another —
+    so a torn read/write can't raise KeyError or leave the cache over its
+    bound. The lock is a threading.RLock, not held across model.encode()
+    (which can be slow): two threads racing on the same cache miss may each
+    compute the same embedding once — harmless, no cache corruption results.
     """
 
     _AVAILABLE: bool | None = None
     # Persistent across instances/candidate-sets — this is the fix: the model
     # is loaded once per process, and a fact's embedding is computed once ever.
     _MODEL_CACHE: dict[str, SentenceTransformer] = {}
-    _VECTOR_CACHE: dict[str, Any] = {}  # fact_id -> embedding vector
+    # (model_name, fact_id, sha256(claim)) -> embedding vector. Plain dict used
+    # as an LRU: Python dicts are insertion-ordered, so "pop + reinsert" moves
+    # a key to the most-recently-used end and the first key is the
+    # least-recently-used one — no collections.OrderedDict needed. All access
+    # must go through _cache_lookup()/_cache_store()/_cache_clear() below,
+    # which hold _VECTOR_CACHE_LOCK for the full check-then-mutate sequence.
+    _VECTOR_CACHE: dict[str, Any] = {}
+    _VECTOR_CACHE_LOCK = threading.RLock()
+    _VECTOR_CACHE_MAX_ENTRIES = _parse_positive_int_env("VELANTRIM_DENSE_CACHE_MAX_ENTRIES", 50000)
 
     def __init__(self, facts: list[dict], model_name: str = _DEFAULT_EMBEDDING_MODEL) -> None:
         self._facts      = facts
         self._model_name = model_name
         # list[Any]: one embedding per self._facts[i], sourced from the
-        # persistent fact_id cache (each vector itself may be an ndarray or a
+        # persistent vector cache (each vector itself may be an ndarray or a
         # Tensor row depending on backend).
         self._embeddings: list[Any] = []
         self._model: SentenceTransformer | None = None
         self._load()
+
+    @staticmethod
+    def _cache_key(model_name: str, fact_id: str, claim: str) -> str:
+        claim_hash = hashlib.sha256(claim.encode("utf-8")).hexdigest()
+        return f"{model_name}\0{fact_id}\0{claim_hash}"
+
+    @classmethod
+    def _cache_lookup(cls, key: str) -> tuple[bool, Any]:
+        """Atomic check-and-touch. Returns (hit, value) — never `(False, <a
+        real cached None>)` vs `(True, None)` ambiguity, since a miss is
+        always `(False, None)` and a hit always reports `True` alongside
+        whatever value is actually stored."""
+        with cls._VECTOR_CACHE_LOCK:
+            if key not in cls._VECTOR_CACHE:
+                return False, None
+            value = cls._VECTOR_CACHE.pop(key)
+            cls._VECTOR_CACHE[key] = value  # reinsert at the end == "touch"
+            return True, value
+
+    @classmethod
+    def _cache_store(cls, key: str, vec: Any) -> None:
+        """Atomic insert/update-as-most-recently-used, then evict overflow."""
+        with cls._VECTOR_CACHE_LOCK:
+            cls._VECTOR_CACHE.pop(key, None)
+            cls._VECTOR_CACHE[key] = vec
+            while len(cls._VECTOR_CACHE) > cls._VECTOR_CACHE_MAX_ENTRIES:
+                oldest_key = next(iter(cls._VECTOR_CACHE))
+                del cls._VECTOR_CACHE[oldest_key]
+
+    @classmethod
+    def _cache_clear(cls) -> None:
+        """Test/helper API: drop every cached embedding. Thread-safe."""
+        with cls._VECTOR_CACHE_LOCK:
+            cls._VECTOR_CACHE.clear()
 
     def _load(self) -> None:
         try:
@@ -193,28 +284,47 @@ class DenseRetriever:
                 logger.info("DenseRetriever: загружена модель %s", self._model_name)
             self._model = model
 
-            cache = DenseRetriever._VECTOR_CACHE
             # Facts without a fact_id can't be cached safely (no stable key) —
             # they are always (re-)encoded, same as every fact was before this fix.
-            missing_idx = [
-                i for i, f in enumerate(self._facts)
-                if not f.get("fact_id") or f["fact_id"] not in cache
+            keys: list[str | None] = [
+                self._cache_key(self._model_name, f["fact_id"], f.get("claim", ""))
+                if f.get("fact_id") else None
+                for f in self._facts
             ]
-            fresh: dict[int, Any] = {}
+
+            # Pass 1: resolve every cacheable key via one atomic lookup+touch
+            # each (never a separate "in cache" check followed by a later,
+            # separately-locked mutation — that gap is exactly what could
+            # raise KeyError or desync the LRU order under concurrent access).
+            resolved: dict[int, Any] = {}
+            missing_idx: list[int] = []
+            for i, key in enumerate(keys):
+                if key is None:
+                    missing_idx.append(i)
+                    continue
+                hit, value = DenseRetriever._cache_lookup(key)
+                if hit:
+                    resolved[i] = value
+                else:
+                    missing_idx.append(i)
+
+            # Pass 2: encode only what's missing. Deliberately NOT holding
+            # _VECTOR_CACHE_LOCK here — model.encode() can take a long time,
+            # and serializing every encode() call behind one global lock
+            # would turn concurrent requests into a queue. Two threads racing
+            # on the same miss may each encode the same claim once; that's a
+            # harmless duplicate computation, not a correctness problem —
+            # _cache_store() below is still the sole, atomic writer.
             if missing_idx:
                 claims = [self._facts[i].get("claim", "") for i in missing_idx]
                 vectors = model.encode(claims, normalize_embeddings=True)
                 for i, vec in zip(missing_idx, vectors):
-                    fid = self._facts[i].get("fact_id")
-                    if fid:
-                        cache[fid] = vec
-                    else:
-                        fresh[i] = vec
+                    key = keys[i]
+                    if key is not None:
+                        DenseRetriever._cache_store(key, vec)
+                    resolved[i] = vec
 
-            self._embeddings = [
-                fresh[i] if i in fresh else cache[self._facts[i]["fact_id"]]
-                for i in range(len(self._facts))
-            ]
+            self._embeddings = [resolved[i] for i in range(len(self._facts))]
             DenseRetriever._AVAILABLE = True
             logger.debug(
                 "DenseRetriever: %d/%d фактов закодировано заново (%d переиспользовано из кэша)",
