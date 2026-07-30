@@ -7,6 +7,7 @@ import json
 import logging
 from queue import Full, Queue
 from threading import Lock, Thread
+from time import perf_counter
 from typing import Mapping
 
 from fastapi import FastAPI
@@ -91,15 +92,20 @@ class _SynapticShadowDispatcher:
     """One daemon worker with bounded pending work and explicit backpressure."""
 
     def __init__(self, *, capacity: int = _SHADOW_QUEUE_CAPACITY) -> None:
-        self._queue: Queue[tuple[object, ...]] = Queue(maxsize=capacity)
+        self._queue: Queue[tuple[str, tuple[object, ...]]] = Queue(maxsize=capacity)
         self._start_lock = Lock()
         self._worker: Thread | None = None
 
-    def submit(self, facts: tuple[object, ...]) -> dict[str, object]:
+    def submit(
+        self,
+        facts: tuple[object, ...],
+        *,
+        query: str = "",
+    ) -> dict[str, object]:
         from core.synaptic_shadow import shadow_queue_preview
 
         try:
-            self._queue.put_nowait(facts)
+            self._queue.put_nowait((query, facts))
         except Full:
             return shadow_queue_preview(
                 status="dropped",
@@ -124,13 +130,50 @@ class _SynapticShadowDispatcher:
         from core.synaptic_shadow import build_synaptic_shadow_preview
 
         while True:
-            facts = self._queue.get()
+            query, facts = self._queue.get()
             try:
                 preview = build_synaptic_shadow_preview(facts)
                 _LOG.info(
                     "synaptic shadow preview completed",
                     extra={"synaptic_shadow_metrics": preview.get("metrics", {})},
                 )
+                try:
+                    from core.runtime_flags import env_flag
+
+                    rco_enabled = env_flag("ENABLE_RCO_SHADOW")
+                except Exception:  # noqa: BLE001
+                    rco_enabled = False
+                if rco_enabled:
+                    started = perf_counter()
+                    try:
+                        from core.policy_kernel import get_policy_kernel
+                        from core.rapid_orientation import (
+                            build_rapid_orientation_receipt,
+                        )
+
+                        policy_snapshot = get_policy_kernel().capture_snapshot()
+                        receipt = build_rapid_orientation_receipt(
+                            query,
+                            preview,
+                            policy_snapshot,
+                        )
+                        metrics = dict(_mapping_or_empty(receipt.get("metrics")))
+                        metrics["latency_ms"] = round(
+                            (perf_counter() - started) * 1000,
+                            3,
+                        )
+                        _LOG.info(
+                            "rapid orientation shadow receipt completed",
+                            extra={
+                                "rapid_orientation_receipt": receipt,
+                                "rapid_orientation_metrics": metrics,
+                            },
+                        )
+                    except Exception as exc:  # noqa: BLE001 — isolated experiment
+                        _LOG.warning(
+                            "rapid orientation shadow failed: %s",
+                            type(exc).__name__,
+                        )
             except Exception as exc:  # noqa: BLE001 — isolated daemon boundary
                 _LOG.warning(
                     "synaptic shadow preview failed: %s",
@@ -141,6 +184,10 @@ class _SynapticShadowDispatcher:
 
 
 _SHADOW_DISPATCHER = _SynapticShadowDispatcher()
+
+
+def _mapping_or_empty(value: object) -> Mapping[str, object]:
+    return value if isinstance(value, Mapping) else {}
 
 
 def register_server_middleware(app: FastAPI) -> None:
@@ -211,8 +258,11 @@ def register_server_middleware(app: FastAPI) -> None:
             facts = payload.get("facts")
             if not isinstance(facts, list):
                 facts = []
+            query = payload.get("query")
+            if not isinstance(query, str):
+                query = ""
             snapshot = snapshot_synaptic_shadow_input(facts)
-            shadow = _SHADOW_DISPATCHER.submit(snapshot)
+            shadow = _SHADOW_DISPATCHER.submit(snapshot, query=query)
         except Exception as exc:  # noqa: BLE001 — shadow must never break legacy
             error_code = getattr(exc, "code", type(exc).__name__)
             if not isinstance(error_code, str) or not error_code.strip():

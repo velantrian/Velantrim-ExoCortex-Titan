@@ -104,7 +104,21 @@ def infer_goal_frame(query: str, metadata: dict[str, Any] | None = None) -> Goal
     elif any(x in lower for x in ("сравни", "compare", "versus", " vs ")):
         intent = GoalIntent.COMPARE
         reasons.append("comparison marker")
-    elif any(x in lower for x in ("почему", "зачем", "как работает", "why", "how does")):
+    elif any(
+        x in lower
+        for x in (
+            "объясни",
+            "объясните",
+            "поясни",
+            "поясните",
+            "почему",
+            "зачем",
+            "как работает",
+            "explain",
+            "why",
+            "how does",
+        )
+    ):
         intent = GoalIntent.EXPLAIN
         reasons.append("explanation marker")
     elif any(x in lower for x in ("сделай", "добавь", "реализуй", "план", "roadmap", "implement")):
