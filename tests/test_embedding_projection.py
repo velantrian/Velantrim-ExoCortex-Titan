@@ -460,3 +460,146 @@ def test_embedding_projection_replay_fixture_is_review_required_with_no_gate_vio
         assert case_diff.critical_regressions == ()
     assert diff.case_diffs[0].route_before == "hybrid"
     assert diff.case_diffs[0].route_after == "lexical"
+
+
+# ─── corrective follow-up: multiple axes can coexist for one record_id ────
+#
+# gs_vectors' primary key is (node_id, model_name), not node_id alone, so a
+# single record can legitimately have more than one stored axis at once
+# (e.g. mid-migration between model versions). Classification must never
+# depend on which row SQLite happens to return first for a plain
+# `WHERE node_id = ? LIMIT 1` — the exact axis the caller expects must
+# always be checked first, and any fallback inspection of other axes must
+# be deterministic regardless of insertion order.
+
+def test_old_and_new_model_coexist_expected_new_is_fresh(store):
+    old = _identity(model="model-a", version="v1")
+    store.store(old, _vec("claim text"))
+    new = _identity(model="model-b", version="v1")
+    store.store(new, _vec("claim text"))
+
+    # Both axes are physically present at once; the exact axis the caller
+    # asks about must win regardless of the other's existence.
+    assert store.check_state(new) == ep.ProjectionState.FRESH
+    assert store.check_state(old) == ep.ProjectionState.FRESH
+
+
+def test_coexisting_axes_classification_is_insertion_order_independent(store, backing):
+    old = _identity(model="model-a", version="v1")
+    new = _identity(model="model-b", version="v1")
+
+    # Insert the *other* axis (old) after the one under test (new), the
+    # reverse of the previous test — result must be identical either way.
+    store.store(new, _vec("claim text"))
+    store.store(old, _vec("claim text"))
+    assert store.check_state(new) == ep.ProjectionState.FRESH
+
+    # And the fallback ("which other axis explains a MISSING exact axis")
+    # path must also be order-independent: two *other* axes for a record
+    # whose own expected axis was never written.
+    backing.store("multi-1", _vec("x"), model_name=_identity(model="model-c", version="v1").storage_key(),
+                  content_hash=ep.compute_content_hash("x"))
+    backing.store("multi-1", _vec("x"), model_name=_identity(model="model-b", version="v1").storage_key(),
+                  content_hash=ep.compute_content_hash("x"))
+    expected = _identity(record_id="multi-1", model="model-a", version="v1")
+    state_a = store.check_state(expected)
+
+    backing2 = EmbeddingStore(backing._db_path)
+    store2 = ep.EmbeddingProjectionStore(backing2)
+    backing2.store("multi-2", _vec("x"), model_name=_identity(model="model-b", version="v1").storage_key(),
+                   content_hash=ep.compute_content_hash("x"))
+    backing2.store("multi-2", _vec("x"), model_name=_identity(model="model-c", version="v1").storage_key(),
+                   content_hash=ep.compute_content_hash("x"))
+    expected2 = _identity(record_id="multi-2", model="model-a", version="v1")
+    state_b = store2.check_state(expected2)
+
+    assert state_a == state_b == ep.ProjectionState.STALE_MODEL
+
+
+def test_expected_axis_missing_other_model_exists_is_stale_model(store):
+    other = _identity(model="model-a", version="v1")
+    store.store(other, _vec("claim text"))
+
+    expected = _identity(model="model-b", version="v1")
+    assert store.check_state(expected) == ep.ProjectionState.STALE_MODEL
+
+
+def test_expected_model_version_present_other_projection_version_is_stale_projection_version(store):
+    other = _identity(model="model-a", version="v1", projection_version="1")
+    store.store(other, _vec("claim text"))
+
+    expected = _identity(model="model-a", version="v1", projection_version="2")
+    assert store.check_state(expected) == ep.ProjectionState.STALE_PROJECTION_VERSION
+
+
+def test_expected_axis_fresh_despite_other_corrupted_axis(store, backing):
+    expected = _identity(record_id="mixed-1", model="model-a", version="v1")
+    store.store(expected, _vec("claim text"))
+
+    # A second, unrelated, unparseable axis for the SAME record_id must
+    # never shadow the exact-match FRESH row.
+    backing.store("mixed-1", _vec("junk"), model_name="not-a-valid-key-shape",
+                  content_hash="deadbeef")
+
+    assert store.check_state(expected) == ep.ProjectionState.FRESH
+
+
+def test_invalidate_model_leaves_other_coexisting_axis_intact(store):
+    keep = _identity(record_id="multi-inv", model="model-a", version="v1")
+    drop = _identity(record_id="multi-inv", model="model-b", version="v1")
+    store.store(keep, _vec("claim text"))
+    store.store(drop, _vec("claim text"))
+
+    n = store.invalidate_model("model-b", "v1")
+    assert n >= 1
+    assert store.check_state(drop) == ep.ProjectionState.STALE_MODEL  # gone, not silently fresh
+    assert store.check_state(keep) == ep.ProjectionState.FRESH  # untouched
+
+
+def test_erasure_removes_every_coexisting_axis_for_a_record(store, backing):
+    a = _identity(record_id="multi-erase", model="model-a", version="v1")
+    b = _identity(record_id="multi-erase", model="model-b", version="v1")
+    store.store(a, _vec("claim text"))
+    store.store(b, _vec("claim text"))
+
+    deleted = backing.purge_node("multi-erase")
+    assert deleted == 2
+    assert store.check_state(a) == ep.ProjectionState.MISSING
+    assert store.check_state(b) == ep.ProjectionState.MISSING
+
+
+def test_classification_is_deterministic_across_a_fresh_sqlite_connection(store, backing):
+    old = _identity(record_id="reopen-1", model="model-a", version="v1")
+    new = _identity(record_id="reopen-1", model="model-b", version="v1")
+    store.store(old, _vec("claim text"))
+    store.store(new, _vec("claim text"))
+
+    first = store.check_state(new)
+
+    # EmbeddingStore opens a fresh sqlite3.connect() per call already, but
+    # this reconstructs the whole EmbeddingProjectionStore on a brand new
+    # EmbeddingStore instance too, to prove no in-process state (ordering,
+    # caching) is involved in the result.
+    reopened_backing = EmbeddingStore(backing._db_path)
+    reopened_store = ep.EmbeddingProjectionStore(reopened_backing)
+    second = reopened_store.check_state(new)
+
+    assert first == second == ep.ProjectionState.FRESH
+
+
+# ─── storage_key() separator validation covers all three fields ───────────
+
+def test_storage_key_rejects_separator_in_model_version_not_just_model_name():
+    """model_name's prefix position makes it safe against the model/model_
+    version split regardless of what model_version contains, but a
+    STORAGE_KEY_VERSION_SEP ('#') inside model_version would still be
+    indistinguishable from the real model_version/projection_version
+    divider on parse — so it must be rejected at construction, the same as
+    a separator in model_name."""
+    bad_version = ep.EmbeddingProjectionIdentity("f1", "hash", "model-a", "v#1", "1")
+    with pytest.raises(ValueError):
+        bad_version.storage_key()
+
+    bad_projection_version = ep.EmbeddingProjectionIdentity("f1", "hash", "model-a", "v1", "1@2")
+    with pytest.raises(ValueError):
+        bad_projection_version.storage_key()
