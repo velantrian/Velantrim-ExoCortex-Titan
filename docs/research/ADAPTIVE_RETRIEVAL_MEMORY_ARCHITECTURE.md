@@ -1,14 +1,13 @@
-# DAYA Patterns Adoption Plan for Titan
+# Adaptive Retrieval and Memory Architecture for Titan
 
 Status: research-to-implementation proposal  
-Reviewed source: `juanyamels-eng/daya-ai` (`main`, 2026-07-30)  
-License note: DAYA is MIT-licensed. This document adopts architectural patterns only; any future code reuse must preserve attribution and license obligations.
+Scope: architecture patterns only; no runtime authority change
 
 ## 1. Decision
 
-DAYA is not an alternative to Titan's epistemic kernel. It is a useful reference for product-facing orchestration, selective memory, graceful retrieval degradation, and model-cost routing.
+Titan should improve speed, memory selectivity, fallback behavior, and context assembly without weakening its epistemic kernel.
 
-Titan keeps its existing authority chain:
+The authority chain remains unchanged:
 
 ```text
 Retrieval / Memory Candidate
@@ -19,13 +18,11 @@ Retrieval / Memory Candidate
 → controlled answer
 ```
 
-No DAYA-inspired fast path may bypass this chain or gain direct Canon authority.
+No fast path may bypass this chain or gain direct Canon authority.
 
-## 2. Patterns approved for adaptation
+## 2. Approved architecture patterns
 
 ### 2.1 Cheap-first task and cost routing
-
-Adopt the pattern:
 
 ```text
 deterministic rules
@@ -33,11 +30,11 @@ deterministic rules
 → route by expected value and cost
 ```
 
-Map it onto existing Titan components instead of adding a new service:
+Map this onto existing Titan components:
 
-- `BudgetPlanner` remains the retrieval-cost authority;
-- RCO-1 remains the orientation and uncertainty observer;
-- `ComputeController` remains the compute admission boundary;
+- `BudgetPlanner` remains retrieval-cost authority;
+- RCO-1 remains orientation and uncertainty observer;
+- `ComputeController` remains compute admission boundary;
 - optional model classification is allowed only for ambiguous requests and must fail back to deterministic routing.
 
 Required properties:
@@ -50,9 +47,7 @@ Required properties:
 
 ### 2.2 Selective memory candidate extraction
 
-Adopt the idea of extracting only durable, useful user/project information instead of storing whole conversations.
-
-Titan-specific flow:
+Titan should extract only durable, useful user/project information instead of storing whole conversations.
 
 ```text
 conversation/event
@@ -64,7 +59,7 @@ conversation/event
 → optional Canon / user-context admission
 ```
 
-The extractor is proposal-only. It cannot write directly.
+The extractor is proposal-only and cannot write directly.
 
 Candidate requirements:
 
@@ -79,7 +74,7 @@ Candidate requirements:
 
 ### 2.3 Derived indexes as rebuildable projections
 
-Adopt the principle that vector, BM25, and graph indexes are derived acceleration structures, never the source of truth.
+Vector, BM25, and graph indexes are derived acceleration structures, never sources of truth.
 
 ```text
 Canon / Evidence Store
@@ -112,7 +107,7 @@ The selected mode must come from `RetrievalPlan`, not an ad-hoc caller decision.
 
 ### 2.5 Parallel context assembly with versioned cache
 
-Independent context sources may be assembled concurrently:
+Independent read-only context sources may be assembled concurrently:
 
 - user context;
 - relevant evidence;
@@ -122,7 +117,7 @@ Independent context sources may be assembled concurrently:
 
 Only versioned and safely invalidated data may be cached. Cache entries must include policy/version dependencies and must never hide a revoked or erased record.
 
-## 3. Patterns explicitly rejected
+## 3. Explicitly rejected patterns
 
 Do not adopt:
 
@@ -136,21 +131,17 @@ Do not adopt:
 
 ## 4. Implementation slices
 
-### PR-DAYA-01 — Routing integration
-
-Scope:
+### PR-ARM-01 — Routing integration
 
 - execute `RetrievalPlan.mode` in the query pipeline;
 - prove lexical mode does not call dense/RRF;
 - preserve FactsPack/TRACE/Guardian/TruthGate;
-- record the chosen mode and reason codes;
+- record chosen mode and reason codes;
 - benchmark cold and warm paths.
 
-This may build on or follow the retrieval-routing contract work in draft PR #91.
+This may build on or follow draft PR #91.
 
-### PR-DAYA-02 — Rebuildable embedding projection contract
-
-Scope:
+### PR-ARM-02 — Rebuildable embedding projection contract
 
 - define projection identity: record ID + content hash + embedding model/version;
 - separate model lifecycle from per-query candidate sets;
@@ -159,9 +150,7 @@ Scope:
 
 No Canon schema authority change.
 
-### PR-DAYA-03 — Selective memory candidate extractor (shadow)
-
-Scope:
+### PR-ARM-03 — Selective memory candidate extractor (shadow)
 
 - immutable candidate contract;
 - exact source spans;
@@ -171,7 +160,7 @@ Scope:
 - shadow-only metrics;
 - zero writes to Canon or user memory.
 
-### PR-DAYA-04 — Candidate admission integration
+### PR-ARM-04 — Candidate admission integration
 
 Only after shadow evaluation:
 
@@ -181,9 +170,7 @@ Only after shadow evaluation:
 - revocation and GDPR erasure compatibility;
 - audit receipts.
 
-### PR-DAYA-05 — Versioned parallel context assembly
-
-Scope:
+### PR-ARM-05 — Versioned parallel context assembly
 
 - parallel read-only context sources;
 - strict final ContextPack budget;
@@ -193,8 +180,6 @@ Scope:
 
 ## 5. Acceptance criteria
 
-The work is acceptable only if:
-
 - query path remains read-only;
 - no fast route bypasses TruthGate;
 - every admitted memory has provenance and a policy receipt;
@@ -203,7 +188,7 @@ The work is acceptable only if:
 - lexical fallback remains functional without external providers;
 - latency improvement is measured, not asserted;
 - shadow evaluation precedes memory-write authority;
-- erasure and policy revocation invalidate all derived caches and projections.
+- erasure and policy revocation invalidate derived caches and projections.
 
 ## 6. Metrics
 
@@ -225,14 +210,16 @@ truth_gate_bypass_count = 0
 query_path_write_count = 0
 ```
 
-## 7. Architectural summary
+## 7. Prior art
+
+A review of external open-source assistants, including `juanyamels-eng/daya-ai`, helped validate several practical orchestration patterns. Those references remain prior art only. Titan's module names, PR names, contracts, authority model, and implementation remain independent.
+
+## 8. Architectural summary
 
 ```text
-DAYA contributes practical orchestration patterns:
-fast routing + selective memory + graceful fallback + rebuildable indexes
-
-Titan contributes the authority model:
+adaptive routing + selective memory + graceful fallback + rebuildable projections
++
 provenance + epistemic status + TRACE + Guardian + TruthGate + Write Gate
 ```
 
-The integration goal is not to make Titan look like DAYA. The goal is to make Titan cheaper and more responsive without weakening its evidence and governance boundaries.
+The goal is to make Titan cheaper, faster, and more responsive without weakening evidence, governance, or local-first boundaries.
