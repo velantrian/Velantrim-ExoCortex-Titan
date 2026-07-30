@@ -45,6 +45,10 @@ def is_budget_planner_enabled() -> bool:
     return get_config().app.enable_budget_planner
 
 
+def is_embedding_projection_contract_enabled() -> bool:
+    return get_config().app.enable_embedding_projection_contract
+
+
 def is_l6_welfare_enabled() -> bool:
     return get_config().app.enable_l6_welfare
 
@@ -155,6 +159,7 @@ __all__ = [
     "is_memory_volition_enabled",
     "is_budget_planner_enabled",
     "is_cognitive_distance_enabled",
+    "is_embedding_projection_contract_enabled",
     "is_graph_lab_enabled",
     "is_observer_enabled",
     "is_rate_limit_enabled",

@@ -77,6 +77,11 @@ class AppSettings:
     enable_cognitive_distance: bool = False
     # BudgetPlanner — adaptive retrieval k/mode by query complexity (default off).
     enable_budget_planner: bool = False
+    # PR-ARM-02 (issue #92) — reserved for a future live-retrieval integration
+    # of core.embedding_projection; this increment ships the identity/
+    # staleness/reindex/fallback contract only, not wired into any hot path.
+    # Default off preserves current behavior unconditionally.
+    enable_embedding_projection_contract: bool = False
     # NetworkX Graph-Analysis Lab — read-only structural analytics over the causal graph
     # (centrality/communities/cycles/pagerank). Research/science mode; off by default.
     enable_graph_lab: bool = False
@@ -178,6 +183,7 @@ class AppSettings:
         a.rate_limit_refill_per_sec = _float("RATE_LIMIT_REFILL_PER_SEC", 1.0)
         a.enable_cognitive_distance = flag("ENABLE_COGNITIVE_DISTANCE")
         a.enable_budget_planner = flag("ENABLE_BUDGET_PLANNER")
+        a.enable_embedding_projection_contract = flag("ENABLE_EMBEDDING_PROJECTION_CONTRACT")
         a.truth_gate_mode = os.getenv("TRUTH_GATE_MODE", "BALANCED")
         a.default_fact_confidence = _float("DEFAULT_FACT_CONFIDENCE", 0.8)
 
