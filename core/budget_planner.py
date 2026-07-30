@@ -25,10 +25,33 @@ _COMPLEX_CUES = ("почему", "зачем", "сравни", "如何", "why", 
 
 @dataclass(frozen=True)
 class RetrievalPlan:
-    mode: str        # none | lexical | hybrid
-    k: int           # how many candidates to fetch
-    max_hops: int    # graph expansion depth hint
+    mode: str          # none | lexical | hybrid
+    k: int             # how many candidates to fetch
+    max_hops: int      # graph expansion depth hint
     complexity: float  # 0..1 (for observability)
+
+    @property
+    def use_dense(self) -> bool:
+        """Whether the execution path should call dense/vector retrieval."""
+        return self.mode == "hybrid"
+
+    @property
+    def use_graph(self) -> bool:
+        """Whether graph expansion is justified by this plan."""
+        return self.mode == "hybrid" and self.max_hops > 1
+
+    def to_execution_kwargs(self) -> dict[str, int | str]:
+        """Stable adapter for the future ``_retrieve_from_store`` execution hook.
+
+        The current pipeline consumes only ``k``. Keeping the complete execution
+        contract here prevents callers from silently dropping ``mode`` or
+        ``max_hops`` when the adaptive route becomes authoritative.
+        """
+        return {
+            "retrieval_mode": self.mode,
+            "k": self.k,
+            "max_hops": self.max_hops,
+        }
 
     def to_dict(self) -> dict:
         return {"mode": self.mode, "k": self.k, "max_hops": self.max_hops,
