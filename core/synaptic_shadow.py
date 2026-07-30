@@ -93,6 +93,19 @@ def _bounded_score(*values: object) -> float:
     return 0.0
 
 
+def _claim_modality(fact: Mapping[str, object]) -> ClaimModality:
+    raw = str(fact.get("claim_type") or "").strip().lower()
+    try:
+        return ClaimModality(raw)
+    except ValueError:
+        pass
+    if fact.get("reported_only") is True or (
+        str(fact.get("origin_type") or "").strip().upper() == "USER_REPORTED"
+    ):
+        return ClaimModality.USER_REPORT
+    return ClaimModality.INTERPRETATION
+
+
 def _fact_identity(fact: Mapping[str, object]) -> str:
     explicit = str(fact.get("fact_id") or fact.get("id") or "").strip()
     if explicit:
@@ -123,7 +136,7 @@ def _project_fact(
     )
     claim = CapsuleClaim.create(
         text=claim_text,
-        modality=ClaimModality.INTERPRETATION,
+        modality=_claim_modality(fact),
         source_spans=(span,),
         extraction_confidence=1.0,
         truth_confidence=None,
