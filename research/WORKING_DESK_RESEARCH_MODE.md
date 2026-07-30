@@ -94,8 +94,9 @@ The permitted relationship is:
 GoalFrame + authorised evidence + ContextPack preview
 → OrientationProjection (read-only)
 → CognitiveRouteProposal
-→ D16 Executive Control
-→ existing permitted route
+→ validation against the D16 research contract
+→ receipt-only comparison with LEGACY_QUERY
+→ optional operator interpretation; no controller execution
 ```
 
 This is a projection over existing Titan components, not a new
