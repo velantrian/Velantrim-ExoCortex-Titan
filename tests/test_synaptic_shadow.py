@@ -49,6 +49,27 @@ def test_preview_is_deterministic_and_non_authoritative() -> None:
     )
 
 
+def test_projection_preserves_known_claim_modality() -> None:
+    fact = _fact("hyp", "This may be true.")
+    fact["claim_type"] = "HYPOTHESIS"
+    preview = build_synaptic_shadow_preview([fact])
+
+    claim = preview["context_pack_preview"]["claims"][0]
+    assert claim["modality"] == "hypothesis"
+    assert claim["truth_confidence"] is None
+
+
+def test_user_report_origin_maps_to_user_report() -> None:
+    fact = _fact("reported", "My preferred language is Russian.")
+    fact["origin_type"] = "USER_REPORTED"
+    fact["reported_only"] = True
+    preview = build_synaptic_shadow_preview([fact])
+
+    claim = preview["context_pack_preview"]["claims"][0]
+    assert claim["modality"] == "user_report"
+    assert claim["truth_confidence"] is None
+
+
 def test_projection_preserves_exact_legacy_claim_whitespace() -> None:
     claim = "  exact legacy claim  "
     preview = build_synaptic_shadow_preview([_fact("spaced", claim)])
