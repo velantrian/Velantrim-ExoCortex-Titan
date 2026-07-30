@@ -70,7 +70,7 @@ def _gemini_403_hints(detail: str = "") -> str:
     return intro + steps
 
 
-def _http_error(provider: str, resp: httpx.Response) -> ValueError:
+def _http_error(provider: str, resp: httpx.Response) -> LlmProviderRequestError:
     try:
         payload = resp.json()
         detail = _format_api_error_detail(payload)
@@ -86,7 +86,13 @@ def _http_error(provider: str, resp: httpx.Response) -> ValueError:
     extra = ""
     if provider == "gemini" and resp.status_code == 403:
         extra = " — " + _gemini_403_hints(detail)
-    return ValueError(f"{provider}: HTTP {resp.status_code}{hint}{extra} — {detail}")
+    message = f"{provider}: HTTP {resp.status_code}{hint}{extra} — {detail}"
+    return LlmProviderRequestError(
+        provider=provider,
+        status_code=resp.status_code,
+        detail=detail,
+        message=message,
+    )
 
 
 # Каталог провайдеров: core/provider_catalog.py (единый источник для API)
@@ -136,6 +142,24 @@ class LlmExecutionIdentity:
 
 class LlmTransportTimeoutError(TimeoutError):
     """Provider transport exceeded its deadline before returning a response."""
+
+
+class LlmProviderRequestError(ValueError):
+    """Structured provider rejection with explicit retry semantics."""
+
+    def __init__(
+        self,
+        *,
+        provider: str,
+        status_code: int,
+        detail: str,
+        message: str,
+    ) -> None:
+        super().__init__(message)
+        self.provider = provider
+        self.status_code = status_code
+        self.detail = detail
+        self.retryable = status_code in {408, 429} or status_code >= 500
 
 
 def _resolve_model(cfg: LlmCallConfig) -> str:
@@ -782,6 +806,7 @@ async def test_connection(cfg: LlmCallConfig) -> dict[str, Any]:
 __all__ = [
     "LlmCallConfig",
     "LlmExecutionIdentity",
+    "LlmProviderRequestError",
     "LlmTransportTimeoutError",
     "chat_complete",
     "get_provider_info",
