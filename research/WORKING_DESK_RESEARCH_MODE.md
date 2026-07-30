@@ -82,17 +82,62 @@ runtime yet:
 - UI working board;
 - adaptive or learned attention weights.
 
+## Rapid Calibrated Orientation research
+
+The broader Working Desk vision now includes a bounded research program for
+**Rapid Calibrated Orientation**. Its complete contract lives in
+[`RAPID_CALIBRATED_ORIENTATION.md`](RAPID_CALIBRATED_ORIENTATION.md).
+
+The permitted relationship is:
+
+```text
+GoalFrame + authorised evidence + ContextPack preview
+→ OrientationProjection (read-only)
+→ CognitiveRouteProposal
+→ D16 Executive Control
+→ existing permitted route
+```
+
+This is a projection over existing Titan components, not a new
+`EssenceEngine`, D23, C-level, task store or epistemic state machine. It has no
+runtime authority and must not expand PR-SYN-06 acceptance scope.
+
+Working Desk may use the projection in Research Mode to organise:
+
+- critical gaps;
+- competing hypotheses;
+- contradiction maps;
+- labelled philosophical, authorial and cross-domain research lenses;
+- discriminating tests and falsification conditions;
+- structured research receipts.
+
+The labels `FACT`, `HYPOTHESIS`, `INTERPRETATION`, `ANALOGY`,
+`METAPHOR`, `AUTHOR_VIEW` and `UNKNOWN` preserve the boundary between
+evidence and question-generating lenses.
+
+A route proposal may recommend an auditable, reversible `DEFER`. It must never
+silently `IGNORE` or delete a user task. The actual route remains a D16
+decision, and any epistemic promotion remains an explicit TruthGate / Canon
+admission operation.
+
 ## Work that remains active
 
-The following are not deferred because they are already approved foundations of
-the Synaptic Exo-Cortex path:
+PR-SYN-03, PR-SYN-04 and PR-SYN-05 are merged in `main`. They provide the
+provider-neutral Reader boundary, deterministic Working Memory Gate and
+provenance-preserving ContextPack contract. This changes the immediate work from
+component construction to passive integration and evidence collection:
 
-1. finish and merge the remote-egress / epistemic boundary;
-2. implement PR-SYN-03 — LLM Reader Adapter;
-3. implement PR-SYN-04 — Working Memory Gate;
-4. implement PR-SYN-05 — ContextPack;
-5. evaluate existing components in shadow mode;
-6. produce a verified gap report before designing Task Registry persistence.
+1. implement PR-SYN-06 as the bounded
+   `SemanticReader → WorkingMemoryGate → ContextPack` shadow contour;
+2. preserve the existing answer path and emit passive receipts only;
+3. build a stable baseline dataset and verified gap report;
+4. evaluate Rapid Calibrated Orientation later as a separate optional shadow
+   experiment over those receipts;
+5. decide authoritative task-state ownership before any Task Registry
+   persistence.
+
+The orientation experiment must not become a hidden requirement of PR-SYN-06,
+control active routing or write to Canon.
 
 ## Invariant versus composite boundary
 
@@ -288,9 +333,9 @@ Explicitly excluded from the first slice:
 
 Revisit this research item when:
 
-- PR #59 is merged;
-- PR-SYN-03/04/05 reach `main`;
-- a shadow ContextPack exists;
+- PR-SYN-06 produces stable passive receipts and a baseline dataset;
+- a Rapid Calibrated Orientation offline evaluation is available;
+- false-defer and unsafe-fast thresholds are ready for Operator review;
 - a real long-running task demonstrates loss of state between sessions;
 - a persistent task store is proposed;
 - an archive or stagnation mechanism is proposed;
