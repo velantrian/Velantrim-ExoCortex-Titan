@@ -41,13 +41,21 @@ _SOURCE_REVISION = "legacy-fact-projection-v1"
 class SynapticShadowConfig:
     """Hard, deterministic bounds for one shadow preview."""
 
+    max_input_facts: int = 64
+    max_input_chars: int = 64_000
     max_items: int = 12
     max_chars: int = 4_000
     max_tokens: int = 16_384
     max_deferred_pointers: int = 32
 
     def __post_init__(self) -> None:
-        for name in ("max_items", "max_chars", "max_tokens"):
+        for name in (
+            "max_input_facts",
+            "max_input_chars",
+            "max_items",
+            "max_chars",
+            "max_tokens",
+        ):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
                 raise ValueError(f"{name} must be a positive integer")
@@ -59,10 +67,49 @@ class SynapticShadowConfig:
             raise ValueError("max_deferred_pointers must be a non-negative integer")
 
 
+class SynapticShadowInputLimitError(ValueError):
+    """A stable, non-sensitive failure for bounded shadow input."""
+
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)
+
+
 def _canonical_json(payload: object) -> str:
     return json.dumps(
         payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     )
+
+
+def _snapshot_with_size(
+    facts: Iterable[object],
+    *,
+    config: SynapticShadowConfig,
+) -> tuple[tuple[object, ...], int]:
+    snapshot: list[object] = []
+    input_chars = 0
+    for raw_fact in facts:
+        if len(snapshot) >= config.max_input_facts:
+            raise SynapticShadowInputLimitError("shadow_input_facts_exceeded")
+        input_chars += len(_canonical_json(raw_fact))
+        if input_chars > config.max_input_chars:
+            raise SynapticShadowInputLimitError("shadow_input_chars_exceeded")
+        snapshot.append(dict(raw_fact) if isinstance(raw_fact, Mapping) else raw_fact)
+    return tuple(snapshot), input_chars
+
+
+def snapshot_synaptic_shadow_input(
+    facts: Iterable[object],
+    *,
+    config: SynapticShadowConfig | None = None,
+) -> tuple[object, ...]:
+    """Create an immutable, bounded snapshot before background dispatch."""
+
+    snapshot, _ = _snapshot_with_size(
+        facts,
+        config=config or SynapticShadowConfig(),
+    )
+    return snapshot
 
 
 def _stable_id(payload: object) -> str:
@@ -80,6 +127,39 @@ def _fail_closed_policy_flag(mapping: Mapping[str, object], name: str) -> bool:
         return False
     value = mapping[name]
     return value if isinstance(value, bool) else True
+
+
+def _privilege_policy_flag(mapping: Mapping[str, object], name: str) -> bool:
+    """Only a literal true grants an admission privilege."""
+
+    return mapping.get(name) is True
+
+
+def _malformed_policy_flag(mapping: Mapping[str, object], name: str) -> bool:
+    return name in mapping and not isinstance(mapping[name], bool)
+
+
+def _has_required_world_fact_evidence(
+    fact: Mapping[str, object],
+    metadata: Mapping[str, object],
+) -> bool:
+    claim_type = str(fact.get("claim_type") or "").strip().upper()
+    origin_type = str(fact.get("origin_type") or "").strip().upper()
+    if claim_type != "WORLD_FACT" or origin_type not in {"EXTERNAL", "LLM_OUTPUT"}:
+        return True
+
+    source = fact.get("source")
+    attributable_source = (
+        isinstance(source, str)
+        and bool(source.strip())
+        and source.strip().lower() != "unknown"
+    )
+    evidence_refs = metadata.get("evidence_refs")
+    has_evidence = (
+        isinstance(evidence_refs, (list, tuple, set))
+        and bool(evidence_refs)
+    )
+    return attributable_source and has_evidence
 
 
 def _bounded_score(*values: object) -> float:
@@ -161,9 +241,13 @@ def _project_fact(
     conflict = _fail_closed_policy_flag(fact, "conflict") or (
         _fail_closed_policy_flag(metadata, "conflict")
     )
-    protected = _fail_closed_policy_flag(fact, "protected") or (
-        _fail_closed_policy_flag(metadata, "protected")
+    malformed_protected = _malformed_policy_flag(
+        fact, "protected"
+    ) or _malformed_policy_flag(metadata, "protected")
+    protected = _privilege_policy_flag(fact, "protected") or (
+        _privilege_policy_flag(metadata, "protected")
     )
+    required_world_evidence = _has_required_world_fact_evidence(fact, metadata)
     attention_score = _bounded_score(
         fact.get("retrieval_score"),
         fact.get("score"),
@@ -173,9 +257,13 @@ def _project_fact(
         capsule=capsule,
         attention_score=attention_score,
         recall_allowed=(
-            is_fact_allowed_for_recall(fact) and not restricted and not erased
+            is_fact_allowed_for_recall(fact)
+            and not restricted
+            and not erased
+            and not malformed_protected
+            and required_world_evidence
         ),
-        eligible=True,
+        eligible=not malformed_protected and required_world_evidence,
         restricted=restricted,
         erased=erased,
         protected=protected,
@@ -201,7 +289,7 @@ def _projection_key(capsule: KnowledgeCapsule) -> tuple[str, int, int, str]:
 
 
 def build_synaptic_shadow_preview(
-    facts: Iterable[Mapping[str, object]],
+    facts: Iterable[object],
     *,
     config: SynapticShadowConfig | None = None,
 ) -> dict[str, object]:
@@ -213,6 +301,7 @@ def build_synaptic_shadow_preview(
     """
 
     resolved = config or SynapticShadowConfig()
+    snapshot, input_chars = _snapshot_with_size(facts, config=resolved)
     projected: dict[
         tuple[str, int, int, str],
         tuple[KnowledgeCapsule, WorkingMemoryCandidate],
@@ -221,7 +310,7 @@ def build_synaptic_shadow_preview(
     skipped_empty = 0
     duplicate_capsules = 0
 
-    for raw_fact in facts:
+    for raw_fact in snapshot:
         input_facts += 1
         if not isinstance(raw_fact, Mapping):
             skipped_empty += 1
@@ -300,6 +389,7 @@ def build_synaptic_shadow_preview(
         "source_mode": SOURCE_MODE,
         "metrics": {
             "input_facts": input_facts,
+            "input_chars": input_chars,
             "projected_capsules": len(capsules),
             "skipped_inputs": skipped_empty,
             "duplicate_capsules": duplicate_capsules,
@@ -311,6 +401,27 @@ def build_synaptic_shadow_preview(
         "working_memory_plan": plan.to_dict(),
         "context_pack_preview": pack.to_prompt_dict(),
     }
+
+
+def shadow_queue_preview(
+    *,
+    status: str,
+    input_facts: int,
+    error_code: str | None = None,
+) -> dict[str, object]:
+    """Return the immediate receipt for non-blocking shadow dispatch."""
+
+    receipt: dict[str, object] = {
+        "schema_version": SHADOW_SCHEMA_VERSION,
+        "status": status,
+        "mode": "shadow_only",
+        "legacy_answer_authoritative": True,
+        "source_mode": SOURCE_MODE,
+        "metrics": {"input_facts": input_facts},
+    }
+    if error_code is not None:
+        receipt["error_code"] = error_code
+    return receipt
 
 
 def shadow_error_preview(code: str) -> dict[str, object]:
@@ -330,7 +441,10 @@ def shadow_error_preview(code: str) -> dict[str, object]:
 __all__ = [
     "SHADOW_SCHEMA_VERSION",
     "SOURCE_MODE",
+    "SynapticShadowInputLimitError",
     "SynapticShadowConfig",
     "build_synaptic_shadow_preview",
+    "shadow_queue_preview",
     "shadow_error_preview",
+    "snapshot_synaptic_shadow_input",
 ]
