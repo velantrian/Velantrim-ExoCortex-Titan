@@ -154,26 +154,72 @@ class DenseRetriever:
     """
     Семантический поиск через sentence-transformers.
     Если не установлены — автоматически пропускается (graceful degradation).
+
+    AUDIT-FIX (PR #91 lifecycle): NGramIndex narrows candidates to a different
+    fact_id subset on almost every query. Before this fix, each new subset was
+    treated as "corpus changed" one level up (pipeline._get_hybrid_retriever),
+    so a fresh DenseRetriever reloaded the sentence-transformer model AND
+    re-encoded every candidate's claim from scratch on every query — the
+    model load alone costs ~1-2s. The model and per-fact embeddings are now
+    process-persistent (class-level), keyed by model_name / fact_id, so a
+    fact already embedded once is never re-encoded just because it resurfaces
+    in a differently-shaped candidate set.
     """
 
     _AVAILABLE: bool | None = None
+    # Persistent across instances/candidate-sets — this is the fix: the model
+    # is loaded once per process, and a fact's embedding is computed once ever.
+    _MODEL_CACHE: dict[str, SentenceTransformer] = {}
+    _VECTOR_CACHE: dict[str, Any] = {}  # fact_id -> embedding vector
 
     def __init__(self, facts: list[dict], model_name: str = _DEFAULT_EMBEDDING_MODEL) -> None:
         self._facts      = facts
         self._model_name = model_name
-        # Any: encode() may return an ndarray or a Tensor depending on backend.
-        self._embeddings: Any = None
+        # list[Any]: one embedding per self._facts[i], sourced from the
+        # persistent fact_id cache (each vector itself may be an ndarray or a
+        # Tensor row depending on backend).
+        self._embeddings: list[Any] = []
         self._model: SentenceTransformer | None = None
         self._load()
 
     def _load(self) -> None:
         try:
             from sentence_transformers import SentenceTransformer
-            self._model = SentenceTransformer(self._model_name)
-            claims = [f.get("claim", "") for f in self._facts]
-            self._embeddings = self._model.encode(claims, normalize_embeddings=True)
+
+            model = DenseRetriever._MODEL_CACHE.get(self._model_name)
+            if model is None:
+                model = SentenceTransformer(self._model_name)
+                DenseRetriever._MODEL_CACHE[self._model_name] = model
+                logger.info("DenseRetriever: загружена модель %s", self._model_name)
+            self._model = model
+
+            cache = DenseRetriever._VECTOR_CACHE
+            # Facts without a fact_id can't be cached safely (no stable key) —
+            # they are always (re-)encoded, same as every fact was before this fix.
+            missing_idx = [
+                i for i, f in enumerate(self._facts)
+                if not f.get("fact_id") or f["fact_id"] not in cache
+            ]
+            fresh: dict[int, Any] = {}
+            if missing_idx:
+                claims = [self._facts[i].get("claim", "") for i in missing_idx]
+                vectors = model.encode(claims, normalize_embeddings=True)
+                for i, vec in zip(missing_idx, vectors):
+                    fid = self._facts[i].get("fact_id")
+                    if fid:
+                        cache[fid] = vec
+                    else:
+                        fresh[i] = vec
+
+            self._embeddings = [
+                fresh[i] if i in fresh else cache[self._facts[i]["fact_id"]]
+                for i in range(len(self._facts))
+            ]
             DenseRetriever._AVAILABLE = True
-            logger.info("DenseRetriever: загружена модель %s", self._model_name)
+            logger.debug(
+                "DenseRetriever: %d/%d фактов закодировано заново (%d переиспользовано из кэша)",
+                len(missing_idx), len(self._facts), len(self._facts) - len(missing_idx),
+            )
         except ImportError:
             DenseRetriever._AVAILABLE = False
             logger.warning(
@@ -195,9 +241,14 @@ class DenseRetriever:
         try:
             assert self._model is not None  # guaranteed by self.available above
             q_emb = self._model.encode([query], normalize_embeddings=True)[0]
-            sims  = self._embeddings @ q_emb          # dot product = cosine (нормализовано)
+            # Per-candidate dot product (embeddings normalized ⇒ cosine). Plain
+            # Python loop, not a vectorized matrix op: candidate sets here are
+            # small (NGram narrows to ≤50-1000), and this keeps DenseRetriever
+            # backend-agnostic (no hard numpy dependency beyond whatever
+            # sentence-transformers itself already requires to encode()).
+            sims = [float(sum(a * b for a, b in zip(vec, q_emb))) for vec in self._embeddings]
             indexed = sorted(enumerate(sims), key=lambda x: x[1], reverse=True)
-            return [(i, float(s)) for i, s in indexed[:top_k]]
+            return [(i, s) for i, s in indexed[:top_k]]
         except Exception as exc:
             logger.warning("DenseRetriever.retrieve error: %s", exc)
             return []
