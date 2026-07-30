@@ -69,6 +69,26 @@ identified by `source_mode = legacy_fact_projection` and
 in v1. An experiment may record them as internal labels only when it maps them to
 one route above in its receipt.
 
+### Compute path is an orthogonal recorded dimension
+
+The existing `ComputeController` emits `FAST_PATH`, `NORMAL_PATH`, `DEEP_PATH`,
+`VERIFY_PATH` and `CREATIVE_PATH`. Those values describe **how much and what kind
+of computation is proposed**, while a D16 route describes **what continuation is
+proposed**. They are not aliases and there is no implicit many-to-one translation.
+
+A research receipt may therefore record:
+
+```text
+route        = FAST_LOCAL | DELIBERATE_LOCAL | REQUEST_EVIDENCE | CLARIFY | DEFER
+compute_path = FAST_PATH | NORMAL_PATH | DEEP_PATH | VERIFY_PATH | CREATIVE_PATH | null
+```
+
+Any experiment that derives a D16 route from a compute path must declare a
+separate, versioned `compute_path_mapping_id`, publish the complete mapping and
+measure it independently. The mapping is evaluation metadata only; it grants no
+authority and cannot make results from differently versioned mappings directly
+comparable.
+
 ## Proposal schema
 
 Illustrative research notation, not a committed Python API:
@@ -82,6 +102,8 @@ CognitiveRouteProposal
 ├── projection_id
 ├── route
 ├── route_payload
+├── compute_path
+├── compute_path_mapping_id
 ├── reason_codes[]
 ├── evidence_refs[]
 ├── critical_gaps[]
@@ -96,7 +118,9 @@ CognitiveRouteProposal
 
 A proposal is invalid when the route is unknown, fallback is absent, evidence is
 not visible to the request, policy identity is missing, or the payload does not
-match the selected route.
+match the selected route. `compute_path` and `compute_path_mapping_id` are
+nullable; when either is present, both must satisfy the versioned mapping rule
+above.
 
 ### Route-specific payloads
 
@@ -139,19 +163,25 @@ full current `CapabilityLease` identity:
 Before any future execution, the runtime must capture a **fresh active
 `PolicySnapshot` immediately before each optional action**. Its `snapshot_id`
 and `policy_version` must match the projection, proposal, receipt and every
-referenced lease. The lease must also be revalidated as current, unexpired,
-unrevoked and scoped to the exact capability, locality and data mode being
-attempted. Comparing an old projection only with an old lease is never
-sufficient. Any stale, partial, revoked or mismatched identity is a hard denial.
-A denial may produce a new proposal or auditable `DEFER`; it may not be
-converted into permission.
+referenced lease. The snapshot itself must come from a verified, healthy policy
+source: `reason_code = policy_dependency_unavailable`,
+`supervisor_mode = unavailable`, a failed dependency-health indicator, or an
+unverifiable snapshot origin makes the snapshot invalid even when IDs are
+present. A non-missing but unhealthy snapshot never authorises a lease-free local
+proposal.
+
+The lease must also be revalidated as current, unexpired, unrevoked and scoped to
+the exact capability, locality and data mode being attempted. Comparing an old
+projection only with an old lease is never sufficient. Any stale, partial,
+revoked, unhealthy or mismatched identity is a hard denial. A denial may produce
+a new proposal or auditable `DEFER`; it may not be converted into permission.
 
 ## Selection semantics
 
 A future controller candidate must apply this order:
 
 1. enforce PolicyKernel, Recall Policy, provenance and evidence dependencies;
-2. reject stale leases and unknown route labels;
+2. reject unhealthy snapshots, stale leases and unknown route labels;
 3. preserve the authoritative fallback;
 4. assess critical gaps and risk;
 5. select only among routes permitted for the current snapshot;
@@ -171,6 +201,7 @@ The receipt must explain:
 - critical gaps and contradictions;
 - policy and lease identities;
 - reason codes;
+- route and separately recorded compute path/mapping identity;
 - estimated and actual cost;
 - whether the proposal agreed with the legacy baseline;
 - whether any action was attempted;
@@ -184,9 +215,11 @@ structured reasons and evidence references only.
 | Failure | Required result |
 |---|---|
 | Missing policy snapshot | reject proposal |
+| Snapshot reports unavailable/unhealthy policy dependency | reject proposal; no local or optional action |
 | Snapshot or policy-version mismatch | reject as stale |
 | Missing required provenance/evidence | `REQUEST_EVIDENCE` or `DEFER` |
 | Unknown route | reject and use `LEGACY_QUERY` baseline |
+| Unknown or unversioned compute-path mapping | ignore mapping for route validity; mark receipt incomparable |
 | Budget unavailable or malformed | fail closed; no optional action |
 | Proposal exception | isolate failure; preserve legacy response |
 | Conflicting evidence | surface conflict; never auto-promote |
@@ -212,7 +245,7 @@ Minimum segmented metrics:
 - critical-gap recall;
 - confidence calibration;
 - latency and compute cost;
-- stale-lease rejection rate;
+- stale-lease and unhealthy-snapshot rejection rates;
 - policy non-interference;
 - deterministic stability.
 
@@ -226,7 +259,7 @@ A bounded active D16 slice requires all of:
 2. versioned schemas and deterministic IDs;
 3. operator-labelled evaluation data;
 4. approved unsafe-fast and false-defer thresholds;
-5. lease replay and policy-version mismatch tests;
+5. lease replay, unhealthy-snapshot and policy-version mismatch tests;
 6. fail-isolated fallback tests;
 7. zero-model local path;
 8. feature flag and rollback;
@@ -249,7 +282,8 @@ This contract does not create:
 
 ```text
 The D16 research contract names proposal vocabulary; research validators may validate it.
-The active PolicySnapshot and current leases bound what may be attempted.
+The active, healthy PolicySnapshot and current leases bound what may be attempted.
+Compute path is separate evaluation metadata, not executive authority.
 LEGACY_QUERY remains the authoritative fallback.
 No runtime controller exists until evidence and Operator GO say otherwise.
 ```
