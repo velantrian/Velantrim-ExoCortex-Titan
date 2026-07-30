@@ -700,9 +700,11 @@ class ContextPack:
 
 
 def _claim_sort_key(claim: CapsuleClaim) -> tuple[int, str]:
+    """Match WorkingMemoryGate's source-order tie-breaker exactly."""
+
     return (
         min(span.start_offset for span in claim.source_spans),
-        claim.claim_id,
+        claim.text,
     )
 
 
