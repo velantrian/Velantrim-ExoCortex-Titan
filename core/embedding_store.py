@@ -292,25 +292,32 @@ class EmbeddingStore:
         finally:
             conn.close()
 
-    def get_stored_model_name(self, node_id: str) -> Optional[str]:
-        """Return whichever `model_name` key is stored for `node_id`, if any.
+    def list_stored_axes(self, node_id: str) -> list[tuple[str, Optional[str]]]:
+        """Every `(model_name, content_hash)` row currently stored for
+        `node_id`, across every coexisting axis.
 
-        Used by callers that must detect an axis change (model/version) for
-        a record before they know what the *new* axis even is — e.g. a
-        projection-identity layer classifying "some vectors exist for this
-        record, but under a different model" rather than a blunt "missing".
-        Assumes at most one live model per node_id in typical usage; returns
-        the first match if more than one axis happens to coexist.
+        The table's primary key is `(node_id, model_name)`, so more than one
+        model/version/projection axis CAN legitimately coexist for the same
+        record (e.g. mid-migration between two model versions). Callers must
+        not assume "at most one row" and must not pick an arbitrary one via
+        `LIMIT 1` — do an exact-axis lookup first (see
+        `load_with_content_hash`) and only fall back to inspecting this list
+        when no row exists for the exact axis they expect. The order of the
+        returned list is deterministic (sorted by model_name), independent
+        of SQLite's own row order, so classification never depends on
+        insertion order.
         """
         conn = sqlite3.connect(self._db_path, timeout=10.0)
         try:
-            row = conn.execute(
-                "SELECT model_name FROM gs_vectors WHERE node_id = ? LIMIT 1", (node_id,)
-            ).fetchone()
-            return row[0] if row else None
+            rows = conn.execute(
+                "SELECT model_name, content_hash FROM gs_vectors "
+                "WHERE node_id = ? ORDER BY model_name",
+                (node_id,),
+            ).fetchall()
+            return [(r[0], r[1]) for r in rows]
         except Exception as exc:
-            logger.debug("EmbeddingStore.get_stored_model_name(%s): %s", node_id, exc)
-            return None
+            logger.debug("EmbeddingStore.list_stored_axes(%s): %s", node_id, exc)
+            return []
         finally:
             conn.close()
 

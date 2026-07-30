@@ -147,11 +147,24 @@ class EmbeddingProjectionIdentity:
         own `model_name` field stays a plain, un-mangled string for
         EmbeddingRegistry lookups; only this derived key touches storage.
         """
-        if _STORAGE_KEY_MODEL_SEP in self.model_name or _STORAGE_KEY_VERSION_SEP in self.model_name:
-            raise ValueError(
-                f"model_name {self.model_name!r} contains a storage-key separator "
-                f"({_STORAGE_KEY_MODEL_SEP!r}/{_STORAGE_KEY_VERSION_SEP!r})"
-            )
+        # All three fields are validated, not just model_name: model_name's
+        # own prefix position makes it safe against the FIRST '@' split
+        # regardless of what model_version contains, but a '#' inside
+        # model_version would still be indistinguishable from the real
+        # model_version/projection_version divider (e.g. model_version="v#1"
+        # would silently swap characters into projection_version on parse) —
+        # so every field is checked, not just the one the split happens to
+        # protect today.
+        for field_name, value in (
+            ("model_name", self.model_name),
+            ("model_version", self.model_version),
+            ("projection_version", self.projection_version),
+        ):
+            if _STORAGE_KEY_MODEL_SEP in value or _STORAGE_KEY_VERSION_SEP in value:
+                raise ValueError(
+                    f"{field_name} {value!r} contains a storage-key separator "
+                    f"({_STORAGE_KEY_MODEL_SEP!r}/{_STORAGE_KEY_VERSION_SEP!r})"
+                )
         return (
             f"{self.model_name}{_STORAGE_KEY_MODEL_SEP}{self.model_version}"
             f"{_STORAGE_KEY_VERSION_SEP}{self.projection_version}"
@@ -184,6 +197,75 @@ def classify_state(
     if stored.content_hash != expected.content_hash:
         return ProjectionState.STALE_CONTENT
     return ProjectionState.FRESH
+
+
+def _parse_storage_key(storage_key: str) -> tuple[str, str, str]:
+    """Split a composite storage key back into
+    `(model_name, model_version, projection_version)`. Pure, module-level —
+    used both by the exact-axis lookup and by `classify_available_axes`,
+    neither of which touches storage."""
+    try:
+        model_name, rest = storage_key.split(_STORAGE_KEY_MODEL_SEP, 1)
+        model_version, projection_version = rest.split(_STORAGE_KEY_VERSION_SEP, 1)
+    except ValueError as exc:
+        raise CorruptedProjectionMetadataError(
+            f"malformed projection storage key: {storage_key!r}"
+        ) from exc
+    return model_name, model_version, projection_version
+
+
+def classify_available_axes(
+    expected: EmbeddingProjectionIdentity,
+    axes: Sequence[tuple[str, str | None]],
+) -> ProjectionState:
+    """Pure function: classify `expected` against every OTHER axis stored
+    for its record_id, given that no row exists for `expected`'s own exact
+    axis (`EmbeddingProjectionStore.check_state` always checks that exact
+    axis first and only reaches this function when it's absent — see there
+    for why a fresh exact match can never be shadowed by anything this
+    function returns).
+
+    Never touches storage, never raises, and — critically — never depends
+    on `axes`' order: the same set of axes in any permutation, or returned
+    by SQLite in any row order, produces the same ProjectionState. Model
+    *names* sorting alphabetically ahead of each other has no bearing on
+    the result; only how close each available axis is to `expected` does.
+
+    Priority (closest available axis wins):
+      1. an axis with the same model_name AND model_version as `expected`,
+         differing only in projection_version -> STALE_PROJECTION_VERSION.
+         This is deliberately checked before any other axis, however many
+         coexist and regardless of their names, because it is the closest
+         possible non-exact axis: same model, same trained version, only
+         an older/newer projection schema.
+      2. any other parseable axis (same model_name but a different
+         model_version, or a completely different model_name) ->
+         STALE_MODEL — vectors from a different model/version can never be
+         reused regardless of content.
+      3. axes exist but none of them could be parsed (every storage key is
+         corrupted) -> INVALID. A corrupted, unrelated axis never hides a
+         valid classification from another axis that *can* be parsed —
+         every row is inspected before INVALID is ever returned.
+      4. no axes at all -> MISSING.
+    """
+    if not axes:
+        return ProjectionState.MISSING
+
+    parsed: list[tuple[str, str, str]] = []
+    for storage_key, _content_hash in axes:
+        try:
+            parsed.append(_parse_storage_key(storage_key))
+        except CorruptedProjectionMetadataError:
+            continue  # an unrelated corrupted axis must not mask a valid one
+
+    for model_name, model_version, _projection_version in parsed:
+        if model_name == expected.model_name and model_version == expected.model_version:
+            return ProjectionState.STALE_PROJECTION_VERSION
+
+    if parsed:
+        return ProjectionState.STALE_MODEL
+
+    return ProjectionState.INVALID
 
 
 @dataclass(frozen=True)
@@ -239,58 +321,69 @@ class EmbeddingProjectionStore:
 
     # ── read (never mutates) ────────────────────────────────────────────
 
-    def _parse_storage_key(self, storage_key: str) -> tuple[str, str, str]:
-        try:
-            model_name, rest = storage_key.split(_STORAGE_KEY_MODEL_SEP, 1)
-            model_version, projection_version = rest.split(_STORAGE_KEY_VERSION_SEP, 1)
-        except ValueError as exc:
-            raise CorruptedProjectionMetadataError(
-                f"malformed projection storage key: {storage_key!r}"
-            ) from exc
-        return model_name, model_version, projection_version
+    def get_stored_identity(
+        self, expected: EmbeddingProjectionIdentity
+    ) -> EmbeddingProjectionIdentity | None:
+        """The stored identity for `expected`'s own EXACT axis, if any —
+        never a different, merely-coexisting axis.
 
-    def get_stored_identity(self, record_id: str) -> EmbeddingProjectionIdentity | None:
-        """Whatever axis (model/version/projection) is currently stored for
-        `record_id`, if any. Returns None if nothing at all is stored (this
-        also covers the persistent backend being unavailable — see
-        `available` — since there is then structurally nothing to read).
-        Raises CorruptedProjectionMetadataError if something is stored but
-        can't be parsed as a valid identity — callers going through
+        `gs_vectors`' primary key is `(node_id, model_name)`, so more than
+        one model/version/projection axis can legitimately coexist for the
+        same record_id (e.g. mid-migration between two model versions).
+        This method deliberately never guesses at one of those other axes;
+        when the exact axis has no row, it returns None and leaves
+        classifying *why* (STALE_MODEL / STALE_PROJECTION_VERSION /
+        INVALID / MISSING) to `classify_available_axes()`, called from
+        `check_state()` below — picking a single "representative" other
+        axis here would silently apply that axis's specific fields
+        (whichever one happened to be inspected) instead of a real
+        priority decision across all of them.
+
+        Raises CorruptedProjectionMetadataError if the exact-axis row
+        exists but has no content_hash — callers going through
         `check_state()` never see this; it is mapped to
-        ProjectionState.INVALID there."""
+        ProjectionState.INVALID there.
+        """
         if self._backing is None:
             return None
-        storage_key = self._backing.get_stored_model_name(record_id)
-        if storage_key is None:
+        exact = self._backing.load_with_content_hash(expected.record_id, expected.storage_key())
+        if exact is None:
             return None
-        model_name, model_version, projection_version = self._parse_storage_key(storage_key)
-        loaded = self._backing.load_with_content_hash(record_id, storage_key)
-        if loaded is None:
-            raise CorruptedProjectionMetadataError(
-                f"storage key present but row unreadable for {record_id!r}"
-            )
-        _, content_hash = loaded
+        _, content_hash = exact
         if not content_hash:
             raise CorruptedProjectionMetadataError(
-                f"projection row for {record_id!r} has no content_hash"
+                f"projection row for {expected.record_id!r} has no content_hash"
             )
         return EmbeddingProjectionIdentity(
-            record_id=record_id,
+            record_id=expected.record_id,
             content_hash=content_hash,
-            model_name=model_name,
-            model_version=model_version,
-            projection_version=projection_version,
+            model_name=expected.model_name,
+            model_version=expected.model_version,
+            projection_version=expected.projection_version,
         )
 
     def check_state(self, expected: EmbeddingProjectionIdentity) -> ProjectionState:
-        """Read-only. Never reindexes, never writes, never raises."""
+        """Read-only. Never reindexes, never writes, never raises.
+
+        Always checks `expected`'s own exact axis first (via
+        `get_stored_identity`) — a fresh exact match is returned
+        immediately and can never be shadowed by any other axis, however
+        many coexist or however they're corrupted. Only when no row exists
+        for the exact axis does it fall back to `classify_available_axes()`
+        over every other stored axis for this record_id.
+        """
+        if self._backing is None:
+            return ProjectionState.MISSING
         try:
-            stored = self.get_stored_identity(expected.record_id)
+            stored = self.get_stored_identity(expected)
         except CorruptedProjectionMetadataError as exc:
             logger.debug("embedding_projection: corrupted metadata for %s: %s",
                          expected.record_id, exc)
             return ProjectionState.INVALID
-        return classify_state(expected, stored)
+        if stored is not None:
+            return classify_state(expected, stored)
+        axes = self._backing.list_stored_axes(expected.record_id)
+        return classify_available_axes(expected, axes)
 
     def get_vector_if_fresh(self, expected: EmbeddingProjectionIdentity) -> Any | None:
         """Returns the stored vector only if its identity is exactly FRESH
@@ -463,6 +556,7 @@ __all__ = [
     "EmbeddingProjectionStore",
     "ProjectionState",
     "ReindexReport",
+    "classify_available_axes",
     "classify_state",
     "compute_content_hash",
     "resolve_or_fallback",
