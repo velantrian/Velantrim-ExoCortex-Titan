@@ -1,0 +1,157 @@
+{
+  "package": {
+    "package_id": "erp-minimal-routing-v1",
+    "protocol_version": "erp-1",
+    "corpus_snapshot": {
+      "sources": {
+        "source:water": "Water boils at 100°C at sea level."
+      }
+    },
+    "policy_fixture": {
+      "query_path_read_only": true,
+      "truth_gate_required": true
+    },
+    "provider_tool_fixtures": {},
+    "redaction_manifest": {
+      "synthetic_only": true
+    },
+    "cases": [
+      {
+        "case_id": "routing-direct-fact-001",
+        "task_class": "direct_fact",
+        "risk_class": "low",
+        "question": "At what temperature does water boil at sea level?",
+        "source_refs": ["source:water"],
+        "expected_claim_refs": ["claim:water-boiling-point"],
+        "expected_evidence_span_refs": ["source:water#0-38"],
+        "expected_memory_dispositions": ["claim:water-boiling-point=EXCLUDE"],
+        "expected_route_set": ["lexical", "hybrid"],
+        "forbidden_outputs": ["Water always boils at exactly 100°C regardless of pressure."],
+        "deterministic_seed": 7,
+        "tags": ["retrieval", "evidence", "synthetic"]
+      }
+    ]
+  },
+  "baseline_run": {
+    "run_id": "baseline-hybrid-001",
+    "package_id": "erp-minimal-routing-v1",
+    "code_revision": "fixture-baseline",
+    "configuration_snapshot": {
+      "retrieval": {
+        "mode": "hybrid",
+        "k": 3
+      }
+    },
+    "feature_flags": {
+      "ENABLE_BUDGET_PLANNER": true
+    },
+    "policy_snapshot_fixture": {
+      "truth_gate_required": true
+    },
+    "provider_fixture_versions": {
+      "dense": "recorded-fixture-v1"
+    },
+    "environment_manifest": {
+      "clock": "fixed",
+      "network": "disabled"
+    },
+    "started_at": "2026-07-30T00:00:00Z",
+    "completed_at": "2026-07-30T00:00:01Z",
+    "case_receipts": [
+      {
+        "case_id": "routing-direct-fact-001",
+        "input_digest": "c94e11f720c25f97d2df816ebb1af098718983bb093e9a9ba4d4f9b365f83796",
+        "extracted_claims": ["claim:water-boiling-point"],
+        "rejected_claims": [],
+        "evidence_refs": ["source:water#0-38"],
+        "retrieval_result": ["claim:water-boiling-point"],
+        "memory_dispositions": {
+          "claim:water-boiling-point": "EXCLUDE"
+        },
+        "temporal_relations": [],
+        "conflicts": [],
+        "route": "hybrid",
+        "answer": "Water boils at 100°C at sea level.",
+        "policy_reason_codes": ["EVIDENCE_PRESENT", "QUERY_PATH_READ_ONLY"],
+        "latency_ms": {
+          "retrieval": 31.0,
+          "total": 42.0
+        },
+        "resource_counts": {
+          "dense_call_count": 1,
+          "model_call_count": 0,
+          "tool_call_count": 0
+        },
+        "truth_gate_bypass_count": 0,
+        "query_path_write_count": 0,
+        "unrecorded_external_call_count": 0,
+        "warnings": []
+      }
+    ]
+  },
+  "candidate_run": {
+    "run_id": "candidate-lexical-001",
+    "package_id": "erp-minimal-routing-v1",
+    "code_revision": "fixture-candidate",
+    "configuration_snapshot": {
+      "retrieval": {
+        "mode": "lexical",
+        "k": 3
+      }
+    },
+    "feature_flags": {
+      "ENABLE_BUDGET_PLANNER": true
+    },
+    "policy_snapshot_fixture": {
+      "truth_gate_required": true
+    },
+    "provider_fixture_versions": {},
+    "environment_manifest": {
+      "clock": "fixed",
+      "network": "disabled"
+    },
+    "started_at": "2030-01-01T12:00:00Z",
+    "completed_at": "2030-01-01T12:00:01Z",
+    "case_receipts": [
+      {
+        "case_id": "routing-direct-fact-001",
+        "input_digest": "c94e11f720c25f97d2df816ebb1af098718983bb093e9a9ba4d4f9b365f83796",
+        "extracted_claims": ["claim:water-boiling-point"],
+        "rejected_claims": [],
+        "evidence_refs": ["source:water#0-38"],
+        "retrieval_result": ["claim:water-boiling-point"],
+        "memory_dispositions": {
+          "claim:water-boiling-point": "EXCLUDE"
+        },
+        "temporal_relations": [],
+        "conflicts": [],
+        "route": "lexical",
+        "answer": "Water boils at 100°C at sea level.",
+        "policy_reason_codes": ["EVIDENCE_PRESENT", "QUERY_PATH_READ_ONLY"],
+        "latency_ms": {
+          "retrieval": 9.0,
+          "total": 18.0
+        },
+        "resource_counts": {
+          "dense_call_count": 0,
+          "model_call_count": 0,
+          "tool_call_count": 0
+        },
+        "truth_gate_bypass_count": 0,
+        "query_path_write_count": 0,
+        "unrecorded_external_call_count": 0,
+        "warnings": []
+      }
+    ]
+  },
+  "fork": {
+    "parent_run_id": "baseline-hybrid-001",
+    "fork_id": "fork-routing-lexical-001",
+    "changed_dimension": "retrieval.mode",
+    "before_value": "hybrid",
+    "after_value": "lexical",
+    "secondary_changes": [],
+    "justification": "Measure cheap-first retrieval on an exact factual query.",
+    "expected_effect": "Preserve evidence while reducing dense calls and latency."
+  }
+}
