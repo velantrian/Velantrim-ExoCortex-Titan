@@ -35,6 +35,22 @@ SOURCE_MODE = "legacy_fact_projection"
 _READER_ID = "legacy-fact-shadow-projector"
 _READER_VERSION = "1.0"
 _SOURCE_REVISION = "legacy-fact-projection-v1"
+_EXTERNAL_WORLD_FACT_ORIGINS = frozenset(
+    {
+        "EXTERNAL",
+        "EXTERNAL_SOURCE",
+        "IMPORT",
+        "LLM",
+        "LLM_DERIVED",
+        "MODEL_DERIVED",
+        "MODEL_GENERATED",
+        "REMOTE_PROVIDER",
+        "WEB",
+    }
+)
+_GENERIC_PROVENANCE_VALUES = frozenset(
+    {"", "external", "legacy-memory", "llm", "model", "remote", "unknown"}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +96,71 @@ def _fail_closed_policy_flag(mapping: Mapping[str, object], name: str) -> bool:
         return False
     value = mapping[name]
     return value if isinstance(value, bool) else True
+
+
+def _strict_privilege_flag(
+    mapping: Mapping[str, object], name: str
+) -> tuple[bool, bool]:
+    """Return (granted, malformed); malformed input never grants privilege."""
+
+    if name not in mapping:
+        return False, False
+    value = mapping[name]
+    if isinstance(value, bool):
+        return value, False
+    return False, True
+
+
+def _reference_present(value: object) -> bool:
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, Mapping):
+        return any(
+            _reference_present(key) or _reference_present(item)
+            for key, item in value.items()
+        )
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return any(_reference_present(item) for item in value)
+    return False
+
+
+def _has_attributable_provenance(
+    fact: Mapping[str, object], metadata: Mapping[str, object]
+) -> bool:
+    explicit_keys = (
+        "source_document_id",
+        "source_ref",
+        "source_revision",
+        "source_uri",
+        "source_url",
+        "provenance",
+        "provenance_ref",
+    )
+    if any(
+        _reference_present(container.get(key))
+        for container in (fact, metadata)
+        for key in explicit_keys
+    ):
+        return True
+    source = str(fact.get("source") or metadata.get("source") or "").strip()
+    return source.casefold() not in _GENERIC_PROVENANCE_VALUES
+
+
+def _world_fact_evidence_allowed(
+    fact: Mapping[str, object],
+    metadata: Mapping[str, object],
+    modality: ClaimModality,
+) -> bool:
+    if modality is not ClaimModality.WORLD_FACT:
+        return True
+    origin = str(
+        fact.get("origin_type") or metadata.get("origin_type") or ""
+    ).strip().upper()
+    if origin not in _EXTERNAL_WORLD_FACT_ORIGINS:
+        return True
+    return _has_attributable_provenance(fact, metadata) and _reference_present(
+        metadata.get("evidence_refs")
+    )
 
 
 def _bounded_score(*values: object) -> float:
@@ -134,9 +215,10 @@ def _project_fact(
         end_offset=len(claim_text),
         source_revision=_SOURCE_REVISION,
     )
+    modality = _claim_modality(fact)
     claim = CapsuleClaim.create(
         text=claim_text,
-        modality=_claim_modality(fact),
+        modality=modality,
         source_spans=(span,),
         extraction_confidence=1.0,
         truth_confidence=None,
@@ -161,8 +243,18 @@ def _project_fact(
     conflict = _fail_closed_policy_flag(fact, "conflict") or (
         _fail_closed_policy_flag(metadata, "conflict")
     )
-    protected = _fail_closed_policy_flag(fact, "protected") or (
-        _fail_closed_policy_flag(metadata, "protected")
+    fact_protected, fact_protected_malformed = _strict_privilege_flag(
+        fact, "protected"
+    )
+    metadata_protected, metadata_protected_malformed = _strict_privilege_flag(
+        metadata, "protected"
+    )
+    protected_marker_malformed = (
+        fact_protected_malformed or metadata_protected_malformed
+    )
+    protected = fact_protected or metadata_protected
+    evidence_dependencies_met = _world_fact_evidence_allowed(
+        fact, metadata, modality
     )
     attention_score = _bounded_score(
         fact.get("retrieval_score"),
@@ -173,9 +265,13 @@ def _project_fact(
         capsule=capsule,
         attention_score=attention_score,
         recall_allowed=(
-            is_fact_allowed_for_recall(fact) and not restricted and not erased
+            is_fact_allowed_for_recall(fact)
+            and not restricted
+            and not erased
+            and not protected_marker_malformed
+            and evidence_dependencies_met
         ),
-        eligible=True,
+        eligible=not protected_marker_malformed and evidence_dependencies_met,
         restricted=restricted,
         erased=erased,
         protected=protected,
@@ -184,6 +280,8 @@ def _project_fact(
             "projection": SOURCE_MODE,
             "legacy_fact_id": fact_id,
             "legacy_source": str(fact.get("source") or "legacy-memory"),
+            "protected_marker_malformed": protected_marker_malformed,
+            "evidence_dependencies_met": evidence_dependencies_met,
         },
     )
     return capsule, candidate
