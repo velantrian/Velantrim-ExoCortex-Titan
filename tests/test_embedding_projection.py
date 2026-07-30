@@ -272,6 +272,24 @@ def test_pipeline_still_reaches_truth_gate_regardless_of_projection_state(monkey
                 "source": "physics", "confidence": 0.95})
     promote_to_validated("tg-1")
 
+    # Deterministic NGram stand-in — pipeline._NGRAM_INDEX is a process-wide
+    # singleton shared across the whole test session (see tests/conftest.py);
+    # relying on its real, cross-test-polluted content is exactly what made
+    # this test flaky when run inside the full suite. Same technique as
+    # tests/test_retrieval_routing.py / tests/test_retrieval_d3.py.
+    class _StubNGram:
+        available = True
+
+        def query(self, _text, limit=50):
+            return ["tg-1"]
+
+    monkeypatch.setattr(pipeline, "_NGRAM_INDEX", _StubNGram())
+    # Same reasoning for the HybridRetriever singleton (also process-wide).
+    monkeypatch.setattr(pipeline, "_HYBRID_RETRIEVER", None)
+    monkeypatch.setattr(pipeline, "_HYBRID_DIRTY", True)
+    monkeypatch.setattr(pipeline, "_HYBRID_FACTS_COUNT", 0)
+    monkeypatch.setattr(pipeline, "_HYBRID_FACT_IDS", frozenset())
+
     embedding_backing = EmbeddingStore(str(tmp_path / "emb.db"))
     embedding_backing.ensure_table()
     projection_store = ep.EmbeddingProjectionStore(embedding_backing)
