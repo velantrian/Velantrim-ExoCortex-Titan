@@ -8,8 +8,9 @@
 
 ## 🧭 Rapid Calibrated Orientation — read-only research projection
 
-**Dedicated specification:**
-[`RAPID_CALIBRATED_ORIENTATION.md`](RAPID_CALIBRATED_ORIENTATION.md)
+**Dedicated specifications:**
+[`RAPID_CALIBRATED_ORIENTATION.md`](RAPID_CALIBRATED_ORIENTATION.md) and
+[`D16_EXECUTIVE_CONTROL_CONTRACT.md`](D16_EXECUTIVE_CONTROL_CONTRACT.md)
 
 **Research question:** can Titan use existing `GoalFrame`, authorised evidence,
 `KnowledgeCapsule`, graph views, `WorkingMemoryGate` and `ContextPack` to
@@ -22,7 +23,7 @@ more accurately than the current baseline?
 existing components
 → OrientationProjection (read-only)
 → CognitiveRouteProposal
-→ D16 Executive Control
+→ D16 research contract (no runtime authority)
 ```
 
 This entry does not authorise a new `EssenceEngine`, D23, C-level, knowledge
@@ -31,9 +32,10 @@ research program with explicit false-defer, unsafe-fast, calibration, latency
 and policy non-interference metrics. User tasks may be reversibly `DEFER`red
 with an audit receipt; they must never be silently `IGNORE`d.
 
-**When to return:** after PR-SYN-06 produces stable passive receipts and a
-baseline dataset. Documentation may precede that work; runtime implementation
-may not.
+**When to return:** PR-SYN-06 is merged; return after its post-merge hardening
+produces stable passive receipts, an operator-labelled baseline dataset and
+lease-bound projection tests. Runtime implementation still requires a separate
+Operator GO.
 
 ---
 
