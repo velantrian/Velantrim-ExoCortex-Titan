@@ -6,6 +6,37 @@
 
 ---
 
+## 🧭 Rapid Calibrated Orientation — read-only research projection
+
+**Dedicated specification:**
+[`RAPID_CALIBRATED_ORIENTATION.md`](RAPID_CALIBRATED_ORIENTATION.md)
+
+**Research question:** can Titan use existing `GoalFrame`, authorised evidence,
+`KnowledgeCapsule`, graph views, `WorkingMemoryGate` and `ContextPack` to
+identify critical gaps and propose the minimum sufficient D16 route faster and
+more accurately than the current baseline?
+
+**Architectural boundary:**
+
+```text
+existing components
+→ OrientationProjection (read-only)
+→ CognitiveRouteProposal
+→ D16 Executive Control
+```
+
+This entry does not authorise a new `EssenceEngine`, D23, C-level, knowledge
+type or active router. It preserves the idea as a measurable shadow-first
+research program with explicit false-defer, unsafe-fast, calibration, latency
+and policy non-interference metrics. User tasks may be reversibly `DEFER`red
+with an audit receipt; they must never be silently `IGNORE`d.
+
+**When to return:** after PR-SYN-06 produces stable passive receipts and a
+baseline dataset. Documentation may precede that work; runtime implementation
+may not.
+
+---
+
 ## 🧮 KDE — Kernel Density Estimation (Entity Layer)
 
 **Что это:**
@@ -138,6 +169,7 @@ API key авторизация (`VELANTRIM_API_KEY`). `core/goal_stack.py` — �
 | Retrieval accuracy <90% | Qwen3-Reranker |
 | Автоматическое построение графа из сырых данных | AGRAG |
 | Нужен multi-branch reasoning с верификацией шагов | BranchManager, StepVerifier |
+| Нужна измеримая быстрая ориентация и выбор D16-маршрута | Rapid Calibrated Orientation (только после PR-SYN-06 baseline) |
 | Нужна полная сессионная история решений | L15 Observer / Diary |
 | Нужна консолидация диалогов в финальную суть | Conversation Consolidation (chat_id binding) |
 | Ingestion документов >10 страниц | Semantic Chunking + Overlapping |
