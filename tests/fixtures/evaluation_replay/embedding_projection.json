@@ -1,0 +1,163 @@
+{
+  "package": {
+    "package_id": "erp-embedding-projection-v1",
+    "protocol_version": "erp-1",
+    "corpus_snapshot": {
+      "sources": {
+        "source:steel": "Tempered steel reduces energy costs compared to concrete."
+      }
+    },
+    "policy_fixture": {
+      "query_path_read_only": true,
+      "truth_gate_required": true
+    },
+    "provider_tool_fixtures": {},
+    "redaction_manifest": {
+      "synthetic_only": true
+    },
+    "cases": [
+      {
+        "case_id": "embedding-projection-fresh-vs-stale-001",
+        "task_class": "direct_fact",
+        "risk_class": "low",
+        "question": "Does tempered steel reduce energy costs compared to concrete?",
+        "source_refs": ["source:steel"],
+        "expected_claim_refs": ["claim:steel-energy-cost"],
+        "expected_evidence_span_refs": ["source:steel#0-58"],
+        "expected_memory_dispositions": ["claim:steel-energy-cost=EXCLUDE"],
+        "expected_route_set": ["hybrid", "lexical"],
+        "forbidden_outputs": [],
+        "deterministic_seed": 11,
+        "tags": ["retrieval", "embedding-projection", "synthetic"]
+      }
+    ]
+  },
+  "baseline_run": {
+    "run_id": "baseline-projection-fresh-001",
+    "package_id": "erp-embedding-projection-v1",
+    "code_revision": "fixture-baseline-arm02",
+    "configuration_snapshot": {
+      "embedding_projection": {
+        "state": "fresh",
+        "model_name": "fixture-model",
+        "model_version": "v1",
+        "projection_version": "1"
+      }
+    },
+    "feature_flags": {
+      "ENABLE_EMBEDDING_PROJECTION_CONTRACT": false
+    },
+    "policy_snapshot_fixture": {
+      "truth_gate_required": true
+    },
+    "provider_fixture_versions": {
+      "dense": "recorded-fixture-v1"
+    },
+    "environment_manifest": {
+      "clock": "fixed",
+      "network": "disabled"
+    },
+    "started_at": "2026-07-30T00:00:00Z",
+    "completed_at": "2026-07-30T00:00:01Z",
+    "case_receipts": [
+      {
+        "case_id": "embedding-projection-fresh-vs-stale-001",
+        "input_digest": "a1c2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2",
+        "extracted_claims": ["claim:steel-energy-cost"],
+        "rejected_claims": [],
+        "evidence_refs": ["source:steel#0-58"],
+        "retrieval_result": ["claim:steel-energy-cost"],
+        "memory_dispositions": {
+          "claim:steel-energy-cost": "EXCLUDE"
+        },
+        "temporal_relations": [],
+        "conflicts": [],
+        "route": "hybrid",
+        "answer": "Tempered steel reduces energy costs compared to concrete.",
+        "policy_reason_codes": ["EVIDENCE_PRESENT", "QUERY_PATH_READ_ONLY", "PROJECTION_FRESH"],
+        "latency_ms": {
+          "retrieval": 12.0,
+          "total": 24.0
+        },
+        "resource_counts": {
+          "dense_call_count": 1,
+          "model_call_count": 0,
+          "tool_call_count": 0,
+          "reindex_call_count": 0
+        },
+        "truth_gate_bypass_count": 0,
+        "query_path_write_count": 0,
+        "unrecorded_external_call_count": 0,
+        "warnings": []
+      }
+    ]
+  },
+  "candidate_run": {
+    "run_id": "candidate-projection-stale-content-001",
+    "package_id": "erp-embedding-projection-v1",
+    "code_revision": "fixture-candidate-arm02",
+    "configuration_snapshot": {
+      "embedding_projection": {
+        "state": "stale_content",
+        "model_name": "fixture-model",
+        "model_version": "v1",
+        "projection_version": "1"
+      }
+    },
+    "feature_flags": {
+      "ENABLE_EMBEDDING_PROJECTION_CONTRACT": false
+    },
+    "policy_snapshot_fixture": {
+      "truth_gate_required": true
+    },
+    "provider_fixture_versions": {},
+    "environment_manifest": {
+      "clock": "fixed",
+      "network": "disabled"
+    },
+    "started_at": "2030-01-01T12:00:00Z",
+    "completed_at": "2030-01-01T12:00:01Z",
+    "case_receipts": [
+      {
+        "case_id": "embedding-projection-fresh-vs-stale-001",
+        "input_digest": "a1c2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2",
+        "extracted_claims": ["claim:steel-energy-cost"],
+        "rejected_claims": [],
+        "evidence_refs": ["source:steel#0-58"],
+        "retrieval_result": ["claim:steel-energy-cost"],
+        "memory_dispositions": {
+          "claim:steel-energy-cost": "EXCLUDE"
+        },
+        "temporal_relations": [],
+        "conflicts": [],
+        "route": "lexical",
+        "answer": "Tempered steel reduces energy costs compared to concrete.",
+        "policy_reason_codes": ["EVIDENCE_PRESENT", "QUERY_PATH_READ_ONLY", "PROJECTION_STALE_CONTENT_FALLBACK"],
+        "latency_ms": {
+          "retrieval": 5.0,
+          "total": 15.0
+        },
+        "resource_counts": {
+          "dense_call_count": 0,
+          "model_call_count": 0,
+          "tool_call_count": 0,
+          "reindex_call_count": 0
+        },
+        "truth_gate_bypass_count": 0,
+        "query_path_write_count": 0,
+        "unrecorded_external_call_count": 0,
+        "warnings": ["embedding_projection_state=stale_content: fell back to lexical without reindexing"]
+      }
+    ]
+  },
+  "fork": {
+    "parent_run_id": "baseline-projection-fresh-001",
+    "fork_id": "fork-embedding-projection-stale-content-001",
+    "changed_dimension": "embedding_projection.state",
+    "before_value": "fresh",
+    "after_value": "stale_content",
+    "secondary_changes": ["retrieval.route: hybrid -> lexical"],
+    "justification": "A fact's claim was edited after its embedding was projected; the projection contract must detect staleness and fall back to lexical without reindexing automatically.",
+    "expected_effect": "Preserve evidence and zero critical-gate violations while the route degrades to lexical until an explicit reindex is run."
+  }
+}
