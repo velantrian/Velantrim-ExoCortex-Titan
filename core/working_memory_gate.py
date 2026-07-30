@@ -182,7 +182,7 @@ class GateDecision:
                 self.rank is None
                 or self.reserved_chars <= 0
                 or self.reserved_chars != self.compressed_char_cost
-                or self.compressed_char_cost > self.full_char_cost
+                or self.compressed_char_cost >= self.full_char_cost
             ):
                 raise ValueError("COMPRESS must reserve smaller essence at a positive rank")
         elif self.disposition is GateDisposition.DEFER:
