@@ -4,7 +4,7 @@
 **Runtime authority:** none  
 **Canon write authority:** none  
 **Default enabled:** false  
-**Date:** 2026-07-29  
+**Date:** 2026-07-30  
 **Scope:** Titan private research track; not stable runtime, not grant claim
 
 ## Decision
@@ -56,7 +56,7 @@ Working Desk must compose existing mechanisms rather than replace them:
 - `KnowledgeCapsule` — source-linked extracted meaning;
 - `SemanticReader` / `ExtractiveReader` — provider-neutral extraction;
 - `AttentionRouter` — deterministic ranking;
-- `FactsPack` and planned `ContextPack` — LLM-facing context;
+- `FactsPack` and merged `ContextPack` — bounded LLM-facing context;
 - `promotion_policy` and TruthGate — epistemic promotion;
 - Recall Policy — fail-closed memory retrieval;
 - `AuditChain` — append-only audit history;
@@ -94,8 +94,9 @@ The permitted relationship is:
 GoalFrame + authorised evidence + ContextPack preview
 → OrientationProjection (read-only)
 → CognitiveRouteProposal
-→ D16 Executive Control
-→ existing permitted route
+→ validation against the D16 research contract
+→ receipt-only comparison with LEGACY_QUERY
+→ optional operator interpretation; no controller execution
 ```
 
 This is a projection over existing Titan components, not a new
@@ -116,22 +117,22 @@ The labels `FACT`, `HYPOTHESIS`, `INTERPRETATION`, `ANALOGY`,
 evidence and question-generating lenses.
 
 A route proposal may recommend an auditable, reversible `DEFER`. It must never
-silently `IGNORE` or delete a user task. The actual route remains a D16
-decision, and any epistemic promotion remains an explicit TruthGate / Canon
-admission operation.
+silently `IGNORE` or delete a user task. The proposal targets the versioned
+[D16 research contract](D16_EXECUTIVE_CONTROL_CONTRACT.md); no active D16
+controller exists yet. Any epistemic promotion remains an explicit TruthGate /
+Canon admission operation.
 
 ## Work that remains active
 
-PR-SYN-03, PR-SYN-04 and PR-SYN-05 are merged in `main`. They provide the
-provider-neutral Reader boundary, deterministic Working Memory Gate and
-provenance-preserving ContextPack contract. This changes the immediate work from
-component construction to passive integration and evidence collection:
+PR-SYN-03, PR-SYN-04, PR-SYN-05 and PR-SYN-06 are merged in `main`. They
+provide the provider-neutral Reader boundary, deterministic Working Memory Gate,
+provenance-preserving ContextPack and the first passive shadow integration. The
+immediate work is now post-merge hardening and evidence collection:
 
-1. implement PR-SYN-06 as the bounded
-   `SemanticReader → WorkingMemoryGate → ContextPack` shadow contour;
-2. preserve the existing answer path and emit passive receipts only;
-3. build a stable baseline dataset and verified gap report;
-4. evaluate Rapid Calibrated Orientation later as a separate optional shadow
+1. close late review findings without changing the authoritative legacy answer;
+2. collect stable PR-SYN-06 receipts and a verified baseline dataset;
+3. define and validate the D16 proposal contract against the real legacy route;
+4. evaluate Rapid Calibrated Orientation as a separate optional shadow
    experiment over those receipts;
 5. decide authoritative task-state ownership before any Task Registry
    persistence.
@@ -319,15 +320,16 @@ Explicitly excluded from the first slice:
 - review resulting PRs and CI metadata through the GitHub connector;
 - keep research claims synchronized with implemented GitHub reality.
 
-### Work requiring Claude Code or an equivalent local coding agent
+### Work requiring a checkout-capable coding agent
 
-- rebase, edit and validate PR #59 locally;
-- run complete grep/call-site audits over the checkout;
-- implement PR-SYN-03/04/05 runtime code and tests;
-- add migrations, CAS semantics and concurrency tests;
+- run complete grep/call-site audits over the current `main`;
+- implement focused post-merge fixes with regression tests;
 - run full pytest, mypy, Ruff and Docker workflows;
-- implement Task Registry or erasure adapters after explicit Operator GO;
-- perform local diff review, commit, push and resolve inline review findings.
+- collect reproducible shadow receipts and baseline metrics;
+- implement any future D16 or RCO runtime slice only after explicit Operator GO;
+- add migrations, CAS semantics or Task Registry persistence only in separate
+  approved PRs;
+- perform local diff review and resolve inline review findings.
 
 ## Return triggers
 
