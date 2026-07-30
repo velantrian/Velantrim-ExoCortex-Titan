@@ -565,7 +565,8 @@ def test_missing_modality_is_rejected_not_defaulted(monkeypatch: pytest.MonkeyPa
     _script(monkeypatch, _payload([{"text": "Кошка спит на окне."}]))
     out = _run(_adapter(), RawSource(document_id="doc-1", text=TEXT))
 
-    assert out.result.status is ReaderStatus.SPAN_VALIDATION_FAILED
+    assert out.result.status is ReaderStatus.INVALID_OUTPUT
+    assert out.result.failure.code == "MODEL_CLAIMS_REJECTED"
     assert out.receipt.claims_rejected_modality == 1
     assert out.receipt.claims_admitted == 0
 
@@ -574,7 +575,8 @@ def test_unknown_modality_is_rejected_not_defaulted(monkeypatch: pytest.MonkeyPa
     _script(monkeypatch, _payload([_claim("Кошка спит на окне.", modality="prophecy")]))
     out = _run(_adapter(), RawSource(document_id="doc-1", text=TEXT))
 
-    assert out.result.status is ReaderStatus.SPAN_VALIDATION_FAILED
+    assert out.result.status is ReaderStatus.INVALID_OUTPUT
+    assert out.result.failure.code == "MODEL_CLAIMS_REJECTED"
     assert out.receipt.claims_rejected_modality == 1
 
 
