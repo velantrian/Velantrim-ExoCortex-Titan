@@ -4,7 +4,7 @@
 **Runtime authority:** none  
 **Canon write authority:** none  
 **Default enabled:** false  
-**Decision ownership:** existing D16 Executive Control contract; no new decision ID  
+**Proposal target:** [`D16_EXECUTIVE_CONTROL_CONTRACT.md`](D16_EXECUTIVE_CONTROL_CONTRACT.md), currently `RESEARCH / PROPOSED` with no runtime authority  
 **Date:** 2026-07-30  
 **Scope:** read-only orientation research for Titan; not an implemented cognition claim
 
@@ -32,8 +32,8 @@ the route, suppress a user request, mutate memory or promote knowledge.
 available evidence + GoalFrame + policy-visible context
 → OrientationProjection
 → CognitiveRouteProposal
-→ D16 Executive Control
-→ permitted route chosen by the existing controller
+→ D16 research contract
+→ receipt-only comparison; no route is executed by this experiment
 ```
 
 ## Why this belongs in Research Mode
@@ -48,7 +48,7 @@ Titan already has many of the mechanisms that an orientation layer would need:
 - `WorkingMemoryGate` assigns reversible context dispositions;
 - `ContextPack` provides a bounded, provenance-preserving read model;
 - `ComputeController` estimates computational budget;
-- D16 defines executive route outcomes.
+- the D16 research contract defines proposal vocabulary and the legacy baseline; no D16 runtime controller is implemented yet.
 
 What is not yet demonstrated is that a single goal-dependent projection over
 those components improves routing quality enough to justify runtime authority.
@@ -84,26 +84,39 @@ facts, tasks, goals or policy.
 
 ### `CognitiveRouteProposal`
 
-A recommendation consumed by the existing D16 Executive Control contract.
-Candidate routes should reuse D16 vocabulary wherever possible:
+A versioned recommendation validated against the
+[D16 research contract](D16_EXECUTIVE_CONTROL_CONTRACT.md). The contract
+separates the two behaviours that exist today from proposal-only vocabulary:
 
 ```text
-ROUTE_FAST
-ROUTE_DELIBERATE
+Observed baseline:
+LEGACY_QUERY
+SYNAPTIC_SHADOW_PREVIEW
+
+Proposal-only:
+FAST_LOCAL
+DELIBERATE_LOCAL
 REQUEST_EVIDENCE
 CLARIFY
 DEFER
 ```
 
-Research experiments may compare additional route labels such as
-`RETRIEVE`, `COMPUTE`, `RESEARCH` or `PARALLEL`, but those labels must be
-mapped to D16 before any implementation proposal. Research vocabulary must not
-silently become a second executive state machine.
+`RETRIEVE`, `COMPUTE`, `RESEARCH` and `PARALLEL` remain research labels
+until the D16 contract assigns explicit semantics, permitted capabilities and a
+fallback. No proposal label may silently become a second executive state
+machine or imply that an active controller already exists.
 
 ### `UnderstandingReceipt`
 
 A structured explanation of the projection and proposal. The name refers to
 auditability, not to a claim that the system possesses human understanding.
+
+Every receipt must copy the projection's `policy_snapshot_id` and
+`policy_version`. If an experiment invokes an optional capability, it must also
+record the complete lease identity: capability, locality, data mode,
+`snapshot_id`, `policy_version`, allow/deny result and reason code. A receipt
+whose lease snapshot differs from its projection is invalid and cannot support
+execution.
 
 ## Input boundary
 
@@ -112,7 +125,7 @@ already authorised to access:
 
 ```text
 GoalFrame
-PolicySnapshot / CapabilityLease outcome
+PolicySnapshot plus the full current CapabilityLease when a capability is proposed
 Recall-policy-approved evidence
 KnowledgeCapsule references
 ContextPack preview
@@ -134,6 +147,9 @@ The schema below is illustrative research notation, not a committed Python API:
 OrientationProjection
 ├── projection_version
 ├── request_id
+├── policy_snapshot_id
+├── policy_version
+├── capability_lease_refs[]
 ├── goal_frame_digest
 ├── evidence_refs[]
 ├── evidence_snapshot_digest
@@ -166,6 +182,11 @@ Required properties:
    output, not prose hidden inside a summary.
 6. **No mutation.** Computation does not alter Canon, ESM, graph relations,
    activation history, attention weights or task state.
+7. **Snapshot-bound authority.** Projection identity includes
+   `policy_snapshot_id` and `policy_version`. Any later optional action requires
+   a current full `CapabilityLease` whose `snapshot_id` and `policy_version`
+   exactly match the active projection; generic allow outcomes and stale leases
+   are rejected.
 
 ## Knowledge lenses, not new knowledge types
 
@@ -295,7 +316,7 @@ entire user task silently.
 | Ring Zero / PolicyKernel / CapabilityLease | Permit or deny actions, tools, network and resources |
 | Recall Policy | Permit or deny memory retrieval |
 | OrientationProjection | Read-only description and route proposal |
-| D16 Executive Control | Choose among already permitted cognitive routes |
+| D16 Executive Control contract | Version proposal vocabulary and baseline semantics; currently research-only with no active route authority |
 | Working Desk | Organise bounded research state in Research Mode |
 | TruthGate / admission service | Evaluate explicit epistemic promotion |
 | Canon write service | Perform authorised canonical mutation with required integrity controls |
@@ -342,7 +363,7 @@ high false-defer or unsafe-fast rate in a critical class.
 
 At minimum compare against:
 
-1. current D16/default routing without the projection;
+1. the actual authoritative legacy `/query` path, with the passive `SYNAPTIC_SHADOW_PREVIEW` recorded separately;
 2. a simple deterministic heuristic;
 3. the candidate projection algorithm;
 4. an operator-reviewed subset.
@@ -352,18 +373,19 @@ the simple heuristic at an acceptable cost.
 
 ## Relationship to PR-SYN-06
 
-PR-SYN-06 remains the primary shadow integration of the already merged Synaptic
-foundations. Rapid Calibrated Orientation must not inflate its acceptance scope.
+PR-SYN-06 is merged and supplies the passive
+`SemanticReader → WorkingMemoryGate → ContextPack` preview. It remains the
+baseline observation contour, not a D16 implementation. Rapid Calibrated
+Orientation is a separate optional experiment and must not retroactively expand
+PR-SYN-06 authority.
 
-Preferred sequence:
+Current sequence:
 
-1. integrate `SemanticReader → WorkingMemoryGate → ContextPack` passively;
-2. establish stable receipts and baseline datasets;
+1. harden the merged shadow contour and collect stable receipts;
+2. define the D16 proposal contract and operator-labelled baseline dataset;
 3. implement OrientationProjection as a separate optional experiment;
 4. compare proposals without controlling runtime;
 5. request explicit Operator GO for any bounded active slice.
-
-Documentation may land before PR-SYN-06. Runtime code must not.
 
 ## Candidate research phases
 
@@ -384,6 +406,9 @@ Documentation may land before PR-SYN-06. Runtime code must not.
 ### RCO-2 — Optional provider-neutral proposals
 
 - compare local rules, graph algorithms and optional model adapters;
+- bind every projection and receipt to `policy_snapshot_id` and
+  `policy_version`;
+- reject stale or mismatched capability leases before any optional invocation;
 - treat all model output as untrusted proposals;
 - require provenance for evidence-dependent fields;
 - preserve a zero-model path.
