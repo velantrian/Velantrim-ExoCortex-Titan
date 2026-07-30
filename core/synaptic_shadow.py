@@ -22,6 +22,7 @@ from core.knowledge_capsule import (
     KnowledgeCapsule,
     SourceSpan,
 )
+from core.recall_policy import is_fact_allowed_for_recall
 from core.working_memory_gate import (
     GateDisposition,
     WorkingMemoryBudget,
@@ -59,7 +60,9 @@ class SynapticShadowConfig:
 
 
 def _canonical_json(payload: object) -> str:
-    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
 
 
 def _stable_id(payload: object) -> str:
@@ -156,7 +159,9 @@ def _project_fact(
     candidate = WorkingMemoryCandidate(
         capsule=capsule,
         attention_score=attention_score,
-        recall_allowed=not restricted and not erased,
+        recall_allowed=(
+            is_fact_allowed_for_recall(fact) and not restricted and not erased
+        ),
         eligible=True,
         restricted=restricted,
         erased=erased,
