@@ -502,16 +502,13 @@ def _maybe_cognitive_rerank(
         return rows[:k]
 
 
-def _retrieve_from_store(
-    query: str,
-    k: int = 3,
-    domain: str | None = None,
+def _narrow_candidates(
+    query: str, domain: str | None
 ) -> list[dict[str, Any]]:
-    """
-    Sprint 2a: получить факты из реального store через HybridRetriever.
-    Шаг 0: NGramIndex pre-filter → список candidate fact_ids.
-    Шаг 1: HybridRetriever(BM25+Dense+RRF) по отфильтрованным фактам.
-    Возвращает факты в формате совместимом с pipeline (fact_id, claim, source...).
+    """Шаг 0: NGramIndex pre-filter → filtered_facts.
+
+    Общий для lexical и hybrid маршрутов — единственное место, где кандидаты
+    сужаются перед ранжированием (NGram → domain filter).
 
     TASK-06: вместо get_all_facts() (SELECT * — вся база в RAM) используем
     get_fact_ids() (SELECT fact_id — легко) + get_facts_by_ids() для кандидатов.
@@ -553,42 +550,27 @@ def _retrieve_from_store(
         filtered_facts = filter_facts_by_domain(
             filtered_facts, normalize_domain(domain)
         )
-        [f["fact_id"] for f in filtered_facts if f.get("fact_id")]
 
-    if not filtered_facts:
-        return []
+    return filtered_facts
 
-    # Шаг 1: HybridRetriever (BM25+Dense+RRF) — AUDIT-FIX v8.4.0: singleton
-    if _HYBRID_AVAILABLE:
-        try:
-            retriever = _get_hybrid_retriever(filtered_facts)
-            if retriever is not None:
-                # cognitive-distance re-rank (opt-in): over-fetch так, чтобы переупорядочивание
-                # имело из чего выбирать; при выключенном флаге fetch_k == k (поведение прежнее).
-                fetch_k = k * 3 if _cogdist_enabled() else k
-                results: list[RetrievedFact] = retriever.retrieve(query, top_k=fetch_k)
-                out = []
-                for r in results:
-                    out.append(
-                        {
-                            "id":              r.fact_id,
-                            "text":            r.claim,
-                            "source":          r.source,
-                            "confidence":      r.confidence,
-                            "retrieval_score": round(r.final_score, 4),
-                            "metadata":        r.metadata or {},
-                            "epistemic_state": "Observed",
-                            "origin":          "hybrid_retriever",
-                        }
-                    )
-                return _maybe_cognitive_rerank(out, k)
-        except Exception as exc:
-            logger.warning("HybridRetriever failed: %s → fallback на BM25", exc)
 
-    # Fallback: BM25 по filtered_facts
-    # Примечание по IDF: при маленьких корпусах IDF может быть <= 0
-    # (N=1 → IDF=log(0.5/1.5) ≈ -1.1). Поэтому фильтруем не по score > 0,
-    # а по факту наличия термов запроса в claim — это корректный критерий релевантности.
+def _bm25_rank_facts(
+    filtered_facts: list[dict[str, Any]],
+    query: str,
+    k: int,
+    *,
+    origin: str = "bm25_fallback",
+) -> list[dict[str, Any]]:
+    """Чистый BM25-ранкинг по уже сужённым кандидатам — без Dense, без RRF.
+
+    Единственная BM25-реализация для реального store: используется и
+    маршрутом ``retrieval_mode == "lexical"``, и как fallback, когда
+    HybridRetriever недоступен/упал в hybrid-маршруте.
+
+    Примечание по IDF: при маленьких корпусах IDF может быть <= 0
+    (N=1 → IDF=log(0.5/1.5) ≈ -1.1). Поэтому фильтруем не по score > 0,
+    а по факту наличия термов запроса в claim — это корректный критерий релевантности.
+    """
     corpus = [tokenize(f.get("claim", "")) for f in filtered_facts]
     bm25 = BM25(corpus)
     query_terms = tokenize(query)
@@ -610,10 +592,84 @@ def _retrieve_from_store(
             "confidence":      fact.get("confidence", 0.5),
             "retrieval_score": retrieval_score,
             "epistemic_state": "Observed",
-            "origin":          "bm25_fallback",
+            "origin":          origin,
+            "retrieval_mode":  "lexical" if origin == "bm25_lexical" else "hybrid",
         })
     scored.sort(key=lambda x: x["retrieval_score"], reverse=True)
     return _maybe_cognitive_rerank(scored, k)
+
+
+def _retrieve_from_store(
+    query: str,
+    k: int = 3,
+    domain: str | None = None,
+    retrieval_mode: str = "hybrid",
+    max_hops: int = 1,
+) -> list[dict[str, Any]]:
+    """
+    Sprint 2a/Increment 2: получить факты из реального store — маршрут
+    зависит от ``retrieval_mode`` (см. ``RetrievalPlan.to_execution_kwargs()``).
+
+    retrieval_mode:
+      "none"    — честный пустой результат. Никакого NGram/BM25/Dense вызова —
+                  дешёвое и детерминированное завершение (BudgetPlanner: пустой
+                  или тривиально-пустой запрос).
+      "lexical" — Шаг 0 (NGram narrowing) → BM25 top-k. НИКОГДА не вызывает
+                  DenseRetriever.retrieve, reciprocal_rank_fusion,
+                  CrossEncoderReranker, graph expansion, LLM или remote provider.
+      "hybrid"  — (по умолчанию, обратная совместимость) прежнее поведение:
+                  NGram → HybridRetriever(BM25+Dense+RRF+опц. reranker) singleton,
+                  fallback на _bm25_rank_facts при недоступности/ошибке Hybrid.
+      любое другое значение — трактуется как "hybrid" (безопасный дефолт для
+      старых вызывающих кодов, не передающих retrieval_mode).
+
+    max_hops принимается для полноты execution-контракта
+    (``RetrievalPlan.to_execution_kwargs()``). ``_retrieve_from_store`` сам не
+    выполняет graph expansion — она уже существует (за ``ENABLE_GRAPH_EXPANSION``)
+    в ``generate_answer()``. Подключение max_hops туда намеренно оставлено вне
+    scope этого PR (см. PR-описание).
+
+    Возвращает факты в формате совместимом с pipeline (fact_id, claim, source...).
+    """
+    if retrieval_mode == "none" or not query or not query.strip():
+        return []
+
+    filtered_facts = _narrow_candidates(query, domain)
+    if not filtered_facts:
+        return []
+
+    if retrieval_mode == "lexical":
+        return _bm25_rank_facts(filtered_facts, query, k, origin="bm25_lexical")
+
+    # hybrid (default) — Шаг 1: HybridRetriever (BM25+Dense+RRF), AUDIT-FIX v8.4.0 singleton
+    if _HYBRID_AVAILABLE:
+        try:
+            retriever = _get_hybrid_retriever(filtered_facts)
+            if retriever is not None:
+                # cognitive-distance re-rank (opt-in): over-fetch так, чтобы переупорядочивание
+                # имело из чего выбирать; при выключенном флаге fetch_k == k (поведение прежнее).
+                fetch_k = k * 3 if _cogdist_enabled() else k
+                results: list[RetrievedFact] = retriever.retrieve(query, top_k=fetch_k)
+                out = []
+                for r in results:
+                    out.append(
+                        {
+                            "id":              r.fact_id,
+                            "text":            r.claim,
+                            "source":          r.source,
+                            "confidence":      r.confidence,
+                            "retrieval_score": round(r.final_score, 4),
+                            "metadata":        r.metadata or {},
+                            "epistemic_state": "Observed",
+                            "origin":          "hybrid_retriever",
+                            "retrieval_mode":  "hybrid",
+                        }
+                    )
+                return _maybe_cognitive_rerank(out, k)
+        except Exception as exc:
+            logger.warning("HybridRetriever failed: %s → fallback на BM25", exc)
+
+    return _bm25_rank_facts(filtered_facts, query, k, origin="bm25_fallback")
 
 
 def retrieve(
@@ -636,15 +692,20 @@ def retrieve(
     """
     import os
 
-    # BudgetPlanner (opt-in): scale k by query complexity. Flag off ⇒ k unchanged.
+    # BudgetPlanner (opt-in): scale k *and* choose the execution route by query
+    # complexity. Flag off ⇒ k unchanged and retrieval_mode stays "hybrid"
+    # (prior behavior, byte-identical).
     eff_k = k
+    execution_kwargs: dict[str, Any] = {"k": k}
     try:
         from core.runtime_flags import is_budget_planner_enabled
 
         if is_budget_planner_enabled():
             from core.budget_planner import plan as _budget_plan
 
-            eff_k = _budget_plan(query, base_k=k).k
+            retrieval_plan = _budget_plan(query, base_k=k)
+            eff_k = retrieval_plan.k
+            execution_kwargs = retrieval_plan.to_execution_kwargs()
     except Exception as exc:  # noqa: BLE001 — planner is advisory, never breaks retrieval
         logger.debug("budget planner skipped: %s", exc)
 
@@ -652,8 +713,9 @@ def retrieve(
     if database is not None:
         return _retrieve_from_database(query, eff_k, database)
 
-    # Пробуем реальный store (Sprint 2a)
-    store_results = _retrieve_from_store(query, eff_k, domain=domain)
+    # Пробуем реальный store (Sprint 2a). execution_kwargs carries k (== eff_k)
+    # plus retrieval_mode/max_hops from the plan (flag off ⇒ just {"k": k}).
+    store_results = _retrieve_from_store(query, domain=domain, **execution_kwargs)
     if store_results:
         return store_results
 
@@ -1390,6 +1452,11 @@ def run(
             reason_code="no_local_retrieval_results",
         )
 
+    # Observability only (Increment 2): which route BudgetPlanner actually
+    # executed. Read off the retrieved rows rather than threading new global
+    # state — absent when the planner flag is off or DI `database=` is used.
+    _retrieval_mode = retrieved[0].get("retrieval_mode") if retrieved else None
+
     # 2. Read-only FactsPack: Canon resolves projection rows; no ingestion.
     facts_pack = build_facts_pack(retrieved, query, cognitive_mode=cognitive_mode)
     if not facts_pack.get("facts"):
@@ -1466,6 +1533,8 @@ def run(
 
     # 8. Generate
     result = generate_answer(facts_pack, trace)
+    if _retrieval_mode:
+        result["retrieval_mode"] = _retrieval_mode
     if causal_hints:
         result["causal_hints"] = causal_hints
     if conflicts:
