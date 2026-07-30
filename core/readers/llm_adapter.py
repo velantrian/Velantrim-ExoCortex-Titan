@@ -154,6 +154,16 @@ _SYSTEM_PROMPT = (
     "entities and time scopes are ignored and will be reported as refused."
 )
 
+_PERMANENT_VALUE_ERROR_MARKERS = (
+    "api key required",
+    "invalid api key",
+    "invalid model",
+    "model not found",
+    "provider is required",
+    "unsupported provider",
+    "unknown provider",
+)
+
 
 class LlmReaderError(RuntimeError):
     """Adapter-internal failure, always converted into a ReaderResult."""
@@ -362,7 +372,7 @@ class LlmReaderAdapter(BaseSemanticReader):
     """LLM-backed reader whose output is admitted only where the source agrees."""
 
     reader_id = "titan.llm"
-    reader_version = "2.0.0"
+    reader_version = "2.1.0"
     supported_modes = frozenset({ReaderMode.FAST, ReaderMode.STANDARD, ReaderMode.DEEP})
 
     def __init__(
@@ -475,7 +485,7 @@ class LlmReaderAdapter(BaseSemanticReader):
                 "Source tail beyond the chunk budget was not examined",
             )
 
-        admitted: list[CapsuleClaim] = []
+        candidates: list[CapsuleClaim] = []
         seen_identity: set[str] = set()
         failures: list[str] = []
 
@@ -508,16 +518,19 @@ class LlmReaderAdapter(BaseSemanticReader):
                 # again, the repeat is a duplicate rather than another unique
                 # omission.
                 seen_identity.add(claim.claim_id)
-                if len(admitted) >= resolved.max_claims:
-                    _warn(
-                        warnings,
-                        "CLAIM_BUDGET_EXHAUSTED",
-                        "Additional unique claims were omitted by the claim budget",
-                    )
-                    # Continue validating later proposals so an overlap duplicate
-                    # of an admitted claim cannot masquerade as omitted content.
-                    continue
-                admitted.append(claim)
+                candidates.append(claim)
+
+        # Provider array order is untrusted execution noise. Validate and
+        # deduplicate the complete candidate set first, then select winners by
+        # source position so equivalent payloads produce the same capsule.
+        candidates.sort(key=_claim_source_order_key)
+        admitted = candidates[: resolved.max_claims]
+        if len(candidates) > resolved.max_claims:
+            _warn(
+                warnings,
+                "CLAIM_BUDGET_EXHAUSTED",
+                "Additional unique claims were omitted by the claim budget",
+            )
 
         receipt.claims_admitted = len(admitted)
         receipt.refused_fields = tuple(sorted(refused))
@@ -537,13 +550,31 @@ class LlmReaderAdapter(BaseSemanticReader):
             if receipt.chunks_succeeded == 0 and failures:
                 status, code = _status_for_failures(failures)
                 return self._fail(
-                    receipt, status, code, "Provider produced no usable output"
+                    receipt,
+                    status,
+                    code,
+                    "Provider produced no usable output",
+                    retryable=_failure_retryable_later(code),
+                )
+            if receipt.claims_proposed == 0:
+                return self._fail(
+                    receipt,
+                    ReaderStatus.REJECTED,
+                    "NO_EXTRACTABLE_CLAIMS",
+                    "Provider returned no extractable claims",
+                )
+            if receipt.claims_rejected_span or receipt.claims_rejected_ambiguous:
+                return self._fail(
+                    receipt,
+                    ReaderStatus.SPAN_VALIDATION_FAILED,
+                    "NO_CLAIM_SURVIVED_SPAN_VALIDATION",
+                    "No proposed claim could be located unambiguously in the source",
                 )
             return self._fail(
                 receipt,
-                ReaderStatus.SPAN_VALIDATION_FAILED,
-                "NO_CLAIM_SURVIVED_VALIDATION",
-                "No proposed claim could be located unambiguously in the source",
+                ReaderStatus.INVALID_OUTPUT,
+                "MODEL_CLAIMS_REJECTED",
+                "All proposed claims failed shape or modality validation",
             )
 
         # Any known omission makes the result PARTIAL. A rejected proposal is
@@ -629,14 +660,13 @@ class LlmReaderAdapter(BaseSemanticReader):
                 )
             except TimeoutError:
                 failures.append("PROVIDER_TIMEOUT")
-                # Not retried: the deadline already elapsed, and retrying
-                # multiplies spend against the same wall clock.
+                # Not immediately retried: the local deadline already elapsed,
+                # and another request would multiply spend against the same wall clock.
                 return None
             except Exception as exc:
                 code = _provider_failure_code(exc)
                 failures.append(code)
-                if code == "REMOTE_EGRESS_DENIED":
-                    # Policy denial is terminal — retrying cannot change it.
+                if not _failure_allows_immediate_retry(code):
                     return None
                 if attempt >= self._limits.max_attempts_per_chunk:
                     return None
@@ -798,11 +828,19 @@ class LlmReaderAdapter(BaseSemanticReader):
         status: ReaderStatus,
         code: str,
         message: str,
+        *,
+        retryable: bool = False,
     ) -> LlmReaderOutcome:
         if code not in receipt.failure_codes:
             receipt.failure_codes = (*receipt.failure_codes, code)
         return LlmReaderOutcome(
-            ReaderResult.failed(status, code=code, safe_message=message), receipt
+            ReaderResult.failed(
+                status,
+                code=code,
+                safe_message=message,
+                retryable=retryable,
+            ),
+            receipt,
         )
 
 
@@ -895,6 +933,19 @@ def _coverage(text: str, claims: list[CapsuleClaim]) -> float:
     return min(1.0, covered / total)
 
 
+def _claim_source_order_key(claim: CapsuleClaim) -> tuple[int, int, str, str]:
+    """Stable source order used before every global claim budget."""
+
+    starts = tuple(span.start_offset for span in claim.source_spans)
+    ends = tuple(span.end_offset for span in claim.source_spans)
+    return (
+        min(starts, default=0),
+        min(ends, default=0),
+        claim.text,
+        claim.claim_id,
+    )
+
+
 def _build_essence(
     claims: list[CapsuleClaim], max_chars: int
 ) -> tuple[str, bool]:
@@ -907,13 +958,7 @@ def _build_essence(
     deterministic and the more readable summary.
     """
 
-    ordered = sorted(
-        claims,
-        key=lambda claim: (
-            min((span.start_offset for span in claim.source_spans), default=0),
-            claim.text,
-        ),
-    )
+    ordered = sorted(claims, key=_claim_source_order_key)
     parts: list[str] = []
     length = 0
     budget_exhausted = False
@@ -927,24 +972,75 @@ def _build_essence(
     return " ".join(parts), budget_exhausted
 
 
+def _is_permanent_value_error(exc: ValueError) -> bool:
+    message = str(exc).strip().casefold()
+    return any(marker in message for marker in _PERMANENT_VALUE_ERROR_MARKERS)
+
+
 def _provider_failure_code(exc: BaseException) -> str:
     name = type(exc).__name__
     if name == "RemoteEgressDeniedError":
         return "REMOTE_EGRESS_DENIED"
     if isinstance(exc, asyncio.CancelledError):
         return "CANCELLED"
+    if name == "LlmProviderRequestError":
+        status_code = getattr(exc, "status_code", None)
+        if status_code == 429:
+            return "PROVIDER_RATE_LIMITED"
+        if status_code == 408:
+            return "PROVIDER_REQUEST_TIMEOUT"
+        if isinstance(status_code, int) and status_code >= 500:
+            return "PROVIDER_SERVER_ERROR"
+        return "PROVIDER_REQUEST_REJECTED"
+    if isinstance(exc, ValueError):
+        # Router configuration/auth/model validation is permanent, but generic
+        # ValueError also covers malformed JSON and empty provider responses.
+        return (
+            "PROVIDER_REQUEST_REJECTED"
+            if _is_permanent_value_error(exc)
+            else "PROVIDER_RESPONSE_ERROR"
+        )
     return "PROVIDER_ERROR"
 
 
-def _status_for_failures(failures: list[str]) -> tuple[ReaderStatus, str]:
-    """Map the first decisive failure to a ReaderStatus."""
+def _failure_allows_immediate_retry(code: str) -> bool:
+    return code in {
+        "PROVIDER_RATE_LIMITED",
+        "PROVIDER_REQUEST_TIMEOUT",
+        "PROVIDER_SERVER_ERROR",
+        "PROVIDER_RESPONSE_ERROR",
+        "PROVIDER_ERROR",
+    }
 
-    if "REMOTE_EGRESS_DENIED" in failures:
-        return ReaderStatus.PROVIDER_ERROR, "REMOTE_EGRESS_DENIED"
-    if "PROVIDER_TIMEOUT" in failures:
-        return ReaderStatus.PROVIDER_ERROR, "PROVIDER_TIMEOUT"
-    if "PROVIDER_ERROR" in failures or "CANCELLED" in failures:
-        return ReaderStatus.PROVIDER_ERROR, failures[0]
+
+def _failure_retryable_later(code: str) -> bool:
+    return code in {
+        "PROVIDER_TIMEOUT",
+        "PROVIDER_RATE_LIMITED",
+        "PROVIDER_REQUEST_TIMEOUT",
+        "PROVIDER_SERVER_ERROR",
+        "PROVIDER_RESPONSE_ERROR",
+        "PROVIDER_ERROR",
+    }
+
+
+def _status_for_failures(failures: list[str]) -> tuple[ReaderStatus, str]:
+    """Select status and code from one shared, deterministic priority rule."""
+
+    priority = (
+        "REMOTE_EGRESS_DENIED",
+        "PROVIDER_TIMEOUT",
+        "PROVIDER_REQUEST_REJECTED",
+        "PROVIDER_RATE_LIMITED",
+        "PROVIDER_REQUEST_TIMEOUT",
+        "PROVIDER_SERVER_ERROR",
+        "PROVIDER_RESPONSE_ERROR",
+        "PROVIDER_ERROR",
+        "CANCELLED",
+    )
+    for code in priority:
+        if code in failures:
+            return ReaderStatus.PROVIDER_ERROR, code
     return ReaderStatus.INVALID_OUTPUT, failures[0]
 
 
