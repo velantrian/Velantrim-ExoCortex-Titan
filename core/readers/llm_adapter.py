@@ -154,6 +154,16 @@ _SYSTEM_PROMPT = (
     "entities and time scopes are ignored and will be reported as refused."
 )
 
+_PERMANENT_VALUE_ERROR_MARKERS = (
+    "api key required",
+    "invalid api key",
+    "invalid model",
+    "model not found",
+    "provider is required",
+    "unsupported provider",
+    "unknown provider",
+)
+
 
 class LlmReaderError(RuntimeError):
     """Adapter-internal failure, always converted into a ReaderResult."""
@@ -540,7 +550,11 @@ class LlmReaderAdapter(BaseSemanticReader):
             if receipt.chunks_succeeded == 0 and failures:
                 status, code = _status_for_failures(failures)
                 return self._fail(
-                    receipt, status, code, "Provider produced no usable output"
+                    receipt,
+                    status,
+                    code,
+                    "Provider produced no usable output",
+                    retryable=_failure_retryable_later(code),
                 )
             if receipt.claims_proposed == 0:
                 return self._fail(
@@ -646,19 +660,13 @@ class LlmReaderAdapter(BaseSemanticReader):
                 )
             except TimeoutError:
                 failures.append("PROVIDER_TIMEOUT")
-                # Not retried: the deadline already elapsed, and retrying
-                # multiplies spend against the same wall clock.
+                # Not immediately retried: the local deadline already elapsed,
+                # and another request would multiply spend against the same wall clock.
                 return None
             except Exception as exc:
                 code = _provider_failure_code(exc)
                 failures.append(code)
-                if code in {
-                    "REMOTE_EGRESS_DENIED",
-                    "PROVIDER_TIMEOUT",
-                    "PROVIDER_REQUEST_REJECTED",
-                }:
-                    # Policy, elapsed deadline, and permanent request failures
-                    # cannot change during an immediate retry.
+                if not _failure_allows_immediate_retry(code):
                     return None
                 if attempt >= self._limits.max_attempts_per_chunk:
                     return None
@@ -820,11 +828,19 @@ class LlmReaderAdapter(BaseSemanticReader):
         status: ReaderStatus,
         code: str,
         message: str,
+        *,
+        retryable: bool = False,
     ) -> LlmReaderOutcome:
         if code not in receipt.failure_codes:
             receipt.failure_codes = (*receipt.failure_codes, code)
         return LlmReaderOutcome(
-            ReaderResult.failed(status, code=code, safe_message=message), receipt
+            ReaderResult.failed(
+                status,
+                code=code,
+                safe_message=message,
+                retryable=retryable,
+            ),
+            receipt,
         )
 
 
@@ -956,6 +972,11 @@ def _build_essence(
     return " ".join(parts), budget_exhausted
 
 
+def _is_permanent_value_error(exc: ValueError) -> bool:
+    message = str(exc).strip().casefold()
+    return any(marker in message for marker in _PERMANENT_VALUE_ERROR_MARKERS)
+
+
 def _provider_failure_code(exc: BaseException) -> str:
     name = type(exc).__name__
     if name == "RemoteEgressDeniedError":
@@ -963,15 +984,44 @@ def _provider_failure_code(exc: BaseException) -> str:
     if isinstance(exc, asyncio.CancelledError):
         return "CANCELLED"
     if name == "LlmProviderRequestError":
-        return (
-            "PROVIDER_RATE_LIMITED"
-            if bool(getattr(exc, "retryable", False))
-            else "PROVIDER_REQUEST_REJECTED"
-        )
-    if isinstance(exc, ValueError):
-        # Router validation/configuration failures are permanent for this run.
+        status_code = getattr(exc, "status_code", None)
+        if status_code == 429:
+            return "PROVIDER_RATE_LIMITED"
+        if status_code == 408:
+            return "PROVIDER_REQUEST_TIMEOUT"
+        if isinstance(status_code, int) and status_code >= 500:
+            return "PROVIDER_SERVER_ERROR"
         return "PROVIDER_REQUEST_REJECTED"
+    if isinstance(exc, ValueError):
+        # Router configuration/auth/model validation is permanent, but generic
+        # ValueError also covers malformed JSON and empty provider responses.
+        return (
+            "PROVIDER_REQUEST_REJECTED"
+            if _is_permanent_value_error(exc)
+            else "PROVIDER_RESPONSE_ERROR"
+        )
     return "PROVIDER_ERROR"
+
+
+def _failure_allows_immediate_retry(code: str) -> bool:
+    return code in {
+        "PROVIDER_RATE_LIMITED",
+        "PROVIDER_REQUEST_TIMEOUT",
+        "PROVIDER_SERVER_ERROR",
+        "PROVIDER_RESPONSE_ERROR",
+        "PROVIDER_ERROR",
+    }
+
+
+def _failure_retryable_later(code: str) -> bool:
+    return code in {
+        "PROVIDER_TIMEOUT",
+        "PROVIDER_RATE_LIMITED",
+        "PROVIDER_REQUEST_TIMEOUT",
+        "PROVIDER_SERVER_ERROR",
+        "PROVIDER_RESPONSE_ERROR",
+        "PROVIDER_ERROR",
+    }
 
 
 def _status_for_failures(failures: list[str]) -> tuple[ReaderStatus, str]:
@@ -982,6 +1032,9 @@ def _status_for_failures(failures: list[str]) -> tuple[ReaderStatus, str]:
         "PROVIDER_TIMEOUT",
         "PROVIDER_REQUEST_REJECTED",
         "PROVIDER_RATE_LIMITED",
+        "PROVIDER_REQUEST_TIMEOUT",
+        "PROVIDER_SERVER_ERROR",
+        "PROVIDER_RESPONSE_ERROR",
         "PROVIDER_ERROR",
         "CANCELLED",
     )
