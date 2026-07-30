@@ -10,10 +10,23 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse, Response
 
 
-def _response_headers(response) -> dict[str, str]:
-    headers = dict(response.headers)
-    headers.pop("content-length", None)
-    return headers
+def _response_raw_headers(response) -> list[tuple[bytes, bytes]]:
+    """Preserve repeated headers while removing the stale body length."""
+
+    raw_headers = getattr(response, "raw_headers", ())
+    return [
+        (bytes(name), bytes(value))
+        for name, value in raw_headers
+        if bytes(name).lower() != b"content-length"
+    ]
+
+
+def _copy_response_headers(target: Response, source) -> Response:
+    target.raw_headers = [
+        *_response_raw_headers(source),
+        (b"content-length", str(len(target.body)).encode("ascii")),
+    ]
+    return target
 
 
 async def _response_body(response) -> bytes:
@@ -30,13 +43,12 @@ async def _response_body(response) -> bytes:
 
 
 def _restore_response(response, body: bytes) -> Response:
-    return Response(
+    restored = Response(
         content=body,
         status_code=response.status_code,
-        headers=_response_headers(response),
-        media_type=response.media_type,
         background=response.background,
     )
+    return _copy_response_headers(restored, response)
 
 
 def register_server_middleware(app: FastAPI) -> None:
@@ -120,9 +132,9 @@ def register_server_middleware(app: FastAPI) -> None:
 
         augmented = dict(payload)
         augmented["synaptic_shadow"] = shadow
-        return JSONResponse(
+        augmented_response = JSONResponse(
             status_code=response.status_code,
             content=augmented,
-            headers=_response_headers(response),
             background=response.background,
         )
+        return _copy_response_headers(augmented_response, response)
