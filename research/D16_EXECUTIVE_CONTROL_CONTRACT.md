@@ -22,9 +22,9 @@ POST /query
 → authoritative response
 
 optional ENABLE_SYNAPTIC_SHADOW
-→ SYNAPTIC_SHADOW_PREVIEW
-→ passive receipt only
-→ no answer, tool, memory or route change
+→ attach a `synaptic_shadow` observation after LEGACY_QUERY completes
+→ `source_mode = legacy_fact_projection`; `mode = shadow_only`
+→ passive receipt only; no answer, tool, memory or route change
 ```
 
 Rapid Calibrated Orientation may emit a proposal conforming to this contract.
@@ -49,7 +49,11 @@ requires a contract-version increment and explicit Operator review.
 | Route | Current meaning | Authority |
 |---|---|---|
 | `LEGACY_QUERY` | Existing `/query` retrieval and answer path | Authoritative current runtime |
-| `SYNAPTIC_SHADOW_PREVIEW` | PR-SYN-06 passive Gate/ContextPack observation | Receipt only; cannot affect the answer |
+
+PR-SYN-06 is not a second route. It attaches a passive `synaptic_shadow`
+observation to the completed `LEGACY_QUERY` response. The emitted receipt is
+identified by `source_mode = legacy_fact_projection` and
+`mode = shadow_only`; evaluation must never treat it as a selectable route.
 
 ### Proposal-only routes
 
@@ -77,6 +81,7 @@ CognitiveRouteProposal
 ├── request_id
 ├── projection_id
 ├── route
+├── route_payload
 ├── reason_codes[]
 ├── evidence_refs[]
 ├── critical_gaps[]
@@ -90,7 +95,24 @@ CognitiveRouteProposal
 ```
 
 A proposal is invalid when the route is unknown, fallback is absent, evidence is
-not visible to the request, or policy identity is missing.
+not visible to the request, policy identity is missing, or the payload does not
+match the selected route.
+
+### Route-specific payloads
+
+`route_payload` is a tagged union keyed by `route`:
+
+| Route | Required payload |
+|---|---|
+| `FAST_LOCAL` | `{}` or an explicitly empty payload; no optional capability |
+| `DELIBERATE_LOCAL` | bounded `budget` and `stop_conditions[]` |
+| `REQUEST_EVIDENCE` | `gap_ids[]`, `acceptable_evidence_types[]`, and a `completion_condition` |
+| `CLARIFY` | a concrete `question` and `blocking_ambiguity_ids[]` |
+| `DEFER` | `reason_codes[]`, `review_trigger`, `expires_at`, and `operator_override` |
+
+A missing field, an empty required list/string, or payload fields belonging to a
+different route invalidate the proposal. `DEFER` remains reversible and
+auditable; it never means `IGNORE` or task deletion.
 
 ## Policy and capability binding
 
@@ -114,10 +136,15 @@ full current `CapabilityLease` identity:
 - `snapshot_id`;
 - `policy_version`.
 
-Before any future execution, both `snapshot_id` and `policy_version` must
-match the active projection and plan. A stale, partial or mismatched lease is a
-hard denial. A denial may produce a new proposal or auditable `DEFER`; it may
-not be converted into permission.
+Before any future execution, the runtime must capture a **fresh active
+`PolicySnapshot` immediately before each optional action**. Its `snapshot_id`
+and `policy_version` must match the projection, proposal, receipt and every
+referenced lease. The lease must also be revalidated as current, unexpired,
+unrevoked and scoped to the exact capability, locality and data mode being
+attempted. Comparing an old projection only with an old lease is never
+sufficient. Any stale, partial, revoked or mismatched identity is a hard denial.
+A denial may produce a new proposal or auditable `DEFER`; it may not be
+converted into permission.
 
 ## Selection semantics
 
@@ -221,8 +248,8 @@ This contract does not create:
 ## Core rule
 
 ```text
-D16 names and validates proposals.
-Policy and leases bound what may be attempted.
+The D16 research contract names proposal vocabulary; research validators may validate it.
+The active PolicySnapshot and current leases bound what may be attempted.
 LEGACY_QUERY remains the authoritative fallback.
 No runtime controller exists until evidence and Operator GO say otherwise.
 ```
