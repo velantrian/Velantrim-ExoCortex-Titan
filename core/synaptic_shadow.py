@@ -42,6 +42,7 @@ _EXTERNAL_WORLD_FACT_ORIGINS = frozenset(
         "IMPORT",
         "LLM",
         "LLM_DERIVED",
+        "LLM_OUTPUT",
         "MODEL_DERIVED",
         "MODEL_GENERATED",
         "REMOTE_PROVIDER",
@@ -111,16 +112,31 @@ def _strict_privilege_flag(
     return False, True
 
 
-def _reference_present(value: object) -> bool:
+def _attributable_reference_present(value: object) -> bool:
+    """Accept concrete reference values, never generic provenance labels."""
+
     if isinstance(value, str):
-        return bool(value.strip())
+        normalized = value.strip().casefold()
+        return bool(normalized) and normalized not in _GENERIC_PROVENANCE_VALUES
     if isinstance(value, Mapping):
-        return any(
-            _reference_present(key) or _reference_present(item)
-            for key, item in value.items()
-        )
+        return any(_attributable_reference_present(item) for item in value.values())
     if isinstance(value, (list, tuple, set, frozenset)):
-        return any(_reference_present(item) for item in value)
+        return any(_attributable_reference_present(item) for item in value)
+    return False
+
+
+def _has_structural_evidence_refs(metadata: Mapping[str, object]) -> bool:
+    """Mirror truth_policy: evidence is a list of mappings with a source reference."""
+
+    refs = metadata.get("evidence_refs")
+    if not isinstance(refs, list):
+        return False
+    for ref in refs:
+        if not isinstance(ref, Mapping):
+            continue
+        source_ref = ref.get("source_id") or ref.get("source")
+        if isinstance(source_ref, str) and source_ref.strip():
+            return True
     return False
 
 
@@ -137,13 +153,13 @@ def _has_attributable_provenance(
         "provenance_ref",
     )
     if any(
-        _reference_present(container.get(key))
+        _attributable_reference_present(container.get(key))
         for container in (fact, metadata)
         for key in explicit_keys
     ):
         return True
-    source = str(fact.get("source") or metadata.get("source") or "").strip()
-    return source.casefold() not in _GENERIC_PROVENANCE_VALUES
+    source = fact.get("source") or metadata.get("source") or ""
+    return _attributable_reference_present(source)
 
 
 def _world_fact_evidence_allowed(
@@ -158,9 +174,9 @@ def _world_fact_evidence_allowed(
     ).strip().upper()
     if origin not in _EXTERNAL_WORLD_FACT_ORIGINS:
         return True
-    return _has_attributable_provenance(fact, metadata) and _reference_present(
-        metadata.get("evidence_refs")
-    )
+    return _has_attributable_provenance(
+        fact, metadata
+    ) and _has_structural_evidence_refs(metadata)
 
 
 def _bounded_score(*values: object) -> float:
