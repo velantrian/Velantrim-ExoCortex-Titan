@@ -1,7 +1,7 @@
 """Deterministic RCO-1 shadow projection.
 
 RCO-1 reads an already-authorised query, the passive Synaptic shadow preview,
-and one immutable PolicySnapshot.  It emits a read-only OrientationProjection,
+and one immutable PolicySnapshot. It emits a read-only OrientationProjection,
 a proposal conforming to the D16 research vocabulary, and an auditable receipt.
 It never executes the proposal, calls a provider, retrieves more data, persists
 state, or mutates Canon/ESM/task state.
@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from enum import Enum
 from hashlib import sha256
 import json
-import math
 from typing import Mapping
 
 from core.compute_controller import ComputePath, decide_compute_path
@@ -243,7 +242,7 @@ def _critical_gaps(
     gaps: set[str] = set()
     if not query.strip():
         gaps.add("missing_goal")
-    if selected_claims == 0 and goal.intent not in {GoalIntent.CREATE}:
+    if selected_claims == 0 and goal.intent is not GoalIntent.CREATE:
         gaps.add("no_admitted_evidence")
     if goal.risk_level is RiskLevel.HIGH and selected_claims < 2:
         gaps.add("high_risk_evidence_insufficient")
@@ -376,6 +375,32 @@ def _route_payload(
     }
 
 
+def _rejected_receipt(
+    policy_snapshot: PolicySnapshot,
+    failure_code: str,
+) -> dict[str, object]:
+    return {
+        "schema_version": RECEIPT_VERSION,
+        "status": "rejected",
+        "mode": "shadow_only",
+        "rco_phase": "RCO-1",
+        "legacy_answer_authoritative": True,
+        "authoritative_route": AUTHORITATIVE_ROUTE,
+        "action_attempted": False,
+        "failure_code": failure_code,
+        "policy_snapshot_id": policy_snapshot.snapshot_id,
+        "policy_version": policy_snapshot.policy_version,
+        "proposal": None,
+        "metrics": {
+            "model_calls": 0,
+            "remote_calls": 0,
+            "retrievals": 0,
+            "mutations_attempted": 0,
+            "policy_non_interference": True,
+        },
+    }
+
+
 def build_rapid_orientation_receipt(
     query: str,
     shadow_preview: Mapping[str, object],
@@ -385,63 +410,23 @@ def build_rapid_orientation_receipt(
 ) -> dict[str, object]:
     """Build one deterministic, zero-model RCO-1 receipt.
 
-    Policy failure rejects the proposal.  It never converts a degraded snapshot
+    Policy failure rejects the proposal. It never converts a degraded snapshot
     into permission and never changes the authoritative LEGACY_QUERY result.
     """
 
-    resolved_query = query if isinstance(query, str) else ""
-    resolved_request_id = request_id or _request_id(resolved_query, shadow_preview)
     if not _healthy_policy(policy_snapshot):
-        return {
-            "schema_version": RECEIPT_VERSION,
-            "status": "rejected",
-            "mode": "shadow_only",
-            "rco_phase": "RCO-1",
-            "legacy_answer_authoritative": True,
-            "authoritative_route": AUTHORITATIVE_ROUTE,
-            "action_attempted": False,
-            "failure_code": "policy_snapshot_unhealthy",
-            "policy_snapshot_id": policy_snapshot.snapshot_id,
-            "policy_version": policy_snapshot.policy_version,
-            "proposal": None,
-            "metrics": {
-                "model_calls": 0,
-                "remote_calls": 0,
-                "retrievals": 0,
-                "mutations_attempted": 0,
-                "policy_non_interference": True,
-            },
-        }
-
+        return _rejected_receipt(policy_snapshot, "policy_snapshot_unhealthy")
     if shadow_preview.get("status") != "ok":
-        return {
-            "schema_version": RECEIPT_VERSION,
-            "status": "rejected",
-            "mode": "shadow_only",
-            "rco_phase": "RCO-1",
-            "legacy_answer_authoritative": True,
-            "authoritative_route": AUTHORITATIVE_ROUTE,
-            "action_attempted": False,
-            "failure_code": "shadow_preview_unavailable",
-            "policy_snapshot_id": policy_snapshot.snapshot_id,
-            "policy_version": policy_snapshot.policy_version,
-            "proposal": None,
-            "metrics": {
-                "model_calls": 0,
-                "remote_calls": 0,
-                "retrievals": 0,
-                "mutations_attempted": 0,
-                "policy_non_interference": True,
-            },
-        }
+        return _rejected_receipt(policy_snapshot, "shadow_preview_unavailable")
 
+    resolved_request_id = request_id or _request_id(query, shadow_preview)
     context_pack = _mapping(shadow_preview.get("context_pack_preview"))
     evidence_refs = _evidence_refs(context_pack)
     contradictions = _contradictions(context_pack)
     selected_claims = len(_objects(context_pack.get("claims")))
-    goal = infer_goal_frame(resolved_query)
+    goal = infer_goal_frame(query)
     gaps = _critical_gaps(
-        resolved_query,
+        query,
         goal,
         selected_claims=selected_claims,
         contradictions=contradictions,
@@ -453,7 +438,7 @@ def build_rapid_orientation_receipt(
     )
     uncertainty = min(1.0, 0.15 * len(gaps) + 0.2 * len(contradictions))
     compute = decide_compute_path(
-        resolved_query,
+        query,
         goal=goal,
         candidate_count=selected_claims,
         uncertainty=uncertainty,
@@ -501,17 +486,18 @@ def build_rapid_orientation_receipt(
         contradictions=contradictions,
         selected_claims=selected_claims,
     )
+    route_payload = _route_payload(
+        route,
+        gaps=gaps,
+        max_reasoning_steps=compute.max_reasoning_steps,
+    )
     proposal_payload = {
         "contract_id": D16_CONTRACT_ID,
         "contract_version": D16_CONTRACT_VERSION,
         "request_id": resolved_request_id,
         "projection_id": projection_id,
         "route": route.value,
-        "route_payload": _route_payload(
-            route,
-            gaps=gaps,
-            max_reasoning_steps=compute.max_reasoning_steps,
-        ),
+        "route_payload": route_payload,
         "compute_path": compute.path.value,
         "compute_path_mapping_id": None,
         "reason_codes": list(reasons),
@@ -529,11 +515,7 @@ def build_rapid_orientation_receipt(
         request_id=resolved_request_id,
         projection_id=projection_id,
         route=route,
-        route_payload=_route_payload(
-            route,
-            gaps=gaps,
-            max_reasoning_steps=compute.max_reasoning_steps,
-        ),
+        route_payload=route_payload,
         compute_path=compute.path,
         reason_codes=reasons,
         evidence_refs=evidence_refs,
