@@ -12,6 +12,8 @@ embeddings correctly on demand and is unaffected by this module.
 """
 from __future__ import annotations
 
+import itertools
+
 import numpy as np
 import pytest
 
@@ -603,3 +605,91 @@ def test_storage_key_rejects_separator_in_model_version_not_just_model_name():
     bad_projection_version = ep.EmbeddingProjectionIdentity("f1", "hash", "model-a", "v1", "1@2")
     with pytest.raises(ValueError):
         bad_projection_version.storage_key()
+
+
+# ─── classify_available_axes(): priority, not sort order, picks the state ─
+#
+# Exercised directly against the pure function (not through check_state) so
+# every permutation of a fixed axis set can be asserted without needing a
+# real backing store per permutation.
+
+def _axis(model="model-a", version="v1", projection_version="1", content="claim text"):
+    ident = _identity(model=model, version=version, projection_version=projection_version,
+                       content=content)
+    return ident.storage_key(), ident.content_hash
+
+
+def test_same_model_version_other_projection_version_wins_over_different_model(store):
+    expected = _identity(model="model-a", version="v1", projection_version="2")
+    same_model_older_schema = _axis(model="model-a", version="v1", projection_version="1")
+    unrelated_model = _axis(model="model-b", version="v1", projection_version="2")
+
+    for axes in itertools.permutations([same_model_older_schema, unrelated_model]):
+        assert ep.classify_available_axes(expected, list(axes)) == \
+            ep.ProjectionState.STALE_PROJECTION_VERSION
+
+    # Also true when the unrelated model happens to sort alphabetically
+    # ahead of the matching one.
+    zzz_model = _axis(model="zzz-model", version="v1", projection_version="2")
+    for axes in itertools.permutations([same_model_older_schema, zzz_model]):
+        assert ep.classify_available_axes(expected, list(axes)) == \
+            ep.ProjectionState.STALE_PROJECTION_VERSION
+
+
+def test_same_model_different_version_plus_unrelated_model_is_stale_model(store):
+    expected = _identity(model="model-a", version="v2", projection_version="1")
+    same_model_older_version = _axis(model="model-a", version="v1", projection_version="1")
+    unrelated_model = _axis(model="model-b", version="v9", projection_version="1")
+
+    for axes in itertools.permutations([same_model_older_version, unrelated_model]):
+        assert ep.classify_available_axes(expected, list(axes)) == ep.ProjectionState.STALE_MODEL
+
+
+def test_corrupted_axis_first_does_not_hide_a_valid_stale_projection_version_axis(store):
+    expected = _identity(model="model-a", version="v1", projection_version="2")
+    corrupted = ("not-a-valid-key-shape", "deadbeef")
+    valid_older_schema = _axis(model="model-a", version="v1", projection_version="1")
+
+    # Corrupted entry deliberately placed first — must not change the result.
+    assert ep.classify_available_axes(expected, [corrupted, valid_older_schema]) == \
+        ep.ProjectionState.STALE_PROJECTION_VERSION
+    assert ep.classify_available_axes(expected, [valid_older_schema, corrupted]) == \
+        ep.ProjectionState.STALE_PROJECTION_VERSION
+
+
+def test_all_available_axes_corrupted_is_invalid(store):
+    expected = _identity()
+    axes = [("not-a-valid-key-shape", "deadbeef"), ("also-not-valid", "beefdead")]
+    for perm in itertools.permutations(axes):
+        assert ep.classify_available_axes(expected, list(perm)) == ep.ProjectionState.INVALID
+
+
+def test_classify_available_axes_permutation_invariant_end_to_end(store):
+    """Same set of axes, every permutation, through the real check_state()
+    path (store several coexisting axes for one record_id, none matching
+    the expected axis exactly) — not just the pure function in isolation."""
+    expected = _identity(record_id="perm-1", model="model-a", version="v1",
+                          projection_version="2")
+    variants = [
+        dict(model="model-a", version="v1", projection_version="1"),
+        dict(model="model-b", version="v1", projection_version="2"),
+        dict(model="model-c", version="v9", projection_version="9"),
+    ]
+    results = set()
+    for order in itertools.permutations(variants):
+        # A fresh on-disk store per permutation so insertion order is the
+        # only thing that changes between runs.
+        import os
+        import tempfile
+        fd, path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        fresh_backing = EmbeddingStore(path)
+        fresh_backing.ensure_table()
+        fresh_store = ep.EmbeddingProjectionStore(fresh_backing)
+        for variant in order:
+            ident = _identity(record_id="perm-1", **variant)
+            fresh_store.store(ident, _vec("claim text"))
+        results.add(fresh_store.check_state(expected))
+        os.remove(path)
+
+    assert results == {ep.ProjectionState.STALE_PROJECTION_VERSION}
