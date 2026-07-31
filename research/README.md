@@ -12,6 +12,7 @@ The root [`README.md`](../README.md) links to this research directory as the ent
 | [`EXTERNAL_ARCHITECTURE_PATTERNS.md`](EXTERNAL_ARCHITECTURE_PATTERNS.md) | neutral Titan-native patterns derived from external prior art | research / prior art |
 | [`EVALUATION_REPLAY_PROTOCOL.md`](EVALUATION_REPLAY_PROTOCOL.md) | fixed-corpus baseline, replay, fork and structural-diff protocol | partial offline prototype |
 | [`../docs/EVALUATION_REPLAY_QUICKSTART.md`](../docs/EVALUATION_REPLAY_QUICKSTART.md) | command, report classes, critical gates and fixture boundary | PR-ERP-01 implementation guide |
+| [`../docs/research/READER_CORE_LONG_DOCUMENT_ARCHITECTURE.md`](../docs/research/READER_CORE_LONG_DOCUMENT_ARCHITECTURE.md) | progressive book and long-document reading, SectionCards, coverage and selective reread | research / proposed |
 | [`RAPID_CALIBRATED_ORIENTATION.md`](RAPID_CALIBRATED_ORIENTATION.md) | read-only orientation research | research / proposed |
 | [`D16_EXECUTIVE_CONTROL_CONTRACT.md`](D16_EXECUTIVE_CONTROL_CONTRACT.md) | proposal vocabulary; no active controller authority | research / proposed |
 | [`FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md`](FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md) | failure, lifecycle and reliability boundaries | research / proposed |
