@@ -151,7 +151,7 @@ class DocumentSection:
         object.__setattr__(self, "parser_warnings", _tuple_of_text(self.parser_warnings, "parser_warning"))
 
     @classmethod
-    def create(cls, **kwargs: object) -> "DocumentSection":
+    def create(cls, **kwargs: object) -> DocumentSection:
         payload = {
             "document_id": kwargs["document_id"],
             "source_revision": kwargs["source_revision"],
