@@ -8,7 +8,7 @@ or Write Gate authority.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from hashlib import sha256
 from typing import Iterable
@@ -26,7 +26,7 @@ class ReadingSessionError(ValueError):
 
 
 class ReadingSessionBudgetExceeded(ReadingSessionError):
-    """Raised before a transition would exceed its immutable resource budget."""
+    """Raised before a transition would exceed an immutable resource budget."""
 
 
 class SessionEventKind(str, Enum):
@@ -53,8 +53,6 @@ class SessionArtifactKind(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class ReadingSessionBudget:
-    """Hard cumulative limits for one logical reading session."""
-
     max_processed_units: int = 10_000
     max_source_chars: int = 100_000_000
     max_model_tokens: int = 10_000_000
@@ -83,7 +81,7 @@ class ReadingSessionBudget:
 
 @dataclass(frozen=True, slots=True)
 class ReadingSessionUsage:
-    """Cumulative measured resource use; never a quality or truth score."""
+    """Measured resource use, never a quality or truth score."""
 
     processed_units: int = 0
     source_chars: int = 0
@@ -101,15 +99,15 @@ class ReadingSessionUsage:
         ):
             _nonnegative_int(getattr(self, name), name)
 
-    def plus(self, delta: ReadingSessionUsage) -> ReadingSessionUsage:
-        if not isinstance(delta, ReadingSessionUsage):
+    def plus(self, other: ReadingSessionUsage) -> ReadingSessionUsage:
+        if not isinstance(other, ReadingSessionUsage):
             raise ReadingSessionError("usage delta must be ReadingSessionUsage")
         return ReadingSessionUsage(
-            processed_units=self.processed_units + delta.processed_units,
-            source_chars=self.source_chars + delta.source_chars,
-            model_tokens=self.model_tokens + delta.model_tokens,
-            wall_time_ms=self.wall_time_ms + delta.wall_time_ms,
-            receipts_emitted=self.receipts_emitted + delta.receipts_emitted,
+            processed_units=self.processed_units + other.processed_units,
+            source_chars=self.source_chars + other.source_chars,
+            model_tokens=self.model_tokens + other.model_tokens,
+            wall_time_ms=self.wall_time_ms + other.wall_time_ms,
+            receipts_emitted=self.receipts_emitted + other.receipts_emitted,
         )
 
     def identity_payload(self) -> dict[str, int]:
@@ -124,15 +122,12 @@ class ReadingSessionUsage:
 
 @dataclass(frozen=True, slots=True)
 class SessionLease:
-    """Caller-supplied fenced worker ownership; not a capability grant."""
-
-    lease_id: str
     runner_id: str
     generation: int
     expires_at_ms: int
+    lease_id: str = ""
 
     def __post_init__(self) -> None:
-        _require_text(self.lease_id, "lease_id")
         _require_text(self.runner_id, "runner_id")
         _positive_int(self.generation, "generation")
         _positive_int(self.expires_at_ms, "expires_at_ms")
@@ -144,30 +139,11 @@ class SessionLease:
                 "expires_at_ms": self.expires_at_ms,
             },
         )
-        if self.lease_id != expected:
-            raise ReadingSessionError("lease_id does not match lease content")
-
-    @classmethod
-    def create(
-        cls,
-        *,
-        runner_id: str,
-        generation: int,
-        expires_at_ms: int,
-    ) -> SessionLease:
-        return cls(
-            lease_id=stable_reader_core_id(
-                "reading-session-lease",
-                {
-                    "runner_id": runner_id,
-                    "generation": generation,
-                    "expires_at_ms": expires_at_ms,
-                },
-            ),
-            runner_id=runner_id,
-            generation=generation,
-            expires_at_ms=expires_at_ms,
-        )
+        if self.lease_id:
+            if self.lease_id != expected:
+                raise ReadingSessionError("lease_id does not match lease content")
+        else:
+            object.__setattr__(self, "lease_id", expected)
 
     def identity_payload(self) -> dict[str, object]:
         return {
@@ -180,8 +156,6 @@ class SessionLease:
 
 @dataclass(frozen=True, slots=True)
 class SessionUnitArtifact:
-    """One processed unit and the current or safely reusable card reference."""
-
     unit_id: str
     artifact_id: str
     kind: SessionArtifactKind
@@ -205,9 +179,6 @@ class SessionUnitArtifact:
 
 @dataclass(frozen=True, slots=True)
 class ReadingSessionReceipt:
-    """One append-only transition receipt in a session-local hash chain."""
-
-    receipt_id: str
     session_id: str
     sequence: int
     previous_receipt_id: str | None
@@ -219,19 +190,19 @@ class ReadingSessionReceipt:
     artifact_ids: tuple[str, ...]
     usage_delta: ReadingSessionUsage
     lease_generation: int
+    receipt_id: str = ""
 
     def __post_init__(self) -> None:
-        _require_text(self.receipt_id, "receipt_id")
         _require_text(self.session_id, "session_id")
         _nonnegative_int(self.sequence, "sequence")
         if self.previous_receipt_id is not None:
             _require_text(self.previous_receipt_id, "previous_receipt_id")
         if not isinstance(self.event_kind, SessionEventKind):
-            raise ReadingSessionError("event_kind must be a SessionEventKind")
+            raise ReadingSessionError("event_kind must be SessionEventKind")
         if self.from_state is not None and not isinstance(self.from_state, SessionState):
             raise ReadingSessionError("from_state must be SessionState or None")
         if not isinstance(self.to_state, SessionState):
-            raise ReadingSessionError("to_state must be a SessionState")
+            raise ReadingSessionError("to_state must be SessionState")
         _require_text(self.reason_code, "reason_code")
         units = _unique_text_tuple(self.affected_unit_ids, "affected_unit_id")
         artifacts = _unique_text_tuple(self.artifact_ids, "artifact_id")
@@ -240,30 +211,34 @@ class ReadingSessionReceipt:
         _nonnegative_int(self.lease_generation, "lease_generation")
         object.__setattr__(self, "affected_unit_ids", units)
         object.__setattr__(self, "artifact_ids", artifacts)
-        expected = _receipt_identity(
-            session_id=self.session_id,
-            sequence=self.sequence,
-            previous_receipt_id=self.previous_receipt_id,
-            event_kind=self.event_kind,
-            from_state=self.from_state,
-            to_state=self.to_state,
-            reason_code=self.reason_code,
-            affected_unit_ids=units,
-            artifact_ids=artifacts,
-            usage_delta=self.usage_delta,
-            lease_generation=self.lease_generation,
+        expected = stable_reader_core_id(
+            "reading-session-receipt",
+            {
+                "session_id": self.session_id,
+                "sequence": self.sequence,
+                "previous_receipt_id": self.previous_receipt_id,
+                "event_kind": self.event_kind.value,
+                "from_state": (
+                    self.from_state.value if self.from_state is not None else None
+                ),
+                "to_state": self.to_state.value,
+                "reason_code": self.reason_code,
+                "affected_unit_ids": list(units),
+                "artifact_ids": list(artifacts),
+                "usage_delta": self.usage_delta.identity_payload(),
+                "lease_generation": self.lease_generation,
+            },
         )
-        if self.receipt_id != expected:
-            raise ReadingSessionError("receipt_id does not match receipt content")
+        if self.receipt_id:
+            if self.receipt_id != expected:
+                raise ReadingSessionError("receipt_id does not match receipt content")
+        else:
+            object.__setattr__(self, "receipt_id", expected)
 
 
 @dataclass(frozen=True, slots=True)
 class ReadingSession:
-    """One immutable snapshot of a logical long-document reading session."""
-
-    snapshot_id: str
     session_id: str
-    schema_version: str
     manager_version: str
     session_key_hash: str
     document_id: str
@@ -289,12 +264,12 @@ class ReadingSession:
     active_lease: SessionLease | None
     receipts: tuple[ReadingSessionReceipt, ...]
     warnings: tuple[str, ...] = ()
+    schema_version: str = READING_SESSION_SCHEMA_VERSION
+    snapshot_id: str = ""
 
     def __post_init__(self) -> None:
         for name in (
-            "snapshot_id",
             "session_id",
-            "schema_version",
             "manager_version",
             "session_key_hash",
             "document_id",
@@ -312,36 +287,31 @@ class ReadingSession:
         ):
             raise ReadingSessionError("session_key_hash must be lowercase SHA-256 hex")
         if not isinstance(self.state, SessionState):
-            raise ReadingSessionError("state must be a SessionState")
+            raise ReadingSessionError("state must be SessionState")
         _nonnegative_int(self.revision_generation, "revision_generation")
-        all_units = _ordered_unique_text_tuple(self.all_unit_ids, "all_unit_id")
-        pending = _ordered_unique_text_tuple(self.pending_unit_ids, "pending_unit_id")
-        completed = _ordered_unique_text_tuple(
-            self.completed_unit_ids,
-            "completed_unit_id",
-        )
+        all_units = _unique_text_tuple(self.all_unit_ids, "all_unit_id")
+        pending = _unique_text_tuple(self.pending_unit_ids, "pending_unit_id")
+        completed = _unique_text_tuple(self.completed_unit_ids, "completed_unit_id")
         if set(pending) & set(completed):
             raise ReadingSessionError("pending and completed units must be disjoint")
         if set(pending) | set(completed) != set(all_units):
             raise ReadingSessionError(
                 "pending and completed units must partition all_unit_ids"
             )
-        if tuple(unit_id for unit_id in all_units if unit_id in pending) != pending:
+        if tuple(unit for unit in all_units if unit in pending) != pending:
             raise ReadingSessionError("pending units must follow plan order")
-        if tuple(unit_id for unit_id in all_units if unit_id in completed) != completed:
+        if tuple(unit for unit in all_units if unit in completed) != completed:
             raise ReadingSessionError("completed units must follow plan order")
 
         artifacts = tuple(self.unit_artifacts)
         if any(not isinstance(item, SessionUnitArtifact) for item in artifacts):
-            raise ReadingSessionError(
-                "unit_artifacts must contain SessionUnitArtifact values"
-            )
-        if len({item.unit_id for item in artifacts}) != len(artifacts):
-            raise ReadingSessionError("one artifact per completed unit is allowed")
+            raise ReadingSessionError("invalid unit_artifacts value")
         if tuple(item.unit_id for item in artifacts) != completed:
             raise ReadingSessionError(
                 "unit_artifacts must match completed units in plan order"
             )
+        if len({item.artifact_id for item in artifacts}) != len(artifacts):
+            raise ReadingSessionError("unit artifact IDs must be unique")
         for artifact in artifacts:
             if (
                 artifact.kind is SessionArtifactKind.CURRENT_CARD
@@ -371,31 +341,25 @@ class ReadingSession:
             if not isinstance(self.active_lease, SessionLease):
                 raise ReadingSessionError("active_lease must be SessionLease or None")
             if self.active_lease.generation != self.lease_generation:
-                raise ReadingSessionError(
-                    "active lease generation must equal session lease_generation"
-                )
+                raise ReadingSessionError("active lease generation mismatch")
 
         receipts = tuple(self.receipts)
         if not receipts:
             raise ReadingSessionError("a session requires at least one receipt")
         if any(not isinstance(item, ReadingSessionReceipt) for item in receipts):
-            raise ReadingSessionError(
-                "receipts must contain ReadingSessionReceipt values"
-            )
+            raise ReadingSessionError("invalid receipts value")
         if tuple(item.sequence for item in receipts) != tuple(range(len(receipts))):
             raise ReadingSessionError("receipt sequences must start at zero")
         for index, receipt in enumerate(receipts):
+            expected_previous = None if index == 0 else receipts[index - 1].receipt_id
             if receipt.session_id != self.session_id:
                 raise ReadingSessionError("receipt session_id mismatch")
-            expected_previous = None if index == 0 else receipts[index - 1].receipt_id
             if receipt.previous_receipt_id != expected_previous:
                 raise ReadingSessionError("receipt hash chain is discontinuous")
         if receipts[-1].to_state != self.state:
             raise ReadingSessionError("last receipt state must equal session state")
         if self.resource_usage.receipts_emitted != len(receipts):
-            raise ReadingSessionError(
-                "receipts_emitted must equal the number of receipts"
-            )
+            raise ReadingSessionError("receipt accounting mismatch")
         warnings = _unique_text_tuple(self.warnings, "warning")
 
         object.__setattr__(self, "all_unit_ids", all_units)
@@ -405,15 +369,16 @@ class ReadingSession:
         object.__setattr__(self, "unresolved_question_refs", questions)
         object.__setattr__(self, "receipts", receipts)
         object.__setattr__(self, "warnings", warnings)
-        expected = _session_snapshot_identity(self)
-        if self.snapshot_id != expected:
-            raise ReadingSessionError("snapshot_id does not match session content")
+        expected = _session_snapshot_id(self)
+        if self.snapshot_id:
+            if self.snapshot_id != expected:
+                raise ReadingSessionError("snapshot_id does not match session content")
+        else:
+            object.__setattr__(self, "snapshot_id", expected)
 
 
 @dataclass(frozen=True, slots=True)
 class RevisionReusePair:
-    """One exact-text reuse proposal from an old card to a new reading unit."""
-
     old_unit_id: str
     new_unit_id: str
     old_artifact_id: str
@@ -442,9 +407,6 @@ class RevisionReusePair:
 
 @dataclass(frozen=True, slots=True)
 class RevisionReusePlan:
-    """Fail-closed exact-text reuse and invalidation plan across revisions."""
-
-    reuse_plan_id: str
     document_id: str
     old_source_revision: str
     new_source_revision: str
@@ -454,10 +416,10 @@ class RevisionReusePlan:
     invalidated_old_unit_ids: tuple[str, ...]
     pending_new_unit_ids: tuple[str, ...]
     warnings: tuple[str, ...] = ()
+    reuse_plan_id: str = ""
 
     def __post_init__(self) -> None:
         for name in (
-            "reuse_plan_id",
             "document_id",
             "old_source_revision",
             "new_source_revision",
@@ -469,16 +431,16 @@ class RevisionReusePlan:
             raise ReadingSessionError("revision reuse requires a changed revision")
         pairs = tuple(self.pairs)
         if any(not isinstance(item, RevisionReusePair) for item in pairs):
-            raise ReadingSessionError("pairs require RevisionReusePair values")
+            raise ReadingSessionError("invalid revision reuse pair")
         if len({item.old_unit_id for item in pairs}) != len(pairs):
             raise ReadingSessionError("old reuse unit IDs must be unique")
         if len({item.new_unit_id for item in pairs}) != len(pairs):
             raise ReadingSessionError("new reuse unit IDs must be unique")
-        invalidated = _ordered_unique_text_tuple(
+        invalidated = _unique_text_tuple(
             self.invalidated_old_unit_ids,
             "invalidated_old_unit_id",
         )
-        pending = _ordered_unique_text_tuple(
+        pending = _unique_text_tuple(
             self.pending_new_unit_ids,
             "pending_new_unit_id",
         )
@@ -501,23 +463,21 @@ class RevisionReusePlan:
                 "warnings": list(warnings),
             },
         )
-        if self.reuse_plan_id != expected:
-            raise ReadingSessionError(
-                "reuse_plan_id does not match revision reuse content"
-            )
+        if self.reuse_plan_id:
+            if self.reuse_plan_id != expected:
+                raise ReadingSessionError("reuse_plan_id does not match content")
+        else:
+            object.__setattr__(self, "reuse_plan_id", expected)
 
 
 @dataclass(frozen=True, slots=True)
 class ReadingSessionCheckpoint:
-    """Serializable checkpoint envelope for exact snapshot restoration."""
-
-    checkpoint_id: str
     session: ReadingSession
+    checkpoint_id: str = ""
 
     def __post_init__(self) -> None:
-        _require_text(self.checkpoint_id, "checkpoint_id")
         if not isinstance(self.session, ReadingSession):
-            raise ReadingSessionError("session must be a ReadingSession")
+            raise ReadingSessionError("session must be ReadingSession")
         expected = stable_reader_core_id(
             "reading-session-checkpoint",
             {
@@ -527,35 +487,17 @@ class ReadingSessionCheckpoint:
                 "last_receipt_id": self.session.receipts[-1].receipt_id,
             },
         )
-        if self.checkpoint_id != expected:
-            raise ReadingSessionError(
-                "checkpoint_id does not match checkpoint content"
-            )
-
-    @classmethod
-    def create(cls, session: ReadingSession) -> ReadingSessionCheckpoint:
-        if not isinstance(session, ReadingSession):
-            raise ReadingSessionError("session must be a ReadingSession")
-        return cls(
-            checkpoint_id=stable_reader_core_id(
-                "reading-session-checkpoint",
-                {
-                    "session_id": session.session_id,
-                    "snapshot_id": session.snapshot_id,
-                    "revision_generation": session.revision_generation,
-                    "last_receipt_id": session.receipts[-1].receipt_id,
-                },
-            ),
-            session=session,
-        )
+        if self.checkpoint_id:
+            if self.checkpoint_id != expected:
+                raise ReadingSessionError("checkpoint_id does not match content")
+        else:
+            object.__setattr__(self, "checkpoint_id", expected)
 
     def restore(self) -> ReadingSession:
         return self.session
 
 
 class ReadingSessionManager:
-    """Pure deterministic transition engine for immutable session snapshots."""
-
     manager_version = "1.0.0"
 
     def create(
@@ -569,19 +511,13 @@ class ReadingSessionManager:
         capability_lease_ref: str | None = None,
     ) -> ReadingSession:
         if not isinstance(reading_plan, HierarchicalSectionPlan):
-            raise ReadingSessionError(
-                "reading_plan must be a HierarchicalSectionPlan"
-            )
+            raise ReadingSessionError("reading_plan must be HierarchicalSectionPlan")
         _require_text(session_key, "session_key")
         _require_text(policy_snapshot_id, "policy_snapshot_id")
         _require_text(policy_version, "policy_version")
         if capability_lease_ref is not None:
             _require_text(capability_lease_ref, "capability_lease_ref")
         budget = resource_budget or ReadingSessionBudget()
-        if not isinstance(budget, ReadingSessionBudget):
-            raise ReadingSessionError(
-                "resource_budget must be ReadingSessionBudget"
-            )
         session_key_hash = sha256(session_key.encode("utf-8")).hexdigest()
         session_id = stable_reader_core_id(
             "reading-session",
@@ -594,21 +530,20 @@ class ReadingSessionManager:
             },
         )
         unit_ids = tuple(unit.unit_id for unit in reading_plan.units)
-        initial_delta = ReadingSessionUsage(receipts_emitted=1)
-        receipt = _make_receipt(
+        delta = ReadingSessionUsage(receipts_emitted=1)
+        receipt = self._receipt(
             session_id=session_id,
-            sequence=0,
-            previous_receipt_id=None,
+            receipts=(),
             event_kind=SessionEventKind.CREATED,
             from_state=None,
             to_state=SessionState.CREATED,
             reason_code="session_created",
             affected_unit_ids=unit_ids,
             artifact_ids=(),
-            usage_delta=initial_delta,
+            usage_delta=delta,
             lease_generation=0,
         )
-        return _build_session(
+        return ReadingSession(
             session_id=session_id,
             manager_version=self.manager_version,
             session_key_hash=session_key_hash,
@@ -627,14 +562,13 @@ class ReadingSessionManager:
             relation_set_id=None,
             unresolved_question_refs=(),
             resource_budget=budget,
-            resource_usage=initial_delta,
+            resource_usage=delta,
             policy_snapshot_id=policy_snapshot_id,
             policy_version=policy_version,
             capability_lease_ref=capability_lease_ref,
             lease_generation=0,
             active_lease=None,
             receipts=(receipt,),
-            warnings=(),
         )
 
     def claim(
@@ -645,7 +579,7 @@ class ReadingSessionManager:
         expires_at_ms: int,
         now_ms: int,
     ) -> ReadingSession:
-        self._validate_session(session)
+        self._session(session)
         _require_text(runner_id, "runner_id")
         _positive_int(expires_at_ms, "expires_at_ms")
         _nonnegative_int(now_ms, "now_ms")
@@ -660,19 +594,33 @@ class ReadingSessionManager:
         if session.active_lease is not None and session.active_lease.expires_at_ms > now_ms:
             raise ReadingSessionError("session already has an unexpired lease")
         generation = session.lease_generation + 1
-        lease = SessionLease.create(
+        lease = SessionLease(
             runner_id=runner_id,
             generation=generation,
             expires_at_ms=expires_at_ms,
         )
-        return self._advance(
-            session,
+        delta = ReadingSessionUsage(receipts_emitted=1)
+        receipt = self._receipt(
+            session_id=session.session_id,
+            receipts=session.receipts,
             event_kind=SessionEventKind.LEASE_CLAIMED,
+            from_state=session.state,
             to_state=session.state,
             reason_code="session_lease_claimed",
-            usage_delta=ReadingSessionUsage(receipts_emitted=1),
+            affected_unit_ids=(),
+            artifact_ids=(),
+            usage_delta=delta,
+            lease_generation=generation,
+        )
+        usage = session.resource_usage.plus(delta)
+        _validate_usage(usage, session.resource_budget)
+        return replace(
+            session,
+            snapshot_id="",
             lease_generation=generation,
             active_lease=lease,
+            resource_usage=usage,
+            receipts=(*session.receipts, receipt),
         )
 
     def renew_lease(
@@ -683,21 +631,19 @@ class ReadingSessionManager:
         expires_at_ms: int,
         now_ms: int,
     ) -> ReadingSession:
-        self._assert_lease(session, lease, now_ms=now_ms)
-        _positive_int(expires_at_ms, "expires_at_ms")
+        self._lease(session, lease, now_ms)
         if expires_at_ms <= max(now_ms, lease.expires_at_ms):
-            raise ReadingSessionError("renewed lease must extend the current expiry")
-        renewed = SessionLease.create(
+            raise ReadingSessionError("renewed lease must extend current expiry")
+        renewed = SessionLease(
             runner_id=lease.runner_id,
             generation=lease.generation,
             expires_at_ms=expires_at_ms,
         )
-        return self._advance(
+        return self._simple_transition(
             session,
             event_kind=SessionEventKind.LEASE_RENEWED,
             to_state=session.state,
             reason_code="session_lease_renewed",
-            usage_delta=ReadingSessionUsage(receipts_emitted=1),
             active_lease=renewed,
         )
 
@@ -708,25 +654,24 @@ class ReadingSessionManager:
         *,
         now_ms: int,
     ) -> ReadingSession:
-        self._assert_lease(session, lease, now_ms=now_ms)
+        self._lease(session, lease, now_ms)
         if session.state not in {
             SessionState.CREATED,
             SessionState.PAUSED,
             SessionState.DEGRADED,
         }:
-            raise ReadingSessionError("session cannot start from its current state")
+            raise ReadingSessionError("session cannot start from current state")
         event = (
             SessionEventKind.STARTED
             if session.state is SessionState.CREATED
             else SessionEventKind.RESUMED
         )
         reason = "session_started" if event is SessionEventKind.STARTED else "session_resumed"
-        return self._advance(
+        return self._simple_transition(
             session,
             event_kind=event,
             to_state=SessionState.READING,
             reason_code=reason,
-            usage_delta=ReadingSessionUsage(receipts_emitted=1),
         )
 
     def record_cards(
@@ -738,7 +683,7 @@ class ReadingSessionManager:
         usage_delta: ReadingSessionUsage,
         now_ms: int,
     ) -> ReadingSession:
-        self._assert_lease(session, lease, now_ms=now_ms)
+        self._lease(session, lease, now_ms)
         if session.state is not SessionState.READING:
             raise ReadingSessionError("cards may be recorded only while READING")
         card_tuple = tuple(cards)
@@ -747,8 +692,9 @@ class ReadingSessionManager:
         if any(not isinstance(card, SectionCard) for card in card_tuple):
             raise ReadingSessionError("cards must contain SectionCard values")
         if len({card.unit_id for card in card_tuple}) != len(card_tuple):
-            raise ReadingSessionError("cards must contain at most one card per unit")
+            raise ReadingSessionError("one card per unit is allowed")
         pending = set(session.pending_unit_ids)
+        cards_by_unit: dict[str, SectionCard] = {}
         for card in card_tuple:
             if (
                 card.document_id != session.document_id
@@ -758,22 +704,18 @@ class ReadingSessionManager:
             ):
                 raise ReadingSessionError("card identity must match session")
             if card.unit_id not in pending:
-                raise ReadingSessionError("card unit must be pending in the session")
+                raise ReadingSessionError("card unit must be pending")
+            cards_by_unit[card.unit_id] = card
         if usage_delta.processed_units != len(card_tuple):
-            raise ReadingSessionError(
-                "usage_delta.processed_units must equal recorded card count"
-            )
+            raise ReadingSessionError("processed_units must equal card count")
         if usage_delta.receipts_emitted != 0:
-            raise ReadingSessionError(
-                "caller usage_delta must not include receipt accounting"
-            )
+            raise ReadingSessionError("caller delta must exclude receipt accounting")
         full_delta = usage_delta.plus(ReadingSessionUsage(receipts_emitted=1))
-        new_usage = session.resource_usage.plus(full_delta)
-        _validate_usage(new_usage, session.resource_budget)
-        cards_by_unit = {card.unit_id: card for card in card_tuple}
-        artifacts_by_unit = {item.unit_id: item for item in session.unit_artifacts}
+        usage = session.resource_usage.plus(full_delta)
+        _validate_usage(usage, session.resource_budget)
+        existing = {item.unit_id: item for item in session.unit_artifacts}
         for card in card_tuple:
-            artifacts_by_unit[card.unit_id] = SessionUnitArtifact(
+            existing[card.unit_id] = SessionUnitArtifact(
                 unit_id=card.unit_id,
                 artifact_id=card.card_id,
                 kind=SessionArtifactKind.CURRENT_CARD,
@@ -781,25 +723,37 @@ class ReadingSessionManager:
             )
         completed_set = set(session.completed_unit_ids) | set(cards_by_unit)
         completed = tuple(
-            unit_id for unit_id in session.all_unit_ids if unit_id in completed_set
+            unit for unit in session.all_unit_ids if unit in completed_set
         )
         new_pending = tuple(
-            unit_id for unit_id in session.all_unit_ids if unit_id not in completed_set
+            unit for unit in session.all_unit_ids if unit not in completed_set
         )
-        artifacts = tuple(artifacts_by_unit[unit_id] for unit_id in completed)
-        ordered_cards = tuple(cards_by_unit[unit_id] for unit_id in session.all_unit_ids if unit_id in cards_by_unit)
-        return self._advance(
-            session,
+        artifacts = tuple(existing[unit] for unit in completed)
+        ordered_cards = tuple(
+            cards_by_unit[unit]
+            for unit in session.all_unit_ids
+            if unit in cards_by_unit
+        )
+        receipt = self._receipt(
+            session_id=session.session_id,
+            receipts=session.receipts,
             event_kind=SessionEventKind.CARDS_RECORDED,
-            to_state=SessionState.READING,
+            from_state=session.state,
+            to_state=session.state,
             reason_code="section_cards_recorded",
             affected_unit_ids=tuple(card.unit_id for card in ordered_cards),
             artifact_ids=tuple(card.card_id for card in ordered_cards),
             usage_delta=full_delta,
-            resource_usage=new_usage,
+            lease_generation=session.lease_generation,
+        )
+        return replace(
+            session,
+            snapshot_id="",
             pending_unit_ids=new_pending,
             completed_unit_ids=completed,
             unit_artifacts=artifacts,
+            resource_usage=usage,
+            receipts=(*session.receipts, receipt),
         )
 
     def attach_artifacts(
@@ -813,7 +767,7 @@ class ReadingSessionManager:
         unresolved_question_refs: Iterable[str] | None = None,
         now_ms: int,
     ) -> ReadingSession:
-        self._assert_lease(session, lease, now_ms=now_ms)
+        self._lease(session, lease, now_ms)
         if session.state not in {
             SessionState.READING,
             SessionState.PAUSED,
@@ -838,22 +792,35 @@ class ReadingSessionManager:
                 "unresolved_question_ref",
             )
         )
+        delta = ReadingSessionUsage(receipts_emitted=1)
+        usage = session.resource_usage.plus(delta)
+        _validate_usage(usage, session.resource_budget)
         artifact_ids = tuple(
             value
             for value in (next_coverage, next_reread, next_relation)
             if value is not None
         )
-        return self._advance(
-            session,
+        receipt = self._receipt(
+            session_id=session.session_id,
+            receipts=session.receipts,
             event_kind=SessionEventKind.ARTIFACTS_ATTACHED,
+            from_state=session.state,
             to_state=session.state,
             reason_code="derived_artifacts_attached",
+            affected_unit_ids=(),
             artifact_ids=artifact_ids,
-            usage_delta=ReadingSessionUsage(receipts_emitted=1),
+            usage_delta=delta,
+            lease_generation=session.lease_generation,
+        )
+        return replace(
+            session,
+            snapshot_id="",
             coverage_map_id=next_coverage,
             reread_plan_id=next_reread,
             relation_set_id=next_relation,
             unresolved_question_refs=questions,
+            resource_usage=usage,
+            receipts=(*session.receipts, receipt),
         )
 
     def pause(
@@ -864,16 +831,14 @@ class ReadingSessionManager:
         reason_code: str,
         now_ms: int,
     ) -> ReadingSession:
-        self._assert_lease(session, lease, now_ms=now_ms)
-        _require_text(reason_code, "reason_code")
+        self._lease(session, lease, now_ms)
         if session.state not in {SessionState.READING, SessionState.DEGRADED}:
             raise ReadingSessionError("only active sessions may be paused")
-        return self._advance(
+        return self._simple_transition(
             session,
             event_kind=SessionEventKind.PAUSED,
             to_state=SessionState.PAUSED,
             reason_code=reason_code,
-            usage_delta=ReadingSessionUsage(receipts_emitted=1),
             active_lease=None,
         )
 
@@ -885,16 +850,14 @@ class ReadingSessionManager:
         reason_code: str,
         now_ms: int,
     ) -> ReadingSession:
-        self._assert_lease(session, lease, now_ms=now_ms)
-        _require_text(reason_code, "reason_code")
+        self._lease(session, lease, now_ms)
         if session.state is not SessionState.READING:
             raise ReadingSessionError("only READING sessions may degrade")
-        return self._advance(
+        return self._simple_transition(
             session,
             event_kind=SessionEventKind.DEGRADED,
             to_state=SessionState.DEGRADED,
             reason_code=reason_code,
-            usage_delta=ReadingSessionUsage(receipts_emitted=1),
         )
 
     def complete(
@@ -904,19 +867,18 @@ class ReadingSessionManager:
         *,
         now_ms: int,
     ) -> ReadingSession:
-        self._assert_lease(session, lease, now_ms=now_ms)
+        self._lease(session, lease, now_ms)
         if session.state not in {SessionState.READING, SessionState.DEGRADED}:
-            raise ReadingSessionError("session cannot complete from this state")
+            raise ReadingSessionError("session cannot complete from current state")
         if session.pending_unit_ids:
             raise ReadingSessionError("session cannot complete with pending units")
         if session.coverage_map_id is None:
             raise ReadingSessionError("session completion requires a CoverageMap")
-        return self._advance(
+        return self._simple_transition(
             session,
             event_kind=SessionEventKind.COMPLETED,
             to_state=SessionState.COMPLETED,
             reason_code="session_completed",
-            usage_delta=ReadingSessionUsage(receipts_emitted=1),
             active_lease=None,
         )
 
@@ -928,20 +890,18 @@ class ReadingSessionManager:
         reason_code: str,
         now_ms: int,
     ) -> ReadingSession:
-        self._assert_lease(session, lease, now_ms=now_ms)
-        _require_text(reason_code, "reason_code")
+        self._lease(session, lease, now_ms)
         if session.state in {
             SessionState.COMPLETED,
             SessionState.FAILED,
             SessionState.CANCELLED,
         }:
             raise ReadingSessionError("terminal session cannot fail again")
-        return self._advance(
+        return self._simple_transition(
             session,
             event_kind=SessionEventKind.FAILED,
             to_state=SessionState.FAILED,
             reason_code=reason_code,
-            usage_delta=ReadingSessionUsage(receipts_emitted=1),
             active_lease=None,
         )
 
@@ -953,20 +913,18 @@ class ReadingSessionManager:
         reason_code: str,
         now_ms: int,
     ) -> ReadingSession:
-        self._assert_lease(session, lease, now_ms=now_ms)
-        _require_text(reason_code, "reason_code")
+        self._lease(session, lease, now_ms)
         if session.state in {
             SessionState.COMPLETED,
             SessionState.FAILED,
             SessionState.CANCELLED,
         }:
             raise ReadingSessionError("terminal session cannot be cancelled")
-        return self._advance(
+        return self._simple_transition(
             session,
             event_kind=SessionEventKind.CANCELLED,
             to_state=SessionState.CANCELLED,
             reason_code=reason_code,
-            usage_delta=ReadingSessionUsage(receipts_emitted=1),
             active_lease=None,
         )
 
@@ -978,16 +936,14 @@ class ReadingSessionManager:
         reason_code: str,
         now_ms: int,
     ) -> ReadingSession:
-        self._assert_lease(session, lease, now_ms=now_ms)
-        _require_text(reason_code, "reason_code")
+        self._lease(session, lease, now_ms)
         if session.state in {SessionState.FAILED, SessionState.CANCELLED}:
             raise ReadingSessionError("failed or cancelled sessions cannot become stale")
-        return self._advance(
+        return self._simple_transition(
             session,
             event_kind=SessionEventKind.STALE,
             to_state=SessionState.STALE,
             reason_code=reason_code,
-            usage_delta=ReadingSessionUsage(receipts_emitted=1),
             active_lease=None,
         )
 
@@ -999,36 +955,37 @@ class ReadingSessionManager:
         new_source: RawSource,
         new_plan: HierarchicalSectionPlan,
     ) -> RevisionReusePlan:
-        self._validate_session(session)
+        self._session(session)
         _validate_source_plan(old_source, old_plan)
         _validate_source_plan(new_source, new_plan)
-        if session.document_id != old_plan.document_id:
-            raise ReadingSessionError("old plan document must match session")
-        if session.source_revision != old_plan.source_revision:
-            raise ReadingSessionError("old plan revision must match session")
-        if session.plan_id != old_plan.plan_id:
-            raise ReadingSessionError("old plan ID must match session")
+        if (
+            session.document_id != old_plan.document_id
+            or session.source_revision != old_plan.source_revision
+            or session.plan_id != old_plan.plan_id
+        ):
+            raise ReadingSessionError("old plan must match session")
         if old_plan.document_id != new_plan.document_id:
             raise ReadingSessionError("revision plans must share document_id")
         if old_plan.source_revision == new_plan.source_revision:
             raise ReadingSessionError("new plan must use a changed revision")
-
         old_units = {unit.unit_id: unit for unit in old_plan.units}
         new_by_fingerprint = _units_by_fingerprint(new_source, new_plan.units)
-        old_completed_by_fingerprint: dict[str, list[tuple[ReadingUnit, SessionUnitArtifact]]] = {}
-        artifacts_by_unit = {item.unit_id: item for item in session.unit_artifacts}
+        artifacts = {item.unit_id: item for item in session.unit_artifacts}
+        old_by_fingerprint: dict[
+            str,
+            list[tuple[ReadingUnit, SessionUnitArtifact]],
+        ] = {}
         for unit_id in session.completed_unit_ids:
             unit = old_units[unit_id]
-            artifact = artifacts_by_unit[unit_id]
-            fingerprint = _unit_fingerprint(old_source, unit)
-            old_completed_by_fingerprint.setdefault(fingerprint, []).append(
-                (unit, artifact)
-            )
+            old_by_fingerprint.setdefault(
+                _unit_fingerprint(old_source, unit),
+                [],
+            ).append((unit, artifacts[unit_id]))
 
         pairs: list[RevisionReusePair] = []
         ambiguous = False
-        for fingerprint in sorted(old_completed_by_fingerprint):
-            old_matches = old_completed_by_fingerprint[fingerprint]
+        for fingerprint in sorted(old_by_fingerprint):
+            old_matches = old_by_fingerprint[fingerprint]
             new_matches = new_by_fingerprint.get(fingerprint, [])
             if len(old_matches) != 1 or len(new_matches) != 1:
                 if new_matches:
@@ -1049,35 +1006,20 @@ class ReadingSessionManager:
                     source_text_hash=old_unit.source_span.text_hash,
                 )
             )
-        old_pair_ids = {item.old_unit_id for item in pairs}
-        new_pair_ids = {item.new_unit_id for item in pairs}
+        old_reused = {item.old_unit_id for item in pairs}
+        new_reused = {item.new_unit_id for item in pairs}
         invalidated = tuple(
-            unit_id
-            for unit_id in session.completed_unit_ids
-            if unit_id not in old_pair_ids
+            unit
+            for unit in session.completed_unit_ids
+            if unit not in old_reused
         )
         pending_new = tuple(
-            unit.unit_id for unit in new_plan.units if unit.unit_id not in new_pair_ids
+            unit.unit_id for unit in new_plan.units if unit.unit_id not in new_reused
         )
         warnings = (
             ("ambiguous_identical_unit_text_not_reused",) if ambiguous else ()
         )
-        payload = {
-            "document_id": session.document_id,
-            "old_source_revision": old_plan.source_revision,
-            "new_source_revision": new_plan.source_revision,
-            "old_plan_id": old_plan.plan_id,
-            "new_plan_id": new_plan.plan_id,
-            "pairs": [item.identity_payload() for item in pairs],
-            "invalidated_old_unit_ids": list(invalidated),
-            "pending_new_unit_ids": list(pending_new),
-            "warnings": list(warnings),
-        }
         return RevisionReusePlan(
-            reuse_plan_id=stable_reader_core_id(
-                "reading-session-revision-reuse-plan",
-                payload,
-            ),
             document_id=session.document_id,
             old_source_revision=old_plan.source_revision,
             new_source_revision=new_plan.source_revision,
@@ -1100,7 +1042,7 @@ class ReadingSessionManager:
         policy_version: str,
         now_ms: int,
     ) -> ReadingSession:
-        self._assert_lease(session, lease, now_ms=now_ms)
+        self._lease(session, lease, now_ms)
         if session.state is not SessionState.STALE:
             raise ReadingSessionError("only STALE sessions may be revision-rebased")
         if not isinstance(new_plan, HierarchicalSectionPlan):
@@ -1117,31 +1059,42 @@ class ReadingSessionManager:
             raise ReadingSessionError("reuse plan does not match session and new plan")
         _require_text(policy_snapshot_id, "policy_snapshot_id")
         _require_text(policy_version, "policy_version")
-        pairs_by_new = {item.new_unit_id: item for item in reuse_plan.pairs}
+        pairs = {item.new_unit_id: item for item in reuse_plan.pairs}
         all_units = tuple(unit.unit_id for unit in new_plan.units)
-        completed = tuple(unit_id for unit_id in all_units if unit_id in pairs_by_new)
+        completed = tuple(unit for unit in all_units if unit in pairs)
+        pending = tuple(unit for unit in all_units if unit not in pairs)
         artifacts = tuple(
             SessionUnitArtifact(
-                unit_id=unit_id,
-                artifact_id=pairs_by_new[unit_id].old_artifact_id,
+                unit_id=unit,
+                artifact_id=pairs[unit].old_artifact_id,
                 kind=SessionArtifactKind.REUSED_CARD,
-                artifact_source_revision=pairs_by_new[unit_id].old_source_revision,
+                artifact_source_revision=pairs[unit].old_source_revision,
             )
-            for unit_id in completed
+            for unit in completed
         )
-        pending = tuple(unit_id for unit_id in all_units if unit_id not in pairs_by_new)
-        return self._advance(
-            session,
+        delta = ReadingSessionUsage(receipts_emitted=1)
+        usage = session.resource_usage.plus(delta)
+        _validate_usage(usage, session.resource_budget)
+        receipt = self._receipt(
+            session_id=session.session_id,
+            receipts=session.receipts,
             event_kind=SessionEventKind.REVISION_REBASED,
+            from_state=session.state,
             to_state=SessionState.CREATED,
             reason_code="source_revision_rebased",
             affected_unit_ids=completed,
             artifact_ids=tuple(item.artifact_id for item in artifacts),
-            usage_delta=ReadingSessionUsage(receipts_emitted=1),
+            usage_delta=delta,
+            lease_generation=session.lease_generation,
+        )
+        return replace(
+            session,
+            snapshot_id="",
             document_id=new_plan.document_id,
             source_revision=new_plan.source_revision,
             structure_map_id=new_plan.structure_map_id,
             plan_id=new_plan.plan_id,
+            state=SessionState.CREATED,
             revision_generation=session.revision_generation + 1,
             all_unit_ids=all_units,
             pending_unit_ids=pending,
@@ -1151,30 +1104,96 @@ class ReadingSessionManager:
             reread_plan_id=None,
             relation_set_id=None,
             unresolved_question_refs=(),
+            resource_usage=usage,
             policy_snapshot_id=policy_snapshot_id,
             policy_version=policy_version,
+            receipts=(*session.receipts, receipt),
             warnings=tuple(dict.fromkeys((*session.warnings, *reuse_plan.warnings))),
         )
 
     @staticmethod
     def checkpoint(session: ReadingSession) -> ReadingSessionCheckpoint:
-        return ReadingSessionCheckpoint.create(session)
+        return ReadingSessionCheckpoint(session=session)
+
+    def _simple_transition(
+        self,
+        session: ReadingSession,
+        *,
+        event_kind: SessionEventKind,
+        to_state: SessionState,
+        reason_code: str,
+        active_lease: SessionLease | None | object = ..., 
+    ) -> ReadingSession:
+        _require_text(reason_code, "reason_code")
+        delta = ReadingSessionUsage(receipts_emitted=1)
+        usage = session.resource_usage.plus(delta)
+        _validate_usage(usage, session.resource_budget)
+        receipt = self._receipt(
+            session_id=session.session_id,
+            receipts=session.receipts,
+            event_kind=event_kind,
+            from_state=session.state,
+            to_state=to_state,
+            reason_code=reason_code,
+            affected_unit_ids=(),
+            artifact_ids=(),
+            usage_delta=delta,
+            lease_generation=session.lease_generation,
+        )
+        next_lease = session.active_lease if active_lease is ... else active_lease
+        if next_lease is not None and not isinstance(next_lease, SessionLease):
+            raise ReadingSessionError("active_lease must be SessionLease or None")
+        return replace(
+            session,
+            snapshot_id="",
+            state=to_state,
+            active_lease=next_lease,
+            resource_usage=usage,
+            receipts=(*session.receipts, receipt),
+        )
 
     @staticmethod
-    def _validate_session(session: ReadingSession) -> None:
-        if not isinstance(session, ReadingSession):
-            raise ReadingSessionError("session must be a ReadingSession")
+    def _receipt(
+        *,
+        session_id: str,
+        receipts: tuple[ReadingSessionReceipt, ...],
+        event_kind: SessionEventKind,
+        from_state: SessionState | None,
+        to_state: SessionState,
+        reason_code: str,
+        affected_unit_ids: tuple[str, ...],
+        artifact_ids: tuple[str, ...],
+        usage_delta: ReadingSessionUsage,
+        lease_generation: int,
+    ) -> ReadingSessionReceipt:
+        return ReadingSessionReceipt(
+            session_id=session_id,
+            sequence=len(receipts),
+            previous_receipt_id=(receipts[-1].receipt_id if receipts else None),
+            event_kind=event_kind,
+            from_state=from_state,
+            to_state=to_state,
+            reason_code=reason_code,
+            affected_unit_ids=affected_unit_ids,
+            artifact_ids=artifact_ids,
+            usage_delta=usage_delta,
+            lease_generation=lease_generation,
+        )
 
-    def _assert_lease(
+    @staticmethod
+    def _session(session: ReadingSession) -> None:
+        if not isinstance(session, ReadingSession):
+            raise ReadingSessionError("session must be ReadingSession")
+
+    def _lease(
         self,
         session: ReadingSession,
         lease: SessionLease,
-        *,
         now_ms: int,
     ) -> None:
-        self._validate_session(session)
+        self._session(session)
         if not isinstance(lease, SessionLease):
-            raise ReadingSessionError("lease must be a SessionLease")
+            raise ReadingSessionError("lease must be SessionLease")
         _nonnegative_int(now_ms, "now_ms")
         if session.active_lease is None:
             raise ReadingSessionError("session has no active lease")
@@ -1185,309 +1204,44 @@ class ReadingSessionManager:
         if lease.expires_at_ms <= now_ms:
             raise ReadingSessionError("session lease has expired")
 
-    def _advance(
-        self,
-        session: ReadingSession,
-        *,
-        event_kind: SessionEventKind,
-        to_state: SessionState,
-        reason_code: str,
-        usage_delta: ReadingSessionUsage,
-        affected_unit_ids: tuple[str, ...] = (),
-        artifact_ids: tuple[str, ...] = (),
-        **changes: object,
-    ) -> ReadingSession:
-        if usage_delta.receipts_emitted != 1:
-            raise ReadingSessionError(
-                "every session transition must account for exactly one receipt"
-            )
-        resource_usage = changes.pop(
-            "resource_usage",
-            session.resource_usage.plus(usage_delta),
-        )
-        if not isinstance(resource_usage, ReadingSessionUsage):
-            raise ReadingSessionError("resource_usage must be ReadingSessionUsage")
-        _validate_usage(resource_usage, session.resource_budget)
-        lease_generation = changes.get("lease_generation", session.lease_generation)
-        if not isinstance(lease_generation, int):
-            raise ReadingSessionError("lease_generation must be an integer")
-        receipt = _make_receipt(
-            session_id=session.session_id,
-            sequence=len(session.receipts),
-            previous_receipt_id=session.receipts[-1].receipt_id,
-            event_kind=event_kind,
-            from_state=session.state,
-            to_state=to_state,
-            reason_code=reason_code,
-            affected_unit_ids=affected_unit_ids,
-            artifact_ids=artifact_ids,
-            usage_delta=usage_delta,
-            lease_generation=lease_generation,
-        )
-        fields: dict[str, object] = {
-            "session_id": session.session_id,
-            "manager_version": session.manager_version,
-            "session_key_hash": session.session_key_hash,
-            "document_id": session.document_id,
-            "source_revision": session.source_revision,
-            "structure_map_id": session.structure_map_id,
-            "plan_id": session.plan_id,
-            "state": to_state,
-            "revision_generation": session.revision_generation,
-            "all_unit_ids": session.all_unit_ids,
-            "pending_unit_ids": session.pending_unit_ids,
-            "completed_unit_ids": session.completed_unit_ids,
-            "unit_artifacts": session.unit_artifacts,
-            "coverage_map_id": session.coverage_map_id,
-            "reread_plan_id": session.reread_plan_id,
-            "relation_set_id": session.relation_set_id,
-            "unresolved_question_refs": session.unresolved_question_refs,
-            "resource_budget": session.resource_budget,
-            "resource_usage": resource_usage,
-            "policy_snapshot_id": session.policy_snapshot_id,
-            "policy_version": session.policy_version,
-            "capability_lease_ref": session.capability_lease_ref,
-            "lease_generation": session.lease_generation,
-            "active_lease": session.active_lease,
-            "receipts": (*session.receipts, receipt),
-            "warnings": session.warnings,
-        }
-        fields.update(changes)
-        return _build_session(**fields)
 
-
-def _build_session(
-    *,
-    session_id: str,
-    manager_version: str,
-    session_key_hash: str,
-    document_id: str,
-    source_revision: str,
-    structure_map_id: str,
-    plan_id: str,
-    state: SessionState,
-    revision_generation: int,
-    all_unit_ids: tuple[str, ...],
-    pending_unit_ids: tuple[str, ...],
-    completed_unit_ids: tuple[str, ...],
-    unit_artifacts: tuple[SessionUnitArtifact, ...],
-    coverage_map_id: str | None,
-    reread_plan_id: str | None,
-    relation_set_id: str | None,
-    unresolved_question_refs: tuple[str, ...],
-    resource_budget: ReadingSessionBudget,
-    resource_usage: ReadingSessionUsage,
-    policy_snapshot_id: str,
-    policy_version: str,
-    capability_lease_ref: str | None,
-    lease_generation: int,
-    active_lease: SessionLease | None,
-    receipts: tuple[ReadingSessionReceipt, ...],
-    warnings: tuple[str, ...],
-) -> ReadingSession:
-    draft = {
-        "session_id": session_id,
-        "schema_version": READING_SESSION_SCHEMA_VERSION,
-        "manager_version": manager_version,
-        "session_key_hash": session_key_hash,
-        "document_id": document_id,
-        "source_revision": source_revision,
-        "structure_map_id": structure_map_id,
-        "plan_id": plan_id,
-        "state": state,
-        "revision_generation": revision_generation,
-        "all_unit_ids": all_unit_ids,
-        "pending_unit_ids": pending_unit_ids,
-        "completed_unit_ids": completed_unit_ids,
-        "unit_artifacts": unit_artifacts,
-        "coverage_map_id": coverage_map_id,
-        "reread_plan_id": reread_plan_id,
-        "relation_set_id": relation_set_id,
-        "unresolved_question_refs": unresolved_question_refs,
-        "resource_budget": resource_budget,
-        "resource_usage": resource_usage,
-        "policy_snapshot_id": policy_snapshot_id,
-        "policy_version": policy_version,
-        "capability_lease_ref": capability_lease_ref,
-        "lease_generation": lease_generation,
-        "active_lease": active_lease,
-        "receipts": receipts,
-        "warnings": warnings,
-    }
-    snapshot_id = _session_snapshot_identity_payload(draft)
-    return ReadingSession(snapshot_id=snapshot_id, **draft)
-
-
-def _make_receipt(
-    *,
-    session_id: str,
-    sequence: int,
-    previous_receipt_id: str | None,
-    event_kind: SessionEventKind,
-    from_state: SessionState | None,
-    to_state: SessionState,
-    reason_code: str,
-    affected_unit_ids: tuple[str, ...],
-    artifact_ids: tuple[str, ...],
-    usage_delta: ReadingSessionUsage,
-    lease_generation: int,
-) -> ReadingSessionReceipt:
-    return ReadingSessionReceipt(
-        receipt_id=_receipt_identity(
-            session_id=session_id,
-            sequence=sequence,
-            previous_receipt_id=previous_receipt_id,
-            event_kind=event_kind,
-            from_state=from_state,
-            to_state=to_state,
-            reason_code=reason_code,
-            affected_unit_ids=affected_unit_ids,
-            artifact_ids=artifact_ids,
-            usage_delta=usage_delta,
-            lease_generation=lease_generation,
-        ),
-        session_id=session_id,
-        sequence=sequence,
-        previous_receipt_id=previous_receipt_id,
-        event_kind=event_kind,
-        from_state=from_state,
-        to_state=to_state,
-        reason_code=reason_code,
-        affected_unit_ids=affected_unit_ids,
-        artifact_ids=artifact_ids,
-        usage_delta=usage_delta,
-        lease_generation=lease_generation,
-    )
-
-
-def _receipt_identity(
-    *,
-    session_id: str,
-    sequence: int,
-    previous_receipt_id: str | None,
-    event_kind: SessionEventKind,
-    from_state: SessionState | None,
-    to_state: SessionState,
-    reason_code: str,
-    affected_unit_ids: tuple[str, ...],
-    artifact_ids: tuple[str, ...],
-    usage_delta: ReadingSessionUsage,
-    lease_generation: int,
-) -> str:
-    return stable_reader_core_id(
-        "reading-session-receipt",
-        {
-            "session_id": session_id,
-            "sequence": sequence,
-            "previous_receipt_id": previous_receipt_id,
-            "event_kind": event_kind.value,
-            "from_state": from_state.value if from_state is not None else None,
-            "to_state": to_state.value,
-            "reason_code": reason_code,
-            "affected_unit_ids": list(affected_unit_ids),
-            "artifact_ids": list(artifact_ids),
-            "usage_delta": usage_delta.identity_payload(),
-            "lease_generation": lease_generation,
-        },
-    )
-
-
-def _session_snapshot_identity(session: ReadingSession) -> str:
-    return _session_snapshot_identity_payload(
-        {
-            "session_id": session.session_id,
-            "schema_version": session.schema_version,
-            "manager_version": session.manager_version,
-            "session_key_hash": session.session_key_hash,
-            "document_id": session.document_id,
-            "source_revision": session.source_revision,
-            "structure_map_id": session.structure_map_id,
-            "plan_id": session.plan_id,
-            "state": session.state,
-            "revision_generation": session.revision_generation,
-            "all_unit_ids": session.all_unit_ids,
-            "pending_unit_ids": session.pending_unit_ids,
-            "completed_unit_ids": session.completed_unit_ids,
-            "unit_artifacts": session.unit_artifacts,
-            "coverage_map_id": session.coverage_map_id,
-            "reread_plan_id": session.reread_plan_id,
-            "relation_set_id": session.relation_set_id,
-            "unresolved_question_refs": session.unresolved_question_refs,
-            "resource_budget": session.resource_budget,
-            "resource_usage": session.resource_usage,
-            "policy_snapshot_id": session.policy_snapshot_id,
-            "policy_version": session.policy_version,
-            "capability_lease_ref": session.capability_lease_ref,
-            "lease_generation": session.lease_generation,
-            "active_lease": session.active_lease,
-            "receipts": session.receipts,
-            "warnings": session.warnings,
-        }
-    )
-
-
-def _session_snapshot_identity_payload(fields: dict[str, object]) -> str:
-    budget = fields["resource_budget"]
-    usage = fields["resource_usage"]
-    state = fields["state"]
-    artifacts = fields["unit_artifacts"]
-    active_lease = fields["active_lease"]
-    receipts = fields["receipts"]
-    if not isinstance(budget, ReadingSessionBudget):
-        raise ReadingSessionError("resource_budget must be ReadingSessionBudget")
-    if not isinstance(usage, ReadingSessionUsage):
-        raise ReadingSessionError("resource_usage must be ReadingSessionUsage")
-    if not isinstance(state, SessionState):
-        raise ReadingSessionError("state must be SessionState")
-    if not isinstance(artifacts, tuple):
-        raise ReadingSessionError("unit_artifacts must be a tuple")
-    if not isinstance(receipts, tuple):
-        raise ReadingSessionError("receipts must be a tuple")
+def _session_snapshot_id(session: ReadingSession) -> str:
     return stable_reader_core_id(
         "reading-session-snapshot",
         {
-            "session_id": fields["session_id"],
-            "schema_version": fields.get(
-                "schema_version",
-                READING_SESSION_SCHEMA_VERSION,
-            ),
-            "manager_version": fields["manager_version"],
-            "session_key_hash": fields["session_key_hash"],
-            "document_id": fields["document_id"],
-            "source_revision": fields["source_revision"],
-            "structure_map_id": fields["structure_map_id"],
-            "plan_id": fields["plan_id"],
-            "state": state.value,
-            "revision_generation": fields["revision_generation"],
-            "all_unit_ids": list(fields["all_unit_ids"]),
-            "pending_unit_ids": list(fields["pending_unit_ids"]),
-            "completed_unit_ids": list(fields["completed_unit_ids"]),
+            "schema_version": session.schema_version,
+            "session_id": session.session_id,
+            "manager_version": session.manager_version,
+            "session_key_hash": session.session_key_hash,
+            "document_id": session.document_id,
+            "source_revision": session.source_revision,
+            "structure_map_id": session.structure_map_id,
+            "plan_id": session.plan_id,
+            "state": session.state.value,
+            "revision_generation": session.revision_generation,
+            "all_unit_ids": list(session.all_unit_ids),
+            "pending_unit_ids": list(session.pending_unit_ids),
+            "completed_unit_ids": list(session.completed_unit_ids),
             "unit_artifacts": [
-                item.identity_payload()
-                for item in artifacts
-                if isinstance(item, SessionUnitArtifact)
+                item.identity_payload() for item in session.unit_artifacts
             ],
-            "coverage_map_id": fields["coverage_map_id"],
-            "reread_plan_id": fields["reread_plan_id"],
-            "relation_set_id": fields["relation_set_id"],
-            "unresolved_question_refs": list(fields["unresolved_question_refs"]),
-            "resource_budget": budget.identity_payload(),
-            "resource_usage": usage.identity_payload(),
-            "policy_snapshot_id": fields["policy_snapshot_id"],
-            "policy_version": fields["policy_version"],
-            "capability_lease_ref": fields["capability_lease_ref"],
-            "lease_generation": fields["lease_generation"],
+            "coverage_map_id": session.coverage_map_id,
+            "reread_plan_id": session.reread_plan_id,
+            "relation_set_id": session.relation_set_id,
+            "unresolved_question_refs": list(session.unresolved_question_refs),
+            "resource_budget": session.resource_budget.identity_payload(),
+            "resource_usage": session.resource_usage.identity_payload(),
+            "policy_snapshot_id": session.policy_snapshot_id,
+            "policy_version": session.policy_version,
+            "capability_lease_ref": session.capability_lease_ref,
+            "lease_generation": session.lease_generation,
             "active_lease": (
-                active_lease.identity_payload()
-                if isinstance(active_lease, SessionLease)
+                session.active_lease.identity_payload()
+                if session.active_lease is not None
                 else None
             ),
-            "receipt_ids": [
-                receipt.receipt_id
-                for receipt in receipts
-                if isinstance(receipt, ReadingSessionReceipt)
-            ],
-            "warnings": list(fields["warnings"]),
+            "receipt_ids": [item.receipt_id for item in session.receipts],
+            "warnings": list(session.warnings),
         },
     )
 
@@ -1515,16 +1269,15 @@ def _validate_source_plan(
     plan: HierarchicalSectionPlan,
 ) -> None:
     if not isinstance(source, RawSource):
-        raise ReadingSessionError("source must be a RawSource")
+        raise ReadingSessionError("source must be RawSource")
     if not isinstance(plan, HierarchicalSectionPlan):
-        raise ReadingSessionError("plan must be a HierarchicalSectionPlan")
-    source_revision = source.source_revision
-    if source_revision is None:
-        digest = sha256(source.text.encode("utf-8")).hexdigest()
-        source_revision = f"sha256:{digest}"
+        raise ReadingSessionError("plan must be HierarchicalSectionPlan")
+    revision = source.source_revision
+    if revision is None:
+        revision = f"sha256:{sha256(source.text.encode('utf-8')).hexdigest()}"
     if source.document_id != plan.document_id:
         raise ReadingSessionError("source document_id must match plan")
-    if source_revision != plan.source_revision:
+    if revision != plan.source_revision:
         raise ReadingSessionError("source revision must match plan")
     for unit in plan.units:
         if not unit.source_span.verify(source.text):
@@ -1581,13 +1334,6 @@ def _unique_text_tuple(
     if len(set(result)) != len(result):
         raise ReadingSessionError(f"{field_name} values must be unique")
     return result
-
-
-def _ordered_unique_text_tuple(
-    values: Iterable[str],
-    field_name: str,
-) -> tuple[str, ...]:
-    return _unique_text_tuple(values, field_name)
 
 
 __all__ = [
