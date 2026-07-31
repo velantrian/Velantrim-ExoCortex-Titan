@@ -129,7 +129,11 @@ class DocumentSection:
         _require_text(self.document_id, "document_id")
         _require_text(self.source_revision, "source_revision")
         _require_text(self.heading, "heading")
-        if isinstance(self.order_index, bool) or not isinstance(self.order_index, int) or self.order_index < 0:
+        if (
+            isinstance(self.order_index, bool)
+            or not isinstance(self.order_index, int)
+            or self.order_index < 0
+        ):
             raise ReaderCoreContractError("order_index must be an integer >= 0")
         if isinstance(self.level, bool) or not isinstance(self.level, int) or self.level < 0:
             raise ReaderCoreContractError("level must be an integer >= 0")
@@ -148,25 +152,54 @@ class DocumentSection:
             value = getattr(self, field_name)
             if value is not None:
                 _require_text(value, field_name)
-        object.__setattr__(self, "parser_warnings", _tuple_of_text(self.parser_warnings, "parser_warning"))
+        object.__setattr__(
+            self,
+            "parser_warnings",
+            _tuple_of_text(self.parser_warnings, "parser_warning"),
+        )
 
     @classmethod
-    def create(cls, **kwargs: object) -> DocumentSection:
+    def create(
+        cls,
+        *,
+        document_id: str,
+        source_revision: str,
+        order_index: int,
+        heading: str,
+        level: int,
+        start_offset: int,
+        end_offset: int,
+        content_kind: ContentKind = ContentKind.TEXT,
+        parent_section_id: str | None = None,
+        previous_section_id: str | None = None,
+        next_section_id: str | None = None,
+        parser_warnings: Iterable[str] = (),
+    ) -> DocumentSection:
         payload = {
-            "document_id": kwargs["document_id"],
-            "source_revision": kwargs["source_revision"],
-            "order_index": kwargs["order_index"],
-            "heading": _normalize(str(kwargs["heading"])),
-            "level": kwargs["level"],
-            "start_offset": kwargs["start_offset"],
-            "end_offset": kwargs["end_offset"],
-            "content_kind": (
-                kwargs.get("content_kind", ContentKind.TEXT).value
-                if isinstance(kwargs.get("content_kind", ContentKind.TEXT), ContentKind)
-                else kwargs.get("content_kind")
-            ),
+            "document_id": document_id,
+            "source_revision": source_revision,
+            "order_index": order_index,
+            "heading": _normalize(heading),
+            "level": level,
+            "start_offset": start_offset,
+            "end_offset": end_offset,
+            "content_kind": content_kind.value,
         }
-        return cls(section_id=stable_reader_core_id("document-section", payload), **kwargs)
+        return cls(
+            section_id=stable_reader_core_id("document-section", payload),
+            document_id=document_id,
+            source_revision=source_revision,
+            order_index=order_index,
+            heading=heading,
+            level=level,
+            start_offset=start_offset,
+            end_offset=end_offset,
+            content_kind=content_kind,
+            parent_section_id=parent_section_id,
+            previous_section_id=previous_section_id,
+            next_section_id=next_section_id,
+            parser_warnings=tuple(parser_warnings),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,20 +215,40 @@ class DocumentStructureMap:
     warnings: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        for name in ("map_id", "schema_version", "document_id", "source_revision", "parser_id", "parser_version"):
+        for name in (
+            "map_id",
+            "schema_version",
+            "document_id",
+            "source_revision",
+            "parser_id",
+            "parser_version",
+        ):
             _require_text(getattr(self, name), name)
-        if not isinstance(self.content_hash, str) or not _SHA256_RE.fullmatch(self.content_hash):
+        if not isinstance(self.content_hash, str) or not _SHA256_RE.fullmatch(
+            self.content_hash
+        ):
             raise ReaderCoreContractError("content_hash must be lowercase SHA-256 hex")
         sections = tuple(self.sections)
-        if not sections or any(not isinstance(section, DocumentSection) for section in sections):
-            raise ReaderCoreContractError("sections must contain at least one DocumentSection")
+        if not sections or any(
+            not isinstance(section, DocumentSection) for section in sections
+        ):
+            raise ReaderCoreContractError(
+                "sections must contain at least one DocumentSection"
+            )
         if len({section.section_id for section in sections}) != len(sections):
             raise ReaderCoreContractError("section_id values must be unique")
-        if [section.order_index for section in sections] != sorted(section.order_index for section in sections):
+        if [section.order_index for section in sections] != sorted(
+            section.order_index for section in sections
+        ):
             raise ReaderCoreContractError("sections must be ordered by order_index")
         for section in sections:
-            if section.document_id != self.document_id or section.source_revision != self.source_revision:
-                raise ReaderCoreContractError("all sections must match document_id and source_revision")
+            if (
+                section.document_id != self.document_id
+                or section.source_revision != self.source_revision
+            ):
+                raise ReaderCoreContractError(
+                    "all sections must match document_id and source_revision"
+                )
         object.__setattr__(self, "sections", sections)
         object.__setattr__(self, "warnings", _tuple_of_text(self.warnings, "warning"))
 
@@ -215,8 +268,14 @@ class CoverageValue:
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise ReaderCoreContractError(f"{name} must be an integer >= 0")
         if self.processed_units > self.known_units:
-            raise ReaderCoreContractError("processed_units cannot exceed known_units")
-        object.__setattr__(self, "unresolved_unit_ids", _tuple_of_text(self.unresolved_unit_ids, "unresolved_unit_id"))
+            raise ReaderCoreContractError(
+                "processed_units cannot exceed known_units"
+            )
+        object.__setattr__(
+            self,
+            "unresolved_unit_ids",
+            _tuple_of_text(self.unresolved_unit_ids, "unresolved_unit_id"),
+        )
 
     @property
     def ratio(self) -> float | None:
@@ -237,16 +296,32 @@ class SectionRelationCandidate:
         _require_text(self.relation_id, "relation_id")
         if not isinstance(self.kind, RelationKind):
             raise ReaderCoreContractError("kind must be a RelationKind")
-        object.__setattr__(self, "source_claim_refs", _tuple_of_text(self.source_claim_refs, "source_claim_ref"))
-        object.__setattr__(self, "target_claim_refs", _tuple_of_text(self.target_claim_refs, "target_claim_ref"))
+        object.__setattr__(
+            self,
+            "source_claim_refs",
+            _tuple_of_text(self.source_claim_refs, "source_claim_ref"),
+        )
+        object.__setattr__(
+            self,
+            "target_claim_refs",
+            _tuple_of_text(self.target_claim_refs, "target_claim_ref"),
+        )
         if not self.source_claim_refs or not self.target_claim_refs:
-            raise ReaderCoreContractError("relations require source and target claim refs")
+            raise ReaderCoreContractError(
+                "relations require source and target claim refs"
+            )
         spans = tuple(self.source_spans)
         if not spans or any(not isinstance(span, SourceSpan) for span in spans):
-            raise ReaderCoreContractError("relations require at least one SourceSpan")
+            raise ReaderCoreContractError(
+                "relations require at least one SourceSpan"
+            )
         object.__setattr__(self, "source_spans", spans)
         _require_text(self.reason_code, "reason_code")
-        object.__setattr__(self, "extraction_confidence", _probability(self.extraction_confidence, "extraction_confidence"))
+        object.__setattr__(
+            self,
+            "extraction_confidence",
+            _probability(self.extraction_confidence, "extraction_confidence"),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -265,13 +340,21 @@ class ReadingSessionCheckpoint:
             _require_text(getattr(self, name), name)
         if not isinstance(self.state, SessionState):
             raise ReaderCoreContractError("state must be a SessionState")
-        completed = _tuple_of_text(self.completed_section_ids, "completed_section_id")
+        completed = _tuple_of_text(
+            self.completed_section_ids, "completed_section_id"
+        )
         pending = _tuple_of_text(self.pending_section_ids, "pending_section_id")
         if set(completed) & set(pending):
-            raise ReaderCoreContractError("completed and pending section IDs must be disjoint")
+            raise ReaderCoreContractError(
+                "completed and pending section IDs must be disjoint"
+            )
         object.__setattr__(self, "completed_section_ids", completed)
         object.__setattr__(self, "pending_section_ids", pending)
-        object.__setattr__(self, "receipt_ids", _tuple_of_text(self.receipt_ids, "receipt_id"))
+        object.__setattr__(
+            self,
+            "receipt_ids",
+            _tuple_of_text(self.receipt_ids, "receipt_id"),
+        )
         if self.policy_version is not None:
             _require_text(self.policy_version, "policy_version")
 
