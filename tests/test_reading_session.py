@@ -396,12 +396,13 @@ def test_revision_reuse_keeps_only_unique_exact_text_units() -> None:
 
 
 def test_ambiguous_identical_units_are_not_reused() -> None:
-    paragraph = "Repeated section text is deliberately identical and long enough."
-    old_text = f"{paragraph}\n\n{paragraph}"
-    new_text = f"{paragraph}\n\n{paragraph}"
+    repeated_unit = "A" * 80
+    old_text = repeated_unit * 2
+    new_text = repeated_unit * 2
     old_source, old_plan = _plan_for_text(old_text, revision="revision-1")
     new_source, new_plan = _plan_for_text(new_text, revision="revision-2")
     assert len(old_plan.units) == len(new_plan.units) == 2
+    assert old_source.text[old_plan.units[0].start_offset : old_plan.units[0].end_offset] == old_source.text[old_plan.units[1].start_offset : old_plan.units[1].end_offset]
 
     manager = ReadingSessionManager()
     session = _created_session(old_plan)
