@@ -16,42 +16,79 @@ from core.selective_memory_candidates import (  # noqa: E402
 )
 
 
-def measure(label: str, text: str, *, policy: CandidateExtractionPolicy | None = None, runs: int = 100):
+def _percentile(values: list[float], percentile: float) -> float:
+    ordered = sorted(values)
+    index = round((len(ordered) - 1) * percentile)
+    return ordered[index]
+
+
+def measure(
+    label: str,
+    text: str,
+    *,
+    policy: CandidateExtractionPolicy | None = None,
+    runs: int = 100,
+):
     durations: list[float] = []
     last = None
     for _ in range(runs):
         started = time.perf_counter()
-        last = extract_memory_candidates(text, source_ref=f"benchmark:{label}", policy=policy)
+        last = extract_memory_candidates(
+            text,
+            source_ref=f"benchmark:{label}",
+            policy=policy,
+        )
         durations.append((time.perf_counter() - started) * 1000.0)
+
     assert last is not None
     assert last.trace.canon_write_count == 0
     assert last.trace.memory_write_count == 0
     assert last.trace.write_gate_call_count == 0
+    assert last.trace.truth_gate_bypass_count == 0
+
+    median_ms = statistics.median(durations)
+    p95_ms = _percentile(durations, 0.95)
+    chars_per_second = (
+        len(text) / (median_ms / 1000.0) if median_ms > 0.0 else float("inf")
+    )
+    candidate_chars = sum(len(item.normalized_text) for item in last.candidates)
+
     print(
         f"{label:<22} mean={statistics.mean(durations):8.4f}ms "
-        f"median={statistics.median(durations):8.4f}ms "
+        f"median={median_ms:8.4f}ms p95={p95_ms:8.4f}ms "
+        f"input_chars={len(text):6d} chars_per_s={chars_per_second:10.1f} "
         f"candidates={len(last.candidates):2d} rejected={len(last.rejected):2d} "
-        f"truncated={last.truncated} chars={sum(len(c.normalized_text) for c in last.candidates)}"
+        f"candidate_chars={candidate_chars:4d} truncated={last.truncated}"
     )
     return last
 
 
 def main() -> None:
     print("Velantrim PR-ARM-03 selective-memory candidate shadow benchmark")
-    short = measure("short", "I prefer concise reports. My goal is to ship tomorrow.")
+    short = measure(
+        "short",
+        "I prefer concise reports. My goal is to ship tomorrow.",
+    )
     measure(
         "mixed-language",
-        "I prefer English summaries. Я предпочитаю подробные отчёты по пятницам. Сейчас работаю удалённо.",
+        "I prefer English summaries. Я предпочитаю подробные отчёты по пятницам. "
+        "Сейчас работаю удалённо.",
     )
     measure(
         "sensitive",
-        "My diagnosis is diabetes. My email is person@example.com. My token: ghp_abcdefghijklmnopqrstuvwxyz123456.",
+        "My diagnosis is diabetes. My email is person@example.com. "
+        "My token: ghp_abcdefghijklmnopqrstuvwxyz123456.",
     )
-    long_text = " ".join(f"I prefer deterministic option {index}." for index in range(200))
+    long_text = " ".join(
+        f"I prefer deterministic option {index}." for index in range(200)
+    )
     bounded = measure(
         "budget-truncation",
         long_text,
-        policy=CandidateExtractionPolicy(max_candidates_per_input=8, max_total_candidate_chars=320),
+        policy=CandidateExtractionPolicy(
+            max_candidates_per_input=8,
+            max_total_candidate_chars=320,
+        ),
         runs=20,
     )
     repeated = extract_memory_candidates(
