@@ -14,10 +14,7 @@ from hashlib import sha256
 from typing import Iterable
 
 from core.critical_exceptions import CriticalExceptionCandidate
-from core.hierarchical_section_planner import (
-    HierarchicalSectionPlan,
-    ReadingUnit,
-)
+from core.hierarchical_section_planner import HierarchicalSectionPlan, ReadingUnit
 from core.knowledge_capsule import SourceSpan
 from core.reader_core_contracts import stable_reader_core_id
 from core.reader_coverage import CoverageMap
@@ -31,8 +28,6 @@ class SelectiveReReadError(ValueError):
 
 
 class ReReadTrigger(str, Enum):
-    """Deterministic reason that one source-linked unit needs more work."""
-
     MISSING_SECTION_CARD = "missing_section_card"
     CLAIM_PROVENANCE_MISSING = "claim_provenance_missing"
     EXCEPTION_SCAN_MISSING = "exception_scan_missing"
@@ -42,8 +37,6 @@ class ReReadTrigger(str, Enum):
 
 
 class ReReadAction(str, Enum):
-    """Requested work; the plan itself executes none of these actions."""
-
     READ_UNIT = "read_unit"
     DEEPEN_UNIT = "deepen_unit"
     RESCAN_EXCEPTIONS = "rescan_exceptions"
@@ -52,8 +45,6 @@ class ReReadAction(str, Enum):
 
 
 class ReReadPriority(IntEnum):
-    """Lower numeric value means earlier deterministic queue placement."""
-
     CRITICAL = 0
     HIGH = 1
     NORMAL = 2
@@ -61,8 +52,6 @@ class ReReadPriority(IntEnum):
 
 
 class ReReadDeferralReason(str, Enum):
-    """Explicit reason a triggered proposal was not admitted to the queue."""
-
     TASK_CHAR_LIMIT = "task_char_limit"
     TOTAL_CHAR_LIMIT = "total_char_limit"
     TASK_COUNT_LIMIT = "task_count_limit"
@@ -71,8 +60,6 @@ class ReReadDeferralReason(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class SelectiveReReadBudget:
-    """Hard deterministic limits for one proposed reread queue."""
-
     max_tasks: int = 32
     max_total_chars: int = 100_000
     max_task_chars: int = 20_000
@@ -87,9 +74,7 @@ class SelectiveReReadBudget:
         ):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-                raise SelectiveReReadError(
-                    f"{name} must be a positive integer"
-                )
+                raise SelectiveReReadError(f"{name} must be a positive integer")
         if self.max_task_chars > self.max_total_chars:
             raise SelectiveReReadError(
                 "max_task_chars cannot exceed max_total_chars"
@@ -98,8 +83,6 @@ class SelectiveReReadBudget:
 
 @dataclass(frozen=True, slots=True)
 class ReReadTask:
-    """One admitted, source-linked proposal for additional bounded work."""
-
     task_id: str
     document_id: str
     source_revision: str
@@ -117,68 +100,13 @@ class ReReadTask:
     queue_index: int
 
     def __post_init__(self) -> None:
-        for name in (
-            "task_id",
-            "document_id",
-            "source_revision",
-            "structure_map_id",
-            "plan_id",
-            "coverage_map_id",
-            "unit_id",
-            "section_id",
-        ):
-            _require_text(getattr(self, name), name)
-        if not isinstance(self.source_span, SourceSpan):
-            raise SelectiveReReadError("source_span must be a SourceSpan")
-        _validate_unit_span(
-            self.source_span,
-            document_id=self.document_id,
-            source_revision=self.source_revision,
-            unit_id=self.unit_id,
-        )
-        if not isinstance(self.priority, ReReadPriority):
-            raise SelectiveReReadError("priority must be a ReReadPriority")
-        actions = _action_tuple(self.actions)
-        triggers = _trigger_tuple(self.trigger_codes)
-        evidence_refs = _unique_text_tuple(
-            self.evidence_refs,
-            "evidence_ref",
-        )
-        if not evidence_refs:
-            raise SelectiveReReadError(
-                "a reread task requires at least one evidence reference"
-            )
-        object.__setattr__(self, "actions", actions)
-        object.__setattr__(self, "trigger_codes", triggers)
-        object.__setattr__(self, "evidence_refs", evidence_refs)
-        _validate_reader_mode(actions, self.reader_mode)
-        if (
-            isinstance(self.queue_index, bool)
-            or not isinstance(self.queue_index, int)
-            or self.queue_index < 0
-        ):
-            raise SelectiveReReadError(
-                "queue_index must be an integer >= 0"
-            )
-        expected_id = _task_identity(
-            document_id=self.document_id,
-            source_revision=self.source_revision,
-            structure_map_id=self.structure_map_id,
-            plan_id=self.plan_id,
-            coverage_map_id=self.coverage_map_id,
-            unit_id=self.unit_id,
-            section_id=self.section_id,
-            source_span=self.source_span,
-            priority=self.priority,
-            actions=actions,
-            trigger_codes=triggers,
-            evidence_refs=evidence_refs,
-            reader_mode=self.reader_mode,
-        )
-        if self.task_id != expected_id:
-            raise SelectiveReReadError(
-                "task_id does not match reread task content"
-            )
+        _validate_common_item(self)
+        if isinstance(self.queue_index, bool) or not isinstance(self.queue_index, int):
+            raise SelectiveReReadError("queue_index must be an integer >= 0")
+        if self.queue_index < 0:
+            raise SelectiveReReadError("queue_index must be an integer >= 0")
+        if self.task_id != _task_identity_from_item(self):
+            raise SelectiveReReadError("task_id does not match reread task content")
 
     @property
     def char_count(self) -> int:
@@ -187,8 +115,6 @@ class ReReadTask:
 
 @dataclass(frozen=True, slots=True)
 class DeferredReReadItem:
-    """A triggered proposal explicitly excluded by the current queue budget."""
-
     item_id: str
     document_id: str
     source_revision: str
@@ -206,62 +132,12 @@ class DeferredReReadItem:
     deferral_reason: ReReadDeferralReason
 
     def __post_init__(self) -> None:
-        for name in (
-            "item_id",
-            "document_id",
-            "source_revision",
-            "structure_map_id",
-            "plan_id",
-            "coverage_map_id",
-            "unit_id",
-            "section_id",
-        ):
-            _require_text(getattr(self, name), name)
-        if not isinstance(self.source_span, SourceSpan):
-            raise SelectiveReReadError("source_span must be a SourceSpan")
-        _validate_unit_span(
-            self.source_span,
-            document_id=self.document_id,
-            source_revision=self.source_revision,
-            unit_id=self.unit_id,
-        )
-        if not isinstance(self.priority, ReReadPriority):
-            raise SelectiveReReadError("priority must be a ReReadPriority")
-        actions = _action_tuple(self.actions)
-        triggers = _trigger_tuple(self.trigger_codes)
-        evidence_refs = _unique_text_tuple(
-            self.evidence_refs,
-            "evidence_ref",
-        )
-        if not evidence_refs:
-            raise SelectiveReReadError(
-                "a deferred item requires at least one evidence reference"
-            )
-        object.__setattr__(self, "actions", actions)
-        object.__setattr__(self, "trigger_codes", triggers)
-        object.__setattr__(self, "evidence_refs", evidence_refs)
-        _validate_reader_mode(actions, self.reader_mode)
+        _validate_common_item(self)
         if not isinstance(self.deferral_reason, ReReadDeferralReason):
             raise SelectiveReReadError(
                 "deferral_reason must be a ReReadDeferralReason"
             )
-        expected_id = _deferred_identity(
-            document_id=self.document_id,
-            source_revision=self.source_revision,
-            structure_map_id=self.structure_map_id,
-            plan_id=self.plan_id,
-            coverage_map_id=self.coverage_map_id,
-            unit_id=self.unit_id,
-            section_id=self.section_id,
-            source_span=self.source_span,
-            priority=self.priority,
-            actions=actions,
-            trigger_codes=triggers,
-            evidence_refs=evidence_refs,
-            reader_mode=self.reader_mode,
-            deferral_reason=self.deferral_reason,
-        )
-        if self.item_id != expected_id:
+        if self.item_id != _deferred_identity_from_item(self):
             raise SelectiveReReadError(
                 "item_id does not match deferred item content"
             )
@@ -269,8 +145,6 @@ class DeferredReReadItem:
 
 @dataclass(frozen=True, slots=True)
 class SelectiveReReadPlan:
-    """Bounded deterministic queue proposal for one exact CoverageMap."""
-
     reread_plan_id: str
     schema_version: str
     planner_version: str
@@ -303,14 +177,15 @@ class SelectiveReReadPlan:
                 "unsupported SelectiveReReadPlan schema_version"
             )
         if not isinstance(self.budget, SelectiveReReadBudget):
-            raise SelectiveReReadError(
-                "budget must be a SelectiveReReadBudget"
-            )
+            raise SelectiveReReadError("budget must be a SelectiveReReadBudget")
 
         tasks = tuple(self.tasks)
+        deferred = tuple(self.deferred_items)
         if any(not isinstance(item, ReReadTask) for item in tasks):
+            raise SelectiveReReadError("tasks must contain ReReadTask values")
+        if any(not isinstance(item, DeferredReReadItem) for item in deferred):
             raise SelectiveReReadError(
-                "tasks must contain ReReadTask values"
+                "deferred_items must contain DeferredReReadItem values"
             )
         if tuple(task.queue_index for task in tasks) != tuple(range(len(tasks))):
             raise SelectiveReReadError(
@@ -322,45 +197,38 @@ class SelectiveReReadPlan:
             raise SelectiveReReadError(
                 "the queue may contain at most one task per unit"
             )
-        for task in tasks:
-            self._validate_item_identity(task)
-
-        deferred = tuple(self.deferred_items)
-        if any(not isinstance(item, DeferredReReadItem) for item in deferred):
-            raise SelectiveReReadError(
-                "deferred_items must contain DeferredReReadItem values"
-            )
         if len({item.item_id for item in deferred}) != len(deferred):
             raise SelectiveReReadError("deferred item IDs must be unique")
         if len({item.unit_id for item in deferred}) != len(deferred):
             raise SelectiveReReadError(
                 "deferred_items may contain at most one item per unit"
             )
+        for task in tasks:
+            self._validate_item_identity(task)
         for item in deferred:
             self._validate_item_identity(item)
-
-        if {task.unit_id for task in tasks} & {
-            item.unit_id for item in deferred
-        }:
+        if {task.unit_id for task in tasks} & {item.unit_id for item in deferred}:
             raise SelectiveReReadError(
                 "a unit cannot be both queued and deferred"
             )
-        triggered_unit_ids = _unique_text_tuple(
+
+        triggered = _unique_text_tuple(
             self.triggered_unit_ids,
             "triggered_unit_id",
         )
-        represented = tuple(
-            sorted(
-                (*tasks, *deferred),
-                key=lambda item: (
-                    item.priority,
-                    item.source_span.start_offset,
-                    item.unit_id,
-                ),
-            )
+        task_keys = tuple(
+            (task.priority, task.source_span.start_offset, task.unit_id)
+            for task in tasks
         )
-        expected_triggered = tuple(item.unit_id for item in represented)
-        if triggered_unit_ids != expected_triggered:
+        deferred_keys = tuple(
+            (item.priority, item.source_span.start_offset, item.unit_id)
+            for item in deferred
+        )
+        expected_triggered = tuple(
+            unit_id
+            for _, _, unit_id in sorted((*task_keys, *deferred_keys))
+        )
+        if triggered != expected_triggered:
             raise SelectiveReReadError(
                 "triggered_unit_ids must follow canonical priority/source order"
             )
@@ -378,13 +246,9 @@ class SelectiveReReadPlan:
             )
         section_counts: dict[str, int] = {}
         for task in tasks:
-            section_counts[task.section_id] = (
-                section_counts.get(task.section_id, 0) + 1
-            )
             if task.char_count > self.budget.max_task_chars:
-                raise SelectiveReReadError(
-                    "queued task exceeds max_task_chars"
-                )
+                raise SelectiveReReadError("queued task exceeds max_task_chars")
+            section_counts[task.section_id] = section_counts.get(task.section_id, 0) + 1
         if any(
             count > self.budget.max_tasks_per_section
             for count in section_counts.values()
@@ -396,24 +260,9 @@ class SelectiveReReadPlan:
         warnings = _unique_text_tuple(self.warnings, "warning")
         object.__setattr__(self, "tasks", tasks)
         object.__setattr__(self, "deferred_items", deferred)
-        object.__setattr__(self, "triggered_unit_ids", triggered_unit_ids)
+        object.__setattr__(self, "triggered_unit_ids", triggered)
         object.__setattr__(self, "warnings", warnings)
-        expected_id = _plan_identity(
-            schema_version=self.schema_version,
-            planner_version=self.planner_version,
-            document_id=self.document_id,
-            source_revision=self.source_revision,
-            structure_map_id=self.structure_map_id,
-            plan_id=self.plan_id,
-            coverage_map_id=self.coverage_map_id,
-            budget=self.budget,
-            tasks=tasks,
-            deferred_items=deferred,
-            triggered_unit_ids=triggered_unit_ids,
-            total_queued_chars=self.total_queued_chars,
-            warnings=warnings,
-        )
-        if self.reread_plan_id != expected_id:
+        if self.reread_plan_id != _plan_identity(self):
             raise SelectiveReReadError(
                 "reread_plan_id does not match plan content"
             )
@@ -479,9 +328,7 @@ _TRIGGER_ORDER = tuple(ReReadTrigger)
 
 
 class SelectiveReReadPlanner:
-    """Propose only targeted bounded work justified by exact evidence."""
-
-    planner_version = "1.1.0"
+    planner_version = "1.1.1"
 
     def plan(
         self,
@@ -492,8 +339,6 @@ class SelectiveReReadPlanner:
         exception_candidates: Iterable[CriticalExceptionCandidate] = (),
         budget: SelectiveReReadBudget | None = None,
     ) -> SelectiveReReadPlan:
-        """Build a deterministic queue without scheduling or executing it."""
-
         resolved_budget = budget or SelectiveReReadBudget()
         self._validate_inputs(source, reading_plan, coverage_map)
         units_by_id = {unit.unit_id: unit for unit in reading_plan.units}
@@ -503,29 +348,26 @@ class SelectiveReReadPlanner:
             tuple(exception_candidates),
             units_by_id=units_by_id,
         )
-        evidence_by_unit = self._collect_evidence(
+        evidence = self._collect_evidence(
             coverage_map,
             candidates,
             units_by_id=units_by_id,
         )
-        proposals = self._proposals(
-            reading_plan,
-            evidence_by_unit=evidence_by_unit,
-        )
+        proposals = self._proposals(reading_plan, evidence_by_unit=evidence)
         tasks, deferred = self._apply_budget(
             proposals,
             coverage_map=coverage_map,
             budget=resolved_budget,
         )
-        triggered_unit_ids = tuple(proposal.unit.unit_id for proposal in proposals)
+        triggered = tuple(proposal.unit.unit_id for proposal in proposals)
         warnings: list[str] = []
         if not proposals:
             warnings.append("no_reread_triggers")
         if deferred:
             warnings.append("reread_work_deferred_by_budget")
-        warning_tuple = tuple(warnings)
         total_chars = sum(task.char_count for task in tasks)
-        reread_plan_id = _plan_identity(
+        draft = SelectiveReReadPlan(
+            reread_plan_id="pending",
             schema_version=SELECTIVE_REREAD_SCHEMA_VERSION,
             planner_version=self.planner_version,
             document_id=reading_plan.document_id,
@@ -536,25 +378,15 @@ class SelectiveReReadPlanner:
             budget=resolved_budget,
             tasks=tasks,
             deferred_items=deferred,
-            triggered_unit_ids=triggered_unit_ids,
+            triggered_unit_ids=triggered,
             total_queued_chars=total_chars,
-            warnings=warning_tuple,
+            warnings=tuple(warnings),
         )
         return SelectiveReReadPlan(
-            reread_plan_id=reread_plan_id,
-            schema_version=SELECTIVE_REREAD_SCHEMA_VERSION,
-            planner_version=self.planner_version,
-            document_id=reading_plan.document_id,
-            source_revision=reading_plan.source_revision,
-            structure_map_id=reading_plan.structure_map_id,
-            plan_id=reading_plan.plan_id,
-            coverage_map_id=coverage_map.coverage_map_id,
-            budget=resolved_budget,
-            tasks=tasks,
-            deferred_items=deferred,
-            triggered_unit_ids=triggered_unit_ids,
-            total_queued_chars=total_chars,
-            warnings=warning_tuple,
+            **{
+                **draft.__dict__,
+                "reread_plan_id": _plan_identity(draft),
+            }
         )
 
     @staticmethod
@@ -570,9 +402,7 @@ class SelectiveReReadPlanner:
                 "reading_plan must be a HierarchicalSectionPlan"
             )
         if not isinstance(coverage_map, CoverageMap):
-            raise SelectiveReReadError(
-                "coverage_map must be a CoverageMap"
-            )
+            raise SelectiveReReadError("coverage_map must be a CoverageMap")
         source_revision = source.source_revision
         if source_revision is None:
             digest = sha256(source.text.encode("utf-8")).hexdigest()
@@ -582,9 +412,7 @@ class SelectiveReReadPlanner:
                 "source document_id must match reading plan"
             )
         if source_revision != reading_plan.source_revision:
-            raise SelectiveReReadError(
-                "source revision must match reading plan"
-            )
+            raise SelectiveReReadError("source revision must match reading plan")
         if (
             coverage_map.document_id != reading_plan.document_id
             or coverage_map.source_revision != reading_plan.source_revision
@@ -608,13 +436,13 @@ class SelectiveReReadPlanner:
         *,
         units_by_id: dict[str, ReadingUnit],
     ) -> tuple[CriticalExceptionCandidate, ...]:
-        candidates_by_id: dict[str, CriticalExceptionCandidate] = {}
+        by_id: dict[str, CriticalExceptionCandidate] = {}
         for candidate in candidates:
             if not isinstance(candidate, CriticalExceptionCandidate):
                 raise SelectiveReReadError(
                     "exception_candidates must contain CriticalExceptionCandidate values"
                 )
-            if candidate.candidate_id in candidates_by_id:
+            if candidate.candidate_id in by_id:
                 raise SelectiveReReadError(
                     "exception candidate IDs must be unique"
                 )
@@ -646,15 +474,12 @@ class SelectiveReReadPlanner:
                 raise SelectiveReReadError(
                     "candidate statement_span must verify against source"
                 )
-            candidates_by_id[candidate.candidate_id] = candidate
-        if set(candidates_by_id) != set(coverage_map.exception_candidate_ids):
+            by_id[candidate.candidate_id] = candidate
+        if set(by_id) != set(coverage_map.exception_candidate_ids):
             raise SelectiveReReadError(
                 "exception_candidates must exactly match CoverageMap candidate IDs"
             )
-        return tuple(
-            candidates_by_id[candidate_id]
-            for candidate_id in coverage_map.exception_candidate_ids
-        )
+        return tuple(by_id[item_id] for item_id in coverage_map.exception_candidate_ids)
 
     @staticmethod
     def _collect_evidence(
@@ -663,7 +488,7 @@ class SelectiveReReadPlanner:
         *,
         units_by_id: dict[str, ReadingUnit],
     ) -> dict[str, list[_TriggerEvidence]]:
-        evidence_by_unit: dict[str, list[_TriggerEvidence]] = {}
+        result: dict[str, list[_TriggerEvidence]] = {}
         for region in coverage_map.unresolved_regions:
             if region.unit_id not in units_by_id:
                 raise SelectiveReReadError(
@@ -675,39 +500,33 @@ class SelectiveReReadPlanner:
                     f"unsupported unresolved coverage reason_code: {region.reason_code}"
                 )
             trigger, action, priority = rule
-            evidence_by_unit.setdefault(region.unit_id, []).append(
-                _TriggerEvidence(
-                    trigger=trigger,
-                    action=action,
-                    priority=priority,
-                    evidence_ref=region.region_id,
-                )
+            result.setdefault(region.unit_id, []).append(
+                _TriggerEvidence(trigger, action, priority, region.region_id)
             )
         for asset in coverage_map.unsupported_assets:
             if asset.unit_id not in units_by_id:
                 raise SelectiveReReadError(
                     "unsupported asset must reference a plan unit"
                 )
-            evidence_by_unit.setdefault(asset.unit_id, []).append(
+            result.setdefault(asset.unit_id, []).append(
                 _TriggerEvidence(
-                    trigger=ReReadTrigger.ATOMIC_ASSET_EXCEEDS_BUDGET,
-                    action=ReReadAction.INSPECT_ATOMIC_ASSET,
-                    priority=ReReadPriority.CRITICAL,
-                    evidence_ref=asset.asset_id,
+                    ReReadTrigger.ATOMIC_ASSET_EXCEEDS_BUDGET,
+                    ReReadAction.INSPECT_ATOMIC_ASSET,
+                    ReReadPriority.CRITICAL,
+                    asset.asset_id,
                 )
             )
         for candidate in candidates:
-            if candidate.target_claim_refs:
-                continue
-            evidence_by_unit.setdefault(candidate.unit_id, []).append(
-                _TriggerEvidence(
-                    trigger=ReReadTrigger.UNRESOLVED_EXCEPTION_TARGET,
-                    action=ReReadAction.RESOLVE_EXCEPTION_TARGET,
-                    priority=ReReadPriority.CRITICAL,
-                    evidence_ref=candidate.candidate_id,
+            if not candidate.target_claim_refs:
+                result.setdefault(candidate.unit_id, []).append(
+                    _TriggerEvidence(
+                        ReReadTrigger.UNRESOLVED_EXCEPTION_TARGET,
+                        ReReadAction.RESOLVE_EXCEPTION_TARGET,
+                        ReReadPriority.CRITICAL,
+                        candidate.candidate_id,
+                    )
                 )
-            )
-        return evidence_by_unit
+        return result
 
     @staticmethod
     def _proposals(
@@ -720,7 +539,6 @@ class SelectiveReReadPlanner:
             evidence = evidence_by_unit.get(unit.unit_id)
             if not evidence:
                 continue
-            priority = min(item.priority for item in evidence)
             actions = tuple(
                 action
                 for action in _ACTION_ORDER
@@ -731,24 +549,20 @@ class SelectiveReReadPlanner:
                 for trigger in _TRIGGER_ORDER
                 if any(item.trigger is trigger for item in evidence)
             )
-            evidence_refs = tuple(
-                dict.fromkeys(item.evidence_ref for item in evidence)
-            )
             proposals.append(
                 _TaskProposal(
                     unit=unit,
-                    priority=priority,
+                    priority=min(item.priority for item in evidence),
                     actions=actions,
                     triggers=triggers,
-                    evidence_refs=evidence_refs,
+                    evidence_refs=tuple(
+                        dict.fromkeys(item.evidence_ref for item in evidence)
+                    ),
                     reader_mode=_reader_mode_for_actions(actions),
                 )
             )
         return tuple(
-            sorted(
-                proposals,
-                key=lambda item: (item.priority, item.unit.order_index),
-            )
+            sorted(proposals, key=lambda item: (item.priority, item.unit.order_index))
         )
 
     @staticmethod
@@ -763,59 +577,18 @@ class SelectiveReReadPlanner:
         total_chars = 0
         section_counts: dict[str, int] = {}
         for proposal in proposals:
-            char_count = proposal.unit.char_count
             reason: ReReadDeferralReason | None = None
+            char_count = proposal.unit.char_count
             if char_count > budget.max_task_chars:
                 reason = ReReadDeferralReason.TASK_CHAR_LIMIT
             elif len(tasks) >= budget.max_tasks:
                 reason = ReReadDeferralReason.TASK_COUNT_LIMIT
-            elif (
-                section_counts.get(proposal.unit.section_id, 0)
-                >= budget.max_tasks_per_section
-            ):
+            elif section_counts.get(proposal.unit.section_id, 0) >= budget.max_tasks_per_section:
                 reason = ReReadDeferralReason.SECTION_TASK_LIMIT
             elif total_chars + char_count > budget.max_total_chars:
                 reason = ReReadDeferralReason.TOTAL_CHAR_LIMIT
 
-            if reason is not None:
-                item_id = _deferred_identity(
-                    document_id=coverage_map.document_id,
-                    source_revision=coverage_map.source_revision,
-                    structure_map_id=coverage_map.structure_map_id,
-                    plan_id=coverage_map.plan_id,
-                    coverage_map_id=coverage_map.coverage_map_id,
-                    unit_id=proposal.unit.unit_id,
-                    section_id=proposal.unit.section_id,
-                    source_span=proposal.unit.source_span,
-                    priority=proposal.priority,
-                    actions=proposal.actions,
-                    trigger_codes=proposal.triggers,
-                    evidence_refs=proposal.evidence_refs,
-                    reader_mode=proposal.reader_mode,
-                    deferral_reason=reason,
-                )
-                deferred.append(
-                    DeferredReReadItem(
-                        item_id=item_id,
-                        document_id=coverage_map.document_id,
-                        source_revision=coverage_map.source_revision,
-                        structure_map_id=coverage_map.structure_map_id,
-                        plan_id=coverage_map.plan_id,
-                        coverage_map_id=coverage_map.coverage_map_id,
-                        unit_id=proposal.unit.unit_id,
-                        section_id=proposal.unit.section_id,
-                        source_span=proposal.unit.source_span,
-                        priority=proposal.priority,
-                        actions=proposal.actions,
-                        trigger_codes=proposal.triggers,
-                        evidence_refs=proposal.evidence_refs,
-                        reader_mode=proposal.reader_mode,
-                        deferral_reason=reason,
-                    )
-                )
-                continue
-
-            task_id = _task_identity(
+            common = dict(
                 document_id=coverage_map.document_id,
                 source_revision=coverage_map.source_revision,
                 structure_map_id=coverage_map.structure_map_id,
@@ -830,23 +603,20 @@ class SelectiveReReadPlanner:
                 evidence_refs=proposal.evidence_refs,
                 reader_mode=proposal.reader_mode,
             )
+            if reason is not None:
+                deferred.append(
+                    DeferredReReadItem(
+                        item_id=_deferred_identity(**common, deferral_reason=reason),
+                        deferral_reason=reason,
+                        **common,
+                    )
+                )
+                continue
             tasks.append(
                 ReReadTask(
-                    task_id=task_id,
-                    document_id=coverage_map.document_id,
-                    source_revision=coverage_map.source_revision,
-                    structure_map_id=coverage_map.structure_map_id,
-                    plan_id=coverage_map.plan_id,
-                    coverage_map_id=coverage_map.coverage_map_id,
-                    unit_id=proposal.unit.unit_id,
-                    section_id=proposal.unit.section_id,
-                    source_span=proposal.unit.source_span,
-                    priority=proposal.priority,
-                    actions=proposal.actions,
-                    trigger_codes=proposal.triggers,
-                    evidence_refs=proposal.evidence_refs,
-                    reader_mode=proposal.reader_mode,
+                    task_id=_task_identity(**common),
                     queue_index=len(tasks),
+                    **common,
                 )
             )
             total_chars += char_count
@@ -856,9 +626,41 @@ class SelectiveReReadPlanner:
         return tuple(tasks), tuple(deferred)
 
 
-def _reader_mode_for_actions(
-    actions: tuple[ReReadAction, ...],
-) -> ReaderMode | None:
+def _validate_common_item(item: ReReadTask | DeferredReReadItem) -> None:
+    for name in (
+        "document_id",
+        "source_revision",
+        "structure_map_id",
+        "plan_id",
+        "coverage_map_id",
+        "unit_id",
+        "section_id",
+    ):
+        _require_text(getattr(item, name), name)
+    if not isinstance(item.source_span, SourceSpan):
+        raise SelectiveReReadError("source_span must be a SourceSpan")
+    if item.source_span.document_id != item.document_id:
+        raise SelectiveReReadError("source_span document_id must match item")
+    if item.source_span.source_revision != item.source_revision:
+        raise SelectiveReReadError("source_span source_revision must match item")
+    if item.source_span.span_id != item.unit_id:
+        raise SelectiveReReadError("source_span span_id must equal unit_id")
+    if not isinstance(item.priority, ReReadPriority):
+        raise SelectiveReReadError("priority must be a ReReadPriority")
+    actions = _action_tuple(item.actions)
+    triggers = _trigger_tuple(item.trigger_codes)
+    refs = _unique_text_tuple(item.evidence_refs, "evidence_ref")
+    if not refs:
+        raise SelectiveReReadError(
+            "a reread item requires at least one evidence reference"
+        )
+    object.__setattr__(item, "actions", actions)
+    object.__setattr__(item, "trigger_codes", triggers)
+    object.__setattr__(item, "evidence_refs", refs)
+    _validate_reader_mode(actions, item.reader_mode)
+
+
+def _reader_mode_for_actions(actions: tuple[ReReadAction, ...]) -> ReaderMode | None:
     if ReReadAction.DEEPEN_UNIT in actions:
         return ReaderMode.DEEP
     if ReReadAction.READ_UNIT in actions:
@@ -871,211 +673,158 @@ def _validate_reader_mode(
     reader_mode: ReaderMode | None,
 ) -> None:
     if reader_mode is not None and not isinstance(reader_mode, ReaderMode):
-        raise SelectiveReReadError(
-            "reader_mode must be a ReaderMode or None"
-        )
-    expected = _reader_mode_for_actions(actions)
-    if reader_mode != expected:
+        raise SelectiveReReadError("reader_mode must be a ReaderMode or None")
+    if reader_mode != _reader_mode_for_actions(actions):
         raise SelectiveReReadError(
             "reader_mode must match semantic reread actions"
         )
 
 
-def _validate_unit_span(
-    span: SourceSpan,
-    *,
-    document_id: str,
-    source_revision: str,
-    unit_id: str,
-) -> None:
-    if span.document_id != document_id:
-        raise SelectiveReReadError(
-            "source_span document_id must match item"
-        )
-    if span.source_revision != source_revision:
-        raise SelectiveReReadError(
-            "source_span source_revision must match item"
-        )
-    if span.span_id != unit_id:
-        raise SelectiveReReadError(
-            "source_span span_id must equal unit_id"
-        )
-
-
-def _task_identity(
-    *,
-    document_id: str,
-    source_revision: str,
-    structure_map_id: str,
-    plan_id: str,
-    coverage_map_id: str,
-    unit_id: str,
-    section_id: str,
-    source_span: SourceSpan,
-    priority: ReReadPriority,
-    actions: tuple[ReReadAction, ...],
-    trigger_codes: tuple[ReReadTrigger, ...],
-    evidence_refs: tuple[str, ...],
-    reader_mode: ReaderMode | None,
-) -> str:
-    return stable_reader_core_id(
-        "selective-reread-task",
-        {
-            "document_id": document_id,
-            "source_revision": source_revision,
-            "structure_map_id": structure_map_id,
-            "plan_id": plan_id,
-            "coverage_map_id": coverage_map_id,
-            "unit_id": unit_id,
-            "section_id": section_id,
-            "source_span": source_span.identity_payload(),
-            "priority": int(priority),
-            "actions": [action.value for action in actions],
-            "trigger_codes": [trigger.value for trigger in trigger_codes],
-            "evidence_refs": list(evidence_refs),
-            "reader_mode": reader_mode.value if reader_mode is not None else None,
-        },
+def _task_identity_from_item(item: ReReadTask) -> str:
+    return _task_identity(
+        document_id=item.document_id,
+        source_revision=item.source_revision,
+        structure_map_id=item.structure_map_id,
+        plan_id=item.plan_id,
+        coverage_map_id=item.coverage_map_id,
+        unit_id=item.unit_id,
+        section_id=item.section_id,
+        source_span=item.source_span,
+        priority=item.priority,
+        actions=item.actions,
+        trigger_codes=item.trigger_codes,
+        evidence_refs=item.evidence_refs,
+        reader_mode=item.reader_mode,
     )
 
 
-def _deferred_identity(
-    *,
-    document_id: str,
-    source_revision: str,
-    structure_map_id: str,
-    plan_id: str,
-    coverage_map_id: str,
-    unit_id: str,
-    section_id: str,
-    source_span: SourceSpan,
-    priority: ReReadPriority,
-    actions: tuple[ReReadAction, ...],
-    trigger_codes: tuple[ReReadTrigger, ...],
-    evidence_refs: tuple[str, ...],
-    reader_mode: ReaderMode | None,
-    deferral_reason: ReReadDeferralReason,
-) -> str:
-    return stable_reader_core_id(
-        "deferred-selective-reread-item",
-        {
-            "document_id": document_id,
-            "source_revision": source_revision,
-            "structure_map_id": structure_map_id,
-            "plan_id": plan_id,
-            "coverage_map_id": coverage_map_id,
-            "unit_id": unit_id,
-            "section_id": section_id,
-            "source_span": source_span.identity_payload(),
-            "priority": int(priority),
-            "actions": [action.value for action in actions],
-            "trigger_codes": [trigger.value for trigger in trigger_codes],
-            "evidence_refs": list(evidence_refs),
-            "reader_mode": reader_mode.value if reader_mode is not None else None,
-            "deferral_reason": deferral_reason.value,
-        },
+def _deferred_identity_from_item(item: DeferredReReadItem) -> str:
+    return _deferred_identity(
+        document_id=item.document_id,
+        source_revision=item.source_revision,
+        structure_map_id=item.structure_map_id,
+        plan_id=item.plan_id,
+        coverage_map_id=item.coverage_map_id,
+        unit_id=item.unit_id,
+        section_id=item.section_id,
+        source_span=item.source_span,
+        priority=item.priority,
+        actions=item.actions,
+        trigger_codes=item.trigger_codes,
+        evidence_refs=item.evidence_refs,
+        reader_mode=item.reader_mode,
+        deferral_reason=item.deferral_reason,
     )
 
 
-def _plan_identity(
-    *,
-    schema_version: str,
-    planner_version: str,
-    document_id: str,
-    source_revision: str,
-    structure_map_id: str,
-    plan_id: str,
-    coverage_map_id: str,
-    budget: SelectiveReReadBudget,
-    tasks: tuple[ReReadTask, ...],
-    deferred_items: tuple[DeferredReReadItem, ...],
-    triggered_unit_ids: tuple[str, ...],
-    total_queued_chars: int,
-    warnings: tuple[str, ...],
-) -> str:
+def _task_identity(**values: object) -> str:
+    return _item_identity("selective-reread-task", values)
+
+
+def _deferred_identity(**values: object) -> str:
+    return _item_identity("deferred-selective-reread-item", values)
+
+
+def _item_identity(kind: str, values: dict[str, object]) -> str:
+    span = values["source_span"]
+    priority = values["priority"]
+    actions = values["actions"]
+    triggers = values["trigger_codes"]
+    refs = values["evidence_refs"]
+    reader_mode = values["reader_mode"]
+    if not isinstance(span, SourceSpan) or not isinstance(priority, ReReadPriority):
+        raise SelectiveReReadError("invalid reread identity values")
+    if not isinstance(actions, tuple) or not isinstance(triggers, tuple):
+        raise SelectiveReReadError("invalid reread identity values")
+    if not isinstance(refs, tuple):
+        raise SelectiveReReadError("invalid reread identity values")
+    payload = {
+        "document_id": values["document_id"],
+        "source_revision": values["source_revision"],
+        "structure_map_id": values["structure_map_id"],
+        "plan_id": values["plan_id"],
+        "coverage_map_id": values["coverage_map_id"],
+        "unit_id": values["unit_id"],
+        "section_id": values["section_id"],
+        "source_span": span.identity_payload(),
+        "priority": int(priority),
+        "actions": [item.value for item in actions if isinstance(item, ReReadAction)],
+        "trigger_codes": [
+            item.value for item in triggers if isinstance(item, ReReadTrigger)
+        ],
+        "evidence_refs": list(refs),
+        "reader_mode": reader_mode.value if isinstance(reader_mode, ReaderMode) else None,
+    }
+    reason = values.get("deferral_reason")
+    if isinstance(reason, ReReadDeferralReason):
+        payload["deferral_reason"] = reason.value
+    return stable_reader_core_id(kind, payload)
+
+
+def _plan_identity(plan: SelectiveReReadPlan) -> str:
     return stable_reader_core_id(
         "selective-reread-plan",
         {
-            "schema_version": schema_version,
-            "planner_version": planner_version,
-            "document_id": document_id,
-            "source_revision": source_revision,
-            "structure_map_id": structure_map_id,
-            "plan_id": plan_id,
-            "coverage_map_id": coverage_map_id,
+            "schema_version": plan.schema_version,
+            "planner_version": plan.planner_version,
+            "document_id": plan.document_id,
+            "source_revision": plan.source_revision,
+            "structure_map_id": plan.structure_map_id,
+            "plan_id": plan.plan_id,
+            "coverage_map_id": plan.coverage_map_id,
             "budget": {
-                "max_tasks": budget.max_tasks,
-                "max_total_chars": budget.max_total_chars,
-                "max_task_chars": budget.max_task_chars,
-                "max_tasks_per_section": budget.max_tasks_per_section,
+                "max_tasks": plan.budget.max_tasks,
+                "max_total_chars": plan.budget.max_total_chars,
+                "max_task_chars": plan.budget.max_task_chars,
+                "max_tasks_per_section": plan.budget.max_tasks_per_section,
             },
-            "task_ids": [task.task_id for task in tasks],
-            "deferred_item_ids": [item.item_id for item in deferred_items],
-            "triggered_unit_ids": list(triggered_unit_ids),
-            "total_queued_chars": total_queued_chars,
-            "warnings": list(warnings),
+            "task_ids": [task.task_id for task in plan.tasks],
+            "deferred_item_ids": [item.item_id for item in plan.deferred_items],
+            "triggered_unit_ids": list(plan.triggered_unit_ids),
+            "total_queued_chars": plan.total_queued_chars,
+            "warnings": list(plan.warnings),
         },
     )
 
 
-def _action_tuple(
-    values: Iterable[ReReadAction],
-) -> tuple[ReReadAction, ...]:
+def _action_tuple(values: Iterable[ReReadAction]) -> tuple[ReReadAction, ...]:
     result = tuple(values)
-    if not result:
-        raise SelectiveReReadError("action values must not be empty")
-    if any(not isinstance(value, ReReadAction) for value in result):
-        raise SelectiveReReadError(
-            "action values must belong to ReReadAction"
-        )
-    if len(set(result)) != len(result):
-        raise SelectiveReReadError("action values must be unique")
+    if not result or any(not isinstance(value, ReReadAction) for value in result):
+        raise SelectiveReReadError("action values must belong to ReReadAction")
     canonical = tuple(action for action in _ACTION_ORDER if action in result)
-    if result != canonical:
+    if result != canonical or len(set(result)) != len(result):
         raise SelectiveReReadError(
-            "action values must use canonical enum order"
+            "action values must be unique and use canonical enum order"
         )
     return result
 
 
-def _trigger_tuple(
-    values: Iterable[ReReadTrigger],
-) -> tuple[ReReadTrigger, ...]:
+def _trigger_tuple(values: Iterable[ReReadTrigger]) -> tuple[ReReadTrigger, ...]:
     result = tuple(values)
-    if not result:
-        raise SelectiveReReadError("trigger_code values must not be empty")
-    if any(not isinstance(value, ReReadTrigger) for value in result):
+    if not result or any(not isinstance(value, ReReadTrigger) for value in result):
         raise SelectiveReReadError(
             "trigger_code values must belong to ReReadTrigger"
         )
-    if len(set(result)) != len(result):
-        raise SelectiveReReadError("trigger_code values must be unique")
     canonical = tuple(trigger for trigger in _TRIGGER_ORDER if trigger in result)
-    if result != canonical:
+    if result != canonical or len(set(result)) != len(result):
         raise SelectiveReReadError(
-            "trigger_code values must use canonical enum order"
+            "trigger_code values must be unique and use canonical enum order"
         )
     return result
 
 
 def _require_text(value: str, field_name: str) -> str:
     if not isinstance(value, str) or not value.strip():
-        raise SelectiveReReadError(
-            f"{field_name} must be a non-empty string"
-        )
+        raise SelectiveReReadError(f"{field_name} must be a non-empty string")
     return value
 
 
-def _unique_text_tuple(
-    values: Iterable[str],
-    field_name: str,
-) -> tuple[str, ...]:
+def _unique_text_tuple(values: Iterable[str], field_name: str) -> tuple[str, ...]:
     result = tuple(values)
     for value in result:
         _require_text(value, field_name)
     if len(set(result)) != len(result):
-        raise SelectiveReReadError(
-            f"{field_name} values must be unique"
-        )
+        raise SelectiveReReadError(f"{field_name} values must be unique")
     return result
 
 
