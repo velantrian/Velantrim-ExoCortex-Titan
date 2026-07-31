@@ -37,7 +37,7 @@
       "expected_relation_count": 0,
       "expected_contradiction_count": 0,
       "expected_qualifier_count": 0,
-      "tags": ["ambiguous-duplicate", "revision", "resume"]
+      "tags": ["ambiguous-duplicate", "resume", "revision"]
     },
     {
       "case_id": "untrusted-document-instruction",
