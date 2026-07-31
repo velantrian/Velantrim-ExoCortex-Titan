@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from hashlib import sha256
+import math
 from typing import Iterable
 
 from core.hierarchical_section_planner import ReadingUnit
@@ -84,6 +86,16 @@ class SectionCardInterpretation:
                 "interpretations require at least one supporting SourceSpan"
             )
         object.__setattr__(self, "supporting_spans", spans)
+        expected_id = _interpretation_identity(
+            kind=self.kind,
+            text=self.text,
+            supporting_spans=spans,
+            inference_reason=self.inference_reason,
+        )
+        if self.interpretation_id != expected_id:
+            raise SectionCardError(
+                "interpretation_id does not match interpretation content"
+            )
 
     @classmethod
     def create(
@@ -93,22 +105,15 @@ class SectionCardInterpretation:
         text: str,
         supporting_spans: Iterable[SourceSpan],
         inference_reason: str,
-        interpretation_id: str | None = None,
     ) -> SectionCardInterpretation:
         spans = tuple(supporting_spans)
-        resolved_id = interpretation_id or stable_reader_core_id(
-            "section-card-interpretation",
-            {
-                "kind": kind.value if isinstance(kind, InterpretationKind) else kind,
-                "text": text,
-                "supporting_spans": [
-                    span.identity_payload() for span in spans
-                ],
-                "inference_reason": inference_reason,
-            },
-        )
         return cls(
-            interpretation_id=resolved_id,
+            interpretation_id=_interpretation_identity(
+                kind=kind,
+                text=text,
+                supporting_spans=spans,
+                inference_reason=inference_reason,
+            ),
             kind=kind,
             text=text,
             supporting_spans=spans,
@@ -125,6 +130,7 @@ class SectionCardBuildReceipt:
     original_capsule_id: str
     reader_status: ReaderStatus
     coordinate_space: SpanCoordinateSpace
+    absolute_claim_ids: tuple[str, ...]
     claim_count: int
     source_span_count: int
     referenced_source_chars: int
@@ -145,6 +151,12 @@ class SectionCardBuildReceipt:
             raise SectionCardError(
                 "coordinate_space must be a SpanCoordinateSpace"
             )
+        claim_ids = _text_tuple(self.absolute_claim_ids, "absolute_claim_id")
+        if not claim_ids or len(set(claim_ids)) != len(claim_ids):
+            raise SectionCardError(
+                "absolute_claim_ids must be non-empty and unique"
+            )
+        object.__setattr__(self, "absolute_claim_ids", claim_ids)
         for name in (
             "claim_count",
             "source_span_count",
@@ -155,29 +167,43 @@ class SectionCardBuildReceipt:
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise SectionCardError(f"{name} must be an integer >= 0")
-        if self.claim_count <= 0:
-            raise SectionCardError("claim_count must be positive")
+        if self.claim_count != len(claim_ids):
+            raise SectionCardError(
+                "claim_count must equal the number of absolute_claim_ids"
+            )
         if self.source_span_count <= 0:
             raise SectionCardError("source_span_count must be positive")
+        if self.unit_char_count <= 0:
+            raise SectionCardError("unit_char_count must be positive")
         if self.referenced_source_chars > self.unit_char_count:
             raise SectionCardError(
                 "referenced_source_chars cannot exceed unit_char_count"
             )
-        score = self.reader_reported_coverage_score
-        if (
-            isinstance(score, bool)
-            or not isinstance(score, (int, float))
-            or not 0.0 <= float(score) <= 1.0
-        ):
-            raise SectionCardError(
-                "reader_reported_coverage_score must be in [0, 1]"
-            )
-        object.__setattr__(self, "reader_reported_coverage_score", float(score))
-        object.__setattr__(
-            self,
-            "reader_warning_codes",
-            _text_tuple(self.reader_warning_codes, "reader_warning_code"),
+        score = _probability(
+            self.reader_reported_coverage_score,
+            "reader_reported_coverage_score",
         )
+        object.__setattr__(self, "reader_reported_coverage_score", score)
+        warning_codes = _text_tuple(
+            self.reader_warning_codes,
+            "reader_warning_code",
+        )
+        object.__setattr__(self, "reader_warning_codes", warning_codes)
+        expected_id = _receipt_identity(
+            unit_id=self.unit_id,
+            original_capsule_id=self.original_capsule_id,
+            reader_status=self.reader_status,
+            coordinate_space=self.coordinate_space,
+            absolute_claim_ids=claim_ids,
+            source_span_count=self.source_span_count,
+            referenced_source_chars=self.referenced_source_chars,
+            unit_char_count=self.unit_char_count,
+            omitted_question_count=self.omitted_question_count,
+            reader_reported_coverage_score=score,
+            reader_warning_codes=warning_codes,
+        )
+        if self.receipt_id != expected_id:
+            raise SectionCardError("receipt_id does not match receipt content")
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,6 +212,7 @@ class SectionCard:
 
     card_id: str
     schema_version: str
+    builder_version: str
     document_id: str
     source_revision: str
     structure_map_id: str
@@ -208,6 +235,7 @@ class SectionCard:
         for name in (
             "card_id",
             "schema_version",
+            "builder_version",
             "document_id",
             "source_revision",
             "structure_map_id",
@@ -219,11 +247,15 @@ class SectionCard:
             "reader_version",
         ):
             _require_text(getattr(self, name), name)
+        if self.schema_version != SECTION_CARD_SCHEMA_VERSION:
+            raise SectionCardError("unsupported SectionCard schema_version")
         if self.prompt_version is not None:
             _require_text(self.prompt_version, "prompt_version")
         if not isinstance(self.unit_source_span, SourceSpan):
             raise SectionCardError("unit_source_span must be a SourceSpan")
         self._validate_span(self.unit_source_span, "unit_source_span")
+        if self.unit_source_span.span_id != self.unit_id:
+            raise SectionCardError("unit_source_span span_id must equal unit_id")
 
         claims = tuple(self.claims)
         if not claims or any(not isinstance(item, SectionCardClaim) for item in claims):
@@ -249,19 +281,43 @@ class SectionCard:
                 self._validate_span(span, "interpretation supporting span")
                 self._require_inside_unit(span)
         object.__setattr__(self, "interpretations", interpretations)
-        object.__setattr__(self, "entities", _text_tuple(self.entities, "entity"))
-        object.__setattr__(
-            self,
-            "omitted_questions",
-            _text_tuple(self.omitted_questions, "omitted_question"),
+        entities = _text_tuple(self.entities, "entity")
+        omitted_questions = _text_tuple(
+            self.omitted_questions,
+            "omitted_question",
         )
+        object.__setattr__(self, "entities", entities)
+        object.__setattr__(self, "omitted_questions", omitted_questions)
         if not isinstance(self.build_receipt, SectionCardBuildReceipt):
             raise SectionCardError(
                 "build_receipt must be a SectionCardBuildReceipt"
             )
-        if self.build_receipt.unit_id != self.unit_id:
-            raise SectionCardError("build receipt unit_id must match card")
-        object.__setattr__(self, "warnings", _text_tuple(self.warnings, "warning"))
+        self._validate_receipt(claims, omitted_questions)
+        warnings = _text_tuple(self.warnings, "warning")
+        if not set(self.build_receipt.reader_warning_codes).issubset(warnings):
+            raise SectionCardError(
+                "card warnings must include every Reader warning code"
+            )
+        object.__setattr__(self, "warnings", warnings)
+
+        expected_id = _card_identity(
+            schema_version=self.schema_version,
+            builder_version=self.builder_version,
+            document_id=self.document_id,
+            source_revision=self.source_revision,
+            structure_map_id=self.structure_map_id,
+            plan_id=self.plan_id,
+            section_id=self.section_id,
+            unit_id=self.unit_id,
+            unit_source_span=self.unit_source_span,
+            local_essence=self.local_essence,
+            claims=claims,
+            interpretations=interpretations,
+            entities=entities,
+            omitted_questions=omitted_questions,
+        )
+        if self.card_id != expected_id:
+            raise SectionCardError("card_id does not match card content")
 
     def _validate_span(self, span: SourceSpan, field_name: str) -> None:
         if span.document_id != self.document_id:
@@ -278,11 +334,52 @@ class SectionCard:
                 "all card provenance spans must be contained in the unit span"
             )
 
+    def _validate_receipt(
+        self,
+        claims: tuple[SectionCardClaim, ...],
+        omitted_questions: tuple[str, ...],
+    ) -> None:
+        receipt = self.build_receipt
+        if receipt.unit_id != self.unit_id:
+            raise SectionCardError("build receipt unit_id must match card")
+        capsule_ids = {item.source_capsule_id for item in claims}
+        if capsule_ids != {receipt.original_capsule_id}:
+            raise SectionCardError(
+                "all card claims must reference the receipt capsule"
+            )
+        claim_ids = tuple(item.claim.claim_id for item in claims)
+        if receipt.absolute_claim_ids != claim_ids:
+            raise SectionCardError(
+                "receipt absolute_claim_ids must match card claims"
+            )
+        claim_spans = tuple(
+            span for item in claims for span in item.claim.source_spans
+        )
+        if receipt.source_span_count != len(claim_spans):
+            raise SectionCardError(
+                "receipt source_span_count must match card claims"
+            )
+        if receipt.referenced_source_chars != _union_char_count(claim_spans):
+            raise SectionCardError(
+                "receipt referenced_source_chars must match card claims"
+            )
+        unit_char_count = (
+            self.unit_source_span.end_offset - self.unit_source_span.start_offset
+        )
+        if receipt.unit_char_count != unit_char_count:
+            raise SectionCardError(
+                "receipt unit_char_count must match unit_source_span"
+            )
+        if receipt.omitted_question_count != len(omitted_questions):
+            raise SectionCardError(
+                "receipt omitted_question_count must match card"
+            )
+
 
 class SectionCardBuilder:
     """Build cards from accepted Reader results without widening authority."""
 
-    builder_version = "1.0.0"
+    builder_version = "1.1.0"
 
     def build(
         self,
@@ -333,22 +430,22 @@ class SectionCardBuilder:
             for card_claim in card_claims
             for span in card_claim.claim.source_spans
         )
+        absolute_claim_ids = tuple(
+            item.claim.claim_id for item in card_claims
+        )
         referenced_chars = _union_char_count(all_claim_spans)
-        receipt_id = stable_reader_core_id(
-            "section-card-build-receipt",
-            {
-                "unit_id": unit.unit_id,
-                "original_capsule_id": capsule.capsule_id,
-                "reader_status": reader_result.status.value,
-                "coordinate_space": coordinate_space.value,
-                "claim_ids": [item.claim.claim_id for item in card_claims],
-                "source_span_count": len(all_claim_spans),
-                "referenced_source_chars": referenced_chars,
-                "unit_char_count": unit.char_count,
-                "omitted_question_count": len(capsule.omitted_questions),
-                "reader_reported_coverage_score": capsule.coverage_score,
-                "reader_warning_codes": list(warning_codes),
-            },
+        receipt_id = _receipt_identity(
+            unit_id=unit.unit_id,
+            original_capsule_id=capsule.capsule_id,
+            reader_status=reader_result.status,
+            coordinate_space=coordinate_space,
+            absolute_claim_ids=absolute_claim_ids,
+            source_span_count=len(all_claim_spans),
+            referenced_source_chars=referenced_chars,
+            unit_char_count=unit.char_count,
+            omitted_question_count=len(capsule.omitted_questions),
+            reader_reported_coverage_score=capsule.coverage_score,
+            reader_warning_codes=warning_codes,
         )
         receipt = SectionCardBuildReceipt(
             receipt_id=receipt_id,
@@ -356,6 +453,7 @@ class SectionCardBuilder:
             original_capsule_id=capsule.capsule_id,
             reader_status=reader_result.status,
             coordinate_space=coordinate_space,
+            absolute_claim_ids=absolute_claim_ids,
             claim_count=len(card_claims),
             source_span_count=len(all_claim_spans),
             referenced_source_chars=referenced_chars,
@@ -364,34 +462,27 @@ class SectionCardBuilder:
             reader_reported_coverage_score=capsule.coverage_score,
             reader_warning_codes=warning_codes,
         )
-        card_id = stable_reader_core_id(
-            "section-card",
-            {
-                "schema_version": SECTION_CARD_SCHEMA_VERSION,
-                "builder_version": self.builder_version,
-                "document_id": unit.document_id,
-                "source_revision": unit.source_revision,
-                "structure_map_id": unit.structure_map_id,
-                "plan_id": plan_id,
-                "section_id": unit.section_id,
-                "unit_id": unit.unit_id,
-                "unit_source_span": unit.source_span.identity_payload(),
-                "original_capsule_id": capsule.capsule_id,
-                "local_essence": capsule.essence,
-                "claim_payloads": [
-                    item.claim.identity_payload() for item in card_claims
-                ],
-                "interpretation_ids": [
-                    item.interpretation_id for item in resolved_interpretations
-                ],
-                "entities": sorted(capsule.entities),
-                "omitted_questions": sorted(capsule.omitted_questions),
-            },
+        card_id = _card_identity(
+            schema_version=SECTION_CARD_SCHEMA_VERSION,
+            builder_version=self.builder_version,
+            document_id=unit.document_id,
+            source_revision=unit.source_revision,
+            structure_map_id=unit.structure_map_id,
+            plan_id=plan_id,
+            section_id=unit.section_id,
+            unit_id=unit.unit_id,
+            unit_source_span=unit.source_span,
+            local_essence=capsule.essence,
+            claims=card_claims,
+            interpretations=resolved_interpretations,
+            entities=capsule.entities,
+            omitted_questions=capsule.omitted_questions,
         )
         warnings = tuple(dict.fromkeys((*warning_codes, *unit.warnings)))
         return SectionCard(
             card_id=card_id,
             schema_version=SECTION_CARD_SCHEMA_VERSION,
+            builder_version=self.builder_version,
             document_id=unit.document_id,
             source_revision=unit.source_revision,
             structure_map_id=unit.structure_map_id,
@@ -431,7 +522,7 @@ class SectionCardBuilder:
             raise SectionCardError("unit must be a ReadingUnit")
         if source.document_id != unit.document_id:
             raise SectionCardError("source document_id must match unit")
-        if source.source_revision != unit.source_revision:
+        if _source_revision(source) != unit.source_revision:
             raise SectionCardError("source revision must match unit")
         if not unit.source_span.verify(source.text):
             raise SectionCardError("unit source span must verify against source")
@@ -546,6 +637,107 @@ class SectionCardBuilder:
                     )
 
 
+def _interpretation_identity(
+    *,
+    kind: InterpretationKind,
+    text: str,
+    supporting_spans: tuple[SourceSpan, ...],
+    inference_reason: str,
+) -> str:
+    return stable_reader_core_id(
+        "section-card-interpretation",
+        {
+            "kind": kind.value if isinstance(kind, InterpretationKind) else kind,
+            "text": text,
+            "supporting_spans": [
+                span.identity_payload() for span in supporting_spans
+            ],
+            "inference_reason": inference_reason,
+        },
+    )
+
+
+def _receipt_identity(
+    *,
+    unit_id: str,
+    original_capsule_id: str,
+    reader_status: ReaderStatus,
+    coordinate_space: SpanCoordinateSpace,
+    absolute_claim_ids: tuple[str, ...],
+    source_span_count: int,
+    referenced_source_chars: int,
+    unit_char_count: int,
+    omitted_question_count: int,
+    reader_reported_coverage_score: float,
+    reader_warning_codes: tuple[str, ...],
+) -> str:
+    return stable_reader_core_id(
+        "section-card-build-receipt",
+        {
+            "unit_id": unit_id,
+            "original_capsule_id": original_capsule_id,
+            "reader_status": reader_status.value,
+            "coordinate_space": coordinate_space.value,
+            "absolute_claim_ids": list(absolute_claim_ids),
+            "source_span_count": source_span_count,
+            "referenced_source_chars": referenced_source_chars,
+            "unit_char_count": unit_char_count,
+            "omitted_question_count": omitted_question_count,
+            "reader_reported_coverage_score": reader_reported_coverage_score,
+            "reader_warning_codes": list(reader_warning_codes),
+        },
+    )
+
+
+def _card_identity(
+    *,
+    schema_version: str,
+    builder_version: str,
+    document_id: str,
+    source_revision: str,
+    structure_map_id: str,
+    plan_id: str,
+    section_id: str,
+    unit_id: str,
+    unit_source_span: SourceSpan,
+    local_essence: str,
+    claims: tuple[SectionCardClaim, ...],
+    interpretations: tuple[SectionCardInterpretation, ...],
+    entities: tuple[str, ...],
+    omitted_questions: tuple[str, ...],
+) -> str:
+    return stable_reader_core_id(
+        "section-card",
+        {
+            "schema_version": schema_version,
+            "builder_version": builder_version,
+            "document_id": document_id,
+            "source_revision": source_revision,
+            "structure_map_id": structure_map_id,
+            "plan_id": plan_id,
+            "section_id": section_id,
+            "unit_id": unit_id,
+            "unit_source_span": unit_source_span.identity_payload(),
+            "local_essence": local_essence,
+            "claim_payloads": [
+                item.claim.identity_payload() for item in claims
+            ],
+            "interpretation_ids": [
+                item.interpretation_id for item in interpretations
+            ],
+            "entities": sorted(entities),
+            "omitted_questions": sorted(omitted_questions),
+        },
+    )
+
+
+def _source_revision(source: RawSource) -> str:
+    if source.source_revision is not None:
+        return source.source_revision
+    content_hash = sha256(source.text.encode("utf-8")).hexdigest()
+    return f"sha256:{content_hash}"
+
+
 def _union_char_count(spans: Iterable[SourceSpan]) -> int:
     intervals = sorted((span.start_offset, span.end_offset) for span in spans)
     if not intervals:
@@ -559,6 +751,15 @@ def _union_char_count(spans: Iterable[SourceSpan]) -> int:
         total += current_end - current_start
         current_start, current_end = start, end
     return total + current_end - current_start
+
+
+def _probability(value: float, field_name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise SectionCardError(f"{field_name} must be a number in [0, 1]")
+    result = float(value)
+    if not math.isfinite(result) or not 0.0 <= result <= 1.0:
+        raise SectionCardError(f"{field_name} must be finite and in [0, 1]")
+    return result
 
 
 def _require_text(value: str, field_name: str) -> str:
