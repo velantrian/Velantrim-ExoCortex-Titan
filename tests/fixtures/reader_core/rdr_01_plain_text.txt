@@ -1,0 +1,4 @@
+Velantrim Reader Core fixture.
+
+This plain-text document has no explicit heading syntax.
+It must remain one exact source-linked section.
