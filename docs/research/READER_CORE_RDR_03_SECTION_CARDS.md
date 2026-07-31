@@ -8,128 +8,118 @@
 
 PR-RDR-03 turns an accepted `SemanticReader` result for one `ReadingUnit` into an immutable `SectionCard`.
 
-A card is a local reading note, not evidence and not truth. Its purpose is to preserve:
+A card is a local reading note, not evidence and not truth. It preserves:
 
-- which unit was read;
-- which `KnowledgeCapsule` supplied the extraction;
-- exact absolute source provenance for every accepted claim;
+- the exact unit that was read;
+- the `KnowledgeCapsule` and origin claim identities used to build it;
+- absolute document provenance for every accepted claim;
 - local essence, entities, and omitted questions;
 - explicit separation between extracted claims and inferred interpretations;
-- observable build counts and Reader warnings.
+- observable build counts and structured Reader warnings.
 
 ```text
-RawSource + ReadingUnit + ReaderResult
-        ↓ validate accepted status and source/unit identity
-validate or rebase claim spans
+RawSource + ReadingUnit + accepted ReaderResult
+        ↓ validate source, revision, unit, and capsule
+validate or rebase every claim span
         ↓
 absolute source-linked SectionCardClaims
         ↓
 optional explicitly inferred interpretations
         ↓
-SectionCard + SectionCardBuildReceipt
+self-verifying SectionCard + build receipt
 ```
 
-## Why coordinate space is explicit
+## Coordinate space must be declared
 
-Existing `SemanticReader` implementations receive a `RawSource` and emit `SourceSpan` offsets relative to that supplied text. When a Reader is run on a bounded unit substring, its offsets begin at zero for that unit. When it is run against the full document with a targeted extraction policy, offsets may already be document-absolute.
+A `SemanticReader` emits offsets relative to the `RawSource` it receives. A Reader run on a unit substring normally emits offsets beginning at zero. A Reader run against the full document may already emit absolute offsets.
 
-Silently guessing between these cases would corrupt provenance. PR-RDR-03 therefore requires one explicit mode:
+Guessing between these cases would corrupt provenance. The builder therefore requires one explicit mode:
 
 ```text
-UNIT_LOCAL        → validate against unit substring, then rebase
-DOCUMENT_ABSOLUTE → validate against full source and unit boundaries
+UNIT_LOCAL        → verify against the unit substring, then rebase
+DOCUMENT_ABSOLUTE → verify against the full source and unit boundaries
 ```
 
-For `UNIT_LOCAL`, every source span is verified against:
+For `UNIT_LOCAL`:
 
 ```text
-source.text[unit.start_offset:unit.end_offset]
-```
-
-It is then recreated against the full immutable source with:
-
-```text
+unit_text      = source.text[unit.start_offset:unit.end_offset]
 absolute_start = unit.start_offset + local_start
 absolute_end   = unit.start_offset + local_end
 ```
 
-For `DOCUMENT_ABSOLUTE`, every span must already fit inside the unit and its hash must verify against the full source.
+The original local span hash must verify against `unit_text`. The rebuilt absolute span hash must then derive from the full immutable source.
+
+For `DOCUMENT_ABSOLUTE`, the span must already lie inside the unit and verify against the complete source.
 
 No invalid, stale, ambiguous, or out-of-unit span is accepted.
 
+## Explicit and derived source revisions
+
+When `RawSource.source_revision` is present, it must equal the reading-unit revision. When it is absent, the builder derives the same deterministic revision used by PR-RDR-01 and PR-RDR-02:
+
+```text
+sha256:<SHA-256 of exact UTF-8 source text>
+```
+
+This allows the original immutable `RawSource` with `source_revision=None` to remain usable throughout the deterministic Reader Core pipeline.
+
 ## SectionCardClaim
 
-A card claim wraps one rebased `CapsuleClaim` and retains:
+A card claim contains:
 
-- `origin_claim_id` — the claim identity supplied by the original capsule;
-- `source_capsule_id` — the capsule from which it came;
-- `claim` — a newly validated claim whose spans use absolute document offsets.
+- `origin_claim_id` — identity supplied by the input capsule;
+- `source_capsule_id` — capsule that supplied it;
+- `claim` — a rebuilt `CapsuleClaim` with absolute document spans.
 
-The absolute claim receives a deterministic identity derived from its absolute provenance. This is intentional: a unit-local identity must not be reused after its coordinate meaning changes.
+The absolute claim receives a new deterministic identity based on its absolute provenance. Reusing a unit-local claim ID after changing its coordinate meaning would be unsafe.
 
 Claim text, modality, extraction confidence, truth confidence, qualifiers, uncertainties, applicability conditions, and temporal scope are preserved without reinterpretation.
 
 ## Inferred interpretations remain separate
 
-`SectionCardInterpretation` is a separate type with:
+`SectionCardInterpretation` is a different type with:
 
-- explicit `InterpretationKind`;
+- an explicit `InterpretationKind`;
 - interpretation text;
-- one or more exact supporting source spans;
-- mandatory `inference_reason`;
-- deterministic interpretation identity.
+- one or more exact supporting spans;
+- a mandatory `inference_reason`;
+- a deterministic content identity.
 
-An interpretation is never inserted into `claims`. This prevents a derived conclusion from silently appearing as something directly extracted from the source.
+An interpretation is never inserted into `claims`. The initial kinds are definition, argument, example, condition, uncertainty, important quote, and other.
 
-The initial kinds are:
-
-- definition;
-- argument;
-- example;
-- condition;
-- uncertainty;
-- important quote;
-- other.
-
-PR-RDR-03 does not automatically generate interpretations. It only defines and validates the safe boundary for later proposal-producing components.
+PR-RDR-03 does not automatically invent interpretations. It defines and validates the safe representation for future proposal-producing components.
 
 ## SectionCardBuildReceipt
 
-The receipt records observable processing facts:
+The receipt records processing facts:
 
 - original capsule identity;
 - Reader status (`SUCCESS` or `PARTIAL`);
 - declared coordinate space;
+- ordered absolute claim IDs;
 - claim and span counts;
-- unique referenced source character count;
-- total unit character count;
+- unique referenced source-character count;
+- total unit-character count;
 - omitted-question count;
 - Reader-reported capsule coverage score;
 - structured Reader warning codes.
 
-### Coverage warning
+The receipt ID is recomputed and verified from these fields. Direct construction cannot silently attach a stale receipt ID to altered counts.
 
-`KnowledgeCapsule.coverage_score` already exists in the Reader contract. PR-RDR-03 preserves it under the deliberately verbose name:
+The `SectionCard` then checks that receipt claim IDs, counts, source-span totals, referenced-character totals, unit length, omitted-question count, and capsule identity all match the actual card content.
+
+## Coverage boundary
+
+The existing `KnowledgeCapsule.coverage_score` is preserved only as:
 
 ```text
 reader_reported_coverage_score
 ```
 
-It is not:
+It is not structural, claim, exception, relation, table, or validation coverage. It is not truth confidence and not a promotion gate. The multi-axis `CoverageMap` remains PR-RDR-04.
 
-- structural coverage;
-- claim coverage;
-- exception coverage;
-- relation coverage;
-- validation coverage;
-- truth confidence;
-- a promotion gate.
-
-The multi-axis `CoverageMap` remains PR-RDR-04. The receipt also records `referenced_source_chars`, but does not convert that count into a claim of understanding.
-
-## Unique referenced-character accounting
-
-Source spans may overlap or repeat. The receipt computes the union of their absolute intervals so characters are not double-counted.
+`referenced_source_chars` is also only an observable count. Overlapping intervals are merged before counting:
 
 ```text
 span A: 10..20
@@ -137,22 +127,32 @@ span B: 15..25
 unique referenced characters = 15
 ```
 
-This remains a processing count, not a correctness metric.
+This does not claim that the referenced text was understood correctly.
 
 ## Card identity
 
-`card_id` includes:
+`card_id` includes the final normalized card meaning and absolute provenance:
 
 - schema and builder versions;
 - document, revision, structure-map, plan, section, and unit identities;
-- exact unit provenance;
-- original provider-neutral capsule identity;
+- exact unit span;
 - local essence;
 - absolute claim identity payloads;
 - interpretation identities;
 - entities and omitted questions.
 
-Replaceable Reader identity, Reader version, prompt version, timestamps, warning text, and execution timing are excluded. Equivalent accepted meaning and provenance can therefore deduplicate across replaceable Reader implementations, while execution metadata remains visible on the card and receipt.
+It deliberately excludes:
+
+- Reader identity and version;
+- prompt version;
+- timestamps and execution timing;
+- warning text;
+- input coordinate mode;
+- original capsule ID.
+
+The original capsule remains visible in each claim wrapper and in the build receipt. Excluding it from semantic card identity means `UNIT_LOCAL` and `DOCUMENT_ABSOLUTE` executions that resolve to identical absolute claims produce the same `card_id`, while their execution receipts remain distinct.
+
+The card recomputes its own ID during validation. Changing card content while retaining an old ID fails closed.
 
 ## Fail-closed rules
 
@@ -160,15 +160,17 @@ A card is rejected when:
 
 - the Reader result is not `SUCCESS` or `PARTIAL`;
 - an accepted result lacks a capsule;
-- source, unit, or capsule document identities disagree;
-- source revision and unit revision disagree;
-- the unit source hash does not verify;
-- a unit-local span falls outside the unit substring;
+- source, unit, or capsule identities disagree;
+- explicit or derived source revisions disagree;
+- the unit source span does not verify;
+- a local span falls outside the unit substring;
 - an absolute span falls outside the unit;
-- any source-span hash fails verification;
-- an interpretation lacks source support or an inference reason.
+- any span hash fails verification;
+- an interpretation lacks support or an inference reason;
+- interpretation, receipt, or card IDs do not match their content;
+- receipt counts do not match actual card content.
 
-Reader failure remains Reader failure. It is never converted into an empty or misleading card.
+Reader failure remains Reader failure. It never becomes an empty or misleading card.
 
 ## Safety and authority boundary
 
@@ -179,25 +181,25 @@ SectionCards:
 - execute no tools;
 - persist nothing in this PR;
 - are not wired into `/query`;
-- cannot write Canon;
-- cannot admit memory;
+- cannot write Canon or admit memory;
 - cannot call or bypass TruthGate or Write Gate;
-- do not grant graph, policy, or tool authority;
-- treat all source content and Reader output as untrusted data requiring validation.
+- grant no graph, policy, or tool authority;
+- treat source content and Reader output as untrusted data requiring validation.
 
 ## Executable checks
 
-`tests/test_section_card.py` verifies:
+`tests/test_section_card.py` and `tests/test_section_card_hardening.py` verify:
 
-- unit-local to absolute offset rebasing;
-- absolute-span validation;
-- source-hash verification;
-- preservation of original capsule and claim identities;
-- PARTIAL warning-code propagation;
+- unit-local to absolute rebasing;
+- absolute-span validation and source-hash checks;
+- PARTIAL warning propagation;
 - explicit source-supported interpretations;
 - rejection of out-of-unit and invalid-hash spans;
 - rejection of failed Reader results;
 - provider-neutral card identity;
+- derived source revisions;
+- coordinate-space-neutral semantic identity;
+- forged interpretation, receipt, and card ID rejection;
 - immutability and absence of authority-bearing fields.
 
 ## Deferred
@@ -207,8 +209,7 @@ PR-RDR-03 intentionally does not implement:
 - durable SectionCard persistence;
 - Reader execution scheduling over plans;
 - automatic definition, argument, example, or quotation classification;
-- critical-exception extraction — PR-RDR-04;
-- multi-axis CoverageMap — PR-RDR-04;
+- critical-exception extraction and multi-axis CoverageMap — PR-RDR-04;
 - selective rereading — PR-RDR-05;
 - cross-section relations — PR-RDR-06;
 - durable ReadingSession orchestration — PR-RDR-07;
