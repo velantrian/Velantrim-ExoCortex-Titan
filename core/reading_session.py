@@ -1007,7 +1007,7 @@ class ReadingSessionManager:
                     new_unit_id=new_unit.unit_id,
                     old_artifact_id=artifact.artifact_id,
                     old_source_revision=artifact.artifact_source_revision,
-                    source_text_hash=old_unit.source_span.text_hash,
+                    source_text_hash=old_unit.source_span.content_hash,
                 )
             )
         old_reused = {item.old_unit_id for item in pairs}
@@ -1310,7 +1310,7 @@ def _unit_fingerprint(source: RawSource, unit: ReadingUnit) -> str:
     return stable_reader_core_id(
         "reading-session-unit-fingerprint",
         {
-            "text_hash": unit.source_span.text_hash,
+            "text_hash": unit.source_span.content_hash,
             "char_count": unit.char_count,
             "text_sha256": sha256(text.encode("utf-8")).hexdigest(),
         },
