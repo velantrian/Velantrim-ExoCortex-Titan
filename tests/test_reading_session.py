@@ -309,9 +309,8 @@ def test_snapshot_and_receipt_ids_are_self_verifying() -> None:
     with pytest.raises(ReadingSessionError, match="snapshot_id"):
         replace(session, snapshot_id="forged")
 
-    forged_receipt = replace(session.receipts[0], reason_code="forged")
     with pytest.raises(ReadingSessionError, match="receipt_id"):
-        replace(session, receipts=(forged_receipt,))
+        replace(session.receipts[0], reason_code="forged")
 
 
 def test_revision_reuse_keeps_only_unique_exact_text_units() -> None:
