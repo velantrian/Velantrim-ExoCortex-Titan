@@ -49,6 +49,11 @@ def is_embedding_projection_contract_enabled() -> bool:
     return get_config().app.enable_embedding_projection_contract
 
 
+def is_selective_memory_candidate_shadow_enabled() -> bool:
+    """PR-ARM-03 shadow extractor flag. Default OFF; never grants write permission."""
+    return env_flag("ENABLE_SELECTIVE_MEMORY_CANDIDATE_SHADOW")
+
+
 def is_l6_welfare_enabled() -> bool:
     return get_config().app.enable_l6_welfare
 
@@ -160,6 +165,7 @@ __all__ = [
     "is_budget_planner_enabled",
     "is_cognitive_distance_enabled",
     "is_embedding_projection_contract_enabled",
+    "is_selective_memory_candidate_shadow_enabled",
     "is_graph_lab_enabled",
     "is_observer_enabled",
     "is_rate_limit_enabled",
