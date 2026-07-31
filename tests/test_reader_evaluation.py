@@ -242,7 +242,11 @@ def test_replay_comparison_is_order_sensitive_and_self_verifying() -> None:
     assert same.matched is True
     assert reordered.matched is False
     with pytest.raises(ReaderEvaluationError, match="comparison_id"):
-        replace(same, first_digest="forged")
+        replace(
+            same,
+            first_digest="forged",
+            second_digest="forged",
+        )
 
 
 def test_aggregation_is_deterministic_and_computes_transparent_metrics() -> None:
