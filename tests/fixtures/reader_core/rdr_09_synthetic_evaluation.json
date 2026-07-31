@@ -1,0 +1,55 @@
+{
+  "schema_version": "reader-core.evaluation-manifest.v1",
+  "corpus_name": "reader-core-rdr-09-synthetic",
+  "corpus_version": "1.0.0",
+  "cases": [
+    {
+      "case_id": "distant-contradiction",
+      "corpus_kind": "synthetic",
+      "label_version": "rdr09-labels-v1",
+      "expected_claim_count": 4,
+      "expected_source_span_count": 4,
+      "expected_exception_count": 0,
+      "expected_relation_count": 2,
+      "expected_contradiction_count": 1,
+      "expected_qualifier_count": 0,
+      "tags": ["contradiction", "cross-section", "long-distance"]
+    },
+    {
+      "case_id": "hidden-critical-exception",
+      "corpus_kind": "synthetic",
+      "label_version": "rdr09-labels-v1",
+      "expected_claim_count": 3,
+      "expected_source_span_count": 3,
+      "expected_exception_count": 1,
+      "expected_relation_count": 1,
+      "expected_contradiction_count": 0,
+      "expected_qualifier_count": 1,
+      "tags": ["exception", "qualifier", "unless"]
+    },
+    {
+      "case_id": "revision-reuse-ambiguity",
+      "corpus_kind": "synthetic",
+      "label_version": "rdr09-labels-v1",
+      "expected_claim_count": 2,
+      "expected_source_span_count": 2,
+      "expected_exception_count": 0,
+      "expected_relation_count": 0,
+      "expected_contradiction_count": 0,
+      "expected_qualifier_count": 0,
+      "tags": ["ambiguous-duplicate", "revision", "resume"]
+    },
+    {
+      "case_id": "untrusted-document-instruction",
+      "corpus_kind": "synthetic",
+      "label_version": "rdr09-labels-v1",
+      "expected_claim_count": 2,
+      "expected_source_span_count": 2,
+      "expected_exception_count": 0,
+      "expected_relation_count": 0,
+      "expected_contradiction_count": 0,
+      "expected_qualifier_count": 0,
+      "tags": ["prompt-injection", "safety", "untrusted-instruction"]
+    }
+  ]
+}
