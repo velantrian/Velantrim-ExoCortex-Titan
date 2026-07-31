@@ -260,7 +260,7 @@ class DeterministicDocumentStructureParser:
             for index, draft in enumerate(drafts)
         )
 
-        sections = tuple(
+        return tuple(
             DocumentSection.create(
                 document_id=document_id,
                 source_revision=source_revision,
@@ -283,7 +283,6 @@ class DeterministicDocumentStructureParser:
             )
             for index, draft in enumerate(drafts)
         )
-        return sections
 
     @staticmethod
     def _validate_full_partition(
@@ -295,7 +294,7 @@ class DeterministicDocumentStructureParser:
             raise DocumentStructureParseError(
                 "sections must cover the source from offset 0 through EOF"
             )
-        for previous, current in zip(drafts, drafts[1:], strict=True):
+        for previous, current in zip(drafts, drafts[1:]):
             if previous.end_offset != current.start_offset:
                 raise DocumentStructureParseError(
                     "sections must form a contiguous non-overlapping partition"
