@@ -25,8 +25,12 @@ class ReadingSessionError(ValueError):
     """Raised when a ReadingSession invariant or transition is invalid."""
 
 
-class ReadingSessionBudgetExceeded(ReadingSessionError):
+class ReadingSessionBudgetExceededError(ReadingSessionError):
     """Raised before a transition would exceed an immutable resource budget."""
+
+
+# Compatibility export retained for the originally drafted PR-RDR-07 contract.
+ReadingSessionBudgetExceeded = ReadingSessionBudgetExceededError
 
 
 class SessionEventKind(str, Enum):
@@ -644,7 +648,7 @@ class ReadingSessionManager:
             event_kind=SessionEventKind.LEASE_RENEWED,
             to_state=session.state,
             reason_code="session_lease_renewed",
-            active_lease=renewed,
+            replacement_lease=renewed,
         )
 
     def start(
@@ -839,7 +843,7 @@ class ReadingSessionManager:
             event_kind=SessionEventKind.PAUSED,
             to_state=SessionState.PAUSED,
             reason_code=reason_code,
-            active_lease=None,
+            clear_lease=True,
         )
 
     def degrade(
@@ -879,7 +883,7 @@ class ReadingSessionManager:
             event_kind=SessionEventKind.COMPLETED,
             to_state=SessionState.COMPLETED,
             reason_code="session_completed",
-            active_lease=None,
+            clear_lease=True,
         )
 
     def fail(
@@ -902,7 +906,7 @@ class ReadingSessionManager:
             event_kind=SessionEventKind.FAILED,
             to_state=SessionState.FAILED,
             reason_code=reason_code,
-            active_lease=None,
+            clear_lease=True,
         )
 
     def cancel(
@@ -925,7 +929,7 @@ class ReadingSessionManager:
             event_kind=SessionEventKind.CANCELLED,
             to_state=SessionState.CANCELLED,
             reason_code=reason_code,
-            active_lease=None,
+            clear_lease=True,
         )
 
     def mark_stale(
@@ -944,7 +948,7 @@ class ReadingSessionManager:
             event_kind=SessionEventKind.STALE,
             to_state=SessionState.STALE,
             reason_code=reason_code,
-            active_lease=None,
+            clear_lease=True,
         )
 
     def plan_revision_reuse(
@@ -1122,9 +1126,14 @@ class ReadingSessionManager:
         event_kind: SessionEventKind,
         to_state: SessionState,
         reason_code: str,
-        active_lease: SessionLease | None | object = ..., 
+        replacement_lease: SessionLease | None = None,
+        clear_lease: bool = False,
     ) -> ReadingSession:
         _require_text(reason_code, "reason_code")
+        if clear_lease and replacement_lease is not None:
+            raise ReadingSessionError(
+                "cannot clear and replace the active lease together"
+            )
         delta = ReadingSessionUsage(receipts_emitted=1)
         usage = session.resource_usage.plus(delta)
         _validate_usage(usage, session.resource_budget)
@@ -1140,9 +1149,11 @@ class ReadingSessionManager:
             usage_delta=delta,
             lease_generation=session.lease_generation,
         )
-        next_lease = session.active_lease if active_lease is ... else active_lease
-        if next_lease is not None and not isinstance(next_lease, SessionLease):
-            raise ReadingSessionError("active_lease must be SessionLease or None")
+        next_lease = (
+            None
+            if clear_lease
+            else replacement_lease or session.active_lease
+        )
         return replace(
             session,
             snapshot_id="",
@@ -1259,7 +1270,7 @@ def _validate_usage(
     )
     for actual, maximum, label in checks:
         if actual > maximum:
-            raise ReadingSessionBudgetExceeded(
+            raise ReadingSessionBudgetExceededError(
                 f"session {label} budget would be exceeded"
             )
 
@@ -1341,6 +1352,7 @@ __all__ = [
     "ReadingSession",
     "ReadingSessionBudget",
     "ReadingSessionBudgetExceeded",
+    "ReadingSessionBudgetExceededError",
     "ReadingSessionCheckpoint",
     "ReadingSessionError",
     "ReadingSessionManager",
