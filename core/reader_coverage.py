@@ -24,6 +24,7 @@ from core.knowledge_capsule import SourceSpan
 from core.reader_core_contracts import (
     ContentKind,
     CoverageAxis,
+    DocumentSection,
     DocumentStructureMap,
     stable_reader_core_id,
 )
@@ -31,10 +32,13 @@ from core.section_card import SectionCard
 from core.semantic_reader import RawSource, ReaderStatus
 
 COVERAGE_MAP_SCHEMA_VERSION = "reader-core.coverage-map.v1"
+_TABLE_FIGURE_KINDS = frozenset(
+    {ContentKind.TABLE, ContentKind.FIGURE, ContentKind.CAPTION}
+)
 
 
 class CoverageMapError(ValueError):
-    """Raised when coverage inputs or derived accounting are inconsistent."""
+    """Raised when coverage inputs or accounting are inconsistent."""
 
 
 class CoverageMeasureKind(str, Enum):
@@ -68,23 +72,12 @@ class CoverageAxisReceipt:
             raise CoverageMapError(
                 "measure_kind must be a CoverageMeasureKind"
             )
-        if (
-            isinstance(self.processed_count, bool)
-            or not isinstance(self.processed_count, int)
-            or self.processed_count < 0
-        ):
-            raise CoverageMapError(
-                "processed_count must be an integer >= 0"
-            )
+        _require_non_negative_int(self.processed_count, "processed_count")
         if self.denominator_count is not None:
-            if (
-                isinstance(self.denominator_count, bool)
-                or not isinstance(self.denominator_count, int)
-                or self.denominator_count < 0
-            ):
-                raise CoverageMapError(
-                    "denominator_count must be an integer >= 0 or None"
-                )
+            _require_non_negative_int(
+                self.denominator_count,
+                "denominator_count",
+            )
             if self.processed_count > self.denominator_count:
                 raise CoverageMapError(
                     "processed_count cannot exceed denominator_count"
@@ -122,7 +115,7 @@ class CoverageAxisReceipt:
 
 @dataclass(frozen=True, slots=True)
 class UnresolvedCoverageRegion:
-    """Exact source region explaining why one coverage axis is incomplete."""
+    """Exact source region explaining why one axis is incomplete."""
 
     region_id: str
     axis: CoverageAxis
@@ -142,14 +135,13 @@ class UnresolvedCoverageRegion:
         if self.source_span.span_id != self.unit_id:
             raise CoverageMapError("source_span span_id must equal unit_id")
         _require_text(self.reason_code, "reason_code")
-        expected_id = _unresolved_region_identity(
+        if self.region_id != _unresolved_region_identity(
             axis=self.axis,
             unit_id=self.unit_id,
             section_id=self.section_id,
             source_span=self.source_span,
             reason_code=self.reason_code,
-        )
-        if self.region_id != expected_id:
+        ):
             raise CoverageMapError(
                 "region_id does not match unresolved region content"
             )
@@ -157,7 +149,7 @@ class UnresolvedCoverageRegion:
 
 @dataclass(frozen=True, slots=True)
 class UnsupportedAssetRegion:
-    """Atomic asset preserved by the planner but outside its normal budget."""
+    """Atomic asset preserved but outside the planner's normal budget."""
 
     asset_id: str
     unit_id: str
@@ -177,14 +169,13 @@ class UnsupportedAssetRegion:
         if self.source_span.span_id != self.unit_id:
             raise CoverageMapError("source_span span_id must equal unit_id")
         _require_text(self.reason_code, "reason_code")
-        expected_id = _unsupported_asset_identity(
+        if self.asset_id != _unsupported_asset_identity(
             unit_id=self.unit_id,
             section_id=self.section_id,
             content_kind=self.content_kind,
             source_span=self.source_span,
             reason_code=self.reason_code,
-        )
-        if self.asset_id != expected_id:
+        ):
             raise CoverageMapError(
                 "asset_id does not match unsupported asset content"
             )
@@ -222,13 +213,13 @@ class CoverageMap:
             _require_text(getattr(self, name), name)
         if self.schema_version != COVERAGE_MAP_SCHEMA_VERSION:
             raise CoverageMapError("unsupported CoverageMap schema_version")
+
         axes = tuple(self.axes)
         if any(not isinstance(item, CoverageAxisReceipt) for item in axes):
             raise CoverageMapError(
                 "axes must contain CoverageAxisReceipt values"
             )
-        axis_values = tuple(item.axis for item in axes)
-        if axis_values != tuple(CoverageAxis):
+        if tuple(item.axis for item in axes) != tuple(CoverageAxis):
             raise CoverageMapError(
                 "axes must contain every CoverageAxis exactly once in enum order"
             )
@@ -237,47 +228,44 @@ class CoverageMap:
             self.exception_candidate_ids,
             "exception_candidate_id",
         )
-        scan_receipt_ids = _unique_text_tuple(
+        scan_ids = _unique_text_tuple(
             self.exception_scan_receipt_ids,
             "exception_scan_receipt_id",
         )
-        unresolved_regions = tuple(self.unresolved_regions)
-        if any(
-            not isinstance(item, UnresolvedCoverageRegion)
-            for item in unresolved_regions
-        ):
+        regions = tuple(self.unresolved_regions)
+        if any(not isinstance(item, UnresolvedCoverageRegion) for item in regions):
             raise CoverageMapError(
                 "unresolved_regions must contain UnresolvedCoverageRegion values"
             )
-        if len({item.region_id for item in unresolved_regions}) != len(
-            unresolved_regions
-        ):
+        if len({item.region_id for item in regions}) != len(regions):
             raise CoverageMapError("unresolved region IDs must be unique")
-        unsupported_assets = tuple(self.unsupported_assets)
-        if any(
-            not isinstance(item, UnsupportedAssetRegion)
-            for item in unsupported_assets
-        ):
+        assets = tuple(self.unsupported_assets)
+        if any(not isinstance(item, UnsupportedAssetRegion) for item in assets):
             raise CoverageMapError(
                 "unsupported_assets must contain UnsupportedAssetRegion values"
             )
-        if len({item.asset_id for item in unsupported_assets}) != len(
-            unsupported_assets
-        ):
+        if len({item.asset_id for item in assets}) != len(assets):
             raise CoverageMapError("unsupported asset IDs must be unique")
+        for item in (*regions, *assets):
+            if item.source_span.document_id != self.document_id:
+                raise CoverageMapError(
+                    "coverage region document_id must match CoverageMap"
+                )
+            if item.source_span.source_revision != self.source_revision:
+                raise CoverageMapError(
+                    "coverage region source_revision must match CoverageMap"
+                )
         warnings = _unique_text_tuple(self.warnings, "warning")
+
         object.__setattr__(self, "axes", axes)
         object.__setattr__(self, "card_ids", card_ids)
         object.__setattr__(self, "exception_candidate_ids", candidate_ids)
-        object.__setattr__(
-            self,
-            "exception_scan_receipt_ids",
-            scan_receipt_ids,
-        )
-        object.__setattr__(self, "unresolved_regions", unresolved_regions)
-        object.__setattr__(self, "unsupported_assets", unsupported_assets)
+        object.__setattr__(self, "exception_scan_receipt_ids", scan_ids)
+        object.__setattr__(self, "unresolved_regions", regions)
+        object.__setattr__(self, "unsupported_assets", assets)
         object.__setattr__(self, "warnings", warnings)
-        expected_id = _coverage_map_identity(
+
+        if self.coverage_map_id != _coverage_map_identity(
             schema_version=self.schema_version,
             builder_version=self.builder_version,
             document_id=self.document_id,
@@ -287,18 +275,17 @@ class CoverageMap:
             axes=axes,
             card_ids=card_ids,
             exception_candidate_ids=candidate_ids,
-            exception_scan_receipt_ids=scan_receipt_ids,
-            unresolved_regions=unresolved_regions,
-            unsupported_assets=unsupported_assets,
+            exception_scan_receipt_ids=scan_ids,
+            unresolved_regions=regions,
+            unsupported_assets=assets,
             warnings=warnings,
-        )
-        if self.coverage_map_id != expected_id:
+        ):
             raise CoverageMapError(
                 "coverage_map_id does not match CoverageMap content"
             )
 
     def axis(self, axis: CoverageAxis) -> CoverageAxisReceipt:
-        """Return one named independent axis without creating a global score."""
+        """Return one independent axis without creating a global score."""
 
         if not isinstance(axis, CoverageAxis):
             raise CoverageMapError("axis must be a CoverageAxis")
@@ -306,9 +293,9 @@ class CoverageMap:
 
 
 class CoverageMapBuilder:
-    """Build observable coverage from structure, plan, cards, and scan receipts."""
+    """Build coverage from exact structure, plan, cards, and scan receipts."""
 
-    builder_version = "1.0.0"
+    builder_version = "1.1.0"
 
     def build(
         self,
@@ -319,33 +306,46 @@ class CoverageMapBuilder:
         cards: Iterable[SectionCard] = (),
         exception_scans: Iterable[ExceptionScanResult] = (),
     ) -> CoverageMap:
-        """Build a complete six-axis map without inferring understanding."""
+        """Build all six axes without inferring correctness or understanding."""
 
         self._validate_source_structure_plan(source, structure_map, plan)
-        resolved_cards = tuple(cards)
-        resolved_scans = tuple(exception_scans)
         units_by_id = {unit.unit_id: unit for unit in plan.units}
         sections_by_id = {
             section.section_id: section for section in structure_map.sections
         }
         cards_by_unit = self._validate_cards(
-            resolved_cards,
+            tuple(cards),
             plan=plan,
             units_by_id=units_by_id,
         )
-        scans_by_unit, candidates = self._validate_scans(
+        scans_by_unit = self._validate_scans(
             source,
-            resolved_scans,
+            tuple(exception_scans),
             cards_by_unit=cards_by_unit,
             units_by_id=units_by_id,
         )
 
-        unresolved_regions = self._unresolved_regions(
+        ordered_cards = tuple(
+            cards_by_unit[unit.unit_id]
+            for unit in plan.units
+            if unit.unit_id in cards_by_unit
+        )
+        ordered_scans = tuple(
+            scans_by_unit[unit.unit_id]
+            for unit in plan.units
+            if unit.unit_id in scans_by_unit
+        )
+        candidates = tuple(
+            candidate
+            for scan in ordered_scans
+            for candidate in scan.candidates
+        )
+        regions = self._unresolved_regions(
             plan,
             cards_by_unit=cards_by_unit,
             scans_by_unit=scans_by_unit,
         )
-        unsupported_assets = self._unsupported_assets(
+        assets = self._unsupported_assets(
             plan,
             sections_by_id=sections_by_id,
         )
@@ -356,27 +356,25 @@ class CoverageMapBuilder:
             cards_by_unit=cards_by_unit,
             scans_by_unit=scans_by_unit,
         )
-        warnings: list[str] = ["relation_axis_unavailable_until_rdr_06"]
+
+        warnings = ["relation_axis_unavailable_until_rdr_06"]
         if not any(
-            section.content_kind
-            in {ContentKind.TABLE, ContentKind.FIGURE, ContentKind.CAPTION}
+            section.content_kind in _TABLE_FIGURE_KINDS
             for section in structure_map.sections
         ):
             warnings.append("no_table_figure_assets_in_structure")
-        if unsupported_assets:
+        if assets:
             warnings.append("unsupported_atomic_assets_present")
         if any(
             card.build_receipt.reader_status is ReaderStatus.PARTIAL
-            for card in resolved_cards
+            for card in ordered_cards
         ):
             warnings.append("partial_reader_results_present")
-        warning_tuple = tuple(dict.fromkeys(warnings))
-        card_ids = tuple(card.card_id for card in resolved_cards)
-        candidate_ids = tuple(candidate.candidate_id for candidate in candidates)
-        scan_receipt_ids = tuple(
-            scan.receipt.receipt_id for scan in resolved_scans
-        )
-        coverage_map_id = _coverage_map_identity(
+        warning_tuple = tuple(warnings)
+        card_ids = tuple(card.card_id for card in ordered_cards)
+        candidate_ids = tuple(item.candidate_id for item in candidates)
+        scan_ids = tuple(scan.receipt.receipt_id for scan in ordered_scans)
+        map_id = _coverage_map_identity(
             schema_version=COVERAGE_MAP_SCHEMA_VERSION,
             builder_version=self.builder_version,
             document_id=plan.document_id,
@@ -386,13 +384,13 @@ class CoverageMapBuilder:
             axes=axes,
             card_ids=card_ids,
             exception_candidate_ids=candidate_ids,
-            exception_scan_receipt_ids=scan_receipt_ids,
-            unresolved_regions=unresolved_regions,
-            unsupported_assets=unsupported_assets,
+            exception_scan_receipt_ids=scan_ids,
+            unresolved_regions=regions,
+            unsupported_assets=assets,
             warnings=warning_tuple,
         )
         return CoverageMap(
-            coverage_map_id=coverage_map_id,
+            coverage_map_id=map_id,
             schema_version=COVERAGE_MAP_SCHEMA_VERSION,
             builder_version=self.builder_version,
             document_id=plan.document_id,
@@ -402,9 +400,9 @@ class CoverageMapBuilder:
             axes=axes,
             card_ids=card_ids,
             exception_candidate_ids=candidate_ids,
-            exception_scan_receipt_ids=scan_receipt_ids,
-            unresolved_regions=unresolved_regions,
-            unsupported_assets=unsupported_assets,
+            exception_scan_receipt_ids=scan_ids,
+            unresolved_regions=regions,
+            unsupported_assets=assets,
             warnings=warning_tuple,
         )
 
@@ -490,12 +488,8 @@ class CoverageMapBuilder:
         *,
         cards_by_unit: dict[str, SectionCard],
         units_by_id: dict[str, ReadingUnit],
-    ) -> tuple[
-        dict[str, ExceptionScanResult],
-        tuple[CriticalExceptionCandidate, ...],
-    ]:
+    ) -> dict[str, ExceptionScanResult]:
         scans_by_unit: dict[str, ExceptionScanResult] = {}
-        candidates: list[CriticalExceptionCandidate] = []
         candidate_ids: set[str] = set()
         for scan in scans:
             if not isinstance(scan, ExceptionScanResult):
@@ -520,12 +514,30 @@ class CoverageMapBuilder:
                 raise CoverageMapError(
                     "exception scan receipt must match its card and unit"
                 )
+            known_claim_ids = {
+                card_claim.claim.claim_id for card_claim in card.claims
+            }
             for candidate in scan.candidates:
                 if candidate.candidate_id in candidate_ids:
                     raise CoverageMapError(
                         "exception candidate IDs must be unique"
                     )
                 candidate_ids.add(candidate.candidate_id)
+                if (
+                    candidate.section_id != card.section_id
+                    or candidate.card_id != card.card_id
+                    or candidate.unit_id != card.unit_id
+                ):
+                    raise CoverageMapError(
+                        "exception candidate must match its card and unit"
+                    )
+                if (
+                    candidate.statement_span.start_offset < unit.start_offset
+                    or candidate.statement_span.end_offset > unit.end_offset
+                ):
+                    raise CoverageMapError(
+                        "candidate statement_span must fit inside its unit"
+                    )
                 if not candidate.trigger_span.verify(source.text):
                     raise CoverageMapError(
                         "candidate trigger_span must verify against source"
@@ -534,9 +546,24 @@ class CoverageMapBuilder:
                     raise CoverageMapError(
                         "candidate statement_span must verify against source"
                     )
-                candidates.append(candidate)
+                if source.text[
+                    candidate.trigger_span.start_offset : candidate.trigger_span.end_offset
+                ] != candidate.trigger_phrase:
+                    raise CoverageMapError(
+                        "candidate trigger_phrase must match source"
+                    )
+                if source.text[
+                    candidate.statement_span.start_offset : candidate.statement_span.end_offset
+                ] != candidate.statement_text:
+                    raise CoverageMapError(
+                        "candidate statement_text must match source"
+                    )
+                if not set(candidate.target_claim_refs).issubset(known_claim_ids):
+                    raise CoverageMapError(
+                        "candidate target claims must belong to its card"
+                    )
             scans_by_unit[unit_id] = scan
-        return scans_by_unit, tuple(candidates)
+        return scans_by_unit
 
     @staticmethod
     def _axis_receipts(
@@ -548,64 +575,58 @@ class CoverageMapBuilder:
         scans_by_unit: dict[str, ExceptionScanResult],
     ) -> tuple[CoverageAxisReceipt, ...]:
         unit_ids = tuple(unit.unit_id for unit in plan.units)
-        missing_card_ids = tuple(
+        missing_cards = tuple(
             unit_id for unit_id in unit_ids if unit_id not in cards_by_unit
         )
-        missing_scan_ids = tuple(
+        missing_scans = tuple(
             unit_id for unit_id in unit_ids if unit_id not in scans_by_unit
         )
-
         claim_spans = tuple(
             span
             for card in cards_by_unit.values()
             for card_claim in card.claims
             for span in card_claim.claim.source_spans
         )
-        claim_char_count = _covered_non_whitespace_count(
-            source.text,
-            claim_spans,
-        )
-        non_whitespace_count = sum(
+        claim_chars = _covered_non_whitespace_count(source.text, claim_spans)
+        source_chars = sum(
             1 for character in source.text if not character.isspace()
         )
-
         section_kinds = {
             section.section_id: section.content_kind
             for section in structure_map.sections
         }
-        asset_unit_ids = tuple(
+        asset_units = tuple(
             unit.unit_id
             for unit in plan.units
-            if section_kinds[unit.section_id]
-            in {ContentKind.TABLE, ContentKind.FIGURE, ContentKind.CAPTION}
+            if section_kinds[unit.section_id] in _TABLE_FIGURE_KINDS
         )
-        processed_asset_ids = tuple(
-            unit_id for unit_id in asset_unit_ids if unit_id in cards_by_unit
+        processed_assets = tuple(
+            item for item in asset_units if item in cards_by_unit
         )
-        missing_asset_ids = tuple(
-            unit_id for unit_id in asset_unit_ids if unit_id not in cards_by_unit
+        missing_assets = tuple(
+            item for item in asset_units if item not in cards_by_unit
         )
-
-        validated_span_count = sum(
+        validated_spans = sum(
             1 for span in claim_spans if span.verify(source.text)
         )
-        receipt_specs = (
+
+        specs = (
             (
                 CoverageAxis.STRUCTURAL,
                 CoverageMeasureKind.READING_UNIT,
                 len(cards_by_unit),
                 len(plan.units),
                 "section_cards_per_planned_reading_unit",
-                missing_card_ids,
+                missing_cards,
                 (),
             ),
             (
                 CoverageAxis.CLAIM,
                 CoverageMeasureKind.SOURCE_CHARACTER,
-                claim_char_count,
-                non_whitespace_count,
+                claim_chars,
+                source_chars,
                 "unique_non_whitespace_characters_linked_by_card_claim_spans",
-                missing_card_ids,
+                missing_cards,
                 ("claim_axis_is_provenance_footprint_not_claim_recall",),
             ),
             (
@@ -614,7 +635,7 @@ class CoverageMapBuilder:
                 len(scans_by_unit),
                 len(plan.units),
                 "exception_scan_receipts_per_planned_reading_unit",
-                missing_scan_ids,
+                missing_scans,
                 ("exception_axis_is_scan_coverage_not_exception_recall",),
             ),
             (
@@ -629,58 +650,27 @@ class CoverageMapBuilder:
             (
                 CoverageAxis.TABLE_FIGURE,
                 CoverageMeasureKind.TABLE_FIGURE_UNIT,
-                len(processed_asset_ids),
-                len(asset_unit_ids),
+                len(processed_assets),
+                len(asset_units),
                 "cards_per_table_figure_or_caption_reading_unit",
-                missing_asset_ids,
+                missing_assets,
                 (
                     ("no_table_figure_assets_in_structure",)
-                    if not asset_unit_ids
+                    if not asset_units
                     else ()
                 ),
             ),
             (
                 CoverageAxis.VALIDATION,
                 CoverageMeasureKind.CLAIM_SOURCE_SPAN,
-                validated_span_count,
+                validated_spans,
                 len(claim_spans),
                 "verified_absolute_claim_source_spans_per_card_claim_span",
                 (),
                 ("validation_axis_covers_emitted_claim_spans_only",),
             ),
         )
-        receipts: list[CoverageAxisReceipt] = []
-        for (
-            axis,
-            measure_kind,
-            processed_count,
-            denominator_count,
-            basis_code,
-            unresolved_ids,
-            warnings,
-        ) in receipt_specs:
-            receipt_id = _axis_receipt_identity(
-                axis=axis,
-                measure_kind=measure_kind,
-                processed_count=processed_count,
-                denominator_count=denominator_count,
-                basis_code=basis_code,
-                unresolved_ids=unresolved_ids,
-                warnings=warnings,
-            )
-            receipts.append(
-                CoverageAxisReceipt(
-                    receipt_id=receipt_id,
-                    axis=axis,
-                    measure_kind=measure_kind,
-                    processed_count=processed_count,
-                    denominator_count=denominator_count,
-                    basis_code=basis_code,
-                    unresolved_ids=unresolved_ids,
-                    warnings=warnings,
-                )
-            )
-        return tuple(receipts)
+        return tuple(_make_axis_receipt(*spec) for spec in specs)
 
     @staticmethod
     def _unresolved_regions(
@@ -690,40 +680,38 @@ class CoverageMapBuilder:
         scans_by_unit: dict[str, ExceptionScanResult],
     ) -> tuple[UnresolvedCoverageRegion, ...]:
         regions: list[UnresolvedCoverageRegion] = []
+        units_by_id = {unit.unit_id: unit for unit in plan.units}
         for unit in plan.units:
             if unit.unit_id not in cards_by_unit:
-                regions.append(
-                    _make_unresolved_region(
-                        axis=CoverageAxis.STRUCTURAL,
-                        unit=unit,
-                        reason_code="missing_section_card",
-                    )
-                )
-                regions.append(
-                    _make_unresolved_region(
-                        axis=CoverageAxis.CLAIM,
-                        unit=unit,
-                        reason_code="unread_unit_has_no_claim_provenance",
+                regions.extend(
+                    (
+                        _make_unresolved_region(
+                            CoverageAxis.STRUCTURAL,
+                            unit,
+                            "missing_section_card",
+                        ),
+                        _make_unresolved_region(
+                            CoverageAxis.CLAIM,
+                            unit,
+                            "unread_unit_has_no_claim_provenance",
+                        ),
                     )
                 )
             if unit.unit_id not in scans_by_unit:
                 regions.append(
                     _make_unresolved_region(
-                        axis=CoverageAxis.EXCEPTION,
-                        unit=unit,
-                        reason_code="exception_scan_missing",
+                        CoverageAxis.EXCEPTION,
+                        unit,
+                        "exception_scan_missing",
                     )
                 )
-        for card in cards_by_unit.values():
+        for unit_id, card in cards_by_unit.items():
             if card.build_receipt.reader_status is ReaderStatus.PARTIAL:
-                unit = next(
-                    item for item in plan.units if item.unit_id == card.unit_id
-                )
                 regions.append(
                     _make_unresolved_region(
-                        axis=CoverageAxis.VALIDATION,
-                        unit=unit,
-                        reason_code="partial_reader_result",
+                        CoverageAxis.VALIDATION,
+                        units_by_id[unit_id],
+                        "partial_reader_result",
                     )
                 )
         return tuple(regions)
@@ -732,18 +720,17 @@ class CoverageMapBuilder:
     def _unsupported_assets(
         plan: HierarchicalSectionPlan,
         *,
-        sections_by_id: dict[str, object],
+        sections_by_id: dict[str, DocumentSection],
     ) -> tuple[UnsupportedAssetRegion, ...]:
         assets: list[UnsupportedAssetRegion] = []
         for unit in plan.units:
             if "atomic_section_exceeds_budget" not in unit.warnings:
                 continue
             section = sections_by_id[unit.section_id]
-            content_kind = section.content_kind
             asset_id = _unsupported_asset_identity(
                 unit_id=unit.unit_id,
                 section_id=unit.section_id,
-                content_kind=content_kind,
+                content_kind=section.content_kind,
                 source_span=unit.source_span,
                 reason_code="atomic_section_exceeds_budget",
             )
@@ -752,7 +739,7 @@ class CoverageMapBuilder:
                     asset_id=asset_id,
                     unit_id=unit.unit_id,
                     section_id=unit.section_id,
-                    content_kind=content_kind,
+                    content_kind=section.content_kind,
                     source_span=unit.source_span,
                     reason_code="atomic_section_exceeds_budget",
                 )
@@ -760,8 +747,37 @@ class CoverageMapBuilder:
         return tuple(assets)
 
 
+def _make_axis_receipt(
+    axis: CoverageAxis,
+    measure_kind: CoverageMeasureKind,
+    processed_count: int,
+    denominator_count: int | None,
+    basis_code: str,
+    unresolved_ids: tuple[str, ...],
+    warnings: tuple[str, ...],
+) -> CoverageAxisReceipt:
+    receipt_id = _axis_receipt_identity(
+        axis=axis,
+        measure_kind=measure_kind,
+        processed_count=processed_count,
+        denominator_count=denominator_count,
+        basis_code=basis_code,
+        unresolved_ids=unresolved_ids,
+        warnings=warnings,
+    )
+    return CoverageAxisReceipt(
+        receipt_id=receipt_id,
+        axis=axis,
+        measure_kind=measure_kind,
+        processed_count=processed_count,
+        denominator_count=denominator_count,
+        basis_code=basis_code,
+        unresolved_ids=unresolved_ids,
+        warnings=warnings,
+    )
+
+
 def _make_unresolved_region(
-    *,
     axis: CoverageAxis,
     unit: ReadingUnit,
     reason_code: str,
@@ -787,10 +803,9 @@ def _covered_non_whitespace_count(
     text: str,
     spans: Iterable[SourceSpan],
 ) -> int:
-    intervals = _merged_intervals(spans)
     return sum(
         1
-        for start, end in intervals
+        for start, end in _merged_intervals(spans)
         for character in text[start:end]
         if not character.isspace()
     )
@@ -805,9 +820,9 @@ def _merged_intervals(spans: Iterable[SourceSpan]) -> tuple[tuple[int, int], ...
     for start, end in intervals[1:]:
         if start <= current_end:
             current_end = max(current_end, end)
-            continue
-        merged.append((current_start, current_end))
-        current_start, current_end = start, end
+        else:
+            merged.append((current_start, current_end))
+            current_start, current_end = start, end
     merged.append((current_start, current_end))
     return tuple(merged)
 
@@ -905,15 +920,17 @@ def _coverage_map_identity(
             "card_ids": list(card_ids),
             "exception_candidate_ids": list(exception_candidate_ids),
             "exception_scan_receipt_ids": list(exception_scan_receipt_ids),
-            "unresolved_region_ids": [
-                item.region_id for item in unresolved_regions
-            ],
-            "unsupported_asset_ids": [
-                item.asset_id for item in unsupported_assets
-            ],
+            "unresolved_region_ids": [item.region_id for item in unresolved_regions],
+            "unsupported_asset_ids": [item.asset_id for item in unsupported_assets],
             "warnings": list(warnings),
         },
     )
+
+
+def _require_non_negative_int(value: int, field_name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise CoverageMapError(f"{field_name} must be an integer >= 0")
+    return value
 
 
 def _require_text(value: str, field_name: str) -> str:
