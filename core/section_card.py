@@ -262,8 +262,8 @@ class SectionCard:
             raise SectionCardError(
                 "claims must contain at least one SectionCardClaim"
             )
-        for item in claims:
-            for span in item.claim.source_spans:
+        for card_claim in claims:
+            for span in card_claim.claim.source_spans:
                 self._validate_span(span, "claim source span")
                 self._require_inside_unit(span)
         object.__setattr__(self, "claims", claims)
@@ -276,8 +276,8 @@ class SectionCard:
             raise SectionCardError(
                 "interpretations must contain SectionCardInterpretation values"
             )
-        for item in interpretations:
-            for span in item.supporting_spans:
+        for interpretation in interpretations:
+            for span in interpretation.supporting_spans:
                 self._validate_span(span, "interpretation supporting span")
                 self._require_inside_unit(span)
         object.__setattr__(self, "interpretations", interpretations)
@@ -342,18 +342,20 @@ class SectionCard:
         receipt = self.build_receipt
         if receipt.unit_id != self.unit_id:
             raise SectionCardError("build receipt unit_id must match card")
-        capsule_ids = {item.source_capsule_id for item in claims}
+        capsule_ids = {card_claim.source_capsule_id for card_claim in claims}
         if capsule_ids != {receipt.original_capsule_id}:
             raise SectionCardError(
                 "all card claims must reference the receipt capsule"
             )
-        claim_ids = tuple(item.claim.claim_id for item in claims)
+        claim_ids = tuple(card_claim.claim.claim_id for card_claim in claims)
         if receipt.absolute_claim_ids != claim_ids:
             raise SectionCardError(
                 "receipt absolute_claim_ids must match card claims"
             )
         claim_spans = tuple(
-            span for item in claims for span in item.claim.source_spans
+            span
+            for card_claim in claims
+            for span in card_claim.claim.source_spans
         )
         if receipt.source_span_count != len(claim_spans):
             raise SectionCardError(
@@ -431,7 +433,7 @@ class SectionCardBuilder:
             for span in card_claim.claim.source_spans
         )
         absolute_claim_ids = tuple(
-            item.claim.claim_id for item in card_claims
+            card_claim.claim.claim_id for card_claim in card_claims
         )
         referenced_chars = _union_char_count(all_claim_spans)
         receipt_id = _receipt_identity(
@@ -720,10 +722,11 @@ def _card_identity(
             "unit_source_span": unit_source_span.identity_payload(),
             "local_essence": local_essence,
             "claim_payloads": [
-                item.claim.identity_payload() for item in claims
+                card_claim.claim.identity_payload() for card_claim in claims
             ],
             "interpretation_ids": [
-                item.interpretation_id for item in interpretations
+                interpretation.interpretation_id
+                for interpretation in interpretations
             ],
             "entities": sorted(entities),
             "omitted_questions": sorted(omitted_questions),
