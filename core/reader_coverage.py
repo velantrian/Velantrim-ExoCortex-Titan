@@ -335,7 +335,7 @@ class CoverageMapBuilder:
             for unit in plan.units
             if unit.unit_id in scans_by_unit
         )
-        candidates = tuple(
+        candidates: tuple[CriticalExceptionCandidate, ...] = tuple(
             candidate
             for scan in ordered_scans
             for candidate in scan.candidates
@@ -610,8 +610,8 @@ class CoverageMapBuilder:
             1 for span in claim_spans if span.verify(source.text)
         )
 
-        specs = (
-            (
+        return (
+            _make_axis_receipt(
                 CoverageAxis.STRUCTURAL,
                 CoverageMeasureKind.READING_UNIT,
                 len(cards_by_unit),
@@ -620,7 +620,7 @@ class CoverageMapBuilder:
                 missing_cards,
                 (),
             ),
-            (
+            _make_axis_receipt(
                 CoverageAxis.CLAIM,
                 CoverageMeasureKind.SOURCE_CHARACTER,
                 claim_chars,
@@ -629,7 +629,7 @@ class CoverageMapBuilder:
                 missing_cards,
                 ("claim_axis_is_provenance_footprint_not_claim_recall",),
             ),
-            (
+            _make_axis_receipt(
                 CoverageAxis.EXCEPTION,
                 CoverageMeasureKind.READING_UNIT,
                 len(scans_by_unit),
@@ -638,7 +638,7 @@ class CoverageMapBuilder:
                 missing_scans,
                 ("exception_axis_is_scan_coverage_not_exception_recall",),
             ),
-            (
+            _make_axis_receipt(
                 CoverageAxis.RELATION,
                 CoverageMeasureKind.UNKNOWN,
                 0,
@@ -647,7 +647,7 @@ class CoverageMapBuilder:
                 (),
                 ("relation_axis_unavailable_until_rdr_06",),
             ),
-            (
+            _make_axis_receipt(
                 CoverageAxis.TABLE_FIGURE,
                 CoverageMeasureKind.TABLE_FIGURE_UNIT,
                 len(processed_assets),
@@ -660,7 +660,7 @@ class CoverageMapBuilder:
                     else ()
                 ),
             ),
-            (
+            _make_axis_receipt(
                 CoverageAxis.VALIDATION,
                 CoverageMeasureKind.CLAIM_SOURCE_SPAN,
                 validated_spans,
@@ -670,7 +670,6 @@ class CoverageMapBuilder:
                 ("validation_axis_covers_emitted_claim_spans_only",),
             ),
         )
-        return tuple(_make_axis_receipt(*spec) for spec in specs)
 
     @staticmethod
     def _unresolved_regions(
