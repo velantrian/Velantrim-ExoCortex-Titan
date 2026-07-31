@@ -1,0 +1,31 @@
+{
+  "schema_version": "reader-core.contracts.v1",
+  "document": {
+    "document_id": "fixture-reader-core-001",
+    "source_revision": "sha256:fixture-rev-001",
+    "text": "# Introduction\nA claim applies only if condition A holds.\n\n# Conclusion\nThe claim is limited by condition A."
+  },
+  "expected_sections": [
+    {
+      "order_index": 0,
+      "heading": "Introduction",
+      "level": 1,
+      "content_kind": "text"
+    },
+    {
+      "order_index": 1,
+      "heading": "Conclusion",
+      "level": 1,
+      "content_kind": "text"
+    }
+  ],
+  "expected_invariants": {
+    "stable_ids": true,
+    "exact_offsets": true,
+    "coverage_without_known_denominator_is_null": true,
+    "direct_canon_write_count": 0,
+    "direct_memory_write_count": 0,
+    "truth_gate_bypass_count": 0,
+    "tool_execution_count": 0
+  }
+}
