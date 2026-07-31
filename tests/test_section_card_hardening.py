@@ -6,7 +6,10 @@ from core.document_structure import (
     DeterministicDocumentStructureParser,
     DocumentStructureFormat,
 )
-from core.hierarchical_section_planner import HierarchicalSectionPlanner
+from core.hierarchical_section_planner import (
+    HierarchicalSectionPlanner,
+    ReadingUnit,
+)
 from core.knowledge_capsule import (
     CapsuleClaim,
     ClaimModality,
@@ -23,7 +26,7 @@ from core.section_card import (
 from core.semantic_reader import RawSource, ReaderResult
 
 
-def _plan_without_explicit_revision() -> tuple[RawSource, object, str]:
+def _plan_without_explicit_revision() -> tuple[RawSource, ReadingUnit, str]:
     source = RawSource(
         document_id="derived-revision-doc",
         text="Alpha claim appears in this source.",
@@ -38,7 +41,7 @@ def _plan_without_explicit_revision() -> tuple[RawSource, object, str]:
 
 def _capsule(
     source: RawSource,
-    unit: object,
+    unit: ReadingUnit,
     *,
     coordinate_space: SpanCoordinateSpace,
 ) -> KnowledgeCapsule:
@@ -129,7 +132,10 @@ def test_card_identity_is_independent_of_input_coordinate_space() -> None:
 
     assert local_card.claims[0].claim == absolute_card.claims[0].claim
     assert local_card.card_id == absolute_card.card_id
-    assert local_card.build_receipt.receipt_id != absolute_card.build_receipt.receipt_id
+    assert (
+        local_card.build_receipt.receipt_id
+        != absolute_card.build_receipt.receipt_id
+    )
 
 
 def test_forged_interpretation_identity_is_rejected() -> None:
@@ -170,7 +176,9 @@ def test_forged_card_and_receipt_content_are_rejected() -> None:
     with pytest.raises(SectionCardError, match="receipt_id"):
         replace(
             card.build_receipt,
-            referenced_source_chars=card.build_receipt.referenced_source_chars - 1,
+            referenced_source_chars=(
+                card.build_receipt.referenced_source_chars - 1
+            ),
         )
 
     with pytest.raises(SectionCardError, match="card_id"):
