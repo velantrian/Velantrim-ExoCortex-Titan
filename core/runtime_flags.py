@@ -51,7 +51,7 @@ def is_embedding_projection_contract_enabled() -> bool:
 
 def is_selective_memory_candidate_shadow_enabled() -> bool:
     """PR-ARM-03 shadow extractor flag. Default OFF; never grants write permission."""
-    return env_flag("ENABLE_SELECTIVE_MEMORY_CANDIDATE_SHADOW")
+    return get_config().app.enable_selective_memory_candidate_shadow
 
 
 def is_l6_welfare_enabled() -> bool:

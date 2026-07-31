@@ -190,20 +190,91 @@ def test_clock_is_injectable_and_does_not_affect_default_determinism():
 
 
 def test_shadow_flag_defaults_off(monkeypatch):
+    """is_selective_memory_candidate_shadow_enabled() delegates to
+    core.feature_config.get_config().app (the codebase's single ENV
+    source of truth, per core.runtime_flags' own module docstring) rather
+    than reading os.environ a second time — so, like every other
+    ENABLE_*-flag test in this suite (test_causal_bridge.py,
+    test_cognitive_fact.py, ...), it must clear_config_cache() both before
+    (so this test's env value is actually picked up) and after (so a
+    cached FeatureConfig object doesn't leak this test's env value into
+    whatever test runs next in the same process — get_config() is
+    @lru_cache(maxsize=1))."""
+
+    from core.feature_config import clear_config_cache
+
     monkeypatch.delenv("ENABLE_SELECTIVE_MEMORY_CANDIDATE_SHADOW", raising=False)
-    result = smc.run_shadow_extraction("I prefer tea.", source_ref="conversation:test")
+    clear_config_cache()
+    try:
+        result = smc.run_shadow_extraction("I prefer tea.", source_ref="conversation:test")
+    finally:
+        clear_config_cache()
     assert result.candidates == ()
     assert result.warnings == ("selective_memory_candidate_shadow_disabled",)
 
 
 def test_shadow_flag_on_returns_proposals_only(monkeypatch):
+    from core.feature_config import clear_config_cache
+
     monkeypatch.setenv("ENABLE_SELECTIVE_MEMORY_CANDIDATE_SHADOW", "1")
-    result = smc.run_shadow_extraction("I prefer tea.", source_ref="conversation:test")
+    clear_config_cache()
+    try:
+        result = smc.run_shadow_extraction("I prefer tea.", source_ref="conversation:test")
+    finally:
+        clear_config_cache()
     assert len(result.candidates) == 1
     assert result.trace.canon_write_count == 0
     assert result.trace.memory_write_count == 0
     assert result.trace.write_gate_call_count == 0
     assert result.trace.truth_gate_bypass_count == 0
+
+
+def test_module_has_no_import_of_canon_or_gate_or_network_modules():
+    """Structural guarantee, stronger than a self-reported zero-count: the
+    module cannot call core.memory (Canon), core.working_memory_gate,
+    core.write_gate, core.truth_gate, any embedding/LLM provider, or the
+    network/socket/urllib/http stack, because it does not import any of
+    them anywhere — not just on the hot path. The only non-stdlib import
+    allowed is the lazy, function-local core.feature_config read used
+    solely to resolve the shadow-mode feature flag."""
+
+    import ast
+    import inspect
+
+    source = inspect.getsource(smc)
+    tree = ast.parse(source)
+
+    forbidden_substrings = (
+        "core.memory",
+        "core.working_memory_gate",
+        "core.write_gate",
+        "core.truth_gate",
+        "core.guardian",
+        "core.embedding",
+        "sentence_transformers",
+        "openai",
+        "anthropic",
+        "socket",
+        "urllib",
+        "http.client",
+        "requests",
+    )
+    allowed_module = "core.feature_config"
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names = [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            names = [node.module] if node.module else []
+        else:
+            continue
+        for name in names:
+            if name == allowed_module:
+                continue
+            for forbidden in forbidden_substrings:
+                assert forbidden not in (name or ""), (
+                    f"unexpected import of {name!r} (matches forbidden {forbidden!r})"
+                )
 
 
 def test_result_has_no_write_capability():
@@ -225,6 +296,69 @@ def test_span_order_is_source_order():
     result = extract(text)
     starts = [candidate.source_span.start_char for candidate in result.candidates]
     assert starts == sorted(starts)
+
+
+def test_sentence_segmentation_does_not_split_email_addresses():
+    """Regression: `_SENTENCE_RE` used to treat the "." inside a domain as
+    a sentence terminator, splitting "person@example.com." into
+    "...person@example." + "com." — two candidates from one statement."""
+
+    result = extract("My email is person@example.com.")
+    assert len(result.candidates) == 1
+    assert result.candidates[0].normalized_text == "My email is [REDACTED_CONTACT]."
+
+
+def test_sentence_segmentation_does_not_split_domain_names_or_urls():
+    result = extract("Visit https://example.com/path today.")
+    assert len(result.candidates) == 1
+    assert result.candidates[0].source_span.text == "Visit https://example.com/path today."
+
+
+def test_sentence_segmentation_does_not_split_decimal_numbers():
+    result = extract("The threshold is 3.14 and it matters a lot.")
+    assert len(result.candidates) == 1
+    assert "3.14" in result.candidates[0].normalized_text
+
+
+def test_sentence_segmentation_does_not_split_version_like_tokens():
+    result = extract("Version v1.2.3 was released today for everyone.")
+    assert len(result.candidates) == 1
+    assert "v1.2.3" in result.candidates[0].normalized_text
+
+
+def test_sentence_segmentation_still_splits_on_a_real_sentence_boundary():
+    """The fix must not merge genuinely separate sentences back together —
+    only "." not followed by whitespace/end should be kept together."""
+
+    result = extract("I prefer tea. I prefer coffee.")
+    assert len(result.candidates) == 2
+
+
+def test_dates_are_not_misclassified_as_contact_sensitivity():
+    """Regression: `_CONTACT_RE`'s phone-number alternative
+    (`\\d[\\d ()-]{7,}\\d`) also matches ISO dates ("2026-08-01"), which
+    then got redacted to the same "[REDACTED_CONTACT]" placeholder for
+    every date — silently colliding distinct dated statements onto the
+    same dedup_key (see test_different_dates_do_not_deduplicate)."""
+
+    candidate = extract("I will travel on 2026-08-01.").candidates[0]
+    assert "2026-08-01" in candidate.normalized_text
+    assert smc.SensitivityFlag.CONTACT not in candidate.sensitivity
+
+
+def test_real_phone_number_is_still_redacted_and_flagged():
+    """The date/phone disambiguation fix must not weaken genuine phone
+    detection."""
+
+    candidate = extract("My phone number is 555-123-4567.").candidates[0]
+    assert "[REDACTED_CONTACT]" in candidate.normalized_text
+    assert smc.SensitivityFlag.CONTACT in candidate.sensitivity
+
+
+def test_multiple_emails_in_one_sentence_are_each_redacted():
+    candidate = extract("Contact me at a@b.co or c@d.org for details.").candidates[0]
+    assert "@" not in candidate.normalized_text
+    assert candidate.normalized_text.count("[REDACTED_CONTACT]") == 2
 
 
 def test_permutation_of_distinct_sentences_changes_source_identity_not_content_keys():

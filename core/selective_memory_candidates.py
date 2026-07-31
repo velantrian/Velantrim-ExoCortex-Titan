@@ -9,7 +9,6 @@ admission belongs to PR-ARM-04.
 from __future__ import annotations
 
 import hashlib
-import os
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -160,7 +159,15 @@ class CandidateExtractionPolicy:
             raise ValueError("min_candidate_chars must not exceed max_candidate_chars")
 
 
-_SENTENCE_RE = re.compile(r"[^.!?\n]+(?:[.!?]+|$)", re.UNICODE)
+
+# A `.`/`!`/`?` only ends a sentence when followed by whitespace or the end
+# of the text. This deliberately keeps a run of terminator-shaped
+# characters together with whatever follows them (an email/domain dot
+# ("example.com"), a URL path, a decimal or version-like token ("3.14",
+# "v1.2.3")) as long as no whitespace separates them — none of those are
+# sentence boundaries, and splitting on them silently fragmented spans
+# (see PR-ARM-03 corrective review).
+_SENTENCE_RE = re.compile(r"[^\n]+?(?:[.!?]+(?=\s|$)|$)", re.UNICODE)
 _WS_RE = re.compile(r"\s+", re.UNICODE)
 
 _CREDENTIAL_RE = re.compile(
@@ -229,13 +236,22 @@ _DATE_RE = re.compile(r"\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\
 _NEGATION_RE = re.compile(r"(?i)\b(?:not|never|don't|do not|не|никогда)\b")
 
 
-def _env_flag(name: str, default: str = "0") -> bool:
-    return (os.getenv(name, default) or "").strip().lower() in {"1", "true", "yes", "on"}
-
-
 def is_selective_memory_candidate_shadow_enabled() -> bool:
-    """Feature flag for diagnostic/shadow invocation. Default is OFF."""
-    return _env_flag("ENABLE_SELECTIVE_MEMORY_CANDIDATE_SHADOW")
+    """Feature flag for diagnostic/shadow invocation. Default is OFF.
+
+    Delegates to core.feature_config's AppSettings (lazily imported, the
+    same way core.pipeline reads other ENABLE_* flags) instead of reading
+    the environment variable directly a second time — core.runtime_flags
+    documents itself as "delegates to core.feature_config — the single
+    source of truth for ENV", and every sibling is_X_enabled() there reads
+    get_config().app.enable_X rather than the environment. A second,
+    independent raw-env read here would silently diverge from that single
+    source (e.g. under compute-profile resolution or a monkeypatched
+    config in tests) instead of always agreeing with it.
+    """
+    from core.feature_config import get_config
+
+    return get_config().app.enable_selective_memory_candidate_shadow
 
 
 def normalize_candidate_text(text: str) -> str:
@@ -297,11 +313,28 @@ def _temporal_scope(text: str, candidate_type: CandidateType) -> TemporalScope:
     return TemporalScope.UNKNOWN
 
 
+def _is_date_shaped(value: str) -> bool:
+    """True if `value` (an already-matched span) is exactly a date, not a
+    phone number. `_CONTACT_RE`'s phone alternative (`\\d[\\d ()-]{7,}\\d`)
+    has the same digit/hyphen shape as an ISO date ("2026-08-01") and
+    matches it too — this filters that false positive out at every call
+    site instead of only where it was first noticed, so a date is never
+    misflagged as CONTACT sensitivity and never redacted away (which
+    silently collapsed distinct dated statements into the same dedup key —
+    see PR-ARM-03 corrective review)."""
+
+    return bool(_DATE_RE.fullmatch(value.strip()))
+
+
+def _has_contact_match(text: str) -> bool:
+    return any(not _is_date_shaped(m.group(0)) for m in _CONTACT_RE.finditer(text))
+
+
 def _sensitivity(text: str) -> tuple[SensitivityFlag, ...]:
     flags: set[SensitivityFlag] = set()
     if _CREDENTIAL_RE.search(text):
         flags.update({SensitivityFlag.CREDENTIAL, SensitivityFlag.SECURITY, SensitivityFlag.HIGH_RISK})
-    if _CONTACT_RE.search(text):
+    if _has_contact_match(text):
         flags.update({SensitivityFlag.CONTACT, SensitivityFlag.PERSONAL})
     if _FINANCIAL_RE.search(text):
         flags.update({SensitivityFlag.FINANCIAL, SensitivityFlag.HIGH_RISK})
@@ -318,8 +351,14 @@ def _sensitivity(text: str) -> tuple[SensitivityFlag, ...]:
     return tuple(sorted(flags, key=lambda item: item.value))
 
 
+def _redact_contact_match(match: re.Match[str]) -> str:
+    value = match.group(0)
+    return value if _is_date_shaped(value) else "[REDACTED_CONTACT]"
+
+
 def _redact(text: str) -> str:
-    return _CONTACT_RE.sub("[REDACTED_CONTACT]", _CREDENTIAL_RE.sub("[REDACTED_SECRET]", text))
+    credential_redacted = _CREDENTIAL_RE.sub("[REDACTED_SECRET]", text)
+    return _CONTACT_RE.sub(_redact_contact_match, credential_redacted)
 
 
 def _confidence(candidate_type: CandidateType, text: str) -> float:
