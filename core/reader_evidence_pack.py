@@ -8,13 +8,13 @@ executes Reader Core, contacts a provider, or authorizes live integration.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum
 from hashlib import sha256
 import json
 from pathlib import Path, PurePosixPath
-from typing import Any, cast
+from typing import Any, TypeVar, cast
 
 from core.reader_core_contracts import stable_reader_core_id
 from core.reader_corpus_adjudication import (
@@ -36,6 +36,9 @@ from core.reader_evidence_intake import (
 
 READER_EVIDENCE_SOURCE_SPEC_SCHEMA_VERSION = "reader-core.evidence-source-spec.v1"
 READER_EVIDENCE_PACK_SCHEMA_VERSION = "reader-core.evidence-pack.v1"
+
+T = TypeVar("T")
+E = TypeVar("E", bound=Enum)
 
 
 class ReaderEvidencePackError(ValueError):
@@ -334,15 +337,18 @@ class ReaderEvidencePack:
             raise ReaderEvidencePackError(
                 "initial_readiness must be a readiness report"
             )
-        packets = tuple(self.annotation_packets)
-        if not packets or any(
-            not isinstance(item, ReaderAnnotationPacket) for item in packets
+        raw_packets = tuple(self.annotation_packets)
+        if not raw_packets or any(
+            not isinstance(item, ReaderAnnotationPacket) for item in raw_packets
         ):
             raise ReaderEvidencePackError(
                 "annotation_packets require ReaderAnnotationPacket values"
             )
         packets = tuple(
-            sorted(packets, key=lambda item: (item.case_id, item.annotator_id))
+            sorted(
+                raw_packets,
+                key=lambda item: (item.case_id, item.annotator_id),
+            )
         )
         if len({item.packet_id for item in packets}) != len(packets):
             raise ReaderEvidencePackError("annotation packet IDs must be unique")
@@ -457,17 +463,17 @@ class ReaderEvidencePackBuilder:
                 spec.guideline.min_independent_annotators
             ),
         )
-        annotator_ids_by_document = {
-            item.document_id: item.annotator_ids for item in spec.assignments
-        }
-        adjudicator_ids_by_document = {
-            item.document_id: item.adjudicator_id for item in spec.assignments
-        }
         plan = ReaderEvidenceProgramPlanner.create_plan(
             package=package,
             guideline=guideline,
-            annotator_ids_by_document=annotator_ids_by_document,
-            adjudicator_ids_by_document=adjudicator_ids_by_document,
+            annotator_ids_by_document={
+                item.document_id: item.annotator_ids
+                for item in spec.assignments
+            },
+            adjudicator_ids_by_document={
+                item.document_id: item.adjudicator_id
+                for item in spec.assignments
+            },
         )
         packets = ReaderEvidenceProgramPlanner.build_annotation_packets(plan)
         readiness = ReaderEvidenceReadinessEvaluator().evaluate(
@@ -563,6 +569,19 @@ def write_annotation_packets(
     directory: str | Path,
     packets: Iterable[ReaderAnnotationPacket],
 ) -> tuple[Path, ...]:
+    raw_packets = tuple(packets)
+    if not raw_packets or any(
+        not isinstance(item, ReaderAnnotationPacket) for item in raw_packets
+    ):
+        raise ReaderEvidencePackError(
+            "packets require at least one ReaderAnnotationPacket"
+        )
+    ordered = tuple(
+        sorted(
+            raw_packets,
+            key=lambda item: (item.case_id, item.annotator_id, item.packet_id),
+        )
+    )
     output_dir = Path(directory)
     if output_dir.exists():
         if not output_dir.is_dir():
@@ -575,18 +594,6 @@ def write_annotation_packets(
             )
     else:
         output_dir.mkdir(parents=True, exist_ok=False)
-    ordered = tuple(
-        sorted(
-            packets,
-            key=lambda item: (item.case_id, item.annotator_id, item.packet_id),
-        )
-    )
-    if not ordered:
-        raise ReaderEvidencePackError("at least one annotation packet is required")
-    if any(not isinstance(item, ReaderAnnotationPacket) for item in ordered):
-        raise ReaderEvidencePackError(
-            "packets require ReaderAnnotationPacket values"
-        )
     written: list[Path] = []
     for packet in ordered:
         output = output_dir / f"annotation-packet-{packet.packet_id}.json"
@@ -704,10 +711,11 @@ def _parse_assignment_source(
 
 def _canonical_value(value: object) -> object:
     if is_dataclass(value) and not isinstance(value, type):
-        result: dict[str, object] = {}
-        for field in fields(value):
-            result[field.name] = _canonical_value(getattr(value, field.name))
-        return result
+        dataclass_value = cast(Any, value)
+        return {
+            field.name: _canonical_value(getattr(dataclass_value, field.name))
+            for field in fields(dataclass_value)
+        }
     if isinstance(value, Enum):
         return value.value
     if isinstance(value, Mapping):
@@ -732,8 +740,7 @@ def _load_json_object(path: str | Path, field_name: str) -> dict[str, object]:
         raise ReaderEvidencePackError(
             f"failed to load {field_name}: {exc}"
         ) from exc
-    mapping = _require_mapping(value, field_name)
-    return dict(mapping)
+    return dict(_require_mapping(value, field_name))
 
 
 def _require_mapping(value: object, field_name: str) -> Mapping[str, object]:
@@ -773,15 +780,15 @@ def _require_exact_keys(
 
 
 def _enum_value(
-    enum_type: type[Enum],
+    enum_type: type[E],
     value: object,
     field_name: str,
-) -> Any:
+) -> E:
     text = _require_text(value, field_name)
     try:
         return enum_type(text)
     except ValueError as exc:
-        allowed = ", ".join(item.value for item in enum_type)
+        allowed = ", ".join(str(item.value) for item in enum_type)
         raise ReaderEvidencePackError(
             f"{field_name} must be one of: {allowed}"
         ) from exc
@@ -874,12 +881,12 @@ def _resolve_local_file(
 
 
 def _canonical_instances(
-    values: Iterable[Any],
-    expected_type: type[Any],
+    values: Iterable[T],
+    expected_type: type[T],
     *,
-    key: Any,
+    key: Callable[[T], str],
     field_name: str,
-) -> tuple[Any, ...]:
+) -> tuple[T, ...]:
     items = tuple(values)
     if not items or any(not isinstance(item, expected_type) for item in items):
         raise ReaderEvidencePackError(
