@@ -1,10 +1,10 @@
-"""Finalize completed Reader Core benchmark batches for PR-RDR-21.
+"""Finalize completed Reader Core benchmark batches for PR-RDR-21/RDR-22.
 
-This module binds an RDR-19 preparation bundle, an RDR-20 complete-success
-execution state, the exact planned threshold policy, the existing RDR-10
-benchmark bundle, and a detached authenticator into one content-addressed
-evidence record. It does not execute a pipeline, calibrate thresholds, record
-Operator GO, or authorize shadow/live integration.
+The finalizer can consume either an in-memory RDR-19 preparation plus RDR-20
+state or an RDR-22 portable completed-batch envelope. Both paths use the same
+existing RDR-10 benchmark runner, promotion reviewer, and detached authenticator.
+It never executes a pipeline, calibrates thresholds, records Operator GO, or
+authorizes shadow/live integration.
 """
 
 from __future__ import annotations
@@ -12,6 +12,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from core.reader_benchmark_batch import BatchCaseStatus
+from core.reader_benchmark_portability import (
+    ReaderBenchmarkFinalizationEnvelope,
+    ReaderBenchmarkPortabilityError,
+)
 from core.reader_benchmark_preparation import ReaderBenchmarkPreparationBundle
 from core.reader_benchmark_runner import (
     ReaderBenchmarkBundle,
@@ -218,15 +222,37 @@ class ReaderCompletedBatchFinalizer:
         key_id: str,
         secret: bytes,
     ) -> ReaderSignedBenchmarkEvidence:
-        _validate_finalization_inputs(
-            preparation=preparation,
-            state=state,
+        try:
+            envelope = ReaderBenchmarkFinalizationEnvelope.from_completed(
+                preparation=preparation,
+                state=state,
+            )
+        except ReaderBenchmarkPortabilityError as exc:
+            raise ReaderBenchmarkFinalizationError(str(exc)) from exc
+        return self.finalize_envelope(
+            envelope=envelope,
+            thresholds=thresholds,
+            key_id=key_id,
+            secret=secret,
+        )
+
+    def finalize_envelope(
+        self,
+        *,
+        envelope: ReaderBenchmarkFinalizationEnvelope,
+        thresholds: ReaderPromotionThresholds,
+        key_id: str,
+        secret: bytes,
+    ) -> ReaderSignedBenchmarkEvidence:
+        _validate_envelope_finalization(
+            envelope=envelope,
             thresholds=thresholds,
         )
+        state = envelope.execution_state
         try:
             benchmark_input = state.to_benchmark_input()
             bundle = self._runner.run(
-                preparation.evaluation_manifest,
+                envelope.evaluation_manifest,
                 benchmark_input,
                 thresholds,
             )
@@ -255,7 +281,7 @@ class ReaderCompletedBatchFinalizer:
             )
         )
         return ReaderSignedBenchmarkEvidence(
-            preparation_id=preparation.preparation_id,
+            preparation_id=envelope.preparation_id,
             execution_state=state,
             benchmark_bundle=bundle,
             bundle_signature=signature,
@@ -284,67 +310,32 @@ class ReaderCompletedBatchFinalizer:
             raise ReaderBenchmarkFinalizationError(str(exc)) from exc
 
 
-def _validate_finalization_inputs(
+def _validate_envelope_finalization(
     *,
-    preparation: ReaderBenchmarkPreparationBundle,
-    state: ReaderPreparedBatchExecutionState,
+    envelope: ReaderBenchmarkFinalizationEnvelope,
     thresholds: ReaderPromotionThresholds,
 ) -> None:
-    if not isinstance(preparation, ReaderBenchmarkPreparationBundle):
+    if not isinstance(envelope, ReaderBenchmarkFinalizationEnvelope):
         raise ReaderBenchmarkFinalizationError(
-            "preparation must be a ReaderBenchmarkPreparationBundle"
-        )
-    if not isinstance(state, ReaderPreparedBatchExecutionState):
-        raise ReaderBenchmarkFinalizationError(
-            "state must be a ReaderPreparedBatchExecutionState"
+            "envelope must be a ReaderBenchmarkFinalizationEnvelope"
         )
     if not isinstance(thresholds, ReaderPromotionThresholds):
         raise ReaderBenchmarkFinalizationError(
             "thresholds must be ReaderPromotionThresholds"
         )
-    if state.status is not PreparedBatchExecutionStatus.COMPLETE_SUCCESS:
-        raise ReaderBenchmarkFinalizationError(
-            "finalization requires complete successful execution"
-        )
-    if state.preparation_id != preparation.preparation_id:
-        raise ReaderBenchmarkFinalizationError(
-            "state belongs to a different preparation bundle"
-        )
-    if state.checkpoint.plan != preparation.batch_plan:
-        raise ReaderBenchmarkFinalizationError(
-            "state checkpoint belongs to a different batch plan"
-        )
-    if preparation.initial_checkpoint.plan != preparation.batch_plan:
-        raise ReaderBenchmarkFinalizationError(
-            "preparation initial checkpoint does not match batch plan"
-        )
-    if preparation.initial_checkpoint.receipts:
-        raise ReaderBenchmarkFinalizationError(
-            "preparation initial checkpoint must be empty"
-        )
-    if preparation.evaluation_manifest.corpus_id != preparation.batch_plan.corpus_id:
-        raise ReaderBenchmarkFinalizationError(
-            "preparation manifest does not match batch plan corpus"
-        )
-    if state.environment.environment_id != preparation.batch_plan.environment_id:
-        raise ReaderBenchmarkFinalizationError(
-            "state environment does not match batch plan"
-        )
-    if thresholds.thresholds_id != preparation.batch_plan.threshold_policy_id:
+    if (
+        thresholds.thresholds_id
+        != envelope.batch_plan.threshold_policy_id
+    ):
         raise ReaderBenchmarkFinalizationError(
             "threshold policy does not match batch plan"
         )
-    latest = state.checkpoint.latest_receipts
-    if set(latest) != set(preparation.batch_plan.case_ids):
-        raise ReaderBenchmarkFinalizationError(
-            "complete state must contain one latest receipt per planned case"
-        )
-    if any(
-        item.status is not BatchCaseStatus.SUCCEEDED
-        for item in latest.values()
+    if (
+        envelope.execution_state.status
+        is not PreparedBatchExecutionStatus.COMPLETE_SUCCESS
     ):
         raise ReaderBenchmarkFinalizationError(
-            "every latest case receipt must be successful"
+            "finalization requires complete successful execution"
         )
 
 
@@ -378,3 +369,11 @@ def _unique_sorted_text(
             f"{field_name} values must use canonical ordering"
         )
     return items
+
+
+__all__ = [
+    "READER_BENCHMARK_FINALIZATION_SCHEMA_VERSION",
+    "ReaderBenchmarkFinalizationError",
+    "ReaderCompletedBatchFinalizer",
+    "ReaderSignedBenchmarkEvidence",
+]
