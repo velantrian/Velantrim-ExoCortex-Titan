@@ -13,6 +13,7 @@ TruthGate, Write Gate, promotion, or live-integration authority.
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Hashable
 from dataclasses import dataclass
 from typing import Iterable, Protocol, TypeAlias, TypeVar
 
@@ -53,6 +54,7 @@ class _PredictionWithId(Protocol):
 
 
 PredictionT = TypeVar("PredictionT", bound=_PredictionWithId)
+MatchT = TypeVar("MatchT", bound=Hashable)
 SpanKey: TypeAlias = tuple[str, str | None, int, int, str]
 ClaimKey: TypeAlias = tuple[
     str,
@@ -565,37 +567,41 @@ class ReaderDocumentPrediction:
             | ReaderQualifierPrediction,
             ...,
         ] = (*claims, *exceptions, *relations, *qualifiers)
-        for item in all_predictions:
+        for prediction in all_predictions:
             if (
-                item.document_id != self.document_id
-                or item.source_revision != self.source_revision
+                prediction.document_id != self.document_id
+                or prediction.source_revision != self.source_revision
             ):
                 raise ReaderScoringError(
                     "every prediction must match document identity"
                 )
-        claim_ids = {item.source_claim_id for item in claims}
+        claim_ids = {claim.source_claim_id for claim in claims}
         if len(claim_ids) != len(claims):
             raise ReaderScoringError("source claim IDs must be unique")
-        for item in exceptions:
-            if not set(item.target_source_claim_ids).issubset(claim_ids):
+        for exception_prediction in exceptions:
+            if not set(exception_prediction.target_source_claim_ids).issubset(
+                claim_ids
+            ):
                 raise ReaderScoringError(
                     "exception targets must reference predicted claims"
                 )
-        for item in relations:
+        for relation_prediction in relations:
             if (
-                item.source_claim_id not in claim_ids
-                or item.target_claim_id not in claim_ids
+                relation_prediction.source_claim_id not in claim_ids
+                or relation_prediction.target_claim_id not in claim_ids
             ):
                 raise ReaderScoringError(
                     "relation endpoints must reference predicted claims"
                 )
-        for item in qualifiers:
-            if item.target_claim_id not in claim_ids:
+        for qualifier_prediction in qualifiers:
+            if qualifier_prediction.target_claim_id not in claim_ids:
                 raise ReaderScoringError(
                     "qualifier targets must reference predicted claims"
                 )
-        for item in synthesis:
-            if not set(item.supporting_source_claim_ids).issubset(claim_ids):
+        for synthesis_prediction in synthesis:
+            if not set(
+                synthesis_prediction.supporting_source_claim_ids
+            ).issubset(claim_ids):
                 raise ReaderScoringError(
                     "synthesis support must reference predicted claims"
                 )
@@ -676,18 +682,21 @@ class ReaderDocumentPrediction:
                 claims_by_id[claim.claim_id] = normalized
 
         exception_predictions: list[ReaderExceptionPrediction] = []
-        for candidate in exception_candidates:
-            if candidate.validation_status is ExceptionValidationStatus.REJECTED:
+        for exception_candidate in exception_candidates:
+            if (
+                exception_candidate.validation_status
+                is ExceptionValidationStatus.REJECTED
+            ):
                 continue
             if (
-                candidate.document_id != document_id
-                or candidate.source_revision != source_revision
+                exception_candidate.document_id != document_id
+                or exception_candidate.source_revision != source_revision
             ):
                 raise ReaderScoringError(
                     "exception candidates must match document identity"
                 )
             exception_predictions.append(
-                ReaderExceptionPrediction.from_candidate(candidate)
+                ReaderExceptionPrediction.from_candidate(exception_candidate)
             )
 
         relation_predictions: list[ReaderRelationPrediction] = []
@@ -706,11 +715,14 @@ class ReaderDocumentPrediction:
                 raise ReaderScoringError(
                     "relation_set must match card identity"
                 )
-            for candidate in relation_set.candidates:
-                if candidate.validation_state is RelationValidationState.REJECTED:
+            for relation_candidate in relation_set.candidates:
+                if (
+                    relation_candidate.validation_state
+                    is RelationValidationState.REJECTED
+                ):
                     continue
                 relation_predictions.append(
-                    ReaderRelationPrediction.from_candidate(candidate)
+                    ReaderRelationPrediction.from_candidate(relation_candidate)
                 )
             artifact_ids.append(relation_set.relation_set_id)
 
@@ -733,17 +745,22 @@ class ReaderDocumentPrediction:
                 sorted(
                     (
                         ReaderSynthesisPrediction(
-                            synthesis_claim_id=item.synthesis_claim_id,
-                            supporting_source_claim_ids=item.supporting_claim_ids,
+                            synthesis_claim_id=synthesis_claim.synthesis_claim_id,
+                            supporting_source_claim_ids=(
+                                synthesis_claim.supporting_claim_ids
+                            ),
                         )
-                        for item in synthesis.claims
+                        for synthesis_claim in synthesis.claims
                     ),
-                    key=lambda item: item.synthesis_claim_id,
+                    key=lambda synthesis_prediction: (
+                        synthesis_prediction.synthesis_claim_id
+                    ),
                 )
             )
             artifact_ids.append(synthesis.synthesis_id)
         artifact_ids.extend(
-            item.source_candidate_id for item in exception_predictions
+            exception_prediction.source_candidate_id
+            for exception_prediction in exception_predictions
         )
         qualifier_predictions = tuple(qualifiers)
         return cls(
@@ -751,16 +768,34 @@ class ReaderDocumentPrediction:
             document_id=document_id,
             source_revision=source_revision,
             claims=tuple(
-                sorted(claims_by_id.values(), key=lambda item: item.prediction_id)
+                sorted(
+                    claims_by_id.values(),
+                    key=lambda claim_prediction: claim_prediction.prediction_id,
+                )
             ),
             exceptions=tuple(
-                sorted(exception_predictions, key=lambda item: item.prediction_id)
+                sorted(
+                    exception_predictions,
+                    key=lambda exception_prediction: (
+                        exception_prediction.prediction_id
+                    ),
+                )
             ),
             relations=tuple(
-                sorted(relation_predictions, key=lambda item: item.prediction_id)
+                sorted(
+                    relation_predictions,
+                    key=lambda relation_prediction: (
+                        relation_prediction.prediction_id
+                    ),
+                )
             ),
             qualifiers=tuple(
-                sorted(qualifier_predictions, key=lambda item: item.prediction_id)
+                sorted(
+                    qualifier_predictions,
+                    key=lambda qualifier_prediction: (
+                        qualifier_prediction.prediction_id
+                    ),
+                )
             ),
             synthesis_claims=synthesis_predictions,
             artifact_ids=tuple(sorted(set(artifact_ids))),
@@ -895,56 +930,68 @@ class DeterministicReaderGoldScorer:
             tuple(_span_key(span) for span in gold_spans),
         )
 
-        predicted_exception_keys = tuple(
-            key
-            for item in first.exceptions
-            if (key := _predicted_exception_key(item, claim_mapping)) is not None
-        )
+        predicted_exception_keys_list: list[ExceptionKey] = []
+        for exception_prediction in first.exceptions:
+            exception_key = _predicted_exception_key(
+                exception_prediction,
+                claim_mapping,
+            )
+            if exception_key is not None:
+                predicted_exception_keys_list.append(exception_key)
+        predicted_exception_keys = tuple(predicted_exception_keys_list)
         matched_exception_count = _multiset_match_count(
             predicted_exception_keys,
-            tuple(_gold_exception_key(item) for item in gold.exceptions),
+            tuple(_gold_exception_key(label) for label in gold.exceptions),
         )
 
-        predicted_relation_keys = tuple(
-            key
-            for item in first.relations
-            if (key := _predicted_relation_key(item, claim_mapping)) is not None
-        )
+        predicted_relation_keys_list: list[RelationKey] = []
+        for relation_prediction in first.relations:
+            relation_key = _predicted_relation_key(
+                relation_prediction,
+                claim_mapping,
+            )
+            if relation_key is not None:
+                predicted_relation_keys_list.append(relation_key)
+        predicted_relation_keys = tuple(predicted_relation_keys_list)
         matched_relation_keys = _matched_items(
             predicted_relation_keys,
-            tuple(_gold_relation_key(item) for item in gold.relations),
+            tuple(_gold_relation_key(label) for label in gold.relations),
         )
         matched_relation_count = len(matched_relation_keys)
         matched_contradiction_count = sum(
-            key[0] == RelationKind.CONTRADICTS.value
-            for key in matched_relation_keys
+            relation_key[0] == RelationKind.CONTRADICTS.value
+            for relation_key in matched_relation_keys
         )
 
-        predicted_qualifier_keys = tuple(
-            key
-            for item in first.qualifiers
-            if (key := _predicted_qualifier_key(item, claim_mapping)) is not None
-        )
+        predicted_qualifier_keys_list: list[QualifierKey] = []
+        for qualifier_prediction in first.qualifiers:
+            qualifier_key = _predicted_qualifier_key(
+                qualifier_prediction,
+                claim_mapping,
+            )
+            if qualifier_key is not None:
+                predicted_qualifier_keys_list.append(qualifier_key)
+        predicted_qualifier_keys = tuple(predicted_qualifier_keys_list)
         connected_qualifier_count = _multiset_match_count(
             predicted_qualifier_keys,
-            tuple(_gold_qualifier_key(item) for item in gold.qualifiers),
+            tuple(_gold_qualifier_key(label) for label in gold.qualifiers),
         )
 
         synthesis_support_ids = {
             claim_id
-            for item in first.synthesis_claims
-            for claim_id in item.supporting_source_claim_ids
+            for synthesis_prediction in first.synthesis_claims
+            for claim_id in synthesis_prediction.supporting_source_claim_ids
         }
         orphan_source_claim_count = sum(
-            item.source_claim_id not in synthesis_support_ids
-            for item in first.claims
+            claim_prediction.source_claim_id not in synthesis_support_ids
+            for claim_prediction in first.claims
         )
         unsupported_synthesis_claim_count = sum(
             not any(
                 claim_id in claim_mapping
-                for claim_id in item.supporting_source_claim_ids
+                for claim_id in synthesis_prediction.supporting_source_claim_ids
             )
-            for item in first.synthesis_claims
+            for synthesis_prediction in first.synthesis_claims
         )
         warnings = tuple(
             sorted(
@@ -1021,23 +1068,27 @@ def _match_claims(
 ) -> dict[str, str]:
     predicted_by_key: dict[ClaimKey, list[ReaderClaimPrediction]] = defaultdict(list)
     gold_by_key: dict[ClaimKey, list[HumanClaimLabel]] = defaultdict(list)
-    for item in predictions:
-        predicted_by_key[item.matching_key].append(item)
-    for item in gold_labels:
-        gold_by_key[_gold_claim_key(item)].append(item)
+    for claim_prediction in predictions:
+        predicted_by_key[claim_prediction.matching_key].append(claim_prediction)
+    for gold_claim in gold_labels:
+        gold_by_key[_gold_claim_key(gold_claim)].append(gold_claim)
     mapping: dict[str, str] = {}
     common_keys = sorted(set(predicted_by_key) & set(gold_by_key), key=repr)
-    for key in common_keys:
+    for claim_key in common_keys:
         predicted_items = sorted(
-            predicted_by_key[key],
-            key=lambda item: item.source_claim_id,
+            predicted_by_key[claim_key],
+            key=lambda claim_prediction: claim_prediction.source_claim_id,
         )
         gold_items = sorted(
-            gold_by_key[key],
-            key=lambda item: item.label_id,
+            gold_by_key[claim_key],
+            key=lambda gold_claim: gold_claim.label_id,
         )
-        for predicted, gold in zip(predicted_items, gold_items, strict=False):
-            mapping[predicted.source_claim_id] = gold.label_id
+        for claim_prediction, gold_claim in zip(
+            predicted_items,
+            gold_items,
+            strict=False,
+        ):
+            mapping[claim_prediction.source_claim_id] = gold_claim.label_id
     return mapping
 
 
@@ -1125,24 +1176,24 @@ def _gold_qualifier_key(label: HumanQualifierLabel) -> QualifierKey:
 
 
 def _multiset_match_count(
-    predictions: tuple[object, ...],
-    gold: tuple[object, ...],
+    predictions: tuple[MatchT, ...],
+    gold: tuple[MatchT, ...],
 ) -> int:
     return len(_matched_items(predictions, gold))
 
 
 def _matched_items(
-    predictions: tuple[object, ...],
-    gold: tuple[object, ...],
-) -> tuple[object, ...]:
-    remaining: dict[object, int] = defaultdict(int)
-    for item in gold:
-        remaining[item] += 1
-    matched: list[object] = []
-    for item in predictions:
-        if remaining[item] > 0:
-            remaining[item] -= 1
-            matched.append(item)
+    predictions: tuple[MatchT, ...],
+    gold: tuple[MatchT, ...],
+) -> tuple[MatchT, ...]:
+    remaining: dict[MatchT, int] = defaultdict(int)
+    for gold_item in gold:
+        remaining[gold_item] += 1
+    matched: list[MatchT] = []
+    for predicted_item in predictions:
+        if remaining[predicted_item] > 0:
+            remaining[predicted_item] -= 1
+            matched.append(predicted_item)
     return tuple(matched)
 
 
