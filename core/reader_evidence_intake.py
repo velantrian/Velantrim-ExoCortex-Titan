@@ -784,17 +784,23 @@ class ReaderEvidenceReadinessEvaluator:
                 raise ReaderEvidenceIntakeError(
                     "label_verifications require verification receipts"
                 )
-            label_set = known_label_sets.get(receipt.label_set_id)
-            if label_set is None:
+            verified_label_set = known_label_sets.get(receipt.label_set_id)
+            if verified_label_set is None:
                 raise ReaderEvidenceIntakeError(
                     "label verification references an unknown label set"
                 )
-            if receipt.descriptor_id != label_set.document_descriptor_id:
+            if (
+                receipt.descriptor_id
+                != verified_label_set.document_descriptor_id
+            ):
                 raise ReaderEvidenceIntakeError(
                     "label verification descriptor does not match label set"
                 )
-            previous = verification_by_label_set.get(receipt.label_set_id)
-            if previous is not None and previous.receipt_id != receipt.receipt_id:
+            previous_receipt = verification_by_label_set.get(receipt.label_set_id)
+            if (
+                previous_receipt is not None
+                and previous_receipt.receipt_id != receipt.receipt_id
+            ):
                 raise ReaderEvidenceIntakeError(
                     "label set has conflicting verification receipts"
                 )
@@ -814,13 +820,13 @@ class ReaderEvidenceReadinessEvaluator:
                     item.label_set_id for item in received_by_annotator.values()
                 )
             )
-            adjudication = adjudication_by_descriptor.get(
+            case_adjudication = adjudication_by_descriptor.get(
                 assignment.descriptor_id
             )
             required_verification_ids = set(annotation_ids)
-            if adjudication is not None:
+            if case_adjudication is not None:
                 required_verification_ids.add(
-                    adjudication.adjudicated_label_set.label_set_id
+                    case_adjudication.adjudicated_label_set.label_set_id
                 )
             verified_ids = tuple(
                 sorted(
@@ -835,7 +841,7 @@ class ReaderEvidenceReadinessEvaluator:
                 f"missing_annotation:{annotator_id}"
                 for annotator_id in missing_ids
             )
-            if not missing_ids and adjudication is None:
+            if not missing_ids and case_adjudication is None:
                 blockers.append("missing_adjudication")
             missing_verification_ids = tuple(
                 sorted(required_verification_ids - set(verified_ids))
@@ -848,7 +854,7 @@ class ReaderEvidenceReadinessEvaluator:
                 stage = EvidenceCaseStage.AWAITING_PACKAGE_VERIFICATION
             elif missing_ids:
                 stage = EvidenceCaseStage.AWAITING_ANNOTATION
-            elif adjudication is None:
+            elif case_adjudication is None:
                 stage = EvidenceCaseStage.AWAITING_ADJUDICATION
             elif missing_verification_ids:
                 stage = EvidenceCaseStage.AWAITING_LABEL_VERIFICATION
@@ -864,8 +870,8 @@ class ReaderEvidenceReadinessEvaluator:
                     annotation_label_set_ids=annotation_ids,
                     adjudication_id=(
                         None
-                        if adjudication is None
-                        else adjudication.adjudication_id
+                        if case_adjudication is None
+                        else case_adjudication.adjudication_id
                     ),
                     verified_label_set_ids=verified_ids,
                     blockers=tuple(sorted(blockers)),
