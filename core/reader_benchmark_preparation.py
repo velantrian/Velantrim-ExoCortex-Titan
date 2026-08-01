@@ -22,10 +22,7 @@ from core.reader_evaluation import (
     EvaluationCorpusManifest,
     ReaderEvaluationCaseManifest,
 )
-from core.reader_evidence_import import (
-    ReaderAdjudicationSubmission,
-    ReaderEvidenceImportBundle,
-)
+from core.reader_evidence_import import ReaderEvidenceImportBundle
 from core.reader_evidence_pack import ReaderEvidencePack
 
 READER_BENCHMARK_PREPARATION_SCHEMA_VERSION = (
