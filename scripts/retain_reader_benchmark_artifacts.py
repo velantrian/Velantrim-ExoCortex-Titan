@@ -25,9 +25,11 @@ from core.reader_benchmark_artifact_retention import (  # noqa: E402
     ReaderArtifactRetentionError,
     ReaderArtifactRetentionSigner,
     ReaderBenchmarkArtifactRetentionBuilder,
-    ReaderBenchmarkArtifactRetentionVerifier,
     extract_verified_evidence_artifact_index,
     load_artifact_retention_source_spec,
+)
+from core.reader_benchmark_artifact_retention_verification import (  # noqa: E402
+    ReaderBenchmarkArtifactRetentionVerifier,
 )
 from core.reader_benchmark_evidence_verification import (  # noqa: E402
     ReaderBenchmarkEvidenceVerificationError,
