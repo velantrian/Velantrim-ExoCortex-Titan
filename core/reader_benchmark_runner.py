@@ -11,7 +11,7 @@ authorize promotion, or grant any runtime authority.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable
 from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum
 import hashlib
@@ -19,7 +19,7 @@ import hmac
 import json
 import os
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from core.reader_core_contracts import stable_reader_core_id
 from core.reader_evaluation import (
@@ -150,43 +150,7 @@ class ReaderBenchmarkObservation:
             object.__setattr__(self, "observation_id", expected)
 
     def identity_payload(self, *, include_id: bool = True) -> dict[str, object]:
-        payload: dict[str, object] = {
-            "case_id": self.case_id,
-            "predicted_claim_count": self.predicted_claim_count,
-            "matched_claim_count": self.matched_claim_count,
-            "predicted_source_span_count": self.predicted_source_span_count,
-            "correct_source_span_count": self.correct_source_span_count,
-            "predicted_exception_count": self.predicted_exception_count,
-            "matched_exception_count": self.matched_exception_count,
-            "predicted_relation_count": self.predicted_relation_count,
-            "matched_relation_count": self.matched_relation_count,
-            "false_relation_count": self.false_relation_count,
-            "matched_contradiction_count": self.matched_contradiction_count,
-            "connected_qualifier_count": self.connected_qualifier_count,
-            "source_claim_count": self.source_claim_count,
-            "orphan_source_claim_count": self.orphan_source_claim_count,
-            "synthesis_claim_count": self.synthesis_claim_count,
-            "unsupported_synthesis_claim_count": (
-                self.unsupported_synthesis_claim_count
-            ),
-            "first_artifact_ids": list(self.first_artifact_ids),
-            "second_artifact_ids": list(self.second_artifact_ids),
-            "section_latencies_ms": list(self.section_latencies_ms),
-            "session_wall_time_ms": self.session_wall_time_ms,
-            "model_tokens": self.model_tokens,
-            "projection_bytes": self.projection_bytes,
-            "rebuild_time_ms": self.rebuild_time_ms,
-            "query_path_latency_delta_ms": self.query_path_latency_delta_ms,
-            "resume_reused_units": self.resume_reused_units,
-            "resume_eligible_units": self.resume_eligible_units,
-            "truth_gate_bypass_count": self.truth_gate_bypass_count,
-            "query_path_write_count": self.query_path_write_count,
-            "direct_canon_write_count": self.direct_canon_write_count,
-            "untrusted_instruction_execution_count": (
-                self.untrusted_instruction_execution_count
-            ),
-            "warnings": list(self.warnings),
-        }
+        payload = _dataclass_payload(self, exclude={"observation_id"})
         if include_id:
             payload["observation_id"] = self.observation_id
         return payload
@@ -544,8 +508,10 @@ def load_evaluation_manifest(path: str | Path) -> EvaluationCorpusManifest:
     schema_version = _as_text(root["schema_version"], "schema_version")
     if schema_version != READER_EVALUATION_MANIFEST_SCHEMA_VERSION:
         raise ReaderBenchmarkError("unsupported evaluation manifest schema")
-    cases_payload = _as_sequence(root["cases"], "cases")
-    cases = tuple(_parse_case_manifest(item) for item in cases_payload)
+    cases = tuple(
+        _parse_case_manifest(item)
+        for item in _as_array(root["cases"], "cases")
+    )
     try:
         return EvaluationCorpusManifest(
             schema_version=schema_version,
@@ -566,14 +532,13 @@ def load_benchmark_input(path: str | Path) -> ReaderBenchmarkInput:
     schema_version = _as_text(root["schema_version"], "schema_version")
     if schema_version != READER_BENCHMARK_INPUT_SCHEMA_VERSION:
         raise ReaderBenchmarkError("unsupported benchmark input schema")
-    environment = _parse_environment(root["environment"])
-    observations_payload = _as_sequence(root["observations"], "observations")
     observations = tuple(
-        _parse_observation(item) for item in observations_payload
+        _parse_observation(item)
+        for item in _as_array(root["observations"], "observations")
     )
     return ReaderBenchmarkInput(
         schema_version=schema_version,
-        environment=environment,
+        environment=_parse_environment(root["environment"]),
         observations=observations,
     )
 
@@ -684,9 +649,8 @@ def load_promotion_thresholds(path: str | Path) -> ReaderPromotionThresholds:
 
 
 def canonical_json_bytes(value: object) -> bytes:
-    payload = _to_jsonable(value)
     return json.dumps(
-        payload,
+        _to_jsonable(value),
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
@@ -707,13 +671,19 @@ def write_canonical_json(path: str | Path, value: object) -> None:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temporary, destination)
+    except OSError as exc:
+        raise ReaderBenchmarkError(
+            f"cannot write canonical JSON to {destination}: {exc}"
+        ) from exc
     finally:
-        if temporary.exists():
-            temporary.unlink()
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def _parse_case_manifest(value: object) -> ReaderEvaluationCaseManifest:
-    item = _as_mapping(value, "case")
+    item = _as_object(value, "case")
     required = {
         "case_id",
         "corpus_kind",
@@ -728,7 +698,7 @@ def _parse_case_manifest(value: object) -> ReaderEvaluationCaseManifest:
     }
     _check_keys(item, required=required)
     tags = tuple(
-        _as_text(tag, "tag") for tag in _as_sequence(item["tags"], "tags")
+        _as_text(tag, "tag") for tag in _as_array(item["tags"], "tags")
     )
     try:
         return ReaderEvaluationCaseManifest(
@@ -768,7 +738,7 @@ def _parse_case_manifest(value: object) -> ReaderEvaluationCaseManifest:
 
 
 def _parse_environment(value: object) -> EvaluationEnvironment:
-    item = _as_mapping(value, "environment")
+    item = _as_object(value, "environment")
     required = {
         "commit_sha",
         "runner_id",
@@ -806,7 +776,7 @@ def _parse_environment(value: object) -> EvaluationEnvironment:
 
 
 def _parse_observation(value: object) -> ReaderBenchmarkObservation:
-    item = _as_mapping(value, "observation")
+    item = _as_object(value, "observation")
     required = {
         "case_id",
         "predicted_claim_count",
@@ -841,92 +811,131 @@ def _parse_observation(value: object) -> ReaderBenchmarkObservation:
         "warnings",
     }
     _check_keys(item, required=required)
-    integer_fields = {
-        name: _as_int(item[name], name)
-        for name in required
-        if name.endswith("_count")
-        or name.endswith("_ms")
-        or name
-        in {
-            "model_tokens",
-            "projection_bytes",
-            "resume_reused_units",
-            "resume_eligible_units",
-        }
-    }
-    first_artifacts = tuple(
-        _as_text(entry, "first_artifact_id")
-        for entry in _as_sequence(
-            item["first_artifact_ids"],
-            "first_artifact_ids",
-        )
-    )
-    second_artifacts = tuple(
-        _as_text(entry, "second_artifact_id")
-        for entry in _as_sequence(
-            item["second_artifact_ids"],
-            "second_artifact_ids",
-        )
-    )
-    latencies = tuple(
-        _as_int(entry, "section_latency_ms")
-        for entry in _as_sequence(
-            item["section_latencies_ms"],
-            "section_latencies_ms",
-        )
-    )
-    warnings = tuple(
-        _as_text(entry, "warning")
-        for entry in _as_sequence(item["warnings"], "warnings")
-    )
     return ReaderBenchmarkObservation(
         case_id=_as_text(item["case_id"], "case_id"),
-        predicted_claim_count=integer_fields["predicted_claim_count"],
-        matched_claim_count=integer_fields["matched_claim_count"],
-        predicted_source_span_count=integer_fields[
-            "predicted_source_span_count"
-        ],
-        correct_source_span_count=integer_fields[
-            "correct_source_span_count"
-        ],
-        predicted_exception_count=integer_fields[
-            "predicted_exception_count"
-        ],
-        matched_exception_count=integer_fields["matched_exception_count"],
-        predicted_relation_count=integer_fields["predicted_relation_count"],
-        matched_relation_count=integer_fields["matched_relation_count"],
-        false_relation_count=integer_fields["false_relation_count"],
-        matched_contradiction_count=integer_fields[
-            "matched_contradiction_count"
-        ],
-        connected_qualifier_count=integer_fields[
-            "connected_qualifier_count"
-        ],
-        source_claim_count=integer_fields["source_claim_count"],
-        orphan_source_claim_count=integer_fields["orphan_source_claim_count"],
-        synthesis_claim_count=integer_fields["synthesis_claim_count"],
-        unsupported_synthesis_claim_count=integer_fields[
-            "unsupported_synthesis_claim_count"
-        ],
-        first_artifact_ids=first_artifacts,
-        second_artifact_ids=second_artifacts,
-        section_latencies_ms=latencies,
-        session_wall_time_ms=integer_fields["session_wall_time_ms"],
-        model_tokens=integer_fields["model_tokens"],
-        projection_bytes=integer_fields["projection_bytes"],
-        rebuild_time_ms=integer_fields["rebuild_time_ms"],
-        query_path_latency_delta_ms=integer_fields[
-            "query_path_latency_delta_ms"
-        ],
-        resume_reused_units=integer_fields["resume_reused_units"],
-        resume_eligible_units=integer_fields["resume_eligible_units"],
-        truth_gate_bypass_count=integer_fields["truth_gate_bypass_count"],
-        query_path_write_count=integer_fields["query_path_write_count"],
-        direct_canon_write_count=integer_fields["direct_canon_write_count"],
-        untrusted_instruction_execution_count=integer_fields[
-            "untrusted_instruction_execution_count"
-        ],
-        warnings=warnings,
+        predicted_claim_count=_as_int(
+            item["predicted_claim_count"],
+            "predicted_claim_count",
+        ),
+        matched_claim_count=_as_int(
+            item["matched_claim_count"],
+            "matched_claim_count",
+        ),
+        predicted_source_span_count=_as_int(
+            item["predicted_source_span_count"],
+            "predicted_source_span_count",
+        ),
+        correct_source_span_count=_as_int(
+            item["correct_source_span_count"],
+            "correct_source_span_count",
+        ),
+        predicted_exception_count=_as_int(
+            item["predicted_exception_count"],
+            "predicted_exception_count",
+        ),
+        matched_exception_count=_as_int(
+            item["matched_exception_count"],
+            "matched_exception_count",
+        ),
+        predicted_relation_count=_as_int(
+            item["predicted_relation_count"],
+            "predicted_relation_count",
+        ),
+        matched_relation_count=_as_int(
+            item["matched_relation_count"],
+            "matched_relation_count",
+        ),
+        false_relation_count=_as_int(
+            item["false_relation_count"],
+            "false_relation_count",
+        ),
+        matched_contradiction_count=_as_int(
+            item["matched_contradiction_count"],
+            "matched_contradiction_count",
+        ),
+        connected_qualifier_count=_as_int(
+            item["connected_qualifier_count"],
+            "connected_qualifier_count",
+        ),
+        source_claim_count=_as_int(
+            item["source_claim_count"],
+            "source_claim_count",
+        ),
+        orphan_source_claim_count=_as_int(
+            item["orphan_source_claim_count"],
+            "orphan_source_claim_count",
+        ),
+        synthesis_claim_count=_as_int(
+            item["synthesis_claim_count"],
+            "synthesis_claim_count",
+        ),
+        unsupported_synthesis_claim_count=_as_int(
+            item["unsupported_synthesis_claim_count"],
+            "unsupported_synthesis_claim_count",
+        ),
+        first_artifact_ids=tuple(
+            _as_text(entry, "first_artifact_id")
+            for entry in _as_array(
+                item["first_artifact_ids"],
+                "first_artifact_ids",
+            )
+        ),
+        second_artifact_ids=tuple(
+            _as_text(entry, "second_artifact_id")
+            for entry in _as_array(
+                item["second_artifact_ids"],
+                "second_artifact_ids",
+            )
+        ),
+        section_latencies_ms=tuple(
+            _as_int(entry, "section_latency_ms")
+            for entry in _as_array(
+                item["section_latencies_ms"],
+                "section_latencies_ms",
+            )
+        ),
+        session_wall_time_ms=_as_int(
+            item["session_wall_time_ms"],
+            "session_wall_time_ms",
+        ),
+        model_tokens=_as_int(item["model_tokens"], "model_tokens"),
+        projection_bytes=_as_int(
+            item["projection_bytes"],
+            "projection_bytes",
+        ),
+        rebuild_time_ms=_as_int(item["rebuild_time_ms"], "rebuild_time_ms"),
+        query_path_latency_delta_ms=_as_int(
+            item["query_path_latency_delta_ms"],
+            "query_path_latency_delta_ms",
+        ),
+        resume_reused_units=_as_int(
+            item["resume_reused_units"],
+            "resume_reused_units",
+        ),
+        resume_eligible_units=_as_int(
+            item["resume_eligible_units"],
+            "resume_eligible_units",
+        ),
+        truth_gate_bypass_count=_as_int(
+            item["truth_gate_bypass_count"],
+            "truth_gate_bypass_count",
+        ),
+        query_path_write_count=_as_int(
+            item["query_path_write_count"],
+            "query_path_write_count",
+        ),
+        direct_canon_write_count=_as_int(
+            item["direct_canon_write_count"],
+            "direct_canon_write_count",
+        ),
+        untrusted_instruction_execution_count=_as_int(
+            item["untrusted_instruction_execution_count"],
+            "untrusted_instruction_execution_count",
+        ),
+        warnings=tuple(
+            _as_text(entry, "warning")
+            for entry in _as_array(item["warnings"], "warnings")
+        ),
     )
 
 
@@ -935,9 +944,11 @@ def _read_json_object(path: str | Path) -> dict[str, object]:
     try:
         text = source.read_text(encoding="utf-8")
         value = json.loads(text, object_pairs_hook=_reject_duplicate_pairs)
+    except ReaderBenchmarkError:
+        raise
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ReaderBenchmarkError(f"cannot read JSON from {source}: {exc}") from exc
-    return _as_mapping(value, str(source))
+    return _as_object(value, str(source))
 
 
 def _reject_duplicate_pairs(
@@ -952,7 +963,7 @@ def _reject_duplicate_pairs(
 
 
 def _check_keys(
-    value: Mapping[str, object],
+    value: dict[str, object],
     *,
     required: set[str],
     optional: set[str] | None = None,
@@ -967,8 +978,8 @@ def _check_keys(
         )
 
 
-def _as_mapping(value: object, field_name: str) -> dict[str, object]:
-    if not isinstance(value, Mapping):
+def _as_object(value: object, field_name: str) -> dict[str, object]:
+    if not isinstance(value, dict):
         raise ReaderBenchmarkError(f"{field_name} must be a JSON object")
     result: dict[str, object] = {}
     for key, item in value.items():
@@ -980,13 +991,10 @@ def _as_mapping(value: object, field_name: str) -> dict[str, object]:
     return result
 
 
-def _as_sequence(value: object, field_name: str) -> Sequence[object]:
-    if isinstance(value, (str, bytes, bytearray)) or not isinstance(
-        value,
-        Sequence,
-    ):
+def _as_array(value: object, field_name: str) -> tuple[object, ...]:
+    if not isinstance(value, list):
         raise ReaderBenchmarkError(f"{field_name} must be a JSON array")
-    return cast(Sequence[object], value)
+    return tuple(value)
 
 
 def _as_text(value: object, field_name: str) -> str:
@@ -1025,15 +1033,27 @@ def _as_optional_float(value: object, field_name: str) -> float | None:
     return _as_float(value, field_name)
 
 
+def _dataclass_payload(
+    value: object,
+    *,
+    exclude: set[str],
+) -> dict[str, object]:
+    if not is_dataclass(value) or isinstance(value, type):
+        raise ReaderBenchmarkError("value must be a dataclass instance")
+    instance = cast(Any, value)
+    return {
+        field.name: _to_jsonable(getattr(instance, field.name))
+        for field in fields(instance)
+        if field.name not in exclude
+    }
+
+
 def _to_jsonable(value: object) -> object:
     if isinstance(value, Enum):
         return value.value
     if is_dataclass(value) and not isinstance(value, type):
-        return {
-            field.name: _to_jsonable(getattr(value, field.name))
-            for field in fields(value)
-        }
-    if isinstance(value, Mapping):
+        return _dataclass_payload(value, exclude=set())
+    if isinstance(value, dict):
         return {
             str(key): _to_jsonable(item)
             for key, item in value.items()
