@@ -14,8 +14,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from enum import Enum
-from typing import Iterable, TypeAlias
+from typing import Iterable, Protocol, TypeAlias, TypeVar
 
 from core.critical_exceptions import (
     CriticalExceptionCandidate,
@@ -28,7 +27,6 @@ from core.reader_core_contracts import RelationKind, stable_reader_core_id
 from core.reader_corpus_adjudication import (
     HumanClaimLabel,
     HumanExceptionLabel,
-    HumanLabelKind,
     HumanLabelSet,
     HumanQualifierLabel,
     HumanRelationLabel,
@@ -49,6 +47,12 @@ class ReaderScoringError(ValueError):
     """Raised when prediction or scoring invariants are invalid."""
 
 
+class _PredictionWithId(Protocol):
+    @property
+    def prediction_id(self) -> str: ...
+
+
+PredictionT = TypeVar("PredictionT", bound=_PredictionWithId)
 SpanKey: TypeAlias = tuple[str, str | None, int, int, str]
 ClaimKey: TypeAlias = tuple[
     str,
@@ -56,18 +60,8 @@ ClaimKey: TypeAlias = tuple[
     tuple[str, ...],
     tuple[str, ...],
 ]
-ExceptionKey: TypeAlias = tuple[
-    str,
-    SpanKey,
-    SpanKey,
-    tuple[str, ...],
-]
-RelationKey: TypeAlias = tuple[
-    str,
-    str,
-    str,
-    tuple[SpanKey, ...],
-]
+ExceptionKey: TypeAlias = tuple[str, SpanKey, SpanKey, tuple[str, ...]]
+RelationKey: TypeAlias = tuple[str, str, str, tuple[SpanKey, ...]]
 QualifierKey: TypeAlias = tuple[str, str, SpanKey]
 
 
@@ -83,13 +77,12 @@ class ReaderClaimPrediction:
     applicability_codes: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        for name in (
-            "prediction_id",
-            "source_claim_id",
-            "document_id",
-            "source_revision",
-        ):
-            _require_text(getattr(self, name), name)
+        _validate_identity_fields(
+            self.prediction_id,
+            self.source_claim_id,
+            self.document_id,
+            self.source_revision,
+        )
         if not isinstance(self.modality, ClaimModality):
             raise ReaderScoringError("modality must be a ClaimModality")
         spans = _canonical_spans(
@@ -98,10 +91,7 @@ class ReaderClaimPrediction:
             source_revision=self.source_revision,
             field_name="claim source span",
         )
-        qualifiers = _unique_sorted_text(
-            self.qualifier_codes,
-            "qualifier_code",
-        )
+        qualifiers = _unique_sorted_text(self.qualifier_codes, "qualifier_code")
         applicability = _unique_sorted_text(
             self.applicability_codes,
             "applicability_code",
@@ -109,14 +99,12 @@ class ReaderClaimPrediction:
         object.__setattr__(self, "source_spans", spans)
         object.__setattr__(self, "qualifier_codes", qualifiers)
         object.__setattr__(self, "applicability_codes", applicability)
-        expected = stable_reader_core_id(
-            "reader-scoring-claim-prediction",
-            self.identity_payload(include_id=False),
+        _verify_content_id(
+            actual=self.prediction_id,
+            namespace="reader-scoring-claim-prediction",
+            payload=self.identity_payload(include_id=False),
+            field_name="prediction_id",
         )
-        if self.prediction_id != expected:
-            raise ReaderScoringError(
-                "prediction_id does not match claim prediction content"
-            )
 
     @classmethod
     def create(
@@ -133,7 +121,7 @@ class ReaderClaimPrediction:
         spans = _sorted_spans(source_spans)
         qualifiers = tuple(sorted(qualifier_codes))
         applicability = tuple(sorted(applicability_codes))
-        payload = {
+        payload: dict[str, object] = {
             "source_claim_id": source_claim_id,
             "document_id": document_id,
             "source_revision": source_revision,
@@ -192,14 +180,13 @@ class ReaderExceptionPrediction:
     target_source_claim_ids: tuple[str, ...]
 
     def __post_init__(self) -> None:
-        for name in (
-            "prediction_id",
-            "source_candidate_id",
-            "document_id",
-            "source_revision",
-            "category",
-        ):
-            _require_text(getattr(self, name), name)
+        _validate_identity_fields(
+            self.prediction_id,
+            self.source_candidate_id,
+            self.document_id,
+            self.source_revision,
+            self.category,
+        )
         _validate_span(
             self.trigger_span,
             document_id=self.document_id,
@@ -224,14 +211,12 @@ class ReaderExceptionPrediction:
             "target_source_claim_id",
         )
         object.__setattr__(self, "target_source_claim_ids", targets)
-        expected = stable_reader_core_id(
-            "reader-scoring-exception-prediction",
-            self.identity_payload(include_id=False),
+        _verify_content_id(
+            actual=self.prediction_id,
+            namespace="reader-scoring-exception-prediction",
+            payload=self.identity_payload(include_id=False),
+            field_name="prediction_id",
         )
-        if self.prediction_id != expected:
-            raise ReaderScoringError(
-                "prediction_id does not match exception prediction content"
-            )
 
     @classmethod
     def from_candidate(
@@ -246,28 +231,14 @@ class ReaderExceptionPrediction:
             raise ReaderScoringError(
                 "rejected exception candidates are not predictions"
             )
-        targets = tuple(sorted(candidate.target_claim_refs))
-        payload = {
-            "source_candidate_id": candidate.candidate_id,
-            "document_id": candidate.document_id,
-            "source_revision": candidate.source_revision,
-            "category": candidate.category.value,
-            "trigger_span": candidate.trigger_span.identity_payload(),
-            "statement_span": candidate.statement_span.identity_payload(),
-            "target_source_claim_ids": list(targets),
-        }
-        return cls(
-            prediction_id=stable_reader_core_id(
-                "reader-scoring-exception-prediction",
-                payload,
-            ),
+        return cls.create(
             source_candidate_id=candidate.candidate_id,
             document_id=candidate.document_id,
             source_revision=candidate.source_revision,
             category=candidate.category.value,
             trigger_span=candidate.trigger_span,
             statement_span=candidate.statement_span,
-            target_source_claim_ids=targets,
+            target_source_claim_ids=candidate.target_claim_refs,
         )
 
     @classmethod
@@ -283,7 +254,7 @@ class ReaderExceptionPrediction:
         target_source_claim_ids: Iterable[str],
     ) -> ReaderExceptionPrediction:
         targets = tuple(sorted(target_source_claim_ids))
-        payload = {
+        payload: dict[str, object] = {
             "source_candidate_id": source_candidate_id,
             "document_id": document_id,
             "source_revision": source_revision,
@@ -333,15 +304,14 @@ class ReaderRelationPrediction:
     evidence_spans: tuple[SourceSpan, ...]
 
     def __post_init__(self) -> None:
-        for name in (
-            "prediction_id",
-            "source_relation_id",
-            "document_id",
-            "source_revision",
-            "source_claim_id",
-            "target_claim_id",
-        ):
-            _require_text(getattr(self, name), name)
+        _validate_identity_fields(
+            self.prediction_id,
+            self.source_relation_id,
+            self.document_id,
+            self.source_revision,
+            self.source_claim_id,
+            self.target_claim_id,
+        )
         if not isinstance(self.kind, RelationKind):
             raise ReaderScoringError("kind must be a RelationKind")
         if self.source_claim_id == self.target_claim_id:
@@ -353,14 +323,12 @@ class ReaderRelationPrediction:
             field_name="relation evidence span",
         )
         object.__setattr__(self, "evidence_spans", spans)
-        expected = stable_reader_core_id(
-            "reader-scoring-relation-prediction",
-            self.identity_payload(include_id=False),
+        _verify_content_id(
+            actual=self.prediction_id,
+            namespace="reader-scoring-relation-prediction",
+            payload=self.identity_payload(include_id=False),
+            field_name="prediction_id",
         )
-        if self.prediction_id != expected:
-            raise ReaderScoringError(
-                "prediction_id does not match relation prediction content"
-            )
 
     @classmethod
     def from_candidate(
@@ -375,28 +343,14 @@ class ReaderRelationPrediction:
             raise ReaderScoringError(
                 "rejected relation candidates are not predictions"
             )
-        spans = _sorted_spans(candidate.evidence_spans)
-        payload = {
-            "source_relation_id": candidate.relation_id,
-            "document_id": candidate.source.document_id,
-            "source_revision": candidate.source.source_revision,
-            "kind": candidate.kind.value,
-            "source_claim_id": candidate.source.claim_id,
-            "target_claim_id": candidate.target.claim_id,
-            "evidence_spans": [span.identity_payload() for span in spans],
-        }
-        return cls(
-            prediction_id=stable_reader_core_id(
-                "reader-scoring-relation-prediction",
-                payload,
-            ),
+        return cls.create(
             source_relation_id=candidate.relation_id,
             document_id=candidate.source.document_id,
             source_revision=candidate.source.source_revision,
             kind=candidate.kind,
             source_claim_id=candidate.source.claim_id,
             target_claim_id=candidate.target.claim_id,
-            evidence_spans=spans,
+            evidence_spans=candidate.evidence_spans,
         )
 
     @classmethod
@@ -412,7 +366,7 @@ class ReaderRelationPrediction:
         evidence_spans: Iterable[SourceSpan],
     ) -> ReaderRelationPrediction:
         spans = _sorted_spans(evidence_spans)
-        payload = {
+        payload: dict[str, object] = {
             "source_relation_id": source_relation_id,
             "document_id": document_id,
             "source_revision": source_revision,
@@ -460,13 +414,12 @@ class ReaderQualifierPrediction:
     source_span: SourceSpan
 
     def __post_init__(self) -> None:
-        for name in (
-            "prediction_id",
-            "document_id",
-            "source_revision",
-            "target_claim_id",
-        ):
-            _require_text(getattr(self, name), name)
+        _validate_identity_fields(
+            self.prediction_id,
+            self.document_id,
+            self.source_revision,
+            self.target_claim_id,
+        )
         if not isinstance(self.kind, QualifierKind):
             raise ReaderScoringError("kind must be a QualifierKind")
         _validate_span(
@@ -475,14 +428,12 @@ class ReaderQualifierPrediction:
             source_revision=self.source_revision,
             field_name="qualifier source span",
         )
-        expected = stable_reader_core_id(
-            "reader-scoring-qualifier-prediction",
-            self.identity_payload(include_id=False),
+        _verify_content_id(
+            actual=self.prediction_id,
+            namespace="reader-scoring-qualifier-prediction",
+            payload=self.identity_payload(include_id=False),
+            field_name="prediction_id",
         )
-        if self.prediction_id != expected:
-            raise ReaderScoringError(
-                "prediction_id does not match qualifier prediction content"
-            )
 
     @classmethod
     def create(
@@ -494,7 +445,7 @@ class ReaderQualifierPrediction:
         target_claim_id: str,
         source_span: SourceSpan,
     ) -> ReaderQualifierPrediction:
-        payload = {
+        payload: dict[str, object] = {
             "document_id": document_id,
             "source_revision": source_revision,
             "kind": kind.value,
@@ -560,12 +511,11 @@ class ReaderDocumentPrediction:
     prediction_id: str = ""
 
     def __post_init__(self) -> None:
-        for name in (
-            "document_descriptor_id",
-            "document_id",
-            "source_revision",
-        ):
-            _require_text(getattr(self, name), name)
+        _validate_identity_fields(
+            self.document_descriptor_id,
+            self.document_id,
+            self.source_revision,
+        )
         if self.schema_version != READER_SCORING_SCHEMA_VERSION:
             raise ReaderScoringError("unsupported deterministic scoring schema")
         claims = _canonical_predictions(
@@ -592,35 +542,30 @@ class ReaderDocumentPrediction:
             ReaderQualifierPrediction,
             "qualifiers",
         )
-        synthesis_claims = tuple(self.synthesis_claims)
-        if any(
-            not isinstance(item, ReaderSynthesisPrediction)
-            for item in synthesis_claims
-        ):
+        synthesis = tuple(self.synthesis_claims)
+        if any(not isinstance(item, ReaderSynthesisPrediction) for item in synthesis):
             raise ReaderScoringError(
                 "synthesis_claims contain invalid values"
             )
         ordered_synthesis = tuple(
-            sorted(synthesis_claims, key=lambda item: item.synthesis_claim_id)
+            sorted(synthesis, key=lambda item: item.synthesis_claim_id)
         )
-        if synthesis_claims != ordered_synthesis:
+        if synthesis != ordered_synthesis:
             raise ReaderScoringError(
                 "synthesis_claims must use canonical ordering"
             )
-        if len(
-            {item.synthesis_claim_id for item in synthesis_claims}
-        ) != len(synthesis_claims):
+        if len({item.synthesis_claim_id for item in synthesis}) != len(synthesis):
             raise ReaderScoringError("synthesis claim IDs must be unique")
         artifacts = _unique_sorted_text(self.artifact_ids, "artifact_id")
         warnings = _unique_sorted_text(self.warnings, "warning")
-        all_items: tuple[
+        all_predictions: tuple[
             ReaderClaimPrediction
             | ReaderExceptionPrediction
             | ReaderRelationPrediction
             | ReaderQualifierPrediction,
             ...,
         ] = (*claims, *exceptions, *relations, *qualifiers)
-        for item in all_items:
+        for item in all_predictions:
             if (
                 item.document_id != self.document_id
                 or item.source_revision != self.source_revision
@@ -631,26 +576,26 @@ class ReaderDocumentPrediction:
         claim_ids = {item.source_claim_id for item in claims}
         if len(claim_ids) != len(claims):
             raise ReaderScoringError("source claim IDs must be unique")
-        for exception in exceptions:
-            if not set(exception.target_source_claim_ids).issubset(claim_ids):
+        for item in exceptions:
+            if not set(item.target_source_claim_ids).issubset(claim_ids):
                 raise ReaderScoringError(
                     "exception targets must reference predicted claims"
                 )
-        for relation in relations:
+        for item in relations:
             if (
-                relation.source_claim_id not in claim_ids
-                or relation.target_claim_id not in claim_ids
+                item.source_claim_id not in claim_ids
+                or item.target_claim_id not in claim_ids
             ):
                 raise ReaderScoringError(
                     "relation endpoints must reference predicted claims"
                 )
-        for qualifier in qualifiers:
-            if qualifier.target_claim_id not in claim_ids:
+        for item in qualifiers:
+            if item.target_claim_id not in claim_ids:
                 raise ReaderScoringError(
                     "qualifier targets must reference predicted claims"
                 )
-        for synthesis in synthesis_claims:
-            if not set(synthesis.supporting_source_claim_ids).issubset(claim_ids):
+        for item in synthesis:
+            if not set(item.supporting_source_claim_ids).issubset(claim_ids):
                 raise ReaderScoringError(
                     "synthesis support must reference predicted claims"
                 )
@@ -658,7 +603,7 @@ class ReaderDocumentPrediction:
         object.__setattr__(self, "exceptions", exceptions)
         object.__setattr__(self, "relations", relations)
         object.__setattr__(self, "qualifiers", qualifiers)
-        object.__setattr__(self, "synthesis_claims", synthesis_claims)
+        object.__setattr__(self, "synthesis_claims", synthesis)
         object.__setattr__(self, "artifact_ids", artifacts)
         object.__setattr__(self, "warnings", warnings)
         expected = stable_reader_core_id(
@@ -789,9 +734,7 @@ class ReaderDocumentPrediction:
                     (
                         ReaderSynthesisPrediction(
                             synthesis_claim_id=item.synthesis_claim_id,
-                            supporting_source_claim_ids=(
-                                item.supporting_claim_ids
-                            ),
+                            supporting_source_claim_ids=item.supporting_claim_ids,
                         )
                         for item in synthesis.claims
                     ),
@@ -802,30 +745,22 @@ class ReaderDocumentPrediction:
         artifact_ids.extend(
             item.source_candidate_id for item in exception_predictions
         )
+        qualifier_predictions = tuple(qualifiers)
         return cls(
             document_descriptor_id=document_descriptor_id,
             document_id=document_id,
             source_revision=source_revision,
             claims=tuple(
-                sorted(
-                    claims_by_id.values(),
-                    key=lambda item: item.prediction_id,
-                )
+                sorted(claims_by_id.values(), key=lambda item: item.prediction_id)
             ),
             exceptions=tuple(
-                sorted(
-                    exception_predictions,
-                    key=lambda item: item.prediction_id,
-                )
+                sorted(exception_predictions, key=lambda item: item.prediction_id)
             ),
             relations=tuple(
-                sorted(
-                    relation_predictions,
-                    key=lambda item: item.prediction_id,
-                )
+                sorted(relation_predictions, key=lambda item: item.prediction_id)
             ),
             qualifiers=tuple(
-                sorted(qualifiers, key=lambda item: item.prediction_id)
+                sorted(qualifier_predictions, key=lambda item: item.prediction_id)
             ),
             synthesis_claims=synthesis_predictions,
             artifact_ids=tuple(sorted(set(artifact_ids))),
@@ -866,10 +801,7 @@ class ReaderDocumentPrediction:
 
     @property
     def replay_artifact_ids(self) -> tuple[str, ...]:
-        return (
-            self.prediction_id,
-            *self.artifact_ids,
-        )
+        return (self.prediction_id, *self.artifact_ids)
 
 
 @dataclass(frozen=True, slots=True)
@@ -952,7 +884,6 @@ class DeterministicReaderGoldScorer:
         self._validate_identity(gold, replay)
 
         claim_mapping = _match_claims(first.claims, gold.claims)
-        matched_claim_count = len(claim_mapping)
         predicted_spans = tuple(
             span for claim in first.claims for span in claim.source_spans
         )
@@ -967,17 +898,11 @@ class DeterministicReaderGoldScorer:
         predicted_exception_keys = tuple(
             key
             for item in first.exceptions
-            if (
-                key := _predicted_exception_key(item, claim_mapping)
-            )
-            is not None
-        )
-        gold_exception_keys = tuple(
-            _gold_exception_key(item) for item in gold.exceptions
+            if (key := _predicted_exception_key(item, claim_mapping)) is not None
         )
         matched_exception_count = _multiset_match_count(
             predicted_exception_keys,
-            gold_exception_keys,
+            tuple(_gold_exception_key(item) for item in gold.exceptions),
         )
 
         predicted_relation_keys = tuple(
@@ -985,15 +910,11 @@ class DeterministicReaderGoldScorer:
             for item in first.relations
             if (key := _predicted_relation_key(item, claim_mapping)) is not None
         )
-        gold_relation_keys = tuple(
-            _gold_relation_key(item) for item in gold.relations
-        )
         matched_relation_keys = _matched_items(
             predicted_relation_keys,
-            gold_relation_keys,
+            tuple(_gold_relation_key(item) for item in gold.relations),
         )
         matched_relation_count = len(matched_relation_keys)
-        false_relation_count = len(first.relations) - matched_relation_count
         matched_contradiction_count = sum(
             key[0] == RelationKind.CONTRADICTS.value
             for key in matched_relation_keys
@@ -1004,27 +925,24 @@ class DeterministicReaderGoldScorer:
             for item in first.qualifiers
             if (key := _predicted_qualifier_key(item, claim_mapping)) is not None
         )
-        gold_qualifier_keys = tuple(
-            _gold_qualifier_key(item) for item in gold.qualifiers
-        )
         connected_qualifier_count = _multiset_match_count(
             predicted_qualifier_keys,
-            gold_qualifier_keys,
+            tuple(_gold_qualifier_key(item) for item in gold.qualifiers),
         )
 
         synthesis_support_ids = {
-            source_claim_id
+            claim_id
             for item in first.synthesis_claims
-            for source_claim_id in item.supporting_source_claim_ids
+            for claim_id in item.supporting_source_claim_ids
         }
         orphan_source_claim_count = sum(
-            claim.source_claim_id not in synthesis_support_ids
-            for claim in first.claims
+            item.source_claim_id not in synthesis_support_ids
+            for item in first.claims
         )
         unsupported_synthesis_claim_count = sum(
             not any(
-                source_claim_id in claim_mapping
-                for source_claim_id in item.supporting_source_claim_ids
+                claim_id in claim_mapping
+                for claim_id in item.supporting_source_claim_ids
             )
             for item in first.synthesis_claims
         )
@@ -1041,14 +959,14 @@ class DeterministicReaderGoldScorer:
         return ReaderBenchmarkObservation(
             case_id=gold.document_id,
             predicted_claim_count=len(first.claims),
-            matched_claim_count=matched_claim_count,
+            matched_claim_count=len(claim_mapping),
             predicted_source_span_count=len(predicted_spans),
             correct_source_span_count=correct_source_span_count,
             predicted_exception_count=len(first.exceptions),
             matched_exception_count=matched_exception_count,
             predicted_relation_count=len(first.relations),
             matched_relation_count=matched_relation_count,
-            false_relation_count=false_relation_count,
+            false_relation_count=len(first.relations) - matched_relation_count,
             matched_contradiction_count=matched_contradiction_count,
             connected_qualifier_count=connected_qualifier_count,
             source_claim_count=len(first.claims),
@@ -1108,7 +1026,8 @@ def _match_claims(
     for item in gold_labels:
         gold_by_key[_gold_claim_key(item)].append(item)
     mapping: dict[str, str] = {}
-    for key in sorted(set(predicted_by_key) & set(gold_by_key), key=repr):
+    common_keys = sorted(set(predicted_by_key) & set(gold_by_key), key=repr)
+    for key in common_keys:
         predicted_items = sorted(
             predicted_by_key[key],
             key=lambda item: item.source_claim_id,
@@ -1136,8 +1055,8 @@ def _predicted_exception_key(
     claim_mapping: dict[str, str],
 ) -> ExceptionKey | None:
     mapped_targets: list[str] = []
-    for source_claim_id in prediction.target_source_claim_ids:
-        target = claim_mapping.get(source_claim_id)
+    for claim_id in prediction.target_source_claim_ids:
+        target = claim_mapping.get(claim_id)
         if target is None:
             return None
         mapped_targets.append(target)
@@ -1291,10 +1210,10 @@ def _canonical_spans(
 
 
 def _canonical_predictions(
-    values: Iterable[ReaderClaimPrediction],
-    expected_type: type[ReaderClaimPrediction],
+    values: Iterable[PredictionT],
+    expected_type: type[PredictionT],
     field_name: str,
-) -> tuple[ReaderClaimPrediction, ...]:
+) -> tuple[PredictionT, ...]:
     predictions = tuple(values)
     if any(not isinstance(item, expected_type) for item in predictions):
         raise ReaderScoringError(
@@ -1306,6 +1225,25 @@ def _canonical_predictions(
     if len({item.prediction_id for item in predictions}) != len(predictions):
         raise ReaderScoringError(f"{field_name} prediction IDs must be unique")
     return predictions
+
+
+def _verify_content_id(
+    *,
+    actual: str,
+    namespace: str,
+    payload: dict[str, object],
+    field_name: str,
+) -> None:
+    expected = stable_reader_core_id(namespace, payload)
+    if actual != expected:
+        raise ReaderScoringError(
+            f"{field_name} does not match prediction content"
+        )
+
+
+def _validate_identity_fields(*values: str) -> None:
+    for value in values:
+        _require_text(value, "identity field")
 
 
 def _require_text(value: str, field_name: str) -> str:
