@@ -8,7 +8,7 @@ Core, upload data, or authorize benchmark promotion or live integration.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from enum import Enum
 import json
@@ -52,6 +52,7 @@ READER_EVIDENCE_IMPORT_BUNDLE_SCHEMA_VERSION = (
 )
 
 E = TypeVar("E", bound=Enum)
+T = TypeVar("T")
 
 
 class ReaderEvidenceImportError(ValueError):
@@ -154,17 +155,17 @@ class ReaderAdjudicationSubmission:
             raise ReaderEvidenceImportError("resolution IDs must be unique")
         object.__setattr__(self, "source_label_set_ids", source_ids)
         object.__setattr__(self, "resolutions", resolutions)
-        expected_submission = stable_reader_core_id(
+        expected = stable_reader_core_id(
             "reader-adjudication-submission",
             self.identity_payload(include_ids=False),
         )
         if self.submission_id:
-            if self.submission_id != expected_submission:
+            if self.submission_id != expected:
                 raise ReaderEvidenceImportError(
                     "submission_id does not match adjudication submission content"
                 )
         else:
-            object.__setattr__(self, "submission_id", expected_submission)
+            object.__setattr__(self, "submission_id", expected)
 
     def identity_payload(self, *, include_ids: bool = True) -> dict[str, object]:
         payload: dict[str, object] = {
@@ -322,26 +323,28 @@ class ReaderEvidenceImporter:
         annotation_by_label_set_id: dict[str, ReaderAnnotationSubmission] = {}
         seen_packet_ids: set[str] = set()
         for path, payload in annotation_payloads:
-            submission = _parse_annotation_submission(payload)
-            if submission.packet_id in seen_packet_ids:
+            annotation_submission = _parse_annotation_submission(payload)
+            if annotation_submission.packet_id in seen_packet_ids:
                 raise ReaderEvidenceImportError(
                     "duplicate annotation submission for packet"
                 )
-            packet = packets_by_id.get(submission.packet_id)
+            packet = packets_by_id.get(annotation_submission.packet_id)
             if packet is None:
                 raise ReaderEvidenceImportError(
                     f"annotation submission references foreign packet: {path.name}"
                 )
-            _validate_annotation_packet(packet, submission.label_set)
-            if submission.label_set.label_set_id in annotation_by_label_set_id:
+            _validate_annotation_packet(
+                packet,
+                annotation_submission.label_set,
+            )
+            label_set_id = annotation_submission.label_set.label_set_id
+            if label_set_id in annotation_by_label_set_id:
                 raise ReaderEvidenceImportError(
                     "duplicate annotation label_set_id"
                 )
-            seen_packet_ids.add(submission.packet_id)
-            annotations.append(submission)
-            annotation_by_label_set_id[
-                submission.label_set.label_set_id
-            ] = submission
+            seen_packet_ids.add(annotation_submission.packet_id)
+            annotations.append(annotation_submission)
+            annotation_by_label_set_id[label_set_id] = annotation_submission
 
         adjudications: list[ReaderAdjudicationSubmission] = []
         typed_adjudications: list[HumanLabelAdjudication] = []
@@ -351,22 +354,25 @@ class ReaderEvidenceImporter:
             item.case_id: item for item in pack.plan.assignments
         }
         for path, payload in adjudication_payloads:
-            submission = _parse_adjudication_submission(payload)
-            if submission.case_id in seen_case_ids:
+            adjudication_submission = _parse_adjudication_submission(payload)
+            if adjudication_submission.case_id in seen_case_ids:
                 raise ReaderEvidenceImportError(
                     "duplicate adjudication submission for case"
                 )
-            assignment = assignments_by_case.get(submission.case_id)
+            assignment = assignments_by_case.get(adjudication_submission.case_id)
             if assignment is None:
                 raise ReaderEvidenceImportError(
                     f"adjudication submission references foreign case: {path.name}"
                 )
-            if submission.adjudicator_id != assignment.adjudicator_id:
+            if (
+                adjudication_submission.adjudicator_id
+                != assignment.adjudicator_id
+            ):
                 raise ReaderEvidenceImportError(
                     "adjudication submission uses wrong adjudicator"
                 )
             source_submissions: list[ReaderAnnotationSubmission] = []
-            for source_id in submission.source_label_set_ids:
+            for source_id in adjudication_submission.source_label_set_ids:
                 source_submission = annotation_by_label_set_id.get(source_id)
                 if source_submission is None:
                     raise ReaderEvidenceImportError(
@@ -385,7 +391,7 @@ class ReaderEvidenceImporter:
                 raise ReaderEvidenceImportError(
                     "adjudication sources must exactly match assigned annotators"
                 )
-            final_set = submission.adjudicated_label_set
+            final_set = adjudication_submission.adjudicated_label_set
             if (
                 final_set.document_descriptor_id != assignment.descriptor_id
                 or final_set.document_id != assignment.document_id
@@ -396,31 +402,38 @@ class ReaderEvidenceImporter:
                 raise ReaderEvidenceImportError(
                     "adjudicated label set does not match evidence assignment"
                 )
-            adjudication = HumanLabelAdjudication(
+            typed_adjudication = HumanLabelAdjudication(
                 source_label_sets=source_sets,
-                adjudicator_id=submission.adjudicator_id,
+                adjudicator_id=adjudication_submission.adjudicator_id,
                 adjudicated_label_set=final_set,
-                resolutions=submission.resolutions,
+                resolutions=adjudication_submission.resolutions,
                 schema_version=ADJUDICATION_SCHEMA_VERSION,
-                adjudication_id=submission.adjudication_id,
+                adjudication_id=adjudication_submission.adjudication_id,
             )
-            if submission.adjudication_id:
-                if adjudication.adjudication_id != submission.adjudication_id:
+            if adjudication_submission.adjudication_id:
+                if (
+                    typed_adjudication.adjudication_id
+                    != adjudication_submission.adjudication_id
+                ):
                     raise ReaderEvidenceImportError(
                         "adjudication_id does not match reconstructed adjudication"
                     )
             else:
-                submission = ReaderAdjudicationSubmission(
-                    case_id=submission.case_id,
-                    adjudicator_id=submission.adjudicator_id,
-                    source_label_set_ids=submission.source_label_set_ids,
-                    adjudicated_label_set=submission.adjudicated_label_set,
-                    resolutions=submission.resolutions,
-                    adjudication_id=adjudication.adjudication_id,
+                adjudication_submission = ReaderAdjudicationSubmission(
+                    case_id=adjudication_submission.case_id,
+                    adjudicator_id=adjudication_submission.adjudicator_id,
+                    source_label_set_ids=(
+                        adjudication_submission.source_label_set_ids
+                    ),
+                    adjudicated_label_set=(
+                        adjudication_submission.adjudicated_label_set
+                    ),
+                    resolutions=adjudication_submission.resolutions,
+                    adjudication_id=typed_adjudication.adjudication_id,
                 )
-            seen_case_ids.add(submission.case_id)
-            adjudications.append(submission)
-            typed_adjudications.append(adjudication)
+            seen_case_ids.add(adjudication_submission.case_id)
+            adjudications.append(adjudication_submission)
+            typed_adjudications.append(typed_adjudication)
             final_label_sets.append(final_set)
 
         verification_receipts: list[HumanLabelSetVerificationReceipt] = []
@@ -987,13 +1000,13 @@ def _unique_sorted_text(
 
 
 def _canonical_typed(
-    values: Iterable[Any],
-    expected_type: type[Any],
+    values: Iterable[T],
+    expected_type: type[T],
     *,
-    key: Any,
+    key: Callable[[T], str],
     field_name: str,
     allow_empty: bool,
-) -> tuple[Any, ...]:
+) -> tuple[T, ...]:
     items = tuple(values)
     if not allow_empty and not items:
         raise ReaderEvidenceImportError(f"{field_name} must not be empty")
