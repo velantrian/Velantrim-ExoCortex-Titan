@@ -15,7 +15,6 @@ from typing import Protocol
 from core.reader_benchmark_batch import (
     BatchCaseStatus,
     ReaderBenchmarkBatchCheckpoint,
-    ReaderBenchmarkBatchError,
     ReaderBenchmarkCaseReceipt,
 )
 from core.reader_benchmark_runner import ReaderBenchmarkObservation
