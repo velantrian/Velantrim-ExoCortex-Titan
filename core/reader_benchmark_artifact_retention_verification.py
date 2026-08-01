@@ -8,12 +8,12 @@ ordering.
 
 from __future__ import annotations
 
+import hmac
 from pathlib import Path
 
 from core.reader_benchmark_artifact_retention import (
     DEFAULT_MAX_ARTIFACT_BYTES,
     DEFAULT_MAX_TOTAL_BYTES,
-    BatchCaseStatus,
     ReaderArtifactRetentionError,
     ReaderArtifactRetentionSignature,
     ReaderArtifactRetentionSigner,
@@ -71,7 +71,7 @@ class ReaderBenchmarkArtifactRetentionVerifier:
                 raise ReaderArtifactRetentionError(
                     f"artifact size mismatch: {record.artifact_id}"
                 )
-            if digest != record.content_sha256:
+            if not hmac.compare_digest(digest, record.content_sha256):
                 raise ReaderArtifactRetentionError(
                     f"artifact digest mismatch: {record.artifact_id}"
                 )
