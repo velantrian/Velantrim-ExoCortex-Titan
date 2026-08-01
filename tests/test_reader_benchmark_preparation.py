@@ -34,11 +34,11 @@ RAW_TEXT = "Policy Alpha applies to standard requests."
 GUIDELINE_TEXT = "# Test guideline\nLabel exact claims and spans.\n"
 
 
-def _source_payload() -> dict[str, object]:
+def _source_payload(*, corpus_version: str = "1.0.0") -> dict[str, object]:
     return {
         "schema_version": "reader-core.evidence-source-spec.v1",
         "corpus_name": "reader-benchmark-preparation-fixture",
-        "corpus_version": "1.0.0",
+        "corpus_version": corpus_version,
         "tags": ["reader-core", "preparation"],
         "guideline": {
             "guideline_version": "reader-core.annotation-guideline.test-v1",
@@ -72,7 +72,11 @@ def _source_payload() -> dict[str, object]:
     }
 
 
-def _source_tree(tmp_path: Path):
+def _source_tree(
+    tmp_path: Path,
+    *,
+    corpus_version: str = "1.0.0",
+):
     root = tmp_path / "evidence-root"
     (root / "documents").mkdir(parents=True)
     (root / "guidelines").mkdir(parents=True)
@@ -86,7 +90,11 @@ def _source_tree(tmp_path: Path):
     )
     spec_path = root / "evidence-spec.json"
     spec_path.write_text(
-        json.dumps(_source_payload(), ensure_ascii=False, indent=2),
+        json.dumps(
+            _source_payload(corpus_version=corpus_version),
+            ensure_ascii=False,
+            indent=2,
+        ),
         encoding="utf-8",
     )
     pack = ReaderEvidencePackBuilder().build(
@@ -274,8 +282,11 @@ def test_incomplete_evidence_is_rejected(tmp_path: Path) -> None:
 
 
 def test_foreign_evidence_pack_is_rejected(tmp_path: Path) -> None:
-    _, pack, imported = _ready_import(tmp_path)
-    foreign_pack = replace(pack, pack_id="foreign-pack")
+    _, _, imported = _ready_import(tmp_path)
+    _, foreign_pack = _source_tree(
+        tmp_path / "foreign",
+        corpus_version="2.0.0",
+    )
 
     with pytest.raises(
         ReaderBenchmarkPreparationError,
