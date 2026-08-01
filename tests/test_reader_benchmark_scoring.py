@@ -373,17 +373,11 @@ def test_synthesis_without_matched_gold_support_is_explicitly_unsupported() -> N
 
 def test_stale_revision_and_non_adjudicated_gold_fail_closed() -> None:
     _, gold, prediction = _gold_and_prediction()
-    stale = replace(
-        prediction,
-        prediction_id="",
-        source_revision="0" * 64,
-    )
-    with pytest.raises(ReaderScoringError, match="source_revision"):
-        DeterministicReaderGoldScorer().score(
-            gold=gold,
-            first=stale,
-            replay=stale,
-            measurement=_measurement(),
+    with pytest.raises(ReaderScoringError, match="document identity"):
+        replace(
+            prediction,
+            prediction_id="",
+            source_revision="0" * 64,
         )
 
     annotator_gold = replace(
