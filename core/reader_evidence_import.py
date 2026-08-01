@@ -20,7 +20,6 @@ from core.knowledge_capsule import ClaimModality, SourceSpan
 from core.reader_core_contracts import RelationKind, stable_reader_core_id
 from core.reader_corpus_adjudication import (
     ADJUDICATION_SCHEMA_VERSION,
-    HUMAN_LABEL_SCHEMA_VERSION,
     AdjudicationResolution,
     CorpusDocumentDescriptor,
     HumanClaimLabel,
@@ -37,7 +36,6 @@ from core.reader_corpus_adjudication import (
 )
 from core.reader_evidence_intake import (
     ReaderAnnotationPacket,
-    ReaderEvidenceIntakeError,
     ReaderEvidenceReadinessEvaluator,
     ReaderEvidenceReadinessReport,
 )
