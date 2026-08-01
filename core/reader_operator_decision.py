@@ -1,9 +1,9 @@
 """Signed Reader Core operator decisions for PR-RDR-25.
 
-The module records a human/operator disposition over already verified benchmark
-and retained-artifact evidence. An approval can authorize isolated shadow
-evaluation only. Live integration, query-path wiring, Canon writes, memory
-writes, and tool authority remain forbidden by construction.
+The module records a human/operator disposition over already verified
+benchmark and retained-artifact evidence. An approval can authorize isolated
+shadow evaluation only. Live integration, query-path wiring, Canon writes,
+memory writes, and tool authority remain forbidden by construction.
 """
 
 from __future__ import annotations
@@ -19,11 +19,9 @@ from pathlib import Path
 from typing import Any, cast
 
 from core.reader_benchmark_artifact_retention import (
-    READER_ARTIFACT_RETENTION_MANIFEST_SCHEMA_VERSION,
     READER_ARTIFACT_RETENTION_VERIFICATION_SCHEMA_VERSION,
     ReaderArtifactRetentionVerificationReceipt,
     ReaderBenchmarkArtifactRetentionManifest,
-    load_artifact_retention_manifest,
 )
 from core.reader_benchmark_evidence_verification import (
     READER_BENCHMARK_EVIDENCE_VERIFICATION_SCHEMA_VERSION,
@@ -115,7 +113,10 @@ class ReaderOperatorDecisionSource:
             )
         object.__setattr__(self, "rationale_codes", rationale)
         object.__setattr__(self, "condition_codes", conditions)
-        if self.schema_version != READER_OPERATOR_DECISION_SOURCE_SCHEMA_VERSION:
+        if (
+            self.schema_version
+            != READER_OPERATOR_DECISION_SOURCE_SCHEMA_VERSION
+        ):
             raise ReaderOperatorDecisionError(
                 "unsupported operator decision source schema"
             )
@@ -277,7 +278,10 @@ class ReaderOperatorDecisionSignature:
             raise ReaderOperatorDecisionError(
                 "unsupported operator decision signature algorithm"
             )
-        if self.schema_version != READER_OPERATOR_DECISION_SIGNATURE_SCHEMA_VERSION:
+        if (
+            self.schema_version
+            != READER_OPERATOR_DECISION_SIGNATURE_SCHEMA_VERSION
+        ):
             raise ReaderOperatorDecisionError(
                 "unsupported operator decision signature schema"
             )
@@ -324,7 +328,10 @@ class ReaderOperatorRevocationSource:
                 "revocation requires rationale codes"
             )
         object.__setattr__(self, "rationale_codes", rationale)
-        if self.schema_version != READER_OPERATOR_REVOCATION_SOURCE_SCHEMA_VERSION:
+        if (
+            self.schema_version
+            != READER_OPERATOR_REVOCATION_SOURCE_SCHEMA_VERSION
+        ):
             raise ReaderOperatorDecisionError(
                 "unsupported operator revocation source schema"
             )
@@ -418,7 +425,10 @@ class ReaderOperatorRevocationSignature:
             raise ReaderOperatorDecisionError(
                 "unsupported operator revocation signature algorithm"
             )
-        if self.schema_version != READER_OPERATOR_REVOCATION_SIGNATURE_SCHEMA_VERSION:
+        if (
+            self.schema_version
+            != READER_OPERATOR_REVOCATION_SIGNATURE_SCHEMA_VERSION
+        ):
             raise ReaderOperatorDecisionError(
                 "unsupported operator revocation signature schema"
             )
@@ -494,7 +504,10 @@ class ReaderOperatorDecisionStatusReceipt:
             canon=self.canon_write_authorized,
             memory=self.memory_write_authorized,
         )
-        if self.schema_version != READER_OPERATOR_DECISION_STATUS_SCHEMA_VERSION:
+        if (
+            self.schema_version
+            != READER_OPERATOR_DECISION_STATUS_SCHEMA_VERSION
+        ):
             raise ReaderOperatorDecisionError(
                 "unsupported operator decision status schema"
             )
@@ -1546,7 +1559,8 @@ def _utc(value: object, field_name: str) -> datetime:
         )
     except ValueError as exc:
         raise ReaderOperatorDecisionError(
-            f"{field_name} must use canonical UTC format YYYY-MM-DDTHH:MM:SSZ"
+            f"{field_name} must use canonical UTC format "
+            "YYYY-MM-DDTHH:MM:SSZ"
         ) from exc
     return parsed
 
