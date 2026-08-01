@@ -15,7 +15,6 @@ import re
 
 from core.reader_core_contracts import stable_reader_core_id
 from core.reader_corpus_adjudication import (
-    CorpusDocumentDescriptor,
     CorpusPackageManifest,
     CorpusPackageVerificationReceipt,
     HumanLabelAdjudication,
