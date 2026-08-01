@@ -1,0 +1,22 @@
+{
+  "schema_version": "reader-core.promotion-thresholds.v1",
+  "min_total_cases": 4,
+  "min_synthetic_cases": 4,
+  "min_real_cases": 1,
+  "min_human_labelled_cases": 1,
+  "min_claim_fidelity": 0.95,
+  "min_source_span_precision": 0.95,
+  "min_source_span_recall": 0.95,
+  "min_critical_exception_recall": 0.95,
+  "min_relation_recall": 0.9,
+  "max_false_relation_rate": 0.05,
+  "min_contradiction_recall": 0.95,
+  "max_orphan_claim_rate": 0.05,
+  "min_qualifier_connectivity": 0.95,
+  "max_unsupported_synthesis_rate": 0.05,
+  "min_replay_match_rate": 1.0,
+  "min_resume_reuse_ratio": 0.9,
+  "max_query_path_latency_delta_ms": 5,
+  "max_section_latency_p95_ms": 100,
+  "max_model_tokens_per_case": 1000
+}
