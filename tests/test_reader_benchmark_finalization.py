@@ -43,17 +43,17 @@ from core.reader_evaluation import (
 )
 from core.reader_prepared_batch_runner import (
     PreparedBatchExecutionStatus,
+    ReaderPreparedBatchExecutionState,
     ReaderPreparedBatchRunner,
 )
 
+SECRET = b"0123456789abcdef0123456789abcdef"
+WRONG_SECRET = b"abcdef0123456789abcdef0123456789"
 
-class _DeterministicPipeline:
-    def __init__(
-        self,
-        *,
-        failures_before_success: dict[str, int] | None = None,
-    ) -> None:
-        self._failures_remaining = dict(failures_before_success or {})
+
+class _Pipeline:
+    def __init__(self, failures: int = 0) -> None:
+        self.failures = failures
         self.calls: dict[str, int] = defaultdict(int)
 
     def run_case(
@@ -63,32 +63,27 @@ class _DeterministicPipeline:
         replay_index: int,
     ) -> ReaderLocalPipelineResult:
         self.calls[case.case_id] += 1
-        if replay_index == 1 and self._failures_remaining.get(case.case_id, 0) > 0:
-            self._failures_remaining[case.case_id] -= 1
-            raise RuntimeError(f"planned failure: {case.case_id}")
+        if replay_index == 1 and self.failures > 0:
+            self.failures -= 1
+            raise RuntimeError("planned benchmark failure")
         claims = tuple(
-            sorted(
-                (
-                    ReaderClaimPrediction.create(
-                        source_claim_id=claim.label_id,
-                        document_id=case.descriptor.document_id,
-                        source_revision=case.descriptor.source_revision,
-                        modality=claim.modality,
-                        source_spans=claim.source_spans,
-                        qualifier_codes=claim.qualifier_codes,
-                        applicability_codes=claim.applicability_codes,
-                    )
-                    for claim in case.gold.claims
-                ),
-                key=lambda item: item.prediction_id,
+            ReaderClaimPrediction.create(
+                source_claim_id=claim.label_id,
+                document_id=case.descriptor.document_id,
+                source_revision=case.descriptor.source_revision,
+                modality=claim.modality,
+                source_spans=claim.source_spans,
+                qualifier_codes=claim.qualifier_codes,
+                applicability_codes=claim.applicability_codes,
             )
+            for claim in case.gold.claims
         )
         prediction = ReaderDocumentPrediction(
             document_descriptor_id=case.descriptor.descriptor_id,
             document_id=case.descriptor.document_id,
             source_revision=case.descriptor.source_revision,
             claims=claims,
-            artifact_ids=(f"prediction-artifact:{case.case_id}",),
+            artifact_ids=(f"prediction:{case.case_id}",),
         )
         measurement = ReaderExecutionMeasurement(
             section_latencies_ms=(5,),
@@ -103,7 +98,7 @@ class _DeterministicPipeline:
         return ReaderLocalPipelineResult(
             prediction=prediction,
             measurement=measurement,
-            run_artifact_ids=(f"run-artifact:{case.case_id}",),
+            run_artifact_ids=(f"run:{case.case_id}",),
         )
 
 
@@ -139,7 +134,7 @@ def _thresholds(*, min_total_cases: int = 1) -> ReaderPromotionThresholds:
     )
 
 
-def _prepared_case(index: int) -> ReaderPreparedBenchmarkCase:
+def _prepared_case(index: int = 1) -> ReaderPreparedBenchmarkCase:
     document_id = f"finalization-document-{index:02d}"
     raw_text = f"Claim for finalization case {index}."
     revision = sha256(raw_text.encode("utf-8")).hexdigest()
@@ -179,12 +174,12 @@ def _prepared_case(index: int) -> ReaderPreparedBenchmarkCase:
         role=LabelSetRole.ADJUDICATED,
         claims=(claim,),
     )
-    local_case = ReaderLocalBenchmarkCase(
+    benchmark_case = ReaderLocalBenchmarkCase(
         case_id=document_id,
         descriptor=descriptor,
         gold=gold,
     )
-    case_manifest = ReaderEvaluationCaseManifest(
+    manifest = ReaderEvaluationCaseManifest(
         case_id=document_id,
         corpus_kind=EvaluationCorpusKind.HUMAN_LABELLED,
         label_version=gold.label_version,
@@ -198,8 +193,8 @@ def _prepared_case(index: int) -> ReaderPreparedBenchmarkCase:
     )
     return ReaderPreparedBenchmarkCase(
         evidence_case_id=f"evidence-finalization-{index:02d}",
-        benchmark_case=local_case,
-        evaluation_manifest=case_manifest,
+        benchmark_case=benchmark_case,
+        evaluation_manifest=manifest,
     )
 
 
@@ -208,9 +203,9 @@ def _preparation(
     thresholds: ReaderPromotionThresholds,
     *,
     case_count: int = 1,
-    max_attempts_per_case: int = 1,
+    max_attempts: int = 1,
 ) -> ReaderBenchmarkPreparationBundle:
-    cases = tuple(_prepared_case(index) for index in range(case_count))
+    cases = tuple(_prepared_case(index + 1) for index in range(case_count))
     manifest = EvaluationCorpusManifest(
         corpus_name="finalization-fixture",
         corpus_version="1.0.0",
@@ -221,7 +216,7 @@ def _preparation(
         environment_id=environment.environment_id,
         threshold_policy_id=thresholds.thresholds_id,
         case_ids=tuple(item.benchmark_case.case_id for item in cases),
-        max_attempts_per_case=max_attempts_per_case,
+        max_attempts_per_case=max_attempts,
     )
     return ReaderBenchmarkPreparationBundle(
         evidence_pack_id="evidence-pack-finalization-001",
@@ -233,59 +228,32 @@ def _preparation(
     )
 
 
-def _complete_state(
+def _initial_state(
     preparation: ReaderBenchmarkPreparationBundle,
     environment: EvaluationEnvironment,
-):
-    runner = ReaderPreparedBatchRunner()
-    initial = runner.initial_state(
+) -> ReaderPreparedBatchExecutionState:
+    return ReaderPreparedBatchRunner.initial_state(
         preparation=preparation,
         environment=environment,
     )
-    return runner.run_pass(
+
+
+def _completed_state(
+    preparation: ReaderBenchmarkPreparationBundle,
+    environment: EvaluationEnvironment,
+) -> ReaderPreparedBatchExecutionState:
+    return ReaderPreparedBatchRunner().run_pass(
         preparation=preparation,
-        state=initial,
-        pipeline=_DeterministicPipeline(),
+        state=_initial_state(preparation, environment),
+        pipeline=_Pipeline(),
     )
 
 
-def test_complete_state_builds_authenticated_evidence() -> None:
+def test_complete_state_builds_deterministic_authenticated_evidence() -> None:
     environment = _environment()
     thresholds = _thresholds()
     preparation = _preparation(environment, thresholds, case_count=2)
-    state = _complete_state(preparation, environment)
-    finalizer = ReaderCompletedBatchFinalizer()
-
-    evidence = finalizer.finalize(
-        preparation=preparation,
-        state=state,
-        thresholds=thresholds,
-        key_id="benchmark-key-test",
-        secret=b"benchmark-secret-test",
-    )
-
-    assert state.status is PreparedBatchExecutionStatus.COMPLETE_SUCCESS
-    assert evidence.preparation_id == preparation.preparation_id
-    assert evidence.execution_state == state
-    assert evidence.benchmark_bundle.manifest == preparation.evaluation_manifest
-    assert evidence.benchmark_bundle.thresholds == thresholds
-    assert evidence.bundle_signature.bundle_id == evidence.benchmark_bundle.bundle_id
-    assert evidence.receipt_ids == tuple(
-        item.receipt_id for item in state.checkpoint.receipts
-    )
-    assert evidence.failed_attempt_receipt_ids == ()
-    assert finalizer.verify(evidence, secret=b"benchmark-secret-test") is True
-    assert finalizer.verify(evidence, secret=b"wrong-secret") is False
-    assert evidence.decision is PromotionDecision.INSUFFICIENT_EVIDENCE
-    assert evidence.operator_go_required is True
-    assert evidence.live_integration_authorized is False
-
-
-def test_finalization_is_deterministic() -> None:
-    environment = _environment()
-    thresholds = _thresholds()
-    preparation = _preparation(environment, thresholds)
-    state = _complete_state(preparation, environment)
+    state = _completed_state(preparation, environment)
     finalizer = ReaderCompletedBatchFinalizer()
 
     first = finalizer.finalize(
@@ -293,69 +261,64 @@ def test_finalization_is_deterministic() -> None:
         state=state,
         thresholds=thresholds,
         key_id="benchmark-key-test",
-        secret=b"benchmark-secret-test",
+        secret=SECRET,
     )
     second = finalizer.finalize(
         preparation=preparation,
         state=state,
         thresholds=thresholds,
         key_id="benchmark-key-test",
-        secret=b"benchmark-secret-test",
+        secret=SECRET,
     )
 
+    assert state.status is PreparedBatchExecutionStatus.COMPLETE_SUCCESS
     assert first == second
-    assert first.evidence_id == second.evidence_id
+    assert first.preparation_id == preparation.preparation_id
+    assert first.execution_state == state
+    assert first.benchmark_bundle.manifest == preparation.evaluation_manifest
+    assert first.benchmark_bundle.thresholds == thresholds
+    assert first.receipt_ids == tuple(
+        item.receipt_id for item in state.checkpoint.receipts
+    )
+    assert first.failed_attempt_receipt_ids == ()
+    assert finalizer.verify(first, secret=SECRET) is True
+    assert finalizer.verify(first, secret=WRONG_SECRET) is False
+    assert first.decision is PromotionDecision.INSUFFICIENT_EVIDENCE
+    assert first.operator_go_required is True
+    assert first.live_integration_authorized is False
 
 
-def test_incomplete_and_exhausted_failed_batches_are_rejected() -> None:
+def test_incomplete_and_exhausted_failed_states_are_rejected() -> None:
     environment = _environment()
     thresholds = _thresholds()
     preparation = _preparation(environment, thresholds)
-    runner = ReaderPreparedBatchRunner()
-    initial = runner.initial_state(
-        preparation=preparation,
-        environment=environment,
-    )
-    case_id = preparation.batch_plan.case_ids[0]
-    failed = runner.run_pass(
+    initial = _initial_state(preparation, environment)
+    failed = ReaderPreparedBatchRunner().run_pass(
         preparation=preparation,
         state=initial,
-        pipeline=_DeterministicPipeline(
-            failures_before_success={case_id: 1}
-        ),
+        pipeline=_Pipeline(failures=1),
     )
     finalizer = ReaderCompletedBatchFinalizer()
 
-    with pytest.raises(
-        ReaderBenchmarkFinalizationError,
-        match="complete successful",
-    ):
-        finalizer.finalize(
-            preparation=preparation,
-            state=initial,
-            thresholds=thresholds,
-            key_id="benchmark-key-test",
-            secret=b"benchmark-secret-test",
-        )
-    with pytest.raises(
-        ReaderBenchmarkFinalizationError,
-        match="complete successful",
-    ):
-        finalizer.finalize(
-            preparation=preparation,
-            state=failed,
-            thresholds=thresholds,
-            key_id="benchmark-key-test",
-            secret=b"benchmark-secret-test",
-        )
+    for state in (initial, failed):
+        with pytest.raises(
+            ReaderBenchmarkFinalizationError,
+            match="complete successful",
+        ):
+            finalizer.finalize(
+                preparation=preparation,
+                state=state,
+                thresholds=thresholds,
+                key_id="benchmark-key-test",
+                secret=SECRET,
+            )
 
 
-def test_threshold_policy_and_preparation_ownership_are_enforced() -> None:
+def test_exact_threshold_policy_and_preparation_are_required() -> None:
     environment = _environment()
     thresholds = _thresholds()
     preparation = _preparation(environment, thresholds)
-    state = _complete_state(preparation, environment)
-    foreign_thresholds = _thresholds(min_total_cases=2)
+    state = _completed_state(preparation, environment)
     foreign_preparation = replace(
         preparation,
         evidence_import_bundle_id="foreign-import-bundle",
@@ -370,9 +333,9 @@ def test_threshold_policy_and_preparation_ownership_are_enforced() -> None:
         finalizer.finalize(
             preparation=preparation,
             state=state,
-            thresholds=foreign_thresholds,
+            thresholds=_thresholds(min_total_cases=2),
             key_id="benchmark-key-test",
-            secret=b"benchmark-secret-test",
+            secret=SECRET,
         )
     with pytest.raises(
         ReaderBenchmarkFinalizationError,
@@ -383,30 +346,23 @@ def test_threshold_policy_and_preparation_ownership_are_enforced() -> None:
             state=state,
             thresholds=thresholds,
             key_id="benchmark-key-test",
-            secret=b"benchmark-secret-test",
+            secret=SECRET,
         )
 
 
-def test_retry_history_is_retained_in_signed_evidence() -> None:
+def test_successful_retry_keeps_failed_receipt_and_all_artifacts() -> None:
     environment = _environment()
     thresholds = _thresholds()
     preparation = _preparation(
         environment,
         thresholds,
-        max_attempts_per_case=2,
-    )
-    case_id = preparation.batch_plan.case_ids[0]
-    pipeline = _DeterministicPipeline(
-        failures_before_success={case_id: 1}
+        max_attempts=2,
     )
     runner = ReaderPreparedBatchRunner()
-    initial = runner.initial_state(
-        preparation=preparation,
-        environment=environment,
-    )
+    pipeline = _Pipeline(failures=1)
     failed = runner.run_pass(
         preparation=preparation,
-        state=initial,
+        state=_initial_state(preparation, environment),
         pipeline=pipeline,
     )
     completed = runner.run_pass(
@@ -420,14 +376,14 @@ def test_retry_history_is_retained_in_signed_evidence() -> None:
         state=completed,
         thresholds=thresholds,
         key_id="benchmark-key-test",
-        secret=b"benchmark-secret-test",
+        secret=SECRET,
     )
 
     assert len(evidence.receipt_ids) == 2
     assert evidence.failed_attempt_receipt_ids == (
         completed.checkpoint.receipts[0].receipt_id,
     )
-    expected_artifacts = tuple(
+    assert evidence.artifact_ids == tuple(
         sorted(
             {
                 artifact_id
@@ -436,29 +392,21 @@ def test_retry_history_is_retained_in_signed_evidence() -> None:
             }
         )
     )
-    assert evidence.artifact_ids == expected_artifacts
 
 
-def test_tampered_signature_and_evidence_indexes_fail_closed() -> None:
+def test_tampering_and_incomplete_indexes_fail_closed() -> None:
     environment = _environment()
     thresholds = _thresholds()
     preparation = _preparation(
         environment,
         thresholds,
-        max_attempts_per_case=2,
+        max_attempts=2,
     )
-    case_id = preparation.batch_plan.case_ids[0]
     runner = ReaderPreparedBatchRunner()
-    initial = runner.initial_state(
-        preparation=preparation,
-        environment=environment,
-    )
-    pipeline = _DeterministicPipeline(
-        failures_before_success={case_id: 1}
-    )
+    pipeline = _Pipeline(failures=1)
     failed = runner.run_pass(
         preparation=preparation,
-        state=initial,
+        state=_initial_state(preparation, environment),
         pipeline=pipeline,
     )
     completed = runner.run_pass(
@@ -472,27 +420,21 @@ def test_tampered_signature_and_evidence_indexes_fail_closed() -> None:
         state=completed,
         thresholds=thresholds,
         key_id="benchmark-key-test",
-        secret=b"benchmark-secret-test",
+        secret=SECRET,
     )
     tampered_signature = replace(
         evidence.bundle_signature,
         signature_hex="0" * 64,
         signature_id="",
     )
-    tampered_evidence = replace(
+    tampered = replace(
         evidence,
         bundle_signature=tampered_signature,
         evidence_id="",
     )
 
-    assert finalizer.verify(
-        tampered_evidence,
-        secret=b"benchmark-secret-test",
-    ) is False
-    with pytest.raises(
-        ReaderBenchmarkFinalizationError,
-        match="receipt_ids",
-    ):
+    assert finalizer.verify(tampered, secret=SECRET) is False
+    with pytest.raises(ReaderBenchmarkFinalizationError, match="receipt_ids"):
         replace(
             evidence,
             receipt_ids=tuple(reversed(evidence.receipt_ids)),
@@ -502,13 +444,6 @@ def test_tampered_signature_and_evidence_indexes_fail_closed() -> None:
         ReaderBenchmarkFinalizationError,
         match="artifact index",
     ):
-        replace(
-            evidence,
-            artifact_ids=(),
-            evidence_id="",
-        )
-    with pytest.raises(
-        ReaderBenchmarkFinalizationError,
-        match="evidence_id",
-    ):
+        replace(evidence, artifact_ids=(), evidence_id="")
+    with pytest.raises(ReaderBenchmarkFinalizationError, match="evidence_id"):
         replace(evidence, evidence_id="forged-evidence")
