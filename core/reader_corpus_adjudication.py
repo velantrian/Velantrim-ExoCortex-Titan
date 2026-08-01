@@ -16,7 +16,7 @@ from enum import Enum
 from hashlib import sha256
 from pathlib import Path, PurePosixPath
 import re
-from typing import Iterable, TypeAlias
+from typing import Iterable, Protocol, TypeAlias, TypeVar
 
 from core.critical_exceptions import ExceptionCategory
 from core.knowledge_capsule import ClaimModality, SourceSpan
@@ -74,9 +74,17 @@ class QualifierKind(str, Enum):
     OTHER = "other"
 
 
+class _LabelWithId(Protocol):
+    @property
+    def label_id(self) -> str: ...
+
+
+LabelT = TypeVar("LabelT", bound=_LabelWithId)
+
+
 @dataclass(frozen=True, slots=True)
 class CorpusDocumentDescriptor:
-    """Content-addressed local document descriptor without raw document text."""
+    """Content-addressed local document descriptor without raw text."""
 
     document_id: str
     relative_path: str
@@ -101,8 +109,8 @@ class CorpusDocumentDescriptor:
             "rights_reference",
         ):
             _require_text(getattr(self, name), name)
-        normalized_path = _normalize_relative_path(self.relative_path)
-        object.__setattr__(self, "relative_path", normalized_path)
+        normalized = _normalize_relative_path(self.relative_path)
+        object.__setattr__(self, "relative_path", normalized)
         _require_sha256(self.content_sha256, "content_sha256")
         if self.source_revision != self.content_sha256:
             raise ReaderCorpusError(
@@ -162,14 +170,7 @@ class CorpusDocumentDescriptor:
         redistribution_allowed: bool,
     ) -> CorpusDocumentDescriptor:
         normalized = _normalize_relative_path(relative_path)
-        source = _resolve_corpus_file(root, normalized)
-        raw = source.read_bytes()
-        try:
-            text = raw.decode("utf-8")
-        except UnicodeDecodeError as exc:
-            raise ReaderCorpusError(
-                f"corpus document must be valid UTF-8: {normalized}"
-            ) from exc
+        raw, text = _read_corpus_file(root, normalized)
         digest = sha256(raw).hexdigest()
         return cls(
             document_id=document_id,
@@ -204,14 +205,7 @@ class CorpusDocumentDescriptor:
         return payload
 
     def verify_file(self, root: str | Path) -> CorpusDocumentVerification:
-        source = _resolve_corpus_file(root, self.relative_path)
-        raw = source.read_bytes()
-        try:
-            text = raw.decode("utf-8")
-        except UnicodeDecodeError as exc:
-            raise ReaderCorpusError(
-                f"corpus document must be valid UTF-8: {self.relative_path}"
-            ) from exc
+        raw, text = _read_corpus_file(root, self.relative_path)
         observed_sha256 = sha256(raw).hexdigest()
         if observed_sha256 != self.content_sha256:
             raise ReaderCorpusError(
@@ -276,23 +270,23 @@ class CorpusDocumentVerification:
         byte_size: int,
         char_count: int,
     ) -> CorpusDocumentVerification:
-        verification_id = stable_reader_core_id(
-            "reader-corpus-document-verification",
-            {
-                "descriptor_id": descriptor_id,
-                "document_id": document_id,
-                "content_sha256": content_sha256,
-                "byte_size": byte_size,
-                "char_count": char_count,
-            },
-        )
+        payload = {
+            "descriptor_id": descriptor_id,
+            "document_id": document_id,
+            "content_sha256": content_sha256,
+            "byte_size": byte_size,
+            "char_count": char_count,
+        }
         return cls(
             descriptor_id=descriptor_id,
             document_id=document_id,
             content_sha256=content_sha256,
             byte_size=byte_size,
             char_count=char_count,
-            verification_id=verification_id,
+            verification_id=stable_reader_core_id(
+                "reader-corpus-document-verification",
+                payload,
+            ),
         )
 
 
@@ -399,14 +393,18 @@ class CorpusPackageVerificationReceipt:
         entries: Iterable[CorpusDocumentVerification],
     ) -> CorpusPackageVerificationReceipt:
         ordered = tuple(sorted(entries, key=lambda item: item.document_id))
-        receipt_id = stable_reader_core_id(
-            "reader-corpus-package-verification",
-            {
-                "package_id": package_id,
-                "verification_ids": [item.verification_id for item in ordered],
-            },
+        payload = {
+            "package_id": package_id,
+            "verification_ids": [item.verification_id for item in ordered],
+        }
+        return cls(
+            package_id=package_id,
+            entries=ordered,
+            receipt_id=stable_reader_core_id(
+                "reader-corpus-package-verification",
+                payload,
+            ),
         )
-        return cls(package_id=package_id, entries=ordered, receipt_id=receipt_id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -471,7 +469,7 @@ class HumanClaimLabel:
         qualifier_codes: Iterable[str] = (),
         applicability_codes: Iterable[str] = (),
     ) -> HumanClaimLabel:
-        spans = tuple(source_spans)
+        spans = _sorted_spans(source_spans)
         qualifiers = tuple(sorted(qualifier_codes))
         applicability = tuple(sorted(applicability_codes))
         payload = {
@@ -648,7 +646,7 @@ class HumanRelationLabel:
         target_claim_label_id: str,
         evidence_spans: Iterable[SourceSpan],
     ) -> HumanRelationLabel:
-        spans = tuple(evidence_spans)
+        spans = _sorted_spans(evidence_spans)
         payload = {
             "document_id": document_id,
             "source_revision": source_revision,
@@ -890,9 +888,7 @@ class HumanLabelSet:
                 "descriptor identity must match label-set document and revision"
             )
         descriptor.verify_file(root)
-        text = _resolve_corpus_file(root, descriptor.relative_path).read_text(
-            encoding="utf-8"
-        )
+        _, text = _read_corpus_file(root, descriptor.relative_path)
         spans = tuple(_iter_label_spans(self))
         for span in spans:
             if not span.verify(text):
@@ -902,7 +898,7 @@ class HumanLabelSet:
         return HumanLabelSetVerificationReceipt.create(
             label_set_id=self.label_set_id,
             descriptor_id=descriptor.descriptor_id,
-            verified_span_ids=tuple(sorted(span.span_id for span in spans)),
+            verified_span_ids=tuple(sorted({span.span_id for span in spans})),
         )
 
 
@@ -942,19 +938,19 @@ class HumanLabelSetVerificationReceipt:
         verified_span_ids: Iterable[str],
     ) -> HumanLabelSetVerificationReceipt:
         spans = tuple(sorted(set(verified_span_ids)))
-        receipt_id = stable_reader_core_id(
-            "reader-human-label-set-verification",
-            {
-                "label_set_id": label_set_id,
-                "descriptor_id": descriptor_id,
-                "verified_span_ids": list(spans),
-            },
-        )
+        payload = {
+            "label_set_id": label_set_id,
+            "descriptor_id": descriptor_id,
+            "verified_span_ids": list(spans),
+        }
         return cls(
             label_set_id=label_set_id,
             descriptor_id=descriptor_id,
             verified_span_ids=spans,
-            receipt_id=receipt_id,
+            receipt_id=stable_reader_core_id(
+                "reader-human-label-set-verification",
+                payload,
+            ),
         )
 
 
@@ -1047,11 +1043,11 @@ class HumanLabelAdjudication:
             raise ReaderCorpusError(
                 "adjudicator must be independent from source annotators"
             )
-        if not isinstance(self.adjudicated_label_set, HumanLabelSet):
+        final = self.adjudicated_label_set
+        if not isinstance(final, HumanLabelSet):
             raise ReaderCorpusError(
                 "adjudicated_label_set must be a HumanLabelSet"
             )
-        final = self.adjudicated_label_set
         if final.role is not LabelSetRole.ADJUDICATED:
             raise ReaderCorpusError(
                 "adjudicated label set must have adjudicated role"
@@ -1060,22 +1056,9 @@ class HumanLabelAdjudication:
             raise ReaderCorpusError(
                 "adjudicated label-set annotator_id must equal adjudicator_id"
             )
-        identity = (
-            sources[0].document_descriptor_id,
-            sources[0].document_id,
-            sources[0].source_revision,
-            sources[0].guideline_version,
-            sources[0].label_version,
-        )
+        identity = _label_set_policy_identity(sources[0])
         for item in (*sources[1:], final):
-            candidate_identity = (
-                item.document_descriptor_id,
-                item.document_id,
-                item.source_revision,
-                item.guideline_version,
-                item.label_version,
-            )
-            if candidate_identity != identity:
+            if _label_set_policy_identity(item) != identity:
                 raise ReaderCorpusError(
                     "all label sets must share document and label policy identity"
                 )
@@ -1117,12 +1100,15 @@ class HumanLabelAdjudication:
         candidate_seen: set[str] = set()
         resolved_seen: set[str] = set()
         for kind in HumanLabelKind:
-            source_sets = [
+            source_id_sets = [
                 {label.label_id for label in source.labels_by_kind(kind)}
                 for source in sources
             ]
-            common = set.intersection(*source_sets)
-            union = set.union(*source_sets)
+            common = set(source_id_sets[0])
+            union: set[str] = set()
+            for label_ids in source_id_sets:
+                common.intersection_update(label_ids)
+                union.update(label_ids)
             disputed = union - common
             final_ids = {
                 label.label_id for label in final.labels_by_kind(kind)
@@ -1131,34 +1117,36 @@ class HumanLabelAdjudication:
                 raise ReaderCorpusError(
                     "labels agreed by all annotators must remain in adjudicated set"
                 )
-            kind_resolutions = [
-                resolution for resolution in resolutions if resolution.kind is kind
-            ]
+            kind_resolutions = tuple(
+                resolution
+                for resolution in resolutions
+                if resolution.kind is kind
+            )
             partition_candidates: set[str] = set()
             partition_resolved: set[str] = set()
             for resolution in kind_resolutions:
-                candidate_ids = set(resolution.candidate_label_ids)
-                resolved_ids = set(resolution.resolved_label_ids)
-                if candidate_ids & candidate_seen:
+                candidates = set(resolution.candidate_label_ids)
+                resolved = set(resolution.resolved_label_ids)
+                if candidates & candidate_seen:
                     raise ReaderCorpusError(
                         "candidate labels cannot appear in multiple resolutions"
                     )
-                if resolved_ids & resolved_seen:
+                if resolved & resolved_seen:
                     raise ReaderCorpusError(
                         "resolved labels cannot appear in multiple resolutions"
                     )
-                if not candidate_ids.issubset(disputed):
+                if not candidates.issubset(disputed):
                     raise ReaderCorpusError(
                         "resolution candidates must be disputed labels of the same kind"
                     )
-                if not resolved_ids.issubset(final_ids - common):
+                if not resolved.issubset(final_ids - common):
                     raise ReaderCorpusError(
                         "resolution outputs must be non-common final labels of the same kind"
                     )
-                candidate_seen.update(candidate_ids)
-                resolved_seen.update(resolved_ids)
-                partition_candidates.update(candidate_ids)
-                partition_resolved.update(resolved_ids)
+                candidate_seen.update(candidates)
+                resolved_seen.update(resolved)
+                partition_candidates.update(candidates)
+                partition_resolved.update(resolved)
             if partition_candidates != disputed:
                 raise ReaderCorpusError(
                     "every disputed label must be resolved exactly once"
@@ -1184,7 +1172,7 @@ class HumanLabelAdjudication:
 
 
 class HumanLabelEvaluationManifestBuilder:
-    """Build the RDR-09 manifest only from fully adjudicated label sets."""
+    """Build an RDR-09 manifest only from fully adjudicated label sets."""
 
     def build(
         self,
@@ -1213,13 +1201,13 @@ class HumanLabelEvaluationManifestBuilder:
             )
         cases: list[ReaderEvaluationCaseManifest] = []
         for descriptor in package.documents:
-            label_set = by_descriptor[descriptor.descriptor_id].adjudicated_label_set
-            expected_source_span_count = sum(
-                len(claim.source_spans) for claim in label_set.claims
+            labels = by_descriptor[descriptor.descriptor_id].adjudicated_label_set
+            source_span_count = sum(
+                len(claim.source_spans) for claim in labels.claims
             )
             contradiction_count = sum(
                 relation.relation_kind is RelationKind.CONTRADICTS
-                for relation in label_set.relations
+                for relation in labels.relations
             )
             tags = tuple(
                 sorted(
@@ -1235,13 +1223,13 @@ class HumanLabelEvaluationManifestBuilder:
                 ReaderEvaluationCaseManifest(
                     case_id=descriptor.document_id,
                     corpus_kind=EvaluationCorpusKind.HUMAN_LABELLED,
-                    label_version=label_set.label_version,
-                    expected_claim_count=len(label_set.claims),
-                    expected_source_span_count=expected_source_span_count,
-                    expected_exception_count=len(label_set.exceptions),
-                    expected_relation_count=len(label_set.relations),
+                    label_version=labels.label_version,
+                    expected_claim_count=len(labels.claims),
+                    expected_source_span_count=source_span_count,
+                    expected_exception_count=len(labels.exceptions),
+                    expected_relation_count=len(labels.relations),
                     expected_contradiction_count=contradiction_count,
-                    expected_qualifier_count=len(label_set.qualifiers),
+                    expected_qualifier_count=len(labels.qualifiers),
                     tags=tags,
                 )
             )
@@ -1252,9 +1240,43 @@ class HumanLabelEvaluationManifestBuilder:
         )
 
 
+def _label_set_policy_identity(
+    label_set: HumanLabelSet,
+) -> tuple[str, str, str, str, str]:
+    return (
+        label_set.document_descriptor_id,
+        label_set.document_id,
+        label_set.source_revision,
+        label_set.guideline_version,
+        label_set.label_version,
+    )
+
+
+def _read_corpus_file(
+    root: str | Path,
+    relative_path: str,
+) -> tuple[bytes, str]:
+    source = _resolve_corpus_file(root, relative_path)
+    try:
+        raw = source.read_bytes()
+        text = raw.decode("utf-8")
+    except OSError as exc:
+        raise ReaderCorpusError(
+            f"cannot read corpus document: {relative_path}"
+        ) from exc
+    except UnicodeDecodeError as exc:
+        raise ReaderCorpusError(
+            f"corpus document must be valid UTF-8: {relative_path}"
+        ) from exc
+    return raw, text
+
+
 def _resolve_corpus_file(root: str | Path, relative_path: str) -> Path:
     normalized = _normalize_relative_path(relative_path)
-    root_path = Path(root).resolve(strict=True)
+    try:
+        root_path = Path(root).resolve(strict=True)
+    except OSError as exc:
+        raise ReaderCorpusError("corpus root does not exist") from exc
     if not root_path.is_dir():
         raise ReaderCorpusError("corpus root must be a directory")
     candidate = root_path
@@ -1309,6 +1331,19 @@ def _validate_one_span(
         raise ReaderCorpusError(f"{field_name} source_revision mismatch")
 
 
+def _sorted_spans(values: Iterable[SourceSpan]) -> tuple[SourceSpan, ...]:
+    return tuple(
+        sorted(
+            values,
+            key=lambda span: (
+                span.start_offset,
+                span.end_offset,
+                span.span_id,
+            ),
+        )
+    )
+
+
 def _validated_spans(
     values: Iterable[SourceSpan],
     *,
@@ -1328,28 +1363,24 @@ def _validated_spans(
         )
     if len({span.span_id for span in spans}) != len(spans):
         raise ReaderCorpusError(f"{field_name} IDs must be unique")
-    ordered = tuple(
-        sorted(spans, key=lambda span: (span.start_offset, span.end_offset, span.span_id))
-    )
-    if spans != ordered:
+    if spans != _sorted_spans(spans):
         raise ReaderCorpusError(f"{field_name} values must be canonical")
     return spans
 
 
-def _verify_or_set_label_id(label: object, expected: str) -> None:
-    actual = getattr(label, "label_id")
-    if actual:
-        if actual != expected:
+def _verify_or_set_label_id(label: _LabelWithId, expected: str) -> None:
+    if label.label_id:
+        if label.label_id != expected:
             raise ReaderCorpusError("label_id does not match label content")
     else:
         object.__setattr__(label, "label_id", expected)
 
 
 def _canonical_labels(
-    values: Iterable[HumanLabel],
-    expected_type: type[HumanLabel],
+    values: Iterable[LabelT],
+    expected_type: type[LabelT],
     field_name: str,
-) -> tuple[HumanLabel, ...]:
+) -> tuple[LabelT, ...]:
     labels = tuple(values)
     if any(not isinstance(item, expected_type) for item in labels):
         raise ReaderCorpusError(f"{field_name} contain invalid label types")
