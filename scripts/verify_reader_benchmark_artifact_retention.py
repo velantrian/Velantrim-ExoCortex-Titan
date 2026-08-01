@@ -17,9 +17,11 @@ from core.reader_benchmark_artifact_retention import (  # noqa: E402
     DEFAULT_MAX_ARTIFACT_BYTES,
     DEFAULT_MAX_TOTAL_BYTES,
     ReaderArtifactRetentionError,
-    ReaderBenchmarkArtifactRetentionVerifier,
     load_artifact_retention_manifest,
     load_artifact_retention_signature,
+)
+from core.reader_benchmark_artifact_retention_verification import (  # noqa: E402
+    ReaderBenchmarkArtifactRetentionVerifier,
 )
 from core.reader_benchmark_runner import write_canonical_json  # noqa: E402
 
