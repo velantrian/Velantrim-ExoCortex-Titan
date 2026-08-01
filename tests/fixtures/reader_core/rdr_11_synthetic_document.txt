@@ -1,0 +1,3 @@
+Policy Alpha applies to all standard requests.
+However, it does not apply to emergency requests unless manual approval is recorded.
+Version 2 supersedes Version 1.
