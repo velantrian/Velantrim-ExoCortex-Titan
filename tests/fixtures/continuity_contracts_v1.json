@@ -1,0 +1,103 @@
+{
+  "schema_version": "continuity.contracts.v1",
+  "vectors": {
+    "assertion_primary": {
+      "canonical_json": "{\"asserted_by\":{\"actor_id\":\"operator:ruslan\",\"kind\":\"operator\"},\"origin_type\":\"user_stated\",\"predicate\":\"architecture.priority\",\"recorded_at\":\"2026-08-01T18:00:02.000000Z\",\"schema_version\":\"continuity.contracts.v1\",\"sensitivity_category\":\"normal\",\"sensitivity_level\":\"normal\",\"source_refs\":[\"a01ba5c16738caf19ac450ed4d1a47cee7a1a5d3f0edfbc251c6340ea9bdf8b5\"],\"subject_ref\":{\"kind\":\"project\",\"subject_id\":\"project:titan\"},\"valid_from\":\"2026-08-01T18:00:00.000000Z\",\"valid_to\":null,\"value\":\"finish_mvp_first\",\"visibility\":\"private\"}",
+      "input": {
+        "asserted_by": {
+          "actor_id": "operator:ruslan",
+          "kind": "operator"
+        },
+        "origin_type": "user_stated",
+        "predicate": "architecture.priority",
+        "recorded_at": "2026-08-01T18:00:02Z",
+        "sensitivity_category": "normal",
+        "sensitivity_level": "normal",
+        "source_refs": [
+          "a01ba5c16738caf19ac450ed4d1a47cee7a1a5d3f0edfbc251c6340ea9bdf8b5"
+        ],
+        "subject_ref": {
+          "kind": "project",
+          "subject_id": "project:titan"
+        },
+        "valid_from": "2026-08-01T20:00:00+02:00",
+        "valid_to": null,
+        "value": "finish_mvp_first",
+        "visibility": "private"
+      },
+      "sha256": "e405bd44201411576084e57cc45fb55cf7b7e84ac0e386a750809f86800064cb"
+    },
+    "assertion_relation": {
+      "canonical_json": "{\"actor_ref\":{\"actor_id\":\"component:thread-weaver\",\"kind\":\"titan_component\"},\"created_at\":\"2026-08-02T06:00:03.000000Z\",\"evidence_refs\":[\"a01ba5c16738caf19ac450ed4d1a47cee7a1a5d3f0edfbc251c6340ea9bdf8b5\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"],\"relation_type\":\"contradicts\",\"schema_version\":\"continuity.contracts.v1\",\"source_assertion_ref\":\"a3f7858b819c2fda35692084c14954bc577c7599e9c6aeb4b199d1b69d2bfbe9\",\"target_assertion_ref\":\"e405bd44201411576084e57cc45fb55cf7b7e84ac0e386a750809f86800064cb\"}",
+      "input": {
+        "actor_ref": {
+          "actor_id": "component:thread-weaver",
+          "kind": "titan_component"
+        },
+        "created_at": "2026-08-02T06:00:03Z",
+        "evidence_refs": [
+          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "a01ba5c16738caf19ac450ed4d1a47cee7a1a5d3f0edfbc251c6340ea9bdf8b5"
+        ],
+        "relation_type": "contradicts",
+        "source_assertion_ref": "a3f7858b819c2fda35692084c14954bc577c7599e9c6aeb4b199d1b69d2bfbe9",
+        "target_assertion_ref": "e405bd44201411576084e57cc45fb55cf7b7e84ac0e386a750809f86800064cb"
+      },
+      "sha256": "579abb00b87ac02e2ce75493cbfd75bb7032bf248caca183fec6d3a0171c6b9b"
+    },
+    "assertion_secondary": {
+      "canonical_json": "{\"asserted_by\":{\"actor_id\":\"operator:ruslan\",\"kind\":\"operator\"},\"origin_type\":\"user_stated\",\"predicate\":\"architecture.priority\",\"recorded_at\":\"2026-08-02T06:00:02.000000Z\",\"schema_version\":\"continuity.contracts.v1\",\"sensitivity_category\":\"normal\",\"sensitivity_level\":\"normal\",\"source_refs\":[\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"],\"subject_ref\":{\"kind\":\"project\",\"subject_id\":\"project:titan\"},\"valid_from\":\"2026-08-02T06:00:00.000000Z\",\"valid_to\":null,\"value\":\"add_architecture_layer_now\",\"visibility\":\"private\"}",
+      "input": {
+        "asserted_by": {
+          "actor_id": "operator:ruslan",
+          "kind": "operator"
+        },
+        "origin_type": "user_stated",
+        "predicate": "architecture.priority",
+        "recorded_at": "2026-08-02T06:00:02Z",
+        "sensitivity_category": "normal",
+        "sensitivity_level": "normal",
+        "source_refs": [
+          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        ],
+        "subject_ref": {
+          "kind": "project",
+          "subject_id": "project:titan"
+        },
+        "valid_from": "2026-08-02T08:00:00+02:00",
+        "valid_to": null,
+        "value": "add_architecture_layer_now",
+        "visibility": "private"
+      },
+      "sha256": "a3f7858b819c2fda35692084c14954bc577c7599e9c6aeb4b199d1b69d2bfbe9"
+    },
+    "interaction_event": {
+      "canonical_json": "{\"actor_ref\":{\"actor_id\":\"operator:ruslan\",\"kind\":\"operator\"},\"content_ref\":\"message:0001\",\"event_type\":\"message\",\"occurred_at\":\"2026-08-01T18:00:00.000000Z\",\"recorded_at\":\"2026-08-01T18:00:01.000000Z\",\"schema_version\":\"continuity.contracts.v1\",\"sensitivity_category\":\"normal\",\"sensitivity_level\":\"normal\",\"session_ref\":\"chat:milestone-1\",\"subject_refs\":[{\"kind\":\"project\",\"subject_id\":\"project:titan\"},{\"kind\":\"software_system\",\"subject_id\":\"system:titan\"}],\"visibility\":\"private\"}",
+      "input": {
+        "actor_ref": {
+          "actor_id": "operator:ruslan",
+          "kind": "operator"
+        },
+        "content_ref": "message:0001",
+        "event_type": "message",
+        "occurred_at": "2026-08-01T20:00:00+02:00",
+        "recorded_at": "2026-08-01T18:00:01Z",
+        "sensitivity_category": "normal",
+        "sensitivity_level": "normal",
+        "session_ref": "chat:milestone-1",
+        "subject_refs": [
+          {
+            "kind": "software_system",
+            "subject_id": "system:titan"
+          },
+          {
+            "kind": "project",
+            "subject_id": "project:titan"
+          }
+        ],
+        "visibility": "private"
+      },
+      "sha256": "a01ba5c16738caf19ac450ed4d1a47cee7a1a5d3f0edfbc251c6340ea9bdf8b5"
+    }
+  }
+}
