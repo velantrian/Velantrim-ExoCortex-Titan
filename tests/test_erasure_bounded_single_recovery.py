@@ -4,15 +4,10 @@ from __future__ import annotations
 
 import sqlite3
 
-import numpy as np
 import pytest
 
 from core.embedding_store import EmbeddingStore
-from core.erasure_coordinator import (
-    COMPLETE,
-    FAILED,
-    ErasureCoordinator,
-)
+from core.erasure_coordinator import COMPLETE, FAILED, ErasureCoordinator
 from core.erasure_startup_recovery import RecoveryDomain
 from core.memory import make_store
 from core.ngram_index import NGramIndex
@@ -51,7 +46,8 @@ def _seed_pending(coordinator: ErasureCoordinator, store, fact_id: str) -> str:
 
 def test_bounded_recovery_processes_only_selected_prefix(rig) -> None:
     coordinator, store = rig
-    for fact_id in ("bounded-a", "bounded-b", "bounded-c"):
+    fact_ids = ("bounded-a", "bounded-b", "bounded-c")
+    for fact_id in fact_ids:
         _seed_pending(coordinator, store, fact_id)
 
     receipt, stopped = coordinator.resume_incomplete_jobs_bounded(
@@ -69,7 +65,7 @@ def test_bounded_recovery_processes_only_selected_prefix(rig) -> None:
     assert receipt.skipped == 0
     assert receipt.remaining_backlog == 1
     assert stopped is False
-    assert sum(store.get_fact(fid) is None for fid in ("bounded-a", "bounded-b", "bounded-c")) == 2
+    assert sum(store.get_fact(fid) is None for fid in fact_ids) == 2
 
     remaining = coordinator.resume_incomplete_jobs()
     assert len(remaining) == 1
