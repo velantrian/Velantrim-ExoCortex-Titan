@@ -522,19 +522,19 @@ class AdvisoryShadowGate:
         )
         excluded: list[str] = []
         for signal in ranked:
-            candidate = self._candidate_for_signal(
+            selected_candidate = self._candidate_for_signal(
                 request,
                 signal,
                 states,
                 goals,
                 loops,
             )
-            if candidate is None:
+            if selected_candidate is None:
                 excluded.append(signal.signal_id)
                 continue
             return self._result(
                 request,
-                candidate,
+                selected_candidate,
                 evaluated=(signal.signal_id,),
                 excluded=tuple(
                     sorted(
@@ -750,7 +750,7 @@ class AdvisoryShadowGate:
             action = AdvisoryAction.REMIND
             text = f"Ранее была подтверждена цель: «{projection.title}»."
         elif request.allow_confirmation_questions:
-            action = AdvisoryAction.ASK_CONFIRMATION
+            action = AdvisoryAction.ASK_CONFIRMIRMATION
             text = f"Цель «{projection.title}» всё ещё актуальна?"
         else:
             return None
