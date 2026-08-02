@@ -227,9 +227,11 @@ class ConversationConsolidator:
                     user_goal=row["user_goal"],
                     key_insights=json.loads(row["key_insights"] or "[]"),
                     conclusion=row["conclusion"],
+                    related_chats=json.loads(row["related_chats"] or "[]"),
                     facts_count=row["facts_count"],
                     messages_count=row["messages_count"],
                     produced_gist=bool(row["finalized_at"]),
+                    created_at=row["created_at"],
                     finalized_at=row["finalized_at"],
                 )
         except Exception:
@@ -252,8 +254,10 @@ class ConversationConsolidator:
                 ConversationNotebook(
                     chat_id=r["chat_id"], main_topic=r["main_topic"],
                     user_goal=r["user_goal"], key_insights=json.loads(r["key_insights"] or "[]"),
-                    conclusion=r["conclusion"], facts_count=r["facts_count"],
-                    messages_count=r["messages_count"], produced_gist=bool(r["finalized_at"]),
+                    conclusion=r["conclusion"],
+                    related_chats=json.loads(r["related_chats"] or "[]"),
+                    facts_count=r["facts_count"], messages_count=r["messages_count"],
+                    produced_gist=bool(r["finalized_at"]), created_at=r["created_at"],
                     finalized_at=r["finalized_at"],
                 ) for r in rows
             ]
@@ -274,8 +278,10 @@ class ConversationConsolidator:
                 ConversationNotebook(
                     chat_id=r["chat_id"], main_topic=r["main_topic"],
                     user_goal=r["user_goal"], key_insights=json.loads(r["key_insights"] or "[]"),
-                    conclusion=r["conclusion"], facts_count=r["facts_count"],
-                    messages_count=r["messages_count"], produced_gist=True,
+                    conclusion=r["conclusion"],
+                    related_chats=json.loads(r["related_chats"] or "[]"),
+                    facts_count=r["facts_count"], messages_count=r["messages_count"],
+                    produced_gist=True, created_at=r["created_at"],
                     finalized_at=r["finalized_at"],
                 ) for r in rows
             ]
