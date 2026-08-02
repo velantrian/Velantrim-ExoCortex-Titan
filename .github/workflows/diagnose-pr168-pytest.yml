@@ -1,4 +1,4 @@
-name: Diagnostic PR168 gateway contract
+name: Diagnostic PR168 order-dependent exception
 
 on:
   pull_request:
@@ -35,83 +35,80 @@ jobs:
           pip install --upgrade pip
           pip install -e ".[server,dev,parsers,retrieval,embeddings,graph-lab]"
 
-      - name: Capture the exact gateway contract exception
-        env:
-          PYTHONUNBUFFERED: 1
-          VELANTRIM_API_KEY: "ci-test-key"
+      - name: Instrument only the swallowed caller exception
         run: |
-          mkdir -p diagnostics
           python - <<'PY'
-          from __future__ import annotations
-
-          import tempfile
           from pathlib import Path
 
-          from core.memory import SQLiteGraphStore
-          from core.promotion_gateway import PromotionGateway, PromotionRequest
-          from core.promotion_policy import PromotionConfig, run_graduated_promotion
-          from core.truth_gate import CognitiveMode
-
-          output: list[str] = ["PR168 gateway contract diagnostic", "---"]
-          with tempfile.TemporaryDirectory() as directory:
-              store = SQLiteGraphStore(db_path=str(Path(directory) / "gateway.db"))
-              store.store_fact({
-                  "fact_id": "t1",
-                  "claim": "A trusted seed axiom about the domain",
-                  "source": "domain_seed",
-                  "confidence": 0.9,
-              })
-              cfg = PromotionConfig(validate_min_age_s=0)
-              run_graduated_promotion(store, cfg=cfg)
-              run_graduated_promotion(store, cfg=cfg)
-
-              raw = store.validate_and_promote(
-                  "t1",
-                  by="graduated_promotion",
-                  mode=CognitiveMode.BALANCED,
+          path = Path("core/promotion_policy.py")
+          source = path.read_text(encoding="utf-8")
+          old = """        except Exception:  # noqa: BLE001
+              report.errors += 1
+          """
+          new = """        except Exception as exc:  # noqa: BLE001
+              raise RuntimeError(
+                  f\"PR168_DIAGNOSTIC:{type(exc).__name__}:{exc}\"
+              ) from exc
+          """
+          if source.count(old) != 1:
+              raise RuntimeError(
+                  f"expected one caller exception boundary, found {source.count(old)}"
               )
-              output.extend([
-                  f"raw.passed={raw.passed!r}",
-                  f"raw.reason={raw.reason!r}",
-                  f"raw.by={raw.by!r}",
-                  f"raw.mode={raw.mode!r}",
-                  f"raw.confidence={raw.confidence!r}:{type(raw.confidence).__name__}",
-                  f"raw.evidence_count={raw.evidence_count!r}:{type(raw.evidence_count).__name__}",
-                  f"raw.contradictions={raw.contradictions!r}:{type(raw.contradictions).__name__}",
-                  f"raw.checked_at={raw.checked_at!r}:{type(raw.checked_at).__name__}",
-              ])
-              try:
-                  outcome = PromotionGateway(store).promote(
-                      PromotionRequest(
-                          fact_id="t1",
-                          requested_by="graduated_promotion",
-                      )
-                  )
-              except Exception as exc:
-                  output.extend([
-                      f"gateway.exception_type={type(exc).__name__}",
-                      f"gateway.exception={str(exc)!r}",
-                  ])
-              else:
-                  output.extend([
-                      "gateway.exception_type=None",
-                      f"gateway.passed={outcome.receipt.passed!r}",
-                      f"gateway.reason={outcome.receipt.reason_code!r}",
-                      f"gateway.requested_by={outcome.receipt.requested_by!r}",
-                      f"gateway.decided_by={outcome.receipt.decided_by!r}",
-                  ])
+          path.write_text(source.replace(old, new, 1), encoding="utf-8")
+          PY
 
-          Path("diagnostics/pr168-gateway-contract.txt").write_text(
-              "\n".join(output) + "\n", encoding="utf-8"
+      - name: Reproduce the authoritative test order and capture traceback
+        env:
+          PYTHONUNBUFFERED: 1
+          VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-ci.db"
+          VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-ngram-ci.db"
+          VELANTRIM_API_KEY: "ci-test-key"
+        run: |
+          set +e
+          python -m pytest tests/ -v --tb=long --timeout=300 -x > /tmp/pr168-order.log 2>&1
+          status=$?
+          set -e
+          mkdir -p diagnostics
+          python - "$status" <<'PY'
+          from __future__ import annotations
+
+          import sys
+          from pathlib import Path
+
+          status = int(sys.argv[1])
+          lines = Path('/tmp/pr168-order.log').read_text(
+              encoding='utf-8', errors='replace'
+          ).splitlines()
+          marker = next(
+              (
+                  index
+                  for index, line in enumerate(lines)
+                  if 'PR168_DIAGNOSTIC:' in line
+                  or '=================================== FAILURES' in line
+              ),
+              max(0, len(lines) - 240),
+          )
+          start = max(0, marker - 80)
+          excerpt = lines[start:start + 320]
+          Path('diagnostics/pr168-order-failure.txt').write_text(
+              '\n'.join([
+                  'PR168 order-dependent exception diagnostic',
+                  f'PYTEST_EXIT={status}',
+                  '---',
+                  *excerpt,
+                  '',
+              ]),
+              encoding='utf-8',
           )
           PY
 
-      - name: Publish temporary diagnostic evidence
+      - name: Publish temporary diagnostic evidence only
         run: |
+          git checkout -- core/promotion_policy.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add diagnostics/pr168-gateway-contract.txt
-          git commit -m "chore(diagnostic): record PR168 gateway contract"
+          git add diagnostics/pr168-order-failure.txt
+          git commit -m "chore(diagnostic): record PR168 order exception"
           git fetch origin agent/promotion-gateway-graduated-migration-clean
           git rebase origin/agent/promotion-gateway-graduated-migration-clean
           git push origin HEAD:agent/promotion-gateway-graduated-migration-clean
