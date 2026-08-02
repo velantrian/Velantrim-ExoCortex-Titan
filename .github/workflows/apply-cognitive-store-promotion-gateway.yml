@@ -31,7 +31,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install focused dependencies
-        run: pip install -e ".[dev,embeddings,retrieval]"
+        run: pip install -e ".[server,dev,embeddings,retrieval]"
 
       - name: Apply exact CognitiveFactStore migration
         run: |
