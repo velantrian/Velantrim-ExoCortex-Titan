@@ -62,6 +62,20 @@ def _utc(value: str, name: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def _validated_storage_ref(persisted: bool, storage_ref: str | None) -> str | None:
+    if not isinstance(persisted, bool):
+        raise ErasureStartupRecoveryError("persisted must be bool")
+    if persisted:
+        if storage_ref is None:
+            raise ErasureStartupRecoveryError("persisted receipt requires storage_ref")
+        return _required_text(storage_ref, "storage_ref")
+    if storage_ref is not None:
+        raise ErasureStartupRecoveryError(
+            "non-persisted receipt cannot claim storage_ref"
+        )
+    return None
+
+
 @dataclass(frozen=True, slots=True)
 class StartupRecoveryBudget:
     """Hard startup bounds; exhaustive operator recovery remains separate."""
@@ -165,7 +179,7 @@ class RecoveryDomainReceipt:
 
 @dataclass(frozen=True, slots=True)
 class StartupRecoveryReceipt:
-    """Truthful aggregate receipt for one bounded startup recovery run."""
+    """Truthful aggregate receipt for one measured bounded recovery run."""
 
     run_id: str
     started_at_utc: str
@@ -215,20 +229,11 @@ class StartupRecoveryReceipt:
             raise ErasureStartupRecoveryError(
                 "selected but unattempted work requires stopped_by_time_budget"
             )
-        if not isinstance(self.persisted, bool):
-            raise ErasureStartupRecoveryError("persisted must be bool")
-        if self.persisted:
-            if self.storage_ref is None:
-                raise ErasureStartupRecoveryError(
-                    "persisted receipt requires storage_ref"
-                )
-            object.__setattr__(
-                self, "storage_ref", _required_text(self.storage_ref, "storage_ref")
-            )
-        elif self.storage_ref is not None:
-            raise ErasureStartupRecoveryError(
-                "non-persisted receipt cannot claim storage_ref"
-            )
+        object.__setattr__(
+            self,
+            "storage_ref",
+            _validated_storage_ref(self.persisted, self.storage_ref),
+        )
         if self.schema_version != ERASURE_STARTUP_RECOVERY_SCHEMA_VERSION:
             raise ErasureStartupRecoveryError("unsupported startup recovery schema")
 
@@ -285,16 +290,92 @@ class StartupRecoveryReceipt:
             "persisted": self.persisted,
             "storage_ref": self.storage_ref,
             "unresolved_count": self.unresolved_count,
-            "observation": {
-                "feature_name": self.observation.feature_name,
-                "metric_name": self.observation.metric_name,
-                "state": self.observation.state.value,
-                "observed_value": self.observation.observed_value,
-                "reason_code": self.observation.reason_code,
-                "source_refs": list(self.observation.source_refs),
-                "schema_version": self.observation.schema_version,
-            },
+            "observation": _observation_dict(self.observation),
         }
+
+
+@dataclass(frozen=True, slots=True)
+class StartupRecoveryFailureReceipt:
+    """Receipt for a run whose observer failed before measured outcomes existed."""
+
+    run_id: str
+    started_at_utc: str
+    failed_at_utc: str
+    budget: StartupRecoveryBudget
+    error_code: str
+    persisted: bool = False
+    storage_ref: str | None = None
+    schema_version: str = ERASURE_STARTUP_RECOVERY_SCHEMA_VERSION
+    observation: ObservationResult = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "run_id", _required_text(self.run_id, "run_id"))
+        started = _utc(self.started_at_utc, "started_at_utc")
+        failed = _utc(self.failed_at_utc, "failed_at_utc")
+        if failed < started:
+            raise ErasureStartupRecoveryError(
+                "failed_at_utc cannot be before started_at_utc"
+            )
+        if not isinstance(self.budget, StartupRecoveryBudget):
+            raise ErasureStartupRecoveryError("budget must be StartupRecoveryBudget")
+        object.__setattr__(
+            self, "error_code", _required_text(self.error_code, "error_code")
+        )
+        object.__setattr__(
+            self,
+            "storage_ref",
+            _validated_storage_ref(self.persisted, self.storage_ref),
+        )
+        if self.schema_version != ERASURE_STARTUP_RECOVERY_SCHEMA_VERSION:
+            raise ErasureStartupRecoveryError("unsupported startup recovery schema")
+        object.__setattr__(
+            self,
+            "observation",
+            ObservationResult(
+                feature_name="gdpr_startup_recovery",
+                metric_name="unresolved_recovery_items",
+                state=ObservationState.OBSERVER_FAILED,
+                reason_code=self.error_code,
+                source_refs=(self.run_id,),
+            ),
+        )
+
+    @property
+    def duration_ms(self) -> int:
+        started = _utc(self.started_at_utc, "started_at_utc")
+        failed = _utc(self.failed_at_utc, "failed_at_utc")
+        return int((failed - started).total_seconds() * 1_000)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "run_id": self.run_id,
+            "started_at_utc": self.started_at_utc,
+            "failed_at_utc": self.failed_at_utc,
+            "duration_ms": self.duration_ms,
+            "budget": {
+                "max_single_jobs": self.budget.max_single_jobs,
+                "max_batches": self.budget.max_batches,
+                "time_budget_ms": self.budget.time_budget_ms,
+                "schema_version": self.budget.schema_version,
+            },
+            "error_code": self.error_code,
+            "persisted": self.persisted,
+            "storage_ref": self.storage_ref,
+            "observation": _observation_dict(self.observation),
+        }
+
+
+def _observation_dict(observation: ObservationResult) -> dict[str, Any]:
+    return {
+        "feature_name": observation.feature_name,
+        "metric_name": observation.metric_name,
+        "state": observation.state.value,
+        "observed_value": observation.observed_value,
+        "reason_code": observation.reason_code,
+        "source_refs": list(observation.source_refs),
+        "schema_version": observation.schema_version,
+    }
 
 
 __all__ = [
@@ -303,5 +384,6 @@ __all__ = [
     "RecoveryDomain",
     "RecoveryDomainReceipt",
     "StartupRecoveryBudget",
+    "StartupRecoveryFailureReceipt",
     "StartupRecoveryReceipt",
 ]
