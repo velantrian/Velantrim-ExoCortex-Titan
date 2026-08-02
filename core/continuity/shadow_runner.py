@@ -375,7 +375,7 @@ class CompleteShadowRunReceipt:
         evaluation_report_id: str | None,
         advisory_result_id: str | None,
         reason_codes: Iterable[ShadowRunnerReason],
-    ) -> "CompleteShadowRunReceipt":
+    ) -> CompleteShadowRunReceipt:
         if not isinstance(status, ShadowRunnerStatus):
             raise CompleteShadowRunnerError(
                 "status must be a ShadowRunnerStatus"
@@ -502,7 +502,7 @@ class CompleteShadowRunResult:
         evaluation: ReplayEvaluationReport | None,
         advisory: AdvisoryShadowResult | None,
         receipt: CompleteShadowRunReceipt,
-    ) -> "CompleteShadowRunResult":
+    ) -> CompleteShadowRunResult:
         if receipt.status is not status:
             raise CompleteShadowRunnerError(
                 "result status must match receipt status"
