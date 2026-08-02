@@ -3,12 +3,11 @@
 The first increment is deliberately narrow:
 
 - it does not replace ``SQLiteGraphStore.validate_and_promote``;
-- it does not migrate any runtime caller;
 - it does not add a feature flag, scheduler, retry loop, network call, or new ESM path;
 - it produces deterministic, content-minimized receipts for later replay/outbox work.
 
 A caller reaches Canon only through the store's already-hardened
-``validate_and_promote`` implementation.  This module validates the returned
+``validate_and_promote`` implementation. This module validates the returned
 contract and records whether the call committed, was an idempotent replay, or
 was rejected.
 """
@@ -28,6 +27,7 @@ PROMOTION_POLICY_VERSION = "promotion-gateway-v1"
 _ALLOWED_TARGET = "Validated"
 _ALLOWED_PASSED_REASONS = frozenset({"passed", "already_validated"})
 _ACTOR_CODE = re.compile(r"^[a-z0-9_.:-]{1,64}$")
+_TRUTH_DECIDER = "truth_gate"
 
 
 class PromotionContractError(RuntimeError):
@@ -97,10 +97,12 @@ class PromotionRequest:
 
 @dataclass(frozen=True, slots=True)
 class PromotionVerdictSnapshot:
-    """Immutable snapshot of the safe, decision-relevant verdict fields."""
+    """Immutable snapshot of safe, decision-relevant verdict fields."""
 
     passed: bool
     reason_code: str
+    requested_by: str
+    decided_by: str
     mode: CognitiveMode
     confidence: float
     evidence_count: int
@@ -115,6 +117,7 @@ class PromotionReceipt:
     request_id: str
     fact_ref: str
     requested_by: str
+    decided_by: str
     target_state: str
     mode: CognitiveMode
     policy_version: str
@@ -128,9 +131,8 @@ class PromotionReceipt:
 class PromotionOutcome:
     """Gateway result for an internal caller.
 
-    ``fact_id`` remains available to the caller, while the durable/replayable
-    receipt uses only ``fact_ref``.  The receipt is therefore unsuitable for
-    reconstructing claim content and safe to persist in a later outbox.
+    ``fact_id`` remains available to the caller, while the replayable receipt
+    uses only ``fact_ref``. The receipt cannot reconstruct claim content.
     """
 
     fact_id: str
@@ -141,7 +143,7 @@ class PromotionOutcome:
 class PromotionGateway:
     """Validate one promotion request against the existing store authority.
 
-    The gateway owns no thresholds and performs no ESM mutation itself.  It
+    The gateway owns no thresholds and performs no ESM mutation itself. It
     delegates exactly once to ``validate_and_promote`` and fails closed when
     the returned verdict violates the current contract.
     """
@@ -162,6 +164,8 @@ class PromotionGateway:
         snapshot = PromotionVerdictSnapshot(
             passed=verdict.passed,
             reason_code=verdict.reason,
+            requested_by=request.requested_by,
+            decided_by=verdict.by,
             mode=verdict.mode,
             confidence=float(verdict.confidence),
             evidence_count=int(verdict.evidence_count),
@@ -172,6 +176,7 @@ class PromotionGateway:
             request_id=request.request_id,
             fact_ref=request.fact_ref,
             requested_by=request.requested_by,
+            decided_by=verdict.by,
             target_state=request.target_state,
             mode=request.mode,
             policy_version=PROMOTION_POLICY_VERSION,
@@ -197,8 +202,14 @@ class PromotionGateway:
             )
         if verdict.fact_id != request.fact_id:
             raise PromotionContractError("promotion verdict fact_id mismatch")
-        if verdict.by != request.requested_by:
+        if not isinstance(verdict.by, str) or not _ACTOR_CODE.fullmatch(verdict.by):
+            raise PromotionContractError("promotion verdict actor is invalid")
+        if verdict.by not in {request.requested_by, _TRUTH_DECIDER}:
             raise PromotionContractError("promotion verdict actor mismatch")
+        if verdict.passed and verdict.by != request.requested_by:
+            raise PromotionContractError(
+                "passed promotion verdict must be attributed to the requesting actor"
+            )
         if verdict.mode != request.mode:
             raise PromotionContractError("promotion verdict mode mismatch")
         if not isinstance(verdict.reason, str) or not verdict.reason:
@@ -222,8 +233,7 @@ class PromotionGateway:
         ):
             raise PromotionContractError("promotion verdict confidence is invalid")
         if not isinstance(verdict.contradictions, list) or any(
-            not isinstance(ref, str) or not ref
-            for ref in verdict.contradictions
+            not isinstance(ref, str) or not ref for ref in verdict.contradictions
         ):
             raise PromotionContractError("promotion verdict contradictions are invalid")
         if not isinstance(verdict.checked_at, str) or not verdict.checked_at:
