@@ -1,6 +1,6 @@
 # Continuity Milestone 1 — Stack Status
 
-**Current `main`:** `f9adf687f2c46e5e98ae663823d89d0165356425`  
+**Current `main`:** `0d07bc9f74a4e8e0bf4a0d615a0bb40ec529f5e7`  
 **Stack state:** 15 open draft PRs · not merged to `main` · no `/query` wiring  
 **Required posture:** shadow-only until scope, privacy, durable ledger, replay and failure-isolation gates pass.
 
@@ -40,8 +40,8 @@ Before the first merge:
 - run one holistic integration build of the complete stack;
 - add minimal `SubjectScope(owner_ref, namespace_ref)`;
 - enforce privacy non-widening;
-- distinguish observer unavailability from measured zero;
-- define a durable SQLite shadow-ledger follow-up;
+- use Reality Lock observation states so unavailable/failed observers cannot pass;
+- define and implement a durable SQLite shadow-ledger follow-up;
 - prove shadow failure cannot change the answer or write Canon.
 
 Before every sequential merge:
