@@ -42,14 +42,16 @@ jobs:
 
           path = Path("core/promotion_policy.py")
           source = path.read_text(encoding="utf-8")
-          old = """        except Exception:  # noqa: BLE001
-              report.errors += 1
-          """
-          new = """        except Exception as exc:  # noqa: BLE001
-              raise RuntimeError(
-                  f\"PR168_DIAGNOSTIC:{type(exc).__name__}:{exc}\"
-              ) from exc
-          """
+          old = (
+              "        except Exception:  # noqa: BLE001\n"
+              "            report.errors += 1\n"
+          )
+          new = (
+              "        except Exception as exc:  # noqa: BLE001\n"
+              "            raise RuntimeError(\n"
+              "                f\"PR168_DIAGNOSTIC:{type(exc).__name__}:{exc}\"\n"
+              "            ) from exc\n"
+          )
           if source.count(old) != 1:
               raise RuntimeError(
                   f"expected one caller exception boundary, found {source.count(old)}"
