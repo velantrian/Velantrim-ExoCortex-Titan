@@ -7,6 +7,7 @@ from core.erasure_startup_recovery import (
     RecoveryDomain,
     RecoveryDomainReceipt,
     StartupRecoveryBudget,
+    StartupRecoveryFailureReceipt,
     StartupRecoveryReceipt,
 )
 from core.runtime_evidence import ObservationState
@@ -190,4 +191,42 @@ def test_receipt_requires_ordered_utc_timestamps() -> None:
         _clean_receipt(
             started_at_utc="2026-08-02T12:00:01Z",
             completed_at_utc="2026-08-02T12:00:00Z",
+        )
+
+
+def test_observer_failure_has_a_distinct_fail_closed_receipt() -> None:
+    receipt = StartupRecoveryFailureReceipt(
+        run_id="recovery-run-failed",
+        started_at_utc="2026-08-02T12:00:00Z",
+        failed_at_utc="2026-08-02T12:00:00.100000Z",
+        budget=StartupRecoveryBudget(
+            max_single_jobs=2,
+            max_batches=1,
+            time_budget_ms=1_000,
+        ),
+        error_code="jobs_schema_unavailable",
+    )
+
+    assert receipt.duration_ms == 100
+    assert receipt.observation.state is ObservationState.OBSERVER_FAILED
+    assert receipt.observation.observed_value is None
+    assert receipt.observation.reason_code == "jobs_schema_unavailable"
+    assert receipt.observation.hard_gate_satisfied is False
+    assert receipt.to_dict()["error_code"] == "jobs_schema_unavailable"
+
+
+def test_failure_receipt_keeps_persistence_claims_honest() -> None:
+    budget = StartupRecoveryBudget(
+        max_single_jobs=1,
+        max_batches=0,
+        time_budget_ms=1_000,
+    )
+    with pytest.raises(ErasureStartupRecoveryError, match="requires storage_ref"):
+        StartupRecoveryFailureReceipt(
+            run_id="failed-1",
+            started_at_utc="2026-08-02T12:00:00Z",
+            failed_at_utc="2026-08-02T12:00:00Z",
+            budget=budget,
+            error_code="database_unavailable",
+            persisted=True,
         )
