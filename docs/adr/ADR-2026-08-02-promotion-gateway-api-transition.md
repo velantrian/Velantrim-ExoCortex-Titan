@@ -65,6 +65,17 @@ The final clean head must pass:
 - the complete `test_truthgate_api_transition.py` adversarial suite;
 - architecture-freeze, Ruff, blocking mypy, full repository pytest and Docker.
 
+Focused validation passed 44/44 tests after the exact server patch was applied. The
+first run exposed a test-only false positive: a raw substring assertion treated
+`validate_and_promote` mentions in the endpoint docstring as executable bypasses. The
+wiring gate now parses `server.py` with `ast`, rejects direct name or attribute calls in
+`transition_fact`, and separately rejects importing `validate_and_promote` from
+`core.memory`. Documentation text cannot satisfy or fail this authority check.
+
+The one-shot workflow and patch script removed themselves after focused success. The
+final pull-request diff contains only the gateway snapshot adjustment, server wiring,
+caller ADR and two permanent regression-test files.
+
 ## Non-claims
 
 After this migration the gateway owns three callers, but it is still not the sole
