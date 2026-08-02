@@ -21,7 +21,6 @@ from core.continuity.goal_open_loop import (
     GoalBasis,
     GoalProjector,
     GoalRecordSnapshot,
-    GoalStatus,
     OpenLoopKind,
     OpenLoopProjector,
     OpenLoopResolution,
