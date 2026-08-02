@@ -1,0 +1,92 @@
+name: Diagnostic PR168 first pytest failure
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: diagnose-pr168-${{ github.head_ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      github.head_ref == 'agent/promotion-gateway-graduated-migration-clean'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/promotion-gateway-graduated-migration-clean
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the authoritative CI dependency profile
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[server,dev,parsers,retrieval,embeddings,graph-lab]"
+
+      - name: Capture only the first full-suite failure
+        env:
+          PYTHONUNBUFFERED: 1
+          VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-ci.db"
+          VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-ngram-ci.db"
+          VELANTRIM_API_KEY: "ci-test-key"
+        run: |
+          set +e
+          python -m pytest tests/ -v --tb=short --timeout=300 -x > /tmp/pr168-pytest.log 2>&1
+          status=$?
+          set -e
+          mkdir -p diagnostics
+          python - "$status" <<'PY'
+          from __future__ import annotations
+
+          import sys
+          from pathlib import Path
+
+          status = int(sys.argv[1])
+          lines = Path('/tmp/pr168-pytest.log').read_text(
+              encoding='utf-8', errors='replace'
+          ).splitlines()
+          markers = (
+              '=================================== FAILURES',
+              '==================================== ERRORS',
+              '=========================== short test summary info',
+          )
+          start = next(
+              (index for index, line in enumerate(lines) if any(m in line for m in markers)),
+              max(0, len(lines) - 180),
+          )
+          excerpt = lines[start:]
+          if len(excerpt) > 220:
+              excerpt = excerpt[:220]
+          output = [
+              'PR168 authoritative full-suite diagnostic',
+              f'PYTEST_EXIT={status}',
+              '---',
+              *excerpt,
+              '',
+          ]
+          Path('diagnostics/pr168-first-failure.txt').write_text(
+              '\n'.join(output), encoding='utf-8'
+          )
+          PY
+
+      - name: Publish temporary diagnostic evidence
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add diagnostics/pr168-first-failure.txt
+          git commit -m "chore(diagnostic): record PR168 first pytest failure"
+          git fetch origin agent/promotion-gateway-graduated-migration-clean
+          git rebase origin/agent/promotion-gateway-graduated-migration-clean
+          git push origin HEAD:agent/promotion-gateway-graduated-migration-clean
