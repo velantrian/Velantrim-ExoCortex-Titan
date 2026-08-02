@@ -67,7 +67,7 @@ def _digest(payload: object) -> str:
 
 @dataclass(frozen=True, slots=True)
 class ShadowSafetyObservation:
-    """Explicit observer counters for effects not derivable from pure artifacts."""
+    """Explicit counters for effects not derivable from pure artifacts."""
 
     privacy_leakage: int = 0
     inference_as_fact: int = 0
@@ -125,11 +125,7 @@ class HardGateCounters:
     @property
     def failed_gates(self) -> tuple[HardGate, ...]:
         values = self.to_dict()
-        return tuple(
-            gate
-            for gate in HardGate
-            if values[gate.value] > 0
-        )
+        return tuple(gate for gate in HardGate if values[gate.value] > 0)
 
     def to_dict(self) -> dict[str, int]:
         return {
@@ -152,18 +148,36 @@ class HardGateCounters:
             raise ReplayEvaluationError("other must be HardGateCounters")
         divergence = max(self.replay_divergence, other.replay_divergence)
         if replay_divergence is not None:
-            divergence = max(divergence, _count(replay_divergence, "replay_divergence"))
+            divergence = max(
+                divergence,
+                _count(replay_divergence, "replay_divergence"),
+            )
         return HardGateCounters(
-            privacy_leakage=max(self.privacy_leakage, other.privacy_leakage),
-            inference_as_fact=max(self.inference_as_fact, other.inference_as_fact),
-            missing_provenance=max(self.missing_provenance, other.missing_provenance),
-            budget_overflow=max(self.budget_overflow, other.budget_overflow),
+            privacy_leakage=max(
+                self.privacy_leakage,
+                other.privacy_leakage,
+            ),
+            inference_as_fact=max(
+                self.inference_as_fact,
+                other.inference_as_fact,
+            ),
+            missing_provenance=max(
+                self.missing_provenance,
+                other.missing_provenance,
+            ),
+            budget_overflow=max(
+                self.budget_overflow,
+                other.budget_overflow,
+            ),
             query_time_canon_write=max(
                 self.query_time_canon_write,
                 other.query_time_canon_write,
             ),
             replay_divergence=divergence,
-            silent_overwrite=max(self.silent_overwrite, other.silent_overwrite),
+            silent_overwrite=max(
+                self.silent_overwrite,
+                other.silent_overwrite,
+            ),
         )
 
 
@@ -172,7 +186,7 @@ def _artifact_counters(
     context_pack: ContextPack,
     observation: ShadowSafetyObservation,
 ) -> HardGateCounters:
-    inference_as_fact = sum(
+    inferred_as_fact = sum(
         1
         for claim in context_pack.claims
         if claim.modality is ClaimModality.HYPOTHESIS
@@ -189,7 +203,7 @@ def _artifact_counters(
     return HardGateCounters(
         privacy_leakage=observation.privacy_leakage,
         inference_as_fact=(
-            observation.inference_as_fact + inference_as_fact
+            observation.inference_as_fact + inferred_as_fact
         ),
         missing_provenance=(
             observation.missing_provenance + missing_provenance
@@ -245,13 +259,15 @@ class ShadowRunSnapshot:
                 "compute_decision must be a ComputeDecision"
             )
         if continuity_pack is not None and not isinstance(
-            continuity_pack, ContinuityContextPack
+            continuity_pack,
+            ContinuityContextPack,
         ):
             raise ReplayEvaluationError(
                 "continuity_pack must be ContinuityContextPack or None"
             )
         if continuity_receipt is not None and not isinstance(
-            continuity_receipt, ContinuityReceipt
+            continuity_receipt,
+            ContinuityReceipt,
         ):
             raise ReplayEvaluationError(
                 "continuity_receipt must be ContinuityReceipt or None"
@@ -265,19 +281,22 @@ class ShadowRunSnapshot:
                 "continuity receipt does not reference continuity pack"
             )
         if state_result is not None and not isinstance(
-            state_result, StateReconciliationResult
+            state_result,
+            StateReconciliationResult,
         ):
             raise ReplayEvaluationError(
                 "state_result must be StateReconciliationResult or None"
             )
         if goal_result is not None and not isinstance(
-            goal_result, GoalProjectionResult
+            goal_result,
+            GoalProjectionResult,
         ):
             raise ReplayEvaluationError(
                 "goal_result must be GoalProjectionResult or None"
             )
         if open_loop_result is not None and not isinstance(
-            open_loop_result, OpenLoopProjectionResult
+            open_loop_result,
+            OpenLoopProjectionResult,
         ):
             raise ReplayEvaluationError(
                 "open_loop_result must be OpenLoopProjectionResult or None"
@@ -288,6 +307,25 @@ class ShadowRunSnapshot:
                 "observation must be ShadowSafetyObservation or None"
             )
 
+        continuity_pack_id = (
+            continuity_pack.pack_id if continuity_pack is not None else None
+        )
+        continuity_receipt_id = (
+            continuity_receipt.receipt_id
+            if continuity_receipt is not None
+            else None
+        )
+        state_result_id = (
+            state_result.result_id if state_result is not None else None
+        )
+        goal_result_id = (
+            goal_result.result_id if goal_result is not None else None
+        )
+        open_loop_result_id = (
+            open_loop_result.result_id
+            if open_loop_result is not None
+            else None
+        )
         plan_hash = _digest(working_memory_plan.to_dict())
         decision_hash = _digest(compute_decision.to_dict())
         hard_gates = _artifact_counters(
@@ -299,25 +337,11 @@ class ShadowRunSnapshot:
             "schema_version": EVALUATION_SCHEMA_VERSION,
             "policy_version": policy,
             "scenario_id": scenario,
-            "continuity_pack_id": (
-                continuity_pack.pack_id if continuity_pack is not None else None
-            ),
-            "continuity_receipt_id": (
-                continuity_receipt.receipt_id
-                if continuity_receipt is not None
-                else None
-            ),
-            "state_result_id": (
-                state_result.result_id if state_result is not None else None
-            ),
-            "goal_result_id": (
-                goal_result.result_id if goal_result is not None else None
-            ),
-            "open_loop_result_id": (
-                open_loop_result.result_id
-                if open_loop_result is not None
-                else None
-            ),
+            "continuity_pack_id": continuity_pack_id,
+            "continuity_receipt_id": continuity_receipt_id,
+            "state_result_id": state_result_id,
+            "goal_result_id": goal_result_id,
+            "open_loop_result_id": open_loop_result_id,
             "working_memory_plan_hash": plan_hash,
             "context_pack_id": context_pack.pack_id,
             "compute_decision_hash": decision_hash,
@@ -328,11 +352,11 @@ class ShadowRunSnapshot:
             schema_version=EVALUATION_SCHEMA_VERSION,
             policy_version=policy,
             scenario_id=scenario,
-            continuity_pack_id=payload["continuity_pack_id"],
-            continuity_receipt_id=payload["continuity_receipt_id"],
-            state_result_id=payload["state_result_id"],
-            goal_result_id=payload["goal_result_id"],
-            open_loop_result_id=payload["open_loop_result_id"],
+            continuity_pack_id=continuity_pack_id,
+            continuity_receipt_id=continuity_receipt_id,
+            state_result_id=state_result_id,
+            goal_result_id=goal_result_id,
+            open_loop_result_id=open_loop_result_id,
             working_memory_plan_hash=plan_hash,
             context_pack_id=context_pack.pack_id,
             compute_decision_hash=decision_hash,
