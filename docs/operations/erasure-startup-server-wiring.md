@@ -59,6 +59,16 @@ Startup logs contain only:
 
 The complete receipt is not logged. Detailed exceptions remain in the protected module logger that generated the typed failure evidence.
 
+## Validation boundary
+
+The self-removing patch workflow compiled the exact server change and passed all 32 focused runner, runtime and source-order tests. Temporary patch workflow/script files are absent from the final branch. Merge evidence must come only from standard CI and Docker attached to the final maintainer-authored PR head.
+
+Relative to current `main`, this lifecycle increment changes only:
+
+- `server.py`;
+- `tests/test_erasure_startup_server_wiring.py`;
+- this operations document.
+
 ## Non-goals
 
 This increment does not:
