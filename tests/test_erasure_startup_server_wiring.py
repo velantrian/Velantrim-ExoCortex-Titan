@@ -51,9 +51,14 @@ def test_recovery_startup_block_is_awaited_and_has_no_background_authority() -> 
 
 def test_invalid_budget_is_loaded_before_recovery_execution() -> None:
     block = _recovery_startup_block(_source())
-    assert block.index("load_startup_recovery_budget()") < block.index(
-        "execute_and_record_startup_recovery"
+    budget_statement = "_recovery_budget = load_startup_recovery_budget()"
+    execution_statement = (
+        "await asyncio.to_thread(\n"
+        "        execute_and_record_startup_recovery,\n"
+        "        _recovery_budget,\n"
+        "    )"
     )
+    assert block.index(budget_statement) < block.index(execution_statement)
 
 
 def test_startup_logging_is_content_free() -> None:
