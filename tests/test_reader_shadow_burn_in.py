@@ -442,7 +442,7 @@ def test_kill_switch_is_immediate_and_terminal() -> None:
             plan=plan,
             plan_signature=plan_signature,
             source=_control_source(
-                ShadowBurnInControlAction.ARM,
+                ShadowBurnInControlAction.PAUSE,
                 "2026-08-01T10:21:00Z",
                 previous_receipt_id=killed.receipt_id,
             ),
