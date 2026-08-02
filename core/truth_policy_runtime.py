@@ -10,6 +10,7 @@ paths, SQL, fact payloads, or provider data into client-visible evidence.
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -18,8 +19,7 @@ from core.core3_adapter import REJECT
 from core.truth_policy import TruthVerdict, decide
 
 logger = logging.getLogger("velantrim.truth_policy_runtime")
-
-TruthDecider = Callable[[str, Sequence[dict[str, Any]]], TruthVerdict]
+_SAFE_REASON_CODE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,8 +37,8 @@ class TruthPolicyRuntimeResult:
             raise TypeError("evaluated must be bool")
         if not isinstance(self.blocks_llm, bool):
             raise TypeError("blocks_llm must be bool")
-        if not self.reason_code or not self.reason_code.replace("_", "").isalnum():
-            raise ValueError("reason_code must be a safe identifier")
+        if _SAFE_REASON_CODE.fullmatch(self.reason_code) is None:
+            raise ValueError("reason_code must be lower_snake_case and at most 64 characters")
         if not self.enabled:
             if self.evaluated or self.blocks_llm or self.truth_block is not None:
                 raise ValueError("disabled TruthPolicy cannot claim evaluation or blocking")
