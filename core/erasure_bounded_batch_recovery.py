@@ -45,13 +45,17 @@ def _select_batch_candidates_bounded(
     coordinator: BatchErasureCoordinator,
     max_batches: int,
 ) -> list[tuple[str, bool]]:
-    """Select a bounded, deterministic, category-fair candidate window.
+    """Select a bounded, deterministic, category-aware candidate window.
 
     Stale-terminal candidates receive the first slot because a successful
     reconciliation permanently moves them out of that bounded category. If
     ordinary work also exists, it receives the next slot. Remaining capacity
-    alternates between the two ordered streams. Duplicate IDs caused by a
-    status race between the two SELECT statements are removed.
+    alternates between the two ordered streams. Duplicate IDs are removed.
+
+    With a one-item budget, no stateless selector can prove starvation freedom
+    for both non-empty categories. The default startup budget is larger; a
+    durable cross-run fairness cursor, if later required by evidence, belongs
+    in a separate reviewed contract rather than being implied here.
     """
 
     if max_batches == 0:
@@ -154,7 +158,7 @@ def resume_batch_jobs_bounded(
     monotonic: Callable[[], float] = time.monotonic,
     coordinator: BatchErasureCoordinator | None = None,
 ) -> tuple[RecoveryDomainReceipt, bool]:
-    """Recover a bounded fair window of durable batch-erasure jobs."""
+    """Recover a bounded category-aware window of durable batch jobs."""
 
     limit = _validate_max_batches(max_batches)
     deadline = _validate_finite_number(deadline_monotonic, "deadline_monotonic")
