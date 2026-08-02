@@ -649,13 +649,59 @@ class SQLiteGraphStore(GraphStore):
             self._l0.pop(fact_id, None)
 
     def _release_stray_locks(self) -> None:
-        """Commit незавершённой транзакции на единственном соединении."""
-        conn = self._sqlite_conn
-        if conn is not None and conn.in_transaction:
+        """Best-effort lock release under the connection-owner lock.
+
+        ``_db()`` owns ``_sqlite_conn`` under ``_db_lock`` and closes the
+        shared handle in its ``finally`` block. Reading ``conn.in_transaction``
+        outside that same lock left a check-vs-close race: another thread could
+        close the handle after this method copied the reference but before the
+        property access, raising ``ProgrammingError`` from cleanup itself.
+
+        A cached handle confirmed closed is already released; clear only that
+        exact stale reference. Other SQLite failures remain visible in logs
+        rather than being silently converted into success.
+        """
+        with self._db_lock:
+            conn = self._sqlite_conn
+            if conn is None:
+                return
+
+            try:
+                in_transaction = conn.in_transaction
+            except sqlite3.ProgrammingError as exc:
+                if "closed" in str(exc).lower() and self._sqlite_conn is conn:
+                    self._sqlite_conn = None
+                    logger.debug(
+                        "SQLiteGraphStore: cleared stale closed connection during lock release"
+                    )
+                    return
+                logger.warning(
+                    "SQLiteGraphStore: cannot inspect transaction during lock release",
+                    exc_info=True,
+                )
+                return
+
+            if not in_transaction:
+                return
+
             try:
                 conn.commit()
-            except Exception:  # noqa: BLE001 — best-effort lock release
-                pass
+            except sqlite3.ProgrammingError as exc:
+                if "closed" in str(exc).lower() and self._sqlite_conn is conn:
+                    self._sqlite_conn = None
+                    logger.debug(
+                        "SQLiteGraphStore: cleared connection closed during lock release"
+                    )
+                    return
+                logger.warning(
+                    "SQLiteGraphStore: programming error during lock-release commit",
+                    exc_info=True,
+                )
+            except sqlite3.Error:
+                logger.warning(
+                    "SQLiteGraphStore: SQLite error during lock-release commit",
+                    exc_info=True,
+                )
 
     # Canonical text of migrations/009_truth_kernel.sql's `prevent_fact_delete`
     # guard — kept in sync so the erasure coordinator can prove it always
