@@ -1,9 +1,10 @@
 """Read-only goal snapshots and typed open-loop projections.
 
-The legacy GoalStack remains the storage owner. This module snapshots it without
-writing and requires explicit evidence attestation before a goal is admitted as
-a continuity projection. Open loops are created only from typed signals supplied
-by upstream code; no intent, blocker, or commitment is inferred from raw text.
+The legacy GoalStack remains the storage owner. This module snapshots it
+without writing and requires explicit evidence attestation before a goal is
+admitted as a continuity projection. Open loops are created only from typed
+signals supplied by upstream code; no intent, blocker, or commitment is
+inferred from raw text.
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ GOAL_OPEN_LOOP_POLICY_VERSION = "continuity.goal_open_loop.policy.v1"
 
 
 class GoalOpenLoopError(ValueError):
-    """Goal or open-loop input violates a deterministic projection boundary."""
+    """Goal or open-loop input violates a projection invariant."""
 
 
 class GoalStatus(str, Enum):
@@ -94,11 +95,15 @@ def _aware(value: object, name: str) -> datetime:
 
 def _parse_time(value: object, name: str) -> datetime:
     if not isinstance(value, str) or not value.strip():
-        raise GoalOpenLoopError(f"{name} must be a non-empty ISO timestamp")
+        raise GoalOpenLoopError(
+            f"{name} must be a non-empty ISO timestamp"
+        )
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as exc:
-        raise GoalOpenLoopError(f"{name} must be a valid ISO timestamp") from exc
+        raise GoalOpenLoopError(
+            f"{name} must be a valid ISO timestamp"
+        ) from exc
     return _aware(parsed, name)
 
 
@@ -132,21 +137,20 @@ def _refs(values: Iterable[str], name: str) -> tuple[str, ...]:
     return tuple(sorted(result))
 
 
+def _merge_refs(*groups: Iterable[str]) -> tuple[str, ...]:
+    normalized = {
+        _text(value, "source_ref")
+        for group in groups
+        for value in group
+    }
+    return tuple(sorted(normalized))
+
+
 def _keywords(values: Iterable[str]) -> tuple[str, ...]:
     result = tuple(_text(value, "keyword").lower() for value in values)
     if len(result) != len(set(result)):
         raise GoalOpenLoopError("keywords cannot contain duplicates")
     return tuple(sorted(result))
-
-
-def _enum_values(values: Iterable[Enum], name: str) -> tuple[Enum, ...]:
-    result = tuple(values)
-    if any(not isinstance(value, Enum) for value in result):
-        raise GoalOpenLoopError(f"{name} contains an invalid value")
-    by_value = {str(value.value): value for value in result}
-    if len(by_value) != len(result):
-        raise GoalOpenLoopError(f"{name} cannot contain duplicates")
-    return tuple(by_value[key] for key in sorted(by_value))
 
 
 class GoalStackReader(Protocol):
@@ -183,18 +187,24 @@ class GoalRecordSnapshot:
         try:
             status = GoalStatus(goal.status)
         except ValueError as exc:
-            raise GoalOpenLoopError(f"unsupported goal status: {goal.status}") from exc
+            raise GoalOpenLoopError(
+                f"unsupported goal status: {goal.status}"
+            ) from exc
         goal_ref = _text(goal.goal_id, "goal_id")
         user_id = _text(goal.user_id, "user_id")
         title = _text(goal.title, "title")
         description = unicodedata.normalize("NFC", goal.description.strip())
-        if isinstance(goal.priority, bool) or not isinstance(goal.priority, int):
+        if isinstance(goal.priority, bool) or not isinstance(
+            goal.priority, int
+        ):
             raise GoalOpenLoopError("priority must be an int")
         keywords = _keywords(tuple(goal.keywords))
         created_at = _parse_time(goal.created_at, "created_at")
         updated_at = _parse_time(goal.updated_at, "updated_at")
         if updated_at.astimezone(UTC) < created_at.astimezone(UTC):
-            raise GoalOpenLoopError("updated_at cannot precede created_at")
+            raise GoalOpenLoopError(
+                "updated_at cannot precede created_at"
+            )
         source_ref = f"goal_stack:{goal_ref}"
         payload = {
             "schema_version": GOAL_SNAPSHOT_SCHEMA_VERSION,
@@ -252,7 +262,11 @@ class GoalStackSnapshotBridge:
         *,
         limit: int = 200,
     ) -> tuple[GoalRecordSnapshot, ...]:
-        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 200:
+        if (
+            isinstance(limit, bool)
+            or not isinstance(limit, int)
+            or not 1 <= limit <= 200
+        ):
             raise GoalOpenLoopError("limit must be an int in [1, 200]")
         records = self._reader.list_goals(
             _text(user_id, "user_id"),
@@ -273,10 +287,9 @@ class GoalStackSnapshotBridge:
                 by_goal.values(),
                 key=lambda value: (
                     -value.priority,
-                    value.updated_at.astimezone(UTC),
+                    -value.updated_at.timestamp(),
                     value.goal_ref,
                 ),
-                reverse=True,
             )
         )
 
@@ -340,10 +353,19 @@ class GoalProjection:
         policy_version: str = GOAL_OPEN_LOOP_POLICY_VERSION,
     ) -> GoalProjection:
         if snapshot.goal_ref != attestation.goal_ref:
-            raise GoalOpenLoopError("attestation goal_ref does not match snapshot")
+            raise GoalOpenLoopError(
+                "attestation goal_ref does not match snapshot"
+            )
+        if (
+            attestation.confirmed_at.astimezone(UTC)
+            < snapshot.created_at.astimezone(UTC)
+        ):
+            raise GoalOpenLoopError(
+                "attestation cannot precede goal creation"
+            )
         policy = _text(policy_version, "policy_version")
-        sources = _refs(
-            (snapshot.source_ref, *attestation.source_refs), "source_refs"
+        sources = _merge_refs(
+            (snapshot.source_ref,), attestation.source_refs
         )
         payload = {
             "schema_version": GOAL_PROJECTION_SCHEMA_VERSION,
@@ -408,25 +430,32 @@ class GoalProjector:
         snapshot_by_goal: dict[str, GoalRecordSnapshot] = {}
         for snapshot in snapshots:
             if not isinstance(snapshot, GoalRecordSnapshot):
-                raise GoalOpenLoopError("snapshots contain an invalid value")
+                raise GoalOpenLoopError(
+                    "snapshots contain an invalid value"
+                )
             previous = snapshot_by_goal.get(snapshot.goal_ref)
             if previous is not None and previous != snapshot:
                 raise GoalOpenLoopError(
                     f"conflicting goal snapshots: {snapshot.goal_ref}"
                 )
             snapshot_by_goal[snapshot.goal_ref] = snapshot
+
         attestation_by_goal: dict[str, GoalAttestation] = {}
         for attestation in attestations:
             if not isinstance(attestation, GoalAttestation):
-                raise GoalOpenLoopError("attestations contain an invalid value")
+                raise GoalOpenLoopError(
+                    "attestations contain an invalid value"
+                )
             if attestation.goal_ref not in snapshot_by_goal:
                 raise GoalOpenLoopError(
-                    f"attestation references unknown goal: {attestation.goal_ref}"
+                    "attestation references unknown goal: "
+                    f"{attestation.goal_ref}"
                 )
             previous = attestation_by_goal.get(attestation.goal_ref)
             if previous is not None and previous != attestation:
                 raise GoalOpenLoopError(
-                    f"multiple attestations for goal: {attestation.goal_ref}"
+                    "multiple attestations for goal: "
+                    f"{attestation.goal_ref}"
                 )
             attestation_by_goal[attestation.goal_ref] = attestation
 
@@ -439,13 +468,17 @@ class GoalProjector:
                     GoalProjectionDecision(
                         goal_ref=goal_ref,
                         disposition=GoalDecisionDisposition.EXCLUDED,
-                        reason_codes=(GoalDecisionReason.MISSING_ATTESTATION,),
+                        reason_codes=(
+                            GoalDecisionReason.MISSING_ATTESTATION,
+                        ),
                         source_refs=(snapshot.source_ref,),
                     )
                 )
                 continue
             projection = GoalProjection.create(
-                snapshot, attestation, policy_version=policy
+                snapshot,
+                attestation,
+                policy_version=policy,
             )
             projections.append(projection)
             decisions.append(
@@ -459,6 +492,7 @@ class GoalProjector:
                     source_refs=projection.source_refs,
                 )
             )
+
         ordered_projections = tuple(
             sorted(projections, key=lambda value: value.projection_id)
         )
@@ -467,12 +501,16 @@ class GoalProjector:
         )
         payload = {
             "policy_version": policy,
-            "projection_ids": [value.projection_id for value in ordered_projections],
+            "projection_ids": [
+                value.projection_id for value in ordered_projections
+            ],
             "decisions": [
                 {
                     "goal_ref": value.goal_ref,
                     "disposition": value.disposition.value,
-                    "reason_codes": [reason.value for reason in value.reason_codes],
+                    "reason_codes": [
+                        reason.value for reason in value.reason_codes
+                    ],
                     "source_refs": list(value.source_refs),
                 }
                 for value in ordered_decisions
@@ -534,7 +572,16 @@ class OpenLoopSignal:
             "due_at": _dt(due) if due is not None else None,
             "related_goal_ref": goal_ref,
         }
-        return cls(_hash(payload), key, kind, text, sources, opened, due, goal_ref)
+        return cls(
+            _hash(payload),
+            key,
+            kind,
+            text,
+            sources,
+            opened,
+            due,
+            goal_ref,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -605,135 +652,173 @@ class OpenLoopProjector:
     ) -> OpenLoopProjectionResult:
         point = _aware(as_of, "as_of")
         policy = _text(policy_version, "policy_version")
-        signal_by_key: dict[str, OpenLoopSignal] = {}
+        signal_by_key = self._signal_map(signals)
+        resolutions_by_key = self._resolution_map(
+            resolutions,
+            signal_by_key,
+        )
+        projections = tuple(
+            self._project_one(
+                signal,
+                resolutions_by_key.get(loop_key, ()),
+                as_of=point,
+                policy_version=policy,
+            )
+            for loop_key, signal in sorted(signal_by_key.items())
+        )
+        payload = {
+            "policy_version": policy,
+            "as_of": _dt(point),
+            "projection_ids": [
+                value.projection_id for value in projections
+            ],
+        }
+        return OpenLoopProjectionResult(
+            result_id=_hash(payload),
+            policy_version=policy,
+            as_of=point,
+            projections=projections,
+        )
+
+    @staticmethod
+    def _signal_map(
+        signals: Iterable[OpenLoopSignal],
+    ) -> dict[str, OpenLoopSignal]:
+        result: dict[str, OpenLoopSignal] = {}
         for signal in signals:
             if not isinstance(signal, OpenLoopSignal):
                 raise GoalOpenLoopError("signals contain an invalid value")
-            previous = signal_by_key.get(signal.loop_key)
+            previous = result.get(signal.loop_key)
             if previous is not None and previous != signal:
                 raise GoalOpenLoopError(
-                    f"conflicting signals for loop_key: {signal.loop_key}"
+                    "conflicting signals for loop_key: "
+                    f"{signal.loop_key}"
                 )
-            signal_by_key[signal.loop_key] = signal
-        resolutions_by_key: dict[str, list[OpenLoopResolution]] = {}
-        seen_resolution_ids: set[str] = set()
+            result[signal.loop_key] = signal
+        return result
+
+    @staticmethod
+    def _resolution_map(
+        resolutions: Iterable[OpenLoopResolution],
+        signals: dict[str, OpenLoopSignal],
+    ) -> dict[str, tuple[OpenLoopResolution, ...]]:
+        grouped: dict[str, dict[str, OpenLoopResolution]] = {}
         for resolution in resolutions:
             if not isinstance(resolution, OpenLoopResolution):
-                raise GoalOpenLoopError("resolutions contain an invalid value")
-            if resolution.resolution_id in seen_resolution_ids:
-                continue
-            seen_resolution_ids.add(resolution.resolution_id)
-            if resolution.loop_key not in signal_by_key:
                 raise GoalOpenLoopError(
-                    f"resolution references unknown loop: {resolution.loop_key}"
+                    "resolutions contain an invalid value"
                 )
-            resolutions_by_key.setdefault(resolution.loop_key, []).append(resolution)
-
-        projections: list[OpenLoopProjection] = []
-        for loop_key, signal in sorted(signal_by_key.items()):
-            all_resolutions = tuple(
+            if resolution.loop_key not in signals:
+                raise GoalOpenLoopError(
+                    "resolution references unknown loop: "
+                    f"{resolution.loop_key}"
+                )
+            grouped.setdefault(resolution.loop_key, {})[
+                resolution.resolution_id
+            ] = resolution
+        return {
+            key: tuple(
                 sorted(
-                    resolutions_by_key.get(loop_key, []),
+                    values.values(),
                     key=lambda value: (
                         value.resolved_at.astimezone(UTC),
                         value.resolution_id,
                     ),
                 )
             )
-            if any(
-                value.resolved_at.astimezone(UTC)
-                < signal.opened_at.astimezone(UTC)
-                for value in all_resolutions
-            ):
-                raise GoalOpenLoopError(
-                    f"resolution precedes open time: {loop_key}"
-                )
-            effective = tuple(
-                value
-                for value in all_resolutions
-                if value.resolved_at.astimezone(UTC) <= point.astimezone(UTC)
-            )
-            reasons = {OpenLoopReason.TYPED_SOURCE_SIGNAL}
-            if signal.opened_at.astimezone(UTC) > point.astimezone(UTC):
-                status = OpenLoopStatus.NOT_YET_OPEN
-                reasons.add(OpenLoopReason.FUTURE_OPEN_TIME)
-            elif effective:
-                status = OpenLoopStatus.RESOLVED
-                reasons.add(OpenLoopReason.RESOLUTION_EVIDENCE_PRESENT)
-            elif (
-                signal.due_at is not None
-                and signal.due_at.astimezone(UTC) < point.astimezone(UTC)
-            ):
-                status = OpenLoopStatus.OVERDUE
-                reasons.add(OpenLoopReason.DEADLINE_PASSED)
-            else:
-                status = OpenLoopStatus.OPEN
-                reasons.add(OpenLoopReason.OPENED_AS_OF_REQUEST)
-            resolution_ids = _refs(
-                (value.resolution_id for value in effective), "resolution_ids"
-            )
-            source_refs = _refs(
-                (
-                    *signal.source_refs,
-                    *(
-                        ref
-                        for resolution in effective
-                        for ref in resolution.source_refs
-                    ),
-                ),
-                "source_refs",
-            )
-            reason_codes = tuple(
-                sorted(reasons, key=lambda value: value.value)
-            )
-            payload = {
-                "schema_version": OPEN_LOOP_SCHEMA_VERSION,
-                "policy_version": policy,
-                "loop_key": loop_key,
-                "signal_id": signal.signal_id,
-                "kind": signal.kind.value,
-                "summary": signal.summary,
-                "status": status.value,
-                "source_refs": list(source_refs),
-                "resolution_ids": list(resolution_ids),
-                "opened_at": _dt(signal.opened_at),
-                "due_at": _dt(signal.due_at) if signal.due_at else None,
-                "related_goal_ref": signal.related_goal_ref,
-                "reason_codes": [value.value for value in reason_codes],
-                "review_required": status
-                in {OpenLoopStatus.OPEN, OpenLoopStatus.OVERDUE},
-            }
-            projections.append(
-                OpenLoopProjection(
-                    projection_id=_hash(payload),
-                    schema_version=OPEN_LOOP_SCHEMA_VERSION,
-                    policy_version=policy,
-                    loop_key=loop_key,
-                    signal_id=signal.signal_id,
-                    kind=signal.kind,
-                    summary=signal.summary,
-                    status=status,
-                    source_refs=source_refs,
-                    resolution_ids=resolution_ids,
-                    opened_at=signal.opened_at,
-                    due_at=signal.due_at,
-                    related_goal_ref=signal.related_goal_ref,
-                    reason_codes=reason_codes,
-                    review_required=status
-                    in {OpenLoopStatus.OPEN, OpenLoopStatus.OVERDUE},
-                )
-            )
-        ordered = tuple(sorted(projections, key=lambda value: value.loop_key))
-        result_payload = {
-            "policy_version": policy,
-            "as_of": _dt(point),
-            "projection_ids": [value.projection_id for value in ordered],
+            for key, values in grouped.items()
         }
-        return OpenLoopProjectionResult(
-            result_id=_hash(result_payload),
-            policy_version=policy,
-            as_of=point,
-            projections=ordered,
+
+    @staticmethod
+    def _project_one(
+        signal: OpenLoopSignal,
+        resolutions: tuple[OpenLoopResolution, ...],
+        *,
+        as_of: datetime,
+        policy_version: str,
+    ) -> OpenLoopProjection:
+        if any(
+            value.resolved_at.astimezone(UTC)
+            < signal.opened_at.astimezone(UTC)
+            for value in resolutions
+        ):
+            raise GoalOpenLoopError(
+                f"resolution precedes open time: {signal.loop_key}"
+            )
+        effective = tuple(
+            value
+            for value in resolutions
+            if value.resolved_at.astimezone(UTC)
+            <= as_of.astimezone(UTC)
+        )
+        reasons = {OpenLoopReason.TYPED_SOURCE_SIGNAL}
+        if signal.opened_at.astimezone(UTC) > as_of.astimezone(UTC):
+            status = OpenLoopStatus.NOT_YET_OPEN
+            reasons.add(OpenLoopReason.FUTURE_OPEN_TIME)
+        elif effective:
+            status = OpenLoopStatus.RESOLVED
+            reasons.add(OpenLoopReason.RESOLUTION_EVIDENCE_PRESENT)
+        elif (
+            signal.due_at is not None
+            and signal.due_at.astimezone(UTC) < as_of.astimezone(UTC)
+        ):
+            status = OpenLoopStatus.OVERDUE
+            reasons.add(OpenLoopReason.DEADLINE_PASSED)
+        else:
+            status = OpenLoopStatus.OPEN
+            reasons.add(OpenLoopReason.OPENED_AS_OF_REQUEST)
+
+        resolution_ids = _refs(
+            (value.resolution_id for value in effective),
+            "resolution_ids",
+        )
+        source_refs = _merge_refs(
+            signal.source_refs,
+            (
+                ref
+                for resolution in effective
+                for ref in resolution.source_refs
+            ),
+        )
+        reason_codes = tuple(
+            sorted(reasons, key=lambda value: value.value)
+        )
+        review_required = status in {
+            OpenLoopStatus.OPEN,
+            OpenLoopStatus.OVERDUE,
+        }
+        payload = {
+            "schema_version": OPEN_LOOP_SCHEMA_VERSION,
+            "policy_version": policy_version,
+            "loop_key": signal.loop_key,
+            "signal_id": signal.signal_id,
+            "kind": signal.kind.value,
+            "summary": signal.summary,
+            "status": status.value,
+            "source_refs": list(source_refs),
+            "resolution_ids": list(resolution_ids),
+            "opened_at": _dt(signal.opened_at),
+            "due_at": _dt(signal.due_at) if signal.due_at else None,
+            "related_goal_ref": signal.related_goal_ref,
+            "reason_codes": [value.value for value in reason_codes],
+            "review_required": review_required,
+        }
+        return OpenLoopProjection(
+            projection_id=_hash(payload),
+            schema_version=OPEN_LOOP_SCHEMA_VERSION,
+            policy_version=policy_version,
+            loop_key=signal.loop_key,
+            signal_id=signal.signal_id,
+            kind=signal.kind,
+            summary=signal.summary,
+            status=status,
+            source_refs=source_refs,
+            resolution_ids=resolution_ids,
+            opened_at=signal.opened_at,
+            due_at=signal.due_at,
+            related_goal_ref=signal.related_goal_ref,
+            reason_codes=reason_codes,
+            review_required=review_required,
         )
 
 
