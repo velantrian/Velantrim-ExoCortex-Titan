@@ -112,11 +112,36 @@ def test_passed_verdict_records_one_committed_promotion() -> None:
     ]
     assert outcome.fact_id == "fact-1"
     assert outcome.verdict.passed is True
+    assert outcome.verdict.requested_by == "api_transition"
+    assert outcome.verdict.decided_by == "api_transition"
     assert outcome.receipt.passed is True
     assert outcome.receipt.committed is True
     assert outcome.receipt.idempotent is False
+    assert outcome.receipt.requested_by == "api_transition"
+    assert outcome.receipt.decided_by == "api_transition"
     assert outcome.receipt.reason_code == "passed"
     assert outcome.receipt.policy_version == PROMOTION_POLICY_VERSION
+
+
+def test_truth_gate_rejection_preserves_request_and_decision_actors() -> None:
+    store = FakePromotionStore(
+        _verdict(
+            passed=False,
+            reason="insufficient_evidence",
+            by="truth_gate",
+        )
+    )
+
+    outcome = PromotionGateway(store).promote(
+        PromotionRequest(fact_id="fact-1", requested_by="graduated_promotion")
+    )
+
+    assert outcome.receipt.passed is False
+    assert outcome.receipt.committed is False
+    assert outcome.receipt.requested_by == "graduated_promotion"
+    assert outcome.receipt.decided_by == "truth_gate"
+    assert outcome.verdict.requested_by == "graduated_promotion"
+    assert outcome.verdict.decided_by == "truth_gate"
 
 
 def test_already_validated_is_idempotent_without_new_commit() -> None:
@@ -184,6 +209,11 @@ def test_gateway_propagates_store_failure_without_fabricating_receipt() -> None:
         _verdict(passed=True, reason="passed", fact_id="other-fact"),
         _verdict(passed=True, reason="passed", by="different_actor"),
         _verdict(
+            passed=False,
+            reason="insufficient_evidence",
+            by="different_actor",
+        ),
+        _verdict(
             passed=True,
             reason="passed",
             mode=CognitiveMode.PRECISION,
@@ -196,6 +226,17 @@ def test_gateway_fails_closed_on_invalid_underlying_contract(verdict: object) ->
     store = FakePromotionStore(verdict)
 
     with pytest.raises(PromotionContractError):
+        PromotionGateway(store).promote(
+            PromotionRequest(fact_id="fact-1", requested_by="api_transition")
+        )
+
+
+def test_passed_verdict_cannot_be_attributed_only_to_truth_gate() -> None:
+    store = FakePromotionStore(
+        _verdict(passed=True, reason="passed", by="truth_gate")
+    )
+
+    with pytest.raises(PromotionContractError, match="requesting actor"):
         PromotionGateway(store).promote(
             PromotionRequest(fact_id="fact-1", requested_by="api_transition")
         )
