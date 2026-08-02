@@ -11,7 +11,27 @@ from typing import Any
 
 from core import memory as memory_api
 from core.pipeline import retrieve
+from core.promotion_gateway import PromotionGateway, PromotionRequest
 from core.tool_registry import PrincipalContext
+
+
+class _CurrentMemoryPromotionStore:
+    """Reload-safe adapter over the currently canonical memory module."""
+
+    def validate_and_promote(
+        self,
+        fact_id: str,
+        by: str = "truth_gate",
+        mode: Any = None,
+    ) -> Any:
+        from core import memory as current_memory_api
+
+        return current_memory_api.validate_and_promote(
+            fact_id, by=by, mode=mode
+        )
+
+
+_tool_promotion_gateway = PromotionGateway(_CurrentMemoryPromotionStore())
 
 
 def search_facts(query: str, *, k: int = 5, domain: str | None = None) -> list[dict[str, Any]]:
@@ -178,20 +198,22 @@ def link_entity(
 
 
 def validate_fact(fact_id: str, *, by: str = "tool:validate_fact") -> dict[str, Any]:
+    """Validate one guardian-tool fact through PromotionGateway.
+
+    The gateway delegates to the existing TruthGate + CAS authority. The
+    reload-safe adapter resolves the currently canonical memory module when
+    the call executes, so test/runtime store reconstruction cannot leave this
+    handler pinned to an obsolete SQLiteGraphStore instance.
     """
-    SECURITY (confirmed Codex finding): promote_to_validated() is an internal
-    path with no TruthGate/I68 check — server.py's PATCH /facts/{fact_id}/transition
-    deliberately routes external Validated transitions through
-    validate_and_promote() instead so a weak fact (missing evidence, low
-    confidence) can't reach Validated. An MCP guardian/admin caller is exactly
-    such an external/untrusted caller, so this handler must use the same path.
-    """
-    verdict = memory_api.validate_and_promote(fact_id, by=by)
+    outcome = _tool_promotion_gateway.promote(
+        PromotionRequest(fact_id=fact_id, requested_by=by)
+    )
+    verdict = outcome.verdict
     return {
         "fact_id": fact_id,
         "validated": verdict.passed,
         "epistemic_state": "Validated" if verdict.passed else None,
-        "reason": verdict.reason,
+        "reason": verdict.reason_code,
         "justification": verdict.justification,
     }
 
