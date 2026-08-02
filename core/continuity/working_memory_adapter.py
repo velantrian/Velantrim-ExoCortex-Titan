@@ -1,9 +1,9 @@
 """Typed bridge from CSL continuity projections into the existing Synaptic Gate.
 
-The adapter is deliberately policy-neutral.  It validates every semantic
+The adapter is deliberately policy-neutral. It validates every semantic
 ``ContinuityContextItem`` against its immutable ``ConversationEpisode`` source,
 projects the item as an exact-source ``KnowledgeCapsule``, and combines it with
-caller-supplied Gate attributes.  It does not compute salience, decide privacy,
+caller-supplied Gate attributes. It does not compute salience, decide privacy,
 run ``WorkingMemoryGate``, build the final ``ContextPack``, write Canon, or alter
 the answer path.
 """
@@ -340,16 +340,16 @@ class ContinuityWorkingMemoryAdapter:
             )
 
         episode_by_id: dict[str, ConversationEpisode] = {}
-        for episode in episodes:
-            if not isinstance(episode, ConversationEpisode):
+        for source_episode in episodes:
+            if not isinstance(source_episode, ConversationEpisode):
                 raise ContinuityWorkingMemoryAdapterError(
                     "episodes must contain ConversationEpisode values"
                 )
-            if episode.episode_id in episode_by_id:
+            if source_episode.episode_id in episode_by_id:
                 raise ContinuityWorkingMemoryAdapterError(
-                    f"duplicate episode_id: {episode.episode_id}"
+                    f"duplicate episode_id: {source_episode.episode_id}"
                 )
-            episode_by_id[episode.episode_id] = episode
+            episode_by_id[source_episode.episode_id] = source_episode
 
         policy_by_item_id: dict[str, ContinuityItemGatePolicy] = {}
         for policy in policies:
@@ -396,13 +396,13 @@ class ContinuityWorkingMemoryAdapter:
                 )
                 continue
 
-            episode = episode_by_id.get(item.source_episode_id)
-            if episode is None:
+            matched_episode = episode_by_id.get(item.source_episode_id)
+            if matched_episode is None:
                 raise ContinuityWorkingMemoryAdapterError(
                     f"missing source episode: {item.source_episode_id}"
                 )
             policy = policy_by_item_id[item.item_id]
-            capsule, span = _capsule_for_item(item, episode)
+            capsule, span = _capsule_for_item(item, matched_episode)
             candidate = WorkingMemoryCandidate(
                 capsule=capsule,
                 attention_score=policy.attention_score,
