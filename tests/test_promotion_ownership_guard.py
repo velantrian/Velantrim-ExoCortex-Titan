@@ -127,11 +127,18 @@ def test_direct_single_fact_authority_callers_match_reviewed_inventory() -> None
     assert authority_sites == expected
 
 
-def test_no_production_caller_uses_literal_plain_transition_to_validated() -> None:
+def test_literal_plain_validated_steps_match_reviewed_primitives() -> None:
     _, literal_validated_steps = _scan()
 
-    # The generic primitives exist in core.memory, but production callers must
-    # not pass a literal Validated target to transition_esm/promote_esm_to.
-    # Standard single-fact callers use PromotionGateway; curated and compound
-    # exceptions are separately inventoried and use different APIs.
-    assert literal_validated_steps == set()
+    # One reviewed low-level compatibility primitive implements its operation
+    # through the generic ladder. No business/runtime caller may add another
+    # literal Validated step without an ADR and inventory update.
+    expected = {
+        CallSite(
+            "core/memory.py",
+            "SQLiteGraphStore.promote_to_validated",
+            "promote_esm_to",
+        )
+    }
+
+    assert literal_validated_steps == expected
