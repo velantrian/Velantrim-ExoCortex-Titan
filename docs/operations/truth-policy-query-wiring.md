@@ -62,3 +62,9 @@ This integration does not change:
 - `allow`, `gap_notice` or measured `reject` semantics.
 
 Only the confirmed fail-open exception path changes.
+
+## Validation boundary
+
+The exact self-removing patch compiled `server.py` and passed all 29 focused TruthPolicy tests after the source-order assertions were updated to inspect the new boundary. Temporary workflow/script files are absent from the final branch.
+
+Merge evidence must come only from standard architecture-freeze, Ruff, blocking mypy, full repository pytest and Docker checks attached to this final maintainer-authored head.
