@@ -142,7 +142,7 @@ class LocalShadowLedger:
                 reason_code="EVENT_TYPE_INVALID",
             )
 
-        resolved_key = idempotency_key or event.event_id
+        resolved_key = event.event_id if idempotency_key is None else idempotency_key
         if not isinstance(resolved_key, str) or not resolved_key.strip():
             return AppendResult(
                 status=AppendStatus.INVALID_EVENT,
