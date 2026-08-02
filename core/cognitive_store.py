@@ -16,8 +16,26 @@ from core.cognitive_fact import (
     cognitive_fact_from_store,
     load_relations_for_fact,
 )
+from core.promotion_gateway import PromotionGateway, PromotionRequest
 
 logger = logging.getLogger(__name__)
+
+
+class _CurrentMemoryPromotionStore:
+    """Resolve the canonical memory module for each promotion call."""
+
+    def validate_and_promote(
+        self,
+        fact_id: str,
+        by: str = "truth_gate",
+        mode: Any = None,
+    ) -> Any:
+        from core import memory as current_memory
+
+        return current_memory.validate_and_promote(fact_id, by=by, mode=mode)
+
+
+_cognitive_promotion_gateway = PromotionGateway(_CurrentMemoryPromotionStore())
 
 _store: CognitiveFactStore | None = None
 
@@ -148,8 +166,26 @@ class CognitiveFactStore:
     ) -> CognitiveFact | None:
         from core.memory import promote_esm_to
 
-        promote_esm_to(fact_id, new_state, by=by)
-        _emit_fact_event(fact_id, is_new=False, event_type="fact_esm_transition")
+        if new_state != "Validated":
+            promote_esm_to(fact_id, new_state, by=by)
+            _emit_fact_event(fact_id, is_new=False, event_type="fact_esm_transition")
+            return self.get(fact_id)
+
+        # Preserve the facade's existing auto-ladder behavior, but stop at
+        # Supported. The final authoritative hop is owned by PromotionGateway
+        # and the existing TruthGate + CAS transaction.
+        if not promote_esm_to(fact_id, "Supported", by=by):
+            return self.get(fact_id)
+
+        outcome = _cognitive_promotion_gateway.promote(
+            PromotionRequest(fact_id=fact_id, requested_by=by)
+        )
+        if outcome.receipt.committed:
+            _emit_fact_event(
+                fact_id,
+                is_new=False,
+                event_type="fact_esm_transition",
+            )
         return self.get(fact_id)
 
     @staticmethod
