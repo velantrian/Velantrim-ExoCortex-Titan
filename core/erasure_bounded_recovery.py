@@ -34,15 +34,17 @@ def _validate_max_jobs(max_jobs: int) -> int:
     return max_jobs
 
 
-def _validate_deadline(deadline_monotonic: float) -> float:
-    if isinstance(deadline_monotonic, bool) or not isinstance(
-        deadline_monotonic, (int, float)
-    ):
-        raise ValueError("deadline_monotonic must be a finite number")
-    deadline = float(deadline_monotonic)
-    if not math.isfinite(deadline):
-        raise ValueError("deadline_monotonic must be a finite number")
-    return deadline
+def _validate_finite_number(value: float, name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{name} must be a finite number")
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError(f"{name} must be a finite number")
+    return number
+
+
+def _clock_now(monotonic: Callable[[], float]) -> float:
+    return _validate_finite_number(monotonic(), "monotonic clock result")
 
 
 def _select_resumable_job_ids(
@@ -92,14 +94,14 @@ def resume_single_fact_jobs_bounded(
 ) -> tuple[RecoveryDomainReceipt, bool]:
     """Recover a deterministic bounded prefix of resumable single-fact jobs.
 
-    Unexpected database, schema, or outcome-contract failures propagate. The
-    later aggregate startup runner is responsible for converting those failures
-    into ``StartupRecoveryFailureReceipt`` rather than manufacturing measured
-    counters.
+    Unexpected database, schema, clock, or outcome-contract failures propagate.
+    The later aggregate startup runner is responsible for converting those
+    failures into ``StartupRecoveryFailureReceipt`` rather than manufacturing
+    measured counters.
     """
 
     limit = _validate_max_jobs(max_jobs)
-    deadline = _validate_deadline(deadline_monotonic)
+    deadline = _validate_finite_number(deadline_monotonic, "deadline_monotonic")
     active = coordinator or get_coordinator()
     selected_ids = _select_resumable_job_ids(active, limit)
 
@@ -112,7 +114,7 @@ def resume_single_fact_jobs_bounded(
     stopped_by_time_budget = False
 
     for job_id in selected_ids:
-        if monotonic() >= deadline:
+        if _clock_now(monotonic) >= deadline:
             stopped_by_time_budget = True
             break
 
