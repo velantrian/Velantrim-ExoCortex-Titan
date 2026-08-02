@@ -19,6 +19,8 @@ import os
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from core.promotion_gateway import PromotionGateway, PromotionRequest
+
 if TYPE_CHECKING:
     from core.memory import SQLiteGraphStore
 
@@ -102,6 +104,7 @@ class ConsolidationEngine:
         prefer_validated: bool = True,
     ) -> None:
         self._store = store
+        self._promotion_gateway = PromotionGateway(store)
         self.min_confidence = (
             min_confidence
             if min_confidence is not None
@@ -317,7 +320,13 @@ class ConsolidationEngine:
         """
         if not self._store.promote_esm_to(fact_id, "Supported", by="consolidation_engine"):
             return False
-        return self._store.validate_and_promote(fact_id, by="consolidation_engine").passed
+        outcome = self._promotion_gateway.promote(
+            PromotionRequest(
+                fact_id=fact_id,
+                requested_by="consolidation_engine",
+            )
+        )
+        return outcome.receipt.passed
 
     def _passes_utility_gate(self, fact: dict) -> bool:
         """
