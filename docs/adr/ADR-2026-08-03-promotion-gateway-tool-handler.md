@@ -53,16 +53,22 @@ fixed safe default.
 
 ## Validation
 
-Focused validation must prove:
+Focused validation proved:
 
 - `validate_fact()` makes one gateway call and no direct promotion-authority call;
 - the request preserves fact ID and actor;
 - response mapping uses the transient verdict snapshot, not the receipt;
 - existing real-store weak-fact rejection remains green;
 - module/store isolation in `tests/test_tool_handlers.py` remains green;
-- PromotionGateway malformed-contract and reload suites remain green;
-- architecture-freeze, Ruff, blocking mypy, full pytest, and Docker pass on the final
-  clean head.
+- PromotionGateway malformed-contract and reload suites remain green.
+
+The exact patch, focused tests, and self-removal workflow completed successfully. The
+final pull-request diff contains exactly three permanent files: the handler wiring, this
+ADR, and the AST/request/response regression suite. Temporary workflow and patch-script
+files are absent.
+
+The final clean head must still pass architecture-freeze, Ruff, blocking mypy, full
+repository pytest, and Docker before merge.
 
 ## Scope boundary
 
