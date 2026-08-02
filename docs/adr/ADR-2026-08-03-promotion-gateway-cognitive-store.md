@@ -54,9 +54,9 @@ delegates, matching the repository's module-reload and isolated-store test model
 - only a committed final gateway outcome publishes that event. An idempotent replay does
   not publish a duplicate transition event.
 
-## Validation
+## Validation evidence
 
-Focused tests must prove:
+Focused validation proved:
 
 - exactly one gateway call for a Validated attempt and no direct final ladder step into
   Validated;
@@ -65,10 +65,19 @@ Focused tests must prove:
 - sequential lower-state transitions remain unchanged;
 - rejection publishes no transition event;
 - successful final commit publishes one transition event;
+- idempotent replay publishes no duplicate event;
 - CognitiveRuntime delegation inherits the same gate;
 - reload-safe gateway/store behavior remains green;
-- architecture-freeze, Ruff, blocking mypy, full pytest, and Docker pass on the final
-  clean head.
+- the existing cognitive-store API regression remains green.
+
+The first one-shot run produced 30 passing tests and one infrastructure error because its
+install profile omitted the repository's `server` extra required by the existing FastAPI
+test. No production assertion failed. The corrected run used the official server extra,
+passed the complete focused suite, removed the temporary workflow and patch script, and
+published the final clean four-file change-set.
+
+Architecture-freeze, Ruff, blocking mypy, full repository pytest, and Docker must still
+pass on the final maintainer-authored head before merge.
 
 ## Scope boundary
 
