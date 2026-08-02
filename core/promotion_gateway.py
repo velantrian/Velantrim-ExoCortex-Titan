@@ -42,8 +42,7 @@ class PromotionStore(Protocol):
         fact_id: str,
         by: str = "truth_gate",
         mode: Any = None,
-    ) -> TruthGateVerdict:
-        """Evaluate with TruthGate and commit through the existing CAS path."""
+    ) -> TruthGateVerdict: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,7 +57,9 @@ class PromotionRequest:
     def __post_init__(self) -> None:
         if not isinstance(self.fact_id, str) or not self.fact_id.strip():
             raise ValueError("PromotionRequest.fact_id must be a non-empty string")
-        if len(self.fact_id) > 256 or any(ord(ch) < 32 for ch in self.fact_id):
+        if len(self.fact_id) > 256 or any(
+            ord(ch) < 32 or ord(ch) == 127 for ch in self.fact_id
+        ):
             raise ValueError("PromotionRequest.fact_id is not a safe technical identifier")
         if not isinstance(self.requested_by, str) or not _ACTOR_CODE.fullmatch(
             self.requested_by
@@ -198,7 +199,7 @@ class PromotionGateway:
             raise PromotionContractError("promotion verdict fact_id mismatch")
         if verdict.by != request.requested_by:
             raise PromotionContractError("promotion verdict actor mismatch")
-        if verdict.mode is not request.mode:
+        if verdict.mode != request.mode:
             raise PromotionContractError("promotion verdict mode mismatch")
         if not isinstance(verdict.reason, str) or not verdict.reason:
             raise PromotionContractError("promotion verdict has no reason code")
@@ -206,7 +207,11 @@ class PromotionGateway:
             raise PromotionContractError(
                 "passed promotion verdict has an unknown commit semantic"
             )
-        if not isinstance(verdict.evidence_count, int) or verdict.evidence_count < 0:
+        if (
+            not isinstance(verdict.evidence_count, int)
+            or isinstance(verdict.evidence_count, bool)
+            or verdict.evidence_count < 0
+        ):
             raise PromotionContractError("promotion verdict evidence_count is invalid")
         confidence = verdict.confidence
         if (
