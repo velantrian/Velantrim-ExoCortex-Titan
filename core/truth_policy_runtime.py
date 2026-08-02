@@ -57,6 +57,16 @@ def _failure_truth_block() -> dict[str, Any]:
     ).to_dict()
 
 
+def _failure_result() -> TruthPolicyRuntimeResult:
+    return TruthPolicyRuntimeResult(
+        enabled=True,
+        evaluated=False,
+        blocks_llm=True,
+        truth_block=_failure_truth_block(),
+        reason_code="truth_policy_unavailable",
+    )
+
+
 def evaluate_truth_policy_runtime(
     query: str,
     facts: Sequence[dict[str, Any]],
@@ -95,13 +105,46 @@ def evaluate_truth_policy_runtime(
         )
     except Exception:  # noqa: BLE001 - converted to content-free fail-closed evidence
         logger.exception("TruthPolicy runtime evaluation failed")
-        return TruthPolicyRuntimeResult(
-            enabled=True,
-            evaluated=False,
-            blocks_llm=True,
-            truth_block=_failure_truth_block(),
-            reason_code="truth_policy_unavailable",
-        )
+        return _failure_result()
 
 
-__all__ = ["TruthPolicyRuntimeResult", "evaluate_truth_policy_runtime"]
+def evaluate_configured_truth_policy_runtime(
+    query: str,
+    facts: Sequence[dict[str, Any]],
+    *,
+    mode: str | None,
+    enabled_resolver: Callable[[], bool] | None = None,
+    decider: Callable[..., TruthVerdict] = decide,
+) -> TruthPolicyRuntimeResult:
+    """Resolve the runtime flag and evaluate under one fail-closed boundary.
+
+    A missing/malformed feature-config dependency is treated as an enabled
+    policy that could not be evaluated, never as an implicit disabled state.
+    """
+
+    try:
+        if enabled_resolver is None:
+            from core.runtime_flags import is_truth_policy_enabled
+
+            enabled_resolver = is_truth_policy_enabled
+        enabled = enabled_resolver()
+        if not isinstance(enabled, bool):
+            raise TypeError("TruthPolicy enabled resolver must return bool")
+    except Exception:  # noqa: BLE001 - configuration dependency must fail closed
+        logger.exception("TruthPolicy runtime configuration resolution failed")
+        return _failure_result()
+
+    return evaluate_truth_policy_runtime(
+        query,
+        facts,
+        mode=mode,
+        enabled=enabled,
+        decider=decider,
+    )
+
+
+__all__ = [
+    "TruthPolicyRuntimeResult",
+    "evaluate_configured_truth_policy_runtime",
+    "evaluate_truth_policy_runtime",
+]
