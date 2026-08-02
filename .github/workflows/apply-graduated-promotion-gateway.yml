@@ -3,7 +3,12 @@ name: One-shot migrate graduated promotion through gateway
 on:
   pull_request:
     branches:
+      - main
       - agent/promotion-gateway-foundation
+
+concurrency:
+  group: graduated-promotion-gateway-${{ github.head_ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
