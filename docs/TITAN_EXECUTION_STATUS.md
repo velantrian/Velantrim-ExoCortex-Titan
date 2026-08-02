@@ -1,6 +1,6 @@
 # Titan Execution Status — Current Reality Matrix
 
-**Baseline:** `main@0d07bc9f74a4e8e0bf4a0d615a0bb40ec529f5e7`  
+**Verified pre-merge baseline:** `main@0d07bc9f74a4e8e0bf4a0d615a0bb40ec529f5e7`  
 **Recorded:** 2026-08-02  
 **Authority:** GitHub code, tests, PR state and CI are authoritative. Notion is a human-readable mirror.
 
