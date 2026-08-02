@@ -138,12 +138,15 @@ def _refs(values: Iterable[str], name: str) -> tuple[str, ...]:
 
 
 def _merge_refs(*groups: Iterable[str]) -> tuple[str, ...]:
-    normalized = {
-        _text(value, "source_ref")
-        for group in groups
-        for value in group
-    }
-    return tuple(sorted(normalized))
+    return tuple(
+        sorted(
+            {
+                _text(value, "source_ref")
+                for group in groups
+                for value in group
+            }
+        )
+    )
 
 
 def _keywords(values: Iterable[str]) -> tuple[str, ...]:
@@ -190,64 +193,46 @@ class GoalRecordSnapshot:
             raise GoalOpenLoopError(
                 f"unsupported goal status: {goal.status}"
             ) from exc
-        goal_ref = _text(goal.goal_id, "goal_id")
-        user_id = _text(goal.user_id, "user_id")
-        title = _text(goal.title, "title")
-        description = unicodedata.normalize("NFC", goal.description.strip())
         if isinstance(goal.priority, bool) or not isinstance(
             goal.priority, int
         ):
             raise GoalOpenLoopError("priority must be an int")
-        keywords = _keywords(tuple(goal.keywords))
+        goal_ref = _text(goal.goal_id, "goal_id")
         created_at = _parse_time(goal.created_at, "created_at")
         updated_at = _parse_time(goal.updated_at, "updated_at")
         if updated_at.astimezone(UTC) < created_at.astimezone(UTC):
             raise GoalOpenLoopError(
                 "updated_at cannot precede created_at"
             )
-        source_ref = f"goal_stack:{goal_ref}"
-        payload = {
+        values = {
             "schema_version": GOAL_SNAPSHOT_SCHEMA_VERSION,
             "goal_ref": goal_ref,
-            "user_id": user_id,
-            "title": title,
-            "description": description,
+            "user_id": _text(goal.user_id, "user_id"),
+            "title": _text(goal.title, "title"),
+            "description": unicodedata.normalize(
+                "NFC", goal.description.strip()
+            ),
             "status": status.value,
             "priority": goal.priority,
-            "keywords": list(keywords),
+            "keywords": list(_keywords(tuple(goal.keywords))),
             "created_at": _dt(created_at),
             "updated_at": _dt(updated_at),
-            "source_ref": source_ref,
+            "source_ref": f"goal_stack:{goal_ref}",
         }
         return cls(
-            snapshot_id=_hash(payload),
+            snapshot_id=_hash(values),
             schema_version=GOAL_SNAPSHOT_SCHEMA_VERSION,
             goal_ref=goal_ref,
-            user_id=user_id,
-            title=title,
-            description=description,
+            user_id=str(values["user_id"]),
+            title=str(values["title"]),
+            description=str(values["description"]),
             status=status,
             priority=goal.priority,
-            keywords=keywords,
+            keywords=tuple(str(value) for value in values["keywords"]),
             created_at=created_at,
             updated_at=updated_at,
-            source_ref=source_ref,
+            source_ref=str(values["source_ref"]),
         )
-
-    def payload(self) -> dict[str, object]:
-        return {
-            "schema_version": self.schema_version,
-            "goal_ref": self.goal_ref,
-            "user_id": self.user_id,
-            "title": self.title,
-            "description": self.description,
-            "status": self.status.value,
-            "priority": self.priority,
-            "keywords": list(self.keywords),
-            "created_at": _dt(self.created_at),
-            "updated_at": _dt(self.updated_at),
-            "source_ref": self.source_ref,
-        }
 
 
 class GoalStackSnapshotBridge:
@@ -276,8 +261,11 @@ class GoalStackSnapshotBridge:
         by_goal: dict[str, GoalRecordSnapshot] = {}
         for record in records:
             snapshot = GoalRecordSnapshot.from_goal(record)
-            previous = by_goal.get(snapshot.goal_ref)
-            if previous is not None and previous != snapshot:
+            existing_snapshot = by_goal.get(snapshot.goal_ref)
+            if (
+                existing_snapshot is not None
+                and existing_snapshot != snapshot
+            ):
                 raise GoalOpenLoopError(
                     f"conflicting goal snapshots: {snapshot.goal_ref}"
                 )
@@ -433,37 +421,47 @@ class GoalProjector:
                 raise GoalOpenLoopError(
                     "snapshots contain an invalid value"
                 )
-            previous = snapshot_by_goal.get(snapshot.goal_ref)
-            if previous is not None and previous != snapshot:
+            existing_snapshot = snapshot_by_goal.get(snapshot.goal_ref)
+            if (
+                existing_snapshot is not None
+                and existing_snapshot != snapshot
+            ):
                 raise GoalOpenLoopError(
                     f"conflicting goal snapshots: {snapshot.goal_ref}"
                 )
             snapshot_by_goal[snapshot.goal_ref] = snapshot
 
         attestation_by_goal: dict[str, GoalAttestation] = {}
-        for attestation in attestations:
-            if not isinstance(attestation, GoalAttestation):
+        for attestation_value in attestations:
+            if not isinstance(attestation_value, GoalAttestation):
                 raise GoalOpenLoopError(
                     "attestations contain an invalid value"
                 )
-            if attestation.goal_ref not in snapshot_by_goal:
+            if attestation_value.goal_ref not in snapshot_by_goal:
                 raise GoalOpenLoopError(
                     "attestation references unknown goal: "
-                    f"{attestation.goal_ref}"
+                    f"{attestation_value.goal_ref}"
                 )
-            previous = attestation_by_goal.get(attestation.goal_ref)
-            if previous is not None and previous != attestation:
+            existing_attestation = attestation_by_goal.get(
+                attestation_value.goal_ref
+            )
+            if (
+                existing_attestation is not None
+                and existing_attestation != attestation_value
+            ):
                 raise GoalOpenLoopError(
                     "multiple attestations for goal: "
-                    f"{attestation.goal_ref}"
+                    f"{attestation_value.goal_ref}"
                 )
-            attestation_by_goal[attestation.goal_ref] = attestation
+            attestation_by_goal[
+                attestation_value.goal_ref
+            ] = attestation_value
 
         projections: list[GoalProjection] = []
         decisions: list[GoalProjectionDecision] = []
         for goal_ref, snapshot in sorted(snapshot_by_goal.items()):
-            attestation = attestation_by_goal.get(goal_ref)
-            if attestation is None:
+            goal_attestation = attestation_by_goal.get(goal_ref)
+            if goal_attestation is None:
                 decisions.append(
                     GoalProjectionDecision(
                         goal_ref=goal_ref,
@@ -477,7 +475,7 @@ class GoalProjector:
                 continue
             projection = GoalProjection.create(
                 snapshot,
-                attestation,
+                goal_attestation,
                 policy_version=policy,
             )
             projections.append(projection)
@@ -688,8 +686,8 @@ class OpenLoopProjector:
         for signal in signals:
             if not isinstance(signal, OpenLoopSignal):
                 raise GoalOpenLoopError("signals contain an invalid value")
-            previous = result.get(signal.loop_key)
-            if previous is not None and previous != signal:
+            existing_signal = result.get(signal.loop_key)
+            if existing_signal is not None and existing_signal != signal:
                 raise GoalOpenLoopError(
                     "conflicting signals for loop_key: "
                     f"{signal.loop_key}"
