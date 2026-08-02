@@ -4,13 +4,18 @@ on:
   push:
     branches:
       - agent/erasure-startup-server-wiring
+  pull_request:
+    branches:
+      - agent/erasure-startup-runtime-state
 
 permissions:
   contents: write
 
 jobs:
   patch-and-test:
-    if: github.actor != 'github-actions[bot]'
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      (github.event_name == 'push' || github.head_ref == 'agent/erasure-startup-server-wiring')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
