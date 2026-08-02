@@ -154,35 +154,35 @@ class LocalShadowLedger:
         with self._lock:
             keyed_event_id = self._idempotency_index.get(resolved_key)
             if keyed_event_id is not None:
-                existing = self._events_by_id[keyed_event_id]
-                if self._same_event(existing.event, event):
+                keyed_entry = self._events_by_id[keyed_event_id]
+                if self._same_event(keyed_entry.event, event):
                     return AppendResult(
                         status=AppendStatus.IDEMPOTENT_REPLAY,
-                        event_id=existing.event.event_id,
-                        sequence=existing.sequence,
+                        event_id=keyed_entry.event.event_id,
+                        sequence=keyed_entry.sequence,
                         reason_code="IDEMPOTENCY_KEY_REPLAY",
                     )
                 return AppendResult(
                     status=AppendStatus.INTEGRITY_CONFLICT,
                     event_id=event.event_id,
-                    sequence=existing.sequence,
+                    sequence=keyed_entry.sequence,
                     reason_code="IDEMPOTENCY_KEY_CONFLICT",
                 )
 
-            existing = self._events_by_id.get(event.event_id)
-            if existing is not None:
-                if self._same_event(existing.event, event):
+            event_entry = self._events_by_id.get(event.event_id)
+            if event_entry is not None:
+                if self._same_event(event_entry.event, event):
                     self._idempotency_index[resolved_key] = event.event_id
                     return AppendResult(
                         status=AppendStatus.IDEMPOTENT_REPLAY,
                         event_id=event.event_id,
-                        sequence=existing.sequence,
+                        sequence=event_entry.sequence,
                         reason_code="EVENT_ID_REPLAY",
                     )
                 return AppendResult(
                     status=AppendStatus.INTEGRITY_CONFLICT,
                     event_id=event.event_id,
-                    sequence=existing.sequence,
+                    sequence=event_entry.sequence,
                     reason_code="EVENT_ID_CONFLICT",
                 )
 
