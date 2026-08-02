@@ -1,7 +1,7 @@
 """Read-only bridge from legacy conversation notebooks into continuity projections.
 
 The bridge consumes the existing ``ConversationConsolidator`` read surface and
-produces immutable, deterministic ``ConversationEpisode`` snapshots.  It never
+produces immutable, deterministic ``ConversationEpisode`` snapshots. It never
 calls notebook mutation methods, never appends to the neutral event ledger, and
 never upgrades notebook text into epistemically confirmed facts.
 """
@@ -109,8 +109,12 @@ def _validate_count(value: int, field_name: str) -> int:
 class ConversationEpisode:
     """Immutable Titan projection of one conversation notebook.
 
-    This object is rebuildable context evidence.  It intentionally carries no
+    This object is rebuildable context evidence. It intentionally carries no
     truth status, confirmation status, salience, advice, or action authority.
+
+    The legacy source updates its ``created_at`` field when insights are added,
+    so the bridge preserves both source timestamps without imposing lifecycle
+    ordering between ``created_at`` and ``finalized_at``.
     """
 
     episode_id: str
@@ -141,8 +145,6 @@ class ConversationEpisode:
         _canonical_datetime(self.created_at)
         if self.finalized_at is not None:
             _canonical_datetime(self.finalized_at)
-            if self.finalized_at < self.created_at:
-                raise ConversationBridgeError("finalized_at cannot precede created_at")
         expected = _stable_digest(self.identity_payload())
         if self.episode_id != expected or self.payload_hash != expected:
             raise ConversationBridgeError(
