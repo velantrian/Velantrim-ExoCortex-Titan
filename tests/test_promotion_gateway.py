@@ -30,11 +30,11 @@ class FakePromotionStore:
         fact_id: str,
         by: str = "truth_gate",
         mode: Any = None,
-    ) -> TruthGateVerdict:
+    ) -> Any:
         self.calls.append((fact_id, by, mode))
         if self.error is not None:
             raise self.error
-        return self.verdict  # type: ignore[return-value]
+        return self.verdict
 
 
 def _verdict(
@@ -157,7 +157,7 @@ def test_outcome_is_frozen_and_receipt_excludes_justification() -> None:
     )
 
     with pytest.raises(FrozenInstanceError):
-        outcome.receipt.committed = False  # type: ignore[misc]
+        setattr(outcome.receipt, "committed", False)
     assert not hasattr(outcome.receipt, "justification")
     assert not hasattr(outcome.receipt, "claim")
     assert not hasattr(outcome.receipt, "evidence_refs")
