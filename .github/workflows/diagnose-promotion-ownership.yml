@@ -1,0 +1,35 @@
+name: Diagnose promotion ownership guard
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      github.head_ref == 'agent/promotion-ownership-lock'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/promotion-ownership-lock
+          fetch-depth: 0
+
+      - name: Produce exact AST inventory
+        run: python scripts/diagnose_promotion_ownership.py
+
+      - name: Commit diagnostic inventory
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add diagnostics/promotion-ownership-actual.txt
+          git commit -m "chore(promotion): publish temporary ownership diagnostic"
+          git fetch origin agent/promotion-ownership-lock
+          git rebase origin/agent/promotion-ownership-lock
+          git push origin HEAD:agent/promotion-ownership-lock
