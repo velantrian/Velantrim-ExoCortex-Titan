@@ -115,6 +115,11 @@ class RecoveryDomainReceipt:
         }
         if values["attempted"] > values["selected"]:
             raise ErasureStartupRecoveryError("attempted cannot exceed selected")
+        unattempted = values["selected"] - values["attempted"]
+        if values["remaining_backlog"] < unattempted:
+            raise ErasureStartupRecoveryError(
+                "remaining_backlog must include every selected but unattempted item"
+            )
         terminal_accounting = (
             values["completed"]
             + values["partial"]
@@ -192,6 +197,24 @@ class StartupRecoveryReceipt:
             raise ErasureStartupRecoveryError("batch receipt must use BATCH domain")
         if not isinstance(self.stopped_by_time_budget, bool):
             raise ErasureStartupRecoveryError("stopped_by_time_budget must be bool")
+        if self.single_fact.selected > self.budget.max_single_jobs:
+            raise ErasureStartupRecoveryError(
+                "single_fact selected count exceeds max_single_jobs"
+            )
+        if self.batch.selected > self.budget.max_batches:
+            raise ErasureStartupRecoveryError(
+                "batch selected count exceeds max_batches"
+            )
+        unattempted = (
+            self.single_fact.selected
+            - self.single_fact.attempted
+            + self.batch.selected
+            - self.batch.attempted
+        )
+        if unattempted > 0 and not self.stopped_by_time_budget:
+            raise ErasureStartupRecoveryError(
+                "selected but unattempted work requires stopped_by_time_budget"
+            )
         if not isinstance(self.persisted, bool):
             raise ErasureStartupRecoveryError("persisted must be bool")
         if self.persisted:
