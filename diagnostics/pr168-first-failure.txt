@@ -1,0 +1,58 @@
+PR168 authoritative full-suite diagnostic
+PYTEST_EXIT=1
+---
+=================================== FAILURES ===================================
+_____ test_graduated_promotion_candidate_without_evidence_stays_supported ______
+tests/test_p0d_truthgate_enforcement.py:58: in test_graduated_promotion_candidate_without_evidence_stays_supported
+    assert report.errors == 0
+E   assert 1 == 0
+E    +  where 1 = PromotionReport(scanned=1, promoted={}, demoted=0, unchanged=0, errors=1, rejected_by_truthgate=0).errors
+------------------------------ Captured log call -------------------------------
+WARNING  core.truth_gate:truth_gate.py:311 TruthGate REJECT | fact_id=t1 reason=insufficient_evidence mode=BALANCED
+=============================== warnings summary ===============================
+../../../../../opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/fastapi/testclient.py:1
+  /opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+tests/test_compliance.py::test_record_of_processing_is_content_free
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_compliance.py:68: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    erasure.erase_fact("e1")  # produces a tombstone (Art. 30 erasure record)
+
+tests/test_compliance.py::test_record_of_processing_reports_corrected_subject
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_compliance.py:92: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    erasure.erase_fact("e2", actor="api:deadbeef")
+
+tests/test_core_imports.py::test_core_module_imports[core.backends.kuzu_graph]
+  /opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/importlib/__init__.py:126: DeprecationWarning: core.backends.kuzu_graph устарел: Kuzu заархивирован (окт. 2025). Используйте LadybugGraphStore или STORAGE_BACKEND=ladybug.
+    return _bootstrap._gcd_import(name[level:], package, level)
+
+tests/test_erasure.py::test_erase_removes_fact_and_writes_tombstone
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_erasure.py:40: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    receipt = erasure.erase_fact("f1", reason="dsr", actor="tester")
+
+tests/test_erasure.py::test_erase_is_idempotent
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_erasure.py:55: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    erasure.erase_fact("f2")
+
+tests/test_erasure.py::test_erase_is_idempotent
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_erasure.py:56: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    again = erasure.erase_fact("f2")
+
+tests/test_erasure.py::test_erase_cascades_to_relations
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_erasure.py:76: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    erasure.erase_fact("a")
+
+tests/test_erasure.py::test_erase_removes_from_fts_index
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_erasure.py:90: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    erasure.erase_fact("f_fts")
+
+tests/test_erasure.py::test_ring_zero_not_erasable
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_erasure.py:99: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    erasure.erase_fact("RING_ZERO")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_p0d_truthgate_enforcement.py::test_graduated_promotion_candidate_without_evidence_stays_supported - assert 1 == 0
+ +  where 1 = PromotionReport(scanned=1, promoted={}, demoted=0, unchanged=0, errors=1, rejected_by_truthgate=0).errors
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+= 1 failed, 1780 passed, 17 skipped, 1 xfailed, 10 warnings in 127.28s (0:02:07) =
