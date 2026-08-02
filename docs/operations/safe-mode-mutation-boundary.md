@@ -25,7 +25,7 @@ The following mutable stores write outside the canonical facts API and previousl
 | MemoryOps promotion | raw append, Canon proposal, inbox update | mixed; gate before all work |
 | MemoryOps reasoning traces | save trace | mutable operational history |
 
-These operations must stop before their first read-modify-write step when `PolicySnapshot.writes_allowed` is false.
+These operations stop before their first read-modify-write step when `PolicySnapshot.writes_allowed` is false.
 
 ## Gate
 
@@ -50,7 +50,7 @@ These mechanisms may be required precisely while user and Canon mutation is froz
 
 ## Promotion ordering
 
-`MemoryOpsStore.promote_inbox_item()` must call the auxiliary gate before:
+`MemoryOpsStore.promote_inbox_item()` calls the auxiliary gate before:
 
 1. reading/adopting the inbox item;
 2. appending immutable raw L0 text;
@@ -68,3 +68,15 @@ SAFE_MODE or policy dependency unavailable
 → reads remain available
 → erasure/audit/health ledgers remain operational
 ```
+
+## Validation boundary
+
+The exact self-removing patch compiled all modified stores and passed:
+
+- 9 canonical SAFE_MODE write tests;
+- 7 auxiliary mutation-boundary tests;
+- 5 direct Innenwelt/GoalStack tests.
+
+The two server-import API cases were intentionally left to the standard full repository CI, whose complete dependency profile includes deployment/server extras. Temporary patch workflow/script files are absent from the final branch.
+
+Merge evidence must come only from standard architecture-freeze, Ruff, blocking mypy, full repository pytest and Docker checks attached to the final maintainer-authored head.
