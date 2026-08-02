@@ -17,16 +17,20 @@ This separation prevents the aggregate unresolved metric from double-counting th
 
 ## Derived observation
 
-The startup receipt derives its own Reality Lock observation:
+A measured startup receipt derives its own Reality Lock observation:
 
 - no partial, failed or backlog items → `OBSERVED_ZERO`;
 - any partial, failed or backlog item → `OBSERVED_NONZERO`;
 - selected-but-unattempted work requires an explicit time-budget stop;
 - callers cannot inject a more favorable observation result.
 
+If recovery cannot produce measured domain outcomes because its observer, jobs schema or database fails first, callers must emit `StartupRecoveryFailureReceipt`. It derives `OBSERVER_FAILED`, carries only a typed safe error code and cannot pretend that zero violations were observed.
+
 ## Persistence honesty
 
 The first increment does not persist receipts. `persisted=True` is valid only with a non-empty `storage_ref`; a non-persisted receipt cannot claim one. Later durable-ledger wiring must set both from the actual committed record rather than configuration intent.
+
+The same persistence rule applies to measured and observer-failure receipts.
 
 ## Runtime boundary
 
