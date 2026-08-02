@@ -37,6 +37,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from core.promotion_gateway import PromotionGateway, PromotionRequest
+
 # Доверенные источники (I98): им можно верить быстрее.
 DEFAULT_TRUSTED_SOURCES = frozenset({"ring_zero", "domain_seed", "system_axiom"})
 
@@ -225,6 +227,7 @@ def run_graduated_promotion(
     cfg = cfg or PromotionConfig.from_env()
     trusted = {s.strip().lower() for s in trusted_sources}
     report = PromotionReport()
+    gateway = PromotionGateway(store)
 
     try:
         all_facts = store.get_all_facts()
@@ -263,7 +266,13 @@ def run_graduated_promotion(
                 # candidate that clears this module's bar but not
                 # TruthGate's (e.g. too few evidence_refs for its
                 # CognitiveMode) stays at Supported, not silently promoted.
-                ok = store.validate_and_promote(fid, by="graduated_promotion").passed
+                outcome = gateway.promote(
+                    PromotionRequest(
+                        fact_id=str(fid),
+                        requested_by="graduated_promotion",
+                    )
+                )
+                ok = outcome.receipt.passed
                 if not ok:
                     report.rejected_by_truthgate += 1
             else:
