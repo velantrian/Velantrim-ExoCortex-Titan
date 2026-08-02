@@ -236,7 +236,7 @@ class ReaderOperatorDecisionRecord:
         payload: dict[str, object] = {
             "schema_version": self.schema_version,
             "source_id": self.source.source_id,
-            "source": self.source,
+            "source": self.source.identity_payload(),
             "evidence_id": self.evidence_id,
             "benchmark_verification_id": self.benchmark_verification_id,
             "retention_manifest_id": self.retention_manifest_id,
@@ -399,7 +399,7 @@ class ReaderOperatorDecisionRevocation:
             "decision_id": self.decision_id,
             "decision_signature_id": self.decision_signature_id,
             "source_id": self.source.source_id,
-            "source": self.source,
+            "source": self.source.identity_payload(),
         }
         if include_id:
             payload["revocation_id"] = self.revocation_id
