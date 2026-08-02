@@ -17,6 +17,8 @@ The adapter performs two bounded queries using the same predicates as the coordi
 
 Both streams are ordered by `created_at, batch_id`, deduplicated and interleaved. A stale-terminal candidate receives the first slot because successful `_report()` reconciliation durably moves it into the ordinary category; when ordinary work also exists, it receives the next slot. The combined result never exceeds `max_batches`.
 
+This is a deterministic, category-aware startup policy, not a claim of starvation freedom for every possible budget. With `max_batches=1` and both categories continuously non-empty, a stateless selector cannot prove progress for both categories. The default startup budget is larger. A durable cross-run fairness cursor, if operational evidence later requires one, needs its own reviewed state and rollback contract.
+
 This policy bounds startup latency without applying a hidden global limit to the existing exhaustive operator API.
 
 ## Existing ownership reused
@@ -59,6 +61,7 @@ This increment does not:
 - assemble the aggregate startup receipt;
 - modify FastAPI lifespan;
 - register a scheduler or background task;
+- add a durable fairness cursor;
 - change erasure, compliance, lease or fencing policy;
 - write Canon or affect user-visible output;
 - persist startup recovery evidence.
