@@ -13,6 +13,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -35,6 +37,9 @@ jobs:
 
       - name: Repo hygiene guard (no tracked runtime/test-cache artifacts)
         run: python scripts/check_no_tracked_artifacts.py
+
+      - name: Architecture freeze guard (ADR required for new authority)
+        run: python scripts/check_architecture_freeze.py
 
       - name: Ruff check (lint)
         run: ruff check core/ --output-format=github
