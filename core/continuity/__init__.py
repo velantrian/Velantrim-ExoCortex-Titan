@@ -1,5 +1,22 @@
 """Continuity foundation for Titan Milestone 1."""
 
+from .context_pack import (
+    CONTEXT_PACK_SCHEMA_VERSION,
+    CONTEXT_POLICY_VERSION,
+    RECEIPT_SCHEMA_VERSION,
+    ContinuityAssemblyResult,
+    ContinuityContextAssembler,
+    ContinuityContextError,
+    ContinuityContextItem,
+    ContinuityContextPack,
+    ContinuityDecision,
+    ContinuityDecisionSubject,
+    ContinuityDisposition,
+    ContinuityItemKind,
+    ContinuityReason,
+    ContinuityReceipt,
+    ContinuityUncertainty,
+)
 from .contracts import (
     CONTINUITY_SCHEMA_VERSION,
     ActorKind,
@@ -53,9 +70,12 @@ from .thread_weaver import (
 )
 
 __all__ = [
+    "CONTEXT_PACK_SCHEMA_VERSION",
+    "CONTEXT_POLICY_VERSION",
     "CONTINUITY_SCHEMA_VERSION",
     "CONTINUITY_THREAD_SCHEMA_VERSION",
     "CONVERSATION_EPISODE_SCHEMA_VERSION",
+    "RECEIPT_SCHEMA_VERSION",
     "THREAD_LINK_SCHEMA_VERSION",
     "UNRESOLVED_THREAD_REFERENCE_SCHEMA_VERSION",
     "ActorKind",
@@ -65,8 +85,20 @@ __all__ = [
     "AssertionRecord",
     "AssertionRelation",
     "AssertionRelationType",
+    "ContinuityAssemblyResult",
+    "ContinuityContextAssembler",
+    "ContinuityContextError",
+    "ContinuityContextItem",
+    "ContinuityContextPack",
     "ContinuityContractError",
+    "ContinuityDecision",
+    "ContinuityDecisionSubject",
+    "ContinuityDisposition",
+    "ContinuityItemKind",
+    "ContinuityReason",
+    "ContinuityReceipt",
     "ContinuityThread",
+    "ContinuityUncertainty",
     "ConversationBridge",
     "ConversationBridgeError",
     "ConversationEpisode",
