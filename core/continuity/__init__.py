@@ -1,4 +1,4 @@
-"""Continuity contract foundation for Titan Milestone 1."""
+"""Continuity foundation for Titan Milestone 1."""
 
 from .contracts import (
     CONTINUITY_SCHEMA_VERSION,
@@ -18,21 +18,43 @@ from .contracts import (
     SubjectRef,
     Visibility,
 )
+from .event_port import (
+    AppendResult,
+    AppendStatus,
+    EventPage,
+    IntegrityResult,
+    IntegrityStatus,
+    LedgerEntry,
+    LedgerPortError,
+    LocalShadowLedger,
+    NeutralEventPort,
+    StreamPosition,
+)
 
 __all__ = [
     "CONTINUITY_SCHEMA_VERSION",
     "ActorKind",
     "ActorRef",
+    "AppendResult",
+    "AppendStatus",
     "AssertionRecord",
     "AssertionRelation",
     "AssertionRelationType",
     "ContinuityContractError",
+    "EventPage",
+    "IntegrityResult",
+    "IntegrityStatus",
     "InteractionEvent",
     "InteractionEventType",
     "JsonScalar",
+    "LedgerEntry",
+    "LedgerPortError",
+    "LocalShadowLedger",
+    "NeutralEventPort",
     "OriginType",
     "SensitivityCategory",
     "SensitivityLevel",
+    "StreamPosition",
     "SubjectKind",
     "SubjectRef",
     "Visibility",
