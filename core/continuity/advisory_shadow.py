@@ -750,7 +750,7 @@ class AdvisoryShadowGate:
             action = AdvisoryAction.REMIND
             text = f"Ранее была подтверждена цель: «{projection.title}»."
         elif request.allow_confirmation_questions:
-            action = AdvisoryAction.ASK_CONFIRMIRMATION
+            action = AdvisoryAction.ASK_CONFIRMATION
             text = f"Цель «{projection.title}» всё ещё актуальна?"
         else:
             return None
