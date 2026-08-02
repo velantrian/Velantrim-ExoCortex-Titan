@@ -121,8 +121,8 @@ from core.memory import (
     store_facts_batch,
     store_raw_text,
     transition_esm,
-    validate_and_promote,
 )
+from core.promotion_gateway import PromotionGateway, PromotionRequest
 from core.mhi import MHICalculator, MHIStatus, check_mhi
 from core.pipeline import run as pipeline_run
 
@@ -148,6 +148,7 @@ except Exception as exc:
 
 # ─── Глобальные объекты ───────────────────────────────────────────────────────
 _store: SQLiteGraphStore = _GLOBAL_STORE
+_promotion_gateway = PromotionGateway(_store)
 _sleep_worker: Optional["SleepTimeWorker"] = None
 _startup_time = time.time()
 
@@ -2671,13 +2672,16 @@ async def transition_fact(
     try:
         if req.new_state == "Validated":
             # SECURITY (I68): единственный API-путь в 'Validated' — обязан
-            # пройти TruthGate. См. core.memory.validate_and_promote().
-            verdict = await asyncio.to_thread(
-                validate_and_promote, fact_id, actor_id
+            # пройти PromotionGateway → TruthGate + CAS. Gateway не владеет
+            # порогами и не дублирует policy.
+            outcome = await asyncio.to_thread(
+                _promotion_gateway.promote,
+                PromotionRequest(fact_id=fact_id, requested_by=actor_id),
             )
-            if verdict.reason == "not_found":
+            verdict = outcome.verdict
+            if verdict.reason_code == "not_found":
                 raise HTTPException(status_code=404, detail=verdict.justification)
-            if verdict.reason == "concurrent_modification":
+            if verdict.reason_code == "concurrent_modification":
                 # SECURITY (TOCTOU): факт изменился между оценкой TruthGate и
                 # записью — не 422 (truth_gate_rejected), т.к. это не был
                 # ложный вердикт, а гонка. Клиент должен просто повторить.
@@ -2685,7 +2689,7 @@ async def transition_fact(
                     status_code=409,
                     detail={
                         "error": "concurrent_modification",
-                        "reason": verdict.reason,
+                        "reason": verdict.reason_code,
                         "justification": verdict.justification,
                     },
                 )
@@ -2694,7 +2698,7 @@ async def transition_fact(
                     status_code=422,
                     detail={
                         "error": "truth_gate_rejected",
-                        "reason": verdict.reason,
+                        "reason": verdict.reason_code,
                         "justification": verdict.justification,
                         "mode": verdict.mode.value,
                         "confidence": verdict.confidence,
