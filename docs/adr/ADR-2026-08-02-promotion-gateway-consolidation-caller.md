@@ -59,7 +59,7 @@ checksum refresh or retries.
 
 ## Validation
 
-Focused tests must prove:
+The self-removing exact-patch run completed successfully and proved:
 
 - a qualifying Validated candidate makes one gateway request;
 - the engine does not directly call `validate_and_promote()`;
@@ -68,8 +68,11 @@ Focused tests must prove:
 - failure to reach `Supported` does not call the gateway;
 - existing P0-D real-store rejection and later-evidence retry tests remain green;
 - issue #26 checksum accounting tests remain green;
-- architecture-freeze, Ruff, blocking mypy, full pytest and Docker pass on the final
-  clean head.
+- PromotionGateway reload-safe and malformed-contract suites remain green.
+
+Temporary workflow/script files removed themselves and are absent from the final
+three-file diff. Architecture-freeze, Ruff, blocking mypy, full pytest and Docker on the
+final maintainer-authored head remain the merge evidence.
 
 ## Scope boundary
 
