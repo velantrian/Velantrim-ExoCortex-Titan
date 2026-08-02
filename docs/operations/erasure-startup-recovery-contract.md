@@ -44,3 +44,7 @@ This contract does not:
 - register a scheduler or background task;
 - change erasure/tombstone policy;
 - write Canon or affect user-visible output.
+
+## Validation gate
+
+Only CI and Docker runs attached to the final maintainer-authored PR head are accepted. Superseded or `action_required` runs from temporary one-shot patch commits are not merge evidence.
