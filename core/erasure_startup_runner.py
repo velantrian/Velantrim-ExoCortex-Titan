@@ -42,6 +42,17 @@ def _default_run_id() -> str:
     return f"esr_{uuid.uuid4().hex[:20]}"
 
 
+def _safe_run_id(run_id_factory: RunIdFactory) -> tuple[str, str | None]:
+    try:
+        run_id = str(run_id_factory()).strip()
+        if not run_id:
+            raise ValueError("run_id must be non-empty")
+        return run_id, None
+    except Exception:  # noqa: BLE001 - converted to a typed, content-free code
+        logger.exception("startup erasure recovery run-id generation failed")
+        return f"esr_identity_failure_{uuid.uuid4().hex[:12]}", "startup_identity_failed"
+
+
 def _utc_iso(value: datetime) -> str:
     if not isinstance(value, datetime):
         raise ValueError("wall clock must return datetime")
@@ -113,15 +124,16 @@ def run_startup_recovery(
     if not isinstance(budget, StartupRecoveryBudget):
         raise TypeError("budget must be StartupRecoveryBudget")
 
-    run_id = str(run_id_factory()).strip()
     started_at, wall_clock_error = _safe_wall_time(now_utc)
-    if wall_clock_error is not None:
+    run_id, run_id_error = _safe_run_id(run_id_factory)
+    startup_error = wall_clock_error or run_id_error
+    if startup_error is not None:
         return StartupRecoveryFailureReceipt(
-            run_id=run_id or "esr_wall_clock_failure",
+            run_id=run_id,
             started_at_utc=started_at,
             failed_at_utc=started_at,
             budget=budget,
-            error_code=wall_clock_error,
+            error_code=startup_error,
         )
 
     phase = "startup_clock"
@@ -153,11 +165,12 @@ def run_startup_recovery(
             batch_receipt = _empty_domain_receipt(RecoveryDomain.BATCH)
             batch_stopped = False
 
-        phase = "aggregate"
+        phase = "completion_clock"
         completed_at, completion_clock_error = _safe_wall_time(now_utc)
         if completion_clock_error is not None:
             raise ValueError(completion_clock_error)
 
+        phase = "aggregate"
         return StartupRecoveryReceipt(
             run_id=run_id,
             started_at_utc=started_at,
@@ -173,7 +186,7 @@ def run_startup_recovery(
         logger.exception("startup erasure recovery failed during phase=%s", phase)
         failed_at, _ = _safe_wall_time(now_utc)
         return StartupRecoveryFailureReceipt(
-            run_id=run_id or "esr_startup_failure",
+            run_id=run_id,
             started_at_utc=started_at,
             failed_at_utc=failed_at,
             budget=budget,
