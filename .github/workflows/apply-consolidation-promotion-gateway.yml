@@ -1,0 +1,72 @@
+name: One-shot migrate ConsolidationEngine through gateway
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: consolidation-promotion-gateway-${{ github.head_ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      github.head_ref == 'agent/promotion-gateway-consolidation-migration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/promotion-gateway-consolidation-migration
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install focused dependencies
+        run: pip install -e ".[dev,embeddings,retrieval]"
+
+      - name: Apply exact ConsolidationEngine migration
+        run: |
+          python scripts/apply_consolidation_promotion_gateway.py
+          python -m py_compile \
+            core/promotion_gateway.py \
+            core/consolidation_engine.py \
+            tests/test_consolidation_gateway_wiring.py \
+            tests/test_p0d_truthgate_enforcement.py
+
+      - name: Run focused consolidation and promotion suites
+        run: |
+          python -m pytest -q \
+            tests/test_consolidation_gateway_wiring.py \
+            tests/test_p0d_truthgate_enforcement.py \
+            tests/test_consolidation_accounting.py \
+            tests/test_promotion_gateway.py \
+            tests/test_promotion_gateway_reload_contract.py
+
+      - name: Remove one-shot machinery
+        run: |
+          rm .github/workflows/apply-consolidation-promotion-gateway.yml
+          rm scripts/apply_consolidation_promotion_gateway.py
+
+      - name: Commit final ConsolidationEngine migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            core/consolidation_engine.py \
+            tests/test_consolidation_gateway_wiring.py \
+            docs/adr/ADR-2026-08-02-promotion-gateway-consolidation-caller.md \
+            .github/workflows/apply-consolidation-promotion-gateway.yml \
+            scripts/apply_consolidation_promotion_gateway.py
+          git commit -m "refactor(promotion): route consolidation through gateway"
+          git fetch origin agent/promotion-gateway-consolidation-migration
+          git rebase origin/agent/promotion-gateway-consolidation-migration
+          git push origin HEAD:agent/promotion-gateway-consolidation-migration
