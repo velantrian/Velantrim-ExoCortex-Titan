@@ -1,6 +1,6 @@
 # Continuity Milestone 1 — Stack Status
 
-**Current `main`:** `0d07bc9f74a4e8e0bf4a0d615a0bb40ec529f5e7`  
+**Verified pre-merge baseline:** `main@0d07bc9f74a4e8e0bf4a0d615a0bb40ec529f5e7`  
 **Stack state:** 15 open draft PRs · not merged to `main` · no `/query` wiring  
 **Required posture:** shadow-only until scope, privacy, durable ledger, replay and failure-isolation gates pass.
 
