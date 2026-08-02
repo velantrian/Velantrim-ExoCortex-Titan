@@ -165,6 +165,9 @@ class MemoryOpsStore:
         metadata: dict[str, Any] | None = None,
         source_id: str | None = None,
     ) -> dict[str, Any]:
+        from core.mutation_gate import ensure_user_mutations_allowed
+
+        ensure_user_mutations_allowed("memory_ops.register_source")
         if not source_type.strip():
             raise ValueError("source_type is required")
         if not label.strip():
@@ -258,6 +261,9 @@ class MemoryOpsStore:
         raw_id: str | None = None,
         inbox_id: str | None = None,
     ) -> dict[str, Any]:
+        from core.mutation_gate import ensure_user_mutations_allowed
+
+        ensure_user_mutations_allowed("memory_ops.enqueue_fact")
         if not claim.strip():
             raise ValueError("claim is required")
         confidence = _validate_confidence(confidence, "memory_ops.enqueue_fact")
@@ -344,6 +350,9 @@ class MemoryOpsStore:
         *,
         reason: str = "",
     ) -> dict[str, Any] | None:
+        from core.mutation_gate import ensure_user_mutations_allowed
+
+        ensure_user_mutations_allowed("memory_ops.set_inbox_status")
         self._validate_status(status)
         now = _now()
         with self._db() as conn:
@@ -373,6 +382,9 @@ class MemoryOpsStore:
         fact_id: str | None = None,
         epistemic_state: str = "Observed",
     ) -> dict[str, Any]:
+        from core.mutation_gate import ensure_user_mutations_allowed
+
+        ensure_user_mutations_allowed("memory_ops.promote_inbox_item")
         item = self.get_inbox_item(inbox_id)
         if not item:
             raise ValueError(f"inbox item not found: {inbox_id}")
@@ -498,6 +510,9 @@ class MemoryOpsStore:
         metadata: dict[str, Any] | None = None,
         trace_id: str | None = None,
     ) -> dict[str, Any]:
+        from core.mutation_gate import ensure_user_mutations_allowed
+
+        ensure_user_mutations_allowed("memory_ops.save_trace")
         if not query.strip():
             raise ValueError("query is required")
         tid = trace_id or f"trace_{uuid.uuid4().hex[:12]}"

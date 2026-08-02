@@ -74,6 +74,9 @@ class ConsoleNotesStore:
         title: str = "",
         tags: list[str] | None = None,
     ) -> dict[str, Any]:
+        from core.mutation_gate import ensure_user_mutations_allowed
+
+        ensure_user_mutations_allowed("console_notes.create")
         now = int(time.time() * 1000)
         clean_content = " ".join((content or "").split())
         clean_title = " ".join((title or "").split()) or clean_content[:60] or "Note"
@@ -95,6 +98,9 @@ class ConsoleNotesStore:
         content: str | None = None,
         tags: list[str] | None = None,
     ) -> dict[str, Any] | None:
+        from core.mutation_gate import ensure_user_mutations_allowed
+
+        ensure_user_mutations_allowed("console_notes.update")
         note = self.get_note(note_id)
         if not note:
             return None
@@ -114,6 +120,9 @@ class ConsoleNotesStore:
         return self.get_note(note_id)
 
     def delete_note(self, note_id: str) -> bool:
+        from core.mutation_gate import ensure_user_mutations_allowed
+
+        ensure_user_mutations_allowed("console_notes.delete")
         with self._connect() as conn:
             cur = conn.execute("DELETE FROM console_notes WHERE note_id = ?", (note_id,))
             return cur.rowcount > 0

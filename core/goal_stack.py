@@ -77,6 +77,9 @@ class GoalStack:
         keywords: list[str] | None = None,
         goal_id: str | None = None,
     ) -> Goal:
+        from core.mutation_gate import ensure_user_mutations_allowed
+
+        ensure_user_mutations_allowed("goal_stack.create")
         gid = goal_id or f"goal_{uuid.uuid4().hex[:12]}"
         now = _now()
         kw = json.dumps(keywords or [], ensure_ascii=False)
@@ -140,6 +143,9 @@ class GoalStack:
         return self._row_to_goal(row) if row else None
 
     def update_status(self, goal_id: str, status: str) -> Goal | None:
+        from core.mutation_gate import ensure_user_mutations_allowed
+
+        ensure_user_mutations_allowed("goal_stack.update_status")
         allowed = {"active", "done", "cancelled"}
         if status not in allowed:
             raise ValueError(f"status должен быть одним из: {allowed}")
