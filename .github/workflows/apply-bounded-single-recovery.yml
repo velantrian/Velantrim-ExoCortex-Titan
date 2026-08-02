@@ -55,3 +55,5 @@ jobs:
                   scripts/apply_bounded_single_recovery.py
           git commit -m "feat(erasure): add bounded single-fact recovery"
           git push origin HEAD:agent/erasure-bounded-single-recovery
+
+# Trigger commit: workflow exists on the branch before this push.
