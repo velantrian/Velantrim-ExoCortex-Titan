@@ -51,6 +51,31 @@ must be attributed to `requested_by`, because it claims mutation semantics for t
 caller. Any other actor value fails closed. This preserves rejection accounting
 without allowing an ambiguous actor to claim a commit.
 
+## Reload-safe verdict contract
+
+The full repository suite reloads selected `core` modules while testing import and
+configuration isolation. That exposed a Python class-identity hazard: a verdict
+created by a reloaded `core.truth_gate.TruthGateVerdict` has the correct fields and
+semantics but is not an `isinstance` of the class object imported by
+`core.promotion_gateway` before the reload.
+
+The gateway therefore validates the verdict structurally rather than trusting
+concrete class identity. This is not permissive duck typing: the gateway requires
+and validates every decision-bearing field:
+
+- `passed`, `fact_id`, `reason`, `justification`;
+- `by`, `mode`, `confidence`, `evidence_count`;
+- `contradictions`, `checked_at`.
+
+It then enforces actor attribution, target fact identity, stable cognitive-mode
+value, finite confidence bounds, evidence-count type, contradiction-reference type,
+known commit semantics and timestamp presence. Missing or malformed fields fail
+closed with `PromotionContractError`.
+
+The immutable outcome normalizes the mode to the request's local `CognitiveMode`
+instance. This prevents a reloaded enum identity from escaping into receipts while
+preserving the stable mode value that the store evaluated.
+
 ## Preserved behavior
 
 - `recommend_transition()` thresholds are unchanged;
@@ -80,13 +105,15 @@ Those require separate characterization and PRs.
 
 ## Validation
 
-The exact migration content passed 51 focused tests, including:
+Focused validation covers:
 
 - no direct store validation call from graduated promotion;
 - exactly one gateway request for a qualifying candidate;
 - accepted and rejected accounting unchanged;
 - rejected candidates remain retryable after evidence is added;
 - request/decision actor separation;
+- malformed verdicts fail closed;
+- a structurally valid verdict from a different/reloaded class identity is accepted;
 - existing real-store ladder and TruthGate enforcement tests.
 
 The clean current-main PR must additionally pass architecture-freeze, Ruff,
