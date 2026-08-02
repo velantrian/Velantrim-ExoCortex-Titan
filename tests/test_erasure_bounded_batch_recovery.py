@@ -11,7 +11,6 @@ from core.erasure_batch_coordinator import (
     COMPLETE,
     CRITICAL_COMPLIANCE_VIOLATION,
     FAILED,
-    PENDING,
     BatchErasureCoordinator,
 )
 from core.erasure_bounded_batch_recovery import (
@@ -85,7 +84,9 @@ def test_bounded_batch_recovery_processes_selected_prefix(rig) -> None:
     remaining = batch.resume_incomplete_batches()
     assert len(remaining) == 1
     assert remaining[0]["outcome"] == COMPLETE
-    assert {batch.get_batch_report(batch_id)["outcome"] for batch_id in ids} == {
+    reports = [batch.get_batch_report(batch_id) for batch_id in ids]
+    assert all(report is not None for report in reports)
+    assert {report["outcome"] for report in reports if report is not None} == {
         COMPLETE
     }
 
@@ -128,7 +129,7 @@ def test_deadline_stops_between_batches(rig) -> None:
     assert stopped is True
 
 
-def test_stale_terminal_candidate_gets_fair_first_slot(rig) -> None:
+def test_stale_terminal_candidate_gets_first_slot_and_self_heals(rig) -> None:
     batch, store = rig
     ordinary_id = _seed_batch(batch, store, "ordinary")
     stale_id = _seed_batch(batch, store, "stale")
@@ -143,9 +144,23 @@ def test_stale_terminal_candidate_gets_fair_first_slot(rig) -> None:
         )
 
     selected = _select_batch_candidates_bounded(batch, 1)
-
     assert selected == [(stale_id, True)]
-    assert ordinary_id != stale_id
+
+    receipt, stopped = resume_batch_jobs_bounded(
+        max_batches=1,
+        deadline_monotonic=1.0,
+        monotonic=lambda: 0.0,
+        coordinator=batch,
+    )
+
+    assert receipt.selected == 1
+    assert receipt.completed == 1
+    assert receipt.remaining_backlog == 1
+    assert stopped is False
+    stale_report = batch.get_batch_report(stale_id)
+    ordinary_report = batch.get_batch_report(ordinary_id)
+    assert stale_report is not None and stale_report["outcome"] == COMPLETE
+    assert ordinary_report is not None and ordinary_report["outcome"] != COMPLETE
 
 
 def test_lost_batch_claim_is_skipped_and_remains_backlog(
@@ -276,7 +291,8 @@ def test_database_error_propagates_to_aggregate_failure_receipt(
 
 
 def test_bounds_and_clock_validation_are_fail_closed(rig) -> None:
-    batch, _ = rig
+    batch, store = rig
+    _seed_batch(batch, store, "clock")
     with pytest.raises(ValueError, match="non-negative integer"):
         resume_batch_jobs_bounded(
             max_batches=True,
@@ -287,5 +303,12 @@ def test_bounds_and_clock_validation_are_fail_closed(rig) -> None:
         resume_batch_jobs_bounded(
             max_batches=1,
             deadline_monotonic=float("nan"),
+            coordinator=batch,
+        )
+    with pytest.raises(ValueError, match="monotonic clock result"):
+        resume_batch_jobs_bounded(
+            max_batches=1,
+            deadline_monotonic=1.0,
+            monotonic=lambda: float("nan"),
             coordinator=batch,
         )
