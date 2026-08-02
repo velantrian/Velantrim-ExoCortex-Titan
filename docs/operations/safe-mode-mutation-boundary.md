@@ -77,6 +77,6 @@ The exact self-removing patch compiled all modified stores and passed:
 - 7 auxiliary mutation-boundary tests;
 - 5 direct Innenwelt/GoalStack tests.
 
-The two server-import API cases were intentionally left to the standard full repository CI, whose complete dependency profile includes deployment/server extras. Temporary patch workflow/script files are absent from the final branch.
+The two server-import API cases are covered by standard full repository CI, whose complete dependency profile includes deployment/server extras. Temporary patch workflow/script files are absent from the final branch.
 
-Merge evidence must come only from standard architecture-freeze, Ruff, blocking mypy, full repository pytest and Docker checks attached to the final maintainer-authored head.
+The final maintainer-authored head was emitted after the TruthPolicy `/query` hardening reached `main`, so standard CI and Docker validate this boundary against the current combined safety baseline.
