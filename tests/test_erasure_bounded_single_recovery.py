@@ -7,6 +7,7 @@ import sqlite3
 import pytest
 
 from core.embedding_store import EmbeddingStore
+from core.erasure_bounded_recovery import resume_single_fact_jobs_bounded
 from core.erasure_coordinator import COMPLETE, FAILED, ErasureCoordinator
 from core.erasure_startup_recovery import RecoveryDomain
 from core.memory import make_store
@@ -50,10 +51,11 @@ def test_bounded_recovery_processes_only_selected_prefix(rig) -> None:
     for fact_id in fact_ids:
         _seed_pending(coordinator, store, fact_id)
 
-    receipt, stopped = coordinator.resume_incomplete_jobs_bounded(
+    receipt, stopped = resume_single_fact_jobs_bounded(
         max_jobs=2,
         deadline_monotonic=1.0,
         monotonic=lambda: 0.0,
+        coordinator=coordinator,
     )
 
     assert receipt.domain is RecoveryDomain.SINGLE_FACT
@@ -77,10 +79,11 @@ def test_expired_deadline_selects_but_attempts_nothing(rig) -> None:
     _seed_pending(coordinator, store, "deadline-a")
     _seed_pending(coordinator, store, "deadline-b")
 
-    receipt, stopped = coordinator.resume_incomplete_jobs_bounded(
+    receipt, stopped = resume_single_fact_jobs_bounded(
         max_jobs=2,
         deadline_monotonic=1.0,
         monotonic=lambda: 1.0,
+        coordinator=coordinator,
     )
 
     assert receipt.selected == 2
@@ -95,10 +98,11 @@ def test_deadline_stops_between_jobs_and_keeps_unattempted_backlog(rig) -> None:
     _seed_pending(coordinator, store, "between-b")
     readings = iter((0.0, 2.0))
 
-    receipt, stopped = coordinator.resume_incomplete_jobs_bounded(
+    receipt, stopped = resume_single_fact_jobs_bounded(
         max_jobs=2,
         deadline_monotonic=1.0,
         monotonic=lambda: next(readings),
+        coordinator=coordinator,
     )
 
     assert receipt.selected == 2
@@ -123,10 +127,11 @@ def test_failed_report_is_counted_once_not_duplicated_as_backlog(
         },
     )
 
-    receipt, stopped = coordinator.resume_incomplete_jobs_bounded(
+    receipt, stopped = resume_single_fact_jobs_bounded(
         max_jobs=1,
         deadline_monotonic=1.0,
         monotonic=lambda: 0.0,
+        coordinator=coordinator,
     )
 
     assert receipt.attempted == 1
@@ -147,10 +152,11 @@ def test_lost_claim_is_skipped_and_remains_backlog(
         lambda job_id, *, wait_if_running: None,
     )
 
-    receipt, stopped = coordinator.resume_incomplete_jobs_bounded(
+    receipt, stopped = resume_single_fact_jobs_bounded(
         max_jobs=1,
         deadline_monotonic=1.0,
         monotonic=lambda: 0.0,
+        coordinator=coordinator,
     )
 
     assert receipt.attempted == 1
@@ -171,22 +177,54 @@ def test_unexpected_database_error_propagates_to_future_failure_receipt(
     monkeypatch.setattr(coordinator, "_run_job", _raise)
 
     with pytest.raises(sqlite3.DatabaseError, match="schema unavailable"):
-        coordinator.resume_incomplete_jobs_bounded(
+        resume_single_fact_jobs_bounded(
             max_jobs=1,
             deadline_monotonic=1.0,
             monotonic=lambda: 0.0,
+            coordinator=coordinator,
         )
 
 
-def test_max_jobs_validation_is_fail_closed(rig) -> None:
+def test_unknown_outcome_propagates_as_contract_failure(
+    rig, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    coordinator, store = rig
+    _seed_pending(coordinator, store, "unknown-outcome")
+    monkeypatch.setattr(
+        coordinator,
+        "_run_job",
+        lambda job_id, *, wait_if_running: {
+            "job_id": job_id,
+            "outcome": "UNKNOWN_NEW_STATE",
+        },
+    )
+
+    with pytest.raises(ValueError, match="unsupported single-fact recovery outcome"):
+        resume_single_fact_jobs_bounded(
+            max_jobs=1,
+            deadline_monotonic=1.0,
+            monotonic=lambda: 0.0,
+            coordinator=coordinator,
+        )
+
+
+def test_bounds_validation_is_fail_closed(rig) -> None:
     coordinator, _ = rig
     with pytest.raises(ValueError, match="non-negative integer"):
-        coordinator.resume_incomplete_jobs_bounded(
+        resume_single_fact_jobs_bounded(
             max_jobs=True,
             deadline_monotonic=1.0,
+            coordinator=coordinator,
         )
     with pytest.raises(ValueError, match="non-negative integer"):
-        coordinator.resume_incomplete_jobs_bounded(
+        resume_single_fact_jobs_bounded(
             max_jobs=-1,
             deadline_monotonic=1.0,
+            coordinator=coordinator,
+        )
+    with pytest.raises(ValueError, match="finite number"):
+        resume_single_fact_jobs_bounded(
+            max_jobs=1,
+            deadline_monotonic=float("nan"),
+            coordinator=coordinator,
         )
