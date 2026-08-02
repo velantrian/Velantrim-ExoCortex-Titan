@@ -109,10 +109,16 @@ class PromotionRequest:
 
 @dataclass(frozen=True, slots=True)
 class PromotionVerdictSnapshot:
-    """Immutable snapshot of safe, decision-relevant verdict fields."""
+    """Immutable in-process verdict snapshot for the immediate caller.
+
+    ``justification`` is preserved only here to maintain existing API/tool error
+    contracts. It is deliberately absent from :class:`PromotionReceipt` and must not
+    be persisted by the future transactional outbox.
+    """
 
     passed: bool
     reason_code: str
+    justification: str
     requested_by: str
     decided_by: str
     mode: CognitiveMode
@@ -143,8 +149,9 @@ class PromotionReceipt:
 class PromotionOutcome:
     """Gateway result for an internal caller.
 
-    ``fact_id`` remains available to the caller, while the replayable receipt
-    uses only ``fact_ref``. The receipt cannot reconstruct claim content.
+    ``fact_id`` and the transient verdict justification remain available to the
+    immediate caller, while the replayable receipt uses only ``fact_ref`` and safe
+    reason codes. The receipt cannot reconstruct claim content.
     """
 
     fact_id: str
@@ -176,6 +183,7 @@ class PromotionGateway:
         snapshot = PromotionVerdictSnapshot(
             passed=verdict.passed,
             reason_code=verdict.reason,
+            justification=verdict.justification,
             requested_by=request.requested_by,
             decided_by=verdict.by,
             mode=request.mode,
