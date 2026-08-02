@@ -86,6 +86,15 @@ def test_idempotency_key_conflict_is_rejected_without_append() -> None:
     assert ledger.read(conflicting_event.event_id) is None
 
 
+def test_empty_idempotency_key_is_rejected() -> None:
+    ledger = LocalShadowLedger()
+    result = ledger.append(_event(1), idempotency_key="")
+
+    assert result.status is AppendStatus.INVALID_EVENT
+    assert result.reason_code == "IDEMPOTENCY_KEY_INVALID"
+    assert len(ledger) == 0
+
+
 def test_scan_is_monotonic_deterministic_and_paginated() -> None:
     ledger = LocalShadowLedger()
     events = tuple(_event(index) for index in range(1, 4))
