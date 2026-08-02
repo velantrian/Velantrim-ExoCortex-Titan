@@ -68,7 +68,12 @@ class TestCognitiveStore:
     def test_transition(self, mem_db):
         from core.cognitive_store import CognitiveFactStore, get_cognitive_store
 
-        cf = CognitiveFactStore.create_observed("x", "s")
+        cf = CognitiveFactStore.create_observed(
+            "x",
+            "s",
+            confidence=0.95,
+            metadata={"evidence_refs": ["source-a", "source-b"]},
+        )
         get_cognitive_store().save(cf)
         get_cognitive_store().transition(cf.id, "Hypothesized")
         get_cognitive_store().transition(cf.id, "Supported")
