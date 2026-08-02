@@ -2148,22 +2148,18 @@ async def query(req: QueryRequest):
     except Exception as exc:  # noqa: BLE001
         logger.debug("mode_router: %s", exc)
 
-    # P2 (T1.4): явный вердикт truth_policy по пакету фактов. Аддитивно и за флагом
-    # (ENABLE_TRUTH_POLICY, по умолчанию off → truth_block=None, поток управления не меняется).
-    truth_block: dict[str, Any] | None = None
-    truth_rejects_answer = False
-    try:
-        from core.runtime_flags import is_truth_policy_enabled
+    # TruthPolicy runtime boundary. Feature-disabled behavior remains additive;
+    # an enabled policy/configuration failure is a content-free REJECT and blocks
+    # unverified LLM generation instead of silently failing open.
+    from core.truth_policy_runtime import evaluate_configured_truth_policy_runtime
 
-        if is_truth_policy_enabled():
-            from core.truth_policy import decide as _truth_decide
-
-            _verdict = _truth_decide(req.query, pipeline_facts, mode=eff_mode)
-            truth_block = _verdict.to_dict()
-            # reject ⇒ нет допустимых фактов ⇒ не выдумываем ответ через LLM
-            truth_rejects_answer = _verdict.is_reject
-    except Exception as exc:  # noqa: BLE001 — аддитивно; никогда не ломаем ответ
-        logger.debug("truth_policy verdict skipped: %s", exc)
+    _truth_runtime = evaluate_configured_truth_policy_runtime(
+        req.query,
+        pipeline_facts,
+        mode=eff_mode,
+    )
+    truth_block: dict[str, Any] | None = _truth_runtime.truth_block
+    truth_rejects_answer = _truth_runtime.blocks_llm
 
     # Шаг 5: LLM генерация
     llm_answer: str | None = None
