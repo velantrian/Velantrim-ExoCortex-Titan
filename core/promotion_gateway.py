@@ -1,10 +1,10 @@
 """Typed promotion ownership boundary over the existing TruthGate + CAS path.
 
-The first increment is deliberately narrow:
+The first increments remain deliberately narrow:
 
-- it does not replace ``SQLiteGraphStore.validate_and_promote``;
-- it does not add a feature flag, scheduler, retry loop, network call, or new ESM path;
-- it produces deterministic, content-minimized receipts for later replay/outbox work.
+- they do not replace ``SQLiteGraphStore.validate_and_promote``;
+- they do not add a feature flag, scheduler, retry loop, network call, or new ESM path;
+- they produce deterministic, content-minimized receipts for later replay/outbox work.
 
 A caller reaches Canon only through the store's already-hardened
 ``validate_and_promote`` implementation. This module validates the returned
@@ -28,6 +28,18 @@ _ALLOWED_TARGET = "Validated"
 _ALLOWED_PASSED_REASONS = frozenset({"passed", "already_validated"})
 _ACTOR_CODE = re.compile(r"^[a-z0-9_.:-]{1,64}$")
 _TRUTH_DECIDER = "truth_gate"
+_REQUIRED_VERDICT_FIELDS = (
+    "passed",
+    "fact_id",
+    "reason",
+    "justification",
+    "by",
+    "mode",
+    "confidence",
+    "evidence_count",
+    "contradictions",
+    "checked_at",
+)
 
 
 class PromotionContractError(RuntimeError):
@@ -145,7 +157,7 @@ class PromotionGateway:
 
     The gateway owns no thresholds and performs no ESM mutation itself. It
     delegates exactly once to ``validate_and_promote`` and fails closed when
-    the returned verdict violates the current contract.
+    the returned verdict violates the current structural contract.
     """
 
     def __init__(self, store: PromotionStore) -> None:
@@ -166,7 +178,7 @@ class PromotionGateway:
             reason_code=verdict.reason,
             requested_by=request.requested_by,
             decided_by=verdict.by,
-            mode=verdict.mode,
+            mode=request.mode,
             confidence=float(verdict.confidence),
             evidence_count=int(verdict.evidence_count),
             contradiction_refs=tuple(verdict.contradictions),
@@ -192,16 +204,23 @@ class PromotionGateway:
         )
 
     @staticmethod
-    def _validate_verdict(
-        request: PromotionRequest,
-        verdict: TruthGateVerdict,
-    ) -> None:
-        if not isinstance(verdict, TruthGateVerdict):
+    def _validate_verdict(request: PromotionRequest, verdict: Any) -> None:
+        missing = [
+            field_name
+            for field_name in _REQUIRED_VERDICT_FIELDS
+            if not hasattr(verdict, field_name)
+        ]
+        if missing:
             raise PromotionContractError(
-                "validate_and_promote returned a non-TruthGateVerdict result"
+                "validate_and_promote returned an incomplete verdict contract: "
+                + ",".join(missing)
             )
-        if verdict.fact_id != request.fact_id:
+        if not isinstance(verdict.passed, bool):
+            raise PromotionContractError("promotion verdict passed flag is invalid")
+        if not isinstance(verdict.fact_id, str) or verdict.fact_id != request.fact_id:
             raise PromotionContractError("promotion verdict fact_id mismatch")
+        if not isinstance(verdict.justification, str):
+            raise PromotionContractError("promotion verdict justification is invalid")
         if not isinstance(verdict.by, str) or not _ACTOR_CODE.fullmatch(verdict.by):
             raise PromotionContractError("promotion verdict actor is invalid")
         if verdict.by not in {request.requested_by, _TRUTH_DECIDER}:
@@ -210,7 +229,8 @@ class PromotionGateway:
             raise PromotionContractError(
                 "passed promotion verdict must be attributed to the requesting actor"
             )
-        if verdict.mode != request.mode:
+        verdict_mode = getattr(verdict.mode, "value", None)
+        if not isinstance(verdict_mode, str) or verdict_mode != request.mode.value:
             raise PromotionContractError("promotion verdict mode mismatch")
         if not isinstance(verdict.reason, str) or not verdict.reason:
             raise PromotionContractError("promotion verdict has no reason code")
