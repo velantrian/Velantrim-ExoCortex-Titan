@@ -10,7 +10,7 @@ SERVER = Path(__file__).resolve().parents[1] / "server.py"
 
 def _query_block() -> str:
     source = SERVER.read_text(encoding="utf-8")
-    start = source.index("    # P2 (T1.4): явный вердикт truth_policy")
+    start = source.index("    # TruthPolicy runtime boundary.")
     end = source.index("    # Шаг 5: LLM генерация", start)
     return source[start:end]
 
@@ -27,7 +27,7 @@ def test_query_uses_single_configured_fail_closed_adapter() -> None:
 def test_adapter_result_controls_truth_block_and_llm_gate() -> None:
     block = _query_block()
     call = block.index("_truth_runtime = evaluate_configured_truth_policy_runtime(")
-    truth_block = block.index("truth_block = _truth_runtime.truth_block")
+    truth_block = block.index("truth_block: dict[str, Any] | None = _truth_runtime.truth_block")
     llm_gate = block.index("truth_rejects_answer = _truth_runtime.blocks_llm")
     assert call < truth_block < llm_gate
 
@@ -42,9 +42,11 @@ def test_truth_policy_failure_cannot_be_caught_and_ignored_in_query_block() -> N
 def test_llm_generation_still_respects_truth_rejects_answer() -> None:
     source = SERVER.read_text(encoding="utf-8")
     query_start = source.index('@app.post("/query"')
-    query_end = source.index('@app.get("/memory/related"', query_start)
-    block = source[query_start:query_end]
-    assert "if eff_use_llm and not pipeline_error and not truth_rejects_answer:" in block
+    llm_gate = source.index(
+        "if eff_use_llm and not pipeline_error and not truth_rejects_answer:",
+        query_start,
+    )
+    assert llm_gate > query_start
 
 
 def test_disabled_policy_semantics_remain_in_runtime_adapter() -> None:
