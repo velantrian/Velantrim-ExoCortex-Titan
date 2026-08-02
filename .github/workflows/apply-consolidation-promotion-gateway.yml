@@ -47,7 +47,7 @@ jobs:
           python -m pytest -q \
             tests/test_consolidation_gateway_wiring.py \
             tests/test_p0d_truthgate_enforcement.py \
-            tests/test_consolidation_accounting.py \
+            tests/test_consolidation_refresh_checksum.py \
             tests/test_promotion_gateway.py \
             tests/test_promotion_gateway_reload_contract.py
 
