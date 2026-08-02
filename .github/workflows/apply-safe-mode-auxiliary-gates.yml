@@ -44,9 +44,8 @@ jobs:
           python -m pytest -q \
             tests/test_safe_mode_writes_blocked.py \
             tests/test_safe_mode_auxiliary_mutations.py \
-            tests/test_goal_stack.py \
-            tests/test_console_notes.py \
-            tests/test_memory_ops.py
+            tests/test_innenwelt_mvp.py \
+            tests/test_server_integration.py
 
       - name: Remove one-shot machinery
         run: |
