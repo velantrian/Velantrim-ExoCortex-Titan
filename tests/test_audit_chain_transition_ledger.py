@@ -306,61 +306,66 @@ class TestConcurrentWritersNoForkNoDuplicate:
         store.transition_esm(fid, "Hypothesized", by="truth_gate")
         chain_id = _chain_id_for(store, fid)
 
-        release_b = threading.Event()
-        a_done = threading.Event()
+        # Synchronize the exact stale-snapshot boundary that the CAS protects.
+        # transition_esm() performs one _l0_get() through get_fact(), then
+        # update_state() performs a second _l0_get() before entering the
+        # CAS-guarded database transaction. Both writers must capture that
+        # same second preimage before either writer is allowed to commit.
+        stale_preimage_barrier = threading.Barrier(2)
+        per_thread = threading.local()
+        real_l0_get = store._l0_get
         results: dict[str, bool] = {}
+        errors: list[BaseException] = []
 
-        from core import audit_chain as ac_module
-        real_append_once = ac_module.AuditChain._append_once
+        def _gated_l0_get(fact_id):
+            value = real_l0_get(fact_id)
+            call_count = getattr(per_thread, "l0_reads", 0) + 1
+            per_thread.l0_reads = call_count
+            if fact_id == fid and call_count == 2:
+                stale_preimage_barrier.wait(timeout=5)
+            return value
 
-        def _gated_append_once(self, conn, **kwargs):
-            # Writer A pauses right before its own append completes, so
-            # writer B's whole CAS-guarded transition (including ITS
-            # append) can interleave in between — proving the CAS guard
-            # on `facts.epistemic_state` (not just the audit head CAS)
-            # prevents a genuine fork: only one of the two concurrent
-            # transitions from "Hypothesized" can ever succeed.
-            if kwargs.get("to_state") == "Supported":
-                release_b.wait(timeout=5)
-            return real_append_once(self, conn, **kwargs)
+        store._l0_get = _gated_l0_get
 
-        def writer_a():
-            ac_module.AuditChain._append_once = _gated_append_once
+        def _writer(name: str, state: str, actor: str) -> None:
             try:
-                results["a"] = store.transition_esm(fid, "Supported", by="truth_gate")
-            finally:
-                a_done.set()
+                results[name] = store.transition_esm(fid, state, by=actor)
+            except BaseException as exc:  # pragma: no cover - asserted below
+                errors.append(exc)
 
-        def writer_b():
-            a_done.wait(timeout=1)  # ensure A has entered its transaction first
-            results["b"] = store.transition_esm(fid, "Contradicted", by="contradiction_resolver")
-            release_b.set()
+        t_a = threading.Thread(
+            target=_writer,
+            args=("a", "Supported", "truth_gate"),
+        )
+        t_b = threading.Thread(
+            target=_writer,
+            args=("b", "Contradicted", "contradiction_resolver"),
+        )
+        try:
+            t_a.start()
+            t_b.start()
+            t_a.join(timeout=10)
+            t_b.join(timeout=10)
+        finally:
+            store._l0_get = real_l0_get
 
-        # writer_a is entered first synchronously up to the gate; writer_b
-        # is only meaningful once A actually holds the CAS precondition —
-        # start both as real threads, gate arbitrates ordering.
-        t_a = threading.Thread(target=writer_a)
-        t_a.start()
-        # Give A a moment to actually be inside update_state()'s transaction
-        # before B starts, using a_done only for a coarse bound (worst case
-        # both attempts race legitimately, which is still a valid proof).
-        t_b = threading.Thread(target=writer_b)
-        t_b.start()
-        t_a.join(timeout=10)
-        t_b.join(timeout=10)
-        ac_module.AuditChain._append_once = real_append_once
+        assert not t_a.is_alive() and not t_b.is_alive(), "writers must terminate"
+        assert errors == []
+        assert sorted(results.values()) == [False, True]
 
         rows = _events(store, chain_id)
-        # Exactly one of Supported/Contradicted must have won the CAS race
-        # from "Hypothesized" (both target it as their precondition), so
-        # exactly one new event beyond the initial transition is expected.
-        assert len(rows) == 2, f"expected 2 events total (1 initial + 1 winner), got {len(rows)}"
+        # Exactly one of Supported/Contradicted wins the CAS from the same
+        # Hypothesized preimage, so one event is added beyond the seed event.
+        assert len(rows) == 2, (
+            f"expected 2 events total (1 initial + 1 winner), got {len(rows)}"
+        )
         to_states = [r["to_state"] for r in rows]
         assert to_states[0] == "Hypothesized"
         assert to_states[1] in ("Supported", "Contradicted")
-        # No forked chain_sequence / duplicate rows for this chain_id.
         sequences = [r["chain_sequence"] for r in rows]
-        assert sequences == sorted(set(sequences)), "chain_sequence must be strictly increasing, no fork"
+        assert sequences == sorted(set(sequences)), (
+            "chain_sequence must be strictly increasing, no fork"
+        )
 
 
 class TestRetrySemantics:
