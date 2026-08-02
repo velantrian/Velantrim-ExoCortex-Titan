@@ -17,7 +17,7 @@ validate configuration
 → announce application start
 ```
 
-Recovery therefore sees the current erasure tables and runs before normal readiness is announced.
+Recovery therefore sees the current erasure tables and runs before normal readiness is announced. A source-order regression test pins this sequence so later refactors cannot silently move recovery behind readiness.
 
 ## Execution semantics
 
