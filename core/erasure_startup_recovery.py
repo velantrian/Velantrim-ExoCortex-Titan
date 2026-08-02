@@ -10,12 +10,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+import re
 from typing import Any, Iterable
 
 from core.runtime_evidence import ObservationResult, ObservationState
 
 
 ERASURE_STARTUP_RECOVERY_SCHEMA_VERSION = "titan.erasure-startup-recovery.v1"
+_SAFE_ERROR_CODE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 
 class ErasureStartupRecoveryError(ValueError):
@@ -47,8 +49,17 @@ def _positive_int(value: int, name: str) -> int:
     return value
 
 
+def _safe_error_code(value: str, name: str = "error_code") -> str:
+    code = _required_text(value, name)
+    if _SAFE_ERROR_CODE.fullmatch(code) is None:
+        raise ErasureStartupRecoveryError(
+            f"{name} must be lower_snake_case and at most 64 characters"
+        )
+    return code
+
+
 def _canonical_codes(values: Iterable[str]) -> tuple[str, ...]:
-    return tuple(sorted({_required_text(value, "error_code") for value in values}))
+    return tuple(sorted({_safe_error_code(value) for value in values}))
 
 
 def _utc(value: str, name: str) -> datetime:
@@ -319,7 +330,7 @@ class StartupRecoveryFailureReceipt:
         if not isinstance(self.budget, StartupRecoveryBudget):
             raise ErasureStartupRecoveryError("budget must be StartupRecoveryBudget")
         object.__setattr__(
-            self, "error_code", _required_text(self.error_code, "error_code")
+            self, "error_code", _safe_error_code(self.error_code)
         )
         object.__setattr__(
             self,

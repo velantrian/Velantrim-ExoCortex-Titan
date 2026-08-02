@@ -26,6 +26,8 @@ A measured startup receipt derives its own Reality Lock observation:
 
 If recovery cannot produce measured domain outcomes because its observer, jobs schema or database fails first, callers must emit `StartupRecoveryFailureReceipt`. It derives `OBSERVER_FAILED`, carries only a typed safe error code and cannot pretend that zero violations were observed.
 
+All recovery error codes are restricted to lower-case `snake_case` identifiers of at most 64 characters. Exception messages, paths, SQL text and payload fragments are invalid receipt data and belong only in protected server logs.
+
 ## Persistence honesty
 
 The first increment does not persist receipts. `persisted=True` is valid only with a non-empty `storage_ref`; a non-persisted receipt cannot claim one. Later durable-ledger wiring must set both from the actual committed record rather than configuration intent.

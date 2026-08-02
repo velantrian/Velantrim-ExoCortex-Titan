@@ -230,3 +230,28 @@ def test_failure_receipt_keeps_persistence_claims_honest() -> None:
             error_code="database_unavailable",
             persisted=True,
         )
+
+
+def test_error_codes_reject_untyped_or_sensitive_text() -> None:
+    with pytest.raises(ErasureStartupRecoveryError, match="lower_snake_case"):
+        _domain(
+            RecoveryDomain.SINGLE_FACT,
+            selected=1,
+            attempted=1,
+            failed=1,
+            error_codes=("Database failed at /secret/path",),
+        )
+
+    with pytest.raises(ErasureStartupRecoveryError, match="lower_snake_case"):
+        StartupRecoveryFailureReceipt(
+            run_id="failed-sensitive",
+            started_at_utc="2026-08-02T12:00:00Z",
+            failed_at_utc="2026-08-02T12:00:00Z",
+            budget=StartupRecoveryBudget(
+                max_single_jobs=1,
+                max_batches=0,
+                time_budget_ms=1_000,
+            ),
+            error_code="sqlite3.ProgrammingError: /private/db.sqlite",
+        )
+
