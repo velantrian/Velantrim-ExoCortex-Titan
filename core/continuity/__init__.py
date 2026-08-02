@@ -18,6 +18,13 @@ from .contracts import (
     SubjectRef,
     Visibility,
 )
+from .conversation_bridge import (
+    CONVERSATION_EPISODE_SCHEMA_VERSION,
+    ConversationBridge,
+    ConversationBridgeError,
+    ConversationEpisode,
+    ConversationNotebookReader,
+)
 from .event_port import (
     AppendResult,
     AppendStatus,
@@ -33,6 +40,7 @@ from .event_port import (
 
 __all__ = [
     "CONTINUITY_SCHEMA_VERSION",
+    "CONVERSATION_EPISODE_SCHEMA_VERSION",
     "ActorKind",
     "ActorRef",
     "AppendResult",
@@ -41,6 +49,10 @@ __all__ = [
     "AssertionRelation",
     "AssertionRelationType",
     "ContinuityContractError",
+    "ConversationBridge",
+    "ConversationBridgeError",
+    "ConversationEpisode",
+    "ConversationNotebookReader",
     "EventPage",
     "IntegrityResult",
     "IntegrityStatus",
