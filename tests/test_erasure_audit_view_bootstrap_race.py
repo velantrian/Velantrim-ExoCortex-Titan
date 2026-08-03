@@ -222,9 +222,12 @@ def _assert_view_projection_semantics(db_path: Path) -> None:
         with store._db() as conn:
             # erasure_log_subject_corrections.batch_id REFERENCES
             # erasure_batches(batch_id), a table created only by migration
-            # 015 (not by this runtime lazy-DDL path). SQLite does not
-            # enforce foreign keys unless PRAGMA foreign_keys=ON (which
-            # this codebase does not set), so an arbitrary value suffices.
+            # 015 (not by this runtime lazy-DDL path). SQLiteGraphStore's
+            # runtime connection used by this test does not enable
+            # PRAGMA foreign_keys=ON (unlike some other components, e.g.
+            # core/version_store.py, which do enable it on their own
+            # connections), so this connection does not enforce the
+            # reference and an arbitrary value suffices.
             conn.execute(
                 "INSERT INTO erasure_log "
                 "(erasure_id, fact_id, user_id, reason, claim_hash, erased_at, "

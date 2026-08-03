@@ -185,9 +185,10 @@ context manager, exactly as before this change.
 
 This PR remains draft until the permanent regression test, architecture freeze,
 repository hygiene, Ruff, blocking mypy and the full repository pytest suite pass on one
-pinned final head. Docker is `NOT_APPLICABLE` when the repository's path filter does not
-schedule it for a diff touching only `core/memory.py` (one line), one test file and one
-ADR.
+pinned final head. Docker: `REQUIRED` and `PASS` for PR #185 because `core/memory.py`
+matches the workflow's `core/**` `pull_request.paths` filter in
+`.github/workflows/docker.yml` — Docker run #414 completed successfully (build, runtime
+smoke tests and hardening checks all passed) for this PR's pinned final head.
 
 ## Follow-up
 
