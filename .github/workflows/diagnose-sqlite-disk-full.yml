@@ -1,0 +1,50 @@
+name: Diagnostic — first SQLite disk-full suite failure
+
+on:
+  push:
+    branches:
+      - agent/sqlite-disk-full-characterization
+
+concurrency:
+  group: diagnose-sqlite-disk-full-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  capture-first-failure:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/sqlite-disk-full-characterization
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the standard CI dependency profile
+        run: pip install -e ".[dev,embeddings,retrieval]"
+
+      - name: Capture only the first full-suite failure
+        shell: bash
+        run: |
+          mkdir -p diagnostics
+          set +e
+          python -m pytest -x -vv > diagnostics/sqlite-disk-full-first-failure.txt 2>&1
+          status=$?
+          set -e
+          printf '\nPYTEST_EXIT_STATUS=%s\n' "$status" >> diagnostics/sqlite-disk-full-first-failure.txt
+
+      - name: Publish diagnostic evidence only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add diagnostics/sqlite-disk-full-first-failure.txt
+          git commit -m "test(diagnostic): capture first sqlite full-suite failure"
+          git push origin HEAD:agent/sqlite-disk-full-characterization
