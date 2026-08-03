@@ -68,7 +68,7 @@ untested retry model into migration 020.
 
 ## Atomicity proof
 
-Foundation tests must show:
+Foundation tests show:
 
 1. append without an active transaction fails closed;
 2. append leaves the caller transaction open;
@@ -78,6 +78,12 @@ Foundation tests must show:
    Canon mutation;
 6. an exact duplicate is one idempotent row, not a second intent;
 7. migration 020 is registered, idempotent and integrity-safe.
+
+The exact migration-runner patch, focused Ruff, focused mypy, outbox atomicity tests and
+existing migration suite passed before the self-removing workflow published the final
+six-file change-set. Bot-authored follow-up workflows were `action_required` with zero
+jobs, so they are not accepted as evidence; standard CI and Docker must run again on a
+maintainer-authored pinned head.
 
 ## Runtime status
 
