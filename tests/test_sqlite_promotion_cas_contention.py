@@ -4,9 +4,10 @@ import sqlite3
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from core.memory import SQLiteGraphStore
+from core.truth_gate import TruthGateVerdict
 
 
 def _promotion_evidence(db_path: Path, fact_id: str) -> tuple[int, int]:
@@ -87,7 +88,7 @@ def test_two_valid_promotions_have_one_cas_winner_and_one_explicit_loser(
     _gate_cas_at_shared_snapshot(writer_a, barrier)
     _gate_cas_at_shared_snapshot(writer_b, barrier)
 
-    def promote(store: SQLiteGraphStore, actor: str):
+    def promote(store: SQLiteGraphStore, actor: str) -> TruthGateVerdict:
         return store.validate_and_promote(fact_id, by=actor)
 
     try:
