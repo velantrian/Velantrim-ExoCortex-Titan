@@ -61,9 +61,9 @@ connect_new = (
     '                    timeout=self._busy_timeout_ms / 1000.0,\n'
     '                    check_same_thread=False,\n'
 )
-if source.count(connect_old) != 2:
+if source.count(connect_old) != 3:
     raise SystemExit(
-        f"sqlite connect timeout: expected two exact matches, found {source.count(connect_old)}"
+        f"sqlite connect timeout: expected three exact matches, found {source.count(connect_old)}"
     )
 source = source.replace(connect_old, connect_new)
 
