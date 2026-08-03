@@ -55,9 +55,13 @@ It contains no claim, justification, evidence body, evidence references, prompt,
 output or arbitrary payload JSON.
 
 A direct aggregate identifier remains inside the same protected Canon SQLite database.
-No Canon caller may be wired until erasure/dependency handling for these rows is added
-and tested. Multi-user activation remains blocked until an executable SubjectScope
-contract exists; this foundation does not invent one.
+Erasure/dependency handling for these rows was added and tested in issue #183 (see
+`ADR-2026-08-03-projection-outbox-erasure-dependency.md`) — `projection_outbox` now
+shares `SQLiteGraphStore`'s same-DB dependent registry, so any row a future caller
+writes is already covered by the existing atomic same-DB deletion and residual proof.
+No Canon caller is wired by that increment either. Multi-user activation remains
+blocked until an executable SubjectScope contract exists; this foundation does not
+invent one.
 
 ## Delivery-state separation
 
@@ -124,6 +128,9 @@ review threads. Focused or bot-authored runs do not replace this gate.
 
 ## Next increment
 
-Select and characterize one single-fact canonical mutation family. Before wiring, add
-outbox erasure/dependency behavior. Then append the intent in the same existing
-transaction and prove both directions of rollback. Dispatcher work remains later.
+~~Before wiring, add outbox erasure/dependency behavior.~~ Done — issue #183,
+`ADR-2026-08-03-projection-outbox-erasure-dependency.md`.
+
+Remaining: select and characterize one single-fact canonical mutation family, append
+the intent in the same existing transaction, and prove both directions of rollback.
+Dispatcher work remains later still.
