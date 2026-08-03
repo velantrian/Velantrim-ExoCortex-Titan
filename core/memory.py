@@ -293,7 +293,7 @@ def _safe_add_column_if_missing(
         )
         return
     except sqlite3.OperationalError as exc:
-        if f"duplicate column name: {column}" not in str(exc):
+        if str(exc) != f"duplicate column name: {column}":
             raise
 
     row = next(

@@ -95,11 +95,12 @@ class _AlterColumnBarrierConnection:
         setattr(object.__getattribute__(self, "_real"), name, value)
 
 
-# Full current-schema facts column set (excluding the two ALTER-only columns
-# audit_subject_id/derived_from, which are never part of CREATE TABLE), used
-# to build a legacy fixture missing exactly one target column while keeping
-# every other guarded column already present -- so only the ONE column under
-# test is ever raced by a given legacy scenario.
+# Union of every guarded column: the current CREATE TABLE's own column set
+# plus the two ALTER-only columns (audit_subject_id, derived_from) that are
+# never part of CREATE TABLE. Used to build a legacy fixture missing exactly
+# one target column while keeping every other guarded column already
+# present -- so only the ONE column under test is ever raced by a given
+# legacy scenario.
 _FULL_FACTS_DDL_COLUMNS = {
     "fact_id": "TEXT PRIMARY KEY",
     "claim": "TEXT NOT NULL",
