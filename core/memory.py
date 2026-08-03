@@ -572,7 +572,7 @@ class SQLiteGraphStore(GraphStore):
                 """)
                 conn.execute("DROP VIEW IF EXISTS erasure_audit")
                 conn.execute("""
-                    CREATE VIEW erasure_audit AS
+                    CREATE VIEW IF NOT EXISTS erasure_audit AS
                     SELECT
                         el.erasure_id,
                         el.fact_id,
