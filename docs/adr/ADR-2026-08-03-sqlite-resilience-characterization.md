@@ -59,6 +59,34 @@ For each level it records:
 It also records platform, Python version, SQLite version, and DB-API thread-safety mode.
 The probe exits non-zero on lost writes, errors, count mismatch, or integrity failure.
 
+## Recorded baseline
+
+The one-shot GitHub-hosted run passed the full matrix and the crash/mixed-concurrency
+pytest suite. The retained machine-readable evidence is:
+
+`docs/evidence/sqlite-concurrency-baseline-2026-08-03.json`
+
+Environment:
+
+- Linux Azure runner;
+- Python 3.11.15;
+- SQLite 3.45.1;
+- DB-API `threadsafety=3`.
+
+Observed writer results:
+
+| Writers | Successful / durable | Errors | Integrity | p50 | p95 | p99 |
+|---:|---:|---:|---|---:|---:|---:|
+| 1 | 1 / 1 | 0 | ok | 93.073 ms | 93.073 ms | 93.073 ms |
+| 10 | 10 / 10 | 0 | ok | 51.214 ms | 77.574 ms | 77.574 ms |
+| 25 | 25 / 25 | 0 | ok | 103.947 ms | 157.034 ms | 187.171 ms |
+| 50 | 50 / 50 | 0 | ok | 189.759 ms | 256.004 ms | 340.361 ms |
+| 100 | 100 / 100 | 0 | ok | 370.341 ms | 495.394 ms | 544.044 ms |
+
+The non-monotonic 1-vs-10 latency and all absolute timings are runner observations, not
+performance guarantees. The load trend does show expected serialized-writer pressure,
+while correctness remained intact for this bounded workload.
+
 ## Interpretation boundary
 
 Correctness is a hard gate. Latency values are observational and hardware-specific; they
