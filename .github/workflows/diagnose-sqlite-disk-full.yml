@@ -9,21 +9,13 @@ concurrency:
   group: diagnose-sqlite-disk-full-${{ github.head_ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: write
-
 jobs:
   trace-write-path:
-    if: >-
-      github.actor != 'github-actions[bot]' &&
-      github.head_ref == 'agent/sqlite-disk-full-characterization'
+    if: github.head_ref == 'agent/sqlite-disk-full-characterization'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: agent/sqlite-disk-full-characterization
-          fetch-depth: 0
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -36,9 +28,7 @@ jobs:
       - name: Trace the public store write path
         shell: bash
         run: |
-          mkdir -p diagnostics
-          python - <<'PY' > diagnostics/sqlite-disk-full-first-failure.txt 2>&1
-          import sqlite3
+          python - <<'PY'
           import tempfile
           from pathlib import Path
 
@@ -61,33 +51,25 @@ jobs:
           store = SQLiteGraphStore(str(db_path))
           store.store_fact(fact("preexisting"))
           with store._db() as conn:
-              print("connection_before", id(conn))
+              print("TRACE connection_before", id(conn), flush=True)
               page_count = int(conn.execute("PRAGMA page_count").fetchone()[0])
               page_size = int(conn.execute("PRAGMA page_size").fetchone()[0])
               target = page_count + 1
               applied = int(conn.execute(f"PRAGMA max_page_count = {target}").fetchone()[0])
-              print("before", page_count, page_size, target, applied)
+              print("TRACE before", page_count, page_size, target, applied, flush=True)
 
           payload = fact("must-rollback", page_size * 256)
           try:
               result = store.store_fact_result(payload)
-              print("store_fact_result", repr(result))
+              print("TRACE store_fact_result", repr(result), flush=True)
           except Exception as exc:
-              print("exception", type(exc).__name__, repr(str(exc)))
+              print("TRACE exception", type(exc).__name__, repr(str(exc)), flush=True)
 
           with store._db() as conn:
-              print("connection_after", id(conn))
-              print("after_page_count", conn.execute("PRAGMA page_count").fetchone()[0])
-              print("after_max_page_count", conn.execute("PRAGMA max_page_count").fetchone()[0])
-              print("durable_fact_count", conn.execute("SELECT COUNT(*) FROM facts WHERE fact_id = ?", ("must-rollback",)).fetchone()[0])
-          print("public_fact", store.get_fact("must-rollback"))
+              print("TRACE connection_after", id(conn), flush=True)
+              print("TRACE after_page_count", conn.execute("PRAGMA page_count").fetchone()[0], flush=True)
+              print("TRACE after_max_page_count", conn.execute("PRAGMA max_page_count").fetchone()[0], flush=True)
+              print("TRACE durable_fact_count", conn.execute("SELECT COUNT(*) FROM facts WHERE fact_id = ?", ("must-rollback",)).fetchone()[0], flush=True)
+          print("TRACE public_fact", store.get_fact("must-rollback"), flush=True)
           store.close()
           PY
-
-      - name: Publish diagnostic evidence only
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add diagnostics/sqlite-disk-full-first-failure.txt
-          git commit -m "test(diagnostic): trace sqlite disk-full write path"
-          git push origin HEAD:agent/sqlite-disk-full-characterization
