@@ -80,10 +80,16 @@ Foundation tests show:
 7. migration 020 is registered, idempotent and integrity-safe.
 
 The exact migration-runner patch, focused Ruff, focused mypy, outbox atomicity tests and
-existing migration suite passed before the self-removing workflow published the final
-six-file change-set. Bot-authored follow-up workflows were `action_required` with zero
-jobs, so they are not accepted as evidence; standard CI and Docker must run again on a
-maintainer-authored pinned head.
+existing migration suite passed before the self-removing workflow published the clean
+foundation change-set.
+
+The first full repository run exposed one unrelated stale Reader Adapter assertion that
+hard-coded `019_suggested_edges.sql` as the permanent last migration. That test did not
+represent its intended invariant: the Reader Adapter must remain schema-free even when
+other subsystems add migrations. It now checks that no Reader-specific migration exists,
+without freezing the repository-wide migration head. The corrected Reader regression,
+outbox tests and migration suite passed together. All diagnostic and patch workflows and
+evidence files were removed before final validation.
 
 ## Runtime status
 
@@ -97,6 +103,13 @@ MERGED_IN_MAIN
 
 It is not `RUNTIME_WIRED`, `FEATURE_ENABLED`, `RUNTIME_OBSERVED` or a delivery guarantee.
 No existing Canon path writes an outbox row.
+
+## Merge gate
+
+Only standard CI and Docker attached to one maintainer-authored pinned final head count
+as merge evidence. Architecture freeze, repository hygiene, Ruff, blocking mypy, the
+full repository pytest suite and Docker hardening must be green, with zero unresolved
+review threads. Focused or bot-authored runs do not replace this gate.
 
 ## Non-goals
 
