@@ -1,0 +1,77 @@
+{
+  "passed": true,
+  "platform": "Linux-6.17.0-1020-azure-x86_64-with-glibc2.39",
+  "python_version": "3.11.15",
+  "results": [
+    {
+      "duration_ms": 93.516,
+      "errors": [],
+      "integrity_check": "ok",
+      "observed_count": 1,
+      "p50_ms": 93.073,
+      "p95_ms": 93.073,
+      "p99_ms": 93.073,
+      "passed": true,
+      "successes": 1,
+      "writers": 1
+    },
+    {
+      "duration_ms": 81.227,
+      "errors": [],
+      "integrity_check": "ok",
+      "observed_count": 10,
+      "p50_ms": 51.214,
+      "p95_ms": 77.574,
+      "p99_ms": 77.574,
+      "passed": true,
+      "successes": 10,
+      "writers": 10
+    },
+    {
+      "duration_ms": 191.466,
+      "errors": [],
+      "integrity_check": "ok",
+      "observed_count": 25,
+      "p50_ms": 103.947,
+      "p95_ms": 157.034,
+      "p99_ms": 187.171,
+      "passed": true,
+      "successes": 25,
+      "writers": 25
+    },
+    {
+      "duration_ms": 350.087,
+      "errors": [],
+      "integrity_check": "ok",
+      "observed_count": 50,
+      "p50_ms": 189.759,
+      "p95_ms": 256.004,
+      "p99_ms": 340.361,
+      "passed": true,
+      "successes": 50,
+      "writers": 50
+    },
+    {
+      "duration_ms": 628.411,
+      "errors": [],
+      "integrity_check": "ok",
+      "observed_count": 100,
+      "p50_ms": 370.341,
+      "p95_ms": 495.394,
+      "p99_ms": 544.044,
+      "passed": true,
+      "successes": 100,
+      "writers": 100
+    }
+  ],
+  "schema_version": 1,
+  "sqlite_threadsafe": 3,
+  "sqlite_version": "3.45.1",
+  "writer_levels": [
+    1,
+    10,
+    25,
+    50,
+    100
+  ]
+}
