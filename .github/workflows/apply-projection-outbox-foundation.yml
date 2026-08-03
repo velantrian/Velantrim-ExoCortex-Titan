@@ -1,0 +1,75 @@
+name: One-shot register projection outbox foundation
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: projection-outbox-foundation-${{ github.head_ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      github.head_ref == 'agent/projection-outbox-foundation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/projection-outbox-foundation
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install focused dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Apply exact migration-runner patch
+        run: |
+          python scripts/apply_projection_outbox_migration_registration.py
+          python -m py_compile \
+            core/projection_outbox.py \
+            scripts/apply_migrations.py \
+            tests/test_projection_outbox.py \
+            tests/test_projection_outbox_migration.py
+
+      - name: Run focused foundation gates
+        run: |
+          ruff check core/projection_outbox.py --output-format=github
+          mypy core/projection_outbox.py --show-error-codes
+          python -m pytest -q \
+            tests/test_projection_outbox.py \
+            tests/test_projection_outbox_migration.py \
+            tests/test_migrations.py
+
+      - name: Remove one-shot machinery
+        run: |
+          rm .github/workflows/apply-projection-outbox-foundation.yml
+          rm scripts/apply_projection_outbox_migration_registration.py
+
+      - name: Commit final foundation change-set
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            core/projection_outbox.py \
+            migrations/020_projection_outbox.sql \
+            scripts/apply_migrations.py \
+            tests/test_projection_outbox.py \
+            tests/test_projection_outbox_migration.py \
+            docs/adr/ADR-2026-08-03-projection-outbox-foundation.md \
+            .github/workflows/apply-projection-outbox-foundation.yml \
+            scripts/apply_projection_outbox_migration_registration.py
+          git commit -m "feat(outbox): add transactional projection foundation"
+          git fetch origin agent/projection-outbox-foundation
+          git rebase origin/agent/projection-outbox-foundation
+          git push origin HEAD:agent/projection-outbox-foundation
