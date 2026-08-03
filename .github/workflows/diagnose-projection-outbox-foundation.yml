@@ -1,0 +1,61 @@
+name: Diagnostic — first projection outbox full-suite failure
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: diagnose-projection-outbox-${{ github.head_ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  capture-first-failure:
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      github.head_ref == 'agent/projection-outbox-foundation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/projection-outbox-foundation
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install exact standard CI dependency profile
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[server,dev,parsers,retrieval,embeddings,graph-lab]"
+
+      - name: Capture only the first full-suite failure
+        shell: bash
+        env:
+          PYTHONUNBUFFERED: "1"
+          VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-ci.db"
+          VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-ngram-ci.db"
+          VELANTRIM_API_KEY: "ci-test-key"
+        run: |
+          mkdir -p diagnostics
+          set +e
+          python -m pytest tests/ -v --tb=short --timeout=300 -x > diagnostics/projection-outbox-first-failure.txt 2>&1
+          status=$?
+          set -e
+          printf '\nPYTEST_EXIT_STATUS=%s\n' "$status" >> diagnostics/projection-outbox-first-failure.txt
+
+      - name: Publish diagnostic evidence only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add diagnostics/projection-outbox-first-failure.txt
+          git commit -m "test(diagnostic): capture first outbox full-suite failure"
+          git fetch origin agent/projection-outbox-foundation
+          git rebase origin/agent/projection-outbox-foundation
+          git push origin HEAD:agent/projection-outbox-foundation
