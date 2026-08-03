@@ -23,7 +23,8 @@ This file is the current entry point for future and external architecture resear
 - [`D16_EXECUTIVE_CONTROL_CONTRACT.md`](D16_EXECUTIVE_CONTROL_CONTRACT.md) — proposal vocabulary, no active controller authority;
 - [`FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md`](FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md) — failure disposition, memory lifecycle and reliability;
 - [`WORKING_DESK_RESEARCH_MODE.md`](WORKING_DESK_RESEARCH_MODE.md) — bounded task-aware research composition;
-- [`../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md`](../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md) — adaptive routing, selective memory and rebuildable projections.
+- [`../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md`](../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md) — adaptive routing, selective memory and rebuildable projections;
+- [`EXTERNAL_MODEL_COGNITIVE_PROPOSALS.md`](EXTERNAL_MODEL_COGNITIVE_PROPOSALS.md) — `Q0`-tier candidate ideas from external AI assistants, fact-checked and filtered before recording; none promoted to the `P` track yet.
 
 ## Promotion rule
 

@@ -17,6 +17,7 @@ The root [`README.md`](../README.md) links to this research directory as the ent
 | [`D16_EXECUTIVE_CONTROL_CONTRACT.md`](D16_EXECUTIVE_CONTROL_CONTRACT.md) | proposal vocabulary; no active controller authority | research / proposed |
 | [`FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md`](FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md) | failure, lifecycle and reliability boundaries | research / proposed |
 | [`WORKING_DESK_RESEARCH_MODE.md`](WORKING_DESK_RESEARCH_MODE.md) | bounded task-aware research composition | research / proposed |
+| [`EXTERNAL_MODEL_COGNITIVE_PROPOSALS.md`](EXTERNAL_MODEL_COGNITIVE_PROPOSALS.md) | fact-checked, filtered brainstorming from external AI assistants reacting to a description of Titan | R0 / unverified source |
 
 Adaptive retrieval and selective-memory architecture is tracked separately at [`../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md`](../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md).
 
