@@ -61,6 +61,14 @@ device loss.
 This increment does not change runtime code, page size, WAL, synchronous mode, timeout,
 retry policy, database selection, connection pooling or outbox behavior.
 
+## Merge gate
+
+An external package-index or dependency-resolution failure is not repository evidence
+and must not be treated as a passing check. This PR remains draft until the permanent
+test, architecture freeze, lint, blocking type checks, full repository test suite and
+Docker hardening all pass on the same pinned final head. No CI exception is granted for
+this characterization increment.
+
 ## Follow-up
 
 After this gate, the next independent storage proof is CAS contention with exactly one
