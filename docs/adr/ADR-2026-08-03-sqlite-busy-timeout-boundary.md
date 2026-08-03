@@ -26,6 +26,7 @@ Add `VELANTRIM_SQLITE_BUSY_TIMEOUT_MS` with these rules:
 - default remains exactly 30000;
 - the same resolved value configures `sqlite3.connect(timeout=...)` and
   `PRAGMA busy_timeout`;
+- all three initial/reopen connection paths use that one resolved value;
 - no automatic retry is added.
 
 ## Failure semantics
@@ -44,18 +45,27 @@ write attempt
 The store must not silently convert the error into success, extend the timeout beyond the
 configured bound, or retry automatically.
 
-## Validation
+## Validation evidence
 
-Focused tests prove:
+Focused tests proved:
 
 - the default remains 30 seconds;
 - malformed and out-of-range values revert to the default;
 - a valid value reaches both the connection and `PRAGMA busy_timeout`;
-- a held `BEGIN IMMEDIATE` lock causes a bounded failure;
+- a held `BEGIN IMMEDIATE` lock causes a bounded failure at 100 ms;
 - the failed write leaves no row;
 - releasing the lock and explicitly retrying produces exactly one row;
 - `PRAGMA integrity_check` remains `ok`;
-- the full SQLite resilience suite remains green.
+- the full SQLite resilience suite from PR #174 remains green.
+
+The first exact-patch run stopped before changing the branch because the current store
+has three, not two, connection/reopen sites. The patch was corrected to require exactly
+three matches; the second run applied the same timeout to all three paths, passed the
+focused suites, removed the temporary workflow/script, and published a clean three-file
+change-set.
+
+Standard architecture-freeze, Ruff, blocking mypy, full repository pytest and Docker
+must pass on the final maintainer-authored head before merge.
 
 ## Scope boundary
 
