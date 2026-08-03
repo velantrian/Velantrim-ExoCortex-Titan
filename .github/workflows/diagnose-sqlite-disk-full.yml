@@ -1,4 +1,4 @@
-name: Diagnostic — first SQLite disk-full suite failure
+name: Diagnostic — trace SQLite disk-full write path
 
 on:
   pull_request:
@@ -13,12 +13,12 @@ permissions:
   contents: write
 
 jobs:
-  capture-first-failure:
+  trace-write-path:
     if: >-
       github.actor != 'github-actions[bot]' &&
       github.head_ref == 'agent/sqlite-disk-full-characterization'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,30 +30,64 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install the exact standard CI dependency profile
-        run: |
-          pip install --upgrade pip
-          pip install -e ".[server,dev,parsers,retrieval,embeddings,graph-lab]"
+      - name: Install focused dependencies
+        run: pip install -e ".[dev]"
 
-      - name: Capture only the first full-suite failure
+      - name: Trace the public store write path
         shell: bash
-        env:
-          PYTHONUNBUFFERED: "1"
-          VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-ci.db"
-          VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-ngram-ci.db"
-          VELANTRIM_API_KEY: "ci-test-key"
         run: |
           mkdir -p diagnostics
-          set +e
-          python -m pytest tests/ -v --tb=short --timeout=300 -x > diagnostics/sqlite-disk-full-first-failure.txt 2>&1
-          status=$?
-          set -e
-          printf '\nPYTEST_EXIT_STATUS=%s\n' "$status" >> diagnostics/sqlite-disk-full-first-failure.txt
+          python - <<'PY' > diagnostics/sqlite-disk-full-first-failure.txt 2>&1
+          import sqlite3
+          import tempfile
+          from pathlib import Path
+
+          from core.memory import SQLiteGraphStore
+
+          def fact(fact_id: str, padding_bytes: int = 0):
+              metadata = {"disk_full_test": True}
+              if padding_bytes:
+                  metadata["padding"] = "x" * padding_bytes
+              return {
+                  "fact_id": fact_id,
+                  "claim": f"SQLite disk-full rollback fact {fact_id}",
+                  "source": "sqlite_disk_full_test",
+                  "confidence": 0.8,
+                  "metadata": metadata,
+              }
+
+          root = Path(tempfile.mkdtemp())
+          db_path = root / "disk-full.db"
+          store = SQLiteGraphStore(str(db_path))
+          store.store_fact(fact("preexisting"))
+          with store._db() as conn:
+              print("connection_before", id(conn))
+              page_count = int(conn.execute("PRAGMA page_count").fetchone()[0])
+              page_size = int(conn.execute("PRAGMA page_size").fetchone()[0])
+              target = page_count + 1
+              applied = int(conn.execute(f"PRAGMA max_page_count = {target}").fetchone()[0])
+              print("before", page_count, page_size, target, applied)
+
+          payload = fact("must-rollback", page_size * 256)
+          try:
+              result = store.store_fact_result(payload)
+              print("store_fact_result", repr(result))
+          except Exception as exc:
+              print("exception", type(exc).__name__, repr(str(exc)))
+
+          with store._db() as conn:
+              print("connection_after", id(conn))
+              print("after_page_count", conn.execute("PRAGMA page_count").fetchone()[0])
+              print("after_max_page_count", conn.execute("PRAGMA max_page_count").fetchone()[0])
+              print("durable_fact_count", conn.execute("SELECT COUNT(*) FROM facts WHERE fact_id = ?", ("must-rollback",)).fetchone()[0])
+          print("public_fact", store.get_fact("must-rollback"))
+          store.close()
+          PY
 
       - name: Publish diagnostic evidence only
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add diagnostics/sqlite-disk-full-first-failure.txt
-          git commit -m "test(diagnostic): capture first sqlite full-suite failure"
+          git commit -m "test(diagnostic): trace sqlite disk-full write path"
           git push origin HEAD:agent/sqlite-disk-full-characterization
