@@ -252,6 +252,80 @@ def _upgrade_erasure_log_schema(conn: sqlite3.Connection) -> None:
     conn.execute("DROP TABLE erasure_log_legacy")
 
 
+def _safe_add_column_if_missing(
+    conn: sqlite3.Connection,
+    table: str,
+    column: str,
+    *,
+    sql_type: str,
+    not_null: bool,
+    default_literal: str,
+) -> None:
+    """Cross-connection-safe lazy column upgrade (issue #184).
+
+    The caller's own ``PRAGMA table_info(table)`` absence-check (taken
+    before this call) is a snapshot that can be stale by the time this
+    specific ``ALTER TABLE`` actually runs: a different, independent
+    ``SQLiteGraphStore`` instance/connection can have added the exact same
+    column in the gap, since the per-instance ``_ddl_initialized_paths``
+    guard does not synchronize across connections. Rather than trusting
+    that snapshot alone, this always attempts the real ``ALTER TABLE``
+    and treats ONLY an exact ``duplicate column name: {column}`` failure
+    for THIS column as a benign race — never any other
+    ``sqlite3.OperationalError`` (malformed schema, I/O, capacity,
+    permission, corruption, a duplicate reported for a different column,
+    or any other failure), which all still propagate uncaught.
+
+    A benign race is verified, never assumed: the authoritative current
+    ``PRAGMA table_info(table)`` must show a column of this exact name
+    with the exact declared type, ``NOT NULL`` contract and default this
+    call itself would have created, or the bootstrap fails closed with a
+    ``RuntimeError`` instead of silently accepting an incompatible
+    pre-existing column.
+    """
+    clauses = [sql_type]
+    if not_null:
+        clauses.append("NOT NULL")
+    clauses.append(f"DEFAULT {default_literal}")
+    try:
+        conn.execute(
+            f"ALTER TABLE {table} ADD COLUMN {column} {' '.join(clauses)}"
+        )
+        return
+    except sqlite3.OperationalError as exc:
+        if str(exc) != f"duplicate column name: {column}":
+            raise
+
+    row = next(
+        (
+            r for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
+            if r[1] == column
+        ),
+        None,
+    )
+    if row is None:
+        raise RuntimeError(
+            f"{table}.{column}: ALTER TABLE reported a duplicate column "
+            "name, but PRAGMA table_info no longer shows that column — "
+            "the schema is inconsistent; refusing to proceed."
+        )
+    _cid, _name, decl_type, notnull, dflt_value, pk = row
+    expected_notnull = 1 if not_null else 0
+    if (
+        decl_type != sql_type
+        or notnull != expected_notnull
+        or dflt_value != default_literal
+        or pk != 0
+    ):
+        raise RuntimeError(
+            f"{table}.{column}: benign-duplicate recovery rejected — a "
+            f"pre-existing column has an incompatible definition. Expected "
+            f"type={sql_type!r} not_null={not_null} default={default_literal!r}; "
+            f"found type={decl_type!r} notnull={notnull} "
+            f"default={dflt_value!r} pk={pk}."
+        )
+
+
 # ─── SQLiteGraphStore ─────────────────────────────────────────────────────────
 class SQLiteGraphStore(GraphStore):
     """
@@ -412,17 +486,20 @@ class SQLiteGraphStore(GraphStore):
                             "t_ingestion_start", "t_ingestion_end",
                             "audit_subject_id"):
                     if col not in existing_cols:
-                        conn.execute(
-                            f"ALTER TABLE facts ADD COLUMN {col} TEXT DEFAULT NULL"
+                        _safe_add_column_if_missing(
+                            conn, "facts", col,
+                            sql_type="TEXT", not_null=False, default_literal="NULL",
                         )
                 # v8.7 P0: modality fields — safe migration for existing databases
                 if "claim_type" not in existing_cols:
-                    conn.execute(
-                        "ALTER TABLE facts ADD COLUMN claim_type TEXT NOT NULL DEFAULT 'UNKNOWN'"
+                    _safe_add_column_if_missing(
+                        conn, "facts", "claim_type",
+                        sql_type="TEXT", not_null=True, default_literal="'UNKNOWN'",
                     )
                 if "origin_type" not in existing_cols:
-                    conn.execute(
-                        "ALTER TABLE facts ADD COLUMN origin_type TEXT NOT NULL DEFAULT 'UNKNOWN'"
+                    _safe_add_column_if_missing(
+                        conn, "facts", "origin_type",
+                        sql_type="TEXT", not_null=True, default_literal="'UNKNOWN'",
                     )
 
                 # TASK-09: L0 Raw Memory (migration 010 DDL — идемпотентно)
@@ -481,8 +558,9 @@ class SQLiteGraphStore(GraphStore):
                     r[1] for r in conn.execute("PRAGMA table_info(erasure_log)").fetchall()
                 }
                 if "job_id" not in erasure_log_cols:
-                    conn.execute(
-                        "ALTER TABLE erasure_log ADD COLUMN job_id TEXT DEFAULT NULL"
+                    _safe_add_column_if_missing(
+                        conn, "erasure_log", "job_id",
+                        sql_type="TEXT", not_null=False, default_literal="NULL",
                     )
                 conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_erasure_user
@@ -587,8 +665,9 @@ class SQLiteGraphStore(GraphStore):
                 """)
                 # TASK-09: derived_from на facts (указывает на l0_raw_memory.raw_id)
                 if "derived_from" not in existing_cols:
-                    conn.execute(
-                        "ALTER TABLE facts ADD COLUMN derived_from TEXT DEFAULT NULL"
+                    _safe_add_column_if_missing(
+                        conn, "facts", "derived_from",
+                        sql_type="TEXT", not_null=False, default_literal="NULL",
                     )
 
                 # D1 (audit M5): backfill claim_dedup_key для legacy-фактов без него,
