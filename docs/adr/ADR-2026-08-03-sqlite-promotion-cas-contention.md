@@ -52,11 +52,40 @@ The loser is not silently converted to idempotent success. A later caller may ex
 read the now-Validated state and decide what to do, but the contested operation itself
 must report that its precondition lost the race.
 
+## Follow-up: post-race idempotency (PR #181)
+
+The original characterization proved the contested race itself — exactly one winner,
+exactly one explicit `concurrent_modification` loser, no false success mid-race. It did
+not prove what happens *after* the race is genuinely decided. PR #181 extends the same
+test with one additional step, appended after the existing final assertions:
+
+1. a new, previously-uninvolved `SQLiteGraphStore` instance calls
+   `validate_and_promote()` on the same fact once the race above has already settled;
+2. this call must return `passed=True, reason="already_validated"` — the normal
+   idempotent branch, not a second contested attempt;
+3. this call must add **no** further `fact_versions` row and **no** further Validated
+   `memory_events` row, measured via the same fact-scoped `_promotion_evidence()` helper
+   already used above (not a whole-table count);
+4. the fact's `history` must still contain exactly one `Validated` entry;
+5. `PRAGMA integrity_check` must still be `ok`.
+
+Together with the original assertions, this closes both halves of issue #178's
+idempotency requirement: a contested loser never becomes a false
+`already_validated` mid-race, and a genuinely later, uncontested caller correctly does
+take the `already_validated` branch — and that branch is provably side-effect-free.
+
 ## Boundary
 
 This increment changes no runtime code, threshold, TruthGate policy, timeout, retry
 behavior, connection model, schema, database selection or PromotionGateway contract. It
 does not introduce the transactional outbox.
+
+A separate, pre-existing concurrent first-use schema-bootstrap race
+(`erasure_audit` VIEW drop/create colliding across independent fresh `SQLiteGraphStore`
+instances, `core/memory.py`) was discovered while developing PR #181's extension above.
+It is out of scope here and tracked independently as issue #182 — this PR/ADR does not
+fix it, and the two-writer test above (which races against an already-bootstrapped
+database, not two brand-new instances' first use) does not exercise it.
 
 ## Interpretation boundary
 

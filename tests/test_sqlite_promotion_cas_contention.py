@@ -133,3 +133,50 @@ def test_two_valid_promotions_have_one_cas_winner_and_one_explicit_loser(
                 (fact_id,),
             ).fetchone()[0]
         ) == 1
+
+    # Post-race idempotency: a later, previously-uninvolved caller must
+    # observe the already-decided race through the normal idempotent
+    # contract, not repeat the mutation. The contested loser above already
+    # proved it gets an honest concurrent_modification, not a false
+    # already_validated success mid-race (issue #178's "loser must never
+    # become already_validated" requirement) — this proves the OTHER half:
+    # once the race is genuinely over, a fresh call correctly DOES take the
+    # already_validated idempotent branch, and that branch adds no further
+    # durable side effect on top of the single winning transaction above.
+    post_race_observer = SQLiteGraphStore(str(db_path))
+    try:
+        idempotent_verdict = post_race_observer.validate_and_promote(
+            fact_id, by="post_race_observer",
+        )
+        assert idempotent_verdict.passed is True
+        assert idempotent_verdict.reason == "already_validated"
+
+        versions_final, validated_events_final = _promotion_evidence(
+            db_path, fact_id,
+        )
+        assert versions_final == versions_after, (
+            "post-race idempotent call must add no fact_versions row, "
+            f"delta was {versions_final - versions_after}"
+        )
+        assert validated_events_final == validated_events_after, (
+            "post-race idempotent call must add no Validated audit event, "
+            f"delta was {validated_events_final - validated_events_after}"
+        )
+
+        final_fact_after_idempotent_call = post_race_observer.get_fact(fact_id)
+        assert final_fact_after_idempotent_call is not None
+        assert final_fact_after_idempotent_call["epistemic_state"] == "Validated"
+        validated_history_after_idempotent_call = [
+            entry
+            for entry in final_fact_after_idempotent_call.get("history", [])
+            if entry.get("state") == "Validated"
+        ]
+        assert len(validated_history_after_idempotent_call) == 1, (
+            "post-race idempotent call must not add a second 'Validated' "
+            "history entry"
+        )
+    finally:
+        post_race_observer.close()
+
+    with sqlite3.connect(str(db_path), timeout=5.0) as conn:
+        assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
