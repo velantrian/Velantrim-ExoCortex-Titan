@@ -1,12 +1,12 @@
 # Promotion ownership inventory
 
-**Baseline:** `main@acb04085847da839c400a0e4a55fcf8692e5751d`  
+**Baseline:** `main@dae864606db75edfe04a3ee24af7d6bfde3e7ca8`  
 **Issue:** #165  
-**Status:** inventory for incremental migration; not a claim of unified ownership
+**Status:** runtime-wired for five standard callers; not yet the sole owner
 
 ## Canonical hardened primitive
 
-`SQLiteGraphStore.validate_and_promote()` is the current hardened single-fact path to
+`SQLiteGraphStore.validate_and_promote()` remains the authoritative single-fact write to
 `Validated`:
 
 ```text
@@ -18,97 +18,126 @@ durable L1 snapshot
 → post-commit L0 publication
 ```
 
-This primitive remains authoritative during the migration.  `PromotionGateway` wraps
-it; it does not replace or reimplement the transaction.
+`PromotionGateway` owns the typed request, fail-closed verdict validation, transient
+outcome, and content-minimized receipt. It delegates exactly once to the primitive and
+does not duplicate thresholds or database mutation logic.
 
-## Confirmed direct callers
+## Runtime-wired standard callers
 
-| Caller | Current behavior | Migration disposition |
+| Caller | Status | Preserved boundary |
 |---|---|---|
-| `server.py` direct transition endpoint | calls `validate_and_promote()` for external `Validated` requests | migrate after API response characterization |
-| `core/tool_handlers.py::validate_fact` | calls `memory_api.validate_and_promote()` and exposes verdict reason/justification | migrate after tool contract characterization |
-| `core/consolidation_engine.py` | pre-vets, walks to `Supported`, then calls `validate_and_promote()` | first runtime migration candidate after foundation |
-| `core/promotion_policy.py` | graduated pre-vetting, then direct `validate_and_promote()` | first runtime migration candidate after foundation |
+| `core/promotion_policy.py::run_graduated_promotion` | merged via #168 | module thresholds remain pre-vetting; TruthGate rejection remains separately accounted |
+| `core/consolidation_engine.py` | merged via #169 | ladder to `Supported`, retryable rejection, checksum-maintenance separation |
+| `PATCH /facts/{fact_id}/transition` | merged via #170 | existing 404/409/422/200 HTTP contract, auth, CAS and Ring Zero protections |
+| `core/tool_handlers.py::validate_fact` | merged via #171 | guardian response contract and reload-safe current-memory store resolution |
+| `core/cognitive_store.py::CognitiveFactStore.transition` | merged via #172 | auto-ladder only to `Supported`, gated final hop, no rejected/idempotent phantom event; covers `CognitiveRuntime` delegation |
 
-These callers already use the correct TruthGate + CAS primitive.  Migration is about
-single ownership, typed receipts and later outbox integration, not changing thresholds.
+These paths are `RUNTIME_WIRED`. This is code/test evidence, not a claim that the feature
+is globally activated, runtime-observed in production, or backed by a transactional
+outbox.
+
+## Reviewed direct authority calls
+
+Production code still contains a small set of low-level calls. They are intentionally
+locked by `tests/test_promotion_ownership_guard.py`:
+
+1. `PromotionGateway.promote()` delegates to its injected store authority.
+2. Reload-safe adapters in `core/tool_handlers.py` and `core/cognitive_store.py` resolve
+   the current `core.memory` module, then delegate for the gateway.
+3. Module-level compatibility wrappers in `core/memory.py` delegate to `_GLOBAL_STORE`.
+4. `core/world_skills_ingest.py` is the explicit curated-ingest exception described
+   below.
+
+Any new production call to `validate_and_promote()` or `promote_to_validated()` fails CI
+until this inventory and an ADR are deliberately updated. CI also rejects literal plain
+`transition_esm(..., "Validated")` and `promote_esm_to(..., "Validated")` caller paths.
+
+## Explicit exception: curated World Skills ingest
+
+`core/world_skills_ingest.py::ingest_facts()` promotes a reviewed offline knowledge pack
+through `store.promote_to_validated()`.
+
+This is **not** silently classified as a standard PromotionGateway caller because:
+
+- the pack is curated and uses a separate knowledge-store workflow;
+- current rows have confidence and provenance metadata but do not carry the normal
+  BALANCED-mode `evidence_refs` contract;
+- routing it through the current gateway without a separate design would reject the
+  pack, while weakening TruthGate to accept it would weaken every standard caller.
+
+Disposition:
+
+```text
+KNOWN_EXCEPTION
+→ no threshold bypass expansion
+→ no use as a template for runtime/user facts
+→ design a curated-pack admission contract separately
+→ remove the exception only after that contract has signed provenance,
+  deterministic pack identity, review evidence and replay tests
+```
+
+The exception remains one exact, CI-locked call site.
 
 ## Separate mutation families
 
 | Family | Current behavior | Decision |
 |---|---|---|
 | `core/truth_maintenance.py::supersede` | TruthGate evaluates a replacement, then `supersede_fact_cas()` atomically creates/validates the new fact and deprecates the old fact | do not force into the single-fact v1 request; design a compound mutation request later |
-| contradiction/deprecation/collapse | ordinary legal ESM transitions | outside PromotionGateway; keep existing transition ownership |
+| contradiction/deprecation/collapse | ordinary legal ESM transitions | outside PromotionGateway |
 | invalidation | CAS-guarded temporal close with audit evidence | outside PromotionGateway |
+| relation lifecycle in `core/relations.py` | relation-state ladder, not fact Canon promotion | outside PromotionGateway |
 | Ring Zero seed/immutable paths | protected special-case authority | outside PromotionGateway |
 
-## Legacy or broad helpers requiring characterization
+## Generic helper classification
 
-`SQLiteGraphStore.promote_esm_to()` is a generic ladder walker.  Its own documentation
-states that it can finish with a plain transition into `Validated` for callers outside
-graduated promotion and consolidation.  Current code search identifies at least:
+`SQLiteGraphStore.promote_esm_to()` remains a broad ESM ladder helper. Current production
+classification is:
 
-- `core/cognitive_store.py`;
-- `core/relations.py`;
-- internal uses in `core/memory.py`;
-- `core/consolidation_engine.py` for the pre-validated walk to `Supported`.
+- ConsolidationEngine: literal target `Supported`, followed by PromotionGateway;
+- CognitiveFactStore: non-Validated targets remain generic; Validated is intercepted,
+  laddered only to `Supported`, then gated;
+- relation store: a different relation-state implementation;
+- memory module wrapper: compatibility primitive, not a business caller.
 
-These paths must not be bulk-rewritten.  For each caller first determine whether the
-operation is:
-
-1. only moving to `Hypothesized`/`Supported`;
-2. test/seed-only;
-3. Ring Zero/system initialization;
-4. a genuine path to `Validated` that requires TruthGate + CAS;
-5. a compound mutation that needs a different gateway contract.
+No reviewed production caller passes a literal `Validated` target to the generic fact
+ladder. The ownership guard makes a future literal bypass a blocking test failure.
 
 ## Pipeline status
 
-Project status documentation records that pipeline ingestion and other internal
-promotion paths use their own pre-vetting and do not yet share one contract-tested
-promotion policy.  Before migration, add characterization tests for:
+`core/pipeline.py::run()` is read-only with respect to ESM promotion. It retrieves and
+scores memory but explicitly does not store or promote facts. It therefore requires no
+PromotionGateway migration. Any future pipeline write authority would be a new
+architecture decision and must first satisfy the architecture-freeze and ownership
+guards.
 
-- target state;
-- current-state assumptions;
-- failure accounting;
-- concurrent modification behavior;
-- retriever-dirty and checksum side effects;
-- whether the caller depends on `TruthGateVerdict.justification`;
-- whether a rejected candidate remains retryable.
-
-## Foundation status
-
-The first `PromotionGateway` increment is:
+## Current status
 
 ```text
-DESIGNED
-→ IMPLEMENTED_IN_BRANCH
-→ not runtime wired
-→ not feature enabled
-→ not runtime observed
-→ not sole owner
+DESIGNED                 ✅
+MERGED_IN_MAIN           ✅
+RUNTIME_WIRED            ✅ five standard callers
+FEATURE_ENABLED          caller/profile dependent
+RUNTIME_OBSERVED         not claimed
+SOLE_SINGLE_FACT_OWNER   ❌ curated ingest exception + compatibility primitives remain
+OUTBOX_ATOMIC             ❌ not implemented
 ```
-
-It becomes `RUNTIME_WIRED` only after at least one real caller is migrated and tested.
-It becomes the sole promotion owner only after direct single-fact paths are removed or
-explicitly classified as exceptions.
 
 ## Migration gates
 
-Every caller migration must prove:
+Every additional standard caller migration must prove:
 
 - exactly one gateway call per promotion attempt;
-- no direct new route to `Validated`;
+- no new direct route to `Validated`;
 - unchanged TruthGate mode and thresholds;
 - unchanged rejection/accounting semantics;
 - `concurrent_modification` remains visible and is not silently retried;
-- no claim/evidence payload in the receipt;
-- architecture-freeze, Ruff, blocking mypy, full pytest and Docker green;
-- final merge pinned to the reviewed head SHA.
+- no claim/evidence/justification payload in the replayable receipt;
+- architecture-freeze, ownership guard, Ruff, blocking mypy, full pytest and Docker are
+  green;
+- final merge is pinned to the reviewed head SHA.
 
 ## Outbox boundary
 
-No caller should persist `PromotionReceipt` independently.  Receipt persistence begins
-only when the transactional outbox can write the mutation evidence intent in the same
-SQLite transaction as the canonical mutation.  Until then receipts are in-process
-results only.
+No caller persists `PromotionReceipt` independently. Receipt persistence begins only
+when a transactional outbox can write the mutation-evidence intent in the same SQLite
+transaction as the canonical mutation. Until then receipts remain in-process results.
