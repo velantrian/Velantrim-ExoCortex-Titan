@@ -30,15 +30,22 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install the standard CI dependency profile
-        run: pip install -e ".[dev,embeddings,retrieval]"
+      - name: Install the exact standard CI dependency profile
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[server,dev,parsers,retrieval,embeddings,graph-lab]"
 
       - name: Capture only the first full-suite failure
         shell: bash
+        env:
+          PYTHONUNBUFFERED: "1"
+          VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-ci.db"
+          VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-ngram-ci.db"
+          VELANTRIM_API_KEY: "ci-test-key"
         run: |
           mkdir -p diagnostics
           set +e
-          python -m pytest -x -vv > diagnostics/sqlite-disk-full-first-failure.txt 2>&1
+          python -m pytest tests/ -v --tb=short --timeout=300 -x > diagnostics/sqlite-disk-full-first-failure.txt 2>&1
           status=$?
           set -e
           printf '\nPYTEST_EXIT_STATUS=%s\n' "$status" >> diagnostics/sqlite-disk-full-first-failure.txt
