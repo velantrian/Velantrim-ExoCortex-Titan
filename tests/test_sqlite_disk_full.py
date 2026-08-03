@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
 
 from core.memory import SQLiteGraphStore
-
-
-_SQLITE_DEFAULT_MAX_PAGE_COUNT = 1_073_741_823
 
 
 def _fact(fact_id: str, *, padding_bytes: int = 0) -> dict[str, object]:
@@ -24,26 +22,38 @@ def _fact(fact_id: str, *, padding_bytes: int = 0) -> dict[str, object]:
     }
 
 
-def _constrain_growth(store: SQLiteGraphStore) -> tuple[int, int, int]:
+def _install_connection_scoped_limit(
+    store: SQLiteGraphStore,
+) -> tuple[int, int, dict[str, bool]]:
+    """Apply ``max_page_count`` to every real store connection while enabled.
+
+    SQLiteGraphStore intentionally closes its connection at the end of each
+    ``_db()`` context. ``PRAGMA max_page_count`` is connection-scoped, so
+    setting it in a preliminary context does not constrain the later public
+    ``store_fact()`` transaction. This test-only wrapper injects the fault into
+    the exact connection used by each public operation without changing
+    production code or bypassing the normal write path.
+    """
     with store._db() as conn:
         page_count = int(conn.execute("PRAGMA page_count").fetchone()[0])
         page_size = int(conn.execute("PRAGMA page_size").fetchone()[0])
-        target = page_count + 1
-        applied = int(
-            conn.execute(f"PRAGMA max_page_count = {target}").fetchone()[0]
-        )
-    assert applied == target
-    return page_count, page_size, target
 
+    target = page_count + 1
+    fault = {"enabled": True}
+    original_db = store._db
 
-def _raise_page_limit(db_path: Path) -> None:
-    with sqlite3.connect(str(db_path), timeout=5.0) as conn:
-        applied = int(
-            conn.execute(
-                f"PRAGMA max_page_count = {_SQLITE_DEFAULT_MAX_PAGE_COUNT}"
-            ).fetchone()[0]
-        )
-    assert applied >= _SQLITE_DEFAULT_MAX_PAGE_COUNT
+    @contextmanager
+    def constrained_db():
+        with original_db() as conn:
+            if fault["enabled"]:
+                applied = int(
+                    conn.execute(f"PRAGMA max_page_count = {target}").fetchone()[0]
+                )
+                assert applied == target
+            yield conn
+
+    store._db = constrained_db  # type: ignore[method-assign]
+    return page_size, target, fault
 
 
 def _fact_reference_counts(db_path: Path, fact_id: str) -> dict[str, int]:
@@ -95,7 +105,7 @@ def test_sqlite_full_rolls_back_fact_and_dependents_then_retry_succeeds(
     seed_before = store.get_fact("preexisting")
     assert seed_before is not None
 
-    _, page_size, max_page_count = _constrain_growth(store)
+    page_size, max_page_count, fault = _install_connection_scoped_limit(store)
     oversized = _fact("must-rollback", padding_bytes=page_size * 256)
 
     try:
@@ -113,26 +123,23 @@ def test_sqlite_full_rolls_back_fact_and_dependents_then_retry_succeeds(
 
         with store._db() as conn:
             assert int(conn.execute("PRAGMA page_count").fetchone()[0]) <= max_page_count
-    finally:
-        store.close()
 
-    durable_counts = _fact_reference_counts(db_path, "must-rollback")
-    assert durable_counts
-    assert all(count == 0 for count in durable_counts.values()), durable_counts
-    assert _integrity_check(db_path) == "ok"
+        durable_counts = _fact_reference_counts(db_path, "must-rollback")
+        assert durable_counts
+        assert all(count == 0 for count in durable_counts.values()), durable_counts
+        assert _integrity_check(db_path) == "ok"
 
-    # Capacity restoration is an explicit operator action. The store does not
-    # retry automatically; a fresh explicit call must be made after recovery.
-    _raise_page_limit(db_path)
-    recovered = SQLiteGraphStore(str(db_path))
-    try:
-        recovered.store_fact(oversized)
-        fact = recovered.get_fact("must-rollback")
+        # Capacity restoration is explicit. The store does not retry
+        # automatically; a fresh public call is made only after the injected
+        # connection-level capacity fault has been removed.
+        fault["enabled"] = False
+        store.store_fact(oversized)
+        fact = store.get_fact("must-rollback")
         assert fact is not None
         assert fact["fact_id"] == "must-rollback"
         assert len(str(fact["metadata"]["padding"])) == page_size * 256
     finally:
-        recovered.close()
+        store.close()
 
     durable_counts = _fact_reference_counts(db_path, "must-rollback")
     assert durable_counts.get("facts.fact_id") == 1
