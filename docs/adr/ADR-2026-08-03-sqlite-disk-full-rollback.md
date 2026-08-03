@@ -65,9 +65,10 @@ retry policy, database selection, connection pooling or outbox behavior.
 
 An external package-index or dependency-resolution failure is not repository evidence
 and must not be treated as a passing check. This PR remains draft until the permanent
-test, architecture freeze, lint, blocking type checks, full repository test suite and
-Docker hardening all pass on the same pinned final head. No CI exception is granted for
-this characterization increment.
+test, architecture freeze, lint, blocking type checks and full repository test suite
+pass on the same pinned final head. Docker hardening must pass when its workflow is
+triggered; an explicit test/docs path-filter skip is recorded as `NOT_APPLICABLE`, never
+as `PASS`. No CI exception is granted for this characterization increment.
 
 ## Follow-up
 
