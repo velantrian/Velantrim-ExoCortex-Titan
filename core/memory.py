@@ -26,7 +26,7 @@ from collections import OrderedDict
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 if TYPE_CHECKING:
     from core.write_result import WriteResult
@@ -119,6 +119,19 @@ FACTS_BY_USER_FILTER_SQL = (
 # determines how many times fact_id is repeated in its params tuple (2 for
 # `relations`, which matches on either direction of the edge; 1 for
 # everything else).
+#
+# `projection_outbox` (migration 020, issue #183): `aggregate_type` is
+# always the literal 'fact' (the only value the table's own CHECK
+# constraint permits today), so it is written directly rather than as a
+# second `?` — only `aggregate_id` is bound to fact_id. No Canon caller
+# writes rows here yet; this entry exists so that WHEN one does, the
+# already-atomic l1_same_db deletion and residual check cover it with no
+# separate wiring. A pre-migration-020 database simply lacks this table
+# (same "not applicable" handling as every other entry here) — see
+# _table_exists()'s caller in same_db_dependents_present() for the one
+# exception: a database whose PRAGMA user_version already claims
+# migration 020 (>= 20) but is missing the table anyway is a corruption
+# shape, not a legitimately older database, and fails closed instead.
 _SAME_DB_DEPENDENT_TABLES: tuple[tuple[str, str], ...] = (
     ("relations", "from_fact_id = ? OR to_fact_id = ?"),
     ("l0_fact_provenance", "fact_id = ?"),
@@ -129,7 +142,16 @@ _SAME_DB_DEPENDENT_TABLES: tuple[tuple[str, str], ...] = (
     ("fact_versions", "fact_id = ?"),
     ("raw_derivation_chain", "derived_fact_id = ?"),
     ("facts_fts", "fact_id = ?"),
+    ("projection_outbox", "aggregate_type = 'fact' AND aggregate_id = ?"),
 )
+
+# Schema version at which scripts/apply_migrations.py records migration
+# 020 (projection_outbox) as applied (PRAGMA user_version). Used only by
+# same_db_dependents_present()'s fail-closed check below — never by
+# erase_fact_dependents_atomic()/_purge(), which reports table absence
+# the same honest "not applicable" way for every entry regardless of why
+# a table is missing.
+_PROJECTION_OUTBOX_MIGRATION_VERSION: Final = 20
 
 
 class ImmutableStateError(Exception):
@@ -834,6 +856,22 @@ class SQLiteGraphStore(GraphStore):
         ).fetchone() is not None
 
     @staticmethod
+    def _migration_020_activated(conn: sqlite3.Connection) -> bool:
+        """True if `scripts/apply_migrations.py` has recorded migration 020
+        (projection_outbox) as applied via `PRAGMA user_version` — used only
+        by same_db_dependents_present()'s fail-closed check (see there) to
+        distinguish a legitimately older/unmigrated database (user_version
+        < 20, table absence expected) from one whose migration bookkeeping
+        claims the table should exist. A version read that itself fails is
+        treated as activated — fail CLOSED, never toward "not applicable".
+        """
+        try:
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+        except sqlite3.Error:
+            return True
+        return bool(version >= _PROJECTION_OUTBOX_MIGRATION_VERSION)
+
+    @staticmethod
     def _prevent_fact_delete_trigger_exists(conn: sqlite3.Connection) -> bool:
         return conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type = 'trigger' "
@@ -997,10 +1035,24 @@ class SQLiteGraphStore(GraphStore):
         exist fails CLOSED (returns True, "residual might be present") —
         the same "can't verify absence is not verified absence" principle
         already applied throughout this saga's tri-state checks.
+
+        `projection_outbox` (issue #183) gets one narrow exception to the
+        plain "missing table = not applicable" rule above: if this
+        database's own `PRAGMA user_version` already claims migration 020
+        is applied (>= 20), the table is not merely from-an-older-install
+        absent — its disappearance is a corruption/tampering shape, and a
+        completion tombstone must never be trusted while that is unproven.
+        That case also fails CLOSED (True), never silently treated as "no
+        residual".
         """
         with self._db() as conn:
             for table, where_sql in _SAME_DB_DEPENDENT_TABLES:
                 if not self._table_exists(conn, table):
+                    if (
+                        table == "projection_outbox"
+                        and self._migration_020_activated(conn)
+                    ):
+                        return True
                     continue
                 try:
                     params = (fact_id,) * where_sql.count("?")
