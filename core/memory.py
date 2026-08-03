@@ -73,6 +73,29 @@ MEMORY_TYPES = frozenset({"episodic", "semantic", "procedural", "system"})
 IMMUTABLE_FACT_IDS = {"VALUES_CORE", "RING_ZERO"}
 L0_CAP = 128
 SQLITE_PATH = os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+_SQLITE_BUSY_TIMEOUT_DEFAULT_MS = 30_000
+_SQLITE_BUSY_TIMEOUT_MAX_MS = 120_000
+
+
+def _sqlite_busy_timeout_ms() -> int:
+    """Resolve one bounded SQLite lock-wait budget per store instance.
+
+    Invalid/operator-hostile values retain the historical 30-second
+    default. The returned integer is safe for both sqlite3.connect() and
+    PRAGMA busy_timeout interpolation.
+    """
+    raw = os.getenv(
+        "VELANTRIM_SQLITE_BUSY_TIMEOUT_MS",
+        str(_SQLITE_BUSY_TIMEOUT_DEFAULT_MS),
+    )
+    try:
+        value = int(raw.strip())
+    except (AttributeError, ValueError):
+        return _SQLITE_BUSY_TIMEOUT_DEFAULT_MS
+    if not 1 <= value <= _SQLITE_BUSY_TIMEOUT_MAX_MS:
+        return _SQLITE_BUSY_TIMEOUT_DEFAULT_MS
+    return value
+
 
 # GDPR Art. 17 batch erasure (core.erasure_batch_coordinator): the single
 # source of truth for "which facts belong to user_id", shared by
@@ -249,6 +272,7 @@ class SQLiteGraphStore(GraphStore):
         self._has_fact_version: bool | None = None
         self.use_json_insert = sqlite3.sqlite_version_info >= (3, 38, 0)
         self._closed = False
+        self._busy_timeout_ms = _sqlite_busy_timeout_ms()
         # Одно WAL-соединение + RLock: исключает deadlock пула из 3 conn.
         self._sqlite_conn: sqlite3.Connection | None = None
         self._db_lock = threading.RLock()
@@ -287,7 +311,9 @@ class SQLiteGraphStore(GraphStore):
             conn = self._sqlite_conn
             if conn is None:
                 conn = sqlite3.connect(
-                    self.db_path, timeout=30.0, check_same_thread=False
+                    self.db_path,
+                    timeout=self._busy_timeout_ms / 1000.0,
+                    check_same_thread=False,
                 )
                 conn.row_factory = sqlite3.Row
                 self._sqlite_conn = conn
@@ -296,12 +322,14 @@ class SQLiteGraphStore(GraphStore):
                     conn.execute("SELECT 1")
                 except sqlite3.ProgrammingError:
                     conn = sqlite3.connect(
-                        self.db_path, timeout=30.0, check_same_thread=False
+                        self.db_path,
+                    timeout=self._busy_timeout_ms / 1000.0,
+                    check_same_thread=False,
                     )
                     conn.row_factory = sqlite3.Row
                     self._sqlite_conn = conn
 
-            conn.execute("PRAGMA busy_timeout = 30000")
+            conn.execute(f"PRAGMA busy_timeout = {self._busy_timeout_ms}")
             try:
                 conn.execute("PRAGMA journal_mode = WAL")
             except sqlite3.OperationalError:
@@ -604,7 +632,9 @@ class SQLiteGraphStore(GraphStore):
                 conn = self._sqlite_conn
                 if conn is None:
                     conn = sqlite3.connect(
-                        self.db_path, timeout=30.0, check_same_thread=False
+                        self.db_path,
+                    timeout=self._busy_timeout_ms / 1000.0,
+                    check_same_thread=False,
                     )
                     conn.row_factory = sqlite3.Row
                     self._sqlite_conn = conn
