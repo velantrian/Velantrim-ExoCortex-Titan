@@ -1,0 +1,96 @@
+name: One-shot fix stale Reader migration assertion
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: projection-outbox-full-suite-fix-${{ github.head_ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      github.head_ref == 'agent/projection-outbox-foundation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/projection-outbox-foundation
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install focused dependencies
+        run: pip install -e ".[server,dev]"
+
+      - name: Replace only the stale Reader migration assertion
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("tests/test_llm_reader_adapter.py")
+          old = '''def test_no_migration_is_required():
+              migrations = sorted(p.name for p in (REPO / "migrations").glob("*.sql"))
+              assert migrations[-1] == "019_suggested_edges.sql"
+          '''
+          new = '''def test_no_reader_specific_migration_is_required():
+              """Reader adapter stays schema-free as unrelated migrations advance."""
+              migrations = sorted(
+                  p.name.lower() for p in (REPO / "migrations").glob("*.sql")
+              )
+              forbidden_reader_markers = (
+                  "llm_reader",
+                  "reader_adapter",
+                  "semantic_reader",
+              )
+              assert migrations
+              assert not any(
+                  marker in migration
+                  for migration in migrations
+                  for marker in forbidden_reader_markers
+              )
+          '''
+          text = path.read_text(encoding="utf-8")
+          if text.count(old) != 1:
+              raise SystemExit("expected exactly one stale Reader migration assertion")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+
+      - name: Run focused regression and outbox gates
+        run: |
+          ruff check tests/test_llm_reader_adapter.py --output-format=github
+          python -m pytest -q \
+            tests/test_llm_reader_adapter.py::test_no_reader_specific_migration_is_required \
+            tests/test_projection_outbox.py \
+            tests/test_projection_outbox_migration.py \
+            tests/test_migrations.py
+
+      - name: Remove temporary diagnostic and patch machinery
+        run: |
+          rm .github/workflows/diagnose-projection-outbox-foundation.yml
+          rm .github/workflows/apply-projection-outbox-full-suite-fix.yml
+          rm diagnostics/projection-outbox-first-failure.txt
+
+      - name: Commit final clean change-set
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            tests/test_llm_reader_adapter.py \
+            .github/workflows/diagnose-projection-outbox-foundation.yml \
+            .github/workflows/apply-projection-outbox-full-suite-fix.yml \
+            diagnostics/projection-outbox-first-failure.txt
+          git commit -m "test(reader): decouple schema-free invariant from migration head"
+          git fetch origin agent/projection-outbox-foundation
+          git rebase origin/agent/projection-outbox-foundation
+          git push origin HEAD:agent/projection-outbox-foundation
