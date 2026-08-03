@@ -1395,6 +1395,19 @@ def test_extractive_reader_behaviour_is_untouched():
     assert len(out.capsule.claims) == 3
 
 
-def test_no_migration_is_required():
-    migrations = sorted(p.name for p in (REPO / "migrations").glob("*.sql"))
-    assert migrations[-1] == "019_suggested_edges.sql"
+def test_no_reader_specific_migration_is_required():
+    """Reader adapter stays schema-free as unrelated migrations advance."""
+    migrations = sorted(
+        p.name.lower() for p in (REPO / "migrations").glob("*.sql")
+    )
+    forbidden_reader_markers = (
+        "llm_reader",
+        "reader_adapter",
+        "semantic_reader",
+    )
+    assert migrations
+    assert not any(
+        marker in migration
+        for migration in migrations
+        for marker in forbidden_reader_markers
+    )
