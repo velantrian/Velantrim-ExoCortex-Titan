@@ -146,9 +146,10 @@ _SAME_DB_DEPENDENT_TABLES: tuple[tuple[str, str], ...] = (
 )
 
 # Schema version at which scripts/apply_migrations.py records migration
-# 020 (projection_outbox) as applied (PRAGMA user_version). Used only by
-# same_db_dependents_present()'s fail-closed check below — never by
-# erase_fact_dependents_atomic()/_purge(), which reports table absence
+# 020 (projection_outbox) as applied (PRAGMA user_version). Used by
+# same_db_dependents_present()'s fail-closed check and by
+# _promote_to_validated_cas()'s own activation gating (issue #191) — never
+# by erase_fact_dependents_atomic()/_purge(), which reports table absence
 # the same honest "not applicable" way for every entry regardless of why
 # a table is missing.
 _PROJECTION_OUTBOX_MIGRATION_VERSION: Final = 20
@@ -166,6 +167,19 @@ class TriggerReconstructionError(RuntimeError):
     never be conflated, since this one means the anti-accidental-deletion
     guard is verifiably absent from the database, not just that one erasure
     attempt failed."""
+
+
+class ProjectionOutboxActivationError(RuntimeError):
+    """Raised by _promote_to_validated_cas() (issue #191) when a promotion
+    cannot safely append its required projection-outbox intent on a
+    database whose own migration bookkeeping (PRAGMA user_version >= 20)
+    claims migration 020 is applied — `projection_outbox` or
+    `facts.fact_version` unexpectedly missing is a schema-inconsistency,
+    never a legitimately older/unmigrated database (see
+    _PROJECTION_OUTBOX_MIGRATION_VERSION). Raising here, inside the same
+    transaction as the Canon CAS UPDATE/VersionStore/AuditChain, rolls all
+    of it back via _db()'s own exception handling — a promotion is never
+    committed without the intent an activated outbox requires."""
 
 
 @dataclass
@@ -3061,8 +3075,63 @@ class SQLiteGraphStore(GraphStore):
                 reason=REASON_CODE_CAS_TRANSITION,
             )
 
-        # Canonical UPDATE + version pre-image + audit event have committed.
-        # Only the process-local cache publication remains.
+            # issue #191: first Canon caller of the transactional projection
+            # outbox. Appended strictly after the CAS UPDATE, VersionStore
+            # pre-image and AuditChain event have all succeeded, still
+            # inside this same transaction and connection, before commit —
+            # any failure here (including the fail-closed raises below)
+            # rolls back everything above via _db()'s own exception
+            # handling. A pre-migration-020 database (user_version < 20)
+            # has no outbox feature to be "backed" by, so this is a no-op
+            # there, exactly as promotion has always behaved. An activated
+            # database (user_version >= 20) missing either
+            # projection_outbox or facts.fact_version is a schema
+            # inconsistency, not a legacy shape — see
+            # ProjectionOutboxActivationError.
+            user_version = conn.execute("PRAGMA user_version").fetchone()[0]
+            if user_version >= _PROJECTION_OUTBOX_MIGRATION_VERSION:
+                if not self._table_exists(conn, "projection_outbox"):
+                    raise ProjectionOutboxActivationError(
+                        f"validate_and_promote('{fact_id}'): PRAGMA "
+                        f"user_version={user_version} claims migration 020 "
+                        "is applied, but projection_outbox is missing — "
+                        "refusing to promote without the required intent"
+                    )
+                if not self._has_fact_version:
+                    raise ProjectionOutboxActivationError(
+                        f"validate_and_promote('{fact_id}'): PRAGMA "
+                        f"user_version={user_version} claims migration 020 "
+                        "is applied, but facts.fact_version is missing — "
+                        "refusing to promote without a durable "
+                        "canonical_version"
+                    )
+                canonical_version = conn.execute(
+                    "SELECT fact_version FROM facts WHERE fact_id = ?",
+                    (fact_id,),
+                ).fetchone()[0]
+
+                from core.projection_outbox import (
+                    LOCAL_PROJECTION_SCOPE_REF,
+                    ProjectionIntent,
+                    ProjectionKind,
+                    ProjectionOperation,
+                    append_projection_intent_in_transaction,
+                )
+
+                append_projection_intent_in_transaction(
+                    conn,
+                    ProjectionIntent(
+                        aggregate_id=fact_id,
+                        scope_ref=LOCAL_PROJECTION_SCOPE_REF,
+                        canonical_version=canonical_version,
+                        projection_kind=ProjectionKind.ALL,
+                        operation=ProjectionOperation.REFRESH,
+                    ),
+                )
+
+        # Canonical UPDATE + version pre-image + audit event + (if
+        # activated) projection-outbox intent have committed. Only the
+        # process-local cache publication remains.
         new_record["audit_subject_id"] = real_audit_subject_id
         self._l0_put(fact_id, new_record)
         return True

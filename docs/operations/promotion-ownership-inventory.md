@@ -15,6 +15,7 @@ durable L1 snapshot
 → TruthGate evaluation
 → CAS-guarded canonical update
 → VersionStore + AuditChain in the same transaction
+→ (if migration 020 activated) projection_outbox intent, same transaction — issue #191
 → post-commit L0 publication
 ```
 
@@ -119,7 +120,7 @@ RUNTIME_WIRED            ✅ five standard callers
 FEATURE_ENABLED          caller/profile dependent
 RUNTIME_OBSERVED         not claimed
 SOLE_SINGLE_FACT_OWNER   ❌ curated ingest exception + compatibility primitives remain
-OUTBOX_ATOMIC             ❌ not implemented
+OUTBOX_ATOMIC            ✅ issue #191 — see below; still not a dispatcher or delivery guarantee
 ```
 
 ## Migration gates
@@ -138,6 +139,21 @@ Every additional standard caller migration must prove:
 
 ## Outbox boundary
 
-No caller persists `PromotionReceipt` independently. Receipt persistence begins only
-when a transactional outbox can write the mutation-evidence intent in the same SQLite
-transaction as the canonical mutation. Until then receipts remain in-process results.
+No caller persists `PromotionReceipt` independently — this is unchanged by issue #191.
+What changed: `_promote_to_validated_cas()` (the one shared primitive under
+`validate_and_promote()`, and therefore under all five standard callers above, since
+none of them bypass it) now appends one content-minimized `projection_outbox` intent —
+`aggregate_type="fact"`, technical `aggregate_id`, `scope_ref=LOCAL_PROJECTION_SCOPE_REF`,
+`canonical_version=facts.fact_version` read on the same connection after the CAS
+succeeds — in the SAME SQLite transaction as the Canon CAS UPDATE, VersionStore
+pre-image and AuditChain event, on databases where migration 020 is activated (`PRAGMA
+user_version >= 20`). A pre-v20 database is unaffected: no outbox feature exists there,
+so no intent is appended and nothing about promotion changes. An activated database
+missing either `projection_outbox` or `facts.fact_version` fails closed — the whole
+promotion transaction, including Canon, rolls back rather than promoting without the
+required intent (`ProjectionOutboxActivationError`, see
+`ADR-2026-08-04-first-canon-caller-projection-outbox.md`).
+
+This is durable intent, not a delivery guarantee: no dispatcher exists, nothing reads or
+applies these rows yet, and no exactly-once claim is made. `PromotionReceipt` itself
+still is not persisted independently of the in-process result.

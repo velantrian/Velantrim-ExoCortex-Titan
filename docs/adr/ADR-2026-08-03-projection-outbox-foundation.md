@@ -142,11 +142,11 @@ review threads. Focused or bot-authored runs do not replace this gate.
 ~~Define a usable scope_ref contract.~~ Done — issue #189,
 `ADR-2026-08-04-local-projection-scope-reference.md`.
 
-Remaining: select and characterize one single-fact canonical mutation family
-(characterization already identified `SQLiteGraphStore.validate_and_promote()` as the
-candidate, with its Canon CAS UPDATE, VersionStore snapshot, and AuditChain event
-already sharing one `sqlite3.Connection`/transaction), append the intent in that same
-transaction using the now-defined `LOCAL_PROJECTION_SCOPE_REF`, source
-`canonical_version` from `facts.fact_version` (migration 009 — itself schema-optional,
-needs its own fail-closed gating parallel to `projection_outbox`'s), and prove both
-directions of rollback. Dispatcher work remains later still.
+~~Select and characterize one single-fact canonical mutation family, append the
+intent in that same transaction, and prove both directions of rollback.~~ Done —
+issue #191, `ADR-2026-08-04-first-canon-caller-projection-outbox.md`
+(`SQLiteGraphStore.validate_and_promote()` via `_promote_to_validated_cas()`).
+
+Remaining: the dispatcher increment #179 itself describes (bounded claim/lease,
+explicit retry policy, idempotent projection application, crash-recovery tests) —
+not started by any increment so far.
