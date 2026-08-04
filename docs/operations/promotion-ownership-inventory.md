@@ -154,6 +154,19 @@ promotion transaction, including Canon, rolls back rather than promoting without
 required intent (`ProjectionOutboxActivationError`, see
 `ADR-2026-08-04-first-canon-caller-projection-outbox.md`).
 
-This is durable intent, not a delivery guarantee: no dispatcher exists, nothing reads or
-applies these rows yet, and no exactly-once claim is made. `PromotionReceipt` itself
-still is not persisted independently of the in-process result.
+This is durable intent, not a delivery guarantee: `PromotionReceipt` itself still is
+not persisted independently of the in-process result.
+
+## Dispatcher status (issue #193)
+
+`core.projection_dispatcher` (migration 022, `projection_dispatch_state`) now exists
+as a bounded, tested claim/lease/retry/ack primitive —
+`claim_batch()` / `apply_claimed_work()` / `ack_claim()` / `retry_claim()` /
+`park_claim()` / `dispatch_once()` — see
+`ADR-2026-08-04-bounded-local-projection-dispatcher.md`. It is a plain callable, not
+runtime-wired: no server startup registration, no background worker/scheduler, no
+invocation cadence, no automatic repetition. Nothing today ever calls
+`dispatch_once()` outside this primitive's own tests. At-least-once, not
+exactly-once — a crash between a committed apply and its acknowledgement is
+recoverable only because `apply_fts_projection()`'s idempotent, version-monotonic
+contract makes every reapply safe.

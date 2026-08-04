@@ -141,7 +141,21 @@ FACTS_BY_USER_FILTER_SQL = (
 # other same-DB dependent, and a surviving/reappeared checkpoint for an
 # already-erased fact is detected as residual by the exact same
 # `same_db_dependents_present()` check, with no separate wiring.
+#
+# `projection_dispatch_state` (migration 022, issue #193): mutable
+# claim/lease/retry/ack state for one `projection_outbox` intent, selected
+# directly by `aggregate_id = ?` (this table has no `aggregate_type` column
+# of its own). Ordered FIRST among the projection-family entries so a purge
+# never leaves it orphaned relative to the checkpoint/outbox/FTS rows it
+# describes — the whole purge is one atomic transaction, so no reader can
+# ever observe an intermediate state regardless of order, but the explicit
+# dispatch_state -> checkpoint -> outbox -> FTS ordering documents intent
+# and matches this table's own `REFERENCES projection_outbox(outbox_id)`.
 _SAME_DB_DEPENDENT_TABLES: tuple[tuple[str, str], ...] = (
+    ("projection_dispatch_state", "aggregate_id = ?"),
+    ("projection_checkpoints", "aggregate_type = 'fact' AND aggregate_id = ?"),
+    ("projection_outbox", "aggregate_type = 'fact' AND aggregate_id = ?"),
+    ("facts_fts", "fact_id = ?"),
     ("relations", "from_fact_id = ? OR to_fact_id = ?"),
     ("l0_fact_provenance", "fact_id = ?"),
     ("fact_living_context", "fact_id = ?"),
@@ -150,9 +164,6 @@ _SAME_DB_DEPENDENT_TABLES: tuple[tuple[str, str], ...] = (
     ("fact_mentions", "fact_id = ?"),
     ("fact_versions", "fact_id = ?"),
     ("raw_derivation_chain", "derived_fact_id = ?"),
-    ("facts_fts", "fact_id = ?"),
-    ("projection_outbox", "aggregate_type = 'fact' AND aggregate_id = ?"),
-    ("projection_checkpoints", "aggregate_type = 'fact' AND aggregate_id = ?"),
 )
 
 # Schema version at which scripts/apply_migrations.py records migration
@@ -171,6 +182,10 @@ _PROJECTION_OUTBOX_MIGRATION_VERSION: Final = 20
 # claimed migration 021 but was missing projection_checkpoints would have
 # been silently treated as "not applicable" instead of a corruption shape.
 _PROJECTION_CHECKPOINTS_MIGRATION_VERSION: Final = 21
+
+# Same purpose as _PROJECTION_OUTBOX_MIGRATION_VERSION above, for migration
+# 022 (projection_dispatch_state, issue #193).
+_PROJECTION_DISPATCH_STATE_MIGRATION_VERSION: Final = 22
 
 
 class ImmutableStateError(Exception):
@@ -932,6 +947,17 @@ class SQLiteGraphStore(GraphStore):
         return bool(version >= _PROJECTION_CHECKPOINTS_MIGRATION_VERSION)
 
     @staticmethod
+    def _migration_022_activated(conn: sqlite3.Connection) -> bool:
+        """Same purpose as _migration_020_activated() above, for migration
+        022 (projection_dispatch_state, issue #193) — see
+        _PROJECTION_DISPATCH_STATE_MIGRATION_VERSION."""
+        try:
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+        except sqlite3.Error:
+            return True
+        return bool(version >= _PROJECTION_DISPATCH_STATE_MIGRATION_VERSION)
+
+    @staticmethod
     def _prevent_fact_delete_trigger_exists(conn: sqlite3.Connection) -> bool:
         return conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type = 'trigger' "
@@ -1096,14 +1122,15 @@ class SQLiteGraphStore(GraphStore):
         the same "can't verify absence is not verified absence" principle
         already applied throughout this saga's tri-state checks.
 
-        `projection_outbox` (issue #183) gets one narrow exception to the
-        plain "missing table = not applicable" rule above: if this
-        database's own `PRAGMA user_version` already claims migration 020
-        is applied (>= 20), the table is not merely from-an-older-install
-        absent — its disappearance is a corruption/tampering shape, and a
-        completion tombstone must never be trusted while that is unproven.
-        That case also fails CLOSED (True), never silently treated as "no
-        residual".
+        `projection_outbox` (issue #183), `projection_checkpoints` (issue
+        #194) and `projection_dispatch_state` (issue #193) each get one
+        narrow exception to the plain "missing table = not applicable" rule
+        above: if this database's own `PRAGMA user_version` already claims
+        the owning migration is applied, the table is not merely
+        from-an-older-install absent — its disappearance is a
+        corruption/tampering shape, and a completion tombstone must never
+        be trusted while that is unproven. That case also fails CLOSED
+        (True), never silently treated as "no residual".
         """
         with self._db() as conn:
             for table, where_sql in _SAME_DB_DEPENDENT_TABLES:
@@ -1114,6 +1141,9 @@ class SQLiteGraphStore(GraphStore):
                     ) or (
                         table == "projection_checkpoints"
                         and self._migration_021_activated(conn)
+                    ) or (
+                        table == "projection_dispatch_state"
+                        and self._migration_022_activated(conn)
                     ):
                         return True
                     continue

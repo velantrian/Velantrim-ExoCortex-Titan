@@ -264,10 +264,11 @@ for any projection family other than FTS.
 
 This is the prerequisite issue #193's own Phase 0 characterization named before any
 dispatcher state machine could be safely designed. It resolves both confirmed
-blockers (`ALL` semantics, version-monotonic apply) **for FTS only**. Issue #193
-remains blocked until this PR merges and post-merge verification confirms the
-checkpoint contract on real `main`. Graph/vector activation is explicitly deferred to
-a future, separately reviewed policy version.
+blockers (`ALL` semantics, version-monotonic apply) **for FTS only**. Issue #193's
+bounded claim/lease/retry/ack dispatcher was built on top of this contract — see
+`ADR-2026-08-04-bounded-local-projection-dispatcher.md` — as a callable primitive,
+not yet runtime-wired. Graph/vector activation is explicitly deferred to a future,
+separately reviewed policy version.
 
 ## Merge gate
 

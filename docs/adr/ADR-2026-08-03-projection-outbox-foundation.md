@@ -154,7 +154,12 @@ machine.~~ Done — issue #194,
 `{FTS}`; `core.projection_apply.apply_fts_projection()`; migration 021
 `projection_checkpoints`).
 
-Remaining: the dispatcher increment #179/#193 itself describes (bounded claim/lease,
-explicit retry policy, crash-recovery tests) — not started by any increment so far.
-Graph/vector activation remains deferred to a future, separately reviewed policy
-version.
+~~The dispatcher increment #179/#193 itself describes (bounded claim/lease,
+explicit retry policy, crash-recovery tests).~~ Done as a callable primitive —
+issue #193, `ADR-2026-08-04-bounded-local-projection-dispatcher.md` (migration 022
+`projection_dispatch_state`; `core.projection_dispatcher.claim_batch()` /
+`apply_claimed_work()` / `ack_claim()` / `retry_claim()` / `park_claim()` /
+`dispatch_once()`). Not runtime-wired: no server startup registration, no
+background worker, no scheduler, no invocation cadence exists yet — that remains
+a separate, future reviewed change. Graph/vector activation remains deferred to a
+future, separately reviewed policy version.
