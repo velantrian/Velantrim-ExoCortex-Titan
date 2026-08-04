@@ -149,7 +149,17 @@ class ClaimedWork:
     """Immutable snapshot of one claimed intent plus this claimer's own
     lease. `aggregate_id` here is read back from `projection_outbox`
     itself (via claim_batch()'s INSERT ... SELECT), never trusted from
-    caller input."""
+    caller input.
+
+    Review finding, PR #197: every semantic field on this dataclass
+    (`aggregate_id`, `scope_ref`, `projection_kind`, `operation`,
+    `canonical_version`, `policy_version`) is INFORMATIONAL ONLY once
+    claim_batch() returns it — this is a public, constructible/replaceable
+    dataclass, and `apply_claimed_work()` re-reads all of them fresh from
+    the durable `projection_outbox` row inside its own transaction rather
+    than trusting this snapshot. Only `outbox_id` and the exact active
+    `lease_token` establish ownership; the durable outbox row is the sole
+    semantic authority for what gets resolved and applied."""
 
     outbox_id: str
     aggregate_id: str
@@ -406,41 +416,58 @@ def apply_claimed_work(
         if lease_expires_at is None or lease_expires_at <= now_iso:
             return _reject(LeaseValidationOutcome.EXPIRED)
 
+        # Re-read the FULL durable intent row fresh inside this same apply
+        # transaction (review finding, PR #197) — ClaimedWork is a public,
+        # constructible/replaceable dataclass: a caller holding genuine
+        # outbox_id/lease_token ownership credentials could still construct
+        # a MODIFIED ClaimedWork (e.g. via dataclasses.replace()) claiming a
+        # different projection_kind/policy_version/canonical_version than
+        # the durable row actually has. The durable projection_outbox row —
+        # never the ClaimedWork snapshot — is the sole semantic authority
+        # for what gets resolved/applied; ClaimedWork's own semantic fields
+        # (aggregate_id, scope_ref, projection_kind, operation,
+        # canonical_version, policy_version) are informational only after
+        # claim. Only outbox_id and the exact active lease_token establish
+        # ownership.
         intent_row = conn.execute(
-            "SELECT aggregate_id, scope_ref, operation FROM projection_outbox WHERE outbox_id = ?",
+            "SELECT aggregate_id, scope_ref, projection_kind, operation, "
+            "canonical_version, policy_version FROM projection_outbox WHERE outbox_id = ?",
             (claimed.outbox_id,),
         ).fetchone()
         if intent_row is None:
             return _reject(LeaseValidationOutcome.INTENT_MISSING)
-        intent_aggregate_id, intent_scope_ref, intent_operation = intent_row
+        (
+            intent_aggregate_id, intent_scope_ref, intent_projection_kind,
+            intent_operation, intent_canonical_version, intent_policy_version,
+        ) = intent_row
         if intent_aggregate_id != state_aggregate_id:
             return _reject(LeaseValidationOutcome.AGGREGATE_MISMATCH)
-        # Re-read scope_ref fresh (review finding, PR #197): migration 020
-        # has no SQL-level CHECK narrowing scope_ref (unlike
-        # aggregate_type/projection_kind/operation, which do), so this is
-        # one of two intent fields a raw/malformed row could carry outside
+        # scope_ref: migration 020 has no SQL-level CHECK narrowing it
+        # (unlike aggregate_type/projection_kind/operation, which do), so
+        # this is one intent field a raw/malformed row could carry outside
         # policy v1's single supported value. Fails closed rather than
         # silently applying under the wrong routing scope.
         if intent_scope_ref != LOCAL_PROJECTION_SCOPE_REF:
             return _park(DispatchErrorCode.UNSUPPORTED_SCOPE)
-        # Re-read operation fresh (review finding, PR #197): migration 020
-        # allows REFRESH and REMOVE, but apply_fts_projection() (issue
-        # #194) has no REMOVE parameter at all — it decides remove-vs-
-        # refresh purely from whether Canon currently exists, independent
-        # of what operation the intent declared. That contract covers "an
-        # intent's own captured operation must never override the current-
-        # Canon rule" — it does NOT mean "an explicit REMOVE intent while
-        # Canon still exists is a reviewed, safe no-op refresh". No
-        # executable REMOVE semantic has been designed or reviewed, so
-        # this fails closed rather than silently refreshing an intent that
-        # asked for removal.
+        # operation: migration 020 allows REFRESH and REMOVE, but
+        # apply_fts_projection() (issue #194) has no REMOVE parameter at
+        # all — it decides remove-vs-refresh purely from whether Canon
+        # currently exists, independent of what operation the intent
+        # declared. That contract covers "an intent's own captured
+        # operation must never override the current-Canon rule" — it does
+        # NOT mean "an explicit REMOVE intent while Canon still exists is a
+        # reviewed, safe no-op refresh". No executable REMOVE semantic has
+        # been designed or reviewed, so this fails closed rather than
+        # silently refreshing an intent that asked for removal.
         if intent_operation != ProjectionOperation.REFRESH.value:
             return _park(DispatchErrorCode.UNSUPPORTED_OPERATION)
 
         try:
             # Policy v1 ALL resolves to exactly {FTS} — see
             # core.projection_apply. No other target exists to iterate.
-            resolve_projection_targets(claimed.policy_version, claimed.projection_kind)
+            # Durable projection_kind/policy_version only — never
+            # claimed.projection_kind/claimed.policy_version.
+            resolve_projection_targets(intent_policy_version, ProjectionKind(intent_projection_kind))
         except UnsupportedPolicyTargetError:
             return _park(DispatchErrorCode.UNSUPPORTED_POLICY_TARGET)
 
@@ -448,7 +475,8 @@ def apply_claimed_work(
             apply_result = apply_fts_projection(
                 conn,
                 fact_id=intent_aggregate_id,
-                intent_canonical_version=claimed.canonical_version,
+                # Durable canonical_version only — never claimed.canonical_version.
+                intent_canonical_version=intent_canonical_version,
             )
         except CanonVersionBehindIntentError:
             return _park(DispatchErrorCode.CANON_VERSION_BEHIND_INTENT)

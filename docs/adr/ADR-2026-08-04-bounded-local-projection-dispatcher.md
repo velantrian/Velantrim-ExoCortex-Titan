@@ -473,6 +473,52 @@ with 0 failures; regression (273 passed); Ruff/mypy clean; architecture-freeze
 and hygiene guards PASS; full repository `pytest tests/`: **3100 passed**, 22
 skipped, 1 xfailed, 0 failed — see the PR body for the exact pinned-head numbers.
 
+## Review-hardening addendum 4 (final maintainer comment, PR #197)
+
+One more finding, confirmed real: `apply_claimed_work()` re-read `aggregate_id`,
+`scope_ref`, and `operation` fresh from the durable `projection_outbox` row
+(addenda 2 and 3 above), but still used `claimed.projection_kind`,
+`claimed.policy_version`, and `claimed.canonical_version` directly from the
+`ClaimedWork` snapshot for `resolve_projection_targets()` and
+`apply_fts_projection()`. Addendum 2's earlier justification for not re-reading
+these three ("guaranteed immutable for a given `outbox_id` by construction, via
+the semantic hash") answered the wrong question: it is true that the DURABLE
+row itself cannot carry two different values for a given `outbox_id`, but that
+says nothing about whether a CALLER-CONSTRUCTED `ClaimedWork` — a public,
+frozen-but-replaceable dataclass — can diverge from that durable row.
+`dataclasses.replace(work, projection_kind=ProjectionKind.FTS)` produces
+exactly such a divergent object, and nothing stopped `apply_claimed_work()`
+from trusting it. A caller genuinely holding the correct `outbox_id` and
+`lease_token` (real ownership credentials) could still turn a durable GRAPH or
+unsupported-policy intent into an FTS/v1 apply, or override the durable
+`canonical_version` entirely.
+
+**Fixed**: the `intent_row` re-read inside `apply_claimed_work()`'s transaction
+now includes `projection_kind`, `canonical_version`, and `policy_version`
+alongside the already-re-read `aggregate_id`/`scope_ref`/`operation` — all six
+semantic fields of the durable intent, in one query. `resolve_projection_targets()`
+and `apply_fts_projection()` now receive ONLY these durable values; `claimed.*`
+is never read for anything except `outbox_id` (identity) and `lease_token`
+(ownership CAS). `ClaimedWork`'s docstring now states explicitly that every
+semantic field is informational-only once returned from `claim_batch()`.
+
+Proven by five new tests: `test_forged_projection_kind_cannot_override_durable_graph_intent`,
+`test_forged_policy_version_cannot_override_durable_unsupported_policy_version`,
+`test_forged_canonical_version_does_not_affect_apply` (a forged value high
+enough to trigger `CanonVersionBehindIntentError` if it were actually used —
+confirms the durable value is used instead, and the apply succeeds normally),
+`test_genuine_unmodified_claim_still_follows_normal_success_path` (regression
+proof that the normal, unmodified flow is unaffected), and
+`test_forged_dto_leaves_fts_checkpoint_and_state_untouched_when_durable_intent_parks`
+(explicit before/after snapshot proof that `apply_claimed_work()` itself
+mutates nothing when the durable intent must park, regardless of what the
+forged DTO claims).
+
+Full re-validation: focused suite grew 50→55 tests, all passing, re-run 25×
+with 0 failures; regression (278 passed); Ruff/mypy clean; architecture-freeze
+and hygiene guards PASS; full repository `pytest tests/`: **3105 passed**, 22
+skipped, 1 xfailed, 0 failed — see the PR body for the exact pinned-head numbers.
+
 ## Interpretation boundary
 
 **Proven:** the claim/lease/retry/ack state machine is race-free under 2- and

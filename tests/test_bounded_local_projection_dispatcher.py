@@ -25,6 +25,7 @@ exceptions.
 """
 from __future__ import annotations
 
+import dataclasses
 import os
 import subprocess
 import sys
@@ -55,7 +56,11 @@ from core.projection_dispatcher import (
     park_claim,
     retry_claim,
 )
-from core.projection_outbox import LOCAL_PROJECTION_SCOPE_REF
+from core.projection_outbox import (
+    LOCAL_PROJECTION_SCOPE_REF,
+    PROJECTION_OUTBOX_POLICY_VERSION,
+    ProjectionKind,
+)
 
 _ROOT = os.path.join(os.path.dirname(__file__), "..")
 _APPLY_MIGRATIONS = os.path.join(_ROOT, "scripts", "apply_migrations.py")
@@ -1587,4 +1592,211 @@ def test_dispatch_once_resamples_clock_between_items_expired_item_rejected(tmp_p
         "item 2 must remain leased (rejected as expired), never acknowledged using the stale batch-start now"
     )
     assert _checkpoint_row(db_path, fact_id_2) is None
+    assert _integrity_ok(db_path)
+
+
+# ── Review-hardening proofs (final maintainer comment, PR #197) ─────────────
+#
+# ClaimedWork is a public, frozen-but-replaceable dataclass. apply_claimed_work()
+# already re-read aggregate_id/scope_ref/operation fresh from the durable
+# projection_outbox row (prior rounds), but still used claimed.projection_kind/
+# claimed.policy_version/claimed.canonical_version directly — a caller holding
+# genuine outbox_id/lease_token ownership could still construct a MODIFIED
+# ClaimedWork (via dataclasses.replace()) carrying different semantic fields
+# than the durable row actually has. Fixed: ALL semantic fields are now
+# re-read fresh from projection_outbox inside the apply transaction; ClaimedWork's
+# own copies are informational only after claim() — only outbox_id and the
+# exact active lease_token establish ownership.
+
+def test_forged_projection_kind_cannot_override_durable_graph_intent(tmp_path: Path) -> None:
+    """dataclasses.replace(work, projection_kind=FTS) must not make a
+    durable GRAPH intent apply or acknowledge — the durable
+    projection_outbox row, not the ClaimedWork snapshot, decides."""
+    db_path = tmp_path / "forged-projection-kind.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_forged_projection_kind"
+    _seed_fact(store, fact_id, claim="claim text")
+    with _open(db_path) as conn:
+        _insert_outbox(
+            conn, outbox_id="ob_forged_projection_kind", aggregate_id=fact_id,
+            projection_kind="graph",
+        )
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        assert work.projection_kind == ProjectionKind.GRAPH  # durable value, as claimed
+
+        forged = dataclasses.replace(work, projection_kind=ProjectionKind.FTS)
+        result = apply_claimed_work(conn, forged, now=_T0)
+
+        assert result.action == DispatchAction.PARK
+        assert result.error_code == DispatchErrorCode.UNSUPPORTED_POLICY_TARGET
+        park_claim(conn, forged.outbox_id, forged.lease_token, error_code=result.error_code, now=_T0)
+    finally:
+        conn.close()
+
+    assert _dispatch_row(db_path, "ob_forged_projection_kind")[2] == "parked"
+    assert _checkpoint_row(db_path, fact_id) is None, "a forged-FTS bypass of a durable GRAPH intent must never write a checkpoint"
+    assert _integrity_ok(db_path)
+
+
+def test_forged_policy_version_cannot_override_durable_unsupported_policy_version(
+    tmp_path: Path,
+) -> None:
+    """A forged, genuinely-supported policy_version must not bypass the
+    durable outbox row's own unsupported policy_version."""
+    db_path = tmp_path / "forged-policy-version.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_forged_policy_version"
+    _seed_fact(store, fact_id, claim="claim text")
+    with _open(db_path) as conn:
+        _insert_outbox(
+            conn, outbox_id="ob_forged_policy_version", aggregate_id=fact_id,
+            policy_version="v2-does-not-exist",
+        )
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        assert work.policy_version == "v2-does-not-exist"  # durable value, as claimed
+
+        forged = dataclasses.replace(work, policy_version=PROJECTION_OUTBOX_POLICY_VERSION)
+        result = apply_claimed_work(conn, forged, now=_T0)
+
+        assert result.action == DispatchAction.PARK
+        assert result.error_code == DispatchErrorCode.UNSUPPORTED_POLICY_TARGET
+        park_claim(conn, forged.outbox_id, forged.lease_token, error_code=result.error_code, now=_T0)
+    finally:
+        conn.close()
+
+    assert _dispatch_row(db_path, "ob_forged_policy_version")[2] == "parked"
+    assert _checkpoint_row(db_path, fact_id) is None
+    assert _integrity_ok(db_path)
+
+
+def test_forged_canonical_version_does_not_affect_apply(tmp_path: Path) -> None:
+    """A forged canonical_version (here, one high enough to trigger
+    CanonVersionBehindIntentError if it were actually used) must have no
+    effect — apply_fts_projection() must be called with the DURABLE
+    projection_outbox.canonical_version, never claimed.canonical_version."""
+    db_path = tmp_path / "forged-canonical-version.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_forged_canonical_version"
+    _seed_fact(store, fact_id, claim="version 1 content")
+    with _open(db_path) as conn:
+        _insert_outbox(conn, outbox_id="ob_forged_canonical_version", aggregate_id=fact_id, canonical_version=1)
+        conn.execute(
+            "UPDATE facts SET claim = ?, fact_version = ? WHERE fact_id = ?",
+            ("version 3 content", 3, fact_id),
+        )
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        assert work.canonical_version == 1  # durable value, as claimed
+
+        # If this forged value (999) were actually used, apply_fts_projection()
+        # would raise CanonVersionBehindIntentError (current Canon is only 3).
+        forged = dataclasses.replace(work, canonical_version=999)
+        result = apply_claimed_work(conn, forged, now=_T0)
+
+        assert result.action == DispatchAction.ACKNOWLEDGE, (
+            "the forged canonical_version must be ignored — the durable "
+            "value (1) is behind current Canon (3), which is a normal, "
+            "successful apply, not a CanonVersionBehindIntentError"
+        )
+        ack_claim(conn, forged.outbox_id, forged.lease_token, now=_T0)
+    finally:
+        conn.close()
+
+    assert _fts_row(db_path, fact_id) == ("version 3 content", "test")
+    assert _checkpoint_row(db_path, fact_id)[0] == 3
+    assert _dispatch_row(db_path, "ob_forged_canonical_version")[2] == "acknowledged"
+    assert _integrity_ok(db_path)
+
+
+def test_genuine_unmodified_claim_still_follows_normal_success_path(tmp_path: Path) -> None:
+    """Sanity/regression proof: an unmodified ClaimedWork (the normal case
+    — nobody constructs or replaces it) is completely unaffected by the
+    durable re-read; claim -> apply -> ack succeeds exactly as before."""
+    db_path = tmp_path / "genuine-unmodified-claim.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_genuine_unmodified"
+    _seed_fact(store, fact_id, claim="original claim")
+    _set_fact_version(db_path, fact_id, 1)
+    with _open(db_path) as conn:
+        _insert_outbox(conn, outbox_id="ob_genuine_unmodified", aggregate_id=fact_id)
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        result = apply_claimed_work(conn, work, now=_T0)  # unmodified — no dataclasses.replace()
+        assert result.action == DispatchAction.ACKNOWLEDGE
+        outcome = ack_claim(conn, work.outbox_id, work.lease_token, now=_T0)
+        assert outcome == AckOutcome.ACKNOWLEDGED
+    finally:
+        conn.close()
+
+    assert _dispatch_row(db_path, "ob_genuine_unmodified")[2] == "acknowledged"
+    assert _fts_row(db_path, fact_id) == ("original claim", "test")
+    assert _checkpoint_row(db_path, fact_id)[0] == 1
+    assert _integrity_ok(db_path)
+
+
+def test_forged_dto_leaves_fts_checkpoint_and_state_untouched_when_durable_intent_parks(
+    tmp_path: Path,
+) -> None:
+    """Explicit before/after snapshot proof: when the DURABLE intent must
+    park (here, an unsupported durable projection_kind), a forged
+    ClaimedWork claiming otherwise must leave FTS, the checkpoint, and the
+    dispatch_state row's lifecycle completely unchanged by apply_claimed_work()
+    itself — parking only happens via the caller's own separate park_claim()."""
+    db_path = tmp_path / "forged-dto-no-mutation.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_forged_dto_no_mutation"
+    _seed_fact(store, fact_id, claim="pre-existing claim")
+    with _open(db_path) as conn:
+        _insert_outbox(
+            conn, outbox_id="ob_forged_dto_no_mutation", aggregate_id=fact_id,
+            projection_kind="vector",
+        )
+        conn.commit()
+    fts_before = _fts_row(db_path, fact_id)  # store_fact()'s own best-effort sync
+    checkpoint_before = _checkpoint_row(db_path, fact_id)
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        assert work.projection_kind == ProjectionKind.VECTOR
+        state_before = _dispatch_row(db_path, "ob_forged_dto_no_mutation")
+        assert state_before[2] == "leased"
+
+        forged = dataclasses.replace(work, projection_kind=ProjectionKind.FTS)
+        result = apply_claimed_work(conn, forged, now=_T0)
+        assert result.action == DispatchAction.PARK
+        assert result.error_code == DispatchErrorCode.UNSUPPORTED_POLICY_TARGET
+
+        # apply_claimed_work() itself must not have mutated anything — no
+        # ack/retry/park call has happened yet.
+        assert _fts_row(db_path, fact_id) == fts_before
+        assert _checkpoint_row(db_path, fact_id) == checkpoint_before
+        assert _dispatch_row(db_path, "ob_forged_dto_no_mutation")[2] == "leased"
+
+        park_claim(conn, forged.outbox_id, forged.lease_token, error_code=result.error_code, now=_T0)
+    finally:
+        conn.close()
+
+    assert _fts_row(db_path, fact_id) == fts_before
+    assert _checkpoint_row(db_path, fact_id) == checkpoint_before
+    assert _dispatch_row(db_path, "ob_forged_dto_no_mutation")[2] == "parked"
     assert _integrity_ok(db_path)
