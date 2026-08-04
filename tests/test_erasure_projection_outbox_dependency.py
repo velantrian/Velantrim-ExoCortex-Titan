@@ -64,9 +64,9 @@ def _insert_outbox_row(
 @pytest.fixture
 def migrated_store(tmp_path):
     """A SQLiteGraphStore whose facts DB has gone through the REAL
-    migration chain (008-020), so `projection_outbox` genuinely exists
-    with the real migrations/020_projection_outbox.sql constraints, and
-    PRAGMA user_version == 20."""
+    migration chain (currently 008-021), so `projection_outbox` genuinely
+    exists with the real migrations/020_projection_outbox.sql constraints,
+    and PRAGMA user_version >= 20."""
     db_path = str(tmp_path / "facts.db")
     subprocess.run(
         [sys.executable, _APPLY_MIGRATIONS, "--db", db_path, "--no-backup"],

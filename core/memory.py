@@ -132,6 +132,15 @@ FACTS_BY_USER_FILTER_SQL = (
 # exception: a database whose PRAGMA user_version already claims
 # migration 020 (>= 20) but is missing the table anyway is a corruption
 # shape, not a legitimately older database, and fails closed instead.
+#
+# `projection_checkpoints` (migration 021, issue #194): same
+# `aggregate_type = 'fact' AND aggregate_id = ?` shape as `projection_outbox`
+# — a version-monotonic same-DB checkpoint of what canonical_version a
+# local projection (policy v1: FTS only) has actually been derived from.
+# Registering it here means erasure removes it atomically alongside every
+# other same-DB dependent, and a surviving/reappeared checkpoint for an
+# already-erased fact is detected as residual by the exact same
+# `same_db_dependents_present()` check, with no separate wiring.
 _SAME_DB_DEPENDENT_TABLES: tuple[tuple[str, str], ...] = (
     ("relations", "from_fact_id = ? OR to_fact_id = ?"),
     ("l0_fact_provenance", "fact_id = ?"),
@@ -143,6 +152,7 @@ _SAME_DB_DEPENDENT_TABLES: tuple[tuple[str, str], ...] = (
     ("raw_derivation_chain", "derived_fact_id = ?"),
     ("facts_fts", "fact_id = ?"),
     ("projection_outbox", "aggregate_type = 'fact' AND aggregate_id = ?"),
+    ("projection_checkpoints", "aggregate_type = 'fact' AND aggregate_id = ?"),
 )
 
 # Schema version at which scripts/apply_migrations.py records migration
@@ -153,6 +163,14 @@ _SAME_DB_DEPENDENT_TABLES: tuple[tuple[str, str], ...] = (
 # the same honest "not applicable" way for every entry regardless of why
 # a table is missing.
 _PROJECTION_OUTBOX_MIGRATION_VERSION: Final = 20
+
+# Same purpose as _PROJECTION_OUTBOX_MIGRATION_VERSION above, for migration
+# 021 (projection_checkpoints, issue #194). Review finding, PR #195: the
+# original same_db_dependents_present() fail-closed exception covered only
+# "projection_outbox" — a database whose PRAGMA user_version already
+# claimed migration 021 but was missing projection_checkpoints would have
+# been silently treated as "not applicable" instead of a corruption shape.
+_PROJECTION_CHECKPOINTS_MIGRATION_VERSION: Final = 21
 
 
 class ImmutableStateError(Exception):
@@ -903,6 +921,17 @@ class SQLiteGraphStore(GraphStore):
         return bool(version >= _PROJECTION_OUTBOX_MIGRATION_VERSION)
 
     @staticmethod
+    def _migration_021_activated(conn: sqlite3.Connection) -> bool:
+        """Same purpose as _migration_020_activated() above, for migration
+        021 (projection_checkpoints, issue #194) — see
+        _PROJECTION_CHECKPOINTS_MIGRATION_VERSION."""
+        try:
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+        except sqlite3.Error:
+            return True
+        return bool(version >= _PROJECTION_CHECKPOINTS_MIGRATION_VERSION)
+
+    @staticmethod
     def _prevent_fact_delete_trigger_exists(conn: sqlite3.Connection) -> bool:
         return conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type = 'trigger' "
@@ -1082,6 +1111,9 @@ class SQLiteGraphStore(GraphStore):
                     if (
                         table == "projection_outbox"
                         and self._migration_020_activated(conn)
+                    ) or (
+                        table == "projection_checkpoints"
+                        and self._migration_021_activated(conn)
                     ):
                         return True
                     continue
@@ -1933,11 +1965,8 @@ class SQLiteGraphStore(GraphStore):
         # V8.8: синхронизировать FTS5 индекс
         try:
             with self._db() as conn:
-                conn.execute(
-                    "INSERT OR REPLACE INTO facts_fts(rowid, fact_id, claim, source) "
-                    "VALUES ((SELECT rowid FROM facts WHERE fact_id=?), ?, ?, ?)",
-                    (fact_id, fact_id, new_claim, source_val),
-                )
+                from core.projection_apply import upsert_fts_row
+                upsert_fts_row(conn, fact_id, new_claim, source_val)
         except sqlite3.OperationalError:
             pass  # FTS5 недоступен
 
@@ -3417,11 +3446,8 @@ class SQLiteGraphStore(GraphStore):
             # 9) FTS index for the new fact — best-effort secondary index,
             # same convention as store_fact()'s own FTS sync.
             try:
-                conn.execute(
-                    "INSERT OR REPLACE INTO facts_fts(rowid, fact_id, claim, source) "
-                    "VALUES ((SELECT rowid FROM facts WHERE fact_id=?), ?, ?, ?)",
-                    (new_fact_id, new_fact_id, claim, source),
-                )
+                from core.projection_apply import upsert_fts_row
+                upsert_fts_row(conn, new_fact_id, claim, source)
             except sqlite3.OperationalError:
                 pass  # FTS5 not available in this SQLite build
 

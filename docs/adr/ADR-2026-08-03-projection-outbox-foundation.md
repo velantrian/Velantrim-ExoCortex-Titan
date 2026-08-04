@@ -147,6 +147,14 @@ intent in that same transaction, and prove both directions of rollback.~~ Done �
 issue #191, `ADR-2026-08-04-first-canon-caller-projection-outbox.md`
 (`SQLiteGraphStore.validate_and_promote()` via `_promote_to_validated_cas()`).
 
-Remaining: the dispatcher increment #179 itself describes (bounded claim/lease,
-explicit retry policy, idempotent projection application, crash-recovery tests) —
-not started by any increment so far.
+~~Resolve `ProjectionKind.ALL`'s executable meaning and give at least one projection
+target a version-monotonic apply contract before any dispatcher lease/retry/ack state
+machine.~~ Done — issue #194,
+`ADR-2026-08-04-projection-policy-v1-fts-checkpoint.md` (policy v1 closes `ALL` to
+`{FTS}`; `core.projection_apply.apply_fts_projection()`; migration 021
+`projection_checkpoints`).
+
+Remaining: the dispatcher increment #179/#193 itself describes (bounded claim/lease,
+explicit retry policy, crash-recovery tests) — not started by any increment so far.
+Graph/vector activation remains deferred to a future, separately reviewed policy
+version.
