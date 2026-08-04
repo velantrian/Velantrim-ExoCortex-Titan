@@ -70,9 +70,9 @@ connection, before commit.
 
 ```text
 PRAGMA user_version >= 20 (migration 020 activated)
-├── projection_outbox exists AND facts.fact_version exists
+├── projection_outbox exists as a real TABLE AND facts.fact_version exists
 │   → append the intent; any append failure rolls back everything
-├── projection_outbox missing
+├── projection_outbox missing, OR present as a VIEW (not a real table)
 │   → ProjectionOutboxActivationError, full rollback (fail closed)
 └── facts.fact_version missing
     → ProjectionOutboxActivationError, full rollback (fail closed)
@@ -103,6 +103,50 @@ accept promotions that silently skip the required intent, and issue #183's own
 read-side check would have nothing to report residual about — the intent would simply
 never have existed. Gating at the point of mutation is the only way to make "no silent
 outbox-backed promotion without its intent" actually true.
+
+### Review hardening: exact TABLE, not VIEW
+
+`SQLiteGraphStore._table_exists()` intentionally treats `table`/`view` as
+interchangeable — other callers rely on exactly that (e.g. `erasure_audit` is
+legitimately a VIEW). Reusing it here would let a VIEW named `projection_outbox` pass
+the activation check, then fail deep inside `append_projection_intent_in_transaction()`
+with a raw `sqlite3.OperationalError: cannot modify projection_outbox because it is a
+view` — a real failure (still rolls back correctly, since `_db()` fails closed on any
+exception), but not the specific, intentional
+`ProjectionOutboxActivationError` this gate exists to raise. A new, narrow
+`_real_table_exists()` helper (`sqlite_master.type = 'table'` exactly, used only by
+this gate) closes that gap. `_table_exists()` itself is unchanged — this is additive,
+not a behavior change to any other caller.
+
+### Review hardening: `_has_fact_version` cache staleness is a pre-existing,
+out-of-scope constraint — not fixed by this issue
+
+Characterization (prompted by review) confirmed `self._has_fact_version`
+(`_fact_version_bump_sql()`'s cache, computed once per `SQLiteGraphStore` instance) can
+go stale if an instance is constructed and used *before* `scripts/apply_migrations.py`
+runs against the same `db_path`, then kept alive and reused *after* that external
+migration completes. Empirically, this is **not narrowly a projection-outbox gating
+gap** — the very next ordinary ESM transition through that same instance already fails,
+because migration 009's own `bump_fact_version` trigger (added by the migration,
+unconditionally enforcing `NEW.fact_version > OLD.fact_version` on any
+`epistemic_state`/`claim`/`confidence` change) now exists and fires, while the stale
+cache makes the instance's own UPDATE never touch `fact_version` in the first place —
+raising a real `sqlite3.IntegrityError` from that pre-existing trigger, before this
+issue's own gate code is ever reached.
+
+This confirms an existing, broader constraint this issue does not introduce and does
+not attempt to fix: **a `SQLiteGraphStore` instance must be constructed after any
+migration run against its `db_path`, never kept alive and reused across a live
+migration of the same file.** This is exactly the lifecycle every fixture in this
+repository already follows (migrate, then construct) — nothing in production or in this
+codebase's own test suite does otherwise. Changing `_fact_version_bump_sql()`'s caching
+behavior to defend against this would touch a hot path shared by several unrelated
+call sites (`update_state()`, `supersede_fact_cas()`, etc.) for a lifecycle the project
+does not use — out of this issue's narrow scope. Instead, this constraint is now pinned
+by a dedicated characterization test
+(`test_reusing_a_live_store_across_an_external_migration_is_unsupported`) documenting
+the current, correct-per-project-convention failure mode (a loud, real
+`sqlite3.IntegrityError`) rather than leaving it as an undocumented surprise.
 
 ## Rejected alternatives
 
@@ -159,15 +203,15 @@ both in transaction order.
 
 ## Validation
 
-- New file: `tests/test_promotion_projection_outbox_caller.py` — 13 tests:
+- New file: `tests/test_promotion_projection_outbox_caller.py` — 15 tests:
   - successful promotion: Canon + VersionStore + AuditChain + exactly one intent, with
     `canonical_version` matching the durable `facts.fact_version`;
-  - a real outbox INSERT trigger failure rolls back Canon + VersionStore + AuditChain
-    together, then a clean retry succeeds;
-  - a real VersionStore (`fact_versions`) INSERT trigger failure rolls back Canon and
-    prevents any intent;
-  - a real AuditChain (`memory_events`) INSERT trigger failure rolls back Canon +
-    VersionStore and prevents any intent;
+  - a real outbox INSERT trigger failure (`sqlite3.IntegrityError`) rolls back Canon +
+    VersionStore + AuditChain together, then a clean retry succeeds;
+  - a real VersionStore (`fact_versions`) INSERT trigger failure
+    (`sqlite3.IntegrityError`) rolls back Canon and prevents any intent;
+  - a real AuditChain (`memory_events`) INSERT trigger failure
+    (`sqlite3.IntegrityError`) rolls back Canon + VersionStore and prevents any intent;
   - TruthGate rejection creates no intent;
   - `already_validated` creates no new version, audit event, or intent;
   - CAS contention at 2, 10, and 25 concurrent contenders: exactly one winner, exactly
@@ -176,18 +220,31 @@ both in transaction order.
   - a pre-migration-020 database promotes unchanged, with no `projection_outbox`
     table involved at all;
   - an activated database (`user_version >= 20`) missing `projection_outbox` fails
-    closed — Canon rolls back;
+    closed (`ProjectionOutboxActivationError`) — Canon rolls back;
+  - an activated database where `projection_outbox` exists as a VIEW, not a real
+    table, fails closed (`ProjectionOutboxActivationError`) — review hardening, see
+    above;
   - an activated database missing `facts.fact_version` (column AND its
     `bump_fact_version` trigger both absent, matching a genuine "migration 009 never
-    ran" shape rather than an orphaned-trigger side effect) fails closed;
+    ran" shape rather than an orphaned-trigger side effect) fails closed
+    (`ProjectionOutboxActivationError`);
+  - characterization: reusing a live store instance across an external migration of
+    its own `db_path` is confirmed unsupported — pins the real
+    `sqlite3.IntegrityError` this pre-existing lifecycle constraint produces — review
+    hardening, see above;
   - a real intent created by a real promotion is removed by
     `erase_fact_dependents_atomic()`.
+- Every `pytest.raises(...)` in this file asserts an exact exception type
+  (`ProjectionOutboxActivationError` for activation/schema-inconsistency cases,
+  `sqlite3.IntegrityError` for genuine SQLite trigger failures — confirmed empirically,
+  never a bare `Exception`) — review hardening.
 - `PRAGMA integrity_check = ok` asserted after every scenario above.
-- RED confirmed against the unmodified baseline: 10/13 failed for the expected reason
-  (no outbox wiring existed yet); 3 passed because they assert pre-existing, unrelated
-  invariants (VersionStore-failure rollback, TruthGate rejection, pre-v20 behavior)
-  this change must not break.
-- GREEN after the fix: 13/13 passed, repeated **25×** with 0 failures (no
+- RED confirmed against the unmodified baseline for both the original 13 tests (10/13
+  failed for the expected reason; 3 passed as pre-existing, unrelated invariants) and
+  the VIEW-gating test added during review hardening (failed with a raw
+  `sqlite3.OperationalError: cannot modify projection_outbox because it is a view`,
+  exactly the un-caught failure mode the hardening fixes).
+- GREEN after the fix: 15/15 passed, repeated **25×** with 0 failures (no
   sleep-based synchronization anywhere — CAS contention uses a
   `threading.Barrier`-gated proxy on `_promote_to_validated_cas` itself, the same
   deterministic technique `tests/test_sqlite_promotion_cas_contention.py` already

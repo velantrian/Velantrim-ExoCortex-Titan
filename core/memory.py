@@ -870,6 +870,23 @@ class SQLiteGraphStore(GraphStore):
         ).fetchone() is not None
 
     @staticmethod
+    def _real_table_exists(conn: sqlite3.Connection, table: str) -> bool:
+        """Stricter than _table_exists(): true only for an actual TABLE,
+        never a same-named VIEW. _table_exists() intentionally treats
+        table/view as interchangeable for its other callers (e.g. the
+        erasure_audit VIEW is a legitimate target there); this one is used
+        only by _promote_to_validated_cas()'s outbox activation gate
+        (issue #191 review hardening), where a VIEW named
+        `projection_outbox` would pass the general check yet cannot accept
+        a plain INSERT — that must surface as a specific, caught schema
+        inconsistency, not a raw 'cannot modify ... because it is a view'
+        error from deep inside the append call."""
+        return conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+            (table,),
+        ).fetchone() is not None
+
+    @staticmethod
     def _migration_020_activated(conn: sqlite3.Connection) -> bool:
         """True if `scripts/apply_migrations.py` has recorded migration 020
         (projection_outbox) as applied via `PRAGMA user_version` — used only
@@ -3090,12 +3107,14 @@ class SQLiteGraphStore(GraphStore):
             # ProjectionOutboxActivationError.
             user_version = conn.execute("PRAGMA user_version").fetchone()[0]
             if user_version >= _PROJECTION_OUTBOX_MIGRATION_VERSION:
-                if not self._table_exists(conn, "projection_outbox"):
+                if not self._real_table_exists(conn, "projection_outbox"):
                     raise ProjectionOutboxActivationError(
                         f"validate_and_promote('{fact_id}'): PRAGMA "
                         f"user_version={user_version} claims migration 020 "
-                        "is applied, but projection_outbox is missing — "
-                        "refusing to promote without the required intent"
+                        "is applied, but projection_outbox does not exist "
+                        "as a real table (missing entirely, or present as "
+                        "a VIEW) — refusing to promote without the "
+                        "required intent"
                     )
                 if not self._has_fact_version:
                     raise ProjectionOutboxActivationError(

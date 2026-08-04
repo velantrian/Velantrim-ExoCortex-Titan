@@ -31,7 +31,7 @@ from pathlib import Path
 
 import pytest
 
-from core.memory import SQLiteGraphStore, make_store
+from core.memory import ProjectionOutboxActivationError, SQLiteGraphStore, make_store
 
 _ROOT = os.path.join(os.path.dirname(__file__), "..")
 _APPLY_MIGRATIONS = os.path.join(_ROOT, "scripts", "apply_migrations.py")
@@ -193,7 +193,7 @@ def test_outbox_insert_failure_rolls_back_canon_version_and_audit(
     versions_before = _fact_versions_count(db_path, fact_id)
     events_before = _validated_audit_events_count(db_path, fact_id)
 
-    with pytest.raises(Exception):
+    with pytest.raises(sqlite3.IntegrityError):
         store.validate_and_promote(fact_id, by="caller_test")
 
     final = store.get_fact(fact_id)
@@ -223,7 +223,7 @@ def test_version_store_failure_rolls_back_canon_audit_and_prevents_intent(
     )
     events_before = _validated_audit_events_count(db_path, fact_id)
 
-    with pytest.raises(Exception):
+    with pytest.raises(sqlite3.IntegrityError):
         store.validate_and_promote(fact_id, by="caller_test")
 
     final = store.get_fact(fact_id)
@@ -252,7 +252,7 @@ def test_audit_chain_failure_rolls_back_canon_version_and_prevents_intent(
     )
     versions_before = _fact_versions_count(db_path, fact_id)
 
-    with pytest.raises(Exception):
+    with pytest.raises(sqlite3.IntegrityError):
         store.validate_and_promote(fact_id, by="caller_test")
 
     final = store.get_fact(fact_id)
@@ -409,13 +409,53 @@ def test_activated_db_missing_projection_outbox_table_fails_closed(
     versions_before = _fact_versions_count(db_path, fact_id)
     events_before = _validated_audit_events_count(db_path, fact_id)
 
-    with pytest.raises(Exception):
+    with pytest.raises(ProjectionOutboxActivationError):
         store.validate_and_promote(fact_id, by="caller_test")
 
     final = store.get_fact(fact_id)
     assert final is not None and final["epistemic_state"] == "Supported", (
         "an activated DB missing projection_outbox must fail closed — "
         "Canon must roll back, not silently promote without the intent"
+    )
+    assert _fact_versions_count(db_path, fact_id) == versions_before
+    assert _validated_audit_events_count(db_path, fact_id) == events_before
+    assert _integrity_ok(db_path)
+
+
+def test_activated_db_with_projection_outbox_as_a_view_fails_closed(
+    tmp_path: Path,
+) -> None:
+    """The general-purpose _table_exists() intentionally treats table/view
+    as interchangeable (other callers, e.g. the erasure_audit VIEW, rely on
+    exactly that). The promotion activation gate must be stricter: a VIEW
+    named projection_outbox would pass a table/view check yet cannot accept
+    a plain INSERT (no INSTEAD OF trigger here) — this must be caught by
+    the gate itself as a schema inconsistency, not surfaced as a random
+    'cannot modify ... because it is a view' error from deep inside the
+    outbox append."""
+    db_path = tmp_path / "v20-outbox-is-a-view.db"
+    _migrate(db_path)
+    with sqlite3.connect(str(db_path)) as conn:
+        conn.execute("DROP TABLE projection_outbox")
+        conn.execute("CREATE VIEW projection_outbox AS SELECT 1 AS outbox_id")
+        conn.commit()
+        assert conn.execute(
+            "SELECT type FROM sqlite_master WHERE name = 'projection_outbox'"
+        ).fetchone()[0] == "view"
+
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_v20_outbox_is_view"
+    _seed_promotable_fact(store, fact_id)
+    versions_before = _fact_versions_count(db_path, fact_id)
+    events_before = _validated_audit_events_count(db_path, fact_id)
+
+    with pytest.raises(ProjectionOutboxActivationError):
+        store.validate_and_promote(fact_id, by="caller_test")
+
+    final = store.get_fact(fact_id)
+    assert final is not None and final["epistemic_state"] == "Supported", (
+        "a projection_outbox VIEW (not a real table) must fail closed — "
+        "Canon must roll back, not attempt an INSERT the object can't accept"
     )
     assert _fact_versions_count(db_path, fact_id) == versions_before
     assert _validated_audit_events_count(db_path, fact_id) == events_before
@@ -440,7 +480,7 @@ def test_activated_db_missing_fact_version_fails_closed(tmp_path: Path) -> None:
     _seed_promotable_fact(store, fact_id)
     events_before = _validated_audit_events_count(db_path, fact_id)
 
-    with pytest.raises(Exception):
+    with pytest.raises(ProjectionOutboxActivationError):
         store.validate_and_promote(fact_id, by="caller_test")
 
     final = store.get_fact(fact_id)
@@ -451,6 +491,65 @@ def test_activated_db_missing_fact_version_fails_closed(tmp_path: Path) -> None:
     )
     assert _validated_audit_events_count(db_path, fact_id) == events_before
     assert _outbox_rows(db_path, fact_id) == []
+    assert _integrity_ok(db_path)
+
+
+# ── E2. Characterization: a live store instance across an external
+#       migration is NOT a supported lifecycle (pre-existing, not
+#       introduced by this issue) ───────────────────────────────────────────
+
+def test_reusing_a_live_store_across_an_external_migration_is_unsupported(
+    tmp_path: Path,
+) -> None:
+    """`SQLiteGraphStore._has_fact_version` is computed once and cached for
+    the lifetime of the instance (`_fact_version_bump_sql()`). If a store
+    is constructed and used BEFORE `scripts/apply_migrations.py` runs
+    against the SAME db_path, and then kept alive and reused AFTER that
+    external migration completes, its cached `False` goes stale — but this
+    is not merely a projection-outbox gating gap: the very next ESM
+    transition through this same instance already fails, because
+    migration 009's own `bump_fact_version` trigger (added by the
+    migration, unconditionally enforcing `NEW.fact_version >
+    OLD.fact_version` on any epistemic_state/claim/confidence change) now
+    exists and fires — but this instance's stale cache makes its own
+    UPDATE never touch `fact_version` in the first place, so the trigger's
+    own WHEN condition raises.
+
+    This confirms the constraint is pre-existing and broader than issue
+    #191's own gate: a SQLiteGraphStore instance must be constructed AFTER
+    any migration run against its db_path, never kept alive and reused
+    across a LIVE migration of the same file — exactly the lifecycle every
+    fixture in this repository already follows (migrate, then construct).
+    This test pins that CURRENT, correct-per-project-convention failure
+    mode (a loud, real `sqlite3.IntegrityError` from the pre-existing
+    trigger) rather than silently working around it — see
+    ADR-2026-08-04-first-canon-caller-projection-outbox.md."""
+    db_path = tmp_path / "live-migration-reuse.db"
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_live_migration_reuse"
+    store.store_fact(
+        {
+            "fact_id": fact_id, "claim": "x", "source": "test", "confidence": 0.9,
+        }
+    )
+    # A real prior ESM transition establishes _has_fact_version's cache
+    # (False — no migration has run against this bare-bootstrapped DB yet).
+    assert store.promote_esm_to(fact_id, "Hypothesized", by="setup") is True
+    assert store._has_fact_version is False
+
+    _migrate(db_path)
+    with sqlite3.connect(str(db_path)) as conn:
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 20
+        assert "fact_version" in {
+            r[1] for r in conn.execute("PRAGMA table_info(facts)").fetchall()
+        }
+    assert store._has_fact_version is False, (
+        "the instance's cache does not observe the external migration"
+    )
+
+    with pytest.raises(sqlite3.IntegrityError, match="fact_version must increase"):
+        store.promote_esm_to(fact_id, "Supported", by="after_migration")
+
     assert _integrity_ok(db_path)
 
 
