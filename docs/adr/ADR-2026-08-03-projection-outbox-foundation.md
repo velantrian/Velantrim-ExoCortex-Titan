@@ -63,6 +63,14 @@ No Canon caller is wired by that increment either. Multi-user activation remains
 blocked until an executable SubjectScope contract exists; this foundation does not
 invent one.
 
+`scope_ref` itself was syntactically defined (regex only) but had no executable
+semantics until issue #189 (see
+`ADR-2026-08-04-local-projection-scope-reference.md`): `ProjectionIntent` v1 now
+accepts exactly one exported constant, `LOCAL_PROJECTION_SCOPE_REF = "local:primary"`
+— a local routing namespace only, explicitly not an authorization boundary, tenant, or
+SubjectScope. This closes the `BLOCKER_SCOPE_CONTRACT` that characterization for the
+first Canon caller increment had identified.
+
 ## Delivery-state separation
 
 The foundation table is immutable intent, not a work-queue state machine. Dispatcher
@@ -131,6 +139,14 @@ review threads. Focused or bot-authored runs do not replace this gate.
 ~~Before wiring, add outbox erasure/dependency behavior.~~ Done — issue #183,
 `ADR-2026-08-03-projection-outbox-erasure-dependency.md`.
 
-Remaining: select and characterize one single-fact canonical mutation family, append
-the intent in the same existing transaction, and prove both directions of rollback.
-Dispatcher work remains later still.
+~~Define a usable scope_ref contract.~~ Done — issue #189,
+`ADR-2026-08-04-local-projection-scope-reference.md`.
+
+Remaining: select and characterize one single-fact canonical mutation family
+(characterization already identified `SQLiteGraphStore.validate_and_promote()` as the
+candidate, with its Canon CAS UPDATE, VersionStore snapshot, and AuditChain event
+already sharing one `sqlite3.Connection`/transaction), append the intent in that same
+transaction using the now-defined `LOCAL_PROJECTION_SCOPE_REF`, source
+`canonical_version` from `facts.fact_version` (migration 009 — itself schema-optional,
+needs its own fail-closed gating parallel to `projection_outbox`'s), and prove both
+directions of rollback. Dispatcher work remains later still.

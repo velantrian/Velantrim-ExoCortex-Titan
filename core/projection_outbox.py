@@ -27,6 +27,14 @@ _TECHNICAL_ID = re.compile(r"^[A-Za-z0-9_.:/-]{1,256}$")
 _SCOPE_REF = re.compile(r"^[A-Za-z0-9_.:/-]{1,128}$")
 _POLICY_CODE = re.compile(r"^[a-z0-9_.:-]{1,64}$")
 
+# issue #189 (ADR-2026-08-04-local-projection-scope-reference.md): the only
+# scope_ref value v1 accepts. A local rebuildable-projection routing
+# namespace — NOT an authorization boundary, tenant, user, workspace,
+# device, or SubjectScope. Multi-user activation stays blocked regardless
+# of this contract; widening the accepted set requires its own ADR and
+# security review, not a silent addition here.
+LOCAL_PROJECTION_SCOPE_REF: Final = "local:primary"
+
 
 class ProjectionOutboxContractError(RuntimeError):
     """The caller or durable row violated the v1 outbox contract."""
@@ -69,6 +77,15 @@ class ProjectionIntent:
             self.scope_ref
         ):
             raise ValueError("ProjectionIntent.scope_ref is not a safe scope reference")
+        if self.scope_ref != LOCAL_PROJECTION_SCOPE_REF:
+            raise ValueError(
+                "ProjectionIntent.scope_ref must be exactly "
+                f"{LOCAL_PROJECTION_SCOPE_REF!r} — v1 supports only this one "
+                "local routing scope (see "
+                "ADR-2026-08-04-local-projection-scope-reference.md); it is "
+                "not an authorization boundary, tenant, or SubjectScope, and "
+                "is never derived, normalized, or widened implicitly"
+            )
         if (
             not isinstance(self.canonical_version, int)
             or isinstance(self.canonical_version, bool)
@@ -182,6 +199,7 @@ def append_projection_intent_in_transaction(
 
 
 __all__ = [
+    "LOCAL_PROJECTION_SCOPE_REF",
     "PROJECTION_OUTBOX_POLICY_VERSION",
     "ProjectionAppendReceipt",
     "ProjectionIntent",
