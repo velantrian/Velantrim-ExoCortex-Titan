@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import sqlite3
 from dataclasses import fields
 from pathlib import Path
@@ -7,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from core.projection_outbox import (
+    LOCAL_PROJECTION_SCOPE_REF,
     ProjectionIntent,
     ProjectionKind,
     ProjectionOperation,
@@ -39,7 +42,7 @@ def _create_schema(conn: sqlite3.Connection) -> None:
 def _intent(*, version: int = 7) -> ProjectionIntent:
     return ProjectionIntent(
         aggregate_id="fact-alpha",
-        scope_ref="local:owner",
+        scope_ref=LOCAL_PROJECTION_SCOPE_REF,
         canonical_version=version,
         projection_kind=ProjectionKind.ALL,
         operation=ProjectionOperation.REFRESH,
@@ -223,5 +226,107 @@ def test_schema_contains_only_immutable_technical_intent_fields(tmp_path: Path) 
                 "last_error",
             }
         )
+    finally:
+        conn.close()
+
+
+# ── issue #189: local projection scope reference contract ──────────────────
+
+
+def test_local_projection_scope_ref_constant_is_local_primary() -> None:
+    assert LOCAL_PROJECTION_SCOPE_REF == "local:primary"
+
+
+def test_intent_accepts_exactly_the_local_projection_scope_ref() -> None:
+    intent = _intent()
+    assert intent.scope_ref == LOCAL_PROJECTION_SCOPE_REF
+
+
+@pytest.mark.parametrize(
+    "rejected_scope_ref",
+    [
+        "local",
+        "local:secondary",
+        "tenant:default",
+        "user:123",
+        "workspace:main",
+        "device:local",
+    ],
+)
+def test_intent_rejects_syntactically_valid_but_unauthorized_scope_ref(
+    rejected_scope_ref: str,
+) -> None:
+    """Each of these values passes the pre-existing _SCOPE_REF regex — the
+    v1 exact-equality contract must reject them anyway; syntactic validity
+    is not authorization to use a different routing scope."""
+    with pytest.raises(ValueError, match="scope_ref"):
+        ProjectionIntent(
+            aggregate_id="fact-alpha",
+            scope_ref=rejected_scope_ref,
+            canonical_version=1,
+        )
+
+
+@pytest.mark.parametrize(
+    "unsafe_scope_ref",
+    ["", "   ", "local primary", "local:primary\n", "a" * 129, "löcal:primary"],
+)
+def test_intent_still_rejects_unsafe_scope_ref_syntax(unsafe_scope_ref: str) -> None:
+    """The pre-existing _SCOPE_REF syntax guard (empty/whitespace/invalid
+    characters/length) must not be weakened by adding the exact-equality
+    check on top of it."""
+    with pytest.raises(ValueError, match="scope_ref"):
+        ProjectionIntent(
+            aggregate_id="fact-alpha",
+            scope_ref=unsafe_scope_ref,
+            canonical_version=1,
+        )
+
+
+def test_scope_ref_participates_in_outbox_id_semantic_identity() -> None:
+    """v1 production validation only ever accepts LOCAL_PROJECTION_SCOPE_REF,
+    so a second live ProjectionIntent with a different scope_ref cannot be
+    built through the public API. This replicates outbox_id's own published
+    hash formula verbatim (same field set, same json.dumps kwargs, same
+    sha256 truncation) with a different scope_ref to prove the field
+    genuinely participates in identity, without weakening or bypassing
+    production validation to do it."""
+    intent = _intent()
+
+    def _hash_for(scope_ref: str) -> str:
+        canonical = json.dumps(
+            {
+                "aggregate_id": intent.aggregate_id,
+                "aggregate_type": intent.aggregate_type,
+                "canonical_version": intent.canonical_version,
+                "operation": intent.operation.value,
+                "policy_version": intent.policy_version,
+                "projection_kind": intent.projection_kind.value,
+                "scope_ref": scope_ref,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return f"projection_{hashlib.sha256(canonical).hexdigest()[:32]}"
+
+    assert intent.outbox_id == _hash_for(LOCAL_PROJECTION_SCOPE_REF)
+    assert intent.outbox_id != _hash_for("tenant:default")
+
+
+def test_durable_row_stores_exact_local_projection_scope_ref(tmp_path: Path) -> None:
+    db_path = tmp_path / "durable-scope.db"
+    conn = _connect(db_path)
+    try:
+        _create_schema(conn)
+        conn.execute("BEGIN IMMEDIATE")
+        append_projection_intent_in_transaction(conn, _intent())
+        conn.commit()
+
+        row_scope_ref = conn.execute(
+            "SELECT scope_ref FROM projection_outbox WHERE outbox_id = ?",
+            (_intent().outbox_id,),
+        ).fetchone()[0]
+        assert row_scope_ref == LOCAL_PROJECTION_SCOPE_REF == "local:primary"
     finally:
         conn.close()

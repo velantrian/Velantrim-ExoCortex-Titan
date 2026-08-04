@@ -29,6 +29,7 @@ from core.erasure_coordinator import COMPLETE, ErasureCoordinator
 from core.embedding_store import EmbeddingStore
 from core.memory import ImmutableStateError, IMMUTABLE_FACT_IDS, make_store
 from core.ngram_index import NGramIndex
+from core.projection_outbox import LOCAL_PROJECTION_SCOPE_REF
 
 _ROOT = os.path.join(os.path.dirname(__file__), "..")
 _APPLY_MIGRATIONS = os.path.join(_ROOT, "scripts", "apply_migrations.py")
@@ -54,9 +55,9 @@ def _insert_outbox_row(
         "INSERT INTO projection_outbox ("
         "outbox_id, aggregate_type, aggregate_id, scope_ref, projection_kind, "
         "operation, canonical_version, policy_version, created_at"
-        ") VALUES (?, ?, ?, 'scope', 'all', 'refresh', ?, 'projection-outbox-v1', "
+        ") VALUES (?, ?, ?, ?, 'all', 'refresh', ?, 'projection-outbox-v1', "
         "'2026-08-03T00:00:00Z')",
-        (outbox_id, aggregate_type, aggregate_id, canonical_version),
+        (outbox_id, aggregate_type, aggregate_id, LOCAL_PROJECTION_SCOPE_REF, canonical_version),
     )
 
 
