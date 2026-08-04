@@ -539,7 +539,10 @@ def test_reusing_a_live_store_across_an_external_migration_is_unsupported(
 
     _migrate(db_path)
     with sqlite3.connect(str(db_path)) as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 20
+        # 21, not 20: migration 021 (projection_checkpoints, issue #194) is
+        # the current latest — this assertion only needs "the full chain
+        # ran", not a specific final version.
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 21
         assert "fact_version" in {
             r[1] for r in conn.execute("PRAGMA table_info(facts)").fetchall()
         }

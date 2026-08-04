@@ -33,7 +33,11 @@ def test_migration_020_is_registered_idempotent_and_content_minimized(
     assert first.returncode == 0, first.stderr
 
     with sqlite3.connect(str(db_path), timeout=5.0) as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 20
+        # 21, not 20: migration 021 (projection_checkpoints, issue #194) is
+        # the latest as of this test's own update — this assertion checks
+        # the runner reached the current latest version, not specifically
+        # that 020 is last forever.
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 21
         columns = {
             str(row[1])
             for row in conn.execute("PRAGMA table_info(projection_outbox)").fetchall()
@@ -63,7 +67,7 @@ def test_migration_020_is_registered_idempotent_and_content_minimized(
     second = _run_apply(db_path)
     assert second.returncode == 0, second.stderr
     with sqlite3.connect(str(db_path), timeout=5.0) as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 20
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 21
         assert conn.execute(
             "SELECT COUNT(*) FROM projection_outbox"
         ).fetchone()[0] == 0
