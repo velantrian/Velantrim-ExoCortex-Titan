@@ -40,7 +40,7 @@ from __future__ import annotations
 import secrets
 import sqlite3
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Final
 
@@ -52,7 +52,7 @@ from core.projection_apply import (
     apply_fts_projection,
     resolve_projection_targets,
 )
-from core.projection_outbox import ProjectionKind, ProjectionOperation
+from core.projection_outbox import LOCAL_PROJECTION_SCOPE_REF, ProjectionKind, ProjectionOperation
 
 #: Hard ceiling on how many intents one claim_batch() call may lease at
 #: once — a bounded dispatcher never claims an unbounded queue.
@@ -97,10 +97,11 @@ class DispatchErrorCode(StrEnum):
 
     FTS_UNAVAILABLE = "FTS_UNAVAILABLE"
     UNSUPPORTED_POLICY_TARGET = "UNSUPPORTED_POLICY_TARGET"
+    UNSUPPORTED_SCOPE = "UNSUPPORTED_SCOPE"
     CANON_VERSION_BEHIND_INTENT = "CANON_VERSION_BEHIND_INTENT"
     INTERNAL_CONTRACT = "INTERNAL_CONTRACT"
     SQLITE_BUSY = "SQLITE_BUSY"
-    SQLITE_TRANSIENT = "SQLITE_TRANSIENT"
+    SQLITE_PERMANENT = "SQLITE_PERMANENT"
 
 
 class DispatchAction(StrEnum):
@@ -192,9 +193,44 @@ def _require_no_active_transaction(conn: sqlite3.Connection) -> None:
         )
 
 
-def _is_busy_or_locked(exc: sqlite3.OperationalError) -> bool:
-    message = str(exc).lower()
-    return "locked" in message or "busy" in message
+def _normalize_now(now: datetime) -> str:
+    """Fail closed on a naive datetime (review finding, PR #197) — a naive
+    value could silently be interpreted against the wrong timezone. Every
+    comparison in this module is a plain ISO-8601 STRING comparison
+    (`lease_expires_at <= now_iso`), which is only correct if every
+    timestamp is normalized to one canonical timezone first — two
+    datetimes representing the SAME instant under different UTC offsets
+    must produce the SAME string, not two lexicographically different
+    ones."""
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise ProjectionDispatchContractError(
+            "now must be a timezone-aware datetime — a naive value could "
+            "silently be compared against the wrong timezone"
+        )
+    return now.astimezone(UTC).isoformat()
+
+
+#: Primary SQLite result codes treated as transient/worth retrying — see
+#: _classify_sqlite_failure(). Extended codes (e.g. SQLITE_BUSY_TIMEOUT)
+#: reduce to their primary code via `& 0xFF` before this check.
+_TRANSIENT_SQLITE_PRIMARY_CODES: Final = frozenset({sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED})
+
+
+def _classify_sqlite_failure(exc: sqlite3.Error) -> DispatchErrorCode:
+    """Classify a real SQLite failure by its primary result code (review
+    finding, PR #197) — never by exception class alone (sqlite3.IntegrityError
+    and a corrupted-database sqlite3.DatabaseError are NOT
+    sqlite3.OperationalError, but were previously funneled into the same
+    "transient, retry" bucket) and never by message string-matching
+    (locale/wording-fragile). Only SQLITE_BUSY/SQLITE_LOCKED (in any
+    extended-code form) are transient and worth retrying — no
+    maximum-attempts cap exists in this module, so anything else
+    (constraint violations, corruption, missing schema objects, or any
+    other DatabaseError) must PARK rather than retry forever."""
+    code = getattr(exc, "sqlite_errorcode", None)
+    if code is not None and (code & 0xFF) in _TRANSIENT_SQLITE_PRIMARY_CODES:
+        return DispatchErrorCode.SQLITE_BUSY
+    return DispatchErrorCode.SQLITE_PERMANENT
 
 
 def compute_retry_delay_seconds(attempt_count: int) -> float:
@@ -242,8 +278,8 @@ def claim_batch(
     ) or lease_duration_seconds <= 0:
         raise ValueError("lease_duration_seconds must be > 0")
 
-    now_iso = now.isoformat()
-    lease_expires_iso = (now + timedelta(seconds=lease_duration_seconds)).isoformat()
+    now_iso = _normalize_now(now)
+    lease_expires_iso = _normalize_now(now + timedelta(seconds=lease_duration_seconds))
 
     conn.execute("BEGIN IMMEDIATE")
     try:
@@ -331,13 +367,14 @@ def apply_claimed_work(
     the caller's job in a SEPARATE transaction, which is precisely the
     proven crash window between "applied" and "acknowledged"."""
     _require_no_active_transaction(conn)
-    now_iso = now.isoformat()
+    now_iso = _normalize_now(now)
 
     try:
         conn.execute("BEGIN IMMEDIATE")
     except sqlite3.OperationalError as exc:
-        code = DispatchErrorCode.SQLITE_BUSY if _is_busy_or_locked(exc) else DispatchErrorCode.SQLITE_TRANSIENT
-        return ApplyAttemptResult(claimed.outbox_id, DispatchAction.RETRY, code, LeaseValidationOutcome.VALID)
+        code = _classify_sqlite_failure(exc)
+        action = DispatchAction.RETRY if code == DispatchErrorCode.SQLITE_BUSY else DispatchAction.PARK
+        return ApplyAttemptResult(claimed.outbox_id, action, code, LeaseValidationOutcome.VALID)
 
     def _reject(outcome: LeaseValidationOutcome) -> ApplyAttemptResult:
         conn.rollback()
@@ -368,14 +405,22 @@ def apply_claimed_work(
             return _reject(LeaseValidationOutcome.EXPIRED)
 
         intent_row = conn.execute(
-            "SELECT aggregate_id FROM projection_outbox WHERE outbox_id = ?",
+            "SELECT aggregate_id, scope_ref FROM projection_outbox WHERE outbox_id = ?",
             (claimed.outbox_id,),
         ).fetchone()
         if intent_row is None:
             return _reject(LeaseValidationOutcome.INTENT_MISSING)
-        intent_aggregate_id = intent_row[0]
+        intent_aggregate_id, intent_scope_ref = intent_row
         if intent_aggregate_id != state_aggregate_id:
             return _reject(LeaseValidationOutcome.AGGREGATE_MISMATCH)
+        # Re-read scope_ref fresh (review finding, PR #197): migration 020
+        # has no SQL-level CHECK narrowing scope_ref (unlike
+        # aggregate_type/projection_kind/operation, which do), so this is
+        # the one intent field that a raw/malformed row could carry
+        # outside policy v1's single supported value. Fails closed rather
+        # than silently applying under the wrong routing scope.
+        if intent_scope_ref != LOCAL_PROJECTION_SCOPE_REF:
+            return _park(DispatchErrorCode.UNSUPPORTED_SCOPE)
 
         try:
             # Policy v1 ALL resolves to exactly {FTS} — see
@@ -394,13 +439,9 @@ def apply_claimed_work(
             return _park(DispatchErrorCode.CANON_VERSION_BEHIND_INTENT)
         except ProjectionApplyContractError:
             return _park(DispatchErrorCode.INTERNAL_CONTRACT)
-        except sqlite3.OperationalError as exc:
-            return _retry(
-                DispatchErrorCode.SQLITE_BUSY if _is_busy_or_locked(exc)
-                else DispatchErrorCode.SQLITE_TRANSIENT
-            )
-        except sqlite3.DatabaseError:
-            return _retry(DispatchErrorCode.SQLITE_TRANSIENT)
+        except sqlite3.Error as exc:
+            code = _classify_sqlite_failure(exc)
+            return _retry(code) if code == DispatchErrorCode.SQLITE_BUSY else _park(code)
     except Exception:
         conn.rollback()
         raise
@@ -428,7 +469,7 @@ def ack_claim(
     ACK_REJECTED, never treated as success. Never deletes the immutable
     `projection_outbox` intent."""
     _require_no_active_transaction(conn)
-    now_iso = now.isoformat()
+    now_iso = _normalize_now(now)
     conn.execute("BEGIN IMMEDIATE")
     try:
         cur = conn.execute(
@@ -452,22 +493,33 @@ def retry_claim(
     outbox_id: str,
     lease_token: str,
     *,
-    attempt_count: int,
     error_code: DispatchErrorCode,
     now: datetime,
 ) -> RetryOutcome:
     """Single CAS retry transition, by exact ACTIVE (non-expired) lease
     token — the same `lease_expires_at > now` guard as ack_claim(), so an
     expired-but-not-yet-reclaimed holder cannot schedule a retry either.
-    Computes the next `next_attempt_at` via `compute_retry_delay_seconds()`
-    from the injected `now` — never sleeps, never uses wall-clock time
-    directly."""
+
+    The backoff delay is computed from the DURABLE `attempt_count` already
+    stored for this row, read inside this same transaction (review
+    finding, PR #197) — never from a caller-supplied parameter, so a
+    caller cannot reset or manipulate backoff timing even while holding a
+    valid lease token. Never sleeps, never uses wall-clock time directly."""
     _require_no_active_transaction(conn)
-    now_iso = now.isoformat()
-    delay = compute_retry_delay_seconds(attempt_count)
-    next_attempt_at = (now + timedelta(seconds=delay)).isoformat()
+    now_iso = _normalize_now(now)
     conn.execute("BEGIN IMMEDIATE")
     try:
+        row = conn.execute(
+            "SELECT attempt_count FROM projection_dispatch_state "
+            "WHERE outbox_id=? AND lifecycle_state='leased' AND lease_token=? "
+            "  AND lease_expires_at > ?",
+            (outbox_id, lease_token, now_iso),
+        ).fetchone()
+        if row is None:
+            conn.rollback()
+            return RetryOutcome.RETRY_REJECTED
+        delay = compute_retry_delay_seconds(row[0])
+        next_attempt_at = _normalize_now(now + timedelta(seconds=delay))
         cur = conn.execute(
             "UPDATE projection_dispatch_state "
             "SET lifecycle_state='retry', lease_token=NULL, lease_expires_at=NULL, "
@@ -497,7 +549,7 @@ def park_claim(
     matches none of claim_batch()'s eligibility conditions — and is never
     silently dropped or treated as delivered."""
     _require_no_active_transaction(conn)
-    now_iso = now.isoformat()
+    now_iso = _normalize_now(now)
     conn.execute("BEGIN IMMEDIATE")
     try:
         cur = conn.execute(
@@ -547,7 +599,7 @@ def dispatch_once(
             assert result.error_code is not None
             retry_outcome = retry_claim(
                 conn, work.outbox_id, work.lease_token,
-                attempt_count=work.attempt_count, error_code=result.error_code, now=now,
+                error_code=result.error_code, now=now,
             )
             if retry_outcome == RetryOutcome.RETRY_SCHEDULED:
                 retried += 1

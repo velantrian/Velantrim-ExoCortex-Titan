@@ -25,7 +25,7 @@ import sys
 import sqlite3
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -39,6 +39,7 @@ from core.projection_dispatcher import (
     InvalidBatchSizeError,
     LeaseValidationOutcome,
     ParkOutcome,
+    ProjectionDispatchContractError,
     RetryOutcome,
     ack_claim,
     apply_claimed_work,
@@ -84,20 +85,21 @@ def _insert_outbox(
     created_at: str = "2026-01-01T00:00:00Z",
     projection_kind: str = "all",
     policy_version: str = "projection-outbox-v1",
+    scope_ref: str = LOCAL_PROJECTION_SCOPE_REF,
 ) -> None:
     """Direct SQL insert (bypassing ProjectionIntent's own Python-level
     validation, which is irrelevant here) — mirrors
     tests/test_erasure_projection_outbox_dependency.py's own
     `_insert_outbox_row()` convention, extended with created_at/
-    projection_kind so ordering and unsupported-policy-target tests can
-    control them directly."""
+    projection_kind/scope_ref so ordering, unsupported-policy-target, and
+    unsupported-scope tests can control them directly."""
     conn.execute(
         "INSERT INTO projection_outbox ("
         "outbox_id, aggregate_type, aggregate_id, scope_ref, projection_kind, "
         "operation, canonical_version, policy_version, created_at"
         ") VALUES (?, 'fact', ?, ?, ?, 'refresh', ?, ?, ?)",
         (
-            outbox_id, aggregate_id, LOCAL_PROJECTION_SCOPE_REF, projection_kind,
+            outbox_id, aggregate_id, scope_ref, projection_kind,
             canonical_version, policy_version, created_at,
         ),
     )
@@ -489,7 +491,7 @@ def test_expired_lease_token_cannot_retry(tmp_path: Path) -> None:
         past_expiry = _T0 + timedelta(seconds=120)  # no one reclaimed; just expired
         outcome = retry_claim(
             conn, work.outbox_id, work.lease_token,
-            attempt_count=work.attempt_count, error_code=DispatchErrorCode.SQLITE_BUSY,
+            error_code=DispatchErrorCode.SQLITE_BUSY,
             now=past_expiry,
         )
         assert outcome == RetryOutcome.RETRY_REJECTED
@@ -553,7 +555,7 @@ def test_retry_requires_exact_active_token(tmp_path: Path) -> None:
 
         outcome = retry_claim(
             conn, stale_work.outbox_id, stale_work.lease_token,
-            attempt_count=stale_work.attempt_count, error_code=DispatchErrorCode.SQLITE_BUSY,
+            error_code=DispatchErrorCode.SQLITE_BUSY,
             now=later,
         )
         assert outcome == RetryOutcome.RETRY_REJECTED
@@ -593,7 +595,7 @@ def test_retry_claim_stores_exact_deterministic_next_attempt_at(tmp_path: Path) 
         work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
         outcome = retry_claim(
             conn, work.outbox_id, work.lease_token,
-            attempt_count=work.attempt_count, error_code=DispatchErrorCode.SQLITE_BUSY, now=_T0,
+            error_code=DispatchErrorCode.SQLITE_BUSY, now=_T0,
         )
         assert outcome == RetryOutcome.RETRY_SCHEDULED
     finally:
@@ -622,7 +624,7 @@ def test_retry_not_claimable_before_due_and_claimable_exactly_when_due(tmp_path:
         work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
         retry_claim(
             conn, work.outbox_id, work.lease_token,
-            attempt_count=work.attempt_count, error_code=DispatchErrorCode.SQLITE_BUSY, now=_T0,
+            error_code=DispatchErrorCode.SQLITE_BUSY, now=_T0,
         )
         due_at = _T0 + timedelta(seconds=1.0)
 
@@ -803,7 +805,12 @@ def test_older_redelivered_intent_reads_current_canon(tmp_path: Path) -> None:
 
 def test_apply_failure_remains_unacknowledged(tmp_path: Path) -> None:
     """Policy v1's ALL expands to exactly {FTS} — a genuine write failure
-    on that one target must never be silently treated as delivered."""
+    on that one target must never be silently treated as delivered.
+
+    A corrupted FTS5 shadow table produces a real `sqlite3.DatabaseError`
+    (SQLITE_CORRUPT_VTAB) — permanent, not transient (review finding,
+    PR #197): retrying a corrupted database will never succeed, so this
+    must PARK, not retry forever (no maximum-attempts cap exists)."""
     db_path = tmp_path / "apply-failure.db"
     _migrate(db_path)
     store = SQLiteGraphStore(str(db_path))
@@ -823,17 +830,16 @@ def test_apply_failure_remains_unacknowledged(tmp_path: Path) -> None:
     try:
         work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
         result = apply_claimed_work(conn, work, now=_T0)
-        assert result.action == DispatchAction.RETRY
-        assert result.error_code in (DispatchErrorCode.SQLITE_TRANSIENT, DispatchErrorCode.SQLITE_BUSY)
-        retry_claim(
-            conn, work.outbox_id, work.lease_token,
-            attempt_count=work.attempt_count, error_code=result.error_code, now=_T0,
+        assert result.action == DispatchAction.PARK
+        assert result.error_code == DispatchErrorCode.SQLITE_PERMANENT
+        park_claim(
+            conn, work.outbox_id, work.lease_token, error_code=result.error_code, now=_T0,
         )
     finally:
         conn.close()
 
     row = _dispatch_row(db_path, "ob_apply_failure")
-    assert row[2] == "retry"
+    assert row[2] == "parked"
     assert row[2] != "acknowledged"
     with sqlite3.connect(str(db_path)) as conn:
         assert conn.execute(
@@ -949,6 +955,12 @@ def test_residual_dispatch_state_survivor_detected_after_rolled_back_erasure(tmp
 # ── 25. Reappearance detected (out-of-band write after clean erasure) ───────
 
 def test_reappearance_of_dispatch_state_after_clean_erasure_detected(tmp_path: Path) -> None:
+    """The out-of-band reappearance being simulated here also needs its own
+    orphaned projection_outbox row (review finding, PR #197 added a trigger
+    enforcing that projection_dispatch_state.aggregate_id always matches an
+    existing projection_outbox row for the same outbox_id) — a legitimate
+    reappearance shape (e.g. a restored backup, or tampering) would carry
+    both rows together, not a dispatch-state row with no backing intent."""
     db_path = tmp_path / "reappearance.db"
     _migrate(db_path)
     store = SQLiteGraphStore(str(db_path))
@@ -958,6 +970,7 @@ def test_reappearance_of_dispatch_state_after_clean_erasure_detected(tmp_path: P
     assert store.same_db_dependents_present(fact_id) is False
 
     with sqlite3.connect(str(db_path)) as conn:
+        _insert_outbox(conn, outbox_id="ob_reappeared", aggregate_id=fact_id)
         conn.execute(
             "INSERT INTO projection_dispatch_state "
             "(outbox_id, aggregate_id, lifecycle_state, attempt_count, "
@@ -1012,3 +1025,400 @@ def test_dispatch_once_does_not_expose_background_scheduling_surface() -> None:
 
     assert not asyncio.iscoroutinefunction(mod.dispatch_once)
     assert not inspect.isasyncgenfunction(mod.dispatch_once)
+
+
+# ── Review-hardening proofs (maintainer review on PR #197) ──────────────────
+#
+# Five findings were independently verified against the actual code before
+# acting: two (timezone normalization; SQLite error misclassification) were
+# real, demonstrable bugs; two (scope_ref validation; a durable-attempt-count
+# CAS read) were legitimate, narrowly-scoped hardening in the spirit of this
+# module's existing "never trust caller input when durable truth exists"
+# convention; one (an aggregate_id consistency trigger) is defense-in-depth
+# against a write path that does not exist today, added because it is cheap
+# and matches this codebase's own style. A sixth proposal — resampling an
+# injected clock at every transaction boundary via a callable — was
+# deliberately NOT implemented: issue #193's own ТЗ explicitly asked for an
+# injected `now` value (exactly what was built), and the actual safety
+# guarantee against the described race comes from the exact-lease-token CAS
+# on every ack/retry/park, not from timestamp comparisons — see the ADR's
+# review-hardening addendum for the full reasoning.
+
+def test_naive_datetime_rejected_by_claim_batch(tmp_path: Path) -> None:
+    db_path = tmp_path / "naive-claim.db"
+    _migrate(db_path)
+    conn = _open(db_path)
+    try:
+        with pytest.raises(ProjectionDispatchContractError):
+            claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=datetime(2026, 1, 1))
+        assert conn.in_transaction is False, "a rejected naive datetime must never open a transaction"
+    finally:
+        conn.close()
+
+
+def test_naive_datetime_rejected_by_ack_claim(tmp_path: Path) -> None:
+    db_path = tmp_path / "naive-ack.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_naive_ack"
+    _seed_fact(store, fact_id, claim="original")
+    with _open(db_path) as conn:
+        _insert_outbox(conn, outbox_id="ob_naive_ack", aggregate_id=fact_id)
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        with pytest.raises(ProjectionDispatchContractError):
+            ack_claim(conn, work.outbox_id, work.lease_token, now=datetime(2026, 1, 1))
+        assert conn.in_transaction is False
+    finally:
+        conn.close()
+
+    assert _dispatch_row(db_path, "ob_naive_ack")[2] == "leased", (
+        "a rejected naive-now ack must not mutate anything"
+    )
+
+
+def test_equal_instant_different_utc_offset_normalizes_correctly(tmp_path: Path) -> None:
+    """Every comparison in this module is a plain ISO-8601 string
+    comparison — only correct if every timestamp is normalized to one
+    canonical timezone first. Without normalization, a `now` expressed in
+    a positive UTC offset can sort AFTER a UTC-stored `lease_expires_at`
+    even though the real instant it represents is earlier — incorrectly
+    rejecting a legitimately still-valid ack."""
+    db_path = tmp_path / "utc-normalize.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_utc_normalize"
+    _seed_fact(store, fact_id, claim="original")
+    with _open(db_path) as conn:
+        _insert_outbox(conn, outbox_id="ob_utc_normalize", aggregate_id=fact_id)
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        actual_instant = _T0 + timedelta(seconds=30)  # well before the 60s lease expires
+        offset_now = actual_instant.astimezone(timezone(timedelta(hours=5)))
+        assert offset_now.isoformat() > work.lease_expires_at, (
+            "sanity check: the raw +05:00 string must sort AFTER the stored "
+            "UTC lease_expires_at despite representing the earlier real instant"
+        )
+        outcome = ack_claim(conn, work.outbox_id, work.lease_token, now=offset_now)
+        assert outcome == AckOutcome.ACKNOWLEDGED, (
+            "normalization must make this ack succeed on the real instant, "
+            "not fail on the raw offset string"
+        )
+    finally:
+        conn.close()
+
+
+def test_unsupported_scope_becomes_parked(tmp_path: Path) -> None:
+    """Review finding, PR #197: migration 020 has no SQL-level CHECK
+    narrowing scope_ref (unlike aggregate_type/projection_kind/operation,
+    which do), so a raw/malformed row could carry a scope outside policy
+    v1's single supported value. apply_claimed_work() now re-reads
+    scope_ref fresh and parks rather than silently applying under the
+    wrong routing scope."""
+    db_path = tmp_path / "unsupported-scope.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_unsupported_scope"
+    _seed_fact(store, fact_id, claim="claim text")
+    with _open(db_path) as conn:
+        _insert_outbox(
+            conn, outbox_id="ob_unsupported_scope", aggregate_id=fact_id, scope_ref="not:local",
+        )
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        result = apply_claimed_work(conn, work, now=_T0)
+        assert result.action == DispatchAction.PARK
+        assert result.error_code == DispatchErrorCode.UNSUPPORTED_SCOPE
+        park_claim(conn, work.outbox_id, work.lease_token, error_code=result.error_code, now=_T0)
+    finally:
+        conn.close()
+
+    assert _dispatch_row(db_path, "ob_unsupported_scope")[2] == "parked"
+    assert _checkpoint_row(db_path, fact_id) is None
+    assert _integrity_ok(db_path)
+
+
+def test_busy_lock_during_apply_is_retried_not_parked(tmp_path: Path) -> None:
+    """Review finding, PR #197: SQLITE_BUSY/SQLITE_LOCKED (in any extended
+    form) must still be classified as transient/RETRY — the fix narrows
+    what counts as transient, it does not eliminate the busy/retry path
+    entirely. Forces a genuine 'database is locked' via a second,
+    zero-timeout connection holding an exclusive write lock — no
+    monkeypatching."""
+    db_path = tmp_path / "busy-lock.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_busy_lock"
+    _seed_fact(store, fact_id, claim="claim text")
+    with _open(db_path) as conn:
+        _insert_outbox(conn, outbox_id="ob_busy_lock", aggregate_id=fact_id)
+        conn.commit()
+
+    claim_conn = _open(db_path)
+    try:
+        work = claim_batch(claim_conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+    finally:
+        claim_conn.close()
+
+    blocker = sqlite3.connect(str(db_path), timeout=0)
+    blocker.execute("BEGIN IMMEDIATE")
+    blocker.execute("UPDATE facts SET claim = claim WHERE fact_id = ?", (fact_id,))
+    apply_conn = sqlite3.connect(str(db_path), timeout=0)
+    try:
+        result = apply_claimed_work(apply_conn, work, now=_T0)
+        assert result.action == DispatchAction.RETRY
+        assert result.error_code == DispatchErrorCode.SQLITE_BUSY
+    finally:
+        blocker.rollback()
+        blocker.close()
+        apply_conn.close()
+
+
+def test_integrity_error_during_apply_becomes_parked_not_retried_forever(tmp_path: Path) -> None:
+    """Review finding, PR #197: sqlite3.IntegrityError (and any other real
+    SQLite failure that is not SQLITE_BUSY/SQLITE_LOCKED) is a PERMANENT
+    failure — retrying will never succeed, and no maximum-attempts cap
+    exists in this module, so misclassifying it as transient would retry
+    forever. A real BEFORE UPDATE trigger forces a genuine
+    sqlite3.IntegrityError on the SECOND checkpoint write (the first write
+    is a plain INSERT, not an UPDATE, so the trigger only fires once a
+    checkpoint row already exists)."""
+    db_path = tmp_path / "integrity-error.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_integrity_error"
+    _seed_fact(store, fact_id, claim="claim v1")
+    _set_fact_version(db_path, fact_id, 1)
+    with _open(db_path) as conn:
+        _insert_outbox(conn, outbox_id="ob_integrity_error_1", aggregate_id=fact_id, canonical_version=1)
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        baseline = apply_claimed_work(conn, work, now=_T0)
+        assert baseline.action == DispatchAction.ACKNOWLEDGE
+        ack_claim(conn, work.outbox_id, work.lease_token, now=_T0)
+    finally:
+        conn.close()
+
+    with _open(db_path) as conn:
+        conn.execute(
+            "UPDATE facts SET claim = ?, fact_version = ? WHERE fact_id = ?",
+            ("claim v2", 2, fact_id),
+        )
+        conn.execute("""
+            CREATE TRIGGER simulate_checkpoint_integrity_failure
+            BEFORE UPDATE ON projection_checkpoints
+            BEGIN
+                SELECT RAISE(ABORT, 'SIMULATED: real integrity failure');
+            END;
+        """)
+        _insert_outbox(
+            conn, outbox_id="ob_integrity_error_2", aggregate_id=fact_id,
+            canonical_version=2, created_at="2026-01-01T00:00:01Z",
+        )
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        work2 = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        assert work2.outbox_id == "ob_integrity_error_2"
+        result = apply_claimed_work(conn, work2, now=_T0)
+        assert result.action == DispatchAction.PARK
+        assert result.error_code == DispatchErrorCode.SQLITE_PERMANENT
+        park_outcome = park_claim(
+            conn, work2.outbox_id, work2.lease_token, error_code=result.error_code, now=_T0,
+        )
+        assert park_outcome == ParkOutcome.PARKED
+    finally:
+        conn.close()
+
+    with sqlite3.connect(str(db_path)) as conn:
+        conn.execute("DROP TRIGGER IF EXISTS simulate_checkpoint_integrity_failure")
+        conn.commit()
+    assert _dispatch_row(db_path, "ob_integrity_error_2")[2] == "parked"
+    assert _checkpoint_row(db_path, fact_id)[0] == 1, "checkpoint must remain at v1 — the v2 write rolled back"
+
+
+def test_retry_backoff_uses_durable_attempt_count_not_caller_input(tmp_path: Path) -> None:
+    """Review finding, PR #197: retry_claim() no longer accepts a
+    caller-supplied attempt_count — it reads the DURABLE value from
+    projection_dispatch_state inside its own CAS transaction, so a caller
+    (even one holding a genuinely valid lease token) cannot reset or
+    manipulate backoff timing. Three successive claim/retry cycles must
+    produce exactly the 1s/2s/4s delays implied by the durable
+    attempt_count (1, 2, 3), matching compute_retry_delay_seconds()."""
+    db_path = tmp_path / "durable-attempt-count.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_durable_attempt_count"
+    _seed_fact(store, fact_id, claim="original")
+    with _open(db_path) as conn:
+        _insert_outbox(conn, outbox_id="ob_durable_attempt_count", aggregate_id=fact_id)
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        expected_delays = [1.0, 2.0, 4.0]  # attempt_count 1, 2, 3
+        due_at = _T0
+        for expected_attempt_count, expected_delay in enumerate(expected_delays, start=1):
+            work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=due_at)[0]
+            assert work.attempt_count == expected_attempt_count
+            outcome = retry_claim(
+                conn, work.outbox_id, work.lease_token,
+                error_code=DispatchErrorCode.SQLITE_BUSY, now=due_at,
+            )
+            assert outcome == RetryOutcome.RETRY_SCHEDULED
+            row = _dispatch_row(db_path, "ob_durable_attempt_count")
+            next_attempt_at = datetime.fromisoformat(row[6])
+            assert next_attempt_at == due_at + timedelta(seconds=expected_delay)
+            due_at = next_attempt_at
+    finally:
+        conn.close()
+
+
+def test_retry_backoff_ignores_forged_attempt_count_even_with_valid_token(tmp_path: Path) -> None:
+    db_path = tmp_path / "forged-attempt-count.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_forged_attempt_count"
+    _seed_fact(store, fact_id, claim="original")
+    with _open(db_path) as conn:
+        _insert_outbox(conn, outbox_id="ob_forged_attempt_count", aggregate_id=fact_id)
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        # Advance to attempt_count=3 durably via two claim/retry cycles.
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        retry_claim(conn, work.outbox_id, work.lease_token, error_code=DispatchErrorCode.SQLITE_BUSY, now=_T0)
+        due1 = datetime.fromisoformat(_dispatch_row(db_path, "ob_forged_attempt_count")[6])
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=due1)[0]
+        assert work.attempt_count == 2
+
+        # retry_claim() no longer even accepts attempt_count as a parameter
+        # — there is no argument left for a caller to forge. The durable
+        # value (2) must drive the delay (2s), not any external input.
+        outcome = retry_claim(
+            conn, work.outbox_id, work.lease_token, error_code=DispatchErrorCode.SQLITE_BUSY, now=due1,
+        )
+        assert outcome == RetryOutcome.RETRY_SCHEDULED
+        row = _dispatch_row(db_path, "ob_forged_attempt_count")
+        expected_next_attempt = (due1 + timedelta(seconds=2.0)).isoformat()
+        assert row[6] == expected_next_attempt
+    finally:
+        conn.close()
+
+
+def test_dispatch_state_aggregate_id_mismatch_insert_rejected(tmp_path: Path) -> None:
+    """Review finding, PR #197: a BEFORE INSERT trigger on
+    projection_dispatch_state now enforces aggregate_id consistency with
+    the referenced projection_outbox row at the schema level, independent
+    of any Python-level caller discipline."""
+    db_path = tmp_path / "aggregate-mismatch-insert.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_aggregate_mismatch_insert"
+    _seed_fact(store, fact_id, claim="claim text")
+    with sqlite3.connect(str(db_path)) as conn:
+        _insert_outbox(conn, outbox_id="ob_aggregate_mismatch", aggregate_id=fact_id)
+        conn.commit()
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO projection_dispatch_state "
+                "(outbox_id, aggregate_id, lifecycle_state, lease_token, "
+                " lease_expires_at, attempt_count, updated_at) "
+                "VALUES ('ob_aggregate_mismatch', 'WRONG_AGGREGATE', 'leased', "
+                "'tok', '2099-01-01T00:00:00Z', 1, '2026-01-01T00:00:00Z')"
+            )
+        assert conn.execute(
+            "SELECT 1 FROM projection_dispatch_state WHERE outbox_id = ?",
+            ("ob_aggregate_mismatch",),
+        ).fetchone() is None
+    assert _integrity_ok(db_path)
+
+
+def test_dispatch_state_nonexistent_outbox_insert_rejected(tmp_path: Path) -> None:
+    db_path = tmp_path / "nonexistent-outbox-insert.db"
+    _migrate(db_path)
+    with sqlite3.connect(str(db_path)) as conn:
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO projection_dispatch_state "
+                "(outbox_id, aggregate_id, lifecycle_state, lease_token, "
+                " lease_expires_at, attempt_count, updated_at) "
+                "VALUES ('ob_never_existed', 'f1', 'leased', "
+                "'tok', '2099-01-01T00:00:00Z', 1, '2026-01-01T00:00:00Z')"
+            )
+    assert _integrity_ok(db_path)
+
+
+def test_dispatch_state_aggregate_id_mismatch_update_rejected(tmp_path: Path) -> None:
+    """A legitimate reclaim/ack/retry/park UPDATE never touches
+    aggregate_id, so it always passes this trigger — only an UPDATE that
+    tries to CHANGE aggregate_id to something inconsistent with the
+    referenced projection_outbox row is rejected."""
+    db_path = tmp_path / "aggregate-mismatch-update.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_aggregate_mismatch_update"
+    _seed_fact(store, fact_id, claim="claim text")
+    with _open(db_path) as conn:
+        _insert_outbox(conn, outbox_id="ob_aggregate_mismatch_update", aggregate_id=fact_id)
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+    finally:
+        conn.close()
+
+    with sqlite3.connect(str(db_path)) as conn:
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "UPDATE projection_dispatch_state SET aggregate_id = 'WRONG_AGGREGATE' "
+                "WHERE outbox_id = ?",
+                (work.outbox_id,),
+            )
+        row = conn.execute(
+            "SELECT aggregate_id FROM projection_dispatch_state WHERE outbox_id = ?",
+            (work.outbox_id,),
+        ).fetchone()
+        assert row[0] == fact_id, "the rejected UPDATE must not have changed aggregate_id"
+    assert _integrity_ok(db_path)
+
+
+def test_erasure_still_works_with_aggregate_id_triggers_installed(tmp_path: Path) -> None:
+    """The new triggers only guard INSERT/UPDATE — erase_fact_dependents_
+    atomic()'s DELETE-only purge must be completely unaffected."""
+    db_path = tmp_path / "erasure-with-triggers.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_erasure_with_triggers"
+    _seed_fact(store, fact_id, claim="claim text")
+    with _open(db_path) as conn:
+        _insert_outbox(conn, outbox_id="ob_erasure_with_triggers", aggregate_id=fact_id)
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        apply_claimed_work(conn, work, now=_T0)
+        ack_claim(conn, work.outbox_id, work.lease_token, now=_T0)
+    finally:
+        conn.close()
+
+    result = store.erase_fact_dependents_atomic(fact_id)
+    assert result["tables"]["projection_dispatch_state"] == {"applicable": True, "deleted": 1}
+    assert _dispatch_row(db_path, "ob_erasure_with_triggers") is None
+    assert _integrity_ok(db_path)

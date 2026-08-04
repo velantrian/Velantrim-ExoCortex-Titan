@@ -30,10 +30,11 @@ CREATE TABLE IF NOT EXISTS projection_dispatch_state (
             OR last_error_code IN (
                 'FTS_UNAVAILABLE',
                 'UNSUPPORTED_POLICY_TARGET',
+                'UNSUPPORTED_SCOPE',
                 'CANON_VERSION_BEHIND_INTENT',
                 'INTERNAL_CONTRACT',
                 'SQLITE_BUSY',
-                'SQLITE_TRANSIENT'
+                'SQLITE_PERMANENT'
             )
         ),
     updated_at        TEXT NOT NULL,
@@ -54,3 +55,34 @@ CREATE TABLE IF NOT EXISTS projection_dispatch_state (
 
 CREATE INDEX IF NOT EXISTS idx_projection_dispatch_state_aggregate
     ON projection_dispatch_state(aggregate_id);
+
+-- Review finding, PR #197: without an executable invariant, a
+-- raw/malformed write (bypassing claim_batch()'s own controlled
+-- INSERT ... SELECT ... FROM projection_outbox) could in principle store
+-- an aggregate_id inconsistent with the outbox_id it claims to describe,
+-- or reference an outbox_id that does not exist at all — either of which
+-- would let a dispatch-state row silently drift from the immutable intent
+-- it is supposed to track, and could let it survive an erasure keyed on
+-- the wrong aggregate_id. claim_batch()'s own INSERT already cannot
+-- produce this (it sources aggregate_id from a SELECT of the very row it
+-- references), but these triggers make the invariant true by construction
+-- for every write path, not just the one this module currently uses.
+CREATE TRIGGER IF NOT EXISTS projection_dispatch_state_aggregate_insert_guard
+BEFORE INSERT ON projection_dispatch_state
+BEGIN
+    SELECT RAISE(ABORT, 'projection_dispatch_state.aggregate_id must match an existing projection_outbox row with the same outbox_id')
+    WHERE NOT EXISTS (
+        SELECT 1 FROM projection_outbox
+        WHERE outbox_id = NEW.outbox_id AND aggregate_id = NEW.aggregate_id
+    );
+END;
+
+CREATE TRIGGER IF NOT EXISTS projection_dispatch_state_aggregate_update_guard
+BEFORE UPDATE ON projection_dispatch_state
+BEGIN
+    SELECT RAISE(ABORT, 'projection_dispatch_state.aggregate_id must match an existing projection_outbox row with the same outbox_id')
+    WHERE NOT EXISTS (
+        SELECT 1 FROM projection_outbox
+        WHERE outbox_id = NEW.outbox_id AND aggregate_id = NEW.aggregate_id
+    );
+END;

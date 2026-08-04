@@ -282,6 +282,133 @@ from 32 to 34 tests; full re-validation (25× repeat, regression, Ruff, mypy,
 architecture-freeze, hygiene, full pytest) re-run green — see the PR body for
 exact numbers.
 
+## Review-hardening addendum 2 (independent maintainer review, PR #197)
+
+A second, more extensive maintainer review raised five findings. Each was
+independently re-verified against the actual code (not accepted at face value)
+before any change — two were confirmed as real bugs, two as legitimate scoped
+hardening, one as reasonable defense-in-depth, and one proposed fix was
+deliberately **not** implemented.
+
+**1. Confirmed bug — timestamp comparisons were not timezone-normalized.**
+Every lease/eligibility check in this module is a plain ISO-8601 STRING
+comparison. A naive `now` could silently compare against the wrong timezone,
+and two datetimes representing the SAME instant under different UTC offsets
+could produce different strings that sort incorrectly — concretely, a `now`
+expressed at `+05:00` can lexicographically sort AFTER a UTC-stored
+`lease_expires_at` even though the real instant it represents is earlier,
+incorrectly rejecting a legitimately valid ack. Fixed: a new `_normalize_now()`
+helper rejects naive datetimes (raises `ProjectionDispatchContractError`) and
+normalizes every aware datetime to UTC before formatting, applied uniformly in
+`claim_batch()`, `apply_claimed_work()`, `ack_claim()`, `retry_claim()`, and
+`park_claim()`. Proven by `test_naive_datetime_rejected_by_claim_batch`,
+`test_naive_datetime_rejected_by_ack_claim`, and
+`test_equal_instant_different_utc_offset_normalizes_correctly` (constructs the
+exact cross-offset scenario above and confirms the ack now succeeds).
+
+**2. Confirmed bug — real SQLite failures were misclassified as transient.**
+`apply_claimed_work()` caught `sqlite3.OperationalError` specifically, then
+funneled every OTHER `sqlite3.DatabaseError` (including `IntegrityError` —
+confirmed empirically to carry `sqlite_errorcode=1299`/`SQLITE_CONSTRAINT_NOTNULL`,
+and a corrupted-database error — confirmed empirically to carry
+`sqlite_errorcode=267`/`SQLITE_CORRUPT_VTAB`, both NOT subclasses of
+`OperationalError`) into the same "transient, retry" bucket. Since this module
+has no maximum-attempts cap by design, a permanent constraint violation or a
+corrupted database would retry forever. Fixed: a new `_classify_sqlite_failure()`
+helper reads the real `sqlite_errorcode` attribute (never message
+string-matching, never exception class alone) and reduces extended codes to
+their primary code via `& 0xFF`; only `SQLITE_BUSY`/`SQLITE_LOCKED` (in any
+extended form) are RETRY-eligible, everything else PARKs with a new
+`SQLITE_PERMANENT` code (replacing the never-actually-reachable
+`SQLITE_TRANSIENT`, removed from both the Python enum and migration 022's CHECK
+constraint since it is unmerged). Proven by
+`test_integrity_error_during_apply_becomes_parked_not_retried_forever` (a real
+`BEFORE UPDATE` trigger forces a genuine `sqlite3.IntegrityError`) and
+`test_busy_lock_during_apply_is_retried_not_parked` (a real second, zero-timeout
+connection forces a genuine "database is locked"), confirming both directions.
+`test_apply_failure_remains_unacknowledged`'s existing corrupted-FTS5-shadow-table
+scenario was updated to assert the now-correct PARK/`SQLITE_PERMANENT` outcome
+(it previously asserted the incorrect RETRY/transient outcome this fix corrects).
+
+**3. Legitimate scoped hardening — scope_ref was never validated at apply time.**
+Migration 020 has no SQL-level CHECK narrowing `projection_outbox.scope_ref`
+(unlike `aggregate_type`/`projection_kind`/`operation`, which do) — a
+raw/malformed row could carry a scope outside policy v1's one supported value,
+and `apply_claimed_work()` never checked it. Fixed, purely within this PR's own
+new code (no change to the already-merged #194 apply contract): re-reads
+`scope_ref` fresh from `projection_outbox` alongside `aggregate_id` and PARKs
+with a new `UNSUPPORTED_SCOPE` code if it is not `LOCAL_PROJECTION_SCOPE_REF`.
+Proven by `test_unsupported_scope_becomes_parked`.
+
+Explicitly **not** changed: this same finding argued the dispatcher should also
+give `ProjectionIntent.operation` (REFRESH vs REMOVE) its own executable
+semantics rather than delegating entirely to `apply_fts_projection()`'s
+current-Canon-based outcome. That behavior — "a REMOVE-shaped outcome
+regardless of the intent's own `operation`" — is a deliberate, already-reviewed,
+already-merged decision from issue #194
+(`ADR-2026-08-04-projection-policy-v1-fts-checkpoint.md`), not a gap introduced
+by this PR. Overriding it here would be scope creep beyond issue #193 and would
+contradict a decision this PR has no mandate to revisit.
+
+**4. Legitimate scoped hardening — retry backoff trusted a caller-supplied
+attempt_count.** `retry_claim()` took `attempt_count` as a parameter and
+computed backoff from it directly — even a caller holding a genuinely valid
+lease token could pass a wrong value and reset or manipulate backoff timing.
+Fixed: `retry_claim()` no longer accepts `attempt_count` as a parameter at
+all — it reads the DURABLE value from `projection_dispatch_state` inside the
+same CAS transaction as the UPDATE, so there is no longer any input for a
+caller to forge. Proven by `test_retry_backoff_uses_durable_attempt_count_not_caller_input`
+(three successive claim/retry cycles produce exactly the 1s/2s/4s delays
+implied by the durable count) and
+`test_retry_backoff_ignores_forged_attempt_count_even_with_valid_token`.
+
+**5. Defense-in-depth, not a proven exploitable bug — no executable invariant
+tied `projection_dispatch_state.aggregate_id` to `projection_outbox.aggregate_id`.**
+`claim_batch()`'s own INSERT already cannot produce a mismatch (it sources
+`aggregate_id` from a `SELECT` of the very row it references) and no other
+write path in this module touches the column, so no exploit through the actual
+shipped API could be constructed. Added anyway, matching this codebase's
+existing belt-and-suspenders style (e.g. `prevent_fact_delete`, the closed CHECK
+constraints on every projection table): `BEFORE INSERT`/`BEFORE UPDATE` triggers
+on `projection_dispatch_state` (migration 022, still unmerged, edited directly —
+no migration 023 needed) that abort unless a `projection_outbox` row with the
+same `outbox_id` AND `aggregate_id` exists. Proven by
+`test_dispatch_state_aggregate_id_mismatch_insert_rejected`,
+`test_dispatch_state_nonexistent_outbox_insert_rejected`,
+`test_dispatch_state_aggregate_id_mismatch_update_rejected`, and
+`test_erasure_still_works_with_aggregate_id_triggers_installed` (confirms the
+DELETE-only erasure purge is unaffected). This also required fixing the
+pre-existing `test_reappearance_of_dispatch_state_after_clean_erasure_detected`,
+whose synthetic reappearance row referenced a nonexistent `outbox_id` — the new
+trigger correctly rejected it, so the test was updated to insert a matching
+orphaned `projection_outbox` row too, genuinely modeling the out-of-band
+reappearance shape it intends to prove.
+
+**Not implemented — resampling an injected clock at every transaction
+boundary.** The review proposed replacing the injected `datetime` value with a
+callable resampled after each `BEGIN IMMEDIATE` acquires its lock, reasoning
+that a long lock wait could leave `now` stale relative to real wall-clock time.
+Rejected: issue #193's own ТЗ explicitly asked for an injected clock (a value
+the caller controls, exactly what was built) — a callable resampled internally
+is a materially different, broader API contract, not a bug fix. More
+importantly, the actual safety guarantee this module provides against the
+described race is NOT the timestamp comparison — it is the exact-lease-token
+CAS on every ack/retry/park. If another process reclaims a row (because real
+wall-clock time has actually passed lease_expires_at), the token in the
+database changes, and this process's own `apply_claimed_work()`/`ack_claim()`/
+`retry_claim()`/`park_claim()` calls will all fail with `STALE_TOKEN`/rejected
+regardless of what `now` value this process happens to be using — the token
+compare, not the timestamp compare, is what makes concurrent claim/apply/ack
+race-free (see `test_concurrent_claimers_one_owner_per_intent` and the two
+crash-recovery tests). No test was written for this proposal since it was not
+implemented.
+
+Full re-validation after all fixes above: focused suite grew 34→46 tests, all
+passing, re-run 25× with 0 failures; full regression (269 passed across every
+outbox/erasure/checkpoint-adjacent suite); Ruff/mypy clean; architecture-freeze
+and hygiene guards PASS; full repository `pytest tests/`: **3096 passed**, 22
+skipped, 1 xfailed, 0 failed — see the PR body for the exact pinned-head numbers.
+
 ## Interpretation boundary
 
 **Proven:** the claim/lease/retry/ack state machine is race-free under 2- and
