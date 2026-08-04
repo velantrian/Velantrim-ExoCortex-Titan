@@ -456,9 +456,11 @@ def retry_claim(
     error_code: DispatchErrorCode,
     now: datetime,
 ) -> RetryOutcome:
-    """Single CAS retry transition, by exact active lease token. Computes
-    the next `next_attempt_at` via `compute_retry_delay_seconds()` from
-    the injected `now` — never sleeps, never uses wall-clock time
+    """Single CAS retry transition, by exact ACTIVE (non-expired) lease
+    token — the same `lease_expires_at > now` guard as ack_claim(), so an
+    expired-but-not-yet-reclaimed holder cannot schedule a retry either.
+    Computes the next `next_attempt_at` via `compute_retry_delay_seconds()`
+    from the injected `now` — never sleeps, never uses wall-clock time
     directly."""
     _require_no_active_transaction(conn)
     now_iso = now.isoformat()
@@ -470,8 +472,9 @@ def retry_claim(
             "UPDATE projection_dispatch_state "
             "SET lifecycle_state='retry', lease_token=NULL, lease_expires_at=NULL, "
             "    next_attempt_at=?, last_error_code=?, updated_at=? "
-            "WHERE outbox_id=? AND lifecycle_state='leased' AND lease_token=?",
-            (next_attempt_at, error_code.value, now_iso, outbox_id, lease_token),
+            "WHERE outbox_id=? AND lifecycle_state='leased' AND lease_token=? "
+            "  AND lease_expires_at > ?",
+            (next_attempt_at, error_code.value, now_iso, outbox_id, lease_token, now_iso),
         )
     except Exception:
         conn.rollback()
@@ -488,10 +491,11 @@ def park_claim(
     error_code: DispatchErrorCode,
     now: datetime,
 ) -> ParkOutcome:
-    """Single CAS terminal park transition, by exact active lease token.
-    A parked row is never automatically retried — it matches none of
-    claim_batch()'s eligibility conditions — and is never silently dropped
-    or treated as delivered."""
+    """Single CAS terminal park transition, by exact ACTIVE (non-expired)
+    lease token — the same `lease_expires_at > now` guard as ack_claim()
+    and retry_claim(). A parked row is never automatically retried — it
+    matches none of claim_batch()'s eligibility conditions — and is never
+    silently dropped or treated as delivered."""
     _require_no_active_transaction(conn)
     now_iso = now.isoformat()
     conn.execute("BEGIN IMMEDIATE")
@@ -500,8 +504,9 @@ def park_claim(
             "UPDATE projection_dispatch_state "
             "SET lifecycle_state='parked', lease_token=NULL, lease_expires_at=NULL, "
             "    next_attempt_at=NULL, last_error_code=?, updated_at=? "
-            "WHERE outbox_id=? AND lifecycle_state='leased' AND lease_token=?",
-            (error_code.value, now_iso, outbox_id, lease_token),
+            "WHERE outbox_id=? AND lifecycle_state='leased' AND lease_token=? "
+            "  AND lease_expires_at > ?",
+            (error_code.value, now_iso, outbox_id, lease_token, now_iso),
         )
     except Exception:
         conn.rollback()

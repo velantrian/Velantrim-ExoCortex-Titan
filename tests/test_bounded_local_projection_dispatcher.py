@@ -470,6 +470,67 @@ def test_expired_lease_token_cannot_ack(tmp_path: Path) -> None:
     assert _integrity_ok(db_path)
 
 
+def test_expired_lease_token_cannot_retry(tmp_path: Path) -> None:
+    """Review finding, PR #197: retry_claim() must reject an
+    expired-but-not-yet-reclaimed holder the same way ack_claim() does —
+    an exact token match alone is not enough once the lease has expired."""
+    db_path = tmp_path / "expired-retry.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_expired_retry"
+    _seed_fact(store, fact_id, claim="original")
+    with _open(db_path) as conn:
+        _insert_outbox(conn, outbox_id="ob_expired_retry", aggregate_id=fact_id)
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        past_expiry = _T0 + timedelta(seconds=120)  # no one reclaimed; just expired
+        outcome = retry_claim(
+            conn, work.outbox_id, work.lease_token,
+            attempt_count=work.attempt_count, error_code=DispatchErrorCode.SQLITE_BUSY,
+            now=past_expiry,
+        )
+        assert outcome == RetryOutcome.RETRY_REJECTED
+    finally:
+        conn.close()
+
+    row = _dispatch_row(db_path, "ob_expired_retry")
+    assert row[2] == "leased", "an expired-but-unreclaimed row stays leased, not silently moved to retry"
+    assert row[6] is None, "next_attempt_at must not be set by a rejected retry"
+    assert _integrity_ok(db_path)
+
+
+def test_expired_lease_token_cannot_park(tmp_path: Path) -> None:
+    """Review finding, PR #197: park_claim() must reject an
+    expired-but-not-yet-reclaimed holder the same way ack_claim() does."""
+    db_path = tmp_path / "expired-park.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_expired_park"
+    _seed_fact(store, fact_id, claim="original")
+    with _open(db_path) as conn:
+        _insert_outbox(conn, outbox_id="ob_expired_park", aggregate_id=fact_id)
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        past_expiry = _T0 + timedelta(seconds=120)  # no one reclaimed; just expired
+        outcome = park_claim(
+            conn, work.outbox_id, work.lease_token,
+            error_code=DispatchErrorCode.FTS_UNAVAILABLE, now=past_expiry,
+        )
+        assert outcome == ParkOutcome.PARK_REJECTED
+    finally:
+        conn.close()
+
+    row = _dispatch_row(db_path, "ob_expired_park")
+    assert row[2] == "leased", "an expired-but-unreclaimed row stays leased, not silently parked"
+    assert _integrity_ok(db_path)
+
+
 # ── 12. Retry transition requires exact active token ────────────────────────
 
 def test_retry_requires_exact_active_token(tmp_path: Path) -> None:

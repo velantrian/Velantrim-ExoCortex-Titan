@@ -265,6 +265,23 @@ silently reporting "not applicable."
 - Full repository `pytest tests/`, CI, Docker: see the PR body for this
   increment's real, verified results.
 
+## Review-hardening addendum (Copilot review, PR #197)
+
+The automated Copilot review on the pinned head found one real gap, fixed in a
+follow-up commit: `retry_claim()`'s and `park_claim()`'s CAS `UPDATE` statements
+checked `lifecycle_state='leased' AND lease_token=?` but, unlike `ack_claim()`,
+did not also require `lease_expires_at > now`. An expired-but-not-yet-reclaimed
+holder could therefore still transition its own row to `retry` or `parked` —
+inconsistent with this ADR's own stated "Lease ownership" contract ("a stale or
+expired token is rejected structurally ... for ack/retry"), which was already
+true for ack but not yet enforced for retry/park. Fixed by adding the same
+`lease_expires_at > ?` guard to both statements; proven by two new tests,
+`test_expired_lease_token_cannot_retry` and `test_expired_lease_token_cannot_park`,
+mirroring the existing `test_expired_lease_token_cannot_ack`. Focused suite grew
+from 32 to 34 tests; full re-validation (25× repeat, regression, Ruff, mypy,
+architecture-freeze, hygiene, full pytest) re-run green — see the PR body for
+exact numbers.
+
 ## Interpretation boundary
 
 **Proven:** the claim/lease/retry/ack state machine is race-free under 2- and
