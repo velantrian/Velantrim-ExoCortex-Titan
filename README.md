@@ -64,6 +64,7 @@ LLM может читать, извлекать и формулировать, �
 | 👤 впервые видите проект | [Atlas: объяснение за 30 секунд](SYSTEM_OVERVIEW.md#plain) |
 | 🛠️ запускаете свою установку | [Быстрый старт](#quick-start) и [Security](SECURITY.md) |
 | 🧑‍💻 собираетесь менять код | [Atlas: инженерные границы](SYSTEM_OVERVIEW.md#engineer) и [`AGENTS.md`](AGENTS.md) |
+| 🧠 изучаете долговременный контекст для Codex, Copilot и code review | [Project Cognition & Code Review](docs/use_cases/PROJECT_COGNITION_AND_CODE_REVIEW.md) |
 | 🔍 проверяете заявления | [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) |
 | 💼 оцениваете зрелость или финансирование | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) |
 | 🧪 проектируете нагрузочные испытания | [Atlas: Architecture Assurance](SYSTEM_OVERVIEW.md#assurance) |
@@ -167,7 +168,6 @@ TRACE и audit показывают, что произошло.
 
 Перед эксплуатационным заявлением проверяйте `core/feature_config.py`,
 `/layers/status`, `/titan/status` и реальные метрики.
-
 </details>
 
 ---
@@ -374,6 +374,7 @@ ENABLE_EVENT_BUS=1
 | Документ | Назначение |
 |---|---|
 | [`SYSTEM_OVERVIEW.md`](SYSTEM_OVERVIEW.md) 🗺️ | многоуровневая экскурсия: plain ↔ engineer ↔ auditor |
+| [`docs/use_cases/README.md`](docs/use_cases/README.md) 🧭 | подробные сценарии применения без перегрузки корневого README |
 | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) 📊 | зрелость, реальные риски, P0/P1/P2 |
 | [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) 🔍 | карта файлов и проверок для аудитора |
 | [`SECURITY.md`](SECURITY.md) 🔒 | threat model, auth, disclosure, ограничения |
