@@ -168,6 +168,7 @@ TRACE и audit показывают, что произошло.
 
 Перед эксплуатационным заявлением проверяйте `core/feature_config.py`,
 `/layers/status`, `/titan/status` и реальные метрики.
+
 </details>
 
 ---
