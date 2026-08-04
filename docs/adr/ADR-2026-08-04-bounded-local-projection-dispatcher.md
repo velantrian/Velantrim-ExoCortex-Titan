@@ -230,8 +230,9 @@ silently reporting "not applicable."
 
 ## Validation
 
-- New file: `tests/test_bounded_local_projection_dispatcher.py` — 32 tests
-  (some parametrized) covering all 26 required proofs from issue #193: successful
+- New file: `tests/test_bounded_local_projection_dispatcher.py` — originally 32
+  tests (some parametrized), grown to 50 across three review-hardening rounds
+  (see the addenda below) — covering all 26 required proofs from issue #193: successful
   claim/apply/ack; 2- and 10-way concurrent claim exclusivity; strict batch
   bound; deterministic ordering; invalid batch size; crash-after-claim and
   crash-after-apply recovery (both with real separate connections modeling
@@ -247,7 +248,10 @@ silently reporting "not applicable."
   (`core.projection_dispatcher` did not exist).
 - GREEN after implementation: 32/32 passed, repeated **25×** with 0 failures
   (no `time.sleep()` anywhere in the module or its tests — every "wait" is an
-  explicitly injected `datetime`).
+  explicitly injected `datetime`). The suite grew to 46, then 50, across the
+  review-hardening rounds below; each round's own "GREEN" count in its addendum
+  reflects the suite size at that point — see the final addendum for the
+  current, authoritative 50/50 count.
 - Regression (255 passed): `test_projection_policy_v1_fts_apply.py`,
   `test_projection_outbox.py`, `test_projection_outbox_migration.py`,
   `test_promotion_projection_outbox_caller.py`,

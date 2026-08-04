@@ -9,7 +9,13 @@ bounded backoff, apply-outcome policy classification, and erasure ownership.
 No background worker, scheduler, asyncio task, or sleep exists anywhere in
 this file or in the module it tests — every "instance"/"restart" is modeled
 as a fresh sqlite3.Connection against the same on-disk database, and every
-clock is an explicitly injected `datetime`, never wall-clock time.
+lease/lifecycle timing decision in core.projection_dispatcher itself is driven
+by an explicitly injected `datetime` (or, for dispatch_once(), a fake
+`clock: Callable[[], datetime]`), never wall-clock time. This does NOT extend
+to core.projection_apply.apply_fts_projection()'s own `updated_at` checkpoint
+timestamp, which is real wall-clock (`datetime.now(UTC)`, issue #194,
+pre-existing and outside this file's control) — no test here asserts on that
+column's exact value, so it does not affect this suite's determinism.
 
 Every test constructs a real, temp-file-backed SQLite database migrated
 through the REAL migration chain (scripts/apply_migrations.py). Failures are
