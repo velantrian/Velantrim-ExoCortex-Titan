@@ -1002,7 +1002,7 @@ def test_dispatch_once_end_to_end_summary(tmp_path: Path) -> None:
 
     conn = _open(db_path)
     try:
-        summary = dispatch_once(conn, batch_size=10, lease_duration_seconds=60, now=_T0)
+        summary = dispatch_once(conn, batch_size=10, lease_duration_seconds=60, clock=lambda: _T0)
     finally:
         conn.close()
 
@@ -1421,4 +1421,164 @@ def test_erasure_still_works_with_aggregate_id_triggers_installed(tmp_path: Path
     result = store.erase_fact_dependents_atomic(fact_id)
     assert result["tables"]["projection_dispatch_state"] == {"applicable": True, "deleted": 1}
     assert _dispatch_row(db_path, "ob_erasure_with_triggers") is None
+    assert _integrity_ok(db_path)
+
+
+# ── Review-hardening proofs (second maintainer follow-up, PR #197) ─────────
+#
+# Two further findings, re-verified before acting: (1) an explicit REMOVE
+# intent while Canon still exists was silently applied as a REFRESH — a real
+# gap, since apply_fts_projection() (issue #194) has no REMOVE parameter at
+# all; its "remove regardless of operation" contract only covers Canon being
+# ABSENT, never a reviewed "REMOVE while Canon exists" semantic. (2)
+# dispatch_once() reused one `now` for its whole batch, so a lease that
+# genuinely expired partway through a slow batch could still pass this
+# orchestrator's own apply/ack calls. Both are now fixed.
+
+def test_remove_operation_becomes_parked_not_applied(tmp_path: Path) -> None:
+    """Review finding, PR #197 (second round): apply_claimed_work() now
+    re-reads `operation` fresh and parks UNSUPPORTED_OPERATION for anything
+    other than REFRESH, rather than silently running apply_fts_projection()
+    (which has no REMOVE parameter and would just refresh from current
+    Canon) and acknowledging a REMOVE intent as if it had actually removed
+    anything."""
+    db_path = tmp_path / "remove-operation.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_remove_operation"
+    _seed_fact(store, fact_id, claim="claim text")
+    with _open(db_path) as conn:
+        conn.execute(
+            "INSERT INTO projection_outbox ("
+            "outbox_id, aggregate_type, aggregate_id, scope_ref, projection_kind, "
+            "operation, canonical_version, policy_version, created_at"
+            ") VALUES ('ob_remove_operation', 'fact', ?, ?, 'all', 'remove', 1, "
+            "'projection-outbox-v1', '2026-01-01T00:00:00Z')",
+            (fact_id, LOCAL_PROJECTION_SCOPE_REF),
+        )
+        conn.commit()
+    fts_before = _fts_row(db_path, fact_id)  # store_fact()'s own best-effort sync
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        result = apply_claimed_work(conn, work, now=_T0)
+        assert result.action == DispatchAction.PARK
+        assert result.error_code == DispatchErrorCode.UNSUPPORTED_OPERATION
+        park_outcome = park_claim(conn, work.outbox_id, work.lease_token, error_code=result.error_code, now=_T0)
+        assert park_outcome == ParkOutcome.PARKED
+    finally:
+        conn.close()
+
+    assert _dispatch_row(db_path, "ob_remove_operation")[2] == "parked"
+    assert _fts_row(db_path, fact_id) == fts_before, "FTS must be untouched by a parked REMOVE intent"
+    assert _checkpoint_row(db_path, fact_id) is None, "no checkpoint may be written for a parked intent"
+    with sqlite3.connect(str(db_path)) as conn:
+        assert conn.execute(
+            "SELECT 1 FROM projection_outbox WHERE outbox_id = ?", ("ob_remove_operation",),
+        ).fetchone() is not None, "the immutable REMOVE intent must survive, never acknowledged away"
+    assert _integrity_ok(db_path)
+
+
+def test_dispatch_once_summary_excludes_parked_remove_from_acknowledged(tmp_path: Path) -> None:
+    db_path = tmp_path / "remove-operation-dispatch-once.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_remove_operation_once"
+    _seed_fact(store, fact_id, claim="claim text")
+    with _open(db_path) as conn:
+        conn.execute(
+            "INSERT INTO projection_outbox ("
+            "outbox_id, aggregate_type, aggregate_id, scope_ref, projection_kind, "
+            "operation, canonical_version, policy_version, created_at"
+            ") VALUES ('ob_remove_once', 'fact', ?, ?, 'all', 'remove', 1, "
+            "'projection-outbox-v1', '2026-01-01T00:00:00Z')",
+            (fact_id, LOCAL_PROJECTION_SCOPE_REF),
+        )
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        summary = dispatch_once(conn, batch_size=10, lease_duration_seconds=60, clock=lambda: _T0)
+    finally:
+        conn.close()
+
+    assert summary.claimed == 1
+    assert summary.acknowledged == 0
+    assert summary.parked == 1
+    assert _dispatch_row(db_path, "ob_remove_once")[7] == "UNSUPPORTED_OPERATION"
+
+
+def test_expired_lease_token_cannot_apply_even_without_reclaim(tmp_path: Path) -> None:
+    """apply_claimed_work()'s own EXPIRED check already uses whatever `now`
+    its caller passes — this proves it directly at the primitive level (no
+    other worker ever reclaims; the SAME token is still recorded, but the
+    caller now honestly reports a later `now` past the lease's own
+    recorded expiry)."""
+    db_path = tmp_path / "expired-apply-no-reclaim.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_expired_apply_no_reclaim"
+    _seed_fact(store, fact_id, claim="original")
+    with _open(db_path) as conn:
+        _insert_outbox(conn, outbox_id="ob_expired_apply_no_reclaim", aggregate_id=fact_id)
+        conn.commit()
+
+    conn = _open(db_path)
+    try:
+        work = claim_batch(conn, batch_size=10, lease_duration_seconds=60, now=_T0)[0]
+        past_expiry = _T0 + timedelta(seconds=120)  # no one reclaimed; same token still stored
+        result = apply_claimed_work(conn, work, now=past_expiry)
+        assert result.action == DispatchAction.REJECTED
+        assert result.lease_validation == LeaseValidationOutcome.EXPIRED
+    finally:
+        conn.close()
+
+    assert _checkpoint_row(db_path, fact_id) is None, "an expired apply attempt must not mutate anything"
+    row = _dispatch_row(db_path, "ob_expired_apply_no_reclaim")
+    assert row[2] == "leased", "still leased (not reclaimed) — merely rejected as expired, not silently applied"
+    assert _integrity_ok(db_path)
+
+
+def test_dispatch_once_resamples_clock_between_items_expired_item_rejected(tmp_path: Path) -> None:
+    """Review finding, PR #197 (second round): dispatch_once() must call
+    `clock()` fresh before each step, not reuse one `now` for a whole
+    batch. A fake clock that advances past the lease duration between
+    item 1 and item 2 must let item 1 succeed normally while item 2 is
+    rejected as expired — never silently applied/acknowledged using a
+    stale `now`. No sleep anywhere; the fake clock is a plain iterator."""
+    db_path = tmp_path / "clock-resample.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id_1, fact_id_2 = "f_resample_1", "f_resample_2"
+    _seed_fact(store, fact_id_1, claim="c1")
+    _seed_fact(store, fact_id_2, claim="c2")
+    with _open(db_path) as conn:
+        _insert_outbox(conn, outbox_id="ob_resample_1", aggregate_id=fact_id_1, created_at="2026-01-01T00:00:00Z")
+        _insert_outbox(conn, outbox_id="ob_resample_2", aggregate_id=fact_id_2, created_at="2026-01-01T00:00:01Z")
+        conn.commit()
+
+    # claim -> apply(item1) -> ack(item1) -> apply(item2, now genuinely past
+    # the 1s lease) -> rejected, no ack call follows for a rejected item.
+    ticks = iter([_T0, _T0, _T0, _T0 + timedelta(seconds=2)])
+
+    def clock() -> datetime:
+        return next(ticks)
+
+    conn = _open(db_path)
+    try:
+        summary = dispatch_once(conn, batch_size=10, lease_duration_seconds=1, clock=clock)
+    finally:
+        conn.close()
+
+    assert summary.claimed == 2
+    assert summary.acknowledged == 1
+    assert summary.rejected == 1
+    assert summary.retried == 0
+    assert summary.parked == 0
+    assert _dispatch_row(db_path, "ob_resample_1")[2] == "acknowledged"
+    assert _dispatch_row(db_path, "ob_resample_2")[2] == "leased", (
+        "item 2 must remain leased (rejected as expired), never acknowledged using the stale batch-start now"
+    )
+    assert _checkpoint_row(db_path, fact_id_2) is None
     assert _integrity_ok(db_path)

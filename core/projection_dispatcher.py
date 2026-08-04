@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import secrets
 import sqlite3
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -98,6 +99,7 @@ class DispatchErrorCode(StrEnum):
     FTS_UNAVAILABLE = "FTS_UNAVAILABLE"
     UNSUPPORTED_POLICY_TARGET = "UNSUPPORTED_POLICY_TARGET"
     UNSUPPORTED_SCOPE = "UNSUPPORTED_SCOPE"
+    UNSUPPORTED_OPERATION = "UNSUPPORTED_OPERATION"
     CANON_VERSION_BEHIND_INTENT = "CANON_VERSION_BEHIND_INTENT"
     INTERNAL_CONTRACT = "INTERNAL_CONTRACT"
     SQLITE_BUSY = "SQLITE_BUSY"
@@ -405,22 +407,35 @@ def apply_claimed_work(
             return _reject(LeaseValidationOutcome.EXPIRED)
 
         intent_row = conn.execute(
-            "SELECT aggregate_id, scope_ref FROM projection_outbox WHERE outbox_id = ?",
+            "SELECT aggregate_id, scope_ref, operation FROM projection_outbox WHERE outbox_id = ?",
             (claimed.outbox_id,),
         ).fetchone()
         if intent_row is None:
             return _reject(LeaseValidationOutcome.INTENT_MISSING)
-        intent_aggregate_id, intent_scope_ref = intent_row
+        intent_aggregate_id, intent_scope_ref, intent_operation = intent_row
         if intent_aggregate_id != state_aggregate_id:
             return _reject(LeaseValidationOutcome.AGGREGATE_MISMATCH)
         # Re-read scope_ref fresh (review finding, PR #197): migration 020
         # has no SQL-level CHECK narrowing scope_ref (unlike
         # aggregate_type/projection_kind/operation, which do), so this is
-        # the one intent field that a raw/malformed row could carry
-        # outside policy v1's single supported value. Fails closed rather
-        # than silently applying under the wrong routing scope.
+        # one of two intent fields a raw/malformed row could carry outside
+        # policy v1's single supported value. Fails closed rather than
+        # silently applying under the wrong routing scope.
         if intent_scope_ref != LOCAL_PROJECTION_SCOPE_REF:
             return _park(DispatchErrorCode.UNSUPPORTED_SCOPE)
+        # Re-read operation fresh (review finding, PR #197): migration 020
+        # allows REFRESH and REMOVE, but apply_fts_projection() (issue
+        # #194) has no REMOVE parameter at all — it decides remove-vs-
+        # refresh purely from whether Canon currently exists, independent
+        # of what operation the intent declared. That contract covers "an
+        # intent's own captured operation must never override the current-
+        # Canon rule" — it does NOT mean "an explicit REMOVE intent while
+        # Canon still exists is a reviewed, safe no-op refresh". No
+        # executable REMOVE semantic has been designed or reviewed, so
+        # this fails closed rather than silently refreshing an intent that
+        # asked for removal.
+        if intent_operation != ProjectionOperation.REFRESH.value:
+            return _park(DispatchErrorCode.UNSUPPORTED_OPERATION)
 
         try:
             # Policy v1 ALL resolves to exactly {FTS} — see
@@ -572,25 +587,37 @@ def dispatch_once(
     *,
     batch_size: int,
     lease_duration_seconds: float,
-    now: datetime,
+    clock: Callable[[], datetime],
 ) -> DispatchOnceSummary:
     """Bounded, single-pass dispatch: claim one batch, apply each claim
     separately, ack/retry/park each by structured policy, return a
     structured summary. Does NOT loop, sleep, retry within itself,
     register with any scheduler, spawn a task, or make a network call —
-    the caller decides if/when to call this again."""
+    the caller decides if/when to call this again.
+
+    `clock` is called fresh before EACH step (once for the claim, then
+    once before every item's apply, and once again before that same
+    item's ack/retry/park) — review finding, PR #197: a single `now`
+    value reused for a whole batch could let a lease that has genuinely
+    expired mid-batch still pass this dispatcher's OWN apply/ack checks,
+    even though the checks themselves are correct given whatever `now`
+    they are handed. The lower-level primitives (`claim_batch()`,
+    `apply_claimed_work()`, `ack_claim()`, `retry_claim()`, `park_claim()`)
+    still take an explicit `now: datetime` each, unchanged, for exact
+    deterministic unit testing — `clock` only changes how THIS orchestrator
+    obtains that value between steps."""
     claimed = claim_batch(
-        conn, batch_size=batch_size, lease_duration_seconds=lease_duration_seconds, now=now,
+        conn, batch_size=batch_size, lease_duration_seconds=lease_duration_seconds, now=clock(),
     )
     acknowledged = retried = parked = rejected = 0
     outbox_ids: list[str] = []
 
     for work in claimed:
         outbox_ids.append(work.outbox_id)
-        result = apply_claimed_work(conn, work, now=now)
+        result = apply_claimed_work(conn, work, now=clock())
 
         if result.action == DispatchAction.ACKNOWLEDGE:
-            ack_outcome = ack_claim(conn, work.outbox_id, work.lease_token, now=now)
+            ack_outcome = ack_claim(conn, work.outbox_id, work.lease_token, now=clock())
             if ack_outcome == AckOutcome.ACKNOWLEDGED:
                 acknowledged += 1
             else:
@@ -599,7 +626,7 @@ def dispatch_once(
             assert result.error_code is not None
             retry_outcome = retry_claim(
                 conn, work.outbox_id, work.lease_token,
-                error_code=result.error_code, now=now,
+                error_code=result.error_code, now=clock(),
             )
             if retry_outcome == RetryOutcome.RETRY_SCHEDULED:
                 retried += 1
@@ -608,7 +635,7 @@ def dispatch_once(
         elif result.action == DispatchAction.PARK:
             assert result.error_code is not None
             park_outcome = park_claim(
-                conn, work.outbox_id, work.lease_token, error_code=result.error_code, now=now,
+                conn, work.outbox_id, work.lease_token, error_code=result.error_code, now=clock(),
             )
             if park_outcome == ParkOutcome.PARKED:
                 parked += 1

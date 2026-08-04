@@ -409,6 +409,66 @@ outbox/erasure/checkpoint-adjacent suite); Ruff/mypy clean; architecture-freeze
 and hygiene guards PASS; full repository `pytest tests/`: **3096 passed**, 22
 skipped, 1 xfailed, 0 failed — see the PR body for the exact pinned-head numbers.
 
+## Review-hardening addendum 3 (second maintainer follow-up, PR #197)
+
+A second maintainer follow-up raised two more findings. Both were re-verified,
+and one of them reverses a position taken in addendum 2 above.
+
+**1. Confirmed bug, reversing addendum 2's "not changed" position — REMOVE
+was silently applied as REFRESH.** Addendum 2 argued that giving
+`ProjectionIntent.operation` its own executable semantics was out of scope,
+citing `apply_fts_projection()`'s "REMOVE-shaped outcome regardless of the
+intent's own `operation`" as a deliberate, already-merged #194 decision. On
+closer inspection this was wrong: that #194 contract describes what happens
+when Canon is **missing** (a remove-shaped outcome regardless of what
+`operation` says); it never addressed — because `apply_fts_projection()` does
+not even accept `operation` as a parameter — what should happen when Canon
+**still exists** and the intent explicitly declared REMOVE. Nothing had ever
+reviewed that combination; issue #193's own dispatcher was silently choosing
+"treat it as REFRESH" by omission, not by any reviewed decision. **Fixed**:
+`apply_claimed_work()` now re-reads `operation` fresh alongside `aggregate_id`/
+`scope_ref` and PARKs with a new `UNSUPPORTED_OPERATION` code for anything
+other than REFRESH — the same fail-closed pattern already used for
+GRAPH/VECTOR and unsupported scope, never inventing a new REMOVE semantic
+(that remains a future, separately reviewed policy decision), and never
+silently refreshing an intent that asked for removal. Proven by
+`test_remove_operation_becomes_parked_not_applied` (FTS/checkpoint untouched,
+immutable intent survives, never acknowledged) and
+`test_dispatch_once_summary_excludes_parked_remove_from_acknowledged`.
+
+**2. Legitimate scoped hardening — `dispatch_once()` reused one `now` for a
+whole batch.** The lower-level primitives' own expiry checks are correct for
+whatever `now` they are handed — this was never in question. The gap was
+narrower: `dispatch_once()` sampled `now` once and passed the SAME value to
+every step (claim, then every item's apply, then that item's ack/retry/park),
+so a lease that genuinely expired partway through a slow batch (no other
+worker ever reclaiming it) would still pass every check `dispatch_once()`
+itself performed, using its own stale snapshot. The originally-proposed fix —
+resampling inside each low-level primitive after its own `BEGIN IMMEDIATE` —
+was declined again for the reasons in addendum 2 (the primitives' own
+correctness does not depend on when they sample `now`; that remains the
+caller's job). What changed: `dispatch_once()` itself now accepts
+`clock: Callable[[], datetime]` instead of a single `now: datetime`, and calls
+`clock()` fresh immediately before every step — the claim, each item's apply,
+and that item's own ack/retry/park. This is a narrower, lower-risk change than
+the original proposal: it touches only the one orchestration function that
+would ever run for real, leaves every tested/reviewed primitive signature
+unchanged, and still gives the caller full, deterministic control over time
+(a fake clock is a plain callable/iterator, no wall-clock or sleep involved).
+Proven by `test_dispatch_once_resamples_clock_between_items_expired_item_rejected`
+(a two-item batch with a lease shorter than processing time; item 1
+acknowledges normally, item 2 is rejected as expired rather than silently
+applied using the stale batch-start time) and, at the primitive level directly,
+`test_expired_lease_token_cannot_apply_even_without_reclaim` (proves
+`apply_claimed_work()` already correctly rejects an expired lease under the
+SAME, never-reclaimed token, given an honestly later `now` — confirming the
+primitive itself needed no change, only its caller's clock discipline did).
+
+Full re-validation: focused suite grew 46→50 tests, all passing, re-run 25×
+with 0 failures; regression (273 passed); Ruff/mypy clean; architecture-freeze
+and hygiene guards PASS; full repository `pytest tests/`: **3100 passed**, 22
+skipped, 1 xfailed, 0 failed — see the PR body for the exact pinned-head numbers.
+
 ## Interpretation boundary
 
 **Proven:** the claim/lease/retry/ack state machine is race-free under 2- and

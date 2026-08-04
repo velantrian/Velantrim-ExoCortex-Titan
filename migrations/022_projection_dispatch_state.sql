@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS projection_dispatch_state (
                 'FTS_UNAVAILABLE',
                 'UNSUPPORTED_POLICY_TARGET',
                 'UNSUPPORTED_SCOPE',
+                'UNSUPPORTED_OPERATION',
                 'CANON_VERSION_BEHIND_INTENT',
                 'INTERNAL_CONTRACT',
                 'SQLITE_BUSY',
