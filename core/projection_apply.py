@@ -22,12 +22,23 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from core.projection_outbox import LOCAL_PROJECTION_SCOPE_REF, ProjectionKind
+from core.projection_outbox import (
+    LOCAL_PROJECTION_SCOPE_REF,
+    PROJECTION_OUTBOX_POLICY_VERSION,
+    ProjectionKind,
+)
 
-#: The only policy version this module currently interprets. A future
-#: policy v2 (e.g. activating graph/vector) requires its own reviewed
-#: resolver branch, never a widening of this one in place.
-_POLICY_V1 = "v1"
+#: The only policy version this module currently interprets — the SAME
+#: durable value every ProjectionIntent's own `policy_version` field
+#: already carries (core.projection_outbox.PROJECTION_OUTBOX_POLICY_VERSION),
+#: not a separate ad-hoc label. A future policy v2 (e.g. activating
+#: graph/vector) requires its own reviewed resolver branch and its own
+#: new PROJECTION_OUTBOX_POLICY_VERSION-shaped constant, never a widening
+#: of this one in place. (Review finding, PR #195: an earlier revision
+#: compared against a disconnected literal "v1" that no real intent's
+#: policy_version would ever equal, making the resolver unreachable from
+#: any actual dispatcher call.)
+_POLICY_V1 = PROJECTION_OUTBOX_POLICY_VERSION
 
 #: Policy v1's closed target set for ProjectionKind.ALL — "all targets
 #: defined by projection policy v1", not every reserved enum value. Graph
@@ -45,6 +56,17 @@ class UnsupportedPolicyTargetError(RuntimeError):
     policy_version, or an explicit GRAPH/VECTOR request under v1. Never a
     silent skip and never treated as delivered/acknowledged: raising here
     means the caller has nothing it can safely act on."""
+
+
+class ProjectionApplyContractError(RuntimeError):
+    """Raised by apply_fts_projection() when `conn` has no active
+    transaction. Without an explicit BEGIN, sqlite3 autocommits each
+    statement individually — the checkpoint UPSERT and the FTS write would
+    no longer be atomic, so a failure between them could leave the
+    checkpoint advanced with no matching FTS content. Fails closed instead
+    (review finding, PR #195), mirroring
+    core.projection_outbox.append_projection_intent_in_transaction()'s own
+    `conn.in_transaction` guard."""
 
 
 class CanonVersionBehindIntentError(RuntimeError):
@@ -176,6 +198,11 @@ def apply_fts_projection(
     `intent_canonical_version` — a durable inconsistency the caller's own
     transaction must roll back whole.
     """
+    if not conn.in_transaction:
+        raise ProjectionApplyContractError(
+            "apply_fts_projection requires an active caller-owned transaction"
+        )
+
     if not _facts_fts_available(conn):
         return ProjectionApplyResult(ProjectionApplyOutcome.FTS_UNAVAILABLE, fact_id, None)
 
@@ -208,6 +235,7 @@ def apply_fts_projection(
 
 __all__ = [
     "CanonVersionBehindIntentError",
+    "ProjectionApplyContractError",
     "ProjectionApplyOutcome",
     "ProjectionApplyResult",
     "UnsupportedPolicyTargetError",

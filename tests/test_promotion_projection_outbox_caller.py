@@ -36,6 +36,9 @@ from core.memory import ProjectionOutboxActivationError, SQLiteGraphStore, make_
 _ROOT = os.path.join(os.path.dirname(__file__), "..")
 _APPLY_MIGRATIONS = os.path.join(_ROOT, "scripts", "apply_migrations.py")
 
+sys.path.insert(0, os.path.join(_ROOT, "scripts"))
+from apply_migrations import LATEST_VERSION  # noqa: E402
+
 
 def _migrate(db_path: Path) -> None:
     subprocess.run(
@@ -539,10 +542,10 @@ def test_reusing_a_live_store_across_an_external_migration_is_unsupported(
 
     _migrate(db_path)
     with sqlite3.connect(str(db_path)) as conn:
-        # 21, not 20: migration 021 (projection_checkpoints, issue #194) is
-        # the current latest — this assertion only needs "the full chain
-        # ran", not a specific final version.
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 21
+        # Review finding, PR #195: derive the latest version dynamically
+        # (as test_migrations.py already does) — this assertion only
+        # needs "the full chain ran", not a specific final version.
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == LATEST_VERSION
         assert "fact_version" in {
             r[1] for r in conn.execute("PRAGMA table_info(facts)").fetchall()
         }

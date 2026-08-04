@@ -164,6 +164,14 @@ _SAME_DB_DEPENDENT_TABLES: tuple[tuple[str, str], ...] = (
 # a table is missing.
 _PROJECTION_OUTBOX_MIGRATION_VERSION: Final = 20
 
+# Same purpose as _PROJECTION_OUTBOX_MIGRATION_VERSION above, for migration
+# 021 (projection_checkpoints, issue #194). Review finding, PR #195: the
+# original same_db_dependents_present() fail-closed exception covered only
+# "projection_outbox" — a database whose PRAGMA user_version already
+# claimed migration 021 but was missing projection_checkpoints would have
+# been silently treated as "not applicable" instead of a corruption shape.
+_PROJECTION_CHECKPOINTS_MIGRATION_VERSION: Final = 21
+
 
 class ImmutableStateError(Exception):
     pass
@@ -913,6 +921,17 @@ class SQLiteGraphStore(GraphStore):
         return bool(version >= _PROJECTION_OUTBOX_MIGRATION_VERSION)
 
     @staticmethod
+    def _migration_021_activated(conn: sqlite3.Connection) -> bool:
+        """Same purpose as _migration_020_activated() above, for migration
+        021 (projection_checkpoints, issue #194) — see
+        _PROJECTION_CHECKPOINTS_MIGRATION_VERSION."""
+        try:
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+        except sqlite3.Error:
+            return True
+        return bool(version >= _PROJECTION_CHECKPOINTS_MIGRATION_VERSION)
+
+    @staticmethod
     def _prevent_fact_delete_trigger_exists(conn: sqlite3.Connection) -> bool:
         return conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type = 'trigger' "
@@ -1092,6 +1111,9 @@ class SQLiteGraphStore(GraphStore):
                     if (
                         table == "projection_outbox"
                         and self._migration_020_activated(conn)
+                    ) or (
+                        table == "projection_checkpoints"
+                        and self._migration_021_activated(conn)
                     ):
                         return True
                     continue

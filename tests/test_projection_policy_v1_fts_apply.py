@@ -36,12 +36,17 @@ import pytest
 from core.memory import SQLiteGraphStore
 from core.projection_apply import (
     CanonVersionBehindIntentError,
+    ProjectionApplyContractError,
     ProjectionApplyOutcome,
     UnsupportedPolicyTargetError,
     apply_fts_projection,
     resolve_projection_targets,
 )
-from core.projection_outbox import LOCAL_PROJECTION_SCOPE_REF, ProjectionKind
+from core.projection_outbox import (
+    LOCAL_PROJECTION_SCOPE_REF,
+    PROJECTION_OUTBOX_POLICY_VERSION,
+    ProjectionKind,
+)
 
 _ROOT = os.path.join(os.path.dirname(__file__), "..")
 _APPLY_MIGRATIONS = os.path.join(_ROOT, "scripts", "apply_migrations.py")
@@ -113,11 +118,11 @@ def _apply(db_path: Path, fact_id: str, intent_canonical_version: int):
 # ── 1-3. Policy v1 resolver ─────────────────────────────────────────────────
 
 def test_policy_v1_all_expands_exactly_to_fts() -> None:
-    assert resolve_projection_targets("v1", ProjectionKind.ALL) == (ProjectionKind.FTS,)
+    assert resolve_projection_targets(PROJECTION_OUTBOX_POLICY_VERSION, ProjectionKind.ALL) == (ProjectionKind.FTS,)
 
 
 def test_policy_v1_fts_expands_to_fts() -> None:
-    assert resolve_projection_targets("v1", ProjectionKind.FTS) == (ProjectionKind.FTS,)
+    assert resolve_projection_targets(PROJECTION_OUTBOX_POLICY_VERSION, ProjectionKind.FTS) == (ProjectionKind.FTS,)
 
 
 def test_policy_v1_expansion_independent_of_environment_flags(monkeypatch) -> None:
@@ -128,12 +133,12 @@ def test_policy_v1_expansion_independent_of_environment_flags(monkeypatch) -> No
         "STORAGE_BACKEND", "ENABLE_ETIR", "ENABLE_IMMUTABLE_CORE",
     ):
         monkeypatch.setenv(flag, "true")
-    assert resolve_projection_targets("v1", ProjectionKind.ALL) == (ProjectionKind.FTS,)
+    assert resolve_projection_targets(PROJECTION_OUTBOX_POLICY_VERSION, ProjectionKind.ALL) == (ProjectionKind.FTS,)
     for flag in (
         "VELANTRIM_ENABLE_GRAPH_PROJECTION", "VELANTRIM_ENABLE_VECTOR_PROJECTION",
     ):
         monkeypatch.setenv(flag, "false")
-    assert resolve_projection_targets("v1", ProjectionKind.ALL) == (ProjectionKind.FTS,)
+    assert resolve_projection_targets(PROJECTION_OUTBOX_POLICY_VERSION, ProjectionKind.ALL) == (ProjectionKind.FTS,)
 
 
 @pytest.mark.parametrize("unsupported_kind", [ProjectionKind.GRAPH, ProjectionKind.VECTOR])
@@ -141,7 +146,7 @@ def test_policy_v1_graph_and_vector_are_unsupported_never_silent(
     unsupported_kind: ProjectionKind,
 ) -> None:
     with pytest.raises(UnsupportedPolicyTargetError):
-        resolve_projection_targets("v1", unsupported_kind)
+        resolve_projection_targets(PROJECTION_OUTBOX_POLICY_VERSION, unsupported_kind)
 
 
 def test_unknown_policy_version_is_unsupported() -> None:
@@ -489,4 +494,60 @@ def test_erasure_removes_checkpoint_and_detects_reappearance(tmp_path: Path) -> 
     assert _integrity_ok(db_path)
 
 
-# ── 14. Integrity throughout — covered inline in every test above ──────────
+def test_schema_version_21_with_missing_checkpoints_table_fails_closed(
+    tmp_path: Path,
+) -> None:
+    """Review finding, PR #195: same corruption shape as issue #183's
+    projection_outbox test — PRAGMA user_version already claims migration
+    021 (projection_checkpoints) is applied, but the table itself is
+    absent. same_db_dependents_present() must fail CLOSED (True), never
+    silently report "not applicable"."""
+    db_path = tmp_path / "checkpoints-corrupt.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_checkpoints_corrupt"
+    _seed_fact(store, fact_id, claim="claim text")
+    store.erase_fact_dependents_atomic(fact_id)
+    assert store.same_db_dependents_present(fact_id) is False, (
+        "sanity check: no unrelated dependent must already be residual "
+        "before projection_checkpoints is dropped"
+    )
+
+    with sqlite3.connect(str(db_path)) as conn:
+        conn.execute("DROP TABLE projection_checkpoints")
+        conn.commit()
+        assert conn.execute("PRAGMA user_version").fetchone()[0] >= 21
+
+    assert store.same_db_dependents_present(fact_id) is True, (
+        "PRAGMA user_version >= 21 with projection_checkpoints missing "
+        "must fail closed, never be treated as a clean absence"
+    )
+
+
+# ── 14. Contract enforcement ─────────────────────────────────────────────────
+
+def test_apply_without_active_transaction_fails_closed(tmp_path: Path) -> None:
+    """Review finding, PR #195: apply_fts_projection() must refuse to run
+    on a connection with no active transaction — without an explicit
+    BEGIN, the checkpoint UPSERT and FTS write would autocommit
+    individually, breaking the atomic guarantee every other test in this
+    file relies on."""
+    db_path = tmp_path / "no-transaction.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    fact_id = "f_no_transaction"
+    _seed_fact(store, fact_id, claim="claim text")
+    _set_fact_version(db_path, fact_id, 1)
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        assert conn.in_transaction is False
+        with pytest.raises(ProjectionApplyContractError):
+            apply_fts_projection(conn, fact_id=fact_id, intent_canonical_version=1)
+    finally:
+        conn.close()
+
+    assert _checkpoint_row(db_path, fact_id) is None
+
+
+# ── 15. Integrity throughout — covered inline in every test above ──────────

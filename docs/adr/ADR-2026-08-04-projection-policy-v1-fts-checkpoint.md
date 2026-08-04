@@ -37,11 +37,15 @@ a pure function of its two arguments — no environment variable, feature flag, 
 runtime configuration is ever consulted:
 
 ```python
-resolve_projection_targets("v1", ProjectionKind.ALL) == (ProjectionKind.FTS,)
-resolve_projection_targets("v1", ProjectionKind.FTS) == (ProjectionKind.FTS,)
-resolve_projection_targets("v1", ProjectionKind.GRAPH)  # raises UnsupportedPolicyTargetError
-resolve_projection_targets("v1", ProjectionKind.VECTOR)  # raises UnsupportedPolicyTargetError
+resolve_projection_targets(PROJECTION_OUTBOX_POLICY_VERSION, ProjectionKind.ALL) == (ProjectionKind.FTS,)
+resolve_projection_targets(PROJECTION_OUTBOX_POLICY_VERSION, ProjectionKind.FTS) == (ProjectionKind.FTS,)
+resolve_projection_targets(PROJECTION_OUTBOX_POLICY_VERSION, ProjectionKind.GRAPH)  # raises UnsupportedPolicyTargetError
+resolve_projection_targets(PROJECTION_OUTBOX_POLICY_VERSION, ProjectionKind.VECTOR)  # raises UnsupportedPolicyTargetError
 ```
+
+`PROJECTION_OUTBOX_POLICY_VERSION` (`"projection-outbox-v1"`, `core/projection_outbox.py`) is
+the SAME durable value every `ProjectionIntent`'s own `policy_version` field already carries —
+not a separate ad-hoc label (see Review-hardening addendum below).
 
 `ALL` under policy v1 means **all targets defined by projection policy v1** — currently
 just FTS — not every reserved `ProjectionKind` enum value. This is a deliberate,
@@ -206,6 +210,41 @@ separate code path and no reliance on any foreign-key cascade.
 - Blocking mypy (pinned): PASS — no issues in 291 source files.
 - Full repository pytest, CI, Docker: see the PR body for this increment's real,
   verified results.
+
+## Review-hardening addendum (Copilot review, PR #195)
+
+The automated Copilot review on the pinned head found three real gaps, fixed in a
+follow-up commit before merge review:
+
+1. **Policy-version mismatch.** `resolve_projection_targets()` originally compared
+   against a disconnected literal `"v1"` that no real `ProjectionIntent.policy_version`
+   would ever equal (the durable field is always
+   `PROJECTION_OUTBOX_POLICY_VERSION = "projection-outbox-v1"`) — a future dispatcher
+   passing a real intent's own `policy_version` into the resolver would always raise
+   `UnsupportedPolicyTargetError`. Fixed by comparing against
+   `PROJECTION_OUTBOX_POLICY_VERSION` directly; all resolver tests and call-site
+   examples above updated to match.
+2. **Missing transaction guard.** `apply_fts_projection()` did not enforce that `conn`
+   has an active transaction, unlike
+   `append_projection_intent_in_transaction()`'s own `conn.in_transaction` check. A
+   caller that forgot `BEGIN` would get per-statement autocommit instead of one atomic
+   checkpoint+FTS write. Fixed by adding the same guard, raising a new
+   `ProjectionApplyContractError`; proven by a new RED-then-GREEN test.
+3. **Erasure fail-closed gap.** `same_db_dependents_present()`'s "table missing but
+   migration bookkeeping claims it should exist" fail-closed exception covered only
+   `projection_outbox`/migration 020, not the newly-added
+   `projection_checkpoints`/migration 021 — a corrupted/tampered database missing that
+   table would have been silently reported as "no residual". Fixed by adding an
+   analogous `_migration_021_activated()` check; proven by a new test mirroring issue
+   #183's own `projection_outbox` corruption test.
+
+A fourth, non-functional finding (two pre-existing tests hardcoding
+`PRAGMA user_version == 21` instead of deriving `LATEST_VERSION` dynamically, as
+`test_migrations.py` already does) was also fixed to remove the churn Copilot flagged.
+
+Focused suite grew from 18 to 20 tests for the two new proofs above; full regression,
+25× repeat, Ruff, mypy, architecture-freeze, and hygiene were all re-run green — see
+the PR body for exact numbers.
 
 ## Interpretation boundary
 
