@@ -49,6 +49,12 @@ def is_embedding_projection_contract_enabled() -> bool:
     return get_config().app.enable_embedding_projection_contract
 
 
+def is_selective_memory_candidate_shadow_enabled() -> bool:
+    """Return whether the bounded ARM-03 diagnostic path is enabled."""
+
+    return get_config().app.enable_selective_memory_candidate_shadow
+
+
 def is_l6_welfare_enabled() -> bool:
     return get_config().app.enable_l6_welfare
 
@@ -154,15 +160,16 @@ __all__ = [
     "WelfareSettings",
     "env_flag",
     "get_welfare_settings",
-    "is_event_bus_enabled",
-    "is_l6_welfare_enabled",
-    "is_memory_volition_enabled",
     "is_budget_planner_enabled",
     "is_cognitive_distance_enabled",
     "is_embedding_projection_contract_enabled",
+    "is_event_bus_enabled",
     "is_graph_lab_enabled",
+    "is_l6_welfare_enabled",
+    "is_memory_volition_enabled",
     "is_observer_enabled",
     "is_rate_limit_enabled",
+    "is_selective_memory_candidate_shadow_enabled",
     "is_truth_policy_enabled",
     "use_event_bus_background",
 ]

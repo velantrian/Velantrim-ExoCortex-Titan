@@ -1,0 +1,64 @@
+name: ARM-03 selective-memory contracts
+
+on:
+  pull_request:
+    paths:
+      - "core/selective_memory_candidates.py"
+      - "core/feature_config.py"
+      - "core/runtime_flags.py"
+      - "tests/test_selective_memory_candidates.py"
+      - "tests/test_selective_memory_speed_contract.py"
+      - "tests/fixtures/evaluation_replay/selective_memory_candidates.json"
+      - "benchmarks/bench_selective_memory_candidates.py"
+      - "docs/SELECTIVE_MEMORY_SPEED_AND_SAFETY.md"
+      - ".github/workflows/arm03-contracts.yml"
+  push:
+    branches: [main]
+    paths:
+      - "core/selective_memory_candidates.py"
+      - "core/feature_config.py"
+      - "core/runtime_flags.py"
+      - "tests/test_selective_memory_candidates.py"
+      - "tests/test_selective_memory_speed_contract.py"
+      - "tests/fixtures/evaluation_replay/selective_memory_candidates.json"
+      - "benchmarks/bench_selective_memory_candidates.py"
+      - ".github/workflows/arm03-contracts.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arm03-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test tooling
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff
+        run: >-
+          ruff check core/selective_memory_candidates.py core/feature_config.py
+          core/runtime_flags.py tests/test_selective_memory_candidates.py
+          tests/test_selective_memory_speed_contract.py
+          benchmarks/bench_selective_memory_candidates.py --output-format=github
+      - name: Mypy
+        run: >-
+          mypy core/selective_memory_candidates.py core/feature_config.py
+          core/runtime_flags.py --show-error-codes
+      - name: Focused tests
+        run: >-
+          python -m pytest tests/test_selective_memory_candidates.py
+          tests/test_selective_memory_speed_contract.py -v --tb=short --timeout=300
+      - name: Benchmark
+        run: python benchmarks/bench_selective_memory_candidates.py
+      - name: Evaluation replay
+        run: >-
+          python -m core.evaluation_replay
+          tests/fixtures/evaluation_replay/selective_memory_candidates.json

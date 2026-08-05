@@ -1,266 +1,137 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot date:** 2026-08-05  
-**Baseline:** `main` at `024454e5ee17a52f6de321e6917bf29eb5cc88ca`
+**Reference main before PR #200:** `649d12953eb141aa783729555861e788cc03c150`
 
-This register is optimized for engineering hand-off. It complements
-`docs/PROJECT_STATUS.md`; it does not replace security review, legal compliance work,
-or runtime evidence.
+This register is an engineering hand-off. Code presence does not close a risk; closure
+requires the stated tests, wiring, operational evidence and governance decision.
 
 ## Priority model
 
-- **P0:** blocks a trustworthy production claim or can cause silent integrity/operability
-  failure.
-- **P1:** materially increases maintenance, integration, privacy, or governance risk.
-- **P2:** important quality and repository hygiene work that can follow the hardening
-  blockers.
+- **P0:** blocks a trustworthy production claim or can cause silent integrity or
+  operability failure.
+- **P1:** materially increases maintenance, privacy, integration or governance risk.
+- **P2:** important quality and repository-governance work.
 
 ## P0
 
 ### RISK-P0-01 — Projection delivery is not runtime-wired
 
-**Current evidence**
+Outbox, checkpoints, version-monotonic apply and bounded dispatch exist, but there is no
+accepted lifecycle owner, cadence, backlog/age SLO or reconciliation loop.
 
-- outbox, checkpoints, version-monotonic FTS apply, and bounded dispatcher are in main;
-- focused lease/retry/park/ack and crash-window tests exist;
-- no production caller, scheduler, startup hook, or worker cadence exists.
-
-**Impact**
-
-- outbox backlog can grow indefinitely;
-- derived FTS state can lag Canon;
-- operators cannot see delivery age or version lag.
-
-**Required sequence**
-
-1. backlog/age/retry/park/version-lag metrics and health state;
-2. manual bounded dispatch command or protected operator action;
-3. feature-gated bounded worker with cancellation, jitter, backoff and clean shutdown;
-4. reconciliation/repair path for missing or stale projection state.
-
-**Closure proof**
-
-- runtime caller and lifecycle tests;
-- restart/backlog/duplicate/crash tests;
-- health and metrics evidence from a running instance;
-- bounded resource and SQLite-pressure behavior.
+**Required sequence:** metrics and health → protected manual bounded dispatch →
+feature-gated worker with cancellation/backoff → reconciliation and restart evidence.
 
 ### RISK-P0-02 — Production deployment contract is ambiguous
 
-**Current evidence**
+`docker-compose.yml` and `docker-compose.prod.yml` present materially different
+production-oriented network, hardening, resource and feature defaults.
 
-- `docker-compose.yml` and `docker-compose.prod.yml` are both presented as production
-  oriented;
-- they differ materially in network binding, hardening, resource limits and enabled
-  research modules.
+**Closure:** select one canonical contract, classify the other, and test documentation,
+environment, ports, hardening and enabled modules together.
 
-**Impact**
+### RISK-P0-03 — Verification scope is narrower than repository claims may imply
 
-- operators can deploy different security and feature postures while believing both are
-  the canonical production profile.
+Coverage configuration, Ruff, mypy and pytest do not form one uniform gate across every
+runtime surface. `server.py`, `api/`, `utils/`, packaging and optional profiles need
+staged expansion and honest baselines.
 
-**Required action**
+### RISK-P0-04 — Storage concurrency is not systemically proven
 
-- choose one canonical production contract;
-- rename or clearly classify the other profile;
-- test documentation, environment defaults, exposed ports and enabled modules together.
+Selected CAS and recovery races are tested, but no repository-wide WAL/contention,
+crash/restart, disk-full and migration stress matrix exists.
 
-### RISK-P0-03 — Coverage policy is configured but not enforced
+### RISK-P0-05 — Supply chain and builds are not fully reproducible
 
-**Current evidence**
-
-- a coverage threshold exists in project configuration;
-- primary CI runs pytest without a blocking coverage command.
-
-**Impact**
-
-- repository claims can imply a gate that does not actually block regressions.
-
-**Required action**
-
-- establish an honest measured baseline;
-- add a non-regressive blocking threshold;
-- ratchet intentionally rather than declaring an unmeasured target satisfied.
-
-### RISK-P0-04 — Static-analysis scope excludes important runtime surfaces
-
-**Current evidence**
-
-- main CI focuses Ruff and mypy on `core/`;
-- `server.py`, `api/`, `utils/` and runtime composition are not all covered by the same
-  gate.
-
-**Impact**
-
-- type and lint defects can survive in network, lifecycle and integration layers.
-
-**Required action**
-
-- expand in staged scopes;
-- fix baseline debt explicitly;
-- keep component-specific workflows for high-risk contracts.
-
-### RISK-P0-05 — Storage concurrency is not systemically proven
-
-**Current evidence**
-
-- selected CAS races are covered;
-- no broad writer stress matrix and no repository-wide verified WAL contract exist.
-
-**Impact**
-
-- contention, lock handling, fairness, partial failure and performance behavior remain
-  uncertain beyond the proven narrow paths.
-
-**Required proof**
-
-- 1/10/25/50/100-writer profiles;
-- busy/locked, crash, restart, disk-full and migration interaction tests;
-- explicit journal/busy-timeout contract and observed latency/error metrics.
-
-### RISK-P0-06 — Supply chain and build are not fully reproducible
-
-**Current evidence**
-
-- broad dependency ranges remain;
-- lockfile is not the authoritative install path for CI and Docker;
-- some runtime installation choices are outside the main dependency declaration;
-- actions and base image are not all immutable-digest pinned.
-
-**Impact**
-
-- identical source commits can resolve to different dependency graphs or image contents.
-
-**Required action**
-
-- select one lock/update policy;
-- make CI and image builds consume it;
-- add dependency audit, SBOM/provenance and controlled update automation.
+Broad ranges, non-authoritative lock usage, mutable action/image references and
+wheel/container differences can produce different artifacts from identical source.
 
 ## P1
 
-### RISK-P1-01 — Continuity stack is not independently reviewable yet
+### RISK-P1-01 — Continuity requires a clean current-main rebuild
 
-**Current evidence**
+The old PR #131–#147 stack is not independently mergeable as one chain. Known work:
 
-- draft stacked PRs #131–#147;
-- no formal independent reviews recorded;
-- PR #146 has a failing mypy contract gate;
-- upper PR #147 contains a typing fix needed by #146;
-- PR #144 changes the public compute contract and introduces `DEFER_PATH`;
-- a downstream cost map in `rapid_orientation.py` omits `DEFER_PATH` on the stack branch;
-- live dialogue → trusted goal/open-loop producer is missing.
+1. move the Advisory typing fix to its owning layer;
+2. add `DEFER_PATH` to all exhaustive consumers;
+3. add differential legacy-compatibility tests;
+4. rebuild and review layers from current `main`;
+5. keep all output shadow-only;
+6. design trusted candidate/attestation producers separately.
 
-**Required action**
+### RISK-P1-02 — Selective-memory extraction is heuristic and proposal-only
 
-1. move the typing fix to #146 and make it independently green;
-2. add `DEFER_PATH` mapping plus exhaustive enum-consumer tests;
-3. add differential compatibility tests with `continuity=None`;
-4. rebase upper PRs;
-5. conduct review gates at #136, #142, #144 and the final aggregate;
-6. design producer-side candidate/attestation/confirmation separately.
+PR #200 hardens ARM-03 but does not make candidate extraction authoritative.
 
-### RISK-P1-02 — Identity layer is a legacy mutable prototype
+Residual risks:
 
-**Current evidence**
+- regex/type classification can miss, over-classify or misclassify statements;
+- English/Russian injection patterns are bounded examples, not complete semantic prompt
+  injection detection;
+- `POSSIBLE_UPDATE_OF` is an within-input hint, not durable reconciliation;
+- raw exact source text remains in protected in-process evidence to verify offsets and
+  must never be copied to logs/receipts except through the redacted safe serializer;
+- subject/context identifiers are caller-supplied and require a trusted upstream owner;
+- a redacted candidate can still be sensitive metadata;
+- benchmark success does not establish candidate precision or user value.
 
-- direct `INSERT OR REPLACE` store;
-- no proven audit/version/reconciliation lifecycle;
-- no established tests or runtime owner;
-- no accepted consent/scope/erasure contract.
+**Required before ARM-04:**
 
-**Impact**
+1. approved replay corpus with explicit consent/synthetic data;
+2. precision/recall and false-retention measurements by candidate type;
+3. privacy review of source evidence and portable receipts;
+4. erasure/revocation propagation design;
+5. WorkingMemoryGate disposition and explicit Write Gate contract;
+6. no query-path admission or persistence;
+7. operator approval in a separate PR.
 
-- accidental activation could create a parallel identity authority and retain sensitive
-  personal assertions without adequate contestation or deletion semantics.
+### RISK-P1-03 — Identity layer is a legacy mutable prototype
 
-**Required action**
+`core/identity_layer.py` has no accepted assertion lifecycle, consent/scope, contestation,
+version/audit or erasure closure. Prevent production activation and define a separate
+Identity Assertion/Admission/Reconciliation protocol.
 
-- mark and guard as legacy/unwired;
-- prevent new production imports/writes;
-- define Identity Assertion/Admission/Reconciliation contracts;
-- keep mechanism evolution under RFC-0084 or a successor governance protocol.
+### RISK-P1-04 — Canon mutation ownership remains fragmented
 
-### RISK-P1-03 — Canon mutation ownership is still fragmented
+Standard promotion ownership improved, but every mutation family is not yet proven to
+use one typed command/receipt/transaction boundary.
 
-**Current evidence**
+### RISK-P1-05 — `server.py` remains a composition monolith
 
-- standard promotion ownership has improved;
-- not every mutation family is proven to use one typed envelope;
-- explicit exceptions remain.
+Initialization order, singletons, lifecycle, routes and provider wiring have broad blast
+radius. Extract in characterized increments.
 
-**Required action**
+### RISK-P1-06 — Authentication is not multi-user authorization
 
-- inventory mutation families;
-- define typed commands/receipts per family;
-- enforce no-new-direct-writer guards;
-- prove transaction, audit, rollback and concurrency behavior.
+A shared API key does not provide accounts, roles, scopes, tenant isolation or sensitive
+multi-user policy.
 
-### RISK-P1-04 — `server.py` is a composition monolith
+### RISK-P1-07 — Wheel and container are distinct packaging surfaces
 
-**Impact**
-
-- hidden initialization order, singleton coupling, lifecycle complexity and broad change
-  blast radius.
-
-**Required action**
-
-- extract settings, lifecycle, dependency composition and route groups incrementally;
-- retain behavior with characterization and integration tests.
-
-### RISK-P1-05 — Authentication is not multi-user authorization
-
-**Current evidence**
-
-- shared API key;
-- no per-user accounts, scopes, tenant isolation or role model.
-
-**Impact**
-
-- unsuitable for sensitive multi-user internet exposure without an external trusted
-  boundary or new authorization model.
-
-### RISK-P1-06 — Wheel and container runtime are different packaging surfaces
-
-**Current evidence**
-
-- wheel package discovery covers a narrow set;
-- Docker separately copies server, application and runtime assets.
-
-**Impact**
-
-- “package works” and “container works” can describe different products.
-
-**Required action**
-
-- define supported artifacts and smoke-test each independently;
-- publish an explicit runtime manifest.
+Define supported artifacts, manifests and independent smoke tests rather than treating
+one successful build as proof for all delivery forms.
 
 ## P2
 
-### RISK-P2-01 — Large generated knowledge artifact in Git history
+### RISK-P2-01 — Large generated knowledge artifact
 
-`kb_graph.json` is large and should be evaluated for Release assets, LFS, or a
-reproducible build pipeline.
+Evaluate `kb_graph.json` for a reproducible build, Release asset or LFS strategy.
 
 ### RISK-P2-02 — Historical audits can look current
 
-Old audits and action lists remain useful but may contain closed findings or obsolete
-counts. Add clear `SUPERSEDED` headers or archive them under a dated index.
+Mark obsolete audits `SUPERSEDED` or index/archive them by date and verified SHA.
 
-### RISK-P2-03 — Repository governance metadata is thin
+### RISK-P2-03 — Repository governance metadata remains incomplete
 
-Add or verify CODEOWNERS, Dependabot/update policy, PR/issue templates, labels and
-branch protection. Branch-protection status must be verified through an authorized
-administrative view rather than inferred from files.
+Verify CODEOWNERS, branch protection, update automation, labels and templates through
+both repository files and authorized settings.
 
-### RISK-P2-04 — Repository discovery metadata is weak
+### RISK-P2-04 — Project discovery metadata is weak
 
-Improve description, homepage and topics so external reviewers understand the project
-before inspecting code.
+Improve repository description, homepage and topics with verified capability language.
 
 ## Risk update rule
 
-A risk is not closed because code was added. Record closure only when the required
-behavior is implemented, tested, wired where applicable, enabled intentionally, and
-supported by the stated evidence.
+Use exact status words: proposed, implemented, tested, wired, enabled and observed. A
+risk is not closed merely because code or documentation was added.
