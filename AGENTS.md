@@ -161,6 +161,20 @@ deployment posture, or a known risk must update the relevant AI context document
 - `docs/ai/WORK_LOG.md` for significant work and hand-off;
 - an ADR for durable architectural decisions.
 
+Every PR must also follow
+[`docs/ai/DOCUMENTATION_SYNC_PROTOCOL.md`](docs/ai/DOCUMENTATION_SYNC_PROTOCOL.md)
+and classify its documentation impact as `NONE`, `GITHUB_ONLY`, or
+`GITHUB_AND_NOTION`.
+
+For `GITHUB_AND_NOTION` changes, the agent must create or update the corresponding
+Notion decision/history record. The record must explain the motivation, intended
+function, decision, alternatives, evidence, exact status, limitations, and links to the
+PR and final merge SHA. If Notion access is unavailable, mark the synchronization as
+`BLOCKED`, keep the PR in draft, and do not report the change as fully complete.
+
+Do not expose private Notion content or private workspace URLs in this public
+repository. A safe page title or internal reference may be used in the public PR.
+
 Do not copy stale test counts or unverified PR claims into current-state documentation.
 Use exact dates, SHAs, PR/issue numbers, and remaining limitations.
 
