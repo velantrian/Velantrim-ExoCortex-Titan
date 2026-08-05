@@ -108,6 +108,12 @@ from .goal_open_loop import (
     OpenLoopSignal,
     OpenLoopStatus,
 )
+from .observations import (
+    OBSERVATION_SCHEMA_VERSION,
+    ContinuitySignalObservation,
+    ContinuitySignalObservationError,
+    ContinuitySignalType,
+)
 from .projection_working_memory_adapter import (
     PROJECTION_ADAPTER_ID,
     PROJECTION_ADAPTER_VERSION,
@@ -119,6 +125,17 @@ from .projection_working_memory_adapter import (
     ProjectionWorkingMemoryAdapter,
     ProjectionWorkingMemoryAdapterError,
     ProjectionWorkingMemoryBatch,
+)
+from .signal_producer import (
+    SIGNAL_PRODUCER_POLICY_VERSION,
+    SIGNAL_PRODUCER_RESULT_SCHEMA_VERSION,
+    SIGNAL_PRODUCER_VERSION,
+    ContinuitySignalPolicy,
+    ContinuitySignalProducerError,
+    ContinuitySignalProductionResult,
+    ContinuitySignalProvenance,
+    RejectedObservation,
+    produce_continuity_compute_signals,
 )
 from .state_reconciler import (
     STATE_PROJECTION_SCHEMA_VERSION,
@@ -171,10 +188,14 @@ __all__ = [
     "GOAL_OPEN_LOOP_POLICY_VERSION",
     "GOAL_PROJECTION_SCHEMA_VERSION",
     "GOAL_SNAPSHOT_SCHEMA_VERSION",
+    "OBSERVATION_SCHEMA_VERSION",
     "OPEN_LOOP_SCHEMA_VERSION",
     "PROJECTION_ADAPTER_ID",
     "PROJECTION_ADAPTER_VERSION",
     "RECEIPT_SCHEMA_VERSION",
+    "SIGNAL_PRODUCER_POLICY_VERSION",
+    "SIGNAL_PRODUCER_RESULT_SCHEMA_VERSION",
+    "SIGNAL_PRODUCER_VERSION",
     "STATE_PROJECTION_SCHEMA_VERSION",
     "STATE_RECONCILIATION_POLICY_VERSION",
     "THREAD_LINK_SCHEMA_VERSION",
@@ -215,6 +236,13 @@ __all__ = [
     "ContinuityItemKind",
     "ContinuityReason",
     "ContinuityReceipt",
+    "ContinuitySignalObservation",
+    "ContinuitySignalObservationError",
+    "ContinuitySignalPolicy",
+    "ContinuitySignalProducerError",
+    "ContinuitySignalProductionResult",
+    "ContinuitySignalProvenance",
+    "ContinuitySignalType",
     "ContinuityThread",
     "ContinuityUncertainty",
     "ContinuityWorkingMemoryAdapter",
@@ -268,6 +296,7 @@ __all__ = [
     "ProjectionWorkingMemoryAdapter",
     "ProjectionWorkingMemoryAdapterError",
     "ProjectionWorkingMemoryBatch",
+    "RejectedObservation",
     "ReplayEvaluationError",
     "ReplayEvaluationReport",
     "SensitivityCategory",
@@ -290,4 +319,5 @@ __all__ = [
     "ThreadWeaverError",
     "UnresolvedThreadReference",
     "Visibility",
+    "produce_continuity_compute_signals",
 ]

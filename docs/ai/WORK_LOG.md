@@ -4,6 +4,54 @@ Re-verify exact SHAs and current PR evidence.
 
 ---
 
+## 2026-08-05 — Trusted Continuity Signal Producer (draft PR, not merged)
+
+```text
+Status:    DRAFT PR · NOT MERGED · NOT IMPLEMENTED IN MAIN
+Branch:    feat/continuity-trusted-signal-producer
+Base:      main @ b2b757ce550dfb731fba202e9dedfed6e46c7a20
+ADR:       docs/adr/ADR-2026-08-05-continuity-trusted-signal-producer.md
+```
+
+Addresses the "no trusted producer for `ContinuityComputeSignals`" gap
+restated at R4, R5A, and R5B by adding `core/continuity/observations.py` and
+`core/continuity/signal_producer.py`: typed, content-addressed
+`ContinuitySignalObservation` inputs → policy-driven trust filtering →
+deterministic aggregation → the unchanged `ContinuityComputeSignals`
+contract, with full per-signal provenance and reason-coded rejections.
+
+This PR does not import `core.evidence`, `core.confidence`,
+`core.contradiction_registry`, or `core.provenance_chain` (isolation
+decision, see ADR); does not change `ComputePath`, `ComputeDecision`,
+`decide_compute_path()`, `ContinuityComputeSignals`, or
+`assess_compute_with_continuity()`; and performs no runtime wiring into
+`/query`, the shadow runner, or any live projection.
+
+### Validation at PR head
+
+```text
+ruff check core/continuity core/compute_controller.py
+  tests/test_continuity*.py         → PASS
+mypy core/continuity core/compute_controller.py
+  --show-error-codes                → PASS (Python 3.11, strict)
+pytest tests/test_continuity*.py    → 271 passed
+pytest (full repo, minus unrelated
+  numpy/erasure fixture gaps)       → 3220 passed, 4 unrelated pre-existing
+                                       numpy import failures in
+                                       test_forgetting.py
+```
+
+### Next phase
+
+Not authorized by this PR: production runtime wiring, trusted runtime source
+adapters deriving observations from `StateReconciliationResult` /
+`GoalProjectionResult` / `OpenLoopProjectionResult`, live telemetry,
+automated policy tuning, Canon authority, Action Gate authority, autonomous
+switching, or real-world calibration. Independent review, exact-head CI, and
+a merge decision remain required before any of that can be considered.
+
+---
+
 ## 2026-08-05 — Continuity Milestone 1 recovery completed
 
 The historical #131–#147 stacked sequence was replaced by independently reviewed recovery PRs on current `main`:
