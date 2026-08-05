@@ -6,7 +6,7 @@ Current architecture-significant hand-off. Re-verify exact SHAs and current PR e
 
 ## 2026-08-05 — Continuity R2 shadow/read-side recovery
 
-**Scope:** current-main recovery branch based on
+**Scope:** PR #202; current-main recovery based on
 `06529700d70854504b88629eeecf737bdc6b81d5`; historical sources #133/#135/#136
 
 ### Verified before change
@@ -28,6 +28,17 @@ Current architecture-significant hand-off. Re-verify exact SHAs and current PR e
 - added current-main read-fidelity/authority regressions;
 - added R2 authority ADR, current-state, component, risk and review hand-off docs.
 
+### Validation
+
+On tested head `65e86db98117f155606d2db47d79ace5fbdcdd16`:
+
+- Continuity contracts `31015768361`: success;
+- full Titan CI `31015768674`: success;
+- Docker hardening `31015768424`: success;
+- architecture freeze, Ruff, blocking mypy, focused tests and full pytest passed.
+
+Final PR-head checks after documentation-only finalization remain the merge authority.
+
 ### Decisions
 
 - the local ledger is disposable process state, not Native Kernel or durable memory;
@@ -36,14 +47,6 @@ Current architecture-significant hand-off. Re-verify exact SHAs and current PR e
 - topic/time alone cannot create continuity;
 - no runtime wiring, database migration, model call, Canon/gate, advice or action is in
   scope.
-
-### Validation pending
-
-- focused Continuity workflow;
-- full Titan CI;
-- Docker hardening;
-- architecture-freeze acceptance;
-- final GitHub/Notion evidence.
 
 ### Remaining after R2
 
