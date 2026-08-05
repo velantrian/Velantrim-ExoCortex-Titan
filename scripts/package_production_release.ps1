@@ -12,8 +12,10 @@ $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $Root
 
 $stamp = Get-Date -Format "yyyyMMdd"
+$generatedAt = (Get-Date).ToUniversalTime().ToString("o")
 $zipName = "velantrim_production_db_$stamp.zip"
 $outPath = Join-Path $OutDir $zipName
+$shaPath = "$outPath.sha256"
 
 $files = @(
     @{ Path = "data/velantrim_kb_clean_20260710_graph.db"; Required = $true },
@@ -29,7 +31,7 @@ $stage = Join-Path $env:TEMP "velantrim_release_$stamp"
 if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 
-$manifest = @()
+$manifestFiles = @()
 foreach ($item in $files) {
     $full = Join-Path $Root $item.Path
     if (-not (Test-Path $full)) {
@@ -46,7 +48,7 @@ foreach ($item in $files) {
     Copy-Item $full (Join-Path $stage $item.Path) -Force
     $hash = (Get-FileHash $full -Algorithm SHA256).Hash.ToLower()
     $size = (Get-Item $full).Length
-    $manifest += [PSCustomObject]@{
+    $manifestFiles += [PSCustomObject]@{
         path = $item.Path
         bytes = $size
         sha256 = $hash
@@ -54,10 +56,17 @@ foreach ($item in $files) {
     Write-Host "✅ $($item.Path) ($([math]::Round($size/1MB,1)) MB)"
 }
 
-$manifest | ConvertTo-Json -Depth 3 | Set-Content (Join-Path $stage "MANIFEST.json") -Encoding UTF8
+$manifest = [PSCustomObject]@{
+    schema_version = 1
+    product = "velantrim-titan"
+    version = "9.0.0"
+    generated_at = $generatedAt
+    files = $manifestFiles
+}
+$manifest | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $stage "MANIFEST.json") -Encoding UTF8
 @"
 # Velantrim Titan 9.0 — Production Database Bundle
-Generated: $(Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+Generated: $generatedAt
 
 Unpack into repository root, then set .env:
 
@@ -67,15 +76,25 @@ LADYBUG_DB_PATH=./data/exocortex.lbug
 SQLITE_GRAPH_PATH=./data/exocortex_graph.db
 VELANTRIM_NGRAM_DB=./data/ngram_house.db
 
-Verify SHA256 against MANIFEST.json before use.
+Verify the extracted bundle before use:
+python scripts/verify_release_bundle.py .
 "@ | Set-Content (Join-Path $stage "README.txt") -Encoding UTF8
 
+# Fail before compression if the staged bundle does not match its manifest.
+python scripts/verify_release_bundle.py $stage
+if ($LASTEXITCODE -ne 0) {
+    throw "Production bundle verification failed before compression"
+}
+
 if (Test-Path $outPath) { Remove-Item -Force $outPath }
+if (Test-Path $shaPath) { Remove-Item -Force $shaPath }
 Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $outPath -CompressionLevel Optimal
 Remove-Item -Recurse -Force $stage
 
 $zipHash = (Get-FileHash $outPath -Algorithm SHA256).Hash.ToLower()
+"$zipHash  $zipName" | Set-Content $shaPath -Encoding ASCII
 $zipMb = [math]::Round((Get-Item $outPath).Length / 1MB, 1)
 Write-Host ""
 Write-Host "📦 Release zip: $outPath ($zipMb MB)"
 Write-Host "🔐 SHA256: $zipHash"
+Write-Host "🧾 Checksum sidecar: $shaPath"
