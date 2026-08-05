@@ -31,13 +31,18 @@ the top. Re-verify historical claims before treating them as current truth.
 - added a path-scoped Ruff/mypy/pytest workflow;
 - added an accepted ADR preserving existing ESM, Canon, WorkingMemory, ContextPack,
   ComputeController, advisory and action owners;
-- updated current-state, component and risk documentation.
+- updated current-state, component, risk and hand-off documentation.
 
 ### Validation
 
-- local isolated contract suite: 22 passed before repository integration;
-- GitHub continuity workflow, full Titan CI and Docker remain required on final PR head;
-- exact final evidence will be recorded in PR #201 and Notion.
+On tested head `9a5bf491b04255cf47558f3d7244927055781d74`:
+
+- Continuity contracts run `31013691542`: success;
+- full Titan CI run `31013691033`: success;
+- Docker hardening run `31013689822`: success;
+- architecture freeze, Ruff, blocking mypy, focused tests and full pytest passed.
+
+Final PR-head checks after documentation-only finalization remain the merge authority.
 
 ### Decisions
 
@@ -50,8 +55,8 @@ the top. Re-verify historical claims before treating them as current truth.
 
 ### Remaining
 
-1. green final-head continuity workflow, full CI and Docker;
-2. final Notion synchronization and merge;
+1. green final-head checks and merge;
+2. final Notion merge checkpoint;
 3. close old #131/#132 as superseded;
 4. start R2 as a new independently green PR for ledger, read-only conversation bridge
    and deterministic thread links.
