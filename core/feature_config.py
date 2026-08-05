@@ -82,6 +82,10 @@ class AppSettings:
     # staleness/reindex/fallback contract only, not wired into any hot path.
     # Default off preserves current behavior unconditionally.
     enable_embedding_projection_contract: bool = False
+    # PR-ARM-03 — bounded, proposal-only selective-memory candidate extraction.
+    # The flag controls only an offline/shadow diagnostic entrypoint. It grants no
+    # memory, Canon, WriteGate, TruthGate, response, or action authority.
+    enable_selective_memory_candidate_shadow: bool = False
     # NetworkX Graph-Analysis Lab — read-only structural analytics over the causal graph
     # (centrality/communities/cycles/pagerank). Research/science mode; off by default.
     enable_graph_lab: bool = False
@@ -184,6 +188,9 @@ class AppSettings:
         a.enable_cognitive_distance = flag("ENABLE_COGNITIVE_DISTANCE")
         a.enable_budget_planner = flag("ENABLE_BUDGET_PLANNER")
         a.enable_embedding_projection_contract = flag("ENABLE_EMBEDDING_PROJECTION_CONTRACT")
+        a.enable_selective_memory_candidate_shadow = flag(
+            "ENABLE_SELECTIVE_MEMORY_CANDIDATE_SHADOW"
+        )
         a.truth_gate_mode = os.getenv("TRUTH_GATE_MODE", "BALANCED")
         a.default_fact_confidence = _float("DEFAULT_FACT_CONFIDENCE", 0.8)
 
