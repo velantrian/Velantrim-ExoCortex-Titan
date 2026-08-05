@@ -164,8 +164,8 @@ def _input(
         open_loop_signals=(loop_signal,),
         advisory_intents=(
             AdvisoryIntent(
-                AdvisorySignalKind.PRIORITY_MAY_HAVE_CHANGED,
-                advisory_target or finish_mvp.assertion_id,
+                AdvisorySignalKind.GOAL_RELEVANT,
+                advisory_target or goal_snapshot.goal_ref,
             ),
         ),
         working_memory_budget=WorkingMemoryBudget(
@@ -211,7 +211,7 @@ def test_disabled_runner_returns_before_pipeline_execution(
     assert ShadowRunnerReason.NO_RUNTIME_AUTHORITY in result.receipt.reason_codes
 
 
-def test_complete_pipeline_replays_and_emits_shadow_confirmation() -> None:
+def test_complete_pipeline_replays_and_emits_shadow_reminder() -> None:
     result = CompleteShadowRunner().run(_enabled_config(), _input())
 
     assert result.status is ShadowRunnerStatus.COMPLETED
@@ -224,7 +224,7 @@ def test_complete_pipeline_replays_and_emits_shadow_confirmation() -> None:
     assert result.evaluation.passed is True
     assert result.baseline.compute_assessment.changed_legacy_decision is True
     assert result.baseline.compute_decision.path is ComputePath.VERIFY_PATH
-    assert result.advisory.candidate.action is AdvisoryAction.ASK_CONFIRMATION
+    assert result.advisory.candidate.action is AdvisoryAction.REMIND
     assert result.advisory.candidate.shadow_only is True
     assert ShadowRunnerReason.MAIN_ANSWER_UNTOUCHED in result.receipt.reason_codes
     assert ShadowRunnerReason.CANON_UNCHANGED in result.receipt.reason_codes
@@ -262,7 +262,7 @@ def test_unknown_advisory_target_fails_closed() -> None:
     ):
         CompleteShadowRunner().run(
             _enabled_config(),
-            _input(advisory_target="assertion:unknown"),
+            _input(advisory_target="goal:unknown"),
         )
 
 
