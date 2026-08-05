@@ -1,7 +1,9 @@
 # Continuity R2 Review Hand-off
 
-**Status:** `DRAFT / SHADOW_ONLY / CI_PENDING`  
-**Base:** `main@06529700d70854504b88629eeecf737bdc6b81d5`
+**Status:** `TESTED / READY_FOR_REVIEW / SHADOW_READ_SIDE_ONLY`  
+**Base:** `main@06529700d70854504b88629eeecf737bdc6b81d5`  
+**Tested head before this documentation-only finalization:**
+`65e86db98117f155606d2db47d79ace5fbdcdd16`
 
 ## Delivered
 
@@ -15,6 +17,17 @@
   text;
 - unresolved explicit-reference projections;
 - current-main regression tests and R2 authority ADR.
+
+## Validation evidence
+
+On `65e86db98117f155606d2db47d79ace5fbdcdd16`:
+
+- Continuity contracts run `31015768361`: success;
+- full Titan CI run `31015768674`: success;
+- Docker hardening run `31015768424`: success;
+- architecture freeze, Ruff, blocking mypy, focused tests and full pytest passed.
+
+Final PR-head checks after documentation-only finalization remain the merge authority.
 
 ## Review route
 
