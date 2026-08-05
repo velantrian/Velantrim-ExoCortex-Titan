@@ -4,7 +4,7 @@ Use the smallest relevant inspection surface and verify exact SHAs, callers and 
 
 ## Authority rules
 
-Continuity, retrieval, selective-memory extraction, advisory and projections do not acquire Canon authority. Origin/inference is not truth, attestation or action permission. One decision type has one owner.
+Continuity, retrieval, selective-memory extraction, advisory and projections do not acquire Canon authority. Origin/inference is not truth, attestation, compute permission or action authority. One decision type has one owner.
 
 ## Canon and projection delivery
 
@@ -20,8 +20,7 @@ Start with `core/memory.py`, PromotionGateway, TruthGate, WriteGate, PolicyKerne
 |---|---|
 | Status | `MAIN + TESTED / CONTRACTS ONLY` |
 | Files | `core/continuity/contracts.py`, public exports |
-| Tests | contract, golden and R1 regression suites |
-| ADR | `ADR-2026-08-05-continuity-r1-foundation.md` |
+| Merge | `06529700d70854504b88629eeecf737bdc6b81d5` |
 
 ## Continuity R2 — shadow ledger, bridge and threads
 
@@ -32,47 +31,54 @@ Start with `core/memory.py`, PromotionGateway, TruthGate, WriteGate, PolicyKerne
 | Event port | `core/continuity/event_port.py` |
 | Conversation bridge | `core/continuity/conversation_bridge.py` |
 | Thread projection | `core/continuity/thread_weaver.py` |
-| Tests | event-port, bridge, thread-weaver and R2 regression suites |
-| Hand-off | `docs/ai/CONTINUITY_R2_HANDOFF.md` |
 
 ## Continuity R3 — projections and WorkingMemory adapters
 
 | Item | Value |
 |---|---|
-| Status | draft PR #203 / pre-merge |
+| Status | `MAIN + TESTED / PROJECTIONS / NOT WIRED` |
+| Merge | `a19d16656676ad5c98c92d4776e9709edbfb920c` |
 | Context projection | `core/continuity/context_pack.py` |
 | Context adapter | `core/continuity/working_memory_adapter.py` |
 | State reconciliation | `core/continuity/state_reconciler.py` |
 | Goal/open-loop projections | `core/continuity/goal_open_loop.py` |
 | Projection adapter | `core/continuity/projection_working_memory_adapter.py` |
-| Ownership ADR | `docs/adr/ADR-CONT-SYN-01-contract-reconciliation.md` |
-| Hand-off | `docs/ai/CONTINUITY_R3_HANDOFF.md` |
+| Ownership ADR | `docs/adr/ADR-CONT-SYN-01-contract-reconciliation.md` (`PROPOSED`) |
 
-Audit questions:
+## Continuity R4 — compatible compute assessment
 
-1. Can model inference displace a user statement? It must not do so silently.
-2. Do conflicting user statements remain contested and reviewable?
-3. Is a goal excluded without typed attestation?
-4. Are open loops accepted only from typed signals rather than raw-text inference?
-5. Does every adapted claim retain `truth_confidence=None`?
-6. Is policy coverage exact and fail-closed?
-7. Does the existing `WorkingMemoryGate` remain the only disposition owner?
-8. Does the existing `ContextPack` remain the only final prompt pack?
-9. Are storage, Canon, compute, advisory, answer, tool, action and runtime APIs absent?
-10. Are producer-side trust, privacy, consent and retention explicitly still unresolved?
+| Item | Value |
+|---|---|
+| Status | draft PR #204 / shadow only / not wired |
+| Legacy owner | `decide_compute_path()` in `core/compute_controller.py` |
+| New input | `ContinuityComputeSignals` |
+| New output | `ContinuityComputeAssessment` |
+| New API | `assess_compute_with_continuity()` |
+| ADR | `ADR-2026-08-05-continuity-r4-compatible-compute-assessment.md` |
+| Hand-off | `docs/ai/CONTINUITY_R4_HANDOFF.md` |
 
-## Continuity later layers
+R4 audit questions:
 
-| Layer | Intended content | Status |
-|---|---|---|
-| R4 | continuity-aware compute signals and differential compatibility proof | not implemented |
-| R5 | replay evaluation, Advisory shadow and disabled complete runner | not implemented |
+1. Is the legacy `decide_compute_path()` signature unchanged?
+2. Are exactly five `ComputePath` enum values retained?
+3. Is direct positional `ComputeDecision` construction still valid?
+4. Is the old seven-key `to_dict()` payload unchanged?
+5. Does the legacy decision matrix remain identical?
+6. Does `RapidOrientation` remain exhaustive over every path?
+7. Are continuity inputs typed and fail-closed?
+8. Can continuity only preserve, raise to VERIFY or cap degraded DEEP?
+9. Is VERIFY never downgraded?
+10. Are retrieval, persistence, Canon, answer, action and runtime APIs absent?
+11. Is `shadow_only=False` rejected?
+12. Is there no live caller or feature activation?
 
-Historical #131–#147 remain source material, not an accepted merge path.
+## Continuity R5 — later recovery
+
+Replay evaluation, Advisory shadow and disabled complete runner remain unimplemented on current main. Historical #145–#147 are source material, not accepted merge targets.
 
 ## Compute and orientation
 
-Owner: `ComputeController`. New enum members or decision fields require exhaustive downstream mapping and differential legacy tests.
+Legacy compute owner: `ComputeController`. New enum members require exhaustive downstream mapping. `RapidOrientation` currently exhaustively maps the five accepted paths; this is why R4 does not add DEFER.
 
 ## Identity
 

@@ -4,54 +4,60 @@ Current architecture-significant hand-off. Re-verify exact SHAs and current PR e
 
 ---
 
-## 2026-08-05 — Continuity R3 projection recovery
+## 2026-08-05 — Continuity R4 compatible compute assessment
 
-**Scope:** draft PR #203; base `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e`; historical sources #138–#143; initial recovery head `f178feadf698ef5ca51d14a37a7beb7863cf2999`.
+**Scope:** draft PR #204; base `a19d16656676ad5c98c92d4776e9709edbfb920c`; initial code head `2af8eadc04ee7a1f22528ca4815e02ecc2639610`; historical source/rejected shape #144.
 
 ### Verified before change
 
-- R1 and R2 are merged on current `main`;
-- old #138–#143 remain in a stale stacked chain and are not accepted merge targets;
-- current main has no R3 state/goal/open-loop projection or continuity WorkingMemory adapter files;
-- existing `KnowledgeCapsule`, `WorkingMemoryGate`, `ContextPack` and `GoalStack` remain the canonical owners reused by R3.
+- R1–R3 are merged on current main and remain unwired;
+- `ComputePath` has five values;
+- `ComputeDecision` has a seven-field constructor and seven-key serialization;
+- `decide_compute_path()` has no continuity argument;
+- `core.rapid_orientation._cost_for_path()` exhaustively maps every accepted path;
+- direct recovery of old #144 would add an unhandled DEFER path and break public compatibility.
 
 ### Changed
 
-- recovered Synaptic/Continuity ownership ADR;
-- added deterministic `ContinuityContextPack`, receipt and assembly;
-- added exact-source continuity-to-capsule adapter;
-- added deterministic current-state reconciliation with user-over-inference protection and contested conflicts;
-- added read-only GoalStack snapshots and typed goal attestations;
-- added typed open-loop signals, deadlines and resolutions;
-- added state/goal/open-loop adapter into the existing WorkingMemoryGate and ContextPack path;
-- restored focused replay, fail-closed, provenance, immutability and authority tests;
-- added R3 hand-off, state, component and risk documentation.
+- preserved legacy compute code and public contract;
+- added typed `ContinuityComputeSignals`;
+- added immutable shadow-only `ContinuityComputeAssessment`;
+- added `assess_compute_with_continuity()` as a separate explicit API;
+- allowed only VERIFY escalation and degraded DEEP-to-NORMAL capping;
+- rejected `shadow_only=False`;
+- expanded the Continuity workflow to cover `core/compute_controller.py`;
+- added signature, constructor, serialization, legacy matrix, signal, determinism, immutability and RapidOrientation exhaustiveness tests;
+- added the compatibility ADR and R4 hand-off/state/component/risk documentation.
 
 ### Authority decisions
 
-- no durable continuity store or migration;
-- no raw-text producer or hidden inference admission;
-- no Canon, ESM, TruthGate or write authority;
-- no second selector or final prompt pack;
-- no compute, advisory, answer, tool or action authority;
-- no startup, worker, `/query`, feature activation or user-visible behavior.
+- no new ComputePath value;
+- no modification of the legacy function signature;
+- no runtime caller, startup hook, worker, query integration or feature activation;
+- no retrieval, persistence, Canon/ESM/TruthGate mutation;
+- no answer, advice, tool or action authority.
 
 ### Validation
 
-Final-head Continuity, full CI and Docker workflow results remain the merge authority. Notion synchronization and independent review are required before leaving Draft.
+The initial focused Continuity gate passed. Final-head Continuity, full CI and Docker runs remain the merge authority after documentation synchronization.
 
-### Remaining after R3
+### Remaining after R4
 
-R4: continuity-aware ComputeController signals with differential legacy behavior proof.  
-R5: replay evaluation, Advisory shadow and disabled complete runner.
+R5: rebuild replay evaluation, Advisory shadow and disabled complete runner from historical #145–#147 against current R1–R4 APIs.
 
 ---
+
+## 2026-08-05 — Continuity R3 projection recovery
+
+**Scope:** PR #203; merged as `a19d16656676ad5c98c92d4776e9709edbfb920c`; historical #138–#143 closed as superseded.
+
+Added deterministic continuity context, current-state reconciliation, attested goals, typed open loops and policy-neutral adapters into the existing WorkingMemoryGate/ContextPack path. Final-head Continuity, full CI and Docker gates passed. No runtime, Canon, compute, advisory, answer or action authority.
 
 ## 2026-08-05 — Continuity R2 shadow/read-side recovery
 
 **Scope:** PR #202; merged as `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e`; historical #133/#135/#136 closed as superseded.
 
-Added process-local neutral ledger, read-only conversation bridge, source-fidelity correction and conservative deterministic thread projection. Final-head Continuity, full CI and Docker gates passed. No durable storage, runtime, Canon, answer or action authority.
+Added process-local neutral ledger, read-only conversation bridge, source-fidelity correction and conservative deterministic thread projection.
 
 ## 2026-08-05 — Continuity R1 immutable foundation
 
@@ -63,7 +69,7 @@ Immutable deterministic events, assertions and relations, golden vectors and aut
 
 **Scope:** PR #200; merged as `bea535d8fd5f7d59d3f1cee02d060bd026ac05cb`.
 
-Hardened proposal-only extraction with privacy-safe serialization, injection rejection, focused CI, benchmark, replay and ADR. Old #102 closed as superseded. No admission or runtime wiring.
+Hardened proposal-only extraction with privacy-safe serialization, injection rejection, focused CI, benchmark, replay and ADR. Old #102 closed as superseded.
 
 ## 2026-08-05 — Documentation continuity
 
