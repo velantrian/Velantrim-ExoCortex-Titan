@@ -1,0 +1,46 @@
+name: Continuity contracts
+
+on:
+  pull_request:
+    paths:
+      - "core/continuity/**"
+      - "tests/test_continuity*.py"
+      - "tests/fixtures/continuity_contracts_v1.json"
+      - ".github/workflows/continuity-contracts.yml"
+  push:
+    branches: [main, master]
+    paths:
+      - "core/continuity/**"
+      - "tests/test_continuity*.py"
+      - "tests/fixtures/continuity_contracts_v1.json"
+      - ".github/workflows/continuity-contracts.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  contract-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install development tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Ruff
+        run: ruff check core/continuity tests/test_continuity*.py --output-format=github
+
+      - name: Mypy
+        run: mypy core/continuity --show-error-codes
+
+      - name: Continuity tests
+        run: python -m pytest tests/test_continuity*.py -v --tb=short --timeout=300
