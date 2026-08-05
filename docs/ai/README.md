@@ -17,13 +17,15 @@ Read only the minimum context needed, in this order:
 1. [`../../README.md`](../../README.md) — product purpose and public maturity claim.
 2. [`../../SYSTEM_OVERVIEW.md`](../../SYSTEM_OVERVIEW.md) — high-level architecture.
 3. [`../../AGENTS.md`](../../AGENTS.md) — mandatory rules for agents changing code.
-4. [`CURRENT_STATE.md`](CURRENT_STATE.md) — verified snapshot of what is in `main`
+4. [`DOCUMENTATION_SYNC_PROTOCOL.md`](DOCUMENTATION_SYNC_PROTOCOL.md) — mandatory
+   GitHub and Notion synchronization contract.
+5. [`CURRENT_STATE.md`](CURRENT_STATE.md) — verified snapshot of what is in `main`
    and what remains only in open PRs or research documents.
-5. [`COMPONENT_MAP.md`](COMPONENT_MAP.md) — component owners, key files, tests, and
+6. [`COMPONENT_MAP.md`](COMPONENT_MAP.md) — component owners, key files, tests, and
    authority boundaries.
-6. [`KNOWN_RISKS.md`](KNOWN_RISKS.md) — unresolved engineering and governance risks.
-7. [`AUDIT_PLAYBOOK.md`](AUDIT_PLAYBOOK.md) — how to audit without exhausting context.
-8. [`WORK_LOG.md`](WORK_LOG.md) — recent significant work, decisions, and hand-offs.
+7. [`KNOWN_RISKS.md`](KNOWN_RISKS.md) — unresolved engineering and governance risks.
+8. [`AUDIT_PLAYBOOK.md`](AUDIT_PLAYBOOK.md) — how to audit without exhausting context.
+9. [`WORK_LOG.md`](WORK_LOG.md) — recent significant work, decisions, and hand-offs.
 
 Then open only the component-specific code, tests, ADRs, PRs, and workflow logs needed
 for the current task.
@@ -52,6 +54,7 @@ not automatically current truth.
 | Identity or personalization | `CURRENT_STATE.md#identity-layer` and the identity risk entry |
 | API/security/deployment | `SECURITY.md`, compose files, Dockerfile, server lifespan, current checks |
 | General audit | `AUDIT_PLAYBOOK.md` and only the relevant component route |
+| New module, technology, or durable decision | `DOCUMENTATION_SYNC_PROTOCOL.md`, affected ADRs, and the related Notion record |
 
 ## Context-budget rule
 
@@ -80,7 +83,9 @@ At minimum:
 - update `KNOWN_RISKS.md` when a risk is opened, narrowed, proven, or closed;
 - add a concise entry to `WORK_LOG.md` for significant work;
 - update `COMPONENT_MAP.md` when ownership or key paths change;
-- record an ADR when a durable architectural decision is made.
+- record an ADR when a durable architectural decision is made;
+- classify the PR as `NONE`, `GITHUB_ONLY`, or `GITHUB_AND_NOTION` and complete the
+  synchronization required by `DOCUMENTATION_SYNC_PROTOCOL.md`.
 
 Do not record unverified claims, test counts copied from old runs, or aspirational
 features as current runtime behavior.
