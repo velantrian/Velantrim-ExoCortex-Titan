@@ -34,6 +34,50 @@ tests, runtime wiring, enablement, and observation.
 
 ---
 
+## 2026-08-05 — Code, GitHub documentation, and Notion synchronization contract
+
+**Scope:** documentation/governance only; branch `agent/documentation-sync-contract`
+
+### Verified before change
+
+- `AGENTS.md` already required AI agents to update current-state, risk, component-map,
+  work-log, and ADR documentation for material changes.
+- The PR template already contained an AI-context checklist.
+- The Titan Notion hub already recorded substantial GitHub changes, but the repository
+  did not define one explicit impact taxonomy or a mandatory deep-rationale record.
+
+### Changed
+
+- added `DOCUMENTATION_SYNC_PROTOCOL.md` as the common definition of done;
+- defined `NONE`, `GITHUB_ONLY`, and `GITHUB_AND_NOTION` impact classes;
+- required Notion records for new technologies, modules, durable decisions, roadmap,
+  cross-project, authority, deployment, and product-meaning changes;
+- required exact PR/SHA, status, evidence, limitations, alternatives, and post-merge
+  reconciliation;
+- expanded `AGENTS.md`, the AI context index, and the PR template so coding agents must
+  perform or explicitly block the synchronization rather than silently omit it.
+
+### Validation
+
+- documentation-only consistency review;
+- no runtime code, Canon path, policy path, dependency, deployment, or test baseline
+  changed.
+
+### Decisions
+
+- GitHub `main` code and tests remain implementation truth.
+- GitHub docs remain the compact technical contract.
+- Notion stores deeper rationale, intended function, rejected alternatives, project
+  history, and cross-project context.
+- Private Notion content and workspace URLs must not be copied into public GitHub.
+- If Notion is unavailable for a required change, the PR remains draft and the task is
+  reported as blocked rather than complete.
+
+### Remaining
+
+- CI enforcement of the machine-readable PR fields may be added separately after the
+  workflow policy is reviewed against fork and permission behavior.
+
 ## 2026-08-05 — AI context navigation and audit hand-off
 
 **Baseline:** `main` at `024454e5ee17a52f6de321e6917bf29eb5cc88ca`  
