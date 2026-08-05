@@ -1,85 +1,48 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-05  
-**Current `main`:** `529d8b6b182b1a548d27558173f0aca473bcc400`  
-**Continuity R5A review surface:** draft PR #205
+**Current `main`:** `58e29bba26299ce7003b62e73fd3b25e028956de`  
+**Continuity R5B review surface:** draft PR #206
 
 Verify claims against exact SHAs, tests, workflows, wiring and runtime evidence. `MAIN`, `TESTED`, `WIRED`, `ENABLED`, `OBSERVED`, `OPEN PR`, `RESEARCH` and `LEGACY/UNWIRED` are separate states.
 
-## Canon and projection delivery
+## Continuity R1–R5A
 
-Projection outbox, version-monotonic FTS apply, checkpoints and bounded dispatch are implemented and tested. The dispatcher remains unwired and lacks accepted lifecycle, cadence, backlog SLO and operational reconciliation.
+| Layer | Merge | State |
+|---|---|---|
+| R1 immutable contracts | `06529700d70854504b88629eeecf737bdc6b81d5` | main, tested, unwired |
+| R2 read-side/threads | `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e` | main, tested, process-local, unwired |
+| R3 projections/adapters | `a19d16656676ad5c98c92d4776e9709edbfb920c` | main, tested, rebuildable, unwired |
+| R4 compute assessment | `529d8b6b182b1a548d27558173f0aca473bcc400` | main, tested, shadow-only, unwired |
+| R5A replay/advisory | `58e29bba26299ce7003b62e73fd3b25e028956de` | main, tested, shadow-only, unwired |
 
-## Selective memory ARM-03
+R4 preserves the five legacy compute paths and exposes a separate assessment. R5A adds deterministic replay hard gates and Advisory Shadow v2. Advisory text cannot be delivered or shown by these layers.
 
-Merged as `bea535d8fd5f7d59d3f1cee02d060bd026ac05cb`.
+## Continuity R5B
 
-**Status:** `MAIN + TESTED + DEFAULT OFF / NOT WIRED / NO ADMISSION`.
+Draft PR #206 composes the complete current R1–R5A path in memory.
 
-## Continuity R1
+**Status:** `OPEN PR / FOCUSED TESTED / DISABLED BY DEFAULT / NOT WIRED`.
 
-Merged as `06529700d70854504b88629eeecf737bdc6b81d5`.
+The default runner exits before component execution. Explicit local evaluation can build baseline/replay artifacts, compare hard gates and inspect an Advisory shadow candidate. The result receipt requires `NO_RUNTIME_AUTHORITY` and confirms the main answer and Canon remain untouched.
 
-**Status:** `MAIN + TESTED / IMMUTABLE CONTRACTS / NOT WIRED`.
+R5B adds no startup, API, worker, persistence, retrieval, network, Canon, answer, delivery, tool, action or user-visible authority.
 
-## Continuity R2
+## After R5B
 
-Merged as `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e`.
+Milestone 1 recovery is complete only as a disabled tested composition. The next phase is not live activation. Required separately:
 
-**Status:** `MAIN + TESTED / PROCESS-LOCAL READ-SIDE / NOT WIRED`.
-
-## Continuity R3
-
-Merged as `a19d16656676ad5c98c92d4776e9709edbfb920c`.
-
-**Status:** `MAIN + TESTED / REBUILDABLE PROJECTIONS / NOT WIRED`.
-
-It provides continuity context, current-state reconciliation, attested goals, typed open loops and policy-neutral adapters into the existing WorkingMemoryGate/ContextPack path. No producer admission, durable storage, Canon, compute, advisory, answer or action authority.
-
-## Continuity R4
-
-Merged as `529d8b6b182b1a548d27558173f0aca473bcc400`.
-
-**Status:** `MAIN + TESTED / SHADOW COMPUTE ASSESSMENT / NOT WIRED`.
-
-R4 preserves the legacy five-path compute API and exposes a separate explicit assessment that may preserve, raise to VERIFY, or cap degraded DEEP to NORMAL. No `DEFER_PATH` or runtime caller exists.
-
-## Continuity R5A
-
-Draft PR #205 adds deterministic replay evidence and a low-risk Advisory Shadow v2.
-
-**Status:** `OPEN PR / FOCUSED TESTED / SHADOW ONLY / NOT WIRED`.
-
-Replay zero-tolerance gates cover privacy leakage, inference-as-fact, missing provenance, budget overflow, query-time Canon writes, replay divergence and silent overwrite.
-
-Advisory candidates require passed replay, private audience, explicit typed relevance signal, exact actionable projection, explicit permission, source-linked basis refs and `shadow_only=True`. Candidate text is inspectable shadow data only and cannot be delivered.
-
-`AdvisoryAction.DEFER` is a shadow disposition, not a compute path.
-
-## Remaining Continuity recovery
-
-```text
-R5A replay gates + Advisory Shadow
-→ R5B complete disabled orchestration runner
-```
-
-Before any live use:
-
-- trusted producers and one policy owner;
-- consent, retention, erasure, tenant isolation and access control;
-- replay corpus and calibration evidence;
-- runtime feature flag, monitoring and rollback;
+- trusted producers for events, assertions, attestations, open loops, compute signals and observations;
+- one policy owner for attention, recall, eligibility, privacy and conflict facts;
+- consent, tenant authorization, retention, erasure and durable evidence lifecycle;
+- replay corpus, calibration, monitoring, rollback and operational SLO;
 - anti-spam, localization, scheduling and cancellation;
-- explicit operator approval and a separate activation ADR.
+- explicit operator approval and an activation ADR.
 
-## Runtime and deployment
+## Other current risks
 
-- API and egress policy are fail-closed under documented production settings;
-- Docker is non-root and checked;
-- `server.py` remains a broad composition module;
+- projection dispatcher remains implemented/tested but unwired;
 - production compose profiles remain inconsistent;
-- authentication remains shared API-key rather than per-user/tenant authorization.
-
-## Identity
-
-`core/identity_layer.py` remains `LEGACY/UNWIRED`; do not activate it.
+- `server.py` remains a broad composition module;
+- authentication remains shared API-key rather than per-user/tenant authorization;
+- `core/identity_layer.py` remains `LEGACY/UNWIRED`; do not activate it.
