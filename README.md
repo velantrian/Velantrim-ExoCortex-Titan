@@ -7,11 +7,16 @@
 >
 > **Зрелость:** research-grade prototype, движущийся к production hardening.
 
+[🤖 AI-агент: начните здесь](docs/ai/README.md) ·
 [🗺️ Экскурсия по системе](SYSTEM_OVERVIEW.md) ·
 [📊 Честный статус](docs/PROJECT_STATUS.md) ·
 [🔍 Для аудитора](docs/REVIEWER_README.md) ·
 [🔒 Security](SECURITY.md) ·
 [🏛️ Канон истины](docs/TRUTH_AND_RINGZERO_CANON.ru.md)
+
+> 🤖 **AI coding agent или автоматический аудитор:** прежде чем читать весь
+> репозиторий или менять код, откройте [`docs/ai/README.md`](docs/ai/README.md) и
+> следуйте обязательному порядку чтения из [`AGENTS.md`](AGENTS.md).
 
 ---
 
@@ -61,6 +66,7 @@ LLM может читать, извлекать и формулировать, �
 
 | Если вы… | Начните здесь |
 |---|---|
+| 🤖 AI coding agent или автоматический аудитор | [`docs/ai/README.md`](docs/ai/README.md), затем [`AGENTS.md`](AGENTS.md) |
 | 👤 впервые видите проект | [Atlas: объяснение за 30 секунд](SYSTEM_OVERVIEW.md#plain) |
 | 🛠️ запускаете свою установку | [Быстрый старт](#quick-start) и [Security](SECURITY.md) |
 | 🧑‍💻 собираетесь менять код | [Atlas: инженерные границы](SYSTEM_OVERVIEW.md#engineer) и [`AGENTS.md`](AGENTS.md) |
@@ -373,6 +379,7 @@ ENABLE_EVENT_BUS=1
 
 | Документ | Назначение |
 |---|---|
+| [`docs/ai/README.md`](docs/ai/README.md) 🤖 | обязательная навигация, текущий контекст и порядок чтения для AI-агентов |
 | [`SYSTEM_OVERVIEW.md`](SYSTEM_OVERVIEW.md) 🗺️ | многоуровневая экскурсия: plain ↔ engineer ↔ auditor |
 | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) 📊 | зрелость, реальные риски, P0/P1/P2 |
 | [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) 🔍 | карта файлов и проверок для аудитора |
