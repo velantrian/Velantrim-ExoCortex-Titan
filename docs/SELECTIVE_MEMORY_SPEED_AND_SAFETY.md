@@ -1,119 +1,100 @@
 # Selective Memory — Speed and Safety Contract
 
-**Status:** `IMPLEMENTED_ON_BRANCH / SHADOW_ONLY / CI_PENDING`  
+**Status:** `TESTED / SHADOW_ONLY / DEFAULT_OFF / NOT_RUNTIME_WIRED`  
 **Scope:** ARM-03 candidate extraction only; no admission, persistence, Canon or response authority  
-**Primary goal:** improve memory-candidate quality without increasing user-visible answer latency
+**Review:** PR #200 and
+`docs/adr/ADR-2026-08-05-selective-memory-shadow-proposal-boundary.md`
 
-## 1. Core decision
+## Core decision
 
 Selective-memory analysis must not become a mandatory synchronous stage of the normal
 answer path.
 
 ```text
 User query
-  -> retrieval and evidence assembly
-  -> Guardian / TruthGate
-  -> answer
+→ retrieval and evidence
+→ Guardian / TruthGate
+→ answer
 
-After or beside the answer path
-  -> bounded shadow dispatch
-  -> selective-memory candidate extraction
-  -> evaluation receipt
-  -> no write
+Separate future shadow path
+→ bounded candidate extraction
+→ evaluation receipt
+→ no write
 ```
 
-ARM-03 is a dependency-free rule baseline. It does not import or call an LLM, embedding
-model, graph traversal, network client, Canon store, WorkingMemoryGate, Write Gate,
-Guardian or TruthGate. It only proposes bounded candidates for offline or shadow
-evaluation.
+ARM-03 itself is not wired into `/query`, a worker, startup or persistence.
 
-## 2. User-visible latency invariant
+## Flag-off invariant
 
 ```text
-flag OFF
--> no extraction call
--> no candidate scan
--> no model/network work
--> legacy response unchanged
+ENABLE_SELECTIVE_MEMORY_CANDIDATE_SHADOW=0
+→ run_shadow_extraction returns before extraction
+→ no candidate scan
+→ no model/network/database work
+→ no write
+→ legacy behavior unchanged
 ```
 
-Any future runtime integration must preserve these rules:
+Future runtime integration must remain non-blocking: queue saturation, timeout or
+extractor failure may discard optional shadow work but must not delay or fail an
+already-computed answer.
 
-1. The legacy answer remains authoritative.
-2. Shadow extraction is never awaited before returning an already-computed answer.
-3. Queue saturation, timeout or extractor failure may drop optional shadow work but must
-   not delay or fail the answer.
-4. Admission and persistence remain separate later stages and must never run on the query
-   path implicitly.
-5. Feature flags OFF preserve legacy behavior except explicitly documented additive
-   diagnostics.
-
-ARM-03 itself is not wired into `/query`.
-
-## 3. Cheap-first execution
+## Cheap-first execution
 
 ```text
-cheap validation
--> bounded exact source spans
--> local regex classification
--> local sensitivity and injection detection
--> local redaction
--> deterministic deduplication/supersession hints
--> bounded immutable result
--> explicit safe serialization
+bounded exact spans
+→ local rule classification
+→ sensitivity and injection checks
+→ redaction
+→ deterministic dedup/supersession hints
+→ immutable proposal result
+→ explicit safe serialization
 ```
 
-Expensive work is absent:
+Absent by contract:
 
-- no provider call;
-- no embedding generation;
-- no reranker;
-- no graph expansion;
-- no database read or write;
-- no truth evaluation;
-- no autonomous admission.
+- provider or model calls;
+- embeddings, reranking or graph traversal;
+- database access;
+- truth evaluation;
+- memory admission;
+- autonomous actions.
 
-## 4. Hard budgets
+## Hard budgets
 
-| Budget | Default | Purpose |
-|---|---:|---|
-| source spans scanned | 64 | bound parsing work |
-| candidates returned | 12 | bound downstream review |
-| characters per candidate | 500 | reject oversized statements |
-| total candidate characters | 2,000 | bound result size |
-| minimum candidate characters | 4 | remove low-value fragments |
+| Budget | Default |
+|---|---:|
+| source spans | 64 |
+| returned candidates | 12 |
+| characters per candidate | 500 |
+| total candidate characters | 2,000 |
+| minimum candidate characters | 4 |
 
-These are execution budgets, not truth or retention policy. ARM-04 may reject every
-candidate.
+These are execution budgets, not retention or truth policy.
 
-## 5. Hardened candidate contract
+## Candidate contract
 
 A candidate carries:
 
-- deterministic candidate ID;
-- type and temporal scope;
+- deterministic ID;
+- candidate type and temporal scope;
 - explicit `RetentionReason`;
 - `extraction_confidence`, never truth confidence;
-- optional `subject_ref` and `context_id`, both bound into identity;
-- exact source offsets plus SHA-256 span hash;
-- sensitivity flags;
+- optional `subject_ref` and `context_id`, bound into identity;
+- exact source offsets and SHA-256 span hash;
+- sensitivity markers;
 - redacted candidate text;
-- deterministic within-input supersession hint;
+- deterministic within-input `POSSIBLE_UPDATE_OF` hint;
 - extractor and policy versions.
 
-The old `.confidence` name is retained only as a read-only compatibility property that
-returns `extraction_confidence`.
+`.confidence` remains only a read-only compatibility alias for
+`extraction_confidence`.
 
-## 6. Prompt-to-memory injection boundary
+## Prompt-to-memory injection
 
-Instruction-shaped text is not memory authority. ARM-03 detects bounded English and
-Russian patterns including requests to:
-
-- ignore prior instructions;
-- remember content permanently;
-- write directly into Canon;
-- disable security checks;
-- bypass truth/write/policy gates.
+Instruction-shaped content has no memory authority. The bounded English/Russian filter
+covers examples asking the system to ignore instructions, remember permanently, write
+to Canon, disable safety checks or bypass gates.
 
 Default disposition:
 
@@ -121,65 +102,62 @@ Default disposition:
 UNTRUSTED_INSTRUCTION
 + MEMORY_INJECTION_RISK
 + SECURITY / HIGH_RISK
--> rejected proposal
--> no admission
--> no write
+→ rejected proposal
+→ no admission
+→ no write
 ```
 
-A policy may retain such material for explicit offline security evaluation, but the
-result remains proposal-only and has no policy or execution authority.
+This is a conservative heuristic, not complete semantic injection detection.
 
-## 7. Safe source-span serialization
+## Safe source evidence
 
-Exact raw source text may be needed inside the in-process result to verify offsets against
-protected source evidence. It must not be copied into portable logs, fixtures or
+Exact raw source text may exist only inside protected in-process evidence to verify
+character offsets and hashes. It must not be copied into ordinary logs, fixtures or
 receipts.
 
-`SourceSpan` therefore:
+`SourceSpan`:
 
-- stores exact character offsets;
-- computes a SHA-256 hash over the exact span;
-- excludes raw text from dataclass `repr`;
+- stores exact offsets;
+- computes SHA-256 over the exact text;
+- excludes raw text from dataclass repr;
 - exposes `to_safe_dict()` with redacted `safe_text`;
-- preserves source reference and hash for protected provenance verification.
+- preserves source reference and hash.
 
 `CandidateExtractionResult.to_safe_dict()` is the supported portable representation.
-Regression tests prove synthetic email, phone and credential values are absent from it.
+Tests prove synthetic email, phone and credential strings are absent from it.
 
-## 8. Failure disposition
+## Failure disposition
 
 ```text
-shadow disabled       -> empty diagnostic result
-shadow queue full     -> future integration drops shadow job
-extractor timeout     -> future integration discards proposal
-invalid input         -> empty/rejected result
-credential detected   -> reject; safe serialization redacts
-memory injection      -> reject/quarantine
-budget exceeded       -> deterministic truncation
+shadow disabled     → empty diagnostic result
+invalid input       → empty/rejected result
+credential          → reject + redact portable evidence
+memory injection    → reject/quarantine
+budget exceeded     → deterministic truncation
+future queue full   → drop optional shadow work
+future timeout      → discard proposal
 ```
 
-Fallback may reduce optional capability but must never expand permission, visibility or
-write authority.
+Fallback may reduce optional capability but never expand permission, visibility or write
+authority.
 
-## 9. Performance measurement
+## Validation
 
-The dependency-free benchmark reports:
+Tested head before final documentation-only edits:
+`125cf0b008f3fc0c0589dc248f1449b5a865e883`.
 
-- mean, median and p95 latency;
-- processed characters and characters per second;
-- candidate and rejection counts;
-- truncation state;
-- safe-serialization assertions;
-- zero Canon writes;
-- zero memory writes;
-- zero Write Gate calls;
-- zero model and network calls.
+- ARM-03 contracts run `31011184457`: success;
+- Docker hardening run `31011184150`: success;
+- full Titan CI run `31011183017`: success;
+- Ruff and blocking mypy passed;
+- focused and full pytest passed;
+- dependency-free benchmark passed;
+- evaluation replay passed;
+- architecture-freeze guard passed with the accepted ADR.
 
-Absolute CI latency thresholds are intentionally avoided because shared runners are
-noisy. Regression decisions compare the same fixture, Python version, hardware class and
-policy version.
+Final PR-head checks remain authoritative for merge.
 
-## 10. Promotion gates before ARM-04
+## Gates before ARM-04
 
 ```text
 truth_gate_bypass_count == 0
@@ -193,34 +171,24 @@ replay critical regressions == 0
 candidate precision accepted by operator
 ```
 
-Active admission requires a separate ARM-04 PR with WorkingMemoryGate disposition,
-explicit Write Gate, provenance, revocation/erasure compatibility, audit receipts and
+ARM-04 requires a separate ADR and PR for trusted identity/scope, consent, privacy,
+erasure/revocation, WorkingMemoryGate disposition, explicit Write Gate receipts and
 operator approval.
 
-## 11. Reality boundary
+## Reality boundary
 
-Implemented on the recovery branch:
+Implemented and tested:
 
-- `extraction_confidence` naming;
-- subject/context identity;
-- retention reason;
-- injection detection and rejection;
-- safe portable serialization with span hash;
-- deterministic within-input supersession hints;
-- default-off feature flag;
-- focused tests, speed contract, benchmark and replay fixture.
-
-Not claimed until CI completes:
-
-- repository-wide test compatibility;
-- benchmark results on the final head;
-- replay classification on the final head;
-- merge into `main`.
+- hardened proposal contract;
+- default-off diagnostic flag;
+- safe portable serialization;
+- injection rejection;
+- focused workflow, benchmark and replay.
 
 Not included:
 
-- `/query` wiring;
-- queues or background workers;
+- runtime wiring or background dispatch;
 - admission or persistence;
 - Canon, ESM, TruthGate, WriteGate or WorkingMemory changes;
-- user-visible memory behavior.
+- user-visible memory behavior;
+- proof of candidate precision or value.
