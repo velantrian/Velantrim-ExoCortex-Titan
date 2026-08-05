@@ -4,70 +4,66 @@ Current architecture-significant hand-off. Re-verify exact SHAs and current PR e
 
 ---
 
-## 2026-08-05 — Continuity R2 shadow/read-side recovery
+## 2026-08-05 — Continuity R3 projection recovery
 
-**Scope:** PR #202; current-main recovery based on
-`06529700d70854504b88629eeecf737bdc6b81d5`; historical sources #133/#135/#136
+**Scope:** draft PR #203; base `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e`; historical sources #138–#143; initial recovery head `f178feadf698ef5ca51d14a37a7beb7863cf2999`.
 
 ### Verified before change
 
-- R1 is merged and tested;
-- old R2 material remained in a stale stacked chain;
-- current `ConversationConsolidator` read reconstruction dropped persisted
-  `related_chats` and regenerated `created_at` for returned notebooks;
-- no continuity runtime caller or durable ledger exists in `main`.
+- R1 and R2 are merged on current `main`;
+- old #138–#143 remain in a stale stacked chain and are not accepted merge targets;
+- current main has no R3 state/goal/open-loop projection or continuity WorkingMemory adapter files;
+- existing `KnowledgeCapsule`, `WorkingMemoryGate`, `ContextPack` and `GoalStack` remain the canonical owners reused by R3.
 
 ### Changed
 
-- added process-local `LocalShadowLedger` with immutable events, idempotency, conflict
-  detection, scan and integrity verification;
-- added read-only `ConversationBridge` and deterministic `ConversationEpisode`;
-- corrected notebook read fidelity in `get_notebook`, `search` and `list_recent`;
-- added conservative `ThreadWeaver`, unresolved explicit refs and connected threads;
-- restricted v1 links to explicit refs or exact normalized goal matches;
-- added current-main read-fidelity/authority regressions;
-- added R2 authority ADR, current-state, component, risk and review hand-off docs.
+- recovered Synaptic/Continuity ownership ADR;
+- added deterministic `ContinuityContextPack`, receipt and assembly;
+- added exact-source continuity-to-capsule adapter;
+- added deterministic current-state reconciliation with user-over-inference protection and contested conflicts;
+- added read-only GoalStack snapshots and typed goal attestations;
+- added typed open-loop signals, deadlines and resolutions;
+- added state/goal/open-loop adapter into the existing WorkingMemoryGate and ContextPack path;
+- restored focused replay, fail-closed, provenance, immutability and authority tests;
+- added R3 hand-off, state, component and risk documentation.
+
+### Authority decisions
+
+- no durable continuity store or migration;
+- no raw-text producer or hidden inference admission;
+- no Canon, ESM, TruthGate or write authority;
+- no second selector or final prompt pack;
+- no compute, advisory, answer, tool or action authority;
+- no startup, worker, `/query`, feature activation or user-visible behavior.
 
 ### Validation
 
-On tested head `65e86db98117f155606d2db47d79ace5fbdcdd16`:
+Final-head Continuity, full CI and Docker workflow results remain the merge authority. Notion synchronization and independent review are required before leaving Draft.
 
-- Continuity contracts `31015768361`: success;
-- full Titan CI `31015768674`: success;
-- Docker hardening `31015768424`: success;
-- architecture freeze, Ruff, blocking mypy, focused tests and full pytest passed.
+### Remaining after R3
 
-Final PR-head checks after documentation-only finalization remain the merge authority.
+R4: continuity-aware ComputeController signals with differential legacy behavior proof.  
+R5: replay evaluation, Advisory shadow and disabled complete runner.
 
-### Decisions
+---
 
-- the local ledger is disposable process state, not Native Kernel or durable memory;
-- the bridge is read-only and legacy notebook storage remains authoritative;
-- episodes and threads are rebuildable non-epistemic projections;
-- topic/time alone cannot create continuity;
-- no runtime wiring, database migration, model call, Canon/gate, advice or action is in
-  scope.
+## 2026-08-05 — Continuity R2 shadow/read-side recovery
 
-### Remaining after R2
+**Scope:** PR #202; merged as `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e`; historical #133/#135/#136 closed as superseded.
 
-R3: state reconciliation, qualified goals/open loops and WorkingMemory adapters.
+Added process-local neutral ledger, read-only conversation bridge, source-fidelity correction and conservative deterministic thread projection. Final-head Continuity, full CI and Docker gates passed. No durable storage, runtime, Canon, answer or action authority.
 
 ## 2026-08-05 — Continuity R1 immutable foundation
 
-**Scope:** PR #201; merged as `06529700d70854504b88629eeecf737bdc6b81d5`
+**Scope:** PR #201; merged as `06529700d70854504b88629eeecf737bdc6b81d5`.
 
-- final head `4e2c73b9fde25ad5d0329d8ff1d5915244ff478d`;
-- Continuity `31014329463`, full CI `31014329316`, Docker `31014330501`: success;
-- old #131/#132 closed as superseded;
-- status: `MAIN + TESTED / CONTRACTS ONLY / NOT WIRED`.
+Immutable deterministic events, assertions and relations, golden vectors and authority tests. Old #131/#132 closed as superseded.
 
 ## 2026-08-05 — ARM-03 selective-memory recovery
 
-**Scope:** PR #200; merged as `bea535d8fd5f7d59d3f1cee02d060bd026ac05cb`
+**Scope:** PR #200; merged as `bea535d8fd5f7d59d3f1cee02d060bd026ac05cb`.
 
-Hardened proposal-only extraction with privacy-safe serialization, injection rejection,
-focused CI, benchmark, replay and ADR. Old #102 closed as superseded. No admission or
-runtime wiring.
+Hardened proposal-only extraction with privacy-safe serialization, injection rejection, focused CI, benchmark, replay and ADR. Old #102 closed as superseded. No admission or runtime wiring.
 
 ## 2026-08-05 — Documentation continuity
 

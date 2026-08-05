@@ -1,10 +1,9 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-05  
-**Current `main`:** `06529700d70854504b88629eeecf737bdc6b81d5`
+**Current `main`:** `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e`
 
-Code presence does not close a risk. Closure requires focused/full validation, wiring and
-operational evidence.
+Code presence does not close a risk. Closure requires focused/full validation, wiring and operational evidence.
 
 ## P0
 
@@ -18,56 +17,52 @@ operational evidence.
 
 ### R2 is a shadow/read-side substrate, not durable continuity
 
-The R2 recovery branch adds a process-local ledger, read-only notebook bridge and
-conservative deterministic thread projection.
+R2 is merged and tested but remains process-local, disposable and unwired. No trusted producer, durable adapter, retention/erasure/access-control contract or operational input bound exists. Exact goal matching can miss real continuations; explicit notebook links may be stale; thread links are rebuildable projections, not truth.
+
+### R3 adds projections, not trusted admission or policy authority
+
+Draft PR #203 adds context, current-state, goal and open-loop projections plus adapters to the existing WorkingMemory path.
 
 Residual risks:
 
-- `LocalShadowLedger` is process-local and lost on restart;
-- it is not a Native Kernel implementation or production event store;
-- no trusted event producer is wired;
-- no purpose/consent/retention/erasure/access-control policy authorizes durable event
-  storage;
-- exact goal matching can miss real continuations;
-- explicit notebook links may be stale or incorrect source data;
-- thread links are rebuildable projections, not truth;
-- direct callers must impose an operational input bound before any runtime wiring;
-- no concurrency/process durability claim follows from an in-process lock;
-- legacy notebook rows can contain model-generated or unconfirmed text.
+- assertions, attestations and open-loop signals are trusted typed inputs; their producer and authorization contract is not part of R3;
+- caller-supplied attention, recall, eligibility, restriction, erasure, protection and conflict fields have no accepted single policy owner yet;
+- GoalStack snapshots can contain legacy or previously inferred content; explicit attestation is required but attestation issuance is not designed here;
+- current-state reconciliation is deterministic policy, not external truth;
+- selected state projections can still be wrong if their immutable source assertions are wrong;
+- contested projections require review and must not become answer/action authority;
+- virtual continuity documents are derived projections, not original source documents;
+- projection adapters preserve provenance only as supplied by the source records;
+- no durable retention, consent, erasure or tenant boundary is authorized;
+- no runtime caller, feature flag, startup hook or user-visible integration is included.
 
-Required before any runtime/durable promotion:
+Required before runtime or durable use:
 
-1. explicit event producer and authorization context;
-2. bounded queue/batch/cancellation/restart contract;
-3. durable adapter RFC with idempotency, retention, erasure and audit;
-4. false-link/missed-link evaluation on synthetic or consented data;
-5. privacy/security review;
+1. trusted producer contracts for assertions, attestations and open-loop signals;
+2. explicit policy owner for all Gate input fields;
+3. purpose/consent/retention/erasure/access-control review;
+4. adversarial tests for forged source refs, stale attestations and cross-user leakage;
+5. evaluation of contested-state behavior and false current-state selection;
 6. no Canon, answer or action authority;
-7. operator approval in a separate PR.
+7. separate operator approval.
 
-### Continuity recovery remains incomplete beyond R2
+### Remaining recovery
 
 ```text
-R3 state + qualified goals/open loops + WorkingMemory adapters
-→ R4 compute signals + replay + Advisory shadow
-→ R5 disabled complete shadow runner
+R4 continuity-aware ComputeController signals
+→ R5 replay evaluation + Advisory shadow + disabled runner
 ```
 
-All recovery PRs must be independently green on current `main`. The old #131–#147 chain
-is not an accepted merge path. Fixes belong in the lowest owning layer. `DEFER_PATH`
-requires exhaustive downstream coverage and legacy behavior requires differential tests.
+R4 must include differential legacy behavior proof and exhaustive downstream coverage for any new compute path such as `DEFER_PATH`. Old #131–#147 remain historical source material, not an accepted merge route.
 
 ### R1 schema commitment
 
-R1 canonical bytes/hashes are an interoperability contract. Field changes require a new
-schema version and golden vectors.
+R1 canonical bytes/hashes are an interoperability contract. Field changes require a new schema version and golden vectors.
 
 ## Other P1
 
-- ARM-03 remains heuristic proposal-only; candidate precision/privacy evidence is needed
-  before ARM-04.
-- Identity remains a legacy mutable prototype without accepted consent/scope,
-  contestation, audit/version and erasure lifecycle.
+- ARM-03 remains heuristic proposal-only; candidate precision/privacy evidence is needed before ARM-04.
+- Identity remains a legacy mutable prototype without accepted consent/scope, contestation, audit/version and erasure lifecycle.
 - Canon mutation ownership is not proven unified across every family.
 - `server.py` remains a composition monolith.
 - Shared API key is not per-user/tenant authorization.
