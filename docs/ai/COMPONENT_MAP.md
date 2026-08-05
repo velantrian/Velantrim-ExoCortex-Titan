@@ -1,66 +1,52 @@
 # 🗺️ Component and Authority Map
 
-Use the smallest relevant inspection surface and verify exact SHAs, callers and tests.
+Use exact SHAs, callers and tests. Presence is not wiring.
 
-## Continuity lineage
+## Continuity recovery lineage
 
-| Layer | Status | Primary surface |
+| Layer | State | Primary files |
 |---|---|---|
-| R1 | main/tested/unwired | `core/continuity/contracts.py` |
+| R1 | main/tested/unwired | `contracts.py` |
 | R2 | main/tested/unwired | `event_port.py`, `conversation_bridge.py`, `thread_weaver.py` |
-| R3 | main/tested/unwired | `context_pack.py`, `state_reconciler.py`, `goal_open_loop.py`, WorkingMemory adapters |
-| R4 | main/tested/unwired | `ContinuityComputeSignals`, `ContinuityComputeAssessment`, `assess_compute_with_continuity()` |
-| R5A | draft #205 / shadow only | `evaluation.py`, `advisory_shadow.py` |
-| R5B | not implemented | complete disabled orchestration runner |
+| R3 | main/tested/unwired | `context_pack.py`, `state_reconciler.py`, `goal_open_loop.py`, adapters |
+| R4 | main/tested/unwired | `core/compute_controller.py` compatible assessment API |
+| R5A | main/tested/unwired | `evaluation.py`, `advisory_shadow.py` |
+| R5B | draft #206 | `shadow_runner.py` |
 
-## R5A replay evaluation
-
-Start with:
-
-- `core/continuity/evaluation.py`;
-- `tests/test_continuity_evaluation.py`;
-- `docs/adr/ADR-2026-08-05-continuity-r5a-replay-advisory-shadow.md`.
-
-Audit questions:
-
-1. Are snapshot identities deterministic?
-2. Does replay divergence fail the report?
-3. Are all hard gates zero-tolerance?
-4. Can R4 final assessment decisions be hashed without execution?
-5. Are externally observed effects explicit counters rather than inferred successes?
-6. Are persistence, mutation and apply APIs absent?
-
-## R5A Advisory Shadow
+## R5B complete shadow runner
 
 Start with:
 
-- `core/continuity/advisory_shadow.py`;
-- `tests/test_continuity_advisory_shadow.py`;
-- `docs/ai/CONTINUITY_R5A_HANDOFF.md`.
+- `core/continuity/shadow_runner.py`;
+- `tests/test_continuity_shadow_runner.py`;
+- `docs/adr/ADR-2026-08-05-continuity-r5b-disabled-shadow-runner.md`;
+- `docs/ai/CONTINUITY_R5B_HANDOFF.md`.
 
 Audit questions:
 
-1. Does a failed replay report always produce text-free `DEFER`?
-2. Does non-private audience always silence personal continuity?
-3. Is every candidate triggered by an explicit typed signal?
-4. Does the signal resolve to exactly one supplied projection ID?
-5. Are inactive goals/resolved loops/non-blockers excluded?
-6. Are reminder/confirmation permissions enforced?
-7. Are basis refs mandatory for reminder-shaped candidates?
-8. Is deterministic priority independent of input order?
-9. Can a non-actionable higher signal be skipped safely?
-10. Is `shadow_only=False` rejected?
-11. Are delivery, answers, tools, actions and persistence absent?
-12. Is Advisory `DEFER` kept separate from compute routing?
+1. Does default execution return before any component call?
+2. Does `enabled=True` remain local object evaluation rather than runtime activation?
+3. Are all inputs already typed?
+4. Does Advisory intent resolve exactly one projection or fail closed?
+5. Are caller policy values copied rather than re-inferred?
+6. Does the runner use the existing WorkingMemoryGate and ContextPackBuilder?
+7. Does it call R4 `assess_compute_with_continuity()` rather than changing legacy compute routing?
+8. Is only the final R4 decision snapshotted, never executed?
+9. Do baseline and reversed-order replay produce the same snapshot?
+10. Do R5A hard-gate failures prevent reminder-shaped output?
+11. Are shared audiences silenced?
+12. Do all receipts include `NO_RUNTIME_AUTHORITY`?
+13. Are server, startup, worker, scheduler, persistence, network, answer, delivery, tool and action interfaces absent?
 
-## Canon and projection delivery
+## Authority ownership
 
-Start with `core/memory.py`, PromotionGateway, TruthGate, WriteGate, PolicyKernel, `core/projection_dispatcher.py` and migrations 020–022. Dispatcher runtime lifecycle remains unresolved.
+- truth/Canon: existing canonical memory/TruthGate paths;
+- WorkingMemory disposition: existing `WorkingMemoryGate`;
+- final prompt context: existing `ContextPackBuilder`;
+- compute routing: legacy `decide_compute_path()`; R4 assessment is separate shadow evidence;
+- Advisory selection: R5A shadow gate only;
+- runtime activation: no owner is accepted yet.
 
-## Identity
+## Other review surfaces
 
-`core/identity_layer.py` remains `LEGACY/UNWIRED`; do not activate it.
-
-## API/deployment/supply chain
-
-Start with `server.py`, `api/`, egress, Docker/compose, `pyproject.toml`, locks and workflows. Main risks remain composition breadth, shared-key authorization, profile ambiguity and reproducibility.
+Projection delivery remains unwired. Identity remains legacy/unwired. API/deployment review starts with `server.py`, API auth, egress, Docker/compose and dependency locks.

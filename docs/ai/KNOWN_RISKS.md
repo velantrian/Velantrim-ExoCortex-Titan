@@ -1,82 +1,55 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-05  
-**Current `main`:** `529d8b6b182b1a548d27558173f0aca473bcc400`
-
-Code presence does not close a risk. Closure requires focused/full validation, wiring and operational evidence.
+**Current `main`:** `58e29bba26299ce7003b62e73fd3b25e028956de`
 
 ## P0
 
-- Projection dispatcher is implemented/tested but not runtime-wired or observed.
-- Production compose contracts remain materially inconsistent.
-- Static-analysis and coverage scope do not uniformly cover all runtime surfaces.
-- Store-wide WAL/contention/crash/restart/disk-full testing is incomplete.
-- Dependency/build reproducibility and wheel/container parity remain incomplete.
+- projection dispatcher remains implemented/tested but unwired and unobserved;
+- production compose contracts remain inconsistent;
+- static-analysis/coverage scope is not uniform across every runtime surface;
+- store-wide contention/crash/restart/disk-full evidence remains incomplete;
+- build and artifact reproducibility remain incomplete.
 
-## P1 — Continuity R1–R4
+## P1 — Continuity R1–R5A
 
-R1 contracts, R2 read-side, R3 projections and R4 compute assessment are in main and tested. They remain unwired and non-user-facing.
+All accepted layers are in main and tested but remain unwired. They do not provide trusted producers, durable lifecycle, consent, tenant authorization, calibration, monitoring or live user behavior.
 
-Residual risks include missing trusted producers, policy ownership, durable adapter, consent, tenant isolation, retention, erasure, access control, calibration and operational evidence.
+## P1 — R5B complete shadow composition
 
-## P1 — R5A replay evaluation
+Draft PR #206 composes the full path in memory. Residual risks:
 
-Draft PR #205 adds deterministic snapshots and zero-tolerance gates.
+- `enabled=True` could be mistaken for production activation despite being local-call permission only;
+- every typed record can be wrong or forged if upstream producer trust is weak;
+- caller-supplied Gate policy facts have no accepted single owner;
+- Advisory intent exact resolution prevents inference but does not authenticate the target subject;
+- replay equality proves deterministic artifacts, not semantic correctness;
+- explicit safety counters can under-report external effects if their producer is incomplete;
+- process-local results and receipts have no durable retention/erasure lifecycle;
+- no bounded input-count/resource policy is accepted for large episode/assertion sets;
+- ThreadWeaver remains potentially O(n²) on large batches;
+- proposed Advisory text has no localization, anti-spam, scheduling or cancellation contract;
+- no runtime feature flag, rollback, SLO, monitoring or operator workflow exists;
+- adding a future server/startup caller could accidentally convert evaluation into authority.
 
-Residual risks:
+Required before any live use:
 
-- privacy/query-write/silent-overwrite counters not derivable from pure artifacts are caller supplied;
-- a dishonest or incomplete observer can under-report external effects;
-- snapshot equality proves deterministic artifacts, not semantic correctness;
-- the replay corpus, scenario coverage and hidden holdouts are not supplied by R5A;
-- compute assessment provenance is represented by the final decision hash, not the whole R4 assessment object;
-- reports are process objects only and are not durably retained;
-- no operational baseline, SLO or alert exists.
+1. trusted and authenticated producers;
+2. tenant/subject authorization and purpose-bound consent;
+3. bounded input/resource policy;
+4. durable evidence, retention and erasure design;
+5. replay corpus, calibration and adversarial evaluation;
+6. explicit runtime owner, feature flag, monitoring and rollback;
+7. delivery anti-spam/localization/scheduling/cancellation;
+8. separate activation ADR and operator approval.
 
-Required before runtime evaluation:
+## P1 — other
 
-1. trusted observation producer;
-2. versioned replay corpus and holdouts;
-3. durable evidence/retention policy;
-4. calibration and false-pass analysis;
-5. operator review of hard-gate coverage.
-
-## P1 — R5A Advisory Shadow
-
-Residual risks:
-
-- relevance signals are caller supplied and can be forged or overproduced;
-- private audience is asserted by the caller, not authenticated here;
-- projection source refs can be stale or cross-tenant if upstream policy fails;
-- proposed Russian text has no localization contract;
-- no anti-spam, frequency cap, scheduling, cancellation, delivery or consent runtime;
-- no user-visible feedback loop or effectiveness metric;
-- reminder-shaped candidates are proposals only, but careless future wiring could bypass that boundary;
-- Advisory `DEFER` could be confused with compute defer unless documentation remains explicit;
-- candidate/receipt objects are not persisted or erased by a durable lifecycle;
-- high/critical sensitivity is recorded but not a complete domain policy.
-
-Required before live advisory:
-
-1. trusted signal and audience owner;
-2. tenant/subject authorization;
-3. explicit opt-in and purpose binding;
-4. anti-spam, scheduling, cancellation and localization;
-5. durable receipt/erasure policy;
-6. shadow metrics and operator approval;
-7. separate activation ADR and rollback plan.
-
-## R5B remains unimplemented
-
-Historical #147 is stale and depends on historical R4/R5 APIs. A complete runner must be rebuilt on the accepted current APIs, disabled by default and independently reviewed.
-
-## Other P1
-
-- ARM-03 remains heuristic proposal-only.
-- Identity remains a legacy mutable prototype without accepted lifecycle.
-- Canon mutation ownership is not proven unified across every family.
-- `server.py` remains a composition monolith.
-- Shared API key is not per-user/tenant authorization.
+- ARM-03 remains heuristic proposal-only;
+- identity remains a legacy mutable prototype without accepted lifecycle;
+- Canon mutation ownership is not proven unified across every family;
+- `server.py` remains a composition monolith;
+- shared API key is not per-user/tenant authorization.
 
 ## Update rule
 

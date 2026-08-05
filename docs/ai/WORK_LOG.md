@@ -1,67 +1,68 @@
 # 🧾 AI Engineering Work Log
 
-Current architecture-significant hand-off. Re-verify exact SHAs and current PR evidence.
+Re-verify exact SHAs and current PR evidence.
 
 ---
 
-## 2026-08-05 — Continuity R5A replay and Advisory recovery
+## 2026-08-05 — Continuity R5B disabled complete runner
 
-**Scope:** draft PR #205; base `529d8b6b182b1a548d27558173f0aca473bcc400`; initial code head `574bf46646c84dc50aacb40d5c86324fe8b8396f`; historical sources #145/#146.
+**Scope:** draft PR #206; base `58e29bba26299ce7003b62e73fd3b25e028956de`; initial runner head `0e0679feb234455f6a5768c7f9e783f00abb5889`; focused-tested head `a4a6e08462fc948fb1e5620968ecdaa93d28703f`; historical source #147.
 
 ### Verified before change
 
-- R1–R4 are independently rebuilt on current main and remain unwired;
-- historical #145 replay design is compatible with the preserved R4 `ComputeDecision`;
-- historical #146 GitHub run failed mypy and skipped tests;
-- no current-main replay evaluation or Advisory Shadow module existed.
+- R1–R5A are independently rebuilt on current main and remain unwired;
+- historical #147 depends on a rejected historical compute signature;
+- no current-main component composed the complete path;
+- current R4 and R5A APIs preserve compute/advisory authority separation.
 
 ### Changed
 
-- recovered deterministic shadow snapshot and replay comparison contracts;
-- restored zero-tolerance privacy/provenance/budget/Canon-write/divergence/overwrite gates;
-- added tests for R4 final-decision snapshot compatibility;
-- redesigned Advisory Shadow as smaller v2 contract;
-- required passed replay, private audience, explicit signal, exact projection, actionable status, permission and basis refs;
-- limited candidate dispositions to remind, ask confirmation, defer and silence;
-- separated Advisory defer from compute routing;
-- fixed the historical optional-candidate mypy/control-flow defect;
-- added deterministic priority and order-invariance tests;
-- added R5A ADR, hand-off, state, component and risk documentation.
+- added a default-disabled complete in-memory runner;
+- composed threads, context, state, goals, open loops, WorkingMemory, ContextPack, R4 assessment, R5A replay and Advisory Shadow;
+- added exact Advisory semantic-reference resolution;
+- added immutable result and receipt identities;
+- required `NO_RUNTIME_AUTHORITY`, unchanged-main-answer, unchanged-Canon and shadow-only receipt reasons;
+- added disabled short-circuit, complete-pipeline, replay, hard-gate, audience, exact-target, determinism, immutability and no-runtime-interface tests;
+- added R5B ADR and AI hand-off/state/component/risk documentation.
+
+### Test-model correction
+
+The first test used two conflicting assertions from one author. The existing reconciler correctly treated the newer record as superseding the older one. The runner end-to-end Advisory test now uses an explicitly attested active goal. Contested priority remains covered in R5A. Production runner code was unchanged.
 
 ### Authority decisions
 
-- no runner, runtime, startup, worker or query wiring;
-- no raw-text relevance or psychological inference;
-- no reminder delivery, answer modification, persistence or tools/actions;
-- no Canon, ESM, TruthGate, memory or policy mutation;
-- no feature activation or user-visible behavior.
+- no startup, server, worker, scheduler, query or runtime registration;
+- no persistence, migration, retrieval or network calls;
+- no Canon/ESM/TruthGate/policy mutation;
+- no answer modification, reminder delivery, tools, actions or user-visible output;
+- no live activation.
 
 ### Validation
 
-Initial focused Continuity gate passed. Final-head Continuity, full CI and Docker runs remain the merge authority after documentation synchronization.
+Focused Continuity passed on `a4a6e084...`. Final-head Continuity, full CI and Docker remain the merge authority after documentation synchronization.
 
-### Remaining after R5A
+### After R5B
 
-R5B: rebuild a complete disabled orchestration runner on accepted R1–R5A APIs without runtime authority.
+Continuity Milestone 1 recovery is complete only as a disabled tested composition. Next work is producer trust, privacy, policy, durable evidence and operational governance—not automatic runtime activation.
 
 ---
 
-## 2026-08-05 — Continuity R4 compatible compute assessment
+## 2026-08-05 — Continuity R5A
 
-PR #204 merged as `529d8b6b182b1a548d27558173f0aca473bcc400`; historical #144 closed. Legacy compute API and RapidOrientation exhaustiveness preserved.
+PR #205 merged as `58e29bba26299ce7003b62e73fd3b25e028956de`; historical #145/#146 closed.
 
-## 2026-08-05 — Continuity R3 projection recovery
+## 2026-08-05 — Continuity R4
+
+PR #204 merged as `529d8b6b182b1a548d27558173f0aca473bcc400`; historical #144 closed.
+
+## 2026-08-05 — Continuity R3
 
 PR #203 merged as `a19d16656676ad5c98c92d4776e9709edbfb920c`; historical #138–#143 closed.
 
-## 2026-08-05 — Continuity R2 shadow/read-side recovery
+## 2026-08-05 — Continuity R2
 
 PR #202 merged as `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e`; historical #133/#135/#136 closed.
 
-## 2026-08-05 — Continuity R1 immutable foundation
+## 2026-08-05 — Continuity R1
 
-PR #201 merged as `06529700d70854504b88629eeecf737bdc6b81d5`; old #131/#132 closed.
-
-## 2026-08-05 — ARM-03 selective-memory recovery
-
-PR #200 merged as `bea535d8fd5f7d59d3f1cee02d060bd026ac05cb`; old #102 closed.
+PR #201 merged as `06529700d70854504b88629eeecf737bdc6b81d5`; historical #131/#132 closed.
