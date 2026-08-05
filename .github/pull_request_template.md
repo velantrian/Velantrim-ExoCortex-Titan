@@ -31,14 +31,27 @@ Do not remove this block; it is the hand-off contract for humans and AI agents.
 
 - Documentation impact: `NONE` / `GITHUB_ONLY` / `GITHUB_AND_NOTION`
 - GitHub documentation updated (paths, or `NOT_REQUIRED` with reason):
-- Notion synchronization: `NOT_REQUIRED` / `PLANNED` / `DONE` / `BLOCKED`
+- GitHub contains the complete technical/audit context without Notion: `YES` / `NO`
+- Notion access: `AVAILABLE` / `UNAVAILABLE` / `NOT_REQUIRED`
+- Notion synchronization: `NOT_REQUIRED` / `PLANNED` / `HANDOFF_REQUIRED` / `SYNCED` / `BLOCKED_PRIVACY_OR_PERMISSION`
+- GitHub hand-off path: `docs/ai/NOTION_HANDOFF.md#...` / `NOT_REQUIRED`
 - Notion record (safe title, internal reference, or public URL):
 - Decision / ADR reference:
 - Historical note: what changed from the original plan, if anything?
 
-For `GITHUB_AND_NOTION`, the PR must remain draft until the Notion record contains the
-motivation, intended function, decision, alternatives, evidence, exact reality status,
-limitations, and PR link. After merge, add the final merge SHA to Notion.
+For `GITHUB_AND_NOTION` work:
+
+- an actor with Notion access updates both systems in the same work cycle;
+- an actor without Notion access completes the GitHub record and creates a structured
+  `HANDOFF_REQUIRED` item in `docs/ai/NOTION_HANDOFF.md`;
+- no actor may claim `SYNCED` without verifying the intended Notion record;
+- `BLOCKED_PRIVACY_OR_PERMISSION` is reserved for a real privacy, permission, or
+  unresolved-target problem, not for the mere absence of a connector;
+- implementation and architectural PRs remain draft until the required synchronization
+  is verified.
+
+After merge, add the final merge SHA, CI evidence, limitations, and deviations from the
+original plan to the Notion record or active hand-off item.
 
 ### AI context files
 
@@ -49,6 +62,7 @@ For architecture, runtime wiring, deployment posture, or known-risk changes:
 - [ ] `docs/ai/COMPONENT_MAP.md` updated or not applicable with reason.
 - [ ] `docs/ai/WORK_LOG.md` entry added or not applicable with reason.
 - [ ] ADR added/updated for a durable architectural decision or not applicable with reason.
+- [ ] Connectorless hand-off added/closed or not applicable with reason.
 
 ## Remaining limitations
 
