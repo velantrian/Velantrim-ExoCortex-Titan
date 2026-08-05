@@ -2,83 +2,60 @@
 
 Use the smallest relevant inspection surface and verify exact SHAs, callers and tests.
 
-## Authority rules
+## Continuity lineage
 
-Continuity, retrieval, selective-memory extraction, advisory and projections do not acquire Canon authority. Origin/inference is not truth, attestation, compute permission or action authority. One decision type has one owner.
+| Layer | Status | Primary surface |
+|---|---|---|
+| R1 | main/tested/unwired | `core/continuity/contracts.py` |
+| R2 | main/tested/unwired | `event_port.py`, `conversation_bridge.py`, `thread_weaver.py` |
+| R3 | main/tested/unwired | `context_pack.py`, `state_reconciler.py`, `goal_open_loop.py`, WorkingMemory adapters |
+| R4 | main/tested/unwired | `ContinuityComputeSignals`, `ContinuityComputeAssessment`, `assess_compute_with_continuity()` |
+| R5A | draft #205 / shadow only | `evaluation.py`, `advisory_shadow.py` |
+| R5B | not implemented | complete disabled orchestration runner |
+
+## R5A replay evaluation
+
+Start with:
+
+- `core/continuity/evaluation.py`;
+- `tests/test_continuity_evaluation.py`;
+- `docs/adr/ADR-2026-08-05-continuity-r5a-replay-advisory-shadow.md`.
+
+Audit questions:
+
+1. Are snapshot identities deterministic?
+2. Does replay divergence fail the report?
+3. Are all hard gates zero-tolerance?
+4. Can R4 final assessment decisions be hashed without execution?
+5. Are externally observed effects explicit counters rather than inferred successes?
+6. Are persistence, mutation and apply APIs absent?
+
+## R5A Advisory Shadow
+
+Start with:
+
+- `core/continuity/advisory_shadow.py`;
+- `tests/test_continuity_advisory_shadow.py`;
+- `docs/ai/CONTINUITY_R5A_HANDOFF.md`.
+
+Audit questions:
+
+1. Does a failed replay report always produce text-free `DEFER`?
+2. Does non-private audience always silence personal continuity?
+3. Is every candidate triggered by an explicit typed signal?
+4. Does the signal resolve to exactly one supplied projection ID?
+5. Are inactive goals/resolved loops/non-blockers excluded?
+6. Are reminder/confirmation permissions enforced?
+7. Are basis refs mandatory for reminder-shaped candidates?
+8. Is deterministic priority independent of input order?
+9. Can a non-actionable higher signal be skipped safely?
+10. Is `shadow_only=False` rejected?
+11. Are delivery, answers, tools, actions and persistence absent?
+12. Is Advisory `DEFER` kept separate from compute routing?
 
 ## Canon and projection delivery
 
-Start with `core/memory.py`, PromotionGateway, TruthGate, WriteGate, PolicyKernel, `core/projection_dispatcher.py` and migrations 020–022. Main risks: mutation ownership is not proven unified and projection delivery has no accepted runtime lifecycle or backlog observability.
-
-## Selective memory — ARM-03
-
-`MAIN + TESTED + DEFAULT OFF / NOT WIRED`. Proposal-only. Start with `core/selective_memory_candidates.py`, focused tests, workflow, benchmark, replay and ADR.
-
-## Continuity R1 — immutable contracts
-
-| Item | Value |
-|---|---|
-| Status | `MAIN + TESTED / CONTRACTS ONLY` |
-| Files | `core/continuity/contracts.py`, public exports |
-| Merge | `06529700d70854504b88629eeecf737bdc6b81d5` |
-
-## Continuity R2 — shadow ledger, bridge and threads
-
-| Item | Value |
-|---|---|
-| Status | `MAIN + TESTED / SHADOW READ-SIDE / NOT WIRED` |
-| Merge | `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e` |
-| Event port | `core/continuity/event_port.py` |
-| Conversation bridge | `core/continuity/conversation_bridge.py` |
-| Thread projection | `core/continuity/thread_weaver.py` |
-
-## Continuity R3 — projections and WorkingMemory adapters
-
-| Item | Value |
-|---|---|
-| Status | `MAIN + TESTED / PROJECTIONS / NOT WIRED` |
-| Merge | `a19d16656676ad5c98c92d4776e9709edbfb920c` |
-| Context projection | `core/continuity/context_pack.py` |
-| Context adapter | `core/continuity/working_memory_adapter.py` |
-| State reconciliation | `core/continuity/state_reconciler.py` |
-| Goal/open-loop projections | `core/continuity/goal_open_loop.py` |
-| Projection adapter | `core/continuity/projection_working_memory_adapter.py` |
-| Ownership ADR | `docs/adr/ADR-CONT-SYN-01-contract-reconciliation.md` (`PROPOSED`) |
-
-## Continuity R4 — compatible compute assessment
-
-| Item | Value |
-|---|---|
-| Status | draft PR #204 / shadow only / not wired |
-| Legacy owner | `decide_compute_path()` in `core/compute_controller.py` |
-| New input | `ContinuityComputeSignals` |
-| New output | `ContinuityComputeAssessment` |
-| New API | `assess_compute_with_continuity()` |
-| ADR | `ADR-2026-08-05-continuity-r4-compatible-compute-assessment.md` |
-| Hand-off | `docs/ai/CONTINUITY_R4_HANDOFF.md` |
-
-R4 audit questions:
-
-1. Is the legacy `decide_compute_path()` signature unchanged?
-2. Are exactly five `ComputePath` enum values retained?
-3. Is direct positional `ComputeDecision` construction still valid?
-4. Is the old seven-key `to_dict()` payload unchanged?
-5. Does the legacy decision matrix remain identical?
-6. Does `RapidOrientation` remain exhaustive over every path?
-7. Are continuity inputs typed and fail-closed?
-8. Can continuity only preserve, raise to VERIFY or cap degraded DEEP?
-9. Is VERIFY never downgraded?
-10. Are retrieval, persistence, Canon, answer, action and runtime APIs absent?
-11. Is `shadow_only=False` rejected?
-12. Is there no live caller or feature activation?
-
-## Continuity R5 — later recovery
-
-Replay evaluation, Advisory shadow and disabled complete runner remain unimplemented on current main. Historical #145–#147 are source material, not accepted merge targets.
-
-## Compute and orientation
-
-Legacy compute owner: `ComputeController`. New enum members require exhaustive downstream mapping. `RapidOrientation` currently exhaustively maps the five accepted paths; this is why R4 does not add DEFER.
+Start with `core/memory.py`, PromotionGateway, TruthGate, WriteGate, PolicyKernel, `core/projection_dispatcher.py` and migrations 020–022. Dispatcher runtime lifecycle remains unresolved.
 
 ## Identity
 
@@ -86,4 +63,4 @@ Legacy compute owner: `ComputeController`. New enum members require exhaustive d
 
 ## API/deployment/supply chain
 
-Start with `server.py`, `api/`, egress, Docker/compose, `pyproject.toml`, locks and workflows. Main risks are composition breadth, shared-key authorization, profile ambiguity, verification scope and reproducibility.
+Start with `server.py`, `api/`, egress, Docker/compose, `pyproject.toml`, locks and workflows. Main risks remain composition breadth, shared-key authorization, profile ambiguity and reproducibility.
