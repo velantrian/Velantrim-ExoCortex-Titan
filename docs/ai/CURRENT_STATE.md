@@ -1,145 +1,139 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-05  
-**Baseline branch:** `main`  
-**Baseline commit:** `024454e5ee17a52f6de321e6917bf29eb5cc88ca`
+**Reference main before PR #200:** `649d12953eb141aa783729555861e788cc03c150`  
+**ARM-03 review surface:** PR #200
 
-This is a compact orientation snapshot. It must be re-verified after relevant merges.
-It does not replace code, tests, current GitHub checks, or runtime observation.
+This is a compact orientation snapshot. Verify material claims against the exact checkout,
+current PR head, tests, workflows, configuration and runtime evidence.
 
 ## Status vocabulary
 
 | Status | Meaning |
 |---|---|
-| `MAIN` | present in the baseline `main` commit |
-| `TESTED` | focused tests exist; this is not a production guarantee |
-| `WIRED` | called by a production/runtime path |
-| `ENABLED` | enabled by the selected runtime profile |
+| `MAIN` | present in the checked-out `main` tree |
+| `TESTED` | focused or full tests passed at a recorded SHA |
+| `WIRED` | called by an accepted runtime path |
+| `ENABLED` | activated by the selected profile/configuration |
 | `OBSERVED` | verified in a running instance with evidence |
-| `OPEN PR` | not part of `main` |
+| `OPEN PR` | proposed tree outside `main` |
 | `RESEARCH` | design/proposal without runtime authority |
-| `LEGACY/UNWIRED` | code exists but has no accepted production role |
+| `LEGACY/UNWIRED` | code exists without an accepted production role |
 
-## Main baseline
-
-### Canon and promotion
+## Canon and promotion
 
 - `PromotionGateway` and the shared promotion primitive are in `main`.
-- Five standard promotion callers are documented as runtime-wired.
-- The gateway is not yet proven to be the sole owner of every mutation family.
+- Standard promotion callers are runtime-wired, but the gateway is not yet proven to be
+  the sole owner of every mutation family.
+- Projection intent creation is part of validated promotion on migrated databases.
 - World Skills curated ingest remains an explicit exception.
-- Projection intent creation is part of the validated-promotion transaction on migrated
-  databases.
 
-**Do not claim:** every canonical mutation in the repository is governed by one typed
-mutation envelope.
+**Do not claim:** every canonical mutation uses one typed envelope.
 
-### Projection outbox and dispatcher
+## Projection delivery
 
-- Projection outbox, version-monotonic FTS apply, checkpoints, and the bounded local
-  dispatcher are in `main`.
-- Lease/CAS/retry/park/ack and apply-before-ack crash recovery are tested.
-- `dispatch_once()` is a plain callable.
-- There is no server startup registration, scheduler, background worker, invocation
-  cadence, backlog SLO, or reconciliation loop in `main`.
+- Projection outbox, version-monotonic FTS application, checkpoints and bounded local
+  dispatch are implemented and tested.
+- `dispatch_once()` remains a plain callable without an accepted production scheduler,
+  lifecycle owner, cadence, backlog SLO or reconciliation loop.
 
-**Status:** `MAIN + TESTED`, but **not `WIRED`, not `ENABLED`, and not `OBSERVED`**.
+**Status:** `MAIN + TESTED`, but not `WIRED`, `ENABLED` or `OBSERVED` as a worker.
 
-### Runtime and deployment
+## Selective memory — ARM-03
 
-- The server is fail-closed for API access unless explicitly configured open.
-- Remote egress policy is validated at boot.
-- Docker runtime is non-root and has strong image-content checks.
-- `server.py` remains a large composition module containing configuration, lifecycle,
-  stores, routes, and provider wiring.
-- The repository currently presents both `docker-compose.yml` and
-  `docker-compose.prod.yml` as production-oriented profiles with materially different
-  defaults. This production contract is not reconciled.
-- Authentication is a shared API-key model, not per-user accounts, roles, scopes, or
-  tenant isolation.
+The tree proposed by PR #200 contains a bounded, dependency-free selective-memory
+candidate extractor.
 
-### CI and packaging
+Implemented contract:
 
-- Main CI runs branding, hygiene, architecture-freeze, Ruff, mypy, and pytest.
-- Ruff and mypy are focused on `core/`; important runtime surfaces such as `server.py`,
-  `api/`, and `utils/` are not all covered by the same static gate.
-- Coverage has a configured threshold but the primary CI command does not enforce it.
-- CI currently targets Python 3.11 only.
-- Dependency ranges are broad and the lockfile is not the authoritative CI/install path.
-- The wheel package set and the Docker runtime asset set are not identical products.
+- default-off flag `ENABLE_SELECTIVE_MEMORY_CANDIDATE_SHADOW`;
+- exact source offsets and SHA-256 span hashes;
+- typed candidate, temporal scope and `RetentionReason`;
+- `extraction_confidence`, explicitly distinct from truth confidence;
+- optional `subject_ref` and `context_id` bound into candidate identity;
+- contact/credential redaction and explicit safe portable serialization;
+- bounded English/Russian prompt-to-memory injection detection with default rejection;
+- deterministic within-input `POSSIBLE_UPDATE_OF` hints;
+- focused workflow, tests, benchmark and replay fixture.
 
-## Continuity stack — open PRs
+Authority boundary:
 
-The Continuity work is a stacked draft series rooted at PR #131 and continuing through
-PR #147. It is **not part of `main`**.
+- no `/query` wiring;
+- no database or persistence access;
+- no Canon, ESM, TruthGate, WriteGate or WorkingMemory authority;
+- no model, embedding, graph or network dependency;
+- no response, reminder, tool or action authority;
+- no ARM-04 admission path.
 
-Architectural intent:
+When this tree is present in `main`, its status is `MAIN + TESTED + DEFAULT OFF`, but it
+remains **not `WIRED`, not `ENABLED` by default and not `OBSERVED`**. A candidate is a
+proposal, not admitted memory or truth.
+
+## Runtime and deployment
+
+- API access and remote-egress policy are fail-closed under the documented production
+  settings.
+- Docker runs non-root and has image/runtime hardening checks.
+- `server.py` remains a broad composition module.
+- `docker-compose.yml` and `docker-compose.prod.yml` still express materially different
+  production-oriented postures.
+- Authentication remains a shared API-key model, not per-user authorization or tenant
+  isolation.
+
+## CI and packaging
+
+- Main CI runs branding, repository hygiene, architecture freeze, Ruff, blocking mypy
+  and full pytest.
+- Important runtime surfaces are not all covered by one static-analysis gate.
+- The configured coverage target is not the same thing as a universally enforced full
+  repository threshold.
+- Dependency/build reproducibility and wheel/container parity remain incomplete.
+- ARM-03 adds a path-scoped blocking workflow for its contracts, benchmark and replay.
+
+## Continuity stack
+
+PRs #131–#147 remain a historical stacked draft series outside `main`. Do not merge the
+old chain directly.
+
+Required recovery approach:
 
 ```text
-neutral event ledger
-→ deterministic thread linking
-→ current-state reconciliation
-→ typed goal/open-loop projections
-→ WorkingMemory adapters
-→ continuity-aware compute signals
-→ replay evaluation
-→ advisory shadow
+current main
+→ contracts and conformance
+→ ledger / conversation bridge / deterministic threads
+→ context / state / goals / open loops / working-memory adapters
+→ compute signals / replay / advisory
 → disabled complete shadow runner
 ```
 
-Current conclusions:
+Known constraints:
 
-- the stack is deliberately separate from Canon truth and canonical writes;
-- model inference is not allowed to silently override a user statement;
-- conflicts are represented rather than silently resolved;
-- advisory behavior is shadow-only and disabled by default;
-- no formal independent review has been recorded for the stack;
-- the producer path from a live conversation to trusted `GoalAttestation` or
-  `OpenLoopSignal` is not implemented;
-- PR #146 is `mergeable: true` but `mergeable_state: unstable` because the
-  `Continuity contracts` workflow fails at mypy;
-- the concrete failure is an optional-type assignment in
-  `core/continuity/advisory_shadow.py`;
-- PR #147 contains a behavior-neutral typing fix that should be moved down so PR #146
-  is independently green;
-- PR #144 changes the public compute contract beyond adding an optional input:
-  `DEFER_PATH`, immutable/slotted contracts, tuple reasons, strict validation, policy
-  version, rebuild state, and defer reason;
-- on the #144 branch, `core/rapid_orientation.py` does not map `DEFER_PATH` in
-  `_cost_for_path()`. The path is currently unreachable there because the caller does
-  not pass continuity signals, but future wiring would raise `KeyError`.
-
-**Required before merge:** focused review gates, a green #146, exhaustive enum-consumer
-tests, differential legacy compatibility tests for #144, and a clean rebase of the
-upper stack.
+- PR #147 contains a typing fix owned by the #146 layer;
+- `DEFER_PATH` needs exhaustive downstream-consumer coverage, including Rapid
+  Orientation cost mapping;
+- legacy compatibility requires differential tests;
+- a trusted live dialogue → candidate → attestation producer is absent;
+- all stages remain shadow-only until separately reviewed and validated.
 
 ## Identity layer
 
-`core/identity_layer.py` exists in `main`, but it is not an accepted production identity
-protocol.
+`core/identity_layer.py` remains `LEGACY/UNWIRED`:
 
-Observed characteristics:
+- direct mutable storage;
+- no accepted assertion/admission/reconciliation lifecycle;
+- no proven audit/version/consent/scope/erasure closure;
+- no accepted production owner.
 
-- direct `INSERT OR REPLACE` storage;
-- no automatic version increment;
-- no AuditChain or VersionStore integration;
-- no accepted assertion lifecycle (`CURRENT`, `CONTESTED`, `SUPERSEDED`, `RETRACTED`);
-- no user/tenant scope or proven erasure closure;
-- no focused tests or established runtime callers found in the audit;
-- module comments promise stronger invariants than the implementation proves.
+Do not activate it. A separate Identity Assertion/Admission/Reconciliation protocol is
+required.
 
-**Status:** `LEGACY/UNWIRED`. Do not activate it or patch it into a parallel governance
-system. A separate Identity Assertion/Admission/Reconciliation design is required.
-RFC-0084 may govern changes to the identity mechanism, but it is not itself the content
-model for identity assertions.
+## Evidence required for status changes
 
-## Evidence needed to refresh this document
+Record:
 
-Before changing a status, record:
-
-- exact commit or PR head SHA;
-- changed files and runtime callers;
-- focused tests and static checks;
-- whether the component is wired and enabled;
-- relevant runtime evidence or an explicit statement that none exists;
+- exact commit or PR head;
+- changed files and callers;
+- focused and full validation;
+- wiring, enablement and observation state;
+- privacy/safety boundaries;
 - remaining exceptions and failure modes.
