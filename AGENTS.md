@@ -10,13 +10,17 @@ Read in this order:
 1. [`README.md`](README.md) — public purpose and maturity claim.
 2. [`SYSTEM_OVERVIEW.md`](SYSTEM_OVERVIEW.md) — high-level system architecture.
 3. [`docs/ai/README.md`](docs/ai/README.md) — AI context-pack manifest.
-4. [`docs/ai/CURRENT_STATE.md`](docs/ai/CURRENT_STATE.md) — verified `main`, open-PR,
+4. [`docs/ai/DOCUMENTATION_SYNC_PROTOCOL.md`](docs/ai/DOCUMENTATION_SYNC_PROTOCOL.md)
+   — GitHub and Notion definition of done.
+5. [`docs/ai/CURRENT_STATE.md`](docs/ai/CURRENT_STATE.md) — verified `main`, open-PR,
    research and legacy status.
-5. Relevant section of
+6. Relevant section of
    [`docs/ai/COMPONENT_MAP.md`](docs/ai/COMPONENT_MAP.md).
-6. Relevant risks in [`docs/ai/KNOWN_RISKS.md`](docs/ai/KNOWN_RISKS.md).
-7. Recent relevant entries in [`docs/ai/WORK_LOG.md`](docs/ai/WORK_LOG.md).
-8. [`docs/ai/AUDIT_PLAYBOOK.md`](docs/ai/AUDIT_PLAYBOOK.md) for audit work.
+7. Relevant risks in [`docs/ai/KNOWN_RISKS.md`](docs/ai/KNOWN_RISKS.md).
+8. Recent relevant entries in [`docs/ai/WORK_LOG.md`](docs/ai/WORK_LOG.md).
+9. [`docs/ai/AUDIT_PLAYBOOK.md`](docs/ai/AUDIT_PLAYBOOK.md) for audit work.
+10. [`docs/ai/NOTION_HANDOFF.md`](docs/ai/NOTION_HANDOFF.md) when a required Notion
+    synchronization cannot be completed directly.
 
 Then inspect only the affected code, callers, tests, ADRs, PRs and workflows. Do not
 load every historical audit or the entire repository unless the evidence requires it.
@@ -41,6 +45,7 @@ Never treat an open PR or research document as behavior already present in `main
 
 For every significant component, distinguish:
 
+- **proposed** — design or research exists but is not merged implementation;
 - **implemented** — code exists;
 - **tested** — focused tests exist and their result is known;
 - **wired** — a production/runtime caller exists;
@@ -150,19 +155,56 @@ For stacked changes:
 
 A green child PR does not repair a red parent.
 
-## 7. Documentation update obligation
+## 7. Documentation and Notion synchronization obligation
 
 Any PR that materially changes architecture, runtime wiring, authority boundaries,
-deployment posture, or a known risk must update the relevant AI context documents:
+deployment posture, project direction, or a known risk must update the relevant public
+GitHub documentation:
 
 - `docs/ai/CURRENT_STATE.md` for verified status changes;
 - `docs/ai/KNOWN_RISKS.md` for opened, narrowed or closed risks;
 - `docs/ai/COMPONENT_MAP.md` for ownership or first-read path changes;
 - `docs/ai/WORK_LOG.md` for significant work and hand-off;
-- an ADR for durable architectural decisions.
+- an ADR/RFC for durable architectural decisions;
+- any affected security, deployment, status, user, or research documents.
+
+Every PR must follow
+[`docs/ai/DOCUMENTATION_SYNC_PROTOCOL.md`](docs/ai/DOCUMENTATION_SYNC_PROTOCOL.md)
+and classify its documentation impact as `NONE`, `GITHUB_ONLY`, or
+`GITHUB_AND_NOTION`.
+
+### GitHub completeness invariant
+
+GitHub must contain enough public technical and audit context for an AI or human reviewer
+to understand, verify, and continue the work without Notion access. Implemented behavior,
+material findings, known risks, exact evidence, architectural decisions, blockers, and
+required next actions must never exist only in Notion.
+
+### When Notion is available
+
+For `GITHUB_AND_NOTION`, update the corresponding Notion decision/history record in the
+same work cycle. Include motivation, intended function, decision, alternatives, evidence,
+exact reality status, limitations, PR, and final merge SHA.
+
+### When Notion is unavailable
+
+Do not abandon the task and do not claim that Notion was updated. Complete the GitHub
+record, add a structured item to
+[`docs/ai/NOTION_HANDOFF.md`](docs/ai/NOTION_HANDOFF.md), and set:
+
+- `Notion access: UNAVAILABLE`;
+- `Notion synchronization: HANDOFF_REQUIRED`;
+- the exact GitHub hand-off path.
+
+A connected human or AI must verify the GitHub evidence, update Notion, and mark the item
+`SYNCED`. `BLOCKED_PRIVACY_OR_PERMISSION` is reserved for a real privacy, permission, or
+unresolved-target problem, not merely the absence of a connector.
+
+Do not expose private Notion content or private workspace URLs in this public repository.
+A safe page title or internal reference may be used in the public PR.
 
 Do not copy stale test counts or unverified PR claims into current-state documentation.
-Use exact dates, SHAs, PR/issue numbers, and remaining limitations.
+Use exact dates, SHAs, PR/issue numbers, evidence, and remaining limitations.
 
 ## 8. Change discipline
 
@@ -174,7 +216,7 @@ Before writing:
 4. preserve default-off/shadow-only boundaries unless activation is explicitly in scope;
 5. make the smallest coherent change;
 6. validate it;
-7. update documentation and the work log;
+7. update GitHub documentation and Notion or create a structured hand-off;
 8. open a draft PR with evidence and remaining risks.
 
 Do not silently merge unrelated cleanup, broad refactors, feature activation, or policy
