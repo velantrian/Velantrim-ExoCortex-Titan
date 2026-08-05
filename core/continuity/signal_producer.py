@@ -197,7 +197,7 @@ class ContinuitySignalPolicy:
         minimum_confirmations: int,
         max_contradiction_count: int,
         policy_version: str = SIGNAL_PRODUCER_POLICY_VERSION,
-    ) -> "ContinuitySignalPolicy":
+    ) -> ContinuitySignalPolicy:
         version = _text(policy_version, "policy_version")
         producers = _non_empty_frozenset(trusted_producers, "trusted_producers")
         sources = _non_empty_frozenset(allowed_source_types, "allowed_source_types")
