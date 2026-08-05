@@ -1,7 +1,8 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-05  
-**Current `main`:** `c7ad5a171ccc6da5015b67b8cefd6d60649d6792`
+**Current verified implementation head:** `c7ad5a171ccc6da5015b67b8cefd6d60649d6792`  
+**Governance documentation checkpoint:** PR #212, merge `7ca49685d5f648d384bd81245709233cfafa4748`
 
 Verify material claims against exact SHAs, tests, workflows, wiring, configuration and runtime evidence. `PROPOSED`, `MAIN`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` are separate states.
 
