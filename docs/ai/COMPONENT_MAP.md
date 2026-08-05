@@ -2,18 +2,18 @@
 
 Use exact SHAs, callers and tests. Presence is not wiring.
 
-## Continuity recovery lineage
+## Continuity Milestone 1 — accepted current-main lineage
 
-| Layer | State | Primary files |
-|---|---|---|
-| R1 | main/tested/unwired | `contracts.py` |
-| R2 | main/tested/unwired | `event_port.py`, `conversation_bridge.py`, `thread_weaver.py` |
-| R3 | main/tested/unwired | `context_pack.py`, `state_reconciler.py`, `goal_open_loop.py`, adapters |
-| R4 | main/tested/unwired | `core/compute_controller.py` compatible assessment API |
-| R5A | main/tested/unwired | `evaluation.py`, `advisory_shadow.py` |
-| R5B | draft #206 | `shadow_runner.py` |
+| Layer | Merge SHA | Primary surface | Runtime state |
+|---|---|---|---|
+| R1 contracts | `06529700d70854504b88629eeecf737bdc6b81d5` | `core/continuity/contracts.py` | unwired |
+| R2 read-side/threads | `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e` | `event_port.py`, `conversation_bridge.py`, `thread_weaver.py` | process-local, unwired |
+| R3 projections/adapters | `a19d16656676ad5c98c92d4776e9709edbfb920c` | `context_pack.py`, `state_reconciler.py`, `goal_open_loop.py`, adapters | rebuildable, unwired |
+| R4 compute assessment | `529d8b6b182b1a548d27558173f0aca473bcc400` | `core/compute_controller.py` | shadow-only, unwired |
+| R5A replay/advisory | `58e29bba26299ce7003b62e73fd3b25e028956de` | `evaluation.py`, `advisory_shadow.py` | shadow-only, unwired |
+| R5B complete runner | `27b91a59f9e9291092b220ac1f53bfeae2daea28` | `shadow_runner.py` | disabled by default, unwired |
 
-## R5B complete shadow runner
+## R5B review surface
 
 Start with:
 
@@ -29,8 +29,8 @@ Audit questions:
 3. Are all inputs already typed?
 4. Does Advisory intent resolve exactly one projection or fail closed?
 5. Are caller policy values copied rather than re-inferred?
-6. Does the runner use the existing WorkingMemoryGate and ContextPackBuilder?
-7. Does it call R4 `assess_compute_with_continuity()` rather than changing legacy compute routing?
+6. Does the runner reuse the existing `WorkingMemoryGate` and `ContextPackBuilder`?
+7. Does it call R4 `assess_compute_with_continuity()` without changing legacy routing?
 8. Is only the final R4 decision snapshotted, never executed?
 9. Do baseline and reversed-order replay produce the same snapshot?
 10. Do R5A hard-gate failures prevent reminder-shaped output?
@@ -38,14 +38,21 @@ Audit questions:
 12. Do all receipts include `NO_RUNTIME_AUTHORITY`?
 13. Are server, startup, worker, scheduler, persistence, network, answer, delivery, tool and action interfaces absent?
 
-## Authority ownership
+## Decision ownership
 
-- truth/Canon: existing canonical memory/TruthGate paths;
+- truth and Canon: existing canonical memory/TruthGate paths;
 - WorkingMemory disposition: existing `WorkingMemoryGate`;
 - final prompt context: existing `ContextPackBuilder`;
-- compute routing: legacy `decide_compute_path()`; R4 assessment is separate shadow evidence;
-- Advisory selection: R5A shadow gate only;
-- runtime activation: no owner is accepted yet.
+- legacy compute routing: `decide_compute_path()`;
+- continuity compute evidence: R4 assessment only;
+- replay evidence: R5A evaluation;
+- Advisory candidate selection: R5A shadow gate only;
+- complete orchestration: R5B disabled in-memory runner;
+- runtime activation: no accepted owner exists.
+
+## Historical status
+
+The old stacked PR sequence #131–#147 is superseded by current-main recovery PRs #201–#206. Historical branches are not accepted integration targets.
 
 ## Other review surfaces
 
