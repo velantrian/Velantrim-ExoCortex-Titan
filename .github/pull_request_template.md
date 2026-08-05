@@ -24,15 +24,31 @@ Describe what changed and why.
 - [ ] Background work is bounded, cancellable, observable, and restart-safe.
 - [ ] This PR is independently green; fixes are not deferred to a child stacked PR.
 
-## AI context and documentation
+## Documentation synchronization
+
+Follow [`docs/ai/DOCUMENTATION_SYNC_PROTOCOL.md`](../docs/ai/DOCUMENTATION_SYNC_PROTOCOL.md).
+Do not remove this block; it is the hand-off contract for humans and AI agents.
+
+- Documentation impact: `NONE` / `GITHUB_ONLY` / `GITHUB_AND_NOTION`
+- GitHub documentation updated (paths, or `NOT_REQUIRED` with reason):
+- Notion synchronization: `NOT_REQUIRED` / `PLANNED` / `DONE` / `BLOCKED`
+- Notion record (safe title, internal reference, or public URL):
+- Decision / ADR reference:
+- Historical note: what changed from the original plan, if anything?
+
+For `GITHUB_AND_NOTION`, the PR must remain draft until the Notion record contains the
+motivation, intended function, decision, alternatives, evidence, exact reality status,
+limitations, and PR link. After merge, add the final merge SHA to Notion.
+
+### AI context files
 
 For architecture, runtime wiring, deployment posture, or known-risk changes:
 
-- [ ] `docs/ai/CURRENT_STATE.md` updated or not applicable.
-- [ ] `docs/ai/KNOWN_RISKS.md` updated or not applicable.
-- [ ] `docs/ai/COMPONENT_MAP.md` updated or not applicable.
-- [ ] `docs/ai/WORK_LOG.md` entry added or not applicable.
-- [ ] ADR added/updated for a durable architectural decision or not applicable.
+- [ ] `docs/ai/CURRENT_STATE.md` updated or not applicable with reason.
+- [ ] `docs/ai/KNOWN_RISKS.md` updated or not applicable with reason.
+- [ ] `docs/ai/COMPONENT_MAP.md` updated or not applicable with reason.
+- [ ] `docs/ai/WORK_LOG.md` entry added or not applicable with reason.
+- [ ] ADR added/updated for a durable architectural decision or not applicable with reason.
 
 ## Remaining limitations
 
