@@ -1,12 +1,14 @@
 # Continuity R1 Review Hand-off
 
-**Status:** `DRAFT_PR / CONTRACTS_ONLY / CI_PENDING`  
+**Status:** `TESTED / READY_FOR_REVIEW / CONTRACTS_ONLY`  
 **PR:** #201  
-**Base:** `main@bea535d8fd5f7d59d3f1cee02d060bd026ac05cb`
+**Base:** `main@bea535d8fd5f7d59d3f1cee02d060bd026ac05cb`  
+**Tested head before this documentation-only finalization:**
+`9a5bf491b04255cf47558f3d7244927055781d74`
 
 ## Review route
 
-1. Read the R1 ADR.
+1. Read `docs/adr/ADR-2026-08-05-continuity-r1-foundation.md`.
 2. Inspect `core/continuity/contracts.py` and public exports.
 3. Verify golden fixture canonical JSON and SHA-256 values.
 4. Run contract, golden and regression tests.
@@ -21,8 +23,21 @@
 - NFC, UTC, sorted-ref and JSON-scalar canonicalization;
 - deterministic content identities;
 - fixed golden vectors;
-- R1 regressions and focused workflow;
-- authority ADR and updated AI context.
+- NFC and authority-boundary regressions;
+- focused workflow;
+- authority ADR and synchronized AI context.
+
+## Validation evidence
+
+On `9a5bf491b04255cf47558f3d7244927055781d74`:
+
+- Continuity contracts run `31013691542`: success;
+- full Titan CI run `31013691033`: success;
+- Docker hardening run `31013689822`: success;
+- architecture freeze, Ruff, blocking mypy, focused tests and full pytest passed.
+
+Final PR-head checks after this documentation-only finalization remain the merge
+authority.
 
 ## Forbidden conclusions
 
