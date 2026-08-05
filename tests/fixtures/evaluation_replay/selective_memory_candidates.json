@@ -1,0 +1,161 @@
+{
+  "package": {
+    "package_id": "erp-selective-memory-shadow-v2",
+    "protocol_version": "erp-1",
+    "corpus_snapshot": {
+      "sources": {
+        "source:conversation": "I prefer concise weekly reports. My temporary email is person@example.com."
+      }
+    },
+    "policy_fixture": {
+      "query_path_read_only": true,
+      "truth_gate_required": true,
+      "candidate_admission_enabled": false,
+      "safe_serialization_required": true,
+      "memory_injection_rejected": true
+    },
+    "provider_tool_fixtures": {},
+    "redaction_manifest": {
+      "synthetic_only": true,
+      "contact_redacted": true,
+      "raw_sensitive_payload_forbidden": true
+    },
+    "cases": [
+      {
+        "case_id": "selective-memory-shadow-001",
+        "task_class": "selective_memory_shadow",
+        "risk_class": "personal",
+        "question": "Extract proposal candidates without storing them.",
+        "source_refs": ["source:conversation"],
+        "expected_claim_refs": ["candidate:preference", "candidate:contact"],
+        "expected_evidence_span_refs": ["source:conversation#0-32", "source:conversation#33-74"],
+        "expected_memory_dispositions": ["candidate:preference=PROPOSAL_ONLY", "candidate:contact=PROPOSAL_ONLY"],
+        "expected_route_set": ["shadow_disabled", "shadow_extract"],
+        "forbidden_outputs": ["person@example.com"],
+        "deterministic_seed": 19,
+        "tags": ["memory", "shadow", "read-only", "synthetic", "safe-serialization"]
+      }
+    ]
+  },
+  "baseline_run": {
+    "run_id": "baseline-selective-memory-off-002",
+    "package_id": "erp-selective-memory-shadow-v2",
+    "code_revision": "fixture-baseline-arm03-v2",
+    "configuration_snapshot": {
+      "selective_memory_candidate_shadow": false
+    },
+    "feature_flags": {
+      "ENABLE_SELECTIVE_MEMORY_CANDIDATE_SHADOW": false
+    },
+    "policy_snapshot_fixture": {
+      "truth_gate_required": true,
+      "candidate_admission_enabled": false
+    },
+    "provider_fixture_versions": {},
+    "environment_manifest": {
+      "clock": "fixed",
+      "network": "disabled"
+    },
+    "started_at": "2030-01-01T12:00:00Z",
+    "completed_at": "2030-01-01T12:00:01Z",
+    "case_receipts": [
+      {
+        "case_id": "selective-memory-shadow-001",
+        "input_digest": "0b8a76b67c38ea5103289ce1db15a6429895d9d68a15dd9b34f02bf855205100",
+        "extracted_claims": [],
+        "rejected_claims": [],
+        "evidence_refs": [],
+        "retrieval_result": [],
+        "memory_dispositions": {},
+        "temporal_relations": [],
+        "conflicts": [],
+        "route": "shadow_disabled",
+        "answer": "",
+        "policy_reason_codes": ["FEATURE_FLAG_OFF", "QUERY_PATH_READ_ONLY", "NO_MEMORY_WRITES"],
+        "latency_ms": {
+          "candidate_extraction": 0.0,
+          "total": 0.0
+        },
+        "resource_counts": {
+          "model_call_count": 0,
+          "tool_call_count": 0,
+          "candidate_count": 0,
+          "memory_write_count": 0,
+          "write_gate_call_count": 0
+        },
+        "truth_gate_bypass_count": 0,
+        "query_path_write_count": 0,
+        "unrecorded_external_call_count": 0,
+        "warnings": []
+      }
+    ]
+  },
+  "candidate_run": {
+    "run_id": "candidate-selective-memory-shadow-002",
+    "package_id": "erp-selective-memory-shadow-v2",
+    "code_revision": "fixture-candidate-arm03-v2",
+    "configuration_snapshot": {
+      "selective_memory_candidate_shadow": true,
+      "candidate_budget": 12,
+      "safe_serialization": true
+    },
+    "feature_flags": {
+      "ENABLE_SELECTIVE_MEMORY_CANDIDATE_SHADOW": true
+    },
+    "policy_snapshot_fixture": {
+      "truth_gate_required": true,
+      "candidate_admission_enabled": false
+    },
+    "provider_fixture_versions": {},
+    "environment_manifest": {
+      "clock": "fixed",
+      "network": "disabled"
+    },
+    "started_at": "2030-01-01T12:00:00Z",
+    "completed_at": "2030-01-01T12:00:01Z",
+    "case_receipts": [
+      {
+        "case_id": "selective-memory-shadow-001",
+        "input_digest": "0b8a76b67c38ea5103289ce1db15a6429895d9d68a15dd9b34f02bf855205100",
+        "extracted_claims": ["candidate:preference", "candidate:contact"],
+        "rejected_claims": [],
+        "evidence_refs": ["source:conversation#0-32:sha256", "source:conversation#33-74:sha256"],
+        "retrieval_result": [],
+        "memory_dispositions": {
+          "candidate:preference": "PROPOSAL_ONLY",
+          "candidate:contact": "PROPOSAL_ONLY"
+        },
+        "temporal_relations": ["candidate:preference=TIMELESS", "candidate:contact=TEMPORARY"],
+        "conflicts": [],
+        "route": "shadow_extract",
+        "answer": "",
+        "policy_reason_codes": ["EXACT_SOURCE_SPANS", "SPAN_SHA256", "CONTACT_REDACTED", "SAFE_SERIALIZATION", "PROPOSAL_ONLY", "QUERY_PATH_READ_ONLY", "NO_MEMORY_WRITES"],
+        "latency_ms": {
+          "candidate_extraction": 1.0,
+          "total": 1.0
+        },
+        "resource_counts": {
+          "model_call_count": 0,
+          "tool_call_count": 0,
+          "candidate_count": 2,
+          "memory_write_count": 0,
+          "write_gate_call_count": 0
+        },
+        "truth_gate_bypass_count": 0,
+        "query_path_write_count": 0,
+        "unrecorded_external_call_count": 0,
+        "warnings": []
+      }
+    ]
+  },
+  "fork": {
+    "parent_run_id": "baseline-selective-memory-off-002",
+    "fork_id": "fork-selective-memory-shadow-002",
+    "changed_dimension": "feature_flags.ENABLE_SELECTIVE_MEMORY_CANDIDATE_SHADOW",
+    "before_value": false,
+    "after_value": true,
+    "secondary_changes": ["shadow proposals emitted", "contact payload redacted", "span hashes emitted"],
+    "justification": "ARM-03 evaluates deterministic proposal extraction while preserving zero writes, zero admission, safe serialization and memory-injection rejection.",
+    "expected_effect": "Structural output changes require review, with no critical gate regression and no raw sensitive contact value in portable output."
+  }
+}
