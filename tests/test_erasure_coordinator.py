@@ -457,6 +457,99 @@ def test_prevent_fact_delete_trigger_restored_after_real_delete_failure(rig):
     assert row is not None
 
 
+def test_emergency_trigger_reconstruction_preserves_original_error_and_guard(
+    rig, monkeypatch
+):
+    """If the post-rollback check cannot see the guard once, reconstruct it
+    without masking the original DELETE failure, then prove the restored
+    guard still rejects a raw DELETE against a different Observed fact."""
+    _, store, _, _ = rig
+    fact_id = "trig_reconstruct_once"
+    store.store_fact(_fact(fact_id, epistemic_state="Observed"))
+    with store._db() as conn:
+        conn.execute(
+            "INSERT INTO fact_versions (fact_id, version_num, claim, recorded_at) "
+            "VALUES (?, ?, ?, ?)",
+            (fact_id, 1, "user contact is a@b.com", "2026-01-01T00:00:00Z"),
+        )
+    _install_real_failure_trigger(store, table="fact_versions", fact_id=fact_id)
+
+    real_trigger_exists = store._prevent_fact_delete_trigger_exists
+    existence_checks = 0
+
+    def _report_missing_once(conn):
+        nonlocal existence_checks
+        existence_checks += 1
+        if existence_checks == 1:
+            return False
+        return real_trigger_exists(conn)
+
+    monkeypatch.setattr(
+        store, "_prevent_fact_delete_trigger_exists", _report_missing_once
+    )
+
+    with pytest.raises(
+        sqlite3.IntegrityError,
+        match="SIMULATED: real DB failure mid-transaction",
+    ):
+        store.erase_fact_dependents_atomic(fact_id)
+
+    assert existence_checks >= 2
+    assert store.get_fact(fact_id) is not None
+    with store._db() as conn:
+        trigger = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='trigger' "
+            "AND name='prevent_fact_delete'"
+        ).fetchone()
+    assert trigger is not None
+
+    guarded_fact_id = "still_guarded_after_reconstruction"
+    store.store_fact(_fact(guarded_fact_id, epistemic_state="Observed"))
+    store._release_stray_locks()
+    with pytest.raises(
+        sqlite3.IntegrityError,
+        match="VELANTRIM: Cannot DELETE facts directly",
+    ):
+        with store._db() as conn:
+            conn.execute("DELETE FROM facts WHERE fact_id = ?", (guarded_fact_id,))
+    assert store.get_fact(guarded_fact_id) is not None
+
+
+def test_emergency_trigger_reconstruction_failure_is_distinct_and_chained(
+    rig, monkeypatch
+):
+    """If emergency reconstruction still cannot prove the guard exists,
+    surface TriggerReconstructionError chained from the original failure."""
+    _, store, _, _ = rig
+    fact_id = "trig_reconstruct_unproven"
+    store.store_fact(_fact(fact_id, epistemic_state="Observed"))
+    with store._db() as conn:
+        conn.execute(
+            "INSERT INTO fact_versions (fact_id, version_num, claim, recorded_at) "
+            "VALUES (?, ?, ?, ?)",
+            (fact_id, 1, "user contact is a@b.com", "2026-01-01T00:00:00Z"),
+        )
+    _install_real_failure_trigger(store, table="fact_versions", fact_id=fact_id)
+
+    monkeypatch.setattr(
+        store,
+        "_prevent_fact_delete_trigger_exists",
+        lambda _conn: False,
+    )
+
+    with pytest.raises(memory.TriggerReconstructionError) as exc_info:
+        store.erase_fact_dependents_atomic(fact_id)
+
+    error_message = str(exc_info.value)
+    assert "prevent_fact_delete guard is still missing" in error_message
+    assert "emergency reconstruction reported success" in error_message
+    assert "sqlite_master does not show it" in error_message
+
+    original_exc = exc_info.value.__cause__
+    assert isinstance(original_exc, sqlite3.IntegrityError)
+    assert str(original_exc) == "SIMULATED: real DB failure mid-transaction"
+
+
 def test_prevent_fact_delete_trigger_restored_after_failure_in_other_dependent_table(rig):
     """The fix must not be special-cased to fact_versions — any dependent
     table's failure must leave the trigger correctly restored."""
