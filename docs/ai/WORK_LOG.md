@@ -32,33 +32,36 @@ Use exact status words: proposed, implemented, tested, wired, enabled and observ
 ### Verified before change
 
 - old PR #102 was based on stale `main` and was not mergeable;
-- its shadow extractor was proposal-only and default-off, but listed unresolved
-  hardening before ARM-04;
-- required hardening included extraction-only confidence naming, subject/context identity,
+- its extractor was proposal-only and default-off but left hardening unresolved;
+- missing contracts included extraction-only confidence naming, subject/context identity,
   retention reasons, prompt-to-memory injection handling, privacy-safe source evidence
-  serialization and a real supersession contract.
+  serialization and a non-empty supersession design.
 
 ### Changed
 
-- rebuilt ARM-03 from current `main` rather than merging/rebasing the stale branch;
+- rebuilt ARM-03 from current `main` instead of merging the stale branch;
 - added the canonical default-off feature flag and runtime readout;
-- added a bounded dependency-free candidate extractor with exact source offsets and
-  SHA-256 span hashes;
+- added a bounded dependency-free extractor with exact source offsets and SHA-256 hashes;
 - added `extraction_confidence`, `subject_ref`, `context_id` and `RetentionReason`;
-- added bounded English/Russian instruction-shaped memory-injection detection with
-  default rejection;
-- added redacted `to_safe_dict()` representations and removed raw span text from repr;
+- added bounded English/Russian instruction-shaped injection detection with default
+  rejection;
+- added redacted safe serialization and excluded raw span text from repr;
 - added deterministic within-input `POSSIBLE_UPDATE_OF` hints;
-- added focused contracts, speed tests, benchmark, replay fixture and blocking workflow;
-- updated current state, component map, risk register and speed/safety documentation.
+- added focused tests, speed tests, benchmark, replay and blocking workflow;
+- added an accepted ADR for proposal-only authority;
+- updated current state, component map, risk register and hand-off documentation.
 
 ### Validation
 
-- ARM-03 workflow passed Ruff, blocking mypy, focused tests, benchmark and evaluation
-  replay on the cleaned branch;
-- Docker hardening checks passed on the cleaned branch;
-- full Titan CI is required on the final documentation-consolidated head before merge;
-- exact final run IDs and head SHA are recorded in PR #200.
+On tested head `125cf0b008f3fc0c0589dc248f1449b5a865e883`:
+
+- ARM-03 contracts run `31011184457`: success;
+- Docker hardening run `31011184150`: success;
+- full Titan CI run `31011183017`: success;
+- architecture-freeze, Ruff, blocking mypy, focused tests, full pytest, benchmark and
+  evaluation replay passed.
+
+Final PR-head checks after documentation-only finalization remain the merge authority.
 
 ### Decisions
 
@@ -67,16 +70,15 @@ Use exact status words: proposed, implemented, tested, wired, enabled and observ
   verification; portable output uses the redacted safe serializer;
 - `.confidence` is a read-only compatibility alias and never truth confidence;
 - supersession remains a bounded hint, not durable reconciliation;
-- injection detection is a safety filter, not complete semantic detection;
-- ARM-04 remains a separate operator-approved admission design.
+- injection detection is a safety heuristic, not complete semantic detection;
+- ARM-04 requires a separate ADR, PR and operator decision.
 
 ### Remaining
 
-1. obtain green full CI on the final head;
-2. synchronize the final tested head and evidence to Notion;
-3. merge PR #200 only after all final-head gates pass;
-4. close old PR #102 as superseded after the merge;
-5. measure candidate precision/privacy before any ARM-04 work.
+- merge PR #200 only after final-head checks pass;
+- close PR #102 as superseded after merge;
+- measure candidate precision and privacy behavior before ARM-04;
+- keep runtime wiring and admission out of scope until separately approved.
 
 ## 2026-08-05 — Connectorless GitHub → Notion hand-off contract
 
@@ -84,11 +86,9 @@ Use exact status words: proposed, implemented, tested, wired, enabled and observ
 
 ### Changed
 
-- added the GitHub completeness invariant;
-- added `docs/ai/NOTION_HANDOFF.md`;
-- defined `HANDOFF_REQUIRED`, `SYNCED`, `NOT_REQUIRED` and
-  `BLOCKED_PRIVACY_OR_PERMISSION`;
-- updated agent rules, AI navigation, synchronization protocol and PR template.
+- added the GitHub completeness invariant and `docs/ai/NOTION_HANDOFF.md`;
+- defined connectorless and privacy/permission synchronization states;
+- updated agent rules, AI navigation, sync protocol and PR template.
 
 ### Validation
 
@@ -107,9 +107,9 @@ synchronizes it.
 
 ### Changed
 
-- added the detailed Project Cognition & Code Review use case;
-- linked it from README and a use-case index;
-- synchronized the deeper rationale and PC-01…PC-06 roadmap to Notion.
+- added the Project Cognition & Code Review use case;
+- linked it from README and the use-case index;
+- synchronized the PC-01…PC-06 roadmap to Notion.
 
 ### Validation
 
@@ -128,7 +128,7 @@ ContextPack runtime or automatic GitHub comments are claimed.
 ### Changed
 
 - created the compact `docs/ai/` orientation pack;
-- expanded mandatory agent rules and PR checklist;
+- expanded agent rules and PR checklist;
 - separated current state, components, risks, audit method and work history.
 
 ### Key findings retained
@@ -136,4 +136,4 @@ ContextPack runtime or automatic GitHub comments are claimed.
 - Continuity requires a clean current-main rebuild;
 - projection delivery lacks runtime lifecycle wiring;
 - Identity remains legacy/unwired;
-- deployment, coverage/static scope, concurrency, supply-chain and packaging risks remain.
+- deployment, verification scope, concurrency, supply-chain and packaging risks remain.
