@@ -13,8 +13,6 @@
 # silently advertise a feature the default image can't serve. To use it:
 #   RUNTIME_EXTRAS=server,graph-lab ENABLE_GRAPH_LAB=1 docker-compose up -d --build
 
-version: "3.9"
-
 services:
   velantrim:
     build:

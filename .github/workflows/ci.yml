@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, master]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
@@ -55,3 +59,53 @@ jobs:
           VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-ci.db"
           VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-ngram-ci.db"
           VELANTRIM_API_KEY: "ci-test-key"
+
+  coverage:
+    name: Coverage ratchet (core ≥74%)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[server,dev,parsers,retrieval,embeddings,graph-lab]"
+
+      - name: Run full core coverage
+        run: |
+          # coverage.py installs tracing hooks. The excluded stress test concurrently
+          # installs its own per-thread trace hooks and is still exercised by the
+          # blocking lint-and-test job above.
+          python -m coverage run -m pytest tests/ -q --tb=short --timeout=300 \
+            -k "not test_concurrent_fresh_bootstrap_add_column_no_duplicate_error"
+          python -m coverage report --show-missing --fail-under=74
+          python -m coverage xml -o coverage.xml
+        env:
+          PYTHONUNBUFFERED: 1
+          VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-coverage.db"
+          VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-ngram-coverage.db"
+          VELANTRIM_API_KEY: "ci-test-key"
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: titan-core-coverage
+          path: coverage.xml
+          if-no-files-found: warn
+          retention-days: 14
