@@ -1,8 +1,8 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-05  
-**Current `main`:** `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e`  
-**Continuity R3 review surface:** draft PR #203
+**Current `main`:** `a19d16656676ad5c98c92d4776e9709edbfb920c`  
+**Continuity R4 review surface:** draft PR #204
 
 Verify material claims against exact SHAs, tests, workflows, wiring, configuration and runtime evidence. `MAIN`, `TESTED`, `WIRED`, `ENABLED`, `OBSERVED`, `OPEN PR`, `RESEARCH` and `LEGACY/UNWIRED` are separate states.
 
@@ -16,58 +16,67 @@ Merged as `bea535d8fd5f7d59d3f1cee02d060bd026ac05cb`.
 
 **Status:** `MAIN + TESTED + DEFAULT OFF / NOT WIRED / NO ADMISSION`.
 
-It remains proposal-only with no persistence, Canon, gate, answer or action authority.
-
-## Continuity — R1
+## Continuity R1 — immutable foundation
 
 Merged as `06529700d70854504b88629eeecf737bdc6b81d5`.
 
 **Status:** `MAIN + TESTED / CONTRACTS ONLY / NOT WIRED`.
 
-R1 provides immutable deterministic events, assertions and relations, canonical serialization, golden vectors and authority regression tests.
-
-## Continuity — R2
+## Continuity R2 — shadow read-side
 
 Merged as `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e`.
 
-**Status:** `MAIN + TESTED / SHADOW READ-SIDE / NOT WIRED`.
+**Status:** `MAIN + TESTED / PROCESS-LOCAL READ-SIDE / NOT WIRED`.
 
-R2 provides a disposable process-local neutral ledger, a read-only conversation bridge and conservative deterministic thread projection. It preserves persisted notebook timestamps and related-chat references. It is not a durable event store, not enabled and not user-facing.
+R2 provides the neutral in-memory ledger, read-only conversation bridge and conservative deterministic thread projection.
 
-## Continuity — R3
+## Continuity R3 — projections and WorkingMemory adapters
 
-Draft PR #203 recovers the historical #138–#143 projection layer on current `main`.
+Merged as `a19d16656676ad5c98c92d4776e9709edbfb920c`.
 
-**Status:** `OPEN PR / PRE-MERGE / NOT WIRED / NO USER-FACING AUTHORITY`.
+**Status:** `MAIN + TESTED / REBUILDABLE PROJECTIONS / NOT WIRED`.
 
-R3 adds:
+R3 provides:
 
-- deterministic continuity context projection and receipts;
+- deterministic continuity context and receipts;
 - exact-source adapters into `KnowledgeCapsule`;
-- current-state reconciliation where model inference cannot silently replace user statements;
-- contested conflict preservation;
+- current-state reconciliation with user-over-inference protection;
+- contested conflict visibility;
 - read-only GoalStack snapshots;
-- explicit typed goal attestations;
-- typed open-loop signals and resolutions;
-- policy-neutral state/goal/open-loop candidates for the existing `WorkingMemoryGate` and `ContextPack`.
+- typed goal attestations and open-loop signals/resolutions;
+- policy-neutral candidates for the existing `WorkingMemoryGate` and final `ContextPack`.
 
-R3 adds no durable storage, raw-text producer, Canon/ESM/TruthGate mutation, compute routing, advisory, answer, tool, action or runtime wiring.
+R3 adds no producer admission, durable storage, Canon/ESM/TruthGate mutation, compute/advisory/answer/action authority or runtime wiring. Its Synaptic ownership ADR remains `PROPOSED`; merge does not authorize activation.
+
+## Continuity R4 — compatible compute assessment
+
+Draft PR #204 adds a separate shadow assessment around the unchanged legacy compute decision.
+
+**Status:** `OPEN PR / FOCUSED TESTED / SHADOW ONLY / NOT WIRED`.
+
+R4 preserves:
+
+- the five existing `ComputePath` values;
+- the seven-field `ComputeDecision` constructor and old serialization;
+- the exact `decide_compute_path()` signature and legacy decision matrix;
+- exhaustive `RapidOrientation` path mapping.
+
+The new explicit `assess_compute_with_continuity()` API can raise important contradiction, missing/stale required state or sensitive low-evidence input to VERIFY, or cap a degraded DEEP route to NORMAL. It adds no `DEFER_PATH`, runtime caller or user-visible behavior.
 
 ## Remaining Continuity recovery
 
 ```text
-R3 projections + WorkingMemory adapters
-→ R4 continuity-aware ComputeController signals with differential legacy proof
+R4 compatible compute assessment
 → R5 replay evaluation + Advisory shadow + disabled complete runner
 ```
 
-Still required before any live use:
+Still required before live use:
 
-- trusted event/assertion/attestation/open-loop producers;
-- explicit policy owner for attention, recall, eligibility, privacy and conflict inputs;
+- trusted event/assertion/attestation/open-loop/compute-signal producers;
+- one policy owner for attention, recall, eligibility, privacy and conflict inputs;
 - consent, retention, erasure and access-control design;
-- exhaustive `DEFER_PATH` consumer coverage in R4;
-- replay/evaluation and operator approval before any advisory or user-facing path.
+- operational evaluation and operator approval;
+- separate ADR before any new compute route such as DEFER.
 
 ## Runtime and deployment
 

@@ -1,7 +1,7 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-05  
-**Current `main`:** `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e`
+**Current `main`:** `a19d16656676ad5c98c92d4776e9709edbfb920c`
 
 Code presence does not close a risk. Closure requires focused/full validation, wiring and operational evidence.
 
@@ -15,49 +15,48 @@ Code presence does not close a risk. Closure requires focused/full validation, w
 
 ## P1 — Continuity
 
-### R2 is a shadow/read-side substrate, not durable continuity
+### R1–R3 are merged but not a live continuity system
 
-R2 is merged and tested but remains process-local, disposable and unwired. No trusted producer, durable adapter, retention/erasure/access-control contract or operational input bound exists. Exact goal matching can miss real continuations; explicit notebook links may be stale; thread links are rebuildable projections, not truth.
-
-### R3 adds projections, not trusted admission or policy authority
-
-Draft PR #203 adds context, current-state, goal and open-loop projections plus adapters to the existing WorkingMemory path.
+R1 contracts, R2 process-local read-side and R3 projections/adapters are in `main` and tested. They remain unwired and non-user-facing.
 
 Residual risks:
 
-- assertions, attestations and open-loop signals are trusted typed inputs; their producer and authorization contract is not part of R3;
-- caller-supplied attention, recall, eligibility, restriction, erasure, protection and conflict fields have no accepted single policy owner yet;
-- GoalStack snapshots can contain legacy or previously inferred content; explicit attestation is required but attestation issuance is not designed here;
-- current-state reconciliation is deterministic policy, not external truth;
-- selected state projections can still be wrong if their immutable source assertions are wrong;
-- contested projections require review and must not become answer/action authority;
-- virtual continuity documents are derived projections, not original source documents;
-- projection adapters preserve provenance only as supplied by the source records;
-- no durable retention, consent, erasure or tenant boundary is authorized;
-- no runtime caller, feature flag, startup hook or user-visible integration is included.
+- no trusted producers for events, assertions, attestations or open-loop signals;
+- no durable adapter, consent, tenant isolation, retention, erasure or access-control contract;
+- no accepted single owner for caller-supplied attention, recall, eligibility, privacy, protection and conflict policy facts;
+- deterministic projections can still be wrong when their source records are wrong;
+- contested state must not become answer/action authority;
+- the R3 Synaptic ownership ADR remains proposed.
 
-Required before runtime or durable use:
+### R4 compatible compute assessment
 
-1. trusted producer contracts for assertions, attestations and open-loop signals;
-2. explicit policy owner for all Gate input fields;
-3. purpose/consent/retention/erasure/access-control review;
-4. adversarial tests for forged source refs, stale attestations and cross-user leakage;
-5. evaluation of contested-state behavior and false current-state selection;
-6. no Canon, answer or action authority;
-7. separate operator approval.
+Draft PR #204 deliberately preserves the legacy `ComputeController` public contract and exposes a separate shadow-only assessment.
 
-### Remaining recovery
+Residual risks:
 
-```text
-R4 continuity-aware ComputeController signals
-→ R5 replay evaluation + Advisory shadow + disabled runner
-```
+- continuity compute signals are caller-supplied typed values with no trusted producer in R4;
+- assessment can recommend VERIFY or cap degraded DEEP, but no runtime owner consumes it;
+- `context_rebuild_required` is evidence, not permission to retrieve or mutate;
+- critical low-evidence inputs verify because no accepted DEFER semantics exist;
+- adding a future `DEFER_PATH` would require exhaustive updates to `RapidOrientation` and every other consumer;
+- direct `ComputeDecision` reasons remain a mutable list for compatibility, despite the frozen dataclass;
+- the assessment is not calibrated against production outcomes;
+- no latency, false-positive escalation or depth-cap quality evidence exists;
+- no user-visible fallback or operator-review workflow is defined.
 
-R4 must include differential legacy behavior proof and exhaustive downstream coverage for any new compute path such as `DEFER_PATH`. Old #131–#147 remain historical source material, not an accepted merge route.
+Required before runtime use:
 
-### R1 schema commitment
+1. trusted signal producer and policy owner;
+2. replay corpus and false-escalation metrics;
+3. explicit runtime caller and feature flag;
+4. proof that legacy answers remain authoritative during shadow evaluation;
+5. consent/privacy review for personal continuity signals;
+6. monitoring, rollback and operator approval;
+7. separate ADR for any new compute path.
 
-R1 canonical bytes/hashes are an interoperability contract. Field changes require a new schema version and golden vectors.
+### R5 remains unimplemented
+
+Historical #145–#147 contain replay evaluation, Advisory shadow and a complete disabled runner, but they are stale stacked source material. They must be rebuilt independently on the current R1–R4 APIs.
 
 ## Other P1
 
