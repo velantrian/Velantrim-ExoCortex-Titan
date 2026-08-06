@@ -1,0 +1,301 @@
+name: Temporary add admission evaluator provenance
+
+on:
+  push:
+    branches: [feat/continuity-source-admission-decisions]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: temporary-admission-evaluator-provenance
+  cancel-in-progress: false
+
+jobs:
+  patch-test-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/continuity-source-admission-decisions
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install focused dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[server,dev]"
+
+      - name: Apply exact evaluator-provenance hardening
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          production = Path("core/continuity/source_admission_decisions.py")
+          text = production.read_text()
+
+          replacements = [
+              (
+                  '''    adapter_id: str
+              adapter_version: str
+              draft_ids: tuple[str, ...]
+              ''',
+                  '''    adapter_id: str
+              adapter_version: str
+              admission_evaluator_id: str
+              admission_evaluator_version: str
+              admission_rule_id: str
+              evaluation_evidence_refs: tuple[str, ...]
+              draft_ids: tuple[str, ...]
+              ''',
+              ),
+              (
+                  '''        object.__setattr__(
+                  self, "adapter_version", _text(self.adapter_version, "adapter_version")
+              )
+              object.__setattr__(
+                  self, "draft_ids", _hash_refs(self.draft_ids, "draft_ids", required=True)
+              )
+              ''',
+                  '''        object.__setattr__(
+                  self, "adapter_version", _text(self.adapter_version, "adapter_version")
+              )
+              for field_name in (
+                  "admission_evaluator_id",
+                  "admission_evaluator_version",
+                  "admission_rule_id",
+              ):
+                  object.__setattr__(
+                      self,
+                      field_name,
+                      _text(getattr(self, field_name), field_name),
+                  )
+              object.__setattr__(
+                  self,
+                  "evaluation_evidence_refs",
+                  _refs(
+                      self.evaluation_evidence_refs,
+                      "evaluation_evidence_refs",
+                      required=True,
+                  ),
+              )
+              object.__setattr__(
+                  self, "draft_ids", _hash_refs(self.draft_ids, "draft_ids", required=True)
+              )
+              ''',
+              ),
+              (
+                  '''        rejected_drafts: Iterable[ContinuityDraftRejection],
+              evaluated_at: datetime,
+              schema_version: str = SOURCE_ADMISSION_DECISION_SCHEMA_VERSION,
+              ''',
+                  '''        rejected_drafts: Iterable[ContinuityDraftRejection],
+              admission_evaluator_id: str,
+              admission_evaluator_version: str,
+              admission_rule_id: str,
+              evaluation_evidence_refs: Iterable[str],
+              evaluated_at: datetime,
+              schema_version: str = SOURCE_ADMISSION_DECISION_SCHEMA_VERSION,
+              ''',
+              ),
+              (
+                  '''        evaluated = _aware(evaluated_at, "evaluated_at")
+              if evaluated < source_envelope.created_at or any(
+              ''',
+                  '''        evaluator_id = _text(
+                  admission_evaluator_id,
+                  "admission_evaluator_id",
+              )
+              evaluator_version = _text(
+                  admission_evaluator_version,
+                  "admission_evaluator_version",
+              )
+              rule_id = _text(admission_rule_id, "admission_rule_id")
+              evaluation_evidence = _refs(
+                  evaluation_evidence_refs,
+                  "evaluation_evidence_refs",
+                  required=True,
+              )
+              evaluated = _aware(evaluated_at, "evaluated_at")
+              if evaluated < source_envelope.created_at or any(
+              ''',
+              ),
+              (
+                  '''            "adapter_id": source_envelope.producer_adapter_id,
+                  "adapter_version": source_envelope.producer_adapter_version,
+                  "draft_ids": sorted(all_ids),
+              ''',
+                  '''            "adapter_id": source_envelope.producer_adapter_id,
+                  "adapter_version": source_envelope.producer_adapter_version,
+                  "admission_evaluator_id": evaluator_id,
+                  "admission_evaluator_version": evaluator_version,
+                  "admission_rule_id": rule_id,
+                  "evaluation_evidence_refs": list(evaluation_evidence),
+                  "draft_ids": sorted(all_ids),
+              ''',
+              ),
+              (
+                  '''            adapter_id=source_envelope.producer_adapter_id,
+                  adapter_version=source_envelope.producer_adapter_version,
+                  draft_ids=tuple(sorted(all_ids)),
+              ''',
+                  '''            adapter_id=source_envelope.producer_adapter_id,
+                  adapter_version=source_envelope.producer_adapter_version,
+                  admission_evaluator_id=evaluator_id,
+                  admission_evaluator_version=evaluator_version,
+                  admission_rule_id=rule_id,
+                  evaluation_evidence_refs=evaluation_evidence,
+                  draft_ids=tuple(sorted(all_ids)),
+              ''',
+              ),
+              (
+                  '''            "adapter_id": self.adapter_id,
+                  "adapter_version": self.adapter_version,
+                  "draft_ids": list(self.draft_ids),
+              ''',
+                  '''            "adapter_id": self.adapter_id,
+                  "adapter_version": self.adapter_version,
+                  "admission_evaluator_id": self.admission_evaluator_id,
+                  "admission_evaluator_version": self.admission_evaluator_version,
+                  "admission_rule_id": self.admission_rule_id,
+                  "evaluation_evidence_refs": list(self.evaluation_evidence_refs),
+                  "draft_ids": list(self.draft_ids),
+              ''',
+              ),
+          ]
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f"production anchor not found: {old[:80]!r}")
+              text = text.replace(old, new, 1)
+          production.write_text(text)
+
+          tests = Path("tests/test_continuity_source_admission_decisions.py")
+          test_text = tests.read_text()
+          helper_anchor = '''        "rejected_drafts": rejected,
+              "evaluated_at": _NOW,
+          '''
+          helper_replacement = '''        "rejected_drafts": rejected,
+              "admission_evaluator_id": "continuity.admission_gate",
+              "admission_evaluator_version": "1",
+              "admission_rule_id": "continuity.admission.default.v1",
+              "evaluation_evidence_refs": ("policy:evaluation",),
+              "evaluated_at": _NOW,
+          '''
+          if helper_anchor not in test_text:
+              raise SystemExit("receipt helper anchor not found")
+          test_text = test_text.replace(helper_anchor, helper_replacement, 1)
+
+          insert_before = '''def test_receipt_evaluation_must_follow_drafts_and_be_authorized() -> None:
+          '''
+          additional_tests = '''def test_receipt_requires_admission_evaluator_provenance() -> None:
+              with pytest.raises(ContinuitySourceAdmissionError, match="non-empty string"):
+                  _receipt(admission_evaluator_id="  ")
+              with pytest.raises(ContinuitySourceAdmissionError, match="non-empty string"):
+                  _receipt(admission_evaluator_version="")
+              with pytest.raises(ContinuitySourceAdmissionError, match="non-empty string"):
+                  _receipt(admission_rule_id="")
+              with pytest.raises(ContinuitySourceAdmissionError, match="cannot be empty"):
+                  _receipt(evaluation_evidence_refs=())
+
+
+          @pytest.mark.parametrize("bad_value", ["policy:evaluation", b"policy", 1, None])
+          def test_receipt_evaluation_evidence_rejects_scalar_values(
+              bad_value: object,
+          ) -> None:
+              with pytest.raises(ContinuitySourceAdmissionError, match="iterable"):
+                  _receipt(evaluation_evidence_refs=bad_value)
+
+
+          def test_receipt_evaluation_evidence_rejects_duplicates() -> None:
+              with pytest.raises(ContinuitySourceAdmissionError, match="duplicates"):
+                  _receipt(
+                      evaluation_evidence_refs=(
+                          "policy:evaluation",
+                          "policy:evaluation",
+                      )
+                  )
+
+
+          def test_receipt_evaluator_provenance_is_normalized_and_identity_bound() -> None:
+              composed = _receipt(
+                  admission_evaluator_id="  caf\u00e9  ",
+                  admission_evaluator_version=" 1 ",
+                  admission_rule_id=" rule:v1 ",
+                  evaluation_evidence_refs=("z", "a"),
+              )
+              decomposed = _receipt(
+                  admission_evaluator_id="cafe\u0301",
+                  admission_evaluator_version="1",
+                  admission_rule_id="rule:v1",
+                  evaluation_evidence_refs=("a", "z"),
+              )
+              assert composed.receipt_id == decomposed.receipt_id
+              assert composed.admission_evaluator_id == "caf\u00e9"
+              assert composed.evaluation_evidence_refs == ("a", "z")
+              with pytest.raises(ContinuitySourceAdmissionError, match="canonical"):
+                  replace(composed, admission_rule_id="different-rule")
+
+
+          def test_receipt_serialization_separates_source_adapter_and_evaluator() -> None:
+              payload = _receipt().to_dict()
+              assert payload["adapter_id"] == "continuity.state_to_signal_draft"
+              assert payload["admission_evaluator_id"] == "continuity.admission_gate"
+              assert payload["admission_evaluator_version"] == "1"
+              assert payload["admission_rule_id"] == "continuity.admission.default.v1"
+              assert payload["evaluation_evidence_refs"] == ["policy:evaluation"]
+
+
+          '''
+          if insert_before not in test_text:
+              raise SystemExit("test insertion anchor not found")
+          test_text = test_text.replace(
+              insert_before,
+              additional_tests + insert_before,
+              1,
+          )
+          tests.write_text(test_text)
+
+          architecture = Path(
+              "docs/research/CONTINUITY_SOURCE_ADMISSION_ARCHITECTURE.md"
+          )
+          doc = architecture.read_text()
+          diagram_anchor = '''├── adapter_id / version
+          ├── draft_ids[]
+          '''
+          diagram_replacement = '''├── adapter_id / version              # source adapter
+          ├── admission_evaluator_id / version
+          ├── admission_rule_id
+          ├── evaluation_evidence_refs[]
+          ├── draft_ids[]
+          '''
+          if diagram_anchor not in doc:
+              raise SystemExit("architecture diagram anchor not found")
+          doc = doc.replace(diagram_anchor, diagram_replacement, 1)
+          rule_anchor = '''The receipt cannot authorize persistence, execution, Canon writes or user-visible output.
+          '''
+          rule_replacement = '''The receipt cannot authorize persistence, execution, Canon writes or user-visible output.
+
+          The source adapter and admission evaluator are separate provenance axes. Evaluator ID/version, admission rule ID and nonempty evaluation evidence are mandatory and enter receipt identity. These fields are evidence references only: a future admission gate must resolve and allowlist the evaluator/rule and verify current policy, authorization, restriction and erasure state rather than trusting caller-supplied strings.
+          '''
+          if rule_anchor not in doc:
+              raise SystemExit("architecture rule anchor not found")
+          architecture.write_text(doc.replace(rule_anchor, rule_replacement, 1))
+          PY
+
+      - name: Focused validation
+        run: |
+          python -m ruff check core/continuity/source_admission_decisions.py tests/test_continuity_source_admission_decisions.py
+          python -m mypy core/continuity/source_admission_decisions.py
+          python -m pytest tests/test_continuity_source_admission_decisions.py -q
+
+      - name: Remove temporary workflow and commit final diff
+        run: |
+          rm .github/workflows/temporary-add-admission-evaluator-provenance.yml
+          git config user.name "Velantim"
+          git config user.email "velantrim@gmail.com"
+          git add core/continuity/source_admission_decisions.py tests/test_continuity_source_admission_decisions.py docs/research/CONTINUITY_SOURCE_ADMISSION_ARCHITECTURE.md .github/workflows/temporary-add-admission-evaluator-provenance.yml
+          git commit -m "fix(continuity): bind admission evaluator provenance"
+          git push origin HEAD:feat/continuity-source-admission-decisions
