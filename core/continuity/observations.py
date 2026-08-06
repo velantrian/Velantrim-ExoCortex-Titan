@@ -23,13 +23,13 @@ effect.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum
 from hashlib import sha256
 import json
 import math
-from typing import Iterable
 
 OBSERVATION_SCHEMA_VERSION = "continuity.signal_producer.observation.v1"
 
@@ -122,8 +122,19 @@ def _canonical_datetime(value: datetime) -> str:
     )
 
 
-def _refs(values: Iterable[str], name: str) -> tuple[str, ...]:
-    items = tuple(_text(value, name) for value in values)
+def _refs(values: object, name: str) -> tuple[str, ...]:
+    """Normalize a collection of references without treating text as a collection."""
+
+    if isinstance(values, (str, bytes)) or not isinstance(values, Iterable):
+        raise ContinuitySignalObservationError(
+            f"{name} must be an iterable of strings"
+        )
+    try:
+        items = tuple(_text(value, name) for value in values)
+    except TypeError as exc:
+        raise ContinuitySignalObservationError(
+            f"{name} must be an iterable of strings"
+        ) from exc
     if len(items) != len(set(items)):
         raise ContinuitySignalObservationError(f"{name} cannot contain duplicates")
     return tuple(sorted(items))
