@@ -88,11 +88,11 @@ jobs:
 
       - name: Run full core coverage
         run: |
-          # coverage.py installs tracing hooks. The excluded stress test concurrently
-          # installs its own per-thread trace hooks and is still exercised by the
-          # blocking lint-and-test job above.
+          # coverage.py installs tracing hooks. The excluded stress families
+          # concurrently install per-thread trace hooks and are still exercised
+          # by the blocking lint-and-test job above.
           python -m coverage run -m pytest tests/ -q --tb=short --timeout=300 \
-            -k "not test_concurrent_fresh_bootstrap_add_column_no_duplicate_error"
+            -k "not test_concurrent_fresh_bootstrap_add_column_no_duplicate_error and not test_concurrent_fresh_bootstrap_on_seeded_db_creates_exactly_one_view"
           python -m coverage report --show-missing --fail-under=74
           python -m coverage xml -o coverage.xml
         env:
