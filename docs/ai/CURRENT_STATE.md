@@ -1,8 +1,9 @@
 # 📍 Current System State
 
-**Verified:** 2026-08-05  
+**Verified:** 2026-08-06  
 **Current verified implementation head:** `c7ad5a171ccc6da5015b67b8cefd6d60649d6792`  
-**Governance documentation checkpoint:** PR #212, merge `7ca49685d5f648d384bd81245709233cfafa4748`
+**Current docs-only `main`:** `adfccb02f88b290aac8411e94aac69417defbafe`  
+**Cognitive reconciliation candidate:** PR #215, branch `agent/cognitive-runtime-reconciliation`
 
 Verify material claims against exact SHAs, tests, workflows, wiring, configuration and runtime evidence. `PROPOSED`, `MAIN`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` are separate states.
 
@@ -17,28 +18,60 @@ Verify material claims against exact SHAs, tests, workflows, wiring, configurati
 
 ### Coverage truth
 
-The repository now runs a dedicated blocking full-core coverage job.
+The repository runs a dedicated blocking full-core coverage job.
 
-- measured final-head baseline: `43,398` executable statements, `11,233` missed, approximately `74.12%` covered;
+- measured accepted baseline: `43,398` executable statements, `11,233` missed, approximately `74.12%` covered;
 - enforced floor: `74%`;
-- final CI run: `31046470206` — success;
-- Docker hardening run: `31046469060` — success;
+- accepted final CI run: `31046470206` — success;
+- accepted Docker hardening run: `31046469060` — success;
 - coverage XML artifact: `8946843485`;
 - normal full pytest remains blocking and includes the per-thread trace-hook stress test;
 - that single stress test is excluded only from simultaneous `coverage.py` tracing because the two tracing systems interfere.
 
 ## Open pull requests
 
-Exactly four PRs remain open. All are intentional architecture/research drafts, not abandoned implementation work:
+Exactly six PRs are currently open: four historical architecture/research drafts, one active Continuity implementation draft and one clean current-main replacement draft.
 
-| PR | Purpose | Merge status |
+| PR | Purpose | Current disposition |
 |---:|---|---|
-| #17 | Ring Zero recovery-kernel research concept | requires human placement/terminology approval |
+| #215 | current-main Cognitive Runtime reconciliation | Draft docs-only replacement for #33; CI and final review required |
+| #214 | trusted typed producer for `ContinuityComputeSignals` | keep Draft; final review found two remaining audit blockers |
+| #17 | Ring Zero recovery-kernel research concept | requires placement/trust-boundary decision |
 | #30 | Code Structural Memory Adapter RFC | requires architecture approval; implementation must be separate |
-| #33 | Epistemic and Cognitive Runtime specification | retain as source; rebuild/reconcile before adoption |
-| #43 | EITI-derived LearningPatch shadow contract | retain as source; reconcile with RFC-0084 and current governance |
+| #33 | historical Epistemic and Cognitive Runtime specification | `REVISE_AND_REPLACE`; close only after #215 is merged |
+| #43 | EITI-derived LearningPatch shadow contract | reconcile with RFC-0084; no parallel governance lifecycle |
 
-Do not bulk-close these four and do not merge their stale branches wholesale.
+Do not bulk-close these PRs and do not merge stale branches wholesale.
+
+### PR #214 exact-head status
+
+Current head: `7921f8c11875b26834861cdfe2a6cb414778bab2`.
+
+The only change after reviewed code head `ea968d1de80b455bb36ce88e1e6a46631640b21f` corrected a WORK_LOG base-SHA mismatch reported by Copilot; it did not change the two remaining code-level blockers.
+
+Current exact-head workflows:
+
+- Continuity contracts `31074592579` — success;
+- Docker hardening `31074592566` — success;
+- full Titan CI `31074592538` — running at this checkpoint.
+
+Remaining independent-review blockers, recorded in PR comment `5200768686`:
+
+1. scalar `str`/`bytes` can be misinterpreted as character collections for observation `evidence_refs` / `reason_codes`;
+2. trusted negative boolean observations disappear from per-signal provenance, creating an audit mismatch.
+
+Required state: `DRAFT · NOT MERGED · SHADOW ONLY · UNWIRED` until code fixes, new exact-head CI and another independent review.
+
+### PR #33 reconciliation
+
+The old 742-line specification predates accepted ownership boundaries. Clean replacement PR #215 is rebuilt from `main@adfccb02...`:
+
+- `docs/research/TITAN_COGNITIVE_RUNTIME_RECONCILIATION.md`;
+- old PR disposition: `REVISE_AND_REPLACE`;
+- existing owners retained for truth, policy, compute, working memory, goals, Continuity and adaptation;
+- no runtime activation, Canon write, worker, scheduler or new root of trust.
+
+PR #33 remains open only as the historical source until #215 passes final-head review and is merged.
 
 ## Cleanup disposition
 
@@ -62,15 +95,19 @@ Continuity Milestone 1 remains in `main` through independently reviewed recovery
 
 R5B is not a live continuity feature. It has no startup registration, API route, worker, scheduler, persistence, Canon mutation, answer modification, reminder delivery, tool call, action authorization or user-visible output.
 
+PR #214, even after eventual acceptance, would add only a typed deterministic observation aggregator. It does not provide raw-conversation extraction, user/model attribution, subject/tenant authorization, consent, retention, erasure or runtime activation.
+
 ## Quarantined and proposed components
 
 - `core/identity_layer.py` is formally `LEGACY/UNWIRED`; mandatory repository guidance prohibits production callers or writes until a candidate/evidence/approval/version/receipt/rollback design is accepted;
 - RFC-0084 remains `Proposed`, has no runtime wiring, forbids Canon writes and requires operator approval;
-- the projection dispatcher is implemented and tested but remains unwired; current production callers do not exist and startup wiring requires a separate reviewed change.
+- the projection dispatcher is implemented and tested but remains unwired; current production callers do not exist and startup wiring requires a separate reviewed change;
+- Ring Zero remains research and must not be assumed to be an accepted policy owner.
 
 ## Required before live Continuity activation
 
-- trusted and authenticated producers;
+- trusted and authenticated upstream observation producers;
+- explicit user statement versus model-inference attribution;
 - subject/tenant authorization and purpose-bound consent;
 - one accepted policy owner;
 - retention, erasure and durable evidence lifecycle;
@@ -85,4 +122,5 @@ R5B is not a live continuity feature. It has no startup registration, API route,
 - `server.py` remains a broad composition module;
 - authentication remains shared API-key rather than per-user/tenant authorization;
 - store-wide contention, disk-full and recovery evidence remains incomplete for some surfaces;
-- coverage is now enforced but remains a floor, not proof of behavioral correctness.
+- coverage is enforced but remains a floor, not proof of behavioral correctness;
+- GitHub and Notion require final synchronization after #215 receives its merge SHA and #33 is closed.
