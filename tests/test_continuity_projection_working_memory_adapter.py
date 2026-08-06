@@ -98,6 +98,7 @@ def _goal_projection(status: str = "active"):
 
 def _open_loop_projection(*, resolved: bool = False):
     signal = OpenLoopSignal.create(
+        user_id="user:ruslan",
         loop_key="loop:new-layer",
         kind=OpenLoopKind.DEFERRED_DECISION,
         summary="Decide whether to add another architecture layer",
@@ -109,6 +110,7 @@ def _open_loop_projection(*, resolved: bool = False):
     if resolved:
         resolutions = (
             OpenLoopResolution.create(
+                user_id=signal.user_id,
                 loop_key=signal.loop_key,
                 source_refs=("conversation:loop-resolved",),
                 resolved_at=datetime(2026, 8, 2, 11, 0, tzinfo=UTC),

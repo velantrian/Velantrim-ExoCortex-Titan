@@ -19,7 +19,7 @@ from core.goal_stack import Goal
 
 GOAL_SNAPSHOT_SCHEMA_VERSION = "continuity.goal_snapshot.v1"
 GOAL_PROJECTION_SCHEMA_VERSION = "continuity.goal_projection.v2"
-OPEN_LOOP_SCHEMA_VERSION = "continuity.open_loop_projection.v1"
+OPEN_LOOP_SCHEMA_VERSION = "continuity.open_loop_projection.v2"
 GOAL_OPEN_LOOP_POLICY_VERSION = "continuity.goal_open_loop.policy.v1"
 
 
@@ -524,6 +524,7 @@ class GoalProjector:
 @dataclass(frozen=True, slots=True)
 class OpenLoopSignal:
     signal_id: str
+    user_id: str
     loop_key: str
     kind: OpenLoopKind
     summary: str
@@ -536,6 +537,7 @@ class OpenLoopSignal:
     def create(
         cls,
         *,
+        user_id: str,
         loop_key: str,
         kind: OpenLoopKind,
         summary: str,
@@ -546,6 +548,7 @@ class OpenLoopSignal:
     ) -> OpenLoopSignal:
         if not isinstance(kind, OpenLoopKind):
             raise GoalOpenLoopError("kind must be an OpenLoopKind")
+        subject = _text(user_id, "user_id")
         key = _text(loop_key, "loop_key")
         text = _text(summary, "summary")
         refs = _unique_refs(source_refs, "source_refs")
@@ -561,6 +564,7 @@ class OpenLoopSignal:
             else None
         )
         payload = {
+            "user_id": subject,
             "loop_key": key,
             "kind": kind.value,
             "summary": text,
@@ -569,12 +573,15 @@ class OpenLoopSignal:
             "due_at": _dt(due) if due is not None else None,
             "related_goal_ref": goal_ref,
         }
-        return cls(_digest(payload), key, kind, text, refs, opened, due, goal_ref)
+        return cls(
+            _digest(payload), subject, key, kind, text, refs, opened, due, goal_ref
+        )
 
 
 @dataclass(frozen=True, slots=True)
 class OpenLoopResolution:
     resolution_id: str
+    user_id: str
     loop_key: str
     source_refs: tuple[str, ...]
     resolved_at: datetime
@@ -583,21 +590,24 @@ class OpenLoopResolution:
     def create(
         cls,
         *,
+        user_id: str,
         loop_key: str,
         source_refs: Iterable[str],
         resolved_at: datetime,
     ) -> OpenLoopResolution:
+        subject = _text(user_id, "user_id")
         key = _text(loop_key, "loop_key")
         refs = _unique_refs(source_refs, "source_refs")
         if not refs:
             raise GoalOpenLoopError("source_refs cannot be empty")
         point = _aware(resolved_at, "resolved_at")
         payload = {
+            "user_id": subject,
             "loop_key": key,
             "source_refs": list(refs),
             "resolved_at": _dt(point),
         }
-        return cls(_digest(payload), key, refs, point)
+        return cls(_digest(payload), subject, key, refs, point)
 
 
 @dataclass(frozen=True, slots=True)
@@ -605,6 +615,7 @@ class OpenLoopProjection:
     projection_id: str
     schema_version: str
     policy_version: str
+    user_id: str
     loop_key: str
     signal_id: str
     kind: OpenLoopKind
@@ -623,6 +634,7 @@ class OpenLoopProjection:
 class OpenLoopProjectionResult:
     result_id: str
     policy_version: str
+    subject_ids: tuple[str, ...]
     as_of: datetime
     projections: tuple[OpenLoopProjection, ...]
 
@@ -651,13 +663,15 @@ class OpenLoopProjector:
             )
             for loop_key, signal in sorted(signal_map.items())
         )
+        subject_ids = tuple(sorted({value.user_id for value in signal_map.values()}))
         payload = {
             "policy_version": policy,
+            "subject_ids": list(subject_ids),
             "as_of": _dt(point),
             "projection_ids": [value.projection_id for value in projections],
         }
         return OpenLoopProjectionResult(
-            _digest(payload), policy, point, projections
+            _digest(payload), policy, subject_ids, point, projections
         )
 
     @staticmethod
@@ -685,9 +699,14 @@ class OpenLoopProjector:
         for resolution in resolutions:
             if not isinstance(resolution, OpenLoopResolution):
                 raise GoalOpenLoopError("resolutions contain an invalid value")
-            if resolution.loop_key not in signals:
+            signal = signals.get(resolution.loop_key)
+            if signal is None:
                 raise GoalOpenLoopError(
                     f"resolution references unknown loop: {resolution.loop_key}"
+                )
+            if resolution.user_id != signal.user_id:
+                raise GoalOpenLoopError(
+                    f"resolution user_id does not match signal: {resolution.loop_key}"
                 )
             grouped.setdefault(resolution.loop_key, {})[
                 resolution.resolution_id
@@ -762,6 +781,7 @@ class OpenLoopProjector:
         payload = {
             "schema_version": OPEN_LOOP_SCHEMA_VERSION,
             "policy_version": policy_version,
+            "user_id": signal.user_id,
             "loop_key": signal.loop_key,
             "signal_id": signal.signal_id,
             "kind": signal.kind.value,
@@ -779,6 +799,7 @@ class OpenLoopProjector:
             projection_id=_digest(payload),
             schema_version=OPEN_LOOP_SCHEMA_VERSION,
             policy_version=policy_version,
+            user_id=signal.user_id,
             loop_key=signal.loop_key,
             signal_id=signal.signal_id,
             kind=signal.kind,
