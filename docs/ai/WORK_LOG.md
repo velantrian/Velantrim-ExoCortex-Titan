@@ -195,8 +195,8 @@ Canon, TruthGate, compute routing, answers, reminders, tools or actions.
 ### Resulting status
 
 ```text
-State adapter                   IMPLEMENTED · TESTED · UNWIRED
-Goal subject binding            IMPLEMENTED · TESTED · UNWIRED
+State adapter                   IMPLEMENTED · TESTED · INTERNAL · UNWIRED
+Goal subject binding            IMPLEMENTED · TESTED · INTERNAL · UNWIRED
 OpenLoop subject binding        NOT IMPLEMENTED
 Goal/OpenLoop adapters          NOT IMPLEMENTED
 Admission/runtime authority     ABSENT
