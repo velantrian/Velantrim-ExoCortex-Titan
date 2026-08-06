@@ -476,19 +476,21 @@ def _aggregate_boolean_or(
         observation for observation in group if observation.value is True
     )
     value = bool(true_observations)
+    if true_observations:
+        rule = "trusted_true_observation_or"
+    elif group:
+        rule = "trusted_false_observations_only"
+    else:
+        rule = "no_trusted_observations"
     provenance = ContinuitySignalProvenance(
         signal_type=signal_type,
         observation_ids=tuple(
-            observation.observation_id for observation in true_observations
+            observation.observation_id for observation in group
         ),
-        evidence_refs=_refs_union(true_observations),
-        producers=_producers(true_observations),
-        confidence=_min_confidence(true_observations),
-        rule=(
-            "trusted_true_observation_or"
-            if true_observations
-            else "no_trusted_true_observations"
-        ),
+        evidence_refs=_refs_union(group),
+        producers=_producers(group),
+        confidence=_min_confidence(group),
+        rule=rule,
         value=value,
     )
     return value, provenance
@@ -520,12 +522,15 @@ def _aggregate_continuity_available(
         contributing = true_observations
     else:
         value = False
-        rule = (
-            "no_trusted_true_observations"
-            if not true_observations
-            else "insufficient_confirmations"
-        )
-        contributing = true_observations
+        if false_observations:
+            rule = "trusted_negative_observations_fail_conservative"
+            contributing = false_observations
+        elif true_observations:
+            rule = "insufficient_confirmations"
+            contributing = true_observations
+        else:
+            rule = "no_trusted_observations"
+            contributing = ()
 
     provenance = ContinuitySignalProvenance(
         signal_type=ContinuitySignalType.CONTINUITY_AVAILABLE,
