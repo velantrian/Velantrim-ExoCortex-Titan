@@ -49,8 +49,11 @@ def _goal(
     )
 
 
-def _attestation(goal_ref: str = "goal:mvp") -> GoalAttestation:
+def _attestation(
+    goal_ref: str = "goal:mvp", *, user_id: str = "user:ruslan"
+) -> GoalAttestation:
     return GoalAttestation.create(
+        user_id=user_id,
         goal_ref=goal_ref,
         basis=GoalBasis.ACCEPTED_DECISION,
         source_refs=("conversation:decision-001",),
@@ -154,6 +157,33 @@ def test_attested_goal_becomes_source_linked_projection() -> None:
         "goal_stack:goal:mvp",
     )
     assert result.decisions[0].disposition is GoalDecisionDisposition.INCLUDED
+    assert projection.user_id == snapshot.user_id
+    assert result.decisions[0].user_id == snapshot.user_id
+    assert result.subject_ids == (snapshot.user_id,)
+
+
+def test_goal_subject_binding_is_content_addressed_and_multi_subject_explicit() -> None:
+    first = GoalRecordSnapshot.from_goal(_goal())
+    other_goal = _goal("goal:other", title="Other subject goal")
+    other_goal.user_id = "user:other"
+    second = GoalRecordSnapshot.from_goal(other_goal)
+    result = GoalProjector().project(
+        [first, second],
+        [
+            _attestation(first.goal_ref, user_id=first.user_id),
+            _attestation(second.goal_ref, user_id=second.user_id),
+        ],
+    )
+    assert result.subject_ids == ("user:other", "user:ruslan")
+    assert {value.user_id for value in result.projections} == set(result.subject_ids)
+    assert {value.user_id for value in result.decisions} == set(result.subject_ids)
+
+
+def test_goal_attestation_cannot_cross_subject_boundary() -> None:
+    snapshot = GoalRecordSnapshot.from_goal(_goal())
+    wrong_subject = _attestation(snapshot.goal_ref, user_id="user:other")
+    with pytest.raises(GoalOpenLoopError, match="user_id does not match"):
+        GoalProjector().project([snapshot], [wrong_subject])
 
 
 def test_goal_projection_is_order_independent() -> None:
@@ -182,6 +212,7 @@ def test_unknown_or_multiple_goal_attestations_fail_closed() -> None:
         GoalProjector().project([snapshot], [unknown])
 
     second = GoalAttestation.create(
+        user_id=snapshot.user_id,
         goal_ref=snapshot.goal_ref,
         basis=GoalBasis.EXPLICIT_INTENT,
         source_refs=("conversation:intent-002",),

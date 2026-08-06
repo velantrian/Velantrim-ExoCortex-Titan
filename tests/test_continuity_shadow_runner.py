@@ -134,6 +134,7 @@ def _input(
         )
     )
     goal_attestation = GoalAttestation.create(
+        user_id=goal_snapshot.user_id,
         goal_ref=goal_snapshot.goal_ref,
         basis=GoalBasis.ACCEPTED_DECISION,
         source_refs=("conversation:goal-decision",),

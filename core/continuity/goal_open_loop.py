@@ -18,7 +18,7 @@ import unicodedata
 from core.goal_stack import Goal
 
 GOAL_SNAPSHOT_SCHEMA_VERSION = "continuity.goal_snapshot.v1"
-GOAL_PROJECTION_SCHEMA_VERSION = "continuity.goal_projection.v1"
+GOAL_PROJECTION_SCHEMA_VERSION = "continuity.goal_projection.v2"
 OPEN_LOOP_SCHEMA_VERSION = "continuity.open_loop_projection.v1"
 GOAL_OPEN_LOOP_POLICY_VERSION = "continuity.goal_open_loop.policy.v1"
 
@@ -285,6 +285,7 @@ class GoalStackSnapshotBridge:
 @dataclass(frozen=True, slots=True)
 class GoalAttestation:
     attestation_id: str
+    user_id: str
     goal_ref: str
     basis: GoalBasis
     source_refs: tuple[str, ...]
@@ -294,6 +295,7 @@ class GoalAttestation:
     def create(
         cls,
         *,
+        user_id: str,
         goal_ref: str,
         basis: GoalBasis,
         source_refs: Iterable[str],
@@ -301,18 +303,20 @@ class GoalAttestation:
     ) -> GoalAttestation:
         if not isinstance(basis, GoalBasis):
             raise GoalOpenLoopError("basis must be a GoalBasis")
+        subject = _text(user_id, "user_id")
         goal_id = _text(goal_ref, "goal_ref")
         refs = _unique_refs(source_refs, "source_refs")
         if not refs:
             raise GoalOpenLoopError("source_refs cannot be empty")
         point = _aware(confirmed_at, "confirmed_at")
         payload = {
+            "user_id": subject,
             "goal_ref": goal_id,
             "basis": basis.value,
             "source_refs": list(refs),
             "confirmed_at": _dt(point),
         }
-        return cls(_digest(payload), goal_id, basis, refs, point)
+        return cls(_digest(payload), subject, goal_id, basis, refs, point)
 
 
 @dataclass(frozen=True, slots=True)
@@ -320,6 +324,7 @@ class GoalProjection:
     projection_id: str
     schema_version: str
     policy_version: str
+    user_id: str
     goal_ref: str
     source_snapshot_id: str
     attestation_id: str
@@ -342,6 +347,8 @@ class GoalProjection:
     ) -> GoalProjection:
         if snapshot.goal_ref != attestation.goal_ref:
             raise GoalOpenLoopError("attestation goal_ref does not match snapshot")
+        if snapshot.user_id != attestation.user_id:
+            raise GoalOpenLoopError("attestation user_id does not match snapshot")
         if (
             attestation.confirmed_at.astimezone(UTC)
             < snapshot.created_at.astimezone(UTC)
@@ -352,6 +359,7 @@ class GoalProjection:
         payload = {
             "schema_version": GOAL_PROJECTION_SCHEMA_VERSION,
             "policy_version": policy,
+            "user_id": snapshot.user_id,
             "goal_ref": snapshot.goal_ref,
             "source_snapshot_id": snapshot.snapshot_id,
             "attestation_id": attestation.attestation_id,
@@ -368,6 +376,7 @@ class GoalProjection:
             projection_id=_digest(payload),
             schema_version=GOAL_PROJECTION_SCHEMA_VERSION,
             policy_version=policy,
+            user_id=snapshot.user_id,
             goal_ref=snapshot.goal_ref,
             source_snapshot_id=snapshot.snapshot_id,
             attestation_id=attestation.attestation_id,
@@ -384,6 +393,7 @@ class GoalProjection:
 
 @dataclass(frozen=True, slots=True)
 class GoalProjectionDecision:
+    user_id: str
     goal_ref: str
     disposition: GoalDecisionDisposition
     reason_codes: tuple[GoalDecisionReason, ...]
@@ -394,6 +404,7 @@ class GoalProjectionDecision:
 class GoalProjectionResult:
     result_id: str
     policy_version: str
+    subject_ids: tuple[str, ...]
     projections: tuple[GoalProjection, ...]
     decisions: tuple[GoalProjectionDecision, ...]
 
@@ -418,6 +429,7 @@ class GoalProjector:
             if attestation is None:
                 decisions.append(
                     GoalProjectionDecision(
+                        snapshot.user_id,
                         goal_ref,
                         GoalDecisionDisposition.EXCLUDED,
                         (GoalDecisionReason.MISSING_ATTESTATION,),
@@ -431,6 +443,7 @@ class GoalProjector:
             projections.append(projection)
             decisions.append(
                 GoalProjectionDecision(
+                    snapshot.user_id,
                     goal_ref,
                     GoalDecisionDisposition.INCLUDED,
                     (
@@ -444,15 +457,18 @@ class GoalProjector:
             sorted(projections, key=lambda value: value.projection_id)
         )
         ordered_decisions = tuple(
-            sorted(decisions, key=lambda value: value.goal_ref)
+            sorted(decisions, key=lambda value: (value.user_id, value.goal_ref))
         )
+        subject_ids = tuple(sorted({value.user_id for value in snapshot_map.values()}))
         payload = {
             "policy_version": policy,
+            "subject_ids": list(subject_ids),
             "projection_ids": [
                 value.projection_id for value in ordered_projections
             ],
             "decisions": [
                 {
+                    "user_id": value.user_id,
                     "goal_ref": value.goal_ref,
                     "disposition": value.disposition.value,
                     "reason_codes": [
@@ -464,7 +480,7 @@ class GoalProjector:
             ],
         }
         return GoalProjectionResult(
-            _digest(payload), policy, ordered_projections, ordered_decisions
+            _digest(payload), policy, subject_ids, ordered_projections, ordered_decisions
         )
 
     @staticmethod

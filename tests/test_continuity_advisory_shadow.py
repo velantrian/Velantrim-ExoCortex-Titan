@@ -118,6 +118,7 @@ def _goal(
         projection_id=projection_id,
         schema_version=GOAL_PROJECTION_SCHEMA_VERSION,
         policy_version=GOAL_OPEN_LOOP_POLICY_VERSION,
+        user_id="user:advisory-fixture",
         goal_ref="goal-1",
         source_snapshot_id="snapshot-1",
         attestation_id="attestation-1",
