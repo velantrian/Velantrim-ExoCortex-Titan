@@ -1,0 +1,147 @@
+name: temp-goal-subject-binding
+
+on:
+  push:
+    branches:
+      - feat/continuity-goal-subject-binding
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/continuity-goal-subject-binding
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Apply subject-binding patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected 1 match, found {count}")
+              return text.replace(old, new, 1)
+
+          path = Path('core/continuity/goal_open_loop.py')
+          text = path.read_text()
+          text = replace_once(text,
+              'GOAL_PROJECTION_SCHEMA_VERSION = "continuity.goal_projection.v1"',
+              'GOAL_PROJECTION_SCHEMA_VERSION = "continuity.goal_projection.v2"',
+              'schema version')
+          text = replace_once(text,
+              'class GoalAttestation:\n    attestation_id: str\n    goal_ref: str\n    basis: GoalBasis',
+              'class GoalAttestation:\n    attestation_id: str\n    user_id: str\n    goal_ref: str\n    basis: GoalBasis',
+              'attestation fields')
+          text = replace_once(text,
+              '        *,\n        goal_ref: str,\n        basis: GoalBasis,',
+              '        *,\n        user_id: str,\n        goal_ref: str,\n        basis: GoalBasis,',
+              'attestation signature')
+          text = replace_once(text,
+              '        goal_id = _text(goal_ref, "goal_ref")\n        refs = _unique_refs(source_refs, "source_refs")',
+              '        subject = _text(user_id, "user_id")\n        goal_id = _text(goal_ref, "goal_ref")\n        refs = _unique_refs(source_refs, "source_refs")',
+              'attestation subject validation')
+          text = replace_once(text,
+              '        payload = {\n            "goal_ref": goal_id,\n            "basis": basis.value,',
+              '        payload = {\n            "user_id": subject,\n            "goal_ref": goal_id,\n            "basis": basis.value,',
+              'attestation payload')
+          text = replace_once(text,
+              '        return cls(_digest(payload), goal_id, basis, refs, point)',
+              '        return cls(_digest(payload), subject, goal_id, basis, refs, point)',
+              'attestation return')
+          text = replace_once(text,
+              '    policy_version: str\n    goal_ref: str\n    source_snapshot_id: str',
+              '    policy_version: str\n    user_id: str\n    goal_ref: str\n    source_snapshot_id: str',
+              'projection fields')
+          text = replace_once(text,
+              '        if snapshot.goal_ref != attestation.goal_ref:\n            raise GoalOpenLoopError("attestation goal_ref does not match snapshot")',
+              '        if snapshot.goal_ref != attestation.goal_ref:\n            raise GoalOpenLoopError("attestation goal_ref does not match snapshot")\n        if snapshot.user_id != attestation.user_id:\n            raise GoalOpenLoopError("attestation user_id does not match snapshot")',
+              'projection subject check')
+          text = replace_once(text,
+              '            "policy_version": policy,\n            "goal_ref": snapshot.goal_ref,',
+              '            "policy_version": policy,\n            "user_id": snapshot.user_id,\n            "goal_ref": snapshot.goal_ref,',
+              'projection payload')
+          text = replace_once(text,
+              '            policy_version=policy,\n            goal_ref=snapshot.goal_ref,',
+              '            policy_version=policy,\n            user_id=snapshot.user_id,\n            goal_ref=snapshot.goal_ref,',
+              'projection return')
+          text = replace_once(text,
+              'class GoalProjectionDecision:\n    goal_ref: str\n    disposition: GoalDecisionDisposition',
+              'class GoalProjectionDecision:\n    user_id: str\n    goal_ref: str\n    disposition: GoalDecisionDisposition',
+              'decision fields')
+          text = replace_once(text,
+              'class GoalProjectionResult:\n    result_id: str\n    policy_version: str\n    projections:',
+              'class GoalProjectionResult:\n    result_id: str\n    policy_version: str\n    subject_ids: tuple[str, ...]\n    projections:',
+              'result fields')
+          text = replace_once(text,
+              '                    GoalProjectionDecision(\n                        goal_ref,\n                        GoalDecisionDisposition.EXCLUDED,',
+              '                    GoalProjectionDecision(\n                        snapshot.user_id,\n                        goal_ref,\n                        GoalDecisionDisposition.EXCLUDED,',
+              'excluded decision')
+          text = replace_once(text,
+              '                GoalProjectionDecision(\n                    goal_ref,\n                    GoalDecisionDisposition.INCLUDED,',
+              '                GoalProjectionDecision(\n                    snapshot.user_id,\n                    goal_ref,\n                    GoalDecisionDisposition.INCLUDED,',
+              'included decision')
+          text = replace_once(text,
+              '        ordered_decisions = tuple(\n            sorted(decisions, key=lambda value: value.goal_ref)\n        )\n        payload = {',
+              '        ordered_decisions = tuple(\n            sorted(decisions, key=lambda value: (value.user_id, value.goal_ref))\n        )\n        subject_ids = tuple(sorted({value.user_id for value in snapshot_map.values()}))\n        payload = {',
+              'decision ordering and subjects')
+          text = replace_once(text,
+              '            "policy_version": policy,\n            "projection_ids": [',
+              '            "policy_version": policy,\n            "subject_ids": list(subject_ids),\n            "projection_ids": [',
+              'result payload subjects')
+          text = replace_once(text,
+              '                {\n                    "goal_ref": value.goal_ref,\n                    "disposition": value.disposition.value,',
+              '                {\n                    "user_id": value.user_id,\n                    "goal_ref": value.goal_ref,\n                    "disposition": value.disposition.value,',
+              'decision payload subject')
+          text = replace_once(text,
+              '        return GoalProjectionResult(\n            _digest(payload), policy, ordered_projections, ordered_decisions\n        )',
+              '        return GoalProjectionResult(\n            _digest(payload), policy, subject_ids, ordered_projections, ordered_decisions\n        )',
+              'result return')
+          path.write_text(text)
+
+          path = Path('tests/test_continuity_goal_open_loop.py')
+          text = path.read_text()
+          text = replace_once(text,
+              'def _attestation(goal_ref: str = "goal:mvp") -> GoalAttestation:\n    return GoalAttestation.create(\n        goal_ref=goal_ref,',
+              'def _attestation(\n    goal_ref: str = "goal:mvp", *, user_id: str = "user:ruslan"\n) -> GoalAttestation:\n    return GoalAttestation.create(\n        user_id=user_id,\n        goal_ref=goal_ref,',
+              'test attestation helper')
+          text = replace_once(text,
+              '    second = GoalAttestation.create(\n        goal_ref=snapshot.goal_ref,',
+              '    second = GoalAttestation.create(\n        user_id=snapshot.user_id,\n        goal_ref=snapshot.goal_ref,',
+              'direct attestation test')
+          insert_after = '''    assert result.decisions[0].disposition is GoalDecisionDisposition.INCLUDED\n'''
+          new_tests = '''    assert result.decisions[0].disposition is GoalDecisionDisposition.INCLUDED\n    assert projection.user_id == snapshot.user_id\n    assert result.decisions[0].user_id == snapshot.user_id\n    assert result.subject_ids == (snapshot.user_id,)\n\n\ndef test_goal_subject_binding_is_content_addressed_and_multi_subject_explicit() -> None:\n    first = GoalRecordSnapshot.from_goal(_goal())\n    other_goal = _goal("goal:other", title="Other subject goal")\n    other_goal.user_id = "user:other"\n    second = GoalRecordSnapshot.from_goal(other_goal)\n\n    result = GoalProjector().project(\n        [first, second],\n        [\n            _attestation(first.goal_ref, user_id=first.user_id),\n            _attestation(second.goal_ref, user_id=second.user_id),\n        ],\n    )\n\n    assert result.subject_ids == ("user:other", "user:ruslan")\n    assert {value.user_id for value in result.projections} == set(result.subject_ids)\n    assert {value.user_id for value in result.decisions} == set(result.subject_ids)\n\n\ndef test_goal_attestation_cannot_cross_subject_boundary() -> None:\n    snapshot = GoalRecordSnapshot.from_goal(_goal())\n    wrong_subject = _attestation(snapshot.goal_ref, user_id="user:other")\n\n    with pytest.raises(GoalOpenLoopError, match="user_id does not match"):\n        GoalProjector().project([snapshot], [wrong_subject])\n'''
+          text = replace_once(text, insert_after, new_tests, 'new subject tests')
+          path.write_text(text)
+
+          for name, anchor in [
+              ('tests/test_continuity_shadow_runner.py', '        goal_ref=goal_snapshot.goal_ref,'),
+              ('tests/test_continuity_projection_working_memory_adapter.py', '        goal_ref=snapshot.goal_ref,'),
+          ]:
+              path = Path(name)
+              text = path.read_text()
+              text = replace_once(text, anchor, anchor.replace('        goal_ref=', '        user_id=' + ('goal_snapshot.user_id,\n        goal_ref=' if 'shadow_runner' in name else 'snapshot.user_id,\n        goal_ref=')), name)
+              path.write_text(text)
+
+          workflow = Path('.github/workflows/temp-goal-subject-binding.yml')
+          workflow.unlink()
+          PY
+      - name: Validate focused tests
+        run: |
+          python -m compileall -q core/continuity/goal_open_loop.py
+          pytest -q tests/test_continuity_goal_open_loop.py tests/test_continuity_projection_working_memory_adapter.py tests/test_continuity_shadow_runner.py
+      - name: Commit patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add core/continuity/goal_open_loop.py tests/test_continuity_goal_open_loop.py tests/test_continuity_projection_working_memory_adapter.py tests/test_continuity_shadow_runner.py .github/workflows/temp-goal-subject-binding.yml
+          git commit -m "feat(continuity): bind goal projections to subjects"
+          git push origin HEAD:feat/continuity-goal-subject-binding
