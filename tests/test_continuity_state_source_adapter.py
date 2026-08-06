@@ -25,6 +25,7 @@ from core.continuity.state_source_adapter import (
     STATE_SOURCE_COMPONENT_VERSION,
     STATE_SOURCE_OWNER,
     STATE_SOURCE_TYPE,
+    StateDraftAdapterOutput,
     adapt_state_reconciliation_to_drafts,
 )
 
@@ -44,11 +45,12 @@ def _projection(
     expired: tuple[str, ...] = (),
     reasons: tuple[StateReason, ...] = (StateReason.ACTIVE_VALUE_CONFLICT,),
     review_required: bool = True,
+    as_of: datetime = _NOW - timedelta(minutes=5),
 ) -> CurrentStateProjection:
     return CurrentStateProjection.create(
         subject_ref=subject,
         predicate=predicate,
-        as_of=_NOW - timedelta(minutes=5),
+        as_of=as_of,
         status=status,
         selected_assertion_ref=selected,
         candidate_assertion_refs=candidates,
@@ -134,10 +136,7 @@ def _binding(
     **overrides: object,
 ) -> ContinuitySourceBindingReceipt:
     subjects = tuple(
-        {
-            projection.subject_ref
-            for projection in result.projections
-        }
+        {projection.subject_ref for projection in result.projections}
     )
     values: dict[str, object] = {
         "source_type": STATE_SOURCE_TYPE,
@@ -162,7 +161,7 @@ def _adapt(
     binding: ContinuitySourceBindingReceipt | None = None,
     authorization: ContinuityAuthorizationContext | None = None,
     created_at: datetime = _NOW,
-):
+) -> StateDraftAdapterOutput:
     return adapt_state_reconciliation_to_drafts(
         result=result,
         binding_receipt=binding or _binding(result),
@@ -174,9 +173,7 @@ def _adapt(
 def test_contested_projection_derives_only_conservative_drafts() -> None:
     output = _adapt(_result())
     assert output.no_runtime_authority is True
-    assert {
-        value.signal_type for value in output.drafts
-    } == {
+    assert {value.signal_type for value in output.drafts} == {
         ContinuitySignalType.CONTEXT_DEGRADED,
         ContinuitySignalType.ACTIVE_CONTRADICTION,
     }
@@ -290,6 +287,36 @@ def test_binding_identity_must_match_actual_result(
         _adapt(result, binding=_binding(result, **override))
 
 
+def test_tampered_result_identity_is_rejected_before_receipt_trust() -> None:
+    result = replace(_result(), result_id="0" * 64)
+    with pytest.raises(ContinuitySourceAdmissionError, match="result_id"):
+        _adapt(result, binding=_binding(result))
+
+
+def test_tampered_projection_identity_is_rejected_before_derivation() -> None:
+    projection = replace(_projection(), predicate="tampered.predicate")
+    result = _result((projection,))
+    with pytest.raises(ContinuitySourceAdmissionError, match="projection_id"):
+        _adapt(result, binding=_binding(result))
+
+
+def test_projection_time_and_assertion_set_must_match_result() -> None:
+    wrong_time = _projection(as_of=_NOW - timedelta(minutes=6))
+    result = _result((wrong_time,))
+    with pytest.raises(ContinuitySourceAdmissionError, match="projection as_of"):
+        _adapt(result, binding=_binding(result))
+
+    projection = _projection()
+    incomplete = StateReconciliationResult.create(
+        as_of=projection.as_of,
+        assertion_refs=("assertion:a",),
+        relation_refs=("relation:a",),
+        projections=(projection,),
+    )
+    with pytest.raises(ContinuitySourceAdmissionError, match="assertion refs"):
+        _adapt(incomplete, binding=_binding(incomplete))
+
+
 def test_binding_must_include_complete_source_evidence() -> None:
     result = _result()
     evidence = tuple(
@@ -349,9 +376,10 @@ def test_output_rejects_runtime_authority_and_cross_envelope_drafts() -> None:
     with pytest.raises(ContinuitySourceAdmissionError, match="remain True"):
         replace(output, no_runtime_authority=False)
 
-    other_result = _result(
-        (_projection(predicate="profile.location"),)
-    )
+    other_result = _result((_projection(predicate="profile.location"),))
     other_draft = _adapt(other_result).drafts[0]
-    with pytest.raises(ContinuitySourceAdmissionError, match="output source envelope"):
+    with pytest.raises(
+        ContinuitySourceAdmissionError,
+        match="output source envelope",
+    ):
         replace(output, drafts=(other_draft,))
