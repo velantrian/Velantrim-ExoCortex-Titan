@@ -216,8 +216,8 @@ def test_stale_and_expired_map_to_bounded_freshness_values() -> None:
         if value.signal_type is ContinuitySignalType.CONTEXT_FRESHNESS
     }
     assert freshness == {
-        "person:subject-a:profile.employer": "critical_stale",
-        "person:subject-a:profile.location": "stale",
+        f"state_projection:{expired.projection_id}": "critical_stale",
+        f"state_projection:{stale.projection_id}": "stale",
     }
 
 
@@ -352,6 +352,13 @@ def test_contradiction_scopes_do_not_collapse_distinct_assertions() -> None:
     assert len(contradictions) == 2
     assert len({value.draft_id for value in contradictions}) == 2
     assert len({value.scope for value in contradictions}) == 2
+    assert all(
+        value.scope is not None
+        and value.scope.startswith(
+            f"state_projection:{projection.projection_id}:contradiction:"
+        )
+        for value in contradictions
+    )
 
 
 def test_adapter_is_deterministic_across_input_order_and_timezones() -> None:
