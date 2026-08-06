@@ -141,7 +141,7 @@ def _validate_binding(
     checks = (
         (
             binding_receipt.source_type == STATE_SOURCE_TYPE,
-            "binding source_type does not identify a State reconciliation result",
+            "binding source_type does not identify a State result",
         ),
         (
             binding_receipt.source_owner == STATE_SOURCE_OWNER,
@@ -158,7 +158,7 @@ def _validate_binding(
         ),
         (
             binding_receipt.source_digest == expected_digest,
-            "binding source_digest does not match canonical State result bytes",
+            "binding source_digest does not match canonical State bytes",
         ),
         (
             binding_receipt.source_policy_version == result.policy_version,
@@ -170,11 +170,12 @@ def _validate_binding(
         ),
         (
             bound_subjects == expected_subjects,
-            "binding subject set must exactly match every State projection subject",
+            "binding subject set must exactly match every projection subject",
         ),
         (
             required_evidence.issubset(set(binding_receipt.evidence_refs)),
-            "binding evidence must include result, projection, assertion, and relation references",
+            "binding evidence must include result, projection, assertion, "
+            "and relation references",
         ),
     )
     for valid, message in checks:
@@ -213,17 +214,21 @@ def _projection_drafts(
     evidence = _projection_evidence(projection)
     drafts: list[ContinuityObservationDraft] = []
 
-    degraded_reasons = {
-        reason.value for reason in projection.reason_codes
-    }
-    if projection.status in {
+    degraded = projection.status in {
         ProjectionStatus.CONTESTED,
         ProjectionStatus.UNRESOLVED,
-    }:
-        degraded_reasons.add(f"state_status:{projection.status.value}")
-    if projection.review_required:
-        degraded_reasons.add("state_review_required")
-    if degraded_reasons:
+    } or projection.review_required
+    if degraded:
+        degraded_reasons = {
+            reason.value for reason in projection.reason_codes
+        }
+        if projection.status in {
+            ProjectionStatus.CONTESTED,
+            ProjectionStatus.UNRESOLVED,
+        }:
+            degraded_reasons.add(f"state_status:{projection.status.value}")
+        if projection.review_required:
+            degraded_reasons.add("state_review_required")
         drafts.append(
             ContinuityObservationDraft.create(
                 source_envelope=envelope,
