@@ -22,7 +22,9 @@ jobs:
           python-version: '3.11'
           cache: pip
       - name: Apply exact review hardening patch
-        run: python scripts/temporary_finalize_continuity_post_merge_hardening.py
+        run: |
+          python scripts/temporary_finalize_continuity_post_merge_hardening.py
+          python scripts/temporary_preserve_continuity_schema_reason.py
       - name: Install and validate focused Continuity surface
         run: |
           python -m pip install --upgrade pip
@@ -37,5 +39,6 @@ jobs:
           git add core/continuity/signal_producer.py docs/ai/WORK_LOG.md tests/test_continuity_signal_producer_review_regressions.py
           git rm .github/workflows/temporary-finalize-continuity-post-merge-hardening.yml
           git rm scripts/temporary_finalize_continuity_post_merge_hardening.py
+          git rm scripts/temporary_preserve_continuity_schema_reason.py
           git commit -m "fix(continuity): harden post-merge trusted observations [continuity-post-merge-hardened]"
           git push origin HEAD:fix/continuity-final-review-hardening
