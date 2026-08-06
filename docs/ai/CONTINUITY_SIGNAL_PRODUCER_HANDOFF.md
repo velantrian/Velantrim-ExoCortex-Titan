@@ -2,7 +2,8 @@
 
 **Status:** `DRAFT · SHADOW-ONLY · UNWIRED · NO RUNTIME AUTHORITY`  
 **Pull request:** #214  
-**Implementation lineage reviewed through:** `83490c61a8bb31be9ea55ea1b441fe205a86810e`
+**Current validation base:** `main@3c73eab991c305d174f6c2c5805595c7998d4068`  
+**Implementation lineage reviewed through:** `c78d6d02ba361ec72bee63f0fdf9ebe1c64dadd5`
 
 ## Scope
 
@@ -30,6 +31,13 @@ findings:
    non-iterables rather than iterating them character by character;
 4. per-signal provenance retains trusted negative boolean observations,
    including false-only warning groups and fail-conservative unavailability.
+
+Additional review cleanup:
+
+- the composition test asserts a real Continuity reason code;
+- evidence-coverage test naming matches behavior;
+- evidence reference aggregation avoids repeated tuple concatenation;
+- temporary patch workflows and scripts are absent from the final diff.
 
 ## Provenance semantics
 
@@ -65,14 +73,14 @@ The following public contracts remain unchanged:
 
 ## Required final gates
 
-Before merge, verify the exact final head rather than any earlier green head:
+Before merge, verify the exact final head against the current validation base rather than any earlier green head:
 
 - repository hygiene: no temporary workflow or patch script in the diff;
 - Ruff;
 - blocking mypy;
 - focused Continuity tests including review regressions;
 - full pytest;
-- coverage floor ≥74%;
+- coverage floor ≥74% with the accepted trace-hook instrumentation isolation;
 - Docker hardening;
 - unresolved review threads = 0;
 - final diff review for authority leakage, mutable state and nondeterminism;
