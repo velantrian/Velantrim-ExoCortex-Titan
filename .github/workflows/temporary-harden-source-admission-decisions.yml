@@ -27,24 +27,25 @@ jobs:
       - name: Install focused dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[server,dev,parsers,retrieval,embeddings,graph-lab]"
+          python -m pip install -e ".[server,dev]"
 
-      - name: Apply exact hardening patch
+      - name: Apply structural hardening patch
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           production = Path("core/continuity/source_admission_decisions.py")
           text = production.read_text()
 
-          anchor = '''def _subject_keys(subjects: tuple[SubjectRef, ...]) -> frozenset[tuple[str, str]]:
-              return frozenset((subject.subject_id, subject.kind.value) for subject in subjects)
-          '''
-          replacement = '''def _subject_keys(subjects: tuple[SubjectRef, ...]) -> frozenset[tuple[str, str]]:
-              return frozenset((subject.subject_id, subject.kind.value) for subject in subjects)
-
-
-          def _hash_refs(
+          if "def _hash_refs(" not in text:
+              match = re.search(
+                  r"def _subject_keys\(subjects: tuple\[SubjectRef, \.\.\.\]\) -> frozenset\[tuple\[str, str\]\]:\n(?:    .*\n)+?\n",
+                  text,
+              )
+              if match is None:
+                  raise SystemExit("subject-key function not found")
+              helper = '''def _hash_refs(
               values: object,
               name: str,
               *,
@@ -57,46 +58,34 @@ jobs:
               if len(refs) != len(set(refs)):
                   raise ContinuitySourceAdmissionError(f"{name} cannot contain duplicates")
               return tuple(sorted(refs))
-          '''
-          if anchor not in text:
-              raise SystemExit("subject-key anchor not found")
-          text = text.replace(anchor, replacement, 1)
 
-          replacements = {
-              'self, "draft_ids", _refs(self.draft_ids, "draft_ids", required=True)':
-              'self, "draft_ids", _hash_refs(self.draft_ids, "draft_ids", required=True)',
-              '_refs(self.admitted_draft_ids, "admitted_draft_ids")':
-              '_hash_refs(self.admitted_draft_ids, "admitted_draft_ids")',
-              '_refs(\n                    self.admission_receipt_ids,\n                    "admission_receipt_ids",\n                    required=True,\n                )':
-              '_hash_refs(\n                    self.admission_receipt_ids,\n                    "admission_receipt_ids",\n                    required=True,\n                )',
-              '_refs(\n                    self.source_binding_receipt_ids,\n                    "source_binding_receipt_ids",\n                    required=True,\n                )':
-              '_hash_refs(\n                    self.source_binding_receipt_ids,\n                    "source_binding_receipt_ids",\n                    required=True,\n                )',
-              '_refs(self.source_envelope_ids, "source_envelope_ids", required=True)':
-              '_hash_refs(self.source_envelope_ids, "source_envelope_ids", required=True)',
-          }
-          for old, new in replacements.items():
-              if old not in text:
-                  raise SystemExit(f"production replacement not found: {old!r}")
-              text = text.replace(old, new, 1)
+
+          '''
+              text = text[: match.end()] + helper + text[match.end() :]
+
+          fields = (
+              "draft_ids",
+              "admitted_draft_ids",
+              "admission_receipt_ids",
+              "source_binding_receipt_ids",
+              "source_envelope_ids",
+          )
+          for field in fields:
+              pattern = rf"_refs\((\s*self\.{field}\s*,)"
+              text, count = re.subn(pattern, rf"_hash_refs(\1", text, count=1)
+              if count != 1:
+                  raise SystemExit(f"ID collection patch count for {field}: {count}")
           production.write_text(text)
 
           tests = Path("tests/test_continuity_source_admission_decisions.py")
           test_text = tests.read_text()
-          old_test = '''def test_batch_direct_constructor_rejects_broken_trace_mapping() -> None:
-              batch = _batch()
-              link = batch.draft_observation_links[0]
-              wrong_link = ContinuityDraftObservationLink(
-                  link_id=link.link_id,
-                  schema_version=link.schema_version,
-                  draft_id=link.draft_id,
-                  observation_id="0" * 64,
-                  source_envelope_id=link.source_envelope_id,
-                  authority=link.authority,
-              )
-              with pytest.raises(ContinuitySourceAdmissionError):
-                  replace(batch, draft_observation_links=(wrong_link,))
-          '''
-          new_test = '''def test_trace_link_direct_constructor_rejects_broken_observation_mapping() -> None:
+          start_name = "def test_batch_direct_constructor_rejects_broken_trace_mapping() -> None:\n"
+          end_name = "def test_serialization_contains_no_runtime_or_admission_executor_fields() -> None:\n"
+          start = test_text.find(start_name)
+          end = test_text.find(end_name, start)
+          if start < 0 or end < 0:
+              raise SystemExit("trace-test function boundaries not found")
+          replacement = '''def test_trace_link_direct_constructor_rejects_broken_observation_mapping() -> None:
               link = _batch().draft_observation_links[0]
               with pytest.raises(ContinuitySourceAdmissionError, match="canonical"):
                   replace(link, observation_id="0" * 64)
@@ -115,10 +104,10 @@ jobs:
                   replace(batch, source_binding_receipt_ids=("binding:not-a-hash",))
               with pytest.raises(ContinuitySourceAdmissionError, match="SHA-256"):
                   replace(batch, source_envelope_ids=("envelope:not-a-hash",))
+
+
           '''
-          if old_test not in test_text:
-              raise SystemExit("trace test anchor not found")
-          tests.write_text(test_text.replace(old_test, new_test, 1))
+          tests.write_text(test_text[:start] + replacement + test_text[end:])
           PY
 
       - name: Focused validation
