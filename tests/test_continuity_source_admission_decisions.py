@@ -19,7 +19,6 @@ from core.continuity.source_admission_decisions import (
     SOURCE_ADMISSION_DECISION_SCHEMA_VERSION,
     AuthorizedContinuityObservationBatch,
     ContinuityAdmissionDisposition,
-    ContinuityDraftObservationLink,
     ContinuityDraftRejection,
     ContinuityObservationAdmissionReceipt,
 )
@@ -202,10 +201,10 @@ def _batch(
     )
     values: dict[str, object] = {
         "authorization_context": authorization_value,
-        "receipts": receipts or (receipt_value,),
-        "envelopes": envelopes or (envelope_value,),
-        "binding_receipts": bindings or (binding_value,),
-        "admitted_drafts": admitted_drafts or (draft_value,),
+        "receipts": (receipt_value,) if receipts is None else receipts,
+        "envelopes": (envelope_value,) if envelopes is None else envelopes,
+        "binding_receipts": (binding_value,) if bindings is None else bindings,
+        "admitted_drafts": (draft_value,) if admitted_drafts is None else admitted_drafts,
         "created_at": _NOW + timedelta(minutes=1),
         "valid_until": _NOW + timedelta(hours=1),
     }
@@ -635,19 +634,25 @@ def test_trace_link_is_frozen_tamper_evident_and_trace_only() -> None:
         replace(link, authority="runtime_authority")
 
 
-def test_batch_direct_constructor_rejects_broken_trace_mapping() -> None:
+def test_trace_link_direct_constructor_rejects_broken_observation_mapping() -> None:
+    link = _batch().draft_observation_links[0]
+    with pytest.raises(ContinuitySourceAdmissionError, match="canonical"):
+        replace(link, observation_id="0" * 64)
+
+
+def test_direct_contracts_reject_non_hash_id_collections() -> None:
+    receipt = _receipt()
     batch = _batch()
-    link = batch.draft_observation_links[0]
-    wrong_link = ContinuityDraftObservationLink(
-        link_id=link.link_id,
-        schema_version=link.schema_version,
-        draft_id=link.draft_id,
-        observation_id="0" * 64,
-        source_envelope_id=link.source_envelope_id,
-        authority=link.authority,
-    )
-    with pytest.raises(ContinuitySourceAdmissionError):
-        replace(batch, draft_observation_links=(wrong_link,))
+    with pytest.raises(ContinuitySourceAdmissionError, match="SHA-256"):
+        replace(receipt, draft_ids=("draft:not-a-hash",))
+    with pytest.raises(ContinuitySourceAdmissionError, match="SHA-256"):
+        replace(receipt, admitted_draft_ids=("draft:not-a-hash",))
+    with pytest.raises(ContinuitySourceAdmissionError, match="SHA-256"):
+        replace(batch, admission_receipt_ids=("receipt:not-a-hash",))
+    with pytest.raises(ContinuitySourceAdmissionError, match="SHA-256"):
+        replace(batch, source_binding_receipt_ids=("binding:not-a-hash",))
+    with pytest.raises(ContinuitySourceAdmissionError, match="SHA-256"):
+        replace(batch, source_envelope_ids=("envelope:not-a-hash",))
 
 
 def test_serialization_contains_no_runtime_or_admission_executor_fields() -> None:

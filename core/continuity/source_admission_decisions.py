@@ -70,6 +70,21 @@ def _unique_by_id(values: tuple[object, ...], name: str, field_name: str) -> Non
 def _subject_keys(subjects: tuple[SubjectRef, ...]) -> frozenset[tuple[str, str]]:
     return frozenset((subject.subject_id, subject.kind.value) for subject in subjects)
 
+def _hash_refs(
+    values: object,
+    name: str,
+    *,
+    required: bool = False,
+) -> tuple[str, ...]:
+    items = _items(values, name)
+    refs = tuple(_hash(value, name) for value in items)
+    if required and not refs:
+        raise ContinuitySourceAdmissionError(f"{name} cannot be empty")
+    if len(refs) != len(set(refs)):
+        raise ContinuitySourceAdmissionError(f"{name} cannot contain duplicates")
+    return tuple(sorted(refs))
+
+
 
 @dataclass(frozen=True, slots=True)
 class ContinuityDraftRejection:
@@ -194,12 +209,12 @@ class ContinuityObservationAdmissionReceipt:
             self, "adapter_version", _text(self.adapter_version, "adapter_version")
         )
         object.__setattr__(
-            self, "draft_ids", _refs(self.draft_ids, "draft_ids", required=True)
+            self, "draft_ids", _hash_refs(self.draft_ids, "draft_ids", required=True)
         )
         object.__setattr__(
             self,
             "admitted_draft_ids",
-            _refs(self.admitted_draft_ids, "admitted_draft_ids"),
+            _hash_refs(self.admitted_draft_ids, "admitted_draft_ids"),
         )
         rejection_items = _typed_tuple(
             self.rejected_drafts,
@@ -601,7 +616,7 @@ class AuthorizedContinuityObservationBatch:
         object.__setattr__(
             self,
             "admission_receipt_ids",
-            _refs(
+            _hash_refs(
                 self.admission_receipt_ids,
                 "admission_receipt_ids",
                 required=True,
@@ -610,7 +625,7 @@ class AuthorizedContinuityObservationBatch:
         object.__setattr__(
             self,
             "source_binding_receipt_ids",
-            _refs(
+            _hash_refs(
                 self.source_binding_receipt_ids,
                 "source_binding_receipt_ids",
                 required=True,
@@ -670,7 +685,7 @@ class AuthorizedContinuityObservationBatch:
         object.__setattr__(
             self,
             "source_envelope_ids",
-            _refs(self.source_envelope_ids, "source_envelope_ids", required=True),
+            _hash_refs(self.source_envelope_ids, "source_envelope_ids", required=True),
         )
         if not {value.source_envelope_id for value in links}.issubset(
             set(self.source_envelope_ids)
