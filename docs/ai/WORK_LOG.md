@@ -4,6 +4,54 @@ Re-verify exact SHAs and current PR evidence.
 
 ---
 
+## 2026-08-05 — Trusted Continuity Signal Producer (draft PR, not merged)
+
+```text
+Status:    DRAFT PR · NOT MERGED · NOT IMPLEMENTED IN MAIN
+Branch:    feat/continuity-trusted-signal-producer
+Base:      main @ adfccb02f88b290aac8411e94aac69417defbafe
+ADR:       docs/adr/ADR-2026-08-05-continuity-trusted-signal-producer.md
+```
+
+Addresses the "no trusted producer for `ContinuityComputeSignals`" gap
+restated at R4, R5A, and R5B by adding `core/continuity/observations.py` and
+`core/continuity/signal_producer.py`: typed, content-addressed
+`ContinuitySignalObservation` inputs → policy-driven trust filtering →
+deterministic aggregation → the unchanged `ContinuityComputeSignals`
+contract, with full per-signal provenance and reason-coded rejections.
+
+This PR does not import `core.evidence`, `core.confidence`,
+`core.contradiction_registry`, or `core.provenance_chain` (isolation
+decision, see ADR); does not change `ComputePath`, `ComputeDecision`,
+`decide_compute_path()`, `ContinuityComputeSignals`, or
+`assess_compute_with_continuity()`; and performs no runtime wiring into
+`/query`, the shadow runner, or any live projection.
+
+### Validation checkpoint
+
+Implementation head `ea968d1de80b455bb36ce88e1e6a46631640b21f` passed:
+
+```text
+Full Titan CI         31052141426 → PASS
+Continuity contracts  31052141682 → PASS
+Docker hardening      31052141462 → PASS
+Ruff · blocking mypy · full pytest · coverage ratchet ≥74% → PASS
+```
+
+A documentation-only review correction followed. Its exact head must pass the
+same mandatory checks and a fresh independent review before merge.
+
+### Next phase
+
+Not authorized by this PR: production runtime wiring, trusted runtime source
+adapters deriving observations from `StateReconciliationResult` /
+`GoalProjectionResult` / `OpenLoopProjectionResult`, live telemetry,
+automated policy tuning, Canon authority, Action Gate authority, autonomous
+switching, or real-world calibration. Independent review, exact-head CI, and
+a merge decision remain required before any of that can be considered.
+
+---
+
 ## 2026-08-05 — Governance cleanup and truthful CI completed
 
 Claude Code correctly identified the open-PR count, ARM-03 recovery and documentation merges, but its proposed bulk classification of eight old PRs as disposable was not safe. Every PR was inspected against current `main`, changed files, review findings and fresh CI.
