@@ -111,7 +111,22 @@ jobs:
           obsolete_import = "    ContinuityDraftObservationLink,\n"
           if obsolete_import not in test_text:
               raise SystemExit("obsolete trace-link import not found")
-          tests.write_text(test_text.replace(obsolete_import, "", 1))
+          test_text = test_text.replace(obsolete_import, "", 1)
+          helper_replacements = {
+              '"receipts": receipts or (receipt_value,),':
+              '"receipts": (receipt_value,) if receipts is None else receipts,',
+              '"envelopes": envelopes or (envelope_value,),':
+              '"envelopes": (envelope_value,) if envelopes is None else envelopes,',
+              '"binding_receipts": bindings or (binding_value,),':
+              '"binding_receipts": (binding_value,) if bindings is None else bindings,',
+              '"admitted_drafts": admitted_drafts or (draft_value,),':
+              '"admitted_drafts": (draft_value,) if admitted_drafts is None else admitted_drafts,',
+          }
+          for old, new in helper_replacements.items():
+              if old not in test_text:
+                  raise SystemExit(f"batch helper replacement not found: {old}")
+              test_text = test_text.replace(old, new, 1)
+          tests.write_text(test_text)
           PY
 
       - name: Focused validation
