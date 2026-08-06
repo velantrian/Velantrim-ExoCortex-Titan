@@ -1,13 +1,12 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-06  
-**Current verified implementation head:** `c7ad5a171ccc6da5015b67b8cefd6d60649d6792`  
-**Current docs-only `main`:** `3bc3607c503c2a32b7ab4f31753b7f9c10ee620f`  
+**Current verified implementation head / current `main`:** `5f1ce06199ebabd6a23f3656ddd91c5c968170fe`  
 **Active architecture replacement:** PR #216, branch `agent/learning-proposal-rfc0084-reconciliation`
 
 Verify material claims against exact SHAs, tests, workflows, wiring, configuration and runtime evidence. `PROPOSED`, `MAIN`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` are separate states.
 
-## Accepted governance and architecture checkpoints
+## Accepted checkpoints
 
 | Capability | Accepted change | State |
 |---|---|---|
@@ -16,59 +15,78 @@ Verify material claims against exact SHAs, tests, workflows, wiring, configurati
 | Fail-closed production bundle contract | #210 → `5d4881e6ab1414b3917eb225c55e0f02458af27a` | main, tested, local tooling |
 | Blocking core coverage ratchet | #211 → `c7ad5a171ccc6da5015b67b8cefd6d60649d6792` | main, enforced in CI |
 | Cognitive Runtime reconciliation | #215 → `3bc3607c503c2a32b7ab4f31753b7f9c10ee620f` | main, docs-only, no runtime authority |
+| Trace-hook coverage isolation | #218 → `3c73eab991c305d174f6c2c5805595c7998d4068` | main, CI-only; normal full pytest unchanged |
+| Continuity trusted signal producer | #214 → `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` | main, tested, shadow-only, unwired |
 
 Historical PR #33 is closed without merge as superseded by #215.
 
 ### Coverage truth
 
-- measured accepted baseline: `43,398` executable statements, `11,233` missed, approximately `74.12%` covered;
+- measured accepted baseline: approximately `74.12%` covered;
 - enforced floor: `74%`;
+- both SQLite trace-hook concurrency stress families remain in the blocking normal pytest job;
+- they are excluded only from simultaneous `coverage.py` instrumentation to avoid trace installation races;
 - coverage is a blocking floor, not proof of behavioral correctness.
 
 ## Open pull requests
 
-Exactly five PRs are open at this transition checkpoint:
+Exactly six PRs are open at this transition checkpoint:
 
 | PR | Purpose | Current disposition |
 |---:|---|---|
 | #216 | current-main LearningProposal ↔ RFC-0084 reconciliation | Draft docs-only replacement for #43 |
-| #214 | trusted typed producer for `ContinuityComputeSignals` | Draft implementation; two independent-review blockers remain |
-| #17 | historical Ring Zero recovery concept | `ARCHIVE_AS_RESEARCH_SOURCE`; placement decision required before closure |
-| #30 | historical Code Structural Memory RFC | `REVISE_AND_REPLACE`; accept concept as docs-only first |
-| #43 | historical LearningPatch / RFC-0083 implementation | `REVISE_AND_REPLACE`; close only after #216 is merged |
+| #217 | current-main Code Structural Memory reconciliation | Draft docs-only replacement for #30; refresh after #216 |
+| #219 | current-main Recovery Authority Placement | Draft docs-only replacement for #17; merge last |
+| #17 | historical Ring Zero recovery concept | `ARCHIVE_AS_RESEARCH_SOURCE`; close only after #219 merge |
+| #30 | historical Code Structural Memory RFC | `REVISE_AND_REPLACE`; close only after #217 merge |
+| #43 | historical LearningPatch / RFC-0083 implementation | `REVISE_AND_REPLACE`; close only after #216 merge |
 
 Do not bulk-close these PRs and do not merge stale branches wholesale.
 
-## PR #214 — current blocker status
+## Continuity trusted signal producer
 
-Current head: `a3ccb5bb12df5168fc38fa775e2837de9bb6877a`.
+PR #214 is merged through `5f1ce06199ebabd6a23f3656ddd91c5c968170fe`.
 
-The branch has moved through temporary review-workflow commits, but direct inspection at the current head still shows:
+Exact-head evidence for reviewed head `59d95df099b97ac334a62587cbf8113b27ea3e27`:
 
-1. `ContinuitySignalObservation._refs()` iterates scalar `str`/`bytes` collections rather than rejecting them as malformed collection inputs;
-2. production `signal_producer.py` was not changed to retain trusted negative boolean observations in per-signal provenance.
+- full Titan CI `31076502756` — success;
+- Continuity contracts `31076502806` — success;
+- Docker hardening `31076502802` — success;
+- unresolved review threads — 0.
 
-These findings are recorded in PR comment `5200768686`.
+Implemented:
 
-Current exact-head validation is not sufficient to override the contract defects. The PR remains:
+- immutable content-addressed typed observations;
+- explicit trusted producer/source policy;
+- deterministic aggregation into the unchanged `ContinuityComputeSignals` contract;
+- per-signal provenance and reason-coded rejected observations;
+- conservative warning OR semantics;
+- fail-conservative availability conflict/negative semantics;
+- strict rejection of scalar text/bytes where iterable reference collections are required;
+- regression tests for negative provenance and iterable validation.
+
+Not implemented:
+
+- raw-conversation extraction;
+- user statement versus model-inference attribution;
+- producer authentication;
+- subject/tenant authorization;
+- consent and purpose binding;
+- retention/erasure lifecycle;
+- persistence;
+- `/query`, startup, worker or scheduler wiring;
+- answer, tool, action, Canon, TruthGate or policy authority.
+
+State:
 
 ```text
-DRAFT
-NOT MERGED
-SHADOW ONLY
+IMPLEMENTED
+TESTED
+SHADOW-ONLY
 UNWIRED
-NO RUNTIME AUTHORITY
+NOT ENABLED
+NOT OBSERVED IN LIVE RUNTIME
 ```
-
-Required before merge:
-
-- fix both production-code defects;
-- add direct regression tests that fail against the old behavior;
-- run the complete exact-head CI, Continuity and Docker matrix;
-- perform another independent diff review;
-- verify no temporary self-mutating workflow remains in the final diff.
-
-Even after acceptance, #214 provides only a deterministic aggregator for already-typed observations. It does not provide raw-conversation extraction, user/model attribution, subject/tenant authorization, consent, retention, erasure or runtime activation.
 
 ## PR #216 — LearningProposal reconciliation
 
@@ -96,7 +114,7 @@ Historical #43 remains open only as a research source until #216 is merged.
 
 ## Code Structural Memory decision
 
-Historical PR #30 has disposition `REVISE_AND_REPLACE`.
+PR #217 is the clean docs-only replacement for historical PR #30.
 
 Accepted concept:
 
@@ -105,13 +123,13 @@ canonical user/world memory
 ≠ rebuildable repository structural index
 ```
 
-Required replacement boundaries include deterministic edge identity, repository-scoped keys and queries, pre-staging lease or generation CAS, cross-repository FK protection, no source-body/secret persistence, no automatic scan and no automatic prompt injection.
+Required boundaries include deterministic edge identity, repository-scoped keys and queries, lease-before-staging plus monotonic generation/CAS, cross-repository FK protection, no source-body/secret persistence, no automatic scan and no automatic prompt injection.
 
 Implementation must be a separate default-off Draft PR after the docs-only architecture is accepted.
 
 ## Recovery authority decision
 
-Historical PR #17 has disposition `ARCHIVE_AS_RESEARCH_SOURCE`.
+PR #219 is the clean docs-only placement replacement for historical PR #17.
 
 Titan must not create a new `Ring Zero` root of trust. A future recovery component may only be an operator-gated coordinator that produces dry-run plans and invokes existing authorised services.
 
@@ -127,8 +145,9 @@ Substrate-level event, reduction, projection and receipt integrity belongs to ne
 | R4 — compatibility-preserving compute assessment | `529d8b6b182b1a548d27558173f0aca473bcc400` | main, tested, shadow-only, unwired |
 | R5A — replay hard gates and Advisory Shadow v2 | `58e29bba26299ce7003b62e73fd3b25e028956de` | main, tested, shadow-only, unwired |
 | R5B — complete disabled shadow runner | `27b91a59f9e9291092b220ac1f53bfeae2daea28` | main, tested, disabled by default, unwired |
+| Typed signal producer | `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` | main, tested, shadow-only, unwired |
 
-R5B has no startup registration, API route, worker, scheduler, persistence, Canon mutation, answer modification, reminder delivery, tool call, action authorization or user-visible output.
+R5B and the signal producer have no startup registration, API route, worker, scheduler, persistence, Canon mutation, answer modification, reminder delivery, tool call, action authorization or user-visible output.
 
 ## Quarantined and proposed components
 
