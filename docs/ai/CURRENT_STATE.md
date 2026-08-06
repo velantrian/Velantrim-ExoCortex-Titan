@@ -1,8 +1,9 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-06  
-**Current verified implementation head / current `main`:** `5f1ce06199ebabd6a23f3656ddd91c5c968170fe`  
-**Active architecture replacement:** PR #216, branch `agent/learning-proposal-rfc0084-reconciliation`
+**Current verified implementation head:** `5f1ce06199ebabd6a23f3656ddd91c5c968170fe`  
+**Current docs-only `main`:** `c7827d58822d4541e3bf347b2991e7be2d0a8f98`  
+**Active architecture replacement:** PR #217, branch `agent/code-structural-memory-reconciliation`
 
 Verify material claims against exact SHAs, tests, workflows, wiring, configuration and runtime evidence. `PROPOSED`, `MAIN`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` are separate states.
 
@@ -17,8 +18,9 @@ Verify material claims against exact SHAs, tests, workflows, wiring, configurati
 | Cognitive Runtime reconciliation | #215 → `3bc3607c503c2a32b7ab4f31753b7f9c10ee620f` | main, docs-only, no runtime authority |
 | Trace-hook coverage isolation | #218 → `3c73eab991c305d174f6c2c5805595c7998d4068` | main, CI-only; normal full pytest unchanged |
 | Continuity trusted signal producer | #214 → `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` | main, tested, shadow-only, unwired |
+| LearningProposal ↔ RFC-0084 reconciliation | #216 → `c7827d58822d4541e3bf347b2991e7be2d0a8f98` | main, docs-only, no runtime authority |
 
-Historical PR #33 is closed without merge as superseded by #215.
+Historical PRs #33 and #43 are closed without merge as superseded by #215 and #216.
 
 ### Coverage truth
 
@@ -30,18 +32,16 @@ Historical PR #33 is closed without merge as superseded by #215.
 
 ## Open pull requests
 
-Exactly six PRs are open at this transition checkpoint:
+Exactly four PRs are open at this transition checkpoint:
 
 | PR | Purpose | Current disposition |
 |---:|---|---|
-| #216 | current-main LearningProposal ↔ RFC-0084 reconciliation | Draft docs-only replacement for #43 |
-| #217 | current-main Code Structural Memory reconciliation | Draft docs-only replacement for #30; refresh after #216 |
+| #217 | current-main Code Structural Memory reconciliation | Draft docs-only replacement for #30 |
 | #219 | current-main Recovery Authority Placement | Draft docs-only replacement for #17; merge last |
 | #17 | historical Ring Zero recovery concept | `ARCHIVE_AS_RESEARCH_SOURCE`; close only after #219 merge |
 | #30 | historical Code Structural Memory RFC | `REVISE_AND_REPLACE`; close only after #217 merge |
-| #43 | historical LearningPatch / RFC-0083 implementation | `REVISE_AND_REPLACE`; close only after #216 merge |
 
-Do not bulk-close these PRs and do not merge stale branches wholesale.
+Do not merge the historical branches directly.
 
 ## Continuity trusted signal producer
 
@@ -58,26 +58,22 @@ Implemented:
 
 - immutable content-addressed typed observations;
 - explicit trusted producer/source policy;
-- deterministic aggregation into the unchanged `ContinuityComputeSignals` contract;
+- deterministic aggregation into unchanged `ContinuityComputeSignals`;
 - per-signal provenance and reason-coded rejected observations;
-- conservative warning OR semantics;
-- fail-conservative availability conflict/negative semantics;
-- strict rejection of scalar text/bytes where iterable reference collections are required;
-- regression tests for negative provenance and iterable validation.
+- conservative warning and availability semantics;
+- strict iterable/reference validation;
+- regression coverage for negative provenance.
 
 Not implemented:
 
 - raw-conversation extraction;
-- user statement versus model-inference attribution;
+- user/model attribution;
 - producer authentication;
-- subject/tenant authorization;
-- consent and purpose binding;
-- retention/erasure lifecycle;
-- persistence;
-- `/query`, startup, worker or scheduler wiring;
+- tenant/subject authorization;
+- consent/purpose binding;
+- retention and erasure;
+- persistence or runtime wiring;
 - answer, tool, action, Canon, TruthGate or policy authority.
-
-State:
 
 ```text
 IMPLEMENTED
@@ -88,52 +84,52 @@ NOT ENABLED
 NOT OBSERVED IN LIVE RUNTIME
 ```
 
-## PR #216 — LearningProposal reconciliation
+## LearningProposal and RFC-0084
 
-Historical PR #43/RFC-0083 is being replaced by a current-main docs-only architecture.
+PR #216 is merged through `c7827d58822d4541e3bf347b2991e7be2d0a8f98`; historical #43 is closed.
 
-Decision:
+Accepted decision:
 
 ```text
-LearningProposal = what is proposed
-RFC-0084 = sole owner of evaluation, stability, approval, apply and rollback
+LearningProposal = immutable proposal envelope
+RFC-0084 = sole evaluation, stability, approval, apply and rollback lifecycle
 ```
 
-The replacement requires:
+No proposal implementation, evaluator, apply service, persistence or runtime wiring is accepted by the docs-only decision.
 
-- immutable content-addressed proposal identity;
-- caller-supplied time;
-- typed tagged items;
-- producer/source/tenant/subject/purpose/policy/base-version binding;
-- separate immutable evaluation receipts;
-- item-specific evaluation profiles;
-- no proposal status transition to approved/applied;
-- no persistence, worker, runtime wiring or user-visible effect.
+## Code Structural Memory replacement
 
-Historical #43 remains open only as a research source until #216 is merged.
-
-## Code Structural Memory decision
-
-PR #217 is the clean docs-only replacement for historical PR #30.
+PR #217 replaces historical #30 with a current-main docs-only architecture.
 
 Accepted concept:
 
 ```text
 canonical user/world memory
+≠ project cognition history
 ≠ rebuildable repository structural index
 ```
 
-Required boundaries include deterministic edge identity, repository-scoped keys and queries, lease-before-staging plus monotonic generation/CAS, cross-repository FK protection, no source-body/secret persistence, no automatic scan and no automatic prompt injection.
+Required boundaries:
 
-Implementation must be a separate default-off Draft PR after the docs-only architecture is accepted.
+- explicit repository registration and immutable snapshot identity;
+- deterministic node and edge IDs;
+- non-null normalized qualified names;
+- repository-scoped primary/foreign/unique keys and queries;
+- same-repository edge endpoints;
+- lease-before-staging plus monotonic generation/CAS;
+- atomic current-snapshot finalization;
+- bounded Python/Tree-sitter first slice;
+- no source body, secrets or arbitrary literal persistence;
+- no automatic scan, prompt injection, Canon or TruthGate authority;
+- separate future default-off implementation PR only after architecture approval.
 
-## Recovery authority decision
+## Recovery authority placement
 
-PR #219 is the clean docs-only placement replacement for historical PR #17.
+PR #219 remains the final docs-only replacement for historical #17.
 
-Titan must not create a new `Ring Zero` root of trust. A future recovery component may only be an operator-gated coordinator that produces dry-run plans and invokes existing authorised services.
+Titan must not create a new Ring Zero root of trust. A future recovery component may only be an operator-gated coordinator that produces dry-run plans and invokes existing authorised services.
 
-Substrate-level event, reduction, projection and receipt integrity belongs to neutral Native Kernel contracts. Current Titan authority remains with PolicyKernel, mutation gates, SAFE_MODE and existing write/version boundaries.
+Neutral Native Kernel contracts own substrate event/reduction/projection/receipt integrity. Current Titan authority remains with PolicyKernel, mutation gates, SAFE_MODE and existing write/version services.
 
 ## Continuity Milestone 1
 
@@ -147,7 +143,7 @@ Substrate-level event, reduction, projection and receipt integrity belongs to ne
 | R5B — complete disabled shadow runner | `27b91a59f9e9291092b220ac1f53bfeae2daea28` | main, tested, disabled by default, unwired |
 | Typed signal producer | `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` | main, tested, shadow-only, unwired |
 
-R5B and the signal producer have no startup registration, API route, worker, scheduler, persistence, Canon mutation, answer modification, reminder delivery, tool call, action authorization or user-visible output.
+These components have no startup registration, API route, worker, scheduler, persistence, Canon mutation, answer modification, reminder delivery, tool call, action authorization or user-visible output.
 
 ## Quarantined and proposed components
 
@@ -155,11 +151,11 @@ R5B and the signal producer have no startup registration, API route, worker, sch
 - RFC-0084 remains `Proposed`, unwired and without Canon write authority;
 - projection dispatcher remains implemented/tested but unwired;
 - Ring Zero is not an accepted Titan owner;
-- LearningProposal, Code Structural Memory and recovery placement remain architecture-only until their clean replacement decisions are merged.
+- Code Structural Memory and recovery placement remain architecture-only until their replacement decisions are merged.
 
 ## Required before live Continuity activation
 
-- trusted authenticated upstream observation producers;
+- authenticated upstream observation producers;
 - explicit user statement versus model-inference attribution;
 - subject/tenant authorization and purpose-bound consent;
 - accepted policy owner;
@@ -175,4 +171,4 @@ R5B and the signal producer have no startup registration, API route, worker, sch
 - `server.py` remains a broad composition module;
 - authentication remains shared API-key rather than per-user/tenant authorization;
 - store-wide contention, disk-full and recovery evidence remains incomplete for some surfaces;
-- GitHub and Notion require final synchronization after each replacement merge and historical-PR closure.
+- GitHub and Notion require final synchronization after #217/#219 merges and historical-PR closures.
