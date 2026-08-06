@@ -574,7 +574,15 @@ class OpenLoopSignal:
             "related_goal_ref": goal_ref,
         }
         return cls(
-            _digest(payload), subject, key, kind, text, refs, opened, due, goal_ref
+            signal_id=_digest(payload),
+            user_id=subject,
+            loop_key=key,
+            kind=kind,
+            summary=text,
+            source_refs=refs,
+            opened_at=opened,
+            due_at=due,
+            related_goal_ref=goal_ref,
         )
 
 
@@ -607,7 +615,13 @@ class OpenLoopResolution:
             "source_refs": list(refs),
             "resolved_at": _dt(point),
         }
-        return cls(_digest(payload), subject, key, refs, point)
+        return cls(
+            resolution_id=_digest(payload),
+            user_id=subject,
+            loop_key=key,
+            source_refs=refs,
+            resolved_at=point,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -671,7 +685,11 @@ class OpenLoopProjector:
             "projection_ids": [value.projection_id for value in projections],
         }
         return OpenLoopProjectionResult(
-            _digest(payload), policy, subject_ids, point, projections
+            result_id=_digest(payload),
+            policy_version=policy,
+            subject_ids=subject_ids,
+            as_of=point,
+            projections=projections,
         )
 
     @staticmethod
@@ -706,7 +724,10 @@ class OpenLoopProjector:
                 )
             if resolution.user_id != signal.user_id:
                 raise GoalOpenLoopError(
-                    f"resolution user_id does not match signal: {resolution.loop_key}"
+                    "resolution user_id does not match signal: "
+                    f"loop_key={resolution.loop_key} "
+                    f"signal_user_id={signal.user_id} "
+                    f"resolution_user_id={resolution.user_id}"
                 )
             grouped.setdefault(resolution.loop_key, {})[
                 resolution.resolution_id
