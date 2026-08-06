@@ -1,13 +1,12 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-06  
-**Current verified implementation head:** `c7ad5a171ccc6da5015b67b8cefd6d60649d6792`  
-**Current docs-only `main`:** `adfccb02f88b290aac8411e94aac69417defbafe`  
-**Cognitive reconciliation candidate:** PR #215, branch `agent/cognitive-runtime-reconciliation`
+**Current verified implementation head / current `main`:** `5f1ce06199ebabd6a23f3656ddd91c5c968170fe`  
+**Active architecture replacement:** PR #216, branch `agent/learning-proposal-rfc0084-reconciliation`
 
 Verify material claims against exact SHAs, tests, workflows, wiring, configuration and runtime evidence. `PROPOSED`, `MAIN`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` are separate states.
 
-## Governance and release hardening completed
+## Accepted checkpoints
 
 | Capability | Accepted change | State |
 |---|---|---|
@@ -15,74 +14,128 @@ Verify material claims against exact SHAs, tests, workflows, wiring, configurati
 | Emergency trigger reconstruction tests | #58 → `b9847f0599092ef5eef78d698b58b92ace2eaf98` | main, tests-only evidence |
 | Fail-closed production bundle contract | #210 → `5d4881e6ab1414b3917eb225c55e0f02458af27a` | main, tested, local tooling |
 | Blocking core coverage ratchet | #211 → `c7ad5a171ccc6da5015b67b8cefd6d60649d6792` | main, enforced in CI |
+| Cognitive Runtime reconciliation | #215 → `3bc3607c503c2a32b7ab4f31753b7f9c10ee620f` | main, docs-only, no runtime authority |
+| Trace-hook coverage isolation | #218 → `3c73eab991c305d174f6c2c5805595c7998d4068` | main, CI-only; normal full pytest unchanged |
+| Continuity trusted signal producer | #214 → `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` | main, tested, shadow-only, unwired |
+
+Historical PR #33 is closed without merge as superseded by #215.
 
 ### Coverage truth
 
-The repository runs a dedicated blocking full-core coverage job.
-
-- measured accepted baseline: `43,398` executable statements, `11,233` missed, approximately `74.12%` covered;
+- measured accepted baseline: approximately `74.12%` covered;
 - enforced floor: `74%`;
-- accepted final CI run: `31046470206` — success;
-- accepted Docker hardening run: `31046469060` — success;
-- coverage XML artifact: `8946843485`;
-- normal full pytest remains blocking and includes the per-thread trace-hook stress test;
-- that single stress test is excluded only from simultaneous `coverage.py` tracing because the two tracing systems interfere.
+- both SQLite trace-hook concurrency stress families remain in the blocking normal pytest job;
+- they are excluded only from simultaneous `coverage.py` instrumentation to avoid trace installation races;
+- coverage is a blocking floor, not proof of behavioral correctness.
 
 ## Open pull requests
 
-Exactly six PRs are currently open: four historical architecture/research drafts, one active Continuity implementation draft and one clean current-main replacement draft.
+Exactly six PRs are open at this transition checkpoint:
 
 | PR | Purpose | Current disposition |
 |---:|---|---|
-| #215 | current-main Cognitive Runtime reconciliation | Draft docs-only replacement for #33; CI and final review required |
-| #214 | trusted typed producer for `ContinuityComputeSignals` | keep Draft; final review found two remaining audit blockers |
-| #17 | Ring Zero recovery-kernel research concept | requires placement/trust-boundary decision |
-| #30 | Code Structural Memory Adapter RFC | requires architecture approval; implementation must be separate |
-| #33 | historical Epistemic and Cognitive Runtime specification | `REVISE_AND_REPLACE`; close only after #215 is merged |
-| #43 | EITI-derived LearningPatch shadow contract | reconcile with RFC-0084; no parallel governance lifecycle |
+| #216 | current-main LearningProposal ↔ RFC-0084 reconciliation | Draft docs-only replacement for #43 |
+| #217 | current-main Code Structural Memory reconciliation | Draft docs-only replacement for #30; refresh after #216 |
+| #219 | current-main Recovery Authority Placement | Draft docs-only replacement for #17; merge last |
+| #17 | historical Ring Zero recovery concept | `ARCHIVE_AS_RESEARCH_SOURCE`; close only after #219 merge |
+| #30 | historical Code Structural Memory RFC | `REVISE_AND_REPLACE`; close only after #217 merge |
+| #43 | historical LearningPatch / RFC-0083 implementation | `REVISE_AND_REPLACE`; close only after #216 merge |
 
 Do not bulk-close these PRs and do not merge stale branches wholesale.
 
-### PR #214 exact-head status
+## Continuity trusted signal producer
 
-Current head: `7921f8c11875b26834861cdfe2a6cb414778bab2`.
+PR #214 is merged through `5f1ce06199ebabd6a23f3656ddd91c5c968170fe`.
 
-The only change after reviewed code head `ea968d1de80b455bb36ce88e1e6a46631640b21f` corrected a WORK_LOG base-SHA mismatch reported by Copilot; it did not change the two remaining code-level blockers.
+Exact-head evidence for reviewed head `59d95df099b97ac334a62587cbf8113b27ea3e27`:
 
-Current exact-head workflows:
+- full Titan CI `31076502756` — success;
+- Continuity contracts `31076502806` — success;
+- Docker hardening `31076502802` — success;
+- unresolved review threads — 0.
 
-- Continuity contracts `31074592579` — success;
-- Docker hardening `31074592566` — success;
-- full Titan CI `31074592538` — running at this checkpoint.
+Implemented:
 
-Remaining independent-review blockers, recorded in PR comment `5200768686`:
+- immutable content-addressed typed observations;
+- explicit trusted producer/source policy;
+- deterministic aggregation into the unchanged `ContinuityComputeSignals` contract;
+- per-signal provenance and reason-coded rejected observations;
+- conservative warning OR semantics;
+- fail-conservative availability conflict/negative semantics;
+- strict rejection of scalar text/bytes where iterable reference collections are required;
+- regression tests for negative provenance and iterable validation.
 
-1. scalar `str`/`bytes` can be misinterpreted as character collections for observation `evidence_refs` / `reason_codes`;
-2. trusted negative boolean observations disappear from per-signal provenance, creating an audit mismatch.
+Not implemented:
 
-Required state: `DRAFT · NOT MERGED · SHADOW ONLY · UNWIRED` until code fixes, new exact-head CI and another independent review.
+- raw-conversation extraction;
+- user statement versus model-inference attribution;
+- producer authentication;
+- subject/tenant authorization;
+- consent and purpose binding;
+- retention/erasure lifecycle;
+- persistence;
+- `/query`, startup, worker or scheduler wiring;
+- answer, tool, action, Canon, TruthGate or policy authority.
 
-### PR #33 reconciliation
+State:
 
-The old 742-line specification predates accepted ownership boundaries. Clean replacement PR #215 is rebuilt from `main@adfccb02...`:
+```text
+IMPLEMENTED
+TESTED
+SHADOW-ONLY
+UNWIRED
+NOT ENABLED
+NOT OBSERVED IN LIVE RUNTIME
+```
 
-- `docs/research/TITAN_COGNITIVE_RUNTIME_RECONCILIATION.md`;
-- old PR disposition: `REVISE_AND_REPLACE`;
-- existing owners retained for truth, policy, compute, working memory, goals, Continuity and adaptation;
-- no runtime activation, Canon write, worker, scheduler or new root of trust.
+## PR #216 — LearningProposal reconciliation
 
-PR #33 remains open only as the historical source until #215 passes final-head review and is merged.
+Historical PR #43/RFC-0083 is being replaced by a current-main docs-only architecture.
 
-## Cleanup disposition
+Decision:
 
-- #10 closed without merge because its generated KB artifact contained confirmed trust-label, graph-coverage and parser defects;
-- #20 and #22 closed as already superseded by stronger implementations in `main`;
-- #1, #19 and #21 closed only after their useful work was rebuilt and merged through #209, #211 and #210;
-- #58 was revalidated on current `main` and merged rather than discarded.
+```text
+LearningProposal = what is proposed
+RFC-0084 = sole owner of evaluation, stability, approval, apply and rollback
+```
+
+The replacement requires:
+
+- immutable content-addressed proposal identity;
+- caller-supplied time;
+- typed tagged items;
+- producer/source/tenant/subject/purpose/policy/base-version binding;
+- separate immutable evaluation receipts;
+- item-specific evaluation profiles;
+- no proposal status transition to approved/applied;
+- no persistence, worker, runtime wiring or user-visible effect.
+
+Historical #43 remains open only as a research source until #216 is merged.
+
+## Code Structural Memory decision
+
+PR #217 is the clean docs-only replacement for historical PR #30.
+
+Accepted concept:
+
+```text
+canonical user/world memory
+≠ rebuildable repository structural index
+```
+
+Required boundaries include deterministic edge identity, repository-scoped keys and queries, lease-before-staging plus monotonic generation/CAS, cross-repository FK protection, no source-body/secret persistence, no automatic scan and no automatic prompt injection.
+
+Implementation must be a separate default-off Draft PR after the docs-only architecture is accepted.
+
+## Recovery authority decision
+
+PR #219 is the clean docs-only placement replacement for historical PR #17.
+
+Titan must not create a new `Ring Zero` root of trust. A future recovery component may only be an operator-gated coordinator that produces dry-run plans and invokes existing authorised services.
+
+Substrate-level event, reduction, projection and receipt integrity belongs to neutral Native Kernel contracts. Current Titan authority remains with PolicyKernel, mutation gates, SAFE_MODE and existing write/version boundaries.
 
 ## Continuity Milestone 1
-
-Continuity Milestone 1 remains in `main` through independently reviewed recovery layers:
 
 | Layer | Merge SHA | State |
 |---|---|---|
@@ -92,27 +145,27 @@ Continuity Milestone 1 remains in `main` through independently reviewed recovery
 | R4 — compatibility-preserving compute assessment | `529d8b6b182b1a548d27558173f0aca473bcc400` | main, tested, shadow-only, unwired |
 | R5A — replay hard gates and Advisory Shadow v2 | `58e29bba26299ce7003b62e73fd3b25e028956de` | main, tested, shadow-only, unwired |
 | R5B — complete disabled shadow runner | `27b91a59f9e9291092b220ac1f53bfeae2daea28` | main, tested, disabled by default, unwired |
+| Typed signal producer | `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` | main, tested, shadow-only, unwired |
 
-R5B is not a live continuity feature. It has no startup registration, API route, worker, scheduler, persistence, Canon mutation, answer modification, reminder delivery, tool call, action authorization or user-visible output.
-
-PR #214, even after eventual acceptance, would add only a typed deterministic observation aggregator. It does not provide raw-conversation extraction, user/model attribution, subject/tenant authorization, consent, retention, erasure or runtime activation.
+R5B and the signal producer have no startup registration, API route, worker, scheduler, persistence, Canon mutation, answer modification, reminder delivery, tool call, action authorization or user-visible output.
 
 ## Quarantined and proposed components
 
-- `core/identity_layer.py` is formally `LEGACY/UNWIRED`; mandatory repository guidance prohibits production callers or writes until a candidate/evidence/approval/version/receipt/rollback design is accepted;
-- RFC-0084 remains `Proposed`, has no runtime wiring, forbids Canon writes and requires operator approval;
-- the projection dispatcher is implemented and tested but remains unwired; current production callers do not exist and startup wiring requires a separate reviewed change;
-- Ring Zero remains research and must not be assumed to be an accepted policy owner.
+- `core/identity_layer.py` remains `LEGACY/UNWIRED`;
+- RFC-0084 remains `Proposed`, unwired and without Canon write authority;
+- projection dispatcher remains implemented/tested but unwired;
+- Ring Zero is not an accepted Titan owner;
+- LearningProposal, Code Structural Memory and recovery placement remain architecture-only until their clean replacement decisions are merged.
 
 ## Required before live Continuity activation
 
-- trusted and authenticated upstream observation producers;
+- trusted authenticated upstream observation producers;
 - explicit user statement versus model-inference attribution;
 - subject/tenant authorization and purpose-bound consent;
-- one accepted policy owner;
+- accepted policy owner;
 - retention, erasure and durable evidence lifecycle;
-- bounded input/resource policy and adversarial replay corpus;
-- calibration, monitoring, rollback and operational SLOs;
+- adversarial replay corpus and resource bounds;
+- calibration, monitoring, rollback and SLOs;
 - anti-spam, localization, scheduling and cancellation;
 - separate activation ADR and explicit operator approval.
 
@@ -122,5 +175,4 @@ PR #214, even after eventual acceptance, would add only a typed deterministic ob
 - `server.py` remains a broad composition module;
 - authentication remains shared API-key rather than per-user/tenant authorization;
 - store-wide contention, disk-full and recovery evidence remains incomplete for some surfaces;
-- coverage is enforced but remains a floor, not proof of behavioral correctness;
-- GitHub and Notion require final synchronization after #215 receives its merge SHA and #33 is closed.
+- GitHub and Notion require final synchronization after each replacement merge and historical-PR closure.
