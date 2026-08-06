@@ -156,8 +156,12 @@ def test_envelope_cannot_predate_source_or_binding_receipt() -> None:
 
 
 def test_envelope_must_be_created_inside_authorization_window() -> None:
+    not_yet_valid = _authorization(
+        valid_from=_NOW + timedelta(minutes=1),
+        valid_until=_NOW + timedelta(hours=1),
+    )
     with pytest.raises(ContinuitySourceAdmissionError, match="validity"):
-        _envelope(created_at=_NOW - timedelta(minutes=6))
+        _envelope(authorization_context=not_yet_valid, created_at=_NOW)
     with pytest.raises(ContinuitySourceAdmissionError, match="validity"):
         _envelope(created_at=_NOW + timedelta(hours=1))
 
