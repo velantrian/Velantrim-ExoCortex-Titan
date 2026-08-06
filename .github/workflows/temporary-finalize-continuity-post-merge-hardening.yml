@@ -27,7 +27,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
-          python -m ruff check core/continuity docs/ai/WORK_LOG.md tests/test_continuity_signal_producer_review_regressions.py
+          python -m ruff check core/continuity tests/test_continuity_signal_producer_review_regressions.py
           python -m mypy core/continuity core/compute_controller.py --show-error-codes
           python -m pytest tests/test_continuity_observations.py tests/test_continuity_signal_producer.py tests/test_continuity_producer_determinism.py tests/test_continuity_signal_producer_review_regressions.py
       - name: Commit tested patch and remove temporary files
