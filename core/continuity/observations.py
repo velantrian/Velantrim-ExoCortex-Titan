@@ -10,8 +10,8 @@ well-formed score, and that its identifiers are non-empty and deterministic.
 It intentionally does **not** decide whether an observation is *trusted* —
 whether its producer is on an allowlist, whether its confidence clears a
 policy threshold, or whether its ``scope`` satisfies a signal-type-specific
-requirement. Those are business-policy decisions that depend on a caller
--supplied :class:`~core.continuity.signal_producer.ContinuitySignalPolicy`,
+requirement. Those are business-policy decisions that depend on a
+caller-supplied :class:`~core.continuity.signal_producer.ContinuitySignalPolicy`,
 not a structural property of the observation itself, so they are made once,
 in one place, by ``signal_producer.py``. Baking a fixed confidence threshold
 into this module would couple one observation to one policy and make it

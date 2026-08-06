@@ -188,7 +188,10 @@ def test_signals_output_composes_into_assess_compute_with_continuity() -> None:
         "what changed since yesterday?", signals=result.signals
     )
     assert assessment.shadow_only is True
-    assert assessment.base_decision == assessment.base_decision
+    assert (
+        "important_claim_requires_conflict_verification"
+        in assessment.reason_codes
+    )
 
 
 def test_signals_output_composes_into_existing_shadow_runner_input() -> None:

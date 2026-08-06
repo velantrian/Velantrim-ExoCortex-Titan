@@ -427,7 +427,7 @@ def test_evidence_coverage_formula_and_conflict_behavior() -> None:
     assert result.signals.evidence_coverage == 0.5
 
 
-def test_nonempty_input_without_evidence_is_fail_closed() -> None:
+def test_nonempty_input_without_coverage_observations_is_fail_closed() -> None:
     result = produce_continuity_compute_signals(
         [observation(ContinuitySignalType.CONTEXT_DEGRADED, True)],
         policy=policy(),
