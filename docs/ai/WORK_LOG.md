@@ -4,6 +4,207 @@ Re-verify exact SHAs and current PR evidence.
 
 ---
 
+## 2026-08-06 — Documentation checkpoint after PR #229 and PR #230
+
+```text
+Documentation impact: GITHUB_AND_NOTION
+Verified main:        81836b4f715470c50a4c6c7768a2cde7478568c8
+Code changes:         NONE
+Runtime authority:    NONE
+Notion state:         already synchronized with both merges
+GitHub state before:  stale at the post-contract checkpoint
+```
+
+### Intent
+
+Restore one coherent canonical record after the State Draft adapter and Goal
+subject-binding correction were merged without the four primary GitHub AI
+context documents being advanced to the final `main` state.
+
+### Problem
+
+Notion already recorded PR #229 and PR #230, but GitHub still stated:
+
+- State Draft adapter `0/1`;
+- Goal subject-binding correction `0/1`;
+- Goal results lose subject identity;
+- the next safe slice is the State adapter.
+
+That drift could cause a new AI agent to repeat merged work, design from a
+superseded eligibility matrix, or over-read the repository before locating the
+real current boundary.
+
+### Decision
+
+Create a separate docs-only Draft PR before any OpenLoop code work. Update the
+public GitHub technical record to match verified `main` and the already current
+Notion pages. Do not combine documentation repair with OpenLoop schema changes,
+an adapter, admission runtime, or wiring.
+
+### Implementation
+
+Updated:
+
+- `docs/ai/CURRENT_STATE.md`;
+- `docs/ai/COMPONENT_MAP.md`;
+- `docs/ai/KNOWN_RISKS.md`;
+- `docs/ai/WORK_LOG.md`;
+- `docs/ai/CONTINUITY_SOURCE_ADMISSION_HANDOFF.md`.
+
+The checkpoint records the accepted #223–#230 lineage, exact heads and CI,
+State/Goal guarantees, OpenLoop subject-binding gap, retry caveat, privacy and
+erasure blockers, and the next safe implementation boundary.
+
+### Evidence
+
+```text
+Current main                         81836b4f715470c50a4c6c7768a2cde7478568c8
+PR #229 exact tested head            aecea098ab5e3fba0539a044a77ababe32067b79
+PR #229 Continuity contracts         31093141984 PASS
+PR #229 Full Titan CI                31093142993 PASS
+PR #229 Docker hardening             31093142155 PASS
+
+PR #230 exact tested head            995b1a846b8f3d35c07f103430a6f6b1db007cca
+PR #230 Continuity contracts         31106174878 PASS
+PR #230 Full Titan CI                31106175347 PASS
+PR #230 Docker hardening             31106174460 PASS
+PR #230 unresolved review threads    0
+```
+
+PR #229 had an earlier unrelated erasure-recovery concurrency failure during a
+coverage-instrumented run. The exact unchanged head passed on retry. The first
+failure remains documented as risk evidence; the retry is not described as an
+unconditional first-attempt pass.
+
+### Non-scope
+
+- no production code;
+- no OpenLoop subject-binding implementation;
+- no Goal or OpenLoop source adapter;
+- no admission evaluator or facade;
+- no privacy/restriction/erasure integration;
+- no persistence, public export, `/query`, startup, worker or scheduler;
+- no feature flag, activation, Canon, TruthGate, reminder, tool or action authority.
+
+### Remaining work
+
+1. Merge this documentation checkpoint after exact-head review and CI.
+2. In a separate PR, correct OpenLoop subject identity only.
+3. Keep Goal/OpenLoop adapters in later independent PRs.
+4. Implement admission, current authorization and privacy/erasure checks before
+   any runtime-capable facade.
+5. Require a separate activation ADR and operator approval before enablement.
+
+### Resulting status
+
+```text
+Documentation: synchronized in this Draft branch
+State adapter: IMPLEMENTED · TESTED · INTERNAL · UNWIRED
+Goal binding:  IMPLEMENTED · TESTED · INTERNAL · UNWIRED
+OpenLoop bind: NOT IMPLEMENTED
+Runtime:       NOT WIRED · NOT ENABLED · NOT OBSERVED
+Live readiness: 3/12 = 25%
+```
+
+---
+
+## 2026-08-06 — State Draft adapter and Goal subject binding merged
+
+### Intent
+
+Advance source-admission prerequisites without granting runtime authority:
+
+1. produce deterministic proposal evidence from a fully bound State result;
+2. preserve Goal subject ownership inside immutable projection evidence.
+
+### Problem
+
+State results had typed subjects but no accepted Draft adapter. Goal snapshots
+contained `user_id`, but Goal projections and result identity lost that subject,
+blocking reliable source authorization.
+
+### Decision
+
+- Keep the State adapter a deterministic proposal transformer, separate from
+  admission evaluation.
+- Reject incomplete or mismatched State subject sets as a whole; never silently
+  filter unauthorized subjects.
+- Correct the Goal schema rather than adding placeholder defaults for old
+  constructors.
+- Put subject identity into the evidence object and its content-addressed
+  identity.
+- Preserve `INTERNAL · UNWIRED · NO RUNTIME AUTHORITY`.
+
+### Implementation
+
+#### PR #229 — State Draft adapter
+
+Merge: `0f1a10ab4f92dd7f15a69e55cc98339e7eeb36b1`
+
+Added `core/continuity/state_source_adapter.py` and adversarial tests.
+The adapter validates canonical result/projection identities, complete subject
+binding, source digest, policy, chronology and evidence before producing a
+`ContinuitySourceEnvelope` and bounded Draft proposals for:
+
+- `context_degraded`;
+- `active_contradiction`;
+- `context_freshness`.
+
+#### PR #230 — Goal subject binding
+
+Merge: `81836b4f715470c50a4c6c7768a2cde7478568c8`
+
+Advanced Goal projection schema to `continuity.goal_projection.v2` and made
+`user_id` explicit through:
+
+```text
+GoalAttestation
+→ GoalProjection
+→ GoalProjectionDecision
+→ GoalProjectionResult.subject_ids
+→ result digest
+```
+
+Cross-subject attestations fail closed. Multi-subject results remain explicit
+and content-addressed. Direct advisory, shadow-runner and WorkingMemory test
+fixtures were migrated rather than weakening the production contract.
+
+### Evidence
+
+Both exact final heads passed Continuity contracts, Ruff, blocking mypy, full
+pytest, the blocking `core ≥74%` coverage ratchet and Docker hardening. Exact
+workflow IDs are recorded in the preceding checkpoint entry and
+`CURRENT_STATE.md`.
+
+### Non-scope
+
+PR #229 did not create an admission decision, batch, producer call, persistence
+or runtime route. PR #230 did not create a Goal adapter. Neither PR changed
+Canon, TruthGate, compute routing, answers, reminders, tools or actions.
+
+### Remaining work
+
+- OpenLoop subject binding;
+- Goal source adapter;
+- OpenLoop source adapter;
+- admission evaluator and evaluator/rule allowlist;
+- current authorization, consent, restriction and erasure checks;
+- admission-aware facade;
+- runtime wiring, enablement and observed evidence.
+
+### Resulting status
+
+```text
+State adapter                   IMPLEMENTED · TESTED · INTERNAL · UNWIRED
+Goal subject binding            IMPLEMENTED · TESTED · INTERNAL · UNWIRED
+OpenLoop subject binding        NOT IMPLEMENTED
+Goal/OpenLoop adapters          NOT IMPLEMENTED
+Admission/runtime authority     ABSENT
+Continuity live readiness       3/12 = 25%
+```
+
+---
+
 ## 2026-08-06 — Trusted Continuity Signal Producer (merged and hardened)
 
 ```text
