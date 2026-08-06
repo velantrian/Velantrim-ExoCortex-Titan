@@ -2,8 +2,8 @@
 
 **Verified:** 2026-08-06  
 **Current verified implementation head:** `5f1ce06199ebabd6a23f3656ddd91c5c968170fe`  
-**Current docs-only `main`:** `c7827d58822d4541e3bf347b2991e7be2d0a8f98`  
-**Active architecture replacement:** PR #217, branch `agent/code-structural-memory-reconciliation`
+**Current docs-only `main`:** `7fa0ce2346af0a177d519e87df36bf46228123cd`  
+**Active architecture replacement:** PR #219, branch `agent/recovery-authority-placement`
 
 Verify material claims against exact SHAs, tests, workflows, wiring, configuration and runtime evidence. `PROPOSED`, `MAIN`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` are separate states.
 
@@ -19,8 +19,9 @@ Verify material claims against exact SHAs, tests, workflows, wiring, configurati
 | Trace-hook coverage isolation | #218 → `3c73eab991c305d174f6c2c5805595c7998d4068` | main, CI-only; normal full pytest unchanged |
 | Continuity trusted signal producer | #214 → `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` | main, tested, shadow-only, unwired |
 | LearningProposal ↔ RFC-0084 reconciliation | #216 → `c7827d58822d4541e3bf347b2991e7be2d0a8f98` | main, docs-only, no runtime authority |
+| Code Structural Memory reconciliation | #217 → `7fa0ce2346af0a177d519e87df36bf46228123cd` | main, docs-only; implementation separate |
 
-Historical PRs #33 and #43 are closed without merge as superseded by #215 and #216.
+Historical PRs #33, #43 and #30 are closed without merge as superseded by #215, #216 and #217.
 
 ### Coverage truth
 
@@ -32,16 +33,14 @@ Historical PRs #33 and #43 are closed without merge as superseded by #215 and #2
 
 ## Open pull requests
 
-Exactly four PRs are open at this transition checkpoint:
+Exactly two PRs are open at this transition checkpoint:
 
 | PR | Purpose | Current disposition |
 |---:|---|---|
-| #217 | current-main Code Structural Memory reconciliation | Draft docs-only replacement for #30 |
-| #219 | current-main Recovery Authority Placement | Draft docs-only replacement for #17; merge last |
+| #219 | current-main Recovery Authority Placement | Draft docs-only replacement for #17 |
 | #17 | historical Ring Zero recovery concept | `ARCHIVE_AS_RESEARCH_SOURCE`; close only after #219 merge |
-| #30 | historical Code Structural Memory RFC | `REVISE_AND_REPLACE`; close only after #217 merge |
 
-Do not merge the historical branches directly.
+The historical branch must not be merged directly.
 
 ## Continuity trusted signal producer
 
@@ -84,24 +83,28 @@ NOT ENABLED
 NOT OBSERVED IN LIVE RUNTIME
 ```
 
-## LearningProposal and RFC-0084
+## Accepted architecture decisions
 
-PR #216 is merged through `c7827d58822d4541e3bf347b2991e7be2d0a8f98`; historical #43 is closed.
+### Cognitive Runtime
 
-Accepted decision:
+PR #215 is merged; historical #33 is closed.
+
+Existing owners remain authoritative for truth, policy, compute, working memory, goals, Continuity and adaptation. No new cognitive god-object or runtime authority was created.
+
+### LearningProposal and RFC-0084
+
+PR #216 is merged; historical #43 is closed.
 
 ```text
 LearningProposal = immutable proposal envelope
 RFC-0084 = sole evaluation, stability, approval, apply and rollback lifecycle
 ```
 
-No proposal implementation, evaluator, apply service, persistence or runtime wiring is accepted by the docs-only decision.
+Proposal implementation, evaluator, apply service, persistence and runtime wiring remain zero.
 
-## Code Structural Memory replacement
+### Code Structural Memory
 
-PR #217 replaces historical #30 with a current-main docs-only architecture.
-
-Accepted concept:
+PR #217 is merged; historical #30 is closed.
 
 ```text
 canonical user/world memory
@@ -109,27 +112,24 @@ canonical user/world memory
 ≠ rebuildable repository structural index
 ```
 
-Required boundaries:
-
-- explicit repository registration and immutable snapshot identity;
-- deterministic node and edge IDs;
-- non-null normalized qualified names;
-- repository-scoped primary/foreign/unique keys and queries;
-- same-repository edge endpoints;
-- lease-before-staging plus monotonic generation/CAS;
-- atomic current-snapshot finalization;
-- bounded Python/Tree-sitter first slice;
-- no source body, secrets or arbitrary literal persistence;
-- no automatic scan, prompt injection, Canon or TruthGate authority;
-- separate future default-off implementation PR only after architecture approval.
+Accepted architecture requires deterministic repository-scoped identities, lease-before-staging, monotonic generation/CAS, atomic finalization, bounded parsing and no automatic prompt/Canon authority. Schema, scanner, read APIs and runtime wiring remain zero and require separate Draft PRs.
 
 ## Recovery authority placement
 
-PR #219 remains the final docs-only replacement for historical #17.
+PR #219 is the final docs-only replacement for historical PR #17.
 
-Titan must not create a new Ring Zero root of trust. A future recovery component may only be an operator-gated coordinator that produces dry-run plans and invokes existing authorised services.
+Decision target:
 
-Neutral Native Kernel contracts own substrate event/reduction/projection/receipt integrity. Current Titan authority remains with PolicyKernel, mutation gates, SAFE_MODE and existing write/version services.
+```text
+Titan Ring Zero runtime root = rejected
+Native Kernel = neutral event/reduction/projection/receipt integrity
+Titan PolicyKernel + mutation gates + SAFE_MODE = current runtime authority
+Future Recovery Coordinator = proposal-only and operator-gated
+```
+
+Recovery must prefer deterministic forward reconstruction, preserve current erasure/restriction state, keep external effects in separate compensation records, prevent self-approval and never claim hardware independence without an actual separate boundary.
+
+No runtime recovery module, automatic rollback, checkpoint database, filesystem/deployment capability or mutation-gate bypass is authorised.
 
 ## Continuity Milestone 1
 
@@ -151,7 +151,7 @@ These components have no startup registration, API route, worker, scheduler, per
 - RFC-0084 remains `Proposed`, unwired and without Canon write authority;
 - projection dispatcher remains implemented/tested but unwired;
 - Ring Zero is not an accepted Titan owner;
-- Code Structural Memory and recovery placement remain architecture-only until their replacement decisions are merged.
+- Recovery Authority Placement remains architecture-only until PR #219 is merged.
 
 ## Required before live Continuity activation
 
@@ -171,4 +171,4 @@ These components have no startup registration, API route, worker, scheduler, per
 - `server.py` remains a broad composition module;
 - authentication remains shared API-key rather than per-user/tenant authorization;
 - store-wide contention, disk-full and recovery evidence remains incomplete for some surfaces;
-- GitHub and Notion require final synchronization after #217/#219 merges and historical-PR closures.
+- GitHub and Notion require final synchronization after #219 merge, #17 closure and the final zero-open-PR governance checkpoint.
