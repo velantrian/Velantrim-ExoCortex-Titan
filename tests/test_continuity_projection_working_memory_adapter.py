@@ -87,6 +87,7 @@ def _goal_projection(status: str = "active"):
         )
     )
     attestation = GoalAttestation.create(
+        user_id=snapshot.user_id,
         goal_ref=snapshot.goal_ref,
         basis=GoalBasis.ACCEPTED_DECISION,
         source_refs=("conversation:goal-decision",),
