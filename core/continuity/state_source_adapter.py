@@ -214,8 +214,7 @@ def _validate_binding(
 
 
 def _projection_scope(projection: CurrentStateProjection) -> str:
-    subject = projection.subject_ref
-    return f"{subject.kind.value}:{subject.subject_id}:{projection.predicate}"
+    return f"state_projection:{projection.projection_id}"
 
 
 def _projection_evidence(projection: CurrentStateProjection) -> tuple[str, ...]:
