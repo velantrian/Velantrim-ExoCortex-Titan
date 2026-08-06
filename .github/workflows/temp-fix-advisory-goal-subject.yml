@@ -2,38 +2,27 @@ name: temp-fix-advisory-goal-subject
 
 on:
   push:
-    branches: [feat/continuity-goal-subject-binding]
+    branches:
+      - feat/continuity-goal-subject-binding
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: feat/continuity-goal-subject-binding
-      - name: Add explicit fixture subject
+          fetch-depth: 0
+      - name: Patch fixture
+        shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('tests/test_continuity_advisory_shadow.py')
-          text = path.read_text()
-          old = '''        policy_version=GOAL_OPEN_LOOP_POLICY_VERSION,
-        goal_ref="goal-1",
-'''
-          new = '''        policy_version=GOAL_OPEN_LOOP_POLICY_VERSION,
-        user_id="user:advisory-fixture",
-        goal_ref="goal-1",
-'''
-          if text.count(old) != 1:
-              raise SystemExit(f'expected one constructor match, found {text.count(old)}')
-          path.write_text(text.replace(old, new, 1))
-          Path('.github/workflows/temp-fix-advisory-goal-subject.yml').unlink()
-          PY
-      - name: Commit fixture update
+          python -c "from pathlib import Path; p=Path('tests/test_continuity_advisory_shadow.py'); s=p.read_text(); old='        policy_version=GOAL_OPEN_LOOP_POLICY_VERSION,\\n        goal_ref=\"goal-1\",\\n'; new='        policy_version=GOAL_OPEN_LOOP_POLICY_VERSION,\\n        user_id=\"user:advisory-fixture\",\\n        goal_ref=\"goal-1\",\\n'; assert s.count(old)==1, s.count(old); p.write_text(s.replace(old,new,1))"
+          rm .github/workflows/temp-fix-advisory-goal-subject.yml
+      - name: Commit
+        shell: bash
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
