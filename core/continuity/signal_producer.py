@@ -644,10 +644,10 @@ def _aggregate_evidence_coverage(
             rule="no_trusted_evidence_observations_fail_closed",
             value=0.0,
         )
-    by_scope: dict[str, tuple[ContinuitySignalObservation, ...]] = defaultdict(tuple)
+    by_scope: dict[str, list[ContinuitySignalObservation]] = defaultdict(list)
     for observation in sorted(group, key=lambda item: item.observation_id):
         scope = _required_scope(observation.scope)
-        by_scope[scope] = by_scope[scope] + (observation,)
+        by_scope[scope].append(observation)
     considered: list[ContinuitySignalObservation] = []
     covered = 0
     for scope in sorted(by_scope):
