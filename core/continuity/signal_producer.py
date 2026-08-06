@@ -47,6 +47,9 @@ _REJECTION_MESSAGES = {
     "CONFIDENCE_BELOW_THRESHOLD": "confidence is below policy.minimum_confidence",
     "MISSING_EVIDENCE_REFS": "policy.require_evidence_refs is set but evidence_refs is empty",
     "MISSING_REQUIRED_SCOPE": "this signal_type requires a non-empty scope",
+    "OBSERVATION_ID_MISMATCH": (
+        "observation_id does not match canonical observation content"
+    ),
 }
 
 
@@ -418,6 +421,12 @@ def _trust_reason(
 ) -> str | None:
     if observation.schema_version != OBSERVATION_SCHEMA_VERSION:
         return "UNKNOWN_SCHEMA_VERSION"
+    try:
+        expected_observation_id = _digest(observation.identity_payload())
+    except (AttributeError, TypeError, ValueError):
+        return "OBSERVATION_ID_MISMATCH"
+    if observation.observation_id != expected_observation_id:
+        return "OBSERVATION_ID_MISMATCH"
     if observation.producer not in policy.trusted_producers:
         return "UNTRUSTED_PRODUCER"
     if observation.source_type not in policy.allowed_source_types:
@@ -562,15 +571,26 @@ def _aggregate_priority_categorical(
             rule="no_trusted_observations_default_applied",
             value=default_value,
         )
-    top_priority = max(
-        priority_table[_string_value(observation.value)] for observation in group
-    )
+    ranked: list[tuple[ContinuitySignalObservation, str, int]] = []
+    for observation in group:
+        raw_value = _string_value(observation.value)
+        priority = priority_table.get(raw_value)
+        if priority is None:
+            raise ContinuitySignalProducerError(
+                f"unsupported {signal_type.value} observation value: {raw_value!r}"
+            )
+        ranked.append((observation, raw_value, priority))
+    top_priority = max(priority for _, _, priority in ranked)
     contributing = tuple(
         observation
-        for observation in group
-        if priority_table[_string_value(observation.value)] == top_priority
+        for observation, _, priority in ranked
+        if priority == top_priority
     )
-    value = _string_value(contributing[0].value)
+    value = next(
+        raw_value
+        for _, raw_value, priority in ranked
+        if priority == top_priority
+    )
     return value, ContinuitySignalProvenance(
         signal_type=signal_type,
         observation_ids=tuple(
@@ -598,11 +618,11 @@ def _aggregate_contradictions(
             rule="no_trusted_observations",
             value=0,
         ), False
-    by_scope: dict[str, ContinuitySignalObservation] = {}
-    for observation in sorted(group, key=lambda item: item.observation_id):
-        by_scope.setdefault(_required_scope(observation.scope), observation)
-    unique = tuple(by_scope[key] for key in sorted(by_scope))
-    raw_count = len(unique)
+    ordered = tuple(sorted(group, key=lambda item: item.observation_id))
+    unique_scopes = {
+        _required_scope(observation.scope) for observation in ordered
+    }
+    raw_count = len(unique_scopes)
     capped = raw_count > policy.max_contradiction_count
     count = min(raw_count, policy.max_contradiction_count)
     rule = f"unique_scopes_deduped_from_{len(group)}_observations"
@@ -610,10 +630,12 @@ def _aggregate_contradictions(
         rule += "_capped_by_policy"
     return count, ContinuitySignalProvenance(
         signal_type=ContinuitySignalType.ACTIVE_CONTRADICTION,
-        observation_ids=tuple(observation.observation_id for observation in unique),
-        evidence_refs=_refs_union(unique),
-        producers=_producers(unique),
-        confidence=_min_confidence(unique),
+        observation_ids=tuple(
+            observation.observation_id for observation in ordered
+        ),
+        evidence_refs=_refs_union(ordered),
+        producers=_producers(ordered),
+        confidence=_min_confidence(ordered),
         rule=rule,
         value=count,
     ), capped

@@ -9,7 +9,7 @@ Re-verify exact SHAs and current PR evidence.
 ```text
 Status:    DRAFT PR · NOT MERGED · NOT IMPLEMENTED IN MAIN
 Branch:    feat/continuity-trusted-signal-producer
-Base:      main @ adfccb02f88b290aac8411e94aac69417defbafe
+Merge base: main @ 3c73eab991c305d174f6c2c5805595c7998d4068
 ADR:       docs/adr/ADR-2026-08-05-continuity-trusted-signal-producer.md
 ```
 

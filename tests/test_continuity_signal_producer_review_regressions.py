@@ -6,10 +6,12 @@ from typing import Any, cast
 
 import pytest
 
+import core.continuity.signal_producer as signal_producer_module
 from core.continuity import (
     ContinuitySignalObservation,
     ContinuitySignalObservationError,
     ContinuitySignalPolicy,
+    ContinuitySignalProducerError,
     ContinuitySignalType,
     produce_continuity_compute_signals,
 )
@@ -25,6 +27,7 @@ def _observation(
     source_id: str = "source-1",
     evidence_ref: str = "evidence-1",
     confidence: float = 0.9,
+    scope: str | None = None,
 ) -> ContinuitySignalObservation:
     return ContinuitySignalObservation.create(
         signal_type=signal_type,
@@ -36,6 +39,7 @@ def _observation(
         observed_at=_NOW,
         evidence_refs=(evidence_ref,),
         reason_codes=("review-regression",),
+        scope=scope,
     )
 
 
@@ -187,3 +191,81 @@ def test_empty_availability_has_empty_default_provenance() -> None:
     assert item.evidence_refs == ()
     assert item.confidence == 0.0
     assert item.rule == "no_trusted_observations"
+
+
+
+def test_tampered_observation_id_is_reason_coded_rejection() -> None:
+    observation = _observation(
+        ContinuitySignalType.CONTEXT_DEGRADED,
+        True,
+    )
+    object.__setattr__(observation, "observation_id", "0" * 64)
+
+    result = produce_continuity_compute_signals(
+        [observation], policy=_policy()
+    )
+
+    assert result.observation_ids == ()
+    assert result.ignored_or_rejected_ids == ("0" * 64,)
+    assert len(result.rejected_observations) == 1
+    rejected = result.rejected_observations[0]
+    assert rejected.reason_code == "OBSERVATION_ID_MISMATCH"
+    assert "canonical observation content" in rejected.message
+
+
+def test_tampered_categorical_value_fails_with_controlled_error() -> None:
+    observation = _observation(
+        ContinuitySignalType.CONTEXT_FRESHNESS,
+        "fresh",
+    )
+    object.__setattr__(observation, "value", "impossible")
+    object.__setattr__(
+        observation,
+        "observation_id",
+        signal_producer_module._digest(observation.identity_payload()),
+    )
+
+    with pytest.raises(
+        ContinuitySignalProducerError,
+        match="unsupported context_freshness observation value",
+    ):
+        produce_continuity_compute_signals(
+            [observation], policy=_policy()
+        )
+
+
+def test_duplicate_contradiction_scope_keeps_complete_provenance() -> None:
+    first = _observation(
+        ContinuitySignalType.ACTIVE_CONTRADICTION,
+        True,
+        producer="trusted-a",
+        source_id="contradiction-a",
+        evidence_ref="evidence-a",
+        confidence=0.9,
+        scope="claim:1",
+    )
+    second = _observation(
+        ContinuitySignalType.ACTIVE_CONTRADICTION,
+        True,
+        producer="trusted-b",
+        source_id="contradiction-b",
+        evidence_ref="evidence-b",
+        confidence=0.7,
+        scope="claim:1",
+    )
+
+    result = produce_continuity_compute_signals(
+        [first, second], policy=_policy()
+    )
+    item = _provenance(
+        result, ContinuitySignalType.ACTIVE_CONTRADICTION
+    )
+
+    assert result.signals.active_contradictions == 1
+    assert item.observation_ids == tuple(
+        sorted((first.observation_id, second.observation_id))
+    )
+    assert item.producers == ("trusted-a", "trusted-b")
+    assert item.evidence_refs == ("evidence-a", "evidence-b")
+    assert item.confidence == 0.7
+    assert item.rule == "unique_scopes_deduped_from_2_observations"
