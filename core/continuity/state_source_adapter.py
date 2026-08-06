@@ -117,12 +117,42 @@ def adapt_state_reconciliation_to_drafts(
     return StateDraftAdapterOutput(source_envelope=envelope, drafts=drafts)
 
 
+def _validate_result_integrity(result: StateReconciliationResult) -> str:
+    expected_result_id = sha256(result.canonical_bytes()).hexdigest()
+    if result.result_id != expected_result_id:
+        raise ContinuitySourceAdmissionError(
+            "State result_id does not match canonical result bytes"
+        )
+    assertion_refs = set(result.assertion_refs)
+    for projection in result.projections:
+        expected_projection_id = sha256(projection.canonical_bytes()).hexdigest()
+        if projection.projection_id != expected_projection_id:
+            raise ContinuitySourceAdmissionError(
+                "State projection_id does not match canonical projection bytes"
+            )
+        if projection.as_of != result.as_of:
+            raise ContinuitySourceAdmissionError(
+                "State projection as_of does not match result as_of"
+            )
+        if projection.policy_version != result.policy_version:
+            raise ContinuitySourceAdmissionError(
+                "State projection policy_version does not match result policy"
+            )
+        projection_refs = set(_projection_evidence(projection))
+        projection_refs.discard(projection.projection_id)
+        if not projection_refs.issubset(assertion_refs):
+            raise ContinuitySourceAdmissionError(
+                "State projection assertion refs must be represented by result"
+            )
+    return expected_result_id
+
+
 def _validate_binding(
     *,
     result: StateReconciliationResult,
     binding_receipt: ContinuitySourceBindingReceipt,
 ) -> None:
-    expected_digest = sha256(result.canonical_bytes()).hexdigest()
+    expected_digest = _validate_result_integrity(result)
     expected_subjects = frozenset(
         (projection.subject_ref.subject_id, projection.subject_ref.kind.value)
         for projection in result.projections
