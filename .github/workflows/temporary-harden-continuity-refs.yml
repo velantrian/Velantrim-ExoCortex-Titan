@@ -1,0 +1,110 @@
+name: Temporary harden Continuity references
+
+on:
+  push:
+    branches:
+      - feat/continuity-trusted-signal-producer
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    if: "${{ !contains(github.event.head_commit.message, 'continuity-refs-hardened') }}"
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/continuity-trusted-signal-producer
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Apply hardening patch and tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          observations_path = Path("core/continuity/observations.py")
+          observations = observations_path.read_text(encoding="utf-8")
+          old = '''def _refs(values: Iterable[str], name: str) -> tuple[str, ...]:
+              items = tuple(_text(value, name) for value in values)
+              if len(items) != len(set(items)):
+                  raise ContinuitySignalObservationError(f"{name} cannot contain duplicates")
+              return tuple(sorted(items))
+          '''
+          new = '''def _refs(values: Iterable[str], name: str) -> tuple[str, ...]:
+              if isinstance(values, (str, bytes)):
+                  raise ContinuitySignalObservationError(
+                      f"{name} must be an iterable of strings, not text"
+                  )
+              try:
+                  items = tuple(_text(value, name) for value in values)
+              except TypeError as exc:
+                  raise ContinuitySignalObservationError(
+                      f"{name} must be an iterable of strings"
+                  ) from exc
+              if len(items) != len(set(items)):
+                  raise ContinuitySignalObservationError(f"{name} cannot contain duplicates")
+              return tuple(sorted(items))
+          '''
+          old = old.replace("          ", "")
+          new = new.replace("          ", "")
+          if observations.count(old) != 1:
+              raise SystemExit("expected one _refs implementation")
+          observations_path.write_text(observations.replace(old, new, 1), encoding="utf-8")
+
+          producer_path = Path("core/continuity/signal_producer.py")
+          producer = producer_path.read_text(encoding="utf-8")
+          old = '''    by_scope: dict[str, tuple[ContinuitySignalObservation, ...]] = defaultdict(tuple)
+              for observation in sorted(group, key=lambda item: item.observation_id):
+                  scope = _required_scope(observation.scope)
+                  by_scope[scope] = by_scope[scope] + (observation,)
+          '''
+          new = '''    by_scope: dict[str, list[ContinuitySignalObservation]] = defaultdict(list)
+              for observation in sorted(group, key=lambda item: item.observation_id):
+                  scope = _required_scope(observation.scope)
+                  by_scope[scope].append(observation)
+          '''
+          old = old.replace("          ", "")
+          new = new.replace("          ", "")
+          if producer.count(old) != 1:
+              raise SystemExit("expected one evidence scope accumulator")
+          producer_path.write_text(producer.replace(old, new, 1), encoding="utf-8")
+
+          tests_path = Path("tests/test_continuity_observations.py")
+          tests = tests_path.read_text(encoding="utf-8")
+          anchor = '''def test_duplicate_reason_codes_are_rejected() -> None:
+              with pytest.raises(ContinuitySignalObservationError, match="duplicates"):
+                  _make(reason_codes=("z", "z"))
+          '''.replace("          ", "")
+          addition = anchor + '''
+
+@pytest.mark.parametrize("field_name", ["evidence_refs", "reason_codes"])
+@pytest.mark.parametrize("bad_value", ["ev:1", b"ev:1", None, 42])
+def test_reference_collections_reject_text_and_non_iterables(
+    field_name: str,
+    bad_value: object,
+) -> None:
+    with pytest.raises(ContinuitySignalObservationError, match="iterable of strings"):
+        _make(**{field_name: bad_value})
+'''
+          if tests.count(anchor) != 1:
+              raise SystemExit("expected one reference-test insertion anchor")
+          tests_path.write_text(tests.replace(anchor, addition, 1), encoding="utf-8")
+          PY
+      - name: Install and validate focused surface
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+          python -m ruff check core/continuity tests/test_continuity_observations.py tests/test_continuity_signal_producer.py tests/test_continuity_producer_determinism.py
+          python -m mypy core/continuity core/compute_controller.py --show-error-codes
+          python -m pytest tests/test_continuity_observations.py tests/test_continuity_signal_producer.py tests/test_continuity_producer_determinism.py
+      - name: Commit tested hardening
+        run: |
+          git config user.name "Velantrim GitHub Actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add core/continuity/observations.py core/continuity/signal_producer.py tests/test_continuity_observations.py
+          git commit -m "fix(continuity): fail closed on malformed reference collections [continuity-refs-hardened]"
+          git push origin HEAD:feat/continuity-trusted-signal-producer
