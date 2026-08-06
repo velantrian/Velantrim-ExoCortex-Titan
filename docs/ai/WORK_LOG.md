@@ -4,13 +4,14 @@ Re-verify exact SHAs and current PR evidence.
 
 ---
 
-## 2026-08-05 — Trusted Continuity Signal Producer (draft PR, not merged)
+## 2026-08-06 — Trusted Continuity Signal Producer (merged and hardened)
 
 ```text
-Status:    DRAFT PR · NOT MERGED · NOT IMPLEMENTED IN MAIN
-Branch:    feat/continuity-trusted-signal-producer
-Merge base: main @ 3c73eab991c305d174f6c2c5805595c7998d4068
-ADR:       docs/adr/ADR-2026-08-05-continuity-trusted-signal-producer.md
+Status:        IMPLEMENTED IN MAIN · SHADOW ONLY · NOT WIRED · NOT ENABLED
+Implementation: PR #214 → 5f1ce06199ebabd6a23f3656ddd91c5c968170fe
+CI isolation:  PR #218 → 3c73eab991c305d174f6c2c5805595c7998d4068
+Hardening:     PR #220 → e37a5d13332628bcdbd0d9441d7a61d5f8a8d523
+ADR:           docs/adr/ADR-2026-08-05-continuity-trusted-signal-producer.md
 ```
 
 Addresses the "no trusted producer for `ContinuityComputeSignals`" gap
@@ -27,28 +28,37 @@ decision, see ADR); does not change `ComputePath`, `ComputeDecision`,
 `assess_compute_with_continuity()`; and performs no runtime wiring into
 `/query`, the shadow runner, or any live projection.
 
-### Validation checkpoint
+### Final validation checkpoint
 
-Implementation head `ea968d1de80b455bb36ce88e1e6a46631640b21f` passed:
+The complete merged lineage passed exact-head review and validation:
 
 ```text
-Full Titan CI         31052141426 → PASS
-Continuity contracts  31052141682 → PASS
-Docker hardening      31052141462 → PASS
-Ruff · blocking mypy · full pytest · coverage ratchet ≥74% → PASS
+PR #214 implementation merge  5f1ce06199ebabd6a23f3656ddd91c5c968170fe
+PR #218 CI isolation merge     3c73eab991c305d174f6c2c5805595c7998d4068
+PR #220 hardening merge        e37a5d13332628bcdbd0d9441d7a61d5f8a8d523
+
+PR #220 focused run            31077257141 → Ruff · mypy · 108 tests PASS (temporary workflow, not retained)
+PR #220 Full Titan CI          31077329680 → PASS
+PR #220 Continuity contracts   31077329650 → PASS
+PR #220 Docker hardening       31077329644 → PASS
+Copilot final review                         4/4 files · 0 comments
+Unresolved review threads                    0
 ```
 
-A documentation-only review correction followed. Its exact head must pass the
-same mandatory checks and a fresh independent review before merge.
+The merged producer verifies canonical observation IDs, rejects malformed
+references and tampered content fail-closed, preserves trusted-negative and
+duplicate-scope provenance, and emits controlled errors for malformed
+categorical values.
 
 ### Next phase
 
-Not authorized by this PR: production runtime wiring, trusted runtime source
-adapters deriving observations from `StateReconciliationResult` /
-`GoalProjectionResult` / `OpenLoopProjectionResult`, live telemetry,
-automated policy tuning, Canon authority, Action Gate authority, autonomous
-switching, or real-world calibration. Independent review, exact-head CI, and
-a merge decision remain required before any of that can be considered.
+Still not authorized by the merged lineage: production runtime wiring,
+trusted runtime source adapters deriving observations from
+`StateReconciliationResult` / `GoalProjectionResult` /
+`OpenLoopProjectionResult`, live telemetry, automated policy tuning, Canon
+authority, Action Gate authority, autonomous switching, or real-world
+calibration. Those require separate architecture, privacy/consent boundaries,
+staged activation and live evidence.
 
 ---
 
