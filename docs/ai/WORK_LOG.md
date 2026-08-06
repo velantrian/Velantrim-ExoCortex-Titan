@@ -27,19 +27,19 @@ decision, see ADR); does not change `ComputePath`, `ComputeDecision`,
 `assess_compute_with_continuity()`; and performs no runtime wiring into
 `/query`, the shadow runner, or any live projection.
 
-### Validation at PR head
+### Validation checkpoint
+
+Implementation head `ea968d1de80b455bb36ce88e1e6a46631640b21f` passed:
 
 ```text
-ruff check core/continuity core/compute_controller.py
-  tests/test_continuity*.py         → PASS
-mypy core/continuity core/compute_controller.py
-  --show-error-codes                → PASS (Python 3.11, strict)
-pytest tests/test_continuity*.py    → 271 passed
-pytest (full repo, minus unrelated
-  numpy/erasure fixture gaps)       → 3220 passed, 4 unrelated pre-existing
-                                       numpy import failures in
-                                       test_forgetting.py
+Full Titan CI         31052141426 → PASS
+Continuity contracts  31052141682 → PASS
+Docker hardening      31052141462 → PASS
+Ruff · blocking mypy · full pytest · coverage ratchet ≥74% → PASS
 ```
+
+A documentation-only review correction followed. Its exact head must pass the
+same mandatory checks and a fresh independent review before merge.
 
 ### Next phase
 
