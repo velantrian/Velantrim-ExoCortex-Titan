@@ -53,6 +53,10 @@ generator. Values are consumed once and normalized to `frozenset`.
 one malformed identifier collection rather than a collection of identifiers.
 Empty collections and non-string elements also fail closed.
 
+Observation-level `evidence_refs` and `reason_codes` follow the same
+collection boundary: text scalars, bytes, and non-iterables fail closed;
+proper one-shot iterables are consumed once and normalized deterministically.
+
 ## Aggregation rules
 
 ### Warning and safety booleans
@@ -67,7 +71,9 @@ One applicable trusted observation asserting `True` is sufficient. Lack of a
 second producer must not erase a trusted degradation, importance, or
 current-state warning.
 
-False-only or absent trusted observations leave the output `False`.
+False-only trusted observations retain their complete provenance while the
+output remains `False`. Absence of trusted observations is represented by a
+separate no-observation rule.
 
 ### Positive availability claim
 
@@ -76,13 +82,16 @@ by `policy.minimum_confirmations` distinct trusted producer identities.
 Multiple observations from one producer cannot manufacture confirmation.
 
 Trusted positive and negative availability observations together resolve to
-`False` and emit `continuity_available_conflict`.
+`False` and emit `continuity_available_conflict`. Negative-only trusted
+observations also retain explicit fail-conservative provenance.
 
 ### Other fields
 
 - `context_freshness` and `sensitivity`: most-severe trusted value wins;
 - `active_contradictions`: unique scopes are counted and capped by policy;
 - `evidence_coverage`: covered unique scopes divided by total unique scopes;
+- evidence coverage groups observations with list accumulation, avoiding
+  repeated tuple reconstruction while preserving deterministic ordering;
 - zero observations at all preserve the existing off-state coverage default
   of `1.0`;
 - non-empty input with no trusted evidence observations yields `0.0`;
@@ -137,9 +146,12 @@ Before merge, the exact final head must pass:
 - Docker hardening;
 - permutation and duplicate invariance;
 - iterable-input regression coverage;
+- malformed reference-collection rejection;
 - one-trusted-warning preservation for all three warning booleans;
+- false-only warning provenance preservation;
 - distinct-producer availability confirmation;
-- fail-conservative availability conflict;
+- fail-conservative negative and conflicting availability provenance;
+- linear evidence-scope accumulation with unchanged deterministic output;
 - authority-field serialization scan;
 - independent final-head review.
 
