@@ -1,0 +1,135 @@
+name: Temporary harden source-admission decisions
+
+on:
+  push:
+    branches: [feat/continuity-source-admission-decisions]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: temporary-source-admission-decisions
+  cancel-in-progress: false
+
+jobs:
+  patch-test-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/continuity-source-admission-decisions
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install focused dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Apply exact hardening patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          production = Path("core/continuity/source_admission_decisions.py")
+          text = production.read_text()
+
+          anchor = '''def _subject_keys(subjects: tuple[SubjectRef, ...]) -> frozenset[tuple[str, str]]:
+              return frozenset((subject.subject_id, subject.kind.value) for subject in subjects)
+          '''
+          replacement = '''def _subject_keys(subjects: tuple[SubjectRef, ...]) -> frozenset[tuple[str, str]]:
+              return frozenset((subject.subject_id, subject.kind.value) for subject in subjects)
+
+
+          def _hash_refs(
+              values: object,
+              name: str,
+              *,
+              required: bool = False,
+          ) -> tuple[str, ...]:
+              items = _items(values, name)
+              refs = tuple(_hash(value, name) for value in items)
+              if required and not refs:
+                  raise ContinuitySourceAdmissionError(f"{name} cannot be empty")
+              if len(refs) != len(set(refs)):
+                  raise ContinuitySourceAdmissionError(f"{name} cannot contain duplicates")
+              return tuple(sorted(refs))
+          '''
+          if anchor not in text:
+              raise SystemExit("subject-key anchor not found")
+          text = text.replace(anchor, replacement, 1)
+
+          replacements = {
+              'self, "draft_ids", _refs(self.draft_ids, "draft_ids", required=True)':
+              'self, "draft_ids", _hash_refs(self.draft_ids, "draft_ids", required=True)',
+              '_refs(self.admitted_draft_ids, "admitted_draft_ids")':
+              '_hash_refs(self.admitted_draft_ids, "admitted_draft_ids")',
+              '_refs(\n                    self.admission_receipt_ids,\n                    "admission_receipt_ids",\n                    required=True,\n                )':
+              '_hash_refs(\n                    self.admission_receipt_ids,\n                    "admission_receipt_ids",\n                    required=True,\n                )',
+              '_refs(\n                    self.source_binding_receipt_ids,\n                    "source_binding_receipt_ids",\n                    required=True,\n                )':
+              '_hash_refs(\n                    self.source_binding_receipt_ids,\n                    "source_binding_receipt_ids",\n                    required=True,\n                )',
+              '_refs(self.source_envelope_ids, "source_envelope_ids", required=True)':
+              '_hash_refs(self.source_envelope_ids, "source_envelope_ids", required=True)',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f"production replacement not found: {old!r}")
+              text = text.replace(old, new, 1)
+          production.write_text(text)
+
+          tests = Path("tests/test_continuity_source_admission_decisions.py")
+          test_text = tests.read_text()
+          old_test = '''def test_batch_direct_constructor_rejects_broken_trace_mapping() -> None:
+              batch = _batch()
+              link = batch.draft_observation_links[0]
+              wrong_link = ContinuityDraftObservationLink(
+                  link_id=link.link_id,
+                  schema_version=link.schema_version,
+                  draft_id=link.draft_id,
+                  observation_id="0" * 64,
+                  source_envelope_id=link.source_envelope_id,
+                  authority=link.authority,
+              )
+              with pytest.raises(ContinuitySourceAdmissionError):
+                  replace(batch, draft_observation_links=(wrong_link,))
+          '''
+          new_test = '''def test_trace_link_direct_constructor_rejects_broken_observation_mapping() -> None:
+              link = _batch().draft_observation_links[0]
+              with pytest.raises(ContinuitySourceAdmissionError, match="canonical"):
+                  replace(link, observation_id="0" * 64)
+
+
+          def test_direct_contracts_reject_non_hash_id_collections() -> None:
+              receipt = _receipt()
+              batch = _batch()
+              with pytest.raises(ContinuitySourceAdmissionError, match="SHA-256"):
+                  replace(receipt, draft_ids=("draft:not-a-hash",))
+              with pytest.raises(ContinuitySourceAdmissionError, match="SHA-256"):
+                  replace(receipt, admitted_draft_ids=("draft:not-a-hash",))
+              with pytest.raises(ContinuitySourceAdmissionError, match="SHA-256"):
+                  replace(batch, admission_receipt_ids=("receipt:not-a-hash",))
+              with pytest.raises(ContinuitySourceAdmissionError, match="SHA-256"):
+                  replace(batch, source_binding_receipt_ids=("binding:not-a-hash",))
+              with pytest.raises(ContinuitySourceAdmissionError, match="SHA-256"):
+                  replace(batch, source_envelope_ids=("envelope:not-a-hash",))
+          '''
+          if old_test not in test_text:
+              raise SystemExit("trace test anchor not found")
+          tests.write_text(test_text.replace(old_test, new_test, 1))
+          PY
+
+      - name: Focused validation
+        run: |
+          python -m ruff check core/continuity/source_admission_decisions.py tests/test_continuity_source_admission_decisions.py
+          python -m mypy core/continuity/source_admission_decisions.py
+          python -m pytest tests/test_continuity_source_admission_decisions.py -q
+
+      - name: Remove temporary workflow and commit final diff
+        run: |
+          rm .github/workflows/temporary-harden-source-admission-decisions.yml
+          git config user.name "Velantim"
+          git config user.email "velantrim@gmail.com"
+          git add core/continuity/source_admission_decisions.py tests/test_continuity_source_admission_decisions.py .github/workflows/temporary-harden-source-admission-decisions.yml
+          git commit -m "fix(continuity): harden decision ID collections and trace tests"
+          git push origin HEAD:feat/continuity-source-admission-decisions
