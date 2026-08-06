@@ -322,7 +322,10 @@ ContinuityObservationAdmissionReceipt
 ├── source_binding_receipt_id
 ├── authorization_context_id
 ├── policy_snapshot_id
-├── adapter_id / version
+├── adapter_id / version              # source adapter
+├── admission_evaluator_id / version
+├── admission_rule_id
+├── evaluation_evidence_refs[]
 ├── draft_ids[]
 ├── admitted_draft_ids[]
 ├── rejected_drafts[]
@@ -335,6 +338,8 @@ ContinuityObservationAdmissionReceipt
 ```
 
 The receipt cannot authorize persistence, execution, Canon writes or user-visible output.
+
+The source adapter and admission evaluator are separate provenance axes. Evaluator ID/version, admission rule ID and nonempty evaluation evidence are mandatory and enter receipt identity. These fields are evidence references only: a future admission gate must resolve and allowlist the evaluator/rule and verify current policy, authorization, restriction and erasure state rather than trusting caller-supplied strings.
 
 ### 6.7 `AuthorizedContinuityObservationBatch`
 
