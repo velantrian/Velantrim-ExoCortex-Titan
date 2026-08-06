@@ -178,6 +178,10 @@ class ContinuityObservationAdmissionReceipt:
     policy_snapshot_id: str
     adapter_id: str
     adapter_version: str
+    admission_evaluator_id: str
+    admission_evaluator_version: str
+    admission_rule_id: str
+    evaluation_evidence_refs: tuple[str, ...]
     draft_ids: tuple[str, ...]
     admitted_draft_ids: tuple[str, ...]
     rejected_drafts: tuple[ContinuityDraftRejection, ...]
@@ -207,6 +211,25 @@ class ContinuityObservationAdmissionReceipt:
         object.__setattr__(self, "adapter_id", _text(self.adapter_id, "adapter_id"))
         object.__setattr__(
             self, "adapter_version", _text(self.adapter_version, "adapter_version")
+        )
+        for field_name in (
+            "admission_evaluator_id",
+            "admission_evaluator_version",
+            "admission_rule_id",
+        ):
+            object.__setattr__(
+                self,
+                field_name,
+                _text(getattr(self, field_name), field_name),
+            )
+        object.__setattr__(
+            self,
+            "evaluation_evidence_refs",
+            _refs(
+                self.evaluation_evidence_refs,
+                "evaluation_evidence_refs",
+                required=True,
+            ),
         )
         object.__setattr__(
             self, "draft_ids", _hash_refs(self.draft_ids, "draft_ids", required=True)
@@ -290,6 +313,10 @@ class ContinuityObservationAdmissionReceipt:
         drafts: Iterable[ContinuityObservationDraft],
         admitted_drafts: Iterable[ContinuityObservationDraft],
         rejected_drafts: Iterable[ContinuityDraftRejection],
+        admission_evaluator_id: str,
+        admission_evaluator_version: str,
+        admission_rule_id: str,
+        evaluation_evidence_refs: Iterable[str],
         evaluated_at: datetime,
         schema_version: str = SOURCE_ADMISSION_DECISION_SCHEMA_VERSION,
     ) -> ContinuityObservationAdmissionReceipt:
@@ -414,6 +441,20 @@ class ContinuityObservationAdmissionReceipt:
             raise ContinuitySourceAdmissionError(
                 "admitted and rejected drafts must completely partition drafts"
             )
+        evaluator_id = _text(
+            admission_evaluator_id,
+            "admission_evaluator_id",
+        )
+        evaluator_version = _text(
+            admission_evaluator_version,
+            "admission_evaluator_version",
+        )
+        rule_id = _text(admission_rule_id, "admission_rule_id")
+        evaluation_evidence = _refs(
+            evaluation_evidence_refs,
+            "evaluation_evidence_refs",
+            required=True,
+        )
         evaluated = _aware(evaluated_at, "evaluated_at")
         if evaluated < source_envelope.created_at or any(
             evaluated < value.created_at for value in normalized_drafts
@@ -442,6 +483,10 @@ class ContinuityObservationAdmissionReceipt:
             "policy_snapshot_id": authorization_context.policy_snapshot_id,
             "adapter_id": source_envelope.producer_adapter_id,
             "adapter_version": source_envelope.producer_adapter_version,
+            "admission_evaluator_id": evaluator_id,
+            "admission_evaluator_version": evaluator_version,
+            "admission_rule_id": rule_id,
+            "evaluation_evidence_refs": list(evaluation_evidence),
             "draft_ids": sorted(all_ids),
             "admitted_draft_ids": sorted(admitted_ids),
             "rejected_drafts": [
@@ -460,6 +505,10 @@ class ContinuityObservationAdmissionReceipt:
             policy_snapshot_id=authorization_context.policy_snapshot_id,
             adapter_id=source_envelope.producer_adapter_id,
             adapter_version=source_envelope.producer_adapter_version,
+            admission_evaluator_id=evaluator_id,
+            admission_evaluator_version=evaluator_version,
+            admission_rule_id=rule_id,
+            evaluation_evidence_refs=evaluation_evidence,
             draft_ids=tuple(sorted(all_ids)),
             admitted_draft_ids=tuple(sorted(admitted_ids)),
             rejected_drafts=normalized_rejections,
@@ -477,6 +526,10 @@ class ContinuityObservationAdmissionReceipt:
             "policy_snapshot_id": self.policy_snapshot_id,
             "adapter_id": self.adapter_id,
             "adapter_version": self.adapter_version,
+            "admission_evaluator_id": self.admission_evaluator_id,
+            "admission_evaluator_version": self.admission_evaluator_version,
+            "admission_rule_id": self.admission_rule_id,
+            "evaluation_evidence_refs": list(self.evaluation_evidence_refs),
             "draft_ids": list(self.draft_ids),
             "admitted_draft_ids": list(self.admitted_draft_ids),
             "rejected_drafts": [value.to_dict() for value in self.rejected_drafts],

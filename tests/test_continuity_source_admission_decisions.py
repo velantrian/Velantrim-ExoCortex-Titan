@@ -170,6 +170,10 @@ def _receipt(
         "drafts": draft_values,
         "admitted_drafts": admitted_values,
         "rejected_drafts": rejected,
+        "admission_evaluator_id": "continuity.admission_gate",
+        "admission_evaluator_version": "1",
+        "admission_rule_id": "continuity.admission.default.v1",
+        "evaluation_evidence_refs": ("policy:evaluation",),
         "evaluated_at": _NOW,
     }
     values.update(overrides)
@@ -375,6 +379,64 @@ def test_receipt_rejects_draft_from_other_envelope() -> None:
             admitted=(),
             rejected=(),
         )
+
+
+def test_receipt_requires_admission_evaluator_provenance() -> None:
+    with pytest.raises(ContinuitySourceAdmissionError, match="non-empty string"):
+        _receipt(admission_evaluator_id="  ")
+    with pytest.raises(ContinuitySourceAdmissionError, match="non-empty string"):
+        _receipt(admission_evaluator_version="")
+    with pytest.raises(ContinuitySourceAdmissionError, match="non-empty string"):
+        _receipt(admission_rule_id="")
+    with pytest.raises(ContinuitySourceAdmissionError, match="cannot be empty"):
+        _receipt(evaluation_evidence_refs=())
+
+
+@pytest.mark.parametrize("bad_value", ["policy:evaluation", b"policy", 1, None])
+def test_receipt_evaluation_evidence_rejects_scalar_values(
+    bad_value: object,
+) -> None:
+    with pytest.raises(ContinuitySourceAdmissionError, match="iterable"):
+        _receipt(evaluation_evidence_refs=bad_value)
+
+
+def test_receipt_evaluation_evidence_rejects_duplicates() -> None:
+    with pytest.raises(ContinuitySourceAdmissionError, match="duplicates"):
+        _receipt(
+            evaluation_evidence_refs=(
+                "policy:evaluation",
+                "policy:evaluation",
+            )
+        )
+
+
+def test_receipt_evaluator_provenance_is_normalized_and_identity_bound() -> None:
+    composed = _receipt(
+        admission_evaluator_id="  café  ",
+        admission_evaluator_version=" 1 ",
+        admission_rule_id=" rule:v1 ",
+        evaluation_evidence_refs=("z", "a"),
+    )
+    decomposed = _receipt(
+        admission_evaluator_id="café",
+        admission_evaluator_version="1",
+        admission_rule_id="rule:v1",
+        evaluation_evidence_refs=("a", "z"),
+    )
+    assert composed.receipt_id == decomposed.receipt_id
+    assert composed.admission_evaluator_id == "café"
+    assert composed.evaluation_evidence_refs == ("a", "z")
+    with pytest.raises(ContinuitySourceAdmissionError, match="canonical"):
+        replace(composed, admission_rule_id="different-rule")
+
+
+def test_receipt_serialization_separates_source_adapter_and_evaluator() -> None:
+    payload = _receipt().to_dict()
+    assert payload["adapter_id"] == "continuity.state_to_signal_draft"
+    assert payload["admission_evaluator_id"] == "continuity.admission_gate"
+    assert payload["admission_evaluator_version"] == "1"
+    assert payload["admission_rule_id"] == "continuity.admission.default.v1"
+    assert payload["evaluation_evidence_refs"] == ["policy:evaluation"]
 
 
 def test_receipt_evaluation_must_follow_drafts_and_be_authorized() -> None:
