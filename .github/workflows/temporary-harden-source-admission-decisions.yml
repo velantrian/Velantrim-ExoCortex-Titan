@@ -107,7 +107,11 @@ jobs:
 
 
           '''
-          tests.write_text(test_text[:start] + replacement + test_text[end:])
+          test_text = test_text[:start] + replacement + test_text[end:]
+          obsolete_import = "    ContinuityDraftObservationLink,\n"
+          if obsolete_import not in test_text:
+              raise SystemExit("obsolete trace-link import not found")
+          tests.write_text(test_text.replace(obsolete_import, "", 1))
           PY
 
       - name: Focused validation
