@@ -44,9 +44,13 @@ Continuity contracts:   31154197538 PASS
 Docker hardening:       31154197912 PASS
 Unresolved threads:     0
 Merge SHA:              659c30e0e8023c48fdf68be8583401fc042a1ab8
+
+Post-merge full CI:     31154604309 PASS
+Post-merge Continuity:  31154604287 PASS
+Post-merge Docker:      31154604295 PASS
 ```
 
-The earlier cancelled Continuity job on `81e07a8ea59f486da9f5cf147ecc2932044fa024` executed no test steps because a hosted runner did not acquire it. The final exact-head run above is the accepted evidence.
+The earlier cancelled Continuity job on `81e07a8ea59f486da9f5cf147ecc2932044fa024` executed no test steps because a hosted runner did not acquire it. The final exact-head and post-merge runs above are the accepted evidence.
 
 ## Implemented primary contracts
 
