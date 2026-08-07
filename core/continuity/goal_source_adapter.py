@@ -275,8 +275,8 @@ def _validate_result_integrity(
             )
         decision_by_key[key] = decision
         if decision.disposition is GoalDecisionDisposition.INCLUDED:
-            projection = projection_by_key.get(key)
-            if projection is None:
+            matched_projection = projection_by_key.get(key)
+            if matched_projection is None:
                 raise ContinuitySourceAdmissionError(
                     "included Goal decision must reference one projection"
                 )
@@ -284,7 +284,7 @@ def _validate_result_integrity(
                 raise ContinuitySourceAdmissionError(
                     "included Goal decision reasons are not canonical"
                 )
-            if decision.source_refs != projection.source_refs:
+            if decision.source_refs != matched_projection.source_refs:
                 raise ContinuitySourceAdmissionError(
                     "included Goal decision source_refs must match projection"
                 )
