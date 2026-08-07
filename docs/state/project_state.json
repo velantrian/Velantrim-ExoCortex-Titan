@@ -1,27 +1,27 @@
 {
   "schema_version": 1,
   "project": "velantrim-exocortex-titan",
-  "verified_at": "2026-08-07T20:40:00Z",
+  "verified_at": "2026-08-07T21:45:00Z",
   "repository": {
     "default_branch": "main",
-    "repository_head_sha_at_verification": "97fe27a37184c6c7277f54e96acd04d98d583ab3",
-    "implementation_baseline_sha": "97fe27a37184c6c7277f54e96acd04d98d583ab3",
-    "documentation_checkpoint_sha": "9dfbfe5822221550389d95b751c8d85b044f6372",
-    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected; implementation_baseline_sha is the latest implementation-bearing Continuity merge; documentation_checkpoint_sha is the previous merged canonical AI-context checkpoint while the evaluator checkpoint is under docs-only review."
+    "repository_head_sha_at_verification": "9f07db6de8d32683d00bfe4f1673e84493607553",
+    "implementation_baseline_sha": "9f07db6de8d32683d00bfe4f1673e84493607553",
+    "documentation_checkpoint_sha": "83213048204da0e692abc147fdfad9a326b2b0d6",
+    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected; implementation_baseline_sha is the latest implementation-bearing Continuity merge; documentation_checkpoint_sha is the previous merged canonical AI-context checkpoint while this facade post-merge checkpoint is under docs-only review."
   },
   "continuity": {
-    "completed_capabilities": 6,
+    "completed_capabilities": 7,
     "total_capabilities": 12,
-    "readiness_percent": 50.0,
-    "remaining_capabilities": 6,
-    "remaining_percent": 50.0,
+    "readiness_percent": 58.3,
+    "remaining_capabilities": 5,
+    "remaining_percent": 41.7,
     "implemented": true,
     "tested": true,
     "wired": false,
     "enabled": false,
     "observed": false,
     "runtime_authority": false,
-    "next_bounded_slice": "internal admission-aware facade and accepted current-state resolver boundary only; stop before producer invocation, persistence or runtime effects"
+    "next_bounded_slice": "compose current principal, authorization, consent or lawful-basis, restriction, erasure-domain and PolicySnapshot evidence through accepted owners; remain internal and stop before producer invocation, persistence or runtime effects"
   },
   "governance": {
     "aggregate_merge_evidence_present": true,
