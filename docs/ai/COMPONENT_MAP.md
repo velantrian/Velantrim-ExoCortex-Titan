@@ -1,196 +1,205 @@
 # 🗺️ Component and Authority Map
 
-**Repository head verified:** `main@9dfbfe5822221550389d95b751c8d85b044f6372`  
-**Implementation baseline:** `42aa79338c57e9b9a67c3e3c08dd948b60c5541f`  
+**Repository head verified:** `main@97fe27a37184c6c7277f54e96acd04d98d583ab3`  
+**Implementation baseline:** `97fe27a37184c6c7277f54e96acd04d98d583ab3`  
 **Machine-readable state:** [`docs/state/project_state.json`](../state/project_state.json)  
-Use exact SHAs, callers and tests. Presence is not wiring; passing tests are not runtime authority.
+**Rule:** presence is not wiring; content-addressed evidence is not runtime authority.
 
-## Continuity accepted lineage
+## 1. Canon and core runtime
+
+| Responsibility | Primary owner | State | Authority |
+|---|---|---|---|
+| Durable facts and ESM | `core/memory.py` / canonical store services | implemented, tested, wired | Canon state owner |
+| Truth admission | `core/truth_gate.py`, accepted write services | implemented, tested, partly unified | evidence/confidence decision |
+| Hard capability/data-mode policy | `core/policy_kernel.py` / `PolicySnapshot` / `CapabilityLease` | implemented, tested | policy owner |
+| Provenance and audit | `core/provenance_chain.py`, `core/audit_chain.py` | implemented, tested | trace and mutation evidence |
+| Retrieval coordination | `core/pipeline.py`, `core/hybrid_retriever.py` | implemented, wired | read-side proposal only |
+| Projection delivery | projection outbox / dispatcher primitives | implemented, tested, not lifecycle-wired | rebuildable derived state |
+
+No Continuity component owns Canon, TruthGate, PolicyKernel, GoalStack, reminders, tools, actions or compute routing.
+
+## 2. Continuity accepted lineage
 
 | Layer | Merge SHA | Primary surface | Runtime state |
 |---|---|---|---|
-| R1 contracts | `06529700d70854504b88629eeecf737bdc6b81d5` | `core/continuity/contracts.py` | unwired |
-| R2 read-side / threads | `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e` | event port, bridge, weaver | process-local, unwired |
-| R3 projections / WM adapters | `a19d16656676ad5c98c92d4776e9709edbfb920c` | context, state, Goal/OpenLoop projections | rebuildable, unwired |
+| R1 immutable contracts | `06529700d70854504b88629eeecf737bdc6b81d5` | `core/continuity/contracts.py` | tested, unwired |
+| R2 read-side / threads | `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e` | `event_port.py`, `conversation_bridge.py`, `thread_weaver.py` | process-local, unwired |
+| R3 projections / WorkingMemory adapters | `a19d16656676ad5c98c92d4776e9709edbfb920c` | `context_pack.py`, `state_reconciler.py`, `goal_open_loop.py` | rebuildable, unwired |
 | R4 compute assessment | `529d8b6b182b1a548d27558173f0aca473bcc400` | `core/compute_controller.py` | shadow-only, unwired |
-| R5A replay / Advisory Shadow | `58e29bba26299ce7003b62e73fd3b25e028956de` | evaluation and advisory shadow | shadow-only, unwired |
-| R5B complete runner | `27b91a59f9e9291092b220ac1f53bfeae2daea28` | `shadow_runner.py` | disabled, unwired |
-| Typed signal producer | `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` | observations and pure producer | shadow-only, unwired |
-| Source-admission contracts | `4adde7997ec0b2a3d1957224c72131d8c4d35ff2` | `source_admission*.py` | internal, unwired |
-| State Draft adapter | `0f1a10ab4f92dd7f15a69e55cc98339e7eeb36b1` | `state_source_adapter.py` | internal, unwired |
-| Goal subject binding v2 | `81836b4f715470c50a4c6c7768a2cde7478568c8` | `goal_open_loop.py` | contract correction, unwired |
-| OpenLoop subject binding v2 | `659c30e0e8023c48fdf68be8583401fc042a1ab8` | `goal_open_loop.py` | contract correction, unwired |
-| Goal Draft adapter | `2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d` | `goal_source_adapter.py` | internal, unwired |
-| OpenLoop Draft adapter | `42aa79338c57e9b9a67c3e3c08dd948b60c5541f` | `open_loop_source_adapter.py` | internal, unwired |
-| Docs checkpoint | `9dfbfe5822221550389d95b751c8d85b044f6372` | `docs/ai/*` | documentation only |
+| R5A replay / Advisory Shadow | `58e29bba26299ce7003b62e73fd3b25e028956de` | `evaluation.py`, `advisory_shadow.py` | shadow-only, unwired |
+| R5B disabled runner | `27b91a59f9e9291092b220ac1f53bfeae2daea28` | `shadow_runner.py` | default-off, unwired |
+| Typed signal producer | `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` | `observations.py`, `signal_producer.py` | pure shadow producer |
+| Producer hardening | `e37a5d13332628bcdbd0d9441d7a61d5f8a8d523` | producer validation | tested, unwired |
+| Source-admission contracts | `4adde7997ec0b2a3d1957224c72131d8c4d35ff2` | `source_admission*.py` | evidence only |
+| State Draft adapter | `0f1a10ab4f92dd7f15a69e55cc98339e7eeb36b1` | `state_source_adapter.py` | tested, internal, unwired |
+| Goal subject binding v2 | `81836b4f715470c50a4c6c7768a2cde7478568c8` | `goal_open_loop.py` | tested contract correction |
+| OpenLoop subject binding v2 | `659c30e0e8023c48fdf68be8583401fc042a1ab8` | `goal_open_loop.py` | tested contract correction |
+| Goal Draft adapter | `2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d` | `goal_source_adapter.py` | tested, internal, unwired |
+| OpenLoop Draft adapter | `42aa79338c57e9b9a67c3e3c08dd948b60c5541f` | `open_loop_source_adapter.py` | tested, internal, unwired |
+| Admission evaluator | `97fe27a37184c6c7277f54e96acd04d98d583ab3` | `admission_evaluator.py` | tested, internal, unwired |
 
-## Architecture and governance
+## 3. Source-admission contracts
 
-| Responsibility | Primary surface | Current owner/state |
-|---|---|---|
-| Accepted admission architecture | `docs/research/CONTINUITY_SOURCE_ADMISSION_ARCHITECTURE.md` | decision and non-authority boundary |
-| Canonical current status | `docs/ai/CURRENT_STATE.md` + `docs/state/project_state.json` | exact implementation/test/wiring state |
-| Risks and required proof | `docs/ai/KNOWN_RISKS.md` | authority, privacy, erasure and operations |
-| Current continuation map | `docs/ai/CONTINUITY_SOURCE_ADMISSION_HANDOFF.md` | next bounded slice |
-| Merge evidence | `.github/workflows/aggregate-merge-evidence.yml` | active, observed, not required by ruleset |
-| Authority-sensitive ownership | `.github/CODEOWNERS` | advisory until branch rules require review |
-
-## Knowledge-base asset boundary
-
-| Responsibility | Primary surface | Authority |
-|---|---|---|
-| Accepted source parsing | `core/world_skills_ingest.py` | source extraction only |
-| Deterministic graph construction | `core/knowledge_linker.py` | graph proposal/construction only |
-| SQLite build + portable export | `scripts/build_kb_graph.py` | build tooling; no runtime authority |
-| Portable JSON export | `scripts/export_kb_graph.py` | artifact serialization only |
-| SQLite quality audit | `scripts/audit_kb_graph.py` | quality evidence only |
-| Portable graph integrity | `scripts/validate_kb_graph.py` | `ARTIFACT_INTEGRITY_ONLY` |
-| Release SHA/size verification | `scripts/verify_release_bundle.py` | bundle integrity only |
-| Preservation/governance contract | `docs/knowledge/KB_GRAPH_GOVERNANCE.md` | documentation contract |
-
-`kb_graph.json` remains a preserved versioned knowledge asset. Integrity validation does
-not establish claim truth, admission to Canon, current permission or runtime authority.
-
-## Primary neutral contracts
+### Primary evidence contracts
 
 | Responsibility | Code | Authority |
 |---|---|---|
-| Principal, authorization and source binding | `core/continuity/source_admission.py` | immutable external evidence only |
-| Source envelope and observation draft | `core/continuity/source_admission_payloads.py` | proposal evidence only |
-| Rejection, admission receipt and authorized batch | `core/continuity/source_admission_decisions.py` | admission evidence only; no runtime permission |
+| Principal, authorization and source binding | `core/continuity/source_admission.py` | immutable represented evidence |
+| Source envelope and observation Draft | `core/continuity/source_admission_payloads.py` | proposal evidence only |
+| Admission receipt and authorized batch | `core/continuity/source_admission_decisions.py` | admission evidence only; no runtime permission |
 
-These modules remain internal and are not exported as a live public boundary.
+Primary modules remain internal and are not a public live trust boundary.
 
-## Source adapter map
-
-### State
-
-| Responsibility | Surface |
-|---|---|
-| Typed result owner | `core/continuity/state_reconciler.py` |
-| Explicit Draft adapter | `core/continuity/state_source_adapter.py` |
-| Adversarial tests | `tests/test_continuity_state_source_adapter.py` |
+### Source adapters
 
 ```text
 StateReconciliationResult
-→ canonical identity verification
-→ complete subject-set verification
-→ external binding/authorization evidence
-→ ContinuitySourceEnvelope
-→ bounded ContinuityObservationDraft values
-→ STOP
+GoalProjectionResult v2
+OpenLoopProjectionResult v2
+        │
+        ▼
+source/result identity verification
+complete exact subject-set verification
+binding + authorization compatibility
+bounded semantic derivation
+        │
+        ▼
+ContinuitySourceEnvelope + ContinuityObservationDraft
+        │
+        ▼
+STOP
 ```
 
-### Goal v2
-
-| Responsibility | Surface |
-|---|---|
-| Snapshot, attestation, projection, decision and result | `core/continuity/goal_open_loop.py` |
-| Explicit Draft adapter | `core/continuity/goal_source_adapter.py` |
-| Main tests | `tests/test_continuity_goal_open_loop.py` |
-| Adapter tests | `tests/test_continuity_goal_source_adapter.py` |
-
-```text
-GoalRecordSnapshot.user_id
-→ GoalAttestation.user_id
-→ GoalProjection.user_id
-→ GoalProjectionDecision.user_id
-→ GoalProjectionResult.subject_ids
-→ complete binding/evidence validation
-→ active + attested + included Goal
-→ EVIDENCE_COVERAGE_ITEM Draft
-→ STOP
-```
-
-Completed, cancelled and excluded goals derive no positive Draft. Title, description, priority and keywords grant no importance, reminder, answer, tool, action or compute authority.
-
-### OpenLoop v2
-
-| Responsibility | Surface |
-|---|---|
-| Signal, resolution, projection and result contracts | `core/continuity/goal_open_loop.py` |
-| Explicit Draft adapter | `core/continuity/open_loop_source_adapter.py` |
-| Main adversarial suite | `tests/test_continuity_open_loop_source_adapter.py` |
-| Receipt chronology regression | `tests/test_continuity_open_loop_source_adapter_receipt_boundary.py` |
-| Result `as_of` ownership regression | `tests/test_continuity_open_loop_source_adapter_result_boundary.py` |
-
-```text
-OpenLoopSignal.user_id
-→ OpenLoopResolution.user_id
-→ OpenLoopProjection.user_id
-→ OpenLoopProjectionResult.subject_ids
-→ projection/result identity recomputation
-→ canonical status/reason/time validation
-→ complete binding and signal/resolution reference evidence
-→ OPEN or OVERDUE
-→ EVIDENCE_COVERAGE_ITEM Draft
-→ STOP
-```
-
-`RESOLVED` and `NOT_YET_OPEN` derive no positive Draft. Deadlines do not authorize reminders, schedules or notification. `related_goal_ref` and `loop_key` are relations, not ownership proof.
-
-The result does not embed the complete original signal/resolution payloads. The adapter therefore recomputes only projection/result identities and requires every signal/resolution ID as bound evidence.
-
-## Common adapter authority boundary
-
-All three adapters:
-
-- validate deterministic source identity and complete subjects;
-- require source binding and authorization evidence;
-- construct immutable envelope and Draft values;
-- stop before admission evaluation;
-- do not persist, replay, invoke the signal producer or call runtime composition;
-- do not write Canon, ESM, TruthGate, GoalStack or ComputeController;
-- do not answer, remind, notify, schedule, call tools or execute actions.
-
-```text
-subjects(source result) == subjects(binding receipt)
-subjects(source result) ⊆ subjects(authorization context)
-```
-
-## Decision ownership
-
-| Concern | Accepted owner | Constraint |
+| Source | Adapter | Positive derivation boundary |
 |---|---|---|
-| Truth and Canon | existing Canon / TruthGate / promotion paths | no source-admission promotion |
-| Hard capability/data policy | `PolicyKernel`, `PolicySnapshot`, `CapabilityLease` | no second policy root |
-| Source result | State / Goal / OpenLoop owners | adapter cannot invent source identity |
-| Subject binding | typed source contract + source-owner receipt | relations/text/API key are insufficient |
-| Source adaptation | deterministic source adapter | proposal transformation only |
-| Admission evaluation | **absent** | next bounded slice; must use allowlisted rules and explicit current evidence |
-| Current auth/privacy/restriction | accepted external owners not yet integrated | historical receipt is insufficient |
-| WorkingMemory disposition | existing `WorkingMemoryGate` | no second disposition owner |
-| Final prompt context | existing `ContextPackBuilder` | no direct Draft injection |
-| Signal aggregation | existing pure signal producer | bare observations never become live authorization |
-| Runtime activation | absent | separate facade, ADR, flag, operator and evidence required |
+| State | `state_source_adapter.py` | context degraded, active contradiction, context freshness |
+| Goal | `goal_source_adapter.py` | bounded active attested evidence-coverage proposals |
+| OpenLoop | `open_loop_source_adapter.py` | bounded open/overdue evidence-coverage proposals |
 
-## Next bounded component: admission evaluator
+Adapters do not admit, persist, call the signal producer or create reminders/actions.
 
-The next PR may add only an internal deterministic evaluator/rule registry that:
+## 4. Pure admission evaluator
 
-1. accepts one validated envelope and its complete Draft set;
-2. resolves an explicitly allowlisted evaluator/rule definition;
-3. accepts explicit current decision evidence instead of reading network, environment, DB or wall clock;
-4. partitions every Draft into admitted or reason-coded rejected;
-5. creates `ContinuityObservationAdmissionReceipt`;
-6. may compose `AuthorizedContinuityObservationBatch` only from admitted Drafts and complete receipts;
-7. stops before producer invocation or runtime facade.
+### Primary surface
 
-It must fail closed for missing, stale, unknown, mismatched or non-allowlisted evaluator/rule, policy, authorization, restriction or erasure evidence.
+| Responsibility | Surface |
+|---|---|
+| Rule definition | `ContinuityAdmissionRuleDefinition` |
+| Evaluator definition | `ContinuityAdmissionEvaluatorDefinition` |
+| Exact allowlist registry | `ContinuityAdmissionRegistry` |
+| Current decision evidence | `ContinuityCurrentDecisionEvidence` |
+| Evaluation function | `evaluate_continuity_admission(...)` |
+| Result evidence | `ContinuityAdmissionEvaluationResult` |
+| Adversarial tests | `tests/test_continuity_admission_evaluator.py` |
 
-## Still absent
+### Evaluation path
 
-- trusted evaluator/rule registry;
-- current principal/tenant/subject resolution;
-- consent/lawful-basis verification;
-- current restriction and erasure checks;
-- durable admission retention/replay/cleanup;
-- admission-aware facade and anti-bypass guards;
-- `/query`, startup, worker or scheduler wiring;
-- feature flag, activation ADR, metrics, SLO, alert and rollback;
-- live useful-behavior evidence;
-- administrator-enforced branch/ruleset protection.
+```text
+SourceEnvelope + complete Draft set
++ binding and authorization evidence
++ explicit current-decision evidence
++ operator-selected evaluator/rule identity
++ explicit evaluated_at
+        │
+        ▼
+registry resolution
+current evidence compatibility and validity
+rule/source/adapter/purpose/handling/retention checks
+Draft signal/rule/confidence/age checks
+        │
+        ▼
+complete deterministic admitted/rejected partition
+ContinuityObservationAdmissionReceipt
+        │
+        ▼
+STOP
+```
 
-## Historical status
+### Authority boundary
 
-Earlier stacked PRs and historical handoffs remain provenance only. Current integration targets are exact merged SHAs in this file and `CURRENT_STATE.md`.
+- Registry identity verifies represented contents; it does not select itself as trusted.
+- Current-decision evidence verifies represented status; it does not authenticate its external resolver.
+- The evaluator reads no DB, environment, network or implicit clock.
+- It creates no runtime permission, producer call, persistence or side effect.
+- A future facade must resolve accepted owners and prevent bypass.
+
+## 5. Decision ownership
+
+- Canon and ESM: canonical memory/write services;
+- truth admission: accepted TruthGate/write paths;
+- hard policy/locality/data mode: PolicyKernel and PolicySnapshot;
+- source result identity: State / Goal / OpenLoop owners;
+- source adaptation: deterministic proposal transformation only;
+- evaluator definitions and rule logic: pure admission evaluator;
+- trusted evaluator registry selection: **no accepted runtime owner yet**;
+- current principal/authorization/consent/restriction/erasure/policy resolution: **no accepted facade integration yet**;
+- WorkingMemory disposition: existing `WorkingMemoryGate`;
+- prompt context: existing `ContextPackBuilder`;
+- legacy compute route: existing `decide_compute_path()`;
+- runtime activation: **no accepted owner**.
+
+## 6. Next facade boundary
+
+The next internal facade must depend on typed protocols instead of creating new policy or identity owners.
+
+Expected shape:
+
+```text
+accepted registry selector
++ principal resolver
++ authorization resolver
++ lawful-basis/consent resolver
++ restriction resolver
++ erasure resolver
++ current policy resolver
+        │
+        ▼
+complete exact-subject CurrentDecisionEvidence
+        │
+        ▼
+pure admission evaluator
+        │
+        ▼
+evidence-only receipt / optional authorized batch
+        │
+        ▼
+STOP
+```
+
+The first facade slice must not invoke the signal producer, persist data, register with startup or change `/query`.
+
+## 7. Privacy and erasure boundaries
+
+Before any live-capable path, the accepted owners must prove:
+
+- current authorization expiry and withdrawal;
+- consent or lawful basis;
+- current restrictions;
+- erasure-domain state and derived-artifact cleanup;
+- current PolicySnapshot compatibility;
+- complete multi-subject aggregation without silent filtering;
+- retention, replay and cleanup lifecycle.
+
+Historical receipts never override current restriction or erasure state.
+
+## 8. Governance and operations
+
+- aggregate merge evidence is implemented and observed;
+- `main` branch protection/ruleset remains unenforced; issue #234;
+- projection dispatcher remains implemented/tested but not lifecycle-wired;
+- identity layer remains legacy/unwired;
+- query-path read-only and Canon writer unification remain open hardening work;
+- research candidates are governed separately by `research/IDEA_INTAKE_PROTOCOL.md`.
+
+## 9. Audit checklist for the next slice
+
+1. Is the trusted registry selected outside caller-controlled payloads?
+2. Do resolver protocols point to accepted owners rather than duplicate policy/identity logic?
+3. Is the complete exact subject set preserved?
+4. Do missing, stale, unknown or conflicting current states fail closed?
+5. Does the facade call only the pure evaluator?
+6. Does output remain evidence-only?
+7. Are bare Draft/observation/producer bypasses guarded?
+8. Are persistence, runtime wiring and activation absent?
+9. Are exact-head tests and Notion synchronization complete?
+10. Are `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` reported separately?

@@ -20,14 +20,14 @@ def test_repository_project_state_is_valid() -> None:
     report = validate_project_state(_state())
 
     assert report["ok"] is True
-    assert report["continuity"] == "5/12"
-    assert report["readiness_percent"] == 41.7
+    assert report["continuity"] == "6/12"
+    assert report["readiness_percent"] == 50.0
     assert report["kb_policy"] == "KEEP_VERSIONED_KNOWLEDGE_ASSET"
 
 
 def test_readiness_arithmetic_fails_closed() -> None:
     state = copy.deepcopy(_state())
-    state["continuity"]["readiness_percent"] = 50.0
+    state["continuity"]["readiness_percent"] = 41.7
 
     with pytest.raises(ProjectStateError, match="readiness_percent"):
         validate_project_state(state)
