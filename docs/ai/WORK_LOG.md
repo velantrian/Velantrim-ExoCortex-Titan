@@ -1,474 +1,152 @@
 # 🧾 AI Engineering Work Log
 
-Re-verify exact SHAs and current PR evidence.
+Re-verify exact SHAs, PR state and workflow conclusions before continuing work.
+
+This file keeps the recent operational hand-off compact. Older detailed entries remain traceable in Git history, merged PR descriptions and per-PR checkpoint documents under `docs/ai/`.
 
 ---
 
-## 2026-08-07 — OpenLoop source adapter merged and canonical checkpoint
+## 2026-08-07 — Pure Continuity admission evaluator merged
 
 ```text
-Documentation impact: GITHUB_AND_NOTION
-Verified main:        42aa79338c57e9b9a67c3e3c08dd948b60c5541f
-Implementation PR:    #240
-Exact tested head:    9623d60f262d00ab4551f5342f7ef1792723e594
-Runtime authority:    NONE
-Notion state:         SYNCED
+PR:                       #244
+Exact tested head:        52fdc9b0ef0ff7833c091a64c35d0754874cedb8
+Merge:                    97fe27a37184c6c7277f54e96acd04d98d583ab3
+Full CI + coverage:       31215957409 PASS
+Continuity contracts:     31215957406 PASS · 502 passed
+Docker hardening:         31215957402 PASS
+Aggregate merge evidence: 31216560826 SUCCESS
+Review threads:           0
+Documentation impact:     GITHUB_AND_NOTION
+Notion:                   SYNCED
 ```
 
 ### Intent
 
-Complete the third bounded Continuity source adapter and restore one coherent
-GitHub + Notion current-state record before beginning admission evaluation.
-
-### Decision
-
-Implement OpenLoop v2 as an evidence-only proposal adapter. Recompute the
-identities actually available in `OpenLoopProjectionResult`, validate complete
-subject and binding evidence, and stop at `ContinuityObservationDraft`.
-Do not claim to recompute original signal/resolution payload identities because
-the result contract contains only their content-addressed references.
+Add the next bounded source-admission capability without creating a live trust boundary: immutable evaluator/rule definitions, exact allowlist registry, explicit current-decision evidence and deterministic Draft admission.
 
 ### Implementation
 
-PR #240 added:
+Added:
 
-- `core/continuity/open_loop_source_adapter.py`;
-- the main adversarial adapter suite;
-- a result-level `as_of` ownership regression;
-- a binding-receipt chronology regression.
+- `core/continuity/admission_evaluator.py`;
+- `tests/test_continuity_admission_evaluator.py`;
+- `docs/ai/PR244_ADMISSION_EVALUATOR_CHECKPOINT.md`.
 
-Only `OPEN` and `OVERDUE` projections may derive
-`EVIDENCE_COVERAGE_ITEM=True`. `RESOLVED` and `NOT_YET_OPEN` derive no positive
-Draft. Summary, kind, due date, related goal and loop key grant no reminder,
-scheduling, action, current-state, answer, tool, delivery or compute authority.
+The evaluator is pure and explicit. It reads no database, environment, network, mutable global configuration or implicit clock. It produces a complete admitted/rejected Draft partition and an immutable admission receipt.
 
-### Evidence
+### Failure history
 
-```text
-Pre-merge CI + coverage       31168858623 PASS
-Pre-merge Continuity          31168858622 PASS
-Pre-merge Docker              31168858691 PASS
-Pre-merge aggregate           31200451054 PASS
-Unresolved review threads     0
-Merge SHA                     42aa79338c57e9b9a67c3e3c08dd948b60c5541f
-Post-merge CI + coverage      31200627655 PASS
-Post-merge Continuity         31200627704 PASS
-Post-merge Docker             31200627678 PASS
-Post-merge aggregate          31200627647 PASS
-```
+The first test head reported `503 passed, 1 failed`. The test fixture created a Draft earlier than its SourceEnvelope. The existing payload contract correctly rejected the invalid chronology before evaluator execution.
 
-Codex did not provide a substantive review because its code-review usage limit
-was reached. This remains unavailable evidence and was not treated as approval.
+The fixture was corrected without weakening production validation. Staleness is tested with valid chronology and a stricter bounded-age rule. Final exact-head checks all passed.
 
-### Documentation synchronization
-
-The canonical checkpoint updates:
-
-- `docs/ai/CURRENT_STATE.md`;
-- `docs/ai/COMPONENT_MAP.md`;
-- `docs/ai/KNOWN_RISKS.md`;
-- `docs/ai/WORK_LOG.md`;
-- `docs/ai/CONTINUITY_SOURCE_ADMISSION_HANDOFF.md`.
-
-Notion records `🧭 Velantrim Titan 9.0 🗺️` and
-`🔐 Continuity Source Admission — Architecture` were updated with the final
-merge SHA, pre/post-merge evidence, readiness and next bounded slice.
-
-### Resulting status
+### Authority boundary
 
 ```text
-State adapter             IMPLEMENTED · TESTED · INTERNAL · UNWIRED
-Goal adapter              IMPLEMENTED · TESTED · INTERNAL · UNWIRED
-OpenLoop adapter          IMPLEMENTED · TESTED · INTERNAL · UNWIRED
-Continuity live readiness 5/12 = 41.7%
-Runtime                   NOT WIRED · NOT ENABLED · NOT OBSERVED
+content-addressed registry ≠ operator-selected trusted registry
+current-decision evidence ≠ authenticated external resolver
+admission receipt ≠ runtime permission
 ```
 
-### Remaining work
+No producer invocation, persistence, runtime wiring, Canon/ESM/TruthGate/GoalStack mutation, reminder, tool, action or compute authority was introduced.
 
-1. deterministic admission evaluator and allowlisted evaluator/rule registry;
-2. current principal/tenant/subject authorization, consent, restriction,
-   erasure and policy resolution;
-3. admission-aware facade and anti-bypass guards;
-4. durable retention, replay and cleanup only after privacy proofs;
-5. runtime wiring, activation ADR, feature flag, operator controls and observed
-   disabled-shadow evidence;
-6. administrator enforcement of the aggregate status and CODEOWNERS through
-   repository rules (issue #234).
-
-### Next safe slice
-
-Implement the pure internal evaluator only:
+### Result
 
 ```text
-validated envelope + complete Draft set
-+ immutable allowlisted evaluator/rule definitions
-+ explicit current decision evidence
-→ complete deterministic allow/deny partition
-→ immutable admission receipt
-→ optional bounded authorized batch
-→ STOP
+Continuity readiness: 6/12 = 50.0%
+Evaluator:             IMPLEMENTED · TESTED · INTERNAL · UNWIRED
+Runtime:               NOT WIRED · NOT ENABLED · NOT OBSERVED
 ```
 
-No producer invocation, persistence, public facade, `/query`, startup, worker,
-scheduler, feature flag, Canon/ESM/TruthGate/GoalStack write or user-visible
-authority belongs in that slice.
+### Next work
+
+Internal admission-aware facade and current resolver boundary only; stop before producer invocation, persistence or runtime effects.
 
 ---
 
-## 2026-08-06 — Documentation checkpoint after PR #229 and PR #230
+## 2026-08-07 — Research intake normalized
 
 ```text
-Documentation impact: GITHUB_AND_NOTION
-Verified main:        81836b4f715470c50a4c6c7768a2cde7478568c8
-Code changes:         NONE
-Runtime authority:    NONE
-Notion state:         already synchronized with both merges
-GitHub state before:  stale at the post-contract checkpoint
+PR:                       #243
+Exact tested head:        ca1de03bedeba0ca9817a27e7e201f3839cd55bb
+Merge:                    2655ecabab400dda4b350ed90142510cf5a4f49c
+Full CI + coverage:       31214588983 PASS
+Aggregate merge evidence: 31215084800 SUCCESS
+Notion:                   SYNCED
 ```
-
-### Intent
-
-Restore one coherent canonical record after the State Draft adapter and Goal
-subject-binding correction were merged without the four primary GitHub AI
-context documents being advanced to the final `main` state.
-
-### Problem
-
-Notion already recorded PR #229 and PR #230, but GitHub still stated:
-
-- State Draft adapter `0/1`;
-- Goal subject-binding correction `0/1`;
-- Goal results lose subject identity;
-- the next safe slice is the State adapter.
-
-That drift could cause a new AI agent to repeat merged work, design from a
-superseded eligibility matrix, or over-read the repository before locating the
-real current boundary.
 
 ### Decision
 
-Create a separate docs-only Draft PR before any OpenLoop code work. Update the
-public GitHub technical record to match verified `main` and the already current
-Notion pages. Do not combine documentation repair with OpenLoop schema changes,
-an adapter, admission runtime, or wiring.
-
-### Implementation
-
-Updated:
-
-- `docs/ai/CURRENT_STATE.md`;
-- `docs/ai/COMPONENT_MAP.md`;
-- `docs/ai/KNOWN_RISKS.md`;
-- `docs/ai/WORK_LOG.md`;
-- `docs/ai/CONTINUITY_SOURCE_ADMISSION_HANDOFF.md`.
-
-The checkpoint records the accepted #223–#230 lineage, exact heads and CI,
-State/Goal guarantees, OpenLoop subject-binding gap, retry caveat, privacy and
-erasure blockers, and the next safe implementation boundary.
-
-### Evidence
+Ideas from audits, conversations and external analyses now enter one explicit classification boundary:
 
 ```text
-Current main                         81836b4f715470c50a4c6c7768a2cde7478568c8
-PR #229 exact tested head            aecea098ab5e3fba0539a044a77ababe32067b79
-PR #229 Continuity contracts         31093141984 PASS
-PR #229 Full Titan CI                31093142993 PASS
-PR #229 Docker hardening             31093142155 PASS
+verified current defect / accepted missing proof
+→ active engineering
 
-PR #230 exact tested head            995b1a846b8f3d35c07f103430a6f6b1db007cca
-PR #230 Continuity contracts         31106174878 PASS
-PR #230 Full Titan CI                31106175347 PASS
-PR #230 Docker hardening             31106174460 PASS
-PR #230 unresolved review threads    0
+unproven future architecture / workload / capability
+→ research intake card + return trigger
 ```
 
-PR #229 had an earlier unrelated erasure-recovery concurrency failure during a
-coverage-instrumented run. The exact unchanged head passed on retry. The first
-failure remains documented as risk evidence; the retry is not described as an
-unconditional first-attempt pass.
+Added `research/IDEA_INTAKE_PROTOCOL.md`, updated the research registry and created the Notion record `🔬 Titan Research Intake & Future Ideas Registry`.
 
-### Non-scope
-
-- no production code;
-- no OpenLoop subject-binding implementation;
-- no Goal or OpenLoop source adapter;
-- no admission evaluator or facade;
-- no privacy/restriction/erasure integration;
-- no persistence, public export, `/query`, startup, worker or scheduler;
-- no feature flag, activation, Canon, TruthGate, reminder, tool or action authority.
-
-### Remaining work
-
-1. Merge this documentation checkpoint after exact-head review and CI.
-2. In a separate PR, correct OpenLoop subject identity only.
-3. Keep Goal/OpenLoop adapters in later independent PRs.
-4. Implement admission, current authorization and privacy/erasure checks before
-   any runtime-capable facade.
-5. Require a separate activation ADR and operator approval before enablement.
-
-### Resulting status
-
-```text
-Documentation: synchronized in this Draft branch
-State adapter: IMPLEMENTED · TESTED · INTERNAL · UNWIRED
-Goal binding:  IMPLEMENTED · TESTED · INTERNAL · UNWIRED
-OpenLoop bind: NOT IMPLEMENTED
-Runtime:       NOT WIRED · NOT ENABLED · NOT OBSERVED
-Live readiness: 3/12 = 25%
-```
+Current engineering such as branch protection, Continuity facade/resolvers, privacy closure, query-path read-only enforcement, Canon writer unification and projection lifecycle is explicitly excluded from Research Mode.
 
 ---
 
-## 2026-08-06 — State Draft adapter and Goal subject binding merged
-
-### Intent
-
-Advance source-admission prerequisites without granting runtime authority:
-
-1. produce deterministic proposal evidence from a fully bound State result;
-2. preserve Goal subject ownership inside immutable projection evidence.
-
-### Problem
-
-State results had typed subjects but no accepted Draft adapter. Goal snapshots
-contained `user_id`, but Goal projections and result identity lost that subject,
-blocking reliable source authorization.
-
-### Decision
-
-- Keep the State adapter a deterministic proposal transformer, separate from
-  admission evaluation.
-- Reject incomplete or mismatched State subject sets as a whole; never silently
-  filter unauthorized subjects.
-- Correct the Goal schema rather than adding placeholder defaults for old
-  constructors.
-- Put subject identity into the evidence object and its content-addressed
-  identity.
-- Preserve `INTERNAL · UNWIRED · NO RUNTIME AUTHORITY`.
-
-### Implementation
-
-#### PR #229 — State Draft adapter
-
-Merge: `0f1a10ab4f92dd7f15a69e55cc98339e7eeb36b1`
-
-Added `core/continuity/state_source_adapter.py` and adversarial tests.
-The adapter validates canonical result/projection identities, complete subject
-binding, source digest, policy, chronology and evidence before producing a
-`ContinuitySourceEnvelope` and bounded Draft proposals for:
-
-- `context_degraded`;
-- `active_contradiction`;
-- `context_freshness`.
-
-#### PR #230 — Goal subject binding
-
-Merge: `81836b4f715470c50a4c6c7768a2cde7478568c8`
-
-Advanced Goal projection schema to `continuity.goal_projection.v2` and made
-`user_id` explicit through:
+## 2026-08-07 — OpenLoop source adapter merged
 
 ```text
-GoalAttestation
-→ GoalProjection
-→ GoalProjectionDecision
-→ GoalProjectionResult.subject_ids
-→ result digest
+PR:                 #240
+Merge:              42aa79338c57e9b9a67c3e3c08dd948b60c5541f
+State:              IMPLEMENTED · TESTED · INTERNAL · UNWIRED
+Continuity readiness after merge: 5/12 = 41.7%
 ```
 
-Cross-subject attestations fail closed. Multi-subject results remain explicit
-and content-addressed. Direct advisory, shadow-runner and WorkingMemory test
-fixtures were migrated rather than weakening the production contract.
+The adapter verifies OpenLoop v2 result/projection identities, complete subject/evidence binding and canonical status/reason/time semantics before producing bounded evidence-coverage Drafts.
 
-### Evidence
-
-Both exact final heads passed Continuity contracts, Ruff, blocking mypy, full
-pytest, the blocking `core ≥74%` coverage ratchet and Docker hardening. Exact
-workflow IDs are recorded in the preceding checkpoint entry and
-`CURRENT_STATE.md`.
-
-### Non-scope
-
-PR #229 did not create an admission decision, batch, producer call, persistence
-or runtime route. PR #230 did not create a Goal adapter. Neither PR changed
-Canon, TruthGate, compute routing, answers, reminders, tools or actions.
-
-### Remaining work
-
-- OpenLoop subject binding;
-- Goal source adapter;
-- OpenLoop source adapter;
-- admission evaluator and evaluator/rule allowlist;
-- current authorization, consent, restriction and erasure checks;
-- admission-aware facade;
-- runtime wiring, enablement and observed evidence.
-
-### Resulting status
-
-```text
-State adapter                   IMPLEMENTED · TESTED · INTERNAL · UNWIRED
-Goal subject binding            IMPLEMENTED · TESTED · INTERNAL · UNWIRED
-OpenLoop subject binding        NOT IMPLEMENTED
-Goal/OpenLoop adapters          NOT IMPLEMENTED
-Admission/runtime authority     ABSENT
-Continuity live readiness       3/12 = 25%
-```
+Only typed `OPEN` and `OVERDUE` states may derive positive evidence-coverage proposals. No reminders, schedules, actions, producer calls, persistence or runtime wiring were introduced.
 
 ---
 
-## 2026-08-06 — Trusted Continuity Signal Producer (merged and hardened)
+## 2026-08-07 — Goal adapter and recovery ownership hotfix
 
 ```text
-Status:        IMPLEMENTED IN MAIN · SHADOW ONLY · NOT WIRED · NOT ENABLED
-Implementation: PR #214 → 5f1ce06199ebabd6a23f3656ddd91c5c968170fe
-CI isolation:  PR #218 → 3c73eab991c305d174f6c2c5805595c7998d4068
-Hardening:     PR #220 → e37a5d13332628bcdbd0d9441d7a61d5f8a8d523
-ADR:           docs/adr/ADR-2026-08-05-continuity-trusted-signal-producer.md
+Goal adapter PR:     #236
+Goal merge:          2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d
+Recovery hotfix PR:  #238
+Hotfix merge:        f0c17de05df6c762c69974775e3c95d9e613cf47
+Docs checkpoint PR:  #239
+Docs merge:          281ed66710b02df5bce352d8bd1030674c5b53ab
 ```
 
-Addresses the "no trusted producer for `ContinuityComputeSignals`" gap
-restated at R4, R5A, and R5B by adding `core/continuity/observations.py` and
-`core/continuity/signal_producer.py`: typed, content-addressed
-`ContinuitySignalObservation` inputs → policy-driven trust filtering →
-deterministic aggregation → the unchanged `ContinuityComputeSignals`
-contract, with full per-signal provenance and reason-coded rejections.
+Goal projection results gained a bounded Draft adapter. A coverage-observed recovery result-ownership race was fixed without excluding the blocking test or hiding the original failure.
 
-This PR does not import `core.evidence`, `core.confidence`,
-`core.contradiction_registry`, or `core.provenance_chain` (isolation
-decision, see ADR); does not change `ComputePath`, `ComputeDecision`,
-`decide_compute_path()`, `ContinuityComputeSignals`, or
-`assess_compute_with_continuity()`; and performs no runtime wiring into
-`/query`, the shadow runner, or any live projection.
+---
 
-### Final validation checkpoint
-
-The complete merged lineage passed exact-head review and validation:
+## 2026-08-07 — OpenLoop subject identity v2 merged
 
 ```text
-PR #214 implementation merge  5f1ce06199ebabd6a23f3656ddd91c5c968170fe
-PR #218 CI isolation merge     3c73eab991c305d174f6c2c5805595c7998d4068
-PR #220 hardening merge        e37a5d13332628bcdbd0d9441d7a61d5f8a8d523
-
-PR #220 focused run            31077257141 → Ruff · mypy · 108 tests PASS (temporary workflow, not retained)
-PR #220 Full Titan CI          31077329680 → PASS
-PR #220 Continuity contracts   31077329650 → PASS
-PR #220 Docker hardening       31077329644 → PASS
-Copilot final review                         4/4 files · 0 comments
-Unresolved review threads                    0
+PR:          #232
+Merge:       659c30e0e8023c48fdf68be8583401fc042a1ab8
+Docs PR:     #233
+Docs merge:  07d49cd03d5fc3058be6d1e8412e9f8b668c3b97
 ```
 
-The merged producer verifies canonical observation IDs, rejects malformed
-references and tampered content fail-closed, preserves trusted-negative and
-duplicate-scope provenance, and emits controlled errors for malformed
-categorical values.
-
-### Next phase
-
-Still not authorized by the merged lineage: production runtime wiring,
-trusted runtime source adapters deriving observations from
-`StateReconciliationResult` / `GoalProjectionResult` /
-`OpenLoopProjectionResult`, live telemetry, automated policy tuning, Canon
-authority, Action Gate authority, autonomous switching, or real-world
-calibration. Those require separate architecture, privacy/consent boundaries,
-staged activation and live evidence.
+OpenLoop signal, resolution, projection and result identities now preserve explicit `user_id` and complete sorted `subject_ids`. Cross-subject resolution fails closed.
 
 ---
 
-## 2026-08-05 — Governance cleanup and truthful CI completed
+## Current unresolved engineering queue
 
-Claude Code correctly identified the open-PR count, ARM-03 recovery and documentation merges, but its proposed bulk classification of eight old PRs as disposable was not safe. Every PR was inspected against current `main`, changed files, review findings and fresh CI.
+1. administrator-enforced branch ruleset — issue #234;
+2. trusted evaluator-registry selection owner;
+3. current principal/authorization/consent/restriction/erasure/policy resolver protocols;
+4. internal admission-aware facade and anti-bypass guards;
+5. durable admission-artifact lifecycle;
+6. runtime wiring and activation governance;
+7. query-path read-only proof and Canon-writer unification;
+8. projection dispatcher lifecycle and operational observability;
+9. independent security review and production privacy/compliance proof.
 
-### Closed without merge
-
-| PR | Disposition |
-|---:|---|
-| #10 | unsafe generated KB artifact; confirmed trust-label, graph-connectivity and parser defects |
-| #20 | superseded by stronger current budget-signal integration |
-| #22 | superseded by the accepted repository hygiene guard |
-
-### Recovered before closing historical branches
-
-| Historical PR | Current replacement/result | Merge SHA |
-|---:|---|---|
-| #1 | clean Titan 9 cosmetic cleanup via #209 | `e6d6002eaf6e771f13d5842db4f083512e0fc0bc` |
-| #21 | fail-closed production bundle contract via #210 | `5d4881e6ab1414b3917eb225c55e0f02458af27a` |
-| #19 | measured blocking coverage ratchet via #211 | `c7ad5a171ccc6da5015b67b8cefd6d60649d6792` |
-
-Historical #1, #21 and #19 were then closed as superseded. Their stale branches were not merged.
-
-### Useful old PR accepted directly
-
-PR #58 was revalidated on current `main` and merged as `b9847f0599092ef5eef78d698b58b92ace2eaf98`. It adds tests for emergency `prevent_fact_delete` trigger reconstruction, original-error preservation, exception chaining and restored guard enforcement.
-
-### Coverage evidence
-
-Final coverage head: `6f314ae94bcd731b27d90959fc995852c1312a0a`.
-
-- full CI run `31046470206` — success;
-- Docker hardening `31046469060` — success;
-- `43,398` executable statements;
-- `11,233` missed;
-- approximately `74.12%` covered;
-- blocking floor `74%`;
-- coverage suite: `3,364 passed`, `17 skipped`, `18 deselected`, `1 xfailed`;
-- coverage XML artifact `8946843485` retained for 14 days.
-
-The per-thread trace-hook bootstrap stress test remains blocking in normal full pytest but is excluded from simultaneous `coverage.py` tracing because both systems install trace hooks and interfere.
-
-### Remaining open PRs
-
-Exactly four PRs remain open, all intentionally retained architecture/research drafts:
-
-- #17 — Ring Zero recovery research;
-- #30 — Code Structural Memory Adapter RFC;
-- #33 — epistemic/cognitive runtime specification requiring current-doc reconciliation;
-- #43 — LearningPatch shadow contract requiring RFC-0084/governance reconciliation.
-
-Do not bulk-close or directly merge these stale branches.
-
-### Corrected architecture status
-
-- `core/identity_layer.py` is already formally quarantined as `LEGACY/UNWIRED` by current AI context and mandatory repository guidance;
-- RFC-0084 remains Proposed, unwired and forbidden from Canon writes;
-- projection dispatcher remains implemented/tested but not connected to production startup/runtime.
-
----
-
-## 2026-08-05 — Continuity Milestone 1 recovery completed
-
-The historical #131–#147 stacked sequence was replaced by independently reviewed recovery PRs on current `main`:
-
-| Recovery | PR | Merge SHA |
-|---|---:|---|
-| R1 immutable foundation | #201 | `06529700d70854504b88629eeecf737bdc6b81d5` |
-| R2 shadow read-side and threads | #202 | `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e` |
-| R3 projections and WorkingMemory adapters | #203 | `a19d16656676ad5c98c92d4776e9709edbfb920c` |
-| R4 compatible compute assessment | #204 | `529d8b6b182b1a548d27558173f0aca473bcc400` |
-| R5A replay gates and Advisory Shadow | #205 | `58e29bba26299ce7003b62e73fd3b25e028956de` |
-| R5B disabled complete shadow runner | #206 | `27b91a59f9e9291092b220ac1f53bfeae2daea28` |
-
-### Final R5B evidence
-
-- final tested head: `8517c0d909b1e3465528f0bcc115265d8c1d1024`;
-- Continuity run `31025608097` — success;
-- full Titan CI `31025605121` — success;
-- Docker hardening `31025606554` — success;
-- independent final-head review completed;
-- historical #147 closed without merge.
-
-### Final architecture state
-
-Milestone 1 exists as a complete, deterministic, in-memory shadow composition. It is disabled by default, not connected to startup or `/query`, and has no persistence, Canon, answer, delivery, tool or action authority.
-
----
-
-## 2026-08-05 — ARM-03 selective-memory recovery
-
-PR #200 merged as `bea535d8fd5f7d59d3f1cee02d060bd026ac05cb`; old #102 closed as superseded. The extractor remains proposal-only, default-off and unwired.
-
-## 2026-08-05 — Documentation continuity governance
-
-- PR #199 merged the mandatory GitHub ↔ Notion synchronization contract;
-- PR #196 merged Project Cognition as research/proposed documentation;
-- PR #198 merged the compact AI context pack.
+Research candidates remain in `research/FUTURE_COMPONENTS.md` and do not replace this engineering queue.
