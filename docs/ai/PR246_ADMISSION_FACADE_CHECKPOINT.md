@@ -2,7 +2,7 @@
 
 **Status:** `DRAFT · IMPLEMENTED IN OPEN PR · GITHUB_AND_NOTION`  
 **Base:** `main@83213048204da0e692abc147fdfad9a326b2b0d6`  
-**Current code/test head before this documentation update:** `a642ccc3b9f022a2167e14e9d0c151afdc0b1f11`  
+**Current implementation/ADR head before this checkpoint update:** `1e74390adf80963a465776e2dcedd185dce58ad9`  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
 
 ## Intent
@@ -20,6 +20,29 @@ The facade pins:
 
 It then invokes only the pure evaluator and returns content-addressed evidence.
 
+## Architecture decision
+
+The architecture-freeze gate correctly classified `ContinuityAdmissionFacadePolicy` as
+an authority-shaped surface. PR #246 now includes:
+
+- `docs/adr/ADR-2026-08-07-continuity-admission-facade-boundary.md`.
+
+The ADR makes the ownership decision explicit:
+
+- the facade owns safe composition and anti-substitution checks only;
+- `PolicyKernel` remains the owner of hard capability/locality/data-mode policy;
+- existing components remain the owners of identity, authorization, consent,
+  restriction, erasure and current-policy state;
+- the pure evaluator remains the owner of deterministic Draft admission;
+- no signal-producer, Canon, action, reminder or compute authority is introduced.
+
+```text
+facade policy object ≠ PolicyKernel
+facade policy object ≠ operator-approved deployment configuration
+resolver protocol ≠ trusted concrete resolver implementation
+facade result ≠ runtime permission
+```
+
 ## Implemented in the open PR
 
 - `core/continuity/admission_facade.py`;
@@ -29,7 +52,8 @@ It then invokes only the pure evaluator and returns content-addressed evidence.
 - content-addressed `ContinuityAdmissionFacadeResult`;
 - adversarial tests in `tests/test_continuity_admission_facade.py`;
 - pre-resolution hardening tests in
-  `tests/test_continuity_admission_facade_hardening.py`.
+  `tests/test_continuity_admission_facade_hardening.py`;
+- accepted-on-merge ADR for the facade ownership boundary.
 
 ## Facade path
 
@@ -81,22 +105,6 @@ Malformed Draft sets are rejected before the facade invokes the external resolve
 Resolver identity failures and resolver execution failures are converted to controlled
 `ContinuitySourceAdmissionError` results.
 
-## Important trust boundary
-
-The facade policy is content-addressed represented evidence. This module does not choose
-or activate itself as trusted deployment configuration.
-
-The typed resolver protocol defines the boundary but does not implement a real identity,
-authorization, consent, restriction, erasure or policy source.
-
-```text
-facade policy object ≠ operator-approved deployment configuration
-resolver protocol ≠ trusted resolver implementation
-facade result ≠ runtime permission
-```
-
-A future deployment composition must own policy selection and concrete resolvers.
-
 ## Validation history
 
 Initial code/test head `e631d17489805234cd151a38fe894d3c142ec2a6`:
@@ -109,14 +117,27 @@ Continuity pytest     511 passed
 Docker hardening      31218761260 PASS
 ```
 
-Self-review then added pre-resolution structural rejection and controlled resolver
-identity handling. Current code/test head before this checkpoint:
+Self-review added pre-resolution structural rejection and controlled resolver identity
+handling. Hardened code/test head:
 
 ```text
 a642ccc3b9f022a2167e14e9d0c151afdc0b1f11
 ```
 
-Exact code+docs CI must be re-run after this documentation update.
+Code+checkpoint head `24f64db30859122bcc7b735a73458542d088315e`:
+
+```text
+Continuity contracts  31219127190 PASS · 514 passed
+Docker hardening      31219127155 PASS
+Full Titan CI         31219127212 FAILED at architecture freeze
+```
+
+The failure was not a runtime/test defect. The freeze guard found the new
+`ContinuityAdmissionFacadePolicy` class and required a concrete ADR. The guard was not
+bypassed or weakened. The facade ownership ADR was added on
+`1e74390adf80963a465776e2dcedd185dce58ad9`.
+
+Fresh exact-head validation is required after this checkpoint update.
 
 ## Explicit non-scope
 
@@ -141,7 +162,7 @@ Current `main` remains:
 ```
 
 Only after exact-head validation, review, GitHub/Notion synchronization and merge may the
-internal facade capability advance the canonical implementation readiness to:
+internal facade capability advance canonical implementation readiness to:
 
 ```text
 7/12 = 58.3%
@@ -160,7 +181,7 @@ composition** without wiring it into runtime:
 - consent or lawful-basis owner;
 - restriction owner;
 - erasure-domain owner;
-- current PolicySnapshot compatibility owner;
+- current `PolicySnapshot` compatibility owner;
 - complete multi-subject fail-closed aggregation.
 
 Concrete resolver integration must remain internal and must not invoke the signal
@@ -172,7 +193,7 @@ producer, persist admission artifacts or alter user-visible behavior.
 Documentation impact:   GITHUB_AND_NOTION
 Notion access:           AVAILABLE
 Notion target:           Continuity Source Admission — Architecture
-Notion synchronization: DRAFT CHECKPOINT REQUIRED
+Notion synchronization: DRAFT CHECKPOINT SYNCED
 ```
 
 Final exact head, final CI, review state and merge SHA must be recorded when available.
