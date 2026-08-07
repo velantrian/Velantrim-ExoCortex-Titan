@@ -1,225 +1,285 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-07  
-**Repository `main` head at verification:** `9dfbfe5822221550389d95b751c8d85b044f6372`  
-**Latest implementation-bearing baseline:** `42aa79338c57e9b9a67c3e3c08dd948b60c5541f`  
-**Machine-readable state:** [`docs/state/project_state.json`](../state/project_state.json)
+**Repository `main` head at verification:** `97fe27a37184c6c7277f54e96acd04d98d583ab3`  
+**Latest implementation-bearing baseline:** `97fe27a37184c6c7277f54e96acd04d98d583ab3`
 
-Code and passing tests do not establish wiring, enablement, authority or production safety. Keep `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` separate.
+Code presence and passing tests do not close a risk. Closure requires correct authority ownership, current evidence, integration controls, activation governance and operational proof.
 
-## Closed or materially reduced
+## Closed or materially reduced in the current Continuity cycle
 
-- seven primary source-admission contracts are implemented and adversarially tested;
-- State, Goal v2 and OpenLoop v2 have deterministic bounded Draft adapters;
-- Goal and OpenLoop schemas preserve complete content-addressed subject identity;
-- all three adapters validate complete source/binding subjects and authorization subset relationships;
-- Goal derives evidence coverage only for active, explicitly attested and included projections;
-- OpenLoop derives evidence coverage only for `OPEN` and `OVERDUE`; resolved/future loops derive nothing positive;
-- semantic text, priority, deadlines and relations cannot create reminder, action, importance, sensitivity, answer or compute authority;
-- aggregate merge evidence and CODEOWNERS are active in `main`;
-- PRs #236, #238, #239 and #240 demonstrated exact-head Draft/Ready aggregation;
-- recovery workers no longer report terminal results for batches they failed to claim;
-- the recovery race passes ordinary and coverage modes before and after the hotfix merge;
-- repository-head, implementation-baseline and documentation-checkpoint SHA roles are now represented separately;
-- portable `kb_graph.json` preservation and referential-integrity validation have explicit owners and tests without deleting or rewriting the knowledge asset.
+- source-admission architecture and owner placement are accepted;
+- seven primary immutable evidence contracts are implemented and tested;
+- State, Goal and OpenLoop source adapters exist as bounded deterministic proposal transformers;
+- Goal and OpenLoop subject identity is explicit and content-addressed;
+- a pure deterministic evaluator and content-addressed evaluator/rule registry are implemented and tested;
+- current-decision evidence explicitly carries principal, authorization, tenant, complete subjects, purpose, policy, lawful basis, authorization receipt, erasure domains, statuses and validity interval;
+- evaluator output is a complete admitted/rejected Draft partition plus immutable receipt;
+- no accepted slice adds runtime, Canon, TruthGate, reminder, tool, action or compute authority.
 
-The source-adapter family is complete at `IMPLEMENTED · TESTED · INTERNAL · UNWIRED`. Admission, current permission, privacy, facade, persistence, runtime and repository-settings risks remain open.
+Continuity readiness is now `6/12 = 50.0%`. This is implementation readiness, not live readiness.
 
-## P0 — Trusted admission decision boundary remains absent
+## P0 — Administrator ruleset remains absent
 
-The existing admission receipt and batch classes can validate a caller-supplied partition. They do not themselves establish that the evaluator, rule or current decision evidence is trusted.
+GitHub `main` remains unprotected and no repository ruleset enforces the aggregate merge-evidence status.
 
-Missing:
+Current controls:
 
-- allowlisted evaluator and rule registry;
-- deterministic admission evaluator;
-- explicit resolved current authentication evidence;
-- current tenant, subject and purpose authorization resolution;
-- current consent or lawful-basis verification;
-- current restriction, erasure and policy compatibility evidence;
-- anti-replay/staleness handling for those current decisions.
+- full CI and blocking coverage;
+- component-specific Continuity and Docker workflows;
+- aggregate exact-head merge-evidence workflow;
+- review-thread checks and documentation metadata validation.
 
-Consequences:
+Residual risk:
 
-```text
-valid receipt structure ≠ trusted admission decision
-historical authorization context ≠ current permission
-authorized batch structure ≠ runtime eligibility
-```
+- these checks can still be bypassed by repository settings or direct merge/push behavior;
+- issue #234 requires administrator configuration.
 
-No caller-supplied evaluator/rule string may be treated as trusted merely because it is identity-bound in a receipt.
+Required action:
 
-## P0 — Runtime authority boundary remains absent
-
-- admission-aware facade does not exist;
-- current authorization/privacy/restriction checks are not connected to a composition boundary;
-- no admission artifact is wired into `/query`, startup, workers or schedulers;
-- bare v1 observations remain structurally usable by the pure shadow producer and require anti-bypass guards before any live path;
-- no feature flag, operator approval, SLO, alert, rollback or kill-switch evidence exists;
-- no live useful-behavior evidence exists.
-
-```text
-IMPLEMENTED + TESTED ≠ WIRED ≠ ENABLED ≠ OBSERVED
-```
-
-## P0 — Repository governance is implemented but not enforced
-
-PR #235 provides an active aggregate status and CODEOWNERS. Later PRs prove the status works. `main` is still unprotected and repository rulesets are absent.
-
-Consequences:
-
-- GitHub does not technically require `Titan aggregate merge evidence`;
-- approvals, stale-approval dismissal and resolved conversations are not enforced;
-- direct push, force-push and deletion restrictions are not enforced;
-- CODEOWNERS review is advisory until required by branch rules.
-
-Administrator action tracked by issue #234:
-
-- protect `main`;
-- require pull requests and at least one approval;
-- dismiss stale approvals;
-- require conversation resolution and up-to-date branches;
+- require pull requests;
 - require `Titan aggregate merge evidence`;
-- require CODEOWNERS review;
-- restrict direct pushes and bypass;
-- block force pushes and deletion.
+- require resolved conversations;
+- block force push and deletion;
+- restrict direct push;
+- require up-to-date branches where appropriate.
 
-## P1 — Evidence is not current authority
+## P0 — Trusted registry selection has no runtime owner
 
-Content-addressed IDs, source bindings, envelopes, Drafts, receipts and batches prove represented evidence integrity and traceability. They do not prove current permission.
+`ContinuityAdmissionRegistry` is content-addressed and internally consistent. It does not select itself as the operator-approved registry.
 
-Residual risks:
+Risks:
 
-- authentication evidence may be forged, expired, revoked or unresolved;
-- authorization or consent may be withdrawn after context creation;
-- restriction, policy or erasure state may change;
-- evaluator/rule identities are untrusted until resolved and allowlisted;
-- structurally valid historical evidence may be stale;
-- batch validity time does not by itself re-check current policy or erasure state.
+- a future caller could construct a permissive but internally valid registry;
+- exact evaluator/rule resolution could be mistaken for trusted configuration;
+- registry identity could be accepted without deployment/operator approval;
+- multiple incompatible registries could create inconsistent admission behavior.
 
-Current deletion, restriction and authorization decisions must dominate historical evidence.
+Required proof:
 
-## P1 — Source adapter limitations
+- one explicit deployment/operator registry-selection owner;
+- configured expected registry identity or accepted signed/versioned configuration;
+- fail-closed behavior when registry identity is missing, stale or unexpected;
+- audit evidence for registry changes;
+- no caller-controlled registry substitution.
 
-### State
+## P0 — Current evidence resolver boundary is absent
 
-Implemented/tested/internal/unwired. Validates deterministic State identity and complete subject binding, but does not authenticate the source owner, decide admission, persist or establish current permission.
+`ContinuityCurrentDecisionEvidence` represents current status but does not authenticate or query its external resolvers.
 
-### Goal v2
+Still absent:
 
-Implemented/tested/internal/unwired. Remaining limitations:
+- accepted principal/authentication resolver;
+- tenant and subject authorization resolver;
+- consent or lawful-basis resolver;
+- restriction resolver;
+- erasure-domain resolver;
+- current PolicySnapshot compatibility resolver;
+- complete multi-subject aggregation owner.
 
-- `user_id` is a legacy vocabulary, not an accepted identity provider;
-- external source-binding and authorization evidence are still required;
-- current principal, tenant, consent, restriction, erasure and policy are unresolved;
-- no admission decision, producer invocation, persistence or runtime effect;
-- positive mapping is limited to evidence coverage for active, attested, included projections.
+Risks:
 
-### OpenLoop v2
+- forged or stale current evidence;
+- one blocked subject silently filtered from a multi-subject result;
+- historical authorization overriding current withdrawal or erasure;
+- resolver disagreement converted into permissive output;
+- a shared deployment API key mistaken for user identity.
 
-Implemented/tested/internal/unwired. Remaining limitations:
-
-- source result does not contain full original signal/resolution payloads;
-- adapter can recompute projection/result IDs only and requires signal/resolution IDs as complete binding evidence;
-- `loop_key`, `related_goal_ref`, summary and deadline are not ownership or authorization evidence;
-- `OPEN`/`OVERDUE` only propose evidence coverage; they cannot create reminder, schedule, action, current-state, answer or delivery authority;
-- current auth/privacy/policy state is unresolved;
-- no admission decision, producer invocation, persistence or runtime effect.
-
-## P1 — Privacy, restriction, retention and erasure
-
-- current consent/lawful-basis evaluation is absent;
-- current restriction and erasure-domain integration is absent;
-- envelopes, Drafts, receipts and batches have no accepted durable retention/replay/cleanup lifecycle;
-- derived State/Goal/OpenLoop artifacts are not proven erasure-addressable end to end;
-- deletion during queued, persisted, replayed or partially evaluated work is unproven;
-- multi-subject erasure and reappearance handling are unproven;
-- persisted-artifact indexes by subject and erasure domain do not exist.
-
-No persistence should be added until discoverability, bounded retention, invalidation and deletion proofs exist.
-
-## P1 — Bare observations and Drafts are not live-authorized
-
-`ContinuityObservationDraft` and `ContinuitySignalObservation` are proposal/evidence values. `AuthorizedContinuityObservationBatch` is a bounded evidence wrapper, still marked `no_runtime_authority`.
-
-Required proof before a live-capable path:
-
-- only an admission-aware facade accepts live-capable input;
-- facade accepts complete authorized batches, never bare Drafts/observations;
-- evaluator and rules are resolved and allowlisted;
-- current authorization, consent, restriction, policy and erasure state are re-checked;
-- API, startup, worker, scheduler and advisory paths cannot bypass the facade;
-- aggregate output is bound to batch and receipt identity;
-- zero user-visible effect is measured in a disabled shadow experiment first.
-
-## P1 — Erasure recovery and concurrency
-
-PR #236 post-merge coverage exposed a reporting race: a losing recovery worker returned the winner's terminal report. PR #238 closes the result-ownership gap while preserving single side-effect execution.
-
-Evidence:
+Required rule:
 
 ```text
-Triggering run:                31164988400 FAILURE
-Exact hotfix head:             6cc5899afe98f53a1ee0e7fff665948b0c5a3d92
-Hotfix full CI + coverage:     31166079813 PASS
-Hotfix Docker:                 31166079825 PASS
-Hotfix merge:                  f0c17de05df6c762c69974775e3c95d9e613cf47
-Post-merge full CI + coverage: 31166699745 PASS
-Post-merge Docker:             31166697770 PASS
+missing / stale / unknown / conflicting current state
+→ reject complete evaluation fail-closed
 ```
 
-Required discipline remains: preserve first failures, avoid blind retry normalization, use deterministic fault injection plus real concurrency tests, and distinguish result ownership from side-effect ownership.
+## P0 — Admission-aware facade and anti-bypass controls are absent
 
-## P1 — GitHub ↔ Notion drift
+The pure evaluator is not a live trust boundary.
 
-Top snapshots can become stale while historical blocks remain accurate. Required control:
+A future facade must:
 
-- one canonical current checkpoint at the top;
-- same-cycle GitHub + Notion synchronization;
-- structured handoff only when Notion is unavailable;
-- post-merge final SHA and CI checkpoint;
-- supersede stale PRs rather than merging documentation from an old base;
-- do not start the next implementation slice while canonical status is materially stale;
-- distinguish repository head, implementation baseline and documentation checkpoint in both systems.
+- accept complete envelope, binding, authorization, Draft and registry context;
+- select the accepted registry through trusted configuration;
+- resolve current state through typed owner protocols;
+- preserve the complete exact subject set;
+- call the pure evaluator;
+- prevent direct live use of bare Drafts, bare v1 observations and raw producer calls;
+- emit evidence-only output in its first slice.
 
-The machine-readable state records these SHA roles explicitly. Notion synchronization for this change remains required until its current checkpoint is updated from the final PR evidence.
+The first facade slice must stop before producer invocation, persistence, runtime wiring or user-visible behavior.
 
-## P1 — Portable KB integrity is not claim truth or reproducibility proof
+## P1 — Content-addressed evidence is not authenticity
 
-`kb_graph.json` is intentionally preserved as a knowledge asset. The portable validator
-can prove structural and referential integrity, counts and a file SHA-256. It cannot by
-itself prove:
+Content addressing proves that represented contents match an identifier. It does not prove:
 
-- truth or freshness of every claim;
-- complete licensing/provenance for every source;
-- deterministic equality with a fresh source rebuild;
-- semantic quality of inferred edges;
-- admission into Canon or current runtime eligibility;
-- erasure/privacy suitability for a specific deployment.
+- who created the evidence;
+- whether the source was authentic;
+- whether permission is current;
+- whether a resolver is approved;
+- whether the represented fact is true;
+- whether runtime use is permitted.
 
-Required next proofs for a regenerated asset include semantic before/after diff,
-source/generator revision, provenance changes, graph-quality report and rollback artifact.
+Rules:
 
-## P1 — Existing shadow/runtime infrastructure
+```text
+Integrity ≠ authenticity
+Integrity ≠ authorization
+Evidence ≠ authority
+Receipt ≠ permanent permission
+Authorized batch ≠ runtime permission
+```
 
-- R1–R5B and the signal producer remain shadow/unwired;
-- typed records may be semantically wrong despite valid hashes;
-- replay equality proves determinism, not correctness or usefulness;
-- process-local outputs lack durable retention/erasure lifecycle;
-- careless wiring could convert advisory evidence into authority;
-- projection dispatcher lacks startup lifecycle and observed operation;
-- GRAPH/VECTOR targets and executable REMOVE remain inactive;
-- ARM-04 admission and ARM-05 context assembly remain absent.
+## P1 — Privacy, restriction, retention and erasure lifecycle
 
-## P1 — Identity, supply chain and operations
+Current gaps:
 
-- `core/identity_layer.py` remains legacy/unwired;
-- shared API key is not end-user, tenant or subject authorization;
-- coverage ≥74% is a regression floor, not a correctness proof;
-- dependency reproducibility and immutable action-SHA policy remain incomplete;
+- no accepted live consent/lawful-basis resolver integration;
+- no live restriction registry integration;
+- no live erasure-domain validation integration;
+- admission artifacts have no accepted durable retention/replay/cleanup lifecycle;
+- queued, persisted, replayed and partially evaluated artifacts are not proven erasure-addressable end to end;
+- no operator evidence proves multi-subject erasure behavior.
+
+Historical permission must never override current deletion or restriction state.
+
+## P1 — Durable persistence and replay are absent
+
+The current evaluator and receipts are pure in-memory evidence contracts.
+
+Not proven:
+
+- storage schema and migrations;
+- idempotent append and deduplication;
+- retention and cleanup;
+- replay after restart;
+- schema-version compatibility;
+- subject/tenant indexing;
+- erasure during queued or partially processed work;
+- crash consistency and disk-full behavior for admission artifacts;
+- operator inspection and reconciliation.
+
+Persistence must be a separate decision after facade and resolver boundaries are accepted.
+
+## P1 — Runtime wiring and activation remain absent
+
+No source-admission path is wired into:
+
+- `/query`;
+- startup;
+- workers or schedulers;
+- answer generation;
+- reminders or notifications;
+- tool/action execution;
+- compute routing;
+- Canon or TruthGate writes.
+
+No feature flag, SLO, alert, rollback or Operator GO exists. This is intentional and must remain explicit.
+
+## P1 — Bare v1 observations remain shadow-only
+
+`ContinuitySignalObservation` v1 does not bind full tenant, principal, subject, purpose, retention or erasure state.
+
+Required proof before any live producer use:
+
+- only the admission-aware facade may create live-capable producer input;
+- static/runtime guards block bare v1 use from server, startup, workers and advisory paths;
+- current authorization, restriction and erasure state are rechecked before producer invocation;
+- producer output remains advisory until a separate activation decision.
+
+## P1 — Semantic calibration and resource limits
+
+Deterministic mapping and evaluation do not prove semantic usefulness.
+
+Open questions:
+
+- precision/false-positive rates of State/Goal/OpenLoop Drafts;
+- confidence thresholds across workloads;
+- bounded batch size and processing time;
+- large multi-subject behavior;
+- evaluator rule calibration;
+- stale-source and stale-current-evidence windows;
+- memory and latency cost;
+- user correction rate.
+
+Offline and shadow evaluation must precede live activation.
+
+## P1 — Query path and Canon writer ownership
+
+Global Titan hardening remains open:
+
+- legacy query flow may still perform promotion through its own policy;
+- internal promotion/supersession families are not fully unified under one gate/CAS/audit/outbox protocol;
+- read-only query invariants are not proven across every path;
+- best-effort post-commit relation/provenance windows remain on some legacy paths.
+
+Required direction:
+
+```text
+query / retrieval → evidence or typed proposal only
+explicit write command → policy → TruthGate → CAS → version/audit/outbox → commit
+```
+
+## P1 — Projection lifecycle and observability
+
+Projection outbox and dispatcher primitives are implemented/tested but not fully runtime-wired.
+
+Still required:
+
+- single lifecycle owner;
+- bounded startup and clean shutdown;
+- cancellation/backoff/jitter;
+- backlog age, retries, parked count and version-lag metrics;
+- reconciliation and repair;
+- restart/crash tests;
+- erasure invalidation across derived projections.
+
+## P1 — Security and deployment
+
+- no independent security audit or penetration test;
+- no certified privacy/compliance program;
+- shared API key is deployment authentication, not user/tenant identity;
+- public internet multi-user deployment is not supported safely by default;
+- backup/restore and incident-response rehearsals remain incomplete;
 - `server.py` remains a composition monolith;
-- reverse-proxy trust, CSP, worker lifecycle, deployment naming, operational SLOs, backup/recovery rehearsal and independent security testing remain incomplete.
+- supply-chain and artifact reproducibility are improved but not complete for every profile.
+
+## P1 — SQLite and future storage profiles
+
+SQLite remains the accepted local-first Canon profile and has substantial concurrency/crash/disk-full evidence. It is not proven for multi-node HA, network filesystems or large multi-tenant server workloads.
+
+PostgreSQL, ANN and distributed profiles remain research candidates governed by explicit return triggers. They must not be implemented merely for architectural symmetry.
+
+## P1 — Documentation drift
+
+Code-only merges can temporarily leave canonical GitHub and Notion status behind.
+
+Controls now available:
+
+- per-PR documentation impact classification;
+- aggregate merge-evidence metadata check;
+- public AI context pack;
+- machine-readable project state;
+- direct Notion synchronization or structured handoff;
+- per-PR checkpoint documents.
+
+Residual risk remains until administrator rules enforce the aggregate status and post-merge checkpoints are consistently completed.
+
+## P1 — Identity
+
+`core/identity_layer.py` remains `LEGACY/UNWIRED`.
+
+Do not add production callers or use model inference as user attestation. Any future identity/personalization path requires consent, evidence, contestation, correction, supersession, retraction, retention and erasure semantics.
+
+## Closed/narrowed evidence notes
+
+- Goal/OpenLoop subject identity gaps are closed by v2 contracts.
+- State, Goal and OpenLoop source-adapter absence is closed.
+- deterministic evaluator/rule-registry absence is closed.
+- a prior erasure-recovery ownership race was fixed without excluding the blocking coverage test; the original failure remains visible.
+- the initial evaluator test failure was an invalid test fixture, not a production evaluator failure; final exact head passed all required checks.
 
 ## Risk update rule
 
-A risk closes only when the missing authority, integration, deployment or observed evidence exists. A class, hash, receipt, green test, retry or synchronized document is insufficient by itself.
+Use exact states: `PROPOSED`, `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED`, `OBSERVED`.
+
+A risk is not closed by a file existing, a test passing once, a content-addressed receipt, a green retry, a Notion update or a research plan. Closure requires the specific missing owner, integration and operational proof.
