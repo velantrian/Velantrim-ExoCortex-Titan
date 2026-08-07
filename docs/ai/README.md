@@ -21,12 +21,14 @@ Read only the minimum context needed, in this order:
    GitHub and Notion synchronization contract.
 5. [`CURRENT_STATE.md`](CURRENT_STATE.md) — verified snapshot of what is in `main`
    and what remains only in open PRs or research documents.
-6. [`COMPONENT_MAP.md`](COMPONENT_MAP.md) — component owners, key files, tests, and
+6. [`../state/project_state.json`](../state/project_state.json) — machine-readable
+   SHA roles, Continuity readiness, governance state and KB preservation boundary.
+7. [`COMPONENT_MAP.md`](COMPONENT_MAP.md) — component owners, key files, tests, and
    authority boundaries.
-7. [`KNOWN_RISKS.md`](KNOWN_RISKS.md) — unresolved engineering and governance risks.
-8. [`AUDIT_PLAYBOOK.md`](AUDIT_PLAYBOOK.md) — how to audit without exhausting context.
-9. [`WORK_LOG.md`](WORK_LOG.md) — recent significant work, decisions, and hand-offs.
-10. [`NOTION_HANDOFF.md`](NOTION_HANDOFF.md) — structured synchronization queue when
+8. [`KNOWN_RISKS.md`](KNOWN_RISKS.md) — unresolved engineering and governance risks.
+9. [`AUDIT_PLAYBOOK.md`](AUDIT_PLAYBOOK.md) — how to audit without exhausting context.
+10. [`WORK_LOG.md`](WORK_LOG.md) — recent significant work, decisions, and hand-offs.
+11. [`NOTION_HANDOFF.md`](NOTION_HANDOFF.md) — structured synchronization queue when
     the current actor cannot access Notion.
 
 Then open only the component-specific code, tests, ADRs, PRs, and workflow logs needed
@@ -45,6 +47,21 @@ When sources disagree, use this order:
 
 `COLLAB_JOURNAL.md`, old audits, and `docs/archive/` are valuable history, but they are
 not automatically current truth.
+
+## SHA role rule
+
+Do not call the latest implementation-bearing merge the current repository head when a
+later documentation-only commit exists. Use the explicit fields from
+`docs/state/project_state.json`:
+
+```text
+repository_head_sha_at_verification
+implementation_baseline_sha
+documentation_checkpoint_sha
+```
+
+The first field is an exact observed checkpoint, not an evergreen claim. Re-query
+GitHub before treating it as the current head.
 
 ## GitHub must work without Notion
 
@@ -87,7 +104,8 @@ A missing connector is `HANDOFF_REQUIRED`, not a generic blocker.
 |---|---|
 | Canon, ESM, promotion, truth | `COMPONENT_MAP.md#canon-and-promotion` plus Truth/Promotion ADRs |
 | Projection outbox or FTS | `COMPONENT_MAP.md#projection-delivery` and `KNOWN_RISKS.md#risk-p0-01` |
-| Continuity PR stack | `CURRENT_STATE.md#continuity-stack-open-prs` and current PR diffs/checks |
+| Continuity PR stack | `CURRENT_STATE.md` plus current PR diffs/checks |
+| Knowledge-base graph or release asset | `../knowledge/KB_GRAPH_GOVERNANCE.md`, `scripts/validate_kb_graph.py`, `scripts/audit_kb_graph.py` |
 | Identity or personalization | `CURRENT_STATE.md#identity-layer` and the identity risk entry |
 | API/security/deployment | `SECURITY.md`, compose files, Dockerfile, server lifespan, current checks |
 | General audit | `AUDIT_PLAYBOOK.md` and only the relevant component route |
@@ -122,6 +140,8 @@ At minimum:
 - update `KNOWN_RISKS.md` when a risk is opened, narrowed, proven, or closed;
 - add a concise entry to `WORK_LOG.md` for significant work;
 - update `COMPONENT_MAP.md` when ownership or key paths change;
+- update `docs/state/project_state.json` when SHA roles, readiness, governance or KB
+  preservation status changes;
 - record an ADR/RFC when a durable architectural decision is made;
 - classify the PR as `NONE`, `GITHUB_ONLY`, or `GITHUB_AND_NOTION`;
 - update Notion directly or add a structured `HANDOFF_REQUIRED` item when required.
