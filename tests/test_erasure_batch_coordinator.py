@@ -753,6 +753,44 @@ def test_two_real_recovery_workers_separate_connections_race_exactly_one_winner(
     assert store.get_fact("f1") is None
 
 
+def test_recovery_claim_loser_does_not_report_winner_terminal_result(rig, monkeypatch):
+    """A recovery worker that loses the batch CAS returns no result,
+    even when the winner reaches a terminal state before the loser
+    observes the row. Live/idempotent callers still get cached readback.
+    """
+    batch, coordinator, store, *_ = rig
+    store.store_fact(_fact("f1"))
+    batch_id = batch._create_batch_snapshot(
+        user_id="userA", reason="dsr", actor="tester", force=False,
+        scope=None, idempotency_key=None, actor_capability="reader",
+        request_fingerprint="fp-deterministic-recovery-loser",
+    )
+    with sqlite3.connect(store.db_path) as conn:
+        conn.execute(
+            "UPDATE erasure_batch_items SET status = ? WHERE batch_id = ?",
+            (COMPLETE, batch_id),
+        )
+        conn.execute(
+            "UPDATE erasure_batches SET status = ?, runner_id = ?, "
+            "lease_expires_at = NULL WHERE batch_id = ?",
+            (COMPLETE, "winning-runner", batch_id),
+        )
+        conn.commit()
+
+    worker = BatchErasureCoordinator(store=store, coordinator=coordinator)
+    monkeypatch.setattr(
+        worker,
+        "_claim_batch_for_running",
+        lambda *args, **kwargs: False,
+    )
+
+    assert worker._run_batch(batch_id, wait_if_running=False) is None
+    cached = worker._run_batch(batch_id, wait_if_running=True)
+    assert cached is not None
+    assert cached["batch_id"] == batch_id
+    assert cached["outcome"] == COMPLETE
+
+
 # ── Idempotency ──────────────────────────────────────────────────────────
 
 def test_idempotency_key_reuse_resumes_same_batch_no_duplicate_snapshot(rig, monkeypatch):

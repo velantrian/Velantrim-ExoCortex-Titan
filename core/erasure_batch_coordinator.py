@@ -914,12 +914,17 @@ class BatchErasureCoordinator:
             batch_id, allow_stale_running=not wait_if_running, runner_id=runner_id,
         )
         if not claimed:
+            if not wait_if_running:
+                # A recovery sweep reports only work this worker actually
+                # claimed. The winning worker may have completed the batch
+                # between candidate selection and this failed CAS; returning
+                # its terminal report here would make the loser falsely
+                # appear to have processed the batch as well.
+                return None
             current = self._load_batch(batch_id)
             if current["status"] in _TERMINAL_BATCH_STATUSES:
                 return self._report(current, self._load_items(batch_id))
-            if wait_if_running:
-                return self._wait_for_batch_completion(batch_id)
-            return None
+            return self._wait_for_batch_completion(batch_id)
 
         batch = self._load_batch(batch_id)
         items = self._load_items(batch_id)
