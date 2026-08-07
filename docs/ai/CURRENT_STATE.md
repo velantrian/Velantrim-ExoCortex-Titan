@@ -1,12 +1,13 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-07  
-**Actual GitHub `main`:** `659c30e0e8023c48fdf68be8583401fc042a1ab8`  
-**Verified implementation change:** PR #232 — OpenLoop subject binding v2  
-**Latest documentation checkpoint in progress:** PR #233  
+**Actual GitHub `main`:** `f0c17de05df6c762c69974775e3c95d9e613cf47`  
+**Latest Continuity slice:** PR #236 — bounded Goal source adapter  
+**Latest reliability fix:** PR #238 — recovery reports only claimed batches  
+**Governance implementation:** PR #235 — aggregate merge evidence + CODEOWNERS  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
 
-Material claims must be verified against exact SHAs, tests, workflows, wiring, configuration and observed runtime evidence.
+Material claims require exact SHAs, tests, workflows, wiring, configuration and observed runtime evidence.
 
 ```text
 PROPOSED ≠ IMPLEMENTED
@@ -16,13 +17,10 @@ WIRED ≠ ENABLED
 ENABLED ≠ OBSERVED
 
 Proposal ≠ Evidence
-Evidence ≠ Approval
+Evidence ≠ Admission
 Integrity ≠ Authorization
-Receipt provenance ≠ Current permission
 Authorized batch ≠ Runtime permission
-Continuity ≠ Truth
-Continuity ≠ Compute authority
-Shadow output ≠ User-visible output
+Continuity ≠ Truth or action authority
 ```
 
 ## Current queue
@@ -31,201 +29,182 @@ Shadow output ≠ User-visible output
 Source-admission architecture:           1/1 = 100%
 Primary neutral contracts:               7/7 = 100%
 State Draft adapter:                     1/1 = 100%
-Goal subject-binding correction:         1/1 = 100%
-OpenLoop subject-binding correction:     1/1 = 100%
-Goal source adapter:                     0/1 =   0%
+Goal source adapter:                     1/1 = 100%
 OpenLoop source adapter:                 0/1 =   0%
 Admission evaluator runtime:             0/1 =   0%
 Admission-aware facade:                  0/1 =   0%
 Privacy/restriction/erasure integration: 0/1 =   0%
 Runtime wiring:                          0/1 =   0%
 Runtime enabled:                         0/1 =   0%
-Live observed evidence:                  0/1 =   0%
+Live useful-behavior evidence:           0/1 =   0%
 ```
 
-Continuity live readiness remains:
+Continuity live readiness:
 
 ```text
-Completed: 3/12 = 25%
-Remaining: 9/12 = 75%
+Completed: 4/12 = 33.3%
+Remaining: 8/12 = 66.7%
 ```
 
-State/Goal/OpenLoop prerequisite completion does not add authentication, admission runtime, privacy closure, wiring, enablement or observed operation.
+Goal and OpenLoop subject binding are complete prerequisites. The Goal adapter completes one explicit live-readiness category but still grants no admission or runtime authority.
 
-## Accepted source-admission lineage
+## Accepted lineage
 
-| Capability | Accepted change | State |
+| Capability | PR / merge | State |
 |---|---|---|
-| Architecture and owner map | #223 → `fa7a15726ff14c6fe5c8611b58db7229fa4b6c2b` | main, docs-only |
-| Principal / authorization / source-binding evidence | #225 → `f5725d54b5230f5fbfd6f0550eb08c80ce579237` | main, tested, internal, unwired |
-| Source envelope / observation draft | #226 → `695f22b7ff7cf6f3af4b4a8d326534a601c09178` | main, tested, internal, unwired |
-| Admission receipt / authorized batch | #227 → `4adde7997ec0b2a3d1957224c72131d8c4d35ff2` | main, tested, internal, unwired |
-| State reconciliation → Draft adapter | #229 → `0f1a10ab4f92dd7f15a69e55cc98339e7eeb36b1` | main, tested, internal, unwired |
-| Goal subject-binding schema v2 | #230 → `81836b4f715470c50a4c6c7768a2cde7478568c8` | main, tested, internal, unwired |
-| OpenLoop subject-binding schema v2 | #232 → `659c30e0e8023c48fdf68be8583401fc042a1ab8` | main, tested, internal, unwired |
+| Source-admission architecture | #223 → `fa7a15726ff14c6fe5c8611b58db7229fa4b6c2b` | accepted architecture |
+| Principal / authorization / binding evidence | #225 → `f5725d54b5230f5fbfd6f0550eb08c80ce579237` | tested, internal, unwired |
+| Source envelope / observation draft | #226 → `695f22b7ff7cf6f3af4b4a8d326534a601c09178` | tested, internal, unwired |
+| Admission receipt / authorized batch | #227 → `4adde7997ec0b2a3d1957224c72131d8c4d35ff2` | tested, internal, unwired |
+| State result → Draft adapter | #229 → `0f1a10ab4f92dd7f15a69e55cc98339e7eeb36b1` | tested, internal, unwired |
+| Goal subject binding v2 | #230 → `81836b4f715470c50a4c6c7768a2cde7478568c8` | tested prerequisite |
+| OpenLoop subject binding v2 | #232 → `659c30e0e8023c48fdf68be8583401fc042a1ab8` | tested prerequisite |
+| Aggregate merge evidence | #235 → `d2edd3882b109e572ff1c94fed1754f486c9b980` | active and observed; ruleset not enabled |
+| Goal result → Draft adapter | #236 → `2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d` | tested, internal, unwired |
+| Recovery ownership hotfix | #238 → `f0c17de05df6c762c69974775e3c95d9e613cf47` | exact-head tested; post-merge validation pending |
 
-## PR #232 exact-head and post-merge evidence
+## Goal adapter evidence
 
 ```text
-Exact tested head:       909789ee99e169f83aa5fab927ed6312e20cf471
-Full Titan CI:           31154197511 PASS
-Continuity contracts:    31154197538 PASS
-Docker hardening:        31154197912 PASS
-Unresolved threads:      0
-Merge SHA:               659c30e0e8023c48fdf68be8583401fc042a1ab8
-
-Post-merge full CI:      31154604309 PASS
-Post-merge Continuity:   31154604287 PASS
-Post-merge Docker:       31154604295 PASS
+Exact tested head:             be5b50315c1995d5eb946f3eae7ead58be2f3d8e
+Full Titan CI + coverage:      31164336300 PASS
+Continuity contracts:          31164336323 PASS
+Docker hardening:              31164336269 PASS
+Aggregate merge evidence:      31164890308 PASS
+Unresolved review threads:     0
+Merge SHA:                     2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d
+Post-merge Continuity:         31164986649 PASS
+Post-merge Docker:             31164989870 PASS
+Post-merge ordinary pytest:    PASS in 31164988400
+Post-merge coverage:           FAILURE in 31164988400 → fixed by PR #238
 ```
 
-The earlier Continuity job on `81e07a8ea59f486da9f5cf147ecc2932044fa024` executed no test steps because GitHub's hosted runner did not acquire the job. The later exact-head and post-merge runs above supply the missing evidence.
+## Goal source adapter
 
-## Implemented primary contracts
-
-The primary neutral source-admission contract family is complete:
-
-1. `ContinuityPrincipalContext`;
-2. `ContinuityAuthorizationContext`;
-3. `ContinuitySourceBindingReceipt`;
-4. `ContinuitySourceEnvelope`;
-5. `ContinuityObservationDraft`;
-6. `ContinuityObservationAdmissionReceipt`;
-7. `AuthorizedContinuityObservationBatch`.
-
-These values remain internal evidence contracts. They are not current authentication, authorization, storage permission, action permission or runtime authority.
-
-## State Draft adapter
-
-PR #229 provides one explicit deterministic adapter:
+PR #236 implements:
 
 ```text
-StateReconciliationResult
-→ recompute result/projection identities
-→ validate complete subject set
-→ validate source-binding receipt
+GoalProjectionResult v2
+→ recompute projection/result identities
+→ validate included and excluded decisions
+→ validate exact complete subject binding
+→ validate result/projection/snapshot/attestation/decision evidence
 → create ContinuitySourceEnvelope
 → derive bounded ObservationDraft proposals
 → STOP
 ```
 
-It does not authenticate, admit, persist, invoke the signal producer, wire runtime behavior or create user-visible effects.
-
-## Goal subject binding v2
-
-PR #230 binds `user_id` through:
+Only an active, explicitly attested and included Goal projection may derive:
 
 ```text
-GoalRecordSnapshot
-→ GoalAttestation
-→ GoalProjection
-→ GoalProjectionDecision
-→ GoalProjectionResult.subject_ids
-→ result identity
+EVIDENCE_COVERAGE_ITEM = True
 ```
 
-Cross-subject attestations fail closed. No Goal source adapter exists.
+Completed, cancelled and excluded goals derive no positive Draft. Title, description, priority and keywords cannot create importance, sensitivity, reminders, answers, tools, actions or compute authority.
 
-## OpenLoop subject binding v2
+The adapter is not publicly exported and is not called by `/query`, startup, workers, schedulers or the signal producer.
 
-PR #232 advances the schema to `continuity.open_loop_projection.v2`:
+## Recovery ownership hotfix
+
+Post-merge coverage for PR #236 exposed a real reporting race:
 
 ```text
-OpenLoopSignal.user_id
-→ OpenLoopResolution.user_id
-→ OpenLoopProjection.user_id
-→ OpenLoopProjectionResult.subject_ids
-→ result identity
+two recovery workers select one batch
+→ one wins the CAS and completes
+→ loser fails the claim after terminal completion
+→ old code returns the winner's cached report to the loser
+→ both callers appear to have processed the batch
 ```
 
-Implemented guarantees:
-
-- subject identity is mandatory for signals and resolutions;
-- subject identity enters signal, resolution, projection and result identities;
-- result carries the complete sorted subject set;
-- cross-subject resolution fails closed with actionable mismatch details;
-- direct fixtures were migrated without a placeholder subject;
-- a dedicated regression test proves that changing only `user_id` changes `signal_id`, `resolution_id`, `projection_id` and `result_id`.
-
-No OpenLoop source adapter exists.
-
-## Source eligibility
-
-| Source | Current subject binding | Current disposition |
-|---|---|---|
-| `StateReconciliationResult` | typed subjects plus complete-set adapter validation | Draft adapter implemented/tested; internal and unwired |
-| `GoalProjectionResult` v2 | explicit `user_id` and complete content-addressed `subject_ids` | prerequisite complete; Goal adapter absent |
-| `OpenLoopProjectionResult` v2 | explicit `user_id` and complete content-addressed `subject_ids` | prerequisite complete; OpenLoop adapter absent |
-
-For every future source adapter:
+The erasure side effect itself remained single-execution. PR #238 makes crash-recovery calls with `wait_if_running=False` return `None` after every lost claim. Live/idempotent callers still receive cached terminal reports or wait for an active owner.
 
 ```text
-subjects(source result) == subjects(source binding receipt)
+Triggering run:                31164988400
+Triggering result:             coverage FAILURE
+Observed suite at failure:     1 failed, 3665 passed, 17 skipped,
+                               21 deselected, 1 xfailed
+Exact hotfix head:             6cc5899afe98f53a1ee0e7fff665948b0c5a3d92
+Hotfix full CI + coverage:     31166079813 PASS
+Hotfix Docker:                 31166079825 PASS
+Hotfix aggregate evidence:     PASS
+Hotfix merge:                  f0c17de05df6c762c69974775e3c95d9e613cf47
+Post-merge full CI/coverage:   running at this checkpoint
+Post-merge Docker:             PASS
+```
+
+The race test remains enabled under coverage. No exclusion or blind rerun was used.
+
+## Source status
+
+| Source | Subject prerequisite | Draft adapter | Runtime state |
+|---|---|---|---|
+| `StateReconciliationResult` | complete typed subject set | ✅ implemented/tested | internal, unwired |
+| `GoalProjectionResult` v2 | complete content-addressed `subject_ids` | ✅ implemented/tested | internal, unwired |
+| `OpenLoopProjectionResult` v2 | complete content-addressed `subject_ids` | ❌ absent | blocked from admission path |
+
+Every adapter must enforce:
+
+```text
+subjects(source result) == subjects(binding receipt)
 subjects(source result) ⊆ subjects(current authorization)
 ```
 
-`goal_ref`, `related_goal_ref`, `loop_key` and shared deployment API keys are not subject-ownership or authorization evidence.
+`goal_ref`, `related_goal_ref`, `loop_key` and deployment API keys are not ownership evidence.
+
+## Governance state
+
+PR #235 added the active workflow `Aggregate merge evidence`, exact status context `Titan aggregate merge evidence`, CODEOWNERS, fail-closed workflow aggregation, stale-base checks and documentation synchronization checks.
+
+PR #236 and PR #238 supplied live proof:
+
+```text
+Draft → aggregate pending
+Ready + every applicable exact-head workflow PASS → aggregate success
+```
+
+`main` remains unprotected. Until repository rules require the aggregate context, approval, resolved conversations, up-to-date branches and CODEOWNERS review, governance is implemented but not technically enforced. Issue #234 owns the administrator-only remainder.
 
 ## Explicit limitations
 
 Not implemented:
 
-- Goal source adapter;
 - OpenLoop source adapter;
-- evaluator/rule registry or allowlist;
-- current principal, tenant and subject authorization resolution;
-- consent or lawful-basis verification;
-- current restriction and erasure-domain checks;
-- policy compatibility evaluation;
-- admission evaluator runtime;
-- admission-aware facade;
-- durable retention, persistence, replay and cleanup lifecycle for admission artifacts;
-- public package export;
+- admission evaluator and trusted evaluator/rule registry;
+- current principal/tenant/subject authorization resolution;
+- current consent/lawful-basis, restriction, erasure and policy checks;
+- admission-aware facade and anti-bypass guards;
+- durable admission retention, persistence, replay and cleanup;
+- package export;
 - `/query`, startup, worker or scheduler wiring;
-- feature flag, operator workflow, SLO, alert or rollback;
-- answer, reminder, tool, action, Canon, TruthGate, GoalStack or compute-route authority;
-- live observed evidence.
+- feature flag, SLO, alert, rollback or activation ADR;
+- Canon/ESM/TruthGate/GoalStack write authority;
+- answer, reminder, delivery, tool, action or compute-route authority;
+- live useful-behavior evidence.
 
-A structurally valid receipt proves represented payload integrity, not current permission.
+A valid receipt proves represented evidence integrity, not current permission.
 
-## Required future admission-aware facade
+## Next safe slice
 
-Bare `ContinuitySignalObservation` values cannot form a live trust boundary. A future facade must accept only a complete `AuthorizedContinuityObservationBatch`, resolve every referenced evidence object, allowlist evaluator/rule identities, re-check current authorization/consent/restriction/erasure/policy state and only then call the existing pure signal producer.
+After post-merge hotfix validation and this documentation checkpoint, implement **OpenLoop source adapter only**:
 
-The facade must remain disabled and produce no user-visible effect until a separate activation ADR and operator approval.
+```text
+OpenLoopProjectionResult v2
+→ recompute/validate projection and result identities
+→ validate complete subject binding and source evidence
+→ create SourceEnvelope
+→ derive conservative bounded Draft proposals
+→ STOP
+```
 
-## Existing Continuity shadow stack
-
-| Layer | Accepted SHA | State |
-|---|---|---|
-| R1 immutable contracts | `06529700d70854504b88629eeecf737bdc6b81d5` | main, tested, unwired |
-| R2 process-local read side | `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e` | main, tested, unwired |
-| R3 projections / WorkingMemory adapters | `a19d16656676ad5c98c92d4776e9709edbfb920c` | main, tested, rebuildable, unwired |
-| R4 compute assessment | `529d8b6b182b1a548d27558173f0aca473bcc400` | main, tested, shadow-only, unwired |
-| R5A advisory/replay gates | `58e29bba26299ce7003b62e73fd3b25e028956de` | main, tested, shadow-only, unwired |
-| R5B disabled composition | `27b91a59f9e9291092b220ac1f53bfeae2daea28` | main, tested, default-off, unwired |
-| Trusted signal producer | `e37a5d13332628bcdbd0d9441d7a61d5f8a8d523` | main, tested, shadow-only, unwired |
-| Source-admission contracts | `4adde7997ec0b2a3d1957224c72131d8c4d35ff2` | main, tested, internal, unwired |
-| State Draft adapter | `0f1a10ab4f92dd7f15a69e55cc98339e7eeb36b1` | main, tested, internal, unwired |
-| Goal subject binding v2 | `81836b4f715470c50a4c6c7768a2cde7478568c8` | main, tested, internal, unwired |
-| OpenLoop subject binding v2 | `659c30e0e8023c48fdf68be8583401fc042a1ab8` | main, tested, internal, unwired |
-
-## Global non-authority statement
-
-No accepted checkpoint authorizes direct Canon write, TruthGate bypass, `/query` behavior changes, startup registration, worker/scheduler execution, policy expansion, automatic reminders, tool/action execution, compute-route ownership, automatic identity inference or treating receipts/batches as permanent runtime permission.
-
-## Next safe implementation slice
-
-The next code PR should implement **one source adapter only**, preferably the Goal source adapter first because Goal subject binding v2 is already accepted and its source semantics are narrower than runtime admission.
-
-It must end at:
+Required final state:
 
 ```text
 IMPLEMENTED · TESTED · INTERNAL · UNWIRED
 NO ADMISSION DECISION
-NO PERSISTENCE
+NO AUTHORIZED BATCH
 NO PRODUCER INVOCATION
+NO PERSISTENCE
 NO RUNTIME OR USER-VISIBLE AUTHORITY
 ```
 
-Goal and OpenLoop adapters remain separate PRs. Admission evaluation, privacy/erasure integration, facade, persistence, runtime composition and activation remain later independent stages.
+Admission evaluation, privacy/erasure integration, facade, persistence, runtime wiring and activation remain later independent stages.
