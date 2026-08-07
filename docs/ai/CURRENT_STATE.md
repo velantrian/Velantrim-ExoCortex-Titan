@@ -1,11 +1,17 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-07  
-**Actual GitHub `main`:** `42aa79338c57e9b9a67c3e3c08dd948b60c5541f`  
+**Repository `main` head at verification:** `9dfbfe5822221550389d95b751c8d85b044f6372`  
+**Latest implementation-bearing Continuity baseline:** `42aa79338c57e9b9a67c3e3c08dd948b60c5541f`  
+**Documentation checkpoint:** `9dfbfe5822221550389d95b751c8d85b044f6372` (PR #241, docs-only)  
 **Latest Continuity slice:** PR #240 — bounded OpenLoop source adapter  
 **Latest reliability fix:** PR #238 — recovery reports only claimed batches  
 **Governance implementation:** PR #235 — aggregate merge evidence + CODEOWNERS  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
+
+Machine-readable status: [`docs/state/project_state.json`](../state/project_state.json).
+The recorded repository head is the exact `main` commit inspected at the stated time; it
+must not be confused with the latest implementation-bearing merge.
 
 Material claims require exact SHAs, tests, workflows, wiring, configuration and observed runtime evidence.
 
@@ -65,6 +71,7 @@ The readiness denominator tracks accepted vertical capabilities, not every prere
 | Goal result → Draft adapter | #236 → `2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d` | tested, internal, unwired |
 | Recovery ownership hotfix | #238 → `f0c17de05df6c762c69974775e3c95d9e613cf47` | exact-head and post-merge tested |
 | OpenLoop result → Draft adapter | #240 → `42aa79338c57e9b9a67c3e3c08dd948b60c5541f` | tested, internal, unwired |
+| OpenLoop docs checkpoint | #241 → `9dfbfe5822221550389d95b751c8d85b044f6372` | documentation only; no new runtime behavior |
 
 ## OpenLoop adapter evidence
 
@@ -75,7 +82,8 @@ Continuity contracts:          31168858622 PASS
 Docker hardening:              31168858691 PASS
 Aggregate merge evidence:      31200451054 PASS
 Unresolved review threads:     0
-Merge SHA:                     42aa79338c57e9b9a67c3e3c08dd948b60c5541f
+Implementation merge SHA:      42aa79338c57e9b9a67c3e3c08dd948b60c5541f
+Documentation merge SHA:       9dfbfe5822221550389d95b751c8d85b044f6372
 Post-merge full CI + coverage: 31200627655 PASS
 Post-merge Continuity:         31200627704 PASS
 Post-merge Docker:             31200627678 PASS
@@ -130,6 +138,20 @@ Ready + every applicable exact-head workflow PASS → aggregate success
 
 `main` remains unprotected. Until repository rules require the aggregate context, approval, resolved conversations, up-to-date branches and CODEOWNERS review, governance is implemented but not technically enforced. Issue #234 owns the administrator-only remainder.
 
+## Knowledge-base preservation and integrity
+
+`kb_graph.json` remains a preserved local-first knowledge asset. It is not removed or
+reclassified as disposable output. This checkpoint adds a portable graph validator and
+an explicit governance contract:
+
+- [`docs/knowledge/KB_GRAPH_GOVERNANCE.md`](../knowledge/KB_GRAPH_GOVERNANCE.md);
+- [`scripts/validate_kb_graph.py`](../../scripts/validate_kb_graph.py);
+- existing SQLite quality audit: `scripts/audit_kb_graph.py`;
+- existing release SHA/size verifier: `scripts/verify_release_bundle.py`.
+
+These controls establish artifact integrity only. They do not validate every claim,
+promote facts, alter Canon, wire a runtime consumer or grant answer/action authority.
+
 ## Explicit limitations
 
 Not implemented:
@@ -146,7 +168,7 @@ Not implemented:
 - answer, reminder, delivery, tool, action or compute-route authority;
 - live useful-behavior evidence.
 
-A valid hash, binding, envelope, Draft, receipt or batch proves represented evidence integrity. It does not prove current permission or runtime eligibility.
+A valid hash, binding, envelope, Draft, receipt, batch or portable KB integrity report proves represented artifact/evidence integrity. It does not prove claim truth, current permission or runtime eligibility.
 
 ## Next safe slice
 
