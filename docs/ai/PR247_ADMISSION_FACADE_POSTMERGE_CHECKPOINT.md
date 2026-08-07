@@ -111,7 +111,7 @@ Documentation impact:   GITHUB_AND_NOTION
 Notion access:           AVAILABLE
 Notion targets:          Velantrim Titan 9.0
                          Continuity Source Admission — Architecture
-Notion synchronization: PENDING FINAL DRAFT CHECKPOINT
+Notion synchronization: SYNCED
 ```
 
-Final docs exact head, CI, aggregate result and merge SHA must be recorded after they exist.
+Titan Hub now records Draft PR #247 and facade-era `7/12 = 58.3%`. The Source Admission page records PR #246 merge, corrected exact workflow IDs, post-merge main evidence and the next resolver-composition boundary. Final docs exact head, CI, aggregate result and merge SHA will be added after they exist.
