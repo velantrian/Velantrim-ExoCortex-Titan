@@ -1,0 +1,29 @@
+# Default owner for all repository changes.
+* @velantrian
+
+# Governance and merge controls.
+/.github/CODEOWNERS @velantrian
+/.github/workflows/** @velantrian
+/docs/ai/** @velantrian
+/docs/operations/** @velantrian
+
+# High-authority and high-risk runtime surfaces.
+/core/continuity/** @velantrian
+/core/*canon* @velantrian
+/core/*truth* @velantrian
+/core/*policy* @velantrian
+/core/*promotion* @velantrian
+/core/*identity* @velantrian
+/migrations/** @velantrian
+/server.py @velantrian
+/server_patch/** @velantrian
+/api/** @velantrian
+
+# Deployment and supply-chain surfaces.
+/Dockerfile @velantrian
+/.dockerignore @velantrian
+/docker-compose*.yml @velantrian
+/pyproject.toml @velantrian
+/config/** @velantrian
+/scripts/apply_migrations.py @velantrian
+/scripts/check_pr_merge_evidence.py @velantrian
