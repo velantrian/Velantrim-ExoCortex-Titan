@@ -1,33 +1,56 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-07  
-**Current implementation `main`:** `f0c17de05df6c762c69974775e3c95d9e613cf47`
+**Current implementation `main`:** `42aa79338c57e9b9a67c3e3c08dd948b60c5541f`
 
 Code and passing tests do not establish wiring, enablement, authority or production safety. Keep `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` separate.
 
 ## Closed or materially reduced
 
-- seven primary source-admission contracts are implemented/tested/internal/unwired;
-- State reconciliation has a deterministic bounded Draft adapter;
+- seven primary source-admission contracts are implemented and adversarially tested;
+- State, Goal v2 and OpenLoop v2 have deterministic bounded Draft adapters;
 - Goal and OpenLoop schemas preserve complete content-addressed subject identity;
-- Goal has a deterministic bounded Draft adapter;
-- the Goal adapter recomputes projection/result identities and validates decisions, complete subjects and evidence;
-- active attested goals can derive only `EVIDENCE_COVERAGE_ITEM=True`;
-- inactive/excluded goals and semantic text fields cannot create reminder, action, importance or compute authority;
+- all three adapters validate complete source/binding subjects and authorization subset relationships;
+- Goal derives evidence coverage only for active, explicitly attested and included projections;
+- OpenLoop derives evidence coverage only for `OPEN` and `OVERDUE`; resolved/future loops derive nothing positive;
+- semantic text, priority, deadlines and relations cannot create reminder, action, importance, sensitivity, answer or compute authority;
 - aggregate merge evidence and CODEOWNERS are active in `main`;
-- PR #236 and PR #238 demonstrated Draft→pending and Ready→success exact-head aggregation;
+- PRs #236, #238, #239 and #240 demonstrated exact-head Draft/Ready aggregation;
 - recovery workers no longer report terminal results for batches they failed to claim;
-- the real two-worker race and a deterministic lost-claim case pass under ordinary and coverage modes both before and after hotfix merge.
+- the recovery race passes ordinary and coverage modes before and after the hotfix merge.
 
-The Goal source-adapter and recovery-result ownership gaps are closed. OpenLoop admission, current permission, privacy, facade, runtime and repository-settings risks remain open.
+The source-adapter family is complete at `IMPLEMENTED · TESTED · INTERNAL · UNWIRED`. Admission, current permission, privacy, facade, persistence, runtime and repository-settings risks remain open.
+
+## P0 — Trusted admission decision boundary remains absent
+
+The existing admission receipt and batch classes can validate a caller-supplied partition. They do not themselves establish that the evaluator, rule or current decision evidence is trusted.
+
+Missing:
+
+- allowlisted evaluator and rule registry;
+- deterministic admission evaluator;
+- explicit resolved current authentication evidence;
+- current tenant, subject and purpose authorization resolution;
+- current consent or lawful-basis verification;
+- current restriction, erasure and policy compatibility evidence;
+- anti-replay/staleness handling for those current decisions.
+
+Consequences:
+
+```text
+valid receipt structure ≠ trusted admission decision
+historical authorization context ≠ current permission
+authorized batch structure ≠ runtime eligibility
+```
+
+No caller-supplied evaluator/rule string may be treated as trusted merely because it is identity-bound in a receipt.
 
 ## P0 — Runtime authority boundary remains absent
 
-- OpenLoop source adapter does not exist;
-- admission evaluator and trusted evaluator/rule registry do not exist;
 - admission-aware facade does not exist;
-- current authorization, consent/lawful basis, restriction, erasure and policy checks are not connected;
-- no admission artifacts are wired into `/query`, startup, workers or schedulers;
+- current authorization/privacy/restriction checks are not connected to a composition boundary;
+- no admission artifact is wired into `/query`, startup, workers or schedulers;
+- bare v1 observations remain structurally usable by the pure shadow producer and require anti-bypass guards before any live path;
 - no feature flag, operator approval, SLO, alert, rollback or kill-switch evidence exists;
 - no live useful-behavior evidence exists.
 
@@ -37,11 +60,11 @@ IMPLEMENTED + TESTED ≠ WIRED ≠ ENABLED ≠ OBSERVED
 
 ## P0 — Repository governance is implemented but not enforced
 
-PR #235 provides an active aggregate status and CODEOWNERS. PR #236 and #238 prove the status works. `main` is still unprotected and repository rulesets are absent.
+PR #235 provides an active aggregate status and CODEOWNERS. Later PRs prove the status works. `main` is still unprotected and repository rulesets are absent.
 
 Consequences:
 
-- GitHub does not technically require the aggregate status;
+- GitHub does not technically require `Titan aggregate merge evidence`;
 - approvals, stale-approval dismissal and resolved conversations are not enforced;
 - direct push, force-push and deletion restrictions are not enforced;
 - CODEOWNERS review is advisory until required by branch rules.
@@ -59,110 +82,102 @@ Administrator action tracked by issue #234:
 
 ## P1 — Evidence is not current authority
 
-Content-addressed IDs, source bindings and envelopes prove represented evidence integrity. They do not prove current permission.
+Content-addressed IDs, source bindings, envelopes, Drafts, receipts and batches prove represented evidence integrity and traceability. They do not prove current permission.
 
 Residual risks:
 
 - authentication evidence may be forged, expired, revoked or unresolved;
-- authorization or consent may be withdrawn after receipt creation;
+- authorization or consent may be withdrawn after context creation;
 - restriction, policy or erasure state may change;
 - evaluator/rule identities are untrusted until resolved and allowlisted;
-- structurally valid historical evidence may be stale.
+- structurally valid historical evidence may be stale;
+- batch validity time does not by itself re-check current policy or erasure state.
 
-```text
-Integrity ≠ Authorization
-Admission receipt ≠ Permanent permission
-Authorized batch ≠ Runtime permission
-```
+Current deletion, restriction and authorization decisions must dominate historical evidence.
 
 ## P1 — Source adapter limitations
 
 ### State
 
-Internal/unwired. It validates structural identity and complete subject binding but does not authenticate the source owner, decide admission, persist or establish current authorization.
+Implemented/tested/internal/unwired. Validates deterministic State identity and complete subject binding, but does not authenticate the source owner, decide admission, persist or establish current permission.
 
-### Goal
+### Goal v2
 
-Implemented/tested/internal/unwired, but:
+Implemented/tested/internal/unwired. Remaining limitations:
 
-- `user_id` remains a legacy string vocabulary, not an accepted identity provider;
-- adapter input still depends on externally issued source-binding and authorization evidence;
-- it does not resolve current principal, tenant, consent, restrictions, erasure or policy;
-- it does not create admission receipts or authorized batches;
-- it does not invoke the signal producer or persist output;
-- its only positive mapping is evidence coverage for active explicitly attested projections.
+- `user_id` is a legacy vocabulary, not an accepted identity provider;
+- external source-binding and authorization evidence are still required;
+- current principal, tenant, consent, restriction, erasure and policy are unresolved;
+- no admission decision, producer invocation, persistence or runtime effect;
+- positive mapping is limited to evidence coverage for active, attested, included projections.
 
-### OpenLoop
+### OpenLoop v2
 
-Subject binding v2 is complete, but:
+Implemented/tested/internal/unwired. Remaining limitations:
 
-- no source adapter exists;
-- no bounded signal mapping has been accepted;
-- no complete binding/evidence validation exists at the adapter boundary;
-- future code must not infer ownership from `loop_key` or `related_goal_ref`;
-- open/deadline/resolution semantics must not become reminders, actions or current-state authority;
-- the result contract does not contain enough original signal/resolution payload to recompute their underlying IDs, so an adapter may only recompute projection/result identities and require signal/resolution IDs as bound evidence unless the input contract is expanded separately.
-
-## P1 — Erasure recovery and concurrency
-
-PR #236 post-merge coverage run `31164988400` exposed a real reporting race:
-
-- one worker owned and completed the batch;
-- a losing recovery worker returned the winner's terminal report;
-- two callers therefore appeared to have processed one batch.
-
-PR #238 closes the ownership gap:
-
-- recovery (`wait_if_running=False`) returns `None` after any lost claim;
-- live/idempotent callers retain cached terminal readback and wait behavior;
-- erasure selection, CAS fencing, lease ownership and deletion behavior are unchanged;
-- exact-head ordinary pytest and coverage passed in `31166079813`;
-- exact-head Docker passed in `31166079825`;
-- post-merge ordinary pytest and full coverage passed in `31166699745`;
-- post-merge Docker passed in `31166697770`.
-
-Required discipline remains:
-
-- preserve first failures and exact-head/post-merge evidence;
-- do not normalize blind retries;
-- prefer deterministic fault injection plus real connection/thread races;
-- treat result ownership separately from side-effect ownership.
+- source result does not contain full original signal/resolution payloads;
+- adapter can recompute projection/result IDs only and requires signal/resolution IDs as complete binding evidence;
+- `loop_key`, `related_goal_ref`, summary and deadline are not ownership or authorization evidence;
+- `OPEN`/`OVERDUE` only propose evidence coverage; they cannot create reminder, schedule, action, current-state, answer or delivery authority;
+- current auth/privacy/policy state is unresolved;
+- no admission decision, producer invocation, persistence or runtime effect.
 
 ## P1 — Privacy, restriction, retention and erasure
 
 - current consent/lawful-basis evaluation is absent;
 - current restriction and erasure-domain integration is absent;
-- admission artifacts have no accepted durable retention/replay/cleanup lifecycle;
+- envelopes, Drafts, receipts and batches have no accepted durable retention/replay/cleanup lifecycle;
 - derived State/Goal/OpenLoop artifacts are not proven erasure-addressable end to end;
 - deletion during queued, persisted, replayed or partially evaluated work is unproven;
-- multi-subject erasure and reappearance handling are unproven.
+- multi-subject erasure and reappearance handling are unproven;
+- persisted-artifact indexes by subject and erasure domain do not exist.
 
-Historical permission must never override current deletion or restriction state.
+No persistence should be added until discoverability, bounded retention, invalidation and deletion proofs exist.
 
 ## P1 — Bare observations and Drafts are not live-authorized
 
-`ContinuityObservationDraft` and `ContinuitySignalObservation` are proposal/evidence values. They do not carry the complete current authorization decision required for live use.
+`ContinuityObservationDraft` and `ContinuitySignalObservation` are proposal/evidence values. `AuthorizedContinuityObservationBatch` is a bounded evidence wrapper, still marked `no_runtime_authority`.
 
-Required proof:
+Required proof before a live-capable path:
 
 - only an admission-aware facade accepts live-capable input;
-- facade accepts complete `AuthorizedContinuityObservationBatch`, never bare Drafts/observations;
-- evaluator/rules are resolved and allowlisted;
+- facade accepts complete authorized batches, never bare Drafts/observations;
+- evaluator and rules are resolved and allowlisted;
 - current authorization, consent, restriction, policy and erasure state are re-checked;
-- API, startup, worker, scheduler and advisory paths cannot bypass the facade.
+- API, startup, worker, scheduler and advisory paths cannot bypass the facade;
+- aggregate output is bound to batch and receipt identity;
+- zero user-visible effect is measured in a disabled shadow experiment first.
+
+## P1 — Erasure recovery and concurrency
+
+PR #236 post-merge coverage exposed a reporting race: a losing recovery worker returned the winner's terminal report. PR #238 closes the result-ownership gap while preserving single side-effect execution.
+
+Evidence:
+
+```text
+Triggering run:                31164988400 FAILURE
+Exact hotfix head:             6cc5899afe98f53a1ee0e7fff665948b0c5a3d92
+Hotfix full CI + coverage:     31166079813 PASS
+Hotfix Docker:                 31166079825 PASS
+Hotfix merge:                  f0c17de05df6c762c69974775e3c95d9e613cf47
+Post-merge full CI + coverage: 31166699745 PASS
+Post-merge Docker:             31166697770 PASS
+```
+
+Required discipline remains: preserve first failures, avoid blind retry normalization, use deterministic fault injection plus real concurrency tests, and distinguish result ownership from side-effect ownership.
 
 ## P1 — GitHub ↔ Notion drift
 
-Top snapshots can become stale while historical blocks remain visible. Required control:
+Top snapshots can become stale while historical blocks remain accurate. Required control:
 
-- one canonical current snapshot at the top;
+- one canonical current checkpoint at the top;
 - same-cycle GitHub + Notion synchronization;
-- structured hand-off only when Notion is unavailable;
+- structured handoff only when Notion is unavailable;
 - post-merge final SHA and CI checkpoint;
 - supersede stale PRs rather than merging documentation from an old base;
-- no next implementation slice while canonical status is materially stale.
+- do not start the next implementation slice while canonical status is materially stale.
 
-PR #237 was closed without merge after PR #238 advanced `main`; PR #239 replaces it from the correct hotfix base.
+This checkpoint replaces the pre-merge OpenLoop Draft status with merge SHA `42aa793...` and post-merge evidence.
 
 ## P1 — Existing shadow/runtime infrastructure
 
@@ -178,7 +193,7 @@ PR #237 was closed without merge after PR #238 advanced `main`; PR #239 replaces
 ## P1 — Identity, supply chain and operations
 
 - `core/identity_layer.py` remains legacy/unwired;
-- shared API key is not end-user/tenant/subject authorization;
+- shared API key is not end-user, tenant or subject authorization;
 - coverage ≥74% is a regression floor, not a correctness proof;
 - dependency reproducibility and immutable action-SHA policy remain incomplete;
 - `server.py` remains a composition monolith;
@@ -186,4 +201,4 @@ PR #237 was closed without merge after PR #238 advanced `main`; PR #239 replaces
 
 ## Risk update rule
 
-A risk closes only when the missing authority, integration, deployment or observed evidence exists. A class, hash, receipt, passing test, green retry or current Notion page is insufficient by itself.
+A risk closes only when the missing authority, integration, deployment or observed evidence exists. A class, hash, receipt, green test, retry or synchronized document is insufficient by itself.
