@@ -1,8 +1,8 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-07  
-**Actual GitHub `main`:** `f0c17de05df6c762c69974775e3c95d9e613cf47`  
-**Latest Continuity slice:** PR #236 — bounded Goal source adapter  
+**Actual GitHub `main`:** `42aa79338c57e9b9a67c3e3c08dd948b60c5541f`  
+**Latest Continuity slice:** PR #240 — bounded OpenLoop source adapter  
 **Latest reliability fix:** PR #238 — recovery reports only claimed batches  
 **Governance implementation:** PR #235 — aggregate merge evidence + CODEOWNERS  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
@@ -29,8 +29,10 @@ Continuity ≠ Truth or action authority
 Source-admission architecture:           1/1 = 100%
 Primary neutral contracts:               7/7 = 100%
 State Draft adapter:                     1/1 = 100%
+Goal subject binding:                    1/1 = 100%
+OpenLoop subject binding:                1/1 = 100%
 Goal source adapter:                     1/1 = 100%
-OpenLoop source adapter:                 0/1 =   0%
+OpenLoop source adapter:                 1/1 = 100%
 Admission evaluator runtime:             0/1 =   0%
 Admission-aware facade:                  0/1 =   0%
 Privacy/restriction/erasure integration: 0/1 =   0%
@@ -42,11 +44,11 @@ Live useful-behavior evidence:           0/1 =   0%
 Continuity live readiness:
 
 ```text
-Completed: 4/12 = 33.3%
-Remaining: 8/12 = 66.7%
+Completed: 5/12 = 41.7%
+Remaining: 7/12 = 58.3%
 ```
 
-Goal and OpenLoop subject binding are complete prerequisites. The Goal adapter completes one explicit live-readiness category but still grants no admission or runtime authority.
+The readiness denominator tracks accepted vertical capabilities, not every prerequisite row shown above. Subject-binding corrections are prerequisites; the three Draft adapters are completed bounded capabilities. Nothing is wired, enabled or observed.
 
 ## Accepted lineage
 
@@ -62,100 +64,64 @@ Goal and OpenLoop subject binding are complete prerequisites. The Goal adapter c
 | Aggregate merge evidence | #235 → `d2edd3882b109e572ff1c94fed1754f486c9b980` | active and observed; ruleset not enabled |
 | Goal result → Draft adapter | #236 → `2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d` | tested, internal, unwired |
 | Recovery ownership hotfix | #238 → `f0c17de05df6c762c69974775e3c95d9e613cf47` | exact-head and post-merge tested |
+| OpenLoop result → Draft adapter | #240 → `42aa79338c57e9b9a67c3e3c08dd948b60c5541f` | tested, internal, unwired |
 
-## Goal adapter evidence
+## OpenLoop adapter evidence
 
 ```text
-Exact tested head:             be5b50315c1995d5eb946f3eae7ead58be2f3d8e
-Full Titan CI + coverage:      31164336300 PASS
-Continuity contracts:          31164336323 PASS
-Docker hardening:              31164336269 PASS
-Aggregate merge evidence:      31164890308 PASS
+Exact tested head:             9623d60f262d00ab4551f5342f7ef1792723e594
+Full Titan CI + coverage:      31168858623 PASS
+Continuity contracts:          31168858622 PASS
+Docker hardening:              31168858691 PASS
+Aggregate merge evidence:      31200451054 PASS
 Unresolved review threads:     0
-Merge SHA:                     2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d
-Post-merge Continuity:         31164986649 PASS
-Post-merge Docker:             31164989870 PASS
-Post-merge ordinary pytest:    PASS in 31164988400
-Post-merge coverage:           FAILURE in 31164988400 → fixed by PR #238
+Merge SHA:                     42aa79338c57e9b9a67c3e3c08dd948b60c5541f
+Post-merge full CI + coverage: 31200627655 PASS
+Post-merge Continuity:         31200627704 PASS
+Post-merge Docker:             31200627678 PASS
+Post-merge aggregate:          31200627647 PASS
 ```
 
-## Goal source adapter
+Codex did not produce a substantive review because its code-review usage limit was reached. That is unavailable evidence, not approval.
 
-PR #236 implements:
+## Source adapter boundary
+
+All accepted adapters follow:
 
 ```text
-GoalProjectionResult v2
-→ recompute projection/result identities
-→ validate included and excluded decisions
-→ validate exact complete subject binding
-→ validate result/projection/snapshot/attestation/decision evidence
-→ create ContinuitySourceEnvelope
-→ derive bounded ObservationDraft proposals
+typed immutable source result
+→ canonical identity validation
+→ complete source-subject validation
+→ binding and authorization evidence validation
+→ ContinuitySourceEnvelope
+→ bounded ContinuityObservationDraft proposals
 → STOP
 ```
 
-Only an active, explicitly attested and included Goal projection may derive:
+| Source | Draft mapping | Runtime state |
+|---|---|---|
+| `StateReconciliationResult` | bounded conflict/freshness/coverage proposals | internal, unwired |
+| `GoalProjectionResult` v2 | active, attested, included Goal → `EVIDENCE_COVERAGE_ITEM=True` | internal, unwired |
+| `OpenLoopProjectionResult` v2 | `OPEN` / `OVERDUE` → `EVIDENCE_COVERAGE_ITEM=True` | internal, unwired |
 
-```text
-EVIDENCE_COVERAGE_ITEM = True
-```
+For OpenLoop, `RESOLVED` and `NOT_YET_OPEN` produce no positive Draft. Summary, kind, due date and related goal cannot create reminders, schedules, actions, current-state requests, importance, sensitivity, answers, tools, delivery or compute authority.
 
-Completed, cancelled and excluded goals derive no positive Draft. Title, description, priority and keywords cannot create importance, sensitivity, reminders, answers, tools, actions or compute authority.
+The result contract contains projection IDs and signal/resolution references, but not the complete original signal/resolution payloads. The adapter recomputes projection/result identities and requires all signal/resolution IDs as complete bound evidence; it does not falsely claim to recompute unavailable source payload identities.
 
-The adapter is not publicly exported and is not called by `/query`, startup, workers, schedulers or the signal producer.
-
-## Recovery ownership hotfix
-
-Post-merge coverage for PR #236 exposed a real reporting race:
-
-```text
-two recovery workers select one batch
-→ one wins the CAS and completes
-→ loser fails the claim after terminal completion
-→ old code returns the winner's cached report to the loser
-→ both callers appear to have processed the batch
-```
-
-The erasure side effect itself remained single-execution. PR #238 makes crash-recovery calls with `wait_if_running=False` return `None` after every lost claim. Live/idempotent callers still receive cached terminal reports or wait for an active owner.
-
-```text
-Triggering run:                31164988400
-Triggering result:             coverage FAILURE
-Observed suite at failure:     1 failed, 3665 passed, 17 skipped,
-                               21 deselected, 1 xfailed
-Exact hotfix head:             6cc5899afe98f53a1ee0e7fff665948b0c5a3d92
-Hotfix full CI + coverage:     31166079813 PASS
-Hotfix Docker:                 31166079825 PASS
-Hotfix aggregate evidence:     PASS
-Hotfix merge:                  f0c17de05df6c762c69974775e3c95d9e613cf47
-Post-merge full CI + coverage: 31166699745 PASS
-Post-merge Docker:             31166697770 PASS
-```
-
-The race test remains enabled under coverage. No exclusion or blind rerun was used.
-
-## Source status
-
-| Source | Subject prerequisite | Draft adapter | Runtime state |
-|---|---|---|---|
-| `StateReconciliationResult` | complete typed subject set | ✅ implemented/tested | internal, unwired |
-| `GoalProjectionResult` v2 | complete content-addressed `subject_ids` | ✅ implemented/tested | internal, unwired |
-| `OpenLoopProjectionResult` v2 | complete content-addressed `subject_ids` | ❌ absent | blocked from admission path |
-
-Every adapter must enforce:
+Every adapter enforces:
 
 ```text
 subjects(source result) == subjects(binding receipt)
-subjects(source result) ⊆ subjects(current authorization)
+subjects(source result) ⊆ subjects(authorization context)
 ```
 
-`goal_ref`, `related_goal_ref`, `loop_key` and deployment API keys are not ownership evidence.
+`goal_ref`, `related_goal_ref`, `loop_key`, free text and a deployment API key are not ownership evidence.
 
 ## Governance state
 
 PR #235 added the active workflow `Aggregate merge evidence`, exact status context `Titan aggregate merge evidence`, CODEOWNERS, fail-closed workflow aggregation, stale-base checks and documentation synchronization checks.
 
-PR #236 and PR #238 supplied live proof:
+PRs #236, #238, #239 and #240 demonstrated live transitions:
 
 ```text
 Draft → aggregate pending
@@ -168,9 +134,8 @@ Ready + every applicable exact-head workflow PASS → aggregate success
 
 Not implemented:
 
-- OpenLoop source adapter;
-- admission evaluator and trusted evaluator/rule registry;
-- current principal/tenant/subject authorization resolution;
+- trusted admission evaluator and allowlisted evaluator/rule registry;
+- current principal, tenant and subject authorization resolution;
 - current consent/lawful-basis, restriction, erasure and policy checks;
 - admission-aware facade and anti-bypass guards;
 - durable admission retention, persistence, replay and cleanup;
@@ -181,18 +146,19 @@ Not implemented:
 - answer, reminder, delivery, tool, action or compute-route authority;
 - live useful-behavior evidence.
 
-A valid receipt proves represented evidence integrity, not current permission.
+A valid hash, binding, envelope, Draft, receipt or batch proves represented evidence integrity. It does not prove current permission or runtime eligibility.
 
 ## Next safe slice
 
-After this documentation checkpoint, implement **OpenLoop source adapter only**:
+Implement **deterministic admission evaluator and allowlisted rule registry only**:
 
 ```text
-OpenLoopProjectionResult v2
-→ recompute/validate projection and result identities
-→ validate complete subject binding and source evidence
-→ create SourceEnvelope
-→ derive conservative bounded Draft proposals
+validated SourceEnvelope + complete Draft set
++ resolved evaluator/rule definition
++ caller-supplied current decision evidence
+→ deterministic allow/deny partition
+→ immutable ContinuityObservationAdmissionReceipt
+→ optional AuthorizedContinuityObservationBatch construction
 → STOP
 ```
 
@@ -200,11 +166,11 @@ Required final state:
 
 ```text
 IMPLEMENTED · TESTED · INTERNAL · UNWIRED
-NO ADMISSION DECISION
-NO AUTHORIZED BATCH
 NO PRODUCER INVOCATION
-NO PERSISTENCE
-NO RUNTIME OR USER-VISIBLE AUTHORITY
+NO PERSISTENCE OR REPLAY
+NO /query OR STARTUP WIRING
+NO FEATURE ENABLEMENT
+NO USER-VISIBLE OR ACTION AUTHORITY
 ```
 
-Admission evaluation, privacy/erasure integration, facade, persistence, runtime wiring and activation remain later independent stages.
+The evaluator must not invent current authentication, consent, restriction, erasure or policy state. Those must enter as explicit resolved evidence and fail closed when absent, stale, mismatched or non-allowlisted. Facade, privacy lifecycle, persistence, runtime wiring and activation remain later independent stages.

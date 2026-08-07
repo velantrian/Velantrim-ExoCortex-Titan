@@ -1,14 +1,14 @@
 # 🔐 Continuity Source Admission — Current Hand-off
 
 **Verified:** 2026-08-07  
-**Current implementation `main`:** `f0c17de05df6c762c69974775e3c95d9e613cf47`  
+**Current implementation `main`:** `42aa79338c57e9b9a67c3e3c08dd948b60c5541f`  
 **Status:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`  
 **Documentation impact:** `GITHUB_AND_NOTION`  
 **Notion records:** Titan Hub; Continuity Source Admission — Architecture
 
-This is the continuation map for source-admission work. Earlier hand-offs are provenance only and do not override `CURRENT_STATE.md` or this checkpoint.
+This is the current continuation map. Earlier hand-offs and research progress counters are provenance only and do not override `CURRENT_STATE.md`, `KNOWN_RISKS.md` or this checkpoint.
 
-## Read before continuing
+## Mandatory reading order
 
 1. `AGENTS.md`;
 2. `docs/ai/README.md`;
@@ -37,47 +37,25 @@ Inspect only code/tests relevant to the next bounded slice.
 | Aggregate merge evidence | #235 | `d2edd3882b109e572ff1c94fed1754f486c9b980` | active/observed; ruleset not enabled |
 | Goal result → Draft adapter | #236 | `2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d` | tested/internal/unwired |
 | Recovery ownership hotfix | #238 | `f0c17de05df6c762c69974775e3c95d9e613cf47` | exact-head and post-merge tested |
+| OpenLoop result → Draft adapter | #240 | `42aa79338c57e9b9a67c3e3c08dd948b60c5541f` | tested/internal/unwired |
 
-## Goal adapter validation
+## OpenLoop adapter validation
 
 ```text
-Exact tested head:             be5b50315c1995d5eb946f3eae7ead58be2f3d8e
-Full Titan CI + coverage:      31164336300 PASS
-Continuity contracts:          31164336323 PASS
-Docker hardening:              31164336269 PASS
-Aggregate merge evidence:      31164890308 PASS
+Exact tested head:             9623d60f262d00ab4551f5342f7ef1792723e594
+Full Titan CI + coverage:      31168858623 PASS
+Continuity contracts:          31168858622 PASS
+Docker hardening:              31168858691 PASS
+Aggregate merge evidence:      31200451054 PASS
 Unresolved review threads:     0
-Merge SHA:                     2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d
-Post-merge Continuity:         31164986649 PASS
-Post-merge Docker:             31164989870 PASS
-Post-merge ordinary pytest:    PASS in 31164988400
-Post-merge coverage:           FAILURE in 31164988400 → fixed by PR #238
+Merge SHA:                     42aa79338c57e9b9a67c3e3c08dd948b60c5541f
+Post-merge full CI + coverage: 31200627655 PASS
+Post-merge Continuity:         31200627704 PASS
+Post-merge Docker:             31200627678 PASS
+Post-merge aggregate:          31200627647 PASS
 ```
 
-## Recovery hotfix validation
-
-```text
-Triggering coverage run:       31164988400 FAILURE
-Triggering assertion:          recovery workers both reported the batch
-Exact hotfix head:             6cc5899afe98f53a1ee0e7fff665948b0c5a3d92
-Full Titan CI + coverage:      31166079813 PASS
-Docker hardening:              31166079825 PASS
-Aggregate merge evidence:      PASS
-Unresolved review threads:     0
-Merge SHA:                     f0c17de05df6c762c69974775e3c95d9e613cf47
-Post-merge full CI + coverage: 31166699745 PASS
-Post-merge Docker:             31166697770 PASS
-```
-
-The hotfix does not alter erasure selection, CAS fencing, lease ownership or deletion. It corrects result ownership:
-
-```text
-recovery worker loses claim → return None
-live/idempotent caller sees terminal batch → return cached report
-live caller sees active owner → wait for completion
-```
-
-The existing real two-worker test remains enabled under coverage, and a deterministic lost-claim regression was added. No exclusion or blind rerun was used.
+Codex was unavailable for substantive review because its usage limit was reached; this is not approval evidence.
 
 ## Implemented primary contracts
 
@@ -89,7 +67,7 @@ The existing real two-worker test remains enabled under coverage, and a determin
 6. `ContinuityObservationAdmissionReceipt`;
 7. `AuthorizedContinuityObservationBatch`.
 
-These are evidence contracts, not runtime permission.
+These are immutable evidence contracts. The receipt/batch constructors validate structure and provenance links but do not resolve whether caller-supplied evaluator/rule/current decision evidence is trusted.
 
 ## Current source status
 
@@ -97,25 +75,40 @@ These are evidence contracts, not runtime permission.
 
 ```text
 StateReconciliationResult
-→ canonical identity checks
-→ complete subject-set and binding validation
+→ canonical identity and complete subject validation
+→ SourceBindingReceipt + AuthorizationContext evidence
 → SourceEnvelope
 → bounded ObservationDraft proposals
 → STOP
 ```
 
-Implemented/tested/internal/unwired. No authentication, admission, persistence, producer invocation or runtime effect.
+Implemented/tested/internal/unwired.
 
-### Goal
+### Goal v2
 
 ```text
 GoalProjectionResult v2
-→ projection/result identity recomputation
-→ complete included/excluded decision validation
-→ exact result/binding subject equality
-→ complete result/projection/snapshot/attestation/decision evidence
+→ projection/result and decision identity validation
+→ exact complete subject and evidence binding
 → SourceEnvelope
-→ active attested Goal → EVIDENCE_COVERAGE_ITEM Draft
+→ active + attested + included Goal
+→ EVIDENCE_COVERAGE_ITEM Draft
+→ STOP
+```
+
+Implemented/tested/internal/unwired. Completed, cancelled and excluded goals derive no positive Draft.
+
+### OpenLoop v2
+
+```text
+OpenLoopProjectionResult v2
+→ projection/result identity recomputation
+→ canonical status/reason/time validation
+→ exact complete subject binding
+→ complete projection/signal/resolution reference evidence
+→ SourceEnvelope
+→ OPEN or OVERDUE
+→ EVIDENCE_COVERAGE_ITEM Draft
 → STOP
 ```
 
@@ -123,33 +116,28 @@ Implemented/tested/internal/unwired.
 
 Safety boundary:
 
-- completed, cancelled and excluded Goals emit no positive Draft;
-- title, description, priority and keywords cannot create importance, sensitivity, reminders, answers, tools or actions;
-- adapter creates no admission receipt or authorized batch;
-- adapter invokes no producer and persists nothing.
-
-### OpenLoop
-
-Schema `continuity.open_loop_projection.v2` has complete content-addressed subject identity and cross-subject resolution rejection. Source adapter remains absent.
-
-The current result contains projection IDs plus signal/resolution references, but not the full original signal/resolution payloads. The next adapter can recompute projection/result identities and require all signal/resolution IDs as binding evidence; it must not claim to recompute unavailable source payload identities unless the contract is separately expanded.
+- `RESOLVED` and `NOT_YET_OPEN` derive no positive Draft;
+- summary, kind, due date, related goal and loop key cannot create reminders, schedules, actions, current-state requests, importance, sensitivity, answers, tools, delivery or compute authority;
+- signal/resolution payloads are not embedded in the result, so their IDs are required as binding evidence rather than falsely recomputed;
+- receipt issuance cannot precede the bound source snapshot;
+- result-level `as_of` remains owned by the result contract, not each projection.
 
 ## Source eligibility matrix
 
-| Source | Subject prerequisite | Draft adapter |
-|---|---|---|
-| State | complete typed subject set | ✅ internal/unwired |
-| Goal v2 | complete content-addressed subject set | ✅ internal/unwired |
-| OpenLoop v2 | complete content-addressed subject set | ❌ absent |
+| Source | Subject prerequisite | Draft adapter | Runtime state |
+|---|---|---|---|
+| State | complete typed subject set | ✅ | internal/unwired |
+| Goal v2 | complete content-addressed subject set | ✅ | internal/unwired |
+| OpenLoop v2 | complete content-addressed subject set | ✅ | internal/unwired |
 
-Every adapter must enforce:
+Every adapter enforces:
 
 ```text
 subjects(source result) == subjects(binding receipt)
-subjects(source result) ⊆ subjects(current authorization)
+subjects(source result) ⊆ subjects(authorization context)
 ```
 
-Never use `goal_ref`, `related_goal_ref`, `loop_key` or a deployment API key as ownership evidence.
+Never use `goal_ref`, `related_goal_ref`, `loop_key`, free text or a deployment API key as ownership evidence.
 
 ## Non-authority boundary
 
@@ -158,7 +146,7 @@ No accepted change authorizes:
 - current authentication or authorization inference;
 - consent/lawful-basis decisions;
 - restriction or erasure override;
-- admission decisions or authorized batches;
+- trusting caller-supplied evaluator/rule identity;
 - producer invocation;
 - persistence or replay lifecycle;
 - Canon/ESM/TruthGate/GoalStack writes;
@@ -170,20 +158,20 @@ No accepted change authorizes:
 ```text
 Projection
 → Draft proposal
-→ Admission evidence
-→ Current policy/authorization/privacy decision
-→ Approved facade
-→ Explicit wiring
-→ Explicit enablement
-→ Observed runtime evidence
+→ resolved/allowlisted admission decision
+→ immutable receipt and bounded batch
+→ current policy/authorization/privacy re-check
+→ approved facade
+→ explicit wiring
+→ explicit enablement
+→ observed runtime evidence
 ```
 
 These remain separate stages.
 
 ## Remaining blockers
 
-- OpenLoop source adapter;
-- admission evaluator and allowlisted evaluator/rule registry;
+- deterministic admission evaluator and allowlisted evaluator/rule registry;
 - current principal/tenant/subject authorization resolution;
 - current consent/lawful-basis verification;
 - current restriction, erasure and policy checks;
@@ -201,7 +189,7 @@ These remain separate stages.
 Primary neutral contracts        7/7 = 100%
 State adapter                    1/1 = 100%
 Goal adapter                     1/1 = 100%
-OpenLoop adapter                 0/1 =   0%
+OpenLoop adapter                 1/1 = 100%
 Admission evaluator runtime      0/1 =   0%
 Admission-aware facade           0/1 =   0%
 Privacy/erasure integration      0/1 =   0%
@@ -209,45 +197,60 @@ Runtime wiring                   0/1 =   0%
 Runtime enabled                  0/1 =   0%
 Live useful-behavior evidence    0/1 =   0%
 
-Continuity live readiness        4/12 = 33.3%
+Continuity live readiness        5/12 = 41.7%
 ```
+
+Subject-binding rows are completed prerequisites and are not separately counted in the 12-capability readiness denominator.
 
 ## Next safe slice
 
-After canonical documentation merge, implement **OpenLoop source adapter only**.
+After this canonical documentation checkpoint merges, implement **deterministic admission evaluator and allowlisted rule registry only**.
 
-Required boundary:
+Required shape:
 
 ```text
-OpenLoopProjectionResult v2
-→ recompute projection/result identities
-→ validate canonical status/reason relationships
-→ validate complete subject binding and signal/resolution evidence
-→ create SourceEnvelope
-→ derive conservative bounded Draft proposals
+ContinuitySourceEnvelope
++ complete ContinuityObservationDraft set
++ resolved evaluator definition
++ resolved rule definition
++ explicit current decision evidence
+→ fail-closed per-Draft allow/deny partition
+→ ContinuityObservationAdmissionReceipt
+→ optional AuthorizedContinuityObservationBatch construction
 → STOP
 ```
 
-The safest initial mapping is evidence-only. `OPEN`, `OVERDUE`, `RESOLVED`, due dates, summaries and kinds must not automatically become reminders, actions, current-state requests, sensitivity or delivery authority.
+Required rules:
+
+- evaluator and rule identifiers must resolve to immutable, content-addressed allowlisted definitions;
+- caller-supplied strings alone are untrusted;
+- evaluation time is explicit, timezone-aware and within authorization validity;
+- current decision evidence must explicitly cover principal, tenant, complete subjects, purpose, policy, restriction and erasure domains;
+- missing, stale, withdrawn, mismatched, unknown or non-allowlisted evidence rejects deterministically;
+- every Draft is admitted or rejected with a stable reason code and nonempty evidence;
+- no silent partial omission;
+- batch construction, when used, includes only admitted Drafts and complete receipts;
+- no network, DB, environment, wall-clock or mutable-global reads in the pure evaluator.
 
 The PR must not:
 
-- make admission decisions or create authorized batches;
 - invoke the signal producer;
-- persist or export runtime state;
+- persist or replay admission artifacts;
+- export a live public facade;
 - wire `/query`, startup, workers or schedulers;
-- add a feature flag;
-- write Canon/TruthGate/GoalStack;
-- create answers, reminders, tools or actions.
+- add a feature flag or activation ADR;
+- write Canon, ESM, TruthGate or GoalStack;
+- create answers, reminders, delivery, tools, actions or compute authority.
 
 ## Definition of done for the next slice
 
 - exact base/head SHA;
 - bounded implementation + adversarial tests;
-- canonical projection/result identity recomputation;
-- complete subject/evidence validation;
-- conservative mapping with no hidden authority;
-- malformed, stale and mismatched inputs fail closed;
+- immutable allowlisted evaluator/rule definitions;
+- deterministic complete partition with stable reason codes;
+- explicit current-decision evidence and staleness checks;
+- malformed, missing, cross-tenant, cross-subject and stale inputs fail closed;
+- no hidden I/O, persistence or runtime authority;
 - Ruff, blocking mypy, Continuity, full pytest, coverage, Docker and aggregate status PASS;
 - unresolved review threads `0`;
 - GitHub and Notion synchronized;
