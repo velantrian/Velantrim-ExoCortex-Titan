@@ -45,6 +45,12 @@ jobs:
       - name: Architecture freeze guard (ADR required for new authority)
         run: python scripts/check_architecture_freeze.py
 
+      - name: Machine-readable project-state guard
+        run: python scripts/check_project_state.py
+
+      - name: Portable KB graph integrity guard
+        run: python scripts/validate_kb_graph.py kb_graph.json
+
       - name: Ruff check (lint)
         run: ruff check core/ --output-format=github
 

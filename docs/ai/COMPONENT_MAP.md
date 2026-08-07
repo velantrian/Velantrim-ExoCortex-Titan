@@ -1,6 +1,8 @@
 # 🗺️ Component and Authority Map
 
-**Verified against:** `main@42aa79338c57e9b9a67c3e3c08dd948b60c5541f`  
+**Repository head verified:** `main@9dfbfe5822221550389d95b751c8d85b044f6372`  
+**Implementation baseline:** `42aa79338c57e9b9a67c3e3c08dd948b60c5541f`  
+**Machine-readable state:** [`docs/state/project_state.json`](../state/project_state.json)  
 Use exact SHAs, callers and tests. Presence is not wiring; passing tests are not runtime authority.
 
 ## Continuity accepted lineage
@@ -20,17 +22,34 @@ Use exact SHAs, callers and tests. Presence is not wiring; passing tests are not
 | OpenLoop subject binding v2 | `659c30e0e8023c48fdf68be8583401fc042a1ab8` | `goal_open_loop.py` | contract correction, unwired |
 | Goal Draft adapter | `2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d` | `goal_source_adapter.py` | internal, unwired |
 | OpenLoop Draft adapter | `42aa79338c57e9b9a67c3e3c08dd948b60c5541f` | `open_loop_source_adapter.py` | internal, unwired |
+| Docs checkpoint | `9dfbfe5822221550389d95b751c8d85b044f6372` | `docs/ai/*` | documentation only |
 
 ## Architecture and governance
 
 | Responsibility | Primary surface | Current owner/state |
 |---|---|---|
 | Accepted admission architecture | `docs/research/CONTINUITY_SOURCE_ADMISSION_ARCHITECTURE.md` | decision and non-authority boundary |
-| Canonical current status | `docs/ai/CURRENT_STATE.md` | exact implementation/test/wiring state |
+| Canonical current status | `docs/ai/CURRENT_STATE.md` + `docs/state/project_state.json` | exact implementation/test/wiring state |
 | Risks and required proof | `docs/ai/KNOWN_RISKS.md` | authority, privacy, erasure and operations |
 | Current continuation map | `docs/ai/CONTINUITY_SOURCE_ADMISSION_HANDOFF.md` | next bounded slice |
 | Merge evidence | `.github/workflows/aggregate-merge-evidence.yml` | active, observed, not required by ruleset |
 | Authority-sensitive ownership | `.github/CODEOWNERS` | advisory until branch rules require review |
+
+## Knowledge-base asset boundary
+
+| Responsibility | Primary surface | Authority |
+|---|---|---|
+| Accepted source parsing | `core/world_skills_ingest.py` | source extraction only |
+| Deterministic graph construction | `core/knowledge_linker.py` | graph proposal/construction only |
+| SQLite build + portable export | `scripts/build_kb_graph.py` | build tooling; no runtime authority |
+| Portable JSON export | `scripts/export_kb_graph.py` | artifact serialization only |
+| SQLite quality audit | `scripts/audit_kb_graph.py` | quality evidence only |
+| Portable graph integrity | `scripts/validate_kb_graph.py` | `ARTIFACT_INTEGRITY_ONLY` |
+| Release SHA/size verification | `scripts/verify_release_bundle.py` | bundle integrity only |
+| Preservation/governance contract | `docs/knowledge/KB_GRAPH_GOVERNANCE.md` | documentation contract |
+
+`kb_graph.json` remains a preserved versioned knowledge asset. Integrity validation does
+not establish claim truth, admission to Canon, current permission or runtime authority.
 
 ## Primary neutral contracts
 
