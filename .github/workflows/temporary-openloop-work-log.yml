@@ -1,0 +1,34 @@
+name: Temporary OpenLoop work-log append
+
+on:
+  push:
+    branches:
+      - docs/continuity-openloop-adapter-checkpoint
+    paths:
+      - .github/workflows/temporary-openloop-work-log.yml
+
+permissions:
+  contents: write
+
+jobs:
+  append-and-clean:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs/continuity-openloop-adapter-checkpoint
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Append exact work-log entry and remove temporary files
+        run: python .github/scripts/temporary_append_openloop_work_log.py
+      - name: Commit final documentation diff
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/ai/WORK_LOG.md .github/scripts/temporary_append_openloop_work_log.py .github/workflows/temporary-openloop-work-log.yml
+          git diff --cached --quiet && exit 1
+          git commit -m 'docs(continuity): record OpenLoop adapter work log'
+          git push origin HEAD:docs/continuity-openloop-adapter-checkpoint
