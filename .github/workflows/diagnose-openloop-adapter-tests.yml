@@ -1,0 +1,49 @@
+name: Diagnostic — OpenLoop adapter test details
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "core/continuity/open_loop_source_adapter.py"
+      - "tests/test_continuity_open_loop_source_adapter*.py"
+      - ".github/workflows/diagnose-openloop-adapter-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install focused test dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[server,dev,parsers,retrieval,embeddings,graph-lab]"
+      - name: Publish focused pytest failure
+        shell: bash
+        env:
+          VELANTRIM_DB_PATH: ${{ runner.temp }}/velantrim-openloop-diagnostic.db
+          VELANTRIM_NGRAM_DB: ${{ runner.temp }}/velantrim-openloop-ngram.db
+          VELANTRIM_API_KEY: diagnostic-test-key
+        run: |
+          set +e
+          python -m pytest \
+            tests/test_continuity_open_loop_source_adapter.py \
+            tests/test_continuity_open_loop_source_adapter_result_boundary.py \
+            -vv --tb=long -x 2>&1 | tee /tmp/pytest.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            python - <<'PY'
+          from pathlib import Path
+          text = Path('/tmp/pytest.log').read_text(encoding='utf-8', errors='replace')
+          tail = '\n'.join(text.splitlines()[-80:])
+          escaped = tail.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print(f'::error title=Focused OpenLoop adapter pytest failure::{escaped}')
+          PY
+          fi
+          exit "$status"
