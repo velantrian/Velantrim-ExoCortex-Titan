@@ -170,7 +170,6 @@ def _projection_payload(projection: OpenLoopProjection) -> dict[str, object]:
         "opened_at": _dt(projection.opened_at),
         "due_at": _dt(projection.due_at) if projection.due_at else None,
         "resolution_ids": list(projection.resolution_ids),
-        "as_of": _dt(projection.as_of),
         "review_required": projection.review_required,
     }
 
@@ -208,10 +207,6 @@ def _validate_projection_semantics(
     if projection.policy_version != result.policy_version:
         raise ContinuitySourceAdmissionError(
             "OpenLoop projection policy_version does not match result policy"
-        )
-    if projection.as_of != result.as_of:
-        raise ContinuitySourceAdmissionError(
-            "OpenLoop projection as_of does not match result as_of"
         )
     if projection.user_id not in result.subject_ids:
         raise ContinuitySourceAdmissionError(
