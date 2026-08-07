@@ -1,30 +1,31 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-08-06  
-**Current verified implementation head:** `81836b4f715470c50a4c6c7768a2cde7478568c8`
+**Snapshot:** 2026-08-07  
+**Current verified implementation head:** `659c30e0e8023c48fdf68be8583401fc042a1ab8`
 
-Code presence and test coverage do not close a risk. Closure requires correct authority ownership, focused and full validation, wiring, activation controls and operational evidence.
+Code presence and tests do not establish wiring, enablement, authority or production safety. Use exact states: `PROPOSED`, `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED`, `OBSERVED`.
 
 ## Closed or materially reduced in the current Continuity cycle
 
-- the seven primary source-admission contracts are implemented, tested, internal and unwired;
-- State reconciliation now has an explicit deterministic Draft adapter with exact complete-subject validation;
-- Goal projection schema v2 preserves explicit subject identity through attestation, projection, decision and result identity;
-- cross-subject Goal attestations fail closed;
-- the State and Goal slices add no runtime, Canon, TruthGate, action, reminder or compute-route authority.
+- seven primary source-admission contracts are implemented, tested, internal and unwired;
+- State reconciliation has a deterministic Draft adapter with complete-subject validation;
+- Goal projection schema v2 preserves subject identity through attestation, projection, decision and result identity;
+- OpenLoop projection schema v2 preserves subject identity through signal, resolution, projection and result identity;
+- cross-subject Goal attestations and OpenLoop resolutions fail closed;
+- a direct OpenLoop hash-regression test proves `user_id` changes every content-addressed identity in the chain;
+- these slices add no runtime, Canon, TruthGate, action, reminder or compute-route authority.
 
-These improvements reduce evidence-integrity gaps. They do not close authorization, privacy, runtime or operational risks.
+The former P0 OpenLoop subject-identity gap is closed. Authorization, privacy, admission, runtime and operational risks remain open.
 
-## P0 — Runtime authority remains absent
+## P0 — Runtime authority boundary remains absent
 
+- Goal and OpenLoop source adapters do not exist;
 - admission evaluator runtime does not exist;
 - admission-aware facade does not exist;
-- current authorization, consent/lawful-basis, restriction, policy and erasure re-checks are not connected;
-- Continuity source-admission artifacts are not wired into `/query`, startup, workers, schedulers or another production route;
-- no feature flag, operational enablement, SLO, alert, rollback or operator approval workflow exists;
-- no live runtime evidence demonstrates safe or useful behavior.
-
-Required interpretation:
+- current authorization, consent/lawful-basis, restriction, policy and erasure checks are not connected;
+- source-admission artifacts are not wired into `/query`, startup, workers or schedulers;
+- no feature flag, operator approval workflow, SLO, alert, rollback or kill-switch evidence exists;
+- no live evidence demonstrates safe or useful behavior.
 
 ```text
 IMPLEMENTED + TESTED
@@ -33,203 +34,168 @@ IMPLEMENTED + TESTED
 ≠ OBSERVED
 ```
 
-## P0 — OpenLoop subject identity
+## P0 — Repository governance is not enforced
 
-`OpenLoopSignal`, `OpenLoopProjection` and `OpenLoopProjectionResult` still lack explicit tenant/user/subject identity.
+`main` remains unprotected and repository rulesets are absent.
 
-Risks:
+Consequences:
 
-- source ownership can be lost between layers;
-- `related_goal_ref` can be mistaken for authorization evidence;
-- a result digest cannot prove which subject owns the result;
-- a future adapter could silently infer or widen scope;
-- multi-subject or ambiguous data could cross an authorization boundary.
+- GitHub does not require PR review or resolved conversations;
+- failed, cancelled, missing or stale checks do not technically block merge;
+- direct push and force-push restrictions are not enforced by repository settings;
+- documentation synchronization remains a process rule rather than a merge gate.
 
-Required next correction:
+Required control:
 
-- mandatory explicit subject identity;
-- schema-version update;
-- subject included in canonical payload and content-addressed IDs;
-- complete result subject set;
-- fail-closed ambiguous and cross-subject handling;
-- no adapter or runtime wiring in the same PR.
+- require pull requests and at least one approval;
+- dismiss stale approvals;
+- require conversation resolution;
+- require an always-present aggregate merge gate;
+- require branch up to date;
+- block force pushes and deletion;
+- restrict direct pushes;
+- add CODEOWNERS for Canon, policy, Continuity, migrations, workflows and security/deployment surfaces.
 
 ## P1 — Evidence is not current authority
 
-Content-addressed IDs and immutable receipts prove integrity of represented payloads. They do not prove that permission is current.
+Content-addressed IDs and immutable receipts prove represented payload integrity. They do not prove current permission.
 
 Residual risks:
 
-- authentication receipts may be forged, expired, revoked or unresolved;
-- evaluator and rule identifiers are caller-supplied evidence until resolved and allowlisted;
-- authorization may have expired or been withdrawn after receipt creation;
+- authentication evidence may be forged, expired, revoked or unresolved;
+- evaluator/rule identifiers are untrusted until resolved and allowlisted;
+- authorization may expire or be withdrawn after receipt creation;
 - consent or lawful basis may no longer apply;
-- current policy may be incompatible with historical policy evidence;
+- policy may be incompatible with historical evidence;
 - a subject may be restricted or erased after an artifact was issued;
-- source evidence may be stale even when structurally valid.
-
-Rules:
+- source evidence may be stale despite structural validity.
 
 ```text
 Integrity ≠ Authorization
-Evidence ≠ Authority
 Admission receipt ≠ Permanent permission
 Authorized batch ≠ Runtime permission
 ```
 
-## P1 — Bare v1 observations are not live-authorized
+## P1 — Bare observations are not live-authorized
 
-`ContinuitySignalObservation` v1 does not bind tenant, subject, principal, purpose, retention or erasure state.
+`ContinuitySignalObservation` remains valid only for deterministic shadow aggregation. It does not carry the complete current tenant, principal, purpose, consent, restriction, retention or erasure decision needed for live use.
 
-It remains valid for pure deterministic shadow aggregation only.
+Required proof:
 
-Risks:
-
-- a future caller may bypass the batch/receipt boundary;
-- producer allowlists may be misused as subject authorization;
-- independently persisted or transported v1 observations may lose required scope evidence;
-- bare producer calls may be wired as a false trust boundary.
-
-Required proof before live use:
-
-- only an admission-aware facade accepts live-capable input;
-- the facade accepts a complete `AuthorizedContinuityObservationBatch`, not bare v1 values;
-- static/runtime guards prevent bypass from `/query`, startup, workers, schedulers and advisory paths;
-- current authorization, restriction and erasure state are re-checked before producer invocation.
+- only an admission-aware facade may accept live-capable input;
+- the facade accepts a complete `AuthorizedContinuityObservationBatch`, never bare observations;
+- static/runtime guards prevent bypass from API, startup, worker, scheduler and advisory paths;
+- current authorization, restriction, policy and erasure state are re-checked before producer invocation.
 
 ## P1 — Privacy, restriction, retention and erasure
 
 - current consent/lawful-basis evaluation is absent;
-- current restriction registry integration is absent;
-- current erasure-domain validation is absent;
+- current restriction and erasure-domain integration is absent;
 - admission artifacts have no accepted durable retention/replay/cleanup lifecycle;
-- derived State/Goal/OpenLoop artifacts are not yet proven erasure-addressable end to end;
-- no proof exists for erasure during queued, persisted, replayed or partially evaluated admission work.
+- derived State/Goal/OpenLoop artifacts are not proven erasure-addressable end to end;
+- no proof covers deletion during queued, persisted, replayed or partially evaluated admission work;
+- multi-subject erasure and reappearance handling are not proven for future Continuity stores.
 
 Historical permission must never override current deletion or restriction state.
 
-## P1 — State Draft adapter limitations
+## P1 — Source adapter limitations
 
-PR #229 is implemented and tested, but remains internal and unwired.
+### State
 
-Residual risks:
+The State Draft adapter is internal and unwired. It validates structural identity and complete subject binding, but does not authenticate the source owner, decide admission, persist artifacts or establish current authorization.
 
-- source-owner authenticity is not independently established by the adapter;
-- binding-receipt evidence can be structurally valid without current authorization;
-- bounded derivation rules need future semantic calibration;
-- large input/resource limits are not an accepted live policy;
-- no evaluator decides whether a Draft may become an admitted observation;
-- no persistence, replay or operator visibility exists.
+### Goal
 
-The adapter must remain a deterministic proposal producer, not an admission evaluator.
-
-## P1 — Goal projection limitations
-
-PR #230 closes subject identity loss in the projection contract, but:
+Goal subject binding v2 is complete, but:
 
 - no Goal source adapter exists;
-- `user_id` vocabulary is still a legacy string rather than an accepted end-user identity provider;
+- `user_id` remains a legacy string vocabulary rather than an accepted end-user identity provider;
 - subject binding does not establish tenant, principal, purpose, consent or current permission;
-- multi-subject result admission rules remain future work;
-- schema v2 compatibility must be preserved across every future serializer, fixture and adapter.
+- future adapters must validate the complete subject set and must not infer ownership from `goal_ref`.
 
-A future Goal adapter must validate the complete subject set against binding and authorization evidence. It must not infer ownership from `goal_ref`.
+### OpenLoop
+
+OpenLoop subject binding v2 is complete, but:
+
+- no OpenLoop source adapter exists;
+- subject binding does not establish tenant, principal, purpose, consent or current permission;
+- future adapters must validate the complete subject set and must not infer ownership from `loop_key` or `related_goal_ref`;
+- schema v2 compatibility must be preserved in future serializers, adapters and replay fixtures.
 
 ## P1 — Concurrency and flaky evidence
 
-An existing erasure recovery concurrency test has demonstrated an intermittent race during a coverage-instrumented run.
-
-PR #229 exact head passed all required workflows after retry, but the first failure must remain visible.
-
-Risks:
-
-- retry can hide real scheduling-sensitive defects;
-- `coverage.py` instrumentation can interact with thread trace hooks;
-- a green retry does not prove unconditional first-attempt stability;
-- erasure/recovery behavior under concurrent load remains a high-value stress surface.
+An existing erasure recovery test has shown an intermittent race during coverage instrumentation. A later unchanged exact head passed on retry, but the first failure remains risk evidence.
 
 Required action:
 
-- preserve the test as blocking where instrumentation permits;
-- record first failure, retry, exact unchanged head and final result;
+- preserve blocking tests where instrumentation permits;
+- record first failure, unchanged-head retry and final result;
 - investigate recurrence rather than normalizing repeated retries;
-- add or refine deterministic synchronization/fault evidence if the race repeats.
+- prefer deterministic synchronization and fault injection over timing-based assertions.
 
-## P1 — GitHub ↔ Notion documentation drift
+## P1 — GitHub ↔ Notion drift
 
-Code-only merges can temporarily leave public GitHub documentation behind an already updated Notion record.
-
-Observed example:
-
-- PR #229 and #230 were recorded in Notion;
-- `CURRENT_STATE.md`, `WORK_LOG.md`, `COMPONENT_MAP.md` and `KNOWN_RISKS.md` still described the pre-#229/#230 state.
+PR #229/#230 and the initial state of PR #232 demonstrated that code, GitHub AI context and Notion can temporarily disagree.
 
 Risks:
 
-- AI agents may repeat completed work;
-- reviewers may misclassify source eligibility;
-- current `main` SHA and live-readiness counters may be wrong;
-- private/workspace history may appear more current than the public canonical technical record.
+- agents repeat completed work;
+- reviewers use superseded eligibility matrices;
+- current SHA and readiness counters become inaccurate;
+- historical Draft blocks appear to be current truth.
 
 Required control:
 
-- documentation impact classification on every PR;
-- same-cycle updates for `GITHUB_AND_NOTION` changes;
-- post-merge checkpoint when final merge SHA or CI evidence was unavailable before merge;
-- GitHub remains sufficient without Notion access;
-- no implementation slice starts while material canonical docs are known stale.
+- one current snapshot at the top of GitHub and Notion records;
+- same-cycle synchronization for `GITHUB_AND_NOTION` changes;
+- explicit structured handoff only when Notion is unavailable;
+- post-merge checkpoint with final merge SHA and CI;
+- no new implementation slice while canonical status is materially stale.
 
 ## P1 — Existing Continuity shadow stack
 
-R1–R5B and the trusted signal producer are in `main`, tested and independently reviewed. The complete path exists only as a disabled deterministic in-memory shadow composition.
+R1–R5B and the signal producer are tested shadow components, not a live cognitive runtime.
 
 Residual risks:
 
-- typed records can still be wrong or forged without trusted/authenticated producers;
-- caller-supplied Gate policy facts have no accepted single live owner;
-- Advisory intent resolution does not authenticate subject or tenant;
-- replay equality proves deterministic artifacts, not semantic correctness;
-- externally supplied safety counters can under-report effects;
-- no accepted bounded input/resource policy exists for large batches;
-- `ThreadWeaver` remains potentially O(n²);
-- process-local results and receipts have no durable retention/erasure lifecycle;
-- careless future wiring could convert evaluation into unintended authority.
+- typed records may be semantically wrong despite valid hashes;
+- trusted source adapters and current authorization are absent;
+- replay equality proves determinism, not usefulness or correctness;
+- process-local outputs have no durable retention/erasure lifecycle;
+- `ThreadWeaver` may remain expensive for large batches;
+- careless future wiring could convert advisory evidence into unintended authority.
 
 ## P1 — Identity
 
-`core/identity_layer.py` remains formally quarantined as `LEGACY/UNWIRED`. It lacks the accepted candidate/evidence/approval/version/receipt/rollback lifecycle. Do not add production callers, persistence authority or a parallel identity-admission path.
+`core/identity_layer.py` remains `LEGACY/UNWIRED`. A shared deployment API key is not end-user, tenant or subject authorization. Do not create a parallel identity-admission path without an accepted owner, lifecycle, receipts, rollback and erasure model.
 
-A shared deployment API key is not end-user, tenant or subject authorization.
+## P1 — Projections and adaptive memory
 
-## P1 — Adaptive updates and projections
+- projection dispatcher is implemented/tested but lacks startup lifecycle, backlog monitoring and observed operation;
+- GRAPH/VECTOR projection targets and executable REMOVE semantics are not active;
+- ARM-03 remains heuristic, proposal-only, default-off and unwired;
+- ARM-04 admission and ARM-05 parallel context assembly remain absent;
+- persistent embedding projection is not the canonical live dense read path.
 
-- RFC-0084 remains `PROPOSED`, has no implementation module or runtime wiring, forbids Canon writes and requires operator approval;
-- projection dispatcher startup/runtime wiring remains deliberately absent;
-- outbox growth, retry/dead-letter operations and long-horizon operational metrics require explicit ownership before activation.
+## P1 — Coverage and supply-chain posture
 
-## P1 — Coverage and CI
-
-The `74%` floor is real and blocking, but it is only a regression ratchet:
-
-- high aggregate coverage can hide low-coverage critical modules;
-- coverage does not prove semantic correctness, security or realistic production behavior;
-- instrumentation-sensitive concurrency tests require honest separate treatment;
-- optional dependency installation is heavy and may consume excessive CI time/bandwidth;
-- the floor should rise only with executable tests and must not be lowered silently.
+- the `core ≥74%` floor is a regression ratchet, not a security or correctness proof;
+- aggregate coverage can hide critical low-coverage modules;
+- concurrency instrumentation requires explicit treatment;
+- dependency constraints remain broad and no complete lock/reproducibility policy is established;
+- GitHub Actions use major-version tags rather than immutable action SHAs.
 
 ## P1 — Other repository risks
 
-- projection dispatcher is implemented and tested but not runtime-wired or operationally observed;
-- production compose contracts remain materially inconsistent;
-- store-wide contention, crash/restart and disk-full evidence remains incomplete on some storage paths;
-- build and artifact reproducibility is improved but not complete across every supported artifact;
-- Canon mutation ownership is not proven unified across every family;
 - `server.py` remains a composition monolith;
-- wheel and container require separately supported artifact contracts;
-- ARM-03 remains heuristic, proposal-only, default-off and unwired.
+- reverse-proxy trust and client-IP rate limiting require an explicit deployment contract;
+- Content Security Policy is absent from current security headers;
+- background/shadow worker lifecycle ownership is incomplete;
+- storage metadata cache invalidation and the unwired `IndexCoordinator` API mismatch remain technical debt;
+- production compose naming and defaults remain ambiguous;
+- durable answer/retrieval/policy replay and operational SLOs remain incomplete;
+- independent security audit and penetration testing have not been completed.
 
 ## Risk update rule
 
-Use exact states: `PROPOSED`, `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED`.
-
-A risk is not closed by a class existing, a test passing once, a retry becoming green, a receipt being content-addressed, or a Notion page being current. Closure requires the specific missing authority, integration and operational proof.
+A risk is not closed by a class existing, a test passing once, a retry becoming green, a receipt being content-addressed or a Notion page being current. Closure requires the specific missing authority, integration, deployment and observed evidence.
