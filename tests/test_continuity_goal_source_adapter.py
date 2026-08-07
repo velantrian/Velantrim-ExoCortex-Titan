@@ -13,7 +13,6 @@ from core.continuity.goal_open_loop import (
     GoalBasis,
     GoalProjector,
     GoalRecordSnapshot,
-    GoalStatus,
 )
 from core.continuity.goal_source_adapter import (
     GOAL_SOURCE_COMPONENT_VERSION,
