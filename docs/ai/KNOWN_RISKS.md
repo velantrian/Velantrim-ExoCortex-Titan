@@ -1,7 +1,9 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-07  
-**Current implementation `main`:** `42aa79338c57e9b9a67c3e3c08dd948b60c5541f`
+**Repository `main` head at verification:** `9dfbfe5822221550389d95b751c8d85b044f6372`  
+**Latest implementation-bearing baseline:** `42aa79338c57e9b9a67c3e3c08dd948b60c5541f`  
+**Machine-readable state:** [`docs/state/project_state.json`](../state/project_state.json)
 
 Code and passing tests do not establish wiring, enablement, authority or production safety. Keep `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` separate.
 
@@ -17,7 +19,9 @@ Code and passing tests do not establish wiring, enablement, authority or product
 - aggregate merge evidence and CODEOWNERS are active in `main`;
 - PRs #236, #238, #239 and #240 demonstrated exact-head Draft/Ready aggregation;
 - recovery workers no longer report terminal results for batches they failed to claim;
-- the recovery race passes ordinary and coverage modes before and after the hotfix merge.
+- the recovery race passes ordinary and coverage modes before and after the hotfix merge;
+- repository-head, implementation-baseline and documentation-checkpoint SHA roles are now represented separately;
+- portable `kb_graph.json` preservation and referential-integrity validation have explicit owners and tests without deleting or rewriting the knowledge asset.
 
 The source-adapter family is complete at `IMPLEMENTED · TESTED · INTERNAL · UNWIRED`. Admission, current permission, privacy, facade, persistence, runtime and repository-settings risks remain open.
 
@@ -175,9 +179,26 @@ Top snapshots can become stale while historical blocks remain accurate. Required
 - structured handoff only when Notion is unavailable;
 - post-merge final SHA and CI checkpoint;
 - supersede stale PRs rather than merging documentation from an old base;
-- do not start the next implementation slice while canonical status is materially stale.
+- do not start the next implementation slice while canonical status is materially stale;
+- distinguish repository head, implementation baseline and documentation checkpoint in both systems.
 
-This checkpoint replaces the pre-merge OpenLoop Draft status with merge SHA `42aa793...` and post-merge evidence.
+The machine-readable state records these SHA roles explicitly. Notion synchronization for this change remains required until its current checkpoint is updated from the final PR evidence.
+
+## P1 — Portable KB integrity is not claim truth or reproducibility proof
+
+`kb_graph.json` is intentionally preserved as a knowledge asset. The portable validator
+can prove structural and referential integrity, counts and a file SHA-256. It cannot by
+itself prove:
+
+- truth or freshness of every claim;
+- complete licensing/provenance for every source;
+- deterministic equality with a fresh source rebuild;
+- semantic quality of inferred edges;
+- admission into Canon or current runtime eligibility;
+- erasure/privacy suitability for a specific deployment.
+
+Required next proofs for a regenerated asset include semantic before/after diff,
+source/generator revision, provenance changes, graph-quality report and rollback artifact.
 
 ## P1 — Existing shadow/runtime infrastructure
 
