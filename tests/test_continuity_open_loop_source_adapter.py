@@ -145,7 +145,7 @@ def _binding(result, **overrides: object) -> ContinuitySourceBindingReceipt:
         "source_policy_version": result.policy_version,
         "source_as_of": result.as_of,
         "evidence_refs": _required_evidence(result),
-        "issued_at": _NOW - timedelta(minutes=1),
+        "issued_at": result.as_of,
     }
     values.update(overrides)
     return ContinuitySourceBindingReceipt.create(**values)  # type: ignore[arg-type]
