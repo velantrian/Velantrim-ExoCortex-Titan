@@ -2,6 +2,7 @@
 
 **Status:** `DRAFT · DOCS-ONLY · GITHUB_AND_NOTION`  
 **Base:** `main@a9b269903cd29448714aa985295b67cdb5fe64cf`  
+**Pull request:** #243  
 **Runtime authority:** none  
 **Canon / ESM / TruthGate authority:** none
 
@@ -65,13 +66,14 @@ Each candidate remains `R0` or parked until its documented return trigger is sat
 ```text
 Documentation impact:   GITHUB_AND_NOTION
 Notion access:           AVAILABLE
-Notion synchronization: IN PROGRESS
-Intended Notion record:  Titan Research Intake & Future Ideas Registry
+Notion synchronization: SYNCED
+Notion record:           Titan Research Intake & Future Ideas Registry
+Notion page ID:          3b5ac84d-0547-815a-8a62-d13568323e99
 ```
 
-The Notion record must mirror classification lanes, candidate IDs, current-engineering
-exclusions, promotion path and non-authority boundaries. The final PR number, exact head,
-CI result and merge SHA must be added after they exist.
+The Notion child page under the Titan Hub mirrors classification lanes, candidate IDs,
+current-engineering exclusions, promotion path, return triggers and non-authority
+boundaries. Final CI and merge SHA remain post-review/post-merge evidence.
 
 ## Explicit non-scope
 
