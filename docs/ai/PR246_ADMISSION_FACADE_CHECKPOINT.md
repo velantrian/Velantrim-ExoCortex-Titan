@@ -2,7 +2,7 @@
 
 **Status:** `DRAFT · IMPLEMENTED IN OPEN PR · GITHUB_AND_NOTION`  
 **Base:** `main@83213048204da0e692abc147fdfad9a326b2b0d6`  
-**Current exact code/test head before documentation:** `e631d17489805234cd151a38fe894d3c142ec2a6`  
+**Current code/test head before this documentation update:** `a642ccc3b9f022a2167e14e9d0c151afdc0b1f11`  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
 
 ## Intent
@@ -27,7 +27,9 @@ It then invokes only the pure evaluator and returns content-addressed evidence.
 - content-addressed `ContinuityAdmissionFacadePolicy`;
 - internal `evaluate_continuity_admission_facade(...)`;
 - content-addressed `ContinuityAdmissionFacadeResult`;
-- adversarial tests in `tests/test_continuity_admission_facade.py`.
+- adversarial tests in `tests/test_continuity_admission_facade.py`;
+- pre-resolution hardening tests in
+  `tests/test_continuity_admission_facade_hardening.py`.
 
 ## Facade path
 
@@ -36,12 +38,13 @@ operator-selected represented facade policy
 + expected registry identity
 + expected resolver identity
 + principal / authorization / source / binding evidence
-+ complete Draft set
++ complete structurally valid Draft set
 + explicit evaluated_at
         │
         ▼
 registry and resolver identity pinning
 cross-contract tenant / subject / receipt checks
+Draft duplicate and cross-envelope checks
 current-decision resolution through typed protocol
 exact principal / authorization / complete-subject coverage check
 pure admission evaluator
@@ -61,18 +64,22 @@ The facade rejects before or during evaluation when:
 - the registry does not match the pinned facade policy;
 - evaluator/rule identity is not resolvable in that registry;
 - resolver ID/version differs from the pinned policy;
+- reading resolver identity fails;
 - principal and authorization contexts do not match;
 - source envelope and binding receipt do not match;
 - tenant or subject scopes are inconsistent;
 - source subjects exceed authorization scope;
+- Draft IDs are duplicated;
+- a Draft references another source envelope;
 - the resolver raises an exception;
 - the resolver returns an invalid object;
 - resolver evidence does not cover the exact principal, authorization, tenant and
   complete authorization subject set;
 - the pure evaluator rejects current state or Draft policy.
 
-Resolver exceptions are converted to a controlled
-`ContinuitySourceAdmissionError("current decision resolver failed closed")`.
+Malformed Draft sets are rejected before the facade invokes the external resolver.
+Resolver identity failures and resolver execution failures are converted to controlled
+`ContinuitySourceAdmissionError` results.
 
 ## Important trust boundary
 
@@ -90,9 +97,9 @@ facade result ≠ runtime permission
 
 A future deployment composition must own policy selection and concrete resolvers.
 
-## Exact-head validation so far
+## Validation history
 
-For code/test head `e631d17489805234cd151a38fe894d3c142ec2a6`:
+Initial code/test head `e631d17489805234cd151a38fe894d3c142ec2a6`:
 
 ```text
 Continuity contracts  31218761535 PASS
@@ -100,8 +107,16 @@ Ruff                  PASS
 blocking mypy         PASS
 Continuity pytest     511 passed
 Docker hardening      31218761260 PASS
-Full Titan CI         31218761239 running at checkpoint creation
 ```
+
+Self-review then added pre-resolution structural rejection and controlled resolver
+identity handling. Current code/test head before this checkpoint:
+
+```text
+a642ccc3b9f022a2167e14e9d0c151afdc0b1f11
+```
+
+Exact code+docs CI must be re-run after this documentation update.
 
 ## Explicit non-scope
 
