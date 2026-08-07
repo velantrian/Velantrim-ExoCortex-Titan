@@ -148,6 +148,7 @@ def _loop(
         projection_id=projection_id,
         schema_version=OPEN_LOOP_SCHEMA_VERSION,
         policy_version=GOAL_OPEN_LOOP_POLICY_VERSION,
+        user_id="user:advisory-fixture",
         loop_key="loop-1",
         signal_id="loop-signal-1",
         kind=kind,

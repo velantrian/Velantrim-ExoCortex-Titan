@@ -141,6 +141,7 @@ def _input(
         confirmed_at=datetime(2026, 8, 5, 10, 0, tzinfo=UTC),
     )
     loop_signal = OpenLoopSignal.create(
+        user_id=goal_snapshot.user_id,
         loop_key="loop:new-layer",
         kind=OpenLoopKind.DEFERRED_DECISION,
         summary="Decide whether to add another architecture layer",

@@ -64,11 +64,13 @@ def _attestation(
 def _signal(
     loop_key: str = "loop:architecture-layer",
     *,
+    user_id: str = "user:ruslan",
     kind: OpenLoopKind = OpenLoopKind.DEFERRED_DECISION,
     opened_at: datetime = datetime(2026, 8, 1, 10, 0, tzinfo=UTC),
     due_at: datetime | None = None,
 ) -> OpenLoopSignal:
     return OpenLoopSignal.create(
+        user_id=user_id,
         loop_key=loop_key,
         kind=kind,
         summary="Decide whether to add another architecture layer",
@@ -225,14 +227,44 @@ def test_unknown_or_multiple_goal_attestations_fail_closed() -> None:
 def test_typed_open_loop_is_open_and_requires_review() -> None:
     signal = _signal()
 
-    projection = OpenLoopProjector().project(
-        [signal], [], as_of=NOW
-    ).projections[0]
+    result = OpenLoopProjector().project([signal], [], as_of=NOW)
+    projection = result.projections[0]
 
     assert projection.status is OpenLoopStatus.OPEN
     assert projection.review_required is True
     assert OpenLoopReason.TYPED_SOURCE_SIGNAL in projection.reason_codes
     assert OpenLoopReason.OPENED_AS_OF_REQUEST in projection.reason_codes
+    assert projection.user_id == signal.user_id
+    assert result.subject_ids == (signal.user_id,)
+
+
+def test_open_loop_subject_binding_is_content_addressed_and_multi_subject_explicit() -> (
+    None
+):
+    first = _signal("loop:first", user_id="user:ruslan")
+    second = _signal(
+        "loop:second",
+        user_id="user:other",
+        kind=OpenLoopKind.UNANSWERED_QUESTION,
+    )
+
+    result = OpenLoopProjector().project([first, second], [], as_of=NOW)
+
+    assert result.subject_ids == ("user:other", "user:ruslan")
+    assert {value.user_id for value in result.projections} == set(result.subject_ids)
+
+
+def test_open_loop_resolution_cannot_cross_subject_boundary() -> None:
+    signal = _signal()
+    wrong_subject = OpenLoopResolution.create(
+        user_id="user:other",
+        loop_key=signal.loop_key,
+        source_refs=("conversation:resolution-001",),
+        resolved_at=datetime(2026, 8, 2, 11, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(GoalOpenLoopError, match="user_id does not match"):
+        OpenLoopProjector().project([signal], [wrong_subject], as_of=NOW)
 
 
 def test_deadline_and_resolution_change_projection_without_mutating_signal() -> None:
@@ -243,6 +275,7 @@ def test_deadline_and_resolution_change_projection_without_mutating_signal() -> 
         [signal], [], as_of=NOW
     ).projections[0]
     resolution = OpenLoopResolution.create(
+        user_id=signal.user_id,
         loop_key=signal.loop_key,
         source_refs=("conversation:resolution-001",),
         resolved_at=datetime(2026, 8, 2, 11, 0, tzinfo=UTC),
@@ -276,6 +309,7 @@ def test_future_signal_is_not_yet_open() -> None:
 def test_unknown_early_or_conflicting_open_loop_inputs_fail_closed() -> None:
     signal = _signal()
     unknown_resolution = OpenLoopResolution.create(
+        user_id=signal.user_id,
         loop_key="loop:unknown",
         source_refs=("conversation:unknown-resolution",),
         resolved_at=NOW,
@@ -286,6 +320,7 @@ def test_unknown_early_or_conflicting_open_loop_inputs_fail_closed() -> None:
         )
 
     early = OpenLoopResolution.create(
+        user_id=signal.user_id,
         loop_key=signal.loop_key,
         source_refs=("conversation:early-resolution",),
         resolved_at=datetime(2026, 7, 31, 10, 0, tzinfo=UTC),
@@ -294,6 +329,7 @@ def test_unknown_early_or_conflicting_open_loop_inputs_fail_closed() -> None:
         OpenLoopProjector().project([signal], [early], as_of=NOW)
 
     conflicting = OpenLoopSignal.create(
+        user_id=signal.user_id,
         loop_key=signal.loop_key,
         kind=OpenLoopKind.BLOCKER,
         summary="A different meaning for the same loop key",
