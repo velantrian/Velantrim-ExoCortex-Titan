@@ -8,7 +8,8 @@ The root [`README.md`](../README.md) links to this research directory as the ent
 
 | Document | Purpose | Status |
 |---|---|---|
-| [`FUTURE_COMPONENTS.md`](FUTURE_COMPONENTS.md) | current research registry and priorities | index |
+| [`IDEA_INTAKE_PROTOCOL.md`](IDEA_INTAKE_PROTOCOL.md) | capture, classify and preserve ideas from audits, conversations and external analysis without confusing them with current engineering | research governance contract |
+| [`FUTURE_COMPONENTS.md`](FUTURE_COMPONENTS.md) | current research registry, candidate tracks and return triggers | index |
 | [`EXTERNAL_ARCHITECTURE_PATTERNS.md`](EXTERNAL_ARCHITECTURE_PATTERNS.md) | neutral Titan-native patterns derived from external prior art | research / prior art |
 | [`EVALUATION_REPLAY_PROTOCOL.md`](EVALUATION_REPLAY_PROTOCOL.md) | fixed-corpus baseline, replay, fork and structural-diff protocol | partial offline prototype |
 | [`../docs/EVALUATION_REPLAY_QUICKSTART.md`](../docs/EVALUATION_REPLAY_QUICKSTART.md) | command, report classes, critical gates and fixture boundary | PR-ERP-01 implementation guide |
@@ -20,17 +21,37 @@ The root [`README.md`](../README.md) links to this research directory as the ent
 
 Adaptive retrieval and selective-memory architecture is tracked separately at [`../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md`](../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md).
 
+## Where an idea belongs
+
+```text
+verified defect / accepted missing proof / current blocker
+→ active engineering docs, issue or bounded implementation PR
+
+unproven architecture / future workload / uncertain ownership or value
+→ IDEA_INTAKE_PROTOCOL.md
+→ FUTURE_COMPONENTS.md
+```
+
+Do not move branch protection, current Continuity admission work, privacy/erasure closure,
+query-path read-only enforcement, Canon-writer unification, projection lifecycle or
+security hardening into Research Mode. Those are current engineering obligations.
+
+Research Mode is for preserving future ideas whose design, trigger, evidence or authority
+boundary is not yet accepted.
+
 ## Promotion path
 
 ```text
-research note
+captured idea
+→ triage against current architecture
 → Titan-native contract
 → licence and threat review
 → offline prototype
 → deterministic replay evaluation
 → shadow receipts
-→ explicit Operator GO
+→ explicit architecture decision
 → bounded implementation PR
+→ separate Operator GO when authority changes
 ```
 
 ## Research invariants
@@ -41,8 +62,12 @@ research note
 - no provider-first or mandatory remote dependency;
 - external projects remain prior art;
 - old ideas remain traceable in `research/archive/` or `docs/archive/legacy/`;
+- every parked idea has an explicit return trigger;
+- current engineering debt is not hidden in the future-ideas registry;
 - reproducible evidence precedes active integration.
 
 ## Current priority
 
 The first shared foundation is [`EVALUATION_REPLAY_PROTOCOL.md`](EVALUATION_REPLAY_PROTOCOL.md). PR-ERP-01 implements only its offline schemas, canonical digests, local fixture loader and structural diff in [`core/evaluation_replay.py`](../core/evaluation_replay.py). It is not connected to production startup, query routing or Canon writes.
+
+New ideas from audits or conversations must first pass the classification and mandatory-card requirements in [`IDEA_INTAKE_PROTOCOL.md`](IDEA_INTAKE_PROTOCOL.md).
