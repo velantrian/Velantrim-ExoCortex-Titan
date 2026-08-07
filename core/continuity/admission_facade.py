@@ -409,6 +409,40 @@ def _validate_cross_contract_identity(
         )
 
 
+def _normalize_drafts_before_resolution(
+    *,
+    drafts: Iterable[ContinuityObservationDraft],
+    source_envelope: ContinuitySourceEnvelope,
+) -> tuple[ContinuityObservationDraft, ...]:
+    draft_items = _items(drafts, "drafts")
+    if not draft_items or any(
+        not isinstance(value, ContinuityObservationDraft) for value in draft_items
+    ):
+        raise ContinuitySourceAdmissionError(
+            "drafts must contain ContinuityObservationDraft values"
+        )
+    normalized = tuple(
+        sorted(
+            (
+                value
+                for value in draft_items
+                if isinstance(value, ContinuityObservationDraft)
+            ),
+            key=lambda value: value.draft_id,
+        )
+    )
+    if len(normalized) != len({value.draft_id for value in normalized}):
+        raise ContinuitySourceAdmissionError("drafts cannot contain duplicate IDs")
+    if any(
+        value.source_envelope_id != source_envelope.envelope_id
+        for value in normalized
+    ):
+        raise ContinuitySourceAdmissionError(
+            "all drafts must reference the supplied source envelope"
+        )
+    return normalized
+
+
 def evaluate_continuity_admission_facade(
     *,
     policy: ContinuityAdmissionFacadePolicy,
@@ -431,7 +465,16 @@ def evaluate_continuity_admission_facade(
         raise ContinuitySourceAdmissionError(
             "registry must be a ContinuityAdmissionRegistry"
         )
-    if not isinstance(resolver, ContinuityCurrentDecisionResolver):
+    try:
+        resolver_matches_protocol = isinstance(
+            resolver,
+            ContinuityCurrentDecisionResolver,
+        )
+    except Exception as exc:
+        raise ContinuitySourceAdmissionError(
+            "current decision resolver identity failed closed"
+        ) from exc
+    if not resolver_matches_protocol:
         raise ContinuitySourceAdmissionError(
             "resolver must implement ContinuityCurrentDecisionResolver"
         )
@@ -455,11 +498,16 @@ def evaluate_continuity_admission_facade(
         raise ContinuitySourceAdmissionError(
             "registry does not match the pinned facade policy"
         )
-    resolver_id = _text(resolver.resolver_id, "resolver.resolver_id")
-    resolver_version = _text(
-        resolver.resolver_version,
-        "resolver.resolver_version",
-    )
+    try:
+        resolver_id = _text(resolver.resolver_id, "resolver.resolver_id")
+        resolver_version = _text(
+            resolver.resolver_version,
+            "resolver.resolver_version",
+        )
+    except Exception as exc:
+        raise ContinuitySourceAdmissionError(
+            "current decision resolver identity failed closed"
+        ) from exc
     if (
         resolver_id != policy.resolver_id
         or resolver_version != policy.resolver_version
@@ -480,17 +528,9 @@ def evaluate_continuity_admission_facade(
         binding_receipt=binding_receipt,
     )
     evaluated = _aware(evaluated_at, "evaluated_at")
-    draft_items = _items(drafts, "drafts")
-    if not draft_items or any(
-        not isinstance(value, ContinuityObservationDraft) for value in draft_items
-    ):
-        raise ContinuitySourceAdmissionError(
-            "drafts must contain ContinuityObservationDraft values"
-        )
-    normalized_drafts = tuple(
-        value
-        for value in draft_items
-        if isinstance(value, ContinuityObservationDraft)
+    normalized_drafts = _normalize_drafts_before_resolution(
+        drafts=drafts,
+        source_envelope=source_envelope,
     )
     try:
         current_evidence = resolver.resolve_current_decision(
