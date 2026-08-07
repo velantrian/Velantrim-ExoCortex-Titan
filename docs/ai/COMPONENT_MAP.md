@@ -1,7 +1,7 @@
 # 🗺️ Component and Authority Map
 
-**Repository head verified:** `main@97fe27a37184c6c7277f54e96acd04d98d583ab3`  
-**Implementation baseline:** `97fe27a37184c6c7277f54e96acd04d98d583ab3`  
+**Repository head verified:** `main@9f07db6de8d32683d00bfe4f1673e84493607553`  
+**Implementation baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553`  
 **Machine-readable state:** [`docs/state/project_state.json`](../state/project_state.json)  
 **Rule:** presence is not wiring; content-addressed evidence is not runtime authority.
 
@@ -37,8 +37,40 @@ No Continuity component owns Canon, TruthGate, PolicyKernel, GoalStack, reminder
 | Goal Draft adapter | `2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d` | `goal_source_adapter.py` | tested, internal, unwired |
 | OpenLoop Draft adapter | `42aa79338c57e9b9a67c3e3c08dd948b60c5541f` | `open_loop_source_adapter.py` | tested, internal, unwired |
 | Admission evaluator | `97fe27a37184c6c7277f54e96acd04d98d583ab3` | `admission_evaluator.py` | tested, internal, unwired |
+| Admission-aware facade | `9f07db6de8d32683d00bfe4f1673e84493607553` | `admission_facade.py` | tested, internal, unwired |
 
-## 3. Source-admission contracts
+## 3. Source-admission path
+
+```text
+StateReconciliationResult / GoalProjectionResult / OpenLoopProjectionResult
+        │
+        ▼
+source adapters
+→ ContinuitySourceEnvelope + complete Draft set
+        │
+        ▼
+operator-selected represented facade policy
++ exact registry/evaluator/rule identity
++ typed current-decision resolver identity
++ principal / authorization / binding evidence
+        │
+        ▼
+internal admission-aware facade
+→ structural and cross-contract validation
+→ current-decision evidence resolution
+→ pure admission evaluator
+        │
+        ▼
+content-addressed facade result
++ deterministic admission receipt
+        │
+        ▼
+STOP
+```
+
+No stage in this accepted path invokes the signal producer, persists admission artifacts, writes Canon, creates reminders/actions or changes compute routing.
+
+## 4. Source-admission contracts and adapters
 
 ### Primary evidence contracts
 
@@ -48,27 +80,7 @@ No Continuity component owns Canon, TruthGate, PolicyKernel, GoalStack, reminder
 | Source envelope and observation Draft | `core/continuity/source_admission_payloads.py` | proposal evidence only |
 | Admission receipt and authorized batch | `core/continuity/source_admission_decisions.py` | admission evidence only; no runtime permission |
 
-Primary modules remain internal and are not a public live trust boundary.
-
 ### Source adapters
-
-```text
-StateReconciliationResult
-GoalProjectionResult v2
-OpenLoopProjectionResult v2
-        │
-        ▼
-source/result identity verification
-complete exact subject-set verification
-binding + authorization compatibility
-bounded semantic derivation
-        │
-        ▼
-ContinuitySourceEnvelope + ContinuityObservationDraft
-        │
-        ▼
-STOP
-```
 
 | Source | Adapter | Positive derivation boundary |
 |---|---|---|
@@ -78,9 +90,7 @@ STOP
 
 Adapters do not admit, persist, call the signal producer or create reminders/actions.
 
-## 4. Pure admission evaluator
-
-### Primary surface
+## 5. Pure admission evaluator
 
 | Responsibility | Surface |
 |---|---|
@@ -90,40 +100,36 @@ Adapters do not admit, persist, call the signal producer or create reminders/act
 | Current decision evidence | `ContinuityCurrentDecisionEvidence` |
 | Evaluation function | `evaluate_continuity_admission(...)` |
 | Result evidence | `ContinuityAdmissionEvaluationResult` |
-| Adversarial tests | `tests/test_continuity_admission_evaluator.py` |
 
-### Evaluation path
+The evaluator reads no database, environment, network or implicit clock. It resolves only the exact evaluator/rule pair in the supplied registry and returns a complete deterministic admitted/rejected partition. It creates no runtime permission.
+
+## 6. Internal admission-aware facade
+
+| Responsibility | Surface | Boundary |
+|---|---|---|
+| Represented facade policy | `ContinuityAdmissionFacadePolicy` | content-addressed configuration evidence |
+| Resolver interface | `ContinuityCurrentDecisionResolver` | typed protocol only |
+| Composition boundary | `evaluate_continuity_admission_facade(...)` | internal explicit call |
+| Evidence output | `ContinuityAdmissionFacadeResult` | no runtime authority |
+| Architecture decision | `ADR-2026-08-07-continuity-admission-facade-boundary.md` | accepted ownership boundary |
+
+The facade:
+
+- pins exact registry, evaluator/rule and resolver identities;
+- validates principal, authorization, tenant, source binding and complete subject scope;
+- rejects duplicate or cross-envelope Drafts before resolver access;
+- converts resolver identity/access/execution failures into controlled fail-closed errors;
+- invokes only the pure evaluator;
+- remains package-internal and unwired.
 
 ```text
-SourceEnvelope + complete Draft set
-+ binding and authorization evidence
-+ explicit current-decision evidence
-+ operator-selected evaluator/rule identity
-+ explicit evaluated_at
-        │
-        ▼
-registry resolution
-current evidence compatibility and validity
-rule/source/adapter/purpose/handling/retention checks
-Draft signal/rule/confidence/age checks
-        │
-        ▼
-complete deterministic admitted/rejected partition
-ContinuityObservationAdmissionReceipt
-        │
-        ▼
-STOP
+facade policy object ≠ PolicyKernel
+facade policy object ≠ operator-approved deployment configuration
+resolver protocol ≠ trusted concrete resolver implementation
+facade result ≠ runtime permission
 ```
 
-### Authority boundary
-
-- Registry identity verifies represented contents; it does not select itself as trusted.
-- Current-decision evidence verifies represented status; it does not authenticate its external resolver.
-- The evaluator reads no DB, environment, network or implicit clock.
-- It creates no runtime permission, producer call, persistence or side effect.
-- A future facade must resolve accepted owners and prevent bypass.
-
-## 5. Decision ownership
+## 7. Decision ownership
 
 - Canon and ESM: canonical memory/write services;
 - truth admission: accepted TruthGate/write paths;
@@ -131,58 +137,60 @@ STOP
 - source result identity: State / Goal / OpenLoop owners;
 - source adaptation: deterministic proposal transformation only;
 - evaluator definitions and rule logic: pure admission evaluator;
-- trusted evaluator registry selection: **no accepted runtime owner yet**;
-- current principal/authorization/consent/restriction/erasure/policy resolution: **no accepted facade integration yet**;
+- composition and anti-substitution: internal admission facade;
+- trusted deployment selection of facade policy/registry: **no accepted runtime owner yet**;
+- concrete principal/authentication evidence: **not composed yet**;
+- concrete authorization/consent/restriction/erasure/current-policy evidence: **not composed yet**;
 - WorkingMemory disposition: existing `WorkingMemoryGate`;
 - prompt context: existing `ContextPackBuilder`;
 - legacy compute route: existing `decide_compute_path()`;
 - runtime activation: **no accepted owner**.
 
-## 6. Next facade boundary
+## 8. Next resolver-composition boundary
 
-The next internal facade must depend on typed protocols instead of creating new policy or identity owners.
+The next internal slice must reuse accepted owners rather than introduce a second PolicyKernel, identity system or erasure owner.
 
 Expected shape:
 
 ```text
-accepted registry selector
-+ principal resolver
-+ authorization resolver
-+ lawful-basis/consent resolver
-+ restriction resolver
-+ erasure resolver
-+ current policy resolver
+operator/deployment-selected facade policy + registry identity
++ accepted principal/authentication owner
++ accepted authorization owner
++ consent or lawful-basis owner
++ restriction owner
++ erasure-domain owner
++ current PolicySnapshot owner
         │
         ▼
 complete exact-subject CurrentDecisionEvidence
         │
         ▼
-pure admission evaluator
+merged internal admission facade
         │
         ▼
-evidence-only receipt / optional authorized batch
+evidence-only result
         │
         ▼
 STOP
 ```
 
-The first facade slice must not invoke the signal producer, persist data, register with startup or change `/query`.
+Missing, stale, unknown, conflicting or partially covered state must reject the complete evaluation. Silent subject filtering is forbidden.
 
-## 7. Privacy and erasure boundaries
+## 9. Privacy and lifecycle boundaries
 
-Before any live-capable path, the accepted owners must prove:
+Before any live-capable path, accepted owners must prove:
 
 - current authorization expiry and withdrawal;
 - consent or lawful basis;
 - current restrictions;
 - erasure-domain state and derived-artifact cleanup;
 - current PolicySnapshot compatibility;
-- complete multi-subject aggregation without silent filtering;
+- complete multi-subject aggregation;
 - retention, replay and cleanup lifecycle.
 
 Historical receipts never override current restriction or erasure state.
 
-## 8. Governance and operations
+## 10. Governance and operations
 
 - aggregate merge evidence is implemented and observed;
 - `main` branch protection/ruleset remains unenforced; issue #234;
@@ -191,15 +199,14 @@ Historical receipts never override current restriction or erasure state.
 - query-path read-only and Canon writer unification remain open hardening work;
 - research candidates are governed separately by `research/IDEA_INTAKE_PROTOCOL.md`.
 
-## 9. Audit checklist for the next slice
+## 11. Audit checklist for the next slice
 
-1. Is the trusted registry selected outside caller-controlled payloads?
-2. Do resolver protocols point to accepted owners rather than duplicate policy/identity logic?
+1. Is facade/registry selection outside caller-controlled payloads?
+2. Do concrete resolvers reuse accepted owners rather than duplicate policy or identity logic?
 3. Is the complete exact subject set preserved?
-4. Do missing, stale, unknown or conflicting current states fail closed?
-5. Does the facade call only the pure evaluator?
+4. Do missing, stale, unknown or conflicting states fail closed?
+5. Does composition call only the merged internal facade?
 6. Does output remain evidence-only?
-7. Are bare Draft/observation/producer bypasses guarded?
-8. Are persistence, runtime wiring and activation absent?
-9. Are exact-head tests and Notion synchronization complete?
-10. Are `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` reported separately?
+7. Are producer invocation, persistence and runtime wiring absent?
+8. Are exact-head tests, ADR implications and Notion synchronization complete?
+9. Are `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` reported separately?

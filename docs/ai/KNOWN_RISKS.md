@@ -1,8 +1,8 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-07  
-**Repository `main` head at verification:** `97fe27a37184c6c7277f54e96acd04d98d583ab3`  
-**Latest implementation-bearing baseline:** `97fe27a37184c6c7277f54e96acd04d98d583ab3`
+**Repository `main` head at verification:** `9f07db6de8d32683d00bfe4f1673e84493607553`  
+**Latest implementation-bearing baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553`
 
 Code presence and passing tests do not close a risk. Closure requires correct authority ownership, current evidence, integration controls, activation governance and operational proof.
 
@@ -13,11 +13,13 @@ Code presence and passing tests do not close a risk. Closure requires correct au
 - State, Goal and OpenLoop source adapters exist as bounded deterministic proposal transformers;
 - Goal and OpenLoop subject identity is explicit and content-addressed;
 - a pure deterministic evaluator and content-addressed evaluator/rule registry are implemented and tested;
-- current-decision evidence explicitly carries principal, authorization, tenant, complete subjects, purpose, policy, lawful basis, authorization receipt, erasure domains, statuses and validity interval;
-- evaluator output is a complete admitted/rejected Draft partition plus immutable receipt;
+- an internal admission-aware facade pins registry/evaluator/rule/resolver identity and verifies complete cross-contract scope;
+- malformed Draft sets fail before resolver access;
+- resolver identity/access/execution failures are converted to controlled fail-closed results;
+- evaluator and facade outputs remain evidence-only;
 - no accepted slice adds runtime, Canon, TruthGate, reminder, tool, action or compute authority.
 
-Continuity readiness is now `6/12 = 50.0%`. This is implementation readiness, not live readiness.
+Continuity implementation readiness is now `7/12 = 58.3%`. This is not live readiness.
 
 ## P0 — Administrator ruleset remains absent
 
@@ -32,101 +34,85 @@ Current controls:
 
 Residual risk:
 
-- these checks can still be bypassed by repository settings or direct merge/push behavior;
+- checks can still be bypassed by repository settings or direct push/merge behavior;
 - issue #234 requires administrator configuration.
 
 Required action:
 
-- require pull requests;
-- require `Titan aggregate merge evidence`;
+- require pull requests and the aggregate merge-evidence check;
 - require resolved conversations;
 - block force push and deletion;
 - restrict direct push;
 - require up-to-date branches where appropriate.
 
-## P0 — Trusted registry selection has no runtime owner
+## P0 — Operator-selected trust root is not deployed
 
-`ContinuityAdmissionRegistry` is content-addressed and internally consistent. It does not select itself as the operator-approved registry.
+`ContinuityAdmissionFacadePolicy` and `ContinuityAdmissionRegistry` are content-addressed and internally consistent. They do not select or activate themselves as operator-approved deployment configuration.
 
 Risks:
 
-- a future caller could construct a permissive but internally valid registry;
+- a future caller could supply a permissive but internally valid policy or registry;
 - exact evaluator/rule resolution could be mistaken for trusted configuration;
-- registry identity could be accepted without deployment/operator approval;
-- multiple incompatible registries could create inconsistent admission behavior.
+- multiple incompatible deployment roots could create inconsistent admission behavior;
+- represented resolver identity could be accepted without a trusted composition owner.
 
 Required proof:
 
-- one explicit deployment/operator registry-selection owner;
-- configured expected registry identity or accepted signed/versioned configuration;
-- fail-closed behavior when registry identity is missing, stale or unexpected;
-- audit evidence for registry changes;
-- no caller-controlled registry substitution.
+- one explicit deployment/operator owner;
+- configured expected facade-policy and registry identity;
+- signed/versioned or otherwise controlled configuration lineage;
+- fail-closed behavior when identity is missing, stale or unexpected;
+- audit evidence for changes;
+- no caller-controlled substitution.
 
-## P0 — Current evidence resolver boundary is absent
+## P0 — Concrete current-decision resolver composition is absent
 
-`ContinuityCurrentDecisionEvidence` represents current status but does not authenticate or query its external resolvers.
+The facade exposes a typed `ContinuityCurrentDecisionResolver` boundary, but no accepted concrete composition currently obtains authoritative evidence from existing owners.
 
 Still absent:
 
-- accepted principal/authentication resolver;
-- tenant and subject authorization resolver;
-- consent or lawful-basis resolver;
-- restriction resolver;
-- erasure-domain resolver;
-- current PolicySnapshot compatibility resolver;
+- principal/authentication evidence composition;
+- tenant and subject authorization composition;
+- consent or lawful-basis composition;
+- restriction composition;
+- erasure-domain composition;
+- current `PolicySnapshot` compatibility composition;
 - complete multi-subject aggregation owner.
 
 Risks:
 
-- forged or stale current evidence;
+- forged, stale or incorrectly scoped evidence;
 - one blocked subject silently filtered from a multi-subject result;
 - historical authorization overriding current withdrawal or erasure;
 - resolver disagreement converted into permissive output;
-- a shared deployment API key mistaken for user identity.
+- shared deployment API key mistaken for user identity;
+- duplicated policy/identity logic creating a second source of truth.
 
 Required rule:
 
 ```text
-missing / stale / unknown / conflicting current state
+missing / stale / unknown / conflicting / partially covered current state
 → reject complete evaluation fail-closed
 ```
 
-## P0 — Admission-aware facade and anti-bypass controls are absent
-
-The pure evaluator is not a live trust boundary.
-
-A future facade must:
-
-- accept complete envelope, binding, authorization, Draft and registry context;
-- select the accepted registry through trusted configuration;
-- resolve current state through typed owner protocols;
-- preserve the complete exact subject set;
-- call the pure evaluator;
-- prevent direct live use of bare Drafts, bare v1 observations and raw producer calls;
-- emit evidence-only output in its first slice.
-
-The first facade slice must stop before producer invocation, persistence, runtime wiring or user-visible behavior.
+The next slice must reuse accepted owners and remain internal, unwired and evidence-only.
 
 ## P1 — Content-addressed evidence is not authenticity
 
 Content addressing proves that represented contents match an identifier. It does not prove:
 
 - who created the evidence;
-- whether the source was authentic;
+- whether the source or resolver was authentic;
 - whether permission is current;
-- whether a resolver is approved;
-- whether the represented fact is true;
+- whether represented claims are true;
 - whether runtime use is permitted.
-
-Rules:
 
 ```text
 Integrity ≠ authenticity
 Integrity ≠ authorization
 Evidence ≠ authority
 Receipt ≠ permanent permission
-Authorized batch ≠ runtime permission
+Facade result ≠ runtime permission
 ```
 
 ## P1 — Privacy, restriction, retention and erasure lifecycle
@@ -144,7 +130,7 @@ Historical permission must never override current deletion or restriction state.
 
 ## P1 — Durable persistence and replay are absent
 
-The current evaluator and receipts are pure in-memory evidence contracts.
+Current evaluator, facade result and receipts are pure in-memory evidence contracts.
 
 Not proven:
 
@@ -158,7 +144,7 @@ Not proven:
 - crash consistency and disk-full behavior for admission artifacts;
 - operator inspection and reconciliation.
 
-Persistence must be a separate decision after facade and resolver boundaries are accepted.
+Persistence remains a separate decision after concrete resolver composition is accepted.
 
 ## P1 — Runtime wiring and activation remain absent
 
@@ -173,18 +159,31 @@ No source-admission path is wired into:
 - compute routing;
 - Canon or TruthGate writes.
 
-No feature flag, SLO, alert, rollback or Operator GO exists. This is intentional and must remain explicit.
+No feature flag, SLO, alert, rollback or Operator GO exists. This is intentional.
 
-## P1 — Bare v1 observations remain shadow-only
+## P1 — Bare observation and producer bypass
 
-`ContinuitySignalObservation` v1 does not bind full tenant, principal, subject, purpose, retention or erasure state.
+`ContinuitySignalObservation` v1 does not bind full tenant, principal, subject, purpose, retention or erasure state. The merged facade does not yet have live callers or runtime anti-bypass enforcement.
 
-Required proof before any live producer use:
+Required proof before producer use:
 
-- only the admission-aware facade may create live-capable producer input;
+- only accepted resolver composition and the admission facade may create live-capable producer input;
 - static/runtime guards block bare v1 use from server, startup, workers and advisory paths;
 - current authorization, restriction and erasure state are rechecked before producer invocation;
 - producer output remains advisory until a separate activation decision.
+
+## P1 — Intermittent SQLite recovery timeout
+
+PR #246 exact-head Full Titan run `31219904698` had one first-attempt timeout in existing `test_drop_legacy_embeddings_lock_owner_process_is_bounded` after 20 seconds. Coverage passed, and attempt 2 on the unchanged SHA passed the full suite.
+
+This is not attributed to the facade. It remains recovery/concurrency risk evidence because a green retry does not prove the timeout impossible.
+
+Required follow-up:
+
+- retain the first failure in audit history;
+- characterize frequency and environmental sensitivity;
+- verify subprocess termination and lock-owner cleanup bounds;
+- avoid weakening or excluding the blocking test merely to remove noise.
 
 ## P1 — Semantic calibration and resource limits
 
@@ -192,7 +191,7 @@ Deterministic mapping and evaluation do not prove semantic usefulness.
 
 Open questions:
 
-- precision/false-positive rates of State/Goal/OpenLoop Drafts;
+- precision and false-positive rates of State/Goal/OpenLoop Drafts;
 - confidence thresholds across workloads;
 - bounded batch size and processing time;
 - large multi-subject behavior;
@@ -208,7 +207,7 @@ Offline and shadow evaluation must precede live activation.
 Global Titan hardening remains open:
 
 - legacy query flow may still perform promotion through its own policy;
-- internal promotion/supersession families are not fully unified under one gate/CAS/audit/outbox protocol;
+- promotion/supersession families are not fully unified under one gate/CAS/audit/outbox protocol;
 - read-only query invariants are not proven across every path;
 - best-effort post-commit relation/provenance windows remain on some legacy paths.
 
@@ -247,13 +246,13 @@ Still required:
 
 SQLite remains the accepted local-first Canon profile and has substantial concurrency/crash/disk-full evidence. It is not proven for multi-node HA, network filesystems or large multi-tenant server workloads.
 
-PostgreSQL, ANN and distributed profiles remain research candidates governed by explicit return triggers. They must not be implemented merely for architectural symmetry.
+PostgreSQL, ANN and distributed profiles remain Research Mode candidates governed by explicit return triggers. They must not be implemented merely for architectural symmetry.
 
 ## P1 — Documentation drift
 
-Code-only merges can temporarily leave canonical GitHub and Notion status behind.
+Code merges can temporarily leave canonical GitHub and Notion status behind.
 
-Controls now available:
+Controls:
 
 - per-PR documentation impact classification;
 - aggregate merge-evidence metadata check;
@@ -262,7 +261,7 @@ Controls now available:
 - direct Notion synchronization or structured handoff;
 - per-PR checkpoint documents.
 
-Residual risk remains until administrator rules enforce the aggregate status and post-merge checkpoints are consistently completed.
+Residual risk remains until administrator rules enforce aggregate status and post-merge checkpoints are consistently completed.
 
 ## P1 — Identity
 
@@ -272,11 +271,13 @@ Do not add production callers or use model inference as user attestation. Any fu
 
 ## Closed/narrowed evidence notes
 
-- Goal/OpenLoop subject identity gaps are closed by v2 contracts.
-- State, Goal and OpenLoop source-adapter absence is closed.
-- deterministic evaluator/rule-registry absence is closed.
-- a prior erasure-recovery ownership race was fixed without excluding the blocking coverage test; the original failure remains visible.
-- the initial evaluator test failure was an invalid test fixture, not a production evaluator failure; final exact head passed all required checks.
+- Goal/OpenLoop subject identity gaps are closed by v2 contracts;
+- State, Goal and OpenLoop adapter absence is closed;
+- deterministic evaluator/rule-registry absence is closed;
+- internal facade and typed resolver-boundary absence is closed by PR #246;
+- concrete trusted resolver composition remains open;
+- a prior erasure-recovery ownership race was fixed without excluding the blocking coverage test;
+- the evaluator chronology fixture failure and PR #246 intermittent SQLite timeout remain visible in audit history.
 
 ## Risk update rule
 

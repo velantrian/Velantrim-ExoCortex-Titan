@@ -6,6 +6,72 @@ This file keeps the recent operational hand-off compact. Older detailed entries 
 
 ---
 
+## 2026-08-07 — Internal Continuity admission facade merged
+
+```text
+PR:                       #246
+Exact tested head:        ec2966ed336ba619e987dfc1e99d45fdf87907b5
+Merge:                    9f07db6de8d32683d00bfe4f1673e84493607553
+Full CI + coverage:       31219904698 PASS on attempt 2, unchanged SHA
+Continuity contracts:     31219904684 PASS · 514 passed
+Docker hardening:         31219904770 PASS
+Aggregate merge evidence: 31221208768 SUCCESS
+Review threads:           0
+Documentation impact:     GITHUB_AND_NOTION
+Notion:                   SYNCED
+```
+
+### Intent
+
+Add the first internal composition boundary above the pure evaluator without creating a live trust boundary.
+
+### Implementation
+
+Added:
+
+- `core/continuity/admission_facade.py`;
+- `tests/test_continuity_admission_facade.py`;
+- `tests/test_continuity_admission_facade_hardening.py`;
+- `docs/adr/ADR-2026-08-07-continuity-admission-facade-boundary.md`;
+- `docs/ai/PR246_ADMISSION_FACADE_CHECKPOINT.md`.
+
+The facade pins facade-policy, registry, evaluator/rule and resolver identity; verifies exact principal, authorization, tenant, source binding and complete subject scope; rejects malformed Draft sets before resolver access; obtains explicit current-decision evidence through a typed protocol; invokes only the pure evaluator; and returns content-addressed evidence.
+
+### Governance history
+
+The first code+docs head passed focused Continuity and Docker checks but failed the architecture-freeze guard because `ContinuityAdmissionFacadePolicy` was correctly recognized as authority-shaped. The guard was not bypassed. A concrete ADR was added to define the new composition owner and preserve existing PolicyKernel, identity, privacy and runtime owners.
+
+### Test history
+
+Attempt 1 of Full Titan run `31219904698` retained an existing SQLite recovery timeout in `test_drop_legacy_embeddings_lock_owner_process_is_bounded` after 20 seconds; coverage passed. Attempt 2 on the unchanged exact SHA passed repository guards, architecture freeze, machine state, KB integrity, Ruff, blocking mypy and full pytest.
+
+The timeout is retained as intermittent recovery evidence and is not described as a facade defect.
+
+### Authority boundary
+
+```text
+facade policy object ≠ PolicyKernel
+facade policy object ≠ operator-approved deployment configuration
+resolver protocol ≠ trusted concrete resolver implementation
+facade result ≠ runtime permission
+```
+
+No producer invocation, persistence, runtime wiring, Canon/ESM/TruthGate/GoalStack mutation, reminder, tool, action or compute authority was introduced.
+
+### Result
+
+```text
+Continuity readiness: 7/12 = 58.3%
+Facade:                IMPLEMENTED · TESTED · INTERNAL · UNWIRED
+Runtime:               NOT WIRED · NOT ENABLED · NOT OBSERVED
+```
+
+### Next work
+
+Compose current principal, authorization, consent/lawful-basis, restriction, erasure-domain and current `PolicySnapshot` evidence through accepted owners. Remain internal and stop before producer invocation, persistence or runtime effects.
+
+---
+
 ## 2026-08-07 — Pure Continuity admission evaluator merged
 
 ```text
@@ -21,47 +87,7 @@ Documentation impact:     GITHUB_AND_NOTION
 Notion:                   SYNCED
 ```
 
-### Intent
-
-Add the next bounded source-admission capability without creating a live trust boundary: immutable evaluator/rule definitions, exact allowlist registry, explicit current-decision evidence and deterministic Draft admission.
-
-### Implementation
-
-Added:
-
-- `core/continuity/admission_evaluator.py`;
-- `tests/test_continuity_admission_evaluator.py`;
-- `docs/ai/PR244_ADMISSION_EVALUATOR_CHECKPOINT.md`.
-
-The evaluator is pure and explicit. It reads no database, environment, network, mutable global configuration or implicit clock. It produces a complete admitted/rejected Draft partition and an immutable admission receipt.
-
-### Failure history
-
-The first test head reported `503 passed, 1 failed`. The test fixture created a Draft earlier than its SourceEnvelope. The existing payload contract correctly rejected the invalid chronology before evaluator execution.
-
-The fixture was corrected without weakening production validation. Staleness is tested with valid chronology and a stricter bounded-age rule. Final exact-head checks all passed.
-
-### Authority boundary
-
-```text
-content-addressed registry ≠ operator-selected trusted registry
-current-decision evidence ≠ authenticated external resolver
-admission receipt ≠ runtime permission
-```
-
-No producer invocation, persistence, runtime wiring, Canon/ESM/TruthGate/GoalStack mutation, reminder, tool, action or compute authority was introduced.
-
-### Result
-
-```text
-Continuity readiness: 6/12 = 50.0%
-Evaluator:             IMPLEMENTED · TESTED · INTERNAL · UNWIRED
-Runtime:               NOT WIRED · NOT ENABLED · NOT OBSERVED
-```
-
-### Next work
-
-Internal admission-aware facade and current resolver boundary only; stop before producer invocation, persistence or runtime effects.
+The evaluator introduced immutable evaluator/rule definitions, exact allowlist registry, explicit current-decision evidence and deterministic Draft admission without runtime authority. The initial fixture chronology failure remains recorded; final exact-head validation passed.
 
 ---
 
@@ -76,8 +102,6 @@ Aggregate merge evidence: 31215084800 SUCCESS
 Notion:                   SYNCED
 ```
 
-### Decision
-
 Ideas from audits, conversations and external analyses now enter one explicit classification boundary:
 
 ```text
@@ -88,65 +112,33 @@ unproven future architecture / workload / capability
 → research intake card + return trigger
 ```
 
-Added `research/IDEA_INTAKE_PROTOCOL.md`, updated the research registry and created the Notion record `🔬 Titan Research Intake & Future Ideas Registry`.
-
-Current engineering such as branch protection, Continuity facade/resolvers, privacy closure, query-path read-only enforcement, Canon writer unification and projection lifecycle is explicitly excluded from Research Mode.
+Current engineering such as branch protection, Continuity resolver composition, privacy closure, query-path read-only enforcement, Canon writer unification and projection lifecycle is excluded from Research Mode.
 
 ---
 
-## 2026-08-07 — OpenLoop source adapter merged
+## 2026-08-07 — Source-adapter sequence completed
 
 ```text
-PR:                 #240
-Merge:              42aa79338c57e9b9a67c3e3c08dd948b60c5541f
-State:              IMPLEMENTED · TESTED · INTERNAL · UNWIRED
-Continuity readiness after merge: 5/12 = 41.7%
+Goal subject identity:      PR #230
+OpenLoop subject identity:  PR #232
+Goal adapter:               PR #236 → 2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d
+OpenLoop adapter:           PR #240 → 42aa79338c57e9b9a67c3e3c08dd948b60c5541f
 ```
 
-The adapter verifies OpenLoop v2 result/projection identities, complete subject/evidence binding and canonical status/reason/time semantics before producing bounded evidence-coverage Drafts.
-
-Only typed `OPEN` and `OVERDUE` states may derive positive evidence-coverage proposals. No reminders, schedules, actions, producer calls, persistence or runtime wiring were introduced.
-
----
-
-## 2026-08-07 — Goal adapter and recovery ownership hotfix
-
-```text
-Goal adapter PR:     #236
-Goal merge:          2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d
-Recovery hotfix PR:  #238
-Hotfix merge:        f0c17de05df6c762c69974775e3c95d9e613cf47
-Docs checkpoint PR:  #239
-Docs merge:          281ed66710b02df5bce352d8bd1030674c5b53ab
-```
-
-Goal projection results gained a bounded Draft adapter. A coverage-observed recovery result-ownership race was fixed without excluding the blocking test or hiding the original failure.
-
----
-
-## 2026-08-07 — OpenLoop subject identity v2 merged
-
-```text
-PR:          #232
-Merge:       659c30e0e8023c48fdf68be8583401fc042a1ab8
-Docs PR:     #233
-Docs merge:  07d49cd03d5fc3058be6d1e8412e9f8b668c3b97
-```
-
-OpenLoop signal, resolution, projection and result identities now preserve explicit `user_id` and complete sorted `subject_ids`. Cross-subject resolution fails closed.
+State, Goal and OpenLoop now produce bounded evidence-only Draft proposals with explicit subject binding. They do not admit, persist, remind, schedule, act or invoke the signal producer.
 
 ---
 
 ## Current unresolved engineering queue
 
 1. administrator-enforced branch ruleset — issue #234;
-2. trusted evaluator-registry selection owner;
-3. current principal/authorization/consent/restriction/erasure/policy resolver protocols;
-4. internal admission-aware facade and anti-bypass guards;
-5. durable admission-artifact lifecycle;
-6. runtime wiring and activation governance;
-7. query-path read-only proof and Canon-writer unification;
-8. projection dispatcher lifecycle and operational observability;
+2. operator/deployment-selected facade-policy and registry trust root;
+3. concrete current principal/authorization/consent/restriction/erasure/policy resolver composition;
+4. durable admission-artifact lifecycle;
+5. runtime wiring and activation governance;
+6. query-path read-only proof and Canon-writer unification;
+7. projection dispatcher lifecycle and operational observability;
+8. characterization of the intermittent SQLite legacy-lock recovery timeout;
 9. independent security review and production privacy/compliance proof.
 
 Research candidates remain in `research/FUTURE_COMPONENTS.md` and do not replace this engineering queue.
