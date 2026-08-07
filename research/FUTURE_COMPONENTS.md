@@ -3,9 +3,11 @@
 **Status:** `RESEARCH INDEX`  
 **Runtime authority:** none  
 **Canon write authority:** none  
-**Updated:** 2026-07-30
+**Updated:** 2026-08-07
 
 This file is the current entry point for future and external architecture research. Historical feature catalogues are preserved separately and must not be read as current runtime claims.
+
+All new ideas from audits, conversations, external AI analysis or operator feedback must first pass [`IDEA_INTAKE_PROTOCOL.md`](IDEA_INTAKE_PROTOCOL.md). The intake protocol separates current engineering obligations from speculative or future research so neither is lost or misclassified.
 
 ## Active research tracks
 
@@ -16,6 +18,39 @@ This file is the current entry point for future and external architecture resear
 | P2 | Unified decision and run receipts | `R0/R1 — research` | [`EXTERNAL_ARCHITECTURE_PATTERNS.md`](EXTERNAL_ARCHITECTURE_PATTERNS.md#p2--unified-decision-and-run-receipts) |
 | P3 | Capability-based extension registry | `R0/R1 — research` | [`EXTERNAL_ARCHITECTURE_PATTERNS.md`](EXTERNAL_ARCHITECTURE_PATTERNS.md#p3--capability-based-extension-registry) |
 | P4 | Evaluated procedural skills | `R0/R1 — research` | [`EXTERNAL_ARCHITECTURE_PATTERNS.md`](EXTERNAL_ARCHITECTURE_PATTERNS.md#p4--evaluated-procedural-skills) |
+
+## Triaged candidate tracks — 2026-08-07
+
+These items are preserved as future research. They are not active implementation commitments.
+
+| ID | Candidate | State | Return trigger |
+|---|---|---|---|
+| `RT-STORAGE-01` | transactional server Canon profile, strict Mode Lock and same-backend outbox | `R0 · PARKED` | measured SQLite SLO failure, multi-node/HA requirement or accepted remote multi-user workload |
+| `RT-RETRIEVAL-01` | ANN/vector projection profiles such as FAISS, HNSW or pgvector | `R0 · PARKED` | versioned corpus benchmark proves current latency, memory or recall target is missed |
+| `RT-DISTRIBUTED-01` | multi-node, replication, fencing, failover and reconciliation profile | `R0 · PARKED` | accepted deployment requires multiple live writers or a formal HA SLO |
+| `RT-ROUTING-01` | policy-driven retrieval coordination without a second PolicyKernel/ComputeController | `R0 · PARKED` | measured routing inconsistency, duplicated authority or benchmarked cost/latency loss |
+| `RT-ASSURANCE-01` | operator assurance console for lineage, receipts, replay, lag and erasure state | `R0` | durable read models and replay artifacts exist and operators require one coherent surface |
+| `RT-CONTINUITY-01` | user-visible continuity, reminders and bounded action proposals | `R0 · BLOCKED` | evaluator, current privacy/authorization, facade, retention, shadow evaluation and Operator GO exist |
+| `RT-SUBSTRATE-01` | Native Kernel-aligned storage/compute substrate profiles | `R0` | concrete cross-project integration slice with accepted ownership and compatibility tests |
+| `RT-WORLDMODEL-01` | meta-causal model of causes, motives, invariants, contradictions and unknowns | `R0` | fixed evidence corpus and comparison target against current causal retrieval |
+| `RT-IDENTITY-01` | contestable evidence-bound persona and identity candidates | `R0 · PARKED` | accepted identity admission, consent, correction, supersession, retraction and erasure protocol |
+
+Detailed boundaries, cheapest experiments and forbidden shortcuts are defined in [`IDEA_INTAKE_PROTOCOL.md`](IDEA_INTAKE_PROTOCOL.md#6-initial-candidate-set-from-the-2026-08-07-audit).
+
+## Current engineering work that is not research
+
+Do not move these items into the future registry:
+
+- issue #234 administrator branch-ruleset enforcement;
+- deterministic Continuity admission evaluator and allowlisted rule registry;
+- admission-aware facade and anti-bypass guards;
+- current authorization, consent, restriction, erasure and policy resolution;
+- query-path read-only proof and Canon-writer unification;
+- projection lifecycle, reconciliation and operational metrics;
+- durable operational observability, backup/recovery and incident evidence;
+- security review and documentation synchronization.
+
+They already have accepted owners, evidence and required completion criteria.
 
 ## Existing Titan-native programs
 
@@ -28,14 +63,16 @@ This file is the current entry point for future and external architecture resear
 ## Promotion rule
 
 ```text
-research note
+captured idea
+→ triage against current architecture
 → Titan-native contract
-→ licence/threat review
+→ licence/threat/privacy review
 → offline prototype
 → deterministic replay evaluation
 → shadow receipts
-→ explicit Operator GO
-→ bounded implementation PR
+→ explicit architecture decision
+→ bounded engineering PR
+→ separate activation decision when authority changes
 ```
 
 No item in this index is runtime merely because it is documented.
@@ -48,7 +85,8 @@ Return to a research item only when at least one trigger exists:
 - a reproducible benchmark case;
 - a concrete workload that existing components cannot satisfy;
 - an approved security, policy or compliance requirement;
-- an operator-labelled evaluation dataset.
+- an operator-labelled evaluation dataset;
+- closure of an explicitly recorded engineering prerequisite.
 
 Feature count, novelty and external popularity are not sufficient triggers.
 
@@ -59,8 +97,9 @@ The previous long-form catalogue is preserved at [`archive/FUTURE_COMPONENTS_LEG
 ## Core rule
 
 ```text
-Research is visible.
-Authority stays explicit.
+Ideas are preserved.
+Current engineering remains explicit.
+Research has no hidden authority.
 Old ideas remain traceable.
 Only measured improvements advance.
 ```
