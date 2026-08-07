@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "project": "velantrim-exocortex-titan",
-  "verified_at": "2026-08-07T19:19:02Z",
+  "verified_at": "2026-08-07T19:49:23Z",
   "repository": {
     "default_branch": "main",
-    "repository_head_sha_at_verification": "9dfbfe5822221550389d95b751c8d85b044f6372",
+    "repository_head_sha_at_verification": "a9b269903cd29448714aa985295b67cdb5fe64cf",
     "implementation_baseline_sha": "42aa79338c57e9b9a67c3e3c08dd948b60c5541f",
-    "documentation_checkpoint_sha": "9dfbfe5822221550389d95b751c8d85b044f6372",
-    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected; implementation_baseline_sha is the latest implementation-bearing Continuity merge; documentation_checkpoint_sha is the docs-only checkpoint built on that implementation."
+    "documentation_checkpoint_sha": "a9b269903cd29448714aa985295b67cdb5fe64cf",
+    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected after PR #242 merged; implementation_baseline_sha is the latest implementation-bearing Continuity merge; documentation_checkpoint_sha is the latest merged checkpoint containing the project-state and KB-governance contract."
   },
   "continuity": {
     "completed_capabilities": 5,
@@ -39,10 +39,23 @@
     "portable_integrity_validator": "scripts/validate_kb_graph.py",
     "release_bundle_verifier": "scripts/verify_release_bundle.py",
     "content_removed": false,
-    "runtime_authority": false
+    "runtime_authority": false,
+    "integrity_verified_on_merge_sha": "a9b269903cd29448714aa985295b67cdb5fe64cf",
+    "integrity_ci_run": 31212681168
+  },
+  "last_change": {
+    "pull_request": 242,
+    "tested_head_sha": "908986521fdb747f3ac4a0aaab91a92d4a9180c7",
+    "merge_sha": "a9b269903cd29448714aa985295b67cdb5fe64cf",
+    "pre_merge_ci_run": 31211939398,
+    "aggregate_merge_evidence_run": 31212620153,
+    "post_merge_ci_run": 31212681168,
+    "post_merge_aggregate_run": 31212681494,
+    "status": "MERGED_AND_POST_MERGE_VERIFIED"
   },
   "notion": {
-    "status": "SYNC_REQUIRED_FOR_THIS_CHANGE",
+    "status": "SYNCED",
+    "synced_for_pull_request": 242,
     "safe_targets": [
       "Velantrim Titan 9.0",
       "Titan Code-Documentation Sync Protocol"
