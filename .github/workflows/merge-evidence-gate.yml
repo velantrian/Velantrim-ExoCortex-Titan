@@ -1,0 +1,66 @@
+name: Aggregate merge evidence
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - converted_to_draft
+      - edited
+  push:
+    branches: [main]
+  workflow_run:
+    workflows:
+      - CI — Velantrim Titan 9.0
+      - Continuity contracts
+      - Docker — build and runtime hardening checks
+      - ARM-03 selective-memory contracts
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+  statuses: write
+
+concurrency:
+  group: merge-evidence-${{ github.event.pull_request.head.sha || github.event.workflow_run.head_sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  evaluate-pull-request:
+    if: ${{ github.event_name == 'pull_request_target' || (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.pull_requests[0].number != null) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out trusted default-branch evaluator
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Evaluate exact-head merge evidence
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.workflow_run.pull_requests[0].number }}
+        run: >-
+          python scripts/check_pr_merge_evidence.py
+          --pull-request "${PR_NUMBER}"
+
+  refresh-open-pull-requests:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out trusted default-branch evaluator
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Re-evaluate every open PR after main advances
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/check_pr_merge_evidence.py --all-open
