@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "project": "velantrim-exocortex-titan",
+  "verified_at": "2026-08-07T19:19:02Z",
+  "repository": {
+    "default_branch": "main",
+    "repository_head_sha_at_verification": "9dfbfe5822221550389d95b751c8d85b044f6372",
+    "implementation_baseline_sha": "42aa79338c57e9b9a67c3e3c08dd948b60c5541f",
+    "documentation_checkpoint_sha": "9dfbfe5822221550389d95b751c8d85b044f6372",
+    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected; implementation_baseline_sha is the latest implementation-bearing Continuity merge; documentation_checkpoint_sha is the docs-only checkpoint built on that implementation."
+  },
+  "continuity": {
+    "completed_capabilities": 5,
+    "total_capabilities": 12,
+    "readiness_percent": 41.7,
+    "remaining_capabilities": 7,
+    "remaining_percent": 58.3,
+    "implemented": true,
+    "tested": true,
+    "wired": false,
+    "enabled": false,
+    "observed": false,
+    "runtime_authority": false,
+    "next_bounded_slice": "deterministic admission evaluator and allowlisted rule registry only"
+  },
+  "governance": {
+    "aggregate_merge_evidence_present": true,
+    "codeowners_present": true,
+    "branch_ruleset_enforced": false,
+    "tracking_issue": 234
+  },
+  "knowledge_base": {
+    "artifact_path": "kb_graph.json",
+    "preservation_policy": "KEEP_VERSIONED_KNOWLEDGE_ASSET",
+    "portable_graph_schema": "kb_graph_v1",
+    "source_rebuild_script": "scripts/build_kb_graph.py",
+    "portable_export_script": "scripts/export_kb_graph.py",
+    "sqlite_quality_audit_script": "scripts/audit_kb_graph.py",
+    "portable_integrity_validator": "scripts/validate_kb_graph.py",
+    "release_bundle_verifier": "scripts/verify_release_bundle.py",
+    "content_removed": false,
+    "runtime_authority": false
+  },
+  "notion": {
+    "status": "SYNC_REQUIRED_FOR_THIS_CHANGE",
+    "safe_targets": [
+      "Velantrim Titan 9.0",
+      "Titan Code-Documentation Sync Protocol"
+    ]
+  }
+}
