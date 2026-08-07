@@ -1,9 +1,9 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-07  
-**Repository `main` head at verification:** `97fe27a37184c6c7277f54e96acd04d98d583ab3`  
-**Latest implementation-bearing Continuity baseline:** `97fe27a37184c6c7277f54e96acd04d98d583ab3`  
-**Documentation checkpoint branch:** `docs/continuity-admission-evaluator-checkpoint`  
+**Repository `main` head at verification:** `9f07db6de8d32683d00bfe4f1673e84493607553`  
+**Latest implementation-bearing Continuity baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553`  
+**Documentation checkpoint branch:** `docs/continuity-facade-postmerge-sync`  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
 
 Material claims must be verified against exact SHAs, tests, workflows, wiring, configuration and runtime evidence.
@@ -15,17 +15,16 @@ TESTED ≠ WIRED
 WIRED ≠ ENABLED
 ENABLED ≠ OBSERVED
 
-Integrity ≠ authorization
-Content-addressed registry ≠ trusted runtime root
-Current-decision evidence object ≠ trusted external resolver
-Admission receipt ≠ runtime permission
-Authorized batch ≠ runtime permission
+Integrity ≠ authenticity
+Content-addressed policy ≠ operator-approved configuration
+Resolver protocol ≠ trusted resolver implementation
+Facade result ≠ runtime permission
 Continuity ≠ truth, action, reminder or compute authority
 ```
 
 ## Current canonical summary
 
-Titan is a research-grade local-first verifiable-memory runtime moving toward production hardening. The core memory, ESM, provenance, TruthGate, retrieval and controlled write boundaries are real and tested. Higher cognitive layers remain explicitly staged.
+Titan is a research-grade local-first verifiable-memory runtime moving toward production hardening. Core memory, ESM, provenance, TruthGate, retrieval and controlled write boundaries are real and tested. Higher cognitive layers remain explicitly staged.
 
 Continuity source admission now contains:
 
@@ -36,17 +35,20 @@ Continuity source admission now contains:
 - pure deterministic admission evaluator;
 - immutable content-addressed evaluator/rule registry;
 - explicit content-addressed current-decision evidence;
-- complete deterministic admitted/rejected Draft partition;
-- existing immutable admission receipt.
+- an internal admission-aware facade with pinned registry, evaluator/rule and resolver identity;
+- deterministic anti-substitution, exact-scope and malformed-Draft rejection;
+- content-addressed evidence-only facade result.
 
-It still has no live-capable facade, trusted current-state resolver integration, durable lifecycle, runtime wiring, enablement or observed operation.
+It still has no concrete trusted current-state resolver composition, durable lifecycle, runtime wiring, enablement or observed operation.
 
 ## Continuity readiness
 
 ```text
-Completed: 6/12 = 50.0%
-Remaining: 6/12 = 50.0%
+Completed: 7/12 = 58.3%
+Remaining: 5/12 = 41.7%
 ```
+
+This is implementation readiness, not production or live readiness.
 
 ### Completed capability categories
 
@@ -55,16 +57,16 @@ Remaining: 6/12 = 50.0%
 3. State reconciliation → bounded Draft adapter;
 4. Goal projection → bounded Draft adapter;
 5. OpenLoop projection → bounded Draft adapter;
-6. deterministic admission evaluator + content-addressed allowlist registry.
+6. deterministic admission evaluator + content-addressed allowlist registry;
+7. internal admission-aware facade + typed resolver boundary + anti-substitution guards.
 
 ### Remaining capability categories
 
-1. accepted current principal/authorization/consent/restriction/erasure/policy resolver boundary;
-2. internal admission-aware facade and anti-bypass guards;
-3. durable retention, replay, cleanup and erasure lifecycle for admission artifacts;
-4. runtime wiring with a single lifecycle owner;
-5. controlled enablement, SLO, monitoring, rollback and Operator GO;
-6. live observed evidence.
+1. concrete current principal/authorization/consent/restriction/erasure/policy resolver composition through accepted owners;
+2. durable retention, replay, cleanup and erasure lifecycle for admission artifacts;
+3. runtime wiring with a single lifecycle owner;
+4. controlled enablement, SLO, monitoring, rollback and Operator GO;
+5. live observed evidence.
 
 ## Accepted source-admission lineage
 
@@ -80,69 +82,59 @@ Remaining: 6/12 = 50.0%
 | Goal Draft adapter | PR #236 → `2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d` | tested, internal, unwired |
 | OpenLoop Draft adapter | PR #240 → `42aa79338c57e9b9a67c3e3c08dd948b60c5541f` | tested, internal, unwired |
 | Pure admission evaluator | PR #244 → `97fe27a37184c6c7277f54e96acd04d98d583ab3` | tested, internal, unwired |
+| Internal admission facade | PR #246 → `9f07db6de8d32683d00bfe4f1673e84493607553` | tested, internal, unwired |
 
-## PR #244 exact evidence
+## PR #246 exact evidence
 
 ```text
-Exact tested head:          52fdc9b0ef0ff7833c091a64c35d0754874cedb8
-Merge SHA:                  97fe27a37184c6c7277f54e96acd04d98d583ab3
-Full Titan CI + coverage:   31215957409 PASS
-Continuity contracts:       31215957406 PASS · 502 passed
-Docker hardening:           31215957402 PASS
-Aggregate merge evidence:   31216560826 SUCCESS
+Exact tested head:          ec2966ed336ba619e987dfc1e99d45fdf87907b5
+Merge SHA:                  9f07db6de8d32683d00bfe4f1673e84493607553
+Full Titan CI + coverage:   31219904698 PASS on attempt 2, unchanged SHA
+Continuity contracts:       31219904684 PASS · 514 passed
+Docker hardening:           31219904770 PASS
+Aggregate merge evidence:   31221208768 SUCCESS
 Unresolved review threads:  0
 ```
 
-The initial evaluator test head produced `503 passed, 1 failed`. The failure was an invalid test chronology: a Draft was created earlier than its SourceEnvelope. The existing payload contract correctly rejected it. The fixture was corrected without weakening production validation, and the final exact head passed every required gate.
+Attempt 1 of the Full Titan run retained one existing SQLite recovery timeout in `test_drop_legacy_embeddings_lock_owner_process_is_bounded`; coverage passed. The unchanged exact head passed the complete second attempt. The timeout remains risk evidence and is not represented as a facade defect.
 
-## Evaluator guarantees
+Architecture freeze initially rejected the authority-shaped `ContinuityAdmissionFacadePolicy` because no concrete ADR existed. The gate was not bypassed. PR #246 added `docs/adr/ADR-2026-08-07-continuity-admission-facade-boundary.md`, after which the exact head passed the freeze guard.
 
-`core/continuity/admission_evaluator.py` provides:
+## Facade guarantees
 
-- content-addressed `ContinuityAdmissionRuleDefinition`;
-- content-addressed `ContinuityAdmissionEvaluatorDefinition`;
-- immutable `ContinuityAdmissionRegistry`;
-- content-addressed `ContinuityCurrentDecisionEvidence`;
-- stable fail-closed reason codes;
-- pure `evaluate_continuity_admission(...)`;
-- evidence-only `ContinuityAdmissionEvaluationResult` with `no_runtime_authority=True`.
+`core/continuity/admission_facade.py` provides:
 
-The evaluator:
+- content-addressed `ContinuityAdmissionFacadePolicy`;
+- typed `ContinuityCurrentDecisionResolver` protocol;
+- internal `evaluate_continuity_admission_facade(...)`;
+- content-addressed `ContinuityAdmissionFacadeResult`;
+- exact registry, evaluator/rule and resolver identity pinning;
+- exact principal, authorization, tenant, binding receipt and complete-subject checks;
+- duplicate and cross-envelope Draft rejection before resolver access;
+- controlled fail-closed resolver identity and execution failures;
+- invocation of only the pure admission evaluator.
 
-- reads no database, environment, network, mutable global state or implicit clock;
-- accepts an explicit `evaluated_at`;
-- resolves only exact evaluator/rule ID+version pairs included in the supplied registry;
-- validates exact current principal, authorization, tenant, complete subject set, purpose, policy, lawful basis, authorization receipt and erasure-domain evidence;
-- rejects stale/mismatched/withdrawn/blocked current evidence fail-closed;
-- rejects unsupported source, adapter, derivation rule, signal, purpose, handling mode or retention class;
-- rejects low-confidence or stale Drafts;
-- produces a complete deterministic admitted/rejected partition;
-- creates no runtime permission.
+The facade does not select or activate itself. Its policy object is represented evidence, not trusted deployment configuration. The resolver protocol is an interface, not a concrete identity, authorization, consent, restriction, erasure or policy owner.
 
 ## Trust boundary that remains open
 
-A content-addressed registry proves the identity of its represented contents. It does not prove that the registry is the operator-approved live trust root.
+The next accepted composition must:
 
-A current-decision evidence object proves the identity of its represented status. It does not prove that the external resolver was authentic or authoritative.
-
-A future facade must therefore:
-
-1. use an operator-selected registry configuration;
-2. resolve current identity, authorization, consent/lawful basis, restriction, erasure and policy through accepted owners;
-3. preserve the complete exact subject set;
-4. reject missing, stale, ambiguous or conflicting state;
-5. invoke the pure evaluator;
-6. stop before producer invocation or any user-visible effect in its first bounded slice.
+1. select the expected facade/registry configuration through an explicit operator/deployment owner;
+2. obtain principal and authorization evidence from accepted owners;
+3. obtain consent or lawful-basis, restriction, erasure-domain and current `PolicySnapshot` evidence from accepted owners;
+4. aggregate the complete exact subject set fail-closed;
+5. reject missing, stale, unknown, ambiguous or conflicting evidence;
+6. call the merged internal facade;
+7. stop before signal-producer invocation, persistence or any user-visible effect.
 
 ## Explicit limitations
 
 Not implemented or not accepted for live use:
 
-- end-user or tenant authentication provider integration;
-- trusted registry selection owner;
-- trusted current-state resolver aggregation;
-- admission-aware facade;
-- anti-bypass guards around bare Draft/observation/producer calls;
+- concrete end-user or tenant authentication integration;
+- trusted deployment selection of facade policy and registry identity;
+- concrete current-state resolver composition;
 - durable persistence, replay, retention, cleanup or erasure lifecycle;
 - public package export;
 - `/query`, startup, worker or scheduler wiring;
@@ -151,31 +143,22 @@ Not implemented or not accepted for live use:
 
 ## Global project boundaries
 
-- `main` still lacks an administrator-enforced branch ruleset; issue #234 tracks this.
-- the aggregate merge-evidence workflow is implemented and observed but is not yet protected by repository settings;
-- the normal query path is not yet proven read-only across all legacy promotion paths;
-- Canon writer ownership is not yet unified across every promotion/supersession family;
+- `main` still lacks an administrator-enforced branch ruleset; issue #234 tracks this;
+- aggregate merge evidence exists but is not protected by repository settings;
+- normal query-path read-only behavior is not yet proven across every legacy promotion path;
+- Canon writer ownership is not unified across every promotion/supersession family;
 - projection dispatcher lifecycle and long-horizon operational metrics remain unwired;
 - independent security audit and certified privacy/compliance program remain absent;
-- SQLite remains the accepted local profile; PostgreSQL/ANN/distributed profiles remain research candidates with explicit return triggers.
+- SQLite remains the accepted local profile; PostgreSQL, ANN and distributed profiles remain research candidates with explicit return triggers.
 
 ## Research boundary
 
 Research intake is governed by `research/IDEA_INTAKE_PROTOCOL.md` and `research/FUTURE_COMPONENTS.md` from PR #243 (`2655ecabab400dda4b350ed90142510cf5a4f49c`). Recording an idea does not accept architecture or grant authority.
 
+Current Continuity resolvers, privacy closure, durable lifecycle, runtime wiring and activation are active engineering, not Research Mode.
+
 ## Next safe implementation slice
 
-The next bounded implementation PR may add an **internal admission-aware facade and resolver boundary only**.
+The next bounded implementation PR may add **concrete current-decision resolver composition through accepted owners only**.
 
-It must:
-
-- accept complete source envelope, binding, authorization, Draft and registry evidence;
-- require exact operator-selected registry identity rather than trusting arbitrary caller registry contents;
-- obtain current-decision evidence through explicit typed resolver protocols;
-- aggregate multi-subject state fail-closed;
-- invoke the pure evaluator;
-- optionally construct evidence-only authorized-batch output;
-- remain internal and explicitly invoked;
-- add no producer invocation, persistence, public export, server/startup/worker/scheduler caller, feature flag or user-visible effect.
-
-Current resolver implementations, durable lifecycle, runtime wiring and activation remain separate later decisions.
+It must remain internal and explicitly invoked, preserve the complete subject set, fail closed on missing or conflicting evidence, and add no producer invocation, persistence, public export, server/startup/worker/scheduler caller, feature flag or user-visible effect.
