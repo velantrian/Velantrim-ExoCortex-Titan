@@ -1,0 +1,41 @@
+name: Apply OpenLoop receipt-time fixture fix
+
+on:
+  push:
+    branches:
+      - feat/continuity-openloop-source-adapter
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-openloop-receipt-time-fix
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/continuity-openloop-source-adapter
+          fetch-depth: 0
+
+      - name: Apply exact fixture patch
+        run: python scripts/apply_openloop_receipt_time_fix_once.py
+
+      - name: Remove temporary diagnostic and patch files
+        run: |
+          rm .github/workflows/apply-openloop-receipt-time-fix.yml
+          rm .github/workflows/diagnose-openloop-adapter-tests.yml
+          rm scripts/apply_openloop_receipt_time_fix_once.py
+
+      - name: Commit clean implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(continuity): issue OpenLoop binding at source as_of"
+          git push origin HEAD:feat/continuity-openloop-source-adapter
