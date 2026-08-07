@@ -227,13 +227,18 @@ def classify_required_workflows(filenames: Iterable[str]) -> dict[str, bool]:
 
 
 def evaluate_documentation_metadata(body: str) -> Evaluation:
-    match = _DOCUMENTATION_IMPACT_RE.search(body)
-    if match is None:
+    matches = tuple(_DOCUMENTATION_IMPACT_RE.finditer(body))
+    if not matches:
         return Evaluation(
             "failure",
             "PR body must declare Documentation impact: NONE, GITHUB_ONLY, or GITHUB_AND_NOTION",
         )
-    impact = match.group(1).upper()
+    if len(matches) != 1:
+        return Evaluation(
+            "failure",
+            "PR body must contain exactly one Documentation impact declaration",
+        )
+    impact = matches[0].group(1).upper()
     if impact != "GITHUB_AND_NOTION":
         return Evaluation("success", f"documentation impact is {impact}")
 
