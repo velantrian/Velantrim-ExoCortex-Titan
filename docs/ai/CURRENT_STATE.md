@@ -3,7 +3,7 @@
 **Verified:** 2026-08-07  
 **Actual GitHub `main`:** `659c30e0e8023c48fdf68be8583401fc042a1ab8`  
 **Verified implementation change:** PR #232 — OpenLoop subject binding v2  
-**Latest documentation checkpoint in progress:** `agent/continuity-pr232-doc-sync`  
+**Latest documentation checkpoint in progress:** PR #233  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
 
 Material claims must be verified against exact SHAs, tests, workflows, wiring, configuration and observed runtime evidence.
@@ -64,7 +64,7 @@ State/Goal/OpenLoop prerequisite completion does not add authentication, admissi
 | Goal subject-binding schema v2 | #230 → `81836b4f715470c50a4c6c7768a2cde7478568c8` | main, tested, internal, unwired |
 | OpenLoop subject-binding schema v2 | #232 → `659c30e0e8023c48fdf68be8583401fc042a1ab8` | main, tested, internal, unwired |
 
-## PR #232 exact-head evidence
+## PR #232 exact-head and post-merge evidence
 
 ```text
 Exact tested head:       909789ee99e169f83aa5fab927ed6312e20cf471
@@ -73,9 +73,13 @@ Continuity contracts:    31154197538 PASS
 Docker hardening:        31154197912 PASS
 Unresolved threads:      0
 Merge SHA:               659c30e0e8023c48fdf68be8583401fc042a1ab8
+
+Post-merge full CI:      31154604309 PASS
+Post-merge Continuity:   31154604287 PASS
+Post-merge Docker:       31154604295 PASS
 ```
 
-The earlier Continuity job on `81e07a8ea59f486da9f5cf147ecc2932044fa024` executed no test steps because GitHub's hosted runner did not acquire the job. The later exact-head run above supplies the missing independent contract evidence.
+The earlier Continuity job on `81e07a8ea59f486da9f5cf147ecc2932044fa024` executed no test steps because GitHub's hosted runner did not acquire the job. The later exact-head and post-merge runs above supply the missing evidence.
 
 ## Implemented primary contracts
 
