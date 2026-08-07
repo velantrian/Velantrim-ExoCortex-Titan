@@ -17,9 +17,9 @@ Code and passing tests do not establish wiring, enablement, authority or product
 - aggregate merge evidence and CODEOWNERS are active in `main`;
 - PR #236 and PR #238 demonstrated Draft→pending and Ready→success exact-head aggregation;
 - recovery workers no longer report terminal results for batches they failed to claim;
-- the real two-worker race and a deterministic lost-claim case remain tested under ordinary and coverage modes.
+- the real two-worker race and a deterministic lost-claim case pass under ordinary and coverage modes both before and after hotfix merge.
 
-The Goal source-adapter and recovery-result ownership gaps are closed at exact-head test level. OpenLoop admission, current permission, privacy, facade, runtime and repository-settings risks remain open.
+The Goal source-adapter and recovery-result ownership gaps are closed. OpenLoop admission, current permission, privacy, facade, runtime and repository-settings risks remain open.
 
 ## P0 — Runtime authority boundary remains absent
 
@@ -111,16 +111,17 @@ PR #236 post-merge coverage run `31164988400` exposed a real reporting race:
 - a losing recovery worker returned the winner's terminal report;
 - two callers therefore appeared to have processed one batch.
 
-PR #238 fixes the ownership semantics:
+PR #238 closes the ownership gap:
 
 - recovery (`wait_if_running=False`) returns `None` after any lost claim;
 - live/idempotent callers retain cached terminal readback and wait behavior;
 - erasure selection, CAS fencing, lease ownership and deletion behavior are unchanged;
-- exact-head coverage and ordinary pytest passed in `31166079813`;
+- exact-head ordinary pytest and coverage passed in `31166079813`;
 - exact-head Docker passed in `31166079825`;
-- post-merge coverage on `f0c17de...` remains required before final closure.
+- post-merge ordinary pytest and full coverage passed in `31166699745`;
+- post-merge Docker passed in `31166697770`.
 
-Required discipline:
+Required discipline remains:
 
 - preserve first failures and exact-head/post-merge evidence;
 - do not normalize blind retries;
@@ -161,7 +162,7 @@ Top snapshots can become stale while historical blocks remain visible. Required 
 - supersede stale PRs rather than merging documentation from an old base;
 - no next implementation slice while canonical status is materially stale.
 
-PR #237 was closed without merge after PR #238 advanced `main`; its replacement is based on the hotfix merge SHA.
+PR #237 was closed without merge after PR #238 advanced `main`; PR #239 replaces it from the correct hotfix base.
 
 ## P1 — Existing shadow/runtime infrastructure
 
