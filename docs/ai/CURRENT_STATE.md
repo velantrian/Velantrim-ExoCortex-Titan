@@ -61,7 +61,7 @@ Goal and OpenLoop subject binding are complete prerequisites. The Goal adapter c
 | OpenLoop subject binding v2 | #232 → `659c30e0e8023c48fdf68be8583401fc042a1ab8` | tested prerequisite |
 | Aggregate merge evidence | #235 → `d2edd3882b109e572ff1c94fed1754f486c9b980` | active and observed; ruleset not enabled |
 | Goal result → Draft adapter | #236 → `2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d` | tested, internal, unwired |
-| Recovery ownership hotfix | #238 → `f0c17de05df6c762c69974775e3c95d9e613cf47` | exact-head tested; post-merge validation pending |
+| Recovery ownership hotfix | #238 → `f0c17de05df6c762c69974775e3c95d9e613cf47` | exact-head and post-merge tested |
 
 ## Goal adapter evidence
 
@@ -128,8 +128,8 @@ Hotfix full CI + coverage:     31166079813 PASS
 Hotfix Docker:                 31166079825 PASS
 Hotfix aggregate evidence:     PASS
 Hotfix merge:                  f0c17de05df6c762c69974775e3c95d9e613cf47
-Post-merge full CI/coverage:   running at this checkpoint
-Post-merge Docker:             PASS
+Post-merge full CI + coverage: 31166699745 PASS
+Post-merge Docker:             31166697770 PASS
 ```
 
 The race test remains enabled under coverage. No exclusion or blind rerun was used.
@@ -185,7 +185,7 @@ A valid receipt proves represented evidence integrity, not current permission.
 
 ## Next safe slice
 
-After post-merge hotfix validation and this documentation checkpoint, implement **OpenLoop source adapter only**:
+After this documentation checkpoint, implement **OpenLoop source adapter only**:
 
 ```text
 OpenLoopProjectionResult v2
