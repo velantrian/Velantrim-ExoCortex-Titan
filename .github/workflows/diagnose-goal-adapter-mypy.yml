@@ -1,0 +1,38 @@
+name: Diagnostic — Goal adapter mypy details
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "core/continuity/goal_source_adapter.py"
+      - ".github/workflows/diagnose-goal-adapter-mypy.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install mypy
+        run: pip install "mypy>=1.10,<2"
+      - name: Publish exact mypy errors
+        shell: bash
+        run: |
+          set +e
+          mypy core/continuity/ --show-error-codes 2>&1 | tee /tmp/mypy.log
+          status=${PIPESTATUS[0]}
+          while IFS= read -r line; do
+            if [[ "$line" =~ ^([^:]+):([0-9]+):\ error:\ (.*)$ ]]; then
+              file="${BASH_REMATCH[1]}"
+              number="${BASH_REMATCH[2]}"
+              message="${BASH_REMATCH[3]}"
+              echo "::error file=${file},line=${number}::${message}"
+            fi
+          done < /tmp/mypy.log
+          exit "$status"
