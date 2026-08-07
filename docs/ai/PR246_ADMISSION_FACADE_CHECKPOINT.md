@@ -2,13 +2,12 @@
 
 **Status:** `DRAFT · IMPLEMENTED IN OPEN PR · GITHUB_AND_NOTION`  
 **Base:** `main@83213048204da0e692abc147fdfad9a326b2b0d6`  
-**Current implementation/ADR head before this checkpoint update:** `1e74390adf80963a465776e2dcedd185dce58ad9`  
+**Exact validated implementation/ADR head before final evidence commit:** `7028b42908d5c4db66947a64f22872107ea2174b`  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
 
 ## Intent
 
-Add the first internal facade boundary above the pure admission evaluator without
-creating a live runtime trust boundary.
+Add the first internal facade boundary above the pure admission evaluator without creating a live runtime trust boundary.
 
 The facade pins:
 
@@ -18,21 +17,19 @@ The facade pins:
 - exact principal, authorization, tenant, source binding and subject scope;
 - explicit evaluation time.
 
-It then invokes only the pure evaluator and returns content-addressed evidence.
+It invokes only the pure evaluator and returns content-addressed evidence.
 
 ## Architecture decision
 
-The architecture-freeze gate correctly classified `ContinuityAdmissionFacadePolicy` as
-an authority-shaped surface. PR #246 now includes:
+The architecture-freeze gate correctly classified `ContinuityAdmissionFacadePolicy` as an authority-shaped surface. PR #246 includes:
 
 - `docs/adr/ADR-2026-08-07-continuity-admission-facade-boundary.md`.
 
-The ADR makes the ownership decision explicit:
+The ADR establishes:
 
 - the facade owns safe composition and anti-substitution checks only;
 - `PolicyKernel` remains the owner of hard capability/locality/data-mode policy;
-- existing components remain the owners of identity, authorization, consent,
-  restriction, erasure and current-policy state;
+- existing components remain the owners of identity, authorization, consent, restriction, erasure and current-policy state;
 - the pure evaluator remains the owner of deterministic Draft admission;
 - no signal-producer, Canon, action, reminder or compute authority is introduced.
 
@@ -51,9 +48,8 @@ facade result ≠ runtime permission
 - internal `evaluate_continuity_admission_facade(...)`;
 - content-addressed `ContinuityAdmissionFacadeResult`;
 - adversarial tests in `tests/test_continuity_admission_facade.py`;
-- pre-resolution hardening tests in
-  `tests/test_continuity_admission_facade_hardening.py`;
-- accepted-on-merge ADR for the facade ownership boundary.
+- pre-resolution hardening tests in `tests/test_continuity_admission_facade_hardening.py`;
+- ADR for the facade ownership boundary.
 
 ## Facade path
 
@@ -83,7 +79,7 @@ STOP
 
 ## Fail-closed guarantees
 
-The facade rejects before or during evaluation when:
+The facade rejects when:
 
 - the registry does not match the pinned facade policy;
 - evaluator/rule identity is not resolvable in that registry;
@@ -97,13 +93,10 @@ The facade rejects before or during evaluation when:
 - a Draft references another source envelope;
 - the resolver raises an exception;
 - the resolver returns an invalid object;
-- resolver evidence does not cover the exact principal, authorization, tenant and
-  complete authorization subject set;
+- resolver evidence does not cover the exact principal, authorization, tenant and complete authorization subject set;
 - the pure evaluator rejects current state or Draft policy.
 
-Malformed Draft sets are rejected before the facade invokes the external resolver.
-Resolver identity failures and resolver execution failures are converted to controlled
-`ContinuitySourceAdmissionError` results.
+Malformed Draft sets are rejected before the facade invokes the external resolver. Resolver identity failures and resolver execution failures are converted to controlled `ContinuitySourceAdmissionError` results.
 
 ## Validation history
 
@@ -111,14 +104,11 @@ Initial code/test head `e631d17489805234cd151a38fe894d3c142ec2a6`:
 
 ```text
 Continuity contracts  31218761535 PASS
-Ruff                  PASS
-blocking mypy         PASS
 Continuity pytest     511 passed
 Docker hardening      31218761260 PASS
 ```
 
-Self-review added pre-resolution structural rejection and controlled resolver identity
-handling. Hardened code/test head:
+Self-review added pre-resolution structural rejection and controlled resolver identity handling. Hardened code/test head:
 
 ```text
 a642ccc3b9f022a2167e14e9d0c151afdc0b1f11
@@ -132,18 +122,31 @@ Docker hardening      31219127155 PASS
 Full Titan CI         31219127212 FAILED at architecture freeze
 ```
 
-The failure was not a runtime/test defect. The freeze guard found the new
-`ContinuityAdmissionFacadePolicy` class and required a concrete ADR. The guard was not
-bypassed or weakened. The facade ownership ADR was added on
-`1e74390adf80963a465776e2dcedd185dce58ad9`.
+The failure was not a runtime/test defect. The freeze guard required a concrete ADR for the new authority-shaped facade policy. The guard was not bypassed or weakened.
 
-Fresh exact-head validation is required after this checkpoint update.
+After adding the ADR, exact head `7028b42908d5c4db66947a64f22872107ea2174b` passed:
+
+```text
+Full Titan CI + coverage  31219414919 PASS
+Continuity contracts      31219414942 PASS
+Docker hardening          31219417341 PASS
+Architecture freeze       PASS with concrete ADR
+Repository guards         PASS
+Machine-readable state    PASS
+Portable KB integrity     PASS
+Ruff                       PASS
+Blocking mypy              PASS
+Full pytest                PASS
+Coverage ratchet ≥74%      PASS
+Unresolved review threads  0
+```
+
+This documentation evidence commit requires one final exact-head rerun before Ready/merge.
 
 ## Explicit non-scope
 
 - no real principal/authentication provider integration;
-- no concrete authorization, consent/lawful-basis, restriction, erasure or policy
-  resolver implementation;
+- no concrete authorization, consent/lawful-basis, restriction, erasure or policy resolver implementation;
 - no signal-producer invocation;
 - no live `AuthorizedContinuityObservationBatch` use;
 - no persistence, replay, retention or cleanup lifecycle;
@@ -155,26 +158,15 @@ Fresh exact-head validation is required after this checkpoint update.
 
 ## Status effect after merge
 
-Current `main` remains:
+Current `main` remains `6/12 = 50.0%`.
 
-```text
-6/12 = 50.0%
-```
+Only after final exact-head validation, review, GitHub/Notion synchronization and merge may the internal facade capability advance canonical implementation readiness to `7/12 = 58.3%`.
 
-Only after exact-head validation, review, GitHub/Notion synchronization and merge may the
-internal facade capability advance canonical implementation readiness to:
-
-```text
-7/12 = 58.3%
-```
-
-`WIRED`, `ENABLED`, `OBSERVED` and runtime authority remain false. Concrete trusted
-resolver integration remains a separate incomplete category.
+`WIRED`, `ENABLED`, `OBSERVED` and runtime authority remain false. Concrete trusted resolver integration remains a separate incomplete category.
 
 ## Next safe slice after merge
 
-The next engineering slice should implement accepted **current-decision resolver
-composition** without wiring it into runtime:
+Implement accepted current-decision resolver composition without runtime wiring:
 
 - principal/authentication evidence owner;
 - authorization owner;
@@ -184,8 +176,7 @@ composition** without wiring it into runtime:
 - current `PolicySnapshot` compatibility owner;
 - complete multi-subject fail-closed aggregation.
 
-Concrete resolver integration must remain internal and must not invoke the signal
-producer, persist admission artifacts or alter user-visible behavior.
+Concrete resolver integration must remain internal and must not invoke the signal producer, persist admission artifacts or alter user-visible behavior.
 
 ## Documentation synchronization
 
@@ -193,7 +184,7 @@ producer, persist admission artifacts or alter user-visible behavior.
 Documentation impact:   GITHUB_AND_NOTION
 Notion access:           AVAILABLE
 Notion target:           Continuity Source Admission — Architecture
-Notion synchronization: DRAFT CHECKPOINT SYNCED
+Notion synchronization: SYNCED
 ```
 
-Final exact head, final CI, review state and merge SHA must be recorded when available.
+Final exact head, final CI, review state and merge SHA must be recorded after the final rerun and merge.
