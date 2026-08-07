@@ -129,6 +129,20 @@ def test_documentation_impact_is_mandatory() -> None:
     assert evaluation.state == "failure"
 
 
+def test_duplicate_documentation_impact_is_rejected() -> None:
+    body = """
+Documentation impact: NONE
+Documentation impact: GITHUB_AND_NOTION
+Notion access: AVAILABLE
+Notion synchronization: SYNCED
+"""
+
+    evaluation = evaluate_documentation_metadata(body)
+
+    assert evaluation.state == "failure"
+    assert "exactly one" in evaluation.description
+
+
 def test_available_notion_requires_synced_state() -> None:
     body = """
 Documentation impact: `GITHUB_AND_NOTION`
