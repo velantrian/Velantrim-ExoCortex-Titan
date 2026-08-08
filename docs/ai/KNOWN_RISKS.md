@@ -45,6 +45,8 @@ Required action:
 - restrict direct push;
 - require up-to-date branches where appropriate.
 
+Administrator handoff: [`docs/operations/branch-ruleset-admin-handoff.md`](../operations/branch-ruleset-admin-handoff.md).
+
 ## P0 — Operator-selected trust root is not deployed
 
 `ContinuityAdmissionFacadePolicy` and `ContinuityAdmissionRegistry` are content-addressed and internally consistent. They do not select or activate themselves as operator-approved deployment configuration.
