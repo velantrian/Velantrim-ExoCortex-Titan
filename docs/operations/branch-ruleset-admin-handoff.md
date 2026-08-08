@@ -10,6 +10,8 @@
 | Setting | Required value |
 |---|---|
 | Changes | Pull request only |
+| Required approvals | ≥ 1 |
+| Dismiss stale approvals | yes — dismiss previous approvals when new commits are pushed |
 | Required status check | `Titan aggregate merge evidence` (exact context name from aggregate workflow) |
 | Review threads | All conversations resolved |
 | Direct push | Blocked for ordinary actors |
@@ -41,6 +43,7 @@ Save structured evidence:
 
 - ruleset ID
 - target branch
+- required approval count (≥ 1) and dismiss-stale-approvals setting
 - required status context string(s)
 - bypass list
 - screenshot or GitHub API export
@@ -52,9 +55,11 @@ Do **not** perform destructive direct-push or force-push tests on `main`.
 ## Issue #234 closure criteria
 
 Close #234 only after proof above is attached to GitHub (for example
-`docs/operations/branch-protection-proof.md` or issue comment with API export).
+`docs/operations/branch-protection-proof.md` or issue comment with API export),
+including the ruleset ID.
 
 Only then may documentation set `branch_ruleset_enforced = true`.
+Until that proof exists, leave `branch_ruleset_enforced = false` and keep #234 open.
 
 ## Residual risk while open
 
