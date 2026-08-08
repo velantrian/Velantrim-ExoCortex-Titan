@@ -1,8 +1,8 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-08-07  
-**Repository `main` head at verification:** `9f07db6de8d32683d00bfe4f1673e84493607553`  
-**Latest implementation-bearing baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553`
+**Snapshot:** 2026-08-08  
+**Repository `main` head at verification:** `294bdfa6a77097e48310872a2e3fae811e8c2c9e`  
+**Latest implementation-bearing baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)
 
 Code presence and passing tests do not close a risk. Closure requires correct authority ownership, current evidence, integration controls, activation governance and operational proof.
 
@@ -172,11 +172,41 @@ Required proof before producer use:
 - current authorization, restriction and erasure state are rechecked before producer invocation;
 - producer output remains advisory until a separate activation decision.
 
-## P1 — Intermittent SQLite recovery timeout
+## P1 — Projection outbox CAS test-harness flake
 
-PR #246 exact-head Full Titan run `31219904698` had one first-attempt timeout in existing `test_drop_legacy_embeddings_lock_owner_process_is_bounded` after 20 seconds. Coverage passed, and attempt 2 on the unchanged SHA passed the full suite.
+PR #247 post-merge Full Titan run `31222680496` on SHA
+`294bdfa6a77097e48310872a2e3fae811e8c2c9e` failed attempt 1 in:
 
-This is not attributed to the facade. It remains recovery/concurrency risk evidence because a green retry does not prove the timeout impossible.
+```text
+tests/test_promotion_projection_outbox_caller.py::
+test_cas_contention_yields_exactly_one_winner_and_one_intent[25]
+```
+
+Failure: `threading.BrokenBarrierError` at `barrier.wait(timeout=15)`.
+
+Attempt 2 on the unchanged exact SHA passed (`3746 passed, 17 skipped, 1 xfailed`).
+Local audit runs reported 30/30 targeted parameterized passes on the same family.
+
+Current hypothesis: runner/scheduling-sensitive pre-CAS test orchestration; a production
+CAS defect is not proven. This family is distinct from fresh-bootstrap ADD COLUMN races
+and from legacy embeddings-lock recovery timeouts.
+
+Required follow-up:
+
+- retain attempt 1 in audit history;
+- harden the harness with stage-based diagnostics;
+- avoid skip, xfail, flaky markers or unconditional reruns as the only mitigation;
+- do not weaken one-winner or one-intent assertions without proven production defect.
+
+## P1 — Intermittent legacy embeddings-lock recovery timeout
+
+PR #246 exact-head Full Titan run `31219904698` had one first-attempt timeout in
+`test_drop_legacy_embeddings_lock_owner_process_is_bounded` after 20 seconds. Coverage
+passed, and attempt 2 on the unchanged SHA passed the full suite.
+
+This is not attributed to the facade or to the CAS harness family above. It remains
+legacy recovery/concurrency risk evidence because a green retry does not prove the
+timeout impossible.
 
 Required follow-up:
 

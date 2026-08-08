@@ -1,10 +1,13 @@
 # 📍 Current System State
 
-**Verified:** 2026-08-07  
-**Repository `main` head at verification:** `9f07db6de8d32683d00bfe4f1673e84493607553`  
-**Latest implementation-bearing Continuity baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553`  
-**Documentation checkpoint branch:** `docs/continuity-facade-postmerge-sync`  
+**Verified:** 2026-08-08  
+**Repository `main` head at verification:** `294bdfa6a77097e48310872a2e3fae811e8c2c9e`  
+**Latest implementation-bearing Continuity baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
+**Documentation checkpoint SHA:** `294bdfa6a77097e48310872a2e3fae811e8c2c9e` (PR #247)  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
+
+> Exact, dated, historical snapshot. Re-query GitHub before treating any SHA here as the
+> current head. `docs/state/project_state.json` records the three SHA roles explicitly.
 
 Material claims must be verified against exact SHAs, tests, workflows, wiring, configuration and runtime evidence.
 
@@ -99,6 +102,24 @@ Unresolved review threads:  0
 Attempt 1 of the Full Titan run retained one existing SQLite recovery timeout in `test_drop_legacy_embeddings_lock_owner_process_is_bounded`; coverage passed. The unchanged exact head passed the complete second attempt. The timeout remains risk evidence and is not represented as a facade defect.
 
 Architecture freeze initially rejected the authority-shaped `ContinuityAdmissionFacadePolicy` because no concrete ADR existed. The gate was not bypassed. PR #246 added `docs/adr/ADR-2026-08-07-continuity-admission-facade-boundary.md`, after which the exact head passed the freeze guard.
+
+## PR #247 post-merge docs checkpoint
+
+```text
+Merge SHA:                  294bdfa6a77097e48310872a2e3fae811e8c2c9e
+Full Titan CI + coverage:   31222680496
+  Attempt 1:                FAILED · test_cas_contention_yields_exactly_one_winner_and_one_intent[25]
+                            threading.BrokenBarrierError at barrier.wait(timeout=15)
+  Attempt 2:                PASS · 3746 passed, 17 skipped, 1 xfailed
+Aggregate push evidence:    31222680550 SUCCESS
+Unresolved review threads:  0
+Documentation impact:       GITHUB_AND_NOTION
+Checkpoint document:        docs/ai/PR247_ADMISSION_FACADE_POSTMERGE_CHECKPOINT.md (FINAL)
+```
+
+This post-merge failure is the projection-outbox CAS test-harness family. It is not the
+historical SQLite fresh-bootstrap ADD COLUMN race family and not the legacy embeddings-lock
+recovery timeout family tracked from PR #246 run `31219904698`.
 
 ## Facade guarantees
 
