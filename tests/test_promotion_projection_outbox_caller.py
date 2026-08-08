@@ -26,7 +26,9 @@ import subprocess
 import sys
 import sqlite3
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
@@ -309,14 +311,155 @@ def test_already_validated_creates_no_new_version_audit_or_intent(
 
 # ── D. CAS contention: exactly one winner, exactly one intent ──────────────
 
-def _gate_cas_at_shared_snapshot(store: SQLiteGraphStore, barrier: threading.Barrier) -> None:
+
+@dataclass
+class _CasContentionHarness:
+    """Stage-aware orchestration for real SQLite CAS contention tests.
+
+    Separates worker/store readiness from synchronized CAS release so a
+    scheduling-sensitive BrokenBarrierError cannot be mistaken for a CAS defect.
+    """
+
+    contenders: int
+    timeout: float = 30.0
+    stall_contender: int | None = None
+    _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
+    _condition: threading.Condition = field(init=False, repr=False)
+    _release_event: threading.Event = field(default_factory=threading.Event, init=False, repr=False)
+    _started_at: float = field(default_factory=time.monotonic, init=False, repr=False)
+    _stage_by_id: dict[int, str] = field(default_factory=dict, init=False, repr=False)
+    _workers_started: int = 0
+    _stores_ready: int = 0
+    _pre_cas_ready: int = 0
+    _cas_returned: int = 0
+
+    def __post_init__(self) -> None:
+        self._condition = threading.Condition(self._lock)
+
+    def mark_submitted(self, contender_id: int) -> None:
+        with self._lock:
+            self._stage_by_id[contender_id] = "submitted"
+
+    def mark_worker_started(self, contender_id: int) -> None:
+        with self._lock:
+            self._stage_by_id[contender_id] = "worker_started"
+            self._workers_started += 1
+
+    def mark_store_ready(self, contender_id: int) -> None:
+        with self._lock:
+            self._stage_by_id[contender_id] = "store_ready"
+            self._stores_ready += 1
+
+    def wait_for_synchronized_cas_release(self, contender_id: int) -> None:
+        if self.stall_contender == contender_id:
+            with self._lock:
+                self._stage_by_id[contender_id] = "pre_cas_gate_stalled"
+            time.sleep(self.timeout + 1.0)
+            return
+
+        with self._lock:
+            self._stage_by_id[contender_id] = "pre_cas_gate"
+            self._pre_cas_ready += 1
+            if self._pre_cas_ready == self.contenders:
+                self._release_event.set()
+                self._condition.notify_all()
+
+        deadline = time.monotonic() + self.timeout
+        with self._condition:
+            while self._pre_cas_ready < self.contenders:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    message = self._diagnostics_unlocked()
+                    raise AssertionError(message)
+                self._condition.wait(timeout=min(remaining, 0.25))
+
+        if not self._release_event.wait(timeout=max(0.0, deadline - time.monotonic())):
+            raise AssertionError(self.format_timeout())
+
+    def mark_cas_returned(self, contender_id: int) -> None:
+        with self._lock:
+            self._stage_by_id[contender_id] = "cas_returned"
+            self._cas_returned += 1
+
+    def _diagnostics_unlocked(self) -> str:
+        missing = [
+            contender_id
+            for contender_id in range(self.contenders)
+            if self._stage_by_id.get(contender_id) not in {
+                "pre_cas_gate",
+                "cas_returned",
+            }
+        ]
+        stage_lines = [
+            f"  contender_{contender_id}: {self._stage_by_id.get(contender_id, 'missing')}"
+            for contender_id in range(self.contenders)
+        ]
+        elapsed = time.monotonic() - self._started_at
+        return (
+            "CAS contention harness timed out before synchronized release\n"
+            f"missing contender IDs: {missing}\n"
+            f"last known stages:\n" + "\n".join(stage_lines) + "\n"
+            f"elapsed monotonic seconds: {elapsed:.3f}\n"
+            f"workers started: {self._workers_started}/{self.contenders}\n"
+            f"stores ready: {self._stores_ready}/{self.contenders}\n"
+            f"pre-CAS gate reached: {self._pre_cas_ready}/{self.contenders}\n"
+            f"CAS returned: {self._cas_returned}/{self.contenders}"
+        )
+
+    def format_timeout(self) -> str:
+        with self._lock:
+            return self._diagnostics_unlocked()
+
+
+def _install_cas_contention_gate(
+    store: SQLiteGraphStore,
+    harness: _CasContentionHarness,
+    contender_id: int,
+) -> None:
     original = store._promote_to_validated_cas
 
     def gated(*args, **kwargs):
-        barrier.wait(timeout=15)
-        return original(*args, **kwargs)
+        harness.wait_for_synchronized_cas_release(contender_id)
+        try:
+            return original(*args, **kwargs)
+        finally:
+            harness.mark_cas_returned(contender_id)
 
     store._promote_to_validated_cas = gated  # type: ignore[method-assign]
+
+
+def _run_cas_contention_race(
+    db_path: Path,
+    *,
+    contenders: int,
+    timeout: float = 30.0,
+    stall_contender: int | None = None,
+) -> list:
+    harness = _CasContentionHarness(
+        contenders,
+        timeout=timeout,
+        stall_contender=stall_contender,
+    )
+    stores = [SQLiteGraphStore(str(db_path)) for _ in range(contenders)]
+    for contender_id, store in enumerate(stores):
+        harness.mark_submitted(contender_id)
+        _install_cas_contention_gate(store, harness, contender_id)
+
+    def promote(store: SQLiteGraphStore, contender_id: int):
+        harness.mark_worker_started(contender_id)
+        harness.mark_store_ready(contender_id)
+        return store.validate_and_promote("f_cas_contention", by=f"contender_{contender_id}")
+
+    try:
+        with ThreadPoolExecutor(max_workers=contenders) as executor:
+            futures = [
+                executor.submit(promote, store, contender_id)
+                for contender_id, store in enumerate(stores)
+            ]
+            return [future.result(timeout=timeout + 5) for future in futures]
+    finally:
+        for store in stores:
+            store.close()
 
 
 @pytest.mark.parametrize("contenders", [2, 10, 25])
@@ -330,39 +473,19 @@ def test_cas_contention_yields_exactly_one_winner_and_one_intent(
     _seed_promotable_fact(bootstrap, fact_id)
     bootstrap.close()
 
-    stores = [SQLiteGraphStore(str(db_path)) for _ in range(contenders)]
-    barrier = threading.Barrier(contenders, timeout=15)
-    for s in stores:
-        _gate_cas_at_shared_snapshot(s, barrier)
+    verdicts = _run_cas_contention_race(db_path, contenders=contenders)
 
-    def promote(store: SQLiteGraphStore, actor: str):
-        return store.validate_and_promote(fact_id, by=actor)
+    winners = [v for v in verdicts if v.passed]
+    assert len(winners) == 1, [(v.passed, v.reason) for v in verdicts]
 
+    post_race = SQLiteGraphStore(str(db_path))
     try:
-        with ThreadPoolExecutor(max_workers=contenders) as executor:
-            futures = [
-                executor.submit(promote, s, f"contender_{i}")
-                for i, s in enumerate(stores)
-            ]
-            verdicts = [f.result(timeout=30) for f in futures]
-
-        winners = [v for v in verdicts if v.passed]
-        assert len(winners) == 1, [(v.passed, v.reason) for v in verdicts]
-
-        final = stores[0].get_fact(fact_id)
+        final = post_race.get_fact(fact_id)
         assert final is not None and final["epistemic_state"] == "Validated"
         rows = _outbox_rows(db_path, fact_id)
         assert len(rows) == 1, f"expected exactly one intent, found {len(rows)}"
         assert rows[0]["canonical_version"] == _fact_version(db_path, fact_id)
-    finally:
-        for s in stores:
-            s.close()
 
-    assert _integrity_ok(db_path)
-
-    # Post-race retry: already_validated, no second intent.
-    post_race = SQLiteGraphStore(str(db_path))
-    try:
         retry_verdict = post_race.validate_and_promote(fact_id, by="post_race")
         assert retry_verdict.passed is True
         assert retry_verdict.reason == "already_validated"
@@ -370,6 +493,28 @@ def test_cas_contention_yields_exactly_one_winner_and_one_intent(
     finally:
         post_race.close()
     assert _integrity_ok(db_path)
+
+
+def test_cas_contention_harness_reports_stalled_contender() -> None:
+    harness = _CasContentionHarness(3, timeout=0.5, stall_contender=1)
+    errors: list[str] = []
+
+    def worker(contender_id: int) -> None:
+        try:
+            harness.wait_for_synchronized_cas_release(contender_id)
+        except AssertionError as exc:
+            errors.append(str(exc))
+
+    threads = [threading.Thread(target=worker, args=(contender_id,)) for contender_id in range(3)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=3.0)
+
+    assert errors, "expected at least one bounded harness timeout"
+    assert any("contender_1: pre_cas_gate_stalled" in message for message in errors)
+    assert any("missing contender IDs: [1]" in message for message in errors)
+    assert any("pre-CAS gate reached: 2/3" in message for message in errors)
 
 
 # ── E. Migration-020 activation gating ──────────────────────────────────────
