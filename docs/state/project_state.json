@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "project": "velantrim-exocortex-titan",
-  "verified_at": "2026-08-08T09:30:00Z",
+  "verified_at": "2026-08-08T10:54:00Z",
   "repository": {
     "default_branch": "main",
-    "repository_head_sha_at_verification": "294bdfa6a77097e48310872a2e3fae811e8c2c9e",
+    "repository_head_sha_at_verification": "c14916214a920802c9ce6187be79ebe74ddfadfc",
     "implementation_baseline_sha": "9f07db6de8d32683d00bfe4f1673e84493607553",
-    "documentation_checkpoint_sha": "294bdfa6a77097e48310872a2e3fae811e8c2c9e",
-    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected at verification; implementation_baseline_sha is the latest implementation-bearing Continuity merge (PR #246); documentation_checkpoint_sha is the merged PR #247 post-merge canonical checkpoint. These fields are exact dated snapshots, not evergreen remote-freshness claims."
+    "documentation_checkpoint_sha": "c14916214a920802c9ce6187be79ebe74ddfadfc",
+    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected at verification (PR #248 merge finalizing the PR #247 checkpoint); implementation_baseline_sha is the latest implementation-bearing Continuity merge (PR #246); documentation_checkpoint_sha is the merged FINAL docs checkpoint on main. These fields are exact dated snapshots, not evergreen remote-freshness claims."
   },
   "continuity": {
     "completed_capabilities": 7,
@@ -21,7 +21,7 @@
     "enabled": false,
     "observed": false,
     "runtime_authority": false,
-    "next_bounded_slice": "compose current principal, authorization, consent or lawful-basis, restriction, erasure-domain and PolicySnapshot evidence through accepted owners; remain internal and stop before producer invocation, persistence or runtime effects"
+    "next_bounded_slice": "complete Phase I remediation (CAS characterization PR #250, frozen deps, action pins, admin ruleset handoff) before owner map / trust-root ADR; remain internal and stop before producer invocation, persistence or runtime effects"
   },
   "governance": {
     "aggregate_merge_evidence_present": true,

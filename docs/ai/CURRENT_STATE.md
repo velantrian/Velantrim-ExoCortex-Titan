@@ -1,9 +1,9 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-08  
-**Repository `main` head at verification:** `294bdfa6a77097e48310872a2e3fae811e8c2c9e`  
+**Repository `main` head at verification:** `c14916214a920802c9ce6187be79ebe74ddfadfc`  
 **Latest implementation-bearing Continuity baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
-**Documentation checkpoint SHA:** `294bdfa6a77097e48310872a2e3fae811e8c2c9e` (PR #247)  
+**Documentation checkpoint SHA:** `c14916214a920802c9ce6187be79ebe74ddfadfc` (PR #248 FINAL of PR #247 checkpoint)  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
 
 > Exact, dated, historical snapshot. Re-query GitHub before treating any SHA here as the
@@ -117,9 +117,11 @@ Documentation impact:       GITHUB_AND_NOTION
 Checkpoint document:        docs/ai/PR247_ADMISSION_FACADE_POSTMERGE_CHECKPOINT.md (FINAL)
 ```
 
-This post-merge failure is the projection-outbox CAS test-harness family. It is not the
-historical SQLite fresh-bootstrap ADD COLUMN race family and not the legacy embeddings-lock
-recovery timeout family tracked from PR #246 run `31219904698`.
+This post-merge failure is an **uncharacterized CAS-contention test failure**
+(`BrokenBarrierError`). It is not yet classified as harness-only flake or production CAS
+defect. It is not the historical SQLite fresh-bootstrap ADD COLUMN race family and not
+the legacy embeddings-lock recovery timeout family tracked from PR #246 run
+`31219904698`. Characterization is tracked by issue #249 / draft PR #250.
 
 ## Facade guarantees
 

@@ -28,9 +28,11 @@ mark the PR #247 checkpoint FINAL instead of DRAFT.
 
 ### Corrected incident identification
 
-Post-merge attempt 1 failed in the projection-outbox CAS test harness
-(`test_cas_contention_yields_exactly_one_winner_and_one_intent[25]`), not in the
-fresh-bootstrap ADD COLUMN family or the legacy embeddings-lock timeout family.
+Post-merge attempt 1 failed in
+`test_cas_contention_yields_exactly_one_winner_and_one_intent[25]` with
+`threading.BrokenBarrierError`. This is an uncharacterized CAS-contention test failure,
+not the fresh-bootstrap ADD COLUMN family and not the legacy embeddings-lock timeout
+family. A green retry does not classify the root cause.
 
 ### SHA roles after correction
 
@@ -39,6 +41,9 @@ repository_head_sha_at_verification: 294bdfa6a77097e48310872a2e3fae811e8c2c9e
 implementation_baseline_sha:         9f07db6de8d32683d00bfe4f1673e84493607553
 documentation_checkpoint_sha:        294bdfa6a77097e48310872a2e3fae811e8c2c9e
 ```
+
+PR #248 later merged the FINAL docs correction as
+`c14916214a920802c9ce6187be79ebe74ddfadfc`.
 
 ### Result
 
@@ -49,7 +54,31 @@ Runtime:               NOT WIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AU
 
 ### Next work
 
-Harden the CAS contention harness (PR-02), then owner map and trust-root ADR (PR-04).
+- CAS-contention characterization / stage diagnostics:
+  [issue #249](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/249),
+  open draft [PR #250](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/250).
+- Owner map and operator trust-root ADR: **no public PR or issue identifier assigned yet**;
+  do not start until Phase I remediation PRs are rebased, reviewed and green.
+
+---
+
+## 2026-08-08 — PR #248 Codex P2 remediation (docs-only)
+
+```text
+Successor to:             #248 (merged as c14916214a920802c9ce6187be79ebe74ddfadfc)
+Documentation impact:     GITHUB_AND_NOTION
+Notion synchronization:   SYNCED (FINAL correction verified on Continuity page)
+Runtime wiring:           no
+Runtime authority:        no
+```
+
+Resolves the three open Codex P2 threads from PR #248:
+
+1. FINAL correction Notion state recorded as verified `SYNCED` with page evidence;
+2. private sequence labels replaced with public issue/PR references (#249, #250) or
+   an explicit “no public identifier assigned” statement;
+3. CAS incident reclassified as uncharacterized contention-test failure, not a proven
+   harness-only flake.
 
 ---
 
