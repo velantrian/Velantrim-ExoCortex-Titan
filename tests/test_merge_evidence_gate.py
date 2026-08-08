@@ -1,14 +1,21 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from scripts.check_pr_merge_evidence import (
     ARM03_WORKFLOW,
     CI_WORKFLOW,
     CONTINUITY_WORKFLOW,
     DOCKER_WORKFLOW,
+    ActorIdentity,
     classify_required_workflows,
     evaluate_documentation_metadata,
     evaluate_required_runs,
+    is_trusted_dependabot,
+    resolve_documentation_impact,
 )
+
+HANDOFF_PATH = Path("docs/operations/branch-ruleset-admin-handoff.md")
 
 
 def _run(
@@ -162,3 +169,128 @@ GitHub hand-off path: docs/ai/NOTION_HANDOFF.md#governance
 """
 
     assert evaluate_documentation_metadata(body).state == "success"
+
+
+def _dependabot() -> ActorIdentity:
+    return ActorIdentity(login="dependabot[bot]", type="Bot", id=49699333)
+
+
+def _human() -> ActorIdentity:
+    return ActorIdentity(login="velantrian", type="User", id=1)
+
+
+def test_trusted_dependabot_identity_requires_bot_type() -> None:
+    assert is_trusted_dependabot(_dependabot()) is True
+    assert (
+        is_trusted_dependabot(
+            ActorIdentity(login="dependabot[bot]", type="User", id=49699333)
+        )
+        is False
+    )
+    assert (
+        is_trusted_dependabot(
+            ActorIdentity(login="renovate[bot]", type="Bot", id=2)
+        )
+        is False
+    )
+
+
+def test_dependabot_dependency_only_missing_metadata_infers_none() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=(
+            ".github/workflows/ci.yml",
+            ".github/workflows/pages.yml",
+        ),
+        body="Bumps the github-actions group with 3 updates.",
+    )
+
+    assert evaluation.state == "success"
+    assert "inferred Documentation impact NONE" in evaluation.description
+
+
+def test_human_missing_metadata_fails_closed() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_human(),
+        changed_paths=(".github/workflows/ci.yml",),
+        body="No classification",
+    )
+
+    assert evaluation.state == "failure"
+    assert "must declare Documentation impact" in evaluation.description
+
+
+def test_unknown_bot_missing_metadata_fails_closed() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=ActorIdentity(login="some-other[bot]", type="Bot", id=99),
+        changed_paths=("uv.lock",),
+        body="",
+    )
+
+    assert evaluation.state == "failure"
+
+
+def test_human_body_claiming_dependabot_does_not_spoof_identity() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_human(),
+        changed_paths=(".github/workflows/ci.yml",),
+        body="This PR is from dependabot[bot] / app/dependabot.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "must declare Documentation impact" in evaluation.description
+
+
+def test_dependabot_sensitive_path_without_metadata_fails_closed() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=(
+            ".github/workflows/ci.yml",
+            "docs/operations/branch-ruleset-admin-handoff.md",
+        ),
+        body="Bumps actions.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "documentation-sensitive paths" in evaluation.description
+
+
+def test_dependabot_explicit_metadata_uses_ordinary_contract() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=("docs/ai/CURRENT_STATE.md",),
+        body="Documentation impact: `GITHUB_ONLY`",
+    )
+
+    assert evaluation.state == "success"
+    assert evaluation.description == "documentation impact is GITHUB_ONLY"
+
+
+def test_dependabot_explicit_notion_requirement_still_validated() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=("docs/ai/CURRENT_STATE.md",),
+        body="Documentation impact: `GITHUB_AND_NOTION`\nNotion access: `AVAILABLE`",
+    )
+
+    assert evaluation.state == "failure"
+    assert "GITHUB_AND_NOTION requires" in evaluation.description
+
+
+def test_stage1_ruleset_contract_is_documented_without_claiming_enforcement() -> None:
+    text = HANDOFF_PATH.read_text(encoding="utf-8")
+
+    assert "Stage 1" in text
+    assert "Stage 2" in text
+    assert "Required approvals" in text
+    assert "Titan aggregate merge evidence" in text
+    assert "Require branches to be up to date" in text or "up to date" in text.lower()
+    assert "force push" in text.lower() or "Force push" in text
+    assert "deletion" in text.lower() or "Restrict deletions" in text
+    assert "Code Owner review" in text
+    assert "DO NOT ENABLE" in text or "not enabled" in text.lower() or "deferred" in text.lower()
+    assert "branch_ruleset_enforced = false" in text or "branch_ruleset_enforced` remains" in text
+    assert "sole" in text.lower() or "single-owner" in text.lower()
+    # Contract documentation must not claim the ruleset already exists as active.
+    assert "ruleset already active" not in text.lower()
+    assert "Ruleset ID:" not in text or "Ruleset ID: *(pending" in text

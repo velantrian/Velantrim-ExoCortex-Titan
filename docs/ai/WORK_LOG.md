@@ -6,6 +6,48 @@ This file keeps the recent operational hand-off compact. Older detailed entries 
 
 ---
 
+## 2026-08-08 — PR-A Stage-1 ruleset preconditions (issue #258)
+
+```text
+Status:                   PHASE I REMEDIATION IN PROGRESS
+Base main:                34ae0c6d8bd70978899c1cf5938324f51c6c3416
+Tracking issue:           #258
+Findings:                 F-004, F-005, F-012
+branch_ruleset_enforced:  false (unchanged)
+Issue #234 / #257:        OPEN / OPEN
+Runtime:                  UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY
+Documentation impact:     GITHUB_AND_NOTION
+```
+
+### Intent
+
+Make the future Stage-1 protected merge path viable without creating a ruleset and
+without enabling Code Owner review under a sole-CODEOWNER topology.
+
+### Changes
+
+- `scripts/check_pr_merge_evidence.py`: narrow trusted-Dependabot inference of
+  `Documentation impact: NONE` for dependency-only allowlisted paths; spoofing and
+  sensitive paths remain fail-closed.
+- `docs/operations/branch-ruleset-admin-handoff.md`: Stage 1 MUST / Stage 2 DO NOT ENABLE
+  Code Owner review; single-owner topology warning; Dependabot notes.
+- Focused regression tests in `tests/test_merge_evidence_gate.py`.
+
+### Explicit non-claims
+
+- ruleset not created;
+- Code Owner review not enabled;
+- `branch_ruleset_enforced` not set true;
+- #234 / #257 not closed;
+- PR-04 not started.
+
+### Next
+
+Administrator creates Active Stage-1 `main-governance` with Code Owner review OFF, then
+canary + governance-proof PR.
+
+---
+
 ## 2026-08-08 — Phase I remediation PRs merged; ruleset still open
 
 ```text
