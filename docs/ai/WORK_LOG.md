@@ -6,6 +6,53 @@ This file keeps the recent operational hand-off compact. Older detailed entries 
 
 ---
 
+## 2026-08-08 — PR #247 post-merge canonical checkpoint finalized
+
+```text
+PR:                       #247
+Merge SHA:                294bdfa6a77097e48310872a2e3fae811e8c2c9e
+Full Titan CI + coverage: 31222680496
+  Attempt 1:              FAILED · test_cas_contention[25] · BrokenBarrierError
+  Attempt 2:              PASS · 3746 passed, 17 skipped, 1 xfailed
+Aggregate push evidence:  31222680550 SUCCESS
+Review threads:           0
+Documentation impact:     GITHUB_AND_NOTION
+Checkpoint:               docs/ai/PR247_ADMISSION_FACADE_POSTMERGE_CHECKPOINT.md (FINAL)
+```
+
+### Intent
+
+Correct semantic drift after PR #247 merged: separate repository head, implementation
+baseline and documentation checkpoint SHAs; record the correct post-merge CI incident;
+mark the PR #247 checkpoint FINAL instead of DRAFT.
+
+### Corrected incident identification
+
+Post-merge attempt 1 failed in the projection-outbox CAS test harness
+(`test_cas_contention_yields_exactly_one_winner_and_one_intent[25]`), not in the
+fresh-bootstrap ADD COLUMN family or the legacy embeddings-lock timeout family.
+
+### SHA roles after correction
+
+```text
+repository_head_sha_at_verification: 294bdfa6a77097e48310872a2e3fae811e8c2c9e
+implementation_baseline_sha:         9f07db6de8d32683d00bfe4f1673e84493607553
+documentation_checkpoint_sha:        294bdfa6a77097e48310872a2e3fae811e8c2c9e
+```
+
+### Result
+
+```text
+Continuity readiness: 7/12 = 58.3% (unchanged)
+Runtime:               NOT WIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY
+```
+
+### Next work
+
+Harden the CAS contention harness (PR-02), then owner map and trust-root ADR (PR-04).
+
+---
+
 ## 2026-08-07 — Internal Continuity admission facade merged
 
 ```text

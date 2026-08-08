@@ -1,7 +1,8 @@
 # 🔐 Continuity Source Admission — Current Hand-off
 
-**Verified:** 2026-08-07  
-**Current implementation `main`:** `9f07db6de8d32683d00bfe4f1673e84493607553`  
+**Verified:** 2026-08-08  
+**Repository head at verification:** `294bdfa6a77097e48310872a2e3fae811e8c2c9e`  
+**Implementation baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
 **Status:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`  
 **Continuity readiness:** `7/12 = 58.3%`
 
@@ -37,6 +38,23 @@ Review threads             0
 Attempt 1 of the Full Titan run retained one existing SQLite recovery timeout in `test_drop_legacy_embeddings_lock_owner_process_is_bounded`; coverage passed. Attempt 2 on the unchanged SHA passed. The timeout remains risk evidence and is not attributed to the facade.
 
 The architecture-freeze guard initially required a concrete ADR for the authority-shaped facade policy. PR #246 added `docs/adr/ADR-2026-08-07-continuity-admission-facade-boundary.md`; the guard was not bypassed.
+
+## PR #247 docs checkpoint
+
+PR #247 merged as `294bdfa6a77097e48310872a2e3fae811e8c2c9e`.
+
+```text
+Full Titan CI + coverage  31222680496
+  Attempt 1:              FAILED · test_cas_contention[25] · BrokenBarrierError
+  Attempt 2:              PASS · 3746 passed, 17 skipped, 1 xfailed
+Aggregate push evidence  31222680550 SUCCESS
+Review threads             0
+Checkpoint               docs/ai/PR247_ADMISSION_FACADE_POSTMERGE_CHECKPOINT.md (FINAL)
+```
+
+The attempt-1 failure is the projection-outbox CAS test-harness family. It is separate
+from the legacy embeddings-lock timeout on PR #246 run `31219904698` and from historical
+fresh-bootstrap ADD COLUMN races.
 
 ## Accepted facade boundary
 
@@ -150,16 +168,17 @@ If one subject is blocked, erased, unknown, conflicting or missing, reject the c
 - no durable admission-artifact lifecycle;
 - no runtime activation governance;
 - query-path read-only and Canon writer unification remain open;
+- intermittent projection-outbox CAS test-harness flake requires characterization (PR #247 post-merge);
 - intermittent legacy SQLite lock-owner recovery timeout requires characterization;
 - independent security audit and compliance program remain absent.
 
 ## Documentation and Notion
 
 - PR #246 checkpoint: `docs/ai/PR246_ADMISSION_FACADE_CHECKPOINT.md`;
+- PR #247 checkpoint: `docs/ai/PR247_ADMISSION_FACADE_POSTMERGE_CHECKPOINT.md` (FINAL);
 - facade ADR: `docs/adr/ADR-2026-08-07-continuity-admission-facade-boundary.md`;
 - Notion record: `🔐 Continuity Source Admission — Architecture`;
-- Notion status: synchronized with merge `9f07db6de8d32683d00bfe4f1673e84493607553`;
-- canonical docs checkpoint branch: `docs/continuity-facade-postmerge-sync`.
+- Notion status: synchronized at PR #247 merge; re-verify after FINAL correction;
 
 ## Re-entry checklist
 

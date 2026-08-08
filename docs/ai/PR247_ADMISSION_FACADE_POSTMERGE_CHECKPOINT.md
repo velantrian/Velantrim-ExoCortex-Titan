@@ -1,16 +1,33 @@
 # 📚 PR #247 — Admission Facade Post-Merge Canonical Checkpoint
 
-**Status:** `DRAFT · DOCS-ONLY · GITHUB_AND_NOTION`  
-**Implementation baseline:** `main@9f07db6de8d32683d00bfe4f1673e84493607553`  
+**Status:** `FINAL · HISTORICAL SNAPSHOT · DOCS-ONLY · GITHUB_AND_NOTION`  
+**Merge SHA:** `294bdfa6a77097e48310872a2e3fae811e8c2c9e`  
+**Verified:** 2026-08-08 UTC  
+**Implementation baseline:** `main@9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
 **Implementation PR:** `#246`  
 **Implementation exact tested head:** `ec2966ed336ba619e987dfc1e99d45fdf87907b5`  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
 
+> This document is an exact, dated, historical snapshot. It is not an evergreen claim
+> about the current repository head. Re-query GitHub before treating any SHA here as
+> current truth.
+
 ## Purpose
 
-Synchronize canonical GitHub and Notion state after PR #246 merged the internal admission-aware facade.
+Synchronize canonical GitHub and Notion state after PR #246 merged the internal
+admission-aware facade and PR #247 merged the post-merge documentation checkpoint.
 
-This checkpoint contains no runtime implementation change. It corrects current-state, authority-map, risk, handoff, work-log and machine-readable readiness surfaces from evaluator-era `6/12 = 50.0%` to facade-era `7/12 = 58.3%`.
+This checkpoint contains no runtime implementation change. It corrects current-state,
+authority-map, risk, handoff, work-log and machine-readable readiness surfaces from
+evaluator-era `6/12 = 50.0%` to facade-era `7/12 = 58.3%`.
+
+## SHA role separation
+
+| Field | Value | Role |
+|---|---|---|
+| `repository_head_sha_at_verification` | `294bdfa6a77097e48310872a2e3fae811e8c2c9e` | Exact `main` inspected at verification |
+| `implementation_baseline_sha` | `9f07db6de8d32683d00bfe4f1673e84493607553` | Latest implementation-bearing Continuity merge (PR #246) |
+| `documentation_checkpoint_sha` | `294bdfa6a77097e48310872a2e3fae811e8c2c9e` | Merged docs-only post-merge checkpoint (PR #247) |
 
 ## Canonical state after PR #246
 
@@ -41,6 +58,8 @@ OBSERVED:  false
 AUTHORITY: false
 ```
 
+This count is internal implementation readiness, not production or live readiness.
+
 ## PR #246 exact evidence
 
 ```text
@@ -53,20 +72,53 @@ Aggregate merge evidence:   31221208768 SUCCESS
 Unresolved review threads:  0
 ```
 
-Attempt 1 of Full Titan run `31219904698` retained one existing SQLite recovery timeout in `test_drop_legacy_embeddings_lock_owner_process_is_bounded`; coverage passed. Attempt 2 on the unchanged exact SHA passed the complete blocking suite. This remains intermittent recovery risk evidence and is not attributed to the facade.
+Attempt 1 of Full Titan run `31219904698` retained one existing SQLite recovery timeout
+in `test_drop_legacy_embeddings_lock_owner_process_is_bounded`; coverage passed. Attempt
+2 on the unchanged exact SHA passed the complete blocking suite. This remains
+intermittent legacy embeddings-lock recovery risk evidence and is **not** attributed to
+the facade.
 
-The architecture-freeze guard initially required a concrete ADR for `ContinuityAdmissionFacadePolicy`. PR #246 added `docs/adr/ADR-2026-08-07-continuity-admission-facade-boundary.md`; the guard was not bypassed.
+The architecture-freeze guard initially required a concrete ADR for
+`ContinuityAdmissionFacadePolicy`. PR #246 added
+`docs/adr/ADR-2026-08-07-continuity-admission-facade-boundary.md`; the guard was not
+bypassed.
 
-## Post-merge main evidence
-
-For `main@9f07db6de8d32683d00bfe4f1673e84493607553`:
+## PR #247 merge and post-merge main evidence
 
 ```text
-Full Titan CI + coverage:  31221241450 PASS
-Continuity contracts:      31221241503 PASS
-Docker hardening:          31221241412 PASS
-Aggregate push evidence:   31221241453 SUCCESS
+Merge SHA:                  294bdfa6a77097e48310872a2e3fae811e8c2c9e
+Full Titan CI + coverage:   31222680496
+  Attempt 1:                FAILED
+  Attempt 2:                PASS · 3746 passed, 17 skipped, 1 xfailed
+Aggregate push evidence:    31222680550 SUCCESS
+Unresolved review threads:  0
 ```
+
+### Post-merge CI incident (correct identification)
+
+The first attempt of Full Titan run `31222680496` on merge SHA
+`294bdfa6a77097e48310872a2e3fae811e8c2c9e` failed in:
+
+```text
+tests/test_promotion_projection_outbox_caller.py::
+test_cas_contention_yields_exactly_one_winner_and_one_intent[25]
+```
+
+Failure:
+
+```text
+threading.BrokenBarrierError
+  at barrier.wait(timeout=15)
+```
+
+Attempt 2 on the unchanged exact SHA passed. Local audit runs on the same test family
+reported 30/30 targeted parameterized passes. Current hypothesis: runner/scheduling-
+sensitive pre-CAS test orchestration; a production CAS defect is not proven.
+
+This incident is **not** the historical SQLite family
+`test_concurrent_fresh_bootstrap_add_column_no_duplicate_error` and **not** the
+historical timeout family `test_drop_legacy_embeddings_lock_owner_process_is_bounded`.
+Those three failure families must remain separate in audit history.
 
 ## Updated canonical surfaces
 
@@ -80,12 +132,14 @@ Aggregate push evidence:   31221241453 SUCCESS
 
 ## Corrected evidence metadata
 
-The Notion facade merge block temporarily contained two non-existent workflow IDs for exact-head Continuity and Docker checks. This checkpoint corrects them to:
+The Notion facade merge block temporarily contained two non-existent workflow IDs for
+exact-head Continuity and Docker checks. This checkpoint corrects them to:
 
 - Continuity `31219904684`;
 - Docker `31219904770`.
 
-The valid aggregate run `31221175073` is retained as an earlier success; the latest exact-head aggregate success before merge is `31221208768`.
+The valid aggregate run `31221175073` is retained as an earlier success; the latest
+exact-head aggregate success before PR #246 merge is `31221208768`.
 
 ## Trust and authority boundary
 
@@ -96,22 +150,29 @@ resolver protocol ≠ trusted concrete resolver implementation
 facade result ≠ runtime permission
 ```
 
-No producer invocation, persistence, runtime wiring, public export, Canon/ESM/TruthGate/GoalStack mutation, reminder, notification, delivery, tool, action or compute authority is introduced by this docs-only checkpoint.
+No producer invocation, persistence, runtime wiring, public export, Canon/ESM/TruthGate/
+GoalStack mutation, reminder, notification, delivery, tool, action or compute authority is
+introduced by this docs-only checkpoint.
 
 ## Next bounded engineering slice
 
-Compose current principal, authorization, consent/lawful-basis, restriction, erasure-domain and current `PolicySnapshot` evidence through accepted owners.
+Compose current principal, authorization, consent/lawful-basis, restriction, erasure-domain
+and current `PolicySnapshot` evidence through accepted owners.
 
-The slice must remain internal and fail closed on incomplete or conflicting multi-subject state. It must stop before producer invocation, persistence, runtime wiring or user-visible effects.
+The slice must remain internal and fail closed on incomplete or conflicting multi-subject
+state. It must stop before producer invocation, persistence, runtime wiring or user-visible
+effects.
 
 ## Documentation synchronization
 
 ```text
 Documentation impact:   GITHUB_AND_NOTION
-Notion access:           AVAILABLE
+Notion access:           AVAILABLE (prior cycle) / verify on next connected actor
 Notion targets:          Velantrim Titan 9.0
                          Continuity Source Admission — Architecture
-Notion synchronization: SYNCED
+Notion synchronization: SYNCED at PR #247 merge; re-verify after this FINAL correction
 ```
 
-Titan Hub now records Draft PR #247 and facade-era `7/12 = 58.3%`. The Source Admission page records PR #246 merge, corrected exact workflow IDs, post-merge main evidence and the next resolver-composition boundary. Final docs exact head, CI, aggregate result and merge SHA will be added after they exist.
+Titan Hub records facade-era `7/12 = 58.3%`. The Source Admission page records PR #246
+merge, corrected exact workflow IDs, post-merge main evidence, the CAS harness incident
+above and the next resolver-composition boundary.

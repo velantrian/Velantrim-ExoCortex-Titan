@@ -16,6 +16,19 @@ def _state() -> dict:
     return json.loads(STATE_PATH.read_text(encoding="utf-8"))
 
 
+def test_sha_roles_are_distinct_when_docs_checkpoint_is_newer() -> None:
+    state = _state()
+    repository = state["repository"]
+    assert (
+        repository["repository_head_sha_at_verification"]
+        == repository["documentation_checkpoint_sha"]
+    )
+    assert (
+        repository["implementation_baseline_sha"]
+        != repository["repository_head_sha_at_verification"]
+    )
+
+
 def test_repository_project_state_is_valid() -> None:
     report = validate_project_state(_state())
 

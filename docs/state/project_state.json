@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "project": "velantrim-exocortex-titan",
-  "verified_at": "2026-08-07T21:45:00Z",
+  "verified_at": "2026-08-08T09:30:00Z",
   "repository": {
     "default_branch": "main",
-    "repository_head_sha_at_verification": "9f07db6de8d32683d00bfe4f1673e84493607553",
+    "repository_head_sha_at_verification": "294bdfa6a77097e48310872a2e3fae811e8c2c9e",
     "implementation_baseline_sha": "9f07db6de8d32683d00bfe4f1673e84493607553",
-    "documentation_checkpoint_sha": "83213048204da0e692abc147fdfad9a326b2b0d6",
-    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected; implementation_baseline_sha is the latest implementation-bearing Continuity merge; documentation_checkpoint_sha is the previous merged canonical AI-context checkpoint while this facade post-merge checkpoint is under docs-only review."
+    "documentation_checkpoint_sha": "294bdfa6a77097e48310872a2e3fae811e8c2c9e",
+    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected at verification; implementation_baseline_sha is the latest implementation-bearing Continuity merge (PR #246); documentation_checkpoint_sha is the merged PR #247 post-merge canonical checkpoint. These fields are exact dated snapshots, not evergreen remote-freshness claims."
   },
   "continuity": {
     "completed_capabilities": 7,

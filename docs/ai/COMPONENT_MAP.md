@@ -1,7 +1,8 @@
 # 🗺️ Component and Authority Map
 
-**Repository head verified:** `main@9f07db6de8d32683d00bfe4f1673e84493607553`  
-**Implementation baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553`  
+**Repository head verified:** `main@294bdfa6a77097e48310872a2e3fae811e8c2c9e`  
+**Implementation baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
+**Documentation checkpoint:** `294bdfa6a77097e48310872a2e3fae811e8c2c9e` (PR #247)  
 **Machine-readable state:** [`docs/state/project_state.json`](../state/project_state.json)  
 **Rule:** presence is not wiring; content-addressed evidence is not runtime authority.
 
