@@ -1,7 +1,7 @@
 # 🔐 Continuity Source Admission — Current Hand-off
 
 **Verified:** 2026-08-08  
-**Repository head at verification:** `294bdfa6a77097e48310872a2e3fae811e8c2c9e`  
+**Repository head at verification:** `c14916214a920802c9ce6187be79ebe74ddfadfc`  
 **Implementation baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
 **Status:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`  
 **Continuity readiness:** `7/12 = 58.3%`
@@ -52,9 +52,10 @@ Review threads             0
 Checkpoint               docs/ai/PR247_ADMISSION_FACADE_POSTMERGE_CHECKPOINT.md (FINAL)
 ```
 
-The attempt-1 failure is the projection-outbox CAS test-harness family. It is separate
-from the legacy embeddings-lock timeout on PR #246 run `31219904698` and from historical
-fresh-bootstrap ADD COLUMN races.
+The attempt-1 failure is an uncharacterized CAS-contention test failure
+(`BrokenBarrierError`). Stage-based harness work is diagnostic only
+(issue #249 / draft PR #250). It is separate from the legacy embeddings-lock timeout on
+PR #246 run `31219904698` and from historical fresh-bootstrap ADD COLUMN races.
 
 ## Accepted facade boundary
 
@@ -168,7 +169,7 @@ If one subject is blocked, erased, unknown, conflicting or missing, reject the c
 - no durable admission-artifact lifecycle;
 - no runtime activation governance;
 - query-path read-only and Canon writer unification remain open;
-- intermittent projection-outbox CAS test-harness flake requires characterization (PR #247 post-merge);
+- uncharacterized CAS-contention test failure requires characterization (issue #249 / draft PR #250);
 - intermittent legacy SQLite lock-owner recovery timeout requires characterization;
 - independent security audit and compliance program remain absent.
 
@@ -178,7 +179,7 @@ If one subject is blocked, erased, unknown, conflicting or missing, reject the c
 - PR #247 checkpoint: `docs/ai/PR247_ADMISSION_FACADE_POSTMERGE_CHECKPOINT.md` (FINAL);
 - facade ADR: `docs/adr/ADR-2026-08-07-continuity-admission-facade-boundary.md`;
 - Notion record: `🔐 Continuity Source Admission — Architecture`;
-- Notion status: synchronized at PR #247 merge; re-verify after FINAL correction;
+- Notion status: SYNCED — FINAL correction verified on Continuity Source Admission page (2026-08-08);
 
 ## Re-entry checklist
 

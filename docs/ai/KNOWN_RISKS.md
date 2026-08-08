@@ -1,7 +1,7 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-08  
-**Repository `main` head at verification:** `294bdfa6a77097e48310872a2e3fae811e8c2c9e`  
+**Repository `main` head at verification:** `c14916214a920802c9ce6187be79ebe74ddfadfc`  
 **Latest implementation-bearing baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)
 
 Code presence and passing tests do not close a risk. Closure requires correct authority ownership, current evidence, integration controls, activation governance and operational proof.
@@ -172,7 +172,7 @@ Required proof before producer use:
 - current authorization, restriction and erasure state are rechecked before producer invocation;
 - producer output remains advisory until a separate activation decision.
 
-## P1 — Projection outbox CAS test-harness flake
+## P1 — Uncharacterized CAS-contention test failure
 
 PR #247 post-merge Full Titan run `31222680496` on SHA
 `294bdfa6a77097e48310872a2e3fae811e8c2c9e` failed attempt 1 in:
@@ -187,16 +187,24 @@ Failure: `threading.BrokenBarrierError` at `barrier.wait(timeout=15)`.
 Attempt 2 on the unchanged exact SHA passed (`3746 passed, 17 skipped, 1 xfailed`).
 Local audit runs reported 30/30 targeted parameterized passes on the same family.
 
-Current hypothesis: runner/scheduling-sensitive pre-CAS test orchestration; a production
-CAS defect is not proven. This family is distinct from fresh-bootstrap ADD COLUMN races
-and from legacy embeddings-lock recovery timeouts.
+Classification: **uncharacterized CAS-contention test failure**. The barrier timeout
+shows that not all 25 contenders reached the synchronization point in time. It does
+**not** yet prove whether the cause is runner scheduling, test orchestration, or a
+worker exiting or blocking before/during the production pre-CAS path. Stage-based
+harness work (open draft [PR #250](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/250),
+tracked by [issue #249](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/249))
+is a diagnostic hypothesis, not proof that production CAS is healthy.
+
+This family is distinct from fresh-bootstrap ADD COLUMN races and from legacy
+embeddings-lock recovery timeouts.
 
 Required follow-up:
 
 - retain attempt 1 in audit history;
-- harden the harness with stage-based diagnostics;
+- use stage-based diagnostics to identify which contenders stalled and at which stage;
 - avoid skip, xfail, flaky markers or unconditional reruns as the only mitigation;
-- do not weaken one-winner or one-intent assertions without proven production defect.
+- do not weaken one-winner or one-intent assertions without proven production defect;
+- do not close this risk as “harness-only flake” until characterization evidence exists.
 
 ## P1 — Intermittent legacy embeddings-lock recovery timeout
 
@@ -204,7 +212,7 @@ PR #246 exact-head Full Titan run `31219904698` had one first-attempt timeout in
 `test_drop_legacy_embeddings_lock_owner_process_is_bounded` after 20 seconds. Coverage
 passed, and attempt 2 on the unchanged SHA passed the full suite.
 
-This is not attributed to the facade or to the CAS harness family above. It remains
+This is not attributed to the facade or to the CAS-contention family above. It remains
 legacy recovery/concurrency risk evidence because a green retry does not prove the
 timeout impossible.
 

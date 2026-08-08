@@ -112,8 +112,13 @@ threading.BrokenBarrierError
 ```
 
 Attempt 2 on the unchanged exact SHA passed. Local audit runs on the same test family
-reported 30/30 targeted parameterized passes. Current hypothesis: runner/scheduling-
-sensitive pre-CAS test orchestration; a production CAS defect is not proven.
+reported 30/30 targeted parameterized passes.
+
+This is an **uncharacterized CAS-contention test failure**. `BrokenBarrierError` proves
+only that all 25 contenders did not reach the barrier within its timeout. It does not
+distinguish runner scheduling, test orchestration, or a worker exiting or blocking in
+the production pre-CAS path. A stage-based harness is a diagnostic hypothesis, not proof
+that production CAS is healthy or that the failure is only a test flake.
 
 This incident is **not** the historical SQLite family
 `test_concurrent_fresh_bootstrap_add_column_no_duplicate_error` and **not** the
@@ -167,12 +172,17 @@ effects.
 
 ```text
 Documentation impact:   GITHUB_AND_NOTION
-Notion access:           AVAILABLE (prior cycle) / verify on next connected actor
+Notion access:           AVAILABLE
 Notion targets:          Velantrim Titan 9.0
                          Continuity Source Admission — Architecture
-Notion synchronization: SYNCED at PR #247 merge; re-verify after this FINAL correction
+Notion synchronization: SYNCED
+Verified:                2026-08-08 UTC
+Evidence:                Continuity Source Admission page contains the
+                         "2026-08-08 — PR #247 checkpoint FINAL correction"
+                         block with SHA roles, CAS-contention incident
+                         identification, and 7/12 readiness boundary
 ```
 
-Titan Hub records facade-era `7/12 = 58.3%`. The Source Admission page records PR #246
-merge, corrected exact workflow IDs, post-merge main evidence, the CAS harness incident
-above and the next resolver-composition boundary.
+Titan Hub / Continuity Source Admission records facade-era `7/12 = 58.3%`, PR #246 merge,
+corrected exact workflow IDs, post-merge main evidence, the uncharacterized CAS-contention
+test failure above, and the next resolver-composition boundary.
