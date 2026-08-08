@@ -1,0 +1,33 @@
+name: Sync Python dependencies (frozen)
+description: Install a pinned uv release and sync the locked dependency graph.
+inputs:
+  extras:
+    description: Space-separated optional dependency groups (uv --extra values)
+    required: true
+    default: server dev parsers retrieval embeddings graph-lab
+runs:
+  using: composite
+  steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: 0.12.3
+        enable-cache: true
+        cache-dependency-glob: uv.lock
+
+    - name: Verify lockfile matches pyproject.toml
+      shell: bash
+      run: uv lock --check
+
+    - name: Install locked dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        args=()
+        for extra in ${EXTRAS}; do
+          args+=(--extra "${extra}")
+        done
+        uv sync --frozen "${args[@]}"
+        echo "${GITHUB_WORKSPACE}/.venv/bin" >> "${GITHUB_PATH}"
+      env:
+        EXTRAS: ${{ inputs.extras }}
