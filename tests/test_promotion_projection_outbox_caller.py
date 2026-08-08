@@ -316,22 +316,28 @@ def test_already_validated_creates_no_new_version_audit_or_intent(
 class _CasContentionHarness:
     """Stage-aware orchestration for real SQLite CAS contention tests.
 
-    Separates worker/store readiness from synchronized CAS release so a
-    scheduling-sensitive BrokenBarrierError cannot be mistaken for a CAS defect.
+    Separates worker/store readiness from synchronized CAS release and records
+    per-contender stages so timeout/failure diagnostics can identify which
+    workers never reached the pre-CAS gate. This is a diagnostic aid for an
+    uncharacterized CAS-contention test failure; it does not prove production
+    CAS health by itself.
     """
 
     contenders: int
     timeout: float = 30.0
     stall_contender: int | None = None
+    fail_before_gate: int | None = None
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
     _condition: threading.Condition = field(init=False, repr=False)
     _release_event: threading.Event = field(default_factory=threading.Event, init=False, repr=False)
+    _abort_event: threading.Event = field(default_factory=threading.Event, init=False, repr=False)
     _started_at: float = field(default_factory=time.monotonic, init=False, repr=False)
     _stage_by_id: dict[int, str] = field(default_factory=dict, init=False, repr=False)
     _workers_started: int = 0
     _stores_ready: int = 0
     _pre_cas_ready: int = 0
     _cas_returned: int = 0
+    _early_failures: dict[int, str] = field(default_factory=dict, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self._condition = threading.Condition(self._lock)
@@ -350,11 +356,22 @@ class _CasContentionHarness:
             self._stage_by_id[contender_id] = "store_ready"
             self._stores_ready += 1
 
+    def mark_failed_before_gate(self, contender_id: int, reason: str) -> None:
+        with self._condition:
+            self._stage_by_id[contender_id] = "failed_before_pre_cas_gate"
+            self._early_failures[contender_id] = reason
+            self._abort_event.set()
+            self._condition.notify_all()
+
     def wait_for_synchronized_cas_release(self, contender_id: int) -> None:
         if self.stall_contender == contender_id:
             with self._lock:
                 self._stage_by_id[contender_id] = "pre_cas_gate_stalled"
-            time.sleep(self.timeout + 1.0)
+            deadline = time.monotonic() + self.timeout + 1.0
+            while time.monotonic() < deadline:
+                if self._abort_event.is_set():
+                    raise AssertionError(self.format_timeout())
+                time.sleep(0.05)
             return
 
         with self._lock:
@@ -367,6 +384,9 @@ class _CasContentionHarness:
         deadline = time.monotonic() + self.timeout
         with self._condition:
             while self._pre_cas_ready < self.contenders:
+                if self._abort_event.is_set() or self._early_failures:
+                    message = self._diagnostics_unlocked()
+                    raise AssertionError(message)
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     message = self._diagnostics_unlocked()
@@ -394,10 +414,18 @@ class _CasContentionHarness:
             f"  contender_{contender_id}: {self._stage_by_id.get(contender_id, 'missing')}"
             for contender_id in range(self.contenders)
         ]
+        early = (
+            "; ".join(
+                f"contender_{cid}: {reason}"
+                for cid, reason in sorted(self._early_failures.items())
+            )
+            or "none"
+        )
         elapsed = time.monotonic() - self._started_at
         return (
-            "CAS contention harness timed out before synchronized release\n"
+            "CAS contention harness timed out or aborted before synchronized release\n"
             f"missing contender IDs: {missing}\n"
+            f"early failures before pre-CAS gate: {early}\n"
             f"last known stages:\n" + "\n".join(stage_lines) + "\n"
             f"elapsed monotonic seconds: {elapsed:.3f}\n"
             f"workers started: {self._workers_started}/{self.contenders}\n"
@@ -409,6 +437,10 @@ class _CasContentionHarness:
     def format_timeout(self) -> str:
         with self._lock:
             return self._diagnostics_unlocked()
+
+    def stage_of(self, contender_id: int) -> str:
+        with self._lock:
+            return self._stage_by_id.get(contender_id, "missing")
 
 
 def _install_cas_contention_gate(
@@ -434,11 +466,13 @@ def _run_cas_contention_race(
     contenders: int,
     timeout: float = 30.0,
     stall_contender: int | None = None,
+    fail_before_gate: int | None = None,
 ) -> list:
     harness = _CasContentionHarness(
         contenders,
         timeout=timeout,
         stall_contender=stall_contender,
+        fail_before_gate=fail_before_gate,
     )
     stores = [SQLiteGraphStore(str(db_path)) for _ in range(contenders)]
     for contender_id, store in enumerate(stores):
@@ -448,7 +482,27 @@ def _run_cas_contention_race(
     def promote(store: SQLiteGraphStore, contender_id: int):
         harness.mark_worker_started(contender_id)
         harness.mark_store_ready(contender_id)
-        return store.validate_and_promote("f_cas_contention", by=f"contender_{contender_id}")
+        if harness.fail_before_gate == contender_id:
+            harness.mark_failed_before_gate(
+                contender_id,
+                "injected failure before validate_and_promote / pre-CAS gate",
+            )
+            raise RuntimeError(
+                f"injected pre-CAS failure for contender_{contender_id}"
+            )
+        try:
+            return store.validate_and_promote(
+                "f_cas_contention", by=f"contender_{contender_id}"
+            )
+        except Exception as exc:
+            # Preserve stage diagnostics when a worker dies before the gate.
+            if harness.stage_of(contender_id) in {
+                "submitted",
+                "worker_started",
+                "store_ready",
+            }:
+                harness.mark_failed_before_gate(contender_id, f"{type(exc).__name__}: {exc}")
+            raise
 
     try:
         with ThreadPoolExecutor(max_workers=contenders) as executor:
@@ -456,7 +510,19 @@ def _run_cas_contention_race(
                 executor.submit(promote, store, contender_id)
                 for contender_id, store in enumerate(stores)
             ]
-            return [future.result(timeout=timeout + 5) for future in futures]
+            verdicts: list = []
+            errors: list[BaseException] = []
+            for future in futures:
+                try:
+                    verdicts.append(future.result(timeout=timeout + 5))
+                except BaseException as exc:  # noqa: BLE001 — aggregate with diagnostics
+                    errors.append(exc)
+            if errors:
+                details = "; ".join(f"{type(exc).__name__}: {exc}" for exc in errors)
+                raise AssertionError(
+                    f"{harness.format_timeout()}\nworker exceptions: {details}"
+                )
+            return verdicts
     finally:
         for store in stores:
             store.close()
@@ -515,6 +581,30 @@ def test_cas_contention_harness_reports_stalled_contender() -> None:
     assert any("contender_1: pre_cas_gate_stalled" in message for message in errors)
     assert any("missing contender IDs: [1]" in message for message in errors)
     assert any("pre-CAS gate reached: 2/3" in message for message in errors)
+
+
+def test_cas_contention_harness_surfaces_failure_before_pre_cas_gate(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "cas-contention-fail-before-gate.db"
+    _migrate(db_path)
+    bootstrap = SQLiteGraphStore(str(db_path))
+    _seed_promotable_fact(bootstrap, "f_cas_contention")
+    bootstrap.close()
+
+    with pytest.raises(AssertionError) as exc_info:
+        _run_cas_contention_race(
+            db_path,
+            contenders=3,
+            timeout=2.0,
+            fail_before_gate=1,
+        )
+
+    message = str(exc_info.value)
+    assert "contender_1: failed_before_pre_cas_gate" in message
+    assert "early failures before pre-CAS gate: contender_1:" in message
+    assert "injected pre-CAS failure" in message
+    assert _integrity_ok(db_path)
 
 
 # ── E. Migration-020 activation gating ──────────────────────────────────────
