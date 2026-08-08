@@ -6,6 +6,48 @@ This file keeps the recent operational hand-off compact. Older detailed entries 
 
 ---
 
+## 2026-08-08 — Phase I remediation PRs merged; ruleset still open
+
+```text
+Status:                   PHASE I REMEDIATION IN PROGRESS
+Final main at sync:       e20571d6444338dab44e03abb9c2562844d2ea0a
+Continuity readiness:     7/12 = 58.3% (unchanged)
+Runtime:                  NOT WIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY
+branch_ruleset_enforced:  false
+Issue #234:               OPEN
+Ruleset API:              [] (empty; agent cannot create rulesets — 403)
+Documentation impact:     GITHUB_AND_NOTION
+```
+
+### Merged remediation chain
+
+| PR | Merge SHA | Notes |
+|---|---|---|
+| #254 | `b07f3fcecf26c483abcb696d18a12f4a1c24a117` | Docs P2; three Codex P2 themes closed; Notion SYNCED |
+| #250 | `e16db600da155c0496a727a56a501c2f984f37fd` | CAS diagnostic harness only; classification unchanged |
+| #251 | `e68b36fea3e96739fc97cc2a66570284efef3f26` | Frozen uv.lock CI path |
+| #252 | `6a020f751ca213d2ad51a3c1f3568dd830a8102e` | Actions full-SHA pins + Dependabot |
+| #253 | `e20571d6444338dab44e03abb9c2562844d2ea0a` | Admin handoff docs; does not apply ruleset |
+
+### Post-merge CI notes
+
+- #254/#251/#252/#253: Full Titan CI push SUCCESS on merge SHA.
+- #250: Full Titan CI push `31268151500` was **cancelled** by concurrency after the
+  immediate next main push; aggregate push on that SHA SUCCESS (`31268151498`).
+  Subsequent main SHAs containing the same harness passed Full Titan
+  (`e68b36f…` / `31268402499`, `6a020f7…` / `31269298026`, `e20571d…` / `31269808302`).
+  Agent cannot `gh run rerun` (`403`).
+- Independent Codex submitted reviews hit usage limits for this cycle; record as process
+  limitation. Aggregate SUCCESS + 0 unresolved threads were required before each merge.
+
+### Hard stop
+
+Do not start PR-04 / Operator Gate A / runtime wiring / persistence / producer /
+Canon·ESM·TruthGate writes / Phase II / Research Copilot lifecycle without a new TZ.
+Next Phase I action is administrator ruleset application + API proof for #234.
+
+---
+
 ## 2026-08-08 — PR #247 post-merge canonical checkpoint finalized
 
 ```text

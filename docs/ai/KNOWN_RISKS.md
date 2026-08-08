@@ -1,8 +1,9 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-08  
-**Repository `main` head at verification:** `c14916214a920802c9ce6187be79ebe74ddfadfc`  
-**Latest implementation-bearing baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)
+**Repository `main` head at verification:** `e20571d6444338dab44e03abb9c2562844d2ea0a`  
+**Latest implementation-bearing baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
+**Phase I remediation status:** `PHASE I REMEDIATION IN PROGRESS` (PRs #254/#250/#251/#252/#253 merged; ruleset not applied)
 
 Code presence and passing tests do not close a risk. Closure requires correct authority ownership, current evidence, integration controls, activation governance and operational proof.
 
@@ -35,15 +36,20 @@ Current controls:
 Residual risk:
 
 - checks can still be bypassed by repository settings or direct push/merge behavior;
-- issue #234 requires administrator configuration.
+- issue #234 requires administrator configuration;
+- merged handoff PR #253 (`e20571d6444338dab44e03abb9c2562844d2ea0a`) does **not**
+  apply the ruleset; API proof at verification still returns an empty ruleset list.
 
 Required action:
 
 - require pull requests and the aggregate merge-evidence check;
 - require resolved conversations;
+- require approvals ≥ 1 and dismiss stale approvals;
 - block force push and deletion;
 - restrict direct push;
-- require up-to-date branches where appropriate.
+- require up-to-date branches where appropriate;
+- record ruleset ID + active + target=`main` before closing #234 or flipping
+  `branch_ruleset_enforced` to `true`.
 
 Administrator handoff: [`docs/operations/branch-ruleset-admin-handoff.md`](../operations/branch-ruleset-admin-handoff.md).
 
@@ -192,10 +198,14 @@ Local audit runs reported 30/30 targeted parameterized passes on the same family
 Classification: **uncharacterized CAS-contention test failure**. The barrier timeout
 shows that not all 25 contenders reached the synchronization point in time. It does
 **not** yet prove whether the cause is runner scheduling, test orchestration, or a
-worker exiting or blocking before/during the production pre-CAS path. Stage-based
-harness work (open draft [PR #250](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/250),
-tracked by [issue #249](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/249))
-is a diagnostic hypothesis, not proof that production CAS is healthy.
+worker exiting or blocking before/during the production pre-CAS path.
+
+Diagnostic harness landed in merged [PR #250](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/250)
+(`e16db600da155c0496a727a56a501c2f984f37fd`, tracked by
+[issue #249](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/249)).
+That PR does **not** change production CAS semantics and does **not** reclassify the
+incident as a proven harness-only flake. Residual diagnostic limit: thread-based
+diagnostics do not provide hard process kill for a permanently hung worker.
 
 This family is distinct from fresh-bootstrap ADD COLUMN races and from legacy
 embeddings-lock recovery timeouts.
@@ -203,7 +213,8 @@ embeddings-lock recovery timeouts.
 Required follow-up:
 
 - retain attempt 1 in audit history;
-- use stage-based diagnostics to identify which contenders stalled and at which stage;
+- use the merged stage-based diagnostics to identify which contenders stalled and at
+  which stage on the next observed failure;
 - avoid skip, xfail, flaky markers or unconditional reruns as the only mitigation;
 - do not weaken one-winner or one-intent assertions without proven production defect;
 - do not close this risk as “harness-only flake” until characterization evidence exists.

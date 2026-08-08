@@ -1,9 +1,10 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-08  
-**Repository `main` head at verification:** `c14916214a920802c9ce6187be79ebe74ddfadfc`  
+**Repository `main` head at verification:** `e20571d6444338dab44e03abb9c2562844d2ea0a`  
 **Latest implementation-bearing Continuity baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
-**Documentation checkpoint SHA:** `c14916214a920802c9ce6187be79ebe74ddfadfc` (PR #248 FINAL of PR #247 checkpoint)  
+**Documentation checkpoint SHA:** `e20571d6444338dab44e03abb9c2562844d2ea0a` (Phase I remediation sync after PR #253)  
+**Phase I remediation status:** `PHASE I REMEDIATION IN PROGRESS`  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
 
 > Exact, dated, historical snapshot. Re-query GitHub before treating any SHA here as the
@@ -121,7 +122,8 @@ This post-merge failure is an **uncharacterized CAS-contention test failure**
 (`BrokenBarrierError`). It is not yet classified as harness-only flake or production CAS
 defect. It is not the historical SQLite fresh-bootstrap ADD COLUMN race family and not
 the legacy embeddings-lock recovery timeout family tracked from PR #246 run
-`31219904698`. Characterization is tracked by issue #249 / draft PR #250.
+`31219904698`. Characterization remains tracked by issue #249; diagnostic harness merged
+in PR #250 (`e16db600da155c0496a727a56a501c2f984f37fd`).
 
 ## Facade guarantees
 
@@ -164,6 +166,36 @@ Not implemented or not accepted for live use:
 - feature flag, runtime enablement, SLO, monitoring, alert, rollback or Operator GO;
 - answer, reminder, notification, delivery, tool, action, Canon, ESM, TruthGate, GoalStack or compute-route authority.
 
+## Phase I remediation (2026-08-08)
+
+Status: **PHASE I REMEDIATION IN PROGRESS** — remediation PRs merged; administrator
+ruleset not yet physically applied. Do **not** treat Phase I as complete.
+
+| PR | Role | Exact tested head | Merge SHA |
+|---|---|---|---|
+| #254 | Docs P2 remediation from #248 | `14843d985adf49ec829b14292f9036e1c14a6f0c` | `b07f3fcecf26c483abcb696d18a12f4a1c24a117` |
+| #250 | CAS contention diagnostic harness | `e1784700324b72792fe5bf0fa706bfb575186918` | `e16db600da155c0496a727a56a501c2f984f37fd` |
+| #251 | Frozen `uv.lock` CI installs | `f1c1a82f622d3eef64b7c756d98502f8c0c9da95` | `e68b36fea3e96739fc97cc2a66570284efef3f26` |
+| #252 | GitHub Actions full-SHA pins | `f7e6397c218b0f1add4ec02ad84a2ebe8427b264` | `6a020f751ca213d2ad51a3c1f3568dd830a8102e` |
+| #253 | Branch ruleset admin handoff | `727250fd6fbbd8c88f14e4db95ae8336205f2652` | `e20571d6444338dab44e03abb9c2562844d2ea0a` |
+
+Merged evidence notes:
+
+- #254 closed three Codex P2 themes from #248; Notion SYNCED; runtime hard stop unchanged;
+- #250 adds stage diagnostics only; classification remains **uncharacterized CAS-contention
+  test failure**; thread-based diagnostics do not provide hard process kill for a
+  permanently hung worker;
+- #251/#252 are CI supply-chain hardening only; Docker pip path remains separately
+  documented and is not a frozen-uv path;
+- #253 documents required ruleset settings. **PR #253 merged ≠ branch ruleset applied.**
+
+Ruleset API at verification: `GET /repos/.../rulesets` → `[]`. Agent token cannot create
+rulesets (`403`). `branch_ruleset_enforced` remains `false`. Issue #234 remains **OPEN**.
+
+Independent Codex submitted reviews were unavailable (usage-limit bot comments) for this
+cycle; merges proceeded only after exact-head aggregate SUCCESS and zero unresolved
+review threads. That process gap is recorded, not invented as an APPROVED review.
+
 ## Global project boundaries
 
 - `main` still lacks an administrator-enforced branch ruleset; issue #234 tracks this;
@@ -180,8 +212,20 @@ Research intake is governed by `research/IDEA_INTAKE_PROTOCOL.md` and `research/
 
 Current Continuity resolvers, privacy closure, durable lifecycle, runtime wiring and activation are active engineering, not Research Mode.
 
-## Next safe implementation slice
+## Next permitted engineering slice
 
-The next bounded implementation PR may add **concrete current-decision resolver composition through accepted owners only**.
+**Blocked until Phase I DoD closes:** do not start PR-04 / concrete resolver composition,
+Operator Gate A, runtime wiring, persistence, producer integration, Canon/ESM/TruthGate
+writes, Phase II, or Research Copilot lifecycle implementation without a new explicit TZ.
 
-It must remain internal and explicitly invoked, preserve the complete subject set, fail closed on missing or conflicting evidence, and add no producer invocation, persistence, public export, server/startup/worker/scheduler caller, feature flag or user-visible effect.
+Immediate remaining Phase I action (administrator only):
+
+1. apply the repository ruleset to `main` per
+   [`docs/operations/branch-ruleset-admin-handoff.md`](../operations/branch-ruleset-admin-handoff.md);
+2. record API proof (ruleset ID, active, target=`main`);
+3. verify issue #234 acceptance criteria;
+4. only then set `branch_ruleset_enforced=true` and close #234.
+
+After that gate, the next bounded Continuity implementation slice may add **concrete
+current-decision resolver composition through accepted owners only**, remaining internal
+and explicitly invoked, with no producer/persistence/runtime authority.
