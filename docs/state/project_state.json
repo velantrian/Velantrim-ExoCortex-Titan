@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "project": "velantrim-exocortex-titan",
-  "verified_at": "2026-08-08T10:54:00Z",
+  "verified_at": "2026-08-08T17:40:00Z",
   "repository": {
     "default_branch": "main",
-    "repository_head_sha_at_verification": "c14916214a920802c9ce6187be79ebe74ddfadfc",
+    "repository_head_sha_at_verification": "e20571d6444338dab44e03abb9c2562844d2ea0a",
     "implementation_baseline_sha": "9f07db6de8d32683d00bfe4f1673e84493607553",
-    "documentation_checkpoint_sha": "c14916214a920802c9ce6187be79ebe74ddfadfc",
-    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected at verification (PR #248 merge finalizing the PR #247 checkpoint); implementation_baseline_sha is the latest implementation-bearing Continuity merge (PR #246); documentation_checkpoint_sha is the merged FINAL docs checkpoint on main. These fields are exact dated snapshots, not evergreen remote-freshness claims."
+    "documentation_checkpoint_sha": "e20571d6444338dab44e03abb9c2562844d2ea0a",
+    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected at verification (PR #253 merge completing the Phase I remediation PR chain); implementation_baseline_sha is the latest implementation-bearing Continuity merge (PR #246); documentation_checkpoint_sha is the Phase I remediation sync checkpoint on main. Phase I remains IN PROGRESS until the administrator ruleset is applied and issue #234 is closed with API proof. These fields are exact dated snapshots, not evergreen remote-freshness claims."
   },
   "continuity": {
     "completed_capabilities": 7,
@@ -21,7 +21,7 @@
     "enabled": false,
     "observed": false,
     "runtime_authority": false,
-    "next_bounded_slice": "complete Phase I remediation (CAS characterization PR #250, frozen deps, action pins, admin ruleset handoff) before owner map / trust-root ADR; remain internal and stop before producer invocation, persistence or runtime effects"
+    "next_bounded_slice": "PHASE I REMEDIATION IN PROGRESS: administrator must apply main branch ruleset per docs/operations/branch-ruleset-admin-handoff.md, record ruleset ID/API proof, verify issue #234 acceptance criteria, then set branch_ruleset_enforced=true. Do not start PR-04 / Operator Gate A / runtime wiring / persistence / producer / Canon-ESM-TruthGate writes / Phase II without a new explicit TZ. Continuity remains internal with no runtime authority."
   },
   "governance": {
     "aggregate_merge_evidence_present": true,
