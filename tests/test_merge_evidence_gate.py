@@ -195,14 +195,11 @@ def test_trusted_dependabot_identity_requires_bot_type() -> None:
     )
 
 
-def test_dependabot_dependency_only_missing_metadata_infers_none() -> None:
+def test_dependabot_uv_lock_missing_metadata_infers_none() -> None:
     evaluation = resolve_documentation_impact(
         actor=_dependabot(),
-        changed_paths=(
-            ".github/workflows/ci.yml",
-            ".github/workflows/pages.yml",
-        ),
-        body="Bumps the github-actions group with 3 updates.",
+        changed_paths=("uv.lock",),
+        body="Bumps uv.lock.",
     )
 
     assert evaluation.state == "success"
@@ -241,14 +238,58 @@ def test_human_body_claiming_dependabot_does_not_spoof_identity() -> None:
     assert "must declare Documentation impact" in evaluation.description
 
 
+def test_dependabot_workflow_without_metadata_fails_closed() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=(".github/workflows/ci.yml",),
+        body="Bumps the github-actions group with 3 updates.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "documentation-sensitive paths" in evaluation.description
+
+
+def test_dependabot_action_without_metadata_fails_closed() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=(".github/actions/my-action/action.yml",),
+        body="Updates custom action.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "documentation-sensitive paths" in evaluation.description
+
+
+def test_dependabot_pyproject_toml_without_metadata_fails_closed() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=("pyproject.toml",),
+        body="Updates dependencies.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "documentation-sensitive paths" in evaluation.description
+
+
+def test_dependabot_dependabot_yml_without_metadata_fails_closed() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=(".github/dependabot.yml",),
+        body="Reconfigures Dependabot.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "documentation-sensitive paths" in evaluation.description
+
+
 def test_dependabot_sensitive_path_without_metadata_fails_closed() -> None:
     evaluation = resolve_documentation_impact(
         actor=_dependabot(),
         changed_paths=(
-            ".github/workflows/ci.yml",
+            "uv.lock",
             "docs/operations/branch-ruleset-admin-handoff.md",
         ),
-        body="Bumps actions.",
+        body="Bumps dependencies.",
     )
 
     assert evaluation.state == "failure"

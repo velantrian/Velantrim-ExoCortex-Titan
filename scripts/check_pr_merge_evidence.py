@@ -85,12 +85,11 @@ _DOCUMENTATION_IMPACT_RE = re.compile(
 
 # Narrow allowlist for trusted Dependabot PRs that may infer Documentation impact
 # NONE when explicit metadata is absent. Any path outside this set remains fail-closed.
+# Workflows and actions are excluded because they can change permissions, triggers, secrets,
+# shell commands, artifacts, privileged execution, and runner behavior. Workflow changes
+# are documentation-sensitive and require explicit metadata.
 DEPENDABOT_INFERRED_NONE_PATHS = (
-    ".github/workflows/**",
-    ".github/actions/**",
-    ".github/dependabot.yml",
     "uv.lock",
-    "pyproject.toml",
     "requirements.txt",
     "requirements-*.txt",
     "requirements/*.txt",
