@@ -20,8 +20,10 @@ integration and operational proof.
 - Phase I exact-head CI and aggregate evidence were retrospectively checked for PRs
   #254/#250/#251/#252/#253/#256;
 - the requested issue #257 audit was performed without fabricating historical approvals;
-- the post-merge GitHub/Notion documentation drift was corrected by PR #261 and the
-  finalized machine-state relationships are guarded by `scripts/check_project_state.py`;
+- the post-merge GitHub/Notion documentation drift was corrected by PR #261;
+- project-state schema v2 now pins the exact audit issue, PR, head, merge and Notion page,
+  while historical v1 snapshots remain readable;
+- the canonical Notion status is `SYNCED`, with a separate finalization boolean;
 - frozen `uv.lock` CI installation and full-SHA GitHub Actions pinning are active;
 - source-admission architecture, seven evidence contracts, three source adapters, the
   evaluator and the internal admission facade remain implemented and tested.
@@ -252,13 +254,18 @@ The retrospective audit found that status files at
 The contradiction was corrected by PR #261, merged as
 `90e221be2bed8177f4648787d713058df0f29e1f`. The same exact audit and merge evidence was
 recorded at the top of the existing Notion page `Velantrim Titan 9.0`; issue #257 closed as
-completed. The machine-readable finalization contract now validates:
+completed.
 
-- public audit issue and PR identifiers;
-- exact audit head and merge SHA shape;
+The versioned machine-readable contract now validates:
+
+- schema v2 for the finalized audit shape and compatibility reading for historical v1;
+- exact audit issue #257 and PR #261;
+- exact audit head `54b4f962748610d3a57580506b7c36afa5329a71`;
+- exact merge/checkpoint `90e221be2bed8177f4648787d713058df0f29e1f`;
 - `COMPLETE` and `CLOSED_COMPLETED` final states;
 - equality between repository checkpoint, audit merge and Notion-recorded merge SHAs;
-- `SYNCED_FINAL`, the exact Titan audit page ID and target allowlisting;
+- canonical Notion status `SYNCED` plus `audit_synchronization_finalized=true`;
+- exact Titan audit page ID and target allowlisting;
 - the explicit absence of claimed independent historical review.
 
 Historical sections may preserve older states, but the newest dated section remains the
