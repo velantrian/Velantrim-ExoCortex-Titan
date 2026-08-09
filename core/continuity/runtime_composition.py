@@ -244,7 +244,7 @@ class ContinuityRuntimeConfiguration:
         lifecycle_owner_version: str,
         storage_root: str | Path,
         tenant_ref: str,
-    ) -> "ContinuityRuntimeConfiguration":
+    ) -> ContinuityRuntimeConfiguration:
         owner_id = _text(lifecycle_owner_id, "lifecycle_owner_id")
         owner_version = _text(
             lifecycle_owner_version,
