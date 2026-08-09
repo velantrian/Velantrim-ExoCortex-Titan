@@ -5,7 +5,7 @@
 **Governance canary checkpoint:** PR #260 → `a733e760732ad2c4ec6496d3f8ea4c5d0383048f`  
 **Dependabot checkpoint:** PR #255 → `c9e272d5d9da76219f8e0caaf784892e80046a31`  
 **Phase I audit checkpoint:** PR #261 → `90e221be2bed8177f4648787d713058df0f29e1f`  
-**Machine state:** [`docs/state/project_state.json`](../state/project_state.json) · `COMPLETE` · `SYNCED_FINAL`  
+**Machine state:** [`docs/state/project_state.json`](../state/project_state.json) · schema v2 · `COMPLETE` · `SYNCED` · audit finalization `true`  
 **Rule:** presence is not wiring; content-addressed evidence is not runtime authority.
 
 ## 1. Canon and core runtime
@@ -35,8 +35,8 @@ actions or compute routing.
 | Typed signal producer | `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` | observations/signal producer | pure shadow producer |
 | Source-admission evidence | `4adde7997ec0b2a3d1957224c72131d8c4d35ff2` | source-admission contracts | evidence only |
 | State Draft adapter | `0f1a10ab4f92dd7f15a69e55cc98339e7eeb36b1` | `state_source_adapter.py` | tested, internal, unwired |
-| Goal subject binding v2 | `81836b4f715470c50a4c6c7768a2cde7478568c8` | `goal_open_loop.py` | tested correction |
-| OpenLoop subject binding v2 | `659c30e0e8023c48fdf68be8583401fc042a1ab8` | `goal_open_loop.py` | tested correction |
+| Goal subject binding v2 | `81836b4f715470c50a4c6c7768a2cde7478568c8` | `goal_open_loop.py` | tested contract correction |
+| OpenLoop subject binding v2 | `659c30e0e8023c48fdf68be8583401fc042a1ab8` | `goal_open_loop.py` | tested contract correction |
 | Goal Draft adapter | `2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d` | `goal_source_adapter.py` | tested, internal, unwired |
 | OpenLoop Draft adapter | `42aa79338c57e9b9a67c3e3c08dd948b60c5541f` | `open_loop_source_adapter.py` | tested, internal, unwired |
 | Admission evaluator | `97fe27a37184c6c7277f54e96acd04d98d583ab3` | `admission_evaluator.py` | tested, internal, unwired |
@@ -122,10 +122,12 @@ Historical receipts never override current restriction or erasure state.
   `90e221be2bed8177f4648787d713058df0f29e1f`;
 - issue #257 is `CLOSED_COMPLETED`;
 - the existing Notion page `Velantrim Titan 9.0` records the same audit head, CI,
-  aggregate, merge and non-authority boundaries as `SYNCED_FINAL`;
+  aggregate, merge and non-authority boundaries with canonical status `SYNCED` and an
+  explicit finalization marker;
+- project-state schema v2 pins issue #257, PR #261, exact head/merge and exact Notion page;
+- historical schema v1 snapshots remain readable without being misclassified as v2;
 - the audit does not backfill historical approvals;
 - aggregate success remains automated merge evidence, not independent review;
-- machine-state validation enforces the exact audit/Notion checkpoint relationships;
 - projection dispatcher lifecycle remains unwired;
 - identity remains legacy/unwired;
 - query-path read-only and Canon-writer unification remain open hardening work.
