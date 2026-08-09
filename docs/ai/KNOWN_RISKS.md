@@ -1,13 +1,16 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-08-08  
-**Repository `main` head at verification:** `34ae0c6d8bd70978899c1cf5938324f51c6c3416`  
+**Snapshot:** 2026-08-09  
+**Repository `main` head at verification:** `28cc8b9ea7b94bf65a0b8cb2a37f30b2187cc6b5`  
 **Latest implementation-bearing baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
-**Phase I remediation status:** `PHASE I REMEDIATION IN PROGRESS` (remediation PRs merged; Stage-1 preconditions in PR-A / #258; ruleset not applied)
+**Phase I remediation status:** `GOVERNANCE CANARY IN PROGRESS`  
+**Governance:** active `main-governance` ruleset, ID `20601712`, accepted solo mode
 
-Code presence and passing tests do not close a risk. Closure requires correct authority ownership, current evidence, integration controls, activation governance and operational proof.
+Code presence and passing tests do not close a risk. Closure requires correct authority
+ownership, current evidence, integration controls, activation governance and operational
+proof.
 
-## Closed or materially reduced in the current Continuity cycle
+## Closed or materially reduced in the current cycle
 
 - source-admission architecture and owner placement are accepted;
 - seven primary immutable evidence contracts are implemented and tested;
@@ -18,49 +21,64 @@ Code presence and passing tests do not close a risk. Closure requires correct au
 - malformed Draft sets fail before resolver access;
 - resolver identity/access/execution failures are converted to controlled fail-closed results;
 - evaluator and facade outputs remain evidence-only;
-- no accepted slice adds runtime, Canon, TruthGate, reminder, tool, action or compute authority.
+- no accepted slice adds runtime, Canon, TruthGate, reminder, tool, action or compute authority;
+- `main-governance` is active and requires PR-only changes, exact aggregate evidence,
+  up-to-date branches and resolved conversations;
+- force pushes are blocked, deletion is restricted and the bypass list is empty.
 
-Continuity implementation readiness is now `7/12 = 58.3%`. This is not live readiness.
+Continuity implementation readiness remains `7/12 = 58.3%`. This is not live readiness.
 
-## P0 — Administrator ruleset remains absent
+## P1 — Solo-mode governance has no independent approval gate
 
-GitHub `main` remains unprotected and no repository ruleset enforces the aggregate merge-evidence status.
+The active ruleset is materially stronger than the previously unprotected repository, but
+it intentionally uses `required approvals = 0` for the accepted solo workflow.
 
-Current controls:
+Verified controls:
 
-- full CI and blocking coverage;
-- component-specific Continuity and Docker workflows;
-- aggregate exact-head merge-evidence workflow;
-- review-thread checks and documentation metadata validation.
+- pull request required before merge;
+- exact `Titan aggregate merge evidence` status required;
+- branch must be up to date;
+- all review conversations must be resolved;
+- force pushes blocked;
+- deletions restricted;
+- bypass list empty;
+- Code Owner review OFF;
+- Restrict updates OFF so valid protected merges remain possible.
+
+Accepted variance:
+
+- the earlier Stage-1 proposal required one non-author approval, stale-approval dismissal
+  and latest-reviewable-push approval;
+- GitHub does not count author self-approval;
+- the owner selected solo mode rather than adding a second account or broad bypass;
+- those three approval controls are therefore OFF and must not be claimed as active.
 
 Residual risk:
 
-- checks can still be bypassed by repository settings or direct push/merge behavior;
-- issue #234 requires administrator configuration;
-- merged handoff PR #253 / checkpoint #256 do **not** apply the ruleset; API proof at
-  verification still returns an empty ruleset list;
-- sole CODEOWNER `@velantrian` makes **Code Owner review unsafe to enable** until a
-  second trusted reviewer topology exists (tracked by issue #258);
-- Dependabot PRs historically failed aggregate for missing Documentation metadata; PR-A
-  adds a narrow trusted-Dependabot inference path (dependency-only allowlist only).
+- automated checks and resolved threads do not equal independent review;
+- a solo maintainer can still approve the substantive decision to merge once configured
+  checks pass;
+- historical Phase I PRs remain without submitted independent reviews;
+- issue #257 therefore remains open for the real retrospective independent audit.
 
-Required action (Stage 1 first):
+Required handling:
 
-- require pull requests and the aggregate merge-evidence check;
-- require resolved conversations;
-- require approvals ≥ 1 (non-author) and dismiss stale approvals;
-- **leave Code Owner review disabled** until Stage 2 topology exists;
-- block force push and deletion;
-- restrict direct push;
-- require up-to-date branches where appropriate;
-- record ruleset ID + active + target=`main` before closing #234 or flipping
-  `branch_ruleset_enforced` to `true`.
+- do not backfill fictional approvals;
+- do not describe aggregate `SUCCESS` as independent review;
+- record the accepted variance on issues #234 and #258;
+- merge PR #260 only on exact-head aggregate `SUCCESS`, zero unresolved threads and the
+  expected head SHA;
+- keep the no-independent-review limitation visible until issue #257 is completed or
+  explicitly deferred with written rationale.
 
-Administrator handoff: [`docs/operations/branch-ruleset-admin-handoff.md`](../operations/branch-ruleset-admin-handoff.md).
+Administrator record:
+[`docs/operations/branch-ruleset-admin-handoff.md`](../operations/branch-ruleset-admin-handoff.md).
 
 ## P0 — Operator-selected trust root is not deployed
 
-`ContinuityAdmissionFacadePolicy` and `ContinuityAdmissionRegistry` are content-addressed and internally consistent. They do not select or activate themselves as operator-approved deployment configuration.
+`ContinuityAdmissionFacadePolicy` and `ContinuityAdmissionRegistry` are content-addressed
+and internally consistent. They do not select or activate themselves as operator-approved
+deployment configuration.
 
 Risks:
 
@@ -80,7 +98,8 @@ Required proof:
 
 ## P0 — Concrete current-decision resolver composition is absent
 
-The facade exposes a typed `ContinuityCurrentDecisionResolver` boundary, but no accepted concrete composition currently obtains authoritative evidence from existing owners.
+The facade exposes a typed `ContinuityCurrentDecisionResolver` boundary, but no accepted
+concrete composition currently obtains authoritative evidence from existing owners.
 
 Still absent:
 
@@ -112,7 +131,8 @@ The next slice must reuse accepted owners and remain internal, unwired and evide
 
 ## P1 — Content-addressed evidence is not authenticity
 
-Content addressing proves that represented contents match an identifier. It does not prove:
+Content addressing proves that represented contents match an identifier. It does not
+prove:
 
 - who created the evidence;
 - whether the source or resolver was authentic;
@@ -176,7 +196,9 @@ No feature flag, SLO, alert, rollback or Operator GO exists. This is intentional
 
 ## P1 — Bare observation and producer bypass
 
-`ContinuitySignalObservation` v1 does not bind full tenant, principal, subject, purpose, retention or erasure state. The merged facade does not yet have live callers or runtime anti-bypass enforcement.
+`ContinuitySignalObservation` v1 does not bind full tenant, principal, subject, purpose,
+retention or erasure state. The merged facade does not yet have live callers or runtime
+anti-bypass enforcement.
 
 Required proof before producer use:
 
@@ -205,7 +227,8 @@ shows that not all 25 contenders reached the synchronization point in time. It d
 **not** yet prove whether the cause is runner scheduling, test orchestration, or a
 worker exiting or blocking before/during the production pre-CAS path.
 
-Diagnostic harness landed in merged [PR #250](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/250)
+Diagnostic harness landed in merged
+[PR #250](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/250)
 (`e16db600da155c0496a727a56a501c2f984f37fd`, tracked by
 [issue #249](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/249)).
 That PR does **not** change production CAS semantics and does **not** reclassify the
@@ -276,7 +299,8 @@ explicit write command → policy → TruthGate → CAS → version/audit/outbox
 
 ## P1 — Projection lifecycle and observability
 
-Projection outbox and dispatcher primitives are implemented/tested but not fully runtime-wired.
+Projection outbox and dispatcher primitives are implemented/tested but not fully
+runtime-wired.
 
 Still required:
 
@@ -300,30 +324,42 @@ Still required:
 
 ## P1 — SQLite and future storage profiles
 
-SQLite remains the accepted local-first Canon profile and has substantial concurrency/crash/disk-full evidence. It is not proven for multi-node HA, network filesystems or large multi-tenant server workloads.
+SQLite remains the accepted local-first Canon profile and has substantial
+concurrency/crash/disk-full evidence. It is not proven for multi-node HA, network
+filesystems or large multi-tenant server workloads.
 
-PostgreSQL, ANN and distributed profiles remain Research Mode candidates governed by explicit return triggers. They must not be implemented merely for architectural symmetry.
+PostgreSQL, ANN and distributed profiles remain Research Mode candidates governed by
+explicit return triggers. They must not be implemented merely for architectural symmetry.
 
 ## P1 — Documentation drift
 
-Code merges can temporarily leave canonical GitHub and Notion status behind.
+Code or repository-setting changes can temporarily leave canonical GitHub and Notion
+status behind.
 
 Controls:
 
 - per-PR documentation impact classification;
 - aggregate merge-evidence metadata check;
+- active ruleset requiring the exact aggregate status;
 - public AI context pack;
 - machine-readable project state;
 - direct Notion synchronization or structured handoff;
 - per-PR checkpoint documents.
 
-Residual risk remains until administrator rules enforce aggregate status and post-merge checkpoints are consistently completed.
+Residual risk:
+
+- repository settings can change manually after documentation is written;
+- governance docs must distinguish API-observed configuration from behavior actually
+  exercised by a canary;
+- PR #260 must complete the current synchronization before issue #258 closes.
 
 ## P1 — Identity
 
 `core/identity_layer.py` remains `LEGACY/UNWIRED`.
 
-Do not add production callers or use model inference as user attestation. Any future identity/personalization path requires consent, evidence, contestation, correction, supersession, retraction, retention and erasure semantics.
+Do not add production callers or use model inference as user attestation. Any future
+identity/personalization path requires consent, evidence, contestation, correction,
+supersession, retraction, retention and erasure semantics.
 
 ## Closed/narrowed evidence notes
 
@@ -332,6 +368,9 @@ Do not add production callers or use model inference as user attestation. Any fu
 - deterministic evaluator/rule-registry absence is closed;
 - internal facade and typed resolver-boundary absence is closed by PR #246;
 - concrete trusted resolver composition remains open;
+- repository ruleset absence is closed by active ruleset ID `20601712`;
+- independent approval is intentionally absent in solo mode and remains a documented
+  governance limitation, not a closed proof;
 - a prior erasure-recovery ownership race was fixed without excluding the blocking coverage test;
 - the evaluator chronology fixture failure and PR #246 intermittent SQLite timeout remain visible in audit history.
 
@@ -339,4 +378,6 @@ Do not add production callers or use model inference as user attestation. Any fu
 
 Use exact states: `PROPOSED`, `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED`, `OBSERVED`.
 
-A risk is not closed by a file existing, a test passing once, a content-addressed receipt, a green retry, a Notion update or a research plan. Closure requires the specific missing owner, integration and operational proof.
+A risk is not closed by a file existing, a test passing once, a content-addressed receipt,
+a green retry, a Notion update, aggregate success or a research plan. Closure requires the
+specific missing owner, integration and operational proof.
