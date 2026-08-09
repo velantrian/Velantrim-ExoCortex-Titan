@@ -12,17 +12,20 @@ jobs:
   patch:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: continuity/status-sync-runtime-wiring
           fetch-depth: 0
 
-      - uses: astral-sh/setup-uv@v6
+      - name: Set up Python 3.11
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
-          enable-cache: true
+          python-version: "3.11"
 
-      - name: Install frozen development environment
-        run: uv sync --frozen --group dev
+      - name: Install locked dependencies
+        uses: ./.github/actions/sync-python-deps
+        with:
+          extras: server dev parsers retrieval embeddings graph-lab
 
       - name: Extract and apply patch
         shell: bash
@@ -38,16 +41,16 @@ jobs:
               }
             }
           ' .github/workflows/_temporary_status_sync_patch.yml > /tmp/status_sync_patch.py
-          uv run python /tmp/status_sync_patch.py
+          python /tmp/status_sync_patch.py
           rm .github/workflows/_temporary_status_sync_patch.yml
           rm .github/workflows/_temporary_status_sync_runner.yml
 
       - name: Validate schema and focused tests
         shell: bash
         run: |
-          uv run python scripts/check_project_state.py
-          uv run pytest -q tests/test_check_project_state.py
-          uv run ruff check scripts/check_project_state.py tests/test_check_project_state.py
+          python scripts/check_project_state.py
+          python -m pytest -q tests/test_check_project_state.py
+          ruff check scripts/check_project_state.py tests/test_check_project_state.py
 
       - name: Commit authoritative status surfaces
         shell: bash
