@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Validate the machine-readable Titan project-state contract.
 
-Schema v1 preserves the exact validation surface accepted before PR #262. Schema v2 is
-the strict finalized Phase I audit contract and binds the exact GitHub and Notion evidence
-recorded by PR #261. The state file records an exact dated checkpoint, not an evergreen
-remote-head claim.
+Schema v1 preserves the original minimal compatibility surface. Schema v2 preserves the
+strict finalized Phase I retrospective-audit checkpoint. Schema v3 records later exact
+implementation checkpoints while retaining the immutable audit identity and Notion target.
+Every schema is a dated checkpoint, not an evergreen remote-head claim.
 """
 
 from __future__ import annotations
@@ -20,14 +20,20 @@ SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 PROJECT_STATE_PATH = Path("docs/state/project_state.json")
 SCHEMA_V1 = 1
 SCHEMA_V2 = 2
-SUPPORTED_SCHEMA_VERSIONS = {SCHEMA_V1, SCHEMA_V2}
+SCHEMA_V3 = 3
+SUPPORTED_SCHEMA_VERSIONS = {SCHEMA_V1, SCHEMA_V2, SCHEMA_V3}
 
 TITAN_AUDIT_ISSUE = 257
 TITAN_AUDIT_PR = 261
 TITAN_AUDIT_HEAD_SHA = "54b4f962748610d3a57580506b7c36afa5329a71"
 TITAN_AUDIT_MERGE_SHA = "90e221be2bed8177f4648787d713058df0f29e1f"
-TITAN_AUDIT_PAGE_ID = "398ac84d-0547-81fe-8ca5-d0d2727d1961"
-TITAN_AUDIT_PAGE_TITLE = "Velantrim Titan 9.0"
+TITAN_NOTION_PAGE_ID = "398ac84d-0547-81fe-8ca5-d0d2727d1961"
+TITAN_NOTION_PAGE_TITLE = "Velantrim Titan 9.0"
+
+RESOLVER_ISSUE = 263
+RESOLVER_PR = 264
+RESOLVER_HEAD_SHA = "6dcbad3926db99e9621622acfcfc1b2db7da9d21"
+RESOLVER_MERGE_SHA = "dc30817f2c4abb1afcaab2f127e679d5f9b884d7"
 
 
 class ProjectStateError(ValueError):
@@ -76,7 +82,7 @@ def _require_sha(mapping: dict[str, Any], field: str) -> str:
 
 
 def _validate_common(root: dict[str, Any]) -> dict[str, Any]:
-    """Validate only fields required by the original schema-v1 validator."""
+    """Validate the fields shared by all historical and current schemas."""
 
     if root.get("project") != "velantrim-exocortex-titan":
         raise ProjectStateError("project must be 'velantrim-exocortex-titan'")
@@ -104,14 +110,20 @@ def _validate_common(root: dict[str, Any]) -> dict[str, Any]:
         raise ProjectStateError("remaining_capabilities must equal total - completed")
     expected_readiness = round(100.0 * completed / total, 1)
     expected_remaining = round(100.0 * remaining / total, 1)
-    if not isinstance(readiness, (int, float)) or not math.isclose(
-        float(readiness), expected_readiness, abs_tol=0.05
+    if (
+        not isinstance(readiness, (int, float))
+        or isinstance(readiness, bool)
+        or not math.isclose(float(readiness), expected_readiness, abs_tol=0.05)
     ):
         raise ProjectStateError(
             f"readiness_percent must equal {expected_readiness} for {completed}/{total}"
         )
-    if not isinstance(remaining_percent, (int, float)) or not math.isclose(
-        float(remaining_percent), expected_remaining, abs_tol=0.05
+    if (
+        not isinstance(remaining_percent, (int, float))
+        or isinstance(remaining_percent, bool)
+        or not math.isclose(
+            float(remaining_percent), expected_remaining, abs_tol=0.05
+        )
     ):
         raise ProjectStateError(
             f"remaining_percent must equal {expected_remaining} for {remaining}/{total}"
@@ -156,27 +168,7 @@ def _validate_common(root: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _validate_v1(_root: dict[str, Any], _common: dict[str, Any]) -> dict[str, Any]:
-    """Apply no requirements beyond the exact pre-v2 validation contract."""
-
-    return {
-        "audit_status": "LEGACY_OR_UNDECLARED",
-        "notion_status": "LEGACY_OR_UNDECLARED",
-    }
-
-
-def _validate_v2(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]:
-    """Validate the strict, finalized Phase I audit evidence contract."""
-
-    verified_head = common["verified_head"]
-    checkpoint = common["checkpoint"]
-    governance = common["governance"]
-
-    if verified_head != checkpoint:
-        raise ProjectStateError(
-            "repository_head_sha_at_verification must equal documentation_checkpoint_sha"
-        )
-
+def _validate_governance_audit(governance: dict[str, Any]) -> str:
     _require_int(governance, "tracking_issue", minimum=1)
     _require_int(governance, "ruleset_id", minimum=1)
     _require_literal(governance, "ruleset_name", "main-governance")
@@ -187,7 +179,6 @@ def _validate_v2(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]
         raise ProjectStateError("governance must not claim independent historical review")
     _require_int(governance, "governance_canary_pr", minimum=1)
     _require_sha(governance, "governance_canary_merge_sha")
-
     _require_literal(governance, "retrospective_audit_issue", TITAN_AUDIT_ISSUE)
     _require_literal(governance, "retrospective_audit_pr", TITAN_AUDIT_PR)
     _require_literal(
@@ -200,19 +191,18 @@ def _validate_v2(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]
     _require_literal(
         governance, "retrospective_audit_issue_state", "CLOSED_COMPLETED"
     )
-    if audit_merge != verified_head or audit_merge != checkpoint:
-        raise ProjectStateError(
-            "repository audit checkpoint SHAs must equal retrospective_audit_merge_sha"
-        )
+    return audit_merge
 
+
+def _validate_notion_audit(root: dict[str, Any], audit_merge: str) -> dict[str, Any]:
     notion = _require_mapping(root.get("notion"), "notion")
     _require_literal(notion, "status", "SYNCED")
     if not _require_bool(notion, "audit_synchronization_finalized"):
         raise ProjectStateError("notion.audit_synchronization_finalized must be true")
     audit_target = _require_literal(
-        notion, "audit_target", TITAN_AUDIT_PAGE_TITLE
+        notion, "audit_target", TITAN_NOTION_PAGE_TITLE
     )
-    _require_literal(notion, "audit_page_id", TITAN_AUDIT_PAGE_ID)
+    _require_literal(notion, "audit_page_id", TITAN_NOTION_PAGE_ID)
     notion_merge = _require_sha(notion, "audit_merge_sha_recorded")
     if notion_merge != audit_merge:
         raise ProjectStateError(
@@ -225,9 +215,121 @@ def _validate_v2(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]
         raise ProjectStateError("notion.safe_targets must be a non-empty string list")
     if audit_target not in safe_targets:
         raise ProjectStateError("notion.audit_target must be included in safe_targets")
+    return notion
+
+
+def _validate_v1(_root: dict[str, Any], _common: dict[str, Any]) -> dict[str, Any]:
+    """Apply no requirements beyond the original schema-v1 surface."""
 
     return {
-        "audit_status": governance["retrospective_audit_status"],
+        "audit_status": "LEGACY_OR_UNDECLARED",
+        "notion_status": "LEGACY_OR_UNDECLARED",
+    }
+
+
+def _validate_v2(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]:
+    """Validate the frozen finalized Phase I audit checkpoint."""
+
+    verified_head = common["verified_head"]
+    checkpoint = common["checkpoint"]
+    if verified_head != checkpoint:
+        raise ProjectStateError(
+            "repository_head_sha_at_verification must equal documentation_checkpoint_sha"
+        )
+
+    audit_merge = _validate_governance_audit(common["governance"])
+    if audit_merge != verified_head or audit_merge != checkpoint:
+        raise ProjectStateError(
+            "repository audit checkpoint SHAs must equal retrospective_audit_merge_sha"
+        )
+    notion = _validate_notion_audit(root, audit_merge)
+    return {
+        "audit_status": common["governance"]["retrospective_audit_status"],
+        "notion_status": notion["status"],
+    }
+
+
+def _validate_v3(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]:
+    """Validate the post-audit resolver implementation checkpoint."""
+
+    verified_head = common["verified_head"]
+    implementation = common["implementation"]
+    checkpoint = common["checkpoint"]
+    if verified_head != checkpoint:
+        raise ProjectStateError(
+            "repository_head_sha_at_verification must equal documentation_checkpoint_sha"
+        )
+    if implementation != verified_head:
+        raise ProjectStateError(
+            "implementation_baseline_sha must equal the verified implementation checkpoint"
+        )
+    if verified_head != RESOLVER_MERGE_SHA:
+        raise ProjectStateError(
+            "schema v3 verified repository checkpoint must equal the resolver merge SHA"
+        )
+
+    continuity = common["continuity"]
+    if common["completed"] != 8 or common["total"] != 12:
+        raise ProjectStateError("schema v3 Continuity readiness must be exactly 8/12")
+    _require_literal(continuity, "implemented", True)
+    _require_literal(continuity, "tested", True)
+    _require_literal(continuity, "wired", False)
+    _require_literal(continuity, "enabled", False)
+    _require_literal(continuity, "observed", False)
+    _require_literal(continuity, "runtime_authority", False)
+    _require_string(continuity, "next_bounded_slice")
+
+    audit_merge = _validate_governance_audit(common["governance"])
+    notion = _validate_notion_audit(root, audit_merge)
+
+    resolver = _require_mapping(
+        root.get("continuity_current_decision_resolver"),
+        "continuity_current_decision_resolver",
+    )
+    _require_literal(resolver, "tracking_issue", RESOLVER_ISSUE)
+    _require_literal(resolver, "implementation_pr", RESOLVER_PR)
+    _require_literal(resolver, "exact_head_sha", RESOLVER_HEAD_SHA)
+    _require_literal(resolver, "merge_sha", RESOLVER_MERGE_SHA)
+    _require_literal(resolver, "status", "COMPLETE")
+    _require_literal(resolver, "authority", "INTERNAL_EVIDENCE_ONLY")
+    for field in (
+        "concrete_live_owner_adapters_selected",
+        "persistence_present",
+        "runtime_wired",
+        "operator_go",
+        "independent_review_claimed",
+    ):
+        _require_literal(resolver, field, False)
+    for field in (
+        "exact_head_continuity_run",
+        "exact_head_full_ci_run",
+        "exact_head_docker_run",
+        "exact_head_aggregate_run",
+        "post_merge_continuity_run",
+        "post_merge_full_ci_run",
+        "post_merge_docker_run",
+        "post_merge_aggregate_run",
+    ):
+        _require_int(resolver, field, minimum=1)
+    _require_literal(resolver, "unresolved_review_threads", 0)
+
+    _require_literal(notion, "latest_status_target", TITAN_NOTION_PAGE_TITLE)
+    _require_literal(notion, "latest_status_page_id", TITAN_NOTION_PAGE_ID)
+    _require_literal(
+        notion,
+        "latest_synchronization_kind",
+        "CONTINUITY_CURRENT_DECISION_RESOLVER",
+    )
+    _require_literal(
+        notion, "latest_implementation_merge_sha", RESOLVER_MERGE_SHA
+    )
+    if not _require_bool(notion, "latest_synchronization_finalized"):
+        raise ProjectStateError(
+            "notion.latest_synchronization_finalized must be true"
+        )
+
+    return {
+        "audit_status": common["governance"]["retrospective_audit_status"],
         "notion_status": notion["status"],
     }
 
@@ -243,11 +345,12 @@ def validate_project_state(data: Any) -> dict[str, Any]:
         )
 
     common = _validate_common(root)
-    version_report = (
-        _validate_v1(root, common)
-        if schema_version == SCHEMA_V1
-        else _validate_v2(root, common)
-    )
+    if schema_version == SCHEMA_V1:
+        version_report = _validate_v1(root, common)
+    elif schema_version == SCHEMA_V2:
+        version_report = _validate_v2(root, common)
+    else:
+        version_report = _validate_v3(root, common)
 
     return {
         "ok": True,

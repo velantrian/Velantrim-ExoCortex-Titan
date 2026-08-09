@@ -1,104 +1,64 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-09  
-**Repository `main` head inspected:** `90e221be2bed8177f4648787d713058df0f29e1f`  
-**Latest implementation-bearing baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
-**Governance:** active `main-governance` · ID `20601712` · accepted solo mode  
-**Retrospective audit:** completed; see [`phase-i-retrospective-audit-2026-08-09.md`](../audits/phase-i-retrospective-audit-2026-08-09.md)
+**Repository checkpoint inspected:** `main@dc30817f2c4abb1afcaab2f127e679d5f9b884d7`  
+**Continuity:** `8/12 = 66.7%` implementation readiness  
+**Runtime:** `UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`  
+**Governance:** active `main-governance` · solo mode · approvals `0`
 
-A risk is not closed by a file existing, a test passing once, a green retry, a Notion
-update, aggregate success or a research plan. Closure requires the missing owner,
-integration and operational proof.
+A risk is not closed because a file exists, a test passes once, a receipt is
+content-addressed, a PR merges, Notion is updated or aggregate evidence is green.
+Closure requires the missing owner, integration and operational proof.
 
 ## Closed or materially reduced
 
-- the repository now requires PRs, the exact aggregate status, an up-to-date branch and
-  resolved conversations;
-- force pushes are blocked, deletion is restricted and the bypass list is empty;
-- the solo-mode variance is public and no inactive approval setting is claimed;
-- the governance canary merged through the protected path in PR #260;
-- Phase I exact-head CI and aggregate evidence were retrospectively checked for PRs
-  #254/#250/#251/#252/#253/#256;
-- the requested issue #257 audit was performed without fabricating historical approvals;
-- the post-merge GitHub/Notion documentation drift was corrected by PR #261;
-- project-state schema v2 now pins the exact audit issue, PR, head, merge and Notion page,
-  while historical v1 snapshots remain readable;
-- the canonical Notion status is `SYNCED`, with a separate finalization boolean;
-- frozen `uv.lock` CI installation and full-SHA GitHub Actions pinning are active;
-- source-admission architecture, seven evidence contracts, three source adapters, the
-  evaluator and the internal admission facade remain implemented and tested.
+- PR #264 implemented and tested the six-owner current-decision resolver composition;
+- exact owner, principal, authorization, source, tenant, complete-subject and domain-scope
+  bindings now fail closed on substitution;
+- owner identity is pinned before and after owner resolution;
+- missing, duplicate, stale, future-effective, malformed and extra-domain snapshots fail
+  closed;
+- represented negative and unknown decisions are preserved rather than softened;
+- the resolver remains internal, unexported, injected and evidence-only;
+- governance, Phase I audit identity and Notion target remain explicitly pinned.
 
-Continuity readiness remains `7/12 = 58.3%`. It is not live readiness.
-
-## P1 — Solo governance has no independent approval gate
-
-The active ruleset intentionally uses `required approvals = 0`.
-
-Current controls:
-
-- PR required;
-- exact `Titan aggregate merge evidence` required;
-- branch up to date;
-- conversation resolution required;
-- force pushes blocked;
-- deletion restricted;
-- bypass empty;
-- Code Owner review OFF;
-- stale-approval dismissal OFF;
-- latest-push approval OFF;
-- Restrict updates OFF.
-
-Residual risk:
-
-- automated checks are not independent review;
-- a solo maintainer remains the final substantive merge decision owner;
-- the six earlier Phase I PRs have no submitted review objects.
-
-The retrospective audit closes the request to inspect the range. It does **not** backfill
-approvals or change the historical review state.
-
-Required handling:
-
-- never state that aggregate `SUCCESS` is independent review;
-- do not create approval metadata after the fact;
-- introduce a real second reviewer only through an explicit future governance change;
-- keep the current solo model documented until that change is actually adopted.
+The former risk “concrete current-decision resolver composition is absent” is closed at the
+**internal implementation** level only. Live owner adapters and authenticity are not solved.
 
 ## P0 — Operator-selected trust root is not deployed
 
-`ContinuityAdmissionFacadePolicy` and `ContinuityAdmissionRegistry` are content-addressed
-and internally consistent. They do not select or activate themselves as trusted deployment
-configuration.
+Content-addressed facade policy, registry, resolver and owner snapshots do not select or
+activate themselves as trusted deployment configuration.
 
 Required proof:
 
 - one explicit operator/deployment owner;
-- controlled expected facade-policy and registry identity;
-- versioned or signed configuration lineage;
-- fail-closed behavior for missing, stale or unexpected identity;
+- controlled expected facade-policy, registry, resolver and owner identities;
+- signed or versioned configuration lineage;
+- fail-closed missing, stale or unexpected identity;
 - no caller-controlled substitution;
 - audit evidence for configuration changes.
 
-## P0 — Concrete current-decision resolver composition is absent
+## P0 — Concrete live owner adapters are not selected
 
-No accepted concrete composition currently obtains authoritative evidence for:
+PR #264 defines six injected read-only owner ports. It intentionally does not choose
+concrete live adapters for principal, authorization, consent/lawful basis, restriction,
+erasure or PolicySnapshot state.
 
-- principal/authentication;
-- tenant and subject authorization;
-- consent or lawful basis;
-- restrictions;
-- erasure-domain state;
-- current `PolicySnapshot` compatibility;
-- complete multi-subject aggregation.
+Residual risk:
 
-Required rule:
+- a future adapter may read stale, ambiguous or unauthenticated state;
+- content hashes prove integrity, not authentic owner provenance;
+- deployment composition could select the wrong owner implementation;
+- no live multi-subject owner aggregation has been observed.
 
-```text
-missing / stale / unknown / ambiguous / conflicting / partially covered state
-→ reject the complete evaluation fail-closed
-```
+Required proof:
 
-The next slice must reuse accepted owners and remain internal, unwired and evidence-only.
+- accepted owner APIs and deployment identities;
+- bounded current-state reads;
+- authenticity and configuration lineage;
+- adversarial integration tests against real owner stores;
+- explicit Operator review before any runtime wiring.
 
 ## P1 — Content-addressed evidence is not authenticity
 
@@ -107,188 +67,115 @@ Integrity ≠ authenticity
 Integrity ≠ authorization
 Evidence ≠ authority
 Receipt ≠ permanent permission
-Facade result ≠ runtime permission
+Resolver result ≠ runtime permission
 ```
 
-Content addressing does not prove who created evidence, whether the source is authentic,
-whether permission is current, whether the claim is true, or whether runtime use is
-allowed.
+Hashes do not prove who created evidence, whether the source is authentic, whether
+permission is still current, whether a claim is true or whether runtime use is allowed.
 
-## P1 — Privacy, restriction, retention and erasure lifecycle
+## P1 — Durable retention, replay, cleanup and erasure lifecycle is absent
 
-Still absent:
-
-- live consent/lawful-basis resolver integration;
-- live restriction and erasure-domain integration;
-- accepted durable retention, replay and cleanup lifecycle;
-- end-to-end erasure-addressability for queued, persisted or derived artifacts;
-- operator proof for multi-subject erasure behavior.
-
-Historical permission must never override current withdrawal, restriction or deletion.
-
-## P1 — Durable persistence and replay are absent
-
-Not proven for admission artifacts:
+Still unimplemented for admission artifacts:
 
 - schema and migrations;
 - idempotent append and deduplication;
 - crash consistency and disk-full behavior;
 - replay after restart;
-- schema-version compatibility;
+- version compatibility;
 - retention and cleanup;
-- subject/tenant indexing;
+- tenant/subject indexing;
 - erasure during queued or partially evaluated work;
-- operator reconciliation.
+- reconciliation and operator evidence.
 
-Persistence remains a separate architecture and implementation decision.
+This is the next permitted bounded engineering slice.
 
 ## P1 — Runtime wiring and activation remain absent
 
-Continuity source admission is not wired into `/query`, startup, workers, schedulers,
-answer generation, reminders, tools/actions, compute routing or Canon/TruthGate writes.
+Continuity is not wired into `/query`, startup, workers, schedulers, answer generation,
+reminders, tools/actions, compute routing or Canon/TruthGate writes.
 
-No feature flag, SLO, alert, rollback or Operator GO exists. This is intentional.
+No feature flag, SLO, alert, rollback or Operator GO exists. This remains intentional.
 
-## P1 — Bare observation and producer bypass
+## P1 — Producer and bare-observation bypass
 
-`ContinuitySignalObservation` v1 does not bind full tenant, principal, subject, purpose,
-retention or erasure state. No live caller or runtime anti-bypass enforcement exists.
+No live anti-bypass enforcement proves that only the accepted current-decision resolver
+composition and admission facade can form live-capable producer input.
 
-Before producer use, prove that:
+Before any producer use:
 
-- only accepted resolver composition and the admission facade can form live-capable input;
-- static/runtime guards block bare v1 use from server/startup/workers/advisory paths;
-- current authorization, restriction and erasure state are rechecked;
-- producer output remains advisory until a separate activation decision.
+- static/runtime guards must block bare observation use from server, startup, workers and
+  advisory paths;
+- current authorization, restriction and erasure state must be rechecked;
+- output must remain advisory until a separate activation decision.
 
-## P1 — Uncharacterized CAS-contention test failure
+## P1 — Solo governance has no independent approval gate
 
-PR #247 post-merge run `31222680496` failed its first attempt in
-`test_cas_contention_yields_exactly_one_winner_and_one_intent[25]` with
-`threading.BrokenBarrierError`; the unchanged SHA passed on attempt 2.
+The active ruleset intentionally uses required approvals `0`.
 
-PR #250 added stage diagnostics but did not change production CAS semantics. The incident
-remains tracked by issue #249 and is not classified as harness-only.
+Current controls include PRs, exact aggregate evidence, up-to-date branches, conversation
+resolution, blocked force pushes, restricted deletion and empty bypass.
 
-Residual limitation: thread-based diagnostics do not provide hard process kill for a
-permanently hung worker.
+Residual risk:
 
-Required follow-up:
+- automated checks are not independent review;
+- a solo maintainer remains the final substantive merge decision owner;
+- PR #264 has no submitted review objects.
 
-- retain the first failure in audit history;
-- use stage diagnostics on the next observed failure;
-- do not weaken one-winner or one-intent assertions;
-- do not use skip/xfail/flaky markers or unconditional reruns as the only mitigation.
+Never claim that aggregate success is independent review.
+
+## P1 — Uncharacterized CAS-contention failure
+
+Issue #249 remains open. The first failure in workflow `31222680496` must remain in audit
+history. PR #250 added diagnostics but did not prove the event harness-only.
+
+Do not weaken one-winner/one-intent assertions or hide the event with skip, xfail or
+unconditional reruns.
 
 ## P1 — Intermittent legacy embeddings-lock recovery timeout
 
-PR #246 exact-head run `31219904698` had one first-attempt timeout in
-`test_drop_legacy_embeddings_lock_owner_process_is_bounded`; the unchanged SHA later
-passed.
-
-Required follow-up:
-
-- preserve the failed attempt;
-- characterize frequency and environmental sensitivity;
-- verify subprocess termination and lock-owner cleanup bounds;
-- do not exclude the blocking test merely to remove noise.
-
-## P1 — Semantic calibration and resource limits
-
-Deterministic mapping does not prove semantic usefulness. Open questions include
-precision, false positives, confidence thresholds, stale-evidence windows, batch bounds,
-latency, memory cost and user correction rate.
-
-Offline and shadow evaluation must precede live activation.
+The historical first-attempt timeout in PR #246 remains unresolved risk evidence.
+Characterize frequency, subprocess termination and lock-owner cleanup bounds before
+reclassification.
 
 ## P1 — Query path and Canon writer ownership
 
-Open hardening work:
+Open hardening work remains:
 
-- legacy query flows may still promote through separate policy paths;
-- promotion/supersession families are not fully unified under one gate/CAS/audit/outbox protocol;
+- some legacy query flows may promote through separate policy paths;
+- promotion/supersession families are not fully unified;
 - read-only query invariants are not proven across every path;
-- some legacy post-commit relation/provenance windows remain best-effort.
-
-Required direction:
-
-```text
-query / retrieval → evidence or typed proposal only
-explicit write command → policy → TruthGate → CAS → version/audit/outbox → commit
-```
+- some post-commit relation/provenance windows remain best-effort.
 
 ## P1 — Projection lifecycle and observability
 
-Projection outbox and dispatcher primitives are implemented/tested but not fully
-runtime-wired.
-
-Still required: one lifecycle owner, bounded startup/shutdown, cancellation, backoff,
-backlog/retry/parked/version-lag metrics, reconciliation, restart/crash tests and erasure
-invalidation of derived projections.
+Projection outbox and dispatcher primitives remain not fully lifecycle-wired. Required:
+bounded startup/shutdown, cancellation, backoff, backlog/retry/parked/version-lag metrics,
+reconciliation, restart/crash tests and erasure invalidation.
 
 ## P1 — Security and deployment
 
 - no independent security audit or penetration test;
 - no certified privacy/compliance program;
-- shared API key is deployment authentication, not user/tenant identity;
+- shared API key is not user/tenant identity;
 - public multi-user internet deployment is not safely supported by default;
 - backup/restore and incident-response rehearsals remain incomplete;
-- `server.py` remains a composition monolith;
-- Docker dependency resolution remains separate from the frozen-uv CI path;
-- supply-chain reproducibility is improved but not complete for every profile.
+- Docker dependency resolution is not identical to every frozen-uv CI profile.
 
 ## P1 — SQLite and future storage profiles
 
-SQLite remains the accepted local-first Canon profile. It is not proven for multi-node HA,
-network filesystems or large multi-tenant server workloads.
-
-PostgreSQL, ANN and distributed profiles remain Research Mode candidates with explicit
-return triggers. They must not be implemented for symmetry alone.
-
-## Closed — Governance completion documentation drift
-
-The retrospective audit found that status files at
-`main@c9e272d5d9da76219f8e0caaf784892e80046a31` still described PR #260 as open and PR
-#255 as pending.
-
-The contradiction was corrected by PR #261, merged as
-`90e221be2bed8177f4648787d713058df0f29e1f`. The same exact audit and merge evidence was
-recorded at the top of the existing Notion page `Velantrim Titan 9.0`; issue #257 closed as
-completed.
-
-The versioned machine-readable contract now validates:
-
-- schema v2 for the finalized audit shape and compatibility reading for historical v1;
-- exact audit issue #257 and PR #261;
-- exact audit head `54b4f962748610d3a57580506b7c36afa5329a71`;
-- exact merge/checkpoint `90e221be2bed8177f4648787d713058df0f29e1f`;
-- `COMPLETE` and `CLOSED_COMPLETED` final states;
-- equality between repository checkpoint, audit merge and Notion-recorded merge SHAs;
-- canonical Notion status `SYNCED` plus `audit_synchronization_finalized=true`;
-- exact Titan audit page ID and target allowlisting;
-- the explicit absence of claimed independent historical review.
-
-Historical sections may preserve older states, but the newest dated section remains the
-authoritative snapshot. Future drift remains possible and is controlled by:
-
-- explicit documentation-impact classification;
-- aggregate metadata enforcement;
-- validated machine-readable project state and focused fail-closed tests;
-- exact dated audit/checkpoint documents;
-- direct Notion synchronization or a structured handoff;
-- post-merge verification before final synchronization is claimed.
+SQLite remains the accepted local-first profile. PostgreSQL, ANN and distributed profiles
+remain research candidates with explicit return triggers; they must not be added for
+symmetry alone.
 
 ## P1 — Identity
 
-`core/identity_layer.py` remains `LEGACY/UNWIRED`.
-
-Do not add production callers or treat model inference as user attestation. Any future
-identity/personalization path requires consent, evidence, contestation, correction,
-supersession, retraction, retention and erasure semantics.
+`core/identity_layer.py` remains `LEGACY/UNWIRED`. Model inference must not be treated as
+user attestation. Future identity work requires consent, evidence, contestation,
+correction, supersession, retraction, retention and erasure semantics.
 
 ## Risk update rule
 
 Use exact states: `PROPOSED`, `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED`, `OBSERVED`.
 
-A green check, content-addressed receipt, retrospective audit or Notion update never grants
-runtime authority by itself.
+A green check, content-addressed receipt, retrospective audit or Notion synchronization
+never grants runtime authority by itself.
