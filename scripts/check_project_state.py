@@ -2,8 +2,10 @@
 """Validate the machine-readable Titan project-state contract.
 
 Schema v1 preserves the original minimal compatibility surface. Schema v2 preserves the
-strict finalized Phase I retrospective-audit checkpoint. Schema v3 records later exact
-implementation checkpoints while retaining the immutable audit identity and Notion target.
+strict finalized Phase I retrospective-audit checkpoint. Schema v3 records the current-
+decision resolver checkpoint. Schema v4 records the durable admission-artifact lifecycle
+checkpoint while retaining the immutable audit identity and exact Notion target.
+
 Every schema is a dated checkpoint, not an evergreen remote-head claim.
 """
 
@@ -21,7 +23,8 @@ PROJECT_STATE_PATH = Path("docs/state/project_state.json")
 SCHEMA_V1 = 1
 SCHEMA_V2 = 2
 SCHEMA_V3 = 3
-SUPPORTED_SCHEMA_VERSIONS = {SCHEMA_V1, SCHEMA_V2, SCHEMA_V3}
+SCHEMA_V4 = 4
+SUPPORTED_SCHEMA_VERSIONS = {SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4}
 
 TITAN_AUDIT_ISSUE = 257
 TITAN_AUDIT_PR = 261
@@ -34,6 +37,11 @@ RESOLVER_ISSUE = 263
 RESOLVER_PR = 264
 RESOLVER_HEAD_SHA = "6dcbad3926db99e9621622acfcfc1b2db7da9d21"
 RESOLVER_MERGE_SHA = "dc30817f2c4abb1afcaab2f127e679d5f9b884d7"
+
+LIFECYCLE_ISSUE = 266
+LIFECYCLE_PR = 267
+LIFECYCLE_HEAD_SHA = "adba2b2621458d11b3173bdb9413c81a5ef599b3"
+LIFECYCLE_MERGE_SHA = "064845579c520e7464678cd0c41d9b650368dfa8"
 
 
 class ProjectStateError(ValueError):
@@ -82,7 +90,7 @@ def _require_sha(mapping: dict[str, Any], field: str) -> str:
 
 
 def _validate_common(root: dict[str, Any]) -> dict[str, Any]:
-    """Validate the fields shared by all historical and current schemas."""
+    """Validate fields shared by all historical and current schemas."""
 
     if root.get("project") != "velantrim-exocortex-titan":
         raise ProjectStateError("project must be 'velantrim-exocortex-titan'")
@@ -218,6 +226,40 @@ def _validate_notion_audit(root: dict[str, Any], audit_merge: str) -> dict[str, 
     return notion
 
 
+def _validate_resolver_record(root: dict[str, Any]) -> dict[str, Any]:
+    resolver = _require_mapping(
+        root.get("continuity_current_decision_resolver"),
+        "continuity_current_decision_resolver",
+    )
+    _require_literal(resolver, "tracking_issue", RESOLVER_ISSUE)
+    _require_literal(resolver, "implementation_pr", RESOLVER_PR)
+    _require_literal(resolver, "exact_head_sha", RESOLVER_HEAD_SHA)
+    _require_literal(resolver, "merge_sha", RESOLVER_MERGE_SHA)
+    _require_literal(resolver, "status", "COMPLETE")
+    _require_literal(resolver, "authority", "INTERNAL_EVIDENCE_ONLY")
+    for field in (
+        "concrete_live_owner_adapters_selected",
+        "persistence_present",
+        "runtime_wired",
+        "operator_go",
+        "independent_review_claimed",
+    ):
+        _require_literal(resolver, field, False)
+    for field in (
+        "exact_head_continuity_run",
+        "exact_head_full_ci_run",
+        "exact_head_docker_run",
+        "exact_head_aggregate_run",
+        "post_merge_continuity_run",
+        "post_merge_full_ci_run",
+        "post_merge_docker_run",
+        "post_merge_aggregate_run",
+    ):
+        _require_int(resolver, field, minimum=1)
+    _require_literal(resolver, "unresolved_review_threads", 0)
+    return resolver
+
+
 def _validate_v1(_root: dict[str, Any], _common: dict[str, Any]) -> dict[str, Any]:
     """Apply no requirements beyond the original schema-v1 surface."""
 
@@ -281,37 +323,7 @@ def _validate_v3(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]
 
     audit_merge = _validate_governance_audit(common["governance"])
     notion = _validate_notion_audit(root, audit_merge)
-
-    resolver = _require_mapping(
-        root.get("continuity_current_decision_resolver"),
-        "continuity_current_decision_resolver",
-    )
-    _require_literal(resolver, "tracking_issue", RESOLVER_ISSUE)
-    _require_literal(resolver, "implementation_pr", RESOLVER_PR)
-    _require_literal(resolver, "exact_head_sha", RESOLVER_HEAD_SHA)
-    _require_literal(resolver, "merge_sha", RESOLVER_MERGE_SHA)
-    _require_literal(resolver, "status", "COMPLETE")
-    _require_literal(resolver, "authority", "INTERNAL_EVIDENCE_ONLY")
-    for field in (
-        "concrete_live_owner_adapters_selected",
-        "persistence_present",
-        "runtime_wired",
-        "operator_go",
-        "independent_review_claimed",
-    ):
-        _require_literal(resolver, field, False)
-    for field in (
-        "exact_head_continuity_run",
-        "exact_head_full_ci_run",
-        "exact_head_docker_run",
-        "exact_head_aggregate_run",
-        "post_merge_continuity_run",
-        "post_merge_full_ci_run",
-        "post_merge_docker_run",
-        "post_merge_aggregate_run",
-    ):
-        _require_int(resolver, field, minimum=1)
-    _require_literal(resolver, "unresolved_review_threads", 0)
+    _validate_resolver_record(root)
 
     _require_literal(notion, "latest_status_target", TITAN_NOTION_PAGE_TITLE)
     _require_literal(notion, "latest_status_page_id", TITAN_NOTION_PAGE_ID)
@@ -334,12 +346,114 @@ def _validate_v3(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]
     }
 
 
+def _validate_v4(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]:
+    """Validate the durable admission-artifact lifecycle checkpoint."""
+
+    verified_head = common["verified_head"]
+    implementation = common["implementation"]
+    checkpoint = common["checkpoint"]
+    if verified_head != checkpoint:
+        raise ProjectStateError(
+            "repository_head_sha_at_verification must equal documentation_checkpoint_sha"
+        )
+    if implementation != verified_head:
+        raise ProjectStateError(
+            "implementation_baseline_sha must equal the verified implementation checkpoint"
+        )
+    if verified_head != LIFECYCLE_MERGE_SHA:
+        raise ProjectStateError(
+            "schema v4 verified repository checkpoint must equal the lifecycle merge SHA"
+        )
+
+    continuity = common["continuity"]
+    if common["completed"] != 9 or common["total"] != 12:
+        raise ProjectStateError("schema v4 Continuity readiness must be exactly 9/12")
+    _require_literal(continuity, "implemented", True)
+    _require_literal(continuity, "tested", True)
+    _require_literal(continuity, "wired", False)
+    _require_literal(continuity, "enabled", False)
+    _require_literal(continuity, "observed", False)
+    _require_literal(continuity, "runtime_authority", False)
+    _require_string(continuity, "next_bounded_slice")
+
+    audit_merge = _validate_governance_audit(common["governance"])
+    notion = _validate_notion_audit(root, audit_merge)
+    _validate_resolver_record(root)
+
+    lifecycle = _require_mapping(
+        root.get("continuity_admission_artifact_lifecycle"),
+        "continuity_admission_artifact_lifecycle",
+    )
+    _require_literal(lifecycle, "tracking_issue", LIFECYCLE_ISSUE)
+    _require_literal(lifecycle, "implementation_pr", LIFECYCLE_PR)
+    _require_literal(lifecycle, "exact_head_sha", LIFECYCLE_HEAD_SHA)
+    _require_literal(lifecycle, "merge_sha", LIFECYCLE_MERGE_SHA)
+    _require_literal(lifecycle, "status", "COMPLETE")
+    _require_literal(lifecycle, "authority", "INTERNAL_STORAGE_LIFECYCLE_ONLY")
+    _require_literal(lifecycle, "storage_profile", "SQLITE_INTERNAL")
+    for field in (
+        "persistence_present",
+        "deterministic_replay_present",
+        "retention_cleanup_present",
+        "erasure_addressability_present",
+        "integrity_verification_present",
+        "crash_safe_transactions_present",
+    ):
+        _require_literal(lifecycle, field, True)
+    for field in (
+        "concrete_live_owner_adapters_selected",
+        "runtime_wired",
+        "enabled",
+        "observed",
+        "operator_go",
+        "producer_side_effects_present",
+        "independent_review_claimed",
+    ):
+        _require_literal(lifecycle, field, False)
+    for field in (
+        "exact_head_continuity_run",
+        "exact_head_full_ci_run",
+        "exact_head_docker_run",
+        "exact_head_aggregate_run",
+        "post_merge_continuity_run",
+        "post_merge_full_ci_run",
+        "post_merge_docker_run",
+        "post_merge_aggregate_run",
+    ):
+        _require_int(lifecycle, field, minimum=1)
+    _require_literal(lifecycle, "unresolved_review_threads", 0)
+
+    _require_literal(notion, "latest_status_target", TITAN_NOTION_PAGE_TITLE)
+    _require_literal(notion, "latest_status_page_id", TITAN_NOTION_PAGE_ID)
+    _require_literal(
+        notion,
+        "latest_synchronization_kind",
+        "CONTINUITY_ADMISSION_ARTIFACT_LIFECYCLE",
+    )
+    _require_literal(
+        notion, "latest_implementation_merge_sha", LIFECYCLE_MERGE_SHA
+    )
+    if not _require_bool(notion, "latest_synchronization_finalized"):
+        raise ProjectStateError(
+            "notion.latest_synchronization_finalized must be true"
+        )
+
+    return {
+        "audit_status": common["governance"]["retrospective_audit_status"],
+        "notion_status": notion["status"],
+    }
+
+
 def validate_project_state(data: Any) -> dict[str, Any]:
     """Validate the declared schema version and its safety/evidence contract."""
 
     root = _require_mapping(data, "root")
     schema_version = root.get("schema_version")
-    if type(schema_version) is not int or schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+    if (
+        not isinstance(schema_version, int)
+        or isinstance(schema_version, bool)
+        or schema_version not in SUPPORTED_SCHEMA_VERSIONS
+    ):
         raise ProjectStateError(
             f"schema_version must be one of {sorted(SUPPORTED_SCHEMA_VERSIONS)}"
         )
@@ -349,8 +463,10 @@ def validate_project_state(data: Any) -> dict[str, Any]:
         version_report = _validate_v1(root, common)
     elif schema_version == SCHEMA_V2:
         version_report = _validate_v2(root, common)
-    else:
+    elif schema_version == SCHEMA_V3:
         version_report = _validate_v3(root, common)
+    else:
+        version_report = _validate_v4(root, common)
 
     return {
         "ok": True,
