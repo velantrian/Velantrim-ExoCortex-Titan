@@ -1528,6 +1528,7 @@ class ContinuityArtifactStore:
                 f"stored artifact failed lifecycle validation: {exc}"
             ) from exc
         return artifact, append_receipt_id
+
     @staticmethod
     def _receipt_from_row(row: sqlite3.Row) -> ContinuityNeutralizationReceipt:
         try:
