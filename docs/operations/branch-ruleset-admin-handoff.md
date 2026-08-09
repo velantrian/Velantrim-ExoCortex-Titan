@@ -23,30 +23,43 @@ Consequences:
 **Ruleset name:** `main-governance`  
 **Enforcement:** Active  
 **Target:** Include default branch / `main`  
-**Require review from Code Owners:** **DO NOT ENABLE YET**
+**Require review from Code Owners:** **OFF**
 
-| Setting | Required value |
-|---|---|
-| Changes | Pull request only |
-| Required approvals | ≥ 1 (must be a non-author reviewer) |
-| Dismiss stale approvals | yes — dismiss previous approvals when new commits are pushed |
-| Require conversation resolution | yes |
-| Require status checks to pass | yes |
-| Required status check | `Titan aggregate merge evidence` (exact context name) |
-| Require branches to be up to date before merging | yes |
-| Block force pushes | yes |
-| Restrict deletions | yes |
-| Restrict direct updates | yes |
-| Bypass | Named emergency maintainers only, documented; no broad bypass |
-| Administrators | Apply ruleset to administrators when a non-author approval path exists |
+| Setting | Required value | Note |
+|---|---|---|
+| Pull request required | yes | Enforce review before merge |
+| Required approvals | ≥ 1 | Must be a non-author reviewer |
+| Dismiss stale approvals | yes | New commits reset approval status |
+| Require conversation resolution | yes | All review threads resolved |
+| Require status checks to pass | yes | Aggregate gate is mandatory |
+| Required status check | `Titan aggregate merge evidence` | Exact context name from workflow |
+| Require branches to be up to date before merging | yes | Prevent stale-base merges |
+| Block force pushes | yes | Prevent history rewriting |
+| Restrict deletions | yes | Prevent branch erasure |
+| Require Code Owner review | **OFF** | Not viable with single-CODEOWNER topology (deadlock risk) |
+| Restrict updates | **OFF** | Merging PR must be allowed; "Require PR" already blocks direct pushes |
+| Bypass | Named emergency maintainers only; no broad role bypass | Minimize exception scope |
+| Administrators | Apply ruleset to administrators when a non-author approval path exists | No self-approval |
 
-Stage-1 reviewer topology:
+**Stage 1 reviewer topology:**
 
 ```text
-PR author:   cursor[bot] / non-@velantrian author
-Approval:    @velantrian (satisfies required approvals ≥ 1)
-Code Owners: OFF
+PR author:      cursor[bot] / non-@velantrian agent
+Approval:       @velantrian (independent, satisfies required approvals ≥ 1)
+Code Owners:    OFF (intentionally)
+Self-approval:  GitHub rejects as non-counting
+Deadlock risk:  Mitigated by non-author author topology
 ```
+
+**Why Code Owner review is OFF in Stage 1:**
+
+GitHub does not count self-approval toward required reviews. With `@velantrian` as the sole effective CODEOWNER (and possibly author), enabling "Require review from Code Owners" creates a merge deadlock:
+
+- If `@velantrian` authors the PR, self-approval doesn't count.
+- No other CODEOWNER exists to provide the required review.
+- Bypass would be required, defeating the protection.
+
+Code Owner review is intentionally deferred to Stage 2, when the topology is expanded.
 
 ## Stage 2 — deferred (do not enable yet)
 
@@ -85,13 +98,14 @@ Save structured evidence:
 - ruleset ID
 - target branch
 - required approval count (≥ 1) and dismiss-stale-approvals setting
-- proof that Code Owner review is **not** enabled
+- proof that Code Owner review is **not** enabled (must be OFF)
+- proof that "Restrict updates" is **not** enabled (must be OFF; "Require PR" blocks direct pushes)
 - required status context string(s)
-- bypass list (minimal)
-- canary acceptance evidence
-- confirmation of force-push/deletion/direct-update policy
+- bypass list (minimal; preferably empty)
+- test evidence: a governance PR authored by `cursor[bot]` / agent, approved by `@velantrian`, merged successfully
+- confirmation of force-push/deletion blocking
 
-Do **not** perform destructive direct-push or force-push tests on `main`.
+Do **not** perform destructive direct-push, force-push, or deletion tests on `main`. The ruleset itself will reject unauthorized changes.
 
 ## Issue #234 closure criteria
 

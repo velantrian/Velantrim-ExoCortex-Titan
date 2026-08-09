@@ -88,12 +88,61 @@ _DOCUMENTATION_IMPACT_RE = re.compile(
 # Workflows and actions are excluded because they can change permissions, triggers, secrets,
 # shell commands, artifacts, privileged execution, and runner behavior. Workflow changes
 # are documentation-sensitive and require explicit metadata.
-DEPENDABOT_INFERRED_NONE_PATHS = (
-    "uv.lock",
-    "requirements.txt",
-    "requirements-*.txt",
-    "requirements/*.txt",
+# This validator avoids fnmatch to prevent * from crossing directory boundaries.
+DEPENDABOT_INFERRED_NONE_EXACT_PATHS = frozenset(
+    {
+        "uv.lock",
+        "requirements.txt",
+    }
 )
+
+def _is_dependabot_inferred_none_path(path: str) -> bool:
+    """Validate that path matches strict Dependabot dependency-only allowlist.
+
+    Accepts only:
+    - Exact root-level files: uv.lock, requirements.txt
+    - Root-level requirements-<fragment>.txt (no directory separators)
+    - requirements/<filename>.txt (exactly one level deep)
+
+    Rejects paths with: .., ., backslashes, directory traversal, nested dirs.
+    """
+    if not path or not isinstance(path, str):
+        return False
+
+    # Reject paths with backslashes (Windows-style or escaping)
+    if "\\" in path:
+        return False
+
+    # Reject absolute paths
+    if path.startswith("/"):
+        return False
+
+    # Check exact matches first
+    if path in DEPENDABOT_INFERRED_NONE_EXACT_PATHS:
+        return True
+
+    # Split on / to validate path structure
+    parts = path.split("/")
+
+    # Reject dot-segment traversal
+    if "." in parts or ".." in parts:
+        return False
+
+    # Allow root-level requirements-<fragment>.txt (exactly one part, no /)
+    if len(parts) == 1 and path.startswith("requirements-") and path.endswith(".txt"):
+        # Ensure fragment is non-empty and doesn't contain more /
+        fragment = path[len("requirements-"):-len(".txt")]
+        if fragment and "/" not in path:
+            return True
+
+    # Allow requirements/<filename>.txt (exactly two parts)
+    if len(parts) == 2 and parts[0] == "requirements":
+        filename = parts[1]
+        # Filename must be non-empty and end with .txt
+        if filename and filename.endswith(".txt") and filename != ".txt":
+            return True
+
+    return False
 
 _TRUSTED_DEPENDABOT_LOGINS = frozenset(
     {
@@ -151,10 +200,15 @@ def is_trusted_dependabot(actor: ActorIdentity) -> bool:
 
 
 def paths_allow_dependabot_inferred_none(paths: Iterable[str]) -> bool:
+    """Check if all paths are in the strict Dependabot dependency-only allowlist.
+
+    Empty path sets fail closed (return False).
+    Any path outside the allowlist causes failure.
+    """
     values = tuple(paths)
     if not values:
         return False
-    return all(_matches(path, DEPENDABOT_INFERRED_NONE_PATHS) for path in values)
+    return all(_is_dependabot_inferred_none_path(path) for path in values)
 
 
 class GitHubApi:

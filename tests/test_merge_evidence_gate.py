@@ -13,6 +13,7 @@ from scripts.check_pr_merge_evidence import (
     evaluate_required_runs,
     is_trusted_dependabot,
     resolve_documentation_impact,
+    _is_dependabot_inferred_none_path,
 )
 
 HANDOFF_PATH = Path("docs/operations/branch-ruleset-admin-handoff.md")
@@ -335,3 +336,117 @@ def test_stage1_ruleset_contract_is_documented_without_claiming_enforcement() ->
     # Contract documentation must not claim the ruleset already exists as active.
     assert "ruleset already active" not in text.lower()
     assert "Ruleset ID:" not in text or "Ruleset ID: *(pending" in text
+
+
+# ============================================================================
+# Strict path validation tests for Dependabot allowlist (issue #4 fix)
+# ============================================================================
+
+
+def test_dependabot_path_validator_accepts_uv_lock() -> None:
+    assert _is_dependabot_inferred_none_path("uv.lock") is True
+
+
+def test_dependabot_path_validator_accepts_requirements_txt() -> None:
+    assert _is_dependabot_inferred_none_path("requirements.txt") is True
+
+
+def test_dependabot_path_validator_accepts_requirements_dev_txt() -> None:
+    assert _is_dependabot_inferred_none_path("requirements-dev.txt") is True
+
+
+def test_dependabot_path_validator_accepts_requirements_nested_txt() -> None:
+    assert _is_dependabot_inferred_none_path("requirements/dev.txt") is True
+
+
+def test_dependabot_path_validator_accepts_requirements_prod_txt() -> None:
+    assert _is_dependabot_inferred_none_path("requirements/prod.txt") is True
+
+
+def test_dependabot_path_validator_rejects_requirements_nested_with_subdirs() -> None:
+    assert _is_dependabot_inferred_none_path("requirements/nested/policy.txt") is False
+
+
+def test_dependabot_path_validator_rejects_requirements_wildcard_traversal() -> None:
+    assert _is_dependabot_inferred_none_path("requirements-foo/docs/architecture.txt") is False
+
+
+def test_dependabot_path_validator_rejects_deeply_nested_requirements() -> None:
+    assert _is_dependabot_inferred_none_path("requirements/a/b.txt") is False
+
+
+def test_dependabot_path_validator_rejects_requirements_in_nested_dir() -> None:
+    assert _is_dependabot_inferred_none_path("nested/requirements.txt") is False
+
+
+def test_dependabot_path_validator_rejects_requirements_in_docs() -> None:
+    assert _is_dependabot_inferred_none_path("docs/requirements.txt") is False
+
+
+def test_dependabot_path_validator_rejects_empty_requirements_file() -> None:
+    assert _is_dependabot_inferred_none_path("requirements/.txt") is False
+
+
+def test_dependabot_path_validator_rejects_dot_traversal() -> None:
+    assert _is_dependabot_inferred_none_path("requirements/../policy.txt") is False
+
+
+def test_dependabot_path_validator_rejects_backslash_paths() -> None:
+    assert _is_dependabot_inferred_none_path("requirements\\test.txt") is False
+
+
+def test_dependabot_path_validator_rejects_absolute_paths() -> None:
+    assert _is_dependabot_inferred_none_path("/requirements.txt") is False
+
+
+def test_dependabot_path_validator_rejects_empty_string() -> None:
+    assert _is_dependabot_inferred_none_path("") is False
+
+
+def test_dependabot_path_validator_rejects_dot_segment() -> None:
+    assert _is_dependabot_inferred_none_path("./requirements.txt") is False
+
+
+def test_dependabot_path_validator_rejects_dotdot_segment() -> None:
+    assert _is_dependabot_inferred_none_path("../requirements.txt") is False
+
+
+def test_dependabot_infer_multiple_valid_paths() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=(
+            "uv.lock",
+            "requirements.txt",
+            "requirements/dev.txt",
+            "requirements-prod.txt",
+        ),
+        body="Updates multiple dependency files.",
+    )
+
+    assert evaluation.state == "success"
+    assert "inferred Documentation impact NONE" in evaluation.description
+
+
+def test_dependabot_fail_closed_on_mixed_valid_invalid_paths() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=(
+            "uv.lock",
+            "docs/architecture.md",  # Invalid path
+        ),
+        body="Mixed dependencies and docs.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "documentation-sensitive paths" in evaluation.description
+
+
+def test_dependabot_fail_closed_on_nested_requirements_traversal() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=("requirements/nested/policy.txt",),
+        body="Updates nested file.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "documentation-sensitive paths" in evaluation.description
