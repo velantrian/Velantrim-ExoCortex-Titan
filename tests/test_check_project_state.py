@@ -12,14 +12,44 @@ from scripts.check_project_state import ProjectStateError, validate_project_stat
 STATE_PATH = Path("docs/state/project_state.json")
 AUDIT_MERGE = "90e221be2bed8177f4648787d713058df0f29e1f"
 AUDIT_IMPLEMENTATION = "9f07db6de8d32683d00bfe4f1673e84493607553"
+RESOLVER_MERGE = "dc30817f2c4abb1afcaab2f127e679d5f9b884d7"
+LIFECYCLE_MERGE = "064845579c520e7464678cd0c41d9b650368dfa8"
 
 
 def _state() -> dict:
     return json.loads(STATE_PATH.read_text(encoding="utf-8"))
 
 
-def _historical_v2_state() -> dict:
+def _historical_v3_state() -> dict:
     state = copy.deepcopy(_state())
+    state["schema_version"] = 3
+    repository = state["repository"]
+    repository["repository_head_sha_at_verification"] = RESOLVER_MERGE
+    repository["implementation_baseline_sha"] = RESOLVER_MERGE
+    repository["documentation_checkpoint_sha"] = RESOLVER_MERGE
+    state["continuity"].update(
+        {
+            "completed_capabilities": 8,
+            "readiness_percent": 66.7,
+            "remaining_capabilities": 4,
+            "remaining_percent": 33.3,
+            "next_bounded_slice": (
+                "Durable retention, replay, cleanup and erasure lifecycle for "
+                "admission artifacts."
+            ),
+        }
+    )
+    state.pop("continuity_admission_artifact_lifecycle", None)
+    notion = state["notion"]
+    notion["latest_synchronization_kind"] = (
+        "CONTINUITY_CURRENT_DECISION_RESOLVER"
+    )
+    notion["latest_implementation_merge_sha"] = RESOLVER_MERGE
+    return state
+
+
+def _historical_v2_state() -> dict:
+    state = _historical_v3_state()
     state["schema_version"] = 2
     state["repository"]["repository_head_sha_at_verification"] = AUDIT_MERGE
     state["repository"]["implementation_baseline_sha"] = AUDIT_IMPLEMENTATION
@@ -57,8 +87,34 @@ def _legacy_v1_state() -> dict:
     return state
 
 
-def test_repository_project_state_v3_is_valid() -> None:
+def test_repository_project_state_v4_is_valid() -> None:
     report = validate_project_state(_state())
+
+    assert report["ok"] is True
+    assert report["schema_version"] == 4
+    assert report["continuity"] == "9/12"
+    assert report["readiness_percent"] == 75.0
+    assert report["audit_status"] == "COMPLETE"
+    assert report["notion_status"] == "SYNCED"
+    assert report["kb_policy"] == "KEEP_VERSIONED_KNOWLEDGE_ASSET"
+
+
+def test_schema_v4_sha_roles_pin_the_lifecycle_merge() -> None:
+    state = _state()
+    repository = state["repository"]
+    lifecycle = state["continuity_admission_artifact_lifecycle"]
+
+    assert (
+        repository["repository_head_sha_at_verification"]
+        == repository["implementation_baseline_sha"]
+        == repository["documentation_checkpoint_sha"]
+        == lifecycle["merge_sha"]
+        == LIFECYCLE_MERGE
+    )
+
+
+def test_historical_v3_snapshot_remains_readable() -> None:
+    report = validate_project_state(_historical_v3_state())
 
     assert report["ok"] is True
     assert report["schema_version"] == 3
@@ -66,20 +122,6 @@ def test_repository_project_state_v3_is_valid() -> None:
     assert report["readiness_percent"] == 66.7
     assert report["audit_status"] == "COMPLETE"
     assert report["notion_status"] == "SYNCED"
-    assert report["kb_policy"] == "KEEP_VERSIONED_KNOWLEDGE_ASSET"
-
-
-def test_schema_v3_sha_roles_pin_the_resolver_merge() -> None:
-    state = _state()
-    repository = state["repository"]
-    resolver = state["continuity_current_decision_resolver"]
-
-    assert (
-        repository["repository_head_sha_at_verification"]
-        == repository["implementation_baseline_sha"]
-        == repository["documentation_checkpoint_sha"]
-        == resolver["merge_sha"]
-    )
 
 
 def test_historical_v2_snapshot_remains_readable() -> None:
@@ -115,13 +157,13 @@ def test_historical_v1_ignores_fields_the_original_validator_ignored() -> None:
 
 def test_unknown_schema_version_fails_closed() -> None:
     state = copy.deepcopy(_state())
-    state["schema_version"] = 4
+    state["schema_version"] = 5
 
     with pytest.raises(ProjectStateError, match="schema_version must be one of"):
         validate_project_state(state)
 
 
-@pytest.mark.parametrize("schema_version", [3.0, True, "3", [], {}])
+@pytest.mark.parametrize("schema_version", [4.0, True, "4", [], {}])
 def test_non_integer_schema_versions_fail_closed(schema_version: object) -> None:
     state = copy.deepcopy(_state())
     state["schema_version"] = schema_version
@@ -138,18 +180,18 @@ def test_readiness_arithmetic_fails_closed() -> None:
         validate_project_state(state)
 
 
-def test_schema_v3_requires_exact_eight_of_twelve() -> None:
+def test_schema_v4_requires_exact_nine_of_twelve() -> None:
     state = copy.deepcopy(_state())
     state["continuity"].update(
         {
-            "completed_capabilities": 9,
-            "remaining_capabilities": 3,
-            "readiness_percent": 75.0,
-            "remaining_percent": 25.0,
+            "completed_capabilities": 8,
+            "remaining_capabilities": 4,
+            "readiness_percent": 66.7,
+            "remaining_percent": 33.3,
         }
     )
 
-    with pytest.raises(ProjectStateError, match="exactly 8/12"):
+    with pytest.raises(ProjectStateError, match="exactly 9/12"):
         validate_project_state(state)
 
 
@@ -161,7 +203,7 @@ def test_enabled_requires_wiring() -> None:
         validate_project_state(state)
 
 
-def test_v3_runtime_wiring_and_authority_remain_false() -> None:
+def test_v4_runtime_wiring_and_authority_remain_false() -> None:
     state = copy.deepcopy(_state())
     state["continuity"]["wired"] = True
     state["continuity"]["runtime_authority"] = True
@@ -180,7 +222,7 @@ def test_kb_preservation_policy_cannot_silently_change() -> None:
 
 def test_sha_roles_require_full_commit_ids() -> None:
     state = copy.deepcopy(_state())
-    state["repository"]["repository_head_sha_at_verification"] = "dc30817"
+    state["repository"]["repository_head_sha_at_verification"] = "0648455"
 
     with pytest.raises(ProjectStateError, match="40-character SHA"):
         validate_project_state(state)
@@ -194,7 +236,7 @@ def test_repository_head_must_match_documentation_checkpoint() -> None:
         validate_project_state(state)
 
 
-def test_v3_implementation_baseline_must_match_verified_head() -> None:
+def test_v4_implementation_baseline_must_match_verified_head() -> None:
     state = copy.deepcopy(_state())
     state["repository"]["implementation_baseline_sha"] = "a" * 40
 
@@ -202,7 +244,17 @@ def test_v3_implementation_baseline_must_match_verified_head() -> None:
         validate_project_state(state)
 
 
-def test_final_audit_requires_exact_public_pr_in_v3() -> None:
+def test_v4_checkpoint_must_match_lifecycle_merge() -> None:
+    state = copy.deepcopy(_state())
+    state["repository"]["repository_head_sha_at_verification"] = "a" * 40
+    state["repository"]["implementation_baseline_sha"] = "a" * 40
+    state["repository"]["documentation_checkpoint_sha"] = "a" * 40
+
+    with pytest.raises(ProjectStateError, match="lifecycle merge SHA"):
+        validate_project_state(state)
+
+
+def test_final_audit_requires_exact_public_pr_in_v4() -> None:
     state = copy.deepcopy(_state())
     state["governance"]["retrospective_audit_pr"] = 999
 
@@ -245,7 +297,7 @@ def test_notion_page_id_cannot_be_substituted() -> None:
         validate_project_state(state)
 
 
-def test_latest_notion_merge_must_match_resolver_merge() -> None:
+def test_latest_notion_merge_must_match_lifecycle_merge() -> None:
     state = copy.deepcopy(_state())
     state["notion"]["latest_implementation_merge_sha"] = "b" * 40
 
@@ -253,11 +305,11 @@ def test_latest_notion_merge_must_match_resolver_merge() -> None:
         validate_project_state(state)
 
 
-def test_resolver_identity_is_exact() -> None:
+def test_lifecycle_identity_is_exact() -> None:
     state = copy.deepcopy(_state())
-    state["continuity_current_decision_resolver"]["implementation_pr"] = 999
+    state["continuity_admission_artifact_lifecycle"]["implementation_pr"] = 999
 
-    with pytest.raises(ProjectStateError, match="implementation_pr must be 264"):
+    with pytest.raises(ProjectStateError, match="implementation_pr must be 267"):
         validate_project_state(state)
 
 
@@ -265,17 +317,56 @@ def test_resolver_identity_is_exact() -> None:
     "field",
     [
         "concrete_live_owner_adapters_selected",
-        "persistence_present",
         "runtime_wired",
+        "enabled",
+        "observed",
         "operator_go",
+        "producer_side_effects_present",
         "independent_review_claimed",
     ],
 )
-def test_resolver_non_authority_flags_fail_closed(field: str) -> None:
+def test_lifecycle_non_authority_flags_fail_closed(field: str) -> None:
     state = copy.deepcopy(_state())
-    state["continuity_current_decision_resolver"][field] = True
+    state["continuity_admission_artifact_lifecycle"][field] = True
 
     with pytest.raises(ProjectStateError, match=field):
+        validate_project_state(state)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "persistence_present",
+        "deterministic_replay_present",
+        "retention_cleanup_present",
+        "erasure_addressability_present",
+        "integrity_verification_present",
+        "crash_safe_transactions_present",
+    ],
+)
+def test_lifecycle_proof_flags_are_required(field: str) -> None:
+    state = copy.deepcopy(_state())
+    state["continuity_admission_artifact_lifecycle"][field] = False
+
+    with pytest.raises(ProjectStateError, match=field):
+        validate_project_state(state)
+
+
+def test_lifecycle_run_evidence_must_be_positive_integer() -> None:
+    state = copy.deepcopy(_state())
+    state["continuity_admission_artifact_lifecycle"][
+        "post_merge_full_ci_run"
+    ] = 0
+
+    with pytest.raises(ProjectStateError, match="post_merge_full_ci_run"):
+        validate_project_state(state)
+
+
+def test_resolver_historical_identity_remains_exact_in_v4() -> None:
+    state = copy.deepcopy(_state())
+    state["continuity_current_decision_resolver"]["implementation_pr"] = 999
+
+    with pytest.raises(ProjectStateError, match="implementation_pr must be 264"):
         validate_project_state(state)
 
 

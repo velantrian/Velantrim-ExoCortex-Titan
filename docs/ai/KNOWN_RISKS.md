@@ -1,39 +1,42 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-09  
-**Repository checkpoint inspected:** `main@dc30817f2c4abb1afcaab2f127e679d5f9b884d7`  
-**Continuity:** `8/12 = 66.7%` implementation readiness  
+**Repository checkpoint inspected:** `main@064845579c520e7464678cd0c41d9b650368dfa8`  
+**Continuity:** `9/12 = 75.0%` implementation readiness  
 **Runtime:** `UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0`
 
-A risk is not closed because a file exists, a test passes once, a receipt is
+A risk is not closed because a file exists, a test passes once, an artifact is
 content-addressed, a PR merges, Notion is updated or aggregate evidence is green.
 Closure requires the missing owner, integration and operational proof.
 
 ## Closed or materially reduced
 
-- PR #264 implemented and tested the six-owner current-decision resolver composition;
-- exact owner, principal, authorization, source, tenant, complete-subject and domain-scope
-  bindings now fail closed on substitution;
-- owner identity is pinned before and after owner resolution;
-- missing, duplicate, stale, future-effective, malformed and extra-domain snapshots fail
-  closed;
-- represented negative and unknown decisions are preserved rather than softened;
-- the resolver remains internal, unexported, injected and evidence-only;
-- governance, Phase I audit identity and Notion target remain explicitly pinned.
+- PR #264 implemented and tested six-owner current-decision composition;
+- PR #267 implemented and tested the internal durable admission-artifact lifecycle;
+- deterministic identity, integrity verification and exact-scope replay now fail closed;
+- duplicate and concurrent append are idempotent without silent overwrite;
+- cross-tenant, principal, authorization-subject-set and policy substitution are rejected;
+- bounded explicit-policy cleanup and retry-stable cleanup receipts are present;
+- exact externally supplied erasure-owner evidence can atomically neutralize payloads;
+- replay and re-append after neutralization are rejected;
+- injected partial append and interrupted cleanup/erasure transactions roll back;
+- producer/runtime/public-package side effects remain absent;
+- governance, Phase I audit identity and the exact Notion target remain pinned.
 
-The former risk “concrete current-decision resolver composition is absent” is closed at the
-**internal implementation** level only. Live owner adapters and authenticity are not solved.
+The former risk “durable retention, replay, cleanup and erasure lifecycle is absent” is
+closed at the **internal implementation and test** level only. Runtime integration,
+operator selection and live operational proof remain absent.
 
 ## P0 — Operator-selected trust root is not deployed
 
-Content-addressed facade policy, registry, resolver and owner snapshots do not select or
-activate themselves as trusted deployment configuration.
+Content-addressed facade policy, registry, resolver, owner snapshots and lifecycle
+artifacts do not select or activate themselves as trusted deployment configuration.
 
 Required proof:
 
 - one explicit operator/deployment owner;
-- controlled expected facade-policy, registry, resolver and owner identities;
+- controlled expected facade-policy, registry, resolver, owner and lifecycle identities;
 - signed or versioned configuration lineage;
 - fail-closed missing, stale or unexpected identity;
 - no caller-controlled substitution;
@@ -41,9 +44,9 @@ Required proof:
 
 ## P0 — Concrete live owner adapters are not selected
 
-PR #264 defines six injected read-only owner ports. It intentionally does not choose
-concrete live adapters for principal, authorization, consent/lawful basis, restriction,
-erasure or PolicySnapshot state.
+The six injected read-only current-decision owner ports intentionally have no selected live
+adapters for principal, authorization, consent/lawful basis, restriction, erasure or
+PolicySnapshot state.
 
 Residual risk:
 
@@ -58,7 +61,7 @@ Required proof:
 - bounded current-state reads;
 - authenticity and configuration lineage;
 - adversarial integration tests against real owner stores;
-- explicit Operator review before any runtime wiring.
+- explicit Operator review before runtime wiring.
 
 ## P1 — Content-addressed evidence is not authenticity
 
@@ -68,26 +71,29 @@ Integrity ≠ authorization
 Evidence ≠ authority
 Receipt ≠ permanent permission
 Resolver result ≠ runtime permission
+Durable artifact ≠ permission to use it
 ```
 
 Hashes do not prove who created evidence, whether the source is authentic, whether
 permission is still current, whether a claim is true or whether runtime use is allowed.
 
-## P1 — Durable retention, replay, cleanup and erasure lifecycle is absent
+## P1 — Durable lifecycle is not operationally integrated
 
-Still unimplemented for admission artifacts:
+PR #267 supplies an internal SQLite owner and adversarial tests, but does not prove:
 
-- schema and migrations;
-- idempotent append and deduplication;
-- crash consistency and disk-full behavior;
-- replay after restart;
-- version compatibility;
-- retention and cleanup;
-- tenant/subject indexing;
-- erasure during queued or partially evaluated work;
-- reconciliation and operator evidence.
+- deployment selection of the owner or database path;
+- startup/shutdown ownership;
+- production filesystem permissions and disk-full behavior;
+- backup, restore and disaster recovery;
+- live retention policy configuration;
+- scheduler/worker cleanup execution;
+- live erasure-owner integration;
+- multi-process contention under deployment topology;
+- operational reconciliation, metrics, alerts or runbooks;
+- observed restart/crash recovery.
 
-This is the next permitted bounded engineering slice.
+These are integration and operations requirements, not reasons to weaken the internal
+artifact contract.
 
 ## P1 — Runtime wiring and activation remain absent
 
@@ -99,7 +105,7 @@ No feature flag, SLO, alert, rollback or Operator GO exists. This remains intent
 ## P1 — Producer and bare-observation bypass
 
 No live anti-bypass enforcement proves that only the accepted current-decision resolver
-composition and admission facade can form live-capable producer input.
+composition and lifecycle boundary can form live-capable producer input.
 
 Before any producer use:
 
@@ -119,7 +125,7 @@ Residual risk:
 
 - automated checks are not independent review;
 - a solo maintainer remains the final substantive merge decision owner;
-- PR #264 has no submitted review objects.
+- PR #267 has no submitted review objects.
 
 Never claim that aggregate success is independent review.
 
@@ -167,6 +173,8 @@ SQLite remains the accepted local-first profile. PostgreSQL, ANN and distributed
 remain research candidates with explicit return triggers; they must not be added for
 symmetry alone.
 
+The new internal lifecycle does not authorize a distributed or server database migration.
+
 ## P1 — Identity
 
 `core/identity_layer.py` remains `LEGACY/UNWIRED`. Model inference must not be treated as
@@ -177,5 +185,5 @@ correction, supersession, retraction, retention and erasure semantics.
 
 Use exact states: `PROPOSED`, `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED`, `OBSERVED`.
 
-A green check, content-addressed receipt, retrospective audit or Notion synchronization
-never grants runtime authority by itself.
+A green check, durable receipt, retrospective audit or Notion synchronization never grants
+runtime authority by itself.

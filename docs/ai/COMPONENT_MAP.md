@@ -1,10 +1,10 @@
 # 🗺️ Component and Authority Map
 
-**Repository checkpoint inspected:** `main@dc30817f2c4abb1afcaab2f127e679d5f9b884d7`  
-**Continuity implementation baseline:** PR #264 → `dc30817f2c4abb1afcaab2f127e679d5f9b884d7`  
+**Repository checkpoint inspected:** `main@064845579c520e7464678cd0c41d9b650368dfa8`  
+**Continuity implementation baseline:** PR #267 → `064845579c520e7464678cd0c41d9b650368dfa8`  
 **Phase I audit checkpoint:** PR #261 → `90e221be2bed8177f4648787d713058df0f29e1f`  
-**Machine state:** [`docs/state/project_state.json`](../state/project_state.json) · schema v3  
-**Rule:** presence is not wiring; integrity is not authenticity; evidence is not authority.
+**Machine state:** [`docs/state/project_state.json`](../state/project_state.json) · schema v4  
+**Rule:** presence is not wiring; integrity is not authenticity; storage is not activation.
 
 ## 1. Canon and core runtime
 
@@ -34,8 +34,9 @@ actions or compute routing.
 | Admission evaluator | `97fe27a37184c6c7277f54e96acd04d98d583ab3` | `admission_evaluator.py` | tested, internal, unwired |
 | Admission-aware facade | `9f07db6de8d32683d00bfe4f1673e84493607553` | `admission_facade.py` | tested, internal, unwired |
 | Current-decision composition | `dc30817f2c4abb1afcaab2f127e679d5f9b884d7` | `current_decision_resolver.py` | tested, internal, unwired |
+| Durable artifact lifecycle | `064845579c520e7464678cd0c41d9b650368dfa8` | `admission_artifact_lifecycle.py` | tested, internal, unwired |
 
-## 3. Source-admission path
+## 3. Admission and lifecycle path
 
 ```text
 State / Goal / OpenLoop result
@@ -47,12 +48,15 @@ State / Goal / OpenLoop result
 → CurrentDecisionEvidence
 → internal admission-aware facade
 → pure admission evaluator
-→ content-addressed evidence-only result
+→ content-addressed accepted result
+→ explicitly invoked internal lifecycle owner
+→ atomic append / verified replay / bounded cleanup / erasure tombstone
 → STOP
 ```
 
-The path does not invoke the signal producer, persist artifacts, write Canon, create
-reminders/actions or change compute routing.
+The lifecycle invocation is not wired into a server, startup path, worker or scheduler.
+The path does not invoke the signal producer, write Canon, create reminders/actions or
+change compute routing.
 
 ## 4. Current-decision ownership
 
@@ -68,7 +72,23 @@ reminders/actions or change compute routing.
 `current_decision_resolver.py` owns only composition and verification. It is not a second
 identity, policy, consent, restriction or erasure system.
 
-## 5. Decision ownership
+## 5. Durable lifecycle ownership
+
+| Concern | Lifecycle responsibility | Authority boundary |
+|---|---|---|
+| Artifact identity | canonical content-derived identity | integrity only |
+| Append | atomic/idempotent SQLite transaction | explicitly invoked internal owner |
+| Replay | exact-scope read + full verification | no new authorization decision |
+| Retention | execute supplied bounded policy | lifecycle does not invent policy |
+| Cleanup | deterministic bounded neutralization + receipt | no scheduler or runtime owner |
+| Erasure | require exact external owner `ALLOW` evidence | lifecycle does not decide eligibility |
+| Tombstone | retain scope and neutralization evidence | source payload removed |
+| Recovery | transaction rollback and retry stability | tested fault seams, not live observation |
+
+The lifecycle is a storage/evidence owner only. It cannot authorize use, activate a
+producer, select live adapters or grant runtime authority.
+
+## 6. Decision ownership
 
 | Decision | Accepted owner |
 |---|---|
@@ -79,39 +99,41 @@ identity, policy, consent, restriction or erasure system.
 | source adaptation | deterministic proposal transform only |
 | evaluator rules | pure admission evaluator |
 | anti-substitution | internal admission facade and resolver composition |
-| concrete live owner adapters | no accepted deployment selection yet |
-| durable admission-artifact lifecycle | not implemented |
+| current owner decisions | six injected domain owners |
+| artifact retention/replay/cleanup execution | internal lifecycle owner |
+| erasure eligibility | external accepted erasure owner |
+| concrete live owner/lifecycle adapters | no accepted deployment selection yet |
 | runtime activation | no accepted owner |
 
-## 6. Resolver fail-closed boundary
+## 7. Fail-closed boundary
 
-The composition rejects:
+The accepted resolver and lifecycle reject:
 
-- missing or multiple snapshots;
-- wrong types or domains;
-- malformed content identity;
+- missing, duplicate or wrong-domain owner snapshots;
+- malformed content identity, digest, JSON, schema or version;
 - owner ID/version mutation;
 - principal, authorization, source, binding, tenant or subject substitution;
-- domain-scope mismatch;
-- stale or future-effective evidence;
-- non-`ACTIVE` principal or PolicySnapshot state.
+- stale or future-effective decision evidence;
+- cross-tenant artifact reuse;
+- conflicting artifact identity and silent overwrite;
+- replay or re-append after cleanup/erasure neutralization;
+- owner/storage exceptions and injected partial transaction failures.
 
 Negative and unknown represented decisions are not converted into allow decisions.
 
-## 7. Remaining lifecycle boundary
+## 8. Remaining integration boundary
 
-Before runtime wiring, implement and prove:
+Before any controlled enablement, separately implement and prove:
 
-- durable retention policy;
-- idempotent persistence;
-- replay after restart;
-- bounded cleanup;
-- tenant/subject indexing;
-- erasure-addressability;
-- crash, disk-full and partial-work behavior;
-- reconciliation evidence.
+- operator-selected lifecycle and six-domain owner adapters;
+- startup/shutdown and database-path ownership;
+- one accepted runtime call site with anti-bypass guards;
+- fail-closed error propagation and bounded recovery;
+- backup/restore and deployment filesystem behavior;
+- metrics, reconciliation and operational evidence;
+- an explicit stop before feature enablement and Operator GO.
 
-## 8. Governance and operations
+## 9. Governance and operations
 
 - ruleset `main-governance` ID `20601712` remains active;
 - PR, aggregate evidence, up-to-date branch and conversation resolution are required;
@@ -119,19 +141,19 @@ Before runtime wiring, implement and prove:
 - accepted solo mode uses approvals `0`;
 - aggregate success is not independent review;
 - Phase I audit identity remains issue #257 / PR #261 / merge `90e221...`;
-- schema v3 preserves historical schema v1/v2 validation and records PR #264 separately;
+- schema v4 preserves historical schema v1/v2/v3 validation and records PR #267 separately;
 - Notion synchronization targets the existing page `Velantrim Titan 9.0`;
 - no runtime authority is implied.
 
-## 9. Next audit checklist
+## 10. Next audit checklist
 
-1. Are live owner adapters operator-selected outside caller-controlled payloads?
+1. Are live owner and lifecycle adapters operator-selected outside caller payloads?
 2. Is authenticity proven rather than inferred from hashes?
-3. Is the complete exact subject set preserved?
+3. Is the complete exact subject set preserved at the runtime call site?
 4. Do missing, stale, ambiguous and conflicting states fail closed?
-5. Is durable lifecycle implemented before runtime wiring?
-6. Does output remain evidence-only?
+5. Is there exactly one accepted lifecycle invocation path with anti-bypass evidence?
+6. Does output remain evidence-only before a separate activation decision?
 7. Are producer invocation and user-visible effects absent?
 8. Are exact-head and post-merge checks attached?
-9. Are GitHub and Notion synchronized?
+9. Are GitHub and the exact Notion page synchronized?
 10. Are `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` separate?
