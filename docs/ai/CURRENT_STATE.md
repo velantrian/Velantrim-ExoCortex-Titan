@@ -7,7 +7,7 @@
 **Phase I audit checkpoint:** `90e221be2bed8177f4648787d713058df0f29e1f` (PR #261)  
 **Phase I remediation:** `COMPLETE` for the accepted solo-governance scope  
 **Retrospective audit:** `COMPLETE`; issue #257 `CLOSED_COMPLETED`  
-**Notion synchronization:** `SYNCED_FINAL` to `Velantrim Titan 9.0`  
+**Notion synchronization:** `SYNCED` to `Velantrim Titan 9.0`; audit finalization marker is true in project-state schema v2  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
 
 > This is an exact dated checkpoint, not an evergreen remote-freshness claim. Re-query
@@ -139,9 +139,9 @@ Unresolved review threads:  0
 Documentation impact:       GITHUB_AND_NOTION
 ```
 
-The canary exercised the ordinary non-destructive PR path. Force-push and deletion
-protections were verified from ruleset configuration, not by destructive tests against
-`main`.
+The canary exercised the ordinary non-destructive protected merge path. Force-push and
+deletion protections were verified from ruleset configuration, not by destructive tests
+against `main`.
 
 ### PR #255 — separate Dependabot update
 
@@ -177,7 +177,9 @@ Unresolved review threads:   0
 Squash merge/checkpoint:      90e221be2bed8177f4648787d713058df0f29e1f
 Issue #257:                   CLOSED_COMPLETED
 Notion target:                Velantrim Titan 9.0
-Notion synchronization:       SYNCED_FINAL
+Notion synchronization:       SYNCED
+Audit synchronization final:  true
+Project-state schema:         v2; historical v1 remains readable
 ```
 
 Verdict:
