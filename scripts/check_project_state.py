@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Validate the machine-readable Titan project-state contract.
 
-Schema v1 remains readable for historical snapshots. Schema v2 is the strict finalized
-Phase I audit contract and binds the exact GitHub and Notion evidence recorded by PR #261.
-The state file records an exact dated checkpoint, not an evergreen remote-head claim.
+Schema v1 preserves the exact validation surface accepted before PR #262. Schema v2 is
+the strict finalized Phase I audit contract and binds the exact GitHub and Notion evidence
+recorded by PR #261. The state file records an exact dated checkpoint, not an evergreen
+remote-head claim.
 """
 
 from __future__ import annotations
@@ -75,6 +76,8 @@ def _require_sha(mapping: dict[str, Any], field: str) -> str:
 
 
 def _validate_common(root: dict[str, Any]) -> dict[str, Any]:
+    """Validate only fields required by the original schema-v1 validator."""
+
     if root.get("project") != "velantrim-exocortex-titan":
         raise ProjectStateError("project must be 'velantrim-exocortex-titan'")
 
@@ -129,7 +132,6 @@ def _validate_common(root: dict[str, Any]) -> dict[str, Any]:
     _require_bool(governance, "aggregate_merge_evidence_present")
     _require_bool(governance, "codeowners_present")
     _require_bool(governance, "branch_ruleset_enforced")
-    _require_int(governance, "tracking_issue", minimum=1)
 
     kb = _require_mapping(root.get("knowledge_base"), "knowledge_base")
     if kb.get("artifact_path") != "kb_graph.json":
@@ -154,32 +156,18 @@ def _validate_common(root: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _validate_v1(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]:
-    """Preserve readability of historical v1 snapshots without applying v2 fields."""
-
-    notion = root.get("notion")
-    notion_status = "LEGACY_OR_UNDECLARED"
-    if notion is not None:
-        notion_mapping = _require_mapping(notion, "notion")
-        notion_status = _require_string(notion_mapping, "status")
-
-    governance = common["governance"]
-    audit_status = governance.get("retrospective_audit_status", "LEGACY_OR_UNDECLARED")
-    if not isinstance(audit_status, str) or not audit_status.strip():
-        raise ProjectStateError(
-            "governance.retrospective_audit_status must be a non-empty string when present"
-        )
+def _validate_v1(_root: dict[str, Any], _common: dict[str, Any]) -> dict[str, Any]:
+    """Apply no requirements beyond the exact pre-v2 validation contract."""
 
     return {
-        "audit_status": audit_status,
-        "notion_status": notion_status,
+        "audit_status": "LEGACY_OR_UNDECLARED",
+        "notion_status": "LEGACY_OR_UNDECLARED",
     }
 
 
 def _validate_v2(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]:
     """Validate the strict, finalized Phase I audit evidence contract."""
 
-    repository = common["repository"]
     verified_head = common["verified_head"]
     checkpoint = common["checkpoint"]
     governance = common["governance"]
@@ -189,6 +177,7 @@ def _validate_v2(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]
             "repository_head_sha_at_verification must equal documentation_checkpoint_sha"
         )
 
+    _require_int(governance, "tracking_issue", minimum=1)
     _require_int(governance, "ruleset_id", minimum=1)
     _require_literal(governance, "ruleset_name", "main-governance")
     _require_literal(governance, "ruleset_mode", "SOLO")
