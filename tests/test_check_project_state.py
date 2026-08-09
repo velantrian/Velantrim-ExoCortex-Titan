@@ -72,6 +72,14 @@ def test_sha_roles_require_full_commit_ids() -> None:
         validate_project_state(state)
 
 
+def test_repository_head_must_match_documentation_checkpoint() -> None:
+    state = copy.deepcopy(_state())
+    state["repository"]["documentation_checkpoint_sha"] = "a" * 40
+
+    with pytest.raises(ProjectStateError, match="must equal documentation_checkpoint_sha"):
+        validate_project_state(state)
+
+
 def test_final_audit_requires_public_pr_number() -> None:
     state = copy.deepcopy(_state())
     del state["governance"]["retrospective_audit_pr"]
@@ -96,14 +104,6 @@ def test_final_audit_rejects_non_final_status() -> None:
         validate_project_state(state)
 
 
-def test_audit_merge_must_match_repository_checkpoint() -> None:
-    state = copy.deepcopy(_state())
-    state["repository"]["documentation_checkpoint_sha"] = "a" * 40
-
-    with pytest.raises(ProjectStateError, match="audit checkpoint SHAs"):
-        validate_project_state(state)
-
-
 def test_notion_merge_must_match_audit_merge() -> None:
     state = copy.deepcopy(_state())
     state["notion"]["audit_merge_sha_recorded"] = "b" * 40
@@ -117,6 +117,14 @@ def test_notion_finalization_requires_valid_page_id() -> None:
     state["notion"]["audit_page_id"] = "not-a-page-id"
 
     with pytest.raises(ProjectStateError, match="lowercase dashed UUID"):
+        validate_project_state(state)
+
+
+def test_notion_finalization_requires_non_empty_safe_targets() -> None:
+    state = copy.deepcopy(_state())
+    state["notion"]["safe_targets"] = []
+
+    with pytest.raises(ProjectStateError, match="non-empty string list"):
         validate_project_state(state)
 
 
