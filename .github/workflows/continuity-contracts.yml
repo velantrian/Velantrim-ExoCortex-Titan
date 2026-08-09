@@ -43,9 +43,24 @@ jobs:
           tests/test_continuity*.py --output-format=github
 
       - name: Mypy
-        run: >-
-          mypy core/continuity core/compute_controller.py
-          --show-error-codes
+        shell: bash
+        run: |
+          set +e
+          output="$(mypy core/continuity core/compute_controller.py --show-error-codes 2>&1)"
+          status=$?
+          printf '%s\n' "$output"
+          while IFS= read -r line; do
+            if [[ "$line" =~ ^([^:]+):([0-9]+):([[:space:]]*)error:[[:space:]](.*)$ ]]; then
+              file="${BASH_REMATCH[1]}"
+              lineno="${BASH_REMATCH[2]}"
+              message="${BASH_REMATCH[4]}"
+              message="${message//'%'/'%25'}"
+              message="${message//$'\r'/'%0D'}"
+              message="${message//$'\n'/'%0A'}"
+              printf '::error file=%s,line=%s::%s\n' "$file" "$lineno" "$message"
+            fi
+          done <<< "$output"
+          exit "$status"
 
       - name: Continuity tests
         run: python -m pytest tests/test_continuity*.py -v --tb=short --timeout=300
