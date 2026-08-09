@@ -7,6 +7,60 @@ merged PR bodies and dated audit/checkpoint documents.
 
 ---
 
+
+## 2026-08-09 — Bounded internal runtime composition implemented
+
+```text
+Tracking issue:               #269
+Implementation PR:            #270
+Base main:                    c2a60b5a54d2803b0e4de128df73e432b909dbf5
+Exact tested head:            7089b506e986b463929135c3d0f4a683bbe08a34
+Continuity contracts:         31338707796 · SUCCESS · 587 tests
+Full Titan CI:                31338707803 · SUCCESS
+Docker hardening:             31338707801 · SUCCESS
+Ready-state aggregate:        31338960646 · SUCCESS
+Submitted reviews:            0
+Codex:                        NOT RUN — USAGE LIMIT
+Unresolved review threads:    0
+Independent review:           NOT CLAIMED
+Protected squash merge:       802e833fa251a8831add8a6b802a5ebb57533549
+Post-merge Continuity:        31339029070 · SUCCESS
+Post-merge full CI:           31339029081 · SUCCESS · 3850 passed
+Post-merge coverage:          91.11% · ratchet 91.1%
+Post-merge Docker:            31339029082 · SUCCESS
+Post-merge aggregate:         31339029069 · SUCCESS
+Documentation impact:         GITHUB_ONLY in implementation PR
+Runtime:                      WIRED INTERNALLY · NOT ENABLED · NOT OBSERVED
+```
+
+### Implemented
+
+- one immutable deployment-owned runtime composition configuration;
+- exact lifecycle owner `continuity.admission_artifact.sqlite@1`;
+- canonical absolute storage root and deterministic SQLite path derivation;
+- exact tenant binding and substitution rejection;
+- deterministic, idempotent and restartable startup/shutdown state machine;
+- one logical initialization under concurrent startup;
+- complete facade-bound accepted-graph input boundary;
+- explicit append and exact-scope replay through the existing lifecycle;
+- fail-closed configuration, schema, storage, append and replay errors;
+- app-lifespan ownership without public endpoint activation;
+- static guards for one store path, unchanged `/query` and absent forbidden imports.
+
+### Explicit non-scope
+
+No controlled enablement, Operator GO, producer activation, public behavior, monitoring,
+SLO/SLA, backup/restore claim, Canon/ESM/TruthGate/GoalStack write, reminder, notification,
+action, tool, Phase II, issue #249 or Continuity 11/12 work.
+
+### Readiness effect
+
+After separate authoritative status synchronization, Continuity advances from `9/12` to
+`10/12 = 83.3%`. This remains implementation/internal-wiring readiness only.
+
+---
+
+
 ## 2026-08-09 — Durable admission-artifact lifecycle implemented
 
 ```text
@@ -120,8 +174,8 @@ mandatory. Force pushes are blocked, deletion restricted and bypass empty.
 
 ## Stable continuation boundary
 
-Continuity is now `9/12 = 75.0%` after lifecycle status synchronization.
+Continuity is now `10/12 = 83.3%` after bounded runtime-wiring status synchronization.
 
-The next unresolved category is bounded runtime wiring with one explicitly selected
-lifecycle owner. This checkpoint does not authorize runtime wiring, controlled activation,
-Operator GO, Phase II or Research Copilot lifecycle work.
+The next unresolved category is controlled enablement with a separate explicit Operator
+GO. This checkpoint does not authorize enablement, live observation, Phase II or Research
+Copilot lifecycle work.

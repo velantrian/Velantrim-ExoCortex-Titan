@@ -1,189 +1,116 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-09  
-**Repository checkpoint inspected:** `main@064845579c520e7464678cd0c41d9b650368dfa8`  
-**Continuity:** `9/12 = 75.0%` implementation readiness  
-**Runtime:** `UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`  
+**Repository checkpoint:** `main@802e833fa251a8831add8a6b802a5ebb57533549`  
+**Continuity:** `10/12 = 83.3%` implementation readiness  
+**Runtime:** `WIRED INTERNALLY · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0`
 
-A risk is not closed because a file exists, a test passes once, an artifact is
-content-addressed, a PR merges, Notion is updated or aggregate evidence is green.
-Closure requires the missing owner, integration and operational proof.
+A merged implementation, durable receipt, successful replay, green aggregate or Notion
+update does not grant permission, authenticity, enablement or production authority.
 
 ## Closed or materially reduced
 
-- PR #264 implemented and tested six-owner current-decision composition;
-- PR #267 implemented and tested the internal durable admission-artifact lifecycle;
-- deterministic identity, integrity verification and exact-scope replay now fail closed;
-- duplicate and concurrent append are idempotent without silent overwrite;
-- cross-tenant, principal, authorization-subject-set and policy substitution are rejected;
-- bounded explicit-policy cleanup and retry-stable cleanup receipts are present;
-- exact externally supplied erasure-owner evidence can atomically neutralize payloads;
-- replay and re-append after neutralization are rejected;
-- injected partial append and interrupted cleanup/erasure transactions roll back;
-- producer/runtime/public-package side effects remain absent;
-- governance, Phase I audit identity and the exact Notion target remain pinned.
+- one deployment-owned internal composition boundary now exists;
+- owner identity/version are exact and unknown values fail closed;
+- SQLite location is derived internally from a canonical absolute storage root;
+- caller-selected database path, owner and tenant substitution are rejected;
+- startup/shutdown are deterministic, idempotent and restartable;
+- concurrent startup creates one logical initialization;
+- only complete facade-bound accepted evidence can enter persistence;
+- append/replay failures and incompatible schema propagate fail closed;
+- `/query`, producer, Canon, ESM, TruthGate, GoalStack, reminder, notification, action and
+  tool side effects remain absent;
+- post-merge full CI, Continuity, Docker and aggregate push evidence are green.
 
-The former risk “durable retention, replay, cleanup and erasure lifecycle is absent” is
-closed at the **internal implementation and test** level only. Runtime integration,
-operator selection and live operational proof remain absent.
+The former risk “runtime wiring is absent” is closed only at the bounded internal
+implementation/test level.
 
-## P0 — Operator-selected trust root is not deployed
+## P0 — Controlled enablement and Operator GO are absent
 
-Content-addressed facade policy, registry, resolver, owner snapshots and lifecycle
-artifacts do not select or activate themselves as trusted deployment configuration.
+Internal wiring does not authorize use. No feature enablement, activation policy,
+Operator GO, rollout, rollback, SLO, alert or user-facing capability exists.
 
-Required proof:
+Required proof before 11/12:
 
-- one explicit operator/deployment owner;
-- controlled expected facade-policy, registry, resolver, owner and lifecycle identities;
-- signed or versioned configuration lineage;
-- fail-closed missing, stale or unexpected identity;
-- no caller-controlled substitution;
-- audit evidence for configuration changes.
+- separate enablement decision and owner;
+- explicit Operator GO;
+- current authorization/restriction/erasure rechecks;
+- bounded rollout and rollback semantics;
+- metrics and fail-closed operational controls;
+- proof that disabled remains the default.
 
-## P0 — Concrete live owner adapters are not selected
+## P0 — Concrete live decision-owner adapters are not selected
 
-The six injected read-only current-decision owner ports intentionally have no selected live
-adapters for principal, authorization, consent/lawful basis, restriction, erasure or
-PolicySnapshot state.
-
-Residual risk:
-
-- a future adapter may read stale, ambiguous or unauthenticated state;
-- content hashes prove integrity, not authentic owner provenance;
-- deployment composition could select the wrong owner implementation;
-- no live multi-subject owner aggregation has been observed.
+The six current-decision ports still have no accepted live deployment adapters for
+principal, authorization, consent/lawful basis, restriction, erasure and PolicySnapshot.
+The new lifecycle owner does not replace them.
 
 Required proof:
 
-- accepted owner APIs and deployment identities;
-- bounded current-state reads;
-- authenticity and configuration lineage;
-- adversarial integration tests against real owner stores;
-- explicit Operator review before runtime wiring.
+- authentic accepted owner APIs and deployment identities;
+- bounded current-state reads and configuration lineage;
+- adversarial tests against real owner stores;
+- explicit Operator decision before activation.
 
-## P1 — Content-addressed evidence is not authenticity
+## P1 — Integrity is not authenticity or permission
 
 ```text
-Integrity ≠ authenticity
-Integrity ≠ authorization
-Evidence ≠ authority
-Receipt ≠ permanent permission
-Resolver result ≠ runtime permission
-Durable artifact ≠ permission to use it
+Hash integrity ≠ authentic provenance
+Stored evidence ≠ current permission
+Replay success ≠ authorization
+Accepted admission ≠ action permission
+Runtime wiring ≠ enablement
 ```
 
-Hashes do not prove who created evidence, whether the source is authentic, whether
-permission is still current, whether a claim is true or whether runtime use is allowed.
+Current permission can become stale after storage. A future producer must re-evaluate the
+accepted current owner state rather than treating an artifact as a token.
 
-## P1 — Durable lifecycle is not operationally integrated
+## P1 — Recovery remains bounded and internal
 
-PR #267 supplies an internal SQLite owner and adversarial tests, but does not prove:
+Proved: after clean restart, the owner can revalidate configuration/schema and perform
+explicit exact-scope replay.
 
-- deployment selection of the owner or database path;
-- startup/shutdown ownership;
-- production filesystem permissions and disk-full behavior;
-- backup, restore and disaster recovery;
-- live retention policy configuration;
-- scheduler/worker cleanup execution;
-- live erasure-owner integration;
-- multi-process contention under deployment topology;
-- operational reconciliation, metrics, alerts or runbooks;
-- observed restart/crash recovery.
+Not proved:
 
-These are integration and operations requirements, not reasons to weaken the internal
-artifact contract.
+- live crash recovery;
+- backup/restore or disaster recovery;
+- multi-process deployment contention;
+- disk-full and filesystem-permission behavior in production;
+- automatic self-healing;
+- SLO/SLA or observed operational recovery.
 
-## P1 — Runtime wiring and activation remain absent
+## P1 — No live observation
 
-Continuity is not wired into `/query`, startup, workers, schedulers, answer generation,
-reminders, tools/actions, compute routing or Canon/TruthGate writes.
-
-No feature flag, SLO, alert, rollback or Operator GO exists. This remains intentional.
-
-## P1 — Producer and bare-observation bypass
-
-No live anti-bypass enforcement proves that only the accepted current-decision resolver
-composition and lifecycle boundary can form live-capable producer input.
-
-Before any producer use:
-
-- static/runtime guards must block bare observation use from server, startup, workers and
-  advisory paths;
-- current authorization, restriction and erasure state must be rechecked;
-- output must remain advisory until a separate activation decision.
+No production deployment, traffic, monitoring, alerting or observed user behavior exists.
+This is the final separate Continuity capability after controlled enablement.
 
 ## P1 — Solo governance has no independent approval gate
 
-The active ruleset intentionally uses required approvals `0`.
-
-Current controls include PRs, exact aggregate evidence, up-to-date branches, conversation
-resolution, blocked force pushes, restricted deletion and empty bypass.
-
-Residual risk:
-
-- automated checks are not independent review;
-- a solo maintainer remains the final substantive merge decision owner;
-- PR #267 has no submitted review objects.
-
-Never claim that aggregate success is independent review.
+PR #270 had zero submitted reviews. Codex did not run because its usage limit was reached.
+Unresolved review threads were zero, but independent review is **NOT CLAIMED**.
 
 ## P1 — Uncharacterized CAS-contention failure
 
-Issue #249 remains open. The first failure in workflow `31222680496` must remain in audit
-history. PR #250 added diagnostics but did not prove the event harness-only.
+Issue #249 remains open and untouched. Do not weaken one-winner/one-intent assertions,
+skip the failure or reclassify it without evidence.
 
-Do not weaken one-winner/one-intent assertions or hide the event with skip, xfail or
-unconditional reruns.
+## P1 — Legacy embeddings-lock timeout
 
-## P1 — Intermittent legacy embeddings-lock recovery timeout
+The historical first-attempt timeout in PR #246 remains unresolved risk evidence. It is
+outside this block.
 
-The historical first-attempt timeout in PR #246 remains unresolved risk evidence.
-Characterize frequency, subprocess termination and lock-owner cleanup bounds before
-reclassification.
+## P1 — Query/Canon ownership and projection lifecycle
 
-## P1 — Query path and Canon writer ownership
-
-Open hardening work remains:
-
-- some legacy query flows may promote through separate policy paths;
-- promotion/supersession families are not fully unified;
-- read-only query invariants are not proven across every path;
-- some post-commit relation/provenance windows remain best-effort.
-
-## P1 — Projection lifecycle and observability
-
-Projection outbox and dispatcher primitives remain not fully lifecycle-wired. Required:
-bounded startup/shutdown, cancellation, backoff, backlog/retry/parked/version-lag metrics,
-reconciliation, restart/crash tests and erasure invalidation.
+Legacy query/promotion hardening and projection dispatcher lifecycle/observability remain
+separate work. This bounded Continuity composition does not alter those paths.
 
 ## P1 — Security and deployment
 
-- no independent security audit or penetration test;
-- no certified privacy/compliance program;
-- shared API key is not user/tenant identity;
-- public multi-user internet deployment is not safely supported by default;
-- backup/restore and incident-response rehearsals remain incomplete;
-- Docker dependency resolution is not identical to every frozen-uv CI profile.
-
-## P1 — SQLite and future storage profiles
-
-SQLite remains the accepted local-first profile. PostgreSQL, ANN and distributed profiles
-remain research candidates with explicit return triggers; they must not be added for
-symmetry alone.
-
-The new internal lifecycle does not authorize a distributed or server database migration.
-
-## P1 — Identity
-
-`core/identity_layer.py` remains `LEGACY/UNWIRED`. Model inference must not be treated as
-user attestation. Future identity work requires consent, evidence, contestation,
-correction, supersession, retraction, retention and erasure semantics.
+No independent security audit, penetration test, certified privacy program, public
+multi-user deployment proof or complete incident-response rehearsal exists.
 
 ## Risk update rule
 
 Use exact states: `PROPOSED`, `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED`, `OBSERVED`.
-
-A green check, durable receipt, retrospective audit or Notion synchronization never grants
-runtime authority by itself.
+Never collapse these states or infer authority from a green check.
