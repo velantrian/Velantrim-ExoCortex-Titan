@@ -13,7 +13,7 @@ content-addressed snapshot from each accepted owner domain and composes the exis
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Protocol, runtime_checkable
@@ -367,14 +367,24 @@ class ContinuityCurrentDecisionResolverComposition:
     restriction_owner: ContinuityCurrentDecisionOwnerPort
     erasure_owner: ContinuityCurrentDecisionOwnerPort
     policy_snapshot_owner: ContinuityCurrentDecisionOwnerPort
+    _owner_identities: tuple[
+        tuple[ContinuityCurrentDecisionOwnerDomain, str, str], ...
+    ] = field(init=False, repr=False)
+    _resolver_id: str = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
-        for expected_domain, owner in self._owners():
-            self._owner_identity(owner, expected_domain)
+        identities: list[
+            tuple[ContinuityCurrentDecisionOwnerDomain, str, str]
+        ] = []
+        for domain, owner in self._owners():
+            owner_id, owner_version = self._read_owner_identity(owner, domain)
+            identities.append((domain, owner_id, owner_version))
+        object.__setattr__(self, "_owner_identities", tuple(identities))
+        object.__setattr__(self, "_resolver_id", _digest(self.identity_payload()))
 
     @property
     def resolver_id(self) -> str:
-        return _digest(self.identity_payload())
+        return self._resolver_id
 
     @property
     def resolver_version(self) -> str:
@@ -408,7 +418,7 @@ class ContinuityCurrentDecisionResolverComposition:
         )
 
     @staticmethod
-    def _owner_identity(
+    def _read_owner_identity(
         owner: ContinuityCurrentDecisionOwnerPort,
         expected_domain: ContinuityCurrentDecisionOwnerDomain,
     ) -> tuple[str, str]:
@@ -432,20 +442,17 @@ class ContinuityCurrentDecisionResolverComposition:
         return owner_id, owner_version
 
     def identity_payload(self) -> dict[str, object]:
-        owners: list[dict[str, str]] = []
-        for domain, owner in self._owners():
-            owner_id, owner_version = self._owner_identity(owner, domain)
-            owners.append(
+        return {
+            "schema_version": CURRENT_DECISION_RESOLVER_SCHEMA_VERSION,
+            "resolver_version": CURRENT_DECISION_RESOLVER_VERSION,
+            "owners": [
                 {
                     "domain": domain.value,
                     "owner_id": owner_id,
                     "owner_version": owner_version,
                 }
-            )
-        return {
-            "schema_version": CURRENT_DECISION_RESOLVER_SCHEMA_VERSION,
-            "resolver_version": CURRENT_DECISION_RESOLVER_VERSION,
-            "owners": owners,
+                for domain, owner_id, owner_version in self._owner_identities
+            ],
             "authority": "current_decision_resolver_composition_only",
             "no_runtime_authority": True,
         }
@@ -663,7 +670,21 @@ class ContinuityCurrentDecisionResolverComposition:
         binding_receipt: ContinuitySourceBindingReceipt,
         evaluated_at: datetime,
     ) -> ContinuityCurrentDecisionOwnerSnapshot:
-        owner_id, owner_version = self._owner_identity(owner, expected_domain)
+        owner_id, owner_version = next(
+            (
+                (value_owner_id, value_owner_version)
+                for domain, value_owner_id, value_owner_version in self._owner_identities
+                if domain is expected_domain
+            ),
+            ("", ""),
+        )
+        if self._read_owner_identity(owner, expected_domain) != (
+            owner_id,
+            owner_version,
+        ):
+            raise ContinuitySourceAdmissionError(
+                f"{expected_domain.value} owner identity changed after composition"
+            )
         try:
             raw_snapshots = owner.resolve_current_decision_snapshots(
                 principal_context=principal_context,
@@ -677,6 +698,13 @@ class ContinuityCurrentDecisionResolverComposition:
             raise ContinuitySourceAdmissionError(
                 f"{expected_domain.value} owner resolution failed closed"
             ) from exc
+        if self._read_owner_identity(owner, expected_domain) != (
+            owner_id,
+            owner_version,
+        ):
+            raise ContinuitySourceAdmissionError(
+                f"{expected_domain.value} owner identity changed during resolution"
+            )
         if len(snapshots) != 1:
             raise ContinuitySourceAdmissionError(
                 f"{expected_domain.value} owner must return exactly one snapshot"
