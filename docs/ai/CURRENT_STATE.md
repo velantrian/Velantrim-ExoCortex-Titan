@@ -1,15 +1,18 @@
 # 📍 Current System State
 
-**Verified:** 2026-08-08  
-**Repository `main` head at verification:** `c14916214a920802c9ce6187be79ebe74ddfadfc`  
+**Verified:** 2026-08-09  
+**Repository `main` head at verification:** `28cc8b9ea7b94bf65a0b8cb2a37f30b2187cc6b5`  
 **Latest implementation-bearing Continuity baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
-**Documentation checkpoint SHA:** `c14916214a920802c9ce6187be79ebe74ddfadfc` (PR #248 FINAL of PR #247 checkpoint)  
+**Documentation checkpoint SHA:** `28cc8b9ea7b94bf65a0b8cb2a37f30b2187cc6b5` (PR #259 Stage-1 viability fix)  
+**Phase I remediation status:** `GOVERNANCE CANARY IN PROGRESS`  
+**Governance:** Active `main-governance` ruleset, ID `20601712`, accepted solo mode  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
 
 > Exact, dated, historical snapshot. Re-query GitHub before treating any SHA here as the
 > current head. `docs/state/project_state.json` records the three SHA roles explicitly.
 
-Material claims must be verified against exact SHAs, tests, workflows, wiring, configuration and runtime evidence.
+Material claims must be verified against exact SHAs, tests, workflows, wiring,
+configuration and runtime evidence.
 
 ```text
 PROPOSED ≠ IMPLEMENTED
@@ -23,11 +26,14 @@ Content-addressed policy ≠ operator-approved configuration
 Resolver protocol ≠ trusted resolver implementation
 Facade result ≠ runtime permission
 Continuity ≠ truth, action, reminder or compute authority
+Aggregate SUCCESS ≠ independent review
 ```
 
 ## Current canonical summary
 
-Titan is a research-grade local-first verifiable-memory runtime moving toward production hardening. Core memory, ESM, provenance, TruthGate, retrieval and controlled write boundaries are real and tested. Higher cognitive layers remain explicitly staged.
+Titan is a research-grade local-first verifiable-memory runtime moving toward production
+hardening. Core memory, ESM, provenance, TruthGate, retrieval and controlled write
+boundaries are real and tested. Higher cognitive layers remain explicitly staged.
 
 Continuity source admission now contains:
 
@@ -42,7 +48,8 @@ Continuity source admission now contains:
 - deterministic anti-substitution, exact-scope and malformed-Draft rejection;
 - content-addressed evidence-only facade result.
 
-It still has no concrete trusted current-state resolver composition, durable lifecycle, runtime wiring, enablement or observed operation.
+It still has no concrete trusted current-state resolver composition, durable lifecycle,
+runtime wiring, enablement or observed operation.
 
 ## Continuity readiness
 
@@ -99,9 +106,16 @@ Aggregate merge evidence:   31221208768 SUCCESS
 Unresolved review threads:  0
 ```
 
-Attempt 1 of the Full Titan run retained one existing SQLite recovery timeout in `test_drop_legacy_embeddings_lock_owner_process_is_bounded`; coverage passed. The unchanged exact head passed the complete second attempt. The timeout remains risk evidence and is not represented as a facade defect.
+Attempt 1 of the Full Titan run retained one existing SQLite recovery timeout in
+`test_drop_legacy_embeddings_lock_owner_process_is_bounded`; coverage passed. The
+unchanged exact head passed the complete second attempt. The timeout remains risk
+evidence and is not represented as a facade defect.
 
-Architecture freeze initially rejected the authority-shaped `ContinuityAdmissionFacadePolicy` because no concrete ADR existed. The gate was not bypassed. PR #246 added `docs/adr/ADR-2026-08-07-continuity-admission-facade-boundary.md`, after which the exact head passed the freeze guard.
+Architecture freeze initially rejected the authority-shaped
+`ContinuityAdmissionFacadePolicy` because no concrete ADR existed. The gate was not
+bypassed. PR #246 added
+`docs/adr/ADR-2026-08-07-continuity-admission-facade-boundary.md`, after which the exact
+head passed the freeze guard.
 
 ## PR #247 post-merge docs checkpoint
 
@@ -121,7 +135,8 @@ This post-merge failure is an **uncharacterized CAS-contention test failure**
 (`BrokenBarrierError`). It is not yet classified as harness-only flake or production CAS
 defect. It is not the historical SQLite fresh-bootstrap ADD COLUMN race family and not
 the legacy embeddings-lock recovery timeout family tracked from PR #246 run
-`31219904698`. Characterization is tracked by issue #249 / draft PR #250.
+`31219904698`. Characterization remains tracked by issue #249; diagnostic harness merged
+in PR #250 (`e16db600da155c0496a727a56a501c2f984f37fd`).
 
 ## Facade guarantees
 
@@ -137,7 +152,9 @@ the legacy embeddings-lock recovery timeout family tracked from PR #246 run
 - controlled fail-closed resolver identity and execution failures;
 - invocation of only the pure admission evaluator.
 
-The facade does not select or activate itself. Its policy object is represented evidence, not trusted deployment configuration. The resolver protocol is an interface, not a concrete identity, authorization, consent, restriction, erasure or policy owner.
+The facade does not select or activate itself. Its policy object is represented evidence,
+not trusted deployment configuration. The resolver protocol is an interface, not a
+concrete identity, authorization, consent, restriction, erasure or policy owner.
 
 ## Trust boundary that remains open
 
@@ -164,10 +181,89 @@ Not implemented or not accepted for live use:
 - feature flag, runtime enablement, SLO, monitoring, alert, rollback or Operator GO;
 - answer, reminder, notification, delivery, tool, action, Canon, ESM, TruthGate, GoalStack or compute-route authority.
 
+## Phase I remediation and governance (2026-08-09)
+
+Status: **GOVERNANCE CANARY IN PROGRESS**. The repository owner created the active
+`main-governance` ruleset manually. PR #259 made the protected merge path viable; PR #260
+synchronizes the final solo-mode configuration and exercises the non-destructive protected
+path.
+
+| PR | Role | Exact tested head | Merge SHA / state |
+|---|---|---|---|
+| #254 | Docs P2 remediation from #248 | `14843d985adf49ec829b14292f9036e1c14a6f0c` | `b07f3fcecf26c483abcb696d18a12f4a1c24a117` |
+| #250 | CAS contention diagnostic harness | `e1784700324b72792fe5bf0fa706bfb575186918` | `e16db600da155c0496a727a56a501c2f984f37fd` |
+| #251 | Frozen `uv.lock` CI installs | `f1c1a82f622d3eef64b7c756d98502f8c0c9da95` | `e68b36fea3e96739fc97cc2a66570284efef3f26` |
+| #252 | GitHub Actions full-SHA pins | `f7e6397c218b0f1add4ec02ad84a2ebe8427b264` | `6a020f751ca213d2ad51a3c1f3568dd830a8102e` |
+| #253 | Original branch ruleset admin handoff | `727250fd6fbbd8c88f14e4db95ae8336205f2652` | `e20571d6444338dab44e03abb9c2562844d2ea0a` |
+| #256 | Phase I remediation checkpoint | `0489d1a943fa0d28e433963e3f8e4313e8411b1f` | `34ae0c6d8bd70978899c1cf5938324f51c6c3416` |
+| #259 | Stage-1 path viability and Dependabot hardening | `52479cae72699ff847983a54d6f05bed63ac3f90` | `28cc8b9ea7b94bf65a0b8cb2a37f30b2187cc6b5` |
+| #260 | Solo-mode docs synchronization and protected-path canary | current exact head must be re-queried | open until exact-head SUCCESS |
+
+### Verified ruleset configuration
+
+GitHub API evidence on 2026-08-09:
+
+```text
+ruleset:                         main-governance
+ruleset ID:                      20601712
+enforcement:                     active
+target:                          default branch / main
+bypass list:                     empty
+pull request required:           yes
+required approvals:              0
+stale-approval dismissal:        off
+Code Owner review:               off
+latest-push approval:            off
+conversation resolution:         required
+required status:                 Titan aggregate merge evidence
+branch up to date:               required
+force pushes:                    blocked
+deletions:                       restricted
+Restrict updates:                off
+```
+
+### Accepted solo-mode variance
+
+The original Stage-1 proposal required one non-author approval and a topology in which a
+non-`@velantrian` actor authored the PR while `@velantrian` approved it. The owner
+consciously superseded that requirement because GitHub does not count self-approval and a
+mandatory approval would deadlock ordinary solo work or require a second account.
+
+The accepted protection model is:
+
+```text
+PR-only
++ exact-head aggregate SUCCESS
++ branch up to date
++ conversation resolution
++ blocked force pushes
++ restricted deletion
++ empty bypass list
+```
+
+No independent approval is claimed. Aggregate success is not an independent review.
+Issue #257 remains open for the retrospective independent audit of the earlier Phase I
+range.
+
+### Canary evidence boundary
+
+PR #260 may be merged only after:
+
+- the exact current head has `Titan aggregate merge evidence` = `SUCCESS`;
+- unresolved review threads = `0`;
+- the branch is mergeable and up to date;
+- squash merge uses the expected exact head SHA.
+
+The canary exercises the ordinary non-destructive PR path. Force-push and deletion
+protection are verified from the ruleset API and are not destructively tested against
+`main`.
+
 ## Global project boundaries
 
-- `main` still lacks an administrator-enforced branch ruleset; issue #234 tracks this;
-- aggregate merge evidence exists but is not protected by repository settings;
+- active repository rules now require PR-only changes, exact aggregate evidence,
+  up-to-date branches and resolved conversations on `main`;
+- solo mode does not provide an independent approval gate;
+- retrospective independent audit debt remains open in issue #257;
 - normal query-path read-only behavior is not yet proven across every legacy promotion path;
 - Canon writer ownership is not unified across every promotion/supersession family;
 - projection dispatcher lifecycle and long-horizon operational metrics remain unwired;
@@ -176,12 +272,32 @@ Not implemented or not accepted for live use:
 
 ## Research boundary
 
-Research intake is governed by `research/IDEA_INTAKE_PROTOCOL.md` and `research/FUTURE_COMPONENTS.md` from PR #243 (`2655ecabab400dda4b350ed90142510cf5a4f49c`). Recording an idea does not accept architecture or grant authority.
+Research intake is governed by `research/IDEA_INTAKE_PROTOCOL.md` and
+`research/FUTURE_COMPONENTS.md` from PR #243
+(`2655ecabab400dda4b350ed90142510cf5a4f49c`). Recording an idea does not accept
+architecture or grant authority.
 
-Current Continuity resolvers, privacy closure, durable lifecycle, runtime wiring and activation are active engineering, not Research Mode.
+Current Continuity resolvers, privacy closure, durable lifecycle, runtime wiring and
+activation are active engineering, not Research Mode.
 
-## Next safe implementation slice
+## Next permitted engineering slice
 
-The next bounded implementation PR may add **concrete current-decision resolver composition through accepted owners only**.
+**Blocked until the governance canary closes:** do not start PR-04 / concrete resolver
+composition, Operator Gate A, runtime wiring, persistence, producer integration,
+Canon/ESM/TruthGate writes, Phase II, or Research Copilot lifecycle implementation without
+a new explicit TZ.
 
-It must remain internal and explicitly invoked, preserve the complete subject set, fail closed on missing or conflicting evidence, and add no producer invocation, persistence, public export, server/startup/worker/scheduler caller, feature flag or user-visible effect.
+Immediate remaining governance actions:
+
+1. merge PR #260 only on exact-head aggregate `SUCCESS`, zero unresolved threads and the
+   expected head SHA;
+2. record the accepted solo-mode variance publicly on closed issue #234;
+3. record superseded DoD items on issue #258 and close it only after the canary merge and
+   documentation synchronization;
+4. keep issue #257 open until the retrospective independent audit is actually completed
+   or explicitly deferred with written rationale;
+5. process Dependabot PR #255 separately after rebasing/updating it onto the new `main`.
+
+After that gate, the next bounded Continuity implementation slice may add **concrete
+current-decision resolver composition through accepted owners only**, remaining internal
+and explicitly invoked, with no producer/persistence/runtime authority.

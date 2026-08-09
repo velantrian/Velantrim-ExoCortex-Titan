@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "project": "velantrim-exocortex-titan",
-  "verified_at": "2026-08-08T10:54:00Z",
+  "verified_at": "2026-08-09T07:03:00Z",
   "repository": {
     "default_branch": "main",
-    "repository_head_sha_at_verification": "c14916214a920802c9ce6187be79ebe74ddfadfc",
+    "repository_head_sha_at_verification": "28cc8b9ea7b94bf65a0b8cb2a37f30b2187cc6b5",
     "implementation_baseline_sha": "9f07db6de8d32683d00bfe4f1673e84493607553",
-    "documentation_checkpoint_sha": "c14916214a920802c9ce6187be79ebe74ddfadfc",
-    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected at verification (PR #248 merge finalizing the PR #247 checkpoint); implementation_baseline_sha is the latest implementation-bearing Continuity merge (PR #246); documentation_checkpoint_sha is the merged FINAL docs checkpoint on main. These fields are exact dated snapshots, not evergreen remote-freshness claims."
+    "documentation_checkpoint_sha": "28cc8b9ea7b94bf65a0b8cb2a37f30b2187cc6b5",
+    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected before PR #260 completes the protected-path canary; implementation_baseline_sha is the latest implementation-bearing Continuity merge (PR #246); documentation_checkpoint_sha is PR #259, which made the ruleset path viable. The active main-governance ruleset is separately verified by GitHub API as id 20601712. These fields are exact dated snapshots, not evergreen remote-freshness claims."
   },
   "continuity": {
     "completed_capabilities": 7,
@@ -21,13 +21,18 @@
     "enabled": false,
     "observed": false,
     "runtime_authority": false,
-    "next_bounded_slice": "complete Phase I remediation (CAS characterization PR #250, frozen deps, action pins, admin ruleset handoff) before owner map / trust-root ADR; remain internal and stop before producer invocation, persistence or runtime effects"
+    "next_bounded_slice": "PHASE I GOVERNANCE CANARY IN PROGRESS: main-governance is Active in accepted solo mode with approvals=0, Code Owner review OFF, exact Titan aggregate merge evidence required, strict up-to-date enforcement, conversation resolution, force-push/deletion protection and empty bypass. Complete PR #260 on exact-head SUCCESS, record accepted variance in #234 and #258, and keep #257 open for the real retrospective independent audit. Do not start PR-04 / Operator Gate A / runtime wiring / persistence / producer / Canon-ESM-TruthGate writes / Phase II without a new explicit TZ. Continuity remains internal with no runtime authority."
   },
   "governance": {
     "aggregate_merge_evidence_present": true,
     "codeowners_present": true,
-    "branch_ruleset_enforced": false,
-    "tracking_issue": 234
+    "branch_ruleset_enforced": true,
+    "tracking_issue": 234,
+    "ruleset_id": 20601712,
+    "ruleset_name": "main-governance",
+    "ruleset_mode": "SOLO",
+    "required_approvals": 0,
+    "independent_review_claimed": false
   },
   "knowledge_base": {
     "artifact_path": "kb_graph.json",

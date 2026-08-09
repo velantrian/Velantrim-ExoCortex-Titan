@@ -6,6 +6,147 @@ This file keeps the recent operational hand-off compact. Older detailed entries 
 
 ---
 
+## 2026-08-09 — Active solo-mode ruleset and PR #260 canary
+
+```text
+Status:                   GOVERNANCE CANARY IN PROGRESS
+Verified main:            28cc8b9ea7b94bf65a0b8cb2a37f30b2187cc6b5
+Ruleset:                  main-governance · id 20601712 · Active
+Mode:                     SOLO · required approvals 0
+Canary PR:                #260
+Issue #234 / #257 / #258: CLOSED / OPEN / OPEN
+Runtime:                  UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY
+Documentation impact:     GITHUB_AND_NOTION
+Notion synchronization:   SYNCED · Titan Hub updated 2026-08-09
+```
+
+### Decision
+
+The repository owner selected an explicit solo workflow. GitHub does not count an
+author's self-approval, so the earlier requirement for one non-author approval would
+create a deadlock for ordinary `@velantrian`-authored work unless a second trusted account
+or broad bypass were introduced.
+
+The earlier Stage-1 author/reviewer topology is superseded. It remains below only as
+historical context and must not be read as the active configuration.
+
+### Verified active controls
+
+- pull request required for `main`;
+- exact `Titan aggregate merge evidence` status required;
+- branch must be up to date;
+- review conversations must be resolved;
+- force pushes blocked;
+- deletion restricted;
+- bypass list empty;
+- approvals `0`;
+- stale-approval dismissal OFF;
+- Code Owner review OFF;
+- latest-reviewable-push approval OFF;
+- Restrict updates OFF.
+
+### Explicit non-claims
+
+- no independent approval is claimed;
+- aggregate `SUCCESS` is not independent review;
+- PR #260 does not destructively test force-push or deletion protection;
+- issue #257 remains open for the real retrospective independent audit;
+- PR-04, Operator Gate A and runtime work remain out of scope.
+
+### Completion gate
+
+PR #260 may merge only when its exact current head has aggregate `SUCCESS`, unresolved
+review threads are `0`, the branch is mergeable and up to date, and squash merge uses the
+expected head SHA. After merge, record the accepted variance on #234, document superseded
+DoD items on #258, and leave #257 open.
+
+---
+
+## 2026-08-08 — PR-A Stage-1 ruleset preconditions (issue #258)
+
+```text
+Status:                   PHASE I REMEDIATION IN PROGRESS
+Base main:                34ae0c6d8bd70978899c1cf5938324f51c6c3416
+Tracking issue:           #258
+Findings:                 F-004, F-005, F-012
+branch_ruleset_enforced:  false (unchanged)
+Issue #234 / #257:        OPEN / OPEN
+Runtime:                  UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY
+Documentation impact:     GITHUB_AND_NOTION
+```
+
+### Intent
+
+Make the future Stage-1 protected merge path viable without creating a ruleset and
+without enabling Code Owner review under a sole-CODEOWNER topology.
+
+### Changes
+
+- `scripts/check_pr_merge_evidence.py`: narrow trusted-Dependabot inference of
+  `Documentation impact: NONE` for dependency-only allowlisted paths; spoofing and
+  sensitive paths remain fail-closed.
+- `docs/operations/branch-ruleset-admin-handoff.md`: Stage 1 MUST / Stage 2 DO NOT ENABLE
+  Code Owner review; single-owner topology warning; Dependabot notes.
+- Focused regression tests in `tests/test_merge_evidence_gate.py`.
+
+### Explicit non-claims
+
+- ruleset not created;
+- Code Owner review not enabled;
+- `branch_ruleset_enforced` not set true;
+- #234 / #257 not closed;
+- PR-04 not started.
+
+### Historical next step
+
+The original next step was an Active Stage-1 ruleset with a non-author approval topology.
+That topology was later superseded by the accepted solo-mode decision recorded above.
+
+---
+
+## 2026-08-08 — Phase I remediation PRs merged; ruleset still open
+
+```text
+Status:                   PHASE I REMEDIATION IN PROGRESS
+Final main at sync:       e20571d6444338dab44e03abb9c2562844d2ea0a
+Continuity readiness:     7/12 = 58.3% (unchanged)
+Runtime:                  NOT WIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY
+branch_ruleset_enforced:  false
+Issue #234:               OPEN
+Ruleset API:              [] (empty; agent cannot create rulesets — 403)
+Documentation impact:     GITHUB_AND_NOTION
+```
+
+### Merged remediation chain
+
+| PR | Merge SHA | Notes |
+|---|---|---|
+| #254 | `b07f3fcecf26c483abcb696d18a12f4a1c24a117` | Docs P2; three Codex P2 themes closed; Notion SYNCED |
+| #250 | `e16db600da155c0496a727a56a501c2f984f37fd` | CAS diagnostic harness only; classification unchanged |
+| #251 | `e68b36fea3e96739fc97cc2a66570284efef3f26` | Frozen uv.lock CI path |
+| #252 | `6a020f751ca213d2ad51a3c1f3568dd830a8102e` | Actions full-SHA pins + Dependabot |
+| #253 | `e20571d6444338dab44e03abb9c2562844d2ea0a` | Admin handoff docs; does not apply ruleset |
+
+### Post-merge CI notes
+
+- #254/#251/#252/#253: Full Titan CI push SUCCESS on merge SHA.
+- #250: Full Titan CI push `31268151500` was **cancelled** by concurrency after the
+  immediate next main push; aggregate push on that SHA SUCCESS (`31268151498`).
+  Subsequent main SHAs containing the same harness passed Full Titan
+  (`e68b36f…` / `31268402499`, `6a020f7…` / `31269298026`, `e20571d…` / `31269808302`).
+  Agent cannot `gh run rerun` (`403`).
+- Independent Codex submitted reviews hit usage limits for this cycle; record as process
+  limitation. Aggregate SUCCESS + 0 unresolved threads were required before each merge.
+
+### Historical hard stop
+
+Do not start PR-04 / Operator Gate A / runtime wiring / persistence / producer /
+Canon·ESM·TruthGate writes / Phase II / Research Copilot lifecycle without a new TZ.
+The then-pending administrator ruleset action has since been completed in solo mode; PR
+#260 is the current governance canary and documentation synchronization step.
+
+---
+
 ## 2026-08-08 — PR #247 post-merge canonical checkpoint finalized
 
 ```text
@@ -111,7 +252,7 @@ Added:
 - `docs/adr/ADR-2026-08-07-continuity-admission-facade-boundary.md`;
 - `docs/ai/PR246_ADMISSION_FACADE_CHECKPOINT.md`.
 
-The facade pins facade-policy, registry, evaluator/rule and resolver identity; verifies exact principal, authorization, tenant, source binding and complete subject scope; rejects malformed Draft sets before resolver access; obtains explicit current-decision evidence through a typed protocol; invokes only the pure evaluator; and returns content-addressed evidence.
+The facade pins facade-policy, registry/evaluator/rule and resolver identity; verifies exact principal, authorization, tenant, source binding and complete subject scope; rejects malformed Draft sets before resolver access; obtains explicit current-decision evidence through a typed protocol; invokes only the pure evaluator; and returns content-addressed evidence.
 
 ### Governance history
 
@@ -207,14 +348,16 @@ State, Goal and OpenLoop now produce bounded evidence-only Draft proposals with 
 
 ## Current unresolved engineering queue
 
-1. administrator-enforced branch ruleset — issue #234;
-2. operator/deployment-selected facade-policy and registry trust root;
-3. concrete current principal/authorization/consent/restriction/erasure/policy resolver composition;
-4. durable admission-artifact lifecycle;
-5. runtime wiring and activation governance;
-6. query-path read-only proof and Canon-writer unification;
-7. projection dispatcher lifecycle and operational observability;
-8. characterization of the intermittent SQLite legacy-lock recovery timeout;
-9. independent security review and production privacy/compliance proof.
+1. complete PR #260 protected-path canary, record the accepted variance on #234 and close #258 only after synchronized evidence;
+2. perform the retrospective independent audit tracked by #257 without backfilling approvals;
+3. update and validate Dependabot PR #255 separately against the post-#260 `main`;
+4. establish the operator/deployment-selected facade-policy and registry trust root;
+5. compose current principal/authorization/consent/restriction/erasure/policy evidence;
+6. design the durable admission-artifact lifecycle;
+7. retain runtime wiring and activation governance as a separately authorized slice;
+8. prove query-path read-only behavior and unify Canon-writer ownership;
+9. wire projection dispatcher lifecycle and operational observability;
+10. characterize the intermittent SQLite legacy-lock recovery timeout;
+11. obtain independent security review and production privacy/compliance proof.
 
 Research candidates remain in `research/FUTURE_COMPONENTS.md` and do not replace this engineering queue.

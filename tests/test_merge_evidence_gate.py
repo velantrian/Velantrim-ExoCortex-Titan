@@ -1,14 +1,22 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from scripts.check_pr_merge_evidence import (
     ARM03_WORKFLOW,
     CI_WORKFLOW,
     CONTINUITY_WORKFLOW,
     DOCKER_WORKFLOW,
+    ActorIdentity,
     classify_required_workflows,
     evaluate_documentation_metadata,
     evaluate_required_runs,
+    is_trusted_dependabot,
+    resolve_documentation_impact,
+    _is_dependabot_inferred_none_path,
 )
+
+HANDOFF_PATH = Path("docs/operations/branch-ruleset-admin-handoff.md")
 
 
 def _run(
@@ -162,3 +170,285 @@ GitHub hand-off path: docs/ai/NOTION_HANDOFF.md#governance
 """
 
     assert evaluate_documentation_metadata(body).state == "success"
+
+
+def _dependabot() -> ActorIdentity:
+    return ActorIdentity(login="dependabot[bot]", type="Bot", id=49699333)
+
+
+def _human() -> ActorIdentity:
+    return ActorIdentity(login="velantrian", type="User", id=1)
+
+
+def test_trusted_dependabot_identity_requires_bot_type() -> None:
+    assert is_trusted_dependabot(_dependabot()) is True
+    assert (
+        is_trusted_dependabot(
+            ActorIdentity(login="dependabot[bot]", type="User", id=49699333)
+        )
+        is False
+    )
+    assert (
+        is_trusted_dependabot(
+            ActorIdentity(login="renovate[bot]", type="Bot", id=2)
+        )
+        is False
+    )
+
+
+def test_dependabot_uv_lock_missing_metadata_infers_none() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=("uv.lock",),
+        body="Bumps uv.lock.",
+    )
+
+    assert evaluation.state == "success"
+    assert "inferred Documentation impact NONE" in evaluation.description
+
+
+def test_human_missing_metadata_fails_closed() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_human(),
+        changed_paths=(".github/workflows/ci.yml",),
+        body="No classification",
+    )
+
+    assert evaluation.state == "failure"
+    assert "must declare Documentation impact" in evaluation.description
+
+
+def test_unknown_bot_missing_metadata_fails_closed() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=ActorIdentity(login="some-other[bot]", type="Bot", id=99),
+        changed_paths=("uv.lock",),
+        body="",
+    )
+
+    assert evaluation.state == "failure"
+
+
+def test_human_body_claiming_dependabot_does_not_spoof_identity() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_human(),
+        changed_paths=(".github/workflows/ci.yml",),
+        body="This PR is from dependabot[bot] / app/dependabot.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "must declare Documentation impact" in evaluation.description
+
+
+def test_dependabot_workflow_without_metadata_fails_closed() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=(".github/workflows/ci.yml",),
+        body="Bumps the github-actions group with 3 updates.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "documentation-sensitive paths" in evaluation.description
+
+
+def test_dependabot_action_without_metadata_fails_closed() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=(".github/actions/my-action/action.yml",),
+        body="Updates custom action.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "documentation-sensitive paths" in evaluation.description
+
+
+def test_dependabot_pyproject_toml_without_metadata_fails_closed() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=("pyproject.toml",),
+        body="Updates dependencies.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "documentation-sensitive paths" in evaluation.description
+
+
+def test_dependabot_dependabot_yml_without_metadata_fails_closed() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=(".github/dependabot.yml",),
+        body="Reconfigures Dependabot.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "documentation-sensitive paths" in evaluation.description
+
+
+def test_dependabot_sensitive_path_without_metadata_fails_closed() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=(
+            "uv.lock",
+            "docs/operations/branch-ruleset-admin-handoff.md",
+        ),
+        body="Bumps dependencies.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "documentation-sensitive paths" in evaluation.description
+
+
+def test_dependabot_explicit_metadata_uses_ordinary_contract() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=("docs/ai/CURRENT_STATE.md",),
+        body="Documentation impact: `GITHUB_ONLY`",
+    )
+
+    assert evaluation.state == "success"
+    assert evaluation.description == "documentation impact is GITHUB_ONLY"
+
+
+def test_dependabot_explicit_notion_requirement_still_validated() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=("docs/ai/CURRENT_STATE.md",),
+        body="Documentation impact: `GITHUB_AND_NOTION`\nNotion access: `AVAILABLE`",
+    )
+
+    assert evaluation.state == "failure"
+    assert "GITHUB_AND_NOTION requires" in evaluation.description
+
+
+def test_active_ruleset_contract_is_documented_without_claiming_independent_review() -> None:
+    text = HANDOFF_PATH.read_text(encoding="utf-8")
+
+    assert "Required approvals" in text
+    assert "Titan aggregate merge evidence" in text
+    assert "Require branches to be up to date" in text or "up to date" in text.lower()
+    assert "force push" in text.lower() or "Force push" in text
+    assert "deletion" in text.lower() or "Restrict deletions" in text
+    assert "Code Owner review" in text
+    assert "sole" in text.lower() or "single-owner" in text.lower() or "single-codeowner" in text.lower()
+    # The document must record the ruleset as genuinely active with a real ID,
+    # not as a pending/proposed contract.
+    assert "active" in text.lower()
+    assert "Ruleset ID:" in text
+    assert "*(pending" not in text
+    # Required approvals = 0 must not be conflated with independent/non-author review.
+    assert "required approvals | `0`" in text.lower() or "required approvals remain `0`" in text.lower()
+    assert "does not provide independent" in text.lower() or "not claim independent" in text.lower() or "no independent" in text.lower()
+    assert "#257" in text
+
+
+# ============================================================================
+# Strict path validation tests for Dependabot allowlist (issue #4 fix)
+# ============================================================================
+
+
+def test_dependabot_path_validator_accepts_uv_lock() -> None:
+    assert _is_dependabot_inferred_none_path("uv.lock") is True
+
+
+def test_dependabot_path_validator_accepts_requirements_txt() -> None:
+    assert _is_dependabot_inferred_none_path("requirements.txt") is True
+
+
+def test_dependabot_path_validator_accepts_requirements_dev_txt() -> None:
+    assert _is_dependabot_inferred_none_path("requirements-dev.txt") is True
+
+
+def test_dependabot_path_validator_accepts_requirements_nested_txt() -> None:
+    assert _is_dependabot_inferred_none_path("requirements/dev.txt") is True
+
+
+def test_dependabot_path_validator_accepts_requirements_prod_txt() -> None:
+    assert _is_dependabot_inferred_none_path("requirements/prod.txt") is True
+
+
+def test_dependabot_path_validator_rejects_requirements_nested_with_subdirs() -> None:
+    assert _is_dependabot_inferred_none_path("requirements/nested/policy.txt") is False
+
+
+def test_dependabot_path_validator_rejects_requirements_wildcard_traversal() -> None:
+    assert _is_dependabot_inferred_none_path("requirements-foo/docs/architecture.txt") is False
+
+
+def test_dependabot_path_validator_rejects_deeply_nested_requirements() -> None:
+    assert _is_dependabot_inferred_none_path("requirements/a/b.txt") is False
+
+
+def test_dependabot_path_validator_rejects_requirements_in_nested_dir() -> None:
+    assert _is_dependabot_inferred_none_path("nested/requirements.txt") is False
+
+
+def test_dependabot_path_validator_rejects_requirements_in_docs() -> None:
+    assert _is_dependabot_inferred_none_path("docs/requirements.txt") is False
+
+
+def test_dependabot_path_validator_rejects_empty_requirements_file() -> None:
+    assert _is_dependabot_inferred_none_path("requirements/.txt") is False
+
+
+def test_dependabot_path_validator_rejects_dot_traversal() -> None:
+    assert _is_dependabot_inferred_none_path("requirements/../policy.txt") is False
+
+
+def test_dependabot_path_validator_rejects_backslash_paths() -> None:
+    assert _is_dependabot_inferred_none_path("requirements\\test.txt") is False
+
+
+def test_dependabot_path_validator_rejects_absolute_paths() -> None:
+    assert _is_dependabot_inferred_none_path("/requirements.txt") is False
+
+
+def test_dependabot_path_validator_rejects_empty_string() -> None:
+    assert _is_dependabot_inferred_none_path("") is False
+
+
+def test_dependabot_path_validator_rejects_dot_segment() -> None:
+    assert _is_dependabot_inferred_none_path("./requirements.txt") is False
+
+
+def test_dependabot_path_validator_rejects_dotdot_segment() -> None:
+    assert _is_dependabot_inferred_none_path("../requirements.txt") is False
+
+
+def test_dependabot_infer_multiple_valid_paths() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=(
+            "uv.lock",
+            "requirements.txt",
+            "requirements/dev.txt",
+            "requirements-prod.txt",
+        ),
+        body="Updates multiple dependency files.",
+    )
+
+    assert evaluation.state == "success"
+    assert "inferred Documentation impact NONE" in evaluation.description
+
+
+def test_dependabot_fail_closed_on_mixed_valid_invalid_paths() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=(
+            "uv.lock",
+            "docs/architecture.md",  # Invalid path
+        ),
+        body="Mixed dependencies and docs.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "documentation-sensitive paths" in evaluation.description
+
+
+def test_dependabot_fail_closed_on_nested_requirements_traversal() -> None:
+    evaluation = resolve_documentation_impact(
+        actor=_dependabot(),
+        changed_paths=("requirements/nested/policy.txt",),
+        body="Updates nested file.",
+    )
+
+    assert evaluation.state == "failure"
+    assert "documentation-sensitive paths" in evaluation.description
