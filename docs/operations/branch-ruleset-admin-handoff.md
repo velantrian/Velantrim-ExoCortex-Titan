@@ -1,126 +1,136 @@
-# ADMIN-01 — Branch ruleset administrator handoff
+# ADMIN-01 — Active `main-governance` ruleset record
 
-**Date (UTC):** 2026-08-08  
-**Tracking issues:** [#234](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/234) (ruleset enforcement), [#258](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/258) (Stage-1 preconditions)  
-**Agent admin permission:** not available (GitHub API rulesets create returns `403`)  
-**Machine state:** `branch_ruleset_enforced = false` in `docs/state/project_state.json` (unchanged)  
-**Ruleset existence:** **absent until an administrator creates it manually**. This document is a contract, not proof of enforcement.
-
-## Current CODEOWNERS topology
-
-`.github/CODEOWNERS` is **single-owner** (`* @velantrian`).
-
-Consequences:
-
-- GitHub does not count self-approval toward required reviews.
-- Enabling **Require review from Code Owners** while `@velantrian` is the sole effective Code Owner and may also author pull requests creates a **merge deadlock** unless a bypass is used.
-- Stage-1 protection therefore relies on **non-author approval** (preferred: PR author = `cursor[bot]` / agent; independent approval = `@velantrian`).
-- Code Owner review is **intentionally deferred** to Stage 2 after a real multi-reviewer topology exists.
-- Do **not** invent CODEOWNERS entries for accounts/teams that are not real trusted reviewers with repository access.
-
-## Stage 1 — enable now (recommended first Active ruleset)
-
+**Initial handoff date (UTC):** 2026-08-08  
+**Active configuration verified:** 2026-08-09  
+**Tracking issues:** [#234](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/234), [#258](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/258)  
+**Ruleset ID:** `20601712`  
 **Ruleset name:** `main-governance`  
-**Enforcement:** Active  
-**Target:** Include default branch / `main`  
-**Require review from Code Owners:** **OFF**
+**Enforcement:** `active`  
+**Target:** default branch (`main`)  
+**Bypass list:** empty
 
-| Setting | Required value | Note |
+This document began as an administrator handoff because the connected agent could not
+create repository rulesets. The repository owner subsequently created and adjusted the
+ruleset manually. The configuration below is the verified current state, not the older
+Stage-1 proposal.
+
+## Accepted solo-workflow decision
+
+Titan is currently maintained by one repository owner working with Cursor, Claude Code,
+Codex and ChatGPT. GitHub does not count an author's self-approval. Requiring one approval
+therefore created a deadlock whenever the PR author was `@velantrian`, unless a second
+trusted account or broad bypass was introduced.
+
+The accepted decision is:
+
+- do not require a second GitHub account;
+- required approvals remain `0` unless the owner explicitly changes the governance model;
+- do not claim independent approval where none exists;
+- do not use aggregate success as a substitute for independent review;
+- keep retrospective independent audit debt visible in issue #257.
+
+This supersedes the earlier proposed topology of `cursor[bot]` as author and
+`@velantrian` as mandatory independent reviewer.
+
+## Verified active configuration
+
+| Setting | Active value | Notes |
 |---|---|---|
-| Pull request required | yes | Enforce review before merge |
-| Required approvals | ≥ 1 | Must be a non-author reviewer |
-| Dismiss stale approvals | yes | New commits reset approval status |
-| Require conversation resolution | yes | All review threads resolved |
-| Require status checks to pass | yes | Aggregate gate is mandatory |
-| Required status check | `Titan aggregate merge evidence` | Exact context name from workflow |
-| Require branches to be up to date before merging | yes | Prevent stale-base merges |
-| Block force pushes | yes | Prevent history rewriting |
-| Restrict deletions | yes | Prevent branch erasure |
-| Require Code Owner review | **OFF** | Not viable with single-CODEOWNER topology (deadlock risk) |
-| Restrict updates | **OFF** | Merging PR must be allowed; "Require PR" already blocks direct pushes |
-| Bypass | Named emergency maintainers only; no broad role bypass | Minimize exception scope |
-| Administrators | Apply ruleset to administrators when a non-author approval path exists | No self-approval |
+| Pull request required | ON | Changes to `main` must pass through a PR |
+| Required approvals | `0` | Accepted solo workflow |
+| Dismiss stale approvals | OFF | No approval gate is configured |
+| Require conversation resolution | ON | Unresolved review threads block merge |
+| Required status checks | ON | Exact aggregate gate is mandatory |
+| Required status check | `Titan aggregate merge evidence` | Exact context, GitHub Actions integration |
+| Require branch up to date | ON | Strict status-check policy |
+| Block force pushes | ON | `non_fast_forward` rule |
+| Restrict deletions | ON | `deletion` rule |
+| Require Code Owner review | OFF | Single-CODEOWNER deadlock avoided |
+| Require latest-push approval | OFF | No approval gate is configured |
+| Restrict updates | OFF | PR requirement protects `main` without blocking valid merges |
+| Bypass | empty | `current_user_can_bypass = never` |
+| Allowed merge methods | merge, squash, rebase | Repository ruleset values |
 
-**Stage 1 reviewer topology:**
+GitHub API evidence:
 
 ```text
-PR author:      cursor[bot] / non-@velantrian agent
-Approval:       @velantrian (independent, satisfies required approvals ≥ 1)
-Code Owners:    OFF (intentionally)
-Self-approval:  GitHub rejects as non-counting
-Deadlock risk:  Mitigated by non-author author topology
+GET /repos/velantrian/Velantrim-ExoCortex-Titan/rulesets
+→ main-governance · id=20601712 · active
+
+GET /repos/velantrian/Velantrim-ExoCortex-Titan/rulesets/20601712
+→ target=~DEFAULT_BRANCH
+→ required_approving_review_count=0
+→ dismiss_stale_reviews_on_push=false
+→ require_code_owner_review=false
+→ require_last_push_approval=false
+→ required_review_thread_resolution=true
+→ strict_required_status_checks_policy=true
+→ required status: Titan aggregate merge evidence
+→ bypass_actors=[]
+→ deletion + non_fast_forward rules present
+→ no update-restriction rule
 ```
 
-**Why Code Owner review is OFF in Stage 1:**
+## Protection model
 
-GitHub does not count self-approval toward required reviews. With `@velantrian` as the sole effective CODEOWNER (and possibly author), enabling "Require review from Code Owners" creates a merge deadlock:
+```text
+PR required
+  + exact-head aggregate SUCCESS
+  + branch up to date with main
+  + all review conversations resolved
+  + force-push protection
+  + deletion protection
+  + empty bypass list
+  = accepted solo-mode protected merge path
+```
 
-- If `@velantrian` authors the PR, self-approval doesn't count.
-- No other CODEOWNER exists to provide the required review.
-- Bypass would be required, defeating the protection.
+This model reduces accidental and automated merge risk. It does not provide independent
+human approval. That limitation is explicit rather than hidden.
 
-Code Owner review is intentionally deferred to Stage 2, when the topology is expanded.
+## Code Owner review
 
-## Stage 2 — deferred (do not enable yet)
-
-| Setting | Status |
-|---|---|
-| Require review from Code Owners | **DO NOT ENABLE YET** |
-
-Enable Stage 2 only after at least one of:
-
-- a second real trusted write collaborator is added as CODEOWNER and can submit counting approvals; or
-- another proven topology that eliminates self-approval deadlock without a broad bypass.
-
-**Warning:** Do not enable Code Owner review while `@velantrian` is the sole effective Code Owner and may also author pull requests.
+`.github/CODEOWNERS` remains single-owner (`* @velantrian`). Code Owner review stays OFF.
+It may be reconsidered only after a real multi-reviewer topology exists and the owner
+explicitly adopts that governance change. Do not invent CODEOWNERS entries or enable a
+setting that recreates the self-approval deadlock.
 
 ## Dependabot aggregate compatibility
 
 The aggregate evaluator (`scripts/check_pr_merge_evidence.py`) may infer
-`Documentation impact: NONE` for **trusted Dependabot** PRs only when:
+`Documentation impact: NONE` for trusted Dependabot PRs only when:
 
 - actor identity comes from GitHub API bot fields (`dependabot[bot]` / `Bot`);
 - changed paths are dependency-only allowlisted paths;
-- no documentation-sensitive / Notion-authoritative paths are present.
+- no documentation-sensitive, workflow, action, governance or other protected paths are
+  present.
 
-Human authors, unknown bots, spoofed body text, and Dependabot changes to sensitive paths remain **fail-closed** without explicit Documentation impact metadata.
+Human authors, unknown bots, spoofed body text and mixed/sensitive Dependabot changes
+remain fail-closed without explicit metadata. Do not execute untrusted PR-head code under
+privileged `pull_request_target` to make Dependabot pass.
 
-Do **not** fix Dependabot compatibility by executing untrusted PR-head code under privileged `pull_request_target`.
+## Canary evidence and limits
 
-## Required status checks (via aggregate gate)
+PR #260 is the non-destructive protected-path canary. Merge it only when:
 
-The aggregate merge-evidence workflow must fail closed when applicable specialized workflows are failed, cancelled, timed out, missing, or stale.
+1. its current exact head has `Titan aggregate merge evidence` = `SUCCESS`;
+2. its branch is up to date with `main`;
+3. unresolved review threads = `0`;
+4. the merge uses the expected exact head SHA.
 
-## Proof to collect (administrator) after Stage-1 creation
+The canary proves the ordinary PR merge path. It does not perform destructive direct-push,
+force-push or deletion attempts against `main`; those controls are verified from ruleset
+configuration.
 
-Save structured evidence:
+## Issue handling
 
-- ruleset ID
-- target branch
-- required approval count (≥ 1) and dismiss-stale-approvals setting
-- proof that Code Owner review is **not** enabled (must be OFF)
-- proof that "Restrict updates" is **not** enabled (must be OFF; "Require PR" blocks direct pushes)
-- required status context string(s)
-- bypass list (minimal; preferably empty)
-- test evidence: a governance PR authored by `cursor[bot]` / agent, approved by `@velantrian`, merged successfully
-- confirmation of force-push/deletion blocking
+- Issue #234 may remain closed only with a public variance comment explaining that the
+  original one-approval criterion was superseded by the accepted solo workflow.
+- Issue #258 must not be closed silently. After PR #260 merges, record which original DoD
+  items were superseded and close it only after documentation synchronization is complete.
+- Issue #257 remains open until the requested retrospective independent audit is actually
+  performed or explicitly deferred with written rationale.
 
-Do **not** perform destructive direct-push, force-push, or deletion tests on `main`. The ruleset itself will reject unauthorized changes.
+## Non-authority statement
 
-## Issue #234 closure criteria
-
-Close #234 only after:
-
-1. Stage-1 ruleset is Active with API proof (ruleset ID recorded);
-2. canary acceptance evidence is recorded;
-3. governance proof PR merges through the protected path;
-4. documentation sets `branch_ruleset_enforced = true`.
-
-Until that proof exists, leave `branch_ruleset_enforced = false` and keep #234 open.
-
-`PR #253 merged ≠ ruleset applied.` Stage-1 precondition docs (issue #258 / PR-A) also do **not** create the ruleset.
-
-## Residual risk while ruleset is absent
-
-CI workflows exist, but repository settings can still bypass required checks,
-allow direct pushes, or merge with unresolved threads. This remains governance P0.
+Repository governance changes no runtime, Canon, TruthGate, policy, identity, Continuity,
+tool, action or deployment authority.
