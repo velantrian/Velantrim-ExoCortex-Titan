@@ -49,13 +49,31 @@ A newer rerun of the same workflow replaces an older attempt only when its `run_
 
 ## Documentation synchronization enforcement
 
-Every PR body must declare exactly one classification:
+**Default contract:** Every PR body must declare exactly one classification:
 
 ```text
 Documentation impact: NONE
 Documentation impact: GITHUB_ONLY
 Documentation impact: GITHUB_AND_NOTION
 ```
+
+**Narrow exception (trusted Dependabot only):**
+
+The aggregate evaluator may infer `Documentation impact: NONE` for trusted Dependabot PRs **only when**:
+
+- Actor identity comes from GitHub API bot fields (`dependabot[bot]` with `type: Bot`)
+- All changed files are in the strict dependency-only allowlist:
+  - Exact root-level files: `uv.lock`, `requirements.txt`
+  - Root-level `requirements-<fragment>.txt` (single filename, no `/`)
+  - One level deep: `requirements/<filename>.txt` only
+- No PR-body text claim can establish bot trust (API identity only)
+- Mixed paths (valid + invalid in same PR) fail closed
+- Empty path sets fail closed
+- Workflows, actions, pyproject.toml, .github/dependabot.yml, and all governance/docs paths remain fail-closed without explicit metadata
+
+Human authors, unknown bots, spoofed body text, and Dependabot changes to sensitive paths remain **fail-closed** without explicit metadata.
+
+When explicit metadata is present, ordinary validation applies even for Dependabot.
 
 For `GITHUB_AND_NOTION`, the gate accepts only:
 
@@ -80,18 +98,40 @@ The evaluator compares the PR base SHA and head SHA. A branch that is behind its
 
 ## Required repository settings
 
+### Stage 1 (current, designed for single-CODEOWNER topology)
+
 An administrator must create a branch ruleset for `main` with:
 
-- require pull request before merge;
-- require at least one approval;
-- dismiss stale approvals;
-- require conversation resolution;
-- require branch to be up to date;
-- require status check `Titan aggregate merge evidence`;
-- block force pushes;
-- block branch deletion;
-- restrict direct pushes and bypass actors;
-- require CODEOWNERS review for owned paths.
+| Setting | Required value | Reason |
+|---|---|---|
+| Pull request required | yes | Enforce code review path before merge |
+| Required approvals | ≥ 1 (non-author) | At least one independent reviewer |
+| Dismiss stale approvals | yes | New commits reset approval status |
+| Conversation resolution | yes | All review threads resolved before merge |
+| Status checks | `Titan aggregate merge evidence` | Gate is mandatory exactly as named |
+| Require branch up to date | yes | Prevent stale-base merges |
+| Block force pushes | yes | Prevent history rewriting |
+| Block deletion | yes | Prevent branch erasure |
+| Require Code Owner review | **OFF** | Not viable with single effective CODEOWNER who may author PRs (deadlock risk) |
+| Direct push / update restriction | Blocked via PR-required setting; no "Restrict updates" toggle | Merging PR is allowed after all checks pass |
+| Bypass | Named emergency maintainers only; no broad role bypass | Minimize exception scope |
+| Apply to administrators | yes (only when non-author approval path is proven viable) | No self-approval; administrators subject to same rules |
+
+**Stage 1 reviewer topology:**
+- PR author: `cursor[bot]` / non-`@velantrian` agent (not self-authored)
+- Approval: `@velantrian` (independent, non-author)
+- Code Owner review: **OFF**
+
+Do not enable "Require review from Code Owners" while `@velantrian` is the sole effective CODEOWNER and may also author pull requests.
+
+### Stage 2 (future, requires topology expansion)
+
+Code Owner review is **intentionally deferred** to Stage 2. Enable only after:
+
+- A second trusted write collaborator is added as CODEOWNER and can submit counting approvals; **OR**
+- Another topology that provably eliminates self-approval deadlock without a broad bypass
+
+Stage 2 is not the current state. Do not claim current governance supports Code Owner review.
 
 The workflow and CODEOWNERS file do not activate these repository settings by themselves.
 

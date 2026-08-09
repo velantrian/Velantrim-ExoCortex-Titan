@@ -1,9 +1,9 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-08  
-**Repository `main` head at verification:** `e20571d6444338dab44e03abb9c2562844d2ea0a`  
+**Repository `main` head at verification:** `34ae0c6d8bd70978899c1cf5938324f51c6c3416`  
 **Latest implementation-bearing baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
-**Phase I remediation status:** `PHASE I REMEDIATION IN PROGRESS` (PRs #254/#250/#251/#252/#253 merged; ruleset not applied)
+**Phase I remediation status:** `PHASE I REMEDIATION IN PROGRESS` (remediation PRs merged; Stage-1 preconditions in PR-A / #258; ruleset not applied)
 
 Code presence and passing tests do not close a risk. Closure requires correct authority ownership, current evidence, integration controls, activation governance and operational proof.
 
@@ -37,14 +37,19 @@ Residual risk:
 
 - checks can still be bypassed by repository settings or direct push/merge behavior;
 - issue #234 requires administrator configuration;
-- merged handoff PR #253 (`e20571d6444338dab44e03abb9c2562844d2ea0a`) does **not**
-  apply the ruleset; API proof at verification still returns an empty ruleset list.
+- merged handoff PR #253 / checkpoint #256 do **not** apply the ruleset; API proof at
+  verification still returns an empty ruleset list;
+- sole CODEOWNER `@velantrian` makes **Code Owner review unsafe to enable** until a
+  second trusted reviewer topology exists (tracked by issue #258);
+- Dependabot PRs historically failed aggregate for missing Documentation metadata; PR-A
+  adds a narrow trusted-Dependabot inference path (dependency-only allowlist only).
 
-Required action:
+Required action (Stage 1 first):
 
 - require pull requests and the aggregate merge-evidence check;
 - require resolved conversations;
-- require approvals ≥ 1 and dismiss stale approvals;
+- require approvals ≥ 1 (non-author) and dismiss stale approvals;
+- **leave Code Owner review disabled** until Stage 2 topology exists;
 - block force push and deletion;
 - restrict direct push;
 - require up-to-date branches where appropriate;

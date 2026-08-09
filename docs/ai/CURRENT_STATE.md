@@ -1,9 +1,9 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-08  
-**Repository `main` head at verification:** `e20571d6444338dab44e03abb9c2562844d2ea0a`  
+**Repository `main` head at verification:** `34ae0c6d8bd70978899c1cf5938324f51c6c3416`  
 **Latest implementation-bearing Continuity baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
-**Documentation checkpoint SHA:** `e20571d6444338dab44e03abb9c2562844d2ea0a` (Phase I remediation sync after PR #253)  
+**Documentation checkpoint SHA:** `34ae0c6d8bd70978899c1cf5938324f51c6c3416` (Phase I sync #256; PR-A Stage-1 preconditions pending merge)  
 **Phase I remediation status:** `PHASE I REMEDIATION IN PROGRESS`  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
 
@@ -178,6 +178,7 @@ ruleset not yet physically applied. Do **not** treat Phase I as complete.
 | #251 | Frozen `uv.lock` CI installs | `f1c1a82f622d3eef64b7c756d98502f8c0c9da95` | `e68b36fea3e96739fc97cc2a66570284efef3f26` |
 | #252 | GitHub Actions full-SHA pins | `f7e6397c218b0f1add4ec02ad84a2ebe8427b264` | `6a020f751ca213d2ad51a3c1f3568dd830a8102e` |
 | #253 | Branch ruleset admin handoff | `727250fd6fbbd8c88f14e4db95ae8336205f2652` | `e20571d6444338dab44e03abb9c2562844d2ea0a` |
+| #256 | Phase I remediation checkpoint | `0489d1a943fa0d28e433963e3f8e4313e8411b1f` | `34ae0c6d8bd70978899c1cf5938324f51c6c3416` |
 
 Merged evidence notes:
 
@@ -188,13 +189,27 @@ Merged evidence notes:
 - #251/#252 are CI supply-chain hardening only; Docker pip path remains separately
   documented and is not a frozen-uv path;
 - #253 documents required ruleset settings. **PR #253 merged ≠ branch ruleset applied.**
+- #256 recorded Phase I IN PROGRESS with ruleset still absent.
+
+### Stage-1 ruleset preconditions (issue #258 / PR-A)
+
+Implemented on the PR-A branch (not yet a claim that the ruleset exists):
+
+- Stage-1 vs Stage-2 Code Owner semantics documented in
+  [`docs/operations/branch-ruleset-admin-handoff.md`](../operations/branch-ruleset-admin-handoff.md);
+- Code Owner review explicitly **deferred** while CODEOWNERS is single-owner;
+- Stage-1 reviewer topology: non-`@velantrian` PR author + `@velantrian` approval;
+- Dependabot aggregate path may infer `Documentation impact: NONE` only for trusted
+  Dependabot bot identity on dependency-only allowlisted paths; spoofing / unknown bots /
+  sensitive paths remain fail-closed (`scripts/check_pr_merge_evidence.py`).
 
 Ruleset API at verification: `GET /repos/.../rulesets` → `[]`. Agent token cannot create
-rulesets (`403`). `branch_ruleset_enforced` remains `false`. Issue #234 remains **OPEN**.
+rulesets (`403`). `branch_ruleset_enforced` remains `false`. Issues #234 and #257 remain
+**OPEN**. Retrospective audit process debt remains #257.
 
-Independent Codex submitted reviews were unavailable (usage-limit bot comments) for this
-cycle; merges proceeded only after exact-head aggregate SUCCESS and zero unresolved
-review threads. That process gap is recorded, not invented as an APPROVED review.
+Independent Codex submitted reviews were unavailable (usage-limit bot comments) for the
+earlier remediation cycle; that process gap is recorded in #257, not invented as an
+APPROVED review.
 
 ## Global project boundaries
 
@@ -218,13 +233,13 @@ Current Continuity resolvers, privacy closure, durable lifecycle, runtime wiring
 Operator Gate A, runtime wiring, persistence, producer integration, Canon/ESM/TruthGate
 writes, Phase II, or Research Copilot lifecycle implementation without a new explicit TZ.
 
-Immediate remaining Phase I action (administrator only):
+Immediate remaining Phase I action:
 
-1. apply the repository ruleset to `main` per
-   [`docs/operations/branch-ruleset-admin-handoff.md`](../operations/branch-ruleset-admin-handoff.md);
-2. record API proof (ruleset ID, active, target=`main`);
-3. verify issue #234 acceptance criteria;
-4. only then set `branch_ruleset_enforced=true` and close #234.
+1. merge PR-A (issue #258) with non-author approval topology when available;
+2. administrator creates Active Stage-1 `main-governance` (**Code Owner review OFF**);
+3. record API proof (ruleset ID, active, target=`main`);
+4. canary + governance-proof PR through protected path;
+5. only then set `branch_ruleset_enforced=true` and close #234.
 
 After that gate, the next bounded Continuity implementation slice may add **concrete
 current-decision resolver composition through accepted owners only**, remaining internal

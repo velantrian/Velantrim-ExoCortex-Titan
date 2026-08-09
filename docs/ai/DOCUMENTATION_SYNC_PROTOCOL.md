@@ -44,6 +44,14 @@ the same decision-bearing facts, reality status, evidence, limitations, and next
 
 Every PR must select one class.
 
+**Narrow exception (trusted Dependabot only):** The aggregate merge-evidence gate may infer `NONE` for a trusted Dependabot PR when:
+- Actor identity is `dependabot[bot]` with type `Bot` (GitHub API, not PR body text)
+- All changed files are in the strict dependency-only allowlist: `uv.lock`, `requirements.txt`, `requirements-<fragment>.txt` (no `/`), `requirements/<filename>.txt` (exactly one level deep)
+- No documentation-sensitive paths are present (workflows, actions, `pyproject.toml`, `.github/dependabot.yml`, governance docs)
+- Human authors, unknown bots, spoofed identity text, and Dependabot PRs with mixed/sensitive paths remain fail-closed and must provide explicit metadata
+
+Human-authored PRs and non-allowlisted Dependabot PRs continue to require explicit classification.
+
 ### `NONE`
 
 Use only when behavior, contracts, architecture, operations, risks, user instructions,

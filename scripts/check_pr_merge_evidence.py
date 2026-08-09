@@ -83,6 +83,74 @@ _DOCUMENTATION_IMPACT_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Narrow allowlist for trusted Dependabot PRs that may infer Documentation impact
+# NONE when explicit metadata is absent. Any path outside this set remains fail-closed.
+# Workflows and actions are excluded because they can change permissions, triggers, secrets,
+# shell commands, artifacts, privileged execution, and runner behavior. Workflow changes
+# are documentation-sensitive and require explicit metadata.
+# This validator avoids fnmatch to prevent * from crossing directory boundaries.
+DEPENDABOT_INFERRED_NONE_EXACT_PATHS = frozenset(
+    {
+        "uv.lock",
+        "requirements.txt",
+    }
+)
+
+def _is_dependabot_inferred_none_path(path: str) -> bool:
+    """Validate that path matches strict Dependabot dependency-only allowlist.
+
+    Accepts only:
+    - Exact root-level files: uv.lock, requirements.txt
+    - Root-level requirements-<fragment>.txt (no directory separators)
+    - requirements/<filename>.txt (exactly one level deep)
+
+    Rejects paths with: .., ., backslashes, directory traversal, nested dirs.
+    """
+    if not path or not isinstance(path, str):
+        return False
+
+    # Reject paths with backslashes (Windows-style or escaping)
+    if "\\" in path:
+        return False
+
+    # Reject absolute paths
+    if path.startswith("/"):
+        return False
+
+    # Check exact matches first
+    if path in DEPENDABOT_INFERRED_NONE_EXACT_PATHS:
+        return True
+
+    # Split on / to validate path structure
+    parts = path.split("/")
+
+    # Reject dot-segment traversal
+    if "." in parts or ".." in parts:
+        return False
+
+    # Allow root-level requirements-<fragment>.txt (exactly one part, no /)
+    if len(parts) == 1 and path.startswith("requirements-") and path.endswith(".txt"):
+        # Ensure fragment is non-empty and doesn't contain more /
+        fragment = path[len("requirements-"):-len(".txt")]
+        if fragment and "/" not in path:
+            return True
+
+    # Allow requirements/<filename>.txt (exactly two parts)
+    if len(parts) == 2 and parts[0] == "requirements":
+        filename = parts[1]
+        # Filename must be non-empty and end with .txt
+        if filename and filename.endswith(".txt") and filename != ".txt":
+            return True
+
+    return False
+
+_TRUSTED_DEPENDABOT_LOGINS = frozenset(
+    {
+        "dependabot[bot]",
+        "app/dependabot",
+    }
+)
+
 
 @dataclass(frozen=True)
 class Evaluation:
@@ -92,6 +160,55 @@ class Evaluation:
     def __post_init__(self) -> None:
         if self.state not in {"pending", "success", "failure"}:
             raise ValueError(f"unsupported evaluation state: {self.state}")
+
+
+@dataclass(frozen=True)
+class ActorIdentity:
+    """GitHub actor identity from API fields (never from PR body text)."""
+
+    login: str
+    type: str
+    id: int | None = None
+
+
+def actor_identity_from_pull_request(pull_request: dict[str, Any]) -> ActorIdentity:
+    user = pull_request.get("user")
+    if not isinstance(user, dict):
+        return ActorIdentity(login="", type="User", id=None)
+    raw_id = user.get("id")
+    actor_id: int | None
+    try:
+        actor_id = int(raw_id) if raw_id is not None else None
+    except (TypeError, ValueError):
+        actor_id = None
+    return ActorIdentity(
+        login=str(user.get("login") or ""),
+        type=str(user.get("type") or "User"),
+        id=actor_id,
+    )
+
+
+def is_trusted_dependabot(actor: ActorIdentity) -> bool:
+    """Return True only for Dependabot bot identity from GitHub API fields."""
+
+    if actor.type != "Bot":
+        return False
+    login = actor.login.strip().lower()
+    if not login:
+        return False
+    return login in {value.lower() for value in _TRUSTED_DEPENDABOT_LOGINS}
+
+
+def paths_allow_dependabot_inferred_none(paths: Iterable[str]) -> bool:
+    """Check if all paths are in the strict Dependabot dependency-only allowlist.
+
+    Empty path sets fail closed (return False).
+    Any path outside the allowlist causes failure.
+    """
+    values = tuple(paths)
+    if not values:
+        return False
+    return all(_is_dependabot_inferred_none_path(path) for path in values)
 
 
 class GitHubApi:
@@ -268,6 +385,42 @@ def evaluate_documentation_metadata(body: str) -> Evaluation:
     )
 
 
+def resolve_documentation_impact(
+    *,
+    actor: ActorIdentity,
+    changed_paths: Iterable[str],
+    body: str,
+) -> Evaluation:
+    """Resolve documentation-impact gate using explicit metadata or narrow Dependabot inference.
+
+    Explicit PR-body metadata always wins and follows the ordinary contract.
+    Missing metadata is fail-closed for humans and unknown bots.
+    Trusted Dependabot may infer ``NONE`` only for dependency-only allowlisted paths.
+    PR body text claiming Dependabot authorship is never trusted.
+    """
+
+    matches = tuple(_DOCUMENTATION_IMPACT_RE.finditer(body))
+    if matches:
+        return evaluate_documentation_metadata(body)
+
+    if is_trusted_dependabot(actor):
+        if paths_allow_dependabot_inferred_none(changed_paths):
+            return Evaluation(
+                "success",
+                "inferred Documentation impact NONE for trusted Dependabot dependency-only paths",
+            )
+        return Evaluation(
+            "failure",
+            "trusted Dependabot PR changes documentation-sensitive paths without "
+            "Documentation impact metadata",
+        )
+
+    return Evaluation(
+        "failure",
+        "PR body must declare Documentation impact: NONE, GITHUB_ONLY, or GITHUB_AND_NOTION",
+    )
+
+
 def _latest_run(
     runs: Iterable[dict[str, Any]], workflow_name: str
 ) -> dict[str, Any] | None:
@@ -330,15 +483,19 @@ def evaluate_pull_request_once(
     if bool(pull_request.get("draft")):
         return head_sha, Evaluation("pending", "pull request is Draft")
 
-    metadata = evaluate_documentation_metadata(str(pull_request.get("body") or ""))
-    if metadata.state == "failure":
-        return head_sha, metadata
-
     comparison = api.compare(base_sha, head_sha)
     if int(comparison.get("behind_by") or 0) > 0:
         return head_sha, Evaluation("failure", "pull request branch is behind base")
 
     filenames = api.pull_request_files(number)
+    metadata = resolve_documentation_impact(
+        actor=actor_identity_from_pull_request(pull_request),
+        changed_paths=filenames,
+        body=str(pull_request.get("body") or ""),
+    )
+    if metadata.state == "failure":
+        return head_sha, metadata
+
     required = classify_required_workflows(filenames)
     runs = api.workflow_runs(head_sha)
     return head_sha, evaluate_required_runs(required, runs)
