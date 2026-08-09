@@ -83,6 +83,15 @@ def test_unknown_schema_version_fails_closed() -> None:
         validate_project_state(state)
 
 
+@pytest.mark.parametrize("schema_version", [2.0, True, "2", [], {}])
+def test_non_integer_schema_versions_fail_closed(schema_version: object) -> None:
+    state = copy.deepcopy(_state())
+    state["schema_version"] = schema_version
+
+    with pytest.raises(ProjectStateError, match="schema_version must be one of"):
+        validate_project_state(state)
+
+
 def test_readiness_arithmetic_fails_closed() -> None:
     state = copy.deepcopy(_state())
     state["continuity"]["readiness_percent"] = 50.0
