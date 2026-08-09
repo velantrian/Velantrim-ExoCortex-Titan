@@ -163,7 +163,7 @@ def test_notion_status_uses_canonical_synced_value() -> None:
     state = copy.deepcopy(_state())
     state["notion"]["status"] = "SYNCED_FINAL"
 
-    with pytest.raises(ProjectStateError, match="notion.status must be 'SYNCED'"):
+    with pytest.raises(ProjectStateError, match="status must be 'SYNCED'"):
         validate_project_state(state)
 
 
