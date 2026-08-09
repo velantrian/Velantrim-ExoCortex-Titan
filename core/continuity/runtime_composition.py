@@ -459,13 +459,22 @@ class ContinuityRuntimeCompositionOwner:
             if self._state is ContinuityRuntimeState.STARTED:
                 return self._diagnostic()
             previous_state = self._state
-            candidate = ContinuityArtifactStore(self._configuration.database_path())
+            database_path = self._configuration.database_path()
+            database_existed = database_path.exists()
+            candidate = ContinuityArtifactStore(database_path)
             try:
                 candidate.ensure_schema()
-                _verify_selected_schema(self._configuration.database_path())
-            except Exception:
+                _verify_selected_schema(database_path)
+            except ContinuityArtifactLifecycleError as exc:
                 self._store = None
                 self._state = previous_state
+                if database_existed and not isinstance(
+                    exc,
+                    ContinuityRuntimeCompositionError,
+                ):
+                    raise ContinuityRuntimeCompositionError(
+                        "selected lifecycle storage schema is incompatible"
+                    ) from exc
                 raise
             self._store = candidate
             self._state = ContinuityRuntimeState.STARTED
