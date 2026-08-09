@@ -1295,9 +1295,9 @@ class ContinuityArtifactStore:
                 (request_id,),
             ).fetchone()
             if previous is not None:
-                receipts = self._receipts_for_request(connection, request_id)
+                previous_receipts = self._receipts_for_request(connection, request_id)
                 connection.execute("COMMIT")
-                return receipts
+                return previous_receipts
             rows = connection.execute(
                 f"""
                 SELECT * FROM {_ACTIVE_TABLE}
@@ -1314,7 +1314,7 @@ class ContinuityArtifactStore:
                     cleanup_limit,
                 ),
             ).fetchall()
-            receipts: list[ContinuityNeutralizationReceipt] = []
+            new_receipts: list[ContinuityNeutralizationReceipt] = []
             for row in rows:
                 artifact, _append_receipt_id = self._artifact_from_row(row)
                 receipt = ContinuityNeutralizationReceipt.create(
@@ -1328,7 +1328,7 @@ class ContinuityArtifactStore:
                     ),
                 )
                 self._neutralize(connection, artifact, receipt)
-                receipts.append(receipt)
+                new_receipts.append(receipt)
             connection.execute(
                 f"""
                 INSERT INTO {_CLEANUP_REQUEST_TABLE}(
@@ -1350,7 +1350,7 @@ class ContinuityArtifactStore:
                 ),
             )
             connection.execute("COMMIT")
-            return tuple(receipts)
+            return tuple(new_receipts)
         except ContinuityArtifactLifecycleError:
             if connection.in_transaction:
                 connection.execute("ROLLBACK")
