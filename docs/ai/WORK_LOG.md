@@ -27,7 +27,9 @@ Historical reviews:        no submitted review objects
 Runtime:                   UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY
 Documentation impact:      GITHUB_AND_NOTION
 Notion target:             Velantrim Titan 9.0
-Notion synchronization:    SYNCED_FINAL
+Notion synchronization:    SYNCED
+Audit sync finalized:      true
+Project-state schema:      v2; historical v1 snapshots remain readable
 ```
 
 ### Audit result
@@ -44,8 +46,10 @@ Notion synchronization:    SYNCED_FINAL
 - a real post-merge documentation drift was found and corrected by PR #261;
 - the same exact audit head, CI, aggregate, merge and boundary facts were recorded at the
   top of the existing Notion page `Velantrim Titan 9.0`;
-- the machine-readable final state is guarded with fail-closed schema, SHA relationship,
-  exact Notion target/page and focused substitution tests.
+- project-state schema v2 pins issue #257, PR #261, exact head/merge and exact Notion page;
+- the canonical Notion protocol status is `SYNCED`; a separate boolean records that the
+  audit synchronization is finalized;
+- historical schema v1 snapshots remain readable under their original, less strict shape.
 
 Public record:
 [`docs/audits/phase-i-retrospective-audit-2026-08-09.md`](../audits/phase-i-retrospective-audit-2026-08-09.md).
