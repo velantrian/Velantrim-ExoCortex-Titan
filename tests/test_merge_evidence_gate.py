@@ -319,23 +319,25 @@ def test_dependabot_explicit_notion_requirement_still_validated() -> None:
     assert "GITHUB_AND_NOTION requires" in evaluation.description
 
 
-def test_stage1_ruleset_contract_is_documented_without_claiming_enforcement() -> None:
+def test_active_ruleset_contract_is_documented_without_claiming_independent_review() -> None:
     text = HANDOFF_PATH.read_text(encoding="utf-8")
 
-    assert "Stage 1" in text
-    assert "Stage 2" in text
     assert "Required approvals" in text
     assert "Titan aggregate merge evidence" in text
     assert "Require branches to be up to date" in text or "up to date" in text.lower()
     assert "force push" in text.lower() or "Force push" in text
     assert "deletion" in text.lower() or "Restrict deletions" in text
     assert "Code Owner review" in text
-    assert "DO NOT ENABLE" in text or "not enabled" in text.lower() or "deferred" in text.lower()
-    assert "branch_ruleset_enforced = false" in text or "branch_ruleset_enforced` remains" in text
-    assert "sole" in text.lower() or "single-owner" in text.lower()
-    # Contract documentation must not claim the ruleset already exists as active.
-    assert "ruleset already active" not in text.lower()
-    assert "Ruleset ID:" not in text or "Ruleset ID: *(pending" in text
+    assert "sole" in text.lower() or "single-owner" in text.lower() or "single-codeowner" in text.lower()
+    # The document must record the ruleset as genuinely active with a real ID,
+    # not as a pending/proposed contract.
+    assert "active" in text.lower()
+    assert "Ruleset ID:" in text
+    assert "*(pending" not in text
+    # Required approvals = 0 must not be conflated with independent/non-author review.
+    assert "required approvals | `0`" in text.lower() or "required approvals remain `0`" in text.lower()
+    assert "does not provide independent" in text.lower() or "not claim independent" in text.lower() or "no independent" in text.lower()
+    assert "#257" in text
 
 
 # ============================================================================
