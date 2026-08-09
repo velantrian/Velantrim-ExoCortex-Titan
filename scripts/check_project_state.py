@@ -237,7 +237,7 @@ def validate_project_state(data: Any) -> dict[str, Any]:
 
     root = _require_mapping(data, "root")
     schema_version = root.get("schema_version")
-    if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+    if type(schema_version) is not int or schema_version not in SUPPORTED_SCHEMA_VERSIONS:
         raise ProjectStateError(
             f"schema_version must be one of {sorted(SUPPORTED_SCHEMA_VERSIONS)}"
         )
