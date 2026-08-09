@@ -17,22 +17,16 @@ def _state() -> dict:
 
 
 def _legacy_v1_state() -> dict:
+    """Build the minimal shape accepted by the validator before schema v2."""
+
     state = copy.deepcopy(_state())
     state["schema_version"] = 1
-    for field in (
-        "retrospective_audit_pr",
-        "retrospective_audit_head_sha",
-        "retrospective_audit_merge_sha",
-        "retrospective_audit_issue_state",
-    ):
-        state["governance"].pop(field)
-    state["governance"]["retrospective_audit_status"] = (
-        "COMPLETE_PENDING_RECORD_MERGE"
-    )
-    state["notion"] = {
-        "status": "SYNCED_PENDING_FINAL_MERGE_SHA",
-        "safe_targets": ["Velantrim Titan 9.0"],
+    state["governance"] = {
+        "aggregate_merge_evidence_present": True,
+        "codeowners_present": True,
+        "branch_ruleset_enforced": True,
     }
+    state.pop("notion", None)
     return state
 
 
@@ -66,8 +60,19 @@ def test_historical_v1_snapshot_remains_readable() -> None:
 
     assert report["ok"] is True
     assert report["schema_version"] == 1
-    assert report["audit_status"] == "COMPLETE_PENDING_RECORD_MERGE"
-    assert report["notion_status"] == "SYNCED_PENDING_FINAL_MERGE_SHA"
+    assert report["audit_status"] == "LEGACY_OR_UNDECLARED"
+    assert report["notion_status"] == "LEGACY_OR_UNDECLARED"
+
+
+def test_historical_v1_ignores_fields_the_original_validator_ignored() -> None:
+    state = _legacy_v1_state()
+    state["governance"]["tracking_issue"] = "not validated by v1"
+    state["notion"] = "not validated by v1"
+
+    report = validate_project_state(state)
+
+    assert report["ok"] is True
+    assert report["schema_version"] == 1
 
 
 def test_unknown_schema_version_fails_closed() -> None:
