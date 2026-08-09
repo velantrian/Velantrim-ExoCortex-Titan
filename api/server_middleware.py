@@ -201,27 +201,27 @@ def _install_continuity_runtime_lifespan(app: FastAPI) -> None:
     original_lifespan = app.router.lifespan_context
 
     @asynccontextmanager
-    async def _composed_lifespan(application: FastAPI):
-        async with original_lifespan(application):
+    async def _composed_lifespan(app: FastAPI):
+        async with original_lifespan(app):
             from core.continuity.runtime_composition import (
                 compose_continuity_runtime_from_environment,
             )
 
             owner = compose_continuity_runtime_from_environment()
-            application.state.continuity_runtime_owner = None
+            app.state.continuity_runtime_owner = None
             if owner is not None:
                 try:
                     await asyncio.to_thread(owner.startup)
-                except BaseException:
+                except Exception:
                     await asyncio.to_thread(owner.shutdown)
                     raise
-                application.state.continuity_runtime_owner = owner
+                app.state.continuity_runtime_owner = owner
             try:
                 yield
             finally:
                 if owner is not None:
                     await asyncio.to_thread(owner.shutdown)
-                application.state.continuity_runtime_owner = None
+                app.state.continuity_runtime_owner = None
 
     app.router.lifespan_context = _composed_lifespan
     setattr(app.state, _CONTINUITY_LIFESPAN_MARKER, True)
