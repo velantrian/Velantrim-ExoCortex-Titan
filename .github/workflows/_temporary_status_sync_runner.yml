@@ -1,0 +1,52 @@
+name: Temporary status-sync runner
+
+on:
+  push:
+    branches:
+      - continuity/status-sync-runtime-wiring
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: continuity/status-sync-runtime-wiring
+          fetch-depth: 0
+
+      - name: Extract and apply patch
+        shell: bash
+        run: |
+          awk '
+            /^          python - <<'\''PY'\''$/ { capture=1; next }
+            /^          PY$/ { capture=0; exit }
+            capture {
+              if (substr($0, 1, 10) == "          ") {
+                print substr($0, 11)
+              } else {
+                print $0
+              }
+            }
+          ' .github/workflows/_temporary_status_sync_patch.yml > /tmp/status_sync_patch.py
+          python /tmp/status_sync_patch.py
+          rm .github/workflows/_temporary_status_sync_patch.yml
+          rm .github/workflows/_temporary_status_sync_runner.yml
+
+      - name: Validate schema and focused tests
+        shell: bash
+        run: |
+          python scripts/check_project_state.py
+          python -m pytest -q tests/test_check_project_state.py
+          python -m ruff check scripts/check_project_state.py tests/test_check_project_state.py
+
+      - name: Commit authoritative status surfaces
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ai/CURRENT_STATE.md docs/ai/KNOWN_RISKS.md docs/ai/WORK_LOG.md docs/ai/COMPONENT_MAP.md docs/state/project_state.json scripts/check_project_state.py tests/test_check_project_state.py .github/workflows/_temporary_status_sync_patch.yml .github/workflows/_temporary_status_sync_runner.yml
+          git commit -m "docs(state): record Continuity 10/12 runtime wiring"
+          git push origin HEAD:continuity/status-sync-runtime-wiring
