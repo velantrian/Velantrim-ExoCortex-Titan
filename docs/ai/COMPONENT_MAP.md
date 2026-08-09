@@ -1,8 +1,8 @@
 # 🗺️ Component and Authority Map
 
-**Repository head verified:** `main@c14916214a920802c9ce6187be79ebe74ddfadfc`  
+**Repository head verified:** `main@28cc8b9ea7b94bf65a0b8cb2a37f30b2187cc6b5`  
 **Implementation baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
-**Documentation checkpoint:** `c14916214a920802c9ce6187be79ebe74ddfadfc` (PR #248 FINAL of PR #247)  
+**Documentation checkpoint:** `28cc8b9ea7b94bf65a0b8cb2a37f30b2187cc6b5` (PR #259)  
 **Machine-readable state:** [`docs/state/project_state.json`](../state/project_state.json)  
 **Rule:** presence is not wiring; content-addressed evidence is not runtime authority.
 
@@ -17,7 +17,8 @@
 | Retrieval coordination | `core/pipeline.py`, `core/hybrid_retriever.py` | implemented, wired | read-side proposal only |
 | Projection delivery | projection outbox / dispatcher primitives | implemented, tested, not lifecycle-wired | rebuildable derived state |
 
-No Continuity component owns Canon, TruthGate, PolicyKernel, GoalStack, reminders, tools, actions or compute routing.
+No Continuity component owns Canon, TruthGate, PolicyKernel, GoalStack, reminders, tools,
+actions or compute routing.
 
 ## 2. Continuity accepted lineage
 
@@ -69,7 +70,8 @@ content-addressed facade result
 STOP
 ```
 
-No stage in this accepted path invokes the signal producer, persists admission artifacts, writes Canon, creates reminders/actions or changes compute routing.
+No stage in this accepted path invokes the signal producer, persists admission artifacts,
+writes Canon, creates reminders/actions or changes compute routing.
 
 ## 4. Source-admission contracts and adapters
 
@@ -102,7 +104,9 @@ Adapters do not admit, persist, call the signal producer or create reminders/act
 | Evaluation function | `evaluate_continuity_admission(...)` |
 | Result evidence | `ContinuityAdmissionEvaluationResult` |
 
-The evaluator reads no database, environment, network or implicit clock. It resolves only the exact evaluator/rule pair in the supplied registry and returns a complete deterministic admitted/rejected partition. It creates no runtime permission.
+The evaluator reads no database, environment, network or implicit clock. It resolves only
+the exact evaluator/rule pair in the supplied registry and returns a complete deterministic
+admitted/rejected partition. It creates no runtime permission.
 
 ## 6. Internal admission-aware facade
 
@@ -149,7 +153,8 @@ facade result ≠ runtime permission
 
 ## 8. Next resolver-composition boundary
 
-The next internal slice must reuse accepted owners rather than introduce a second PolicyKernel, identity system or erasure owner.
+The next internal slice must reuse accepted owners rather than introduce a second
+PolicyKernel, identity system or erasure owner.
 
 Expected shape:
 
@@ -175,7 +180,8 @@ evidence-only result
 STOP
 ```
 
-Missing, stale, unknown, conflicting or partially covered state must reject the complete evaluation. Silent subject filtering is forbidden.
+Missing, stale, unknown, conflicting or partially covered state must reject the complete
+evaluation. Silent subject filtering is forbidden.
 
 ## 9. Privacy and lifecycle boundaries
 
@@ -193,8 +199,16 @@ Historical receipts never override current restriction or erasure state.
 
 ## 10. Governance and operations
 
-- aggregate merge evidence is implemented and observed;
-- `main` branch protection/ruleset remains unenforced; issue #234;
+- aggregate merge evidence is implemented, observed and required by the active ruleset;
+- `main-governance` is active as ruleset ID `20601712` for the default branch;
+- the accepted solo mode requires `0` approvals, Code Owner review OFF and latest-push
+  approval OFF;
+- pull requests, exact aggregate evidence, up-to-date branches and resolved conversations
+  are mandatory;
+- force pushes are blocked, deletion is restricted, Restrict updates is OFF and bypass is
+  empty;
+- PR #260 is the non-destructive protected-path canary and governance documentation sync;
+- issue #257 remains open because aggregate success does not replace independent review;
 - projection dispatcher remains implemented/tested but not lifecycle-wired;
 - identity layer remains legacy/unwired;
 - query-path read-only and Canon writer unification remain open hardening work;
