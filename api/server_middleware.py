@@ -3,6 +3,8 @@ HTTP middleware extracted from server.py (security headers + opt-in rate limit).
 """
 from __future__ import annotations
 
+import asyncio
+from contextlib import asynccontextmanager
 import json
 import logging
 from queue import Full, Queue
@@ -15,6 +17,7 @@ from fastapi.responses import JSONResponse, Response
 
 _LOG = logging.getLogger(__name__)
 _SHADOW_QUEUE_CAPACITY = 4
+_CONTINUITY_LIFESPAN_MARKER = "_continuity_runtime_lifespan_installed"
 
 
 def _response_with_body(response, body: bytes) -> Response:
@@ -190,7 +193,43 @@ def _mapping_or_empty(value: object) -> Mapping[str, object]:
     return value if isinstance(value, Mapping) else {}
 
 
+def _install_continuity_runtime_lifespan(app: FastAPI) -> None:
+    """Compose bounded Continuity ownership around the existing server lifespan."""
+
+    if getattr(app.state, _CONTINUITY_LIFESPAN_MARKER, False):
+        return
+    original_lifespan = app.router.lifespan_context
+
+    @asynccontextmanager
+    async def _composed_lifespan(app: FastAPI):
+        async with original_lifespan(app):
+            from core.continuity.runtime_composition import (
+                compose_continuity_runtime_from_environment,
+            )
+
+            owner = compose_continuity_runtime_from_environment()
+            app.state.continuity_runtime_owner = None
+            if owner is not None:
+                try:
+                    await asyncio.to_thread(owner.startup)
+                except Exception:
+                    await asyncio.to_thread(owner.shutdown)
+                    raise
+                app.state.continuity_runtime_owner = owner
+            try:
+                yield
+            finally:
+                if owner is not None:
+                    await asyncio.to_thread(owner.shutdown)
+                app.state.continuity_runtime_owner = None
+
+    app.router.lifespan_context = _composed_lifespan
+    setattr(app.state, _CONTINUITY_LIFESPAN_MARKER, True)
+
+
 def register_server_middleware(app: FastAPI) -> None:
+    _install_continuity_runtime_lifespan(app)
+
     @app.middleware("http")
     async def _security_headers_mw(request, call_next):
         response = await call_next(request)
