@@ -1,27 +1,49 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "project": "velantrim-exocortex-titan",
-  "verified_at": "2026-08-09T08:25:33Z",
+  "verified_at": "2026-08-09T18:25:46Z",
   "repository": {
     "default_branch": "main",
-    "repository_head_sha_at_verification": "90e221be2bed8177f4648787d713058df0f29e1f",
-    "implementation_baseline_sha": "9f07db6de8d32683d00bfe4f1673e84493607553",
-    "documentation_checkpoint_sha": "90e221be2bed8177f4648787d713058df0f29e1f",
-    "head_semantics": "repository_head_sha_at_verification and documentation_checkpoint_sha identify the exact main commit inspected after PR #261 merged the durable Phase I retrospective audit record. implementation_baseline_sha remains the latest implementation-bearing Continuity merge (PR #246). This file is an exact dated snapshot and does not claim evergreen remote freshness."
+    "repository_head_sha_at_verification": "dc30817f2c4abb1afcaab2f127e679d5f9b884d7",
+    "implementation_baseline_sha": "dc30817f2c4abb1afcaab2f127e679d5f9b884d7",
+    "documentation_checkpoint_sha": "dc30817f2c4abb1afcaab2f127e679d5f9b884d7",
+    "head_semantics": "These three SHA roles identify the exact protected main checkpoint inspected after PR #264 merged the internal current-decision resolver composition. The later status-synchronization PR documents this underlying implementation checkpoint and does not claim evergreen remote freshness."
   },
   "continuity": {
-    "completed_capabilities": 7,
+    "completed_capabilities": 8,
     "total_capabilities": 12,
-    "readiness_percent": 58.3,
-    "remaining_capabilities": 5,
-    "remaining_percent": 41.7,
+    "readiness_percent": 66.7,
+    "remaining_capabilities": 4,
+    "remaining_percent": 33.3,
     "implemented": true,
     "tested": true,
     "wired": false,
     "enabled": false,
     "observed": false,
     "runtime_authority": false,
-    "next_bounded_slice": "GOVERNANCE CANARY COMPLETE; PHASE I RETROSPECTIVE AUDIT COMPLETE; GITHUB_AND_NOTION SYNCHRONIZATION COMPLETE. The active main-governance ruleset remains in accepted solo mode. No Continuity runtime authority is granted. Any resolver-composition, Operator Gate, runtime wiring, persistence, producer, Canon-ESM-TruthGate write, Phase II or Research Copilot lifecycle work requires a separate explicit task."
+    "next_bounded_slice": "Durable retention, replay, cleanup and erasure lifecycle for admission artifacts. It must remain separate from runtime wiring, controlled enablement, Operator GO and live observed evidence."
+  },
+  "continuity_current_decision_resolver": {
+    "tracking_issue": 263,
+    "implementation_pr": 264,
+    "exact_head_sha": "6dcbad3926db99e9621622acfcfc1b2db7da9d21",
+    "merge_sha": "dc30817f2c4abb1afcaab2f127e679d5f9b884d7",
+    "status": "COMPLETE",
+    "authority": "INTERNAL_EVIDENCE_ONLY",
+    "concrete_live_owner_adapters_selected": false,
+    "persistence_present": false,
+    "runtime_wired": false,
+    "operator_go": false,
+    "exact_head_continuity_run": 31328446750,
+    "exact_head_full_ci_run": 31328446760,
+    "exact_head_docker_run": 31328446757,
+    "exact_head_aggregate_run": 31328730371,
+    "post_merge_continuity_run": 31328768451,
+    "post_merge_full_ci_run": 31328768446,
+    "post_merge_docker_run": 31328768473,
+    "post_merge_aggregate_run": 31328768471,
+    "unresolved_review_threads": 0,
+    "independent_review_claimed": false
   },
   "governance": {
     "aggregate_merge_evidence_present": true,
@@ -70,6 +92,11 @@
     ],
     "audit_target": "Velantrim Titan 9.0",
     "audit_page_id": "398ac84d-0547-81fe-8ca5-d0d2727d1961",
-    "audit_merge_sha_recorded": "90e221be2bed8177f4648787d713058df0f29e1f"
+    "audit_merge_sha_recorded": "90e221be2bed8177f4648787d713058df0f29e1f",
+    "latest_status_target": "Velantrim Titan 9.0",
+    "latest_status_page_id": "398ac84d-0547-81fe-8ca5-d0d2727d1961",
+    "latest_synchronization_kind": "CONTINUITY_CURRENT_DECISION_RESOLVER",
+    "latest_implementation_merge_sha": "dc30817f2c4abb1afcaab2f127e679d5f9b884d7",
+    "latest_synchronization_finalized": true
   }
 }
