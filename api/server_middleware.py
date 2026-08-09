@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 import json
 import logging
 from queue import Full, Queue
@@ -203,15 +204,18 @@ def _install_continuity_runtime_lifespan(app: FastAPI) -> None:
     @asynccontextmanager
     async def _composed_lifespan(app: FastAPI):
         async with original_lifespan(app):
-            from core.continuity.runtime_composition import (
-                compose_continuity_runtime_from_environment,
+            from core.continuity.controlled_enablement import (
+                compose_controlled_continuity_runtime_from_environment,
             )
 
-            owner = compose_continuity_runtime_from_environment()
+            owner = compose_controlled_continuity_runtime_from_environment()
             app.state.continuity_runtime_owner = None
             if owner is not None:
                 try:
-                    await asyncio.to_thread(owner.startup)
+                    await asyncio.to_thread(
+                        owner.startup,
+                        evaluated_at=datetime.now(UTC),
+                    )
                 except Exception:
                     await asyncio.to_thread(owner.shutdown)
                     raise
