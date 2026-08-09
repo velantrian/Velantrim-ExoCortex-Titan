@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "project": "velantrim-exocortex-titan",
   "verified_at": "2026-08-09T08:25:33Z",
   "repository": {
@@ -21,7 +21,7 @@
     "enabled": false,
     "observed": false,
     "runtime_authority": false,
-    "next_bounded_slice": "GOVERNANCE CANARY COMPLETE; PHASE I RETROSPECTIVE AUDIT COMPLETE; GITHUB_AND_NOTION SYNCHRONIZATION FINAL. The active main-governance ruleset remains in accepted solo mode. No Continuity runtime authority is granted. Any resolver-composition, Operator Gate, runtime wiring, persistence, producer, Canon-ESM-TruthGate write, Phase II or Research Copilot lifecycle work requires a separate explicit task."
+    "next_bounded_slice": "GOVERNANCE CANARY COMPLETE; PHASE I RETROSPECTIVE AUDIT COMPLETE; GITHUB_AND_NOTION SYNCHRONIZATION COMPLETE. The active main-governance ruleset remains in accepted solo mode. No Continuity runtime authority is granted. Any resolver-composition, Operator Gate, runtime wiring, persistence, producer, Canon-ESM-TruthGate write, Phase II or Research Copilot lifecycle work requires a separate explicit task."
   },
   "governance": {
     "aggregate_merge_evidence_present": true,
@@ -61,7 +61,8 @@
     "runtime_authority": false
   },
   "notion": {
-    "status": "SYNCED_FINAL",
+    "status": "SYNCED",
+    "audit_synchronization_finalized": true,
     "safe_targets": [
       "Velantrim Titan 9.0",
       "Continuity Source Admission — Architecture",
