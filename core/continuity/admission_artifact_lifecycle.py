@@ -98,7 +98,7 @@ class ContinuityNeutralizationKind(str, Enum):
 
 
 def _bounded_int(value: object, name: str, maximum: int) -> int:
-    if type(value) is not int or not 1 <= value <= maximum:
+    if not isinstance(value, int) or isinstance(value, bool) or not 1 <= value <= maximum:
         raise ContinuityArtifactLifecycleError(
             f"{name} must be an integer in [1, {maximum}]"
         )
@@ -273,7 +273,7 @@ class ContinuityRetentionPolicy:
         retention_class: str,
         retention_seconds: int,
         max_cleanup_batch: int = MAX_CLEANUP_BATCH,
-    ) -> "ContinuityRetentionPolicy":
+    ) -> ContinuityRetentionPolicy:
         payload: dict[str, object] = {
             "schema_version": RETENTION_POLICY_SCHEMA_VERSION,
             "retention_class": _text(retention_class, "retention_class"),
@@ -470,7 +470,7 @@ class ContinuityAdmissionArtifact:
         facade_result: ContinuityAdmissionFacadeResult,
         retention_policy: ContinuityRetentionPolicy,
         recorded_at: datetime,
-    ) -> "ContinuityAdmissionArtifact":
+    ) -> ContinuityAdmissionArtifact:
         if not isinstance(principal_context, ContinuityPrincipalContext):
             raise ContinuityArtifactLifecycleError("principal context is malformed")
         if not isinstance(authorization_context, ContinuityAuthorizationContext):
@@ -785,7 +785,7 @@ class ContinuityErasureDecision:
         observed_at: datetime,
         valid_until: datetime,
         evidence_refs: Iterable[str],
-    ) -> "ContinuityErasureDecision":
+    ) -> ContinuityErasureDecision:
         if not isinstance(status, ContinuityErasureStatus):
             raise ContinuityArtifactLifecycleError("erasure status is invalid")
         owner_name = _text(owner_id, "owner_id")
@@ -962,7 +962,7 @@ class ContinuityNeutralizationReceipt:
         evidence_refs: Iterable[str],
         owner_id: str | None = None,
         owner_version: str | None = None,
-    ) -> "ContinuityNeutralizationReceipt":
+    ) -> ContinuityNeutralizationReceipt:
         request = _hash(request_id, "request_id")
         neutralized = _aware(neutralized_at, "neutralized_at")
         refs = _refs(evidence_refs, "evidence_refs", required=True)
