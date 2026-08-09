@@ -1492,36 +1492,42 @@ class ContinuityArtifactStore:
             )
 
     @staticmethod
-    def _artifact_from_row(
-        row: sqlite3.Row,
-    ) -> tuple[ContinuityAdmissionArtifact, str]:
+def _artifact_from_row(
+    row: sqlite3.Row,
+) -> tuple[ContinuityAdmissionArtifact, str]:
+    try:
         artifact = ContinuityAdmissionArtifact(
-            artifact_id=row["artifact_id"],
-            integrity_digest=row["integrity_digest"],
-            tenant_ref=row["tenant_ref"],
-            principal_context_id=row["principal_context_id"],
-            authorization_context_id=row["authorization_context_id"],
-            subject_refs=_stored_subjects(row["subject_refs_json"]),
-            policy_snapshot_id=row["policy_snapshot_id"],
-            retention_policy_id=row["retention_policy_id"],
-            erasure_domain_refs=_stored_strings(
-                row["erasure_domain_refs_json"],
-                "erasure_domain_refs_json",
-            ),
-            recorded_at=_parse_datetime(row["recorded_at"], "recorded_at"),
-            retained_until=_parse_datetime(
-                row["retained_until"],
-                "retained_until",
-            ),
-            payload_json=row["payload_json"],
-            schema_version=row["schema_version"],
+  artifact_id=row["artifact_id"],
+  integrity_digest=row["integrity_digest"],
+  tenant_ref=row["tenant_ref"],
+  principal_context_id=row["principal_context_id"],
+  authorization_context_id=row["authorization_context_id"],
+  subject_refs=_stored_subjects(row["subject_refs_json"]),
+  policy_snapshot_id=row["policy_snapshot_id"],
+  retention_policy_id=row["retention_policy_id"],
+  erasure_domain_refs=_stored_strings(
+      row["erasure_domain_refs_json"],
+      "erasure_domain_refs_json",
+  ),
+  recorded_at=_parse_datetime(row["recorded_at"], "recorded_at"),
+  retained_until=_parse_datetime(
+      row["retained_until"],
+      "retained_until",
+  ),
+  payload_json=row["payload_json"],
+  schema_version=row["schema_version"],
         )
         append_receipt_id = _hash(
-            row["append_receipt_id"],
-            "append_receipt_id",
+  row["append_receipt_id"],
+  "append_receipt_id",
         )
-        return artifact, append_receipt_id
-
+    except ContinuityArtifactLifecycleError:
+        raise
+    except ContinuitySourceAdmissionError as exc:
+        raise ContinuityArtifactLifecycleError(
+  f"stored artifact failed lifecycle validation: {exc}"
+        ) from exc
+    return artifact, append_receipt_id
     @staticmethod
     def _receipt_from_row(row: sqlite3.Row) -> ContinuityNeutralizationReceipt:
         try:
