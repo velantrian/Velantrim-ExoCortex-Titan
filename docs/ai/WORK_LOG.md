@@ -8,21 +8,26 @@ history, merged PR bodies and dated checkpoint documents under `docs/ai/` and
 
 ---
 
-## 2026-08-09 — Phase I retrospective audit completed
+## 2026-08-09 — Phase I retrospective audit completed and synchronized
 
 ```text
-Audit issue:               #257
+Audit issue:               #257 · CLOSED_COMPLETED
 Audit range:               c14916214a920802c9ce6187be79ebe74ddfadfc
                            ...
                            34ae0c6d8bd70978899c1cf5938324f51c6c3416
 Included PRs:              #254, #250, #251, #252, #253, #256
 Range size:                6 squash merges · 21 changed files
-Main inspected:            c9e272d5d9da76219f8e0caaf784892e80046a31
+Audit PR:                  #261
+Audit PR exact head:       54b4f962748610d3a57580506b7c36afa5329a71
+Full Titan CI:             31303242633 · SUCCESS
+Aggregate evidence:        31303444415 · SUCCESS
+Audit merge/checkpoint:    90e221be2bed8177f4648787d713058df0f29e1f
 Verdict:                   no new P0/P1 runtime defect in the range
 Historical reviews:        no submitted review objects
 Runtime:                   UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY
 Documentation impact:      GITHUB_AND_NOTION
 Notion target:             Velantrim Titan 9.0
+Notion synchronization:    SYNCED_FINAL
 ```
 
 ### Audit result
@@ -36,8 +41,11 @@ Notion target:             Velantrim Titan 9.0
 - the older PR #253 one-approval model was later superseded by the accepted solo workflow
   and corrected by PR #260;
 - the CAS-contention incident remains uncharacterized under issue #249;
-- a real post-merge documentation drift was found and corrected: canonical files still
-  described PR #260 as open and PR #255 as pending.
+- a real post-merge documentation drift was found and corrected by PR #261;
+- the same exact audit head, CI, aggregate, merge and boundary facts were recorded at the
+  top of the existing Notion page `Velantrim Titan 9.0`;
+- the machine-readable final state is guarded with fail-closed schema, SHA relationship,
+  exact Notion target/page and focused substitution tests.
 
 Public record:
 [`docs/audits/phase-i-retrospective-audit-2026-08-09.md`](../audits/phase-i-retrospective-audit-2026-08-09.md).
@@ -60,10 +68,11 @@ Mode:                     SOLO · required approvals 0
 Canary PR #260 head:      b2e618e0410b89f7b889d17ed5088a561076b556
 Canary merge:             a733e760732ad2c4ec6496d3f8ea4c5d0383048f
 Dependabot PR #255 head:  c5e192acd62276cfd8968436eaaebfed319b72e0
-Dependabot merge/main:    c9e272d5d9da76219f8e0caaf784892e80046a31
+Dependabot merge:         c9e272d5d9da76219f8e0caaf784892e80046a31
+Audit PR #261 merge:      90e221be2bed8177f4648787d713058df0f29e1f
 Issue #234:               CLOSED with solo-mode variance record
 Issue #258:               CLOSED with superseded-DoD record
-Issue #257:               audit performed; close after public record merge/sync
+Issue #257:               CLOSED_COMPLETED after public audit merge/sync
 Runtime:                  unchanged
 ```
 
