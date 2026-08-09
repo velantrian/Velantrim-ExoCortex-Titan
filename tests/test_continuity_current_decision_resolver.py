@@ -146,11 +146,13 @@ class _Owner:
     substitute_subjects: tuple[SubjectRef, ...] | None = None
     corrupt_digest: bool = False
     fail: bool = False
+    mutate_identity: bool = False
+    identity_suffix: str = "stable"
     calls: int = 0
 
     @property
     def owner_id(self) -> str:
-        return f"owner:{self.domain.value}"
+        return f"owner:{self.domain.value}:{self.identity_suffix}"
 
     @property
     def owner_version(self) -> str:
@@ -171,6 +173,8 @@ class _Owner:
             raise RuntimeError("owner unavailable")
         if self.count == 0:
             return ()
+        if self.mutate_identity:
+            self.identity_suffix = "changed"
         snapshot = ContinuityCurrentDecisionOwnerSnapshot.create(
             domain=self.returned_domain or self.domain,
             owner_id=self.owner_id,
@@ -426,6 +430,16 @@ def test_non_active_principal_or_policy_snapshot_fails_closed(
     )
 
     with pytest.raises(ContinuitySourceAdmissionError, match="must be ACTIVE"):
+        _resolve(resolver)
+
+
+def test_owner_identity_mutation_during_resolution_fails_closed() -> None:
+    domain = ContinuityCurrentDecisionOwnerDomain.AUTHORIZATION
+    resolver = _resolver(
+        overrides={domain: _Owner(domain=domain, mutate_identity=True)}
+    )
+
+    with pytest.raises(ContinuitySourceAdmissionError, match="identity changed"):
         _resolve(resolver)
 
 
