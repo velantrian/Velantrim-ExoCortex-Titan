@@ -16,10 +16,8 @@ from pathlib import Path
 from typing import Any
 
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
-UUID_RE = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-)
 PROJECT_STATE_PATH = Path("docs/state/project_state.json")
+TITAN_AUDIT_PAGE_ID = "398ac84d-0547-81fe-8ca5-d0d2727d1961"
 
 
 class ProjectStateError(ValueError):
@@ -157,13 +155,15 @@ def validate_project_state(data: Any) -> dict[str, Any]:
         raise ProjectStateError(
             "governance retrospective audit head and merge SHAs must differ"
         )
+    if audit_merge != verified_head or audit_merge != checkpoint:
+        raise ProjectStateError(
+            "repository audit checkpoint SHAs must equal retrospective_audit_merge_sha"
+        )
 
     notion = _require_mapping(root.get("notion"), "notion")
     _require_literal(notion, "status", "SYNCED_FINAL")
     audit_target = _require_literal(notion, "audit_target", "Velantrim Titan 9.0")
-    page_id = _require_string(notion, "audit_page_id")
-    if not UUID_RE.fullmatch(page_id):
-        raise ProjectStateError("notion.audit_page_id must be a lowercase dashed UUID")
+    _require_literal(notion, "audit_page_id", TITAN_AUDIT_PAGE_ID)
     notion_merge = _require_sha(notion, "audit_merge_sha_recorded")
     if notion_merge != audit_merge:
         raise ProjectStateError(
