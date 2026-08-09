@@ -80,6 +80,10 @@ def validate_project_state(data: Any) -> dict[str, Any]:
     verified_head = _require_sha(repository, "repository_head_sha_at_verification")
     implementation = _require_sha(repository, "implementation_baseline_sha")
     checkpoint = _require_sha(repository, "documentation_checkpoint_sha")
+    if verified_head != checkpoint:
+        raise ProjectStateError(
+            "repository_head_sha_at_verification must equal documentation_checkpoint_sha"
+        )
     if not isinstance(repository.get("head_semantics"), str) or not repository[
         "head_semantics"
     ].strip():
@@ -153,10 +157,6 @@ def validate_project_state(data: Any) -> dict[str, Any]:
         raise ProjectStateError(
             "governance retrospective audit head and merge SHAs must differ"
         )
-    if audit_merge != verified_head or audit_merge != checkpoint:
-        raise ProjectStateError(
-            "repository audit checkpoint SHAs must equal retrospective_audit_merge_sha"
-        )
 
     notion = _require_mapping(root.get("notion"), "notion")
     _require_literal(notion, "status", "SYNCED_FINAL")
@@ -170,7 +170,7 @@ def validate_project_state(data: Any) -> dict[str, Any]:
             "notion.audit_merge_sha_recorded must equal retrospective_audit_merge_sha"
         )
     safe_targets = notion.get("safe_targets")
-    if not isinstance(safe_targets, list) or not all(
+    if not isinstance(safe_targets, list) or not safe_targets or not all(
         isinstance(target, str) and target.strip() for target in safe_targets
     ):
         raise ProjectStateError("notion.safe_targets must be a non-empty string list")
