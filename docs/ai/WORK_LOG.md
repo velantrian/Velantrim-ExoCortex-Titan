@@ -16,7 +16,8 @@ Mode:                     SOLO · required approvals 0
 Canary PR:                #260
 Issue #234 / #257 / #258: CLOSED / OPEN / OPEN
 Runtime:                  UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY
-Documentation impact:     GITHUB_ONLY
+Documentation impact:     GITHUB_AND_NOTION
+Notion synchronization:   SYNCED · Titan Hub updated 2026-08-09
 ```
 
 ### Decision
