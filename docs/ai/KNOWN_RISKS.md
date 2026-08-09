@@ -1,7 +1,7 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-09  
-**Repository `main` head inspected:** `c9e272d5d9da76219f8e0caaf784892e80046a31`  
+**Repository `main` head inspected:** `90e221be2bed8177f4648787d713058df0f29e1f`  
 **Latest implementation-bearing baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
 **Governance:** active `main-governance` · ID `20601712` · accepted solo mode  
 **Retrospective audit:** completed; see [`phase-i-retrospective-audit-2026-08-09.md`](../audits/phase-i-retrospective-audit-2026-08-09.md)
@@ -20,6 +20,8 @@ integration and operational proof.
 - Phase I exact-head CI and aggregate evidence were retrospectively checked for PRs
   #254/#250/#251/#252/#253/#256;
 - the requested issue #257 audit was performed without fabricating historical approvals;
+- the post-merge GitHub/Notion documentation drift was corrected by PR #261 and the
+  finalized machine-state relationships are guarded by `scripts/check_project_state.py`;
 - frozen `uv.lock` CI installation and full-SHA GitHub Actions pinning are active;
 - source-admission architecture, seven evidence contracts, three source adapters, the
   evaluator and the internal admission facade remain implemented and tested.
@@ -241,24 +243,33 @@ network filesystems or large multi-tenant server workloads.
 PostgreSQL, ANN and distributed profiles remain Research Mode candidates with explicit
 return triggers. They must not be implemented for symmetry alone.
 
-## P1 — Documentation drift
+## Closed — Governance completion documentation drift
 
-The retrospective audit found a real post-merge drift: status files at
+The retrospective audit found that status files at
 `main@c9e272d5d9da76219f8e0caaf784892e80046a31` still described PR #260 as open and PR
 #255 as pending.
 
-This corrective audit PR updates the canonical GitHub files and the existing Titan Notion
-page. Historical sections may preserve old states, but the newest dated section must be
-clearly authoritative.
+The contradiction was corrected by PR #261, merged as
+`90e221be2bed8177f4648787d713058df0f29e1f`. The same exact audit and merge evidence was
+recorded at the top of the existing Notion page `Velantrim Titan 9.0`; issue #257 closed as
+completed. The machine-readable finalization contract now validates:
 
-Controls:
+- public audit issue and PR identifiers;
+- exact audit head and merge SHA shape;
+- `COMPLETE` and `CLOSED_COMPLETED` final states;
+- equality between repository checkpoint, audit merge and Notion-recorded merge SHAs;
+- `SYNCED_FINAL`, the exact Titan audit page ID and target allowlisting;
+- the explicit absence of claimed independent historical review.
+
+Historical sections may preserve older states, but the newest dated section remains the
+authoritative snapshot. Future drift remains possible and is controlled by:
 
 - explicit documentation-impact classification;
 - aggregate metadata enforcement;
-- machine-readable project state;
+- validated machine-readable project state and focused fail-closed tests;
 - exact dated audit/checkpoint documents;
 - direct Notion synchronization or a structured handoff;
-- post-merge verification before claiming final synchronization.
+- post-merge verification before final synchronization is claimed.
 
 ## P1 — Identity
 
