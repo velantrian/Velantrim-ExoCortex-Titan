@@ -1,11 +1,13 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-09  
-**Repository `main` head inspected:** `c9e272d5d9da76219f8e0caaf784892e80046a31`  
+**Repository `main` head inspected:** `90e221be2bed8177f4648787d713058df0f29e1f`  
 **Latest implementation-bearing Continuity baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
-**Post-governance checkpoint:** `c9e272d5d9da76219f8e0caaf784892e80046a31` (PR #260 followed by PR #255)  
+**Pre-audit governance checkpoint:** `c9e272d5d9da76219f8e0caaf784892e80046a31` (PR #260 followed by PR #255)  
+**Phase I audit checkpoint:** `90e221be2bed8177f4648787d713058df0f29e1f` (PR #261)  
 **Phase I remediation:** `COMPLETE` for the accepted solo-governance scope  
-**Retrospective audit:** completed; public record in [`docs/audits/phase-i-retrospective-audit-2026-08-09.md`](../audits/phase-i-retrospective-audit-2026-08-09.md)  
+**Retrospective audit:** `COMPLETE`; issue #257 `CLOSED_COMPLETED`  
+**Notion synchronization:** `SYNCED_FINAL` to `Velantrim Titan 9.0`  
 **Reality boundary:** `INTERNAL · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
 
 > This is an exact dated checkpoint, not an evergreen remote-freshness claim. Re-query
@@ -153,7 +155,7 @@ Aggregate status:           SUCCESS
 Unresolved review threads:  0
 ```
 
-## Retrospective Phase I audit
+## Retrospective Phase I audit — final evidence
 
 Issue #257 requested an independent retrospective inspection of:
 
@@ -166,6 +168,18 @@ c14916214a920802c9ce6187be79ebe74ddfadfc
 The audit covered PRs #254, #250, #251, #252, #253 and #256: six squash merges and 21
 changed files.
 
+```text
+Audit PR:                    #261
+Exact tested head:           54b4f962748610d3a57580506b7c36afa5329a71
+Full Titan CI:               31303242633 · SUCCESS
+Aggregate merge evidence:    31303444415 · SUCCESS
+Unresolved review threads:   0
+Squash merge/checkpoint:      90e221be2bed8177f4648787d713058df0f29e1f
+Issue #257:                   CLOSED_COMPLETED
+Notion target:                Velantrim Titan 9.0
+Notion synchronization:       SYNCED_FINAL
+```
+
 Verdict:
 
 - no new P0/P1 runtime defect was found in that range;
@@ -175,10 +189,11 @@ Verdict:
 - the absence of historical independent review remains a fact and was not backfilled;
 - PR #253's older approval model was later superseded and corrected by PR #260;
 - the CAS diagnostic limitation remains open under issue #249;
-- a real post-merge status-document drift was found and is corrected by the audit record.
+- the post-merge status-document drift was corrected and synchronized by PR #261.
 
 The retrospective audit is a later audit. It does not transform earlier merges into
-independently approved merges.
+independently approved merges. The machine-readable final state is guarded by
+`scripts/check_project_state.py` and focused fail-closed tests.
 
 ## Open authority and runtime boundaries
 
