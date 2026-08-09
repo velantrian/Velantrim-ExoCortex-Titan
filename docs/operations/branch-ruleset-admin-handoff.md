@@ -1,55 +1,52 @@
 # ADMIN-01 — Active `main-governance` ruleset record
 
-**Initial handoff date (UTC):** 2026-08-08  
-**Active configuration verified:** 2026-08-09  
-**Tracking issues:** [#234](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/234), [#258](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/258)  
+**Initial handoff date:** 2026-08-08 UTC  
+**Final configuration verified:** 2026-08-09 UTC  
 **Ruleset ID:** `20601712`  
 **Ruleset name:** `main-governance`  
 **Enforcement:** `active`  
 **Target:** default branch (`main`)  
-**Bypass list:** empty
+**Bypass list:** empty  
+**Governance canary:** PR #260 merged as `a733e760732ad2c4ec6496d3f8ea4c5d0383048f`
 
 This document began as an administrator handoff because the connected agent could not
-create repository rulesets. The repository owner subsequently created and adjusted the
-ruleset manually. The configuration below is the verified current state, not the older
+create repository rulesets. The repository owner created and adjusted the ruleset
+manually. The configuration below is the accepted current state, not the superseded
 Stage-1 proposal.
 
 ## Accepted solo-workflow decision
 
-Titan is currently maintained by one repository owner working with Cursor, Claude Code,
-Codex and ChatGPT. GitHub does not count an author's self-approval. Requiring one approval
-therefore created a deadlock whenever the PR author was `@velantrian`, unless a second
-trusted account or broad bypass was introduced.
+Titan is currently maintained through one repository-owner identity working with several
+AI coding/review tools. GitHub does not count an author's self-approval. Requiring one
+approval therefore deadlocked ordinary owner-authored PRs unless a second trusted account
+or broad bypass was introduced.
 
-The accepted decision is:
+Accepted decision:
 
-- do not require a second GitHub account;
-- required approvals remain `0` unless the owner explicitly changes the governance model;
-- do not claim independent approval where none exists;
-- do not use aggregate success as a substitute for independent review;
-- keep retrospective independent audit debt visible in issue #257.
-
-This supersedes the earlier proposed topology of `cursor[bot]` as author and
-`@velantrian` as mandatory independent reviewer.
+- required approvals remain `0` until an explicit multi-reviewer governance change;
+- no second account is required merely to manufacture approval topology;
+- no broad bypass is introduced;
+- no independent approval is claimed where none exists;
+- aggregate success is not described as independent review;
+- retrospective audit records do not backfill historical approvals.
 
 ## Verified active configuration
 
 | Setting | Active value | Notes |
 |---|---|---|
-| Pull request required | ON | Changes to `main` must pass through a PR |
-| Required approvals | `0` | Accepted solo workflow |
-| Dismiss stale approvals | OFF | No approval gate is configured |
-| Require conversation resolution | ON | Unresolved review threads block merge |
-| Required status checks | ON | Exact aggregate gate is mandatory |
-| Required status check | `Titan aggregate merge evidence` | Exact context, GitHub Actions integration |
-| Require branch up to date | ON | Strict status-check policy |
+| Pull request required | ON | changes to `main` use a PR |
+| Required approvals | `0` | accepted solo workflow |
+| Dismiss stale approvals | OFF | no approval gate configured |
+| Conversation resolution | ON | unresolved threads block merge |
+| Required status | `Titan aggregate merge evidence` | exact context |
+| Require branch up to date | ON | stale-base merges blocked |
 | Block force pushes | ON | `non_fast_forward` rule |
 | Restrict deletions | ON | `deletion` rule |
-| Require Code Owner review | OFF | Single-CODEOWNER deadlock avoided |
-| Require latest-push approval | OFF | No approval gate is configured |
-| Restrict updates | OFF | PR requirement protects `main` without blocking valid merges |
-| Bypass | empty | `current_user_can_bypass = never` |
-| Allowed merge methods | merge, squash, rebase | Repository ruleset values |
+| Code Owner review | OFF | single-CODEOWNER self-review cannot count |
+| Latest-push approval | OFF | no approval gate configured |
+| Restrict updates | OFF | valid protected merges remain possible |
+| Bypass | empty | no actor may bypass |
+| Allowed merge methods | merge, squash, rebase | repository configuration |
 
 GitHub API evidence:
 
@@ -75,62 +72,63 @@ GET /repos/velantrian/Velantrim-ExoCortex-Titan/rulesets/20601712
 
 ```text
 PR required
-  + exact-head aggregate SUCCESS
-  + branch up to date with main
-  + all review conversations resolved
-  + force-push protection
-  + deletion protection
-  + empty bypass list
-  = accepted solo-mode protected merge path
++ exact-head aggregate SUCCESS
++ branch up to date with main
++ all review conversations resolved
++ force-push protection
++ deletion protection
++ empty bypass list
+= accepted solo-mode protected merge path
 ```
 
-This model reduces accidental and automated merge risk. It does not provide independent
-human approval. That limitation is explicit rather than hidden.
+This reduces accidental and automated merge risk. It does not provide independent human
+approval.
 
-## Code Owner review
+## CODEOWNERS
 
 `.github/CODEOWNERS` remains single-owner (`* @velantrian`). Code Owner review stays OFF.
 It may be reconsidered only after a real multi-reviewer topology exists and the owner
-explicitly adopts that governance change. Do not invent CODEOWNERS entries or enable a
-setting that recreates the self-approval deadlock.
+explicitly adopts that governance change.
 
 ## Dependabot aggregate compatibility
 
-The aggregate evaluator (`scripts/check_pr_merge_evidence.py`) may infer
-`Documentation impact: NONE` for trusted Dependabot PRs only when:
+The aggregate evaluator may infer `Documentation impact: NONE` only for a trusted
+`dependabot[bot]` identity and strict dependency-only allowlisted paths. Workflow, action,
+governance, `pyproject.toml`, `.github/dependabot.yml`, mixed or unknown paths remain
+fail-closed without explicit metadata.
 
-- actor identity comes from GitHub API bot fields (`dependabot[bot]` / `Bot`);
-- changed paths are dependency-only allowlisted paths;
-- no documentation-sensitive, workflow, action, governance or other protected paths are
-  present.
+PR #255 changed workflow pins, so it was treated as sensitive, updated onto the current
+base, validated on exact head `c5e192acd62276cfd8968436eaaebfed319b72e0` and merged as
+`c9e272d5d9da76219f8e0caaf784892e80046a31`.
 
-Human authors, unknown bots, spoofed body text and mixed/sensitive Dependabot changes
-remain fail-closed without explicit metadata. Do not execute untrusted PR-head code under
-privileged `pull_request_target` to make Dependabot pass.
+## Completed canary
 
-## Canary evidence and limits
+PR #260 completed the non-destructive protected-path canary:
 
-PR #260 is the non-destructive protected-path canary. Merge it only when:
-
-1. its current exact head has `Titan aggregate merge evidence` = `SUCCESS`;
-2. its branch is up to date with `main`;
-3. unresolved review threads = `0`;
-4. the merge uses the expected exact head SHA.
+```text
+exact head:                 b2e618e0410b89f7b889d17ed5088a561076b556
+aggregate:                  SUCCESS
+unresolved review threads:  0
+squash merge:               a733e760732ad2c4ec6496d3f8ea4c5d0383048f
+```
 
 The canary proves the ordinary PR merge path. It does not perform destructive direct-push,
-force-push or deletion attempts against `main`; those controls are verified from ruleset
+force-push or deletion attempts against `main`; those controls are observed from ruleset
 configuration.
 
-## Issue handling
+## Issue outcomes
 
-- Issue #234 may remain closed only with a public variance comment explaining that the
-  original one-approval criterion was superseded by the accepted solo workflow.
-- Issue #258 must not be closed silently. After PR #260 merges, record which original DoD
-  items were superseded and close it only after documentation synchronization is complete.
-- Issue #257 remains open until the requested retrospective independent audit is actually
-  performed or explicitly deferred with written rationale.
+- #234: closed with a public record that the original one-approval criterion was
+  consciously superseded by the accepted solo workflow;
+- #258: closed after recording the original DoD items that were superseded and after the
+  canary/documentation synchronization;
+- #257: requested Phase I retrospective audit performed; public audit record is
+  [`docs/audits/phase-i-retrospective-audit-2026-08-09.md`](../audits/phase-i-retrospective-audit-2026-08-09.md).
+
+Closing #257 after the audit record merge means the audit request was completed. It does
+not relabel the historical PRs as independently approved.
 
 ## Non-authority statement
 
-Repository governance changes no runtime, Canon, TruthGate, policy, identity, Continuity,
+Repository governance grants no runtime, Canon, TruthGate, policy, identity, Continuity,
 tool, action or deployment authority.

@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "project": "velantrim-exocortex-titan",
-  "verified_at": "2026-08-09T07:03:00Z",
+  "verified_at": "2026-08-09T08:06:55Z",
   "repository": {
     "default_branch": "main",
-    "repository_head_sha_at_verification": "28cc8b9ea7b94bf65a0b8cb2a37f30b2187cc6b5",
+    "repository_head_sha_at_verification": "c9e272d5d9da76219f8e0caaf784892e80046a31",
     "implementation_baseline_sha": "9f07db6de8d32683d00bfe4f1673e84493607553",
-    "documentation_checkpoint_sha": "28cc8b9ea7b94bf65a0b8cb2a37f30b2187cc6b5",
-    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected before PR #260 completes the protected-path canary; implementation_baseline_sha is the latest implementation-bearing Continuity merge (PR #246); documentation_checkpoint_sha is PR #259, which made the ruleset path viable. The active main-governance ruleset is separately verified by GitHub API as id 20601712. These fields are exact dated snapshots, not evergreen remote-freshness claims."
+    "documentation_checkpoint_sha": "c9e272d5d9da76219f8e0caaf784892e80046a31",
+    "head_semantics": "repository_head_sha_at_verification is the exact main commit inspected before the Phase I retrospective audit record; implementation_baseline_sha remains the latest implementation-bearing Continuity merge (PR #246); documentation_checkpoint_sha is the post-governance main checkpoint after PR #260 and Dependabot PR #255. The audit documentation itself is carried by the current corrective PR and becomes a later main commit after merge."
   },
   "continuity": {
     "completed_capabilities": 7,
@@ -21,7 +21,7 @@
     "enabled": false,
     "observed": false,
     "runtime_authority": false,
-    "next_bounded_slice": "PHASE I GOVERNANCE CANARY IN PROGRESS: main-governance is Active in accepted solo mode with approvals=0, Code Owner review OFF, exact Titan aggregate merge evidence required, strict up-to-date enforcement, conversation resolution, force-push/deletion protection and empty bypass. Complete PR #260 on exact-head SUCCESS, record accepted variance in #234 and #258, and keep #257 open for the real retrospective independent audit. Do not start PR-04 / Operator Gate A / runtime wiring / persistence / producer / Canon-ESM-TruthGate writes / Phase II without a new explicit TZ. Continuity remains internal with no runtime authority."
+    "next_bounded_slice": "GOVERNANCE CANARY COMPLETE; PHASE I RETROSPECTIVE AUDIT COMPLETE PENDING MERGE OF ITS PUBLIC RECORD. The active main-governance ruleset remains in accepted solo mode. No Continuity runtime authority is granted. Any resolver-composition, Operator Gate, runtime wiring, persistence, producer, Canon-ESM-TruthGate write, Phase II or Research Copilot lifecycle work requires a separate explicit task."
   },
   "governance": {
     "aggregate_merge_evidence_present": true,
@@ -32,7 +32,11 @@
     "ruleset_name": "main-governance",
     "ruleset_mode": "SOLO",
     "required_approvals": 0,
-    "independent_review_claimed": false
+    "independent_review_claimed": false,
+    "governance_canary_pr": 260,
+    "governance_canary_merge_sha": "a733e760732ad2c4ec6496d3f8ea4c5d0383048f",
+    "retrospective_audit_issue": 257,
+    "retrospective_audit_status": "COMPLETE_PENDING_RECORD_MERGE"
   },
   "knowledge_base": {
     "artifact_path": "kb_graph.json",
@@ -53,11 +57,12 @@
     "runtime_authority": false
   },
   "notion": {
-    "status": "SYNCED",
+    "status": "SYNCED_PENDING_FINAL_MERGE_SHA",
     "safe_targets": [
       "Velantrim Titan 9.0",
       "Continuity Source Admission — Architecture",
       "Titan Research Intake & Future Ideas Registry"
-    ]
+    ],
+    "audit_target": "Velantrim Titan 9.0"
   }
 }

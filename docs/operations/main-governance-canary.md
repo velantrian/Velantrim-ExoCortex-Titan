@@ -1,8 +1,8 @@
-# Main governance canary
+# Main governance canary — final record
 
-This document records the non-destructive canary for the active `main-governance`
-ruleset. It separates settings observed through the GitHub Rulesets API from behavior
-actually exercised by pull request #260.
+This document records the completed non-destructive canary for the active
+`main-governance` ruleset. It separates settings observed through the GitHub Rulesets API
+from behavior exercised by pull request #260.
 
 ## Observed ruleset configuration
 
@@ -11,9 +11,9 @@ Observed on 2026-08-09 through the GitHub API:
 - ruleset ID: `20601712`;
 - name: `main-governance`;
 - enforcement: `active`;
-- target: default branch (`~DEFAULT_BRANCH`, currently `main`);
+- target: default branch (`main`);
 - bypass list: empty;
-- pull request required before merge;
+- pull request required;
 - required approvals: `0` for the accepted solo workflow;
 - stale-approval dismissal: OFF;
 - Code Owner review: OFF;
@@ -25,28 +25,49 @@ Observed on 2026-08-09 through the GitHub API:
 - deletions restricted (`deletion` rule);
 - update restriction: OFF / no update-restriction rule.
 
-## What PR #260 exercises
+## Completed canary
 
-A successful squash merge of PR #260 on its exact head, after the aggregate status is
-`SUCCESS` and all review conversations are resolved, demonstrates the ordinary
-non-destructive protected path:
+```text
+Pull request:               #260
+Exact tested head:          b2e618e0410b89f7b889d17ed5088a561076b556
+Aggregate status:           SUCCESS
+Unresolved review threads:  0
+Squash merge:               a733e760732ad2c4ec6496d3f8ea4c5d0383048f
+Documentation impact:       GITHUB_AND_NOTION
+```
+
+The successful merge demonstrates the ordinary non-destructive protected path:
 
 ```text
 pull request
 → exact-head aggregate evidence
 → up-to-date branch
 → resolved conversations
-→ protected merge
+→ protected squash merge
 ```
 
-PR #260 does not claim to provide an independent approval. Aggregate success is not a
+PR #260 did not provide or claim independent approval. Aggregate success is not a
 substitute for independent review.
 
 ## Evidence boundary
 
-This canary does not perform destructive direct-push, force-push, or branch-deletion
-tests against `main`. Those protections are recorded as observed ruleset configuration,
-not as destructive canary observations. Approval dismissal and latest-push approval are
-also not exercised because both settings are intentionally OFF in solo mode.
+The canary did not perform destructive direct-push, force-push or branch-deletion tests
+against `main`. Those protections are recorded as observed ruleset configuration, not as
+destructive canary observations. Approval dismissal and latest-push approval were not
+exercised because both controls are intentionally OFF in solo mode.
 
-No runtime behavior, authority, or Continuity state is changed.
+## Follow-up completed
+
+- issue #234 received the explicit solo-mode variance record and remains closed;
+- issue #258 received the superseded-DoD record and closed;
+- Dependabot PR #255 was validated separately and merged as
+  `c9e272d5d9da76219f8e0caaf784892e80046a31`;
+- issue #257's retrospective Phase I audit was performed and recorded in
+  [`docs/audits/phase-i-retrospective-audit-2026-08-09.md`](../audits/phase-i-retrospective-audit-2026-08-09.md).
+
+The retrospective audit does not backfill approvals for historical PRs.
+
+## Non-authority statement
+
+Repository governance changes no runtime behavior, Canon, TruthGate, policy, identity,
+Continuity, tool, action or deployment authority.

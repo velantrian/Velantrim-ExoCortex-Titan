@@ -1,9 +1,10 @@
 # 🗺️ Component and Authority Map
 
-**Repository head verified:** `main@28cc8b9ea7b94bf65a0b8cb2a37f30b2187cc6b5`  
+**Repository head inspected:** `main@c9e272d5d9da76219f8e0caaf784892e80046a31`  
 **Implementation baseline:** `9f07db6de8d32683d00bfe4f1673e84493607553` (PR #246)  
-**Documentation checkpoint:** `28cc8b9ea7b94bf65a0b8cb2a37f30b2187cc6b5` (PR #259)  
-**Machine-readable state:** [`docs/state/project_state.json`](../state/project_state.json)  
+**Governance checkpoint:** PR #260 → `a733e760732ad2c4ec6496d3f8ea4c5d0383048f`  
+**Current checkpoint after Dependabot:** `c9e272d5d9da76219f8e0caaf784892e80046a31`  
+**Machine state:** [`docs/state/project_state.json`](../state/project_state.json)  
 **Rule:** presence is not wiring; content-addressed evidence is not runtime authority.
 
 ## 1. Canon and core runtime
@@ -12,7 +13,7 @@
 |---|---|---|---|
 | Durable facts and ESM | `core/memory.py` / canonical store services | implemented, tested, wired | Canon state owner |
 | Truth admission | `core/truth_gate.py`, accepted write services | implemented, tested, partly unified | evidence/confidence decision |
-| Hard capability/data-mode policy | `core/policy_kernel.py` / `PolicySnapshot` / `CapabilityLease` | implemented, tested | policy owner |
+| Hard capability/data-mode policy | `core/policy_kernel.py`, `PolicySnapshot`, `CapabilityLease` | implemented, tested | policy owner |
 | Provenance and audit | `core/provenance_chain.py`, `core/audit_chain.py` | implemented, tested | trace and mutation evidence |
 | Retrieval coordination | `core/pipeline.py`, `core/hybrid_retriever.py` | implemented, wired | read-side proposal only |
 | Projection delivery | projection outbox / dispatcher primitives | implemented, tested, not lifecycle-wired | rebuildable derived state |
@@ -25,17 +26,16 @@ actions or compute routing.
 | Layer | Merge SHA | Primary surface | Runtime state |
 |---|---|---|---|
 | R1 immutable contracts | `06529700d70854504b88629eeecf737bdc6b81d5` | `core/continuity/contracts.py` | tested, unwired |
-| R2 read-side / threads | `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e` | `event_port.py`, `conversation_bridge.py`, `thread_weaver.py` | process-local, unwired |
-| R3 projections / WorkingMemory adapters | `a19d16656676ad5c98c92d4776e9709edbfb920c` | `context_pack.py`, `state_reconciler.py`, `goal_open_loop.py` | rebuildable, unwired |
+| R2 read-side / threads | `320d5ae9f89780efc553ffbfc3a17c1ebc83b47e` | event/bridge/weaver | process-local, unwired |
+| R3 projections / WorkingMemory adapters | `a19d16656676ad5c98c92d4776e9709edbfb920c` | context/state/goal-open-loop | rebuildable, unwired |
 | R4 compute assessment | `529d8b6b182b1a548d27558173f0aca473bcc400` | `core/compute_controller.py` | shadow-only, unwired |
-| R5A replay / Advisory Shadow | `58e29bba26299ce7003b62e73fd3b25e028956de` | `evaluation.py`, `advisory_shadow.py` | shadow-only, unwired |
+| R5A replay / Advisory Shadow | `58e29bba26299ce7003b62e73fd3b25e028956de` | evaluation/advisory shadow | shadow-only, unwired |
 | R5B disabled runner | `27b91a59f9e9291092b220ac1f53bfeae2daea28` | `shadow_runner.py` | default-off, unwired |
-| Typed signal producer | `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` | `observations.py`, `signal_producer.py` | pure shadow producer |
-| Producer hardening | `e37a5d13332628bcdbd0d9441d7a61d5f8a8d523` | producer validation | tested, unwired |
-| Source-admission contracts | `4adde7997ec0b2a3d1957224c72131d8c4d35ff2` | `source_admission*.py` | evidence only |
+| Typed signal producer | `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` | observations/signal producer | pure shadow producer |
+| Source-admission evidence | `4adde7997ec0b2a3d1957224c72131d8c4d35ff2` | source-admission contracts | evidence only |
 | State Draft adapter | `0f1a10ab4f92dd7f15a69e55cc98339e7eeb36b1` | `state_source_adapter.py` | tested, internal, unwired |
-| Goal subject binding v2 | `81836b4f715470c50a4c6c7768a2cde7478568c8` | `goal_open_loop.py` | tested contract correction |
-| OpenLoop subject binding v2 | `659c30e0e8023c48fdf68be8583401fc042a1ab8` | `goal_open_loop.py` | tested contract correction |
+| Goal subject binding v2 | `81836b4f715470c50a4c6c7768a2cde7478568c8` | `goal_open_loop.py` | tested correction |
+| OpenLoop subject binding v2 | `659c30e0e8023c48fdf68be8583401fc042a1ab8` | `goal_open_loop.py` | tested correction |
 | Goal Draft adapter | `2f9eadd2c16a77835fb58c0d1e481abfc57d8a2d` | `goal_source_adapter.py` | tested, internal, unwired |
 | OpenLoop Draft adapter | `42aa79338c57e9b9a67c3e3c08dd948b60c5541f` | `open_loop_source_adapter.py` | tested, internal, unwired |
 | Admission evaluator | `97fe27a37184c6c7277f54e96acd04d98d583ab3` | `admission_evaluator.py` | tested, internal, unwired |
@@ -44,184 +44,98 @@ actions or compute routing.
 ## 3. Source-admission path
 
 ```text
-StateReconciliationResult / GoalProjectionResult / OpenLoopProjectionResult
-        │
-        ▼
-source adapters
-→ ContinuitySourceEnvelope + complete Draft set
-        │
-        ▼
-operator-selected represented facade policy
-+ exact registry/evaluator/rule identity
-+ typed current-decision resolver identity
-+ principal / authorization / binding evidence
-        │
-        ▼
-internal admission-aware facade
-→ structural and cross-contract validation
-→ current-decision evidence resolution
+State / Goal / OpenLoop result
+→ deterministic source adapter
+→ source envelope + complete Draft set
+→ operator-selected represented facade policy
+→ exact registry/evaluator/rule identity
+→ typed current-decision resolver boundary
+→ internal admission-aware facade
 → pure admission evaluator
-        │
-        ▼
-content-addressed facade result
-+ deterministic admission receipt
-        │
-        ▼
-STOP
+→ content-addressed evidence-only result
+→ STOP
 ```
 
-No stage in this accepted path invokes the signal producer, persists admission artifacts,
-writes Canon, creates reminders/actions or changes compute routing.
+The accepted path does not invoke the signal producer, persist admission artifacts, write
+Canon, create reminders/actions or change compute routing.
 
-## 4. Source-admission contracts and adapters
+## 4. Decision ownership
 
-### Primary evidence contracts
-
-| Responsibility | Code | Authority |
-|---|---|---|
-| Principal, authorization and source binding | `core/continuity/source_admission.py` | immutable represented evidence |
-| Source envelope and observation Draft | `core/continuity/source_admission_payloads.py` | proposal evidence only |
-| Admission receipt and authorized batch | `core/continuity/source_admission_decisions.py` | admission evidence only; no runtime permission |
-
-### Source adapters
-
-| Source | Adapter | Positive derivation boundary |
-|---|---|---|
-| State | `state_source_adapter.py` | context degraded, active contradiction, context freshness |
-| Goal | `goal_source_adapter.py` | bounded active attested evidence-coverage proposals |
-| OpenLoop | `open_loop_source_adapter.py` | bounded open/overdue evidence-coverage proposals |
-
-Adapters do not admit, persist, call the signal producer or create reminders/actions.
-
-## 5. Pure admission evaluator
-
-| Responsibility | Surface |
+| Decision | Accepted owner |
 |---|---|
-| Rule definition | `ContinuityAdmissionRuleDefinition` |
-| Evaluator definition | `ContinuityAdmissionEvaluatorDefinition` |
-| Exact allowlist registry | `ContinuityAdmissionRegistry` |
-| Current decision evidence | `ContinuityCurrentDecisionEvidence` |
-| Evaluation function | `evaluate_continuity_admission(...)` |
-| Result evidence | `ContinuityAdmissionEvaluationResult` |
+| Canon / ESM state | canonical memory and write services |
+| Truth admission | accepted TruthGate/write path |
+| hard policy, locality and data mode | PolicyKernel / PolicySnapshot |
+| State/Goal/OpenLoop result identity | source component owners |
+| source adaptation | deterministic proposal transform only |
+| evaluator rules | pure admission evaluator |
+| anti-substitution and composition boundary | internal admission facade |
+| WorkingMemory disposition | existing `WorkingMemoryGate` |
+| prompt context | existing `ContextPackBuilder` |
+| legacy compute route | existing `decide_compute_path()` |
+| trusted facade/registry deployment selection | no accepted runtime owner yet |
+| concrete current-decision evidence composition | not implemented yet |
+| runtime activation | no accepted owner |
 
-The evaluator reads no database, environment, network or implicit clock. It resolves only
-the exact evaluator/rule pair in the supplied registry and returns a complete deterministic
-admitted/rejected partition. It creates no runtime permission.
+## 5. Next resolver-composition boundary
 
-## 6. Internal admission-aware facade
-
-| Responsibility | Surface | Boundary |
-|---|---|---|
-| Represented facade policy | `ContinuityAdmissionFacadePolicy` | content-addressed configuration evidence |
-| Resolver interface | `ContinuityCurrentDecisionResolver` | typed protocol only |
-| Composition boundary | `evaluate_continuity_admission_facade(...)` | internal explicit call |
-| Evidence output | `ContinuityAdmissionFacadeResult` | no runtime authority |
-| Architecture decision | `ADR-2026-08-07-continuity-admission-facade-boundary.md` | accepted ownership boundary |
-
-The facade:
-
-- pins exact registry, evaluator/rule and resolver identities;
-- validates principal, authorization, tenant, source binding and complete subject scope;
-- rejects duplicate or cross-envelope Drafts before resolver access;
-- converts resolver identity/access/execution failures into controlled fail-closed errors;
-- invokes only the pure evaluator;
-- remains package-internal and unwired.
+A later bounded internal slice must reuse existing owners rather than introduce a second
+PolicyKernel, identity system, restriction registry or erasure owner.
 
 ```text
-facade policy object ≠ PolicyKernel
-facade policy object ≠ operator-approved deployment configuration
-resolver protocol ≠ trusted concrete resolver implementation
-facade result ≠ runtime permission
-```
-
-## 7. Decision ownership
-
-- Canon and ESM: canonical memory/write services;
-- truth admission: accepted TruthGate/write paths;
-- hard policy/locality/data mode: PolicyKernel and PolicySnapshot;
-- source result identity: State / Goal / OpenLoop owners;
-- source adaptation: deterministic proposal transformation only;
-- evaluator definitions and rule logic: pure admission evaluator;
-- composition and anti-substitution: internal admission facade;
-- trusted deployment selection of facade policy/registry: **no accepted runtime owner yet**;
-- concrete principal/authentication evidence: **not composed yet**;
-- concrete authorization/consent/restriction/erasure/current-policy evidence: **not composed yet**;
-- WorkingMemory disposition: existing `WorkingMemoryGate`;
-- prompt context: existing `ContextPackBuilder`;
-- legacy compute route: existing `decide_compute_path()`;
-- runtime activation: **no accepted owner**.
-
-## 8. Next resolver-composition boundary
-
-The next internal slice must reuse accepted owners rather than introduce a second
-PolicyKernel, identity system or erasure owner.
-
-Expected shape:
-
-```text
-operator/deployment-selected facade policy + registry identity
+operator-selected facade policy + registry
 + accepted principal/authentication owner
 + accepted authorization owner
-+ consent or lawful-basis owner
++ consent/lawful-basis owner
 + restriction owner
 + erasure-domain owner
 + current PolicySnapshot owner
-        │
-        ▼
-complete exact-subject CurrentDecisionEvidence
-        │
-        ▼
-merged internal admission facade
-        │
-        ▼
-evidence-only result
-        │
-        ▼
-STOP
+→ complete exact-subject CurrentDecisionEvidence
+→ accepted internal facade
+→ evidence-only result
+→ STOP
 ```
 
-Missing, stale, unknown, conflicting or partially covered state must reject the complete
-evaluation. Silent subject filtering is forbidden.
+Missing, stale, unknown, ambiguous, conflicting or partially covered state must reject the
+complete evaluation. Silent subject filtering is forbidden.
 
-## 9. Privacy and lifecycle boundaries
+## 6. Privacy and lifecycle boundary
 
-Before any live-capable path, accepted owners must prove:
-
-- current authorization expiry and withdrawal;
-- consent or lawful basis;
-- current restrictions;
-- erasure-domain state and derived-artifact cleanup;
-- current PolicySnapshot compatibility;
-- complete multi-subject aggregation;
-- retention, replay and cleanup lifecycle.
+Before any live-capable path, prove current authorization expiry/withdrawal, lawful basis,
+restrictions, erasure-domain state, derived-artifact cleanup, PolicySnapshot compatibility,
+complete multi-subject aggregation and durable retention/replay/cleanup semantics.
 
 Historical receipts never override current restriction or erasure state.
 
-## 10. Governance and operations
+## 7. Governance and operations
 
-- aggregate merge evidence is implemented, observed and required by the active ruleset;
-- `main-governance` is active as ruleset ID `20601712` for the default branch;
-- the accepted solo mode requires `0` approvals, Code Owner review OFF and latest-push
-  approval OFF;
-- pull requests, exact aggregate evidence, up-to-date branches and resolved conversations
-  are mandatory;
-- force pushes are blocked, deletion is restricted, Restrict updates is OFF and bypass is
-  empty;
-- PR #260 is the non-destructive protected-path canary and governance documentation sync;
-- issue #257 remains open because aggregate success does not replace independent review;
-- projection dispatcher remains implemented/tested but not lifecycle-wired;
-- identity layer remains legacy/unwired;
-- query-path read-only and Canon writer unification remain open hardening work;
-- research candidates are governed separately by `research/IDEA_INTAKE_PROTOCOL.md`.
+- ruleset `main-governance` is active on `main` as ID `20601712`;
+- PRs, exact aggregate evidence, up-to-date branches and resolved conversations are required;
+- force pushes are blocked, deletion is restricted and bypass is empty;
+- accepted solo mode uses approvals `0`, Code Owner review OFF, stale dismissal OFF and
+  latest-push approval OFF;
+- Restrict updates is OFF so valid protected merges remain possible;
+- PR #260 completed the non-destructive protected-path canary;
+- PR #255 was validated and merged separately as a workflow-pin update;
+- issue #257's requested retrospective audit was completed and recorded in
+  [`docs/audits/phase-i-retrospective-audit-2026-08-09.md`](../audits/phase-i-retrospective-audit-2026-08-09.md);
+- the audit does not backfill historical approvals;
+- aggregate success remains automated merge evidence, not independent review;
+- projection dispatcher lifecycle remains unwired;
+- identity remains legacy/unwired;
+- query-path read-only and Canon-writer unification remain open hardening work.
 
-## 11. Audit checklist for the next slice
+## 8. Current audit checklist
+
+Before the next engineering slice, verify:
 
 1. Is facade/registry selection outside caller-controlled payloads?
-2. Do concrete resolvers reuse accepted owners rather than duplicate policy or identity logic?
+2. Are existing policy, identity, restriction and erasure owners reused?
 3. Is the complete exact subject set preserved?
-4. Do missing, stale, unknown or conflicting states fail closed?
-5. Does composition call only the merged internal facade?
+4. Do missing, stale, unknown, ambiguous or conflicting states fail closed?
+5. Does composition call only the accepted internal facade?
 6. Does output remain evidence-only?
 7. Are producer invocation, persistence and runtime wiring absent?
-8. Are exact-head tests, ADR implications and Notion synchronization complete?
-9. Are `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` reported separately?
+8. Are tests and aggregate evidence attached to the exact head?
+9. Are GitHub and the intended Notion page synchronized?
+10. Are `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED` and `OBSERVED` reported separately?
