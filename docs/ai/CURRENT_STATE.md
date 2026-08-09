@@ -1,9 +1,9 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-09  
-**Repository `main` checkpoint inspected:** `dc30817f2c4abb1afcaab2f127e679d5f9b884d7`  
-**Latest implementation-bearing Continuity merge:** PR #264 → `dc30817f2c4abb1afcaab2f127e679d5f9b884d7`  
-**Exact tested implementation head:** `6dcbad3926db99e9621622acfcfc1b2db7da9d21`  
+**Repository `main` checkpoint inspected:** `064845579c520e7464678cd0c41d9b650368dfa8`  
+**Latest implementation-bearing Continuity merge:** PR #267 → `064845579c520e7464678cd0c41d9b650368dfa8`  
+**Exact tested implementation head:** `adba2b2621458d11b3173bdb9413c81a5ef599b3`  
 **Phase I audit checkpoint retained:** PR #261 → `90e221be2bed8177f4648787d713058df0f29e1f`  
 **Notion target:** `Velantrim Titan 9.0` · `398ac84d-0547-81fe-8ca5-d0d2727d1961`  
 **Reality boundary:** `INTERNAL · TESTED · UNWIRED · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
@@ -20,6 +20,7 @@ ENABLED ≠ OBSERVED
 
 Integrity ≠ authenticity
 Evidence ≠ authority
+Durable storage ≠ runtime activation
 Aggregate SUCCESS ≠ independent review
 ```
 
@@ -30,25 +31,25 @@ production hardening. Core memory, provenance, TruthGate, retrieval and controll
 boundaries are implemented and tested. Higher cognitive and Continuity layers remain
 explicitly staged.
 
-PR #264 added the first accepted concrete **internal composition** for current-decision
-evidence. It composes six injected read-only owner domains:
+PR #267 added an explicitly invoked, internal SQLite lifecycle for completed accepted
+Continuity admission results. It retains the complete canonical evidence graph and provides:
 
-1. principal;
-2. authorization;
-3. lawful basis or consent;
-4. restriction;
-5. erasure;
-6. PolicySnapshot compatibility.
+1. deterministic artifact identity;
+2. atomic append and idempotent duplicate handling;
+3. integrity and schema/version verification;
+4. exact-scope deterministic replay;
+5. explicit bounded retention cleanup;
+6. erasure-addressable neutralization and tombstone evidence;
+7. transaction rollback for injected partial-write and interrupted-cleanup failures.
 
-The composition reuses the existing `ContinuityCurrentDecisionEvidence` contract and the
-existing admission-facade resolver boundary. It does not create a second policy, identity,
-restriction or erasure authority.
+The lifecycle does not decide authorization, consent/lawful basis, restrictions, erasure
+eligibility or PolicySnapshot validity. Those decisions remain with the existing owners.
 
 ## Continuity readiness
 
 ```text
-Completed: 8/12 = 66.7%
-Remaining: 4/12 = 33.3%
+Completed: 9/12 = 75.0%
+Remaining: 3/12 = 25.0%
 ```
 
 This is **implementation readiness**, not live or production readiness.
@@ -62,64 +63,73 @@ This is **implementation readiness**, not live or production readiness.
 5. OpenLoop projection → bounded Draft adapter;
 6. deterministic evaluator + content-addressed allowlist registry;
 7. internal admission-aware facade + typed resolver boundary;
-8. six-owner current-decision resolver composition.
+8. six-owner current-decision resolver composition;
+9. durable admission-artifact retention, replay, cleanup and erasure-addressability lifecycle.
 
 ### Remaining categories
 
-1. durable retention, replay, cleanup and erasure lifecycle for admission artifacts;
-2. runtime wiring with one lifecycle owner;
-3. controlled enablement, SLO, monitoring, rollback and explicit Operator GO;
-4. live observed evidence.
+1. runtime wiring with one explicitly selected lifecycle owner;
+2. controlled enablement, SLO, monitoring, rollback and explicit Operator GO;
+3. live observed evidence.
 
-## PR #264 implementation evidence
+## PR #267 implementation evidence
 
 ```text
-Tracking issue:                 #263
-Implementation PR:              #264
-Exact tested head:              6dcbad3926db99e9621622acfcfc1b2db7da9d21
-Continuity contracts:           31328446750 · SUCCESS
-Full Titan CI:                  31328446760 · SUCCESS
-Docker hardening:               31328446757 · SUCCESS
-Required aggregate evidence:    31328730371 · SUCCESS
+Tracking issue:                 #266
+Implementation PR:              #267
+Exact tested head:              adba2b2621458d11b3173bdb9413c81a5ef599b3
+Continuity contracts:           31332672099 · SUCCESS
+Full Titan CI:                  31332672144 · SUCCESS
+Docker hardening:               31332672122 · SUCCESS
+Required aggregate evidence:    31333907506 · SUCCESS
+Exact-head test summary:        3834 passed · 17 skipped · 21 deselected · 1 xfailed
+Exact-head total coverage:      99%
+Lifecycle module coverage:      94%
 Unresolved review threads:      0
 Submitted reviews:              0
-Squash merge:                   dc30817f2c4abb1afcaab2f127e679d5f9b884d7
-Post-merge Continuity:          31328768451 · SUCCESS
-Post-merge full CI:             31328768446 · SUCCESS
-Post-merge Docker:              31328768473 · SUCCESS
-Post-merge aggregate push:      31328768471 · SUCCESS
+Squash merge:                   064845579c520e7464678cd0c41d9b650368dfa8
+Post-merge Continuity:          31333928059 · SUCCESS
+Post-merge full CI:             31333928065 · SUCCESS
+Post-merge Docker:              31333928069 · SUCCESS
+Post-merge aggregate push:      31333928024 · SUCCESS
 ```
 
-## Resolver guarantees
+The first aggregate run after draft-to-ready transition, `31333864098`, failed because the
+PR body lacked the required single `Documentation impact` declaration. The declaration was
+added as `GITHUB_ONLY`; final exact-head aggregate evidence then passed. No check was bypassed.
 
-The accepted composition:
+## Lifecycle guarantees
 
-- requires exactly one content-addressed snapshot from each named owner;
-- binds snapshots to exact owner ID/version, principal, authorization, source envelope,
-  binding receipt, tenant, complete authorization subject set and domain scope;
-- pins owner identity across the complete resolution call;
-- rejects missing, duplicate, extra-domain, malformed, stale, future-effective,
-  substituted or identity-mutating owner state;
-- preserves the existing status vocabulary:
-  `ACTIVE`, `CLEAR`, `BLOCKED`, `INACTIVE`, `WITHDRAWN`, `UNKNOWN`;
-- preserves represented blocking and unknown decisions without softening them;
-- requires principal and PolicySnapshot owners to be `ACTIVE`;
-- remains deterministic, internal, unexported and evidence-only.
+The accepted lifecycle:
+
+- persists a canonical complete admission artifact rather than a lossy summary;
+- binds artifact identity and replay to tenant, principal, authorization, exact subject set,
+  source envelope, binding receipt, owner snapshots, policy snapshot and decision evidence;
+- rejects digest corruption, malformed schema, unknown versions, subject substitution,
+  stale policy substitution and cross-tenant reuse;
+- prevents silent overwrite and conflicting identity reuse;
+- provides deterministic replay and cleanup ordering;
+- records completed cleanup requests, including empty results, for stable retries;
+- requires exact externally supplied erasure-owner `ALLOW` evidence;
+- atomically removes payload content and retains addressable cleanup/erasure evidence;
+- blocks replay and re-append after neutralization;
+- rolls back injected partial append and interrupted cleanup/erasure transactions;
+- remains internal, unexported and without producer or user-visible side effects.
 
 ## Explicit non-authority boundary
 
-PR #264 did **not** add:
+PR #267 did **not** add:
 
 - concrete live owner adapters or an operator-selected trust root;
-- database, configuration, network or OS owner discovery;
-- persistence, schema or migrations;
-- durable retention, replay, cleanup or erasure lifecycle;
-- producer invocation;
-- `/query`, startup, worker or scheduler wiring;
-- feature flags, SLOs, monitoring, rollback or Operator GO;
+- deployment selection of the SQLite lifecycle owner;
+- `/query`, API/server/startup, worker or scheduler wiring;
+- feature flags or controlled enablement;
+- SLOs, alerts, rollback or Operator GO;
 - answer, reminder, notification, delivery, tool or action behavior;
 - Canon, ESM, TruthGate, GoalStack or compute-route writes;
-- Phase II, ADAO or Research Copilot lifecycle work.
+- live retention configuration or operational cleanup scheduling;
+- backup/restore, live crash recovery or observed production evidence;
+- Phase II, ADAO, Research Copilot lifecycle or issue #249 work.
 
 ## Governance
 
@@ -137,7 +147,7 @@ The active ruleset remains `main-governance` in accepted solo mode:
 No independent review is claimed. Automated checks and aggregate success are not
 independent review.
 
-## Audit continuity
+## Audit and schema continuity
 
 The Phase I retrospective audit remains immutable:
 
@@ -149,22 +159,24 @@ Merge:       90e221be2bed8177f4648787d713058df0f29e1f
 Status:      COMPLETE · CLOSED_COMPLETED
 ```
 
-Schema v3 does not rewrite that audit checkpoint. It adds a later implementation-checkpoint
-path while preserving historical schema-v1 and schema-v2 validation.
+Schema v4 records the later PR #267 lifecycle checkpoint while preserving historical
+schema-v1, schema-v2 and schema-v3 validation. The PR #264 resolver record remains an
+immutable historical implementation checkpoint inside schema v4.
 
-## Next permitted engineering slice
+## Next unresolved engineering category
 
-The next bounded slice is the durable admission-artifact lifecycle:
+The next unresolved category is bounded runtime wiring with one explicitly selected
+lifecycle owner:
 
 ```text
-retention
-→ idempotent persistence
-→ replay
-→ cleanup
-→ erasure-addressability
-→ crash/restart evidence
-→ STOP
+operator-selected lifecycle owner
+→ startup/shutdown boundary
+→ accepted resolver result
+→ explicit lifecycle invocation
+→ replay/recovery integration
+→ fail-closed error propagation
+→ STOP before enablement
 ```
 
-It must remain separate from runtime wiring, controlled activation, Operator GO and live
-observed evidence.
+This status synchronization does **not** authorize that work. Runtime wiring, controlled
+activation, Operator GO and live observation require a separate bounded decision.
