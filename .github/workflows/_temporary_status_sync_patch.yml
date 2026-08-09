@@ -1,0 +1,959 @@
+name: Temporary status-sync patch
+
+on:
+  push:
+    branches:
+      - continuity/status-sync-runtime-wiring
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: continuity/status-sync-runtime-wiring
+          fetch-depth: 0
+
+      - name: Apply bounded runtime-wiring status synchronization
+        shell: bash
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import json
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          IMPLEMENTATION_HEAD = "7089b506e986b463929135c3d0f4a683bbe08a34"
+          IMPLEMENTATION_MERGE = "802e833fa251a8831add8a6b802a5ebb57533549"
+
+          # Machine-readable state: preserve every historical record and advance only
+          # the new schema-v5 checkpoint.
+          state_path = Path("docs/state/project_state.json")
+          state = json.loads(state_path.read_text(encoding="utf-8"))
+          state["schema_version"] = 5
+          state["verified_at"] = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+          state["repository"].update(
+              {
+                  "repository_head_sha_at_verification": IMPLEMENTATION_MERGE,
+                  "implementation_baseline_sha": IMPLEMENTATION_MERGE,
+                  "documentation_checkpoint_sha": IMPLEMENTATION_MERGE,
+                  "head_semantics": (
+                      "These SHA roles identify the exact protected main implementation "
+                      "checkpoint inspected after PR #270 merged bounded internal Continuity "
+                      "runtime composition. The separate status-synchronization PR documents "
+                      "this implementation checkpoint and does not claim evergreen remote freshness."
+                  ),
+              }
+          )
+          state["continuity"].update(
+              {
+                  "completed_capabilities": 10,
+                  "total_capabilities": 12,
+                  "readiness_percent": 83.3,
+                  "remaining_capabilities": 2,
+                  "remaining_percent": 16.7,
+                  "implemented": True,
+                  "tested": True,
+                  "wired": True,
+                  "enabled": False,
+                  "observed": False,
+                  "runtime_authority": False,
+                  "next_bounded_slice": (
+                      "Controlled enablement remains the next unresolved capability. It requires "
+                      "a separate bounded authorization, explicit Operator GO, operational controls "
+                      "and must remain separate from live observed evidence."
+                  ),
+              }
+          )
+          state["continuity_bounded_runtime_composition"] = {
+              "tracking_issue": 269,
+              "implementation_pr": 270,
+              "exact_head_sha": IMPLEMENTATION_HEAD,
+              "merge_sha": IMPLEMENTATION_MERGE,
+              "status": "COMPLETE",
+              "authority": "INTERNAL_RUNTIME_COMPOSITION_ONLY",
+              "composition_root": "server.py::lifespan",
+              "lifecycle_owner_id": "continuity.admission_artifact.sqlite",
+              "lifecycle_owner_version": "1",
+              "configuration_schema_version": "continuity.runtime_composition.v1",
+              "storage_selection": "DEPLOYMENT_OWNED_ABSOLUTE_ROOT_WITH_DETERMINISTIC_SQLITE_DERIVATION",
+              "accepted_input_boundary": "COMPLETE_FACADE_BOUND_ACCEPTED_GRAPH_ONLY",
+              "recovery_boundary": "EXPLICIT_EXACT_SCOPE_REPLAY_AFTER_RESTART",
+              "runtime_wired": True,
+              "enabled": False,
+              "observed": False,
+              "runtime_authority": False,
+              "operator_go": False,
+              "user_visible_behavior": "UNCHANGED",
+              "query_behavior": "UNCHANGED",
+              "caller_selected_database_path": False,
+              "caller_selected_owner": False,
+              "caller_selected_tenant": False,
+              "producer_side_effects_present": False,
+              "canon_writes_present": False,
+              "esm_writes_present": False,
+              "truth_gate_writes_present": False,
+              "goal_stack_writes_present": False,
+              "reminder_created": False,
+              "notification_created": False,
+              "action_created": False,
+              "tool_call_created": False,
+              "exact_head_continuity_run": 31338707796,
+              "exact_head_full_ci_run": 31338707803,
+              "exact_head_docker_run": 31338707801,
+              "exact_head_aggregate_run": 31338960646,
+              "post_merge_continuity_run": 31339029070,
+              "post_merge_full_ci_run": 31339029081,
+              "post_merge_docker_run": 31339029082,
+              "post_merge_aggregate_run": 31339029069,
+              "submitted_review_count": 0,
+              "codex_review_status": "NOT_RUN_USAGE_LIMIT",
+              "unresolved_review_threads": 0,
+              "independent_review_claimed": False,
+          }
+          state["notion"].update(
+              {
+                  "latest_status_target": "Velantrim Titan 9.0",
+                  "latest_status_page_id": "398ac84d-0547-81fe-8ca5-d0d2727d1961",
+                  "latest_synchronization_kind": "CONTINUITY_BOUNDED_RUNTIME_COMPOSITION",
+                  "latest_implementation_merge_sha": IMPLEMENTATION_MERGE,
+                  "latest_synchronization_finalized": True,
+              }
+          )
+          state_path.write_text(
+              json.dumps(state, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+
+          validator_path = Path("scripts/check_project_state.py")
+          validator = validator_path.read_text(encoding="utf-8")
+          validator = validator.replace(
+              "checkpoint while retaining the immutable audit identity and exact Notion target.\n",
+              "checkpoint while retaining the immutable audit identity and exact Notion target.\n"
+              "Schema v5 records bounded internal runtime composition while preserving every\n"
+              "historical validator and separating wiring from enablement and observation.\n",
+          )
+          validator = validator.replace(
+              "SCHEMA_V4 = 4\nSUPPORTED_SCHEMA_VERSIONS = {SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4}\n",
+              "SCHEMA_V4 = 4\nSCHEMA_V5 = 5\nSUPPORTED_SCHEMA_VERSIONS = {\n"
+              "    SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5\n"
+              "}\n",
+          )
+          validator = validator.replace(
+              'LIFECYCLE_MERGE_SHA = "064845579c520e7464678cd0c41d9b650368dfa8"\n',
+              'LIFECYCLE_MERGE_SHA = "064845579c520e7464678cd0c41d9b650368dfa8"\n\n'
+              'RUNTIME_WIRING_ISSUE = 269\n'
+              'RUNTIME_WIRING_PR = 270\n'
+              f'RUNTIME_WIRING_HEAD_SHA = "{IMPLEMENTATION_HEAD}"\n'
+              f'RUNTIME_WIRING_MERGE_SHA = "{IMPLEMENTATION_MERGE}"\n',
+          )
+
+          v5_validator = r'''
+
+def _validate_v5(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]:
+    """Validate the bounded internal runtime-composition checkpoint."""
+
+    verified_head = common["verified_head"]
+    implementation = common["implementation"]
+    checkpoint = common["checkpoint"]
+    if verified_head != checkpoint:
+        raise ProjectStateError(
+            "repository_head_sha_at_verification must equal documentation_checkpoint_sha"
+        )
+    if implementation != verified_head:
+        raise ProjectStateError(
+            "implementation_baseline_sha must equal the verified implementation checkpoint"
+        )
+    if verified_head != RUNTIME_WIRING_MERGE_SHA:
+        raise ProjectStateError(
+            "schema v5 verified repository checkpoint must equal the runtime-wiring merge SHA"
+        )
+
+    continuity = common["continuity"]
+    if common["completed"] != 10 or common["total"] != 12:
+        raise ProjectStateError("schema v5 Continuity readiness must be exactly 10/12")
+    _require_literal(continuity, "implemented", True)
+    _require_literal(continuity, "tested", True)
+    _require_literal(continuity, "wired", True)
+    _require_literal(continuity, "enabled", False)
+    _require_literal(continuity, "observed", False)
+    _require_literal(continuity, "runtime_authority", False)
+    _require_string(continuity, "next_bounded_slice")
+
+    audit_merge = _validate_governance_audit(common["governance"])
+    notion = _validate_notion_audit(root, audit_merge)
+    _validate_resolver_record(root)
+
+    lifecycle = _require_mapping(
+        root.get("continuity_admission_artifact_lifecycle"),
+        "continuity_admission_artifact_lifecycle",
+    )
+    _require_literal(lifecycle, "tracking_issue", LIFECYCLE_ISSUE)
+    _require_literal(lifecycle, "implementation_pr", LIFECYCLE_PR)
+    _require_literal(lifecycle, "exact_head_sha", LIFECYCLE_HEAD_SHA)
+    _require_literal(lifecycle, "merge_sha", LIFECYCLE_MERGE_SHA)
+    _require_literal(lifecycle, "status", "COMPLETE")
+    _require_literal(lifecycle, "authority", "INTERNAL_STORAGE_LIFECYCLE_ONLY")
+    _require_literal(lifecycle, "storage_profile", "SQLITE_INTERNAL")
+    for field in (
+        "persistence_present",
+        "deterministic_replay_present",
+        "retention_cleanup_present",
+        "erasure_addressability_present",
+        "integrity_verification_present",
+        "crash_safe_transactions_present",
+    ):
+        _require_literal(lifecycle, field, True)
+    for field in (
+        "concrete_live_owner_adapters_selected",
+        "runtime_wired",
+        "enabled",
+        "observed",
+        "operator_go",
+        "producer_side_effects_present",
+        "independent_review_claimed",
+    ):
+        _require_literal(lifecycle, field, False)
+    for field in (
+        "exact_head_continuity_run",
+        "exact_head_full_ci_run",
+        "exact_head_docker_run",
+        "exact_head_aggregate_run",
+        "post_merge_continuity_run",
+        "post_merge_full_ci_run",
+        "post_merge_docker_run",
+        "post_merge_aggregate_run",
+    ):
+        _require_int(lifecycle, field, minimum=1)
+    _require_literal(lifecycle, "unresolved_review_threads", 0)
+
+    composition = _require_mapping(
+        root.get("continuity_bounded_runtime_composition"),
+        "continuity_bounded_runtime_composition",
+    )
+    _require_literal(composition, "tracking_issue", RUNTIME_WIRING_ISSUE)
+    _require_literal(composition, "implementation_pr", RUNTIME_WIRING_PR)
+    _require_literal(composition, "exact_head_sha", RUNTIME_WIRING_HEAD_SHA)
+    _require_literal(composition, "merge_sha", RUNTIME_WIRING_MERGE_SHA)
+    _require_literal(composition, "status", "COMPLETE")
+    _require_literal(composition, "authority", "INTERNAL_RUNTIME_COMPOSITION_ONLY")
+    _require_literal(composition, "composition_root", "server.py::lifespan")
+    _require_literal(
+        composition, "lifecycle_owner_id", "continuity.admission_artifact.sqlite"
+    )
+    _require_literal(composition, "lifecycle_owner_version", "1")
+    _require_literal(
+        composition,
+        "configuration_schema_version",
+        "continuity.runtime_composition.v1",
+    )
+    _require_literal(
+        composition,
+        "storage_selection",
+        "DEPLOYMENT_OWNED_ABSOLUTE_ROOT_WITH_DETERMINISTIC_SQLITE_DERIVATION",
+    )
+    _require_literal(
+        composition,
+        "accepted_input_boundary",
+        "COMPLETE_FACADE_BOUND_ACCEPTED_GRAPH_ONLY",
+    )
+    _require_literal(
+        composition,
+        "recovery_boundary",
+        "EXPLICIT_EXACT_SCOPE_REPLAY_AFTER_RESTART",
+    )
+    _require_literal(composition, "runtime_wired", True)
+    for field in (
+        "enabled",
+        "observed",
+        "runtime_authority",
+        "operator_go",
+        "caller_selected_database_path",
+        "caller_selected_owner",
+        "caller_selected_tenant",
+        "producer_side_effects_present",
+        "canon_writes_present",
+        "esm_writes_present",
+        "truth_gate_writes_present",
+        "goal_stack_writes_present",
+        "reminder_created",
+        "notification_created",
+        "action_created",
+        "tool_call_created",
+        "independent_review_claimed",
+    ):
+        _require_literal(composition, field, False)
+    _require_literal(composition, "user_visible_behavior", "UNCHANGED")
+    _require_literal(composition, "query_behavior", "UNCHANGED")
+    for field in (
+        "exact_head_continuity_run",
+        "exact_head_full_ci_run",
+        "exact_head_docker_run",
+        "exact_head_aggregate_run",
+        "post_merge_continuity_run",
+        "post_merge_full_ci_run",
+        "post_merge_docker_run",
+        "post_merge_aggregate_run",
+    ):
+        _require_int(composition, field, minimum=1)
+    _require_literal(composition, "submitted_review_count", 0)
+    _require_literal(composition, "codex_review_status", "NOT_RUN_USAGE_LIMIT")
+    _require_literal(composition, "unresolved_review_threads", 0)
+
+    _require_literal(notion, "latest_status_target", TITAN_NOTION_PAGE_TITLE)
+    _require_literal(notion, "latest_status_page_id", TITAN_NOTION_PAGE_ID)
+    _require_literal(
+        notion,
+        "latest_synchronization_kind",
+        "CONTINUITY_BOUNDED_RUNTIME_COMPOSITION",
+    )
+    _require_literal(
+        notion, "latest_implementation_merge_sha", RUNTIME_WIRING_MERGE_SHA
+    )
+    if not _require_bool(notion, "latest_synchronization_finalized"):
+        raise ProjectStateError(
+            "notion.latest_synchronization_finalized must be true"
+        )
+
+    return {
+        "audit_status": common["governance"]["retrospective_audit_status"],
+        "notion_status": notion["status"],
+    }
+'''
+          marker = "\ndef validate_project_state(data: Any) -> dict[str, Any]:\n"
+          if marker not in validator:
+              raise SystemExit("validator insertion marker missing")
+          validator = validator.replace(marker, v5_validator + marker, 1)
+          validator = validator.replace(
+              "    elif schema_version == SCHEMA_V3:\n"
+              "        version_report = _validate_v3(root, common)\n"
+              "    else:\n"
+              "        version_report = _validate_v4(root, common)\n",
+              "    elif schema_version == SCHEMA_V3:\n"
+              "        version_report = _validate_v3(root, common)\n"
+              "    elif schema_version == SCHEMA_V4:\n"
+              "        version_report = _validate_v4(root, common)\n"
+              "    else:\n"
+              "        version_report = _validate_v5(root, common)\n",
+          )
+          validator_path.write_text(validator, encoding="utf-8")
+
+          tests_path = Path("tests/test_check_project_state.py")
+          tests = tests_path.read_text(encoding="utf-8")
+          tests = tests.replace(
+              'LIFECYCLE_MERGE = "064845579c520e7464678cd0c41d9b650368dfa8"\n',
+              'LIFECYCLE_MERGE = "064845579c520e7464678cd0c41d9b650368dfa8"\n'
+              f'RUNTIME_WIRING_MERGE = "{IMPLEMENTATION_MERGE}"\n',
+          )
+          tests = tests.replace(
+              "def _state() -> dict:\n"
+              "    return json.loads(STATE_PATH.read_text(encoding=\"utf-8\"))\n\n\n"
+              "def _historical_v3_state() -> dict:\n"
+              "    state = copy.deepcopy(_state())\n",
+              "def _current_state() -> dict:\n"
+              "    return json.loads(STATE_PATH.read_text(encoding=\"utf-8\"))\n\n\n"
+              "def _historical_v4_state() -> dict:\n"
+              "    state = copy.deepcopy(_current_state())\n"
+              "    state[\"schema_version\"] = 4\n"
+              "    repository = state[\"repository\"]\n"
+              "    repository[\"repository_head_sha_at_verification\"] = LIFECYCLE_MERGE\n"
+              "    repository[\"implementation_baseline_sha\"] = LIFECYCLE_MERGE\n"
+              "    repository[\"documentation_checkpoint_sha\"] = LIFECYCLE_MERGE\n"
+              "    state[\"continuity\"].update(\n"
+              "        {\n"
+              "            \"completed_capabilities\": 9,\n"
+              "            \"readiness_percent\": 75.0,\n"
+              "            \"remaining_capabilities\": 3,\n"
+              "            \"remaining_percent\": 25.0,\n"
+              "            \"wired\": False,\n"
+              "            \"enabled\": False,\n"
+              "            \"observed\": False,\n"
+              "            \"runtime_authority\": False,\n"
+              "            \"next_bounded_slice\": (\n"
+              "                \"Runtime wiring with one explicitly selected lifecycle owner.\"\n"
+              "            ),\n"
+              "        }\n"
+              "    )\n"
+              "    state.pop(\"continuity_bounded_runtime_composition\", None)\n"
+              "    notion = state[\"notion\"]\n"
+              "    notion[\"latest_synchronization_kind\"] = (\n"
+              "        \"CONTINUITY_ADMISSION_ARTIFACT_LIFECYCLE\"\n"
+              "    )\n"
+              "    notion[\"latest_implementation_merge_sha\"] = LIFECYCLE_MERGE\n"
+              "    return state\n\n\n"
+              "def _state() -> dict:\n"
+              "    return _historical_v4_state()\n\n\n"
+              "def _historical_v3_state() -> dict:\n"
+              "    state = copy.deepcopy(_state())\n",
+          )
+          tests = tests.replace(
+              '    state["schema_version"] = 5\n\n    with pytest.raises(ProjectStateError, match="schema_version must be one of"):',
+              '    state["schema_version"] = 6\n\n    with pytest.raises(ProjectStateError, match="schema_version must be one of"): ',
+          )
+          tests = tests.replace(
+              '@pytest.mark.parametrize("schema_version", [4.0, True, "4", [], {}])',
+              '@pytest.mark.parametrize("schema_version", [5.0, True, "5", [], {}])',
+          )
+          v5_tests = r'''
+
+
+def test_repository_project_state_v5_is_valid() -> None:
+    report = validate_project_state(_current_state())
+
+    assert report["ok"] is True
+    assert report["schema_version"] == 5
+    assert report["continuity"] == "10/12"
+    assert report["readiness_percent"] == 83.3
+    assert report["audit_status"] == "COMPLETE"
+    assert report["notion_status"] == "SYNCED"
+    assert report["kb_policy"] == "KEEP_VERSIONED_KNOWLEDGE_ASSET"
+
+
+def test_schema_v5_sha_roles_pin_runtime_wiring_merge() -> None:
+    state = _current_state()
+    repository = state["repository"]
+    composition = state["continuity_bounded_runtime_composition"]
+
+    assert (
+        repository["repository_head_sha_at_verification"]
+        == repository["implementation_baseline_sha"]
+        == repository["documentation_checkpoint_sha"]
+        == composition["merge_sha"]
+        == RUNTIME_WIRING_MERGE
+    )
+
+
+def test_historical_schema_v4_snapshot_remains_readable() -> None:
+    report = validate_project_state(_historical_v4_state())
+
+    assert report["ok"] is True
+    assert report["schema_version"] == 4
+    assert report["continuity"] == "9/12"
+    assert report["readiness_percent"] == 75.0
+
+
+def test_schema_v5_requires_exact_ten_of_twelve() -> None:
+    state = _current_state()
+    state["continuity"].update(
+        {
+            "completed_capabilities": 9,
+            "remaining_capabilities": 3,
+            "readiness_percent": 75.0,
+            "remaining_percent": 25.0,
+        }
+    )
+
+    with pytest.raises(ProjectStateError, match="exactly 10/12"):
+        validate_project_state(state)
+
+
+@pytest.mark.parametrize("field", ["enabled", "observed", "runtime_authority"])
+def test_schema_v5_does_not_conflate_wiring_with_authority(field: str) -> None:
+    state = _current_state()
+    state["continuity"][field] = True
+
+    with pytest.raises(ProjectStateError, match=field):
+        validate_project_state(state)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "caller_selected_database_path",
+        "caller_selected_owner",
+        "caller_selected_tenant",
+        "producer_side_effects_present",
+        "canon_writes_present",
+        "esm_writes_present",
+        "truth_gate_writes_present",
+        "goal_stack_writes_present",
+        "reminder_created",
+        "notification_created",
+        "action_created",
+        "tool_call_created",
+        "independent_review_claimed",
+    ],
+)
+def test_schema_v5_runtime_composition_non_authority_flags_fail_closed(
+    field: str,
+) -> None:
+    state = _current_state()
+    state["continuity_bounded_runtime_composition"][field] = True
+
+    with pytest.raises(ProjectStateError, match=field):
+        validate_project_state(state)
+
+
+def test_schema_v5_runtime_composition_owner_is_exact() -> None:
+    state = _current_state()
+    state["continuity_bounded_runtime_composition"]["lifecycle_owner_id"] = (
+        "continuity.substituted"
+    )
+
+    with pytest.raises(ProjectStateError, match="lifecycle_owner_id"):
+        validate_project_state(state)
+
+
+def test_schema_v5_runtime_composition_evidence_is_positive() -> None:
+    state = _current_state()
+    state["continuity_bounded_runtime_composition"]["post_merge_full_ci_run"] = 0
+
+    with pytest.raises(ProjectStateError, match="post_merge_full_ci_run"):
+        validate_project_state(state)
+'''
+          tests_path.write_text(tests + v5_tests, encoding="utf-8")
+
+          current_state = f'''# 📍 Current System State
+
+**Verified:** 2026-08-09  
+**Repository implementation checkpoint:** `main@{IMPLEMENTATION_MERGE}`  
+**Bounded runtime-wiring implementation:** issue #269 · PR #270  
+**Exact tested implementation head:** `{IMPLEMENTATION_HEAD}`  
+**Machine-readable state:** schema v5  
+**Notion target:** `Velantrim Titan 9.0` · `398ac84d-0547-81fe-8ca5-d0d2727d1961`  
+**Reality boundary:** `INTERNAL · TESTED · WIRED INTERNALLY · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
+
+> This is a dated implementation checkpoint. Live GitHub and Notion must still be
+> re-read before any later operation treats it as current.
+
+```text
+PROPOSED ≠ IMPLEMENTED
+IMPLEMENTED ≠ TESTED
+TESTED ≠ WIRED
+WIRED ≠ ENABLED
+ENABLED ≠ OBSERVED
+
+Stored evidence ≠ current permission
+Successful replay ≠ authorization
+Accepted admission ≠ action permission
+Internal persistence ≠ producer activation
+```
+
+## Canonical summary
+
+Continuity implementation readiness is now:
+
+```text
+Completed: 10/12 = 83.3%
+Remaining: 2/12 = 16.7%
+```
+
+This is implementation and internal-wiring readiness only. It is not controlled
+enablement, Operator GO, production readiness or live evidence.
+
+## Bounded runtime composition
+
+PR #270 added `core/continuity/runtime_composition.py` and composed it around the existing
+`server.py::lifespan` boundary through the established server registration path.
+The owner exists only on `FastAPI app.state`; no second runtime, service locator, DI
+framework or module-global Continuity singleton was introduced.
+
+```text
+complete facade-bound accepted graph
+→ ContinuityRuntimeCompositionOwner
+→ continuity.admission_artifact.sqlite@1
+→ deployment-owned absolute storage root
+→ deterministic SQLite path derivation
+→ existing durable artifact lifecycle
+→ explicit append / exact-scope replay
+→ STOP
+```
+
+Configuration is immutable and all-or-nothing. No configuration means no owner and no
+SQLite creation. Partial configuration, unknown owner/version, unsafe root, substituted
+configuration, cross-tenant use, incompatible schema, append failure and replay failure
+all fail closed.
+
+The runtime owner accepts only a complete facade-bound accepted evidence graph. It does
+not accept bare observations, bare Drafts, raw evaluator results, caller-built artifacts,
+caller-selected owner identity, caller-selected database path, tenant override or subject
+substitution.
+
+## Exact implementation evidence
+
+```text
+Tracking issue:                 #269
+Implementation PR:              #270
+Exact tested head:              {IMPLEMENTATION_HEAD}
+Continuity contracts:           31338707796 · SUCCESS · 587 tests
+Full Titan CI:                  31338707803 · SUCCESS
+Docker hardening:               31338707801 · SUCCESS
+Ready-state aggregate:          31338960646 · SUCCESS
+Submitted reviews:              0
+Codex:                          NOT RUN — USAGE LIMIT
+Unresolved review threads:      0
+Independent review:             NOT CLAIMED
+Protected squash merge:         {IMPLEMENTATION_MERGE}
+Post-merge Continuity:          31339029070 · SUCCESS
+Post-merge full CI:             31339029081 · SUCCESS · 3850 passed
+Post-merge total coverage:      91.11% · ratchet 91.1%
+Post-merge Docker:              31339029082 · SUCCESS
+Post-merge aggregate push:      31339029069 · SUCCESS
+```
+
+Codex did not perform a substantive review because its usage limit was reached. This is
+not an approval and no independent review is claimed.
+
+## Proved absence of activation and side effects
+
+The merged block leaves all of the following absent:
+
+- controlled enablement and user activation;
+- Operator GO and runtime authority;
+- producer invocation;
+- Canon, ESM, TruthGate or GoalStack writes;
+- reminders, notifications, actions, tools or delivery;
+- background scheduler activation;
+- `/query` or answer behavior changes;
+- production observation, SLO, SLA, alerting, backup/restore or disaster-recovery claims.
+
+## Historical checkpoints remain immutable
+
+- Phase I audit: issue #257 · PR #261 · merge `90e221be2bed8177f4648787d713058df0f29e1f`;
+- current-decision resolver: issue #263 · PR #264 · merge `dc30817f2c4abb1afcaab2f127e679d5f9b884d7`;
+- durable artifact lifecycle: issue #266 · PR #267 · merge `064845579c520e7464678cd0c41d9b650368dfa8`.
+
+Schema v5 preserves validation for historical schemas v1, v2, v3 and v4. Schema v4
+continues to mean `TESTED · UNWIRED`; it is not rewritten retroactively.
+
+## Remaining capabilities
+
+1. controlled enablement with a separate explicit authorization and Operator GO;
+2. live monitored/observed evidence.
+
+No work on Continuity 11/12 is authorized by this checkpoint.
+'''
+          Path("docs/ai/CURRENT_STATE.md").write_text(current_state, encoding="utf-8")
+
+          known_risks = f'''# ⚠️ Known Risks and Required Proof
+
+**Snapshot:** 2026-08-09  
+**Repository checkpoint:** `main@{IMPLEMENTATION_MERGE}`  
+**Continuity:** `10/12 = 83.3%` implementation readiness  
+**Runtime:** `WIRED INTERNALLY · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`  
+**Governance:** active `main-governance` · solo mode · approvals `0`
+
+A merged implementation, durable receipt, successful replay, green aggregate or Notion
+update does not grant permission, authenticity, enablement or production authority.
+
+## Closed or materially reduced
+
+- one deployment-owned internal composition boundary now exists;
+- owner identity/version are exact and unknown values fail closed;
+- SQLite location is derived internally from a canonical absolute storage root;
+- caller-selected database path, owner and tenant substitution are rejected;
+- startup/shutdown are deterministic, idempotent and restartable;
+- concurrent startup creates one logical initialization;
+- only complete facade-bound accepted evidence can enter persistence;
+- append/replay failures and incompatible schema propagate fail closed;
+- `/query`, producer, Canon, ESM, TruthGate, GoalStack, reminder, notification, action and
+  tool side effects remain absent;
+- post-merge full CI, Continuity, Docker and aggregate push evidence are green.
+
+The former risk “runtime wiring is absent” is closed only at the bounded internal
+implementation/test level.
+
+## P0 — Controlled enablement and Operator GO are absent
+
+Internal wiring does not authorize use. No feature enablement, activation policy,
+Operator GO, rollout, rollback, SLO, alert or user-facing capability exists.
+
+Required proof before 11/12:
+
+- separate enablement decision and owner;
+- explicit Operator GO;
+- current authorization/restriction/erasure rechecks;
+- bounded rollout and rollback semantics;
+- metrics and fail-closed operational controls;
+- proof that disabled remains the default.
+
+## P0 — Concrete live decision-owner adapters are not selected
+
+The six current-decision ports still have no accepted live deployment adapters for
+principal, authorization, consent/lawful basis, restriction, erasure and PolicySnapshot.
+The new lifecycle owner does not replace them.
+
+Required proof:
+
+- authentic accepted owner APIs and deployment identities;
+- bounded current-state reads and configuration lineage;
+- adversarial tests against real owner stores;
+- explicit Operator decision before activation.
+
+## P1 — Integrity is not authenticity or permission
+
+```text
+Hash integrity ≠ authentic provenance
+Stored evidence ≠ current permission
+Replay success ≠ authorization
+Accepted admission ≠ action permission
+Runtime wiring ≠ enablement
+```
+
+Current permission can become stale after storage. A future producer must re-evaluate the
+accepted current owner state rather than treating an artifact as a token.
+
+## P1 — Recovery remains bounded and internal
+
+Proved: after clean restart, the owner can revalidate configuration/schema and perform
+explicit exact-scope replay.
+
+Not proved:
+
+- live crash recovery;
+- backup/restore or disaster recovery;
+- multi-process deployment contention;
+- disk-full and filesystem-permission behavior in production;
+- automatic self-healing;
+- SLO/SLA or observed operational recovery.
+
+## P1 — No live observation
+
+No production deployment, traffic, monitoring, alerting or observed user behavior exists.
+This is the final separate Continuity capability after controlled enablement.
+
+## P1 — Solo governance has no independent approval gate
+
+PR #270 had zero submitted reviews. Codex did not run because its usage limit was reached.
+Unresolved review threads were zero, but independent review is **NOT CLAIMED**.
+
+## P1 — Uncharacterized CAS-contention failure
+
+Issue #249 remains open and untouched. Do not weaken one-winner/one-intent assertions,
+skip the failure or reclassify it without evidence.
+
+## P1 — Legacy embeddings-lock timeout
+
+The historical first-attempt timeout in PR #246 remains unresolved risk evidence. It is
+outside this block.
+
+## P1 — Query/Canon ownership and projection lifecycle
+
+Legacy query/promotion hardening and projection dispatcher lifecycle/observability remain
+separate work. This bounded Continuity composition does not alter those paths.
+
+## P1 — Security and deployment
+
+No independent security audit, penetration test, certified privacy program, public
+multi-user deployment proof or complete incident-response rehearsal exists.
+
+## Risk update rule
+
+Use exact states: `PROPOSED`, `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED`, `OBSERVED`.
+Never collapse these states or infer authority from a green check.
+'''
+          Path("docs/ai/KNOWN_RISKS.md").write_text(known_risks, encoding="utf-8")
+
+          component_map = f'''# 🗺️ Component and Authority Map
+
+**Repository checkpoint:** `main@{IMPLEMENTATION_MERGE}`  
+**Runtime-wiring implementation:** issue #269 · PR #270  
+**Machine state:** [`docs/state/project_state.json`](../state/project_state.json) · schema v5  
+**Reality:** `INTERNAL · TESTED · WIRED INTERNALLY · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`
+
+## 1. Accepted Continuity lineage
+
+| Capability | Primary surface | State / authority |
+|---|---|---|
+| Source adapters | `state_source_adapter.py`, `goal_source_adapter.py`, `open_loop_source_adapter.py` | tested proposals only |
+| Admission evaluator | `admission_evaluator.py` | pure deterministic evaluation |
+| Admission facade | `admission_facade.py` | accepted binding boundary |
+| Current-decision resolver | `current_decision_resolver.py` | six-owner evidence composition; no live adapters selected |
+| Durable lifecycle | `admission_artifact_lifecycle.py` | internal SQLite append/replay/cleanup/erasure owner |
+| Runtime composition | `runtime_composition.py` | tested and wired in lifespan; disabled and without authority |
+| Composition root | `server.py::lifespan` via `api/server_middleware.py` | startup/shutdown owner only |
+
+## 2. Exact internal path
+
+```text
+State / Goal / OpenLoop result
+→ deterministic source adapter
+→ complete Draft/evidence set
+→ six-owner current-decision evidence
+→ admission-aware facade
+→ accepted facade result
+→ ContinuityRuntimeCompositionOwner
+→ continuity.admission_artifact.sqlite@1
+→ derived tenant-bound SQLite location
+→ existing durable lifecycle append / exact-scope replay
+→ STOP
+```
+
+No public endpoint invokes this path. The lifespan selects and starts the owner only when
+all deployment configuration fields are present. Missing configuration creates no owner
+and no SQLite database.
+
+## 3. Runtime-composition ownership
+
+| Concern | Composition responsibility | Boundary |
+|---|---|---|
+| Configuration | frozen content-addressed deployment contract | no caller substitution |
+| Owner selection | exact owner ID/version | unknown values fail closed |
+| Storage | canonical absolute root + deterministic filename | no caller DB path |
+| Tenant | exact deployment binding | cross-tenant use rejected |
+| Startup | schema initialization and verification | one logical initialization |
+| Shutdown | deterministic owner release | idempotent |
+| Append | complete accepted graph only | existing lifecycle remains validator |
+| Replay | exact scope after restart | evidence, never authorization |
+| Diagnostics | content-free internal evidence | no user side effect |
+
+## 4. State machine
+
+```text
+NEW --startup--> STARTED --shutdown--> STOPPED
+ |                 |                     |
+ shutdown          startup               shutdown
+ |                 |                     |
+ v                 v                     v
+STOPPED          STARTED               STOPPED
+
+STOPPED --startup--> STARTED
+```
+
+An `RLock` serializes startup, shutdown, append and replay through one logical owner.
+Failed initialization never publishes a started store.
+
+## 5. Authority map
+
+| Decision | Accepted owner |
+|---|---|
+| Canon / ESM state | canonical memory and write services |
+| Truth admission | TruthGate / accepted write path |
+| hard policy | PolicyKernel / PolicySnapshot |
+| current identity/authorization/consent/restriction/erasure | external domain owners; no live adapters selected |
+| admission decision | facade + pure evaluator |
+| artifact persistence/replay | durable lifecycle selected by runtime composition |
+| runtime startup/shutdown | existing FastAPI lifespan |
+| controlled enablement | no accepted owner |
+| Operator GO | absent |
+| production observation | absent |
+
+## 6. Anti-bypass guarantees
+
+- bare observations, bare Drafts and raw evaluator results are not accepted;
+- callers cannot supply artifacts, owner identity, database path, tenant or subject set;
+- no second non-test `ContinuityArtifactStore` construction path exists;
+- `/query` does not reference the runtime owner or persistence method;
+- replay does not call a producer, action, tool or authorization owner;
+- stored artifacts retain no runtime authority;
+- no Canon, ESM, TruthGate or GoalStack writes are introduced.
+
+## 7. Historical state
+
+| Checkpoint | Issue / PR | Merge | Meaning |
+|---|---|---|---|
+| Current-decision resolver | #263 / #264 | `dc30817f2c4abb1afcaab2f127e679d5f9b884d7` | schema v3 · 8/12 |
+| Durable lifecycle | #266 / #267 | `064845579c520e7464678cd0c41d9b650368dfa8` | schema v4 · 9/12 · unwired |
+| Bounded runtime composition | #269 / #270 | `{IMPLEMENTATION_MERGE}` | schema v5 · 10/12 · internally wired |
+
+Historical schema v4 remains `wired=false`; schema v5 alone records the new wiring.
+
+## 8. Remaining boundary
+
+```text
+Current state: 10/12 = 83.3%
+
+Remaining:
+1. controlled enablement + explicit Operator GO;
+2. live monitored/observed evidence.
+```
+
+Do not start 11/12 from this checkpoint automatically.
+'''
+          Path("docs/ai/COMPONENT_MAP.md").write_text(component_map, encoding="utf-8")
+
+          work_log_path = Path("docs/ai/WORK_LOG.md")
+          work_log = work_log_path.read_text(encoding="utf-8")
+          entry = f'''
+## 2026-08-09 — Bounded internal runtime composition implemented
+
+```text
+Tracking issue:               #269
+Implementation PR:            #270
+Base main:                    c2a60b5a54d2803b0e4de128df73e432b909dbf5
+Exact tested head:            {IMPLEMENTATION_HEAD}
+Continuity contracts:         31338707796 · SUCCESS · 587 tests
+Full Titan CI:                31338707803 · SUCCESS
+Docker hardening:             31338707801 · SUCCESS
+Ready-state aggregate:        31338960646 · SUCCESS
+Submitted reviews:            0
+Codex:                        NOT RUN — USAGE LIMIT
+Unresolved review threads:    0
+Independent review:           NOT CLAIMED
+Protected squash merge:       {IMPLEMENTATION_MERGE}
+Post-merge Continuity:        31339029070 · SUCCESS
+Post-merge full CI:           31339029081 · SUCCESS · 3850 passed
+Post-merge coverage:          91.11% · ratchet 91.1%
+Post-merge Docker:            31339029082 · SUCCESS
+Post-merge aggregate:         31339029069 · SUCCESS
+Documentation impact:         GITHUB_ONLY in implementation PR
+Runtime:                      WIRED INTERNALLY · NOT ENABLED · NOT OBSERVED
+```
+
+### Implemented
+
+- one immutable deployment-owned runtime composition configuration;
+- exact lifecycle owner `continuity.admission_artifact.sqlite@1`;
+- canonical absolute storage root and deterministic SQLite path derivation;
+- exact tenant binding and substitution rejection;
+- deterministic, idempotent and restartable startup/shutdown state machine;
+- one logical initialization under concurrent startup;
+- complete facade-bound accepted-graph input boundary;
+- explicit append and exact-scope replay through the existing lifecycle;
+- fail-closed configuration, schema, storage, append and replay errors;
+- app-lifespan ownership without public endpoint activation;
+- static guards for one store path, unchanged `/query` and absent forbidden imports.
+
+### Explicit non-scope
+
+No controlled enablement, Operator GO, producer activation, public behavior, monitoring,
+SLO/SLA, backup/restore claim, Canon/ESM/TruthGate/GoalStack write, reminder, notification,
+action, tool, Phase II, issue #249 or Continuity 11/12 work.
+
+### Readiness effect
+
+After separate authoritative status synchronization, Continuity advances from `9/12` to
+`10/12 = 83.3%`. This remains implementation/internal-wiring readiness only.
+
+---
+
+'''
+          first_separator = work_log.find("---\n")
+          if first_separator < 0:
+              raise SystemExit("work-log insertion marker missing")
+          insert_at = first_separator + len("---\n")
+          work_log = work_log[:insert_at] + "\n" + entry + work_log[insert_at:]
+          work_log = work_log.replace(
+              "Continuity is now `9/12 = 75.0%` after lifecycle status synchronization.\n\n"
+              "The next unresolved category is bounded runtime wiring with one explicitly selected\n"
+              "lifecycle owner. This checkpoint does not authorize runtime wiring, controlled activation,\n"
+              "Operator GO, Phase II or Research Copilot lifecycle work.",
+              "Continuity is now `10/12 = 83.3%` after bounded runtime-wiring status synchronization.\n\n"
+              "The next unresolved category is controlled enablement with a separate explicit Operator\n"
+              "GO. This checkpoint does not authorize enablement, live observation, Phase II or Research\n"
+              "Copilot lifecycle work.",
+          )
+          work_log_path.write_text(work_log, encoding="utf-8")
+          PY
+
+          rm .github/workflows/_temporary_status_sync_patch.yml
+
+      - name: Validate schema and focused tests
+        shell: bash
+        run: |
+          python scripts/check_project_state.py
+          python -m pytest -q tests/test_check_project_state.py
+          python -m ruff check scripts/check_project_state.py tests/test_check_project_state.py
+
+      - name: Commit authoritative status surfaces
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ai/CURRENT_STATE.md docs/ai/KNOWN_RISKS.md docs/ai/WORK_LOG.md docs/ai/COMPONENT_MAP.md docs/state/project_state.json scripts/check_project_state.py tests/test_check_project_state.py .github/workflows/_temporary_status_sync_patch.yml
+          git commit -m "docs(state): record Continuity 10/12 runtime wiring"
+          git push origin HEAD:continuity/status-sync-runtime-wiring
