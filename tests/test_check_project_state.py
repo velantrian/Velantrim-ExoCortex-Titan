@@ -14,10 +14,46 @@ AUDIT_MERGE = "90e221be2bed8177f4648787d713058df0f29e1f"
 AUDIT_IMPLEMENTATION = "9f07db6de8d32683d00bfe4f1673e84493607553"
 RESOLVER_MERGE = "dc30817f2c4abb1afcaab2f127e679d5f9b884d7"
 LIFECYCLE_MERGE = "064845579c520e7464678cd0c41d9b650368dfa8"
+RUNTIME_WIRING_MERGE = "802e833fa251a8831add8a6b802a5ebb57533549"
+
+
+def _current_state() -> dict:
+    return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+
+
+def _historical_v4_state() -> dict:
+    state = copy.deepcopy(_current_state())
+    state["schema_version"] = 4
+    repository = state["repository"]
+    repository["repository_head_sha_at_verification"] = LIFECYCLE_MERGE
+    repository["implementation_baseline_sha"] = LIFECYCLE_MERGE
+    repository["documentation_checkpoint_sha"] = LIFECYCLE_MERGE
+    state["continuity"].update(
+        {
+            "completed_capabilities": 9,
+            "readiness_percent": 75.0,
+            "remaining_capabilities": 3,
+            "remaining_percent": 25.0,
+            "wired": False,
+            "enabled": False,
+            "observed": False,
+            "runtime_authority": False,
+            "next_bounded_slice": (
+                "Runtime wiring with one explicitly selected lifecycle owner."
+            ),
+        }
+    )
+    state.pop("continuity_bounded_runtime_composition", None)
+    notion = state["notion"]
+    notion["latest_synchronization_kind"] = (
+        "CONTINUITY_ADMISSION_ARTIFACT_LIFECYCLE"
+    )
+    notion["latest_implementation_merge_sha"] = LIFECYCLE_MERGE
+    return state
 
 
 def _state() -> dict:
-    return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+    return _historical_v4_state()
 
 
 def _historical_v3_state() -> dict:
@@ -157,13 +193,13 @@ def test_historical_v1_ignores_fields_the_original_validator_ignored() -> None:
 
 def test_unknown_schema_version_fails_closed() -> None:
     state = copy.deepcopy(_state())
-    state["schema_version"] = 5
+    state["schema_version"] = 6
 
-    with pytest.raises(ProjectStateError, match="schema_version must be one of"):
+    with pytest.raises(ProjectStateError, match="schema_version must be one of"): 
         validate_project_state(state)
 
 
-@pytest.mark.parametrize("schema_version", [4.0, True, "4", [], {}])
+@pytest.mark.parametrize("schema_version", [5.0, True, "5", [], {}])
 def test_non_integer_schema_versions_fail_closed(schema_version: object) -> None:
     state = copy.deepcopy(_state())
     state["schema_version"] = schema_version
@@ -375,4 +411,110 @@ def test_notion_finalization_requires_non_empty_safe_targets() -> None:
     state["notion"]["safe_targets"] = []
 
     with pytest.raises(ProjectStateError, match="non-empty string list"):
+        validate_project_state(state)
+
+
+
+def test_repository_project_state_v5_is_valid() -> None:
+    report = validate_project_state(_current_state())
+
+    assert report["ok"] is True
+    assert report["schema_version"] == 5
+    assert report["continuity"] == "10/12"
+    assert report["readiness_percent"] == 83.3
+    assert report["audit_status"] == "COMPLETE"
+    assert report["notion_status"] == "SYNCED"
+    assert report["kb_policy"] == "KEEP_VERSIONED_KNOWLEDGE_ASSET"
+
+
+def test_schema_v5_sha_roles_pin_runtime_wiring_merge() -> None:
+    state = _current_state()
+    repository = state["repository"]
+    composition = state["continuity_bounded_runtime_composition"]
+
+    assert (
+        repository["repository_head_sha_at_verification"]
+        == repository["implementation_baseline_sha"]
+        == repository["documentation_checkpoint_sha"]
+        == composition["merge_sha"]
+        == RUNTIME_WIRING_MERGE
+    )
+
+
+def test_historical_schema_v4_snapshot_remains_readable() -> None:
+    report = validate_project_state(_historical_v4_state())
+
+    assert report["ok"] is True
+    assert report["schema_version"] == 4
+    assert report["continuity"] == "9/12"
+    assert report["readiness_percent"] == 75.0
+
+
+def test_schema_v5_requires_exact_ten_of_twelve() -> None:
+    state = _current_state()
+    state["continuity"].update(
+        {
+  "completed_capabilities": 9,
+  "remaining_capabilities": 3,
+  "readiness_percent": 75.0,
+  "remaining_percent": 25.0,
+        }
+    )
+
+    with pytest.raises(ProjectStateError, match="exactly 10/12"):
+        validate_project_state(state)
+
+
+@pytest.mark.parametrize("field", ["enabled", "observed", "runtime_authority"])
+def test_schema_v5_does_not_conflate_wiring_with_authority(field: str) -> None:
+    state = _current_state()
+    state["continuity"][field] = True
+
+    with pytest.raises(ProjectStateError, match=field):
+        validate_project_state(state)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "caller_selected_database_path",
+        "caller_selected_owner",
+        "caller_selected_tenant",
+        "producer_side_effects_present",
+        "canon_writes_present",
+        "esm_writes_present",
+        "truth_gate_writes_present",
+        "goal_stack_writes_present",
+        "reminder_created",
+        "notification_created",
+        "action_created",
+        "tool_call_created",
+        "independent_review_claimed",
+    ],
+)
+def test_schema_v5_runtime_composition_non_authority_flags_fail_closed(
+    field: str,
+) -> None:
+    state = _current_state()
+    state["continuity_bounded_runtime_composition"][field] = True
+
+    with pytest.raises(ProjectStateError, match=field):
+        validate_project_state(state)
+
+
+def test_schema_v5_runtime_composition_owner_is_exact() -> None:
+    state = _current_state()
+    state["continuity_bounded_runtime_composition"]["lifecycle_owner_id"] = (
+        "continuity.substituted"
+    )
+
+    with pytest.raises(ProjectStateError, match="lifecycle_owner_id"):
+        validate_project_state(state)
+
+
+def test_schema_v5_runtime_composition_evidence_is_positive() -> None:
+    state = _current_state()
+    state["continuity_bounded_runtime_composition"]["post_merge_full_ci_run"] = 0
+
+    with pytest.raises(ProjectStateError, match="post_merge_full_ci_run"):
         validate_project_state(state)

@@ -5,6 +5,8 @@ Schema v1 preserves the original minimal compatibility surface. Schema v2 preser
 strict finalized Phase I retrospective-audit checkpoint. Schema v3 records the current-
 decision resolver checkpoint. Schema v4 records the durable admission-artifact lifecycle
 checkpoint while retaining the immutable audit identity and exact Notion target.
+Schema v5 records bounded internal runtime composition while preserving every
+historical validator and separating wiring from enablement and observation.
 
 Every schema is a dated checkpoint, not an evergreen remote-head claim.
 """
@@ -24,7 +26,10 @@ SCHEMA_V1 = 1
 SCHEMA_V2 = 2
 SCHEMA_V3 = 3
 SCHEMA_V4 = 4
-SUPPORTED_SCHEMA_VERSIONS = {SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4}
+SCHEMA_V5 = 5
+SUPPORTED_SCHEMA_VERSIONS = {
+    SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V5
+}
 
 TITAN_AUDIT_ISSUE = 257
 TITAN_AUDIT_PR = 261
@@ -42,6 +47,11 @@ LIFECYCLE_ISSUE = 266
 LIFECYCLE_PR = 267
 LIFECYCLE_HEAD_SHA = "adba2b2621458d11b3173bdb9413c81a5ef599b3"
 LIFECYCLE_MERGE_SHA = "064845579c520e7464678cd0c41d9b650368dfa8"
+
+RUNTIME_WIRING_ISSUE = 269
+RUNTIME_WIRING_PR = 270
+RUNTIME_WIRING_HEAD_SHA = "7089b506e986b463929135c3d0f4a683bbe08a34"
+RUNTIME_WIRING_MERGE_SHA = "802e833fa251a8831add8a6b802a5ebb57533549"
 
 
 class ProjectStateError(ValueError):
@@ -444,6 +454,177 @@ def _validate_v4(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]
     }
 
 
+
+def _validate_v5(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]:
+    """Validate the bounded internal runtime-composition checkpoint."""
+
+    verified_head = common["verified_head"]
+    implementation = common["implementation"]
+    checkpoint = common["checkpoint"]
+    if verified_head != checkpoint:
+        raise ProjectStateError(
+  "repository_head_sha_at_verification must equal documentation_checkpoint_sha"
+        )
+    if implementation != verified_head:
+        raise ProjectStateError(
+  "implementation_baseline_sha must equal the verified implementation checkpoint"
+        )
+    if verified_head != RUNTIME_WIRING_MERGE_SHA:
+        raise ProjectStateError(
+  "schema v5 verified repository checkpoint must equal the runtime-wiring merge SHA"
+        )
+
+    continuity = common["continuity"]
+    if common["completed"] != 10 or common["total"] != 12:
+        raise ProjectStateError("schema v5 Continuity readiness must be exactly 10/12")
+    _require_literal(continuity, "implemented", True)
+    _require_literal(continuity, "tested", True)
+    _require_literal(continuity, "wired", True)
+    _require_literal(continuity, "enabled", False)
+    _require_literal(continuity, "observed", False)
+    _require_literal(continuity, "runtime_authority", False)
+    _require_string(continuity, "next_bounded_slice")
+
+    audit_merge = _validate_governance_audit(common["governance"])
+    notion = _validate_notion_audit(root, audit_merge)
+    _validate_resolver_record(root)
+
+    lifecycle = _require_mapping(
+        root.get("continuity_admission_artifact_lifecycle"),
+        "continuity_admission_artifact_lifecycle",
+    )
+    _require_literal(lifecycle, "tracking_issue", LIFECYCLE_ISSUE)
+    _require_literal(lifecycle, "implementation_pr", LIFECYCLE_PR)
+    _require_literal(lifecycle, "exact_head_sha", LIFECYCLE_HEAD_SHA)
+    _require_literal(lifecycle, "merge_sha", LIFECYCLE_MERGE_SHA)
+    _require_literal(lifecycle, "status", "COMPLETE")
+    _require_literal(lifecycle, "authority", "INTERNAL_STORAGE_LIFECYCLE_ONLY")
+    _require_literal(lifecycle, "storage_profile", "SQLITE_INTERNAL")
+    for field in (
+        "persistence_present",
+        "deterministic_replay_present",
+        "retention_cleanup_present",
+        "erasure_addressability_present",
+        "integrity_verification_present",
+        "crash_safe_transactions_present",
+    ):
+        _require_literal(lifecycle, field, True)
+    for field in (
+        "concrete_live_owner_adapters_selected",
+        "runtime_wired",
+        "enabled",
+        "observed",
+        "operator_go",
+        "producer_side_effects_present",
+        "independent_review_claimed",
+    ):
+        _require_literal(lifecycle, field, False)
+    for field in (
+        "exact_head_continuity_run",
+        "exact_head_full_ci_run",
+        "exact_head_docker_run",
+        "exact_head_aggregate_run",
+        "post_merge_continuity_run",
+        "post_merge_full_ci_run",
+        "post_merge_docker_run",
+        "post_merge_aggregate_run",
+    ):
+        _require_int(lifecycle, field, minimum=1)
+    _require_literal(lifecycle, "unresolved_review_threads", 0)
+
+    composition = _require_mapping(
+        root.get("continuity_bounded_runtime_composition"),
+        "continuity_bounded_runtime_composition",
+    )
+    _require_literal(composition, "tracking_issue", RUNTIME_WIRING_ISSUE)
+    _require_literal(composition, "implementation_pr", RUNTIME_WIRING_PR)
+    _require_literal(composition, "exact_head_sha", RUNTIME_WIRING_HEAD_SHA)
+    _require_literal(composition, "merge_sha", RUNTIME_WIRING_MERGE_SHA)
+    _require_literal(composition, "status", "COMPLETE")
+    _require_literal(composition, "authority", "INTERNAL_RUNTIME_COMPOSITION_ONLY")
+    _require_literal(composition, "composition_root", "server.py::lifespan")
+    _require_literal(
+        composition, "lifecycle_owner_id", "continuity.admission_artifact.sqlite"
+    )
+    _require_literal(composition, "lifecycle_owner_version", "1")
+    _require_literal(
+        composition,
+        "configuration_schema_version",
+        "continuity.runtime_composition.v1",
+    )
+    _require_literal(
+        composition,
+        "storage_selection",
+        "DEPLOYMENT_OWNED_ABSOLUTE_ROOT_WITH_DETERMINISTIC_SQLITE_DERIVATION",
+    )
+    _require_literal(
+        composition,
+        "accepted_input_boundary",
+        "COMPLETE_FACADE_BOUND_ACCEPTED_GRAPH_ONLY",
+    )
+    _require_literal(
+        composition,
+        "recovery_boundary",
+        "EXPLICIT_EXACT_SCOPE_REPLAY_AFTER_RESTART",
+    )
+    _require_literal(composition, "runtime_wired", True)
+    for field in (
+        "enabled",
+        "observed",
+        "runtime_authority",
+        "operator_go",
+        "caller_selected_database_path",
+        "caller_selected_owner",
+        "caller_selected_tenant",
+        "producer_side_effects_present",
+        "canon_writes_present",
+        "esm_writes_present",
+        "truth_gate_writes_present",
+        "goal_stack_writes_present",
+        "reminder_created",
+        "notification_created",
+        "action_created",
+        "tool_call_created",
+        "independent_review_claimed",
+    ):
+        _require_literal(composition, field, False)
+    _require_literal(composition, "user_visible_behavior", "UNCHANGED")
+    _require_literal(composition, "query_behavior", "UNCHANGED")
+    for field in (
+        "exact_head_continuity_run",
+        "exact_head_full_ci_run",
+        "exact_head_docker_run",
+        "exact_head_aggregate_run",
+        "post_merge_continuity_run",
+        "post_merge_full_ci_run",
+        "post_merge_docker_run",
+        "post_merge_aggregate_run",
+    ):
+        _require_int(composition, field, minimum=1)
+    _require_literal(composition, "submitted_review_count", 0)
+    _require_literal(composition, "codex_review_status", "NOT_RUN_USAGE_LIMIT")
+    _require_literal(composition, "unresolved_review_threads", 0)
+
+    _require_literal(notion, "latest_status_target", TITAN_NOTION_PAGE_TITLE)
+    _require_literal(notion, "latest_status_page_id", TITAN_NOTION_PAGE_ID)
+    _require_literal(
+        notion,
+        "latest_synchronization_kind",
+        "CONTINUITY_BOUNDED_RUNTIME_COMPOSITION",
+    )
+    _require_literal(
+        notion, "latest_implementation_merge_sha", RUNTIME_WIRING_MERGE_SHA
+    )
+    if not _require_bool(notion, "latest_synchronization_finalized"):
+        raise ProjectStateError(
+  "notion.latest_synchronization_finalized must be true"
+        )
+
+    return {
+        "audit_status": common["governance"]["retrospective_audit_status"],
+        "notion_status": notion["status"],
+    }
+
 def validate_project_state(data: Any) -> dict[str, Any]:
     """Validate the declared schema version and its safety/evidence contract."""
 
@@ -465,8 +646,10 @@ def validate_project_state(data: Any) -> dict[str, Any]:
         version_report = _validate_v2(root, common)
     elif schema_version == SCHEMA_V3:
         version_report = _validate_v3(root, common)
-    else:
+    elif schema_version == SCHEMA_V4:
         version_report = _validate_v4(root, common)
+    else:
+        version_report = _validate_v5(root, common)
 
     return {
         "ok": True,
