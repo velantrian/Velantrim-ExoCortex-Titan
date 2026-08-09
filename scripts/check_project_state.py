@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Validate the machine-readable Titan project-state contract.
 
-The state file deliberately records the exact main SHA inspected, not an evergreen
-claim that a hard-coded SHA is still the current repository head. CI can therefore
-validate semantics and arithmetic without pretending to query GitHub at runtime.
+Schema v1 remains readable for historical snapshots. Schema v2 is the strict finalized
+Phase I audit contract and binds the exact GitHub and Notion evidence recorded by PR #261.
+The state file records an exact dated checkpoint, not an evergreen remote-head claim.
 """
 
 from __future__ import annotations
@@ -17,7 +17,16 @@ from typing import Any
 
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 PROJECT_STATE_PATH = Path("docs/state/project_state.json")
+SCHEMA_V1 = 1
+SCHEMA_V2 = 2
+SUPPORTED_SCHEMA_VERSIONS = {SCHEMA_V1, SCHEMA_V2}
+
+TITAN_AUDIT_ISSUE = 257
+TITAN_AUDIT_PR = 261
+TITAN_AUDIT_HEAD_SHA = "54b4f962748610d3a57580506b7c36afa5329a71"
+TITAN_AUDIT_MERGE_SHA = "90e221be2bed8177f4648787d713058df0f29e1f"
 TITAN_AUDIT_PAGE_ID = "398ac84d-0547-81fe-8ca5-d0d2727d1961"
+TITAN_AUDIT_PAGE_TITLE = "Velantrim Titan 9.0"
 
 
 class ProjectStateError(ValueError):
@@ -51,8 +60,8 @@ def _require_string(mapping: dict[str, Any], field: str) -> str:
     return value
 
 
-def _require_literal(mapping: dict[str, Any], field: str, expected: str) -> str:
-    value = _require_string(mapping, field)
+def _require_literal(mapping: dict[str, Any], field: str, expected: Any) -> Any:
+    value = mapping.get(field)
     if value != expected:
         raise ProjectStateError(f"{field} must be {expected!r}")
     return value
@@ -65,12 +74,7 @@ def _require_sha(mapping: dict[str, Any], field: str) -> str:
     return value
 
 
-def validate_project_state(data: Any) -> dict[str, Any]:
-    """Validate shape, SHA semantics, readiness arithmetic and safety boundaries."""
-
-    root = _require_mapping(data, "root")
-    if root.get("schema_version") != 1:
-        raise ProjectStateError("schema_version must be 1")
+def _validate_common(root: dict[str, Any]) -> dict[str, Any]:
     if root.get("project") != "velantrim-exocortex-titan":
         raise ProjectStateError("project must be 'velantrim-exocortex-titan'")
 
@@ -78,14 +82,7 @@ def validate_project_state(data: Any) -> dict[str, Any]:
     verified_head = _require_sha(repository, "repository_head_sha_at_verification")
     implementation = _require_sha(repository, "implementation_baseline_sha")
     checkpoint = _require_sha(repository, "documentation_checkpoint_sha")
-    if verified_head != checkpoint:
-        raise ProjectStateError(
-            "repository_head_sha_at_verification must equal documentation_checkpoint_sha"
-        )
-    if not isinstance(repository.get("head_semantics"), str) or not repository[
-        "head_semantics"
-    ].strip():
-        raise ProjectStateError("repository.head_semantics must explain the three SHA roles")
+    _require_string(repository, "head_semantics")
 
     continuity = _require_mapping(root.get("continuity"), "continuity")
     completed = continuity.get("completed_capabilities")
@@ -133,36 +130,99 @@ def validate_project_state(data: Any) -> dict[str, Any]:
     _require_bool(governance, "codeowners_present")
     _require_bool(governance, "branch_ruleset_enforced")
     _require_int(governance, "tracking_issue", minimum=1)
+
+    kb = _require_mapping(root.get("knowledge_base"), "knowledge_base")
+    if kb.get("artifact_path") != "kb_graph.json":
+        raise ProjectStateError("knowledge_base.artifact_path must preserve kb_graph.json")
+    if kb.get("preservation_policy") != "KEEP_VERSIONED_KNOWLEDGE_ASSET":
+        raise ProjectStateError("KB preservation policy must remain explicit")
+    if kb.get("content_removed") is not False:
+        raise ProjectStateError("project state must not claim KB content was removed")
+    _require_bool(kb, "runtime_authority")
+
+    return {
+        "repository": repository,
+        "verified_head": verified_head,
+        "implementation": implementation,
+        "checkpoint": checkpoint,
+        "continuity": continuity,
+        "completed": completed,
+        "total": total,
+        "expected_readiness": expected_readiness,
+        "governance": governance,
+        "kb": kb,
+    }
+
+
+def _validate_v1(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]:
+    """Preserve readability of historical v1 snapshots without applying v2 fields."""
+
+    notion = root.get("notion")
+    notion_status = "LEGACY_OR_UNDECLARED"
+    if notion is not None:
+        notion_mapping = _require_mapping(notion, "notion")
+        notion_status = _require_string(notion_mapping, "status")
+
+    governance = common["governance"]
+    audit_status = governance.get("retrospective_audit_status", "LEGACY_OR_UNDECLARED")
+    if not isinstance(audit_status, str) or not audit_status.strip():
+        raise ProjectStateError(
+            "governance.retrospective_audit_status must be a non-empty string when present"
+        )
+
+    return {
+        "audit_status": audit_status,
+        "notion_status": notion_status,
+    }
+
+
+def _validate_v2(root: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]:
+    """Validate the strict, finalized Phase I audit evidence contract."""
+
+    repository = common["repository"]
+    verified_head = common["verified_head"]
+    checkpoint = common["checkpoint"]
+    governance = common["governance"]
+
+    if verified_head != checkpoint:
+        raise ProjectStateError(
+            "repository_head_sha_at_verification must equal documentation_checkpoint_sha"
+        )
+
     _require_int(governance, "ruleset_id", minimum=1)
     _require_literal(governance, "ruleset_name", "main-governance")
     _require_literal(governance, "ruleset_mode", "SOLO")
-    required_approvals = _require_int(governance, "required_approvals")
-    if required_approvals != 0:
+    if _require_int(governance, "required_approvals") != 0:
         raise ProjectStateError("governance.required_approvals must be 0 in SOLO mode")
     if _require_bool(governance, "independent_review_claimed"):
         raise ProjectStateError("governance must not claim independent historical review")
     _require_int(governance, "governance_canary_pr", minimum=1)
     _require_sha(governance, "governance_canary_merge_sha")
-    _require_int(governance, "retrospective_audit_issue", minimum=1)
-    _require_int(governance, "retrospective_audit_pr", minimum=1)
-    audit_head = _require_sha(governance, "retrospective_audit_head_sha")
-    audit_merge = _require_sha(governance, "retrospective_audit_merge_sha")
+
+    _require_literal(governance, "retrospective_audit_issue", TITAN_AUDIT_ISSUE)
+    _require_literal(governance, "retrospective_audit_pr", TITAN_AUDIT_PR)
+    _require_literal(
+        governance, "retrospective_audit_head_sha", TITAN_AUDIT_HEAD_SHA
+    )
+    audit_merge = _require_literal(
+        governance, "retrospective_audit_merge_sha", TITAN_AUDIT_MERGE_SHA
+    )
     _require_literal(governance, "retrospective_audit_status", "COMPLETE")
     _require_literal(
         governance, "retrospective_audit_issue_state", "CLOSED_COMPLETED"
     )
-    if audit_head == audit_merge:
-        raise ProjectStateError(
-            "governance retrospective audit head and merge SHAs must differ"
-        )
     if audit_merge != verified_head or audit_merge != checkpoint:
         raise ProjectStateError(
             "repository audit checkpoint SHAs must equal retrospective_audit_merge_sha"
         )
 
     notion = _require_mapping(root.get("notion"), "notion")
-    _require_literal(notion, "status", "SYNCED_FINAL")
-    audit_target = _require_literal(notion, "audit_target", "Velantrim Titan 9.0")
+    _require_literal(notion, "status", "SYNCED")
+    if not _require_bool(notion, "audit_synchronization_finalized"):
+        raise ProjectStateError("notion.audit_synchronization_finalized must be true")
+    audit_target = _require_literal(
+        notion, "audit_target", TITAN_AUDIT_PAGE_TITLE
+    )
     _require_literal(notion, "audit_page_id", TITAN_AUDIT_PAGE_ID)
     notion_merge = _require_sha(notion, "audit_merge_sha_recorded")
     if notion_merge != audit_merge:
@@ -177,25 +237,40 @@ def validate_project_state(data: Any) -> dict[str, Any]:
     if audit_target not in safe_targets:
         raise ProjectStateError("notion.audit_target must be included in safe_targets")
 
-    kb = _require_mapping(root.get("knowledge_base"), "knowledge_base")
-    if kb.get("artifact_path") != "kb_graph.json":
-        raise ProjectStateError("knowledge_base.artifact_path must preserve kb_graph.json")
-    if kb.get("preservation_policy") != "KEEP_VERSIONED_KNOWLEDGE_ASSET":
-        raise ProjectStateError("KB preservation policy must remain explicit")
-    if kb.get("content_removed") is not False:
-        raise ProjectStateError("project state must not claim KB content was removed")
-    _require_bool(kb, "runtime_authority")
+    return {
+        "audit_status": governance["retrospective_audit_status"],
+        "notion_status": notion["status"],
+    }
+
+
+def validate_project_state(data: Any) -> dict[str, Any]:
+    """Validate the declared schema version and its safety/evidence contract."""
+
+    root = _require_mapping(data, "root")
+    schema_version = root.get("schema_version")
+    if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+        raise ProjectStateError(
+            f"schema_version must be one of {sorted(SUPPORTED_SCHEMA_VERSIONS)}"
+        )
+
+    common = _validate_common(root)
+    version_report = (
+        _validate_v1(root, common)
+        if schema_version == SCHEMA_V1
+        else _validate_v2(root, common)
+    )
 
     return {
         "ok": True,
-        "verified_head": verified_head,
-        "implementation_baseline": implementation,
-        "documentation_checkpoint": checkpoint,
-        "continuity": f"{completed}/{total}",
-        "readiness_percent": expected_readiness,
-        "audit_status": governance["retrospective_audit_status"],
-        "notion_status": notion["status"],
-        "kb_policy": kb["preservation_policy"],
+        "schema_version": schema_version,
+        "verified_head": common["verified_head"],
+        "implementation_baseline": common["implementation"],
+        "documentation_checkpoint": common["checkpoint"],
+        "continuity": f"{common['completed']}/{common['total']}",
+        "readiness_percent": common["expected_readiness"],
+        "audit_status": version_report["audit_status"],
+        "notion_status": version_report["notion_status"],
+        "kb_policy": common["kb"]["preservation_policy"],
     }
 
 
@@ -235,6 +310,7 @@ def main() -> int:
     else:
         print(
             "OK: project state validated; "
+            f"schema=v{report['schema_version']}, "
             f"Continuity={report['continuity']} ({report['readiness_percent']}%), "
             f"Audit={report['audit_status']}, Notion={report['notion_status']}, "
             f"KB={report['kb_policy']}"
