@@ -157,3 +157,24 @@ Remaining: none.
 Continuity 12/12 is complete. This is not a production-readiness, production-authority,
 or standing-Operator-GO claim — see `docs/ai/CURRENT_STATE.md`'s "Explicit non-goals
 preserved" section and `docs/ai/KNOWN_RISKS.md`.
+
+## 9. Post-Continuity canonical PII-redaction ownership
+
+This section records a post-Continuity canonical-memory hardening decision; it does not
+change the 12/12 Continuity checkpoint or runtime authority above.
+
+| Concern | Accepted owner / surface | Boundary |
+|---|---|---|
+| PII detection/replacement policy | `core.forgetting.redact_pii()` | deterministic claim-text transformation only |
+| PII claim mutation | `core.pii_redaction.CanonicalPiiRedactor` | narrow mutation-family service over existing `SQLiteGraphStore`; no general write authority |
+| Legacy compatibility | `ForgettingEngine.redact_pii_fact()` / `.redact_pii_batch()` | adapter only; no direct raw-SQL claim UPDATE |
+| Current Canon | existing `SQLiteGraphStore` transaction | CAS-guarded claim + integrity metadata + version bump |
+| Version history | privacy-sanitized `fact_versions` | exact plaintext pre-image is intentionally not retained for redacted claim surface |
+| Tamper-evident evidence | content-free `AuditChain` event | does not store removed claim payload |
+| FTS | synchronous refresh in same SQLite transaction when present | rebuildable projection; never Canon |
+| Other local projections | content-free migration-020 outbox refresh intent when active | no direct graph/vector authority added |
+| Full physical erasure | `ErasureCoordinator` / batch erasure | separate contract; claim redaction is not Art. 17 proof for every storage surface |
+
+See `docs/adr/ADR-2026-08-10-pii-redaction-privacy-history-exception.md` and
+`docs/operations/canonical-pii-redaction.md`. Review-stage implementation is tracked in
+#282 / PR #283 and is not implementation truth until protected merge evidence exists.
