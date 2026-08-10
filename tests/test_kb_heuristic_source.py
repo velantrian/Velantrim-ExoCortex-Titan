@@ -45,9 +45,16 @@ def test_generated_heuristic_inserts_into_migrated_relations_schema():
     conn.executescript(migration)
 
     edge = build_ops_sequence_edges(_ops_facts())[0]
-    result = batch_insert_edges(conn, [edge], create_inverse=False)
+    result = batch_insert_edges(conn, [edge])
 
     assert result["inserted"] == 1
-    assert conn.execute(
-        "SELECT inference_source FROM relations"
-    ).fetchone() == ("autolinker",)
+    forward = conn.execute(
+        """
+        SELECT inference_source, truth_status, review_state
+        FROM relations
+        WHERE from_fact_id = ? AND to_fact_id = ? AND relation_type = ?
+        """,
+        (edge["source_id"], edge["target_id"], edge["relation_type"]),
+    ).fetchone()
+    assert forward == ("autolinker", "hypothesis", "pending")
+    assert conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0] == 2
