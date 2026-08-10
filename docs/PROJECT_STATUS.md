@@ -21,7 +21,8 @@ These are exercised by tests, used on every request by default, and considered t
 product's actual core:
 
 - **Memory + epistemic state machine** (`core/memory.py`) — 8-state ESM, bi-temporal
-  fields, single write path, Ring Zero immutable core.
+  fields, canonical storage primitives, Ring Zero immutable core. Promotion ownership
+  is separately inventoried in `docs/operations/promotion-ownership-inventory.md`.
 - **HTTP API + web console** (`server.py`, `api/`) — auth, CORS, rate limiting, routing.
 - **Truth Gate + cognitive modes** (`core/truth_gate.py`) — confidence/evidence
   thresholds per mode (PRECISION/BALANCED/EXPLORATION/CREATIVE).
