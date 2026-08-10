@@ -1,116 +1,105 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-08-09  
-**Repository checkpoint:** `main@802e833fa251a8831add8a6b802a5ebb57533549`  
-**Continuity:** `10/12 = 83.3%` implementation readiness  
-**Runtime:** `WIRED INTERNALLY · NOT ENABLED · NOT OBSERVED · NO RUNTIME AUTHORITY`  
+**Snapshot:** 2026-08-10  
+**Repository checkpoint:** `main@66318e6883590cb29a4565157e0a3a25b3716d81`  
+**Continuity:** `11/12 = 91.7%` implementation readiness  
+**Runtime:** `CONTROLLED-ENABLEMENT MECHANISM WIRED · CURRENTLY DISABLED · OPERATOR GO ABSENT · NOT OBSERVED · NO RUNTIME AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0`
 
-A merged implementation, durable receipt, successful replay, green aggregate or Notion
-update does not grant permission, authenticity, enablement or production authority.
+A canonical manifest, persisted decision, green aggregate or Notion update does not prove
+operator authenticity, current permission, observation or production authority.
 
 ## Closed or materially reduced
 
-- one deployment-owned internal composition boundary now exists;
-- owner identity/version are exact and unknown values fail closed;
-- SQLite location is derived internally from a canonical absolute storage root;
-- caller-selected database path, owner and tenant substitution are rejected;
-- startup/shutdown are deterministic, idempotent and restartable;
-- concurrent startup creates one logical initialization;
-- only complete facade-bound accepted evidence can enter persistence;
-- append/replay failures and incompatible schema propagate fail closed;
-- `/query`, producer, Canon, ESM, TruthGate, GoalStack, reminder, notification, action and
-  tool side effects remain absent;
-- post-merge full CI, Continuity, Docker and aggregate push evidence are green.
+- controlled enablement now has one explicit deployment-owned decision contract;
+- exact schema, canonical JSON and SHA-256 integrity are validated;
+- decisions bind to exact configuration, lifecycle owner/version, tenant, content-free
+  storage identity and one internal scope;
+- enable leases are finite; disable decisions are explicit and monotonic;
+- duplicate decisions are idempotent; stale/conflicting decisions fail closed;
+- concurrent enable/disable converges through serialized in-process application and
+  SQLite uniqueness constraints;
+- decision evidence remains in the existing tenant-bound SQLite database;
+- persisted evidence is revalidated and is never restart permission;
+- runtime configuration without a current enable decision stays disabled;
+- only existing explicit append/replay methods are gated;
+- `/query`, producer and all forbidden side effects remain absent.
 
-The former risk “runtime wiring is absent” is closed only at the bounded internal
-implementation/test level.
+The former risk “controlled-enablement mechanism is absent” is closed only at the bounded
+implementation/test/wiring level.
 
-## P0 — Controlled enablement and Operator GO are absent
+## P0 — No current Operator GO or deployed activation
 
-Internal wiring does not authorize use. No feature enablement, activation policy,
-Operator GO, rollout, rollback, SLO, alert or user-facing capability exists.
+No activation manifest is committed or supplied by this repository checkpoint.
+`runtime currently enabled=false`, `operator authorization present=false`, and
+`operator_go=false`.
 
-Required proof before 11/12:
+Before any real deployment may enable the runtime, an operator must provide a current
+exact decision through deployment-owned controls and independently establish the
+identity/authority of that operator. Manifest SHA-256 proves integrity, not authenticity.
 
-- separate enablement decision and owner;
-- explicit Operator GO;
-- current authorization/restriction/erasure rechecks;
-- bounded rollout and rollback semantics;
-- metrics and fail-closed operational controls;
-- proof that disabled remains the default.
-
-## P0 — Concrete live decision-owner adapters are not selected
+## P0 — Concrete live current-decision owner adapters remain unselected
 
 The six current-decision ports still have no accepted live deployment adapters for
 principal, authorization, consent/lawful basis, restriction, erasure and PolicySnapshot.
-The new lifecycle owner does not replace them.
+Controlled enablement does not replace those owners.
 
-Required proof:
+Required proof before any side-effect-capable producer:
 
-- authentic accepted owner APIs and deployment identities;
+- authentic owner APIs and deployment identities;
 - bounded current-state reads and configuration lineage;
-- adversarial tests against real owner stores;
-- explicit Operator decision before activation.
+- adversarial tests against accepted owner stores;
+- current restriction/erasure/authorization rechecks;
+- explicit operator decision under deployment governance.
 
-## P1 — Integrity is not authenticity or permission
+## P1 — Live observation is absent
 
-```text
-Hash integrity ≠ authentic provenance
-Stored evidence ≠ current permission
-Replay success ≠ authorization
-Accepted admission ≠ action permission
-Runtime wiring ≠ enablement
-```
+No production deployment, traffic, telemetry, monitoring, alerting or observed user
+behavior exists. This is the final separate Continuity capability and is not implied by
+the controlled-enablement mechanism.
 
-Current permission can become stale after storage. A future producer must re-evaluate the
-accepted current owner state rather than treating an artifact as a token.
-
-## P1 — Recovery remains bounded and internal
-
-Proved: after clean restart, the owner can revalidate configuration/schema and perform
-explicit exact-scope replay.
+## P1 — Operational scope remains bounded
 
 Not proved:
 
-- live crash recovery;
-- backup/restore or disaster recovery;
-- multi-process deployment contention;
+- multi-process decision contention;
+- live crash recovery, backup/restore or disaster recovery;
 - disk-full and filesystem-permission behavior in production;
-- automatic self-healing;
-- SLO/SLA or observed operational recovery.
-
-## P1 — No live observation
-
-No production deployment, traffic, monitoring, alerting or observed user behavior exists.
-This is the final separate Continuity capability after controlled enablement.
+- external audit service, SLO/SLA, alerting or rollback orchestration;
+- public multi-user rollout.
 
 ## P1 — Solo governance has no independent approval gate
 
-PR #270 had zero submitted reviews. Codex did not run because its usage limit was reached.
-Unresolved review threads were zero, but independent review is **NOT CLAIMED**.
+PR #273 had zero submitted reviews. Codex did not run because its usage limit was reached.
+Unresolved review threads were zero. Independent review is **NOT CLAIMED**.
 
 ## P1 — Uncharacterized CAS-contention failure
 
 Issue #249 remains open and untouched. Do not weaken one-winner/one-intent assertions,
 skip the failure or reclassify it without evidence.
 
-## P1 — Legacy embeddings-lock timeout
+## P1 — Legacy and unrelated risks remain separate
 
-The historical first-attempt timeout in PR #246 remains unresolved risk evidence. It is
-outside this block.
-
-## P1 — Query/Canon ownership and projection lifecycle
-
-Legacy query/promotion hardening and projection dispatcher lifecycle/observability remain
-separate work. This bounded Continuity composition does not alter those paths.
-
-## P1 — Security and deployment
-
-No independent security audit, penetration test, certified privacy program, public
-multi-user deployment proof or complete incident-response rehearsal exists.
+- the historical embeddings-lock timeout remains unresolved evidence;
+- legacy query/promotion hardening remains separate;
+- projection dispatcher lifecycle/observability remains separate;
+- no independent security audit, penetration test, certified privacy program or complete
+  incident-response rehearsal exists.
 
 ## Risk update rule
 
-Use exact states: `PROPOSED`, `IMPLEMENTED`, `TESTED`, `WIRED`, `ENABLED`, `OBSERVED`.
-Never collapse these states or infer authority from a green check.
+Use exact states:
+
+```text
+IMPLEMENTED
+TESTED
+WIRED
+ENABLEMENT MECHANISM IMPLEMENTED
+RUNTIME CURRENTLY ENABLED
+OPERATOR AUTHORIZATION PRESENT
+OPERATOR GO
+OBSERVED
+PRODUCTION-AUTHORITATIVE
+```
+
+Never infer a later state from an earlier one.
