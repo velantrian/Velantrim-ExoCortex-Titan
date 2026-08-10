@@ -2,10 +2,9 @@
 
 Issue #284 / parent #50.
 
-``MemoryArchival`` owns archive-payload preparation and eligibility.  This
-module owns the canonical SQLite mutation only.  It deliberately reuses the
-existing ``SQLiteGraphStore`` transaction/evidence primitives instead of
-introducing another general write protocol.
+``MemoryArchival`` owns archive-payload preparation and eligibility. This module owns
+the canonical SQLite mutation only and reuses the existing ``SQLiteGraphStore``
+transaction/evidence primitives instead of introducing another general write protocol.
 """
 
 from __future__ import annotations
@@ -14,6 +13,7 @@ import json
 import sqlite3
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 
 from core.audit_chain import (
     ACTOR_CODE_STORE_FACT,
@@ -32,7 +32,6 @@ from core.projection_outbox import (
 )
 from core.version_store import VersionStore
 from core.write_gate import ensure_writes_allowed
-
 
 _ARCHIVED_FACTS_DDL = """
 CREATE TABLE IF NOT EXISTS archived_facts (
@@ -86,6 +85,22 @@ class CanonicalArchivalRewriter:
             chain_id = f"fact-transition:{candidate.audit_subject_id}"
             with self._store._db() as ready_conn:
                 AuditChain.verify_schema_ready(ready_conn, chain_id=chain_id)
+
+    @staticmethod
+    def _validate_payloads(candidates: list[ArchivalCandidate]) -> None:
+        seen: set[str] = set()
+        for candidate in candidates:
+            if candidate.fact_id in seen:
+                raise ValueError(f"duplicate archival candidate {candidate.fact_id!r}")
+            seen.add(candidate.fact_id)
+            path = Path(candidate.archive_file)
+            if not path.is_file():
+                raise FileNotFoundError(
+                    f"archive payload missing before canonical mutation: {path}"
+                )
+            expected_prefix = f"archive://{path.name}#"
+            if not candidate.archive_key.startswith(expected_prefix):
+                raise ValueError("archive_key does not identify the prepared payload")
 
     @staticmethod
     def _fts_exists(conn: sqlite3.Connection) -> bool:
@@ -164,7 +179,6 @@ class CanonicalArchivalRewriter:
             "SELECT audit_subject_id FROM facts WHERE fact_id = ?",
             (candidate.fact_id,),
         ).fetchone()[0]
-
         self._store._snapshot_before_change_in_transaction(
             conn,
             candidate.fact_id,
@@ -172,7 +186,6 @@ class CanonicalArchivalRewriter:
             caused_by="memory.archive",
             now_iso=now,
         )
-
         conn.execute(
             """INSERT INTO archived_facts
                (fact_id, archive_key, archived_at, original_claim, original_state, archive_file)
@@ -186,7 +199,6 @@ class CanonicalArchivalRewriter:
                 candidate.archive_file,
             ),
         )
-
         AuditChain(
             conn,
             chain_id=f"fact-transition:{real_subject}",
@@ -197,7 +209,6 @@ class CanonicalArchivalRewriter:
             to_state=snapshot.get("epistemic_state"),
             reason=REASON_CODE_CAS_GUARDED_WRITE,
         )
-
         if self._fts_exists(conn):
             upsert_fts_row(
                 conn,
@@ -208,16 +219,12 @@ class CanonicalArchivalRewriter:
         self._append_projection_intent_if_active(conn, fact_id=candidate.fact_id)
 
     def rewrite_batch(self, candidates: list[ArchivalCandidate]) -> int:
-        """Commit one selected archive batch atomically in SQLite.
-
-        Archive payloads are prepared by the caller before this method.  A failure here
-        commits neither Canon nor ``archived_facts`` nor version/audit/projection
-        evidence.  Filesystem cleanup is therefore caller-owned and best-effort.
-        """
+        """Commit one selected archive batch atomically in SQLite."""
         if not candidates:
             return 0
         ensure_writes_allowed()
         self.ensure_schema()
+        self._validate_payloads(candidates)
         self._store._release_stray_locks()
         self._prepare_evidence_schema(candidates)
 
