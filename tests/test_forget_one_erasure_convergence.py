@@ -7,6 +7,7 @@ proofs and only mock the coordinator for explicit legacy-result mapping tests.
 """
 from __future__ import annotations
 
+import importlib
 import inspect
 import sqlite3
 
@@ -18,7 +19,6 @@ from core.erasure_coordinator import (
     PARTIAL,
     RESIDUAL_IMMUTABLE_DATA,
     SUBJECT_CONFLICT,
-    ErasureCoordinator,
 )
 from core.forgetting import ForgettingEngine
 from core.memory import make_store
@@ -153,7 +153,15 @@ def test_forget_one_has_no_independent_raw_fact_delete():
 def test_forget_one_never_maps_non_complete_durable_outcome_to_success(
     tmp_path, monkeypatch, outcome, residual
 ):
-    """Legacy compatibility must not turn PARTIAL/FAILED/residual/conflict into success."""
+    """Legacy compatibility must not turn PARTIAL/FAILED/residual/conflict into success.
+
+    Some full-suite fixtures deliberately evict every ``core.*`` module from
+    ``sys.modules`` and import a fresh FastAPI app. A top-level class binding in
+    this test file can therefore become stale while ``forget_one()`` resolves
+    ``core.erasure_coordinator`` lazily at call time. Patch the module that is
+    current in ``sys.modules`` immediately before the call, mirroring the
+    repository's established fresh-import pattern in ``test_forgetting.py``.
+    """
     tenant_db_path = str(tmp_path / "tenant.db")
     tenant_store = make_store(tenant_db_path)
     tenant_store.store_fact(_fact("f_pending"))
@@ -173,7 +181,8 @@ def test_forget_one_never_maps_non_complete_durable_outcome_to_success(
             "steps": {},
         }
 
-    monkeypatch.setattr(ErasureCoordinator, "erase_fact_durable", _report_only)
+    erasure_mod = importlib.import_module("core.erasure_coordinator")
+    monkeypatch.setattr(erasure_mod.ErasureCoordinator, "erase_fact_durable", _report_only)
     engine = _tenant_engine(tmp_path, tenant_db_path)
 
     verdict = engine.forget_one("f_pending", user_id="userA", reason="dsr")
