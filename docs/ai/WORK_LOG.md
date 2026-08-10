@@ -7,6 +7,60 @@ merged PR bodies and dated checkpoint documents.
 
 ---
 
+## 2026-08-10 — P0 PII claim-redaction convergence in protected review
+
+```text
+Parent Truth Foundation:       #50 · OPEN
+Tracking issue:                #282
+Implementation PR:             #283 · DRAFT / REVIEW-STAGE
+Exact base main:               d62d51636f96749950fd60cac316e41f46a461a5
+Documentation impact:          GITHUB_AND_NOTION
+Continuity:                    12/12 = 100% · unchanged
+Schema:                        v7 · unchanged
+Runtime currently enabled:     false · unchanged
+Operator GO:                   false · unchanged
+Runtime authority:             false · unchanged
+Production authority:          false · unchanged
+```
+
+### What is being converged
+
+The legacy `ForgettingEngine.redact_pii_fact()` / `redact_pii_batch()` paths previously
+owned direct SQLite `facts.claim` UPDATEs. They bumped `fact_version`, but the claim
+mutation was not bound to the Issue #50 same-transaction evidence contract.
+
+PR #283 introduces one narrow `CanonicalPiiRedactor` mutation-family service over the
+existing `SQLiteGraphStore` transaction owner. Legacy methods become compatibility
+adapters. The bounded contract preserves ESM state/confidence, uses a durable-snapshot
+CAS, refreshes claim-derived integrity metadata, bumps fact version exactly once,
+records content-free AuditChain evidence, refreshes same-DB FTS when present and emits
+a content-free migration-020 outbox refresh intent when active.
+
+### Privacy-history exception
+
+A normal VersionStore pre-image contains the exact plaintext historical `claim`. For a
+PII-redaction operation that would re-persist the email/phone/name that the caller is
+trying to remove. ADR
+`ADR-2026-08-10-pii-redaction-privacy-history-exception.md` therefore defines a narrow
+privacy exception: affected historical `fact_versions.claim` values and the new
+redaction boundary snapshot are stored **sanitized**, with integrity metadata/checksum
+recomputed. Exact plaintext time-travel recovery is intentionally sacrificed on this
+claim surface; structural historical/audit evidence remains.
+
+This is claim-surface redaction, not proof of complete GDPR Art. 17 physical erasure
+from raw origins, arbitrary metadata, every graph/vector/external backend, backups or
+external systems. Durable physical erasure remains the ErasureCoordinator contract.
+
+### Merge boundary
+
+This entry describes **review-stage work**, not current-main implementation truth.
+Before PR #283 can leave draft it still requires final-head full CI/Docker/aggregate,
+Notion review-stage synchronization + read-back, clear review threads and protected
+merge. After merge, post-merge CI and final Notion read-back are required. #50 remains
+open for archival/causal-relation and any other live residual mutation families.
+
+---
+
 ## 2026-08-10 — Continuity 12/12: bounded observation canary executed
 
 ```text
