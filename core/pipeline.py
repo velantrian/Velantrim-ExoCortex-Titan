@@ -56,6 +56,7 @@ from core.memory import (
     get_facts_by_ids,
 )
 
+# ── Sprint 2a: новые импорты ──────────────────────────────────────────────────
 try:
     from core.hybrid_retriever import HybridRetriever, RetrievedFact
     _HYBRID_AVAILABLE = True
@@ -82,6 +83,11 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# ─── MOCK DATABASE (L3 заглушка) ──────────────────────────────────────────────
+# Используется как fallback если store пустой (разработка, тесты без данных).
+# FIX v8.5.1 (Gemini): DATABASE — ТОЛЬКО FALLBACK для dev/test.
+# В production при пустом store НЕ используем эти данные — возвращаем пустой результат.
+# TODO Sprint 2b: полностью убрать DATABASE после реализации реального GraphStore.
 _DATABASE_DEV_ONLY = [
     {"id": "f1", "text": "Water boils at 100°C at sea level",      "source": "physics",      "confidence": 0.99},
     {"id": "f2", "text": "Quantum entanglement links particles",     "source": "physics",      "confidence": 0.85},
@@ -89,29 +95,53 @@ _DATABASE_DEV_ONLY = [
     {"id": "f4", "text": "The human brain has ~86 billion neurons", "source": "neuroscience", "confidence": 0.90},
     {"id": "f5", "text": "DNA encodes genetic information",         "source": "biology",      "confidence": 0.99},
 ]
+
+# FIX v8.5.2 (Claude audit): обратно-совместимый алиас для существующих
+# тестов и внешнего кода, импортирующего `DATABASE`. Удалить в Sprint 2b
+# вместе с самим mock-fallback. Не использовать в новом коде.
 DATABASE = _DATABASE_DEV_ONLY
 
+
+# ─── HybridRetriever singleton (AUDIT-FIX v8.4.0) ─────────────────────────────
+# До v8.4.0 _retrieve_from_store создавал HybridRetriever на каждом запросе.
+# Каждое создание грузит sentence-transformer (~80MB модель, 1-2 сек) и считает
+# embeddings всей базы. На production это performance bomb.
+# Сейчас держим singleton + признак "грязный" (_HYBRID_DIRTY), который вызывает
+# rebuild при значимых изменениях базы. Authoritative writer вызывает
+# mark_retriever_dirty() после изменения базы; QueryPipeline сам флаг не меняет.
+
 _HYBRID_RETRIEVER: Optional["HybridRetriever"] = None
-_HYBRID_DIRTY: bool = True
-_HYBRID_FACTS_COUNT: int = 0
-_HYBRID_FACT_IDS: frozenset = frozenset()
+_HYBRID_DIRTY: bool = True   # при старте — нужно построить
+_HYBRID_FACTS_COUNT: int = 0  # для лёгкой инвалидации
+_HYBRID_FACT_IDS: frozenset = frozenset()  # TASK-06/07: детектируем смену фактов
 
 
 def mark_retriever_dirty() -> None:
+    """Пометить singleton как requiring rebuild (вызывать после store_fact)."""
     global _HYBRID_DIRTY
     _HYBRID_DIRTY = True
 
 
 def _get_hybrid_retriever(facts: list[dict[str, Any]]) -> Optional["HybridRetriever"]:
+    """
+    Получить singleton HybridRetriever, перестраивая при необходимости.
+    Перестройка происходит когда:
+      - _HYBRID_DIRTY = True (явный вызов mark_retriever_dirty)
+      - количество фактов изменилось значимо (>10% разница)
+      - состав fact_id изменился (TASK-06/07: иные факты с тем же count)
+    """
     global _HYBRID_RETRIEVER, _HYBRID_DIRTY, _HYBRID_FACTS_COUNT, _HYBRID_FACT_IDS
+
     if not _HYBRID_AVAILABLE:
         return None
+
     n = len(facts)
     current_ids = frozenset(f.get("fact_id", "") for f in facts)
     facts_changed = (
         abs(n - _HYBRID_FACTS_COUNT) > max(1, _HYBRID_FACTS_COUNT * 0.1)
         or current_ids != _HYBRID_FACT_IDS
     )
+
     if _HYBRID_RETRIEVER is None or _HYBRID_DIRTY or facts_changed:
         try:
             _HYBRID_RETRIEVER = HybridRetriever(facts)
@@ -122,12 +152,16 @@ def _get_hybrid_retriever(facts: list[dict[str, Any]]) -> Optional["HybridRetrie
         except Exception as exc:
             logger.warning("HybridRetriever build failed: %s", exc)
             return None
+
     return _HYBRID_RETRIEVER
 
 
+# ─── CausalGraph singleton (TASK-08) ──────────────────────────────────────────
+# Отслеживаем db_path чтобы пересоздавать при смене store (тесты с isolated_db).
 _CAUSAL_GRAPH: Optional["CausalGraph"] = None
 _CAUSAL_GRAPH_DB_PATH: str = ""
 
+# Regex для определения каузальных паттернов (EN + RU)
 _CAUSAL_REGEX = re.compile(
     r"\b(because|therefore|thus|hence|since|causes|leads to|results in|implies|"
     r"due to|consequently|as a result|"
@@ -171,19 +205,30 @@ _RELATIONS_DDL = """
 
 
 def _get_causal_graph() -> Optional["CausalGraph"]:
+    """
+    TASK-08: Получить singleton CausalGraph.
+    Пересоздаёт если db_path изменился (тесты с isolated_db).
+    Создаёт таблицы если их нет (идемпотентно, как migration 008).
+    """
     global _CAUSAL_GRAPH, _CAUSAL_GRAPH_DB_PATH
+
     if not _CAUSAL_GRAPH_AVAILABLE:
         return None
+
     import core.memory as _mem
+
     current_path = getattr(_mem._GLOBAL_STORE, "db_path", "")
     if _CAUSAL_GRAPH is not None and _CAUSAL_GRAPH_DB_PATH == current_path:
         return _CAUSAL_GRAPH
+
+    # db_path изменился → пересоздаём (закрываем старое соединение)
     if _CAUSAL_GRAPH is not None:
         try:
             _CAUSAL_GRAPH._conn.close()
         except Exception:
             pass
         _CAUSAL_GRAPH = None
+
     try:
         conn = sqlite3.connect(current_path)
         conn.row_factory = sqlite3.Row
@@ -203,21 +248,17 @@ def _get_causal_graph() -> Optional["CausalGraph"]:
 
 
 def reset_causal_graph() -> None:
-    """Auditably clear canonical relations and detach the singleton.
-
-    Issue #286: this public reset surface no longer owns a raw
-    ``DELETE FROM relations`` path. The canonical mutation and same-transaction
-    AuditChain evidence are owned by ``CausalGraph.reset_relations()``.
-    """
+    """Auditably clear canonical relations and detach the singleton."""
     global _CAUSAL_GRAPH, _CAUSAL_GRAPH_DB_PATH
 
-    graph = _CAUSAL_GRAPH
-    if graph is not None:
-        graph.reset_relations()
+    if _CAUSAL_GRAPH is not None:
         try:
-            graph._conn.close()
-        except Exception:
-            logger.debug("CausalGraph close after reset failed", exc_info=True)
+            _CAUSAL_GRAPH.reset_relations()
+        finally:
+            try:
+                _CAUSAL_GRAPH._conn.close()
+            except Exception:
+                pass
     _CAUSAL_GRAPH = None
     _CAUSAL_GRAPH_DB_PATH = ""
 
@@ -226,34 +267,57 @@ def _extract_conflicts(
     facts: list[dict[str, Any]],
     graph: "CausalGraph",
 ) -> list[dict[str, Any]]:
+    """
+    TASK-16: Contradiction-First — извлечь существующие противоречия
+    для фактов которые попали в ответ.
+
+    Использует find_contradictions() из CausalGraph (с cycle protection из TASK-10).
+    Не создаёт новые связи — только показывает уже существующие contradicts-рёбра.
+
+    Не блокирует ответ. Просто аннотирует.
+    """
     conflicts: list[dict[str, Any]] = []
-    seen_pairs: set = set()
+    seen_pairs: set = set()  # дедупликация (A↔B одна пара)
+
     fact_ids_in_response = {f.get("fact_id") for f in facts if f.get("fact_id")}
+
     for fact in facts:
         fact_id = fact.get("fact_id")
         if not fact_id:
             continue
+
         try:
             contradictions = graph.find_contradictions(fact_id)
         except Exception as exc:
             logger.debug("find_contradictions failed for %s: %s", fact_id, exc)
             continue
+
         for rel in contradictions:
-            other_id = rel.to_fact_id if rel.from_fact_id == fact_id else rel.from_fact_id
+            # Определяем "другой конец" связи
+            other_id = (
+                rel.to_fact_id if rel.from_fact_id == fact_id
+                else rel.from_fact_id
+            )
+            # Дедупликация: пара (A,B) == (B,A)
             pair_key = tuple(sorted([fact_id, other_id]))
             if pair_key in seen_pairs:
                 continue
             seen_pairs.add(pair_key)
+
+            # Если оба факта в ответе — показываем как "internal conflict"
+            # Если только один — как "external conflict" с памятью
             kind = "internal" if other_id in fact_ids_in_response else "external"
+
             conflicts.append({
                 "relation_id": rel.relation_id,
-                "fact_a": fact_id,
+                "fact_a":      fact_id,
                 "fact_a_claim": fact.get("claim", "")[:80],
-                "fact_b": other_id,
-                "kind": kind,
-                "confidence": getattr(rel, "confidence", 0.5),
-                "review": getattr(rel, "review_state", "unknown"),
+                "fact_b":      other_id,
+                "kind":        kind,
+                "confidence":  getattr(rel, "confidence", 0.5),
+                "review":      getattr(rel, "review_state", "unknown"),
             })
+
     return conflicts
 
 
@@ -261,9 +325,26 @@ def _extract_causal_hints(
     facts: list[dict[str, Any]],
     graph: Optional["CausalGraph"] = None,
 ) -> list[dict[str, Any]]:
-    causal_facts = [f for f in facts if _CAUSAL_REGEX.search(f.get("claim", ""))]
+    """
+    TASK-08/P0: read-only regex extractor for causal proposals.
+
+    Логика:
+    - Если claim факта содержит каузальный паттерн → он "каузально нагружен"
+    - Каузально нагруженные факты образуют AnalysisProposal для `implies`
+    - QueryPipeline НИКОГДА не вызывает graph.add_relation()
+    - Отдельный ingestion/review path позже может принять или отклонить proposal
+
+    ``graph`` remains an ignored compatibility parameter for callers that used
+    the old helper.  Supplying it cannot grant write authority.
+    """
+    causal_facts = [
+        f for f in facts
+        if _CAUSAL_REGEX.search(f.get("claim", ""))
+    ]
+
     if len(causal_facts) < 2:
         return []
+
     hints: list[dict[str, Any]] = []
     for i, fa in enumerate(causal_facts):
         for fb in causal_facts[i + 1:]:
@@ -277,23 +358,27 @@ def _extract_causal_hints(
             hints.append({
                 "proposal_id": proposal_id,
                 "relation_id": None,
-                "from": fa["fact_id"],
-                "from_claim": fa["claim"][:60],
-                "to": fb["fact_id"],
-                "to_claim": fb["claim"][:60],
-                "type": "implies",
-                "status": "hypothetical",
-                "confidence": 0.35,
-                "review": "pending",
+                "from":        fa["fact_id"],
+                "from_claim":  fa["claim"][:60],
+                "to":          fb["fact_id"],
+                "to_claim":    fb["claim"][:60],
+                "type":        "implies",
+                "status":      "hypothetical",
+                "confidence":  0.35,
+                "review":      "pending",
                 "disposition": "proposal_only",
             })
             logger.debug(
                 "Causal proposal: %s → %s (implies, pending)",
                 fa["fact_id"], fb["fact_id"],
             )
+
     return hints
 
 
+# ─── NGramIndex singleton (Sprint 2a) ─────────────────────────────────────────
+# Инициализируется один раз при загрузке модуля.
+# Если FTS5 недоступен — _NGRAM_INDEX.available == False, pipeline пропускает.
 _NGRAM_INDEX: Optional["NGramIndex"] = None
 if _NGRAM_AVAILABLE:
     try:
@@ -303,16 +388,25 @@ if _NGRAM_AVAILABLE:
     except Exception as exc:
         logger.warning("pipeline: NGramIndex init failed: %s → fallback на полный поиск", exc)
 
+
+# ─── HELPERS ──────────────────────────────────────────────────────────────────
+
 _TOKEN_SPLIT = re.compile(r"[\s\u2013\u2014\-_/]+")
 _TOKEN_STRIP = ".,!?;:()[]{}\"'`"
 
 
 def tokenize(text: str) -> list[str]:
+    """Разбить текст на токены с поддержкой em-dash, en-dash, пунктуации."""
     return [t for raw in _TOKEN_SPLIT.split(text)
             if (t := raw.lower().strip(_TOKEN_STRIP))]
 
 
+# ─── LEGACY BM25 (для DATABASE fallback) ──────────────────────────────────────
+# Остаётся для обратной совместимости с тестами и DATABASE-режимом.
+# При работе с реальным store используется HybridRetriever (Sprint 2a).
+
 class BM25:
+    """BM25 Okapi — legacy ранкер для DATABASE mock."""
     def __init__(self, corpus: list[list[str]], k1: float = 1.5, b: float = 0.75) -> None:
         self.k1, self.b = k1, b
         self.N = len(corpus)
@@ -352,9 +446,12 @@ _DB_TOKENS: list[list[str]] = [tokenize(str(item["text"])) for item in _DATABASE
 _BM25_INDEX = BM25(_DB_TOKENS)
 
 
+# ─── RETRIEVAL ────────────────────────────────────────────────────────────────
+
 def _cogdist_enabled() -> bool:
     try:
         from core.runtime_flags import is_cognitive_distance_enabled
+
         return is_cognitive_distance_enabled()
     except Exception:  # noqa: BLE001
         return False
@@ -363,10 +460,20 @@ def _cogdist_enabled() -> bool:
 def _maybe_cognitive_rerank(
     rows: list[dict[str, Any]], k: int
 ) -> list[dict[str, Any]]:
+    """Opt-in re-rank of retrieval rows by cognitive_distance, then truncate to k.
+
+    Flag off ⇒ returns rows[:k] unchanged (byte-identical). Read-only; never raises —
+    on any failure falls back to the incoming order. Candidates are ENRICHED from the
+    store first (real epistemic_state / relations / temporal), because the retrieval
+    rows hardcode epistemic_state="Observed". v0 runs without a query embedding, so the
+    semantic axis is 0 and the working signal is epistemic + relational + temporal
+    (usage/semantic axes are inert until those fields exist in the schema).
+    """
     if not _cogdist_enabled() or not rows:
         return rows[:k]
     try:
         from core.cognitive_distance import rank_by_distance
+
         ids = [str(r.get("id")) for r in rows if r.get("id")]
         enriched_by_id = {f.get("fact_id"): f for f in get_facts_by_ids(ids)} if ids else {}
         facts = []
@@ -379,7 +486,7 @@ def _maybe_cognitive_rerank(
                 "relations": src.get("relations", []),
                 "t_event_valid_start": src.get("t_event_valid_start"),
                 "t_event_valid_end": src.get("t_event_valid_end"),
-                "_row": r,
+                "_row": r,  # carry original row through
             })
         ranked = rank_by_distance(facts, query_vector=None, top_k=k)
         out = []
@@ -388,7 +495,7 @@ def _maybe_cognitive_rerank(
             row["cognitive_distance"] = f.get("cognitive_distance")
             out.append(row)
         return out
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — re-rank must never break retrieval
         logger.debug("cognitive rerank skipped: %s", exc)
         return rows[:k]
 
@@ -396,7 +503,18 @@ def _maybe_cognitive_rerank(
 def _narrow_candidates(
     query: str, domain: str | None
 ) -> list[dict[str, Any]]:
+    """Шаг 0: NGramIndex pre-filter → filtered_facts.
+
+    Общий для lexical и hybrid маршрутов — единственное место, где кандидаты
+    сужаются перед ранжированием (NGram → domain filter).
+
+    TASK-06: вместо get_all_facts() (SELECT * — вся база в RAM) используем
+    get_fact_ids() (SELECT fact_id — легко) + get_facts_by_ids() для кандидатов.
+    При NGramIndex: загружаем только отфильтрованные N фактов.
+    При отсутствии NGramIndex: cap=1000 (вместо неограниченного SELECT *).
+    """
     _RETRIEVE_CAP = 1_000
+
     if _NGRAM_INDEX is not None and _NGRAM_INDEX.available:
         candidate_ids = list(_NGRAM_INDEX.query(query, limit=50))
         if candidate_ids:
@@ -411,13 +529,17 @@ def _narrow_candidates(
             logger.debug("NGramIndex: 0 кандидатов → bounded fallback (cap=%d)", _RETRIEVE_CAP)
     else:
         filtered_facts = get_facts_by_ids(get_fact_ids(limit=_RETRIEVE_CAP))
+
     if not filtered_facts:
         return []
+
     if domain:
         from core.domain_tags import filter_facts_by_domain, normalize_domain
+
         filtered_facts = filter_facts_by_domain(
             filtered_facts, normalize_domain(domain)
         )
+
     return filtered_facts
 
 
