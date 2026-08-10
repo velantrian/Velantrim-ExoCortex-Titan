@@ -58,8 +58,12 @@ if TYPE_CHECKING:
     from core.memory import SQLiteGraphStore
 
 
-class PiiRedactionConcurrentModification(RuntimeError):
+class PiiRedactionConcurrentModificationError(RuntimeError):
     """A fact changed after the redaction candidate snapshot was prepared."""
+
+
+# Compatibility name used by the legacy adapter/tests in this bounded PR.
+PiiRedactionConcurrentModification = PiiRedactionConcurrentModificationError
 
 
 @dataclass(frozen=True, slots=True)
@@ -375,5 +379,6 @@ class CanonicalPiiRedactor:
 __all__ = [
     "CanonicalPiiRedactor",
     "PiiRedactionConcurrentModification",
+    "PiiRedactionConcurrentModificationError",
     "PiiRedactionResult",
 ]
