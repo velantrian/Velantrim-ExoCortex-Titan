@@ -1,20 +1,15 @@
-"""
-📦 core/memory_archival.py — Memory Archival (V8.7 Titan, из Memory f.md)
+"""📦 Memory archival coordinator.
 
-Архивация старых эпизодов — не удаление, а ПЕРЕНОС в object storage.
-Освобождает граф от мёртвого груза, сохраняя историю доступной.
+Issue #284 / parent #50 convergence: this module owns archival eligibility,
+filesystem payload preparation, restore and reporting.  It no longer owns raw SQL
+updates of canonical ``facts.claim``.  Canonical claim mutation is delegated to
+``CanonicalArchivalRewriter`` over the existing ``SQLiteGraphStore`` transaction.
 
-V8.7: использует локальную файловую систему (архив в JSON).
-S3/MinIO — опциональное расширение (меняется только storage backend).
-
-Конфигурация:
-    VELANTRIM_ARCHIVE_PATH   — путь к архиву (default: ./data/archive)
-    VELANTRIM_ARCHIVE_AGE    — возраст эпизодов для архивации в днях (default: 90)
-
-Инварианты:
-    I-AR1: Архивация НЕ удаляет факт — заменяет на ссылку archive_key.
-    I-AR2: ImmutableCore / Ring Zero — НЕ архивируются.
-    I-AR3: Архивные файлы — read-only после записи.
+Filesystem and SQLite cannot share a literal transaction.  The bounded ordering is:
+prepare a durable archive payload first, then atomically commit Canon + archive marker
++ VersionStore + AuditChain + projections.  If the DB/evidence transaction fails, a
+newly-created payload is removed best-effort; an unremovable orphan never counts as a
+successful canonical archive.
 """
 
 from __future__ import annotations
@@ -22,11 +17,15 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sqlite3
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from core.archival_mutation import ArchivalCandidate, CanonicalArchivalRewriter
+from core.memory import SQLiteGraphStore
+from core.write_gate import ensure_writes_allowed
 
 logger = logging.getLogger("velantrim.memory_archival")
 
@@ -35,17 +34,6 @@ ARCHIVE_PATH = os.getenv("VELANTRIM_ARCHIVE_PATH", "./data/archive")
 ARCHIVE_AGE_DAYS = int(os.getenv("VELANTRIM_ARCHIVE_AGE", "90"))
 
 _IMMUTABLE_STATES = {"ImmutableCore"}
-
-_ARCHIVE_MARK_DDL = """
-CREATE TABLE IF NOT EXISTS archived_facts (
-    fact_id       TEXT PRIMARY KEY,
-    archive_key   TEXT NOT NULL,
-    archived_at   TEXT NOT NULL,
-    original_claim TEXT,
-    original_state TEXT,
-    archive_file  TEXT NOT NULL
-);
-"""
 
 
 @dataclass
@@ -69,12 +57,7 @@ class ArchiveReport:
 
 
 class MemoryArchival:
-    """
-    Перенос старых фактов в архив.
-
-    Не удаляет данные — заменяет claim на archive_key.
-    Оригинал сохраняется в JSON-файле.
-    """
+    """Archive coordinator; not an independent canonical-write owner."""
 
     def __init__(
         self,
@@ -87,37 +70,17 @@ class MemoryArchival:
         self._archive_path = Path(archive_path)
         self._age_days = age_days
         self._archive_path.mkdir(parents=True, exist_ok=True)
-        self._init_db()
+        self._store = SQLiteGraphStore(db_path)
+        self._rewriter = CanonicalArchivalRewriter(self._store)
+        self._rewriter.ensure_schema()
 
-    def _init_db(self) -> None:
-        try:
-            conn = sqlite3.connect(self._db_path, timeout=10.0)
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.executescript(_ARCHIVE_MARK_DDL)
-            conn.commit()
-            conn.close()
-        except Exception as exc:
-            logger.warning("MemoryArchival DDL: %s", exc)
+    def close(self) -> None:
+        self._store.close()
 
-    # ── Архивация ─────────────────────────────────────────────────────────
-
-    def archive_old_facts(self, *, dry_run: bool = False) -> ArchiveReport:
-        """
-        Найти и заархивировать факты старше age_days.
-
-        dry_run=True → только отчёт (не архивирует).
-        """
-        report = ArchiveReport(archive_path=str(self._archive_path))
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=self._age_days)).isoformat()
-
-        try:
-            conn = sqlite3.connect(self._db_path, timeout=10.0)
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.row_factory = sqlite3.Row
-
-            # Найти старые факты — FIX #11 (Claude audit): исключать уже-архивированные
+    def _eligible_snapshots(self, cutoff: str) -> list[dict[str, Any]]:
+        with self._store._db() as conn:
             rows = conn.execute(
-                """SELECT fact_id, claim, epistemic_state, confidence, created_at
+                """SELECT fact_id
                    FROM facts
                    WHERE created_at < ?
                      AND epistemic_state NOT IN ('ImmutableCore',)
@@ -125,69 +88,68 @@ class MemoryArchival:
                    ORDER BY created_at ASC""",
                 (cutoff,),
             ).fetchall()
+        snapshots: list[dict[str, Any]] = []
+        for row in rows:
+            snapshot = self._store.get_fact_durable(str(row["fact_id"]))
+            if snapshot is not None:
+                snapshots.append(snapshot)
+        return snapshots
 
-            report.scanned = len(rows)
-            logger.info(
-                "MemoryArchival: найдено %d старых фактов (старше %d дней)",
-                report.scanned, self._age_days,
-            )
+    def archive_old_facts(self, *, dry_run: bool = False) -> ArchiveReport:
+        """Archive eligible facts older than the configured age.
 
+        Each generated payload batch (max 100 records) is one SQLite atomic mutation
+        unit.  A later batch failure does not lie about earlier committed batches.
+        """
+        report = ArchiveReport(archive_path=str(self._archive_path))
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=self._age_days)).isoformat()
+
+        try:
+            snapshots = self._eligible_snapshots(cutoff)
+            report.scanned = len(snapshots)
             if dry_run:
-                conn.close()
-                report.archived = 0
                 return report
 
-            # Группировка для архивации (batch по 100 фактов в один файл)
-            batch: List[Dict] = []
+            batch: List[Dict[str, Any]] = []
             batch_count = 0
-
-            for row in rows:
-                if row["epistemic_state"] in _IMMUTABLE_STATES:
+            for snapshot in snapshots:
+                if snapshot.get("epistemic_state") in _IMMUTABLE_STATES:
                     report.skipped_immutable += 1
                     continue
-
-                batch.append(dict(row))
-
+                batch.append(snapshot)
                 if len(batch) >= 100:
-                    self._archive_batch(conn, batch, batch_count)
-                    report.archived += len(batch)
+                    report.archived += self._archive_batch(batch, batch_count)
                     batch_count += 1
                     batch = []
-
-            # Последний batch
             if batch:
-                self._archive_batch(conn, batch, batch_count)
-                report.archived += len(batch)
-
-            conn.commit()
-            conn.close()
-
-            logger.info(
-                "MemoryArchival: заархивировано %d фактов, пропущено %d immutable",
-                report.archived, report.skipped_immutable,
-            )
+                report.archived += self._archive_batch(batch, batch_count)
             return report
-
-        except Exception as exc:
+        except Exception as exc:  # fail closed; committed prior batches stay truthful
             logger.error("MemoryArchival.archive_old_facts: %s", exc)
             report.errors += 1
             return report
 
     def _archive_batch(
         self,
-        conn: sqlite3.Connection,
-        batch: List[Dict],
+        batch: List[Dict[str, Any]],
         batch_num: int,
-    ) -> None:
-        """Заархивировать пачку фактов в один JSON-файл."""
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
-        archive_file = self._archive_path / f"archive_{timestamp}_b{batch_num:03d}.json"
+    ) -> int:
+        """Prepare one immutable payload, then atomically rewrite its Canon rows."""
+        if not batch:
+            return 0
+        ensure_writes_allowed()
 
-        # Записать JSON
-        with open(archive_file, "w", encoding="utf-8") as f:
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
+        archive_file = self._archive_path / (
+            f"archive_{timestamp}_b{batch_num:03d}_{uuid.uuid4().hex[:8]}.json"
+        )
+        archived_at = datetime.now(timezone.utc).isoformat()
+
+        # Exclusive create avoids silently replacing an existing archive artifact.
+        with open(archive_file, "x", encoding="utf-8") as f:
             json.dump(
                 {
-                    "archived_at": datetime.now(timezone.utc).isoformat(),
+                    "archived_at": archived_at,
                     "archived_count": len(batch),
                     "facts": batch,
                 },
@@ -195,123 +157,84 @@ class MemoryArchival:
                 ensure_ascii=False,
                 indent=2,
             )
+            f.flush()
+            os.fsync(f.fileno())
 
-        # Заменить claim на ссылку, обновить БД
-        for fact in batch:
-            archive_key = f"archive://{archive_file.name}#{fact['fact_id']}"
-
-            # Отметить в таблице archived_facts — FIX #11 (Claude audit):
-            # INSERT OR IGNORE чтобы избежать дублей при перезапуске.
-            # Фильтр: исключать уже-архивированные (AND fact_id NOT IN archived_facts).
-            conn.execute(
-                """INSERT OR IGNORE INTO archived_facts
-                   (fact_id, archive_key, archived_at, original_claim, original_state, archive_file)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
-                (
-                    fact["fact_id"],
-                    archive_key,
-                    datetime.now(timezone.utc).isoformat(),
-                    fact.get("claim", "")[:500],
-                    fact.get("epistemic_state", ""),
-                    str(archive_file),
-                ),
+        candidates = [
+            ArchivalCandidate.from_snapshot(
+                snapshot,
+                archive_key=f"archive://{archive_file.name}#{snapshot['fact_id']}",
+                archive_file=str(archive_file),
             )
+            for snapshot in batch
+        ]
 
-            # Обновить claim в facts + bump fact_version (триггер 009 требует)
-            bump = ""
+        try:
+            return self._rewriter.rewrite_batch(candidates)
+        except Exception:
             try:
-                has_version = any(
-                    r[1] == "fact_version"
-                    for r in conn.execute("PRAGMA table_info(facts)")
+                archive_file.unlink(missing_ok=True)
+            except OSError as cleanup_exc:
+                logger.error(
+                    "Archival DB rollback left non-canonical orphan payload %s: %s",
+                    archive_file,
+                    cleanup_exc,
                 )
-                bump = ", fact_version = fact_version + 1" if has_version else ""
-            except Exception:
-                pass
-            conn.execute(
-                f"UPDATE facts SET claim = ?, updated_at = ?{bump} WHERE fact_id = ?",
-                (
-                    f"[ARCHIVED: {archive_key}]",
-                    datetime.now(timezone.utc).isoformat(),
-                    fact["fact_id"],
-                ),
-            )
-
-    # ── Восстановление ────────────────────────────────────────────────────
+            raise
 
     def restore_fact(self, fact_id: str) -> Optional[Dict[str, Any]]:
-        """Восстановить факт из архива."""
+        """Read the original archived payload; this is not a Canon mutation."""
         try:
-            conn = sqlite3.connect(self._db_path, timeout=10.0)
-            conn.row_factory = sqlite3.Row
-
-            # Найти архивную запись
-            row = conn.execute(
-                "SELECT * FROM archived_facts WHERE fact_id = ?",
-                (fact_id,),
-            ).fetchone()
-
+            with self._store._db() as conn:
+                row = conn.execute(
+                    "SELECT * FROM archived_facts WHERE fact_id = ?", (fact_id,)
+                ).fetchone()
             if not row:
-                conn.close()
                 return None
 
-            archive_file = row["archive_file"]
-            original_claim = row["original_claim"]
-
-            # Найти в JSON-файле
-            archive_path = self._archive_path / Path(archive_file).name
+            archive_path = self._archive_path / Path(row["archive_file"]).name
             if archive_path.exists():
                 with open(archive_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 for fact in data.get("facts", []):
                     if fact.get("fact_id") == fact_id:
-                        conn.close()
                         return fact
-
-            conn.close()
-            return {"fact_id": fact_id, "claim": original_claim, "archived": True}
-
+            return {
+                "fact_id": fact_id,
+                "claim": row["original_claim"],
+                "archived": True,
+            }
         except Exception as exc:
             logger.error("MemoryArchival.restore_fact: %s", exc)
             return None
 
-    # ── Статистика ────────────────────────────────────────────────────────
-
     def stats(self) -> Dict[str, Any]:
         try:
-            conn = sqlite3.connect(self._db_path, timeout=10.0)
-            archived = conn.execute(
-                "SELECT COUNT(*) FROM archived_facts"
-            ).fetchone()[0]
-            conn.close()
-
+            with self._store._db() as conn:
+                archived = conn.execute(
+                    "SELECT COUNT(*) FROM archived_facts"
+                ).fetchone()[0]
             archive_files = list(self._archive_path.glob("archive_*.json"))
             return {
                 "archived_facts": archived,
                 "archive_files_count": len(archive_files),
                 "archive_path": str(self._archive_path),
                 "archive_age_days": self._age_days,
-                "total_archive_size_bytes": sum(
-                    f.stat().st_size for f in archive_files
-                ),
+                "total_archive_size_bytes": sum(f.stat().st_size for f in archive_files),
             }
         except Exception:
             return {"archived_facts": 0, "archive_path": str(self._archive_path)}
 
 
-# ─── Глобальный экземпляр ────────────────────────────────────────────────────
-
 _archival: Optional[MemoryArchival] = None
 
 
 def get_memory_archival() -> MemoryArchival:
+    """Legacy process-level access surface; not a new mutation authority."""
     global _archival
     if _archival is None:
         _archival = MemoryArchival()
     return _archival
 
 
-__all__ = [
-    "MemoryArchival",
-    "ArchiveReport",
-    "get_memory_archival",
-]
+__all__ = ["MemoryArchival", "ArchiveReport", "get_memory_archival"]
