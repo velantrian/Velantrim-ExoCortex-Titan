@@ -7,6 +7,99 @@ merged PR bodies and dated checkpoint documents.
 
 ---
 
+## 2026-08-10 — Continuity 12/12: bounded observation canary executed
+
+```text
+Tracking issue:                #275
+Mechanism implementation PR:   #276 (merge 456b762b1e752a2f5fb22762869336be9fed42a4)
+Canary baseline main:          39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e
+Operator authorization:        explicit, human, chat, scoped to exact SHA + issue #275
+Operator ref:                  operator:human-chat-authorization-2026-08-10
+Canary tenant (non-production): tenant:continuity-canary-2026-08-10
+Rollback verified:              true
+No silent re-enable verified:   true
+Post-disable rejection verified: true
+Runtime currently enabled:      false (current, unchanged)
+Operator GO:                    false (current — one-time grant now exhausted)
+Observed:                       true (durable historical fact)
+Runtime authority:              false
+Continuity:                     12/12 = 100%
+Schema:                         v7
+```
+
+### What was executed
+
+Pre-flight: confirmed `origin/main` was exactly the authorized SHA, 0 open PRs, no
+competing runtime/storage, working tree clean at that exact commit.
+
+Real bounded lifecycle, executed with the actual production composition functions
+(`compose_controlled_continuity_runtime_from_environment`,
+`ContinuityBoundedObservationController`, `summarize_observation_session` — the same
+functions wired into `api/server_middleware.py`'s FastAPI lifespan), against a
+dedicated canary storage root and tenant, with an explicit `environ` mapping (never
+`os.environ`):
+
+```text
+VALIDATE (no manifest, startup() -> DISABLED)
+-> bounded OBSERVE (baseline, all invariants pass)
+-> controlled ENABLE (real bounded lease, 10 minutes)
+-> bounded OBSERVE (enabled, lease valid, all invariants pass)
+-> explicit DISABLE (higher-sequence decision dominates)
+-> bounded OBSERVE (post-disable) + summarize_observation_session() -> rollback_verified=true
+-> verify post-disable rejection (persist_accepted_admission raises
+   ContinuityActivationStateError before any graph is inspected)
+-> clean SHUTDOWN (STOPPED)
+-> RESTART (fresh objects, same storage, no manifest) -> DISABLED despite the
+   persisted ENABLED row -> no silent re-enable
+-> final fail-closed (STOPPED)
+```
+
+Full structured evidence (decision IDs, observation IDs, invariant results, session
+summary) was written to a local canary evidence file; the raw SQLite file is
+canary-local scratch state and is not committed to this repository. See
+`docs/adr/ADR-2026-08-10-continuity-12-12-bounded-observation-canary.md` for the full
+record.
+
+### Validator correction
+
+`scripts/check_project_state.py`'s shared `common()` check previously required
+`observed implies enabled` — never exercised before (every prior schema forced
+`observed=false`), and wrong for this fact: real observed evidence now exists while
+the runtime is correctly back to disabled. Corrected to `observed implies wired`
+(the mechanism must have existed, not be currently live). `continuity_flags()` was
+refactored to a dict-with-overrides so schema v7 can legitimately set
+`observed=True`. Schemas v1-v6 fixtures are unaffected — none of them ever exercised
+the removed branch. 85 validator tests pass, including new v7-specific and
+canary-evidence tests.
+
+### Machine-readable state
+
+Schema advances to **v7**: `completed_capabilities=12`, `total_capabilities=12`,
+`readiness_percent=100.0`, `observation_mechanism_implemented=true`,
+`observed=true`; `enabled`, `operator_authorization_present`, `operator_go`,
+`runtime_authority`, `user_visible_behavior_changed`, `side_effects_enabled` remain
+`false` — current facts, unaffected by the now-concluded canary. New
+`continuity_bounded_observation_canary` record pinned to the canary baseline SHA.
+`python scripts/check_project_state.py` reports `Continuity=12/12 (100.0%)`.
+
+### Explicit non-scope
+
+No production rollout, no public enablement, no permanent runtime enablement, no
+`/query` or user-visible-behavior change, no Canon/ESM/TruthGate/GoalStack write, no
+reminder/notification/action/tool call, no scheduler/autonomous loop, no second
+runtime or storage path, no standing Operator GO, no independent-review claim, and no
+production-readiness claim. This Operator GO is single-use and is now exhausted; any
+future real activation requires a new, separately scoped Operator GO against a new
+exact SHA.
+
+### Readiness effect
+
+Continuity advances from `11/12 = 91.7%` to `12/12 = 100%`. Tracking issue #275 is
+closed as `CLOSED_COMPLETED` after this status-sync PR's post-merge evidence and
+Notion read-back confirm agreement.
+
+---
+
 ## 2026-08-10 — Bounded observation mechanism implemented
 
 ```text

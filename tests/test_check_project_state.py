@@ -15,14 +15,52 @@ RESOLVER_MERGE = "dc30817f2c4abb1afcaab2f127e679d5f9b884d7"
 LIFECYCLE_MERGE = "064845579c520e7464678cd0c41d9b650368dfa8"
 RUNTIME_WIRING_MERGE = "802e833fa251a8831add8a6b802a5ebb57533549"
 CONTROLLED_ENABLEMENT_MERGE = "66318e6883590cb29a4565157e0a3a25b3716d81"
+OBSERVATION_MECHANISM_MERGE = "456b762b1e752a2f5fb22762869336be9fed42a4"
+CANARY_BASELINE_SHA = "39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e"
 
 
 def _current_state() -> dict:
     return json.loads(STATE_PATH.read_text(encoding="utf-8"))
 
 
-def _historical_v5_state() -> dict:
+def _historical_v6_state() -> dict:
     state = copy.deepcopy(_current_state())
+    state["schema_version"] = 6
+    repository = state["repository"]
+    repository["repository_head_sha_at_verification"] = CONTROLLED_ENABLEMENT_MERGE
+    repository["implementation_baseline_sha"] = CONTROLLED_ENABLEMENT_MERGE
+    repository["documentation_checkpoint_sha"] = CONTROLLED_ENABLEMENT_MERGE
+    state["continuity"] = {
+        "completed_capabilities": 11,
+        "total_capabilities": 12,
+        "readiness_percent": 91.7,
+        "remaining_capabilities": 1,
+        "remaining_percent": 8.3,
+        "implemented": True,
+        "tested": True,
+        "wired": True,
+        "enablement_mechanism_implemented": True,
+        "enabled": False,
+        "operator_authorization_present": False,
+        "operator_go": False,
+        "observed": False,
+        "runtime_authority": False,
+        "user_visible_behavior_changed": False,
+        "side_effects_enabled": False,
+        "next_bounded_slice": (
+            "Live monitored and observed evidence remains the final separate "
+            "Continuity capability. Continuity 12/12 has not started."
+        ),
+    }
+    state.pop("continuity_bounded_observation_canary", None)
+    notion = state["notion"]
+    notion["latest_synchronization_kind"] = "CONTINUITY_CONTROLLED_ENABLEMENT"
+    notion["latest_implementation_merge_sha"] = CONTROLLED_ENABLEMENT_MERGE
+    return state
+
+
+def _historical_v5_state() -> dict:
+    state = _historical_v6_state()
     state["schema_version"] = 5
     repository = state["repository"]
     repository["repository_head_sha_at_verification"] = RUNTIME_WIRING_MERGE
@@ -156,7 +194,8 @@ def _legacy_v1_state() -> dict:
         (_historical_v3_state, 3, "8/12", 66.7),
         (_historical_v4_state, 4, "9/12", 75.0),
         (_historical_v5_state, 5, "10/12", 83.3),
-        (_current_state, 6, "11/12", 91.7),
+        (_historical_v6_state, 6, "11/12", 91.7),
+        (_current_state, 7, "12/12", 100.0),
     ],
 )
 def test_all_historical_and_current_schemas_remain_readable(
@@ -175,7 +214,7 @@ def test_all_historical_and_current_schemas_remain_readable(
 
 
 def test_schema_v6_sha_roles_pin_controlled_enablement_merge() -> None:
-    state = _current_state()
+    state = _historical_v6_state()
     repository = state["repository"]
     enablement = state["continuity_controlled_enablement"]
 
@@ -188,7 +227,21 @@ def test_schema_v6_sha_roles_pin_controlled_enablement_merge() -> None:
     )
 
 
-@pytest.mark.parametrize("schema_version", [7, 6.0, True, "6", [], {}])
+def test_schema_v7_sha_roles_pin_canary_baseline() -> None:
+    state = _current_state()
+    repository = state["repository"]
+    canary = state["continuity_bounded_observation_canary"]
+
+    assert (
+        repository["repository_head_sha_at_verification"]
+        == repository["implementation_baseline_sha"]
+        == repository["documentation_checkpoint_sha"]
+        == canary["canary_baseline_sha"]
+        == CANARY_BASELINE_SHA
+    )
+
+
+@pytest.mark.parametrize("schema_version", [8, 6.0, True, "7", [], {}])
 def test_unknown_or_non_integer_schema_versions_fail_closed(
     schema_version: object,
 ) -> None:
@@ -200,7 +253,7 @@ def test_unknown_or_non_integer_schema_versions_fail_closed(
 
 
 def test_schema_v6_requires_exact_eleven_of_twelve() -> None:
-    state = _current_state()
+    state = _historical_v6_state()
     state["continuity"].update(
         {
             "completed_capabilities": 10,
@@ -211,6 +264,21 @@ def test_schema_v6_requires_exact_eleven_of_twelve() -> None:
     )
 
     with pytest.raises(ProjectStateError, match="exactly 11/12"):
+        validate_project_state(state)
+
+
+def test_schema_v7_requires_exact_twelve_of_twelve() -> None:
+    state = _current_state()
+    state["continuity"].update(
+        {
+            "completed_capabilities": 11,
+            "remaining_capabilities": 1,
+            "readiness_percent": 91.7,
+            "remaining_percent": 8.3,
+        }
+    )
+
+    with pytest.raises(ProjectStateError, match="exactly 12/12"):
         validate_project_state(state)
 
 
@@ -229,6 +297,27 @@ def test_schema_v6_requires_exact_eleven_of_twelve() -> None:
 def test_schema_v6_does_not_conflate_mechanism_with_runtime_authority(
     field: str,
 ) -> None:
+    state = _historical_v6_state()
+    state["continuity"][field] = True
+
+    with pytest.raises(ProjectStateError, match=field):
+        validate_project_state(state)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "enabled",
+        "operator_authorization_present",
+        "operator_go",
+        "runtime_authority",
+        "user_visible_behavior_changed",
+        "side_effects_enabled",
+    ],
+)
+def test_schema_v7_does_not_conflate_mechanism_with_runtime_authority(
+    field: str,
+) -> None:
     state = _current_state()
     state["continuity"][field] = True
 
@@ -236,14 +325,111 @@ def test_schema_v6_does_not_conflate_mechanism_with_runtime_authority(
         validate_project_state(state)
 
 
-def test_schema_v6_requires_enablement_mechanism() -> None:
+def test_schema_v7_requires_observed_true() -> None:
     state = _current_state()
+    state["continuity"]["observed"] = False
+
+    with pytest.raises(ProjectStateError, match="observed"):
+        validate_project_state(state)
+
+
+def test_observed_no_longer_requires_currently_enabled() -> None:
+    """The historical `observed implies enabled` check was a bug: observed is
+    durable historical evidence, enabled is current runtime state. Schema v7's
+    real canary evidence is exactly observed=true, enabled=false, and it must
+    validate cleanly."""
+    state = _current_state()
+    assert state["continuity"]["observed"] is True
+    assert state["continuity"]["enabled"] is False
+
+    report = validate_project_state(state)
+    assert report["ok"] is True
+
+
+def test_observed_still_requires_wired() -> None:
+    state = _current_state()
+    state["continuity"]["wired"] = False
+
+    with pytest.raises(ProjectStateError, match="observed while wired=false"):
+        validate_project_state(state)
+
+
+def test_schema_v6_requires_enablement_mechanism() -> None:
+    state = _historical_v6_state()
     state["continuity"]["enablement_mechanism_implemented"] = False
 
     with pytest.raises(
         ProjectStateError,
         match="enablement_mechanism_implemented",
     ):
+        validate_project_state(state)
+
+
+def test_schema_v7_requires_observation_mechanism() -> None:
+    state = _current_state()
+    state["continuity"]["observation_mechanism_implemented"] = False
+
+    with pytest.raises(
+        ProjectStateError,
+        match="observation_mechanism_implemented",
+    ):
+        validate_project_state(state)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "runtime_authority",
+        "operator_go",
+        "user_visible_behavior_changed",
+        "side_effects_enabled",
+        "producer_side_effects_present",
+        "canon_writes_present",
+        "esm_writes_present",
+        "truth_gate_writes_present",
+        "goal_stack_writes_present",
+        "reminder_created",
+        "notification_created",
+        "action_created",
+        "tool_call_created",
+        "scheduler_enabled",
+        "second_runtime_present",
+        "second_storage_present",
+    ],
+)
+def test_bounded_observation_canary_non_authority_flags_fail_closed(
+    field: str,
+) -> None:
+    state = _current_state()
+    state["continuity_bounded_observation_canary"][field] = True
+
+    with pytest.raises(ProjectStateError, match=field):
+        validate_project_state(state)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "operator_authorized_canary",
+        "rollback_verified",
+        "observed",
+        "no_silent_reenable_verified",
+        "post_disable_rejection_verified",
+    ],
+)
+def test_bounded_observation_canary_proof_flags_are_required(field: str) -> None:
+    state = _current_state()
+    state["continuity_bounded_observation_canary"][field] = False
+
+    with pytest.raises(ProjectStateError, match=field):
+        validate_project_state(state)
+
+
+def test_bounded_observation_canary_identity_is_exact() -> None:
+    state = _current_state()
+    state["continuity_bounded_observation_canary"]["tracking_issue"] = 999
+
+    with pytest.raises(ProjectStateError, match="tracking_issue"):
         validate_project_state(state)
 
 

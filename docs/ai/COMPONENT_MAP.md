@@ -1,9 +1,10 @@
 # 🗺️ Component and Authority Map
 
-**Repository checkpoint:** `main@456b762b1e752a2f5fb22762869336be9fed42a4`  
+**Repository checkpoint:** `main@39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e`  
 **Bounded-observation implementation:** issue #275 · PR #276  
-**Machine state:** [`docs/state/project_state.json`](../state/project_state.json) · schema v6 (unchanged — see `docs/ai/CURRENT_STATE.md`)  
-**Reality:** `IMPLEMENTED · TESTED · WIRED · ENABLEMENT MECHANISM PRESENT · OBSERVATION MECHANISM PRESENT · RUNTIME CURRENTLY DISABLED · OPERATOR GO ABSENT · NOT OBSERVED · NO RUNTIME AUTHORITY · BLOCKED_ON_OPERATOR_GO`
+**Bounded observation canary:** issue #275 · operator-authorized · executed at this exact checkpoint  
+**Machine state:** [`docs/state/project_state.json`](../state/project_state.json) · schema v7 — see `docs/ai/CURRENT_STATE.md`  
+**Reality:** `IMPLEMENTED · TESTED · WIRED · ENABLEMENT MECHANISM PRESENT · OBSERVATION MECHANISM PRESENT · RUNTIME CURRENTLY DISABLED · OPERATOR GO ABSENT (CURRENT) · OBSERVED (HISTORICAL, ONE ROLLED-BACK CANARY) · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`
 
 ## 1. Accepted Continuity lineage
 
@@ -16,7 +17,7 @@
 | Durable lifecycle | `admission_artifact_lifecycle.py` | internal SQLite append/replay/cleanup/erasure owner |
 | Runtime composition | `runtime_composition.py` | tested and wired in lifespan |
 | Controlled enablement | `controlled_enablement.py` | exact bounded decision gate; no authority escalation |
-| Bounded observation | `bounded_observation.py` | read-only, content-free evidence; no authority escalation |
+| Bounded observation | `bounded_observation.py` | read-only, content-free evidence; one real rolled-back canary |
 | Composition root | `server.py::lifespan` via `api/server_middleware.py` | startup/shutdown + open/close only |
 
 ## 2. Exact internal path
@@ -44,7 +45,11 @@ ControlledEnablementController.diagnostic() / .lease_valid_at()
 ```
 
 No public endpoint invokes either path. No current activation manifest is recorded, so
-the runtime remains disabled, and nothing calls `observe()` automatically.
+the runtime remains disabled, and nothing calls `observe()` automatically. One
+operator-authorized canary exercised this exact path directly (a standalone script
+calling the same production composition functions with an explicit `environ` mapping),
+never through a public endpoint, and left the runtime disabled again afterward — see
+`docs/adr/ADR-2026-08-10-continuity-12-12-bounded-observation-canary.md`.
 
 ## 3. Controlled-enablement ownership
 
@@ -68,6 +73,7 @@ the runtime remains disabled, and nothing calls `observe()` automatically.
 | Observation evidence | same tenant-bound SQLite file, dedicated table | never a permission token |
 | Sequencing | positive monotonic, idempotent, conflict-rejecting | stale/conflicting sequence rejected |
 | Session result | pure `summarize_observation_session` reduction | no Operator GO, no production authority |
+| Canary evidence | one real, human-operator-authorized, rolled-back canary | single-use grant, exhausted; not a standing authorization |
 
 ## 4. State machines
 
@@ -101,9 +107,9 @@ underlying runtime is `NEW` or `STOPPED`.
 | runtime startup/shutdown | existing FastAPI lifespan |
 | bounded enable/disable decision validation | controlled-enablement controller |
 | operator identity/authenticity | deployment governance; not established here |
-| Operator GO project fact | absent |
+| Operator GO project fact | absent (current) — the one canary grant is exhausted |
 | observation mechanism | bounded-observation controller |
-| real observed evidence | absent · `BLOCKED_ON_OPERATOR_GO` |
+| real observed evidence | present (historical) — one operator-authorized, rolled-back canary |
 | production authority | absent |
 
 ## 6. Anti-bypass guarantees
@@ -132,19 +138,22 @@ underlying runtime is `NEW` or `STOPPED`.
 | Bounded runtime composition | #269 / #270 | `802e833fa251a8831add8a6b802a5ebb57533549` | schema v5 · 10/12 · wired/disabled |
 | Controlled enablement | #272 / #273 | `66318e6883590cb29a4565157e0a3a25b3716d81` | schema v6 · 11/12 · mechanism present/runtime disabled |
 | Bounded observation mechanism | #275 / #276 | `456b762b1e752a2f5fb22762869336be9fed42a4` | schema v6 unchanged · 11/12 unchanged · mechanism present, real evidence `BLOCKED_ON_OPERATOR_GO` |
+| Bounded observation canary | #275 | `39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e` | schema v7 · 12/12 · one operator-authorized, rolled-back canary; `observed=true` (historical), `enabled=false` (current) |
 
-Historical schemas v1-v5 remain unchanged. Schema v6 still records exactly the
-controlled-enablement checkpoint; this row is additional prose/evidence, not a schema
-bump — see `docs/ai/CURRENT_STATE.md`'s "Machine-readable state" section.
+Historical schemas v1-v6 remain unchanged. Schema v7 is the current schema; it exists
+because schema v6's shared validator could not represent `observed=true` while
+`enabled=false` without conflating durable historical evidence with current runtime
+state — see `docs/ai/CURRENT_STATE.md`'s "Machine-readable state" section and the
+canary ADR.
 
 ## 8. Remaining boundary
 
 ```text
-Current state: 11/12 = 91.7%
+Current state: 12/12 = 100%
 
-Remaining:
-1. live monitored/observed evidence under separate authority — mechanism now exists
-   (PR #276); real evidence is BLOCKED_ON_OPERATOR_GO.
+Remaining: none.
 ```
 
-Continuity 12/12 has not been reached.
+Continuity 12/12 is complete. This is not a production-readiness, production-authority,
+or standing-Operator-GO claim — see `docs/ai/CURRENT_STATE.md`'s "Explicit non-goals
+preserved" section and `docs/ai/KNOWN_RISKS.md`.
