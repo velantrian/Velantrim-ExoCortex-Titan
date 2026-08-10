@@ -83,7 +83,7 @@ class MemoryArchival:
                 """SELECT fact_id
                    FROM facts
                    WHERE created_at < ?
-                     AND epistemic_state NOT IN ('ImmutableCore',)
+                     AND epistemic_state != 'ImmutableCore'
                      AND fact_id NOT IN (SELECT fact_id FROM archived_facts)
                    ORDER BY created_at ASC""",
                 (cutoff,),
