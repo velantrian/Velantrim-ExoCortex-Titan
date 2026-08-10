@@ -98,9 +98,11 @@ class CanonicalArchivalRewriter:
                 raise FileNotFoundError(
                     f"archive payload missing before canonical mutation: {path}"
                 )
-            expected_prefix = f"archive://{path.name}#"
-            if not candidate.archive_key.startswith(expected_prefix):
-                raise ValueError("archive_key does not identify the prepared payload")
+            expected_key = f"archive://{path.name}#{candidate.fact_id}"
+            if candidate.archive_key != expected_key:
+                raise ValueError(
+                    "archive_key must identify the prepared payload and candidate fact"
+                )
 
     @staticmethod
     def _fts_exists(conn: sqlite3.Connection) -> bool:
