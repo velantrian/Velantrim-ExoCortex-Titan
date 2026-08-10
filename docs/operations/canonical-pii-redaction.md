@@ -1,7 +1,9 @@
 # Canonical PII redaction — ownership and residual boundary
 
-**Tracking:** issue #282 · parent #50  
-**Implementation PR:** #283 (review-stage until merged)  
+**Tracking:** issue #282 · CLOSED_COMPLETED · parent #50 OPEN  
+**Implementation PR:** #283 · MERGED  
+**Exact tested head:** `f4e41ca419e650a3a798dada77db82c02213b219`  
+**Protected squash merge:** `493b1b6b6204cc9a7f5de82709717a1b625e2234`  
 **Architecture decision:** `docs/adr/ADR-2026-08-10-pii-redaction-privacy-history-exception.md`
 
 ## Current ownership
@@ -26,9 +28,9 @@ existing SQLiteGraphStore transaction
     `-- content-free projection outbox refresh when migration 020 is active
 ```
 
-`CanonicalPiiRedactor` is the single owner for the PII **claim-redaction mutation
-family**. It is not a general Canon service and does not own ESM promotion, physical
-erasure, archival, causal relations, scheduling, runtime activation, or policy
+`CanonicalPiiRedactor` is the current-main single owner for the PII **claim-redaction
+mutation family**. It is not a general Canon service and does not own ESM promotion,
+physical erasure, archival, causal relations, scheduling, runtime activation or policy
 escalation.
 
 ## Privacy-history rule
@@ -39,48 +41,40 @@ would make the version store itself a residual PII store.
 
 For a successful redaction, affected historical `fact_versions.claim` values are
 sanitized in the same transaction and their integrity metadata/checksum is recomputed.
-The redaction boundary VersionStore row is also inserted with the sanitized claim. A
-content-free AuditChain event records that the canonical fact was updated without
-persisting the removed claim in the new event.
+The redaction boundary VersionStore row is also stored with the sanitized claim. A
+content-free AuditChain event records that the canonical fact changed without persisting
+the removed claim in the new event.
 
 This is a narrow privacy exception, not a general permission to rewrite history.
 
 ## Atomicity / failure semantics
 
-A successful changed claim commits as one SQLite transaction. Any of the following
-aborts the whole operation:
-
-- source snapshot no longer matches the canonical row;
-- VersionStore evidence cannot be written/sanitized;
-- AuditChain append fails;
-- an activated projection-outbox contract cannot accept its refresh intent;
-- another SQLite/storage failure occurs before commit.
-
-No-PII is a true no-op and must not create version, audit or outbox evidence.
-
-Batch redaction is bounded and all-or-nothing for its selected candidates. One stale
-candidate rolls back changes to every other candidate in the same batch.
+A successful changed claim commits as one SQLite transaction. A stale source snapshot,
+VersionStore failure, AuditChain failure, activated projection-outbox failure or other
+SQLite failure aborts the whole operation. No-PII is a true no-op and emits no false
+version/audit/outbox evidence. Batch redaction is bounded and all-or-nothing for the
+selected candidates.
 
 ## Explicit non-claims
 
-This mechanism redacts PII found by `core.forgetting.redact_pii()` from the fact's
-**claim surface**. It does not prove physical erasure from all possible locations.
-Specifically, this PR does not claim removal from arbitrary metadata, immutable raw
-origins, every graph/vector/external backend, backups, third-party systems, or legacy
-logs. Full data-subject erasure remains the durable erasure coordinators' contract.
+This mechanism redacts PII from the canonical fact's **claim surface**. It does not prove
+physical erasure from arbitrary metadata, immutable raw origins, every graph/vector or
+external backend, backups, third-party systems or legacy logs. Full data-subject erasure
+remains the durable erasure coordinators' contract.
 
 No GDPR certification, production readiness, current runtime enablement, current
 Operator GO, runtime authority or production authority follows from this mechanism.
 
-## Review checklist
+## Verified evidence
 
-Before treating PR #283 as implementation truth, verify its exact tested head and that:
+- exact-head Full CI `31392230442` — SUCCESS;
+- exact-head Docker `31392230462` — SUCCESS;
+- exact-head aggregate `31392977479` — SUCCESS;
+- post-merge Full CI `31393127943` — SUCCESS;
+- post-merge Docker `31393127973` — SUCCESS;
+- post-merge aggregate `31393128123` — SUCCESS;
+- submitted reviews `0`; unresolved review threads `0`;
+- Codex `NOT RUN — USAGE LIMIT`; independent review not claimed;
+- final Notion synchronization/read-back confirmed.
 
-- `core/forgetting.py` has no direct `UPDATE facts ... claim` redaction owner;
-- state/confidence are preserved;
-- current/historical claim surfaces covered by the contract contain no original PII;
-- VersionStore integrity remains valid;
-- new audit evidence is content-free;
-- FTS/outbox behavior matches the ADR;
-- rollback/concurrency tests pass;
-- the PR is merged through protected `main` and post-merge CI is green.
+Parent #50 remains open for residual mutation families.
