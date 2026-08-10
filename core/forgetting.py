@@ -16,32 +16,25 @@
     Не заменяет удаление в SQLite. Добавляет проверки ДО удаления.
     Все операции логируются в provenance_chain (если доступен).
 
-DEPRECATED (batch erasure hardening): ForgettingEngine.forget_all() used to
-run its own single-pass, non-durable delete with no snapshot of which
-fact_ids it decided to erase before deleting them, and treated ANY fact in
-epistemic_state='ImmutableCore' as an automatic, silent GDPR exemption. It
-now delegates to core.erasure_batch_coordinator.forget_all_durable() — a
-durable, resumable batch saga (erasure_batches / erasure_batch_items) that
-snapshots its full fact_id membership before touching anything, erases each
-fact through the existing per-fact P0-B saga
-(core.erasure_coordinator.erase_fact_durable()), and reports a CRITICAL
-compliance finding — never a silent skip or a false success — when a
-personal fact is found inside ImmutableCore. See
-core/erasure_batch_coordinator.py for the full design rationale.
-FORGET_ONE and REDACT_PII are unaffected by this change.
+DEPRECATED compatibility shims:
+- ForgettingEngine.forget_all() delegates to the durable, resumable batch
+  erasure saga in core.erasure_batch_coordinator.
+- ForgettingEngine.forget_one() delegates to the durable single-fact erasure
+  authority in core.erasure_coordinator. It no longer owns a second raw-SQL
+  physical-delete path.
+
+Both shims preserve the legacy ForgetVerdict surface while the durable erasure
+coordinators remain authoritative for completion, residual, and failure state.
 """
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import os
 import re
 import sqlite3
-import uuid
 import warnings
 from dataclasses import dataclass, field
-from contextlib import contextmanager
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
@@ -67,28 +60,6 @@ def _normalize_tenant_path(path: str | None) -> str | None:
         return None
     stripped = path.strip()
     return stripped or None
-
-_FACT_DELETE_TRIGGER_SQL = """
-CREATE TRIGGER prevent_fact_delete
-BEFORE DELETE ON facts
-BEGIN
-    SELECT CASE
-        WHEN OLD.epistemic_state NOT IN ('Collapsed', 'Deprecated')
-        THEN RAISE(ABORT, 'VELANTRIM: Cannot DELETE facts directly. Transition to Collapsed or Deprecated first.')
-    END;
-END;
-"""
-
-
-@contextmanager
-def _without_fact_delete_guard(conn: sqlite3.Connection):
-    """Временно снимает truth-kernel триггер; гарантирует восстановление."""
-    conn.execute("DROP TRIGGER IF EXISTS prevent_fact_delete")
-    try:
-        yield conn
-    finally:
-        conn.execute("DROP TRIGGER IF EXISTS prevent_fact_delete")
-        conn.execute(_FACT_DELETE_TRIGGER_SQL)
 
 
 # Базовые PII-паттерны (RU + EN)
@@ -215,21 +186,19 @@ class ForgettingEngine:
     ):
         """`embedding_db_path`/`embedding_store` (Round 5.4 sixth-order fix,
         Codex P2) and `ngram_db_path`/`ngram_index` (Round 5.4 seventh-order
-        fix, Codex P2): a custom, non-global `db_path` used to leave
-        `forget_all()`'s `ErasureCoordinator` with NO tenant-scoped
-        embeddings/ngram backends at all — it would lazily default to the
-        process-global `EmbeddingStore()` (`SQLITE_GRAPH_PATH`/
-        `EXOCORTEX_DB`) and `get_global_ngram()`, completely unrelated to
-        this tenant's own storage. A tenant's real `gs_vectors` row, or a
-        row still present in the tenant's own ngram FTS5 index, could then
-        survive erasure entirely undetected (checked against the wrong
-        file) while the batch still reported COMPLETE — a GDPR Art. 17
-        false-success condition. See forget_all() for how these are
-        validated/used; the defaults (all None) preserve the exact
-        pre-existing global behavior for the default `db_path`. A blank/
-        whitespace-only `embedding_db_path`/`ngram_db_path` is normalized
-        to "not configured" (see `_normalize_tenant_path()`) — never
-        silently treated as an explicit tenant path."""
+        fix, Codex P2): a custom, non-global `db_path` used to leave the
+        durable erasure coordinators with NO tenant-scoped embeddings/ngram
+        backends at all — they would lazily default to process-global stores
+        unrelated to this tenant's own storage. A tenant's derived index row
+        could then survive erasure entirely undetected while the caller
+        reports completion — a GDPR Art. 17 false-success condition.
+
+        The defaults (all None) preserve the exact pre-existing global
+        behavior for the default `db_path`. A blank/whitespace-only
+        `embedding_db_path`/`ngram_db_path` is normalized to "not configured"
+        (see `_normalize_tenant_path()`) — never silently treated as an
+        explicit tenant path.
+        """
         self._db_path = db_path
         self._embedding_db_path = embedding_db_path
         self._injected_embedding_store = embedding_store
@@ -296,58 +265,40 @@ class ForgettingEngine:
         reason: str = "user_request",
         user_id: str = "default",
     ) -> ForgetVerdict:
-        """Удалить один факт с проверками."""
+        """Compatibility adapter over the durable single-fact erasure authority.
+
+        `ErasureCoordinator` owns physical deletion, dependency/projection
+        cleanup, durable job receipts, residual semantics, and completion
+        tombstones. This legacy method only preserves the preflight warning
+        surface and maps the durable report into `ForgetVerdict`.
+        """
         verdict = self.check(fact_id)
         if not verdict.allowed and "immutable" in verdict.reason:
             return verdict
 
-        # Даже с зависимостями — удаляем (пользователь предупреждён)
-        conn = None
+        from core.erasure_coordinator import COMPLETE, NOT_FOUND, ErasureCoordinator
+        from core.memory import SQLiteGraphStore
+
+        store = None
         try:
-            conn = sqlite3.connect(self._db_path, timeout=10.0)
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA foreign_keys = ON")
+            # Resolve every tenant backend before opening the facts store so a
+            # misconfigured tenant fails closed before any destructive work.
+            embedding_store, embedding_db_path = self._bind_tenant_embedding_store()
+            ngram_index = self._bind_tenant_ngram_index()
 
-            claim_row = conn.execute(
-                "SELECT claim FROM facts WHERE fact_id = ?", (fact_id,)
-            ).fetchone()
-            claim_hash = (
-                hashlib.sha256((claim_row[0] if claim_row else "").encode()).hexdigest()
+            store = SQLiteGraphStore(self._db_path)
+            store.ensure_schema()
+            coordinator = ErasureCoordinator(
+                store=store,
+                embedding_store=embedding_store,
+                embedding_db_path=embedding_db_path,
+                ngram_index=ngram_index,
             )
-
-            with _without_fact_delete_guard(conn):
-                conn.execute("DELETE FROM fact_mentions WHERE fact_id = ?", (fact_id,))
-                try:
-                    conn.execute("DELETE FROM fact_versions WHERE fact_id = ?", (fact_id,))
-                except Exception:
-                    pass
-                try:
-                    conn.execute(
-                        "DELETE FROM l0_fact_provenance WHERE fact_id = ?", (fact_id,)
-                    )
-                except Exception:
-                    pass
-                conn.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
-                now = datetime.now(timezone.utc).isoformat()
-                erasure_id = f"era_{uuid.uuid4().hex[:12]}"
-                conn.execute(
-                    """INSERT INTO erasure_log
-                       (erasure_id, fact_id, user_id, reason, claim_hash, erased_at)
-                       VALUES (?, ?, ?, ?, ?, ?)""",
-                    (erasure_id, fact_id, user_id, reason, claim_hash, now),
-                )
-                self._log_forgetting(conn, fact_id, reason, user_id)
-
-            conn.commit()
-            conn.close()
-            conn = None
-
-            logger.info("Forgetting: удалён %s (reason=%s, user=%s)", fact_id, reason, user_id)
-            return ForgetVerdict(
-                allowed=True,
-                reason="deleted",
-                affected_facts=verdict.affected_facts + 1,
-                details=[f"✅ Факт {fact_id} удалён."] + verdict.details,
+            report = coordinator.erase_fact_durable(
+                fact_id,
+                reason=reason,
+                actor=user_id,
+                subject_user_id=user_id,
             )
         except Exception as exc:
             logger.error("Forgetting.forget_one: %s", exc)
@@ -357,11 +308,58 @@ class ForgettingEngine:
                 details=[f"❌ Ошибка при удалении {fact_id}: {exc}"],
             )
         finally:
-            if conn is not None:
-                try:
-                    conn.close()
-                except Exception:
-                    pass
+            if store is not None:
+                store.close()
+
+        outcome = report["outcome"]
+        if outcome == COMPLETE:
+            erased_now = bool(report.get("erased_now"))
+            if erased_now:
+                self._log_forgetting(fact_id, reason, user_id)
+            logger.info(
+                "Forgetting: durable erasure %s for %s (reason=%s, user=%s, job=%s)",
+                "completed" if erased_now else "already complete",
+                fact_id,
+                reason,
+                user_id,
+                report.get("job_id"),
+            )
+            return ForgetVerdict(
+                allowed=True,
+                reason="deleted" if erased_now else "already_deleted",
+                affected_facts=verdict.affected_facts + 1 if erased_now else 0,
+                details=[
+                    (
+                        f"✅ Факт {fact_id} удалён через durable ErasureCoordinator."
+                        if erased_now
+                        else f"ℹ️ Факт {fact_id} уже был durably удалён ранее."
+                    ),
+                    f"Erasure job: {report.get('job_id')}",
+                ] + (verdict.details if erased_now else []),
+            )
+
+        if outcome == NOT_FOUND:
+            return ForgetVerdict(
+                allowed=False,
+                reason="fact_not_found",
+                details=verdict.details or [f"Факт {fact_id} не найден."],
+            )
+
+        # Any non-COMPLETE durable outcome must remain fail-closed here.
+        # In particular RESIDUAL_IMMUTABLE_DATA means the derived layer may
+        # be gone while immutable raw-origin data remains; that is not a
+        # complete GDPR erasure and must never be translated into success.
+        return ForgetVerdict(
+            allowed=False,
+            reason=str(outcome).lower(),
+            affected_facts=0,
+            details=[
+                f"❌ Durable erasure не достиг полного COMPLETE для {fact_id}.",
+                f"Outcome: {outcome}",
+                f"Residual: {report.get('residual')}",
+                f"Erasure job: {report.get('job_id')}",
+            ],
+        )
 
     # ── FORGET_ALL (GDPR) ─────────────────────────────────────────────────
 
@@ -369,49 +367,18 @@ class ForgettingEngine:
         return os.path.abspath(self._db_path) == os.path.abspath(SQLITE_PATH)
 
     def _bind_tenant_embedding_store(self) -> tuple[EmbeddingStore | None, str | None]:
-        """Resolve what forget_all() must bind to ErasureCoordinator's
-        embeddings backend: either a real, externally-injected
-        `EmbeddingStore` (returned as-is — `forget_all()` never touches
-        its lifecycle), or a bare tenant PATH string (never both — an
-        injected object always wins when both are given).
+        """Resolve what durable erasure must bind to the embeddings backend:
+        either a real, externally-injected `EmbeddingStore` (returned as-is),
+        or a bare tenant PATH string (never both — an injected object always
+        wins when both are given).
 
-        Round 5.4 sixth-order fix (Codex P2): a custom, non-global
-        `db_path` used to leave `ErasureCoordinator` with no embedding_store
-        at all, so it lazily defaulted to the process-global
-        `EmbeddingStore()` — completely unrelated to this tenant's own
-        storage. A tenant's real `gs_vectors` row could then survive
-        erasure entirely undetected (checked against the wrong file) while
-        the batch still reported COMPLETE: a GDPR Art. 17 false-success
-        condition.
+        A custom, non-global `db_path` must never silently use the global
+        embeddings store: that can leave tenant vectors unerased while a
+        coordinator checks an unrelated file and reports success.
 
-        Round 5.4 seventh-order fix (Codex P2): the sixth-order fix's own
-        first draft eagerly constructed a real `EmbeddingStore` here for
-        the path-only case — but `core.embedding_store` imports numpy at
-        module level, so merely importing it (even to hold an instance
-        whose methods are never called) forced that optional dependency
-        on every tenant caller, including a dry-run or a fact that never
-        had embeddings at all. This method now NEVER imports
-        `core.embedding_store` for the path-only case: the bare path is
-        passed straight through to `ErasureCoordinator(embedding_db_path=
-        ...)`, which defers the numpy-requiring import to
-        `_get_embeddings()`'s first actual use (inside `_run_embeddings()`)
-        — and its stdlib-only no-row proof
-        (`_embeddings_row_present_for()`) already works from that path
-        alone, no numpy required, exactly restoring the graceful-
-        degradation behavior the coordinator's default/global path always
-        had.
-
-        A blank/whitespace-only `embedding_db_path` is normalized to "not
-        configured" (see `_normalize_tenant_path()`) — treated identically
-        to a missing one.
-
-        Returns `(None, None)` ONLY for the default/global `db_path` —
-        ErasureCoordinator's own lazy default there is the exact, unchanged
-        pre-existing behavior. For any OTHER (tenant) `db_path`, an
-        explicit, non-blank `embedding_store=` or `embedding_db_path=` is
-        REQUIRED; silently falling back to the global embeddings store is
-        refused — this raises ValueError instead, BEFORE any facts store
-        is even opened, rather than merely documenting the risk.
+        The path-only case stays lazy so merely configuring a tenant path does
+        not require importing the optional numpy-dependent embeddings module.
+        Returns `(None, None)` only for the default/global `db_path`.
         """
         if self._injected_embedding_store is not None:
             return self._injected_embedding_store, None
@@ -425,35 +392,17 @@ class ForgettingEngine:
             "database, but no tenant embedding storage was configured "
             "(embedding_db_path=... or embedding_store=...). Refusing to "
             "silently fall back to the process-global embeddings store — "
-            "that would let a tenant's real gs_vectors row survive erasure "
-            "undetected while forget_all() still reports COMPLETE (GDPR "
-            "Art. 17 false success). Pass embedding_db_path=... or "
-            "embedding_store=... to ForgettingEngine()."
+            "that could let a tenant's real gs_vectors row survive erasure "
+            "undetected. Pass embedding_db_path=... or embedding_store=... "
+            "to ForgettingEngine()."
         )
 
     def _bind_tenant_ngram_index(self) -> NGramIndex | None:
-        """Round 5.4 seventh-order fix (Codex P2): mirrors
-        _bind_tenant_embedding_store() for the ngram backend — a custom
-        tenant `db_path` also left `ErasureCoordinator`'s `ngram_index`
-        unset, so it fell back to `get_global_ngram()` — the SAME
-        false-success class of bug, just for the ngram FTS5 index instead
-        of embeddings: a tenant fact indexed only in its own `NGramIndex`
-        could remain searchable there after `forget_all()` reports
-        COMPLETE, because only the (empty, unrelated) global index was
-        ever checked/purged.
+        """Resolve the ngram backend for durable erasure.
 
-        Unlike embeddings, `core.ngram_index` has no numpy dependency
-        (pure stdlib `sqlite3` FTS5) — a real `NGramIndex` is constructed
-        directly here; there is no deferred-import concern to preserve.
-
-        A blank/whitespace-only `ngram_db_path` is normalized to "not
-        configured", exactly like `embedding_db_path`.
-
-        Returns `None` ONLY for the default/global `db_path` — the exact,
-        unchanged pre-existing `get_global_ngram()` fallback. For any
-        OTHER (tenant) `db_path`, an explicit, non-blank `ngram_index=` or
-        `ngram_db_path=` is REQUIRED; fails closed with ValueError
-        otherwise, BEFORE any facts store is even opened.
+        A custom tenant `db_path` must use an explicitly injected/path-bound
+        NGramIndex. Only the default/global facts DB may use the global ngram
+        fallback. Blank/whitespace paths are treated as missing.
         """
         if self._injected_ngram_index is not None:
             return self._injected_ngram_index
@@ -468,11 +417,9 @@ class ForgettingEngine:
             f"ForgettingEngine(db_path={self._db_path!r}) is a custom tenant "
             "database, but no tenant ngram storage was configured "
             "(ngram_db_path=... or ngram_index=...). Refusing to silently "
-            "fall back to the process-global ngram index — that would let "
-            "a tenant's real ngram-indexed row survive erasure undetected "
-            "while forget_all() still reports COMPLETE (GDPR Art. 17 false "
-            "success). Pass ngram_db_path=... or ngram_index=... to "
-            "ForgettingEngine()."
+            "fall back to the process-global ngram index — that could let "
+            "tenant search data survive erasure undetected. Pass "
+            "ngram_db_path=... or ngram_index=... to ForgettingEngine()."
         )
 
     def forget_all(
@@ -818,17 +765,17 @@ class ForgettingEngine:
 
     def _log_forgetting(
         self,
-        conn: sqlite3.Connection,
         fact_id: str,
         reason: str,
         user_id: str,
         extra: Optional[Dict] = None,
     ) -> None:
-        """
-        Записать событие забывания в provenance_chain.
+        """Record legacy provenance evidence after durable completion.
 
-        FIX #22 (Claude audit): ловить конкретные исключения (не all-except-pass).
-        Провал provenance НЕ молча проглатывается — логируется как WARNING.
+        This is compatibility side evidence only. It never determines whether
+        deletion completed; `ErasureCoordinator`'s durable job/tombstone is
+        authoritative. Provenance failure is therefore logged but cannot turn
+        an already-completed erasure into a false failure.
         """
         try:
             from core.provenance_chain import get_provenance_chain
