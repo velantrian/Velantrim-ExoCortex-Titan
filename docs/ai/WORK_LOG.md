@@ -7,6 +7,82 @@ merged PR bodies and dated checkpoint documents.
 
 ---
 
+## 2026-08-10 — Bounded observation mechanism implemented
+
+```text
+Tracking issue:               #275
+Implementation PR:            #276
+Base main:                    9e43f379fc469f471fdc5dced5d280add0d27bf6
+Exact tested head:            d821bb808729b3edf30692fba5b0687646b34ef5
+Continuity contracts:         31361439678 · SUCCESS
+Full Titan CI:                31361439614 · SUCCESS
+Docker hardening:             31361439628 · SUCCESS
+Ready-state aggregate:        31361785225 · SUCCESS
+Submitted reviews:            0
+Codex:                        NOT RUN — USAGE LIMIT
+Unresolved review threads:    0
+Independent review:           NOT CLAIMED
+Protected squash merge:       456b762b1e752a2f5fb22762869336be9fed42a4
+Post-merge Continuity:        31362741148 · SUCCESS
+Post-merge full CI:           31362741122 · SUCCESS
+Post-merge Docker:            31362741193 · SUCCESS
+Post-merge aggregate:         31362741130 · SUCCESS
+Documentation impact:         GITHUB_ONLY in implementation PR
+Runtime:                      ENABLEMENT + OBSERVATION MECHANISMS WIRED · CURRENTLY
+                               DISABLED · NOT OBSERVED
+Operator GO:                  ABSENT
+Runtime authority:            false
+Blocker:                      BLOCKED_ON_OPERATOR_GO
+```
+
+### Implemented
+
+- read-only, content-free `ContinuityBoundedObservationController` wrapping the
+  existing `ContinuityControlledEnablementController`;
+- immutable `ContinuityBoundedObservationEvidence` record with a fixed, closed
+  seven-invariant checklist (configuration/storage/owner binding stability,
+  decision-binding consistency, lease validity while enabled, absence of
+  runtime/side-effect authority) and fixed `no_new_authority_granted` /
+  `evidence_is_not_permission` markers that construction enforces;
+- same-database, append-only, monotonic and idempotent evidence persistence with
+  digest-verified anti-tamper recovery validation;
+- pure `summarize_observation_session` reduction proving a session's deterministic
+  result, including `rollback_verified`;
+- one minimal read-only `lease_valid_at()` method added to the existing enablement
+  controller so observation never needs to invoke a business operation to report
+  lease status;
+- FastAPI lifespan composition (open/close only — no automatic `observe()` call, no
+  new endpoint);
+- 34 focused/adversarial tests: construction binding, lifecycle gating (before
+  open/startup, after shutdown), expired-lease reporting without state mutation,
+  idempotent/monotonic sequencing, concurrency, restart with no silent re-enable,
+  tampered/incompatible persisted state, a foreign-configuration row in shared
+  storage, absent authority escalation, and a full bounded session proving
+  rollback;
+- ADR documenting the authority boundaries and non-goals.
+
+### Explicit non-scope
+
+No committed live activation, no self-issued Operator GO, no producer execution, no
+public behavior change, no Canon/ESM/TruthGate/GoalStack writes, no reminders,
+notifications, actions, tools, scheduler/background loop, no issue #249 work, and —
+critically — **no claim that Continuity reaches 12/12**. This PR does not touch
+`docs/state/project_state.json`, `scripts/check_project_state.py`, or
+`tests/test_check_project_state.py`: Continuity's numeric readiness has not changed
+(still `11/12`), and schema v7 is reserved for the moment real observed evidence
+exists — see `docs/ai/CURRENT_STATE.md`'s "Machine-readable state" section for the
+full reasoning.
+
+### Readiness effect
+
+**None.** Continuity remains `11/12 = 91.7%`. The bounded-observation **mechanism**
+is implemented/tested/wired; this does not mean any deployment has produced real
+observed evidence. Tracking issue #275 stays open with status
+`BLOCKED_ON_OPERATOR_GO` pending an actual operator-authorized bounded activation
+against a real deployment.
+
+---
+
 ## 2026-08-10 — Controlled enablement implemented
 
 ```text
