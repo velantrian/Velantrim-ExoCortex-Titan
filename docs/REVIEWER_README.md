@@ -22,8 +22,9 @@ query -> memory -> retrieval -> facts -> Truth Gate -> TRACE -> LLM voice
 Concretely, that means:
 
 - **Evidence-gated AI memory** — facts move through an explicit epistemic-state
-  machine (`core/memory.py`) and are only promoted to a trusted state after passing
-  `core/truth_gate.py`, not just because an LLM said so.
+  machine (`core/memory.py`). Standard runtime promotion to `Validated` is routed
+  through the reviewed TruthGate-backed promotion boundary; separately inventoried
+  special mutation/admission families are not silently treated as that standard path.
 - **Auditable provenance** — every accepted fact carries a source, and structural
   integrity is checkable after the fact via an append-only hash chain
   (`core/provenance_chain.py`).
