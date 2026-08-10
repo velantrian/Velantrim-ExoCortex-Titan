@@ -29,135 +29,91 @@ from core.write_gate import ensure_writes_allowed
 
 logger = logging.getLogger(__name__)
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Константы
-# ═══════════════════════════════════════════════════════════════════════════════
-
-# ─── Relation type ontology ───────────────────────────────────────────────────
-#
-# Архитектурное различение, введённое в v8.5.2 (Claude audit):
-#
-#   FORWARD_RELATION_TYPES   = типы, которые пользователь может передать
-#                              в add_relation() напрямую (15 типов).
-#   BACKWARD_RELATION_TYPES  = типы, которые создаются автоматически как
-#                              inverse_of forward-отношений. Пользователь
-#                              их НЕ передаёт напрямую — это нарушение
-#                              API-контракта.
-#   VALID_RELATION_TYPES     = объединение, проверка на storage-уровне
-#                              (что вообще может оказаться в БД).
-#
-# До v8.5.2 был один frozenset VALID_RELATION_TYPES без BACKWARD-типов.
-# В add_relation() условие `if inverse_type in VALID_RELATION_TYPES`
-# было ВСЕГДА False для caused_by/prevented_by/required_by/enabled_by/
-# implied_by/composed_of → авто-inverse рёбра тихо НЕ сохранялись.
-# Результат: 6 из 12 backward-обходов графа физически невозможны.
-# Тест test_causal_chain_depth_3 падал именно поэтому.
-#
 FORWARD_RELATION_TYPES = frozenset({
     "causes", "prevents", "requires", "enables",
     "implies", "contradicts", "generalizes", "specializes",
     "precedes", "follows", "composes", "analogous_to",
-    "becomes",
-    "affords",
-    "inhabited_by",
+    "becomes", "affords", "inhabited_by",
 })
-
 BACKWARD_RELATION_TYPES = frozenset({
-    "caused_by",
-    "prevented_by",
-    "required_by",
-    "enabled_by",
-    "implied_by",
-    "composed_of",
+    "caused_by", "prevented_by", "required_by", "enabled_by", "implied_by", "composed_of",
 })
-
 VALID_RELATION_TYPES = FORWARD_RELATION_TYPES | BACKWARD_RELATION_TYPES
-
-VALID_KNOWLEDGE_STATUSES = frozenset({
-    "known", "inferred", "hypothetical", "unknown",
-})
-
+VALID_KNOWLEDGE_STATUSES = frozenset({"known", "inferred", "hypothetical", "unknown"})
 VALID_INFERENCE_SOURCES = frozenset({
-    "manual", "autolinker", "counterfactual_engine",
-    "llm_extraction", "atlas_sync", "affordance_inference",
-    "cross_domain",
+    "manual", "autolinker", "counterfactual_engine", "llm_extraction", "atlas_sync",
+    "affordance_inference", "cross_domain",
 })
-
 VALID_TRUTH_STATUSES = frozenset({"validated", "hypothesis", "pending"})
 VALID_REVIEW_STATES = frozenset({"approved", "pending", "rejected"})
 
 INVERSE_RELATIONS: dict[str, str] = {
-    "causes":       "caused_by",
-    "prevents":     "prevented_by",
-    "requires":     "required_by",
-    "enables":      "enabled_by",
-    "implies":      "implied_by",
-    "generalizes":  "specializes",
-    "specializes":  "generalizes",
-    "precedes":     "follows",
-    "follows":      "precedes",
-    "composes":     "composed_of",
-    "contradicts":  "contradicts",
+    "causes": "caused_by",
+    "prevents": "prevented_by",
+    "requires": "required_by",
+    "enables": "enabled_by",
+    "implies": "implied_by",
+    "generalizes": "specializes",
+    "specializes": "generalizes",
+    "precedes": "follows",
+    "follows": "precedes",
+    "composes": "composed_of",
+    "contradicts": "contradicts",
     "analogous_to": "analogous_to",
 }
-
 IMPLICATION_TYPES = frozenset({"implies", "causes", "enables"})
-
 BACKWARD_TYPES: dict[str, str] = {
-    "causes":      "caused_by",
-    "implies":     "implied_by",
-    "requires":    "required_by",
-    "enables":     "enabled_by",
+    "causes": "caused_by",
+    "implies": "implied_by",
+    "requires": "required_by",
+    "enables": "enabled_by",
 }
-
 RELATION_TYPE_WEIGHTS: dict[str, float] = {
-    "causes":        0.95,
-    "caused_by":     0.95,
-    "prevents":      0.90,
-    "prevented_by":  0.90,
-    "requires":      0.90,
-    "required_by":   0.90,
-    "implies":       0.85,
-    "implied_by":    0.85,
-    "contradicts":   0.95,
-    "composes":      0.80,
-    "composed_of":   0.80,
-    "enables":       0.75,
-    "enabled_by":    0.75,
-    "becomes":       0.70,
-    "specializes":   0.65,
-    "generalizes":   0.60,
-    "precedes":      0.50,
-    "follows":       0.50,
-    "affords":       0.40,
-    "inhabited_by":  0.35,
-    "analogous_to":  0.30,
+    "causes": 0.95,
+    "caused_by": 0.95,
+    "prevents": 0.90,
+    "prevented_by": 0.90,
+    "requires": 0.90,
+    "required_by": 0.90,
+    "implies": 0.85,
+    "implied_by": 0.85,
+    "contradicts": 0.95,
+    "composes": 0.80,
+    "composed_of": 0.80,
+    "enables": 0.75,
+    "enabled_by": 0.75,
+    "becomes": 0.70,
+    "specializes": 0.65,
+    "generalizes": 0.60,
+    "precedes": 0.50,
+    "follows": 0.50,
+    "affords": 0.40,
+    "inhabited_by": 0.35,
+    "analogous_to": 0.30,
 }
 
 
 @dataclass
 class Relation:
     """Типизированное отношение между двумя фактами."""
-    relation_id:      str
-    from_fact_id:     str
-    to_fact_id:       str
-    relation_type:    str
-    confidence:       float
+
+    relation_id: str
+    from_fact_id: str
+    to_fact_id: str
+    relation_type: str
+    confidence: float
     knowledge_status: str = "known"
     inference_source: str | None = None
-    truth_status:  str = "validated"
-    review_state:  str = "approved"
-    evidence_ref:  str | None = None
-    created_at:    str = ""
-    valid_from:    str = ""
-    valid_to:      str | None = None
-    metadata:      dict | None = None
+    truth_status: str = "validated"
+    review_state: str = "approved"
+    evidence_ref: str | None = None
+    created_at: str = ""
+    valid_from: str = ""
+    valid_to: str | None = None
+    metadata: dict | None = None
 
     def is_reliable(self, min_confidence: float = 0.5) -> bool:
-        return (
-            self.confidence >= min_confidence
-            and self.knowledge_status in ("known", "inferred")
-        )
+        return self.confidence >= min_confidence and self.knowledge_status in ("known", "inferred")
 
     def to_dict(self) -> dict:
         return {
@@ -180,17 +136,13 @@ class Relation:
 
 @dataclass
 class ChainResult:
-    chain:              list[Relation]
-    min_confidence:     float
+    chain: list[Relation]
+    min_confidence: float
     product_confidence: float
-    has_hypothetical:   bool
-    unknown_count:      int
+    has_hypothetical: bool
+    unknown_count: int
 
-    def is_trustworthy(
-        self,
-        min_confidence: float = 0.5,
-        allow_hypothetical: bool = False,
-    ) -> bool:
+    def is_trustworthy(self, min_confidence: float = 0.5, allow_hypothetical: bool = False) -> bool:
         if self.has_hypothetical and not allow_hypothetical:
             return False
         return self.min_confidence >= min_confidence
@@ -211,8 +163,7 @@ class ChainResult:
             return 1.0
         total = 1.0
         for rel in self.chain:
-            type_weight = RELATION_TYPE_WEIGHTS.get(rel.relation_type, 0.5)
-            total *= rel.confidence * type_weight
+            total *= rel.confidence * RELATION_TYPE_WEIGHTS.get(rel.relation_type, 0.5)
         return round(total, 4)
 
     def explain_path(self) -> str:
@@ -222,15 +173,11 @@ class ChainResult:
         for rel in self.chain:
             tw = RELATION_TYPE_WEIGHTS.get(rel.relation_type, 0.5)
             steps.append(
-                f"{rel.from_fact_id} →[{rel.relation_type}, "
-                f"conf={rel.confidence:.2f}, w={tw:.0%}]→ {rel.to_fact_id}"
+                f"{rel.from_fact_id} →[{rel.relation_type}, conf={rel.confidence:.2f}, w={tw:.0%}]→ {rel.to_fact_id}"
             )
-        path = " и затем ".join(steps)
         return (
-            f"{path} "
-            f"({len(self.chain)} рёбер, "
-            f"мин.уверенность={self.min_confidence:.2f}, "
-            f"взвешенная={self.weighted_confidence:.2f})"
+            f"{' и затем '.join(steps)} ({len(self.chain)} рёбер, "
+            f"мин.уверенность={self.min_confidence:.2f}, взвешенная={self.weighted_confidence:.2f})"
         )
 
 
@@ -239,8 +186,7 @@ class CausalGraph:
 
     Issue #286 / parent #50: this class is the one canonical mutation owner for
     ``relations``. Every public create/delete/reset operation is WriteGate-protected,
-    transaction-owned here, and bound to same-transaction AuditChain evidence. Read-only
-    graph projections (NetworkX/Neo4j copies) do not gain write authority from this API.
+    transaction-owned here, and bound to same-transaction AuditChain evidence.
     """
 
     def __init__(self, db_conn) -> None:
@@ -255,8 +201,7 @@ class CausalGraph:
         ensure_writes_allowed()
         if self._conn.in_transaction:
             raise RuntimeError(
-                "CausalGraph canonical mutation requires an idle connection; "
-                "caller-owned relation transactions are not supported"
+                "CausalGraph canonical mutation requires an idle connection; caller-owned relation transactions are not supported"
             )
         ensure_causal_audit_ready(self._conn)
 
@@ -268,29 +213,16 @@ class CausalGraph:
         truth_status: str | None,
         review_state: str | None,
     ) -> tuple[str, str]:
-        automatic = (
-            knowledge_status != "known"
-            or inference_source not in (None, "manual")
-        )
-        resolved_truth = (
-            truth_status
-            if truth_status is not None
-            else ("hypothesis" if automatic else "validated")
-        )
-        resolved_review = (
-            review_state
-            if review_state is not None
-            else ("pending" if automatic else "approved")
-        )
+        automatic = knowledge_status != "known" or inference_source not in (None, "manual")
+        resolved_truth = truth_status if truth_status is not None else ("hypothesis" if automatic else "validated")
+        resolved_review = review_state if review_state is not None else ("pending" if automatic else "approved")
         if resolved_truth not in VALID_TRUTH_STATUSES:
             raise ValueError(
-                f"Неизвестный truth_status: {resolved_truth!r}. "
-                f"Допустимые: {sorted(VALID_TRUTH_STATUSES)}"
+                f"Неизвестный truth_status: {resolved_truth!r}. Допустимые: {sorted(VALID_TRUTH_STATUSES)}"
             )
         if resolved_review not in VALID_REVIEW_STATES:
             raise ValueError(
-                f"Неизвестный review_state: {resolved_review!r}. "
-                f"Допустимые: {sorted(VALID_REVIEW_STATES)}"
+                f"Неизвестный review_state: {resolved_review!r}. Допустимые: {sorted(VALID_REVIEW_STATES)}"
             )
         return resolved_truth, resolved_review
 
@@ -300,7 +232,7 @@ class CausalGraph:
         from_fact_id: str,
         to_fact_id: str,
         relation_type: str,
-        confidence: object,
+        confidence: str | float | int,
         knowledge_status: str,
         inference_source: str | None,
         truth_status: str | None,
@@ -311,22 +243,18 @@ class CausalGraph:
         if relation_type not in FORWARD_RELATION_TYPES:
             if relation_type in BACKWARD_RELATION_TYPES:
                 raise ValueError(
-                    f"relation_type={relation_type!r} — это backward-тип, "
-                    "он создаётся автоматически как inverse"
+                    f"relation_type={relation_type!r} — это backward-тип, он создаётся автоматически как inverse"
                 )
             raise ValueError(
-                f"Неизвестный relation_type: {relation_type!r}. "
-                f"Допустимые: {sorted(FORWARD_RELATION_TYPES)}"
+                f"Неизвестный relation_type: {relation_type!r}. Допустимые: {sorted(FORWARD_RELATION_TYPES)}"
             )
         if knowledge_status not in VALID_KNOWLEDGE_STATUSES:
             raise ValueError(
-                f"Неизвестный knowledge_status: {knowledge_status!r}. "
-                f"Допустимые: {sorted(VALID_KNOWLEDGE_STATUSES)}"
+                f"Неизвестный knowledge_status: {knowledge_status!r}. Допустимые: {sorted(VALID_KNOWLEDGE_STATUSES)}"
             )
         if inference_source is not None and inference_source not in VALID_INFERENCE_SOURCES:
             raise ValueError(
-                f"Неизвестный inference_source: {inference_source!r}. "
-                f"Допустимые: {sorted(VALID_INFERENCE_SOURCES)}"
+                f"Неизвестный inference_source: {inference_source!r}. Допустимые: {sorted(VALID_INFERENCE_SOURCES)}"
             )
         if isinstance(confidence, bool):
             raise ValueError("confidence не может быть bool")
@@ -407,14 +335,22 @@ class CausalGraph:
             INSERT INTO relations (
                 relation_id, from_fact_id, to_fact_id, relation_type,
                 confidence, knowledge_status, inference_source,
-                truth_status, review_state,
-                evidence_ref, created_at, valid_from, metadata
+                truth_status, review_state, evidence_ref, created_at, valid_from, metadata
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                relation_id, from_fact_id, to_fact_id, relation_type,
-                float(confidence), knowledge_status, inference_source,
-                truth_status, review_state, evidence_ref, now, now,
+                relation_id,
+                from_fact_id,
+                to_fact_id,
+                relation_type,
+                float(confidence),
+                knowledge_status,
+                inference_source,
+                truth_status,
+                review_state,
+                evidence_ref,
+                now,
+                now,
                 CausalGraph._metadata_json(metadata),
             ),
         )
@@ -434,7 +370,7 @@ class CausalGraph:
             relation_type=str(row["relation_type"]),
             confidence=raw_confidence,
             knowledge_status=knowledge_status,
-            inference_source=(str(inference_source) if inference_source is not None else None),
+            inference_source=str(inference_source) if inference_source is not None else None,
             truth_status=row.get("truth_status"),
             review_state=row.get("review_state"),
         )
@@ -447,12 +383,8 @@ class CausalGraph:
             "relation_type": str(row["relation_type"]),
             "confidence": float(raw_confidence),
             "knowledge_status": knowledge_status,
-            "inference_source": (
-                str(inference_source) if inference_source is not None else None
-            ),
-            "evidence_ref": (
-                str(row["evidence_ref"]) if row.get("evidence_ref") is not None else None
-            ),
+            "inference_source": str(inference_source) if inference_source is not None else None,
+            "evidence_ref": str(row["evidence_ref"]) if row.get("evidence_ref") is not None else None,
             "metadata": metadata,
             "truth_status": truth_status,
             "review_state": review_state,
@@ -553,8 +485,11 @@ class CausalGraph:
     def add_relations_batch(self, rows: list[dict]) -> dict:
         if not rows:
             return {
-                "requested": 0, "created": 0, "existing": 0,
-                "physical_rows_created": 0, "relation_ids": [],
+                "requested": 0,
+                "created": 0,
+                "existing": 0,
+                "physical_rows_created": 0,
+                "relation_ids": [],
             }
         normalized = [self._normalized_row(dict(row)) for row in rows]
         self._prepare_mutation()
@@ -891,22 +826,17 @@ class CausalGraph:
             "causal_chain": effects,
             "affected_count": len(effects),
             "note": (
-                "Pearl Level 2 (intervention). "
-                "Для полного do-calculus (Level 3) нужна SCM с уравнениями."
+                "Pearl Level 2 (intervention). Для полного do-calculus (Level 3) нужна SCM с уравнениями."
             ),
         }
 
-    def find_analogies(
-        self, fact_id: str, cross_domain: bool = True
-    ) -> list[tuple[str, float]]:
+    def find_analogies(self, fact_id: str, cross_domain: bool = True) -> list[tuple[str, float]]:
         own_rels = self.get_relations_from(fact_id)
         own_types = frozenset(r.relation_type for r in own_rels)
         if not own_types:
             return []
         direct_analogies = self.get_relations_from(fact_id, relation_type="analogous_to")
-        results: list[tuple[str, float]] = [
-            (r.to_fact_id, r.confidence) for r in direct_analogies
-        ]
+        results: list[tuple[str, float]] = [(r.to_fact_id, r.confidence) for r in direct_analogies]
         seen = {fact_id} | {r.to_fact_id for r in direct_analogies}
         candidates_sql = """
             SELECT DISTINCT from_fact_id FROM relations
@@ -931,11 +861,7 @@ class CausalGraph:
                 results.append((candidate_id, similarity))
         return sorted(results, key=lambda x: -x[1])[:10]
 
-    def find_contradictions(
-        self,
-        fact_id: str,
-        _visited_facts: set | None = None,
-    ) -> list[Relation]:
+    def find_contradictions(self, fact_id: str, _visited_facts: set | None = None) -> list[Relation]:
         if _visited_facts is None:
             _visited_facts = set()
         if fact_id in _visited_facts:
@@ -961,9 +887,7 @@ class CausalGraph:
         ) + self.get_relations_to(fact_id, only_approved=False)
         status_counts = {"known": 0, "inferred": 0, "hypothetical": 0, "unknown": 0}
         for rel in all_rels:
-            status_counts[rel.knowledge_status] = (
-                status_counts.get(rel.knowledge_status, 0) + 1
-            )
+            status_counts[rel.knowledge_status] = status_counts.get(rel.knowledge_status, 0) + 1
         confidences = [r.confidence for r in all_rels]
         avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
         min_conf = min(confidences) if confidences else 0.0
@@ -1204,6 +1128,7 @@ def is_causal_graph_enabled() -> bool:
 
 def get_causal_graph() -> CausalGraph:
     from core.pipeline import _get_causal_graph
+
     graph = _get_causal_graph()
     if graph is None:
         raise RuntimeError("CausalGraph недоступен (проверьте миграции relations)")
