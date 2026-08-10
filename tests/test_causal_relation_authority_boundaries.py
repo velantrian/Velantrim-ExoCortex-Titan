@@ -131,8 +131,8 @@ def test_networkx_and_neo4j_surfaces_remain_non_authoritative():
     assert "UPDATE relations" not in graph_lab
     assert "DELETE FROM relations" not in graph_lab
 
-    # Neo4j is fed snapshots exported from local CausalGraph; it does not mutate
-    # the local SQLite `relations` Canon directly.
-    assert "export_snapshots" in neo4j
+    # Neo4j remains derived persistence. A reverse load must pass through the
+    # local CausalGraph admission API rather than mutating SQLite relations SQL.
+    assert "get_causal_graph().import_snapshots" in neo4j
     assert "INSERT INTO relations" not in neo4j
     assert "DELETE FROM relations" not in neo4j
