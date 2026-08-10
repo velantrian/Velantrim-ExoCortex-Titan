@@ -1,13 +1,14 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-10  
-**Repository checkpoint:** `main@66318e6883590cb29a4565157e0a3a25b3716d81`  
-**Continuity:** `11/12 = 91.7%` implementation readiness  
-**Runtime:** `CONTROLLED-ENABLEMENT MECHANISM WIRED · CURRENTLY DISABLED · OPERATOR GO ABSENT · NOT OBSERVED · NO RUNTIME AUTHORITY`  
+**Repository checkpoint:** `main@456b762b1e752a2f5fb22762869336be9fed42a4`  
+**Continuity:** `11/12 = 91.7%` implementation readiness (unchanged by this checkpoint)  
+**Runtime:** `CONTROLLED-ENABLEMENT + OBSERVATION MECHANISMS WIRED · CURRENTLY DISABLED · OPERATOR GO ABSENT · NOT OBSERVED · NO RUNTIME AUTHORITY · BLOCKED_ON_OPERATOR_GO`  
 **Governance:** active `main-governance` · solo mode · approvals `0`
 
-A canonical manifest, persisted decision, green aggregate or Notion update does not prove
-operator authenticity, current permission, observation or production authority.
+A canonical manifest, persisted decision, persisted observation evidence, green
+aggregate or Notion update does not prove operator authenticity, current permission,
+observation or production authority.
 
 ## Closed or materially reduced
 
@@ -23,10 +24,17 @@ operator authenticity, current permission, observation or production authority.
 - persisted evidence is revalidated and is never restart permission;
 - runtime configuration without a current enable decision stays disabled;
 - only existing explicit append/replay methods are gated;
-- `/query`, producer and all forbidden side effects remain absent.
+- `/query`, producer and all forbidden side effects remain absent;
+- a bounded, content-free **observation mechanism** now exists (PR #276): it can
+  record deterministic evidence of configuration/storage/owner binding stability,
+  lease validity while enabled, and absence of runtime/side-effect authority, and can
+  reduce a session to one deterministic `rollback_verified` result — proven with a
+  synthetic operator decision in 34 focused/adversarial tests.
 
 The former risk “controlled-enablement mechanism is absent” is closed only at the bounded
-implementation/test/wiring level.
+implementation/test/wiring level. The former risk “no observation mechanism exists at
+all” is likewise closed only at the implementation/test/wiring level — see the P0 risk
+below for what remains open.
 
 ## P0 — No current Operator GO or deployed activation
 
@@ -52,11 +60,23 @@ Required proof before any side-effect-capable producer:
 - current restriction/erasure/authorization rechecks;
 - explicit operator decision under deployment governance.
 
-## P1 — Live observation is absent
+## P0 — Real observed evidence is BLOCKED_ON_OPERATOR_GO
 
 No production deployment, traffic, telemetry, monitoring, alerting or observed user
-behavior exists. This is the final separate Continuity capability and is not implied by
-the controlled-enablement mechanism.
+behavior exists. This is the final separate Continuity capability. Neither the
+controlled-enablement mechanism (PR #273) nor the bounded-observation mechanism (PR
+#276) implies it: a mechanism that *can* record evidence is not evidence.
+
+Producing real `observed=true` evidence requires an actual operator-authorized bounded
+activation against a real deployment — a committed activation manifest, an operator
+whose identity/authority is independently established outside this repository, and
+someone running the observation session against that real activation. None of that
+exists in this repository checkpoint, and an AI agent has no authority to self-issue
+Operator GO on its own initiative.
+
+**Status: `BLOCKED_ON_OPERATOR_GO`.** Tracking issue #275 remains open until this is
+resolved; it must not be closed as completing Continuity 12/12 on mechanism evidence
+alone.
 
 ## P1 — Operational scope remains bounded
 
@@ -70,8 +90,9 @@ Not proved:
 
 ## P1 — Solo governance has no independent approval gate
 
-PR #273 had zero submitted reviews. Codex did not run because its usage limit was reached.
-Unresolved review threads were zero. Independent review is **NOT CLAIMED**.
+PR #273 and PR #276 each had zero submitted reviews. Codex did not run on either because
+its usage limit was reached. Unresolved review threads were zero on both. Independent
+review is **NOT CLAIMED**.
 
 ## P1 — Uncharacterized CAS-contention failure
 
@@ -95,6 +116,7 @@ IMPLEMENTED
 TESTED
 WIRED
 ENABLEMENT MECHANISM IMPLEMENTED
+OBSERVATION MECHANISM IMPLEMENTED
 RUNTIME CURRENTLY ENABLED
 OPERATOR AUTHORIZATION PRESENT
 OPERATOR GO

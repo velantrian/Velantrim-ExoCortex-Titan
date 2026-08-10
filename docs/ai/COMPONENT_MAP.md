@@ -1,9 +1,9 @@
 # 🗺️ Component and Authority Map
 
-**Repository checkpoint:** `main@66318e6883590cb29a4565157e0a3a25b3716d81`  
-**Controlled-enablement implementation:** issue #272 · PR #273  
-**Machine state:** [`docs/state/project_state.json`](../state/project_state.json) · schema v6  
-**Reality:** `IMPLEMENTED · TESTED · WIRED · ENABLEMENT MECHANISM PRESENT · RUNTIME CURRENTLY DISABLED · OPERATOR GO ABSENT · NOT OBSERVED · NO RUNTIME AUTHORITY`
+**Repository checkpoint:** `main@456b762b1e752a2f5fb22762869336be9fed42a4`  
+**Bounded-observation implementation:** issue #275 · PR #276  
+**Machine state:** [`docs/state/project_state.json`](../state/project_state.json) · schema v6 (unchanged — see `docs/ai/CURRENT_STATE.md`)  
+**Reality:** `IMPLEMENTED · TESTED · WIRED · ENABLEMENT MECHANISM PRESENT · OBSERVATION MECHANISM PRESENT · RUNTIME CURRENTLY DISABLED · OPERATOR GO ABSENT · NOT OBSERVED · NO RUNTIME AUTHORITY · BLOCKED_ON_OPERATOR_GO`
 
 ## 1. Accepted Continuity lineage
 
@@ -16,7 +16,8 @@
 | Durable lifecycle | `admission_artifact_lifecycle.py` | internal SQLite append/replay/cleanup/erasure owner |
 | Runtime composition | `runtime_composition.py` | tested and wired in lifespan |
 | Controlled enablement | `controlled_enablement.py` | exact bounded decision gate; no authority escalation |
-| Composition root | `server.py::lifespan` via `api/server_middleware.py` | startup/shutdown only |
+| Bounded observation | `bounded_observation.py` | read-only, content-free evidence; no authority escalation |
+| Composition root | `server.py::lifespan` via `api/server_middleware.py` | startup/shutdown + open/close only |
 
 ## 2. Exact internal path
 
@@ -33,10 +34,17 @@ State / Goal / OpenLoop result
 → existing tenant-bound SQLite lifecycle
 → explicit append / exact-scope replay
 → STOP
+
+ControlledEnablementController.diagnostic() / .lease_valid_at()
+→ ContinuityBoundedObservationController.observe() [read-only]
+→ fixed invariant checklist
+→ content-free evidence row, same tenant-bound SQLite database
+→ summarize_observation_session() [pure]
+→ STOP
 ```
 
-No public endpoint invokes this path. No current activation manifest is recorded, so the
-runtime remains disabled.
+No public endpoint invokes either path. No current activation manifest is recorded, so
+the runtime remains disabled, and nothing calls `observe()` automatically.
 
 ## 3. Controlled-enablement ownership
 
@@ -51,6 +59,16 @@ runtime remains disabled.
 | Operation gate | existing explicit append/replay | no producer/action authority |
 | Diagnostics | content-free state evidence | no user side effect |
 
+## 3a. Bounded-observation ownership
+
+| Concern | Accepted responsibility | Boundary |
+|---|---|---|
+| Diagnostic read | existing enablement `diagnostic()` / new `lease_valid_at()` | no state mutation |
+| Invariant evaluation | fixed, closed seven-entry checklist | no caller-supplied invariants |
+| Observation evidence | same tenant-bound SQLite file, dedicated table | never a permission token |
+| Sequencing | positive monotonic, idempotent, conflict-rejecting | stale/conflicting sequence rejected |
+| Session result | pure `summarize_observation_session` reduction | no Operator GO, no production authority |
+
 ## 4. State machines
 
 ```text
@@ -59,11 +77,16 @@ NEW ↔ STARTED ↔ STOPPED
 
 Enablement controller:
 NEW → DISABLED ↔ ENABLED → STOPPED
+
+Observation controller:
+NEW → READY → CLOSED
 ```
 
 `ENABLED` requires a current exact unexpired decision. Shutdown revokes in-process
 enablement. Restart without a current manifest returns to `DISABLED`, regardless of old
-persisted enable evidence.
+persisted enable evidence. The observation controller only reads `READY`; it never
+transitions the enablement controller's own state and rejects `observe()` while the
+underlying runtime is `NEW` or `STOPPED`.
 
 ## 5. Authority map
 
@@ -79,7 +102,8 @@ persisted enable evidence.
 | bounded enable/disable decision validation | controlled-enablement controller |
 | operator identity/authenticity | deployment governance; not established here |
 | Operator GO project fact | absent |
-| production observation | absent |
+| observation mechanism | bounded-observation controller |
+| real observed evidence | absent · `BLOCKED_ON_OPERATOR_GO` |
 | production authority | absent |
 
 ## 6. Anti-bypass guarantees
@@ -93,7 +117,11 @@ persisted enable evidence.
 - `/query` does not call append or replay;
 - producer, Canon, ESM, TruthGate, GoalStack, reminder, notification, action, tool and
   scheduler effects remain absent;
-- neither manifest digest nor replay grants authorization.
+- neither manifest digest nor replay grants authorization;
+- the observation controller never calls `persist_accepted_admission` or `replay`,
+  never issues/evaluates a decision, and constructing/persisting evidence cannot grant
+  authority — `no_new_authority_granted`/`evidence_is_not_permission` are fixed `True`
+  markers, not caller-supplied claims.
 
 ## 7. Historical state
 
@@ -103,8 +131,11 @@ persisted enable evidence.
 | Durable lifecycle | #266 / #267 | `064845579c520e7464678cd0c41d9b650368dfa8` | schema v4 · 9/12 · unwired |
 | Bounded runtime composition | #269 / #270 | `802e833fa251a8831add8a6b802a5ebb57533549` | schema v5 · 10/12 · wired/disabled |
 | Controlled enablement | #272 / #273 | `66318e6883590cb29a4565157e0a3a25b3716d81` | schema v6 · 11/12 · mechanism present/runtime disabled |
+| Bounded observation mechanism | #275 / #276 | `456b762b1e752a2f5fb22762869336be9fed42a4` | schema v6 unchanged · 11/12 unchanged · mechanism present, real evidence `BLOCKED_ON_OPERATOR_GO` |
 
-Historical schema v5 remains unchanged; only schema v6 records the new mechanism.
+Historical schemas v1-v5 remain unchanged. Schema v6 still records exactly the
+controlled-enablement checkpoint; this row is additional prose/evidence, not a schema
+bump — see `docs/ai/CURRENT_STATE.md`'s "Machine-readable state" section.
 
 ## 8. Remaining boundary
 
@@ -112,7 +143,8 @@ Historical schema v5 remains unchanged; only schema v6 records the new mechanism
 Current state: 11/12 = 91.7%
 
 Remaining:
-1. live monitored/observed evidence under separate authority.
+1. live monitored/observed evidence under separate authority — mechanism now exists
+   (PR #276); real evidence is BLOCKED_ON_OPERATOR_GO.
 ```
 
-Continuity 12/12 has not started.
+Continuity 12/12 has not been reached.
