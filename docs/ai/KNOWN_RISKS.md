@@ -99,10 +99,29 @@ was performed on the canary execution itself (single human operator authorizatio
 Issue #249 remains open and untouched. Do not weaken one-winner/one-intent assertions,
 skip the failure or reclassify it without evidence.
 
+## P1 — PII claim redaction is not full physical erasure
+
+Issue #282 / PR #283 hardens one specific #50 mutation family: PII found in a canonical
+fact's **claim**. The privacy contract intentionally sanitizes the affected
+`fact_versions.claim` history instead of retaining a recoverable plaintext pre-image,
+and records a content-free AuditChain event. That closes the specific risk of the
+redaction operation re-persisting its own removed claim in ordinary VersionStore
+history.
+
+Residual scope remains explicit. Claim redaction does not prove removal from arbitrary
+metadata, immutable/raw origins, every graph/vector/external backend, backups,
+third-party systems, or historical logs created by unrelated legacy paths. Full
+Art. 17-style physical erasure remains a separate durable-erasure contract. No
+certified GDPR/compliance claim follows from PII claim redaction.
+
+Until PR #283 is protected-merged and post-merge verified, this paragraph describes a
+review-stage contract, not current `main` implementation truth.
+
 ## P1 — Legacy and unrelated risks remain separate
 
 - the historical embeddings-lock timeout remains unresolved evidence;
-- legacy query/promotion hardening remains separate;
+- remaining #50 archival/causal-relation and any live async mutation-family hardening
+  remain separate from PII redaction;
 - projection dispatcher lifecycle/observability remains separate;
 - no independent security audit, penetration test, certified privacy program or complete
   incident-response rehearsal exists.
