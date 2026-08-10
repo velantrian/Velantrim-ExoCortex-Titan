@@ -19,6 +19,14 @@ from collections import deque
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from core.causal_relation_audit import (
+    EVENT_RELATION_CREATED,
+    EVENT_RELATION_REMOVED,
+    append_relation_event,
+    ensure_causal_audit_ready,
+)
+from core.write_gate import ensure_writes_allowed
+
 logger = logging.getLogger(__name__)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -81,6 +89,9 @@ VALID_INFERENCE_SOURCES = frozenset({
     "llm_extraction", "atlas_sync", "affordance_inference",
     "cross_domain",
 })
+
+VALID_TRUTH_STATUSES = frozenset({"validated", "hypothesis", "pending"})
+VALID_REVIEW_STATES = frozenset({"approved", "pending", "rejected"})
 
 # Автоматические обратные типы
 INVERSE_RELATIONS: dict[str, str] = {
@@ -294,13 +305,18 @@ class ChainResult:
 
 class CausalGraph:
     """
-    Каузальный граф — слой над Velantrim memory.
+    Каузальный граф — canonical Truth-edge слой над Velantrim memory.
 
     ПРИНЦИП: система обязана знать, чего она НЕ знает.
     Каждое ребро несёт knowledge_status (откуда это знание) —
     отдельно от confidence (вероятность наблюдения).
 
     Хранение: SQLite таблица relations (миграция 008_add_relations.sql).
+
+    Issue #286 / parent #50: this class is the one canonical mutation owner for
+    ``relations``. Every public create/delete/reset operation is WriteGate-protected,
+    transaction-owned here, and bound to same-transaction AuditChain evidence. Read-only
+    graph projections (NetworkX/Neo4j copies) do not gain write authority from this API.
     """
 
     def __init__(self, db_conn) -> None:
@@ -316,38 +332,68 @@ class CausalGraph:
         self._conn.execute("PRAGMA foreign_keys = ON")
         self._conn.commit()
 
-    # ── CRUD ──────────────────────────────────────────────────────────────────
+    # ── Canonical mutation helpers (#286) ─────────────────────────────────────
 
-    def add_relation(
-        self,
-        from_fact_id:     str,
-        to_fact_id:       str,
-        relation_type:    str,
-        confidence:       float = 0.8,
-        knowledge_status: str = "known",
-        inference_source: str | None = None,
-        evidence_ref:     str | None = None,
-        metadata:         dict | None = None,
-        truth_status:     str = "validated",
-        review_state:     str = "approved",
-    ) -> str:
-        """
-        Добавить отношение между двумя фактами.
-        Автоматически создаёт inverse relation.
+    def _prepare_mutation(self) -> None:
+        """Fail closed before a canonical relation transaction is opened."""
+        ensure_writes_allowed()
+        if self._conn.in_transaction:
+            raise RuntimeError(
+                "CausalGraph canonical mutation requires an idle connection; "
+                "caller-owned relation transactions are not supported"
+            )
+        ensure_causal_audit_ready(self._conn)
 
-        Returns: relation_id
-        Raises:
-            ValueError: если relation_type или knowledge_status невалидны,
-                        или from_fact_id == to_fact_id
-        """
-        # Валидация
+    @staticmethod
+    def _resolve_truth_review(
+        *,
+        knowledge_status: str,
+        inference_source: str | None,
+        truth_status: str | None,
+        review_state: str | None,
+    ) -> tuple[str, str]:
+        """Default automatic inference to hypothesis/pending, never accepted truth."""
+        automatic = (
+            knowledge_status != "known"
+            or inference_source not in (None, "manual")
+        )
+        resolved_truth = (
+            truth_status
+            if truth_status is not None
+            else ("hypothesis" if automatic else "validated")
+        )
+        resolved_review = (
+            review_state
+            if review_state is not None
+            else ("pending" if automatic else "approved")
+        )
+        if resolved_truth not in VALID_TRUTH_STATUSES:
+            raise ValueError(
+                f"Неизвестный truth_status: {resolved_truth!r}. "
+                f"Допустимые: {sorted(VALID_TRUTH_STATUSES)}"
+            )
+        if resolved_review not in VALID_REVIEW_STATES:
+            raise ValueError(
+                f"Неизвестный review_state: {resolved_review!r}. "
+                f"Допустимые: {sorted(VALID_REVIEW_STATES)}"
+            )
+        return resolved_truth, resolved_review
+
+    @staticmethod
+    def _validate_relation_input(
+        *,
+        from_fact_id: str,
+        to_fact_id: str,
+        relation_type: str,
+        confidence: float,
+        knowledge_status: str,
+        inference_source: str | None,
+        truth_status: str | None,
+        review_state: str | None,
+    ) -> tuple[str, str]:
         if from_fact_id == to_fact_id:
             raise ValueError("Петли запрещены: from_fact_id == to_fact_id")
 
-        # FIX v8.5.2 (Claude audit): пользователь передаёт ТОЛЬКО forward-типы.
-        # Backward-типы (caused_by и т.д.) создаются автоматически как inverse
-        # и не должны передаваться напрямую. Если кто-то пытается — это
-        # архитектурная ошибка вызывающего кода.
         if relation_type not in FORWARD_RELATION_TYPES:
             if relation_type in BACKWARD_RELATION_TYPES:
                 raise ValueError(
@@ -374,15 +420,84 @@ class CausalGraph:
                 f"Допустимые: {sorted(VALID_INFERENCE_SOURCES)}"
             )
 
-        if not 0.0 <= confidence <= 1.0:
+        if isinstance(confidence, bool) or not math.isfinite(float(confidence)):
+            raise ValueError(f"confidence должен быть конечным числом в [0.0, 1.0]: {confidence}")
+        if not 0.0 <= float(confidence) <= 1.0:
             raise ValueError(f"confidence должен быть в [0.0, 1.0], получено: {confidence}")
 
-        now = datetime.now(UTC).isoformat()
-        relation_id = f"rel_{uuid.uuid4().hex[:12]}"
+        return CausalGraph._resolve_truth_review(
+            knowledge_status=knowledge_status,
+            inference_source=inference_source,
+            truth_status=truth_status,
+            review_state=review_state,
+        )
 
-        self._conn.execute(
+    @staticmethod
+    def _metadata_json(metadata: dict | None) -> str | None:
+        if not metadata:
+            return None
+        return json.dumps(metadata, ensure_ascii=False, sort_keys=True)
+
+    @staticmethod
+    def _inverse_metadata(metadata: dict | None, *, relation_id: str) -> dict:
+        out = dict(metadata or {})
+        out["inverse_of"] = relation_id
+        return out
+
+    @staticmethod
+    def _inverse_type_for_stored(relation_type: str) -> str | None:
+        direct = INVERSE_RELATIONS.get(relation_type)
+        if direct:
+            return direct
+        for forward, inverse in INVERSE_RELATIONS.items():
+            if inverse == relation_type:
+                return forward
+        return None
+
+    @staticmethod
+    def _find_existing_relation_id(
+        conn,
+        *,
+        from_fact_id: str,
+        to_fact_id: str,
+        relation_type: str,
+        inference_source: str | None,
+    ) -> str | None:
+        row = conn.execute(
             """
-            INSERT OR IGNORE INTO relations (
+            SELECT relation_id
+            FROM relations
+            WHERE from_fact_id = ?
+              AND to_fact_id = ?
+              AND relation_type = ?
+              AND inference_source IS ?
+            ORDER BY relation_id
+            LIMIT 1
+            """,
+            (from_fact_id, to_fact_id, relation_type, inference_source),
+        ).fetchone()
+        return str(row[0]) if row else None
+
+    @staticmethod
+    def _insert_relation_row(
+        conn,
+        *,
+        relation_id: str,
+        from_fact_id: str,
+        to_fact_id: str,
+        relation_type: str,
+        confidence: float,
+        knowledge_status: str,
+        inference_source: str | None,
+        truth_status: str,
+        review_state: str,
+        evidence_ref: str | None,
+        now: str,
+        metadata: dict | None,
+    ) -> None:
+        conn.execute(
+            """
+            INSERT INTO relations (
                 relation_id, from_fact_id, to_fact_id, relation_type,
                 confidence, knowledge_status, inference_source,
                 truth_status, review_state,
@@ -391,37 +506,208 @@ class CausalGraph:
             """,
             (
                 relation_id, from_fact_id, to_fact_id, relation_type,
-                confidence, knowledge_status, inference_source,
+                float(confidence), knowledge_status, inference_source,
                 truth_status, review_state,
                 evidence_ref, now, now,
-                json.dumps(metadata) if metadata else None,
+                CausalGraph._metadata_json(metadata),
             ),
         )
 
-        # Автоматическое создание inverse relation
-        inverse_type = INVERSE_RELATIONS.get(relation_type)
-        if inverse_type and inverse_type in VALID_RELATION_TYPES:
-            inverse_id = f"rel_{uuid.uuid4().hex[:12]}"
-            self._conn.execute(
-                """
-                INSERT OR IGNORE INTO relations (
-                    relation_id, from_fact_id, to_fact_id, relation_type,
-                    confidence, knowledge_status, inference_source,
-                    truth_status, review_state,
-                    evidence_ref, created_at, valid_from, metadata
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    inverse_id, to_fact_id, from_fact_id, inverse_type,
-                    confidence, knowledge_status, inference_source,
-                    truth_status, review_state,
-                    evidence_ref, now, now,
-                    json.dumps({"inverse_of": relation_id}) if not metadata else None,
-                ),
-            )
+    @staticmethod
+    def _normalized_row(row: dict) -> dict:
+        required = ("from_fact_id", "to_fact_id", "relation_type")
+        missing = [key for key in required if not row.get(key)]
+        if missing:
+            raise ValueError(f"relation row missing required fields: {missing}")
 
-        self._conn.commit()
-        return relation_id
+        knowledge_status = str(row.get("knowledge_status") or "known")
+        inference_source = row.get("inference_source")
+        truth_status, review_state = CausalGraph._validate_relation_input(
+            from_fact_id=str(row["from_fact_id"]),
+            to_fact_id=str(row["to_fact_id"]),
+            relation_type=str(row["relation_type"]),
+            confidence=float(row.get("confidence", 0.8)),
+            knowledge_status=knowledge_status,
+            inference_source=(str(inference_source) if inference_source is not None else None),
+            truth_status=row.get("truth_status"),
+            review_state=row.get("review_state"),
+        )
+        metadata = row.get("metadata")
+        if metadata is not None and not isinstance(metadata, dict):
+            raise ValueError("relation metadata must be a dict or None")
+        return {
+            "from_fact_id": str(row["from_fact_id"]),
+            "to_fact_id": str(row["to_fact_id"]),
+            "relation_type": str(row["relation_type"]),
+            "confidence": float(row.get("confidence", 0.8)),
+            "knowledge_status": knowledge_status,
+            "inference_source": (
+                str(inference_source) if inference_source is not None else None
+            ),
+            "evidence_ref": (
+                str(row["evidence_ref"]) if row.get("evidence_ref") is not None else None
+            ),
+            "metadata": metadata,
+            "truth_status": truth_status,
+            "review_state": review_state,
+        }
+
+    def _add_one_in_transaction(self, row: dict, *, now: str) -> tuple[str, int]:
+        """Insert/repair one semantic forward edge inside the current transaction."""
+        existing_id = self._find_existing_relation_id(
+            self._conn,
+            from_fact_id=row["from_fact_id"],
+            to_fact_id=row["to_fact_id"],
+            relation_type=row["relation_type"],
+            inference_source=row["inference_source"],
+        )
+        physical_created = 0
+        if existing_id is None:
+            relation_id = f"rel_{uuid.uuid4().hex[:12]}"
+            self._insert_relation_row(
+                self._conn,
+                relation_id=relation_id,
+                from_fact_id=row["from_fact_id"],
+                to_fact_id=row["to_fact_id"],
+                relation_type=row["relation_type"],
+                confidence=row["confidence"],
+                knowledge_status=row["knowledge_status"],
+                inference_source=row["inference_source"],
+                truth_status=row["truth_status"],
+                review_state=row["review_state"],
+                evidence_ref=row["evidence_ref"],
+                now=now,
+                metadata=row["metadata"],
+            )
+            append_relation_event(
+                self._conn,
+                relation_id=relation_id,
+                event_type=EVENT_RELATION_CREATED,
+            )
+            physical_created += 1
+        else:
+            relation_id = existing_id
+
+        inverse_type = INVERSE_RELATIONS.get(row["relation_type"])
+        if inverse_type and inverse_type in VALID_RELATION_TYPES:
+            inverse_existing = self._find_existing_relation_id(
+                self._conn,
+                from_fact_id=row["to_fact_id"],
+                to_fact_id=row["from_fact_id"],
+                relation_type=inverse_type,
+                inference_source=row["inference_source"],
+            )
+            if inverse_existing is None:
+                inverse_id = f"rel_{uuid.uuid4().hex[:12]}"
+                self._insert_relation_row(
+                    self._conn,
+                    relation_id=inverse_id,
+                    from_fact_id=row["to_fact_id"],
+                    to_fact_id=row["from_fact_id"],
+                    relation_type=inverse_type,
+                    confidence=row["confidence"],
+                    knowledge_status=row["knowledge_status"],
+                    inference_source=row["inference_source"],
+                    truth_status=row["truth_status"],
+                    review_state=row["review_state"],
+                    evidence_ref=row["evidence_ref"],
+                    now=now,
+                    metadata=self._inverse_metadata(
+                        row["metadata"], relation_id=relation_id
+                    ),
+                )
+                append_relation_event(
+                    self._conn,
+                    relation_id=inverse_id,
+                    event_type=EVENT_RELATION_CREATED,
+                )
+                physical_created += 1
+
+        return relation_id, physical_created
+
+    # ── CRUD ──────────────────────────────────────────────────────────────────
+
+    def add_relation(
+        self,
+        from_fact_id:     str,
+        to_fact_id:       str,
+        relation_type:    str,
+        confidence:       float = 0.8,
+        knowledge_status: str = "known",
+        inference_source: str | None = None,
+        evidence_ref:     str | None = None,
+        metadata:         dict | None = None,
+        truth_status:     str | None = None,
+        review_state:     str | None = None,
+    ) -> str:
+        """Add one canonical relation and its inverse atomically.
+
+        Duplicate semantic input is a true idempotent no-op and returns the durable
+        relation ID already present in SQLite. Automatic inferred/hypothetical input
+        defaults to ``hypothesis/pending`` unless the caller explicitly supplies review
+        labels. Audit failure rolls back both forward and inverse rows.
+        """
+        result = self.add_relations_batch([
+            {
+                "from_fact_id": from_fact_id,
+                "to_fact_id": to_fact_id,
+                "relation_type": relation_type,
+                "confidence": confidence,
+                "knowledge_status": knowledge_status,
+                "inference_source": inference_source,
+                "evidence_ref": evidence_ref,
+                "metadata": metadata,
+                "truth_status": truth_status,
+                "review_state": review_state,
+            }
+        ])
+        return result["relation_ids"][0]
+
+    def add_relations_batch(self, rows: list[dict]) -> dict:
+        """Atomically add a bounded batch through the same canonical owner."""
+        if not rows:
+            return {
+                "requested": 0,
+                "created": 0,
+                "existing": 0,
+                "physical_rows_created": 0,
+                "relation_ids": [],
+            }
+
+        normalized = [self._normalized_row(dict(row)) for row in rows]
+        self._prepare_mutation()
+        now = datetime.now(UTC).isoformat()
+        relation_ids: list[str] = []
+        semantic_created = 0
+        physical_created = 0
+
+        try:
+            self._conn.execute("BEGIN IMMEDIATE")
+            for row in normalized:
+                before = self._find_existing_relation_id(
+                    self._conn,
+                    from_fact_id=row["from_fact_id"],
+                    to_fact_id=row["to_fact_id"],
+                    relation_type=row["relation_type"],
+                    inference_source=row["inference_source"],
+                )
+                relation_id, created_rows = self._add_one_in_transaction(row, now=now)
+                relation_ids.append(relation_id)
+                if before is None:
+                    semantic_created += 1
+                physical_created += created_rows
+            self._conn.commit()
+        except Exception:
+            self._conn.rollback()
+            raise
+
+        return {
+            "requested": len(normalized),
+            "created": semantic_created,
+            "existing": len(normalized) - semantic_created,
+            "physical_rows_created": physical_created,
+            "relation_ids": relation_ids,
+        }
 
     def get_relations_from(
         self,
@@ -487,14 +773,93 @@ class CausalGraph:
         rows = self._conn.execute(sql, params).fetchall()
         return [self._row_to_relation(r) for r in rows]
 
+    def _expand_remove_ids_in_transaction(self, relation_ids: list[str]) -> list[str]:
+        expanded: set[str] = set()
+        for relation_id in relation_ids:
+            row = self._conn.execute(
+                """
+                SELECT relation_id, from_fact_id, to_fact_id, relation_type,
+                       inference_source
+                FROM relations WHERE relation_id = ?
+                """,
+                (relation_id,),
+            ).fetchone()
+            if row is None:
+                continue
+            expanded.add(str(row[0]))
+            inverse_type = self._inverse_type_for_stored(str(row[3]))
+            if inverse_type:
+                inverse_rows = self._conn.execute(
+                    """
+                    SELECT relation_id FROM relations
+                    WHERE from_fact_id = ?
+                      AND to_fact_id = ?
+                      AND relation_type = ?
+                      AND inference_source IS ?
+                    """,
+                    (row[2], row[1], inverse_type, row[4]),
+                ).fetchall()
+                expanded.update(str(r[0]) for r in inverse_rows)
+        return sorted(expanded)
+
+    def remove_relations(self, relation_ids: list[str]) -> int:
+        """Remove targeted relation rows (and their inverse companions) atomically."""
+        requested = list(dict.fromkeys(str(rid) for rid in relation_ids if rid))
+        if not requested:
+            return 0
+        self._prepare_mutation()
+        try:
+            self._conn.execute("BEGIN IMMEDIATE")
+            expanded = self._expand_remove_ids_in_transaction(requested)
+            removed = 0
+            for relation_id in expanded:
+                cur = self._conn.execute(
+                    "DELETE FROM relations WHERE relation_id = ?",
+                    (relation_id,),
+                )
+                if cur.rowcount == 1:
+                    append_relation_event(
+                        self._conn,
+                        relation_id=relation_id,
+                        event_type=EVENT_RELATION_REMOVED,
+                    )
+                    removed += 1
+            self._conn.commit()
+            return removed
+        except Exception:
+            self._conn.rollback()
+            raise
+
     def remove_relation(self, relation_id: str) -> bool:
-        """Удалить отношение. Returns True если удалено."""
-        cur = self._conn.execute(
-            "DELETE FROM relations WHERE relation_id = ?",
-            (relation_id,),
-        )
-        self._conn.commit()
-        return cur.rowcount > 0
+        """Удалить отношение и его inverse companion; no-op не создаёт audit event."""
+        return self.remove_relations([relation_id]) > 0
+
+    def reset_relations(self) -> int:
+        """Canonical full reset with exact per-row same-transaction audit evidence."""
+        self._prepare_mutation()
+        try:
+            self._conn.execute("BEGIN IMMEDIATE")
+            relation_ids = [
+                str(row[0])
+                for row in self._conn.execute(
+                    "SELECT relation_id FROM relations ORDER BY relation_id"
+                ).fetchall()
+            ]
+            if not relation_ids:
+                self._conn.commit()
+                return 0
+            self._conn.execute("DELETE FROM relations")
+            for relation_id in relation_ids:
+                append_relation_event(
+                    self._conn,
+                    relation_id=relation_id,
+                    event_type=EVENT_RELATION_REMOVED,
+                )
+            self._conn.commit()
+            return len(relation_ids)
+        except Exception:
+            self._conn.rollback()
+            raise
 
     def get_relation(self, relation_id: str) -> Relation | None:
         """Получить одно отношение по ID."""
@@ -554,8 +919,6 @@ class CausalGraph:
         only_known=True — игнорировать 'inferred' и 'hypothetical' рёбра.
         """
         results: list[ChainResult] = []
-        # BFS: (current_fact_id, path_so_far, visited)
-        # TASK-11: deque.popleft() = O(1) vs list.pop(0) = O(n)
         queue: deque[tuple[str, list[Relation], set[str]]] = deque([
             (from_fact_id, [], {from_fact_id}),
         ])
@@ -629,12 +992,6 @@ class CausalGraph:
         """
         Почему этот факт верен? Backward reasoning.
         Обход по ОБРАТНЫМ рёбрам: caused_by, implied_by, required_by.
-
-        FIX P0 (v8.5.2 audit): после того как add_relation() начал
-        сохранять backward-типы (caused_by, required_by, implied_by)
-        как авто-inverse, explain() должен искать именно их, а не
-        forward-типы (causes, requires, implies). До фикса всегда
-        возвращал пустые списки.
         """
         causes: list[dict] = []
         requires: list[dict] = []
@@ -643,7 +1000,6 @@ class CausalGraph:
         for rel in self.get_relations_from(fact_id, relation_type="caused_by"):
             causes.append({"fact_id": rel.to_fact_id, "confidence": rel.confidence,
                            "status": rel.knowledge_status})
-        # Совместимость: прямые входящие causes/requires/implies
         for rel in self.get_relations_to(fact_id, relation_type="causes"):
             causes.append({"fact_id": rel.from_fact_id, "confidence": rel.confidence,
                            "status": rel.knowledge_status})
@@ -701,14 +1057,9 @@ class CausalGraph:
         fact_id: str,
         levels: int = 3,
     ) -> list[list[str]]:
-        """
-        Все уровни абстракции одновременно.
-        Вверх: 'generalizes' (от конкретного к общему)
-        Вниз: 'specializes' (от общего к конкретному)
-        """
+        """Все уровни абстракции одновременно."""
         ladder: list[list[str]] = [[fact_id]]
 
-        # Вверх по уровням абстракции
         current_level = [fact_id]
         for _ in range(levels):
             next_level: list[str] = []
@@ -722,7 +1073,6 @@ class CausalGraph:
             else:
                 break
 
-        # Вниз (конкретизации)
         current_level = [fact_id]
         concrete: list[str] = []
         for rel in self.get_relations_from(fact_id, relation_type="specializes"):
@@ -739,11 +1089,7 @@ class CausalGraph:
         fact_id:    str,
         hypothesis: str,
     ) -> dict:
-        """
-        Pearl Level 2: интервенция (не контрфактуал Level 3).
-        Клонирует подграф, применяет изменение, прогоняет implications.
-        Клон НЕ изменяет оригинал.
-        """
+        """Pearl Level 2: интервенция (не контрфактуал Level 3)."""
         effects = self.propagate_change(fact_id, hypothesis)
 
         return {
@@ -765,18 +1111,13 @@ class CausalGraph:
         fact_id:      str,
         cross_domain: bool = True,
     ) -> list[tuple[str, float]]:
-        """
-        Структурное сходство с другими фактами.
-        Основано на паттерне исходящих отношений.
-        """
-        # Получаем профиль типов у исходного факта
+        """Структурное сходство с другими фактами."""
         own_rels = self.get_relations_from(fact_id)
         own_types = frozenset(r.relation_type for r in own_rels)
 
         if not own_types:
             return []
 
-        # Прямые analogous_to отношения — самый надёжный сигнал
         direct_analogies = self.get_relations_from(
             fact_id, relation_type="analogous_to",
         )
@@ -785,7 +1126,6 @@ class CausalGraph:
         ]
         seen = {fact_id} | {r.to_fact_id for r in direct_analogies}
 
-        # Структурные аналогии: другие факты с похожим набором типов
         candidates_sql = """
             SELECT DISTINCT from_fact_id
             FROM relations
@@ -804,7 +1144,6 @@ class CausalGraph:
             cand_types = frozenset(r.relation_type for r in cand_rels)
             if not cand_types:
                 continue
-            # Jaccard similarity по типам
             intersection = len(own_types & cand_types)
             union = len(own_types | cand_types)
             similarity = intersection / union if union > 0 else 0.0
@@ -820,32 +1159,23 @@ class CausalGraph:
         fact_id: str,
         _visited_facts: set | None = None,
     ) -> list[Relation]:
-        """
-        Найти все факты, противоречащие данному.
-        Прямые (contradicts) + транзитивные (через implies).
-
-        TASK-10: _visited_facts — защита от циклических графов.
-        Передаётся через рекурсию, не предназначен для внешних вызовов.
-        """
-        # TASK-10: инициализируем visited при первом вызове
+        """Найти все факты, противоречащие данному."""
         if _visited_facts is None:
             _visited_facts = set()
         if fact_id in _visited_facts:
-            return []  # цикл — выходим без бесконечной рекурсии
+            return []
         _visited_facts.add(fact_id)
 
         direct = self.get_relations_from(fact_id, relation_type="contradicts")
         direct += self.get_relations_to(fact_id, relation_type="contradicts")
 
-        # Дедупликация по relation_id
         seen_ids: set[str] = {r.relation_id for r in direct}
         result = list(direct)
 
-        # Транзитивные: если B implies C и C contradicts A
         for impl_rel in self.get_relations_to(fact_id, relation_type="implies"):
             for contra_rel in self.find_contradictions(
                 impl_rel.from_fact_id,
-                _visited_facts=_visited_facts,  # TASK-10: передаём visited
+                _visited_facts=_visited_facts,
             ):
                 if contra_rel.relation_id not in seen_ids:
                     seen_ids.add(contra_rel.relation_id)
@@ -856,10 +1186,7 @@ class CausalGraph:
     # ── Knowledge boundary ─────────────────────────────────────────────────────
 
     def knowledge_summary(self, fact_id: str) -> dict:
-        """
-        Честный отчёт о том, что система знает и не знает
-        про данный факт и его связи.
-        """
+        """Честный отчёт о том, что система знает и не знает про связи факта."""
         all_rels = self.get_relations_from(fact_id) + self.get_relations_to(fact_id)
 
         status_counts = {"known": 0, "inferred": 0, "hypothetical": 0, "unknown": 0}
@@ -874,7 +1201,6 @@ class CausalGraph:
 
         has_contradictions = bool(self.find_contradictions(fact_id))
 
-        # Рекомендация
         if status_counts["unknown"] > 0:
             recommendation = "incomplete"
         elif status_counts["inferred"] > 0 or status_counts["hypothetical"] > 0:
@@ -905,13 +1231,14 @@ class CausalGraph:
         *,
         merge: bool = True,
     ) -> int:
-        """
-        Загрузить рёбра из внешнего графа (Neo4j snapshot).
+        """Load external snapshots only through the local canonical owner.
 
-        merge=True: пропускать дубликаты по relation_id; merge=False: очистка не делается
-        (вызывающий должен reset_causal_graph() до импорта).
+        Remote/derived persistence is never authority. Imported rows therefore follow
+        exactly the same WriteGate, pending-inference defaults and AuditChain contract as
+        local callers. ``merge=False`` still does not wipe Canon implicitly; the caller
+        must invoke the explicit audited reset operation first.
         """
-        imported = 0
+        prepared: list[dict] = []
         for row in rows:
             from_id = row.get("from_fact_id")
             to_id = row.get("to_fact_id")
@@ -923,24 +1250,30 @@ class CausalGraph:
                 existing = self.get_relation(str(rid))
                 if existing:
                     continue
-            try:
-                self.add_relation(
-                    str(from_id),
-                    str(to_id),
-                    str(rtype),
-                    confidence=float(row.get("confidence") or 0.8),
-                    knowledge_status=str(row.get("knowledge_status") or "known"),
-                )
-                imported += 1
-            except ValueError as exc:
-                logger.warning("import_snapshots: пропущено ребро %s→%s (%s): %s",
-                               from_id, to_id, rtype, exc)
-                continue
-            except Exception as exc:
-                logger.error("import_snapshots: ошибка при импорте %s→%s: %s",
-                             from_id, to_id, exc)
-                continue
-        return imported
+            prepared.append({
+                "from_fact_id": str(from_id),
+                "to_fact_id": str(to_id),
+                "relation_type": str(rtype),
+                "confidence": float(row.get("confidence") or 0.8),
+                "knowledge_status": str(row.get("knowledge_status") or "inferred"),
+                "inference_source": row.get("inference_source") or "atlas_sync",
+                "truth_status": row.get("truth_status"),
+                "review_state": row.get("review_state"),
+                "evidence_ref": row.get("evidence_ref"),
+                "metadata": row.get("metadata") if isinstance(row.get("metadata"), dict) else None,
+            })
+
+        if not prepared:
+            return 0
+        try:
+            result = self.add_relations_batch(prepared)
+            return int(result["created"])
+        except ValueError as exc:
+            logger.warning("import_snapshots: snapshot batch rejected: %s", exc)
+            return 0
+        except Exception:
+            logger.exception("import_snapshots: canonical snapshot import failed")
+            return 0
 
     # ── Statistics ─────────────────────────────────────────────────────────────
 
@@ -974,22 +1307,10 @@ class CausalGraph:
             "density": round(total / max(unique_facts, 1), 2),
         }
 
-    # ── Integrity Diagnostics (из Wiki-MCP-Server, апрель 2026) ─────────────────
-    #
-    # Набор инструментов для наблюдаемости графа. Из статьи:
-    #   wiki_graph_stats, wiki_graph_contradictions, graph_dedup_edges —
-    #   орфан-ноды, dangling-рёбра, дубли, противоречия.
-    #
-    # Для Velantrim это фундамент observability/auditability.
+    # ── Integrity Diagnostics ───────────────────────────────────────────────────
 
     def find_orphan_nodes(self, limit: int = 100) -> list[str]:
-        """
-        Найти факты с нулевым числом рёбер (изолированные узлы).
-
-        Орфаны — факты в графе, которые не связаны ни с одним другим фактом.
-        При namespace-линковщике (link_by_namespace) их должно быть <1%.
-        Если >5% — линковщик не покрывает граф.
-        """
+        """Найти факты с нулевым числом рёбер (изолированные узлы)."""
         rows = self._conn.execute("""
             SELECT f.fact_id
             FROM facts f
@@ -1018,12 +1339,7 @@ class CausalGraph:
         return row[0] if row else 0
 
     def find_dangling_edges(self, limit: int = 100) -> list[dict]:
-        """
-        Найти рёбра, ссылающиеся на несуществующие факты.
-
-        Dangling edge — база говорит что A→B связаны, но B (или A) нет в facts.
-        Это симптом: либо факт удалён без каскада, либо баг в ingest.
-        """
+        """Найти рёбра, ссылающиеся на несуществующие факты."""
         rows = self._conn.execute("""
             SELECT r.relation_id, r.from_fact_id, r.to_fact_id, r.relation_type
             FROM relations r
@@ -1054,11 +1370,7 @@ class CausalGraph:
         return row[0] if row else 0
 
     def find_duplicate_edges(self, limit: int = 100) -> list[dict]:
-        """
-        Найти дублирующиеся рёбра (одинаковые from+to+type).
-        dedup_edges() в knowledge_linker предотвращает создание,
-        но если кто-то пишет напрямую в relations — могут появиться.
-        """
+        """Найти дублирующиеся рёбра (одинаковые from+to+type)."""
         rows = self._conn.execute("""
             SELECT from_fact_id, to_fact_id, relation_type, COUNT(*) AS cnt
             FROM relations
@@ -1072,12 +1384,7 @@ class CausalGraph:
         ]
 
     def find_missing_evidence(self, limit: int = 100) -> list[dict]:
-        """
-        Рёбра без evidence_ref (не подкреплены источником).
-
-        Для Guardian/TruthGate: рёбра без evidence — кандидаты на downgrade
-        knowledge_status до 'inferred' или 'hypothetical'.
-        """
+        """Рёбра без evidence_ref, записанные как known."""
         rows = self._conn.execute("""
             SELECT relation_id, from_fact_id, to_fact_id, relation_type,
                    knowledge_status, confidence
@@ -1096,15 +1403,7 @@ class CausalGraph:
         ]
 
     def integrity_report(self) -> dict:
-        """
-        Полный отчёт о целостности графа.
-
-        Объединяет все диагностики в один вызов — как wiki_graph_stats
-        из статьи, но для Velantrim. Используется для:
-          - CI/CD (блокировать деплой при >X орфанов)
-          - Guardian dashboard (observability)
-          - Аудит (грант: «система знает о своём состоянии»)
-        """
+        """Полный отчёт о целостности графа."""
         orphans = self.count_orphan_nodes()
         dangling = self.count_dangling_edges()
         s = self.stats()
@@ -1123,7 +1422,6 @@ class CausalGraph:
             issues.append(f"{dangling} dangling-рёбер (ссылаются на несуществующие факты)")
             integrity_score -= min(40, dangling * 2)
 
-        # Проверка на критические проблемы
         critical = orphan_pct > 20 or dangling > 10
 
         return {
@@ -1185,7 +1483,6 @@ class CausalGraph:
 
 
 # ── Singleton API (V8.6 — для causal_bridge и ingest) ─────────────────────────
-
 def is_causal_graph_enabled() -> bool:
     """Флаг ENABLE_CAUSAL_GRAPH из feature_config (дефолт True)."""
     try:
@@ -1193,10 +1490,6 @@ def is_causal_graph_enabled() -> bool:
 
         return get_config().app.enable_causal_graph
     except Exception:  # noqa: BLE001
-        # F-02: раньше возвращали True МОЛЧА. Дефолт остаётся True (совпадает с
-        # feature_config.enable_causal_graph=True), но сбой чтения конфига теперь виден,
-        # а не маскируется. (Ср. write_gate.is_write_gate_enabled → fail-closed к False,
-        # т.к. там дефолт OFF: направление fallback'а = задокументированный дефолт флага.)
         logger.warning(
             "is_causal_graph_enabled: config read failed, falling back to default=True",
             exc_info=True,
@@ -1205,9 +1498,7 @@ def is_causal_graph_enabled() -> bool:
 
 
 def get_causal_graph() -> CausalGraph:
-    """
-    Делегирует в pipeline._get_causal_graph (общая БД с facts).
-    """
+    """Делегирует в pipeline._get_causal_graph (общая БД с facts)."""
     from core.pipeline import _get_causal_graph
 
     graph = _get_causal_graph()
@@ -1217,7 +1508,7 @@ def get_causal_graph() -> CausalGraph:
 
 
 def reset_causal_graph() -> None:
-    """Сброс CausalGraph (полный re-import из Neo4j)."""
+    """Сброс CausalGraph через canonical audited reset owner."""
     from core.pipeline import reset_causal_graph as _reset
 
     _reset()
