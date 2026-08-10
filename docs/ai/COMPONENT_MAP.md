@@ -45,9 +45,11 @@ are never permission tokens.
 | single-fact physical erasure | `ErasureCoordinator.erase_fact_durable()` | CONVERGED; `ForgettingEngine.forget_one()` is legacy adapter |
 | PII claim redaction | `CanonicalPiiRedactor` over existing `SQLiteGraphStore` | CONVERGED on merged #283; privacy-sanitized history exception |
 | async fact mutations | `AsyncSQLiteStore` → exact synchronous canonical owner | LEGACY_ADAPTER / CONVERGED; native async SQL disabled |
-| archival claim rewrite | `CanonicalArchivalRewriter` over existing `SQLiteGraphStore` | REVIEW-STAGE on #285 until protected merge |
-| causal relation create/delete | current `CausalGraph` direct relation-table mutation | REAL_GAP · separate future #50 block |
+| archival claim rewrite | `CanonicalArchivalRewriter` over existing `SQLiteGraphStore` | CONVERGED on merged #285 · current main `3100952f3dacf268f4d9c9b3f5a738f449663de6` |
+| causal relation create/delete/reset | candidate `CausalGraph` canonical owner on #286/#287 | REVIEW-STAGE · NOT MAIN until protected merge |
+| associative relation/LTP | `RelationStore` / `fact_relations` | SEPARATE NON-CAUSAL MODEL · not merged into causal Canon |
 | optional Neo4j causal persistence | `causal_persistence.py` | derived persistence; NOT canonical authority |
+| optional NetworkX Graph Lab | `graph_lab.py` | read-only/in-memory projection; NOT canonical authority |
 
 ## 3. PII redaction contract
 
@@ -61,23 +63,14 @@ Exact plaintext time-travel recovery for the redacted claim surface is intention
 sacrificed so the privacy operation does not re-store the removed PII. Full physical
 erasure remains a separate durable-erasure contract.
 
-## 4. Archival convergence contract — issue #284 / PR #285
+## 4. Archival convergence contract — merged #284 / #285
 
-The legacy path previously did:
-
-```text
-MemoryArchival
-→ archive JSON
-→ raw INSERT archived_facts
-→ raw UPDATE facts.claim + manual version bump
-→ commit
-```
-
-The candidate ownership is:
+The old path directly owned archive marker + canonical claim mutation. Current main now
+uses:
 
 ```text
 MemoryArchival
-  eligibility + bounded payload preparation + restore/reporting
+  eligibility + durable payload preparation + restore/reporting
         |
         v
 CanonicalArchivalRewriter
@@ -88,7 +81,7 @@ existing SQLiteGraphStore transaction
   + claim + integrity metadata + exact version bump
   + exact VersionStore pre-image
   + archived_facts marker
-  + content-free AuditChain FACT_UPDATED
+  + tamper-evident AuditChain FACT_UPDATED
   + synchronous FTS refresh when present
   + active migration-020 projection refresh intent
         |
@@ -96,53 +89,95 @@ existing SQLiteGraphStore transaction
 COMMIT → L0 invalidation
 ```
 
-`MemoryArchival` no longer owns direct `UPDATE facts` in the candidate branch.
+The protected squash merge is current-main truth at
+`3100952f3dacf268f4d9c9b3f5a738f449663de6`. Filesystem payload creation remains a
+precondition rather than a falsely claimed cross-system ACID transaction. A cleanup
+failure after DB rollback can leave a non-canonical orphan file, never canonical success.
 
-### Filesystem boundary
+## 5. Causal Truth-edge convergence — issue #286 / draft PR #287
 
-Archive payload creation is a precondition, not a second Canon transaction:
+Fresh ownership audit separates four graph-shaped surfaces:
 
 ```text
-exclusive create → flush → fsync → validate payload exists
-→ BEGIN IMMEDIATE SQLite canonical mutation
+SQLite relations
+    = causal Truth-edge Canon
+    = candidate single mutation owner: CausalGraph
+
+fact_relations / RelationStore
+    = associative strength + LTP/LTD model
+    = separate semantics, not causal Canon
+
+NetworkX Graph Lab
+    = SELECT-only in-memory analytics
+
+Neo4j causal persistence
+    = downstream/derived copy
 ```
 
-If SQLite/evidence fails, Canon and all same-DB evidence roll back. The coordinator
-removes the just-created payload best-effort. An unremovable orphan file remains
-non-canonical residue and cannot be interpreted as successful archival.
+On the #287 review branch, `CausalGraph` is the candidate single canonical owner for
+`relations` create/batch/remove/reset. Candidate semantics bind WriteGate, deterministic
+validation, one caller-owned SQLite transaction and same-transaction per-relation
+AuditChain lifecycle evidence. Audit failure rolls the relation mutation back.
 
-This adds no scheduler/background loop. Archival occurs only when an existing caller
-explicitly invokes the coordinator.
+Forward + inverse rows are one atomic create unit. Semantic duplicate input returns the
+already durable relation ID rather than a generated phantom ID and creates no false audit
+event.
 
-## 5. Causal residual boundary
+### Proposal / truth boundary
 
-`CausalGraph.add_relation()` currently inserts forward/inverse rows and commits directly;
-`remove_relation()` directly deletes and commits. Ingest-side causal bridge code may call
-`add_relation()` for inferred relations. These writes are therefore a separate meaningful
-#50 mutation family requiring a later bounded architecture/evidence convergence.
+Automatic inference is not accepted causal truth. Unless an explicit admission/review
+path supplies stronger labels:
 
-Do not solve causal mutation inside #285. Do not promote optional Neo4j persistence into
-Canon while solving it.
+```text
+knowledge_status != known OR inference_source is non-manual
+→ truth_status = hypothesis
+→ review_state = pending
+```
+
+Approved traversal reads remain approved-only by default. Diagnostics may explicitly
+inspect pending rows. HITL approval of an edge suggestion may authorize recording a
+hypothesis; it does not by itself validate the causal proposition as truth.
+
+### Candidate bypass removal
+
+On #287, KB batch writes/deletes and admin/pipeline reset surfaces delegate durable
+`relations` mutation to `CausalGraph`. `create_inverse=False` is rejected for canonical
+writes so a caller cannot create a deliberately unaudited half-edge.
+
+Dependent relation deletion inside the already-durable fact-erasure transaction remains
+part of that parent erasure transaction and is not double-logged as an independent
+causal mutation merely to satisfy #286.
+
+This section is **review evidence only** until #287 is protected-merged and post-merge
+verified. It grants no runtime permission or production authority.
 
 ## 6. Projection authority
 
-FTS, graph/vector indexes, caches, summaries, Neo4j copies and projection-outbox workers
-are derived/rebuildable surfaces. Projection state never wins over Canon and cannot grant
-write or answer authority by itself.
+FTS, graph/vector indexes, caches, summaries, NetworkX analytics, Neo4j copies and
+projection-outbox workers are derived/rebuildable surfaces. Projection state never wins
+over Canon and cannot grant write or answer authority by itself.
 
-## 7. Anti-bypass guarantees preserved
+## 7. Anti-bypass guarantees and review boundaries
 
-- no second canonical store or general write protocol is introduced by #285;
+Current-main guarantees:
+
+- no second canonical store or general write protocol was introduced by #283/#285;
 - runtime configuration cannot grant Operator GO;
 - historical canary evidence cannot silently re-enable runtime;
-- async callers cannot select the removed native-SQL write path;
-- PII redaction cannot retain ordinary plaintext VersionStore history for the redacted
-  claim surface;
+- async callers cannot select the removed native-SQL fact write path;
+- PII redaction does not retain ordinary plaintext VersionStore history for the redacted claim surface;
 - archival Canon cannot point to a payload that failed its preparation precondition;
-- failed archival CAS/version/audit/outbox operations commit no false canonical or audit
-  success;
-- causal remains explicitly unresolved rather than being falsely marked converged;
-- no producer/action/reminder/notification/tool/scheduler authority is added.
+- failed archival CAS/version/audit/outbox operations commit no false canonical or audit success.
+
+Candidate #287 guarantees, not yet main truth:
+
+- causal `relations` create/delete/reset is converged on one `CausalGraph` mutation owner;
+- automatic inference cannot silently default to `validated/approved`;
+- KB/admin/pipeline surfaces do not own independent durable causal SQL mutation;
+- NetworkX and Neo4j remain non-authoritative;
+- `RelationStore/fact_relations` is not falsely merged into causal Canon.
+
+No producer/action/reminder/notification/tool/scheduler authority is added.
 
 ## 8. Historical Continuity checkpoints
 
@@ -158,6 +193,7 @@ write or answer authority by itself.
 ## 9. Current continuation boundary
 
 Continuity has no remaining capability: `12/12` is complete. Truth Foundation #50 is a
-separate canonical-memory hardening workstream and remains OPEN while real mutation gaps
-remain. Current review work does not authorize Phase II, 13/12, ADAO, ARM-04, wider
-runtime activation, production rollout or a standing Operator GO.
+separate canonical-memory hardening workstream and remains OPEN while #286/#287 is under
+review and until a fresh post-merge residual inventory proves no other meaningful #50
+mutation family remains. Current review work does not authorize Phase II, 13/12, ADAO,
+ARM-04, wider runtime activation, production rollout or a standing Operator GO.
