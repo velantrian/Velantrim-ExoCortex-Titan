@@ -10,8 +10,13 @@
 > - 🔀 **Bridge** — `VELANTRIM_Dual_Core_Router/README.ru.md`
 > - 🧠 **Big Core** — `VELANTRIM_ExoCortex_V8.6/` (this repository)
 >
-> ⚠️ This document is a **specification**, not a description of the current V8.6. Section §7 records
-> where V8.6 today **deviates** from the canon (gap analysis from the deep audit 2026-05-31).
+> ⚠️ **Historical boundary:** this document is a normative etalon drafted on
+> 2026-05-31 from V8.6-era source snapshots. Parenthetical `V8.6:` annotations in
+> Part V are immutable **historical audit evidence**, not current Titan 9.0
+> implementation status. For current implementation truth, re-read live `main`, tests
+> and CI, `docs/ai/CURRENT_STATE.md`, and the relevant current ownership/inventory
+> documents. Do not turn an old ❌/⚠️ marker into a current backlog claim without
+> revalidation at the exact SHA under review.
 
 ---
 
@@ -362,7 +367,12 @@ upon entering the graph must carry a `source` and pass Truth Policy; unproven on
 
 ---
 
-# ✅ PART V — Conformance: a checklist for the code
+# ✅ PART V — Normative conformance checklist + historical V8.6 snapshot
+
+> The requirements C1–C12 below are normative. The parenthetical `V8.6:` notes beside
+> C1–C9 are **historical findings captured on 2026-05-31**. They do not assert the
+> current Titan 9.0 result of those checks. Current conformance must be re-established
+> from live code, tests, CI and current inventories at the exact SHA under review.
 
 A full-fledged implementation of the dual-core system **must** satisfy:
 
@@ -379,8 +389,10 @@ A full-fledged implementation of the dual-core system **must** satisfy:
 - **C11.** Append-only audit on every Ring Zero decision and every Truth Engine verdict.
 - **C12.** The threshold ladder `0.5 ≤ 0.75 ≤ 0.85` in one place as explicit constants.
 
-> Full gap analysis: see the deep audit 2026-05-31 (findings C1/C2/H1–H3, M1–M2, security) and
-> `docs/AUDIT_V8_6.ru.md`. Each ❌ above is a concrete task of migrating V8.6 to the canon.
+> Historical gap analysis: see the deep audit 2026-05-31 (findings C1/C2/H1–H3,
+> M1–M2, security) and `docs/AUDIT_V8_6.ru.md`. Each `V8.6:` ❌/⚠️ above records that
+> historical snapshot only; it must not be cited as a current Titan 9.0 failure or
+> current backlog item without revalidation.
 
 ---
 
