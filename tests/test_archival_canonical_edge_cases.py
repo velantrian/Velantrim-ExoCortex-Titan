@@ -142,3 +142,27 @@ def test_active_migration_with_missing_outbox_rolls_back_canonical_batch(
 
     assert tuple(_row(store, "corrupt-outbox")) == before
     assert _evidence_counts(store, "corrupt-outbox") == before_evidence
+
+
+def test_archive_key_fragment_must_match_candidate_fact(migrated_store, tmp_path):
+    from core.archival_mutation import ArchivalCandidate, CanonicalArchivalRewriter
+
+    store = migrated_store
+    _seed(store, "archive-key-owner")
+    snapshot = store.get_fact_durable("archive-key-owner")
+    assert snapshot is not None
+    payload = tmp_path / "archive-key-owner.json"
+    payload.write_text('{"facts": []}', encoding="utf-8")
+    candidate = ArchivalCandidate.from_snapshot(
+        snapshot,
+        archive_key=f"archive://{payload.name}#different-fact",
+        archive_file=str(payload),
+    )
+    before = tuple(_row(store, "archive-key-owner"))
+    before_evidence = _evidence_counts(store, "archive-key-owner")
+
+    with pytest.raises(ValueError, match="candidate fact"):
+        CanonicalArchivalRewriter(store).rewrite_batch([candidate])
+
+    assert tuple(_row(store, "archive-key-owner")) == before
+    assert _evidence_counts(store, "archive-key-owner") == before_evidence
