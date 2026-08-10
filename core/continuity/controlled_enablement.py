@@ -638,6 +638,27 @@ class ContinuityControlledEnablementController:
         with self._lock:
             return self._diagnostic()
 
+    def lease_valid_at(self, evaluated_at: datetime) -> bool:
+        """Read-only check: does the currently applied decision remain valid now?
+
+        This never mutates controller state and never gates access by itself; a
+        caller must still go through ``persist_accepted_admission``/``replay``
+        for authoritative fail-closed enforcement. It exists only so a
+        content-free external observer (see ``bounded_observation.py``) can
+        report lease validity without invoking a business operation.
+        """
+
+        moment = _aware_utc(evaluated_at, "evaluated_at")
+        with self._lock:
+            self._assert_configuration()
+            if self._applied_decision is None:
+                return False
+            try:
+                self._applied_decision.validate_at(moment)
+            except ContinuityActivationConfigurationError:
+                return False
+            return True
+
     def _apply_decision_locked(
         self,
         decision: ContinuityActivationDecision,

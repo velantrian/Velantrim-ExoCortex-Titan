@@ -204,12 +204,20 @@ def _install_continuity_runtime_lifespan(app: FastAPI) -> None:
     @asynccontextmanager
     async def _composed_lifespan(app: FastAPI):
         async with original_lifespan(app):
+            from core.continuity.bounded_observation import (
+                ContinuityBoundedObservationController,
+            )
             from core.continuity.controlled_enablement import (
                 compose_controlled_continuity_runtime_from_environment,
+            )
+            from core.continuity.runtime_composition import (
+                load_continuity_runtime_configuration,
             )
 
             owner = compose_controlled_continuity_runtime_from_environment()
             app.state.continuity_runtime_owner = None
+            app.state.continuity_observation_controller = None
+            observation_controller: ContinuityBoundedObservationController | None = None
             if owner is not None:
                 try:
                     await asyncio.to_thread(
@@ -220,9 +228,27 @@ def _install_continuity_runtime_lifespan(app: FastAPI) -> None:
                     await asyncio.to_thread(owner.shutdown)
                     raise
                 app.state.continuity_runtime_owner = owner
+                # Bounded observation is wired here as a read-only, content-free
+                # diagnostic surface bound to the same runtime configuration.
+                # Composing and opening it grants no authority, applies no
+                # decision, and never calls persist/replay on its own; nothing
+                # here makes the runtime "observed" as a project fact.
+                configuration = load_continuity_runtime_configuration()
+                if configuration is not None:
+                    observation_controller = ContinuityBoundedObservationController(
+                        configuration=configuration,
+                        enablement_controller=owner,
+                    )
+                    await asyncio.to_thread(observation_controller.open)
+                    app.state.continuity_observation_controller = (
+                        observation_controller
+                    )
             try:
                 yield
             finally:
+                if observation_controller is not None:
+                    await asyncio.to_thread(observation_controller.close)
+                app.state.continuity_observation_controller = None
                 if owner is not None:
                     await asyncio.to_thread(owner.shutdown)
                 app.state.continuity_runtime_owner = None
