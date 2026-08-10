@@ -65,10 +65,17 @@ def _evidence_counts(store, fact_id: str) -> tuple[int, int]:
                 "SELECT COUNT(*) FROM fact_versions WHERE fact_id = ?", (fact_id,)
             ).fetchone()[0]
         )
-        archived = int(
-            conn.execute(
-                "SELECT COUNT(*) FROM archived_facts WHERE fact_id = ?", (fact_id,)
-            ).fetchone()[0]
+        marker_table = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='archived_facts'"
+        ).fetchone()
+        archived = (
+            int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM archived_facts WHERE fact_id = ?", (fact_id,)
+                ).fetchone()[0]
+            )
+            if marker_table
+            else 0
         )
     return versions, archived
 
