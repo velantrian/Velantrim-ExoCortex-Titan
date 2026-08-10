@@ -22,9 +22,15 @@ DEPRECATED compatibility shims:
 - ForgettingEngine.forget_one() delegates to the durable single-fact erasure
   authority in core.erasure_coordinator. It no longer owns a second raw-SQL
   physical-delete path.
+- ForgettingEngine.redact_pii_fact()/redact_pii_batch() delegate canonical
+  claim mutation to core.pii_redaction.CanonicalPiiRedactor. They no longer
+  own direct raw-SQL UPDATE paths.
 
-Both shims preserve the legacy ForgetVerdict surface while the durable erasure
-coordinators remain authoritative for completion, residual, and failure state.
+These shims preserve the legacy ForgetVerdict surface while the durable
+coordinators/canonical redaction service remain authoritative for mutation
+completion and evidence. REDACT_PII is claim-surface redaction, not physical
+Art. 17 erasure of every raw origin/projection; use the erasure coordinators
+when complete data-subject deletion is required.
 """
 
 from __future__ import annotations
@@ -35,7 +41,6 @@ import re
 import sqlite3
 import warnings
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
@@ -583,126 +588,82 @@ class ForgettingEngine:
     # ── REDACT_PII ────────────────────────────────────────────────────────
 
     def redact_pii_fact(self, fact_id: str) -> ForgetVerdict:
+        """Redact PII from one fact through the canonical redaction authority.
+
+        The compatibility result remains a ``ForgetVerdict``.  The mutation
+        itself is owned by ``CanonicalPiiRedactor`` so current Canon,
+        sanitized VersionStore evidence, AuditChain, FTS and active outbox
+        intent share the required transaction semantics.
         """
-        Обезличить факт — заменить PII на теги.
-        Факт остаётся, но без персональных данных.
-        """
-        fact = self._get_fact(fact_id)
-        if fact is None:
+        from core.memory import SQLiteGraphStore
+        from core.pii_redaction import (
+            CanonicalPiiRedactor,
+            PiiRedactionConcurrentModification,
+        )
+
+        store = SQLiteGraphStore(self._db_path)
+        try:
+            result = CanonicalPiiRedactor(store).redact_fact(fact_id, redact_pii)
+        except PiiRedactionConcurrentModification:
+            return ForgetVerdict(
+                allowed=False,
+                reason="concurrent_modification",
+                details=[f"Факт {fact_id} изменился конкурентно; redaction не применён."],
+            )
+        except Exception as exc:
+            logger.error("Forgetting.redact_pii: %s", exc)
+            return ForgetVerdict(allowed=False, reason=f"store_error: {exc}")
+        finally:
+            store.close()
+
+        if result.status == "fact_not_found":
             return ForgetVerdict(allowed=False, reason="fact_not_found")
-
-        claim = fact.get("claim", "")
-        redacted = redact_pii(claim)
-
-        if redacted == claim:
+        if result.status == "no_pii_found":
             return ForgetVerdict(
                 allowed=True,
                 reason="no_pii_found",
                 details=[f"PII не обнаружено в факте {fact_id}."],
             )
-
-        # Обновить claim
-        # PR-C1b review fix: conn is opened before the try so a finally
-        # block can always close it — a failure between connect() and the
-        # old single conn.close() (on the success path only) leaked the
-        # connection (and its WAL lock) on every exception. rollback() is
-        # attempted first so a half-applied UPDATE never sits uncommitted
-        # on a connection about to be closed anyway.
-        conn = None
-        try:
-            conn = sqlite3.connect(self._db_path, timeout=10.0)
-            conn.execute("PRAGMA journal_mode=WAL")
-            # PR-C1b (Issue #37): claim change trips migration 009's
-            # bump_fact_version trigger unless this UPDATE itself increases
-            # fact_version — redaction used to silently no-op on any DB with
-            # migration 009 applied (caught by the except below, reported as
-            # a generic store_error, never actually redacting the PII).
-            from core.memory import facts_table_has_fact_version
-            _bump = (
-                "fact_version = fact_version + 1, "
-                if facts_table_has_fact_version(conn) else ""
-            )
-            conn.execute(
-                f"UPDATE facts SET {_bump}claim = ?, updated_at = ? WHERE fact_id = ?",
-                (redacted, datetime.now(timezone.utc).isoformat(), fact_id),
-            )
-            conn.commit()
-
-            logger.info("PII redacted: %s → %s", fact_id, redacted[:80])
-            return ForgetVerdict(
-                allowed=True,
-                reason="redacted",
-                redacted_count=1,
-                details=[
-                    f"✅ PII удалён из {fact_id}.",
-                    f"Было: {claim[:80]}...",
-                    f"Стало: {redacted[:80]}...",
-                ],
-            )
-        except Exception as exc:
-            if conn is not None:
-                try:
-                    conn.rollback()
-                except Exception:
-                    pass
-            logger.error("Forgetting.redact_pii: %s", exc)
-            return ForgetVerdict(allowed=False, reason=f"store_error: {exc}")
-        finally:
-            if conn is not None:
-                conn.close()
+        logger.info("PII redacted canonically: %s", fact_id)
+        return ForgetVerdict(
+            allowed=True,
+            reason="redacted",
+            redacted_count=result.redacted_count,
+            details=[f"✅ PII удалён из claim факта {fact_id}."],
+        )
 
     def redact_pii_batch(self, limit: int = 100) -> ForgetVerdict:
-        """Пакетное обезличивание всех фактов с PII."""
-        # PR-C1b review fix: same conn-always-closed-via-finally fix as
-        # redact_pii_fact() — see its comment for why.
-        conn = None
+        """Atomically redact PII claims in one bounded selected batch."""
+        from core.memory import SQLiteGraphStore
+        from core.pii_redaction import (
+            CanonicalPiiRedactor,
+            PiiRedactionConcurrentModification,
+        )
+
+        store = SQLiteGraphStore(self._db_path)
         try:
-            conn = sqlite3.connect(self._db_path, timeout=10.0)
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA journal_mode=WAL")
-
-            rows = conn.execute(
-                "SELECT fact_id, claim FROM facts LIMIT ?", (limit,)
-            ).fetchall()
-
-            # PR-C1b (Issue #37): same bump_fact_version requirement as
-            # redact_pii_fact() — computed once for the whole batch.
-            from core.memory import facts_table_has_fact_version
-            _bump = (
-                "fact_version = fact_version + 1, "
-                if facts_table_has_fact_version(conn) else ""
-            )
-
-            redacted_count = 0
-            for row in rows:
-                claim = row["claim"]
-                redacted = redact_pii(claim)
-                if redacted != claim:
-                    conn.execute(
-                        f"UPDATE facts SET {_bump}claim = ?, updated_at = ? WHERE fact_id = ?",
-                        (redacted, datetime.now(timezone.utc).isoformat(), row["fact_id"]),
-                    )
-                    redacted_count += 1
-
-            conn.commit()
-
+            result = CanonicalPiiRedactor(store).redact_batch(limit, redact_pii)
+        except PiiRedactionConcurrentModification:
             return ForgetVerdict(
-                allowed=True,
-                reason="batch_redacted",
-                redacted_count=redacted_count,
-                details=[f"✅ Обезличено {redacted_count} фактов из {len(rows)}."],
+                allowed=False,
+                reason="concurrent_modification",
+                details=["Пакет redaction откатан: один из фактов изменился конкурентно."],
             )
         except Exception as exc:
-            if conn is not None:
-                try:
-                    conn.rollback()
-                except Exception:
-                    pass
             logger.error("Forgetting.redact_pii_batch: %s", exc)
             return ForgetVerdict(allowed=False, reason=f"store_error: {exc}")
         finally:
-            if conn is not None:
-                conn.close()
+            store.close()
+
+        return ForgetVerdict(
+            allowed=True,
+            reason="batch_redacted",
+            redacted_count=result.redacted_count,
+            details=[
+                f"✅ Обезличено {result.redacted_count} фактов "
+                f"из {result.scanned_count}."
+            ],
+        )
 
     # ── Вспомогательные ──────────────────────────────────────────────────
 
