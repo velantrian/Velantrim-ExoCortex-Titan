@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Titan's machine-readable project-state contract (schemas v1-v6)."""
+"""Validate Titan's machine-readable project-state contract (schemas v1-v7)."""
 from __future__ import annotations
 
 import argparse
@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 PROJECT_STATE_PATH = Path("docs/state/project_state.json")
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
-SUPPORTED_SCHEMA_VERSIONS = frozenset(range(1, 7))
+SUPPORTED_SCHEMA_VERSIONS = frozenset(range(1, 8))
 NOTION_TITLE = "Velantrim Titan 9.0"
 NOTION_ID = "398ac84d-0547-81fe-8ca5-d0d2727d1961"
 AUDIT_MERGE = "90e221be2bed8177f4648787d713058df0f29e1f"
@@ -19,6 +19,8 @@ RESOLVER_MERGE = "dc30817f2c4abb1afcaab2f127e679d5f9b884d7"
 LIFECYCLE_MERGE = "064845579c520e7464678cd0c41d9b650368dfa8"
 WIRING_MERGE = "802e833fa251a8831add8a6b802a5ebb57533549"
 ENABLEMENT_MERGE = "66318e6883590cb29a4565157e0a3a25b3716d81"
+OBSERVATION_MECHANISM_MERGE = "456b762b1e752a2f5fb22762869336be9fed42a4"
+CANARY_BASELINE_SHA = "39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e"
 
 
 class ProjectStateError(ValueError):
@@ -106,8 +108,8 @@ def common(root: dict[str, Any]) -> dict[str, Any]:
     authority = boolean(continuity, "runtime_authority")
     if enabled and not wired:
         raise ProjectStateError("Continuity cannot be enabled while wired=false")
-    if observed and not enabled:
-        raise ProjectStateError("Continuity cannot be observed while enabled=false")
+    if observed and not wired:
+        raise ProjectStateError("Continuity cannot be observed while wired=false")
     if authority and not wired:
         raise ProjectStateError("Continuity cannot have runtime authority while wired=false")
 
@@ -217,8 +219,61 @@ def enablement(root: dict[str, Any]) -> None:
     literal(record, "codex_review_status", "NOT_RUN_USAGE_LIMIT")
 
 
+def bounded_observation_canary(root: dict[str, Any]) -> None:
+    record = obj(
+        root.get("continuity_bounded_observation_canary"),
+        "continuity_bounded_observation_canary",
+    )
+    literal(record, "tracking_issue", 275)
+    literal(record, "mechanism_implementation_pr", 276)
+    literal(record, "mechanism_merge_sha", OBSERVATION_MECHANISM_MERGE)
+    canary_sha = sha(record, "canary_baseline_sha")
+    if canary_sha != CANARY_BASELINE_SHA:
+        raise ProjectStateError(
+            "canary_baseline_sha must equal the verified canary baseline"
+        )
+    literal(record, "status", "COMPLETE")
+    literal(record, "authority", "INTERNAL_OBSERVATION_EVIDENCE_ONLY")
+    literal(record, "operator_authorized_canary", True)
+    text(record, "operator_ref")
+    literal(record, "rollback_verified", True)
+    literal(record, "observed", True)
+    literal(record, "no_silent_reenable_verified", True)
+    literal(record, "post_disable_rejection_verified", True)
+    for field in (
+        "runtime_authority",
+        "operator_go",
+        "user_visible_behavior_changed",
+        "side_effects_enabled",
+        "producer_side_effects_present",
+        "canon_writes_present",
+        "esm_writes_present",
+        "truth_gate_writes_present",
+        "goal_stack_writes_present",
+        "reminder_created",
+        "notification_created",
+        "action_created",
+        "tool_call_created",
+        "scheduler_enabled",
+        "second_runtime_present",
+        "second_storage_present",
+    ):
+        literal(record, field, False)
+    literal(record, "submitted_review_count", 0)
+    literal(record, "codex_review_status", "NOT_RUN_USAGE_LIMIT")
+
+
 def continuity_flags(record: dict[str, Any], *, wired: bool, extra: tuple[tuple[str, Any], ...] = ()) -> None:
-    for field, expected in (("implemented", True), ("tested", True), ("wired", wired), ("enabled", False), ("observed", False), ("runtime_authority", False), *extra):
+    defaults: dict[str, Any] = {
+        "implemented": True,
+        "tested": True,
+        "wired": wired,
+        "enabled": False,
+        "observed": False,
+        "runtime_authority": False,
+    }
+    defaults.update(dict(extra))
+    for field, expected in defaults.items():
         literal(record, field, expected)
 
 
@@ -268,7 +323,29 @@ def validate_v6(root: dict[str, Any], state: dict[str, Any]) -> dict[str, str]:
     return {"audit_status": "COMPLETE", "notion_status": record["status"]}
 
 
-VALIDATORS: dict[int, Callable[[dict[str, Any], dict[str, Any]], dict[str, str]]] = {1: validate_v1, 2: validate_v2, 3: validate_v3, 4: validate_v4, 5: validate_v5, 6: validate_v6}
+def validate_v7(root: dict[str, Any], state: dict[str, Any]) -> dict[str, str]:
+    checkpoint(state, CANARY_BASELINE_SHA, "bounded-observation-canary")
+    if state["completed"] != 12 or state["total"] != 12:
+        raise ProjectStateError("schema v7 Continuity readiness must be exactly 12/12")
+    continuity_flags(
+        state["continuity"],
+        wired=True,
+        extra=(
+            ("enablement_mechanism_implemented", True),
+            ("observation_mechanism_implemented", True),
+            ("operator_authorization_present", False),
+            ("operator_go", False),
+            ("observed", True),
+            ("user_visible_behavior_changed", False),
+            ("side_effects_enabled", False),
+        ),
+    )
+    governance(state["governance"]); resolver(root); lifecycle(root); composition(root); enablement(root); bounded_observation_canary(root)
+    record = notion(root, "CONTINUITY_12_12_BOUNDED_OBSERVATION_CANARY", CANARY_BASELINE_SHA)
+    return {"audit_status": "COMPLETE", "notion_status": record["status"]}
+
+
+VALIDATORS: dict[int, Callable[[dict[str, Any], dict[str, Any]], dict[str, str]]] = {1: validate_v1, 2: validate_v2, 3: validate_v3, 4: validate_v4, 5: validate_v5, 6: validate_v6, 7: validate_v7}
 
 
 def validate_project_state(data: Any) -> dict[str, Any]:

@@ -1,56 +1,57 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-10  
-**Repository checkpoint:** `main@456b762b1e752a2f5fb22762869336be9fed42a4`  
-**Continuity:** `11/12 = 91.7%` implementation readiness (unchanged by this checkpoint)  
-**Runtime:** `CONTROLLED-ENABLEMENT + OBSERVATION MECHANISMS WIRED · CURRENTLY DISABLED · OPERATOR GO ABSENT · NOT OBSERVED · NO RUNTIME AUTHORITY · BLOCKED_ON_OPERATOR_GO`  
+**Repository checkpoint:** `main@39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e`  
+**Continuity:** `12/12 = 100%` — complete  
+**Runtime:** `MECHANISMS WIRED · CURRENTLY DISABLED · OPERATOR GO ABSENT (CURRENT) · OBSERVED=TRUE (HISTORICAL, ONE ROLLED-BACK CANARY) · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0`
 
-A canonical manifest, persisted decision, persisted observation evidence, green
-aggregate or Notion update does not prove operator authenticity, current permission,
-observation or production authority.
+A canonical manifest, persisted decision, persisted observation evidence, a completed
+canary, a green aggregate, or a Notion update does not prove operator authenticity,
+current permission, or production authority. Continuity 12/12 is not a
+production-readiness claim.
 
 ## Closed or materially reduced
 
-- controlled enablement now has one explicit deployment-owned decision contract;
-- exact schema, canonical JSON and SHA-256 integrity are validated;
-- decisions bind to exact configuration, lifecycle owner/version, tenant, content-free
-  storage identity and one internal scope;
-- enable leases are finite; disable decisions are explicit and monotonic;
-- duplicate decisions are idempotent; stale/conflicting decisions fail closed;
-- concurrent enable/disable converges through serialized in-process application and
-  SQLite uniqueness constraints;
-- decision evidence remains in the existing tenant-bound SQLite database;
-- persisted evidence is revalidated and is never restart permission;
-- runtime configuration without a current enable decision stays disabled;
-- only existing explicit append/replay methods are gated;
-- `/query`, producer and all forbidden side effects remain absent;
-- a bounded, content-free **observation mechanism** now exists (PR #276): it can
-  record deterministic evidence of configuration/storage/owner binding stability,
-  lease validity while enabled, and absence of runtime/side-effect authority, and can
-  reduce a session to one deterministic `rollback_verified` result — proven with a
-  synthetic operator decision in 34 focused/adversarial tests.
+- controlled enablement has one explicit deployment-owned decision contract; exact
+  schema, canonical JSON and SHA-256 integrity are validated; decisions bind to exact
+  configuration, lifecycle owner/version, tenant, content-free storage identity and
+  one internal scope; enable leases are finite; disable decisions are explicit and
+  monotonic; duplicate decisions are idempotent; stale/conflicting decisions fail
+  closed; concurrent enable/disable converges through serialized in-process
+  application and SQLite uniqueness constraints; decision evidence remains in the
+  existing tenant-bound SQLite database; persisted evidence is revalidated and is
+  never restart permission; `/query`, producer and all forbidden side effects remain
+  absent;
+- a bounded, content-free **observation mechanism** exists (PR #276): it records
+  deterministic evidence of configuration/storage/owner binding stability, lease
+  validity while enabled, and absence of runtime/side-effect authority, and reduces a
+  session to one deterministic `rollback_verified` result;
+- **real observed evidence now exists** (tracking issue #275): one
+  human-operator-authorized bounded canary was executed against
+  `main@39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e` using the real production
+  composition functions — enable, observe, disable, verified post-disable rejection,
+  clean shutdown, restart with no silent re-enable, `rollback_verified=true`. See
+  `docs/adr/ADR-2026-08-10-continuity-12-12-bounded-observation-canary.md`.
 
-The former risk “controlled-enablement mechanism is absent” is closed only at the bounded
-implementation/test/wiring level. The former risk “no observation mechanism exists at
-all” is likewise closed only at the implementation/test/wiring level — see the P0 risk
-below for what remains open.
+The former risk “no observation mechanism exists at all” and the former risk “real
+observed evidence is absent” are both closed. **This does not close or replace any of
+the risks below.**
 
 ## P0 — No current Operator GO or deployed activation
 
-No activation manifest is committed or supplied by this repository checkpoint.
+No activation manifest is committed by this repository checkpoint. The canary's
+Operator GO was single-use, scoped to one exact SHA, and is now **exhausted**.
 `runtime currently enabled=false`, `operator authorization present=false`, and
-`operator_go=false`.
-
-Before any real deployment may enable the runtime, an operator must provide a current
-exact decision through deployment-owned controls and independently establish the
-identity/authority of that operator. Manifest SHA-256 proves integrity, not authenticity.
+`operator_go=false` remain the current facts. Before any future real activation, a
+new operator must supply a new current exact decision and a new, separately scoped
+Operator GO. Manifest SHA-256 proves integrity, not authenticity.
 
 ## P0 — Concrete live current-decision owner adapters remain unselected
 
 The six current-decision ports still have no accepted live deployment adapters for
 principal, authorization, consent/lawful basis, restriction, erasure and PolicySnapshot.
-Controlled enablement does not replace those owners.
+Controlled enablement and the bounded canary do not replace those owners.
 
 Required proof before any side-effect-capable producer:
 
@@ -60,39 +61,38 @@ Required proof before any side-effect-capable producer:
 - current restriction/erasure/authorization rechecks;
 - explicit operator decision under deployment governance.
 
-## P0 — Real observed evidence is BLOCKED_ON_OPERATOR_GO
+## P1 — Continuity 12/12 is not production readiness
 
-No production deployment, traffic, telemetry, monitoring, alerting or observed user
-behavior exists. This is the final separate Continuity capability. Neither the
-controlled-enablement mechanism (PR #273) nor the bounded-observation mechanism (PR
-#276) implies it: a mechanism that *can* record evidence is not evidence.
+Completing all twelve bounded Continuity capabilities proves the internal mechanism
+chain end to end under one narrow, operator-authorized, rolled-back canary. It does
+not prove:
 
-Producing real `observed=true` evidence requires an actual operator-authorized bounded
-activation against a real deployment — a committed activation manifest, an operator
-whose identity/authority is independently established outside this repository, and
-someone running the observation session against that real activation. None of that
-exists in this repository checkpoint, and an AI agent has no authority to self-issue
-Operator GO on its own initiative.
+- production deployment, real user traffic, or production telemetry/monitoring;
+- concrete live current-decision owner adapters (see P0 above);
+- SLOs, alerting, backup/restore, disaster recovery, or rollback orchestration at
+  production scale;
+- public multi-user rollout or wider enablement;
+- independent security review.
 
-**Status: `BLOCKED_ON_OPERATOR_GO`.** Tracking issue #275 remains open until this is
-resolved; it must not be closed as completing Continuity 12/12 on mechanism evidence
-alone.
+No claim of production-readiness, production authority, or safe autonomous deployment
+is made by this checkpoint.
 
 ## P1 — Operational scope remains bounded
 
 Not proved:
 
 - multi-process decision contention;
-- live crash recovery, backup/restore or disaster recovery;
+- live crash recovery, backup/restore or disaster recovery under real production load;
 - disk-full and filesystem-permission behavior in production;
 - external audit service, SLO/SLA, alerting or rollback orchestration;
 - public multi-user rollout.
 
 ## P1 — Solo governance has no independent approval gate
 
-PR #273 and PR #276 each had zero submitted reviews. Codex did not run on either because
-its usage limit was reached. Unresolved review threads were zero on both. Independent
-review is **NOT CLAIMED**.
+PR #273 and PR #276 each had zero submitted reviews. Codex did not run on either
+because its usage limit was reached. Unresolved review threads were zero on both.
+Independent review is **NOT CLAIMED** for the mechanism, and no independent review
+was performed on the canary execution itself (single human operator authorization).
 
 ## P1 — Uncharacterized CAS-contention failure
 
@@ -117,11 +117,14 @@ TESTED
 WIRED
 ENABLEMENT MECHANISM IMPLEMENTED
 OBSERVATION MECHANISM IMPLEMENTED
-RUNTIME CURRENTLY ENABLED
-OPERATOR AUTHORIZATION PRESENT
-OPERATOR GO
-OBSERVED
-PRODUCTION-AUTHORITATIVE
+RUNTIME CURRENTLY ENABLED           <- current
+OPERATOR AUTHORIZATION PRESENT      <- current
+OPERATOR GO                         <- current, single-use grants are exhausted after use
+OBSERVED                            <- durable historical evidence, not current state
+RUNTIME AUTHORITY                   <- current
+PRODUCTION AUTHORITY                <- current
+PRODUCTION-READY                    <- never implied by OBSERVED or by 12/12
 ```
 
-Never infer a later state from an earlier one.
+Never infer a later state from an earlier one. Never infer current runtime authority
+from historical observation evidence.
