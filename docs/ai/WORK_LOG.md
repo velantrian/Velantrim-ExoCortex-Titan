@@ -154,6 +154,6 @@ Conversation resolution:      required
 ## Stable continuation boundary
 
 Continuity is complete at `12/12 = 100%`; do not invent 13/12 or infer production
-readiness. Truth Foundation #50 remains OPEN while #286/#287 is review-stage and until a
-fresh post-merge residual inventory proves no other meaningful canonical mutation gap
-remains. Issue #249 stays separate.
+readiness. Truth Foundation #50 remains OPEN while #289 is review-stage and until a fresh
+post-merge residual inventory proves no other meaningful canonical mutation gap remains.
+Merged #286/#287 is already current-main causal truth. Issue #249 stays separate.
