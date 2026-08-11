@@ -80,7 +80,7 @@ async def fetch_relation_rows(graphiti: Any) -> list[dict[str, Any]]:
 
 
 async def import_graph_to_causal(graphiti: Any, *, merge: bool = True) -> int:
-    """Загрузить Neo4j → process singleton CausalGraph."""
+    """Загрузить Neo4j → process singleton CausalGraph через local admission."""
     if not is_causal_graph_enabled():
         return 0
 
@@ -135,11 +135,17 @@ async def persist_relations_to_graph(
 
 
 async def reload_causal_from_graph(graphiti: Any) -> dict[str, int]:
-    """Полная перезагрузка snapshot из Neo4j (для API admin)."""
-    from core.causal_graph import reset_causal_graph
+    """Re-admit derived Neo4j rows without destructive replacement of local Canon.
 
-    reset_causal_graph()
-    imported = await import_graph_to_causal(graphiti, merge=False)
+    Neo4j is downstream/derived persistence, not a reset authority.  An empty,
+    unavailable, stale, or rejected remote snapshot therefore leaves existing local
+    canonical relations untouched.  Imported rows re-enter through CausalGraph local
+    admission and are forced to inferred/hypothesis/pending by that boundary.
+
+    The legacy function name is retained for API compatibility; its semantics are now
+    intentionally non-destructive.
+    """
+    imported = await import_graph_to_causal(graphiti, merge=True)
     return {
         "imported": imported,
         "relation_count": get_causal_graph().stats()["total_relations"],
