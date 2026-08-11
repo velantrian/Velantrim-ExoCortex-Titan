@@ -45,8 +45,9 @@ are never permission tokens.
 | single-fact physical erasure | `ErasureCoordinator.erase_fact_durable()` | CONVERGED; `ForgettingEngine.forget_one()` is legacy adapter |
 | PII claim redaction | `CanonicalPiiRedactor` over existing `SQLiteGraphStore` | CONVERGED on merged #283; privacy-sanitized history exception |
 | async fact mutations | `AsyncSQLiteStore` → exact synchronous canonical owner | LEGACY_ADAPTER / CONVERGED; native async SQL disabled |
-| archival claim rewrite | `CanonicalArchivalRewriter` over existing `SQLiteGraphStore` | CONVERGED on merged #285 · current main `3100952f3dacf268f4d9c9b3f5a738f449663de6` |
-| causal relation create/delete/reset | candidate `CausalGraph` canonical owner on #286/#287 | REVIEW-STAGE · NOT MAIN until protected merge |
+| archival claim rewrite | `CanonicalArchivalRewriter` over existing `SQLiteGraphStore` | CONVERGED on merged #285 · merge checkpoint `3100952f3dacf268f4d9c9b3f5a738f449663de6` |
+| causal relation create/delete/reset | `CausalGraph` / `relations` | CONVERGED on merged #287 · current main `615201ec1073dafb047028e88ce94463f4ef9b77` |
+| raw provenance binding | candidate `SQLiteGraphStore.link_raw_to_fact()` on #288/#289 | REVIEW-STAGE · NOT MAIN until protected merge |
 | associative relation/LTP | `RelationStore` / `fact_relations` | SEPARATE NON-CAUSAL MODEL · not merged into causal Canon |
 | optional Neo4j causal persistence | `causal_persistence.py` | derived persistence; NOT canonical authority |
 | optional NetworkX Graph Lab | `graph_lab.py` | read-only/in-memory projection; NOT canonical authority |
@@ -94,62 +95,36 @@ The protected squash merge is current-main truth at
 precondition rather than a falsely claimed cross-system ACID transaction. A cleanup
 failure after DB rollback can leave a non-canonical orphan file, never canonical success.
 
-## 5. Causal Truth-edge convergence — issue #286 / draft PR #287
+## 5. Causal Truth-edge convergence — merged #286 / #287
 
-Fresh ownership audit separates four graph-shaped surfaces:
+Protected merge #287 established `CausalGraph` / SQLite `relations` as the bounded local
+causal Truth-edge mutation owner on current main
+`615201ec1073dafb047028e88ce94463f4ef9b77`.
 
-```text
-SQLite relations
-    = causal Truth-edge Canon
-    = candidate single mutation owner: CausalGraph
+`RelationStore` / `fact_relations` remains a separate associative/LTP model. NetworkX
+Graph Lab remains SELECT-only analytics. Neo4j / Graphiti remain downstream/derived and
+cannot grant local truth or reset authority. Automatic/non-manual causal input is
+re-admitted as hypothesis/pending by default, and derived snapshots cannot self-promote
+remote `validated/approved` labels into local authority. Derived reload is non-destructive
+and cannot erase local Canon when the remote copy is empty, stale, unavailable or
+rejected.
 
-fact_relations / RelationStore
-    = associative strength + LTP/LTD model
-    = separate semantics, not causal Canon
+Exact final evidence for #287 is preserved in the merged PR, closed #286 and the existing
+Notion FINAL block. Continuity remains 12/12 and schema v7; runtime/Operator
+GO/runtime-authority/production-authority all remain false.
 
-NetworkX Graph Lab
-    = SELECT-only in-memory analytics
+### Raw provenance residual — issue #288 / draft PR #289
 
-Neo4j causal persistence
-    = downstream/derived copy
-```
+Fresh post-#287 residual audit found one remaining meaningful #50 mutation family:
+`facts.derived_from` raw-source binding. Current-main `SQLiteGraphStore.link_raw_to_fact()`
+mutates that canonical field without VersionStore/AuditChain evidence, while legacy
+`RawMemoryStore.link_fact()` owns a second direct SQL path.
 
-On the #287 review branch, `CausalGraph` is the candidate single canonical owner for
-`relations` create/batch/remove/reset. Candidate semantics bind WriteGate, deterministic
-validation, one caller-owned SQLite transaction and same-transaction per-relation
-AuditChain lifecycle evidence. Audit failure rolls the relation mutation back.
-
-Forward + inverse rows are one atomic create unit. Semantic duplicate input returns the
-already durable relation ID rather than a generated phantom ID and creates no false audit
-event.
-
-### Proposal / truth boundary
-
-Automatic inference is not accepted causal truth. Unless an explicit admission/review
-path supplies stronger labels:
-
-```text
-knowledge_status != known OR inference_source is non-manual
-→ truth_status = hypothesis
-→ review_state = pending
-```
-
-Approved traversal reads remain approved-only by default. Diagnostics may explicitly
-inspect pending rows. HITL approval of an edge suggestion may authorize recording a
-hypothesis; it does not by itself validate the causal proposition as truth.
-
-### Candidate bypass removal
-
-On #287, KB batch writes/deletes and admin/pipeline reset surfaces delegate durable
-`relations` mutation to `CausalGraph`. `create_inverse=False` is rejected for canonical
-writes so a caller cannot create a deliberately unaudited half-edge.
-
-Dependent relation deletion inside the already-durable fact-erasure transaction remains
-part of that parent erasure transaction and is not double-logged as an independent
-causal mutation merely to satisfy #286.
-
-This section is **review evidence only** until #287 is protected-merged and post-merge
-verified. It grants no runtime permission or production authority.
+PR #289 is review-stage only. Its candidate contract keeps `SQLiteGraphStore` as the
+existing owner and adds first-binding CAS semantics, same-transaction VersionStore +
+`l0_fact_provenance` + AuditChain evidence, fail-closed conflicting-source behavior and a
+legacy adapter with no direct canonical UPDATE. A successful protected merge must be
+followed by a fresh residual inventory before parent #50 can close.
 
 ## 6. Projection authority
 
@@ -169,13 +144,19 @@ Current-main guarantees:
 - archival Canon cannot point to a payload that failed its preparation precondition;
 - failed archival CAS/version/audit/outbox operations commit no false canonical or audit success.
 
-Candidate #287 guarantees, not yet main truth:
+Merged #287 current-main guarantees:
 
 - causal `relations` create/delete/reset is converged on one `CausalGraph` mutation owner;
 - automatic inference cannot silently default to `validated/approved`;
 - KB/admin/pipeline surfaces do not own independent durable causal SQL mutation;
-- NetworkX and Neo4j remain non-authoritative;
-- `RelationStore/fact_relations` is not falsely merged into causal Canon.
+- NetworkX and Neo4j/Graphiti remain non-authoritative and derived reload is non-destructive;
+- `RelationStore/fact_relations` remains a separate associative model.
+
+Candidate #289 review boundary:
+
+- raw provenance binding must not mutate `facts.derived_from` without canonical evidence;
+- conflicting second-source provenance must fail closed;
+- legacy `RawMemoryStore.link_fact()` must not retain independent canonical SQL authority.
 
 No producer/action/reminder/notification/tool/scheduler authority is added.
 

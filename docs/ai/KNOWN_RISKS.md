@@ -1,6 +1,6 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-08-10  
+**Snapshot:** 2026-08-11
 **Continuity:** `12/12 = 100%` — complete  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0` · required check `Titan aggregate merge evidence`
@@ -64,57 +64,31 @@ system. If the SQLite transaction fails after payload creation, cleanup remains
 best-effort. An OS cleanup failure can leave a **non-canonical orphan payload**; that
 residue is never canonical archival success.
 
-## P1 — Causal Truth-edge convergence is review-stage, not main truth
+## Reduced risk — Causal Truth-edge mutation ownership converged
 
-Issue #286 / draft PR #287 is the bounded residual #50 workstream for SQLite `relations`.
-Fresh audit classified:
+Issue #286 / merged PR #287 converged SQLite `relations` mutation on `CausalGraph` at
+current main `615201ec1073dafb047028e88ce94463f4ef9b77`. Relation create/batch/remove/reset
+now uses the bounded canonical owner with same-transaction lifecycle AuditChain evidence.
+Automatic/non-manual input defaults to hypothesis/pending, derived snapshots cannot
+self-promote authority labels, and Neo4j/Graphiti reload cannot destructively replace
+local Canon. `RelationStore` / `fact_relations` remains a separate associative model.
 
-- `CausalGraph` / `relations` — causal Truth-edge canonical surface;
-- `RelationStore` / `fact_relations` — separate associative/LTP model, not causal Canon;
-- NetworkX Graph Lab — SELECT-only in-memory analytics;
-- Neo4j causal persistence — downstream/derived persistence.
+Residual risks remain bounded: explicit future accepted-label callers still need their own
+authorized admission surface, and full graph reset cost grows with graph size. Neither
+risk justifies a raw-SQL bypass or remote truth authority.
 
-The old current-main behavior at base `3100952f3dacf268f4d9c9b3f5a738f449663de6`
-still has direct causal mutation ownership without same-transaction causal AuditChain
-evidence. PR #287 proposes one `CausalGraph` create/batch/remove/reset owner with WriteGate,
-atomic forward+inverse mutation, same-transaction relation lifecycle evidence, durable-ID
-idempotency and removal of KB/admin/pipeline raw-SQL bypasses.
+## P0 — Raw provenance canonical evidence remains review-stage
 
-Until #287 is protected-merged and post-merge verified, those guarantees are **review
-branch evidence only**.
+Fresh residual audit of parent #50 after #287 found one meaningful mutation family:
+`facts.derived_from`. Current main still allows `SQLiteGraphStore.link_raw_to_fact()` to
+change the field without VersionStore/AuditChain evidence, and legacy
+`RawMemoryStore.link_fact()` owns a second direct UPDATE path.
 
-## P1 — Automatic causal inference must not become accepted truth by default
-
-The pre-#286 API could persist `knowledge_status="inferred"` while defaulting
-`truth_status="validated"` and `review_state="approved"`. That is an authority mismatch:
-inference/proposal is not accepted causal truth.
-
-PR #287 proposes the conservative default:
-
-```text
-knowledge_status != known OR inference_source is non-manual
-→ truth_status = hypothesis
-→ review_state = pending
-```
-
-Approved reasoning reads remain approved-only unless a diagnostic explicitly requests
-pending rows. HITL approval of a suggested edge may authorize recording the hypothesis;
-it does not itself prove that the causal proposition is validated truth.
-
-Risk after merge would remain: any future caller that explicitly supplies stronger
-`validated/approved` labels must itself be an authorized admission/review surface. This
-PR does not create a universal causal TruthGate or automatic validator.
-
-## P1 — Causal audit history is lifecycle evidence, not relation VersionStore
-
-PR #287 deliberately does **not** invent a second relation-history database or schema-v8
-migration. Causal create/delete operations use the live canonical row plus per-physical-
-row tamper-evident AuditChain lifecycle events (`relation_created` / `relation_removed`).
-This is bounded evidence for the current create/delete mutation family, not arbitrary
-historical reconstruction of relation payloads.
-
-If a future feature requires mutable relation payload/version history, that would need a
-separate evidence-backed design decision; it must not be silently inferred from this PR.
+Issue #288 / draft PR #289 is the bounded convergence candidate. Review-head semantics
+must preserve first-binding-only ownership, same-source idempotency, different-source
+fail-closed behavior, same-transaction VersionStore + provenance + AuditChain evidence,
+and legacy delegation to the existing canonical owner. These guarantees are **not main
+truth** until protected merge and post-merge verification.
 
 ## P1 — Full causal reset can generate proportional audit volume
 
