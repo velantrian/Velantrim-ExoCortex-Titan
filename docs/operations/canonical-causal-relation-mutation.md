@@ -75,8 +75,8 @@ Reasoning/traversal reads default to approved relations only. Diagnostic code ma
 to pending rows explicitly.
 
 An HITL action can approve **recording a hypothesis** without validating the hypothesis as
-truth. Stronger `validated/approved` labels require an explicit accepted admission path;
-they are never inferred from model output alone.
+truth. Stronger `validated/approved` labels require an explicit accepted local admission
+path; they are never inferred from model output alone.
 
 ## Canonical remove
 
@@ -102,7 +102,8 @@ Reset enumerates the physical relation IDs, deletes them, appends one structured
 `relation_removed` lifecycle event for each removed physical row, and commits as one
 canonical transaction.
 
-This is a destructive administrative operation, not an autonomous maintenance loop.
+This is a destructive **local administrative** operation, not an autonomous maintenance
+loop and not a permission granted to a remote/derived store.
 
 ## KB graph build
 
@@ -119,11 +120,26 @@ outside the forward/inverse integrity contract.
 ## Snapshot import / remote persistence
 
 `CausalGraph.import_snapshots()` treats external rows as input to local admission, not as
-remote canonical truth. The local owner applies the same WriteGate, policy defaults,
-transaction and AuditChain evidence.
+remote canonical truth. Derived snapshots are forcibly normalized to:
 
-Neo4j and any other external graph copy remain derived. Failure or availability of a
-remote graph cannot grant local write authority or accepted-truth status.
+```text
+knowledge_status=inferred
+inference_source=atlas_sync
+truth_status=hypothesis
+review_state=pending
+```
+
+A derived snapshot cannot replay `known/manual/validated/approved` labels as local
+authority. Those remote labels are evidence/input only.
+
+Legacy `reload_causal_from_graph()` and `reload_causal_from_graphiti()` names are retained
+for compatibility but are intentionally non-destructive. They do **not** call
+`reset_causal_graph()` before import. An unavailable, empty, stale, or rejected remote
+snapshot therefore leaves existing local Canon intact.
+
+Neo4j and any other external graph copy remain derived. Remote failure, availability,
+content, or labels cannot grant local write authority, accepted-truth status, or reset
+authority.
 
 ## NetworkX boundary
 
@@ -140,7 +156,9 @@ promote truth status.
 | duplicate create | durable existing ID; no false audit |
 | AuditChain append failure | canonical transaction rollback |
 | remove miss | no-op; no false audit |
-| automatic inferred input | hypothesis/pending unless explicitly accepted |
+| automatic inferred local input | hypothesis/pending unless explicitly accepted by a local admission path |
+| derived snapshot claims stronger authority | forcibly re-admit as inferred/hypothesis/pending |
+| remote snapshot empty/unavailable/rejected | existing local Canon remains intact |
 | remote/derived graph failure | cannot replace local Canon |
 
 ## Evidence boundary
@@ -174,6 +192,7 @@ Before this record can be treated as current-main truth:
 - issue #286 scope is unchanged;
 - exact PR head is frozen;
 - real-SQLite adversarial tests pass;
+- derived snapshot authority and non-destructive reload regressions pass;
 - Full CI succeeds;
 - Docker succeeds;
 - review-stage Notion evidence is synchronized and read back;
