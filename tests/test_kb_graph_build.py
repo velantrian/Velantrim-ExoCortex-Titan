@@ -6,6 +6,10 @@ from core.kb_graph_build import batch_insert_edges, delete_kb_generated_edges
 
 def _relations_db() -> sqlite3.Connection:
     conn = sqlite3.connect(":memory:")
+    # Causal relations are a dependent of canonical facts in the production
+    # SQLite schema.  Keep this focused fixture minimal, but include the parent
+    # table required by both relations and same-transaction AuditChain DDL.
+    conn.execute("CREATE TABLE facts (fact_id TEXT PRIMARY KEY)")
     conn.execute("""
         CREATE TABLE relations (
             relation_id TEXT PRIMARY KEY,
