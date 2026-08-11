@@ -57,8 +57,8 @@ def get_graphiti_client() -> Any | None:
 
 
 async def reload_causal_from_graphiti() -> dict[str, Any]:
-    """Импорт :CausalRelation из Neo4j в in-process CausalGraph."""
-    from core.causal_graph import is_causal_graph_enabled, reset_causal_graph
+    """Re-admit derived :CausalRelation rows without resetting local Canon."""
+    from core.causal_graph import is_causal_graph_enabled
     from core.causal_persistence import is_causal_persist_enabled, reload_causal_from_graph
 
     if not is_causal_graph_enabled():
@@ -72,7 +72,6 @@ async def reload_causal_from_graphiti() -> dict[str, Any]:
             "hint": "STORAGE_BACKEND=neo4j и graphiti_core + NEO4J_URI",
         }
 
-    reset_causal_graph()
     stats = await reload_causal_from_graph(graphiti)
     return {
         "ok": True,
