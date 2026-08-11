@@ -174,7 +174,8 @@ No producer/action/reminder/notification/tool/scheduler authority is added.
 ## 9. Current continuation boundary
 
 Continuity has no remaining capability: `12/12` is complete. Truth Foundation #50 is a
-separate canonical-memory hardening workstream and remains OPEN while #286/#287 is under
-review and until a fresh post-merge residual inventory proves no other meaningful #50
-mutation family remains. Current review work does not authorize Phase II, 13/12, ADAO,
-ARM-04, wider runtime activation, production rollout or a standing Operator GO.
+separate canonical-memory hardening workstream and remains OPEN while #289 is review-stage
+and until a fresh post-merge residual inventory proves no other meaningful #50 mutation
+family remains. Merged #286/#287 is already current-main causal truth and is not a pending
+gate. Current review work does not authorize Phase II, 13/12, ADAO, ARM-04, wider runtime
+activation, production rollout or a standing Operator GO.
