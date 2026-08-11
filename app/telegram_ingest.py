@@ -104,6 +104,8 @@ def ingest_telegram_message(
         source_type="telegram",
     )
 
+    # Issue #288: do not pre-populate facts.derived_from through store_fact().
+    # The canonical linker below owns the first binding and its evidence.
     store_fact(
         {
             "fact_id": fact_id,
@@ -111,7 +113,6 @@ def ingest_telegram_message(
             "source": source,
             "confidence": 0.75,
             "metadata": metadata,
-            "derived_from": raw_id,
         }
     )
 
