@@ -420,6 +420,10 @@ class MemoryOpsStore:
             raw_id = store_raw_text(item["claim"], source_label, "fact_inbox")
             raw_created_here = True
 
+        # Issue #288: raw provenance is not pre-populated in the fact payload.
+        # SQLiteGraphStore.link_raw_to_fact() below owns the first canonical
+        # facts.derived_from mutation and its VersionStore/provenance/AuditChain
+        # evidence transaction after the fact write itself is accepted.
         fact = {
             "fact_id": fid,
             "claim": item["claim"],
@@ -427,7 +431,6 @@ class MemoryOpsStore:
             "confidence": item["confidence"],
             "epistemic_state": epistemic_state,
             "metadata": meta,
-            "derived_from": raw_id,
         }
         from core.memory import get_fact, link_raw_to_fact, store_fact_result
         from core.write_result import ACCEPTED_WRITE_STATUSES
