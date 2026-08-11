@@ -152,25 +152,49 @@ class RawMemoryStore:
         step_index:      int = 0,
         transformation:  str | None = None,
     ) -> None:
-        """
-        Связать derived факт с оригинальным raw текстом.
+        """Compatibility adapter over the canonical provenance owner.
 
-        derivation_type:
-            'direct'     — факт прямо из raw текста
-            'chunked'    — факт из куска raw текста
-            'summarized' — через суммаризацию (осторожно: drift risk)
-            'inferred'   — выведен через reasoning
+        ``RawMemoryStore`` no longer owns an independent ``UPDATE facts``.
+        File-backed databases delegate the canonical ``facts.derived_from``
+        mutation to ``SQLiteGraphStore.link_raw_to_fact()``.  The historical
+        ``raw_derivation_chain`` row remains a derived/read-side trace and is
+        appended only after the canonical binding is accepted.
         """
-        step_id = f"step_{uuid.uuid4().hex[:12]}"
-        now = datetime.now(UTC).isoformat()
+        db_row = self._conn.execute("PRAGMA database_list").fetchone()
+        db_path = str(db_row[2] or "") if db_row else ""
+        if not db_path:
+            raise RuntimeError(
+                "RawMemoryStore.link_fact requires a file-backed SQLite DB so "
+                "the canonical SQLiteGraphStore owner can be resolved"
+            )
 
-        # Обновляем derived_from в facts
-        self._conn.execute(
-            "UPDATE facts SET derived_from = ? WHERE fact_id = ?",
-            (raw_id, fact_id),
+        from core.memory import make_store
+
+        canonical = make_store(db_path)
+        try:
+            linked = canonical.link_raw_to_fact(
+                raw_id, fact_id, derivation_type=derivation_type
+            )
+        finally:
+            canonical.close()
+        if not linked:
+            return
+
+        # ``raw_derivation_chain`` is a legacy derived trace, not Canon.  A
+        # virgin runtime DB may legitimately lack migration-010's optional
+        # table; in that shape the accepted canonical link is sufficient.
+        has_chain = self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='raw_derivation_chain'"
+        ).fetchone()
+        if has_chain is None:
+            return
+
+        step_material = "|".join(
+            [raw_id, fact_id, derivation_type, str(step_index), transformation or ""]
         )
-
-        # Записываем шаг в цепочку
+        step_id = f"step_{hashlib.sha256(step_material.encode()).hexdigest()[:12]}"
+        now = datetime.now(UTC).isoformat()
         self._conn.execute(
             """
             INSERT OR IGNORE INTO raw_derivation_chain (

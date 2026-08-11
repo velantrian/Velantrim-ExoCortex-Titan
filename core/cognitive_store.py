@@ -72,6 +72,13 @@ class CognitiveFactStore:
         rejection — it is immutable input material, not something owned by
         this attempt.
 
+        Issue #288: when a raw source is supplied, it is deliberately held
+        outside the store_fact_result() payload.  facts.derived_from is bound
+        only by SQLiteGraphStore.link_raw_to_fact(), so the first canonical
+        binding, VersionStore pre-image, provenance row and AuditChain event
+        share that owner's one guarded transaction.  This also preserves the
+        historical same-binding retry as a true no-evidence no-op.
+
         Если ensure_raw и есть raw_input без derived_from — создаёт L0 запись.
         """
         from core.memory import link_raw_to_fact, store_fact_result, store_raw_text
@@ -84,13 +91,22 @@ class CognitiveFactStore:
                 source_type=str(fact.metadata.get("source_type", "cognitive_store")),
             )
 
+        raw_id = fact.derived_from
         payload = fact.to_store_dict()
+        if link_provenance and raw_id:
+            payload["derived_from"] = None
+
         result = store_fact_result(payload)
         accepted = result.status in ACCEPTED_WRITE_STATUSES
 
-        if link_provenance and fact.derived_from and accepted:
+        if link_provenance and raw_id and accepted:
             try:
-                link_raw_to_fact(fact.derived_from, fact.id)
+                linked = link_raw_to_fact(raw_id, fact.id)
+                if not linked:
+                    logger.warning(
+                        "cognitive_store canonical provenance link rejected for fact_id=%s",
+                        fact.id,
+                    )
             except Exception as exc:  # noqa: BLE001
                 logger.debug("cognitive_store link_raw: %s", exc)
 

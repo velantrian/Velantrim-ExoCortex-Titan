@@ -2370,45 +2370,130 @@ class SQLiteGraphStore(GraphStore):
         fact_id: str,
         derivation_type: str = "direct",
     ) -> bool:
-        """
-        TASK-09: Связать derived факт с оригинальным raw_id в провенанс-таблице.
-        Также устанавливает facts.derived_from = raw_id и инвалидирует L0-кэш.
+        """Bind a canonical fact to one immutable L0 raw source.
 
-        PR-C1: raw_id и fact_id проверяются на существование в ОДНОЙ
-        транзакции перед записью — l0_fact_provenance.fact_id ссылается на
-        facts(fact_id) как REFERENCES, но PRAGMA foreign_keys для этого
-        соединения не включена, поэтому без явной проверки INSERT OR IGNORE
-        молча создавал phantom-provenance на fact_id, которого нет в `facts`
-        (см. PR-C1 evidence report). Возвращает False и ничего не пишет,
-        если raw_id или fact_id отсутствуют — существующие вызывающие
-        стороны, игнорирующие возврат, не ломаются (раньше метод возвращал
-        None, тоже falsy).
+        Issue #288 / parent #50: ``facts.derived_from`` is canonical fact
+        state, so provenance binding follows the same evidence contract as
+        the other meaningful fact mutations.  First binding is a guarded
+        write whose facts row, VersionStore pre-image, provenance row and
+        AuditChain event share one SQLite transaction.  A missing input,
+        conflicting second source or CAS miss creates no false evidence.
+
+        First-binding semantics are intentionally strict:
+        - same ``raw_id`` already bound -> idempotent success, no new evidence;
+        - a different non-NULL ``derived_from`` -> fail closed;
+        - only NULL -> requested raw_id may perform the canonical mutation.
         """
-        prov_id = f"prov_{hashlib.sha256((raw_id+fact_id).encode()).hexdigest()[:16]}"
-        now = datetime.now(UTC).isoformat()
+        from core.write_gate import ensure_writes_allowed
+
+        ensure_writes_allowed()
+        self._release_stray_locks()
+
         with self._db() as conn:
             raw_exists = conn.execute(
                 "SELECT 1 FROM l0_raw_memory WHERE raw_id = ?", (raw_id,)
             ).fetchone()
-            fact_exists = conn.execute(
-                "SELECT 1 FROM facts WHERE fact_id = ?", (fact_id,)
+        if raw_exists is None:
+            return False
+
+        durable = self._get_fact_durable(fact_id)
+        if durable is None:
+            self._l0_del(fact_id)
+            return False
+
+        current_raw_id = durable.get("derived_from")
+        if current_raw_id == raw_id:
+            return True
+        if current_raw_id is not None:
+            return False
+
+        import uuid as _uuid
+
+        from core.audit_chain import (
+            AuditChain,
+            EventType,
+            REASON_CODE_CAS_GUARDED_WRITE,
+        )
+
+        now = _now()
+        prov_id = f"prov_{hashlib.sha256((raw_id + fact_id).encode()).hexdigest()[:16]}"
+        audit_subject_id = durable.get("audit_subject_id") or _uuid.uuid4().hex
+        chain_id = f"fact-transition:{audit_subject_id}"
+        with self._db() as ready_conn:
+            AuditChain.verify_schema_ready(ready_conn, chain_id=chain_id)
+
+        cas_miss = False
+        real_audit_subject_id: str | None = None
+        with self._db() as conn:
+            # Re-check the immutable raw parent inside the mutation
+            # transaction.  A corrupt/out-of-band missing raw row must never
+            # produce a canonical provenance pointer.
+            raw_exists_tx = conn.execute(
+                "SELECT 1 FROM l0_raw_memory WHERE raw_id = ?", (raw_id,)
             ).fetchone()
-            if not raw_exists or not fact_exists:
+            if raw_exists_tx is None:
                 return False
-            conn.execute(
-                """INSERT OR IGNORE INTO l0_fact_provenance
-                   (id, raw_id, fact_id, derivation_type, linked_at)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (prov_id, raw_id, fact_id, derivation_type, now),
+
+            cur = conn.execute(
+                "UPDATE facts SET derived_from = ?, updated_at = ?, "
+                "audit_subject_id = COALESCE(audit_subject_id, ?) "
+                "WHERE fact_id = ? AND derived_from IS NULL AND updated_at = ?",
+                (raw_id, now, audit_subject_id, fact_id, durable["updated_at"]),
             )
-            conn.execute(
-                "UPDATE facts SET derived_from = ? WHERE fact_id = ? AND derived_from IS NULL",
-                (raw_id, fact_id),
-            )
-        # Инвалидируем L0-кэш чтобы get_fact() увидел обновлённый derived_from
-        with self._l0_lock:
-            if fact_id in self._l0:
-                del self._l0[fact_id]
+            if cur.rowcount == 0:
+                cas_miss = True
+            else:
+                real_audit_subject_id = conn.execute(
+                    "SELECT audit_subject_id FROM facts WHERE fact_id = ?",
+                    (fact_id,),
+                ).fetchone()[0]
+
+                self._snapshot_before_change_in_transaction(
+                    conn,
+                    fact_id,
+                    durable,
+                    caused_by="memory.link_raw_to_fact",
+                    now_iso=now,
+                )
+
+                conn.execute(
+                    """INSERT OR IGNORE INTO l0_fact_provenance
+                       (id, raw_id, fact_id, derivation_type, linked_at)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (prov_id, raw_id, fact_id, derivation_type, now),
+                )
+                provenance_exists = conn.execute(
+                    "SELECT 1 FROM l0_fact_provenance "
+                    "WHERE raw_id = ? AND fact_id = ? LIMIT 1",
+                    (raw_id, fact_id),
+                ).fetchone()
+                if provenance_exists is None:
+                    raise RuntimeError(
+                        "link_raw_to_fact: canonical binding lacks provenance row"
+                    )
+
+                chain = AuditChain(
+                    conn,
+                    chain_id=f"fact-transition:{real_audit_subject_id}",
+                    _skip_schema_check=True,
+                )
+                chain.log_in_transaction(
+                    event_type=EventType.FACT_UPDATED,
+                    actor="memory_link_raw_to_fact",
+                    to_state=durable.get("epistemic_state"),
+                    reason=REASON_CODE_CAS_GUARDED_WRITE,
+                )
+
+        if cas_miss:
+            self._l0_del(fact_id)
+            latest = self._get_fact_durable(fact_id)
+            if latest is None:
+                return False
+            return latest.get("derived_from") == raw_id
+
+        # Canon + VersionStore + provenance + AuditChain have committed.
+        # Force the next reader to observe the durable updated_at/source.
+        self._l0_del(fact_id)
         return True
 
     def get_raw_text_for_fact(self, fact_id: str) -> str | None:
