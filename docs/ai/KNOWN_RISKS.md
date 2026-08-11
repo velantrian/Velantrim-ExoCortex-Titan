@@ -51,32 +51,80 @@ It does not prove removal from arbitrary metadata, immutable/raw origins, every 
 backend, backups or unrelated historical logs. Full durable physical erasure remains a
 separate ErasureCoordinator contract; no certified GDPR claim follows.
 
-## P1 — Archival filesystem/SQLite boundary
+## P1 — Archival filesystem/SQLite boundary remains bounded
 
-Issue #284 / PR #285 converges the archival canonical claim rewrite on existing
-`SQLiteGraphStore` evidence primitives. The candidate contract creates, flushes and
-fsyncs the unique archive payload before a SQLite transaction may point Canon at it.
-CAS/version/audit/marker/FTS/outbox failures roll the SQLite batch back.
+Issue #284 / merged PR #285 converged archival canonical claim rewrite on the existing
+`SQLiteGraphStore` evidence primitives. It is current-main truth at
+`3100952f3dacf268f4d9c9b3f5a738f449663de6`.
 
-A filesystem file cannot participate in the same SQLite ACID transaction without adding
-another transactional system. If the DB/evidence transaction fails after payload
-creation, cleanup is best-effort. An OS-level cleanup failure may therefore leave a
-**non-canonical orphan archive payload**. That residue must never be represented as a
-successful canonical archive. This risk is bounded and documented, not hidden.
+The payload is created/fsynced before Canon may point at it; canonical claim, VersionStore,
+AuditChain, archive marker, FTS and active outbox intent are one SQLite transaction. A
+filesystem file cannot join that SQLite ACID transaction without another transactional
+system. If the SQLite transaction fails after payload creation, cleanup remains
+best-effort. An OS cleanup failure can leave a **non-canonical orphan payload**; that
+residue is never canonical archival success.
 
-Until PR #285 is protected-merged and post-merge verified, the archival section is
-review-stage evidence, not `main` truth.
+## P1 — Causal Truth-edge convergence is review-stage, not main truth
 
-## P1 — Causal relation mutation remains a separate Truth Foundation gap
+Issue #286 / draft PR #287 is the bounded residual #50 workstream for SQLite `relations`.
+Fresh audit classified:
 
-Current `CausalGraph.add_relation()` / `remove_relation()` own direct relation-table
-mutation and commit semantics without the same canonical AuditChain/version-policy
-contract required by #50. Ingest-side heuristic code can call `add_relation()` directly.
-This is intentionally **not** repaired in PR #285; it remains the next separate residual
-mutation family to audit/converge after archival finalization.
+- `CausalGraph` / `relations` — causal Truth-edge canonical surface;
+- `RelationStore` / `fact_relations` — separate associative/LTP model, not causal Canon;
+- NetworkX Graph Lab — SELECT-only in-memory analytics;
+- Neo4j causal persistence — downstream/derived persistence.
 
-Optional Neo4j causal persistence is downstream/derived persistence and must not become a
-second Canon owner while this is addressed.
+The old current-main behavior at base `3100952f3dacf268f4d9c9b3f5a738f449663de6`
+still has direct causal mutation ownership without same-transaction causal AuditChain
+evidence. PR #287 proposes one `CausalGraph` create/batch/remove/reset owner with WriteGate,
+atomic forward+inverse mutation, same-transaction relation lifecycle evidence, durable-ID
+idempotency and removal of KB/admin/pipeline raw-SQL bypasses.
+
+Until #287 is protected-merged and post-merge verified, those guarantees are **review
+branch evidence only**.
+
+## P1 — Automatic causal inference must not become accepted truth by default
+
+The pre-#286 API could persist `knowledge_status="inferred"` while defaulting
+`truth_status="validated"` and `review_state="approved"`. That is an authority mismatch:
+inference/proposal is not accepted causal truth.
+
+PR #287 proposes the conservative default:
+
+```text
+knowledge_status != known OR inference_source is non-manual
+→ truth_status = hypothesis
+→ review_state = pending
+```
+
+Approved reasoning reads remain approved-only unless a diagnostic explicitly requests
+pending rows. HITL approval of a suggested edge may authorize recording the hypothesis;
+it does not itself prove that the causal proposition is validated truth.
+
+Risk after merge would remain: any future caller that explicitly supplies stronger
+`validated/approved` labels must itself be an authorized admission/review surface. This
+PR does not create a universal causal TruthGate or automatic validator.
+
+## P1 — Causal audit history is lifecycle evidence, not relation VersionStore
+
+PR #287 deliberately does **not** invent a second relation-history database or schema-v8
+migration. Causal create/delete operations use the live canonical row plus per-physical-
+row tamper-evident AuditChain lifecycle events (`relation_created` / `relation_removed`).
+This is bounded evidence for the current create/delete mutation family, not arbitrary
+historical reconstruction of relation payloads.
+
+If a future feature requires mutable relation payload/version history, that would need a
+separate evidence-backed design decision; it must not be silently inferred from this PR.
+
+## P1 — Full causal reset can generate proportional audit volume
+
+An explicit destructive causal reset enumerates physical relation IDs and appends a
+structured `relation_removed` event for each removed row in the same transaction. This
+maximizes audit fidelity but means transaction work grows with graph size. It is an
+explicit admin/KB operation, not a background loop.
+
+Production-scale reset latency/size is not proven by #287 and must not be represented as
+such. This risk does not justify bypassing the canonical owner or dropping audit evidence.
 
 ## Reduced risk — async canonical mutation bypass
 
@@ -90,6 +138,7 @@ not own an independent SQL mutation path.
 Still not proved:
 
 - multi-process write contention under production load;
+- large-graph full-reset latency/audit volume under production load;
 - disk-full/filesystem-permission behavior at production scale;
 - live backup/restore and disaster-recovery orchestration;
 - external audit service/SLO/alerting coverage;

@@ -311,9 +311,7 @@ def reset_graph(*, confirm: bool = False) -> dict[str, Any]:
         }
     from core.causal_graph import get_causal_graph
 
-    graph = get_causal_graph()
-    deleted = graph._conn.execute("DELETE FROM relations").rowcount
-    graph._conn.commit()
+    deleted = get_causal_graph().reset_relations()
     return {"ok": True, "relations_deleted": deleted}
 
 
