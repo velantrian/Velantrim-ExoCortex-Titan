@@ -115,14 +115,28 @@ causal writes. Canonical Truth-edge creation preserves forward/inverse consisten
 
 ## External / derived persistence
 
-Remote or derived graph persistence is not write authority.
+Remote or derived graph persistence is not write authority and is never reset authority.
 
-`import_snapshots()` may accept external snapshots only as input to the same local
-canonical mutation owner. Imported/derived rows default to inferred/pending unless an
-explicit accepted status accompanies the request.
+`import_snapshots()` accepts external snapshots only as input to the same local canonical
+mutation owner. Every imported/derived snapshot is forcibly re-admitted as:
+
+```text
+knowledge_status = inferred
+inference_source = atlas_sync
+truth_status = hypothesis
+review_state = pending
+```
+
+Remote `validated/approved`, `known`, or `manual` labels are data carried by a derived copy,
+not authority tokens, and cannot self-promote a local causal edge.
+
+Legacy `reload_causal_from_graph*` API names are retained for compatibility, but their
+semantics are intentionally **non-destructive**: they merge derived rows through local
+admission and never reset SQLite Canon first. An empty, unavailable, stale, or rejected
+Neo4j snapshot therefore cannot erase existing local causal Truth edges.
 
 Neo4j persistence remains downstream/derived. NetworkX remains SELECT-only/in-memory.
-Neither can overwrite or bypass local canonical mutation evidence.
+Neither can overwrite, erase, or bypass local canonical mutation evidence.
 
 ## RelationStore boundary
 
@@ -168,10 +182,12 @@ Before merge, exact-head evidence must prove with real SQLite tests:
 - duplicate create returns durable identity and creates no false audit;
 - automatic inference defaults to hypothesis/pending and is excluded from approved
   reasoning reads;
-- explicitly accepted status is preserved only when supplied intentionally;
+- explicitly accepted local admission status is preserved only when supplied intentionally;
+- derived snapshots cannot replay stronger authority labels into local Canon;
+- derived reload cannot reset or erase existing local Canon;
 - targeted remove + inverse companion + audit are atomic;
 - remove miss creates no false audit;
-- full reset is audited;
+- full local administrative reset is audited;
 - KB bulk writes/deletes and admin/pipeline resets own no raw relation mutation bypass;
 - NetworkX remains read-only;
 - optional downstream graph persistence does not become Canon.
