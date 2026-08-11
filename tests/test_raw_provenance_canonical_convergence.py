@@ -11,6 +11,18 @@ def _counts(store, fact_id: str) -> dict[str, int]:
         def count(sql: str, params: tuple = ()) -> int:
             return int(conn.execute(sql, params).fetchone()[0])
 
+        audit_table_exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='memory_events'"
+        ).fetchone()
+        audit_count = (
+            count(
+                "SELECT COUNT(*) FROM memory_events WHERE actor = ?",
+                ("memory_link_raw_to_fact",),
+            )
+            if audit_table_exists is not None
+            else 0
+        )
+
         return {
             "provenance": count(
                 "SELECT COUNT(*) FROM l0_fact_provenance WHERE fact_id = ?",
@@ -20,10 +32,7 @@ def _counts(store, fact_id: str) -> dict[str, int]:
                 "SELECT COUNT(*) FROM fact_versions WHERE fact_id = ?",
                 (fact_id,),
             ),
-            "audit": count(
-                "SELECT COUNT(*) FROM memory_events WHERE actor = ?",
-                ("memory_link_raw_to_fact",),
-            ),
+            "audit": audit_count,
         }
 
 
