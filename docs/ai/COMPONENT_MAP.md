@@ -49,7 +49,7 @@ are never permission tokens.
 | causal relation create/delete/reset | `CausalGraph` / `relations` | CONVERGED on merged #287 · checkpoint `615201ec1073dafb047028e88ce94463f4ef9b77` |
 | post-create raw provenance binding | `SQLiteGraphStore.link_raw_to_fact()` | CONVERGED on merged #289 · current main `902b2b6335b05f9a6f956e75151a8e801f23ba1d` |
 | initial raw provenance on fact creation | existing `SQLiteGraphStore` fact-create parent transactions | CONVERGED on merged #291 · current main `7a47f5dbb786fe267093857bf370fd03703207ac` |
-| smart-KB fact create/classify/validate | existing `store_facts_batch()` + canonical ESM owner; builder orchestration only | REVIEW-STAGE on #292/#293 · NOT MAIN |
+| smart-KB fact create/classify/validate | existing `store_facts_batch()` + canonical ESM owner; builder orchestration only | CONVERGED on merged #293 · current main `c80c8d47588de3d2607c7e1b10aa1677eb84383f` |
 | associative relation/LTP | `RelationStore` / `fact_relations` | SEPARATE NON-CAUSAL MODEL · not merged into causal Canon |
 | optional Neo4j causal persistence | `causal_persistence.py` | derived persistence; NOT canonical authority |
 | optional NetworkX Graph Lab | `graph_lab.py` | read-only/in-memory projection; NOT canonical authority |
@@ -135,7 +135,7 @@ pointers cannot be rebound through generic upsert, while non-raw `derived_from` 
 fact-to-fact lineage. Issue #290 is CLOSED_COMPLETED; post-merge Full CI, Docker and
 aggregate evidence all passed.
 
-### Smart-KB fact-build residual — issue #292 / draft PR #293
+### Smart-KB fact-build convergence — merged #292 / #293
 
 Fresh post-#291 current-main inventory found that `scripts/build_kb_graph.py` could bypass
 canonical fact authority: `--fast-fresh` directly inserted `facts`, and build paths used
@@ -143,15 +143,15 @@ raw SQL to classify facts and drive the ESM ladder. The resulting `velantrim_kb.
 become the ordinary `VELANTRIM_DB_PATH`, so this is a Canon surface rather than an inert
 export.
 
-PR #293 is review-stage only. Its candidate removes raw fact DML from the builder,
-declares curated World Skills rows as `WORLD_FACT / EXTERNAL` before admission, delegates
-create/update to existing `store_facts_batch()` evidence semantics, and delegates
-validation to `promote_to_validated()` / canonical ESM transitions. Batch classification
-changes become VersionStore/AuditChain-evidenced changes with coherent L0/L1 state.
-`--fast-fresh` becomes only an empty-database precondition, and incomplete ingest or
-validation fails the build. Causal edges remain owned by the already-converged
-`CausalGraph`. These guarantees are NOT main truth until protected merge and post-merge
-verification.
+Protected squash merge #293 converged this path on current main `c80c8d47588de3d2607c7e1b10aa1677eb84383f`. The
+builder owns no raw canonical fact INSERT/UPDATE path: curated World Skills rows are
+classified as `WORLD_FACT / EXTERNAL` before admission, create/update delegates to
+`store_facts_batch()`, validation delegates to `promote_to_validated()` / canonical ESM
+transitions, and batch reclassification uses VersionStore/AuditChain evidence with
+coherent L0/L1 state. `--fast-fresh` is only an empty-database precondition; incomplete
+ingest or validation fails the build. Causal edges remain owned by `CausalGraph`.
+Issue #292 is CLOSED_COMPLETED. Pre-merge and post-merge Full CI, Docker and aggregate
+evidence passed, and a fresh current-main residual inventory found `REAL_GAP=0`.
 
 ## 6. Projection authority
 
@@ -163,7 +163,7 @@ over Canon and cannot grant write or answer authority by itself.
 
 Current-main guarantees include:
 
-- no second canonical store or general write protocol was introduced by #283/#285/#289;
+- no second canonical store or general write protocol was introduced by #283/#285/#289/#291/#293;
 - runtime configuration cannot grant Operator GO;
 - historical canary evidence cannot silently re-enable runtime;
 - async callers cannot select the removed native-SQL fact write path;
@@ -183,7 +183,7 @@ Current-main #291 guarantee:
 - generic upsert cannot rebind existing durable raw provenance;
 - non-raw fact lineage remains unchanged.
 
-Candidate #293 review boundary:
+Current-main #293 guarantee:
 
 - smart-KB builder must own no direct `INSERT INTO facts` or `UPDATE facts SET` mutation path;
 - curated WSC fact admission must use the existing canonical batch owner and evidence semantics;
@@ -207,10 +207,10 @@ No producer/action/reminder/notification/tool/scheduler authority is added.
 
 ## 9. Current continuation boundary
 
-Continuity has no remaining capability: `12/12` is complete. Truth Foundation #50 is a
-separate canonical-memory hardening workstream and remains OPEN while #292/#293 is
-review-stage and until a fresh post-merge current-main inventory proves no other
-meaningful #50 mutation family remains. Merged #290/#291 is current-main initial raw
-provenance truth and is not a pending gate. Current review work does not authorize Phase
-II, 13/12, ADAO, ARM-04, wider runtime activation, production rollout or a standing
-Operator GO.
+Continuity has no remaining capability: `12/12` is complete. Truth Foundation #50 is
+CLOSED_COMPLETED at current main `c80c8d47588de3d2607c7e1b10aa1677eb84383f` after merged #293, green post-merge evidence,
+and a fresh current-main residual inventory with `REAL_GAP=0`. Merged #288/#289,
+#290/#291 and #292/#293 are current-main Truth Foundation convergence, not pending gates.
+Open #53 is a downstream architecture workstream that depends on #50; this closure does
+not itself authorize its implementation. No Phase II, 13/12, ADAO, ARM-04, wider runtime
+activation, production rollout or standing Operator GO follows from #50 closure.

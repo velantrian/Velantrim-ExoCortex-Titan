@@ -7,7 +7,50 @@ merged PR bodies, issues, ADRs and dated checkpoint documents.
 
 ---
 
-## 2026-08-12 — P0 smart-KB fact-build authority in protected review
+## 2026-08-12 — P0 smart-KB convergence + Truth Foundation #50 completed
+
+```text
+Parent Truth Foundation:       #50 · CLOSED_COMPLETED · fresh residual REAL_GAP=0
+Tracking issue:                #292 · CLOSED_COMPLETED
+Implementation PR:             #293 · MERGED
+Final pre-merge head:          48817c5b0067d085135d4e8f144a620a34265597
+Protected squash merge/main:   c80c8d47588de3d2607c7e1b10aa1677eb84383f
+Merge parent:                  7a47f5dbb786fe267093857bf370fd03703207ac
+Focused identical-tree gate:   31578562991 · SUCCESS
+Pre-merge Full CI:             31580684106 · SUCCESS
+Pre-merge Docker:              31580683989 · SUCCESS
+Ready aggregate:               31594821320 · SUCCESS
+Post-merge Full CI:            31594960307 · SUCCESS
+Post-merge Docker:             31594960229 · SUCCESS
+Post-merge aggregate:          31594960289 · SUCCESS
+Merge signature:               VERIFIED / valid
+Submitted reviews:             0
+Codex code review:             NOT RUN — USAGE LIMIT
+Unresolved review threads:     0
+Continuity:                    12/12 = 100% · unchanged
+Schema:                        v7 · unchanged
+Runtime currently enabled:     false · unchanged
+Operator GO:                   false · unchanged
+Runtime authority:             false · unchanged
+Production authority:          false · unchanged
+```
+
+Current-main smart-KB fact build no longer owns raw canonical fact DML. Curated fact
+admission delegates to `store_facts_batch()`, validation to canonical ESM promotion,
+`--fast-fresh` is only an empty-DB precondition, incomplete builds fail closed, and
+causal edges remain on `CausalGraph`.
+
+Fresh residual inventory on `c80c8d47588de3d2607c7e1b10aa1677eb84383f` rechecked fact create/update, raw provenance, ESM
+transitions, supersede, redaction, archival rewrite, durable erasure/dependent deletion,
+causal relations, async adapters, smart-KB build, cache-maintenance, projections/indexes,
+entity/living-context/notes/audit side stores, migration-only paths and scratch ingestion.
+No new meaningful canonical mutation owner remained: `REAL_GAP=0`. Emergency coverage
+issue #28 is CLOSED. Open #53 is downstream architecture that depends on #50 and is not
+a residual #50 mutation gap or an authorization granted by this closure.
+
+---
+
+## Historical pre-merge evidence — P0 smart-KB fact-build authority
 
 ```text
 Parent Truth Foundation:       #50 · OPEN / reopened
@@ -222,8 +265,9 @@ Conversation resolution:      required
 ## Stable continuation boundary
 
 Continuity is complete at `12/12 = 100%`; do not invent 13/12 or infer production
-readiness. Truth Foundation #50 remains OPEN while #292/#293 is review-stage and until a
-fresh post-merge residual inventory proves no other meaningful canonical mutation gap
-remains. Merged #290/#291 is current-main initial raw-provenance truth. Issue #249 stays
-separate. No schema v8, Phase II, ADAO, ARM-04, runtime activation, standing Operator GO,
-runtime authority or production authority follows from the current review block.
+readiness. Truth Foundation #50 is CLOSED_COMPLETED on current main `c80c8d47588de3d2607c7e1b10aa1677eb84383f` after merged
+#293, green post-merge evidence and a fresh residual inventory with `REAL_GAP=0`. Merged
+#288/#289, #290/#291 and #292/#293 are current-main Truth Foundation history. Issue #249
+stays separate. Open #53 is downstream architecture, not an automatic next implementation
+authorization. No schema v8, Phase II, ADAO, ARM-04, runtime activation, standing Operator
+GO, runtime authority or production authority follows from this closure.
