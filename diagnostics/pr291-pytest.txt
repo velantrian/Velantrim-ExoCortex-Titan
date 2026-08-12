@@ -1,0 +1,245 @@
+CANDIDATE_HEAD=599e4fb61a03b00971bfc06f597d7b2eca2ac61a
+WORKFLOW_HEAD=fe61a35597ca92aba68c0509094a21efeb266475
+PYTEST_EXIT=1
+--- PYTEST OUTPUT ---
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-8.4.2, pluggy-1.6.0
+rootdir: /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan
+configfile: pyproject.toml
+plugins: anyio-4.13.0, cov-7.1.0, asyncio-0.26.0, timeout-2.4.0
+asyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+timeout: 300.0s
+timeout method: signal
+timeout func_only: False
+collected 4093 items / 1 skipped
+
+tests/test_adversarial.py ...............................ssssssss.x..... [  1%]
+..                                                                       [  1%]
+tests/test_affordance_mvp.py .........                                   [  1%]
+tests/test_api_promotion_gateway_wiring.py ...                           [  1%]
+tests/test_app_paths.py ....                                             [  1%]
+tests/test_architecture_freeze_guard.py ....                             [  1%]
+tests/test_archival_canonical_convergence.py ........                    [  1%]
+tests/test_archival_canonical_edge_cases.py ...                          [  1%]
+tests/test_archive_rar_size_guard.py .............                       [  2%]
+tests/test_async_store_canonical_semantics.py ....                       [  2%]
+tests/test_async_utils.py ..                                             [  2%]
+tests/test_attention_noetic_contracts.py ....                            [  2%]
+tests/test_audit_chain_lifecycle_paths.py .............................. [  3%]
+...                                                                      [  3%]
+tests/test_audit_chain_transition_ledger.py ............................ [  3%]
+.                                                                        [  4%]
+tests/test_audit_chain_v2.py ........................................... [  5%]
+................................                                         [  5%]
+tests/test_batch_split_brain.py ...                                      [  5%]
+tests/test_bounded_local_projection_dispatcher.py ...................... [  6%]
+.................................                                        [  7%]
+tests/test_budget_planner.py .........                                   [  7%]
+tests/test_canonical_write_protocol.py ........                          [  7%]
+tests/test_causal_bridge.py ..                                           [  7%]
+tests/test_causal_derived_reload_authority.py ..                         [  7%]
+tests/test_causal_graph.py ............................................. [  8%]
+..                                                                       [  8%]
+tests/test_causal_relation_authority_boundaries.py .....                 [  9%]
+tests/test_causal_relation_canonical_convergence.py ...........          [  9%]
+tests/test_causal_snapshot_import_authority.py .                         [  9%]
+tests/test_check_project_state.py ...................................... [ 10%]
+...............................................                          [ 11%]
+tests/test_claim_type.py ............................................... [ 12%]
+...                                                                      [ 12%]
+tests/test_cognitive_distance.py .......                                 [ 12%]
+tests/test_cognitive_fact.py .....                                       [ 12%]
+tests/test_cognitive_relations.py ..                                     [ 12%]
+tests/test_cognitive_runtime.py ...                                      [ 13%]
+tests/test_cognitive_store.py ....                                       [ 13%]
+tests/test_cognitive_store_promotion_gateway.py ......                   [ 13%]
+tests/test_compliance.py ......                                          [ 13%]
+tests/test_compute_profile.py .....                                      [ 13%]
+tests/test_console_security.py .......                                   [ 13%]
+tests/test_consolidation_d5.py .....                                     [ 13%]
+tests/test_consolidation_gateway_wiring.py ....                          [ 13%]
+tests/test_consolidation_refresh_checksum.py ..............              [ 14%]
+tests/test_context_pack.py ..........                                    [ 14%]
+tests/test_continuity_admission_artifact_lifecycle.py .................. [ 14%]
+............                                                             [ 15%]
+tests/test_continuity_admission_evaluator.py ...........                 [ 15%]
+tests/test_continuity_admission_facade.py .........                      [ 15%]
+tests/test_continuity_admission_facade_hardening.py ...                  [ 15%]
+tests/test_continuity_advisory_shadow.py ................                [ 16%]
+tests/test_continuity_bounded_observation.py ........................... [ 16%]
+.......                                                                  [ 17%]
+tests/test_continuity_compute_assessment.py .......................      [ 17%]
+tests/test_continuity_context_pack.py .........                          [ 17%]
+tests/test_continuity_contracts.py ..............                        [ 18%]
+tests/test_continuity_controlled_enablement.py ......................... [ 18%]
+.............                                                            [ 19%]
+tests/test_continuity_conversation_bridge.py ..........                  [ 19%]
+tests/test_continuity_current_decision_resolver.py ..................    [ 19%]
+tests/test_continuity_evaluation.py ................                     [ 20%]
+tests/test_continuity_event_port.py ...............                      [ 20%]
+tests/test_continuity_goal_open_loop.py ................                 [ 20%]
+tests/test_continuity_goal_source_adapter.py .....................       [ 21%]
+tests/test_continuity_goal_subject_binding_contract.py .                 [ 21%]
+tests/test_continuity_golden_fixtures.py ....                            [ 21%]
+tests/test_continuity_observations.py .................................. [ 22%]
+.........                                                                [ 22%]
+tests/test_continuity_open_loop_source_adapter.py ....................   [ 23%]
+tests/test_continuity_open_loop_source_adapter_receipt_boundary.py .     [ 23%]
+tests/test_continuity_open_loop_source_adapter_result_boundary.py .      [ 23%]
+tests/test_continuity_open_loop_subject_hashing.py .                     [ 23%]
+tests/test_continuity_producer_determinism.py .........                  [ 23%]
+tests/test_continuity_projection_working_memory_adapter.py ..........    [ 23%]
+tests/test_continuity_r1_regressions.py ..                               [ 23%]
+tests/test_continuity_r2_regressions.py ...                              [ 23%]
+tests/test_continuity_runtime_composition.py .........................   [ 24%]
+tests/test_continuity_shadow_runner.py ...........                       [ 24%]
+tests/test_continuity_signal_producer.py ............................... [ 25%]
+...........                                                              [ 25%]
+tests/test_continuity_signal_producer_review_regressions.py ............ [ 25%]
+..                                                                       [ 26%]
+tests/test_continuity_source_admission_decisions.py .................... [ 26%]
+.................                                                        [ 26%]
+tests/test_continuity_source_admission_foundation.py ................... [ 27%]
+.............                                                            [ 27%]
+tests/test_continuity_source_admission_payloads.py ..................... [ 28%]
+...........................................                              [ 29%]
+tests/test_continuity_state_reconciler.py ...............                [ 29%]
+tests/test_continuity_state_source_adapter.py ....................       [ 30%]
+tests/test_continuity_thread_weaver.py ............                      [ 30%]
+tests/test_continuity_working_memory_adapter.py .........                [ 30%]
+tests/test_contradiction_resolver.py ..........                          [ 30%]
+tests/test_core3_adapter.py sss...                                       [ 31%]
+tests/test_core_imports.py ............................................. [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 35%]
+........................................................................ [ 37%]
+.......................................................                  [ 38%]
+tests/test_critical_exceptions.py ......                                 [ 38%]
+tests/test_cross_domain.py ...                                           [ 38%]
+tests/test_cross_domain_advanced.py ..                                   [ 39%]
+tests/test_crypto.py .....                                               [ 39%]
+tests/test_curated_causal.py ..                                          [ 39%]
+tests/test_decay_orchestrator_smoke.py .....                             [ 39%]
+tests/test_dedup_index_d1_d2.py ......                                   [ 39%]
+tests/test_dense_retriever_cache_key.py ..............                   [ 39%]
+tests/test_deployment_profiles.py .......                                [ 39%]
+tests/test_dialogue_essence.py ..                                        [ 40%]
+tests/test_document_structure.py ......                                  [ 40%]
+tests/test_dual_process.py .....                                         [ 40%]
+tests/test_edge_suggester.py ....                                        [ 40%]
+tests/test_egress_review_fixes.py ...................................... [ 41%]
+.................                                                        [ 41%]
+tests/test_embedding_projection.py ....................................  [ 42%]
+tests/test_embedding_registry.py ...................                     [ 43%]
+tests/test_erasure.py ......                                             [ 43%]
+tests/test_erasure_audit_view_bootstrap_race.py ...                      [ 43%]
+tests/test_erasure_batch_coordinator.py ................................ [ 44%]
+...............................                                          [ 44%]
+tests/test_erasure_bounded_batch_recovery.py ..........                  [ 45%]
+tests/test_erasure_bounded_clock_validation.py .                         [ 45%]
+tests/test_erasure_bounded_single_recovery.py ........                   [ 45%]
+tests/test_erasure_coordinator.py ...................................... [ 46%]
+............................................................             [ 47%]
+tests/test_erasure_projection_outbox_dependency.py .........             [ 47%]
+tests/test_erasure_startup_recovery.py .............                     [ 48%]
+tests/test_erasure_startup_runner.py ...........                         [ 48%]
+tests/test_erasure_startup_runtime.py ...............                    [ 48%]
+tests/test_erasure_startup_server_wiring.py ......                       [ 49%]
+tests/test_esm.py ........................................               [ 49%]
+tests/test_essence.py ..........................                         [ 50%]
+tests/test_eval_golden.py ..........                                     [ 50%]
+tests/test_evaluation_replay.py ...........                              [ 51%]
+tests/test_events_catalog.py ....                                        [ 51%]
+tests/test_evidence_authenticity.py .......                              [ 51%]
+tests/test_exocortex_e2e.py ....                                         [ 51%]
+tests/test_exocortex_flags_matrix.py ..........                          [ 51%]
+tests/test_exocortex_import.py ...................                       [ 52%]
+tests/test_experience_replay_velum_bridge.py .................           [ 52%]
+tests/test_fact_version_consistency.py .................                 [ 53%]
+tests/test_file_generators/test_basic.py .sss..ss...............         [ 53%]
+tests/test_file_parsers/test_basic.py .....................              [ 54%]
+tests/test_forget_one_erasure_convergence.py .........                   [ 54%]
+tests/test_forgetting.py .............................                   [ 55%]
+tests/test_fractal_memory.py .......                                     [ 55%]
+tests/test_global_synthesis.py .......                                   [ 55%]
+tests/test_graph_lab.py .................                                [ 55%]
+tests/test_graphiti_adapter.py ..                                        [ 55%]
+tests/test_health_no_full_scan.py ..                                     [ 55%]
+tests/test_heterogeneous_decay.py .......                                [ 56%]
+tests/test_hierarchical_section_planner.py .......                       [ 56%]
+tests/test_horizons_status.py ...........                                [ 56%]
+tests/test_hybrid_retriever.py .....................                     [ 57%]
+tests/test_hybrid_retriever_lifecycle.py ...                             [ 57%]
+tests/test_import_without_numpy.py ....                                  [ 57%]
+tests/test_initial_raw_provenance_create_convergence.py F
+
+=================================== FAILURES ===================================
+________ test_direct_create_raw_binding_is_parent_transaction_evidence _________
+
+store = <core.memory.SQLiteGraphStore object at 0x7f8d12c6c6d0>
+
+    def test_direct_create_raw_binding_is_parent_transaction_evidence(store):
+        raw_id = store.store_raw_text("direct raw", source="test")
+        result = store.store_fact_result(
+            _fact_payload("fact_initial_raw", derived_from=raw_id)
+        )
+    
+>       assert result.status is WriteStatus.CREATED
+E       AssertionError: assert <WriteStatus.CREATED: 'created'> is <WriteStatus.CREATED: 'created'>
+E        +  where <WriteStatus.CREATED: 'created'> = WriteResult(status=<WriteStatus.CREATED: 'created'>, fact_id='fact_initial_raw', created=True, canonical_exists=True, durable_write=True, safe_reason_code=None, safe_message=None).status
+E        +  and   <WriteStatus.CREATED: 'created'> = WriteStatus.CREATED
+
+tests/test_initial_raw_provenance_create_convergence.py:55: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.11/site-packages/fastapi/testclient.py:1
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/.venv/lib/python3.11/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+tests/test_compliance.py::test_record_of_processing_is_content_free
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_compliance.py:68: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    erasure.erase_fact("e1")  # produces a tombstone (Art. 30 erasure record)
+
+tests/test_compliance.py::test_record_of_processing_reports_corrected_subject
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_compliance.py:92: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    erasure.erase_fact("e2", actor="api:deadbeef")
+
+tests/test_core_imports.py::test_core_module_imports[core.backends.kuzu_graph]
+  /opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/importlib/__init__.py:126: DeprecationWarning: core.backends.kuzu_graph устарел: Kuzu заархивирован (окт. 2025). Используйте LadybugGraphStore или STORAGE_BACKEND=ladybug.
+    return _bootstrap._gcd_import(name[level:], package, level)
+
+tests/test_embedding_projection.py::test_pipeline_still_reaches_truth_gate_regardless_of_projection_state
+tests/test_embedding_projection.py::test_pipeline_still_reaches_truth_gate_regardless_of_projection_state
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/.venv/lib/python3.11/site-packages/huggingface_hub/file_download.py:1856: DeprecationWarning: hf_xet.download_files() is deprecated. Use XetSession().new_file_download_group().start_download_file() instead.
+    xet_get(
+
+tests/test_erasure.py::test_erase_removes_fact_and_writes_tombstone
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_erasure.py:40: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    receipt = erasure.erase_fact("f1", reason="dsr", actor="tester")
+
+tests/test_erasure.py::test_erase_is_idempotent
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_erasure.py:55: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    erasure.erase_fact("f2")
+
+tests/test_erasure.py::test_erase_is_idempotent
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_erasure.py:56: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    again = erasure.erase_fact("f2")
+
+tests/test_erasure.py::test_erase_cascades_to_relations
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_erasure.py:76: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    erasure.erase_fact("a")
+
+tests/test_erasure.py::test_erase_removes_from_fts_index
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_erasure.py:90: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    erasure.erase_fact("f_fts")
+
+tests/test_erasure.py::test_ring_zero_not_erasable
+  /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan/tests/test_erasure.py:99: DeprecationWarning: core.erasure.erase_fact() is deprecated — use core.erasure_coordinator.erase_fact_durable() directly.
+    erasure.erase_fact("RING_ZERO")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_initial_raw_provenance_create_convergence.py::test_direct_create_raw_binding_is_parent_transaction_evidence - AssertionError: assert <WriteStatus.CREATED: 'created'> is <WriteStatus.CREATED: 'created'>
+ +  where <WriteStatus.CREATED: 'created'> = WriteResult(status=<WriteStatus.CREATED: 'created'>, fact_id='fact_initial_raw', created=True, canonical_exists=True, durable_write=True, safe_reason_code=None, safe_message=None).status
+ +  and   <WriteStatus.CREATED: 'created'> = WriteStatus.CREATED
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+= 1 failed, 2324 passed, 17 skipped, 1 xfailed, 12 warnings in 117.06s (0:01:57) =
