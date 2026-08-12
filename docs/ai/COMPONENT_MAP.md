@@ -48,7 +48,8 @@ are never permission tokens.
 | archival claim rewrite | `CanonicalArchivalRewriter` over existing `SQLiteGraphStore` | CONVERGED on merged #285 · merge checkpoint `3100952f3dacf268f4d9c9b3f5a738f449663de6` |
 | causal relation create/delete/reset | `CausalGraph` / `relations` | CONVERGED on merged #287 · checkpoint `615201ec1073dafb047028e88ce94463f4ef9b77` |
 | post-create raw provenance binding | `SQLiteGraphStore.link_raw_to_fact()` | CONVERGED on merged #289 · current main `902b2b6335b05f9a6f956e75151a8e801f23ba1d` |
-| initial raw provenance on fact creation | existing `SQLiteGraphStore` fact-create parent transactions | REVIEW-STAGE on #290/#291 · NOT MAIN |
+| initial raw provenance on fact creation | existing `SQLiteGraphStore` fact-create parent transactions | CONVERGED on merged #291 · current main `7a47f5dbb786fe267093857bf370fd03703207ac` |
+| smart-KB fact create/classify/validate | existing `store_facts_batch()` + canonical ESM owner; builder orchestration only | REVIEW-STAGE on #292/#293 · NOT MAIN |
 | associative relation/LTP | `RelationStore` / `fact_relations` | SEPARATE NON-CAUSAL MODEL · not merged into causal Canon |
 | optional Neo4j causal persistence | `causal_persistence.py` | derived persistence; NOT canonical authority |
 | optional NetworkX Graph Lab | `graph_lab.py` | read-only/in-memory projection; NOT canonical authority |
@@ -124,21 +125,33 @@ SQLite transaction. Same-source retries are idempotent, conflicting second sourc
 closed, and `RawMemoryStore.link_fact()` no longer owns an independent canonical UPDATE.
 Issue #288 is CLOSED_COMPLETED.
 
-### Initial-create raw provenance residual — issue #290 / draft PR #291
+### Initial-create raw provenance convergence — merged #290 / #291
 
-Fresh post-#289 current-main inventory found one separate residual: a brand-new fact can
-arrive with `derived_from` already populated. Raw L0 identity and fact-to-fact lineage
-share that historical column, so globally stripping `derived_from` would break legitimate
-GIST → VERBATIM lineage.
+Protected squash merge #291 converged initial `raw_*` provenance on current main
+`7a47f5dbb786fe267093857bf370fd03703207ac`. New single/batch facts and replacement-fact
+creation inside `supersede_fact_cas()` verify the L0 raw parent and close matching
+`l0_fact_provenance` evidence inside the owning FACT_CREATED transaction. Existing durable
+pointers cannot be rebound through generic upsert, while non-raw `derived_from` remains
+fact-to-fact lineage. Issue #290 is CLOSED_COMPLETED; post-merge Full CI, Docker and
+aggregate evidence all passed.
 
-PR #291 is review-stage only. Its candidate reserves `raw_*` as the L0 raw namespace and,
-for NEW fact creation, verifies that raw parent and appends `l0_fact_provenance` inside the
-same parent FACT_CREATED transaction. Existing durable pointers win over generic upsert
-input; non-`raw_` lineage remains unchanged. Batch creation and `supersede_fact_cas()` use
-the same parent-transaction rule. Brand-new facts do not fabricate a VersionStore
-pre-image or a second FACT_UPDATED event. Missing raw/evidence/audit failure fails closed
-with transaction rollback. These guarantees are NOT main truth until protected merge and
-post-merge verification.
+### Smart-KB fact-build residual — issue #292 / draft PR #293
+
+Fresh post-#291 current-main inventory found that `scripts/build_kb_graph.py` could bypass
+canonical fact authority: `--fast-fresh` directly inserted `facts`, and build paths used
+raw SQL to classify facts and drive the ESM ladder. The resulting `velantrim_kb.db` can
+become the ordinary `VELANTRIM_DB_PATH`, so this is a Canon surface rather than an inert
+export.
+
+PR #293 is review-stage only. Its candidate removes raw fact DML from the builder,
+declares curated World Skills rows as `WORLD_FACT / EXTERNAL` before admission, delegates
+create/update to existing `store_facts_batch()` evidence semantics, and delegates
+validation to `promote_to_validated()` / canonical ESM transitions. Batch classification
+changes become VersionStore/AuditChain-evidenced changes with coherent L0/L1 state.
+`--fast-fresh` becomes only an empty-database precondition, and incomplete ingest or
+validation fails the build. Causal edges remain owned by the already-converged
+`CausalGraph`. These guarantees are NOT main truth until protected merge and post-merge
+verification.
 
 ## 6. Projection authority
 
@@ -163,13 +176,21 @@ Current-main guarantees include:
 - post-create raw provenance binding cannot mutate `facts.derived_from` without the #289 canonical evidence contract;
 - conflicting second-source post-create provenance fails closed and the legacy raw-memory adapter owns no independent canonical SQL mutation.
 
-Candidate #291 review boundary:
+Current-main #291 guarantee:
 
-- a NEW fact carrying a `raw_*` source must not establish Canon without matching `l0_fact_provenance` in its parent transaction;
-- a missing raw parent or evidence/audit failure must roll the create transaction back;
-- generic single/batch upsert must not rebind an existing durable provenance pointer;
-- non-raw fact lineage must remain fact lineage rather than being reinterpreted as L0 raw provenance;
-- `supersede_fact_cas()` replacement creation must obey the same initial raw-provenance rule.
+- NEW `raw_*` facts cannot establish Canon without matching same-parent-transaction L0 provenance evidence;
+- missing raw/evidence/audit failure rolls back the owning creation transaction;
+- generic upsert cannot rebind existing durable raw provenance;
+- non-raw fact lineage remains unchanged.
+
+Candidate #293 review boundary:
+
+- smart-KB builder must own no direct `INSERT INTO facts` or `UPDATE facts SET` mutation path;
+- curated WSC fact admission must use the existing canonical batch owner and evidence semantics;
+- ESM validation must use canonical transition ownership rather than raw SQL;
+- `--fast-fresh` may require empty storage but cannot grant a bootstrap authority bypass;
+- incomplete/evidence-failed build must not report an accepted active smart-KB Canon;
+- causal-edge ownership must remain on `CausalGraph`.
 
 No producer/action/reminder/notification/tool/scheduler authority is added.
 
@@ -187,9 +208,9 @@ No producer/action/reminder/notification/tool/scheduler authority is added.
 ## 9. Current continuation boundary
 
 Continuity has no remaining capability: `12/12` is complete. Truth Foundation #50 is a
-separate canonical-memory hardening workstream and remains OPEN while #290/#291 is
+separate canonical-memory hardening workstream and remains OPEN while #292/#293 is
 review-stage and until a fresh post-merge current-main inventory proves no other
-meaningful #50 mutation family remains. Merged #288/#289 is already current-main
-post-create provenance truth and is not a pending gate. Current review work does not
-authorize Phase II, 13/12, ADAO, ARM-04, wider runtime activation, production rollout or
-a standing Operator GO.
+meaningful #50 mutation family remains. Merged #290/#291 is current-main initial raw
+provenance truth and is not a pending gate. Current review work does not authorize Phase
+II, 13/12, ADAO, ARM-04, wider runtime activation, production rollout or a standing
+Operator GO.
