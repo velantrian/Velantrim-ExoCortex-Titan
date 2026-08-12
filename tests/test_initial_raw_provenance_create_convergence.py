@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-from core.write_result import WriteStatus
-
 
 @pytest.fixture
 def store(tmp_path):
@@ -13,6 +11,15 @@ def store(tmp_path):
     value.ensure_schema()
     yield value
     value.close()
+
+
+def _current_write_status(name: str):
+    # Resolve lazily because the full suite exercises core import isolation and may
+    # replace module objects after collection. Identity remains strict against the
+    # WriteStatus class that the store is currently using.
+    from core.write_result import WriteStatus
+
+    return getattr(WriteStatus, name)
 
 
 def _provenance_count(store, fact_id: str) -> int:
@@ -52,7 +59,7 @@ def test_direct_create_raw_binding_is_parent_transaction_evidence(store):
         _fact_payload("fact_initial_raw", derived_from=raw_id)
     )
 
-    assert result.status is WriteStatus.CREATED
+    assert result.status is _current_write_status("CREATED")
     assert store.get_fact_durable("fact_initial_raw")["derived_from"] == raw_id
     assert _provenance_count(store, "fact_initial_raw") == 1
     # Brand-new Canon has no predecessor, therefore no VersionStore pre-image.
@@ -72,7 +79,7 @@ def test_direct_create_audit_failure_rolls_back_fact_and_provenance(store, monke
         _fact_payload("fact_initial_rollback", derived_from=raw_id)
     )
 
-    assert result.status is WriteStatus.FAILED_INTERNAL
+    assert result.status is _current_write_status("FAILED_INTERNAL")
     assert store.get_fact_durable("fact_initial_rollback") is None
     assert _provenance_count(store, "fact_initial_rollback") == 0
 
@@ -82,7 +89,7 @@ def test_missing_raw_namespace_pointer_fails_closed(store):
         _fact_payload("fact_missing_raw", derived_from="raw_missing_parent")
     )
 
-    assert result.status is WriteStatus.REJECTED_VALIDATION
+    assert result.status is _current_write_status("REJECTED_VALIDATION")
     assert store.get_fact_durable("fact_missing_raw") is None
     assert _provenance_count(store, "fact_missing_raw") == 0
 
@@ -92,7 +99,7 @@ def test_fact_to_fact_lineage_is_preserved_without_l0_provenance(store):
         _fact_payload("gist_1", derived_from="verb_1")
     )
 
-    assert result.status is WriteStatus.CREATED
+    assert result.status is _current_write_status("CREATED")
     assert store.get_fact_durable("gist_1")["derived_from"] == "verb_1"
     assert _provenance_count(store, "gist_1") == 0
 
@@ -112,7 +119,7 @@ def test_existing_fact_cannot_rebind_through_generic_upsert_or_poison_l0(store):
         )
     )
 
-    assert result.status is WriteStatus.UPDATED
+    assert result.status is _current_write_status("UPDATED")
     assert store.get_fact_durable("fact_no_rebind")["derived_from"] == raw_1
     assert store.get_fact("fact_no_rebind")["derived_from"] == raw_1
     assert _provenance_count(store, "fact_no_rebind") == 1
