@@ -4307,6 +4307,14 @@ class SQLiteGraphStore(GraphStore):
                     # upsert may update content/metadata but cannot rebind it or
                     # publish an incoming pointer only into L0.
                     record["derived_from"] = existing.get("derived_from")
+                    # Match single-fact upsert semantics: UNKNOWN is not a
+                    # request to erase an existing durable classification.
+                    # Resolve it before SQL and before the post-commit L0 put,
+                    # otherwise batch upsert can create an L0/L1 split-brain.
+                    if record["claim_type"] == "UNKNOWN":
+                        record["claim_type"] = existing.get("claim_type", "UNKNOWN")
+                    if record["origin_type"] == "UNKNOWN":
+                        record["origin_type"] = existing.get("origin_type", "UNKNOWN")
                     if (existing["claim"] != new_claim and
                             existing["epistemic_state"] in {"Validated", "Supported"}):
                         allowed = ESM_TRANSITIONS.get(existing["epistemic_state"], set())
@@ -4349,6 +4357,8 @@ class SQLiteGraphStore(GraphStore):
                     _needs_bump = (
                         existing["claim"] != new_claim
                         or existing["confidence"] != confidence
+                        or existing.get("claim_type", "UNKNOWN") != record["claim_type"]
+                        or existing.get("origin_type", "UNKNOWN") != record["origin_type"]
                         or (record["epistemic_state"] == "Contradicted"
                             and existing["epistemic_state"] != "Contradicted")
                     )
@@ -4473,6 +4483,8 @@ class SQLiteGraphStore(GraphStore):
                         history          = excluded.history,
                         updated_at       = excluded.updated_at,
                         metadata         = excluded.metadata,
+                        claim_type       = excluded.claim_type,
+                        origin_type      = excluded.origin_type,
                         audit_subject_id = COALESCE(audit_subject_id, excluded.audit_subject_id)
                 """, records_bump)
 

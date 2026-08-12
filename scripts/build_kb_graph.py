@@ -16,7 +16,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sqlite3
 import sys
 import time
 
@@ -44,12 +43,57 @@ def _write_quality_report(
     return report
 
 
+
+def ingest_kb_facts(
+    store,
+    facts: list[dict],
+    *,
+    batch_size: int = 500,
+    require_empty: bool = False,
+) -> dict[str, int]:
+    """Ingest curated KB facts only through canonical fact/ESM owners.
+
+    ``require_empty`` preserves the historical ``--fast-fresh`` safety
+    precondition, but never grants a raw-SQL bootstrap bypass. A partial or
+    evidence-failed batch is an unsuccessful build so the launcher cannot
+    treat that DB as an accepted smart-KB Canon.
+    """
+    if batch_size <= 0:
+        raise ValueError("batch_size must be positive")
+    if require_empty:
+        with store._db() as conn:
+            existing = int(conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0])
+        if existing:
+            raise RuntimeError("--fast-fresh requires an empty KB database")
+
+    from core.world_skills_ingest import ingest_facts
+
+    totals = {"parsed": len(facts), "ingested": 0, "validated": 0, "errors": 0}
+    for start in range(0, len(facts), batch_size):
+        chunk = facts[start:start + batch_size]
+        rep = ingest_facts(store, chunk, validate=True)
+        for key in ("ingested", "validated", "errors"):
+            totals[key] += int(rep.get(key, 0))
+        if (
+            int(rep.get("errors", 0)) != 0
+            or int(rep.get("ingested", 0)) != len(chunk)
+            or int(rep.get("validated", 0)) != len(chunk)
+        ):
+            raise RuntimeError(
+                "canonical smart-KB ingest incomplete: "
+                f"chunk={start}:{start + len(chunk)} "
+                f"ingested={rep.get('ingested', 0)} "
+                f"validated={rep.get('validated', 0)} "
+                f"errors={rep.get('errors', 0)}"
+            )
+    return totals
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Build production KB graph (facts + edges).")
     ap.add_argument("--db", type=str, default="", help="путь к KB SQLite (VELANTRIM_DB_PATH)")
     ap.add_argument("--limit", type=int, default=0, help="ограничить число фактов (0 = все)")
     ap.add_argument("--batch-size", type=int, default=500, help="batch для facts ingest")
-    ap.add_argument("--fast-fresh", action="store_true", help="быстрый insert в пустую БД")
+    ap.add_argument("--fast-fresh", action="store_true", help="требовать пустую KB-БД; запись остаётся canonical")
     ap.add_argument("--facts-only", action="store_true", help="только факты, без рёбер")
     ap.add_argument("--edges-only", action="store_true", help="только рёбра (факты уже в БД)")
     ap.add_argument("--edge-offset", type=int, default=0, help="смещение в списке рёбер")
@@ -78,8 +122,8 @@ def main() -> int:
         load_checkpoint,
         save_checkpoint,
     )
-    from core.knowledge_linker import graph_quality_report, link_facts
-    from core.memory import _GLOBAL_STORE, _now, store_facts_batch
+    from core.knowledge_linker import link_facts
+    from core.memory import _GLOBAL_STORE
     from core.world_skills_ingest import parse_knowledge_dir
 
     print(f"🔗 KB → {db}  (synchronous={os.environ['VELANTRIM_SQLITE_SYNCHRONOUS']})")
@@ -92,107 +136,17 @@ def main() -> int:
 
     # ── Факты ────────────────────────────────────────────────────────────────
     if not args.edges_only:
-        payload = [{
-            "fact_id": f["fact_id"],
-            "claim": f["claim"],
-            "source": f["source"],
-            "confidence": 0.85,
-            "metadata": {"domain": f["metadata"]["domain"], "kb_type": f.get("type", "")},
-        } for f in facts]
-
-        batch_size = max(1, args.batch_size)
-        if args.fast_fresh:
-            from core.fact_integrity import compute_claim_dedup_key
-
-            records = []
-            for fact in payload:
-                metadata = dict(fact["metadata"])
-                metadata["claim_dedup_key"] = compute_claim_dedup_key(fact["claim"])
-                records.append({
-                    **fact,
-                    "epistemic_state": "Observed",
-                    "created_at": _now(),
-                    "updated_at": _now(),
-                    "metadata": json.dumps(metadata, ensure_ascii=False),
-                    "history": "[]",
-                    "t_event_valid_start": _now(),
-                    "t_event_valid_end": None,
-                    "t_ingestion_start": _now(),
-                    "t_ingestion_end": None,
-                    "claim_type": "UNKNOWN",
-                    "origin_type": "UNKNOWN",
-                    "memory_type": "semantic",
-                })
-            with _GLOBAL_STORE._db() as conn:
-                existing = conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0]
-                if existing:
-                    raise RuntimeError("--fast-fresh requires an empty KB database")
-                conn.executemany("""
-                    INSERT INTO facts (
-                        fact_id, claim, source, confidence, epistemic_state,
-                        created_at, updated_at, metadata, history,
-                        t_event_valid_start, t_event_valid_end,
-                        t_ingestion_start, t_ingestion_end,
-                        claim_type, origin_type, memory_type
-                    ) VALUES (
-                        :fact_id, :claim, :source, :confidence, :epistemic_state,
-                        :created_at, :updated_at, :metadata, :history,
-                        :t_event_valid_start, :t_event_valid_end,
-                        :t_ingestion_start, :t_ingestion_end,
-                        :claim_type, :origin_type, :memory_type
-                    )
-                """, records)
-                try:
-                    conn.executemany(
-                        "INSERT OR REPLACE INTO facts_fts(rowid, fact_id, claim, source) "
-                        "VALUES ((SELECT rowid FROM facts WHERE fact_id=?), ?, ?, ?)",
-                        [(r["fact_id"], r["fact_id"], r["claim"], r["source"]) for r in records],
-                    )
-                except sqlite3.OperationalError:
-                    pass  # FTS5 is optional in the local SQLite build
-            print(f"  факты в store: stored={len(records)} errors=0 (fast-fresh)")
-        else:
-            totals = {"stored": 0, "updated": 0, "errors": 0}
-            for start in range(0, len(payload), batch_size):
-                st = store_facts_batch(payload[start:start + batch_size])
-                for key in totals:
-                    totals[key] += int(st.get(key, 0))
-                print(f"  facts batch {min(start + batch_size, len(payload))}/{len(payload)}", flush=True)
-            print(
-                f"  факты в store: stored={totals['stored']} updated={totals['updated']} "
-                f"errors={totals['errors']} (batch_size={batch_size})"
-            )
-
-        fact_ids = [f["fact_id"] for f in facts]
-        now = _now()
-        with _GLOBAL_STORE._db() as conn:
-            has_version = any(
-                r[1] == "fact_version" for r in conn.execute("PRAGMA table_info(facts)")
-            )
-            bump = ", fact_version = fact_version + 1" if has_version else ""
-            conn.execute("CREATE TEMP TABLE IF NOT EXISTS _kb_ids (fact_id TEXT PRIMARY KEY)")
-            conn.execute("DELETE FROM _kb_ids")
-            conn.executemany("INSERT OR IGNORE INTO _kb_ids VALUES (?)", [(i,) for i in fact_ids])
-            conn.execute(
-                "UPDATE facts SET claim_type='WORLD_FACT', origin_type='EXTERNAL' "
-                "WHERE fact_id IN (SELECT fact_id FROM _kb_ids) "
-                "  AND epistemic_state NOT IN ('ImmutableCore', 'Collapsed') "
-                "  AND (claim_type IS NULL OR claim_type != 'WORLD_FACT')"
-            )
-            val = 0
-            for frm, to in (
-                ("Observed", "Hypothesized"),
-                ("Hypothesized", "Supported"),
-                ("Supported", "Validated"),
-            ):
-                cur = conn.execute(
-                    f"UPDATE facts SET epistemic_state=?, updated_at=?{bump} "
-                    "WHERE epistemic_state=? AND fact_id IN (SELECT fact_id FROM _kb_ids)",
-                    (to, now, frm),
-                )
-                val = cur.rowcount
-            conn.execute("DROP TABLE IF EXISTS _kb_ids")
-        print(f"  валидировано → Validated (ESM 3 ступени): {val}")
+        fact_stats = ingest_kb_facts(
+            _GLOBAL_STORE,
+            facts,
+            batch_size=max(1, args.batch_size),
+            require_empty=args.fast_fresh,
+        )
+        print(
+            f"  факты в store: ingested={fact_stats['ingested']} "
+            f"validated={fact_stats['validated']} errors={fact_stats['errors']} "
+            f"(canonical batch_size={max(1, args.batch_size)})"
+        )
 
     if args.facts_only:
         print(f"\n✅ Факты KB готовы в {db}.")
@@ -253,7 +207,7 @@ def main() -> int:
     )
 
     if next_offset < total_edges and not args.edge_limit:
-        print(f"  ⚠️  не все рёбра записаны; перезапустите с --resume")
+        print("  ⚠️  не все рёбра записаны; перезапустите с --resume")
     elif next_offset >= total_edges:
         ckpt["completed"] = True
         save_checkpoint(ckpt_path, ckpt)
