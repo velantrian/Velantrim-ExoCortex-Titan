@@ -46,8 +46,9 @@ are never permission tokens.
 | PII claim redaction | `CanonicalPiiRedactor` over existing `SQLiteGraphStore` | CONVERGED on merged #283; privacy-sanitized history exception |
 | async fact mutations | `AsyncSQLiteStore` → exact synchronous canonical owner | LEGACY_ADAPTER / CONVERGED; native async SQL disabled |
 | archival claim rewrite | `CanonicalArchivalRewriter` over existing `SQLiteGraphStore` | CONVERGED on merged #285 · merge checkpoint `3100952f3dacf268f4d9c9b3f5a738f449663de6` |
-| causal relation create/delete/reset | `CausalGraph` / `relations` | CONVERGED on merged #287 · current main `615201ec1073dafb047028e88ce94463f4ef9b77` |
-| raw provenance binding | candidate `SQLiteGraphStore.link_raw_to_fact()` on #288/#289 | REVIEW-STAGE · NOT MAIN until protected merge |
+| causal relation create/delete/reset | `CausalGraph` / `relations` | CONVERGED on merged #287 · checkpoint `615201ec1073dafb047028e88ce94463f4ef9b77` |
+| post-create raw provenance binding | `SQLiteGraphStore.link_raw_to_fact()` | CONVERGED on merged #289 · current main `902b2b6335b05f9a6f956e75151a8e801f23ba1d` |
+| initial raw provenance on fact creation | existing `SQLiteGraphStore` fact-create parent transactions | REVIEW-STAGE on #290/#291 · NOT MAIN |
 | associative relation/LTP | `RelationStore` / `fact_relations` | SEPARATE NON-CAUSAL MODEL · not merged into causal Canon |
 | optional Neo4j causal persistence | `causal_persistence.py` | derived persistence; NOT canonical authority |
 | optional NetworkX Graph Lab | `graph_lab.py` | read-only/in-memory projection; NOT canonical authority |
@@ -98,7 +99,7 @@ failure after DB rollback can leave a non-canonical orphan file, never canonical
 ## 5. Causal Truth-edge convergence — merged #286 / #287
 
 Protected merge #287 established `CausalGraph` / SQLite `relations` as the bounded local
-causal Truth-edge mutation owner on current main
+causal Truth-edge mutation owner at checkpoint
 `615201ec1073dafb047028e88ce94463f4ef9b77`.
 
 `RelationStore` / `fact_relations` remains a separate associative/LTP model. NetworkX
@@ -113,18 +114,31 @@ Exact final evidence for #287 is preserved in the merged PR, closed #286 and the
 Notion FINAL block. Continuity remains 12/12 and schema v7; runtime/Operator
 GO/runtime-authority/production-authority all remain false.
 
-### Raw provenance residual — issue #288 / draft PR #289
+### Raw provenance linker convergence — merged #288 / #289
 
-Fresh post-#287 residual audit found one remaining meaningful #50 mutation family:
-`facts.derived_from` raw-source binding. Current-main `SQLiteGraphStore.link_raw_to_fact()`
-mutates that canonical field without VersionStore/AuditChain evidence, while legacy
-`RawMemoryStore.link_fact()` owns a second direct SQL path.
+Protected squash merge #289 converged the explicit post-create raw provenance mutation
+owner on current main `902b2b6335b05f9a6f956e75151a8e801f23ba1d`. `SQLiteGraphStore.link_raw_to_fact()`
+now owns first-binding CAS semantics for an already-existing unbound fact, with the
+VersionStore pre-image, `l0_fact_provenance` row and AuditChain evidence in the same
+SQLite transaction. Same-source retries are idempotent, conflicting second sources fail
+closed, and `RawMemoryStore.link_fact()` no longer owns an independent canonical UPDATE.
+Issue #288 is CLOSED_COMPLETED.
 
-PR #289 is review-stage only. Its candidate contract keeps `SQLiteGraphStore` as the
-existing owner and adds first-binding CAS semantics, same-transaction VersionStore +
-`l0_fact_provenance` + AuditChain evidence, fail-closed conflicting-source behavior and a
-legacy adapter with no direct canonical UPDATE. A successful protected merge must be
-followed by a fresh residual inventory before parent #50 can close.
+### Initial-create raw provenance residual — issue #290 / draft PR #291
+
+Fresh post-#289 current-main inventory found one separate residual: a brand-new fact can
+arrive with `derived_from` already populated. Raw L0 identity and fact-to-fact lineage
+share that historical column, so globally stripping `derived_from` would break legitimate
+GIST → VERBATIM lineage.
+
+PR #291 is review-stage only. Its candidate reserves `raw_*` as the L0 raw namespace and,
+for NEW fact creation, verifies that raw parent and appends `l0_fact_provenance` inside the
+same parent FACT_CREATED transaction. Existing durable pointers win over generic upsert
+input; non-`raw_` lineage remains unchanged. Batch creation and `supersede_fact_cas()` use
+the same parent-transaction rule. Brand-new facts do not fabricate a VersionStore
+pre-image or a second FACT_UPDATED event. Missing raw/evidence/audit failure fails closed
+with transaction rollback. These guarantees are NOT main truth until protected merge and
+post-merge verification.
 
 ## 6. Projection authority
 
@@ -134,29 +148,28 @@ over Canon and cannot grant write or answer authority by itself.
 
 ## 7. Anti-bypass guarantees and review boundaries
 
-Current-main guarantees:
+Current-main guarantees include:
 
-- no second canonical store or general write protocol was introduced by #283/#285;
+- no second canonical store or general write protocol was introduced by #283/#285/#289;
 - runtime configuration cannot grant Operator GO;
 - historical canary evidence cannot silently re-enable runtime;
 - async callers cannot select the removed native-SQL fact write path;
 - PII redaction does not retain ordinary plaintext VersionStore history for the redacted claim surface;
 - archival Canon cannot point to a payload that failed its preparation precondition;
-- failed archival CAS/version/audit/outbox operations commit no false canonical or audit success.
-
-Merged #287 current-main guarantees:
-
+- failed archival CAS/version/audit/outbox operations commit no false canonical or audit success;
 - causal `relations` create/delete/reset is converged on one `CausalGraph` mutation owner;
-- automatic inference cannot silently default to `validated/approved`;
-- KB/admin/pipeline surfaces do not own independent durable causal SQL mutation;
+- automatic causal inference cannot silently default to `validated/approved`;
 - NetworkX and Neo4j/Graphiti remain non-authoritative and derived reload is non-destructive;
-- `RelationStore/fact_relations` remains a separate associative model.
+- post-create raw provenance binding cannot mutate `facts.derived_from` without the #289 canonical evidence contract;
+- conflicting second-source post-create provenance fails closed and the legacy raw-memory adapter owns no independent canonical SQL mutation.
 
-Candidate #289 review boundary:
+Candidate #291 review boundary:
 
-- raw provenance binding must not mutate `facts.derived_from` without canonical evidence;
-- conflicting second-source provenance must fail closed;
-- legacy `RawMemoryStore.link_fact()` must not retain independent canonical SQL authority.
+- a NEW fact carrying a `raw_*` source must not establish Canon without matching `l0_fact_provenance` in its parent transaction;
+- a missing raw parent or evidence/audit failure must roll the create transaction back;
+- generic single/batch upsert must not rebind an existing durable provenance pointer;
+- non-raw fact lineage must remain fact lineage rather than being reinterpreted as L0 raw provenance;
+- `supersede_fact_cas()` replacement creation must obey the same initial raw-provenance rule.
 
 No producer/action/reminder/notification/tool/scheduler authority is added.
 
@@ -174,8 +187,9 @@ No producer/action/reminder/notification/tool/scheduler authority is added.
 ## 9. Current continuation boundary
 
 Continuity has no remaining capability: `12/12` is complete. Truth Foundation #50 is a
-separate canonical-memory hardening workstream and remains OPEN while #289 is review-stage
-and until a fresh post-merge residual inventory proves no other meaningful #50 mutation
-family remains. Merged #286/#287 is already current-main causal truth and is not a pending
-gate. Current review work does not authorize Phase II, 13/12, ADAO, ARM-04, wider runtime
-activation, production rollout or a standing Operator GO.
+separate canonical-memory hardening workstream and remains OPEN while #290/#291 is
+review-stage and until a fresh post-merge current-main inventory proves no other
+meaningful #50 mutation family remains. Merged #288/#289 is already current-main
+post-create provenance truth and is not a pending gate. Current review work does not
+authorize Phase II, 13/12, ADAO, ARM-04, wider runtime activation, production rollout or
+a standing Operator GO.

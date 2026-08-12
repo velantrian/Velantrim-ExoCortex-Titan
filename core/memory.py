@@ -1564,6 +1564,61 @@ class SQLiteGraphStore(GraphStore):
             now_iso=now_iso,
         )
 
+    @staticmethod
+    def _bind_initial_raw_provenance_in_transaction(
+        conn: sqlite3.Connection,
+        fact_id: str,
+        derived_from: Any,
+        *,
+        linked_at: str,
+    ) -> bool:
+        """Bind L0 raw provenance inside an already-owning fact-create txn.
+
+        Issue #290 / parent #50: ``derived_from`` is historically overloaded.
+        Values in the reserved ``raw_`` namespace denote immutable L0 raw
+        sources; other strings remain fact-to-fact lineage (for example
+        MeaningParser GIST -> VERBATIM). A raw-looking pointer must resolve
+        to ``l0_raw_memory`` and receives its ``l0_fact_provenance`` evidence
+        in the exact parent transaction that creates the fact. No separate
+        FACT_UPDATED event or VersionStore pre-image is fabricated for a row
+        that did not exist before that transaction.
+        """
+        if derived_from is None:
+            return False
+        if not isinstance(derived_from, str):
+            raise ValueError("derived_from must be a string or null")
+        if not derived_from.startswith("raw_"):
+            return False
+
+        raw_exists = conn.execute(
+            "SELECT 1 FROM l0_raw_memory WHERE raw_id = ?", (derived_from,)
+        ).fetchone()
+        if raw_exists is None:
+            raise ValueError(
+                f"initial raw provenance references missing raw_id '{derived_from}'"
+            )
+
+        prov_id = (
+            "prov_"
+            + hashlib.sha256((derived_from + fact_id).encode()).hexdigest()[:16]
+        )
+        conn.execute(
+            """INSERT OR IGNORE INTO l0_fact_provenance
+               (id, raw_id, fact_id, derivation_type, linked_at)
+               VALUES (?, ?, ?, 'direct', ?)""",
+            (prov_id, derived_from, fact_id, linked_at),
+        )
+        linked = conn.execute(
+            "SELECT 1 FROM l0_fact_provenance "
+            "WHERE raw_id = ? AND fact_id = ? LIMIT 1",
+            (derived_from, fact_id),
+        ).fetchone()
+        if linked is None:
+            raise RuntimeError(
+                "initial raw provenance binding lacks l0_fact_provenance evidence"
+            )
+        return True
+
     # ── store_fact ──────────────────────────────────────────────────────────
 
     def _store_fact_outcome(self, fact: dict) -> "WriteResult":
@@ -1805,6 +1860,8 @@ class SQLiteGraphStore(GraphStore):
                 # COALESCE. Preserve the durable subject id on the no-op path.
                 if existing.get("audit_subject_id"):
                     record["audit_subject_id"] = existing["audit_subject_id"]
+                # Issue #290: a no-op must not erase durable provenance from L0.
+                record["derived_from"] = existing.get("derived_from")
                 self._l0_put(fact_id, record)
                 return WriteResult(
                     status=WriteStatus.NOOP_EXISTING,
@@ -1814,8 +1871,20 @@ class SQLiteGraphStore(GraphStore):
                     durable_write=False,
                 )  # TASK-04: не новый факт, retriever актуален
 
-        # TASK-09: derived_from — провенанс из L0 Raw Memory
-        derived_from = fact.get("derived_from")
+        # Issue #290: callers may use derived_from either for L0 raw
+        # provenance (reserved raw_* namespace) or fact-to-fact lineage.
+        # Existing facts never accept a new binding through this generic upsert;
+        # the durable pointer wins and avoids L0/L1 split-brain. New raw_*
+        # bindings are admitted with provenance evidence inside the parent
+        # FACT_CREATED transaction below.
+        requested_derived_from = fact.get("derived_from")
+        if requested_derived_from is not None and not isinstance(
+            requested_derived_from, str
+        ):
+            raise ValueError("derived_from must be a string or null")
+        derived_from = (
+            existing.get("derived_from") if existing else requested_derived_from
+        )
         record["derived_from"] = derived_from
 
         l1_record = {
@@ -1944,6 +2013,14 @@ class SQLiteGraphStore(GraphStore):
             real_audit_subject_id = conn.execute(
                 "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (fact_id,)
             ).fetchone()[0]
+
+            if existing is None:
+                self._bind_initial_raw_provenance_in_transaction(
+                    conn,
+                    fact_id,
+                    record.get("derived_from"),
+                    linked_at=now,
+                )
 
             # Issue #50: the pre-image is no longer a post-commit,
             # best-effort side effect.  It shares this exact transaction
@@ -3446,6 +3523,13 @@ class SQLiteGraphStore(GraphStore):
                     committed=False, reason="new_id_collision",
                 )
 
+            self._bind_initial_raw_provenance_in_transaction(
+                conn,
+                new_fact_id,
+                insert_record.get("derived_from"),
+                linked_at=now,
+            )
+
             bump = self._fact_version_bump_sql(conn)
 
             # 4) + 5) Ladder Observed → Hypothesized → Supported → Validated,
@@ -4137,6 +4221,11 @@ class SQLiteGraphStore(GraphStore):
                 confidence = _validate_confidence(fact.get("confidence", 0.5))
                 metadata_dict = dict(fact.get("metadata", {}) or {})
                 new_claim = fact.get("claim", "")
+                requested_derived_from = fact.get("derived_from")
+                if requested_derived_from is not None and not isinstance(
+                    requested_derived_from, str
+                ):
+                    raise ValueError("derived_from must be a string or null")
                 # D1 (audit M5): batch-факты обязаны нести claim_dedup_key
                 # (store_fact делает это через attach_integrity_metadata), иначе
                 # индексированный дедуп их не находит и падает в скан.
@@ -4207,12 +4296,17 @@ class SQLiteGraphStore(GraphStore):
                     "claim_type":          _ct,
                     "origin_type":         _ot,
                     "memory_type":         fact.get("memory_type", "semantic"),
+                    "derived_from":        requested_derived_from,
                 }
 
                 # Drift protection: проверяем существующие факты через L0
                 existing = self.get_fact(fact_id)
                 _needs_bump = False
                 if existing:
+                    # Existing Canon owns its provenance pointer. Generic batch
+                    # upsert may update content/metadata but cannot rebind it or
+                    # publish an incoming pointer only into L0.
+                    record["derived_from"] = existing.get("derived_from")
                     if (existing["claim"] != new_claim and
                             existing["epistemic_state"] in {"Validated", "Supported"}):
                         allowed = ESM_TRANSITIONS.get(existing["epistemic_state"], set())
@@ -4278,6 +4372,8 @@ class SQLiteGraphStore(GraphStore):
                     _event_type = EventType.FACT_UPDATED
                 audit_pending.append({
                     "fact_id": fact_id,
+                    "is_new": existing is None,
+                    "derived_from": record.get("derived_from"),
                     "chain_id_candidate": f"fact-transition:{audit_subject_id}",
                     "event_type": _event_type,
                     "from_state": existing["epistemic_state"] if (
@@ -4330,6 +4426,7 @@ class SQLiteGraphStore(GraphStore):
                          created_at, updated_at, metadata, history,
                          t_event_valid_start, t_event_valid_end,
                          t_ingestion_start,   t_ingestion_end,
+                         derived_from,
                          claim_type, origin_type, memory_type,
                          audit_subject_id)
                     VALUES
@@ -4337,6 +4434,7 @@ class SQLiteGraphStore(GraphStore):
                          :created_at, :updated_at, :metadata, :history,
                          :t_event_valid_start, :t_event_valid_end,
                          :t_ingestion_start,   :t_ingestion_end,
+                         :derived_from,
                          :claim_type, :origin_type, :memory_type,
                          :audit_subject_id)
                     ON CONFLICT(fact_id) DO UPDATE SET
@@ -4356,6 +4454,7 @@ class SQLiteGraphStore(GraphStore):
                          created_at, updated_at, metadata, history,
                          t_event_valid_start, t_event_valid_end,
                          t_ingestion_start,   t_ingestion_end,
+                         derived_from,
                          claim_type, origin_type, memory_type,
                          audit_subject_id)
                     VALUES
@@ -4363,6 +4462,7 @@ class SQLiteGraphStore(GraphStore):
                          :created_at, :updated_at, :metadata, :history,
                          :t_event_valid_start, :t_event_valid_end,
                          :t_ingestion_start,   :t_ingestion_end,
+                         :derived_from,
                          :claim_type, :origin_type, :memory_type,
                          :audit_subject_id)
                     ON CONFLICT(fact_id) DO UPDATE SET
@@ -4391,7 +4491,14 @@ class SQLiteGraphStore(GraphStore):
                     "SELECT audit_subject_id FROM facts WHERE fact_id = ?", (_fid,)
                 ).fetchone()[0]
                 real_subject_ids[_fid] = real_subject_id
-                if _pending["preimage"] is not None:
+                if _pending["is_new"]:
+                    self._bind_initial_raw_provenance_in_transaction(
+                        conn,
+                        _fid,
+                        _pending["derived_from"],
+                        linked_at=now,
+                    )
+                elif _pending["preimage"] is not None:
                     self._snapshot_before_change_in_transaction(
                         conn,
                         _fid,

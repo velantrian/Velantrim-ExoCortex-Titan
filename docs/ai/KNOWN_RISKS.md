@@ -1,6 +1,6 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-08-11
+**Snapshot:** 2026-08-12
 **Continuity:** `12/12 = 100%` — complete  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0` · required check `Titan aggregate merge evidence`
@@ -44,7 +44,7 @@ has not been proven. Do not weaken one-winner/one-intent assertions without evid
 
 Issue #282 / merged PR #283 converged PII **claim** redaction on
 `CanonicalPiiRedactor`. Affected VersionStore claim history is intentionally sanitized so
-the removed plaintext is not re-persisted. This is current-main implementation truth at
+the removed plaintext is not re-persisted. This is implementation truth at checkpoint
 `493b1b6b6204cc9a7f5de82709717a1b625e2234`.
 
 It does not prove removal from arbitrary metadata, immutable/raw origins, every external
@@ -54,7 +54,7 @@ separate ErasureCoordinator contract; no certified GDPR claim follows.
 ## P1 — Archival filesystem/SQLite boundary remains bounded
 
 Issue #284 / merged PR #285 converged archival canonical claim rewrite on the existing
-`SQLiteGraphStore` evidence primitives. It is current-main truth at
+`SQLiteGraphStore` evidence primitives at checkpoint
 `3100952f3dacf268f4d9c9b3f5a738f449663de6`.
 
 The payload is created/fsynced before Canon may point at it; canonical claim, VersionStore,
@@ -67,8 +67,8 @@ residue is never canonical archival success.
 ## Reduced risk — Causal Truth-edge mutation ownership converged
 
 Issue #286 / merged PR #287 converged SQLite `relations` mutation on `CausalGraph` at
-current main `615201ec1073dafb047028e88ce94463f4ef9b77`. Relation create/batch/remove/reset
-now uses the bounded canonical owner with same-transaction lifecycle AuditChain evidence.
+checkpoint `615201ec1073dafb047028e88ce94463f4ef9b77`. Relation create/batch/remove/reset
+uses the bounded canonical owner with same-transaction lifecycle AuditChain evidence.
 Automatic/non-manual input defaults to hypothesis/pending, derived snapshots cannot
 self-promote authority labels, and Neo4j/Graphiti reload cannot destructively replace
 local Canon. `RelationStore` / `fact_relations` remains a separate associative model.
@@ -77,18 +77,40 @@ Residual risks remain bounded: explicit future accepted-label callers still need
 authorized admission surface, and full graph reset cost grows with graph size. Neither
 risk justifies a raw-SQL bypass or remote truth authority.
 
-## P0 — Raw provenance canonical evidence remains review-stage
+## Reduced risk — Post-create raw provenance binding converged
 
-Fresh residual audit of parent #50 after #287 found one meaningful mutation family:
-`facts.derived_from`. Current main still allows `SQLiteGraphStore.link_raw_to_fact()` to
-change the field without VersionStore/AuditChain evidence, and legacy
-`RawMemoryStore.link_fact()` owns a second direct UPDATE path.
+Issue #288 is CLOSED_COMPLETED and PR #289 is protected-merged on current main
+`902b2b6335b05f9a6f956e75151a8e801f23ba1d`. For an already-existing unbound fact,
+`SQLiteGraphStore.link_raw_to_fact()` owns first-binding CAS semantics with VersionStore
+pre-image, `l0_fact_provenance` and AuditChain evidence in one SQLite transaction.
+Same-source retries are idempotent, conflicting second sources fail closed, and legacy
+`RawMemoryStore.link_fact()` no longer owns an independent canonical UPDATE.
 
-Issue #288 / draft PR #289 is the bounded convergence candidate. Review-head semantics
-must preserve first-binding-only ownership, same-source idempotency, different-source
-fail-closed behavior, same-transaction VersionStore + provenance + AuditChain evidence,
-and legacy delegation to the existing canonical owner. These guarantees are **not main
-truth** until protected merge and post-merge verification.
+This convergence does **not** imply that every fact-create surface was already covered;
+that separate residual is tracked below as #290/#291.
+
+## P0 — Initial fact-create raw provenance remains review-stage
+
+Fresh post-#289 current-main inventory found that a NEW fact can receive `derived_from`
+directly during single/batch creation. Because this historical field also carries
+fact-to-fact lineage, a global ban or strip would be unsafe: MeaningParser GIST → VERBATIM
+lineage is not L0 raw provenance.
+
+Issue #290 / draft PR #291 is the bounded candidate. On the review head, `raw_*` denotes
+L0 raw identity: the raw parent must exist and matching `l0_fact_provenance` evidence is
+created inside the same owning FACT_CREATED transaction. Generic update paths preserve an
+existing durable pointer rather than rebinding it; non-raw lineage remains unchanged.
+Batch creation and `supersede_fact_cas()` use the same parent-transaction rule. A new fact
+has no predecessor, so the candidate does not fabricate a VersionStore pre-image or a
+second FACT_UPDATED event. Missing raw/evidence/audit failure must roll the parent
+transaction back.
+
+Focused regression evidence on implementation head
+`927972c39c167098f2424fe64b99e45744e6e035` passed 9/9 tests, including direct create,
+batch create, non-raw lineage, no-rebind and supersede creation. Exact-head Full CI
+`31574249831` and Docker `31574249775` were SUCCESS before this AI truth-doc
+reconciliation. These are **review evidence only**; #291 is not main truth until protected
+merge and post-merge verification.
 
 ## P1 — Full causal reset can generate proportional audit volume
 
