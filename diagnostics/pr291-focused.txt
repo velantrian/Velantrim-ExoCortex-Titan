@@ -1,0 +1,18 @@
+CANDIDATE_HEAD=927972c39c167098f2424fe64b99e45744e6e035
+WORKFLOW_HEAD=c38c3c947104b42841eab1336baca6ea3dee92d7
+PYTEST_EXIT=0
+--- PYTEST OUTPUT ---
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-8.4.2, pluggy-1.6.0
+rootdir: /home/runner/work/Velantrim-ExoCortex-Titan/Velantrim-ExoCortex-Titan
+configfile: pyproject.toml
+plugins: anyio-4.13.0, cov-7.1.0, asyncio-0.26.0, timeout-2.4.0
+asyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+timeout: 300.0s
+timeout method: signal
+timeout func_only: False
+collected 9 items
+
+tests/test_initial_raw_provenance_create_convergence.py .........        [100%]
+
+============================== 9 passed in 0.41s ===============================
