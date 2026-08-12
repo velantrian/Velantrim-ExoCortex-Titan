@@ -98,21 +98,22 @@ transaction; non-raw lineage remains unchanged, generic upsert cannot rebind an 
 durable pointer, and failure rolls back. Pre/post-merge Full CI, Docker and aggregate
 evidence passed. This is current-main truth, not review-stage evidence.
 
-## P0 — Smart-KB fact-build authority remains review-stage
+## Reduced risk — Smart-KB fact-build authority converged
 
 Fresh post-#291 inventory found that `scripts/build_kb_graph.py` could directly insert
 canonical facts and use raw SQL to classify/validate them. Because `serve_smart_kb.ps1`
-can install the resulting database as ordinary `VELANTRIM_DB_PATH`, the path is not an
-inert projection and remains a Truth Foundation authority risk on current main.
+can install the resulting database as ordinary `VELANTRIM_DB_PATH`, that was a real Truth
+Foundation authority gap. Protected merge #293 converged it on current main `c80c8d47588de3d2607c7e1b10aa1677eb84383f`.
 
-Issue #292 / draft PR #293 is the bounded candidate. The clean implementation head
-`a61d0f64a0d0df49f9c2153e3500f2b0cdd12a5d` removes raw fact DML from builder
-orchestration, admits curated facts through existing `store_facts_batch()` policy,
-VersionStore and AuditChain semantics, uses canonical ESM promotion, treats
-`--fast-fresh` only as an empty-DB precondition, and fails incomplete builds. Existing
-`CausalGraph` ownership is unchanged. Focused staging evidence `31578562991`, exact-head
-Full CI `31579598960`, and Docker `31579598954` are SUCCESS before this truth-doc
-reconciliation. These remain review evidence until protected merge/post-merge checks.
+Issue #292 is CLOSED_COMPLETED and PR #293 is protected-merged. The accepted path
+removes raw fact DML from builder orchestration, admits curated facts through existing
+`store_facts_batch()` policy/VersionStore/AuditChain semantics, uses canonical ESM
+promotion, treats `--fast-fresh` only as an empty-DB precondition, and fails incomplete
+builds. Existing `CausalGraph` ownership is unchanged. Final pre-merge head `48817c5b0067d085135d4e8f144a620a34265597`
+passed Full CI `31580684106`, Docker `31580683989`, and ready aggregate `31594821320`;
+post-merge main passed Full CI `31594960307`, Docker `31594960229`, and aggregate
+`31594960289`. A fresh current-main residual inventory found `REAL_GAP=0`, so parent #50
+is CLOSED_COMPLETED. This does not imply production readiness or runtime authority.
 
 ## P1 — Full causal reset can generate proportional audit volume
 
