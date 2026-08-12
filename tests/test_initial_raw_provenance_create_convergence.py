@@ -125,6 +125,26 @@ def test_existing_fact_cannot_rebind_through_generic_upsert_or_poison_l0(store):
     assert _provenance_count(store, "fact_no_rebind") == 1
 
 
+def test_supersede_create_raw_binding_is_parent_transaction_evidence(store):
+    assert store.store_fact(_fact_payload("fact_supersede_old"))
+    old = store.get_fact_durable("fact_supersede_old")
+    assert old is not None
+    raw_id = store.store_raw_text("supersede raw", source="test")
+
+    result = store.supersede_fact_cas(
+        "fact_supersede_old",
+        "fact_supersede_new",
+        _fact_payload("fact_supersede_new", derived_from=raw_id),
+        expected_old_state=old["epistemic_state"],
+        expected_old_updated_at=old["updated_at"],
+        old_durable_snapshot=old,
+    )
+
+    assert result.committed is True
+    assert store.get_fact_durable("fact_supersede_new")["derived_from"] == raw_id
+    assert _provenance_count(store, "fact_supersede_new") == 1
+
+
 def test_batch_create_raw_binding_is_parent_transaction_evidence(store):
     raw_id = store.store_raw_text("batch raw", source="test")
     stats = store.store_facts_batch(
