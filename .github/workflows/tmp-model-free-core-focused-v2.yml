@@ -1,0 +1,33 @@
+name: TMP #295 ModelFreeCore focused gate v2
+
+on:
+  push:
+    branches: ["tmp/model-free-core-focused-v2"]
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - name: Set up Python 3.11
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11"
+      - name: Install locked dependencies
+        uses: ./.github/actions/sync-python-deps
+        with:
+          extras: server dev parsers retrieval embeddings graph-lab
+      - name: Ruff changed Python
+        run: ruff check core/model_free_core.py tests/test_model_free_core.py --output-format=github
+      - name: Mypy facade
+        run: mypy core/model_free_core.py --show-error-codes
+      - name: Focused tests
+        run: python -m pytest tests/test_model_free_core.py tests/test_retrieval_routing.py -q --tb=short --timeout=300
+        env:
+          PYTHONUNBUFFERED: 1
+          VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-model-free.db"
+          VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-model-free-ngram.db"
+          VELANTRIM_API_KEY: "ci-test-key"
