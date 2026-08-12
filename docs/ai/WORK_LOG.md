@@ -7,20 +7,19 @@ merged PR bodies, issues, ADRs and dated checkpoint documents.
 
 ---
 
-## 2026-08-12 — P0 initial fact-create raw provenance convergence in protected review
+## 2026-08-12 — P0 smart-KB fact-build authority in protected review
 
 ```text
 Parent Truth Foundation:       #50 · OPEN / reopened
-Tracking issue:                #290 · OPEN
-Implementation PR:             #291 · DRAFT / REVIEW-STAGE
-Authoritative base main:       902b2b6335b05f9a6f956e75151a8e801f23ba1d
-Branch:                        p0/initial-raw-provenance-create-convergence
-Implementation/test head:      927972c39c167098f2424fe64b99e45744e6e035
-Focused provenance tests:      9/9 PASS · diagnostic run 31574307055
-Exact-head Full CI:            31574249831 · SUCCESS
-Exact-head Docker:             31574249775 · SUCCESS
-Submitted reviews:             0 at pre-doc reconciliation
-Unresolved review threads:     0 at pre-doc reconciliation
+Tracking issue:                #292 · OPEN
+Implementation PR:             #293 · DRAFT / REVIEW-STAGE
+Authoritative base main:       7a47f5dbb786fe267093857bf370fd03703207ac
+Branch:                        p0/smart-kb-fact-build-authority
+Clean implementation head:     a61d0f64a0d0df49f9c2153e3500f2b0cdd12a5d
+Focused identical-tree gate:   31578562991 · SUCCESS
+Exact-head Full CI:            31579598960 · SUCCESS
+Exact-head Docker:             31579598954 · SUCCESS
+Draft aggregate:               31579598885 · SUCCESS · not final merge gate
 Documentation impact:          GITHUB_AND_NOTION · REVIEW sync pending final candidate
 Continuity:                    12/12 = 100% · unchanged
 Schema:                        v7 · unchanged
@@ -30,33 +29,46 @@ Runtime authority:             false · unchanged
 Production authority:          false · unchanged
 ```
 
-Fresh post-#289 current-main inventory found one separate residual: initial fact creation
-could establish a `raw_*` `derived_from` pointer without the first-binding provenance
-evidence that #289 added to the explicit post-create linker. Because `derived_from` also
-carries GIST → VERBATIM fact lineage, the bounded candidate does not globally strip the
-field.
+Fresh post-#291 inventory found direct smart-KB fact DML in `build_kb_graph.py`. The
+resulting database can be launched as normal `VELANTRIM_DB_PATH`, so parent #50 remains
+OPEN. The candidate removes builder-owned fact INSERT/UPDATE authority, declares curated
+WSC classification before canonical batch admission, uses VersionStore/AuditChain-aware
+batch reclassification and canonical ESM promotion, preserves `CausalGraph` ownership,
+and makes `--fast-fresh` an empty-DB precondition rather than an authority bypass.
+Incomplete ingest/validation fails the build.
 
-The #291 review candidate verifies a `raw_*` parent and appends
-`l0_fact_provenance` inside the same parent FACT_CREATED SQLite transaction for new facts.
-Existing durable pointers win over incoming generic upsert data; non-raw lineage remains
-unchanged. Batch create and `supersede_fact_cas()` use the same parent-create rule. A new
-fact has no predecessor, so no artificial VersionStore pre-image or second FACT_UPDATED
-event is created. Missing raw/evidence/audit failure is fail-closed and rolls back the
-owning transaction.
+The clean PR commit has exactly one parent (`main@7a47f5db...`) and six intended files;
+staging helper history is not ancestral to PR #293. AI truth-doc reconciliation follows
+the green code head and therefore changes the final PR head; Full CI + Docker must run
+again on that final docs head before Notion REVIEW evidence or readiness/merge.
 
-The original exact-head CI failure on `599e4fb61a03b00971bfc06f597d7b2eca2ac61a`
-was reproduced with an isolated diagnostic workflow: the new regression test held a
-collection-time `WriteStatus` Enum object while the full suite exercised import isolation,
-so identity compared against a different live module instance even though both rendered
-`WriteStatus.CREATED`. The test now resolves `WriteStatus` lazily at assertion time and
-keeps strict identity semantics. No production behavior, xfail, skip, coverage threshold
-or assertion meaning was weakened.
+---
 
-AI truth-doc reconciliation follows the green implementation head and intentionally
-changes the final PR head; Full CI + Docker must therefore run again on the final docs
-head before Notion REVIEW evidence or readiness/merge. #249 remains separate. Parent #50
-must remain OPEN until protected merge, post-merge verification and a fresh residual
-current-main inventory establish whether `REAL_GAP = 0`.
+## 2026-08-12 — P0 initial fact-create raw provenance convergence completed
+
+```text
+Parent Truth Foundation:       #50 · OPEN / reopened after fresh residual
+Tracking issue:                #290 · CLOSED_COMPLETED
+Implementation PR:             #291 · MERGED
+Final pre-merge head:          701e382cbd5fc08fc0d8475569bdeef7bc5fc673
+Protected squash merge/main:   7a47f5dbb786fe267093857bf370fd03703207ac
+Merge parent:                  902b2b6335b05f9a6f956e75151a8e801f23ba1d
+Pre-merge Full CI:             31574822654 · SUCCESS
+Pre-merge Docker:              31574822650 · SUCCESS
+Ready aggregate:               31575538209 · SUCCESS
+Post-merge Full CI:            31575663761 · SUCCESS
+Post-merge Docker:             31575663848 · SUCCESS
+Post-merge aggregate:          31575663733 · SUCCESS
+Submitted reviews:             0
+Codex code review:             NOT RUN — USAGE LIMIT
+Unresolved review threads:     0
+Documentation impact:          GITHUB_AND_NOTION · FINAL read-back confirmed
+```
+
+Current main closes initial `raw_*` provenance for single/batch creation and replacement
+fact creation without reinterpreting non-raw fact lineage. A fresh post-merge inventory
+then found the separate smart-KB build authority residual #292; #50 was explicitly
+reopened. That residual does not invalidate #290/#291.
 
 ---
 
@@ -210,8 +222,8 @@ Conversation resolution:      required
 ## Stable continuation boundary
 
 Continuity is complete at `12/12 = 100%`; do not invent 13/12 or infer production
-readiness. Truth Foundation #50 remains OPEN while #290/#291 is review-stage and until a
+readiness. Truth Foundation #50 remains OPEN while #292/#293 is review-stage and until a
 fresh post-merge residual inventory proves no other meaningful canonical mutation gap
-remains. Merged #288/#289 is current-main post-create provenance truth. Issue #249 stays
+remains. Merged #290/#291 is current-main initial raw-provenance truth. Issue #249 stays
 separate. No schema v8, Phase II, ADAO, ARM-04, runtime activation, standing Operator GO,
 runtime authority or production authority follows from the current review block.
