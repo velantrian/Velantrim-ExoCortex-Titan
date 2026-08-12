@@ -86,31 +86,33 @@ pre-image, `l0_fact_provenance` and AuditChain evidence in one SQLite transactio
 Same-source retries are idempotent, conflicting second sources fail closed, and legacy
 `RawMemoryStore.link_fact()` no longer owns an independent canonical UPDATE.
 
-This convergence does **not** imply that every fact-create surface was already covered;
-that separate residual is tracked below as #290/#291.
+The separate initial-create residual was subsequently converged by merged #290/#291 on
+current main `7a47f5dbb786fe267093857bf370fd03703207ac`.
 
-## P0 — Initial fact-create raw provenance remains review-stage
+## Reduced risk — Initial fact-create raw provenance converged
 
-Fresh post-#289 current-main inventory found that a NEW fact can receive `derived_from`
-directly during single/batch creation. Because this historical field also carries
-fact-to-fact lineage, a global ban or strip would be unsafe: MeaningParser GIST → VERBATIM
-lineage is not L0 raw provenance.
+Issue #290 is CLOSED_COMPLETED and PR #291 is protected-merged on current main
+`7a47f5dbb786fe267093857bf370fd03703207ac`. NEW `raw_*` single/batch facts and
+replacement-fact creation close L0 provenance evidence inside their owning creation
+transaction; non-raw lineage remains unchanged, generic upsert cannot rebind an existing
+durable pointer, and failure rolls back. Pre/post-merge Full CI, Docker and aggregate
+evidence passed. This is current-main truth, not review-stage evidence.
 
-Issue #290 / draft PR #291 is the bounded candidate. On the review head, `raw_*` denotes
-L0 raw identity: the raw parent must exist and matching `l0_fact_provenance` evidence is
-created inside the same owning FACT_CREATED transaction. Generic update paths preserve an
-existing durable pointer rather than rebinding it; non-raw lineage remains unchanged.
-Batch creation and `supersede_fact_cas()` use the same parent-transaction rule. A new fact
-has no predecessor, so the candidate does not fabricate a VersionStore pre-image or a
-second FACT_UPDATED event. Missing raw/evidence/audit failure must roll the parent
-transaction back.
+## P0 — Smart-KB fact-build authority remains review-stage
 
-Focused regression evidence on implementation head
-`927972c39c167098f2424fe64b99e45744e6e035` passed 9/9 tests, including direct create,
-batch create, non-raw lineage, no-rebind and supersede creation. Exact-head Full CI
-`31574249831` and Docker `31574249775` were SUCCESS before this AI truth-doc
-reconciliation. These are **review evidence only**; #291 is not main truth until protected
-merge and post-merge verification.
+Fresh post-#291 inventory found that `scripts/build_kb_graph.py` could directly insert
+canonical facts and use raw SQL to classify/validate them. Because `serve_smart_kb.ps1`
+can install the resulting database as ordinary `VELANTRIM_DB_PATH`, the path is not an
+inert projection and remains a Truth Foundation authority risk on current main.
+
+Issue #292 / draft PR #293 is the bounded candidate. The clean implementation head
+`a61d0f64a0d0df49f9c2153e3500f2b0cdd12a5d` removes raw fact DML from builder
+orchestration, admits curated facts through existing `store_facts_batch()` policy,
+VersionStore and AuditChain semantics, uses canonical ESM promotion, treats
+`--fast-fresh` only as an empty-DB precondition, and fails incomplete builds. Existing
+`CausalGraph` ownership is unchanged. Focused staging evidence `31578562991`, exact-head
+Full CI `31579598960`, and Docker `31579598954` are SUCCESS before this truth-doc
+reconciliation. These remain review evidence until protected merge/post-merge checks.
 
 ## P1 — Full causal reset can generate proportional audit volume
 

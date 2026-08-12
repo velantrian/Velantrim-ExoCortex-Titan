@@ -232,6 +232,12 @@ def ingest_facts(store: Any, facts: Sequence[dict[str, Any]], validate: bool = T
         "fact_id": f["fact_id"], "claim": f["claim"],
         "source": f["source"], "confidence": f.get("confidence", 0.85),
         "metadata": f.get("metadata", {}),   # domain → блокировка семантического дедупа (D4)
+        # Curated World Skills rows are external world claims. Declare this
+        # before canonical admission instead of writing UNKNOWN and repairing
+        # the classification later with raw SQL.
+        "claim_type": "WORLD_FACT",
+        "origin_type": "EXTERNAL",
+        "memory_type": "semantic",
     } for f in facts]
 
     # PERF (audit P-4): один коннект на весь батч вместо per-fact store_fact
@@ -244,8 +250,10 @@ def ingest_facts(store: Any, facts: Sequence[dict[str, Any]], validate: bool = T
         logger.debug("store_facts_batch failed (%s) → per-fact", exc)
         for p in payload:
             try:
-                store.store_fact(p)
-                rep["ingested"] += 1
+                if store.store_fact(p):
+                    rep["ingested"] += 1
+                else:
+                    rep["errors"] += 1
             except Exception:  # noqa: BLE001
                 rep["errors"] += 1
 
