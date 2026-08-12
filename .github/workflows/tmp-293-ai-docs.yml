@@ -1,0 +1,39 @@
+name: Temporary #293 AI truth-doc reconciliation
+
+on:
+  push:
+    branches:
+      - staging/293-ai-docs-20260812
+
+permissions:
+  contents: write
+
+jobs:
+  patch-docs:
+    if: ${{ !contains(github.event.head_commit.message, '[293-doc-candidate]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Apply exact truth-doc patch
+        run: python .github/tmp_patch_293_docs.py
+      - name: Remove helpers and validate net scope
+        shell: bash
+        run: |
+          rm .github/tmp_patch_293_docs.py .github/workflows/tmp-293-ai-docs.yml
+          git add -A
+          actual="$(git diff --cached --name-only a61d0f64a0d0df49f9c2153e3500f2b0cdd12a5d | sort)"
+          expected="$(printf '%s\n' docs/ai/COMPONENT_MAP.md docs/ai/KNOWN_RISKS.md docs/ai/WORK_LOG.md | sort)"
+          printf 'ACTUAL:\n%s\nEXPECTED:\n%s\n' "$actual" "$expected"
+          test "$actual" = "$expected"
+          ! grep -q 'draft PR #291' docs/ai/COMPONENT_MAP.md docs/ai/KNOWN_RISKS.md docs/ai/WORK_LOG.md
+          ! grep -q '#290/#291 is review-stage' docs/ai/COMPONENT_MAP.md docs/ai/KNOWN_RISKS.md docs/ai/WORK_LOG.md
+      - name: Commit net-clean docs candidate
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "[293-doc-candidate] reconcile smart-KB authority truth docs"
+          git push origin HEAD:staging/293-ai-docs-20260812
