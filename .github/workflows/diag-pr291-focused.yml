@@ -1,0 +1,53 @@
+name: Diagnostic PR291 focused provenance
+
+on:
+  push:
+    branches:
+      - diag/pr291-focused-20260812
+
+permissions:
+  contents: write
+
+jobs:
+  focused:
+    if: ${{ !contains(github.event.head_commit.message, '[diag-report]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python 3.11
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install locked dependencies (uv)
+        uses: ./.github/actions/sync-python-deps
+        with:
+          extras: server dev parsers retrieval embeddings graph-lab
+      - name: Run focused provenance regression file
+        shell: bash
+        env:
+          PYTHONUNBUFFERED: 1
+          VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-ci.db"
+          VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-ngram-ci.db"
+          VELANTRIM_API_KEY: "ci-test-key"
+        run: |
+          set +e
+          python -m pytest tests/test_initial_raw_provenance_create_convergence.py -q --tb=long --timeout=300 > /tmp/pr291-focused.txt 2>&1
+          status=$?
+          set -e
+          mkdir -p diagnostics
+          {
+            echo "CANDIDATE_HEAD=927972c39c167098f2424fe64b99e45744e6e035"
+            echo "WORKFLOW_HEAD=${GITHUB_SHA}"
+            echo "PYTEST_EXIT=${status}"
+            echo "--- PYTEST OUTPUT ---"
+            cat /tmp/pr291-focused.txt
+          } > diagnostics/pr291-focused.txt
+      - name: Commit diagnostic report
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add diagnostics/pr291-focused.txt
+          git commit -m "[diag-report] capture PR291 focused provenance"
+          git push origin HEAD:diag/pr291-focused-20260812
