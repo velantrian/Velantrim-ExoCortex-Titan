@@ -1,0 +1,37 @@
+name: DIAG — PR296 first full-suite failure
+
+on:
+  push:
+    branches: [diag/pr296-full-pytest-20260813]
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python 3.11
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install locked dependencies
+        uses: ./.github/actions/sync-python-deps
+        with:
+          extras: server dev parsers retrieval embeddings graph-lab
+      - name: Capture first full-suite failure
+        shell: bash
+        env:
+          PYTHONUNBUFFERED: 1
+          VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-diag.db"
+          VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-ngram-diag.db"
+          VELANTRIM_API_KEY: "ci-test-key"
+        run: |
+          set +e
+          python -m pytest tests/ -x -vv --tb=short --timeout=300 > /tmp/pytest.log 2>&1
+          status=$?
+          echo "pytest_exit=${status}"
+          echo "----- compact failure tail -----"
+          tail -n 180 /tmp/pytest.log
+          exit "${status}"
