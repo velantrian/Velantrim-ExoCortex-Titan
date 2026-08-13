@@ -132,6 +132,22 @@ using `asyncio.to_thread`. The former native aiosqlite write implementation rema
 explicitly disabled. Existing equivalence and cancellation tests prove the adapter does
 not own an independent SQL mutation path.
 
+## Review-stage boundary — ModelFreeCore Phase 1 is not runtime wiring
+
+Issue #295 / draft PR #296 is the current bounded implementation slice under open #53.
+The exact pre-documentation code head `4d40229ce746a164534682b3443f9de6e729b6da`
+passed Full CI `31669587920` and Docker `31669587884`. A full-suite-only test isolation
+failure on the earlier head was reproduced by diagnostic run `31669157724` and corrected
+without changing production semantics; the accepted code head then passed both full-suite
+and coverage gates.
+
+The candidate is still REVIEW-STAGE / NOT MAIN. It is a typed read-only facade over
+existing local primitives and deliberately selects lexical retrieval. It does not prove
+runtime routing, default-route replacement, CapabilityRegistry, embedding/vector
+architecture, ADAO, LLM execution, network/provider access or production readiness.
+Optional capability absence must not block a model-free result, and query execution must
+not mutate Canon, ESM state or causal relations.
+
 ## Operational residuals
 
 Still not proved:
