@@ -204,6 +204,7 @@ No producer/action/reminder/notification/tool/scheduler authority is added.
 
 | Block | Merge/checkpoint | Meaning |
 |---|---|---|
+| trusted signal producer | `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` (#214) → `e37a5d13332628bcdbd0d9441d7a61d5f8a8d523` (#220) | INTERNAL / SHADOW / UNWIRED; #220 is the accepted integrity baseline with canonical observation-ID verification, controlled malformed-value handling, complete contradiction provenance and regression coverage |
 | current-decision resolver | `dc30817f2c4abb1afcaab2f127e679d5f9b884d7` | schema v3 · 8/12 |
 | durable lifecycle | `064845579c520e7464678cd0c41d9b650368dfa8` | schema v4 · 9/12 |
 | runtime composition | `802e833fa251a8831add8a6b802a5ebb57533549` | schema v5 · 10/12 |
