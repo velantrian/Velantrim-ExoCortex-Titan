@@ -374,10 +374,11 @@ class CausalGraph:
             truth_status=row.get("truth_status"),
             review_state=row.get("review_state"),
         )
-        metadata = row.get("metadata")
-        if metadata is not None and not isinstance(metadata, dict):
+        raw_metadata = row.get("metadata")
+        if raw_metadata is not None and not isinstance(raw_metadata, dict):
             raise ValueError("relation metadata must be a dict or None")
-        if isinstance(metadata, dict) and "inverse_of" in metadata:
+        metadata = dict(raw_metadata) if raw_metadata is not None else None
+        if metadata is not None and "inverse_of" in metadata:
             raise ValueError(
                 "relation metadata key 'inverse_of' is reserved for canonical inverse identity"
             )
@@ -640,16 +641,11 @@ class CausalGraph:
                         if str(candidate[0]) == selected_id
                     )
                     selected_backlink = selected_metadata.get("inverse_of")
-                    if selected_backlink not in (None, relation_id):
+                    if selected_backlink is not None:
                         raise RuntimeError(
                             f"relation {relation_id!r} has a conflicting inverse identity backlink"
                         )
-                    if str(row[3]) in FORWARD_RELATION_TYPES:
-                        if backlink_ids != {selected_id}:
-                            raise RuntimeError(
-                                f"relation {relation_id!r} has a non-reciprocal forward inverse identity"
-                            )
-                    elif backlink_ids and backlink_ids != {selected_id}:
+                    if backlink_ids:
                         raise RuntimeError(
                             f"relation {relation_id!r} has conflicting inverse identity links"
                         )

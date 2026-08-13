@@ -219,6 +219,45 @@ def test_model_free_filters_restricted_relation_endpoint(store):
     assert "restricted" not in json.dumps(result.to_dict(), ensure_ascii=False)
 
 
+def test_model_free_rechecks_restriction_on_packed_endpoint_snapshot(
+    store, monkeypatch
+):
+    memory = _memory()
+    pipeline = _pipeline()
+    model_free = _model_free()
+    _seed_validated("visible", "видимый якорь политики", source="public-source")
+    _seed_validated("late-restricted", "связанный закрываемый факт", source="private")
+    graph = pipeline._get_causal_graph()
+    assert graph is not None
+    graph.add_relation(
+        "visible",
+        "late-restricted",
+        "requires",
+        confidence=0.9,
+        inference_source="manual",
+    )
+    original_build = pipeline.build_facts_pack
+
+    def restrict_before_endpoint_pack(retrieved, query, *args, **kwargs):
+        if (
+            query == "model-free relation endpoint policy"
+            and retrieved
+            and retrieved[0].get("id") == "late-restricted"
+        ):
+            assert memory.set_restricted("late-restricted", True) is True
+        return original_build(retrieved, query, *args, **kwargs)
+
+    monkeypatch.setattr(pipeline, "build_facts_pack", restrict_before_endpoint_pack)
+
+    result = model_free.ModelFreeCore().query(
+        model_free.L2Query("видимый якорь", top_k=5)
+    )
+
+    assert result.insufficient_evidence is False
+    assert result.relations == ()
+    assert "late-restricted" not in json.dumps(result.to_dict(), ensure_ascii=False)
+
+
 def test_model_free_fails_closed_when_facts_pack_policy_is_unavailable(
     store, monkeypatch
 ):
@@ -276,6 +315,24 @@ def test_model_free_fails_closed_when_present_graph_cannot_be_read(
     assert result.answer == "Недостаточно подтверждённых локальных данных."
 
 
+def test_model_free_fails_closed_while_causal_reset_is_in_progress(
+    store, monkeypatch
+):
+    pipeline = _pipeline()
+    model_free = _model_free()
+    _seed_validated("water", "вода нужна для жизни", source="biology")
+    assert pipeline._get_causal_graph() is not None
+    monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH_RESET_IN_PROGRESS", True)
+
+    result = model_free.ModelFreeCore().query(
+        model_free.L2Query("вода жизнь", include_graph=True)
+    )
+
+    assert result.insufficient_evidence is True
+    assert result.reason_code == "causal_graph_read_failed"
+    assert result.relations == ()
+
+
 def test_model_free_fails_closed_when_relation_row_cannot_be_decoded(store):
     pipeline = _pipeline()
     model_free = _model_free()
@@ -303,6 +360,31 @@ def test_model_free_fails_closed_when_relation_row_cannot_be_decoded(store):
     assert result.reason_code == "causal_graph_read_failed"
     assert result.relations == ()
     assert result.answer == "Недостаточно подтверждённых локальных данных."
+
+
+def test_model_free_validates_corrupt_inverse_before_pair_collapse(store):
+    pipeline = _pipeline()
+    model_free = _model_free()
+    _seed_validated("a", "альфа связана с бета", source="fixture-a")
+    _seed_validated("b", "бета связана с альфа", source="fixture-b")
+    graph = pipeline._get_causal_graph()
+    assert graph is not None
+    forward_id = graph.add_relation(
+        "a", "b", "requires", confidence=0.9, inference_source="manual"
+    )
+    graph._conn.execute(
+        "UPDATE relations SET confidence = 'not-a-number' WHERE relation_id != ?",
+        (forward_id,),
+    )
+    graph._conn.commit()
+
+    result = model_free.ModelFreeCore().query(
+        model_free.L2Query("альфа бета", include_graph=True)
+    )
+
+    assert result.insufficient_evidence is True
+    assert result.reason_code == "causal_graph_read_failed"
+    assert result.relations == ()
 
 
 def test_model_free_fails_closed_when_relation_metadata_is_corrupt(store):

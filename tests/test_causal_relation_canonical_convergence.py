@@ -207,6 +207,24 @@ def test_remove_uses_explicit_inverse_identity_with_null_source_duplicates():
     assert remaining == {"forward_2", "inverse_2"}
 
 
+@pytest.mark.parametrize(
+    "relation_type",
+    ["contradicts", "analogous_to", "precedes", "generalizes"],
+)
+def test_generated_inverse_id_is_independently_removable(relation_type):
+    conn = _db()
+    graph = CausalGraph(conn)
+    forward_id = graph.add_relation("a", "b", relation_type)
+    inverse_id = conn.execute(
+        "SELECT relation_id FROM relations WHERE relation_id != ?",
+        (forward_id,),
+    ).fetchone()[0]
+
+    assert graph.remove_relation(inverse_id) is True
+
+    assert conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0] == 0
+
+
 def test_remove_fails_closed_for_stale_forward_inverse_pointer():
     conn = _db()
     graph = CausalGraph(conn)
@@ -268,6 +286,46 @@ def test_add_rejects_caller_owned_inverse_identity_metadata():
             "b",
             "causes",
             metadata={"inverse_of": "caller-selected-row"},
+        )
+
+    assert conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0] == 0
+
+
+def test_add_snapshots_metadata_before_prepare_mutation(monkeypatch):
+    conn = _db()
+    graph = CausalGraph(conn)
+    metadata = {"producer": "fixture"}
+    original_prepare = graph._prepare_mutation
+
+    def mutate_caller_dictionary():
+        metadata["inverse_of"] = "caller-race"
+        original_prepare()
+
+    monkeypatch.setattr(graph, "_prepare_mutation", mutate_caller_dictionary)
+    relation_id = graph.add_relation("a", "b", "causes", metadata=metadata)
+
+    stored = conn.execute(
+        "SELECT metadata FROM relations WHERE relation_id = ?", (relation_id,)
+    ).fetchone()[0]
+    assert stored == '{"producer": "fixture"}'
+
+
+def test_add_rejects_mapping_that_hides_reserved_inverse_identity():
+    conn = _db()
+    graph = CausalGraph(conn)
+
+    class HidingDictionary(dict):
+        def __contains__(self, key):
+            if key == "inverse_of":
+                return False
+            return super().__contains__(key)
+
+    with pytest.raises(ValueError, match="inverse_of.*reserved"):
+        graph.add_relation(
+            "a",
+            "b",
+            "causes",
+            metadata=HidingDictionary({"inverse_of": "caller-selected-row"}),
         )
 
     assert conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0] == 0

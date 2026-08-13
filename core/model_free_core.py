@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from core.query_router import QueryRouter, get_query_router
+from core.recall_policy import is_fact_allowed_for_recall
 from core.trace import build_trace
 
 _INSUFFICIENT_ANSWER = "Недостаточно подтверждённых локальных данных."
@@ -328,13 +329,20 @@ class ModelFreeCore:
                     continue
                 candidates_by_id.setdefault(relation_id, relation)
 
+        try:
+            decoded_by_id = {
+                relation_id: ModelFreeCore._decode_relation(relation)
+                for relation_id, relation in candidates_by_id.items()
+            }
+        except Exception as exc:
+            raise ModelFreeGraphReadError(
+                "causal relation row could not be decoded"
+            ) from exc
+
         endpoint_ids = {
-            str(endpoint)
-            for relation in candidates_by_id.values()
-            for endpoint in (
-                getattr(relation, "from_fact_id", ""),
-                getattr(relation, "to_fact_id", ""),
-            )
+            endpoint
+            for relation in decoded_by_id.values()
+            for endpoint in (relation.from_fact_id, relation.to_fact_id)
             if endpoint
         }
         try:
@@ -360,21 +368,21 @@ class ModelFreeCore:
                     str(packed.get("fact_id"))
                     for packed in endpoint_pack.get("facts", [])
                     if packed.get("fact_id")
+                    and is_fact_allowed_for_recall(packed)
                 )
         except Exception as exc:
             raise ModelFreeGraphReadError(
                 "causal relation endpoint policy could not be evaluated"
             ) from exc
 
-        semantic_relations: dict[str, Any] = {}
-        for relation_id, relation in candidates_by_id.items():
-            from_fact_id = str(getattr(relation, "from_fact_id", "") or "")
-            to_fact_id = str(getattr(relation, "to_fact_id", "") or "")
-            if from_fact_id not in eligible_ids or to_fact_id not in eligible_ids:
+        semantic_relations: dict[str, L2Relation] = {}
+        for relation_id, relation in decoded_by_id.items():
+            if (
+                relation.from_fact_id not in eligible_ids
+                or relation.to_fact_id not in eligible_ids
+            ):
                 continue
-            raw_metadata = getattr(relation, "metadata", None)
-            metadata = dict(raw_metadata) if isinstance(raw_metadata, dict) else {}
-            inverse_of = metadata.get("inverse_of")
+            inverse_of = relation.metadata.get("inverse_of")
             semantic_id = (
                 str(inverse_of)
                 if isinstance(inverse_of, str) and inverse_of
@@ -384,55 +392,11 @@ class ModelFreeCore:
             if existing is None:
                 semantic_relations[semantic_id] = relation
                 continue
-            existing_metadata = getattr(existing, "metadata", None)
-            if isinstance(existing_metadata, dict) and existing_metadata.get("inverse_of"):
-                if not metadata.get("inverse_of"):
+            if existing.metadata.get("inverse_of"):
+                if not relation.metadata.get("inverse_of"):
                     semantic_relations[semantic_id] = relation
 
-        rows: list[L2Relation] = []
-        for relation in semantic_relations.values():
-            try:
-                raw_metadata = getattr(relation, "metadata", None)
-                metadata = dict(raw_metadata) if isinstance(raw_metadata, dict) else {}
-                raw_confidence = getattr(relation, "confidence", 0.0)
-                if isinstance(raw_confidence, bool):
-                    raise ValueError("relation confidence must not be boolean")
-                confidence = float(raw_confidence or 0.0)
-                if not math.isfinite(confidence) or not 0.0 <= confidence <= 1.0:
-                    raise ValueError("relation confidence must be finite and bounded")
-                rows.append(
-                    L2Relation(
-                        relation_id=str(getattr(relation, "relation_id", "") or ""),
-                        from_fact_id=str(getattr(relation, "from_fact_id", "") or ""),
-                        to_fact_id=str(getattr(relation, "to_fact_id", "") or ""),
-                        relation_type=str(getattr(relation, "relation_type", "") or ""),
-                        confidence=confidence,
-                        knowledge_status=str(
-                            getattr(relation, "knowledge_status", "unknown") or "unknown"
-                        ),
-                        truth_status=str(
-                            getattr(relation, "truth_status", "pending") or "pending"
-                        ),
-                        review_state=str(
-                            getattr(relation, "review_state", "pending") or "pending"
-                        ),
-                        inference_source=(
-                            str(getattr(relation, "inference_source"))
-                            if getattr(relation, "inference_source", None) is not None
-                            else None
-                        ),
-                        evidence_ref=(
-                            str(getattr(relation, "evidence_ref"))
-                            if getattr(relation, "evidence_ref", None) is not None
-                            else None
-                        ),
-                        metadata=metadata,
-                    )
-                )
-            except Exception as exc:
-                raise ModelFreeGraphReadError(
-                    "causal relation row could not be decoded"
-                ) from exc
+        rows = list(semantic_relations.values())
         rows.sort(
             key=lambda row: (
                 row.relation_type,
@@ -442,6 +406,54 @@ class ModelFreeCore:
             )
         )
         return tuple(rows)
+
+    @staticmethod
+    def _decode_relation(relation: Any) -> L2Relation:
+        raw_metadata = getattr(relation, "metadata", None)
+        if raw_metadata is None:
+            metadata: dict[str, Any] = {}
+        elif isinstance(raw_metadata, dict):
+            metadata = dict(raw_metadata)
+        else:
+            raise ValueError("relation metadata must be a dict or None")
+        inverse_of = metadata.get("inverse_of")
+        if inverse_of is not None and (
+            not isinstance(inverse_of, str) or not inverse_of
+        ):
+            raise ValueError("relation inverse identity must be a non-empty string")
+        raw_confidence = getattr(relation, "confidence", 0.0)
+        if isinstance(raw_confidence, bool):
+            raise ValueError("relation confidence must not be boolean")
+        confidence = float(raw_confidence or 0.0)
+        if not math.isfinite(confidence) or not 0.0 <= confidence <= 1.0:
+            raise ValueError("relation confidence must be finite and bounded")
+        return L2Relation(
+            relation_id=str(getattr(relation, "relation_id", "") or ""),
+            from_fact_id=str(getattr(relation, "from_fact_id", "") or ""),
+            to_fact_id=str(getattr(relation, "to_fact_id", "") or ""),
+            relation_type=str(getattr(relation, "relation_type", "") or ""),
+            confidence=confidence,
+            knowledge_status=str(
+                getattr(relation, "knowledge_status", "unknown") or "unknown"
+            ),
+            truth_status=str(
+                getattr(relation, "truth_status", "pending") or "pending"
+            ),
+            review_state=str(
+                getattr(relation, "review_state", "pending") or "pending"
+            ),
+            inference_source=(
+                str(getattr(relation, "inference_source"))
+                if getattr(relation, "inference_source", None) is not None
+                else None
+            ),
+            evidence_ref=(
+                str(getattr(relation, "evidence_ref"))
+                if getattr(relation, "evidence_ref", None) is not None
+                else None
+            ),
+            metadata=metadata,
+        )
 
     @staticmethod
     def _render(

@@ -264,15 +264,18 @@ def _peek_causal_graph() -> Optional["CausalGraph"]:
     replace a singleton, or close another connection merely because graph evidence was
     requested. ``None`` means the optional graph capability is not already available.
     """
-    if not _CAUSAL_GRAPH_AVAILABLE:
+    with _CAUSAL_GRAPH_RESET_CONDITION:
+        if _CAUSAL_GRAPH_RESET_IN_PROGRESS:
+            raise RuntimeError("causal graph reset is still in progress")
+        if not _CAUSAL_GRAPH_AVAILABLE:
+            return None
+
+        import core.memory as _mem
+
+        current_path = getattr(_mem._GLOBAL_STORE, "db_path", "")
+        if _CAUSAL_GRAPH is not None and _CAUSAL_GRAPH_DB_PATH == current_path:
+            return _CAUSAL_GRAPH
         return None
-
-    import core.memory as _mem
-
-    current_path = getattr(_mem._GLOBAL_STORE, "db_path", "")
-    if _CAUSAL_GRAPH is not None and _CAUSAL_GRAPH_DB_PATH == current_path:
-        return _CAUSAL_GRAPH
-    return None
 
 
 def reset_causal_graph(*, initialize_if_missing: bool = False) -> None:
