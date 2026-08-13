@@ -1,244 +1,280 @@
 # 🗺️ Component and Authority Map
 
+**Verified implementation baseline entering Phase 2A:** `main@51058f2d5662edfdb91b037a46dce9297c441a1b`  
 **Continuity:** `12/12 = 100%`  
 **Machine state:** schema v7  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`
 
-This map separates executable ownership from proposals and projections. Re-verify the
-live `main` SHA before using a review branch as implementation truth.
+This file is an orientation map. Re-query live GitHub before treating the SHA above or a
+review branch as current repository truth. Keep `main` truth separate from Draft PR
+candidate truth.
 
-## 1. Continuity ownership
+## 1. Global authority rules
+
+```text
+local Canon
+  > derived projections/caches
+  > model/provider output
+
+hard policy / WriteGate / TruthGate / ESM
+  > routing or optimization preference
+
+explicit authorization
+  > configuration or historical observation
+```
+
+No green CI run, descriptor, health flag, preset, `auto` selection, provider preference,
+historical canary or Notion record grants runtime/production authority.
+
+## 2. Continuity ownership
 
 | Capability | Primary surface | Authority boundary |
 |---|---|---|
-| Source adapters | state/goal/open-loop adapters | deterministic proposals only |
-| Admission evaluator/facade | admission evaluator + facade | bounded admission decision; no external owner substitution |
-| Current-decision resolver | six-owner evidence composition | no accepted live deployment adapters selected |
-| Durable lifecycle | admission artifact lifecycle | internal SQLite artifact persistence/replay only |
-| Runtime composition | `runtime_composition.py` | wired internally |
-| Controlled enablement | `controlled_enablement.py` | finite exact decision gate; current runtime disabled |
-| Bounded observation | `bounded_observation.py` | read-only/content-free evidence; historical canary only |
-| Composition root | FastAPI lifespan | startup/shutdown + composition; no public write endpoint added by Continuity |
+| source adapters | state/goal/open-loop adapters | deterministic proposals only |
+| admission evaluator/facade | admission evaluator + facade | bounded admission; no owner substitution |
+| current-decision resolver | six-owner evidence composition | no accepted live deployment adapters selected |
+| durable lifecycle | admission artifact lifecycle | internal SQLite artifact persistence/replay only |
+| runtime composition | `runtime_composition.py` | wired internally |
+| controlled enablement | `controlled_enablement.py` | exact finite gate; current runtime disabled |
+| bounded observation | `bounded_observation.py` | content-free read-only evidence; historical canary only |
+| composition root | FastAPI lifespan | startup/shutdown composition; not current activation authority |
 
-### Current authority facts
+Current facts:
 
 ```text
-Continuity                         12/12 = 100%
+Continuity                         12/12
 runtime currently enabled          false
 current Operator GO                false
 operator authorization present     false
-observed                           true (historical one rolled-back canary)
+observed                           true (historical rolled-back canary)
 runtime authority                  false
 production authority               false
 user-visible runtime activation    false
 ```
 
-Evidence, configuration, manifest hashes, persisted decisions and the historical canary
-are never permission tokens.
+## 3. Canon / Truth Foundation ownership
 
-## 2. Canonical memory / Truth Foundation ownership
-
-| Mutation family | Accepted/current owner | Status |
+| Mutation family | Accepted owner | Current status |
 |---|---|---|
-| create/update canonical fact | existing `SQLiteGraphStore` canonical methods | CONVERGED |
-| ESM transition/invalidation/restriction | existing `SQLiteGraphStore` mutation methods | CONVERGED |
-| single-fact physical erasure | `ErasureCoordinator.erase_fact_durable()` | CONVERGED; `ForgettingEngine.forget_one()` is legacy adapter |
-| PII claim redaction | `CanonicalPiiRedactor` over existing `SQLiteGraphStore` | CONVERGED on merged #283; privacy-sanitized history exception |
-| async fact mutations | `AsyncSQLiteStore` → exact synchronous canonical owner | LEGACY_ADAPTER / CONVERGED; native async SQL disabled |
-| archival claim rewrite | `CanonicalArchivalRewriter` over existing `SQLiteGraphStore` | CONVERGED on merged #285 · merge checkpoint `3100952f3dacf268f4d9c9b3f5a738f449663de6` |
-| causal relation create/delete/reset | `CausalGraph` / `relations` | OWNER CONVERGED on #287; three post-merge failure paths under bounded hardening |
-| post-create raw provenance binding | `SQLiteGraphStore.link_raw_to_fact()` | CONVERGED on merged #289 · current main `902b2b6335b05f9a6f956e75151a8e801f23ba1d` |
-| initial raw provenance on fact creation | existing `SQLiteGraphStore` fact-create parent transactions | CONVERGED on merged #291 · current main `7a47f5dbb786fe267093857bf370fd03703207ac` |
-| smart-KB fact create/classify/validate | existing `store_facts_batch()` + canonical ESM owner; builder orchestration only | CONVERGED on merged #293 · current main `c80c8d47588de3d2607c7e1b10aa1677eb84383f` |
-| associative relation/LTP | `RelationStore` / `fact_relations` | SEPARATE NON-CAUSAL MODEL · not merged into causal Canon |
-| optional Neo4j causal persistence | `causal_persistence.py` | derived persistence; NOT canonical authority |
-| optional NetworkX Graph Lab | `graph_lab.py` | read-only/in-memory projection; NOT canonical authority |
+| canonical fact create/update | existing `SQLiteGraphStore` canonical methods | CONVERGED |
+| ESM transitions / invalidation / restriction | existing `SQLiteGraphStore` mutation methods | CONVERGED |
+| physical fact erasure | `ErasureCoordinator.erase_fact_durable()` | CONVERGED; forgetting adapter is legacy |
+| PII claim redaction | `CanonicalPiiRedactor` over canonical store | CONVERGED |
+| archival claim rewrite | `CanonicalArchivalRewriter` over canonical store | CONVERGED |
+| async fact mutations | `AsyncSQLiteStore` → synchronous canonical owner | CONVERGED ADAPTER; native async SQL disabled |
+| causal relation create/delete/reset | `CausalGraph` / SQLite `relations` | CONVERGED + #297 HARDENED |
+| post-create raw provenance | `SQLiteGraphStore.link_raw_to_fact()` | CONVERGED |
+| initial raw provenance | canonical fact-create parent transaction | CONVERGED |
+| smart-KB fact admission/ESM | existing batch/ESM owners | CONVERGED; builder is orchestration only |
+| associative/LTP relation model | `RelationStore` / `fact_relations` | SEPARATE NON-CAUSAL MODEL |
+| optional Neo4j persistence | `causal_persistence.py` | DERIVED · NOT CANON |
+| optional NetworkX graph lab | `graph_lab.py` | READ-ONLY PROJECTION |
 
-## 3. PII redaction contract
+Truth Foundation parent #50 is `CLOSED_COMPLETED`; the final residual inventory reached
+`REAL_GAP=0`. That does not imply runtime or production authority.
 
-`CanonicalPiiRedactor` is a narrow mutation-family owner, not a second Canon service.
-Successful changed claims use durable-snapshot CAS, preserve state/confidence, refresh
-integrity, advance fact version once, sanitize affected VersionStore claim history,
-append content-free AuditChain evidence, refresh FTS and append an active projection
-refresh intent in one SQLite transaction. L0 is invalidated only after commit.
+## 4. ModelFreeCore read-side ownership
 
-Exact plaintext time-travel recovery for the redacted claim surface is intentionally
-sacrificed so the privacy operation does not re-store the removed PII. Full physical
-erasure remains a separate durable-erasure contract.
-
-## 4. Archival convergence contract — merged #284 / #285
-
-The old path directly owned archive marker + canonical claim mutation. Current main now
-uses:
+Phase 1 was introduced by #295/#296 and post-merge hardened by #297.
 
 ```text
-MemoryArchival
-  eligibility + durable payload preparation + restore/reporting
-        |
-        v
-CanonicalArchivalRewriter
-        |
-        v
-existing SQLiteGraphStore transaction
-  + durable-snapshot CAS
-  + claim + integrity metadata + exact version bump
-  + exact VersionStore pre-image
-  + archived_facts marker
-  + tamper-evident AuditChain FACT_UPDATED
-  + synchronous FTS refresh when present
-  + active migration-020 projection refresh intent
-        |
-        v
-COMMIT → L0 invalidation
+L2Query
+  → existing QueryRouter
+  → lexical-only retrieval
+  → existing FactsPack
+  → Guardian
+  → TruthGate
+  → optional READ-ONLY CausalGraph
+  → deterministic evidence renderer
+  → L2Result
 ```
 
-The protected squash merge is current-main truth at
-`3100952f3dacf268f4d9c9b3f5a738f449663de6`. Filesystem payload creation remains a
-precondition rather than a falsely claimed cross-system ACID transaction. A cleanup
-failure after DB rollback can leave a non-canonical orphan file, never canonical success.
+Key files:
 
-## 5. Causal Truth-edge convergence — merged #286 / #287
+- `core/model_free_core.py` — explicit model-free read-side facade;
+- existing QueryRouter / FactsPack / Guardian / TruthGate owners — reused, not duplicated;
+- `core/causal_graph.py` — optional causal evidence owner, read-only from ModelFreeCore;
+- `core/pipeline.py` — existing pipeline ownership; Phase 1 did not replace the default
+  runtime route.
 
-Protected merge #287 established `CausalGraph` / SQLite `relations` as the bounded local
-causal Truth-edge mutation owner at checkpoint
-`615201ec1073dafb047028e88ce94463f4ef9b77`.
+#297 closed the bounded failure-path lane around lexical-only enforcement, absent/present
+graph semantics, malformed physical relation rows, reciprocal inverse identity,
+endpoint recall-policy rechecks, provenance preservation, FactsPack policy, typed input
+and verified-vs-attributed rendering.
 
-`RelationStore` / `fact_relations` remains a separate associative/LTP model. NetworkX
-Graph Lab remains SELECT-only analytics. Neo4j / Graphiti remain downstream/derived and
-cannot grant local truth or reset authority. Automatic/non-manual causal input is
-re-admitted as hypothesis/pending by default, and derived snapshots cannot self-promote
-remote `validated/approved` labels into local authority. Derived reload is non-destructive
-and cannot erase local Canon when the remote copy is empty, stale, unavailable or
-rejected.
+Final #297 evidence is recorded in `WORK_LOG.md` and the merged PR. #298 subsequently
+reconciled GitHub/Notion public truth surfaces.
 
-Exact final evidence for #287 is preserved in the merged PR, closed #286 and the existing
-Notion FINAL block. Continuity remains 12/12 and schema v7; runtime/Operator
-GO/runtime-authority/production-authority all remain false.
+## 5. Policy authority
 
-A later substantive review found that ownership convergence did not yet make every
-failure path fail-closed: snapshot rejection could be masked, reset could retain a closed
-singleton, and legacy duplicate inverse rows could be paired by tuple rather than durable
-identity. The current audit-hardening candidate fixes those three paths without creating
-a second relation owner or changing Neo4j's derived-only role. Review of that candidate
-then required reserved/consistent inverse identity, serialized concurrent reset outcomes,
-and cold-start initialization for the public durable reset; those changes and adversarial
-regressions remain Draft until final exact-head evidence and protected merge.
+`core/policy_kernel.py` is the existing deterministic permission owner for:
 
-### Raw provenance linker convergence — merged #288 / #289
+- `EffectivePolicy`;
+- `PolicySnapshot`;
+- `PolicyDecision`;
+- `CapabilityLease`;
+- network deny/ask/allow;
+- remote-data bounds;
+- local-only canonical-write policy;
+- mandatory WriteGate / fail-closed decisions;
+- stable reason codes.
 
-Protected squash merge #289 converged the explicit post-create raw provenance mutation
-owner on current main `902b2b6335b05f9a6f956e75151a8e801f23ba1d`. `SQLiteGraphStore.link_raw_to_fact()`
-now owns first-binding CAS semantics for an already-existing unbound fact, with the
-VersionStore pre-image, `l0_fact_provenance` row and AuditChain evidence in the same
-SQLite transaction. Same-source retries are idempotent, conflicting second sources fail
-closed, and `RawMemoryStore.link_fact()` no longer owns an independent canonical UPDATE.
-Issue #288 is CLOSED_COMPLETED.
+The process-wide owner is obtained through `get_policy_kernel()`.
 
-### Initial-create raw provenance convergence — merged #290 / #291
+**Do not create another global policy/permission engine.** Selection, provider health,
+presets, budgets and `auto` may restrict or order candidates; none may weaken a
+PolicyKernel denial.
 
-Protected squash merge #291 converged initial `raw_*` provenance on current main
-`7a47f5dbb786fe267093857bf370fd03703207ac`. New single/batch facts and replacement-fact
-creation inside `supersede_fact_cas()` verify the L0 raw parent and close matching
-`l0_fact_provenance` evidence inside the owning FACT_CREATED transaction. Existing durable
-pointers cannot be rebound through generic upsert, while non-raw `derived_from` remains
-fact-to-fact lineage. Issue #290 is CLOSED_COMPLETED; post-merge Full CI, Docker and
-aggregate evidence all passed.
+## 6. Provider catalogue vs Phase 2A registry
 
-### Smart-KB fact-build convergence — merged #292 / #293
+### Existing current-main owner: `core/provider_catalog.py`
 
-Fresh post-#291 current-main inventory found that `scripts/build_kb_graph.py` could bypass
-canonical fact authority: `--fast-fresh` directly inserted `facts`, and build paths used
-raw SQL to classify facts and drive the ESM ladder. The resulting `velantrim_kb.db` can
-become the ordinary `VELANTRIM_DB_PATH`, so this is a Canon surface rather than an inert
-export.
+This is a console-facing LLM provider/model catalogue. It may describe available model
+names for UI/config purposes. It is **not** the generic permission authority, provider
+health owner or runtime router.
 
-Protected squash merge #293 converged this path on current main `c80c8d47588de3d2607c7e1b10aa1677eb84383f`. The
-builder owns no raw canonical fact INSERT/UPDATE path: curated World Skills rows are
-classified as `WORLD_FACT / EXTERNAL` before admission, create/update delegates to
-`store_facts_batch()`, validation delegates to `promote_to_validated()` / canonical ESM
-transitions, and batch reclassification uses VersionStore/AuditChain evidence with
-coherent L0/L1 state. `--fast-fresh` is only an empty-database precondition; incomplete
-ingest or validation fails the build. Causal edges remain owned by `CausalGraph`.
-Issue #292 is CLOSED_COMPLETED. Pre-merge and post-merge Full CI, Docker and aggregate
-evidence passed, and a fresh current-main residual inventory found `REAL_GAP=0`.
+### Draft #300 candidate: `core/capability_registry.py`
 
-## 6. Projection authority
+Tracking issue #299 admits a narrow Phase 2A implementation. Until #300 is protected-merged,
+this section describes a **review-stage candidate**, not current-main implementation.
+
+Candidate ownership is limited to:
+
+- stable provider/capability descriptors;
+- capability-specific declared `data_mode`;
+- explicitly supplied provider health (`UNKNOWN / HEALTHY / DEGRADED / UNAVAILABLE`);
+- deterministic candidate evaluation;
+- separate health and policy/selection reason codes;
+- selection/no-selection explanation;
+- trace-ready metadata returned to a future authorized caller.
+
+Candidate authority chain:
+
+```text
+ProviderDescriptor + CapabilityDescriptor + ProviderHealth
+                       |
+                       v
+               CapabilityRegistry
+                       |
+                       | lease request only
+                       v
+          existing get_policy_kernel()
+                       |
+                  allow / deny
+                       |
+                       v
+                SelectionResult
+```
+
+The candidate:
+
+- does not instantiate a second PolicyKernel by default;
+- does not probe providers;
+- does not invoke providers/models;
+- performs no network I/O;
+- is not wired into `pipeline.py` or server runtime;
+- performs no Canon/ESM/TRACE/Audit mutation;
+- fails closed on missing/unavailable health, malformed typed metadata, policy exceptions
+  and policy snapshot/version changes during a single selection pass;
+- cannot let explicit preference or `auto` override policy denial.
+
+Read `PHASE2A_CAPABILITY_REGISTRY.md`, the Phase 2A ADR and exact PR #300 evidence before
+working in this area.
+
+## 7. Compute/config/resource ownership
+
+Existing compute-profile and configuration mechanisms remain their own owners. Phase 2A
+registry metadata does not replace:
+
+- `core/compute_profile.py` defaults/features;
+- existing config precedence;
+- existing budget/resource mechanisms;
+- runtime enablement gates.
+
+These surfaces may later feed a bounded selector only under a separate admitted milestone.
+A preset or resource preference cannot grant network, provider or Canon authority.
+
+## 8. Projection authority
 
 FTS, graph/vector indexes, caches, summaries, NetworkX analytics, Neo4j copies and
 projection-outbox workers are derived/rebuildable surfaces. Projection state never wins
 over Canon and cannot grant write or answer authority by itself.
 
-## 7. Anti-bypass guarantees and review boundaries
+Vector/embedding execution is explicitly outside #299/#300.
 
-Current-main guarantees include:
+## 9. Trace / audit ownership
 
-- no second canonical store or general write protocol was introduced by #283/#285/#289/#291/#293;
-- runtime configuration cannot grant Operator GO;
-- historical canary evidence cannot silently re-enable runtime;
-- async callers cannot select the removed native-SQL fact write path;
-- PII redaction does not retain ordinary plaintext VersionStore history for the redacted claim surface;
-- archival Canon cannot point to a payload that failed its preparation precondition;
-- failed archival CAS/version/audit/outbox operations commit no false canonical or audit success;
-- causal `relations` create/delete/reset is converged on one `CausalGraph` mutation owner;
-- automatic causal inference cannot silently default to `validated/approved`;
-- NetworkX and Neo4j/Graphiti remain non-authoritative and derived reload is non-destructive;
-- post-create raw provenance binding cannot mutate `facts.derived_from` without the #289 canonical evidence contract;
-- conflicting second-source post-create provenance fails closed and the legacy raw-memory adapter owns no independent canonical SQL mutation.
+Existing TRACE/AnalysisTrace and AuditChain owners remain unchanged.
 
-Current-main #291 guarantee:
+Phase 2A `SelectionResult.as_trace_metadata()` returns bounded metadata only. It does not
+persist TRACE, append AuditChain receipts or create a new provenance authority.
 
-- NEW `raw_*` facts cannot establish Canon without matching same-parent-transaction L0 provenance evidence;
-- missing raw/evidence/audit failure rolls back the owning creation transaction;
-- generic upsert cannot rebind existing durable raw provenance;
-- non-raw fact lineage remains unchanged.
+A future authorized caller may attach:
 
-Current-main #293 guarantee:
+- capability kind and preference;
+- selected capability id or no-selection result;
+- candidate provider id;
+- provider health + `health_reason_code`;
+- policy/selection reason;
+- PolicyKernel snapshot id/version.
 
-- smart-KB builder must own no direct `INSERT INTO facts` or `UPDATE facts SET` mutation path;
-- curated WSC fact admission must use the existing canonical batch owner and evidence semantics;
-- ESM validation must use canonical transition ownership rather than raw SQL;
-- `--fast-fresh` may require empty storage but cannot grant a bootstrap authority bypass;
-- incomplete/evidence-failed build must not report an accepted active smart-KB Canon;
-- causal-edge ownership must remain on `CausalGraph`.
+No secret or prohibited payload belongs in registry metadata.
 
-No producer/action/reminder/notification/tool/scheduler authority is added.
+## 10. Anti-bypass guarantees
 
-## 8. Historical Continuity checkpoints
+Current-main guarantees plus the #300 candidate boundary require:
 
-| Block | Merge/checkpoint | Meaning |
-|---|---|---|
-| trusted signal producer | `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` (#214) → `e37a5d13332628bcdbd0d9441d7a61d5f8a8d523` (#220) | INTERNAL / SHADOW / UNWIRED; #220 is the accepted integrity baseline with canonical observation-ID verification, controlled malformed-value handling, complete contradiction provenance and regression coverage |
-| current-decision resolver | `dc30817f2c4abb1afcaab2f127e679d5f9b884d7` | schema v3 · 8/12 |
-| durable lifecycle | `064845579c520e7464678cd0c41d9b650368dfa8` | schema v4 · 9/12 |
-| runtime composition | `802e833fa251a8831add8a6b802a5ebb57533549` | schema v5 · 10/12 |
-| controlled enablement | `66318e6883590cb29a4565157e0a3a25b3716d81` | schema v6 · 11/12 |
-| observation mechanism | `456b762b1e752a2f5fb22762869336be9fed42a4` | mechanism present; still 11/12 at merge |
-| bounded canary | `39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e` | schema v7 · 12/12 · rolled back to disabled |
+- one canonical store/write protocol;
+- one PolicyKernel permission owner;
+- no second QueryRouter or TruthGate;
+- no raw-SQL Canon bypass;
+- remote provider metadata cannot hide network requirement;
+- capability `data_mode` is declarative PolicyKernel input, never consent;
+- missing health cannot default to healthy;
+- unavailable providers cannot be selected;
+- healthy candidates outrank degraded candidates before preference;
+- explicit preference cannot override lease denial;
+- a policy evaluation exception cannot fall back to permission;
+- mixed policy snapshots cannot be composed into one successful selection;
+- registry/provider state cannot grant Operator GO or runtime authority.
 
-## 9. Current continuation boundary
+## 11. Review-stage Phase 2A files
 
-Continuity has no remaining capability: `12/12` is complete. Truth Foundation #50 is
-CLOSED_COMPLETED; the protected documentation-truth baseline entering this bounded block
-is `main@2699963547a42c4fbcd6b0273125c890a038654b` with the fresh Truth Foundation
-residual inventory at `REAL_GAP=0`.
+```text
+#299                                           tracking / admission
+#300                                           Draft implementation PR
+core/capability_registry.py                    candidate implementation
+tests/test_capability_registry.py              adversarial contract tests
+docs/adr/ADR-2026-08-13-phase2a-capability-registry.md
+docs/operations/capability-registry-contract.md
+docs/ai/PHASE2A_CAPABILITY_REGISTRY.md
+```
 
-Child issue #295 / PR #296 protected-merged Phase 1 explicit `ModelFreeCore` at
-`main@e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96`; final-head and post-merge Full CI,
-Docker and aggregate evidence passed. The merged slice composes the existing
-`QueryRouter` + lexical-only retrieval + FactsPack + Guardian + TruthGate + optional
-read-only CausalGraph into typed `L2Query`/`L2Result` evidence output; it does not change
-the general pipeline default or add runtime/server wiring.
+The PR must remain Draft until final exact-head CI/Docker, required review/thread closure,
+review-stage Notion synchronization and read-back are complete. After Ready, require a
+fresh `Titan aggregate merge evidence` result on the unchanged head before protected
+merge.
 
-A post-merge audit follow-up is still required to make the lexical-only selection
-explicitly bypass cognitive reranking, prevent graph reads from initializing mutable
-state, fail closed on graph/FactsPack policy errors, filter both relation endpoints
-through current recall policy, collapse physical inverse pairs, preserve relation
-provenance, distinguish attributed reports from verified facts, and reject malformed
-typed inputs. Subsequent review additionally requires bounded malformed-relation decoding,
-single-line escaping of attributed fields, and correct `ImmutableCore` verification
-classification. These are contract-hardening corrections, not new runtime authority.
+## 12. Explicitly unauthorized by Phase 2A
 
-Issue #53 remains OPEN for later bounded phases. No CapabilityRegistry, new vector
-architecture, ADAO, LLM role enablement, remote provider path, schema v8, Continuity
-13/12, runtime activation, standing Operator GO, runtime authority or production
-authority follows from Phase 1.
+```text
+embeddings/vector execution       OUT_OF_SCOPE
+reranker execution                OUT_OF_SCOPE
+LLM invocation                    OUT_OF_SCOPE
+ADAO execution                    OUT_OF_SCOPE
+ARM-04                            NOT_AUTHORIZED
+remote consent implementation     OUT_OF_SCOPE
+provider probing                  OUT_OF_SCOPE
+network activation                OUT_OF_SCOPE
+runtime route replacement         OUT_OF_SCOPE
+runtime enablement                false
+Operator GO                       false
+runtime authority                 false
+production authority              false
+remote Canon                      forbidden
+schema v8                         not created
+Continuity 13/12                  not created
+```
+
+Before any later wiring or activation, re-audit live `main`, preserve the owners above,
+and require a separate bounded admission decision.

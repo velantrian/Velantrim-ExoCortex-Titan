@@ -105,6 +105,7 @@ A missing connector is `HANDOFF_REQUIRED`, not a generic blocker.
 | Canon, ESM, promotion, truth | `COMPONENT_MAP.md#canon-and-promotion` plus Truth/Promotion ADRs |
 | Projection outbox or FTS | `COMPONENT_MAP.md#projection-delivery` and `KNOWN_RISKS.md#risk-p0-01` |
 | Continuity PR stack | `CURRENT_STATE.md` plus current PR diffs/checks |
+| Capability/provider registry or Phase 2A #299/#300 | `PHASE2A_CAPABILITY_REGISTRY.md`, the Phase 2A ADR, then exact PR evidence |
 | Knowledge-base graph or release asset | `../knowledge/KB_GRAPH_GOVERNANCE.md`, `scripts/validate_kb_graph.py`, `scripts/audit_kb_graph.py` |
 | Identity or personalization | `CURRENT_STATE.md#identity-layer` and the identity risk entry |
 | API/security/deployment | `SECURITY.md`, compose files, Dockerfile, server lifespan, current checks |
@@ -125,8 +126,8 @@ orientation pack
 ```
 
 The goal is not to fit the whole repository into one prompt. The goal is to preserve
-architecture, provenance, and unresolved work while spending context on the files that
-can actually change the conclusion.
+architecture, provenance, and unresolved work while spending context on the files that can
+actually change the conclusion.
 
 ## Update obligation
 
@@ -140,9 +141,9 @@ At minimum:
 - update `KNOWN_RISKS.md` when a risk is opened, narrowed, proven, or closed;
 - add a concise entry to `WORK_LOG.md` for significant work;
 - update `COMPONENT_MAP.md` when ownership or key paths change;
-- update `docs/state/project_state.json` when SHA roles, readiness, governance or KB
-  preservation status changes;
-- record an ADR/RFC when a durable architectural decision is made;
+- add or amend an ADR for a durable architectural decision;
+- update `docs/state/project_state.json` only when its governed SHA/readiness/governance
+  semantics actually change; do not advance schema merely because a new module exists;
 - classify the PR as `NONE`, `GITHUB_ONLY`, or `GITHUB_AND_NOTION`;
 - update Notion directly or add a structured `HANDOFF_REQUIRED` item when required.
 
