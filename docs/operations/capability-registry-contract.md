@@ -2,7 +2,7 @@
 
 **Tracking:** #53 → #299  
 **Reality status in this PR:** implemented candidate · focused tests included · **UNWIRED** · **NOT ENABLED**  
-**Authority:** descriptor/health/selection metadata only; `PolicyKernel` remains permission owner.
+**Authority:** descriptor/health/selection metadata only; the existing process-wide `PolicyKernel` remains permission owner.
 
 ## Purpose
 
@@ -17,13 +17,13 @@ permission.
 ```text
 registered metadata
   + explicit provider health
-  + existing PolicyKernel lease
+  + existing process-wide PolicyKernel lease
             |
             v
  deterministic SelectionResult
             |
             +--> selected capability id OR bounded no-selection reason
-            +--> candidate reason codes
+            +--> health reason + policy reason
             +--> policy snapshot/version evidence
             +--> trace-ready metadata (not persisted here)
 ```
@@ -32,43 +32,49 @@ registered metadata
 
 | Concern | Owner |
 |---|---|
-| effective policy / network / remote-data permission | existing `core/policy_kernel.py` |
+| effective policy / network / remote-data permission | existing `core/policy_kernel.py` / `get_policy_kernel()` |
 | console LLM model catalogue | existing `core/provider_catalog.py` |
 | compute profile feature defaults | existing `core/compute_profile.py` / config owners |
 | TRACE persistence/ownership | existing trace / analysis owners |
 | capability/provider descriptive registry | `core/capability_registry.py` |
 | provider invocation / egress | **not owned by Phase 2A** |
 
-The registry may consume a `CapabilityLease`; it may not mint permission or reinterpret a
-denial.
+The registry consumes `CapabilityLease` results from the existing owner; it may not mint
+permission or reinterpret a denial. The default registry constructor reuses
+`get_policy_kernel()` and does not create another PolicyKernel instance. Test doubles may
+be injected only to isolate the contract in tests.
 
 ## Main types
 
 ### `ProviderDescriptor`
 
-Stable metadata:
+Stable provider-level metadata:
 
 - `provider_id`;
 - `locality`: `local | remote`;
 - `requires_network`;
-- declared `data_mode`: `none | redacted | raw`;
 - optional revision and privacy class.
 
 A remote descriptor with `requires_network=False` is invalid. This prevents provider
-metadata from hiding network egress from PolicyKernel.
+metadata from hiding network egress from PolicyKernel. Provider descriptors contain no
+credential or consent state.
 
 ### `CapabilityDescriptor`
 
-Stable metadata:
+Stable capability-level metadata:
 
 - `capability_id`;
 - capability `kind`;
 - provider reference;
+- declared `data_mode`: `none | redacted | raw`;
 - optional model/revision;
 - deterministic flag;
 - small immutable resource-profile metadata.
 
-Registration fails if the provider is absent or the identity is duplicated.
+`data_mode` is capability-specific because different operations on one provider can expose
+different payload classes. It is forwarded to PolicyKernel as lease input and is never
+interpreted as consent. Registration fails if the provider is absent or identity is
+duplicated.
 
 ### `ProviderHealth`
 
@@ -83,16 +89,21 @@ UNAVAILABLE  -> not selectable
 
 No missing-health assumption becomes `healthy`.
 
-### `SelectionResult`
+### `CandidateEvaluation` / `SelectionResult`
 
-Contains:
+The explanation preserves two different reasons rather than collapsing them:
+
+- `health_reason_code` — why the provider is healthy/degraded/unavailable;
+- `reason_code` — selection/policy eligibility result, including PolicyKernel denial.
+
+`SelectionResult` contains:
 
 - selected capability id or `None`;
 - overall reason code;
 - requested kind and preference;
 - deterministic candidate evaluations;
-- health state;
-- lease reason;
+- health state and health reason;
+- lease/selection reason;
 - PolicyKernel snapshot id/version where evaluated.
 
 `as_trace_metadata()` only returns data. It does not persist TRACE or audit state.
@@ -101,7 +112,7 @@ Contains:
 
 ```text
 health eligibility
-  > PolicyKernel lease
+  > existing PolicyKernel lease
   > one consistent policy snapshot/version for the pass
   > HEALTHY over DEGRADED
   > explicit preference (if still eligible)
@@ -133,7 +144,7 @@ Representative result/candidate codes:
 - `no_registered_capability`;
 - `preferred_capability_unknown`;
 - `provider_health_unknown`;
-- provider-supplied unavailable/degraded reason code;
+- provider-supplied unavailable/degraded health reason;
 - existing PolicyKernel denial reason such as `network_denied`;
 - `policy_lease_error`;
 - `policy_evaluation_incomplete`;
@@ -144,19 +155,20 @@ Representative result/candidate codes:
 
 ## Policy-TOCTOU boundary
 
-`PolicyKernel.lease_capability()` remains the sole permission evaluator. Because the
-existing method captures its own immutable snapshot, Phase 2A verifies that every lease
-produced during one multi-candidate selection has the same snapshot id and policy version.
-If they differ, selection fails closed rather than composing decisions from different
-policy moments.
+`PolicyKernel.lease_capability()` remains the sole permission evaluator. The registry
+reuses the process-wide owner returned by `get_policy_kernel()` by default. Because the
+existing lease method captures its own immutable snapshot, Phase 2A verifies that every
+lease produced during one multi-candidate selection has the same snapshot id and policy
+version. If they differ, selection fails closed rather than composing decisions from
+different policy moments.
 
 This is a consistency check, not copied policy logic.
 
 ## Privacy and data
 
 The registry stores no user prompt, memory claim, provider result, token, secret or
-credential. Provider `data_mode` is declarative policy input only and never counts as
-consent.
+credential. Capability `data_mode` is declarative policy input only and never counts as
+consent. Provider health metadata is explicit input, not an active network probe.
 
 ## Runtime state
 
@@ -164,7 +176,7 @@ For this Phase 2A slice:
 
 ```text
 implemented candidate:  true (PR branch only until merge)
-tested:                 pending exact-head CI
+tested:                 pending final exact-head CI after review-stage edits
 wired:                  false
 enabled:                false
 provider calls:         false
