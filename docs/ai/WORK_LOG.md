@@ -5,91 +5,83 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
-## 2026-08-13 — Phase 2A capability registry · DRAFT / FINAL REVIEW CANDIDATE
+## 2026-08-13 — Phase 2A capability registry · FINAL / POST-MERGE VERIFIED
 
 ```text
-main:                         51058f2d5662edfdb91b037a46dce9297c441a1b
-main signature:               VERIFIED / valid
-#50:                          CLOSED_COMPLETED · final REAL_GAP=0
-#53:                          OPEN
-#299:                         OPEN · ADMITTED_FOR_BOUNDED_IMPLEMENTATION
-#300:                         OPEN · DRAFT · NOT MERGED
-#300 base:                    main@51058f2d5662edfdb91b037a46dce9297c441a1b
-pre-WORK_LOG candidate head:  50ed8c68110feae34d2a914ab503562315016f4f
-Codex exact-head review:      NOT RUN — USAGE LIMIT
-Continuity:                   12/12
-schema:                       v7
-runtime enabled:              false
-Operator GO:                  false
-runtime authority:            false
-production authority:         false
+implementation main:             c1fa13cf8fe6bf82d99dfb507beeac2c1c8f7aca
+main signature:                   VERIFIED / valid
+#50:                              CLOSED_COMPLETED · final REAL_GAP=0
+#53:                              OPEN
+#299:                             OPEN pending documentation closure
+#300:                             MERGED
+#300 final tested head:           f0b893bac1b6fe1f58a71c70ac631f3c14becb59
+#300 protected squash merge:      c1fa13cf8fe6bf82d99dfb507beeac2c1c8f7aca
+pre-merge Full CI:                #1105 · 31735939941 · SUCCESS
+pre-merge Docker:                 #723 · 31735939929 · SUCCESS
+READY aggregate:                  #981 · 31736858130 · SUCCESS
+post-merge Full CI:               #1106 · 31736925690 · SUCCESS
+post-merge Docker:                #724 · 31736925695 · SUCCESS
+post-merge aggregate:             #982 · 31736925705 · SUCCESS
+Codex review:                     NOT RUN — USAGE LIMIT
+independent formal approval:      NONE / NOT CLAIMED
+Continuity:                       12/12
+schema:                           v7
+runtime enabled:                  false
+Operator GO:                      false
+runtime authority:                false
+production authority:             false
 ```
 
-The #297/#298 foundation closure is complete. Phase 2A was admitted separately through
-#299; admission is not runtime authorization.
+Phase 2A was admitted through #299 after the #297/#298 foundation and public-truth closure.
+It is now implemented and protected-merged through #300, but remains deliberately
+**UNWIRED / NOT ENABLED**. No provider/model/network call path was activated.
 
-Fresh owner audit confirmed that `core/policy_kernel.py` already owns effective policy,
-network/remote-data limits, local-only Canon policy and capability leases.
-`core/provider_catalog.py` remains the console-facing LLM model catalogue. Existing
-QueryRouter/pipeline, compute-profile, TRACE/Audit, Canon/ESM, TruthGate/WriteGate and
-remote-egress ownership remain unchanged.
+### Implemented bounded owner
 
-Draft PR #300 adds an **unwired metadata contract** only:
+`core/capability_registry.py` now provides a process-local metadata contract for:
 
-- stable provider/capability descriptors;
-- capability-specific declared `data_mode` forwarded to PolicyKernel;
-- explicit provider health: UNKNOWN / HEALTHY / DEGRADED / UNAVAILABLE;
-- deterministic selection/no-selection with separate health and policy reason codes;
-- trace-ready explanation metadata without TRACE persistence;
-- remote metadata cannot hide required network access;
-- malformed typed metadata fails closed;
-- policy exceptions and mixed policy snapshots fail closed.
+- stable `ProviderDescriptor` and `CapabilityDescriptor` identity;
+- capability-specific declared `data_mode`;
+- explicit `ProviderHealth` states: UNKNOWN / HEALTHY / DEGRADED / UNAVAILABLE;
+- deterministic candidate selection/no-selection;
+- separate health and policy/selection reason codes;
+- trace-ready selection metadata without TRACE persistence.
 
-### Authority-bypass self-review finding and fix
+The existing process-wide `PolicyKernel` remains the sole permission owner. Production
+`CapabilityRegistry()` has no policy/leaser injection parameter and always resolves the
+owner through `get_policy_kernel()`. Every HEALTHY/DEGRADED candidate must receive an
+existing PolicyKernel lease; explicit preference and `auto` cannot reinterpret a denial.
 
-Self-review found that the early candidate accepted an arbitrary `CapabilityLeaser` in the
-registry constructor for testability. That would have left a future production extension
-point where a caller could supply an allow-all substitute instead of the real PolicyKernel.
-This was treated as a blocking authority defect and removed before Ready.
+### Authority-bypass hardening
 
-The final candidate contract now has:
+Self-review found an early constructor-injection surface that would have allowed a future
+caller to substitute an arbitrary leaser. That was treated as a blocking authority defect
+and removed before Ready. Tests patch `get_policy_kernel()` only inside the test process;
+there is no production alternate-policy extension point.
 
-```text
-CapabilityRegistry()
-    → mandatory get_policy_kernel()
-    → no policy/leaser constructor injection
-```
+Additional fail-closed boundaries include malformed typed metadata, remote provider
+metadata that hides network requirements, unknown/unavailable health, PolicyKernel
+exceptions and mixed policy snapshot/version values during one selection pass.
 
-Tests replace the module-level lookup with `unittest.mock.patch` only inside the test
-process. This is not a production extension point. The same self-review also moved
-`data_mode` to capability scope, preserves health reason independently of policy reason,
-validates booleans/enums, and keeps policy-snapshot TOCTOU fail-closed.
+### Review and governance evidence
 
-The relevant ADR, operations contract, `COMPONENT_MAP.md`, AI README route and
-`PHASE2A_CAPABILITY_REGISTRY.md` are aligned to this owner model.
+A Codex review request on ancestor head `009e5fbc11b03fd4033c939ae04ff0a8835e797b`
+returned `NOT RUN — USAGE LIMIT`. This is neither approval nor a finding. The active solo
+ruleset requires zero approving reviews, review-thread resolution and the
+`Titan aggregate merge evidence` status check; no independent review is claimed.
 
-### Review evidence
+The first Ready aggregate (#980) failed only because the PR-body Notion lifecycle token did
+not use the validator's accepted `SYNCED` value. The existing Notion page had already been
+updated and read back. PR metadata was corrected without changing the exact head; fresh
+Ready aggregate #981 then succeeded.
 
-A Codex review was requested on ancestor head
-`009e5fbc11b03fd4033c939ae04ff0a8835e797b`, but Codex returned
-`NOT RUN — USAGE LIMIT`. This is neither approval nor a finding. No independent formal
-approval is claimed or required by the active solo ruleset.
+### Documentation closure
 
-The candidate changed after that request because the local authority-bypass audit found
-and fixed the constructor injection surface. Therefore the Codex request is ancestor
-metadata only, not final-head review evidence.
-
-The branch head immediately before this WORK_LOG update is
-`50ed8c68110feae34d2a914ab503562315016f4f`; this documentation commit itself advances the
-branch. Fresh Full CI and Docker on the new exact head are mandatory. Green ancestor runs
-must not be reused as final proof.
-
-### Notion synchronization
-
-The existing `Velantrim Titan 9.0` page contains a Phase 2A REVIEW-STAGE block. No new
-Notion page was created. After the new exact head completes CI/Docker, refresh that same
-block with exact evidence and the constructor-injection fix, then read it back before
-Ready.
+The implementation merge left review-stage language in public AI context files. This
+separate docs-only reconciliation updates those truth surfaces without touching `core/**`
+or changing Phase 2A behavior. The existing `Velantrim Titan 9.0` page will be synchronized
+again with final implementation and documentation-closure evidence. No new Notion page is
+permitted.
 
 ---
 
@@ -108,24 +100,33 @@ Ready.
 #298 post-merge aggregate:       #921 · 31729908264 · SUCCESS
 ```
 
-The active solo ruleset requires zero approving reviews, review-thread resolution and the
-`Titan aggregate merge evidence` status check. Independent review must not be invented.
-
 ---
 
-## Next safe order
+## Stable authority boundary
 
 ```text
-fresh exact-head Full CI + Docker
-→ verify PR head unchanged and review threads = 0
-→ refresh same-page Notion review evidence + read-back
-→ mark Ready
-→ require fresh READY aggregate on unchanged head
-→ protected squash merge
-→ post-merge main/signature/CI/Docker/aggregate verification
-→ FINAL GitHub + same-page Notion reconciliation
-→ close #299 only after all acceptance evidence is satisfied
+Continuity:             12/12
+schema:                 v7
+runtime enabled:        false
+Operator GO:            false
+runtime authority:      false
+production authority:   false
+Canon:                  local
+remote Canon:           forbidden
 ```
 
-Never infer schema v8, Continuity 13/12, runtime enablement, Operator GO, runtime authority
-or production authority from Phase 2A.
+Phase 2A does not authorize embeddings/vector execution, reranker/LLM execution, ADAO,
+ARM-04, provider probing/invocation, remote consent implementation, network activation,
+runtime route replacement, runtime enablement, Continuity 13/12 or schema v8.
+
+Next safe order for this closure:
+
+```text
+docs-only reconciliation PR exact-head CI
+→ same-page Notion sync + read-back
+→ Ready aggregate
+→ protected docs merge
+→ post-merge verification
+→ FINAL Notion read-back
+→ close #299 completed
+```
