@@ -1,0 +1,16 @@
+{
+  "schema": "velantrim-documentation-manifest/1",
+  "project": "Velantrim Exo-Cortex Titan",
+  "human_start": "README.md",
+  "system_overview": "SYSTEM_OVERVIEW.md",
+  "ai_start": "docs/ai/README.md",
+  "agent_rules": "AGENTS.md",
+  "current_state": "docs/ai/CURRENT_STATE.md",
+  "machine_state": "docs/state/project_state.json",
+  "update_classes": ["STRUCTURAL_CHANGE", "STATE_CHANGE", "EVIDENCE_ONLY"],
+  "review_all_landing_surfaces_on_structural_change": true,
+  "update_only_affected_landing_surfaces": true,
+  "preserve_history": true,
+  "resolve_live_head_from_github": true,
+  "notion_hub_page_id": "398ac84d-0547-81fe-8ca5-d0d2727d1961"
+}
