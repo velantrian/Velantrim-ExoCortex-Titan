@@ -23,6 +23,7 @@ Earlier causal PR:              #287 MERGED · 615201ec1073dafb047028e88ce94463f
 Causal post-merge review:       3 unresolved findings on #287 · 2 P1 + 1 P2
 Audit follow-up:                DRAFT PR #297 · resolve current exact head live · not merged
 Initial review checkpoint:      f6603f9b5643d75d1f11c882ff7766c6479acf2c · Titan CI #1073 / Docker #693 / Aggregate #866 · SUCCESS
+PR #297 Codex review:           6 findings on review head 7294e69c... · 3 P1 + 3 P2 · remediation candidate pending exact-head CI
 Documentation impact:           GITHUB_AND_NOTION
 Notion synchronization:         #296 FINAL complete; #297 REVIEW checkpoint read back; final merge sync pending
 Continuity:                     12/12 = 100% · unchanged
@@ -56,6 +57,17 @@ leave it backed by a closed connection, and relation deletion uses explicit `inv
 identity. Ambiguous unlinked legacy NULL-source duplicates abort the whole deletion
 transaction rather than guessing an inverse companion. Regression tests cover all three
 failure paths.
+
+Codex then reviewed PR #297 head `7294e69c...` and found six additional edge cases.
+The current remediation candidate reserves `inverse_of` for canonical identity and
+requires consistent pair evidence, serializes concurrent reset epochs and propagates the
+owner's failure to waiters, and makes the public durable reset initialize the current
+store instead of silently no-oping after a cold start. ModelFree relation decoding now
+fails boundedly on malformed confidence, multiline evidence fields cannot inject a
+verified-looking heading, and both `Validated` and `ImmutableCore` map to verified
+evidence. The expanded focused suite is 48/48 locally, with Ruff and blocking focused
+Mypy green. These findings remain review-stage until a final exact head is green and the
+source threads are evidence-reconciled.
 
 Draft PR #297's initial review head passed Titan CI #1073, Docker #693 and Aggregate
 merge evidence #866. The existing `Velantrim Titan 9.0` Notion page was updated with

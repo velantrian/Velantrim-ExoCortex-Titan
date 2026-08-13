@@ -377,6 +377,10 @@ class CausalGraph:
         metadata = row.get("metadata")
         if metadata is not None and not isinstance(metadata, dict):
             raise ValueError("relation metadata must be a dict or None")
+        if isinstance(metadata, dict) and "inverse_of" in metadata:
+            raise ValueError(
+                "relation metadata key 'inverse_of' is reserved for canonical inverse identity"
+            )
         return {
             "from_fact_id": str(row["from_fact_id"]),
             "to_fact_id": str(row["to_fact_id"]),
@@ -607,16 +611,51 @@ class CausalGraph:
                 ).fetchall()
                 current_metadata = self._parse_metadata(row[5])
                 linked_from_current = current_metadata.get("inverse_of")
+                if "inverse_of" in current_metadata and not isinstance(
+                    linked_from_current, str
+                ):
+                    raise RuntimeError(
+                        f"relation {relation_id!r} has a malformed inverse identity pointer"
+                    )
+                backlink_ids = {
+                    str(candidate[0])
+                    for candidate in inverse_rows
+                    if self._parse_metadata(candidate[1]).get("inverse_of")
+                    == relation_id
+                }
                 if isinstance(linked_from_current, str):
-                    linked_ids = {
-                        str(candidate[0]) for candidate in inverse_rows
+                    pointer_ids = {
+                        str(candidate[0])
+                        for candidate in inverse_rows
                         if str(candidate[0]) == linked_from_current
                     }
+                    if len(pointer_ids) != 1:
+                        raise RuntimeError(
+                            f"relation {relation_id!r} has a dangling inverse identity pointer"
+                        )
+                    selected_id = next(iter(pointer_ids))
+                    selected_metadata = next(
+                        self._parse_metadata(candidate[1])
+                        for candidate in inverse_rows
+                        if str(candidate[0]) == selected_id
+                    )
+                    selected_backlink = selected_metadata.get("inverse_of")
+                    if selected_backlink not in (None, relation_id):
+                        raise RuntimeError(
+                            f"relation {relation_id!r} has a conflicting inverse identity backlink"
+                        )
+                    if str(row[3]) in FORWARD_RELATION_TYPES:
+                        if backlink_ids != {selected_id}:
+                            raise RuntimeError(
+                                f"relation {relation_id!r} has a non-reciprocal forward inverse identity"
+                            )
+                    elif backlink_ids and backlink_ids != {selected_id}:
+                        raise RuntimeError(
+                            f"relation {relation_id!r} has conflicting inverse identity links"
+                        )
+                    linked_ids = {selected_id}
                 else:
-                    linked_ids = {
-                        str(candidate[0]) for candidate in inverse_rows
-                        if self._parse_metadata(candidate[1]).get("inverse_of") == relation_id
-                    }
+                    linked_ids = backlink_ids
 
                 if len(linked_ids) == 1:
                     expanded.update(linked_ids)
@@ -634,6 +673,13 @@ class CausalGraph:
                         f"relation {relation_id!r} has ambiguous legacy inverse companions"
                     )
                 if len(candidate_ids) == 1:
+                    sole_candidate = inverse_rows[0]
+                    sole_metadata = self._parse_metadata(sole_candidate[1])
+                    sole_backlink = sole_metadata.get("inverse_of")
+                    if "inverse_of" in sole_metadata and sole_backlink != relation_id:
+                        raise RuntimeError(
+                            f"relation {relation_id!r} has a conflicting legacy inverse identity"
+                        )
                     sibling_count = int(self._conn.execute(
                         """
                         SELECT COUNT(*) FROM relations
@@ -1184,7 +1230,7 @@ def reset_causal_graph() -> None:
     """Audited reset plus singleton detach; never call the legacy raw wipe."""
     from core import pipeline as _pipeline
 
-    _pipeline.reset_causal_graph()
+    _pipeline.reset_causal_graph(initialize_if_missing=True)
 
 
 __all__ = [

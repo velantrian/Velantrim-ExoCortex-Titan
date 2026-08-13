@@ -119,7 +119,10 @@ A later substantive review found that ownership convergence did not yet make eve
 failure path fail-closed: snapshot rejection could be masked, reset could retain a closed
 singleton, and legacy duplicate inverse rows could be paired by tuple rather than durable
 identity. The current audit-hardening candidate fixes those three paths without creating
-a second relation owner or changing Neo4j's derived-only role.
+a second relation owner or changing Neo4j's derived-only role. Review of that candidate
+then required reserved/consistent inverse identity, serialized concurrent reset outcomes,
+and cold-start initialization for the public durable reset; those changes and adversarial
+regressions remain Draft until final exact-head evidence and protected merge.
 
 ### Raw provenance linker convergence — merged #288 / #289
 
@@ -231,7 +234,9 @@ explicitly bypass cognitive reranking, prevent graph reads from initializing mut
 state, fail closed on graph/FactsPack policy errors, filter both relation endpoints
 through current recall policy, collapse physical inverse pairs, preserve relation
 provenance, distinguish attributed reports from verified facts, and reject malformed
-typed inputs. These are contract-hardening corrections, not new runtime authority.
+typed inputs. Subsequent review additionally requires bounded malformed-relation decoding,
+single-line escaping of attributed fields, and correct `ImmutableCore` verification
+classification. These are contract-hardening corrections, not new runtime authority.
 
 Issue #53 remains OPEN for later bounded phases. No CapabilityRegistry, new vector
 architecture, ADAO, LLM role enablement, remote provider path, schema v8, Continuity

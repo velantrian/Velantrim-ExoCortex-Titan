@@ -82,6 +82,14 @@ before closing, binds inverse deletion by identity, and fails closed when old ro
 be paired unambiguously. Until that follow-up is protected-merged and the three #287
 threads are evidence-resolved, the earlier "converged" label is incomplete.
 
+A subsequent Codex review of the follow-up itself found three further reset/identity
+edges: caller-owned or stale `inverse_of` metadata could mispair duplicates, concurrent
+reset waiters could return success after the owning reset failed, and the public reset
+could no-op against durable rows after a cold start. The current candidate reserves and
+cross-checks inverse identity, serializes reset epochs with shared failure propagation,
+and requires the public wrapper to initialize the current store before audited reset.
+These claims are still review-stage until final exact-head CI and protected merge.
+
 Other residuals remain bounded: explicit future accepted-label callers still need their
 own authorized admission surface, and full graph reset cost grows with graph size. Neither
 risk justifies a raw-SQL bypass or remote truth authority.
@@ -156,6 +164,13 @@ data; and `L2Query` accepted malformed bool/non-string inputs. The current bound
 follow-up candidate closes those paths fail-closed and adds adversarial tests. Until that
 follow-up is protected-merged, #296's green CI must not be represented as proof of those
 logical guarantees.
+
+Codex review of the follow-up also found that corrupt relation confidence could escape
+the bounded result, multiline attributed fields could inject verified-looking renderer
+headings, and `ImmutableCore` was incorrectly mapped as unverified. The candidate now
+validates relation decoding inside the graph error boundary, renders every evidence field
+as one escaped line, and treats `ImmutableCore` alongside `Validated` as verified. These
+six PR-level review threads remain open until final exact-head evidence exists.
 
 Even after hardening, Phase 1 does not prove runtime routing, default-route replacement,
 CapabilityRegistry, embedding/vector architecture, ADAO, LLM execution, network/provider

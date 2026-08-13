@@ -39,6 +39,7 @@ import logging
 import math
 import re
 import sqlite3
+import threading
 from collections import Counter
 from typing import Any, Optional
 
@@ -164,6 +165,11 @@ def _get_hybrid_retriever(facts: list[dict[str, Any]]) -> Optional["HybridRetrie
 # Отслеживаем db_path чтобы пересоздавать при смене store (тесты с isolated_db).
 _CAUSAL_GRAPH: Optional["CausalGraph"] = None
 _CAUSAL_GRAPH_DB_PATH: str = ""
+_CAUSAL_GRAPH_RESET_CONDITION = threading.Condition()
+_CAUSAL_GRAPH_RESET_IN_PROGRESS = False
+_CAUSAL_GRAPH_RESET_EPOCH = 0
+_CAUSAL_GRAPH_RESET_RESULTS: dict[int, BaseException | None] = {}
+_CAUSAL_GRAPH_RESET_WAITERS: dict[int, int] = {}
 
 # Regex для определения каузальных паттернов (EN + RU)
 _CAUSAL_REGEX = re.compile(
@@ -269,23 +275,80 @@ def _peek_causal_graph() -> Optional["CausalGraph"]:
     return None
 
 
-def reset_causal_graph() -> None:
-    """Auditably clear canonical relations and detach the singleton."""
-    global _CAUSAL_GRAPH, _CAUSAL_GRAPH_DB_PATH
+def reset_causal_graph(*, initialize_if_missing: bool = False) -> None:
+    """Auditably clear canonical relations and detach the singleton.
 
-    graph = _CAUSAL_GRAPH
-    # Detach before attempting the audited reset. If WriteGate or AuditChain fails,
-    # callers must never retain a singleton backed by the connection closed below.
-    _CAUSAL_GRAPH = None
-    _CAUSAL_GRAPH_DB_PATH = ""
-    if graph is not None:
-        try:
-            graph.reset_relations()
-        finally:
+    Concurrent callers join the same reset epoch and receive the owning reset's
+    failure instead of returning success while that reset is still in flight.  The
+    public durable-reset wrapper requests ``initialize_if_missing`` so a cold process
+    cannot silently leave on-disk relations untouched.
+    """
+    global _CAUSAL_GRAPH, _CAUSAL_GRAPH_DB_PATH
+    global _CAUSAL_GRAPH_RESET_EPOCH, _CAUSAL_GRAPH_RESET_IN_PROGRESS
+
+    with _CAUSAL_GRAPH_RESET_CONDITION:
+        if _CAUSAL_GRAPH_RESET_IN_PROGRESS:
+            wait_epoch = _CAUSAL_GRAPH_RESET_EPOCH
+            _CAUSAL_GRAPH_RESET_WAITERS[wait_epoch] = (
+                _CAUSAL_GRAPH_RESET_WAITERS.get(wait_epoch, 0) + 1
+            )
             try:
-                graph._conn.close()
-            except Exception:
-                pass
+                while wait_epoch not in _CAUSAL_GRAPH_RESET_RESULTS:
+                    _CAUSAL_GRAPH_RESET_CONDITION.wait()
+                waited_owner_error = _CAUSAL_GRAPH_RESET_RESULTS[wait_epoch]
+            finally:
+                remaining = _CAUSAL_GRAPH_RESET_WAITERS[wait_epoch] - 1
+                if remaining:
+                    _CAUSAL_GRAPH_RESET_WAITERS[wait_epoch] = remaining
+                else:
+                    _CAUSAL_GRAPH_RESET_WAITERS.pop(wait_epoch, None)
+                    _CAUSAL_GRAPH_RESET_RESULTS.pop(wait_epoch, None)
+            if waited_owner_error is not None:
+                raise RuntimeError(
+                    "concurrent causal graph reset failed in owning caller"
+                ) from waited_owner_error
+            return
+
+        if initialize_if_missing:
+            initialized = _get_causal_graph()
+            if initialized is None:
+                raise RuntimeError(
+                    "CausalGraph durable reset could not initialize the current store"
+                )
+
+        graph = _CAUSAL_GRAPH
+        if graph is None:
+            return
+
+        _CAUSAL_GRAPH_RESET_EPOCH += 1
+        reset_epoch = _CAUSAL_GRAPH_RESET_EPOCH
+        _CAUSAL_GRAPH_RESET_IN_PROGRESS = True
+
+        # Detach before attempting the audited reset. If WriteGate or AuditChain fails,
+        # callers must never retain a singleton backed by the connection closed below.
+        _CAUSAL_GRAPH = None
+        _CAUSAL_GRAPH_DB_PATH = ""
+
+    owner_error: BaseException | None = None
+    try:
+        graph.reset_relations()
+    except BaseException as exc:
+        owner_error = exc
+    finally:
+        try:
+            graph._conn.close()
+        except Exception:
+            pass
+
+    with _CAUSAL_GRAPH_RESET_CONDITION:
+        _CAUSAL_GRAPH_RESET_RESULTS[reset_epoch] = owner_error
+        _CAUSAL_GRAPH_RESET_IN_PROGRESS = False
+        _CAUSAL_GRAPH_RESET_CONDITION.notify_all()
+        if _CAUSAL_GRAPH_RESET_WAITERS.get(reset_epoch, 0) == 0:
+            _CAUSAL_GRAPH_RESET_RESULTS.pop(reset_epoch, None)
+
+    if owner_error is not None:
+        raise owner_error
 
 
 def _extract_conflicts(
@@ -792,7 +855,11 @@ def build_facts_pack(
                 "origin_type": modality_by_fact_id.get(pf.fact_id, ("UNKNOWN", "UNKNOWN"))[1],
                 "metadata": metadata_by_fact_id.get(pf.fact_id, {}),
                 "canonical_record": canonical_by_fact_id.get(pf.fact_id, False),
-                "truth_status": "VERIFIED" if pf.epistemic_state == "Validated" else "UNVERIFIED",
+                "truth_status": (
+                    "VERIFIED"
+                    if pf.epistemic_state in {"Validated", "ImmutableCore"}
+                    else "UNVERIFIED"
+                ),
             } for pf in fp.facts]
             included_ids = {f["fact_id"] for f in facts}
             reported_added = 0
@@ -835,7 +902,11 @@ def build_facts_pack(
         )
     raw_facts.sort(key=lambda x: x["retrieval_score"], reverse=True)
     for f in raw_facts:
-        f["truth_status"] = "VERIFIED" if f["epistemic_state"] == "Validated" else "UNVERIFIED"
+        f["truth_status"] = (
+            "VERIFIED"
+            if f["epistemic_state"] in {"Validated", "ImmutableCore"}
+            else "UNVERIFIED"
+        )
     return {"facts": raw_facts, "query": query, "total": len(raw_facts)}
 
 

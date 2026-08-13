@@ -18,6 +18,7 @@ is selected by this facade.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -390,37 +391,48 @@ class ModelFreeCore:
 
         rows: list[L2Relation] = []
         for relation in semantic_relations.values():
-            raw_metadata = getattr(relation, "metadata", None)
-            metadata = dict(raw_metadata) if isinstance(raw_metadata, dict) else {}
-            rows.append(
-                L2Relation(
-                    relation_id=str(getattr(relation, "relation_id", "") or ""),
-                    from_fact_id=str(getattr(relation, "from_fact_id", "") or ""),
-                    to_fact_id=str(getattr(relation, "to_fact_id", "") or ""),
-                    relation_type=str(getattr(relation, "relation_type", "") or ""),
-                    confidence=float(getattr(relation, "confidence", 0.0) or 0.0),
-                    knowledge_status=str(
-                        getattr(relation, "knowledge_status", "unknown") or "unknown"
-                    ),
-                    truth_status=str(
-                        getattr(relation, "truth_status", "pending") or "pending"
-                    ),
-                    review_state=str(
-                        getattr(relation, "review_state", "pending") or "pending"
-                    ),
-                    inference_source=(
-                        str(getattr(relation, "inference_source"))
-                        if getattr(relation, "inference_source", None) is not None
-                        else None
-                    ),
-                    evidence_ref=(
-                        str(getattr(relation, "evidence_ref"))
-                        if getattr(relation, "evidence_ref", None) is not None
-                        else None
-                    ),
-                    metadata=metadata,
+            try:
+                raw_metadata = getattr(relation, "metadata", None)
+                metadata = dict(raw_metadata) if isinstance(raw_metadata, dict) else {}
+                raw_confidence = getattr(relation, "confidence", 0.0)
+                if isinstance(raw_confidence, bool):
+                    raise ValueError("relation confidence must not be boolean")
+                confidence = float(raw_confidence or 0.0)
+                if not math.isfinite(confidence) or not 0.0 <= confidence <= 1.0:
+                    raise ValueError("relation confidence must be finite and bounded")
+                rows.append(
+                    L2Relation(
+                        relation_id=str(getattr(relation, "relation_id", "") or ""),
+                        from_fact_id=str(getattr(relation, "from_fact_id", "") or ""),
+                        to_fact_id=str(getattr(relation, "to_fact_id", "") or ""),
+                        relation_type=str(getattr(relation, "relation_type", "") or ""),
+                        confidence=confidence,
+                        knowledge_status=str(
+                            getattr(relation, "knowledge_status", "unknown") or "unknown"
+                        ),
+                        truth_status=str(
+                            getattr(relation, "truth_status", "pending") or "pending"
+                        ),
+                        review_state=str(
+                            getattr(relation, "review_state", "pending") or "pending"
+                        ),
+                        inference_source=(
+                            str(getattr(relation, "inference_source"))
+                            if getattr(relation, "inference_source", None) is not None
+                            else None
+                        ),
+                        evidence_ref=(
+                            str(getattr(relation, "evidence_ref"))
+                            if getattr(relation, "evidence_ref", None) is not None
+                            else None
+                        ),
+                        metadata=metadata,
+                    )
                 )
-            )
+            except Exception as exc:
+                raise ModelFreeGraphReadError(
+                    "causal relation row could not be decoded"
+                ) from exc
         rows.sort(
             key=lambda row: (
                 row.relation_type,
@@ -446,18 +458,29 @@ class ModelFreeCore:
         if verified:
             lines.append("Подтверждённые локальные факты:")
             for fact in verified:
-                lines.append(f"- [{fact.fact_id}] ({fact.epistemic_state}) {fact.claim}")
+                lines.append(
+                    f"- [{ModelFreeCore._single_line(fact.fact_id)}] "
+                    f"({ModelFreeCore._single_line(fact.epistemic_state)}) "
+                    f"{ModelFreeCore._single_line(fact.claim)}"
+                )
         if unverified:
             if lines:
                 lines.append("")
             lines.append("Атрибутированные, но не подтверждённые как факты записи:")
             for fact in unverified:
                 lines.append(
-                    f"- [{fact.fact_id}] (источник: {fact.source}) {fact.claim}"
+                    f"- [{ModelFreeCore._single_line(fact.fact_id)}] "
+                    f"(источник: {ModelFreeCore._single_line(fact.source)}) "
+                    f"{ModelFreeCore._single_line(fact.claim)}"
                 )
         if conflicts:
             lines.append(f"⚠️ Известные локальные противоречия: {len(conflicts)}.")
         return "\n".join(lines)
+
+    @staticmethod
+    def _single_line(value: object) -> str:
+        """Render an evidence field without allowing line/heading injection."""
+        return r"\n".join(str(value).splitlines())
 
     @staticmethod
     def _insufficient(

@@ -59,9 +59,10 @@ returns bounded insufficient evidence rather than silently omitting contradictio
 
 The deterministic renderer may only restate claims that survived the existing
 FactsPack + Guardian + TruthGate path. It labels `VERIFIED` facts separately from
-attributed `UNVERIFIED` reports; policy eligibility does not convert a user report into a
-confirmed world fact. When evidence is absent or rejected it returns the bounded message
-`Недостаточно подтверждённых локальных данных.` with a reason code.
+attributed `UNVERIFIED` reports, treats both `Validated` and `ImmutableCore` as verified,
+and escapes every evidence field onto one line; policy eligibility does not convert a
+user report into a confirmed world fact. When evidence is absent or rejected it returns
+the bounded message `Недостаточно подтверждённых локальных данных.` with a reason code.
 
 FactsPack policy is mandatory for this facade: builder absence or failure cannot fall
 back to raw retrieval rows. Relation reads apply the same current recall policy to both
@@ -125,7 +126,9 @@ Focused acceptance tests must prove:
 - unavailable or failing FactsPack policy rejects the answer rather than using raw rows;
 - graph absence is non-blocking, graph read failure is fail-closed, and graph lookup does
   not invoke the DDL-capable initializer;
-- verified facts and attributed user reports are rendered under distinct headings;
+- malformed relation decoding is converted to bounded graph-read failure;
+- verified facts and attributed user reports are rendered under distinct headings,
+  multiline fields cannot inject another heading, and `ImmutableCore` stays verified;
 - malformed `top_k`, domain, cognitive-mode and graph-inclusion values fail closed;
 - insufficient/policy-ineligible evidence fails boundedly;
 - repeated equivalent reads serialize deterministically;

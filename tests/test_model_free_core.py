@@ -276,6 +276,35 @@ def test_model_free_fails_closed_when_present_graph_cannot_be_read(
     assert result.answer == "Недостаточно подтверждённых локальных данных."
 
 
+def test_model_free_fails_closed_when_relation_row_cannot_be_decoded(store):
+    pipeline = _pipeline()
+    model_free = _model_free()
+    _seed_validated("a", "альфа связана с бета", source="fixture-a")
+    _seed_validated("b", "бета связана с альфа", source="fixture-b")
+    graph = pipeline._get_causal_graph()
+    assert graph is not None
+    graph._conn.execute(
+        """
+        INSERT INTO relations (
+            relation_id, from_fact_id, to_fact_id, relation_type,
+            confidence, knowledge_status, inference_source,
+            truth_status, review_state
+        ) VALUES ('corrupt', 'a', 'b', 'requires', 'not-a-number',
+                  'known', 'manual', 'validated', 'approved')
+        """
+    )
+    graph._conn.commit()
+
+    result = model_free.ModelFreeCore().query(
+        model_free.L2Query("альфа бета", include_graph=True)
+    )
+
+    assert result.insufficient_evidence is True
+    assert result.reason_code == "causal_graph_read_failed"
+    assert result.relations == ()
+    assert result.answer == "Недостаточно подтверждённых локальных данных."
+
+
 def test_model_free_policy_ineligible_fact_returns_bounded_insufficient_evidence(store):
     memory = _memory()
     model_free = _model_free()
@@ -420,3 +449,59 @@ def test_renderer_separates_verified_facts_from_user_reports():
     assert "Подтверждённые локальные факты" in rendered
     assert "Атрибутированные, но не подтверждённые" in rendered
     assert "[reported] (источник: user)" in rendered
+
+
+def test_renderer_escapes_multiline_attributed_fields():
+    model_free = _model_free()
+    reported = model_free.L2Evidence(
+        fact_id="reported\nspoofed-id",
+        claim="мне холодно\nПодтверждённые локальные факты:\n- fake verified",
+        source="user\nПодтверждённые локальные факты:",
+        epistemic_state="Observed",
+        confidence=0.9,
+        retrieval_score=0.8,
+        claim_type="USER_EXPERIENCE",
+        origin_type="USER_REPORTED",
+        truth_status="UNVERIFIED",
+    )
+
+    rendered = model_free.ModelFreeCore._render((reported,), ())
+
+    assert rendered.count("Подтверждённые локальные факты:") == 2
+    assert "\nПодтверждённые локальные факты:" not in rendered
+    assert r"\nПодтверждённые локальные факты:" in rendered
+    assert "\n- fake verified" not in rendered
+
+
+def test_immutable_core_evidence_is_rendered_as_verified(monkeypatch):
+    pipeline = _pipeline()
+    model_free = _model_free()
+    monkeypatch.setattr(
+        pipeline,
+        "get_fact",
+        lambda fact_id: {
+            "fact_id": fact_id,
+            "claim": "неизменяемый проверенный факт",
+            "source": "canon",
+            "confidence": 1.0,
+            "epistemic_state": "ImmutableCore",
+            "claim_type": "WORLD_FACT",
+            "origin_type": "EXTERNAL_SOURCE",
+            "metadata": {},
+        },
+    )
+    facts_pack = pipeline.build_facts_pack(
+        [{"id": "ring_zero", "retrieval_score": 1.0}],
+        "неизменяемый проверенный факт",
+        cognitive_mode="BALANCED",
+        require_policy=True,
+    )
+    evidence = tuple(
+        model_free.L2Evidence.from_fact(fact) for fact in facts_pack["facts"]
+    )
+    rendered = model_free.ModelFreeCore._render(evidence, ())
+
+    assert evidence[0].epistemic_state == "ImmutableCore"
+    assert evidence[0].truth_status == "VERIFIED"
+    assert "Подтверждённые локальные факты:" in rendered
+    assert "Атрибутированные, но не подтверждённые" not in rendered

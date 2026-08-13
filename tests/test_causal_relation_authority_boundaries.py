@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from pathlib import Path
 
 import pytest
@@ -174,9 +175,97 @@ def test_failed_audited_reset_detaches_closed_singleton(monkeypatch):
         conn.execute("SELECT 1")
 
 
+def test_concurrent_reset_waiter_observes_owner_failure(monkeypatch):
+    entered = threading.Event()
+    release = threading.Event()
+    waiter_registered = threading.Event()
+
+    class NotifyingWaiters(dict[int, int]):
+        def __setitem__(self, key: int, value: int) -> None:
+            super().__setitem__(key, value)
+            waiter_registered.set()
+
+    class FakeConnection:
+        def close(self) -> None:
+            pass
+
+    class FailingGraph:
+        _conn = FakeConnection()
+
+        def reset_relations(self) -> int:
+            entered.set()
+            assert release.wait(timeout=5)
+            raise RuntimeError("forced concurrent reset failure")
+
+    monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH", FailingGraph())
+    monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH_DB_PATH", "concurrent.db")
+    monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH_RESET_IN_PROGRESS", False)
+    monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH_RESET_EPOCH", 0)
+    monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH_RESET_RESULTS", {})
+    monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH_RESET_WAITERS", NotifyingWaiters())
+    errors: list[BaseException] = []
+
+    def reset() -> None:
+        try:
+            pipeline.reset_causal_graph()
+        except BaseException as exc:
+            errors.append(exc)
+
+    owner = threading.Thread(target=reset)
+    waiter = threading.Thread(target=reset)
+    owner.start()
+    assert entered.wait(timeout=5)
+    waiter.start()
+    assert waiter_registered.wait(timeout=5)
+    release.set()
+    owner.join(timeout=5)
+    waiter.join(timeout=5)
+
+    assert not owner.is_alive()
+    assert not waiter.is_alive()
+    assert len(errors) == 2
+    assert {str(error) for error in errors} == {
+        "forced concurrent reset failure",
+        "concurrent causal graph reset failed in owning caller",
+    }
+
+
+def test_public_reset_initializes_cold_store_before_audited_reset(monkeypatch):
+    calls: list[str] = []
+
+    class FakeConnection:
+        def close(self) -> None:
+            calls.append("close")
+
+    class FakeGraph:
+        _conn = FakeConnection()
+
+        def reset_relations(self) -> int:
+            calls.append("reset")
+            return 0
+
+    graph = FakeGraph()
+    monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH", None)
+    monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH_DB_PATH", "")
+
+    def initialize():
+        pipeline._CAUSAL_GRAPH = graph
+        pipeline._CAUSAL_GRAPH_DB_PATH = "cold.db"
+        calls.append("initialize")
+        return graph
+
+    monkeypatch.setattr(pipeline, "_get_causal_graph", initialize)
+
+    causal_graph_module.reset_causal_graph()
+
+    assert calls == ["initialize", "reset", "close"]
+    assert pipeline._CAUSAL_GRAPH is None
+    assert pipeline._CAUSAL_GRAPH_DB_PATH == ""
+
+
 def test_pipeline_reset_has_no_raw_relation_delete_owner():
     source = Path("core/pipeline.py").read_text(encoding="utf-8")
-    start = source.index("def reset_causal_graph()")
+    start = source.index("def reset_causal_graph(")
     end = source.index("\ndef _extract_conflicts", start)
     reset_source = source[start:end]
 

@@ -72,7 +72,8 @@ Known local causal rows may be returned as typed read evidence. A `contradicts` 
 also exposed in the `conflicts` collection. The facade never calls `CausalGraph`
 mutation methods or the DDL-capable graph initializer. An absent optional graph is
 non-blocking; an already-present graph that raises during a read produces bounded
-insufficient evidence.
+insufficient evidence. A legacy/corrupt relation that cannot be decoded into the typed
+contract is the same bounded `causal_graph_read_failed` outcome, not an exception leak.
 
 Before a relation is exposed, both endpoints must independently survive current
 canonical recall policy. Restricted, missing, contradicted, collapsed, deprecated or
@@ -80,7 +81,9 @@ mode-ineligible endpoints are omitted. The two physical rows used to persist a
 forward/inverse pair collapse to one semantic result (including symmetric
 `contradicts`), and `L2Relation` retains `inference_source`, `evidence_ref` and metadata.
 
-`VERIFIED` facts and `UNVERIFIED` attributed reports use separate renderer headings.
+`Validated` and `ImmutableCore` evidence map to `VERIFIED`; attributed `UNVERIFIED`
+reports use a separate renderer heading. Every rendered evidence field is escaped onto a
+single line so an embedded newline cannot inject a verified-looking heading or bullet.
 Passing Guardian/TruthGate establishes policy eligibility for the response; it does not
 upgrade a user report into a verified world fact.
 
@@ -94,8 +97,8 @@ Before review:
 - [ ] no server/runtime/config wiring added;
 - [ ] no default retrieval-mode change;
 - [ ] no Canon/ESM/relation mutation from query tests;
-- [x] strict FactsPack failure, restricted endpoint, inverse-pair collapse and relation
-  provenance regressions green locally;
+- [x] strict FactsPack failure, restricted endpoint, inverse-pair collapse, relation
+  provenance/decoding, multiline rendering and `ImmutableCore` regressions green locally;
 - [ ] exact candidate SHA recorded;
 - [ ] Full CI and applicable Docker checks green;
 - [ ] GitHub AI docs reconciled;
