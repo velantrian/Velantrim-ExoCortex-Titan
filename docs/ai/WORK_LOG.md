@@ -5,7 +5,7 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
-## 2026-08-13 — Phase 2A capability registry · DRAFT / REVIEW-STAGE
+## 2026-08-13 — Phase 2A capability registry · DRAFT / PRE-REVIEW HANDOFF
 
 ```text
 main:                         51058f2d5662edfdb91b037a46dce9297c441a1b
@@ -15,7 +15,7 @@ main signature:               VERIFIED / valid
 #299:                         OPEN · ADMITTED_FOR_BOUNDED_IMPLEMENTATION
 #300:                         OPEN · DRAFT · NOT MERGED
 #300 base:                    main@51058f2d5662edfdb91b037a46dce9297c441a1b
-review-stage head:            79deb3081fc36456cadf2743520f802adb2a9921
+pre-handoff branch head:      ac4a572f4df27bfe2f39de81ac32c9c34fc8b534
 Continuity:                   12/12
 schema:                       v7
 runtime enabled:              false
@@ -44,25 +44,40 @@ Draft PR #300 adds an **unwired in-memory metadata contract** only:
 - deterministic reason-coded candidate evaluation and selection/no-selection;
 - separate provider-health reason and policy/selection reason in trace-ready metadata;
 - reuse of the process-wide `get_policy_kernel()` owner by default;
-- fail-closed behavior on missing/unavailable health, policy exceptions and policy
-  snapshot/version changes during one multi-candidate selection;
+- fail-closed behavior on malformed typed metadata, missing/unavailable health, policy
+  exceptions and policy snapshot/version changes during one multi-candidate selection;
 - remote provider metadata cannot hide network requirements.
 
 The registry performs no provider probe, model/network invocation, Canon/ESM/TRACE/Audit
 mutation or background work and has no runtime caller in this phase. `auto` and explicit
 preference affect ordering only after health and PolicyKernel eligibility.
 
-The first branch checkpoint `9b64eefe7d13c6ee2ea54bcb67c9b9af97102737` started Full CI #1088 and Docker #706;
-Docker #706 completed SUCCESS, but that checkpoint was superseded by self-review hardening
-before final-head proof. Do not reuse ancestor evidence for the final candidate. Fresh
-exact-head CI/Docker must pass after documentation and review fixes stop moving the head.
+### Self-review hardening before external review
+
+The initial candidate used a fresh `PolicyKernel()` instance and provider-level data-mode
+metadata. Self-review corrected both before Ready: the default now reuses
+`get_policy_kernel()`, and payload exposure is declared per capability and passed to that
+existing owner. Health reason is preserved separately from policy/selection reason,
+malformed boolean/enum metadata is rejected, and one selection cannot combine leases from
+different policy snapshots.
+
+Focused adversarial tests cover those boundaries. `COMPONENT_MAP.md`, the Phase 2A ADR,
+operations contract, AI hand-off and AI README route have been reconciled to the same
+owner model.
+
+The earlier #300 checkpoints and their workflow runs are ancestor evidence only after
+subsequent hardening/documentation commits. The pre-handoff branch head immediately before
+this WORK_LOG update is `ac4a572f4df27bfe2f39de81ac32c9c34fc8b534`; this documentation update itself advances
+the branch again. Therefore **fresh Full CI and Docker on the new exact head are required**
+before requesting/accepting final review evidence or marking Ready.
 
 ### Review-stage Notion synchronization
 
 The existing `Velantrim Titan 9.0` page contains a Phase 2A REVIEW-STAGE block describing
-#299/#300, the owner audit, unwired reality boundary, pending evidence and explicit
-non-goals. It was read back successfully. No new Notion page was created. Every later head
-or review correction must be reconciled before Ready.
+#299/#300, the owner audit, unwired reality boundary, current candidate evolution and
+explicit non-goals. It was read back successfully. No new Notion page was created. After
+the final exact head is known, update that same block with exact CI/Docker/review evidence
+and read it back again before Ready.
 
 ---
 
@@ -113,8 +128,7 @@ They are not part of #299/#300.
 Next safe order for this bounded block:
 
 ```text
-finish #300 code/docs self-review
-→ fresh exact-head CI + Docker
+fresh exact-head Full CI + Docker
 → request/fetch substantive review if available
 → remediate all findings and resolve all review threads
 → refresh same-page Notion review-stage evidence + read-back
