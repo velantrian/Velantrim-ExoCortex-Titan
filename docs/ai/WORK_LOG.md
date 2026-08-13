@@ -5,23 +5,17 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
-## 2026-08-13 — PR #297 post-merge hardening · FINAL / POST-MERGE VERIFIED
+## 2026-08-13 — Phase 2A capability registry · DRAFT / REVIEW-STAGE
 
 ```text
-main:                         c96b734b94f30e1d96e8bcb992dec429bda5c8fd
+main:                         51058f2d5662edfdb91b037a46dce9297c441a1b
 main signature:               VERIFIED / valid
-main parent:                  e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96
 #50:                          CLOSED_COMPLETED · final REAL_GAP=0
 #53:                          OPEN
-#295 / #296:                  CLOSED_COMPLETED / MERGED
-#297:                         MERGED
-#297 exact tested head:       9830212159b092af2b3867d52e02fc7aaa57afa1
-#297 squash merge:            c96b734b94f30e1d96e8bcb992dec429bda5c8fd
-review threads:               13/13 RESOLVED
-independent formal approval:  NONE / NOT CLAIMED
-READY aggregate:              #914 · 31725868065 · SUCCESS
-post-merge Full CI:           #1085 · 31725945373 · SUCCESS
-post-merge Docker:            #705 · 31725945362 · SUCCESS
+#299:                         OPEN · ADMITTED_FOR_BOUNDED_IMPLEMENTATION
+#300:                         OPEN · DRAFT · NOT MERGED
+#300 base:                    main@51058f2d5662edfdb91b037a46dce9297c441a1b
+review-stage head:            79deb3081fc36456cadf2743520f802adb2a9921
 Continuity:                   12/12
 schema:                       v7
 runtime enabled:              false
@@ -30,61 +24,72 @@ runtime authority:            false
 production authority:         false
 ```
 
-PR #296 introduced the explicit `ModelFreeCore` read-side facade. PR #297 then closed the
-bounded post-merge logical/failure-path gaps found across the causal and ModelFreeCore
-contracts. Three substantive Codex review rounds produced 13 actionable findings in total;
-all 13 review conversations are now resolved. A fresh fourth review was requested on the
-final head but returned `NOT RUN — USAGE LIMIT`, which is neither approval nor rejection.
-The active solo ruleset requires zero approving reviews, but did require review-thread
-resolution and `Titan aggregate merge evidence`; those merge gates were satisfied.
+The post-#297 public-truth reconciliation is complete via merged #298 at
+`main@51058f2d5662edfdb91b037a46dce9297c441a1b`; post-merge Full CI #1087 and aggregate
+#921 were SUCCESS, and the same existing `Velantrim Titan 9.0` page was synchronized and
+read back. Phase 2A was then admitted as separate bounded child #299. Admission is not
+runtime authorization.
 
-The final hardening fails closed across causal snapshot admission, reset ownership and
-concurrency, canonical inverse identity/deletion, legacy ambiguity/corrupt metadata,
-ModelFree physical-row decoding before semantic collapse, endpoint policy rechecks and
-verified-vs-attributed evidence rendering. It adds no runtime wiring, provider/network
-execution, new mutation owner, Operator GO, runtime authority or production authority.
+Fresh owner audit for #299 confirmed that `core/policy_kernel.py` already owns effective
+policy, network/remote-data limits, local-only Canon policy and capability leases.
+`core/provider_catalog.py` already exists as a console-facing LLM model catalogue and is
+not repurposed into an authority owner. Existing QueryRouter/pipeline, compute-profile,
+TRACE/Audit, Canon/ESM, TruthGate/WriteGate and remote-egress ownership are unchanged.
 
-### Notion synchronization
+Draft PR #300 adds an **unwired in-memory metadata contract** only:
 
-The connectorless merge actor correctly recorded `UNAVAILABLE + HANDOFF_REQUIRED` rather
-than claiming a Notion write it could not perform. A later connected work cycle verified
-the protected merge, signature, 13/13 resolved thread state and post-merge Actions, then
-updated the existing `Velantrim Titan 9.0` page and read it back. No new Notion page was
-created. `docs/ai/NOTION_HANDOFF.md` records the repaired synchronization lifecycle.
+- stable `ProviderDescriptor` and `CapabilityDescriptor` identities;
+- capability-specific declared `data_mode` forwarded to existing PolicyKernel leasing;
+- explicit `ProviderHealth` with UNKNOWN/HEALTHY/DEGRADED/UNAVAILABLE;
+- deterministic reason-coded candidate evaluation and selection/no-selection;
+- separate provider-health reason and policy/selection reason in trace-ready metadata;
+- reuse of the process-wide `get_policy_kernel()` owner by default;
+- fail-closed behavior on missing/unavailable health, policy exceptions and policy
+  snapshot/version changes during one multi-candidate selection;
+- remote provider metadata cannot hide network requirements.
+
+The registry performs no provider probe, model/network invocation, Canon/ESM/TRACE/Audit
+mutation or background work and has no runtime caller in this phase. `auto` and explicit
+preference affect ordering only after health and PolicyKernel eligibility.
+
+The first branch checkpoint `9b64eefe7d13c6ee2ea54bcb67c9b9af97102737` started Full CI #1088 and Docker #706;
+Docker #706 completed SUCCESS, but that checkpoint was superseded by self-review hardening
+before final-head proof. Do not reuse ancestor evidence for the final candidate. Fresh
+exact-head CI/Docker must pass after documentation and review fixes stop moving the head.
+
+### Review-stage Notion synchronization
+
+The existing `Velantrim Titan 9.0` page contains a Phase 2A REVIEW-STAGE block describing
+#299/#300, the owner audit, unwired reality boundary, pending evidence and explicit
+non-goals. It was read back successfully. No new Notion page was created. Every later head
+or review correction must be reconciled before Ready.
 
 ---
 
-## 2026-08-13 — #53 Phase 2 admission audit · READ-ONLY
-
-Current-main ownership remains consistent with the earlier Phase 2 audit. The #297
-hardening changed causal/ModelFree failure semantics but did not create or replace the
-policy authority owner.
-
-`core/policy_kernel.py` already owns `EffectivePolicy`, `PolicySnapshot`,
-`PolicyDecision`, `CapabilityLease` and `PolicyKernel.lease_capability()`. Its defaults
-remain network deny, remote-data never, local canonical write, remote Canon forbidden,
-mandatory WriteGate and fail-closed decisions with stable reason codes.
-
-Classification:
+## 2026-08-13 — #297 / #298 foundation closure · FINAL
 
 ```text
-policy envelope / network / locality lease     ALREADY_CONVERGED
-config + preset precedence                     PARTIAL
-runtime flag facade                            PARTIAL
-resource / retrieval budget                    PARTIAL
-health / status                                PARTIAL
-capability descriptor registry                 REAL_GAP
-provider registry / provider health            REAL_GAP
-selection explanation / trace metadata         PARTIAL / REAL_GAP
-embedding / LLM / ADAO execution               OUT_OF_SCOPE
-ARM-04                                         NOT AUTHORIZED / OUT_OF_SCOPE
+#296 ModelFreeCore Phase 1:     MERGED
+#297 hardening:                 MERGED · c96b734b94f30e1d96e8bcb992dec429bda5c8fd
+#297 review threads:            13/13 RESOLVED
+#297 READY aggregate:           #914 · 31725868065 · SUCCESS
+#297 post-merge Full CI:        #1085 · 31725945373 · SUCCESS
+#297 post-merge Docker:         #705 · 31725945362 · SUCCESS
+#298 truth reconciliation:      MERGED · 51058f2d5662edfdb91b037a46dce9297c441a1b
+#298 exact-head Full CI:        #1086 · 31729146690 · SUCCESS
+#298 READY aggregate:           #920 · 31729778909 · SUCCESS
+#298 post-merge Full CI:        #1087 · 31729908579 · SUCCESS
+#298 post-merge aggregate:      #921 · 31729908264 · SUCCESS
 ```
 
-The bounded Phase 2 gap remains a capability-descriptor + provider-health +
-effective-selection/explanation contract that composes with the existing `PolicyKernel`.
-It is not a second policy engine and cannot escalate permission. Formal implementation
-admission must remain a separate #53 child decision after this post-merge truth-surface
-reconciliation is itself merged and verified.
+PR #297 closed the bounded causal/ModelFree failure-path findings without runtime or
+provider authority expansion. PR #298 then repaired the public GitHub truth surfaces and
+the structured Notion hand-off lifecycle. No #298 Docker run was spawned for the docs-only
+change, so no #298 Docker success is claimed.
+
+The active solo ruleset requires zero approving reviews, review-thread resolution and the
+`Titan aggregate merge evidence` status check. Independent review is not implied and must
+not be invented. Codex usage-limit responses are `NOT RUN — USAGE LIMIT`, not approvals.
 
 ---
 
@@ -103,15 +108,23 @@ post-merge aggregate:          31676260313 · SUCCESS
 
 Separate open workstreams remain #51 (ADAO), #92 (ARM; ARM-04 NOT AUTHORIZED), #120
 (Reader Core production evidence), #249 (CAS contention) and #52 (trusted platform).
+They are not part of #299/#300.
 
-Next safe order:
+Next safe order for this bounded block:
 
 ```text
-post-#297 GitHub/Notion truth reconciliation
-→ verify reconciliation PR merge + final same-page Notion read-back
-→ Phase 2 admission decision under #53
-→ only if admitted: separate bounded Phase 2 child issue
+finish #300 code/docs self-review
+→ fresh exact-head CI + Docker
+→ request/fetch substantive review if available
+→ remediate all findings and resolve all review threads
+→ refresh same-page Notion review-stage evidence + read-back
+→ mark Ready
+→ require fresh READY aggregate on unchanged head
+→ protected squash merge
+→ post-merge main/signature/CI/Docker/aggregate verification
+→ FINAL GitHub + same-page Notion reconciliation
+→ close #299 only if all acceptance evidence is satisfied
 ```
 
 Never infer schema v8, Continuity 13/12, runtime enablement, Operator GO, runtime authority
-or production authority from this work.
+or production authority from Phase 2A.
