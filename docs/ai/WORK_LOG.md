@@ -9,19 +9,27 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ```text
 implementation main:             c1fa13cf8fe6bf82d99dfb507beeac2c1c8f7aca
+documentation closure main:      840b5aa231fe7d8cc0383c072ad953ca9bf4f46a
 main signature:                   VERIFIED / valid
 #50:                              CLOSED_COMPLETED · final REAL_GAP=0
 #53:                              OPEN
-#299:                             OPEN pending documentation closure
+#299:                             CLOSED_COMPLETED
 #300:                             MERGED
+#301:                             MERGED
 #300 final tested head:           f0b893bac1b6fe1f58a71c70ac631f3c14becb59
 #300 protected squash merge:      c1fa13cf8fe6bf82d99dfb507beeac2c1c8f7aca
+#301 exact docs head:             b1376ac74c713773fa1fd6fd723bb05d53490bd1
+#301 protected squash merge:      840b5aa231fe7d8cc0383c072ad953ca9bf4f46a
 pre-merge Full CI:                #1105 · 31735939941 · SUCCESS
 pre-merge Docker:                 #723 · 31735939929 · SUCCESS
 READY aggregate:                  #981 · 31736858130 · SUCCESS
 post-merge Full CI:               #1106 · 31736925690 · SUCCESS
 post-merge Docker:                #724 · 31736925695 · SUCCESS
 post-merge aggregate:             #982 · 31736925705 · SUCCESS
+#301 exact-head Full CI:          #1107 · 31737790013 · SUCCESS
+#301 READY aggregate:             #987 · 31738384462 · SUCCESS
+#301 post-merge Full CI:          #1108 · 31738432888 · SUCCESS
+#301 post-merge aggregate:        #988 · SUCCESS
 Codex review:                     NOT RUN — USAGE LIMIT
 independent formal approval:      NONE / NOT CLAIMED
 Continuity:                       12/12
@@ -33,8 +41,10 @@ production authority:             false
 ```
 
 Phase 2A was admitted through #299 after the #297/#298 foundation and public-truth closure.
-It is now implemented and protected-merged through #300, but remains deliberately
-**UNWIRED / NOT ENABLED**. No provider/model/network call path was activated.
+It is implemented and protected-merged through #300, with the public documentation closure
+completed through #301 and tracking issue #299 subsequently closed as `CLOSED_COMPLETED`.
+The registry remains deliberately **UNWIRED / NOT ENABLED**. No provider/model/network call
+path was activated.
 
 ### Implemented bounded owner
 
@@ -77,11 +87,14 @@ Ready aggregate #981 then succeeded.
 
 ### Documentation closure
 
-The implementation merge left review-stage language in public AI context files. This
-separate docs-only reconciliation updates those truth surfaces without touching `core/**`
-or changing Phase 2A behavior. The existing `Velantrim Titan 9.0` page will be synchronized
-again with final implementation and documentation-closure evidence. No new Notion page is
-permitted.
+The implementation merge left review-stage language in public AI context files. Docs-only
+PR #301 reconciled those truth surfaces without touching `core/**` or changing Phase 2A
+behavior. It protected-merged as
+`840b5aa231fe7d8cc0383c072ad953ca9bf4f46a`; its exact-head Full CI #1107 and Ready
+aggregate #987 succeeded, followed by post-merge Full CI #1108 and aggregate #988. No
+Docker run was spawned for docs-only #301, so no Docker success is claimed for it. The
+existing `Velantrim Titan 9.0` page was synchronized/read back, and issue #299 was then
+closed with state reason `completed`.
 
 ---
 
@@ -119,14 +132,15 @@ Phase 2A does not authorize embeddings/vector execution, reranker/LLM execution,
 ARM-04, provider probing/invocation, remote consent implementation, network activation,
 runtime route replacement, runtime enablement, Continuity 13/12 or schema v8.
 
-Next safe order for this closure:
+Phase 2A closure sequence completed:
 
 ```text
-docs-only reconciliation PR exact-head CI
+#301 exact-head CI SUCCESS
 → same-page Notion sync + read-back
-→ Ready aggregate
-→ protected docs merge
-→ post-merge verification
+→ Ready aggregate #987 SUCCESS
+→ protected docs merge 840b5aa231fe7d8cc0383c072ad953ca9bf4f46a
+→ post-merge Full CI #1108 SUCCESS
+→ post-merge aggregate #988 SUCCESS
 → FINAL Notion read-back
-→ close #299 completed
+→ #299 CLOSED_COMPLETED
 ```
