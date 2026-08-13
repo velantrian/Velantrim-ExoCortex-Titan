@@ -28,8 +28,6 @@ _AUTO_PREFERENCE = "auto"
 
 
 class ProviderHealthState(str, Enum):
-    """Explicit availability state supplied to the registry."""
-
     UNKNOWN = "unknown"
     HEALTHY = "healthy"
     DEGRADED = "degraded"
@@ -38,13 +36,6 @@ class ProviderHealthState(str, Enum):
 
 @dataclass(frozen=True)
 class ProviderDescriptor:
-    """Stable provider identity and policy-relevant execution metadata.
-
-    ``locality`` describes where the provider executes. A remote provider must declare
-    ``requires_network=True`` so metadata cannot hide remote egress from PolicyKernel.
-    Provider descriptors do not grant permission and contain no credentials.
-    """
-
     provider_id: str
     locality: str
     requires_network: bool
@@ -55,6 +46,8 @@ class ProviderDescriptor:
         _require_token("provider_id", self.provider_id)
         _require_token("locality", self.locality)
         _require_token("privacy_class", self.privacy_class)
+        if not isinstance(self.requires_network, bool):
+            raise ValueError("requires_network must be bool")
         if self.locality not in _LOCALITIES:
             raise ValueError("locality must be local or remote")
         if self.locality == "remote" and not self.requires_network:
@@ -65,13 +58,6 @@ class ProviderDescriptor:
 
 @dataclass(frozen=True)
 class CapabilityDescriptor:
-    """Descriptive capability metadata with no execution authority.
-
-    ``data_mode`` is declared per capability because one provider can host operations
-    with different payload exposure. It is passed to PolicyKernel for the actual lease
-    decision; the registry never treats it as consent.
-    """
-
     capability_id: str
     kind: str
     provider_id: str
@@ -88,6 +74,8 @@ class CapabilityDescriptor:
         _require_token("data_mode", self.data_mode)
         if self.data_mode not in _DATA_MODES:
             raise ValueError("data_mode must be none, redacted, or raw")
+        if not isinstance(self.deterministic, bool):
+            raise ValueError("deterministic must be bool")
         if self.model is not None:
             _require_token("model", self.model)
         if self.revision is not None:
@@ -103,16 +91,12 @@ class CapabilityDescriptor:
 
 @dataclass(frozen=True)
 class ProviderHealth:
-    """One explicit provider-health observation/configuration snapshot.
-
-    The registry never probes providers. UNKNOWN is the default and is fail-closed for
-    selection until a caller supplies health evidence through ``set_provider_health``.
-    """
-
     state: ProviderHealthState
     reason_code: str
 
     def __post_init__(self) -> None:
+        if not isinstance(self.state, ProviderHealthState):
+            raise ValueError("state must be ProviderHealthState")
         _require_token("reason_code", self.reason_code)
 
     @classmethod
@@ -128,15 +112,11 @@ class ProviderHealth:
         return cls(ProviderHealthState.DEGRADED, reason_code)
 
     @classmethod
-    def unavailable(
-        cls, reason_code: str = "provider_unavailable"
-    ) -> ProviderHealth:
+    def unavailable(cls, reason_code: str = "provider_unavailable") -> ProviderHealth:
         return cls(ProviderHealthState.UNAVAILABLE, reason_code)
 
 
 class CapabilityLeaser(Protocol):
-    """Structural subset of PolicyKernel used by the registry."""
-
     def lease_capability(
         self,
         capability: str,
@@ -149,8 +129,6 @@ class CapabilityLeaser(Protocol):
 
 @dataclass(frozen=True)
 class CandidateEvaluation:
-    """Reason-coded evaluation for one registered capability."""
-
     capability_id: str
     provider_id: str
     health_state: ProviderHealthState
@@ -175,8 +153,6 @@ class CandidateEvaluation:
 
 @dataclass(frozen=True)
 class SelectionResult:
-    """Deterministic, replay-friendly selection explanation."""
-
     kind: str
     preference: str
     selected_capability_id: str | None
@@ -188,12 +164,6 @@ class SelectionResult:
         return self.selected_capability_id is not None
 
     def as_trace_metadata(self) -> dict[str, Any]:
-        """Return bounded metadata suitable for an existing AnalysisTrace owner.
-
-        This method does not write or persist a trace. It only returns deterministic
-        selection metadata for a future authorized caller to attach to its own trace.
-        """
-
         return {
             "capability_kind": self.kind,
             "preference": self.preference,
@@ -204,36 +174,31 @@ class SelectionResult:
 
 
 class CapabilityRegistry:
-    """In-memory descriptor/health registry with fail-closed selection.
-
-    The registry snapshots its own descriptors and health under one lock, then delegates
-    permission for every health-eligible candidate to the injected PolicyKernel-compatible
-    owner. If no test double is injected, it reuses the process-wide PolicyKernel owner
-    returned by ``get_policy_kernel()``; it never creates a second PolicyKernel instance.
-
-    If policy evaluation errors or produces inconsistent snapshots during one selection,
-    no capability is selected.
-    """
+    """Unwired descriptor/health registry that delegates all permission to PolicyKernel."""
 
     def __init__(self, policy_kernel: CapabilityLeaser | None = None) -> None:
-        self._policy_kernel: CapabilityLeaser = policy_kernel or get_policy_kernel()
+        self._policy_kernel: CapabilityLeaser = (
+            policy_kernel if policy_kernel is not None else get_policy_kernel()
+        )
         self._providers: dict[str, ProviderDescriptor] = {}
         self._capabilities: dict[str, CapabilityDescriptor] = {}
         self._health: dict[str, ProviderHealth] = {}
         self._lock = RLock()
 
     def register_provider(self, descriptor: ProviderDescriptor) -> None:
+        if not isinstance(descriptor, ProviderDescriptor):
+            raise ValueError("descriptor must be ProviderDescriptor")
         with self._lock:
             if descriptor.provider_id in self._providers:
                 raise ValueError(f"provider already registered: {descriptor.provider_id}")
             self._providers[descriptor.provider_id] = descriptor
 
     def register_capability(self, descriptor: CapabilityDescriptor) -> None:
+        if not isinstance(descriptor, CapabilityDescriptor):
+            raise ValueError("descriptor must be CapabilityDescriptor")
         with self._lock:
             if descriptor.capability_id in self._capabilities:
-                raise ValueError(
-                    f"capability already registered: {descriptor.capability_id}"
-                )
+                raise ValueError(f"capability already registered: {descriptor.capability_id}")
             if descriptor.provider_id not in self._providers:
                 raise ValueError(
                     f"unknown provider for capability {descriptor.capability_id}: "
@@ -242,6 +207,9 @@ class CapabilityRegistry:
             self._capabilities[descriptor.capability_id] = descriptor
 
     def set_provider_health(self, provider_id: str, health: ProviderHealth) -> None:
+        _require_token("provider_id", provider_id)
+        if not isinstance(health, ProviderHealth):
+            raise ValueError("health must be ProviderHealth")
         with self._lock:
             if provider_id not in self._providers:
                 raise ValueError(f"unknown provider: {provider_id}")
@@ -263,28 +231,13 @@ class CapabilityRegistry:
         return tuple(sorted(items, key=lambda item: item.capability_id))
 
     def provider_health(self, provider_id: str) -> ProviderHealth:
+        _require_token("provider_id", provider_id)
         with self._lock:
             if provider_id not in self._providers:
                 raise ValueError(f"unknown provider: {provider_id}")
             return self._health.get(provider_id, ProviderHealth.unknown())
 
     def resolve(self, kind: str, *, preference: str = _AUTO_PREFERENCE) -> SelectionResult:
-        """Resolve one allowed capability without granting permission itself.
-
-        Selection order is intentionally conservative:
-
-        1. only HEALTHY/DEGRADED providers can become eligible;
-        2. every such candidate must receive an allowed PolicyKernel lease;
-        3. all successful policy evaluations in this selection must agree on snapshot id
-           and policy version, otherwise the whole selection fails closed;
-        4. HEALTHY beats DEGRADED;
-        5. an explicit preference is considered only after health/policy eligibility;
-        6. local beats remote when otherwise equal;
-        7. deterministic capability and capability id provide stable tie-breaking.
-
-        Thus ``preference``/``auto`` can never weaken health or policy.
-        """
-
         _require_token("kind", kind)
         _require_token("preference", preference)
 
@@ -299,22 +252,12 @@ class CapabilityRegistry:
             )
 
         if not capabilities:
-            return SelectionResult(
-                kind=kind,
-                preference=preference,
-                selected_capability_id=None,
-                reason_code="no_registered_capability",
-                candidates=(),
-            )
+            return SelectionResult(kind, preference, None, "no_registered_capability", ())
 
         capability_ids = {item.capability_id for item in capabilities}
         if preference != _AUTO_PREFERENCE and preference not in capability_ids:
             return SelectionResult(
-                kind=kind,
-                preference=preference,
-                selected_capability_id=None,
-                reason_code="preferred_capability_unknown",
-                candidates=(),
+                kind, preference, None, "preferred_capability_unknown", ()
             )
 
         evaluations: list[CandidateEvaluation] = []
@@ -328,12 +271,12 @@ class CapabilityRegistry:
             if provider_health.state is ProviderHealthState.UNKNOWN:
                 evaluations.append(
                     CandidateEvaluation(
-                        capability_id=capability.capability_id,
-                        provider_id=provider.provider_id,
-                        health_state=provider_health.state,
-                        health_reason_code=provider_health.reason_code,
-                        eligible=False,
-                        reason_code="provider_health_unknown",
+                        capability.capability_id,
+                        provider.provider_id,
+                        provider_health.state,
+                        provider_health.reason_code,
+                        False,
+                        "provider_health_unknown",
                     )
                 )
                 continue
@@ -341,12 +284,12 @@ class CapabilityRegistry:
             if provider_health.state is ProviderHealthState.UNAVAILABLE:
                 evaluations.append(
                     CandidateEvaluation(
-                        capability_id=capability.capability_id,
-                        provider_id=provider.provider_id,
-                        health_state=provider_health.state,
-                        health_reason_code=provider_health.reason_code,
-                        eligible=False,
-                        reason_code=provider_health.reason_code,
+                        capability.capability_id,
+                        provider.provider_id,
+                        provider_health.state,
+                        provider_health.reason_code,
+                        False,
+                        provider_health.reason_code,
                     )
                 )
                 continue
@@ -358,16 +301,16 @@ class CapabilityRegistry:
                     requires_network=provider.requires_network,
                     data_mode=capability.data_mode,
                 )
-            except Exception:  # noqa: BLE001 - selection boundary must fail closed
+            except Exception:  # noqa: BLE001 - boundary must fail closed
                 policy_error = True
                 evaluations.append(
                     CandidateEvaluation(
-                        capability_id=capability.capability_id,
-                        provider_id=provider.provider_id,
-                        health_state=provider_health.state,
-                        health_reason_code=provider_health.reason_code,
-                        eligible=False,
-                        reason_code="policy_lease_error",
+                        capability.capability_id,
+                        provider.provider_id,
+                        provider_health.state,
+                        provider_health.reason_code,
+                        False,
+                        "policy_lease_error",
                     )
                 )
                 continue
@@ -375,30 +318,25 @@ class CapabilityRegistry:
             leases_by_capability[capability.capability_id] = lease
             evaluations.append(
                 CandidateEvaluation(
-                    capability_id=capability.capability_id,
-                    provider_id=provider.provider_id,
-                    health_state=provider_health.state,
-                    health_reason_code=provider_health.reason_code,
-                    eligible=lease.allowed,
-                    reason_code=(
-                        "candidate_allowed" if lease.allowed else lease.reason_code
-                    ),
-                    policy_snapshot_id=lease.snapshot_id,
-                    policy_version=lease.policy_version,
+                    capability.capability_id,
+                    provider.provider_id,
+                    provider_health.state,
+                    provider_health.reason_code,
+                    lease.allowed,
+                    "candidate_allowed" if lease.allowed else lease.reason_code,
+                    lease.snapshot_id,
+                    lease.policy_version,
                 )
             )
 
-        ordered_evaluations = tuple(
-            sorted(evaluations, key=lambda item: item.capability_id)
-        )
-
+        ordered_evaluations = tuple(sorted(evaluations, key=lambda item: item.capability_id))
         if policy_error:
             return SelectionResult(
-                kind=kind,
-                preference=preference,
-                selected_capability_id=None,
-                reason_code="policy_evaluation_incomplete",
-                candidates=ordered_evaluations,
+                kind,
+                preference,
+                None,
+                "policy_evaluation_incomplete",
+                ordered_evaluations,
             )
 
         snapshots = {
@@ -407,16 +345,14 @@ class CapabilityRegistry:
         }
         if len(snapshots) > 1:
             return SelectionResult(
-                kind=kind,
-                preference=preference,
-                selected_capability_id=None,
-                reason_code="policy_snapshot_changed_during_selection",
-                candidates=ordered_evaluations,
+                kind,
+                preference,
+                None,
+                "policy_snapshot_changed_during_selection",
+                ordered_evaluations,
             )
 
-        evaluation_by_id = {
-            evaluation.capability_id: evaluation for evaluation in evaluations
-        }
+        evaluation_by_id = {item.capability_id: item for item in evaluations}
         eligible = [
             capability
             for capability in capabilities
@@ -424,11 +360,11 @@ class CapabilityRegistry:
         ]
         if not eligible:
             return SelectionResult(
-                kind=kind,
-                preference=preference,
-                selected_capability_id=None,
-                reason_code="no_allowed_healthy_capability",
-                candidates=ordered_evaluations,
+                kind,
+                preference,
+                None,
+                "no_allowed_healthy_capability",
+                ordered_evaluations,
             )
 
         def selection_key(
@@ -436,27 +372,20 @@ class CapabilityRegistry:
         ) -> tuple[int, int, int, int, str]:
             provider = providers[capability.provider_id]
             state = health.get(provider.provider_id, ProviderHealth.unknown()).state
-            health_rank = 0 if state is ProviderHealthState.HEALTHY else 1
-            preference_rank = (
+            return (
+                0 if state is ProviderHealthState.HEALTHY else 1,
                 0
                 if preference != _AUTO_PREFERENCE
                 and capability.capability_id == preference
-                else 1
-            )
-            locality_rank = 0 if provider.locality == "local" else 1
-            deterministic_rank = 0 if capability.deterministic else 1
-            return (
-                health_rank,
-                preference_rank,
-                locality_rank,
-                deterministic_rank,
+                else 1,
+                0 if provider.locality == "local" else 1,
+                0 if capability.deterministic else 1,
                 capability.capability_id,
             )
 
         selected = min(eligible, key=selection_key)
         selected_health = health.get(
-            providers[selected.provider_id].provider_id,
-            ProviderHealth.unknown(),
+            providers[selected.provider_id].provider_id, ProviderHealth.unknown()
         ).state
         reason = (
             "selected_degraded_provider"
@@ -464,11 +393,11 @@ class CapabilityRegistry:
             else "selected"
         )
         return SelectionResult(
-            kind=kind,
-            preference=preference,
-            selected_capability_id=selected.capability_id,
-            reason_code=reason,
-            candidates=ordered_evaluations,
+            kind,
+            preference,
+            selected.capability_id,
+            reason,
+            ordered_evaluations,
         )
 
 
