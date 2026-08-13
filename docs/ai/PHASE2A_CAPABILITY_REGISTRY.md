@@ -2,6 +2,7 @@
 
 **Parent:** #53  
 **Tracking:** #299  
+**Implementation PR:** #300  
 **Base:** `main@51058f2d5662edfdb91b037a46dce9297c441a1b`  
 **Scope:** typed descriptor/provider-health/selection explanation contract only  
 **Runtime:** UNWIRED / NOT ENABLED  
@@ -9,9 +10,9 @@
 
 ## Read this first
 
-Phase 2A must not be interpreted as LLM/provider activation. The new registry is a
-read-side metadata and selection-explanation component. It owns no provider call, network
-transport, Canon write, policy rule, QueryRouter decision or runtime composition.
+Phase 2A must not be interpreted as LLM/provider activation. The registry is a read-side
+metadata and selection-explanation component. It owns no provider call, network transport,
+Canon write, policy rule, QueryRouter decision or runtime composition.
 
 Authority chain:
 
@@ -23,7 +24,8 @@ ProviderDescriptor + CapabilityDescriptor + explicit ProviderHealth
                        |
                        | asks for a lease
                        v
-              existing PolicyKernel
+       existing process-wide PolicyKernel
+              via get_policy_kernel()
                        |
              allow / deny + reason
                        |
@@ -31,8 +33,9 @@ ProviderDescriptor + CapabilityDescriptor + explicit ProviderHealth
                 SelectionResult
 ```
 
-`PolicyKernel` remains the permission owner. Registry selection cannot reinterpret a denied
-lease. `auto` is ordering, not permission.
+`PolicyKernel` remains the permission owner. The default registry constructor reuses the
+existing process-wide owner and does not instantiate another PolicyKernel. Registry
+selection cannot reinterpret a denied lease. `auto` is ordering, not permission.
 
 ## Existing owners that must be reused
 
@@ -49,9 +52,11 @@ Do not create a second owner for any of these.
 
 `core/capability_registry.py` owns only:
 
-- validated stable descriptors;
+- validated stable provider/capability descriptors;
+- capability-specific declared `data_mode` passed to PolicyKernel;
 - explicit provider health metadata;
 - deterministic candidate evaluation;
+- separate health reason and policy/selection reason codes;
 - reason-coded selection/no-selection;
 - trace-ready selection metadata.
 
@@ -60,16 +65,19 @@ The module is deliberately not wired into production/runtime callers in this mil
 ## Safety invariants
 
 1. Remote provider metadata must declare `requires_network=True`.
-2. Missing health is `UNKNOWN` and cannot be selected.
-3. UNAVAILABLE providers cannot be selected.
-4. DEGRADED providers lose to HEALTHY eligible providers.
-5. Every HEALTHY/DEGRADED candidate is checked by existing PolicyKernel leasing.
-6. Explicit preference cannot override lease denial.
-7. Any lease-evaluation exception fails the whole selection closed.
-8. Different policy snapshot/version values within one selection fail the whole selection
+2. Capability `data_mode` must be one of `none / redacted / raw`; it is PolicyKernel input,
+   never consent.
+3. Missing health is `UNKNOWN` and cannot be selected.
+4. UNAVAILABLE providers cannot be selected.
+5. DEGRADED providers lose to HEALTHY eligible providers.
+6. Every HEALTHY/DEGRADED candidate is checked by the existing process-wide PolicyKernel.
+7. Explicit preference cannot override lease denial.
+8. Any lease-evaluation exception fails the whole selection closed.
+9. Different policy snapshot/version values within one selection fail the whole selection
    closed; do not combine permission decisions from different policy moments.
-9. Selection returns bounded explanation metadata; it performs no retry/provider probe.
-10. No Canon/ESM/TRACE/Audit mutation occurs here.
+10. Selection preserves health reason separately from policy/selection reason.
+11. Selection returns bounded explanation metadata; it performs no retry/provider probe.
+12. No Canon/ESM/TRACE/Audit mutation occurs here.
 
 ## Out of scope
 
@@ -80,6 +88,7 @@ LLM invocation                    OUT_OF_SCOPE
 ADAO execution                    OUT_OF_SCOPE
 ARM-04                            NOT_AUTHORIZED
 remote consent implementation     OUT_OF_SCOPE
+provider probing                  OUT_OF_SCOPE
 network activation                OUT_OF_SCOPE
 runtime route replacement         OUT_OF_SCOPE
 runtime enablement                OUT_OF_SCOPE
@@ -98,6 +107,8 @@ Read:
 2. `docs/operations/capability-registry-contract.md`
 3. `core/capability_registry.py`
 4. `tests/test_capability_registry.py`
-5. exact-head CI and review evidence on the Phase 2A PR
+5. `docs/ai/WORK_LOG.md`
+6. exact-head CI, Docker, review threads and aggregate evidence on PR #300
 
-Before any later runtime wiring, re-audit current main and open a separate bounded issue.
+Any earlier PR-head evidence is ancestor-only after a new commit. Before any later runtime
+wiring, re-audit current main and open a separate bounded issue.
