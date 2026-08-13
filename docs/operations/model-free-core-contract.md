@@ -87,7 +87,9 @@ Before review:
 - [ ] exact candidate SHA recorded;
 - [ ] Full CI and applicable Docker checks green;
 - [ ] GitHub AI docs reconciled;
-- [ ] existing `Velantrim Titan 9.0` Notion page REVIEW sync/read-back complete.
+- [x] existing `Velantrim Titan 9.0` Notion page REVIEW sync/read-back complete for Draft
+  PR #297 code head `f6603f9b5643d75d1f11c882ff7766c6479acf2c` after Titan CI #1073,
+  Docker #693 and Aggregate #866 succeeded; final protected-merge sync is still required.
 
 After protected merge, rerun applicable post-merge evidence and write FINAL Notion
 evidence before closing #295. Parent #53 remains open for later phases.
