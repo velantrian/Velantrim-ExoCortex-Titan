@@ -42,10 +42,13 @@ the same decision-bearing facts, exact status, evidence, limitations, and next a
 2. Update the affected technical documents and the relevant files under `docs/ai/`.
 3. Record exact base/head SHA, PR or issue, tests, CI, limitations, and next actions.
 4. Add a hand-off item below for work classified `GITHUB_AND_NOTION`.
+   New pending items must use the machine-stable level-2 heading
+   `## handoff-pr-<PR-NUMBER>` so the aggregate validator can bind the item to the
+   current pull request without guessing GitHub-generated title slugs.
 5. Set the PR fields to:
    - `Notion access: UNAVAILABLE`;
    - `Notion synchronization: HANDOFF_REQUIRED`;
-   - `GitHub hand-off path: docs/ai/NOTION_HANDOFF.md#<item-anchor>`.
+   - `GitHub hand-off path: docs/ai/NOTION_HANDOFF.md#handoff-pr-<PR-NUMBER>`.
 6. Never claim that Notion was updated.
 7. Keep an implementation or architectural PR draft until a connected actor verifies
    the evidence and records `SYNCED`.
@@ -75,7 +78,9 @@ Use a safe page title or internal reference when the Notion URL must remain priv
 Copy this section for each pending synchronization and place new items above older ones.
 
 ```markdown
-## YYYY-MM-DD — Short title
+## handoff-pr-<PR-NUMBER>
+
+### YYYY-MM-DD — Short title
 
 - **Status:** `HANDOFF_REQUIRED` / `SYNCED` / `BLOCKED_PRIVACY_OR_PERMISSION`
 - **Documentation impact:** `GITHUB_AND_NOTION`
@@ -110,6 +115,14 @@ Copy this section for each pending synchronization and place new items above old
 - Status: `SYNCED`
 - Final PR / merge SHA / CI:
 ```
+
+For `UNAVAILABLE + HANDOFF_REQUIRED`, the merge-evidence gate reads this file from the
+**exact PR head** and fails closed unless the declared path is exactly
+`docs/ai/NOTION_HANDOFF.md#handoff-pr-<current-PR>`, this file is changed by that PR,
+and the matching item contains the current PR reference, current base SHA, a full head SHA,
+the intended Notion record, `UNAVAILABLE` origin access, and the required structured
+sections. Existing historical items keep their original headings; only new pending items
+need the machine-stable `handoff-pr-<PR-NUMBER>` heading.
 
 ## Queue
 
