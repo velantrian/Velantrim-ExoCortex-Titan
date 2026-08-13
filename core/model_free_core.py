@@ -334,6 +334,7 @@ class ModelFreeCore:
                 relation_id: ModelFreeCore._decode_relation(relation)
                 for relation_id, relation in candidates_by_id.items()
             }
+            ModelFreeCore._validate_inverse_identity(decoded_by_id)
         except Exception as exc:
             raise ModelFreeGraphReadError(
                 "causal relation row could not be decoded"
@@ -454,6 +455,44 @@ class ModelFreeCore:
             ),
             metadata=metadata,
         )
+
+    @staticmethod
+    def _validate_inverse_identity(decoded_by_id: dict[str, L2Relation]) -> None:
+        """Validate generated inverse backlinks before semantic pair collapse.
+
+        Canonical inverse rows point to the forward row through ``inverse_of``.
+        Legacy/corrupt pointers must never be trusted as collapse keys: a target
+        must exist, be the reciprocal relation tuple, and have exactly one
+        backlink. Otherwise read-side evidence fails closed rather than hiding a
+        physical relation or contradiction.
+        """
+        from core.causal_graph import INVERSE_RELATIONS
+
+        linked_targets: set[str] = set()
+        for relation_id, relation in decoded_by_id.items():
+            inverse_of = relation.metadata.get("inverse_of")
+            if not inverse_of:
+                continue
+            if inverse_of == relation_id:
+                raise ValueError("relation inverse identity cannot point to itself")
+            target = decoded_by_id.get(inverse_of)
+            if target is None:
+                raise ValueError("relation inverse identity target is missing")
+            if target.metadata.get("inverse_of") is not None:
+                raise ValueError("relation inverse identity target has a conflicting backlink")
+            if inverse_of in linked_targets:
+                raise ValueError("relation inverse identity target has multiple backlinks")
+
+            expected_inverse_type = INVERSE_RELATIONS.get(target.relation_type)
+            reciprocal_tuple = (
+                target.from_fact_id == relation.to_fact_id
+                and target.to_fact_id == relation.from_fact_id
+                and expected_inverse_type == relation.relation_type
+                and target.inference_source == relation.inference_source
+            )
+            if not reciprocal_tuple:
+                raise ValueError("relation inverse identity target is not the reciprocal tuple")
+            linked_targets.add(inverse_of)
 
     @staticmethod
     def _render(
