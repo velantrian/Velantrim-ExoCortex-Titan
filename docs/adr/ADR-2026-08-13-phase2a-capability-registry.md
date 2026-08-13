@@ -37,11 +37,12 @@ It owns only:
   preserves health reason separately from policy/selection reason;
 - deterministic candidate ordering after health and policy eligibility.
 
-Every health-eligible candidate must be evaluated by the existing
-`PolicyKernel.lease_capability()` contract (through a structural `CapabilityLeaser`
-interface for tests). The default registry reuses the process-wide policy owner returned
-by `get_policy_kernel()`; it does not instantiate another PolicyKernel. Registry preference
-cannot convert a denied lease into permission.
+Every health-eligible candidate must be evaluated by the existing process-wide
+`PolicyKernel.lease_capability()` contract. `CapabilityRegistry()` takes **no policy or
+leaser argument** and always obtains the owner through `get_policy_kernel()`. This closes a
+potential authority-bypass extension point: future production callers cannot inject an
+allow-all substitute through the registry constructor. Tests patch the module-level lookup
+only inside the test process; that is not a production API.
 
 Remote provider descriptors are invalid unless `requires_network=True`, preventing
 metadata from hiding egress from PolicyKernel. `data_mode` is declared per capability and
@@ -61,7 +62,7 @@ reranking or remote egress in this phase.
 - **Background execution:** none.
 - **Network/provider access:** none; no probe or invocation is performed.
 - **Policy authority:** remains the existing process-wide `PolicyKernel`; the registry
-  consumes leases only.
+  consumes leases only and exposes no alternate policy-owner injection API.
 - **Provider catalogue ownership:** existing `core/provider_catalog.py` remains the console
   LLM catalogue; it is not replaced.
 - **Routing authority:** none; current QueryRouter/pipeline ownership is unchanged.
@@ -83,16 +84,9 @@ metadata cannot omit its network requirement.
 
 ## Failure semantics
 
-Fail closed on:
-
-- malformed/ambiguous descriptor tokens or unsupported capability data modes;
-- duplicate provider or capability identity;
-- capability referencing an unknown provider;
-- unknown or unavailable provider health;
-- unknown explicit preference;
-- PolicyKernel lease denial;
-- PolicyKernel evaluation exception;
-- inconsistent policy snapshot/version across one selection pass.
+Fail closed on malformed metadata, duplicate identity, unknown provider references,
+unknown/unavailable health, unknown explicit preference, PolicyKernel denial/evaluation
+error, or inconsistent policy snapshot/version across one selection pass.
 
 A DEGRADED provider may be selected only when no HEALTHY eligible candidate wins the
 conservative ordering. Failure returns a bounded `SelectionResult`; it does not retry,
@@ -115,11 +109,10 @@ tests and documentation. No persistent migration or state recovery is needed.
 
 ## Validation
 
-Focused tests cover remote-network declaration, malformed/duplicate descriptors, invalid
-capability data modes, unknown providers/health, local selection, capability-specific
-policy data mode, remote preference under network denial, unavailable/degraded fallback,
-health-reason preservation, policy exceptions, policy snapshot changes, and unknown
-explicit preference.
+Focused tests cover the non-injectable policy owner, remote-network declaration, malformed
+descriptors, invalid capability data modes, unknown health, local selection,
+capability-specific policy data mode, remote preference under network denial,
+unavailable/degraded handling, policy exceptions and policy snapshot changes.
 
 Repository Ruff, blocking Mypy, pytest, architecture-freeze, project-state, coverage,
 Docker and aggregate merge-evidence gates remain required before protected merge where the
