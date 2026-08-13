@@ -26,14 +26,21 @@
 #   docker build --build-arg RUNTIME_EXTRAS=server,parsers,retrieval,embeddings .
 # "dev" (pytest/ruff/mypy) and "audio" (openai-whisper, GB-scale) are
 # intentionally never part of the default and must be opted into explicitly.
+#
+# Supply-chain boundary (#52): both stages intentionally use the same
+# immutable Docker Official Image index digest. The human-readable tag keeps
+# the Python line visible, but the digest is authoritative for image content.
+# Rotate this pin only as a deliberate supply-chain change and rerun the
+# Docker workflow on the exact PR head.
 
-ARG PYTHON_VERSION=3.11-slim
 ARG RUNTIME_EXTRAS=server
 
+# Docker Official Image: python:3.11.15-slim / python:3.11-slim
+# Resolved index digest: 2026-08-14
 # ---------------------------------------------------------------------------
 # Stage 1: builder
 # ---------------------------------------------------------------------------
-FROM python:${PYTHON_VERSION} AS builder
+FROM python:3.11.15-slim@sha256:db3ff2e1800a8581e2c48a27c3995339d47bdf046da21c7627accd3d51053a93 AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -73,7 +80,7 @@ RUN WHEEL="$(ls /wheels/*.whl)" \
 # ---------------------------------------------------------------------------
 # Stage 2: runtime
 # ---------------------------------------------------------------------------
-FROM python:${PYTHON_VERSION} AS runtime
+FROM python:3.11.15-slim@sha256:db3ff2e1800a8581e2c48a27c3995339d47bdf046da21c7627accd3d51053a93 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
