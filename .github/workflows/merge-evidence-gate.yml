@@ -46,7 +46,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.workflow_run.pull_requests[0].number }}
         run: >-
-          python scripts/check_pr_merge_evidence.py
+          python scripts/check_pr_merge_evidence_handoff.py
           --pull-request "${PR_NUMBER}"
 
   refresh-open-pull-requests:
@@ -63,4 +63,4 @@ jobs:
       - name: Re-evaluate every open PR after main advances
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python scripts/check_pr_merge_evidence.py --all-open
+        run: python scripts/check_pr_merge_evidence_handoff.py --all-open
