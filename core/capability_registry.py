@@ -20,7 +20,7 @@ from enum import Enum
 from threading import RLock
 from typing import Any, Protocol
 
-from core.policy_kernel import CapabilityLease, PolicyKernel
+from core.policy_kernel import CapabilityLease, get_policy_kernel
 
 _LOCALITIES = frozenset({"local", "remote"})
 _DATA_MODES = frozenset({"none", "redacted", "raw"})
@@ -41,27 +41,22 @@ class ProviderDescriptor:
     """Stable provider identity and policy-relevant execution metadata.
 
     ``locality`` describes where the provider executes. A remote provider must declare
-    ``requires_network=True`` so a descriptor cannot hide remote egress from PolicyKernel.
-    ``data_mode`` is the maximum payload class the capability declaration expects to
-    expose if selected; PolicyKernel remains authoritative for whether that is permitted.
+    ``requires_network=True`` so metadata cannot hide remote egress from PolicyKernel.
+    Provider descriptors do not grant permission and contain no credentials.
     """
 
     provider_id: str
     locality: str
     requires_network: bool
-    data_mode: str = "none"
     revision: str | None = None
     privacy_class: str = "default"
 
     def __post_init__(self) -> None:
         _require_token("provider_id", self.provider_id)
         _require_token("locality", self.locality)
-        _require_token("data_mode", self.data_mode)
         _require_token("privacy_class", self.privacy_class)
         if self.locality not in _LOCALITIES:
             raise ValueError("locality must be local or remote")
-        if self.data_mode not in _DATA_MODES:
-            raise ValueError("data_mode must be none, redacted, or raw")
         if self.locality == "remote" and not self.requires_network:
             raise ValueError("remote providers must declare requires_network=True")
         if self.revision is not None:
@@ -70,13 +65,19 @@ class ProviderDescriptor:
 
 @dataclass(frozen=True)
 class CapabilityDescriptor:
-    """Descriptive capability metadata with no execution authority."""
+    """Descriptive capability metadata with no execution authority.
+
+    ``data_mode`` is declared per capability because one provider can host operations
+    with different payload exposure. It is passed to PolicyKernel for the actual lease
+    decision; the registry never treats it as consent.
+    """
 
     capability_id: str
     kind: str
     provider_id: str
     model: str | None = None
     revision: str | None = None
+    data_mode: str = "none"
     deterministic: bool = False
     resource_profile: tuple[tuple[str, str], ...] = field(default_factory=tuple)
 
@@ -84,6 +85,9 @@ class CapabilityDescriptor:
         _require_token("capability_id", self.capability_id)
         _require_token("kind", self.kind)
         _require_token("provider_id", self.provider_id)
+        _require_token("data_mode", self.data_mode)
+        if self.data_mode not in _DATA_MODES:
+            raise ValueError("data_mode must be none, redacted, or raw")
         if self.model is not None:
             _require_token("model", self.model)
         if self.revision is not None:
@@ -150,6 +154,7 @@ class CandidateEvaluation:
     capability_id: str
     provider_id: str
     health_state: ProviderHealthState
+    health_reason_code: str
     eligible: bool
     reason_code: str
     policy_snapshot_id: str | None = None
@@ -160,6 +165,7 @@ class CandidateEvaluation:
             "capability_id": self.capability_id,
             "provider_id": self.provider_id,
             "health": self.health_state.value,
+            "health_reason_code": self.health_reason_code,
             "eligible": self.eligible,
             "reason_code": self.reason_code,
             "policy_snapshot_id": self.policy_snapshot_id,
@@ -202,12 +208,15 @@ class CapabilityRegistry:
 
     The registry snapshots its own descriptors and health under one lock, then delegates
     permission for every health-eligible candidate to the injected PolicyKernel-compatible
-    owner. If policy evaluation errors or produces inconsistent snapshots during one
-    selection, no capability is selected.
+    owner. If no test double is injected, it reuses the process-wide PolicyKernel owner
+    returned by ``get_policy_kernel()``; it never creates a second PolicyKernel instance.
+
+    If policy evaluation errors or produces inconsistent snapshots during one selection,
+    no capability is selected.
     """
 
     def __init__(self, policy_kernel: CapabilityLeaser | None = None) -> None:
-        self._policy_kernel: CapabilityLeaser = policy_kernel or PolicyKernel()
+        self._policy_kernel: CapabilityLeaser = policy_kernel or get_policy_kernel()
         self._providers: dict[str, ProviderDescriptor] = {}
         self._capabilities: dict[str, CapabilityDescriptor] = {}
         self._health: dict[str, ProviderHealth] = {}
@@ -248,10 +257,10 @@ class CapabilityRegistry:
         if kind is not None:
             _require_token("kind", kind)
         with self._lock:
-            values = self._capabilities.values()
-            if kind is not None:
-                values = (item for item in values if item.kind == kind)
-            return tuple(sorted(values, key=lambda item: item.capability_id))
+            items = tuple(self._capabilities.values())
+        if kind is not None:
+            items = tuple(item for item in items if item.kind == kind)
+        return tuple(sorted(items, key=lambda item: item.capability_id))
 
     def provider_health(self, provider_id: str) -> ProviderHealth:
         with self._lock:
@@ -322,6 +331,7 @@ class CapabilityRegistry:
                         capability_id=capability.capability_id,
                         provider_id=provider.provider_id,
                         health_state=provider_health.state,
+                        health_reason_code=provider_health.reason_code,
                         eligible=False,
                         reason_code="provider_health_unknown",
                     )
@@ -334,6 +344,7 @@ class CapabilityRegistry:
                         capability_id=capability.capability_id,
                         provider_id=provider.provider_id,
                         health_state=provider_health.state,
+                        health_reason_code=provider_health.reason_code,
                         eligible=False,
                         reason_code=provider_health.reason_code,
                     )
@@ -345,7 +356,7 @@ class CapabilityRegistry:
                     capability.capability_id,
                     locality=provider.locality,
                     requires_network=provider.requires_network,
-                    data_mode=provider.data_mode,
+                    data_mode=capability.data_mode,
                 )
             except Exception:  # noqa: BLE001 - selection boundary must fail closed
                 policy_error = True
@@ -354,6 +365,7 @@ class CapabilityRegistry:
                         capability_id=capability.capability_id,
                         provider_id=provider.provider_id,
                         health_state=provider_health.state,
+                        health_reason_code=provider_health.reason_code,
                         eligible=False,
                         reason_code="policy_lease_error",
                     )
@@ -366,6 +378,7 @@ class CapabilityRegistry:
                     capability_id=capability.capability_id,
                     provider_id=provider.provider_id,
                     health_state=provider_health.state,
+                    health_reason_code=provider_health.reason_code,
                     eligible=lease.allowed,
                     reason_code=(
                         "candidate_allowed" if lease.allowed else lease.reason_code
@@ -418,7 +431,9 @@ class CapabilityRegistry:
                 candidates=ordered_evaluations,
             )
 
-        def selection_key(capability: CapabilityDescriptor) -> tuple[int, int, int, int, str]:
+        def selection_key(
+            capability: CapabilityDescriptor,
+        ) -> tuple[int, int, int, int, str]:
             provider = providers[capability.provider_id]
             state = health.get(provider.provider_id, ProviderHealth.unknown()).state
             health_rank = 0 if state is ProviderHealthState.HEALTHY else 1
