@@ -228,9 +228,10 @@ the general pipeline default or add runtime/server wiring.
 
 A post-merge audit follow-up is still required to make the lexical-only selection
 explicitly bypass cognitive reranking, prevent graph reads from initializing mutable
-state, fail closed on graph read errors, distinguish attributed reports from verified
-facts, and reject malformed typed inputs. These are contract-hardening corrections, not
-new runtime authority.
+state, fail closed on graph/FactsPack policy errors, filter both relation endpoints
+through current recall policy, collapse physical inverse pairs, preserve relation
+provenance, distinguish attributed reports from verified facts, and reject malformed
+typed inputs. These are contract-hardening corrections, not new runtime authority.
 
 Issue #53 remains OPEN for later bounded phases. No CapabilityRegistry, new vector
 architecture, ADAO, LLM role enablement, remote provider path, schema v8, Continuity

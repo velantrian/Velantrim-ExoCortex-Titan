@@ -166,6 +166,8 @@ def test_model_free_surfaces_existing_local_contradiction_read_only(store):
         "contradicts",
         confidence=0.9,
         inference_source="manual",
+        evidence_ref="fixture://coffee-contradiction",
+        metadata={"producer": "model-free-test"},
     )
     before_relations = graph._conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0]
 
@@ -175,9 +177,80 @@ def test_model_free_surfaces_existing_local_contradiction_read_only(store):
     after_relations = graph._conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0]
 
     assert result.insufficient_evidence is False
-    assert any(rel.relation_type == "contradicts" for rel in result.conflicts)
+    assert len(result.conflicts) == 1
+    assert len(result.relations) == 1
+    relation = result.conflicts[0]
+    assert relation.relation_type == "contradicts"
+    assert relation.inference_source == "manual"
+    assert relation.evidence_ref == "fixture://coffee-contradiction"
+    assert relation.metadata == {"producer": "model-free-test"}
+    assert relation.to_dict()["metadata"] == {"producer": "model-free-test"}
     assert "Известные локальные противоречия" in result.answer
+    assert "Известные локальные противоречия: 1" in result.answer
     assert after_relations == before_relations
+
+
+def test_model_free_filters_restricted_relation_endpoint(store):
+    memory = _memory()
+    pipeline = _pipeline()
+    model_free = _model_free()
+    _seed_validated("visible", "видимый якорь политики", source="public-source")
+    _seed_validated("restricted", "скрытая связанная запись", source="private-source")
+
+    graph = pipeline._get_causal_graph()
+    assert graph is not None
+    graph.add_relation(
+        "visible",
+        "restricted",
+        "requires",
+        confidence=0.9,
+        inference_source="manual",
+    )
+    assert memory.set_restricted("restricted", True) is True
+
+    result = model_free.ModelFreeCore().query(
+        model_free.L2Query("видимый якорь", top_k=5)
+    )
+
+    assert result.insufficient_evidence is False
+    assert [fact.fact_id for fact in result.evidence] == ["visible"]
+    assert result.relations == ()
+    assert result.conflicts == ()
+    assert "restricted" not in json.dumps(result.to_dict(), ensure_ascii=False)
+
+
+def test_model_free_fails_closed_when_facts_pack_policy_is_unavailable(
+    store, monkeypatch
+):
+    pipeline = _pipeline()
+    model_free = _model_free()
+    _seed_validated("water", "вода нужна для жизни", source="biology")
+    monkeypatch.setattr(pipeline, "_FACTS_PACK_BUILDER_AVAILABLE", False)
+
+    result = model_free.ModelFreeCore().query(model_free.L2Query("вода жизнь"))
+
+    assert result.insufficient_evidence is True
+    assert result.reason_code == "facts_pack_policy_unavailable"
+    assert result.guardian_passed is False
+    assert result.truth_gate_passed is False
+    assert result.evidence == ()
+
+
+def test_model_free_fails_closed_when_facts_pack_policy_raises(store, monkeypatch):
+    pipeline = _pipeline()
+    model_free = _model_free()
+    _seed_validated("water", "вода нужна для жизни", source="biology")
+    monkeypatch.setattr(
+        pipeline.FactsPackBuilder,
+        "build",
+        _boom("FactsPack policy builder"),
+    )
+
+    result = model_free.ModelFreeCore().query(model_free.L2Query("вода жизнь"))
+
+    assert result.insufficient_evidence is True
+    assert result.reason_code == "facts_pack_policy_unavailable"
+    assert result.evidence == ()
 
 
 def test_model_free_fails_closed_when_present_graph_cannot_be_read(

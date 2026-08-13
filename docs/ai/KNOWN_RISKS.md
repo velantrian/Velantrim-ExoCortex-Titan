@@ -149,7 +149,9 @@ independent review occurred before merge.
 
 A post-merge audit found that the claimed lexical-only boundary still inherited an
 opt-in cognitive reranker; graph collection called the DDL-capable singleton initializer
-and swallowed read failures; the renderer called `UNVERIFIED` user reports confirmed
+and swallowed read failures; restricted relation endpoints could leak; stored inverse
+pairs could double-count one contradiction; relation provenance was dropped; FactsPack
+failure could fall back to raw rows; the renderer called `UNVERIFIED` records confirmed
 data; and `L2Query` accepted malformed bool/non-string inputs. The current bounded
 follow-up candidate closes those paths fail-closed and adds adversarial tests. Until that
 follow-up is protected-merged, #296's green CI must not be represented as proof of those

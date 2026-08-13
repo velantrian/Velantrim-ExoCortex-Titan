@@ -83,6 +83,10 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+
+class FactsPackPolicyUnavailableError(RuntimeError):
+    """The canonical read-policy pack could not be built fail closed."""
+
 # ─── MOCK DATABASE (L3 заглушка) ──────────────────────────────────────────────
 # Используется как fallback если store пустой (разработка, тесты без данных).
 # FIX v8.5.1 (Gemini): DATABASE — ТОЛЬКО FALLBACK для dev/test.
@@ -727,6 +731,7 @@ def build_facts_pack(
     query: str,
     database: list[dict[str, Any]] | None = None,
     cognitive_mode: str | None = None,
+    require_policy: bool = False,
 ) -> dict[str, Any]:
     raw_facts: list[dict[str, Any]] = []
     for item in retrieved:
@@ -819,7 +824,15 @@ def build_facts_pack(
                 "mode": mode,
             }
         except Exception as exc:
+            if require_policy:
+                raise FactsPackPolicyUnavailableError(
+                    f"FactsPackBuilder failed in required-policy mode: {exc}"
+                ) from exc
             logger.warning("FactsPackBuilder failed (%s) → fallback: %s", mode, exc)
+    elif require_policy:
+        raise FactsPackPolicyUnavailableError(
+            "FactsPackBuilder is unavailable in required-policy mode"
+        )
     raw_facts.sort(key=lambda x: x["retrieval_score"], reverse=True)
     for f in raw_facts:
         f["truth_status"] = "VERIFIED" if f["epistemic_state"] == "Validated" else "UNVERIFIED"

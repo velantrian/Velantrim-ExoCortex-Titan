@@ -63,6 +63,13 @@ attributed `UNVERIFIED` reports; policy eligibility does not convert a user repo
 confirmed world fact. When evidence is absent or rejected it returns the bounded message
 `Недостаточно подтверждённых локальных данных.` with a reason code.
 
+FactsPack policy is mandatory for this facade: builder absence or failure cannot fall
+back to raw retrieval rows. Relation reads apply the same current recall policy to both
+endpoints, so restricted, missing or otherwise ineligible facts cannot leak through a
+derived edge. Stored forward/inverse physical pairs collapse to one semantic relation,
+and the typed result retains `inference_source`, `evidence_ref` and relation metadata so
+read-side evidence remains auditable.
+
 `L2Result` intentionally excludes volatile timestamps so equivalent canonical state and
 equivalent query inputs can produce a stable serializable contract.
 
@@ -112,6 +119,10 @@ Focused acceptance tests must prove:
 - the cognitive reranker is not invoked even when its shared runtime flag is enabled;
 - typed lexical evidence can be returned from canonical local memory;
 - existing local contradictions/relations are observable read-only;
+- restricted or policy-ineligible relation endpoints are not exposed;
+- stored inverse pairs collapse to one semantic relation/conflict;
+- relation provenance survives typed serialization;
+- unavailable or failing FactsPack policy rejects the answer rather than using raw rows;
 - graph absence is non-blocking, graph read failure is fail-closed, and graph lookup does
   not invoke the DDL-capable initializer;
 - verified facts and attributed user reports are rendered under distinct headings;

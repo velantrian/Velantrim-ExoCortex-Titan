@@ -117,6 +117,9 @@ class L2Relation:
     knowledge_status: str
     truth_status: str
     review_state: str
+    inference_source: str | None
+    evidence_ref: str | None
+    metadata: dict[str, Any]
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -128,6 +131,9 @@ class L2Relation:
             "knowledge_status": self.knowledge_status,
             "truth_status": self.truth_status,
             "review_state": self.review_state,
+            "inference_source": self.inference_source,
+            "evidence_ref": self.evidence_ref,
+            "metadata": dict(self.metadata),
         }
 
 
@@ -195,11 +201,19 @@ class ModelFreeCore:
                 request, query_type, "no_local_lexical_retrieval_results"
             )
 
-        facts_pack = pipeline.build_facts_pack(
-            retrieved,
-            request.text,
-            cognitive_mode=request.cognitive_mode,
-        )
+        try:
+            facts_pack = pipeline.build_facts_pack(
+                retrieved,
+                request.text,
+                cognitive_mode=request.cognitive_mode,
+                require_policy=True,
+            )
+        except Exception:
+            return self._insufficient(
+                request,
+                query_type,
+                "facts_pack_policy_unavailable",
+            )
         facts = list(facts_pack.get("facts") or [])
         if not facts:
             return self._insufficient(
@@ -246,7 +260,11 @@ class ModelFreeCore:
         evidence = tuple(L2Evidence.from_fact(fact) for fact in facts)
         try:
             relations = (
-                self._collect_relations(pipeline, evidence)
+                self._collect_relations(
+                    pipeline,
+                    evidence,
+                    cognitive_mode=request.cognitive_mode,
+                )
                 if request.include_graph
                 else ()
             )
@@ -280,6 +298,8 @@ class ModelFreeCore:
     def _collect_relations(
         pipeline: Any,
         evidence: tuple[L2Evidence, ...],
+        *,
+        cognitive_mode: str,
     ) -> tuple[L2Relation, ...]:
         if not evidence:
             return ()
@@ -291,8 +311,7 @@ class ModelFreeCore:
             return ()
 
         evidence_ids = {item.fact_id for item in evidence}
-        seen: set[str] = set()
-        rows: list[L2Relation] = []
+        candidates_by_id: dict[str, Any] = {}
         for fact_id in sorted(evidence_ids):
             try:
                 candidates = graph.get_relations_from(fact_id) + graph.get_relations_to(
@@ -304,27 +323,104 @@ class ModelFreeCore:
                 ) from exc
             for relation in candidates:
                 relation_id = str(getattr(relation, "relation_id", "") or "")
-                if not relation_id or relation_id in seen:
+                if not relation_id:
                     continue
-                seen.add(relation_id)
-                rows.append(
-                    L2Relation(
-                        relation_id=relation_id,
-                        from_fact_id=str(getattr(relation, "from_fact_id", "") or ""),
-                        to_fact_id=str(getattr(relation, "to_fact_id", "") or ""),
-                        relation_type=str(getattr(relation, "relation_type", "") or ""),
-                        confidence=float(getattr(relation, "confidence", 0.0) or 0.0),
-                        knowledge_status=str(
-                            getattr(relation, "knowledge_status", "unknown") or "unknown"
-                        ),
-                        truth_status=str(
-                            getattr(relation, "truth_status", "pending") or "pending"
-                        ),
-                        review_state=str(
-                            getattr(relation, "review_state", "pending") or "pending"
-                        ),
-                    )
+                candidates_by_id.setdefault(relation_id, relation)
+
+        endpoint_ids = {
+            str(endpoint)
+            for relation in candidates_by_id.values()
+            for endpoint in (
+                getattr(relation, "from_fact_id", ""),
+                getattr(relation, "to_fact_id", ""),
+            )
+            if endpoint
+        }
+        try:
+            recallable = pipeline.get_facts_by_ids(sorted(endpoint_ids))
+            eligible_ids: set[str] = set()
+            for fact in recallable:
+                fact_id = fact.get("fact_id")
+                if not fact_id:
+                    continue
+                endpoint_pack = pipeline.build_facts_pack(
+                    [
+                        {
+                            "id": fact_id,
+                            "retrieval_score": 1.0,
+                            "metadata": fact.get("metadata", {}),
+                        }
+                    ],
+                    "model-free relation endpoint policy",
+                    cognitive_mode=cognitive_mode,
+                    require_policy=True,
                 )
+                eligible_ids.update(
+                    str(packed.get("fact_id"))
+                    for packed in endpoint_pack.get("facts", [])
+                    if packed.get("fact_id")
+                )
+        except Exception as exc:
+            raise ModelFreeGraphReadError(
+                "causal relation endpoint policy could not be evaluated"
+            ) from exc
+
+        semantic_relations: dict[str, Any] = {}
+        for relation_id, relation in candidates_by_id.items():
+            from_fact_id = str(getattr(relation, "from_fact_id", "") or "")
+            to_fact_id = str(getattr(relation, "to_fact_id", "") or "")
+            if from_fact_id not in eligible_ids or to_fact_id not in eligible_ids:
+                continue
+            raw_metadata = getattr(relation, "metadata", None)
+            metadata = dict(raw_metadata) if isinstance(raw_metadata, dict) else {}
+            inverse_of = metadata.get("inverse_of")
+            semantic_id = (
+                str(inverse_of)
+                if isinstance(inverse_of, str) and inverse_of
+                else relation_id
+            )
+            existing = semantic_relations.get(semantic_id)
+            if existing is None:
+                semantic_relations[semantic_id] = relation
+                continue
+            existing_metadata = getattr(existing, "metadata", None)
+            if isinstance(existing_metadata, dict) and existing_metadata.get("inverse_of"):
+                if not metadata.get("inverse_of"):
+                    semantic_relations[semantic_id] = relation
+
+        rows: list[L2Relation] = []
+        for relation in semantic_relations.values():
+            raw_metadata = getattr(relation, "metadata", None)
+            metadata = dict(raw_metadata) if isinstance(raw_metadata, dict) else {}
+            rows.append(
+                L2Relation(
+                    relation_id=str(getattr(relation, "relation_id", "") or ""),
+                    from_fact_id=str(getattr(relation, "from_fact_id", "") or ""),
+                    to_fact_id=str(getattr(relation, "to_fact_id", "") or ""),
+                    relation_type=str(getattr(relation, "relation_type", "") or ""),
+                    confidence=float(getattr(relation, "confidence", 0.0) or 0.0),
+                    knowledge_status=str(
+                        getattr(relation, "knowledge_status", "unknown") or "unknown"
+                    ),
+                    truth_status=str(
+                        getattr(relation, "truth_status", "pending") or "pending"
+                    ),
+                    review_state=str(
+                        getattr(relation, "review_state", "pending") or "pending"
+                    ),
+                    inference_source=(
+                        str(getattr(relation, "inference_source"))
+                        if getattr(relation, "inference_source", None) is not None
+                        else None
+                    ),
+                    evidence_ref=(
+                        str(getattr(relation, "evidence_ref"))
+                        if getattr(relation, "evidence_ref", None) is not None
+                        else None
+                    ),
+                    metadata=metadata,
+                )
+            )
         rows.sort(
             key=lambda row: (
                 row.relation_type,

@@ -64,11 +64,21 @@ pack, or TruthGate rejects it, the facade returns:
 
 with a machine-readable reason code.
 
+FactsPack policy is required for this facade. If its builder is unavailable or raises,
+the query fails closed with `facts_pack_policy_unavailable`; the pipeline's legacy raw
+fallback remains available only to callers that do not request strict policy.
+
 Known local causal rows may be returned as typed read evidence. A `contradicts` row is
 also exposed in the `conflicts` collection. The facade never calls `CausalGraph`
 mutation methods or the DDL-capable graph initializer. An absent optional graph is
 non-blocking; an already-present graph that raises during a read produces bounded
 insufficient evidence.
+
+Before a relation is exposed, both endpoints must independently survive current
+canonical recall policy. Restricted, missing, contradicted, collapsed, deprecated or
+mode-ineligible endpoints are omitted. The two physical rows used to persist a
+forward/inverse pair collapse to one semantic result (including symmetric
+`contradicts`), and `L2Relation` retains `inference_source`, `evidence_ref` and metadata.
 
 `VERIFIED` facts and `UNVERIFIED` attributed reports use separate renderer headings.
 Passing Guardian/TruthGate establishes policy eligibility for the response; it does not
@@ -84,6 +94,8 @@ Before review:
 - [ ] no server/runtime/config wiring added;
 - [ ] no default retrieval-mode change;
 - [ ] no Canon/ESM/relation mutation from query tests;
+- [x] strict FactsPack failure, restricted endpoint, inverse-pair collapse and relation
+  provenance regressions green locally;
 - [ ] exact candidate SHA recorded;
 - [ ] Full CI and applicable Docker checks green;
 - [ ] GitHub AI docs reconciled;

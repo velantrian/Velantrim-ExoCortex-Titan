@@ -34,16 +34,20 @@ Production authority:           false · unchanged
 ```
 
 Phase 1 is now on `main`, but the merge occurred without substantive independent review.
-A fresh audit found five contract gaps: the lexical path could still invoke the opt-in
+A fresh audit found nine contract gaps: the lexical path could still invoke the opt-in
 cognitive reranker, graph reads initialized DDL-capable state, graph read failures were
-silently omitted, user-reported `UNVERIFIED` evidence was rendered under a confirmed-data
+silently omitted, restricted relation endpoints could leak, inverse rows could
+double-count one semantic conflict, relation provenance was dropped, FactsPack failure
+could fall back to raw rows, `UNVERIFIED` evidence was rendered under a confirmed-data
 heading, and malformed typed inputs were not fully rejected.
 
 The bounded follow-up explicitly disables cognitive reranking for `ModelFreeCore`, uses a
 non-initializing graph peek, returns insufficient evidence on a present-but-failing graph,
 separates verified facts from attributed reports in the renderer, and rejects bool/non-int
-`top_k` plus malformed mode/domain/graph flags. It adds no server route, model/provider,
-network path, mutation authority, runtime enablement or production authority.
+`top_k` plus malformed mode/domain/graph flags. It also makes FactsPack policy mandatory,
+filters both relation endpoints through recall policy, collapses stored inverse pairs and
+preserves relation provenance. It adds no server route, model/provider, network path,
+mutation authority, runtime enablement or production authority.
 
 The same bounded audit follow-up remediates the three substantive findings left on
 merged #287: snapshot admission propagates WriteGate/AuditChain failures instead of
