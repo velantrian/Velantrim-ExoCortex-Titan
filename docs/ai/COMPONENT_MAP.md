@@ -1,13 +1,12 @@
 # 🗺️ Component and Authority Map
 
-**Verified implementation baseline entering Phase 2A:** `main@51058f2d5662edfdb91b037a46dce9297c441a1b`  
+**Verified implementation checkpoint:** `main@c1fa13cf8fe6bf82d99dfb507beeac2c1c8f7aca`  
 **Continuity:** `12/12 = 100%`  
 **Machine state:** schema v7  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`
 
-This file is an orientation map. Re-query live GitHub before treating the SHA above or a
-review branch as current repository truth. Keep `main` truth separate from Draft PR
-candidate truth.
+This file is an orientation map. Re-query live GitHub before treating the SHA above as
+current repository truth.
 
 ## 1. Global authority rules
 
@@ -97,13 +96,7 @@ Key files:
 - `core/pipeline.py` — existing pipeline ownership; Phase 1 did not replace the default
   runtime route.
 
-#297 closed the bounded failure-path lane around lexical-only enforcement, absent/present
-graph semantics, malformed physical relation rows, reciprocal inverse identity,
-endpoint recall-policy rechecks, provenance preservation, FactsPack policy, typed input
-and verified-vs-attributed rendering.
-
-Final #297 evidence is recorded in `WORK_LOG.md` and the merged PR. #298 subsequently
-reconciled GitHub/Notion public truth surfaces.
+#297 closed the bounded failure-path lane. #298 reconciled GitHub/Notion public truth.
 
 ## 5. Policy authority
 
@@ -127,18 +120,18 @@ PolicyKernel denial.
 
 ## 6. Provider catalogue vs Phase 2A registry
 
-### Existing current-main owner: `core/provider_catalog.py`
+### Existing owner: `core/provider_catalog.py`
 
-This is a console-facing LLM provider/model catalogue. It may describe available model
-names for UI/config purposes. It is **not** the generic permission authority, provider
-health owner or runtime router.
+This remains a console-facing LLM provider/model catalogue. It may describe model names for
+UI/config purposes. It is **not** the generic permission authority, provider-health owner
+or runtime router.
 
-### Draft #300 candidate: `core/capability_registry.py`
+### Merged Phase 2A owner: `core/capability_registry.py`
 
-Tracking issue #299 admits a narrow Phase 2A implementation. Until #300 is protected-merged,
-this section describes a **review-stage candidate**, not current-main implementation.
+Tracking issue #299 / merged PR #300 converged the bounded metadata contract at
+`main@c1fa13cf8fe6bf82d99dfb507beeac2c1c8f7aca`.
 
-Candidate ownership is limited to:
+Ownership is limited to:
 
 - stable provider/capability descriptors;
 - capability-specific declared `data_mode`;
@@ -148,13 +141,13 @@ Candidate ownership is limited to:
 - selection/no-selection explanation;
 - trace-ready metadata returned to a future authorized caller.
 
-Candidate authority chain:
+Authority chain:
 
 ```text
 ProviderDescriptor + CapabilityDescriptor + ProviderHealth
                        |
                        v
-               CapabilityRegistry
+              CapabilityRegistry()
                        |
                        | lease request only
                        v
@@ -166,9 +159,10 @@ ProviderDescriptor + CapabilityDescriptor + ProviderHealth
                 SelectionResult
 ```
 
-The candidate:
+The merged contract:
 
-- does not instantiate a second PolicyKernel by default;
+- exposes no alternate policy/leaser constructor injection;
+- does not instantiate a second PolicyKernel;
 - does not probe providers;
 - does not invoke providers/models;
 - performs no network I/O;
@@ -178,13 +172,23 @@ The candidate:
   and policy snapshot/version changes during a single selection pass;
 - cannot let explicit preference or `auto` override policy denial.
 
-Read `PHASE2A_CAPABILITY_REGISTRY.md`, the Phase 2A ADR and exact PR #300 evidence before
-working in this area.
+Final #300 evidence:
+
+```text
+exact tested head:       f0b893bac1b6fe1f58a71c70ac631f3c14becb59
+protected squash merge:  c1fa13cf8fe6bf82d99dfb507beeac2c1c8f7aca
+Full CI:                  #1105 · 31735939941 · SUCCESS
+Docker:                   #723 · 31735939929 · SUCCESS
+READY aggregate:          #981 · 31736858130 · SUCCESS
+post-merge Full CI:       #1106 · 31736925690 · SUCCESS
+post-merge Docker:        #724 · 31736925695 · SUCCESS
+post-merge aggregate:     #982 · 31736925705 · SUCCESS
+```
 
 ## 7. Compute/config/resource ownership
 
-Existing compute-profile and configuration mechanisms remain their own owners. Phase 2A
-registry metadata does not replace:
+Existing compute-profile and configuration mechanisms remain their own owners. The Phase
+2A registry does not replace:
 
 - `core/compute_profile.py` defaults/features;
 - existing config precedence;
@@ -200,7 +204,8 @@ FTS, graph/vector indexes, caches, summaries, NetworkX analytics, Neo4j copies a
 projection-outbox workers are derived/rebuildable surfaces. Projection state never wins
 over Canon and cannot grant write or answer authority by itself.
 
-Vector/embedding execution is explicitly outside #299/#300.
+Vector/embedding execution was explicitly outside #299/#300 and remains unauthorized by
+that merge.
 
 ## 9. Trace / audit ownership
 
@@ -209,7 +214,7 @@ Existing TRACE/AnalysisTrace and AuditChain owners remain unchanged.
 Phase 2A `SelectionResult.as_trace_metadata()` returns bounded metadata only. It does not
 persist TRACE, append AuditChain receipts or create a new provenance authority.
 
-A future authorized caller may attach:
+A future separately authorized caller may attach:
 
 - capability kind and preference;
 - selected capability id or no-selection result;
@@ -218,11 +223,7 @@ A future authorized caller may attach:
 - policy/selection reason;
 - PolicyKernel snapshot id/version.
 
-No secret or prohibited payload belongs in registry metadata.
-
 ## 10. Anti-bypass guarantees
-
-Current-main guarantees plus the #300 candidate boundary require:
 
 - one canonical store/write protocol;
 - one PolicyKernel permission owner;
@@ -238,22 +239,17 @@ Current-main guarantees plus the #300 candidate boundary require:
 - mixed policy snapshots cannot be composed into one successful selection;
 - registry/provider state cannot grant Operator GO or runtime authority.
 
-## 11. Review-stage Phase 2A files
+## 11. Phase 2A files
 
 ```text
-#299                                           tracking / admission
-#300                                           Draft implementation PR
-core/capability_registry.py                    candidate implementation
+#299                                           tracking / closure issue
+#300                                           MERGED implementation PR
+core/capability_registry.py                    merged metadata contract
 tests/test_capability_registry.py              adversarial contract tests
 docs/adr/ADR-2026-08-13-phase2a-capability-registry.md
 docs/operations/capability-registry-contract.md
 docs/ai/PHASE2A_CAPABILITY_REGISTRY.md
 ```
-
-The PR must remain Draft until final exact-head CI/Docker, required review/thread closure,
-review-stage Notion synchronization and read-back are complete. After Ready, require a
-fresh `Titan aggregate merge evidence` result on the unchanged head before protected
-merge.
 
 ## 12. Explicitly unauthorized by Phase 2A
 
