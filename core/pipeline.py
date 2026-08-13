@@ -39,6 +39,7 @@ import logging
 import math
 import re
 import sqlite3
+import threading
 from collections import Counter
 from typing import Any, Optional
 
@@ -82,6 +83,10 @@ except ImportError:
     _CAUSAL_GRAPH_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
+
+
+class FactsPackPolicyUnavailableError(RuntimeError):
+    """The canonical read-policy pack could not be built fail closed."""
 
 # ─── MOCK DATABASE (L3 заглушка) ──────────────────────────────────────────────
 # Используется как fallback если store пустой (разработка, тесты без данных).
@@ -160,6 +165,11 @@ def _get_hybrid_retriever(facts: list[dict[str, Any]]) -> Optional["HybridRetrie
 # Отслеживаем db_path чтобы пересоздавать при смене store (тесты с isolated_db).
 _CAUSAL_GRAPH: Optional["CausalGraph"] = None
 _CAUSAL_GRAPH_DB_PATH: str = ""
+_CAUSAL_GRAPH_RESET_CONDITION = threading.Condition()
+_CAUSAL_GRAPH_RESET_IN_PROGRESS = False
+_CAUSAL_GRAPH_RESET_EPOCH = 0
+_CAUSAL_GRAPH_RESET_RESULTS: dict[int, BaseException | None] = {}
+_CAUSAL_GRAPH_RESET_WAITERS: dict[int, int] = {}
 
 # Regex для определения каузальных паттернов (EN + RU)
 _CAUSAL_REGEX = re.compile(
@@ -247,20 +257,101 @@ def _get_causal_graph() -> Optional["CausalGraph"]:
         return None
 
 
-def reset_causal_graph() -> None:
-    """Auditably clear canonical relations and detach the singleton."""
-    global _CAUSAL_GRAPH, _CAUSAL_GRAPH_DB_PATH
+def _peek_causal_graph() -> Optional["CausalGraph"]:
+    """Return an already-open graph for the current store without initializing it.
 
-    if _CAUSAL_GRAPH is not None:
-        try:
-            _CAUSAL_GRAPH.reset_relations()
-        finally:
+    Read-only facades use this boundary so a query cannot create tables, commit DDL,
+    replace a singleton, or close another connection merely because graph evidence was
+    requested. ``None`` means the optional graph capability is not already available.
+    """
+    with _CAUSAL_GRAPH_RESET_CONDITION:
+        if _CAUSAL_GRAPH_RESET_IN_PROGRESS:
+            raise RuntimeError("causal graph reset is still in progress")
+        if not _CAUSAL_GRAPH_AVAILABLE:
+            return None
+
+        import core.memory as _mem
+
+        current_path = getattr(_mem._GLOBAL_STORE, "db_path", "")
+        if _CAUSAL_GRAPH is not None and _CAUSAL_GRAPH_DB_PATH == current_path:
+            return _CAUSAL_GRAPH
+        return None
+
+
+def reset_causal_graph(*, initialize_if_missing: bool = False) -> None:
+    """Auditably clear canonical relations and detach the singleton.
+
+    Concurrent callers join the same reset epoch and receive the owning reset's
+    failure instead of returning success while that reset is still in flight.  The
+    public durable-reset wrapper requests ``initialize_if_missing`` so a cold process
+    cannot silently leave on-disk relations untouched.
+    """
+    global _CAUSAL_GRAPH, _CAUSAL_GRAPH_DB_PATH
+    global _CAUSAL_GRAPH_RESET_EPOCH, _CAUSAL_GRAPH_RESET_IN_PROGRESS
+
+    with _CAUSAL_GRAPH_RESET_CONDITION:
+        if _CAUSAL_GRAPH_RESET_IN_PROGRESS:
+            wait_epoch = _CAUSAL_GRAPH_RESET_EPOCH
+            _CAUSAL_GRAPH_RESET_WAITERS[wait_epoch] = (
+                _CAUSAL_GRAPH_RESET_WAITERS.get(wait_epoch, 0) + 1
+            )
             try:
-                _CAUSAL_GRAPH._conn.close()
-            except Exception:
-                pass
-    _CAUSAL_GRAPH = None
-    _CAUSAL_GRAPH_DB_PATH = ""
+                while wait_epoch not in _CAUSAL_GRAPH_RESET_RESULTS:
+                    _CAUSAL_GRAPH_RESET_CONDITION.wait()
+                waited_owner_error = _CAUSAL_GRAPH_RESET_RESULTS[wait_epoch]
+            finally:
+                remaining = _CAUSAL_GRAPH_RESET_WAITERS[wait_epoch] - 1
+                if remaining:
+                    _CAUSAL_GRAPH_RESET_WAITERS[wait_epoch] = remaining
+                else:
+                    _CAUSAL_GRAPH_RESET_WAITERS.pop(wait_epoch, None)
+                    _CAUSAL_GRAPH_RESET_RESULTS.pop(wait_epoch, None)
+            if waited_owner_error is not None:
+                raise RuntimeError(
+                    "concurrent causal graph reset failed in owning caller"
+                ) from waited_owner_error
+            return
+
+        if initialize_if_missing:
+            initialized = _get_causal_graph()
+            if initialized is None:
+                raise RuntimeError(
+                    "CausalGraph durable reset could not initialize the current store"
+                )
+
+        graph = _CAUSAL_GRAPH
+        if graph is None:
+            return
+
+        _CAUSAL_GRAPH_RESET_EPOCH += 1
+        reset_epoch = _CAUSAL_GRAPH_RESET_EPOCH
+        _CAUSAL_GRAPH_RESET_IN_PROGRESS = True
+
+        # Detach before attempting the audited reset. If WriteGate or AuditChain fails,
+        # callers must never retain a singleton backed by the connection closed below.
+        _CAUSAL_GRAPH = None
+        _CAUSAL_GRAPH_DB_PATH = ""
+
+    owner_error: BaseException | None = None
+    try:
+        graph.reset_relations()
+    except BaseException as exc:
+        owner_error = exc
+    finally:
+        try:
+            graph._conn.close()
+        except Exception:
+            pass
+
+    with _CAUSAL_GRAPH_RESET_CONDITION:
+        _CAUSAL_GRAPH_RESET_RESULTS[reset_epoch] = owner_error
+        _CAUSAL_GRAPH_RESET_IN_PROGRESS = False
+        _CAUSAL_GRAPH_RESET_CONDITION.notify_all()
+        if _CAUSAL_GRAPH_RESET_WAITERS.get(reset_epoch, 0) == 0:
+            _CAUSAL_GRAPH_RESET_RESULTS.pop(reset_epoch, None)
+
+    if owner_error is not None:
+        raise owner_error
 
 
 def _extract_conflicts(
@@ -549,6 +640,7 @@ def _bm25_rank_facts(
     k: int,
     *,
     origin: str = "bm25_fallback",
+    allow_cognitive_rerank: bool = True,
 ) -> list[dict[str, Any]]:
     corpus = [tokenize(f.get("claim", "")) for f in filtered_facts]
     bm25 = BM25(corpus)
@@ -572,6 +664,8 @@ def _bm25_rank_facts(
             "retrieval_mode": "lexical" if origin == "bm25_lexical" else "hybrid",
         })
     scored.sort(key=lambda x: x["retrieval_score"], reverse=True)
+    if not allow_cognitive_rerank:
+        return scored[:k]
     return _maybe_cognitive_rerank(scored, k)
 
 
@@ -581,6 +675,7 @@ def _retrieve_from_store(
     domain: str | None = None,
     retrieval_mode: str = "hybrid",
     max_hops: int = 1,
+    allow_cognitive_rerank: bool = True,
 ) -> list[dict[str, Any]]:
     if retrieval_mode == "none" or not query or not query.strip():
         return []
@@ -588,12 +683,18 @@ def _retrieve_from_store(
     if not filtered_facts:
         return []
     if retrieval_mode == "lexical":
-        return _bm25_rank_facts(filtered_facts, query, k, origin="bm25_lexical")
+        return _bm25_rank_facts(
+            filtered_facts,
+            query,
+            k,
+            origin="bm25_lexical",
+            allow_cognitive_rerank=allow_cognitive_rerank,
+        )
     if _HYBRID_AVAILABLE:
         try:
             retriever = _get_hybrid_retriever(filtered_facts)
             if retriever is not None:
-                fetch_k = k * 3 if _cogdist_enabled() else k
+                fetch_k = k * 3 if allow_cognitive_rerank and _cogdist_enabled() else k
                 results: list[RetrievedFact] = retriever.retrieve(query, top_k=fetch_k)
                 out = []
                 for r in results:
@@ -608,10 +709,18 @@ def _retrieve_from_store(
                         "origin": "hybrid_retriever",
                         "retrieval_mode": "hybrid",
                     })
+                if not allow_cognitive_rerank:
+                    return out[:k]
                 return _maybe_cognitive_rerank(out, k)
         except Exception as exc:
             logger.warning("HybridRetriever failed: %s → fallback на BM25", exc)
-    return _bm25_rank_facts(filtered_facts, query, k, origin="bm25_fallback")
+    return _bm25_rank_facts(
+        filtered_facts,
+        query,
+        k,
+        origin="bm25_fallback",
+        allow_cognitive_rerank=allow_cognitive_rerank,
+    )
 
 
 def retrieve(
@@ -688,6 +797,7 @@ def build_facts_pack(
     query: str,
     database: list[dict[str, Any]] | None = None,
     cognitive_mode: str | None = None,
+    require_policy: bool = False,
 ) -> dict[str, Any]:
     raw_facts: list[dict[str, Any]] = []
     for item in retrieved:
@@ -748,7 +858,11 @@ def build_facts_pack(
                 "origin_type": modality_by_fact_id.get(pf.fact_id, ("UNKNOWN", "UNKNOWN"))[1],
                 "metadata": metadata_by_fact_id.get(pf.fact_id, {}),
                 "canonical_record": canonical_by_fact_id.get(pf.fact_id, False),
-                "truth_status": "VERIFIED" if pf.epistemic_state == "Validated" else "UNVERIFIED",
+                "truth_status": (
+                    "VERIFIED"
+                    if pf.epistemic_state in {"Validated", "ImmutableCore"}
+                    else "UNVERIFIED"
+                ),
             } for pf in fp.facts]
             included_ids = {f["fact_id"] for f in facts}
             reported_added = 0
@@ -780,10 +894,22 @@ def build_facts_pack(
                 "mode": mode,
             }
         except Exception as exc:
+            if require_policy:
+                raise FactsPackPolicyUnavailableError(
+                    f"FactsPackBuilder failed in required-policy mode: {exc}"
+                ) from exc
             logger.warning("FactsPackBuilder failed (%s) → fallback: %s", mode, exc)
+    elif require_policy:
+        raise FactsPackPolicyUnavailableError(
+            "FactsPackBuilder is unavailable in required-policy mode"
+        )
     raw_facts.sort(key=lambda x: x["retrieval_score"], reverse=True)
     for f in raw_facts:
-        f["truth_status"] = "VERIFIED" if f["epistemic_state"] == "Validated" else "UNVERIFIED"
+        f["truth_status"] = (
+            "VERIFIED"
+            if f["epistemic_state"] in {"Validated", "ImmutableCore"}
+            else "UNVERIFIED"
+        )
     return {"facts": raw_facts, "query": query, "total": len(raw_facts)}
 
 

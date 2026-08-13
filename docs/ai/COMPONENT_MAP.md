@@ -46,7 +46,7 @@ are never permission tokens.
 | PII claim redaction | `CanonicalPiiRedactor` over existing `SQLiteGraphStore` | CONVERGED on merged #283; privacy-sanitized history exception |
 | async fact mutations | `AsyncSQLiteStore` → exact synchronous canonical owner | LEGACY_ADAPTER / CONVERGED; native async SQL disabled |
 | archival claim rewrite | `CanonicalArchivalRewriter` over existing `SQLiteGraphStore` | CONVERGED on merged #285 · merge checkpoint `3100952f3dacf268f4d9c9b3f5a738f449663de6` |
-| causal relation create/delete/reset | `CausalGraph` / `relations` | CONVERGED on merged #287 · checkpoint `615201ec1073dafb047028e88ce94463f4ef9b77` |
+| causal relation create/delete/reset | `CausalGraph` / `relations` | OWNER CONVERGED on #287; three post-merge failure paths under bounded hardening |
 | post-create raw provenance binding | `SQLiteGraphStore.link_raw_to_fact()` | CONVERGED on merged #289 · current main `902b2b6335b05f9a6f956e75151a8e801f23ba1d` |
 | initial raw provenance on fact creation | existing `SQLiteGraphStore` fact-create parent transactions | CONVERGED on merged #291 · current main `7a47f5dbb786fe267093857bf370fd03703207ac` |
 | smart-KB fact create/classify/validate | existing `store_facts_batch()` + canonical ESM owner; builder orchestration only | CONVERGED on merged #293 · current main `c80c8d47588de3d2607c7e1b10aa1677eb84383f` |
@@ -114,6 +114,15 @@ rejected.
 Exact final evidence for #287 is preserved in the merged PR, closed #286 and the existing
 Notion FINAL block. Continuity remains 12/12 and schema v7; runtime/Operator
 GO/runtime-authority/production-authority all remain false.
+
+A later substantive review found that ownership convergence did not yet make every
+failure path fail-closed: snapshot rejection could be masked, reset could retain a closed
+singleton, and legacy duplicate inverse rows could be paired by tuple rather than durable
+identity. The current audit-hardening candidate fixes those three paths without creating
+a second relation owner or changing Neo4j's derived-only role. Review of that candidate
+then required reserved/consistent inverse identity, serialized concurrent reset outcomes,
+and cold-start initialization for the public durable reset; those changes and adversarial
+regressions remain Draft until final exact-head evidence and protected merge.
 
 ### Raw provenance linker convergence — merged #288 / #289
 
@@ -198,6 +207,7 @@ No producer/action/reminder/notification/tool/scheduler authority is added.
 
 | Block | Merge/checkpoint | Meaning |
 |---|---|---|
+| trusted signal producer | `5f1ce06199ebabd6a23f3656ddd91c5c968170fe` (#214) → `e37a5d13332628bcdbd0d9441d7a61d5f8a8d523` (#220) | INTERNAL / SHADOW / UNWIRED; #220 is the accepted integrity baseline with canonical observation-ID verification, controlled malformed-value handling, complete contradiction provenance and regression coverage |
 | current-decision resolver | `dc30817f2c4abb1afcaab2f127e679d5f9b884d7` | schema v3 · 8/12 |
 | durable lifecycle | `064845579c520e7464678cd0c41d9b650368dfa8` | schema v4 · 9/12 |
 | runtime composition | `802e833fa251a8831add8a6b802a5ebb57533549` | schema v5 · 10/12 |
@@ -212,14 +222,21 @@ CLOSED_COMPLETED; the protected documentation-truth baseline entering this bound
 is `main@2699963547a42c4fbcd6b0273125c890a038654b` with the fresh Truth Foundation
 residual inventory at `REAL_GAP=0`.
 
-Current bounded work is child issue #295 / draft PR #296 under open architecture issue
-#53: Phase 1 explicit `ModelFreeCore`. The exact pre-documentation code head
-`4d40229ce746a164534682b3443f9de6e729b6da` passed Full CI `31669587920` and Docker
-`31669587884`, but remains REVIEW-STAGE / NOT MAIN until final-head gates, review/thread
-reconciliation and protected merge complete. The candidate composes the existing
+Child issue #295 / PR #296 protected-merged Phase 1 explicit `ModelFreeCore` at
+`main@e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96`; final-head and post-merge Full CI,
+Docker and aggregate evidence passed. The merged slice composes the existing
 `QueryRouter` + lexical-only retrieval + FactsPack + Guardian + TruthGate + optional
 read-only CausalGraph into typed `L2Query`/`L2Result` evidence output; it does not change
 the general pipeline default or add runtime/server wiring.
+
+A post-merge audit follow-up is still required to make the lexical-only selection
+explicitly bypass cognitive reranking, prevent graph reads from initializing mutable
+state, fail closed on graph/FactsPack policy errors, filter both relation endpoints
+through current recall policy, collapse physical inverse pairs, preserve relation
+provenance, distinguish attributed reports from verified facts, and reject malformed
+typed inputs. Subsequent review additionally requires bounded malformed-relation decoding,
+single-line escaping of attributed fields, and correct `ImmutableCore` verification
+classification. These are contract-hardening corrections, not new runtime authority.
 
 Issue #53 remains OPEN for later bounded phases. No CapabilityRegistry, new vector
 architecture, ADAO, LLM role enablement, remote provider path, schema v8, Continuity

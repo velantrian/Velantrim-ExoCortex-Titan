@@ -1,6 +1,6 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-08-12
+**Snapshot:** 2026-08-13
 **Continuity:** `12/12 = 100%` — complete  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0` · required check `Titan aggregate merge evidence`
@@ -64,7 +64,7 @@ system. If the SQLite transaction fails after payload creation, cleanup remains
 best-effort. An OS cleanup failure can leave a **non-canonical orphan payload**; that
 residue is never canonical archival success.
 
-## Reduced risk — Causal Truth-edge mutation ownership converged
+## P1 — Causal ownership merged with three unresolved failure-path findings
 
 Issue #286 / merged PR #287 converged SQLite `relations` mutation on `CausalGraph` at
 checkpoint `615201ec1073dafb047028e88ce94463f4ef9b77`. Relation create/batch/remove/reset
@@ -73,8 +73,25 @@ Automatic/non-manual input defaults to hypothesis/pending, derived snapshots can
 self-promote authority labels, and Neo4j/Graphiti reload cannot destructively replace
 local Canon. `RelationStore` / `fact_relations` remains a separate associative model.
 
-Residual risks remain bounded: explicit future accepted-label callers still need their own
-authorized admission surface, and full graph reset cost grows with graph size. Neither
+Post-merge Codex review then found three logical defects that green CI did not cover:
+snapshot admission could hide WriteGate/AuditChain failure as zero imported rows, an
+audited reset failure could retain a singleton backed by a closed connection, and
+ambiguous legacy NULL-source duplicates could delete the wrong inverse companions. The
+current bounded follow-up candidate propagates admission failures, detaches reset state
+before closing, binds inverse deletion by identity, and fails closed when old rows cannot
+be paired unambiguously. Until that follow-up is protected-merged and the three #287
+threads are evidence-resolved, the earlier "converged" label is incomplete.
+
+A subsequent Codex review of the follow-up itself found three further reset/identity
+edges: caller-owned or stale `inverse_of` metadata could mispair duplicates, concurrent
+reset waiters could return success after the owning reset failed, and the public reset
+could no-op against durable rows after a cold start. The current candidate reserves and
+cross-checks inverse identity, serializes reset epochs with shared failure propagation,
+and requires the public wrapper to initialize the current store before audited reset.
+These claims are still review-stage until final exact-head CI and protected merge.
+
+Other residuals remain bounded: explicit future accepted-label callers still need their
+own authorized admission surface, and full graph reset cost grows with graph size. Neither
 risk justifies a raw-SQL bypass or remote truth authority.
 
 ## Reduced risk — Post-create raw provenance binding converged
@@ -132,21 +149,48 @@ using `asyncio.to_thread`. The former native aiosqlite write implementation rema
 explicitly disabled. Existing equivalence and cancellation tests prove the adapter does
 not own an independent SQL mutation path.
 
-## Review-stage boundary — ModelFreeCore Phase 1 is not runtime wiring
+## P1 — ModelFreeCore was merged before substantive review
 
-Issue #295 / draft PR #296 is the current bounded implementation slice under open #53.
-The exact pre-documentation code head `4d40229ce746a164534682b3443f9de6e729b6da`
-passed Full CI `31669587920` and Docker `31669587884`. A full-suite-only test isolation
-failure on the earlier head was reproduced by diagnostic run `31669157724` and corrected
-without changing production semantics; the accepted code head then passed both full-suite
-and coverage gates.
+Issue #295 / PR #296 is merged on `main@e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96`.
+Final-head and post-merge Full CI, Docker and aggregate evidence passed, but no substantive
+independent review occurred before merge.
 
-The candidate is still REVIEW-STAGE / NOT MAIN. It is a typed read-only facade over
-existing local primitives and deliberately selects lexical retrieval. It does not prove
-runtime routing, default-route replacement, CapabilityRegistry, embedding/vector
-architecture, ADAO, LLM execution, network/provider access or production readiness.
-Optional capability absence must not block a model-free result, and query execution must
-not mutate Canon, ESM state or causal relations.
+A post-merge audit found that the claimed lexical-only boundary still inherited an
+opt-in cognitive reranker; graph collection called the DDL-capable singleton initializer
+and swallowed read failures; restricted relation endpoints could leak; stored inverse
+pairs could double-count one contradiction; relation provenance was dropped; FactsPack
+failure could fall back to raw rows; the renderer called `UNVERIFIED` records confirmed
+data; and `L2Query` accepted malformed bool/non-string inputs. Draft PR #297 is the
+bounded follow-up that closes those paths fail-closed. Until #297 is protected-merged,
+#296's green CI must not be represented as proof of those additional logical guarantees.
+
+Codex has now performed three substantive review rounds on PR #297. The first two rounds
+produced eleven actionable findings. Candidate head
+`6bb577247fd8a672121cc2c0c420d88f4a261c6b` fixed all eleven with a 54/54 focused suite;
+Titan CI #1080 and Docker #700 were SUCCESS, and those eleven threads were resolved.
+A third round then found two more P1 issues: read-side inverse-pair collapse trusted
+`inverse_of` without proving that the target existed and was the reciprocal relation,
+and this GitHub hand-off still described the superseded earlier review state.
+
+The inverse-identity read defect is now fixed on the follow-up branch: every physical
+row is decoded before collapse, an `inverse_of` target must exist, must be the reciprocal
+relation tuple with matching inference source, must not carry a conflicting backlink,
+and may have only one backlink. Dangling, conflicting or many-to-one identities fail
+closed through `ModelFreeGraphReadError` instead of silently hiding relation evidence.
+Dedicated adversarial regression coverage was added. The pre-documentation code/test
+head is `161c6ee3e60d11ea782d9d06525f72cfb2d7259f`; its exact-head Actions must be read
+as evidence only for that head, and this documentation reconciliation advances the PR
+again, so final merge evidence must be regenerated on the then-current exact head.
+
+PR #297 remains **DRAFT / REVIEW-STAGE**. There is no independent formal approval,
+no READY aggregate claim for the final candidate, no protected merge and no post-merge
+reconciliation yet. Review/thread closure must follow fresh exact-head CI/Docker evidence;
+green ancestor runs are not sufficient.
+
+Even after hardening, Phase 1 does not prove runtime routing, default-route replacement,
+CapabilityRegistry, embedding/vector architecture, ADAO, LLM execution, network/provider
+access or production readiness. Optional graph absence remains non-blocking; a graph that
+is present but unreadable must not produce a falsely complete answer.
 
 ## Operational residuals
 
