@@ -5,12 +5,12 @@ or activation surface. It owns only descriptive metadata, explicit provider-heal
 snapshots, and deterministic selection explanations.
 
 Permission remains owned by :mod:`core.policy_kernel`. Every candidate that is healthy
-enough to be considered must receive a ``CapabilityLease`` from that existing owner.
-A preference such as ``auto`` or a preferred capability id can change ordering only; it
-can never turn a denied lease into permission.
+enough to be considered must receive a ``CapabilityLease`` from the process-wide
+``get_policy_kernel()`` owner. Preferences can change ordering only; they can never turn
+a denied lease into permission.
 
-The registry is currently unwired. Callers must instantiate it explicitly. It performs
-no network I/O, no model/provider invocation, no Canon mutation, and no background work.
+The registry is currently unwired. It performs no network I/O, no model/provider
+invocation, no Canon mutation, and no background work.
 """
 
 from __future__ import annotations
@@ -116,7 +116,9 @@ class ProviderHealth:
         return cls(ProviderHealthState.UNAVAILABLE, reason_code)
 
 
-class CapabilityLeaser(Protocol):
+class _CapabilityLeaser(Protocol):
+    """Private structural view of the existing PolicyKernel lease method."""
+
     def lease_capability(
         self,
         capability: str,
@@ -174,12 +176,16 @@ class SelectionResult:
 
 
 class CapabilityRegistry:
-    """Unwired descriptor/health registry that delegates all permission to PolicyKernel."""
+    """Unwired registry that delegates every permission decision to PolicyKernel.
 
-    def __init__(self, policy_kernel: CapabilityLeaser | None = None) -> None:
-        self._policy_kernel: CapabilityLeaser = (
-            policy_kernel if policy_kernel is not None else get_policy_kernel()
-        )
+    There is intentionally no constructor parameter for a policy/leaser implementation.
+    Production callers cannot substitute another permission owner through this API.
+    Tests replace the module-level ``get_policy_kernel`` lookup with a test double only
+    inside the test process.
+    """
+
+    def __init__(self) -> None:
+        self._policy_kernel: _CapabilityLeaser = get_policy_kernel()
         self._providers: dict[str, ProviderDescriptor] = {}
         self._capabilities: dict[str, CapabilityDescriptor] = {}
         self._health: dict[str, ProviderHealth] = {}
@@ -409,7 +415,6 @@ def _require_token(name: str, value: str) -> None:
 __all__ = [
     "CandidateEvaluation",
     "CapabilityDescriptor",
-    "CapabilityLeaser",
     "CapabilityRegistry",
     "ProviderDescriptor",
     "ProviderHealth",
