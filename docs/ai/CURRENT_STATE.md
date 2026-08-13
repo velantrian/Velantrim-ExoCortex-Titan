@@ -1,13 +1,13 @@
 # 📍 Current System State
 
-**Verified:** 2026-08-13  
-**Implementation checkpoint:** `main@c1fa13cf8fe6bf82d99dfb507beeac2c1c8f7aca` · signature `VERIFIED / valid`  
+**Verified:** 2026-08-14  
+**Current repository checkpoint:** `main@5cd4003d62d8f5e09971f2b46f89e61ab58bffca` · signature `VERIFIED / valid`  
 **Continuity:** `12/12 = 100%`  
 **Machine-readable state:** schema v7  
 **Notion target:** `Velantrim Titan 9.0` · `398ac84d-0547-81fe-8ca5-d0d2727d1961`  
 **Reality boundary:** `IMPLEMENTED COMPONENTS PRESENT · RUNTIME CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVATION EXISTS · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`
 
-> This is a dated implementation checkpoint. Re-read live GitHub, current Actions and the
+> This is a dated repository checkpoint. Re-read live GitHub, current Actions and the
 > existing Notion page before using it as operational truth.
 
 ## State semantics
@@ -65,7 +65,7 @@ runtime route or authorize embeddings, providers, LLM execution or ADAO.
 ### Phase 2A Capability Registry
 
 Issue #299 admitted a narrow descriptor/provider-health/selection-explanation contract.
-PR #300 is protected-merged at current implementation checkpoint
+PR #300 is protected-merged at its implementation checkpoint
 `c1fa13cf8fe6bf82d99dfb507beeac2c1c8f7aca`.
 
 Merged surface:
@@ -112,6 +112,27 @@ post-merge aggregate:        #982 · 31736925705 · SUCCESS
 Codex did not complete the requested review because usage limits were reached. This is
 `NOT RUN — USAGE LIMIT`, not approval. No independent formal approval is claimed.
 
+### Documentation hand-off validator hardening
+
+Issue #305 / merged PR #306 closes the bounded governance mismatch between the written
+connectorless Notion hand-off protocol and aggregate validation. The existing aggregate
+owner is preserved; a thin trusted adapter reads `docs/ai/NOTION_HANDOFF.md` from the
+actual exact PR head and validates the machine-stable current-PR anchor, current base SHA,
+structured fields and required sections before connectorless `HANDOFF_REQUIRED` evidence
+can pass.
+
+```text
+#306 exact tested head:      d5767cb9db5aa257128ca34c049f7902c9b7e227
+#306 protected squash merge: 5cd4003d62d8f5e09971f2b46f89e61ab58bffca
+exact-head Full CI:          #1114 · 31750358527 · SUCCESS
+READY aggregate:             #1004 · 31751015239 · SUCCESS
+post-merge Full CI:          #1115 · 31751070147 · SUCCESS
+post-merge aggregate:        #1005 · 31751070170 · SUCCESS
+```
+
+This governance hardening changes no runtime, Canon, capability, provider, Continuity,
+schema, Operator GO, runtime-authority or production-authority semantics.
+
 ## Existing owners preserved
 
 | Concern | Current owner / rule |
@@ -123,8 +144,10 @@ Codex did not complete the requested review because usage limits were reached. T
 | compute profile / config | existing compute/config owners |
 | TRACE / Audit | existing trace and AuditChain owners |
 | Phase 2A descriptors / explicit health / selection explanation | `core/capability_registry.py` |
+| aggregate merge evidence | `scripts/check_pr_merge_evidence.py` with strict Notion hand-off adapter |
 
-No second PolicyKernel, QueryRouter, TruthGate, WriteGate or Canon writer was created.
+No second PolicyKernel, QueryRouter, TruthGate, WriteGate, Canon writer or aggregate
+merge-evidence authority was created.
 
 ## Still not implemented/authorized by Phase 2A
 
@@ -153,14 +176,13 @@ exact-head tests/CI, protected merge and synchronized GitHub/Notion evidence.
 
 ## Open residuals that remain separate
 
-Do not mix them into Phase 2A closure:
+Do not mix them into Phase 2A or governance closure:
 
 - #51 — ADAO workstream;
-- #52 — trusted platform / documentation and related hardening;
+- #52 — trusted platform / supply-chain and related hardening;
 - #92 — ARM, with ARM-04 not authorized;
 - #120 — Reader Core production evidence;
-- #249 — CAS contention evidence;
-- the documentation hand-off validator/protocol mismatch recorded in `KNOWN_RISKS.md`.
+- #249 — CAS contention evidence.
 
 ## Historical evidence rule
 
