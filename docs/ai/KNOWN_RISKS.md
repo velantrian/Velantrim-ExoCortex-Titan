@@ -1,7 +1,7 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-08-13  
-**Current implementation main checkpoint:** `c1fa13cf8fe6bf82d99dfb507beeac2c1c8f7aca` · signature `VERIFIED / valid`  
+**Snapshot:** 2026-08-14  
+**Current repository checkpoint:** `5cd4003d62d8f5e09971f2b46f89e61ab58bffca` · signature `VERIFIED / valid`  
 **Continuity:** `12/12 = 100%` — complete  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0` · review-thread resolution required · required check `Titan aggregate merge evidence`
@@ -214,18 +214,34 @@ The following **remain unproved and unauthorized** by Phase 2A:
 A later wiring/activation phase must be separately admitted. `auto` remains preference,
 never permission.
 
-## P1 — Documentation hand-off validator is weaker than the written protocol
+## Reduced risk — Documentation hand-off validation converged
 
-`DOCUMENTATION_SYNC_PROTOCOL.md` and `NOTION_HANDOFF.md` require connectorless
-`GITHUB_AND_NOTION` work to create a structured hand-off item and link its exact anchor.
-The current aggregate validator accepts `UNAVAILABLE + HANDOFF_REQUIRED` when any
-`GitHub hand-off path:` string is present; it does not prove that the referenced structured
-item exists. PR #297 exposed this mismatch when a non-queue path passed the gate.
+Issue #305 / merged PR #306 closes the bounded mismatch between the written connectorless
+Notion hand-off protocol and aggregate merge-evidence validation.
 
-The final connected synchronization for #297 is repaired and recorded, so this is no
-longer a blocker for that merge. The validator/protocol mismatch remains a separate
-governance-hardening residual and should be fixed in its own bounded workstream rather
-than weakening the documentation protocol.
+```text
+exact tested head:       d5767cb9db5aa257128ca34c049f7902c9b7e227
+protected squash merge:  5cd4003d62d8f5e09971f2b46f89e61ab58bffca
+exact-head Full CI:      #1114 · 31750358527 · SUCCESS
+READY aggregate:         #1004 · 31751015239 · SUCCESS
+review threads:          0 unresolved
+post-merge Full CI:      #1115 · 31751070147 · SUCCESS
+post-merge aggregate:    #1005 · 31751070170 · SUCCESS
+Docker:                  not spawned / not claimed
+```
+
+The existing `scripts/check_pr_merge_evidence.py` remains the aggregate owner. A thin
+trusted adapter now reads `docs/ai/NOTION_HANDOFF.md` from the actual exact PR head and
+fails connectorless `UNAVAILABLE + HANDOFF_REQUIRED` evidence unless the declared path is
+the machine-stable `#handoff-pr-<current-PR>` anchor, the hand-off file is part of that PR,
+and the matching structured item is bound to the current PR/base with the required
+provenance and sections. Arbitrary paths, missing items, stale other-PR items and wrong
+base SHA fail closed. The ordinary `AVAILABLE + SYNCED` route remains unchanged.
+
+Post-merge aggregate #1005 executed the adapter's `--all-open` entrypoint from trusted
+default-branch code, so the new workflow entrypoint is proven in real Actions execution.
+This governance hardening changes no runtime, Canon, capability, provider, Continuity,
+schema, Operator GO, runtime-authority or production-authority semantics.
 
 ## Operational residuals
 
