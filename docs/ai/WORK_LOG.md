@@ -7,19 +7,23 @@ merged PR bodies, issues, ADRs and dated checkpoint documents.
 
 ---
 
-## 2026-08-13 — #53 Phase 1 ModelFreeCore · REVIEW-STAGE / NOT MAIN
+## 2026-08-13 — Post-merge core audit hardening · DRAFT CANDIDATE
 
 ```text
 Parent architecture:            #53 · OPEN
-Tracking issue:                 #295 · OPEN
-Implementation PR:              #296 · DRAFT / REVIEW-STAGE
-Authoritative base main:        2699963547a42c4fbcd6b0273125c890a038654b
-Clean pre-doc code head:        4d40229ce746a164534682b3443f9de6e729b6da
-Exact-head Full CI:             31669587920 · SUCCESS
-Exact-head Docker:              31669587884 · SUCCESS
-Diagnostic first-failure run:   31669157724 · reproduced full-suite isolation leak
+ModelFreeCore issue / PR:        #295 CLOSED · #296 MERGED
+Final #296 head:                d376f146763bd70f6d725e53890e7beda4fd22e6
+Protected squash merge/main:    e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96
+Final-head Full CI / Docker:     31670168755 / 31670168759 · SUCCESS
+Ready aggregate:                31676173562 · SUCCESS
+Post-merge Full CI / Docker:     31676260316 / 31676260285 · SUCCESS
+Post-merge aggregate:           31676260313 · SUCCESS
+Independent review:             NOT PERFORMED
+Earlier causal PR:              #287 MERGED · 615201ec1073dafb047028e88ce94463f4ef9b77
+Causal post-merge review:       3 unresolved findings on #287 · 2 P1 + 1 P2
+Audit follow-up:                DRAFT CANDIDATE · not yet merged
 Documentation impact:           GITHUB_AND_NOTION
-Notion synchronization:         REVIEW_PENDING until final docs head is green
+Notion synchronization:         #296 FINAL complete; follow-up REVIEW pending
 Continuity:                     12/12 = 100% · unchanged
 Schema:                         v7 · unchanged
 Runtime currently enabled:      false · unchanged
@@ -28,22 +32,25 @@ Runtime authority:              false · unchanged
 Production authority:           false · unchanged
 ```
 
-Phase 1 composes existing deterministic/read-only primitives behind typed
-`L2Query`/`L2Result` contracts. It explicitly selects the existing lexical path and keeps
-Dense/RRF/reranker/LLM/provider/network paths out of this facade. FactsPack, Guardian and
-TruthGate remain the evidence policy; CausalGraph is read-only. No server/default-route
-wiring or new mutation authority is introduced.
+Phase 1 is now on `main`, but the merge occurred without substantive independent review.
+A fresh audit found five contract gaps: the lexical path could still invoke the opt-in
+cognitive reranker, graph reads initialized DDL-capable state, graph read failures were
+silently omitted, user-reported `UNVERIFIED` evidence was rendered under a confirmed-data
+heading, and malformed typed inputs were not fully rejected.
 
-The first PR head passed focused tests but failed full-suite because the new acceptance
-test retained `core.*` module objects across repository tests that deliberately purge and
-re-import `sys.modules`. Diagnostic run `31669157724` proved the exact failure after 2705
-passes. The fix changed only test isolation: reload-sensitive modules are resolved at test
-execution time. Production semantics remained unchanged, and the clean replacement code
-head passed full pytest plus coverage and Docker.
+The bounded follow-up explicitly disables cognitive reranking for `ModelFreeCore`, uses a
+non-initializing graph peek, returns insufficient evidence on a present-but-failing graph,
+separates verified facts from attributed reports in the renderer, and rejects bool/non-int
+`top_k` plus malformed mode/domain/graph flags. It adds no server route, model/provider,
+network path, mutation authority, runtime enablement or production authority.
 
-AI truth docs are being reconciled after that green code head. They will change the final
-PR head, so Full CI + Docker must run again before Notion REVIEW evidence, readiness or
-merge. PR #296 is explicitly NOT MAIN at this checkpoint.
+The same bounded audit follow-up remediates the three substantive findings left on
+merged #287: snapshot admission propagates WriteGate/AuditChain failures instead of
+reporting zero imports, an audited reset detaches the singleton before a failure can
+leave it backed by a closed connection, and relation deletion uses explicit `inverse_of`
+identity. Ambiguous unlinked legacy NULL-source duplicates abort the whole deletion
+transaction rather than guessing an inverse companion. Regression tests cover all three
+failure paths.
 
 ---
 
@@ -310,9 +317,11 @@ current bounded block is `2699963547a42c4fbcd6b0273125c890a038654b` and its fres
 Truth Foundation residual inventory is `REAL_GAP=0`. Merged #288/#289, #290/#291 and
 #292/#293 remain current-main Truth Foundation history. Issue #249 stays separate.
 
-Open #53 now has one explicitly bounded Phase 1 implementation child: #295 / draft PR
-#296. Its pre-documentation code head passed Full CI and Docker, but the work remains
-REVIEW-STAGE / NOT MAIN until final-head gates, Notion REVIEW evidence, readiness,
-thread reconciliation and protected merge. Later #53 phases remain unimplemented and
-unauthorized by this slice. No schema v8, Phase II, ADAO, ARM-04, runtime activation,
-standing Operator GO, runtime authority or production authority follows from Phase 1.
+Open #53 now has one protected-merged bounded Phase 1 child: closed #295 / merged #296 at
+`main@e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96`. Final-head and post-merge Full CI,
+Docker and aggregate evidence passed, and the #296 Notion FINAL read-back is recorded.
+A fresh logical audit nevertheless requires the bounded follow-up described at the top
+of this file; green #296 CI did not independently review those contracts. Later #53
+phases remain unimplemented and unauthorized. No schema v8, Phase II, ADAO, ARM-04,
+runtime activation, standing Operator GO, runtime authority or production authority
+follows from Phase 1 or its hardening.

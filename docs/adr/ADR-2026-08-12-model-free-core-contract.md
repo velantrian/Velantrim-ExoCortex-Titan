@@ -1,6 +1,6 @@
 # ADR — Explicit ModelFreeCore contract for #53 Phase 1
 
-- Status: Proposed
+- Status: Accepted by protected merge #296; post-merge hardening in progress
 - Date: 2026-08-12
 - Tracking: #295
 - Parent architecture: #53
@@ -50,9 +50,18 @@ L2Query
 an LLM, a remote provider, ADAO, or CapabilityRegistry. It owns no canonical mutation
 method.
 
+The lexical call must pass an explicit `allow_cognitive_rerank=False`; selecting the
+lexical BM25 branch alone is insufficient because the shared pipeline can otherwise
+apply an opt-in cognitive reranker. Optional causal evidence may use only an already-open
+graph for the current store. A model-free query must not initialize graph tables or
+replace/close a singleton. If that present graph cannot be read reliably, the facade
+returns bounded insufficient evidence rather than silently omitting contradictions.
+
 The deterministic renderer may only restate claims that survived the existing
-FactsPack + Guardian + TruthGate path. When evidence is absent or rejected it returns the
-bounded message `Недостаточно подтверждённых локальных данных.` with a reason code.
+FactsPack + Guardian + TruthGate path. It labels `VERIFIED` facts separately from
+attributed `UNVERIFIED` reports; policy eligibility does not convert a user report into a
+confirmed world fact. When evidence is absent or rejected it returns the bounded message
+`Недостаточно подтверждённых локальных данных.` with a reason code.
 
 `L2Result` intentionally excludes volatile timestamps so equivalent canonical state and
 equivalent query inputs can produce a stable serializable contract.
@@ -100,8 +109,13 @@ Deferred to later #53 phases. Existing narrow embedding code is not expanded by 
 Focused acceptance tests must prove:
 
 - optional model/network paths are not invoked;
+- the cognitive reranker is not invoked even when its shared runtime flag is enabled;
 - typed lexical evidence can be returned from canonical local memory;
 - existing local contradictions/relations are observable read-only;
+- graph absence is non-blocking, graph read failure is fail-closed, and graph lookup does
+  not invoke the DDL-capable initializer;
+- verified facts and attributed user reports are rendered under distinct headings;
+- malformed `top_k`, domain, cognitive-mode and graph-inclusion values fail closed;
 - insufficient/policy-ineligible evidence fails boundedly;
 - repeated equivalent reads serialize deterministically;
 - no fact, ESM or relation mutation occurs during ModelFreeCore queries;

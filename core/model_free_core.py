@@ -28,6 +28,10 @@ _INSUFFICIENT_ANSWER = "Недостаточно подтверждённых л
 _ALLOWED_MODES = frozenset({"PRECISION", "BALANCED", "EXPLORATION", "CREATIVE"})
 
 
+class ModelFreeGraphReadError(RuntimeError):
+    """The optional graph was present but could not be read reliably."""
+
+
 @dataclass(frozen=True)
 class L2Query:
     """Typed model-free query contract."""
@@ -41,8 +45,19 @@ class L2Query:
     def __post_init__(self) -> None:
         if not isinstance(self.text, str):
             raise TypeError("L2Query.text must be a string")
+        if isinstance(self.top_k, bool) or not isinstance(self.top_k, int):
+            raise TypeError("L2Query.top_k must be an integer")
         if not 1 <= self.top_k <= 100:
             raise ValueError("L2Query.top_k must be between 1 and 100")
+        if self.domain is not None:
+            if not isinstance(self.domain, str):
+                raise TypeError("L2Query.domain must be a string or None")
+            if not self.domain.strip():
+                raise ValueError("L2Query.domain must not be empty")
+        if not isinstance(self.cognitive_mode, str):
+            raise TypeError("L2Query.cognitive_mode must be a string")
+        if not isinstance(self.include_graph, bool):
+            raise TypeError("L2Query.include_graph must be a boolean")
         normalized_mode = self.cognitive_mode.upper()
         if normalized_mode not in _ALLOWED_MODES:
             raise ValueError(
@@ -173,6 +188,7 @@ class ModelFreeCore:
             k=request.top_k,
             domain=request.domain,
             retrieval_mode="lexical",
+            allow_cognitive_rerank=False,
         )
         if not retrieved:
             return self._insufficient(
@@ -228,11 +244,20 @@ class ModelFreeCore:
             )
 
         evidence = tuple(L2Evidence.from_fact(fact) for fact in facts)
-        relations = (
-            self._collect_relations(pipeline, evidence)
-            if request.include_graph
-            else ()
-        )
+        try:
+            relations = (
+                self._collect_relations(pipeline, evidence)
+                if request.include_graph
+                else ()
+            )
+        except ModelFreeGraphReadError:
+            return self._insufficient(
+                request,
+                query_type,
+                "causal_graph_read_failed",
+                guardian_passed=True,
+                truth_gate_passed=True,
+            )
         conflicts = tuple(
             relation for relation in relations if relation.relation_type == "contradicts"
         )
@@ -259,9 +284,9 @@ class ModelFreeCore:
         if not evidence:
             return ()
         try:
-            graph = pipeline._get_causal_graph()
-        except Exception:
-            return ()
+            graph = pipeline._peek_causal_graph()
+        except Exception as exc:
+            raise ModelFreeGraphReadError("causal graph lookup failed") from exc
         if graph is None:
             return ()
 
@@ -273,8 +298,10 @@ class ModelFreeCore:
                 candidates = graph.get_relations_from(fact_id) + graph.get_relations_to(
                     fact_id
                 )
-            except Exception:
-                continue
+            except Exception as exc:
+                raise ModelFreeGraphReadError(
+                    f"causal graph read failed for fact {fact_id!r}"
+                ) from exc
             for relation in candidates:
                 relation_id = str(getattr(relation, "relation_id", "") or "")
                 if not relation_id or relation_id in seen:
@@ -313,9 +340,25 @@ class ModelFreeCore:
         evidence: tuple[L2Evidence, ...],
         conflicts: tuple[L2Relation, ...],
     ) -> str:
-        lines = ["Подтверждённые локальные данные:"]
-        for fact in evidence:
-            lines.append(f"- [{fact.fact_id}] ({fact.epistemic_state}) {fact.claim}")
+        verified = tuple(
+            fact for fact in evidence if fact.truth_status.upper() == "VERIFIED"
+        )
+        unverified = tuple(
+            fact for fact in evidence if fact.truth_status.upper() != "VERIFIED"
+        )
+        lines: list[str] = []
+        if verified:
+            lines.append("Подтверждённые локальные факты:")
+            for fact in verified:
+                lines.append(f"- [{fact.fact_id}] ({fact.epistemic_state}) {fact.claim}")
+        if unverified:
+            if lines:
+                lines.append("")
+            lines.append("Атрибутированные, но не подтверждённые как факты записи:")
+            for fact in unverified:
+                lines.append(
+                    f"- [{fact.fact_id}] (источник: {fact.source}) {fact.claim}"
+                )
         if conflicts:
             lines.append(f"⚠️ Известные локальные противоречия: {len(conflicts)}.")
         return "\n".join(lines)
@@ -350,6 +393,7 @@ class ModelFreeCore:
 
 __all__ = [
     "L2Evidence",
+    "ModelFreeGraphReadError",
     "L2Query",
     "L2Relation",
     "L2Result",

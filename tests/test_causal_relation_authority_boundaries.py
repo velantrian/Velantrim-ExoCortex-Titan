@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 import core.causal_graph as causal_graph_module
+import core.pipeline as pipeline
 from core.causal_graph import CausalGraph
 
 
@@ -101,6 +102,76 @@ def test_snapshot_import_is_local_admission_and_defaults_pending():
     ).fetchone()
     assert row == ("inferred", "atlas_sync", "hypothesis", "pending")
     assert graph.get_relations_from("a", relation_type="causes") == []
+
+
+def test_snapshot_import_propagates_write_gate_denial(monkeypatch):
+    conn = _db()
+    graph = CausalGraph(conn)
+
+    def deny() -> None:
+        raise RuntimeError("writes disabled")
+
+    monkeypatch.setattr(causal_graph_module, "ensure_writes_allowed", deny)
+
+    with pytest.raises(RuntimeError, match="writes disabled"):
+        graph.import_snapshots([
+            {
+                "from_fact_id": "a",
+                "to_fact_id": "b",
+                "relation_type": "causes",
+            }
+        ])
+
+    assert conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0] == 0
+
+
+def test_snapshot_import_propagates_audit_failure_and_rolls_back(monkeypatch):
+    conn = _db()
+    graph = CausalGraph(conn)
+
+    def fail_audit(*args, **kwargs) -> None:
+        raise RuntimeError("forced snapshot audit failure")
+
+    monkeypatch.setattr(causal_graph_module, "append_relation_event", fail_audit)
+
+    with pytest.raises(RuntimeError, match="forced snapshot audit failure"):
+        graph.import_snapshots([
+            {
+                "from_fact_id": "a",
+                "to_fact_id": "b",
+                "relation_type": "causes",
+            }
+        ])
+
+    assert conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0] == 0
+
+
+def test_snapshot_import_rejects_incomplete_rows_instead_of_reporting_zero():
+    conn = _db()
+    graph = CausalGraph(conn)
+
+    with pytest.raises(ValueError, match="snapshot row requires"):
+        graph.import_snapshots([{"from_fact_id": "a", "to_fact_id": "b"}])
+
+
+def test_failed_audited_reset_detaches_closed_singleton(monkeypatch):
+    conn = _db()
+    graph = CausalGraph(conn)
+
+    def fail_reset() -> int:
+        raise RuntimeError("forced audited reset failure")
+
+    monkeypatch.setattr(graph, "reset_relations", fail_reset)
+    monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH", graph)
+    monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH_DB_PATH", "stale.db")
+
+    with pytest.raises(RuntimeError, match="forced audited reset failure"):
+        pipeline.reset_causal_graph()
+
+    assert pipeline._CAUSAL_GRAPH is None
+    assert pipeline._CAUSAL_GRAPH_DB_PATH == ""
+    with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+        conn.execute("SELECT 1")
 
 
 def test_pipeline_reset_has_no_raw_relation_delete_owner():

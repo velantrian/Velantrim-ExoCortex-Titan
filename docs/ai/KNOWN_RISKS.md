@@ -64,7 +64,7 @@ system. If the SQLite transaction fails after payload creation, cleanup remains
 best-effort. An OS cleanup failure can leave a **non-canonical orphan payload**; that
 residue is never canonical archival success.
 
-## Reduced risk — Causal Truth-edge mutation ownership converged
+## P1 — Causal ownership merged with three unresolved failure-path findings
 
 Issue #286 / merged PR #287 converged SQLite `relations` mutation on `CausalGraph` at
 checkpoint `615201ec1073dafb047028e88ce94463f4ef9b77`. Relation create/batch/remove/reset
@@ -73,8 +73,17 @@ Automatic/non-manual input defaults to hypothesis/pending, derived snapshots can
 self-promote authority labels, and Neo4j/Graphiti reload cannot destructively replace
 local Canon. `RelationStore` / `fact_relations` remains a separate associative model.
 
-Residual risks remain bounded: explicit future accepted-label callers still need their own
-authorized admission surface, and full graph reset cost grows with graph size. Neither
+Post-merge Codex review then found three logical defects that green CI did not cover:
+snapshot admission could hide WriteGate/AuditChain failure as zero imported rows, an
+audited reset failure could retain a singleton backed by a closed connection, and
+ambiguous legacy NULL-source duplicates could delete the wrong inverse companions. The
+current bounded follow-up candidate propagates admission failures, detaches reset state
+before closing, binds inverse deletion by identity, and fails closed when old rows cannot
+be paired unambiguously. Until that follow-up is protected-merged and the three #287
+threads are evidence-resolved, the earlier "converged" label is incomplete.
+
+Other residuals remain bounded: explicit future accepted-label callers still need their
+own authorized admission surface, and full graph reset cost grows with graph size. Neither
 risk justifies a raw-SQL bypass or remote truth authority.
 
 ## Reduced risk — Post-create raw provenance binding converged
@@ -132,21 +141,24 @@ using `asyncio.to_thread`. The former native aiosqlite write implementation rema
 explicitly disabled. Existing equivalence and cancellation tests prove the adapter does
 not own an independent SQL mutation path.
 
-## Review-stage boundary — ModelFreeCore Phase 1 is not runtime wiring
+## P1 — ModelFreeCore was merged before substantive review
 
-Issue #295 / draft PR #296 is the current bounded implementation slice under open #53.
-The exact pre-documentation code head `4d40229ce746a164534682b3443f9de6e729b6da`
-passed Full CI `31669587920` and Docker `31669587884`. A full-suite-only test isolation
-failure on the earlier head was reproduced by diagnostic run `31669157724` and corrected
-without changing production semantics; the accepted code head then passed both full-suite
-and coverage gates.
+Issue #295 / PR #296 is merged on `main@e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96`.
+Final-head and post-merge Full CI, Docker and aggregate evidence passed, but no substantive
+independent review occurred before merge.
 
-The candidate is still REVIEW-STAGE / NOT MAIN. It is a typed read-only facade over
-existing local primitives and deliberately selects lexical retrieval. It does not prove
-runtime routing, default-route replacement, CapabilityRegistry, embedding/vector
-architecture, ADAO, LLM execution, network/provider access or production readiness.
-Optional capability absence must not block a model-free result, and query execution must
-not mutate Canon, ESM state or causal relations.
+A post-merge audit found that the claimed lexical-only boundary still inherited an
+opt-in cognitive reranker; graph collection called the DDL-capable singleton initializer
+and swallowed read failures; the renderer called `UNVERIFIED` user reports confirmed
+data; and `L2Query` accepted malformed bool/non-string inputs. The current bounded
+follow-up candidate closes those paths fail-closed and adds adversarial tests. Until that
+follow-up is protected-merged, #296's green CI must not be represented as proof of those
+logical guarantees.
+
+Even after hardening, Phase 1 does not prove runtime routing, default-route replacement,
+CapabilityRegistry, embedding/vector architecture, ADAO, LLM execution, network/provider
+access or production readiness. Optional graph absence remains non-blocking; a graph that
+is present but unreadable must not produce a falsely complete answer.
 
 ## Operational residuals
 

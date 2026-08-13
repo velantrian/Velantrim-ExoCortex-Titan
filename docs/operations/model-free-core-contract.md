@@ -1,28 +1,28 @@
-# ModelFreeCore Phase-1 contract — review/operations note
+# ModelFreeCore Phase-1 contract — operations and audit note
 
 Tracking: #295  
 Parent architecture: #53  
-Authoritative baseline: `main@2699963547a42c4fbcd6b0273125c890a038654b`
+Protected implementation: PR #296 · `main@e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96`
 
 ## Purpose
 
 This note defines the review boundary for the first implementation slice of the
 local-first adaptive architecture. It is **not a runtime activation guide**.
 
-The candidate `ModelFreeCore` is a typed read facade over mechanisms already present on
-`main`. It makes the no-model baseline explicit without changing the default server
-pipeline.
+`ModelFreeCore` is a typed read facade over mechanisms already present on `main`. It
+makes the no-model baseline explicit without changing the default server pipeline. A
+post-merge audit hardening candidate closes logical gaps not detected by #296 CI.
 
 ## Expected execution
 
 ```text
 L2Query
   -> QueryRouter (rules)
-  -> lexical-only pipeline retrieval
+  -> lexical-only pipeline retrieval (cognitive rerank explicitly disabled)
   -> FactsPack
   -> Guardian
   -> TruthGate
-  -> optional local CausalGraph READ
+  -> optional already-open local CausalGraph READ (no initializer/DDL)
   -> deterministic renderer
   -> L2Result
 ```
@@ -66,15 +66,21 @@ with a machine-readable reason code.
 
 Known local causal rows may be returned as typed read evidence. A `contradicts` row is
 also exposed in the `conflicts` collection. The facade never calls `CausalGraph`
-mutation methods.
+mutation methods or the DDL-capable graph initializer. An absent optional graph is
+non-blocking; an already-present graph that raises during a read produces bounded
+insufficient evidence.
+
+`VERIFIED` facts and `UNVERIFIED` attributed reports use separate renderer headings.
+Passing Guardian/TruthGate establishes policy eligibility for the response; it does not
+upgrade a user report into a verified world fact.
 
 ## Verification checklist
 
 Before review:
 
-- [ ] focused `tests/test_model_free_core.py` green;
-- [ ] existing `tests/test_retrieval_routing.py` remains green;
-- [ ] Ruff on changed Python files green;
+- [x] focused `tests/test_model_free_core.py` green locally;
+- [x] relevant pipeline tests green locally;
+- [x] Ruff and focused mypy on changed Python files green locally;
 - [ ] no server/runtime/config wiring added;
 - [ ] no default retrieval-mode change;
 - [ ] no Canon/ESM/relation mutation from query tests;

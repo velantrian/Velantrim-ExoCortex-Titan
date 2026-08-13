@@ -581,12 +581,13 @@ class CausalGraph:
         return [self._row_to_relation(r) for r in rows]
 
     def _expand_remove_ids_in_transaction(self, relation_ids: list[str]) -> list[str]:
+        requested = set(relation_ids)
         expanded: set[str] = set()
         for relation_id in relation_ids:
             row = self._conn.execute(
                 """
                 SELECT relation_id, from_fact_id, to_fact_id, relation_type,
-                       inference_source FROM relations WHERE relation_id = ?
+                       inference_source, metadata FROM relations WHERE relation_id = ?
                 """,
                 (relation_id,),
             ).fetchone()
@@ -597,13 +598,55 @@ class CausalGraph:
             if inverse_type:
                 inverse_rows = self._conn.execute(
                     """
-                    SELECT relation_id FROM relations
+                    SELECT relation_id, metadata FROM relations
                     WHERE from_fact_id = ? AND to_fact_id = ?
                       AND relation_type = ? AND inference_source IS ?
+                    ORDER BY relation_id
                     """,
                     (row[2], row[1], inverse_type, row[4]),
                 ).fetchall()
-                expanded.update(str(r[0]) for r in inverse_rows)
+                current_metadata = self._parse_metadata(row[5])
+                linked_from_current = current_metadata.get("inverse_of")
+                if isinstance(linked_from_current, str):
+                    linked_ids = {
+                        str(candidate[0]) for candidate in inverse_rows
+                        if str(candidate[0]) == linked_from_current
+                    }
+                else:
+                    linked_ids = {
+                        str(candidate[0]) for candidate in inverse_rows
+                        if self._parse_metadata(candidate[1]).get("inverse_of") == relation_id
+                    }
+
+                if len(linked_ids) == 1:
+                    expanded.update(linked_ids)
+                    continue
+                if len(linked_ids) > 1:
+                    raise RuntimeError(
+                        f"relation {relation_id!r} has multiple identity-linked inverse companions"
+                    )
+
+                candidate_ids = {str(candidate[0]) for candidate in inverse_rows}
+                if candidate_ids and candidate_ids.issubset(requested):
+                    continue
+                if len(candidate_ids) > 1:
+                    raise RuntimeError(
+                        f"relation {relation_id!r} has ambiguous legacy inverse companions"
+                    )
+                if len(candidate_ids) == 1:
+                    sibling_count = int(self._conn.execute(
+                        """
+                        SELECT COUNT(*) FROM relations
+                        WHERE from_fact_id = ? AND to_fact_id = ?
+                          AND relation_type = ? AND inference_source IS ?
+                        """,
+                        (row[1], row[2], row[3], row[4]),
+                    ).fetchone()[0])
+                    if sibling_count > 1:
+                        raise RuntimeError(
+                            f"relation {relation_id!r} belongs to an ambiguous legacy duplicate set"
+                        )
+                    expanded.update(candidate_ids)
         return sorted(expanded)
 
     def remove_relations(self, relation_ids: list[str]) -> int:
@@ -920,7 +963,9 @@ class CausalGraph:
             to_id = row.get("to_fact_id")
             rtype = row.get("relation_type")
             if not from_id or not to_id or not rtype:
-                continue
+                raise ValueError(
+                    "snapshot row requires from_fact_id, to_fact_id, and relation_type"
+                )
             rid = row.get("relation_id")
             if rid and merge and self.get_relation(str(rid)):
                 continue
@@ -939,15 +984,8 @@ class CausalGraph:
             })
         if not prepared:
             return 0
-        try:
-            result = self.add_relations_batch(prepared)
-            return int(result["created"])
-        except ValueError as exc:
-            logger.warning("import_snapshots: snapshot batch rejected: %s", exc)
-            return 0
-        except Exception:
-            logger.exception("import_snapshots: canonical snapshot import failed")
-            return 0
+        result = self.add_relations_batch(prepared)
+        return int(result["created"])
 
     def stats(self) -> dict:
         total = self._conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0]
@@ -1090,12 +1128,7 @@ class CausalGraph:
 
     @staticmethod
     def _row_to_relation(row) -> Relation:
-        meta = None
-        if row[13]:
-            try:
-                meta = json.loads(row[13])
-            except (json.JSONDecodeError, TypeError):
-                meta = None
+        meta = CausalGraph._parse_metadata(row[13]) or None
         return Relation(
             relation_id=row[0],
             from_fact_id=row[1],
@@ -1112,6 +1145,18 @@ class CausalGraph:
             valid_to=row[12],
             metadata=meta,
         )
+
+    @staticmethod
+    def _parse_metadata(raw: object) -> dict:
+        if isinstance(raw, dict):
+            return raw
+        if not raw:
+            return {}
+        try:
+            parsed = json.loads(str(raw))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
 
 
 def is_causal_graph_enabled() -> bool:
@@ -1139,15 +1184,7 @@ def reset_causal_graph() -> None:
     """Audited reset plus singleton detach; never call the legacy raw wipe."""
     from core import pipeline as _pipeline
 
-    graph = _pipeline._get_causal_graph()
-    if graph is not None:
-        graph.reset_relations()
-        try:
-            graph._conn.close()
-        except Exception:  # noqa: BLE001
-            logger.debug("CausalGraph close after reset failed", exc_info=True)
-    _pipeline._CAUSAL_GRAPH = None
-    _pipeline._CAUSAL_GRAPH_DB_PATH = ""
+    _pipeline.reset_causal_graph()
 
 
 __all__ = [

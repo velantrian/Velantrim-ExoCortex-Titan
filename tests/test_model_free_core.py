@@ -98,6 +98,11 @@ def test_model_free_query_never_invokes_optional_model_or_network_paths(
     monkeypatch.setattr(pipeline, "_get_hybrid_retriever", _boom("HybridRetriever"))
     monkeypatch.setattr(hybrid.DenseRetriever, "retrieve", _boom("DenseRetriever"))
     monkeypatch.setattr(hybrid, "reciprocal_rank_fusion", _boom("RRF"))
+    monkeypatch.setattr(
+        pipeline,
+        "_maybe_cognitive_rerank",
+        _boom("cognitive reranker"),
+    )
     monkeypatch.setattr(socket, "create_connection", _boom("network"))
     monkeypatch.setattr(urllib.request, "urlopen", _boom("network"))
 
@@ -129,6 +134,24 @@ def test_model_free_result_is_typed_deterministic_and_json_serializable(store):
     assert json.loads(json.dumps(first, ensure_ascii=False)) == first
 
 
+def test_model_free_query_does_not_initialize_causal_graph(store, monkeypatch):
+    pipeline = _pipeline()
+    model_free = _model_free()
+    _seed_validated("water", "вода нужна для жизни", source="biology")
+    monkeypatch.setattr(
+        pipeline,
+        "_get_causal_graph",
+        _boom("mutating causal graph initializer"),
+    )
+
+    result = model_free.ModelFreeCore().query(
+        model_free.L2Query("вода жизнь", include_graph=True)
+    )
+
+    assert result.insufficient_evidence is False
+    assert result.relations == ()
+
+
 def test_model_free_surfaces_existing_local_contradiction_read_only(store):
     pipeline = _pipeline()
     model_free = _model_free()
@@ -155,6 +178,29 @@ def test_model_free_surfaces_existing_local_contradiction_read_only(store):
     assert any(rel.relation_type == "contradicts" for rel in result.conflicts)
     assert "Известные локальные противоречия" in result.answer
     assert after_relations == before_relations
+
+
+def test_model_free_fails_closed_when_present_graph_cannot_be_read(
+    store, monkeypatch
+):
+    pipeline = _pipeline()
+    model_free = _model_free()
+    _seed_validated("water", "вода нужна для жизни", source="biology")
+    graph = pipeline._get_causal_graph()
+    assert graph is not None
+    monkeypatch.setattr(
+        graph,
+        "get_relations_from",
+        _boom("causal relation read"),
+    )
+
+    result = model_free.ModelFreeCore().query(
+        model_free.L2Query("вода жизнь", include_graph=True)
+    )
+
+    assert result.insufficient_evidence is True
+    assert result.reason_code == "causal_graph_read_failed"
+    assert result.answer == "Недостаточно подтверждённых локальных данных."
 
 
 def test_model_free_policy_ineligible_fact_returns_bounded_insufficient_evidence(store):
@@ -257,3 +303,47 @@ def test_l2_query_bounds_are_fail_closed():
         model_free.L2Query("x", top_k=0)
     with pytest.raises(ValueError, match="cognitive_mode"):
         model_free.L2Query("x", cognitive_mode="AUTO")
+    with pytest.raises(TypeError, match="top_k"):
+        model_free.L2Query("x", top_k=True)
+    with pytest.raises(TypeError, match="top_k"):
+        model_free.L2Query("x", top_k=2.5)
+    with pytest.raises(TypeError, match="cognitive_mode"):
+        model_free.L2Query("x", cognitive_mode=None)
+    with pytest.raises(TypeError, match="domain"):
+        model_free.L2Query("x", domain=42)
+    with pytest.raises(ValueError, match="domain"):
+        model_free.L2Query("x", domain="   ")
+    with pytest.raises(TypeError, match="include_graph"):
+        model_free.L2Query("x", include_graph=1)
+
+
+def test_renderer_separates_verified_facts_from_user_reports():
+    model_free = _model_free()
+    verified = model_free.L2Evidence(
+        fact_id="verified",
+        claim="вода кипит",
+        source="lab",
+        epistemic_state="Validated",
+        confidence=0.9,
+        retrieval_score=1.0,
+        claim_type="WORLD_FACT",
+        origin_type="EXTERNAL_SOURCE",
+        truth_status="VERIFIED",
+    )
+    reported = model_free.L2Evidence(
+        fact_id="reported",
+        claim="мне холодно",
+        source="user",
+        epistemic_state="Observed",
+        confidence=0.9,
+        retrieval_score=0.8,
+        claim_type="USER_EXPERIENCE",
+        origin_type="USER_REPORTED",
+        truth_status="UNVERIFIED",
+    )
+
+    rendered = model_free.ModelFreeCore._render((verified, reported), ())
+
+    assert "Подтверждённые локальные факты" in rendered
+    assert "Атрибутированные, но не подтверждённые" in rendered
+    assert "[reported] (источник: user)" in rendered

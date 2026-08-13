@@ -177,6 +177,62 @@ def test_remove_relation_and_inverse_share_audited_transaction():
     assert removed == 2
 
 
+def test_remove_uses_explicit_inverse_identity_with_null_source_duplicates():
+    conn = _db()
+    graph = CausalGraph(conn)
+    conn.executemany(
+        """
+        INSERT INTO relations (
+            relation_id, from_fact_id, to_fact_id, relation_type,
+            confidence, knowledge_status, inference_source,
+            truth_status, review_state, metadata
+        ) VALUES (?, ?, ?, ?, 0.8, 'known', NULL, 'validated', 'approved', ?)
+        """,
+        [
+            ("forward_1", "a", "b", "causes", None),
+            ("forward_2", "a", "b", "causes", None),
+            ("inverse_1", "b", "a", "caused_by", '{"inverse_of":"forward_1"}'),
+            ("inverse_2", "b", "a", "caused_by", '{"inverse_of":"forward_2"}'),
+        ],
+    )
+    conn.commit()
+
+    assert graph.remove_relation("forward_1") is True
+
+    remaining = {
+        row[0] for row in conn.execute(
+            "SELECT relation_id FROM relations ORDER BY relation_id"
+        ).fetchall()
+    }
+    assert remaining == {"forward_2", "inverse_2"}
+
+
+def test_remove_fails_closed_for_unlinked_null_source_duplicates():
+    conn = _db()
+    graph = CausalGraph(conn)
+    conn.executemany(
+        """
+        INSERT INTO relations (
+            relation_id, from_fact_id, to_fact_id, relation_type,
+            confidence, knowledge_status, inference_source,
+            truth_status, review_state
+        ) VALUES (?, ?, ?, ?, 0.8, 'known', NULL, 'validated', 'approved')
+        """,
+        [
+            ("forward_1", "a", "b", "causes"),
+            ("forward_2", "a", "b", "causes"),
+            ("inverse_1", "b", "a", "caused_by"),
+            ("inverse_2", "b", "a", "caused_by"),
+        ],
+    )
+    conn.commit()
+
+    with pytest.raises(RuntimeError, match="ambiguous legacy inverse companions"):
+        graph.remove_relation("forward_1")
+
+    assert conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0] == 4
+
+
 def test_remove_audit_failure_rolls_back_delete(monkeypatch):
     conn = _db()
     graph = CausalGraph(conn)
