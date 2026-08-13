@@ -7,8 +7,12 @@ import binascii
 from typing import Any
 from urllib.parse import quote
 
-from scripts import check_pr_merge_evidence as gate
-from scripts import notion_handoff_contract as handoff_contract
+try:
+    from scripts import check_pr_merge_evidence as gate
+    from scripts import notion_handoff_contract as handoff_contract
+except ModuleNotFoundError:
+    import check_pr_merge_evidence as gate
+    import notion_handoff_contract as handoff_contract
 
 _BASE_EVALUATE = gate.evaluate_pull_request_once
 
