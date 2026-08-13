@@ -7,6 +7,46 @@ merged PR bodies, issues, ADRs and dated checkpoint documents.
 
 ---
 
+## 2026-08-13 — #53 Phase 1 ModelFreeCore · REVIEW-STAGE / NOT MAIN
+
+```text
+Parent architecture:            #53 · OPEN
+Tracking issue:                 #295 · OPEN
+Implementation PR:              #296 · DRAFT / REVIEW-STAGE
+Authoritative base main:        2699963547a42c4fbcd6b0273125c890a038654b
+Clean pre-doc code head:        4d40229ce746a164534682b3443f9de6e729b6da
+Exact-head Full CI:             31669587920 · SUCCESS
+Exact-head Docker:              31669587884 · SUCCESS
+Diagnostic first-failure run:   31669157724 · reproduced full-suite isolation leak
+Documentation impact:           GITHUB_AND_NOTION
+Notion synchronization:         REVIEW_PENDING until final docs head is green
+Continuity:                     12/12 = 100% · unchanged
+Schema:                         v7 · unchanged
+Runtime currently enabled:      false · unchanged
+Operator GO:                    false · unchanged
+Runtime authority:              false · unchanged
+Production authority:           false · unchanged
+```
+
+Phase 1 composes existing deterministic/read-only primitives behind typed
+`L2Query`/`L2Result` contracts. It explicitly selects the existing lexical path and keeps
+Dense/RRF/reranker/LLM/provider/network paths out of this facade. FactsPack, Guardian and
+TruthGate remain the evidence policy; CausalGraph is read-only. No server/default-route
+wiring or new mutation authority is introduced.
+
+The first PR head passed focused tests but failed full-suite because the new acceptance
+test retained `core.*` module objects across repository tests that deliberately purge and
+re-import `sys.modules`. Diagnostic run `31669157724` proved the exact failure after 2705
+passes. The fix changed only test isolation: reload-sensitive modules are resolved at test
+execution time. Production semantics remained unchanged, and the clean replacement code
+head passed full pytest plus coverage and Docker.
+
+AI truth docs are being reconciled after that green code head. They will change the final
+PR head, so Full CI + Docker must run again before Notion REVIEW evidence, readiness or
+merge. PR #296 is explicitly NOT MAIN at this checkpoint.
+
+---
+
 ## 2026-08-12 — P0 smart-KB convergence + Truth Foundation #50 completed
 
 ```text
@@ -265,9 +305,14 @@ Conversation resolution:      required
 ## Stable continuation boundary
 
 Continuity is complete at `12/12 = 100%`; do not invent 13/12 or infer production
-readiness. Truth Foundation #50 is CLOSED_COMPLETED on current main `c80c8d47588de3d2607c7e1b10aa1677eb84383f` after merged
-#293, green post-merge evidence and a fresh residual inventory with `REAL_GAP=0`. Merged
-#288/#289, #290/#291 and #292/#293 are current-main Truth Foundation history. Issue #249
-stays separate. Open #53 is downstream architecture, not an automatic next implementation
-authorization. No schema v8, Phase II, ADAO, ARM-04, runtime activation, standing Operator
-GO, runtime authority or production authority follows from this closure.
+readiness. Truth Foundation #50 is CLOSED_COMPLETED; authoritative base main for the
+current bounded block is `2699963547a42c4fbcd6b0273125c890a038654b` and its fresh
+Truth Foundation residual inventory is `REAL_GAP=0`. Merged #288/#289, #290/#291 and
+#292/#293 remain current-main Truth Foundation history. Issue #249 stays separate.
+
+Open #53 now has one explicitly bounded Phase 1 implementation child: #295 / draft PR
+#296. Its pre-documentation code head passed Full CI and Docker, but the work remains
+REVIEW-STAGE / NOT MAIN until final-head gates, Notion REVIEW evidence, readiness,
+thread reconciliation and protected merge. Later #53 phases remain unimplemented and
+unauthorized by this slice. No schema v8, Phase II, ADAO, ARM-04, runtime activation,
+standing Operator GO, runtime authority or production authority follows from Phase 1.

@@ -208,9 +208,20 @@ No producer/action/reminder/notification/tool/scheduler authority is added.
 ## 9. Current continuation boundary
 
 Continuity has no remaining capability: `12/12` is complete. Truth Foundation #50 is
-CLOSED_COMPLETED at current main `c80c8d47588de3d2607c7e1b10aa1677eb84383f` after merged #293, green post-merge evidence,
-and a fresh current-main residual inventory with `REAL_GAP=0`. Merged #288/#289,
-#290/#291 and #292/#293 are current-main Truth Foundation convergence, not pending gates.
-Open #53 is a downstream architecture workstream that depends on #50; this closure does
-not itself authorize its implementation. No Phase II, 13/12, ADAO, ARM-04, wider runtime
-activation, production rollout or standing Operator GO follows from #50 closure.
+CLOSED_COMPLETED; the protected documentation-truth baseline entering this bounded block
+is `main@2699963547a42c4fbcd6b0273125c890a038654b` with the fresh Truth Foundation
+residual inventory at `REAL_GAP=0`.
+
+Current bounded work is child issue #295 / draft PR #296 under open architecture issue
+#53: Phase 1 explicit `ModelFreeCore`. The exact pre-documentation code head
+`4d40229ce746a164534682b3443f9de6e729b6da` passed Full CI `31669587920` and Docker
+`31669587884`, but remains REVIEW-STAGE / NOT MAIN until final-head gates, review/thread
+reconciliation and protected merge complete. The candidate composes the existing
+`QueryRouter` + lexical-only retrieval + FactsPack + Guardian + TruthGate + optional
+read-only CausalGraph into typed `L2Query`/`L2Result` evidence output; it does not change
+the general pipeline default or add runtime/server wiring.
+
+Issue #53 remains OPEN for later bounded phases. No CapabilityRegistry, new vector
+architecture, ADAO, LLM role enablement, remote provider path, schema v8, Continuity
+13/12, runtime activation, standing Operator GO, runtime authority or production
+authority follows from Phase 1.
