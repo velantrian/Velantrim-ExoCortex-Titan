@@ -305,6 +305,35 @@ def test_model_free_fails_closed_when_relation_row_cannot_be_decoded(store):
     assert result.answer == "Недостаточно подтверждённых локальных данных."
 
 
+def test_model_free_fails_closed_when_relation_metadata_is_corrupt(store):
+    pipeline = _pipeline()
+    model_free = _model_free()
+    _seed_validated("a", "альфа связана с бета", source="fixture-a")
+    _seed_validated("b", "бета связана с альфа", source="fixture-b")
+    graph = pipeline._get_causal_graph()
+    assert graph is not None
+    graph._conn.execute(
+        """
+        INSERT INTO relations (
+            relation_id, from_fact_id, to_fact_id, relation_type,
+            confidence, knowledge_status, inference_source,
+            truth_status, review_state, metadata
+        ) VALUES ('corrupt-metadata', 'a', 'b', 'requires', 0.9,
+                  'known', 'manual', 'validated', 'approved', 'not-json')
+        """
+    )
+    graph._conn.commit()
+
+    result = model_free.ModelFreeCore().query(
+        model_free.L2Query("альфа бета", include_graph=True)
+    )
+
+    assert result.insufficient_evidence is True
+    assert result.reason_code == "causal_graph_read_failed"
+    assert result.relations == ()
+    assert result.answer == "Недостаточно подтверждённых локальных данных."
+
+
 def test_model_free_policy_ineligible_fact_returns_bounded_insufficient_evidence(store):
     memory = _memory()
     model_free = _model_free()

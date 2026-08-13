@@ -233,6 +233,31 @@ def test_remove_fails_closed_for_stale_forward_inverse_pointer():
     assert conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0] == 4
 
 
+def test_remove_fails_closed_for_corrupt_inverse_metadata():
+    conn = _db()
+    graph = CausalGraph(conn)
+    conn.executemany(
+        """
+        INSERT INTO relations (
+            relation_id, from_fact_id, to_fact_id, relation_type,
+            confidence, knowledge_status, inference_source,
+            truth_status, review_state, metadata
+        ) VALUES (?, ?, ?, ?, 0.8, 'known', NULL, 'validated', 'approved', ?)
+        """,
+        [
+            ("forward_1", "a", "b", "causes", "not-json"),
+            ("inverse_1", "b", "a", "caused_by", None),
+        ],
+    )
+    conn.commit()
+
+    with pytest.raises(ValueError, match="metadata.*JSON object"):
+        graph.remove_relation("forward_1")
+
+    assert conn.execute("SELECT COUNT(*) FROM relations").fetchone()[0] == 2
+    assert _audit_count(conn) == 0
+
+
 def test_add_rejects_caller_owned_inverse_identity_metadata():
     conn = _db()
     graph = CausalGraph(conn)

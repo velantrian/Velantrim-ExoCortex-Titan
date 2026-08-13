@@ -1199,10 +1199,12 @@ class CausalGraph:
         if not raw:
             return {}
         try:
-            parsed = json.loads(str(raw))
-        except (json.JSONDecodeError, TypeError, ValueError):
-            return {}
-        return parsed if isinstance(parsed, dict) else {}
+            parsed = json.loads(raw)  # type: ignore[arg-type]
+        except (json.JSONDecodeError, TypeError, UnicodeDecodeError) as exc:
+            raise ValueError("relation metadata must be a valid JSON object") from exc
+        if not isinstance(parsed, dict):
+            raise ValueError("relation metadata must decode to a JSON object")
+        return parsed
 
 
 def is_causal_graph_enabled() -> bool:
