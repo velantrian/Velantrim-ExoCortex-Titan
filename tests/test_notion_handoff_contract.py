@@ -55,3 +55,27 @@ def test_arbitrary_path_fails() -> None:
         base_sha=BASE_SHA,
     )
     assert result.state == "failure"
+
+
+def test_missing_structured_item_fails() -> None:
+    result = evaluate_structured_handoff(
+        _body(f"{NOTION_HANDOFF_PATH}#handoff-pr-306"),
+        "# empty queue\n",
+        changed_paths=(NOTION_HANDOFF_PATH,),
+        pull_request_number=PR_NUMBER,
+        base_sha=BASE_SHA,
+    )
+    assert result.state == "failure"
+    assert "handoff-pr-306 is missing" in result.description
+
+
+def test_handoff_file_must_be_in_current_pr_diff() -> None:
+    result = evaluate_structured_handoff(
+        _body(f"{NOTION_HANDOFF_PATH}#handoff-pr-306"),
+        _item(),
+        changed_paths=(),
+        pull_request_number=PR_NUMBER,
+        base_sha=BASE_SHA,
+    )
+    assert result.state == "failure"
+    assert "NOTION_HANDOFF.md in the PR diff" in result.description
