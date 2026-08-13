@@ -1,6 +1,6 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-08-12
+**Snapshot:** 2026-08-13
 **Continuity:** `12/12 = 100%` — complete  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0` · required check `Titan aggregate merge evidence`
@@ -160,17 +160,32 @@ opt-in cognitive reranker; graph collection called the DDL-capable singleton ini
 and swallowed read failures; restricted relation endpoints could leak; stored inverse
 pairs could double-count one contradiction; relation provenance was dropped; FactsPack
 failure could fall back to raw rows; the renderer called `UNVERIFIED` records confirmed
-data; and `L2Query` accepted malformed bool/non-string inputs. The current bounded
-follow-up candidate closes those paths fail-closed and adds adversarial tests. Until that
-follow-up is protected-merged, #296's green CI must not be represented as proof of those
-logical guarantees.
+data; and `L2Query` accepted malformed bool/non-string inputs. Draft PR #297 is the
+bounded follow-up that closes those paths fail-closed. Until #297 is protected-merged,
+#296's green CI must not be represented as proof of those additional logical guarantees.
 
-Codex review of the follow-up also found that corrupt relation confidence could escape
-the bounded result, multiline attributed fields could inject verified-looking renderer
-headings, and `ImmutableCore` was incorrectly mapped as unverified. The candidate now
-validates relation decoding inside the graph error boundary, renders every evidence field
-as one escaped line, and treats `ImmutableCore` alongside `Validated` as verified. These
-six PR-level review threads remain open until final exact-head evidence exists.
+Codex has now performed three substantive review rounds on PR #297. The first two rounds
+produced eleven actionable findings. Candidate head
+`6bb577247fd8a672121cc2c0c420d88f4a261c6b` fixed all eleven with a 54/54 focused suite;
+Titan CI #1080 and Docker #700 were SUCCESS, and those eleven threads were resolved.
+A third round then found two more P1 issues: read-side inverse-pair collapse trusted
+`inverse_of` without proving that the target existed and was the reciprocal relation,
+and this GitHub hand-off still described the superseded earlier review state.
+
+The inverse-identity read defect is now fixed on the follow-up branch: every physical
+row is decoded before collapse, an `inverse_of` target must exist, must be the reciprocal
+relation tuple with matching inference source, must not carry a conflicting backlink,
+and may have only one backlink. Dangling, conflicting or many-to-one identities fail
+closed through `ModelFreeGraphReadError` instead of silently hiding relation evidence.
+Dedicated adversarial regression coverage was added. The pre-documentation code/test
+head is `161c6ee3e60d11ea782d9d06525f72cfb2d7259f`; its exact-head Actions must be read
+as evidence only for that head, and this documentation reconciliation advances the PR
+again, so final merge evidence must be regenerated on the then-current exact head.
+
+PR #297 remains **DRAFT / REVIEW-STAGE**. There is no independent formal approval,
+no READY aggregate claim for the final candidate, no protected merge and no post-merge
+reconciliation yet. Review/thread closure must follow fresh exact-head CI/Docker evidence;
+green ancestor runs are not sufficient.
 
 Even after hardening, Phase 1 does not prove runtime routing, default-route replacement,
 CapabilityRegistry, embedding/vector architecture, ADAO, LLM execution, network/provider
