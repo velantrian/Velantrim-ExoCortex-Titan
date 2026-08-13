@@ -113,6 +113,93 @@ Copy this section for each pending synchronization and place new items above old
 
 ## Queue
 
-No pending hand-off items at the time this protocol was introduced. Future
-connectorless actors must add items here rather than leaving material context only in a
-chat transcript or private scratchpad.
+## 2026-08-13 — PR #297 post-merge hardening final synchronization
+
+- **Status:** `SYNCED`
+- **Documentation impact:** `GITHUB_AND_NOTION`
+- **Repository / PR / issue:** `velantrian/Velantrim-ExoCortex-Titan` · PR #297 · parent architecture #53
+- **Base SHA:** `e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96`
+- **Head SHA:** `9830212159b092af2b3867d52e02fc7aaa57afa1`
+- **Intended Notion record:** `Velantrim Titan 9.0`
+- **Notion access for originating actor:** `UNAVAILABLE`
+
+### Problem / opportunity
+
+The originating merge actor could complete GitHub review/merge work but could not access
+Notion. It therefore used `UNAVAILABLE + HANDOFF_REQUIRED`. The PR body linked a public
+risk file rather than creating the structured queue item required by this protocol, and
+the aggregate validator accepted that weaker metadata form. A later connected actor had
+to repair both the actual Notion synchronization and this missing public queue record.
+
+### Material findings
+
+- PR #297 is protected-squash merged as `c96b734b94f30e1d96e8bcb992dec429bda5c8fd`.
+- Merge signature is `VERIFIED / valid`; parent is `e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96`.
+- All 13 review conversations are resolved.
+- Ready-state aggregate #914 / `31725868065` is SUCCESS.
+- Post-merge Full CI #1085 / `31725945373` is SUCCESS.
+- Post-merge Docker #705 / `31725945362` is SUCCESS.
+- The fresh fourth Codex review returned `NOT RUN — USAGE LIMIT`; no approval is inferred.
+- The connected work cycle updated the existing Notion page and verified read-back.
+
+### Decision and rationale
+
+Treat #297 as `MERGED + POST-MERGE VERIFIED` for its bounded causal/ModelFree hardening
+scope. Preserve the original connectorless claim as truthful for that actor, but close the
+lifecycle as `SYNCED` now that a connected actor independently verified the GitHub evidence
+and updated the intended existing Notion record.
+
+### Rejected or deferred alternatives
+
+- Do not pretend the connectorless actor synchronized Notion.
+- Do not create a new Notion page.
+- Do not reinterpret green CI as independent approval.
+- Do not fold Phase 2 implementation into this reconciliation.
+- Harden the aggregate validator's hand-off-path verification only in a separate bounded
+  governance workstream.
+
+### Authority, safety, privacy, and Canon boundaries
+
+Continuity remains 12/12; schema remains v7; runtime enabled remains false; current
+Operator GO remains false; runtime authority remains false; production authority remains
+false. Canon remains local and remote Canon remains forbidden. No ARM-04, ADAO,
+embedding/LLM, provider/network or production activation is authorized by this sync.
+
+### GitHub files updated
+
+- `docs/ai/WORK_LOG.md`
+- `docs/ai/KNOWN_RISKS.md`
+- `docs/ai/NOTION_HANDOFF.md`
+
+### Evidence
+
+```text
+PR #297 head:             9830212159b092af2b3867d52e02fc7aaa57afa1
+merge/main checkpoint:    c96b734b94f30e1d96e8bcb992dec429bda5c8fd
+signature:                VERIFIED / valid
+review threads:           13/13 RESOLVED
+READY aggregate:          #914 · 31725868065 · SUCCESS
+post-merge Full CI:       #1085 · 31725945373 · SUCCESS
+post-merge Docker:        #705 · 31725945362 · SUCCESS
+```
+
+### Known limitations
+
+The #53 Phase 2 registry/provider gaps remain separate architectural work. Production
+readiness, production-scale reset behavior, Reader Core production evidence (#120), CAS
+contention (#249), ADAO (#51), trusted-platform work (#52) and ARM-04 (#92) are not closed
+by #297.
+
+### Next actions
+
+1. Merge the bounded post-#297 documentation reconciliation after its own required evidence.
+2. Re-read GitHub + the existing Notion page.
+3. Decide Phase 2 admission separately under #53.
+4. Track the aggregate-validator/hand-off-anchor mismatch as a separate governance residual.
+
+### Synchronization result
+
+- **Connected actor:** connected AI work cycle with GitHub + Notion access
+- **Notion record:** `Velantrim Titan 9.0`
+- **Status:** `SYNCED`
+- **Final PR / merge SHA / CI:** #297 · `c96b734b94f30e1d96e8bcb992dec429bda5c8fd` · post-merge CI #1085 SUCCESS · Docker #705 SUCCESS
