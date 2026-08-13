@@ -1,7 +1,7 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-13  
-**Current implementation main checkpoint:** `c96b734b94f30e1d96e8bcb992dec429bda5c8fd` · signature `VERIFIED / valid`  
+**Current implementation main checkpoint:** `c1fa13cf8fe6bf82d99dfb507beeac2c1c8f7aca` · signature `VERIFIED / valid`  
 **Continuity:** `12/12 = 100%` — complete  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0` · review-thread resolution required · required check `Titan aggregate merge evidence`
@@ -172,31 +172,47 @@ rechecks endpoint recall policy on the admitted snapshot, preserves relation pro
 requires FactsPack policy, validates typed input, and separates verified evidence from
 attributed/unverified reports with one-line escaping.
 
-This does **not** prove runtime routing, default-route replacement, a CapabilityRegistry,
-embedding/vector architecture, ADAO, LLM execution, network/provider access or production
-readiness. Optional graph absence remains non-blocking; a graph that is present but
-unreadable must not produce a falsely complete answer.
+This does **not** prove runtime routing, default-route replacement, embedding/vector
+architecture, ADAO, LLM execution, network/provider access or production readiness.
+Optional graph absence remains non-blocking; a graph that is present but unreadable must
+not produce a falsely complete answer.
 
-## P1 — Phase 2 registry/provider gaps remain architectural, not authorization grants
+## Reduced risk — Phase 2A descriptor/provider-health contract converged, runtime remains unwired
 
-The current #53 Phase 2 read-only audit found that `core/policy_kernel.py` already owns the
-fail-closed policy envelope, network-deny defaults, local-canonical boundary and capability
-leases. Creating a second global policy/permission engine would be an architectural
-regression.
-
-Current gaps remain:
+Issue #299 / merged PR #300 closed the bounded architectural gap for a generic typed
+capability descriptor + explicit provider-health + selection-explanation contract.
 
 ```text
-capability descriptor registry                 REAL_GAP
-provider registry / provider health            REAL_GAP
-selection explanation / trace metadata         PARTIAL / REAL_GAP
+exact tested head:       f0b893bac1b6fe1f58a71c70ac631f3c14becb59
+protected squash merge:  c1fa13cf8fe6bf82d99dfb507beeac2c1c8f7aca
+pre-merge Full CI:       #1105 · 31735939941 · SUCCESS
+pre-merge Docker:        #723 · 31735939929 · SUCCESS
+READY aggregate:         #981 · 31736858130 · SUCCESS
+post-merge Full CI:      #1106 · 31736925690 · SUCCESS
+post-merge Docker:       #724 · 31736925695 · SUCCESS
+post-merge aggregate:    #982 · 31736925705 · SUCCESS
 ```
 
-Config/preset precedence, runtime flags, budgets and health/status are partial existing
-surfaces. Embeddings, LLM execution, ADAO and ARM-04 are outside this bounded Phase 2
-contract; ARM-04 remains explicitly NOT AUTHORIZED. Phase 2 implementation requires a
-separate admitted child under #53 and must compose with `PolicyKernel` rather than grant
-permission itself. `auto` never means permission.
+`core/capability_registry.py` reuses the existing process-wide `PolicyKernel` through
+`get_policy_kernel()` and exposes no production policy/leaser constructor injection.
+Provider metadata cannot hide remote network requirements; capability-specific data mode
+is PolicyKernel input, not consent; unknown/unavailable health fails closed; explicit
+preference cannot override a lease denial; policy evaluation failure or mixed snapshots
+cannot fall back to selection.
+
+The following **remain unproved and unauthorized** by Phase 2A:
+
+- runtime wiring of the registry into the query/pipeline path;
+- active provider probing or provider invocation;
+- embeddings/vector or reranker execution;
+- LLM execution;
+- ADAO execution;
+- remote-consent implementation or network activation;
+- ARM-04;
+- Operator GO, runtime authority or production authority.
+
+A later wiring/activation phase must be separately admitted. `auto` remains preference,
+never permission.
 
 ## P1 — Documentation hand-off validator is weaker than the written protocol
 
