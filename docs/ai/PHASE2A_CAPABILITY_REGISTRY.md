@@ -14,18 +14,15 @@ Phase 2A must not be interpreted as LLM/provider activation. The registry is a r
 metadata and selection-explanation component. It owns no provider call, network transport,
 Canon write, policy rule, QueryRouter decision or runtime composition.
 
-Authority chain:
-
 ```text
 ProviderDescriptor + CapabilityDescriptor + explicit ProviderHealth
                        |
                        v
-               CapabilityRegistry
+               CapabilityRegistry()
                        |
-                       | asks for a lease
+                       | mandatory lease request
                        v
-       existing process-wide PolicyKernel
-              via get_policy_kernel()
+              get_policy_kernel()
                        |
              allow / deny + reason
                        |
@@ -33,9 +30,10 @@ ProviderDescriptor + CapabilityDescriptor + explicit ProviderHealth
                 SelectionResult
 ```
 
-`PolicyKernel` remains the permission owner. The default registry constructor reuses the
-existing process-wide owner and does not instantiate another PolicyKernel. Registry
-selection cannot reinterpret a denied lease. `auto` is ordering, not permission.
+`CapabilityRegistry()` exposes **no policy/leaser constructor argument**. Production code
+cannot substitute a second permission owner through the registry API. Tests patch the
+module-level `get_policy_kernel` lookup only inside the test process. `auto` and explicit
+preference are ordering only, never permission.
 
 ## Existing owners that must be reused
 
@@ -64,20 +62,18 @@ The module is deliberately not wired into production/runtime callers in this mil
 
 ## Safety invariants
 
-1. Remote provider metadata must declare `requires_network=True`.
-2. Capability `data_mode` must be one of `none / redacted / raw`; it is PolicyKernel input,
-   never consent.
-3. Missing health is `UNKNOWN` and cannot be selected.
-4. UNAVAILABLE providers cannot be selected.
-5. DEGRADED providers lose to HEALTHY eligible providers.
-6. Every HEALTHY/DEGRADED candidate is checked by the existing process-wide PolicyKernel.
-7. Explicit preference cannot override lease denial.
-8. Any lease-evaluation exception fails the whole selection closed.
-9. Different policy snapshot/version values within one selection fail the whole selection
-   closed; do not combine permission decisions from different policy moments.
-10. Selection preserves health reason separately from policy/selection reason.
-11. Selection returns bounded explanation metadata; it performs no retry/provider probe.
-12. No Canon/ESM/TRACE/Audit mutation occurs here.
+1. Policy authority is not constructor-injectable; use the existing `get_policy_kernel()`.
+2. Remote provider metadata must declare `requires_network=True`.
+3. Capability `data_mode` must be `none / redacted / raw`; it is policy input, not consent.
+4. Missing health is `UNKNOWN` and cannot be selected.
+5. UNAVAILABLE providers cannot be selected.
+6. DEGRADED providers lose to HEALTHY eligible providers.
+7. Every HEALTHY/DEGRADED candidate is checked by existing PolicyKernel leasing.
+8. Explicit preference cannot override lease denial.
+9. Any lease-evaluation exception fails the whole selection closed.
+10. Different policy snapshot/version values within one selection fail closed.
+11. Health reason remains separate from policy/selection reason.
+12. Selection performs no retry/provider probe and no Canon/ESM/TRACE/Audit mutation.
 
 ## Out of scope
 
