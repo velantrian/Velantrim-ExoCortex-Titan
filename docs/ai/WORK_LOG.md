@@ -21,8 +21,8 @@ Post-merge aggregate:           31676260313 · SUCCESS
 Independent review:             NOT PERFORMED
 Earlier causal PR:              #287 MERGED · 615201ec1073dafb047028e88ce94463f4ef9b77
 Causal post-merge review:       3 unresolved findings on #287 · 2 P1 + 1 P2
-Audit follow-up:                DRAFT PR #297 · code head f6603f9b5643d75d1f11c882ff7766c6479acf2c · not merged
-Follow-up exact-head evidence:  Titan CI #1073 / Docker #693 / Aggregate #866 · SUCCESS
+Audit follow-up:                DRAFT PR #297 · resolve current exact head live · not merged
+Initial review checkpoint:      f6603f9b5643d75d1f11c882ff7766c6479acf2c · Titan CI #1073 / Docker #693 / Aggregate #866 · SUCCESS
 Documentation impact:           GITHUB_AND_NOTION
 Notion synchronization:         #296 FINAL complete; #297 REVIEW checkpoint read back; final merge sync pending
 Continuity:                     12/12 = 100% · unchanged
@@ -57,11 +57,12 @@ identity. Ambiguous unlinked legacy NULL-source duplicates abort the whole delet
 transaction rather than guessing an inverse companion. Regression tests cover all three
 failure paths.
 
-Draft PR #297's code head passed Titan CI #1073, Docker #693 and Aggregate merge evidence
-#866. The existing `Velantrim Titan 9.0` Notion page was updated with that explicitly
-review-stage checkpoint and read back successfully. The PR remains Draft and without a
-substantive independent approval; the three #287 source threads remain open until
-protected merge evidence exists.
+Draft PR #297's initial review head passed Titan CI #1073, Docker #693 and Aggregate
+merge evidence #866. The existing `Velantrim Titan 9.0` Notion page was updated with
+that explicitly review-stage checkpoint and read back successfully. Later review
+hardening must be verified against the live PR head rather than inferred from this
+historical checkpoint. The PR remains Draft and without a substantive independent
+approval; source threads remain open until protected merge evidence exists.
 
 ---
 
