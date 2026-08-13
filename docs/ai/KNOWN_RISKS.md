@@ -1,9 +1,10 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-08-13
+**Snapshot:** 2026-08-13  
+**Current implementation main checkpoint:** `c96b734b94f30e1d96e8bcb992dec429bda5c8fd` · signature `VERIFIED / valid`  
 **Continuity:** `12/12 = 100%` — complete  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
-**Governance:** active `main-governance` · solo mode · approvals `0` · required check `Titan aggregate merge evidence`
+**Governance:** active `main-governance` · solo mode · approvals `0` · review-thread resolution required · required check `Titan aggregate merge evidence`
 
 A green CI run, manifest, config, historical canary, archive payload, audit record or
 Notion update is evidence only. None of them grants current permission, runtime authority
@@ -30,9 +31,9 @@ production-scale failure recovery.
 ## P1 — Solo governance has no independent approval gate
 
 The active repository ruleset requires zero approvals in solo mode, while requiring PR
-flow, thread resolution and the aggregate status check. Independent review is therefore
-not implied by mergeability. Codex usage-limit failures must be recorded as `NOT RUN —
-USAGE LIMIT`, never as approval.
+flow, review-thread resolution and the aggregate status check. Independent review is
+therefore not implied by mergeability. Codex usage-limit failures must be recorded as
+`NOT RUN — USAGE LIMIT`, never as approval.
 
 ## P1 — Uncharacterized CAS-contention failure
 
@@ -64,7 +65,7 @@ system. If the SQLite transaction fails after payload creation, cleanup remains
 best-effort. An OS cleanup failure can leave a **non-canonical orphan payload**; that
 residue is never canonical archival success.
 
-## P1 — Causal ownership merged with three unresolved failure-path findings
+## Reduced risk — Causal ownership + post-merge failure-path hardening verified
 
 Issue #286 / merged PR #287 converged SQLite `relations` mutation on `CausalGraph` at
 checkpoint `615201ec1073dafb047028e88ce94463f4ef9b77`. Relation create/batch/remove/reset
@@ -73,64 +74,65 @@ Automatic/non-manual input defaults to hypothesis/pending, derived snapshots can
 self-promote authority labels, and Neo4j/Graphiti reload cannot destructively replace
 local Canon. `RelationStore` / `fact_relations` remains a separate associative model.
 
-Post-merge Codex review then found three logical defects that green CI did not cover:
-snapshot admission could hide WriteGate/AuditChain failure as zero imported rows, an
-audited reset failure could retain a singleton backed by a closed connection, and
-ambiguous legacy NULL-source duplicates could delete the wrong inverse companions. The
-current bounded follow-up candidate propagates admission failures, detaches reset state
-before closing, binds inverse deletion by identity, and fails closed when old rows cannot
-be paired unambiguously. Until that follow-up is protected-merged and the three #287
-threads are evidence-resolved, the earlier "converged" label is incomplete.
+The subsequent post-merge audit found additional logical failure paths around snapshot
+admission, reset ownership/concurrency, inverse identity/deletion, legacy duplicate
+ambiguity and malformed metadata. Those defects are now closed by merged PR #297:
 
-A subsequent Codex review of the follow-up itself found three further reset/identity
-edges: caller-owned or stale `inverse_of` metadata could mispair duplicates, concurrent
-reset waiters could return success after the owning reset failed, and the public reset
-could no-op against durable rows after a cold start. The current candidate reserves and
-cross-checks inverse identity, serializes reset epochs with shared failure propagation,
-and requires the public wrapper to initialize the current store before audited reset.
-These claims are still review-stage until final exact-head CI and protected merge.
+```text
+exact tested head:       9830212159b092af2b3867d52e02fc7aaa57afa1
+protected squash merge:  c96b734b94f30e1d96e8bcb992dec429bda5c8fd
+review threads:          13/13 RESOLVED
+READY aggregate:         #914 · 31725868065 · SUCCESS
+post-merge Full CI:      #1085 · 31725945373 · SUCCESS
+post-merge Docker:       #705 · 31725945362 · SUCCESS
+```
 
-Other residuals remain bounded: explicit future accepted-label callers still need their
-own authorized admission surface, and full graph reset cost grows with graph size. Neither
-risk justifies a raw-SQL bypass or remote truth authority.
+Snapshot/WriteGate/AuditChain/reset failures are propagated fail-closed; reset epochs are
+serialized; cold durable reset cannot silently no-op; canonical inverse identity is
+reserved and cross-validated; ambiguous/corrupt legacy pairing fails closed instead of
+guessing. The fresh fourth Codex review did not run because of usage limits; no independent
+approval is claimed or required by the active solo ruleset.
+
+Remaining causal risks are bounded rather than silently closed: explicit future
+accepted-label callers still need their own authorized admission surface, and full graph
+reset cost/audit volume grows with graph size. Neither risk justifies raw-SQL bypass or
+remote truth authority.
 
 ## Reduced risk — Post-create raw provenance binding converged
 
-Issue #288 is CLOSED_COMPLETED and PR #289 is protected-merged on current main
+Issue #288 is CLOSED_COMPLETED and PR #289 is protected-merged at checkpoint
 `902b2b6335b05f9a6f956e75151a8e801f23ba1d`. For an already-existing unbound fact,
 `SQLiteGraphStore.link_raw_to_fact()` owns first-binding CAS semantics with VersionStore
 pre-image, `l0_fact_provenance` and AuditChain evidence in one SQLite transaction.
 Same-source retries are idempotent, conflicting second sources fail closed, and legacy
 `RawMemoryStore.link_fact()` no longer owns an independent canonical UPDATE.
 
-The separate initial-create residual was subsequently converged by merged #290/#291 on
-current main `7a47f5dbb786fe267093857bf370fd03703207ac`.
+The separate initial-create residual was subsequently converged by merged #290/#291.
 
 ## Reduced risk — Initial fact-create raw provenance converged
 
-Issue #290 is CLOSED_COMPLETED and PR #291 is protected-merged on current main
+Issue #290 is CLOSED_COMPLETED and PR #291 is protected-merged at checkpoint
 `7a47f5dbb786fe267093857bf370fd03703207ac`. NEW `raw_*` single/batch facts and
 replacement-fact creation close L0 provenance evidence inside their owning creation
 transaction; non-raw lineage remains unchanged, generic upsert cannot rebind an existing
 durable pointer, and failure rolls back. Pre/post-merge Full CI, Docker and aggregate
-evidence passed. This is current-main truth, not review-stage evidence.
+evidence passed.
 
 ## Reduced risk — Smart-KB fact-build authority converged
 
 Fresh post-#291 inventory found that `scripts/build_kb_graph.py` could directly insert
 canonical facts and use raw SQL to classify/validate them. Because `serve_smart_kb.ps1`
 can install the resulting database as ordinary `VELANTRIM_DB_PATH`, that was a real Truth
-Foundation authority gap. Protected merge #293 converged it on current main `c80c8d47588de3d2607c7e1b10aa1677eb84383f`.
+Foundation authority gap. Protected merge #293 converged it at checkpoint
+`c80c8d47588de3d2607c7e1b10aa1677eb84383f`.
 
-Issue #292 is CLOSED_COMPLETED and PR #293 is protected-merged. The accepted path
-removes raw fact DML from builder orchestration, admits curated facts through existing
+Issue #292 is CLOSED_COMPLETED and PR #293 is protected-merged. The accepted path removes
+raw fact DML from builder orchestration, admits curated facts through existing
 `store_facts_batch()` policy/VersionStore/AuditChain semantics, uses canonical ESM
 promotion, treats `--fast-fresh` only as an empty-DB precondition, and fails incomplete
-builds. Existing `CausalGraph` ownership is unchanged. Final pre-merge head `48817c5b0067d085135d4e8f144a620a34265597`
-passed Full CI `31580684106`, Docker `31580683989`, and ready aggregate `31594821320`;
-post-merge main passed Full CI `31594960307`, Docker `31594960229`, and aggregate
-`31594960289`. A fresh current-main residual inventory found `REAL_GAP=0`, so parent #50
-is CLOSED_COMPLETED. This does not imply production readiness or runtime authority.
+builds. Existing `CausalGraph` ownership is unchanged. A fresh current-main residual
+inventory found `REAL_GAP=0`, so parent #50 is CLOSED_COMPLETED. This does not imply
+production readiness or runtime authority.
 
 ## P1 — Full causal reset can generate proportional audit volume
 
@@ -139,8 +141,9 @@ structured `relation_removed` event for each removed row in the same transaction
 maximizes audit fidelity but means transaction work grows with graph size. It is an
 explicit admin/KB operation, not a background loop.
 
-Production-scale reset latency/size is not proven by #287 and must not be represented as
-such. This risk does not justify bypassing the canonical owner or dropping audit evidence.
+Production-scale reset latency/size is not proven by #287/#297 and must not be represented
+as such. This risk does not justify bypassing the canonical owner or dropping audit
+evidence.
 
 ## Reduced risk — async canonical mutation bypass
 
@@ -149,48 +152,64 @@ using `asyncio.to_thread`. The former native aiosqlite write implementation rema
 explicitly disabled. Existing equivalence and cancellation tests prove the adapter does
 not own an independent SQL mutation path.
 
-## P1 — ModelFreeCore was merged before substantive review
+## Reduced risk — ModelFreeCore post-merge hardening verified
 
-Issue #295 / PR #296 is merged on `main@e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96`.
-Final-head and post-merge Full CI, Docker and aggregate evidence passed, but no substantive
-independent review occurred before merge.
+Issue #295 / PR #296 introduced the explicit `ModelFreeCore` facade at checkpoint
+`e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96`. The subsequent audit found that green CI did
+not cover several logical guarantees: an opt-in cognitive reranker could violate the
+model-free boundary; graph collection could initialize a DDL-capable singleton and swallow
+read failures; restricted relation endpoints could leak; inverse physical pairs could
+double-count; relation provenance could be dropped; FactsPack failure could fall back to
+raw rows; unverified evidence could be rendered as confirmed; malformed typed input could
+be accepted; and later review rounds found additional reset/identity/corrupt-metadata,
+policy-TOCTOU and semantic-collapse defects.
 
-A post-merge audit found that the claimed lexical-only boundary still inherited an
-opt-in cognitive reranker; graph collection called the DDL-capable singleton initializer
-and swallowed read failures; restricted relation endpoints could leak; stored inverse
-pairs could double-count one contradiction; relation provenance was dropped; FactsPack
-failure could fall back to raw rows; the renderer called `UNVERIFIED` records confirmed
-data; and `L2Query` accepted malformed bool/non-string inputs. Draft PR #297 is the
-bounded follow-up that closes those paths fail-closed. Until #297 is protected-merged,
-#296's green CI must not be represented as proof of those additional logical guarantees.
+Merged PR #297 closes that bounded hardening lane. `ModelFreeCore` now remains lexical and
+read-side only, avoids cognitive reranking/provider/network paths, does not initialize an
+absent graph, fails boundedly when a present graph cannot be trusted, validates every
+physical relation row before semantic collapse, validates reciprocal inverse identity,
+rechecks endpoint recall policy on the admitted snapshot, preserves relation provenance,
+requires FactsPack policy, validates typed input, and separates verified evidence from
+attributed/unverified reports with one-line escaping.
 
-Codex has now performed three substantive review rounds on PR #297. The first two rounds
-produced eleven actionable findings. Candidate head
-`6bb577247fd8a672121cc2c0c420d88f4a261c6b` fixed all eleven with a 54/54 focused suite;
-Titan CI #1080 and Docker #700 were SUCCESS, and those eleven threads were resolved.
-A third round then found two more P1 issues: read-side inverse-pair collapse trusted
-`inverse_of` without proving that the target existed and was the reciprocal relation,
-and this GitHub hand-off still described the superseded earlier review state.
+This does **not** prove runtime routing, default-route replacement, a CapabilityRegistry,
+embedding/vector architecture, ADAO, LLM execution, network/provider access or production
+readiness. Optional graph absence remains non-blocking; a graph that is present but
+unreadable must not produce a falsely complete answer.
 
-The inverse-identity read defect is now fixed on the follow-up branch: every physical
-row is decoded before collapse, an `inverse_of` target must exist, must be the reciprocal
-relation tuple with matching inference source, must not carry a conflicting backlink,
-and may have only one backlink. Dangling, conflicting or many-to-one identities fail
-closed through `ModelFreeGraphReadError` instead of silently hiding relation evidence.
-Dedicated adversarial regression coverage was added. The pre-documentation code/test
-head is `161c6ee3e60d11ea782d9d06525f72cfb2d7259f`; its exact-head Actions must be read
-as evidence only for that head, and this documentation reconciliation advances the PR
-again, so final merge evidence must be regenerated on the then-current exact head.
+## P1 — Phase 2 registry/provider gaps remain architectural, not authorization grants
 
-PR #297 remains **DRAFT / REVIEW-STAGE**. There is no independent formal approval,
-no READY aggregate claim for the final candidate, no protected merge and no post-merge
-reconciliation yet. Review/thread closure must follow fresh exact-head CI/Docker evidence;
-green ancestor runs are not sufficient.
+The current #53 Phase 2 read-only audit found that `core/policy_kernel.py` already owns the
+fail-closed policy envelope, network-deny defaults, local-canonical boundary and capability
+leases. Creating a second global policy/permission engine would be an architectural
+regression.
 
-Even after hardening, Phase 1 does not prove runtime routing, default-route replacement,
-CapabilityRegistry, embedding/vector architecture, ADAO, LLM execution, network/provider
-access or production readiness. Optional graph absence remains non-blocking; a graph that
-is present but unreadable must not produce a falsely complete answer.
+Current gaps remain:
+
+```text
+capability descriptor registry                 REAL_GAP
+provider registry / provider health            REAL_GAP
+selection explanation / trace metadata         PARTIAL / REAL_GAP
+```
+
+Config/preset precedence, runtime flags, budgets and health/status are partial existing
+surfaces. Embeddings, LLM execution, ADAO and ARM-04 are outside this bounded Phase 2
+contract; ARM-04 remains explicitly NOT AUTHORIZED. Phase 2 implementation requires a
+separate admitted child under #53 and must compose with `PolicyKernel` rather than grant
+permission itself. `auto` never means permission.
+
+## P1 — Documentation hand-off validator is weaker than the written protocol
+
+`DOCUMENTATION_SYNC_PROTOCOL.md` and `NOTION_HANDOFF.md` require connectorless
+`GITHUB_AND_NOTION` work to create a structured hand-off item and link its exact anchor.
+The current aggregate validator accepts `UNAVAILABLE + HANDOFF_REQUIRED` when any
+`GitHub hand-off path:` string is present; it does not prove that the referenced structured
+item exists. PR #297 exposed this mismatch when a non-queue path passed the gate.
+
+The final connected synchronization for #297 is repaired and recorded, so this is no
+longer a blocker for that merge. The validator/protocol mismatch remains a separate
+governance-hardening residual and should be fixed in its own bounded workstream rather
+than weakening the documentation protocol.
 
 ## Operational residuals
 

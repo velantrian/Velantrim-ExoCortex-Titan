@@ -5,18 +5,23 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
-## 2026-08-13 — Post-ModelFreeCore hardening · DRAFT / REVIEW-STAGE
+## 2026-08-13 — PR #297 post-merge hardening · FINAL / POST-MERGE VERIFIED
 
 ```text
-main:                         e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96
+main:                         c96b734b94f30e1d96e8bcb992dec429bda5c8fd
 main signature:               VERIFIED / valid
+main parent:                  e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96
 #50:                          CLOSED_COMPLETED · final REAL_GAP=0
 #53:                          OPEN
 #295 / #296:                  CLOSED_COMPLETED / MERGED
-#297:                         OPEN · DRAFT · NOT MERGED
-#297 base:                    main@e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96
-pre-doc code/test head:       161c6ee3e60d11ea782d9d06525f72cfb2d7259f
+#297:                         MERGED
+#297 exact tested head:       9830212159b092af2b3867d52e02fc7aaa57afa1
+#297 squash merge:            c96b734b94f30e1d96e8bcb992dec429bda5c8fd
+review threads:               13/13 RESOLVED
 independent formal approval:  NONE / NOT CLAIMED
+READY aggregate:              #914 · 31725868065 · SUCCESS
+post-merge Full CI:           #1085 · 31725945373 · SUCCESS
+post-merge Docker:            #705 · 31725945362 · SUCCESS
 Continuity:                   12/12
 schema:                       v7
 runtime enabled:              false
@@ -25,44 +30,35 @@ runtime authority:            false
 production authority:         false
 ```
 
-PR #296 put the explicit `ModelFreeCore` read-side facade on main, but no substantive
-independent review occurred before merge. PR #297 is the bounded post-merge hardening
-slice for logical failure paths found in #287/#296. It adds no runtime wiring, provider
-or network execution, new mutation owner, Operator GO or production authority.
+PR #296 introduced the explicit `ModelFreeCore` read-side facade. PR #297 then closed the
+bounded post-merge logical/failure-path gaps found across the causal and ModelFreeCore
+contracts. Three substantive Codex review rounds produced 13 actionable findings in total;
+all 13 review conversations are now resolved. A fresh fourth review was requested on the
+final head but returned `NOT RUN — USAGE LIMIT`, which is neither approval nor rejection.
+The active solo ruleset requires zero approving reviews, but did require review-thread
+resolution and `Titan aggregate merge evidence`; those merge gates were satisfied.
 
-Codex has performed three substantive review rounds on #297. The first two rounds produced
-11 actionable findings. Head `6bb577247fd8a672121cc2c0c420d88f4a261c6b` fixed all 11;
-54/54 focused tests passed locally, Titan CI #1080 and Docker #700 were SUCCESS, and those
-11 threads were resolved. A third round then found two P1 issues: read-side inverse
-collapse trusted `inverse_of` without proving reciprocal identity, and this GitHub hand-off
-still described the older review state.
+The final hardening fails closed across causal snapshot admission, reset ownership and
+concurrency, canonical inverse identity/deletion, legacy ambiguity/corrupt metadata,
+ModelFree physical-row decoding before semantic collapse, endpoint policy rechecks and
+verified-vs-attributed evidence rendering. It adds no runtime wiring, provider/network
+execution, new mutation owner, Operator GO, runtime authority or production authority.
 
-The inverse-collapse defect is now fixed on the branch. Before semantic collapse,
-`ModelFreeCore` validates every physical row and requires an `inverse_of` target to exist,
-be the reciprocal relation tuple, match `inference_source`, carry no conflicting backlink,
-and have at most one backlink. Dangling/conflicting/many-to-one identity fails closed via
-`ModelFreeGraphReadError`. Dedicated adversarial regressions cover valid identity,
-dangling target, non-reciprocal target, duplicate backlinks and bounded graph-read failure.
+### Notion synchronization
 
-The code/test checkpoint before this documentation reconciliation is
-`161c6ee3e60d11ea782d9d06525f72cfb2d7259f`; Titan CI #1082 was started for that exact
-head. This docs update advances the branch, so #1082 cannot be reused as final-head proof.
-Fresh Full CI and Docker are required on the new exact head before thread closure or READY
-claims. PR #297 remains Draft, without protected merge or independent formal approval.
-
-### Notion status
-
-`Velantrim Titan 9.0` contains #296 FINAL and a historical #297 review checkpoint at
-`6bb57724...`. The latter became stale after the third Codex round. Correct the same page
-and read it back only after the current PR head/evidence is established. Do not create a
-new Notion page.
+The connectorless merge actor correctly recorded `UNAVAILABLE + HANDOFF_REQUIRED` rather
+than claiming a Notion write it could not perform. A later connected work cycle verified
+the protected merge, signature, 13/13 resolved thread state and post-merge Actions, then
+updated the existing `Velantrim Titan 9.0` page and read it back. No new Notion page was
+created. `docs/ai/NOTION_HANDOFF.md` records the repaired synchronization lifecycle.
 
 ---
 
 ## 2026-08-13 — #53 Phase 2 admission audit · READ-ONLY
 
-Current-main audit found that Phase 2 must reuse existing policy ownership rather than
-invent another global control plane.
+Current-main ownership remains consistent with the earlier Phase 2 audit. The #297
+hardening changed causal/ModelFree failure semantics but did not create or replace the
+policy authority owner.
 
 `core/policy_kernel.py` already owns `EffectivePolicy`, `PolicySnapshot`,
 `PolicyDecision`, `CapabilityLease` and `PolicyKernel.lease_capability()`. Its defaults
@@ -84,24 +80,19 @@ embedding / LLM / ADAO execution               OUT_OF_SCOPE
 ARM-04                                         NOT AUTHORIZED / OUT_OF_SCOPE
 ```
 
-The likely bounded Phase 2 gap is therefore a capability descriptor + provider-health +
-effective-selection contract that composes with `PolicyKernel`; it is not a new policy
-engine and cannot escalate permission.
-
-Because #297 is still active hardening of the Phase 1/causal read foundation, Phase 2 is:
-
-`AUDITED · REAL_GAP_PRELIMINARILY_CONFIRMED · NOT YET ADMITTED FOR IMPLEMENTATION`.
-
-Do not open or implement a Phase 2 child until #297 and the active GitHub/Notion truth
-surfaces are reconciled.
+The bounded Phase 2 gap remains a capability-descriptor + provider-health +
+effective-selection/explanation contract that composes with the existing `PolicyKernel`.
+It is not a second policy engine and cannot escalate permission. Formal implementation
+admission must remain a separate #53 child decision after this post-merge truth-surface
+reconciliation is itself merged and verified.
 
 ---
 
-## Stable evidence
+## Stable ModelFreeCore Phase 1 evidence
 
 ```text
 #296 final head:               d376f146763bd70f6d725e53890e7beda4fd22e6
-#296 merge/main:               e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96
+#296 merge/main checkpoint:    e8adfeaeabc13ab429f5f309ee1c4d6b56d27d96
 pre-merge Full CI:             31670168755 · SUCCESS
 pre-merge Docker:              31670168759 · SUCCESS
 READY aggregate:               31676173562 · SUCCESS
@@ -116,11 +107,10 @@ Separate open workstreams remain #51 (ADAO), #92 (ARM; ARM-04 NOT AUTHORIZED), #
 Next safe order:
 
 ```text
-#297 exact-head CI/review reconciliation
-→ #53/#49/#52/#296 truth-surface reconciliation where needed
-→ same-page Notion correction + read-back
-→ Phase 2 admission decision
-→ only if admitted: separate bounded child issue
+post-#297 GitHub/Notion truth reconciliation
+→ verify reconciliation PR merge + final same-page Notion read-back
+→ Phase 2 admission decision under #53
+→ only if admitted: separate bounded Phase 2 child issue
 ```
 
 Never infer schema v8, Continuity 13/12, runtime enablement, Operator GO, runtime authority
