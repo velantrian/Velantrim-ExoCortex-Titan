@@ -1,7 +1,7 @@
 # 📚 Source Rules & Collection Plan — правила сбора World Skills Core
 
 **Язык:** русский  
-**Статус:** рабочие правила v0.1  
+**Статус:** рабочие правила v0.2 · C9 / #52 admission-aligned  
 **Назначение:** чтобы сбор знаний не превратился в хаотичную энциклопедию или набор неподтверждённых утверждений.
 
 ---
@@ -14,7 +14,7 @@
 LAW / THEOREM / MODEL / MECHANISM / METHOD / CONSTRAINT / FAILURE_MODE / SAFETY_RULE
 ```
 
-Каждая запись должна иметь:
+Для **Canon-admission candidate** каждая запись должна иметь полный C9 contract:
 
 ```text
 id
@@ -22,12 +22,20 @@ domain
 type
 statement
 conditions
-limits
 links
 truth_status
+source_refs
 confidence
-source_tier
+risk_domain
+limitations
+review_status
+reviewer
+reviewed_at
 ```
+
+`source_tier` остаётся полезной классификацией источника, но не заменяет конкретные
+`source_refs`. Старые таблицы без полного набора полей остаются допустимым исследовательским
+корпусом, однако C9 трактует их как `Draft / unreviewed` и не промоутит в Canon.
 
 ---
 
@@ -49,16 +57,43 @@ source_tier
 
 ## ⚖️ Truth status by domain
 
-| Домен | Типичный статус после первичного сбора |
+В authoring/review surface `truth_status` — **pre-Canon status**, а не право самостоятельно
+поставить ESM `Validated`. Для C9 admission готовая к проверке запись должна приходить как
+`Supported`; финальный `Validated` выдаёт только существующая цепочка TruthGate +
+PromotionGateway + canonical CAS.
+
+| Домен | Типичный pre-Canon статус после review |
 |---|---|
-| математика / классическая логика | `Validated` после проверки формулировки |
-| физика базовая | `Validated`, если это учебниковый закон с условиями |
-| химия бытовой безопасности | `Supported` / `Validated`, источник обязателен |
+| математика / классическая логика | `Supported` после проверки формулировки и источников |
+| физика базовая | `Supported`, если это учебниковый закон с явными условиями |
+| химия бытовой безопасности | `Supported`, источник и safety/limits обязательны |
 | медицина / здоровье | `Supported`, не промоутить по одному источнику |
-| психология | `Supported`, почти никогда не `ImmutableCore` |
-| философия | `POSITION` / `ARGUMENT`, не `FACT` |
-| инженерная практика | `Supported` / `Validated`, с safety и условиями |
-| география текущая | зависит от даты и источника |
+| психология | `Supported`, почти никогда не кандидат в `ImmutableCore` |
+| философия | `POSITION` / `ARGUMENT`, не `WORLD_FACT` без отдельной классификации |
+| инженерная практика | `Supported`, с safety и условиями |
+| география текущая | зависит от даты, источника и review |
+
+Нельзя авторским текстом объявить `truth_status=Validated` и тем самым обойти admission.
+C9 принимает к финальной TruthGate-проверке только explicit `Supported` candidate.
+
+---
+
+## 🔐 C9 admission metadata
+
+| Поле | Требование |
+|---|---|
+| `truth_status` | `Supported` перед admission; legacy/missing = `Draft` |
+| `source_refs` | непустой набор конкретных уникальных ссылок/идентификаторов источников |
+| `confidence` | конечное число `[0,1]`; не является заменой доказательствам |
+| `risk_domain` | явная risk-классификация; critical domains выбирают существующий PRECISION TruthGate |
+| `limitations` | непустые условия/ограничения применимости |
+| `review_status` | `approved` для admission |
+| `reviewer` | явный reviewer id; ingest actor не может review сам себя |
+| `reviewed_at` | timezone-aware ISO-8601 timestamp |
+
+Полный runtime contract и fail-closed flow описаны в
+`docs/operations/world-skills-admission.md` и ADR
+`docs/adr/ADR-2026-08-14-world-skills-admission.md`.
 
 ---
 
@@ -131,11 +166,13 @@ source_tier
 ## 🚫 Что нельзя делать
 
 - Нельзя копировать большие куски из сайтов.
-- Нельзя писать `Validated`, если нет источника и условий.
+- Нельзя писать authoring `Validated` как способ обойти TruthGate/PromotionGateway.
+- Нельзя считать наличие строки в curated-файле доказательством provenance/review.
+- Нельзя автоматически выдумывать `source_refs`, reviewer или review timestamp.
 - Нельзя смешивать fact / inference / prediction / hypothesis.
-- Нельзя делать медицинские или химически опасные инструкции без safety.
+- Нельзя делать медицинские или химически опасные инструкции без safety и limitations.
 - Нельзя считать Wikipedia финальным источником для критичных фактов.
-- Нельзя автоматически писать этот seed в L3.
+- Нельзя автоматически писать legacy seed в Canon/L3 без полного C9 admission.
 
 ---
 
@@ -157,11 +194,15 @@ source_tier
 
 ```text
 source
-  -> extract compact unit
-  -> classify domain/type
-  -> add conditions and limits
-  -> add links to other domains
-  -> assign cautious truth_status
-  -> review
-  -> only then candidate for graph memory
+  → extract compact unit
+  → classify domain/type/risk_domain
+  → add conditions + limitations
+  → add concrete source_refs
+  → assign cautious pre-Canon truth_status
+  → domain review + reviewer + reviewed_at
+  → TruthGate / PromotionGateway admission
+  → only then Validated / local Canon
 ```
+
+Legacy rows without this evidence remain research/scratch candidates; C9 does not
+retroactively certify them.
