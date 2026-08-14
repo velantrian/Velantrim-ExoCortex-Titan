@@ -1,4 +1,4 @@
-name: C5 temporary Docker SBOM patch exporter
+name: C5 temporary Docker SBOM blob exporter
 
 on:
   push:
@@ -6,10 +6,10 @@ on:
       - agent/issue-52-container-sbom
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  export-c5-patch:
+  export-c5-blobs:
     if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -31,14 +31,15 @@ jobs:
             exit 1
           fi
 
-      - name: Export exact patched contents for connector write
+      - name: Commit exact patched contents as temporary ordinary files
         run: |
           set -euo pipefail
-          echo '---DOCKER_YML_BASE64_BEGIN---'
-          base64 -w0 .github/workflows/docker.yml
-          echo
-          echo '---DOCKER_YML_BASE64_END---'
-          echo '---MERGE_EVIDENCE_BASE64_BEGIN---'
-          base64 -w0 scripts/check_pr_merge_evidence.py
-          echo
-          echo '---MERGE_EVIDENCE_BASE64_END---'
+          mkdir -p tmp/c5
+          cp .github/workflows/docker.yml tmp/c5/docker.yml
+          cp scripts/check_pr_merge_evidence.py tmp/c5/check_pr_merge_evidence.py
+          git restore .github/workflows/docker.yml scripts/check_pr_merge_evidence.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f tmp/c5/docker.yml tmp/c5/check_pr_merge_evidence.py
+          git commit -m "chore: export exact C5 patch blobs"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
