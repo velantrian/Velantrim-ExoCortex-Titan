@@ -284,7 +284,19 @@ def register_server_middleware(app: FastAPI) -> None:
                 response.headers.setdefault("X-XSS-Protection", "0")
                 return response
 
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception as exc:  # noqa: BLE001 — sanitize this diagnostic boundary only
+            if not protect_epigenetic:
+                raise
+            _LOG.warning(
+                "epigenetic diagnostic failed: %s",
+                type(exc).__name__,
+            )
+            response = JSONResponse(
+                status_code=500,
+                content={"detail": "Internal server error"},
+            )
         if protect_epigenetic and response.status_code >= 500:
             response = _json_response_with_raw_headers(
                 response,
