@@ -2,11 +2,11 @@
 📄 PDF Parser v2.0 — Лучшие open-source инструменты 2026 года
 ==============================================================
 Каскад (от лучшего к fallback):
-    Marker → Docling → MinerU → Unstructured → PyMuPDF → PyPDF2
+    Marker → Docling → MinerU → Unstructured → PyMuPDF → pypdf
 
 CHANGELOG v2.0:
 - 🆕 Marker (Surya OCR + опц. LLM rerank) — самый универсальный 2026
-- 🆕 PyMuPDF (fitz) заменил PyPDF2 как primary fallback — в 10-50× быстрее
+- 🆕 PyMuPDF (fitz) — primary fallback, в 10-50× быстрее pypdf
 - 🆕 Encrypted PDF detection с понятной ошибкой
 - 🆕 Hi-res strategy → fast strategy fallback в Unstructured (timeout-aware)
 - 🆕 _enrich_with_essence унаследован из base (был дубликат)
@@ -21,19 +21,19 @@ from .base import FileParser, ParseResult
 logger = logging.getLogger("velantrim.parsers.pdf")
 
 # ─── Lazy import detection ────────────────────────────────────────────────────
-
 def _check_available(module_name: str) -> bool:
     """Проверяет доступность модуля без импорта."""
     import importlib.util
+
     return importlib.util.find_spec(module_name) is not None
 
 
-MARKER_AVAILABLE       = _check_available("marker")
-DOCLING_AVAILABLE      = _check_available("docling")
-MINERU_AVAILABLE       = _check_available("magic_pdf")
+MARKER_AVAILABLE = _check_available("marker")
+DOCLING_AVAILABLE = _check_available("docling")
+MINERU_AVAILABLE = _check_available("magic_pdf")
 UNSTRUCTURED_AVAILABLE = _check_available("unstructured")
-PYMUPDF_AVAILABLE      = _check_available("fitz")
-PYPDF2_AVAILABLE       = _check_available("PyPDF2") or _check_available("pypdf")
+PYMUPDF_AVAILABLE = _check_available("fitz")
+PYPDF_AVAILABLE = _check_available("pypdf")
 
 
 class PDFParser(FileParser):
@@ -80,8 +80,12 @@ class PDFParser(FileParser):
                     text, structured, pages = self._parse_marker(file_path)
                     if text.strip():
                         return self._finalize(
-                            result, text, structured, "Marker",
-                            page_count=pages, start=start,
+                            result,
+                            text,
+                            structured,
+                            "Marker",
+                            page_count=pages,
+                            start=start,
                         )
                 except Exception as exc:
                     logger.warning(f"Marker failed: {exc}")
@@ -93,8 +97,12 @@ class PDFParser(FileParser):
                     text, structured, pages = self._parse_docling(file_path)
                     if text.strip():
                         return self._finalize(
-                            result, text, structured, "Docling (IBM)",
-                            page_count=pages, start=start,
+                            result,
+                            text,
+                            structured,
+                            "Docling (IBM)",
+                            page_count=pages,
+                            start=start,
                         )
                 except Exception as exc:
                     logger.warning(f"Docling failed: {exc}")
@@ -106,8 +114,12 @@ class PDFParser(FileParser):
                     text, structured, pages = self._parse_mineru(file_path)
                     if text.strip():
                         return self._finalize(
-                            result, text, structured, "MinerU",
-                            page_count=pages, start=start,
+                            result,
+                            text,
+                            structured,
+                            "MinerU",
+                            page_count=pages,
+                            start=start,
                         )
                 except Exception as exc:
                     logger.warning(f"MinerU failed: {exc}")
@@ -118,29 +130,41 @@ class PDFParser(FileParser):
                     text, structured, pages = self._parse_unstructured(file_path)
                     if text.strip():
                         return self._finalize(
-                            result, text, structured, "Unstructured",
-                            page_count=pages, start=start,
+                            result,
+                            text,
+                            structured,
+                            "Unstructured",
+                            page_count=pages,
+                            start=start,
                         )
                 except Exception as exc:
                     logger.warning(f"Unstructured failed: {exc}")
 
-            # Метод 5: PyMuPDF (fitz) — быстрый fallback, в 10-50× быстрее PyPDF2
+            # Метод 5: PyMuPDF (fitz) — быстрый fallback
             if PYMUPDF_AVAILABLE:
                 try:
                     text, structured, pages = self._parse_pymupdf(file_path)
                     return self._finalize(
-                        result, text, structured, "PyMuPDF (fast fallback)",
-                        page_count=pages, start=start,
+                        result,
+                        text,
+                        structured,
+                        "PyMuPDF (fast fallback)",
+                        page_count=pages,
+                        start=start,
                     )
                 except Exception as exc:
                     logger.warning(f"PyMuPDF failed: {exc}")
 
-            # Метод 6: PyPDF2 — последний universal fallback
-            if PYPDF2_AVAILABLE:
-                text, structured, pages = self._parse_pypdf2(file_path)
+            # Метод 6: pypdf — последний universal fallback
+            if PYPDF_AVAILABLE:
+                text, structured, pages = self._parse_pypdf(file_path)
                 return self._finalize(
-                    result, text, structured, "PyPDF2 (last resort)",
-                    page_count=pages, start=start,
+                    result,
+                    text,
+                    structured,
+                    "pypdf (last resort)",
+                    page_count=pages,
+                    start=start,
                 )
 
             result.error = (
@@ -181,15 +205,14 @@ class PDFParser(FileParser):
         try:
             if PYMUPDF_AVAILABLE:
                 import fitz
+
                 doc = fitz.open(file_path)
                 is_enc = doc.is_encrypted
                 doc.close()
                 return is_enc
-            if PYPDF2_AVAILABLE:
-                try:
-                    from pypdf import PdfReader
-                except ImportError:
-                    from PyPDF2 import PdfReader
+            if PYPDF_AVAILABLE:
+                from pypdf import PdfReader
+
                 reader = PdfReader(file_path)
                 return reader.is_encrypted
         except Exception:
@@ -224,6 +247,7 @@ class PDFParser(FileParser):
     def _parse_docling(self, file_path: str) -> tuple[str, dict, int]:
         """Docling — IBM, лучший для enterprise RAG."""
         from docling.document_converter import DocumentConverter
+
         converter = DocumentConverter()
         result = converter.convert(file_path)
         doc = result.document
@@ -259,19 +283,21 @@ class PDFParser(FileParser):
 
         text = "\n\n".join(str(el) for el in elements)
         return text, {
-            "elements": [
-                {"type": type(el).__name__, "text": str(el)}
-                for el in elements
-            ],
+            "elements": [{"type": type(el).__name__, "text": str(el)} for el in elements],
             "strategy": strategy,
-        }, sum(1 for el in elements if hasattr(el, "metadata") and getattr(el.metadata, "page_number", None))
+        }, sum(
+            1
+            for el in elements
+            if hasattr(el, "metadata") and getattr(el.metadata, "page_number", None)
+        )
 
     def _parse_pymupdf(self, file_path: str) -> tuple[str, dict, int]:
         """
         PyMuPDF (fitz) — быстрый primary fallback.
-        В 10-50× быстрее PyPDF2 для извлечения текста.
+        В 10-50× быстрее pypdf для извлечения текста.
         """
         import fitz
+
         doc = fitz.open(file_path)
         try:
             pages_text = []
@@ -296,12 +322,9 @@ class PDFParser(FileParser):
         finally:
             doc.close()
 
-    def _parse_pypdf2(self, file_path: str) -> tuple[str, dict, int]:
-        """PyPDF2/pypdf — последний universal fallback."""
-        try:
-            from pypdf import PdfReader
-        except ImportError:
-            from PyPDF2 import PdfReader
+    def _parse_pypdf(self, file_path: str) -> tuple[str, dict, int]:
+        """pypdf — последний universal fallback."""
+        from pypdf import PdfReader
 
         with open(file_path, "rb") as f:
             reader = PdfReader(f)
