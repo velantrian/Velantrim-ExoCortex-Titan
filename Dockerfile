@@ -83,6 +83,11 @@ RUN pip install --upgrade pip build "uv==${UV_VERSION}" \
 # export, then install the project wheel itself without dependency resolution.
 # The hash gate makes pip fail if an exported registry requirement lacks the
 # lock-derived hashes expected by this bounded path.
+#
+# Docker-only residual (#52): pymorphy3 is optional in core/lemmatizer_ru.py
+# and is not currently represented in uv.lock. Keep it explicit rather than
+# falsely claiming full lock equivalence; a later bounded decision must either
+# admit it into project dependency ownership or remove this override.
 ARG RUNTIME_EXTRAS
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
@@ -92,10 +97,6 @@ RUN python scripts/export_locked_runtime_requirements.py \
     && pip install --require-hashes -r /tmp/velantrim-runtime-requirements.txt \
     && WHEEL="$(ls /wheels/*.whl)" \
     && pip install --no-deps "${WHEEL}" \
-    # Docker-only residual (#52): pymorphy3 is optional in core/lemmatizer_ru.py
-    # and is not currently represented in uv.lock. Keep it explicit rather than
-    # falsely claiming full lock equivalence; a later bounded decision must
-    # either admit it into project dependency ownership or remove this override.
     && pip install pymorphy3 \
     && python -c "import pymorphy3; pymorphy3.MorphAnalyzer(lang='ru')"
 
