@@ -8,15 +8,14 @@ Titan generates an SPDX Software Bill of Materials for the **final Docker runtim
 
 The existing Docker workflow remains the runtime-behavior owner. It builds a local image and performs import, non-root, health, console, deployment-profile, filesystem allowlist, secret-canary, wheel-packaging and compose-default checks.
 
-C5 extends that same build evidence with BuildKit SBOM generation instead of introducing registry credentials or a separate image publication lifecycle.
+C5 extends that workflow with BuildKit SBOM generation without introducing registry credentials or an image publication lifecycle.
 
-A single `docker buildx build` solve uses multiple exporters:
+Hosted-runner evidence showed that the default Docker driver rejects attestations, and that an attested manifest produced by the `docker-container` driver cannot be loaded through the classic Docker exporter. Titan therefore uses two bounded solves over the same checked-out Dockerfile, immutable base reference, build arguments and `uv.lock`:
 
-- `--load` keeps the image available as `velantrim-titan:ci` for the existing runtime-hardening checks;
-- `--sbom=true` asks BuildKit to generate an SPDX SBOM;
-- `--output type=local,dest=container-sbom-out` writes the final root filesystem and the local-export attestation file `sbom.spdx.json` to the runner.
+1. `docker build --no-cache` produces `velantrim-titan:ci` for all existing runtime-hardening checks;
+2. a `docker-container` Buildx builder runs `docker buildx build --no-cache --sbom=true --output type=local,...` without `--load`, producing the final-stage root filesystem plus `sbom.spdx.json` evidence.
 
-The workflow copies only the SBOM evidence into `artifacts/` and removes the exported root filesystem before continuing the existing runtime checks.
+No image is pushed merely to retain an attestation. The local-export SPDX file is the authoritative C5 artifact.
 
 ## Fail-closed validation
 
@@ -36,14 +35,17 @@ The artifact `titan-container-sbom` contains:
 - a compact validation summary;
 - Buildx/Docker tool version evidence;
 - Dockerfile and `uv.lock` SHA-256 bindings;
-- the source head SHA and loaded image ID.
+- the source head SHA and the separately runtime-tested local image ID;
+- explicit `sbom_exporter=buildkit-local` and `sbom_scope=final-runtime-stage` metadata.
 
 ## Scope boundary
 
-This is the inventory for Titan's **final runtime image**, not the discarded builder stage. Build dependencies that do not survive into the runtime image are intentionally outside this artifact.
+This is the inventory for Titan's **final runtime stage**, not the discarded builder stage. Build dependencies that do not survive into the runtime stage are intentionally outside this artifact.
+
+The runtime-tested Docker image and the SBOM solve are separate exports because of the hosted runner's classic Docker image-store limitation. C5 therefore proves that both are derived from the same repository inputs and final-stage contract; it does not falsely claim that the classic local image store retained an attached attestation.
 
 The SBOM is inventory evidence, not vulnerability evidence. C4 separately audits the Python lock graph against OSV. C5 does **not** add OS-package vulnerability scanning, registry publication, signing, deployment authority, or Operator GO.
 
 ## Registry boundary
 
-Titan does not push an image merely to preserve an attestation. The current workflow is a local verification workflow. The local-export evidence file is the authoritative C5 artifact; image-attached attestations can be admitted later only alongside an explicit release/registry lifecycle.
+Titan does not push an image merely to preserve an attestation. Image-attached attestations can be admitted later only alongside an explicit release/registry lifecycle; until then, the local-export SPDX evidence is the bounded supply-chain truth.
