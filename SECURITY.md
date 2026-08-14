@@ -40,6 +40,9 @@ Practical implications:
 - Outbound LLM/STT/TTS routes (`register_llm_routes(..., auth_dependency=require_api_key)`)
   are gated behind the same key — an unauthenticated caller cannot use your configured
   LLM provider key as a free relay.
+- The operational diagnostic `GET /system/epigenetic` follows the same API-key boundary;
+  internal failures are returned as a generic 500 response rather than reflecting raw
+  exception text to the client. Dedicated regression tests lock both properties.
 
 There is a single shared API key, not per-user accounts or scoped tokens. Treat it as a
 deployment secret (put it in `.env` / your orchestrator's secret store), not something
@@ -58,33 +61,44 @@ only to make outbound calls to that provider on the caller's behalf.
 - If you do not configure a provider (`LLM_PROVIDER=none`), no outbound LLM calls are
   made at all — the runtime still works as a pure memory/retrieval system.
 
-## 4. Docker production warning
+## 4. Docker deployment profiles
 
-- `docker-compose.yml` is the **production** profile. It requires an explicit
-  `VELANTRIM_API_KEY` (`${VELANTRIM_API_KEY:?VELANTRIM_API_KEY is required}`) — it will
-  refuse to start `docker compose config`/`up` without one. There is no built-in default
-  key in this file.
+- `docker-compose.prod.yml` is the **hardened, deny-by-default production profile**.
+  It requires an explicit `VELANTRIM_API_KEY`, binds the published API to loopback by
+  default, pins research/cognitive/autonomous layers off, applies container hardening,
+  and pins the Titan application egress policy to `VELANTRIM_NETWORK_MODE=deny` plus
+  `VELANTRIM_REMOTE_DATA_MODE=never`. See
+  `docs/operations/hardened-production-profile.md` for the exact threat model and
+  limitations.
+- `docker-compose.yml` is a **historical compatibility / research-convenience profile**.
+  It still requires an API key, but it publishes port 8000 broadly and explicitly
+  enables several research/cognitive layers. It is retained so existing research
+  workflows do not silently change behavior; do not treat it as the hardened production
+  configuration.
 - `docker-compose.dev.yml` is **local development only**. It falls back to a
   well-known, public default (`dev-key-change-me`) when `VELANTRIM_API_KEY` is unset.
   **Do not use `docker-compose.dev.yml`, or that default key, in any environment
   reachable from outside your own machine.**
-- Both files expose port `8000` directly. Put a reverse proxy (TLS termination, WAF,
-  rate limiting at the edge) in front of any deployment reachable from the internet —
-  the app-level rate limiter (§6) is a courtesy, not a substitute.
 
-## 5. Dev vs. production distinction
+The hardened profile provides application/container controls; it does not claim host-
+level firewalling, network-namespace isolation, TLS termination, a WAF, or a shared
+multi-replica rate limiter. Add those controls at the deployment layer when required.
 
-| | Development | Production |
-|---|---|---|
-| API key | optional (`VELANTRIM_ALLOW_OPEN=true`) or `dev-key-change-me` | **required**, no default |
-| Compose file | `docker-compose.dev.yml` | `docker-compose.yml` |
-| Swagger/OpenAPI (`/docs`, `/redoc`) | `ENABLE_API_DOCS=true` to inspect | leave unset (default `false`) — it is an admin-adjacent surface |
-| CORS | permissive during local iteration if you choose | set `CORS_ORIGINS` explicitly to the origins you actually serve |
-| Encryption at rest | optional | recommended once you hold real user data (see §7) |
+## 5. Dev vs. hardened production distinction
 
-If you are reviewing this project for a security assessment, assume the **production**
-column is the one that matters; the development column exists purely to lower the
-barrier to running and testing the code locally.
+| | Development | Compatibility / research | Hardened production |
+|---|---|---|---|
+| API key | optional (`VELANTRIM_ALLOW_OPEN=true`) or `dev-key-change-me` | **required**, no default | **required**, no default |
+| Compose file | `docker-compose.dev.yml` | `docker-compose.yml` | `docker-compose.prod.yml` |
+| Research/cognitive layers | may be enabled | several explicitly enabled | explicitly pinned off except documented local substrate controls |
+| Published API | development convenience | `0.0.0.0:8000`-style broad publish | loopback by default |
+| Remote egress | configuration-dependent | configuration-dependent | Titan policy pinned `deny` + `never` |
+| Swagger/OpenAPI | `ENABLE_API_DOCS=true` to inspect | configurable | explicitly disabled |
+| Container hardening | development baseline | compatibility baseline | read-only rootfs, non-root UID, capabilities dropped, bounded resources |
+
+If you are reviewing this project for a security assessment, use
+`docker-compose.prod.yml` as the repository's hardened deployment contract and read its
+known limitations before treating any control as stronger than the implementation.
 
 ## 6. Rate limiting
 
@@ -92,7 +106,7 @@ An in-process, per-IP token-bucket rate limiter (`core/rate_limit.py`) is availa
 gated behind `ENABLE_RATE_LIMIT` (default off). It is intentionally simple (stdlib only,
 single-process, no shared state across replicas) — treat it as a courtesy backstop, not
 a substitute for rate limiting at your load balancer/WAF in front of a public
-deployment.
+deployment. The hardened profile pins it on.
 
 ## 7. CORS / API docs note
 
@@ -107,8 +121,8 @@ deployment.
   admin-adjacent surface (they enumerate every route) — only enable them where you also
   control network access.
 - Additional always-on response headers (`X-Content-Type-Options: nosniff`, etc.) are
-  applied via a small security-headers middleware in `server.py`; they are defensive
-  depth, not a replacement for the controls above.
+  applied via `api/server_middleware.py`; they are defensive depth, not a replacement
+  for the controls above.
 
 ## 8. Encryption at rest (optional)
 
@@ -156,6 +170,9 @@ project has not undergone an independent third-party security audit or penetrati
 test. Treat it accordingly: suitable for local use, research, and evaluation today;
 additional hardening (see `docs/PROJECT_STATUS.md` for the roadmap) is expected before
 it should hold real users' sensitive data in a production, internet-facing deployment.
+
+Current dated CI/release evidence and its limits are recorded in
+`docs/evidence/release-evidence-2026-08-14.md`.
 
 ---
 
