@@ -48,4 +48,5 @@ def test_reproducibility_claim_is_wheel_scoped_not_oci_digest() -> None:
     verifier = (ROOT / "scripts" / "verify_reproducible_wheel.py").read_text(encoding="utf-8")
 
     assert '"claim_scope": "python-wheel-distribution"' in verifier
-    assert "does not\nclaim that Docker/OCI image manifests" in verifier
+    assert "Docker/OCI image manifests" in verifier
+    assert "byte-for-byte reproducible" in verifier
