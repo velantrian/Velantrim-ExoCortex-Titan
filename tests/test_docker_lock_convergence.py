@@ -32,10 +32,11 @@ def test_uv_export_command_is_frozen_and_keeps_hashes() -> None:
 
 def test_docker_declared_dependency_install_is_lock_bound() -> None:
     text = Path("Dockerfile").read_text(encoding="utf-8")
-    assert "COPY uv.lock ./" in text
+    copy_lines = [line.split() for line in text.splitlines() if line.startswith("COPY ")]
+    assert any("uv.lock" in tokens[1:-1] for tokens in copy_lines)
     assert "export_locked_runtime_requirements.py" in text
     assert "--require-hashes" in text
-    assert "pip install --no-deps \"${WHEEL}\"" in text
+    assert 'pip install --no-deps "${WHEEL}"' in text
     assert 'pip install "${WHEEL}[${RUNTIME_EXTRAS}]"' not in text
 
 
