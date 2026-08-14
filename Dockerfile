@@ -33,12 +33,13 @@
 # Rotate this pin only as a deliberate supply-chain change and rerun the
 # Docker workflow on the exact PR head.
 #
-# Declared project dependencies are resolved from the repository's uv.lock.
+# Runtime Python dependencies are resolved from the repository's uv.lock.
 # The helper validates requested extras against pyproject.toml, runs a frozen
 # uv export, and pip installs that export with --require-hashes. The wheel is
 # then installed with --no-deps so pip cannot re-resolve project dependencies.
-# This is deliberately NOT yet a claim that every Python package in the image
-# is lock-equivalent: pymorphy3 remains a Docker-only residual below.
+# The default server extra owns pymorphy3 because multilingual routing is
+# enabled by default in server.py; no runtime Python package is installed by a
+# separate Docker-only pip resolution path.
 
 ARG UV_VERSION=0.12.3
 ARG RUNTIME_EXTRAS=server
@@ -83,11 +84,6 @@ RUN pip install --upgrade pip build "uv==${UV_VERSION}" \
 # export, then install the project wheel itself without dependency resolution.
 # The hash gate makes pip fail if an exported registry requirement lacks the
 # lock-derived hashes expected by this bounded path.
-#
-# Docker-only residual (#52): pymorphy3 is optional in core/lemmatizer_ru.py
-# and is not currently represented in uv.lock. Keep it explicit rather than
-# falsely claiming full lock equivalence; a later bounded decision must either
-# admit it into project dependency ownership or remove this override.
 ARG RUNTIME_EXTRAS
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
@@ -97,7 +93,7 @@ RUN python scripts/export_locked_runtime_requirements.py \
     && pip install --require-hashes -r /tmp/velantrim-runtime-requirements.txt \
     && WHEEL="$(ls /wheels/*.whl)" \
     && pip install --no-deps "${WHEEL}" \
-    && pip install pymorphy3 \
+    && pip check \
     && python -c "import pymorphy3; pymorphy3.MorphAnalyzer(lang='ru')"
 
 # ---------------------------------------------------------------------------
