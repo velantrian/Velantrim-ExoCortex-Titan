@@ -27,6 +27,9 @@ exclude = ["tests*", "scripts*", ".venv*"]
 [project.optional-dependencies]
 
 # HTTP/API runtime used by server.py, Docker, and integration tests.
+# Multilingual routing is enabled by default by server.py, so its primary
+# Russian morphology implementation belongs to this runtime graph rather than
+# being installed as a Docker-only override. The lockfile remains authoritative.
 server = [
     "fastapi>=0.110",
     "uvicorn[standard]>=0.27",
@@ -35,6 +38,7 @@ server = [
     "httpx>=0.27",
     "aiosqlite>=0.19",
     "kuzu>=0.7,<0.12",
+    "pymorphy3>=2.0.6,<3",
 ]
 
 # Парсеры для FileIngester (RFC0063, 20+ форматов)
