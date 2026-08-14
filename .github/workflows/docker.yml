@@ -102,6 +102,8 @@ jobs:
           mkdir -p artifacts
           docker buildx version | tee artifacts/docker-buildx-version.txt
           docker version --format '{{.Client.Version}}' > artifacts/docker-client-version.txt
+          docker buildx create --driver docker-container --name titan-ci-builder --use
+          docker buildx inspect --bootstrap
           docker buildx build --no-cache \
             --sbom=true \
             --build-arg RUNTIME_EXTRAS=server \
