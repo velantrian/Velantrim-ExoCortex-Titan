@@ -103,3 +103,37 @@ jobs:
           path: coverage.xml
           if-no-files-found: warn
           retention-days: 14
+
+  sbom:
+    name: Deterministic lock SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Generate and verify deterministic SBOM
+        run: |
+          mkdir -p artifacts
+          python scripts/generate_sbom.py --output artifacts/titan-uv-lock.cdx.json
+          python scripts/generate_sbom.py --output "${RUNNER_TEMP}/titan-uv-lock.second.cdx.json"
+          cmp artifacts/titan-uv-lock.cdx.json "${RUNNER_TEMP}/titan-uv-lock.second.cdx.json"
+          python -m json.tool artifacts/titan-uv-lock.cdx.json >/dev/null
+          sha256sum artifacts/titan-uv-lock.cdx.json > artifacts/titan-uv-lock.cdx.json.sha256
+
+      - name: Upload deterministic SBOM evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: titan-lock-sbom
+          path: |
+            artifacts/titan-uv-lock.cdx.json
+            artifacts/titan-uv-lock.cdx.json.sha256
+          if-no-files-found: error
+          retention-days: 14
