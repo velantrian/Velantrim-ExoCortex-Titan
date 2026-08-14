@@ -1,6 +1,11 @@
-# Velantrim Titan 9.0 — docker-compose.yml (production)
+# Velantrim Titan 9.0 — docker-compose.yml (compatibility / research convenience)
 # Запуск: docker-compose up -d
 # Остановка: docker-compose down
+#
+# ВАЖНО: это не hardened production profile. Он сохраняет историческое поведение
+# и явно включает несколько research/cognitive layers. Для deny-by-default
+# production deployment используйте docker-compose.prod.yml и
+# docs/operations/hardened-production-profile.md.
 #
 # Требует VELANTRIM_API_KEY в окружении/`.env` — без него контейнер не стартует.
 # Для локальной разработки с dev-ключом по умолчанию используйте:
@@ -9,8 +14,8 @@
 # GraphLab (ENABLE_GRAPH_LAB) needs the "graph-lab" build extra (networkx),
 # which the default image (RUNTIME_EXTRAS=server) does not install — it
 # degrades gracefully (networkx_not_installed) rather than crashing, but
-# stays off by default here so the recommended compose deploy doesn't
-# silently advertise a feature the default image can't serve. To use it:
+# stays off by default here so this compatibility compose does not silently
+# advertise a feature the default image can't serve. To use it:
 #   RUNTIME_EXTRAS=server,graph-lab ENABLE_GRAPH_LAB=1 docker-compose up -d --build
 
 services:
@@ -35,7 +40,8 @@ services:
       - VELANTRIM_ASYNC_DB=1
       - VELANTRIM_LEMMATIZE_RU=1
       - ENABLE_PROMETHEUS_METRICS=1
-      # Опциональные слои (выключены по умолчанию)
+      # Historical compatibility defaults: these layers are intentionally ON here.
+      # The hardened production profile pins research/cognitive layers OFF.
       - ENABLE_CONCEPT_EMERGENCE=1
       - ENABLE_WORKING_NOTEBOOK=1
       - ENABLE_CAUSAL_GRAPH=1
