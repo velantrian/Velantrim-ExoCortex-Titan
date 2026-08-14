@@ -2,6 +2,7 @@ from pathlib import Path
 
 
 WORKFLOW = Path(".github/workflows/ci.yml")
+PYPROJECT = Path("pyproject.toml")
 
 
 def test_dependency_audit_is_frozen_lock_bound_and_fail_closed() -> None:
@@ -29,3 +30,14 @@ def test_dependency_audit_uses_repository_uv_and_pinned_artifact_action() -> Non
     assert "if: always()" in audit_section
     assert "service_url=https://api.osv.dev/" in audit_section
     assert "lock_sha256=" in audit_section
+
+
+def test_direct_dependency_security_floors_and_archived_kuzu_removal() -> None:
+    text = PYPROJECT.read_text(encoding="utf-8")
+
+    assert 'requires = ["setuptools>=83", "wheel"]' in text
+    assert '"pypdf2>=3.9.0"' in text
+    assert '"pillow>=12.3.0"' in text
+    assert '"pytest>=9.0.3,<10"' in text
+    assert '"kuzu>=' not in text
+    assert '"ladybug>=0.17"' in text
