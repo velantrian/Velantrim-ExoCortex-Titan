@@ -13,7 +13,7 @@ from threading import Lock, Thread
 from time import perf_counter
 from typing import Mapping
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, Response
 
 _LOG = logging.getLogger(__name__)
@@ -262,7 +262,34 @@ def register_server_middleware(app: FastAPI) -> None:
 
     @app.middleware("http")
     async def _security_headers_mw(request, call_next):
+        # Issue #52: this operational diagnostic used to bypass the API-key
+        # boundary and reflected raw exception text. Reuse server.require_api_key
+        # at request time so open/dev semantics and constant-time comparison stay
+        # owned by the canonical auth function instead of being duplicated here.
+        protect_epigenetic = request.url.path == "/system/epigenetic"
+        if protect_epigenetic:
+            from server import require_api_key
+
+            try:
+                await require_api_key(request.headers.get("X-Api-Key", ""))
+            except HTTPException as exc:
+                response = JSONResponse(
+                    status_code=exc.status_code,
+                    content={"detail": exc.detail},
+                    headers=exc.headers,
+                )
+                response.headers.setdefault("X-Content-Type-Options", "nosniff")
+                response.headers.setdefault("X-Frame-Options", "DENY")
+                response.headers.setdefault("Referrer-Policy", "no-referrer")
+                response.headers.setdefault("X-XSS-Protection", "0")
+                return response
+
         response = await call_next(request)
+        if protect_epigenetic and response.status_code >= 500:
+            response = _json_response_with_raw_headers(
+                response,
+                {"detail": "Internal server error"},
+            )
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "no-referrer")
