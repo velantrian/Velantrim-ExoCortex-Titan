@@ -32,7 +32,15 @@
 # the Python line visible, but the digest is authoritative for image content.
 # Rotate this pin only as a deliberate supply-chain change and rerun the
 # Docker workflow on the exact PR head.
+#
+# Declared project dependencies are resolved from the repository's uv.lock.
+# The helper validates requested extras against pyproject.toml, runs a frozen
+# uv export, and pip installs that export with --require-hashes. The wheel is
+# then installed with --no-deps so pip cannot re-resolve project dependencies.
+# This is deliberately NOT yet a claim that every Python package in the image
+# is lock-equivalent: pymorphy3 remains a Docker-only residual below.
 
+ARG UV_VERSION=0.12.3
 ARG RUNTIME_EXTRAS=server
 
 # Docker Official Image: python:3.11.15-slim / python:3.11-slim
@@ -56,25 +64,39 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /src
 
-# Source must be present before the package is built (no editable install
-# of an empty/partial tree, no install-then-copy ordering bugs).
-COPY pyproject.toml README.md LICENSE ./
+# Source and the authoritative dependency lock must be present before the
+# package is built. The helper is copied explicitly rather than widening the
+# Docker context with the whole scripts/ tree.
+COPY pyproject.toml uv.lock README.md LICENSE ./
+COPY scripts/export_locked_runtime_requirements.py ./scripts/export_locked_runtime_requirements.py
 COPY core ./core
 COPY api ./api
 COPY utils ./utils
 
-RUN pip install --upgrade pip build \
+# Use the same uv release as the repository CI dependency-sync owner. uv is a
+# builder-only tool; it is not copied into the runtime image.
+ARG UV_VERSION
+RUN pip install --upgrade pip build "uv==${UV_VERSION}" \
     && python -m build --wheel --outdir /wheels
 
-# Install the built wheel (non-editable) plus the requested runtime
-# extras into an isolated virtualenv that gets copied wholesale into the
-# runtime stage — this is what keeps the compiler toolchain out of it.
+# Install the selected declared runtime dependencies from a frozen uv.lock
+# export, then install the project wheel itself without dependency resolution.
+# The hash gate makes pip fail if an exported registry requirement lacks the
+# lock-derived hashes expected by this bounded path.
 ARG RUNTIME_EXTRAS
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
-RUN WHEEL="$(ls /wheels/*.whl)" \
-    && pip install --upgrade pip \
-    && pip install "${WHEEL}[${RUNTIME_EXTRAS}]" pymorphy3 \
+RUN python scripts/export_locked_runtime_requirements.py \
+        --extras "${RUNTIME_EXTRAS}" \
+        --output /tmp/velantrim-runtime-requirements.txt \
+    && pip install --require-hashes -r /tmp/velantrim-runtime-requirements.txt \
+    && WHEEL="$(ls /wheels/*.whl)" \
+    && pip install --no-deps "${WHEEL}" \
+    # Docker-only residual (#52): pymorphy3 is optional in core/lemmatizer_ru.py
+    # and is not currently represented in uv.lock. Keep it explicit rather than
+    # falsely claiming full lock equivalence; a later bounded decision must
+    # either admit it into project dependency ownership or remove this override.
+    && pip install pymorphy3 \
     && python -c "import pymorphy3; pymorphy3.MorphAnalyzer(lang='ru')"
 
 # ---------------------------------------------------------------------------
