@@ -10,7 +10,7 @@
 | Изменение | Эффект |
 |---|---|
 | 🏆 **Marker** (Surya OCR) для PDF | Лучший универсальный инструмент 2026 |
-| ⚡ **PyMuPDF** заменил PyPDF2 | 10-50× быстрее извлечение текста |
+| ⚡ **PyMuPDF primary + pypdf last-resort** | Быстрый основной fallback и поддерживаемый универсальный последний fallback |
 | 🚀 **faster-whisper** для аудио | 4× быстрее openai-whisper, 50% меньше RAM |
 | 💾 **Lazy singleton** моделей | Whisper грузится **один раз** за процесс (раньше — на каждый файл) |
 | 🗂️ **ParserRegistry** | Добавление нового парсера = одна строка |
@@ -31,7 +31,7 @@
 | 📚 Книги | `.epub` `.mobi` `.azw` `.azw3` `.fb2` |
 | 📝 Текст | `.txt` `.md` `.markdown` `.rst` `.json` `.jsonl` `.ndjson` `.yaml` `.yml` `.toml` |
 | 💻 Код | `.py` `.js` `.ts` `.go` `.rs` `.cpp` `.java` `.html` `.css` `.sql` (всего 25+) |
-| 📊 Таблицы | `.csv` `.tsv` `.xlsx` `.xls` `.ods` |
+| 📊 Таблицы | `.csv` `.tsv` `.xlsx` `.xls` `.ods` (multi-sheet) |
 | 📧 Email | `.eml` `.msg` `.mbox` |
 | 🌐 Web | `.html` `.htm` `.xhtml` `.mhtml` `.xml` |
 | 🖼️ Изображения | `.jpg` `.jpeg` `.png` `.gif` `.webp` `.bmp` `.tiff` `.heic` `.heif` |
@@ -137,7 +137,7 @@ core/file_parsers/
 ├── base.py                      ← FileParser ABC, ParseResult, ParserRegistry
 ├── file_ingester.py             ← главный оркестратор
 │
-├── pdf_parser.py        🆙      ← Marker → Docling → PyMuPDF → PyPDF2
+├── pdf_parser.py        🆙      ← Marker → Docling → MinerU → Unstructured → PyMuPDF → pypdf
 ├── docx_parser.py       🆙      ← Unstructured → python-docx
 ├── pptx_parser.py       🆕      ← python-pptx → Unstructured
 ├── text_parser.py       🆙      ← TXT, MD, JSON, YAML, code
@@ -167,6 +167,6 @@ core/file_parsers/
 | `essence_extractor.extract(text[:5000])` хардкод | → `self.essence_sample_size`, переопределяется |
 | Нет проверки размера → OOM на больших файлах | → `_check_file()` с `max_file_size_bytes` |
 | Encrypted PDF crash без понятной ошибки | → `_is_encrypted()` детекция |
-| PyPDF2 в каскаде (медленный) | → PyMuPDF primary fallback |
+| PyPDF2 в каскаде (медленный) | → PyMuPDF primary fallback; поддерживаемый `pypdf` остаётся last-resort |
 | Нет parallel processing | → `ThreadPoolExecutor` в `ingest_directory()` |
 | Архивы не поддерживались | → `ArchiveParser` с recursion |
