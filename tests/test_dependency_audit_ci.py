@@ -1,3 +1,4 @@
+import tomllib
 from pathlib import Path
 
 
@@ -35,8 +36,22 @@ def test_dependency_audit_uses_repository_uv_and_pinned_artifact_action() -> Non
 
 def test_direct_dependency_security_floors_and_archived_owners() -> None:
     text = PYPROJECT.read_text(encoding="utf-8")
+    with PYPROJECT.open("rb") as handle:
+        payload = tomllib.load(handle)
 
-    assert 'requires = ["setuptools>=83", "wheel"]' in text
+    build_system = payload["build-system"]
+    assert build_system["build-backend"] == "setuptools.build_meta"
+
+    build_requires = build_system["requires"]
+    assert isinstance(build_requires, list)
+    assert len(build_requires) == 1
+    setuptools_requirement = build_requires[0]
+    assert isinstance(setuptools_requirement, str)
+    assert setuptools_requirement.startswith("setuptools>=")
+    setuptools_floor = int(setuptools_requirement.removeprefix("setuptools>=").split(",", 1)[0])
+    assert setuptools_floor >= 83
+    assert not any(requirement.lower().startswith("wheel") for requirement in build_requires)
+
     assert '"pypdf>=6.14.2,<7"' in text
     assert '"pypdf2>=' not in text.lower()
     assert '"pillow>=12.3.0"' in text
