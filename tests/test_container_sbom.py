@@ -71,6 +71,8 @@ def test_validator_fails_closed_without_os_or_python_inventory() -> None:
 def test_docker_workflow_generates_and_publishes_final_image_sbom() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 
+    assert "docker buildx create --driver docker-container" in text
+    assert "docker buildx inspect --bootstrap" in text
     assert "docker buildx build --no-cache" in text
     assert "--sbom=true" in text
     assert "--output type=local,dest=container-sbom-out" in text
