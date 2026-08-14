@@ -5,6 +5,85 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
+## 2026-08-14 — #52 C8 closed → C9 World Skills admission · IN PROGRESS
+
+```text
+C8 protected squash main:         1909e3f10330c4032641970ad0934a67649681e3
+C8 signature:                     VERIFIED / valid
+C8 post-merge Full CI:            #1170 · 31829982550 · SUCCESS
+C8 post-merge Docker:             #769 · 31829982337 · SUCCESS
+C8 post-merge CodeQL:             #8 · 31829982439 · SUCCESS
+C8 post-merge aggregate:          #1171 · 31829982414 · SUCCESS
+C9 tracking PR:                   #320 · DRAFT
+C9 branch:                        agent/issue-52-world-skills-admission
+C9 base:                          1909e3f10330c4032641970ad0934a67649681e3
+C9 exact candidate head:          RESOLVE LIVE — changes still under review
+C9 Notion DRAFT/read-back:        SYNCED
+parent #52:                       OPEN
+Continuity:                       12/12
+schema:                           v7
+runtime enabled:                  false
+Operator GO:                      false
+runtime authority:                false
+production authority:             false
+Canon:                            local
+remote Canon:                     forbidden
+```
+
+Fresh #52 audit after C8 confirmed that World Skills remained a real current residual,
+not stale issue prose. `core/world_skills_ingest.py` directly called
+`promote_to_validated()` for curated rows; the parser did not expose the complete #52
+provenance/risk/review metadata contract; the focused ingest test explicitly expected
+legacy rows to auto-validate; and the promotion ownership inventory already documented the
+route as a `KNOWN_EXCEPTION` requiring separate convergence.
+
+C9 is therefore bounded to that exception. The candidate does **not** weaken TruthGate or
+create a second Canon owner. It introduces explicit candidate metadata:
+
+```text
+truth_status
+source_refs
+confidence
+risk_domain
+limitations
+review_status
+reviewer
+reviewed_at
+```
+
+Legacy rows receive safe non-claims and remain quarantined. The proposed admission chain is:
+
+```text
+Draft
+→ Quarantine
+→ Provenance Check
+→ Domain Review
+→ existing TruthGate precheck
+→ legal ESM ladder to Supported
+→ existing PromotionGateway
+→ existing validate_and_promote()
+→ TruthGate recheck + CAS
+→ Validated / local Canon
+```
+
+A high-risk candidate selects the existing `PRECISION` mode; ordinary explicit risk uses
+existing `BALANCED`. Numerical truth/evidence thresholds remain entirely TruthGate-owned.
+Candidate and pack SHA-256 identifiers provide deterministic replay/content binding, not
+cryptographic reviewer authentication.
+
+Focused candidate tests cover legacy quarantine, successful reviewed low-risk admission,
+high-risk TruthGate rejection, self-review rejection and order-independent/content-bound
+pack identity. `tests/test_promotion_ownership_guard.py` removes World Skills from the
+reviewed direct-promotion allowlist, so a reintroduced business-level bypass fails CI.
+
+C9 also reconciles the promotion ownership inventory, the World Skills authoring/source
+rules, ADR and operator documentation. The existing Notion `Velantrim Titan 9.0` page has
+a C9 DRAFT checkpoint and was read back. No FINAL/merge claim is made yet: exact-head Full
+CI, Docker, CodeQL, review/race audit, Ready aggregate, protected merge, post-merge evidence
+and FINAL GitHub/Notion reconciliation remain required.
+
+---
+
 ## 2026-08-13 — Phase 2A capability registry · FINAL / POST-MERGE VERIFIED
 
 ```text
@@ -128,9 +207,10 @@ Canon:                  local
 remote Canon:           forbidden
 ```
 
-Phase 2A does not authorize embeddings/vector execution, reranker/LLM execution, ADAO,
-ARM-04, provider probing/invocation, remote consent implementation, network activation,
-runtime route replacement, runtime enablement, Continuity 13/12 or schema v8.
+Phase 2A and #52 hardening do not authorize embeddings/vector execution, reranker/LLM
+execution, ADAO, ARM-04, provider probing/invocation, remote consent implementation,
+network activation, runtime route replacement, runtime enablement, Continuity 13/12 or
+schema v8.
 
 Phase 2A closure sequence completed:
 
