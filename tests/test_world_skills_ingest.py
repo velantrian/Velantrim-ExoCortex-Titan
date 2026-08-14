@@ -73,6 +73,28 @@ def test_legacy_rows_are_quarantined_and_never_auto_validate(tmp_path):
     assert store.get_fact("agro.crop.wheat.grain")["epistemic_state"] == "Observed"
 
 
+def test_author_declared_validated_cannot_self_promote():
+    candidate = parse_batch_markdown(_ENRICHED)[0]
+    candidate["truth_status"] = "Validated"
+
+    decision = evaluate_world_skill_candidate(candidate)
+
+    assert decision.stage is WorldSkillAdmissionStage.QUARANTINE
+    assert decision.passed is False
+    assert decision.reason_code == "truth_status_not_supported"
+
+
+def test_supported_candidate_without_sources_fails_provenance_check():
+    candidate = parse_batch_markdown(_ENRICHED)[0]
+    candidate["source_refs"] = []
+
+    decision = evaluate_world_skill_candidate(candidate)
+
+    assert decision.stage is WorldSkillAdmissionStage.PROVENANCE_CHECK
+    assert decision.passed is False
+    assert decision.reason_code == "source_refs_missing"
+
+
 def test_reviewed_low_risk_candidate_reaches_validated_through_existing_gate(tmp_path):
     from core.memory import SQLiteGraphStore
 
@@ -95,6 +117,27 @@ def test_reviewed_low_risk_candidate_reaches_validated_through_existing_gate(tmp
     assert stored["metadata"]["source_refs"] == ["src:nist-water", "src:textbook-thermo"]
     assert stored["metadata"]["evidence_refs"] == ["src:nist-water", "src:textbook-thermo"]
     assert stored["metadata"]["world_skills_pack_id"] == rep["pack_id"]
+
+
+def test_reviewed_candidate_replay_preserves_validated_state(tmp_path):
+    from core.memory import SQLiteGraphStore
+
+    store = SQLiteGraphStore(db_path=str(tmp_path / "kb.db"))
+    facts = parse_batch_markdown(_ENRICHED)
+
+    first = ingest_facts(store, facts, validate=True)
+    first_stored = store.get_fact("science.water.boiling")
+    second = ingest_facts(store, facts, validate=True)
+    second_stored = store.get_fact("science.water.boiling")
+
+    assert first["validated"] == 1
+    assert first["errors"] == 0
+    assert first_stored["epistemic_state"] == "Validated"
+    assert second["validated"] == 1
+    assert second["errors"] == 0
+    assert second["pack_id"] == first["pack_id"]
+    assert second_stored["epistemic_state"] == "Validated"
+    assert second_stored["metadata"]["world_skills_pack_id"] == first["pack_id"]
 
 
 def test_high_risk_candidate_with_two_sources_stays_observed(tmp_path):
