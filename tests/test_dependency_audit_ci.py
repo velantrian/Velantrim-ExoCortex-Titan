@@ -41,6 +41,7 @@ def test_direct_dependency_security_floors_and_archived_owners() -> None:
     assert '"pypdf2>=' not in text.lower()
     assert '"pillow>=12.3.0"' in text
     assert '"pytest>=9.0.3,<10"' in text
+    assert '"pytest-asyncio>=1.4.0,<2"' in text
     assert '"kuzu>=' not in text
     assert '"ladybug>=0.17"' in text
 
