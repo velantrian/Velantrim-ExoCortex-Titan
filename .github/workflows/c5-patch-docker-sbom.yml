@@ -1,4 +1,4 @@
-name: C5 temporary Docker SBOM patcher
+name: C5 temporary Docker SBOM patch exporter
 
 on:
   push:
@@ -6,10 +6,10 @@ on:
       - agent/issue-52-container-sbom
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch-c5:
+  export-c5-patch:
     if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -19,7 +19,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Patch Docker SBOM evidence contract
+      - name: Generate and verify bounded patch
         run: |
           set -euo pipefail
           python scripts/c5_patch_temp.py
@@ -31,11 +31,14 @@ jobs:
             exit 1
           fi
 
-      - name: Commit bounded patch
+      - name: Export exact patched contents for connector write
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/workflows/docker.yml scripts/check_pr_merge_evidence.py
-          git commit -m "build: generate final runtime container SBOM"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo '---DOCKER_YML_BASE64_BEGIN---'
+          base64 -w0 .github/workflows/docker.yml
+          echo
+          echo '---DOCKER_YML_BASE64_END---'
+          echo '---MERGE_EVIDENCE_BASE64_BEGIN---'
+          base64 -w0 scripts/check_pr_merge_evidence.py
+          echo
+          echo '---MERGE_EVIDENCE_BASE64_END---'
