@@ -75,6 +75,9 @@ DOCKER_PATHS = (
     "scripts/validate_production_profile.py",
     "tests/test_production_profile.py",
     "docs/operations/hardened-production-profile.md",
+    "scripts/validate_container_sbom.py",
+    "tests/test_container_sbom.py",
+    "docs/operations/container-sbom.md",
     ".github/workflows/docker.yml",
 )
 
