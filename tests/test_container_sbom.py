@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts.check_pr_merge_evidence import DOCKER_WORKFLOW, classify_required_workflows
 from scripts.validate_container_sbom import validate_container_sbom
 
 
@@ -80,6 +81,18 @@ def test_docker_workflow_generates_and_publishes_final_image_sbom() -> None:
     assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in text
     assert "docker login" not in text.lower()
     assert "--push" not in text
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "scripts/validate_container_sbom.py",
+        "tests/test_container_sbom.py",
+        "docs/operations/container-sbom.md",
+    ],
+)
+def test_container_sbom_paths_require_docker_workflow(path: str) -> None:
+    assert classify_required_workflows((path,))[DOCKER_WORKFLOW] is True
 
 
 def test_validator_summary_is_json_serializable() -> None:
