@@ -6,6 +6,26 @@ import pytest
 
 
 def _fact(fid: str) -> dict:
+    """Explicitly reviewed World Skills candidate that is eligible for Canon admission."""
+    return {
+        "fact_id": fid,
+        "type": "METHOD",
+        "claim": f"Curated external world knowledge for {fid}",
+        "source": "wsc:METHOD",
+        "truth_status": "Supported",
+        "source_refs": ["source:test:primary", "source:test:corroborating"],
+        "confidence": 0.85,
+        "risk_domain": "general",
+        "limitations": "Synthetic fixture limited to the smart-KB authority contract.",
+        "review_status": "approved",
+        "reviewer": "reviewer:test-suite",
+        "reviewed_at": "2026-08-14T18:00:00+00:00",
+        "metadata": {"domain": "test", "knowledge_file": "TEST_BATCH.ru.md"},
+    }
+
+
+def _legacy_unreviewed_fact(fid: str) -> dict:
+    """Historical curated row without the C9 provenance/review admission metadata."""
     return {
         "fact_id": fid,
         "type": "METHOD",
@@ -47,6 +67,25 @@ def test_canonical_kb_build_creates_classifies_validates_and_versions(tmp_path):
         ).fetchone()[0] >= 4
 
 
+def test_canonical_kb_build_rejects_legacy_unreviewed_curated_fact(tmp_path):
+    from core.memory import SQLiteGraphStore
+    from scripts.build_kb_graph import ingest_kb_facts
+
+    store = SQLiteGraphStore(db_path=str(tmp_path / "kb.db"))
+    with pytest.raises(RuntimeError, match="canonical smart-KB ingest incomplete"):
+        ingest_kb_facts(
+            store,
+            [_legacy_unreviewed_fact("kb.authority.unreviewed")],
+            batch_size=1,
+            require_empty=True,
+        )
+
+    durable = store.get_fact_durable("kb.authority.unreviewed")
+    assert durable is not None
+    assert durable["epistemic_state"] == "Observed"
+    assert durable["metadata"]["world_skills_admission_contract"] == "world-skills-admission-v1"
+
+
 def test_normal_rebuild_reclassifies_existing_fact_through_batch_owner(tmp_path):
     from core.memory import SQLiteGraphStore
     from core.world_skills_ingest import ingest_facts
@@ -70,7 +109,16 @@ def test_normal_rebuild_reclassifies_existing_fact_through_batch_owner(tmp_path)
         ).fetchone()[0])
 
     rep = ingest_facts(store, [_fact("kb.authority.legacy")], validate=False)
-    assert rep == {"parsed": 1, "ingested": 1, "validated": 0, "errors": 0}
+    assert {key: rep[key] for key in ("parsed", "ingested", "validated", "errors")} == {
+        "parsed": 1,
+        "ingested": 1,
+        "validated": 0,
+        "errors": 0,
+    }
+    assert rep["quarantined"] == 0
+    assert rep["truth_gate_rejected"] == 0
+    assert rep["admission_contract"] == "world-skills-admission-v1"
+    assert rep["pack_id"].startswith("wsc_pack_")
 
     after = store.get_fact_durable("kb.authority.legacy")
     assert after is not None
