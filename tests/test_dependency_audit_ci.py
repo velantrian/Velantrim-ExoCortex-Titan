@@ -3,6 +3,7 @@ from pathlib import Path
 
 WORKFLOW = Path(".github/workflows/ci.yml")
 PYPROJECT = Path("pyproject.toml")
+PDF_PARSER = Path("core/file_parsers/pdf_parser.py")
 
 
 def test_dependency_audit_is_frozen_lock_bound_and_fail_closed() -> None:
@@ -32,12 +33,22 @@ def test_dependency_audit_uses_repository_uv_and_pinned_artifact_action() -> Non
     assert "lock_sha256=" in audit_section
 
 
-def test_direct_dependency_security_floors_and_archived_kuzu_removal() -> None:
+def test_direct_dependency_security_floors_and_archived_owners() -> None:
     text = PYPROJECT.read_text(encoding="utf-8")
 
     assert 'requires = ["setuptools>=83", "wheel"]' in text
-    assert '"pypdf2>=3.9.0"' in text
+    assert '"pypdf>=6.14.2,<7"' in text
+    assert '"pypdf2>=' not in text.lower()
     assert '"pillow>=12.3.0"' in text
     assert '"pytest>=9.0.3,<10"' in text
     assert '"kuzu>=' not in text
     assert '"ladybug>=0.17"' in text
+
+
+def test_pdf_fallback_cannot_silently_reintroduce_pypdf2() -> None:
+    text = PDF_PARSER.read_text(encoding="utf-8")
+
+    assert 'PYPDF_AVAILABLE = _check_available("pypdf")' in text
+    assert "from pypdf import PdfReader" in text
+    assert "from PyPDF2 import PdfReader" not in text
+    assert "PYPDF2_AVAILABLE" not in text
