@@ -1,7 +1,8 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-14  
-**Current repository checkpoint:** `main@5cd4003d62d8f5e09971f2b46f89e61ab58bffca` · signature `VERIFIED / valid`  
+**Current live base for C9:** `main@1909e3f10330c4032641970ad0934a67649681e3` · signature `VERIFIED / valid`  
+**C9 candidate:** PR #320 · resolve exact head from live GitHub before any mutation or merge  
 **Continuity:** `12/12 = 100%`  
 **Machine-readable state:** schema v7  
 **Notion target:** `Velantrim Titan 9.0` · `398ac84d-0547-81fe-8ca5-d0d2727d1961`  
@@ -45,6 +46,62 @@ full historical canary evidence, use the Continuity ADRs, issues #275/#276 and G
 rather than treating that old exact checkpoint as today's repository head.
 
 ## Current implementation milestones
+
+### Parent #52 — supply-chain residual program
+
+C8 reproducible-wheel verification is protected-merged through PR #318 at
+`main@1909e3f10330c4032641970ad0934a67649681e3`. Its admitted claim is deliberately
+bounded: two clean Titan Python wheel builds from one exact source head under the frozen,
+hash-bound Setuptools build contract produced byte-identical wheel bytes. This is **not**
+a byte-reproducible Docker/OCI-image claim and changes no runtime authority.
+
+C9 is the current bounded candidate in PR #320. Fresh audit proved that the historical
+World Skills importer was a real remaining #52 trust-boundary gap: it directly used
+`promote_to_validated()` and legacy rows did not carry the full structured provenance,
+risk, limitations and review metadata required by #52.
+
+The C9 candidate removes that business-level direct-promotion exception and uses only
+existing owners:
+
+```text
+Draft candidate
+→ Quarantine
+→ Provenance Check
+→ Domain Review
+→ existing TruthGate read-only precheck
+→ legal ESM ladder to Supported
+→ existing PromotionGateway
+→ existing validate_and_promote()
+→ TruthGate recheck + CAS
+→ Validated / local Canon
+```
+
+Required candidate metadata:
+
+```text
+truth_status
+source_refs
+confidence
+risk_domain
+limitations
+review_status
+reviewer
+reviewed_at
+```
+
+Legacy rows receive explicit safe non-claims (`Draft`, empty source/review/risk metadata,
+`unreviewed`) and remain available for scratch/non-canonical analysis. C9 does **not**
+retroactively certify the corpus, infer sources/reviewer identity, or treat file curation
+as evidence.
+
+Candidate/pack SHA-256 identifiers provide deterministic content/replay binding only.
+They are not cryptographic human signatures and create no reviewer-key authority.
+High-risk `risk_domain` metadata selects the existing `PRECISION` TruthGate mode; ordinary
+explicit risk uses existing `BALANCED`. C9 owns no numerical truth thresholds.
+
+PR #320 remains non-authoritative until exact-head CI/Docker/CodeQL, review/race audit,
+Ready aggregate, protected merge and post-merge evidence complete. Parent #52 remains
+OPEN until all current residuals are CLOSED or explicitly SUPERSEDED with evidence.
 
 ### Truth Foundation
 
@@ -138,6 +195,8 @@ schema, Operator GO, runtime-authority or production-authority semantics.
 | Concern | Current owner / rule |
 |---|---|
 | Canon / ESM mutation | existing canonical store + accepted mutation owners |
+| final single-fact `Validated` admission | existing `PromotionGateway` → `SQLiteGraphStore.validate_and_promote()` → `TruthGate` + CAS |
+| World Skills candidate orchestration | `core/world_skills_ingest.py`; no independent truth thresholds or Canon mutation owner |
 | policy / network / remote-data permission | `core/policy_kernel.py` / `get_policy_kernel()` |
 | query routing | existing QueryRouter / pipeline |
 | console LLM model catalogue | `core/provider_catalog.py` |
@@ -146,20 +205,20 @@ schema, Operator GO, runtime-authority or production-authority semantics.
 | Phase 2A descriptors / explicit health / selection explanation | `core/capability_registry.py` |
 | aggregate merge evidence | `scripts/check_pr_merge_evidence.py` with strict Notion hand-off adapter |
 
-No second PolicyKernel, QueryRouter, TruthGate, WriteGate, Canon writer or aggregate
-merge-evidence authority was created.
+No second PolicyKernel, QueryRouter, TruthGate, WriteGate, Canon writer, reviewer-key owner
+or aggregate merge-evidence authority was created.
 
-## Still not implemented/authorized by Phase 2A
+## Still not implemented/authorized by Phase 2A / #52 hardening
 
 ```text
 registry runtime wiring             NOT DONE
 provider active probing             NOT DONE
 provider invocation                 NOT DONE
-embeddings/vector execution         NOT AUTHORIZED BY #300
-reranker execution                  NOT AUTHORIZED BY #300
-LLM execution                       NOT AUTHORIZED BY #300
-ADAO execution                      NOT AUTHORIZED BY #300
-remote consent implementation       NOT AUTHORIZED BY #300
+embeddings/vector execution         NOT AUTHORIZED
+reranker execution                  NOT AUTHORIZED
+LLM execution                       NOT AUTHORIZED
+ADAO execution                      NOT AUTHORIZED
+remote consent implementation       NOT AUTHORIZED
 ARM-04                              NOT AUTHORIZED
 network activation                  false
 runtime route replacement           false
@@ -176,17 +235,19 @@ exact-head tests/CI, protected merge and synchronized GitHub/Notion evidence.
 
 ## Open residuals that remain separate
 
-Do not mix them into Phase 2A or governance closure:
+Do not mix them into the current bounded #52/C9 work:
 
 - #51 — ADAO workstream;
-- #52 — trusted platform / supply-chain and related hardening;
+- #52 — trusted platform / supply-chain and related hardening; **current parent / OPEN**;
+- #53 — Local Semantic Capability; do not begin before #52 closure under the current handoff;
 - #92 — ARM, with ARM-04 not authorized;
 - #120 — Reader Core production evidence;
 - #249 — CAS contention evidence.
 
 ## Historical evidence rule
 
-Historical Continuity, Truth Foundation and review checkpoints remain immutable evidence,
-but they are not current repository-head claims. Use Git history, merged PRs, issues and
-ADRs for the full chronology. Use this file, `WORK_LOG.md`, `COMPONENT_MAP.md`,
-`KNOWN_RISKS.md` and `docs/state/project_state.json` for current orientation.
+Historical Continuity, Truth Foundation, supply-chain and review checkpoints remain
+immutable evidence, but they are not substitutes for the current repository head. Use Git
+history, merged PRs, issues and ADRs for the full chronology. Use this file, `WORK_LOG.md`,
+`COMPONENT_MAP.md`, `KNOWN_RISKS.md` and `docs/state/project_state.json` for current
+orientation, resolving live GitHub before mutation.

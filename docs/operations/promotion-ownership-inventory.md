@@ -1,8 +1,9 @@
 # Promotion ownership inventory
 
-**Baseline:** `main@dae864606db75edfe04a3ee24af7d6bfde3e7ca8`  
-**Issue:** #165  
-**Status:** runtime-wired for five standard callers; not yet the sole owner
+**C9 base:** `main@1909e3f10330c4032641970ad0934a67649681e3`  
+**Issues:** #165, #52  
+**C9 tracking:** PR #320  
+**Status:** five standard runtime callers are gateway-routed; C9 removes the World Skills business-level direct-promotion exception while preserving reviewed compatibility primitives
 
 ## Canonical hardened primitive
 
@@ -34,8 +35,7 @@ does not duplicate thresholds or database mutation logic.
 | `core/cognitive_store.py::CognitiveFactStore.transition` | merged via #172 | auto-ladder only to `Supported`, gated final hop, no rejected/idempotent phantom event; covers `CognitiveRuntime` delegation |
 
 These paths are `RUNTIME_WIRED`. This is code/test evidence, not a claim that the feature
-is globally activated, runtime-observed in production, or backed by a transactional
-outbox.
+is globally activated or runtime-observed in production.
 
 ## Reviewed direct authority calls
 
@@ -46,38 +46,68 @@ locked by `tests/test_promotion_ownership_guard.py`:
 2. Reload-safe adapters in `core/tool_handlers.py` and `core/cognitive_store.py` resolve
    the current `core.memory` module, then delegate for the gateway.
 3. Module-level compatibility wrappers in `core/memory.py` delegate to `_GLOBAL_STORE`.
-4. `core/world_skills_ingest.py` is the explicit curated-ingest exception described
-   below.
+
+World Skills is deliberately absent from this direct-call inventory under C9. Its final
+single-fact Canon admission is routed through `PromotionGateway`; reintroducing a direct
+`promote_to_validated()` or `validate_and_promote()` call in that business path fails the
+ownership guard.
 
 Any new production call to `validate_and_promote()` or `promote_to_validated()` fails CI
 until this inventory and an ADR are deliberately updated. CI also rejects literal plain
 `transition_esm(..., "Validated")` and `promote_esm_to(..., "Validated")` caller paths.
 
-## Explicit exception: curated World Skills ingest
+## Curated World Skills admission — C9 convergence
 
-`core/world_skills_ingest.py::ingest_facts()` promotes a reviewed offline knowledge pack
-through `store.promote_to_validated()`.
+The historical World Skills exception existed because curated rows were promoted through
+`store.promote_to_validated()` without the standard TruthGate evidence contract. Fresh C9
+audit showed that the legacy corpus also does **not** contain the complete #52 structured
+provenance/risk/review metadata required to justify that shortcut.
 
-This is **not** silently classified as a standard PromotionGateway caller because:
-
-- the pack is curated and uses a separate knowledge-store workflow;
-- current rows have confidence and provenance metadata but do not carry the normal
-  BALANCED-mode `evidence_refs` contract;
-- routing it through the current gateway without a separate design would reject the
-  pack, while weakening TruthGate to accept it would weaken every standard caller.
-
-Disposition:
+PR #320 therefore does not weaken TruthGate and does not manufacture missing evidence.
+Instead, `core/world_skills_ingest.py` treats every row as a candidate and enforces:
 
 ```text
-KNOWN_EXCEPTION
-→ no threshold bypass expansion
-→ no use as a template for runtime/user facts
-→ design a curated-pack admission contract separately
-→ remove the exception only after that contract has signed provenance,
-  deterministic pack identity, review evidence and replay tests
+Draft
+→ Quarantine
+→ Provenance Check
+→ Domain Review
+→ existing TruthGate precheck
+→ legal ESM ladder to Supported
+→ existing PromotionGateway
+→ existing validate_and_promote()
+→ TruthGate recheck + CAS
+→ Validated / local Canon
 ```
 
-The exception remains one exact, CI-locked call site.
+Required candidate metadata is:
+
+```text
+truth_status
+source_refs
+confidence
+risk_domain
+limitations
+review_status
+reviewer
+reviewed_at
+```
+
+Legacy rows receive explicit non-claims (`Draft`, empty source/review/risk fields,
+`unreviewed`) and remain quarantined from Canon admission. The parser's historical
+`confidence=0.85` value is retained for compatibility but cannot compensate for missing
+provenance or review evidence.
+
+C9 also provides deterministic candidate and order-independent pack SHA-256 identifiers
+for content/replay binding. These digests are integrity identifiers, **not cryptographic
+human signatures**. The older phrase "signed provenance" was underspecified: no reviewer
+key or signature authority existed to support such a claim. C9 admits attributable
+`source_refs`, explicit reviewer identity/timestamp, deterministic content binding, and
+TruthGate evaluation. Any future cryptographic reviewer-signature protocol requires a
+separate key/identity owner and separate admission.
+
+The old `KNOWN_EXCEPTION` is therefore removed by C9 rather than expanded. World Skills
+remains a curated offline ingestion surface, not a template for ordinary runtime/user
+facts and not an alternate truth authority.
 
 ## Separate mutation families
 
@@ -97,6 +127,8 @@ classification is:
 - ConsolidationEngine: literal target `Supported`, followed by PromotionGateway;
 - CognitiveFactStore: non-Validated targets remain generic; Validated is intercepted,
   laddered only to `Supported`, then gated;
+- World Skills C9: literal target `Supported` is reachable only after provenance/domain
+  gates and a read-only TruthGate precheck; final `Validated` remains PromotionGateway-owned;
 - relation store: a different relation-state implementation;
 - memory module wrapper: compatibility primitive, not a business caller.
 
@@ -114,25 +146,33 @@ guards.
 ## Current status
 
 ```text
-DESIGNED                 ✅
-MERGED_IN_MAIN           ✅
-RUNTIME_WIRED            ✅ five standard callers
-FEATURE_ENABLED          caller/profile dependent
-RUNTIME_OBSERVED         not claimed
-SOLE_SINGLE_FACT_OWNER   ❌ curated ingest exception + compatibility primitives remain
-OUTBOX_ATOMIC            ✅ issue #191 — see below; still not a dispatcher or delivery guarantee
+DESIGNED                              ✅
+MERGED_FOUNDATION                     ✅
+RUNTIME_WIRED_STANDARD_CALLERS        ✅ five standard callers
+WORLD_SKILLS_DIRECT_EXCEPTION         ❌ removed by C9 candidate
+WORLD_SKILLS_FINAL_GATEWAY_ROUTE       ✅ C9 candidate
+LOW_LEVEL_COMPATIBILITY_PRIMITIVES     reviewed / intentionally retained
+FEATURE_ENABLED                       caller/profile dependent
+RUNTIME_OBSERVED                      not claimed
+SOLE_BUSINESS_LEVEL_VALIDATED_BYPASS   none admitted by current ownership guard
+OUTBOX_ATOMIC                         ✅ issue #191 — see below; still not a dispatcher or delivery guarantee
 ```
+
+Do not reinterpret this table as runtime activation, production readiness, or a claim
+that all World Skills rows are Canon-admissible. Legacy rows are intentionally quarantined
+until real provenance and review metadata exists.
 
 ## Migration gates
 
-Every additional standard caller migration must prove:
+Every additional standard or curated caller migration must prove:
 
-- exactly one gateway call per promotion attempt;
-- no new direct route to `Validated`;
-- unchanged TruthGate mode and thresholds;
-- unchanged rejection/accounting semantics;
+- exactly one gateway call per final promotion attempt;
+- no new direct business route to `Validated`;
+- no duplicated or weakened TruthGate thresholds;
+- unchanged rejection/accounting semantics unless an ADR explicitly changes them;
 - `concurrent_modification` remains visible and is not silently retried;
-- no claim/evidence/justification payload in the replayable receipt;
+- no claim/evidence/justification payload in the replayable PromotionGateway receipt;
+- any pre-gateway ESM movement is non-Validated, legally bounded, and policy-evidenced;
 - architecture-freeze, ownership guard, Ruff, blocking mypy, full pytest and Docker are
   green;
 - final merge is pinned to the reviewed head SHA.
@@ -140,9 +180,9 @@ Every additional standard caller migration must prove:
 ## Outbox boundary
 
 No caller persists `PromotionReceipt` independently — this is unchanged by issue #191.
-What changed: `_promote_to_validated_cas()` (the one shared primitive under
-`validate_and_promote()`, and therefore under all five standard callers above, since
-none of them bypass it) now appends one content-minimized `projection_outbox` intent —
+What changed there: `_promote_to_validated_cas()` (the one shared primitive under
+`validate_and_promote()`, and therefore under all gateway-routed single-fact final
+promotions) appends one content-minimized `projection_outbox` intent —
 `aggregate_type="fact"`, technical `aggregate_id`, `scope_ref=LOCAL_PROJECTION_SCOPE_REF`,
 `canonical_version=facts.fact_version` read on the same connection after the CAS
 succeeds — in the SAME SQLite transaction as the Canon CAS UPDATE, VersionStore

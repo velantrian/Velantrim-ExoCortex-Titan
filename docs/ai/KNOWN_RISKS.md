@@ -1,7 +1,8 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-14  
-**Current repository checkpoint:** `5cd4003d62d8f5e09971f2b46f89e61ab58bffca` · signature `VERIFIED / valid`  
+**C9 live base:** `1909e3f10330c4032641970ad0934a67649681e3` · signature `VERIFIED / valid`  
+**C9 candidate:** PR #320 · exact head must be resolved live before acceptance  
 **Continuity:** `12/12 = 100%` — complete  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0` · review-thread resolution required · required check `Titan aggregate merge evidence`
@@ -9,6 +10,43 @@
 A green CI run, manifest, config, historical canary, archive payload, audit record or
 Notion update is evidence only. None of them grants current permission, runtime authority
 or production authority.
+
+## P1 — World Skills legacy corpus is not retroactively reviewed or provenance-complete
+
+Fresh C9 audit for parent #52 proved that the historical World Skills curated-ingest path
+was a real trust-boundary residual: legacy rows do not carry the complete structured
+`truth_status/source_refs/risk_domain/limitations/review_status/reviewer/reviewed_at`
+contract, while `core/world_skills_ingest.py` directly called `promote_to_validated()`.
+
+PR #320 removes that direct business-level exception and fails closed. Legacy rows are
+explicit Draft/unreviewed candidates with empty provenance/risk/reviewer metadata and must
+remain non-canonical unless real evidence is added. Curation, filename location, Git
+history, claim prose and LLM output are not acceptable substitutes for attributable
+`source_refs` or reviewer evidence.
+
+The bounded candidate uses existing owners only:
+
+```text
+metadata/review gates
+→ TruthGate read-only precheck
+→ legal ESM ladder to Supported
+→ PromotionGateway
+→ validate_and_promote()
+→ TruthGate recheck + CAS
+→ Validated / local Canon
+```
+
+High-risk metadata selects the existing `PRECISION` TruthGate mode; C9 owns no numerical
+thresholds. Candidate/pack SHA-256 digests are deterministic content/replay integrity
+identifiers, **not cryptographic human signatures**. Reviewer-key authentication remains
+unimplemented and is not required/claimed by C9. If cryptographic reviewer signatures are
+later required, they need a separately governed identity/key owner and fresh admission.
+
+Remaining proof before this risk can be marked reduced: exact-head Full CI, Docker,
+CodeQL, review/race audit, Ready aggregate, protected merge, post-merge evidence, GitHub
+reconciliation and same-page Notion FINAL/read-back. Even after C9 closure, the legacy
+corpus remains only partially reviewable until actual source/review metadata is authored;
+C9 proves fail-closed admission, not corpus truth.
 
 ## P0 — No current Operator GO or deployed activation
 
