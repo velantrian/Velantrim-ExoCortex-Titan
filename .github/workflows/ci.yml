@@ -197,3 +197,44 @@ jobs:
             cat artifacts/titan-dependency-audit.json
             exit "${audit_status}"
           fi
+
+  reproducible-wheel:
+    name: Reproducible Titan wheel
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install repository uv version
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          version: 0.12.3
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Verify byte-identical wheel builds
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python scripts/verify_reproducible_wheel.py \
+            --source-head-sha "${SOURCE_HEAD_SHA}" \
+            --artifact-dir artifacts/reproducible-wheel
+          python -m json.tool artifacts/reproducible-wheel/titan-reproducible-wheel.metadata.json >/dev/null
+
+      - name: Upload reproducible wheel evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: titan-reproducible-wheel
+          path: artifacts/reproducible-wheel
+          if-no-files-found: error
+          retention-days: 14
