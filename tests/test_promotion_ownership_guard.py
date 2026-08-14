@@ -90,7 +90,9 @@ def test_direct_single_fact_authority_callers_match_reviewed_inventory() -> None
     authority_sites, _ = _scan()
 
     # Exact reviewed boundary. New entries require an ADR and an intentional
-    # update to docs/operations/promotion-ownership-inventory.md.
+    # update to docs/operations/promotion-ownership-inventory.md. World Skills
+    # is no longer an exception: C9 routes final Canon admission through
+    # PromotionGateway instead of calling the low-level promotion primitive.
     expected = {
         CallSite(
             "core/promotion_gateway.py",
@@ -115,11 +117,6 @@ def test_direct_single_fact_authority_callers_match_reviewed_inventory() -> None
         CallSite(
             "core/memory.py",
             "promote_to_validated",
-            "promote_to_validated",
-        ),
-        CallSite(
-            "core/world_skills_ingest.py",
-            "ingest_facts",
             "promote_to_validated",
         ),
     }
