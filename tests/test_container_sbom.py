@@ -39,7 +39,6 @@ def _spdx() -> dict[str, object]:
 
 def test_validator_accepts_direct_spdx_with_os_and_python_packages() -> None:
     summary = validate_container_sbom(_spdx())
-
     assert summary["package_count"] == 2
     assert summary["debian_os_package_count"] == 1
     assert summary["python_pypi_package_count"] == 1
@@ -51,7 +50,6 @@ def test_validator_accepts_in_toto_spdx_predicate() -> None:
         "predicateType": "https://spdx.dev/Document",
         "predicate": _spdx(),
     }
-
     summary = validate_container_sbom(wrapped)
     assert summary["spdx_version"] == "SPDX-2.2"
 
@@ -71,12 +69,15 @@ def test_validator_fails_closed_without_os_or_python_inventory() -> None:
 def test_docker_workflow_generates_and_publishes_final_image_sbom() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
 
+    assert "name: Build runtime image (no cache)" in text
+    assert "docker build --no-cache" in text
+    assert "name: Generate final runtime SBOM (BuildKit local exporter)" in text
     assert "docker buildx create --driver docker-container" in text
     assert "docker buildx inspect --bootstrap" in text
     assert "docker buildx build --no-cache" in text
     assert "--sbom=true" in text
     assert "--output type=local,dest=container-sbom-out" in text
-    assert "--load" in text
+    assert "--load" not in text
     assert "container-sbom-out/sbom.spdx.json" in text
     assert "scripts/validate_container_sbom.py" in text
     assert "name: titan-container-sbom" in text
