@@ -9,7 +9,7 @@ A local-first verifiable memory runtime for AI agents: evidence-gated AI memory 
 > 🌿 **Philosophy:** [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md)
 > 🔒 **For AI agents:** [docs/PHILOSOPHY_SPEC.md](docs/PHILOSOPHY_SPEC.md)
 > 🗺️ **Project map:** [Velantrim_Project_Map.md](Velantrim_Project_Map.md)
-> 📁 **Related folders:** [docs/RELATED_PROJECTS.ru.md](docs/RELATED_PROJECTS.ru) — do not confuse with `Graphiti_fractal-main`
+> 📁 **Related folders:** [docs/RELATED_PROJECTS.ru.md](docs/RELATED_PROJECTS.ru.md) — do not confuse with `Graphiti_fractal-main`
 >
 > Legacy notes are preserved in [CHANGELOG.md](CHANGELOG.md) and `docs/archive/`.
 
