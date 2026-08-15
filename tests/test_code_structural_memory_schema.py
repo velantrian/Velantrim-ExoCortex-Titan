@@ -338,6 +338,49 @@ def test_dirty_source_state_matches_null_commit_across_receipt_and_snapshot(
         conn.close()
 
 
+def test_snapshot_identity_inputs_cannot_drift_after_insert(tmp_path) -> None:
+    conn = connect_database(tmp_path / "snapshot-identity-immutable.sqlite3")
+    try:
+        initialize_schema(conn)
+        _insert_repository(conn, "repo-a")
+        _insert_receipt(conn, "repo-a", "receipt-a", "snapshot-a", 1)
+        _insert_snapshot(conn, "repo-a", "snapshot-a", "receipt-a", 1)
+
+        with pytest.raises(sqlite3.IntegrityError, match="snapshot identity inputs"):
+            conn.execute(
+                "UPDATE csm_snapshots SET parser_profile_id='python-v2' "
+                "WHERE repository_id='repo-a' AND snapshot_id='snapshot-a'"
+            )
+
+        conn.execute(
+            "UPDATE csm_snapshots SET promoted_at='2026-08-15T10:00:02Z' "
+            "WHERE repository_id='repo-a' AND snapshot_id='snapshot-a'"
+        )
+        assert conn.execute(
+            "SELECT promoted_at FROM csm_snapshots "
+            "WHERE repository_id='repo-a' AND snapshot_id='snapshot-a'"
+        ).fetchone()[0] == "2026-08-15T10:00:02Z"
+    finally:
+        conn.close()
+
+
+def test_receipt_snapshot_identity_inputs_cannot_drift_after_insert(tmp_path) -> None:
+    conn = connect_database(tmp_path / "receipt-identity-immutable.sqlite3")
+    try:
+        initialize_schema(conn)
+        _insert_repository(conn, "repo-a")
+        _insert_receipt(conn, "repo-a", "receipt-a", "snapshot-a", 1)
+        _insert_snapshot(conn, "repo-a", "snapshot-a", "receipt-a", 1)
+
+        with pytest.raises(sqlite3.IntegrityError, match="receipt snapshot identity inputs"):
+            conn.execute(
+                "UPDATE csm_scan_receipts SET source_manifest_digest='other' "
+                "WHERE repository_id='repo-a' AND receipt_id='receipt-a'"
+            )
+    finally:
+        conn.close()
+
+
 def test_reason_count_json_round_trips_deterministically(tmp_path) -> None:
     conn = connect_database(tmp_path / "reason-counts.sqlite3")
     try:
