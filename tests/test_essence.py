@@ -277,7 +277,7 @@ def test_generate_answer_builds_chain_from_causal(monkeypatch):
     import core.pipeline as pl
     cg = _stub_cg({"p0": [_rel("p0", "p1", "causes")],
                    "p1": [_rel("p1", "p2", "enables")]})
-    monkeypatch.setattr(pl, "_get_causal_graph", lambda: cg)
+    monkeypatch.setattr(pl, "_peek_causal_graph", lambda: cg)
     pack = {"facts": [
         {"fact_id": "p0", "claim": "Сухая древесина легко загорается",
          "source": "s", "epistemic_state": "Validated", "confidence": 0.95},

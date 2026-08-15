@@ -1010,7 +1010,7 @@ def _essence_relations_for(
 ) -> list[dict[str, Any]]:
     if cg is None:
         try:
-            cg = _get_causal_graph()
+            cg = _peek_causal_graph()
         except Exception:  # noqa: BLE001
             cg = None
     if cg is None:
@@ -1096,7 +1096,10 @@ def _task_routing_enabled() -> bool:
 def _expand_with_graph_neighbors(
     facts: list[dict], max_neighbors: int = 8, depth: int | None = None,
 ) -> list[dict]:
-    cg = _get_causal_graph()
+    try:
+        cg = _peek_causal_graph()
+    except Exception:  # noqa: BLE001
+        cg = None
     if cg is None or not facts:
         return facts
     if depth is None:
@@ -1330,7 +1333,11 @@ def run(
         )
     ]
     causal_hints = _extract_causal_hints(validated_for_cg)
-    cg = _get_causal_graph()
+    try:
+        cg = _peek_causal_graph()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("CausalGraph read unavailable (non-blocking): %s", exc)
+        cg = None
     if cg is not None:
         try:
             conflicts = _extract_conflicts(facts_pack["facts"], cg)

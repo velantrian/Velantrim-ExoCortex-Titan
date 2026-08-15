@@ -33,6 +33,16 @@ def isolated_db(monkeypatch, tmp_path):
     monkeypatch.setattr(memory, "_DDL_INITIALIZED", fresh._ddl_initialized_paths)
     monkeypatch.setattr(memory, "SQLITE_PATH",      str(tmp_path / "test.db"))
     yield fresh
+    pipeline = sys.modules.get("core.pipeline")
+    if pipeline is not None:
+        graph = getattr(pipeline, "_CAUSAL_GRAPH", None)
+        if graph is not None:
+            try:
+                graph._conn.close()
+            except Exception:
+                pass
+        pipeline._CAUSAL_GRAPH = None
+        pipeline._CAUSAL_GRAPH_DB_PATH = ""
     fresh.close()
 
 
@@ -166,10 +176,18 @@ def test_graph_expansion_pulls_reliable_neighbors(isolated_db):
     assert any(f.get("graph_expanded") for f in expanded), "соседи помечены graph_expanded"
 
 
-def test_graph_expansion_no_graph_is_noop(isolated_db):
-    """Без рёбер / соседей — expansion возвращает исходный набор (безопасно)."""
+def test_graph_expansion_no_graph_is_noop(isolated_db, monkeypatch):
+    """Без открытого graph expansion не инициализирует его и возвращает seed."""
     from core import pipeline
     from core.memory import promote_to_validated, store_fact
+
+    pipeline._CAUSAL_GRAPH = None
+    pipeline._CAUSAL_GRAPH_DB_PATH = ""
+
+    def fail_initializer():
+        raise AssertionError("read-side graph expansion must not initialize CausalGraph")
+
+    monkeypatch.setattr(pipeline, "_get_causal_graph", fail_initializer)
     store_fact({"fact_id": "solo", "claim": "Одинокий факт без связей", "source": "x",
                 "confidence": 0.9, "claim_type": "WORLD_FACT", "origin_type": "EXTERNAL"})
     promote_to_validated("solo")
@@ -177,6 +195,7 @@ def test_graph_expansion_no_graph_is_noop(isolated_db):
              "epistemic_state": "Validated", "confidence": 0.9, "claim_type": "WORLD_FACT"}]
     out = pipeline._expand_with_graph_neighbors(seed)
     assert {f["fact_id"] for f in out} == {"solo"}
+    assert pipeline._CAUSAL_GRAPH is None
 
 
 # ─── AUDIT-FIX: pipeline.run() idempotent ────────────────────────────────────
@@ -223,6 +242,54 @@ def test_pipeline_read_does_not_record_actr_access(seeded_db, monkeypatch):
 
     assert result["answer"]
     assert calls == []
+
+
+def test_pipeline_read_does_not_initialize_causal_schema(seeded_db):
+    """A default query cannot create causal tables, indexes, or ESM mutations."""
+    import sqlite3
+
+    from core import pipeline
+
+    pipeline._CAUSAL_GRAPH = None
+    pipeline._CAUSAL_GRAPH_DB_PATH = ""
+
+    def schema_snapshot():
+        with sqlite3.connect(seeded_db.db_path) as conn:
+            return tuple(conn.execute(
+                """
+                SELECT type, name, tbl_name, sql
+                FROM sqlite_master
+                WHERE name NOT LIKE 'sqlite_%'
+                ORDER BY type, name
+                """
+            ).fetchall())
+
+    def esm_snapshot():
+        with sqlite3.connect(seeded_db.db_path) as conn:
+            return tuple(conn.execute(
+                "SELECT fact_id, epistemic_state FROM facts ORDER BY fact_id"
+            ).fetchall())
+
+    before_schema = schema_snapshot()
+    before_esm = esm_snapshot()
+    before_names = {row[1] for row in before_schema}
+    assert {
+        "relations",
+        "relation_paths",
+        "idx_relations_from",
+        "idx_relations_to",
+    }.isdisjoint(before_names)
+
+    result = pipeline.run("quantum entanglement")
+
+    after_schema = schema_snapshot()
+    after_esm = esm_snapshot()
+    assert result.get("answer") is not None
+    assert result.get("error") is None
+    assert after_schema == before_schema
+    assert after_esm == before_esm
+    assert pipeline._CAUSAL_GRAPH is None
+    assert pipeline._CAUSAL_GRAPH_DB_PATH == ""
 
 
 # ─── tokenize edge cases ──────────────────────────────────────────────────────
@@ -580,7 +647,7 @@ def test_get_facts_by_ids_returns_full_facts():
     """TASK-06: get_facts_by_ids тянет полные факты только для нужных ID."""
     from core.memory import get_facts_by_ids, store_fact
     store_fact({"fact_id": "gfbi_1", "claim": "gamma", "source": "s", "confidence": 0.9})
-    store_fact({"fact_id": "gfbi_2", "claim": "delta", "source": "s", "confidence": 0.8})
+    store_fact({"fact_id": "gfbi_2", "claim": "delta",  "source": "s", "confidence": 0.8})
     facts = get_facts_by_ids(["gfbi_1"])
     assert len(facts) == 1
     assert facts[0]["fact_id"] == "gfbi_1"
