@@ -198,6 +198,47 @@ def test_failed_migration_rolls_back_ddl_and_version(tmp_path) -> None:
         conn.close()
 
 
+def test_snapshot_cannot_attach_receipt_from_another_repository(tmp_path) -> None:
+    conn = connect_database(tmp_path / "receipt-repository-custody.sqlite3")
+    try:
+        initialize_schema(conn)
+        _insert_repository(conn, "repo-a")
+        _insert_repository(conn, "repo-b")
+        _insert_receipt(conn, "repo-b", "receipt-b", "snapshot-a", 1)
+
+        with pytest.raises(sqlite3.IntegrityError):
+            _insert_snapshot(conn, "repo-a", "snapshot-a", "receipt-b", 1)
+    finally:
+        conn.close()
+
+
+def test_snapshot_generation_must_match_receipt_generation(tmp_path) -> None:
+    conn = connect_database(tmp_path / "receipt-generation-custody.sqlite3")
+    try:
+        initialize_schema(conn)
+        _insert_repository(conn, "repo-a")
+        _insert_receipt(conn, "repo-a", "receipt-a", "snapshot-a", 1)
+
+        with pytest.raises(sqlite3.IntegrityError):
+            _insert_snapshot(conn, "repo-a", "snapshot-a", "receipt-a", 2)
+    finally:
+        conn.close()
+
+
+def test_node_generation_must_match_snapshot_generation(tmp_path) -> None:
+    conn = connect_database(tmp_path / "node-generation-custody.sqlite3")
+    try:
+        initialize_schema(conn)
+        _insert_repository(conn, "repo-a")
+        _insert_receipt(conn, "repo-a", "receipt-a", "snapshot-a", 1)
+        _insert_snapshot(conn, "repo-a", "snapshot-a", "receipt-a", 1)
+
+        with pytest.raises(sqlite3.IntegrityError):
+            _insert_node(conn, "repo-a", "snapshot-a", "node-a", 2)
+    finally:
+        conn.close()
+
+
 def test_cross_repository_resolved_edge_is_rejected(tmp_path) -> None:
     conn = connect_database(tmp_path / "repo-isolation.sqlite3")
     try:
