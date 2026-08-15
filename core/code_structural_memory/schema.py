@@ -19,7 +19,7 @@ class CSMDatabaseError(RuntimeError):
     """Base error for bounded CSM schema operations."""
 
 
-class UnsupportedSchemaVersion(CSMDatabaseError):
+class UnsupportedSchemaVersionError(CSMDatabaseError):
     """Raised when the database schema is outside the admitted compatibility set."""
 
 
@@ -274,11 +274,11 @@ def initialize_schema(conn: sqlite3.Connection) -> int:
     if current == SCHEMA_VERSION:
         return current
     if current > SCHEMA_VERSION:
-        raise UnsupportedSchemaVersion(
+        raise UnsupportedSchemaVersionError(
             f"database schema v{current} is newer than supported v{SCHEMA_VERSION}"
         )
     if current != 0:
-        raise UnsupportedSchemaVersion(
+        raise UnsupportedSchemaVersionError(
             f"no admitted migration path from schema v{current} to v{SCHEMA_VERSION}"
         )
 
