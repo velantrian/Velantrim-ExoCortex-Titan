@@ -1,8 +1,8 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-08-14  
-**C9 live base:** `1909e3f10330c4032641970ad0934a67649681e3` · signature `VERIFIED / valid`  
-**C9 candidate:** PR #320 · exact head must be resolved live before acceptance  
+**Snapshot:** 2026-08-15  
+**Current live base:** `main@0074ea569030e0708ea345693c74e8506ada94a5` · signature `VERIFIED / valid`  
+**C11 candidate:** branch `agent/issue-52-final-reconciliation` · documentation-only final #52 reconciliation  
 **Continuity:** `12/12 = 100%` — complete  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0` · review-thread resolution required · required check `Titan aggregate merge evidence`
@@ -11,20 +11,21 @@ A green CI run, manifest, config, historical canary, archive payload, audit reco
 Notion update is evidence only. None of them grants current permission, runtime authority
 or production authority.
 
-## P1 — World Skills legacy corpus is not retroactively reviewed or provenance-complete
+## Reduced risk — World Skills admission is fail-closed; legacy corpus remains unreviewed
 
-Fresh C9 audit for parent #52 proved that the historical World Skills curated-ingest path
-was a real trust-boundary residual: legacy rows do not carry the complete structured
+C9 for parent #52 is **CLOSED** through protected-merged PR #320 at signed
+`main@0b2c49d701b88d12c66042148c19199638130d03`. The historical World Skills curated-ingest
+path had been a real trust-boundary residual: legacy rows lacked the complete structured
 `truth_status/source_refs/risk_domain/limitations/review_status/reviewer/reviewed_at`
-contract, while `core/world_skills_ingest.py` directly called `promote_to_validated()`.
+contract and the importer directly called `promote_to_validated()`.
 
-PR #320 removes that direct business-level exception and fails closed. Legacy rows are
+The admitted implementation removed that direct business-level exception. Legacy rows are
 explicit Draft/unreviewed candidates with empty provenance/risk/reviewer metadata and must
 remain non-canonical unless real evidence is added. Curation, filename location, Git
-history, claim prose and LLM output are not acceptable substitutes for attributable
-`source_refs` or reviewer evidence.
+history, claim prose and LLM output are not substitutes for attributable `source_refs` or
+reviewer evidence.
 
-The bounded candidate uses existing owners only:
+The accepted path reuses existing owners:
 
 ```text
 metadata/review gates
@@ -42,11 +43,12 @@ identifiers, **not cryptographic human signatures**. Reviewer-key authentication
 unimplemented and is not required/claimed by C9. If cryptographic reviewer signatures are
 later required, they need a separately governed identity/key owner and fresh admission.
 
-Remaining proof before this risk can be marked reduced: exact-head Full CI, Docker,
-CodeQL, review/race audit, Ready aggregate, protected merge, post-merge evidence, GitHub
-reconciliation and same-page Notion FINAL/read-back. Even after C9 closure, the legacy
-corpus remains only partially reviewable until actual source/review metadata is authored;
-C9 proves fail-closed admission, not corpus truth.
+C9 closure proof is complete: exact-head Full CI #1180, Docker #778, CodeQL #18 and Ready
+aggregate #1212 succeeded; protected merge `0b2c49d...` is verified/valid; post-merge Full
+CI #1181, Docker #779, CodeQL #19 and aggregate #1213 succeeded; GitHub and same-page Notion
+FINAL/read-back were reconciled. The remaining risk is semantic, not an admission bypass:
+the historical corpus is still not retroactively reviewed until real source/reviewer
+metadata is authored. C9 proves fail-closed admission, not corpus truth.
 
 ## P0 — No current Operator GO or deployed activation
 
