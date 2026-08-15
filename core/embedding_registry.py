@@ -12,8 +12,8 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,12 @@ class UnknownModelError(KeyError):
 
 class EmbeddingSpaceMismatchError(ValueError):
     """Two descriptors identify different embedding spaces."""
+
+
+class _EmbeddingVectorLike(Protocol):
+    """Structural type for vectors whose dimension can be checked via len()."""
+
+    def __len__(self) -> int: ...
 
 
 def _require_token(field_name: str, value: str) -> None:
@@ -226,7 +232,7 @@ class EmbeddingRegistry:
             )
 
     @classmethod
-    def validate(cls, embedding: Sequence[float], model_name: str) -> None:
+    def validate(cls, embedding: _EmbeddingVectorLike, model_name: str) -> None:
         """Validate a vector against a legacy model dimension."""
         if model_name not in cls._REGISTRY:
             raise UnknownModelError(
@@ -245,7 +251,7 @@ class EmbeddingRegistry:
     @classmethod
     def validate_space_vector(
         cls,
-        embedding: Sequence[float],
+        embedding: _EmbeddingVectorLike,
         descriptor: EmbeddingSpaceDescriptor,
     ) -> None:
         """Validate a vector against an explicit typed space descriptor."""
@@ -261,8 +267,8 @@ class EmbeddingRegistry:
 
     @staticmethod
     def validate_pair_dimensions(
-        left: Sequence[float],
-        right: Sequence[float],
+        left: _EmbeddingVectorLike,
+        right: _EmbeddingVectorLike,
         *,
         expected_dimension: int | None = None,
     ) -> None:
@@ -302,7 +308,7 @@ class EmbeddingRegistry:
 
     @classmethod
     def validate_safe(
-        cls, embedding: Sequence[float], model_name: str
+        cls, embedding: _EmbeddingVectorLike, model_name: str
     ) -> str | None:
         try:
             cls.validate(embedding, model_name)
