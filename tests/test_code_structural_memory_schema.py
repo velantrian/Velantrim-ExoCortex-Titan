@@ -5,7 +5,7 @@ import pytest
 from core.code_structural_memory.schema import (
     SCHEMA_VERSION,
     CSMDatabaseError,
-    UnsupportedSchemaVersion,
+    UnsupportedSchemaVersionError,
     _apply_statements_transactionally,
     connect_database,
     initialize_schema,
@@ -155,7 +155,7 @@ def test_newer_schema_version_fails_closed(tmp_path) -> None:
             (SCHEMA_VERSION + 1,),
         )
         conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION + 1}")
-        with pytest.raises(UnsupportedSchemaVersion, match="newer"):
+        with pytest.raises(UnsupportedSchemaVersionError, match="newer"):
             initialize_schema(conn)
     finally:
         conn.close()
