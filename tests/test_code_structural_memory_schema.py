@@ -1,7 +1,9 @@
+import json
 import sqlite3
 
 import pytest
 
+from core.code_structural_memory.contracts import serialize_reason_counts
 from core.code_structural_memory.schema import (
     SCHEMA_VERSION,
     CSMDatabaseError,
@@ -43,6 +45,14 @@ def _insert_receipt(
     receipt_id: str,
     snapshot_id: str,
     generation: int,
+    *,
+    source_manifest_digest: str = "manifest",
+    source_dirty: int = 0,
+    source_commit_sha: str | None = "abc123",
+    omitted_count: int = 0,
+    omission_reason_counts_json: str = "[]",
+    error_count: int = 0,
+    error_reason_counts_json: str = "[]",
 ) -> None:
     conn.execute(
         """
@@ -53,24 +63,42 @@ def _insert_receipt(
             previous_snapshot_id,
             candidate_snapshot_id,
             source_manifest_digest,
+            source_dirty,
+            source_commit_sha,
             parser_profile_id,
             parser_versions_json,
             scan_config_digest,
             discovered_file_count,
             discovered_byte_count,
             omitted_count,
+            omission_reason_counts_json,
             error_count,
+            error_reason_counts_json,
             structural_graph_digest,
             lease_cas_result,
             final_disposition,
             started_at,
             completed_at,
             no_runtime_authority
-        ) VALUES (?, ?, ?, NULL, ?, 'manifest', 'python-v1', '[]', 'config', 1, 10, 0, 0,
-                  'graph', 'NOT_IMPLEMENTED_STAGE_B', 'SCHEMA_FIXTURE',
-                  '2026-08-15T10:00:00Z', '2026-08-15T10:00:01Z', 1)
+        ) VALUES (
+            ?, ?, ?, NULL, ?, ?, ?, ?, 'python-v1', '[]', 'config', 1, 10,
+            ?, ?, ?, ?, 'graph', 'NOT_IMPLEMENTED_STAGE_B', 'SCHEMA_FIXTURE',
+            '2026-08-15T10:00:00Z', '2026-08-15T10:00:01Z', 1
+        )
         """,
-        (receipt_id, repository_id, generation, snapshot_id),
+        (
+            receipt_id,
+            repository_id,
+            generation,
+            snapshot_id,
+            source_manifest_digest,
+            source_dirty,
+            source_commit_sha,
+            omitted_count,
+            omission_reason_counts_json,
+            error_count,
+            error_reason_counts_json,
+        ),
     )
 
 
@@ -80,6 +108,10 @@ def _insert_snapshot(
     snapshot_id: str,
     receipt_id: str,
     generation: int,
+    *,
+    manifest_digest: str = "manifest",
+    dirty: int = 0,
+    commit_sha: str | None = "abc123",
 ) -> None:
     conn.execute(
         """
@@ -98,10 +130,18 @@ def _insert_snapshot(
             structural_graph_digest,
             scan_receipt_id,
             promoted_at
-        ) VALUES (?, ?, ?, 'manifest', 0, 'abc123', 'python-v1', '[]', 'config',
+        ) VALUES (?, ?, ?, ?, ?, ?, 'python-v1', '[]', 'config',
                   1, 10, 'graph', ?, NULL)
         """,
-        (repository_id, snapshot_id, generation, receipt_id),
+        (
+            repository_id,
+            snapshot_id,
+            generation,
+            manifest_digest,
+            dirty,
+            commit_sha,
+            receipt_id,
+        ),
     )
 
 
@@ -198,6 +238,25 @@ def test_failed_migration_rolls_back_ddl_and_version(tmp_path) -> None:
         conn.close()
 
 
+def test_dirty_receipt_with_commit_identity_is_rejected(tmp_path) -> None:
+    conn = connect_database(tmp_path / "dirty-receipt.sqlite3")
+    try:
+        initialize_schema(conn)
+        _insert_repository(conn, "repo-a")
+        with pytest.raises(sqlite3.IntegrityError):
+            _insert_receipt(
+                conn,
+                "repo-a",
+                "receipt-a",
+                "snapshot-a",
+                1,
+                source_dirty=1,
+                source_commit_sha="abc123",
+            )
+    finally:
+        conn.close()
+
+
 def test_snapshot_cannot_attach_receipt_from_another_repository(tmp_path) -> None:
     conn = connect_database(tmp_path / "receipt-repository-custody.sqlite3")
     try:
@@ -221,6 +280,93 @@ def test_snapshot_generation_must_match_receipt_generation(tmp_path) -> None:
 
         with pytest.raises(sqlite3.IntegrityError):
             _insert_snapshot(conn, "repo-a", "snapshot-a", "receipt-a", 2)
+    finally:
+        conn.close()
+
+
+def test_snapshot_source_state_must_match_receipt_source_state(tmp_path) -> None:
+    conn = connect_database(tmp_path / "source-state-custody.sqlite3")
+    try:
+        initialize_schema(conn)
+        _insert_repository(conn, "repo-a")
+        _insert_receipt(conn, "repo-a", "receipt-a", "snapshot-a", 1)
+
+        with pytest.raises(sqlite3.IntegrityError, match="source state"):
+            _insert_snapshot(
+                conn,
+                "repo-a",
+                "snapshot-a",
+                "receipt-a",
+                1,
+                manifest_digest="different-manifest",
+            )
+    finally:
+        conn.close()
+
+
+def test_dirty_source_state_matches_null_commit_across_receipt_and_snapshot(
+    tmp_path,
+) -> None:
+    conn = connect_database(tmp_path / "dirty-source-state-custody.sqlite3")
+    try:
+        initialize_schema(conn)
+        _insert_repository(conn, "repo-a")
+        _insert_receipt(
+            conn,
+            "repo-a",
+            "receipt-a",
+            "snapshot-a",
+            1,
+            source_dirty=1,
+            source_commit_sha=None,
+        )
+        _insert_snapshot(
+            conn,
+            "repo-a",
+            "snapshot-a",
+            "receipt-a",
+            1,
+            dirty=1,
+            commit_sha=None,
+        )
+        row = conn.execute(
+            "SELECT dirty, commit_sha FROM csm_snapshots WHERE repository_id='repo-a'"
+        ).fetchone()
+        assert row is not None
+        assert tuple(row) == (1, None)
+    finally:
+        conn.close()
+
+
+def test_reason_count_json_round_trips_deterministically(tmp_path) -> None:
+    conn = connect_database(tmp_path / "reason-counts.sqlite3")
+    try:
+        initialize_schema(conn)
+        _insert_repository(conn, "repo-a")
+        omission_json = serialize_reason_counts((("zeta", 1), ("alpha", 2)))
+        error_json = serialize_reason_counts((("parse", 1),))
+        _insert_receipt(
+            conn,
+            "repo-a",
+            "receipt-a",
+            "snapshot-a",
+            1,
+            omitted_count=3,
+            omission_reason_counts_json=omission_json,
+            error_count=1,
+            error_reason_counts_json=error_json,
+        )
+        row = conn.execute(
+            """
+            SELECT omission_reason_counts_json, error_reason_counts_json
+            FROM csm_scan_receipts
+            WHERE repository_id = 'repo-a' AND receipt_id = 'receipt-a'
+            """
+        ).fetchone()
+        assert row is not None
+        assert row[0] == '[["alpha",2],["zeta",1]]'
+        assert json.loads(row[0]) == [["alpha", 2], ["zeta", 1]]
+        assert row[1] == '[["parse",1]]'
     finally:
         conn.close()
 

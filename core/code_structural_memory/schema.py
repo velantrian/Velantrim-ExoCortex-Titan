@@ -50,13 +50,17 @@ _V1_STATEMENTS = (
         previous_snapshot_id TEXT,
         candidate_snapshot_id TEXT NOT NULL,
         source_manifest_digest TEXT NOT NULL,
+        source_dirty INTEGER NOT NULL CHECK (source_dirty IN (0, 1)),
+        source_commit_sha TEXT,
         parser_profile_id TEXT NOT NULL,
         parser_versions_json TEXT NOT NULL,
         scan_config_digest TEXT NOT NULL,
         discovered_file_count INTEGER NOT NULL CHECK (discovered_file_count >= 0),
         discovered_byte_count INTEGER NOT NULL CHECK (discovered_byte_count >= 0),
         omitted_count INTEGER NOT NULL CHECK (omitted_count >= 0),
+        omission_reason_counts_json TEXT NOT NULL,
         error_count INTEGER NOT NULL CHECK (error_count >= 0),
+        error_reason_counts_json TEXT NOT NULL,
         structural_graph_digest TEXT NOT NULL,
         lease_cas_result TEXT NOT NULL,
         final_disposition TEXT NOT NULL,
@@ -66,6 +70,7 @@ _V1_STATEMENTS = (
             CHECK (no_runtime_authority = 1),
         PRIMARY KEY (repository_id, receipt_id),
         UNIQUE (repository_id, receipt_id, generation, candidate_snapshot_id),
+        CHECK (source_dirty = 0 OR source_commit_sha IS NULL),
         FOREIGN KEY (repository_id)
             REFERENCES csm_repositories(repository_id)
             ON DELETE CASCADE
@@ -106,6 +111,25 @@ _V1_STATEMENTS = (
             candidate_snapshot_id
         )
     )
+    """,
+    """
+    CREATE TRIGGER csm_snapshot_receipt_source_state_guard
+    BEFORE INSERT ON csm_snapshots
+    FOR EACH ROW
+    WHEN NOT EXISTS (
+        SELECT 1
+        FROM csm_scan_receipts AS receipt
+        WHERE receipt.repository_id = NEW.repository_id
+          AND receipt.receipt_id = NEW.scan_receipt_id
+          AND receipt.generation = NEW.generation
+          AND receipt.candidate_snapshot_id = NEW.snapshot_id
+          AND receipt.source_manifest_digest = NEW.manifest_digest
+          AND receipt.source_dirty = NEW.dirty
+          AND receipt.source_commit_sha IS NEW.commit_sha
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'snapshot source state must match scan receipt');
+    END
     """,
     """
     CREATE TABLE csm_nodes (

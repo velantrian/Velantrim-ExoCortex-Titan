@@ -17,6 +17,7 @@ from typing import Iterable
 
 CONTRACT_VERSION = "csm-contract-v1"
 IDENTITY_SCHEMA_VERSION = "csm-identity-v1"
+SNAPSHOT_IDENTITY_VERSION = "csm-snapshot-identity-v1"
 
 
 def _require_text(value: str, field_name: str) -> str:
@@ -63,6 +64,43 @@ def _canonical_digest(parts: Iterable[object]) -> str:
         separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _normalize_parser_versions(
+    parser_versions: Iterable[tuple[str, str]],
+) -> tuple[tuple[str, str], ...]:
+    return tuple(
+        sorted(
+            (
+                _require_text(name, "parser_name"),
+                _require_text(version, "parser_version"),
+            )
+            for name, version in parser_versions
+        )
+    )
+
+
+def _normalize_reason_counts(
+    reason_counts: Iterable[tuple[str, int]],
+    field_name: str,
+) -> tuple[tuple[str, int], ...]:
+    normalized: list[tuple[str, int]] = []
+    seen: set[str] = set()
+    for reason, count in reason_counts:
+        reason = _require_text(reason, f"{field_name}.reason")
+        if reason in seen:
+            raise ValueError(f"{field_name} must not contain duplicate reasons")
+        if isinstance(count, bool) or not isinstance(count, int) or count <= 0:
+            raise ValueError(f"{field_name} counts must be positive integers")
+        seen.add(reason)
+        normalized.append((reason, count))
+    return tuple(sorted(normalized))
+
+
+def serialize_reason_counts(reason_counts: Iterable[tuple[str, int]]) -> str:
+    """Serialize reason accounting deterministically for bounded persistence."""
+    normalized = _normalize_reason_counts(reason_counts, "reason_counts")
+    return json.dumps(normalized, ensure_ascii=False, separators=(",", ":"))
 
 
 def make_node_id(
@@ -131,6 +169,8 @@ class SourceState:
             "manifest_digest",
             _require_text(self.manifest_digest, "manifest_digest"),
         )
+        if not isinstance(self.dirty, bool):
+            raise TypeError("dirty must be a bool")
         if self.commit_sha is not None:
             object.__setattr__(
                 self,
@@ -141,6 +181,40 @@ class SourceState:
             raise ValueError(
                 "dirty source state must not claim exact clean-commit identity"
             )
+
+
+def make_snapshot_id(
+    *,
+    repository_id: str,
+    source_state: SourceState,
+    parser_profile_id: str,
+    parser_versions: Iterable[tuple[str, str]],
+    scan_config_digest: str,
+    structural_graph_digest: str,
+) -> str:
+    """Create the semantic/content identity of one repository snapshot.
+
+    Generation, receipt/lease identity and wall-clock metadata are custody data,
+    not semantic content, and are intentionally excluded.
+    """
+    if not isinstance(source_state, SourceState):
+        raise TypeError("source_state must be a SourceState")
+    normalized_versions = _normalize_parser_versions(parser_versions)
+    return _canonical_digest(
+        (
+            SNAPSHOT_IDENTITY_VERSION,
+            _require_text(repository_id, "repository_id"),
+            (
+                source_state.manifest_digest,
+                source_state.dirty,
+                source_state.commit_sha,
+            ),
+            _require_text(parser_profile_id, "parser_profile_id"),
+            normalized_versions,
+            _require_text(scan_config_digest, "scan_config_digest"),
+            _require_text(structural_graph_digest, "structural_graph_digest"),
+        )
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -211,20 +285,26 @@ class RepositorySnapshot:
                 field_name,
                 _require_text(getattr(self, field_name), field_name),
             )
+        if not isinstance(self.source_state, SourceState):
+            raise TypeError("source_state must be a SourceState")
         if self.generation < 1:
             raise ValueError("generation must be >= 1")
         if self.discovered_file_count < 0 or self.discovered_byte_count < 0:
             raise ValueError("discovered counts must be non-negative")
-        normalized_versions = tuple(
-            sorted(
-                (
-                    _require_text(name, "parser_name"),
-                    _require_text(version, "parser_version"),
-                )
-                for name, version in self.parser_versions
-            )
-        )
+        normalized_versions = _normalize_parser_versions(self.parser_versions)
         object.__setattr__(self, "parser_versions", normalized_versions)
+        expected = make_snapshot_id(
+            repository_id=self.repository_id,
+            source_state=self.source_state,
+            parser_profile_id=self.parser_profile_id,
+            parser_versions=normalized_versions,
+            scan_config_digest=self.scan_config_digest,
+            structural_graph_digest=self.structural_graph_digest,
+        )
+        if self.snapshot_id != expected:
+            raise ValueError(
+                "snapshot_id does not match the content-addressed identity contract"
+            )
         if self.promoted_at is not None:
             object.__setattr__(
                 self,
@@ -419,14 +499,16 @@ class ScanReceipt:
     repository_id: str
     generation: int
     candidate_snapshot_id: str
-    source_manifest_digest: str
+    source_state: SourceState
     parser_profile_id: str
     parser_versions: tuple[tuple[str, str], ...]
     scan_config_digest: str
     discovered_file_count: int
     discovered_byte_count: int
     omitted_count: int
+    omission_reason_counts: tuple[tuple[str, int], ...]
     error_count: int
+    error_reason_counts: tuple[tuple[str, int], ...]
     structural_graph_digest: str
     lease_cas_result: str
     final_disposition: str
@@ -440,7 +522,6 @@ class ScanReceipt:
             "receipt_id",
             "repository_id",
             "candidate_snapshot_id",
-            "source_manifest_digest",
             "parser_profile_id",
             "scan_config_digest",
             "structural_graph_digest",
@@ -454,6 +535,8 @@ class ScanReceipt:
                 field_name,
                 _require_text(getattr(self, field_name), field_name),
             )
+        if not isinstance(self.source_state, SourceState):
+            raise TypeError("source_state must be a SourceState")
         if self.previous_snapshot_id is not None:
             object.__setattr__(
                 self,
@@ -470,18 +553,35 @@ class ScanReceipt:
         ):
             if getattr(self, name) < 0:
                 raise ValueError(f"{name} must be non-negative")
-        object.__setattr__(
-            self,
-            "parser_versions",
-            tuple(
-                sorted(
-                    (
-                        _require_text(name, "parser_name"),
-                        _require_text(version, "parser_version"),
-                    )
-                    for name, version in self.parser_versions
-                )
-            ),
+        normalized_versions = _normalize_parser_versions(self.parser_versions)
+        object.__setattr__(self, "parser_versions", normalized_versions)
+
+        omission_counts = _normalize_reason_counts(
+            self.omission_reason_counts,
+            "omission_reason_counts",
         )
+        error_counts = _normalize_reason_counts(
+            self.error_reason_counts,
+            "error_reason_counts",
+        )
+        if sum(count for _, count in omission_counts) != self.omitted_count:
+            raise ValueError("omission reason counts must sum to omitted_count")
+        if sum(count for _, count in error_counts) != self.error_count:
+            raise ValueError("error reason counts must sum to error_count")
+        object.__setattr__(self, "omission_reason_counts", omission_counts)
+        object.__setattr__(self, "error_reason_counts", error_counts)
+
+        expected_snapshot_id = make_snapshot_id(
+            repository_id=self.repository_id,
+            source_state=self.source_state,
+            parser_profile_id=self.parser_profile_id,
+            parser_versions=normalized_versions,
+            scan_config_digest=self.scan_config_digest,
+            structural_graph_digest=self.structural_graph_digest,
+        )
+        if self.candidate_snapshot_id != expected_snapshot_id:
+            raise ValueError(
+                "candidate_snapshot_id does not match receipt snapshot identity inputs"
+            )
         if self.no_runtime_authority is not True:
             raise ValueError("CSM scan receipts cannot claim runtime authority")
