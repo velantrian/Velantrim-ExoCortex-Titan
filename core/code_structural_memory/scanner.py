@@ -890,7 +890,8 @@ def _discover_and_parse(
                 )
             )
             continue
-        if total_bytes + size > budget.max_total_bytes:
+        remaining_total_bytes = budget.max_total_bytes - total_bytes
+        if remaining_total_bytes <= 0 or size > remaining_total_bytes:
             problems.append(
                 _problem(
                     relative_path=relative_path,
@@ -900,11 +901,35 @@ def _discover_and_parse(
             )
             continue
 
+        # Charge aggregate budget for bytes actually inspected, including files that
+        # are later rejected by decode/parse checks. Read one look-ahead byte only
+        # to detect growth after stat without allowing an unbounded read.
+        read_cap = min(budget.max_file_bytes, remaining_total_bytes)
         try:
-            raw = resolved.read_bytes()
+            with resolved.open("rb", buffering=0) as source:
+                raw = source.read(read_cap + 1)
         except OSError:
             problems.append(
                 _problem(relative_path=relative_path, reason="READ_ERROR", is_error=True)
+            )
+            # The read request itself was bounded, but an exception gives no
+            # trustworthy byte count. Stop rather than spend an unknown remainder.
+            break
+
+        total_bytes += len(raw)
+        if len(raw) > read_cap:
+            overflow_reason = (
+                "TOTAL_BYTE_LIMIT"
+                if remaining_total_bytes <= budget.max_file_bytes
+                else "FILE_SIZE_LIMIT"
+            )
+            problems.append(
+                _problem(
+                    relative_path=relative_path,
+                    reason=overflow_reason,
+                    observed_bytes=len(raw),
+                    is_error=True,
+                )
             )
             continue
         if len(raw) != size:
@@ -976,7 +1001,6 @@ def _discover_and_parse(
             )
             break
 
-        total_bytes += len(raw)
         parsed.append(
             _ParsedFile(
                 relative_path=relative_path,
