@@ -40,15 +40,15 @@ registry, persistent vector store, rebuildable projection contract and legacy on
 DenseRetriever. The real gap was not missing embeddings but missing complete semantic-space
 identity across those owners.
 
-Phase 3A therefore evolved the existing `core/embedding_registry.py` instead of creating a
-second registry/store. `EmbeddingSpaceDescriptor` binds provider, model, model revision,
-dimension, normalization, pooling, distance metric, chunker version and preprocessing
-version. Canonical JSON + SHA-256 produces deterministic `embedding-space-v1:<digest>`
-identity; equal dimensions alone never imply compatibility.
+Phase 3A evolved the existing `core/embedding_registry.py` instead of creating a second
+registry/store. `EmbeddingSpaceDescriptor` binds provider, model, model revision, dimension,
+normalization, pooling, distance metric, chunker version and preprocessing version.
+Canonical JSON + SHA-256 produces deterministic `embedding-space-v1:<digest>` identity;
+equal dimensions alone never imply compatibility.
 
 The existing projection/storage TEXT identity axis is reused, so project schema remains
-v7. Historical plain-model rows do not contain the complete typed metadata and fail closed
-to lexical fallback rather than being auto-reused.
+v7. Historical plain-model rows lack complete typed metadata and fail closed to lexical
+fallback rather than being auto-reused.
 
 A separate correctness trap was closed in `DenseRetriever.retrieve()`: the complete
 candidate batch is dimension-validated against the query before any similarity
@@ -72,7 +72,7 @@ so documentation/Notion lifecycle could be reconciled before final `CLOSED_COMPL
 
 ---
 
-## 2026-08-14 — #52 C8 closed → C9 World Skills admission · HISTORICAL CHECKPOINT
+## 2026-08-14 — #52 C8 closed → C9 World Skills admission · IN PROGRESS
 
 ```text
 C8 protected squash main:         1909e3f10330c4032641970ad0934a67649681e3
@@ -81,10 +81,12 @@ C8 post-merge Full CI:            #1170 · 31829982550 · SUCCESS
 C8 post-merge Docker:             #769 · 31829982337 · SUCCESS
 C8 post-merge CodeQL:             #8 · 31829982439 · SUCCESS
 C8 post-merge aggregate:          #1171 · 31829982414 · SUCCESS
-C9 tracking PR at that time:      #320 · DRAFT
+C9 tracking PR:                   #320 · DRAFT
 C9 branch:                        agent/issue-52-world-skills-admission
 C9 base:                          1909e3f10330c4032641970ad0934a67649681e3
+C9 exact candidate head:          RESOLVE LIVE — changes still under review
 C9 Notion DRAFT/read-back:        SYNCED
+parent #52:                       OPEN
 Continuity:                       12/12
 schema:                           v7
 runtime enabled:                  false
@@ -102,11 +104,50 @@ provenance/risk/review metadata contract; the focused ingest test explicitly exp
 legacy rows to auto-validate; and the promotion ownership inventory already documented the
 route as a `KNOWN_EXCEPTION` requiring separate convergence.
 
-C9 was bounded to that exception and later closed through protected merge. The accepted
-admission chain reuses TruthGate, legal ESM progression, PromotionGateway and
-`validate_and_promote()`; legacy/unreviewed rows remain non-canonical without real evidence.
-Historical candidate/pack SHA-256 identifiers bind content/replay, not human reviewer
-authentication.
+C9 is therefore bounded to that exception. The candidate does **not** weaken TruthGate or
+create a second Canon owner. It introduces explicit candidate metadata:
+
+```text
+truth_status
+source_refs
+confidence
+risk_domain
+limitations
+review_status
+reviewer
+reviewed_at
+```
+
+Legacy rows receive safe non-claims and remain quarantined. The proposed admission chain is:
+
+```text
+Draft
+→ Quarantine
+→ Provenance Check
+→ Domain Review
+→ existing TruthGate precheck
+→ legal ESM ladder to Supported
+→ existing PromotionGateway
+→ existing validate_and_promote()
+→ TruthGate recheck + CAS
+→ Validated / local Canon
+```
+
+A high-risk candidate selects the existing `PRECISION` mode; ordinary explicit risk uses
+existing `BALANCED`. Numerical truth/evidence thresholds remain entirely TruthGate-owned.
+Candidate and pack SHA-256 identifiers provide deterministic replay/content binding, not
+cryptographic reviewer authentication.
+
+Focused candidate tests cover legacy quarantine, successful reviewed low-risk admission,
+high-risk TruthGate rejection, self-review rejection and order-independent/content-bound
+pack identity. `tests/test_promotion_ownership_guard.py` removes World Skills from the
+reviewed direct-promotion allowlist, so a reintroduced business-level bypass fails CI.
+
+C9 also reconciles the promotion ownership inventory, the World Skills authoring/source
+rules, ADR and operator documentation. The existing Notion `Velantrim Titan 9.0` page has
+a C9 DRAFT checkpoint and was read back. No FINAL/merge claim is made yet: exact-head Full
+CI, Docker, CodeQL, review/race audit, Ready aggregate, protected merge, post-merge evidence
+and FINAL GitHub/Notion reconciliation remain required.
 
 ---
 
@@ -151,18 +192,55 @@ completed through #301 and tracking issue #299 subsequently closed as `CLOSED_CO
 The registry remains deliberately **UNWIRED / NOT ENABLED**. No provider/model/network call
 path was activated.
 
-`core/capability_registry.py` provides process-local metadata for stable provider/capability
-descriptors, declared data mode, explicit health states, deterministic candidate
-selection/no-selection and trace-ready metadata. The existing process-wide `PolicyKernel`
-remains the sole permission owner. Explicit preference and `auto` cannot reinterpret a
-denial.
+### Implemented bounded owner
 
-A Codex review request returned `NOT RUN — USAGE LIMIT`; this is neither approval nor a
-finding. The active solo ruleset requires zero approving reviews, review-thread resolution
-and the `Titan aggregate merge evidence` status check; no independent review is claimed.
+`core/capability_registry.py` now provides a process-local metadata contract for:
 
-Docs-only PR #301 reconciled Phase 2A public lifecycle without changing code or runtime
-behavior. No Docker run was spawned for that docs-only PR, so none is claimed.
+- stable `ProviderDescriptor` and `CapabilityDescriptor` identity;
+- capability-specific declared `data_mode`;
+- explicit `ProviderHealth` states: UNKNOWN / HEALTHY / DEGRADED / UNAVAILABLE;
+- deterministic candidate selection/no-selection;
+- separate health and policy/selection reason codes;
+- trace-ready selection metadata without TRACE persistence.
+
+The existing process-wide `PolicyKernel` remains the sole permission owner. Production
+`CapabilityRegistry()` has no policy/leaser injection parameter and always resolves the
+owner through `get_policy_kernel()`. Every HEALTHY/DEGRADED candidate must receive an
+existing PolicyKernel lease; explicit preference and `auto` cannot reinterpret a denial.
+
+### Authority-bypass hardening
+
+Self-review found an early constructor-injection surface that would have allowed a future
+caller to substitute an arbitrary leaser. That was treated as a blocking authority defect
+and removed before Ready. Tests patch `get_policy_kernel()` only inside the test process;
+there is no production alternate-policy extension point.
+
+Additional fail-closed boundaries include malformed typed metadata, remote provider
+metadata that hides network requirements, unknown/unavailable health, PolicyKernel
+exceptions and mixed policy snapshot/version values during one selection pass.
+
+### Review and governance evidence
+
+A Codex review request on ancestor head `009e5fbc11b03fd4033c939ae04ff0a8835e797b`
+returned `NOT RUN — USAGE LIMIT`. This is neither approval nor a finding. The active solo
+ruleset requires zero approving reviews, review-thread resolution and the
+`Titan aggregate merge evidence` status check; no independent review is claimed.
+
+The first Ready aggregate (#980) failed only because the PR-body Notion lifecycle token did
+not use the validator's accepted `SYNCED` value. The existing Notion page had already been
+updated and read back. PR metadata was corrected without changing the exact head; fresh
+Ready aggregate #981 then succeeded.
+
+### Documentation closure
+
+The implementation merge left review-stage language in public AI context files. Docs-only
+PR #301 reconciled those truth surfaces without touching `core/**` or changing Phase 2A
+behavior. It protected-merged as
+`840b5aa231fe7d8cc0383c072ad953ca9bf4f46a`; its exact-head Full CI #1107 and Ready
+aggregate #987 succeeded, followed by post-merge Full CI #1108 and aggregate #988. No
+Docker run was spawned for docs-only #301, so no Docker success is claimed for it. The
+existing `Velantrim Titan 9.0` page was synchronized/read back, and issue #299 was then
+closed with state reason `completed`.
 
 ---
 
@@ -196,7 +274,24 @@ Canon:                  local
 remote Canon:           forbidden
 ```
 
-Phase 3A does not authorize persistent projection live retrieval, provider execution,
-remote embeddings, reranker/LLM execution, ADAO, ARM-04, background semantic indexing,
+Phase 2A and #52 hardening do not authorize embeddings/vector execution, reranker/LLM
+execution, ADAO, ARM-04, provider probing/invocation, remote consent implementation,
 network activation, runtime route replacement, runtime enablement, Continuity 13/12 or
-schema v8. Phase 3B is not automatically admitted by this closure.
+schema v8.
+
+Phase 3A adds a tested embedding-space identity / dimension-safety contract only. It does
+not authorize persistent projection live retrieval, embedding provider execution,
+background semantic indexing, semantic-quality claims or Phase 3B.
+
+Phase 2A closure sequence completed:
+
+```text
+#301 exact-head CI SUCCESS
+→ same-page Notion sync + read-back
+→ Ready aggregate #987 SUCCESS
+→ protected docs merge 840b5aa231fe7d8cc0383c072ad953ca9bf4f46a
+→ post-merge Full CI #1108 SUCCESS
+→ post-merge aggregate #988 SUCCESS
+→ FINAL Notion read-back
+→ #299 CLOSED_COMPLETED
+```
