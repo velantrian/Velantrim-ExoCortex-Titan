@@ -33,8 +33,10 @@ product's actual core:
 
 ## 2. Feature-gated / experimental areas
 
-Off by default; enabled per-deployment via `ENABLE_*` environment flags (see
-`README.md` → ExoCortex optional flags). Working, but at varying levels of hardening:
+These are opt-in at the code/configuration boundary and work at varying levels of
+hardening. Do not infer the settings of a particular Compose profile from this table:
+the compatibility `docker-compose.yml` intentionally enables several research layers,
+while `docker-compose.prod.yml` pins them off for the hardened profile.
 
 | Area | Flag(s) | Maturity |
 |---|---|---|
@@ -71,31 +73,34 @@ Ranked by what would actually hurt someone relying on this in production:
 4. **Observability is metrics + logs, not a persisted long-term trace store.** You can
    see current latency/health, but reconstructing "why did the system answer this way"
    for a request from last week is not yet a first-class capability.
-5. **Promotion ownership is substantially hardened, but not globally singular.** A
-   previous version of this document described `POST /query` as a second public path
-   that could promote retrieved facts. That is stale: `core/pipeline.py::run()` is now
-   read-only with respect to fact/ESM mutation. Five standard promotion callers route
-   through `PromotionGateway`, which delegates to the canonical
-   `SQLiteGraphStore.validate_and_promote()` path; an AST-based CI ownership guard
-   rejects unreviewed new direct promotion sites. The hardened promotion primitive uses
-   a durable L1 snapshot, TruthGate evaluation, a CAS-guarded canonical update, and
-   `VersionStore` pre-image + `AuditChain` event in the same SQLite transaction; when
-   migration 020 is active, the projection-outbox intent is committed in that same
-   transaction too. See `docs/operations/promotion-ownership-inventory.md` and
-   `docs/adr/ADR-2026-08-03-promotion-ownership-lock.md`.
+5. **Promotion ownership is substantially hardened, but mutation ownership remains
+   family-specific.** `core/pipeline.py::run()` is read-only with respect to fact/ESM
+   mutation. Standard promotion callers route through `PromotionGateway`, which
+   delegates to the canonical `SQLiteGraphStore.validate_and_promote()` path; an
+   AST-based CI ownership guard rejects unreviewed new direct promotion sites. The
+   hardened promotion primitive uses a durable L1 snapshot, TruthGate evaluation, a
+   CAS-guarded canonical update, and transactionally coupled version/audit evidence.
 
-   This is **not** a claim that all mutation families have one global owner. The curated
-   World Skills ingest remains one explicit, CI-locked promotion exception pending a
-   separate admission contract; `truth_maintenance.supersede()` remains a compound
-   mutation with its own atomic facts transaction; ordinary non-Validated ESM
-   transitions, invalidation, relation lifecycle, archival/redaction and other mutation
-   families have their own boundaries. The remaining engineering task is to keep those
-   families explicit and converge legacy bypasses without creating a second authority.
-6. **Version/branding drift risk.** Recently unified to Titan 9.0 across public
-   entrypoints (`README.md`, `pyproject.toml`, `server.py`, Docker); historical docs and
-   code comments intentionally retain old version numbers (V8.6/V8.7) as history — see
-   `CHANGELOG.md` and `docs/archive/legacy/`. Watch for regressions if new
-   version-specific strings get introduced without going through `core.__version__`.
+   The old World Skills direct-promotion exception is **closed** as of Issue #52 C9 /
+   PR #320. World Skills candidates now pass explicit provenance metadata, domain
+   review and a read-only TruthGate precheck; a legal ESM transition reaches
+   `Supported`; final `Validated` / local-Canon admission is owned by
+   `PromotionGateway` + TruthGate recheck + CAS. Legacy/unreviewed World Skills rows are
+   quarantined rather than auto-validated. See
+   `docs/operations/world-skills-admission.md` and
+   `docs/operations/promotion-ownership-inventory.md`.
+
+   This is **not** a claim that all mutation families have one global owner.
+   `truth_maintenance.supersede()` remains a compound mutation with its own atomic facts
+   transaction; ordinary non-Validated ESM transitions, invalidation, relation
+   lifecycle, archival/redaction and other mutation families retain their documented
+   boundaries.
+6. **Version/branding/public-release drift risk.** Public entrypoints use Titan 9.0,
+   while historical docs and comments intentionally retain older version numbers as
+   history. The only historical GitHub Release visible during the 2026-08-14 audit has
+   a Titan tag but a cross-project/mislabeled release title; it is explicitly classified
+   as historical and not current Titan release evidence in
+   `docs/evidence/release-evidence-2026-08-14.md`.
 
 ## 4. Roadmap: P0 / P1 / P2
 
@@ -113,11 +118,12 @@ parentheses for traceability.
   bounded SQLite concurrency/crash characterization now exist. Standard Validated
   callers are CI-inventoried behind `PromotionGateway`; `/query` is read-only; the
   canonical promotion path is CAS guarded and transactionally couples its required
-  Version/Audit evidence. Still open: characterize issue #249 without weakening its
-  one-winner/one-intent assertions; prove the wider storage path under realistic
-  multiprocess/production conditions; and continue converging separate legacy mutation
-  families only where evidence shows an authority or atomicity gap. CI coverage gate
-  (`--cov-fail-under`) is enforced, not just configured.
+  Version/Audit evidence. World Skills now uses its dedicated fail-closed admission
+  contract rather than a direct-promotion exception. Still open: characterize issue
+  #249 without weakening its one-winner/one-intent assertions; prove the wider storage
+  path under realistic multiprocess/production conditions; and continue converging
+  separate legacy mutation families only where evidence shows an authority or atomicity
+  gap. CI coverage gate (`--cov-fail-under`) is enforced, not just configured.
 - **Independent security review** before any deployment that will hold real users'
   sensitive data on the public internet.
 
@@ -144,33 +150,32 @@ parentheses for traceability.
   `core.__version__` (`server.py` already does, as of Titan 9.0) rather than
   reintroducing hardcoded version literals.
 
-## 5. Current test status
+## 5. Current test / release evidence
 
-Verified directly for this document (not aspirational):
+The current dated evidence snapshot is:
+
+[`docs/evidence/release-evidence-2026-08-14.md`](evidence/release-evidence-2026-08-14.md)
+
+Its signed baseline is `main@0b2c49d701b88d12c66042148c19199638130d03` after
+C9 / PR #320. Repository-owned push evidence on that exact SHA records:
 
 ```text
-pytest tests/test_smoke.py tests/test_invariants.py tests/test_truth_gate.py \
-       tests/test_write_gate.py tests/test_llm_router.py tests/test_llm_api_routes.py \
-       tests/test_console_security.py tests/test_server_integration.py -v
-→ 126 passed
+Full CI #1181 / run 31839014136           SUCCESS (5/5 jobs)
+Docker #779 / run 31839014137             SUCCESS
+CodeQL #19 / run 31839014207              SUCCESS
+Aggregate #1213 / run 31839014181         SUCCESS
+full pytest path                          4160 passed
+coverage ratchet                          76% >= 74%
 ```
 
-This covers: import/wiring sanity, all current CI-blocking tests in
-`tests/test_invariants.py`, Truth Gate thresholds,
-the write-time admission gate, LLM provider routing/catalog, console/LLM-proxy auth
-(including the "provider key never leaks" regression test), and end-to-end server
-integration (auth, CORS, sleep worker, console chat memory).
+Those values supersede the old focused `126 passed` snapshot as the current public
+CI evidence for this document. They remain **snapshot evidence**, not an evergreen
+claim: any newer candidate or merge must establish its own exact-head/post-merge runs.
 
-Broader picture (not independently re-verified in full for this document — see
-`README.md` and `docs/LIMITATIONS.md` for the project's own running counts): **137
-`test_*.py` files** under `tests/` on the documented repository snapshot, spanning
-unit, integration, and invariant levels. Coverage is
-uneven across layers — the 🟢 stable areas in §1 are the ones actually exercised
-end-to-end; treat 🟡/🔵 areas in §2 as "read the code," per
-[`docs/REVIEWER_README.md`](REVIEWER_README.md) §8–9.
-
-These counts are snapshot evidence for the documented run, not a live repository total;
-re-run the relevant commands before quoting them as current.
+The evidence report also records the explicit absence of a current 2026-08-14 GitHub
+Release and classifies the repository's older mislabeled release/tag as historical, not
+current Titan release evidence. No release is invented merely to make this status page
+look complete.
 
 ## 6. Reviewer-safe summary
 
@@ -178,9 +183,12 @@ Velantrim Titan 9.0 is a **research-grade prototype moving toward production
 hardening**: a local-first verifiable memory runtime with evidence-gated AI memory,
 auditable provenance, and truth-bound generation, where the core write/read/truth path
 (memory → Truth Gate → provenance → retrieval) is stable and test-covered, and higher
-cognitive layers are explicit, honestly-labeled, opt-in research code. It has not had an
-independent security audit and does not have a certified compliance program. SQLite
-concurrency and crash behavior have bounded characterization evidence, but production-
-scale multiprocess/storage behavior and issue #249 remain unresolved. It is a reasonable
-choice to evaluate, extend, or run locally today; it is not yet a drop-in production
-system for sensitive, internet-facing, multi-user workloads without the P0 work above.
+cognitive layers are explicit research code. It has not had an independent security
+audit and does not have a certified compliance program. SQLite concurrency and crash
+behavior have bounded characterization evidence, but production-scale
+multiprocess/storage behavior and issue #249 remain unresolved. For deployment,
+`docker-compose.prod.yml` is the repository's hardened deny-by-default profile;
+`docker-compose.yml` is retained for compatibility/research behavior and is not the
+hardened production contract. It is a reasonable choice to evaluate, extend, or run
+locally today; it is not yet a drop-in production system for sensitive,
+internet-facing, multi-user workloads without the P0 work above.

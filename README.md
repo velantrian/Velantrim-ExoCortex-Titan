@@ -275,23 +275,40 @@ Working Desk сохранён в **Research Mode** как будущая task-aw
 
 ## 🚀 Быстрый старт
 
-### Вариант A — Docker
+### Вариант A — hardened deployment profile
 
 ```bash
 git clone https://github.com/velantrian/Velantrim-ExoCortex-Titan.git
 cd Velantrim-ExoCortex-Titan
 
-cp .env.example .env
-# Укажите в .env безопасный VELANTRIM_API_KEY
+cp .env.prod.example .env.prod
+# Укажите в .env.prod безопасный VELANTRIM_API_KEY.
 
-docker compose up -d
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 ```
+
+Hardened-профиль по умолчанию публикует API только на loopback и fail-closed
+отключает research/autonomous layers. Перед эксплуатацией прочитайте
+[`docs/operations/hardened-production-profile.md`](docs/operations/hardened-production-profile.md):
+это application/container hardening, а не обещание host-level firewall/TLS/WAF.
 
 После запуска проверьте:
 
 ```text
-http://localhost:8000/health
+http://127.0.0.1:8000/health
 ```
+
+### Вариант A2 — compatibility / research Compose
+
+```bash
+cp .env.example .env
+# Укажите VELANTRIM_API_KEY.
+docker compose up -d
+```
+
+`docker-compose.yml` сохраняет историческое research/compatibility-поведение: он
+явно включает несколько cognitive/research layers и широко публикует порт 8000.
+Поэтому это **не** hardened production profile.
 
 ### Вариант B — локальная разработка
 
@@ -358,6 +375,9 @@ ENABLE_EVENT_BUS=1
    = CI evidence, но не замена runtime-наблюдению
 ```
 
+Текущий датированный CI/release snapshot и его ограничения:
+[`docs/evidence/release-evidence-2026-08-14.md`](docs/evidence/release-evidence-2026-08-14.md).
+
 Для системной жизнеспособности нужен более широкий цикл:
 
 ```text
@@ -386,6 +406,7 @@ ENABLE_EVENT_BUS=1
 | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) 📊 | зрелость, реальные риски, P0/P1/P2 |
 | [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) 🔍 | карта файлов и проверок для аудитора |
 | [`SECURITY.md`](SECURITY.md) 🔒 | threat model, auth, disclosure, ограничения |
+| [`docs/evidence/release-evidence-2026-08-14.md`](docs/evidence/release-evidence-2026-08-14.md) 🧾 | датированный CI/release evidence snapshot и ограничения |
 | [`AGENTS.md`](AGENTS.md) 🤖 | обязательные правила для coding agents |
 
 ### Канон и архитектура

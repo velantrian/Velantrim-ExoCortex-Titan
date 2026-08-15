@@ -1,8 +1,8 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-14  
-**Current live base for C9:** `main@1909e3f10330c4032641970ad0934a67649681e3` · signature `VERIFIED / valid`  
-**C9 candidate:** PR #320 · resolve exact head from live GitHub before any mutation or merge  
+**Current live base for C10:** `main@0b2c49d701b88d12c66042148c19199638130d03` · signature `VERIFIED / valid`  
+**C10 candidate:** branch `agent/issue-52-public-truth-release-evidence` · resolve exact head from live GitHub before any mutation or merge  
 **Continuity:** `12/12 = 100%`  
 **Machine-readable state:** schema v7  
 **Notion target:** `Velantrim Titan 9.0` · `398ac84d-0547-81fe-8ca5-d0d2727d1961`  
@@ -49,19 +49,15 @@ rather than treating that old exact checkpoint as today's repository head.
 
 ### Parent #52 — supply-chain residual program
 
-C8 reproducible-wheel verification is protected-merged through PR #318 at
-`main@1909e3f10330c4032641970ad0934a67649681e3`. Its admitted claim is deliberately
-bounded: two clean Titan Python wheel builds from one exact source head under the frozen,
-hash-bound Setuptools build contract produced byte-identical wheel bytes. This is **not**
-a byte-reproducible Docker/OCI-image claim and changes no runtime authority.
+C8 reproducible-wheel verification is protected-merged through PR #318. Its admitted
+claim is deliberately bounded: two clean Titan Python wheel builds from one exact source
+head under the frozen, hash-bound Setuptools build contract produced byte-identical wheel
+bytes. This is **not** a byte-reproducible Docker/OCI-image claim and changes no runtime
+authority.
 
-C9 is the current bounded candidate in PR #320. Fresh audit proved that the historical
-World Skills importer was a real remaining #52 trust-boundary gap: it directly used
-`promote_to_validated()` and legacy rows did not carry the full structured provenance,
-risk, limitations and review metadata required by #52.
-
-The C9 candidate removes that business-level direct-promotion exception and uses only
-existing owners:
+C9 World Skills provenance/admission is **CLOSED** through protected-merged PR #320 at
+`main@0b2c49d701b88d12c66042148c19199638130d03`. The historical direct
+`promote_to_validated()` business exception was removed. Current candidate flow is:
 
 ```text
 Draft candidate
@@ -76,32 +72,21 @@ Draft candidate
 → Validated / local Canon
 ```
 
-Required candidate metadata:
+Legacy/unreviewed World Skills rows are not retroactively certified. Deterministic
+candidate/pack identifiers bind content/replay only; they are not cryptographic human
+reviewer signatures. C9 post-merge evidence on the exact merged main includes Full CI
+#1181, Docker #779, CodeQL #19 and aggregate #1213, all SUCCESS.
 
-```text
-truth_status
-source_refs
-confidence
-risk_domain
-limitations
-review_status
-reviewer
-reviewed_at
-```
+C10 is the current bounded **public truth & release evidence** candidate. Fresh audit of
+`main@0b2c49d...` found concrete residuals: stale World Skills exception text in public
+status, base `docker-compose.yml` mislabeled as hardened production, English README
+scheduler/deployment overclaims, an unauthenticated/raw-error `/system/epigenetic`
+diagnostic, and a historical Titan GitHub Release whose public title is cross-project/
+mislabeled. C10 reconciles those claims, adds dedicated endpoint security regressions and
+a dated evidence snapshot. It does not create a new release or alter authority state.
 
-Legacy rows receive explicit safe non-claims (`Draft`, empty source/review/risk metadata,
-`unreviewed`) and remain available for scratch/non-canonical analysis. C9 does **not**
-retroactively certify the corpus, infer sources/reviewer identity, or treat file curation
-as evidence.
-
-Candidate/pack SHA-256 identifiers provide deterministic content/replay binding only.
-They are not cryptographic human signatures and create no reviewer-key authority.
-High-risk `risk_domain` metadata selects the existing `PRECISION` TruthGate mode; ordinary
-explicit risk uses existing `BALANCED`. C9 owns no numerical truth thresholds.
-
-PR #320 remains non-authoritative until exact-head CI/Docker/CodeQL, review/race audit,
-Ready aggregate, protected merge and post-merge evidence complete. Parent #52 remains
-OPEN until all current residuals are CLOSED or explicitly SUPERSEDED with evidence.
+Parent #52 remains OPEN until C10 is accepted and the final C11 residual/PR-queue matrix
+contains no PARTIAL/UNKNOWN/NOT VERIFIED requirements.
 
 ### Truth Foundation
 
@@ -235,7 +220,7 @@ exact-head tests/CI, protected merge and synchronized GitHub/Notion evidence.
 
 ## Open residuals that remain separate
 
-Do not mix them into the current bounded #52/C9 work:
+Do not mix them into the current bounded #52/C10 work:
 
 - #51 — ADAO workstream;
 - #52 — trusted platform / supply-chain and related hardening; **current parent / OPEN**;
