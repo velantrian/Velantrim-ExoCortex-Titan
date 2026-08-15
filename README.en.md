@@ -32,12 +32,15 @@ Velantrim:
 Short formula:
 
 ```text
-Graph = Truth
+Graph = Structure
 Index = Speed
 Facts Pack = Evidence
-Truth Gate = Trust
+Truth Gate = Trust Boundary
 TRACE = Accountability
 LLM / BAE = Voice
+
+Graph relation != truth
+Graph connectivity != evidence authority
 ```
 
 ---
