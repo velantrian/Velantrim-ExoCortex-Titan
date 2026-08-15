@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Iterable
 
 
@@ -31,6 +31,8 @@ def _require_text(value: str, field_name: str) -> str:
 def normalize_relative_path(value: str) -> str:
     """Return a portable repository-relative POSIX path or fail closed."""
     raw = _require_text(value, "relative_path").replace("\\", "/")
+    if PureWindowsPath(raw).drive:
+        raise ValueError("relative_path must not be drive-qualified")
     path = PurePosixPath(raw)
     if path.is_absolute():
         raise ValueError("relative_path must not be absolute")
