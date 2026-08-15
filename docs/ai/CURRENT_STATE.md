@@ -2,6 +2,7 @@
 
 **Verified:** 2026-08-15  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · parent `86ed963d2d31b9da174c88f0cf05cc27faced2b9` · signature `VERIFIED / valid`  
+**C11 lifecycle rule:** resolve the current #52 lifecycle from live GitHub; the C11 paragraphs below remain historical repository evidence  
 **Continuity:** `12/12 = 100%`  
 **Machine-readable state:** schema v7  
 **Notion target:** `Velantrim Titan 9.0` · `398ac84d-0547-81fe-8ca5-d0d2727d1961`  
@@ -99,13 +100,28 @@ aggregate merge evidence:    #1248 · 31868888440 · SUCCESS
 After C10, docs-only PR #323 was separately protected-merged as
 `main@5f916e0aeb130abf0c840dc622b350e1a268dac2`. It removes a residual English
 `Graph = Truth` overclaim and tightens cross-project research ownership boundaries. It
-changes no runtime or Canon authority and was carried forward into C11.
+changes no runtime or Canon authority and is carried forward into the C11 base rather than
+being overwritten.
 
-C11 was the bounded final #52 residual / PR-queue reconciliation. Its repository record is
-`docs/evidence/issue-52-final-reconciliation-2026-08-15.md`. Parent Issue #52 was later
-closed as completed after protected merge, post-merge evidence and same-page Notion FINAL
-read-back. Historical queue counts in #52 remain historical evidence, not current open-PR
-truth.
+C11 is the bounded **final #52 residual / PR-queue reconciliation**. Its fresh audit found
+that this file, `docs/ai/KNOWN_RISKS.md`, and the dated release-evidence report still
+carried pre-merge C9/C10 wording even though GitHub/Notion FINAL evidence existed. C11
+reconciles those documentation surfaces and adds the repository-side final requirement
+matrix at `docs/evidence/issue-52-final-reconciliation-2026-08-15.md`. It changes no
+runtime, Canon, policy, schema, Continuity, Operator GO, provider/model, network or
+production-authority semantics.
+
+The body statement in #52 about “10 currently open PRs” is historical queue evidence and
+was explicitly superseded by later #52 reconciliation. During the C11 race audit, PR #321
+was confirmed **CLOSED / not merged / superseded by #323**, and #323 was confirmed
+**MERGED** to signed `main@5f916e0a...`. A fresh direct GitHub Pulls API read then returned
+exactly one open PR: #324, the C11 reconciliation PR itself. Therefore there was no separate
+unclassified open-PR debt remaining inside the #52 hardening scope at that checkpoint.
+
+Parent Issue #52 was subsequently closed as completed after exact-head acceptance,
+protected merge, post-merge evidence and same-page Notion FINAL/read-back. Resolve live
+GitHub for the current #52 lifecycle rather than inferring it from this dated historical
+record.
 
 ### Truth Foundation
 
@@ -153,8 +169,9 @@ CapabilityRegistry()
     → deterministic SelectionResult
 ```
 
-Production `CapabilityRegistry()` exposes no alternate policy/leaser injection. `auto` and
-explicit preference are ordering hints only and cannot override PolicyKernel denial.
+Production `CapabilityRegistry()` exposes no alternate policy/leaser injection. This
+closes the constructor-injection bypass found during self-review. `auto` and explicit
+preference are ordering hints only and cannot override PolicyKernel denial.
 
 Final Phase 2A implementation evidence:
 
