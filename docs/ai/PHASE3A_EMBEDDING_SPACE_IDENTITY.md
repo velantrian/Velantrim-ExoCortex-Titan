@@ -212,7 +212,7 @@ CodeQL:                   #45 · 31882546888 · SUCCESS
 
 An earlier candidate failed the blocking mypy gate because `SentenceTransformer.encode()[0]` is typed as a Tensor while the first validator signature accepted only `Sequence[float]`. The implementation was corrected to a structural vector-like contract requiring only `__len__`, preserving strict dimension checking for Tensor/ndarray/list without weakening the fail-closed boundary.
 
-Because this documentation commit necessarily moves the PR head, the evidence above becomes a **historical code-bearing checkpoint**. A fresh exact-head workflow set on the final PR head is mandatory before Ready/merge.
+Because documentation commits necessarily move the PR head, the evidence above is a **historical code-bearing checkpoint**. A fresh exact-head workflow set on the final PR head is mandatory before Ready/merge.
 
 ## 9. Authority and runtime state
 
@@ -323,7 +323,7 @@ Before PR #328 can become Ready:
 - [x] code-bearing checkpoint Full CI / Docker / CodeQL green;
 - [x] ADR added;
 - [x] existing Notion page received a DRAFT admission snapshot and read-back;
-- [ ] final GitHub documentation candidate committed;
+- [x] final GitHub documentation candidate committed;
 - [ ] fresh exact-head CI/Docker/CodeQL evaluated on final candidate;
 - [ ] current review threads/comments/submitted reviews re-audited;
 - [ ] current `main` re-fetched and base drift resolved if present;
