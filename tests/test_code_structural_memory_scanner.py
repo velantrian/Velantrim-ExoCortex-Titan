@@ -331,8 +331,8 @@ def test_file_count_total_byte_and_path_depth_budgets_fail_closed(tmp_path) -> N
             conn,
             repository_id="repo-a",
             root=root,
-            relative_paths=["a.py"],
-            budget=_budget(max_file_bytes=100, max_total_bytes=3),
+            relative_paths=["a.py", "b.py"],
+            budget=_budget(max_file_bytes=10, max_total_bytes=10),
             lease_ttl_seconds=10.0,
             token_factory=lambda: "lease-total",
         )
