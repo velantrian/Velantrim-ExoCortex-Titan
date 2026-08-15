@@ -48,7 +48,17 @@ def test_node_identity_is_repository_scoped() -> None:
     assert first != second
 
 
-@pytest.mark.parametrize("path", ["../escape.py", "/absolute.py", "core/../../escape.py"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "../escape.py",
+        "/absolute.py",
+        "core/../../escape.py",
+        r"C:\repository\absolute.py",
+        "C:/repository/absolute.py",
+        r"\\server\share\absolute.py",
+    ],
+)
 def test_repository_relative_path_fails_closed_on_escape(path: str) -> None:
     with pytest.raises(ValueError):
         normalize_relative_path(path)
