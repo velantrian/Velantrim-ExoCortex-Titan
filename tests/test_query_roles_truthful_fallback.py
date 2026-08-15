@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import importlib
+import os
+import sys
+
 import pytest
 
 from core.branch_manager import BranchManager
@@ -153,3 +157,88 @@ async def test_mixed_multi_branch_synthesis_is_not_all_llm(monkeypatch):
     assert len(result.branches) == 2
     assert {branch.used_llm for branch in result.branches} == {True, False}
     assert result.all_branches_used_llm is False
+
+
+@pytest.fixture
+def query_roles_client(tmp_path, monkeypatch):
+    """Isolated authenticated server fixture with no external LLM by default."""
+    monkeypatch.setenv("VELANTRIM_API_KEY", "test-key")
+    monkeypatch.setenv("VELANTRIM_DB_PATH", str(tmp_path / "query_roles.db"))
+    monkeypatch.setenv("VELANTRIM_NGRAM_DB", str(tmp_path / "query_roles_ngram.db"))
+    monkeypatch.setenv("CORE_BLOCKS_DB", str(tmp_path / "blocks.db"))
+    monkeypatch.setenv("NOTEBOOK_DB", str(tmp_path / "notebook.db"))
+    monkeypatch.setenv("LLM_PROVIDER", "none")
+    monkeypatch.setenv("SLEEP_WORKER_ENABLED", "false")
+    monkeypatch.setenv("ENABLE_CAUSAL_GRAPH", "0")
+    monkeypatch.setenv("VELANTRIM_MULTILINGUAL", "0")
+
+    for mod in list(sys.modules):
+        if mod == "server" or mod.startswith("server."):
+            del sys.modules[mod]
+
+    try:
+        from fastapi.testclient import TestClient
+
+        srv = importlib.import_module("server")
+    except ImportError as exc:
+        pytest.skip(f"server test dependencies unavailable: {exc}")
+
+    client = TestClient(srv.app)
+    client.headers.update({"X-Api-Key": "test-key"})
+    yield client, srv
+    client.close()
+
+
+def test_query_roles_endpoint_deterministic_fallback_is_not_llm_answer(
+    query_roles_client,
+    monkeypatch,
+):
+    client, srv = query_roles_client
+    monkeypatch.setattr(srv, "_env_llm_config", lambda: None)
+
+    response = client.post(
+        "/query/roles",
+        json={"query": "Как устроена изоляция SQLite?", "roles": "ENGINEER"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["answer"] == "Нет проверенных фактов — вывод невозможен."
+    assert body["llm_answer"] is None
+    assert body["mode"] == "multi_perspective"
+    assert body["lens_context"]["all_branches_used_llm"] is False
+    assert body["lens_context"]["branches"][0]["used_llm"] is False
+
+
+def test_query_roles_endpoint_sets_llm_answer_only_after_real_model_call(
+    query_roles_client,
+    monkeypatch,
+):
+    client, srv = query_roles_client
+    import core.llm_router as llm_router
+
+    cfg = LlmCallConfig(
+        provider="openai",
+        api_key="synthetic-test-key",
+        model="gpt-4o",
+        max_tokens=500,
+    )
+    monkeypatch.setattr(srv, "_env_llm_config", lambda: cfg)
+
+    async def fake_chat_complete(received_cfg, prompt, system="", **kwargs):
+        assert received_cfg is cfg
+        return "REAL ENDPOINT MODEL RESPONSE"
+
+    monkeypatch.setattr(llm_router, "chat_complete", fake_chat_complete)
+
+    response = client.post(
+        "/query/roles",
+        json={"query": "Как устроена изоляция SQLite?", "roles": "ENGINEER"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["answer"] == "REAL ENDPOINT MODEL RESPONSE"
+    assert body["llm_answer"] == "REAL ENDPOINT MODEL RESPONSE"
+    assert body["lens_context"]["all_branches_used_llm"] is True
+    assert body["lens_context"]["branches"][0]["used_llm"] is True
