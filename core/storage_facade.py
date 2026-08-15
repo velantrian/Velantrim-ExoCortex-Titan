@@ -36,8 +36,10 @@ def is_local_graph_store() -> bool:
 
 
 def reset_graph_store() -> None:
+    """Reset the graph-store lifecycle and its cached observability snapshot."""
     global _backend_singleton
     _backend_singleton = None
+    storage_info.cache_clear()
 
 
 def get_graph_store(force_new: bool = False) -> GraphStoreBackend:
