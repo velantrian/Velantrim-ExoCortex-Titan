@@ -5,6 +5,73 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
+## 2026-08-15 — #53 Phase 3A embedding-space identity · IMPLEMENTED_BOUNDED / POST-MERGE VERIFIED
+
+```text
+admission / closure issue:        #327
+implementation PR:                #328 · MERGED
+final accepted PR head:           96f4aad2ae4a65203cc133dbe2af40ed869c99e8
+protected squash merge/main:      4932727c348ec967564d8babf80e25ca82bce8be
+implementation parent:            86ed963d2d31b9da174c88f0cf05cc27faced2b9
+merge signature:                  VERIFIED / valid
+exact-head Full CI:               #1210 · 31882948349 · SUCCESS
+exact-head Docker:                #799  · 31882948356 · SUCCESS
+exact-head CodeQL:                #48   · 31882948357 · SUCCESS
+READY aggregate:                  #1315 · 31883253917 · SUCCESS
+post-merge Full CI:               #1211 · 31883324866 · SUCCESS
+post-merge Docker:                #800  · 31883324890 · SUCCESS
+post-merge CodeQL:                #49   · 31883324957 · SUCCESS
+post-merge aggregate:             #1316 · 31883324900 · SUCCESS
+submitted reviews:                0
+review threads:                   0
+PR comments:                      0
+Continuity:                       12/12
+schema:                           v7
+runtime enabled:                  false
+Operator GO:                      false
+runtime authority:                false
+production authority:             false
+Canon:                            local
+remote Canon:                     forbidden
+```
+
+Fresh live admission under parent #53 confirmed that Titan already had an embedding
+registry, persistent vector store, rebuildable projection contract and legacy on-demand
+DenseRetriever. The real gap was not missing embeddings but missing complete semantic-space
+identity across those owners.
+
+Phase 3A evolved the existing `core/embedding_registry.py` instead of creating a second
+registry/store. `EmbeddingSpaceDescriptor` binds provider, model, model revision, dimension,
+normalization, pooling, distance metric, chunker version and preprocessing version.
+Canonical JSON + SHA-256 produces deterministic `embedding-space-v1:<digest>` identity;
+equal dimensions alone never imply compatibility.
+
+The existing projection/storage TEXT identity axis is reused, so project schema remains
+v7. Historical plain-model rows lack complete typed metadata and fail closed to lexical
+fallback rather than being auto-reused.
+
+A separate correctness trap was closed in `DenseRetriever.retrieve()`: the complete
+candidate batch is dimension-validated against the query before any similarity
+multiplication. Python `zip()` can therefore no longer silently truncate unequal vectors
+and yield a dense score.
+
+Focused Phase 3A tests prove all nine identity axes, deterministic hashing,
+same-dimension incompatibility, existing storage reuse, legacy fail-close, erasure
+preservation, pre-score mismatch rejection and normal equal-dimension scoring. Full CI
+also passed blocking mypy, full pytest, coverage ratchet ≥74%, dependency audit,
+reproducible wheel, deterministic SBOM and architecture/project-state/KB guards.
+
+The implementation is deliberately **UNWIRED / NOT ENABLED**. It did not change
+`pipeline.py`, activate persistent projection, invoke/probe providers, enable network or
+remote embeddings, add background indexing, mutate Canon/ESM, grant Operator GO, runtime
+authority or production authority. No semantic retrieval-quality claim is made.
+
+The existing Notion `Velantrim Titan 9.0` page was synchronized to the final PR candidate
+and read back before Ready. After implementation merge, Issue #327 was temporarily reopened
+so documentation/Notion lifecycle could be reconciled before final `CLOSED_COMPLETED`.
+
+---
+
 ## 2026-08-14 — #52 C8 closed → C9 World Skills admission · IN PROGRESS
 
 ```text
@@ -211,6 +278,10 @@ Phase 2A and #52 hardening do not authorize embeddings/vector execution, reranke
 execution, ADAO, ARM-04, provider probing/invocation, remote consent implementation,
 network activation, runtime route replacement, runtime enablement, Continuity 13/12 or
 schema v8.
+
+Phase 3A adds a tested embedding-space identity / dimension-safety contract only. It does
+not authorize persistent projection live retrieval, embedding provider execution,
+background semantic indexing, semantic-quality claims or Phase 3B.
 
 Phase 2A closure sequence completed:
 

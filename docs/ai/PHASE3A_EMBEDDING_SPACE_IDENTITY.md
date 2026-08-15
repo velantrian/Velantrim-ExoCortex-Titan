@@ -1,14 +1,16 @@
 # 🧬 Phase 3A — Embedding Space Identity & Projection Contract Convergence
 
 **Parent:** Issue #53  
-**Admission:** Issue #327  
-**Implementation PR:** #328 · DRAFT  
-**Lifecycle:** IMPLEMENTED_CANDIDATE · TESTED_CODE_CHECKPOINT · UNWIRED · NOT ENABLED · NO RUNTIME AUTHORITY  
+**Admission / closure:** Issue #327  
+**Implementation PR:** #328 · MERGED  
+**Implementation merge:** `4932727c348ec967564d8babf80e25ca82bce8be`  
+**Accepted implementation head:** `96f4aad2ae4a65203cc133dbe2af40ed869c99e8`  
+**Lifecycle:** `IMPLEMENTED_BOUNDED · TESTED · UNWIRED · NOT ENABLED · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
 **Documentation impact:** `GITHUB_AND_NOTION`
 
-> This file records the complete GitHub-side AI hand-off for Phase 3A. It is orientation and review evidence, not permission to activate semantic execution. Re-query live GitHub for the current PR head, base, reviews and workflow conclusions before treating any SHA below as the final merge candidate.
+> This file is the GitHub-side AI hand-off for the closed Phase 3A implementation. It records a bounded contract milestone, not permission to activate semantic execution. Always re-query live GitHub for the current repository head, Issue #53 lifecycle and any later explicitly admitted phase.
 
-## 1. Why Phase 3A exists
+## 1. What Phase 3A solved
 
 Titan already had several embedding-related owners before this milestone:
 
@@ -20,9 +22,9 @@ Titan already had several embedding-related owners before this milestone:
 - `core/capability_registry.py` — descriptive provider/capability metadata and deterministic selection explanation;
 - `core/policy_kernel.py` — sole capability permission owner.
 
-Therefore the real gap was **not** “Titan has no embeddings.” The gap was that these surfaces did not share one strict embedding-space identity sufficient to decide whether a persistent vector is actually compatible with the query space.
+The gap was therefore not “Titan has no embeddings.” It was the absence of one strict identity sufficient to prove that a stored vector and a query belong to the same semantic space.
 
-The central correctness rule is:
+The core correctness rule remains:
 
 ```text
 same dimension
@@ -30,36 +32,9 @@ same dimension
 same embedding space
 ```
 
-A 384-dimensional vector from model/provider/revision A cannot be reused merely because another semantic path also produces 384 dimensions.
+## 2. Accepted identity contract
 
-## 2. Live admission result
-
-The pre-mutation audit classified the relevant requirements as follows:
-
-| Requirement | Admission classification |
-|---|---|
-| historical model name + dimension | ALREADY_CONVERGED |
-| model revision | PARTIAL |
-| provider | REAL_GAP |
-| normalization | REAL_GAP |
-| pooling | REAL_GAP |
-| distance metric | REAL_GAP |
-| chunker version | REAL_GAP |
-| preprocessing version | REAL_GAP |
-| deterministic complete space ID | REAL_GAP |
-| storage identity | PARTIAL |
-| legacy-row compatibility | PARTIAL |
-| lexical fallback | ALREADY_CONVERGED |
-| erasure | ALREADY_CONVERGED |
-| dimension fail-close before scoring | REAL_GAP |
-| PolicyKernel ownership | ALREADY_CONVERGED |
-| persistent projection runtime wiring | OUT_OF_SCOPE |
-
-Because `REAL_GAP > 0`, Issue #327 admitted a bounded implementation. No duplicate Phase 3A child issue/branch existed when admission was created.
-
-## 3. Accepted embedding-space identity
-
-The existing `core/embedding_registry.py` owner is evolved rather than duplicated.
+The existing `core/embedding_registry.py` owner was evolved rather than duplicated.
 
 `EmbeddingSpaceDescriptor` binds all compatibility-bearing axes:
 
@@ -75,21 +50,13 @@ chunker_version
 preprocessing_version
 ```
 
-Every axis is identity-bearing. Changing any one produces a different space.
+Every axis is identity-bearing. Changing any one creates a different embedding space.
 
-The descriptor is immutable metadata only. It does not:
+The descriptor is immutable metadata only. It does not load a model, invoke or probe a provider, perform network I/O, grant PolicyKernel permission, route the pipeline, mutate Canon/ESM or enable runtime execution.
 
-- load or invoke an embedding model;
-- probe a provider;
-- perform network I/O;
-- grant PolicyKernel permission;
-- route the pipeline;
-- mutate Canon or ESM;
-- enable runtime execution.
+## 3. Deterministic `embedding_space_id`
 
-## 4. Deterministic `embedding_space_id`
-
-The ID is derived from canonical JSON containing the contract version and all nine axes:
+The ID is derived as:
 
 ```text
 canonical JSON
@@ -98,20 +65,18 @@ canonical JSON
 → embedding-space-v1:<digest>
 ```
 
-Properties:
+The canonical payload contains the contract version plus all nine identity axes. Python's process-salted `hash()` is not used.
 
-- deterministic across process restarts;
-- deterministic across independently-created equivalent descriptors;
-- stable field semantics;
-- serializable;
-- no Python process-salted `hash()`;
-- no compatibility inference from dimension alone.
+Properties proven by tests:
 
-## 5. Projection/storage convergence
+- equivalent independently-created descriptors produce the same ID;
+- every identity-axis change changes the ID;
+- equal dimensions do not imply compatibility;
+- the representation is stable and serializable across process restarts.
 
-Phase 3A does **not** create a second vector database, table or store owner.
+## 4. Projection/storage convergence
 
-The existing chain remains:
+Phase 3A created no second registry, vector database, table or projection owner.
 
 ```text
 EmbeddingSpaceDescriptor
@@ -128,27 +93,25 @@ existing EmbeddingStore.model_name TEXT axis
 existing gs_vectors PK(node_id, model_name)
 ```
 
-This reuses the existing storage contract. No project schema v8 migration is required by the admitted implementation.
+The existing storage contract was sufficient, so **project schema remains v7**. No schema v8 migration was admitted or needed.
 
-### Legacy rows
+### Legacy rows fail closed
 
-A historical row keyed by a plain model name does not contain the complete Phase 3A identity metadata. It is therefore **unknown/incompatible**, not auto-compatible.
+Historical rows keyed only by a plain model name do not contain all Phase 3A identity metadata. They are therefore unknown/incompatible, not implicitly compatible.
 
-When a typed space is expected, the historical axis differs from the `embedding-space-v1:<sha256>` axis. Existing projection classification therefore yields `STALE_MODEL`, and `resolve_or_fallback()` selects lexical fallback.
+When a typed space is expected, the historical axis differs from `embedding-space-v1:<sha256>`. The existing projection classifier yields an incompatible/stale state and `resolve_or_fallback()` preserves lexical fallback.
 
-There is no automatic rebuild. Rebuild remains explicit and bounded.
+State detection does not rebuild anything. Rebuild remains explicit and bounded.
 
-## 6. Dimension fail-close boundary
+## 5. Dimension fail-close boundary
 
-Before Phase 3A, `DenseRetriever.retrieve()` computed normalized-vector similarity with a Python expression equivalent to:
+Before Phase 3A, legacy dense scoring used a Python expression equivalent to:
 
 ```python
 sum(a * b for a, b in zip(vec, q_emb))
 ```
 
-Python `zip()` silently truncates to the shorter iterable. That could become a correctness defect once persistent vectors are reused across independently-described spaces.
-
-Phase 3A adds a complete candidate-batch dimension preflight **before any similarity multiplication**:
+Python `zip()` silently truncates unequal iterables. Phase 3A added a complete candidate-batch dimension preflight **before any similarity multiplication**:
 
 ```text
 query vector
@@ -160,76 +123,85 @@ validate_pair_dimensions()
    └─ any mismatch → fail closed; no dense score
 ```
 
-If a mismatch occurs, the existing `DenseRetriever` failure boundary returns no dense results; `HybridRetriever` retains the lexical/BM25 path. Persistent projection is still not wired into that runtime path.
+If one vector mismatches, the existing DenseRetriever failure boundary returns no dense results and HybridRetriever retains its lexical/BM25 fallback. Persistent projection was not wired into that runtime route.
 
-The retained `zip()` dot product is now reached only after equality has been proven for the full candidate batch.
+The retained `zip()` dot product is reachable only after dimension equality has been proven for the complete candidate batch.
 
-## 7. Acceptance evidence implemented in tests
+## 6. Acceptance tests
 
-`tests/test_phase3a_embedding_space.py` proves the new contract without a real provider or network call:
+`tests/test_phase3a_embedding_space.py` proves, without a real provider or network call:
 
 - stable canonical SHA-256 identity;
-- changing each of the nine axes changes the space ID;
-- same dimension with different spaces is incompatible;
-- typed identity is stored through the existing projection/store owner;
-- a typed exact match can be `FRESH`;
-- a different same-dimension space cannot reuse that persistent vector;
+- all nine axes affect identity;
+- same-dimension different spaces are incompatible;
+- typed identity reuses the existing projection/store owner;
+- exact typed identity can classify `FRESH`;
+- same-dimension incompatible space cannot reuse the vector;
 - legacy plain-model rows are not auto-compatible;
-- incompatible/legacy rows resolve to lexical fallback;
+- incompatible/legacy rows preserve lexical fallback;
 - vector dimension mismatch raises before scoring;
-- a sentinel multiplication object proves no similarity multiplication occurs after dimension mismatch;
+- sentinel multiplication proves no similarity multiplication occurs after mismatch;
 - equal-dimension legacy dense scoring still works;
-- `purge_node(record_id)` still removes all embedding axes for the record.
+- `purge_node(record_id)` still removes every projection axis for the record.
 
-Existing `tests/test_embedding_projection.py` continues to prove additional unchanged boundaries:
+Existing projection tests continue to prove that projection reads do not mutate Canon, rebuild is explicit/idempotent/bounded, corrupt metadata classifies invalid rather than successful, the projection feature flag defaults off, and stale projection routing falls back lexically.
 
-- projection reads do not mutate Canon;
-- TruthGate remains reachable because projection is not wired into `pipeline.run()`;
-- rebuild is explicit, bounded, idempotent and deterministic;
-- corrupt projection metadata classifies `INVALID` rather than becoming semantic success;
-- the projection feature flag defaults off;
-- stale projection routing falls back lexically;
-- coexisting projection axes classify deterministically and do not shadow exact matches.
+## 7. Exact accepted evidence
 
-## 8. Code-bearing exact-head evidence
-
-The first complete code-bearing candidate after the mypy correction was:
+### Final PR candidate before protected merge
 
 ```text
-head:                     bf32ba7b41c70a0ffb606ae79d6b555b01e1b7f0
-base main:                86ed963d2d31b9da174c88f0cf05cc27faced2b9
-Full CI:                  #1207 · 31882546887 · SUCCESS
-Ruff:                     SUCCESS
-Mypy blocking gate:       SUCCESS
-Pytest:                   SUCCESS
-Coverage ratchet ≥74%:    SUCCESS
-Dependency audit:         SUCCESS
-Reproducible wheel:       SUCCESS
-Deterministic SBOM:       SUCCESS
-Docker:                   #796 · 31882546902 · SUCCESS
-CodeQL:                   #45 · 31882546888 · SUCCESS
+PR:                       #328
+head:                     96f4aad2ae4a65203cc133dbe2af40ed869c99e8
+base:                     86ed963d2d31b9da174c88f0cf05cc27faced2b9
+Full CI:                  #1210 · 31882948349 · SUCCESS
+Docker:                   #799  · 31882948356 · SUCCESS
+CodeQL:                   #48   · 31882948357 · SUCCESS
+READY aggregate:          #1315 · 31883253917 · SUCCESS
+reviews:                  0 submitted
+review threads:           0
+PR comments:              0
+Notion synchronization:   SYNCED after same-page read-back
 ```
 
-An earlier candidate failed the blocking mypy gate because `SentenceTransformer.encode()[0]` is typed as a Tensor while the first validator signature accepted only `Sequence[float]`. The implementation was corrected to a structural vector-like contract requiring only `__len__`, preserving strict dimension checking for Tensor/ndarray/list without weakening the fail-closed boundary.
+### Protected implementation merge
 
-Because documentation commits necessarily move the PR head, the evidence above is a **historical code-bearing checkpoint**. A fresh exact-head workflow set on the final PR head is mandatory before Ready/merge.
+```text
+merge/main:               4932727c348ec967564d8babf80e25ca82bce8be
+parent:                   86ed963d2d31b9da174c88f0cf05cc27faced2b9
+signature:                VERIFIED / valid
+accepted PR head:         96f4aad2ae4a65203cc133dbe2af40ed869c99e8
+```
 
-## 9. Authority and runtime state
+### Exact implementation post-merge evidence
+
+```text
+Full CI:                  #1211 · 31883324866 · SUCCESS
+Docker:                   #800  · 31883324890 · SUCCESS
+CodeQL:                   #49   · 31883324957 · SUCCESS
+aggregate merge evidence: #1316 · 31883324900 · SUCCESS
+```
+
+Full CI #1211 includes the blocking mypy gate, full pytest, core coverage ratchet ≥74%, dependency audit, reproducible wheel, deterministic SBOM and architecture/project-state/KB guards.
+
+No local CLI result and no Codex approval are claimed. Exact GitHub workflow evidence is the acceptance basis.
+
+## 8. Authority and runtime state
 
 Phase 3A changes compatibility metadata and a pre-score correctness guard only.
 
 ```text
-Implemented contract:       yes, candidate in PR #328
-Tested code checkpoint:     yes
-Persistent projection wired:no
-Semantic execution enabled: no
-Provider invocation:        no
-Network activation:         no
-Default pipeline route:     unchanged
-Canon mutation:             no
-ESM mutation:               no
-Runtime authority:          false
-Production authority:       false
+Implemented:                    yes
+Tested:                         yes
+Persistent projection wired:    no
+Semantic execution enabled:     no
+Provider invocation/probing:    no
+Network activation:             no
+Default pipeline route changed: no
+Canon mutation:                 no
+ESM mutation:                   no
+Runtime authority:              false
+Production authority:           false
 ```
 
 Frozen project state remains:
@@ -245,43 +217,28 @@ Canon:                   local
 remote Canon:            forbidden
 ```
 
-### Ownership remains unchanged
+Ownership remains unchanged:
 
-- `PolicyKernel` is still the sole permission owner.
-- `CapabilityRegistry` is still descriptive/selection metadata, not permission authority.
-- `EmbeddingRegistry` owns embedding compatibility metadata, not policy.
-- `EmbeddingProjectionStore` is derived/rebuildable projection state, not truth authority.
-- `EmbeddingStore` remains the sole existing persistent vector store owner for this path.
-- `pipeline.py` remains the existing runtime route owner and is not modified by Phase 3A.
+- `PolicyKernel` is the sole permission owner;
+- `CapabilityRegistry` is descriptive/selection metadata only;
+- `EmbeddingRegistry` owns embedding compatibility metadata, not policy or execution;
+- `EmbeddingProjectionStore` remains derived/rebuildable projection state without truth authority;
+- `EmbeddingStore` remains the existing persistent vector-store owner for this path;
+- `pipeline.py` remains the runtime-route owner and was not modified by Phase 3A.
 
-## 10. Parallel CSM isolation
+## 9. Parallel CSM isolation
 
-Issue #325 / Draft PR #326 is a separate Code Structural Memory workstream and explicitly excludes embeddings/semantic search.
+Issue #325 / PR #326 is a separate Code Structural Memory workstream and explicitly excludes embeddings/semantic search. No CSM changes were mixed into #327/#328.
 
-```text
-#325 / #326 CSM
-    └─ embeddings OUT OF SCOPE
+## 10. What Phase 3A does not prove
 
-#327 / #328 Phase 3A
-    └─ CSM OUT OF SCOPE
-```
+Phase 3A makes **no semantic retrieval-quality claim**.
 
-Do not combine these diffs. If parallel work changes `main` before Phase 3A merge, rebase/update the Phase 3A branch and re-run exact-head evidence.
+`benchmarks/bench_embedding_projection.py` measures projection-contract overhead with a synthetic embedder. `benchmarks/bench_retrieval_routing.py` measures lifecycle/cost behavior of the existing Hybrid/Dense path. Neither proves Titan-specific semantic quality.
 
-## 11. What Phase 3A does not prove
+Any live persistent projection integration, provider execution or semantic-quality benchmark belongs to a separately admitted later phase.
 
-This milestone makes **no semantic retrieval-quality claim**.
-
-Existing benchmark surfaces have different meanings:
-
-- `benchmarks/bench_embedding_projection.py` measures projection-contract overhead with a synthetic embedder;
-- `benchmarks/bench_retrieval_routing.py` measures lifecycle/cost behavior of the existing Hybrid/Dense route.
-
-Neither proves Titan-specific semantic quality.
-
-Any future claim about persistent semantic retrieval quality belongs to a separately admitted later phase with a reproducible Titan-specific benchmark.
-
-## 12. Explicitly out of scope
+## 11. Explicitly not authorized
 
 ```text
 persistent projection live retrieval wiring
@@ -293,8 +250,7 @@ network activation
 reranker integration
 LLM execution
 ADAO / ARM-04
-autonomous indexing
-background daemon / scheduler / worker
+autonomous/background indexing
 new API endpoint
 Operator GO
 runtime authority
@@ -306,35 +262,8 @@ Continuity 13/12
 semantic-quality marketing claims
 ```
 
-## 13. Review / readiness checklist
+## 12. Closure semantics
 
-Before PR #328 can become Ready:
+When this reconciliation is read from `main`, Phase 3A's GitHub technical record is reconciled as **IMPLEMENTED_BOUNDED**. The existing Notion page must carry the same final lifecycle and exact evidence before Issue #327 is finally closed as completed.
 
-- [x] live baseline and owners re-audited;
-- [x] `REAL_GAP > 0` demonstrated;
-- [x] bounded child Issue #327 created;
-- [x] implementation isolated to dedicated branch / Draft PR #328;
-- [x] deterministic full-space identity implemented;
-- [x] same-dimension incompatible spaces fail closed;
-- [x] legacy projection rows fail closed;
-- [x] dimension mismatch fails before scoring;
-- [x] erasure semantics preserved;
-- [x] no runtime/Canon/policy authority introduced;
-- [x] code-bearing checkpoint Full CI / Docker / CodeQL green;
-- [x] ADR added;
-- [x] existing Notion page received a DRAFT admission snapshot and read-back;
-- [x] final GitHub documentation candidate committed;
-- [ ] fresh exact-head CI/Docker/CodeQL evaluated on final candidate;
-- [ ] current review threads/comments/submitted reviews re-audited;
-- [ ] current `main` re-fetched and base drift resolved if present;
-- [ ] existing Notion page updated to the final candidate head and read back;
-- [ ] PR metadata marks Notion synchronization `SYNCED` only after that read-back;
-- [ ] Ready aggregate `Titan aggregate merge evidence` succeeds.
-
-## 14. Post-merge boundary
-
-Protected merge is not the end of evidence collection. After merge, verify the resulting `main`, parent, signature and actual post-merge workflows. Update GitHub lifecycle truth if needed, update the **same existing** Notion page to FINAL, read it back, then close Issue #327 as completed.
-
-Do **not** start Phase 3B automatically.
-
-A possible later Phase 3B may evaluate local embedding execution / persistent projection runtime integration plus a Titan-specific semantic benchmark, but it requires a fresh explicit admission.
+Parent Issue #53 remains a separate open architecture line. Phase 3A closure does **not** admit or start Phase 3B.

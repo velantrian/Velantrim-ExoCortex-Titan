@@ -1,12 +1,13 @@
 # 🗺️ Component and Authority Map
 
-**Verified implementation checkpoint:** `main@c1fa13cf8fe6bf82d99dfb507beeac2c1c8f7aca`  
+**Verified implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be`  
 **Continuity:** `12/12 = 100%`  
 **Machine state:** schema v7  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`
 
 This file is an orientation map. Re-query live GitHub before treating the SHA above as
-current repository truth.
+current repository truth; documentation-only closure commits may advance `main` without
+changing the implementation checkpoint.
 
 ## 1. Global authority rules
 
@@ -22,7 +23,7 @@ explicit authorization
   > configuration or historical observation
 ```
 
-No green CI run, descriptor, health flag, preset, `auto` selection, provider preference,
+No green CI run, descriptor, health flag, preset, `auto` selection, embedding-space ID,
 historical canary or Notion record grants runtime/production authority.
 
 ## 2. Continuity ownership
@@ -115,8 +116,8 @@ Key files:
 The process-wide owner is obtained through `get_policy_kernel()`.
 
 **Do not create another global policy/permission engine.** Selection, provider health,
-presets, budgets and `auto` may restrict or order candidates; none may weaken a
-PolicyKernel denial.
+presets, budgets, embedding metadata and `auto` may restrict or order candidates; none may
+weaken a PolicyKernel denial.
 
 ## 6. Provider catalogue vs Phase 2A registry
 
@@ -204,73 +205,143 @@ FTS, graph/vector indexes, caches, summaries, NetworkX analytics, Neo4j copies a
 projection-outbox workers are derived/rebuildable surfaces. Projection state never wins
 over Canon and cannot grant write or answer authority by itself.
 
-Vector/embedding execution was explicitly outside #299/#300 and remains unauthorized by
-that merge.
+Phase 3A does not change that rule. Persistent embedding projection remains derived,
+explicitly rebuildable and **not wired into the live pipeline route**.
 
-## 9. Trace / audit ownership
+## 9. Phase 3A embedding-space ownership
+
+Issue #327 / protected-merged PR #328 converged the identity boundary across existing
+embedding owners without creating another subsystem.
+
+| Concern | Owner | Phase 3A boundary |
+|---|---|---|
+| legacy model-name → dimension registry | `core/embedding_registry.py` / `EmbeddingRegistry` | preserved for compatibility |
+| complete embedding-space compatibility metadata | `EmbeddingSpaceDescriptor` in existing `core/embedding_registry.py` | metadata only; no permission/execution authority |
+| deterministic space identity | `EmbeddingSpaceDescriptor.embedding_space_id` | canonical JSON + SHA-256 over 9 axes |
+| persistent derived vector storage | existing `core/embedding_store.py` / `EmbeddingStore` | existing `TEXT` axis reused; schema v7 |
+| projection freshness/staleness/fallback | existing `core/embedding_projection.py` / `EmbeddingProjectionStore` | derived/rebuildable; legacy/incompatible rows fail closed |
+| on-demand dense scorer | existing `DenseRetriever` in `core/hybrid_retriever.py` | complete dimension preflight before scoring |
+| policy / provider permission | existing `PolicyKernel` | unchanged sole permission owner |
+| provider/capability selection metadata | existing `CapabilityRegistry` | descriptive selection contract only |
+| runtime route | existing `pipeline.py` / QueryRouter path | unchanged; persistent projection not wired |
+
+Identity chain:
+
+```text
+provider + model + revision + dimension
++ normalization + pooling + metric
++ chunker version + preprocessing version
+                    ↓
+            EmbeddingSpaceDescriptor
+                    ↓
+       canonical JSON + SHA-256
+                    ↓
+      embedding-space-v1:<digest>
+                    ↓
+existing projection/storage identity axis
+```
+
+Same dimension never implies same space. Historical plain-model rows lack the complete
+Phase 3A identity and cannot be auto-reused as typed compatible vectors.
+
+Dense scoring guard:
+
+```text
+query vector + every candidate vector
+                ↓
+validate complete dimensions before scoring
+       ├─ equal → dot product allowed
+       └─ mismatch → no dense result / lexical fallback retained
+```
+
+Phase 3A exact implementation checkpoint:
+
+```text
+merge/main:               4932727c348ec967564d8babf80e25ca82bce8be
+signature:                VERIFIED / valid
+post-merge Full CI:       #1211 · 31883324866 · SUCCESS
+post-merge Docker:        #800  · 31883324890 · SUCCESS
+post-merge CodeQL:        #49   · 31883324957 · SUCCESS
+post-merge aggregate:     #1316 · 31883324900 · SUCCESS
+```
+
+No provider probing/invocation, remote embedding, background indexing, runtime activation,
+Canon/ESM mutation or semantic-quality claim is owned by this milestone.
+
+## 10. Trace / audit ownership
 
 Existing TRACE/AnalysisTrace and AuditChain owners remain unchanged.
 
 Phase 2A `SelectionResult.as_trace_metadata()` returns bounded metadata only. It does not
 persist TRACE, append AuditChain receipts or create a new provenance authority.
 
-A future separately authorized caller may attach:
+A future separately authorized caller may attach capability, provider-health and
+PolicyKernel snapshot metadata. Phase 3A adds no TRACE persistence or new audit owner.
 
-- capability kind and preference;
-- selected capability id or no-selection result;
-- candidate provider id;
-- provider health + `health_reason_code`;
-- policy/selection reason;
-- PolicyKernel snapshot id/version.
-
-## 10. Anti-bypass guarantees
+## 11. Anti-bypass guarantees
 
 - one canonical store/write protocol;
 - one PolicyKernel permission owner;
+- one existing EmbeddingRegistry owner, now extended with typed space metadata;
+- one existing EmbeddingStore owner for this projection path;
 - no second QueryRouter or TruthGate;
 - no raw-SQL Canon bypass;
 - remote provider metadata cannot hide network requirement;
 - capability `data_mode` is declarative PolicyKernel input, never consent;
 - missing health cannot default to healthy;
 - unavailable providers cannot be selected;
-- healthy candidates outrank degraded candidates before preference;
 - explicit preference cannot override lease denial;
 - a policy evaluation exception cannot fall back to permission;
 - mixed policy snapshots cannot be composed into one successful selection;
-- registry/provider state cannot grant Operator GO or runtime authority.
+- equal embedding dimension cannot override space incompatibility;
+- unknown/legacy projection metadata cannot auto-grant vector reuse;
+- dimension mismatch cannot reach similarity multiplication;
+- registry/provider/projection state cannot grant Operator GO or runtime authority.
 
-## 11. Phase 2A files
-
-```text
-#299                                           tracking / closure issue
-#300                                           MERGED implementation PR
-core/capability_registry.py                    merged metadata contract
-tests/test_capability_registry.py              adversarial contract tests
-docs/adr/ADR-2026-08-13-phase2a-capability-registry.md
-docs/operations/capability-registry-contract.md
-docs/ai/PHASE2A_CAPABILITY_REGISTRY.md
-```
-
-## 12. Explicitly unauthorized by Phase 2A
+## 12. Phase 2A and Phase 3A files
 
 ```text
-embeddings/vector execution       OUT_OF_SCOPE
-reranker execution                OUT_OF_SCOPE
-LLM invocation                    OUT_OF_SCOPE
-ADAO execution                    OUT_OF_SCOPE
-ARM-04                            NOT_AUTHORIZED
-remote consent implementation     OUT_OF_SCOPE
-provider probing                  OUT_OF_SCOPE
-network activation                OUT_OF_SCOPE
-runtime route replacement         OUT_OF_SCOPE
-runtime enablement                false
-Operator GO                       false
-runtime authority                 false
-production authority              false
-remote Canon                      forbidden
-schema v8                         not created
-Continuity 13/12                  not created
+#299                                           Phase 2A tracking / closure issue
+#300                                           MERGED Phase 2A implementation PR
+core/capability_registry.py                    Phase 2A metadata contract
+tests/test_capability_registry.py              Phase 2A adversarial tests
+docs/ai/PHASE2A_CAPABILITY_REGISTRY.md         Phase 2A hand-off
+
+#327                                           Phase 3A admission / closure issue
+#328                                           MERGED Phase 3A implementation PR
+core/embedding_registry.py                     typed space identity owner
+core/hybrid_retriever.py                       pre-score dimension fail-close
+tests/test_phase3a_embedding_space.py          Phase 3A contract tests
+docs/ai/PHASE3A_EMBEDDING_SPACE_IDENTITY.md   Phase 3A hand-off
+docs/adr/ADR-2026-08-15-phase3a-embedding-space-identity.md
 ```
 
-Before any later wiring or activation, re-audit live `main`, preserve the owners above,
-and require a separate bounded admission decision.
+## 13. Explicitly unauthorized after Phase 3A
+
+```text
+capability registry runtime wiring     NOT DONE
+persistent projection live wiring      NOT DONE
+provider probing                       OUT_OF_SCOPE
+provider invocation                    OUT_OF_SCOPE
+remote embedding execution             OUT_OF_SCOPE
+reranker execution                     OUT_OF_SCOPE
+LLM invocation                         OUT_OF_SCOPE
+ADAO execution                         OUT_OF_SCOPE
+ARM-04                                 NOT_AUTHORIZED
+remote consent implementation          OUT_OF_SCOPE
+background semantic indexing           OUT_OF_SCOPE
+network activation                     false
+runtime route replacement              false
+runtime enablement                     false
+Operator GO                            false
+runtime authority                      false
+production authority                   false
+remote Canon                           forbidden
+schema v8                              not created
+Continuity 13/12                       not created
+semantic retrieval-quality claim       not established
+```
+
+Before any later wiring, quality benchmark or activation, re-audit live `main`, preserve
+the owners above, and require a separate bounded admission decision. Phase 3A closure does
+not automatically admit Phase 3B.

@@ -1,15 +1,17 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-15  
-**Authoritative pre-C11 checkpoint:** `main@5f916e0aeb130abf0c840dc622b350e1a268dac2` · signature `VERIFIED / valid`  
-**C11 lifecycle rule:** resolve the current #52 issue/PR/merge state from live GitHub; this file records repository truth and intentionally does not hard-code an open/closed issue lifecycle token  
+**Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · parent `86ed963d2d31b9da174c88f0cf05cc27faced2b9` · signature `VERIFIED / valid`  
+**C11 lifecycle rule:** resolve the current #52 lifecycle from live GitHub; the C11 paragraphs below remain historical repository evidence  
 **Continuity:** `12/12 = 100%`  
 **Machine-readable state:** schema v7  
 **Notion target:** `Velantrim Titan 9.0` · `398ac84d-0547-81fe-8ca5-d0d2727d1961`  
 **Reality boundary:** `IMPLEMENTED COMPONENTS PRESENT · RUNTIME CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVATION EXISTS · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`
 
 > This is a dated repository checkpoint. Re-read live GitHub, current Actions and the
-> existing Notion page before using it as operational truth.
+> existing Notion page before using it as operational truth. The exact repository head may
+> advance through documentation-only reconciliation without changing the implementation
+> checkpoint named above.
 
 ## State semantics
 
@@ -113,14 +115,13 @@ The body statement in #52 about “10 currently open PRs” is historical queue 
 was explicitly superseded by later #52 reconciliation. During the C11 race audit, PR #321
 was confirmed **CLOSED / not merged / superseded by #323**, and #323 was confirmed
 **MERGED** to signed `main@5f916e0a...`. A fresh direct GitHub Pulls API read then returned
-exactly one open PR: #324, the C11 reconciliation PR itself. Therefore there is no separate
-unclassified open-PR debt remaining inside the #52 hardening scope.
+exactly one open PR: #324, the C11 reconciliation PR itself. Therefore there was no separate
+unclassified open-PR debt remaining inside the #52 hardening scope at that checkpoint.
 
-When this C11 documentation is read from `main`, treat the repository-side documentation
-residual as reconciled. Final GitHub issue closure is an external lifecycle action that is
-allowed only after exact-head acceptance, protected merge, post-merge evidence and
-same-page Notion FINAL/read-back. Always resolve the live #52 state rather than infer it
-from this dated file.
+Parent Issue #52 was subsequently closed as completed after exact-head acceptance,
+protected merge, post-merge evidence and same-page Notion FINAL/read-back. Resolve live
+GitHub for the current #52 lifecycle rather than inferring it from this dated historical
+record.
 
 ### Truth Foundation
 
@@ -188,6 +189,66 @@ post-merge aggregate:        #982 · 31736925705 · SUCCESS
 Codex did not complete the requested review because usage limits were reached. This is
 `NOT RUN — USAGE LIMIT`, not approval. No independent formal approval is claimed.
 
+### Phase 3A Embedding Space Identity & Projection Contract Convergence
+
+Issue #327 admitted the bounded contract gap under parent #53. Protected-merged PR #328
+implemented one strict embedding-space identity without activating semantic execution.
+
+The accepted identity binds:
+
+```text
+provider_id
+model
+model_revision
+dimension
+normalization
+pooling
+distance_metric
+chunker_version
+preprocessing_version
+        ↓
+canonical JSON + SHA-256
+        ↓
+embedding-space-v1:<digest>
+```
+
+The existing `core/embedding_registry.py` is the compatibility-metadata owner; no second
+registry was created. The deterministic `embedding_space_id` is carried through the
+existing `EmbeddingProjectionIdentity` / `EmbeddingStore` TEXT axis, so project schema
+remains v7. Legacy plain-model rows lack complete identity metadata and fail closed to the
+existing lexical fallback rather than being auto-adopted.
+
+`DenseRetriever.retrieve()` now validates the entire candidate batch against the query
+vector before any dot-product multiplication. Unequal dimensions therefore cannot produce
+a score through Python `zip()` truncation.
+
+Phase 3A is **IMPLEMENTED_BOUNDED · TESTED · UNWIRED · NOT ENABLED**. It does not wire
+persistent projection into `pipeline.py`, invoke/probe providers, enable network or remote
+embeddings, mutate Canon/ESM, start background indexing, grant Operator GO, runtime
+authority or production authority.
+
+Exact accepted evidence:
+
+```text
+#328 final head:             96f4aad2ae4a65203cc133dbe2af40ed869c99e8
+#328 protected squash merge: 4932727c348ec967564d8babf80e25ca82bce8be
+parent:                      86ed963d2d31b9da174c88f0cf05cc27faced2b9
+signature:                   VERIFIED / valid
+exact-head Full CI:          #1210 · 31882948349 · SUCCESS
+exact-head Docker:           #799  · 31882948356 · SUCCESS
+exact-head CodeQL:           #48   · 31882948357 · SUCCESS
+READY aggregate:             #1315 · 31883253917 · SUCCESS
+post-merge Full CI:          #1211 · 31883324866 · SUCCESS
+post-merge Docker:           #800  · 31883324890 · SUCCESS
+post-merge CodeQL:           #49   · 31883324957 · SUCCESS
+post-merge aggregate:        #1316 · 31883324900 · SUCCESS
+```
+
+Detailed contract and evidence: `docs/ai/PHASE3A_EMBEDDING_SPACE_IDENTITY.md` and
+`docs/adr/ADR-2026-08-15-phase3a-embedding-space-identity.md`.
+
+Phase 3A makes no Titan semantic-quality claim and does not admit Phase 3B.
+
 ### Documentation hand-off validator hardening
 
 Issue #305 / merged PR #306 closes the bounded governance mismatch between the written
@@ -222,32 +283,40 @@ schema, Operator GO, runtime-authority or production-authority semantics.
 | compute profile / config | existing compute/config owners |
 | TRACE / Audit | existing trace and AuditChain owners |
 | Phase 2A descriptors / explicit health / selection explanation | `core/capability_registry.py` |
+| embedding-space compatibility metadata | existing `core/embedding_registry.py` + `EmbeddingSpaceDescriptor`; no permission/execution authority |
+| persistent derived vector storage | existing `core/embedding_store.py`; projection remains rebuildable, non-Canon state |
+| projection freshness / lexical fallback | existing `core/embedding_projection.py`; no automatic rebuild or live-route authority |
+| dense on-demand scoring | existing `core/hybrid_retriever.py`; Phase 3A adds pre-score dimension fail-close only |
 | aggregate merge evidence | `scripts/check_pr_merge_evidence.py` with strict Notion hand-off adapter |
 
-No second PolicyKernel, QueryRouter, TruthGate, WriteGate, Canon writer, reviewer-key owner
-or aggregate merge-evidence authority was created.
+No second PolicyKernel, QueryRouter, TruthGate, WriteGate, Canon writer, EmbeddingRegistry,
+EmbeddingStore, reviewer-key owner or aggregate merge-evidence authority was created.
 
-## Still not implemented/authorized by Phase 2A / #52 hardening
+## Still not implemented / not authorized
 
 ```text
-registry runtime wiring             NOT DONE
-provider active probing             NOT DONE
-provider invocation                 NOT DONE
-embeddings/vector execution         NOT AUTHORIZED
-reranker execution                  NOT AUTHORIZED
-LLM execution                       NOT AUTHORIZED
-ADAO execution                      NOT AUTHORIZED
-remote consent implementation       NOT AUTHORIZED
-ARM-04                              NOT AUTHORIZED
-network activation                  false
-runtime route replacement           false
-runtime enablement                  false
-Operator GO                         false
-runtime authority                   false
-production authority                false
-schema v8                           not created
-Continuity 13/12                    not created
+capability registry runtime wiring           NOT DONE
+provider active probing                      NOT DONE
+provider invocation                          NOT DONE
+persistent projection live retrieval         NOT DONE
+embedding provider execution                 NOT AUTHORIZED
+reranker execution                           NOT AUTHORIZED
+LLM execution                                NOT AUTHORIZED
+ADAO execution                               NOT AUTHORIZED
+remote consent implementation                NOT AUTHORIZED
+ARM-04                                       NOT AUTHORIZED
+background semantic indexing                 NOT AUTHORIZED
+semantic retrieval-quality claim             NOT ESTABLISHED
+network activation                           false
+runtime route replacement                    false
+runtime enablement                           false
+Operator GO                                  false
+runtime authority                            false
+production authority                         false
+schema v8                                    not created
+Continuity 13/12                              not created
 ```
 
-Any later wiring or activation requires a separate bounded admission, fresh owner audit,
-exact-head tests/CI, protected merge and synchronized GitHub/Notion evidence.
+Any later wiring, semantic-quality benchmark or activation requires a separate bounded
+admission, fresh owner audit, exact-head tests/CI, protected merge and synchronized
+GitHub/Notion evidence.
