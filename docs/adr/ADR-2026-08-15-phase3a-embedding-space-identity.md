@@ -1,13 +1,14 @@
 # ADR — Phase 3A Embedding Space Identity & Projection Contract Convergence
 
 **Date:** 2026-08-15  
-**Status:** Proposed / Draft PR #328  
+**Status:** Accepted / implemented through protected-merged PR #328  
 **Parent:** #53  
-**Admission:** #327
+**Admission / closure:** #327  
+**Implementation merge:** `4932727c348ec967564d8babf80e25ca82bce8be`
 
 ## Context
 
-Titan already has several embedding-related surfaces:
+Titan already had several embedding-related surfaces:
 
 - `core/embedding_registry.py` owns the historical model-name → dimension registry;
 - `core/embedding_store.py` owns persistent derived vectors;
@@ -16,15 +17,15 @@ Titan already has several embedding-related surfaces:
 - `core/capability_registry.py` describes provider/capability candidates;
 - `core/policy_kernel.py` remains the sole permission owner.
 
-The missing contract is not "embeddings exist". The gap is that a persistent vector space was not uniquely identified by every compatibility-bearing axis. Equal dimensions are insufficient: two providers/models/revisions or two normalization/pooling/metric/chunking/preprocessing contracts may emit vectors of the same length while representing incompatible spaces.
+The missing contract was not "embeddings exist". The gap was that a persistent vector space was not uniquely identified by every compatibility-bearing axis. Equal dimensions are insufficient: two providers/models/revisions or two normalization/pooling/metric/chunking/preprocessing contracts may emit vectors of the same length while representing incompatible spaces.
 
-A second correctness gap exists in the legacy dense scorer: Python `zip()` silently truncates unequal vectors. That is benign only while corpus/query embeddings are created by one model invocation path. It becomes unsafe before any future persistent-vector reuse.
+A second correctness gap existed in the legacy dense scorer: Python `zip()` silently truncates unequal vectors. That was benign only while corpus/query embeddings were created by one model invocation path. It would be unsafe before future persistent-vector reuse.
 
 ## Decision
 
 ### 1. One typed embedding-space identity
 
-Evolve the existing `core.embedding_registry.py` owner with a frozen `EmbeddingSpaceDescriptor` containing:
+Evolve the existing `core/embedding_registry.py` owner with a frozen `EmbeddingSpaceDescriptor` containing:
 
 - `provider_id`;
 - `model`;
@@ -62,7 +63,7 @@ Therefore Phase 3A requires no project schema v8 migration.
 
 Existing projection rows whose axis uses a plain historical model name do not contain all Phase 3A identity dimensions. They are therefore **unknown/incompatible**, not implicitly compatible.
 
-A typed expected identity has a different model axis (`embedding-space-v1:<sha256>`), so the existing projection classifier returns `STALE_MODEL` and retrieval falls back lexically. No automatic rebuild occurs.
+A typed expected identity has a different model axis (`embedding-space-v1:<sha256>`), so the existing projection classifier returns an incompatible/stale state and retrieval falls back lexically. No automatic rebuild occurs.
 
 ### 5. Dimension mismatch is rejected before scoring
 
@@ -72,11 +73,11 @@ A typed expected identity has a different model axis (`embedding-space-v1:<sha25
 
 ## Authority boundaries
 
-This decision does **not** grant runtime or production authority.
+This decision grants no runtime or production authority.
 
 - `PolicyKernel` remains the sole capability permission owner.
 - `CapabilityRegistry` remains descriptive/selection metadata only.
-- `EmbeddingRegistry` owns compatibility metadata only; it is not a policy engine.
+- `EmbeddingRegistry` owns compatibility metadata only; it is not a policy engine or provider executor.
 - `EmbeddingProjectionStore` remains derived/rebuildable and has no Canon/ESM truth authority.
 - `pipeline.py` default routing is unchanged.
 - No provider probing/invocation or network call is added.
@@ -99,7 +100,7 @@ remote Canon:            forbidden
 
 ## Erasure and deletion
 
-The existing erasure contract remains valid. `EmbeddingStore.purge_node(record_id)` deletes all projection axes for the record, independent of the embedding-space ID encoded into `model_name`. Phase 3A therefore does not add a new deletion owner or erasure path.
+The existing erasure contract remains valid. `EmbeddingStore.purge_node(record_id)` deletes all projection axes for the record, independent of the embedding-space ID encoded into `model_name`. Phase 3A adds no deletion owner or erasure path.
 
 ## Consequences
 
@@ -116,7 +117,7 @@ The existing erasure contract remains valid. `EmbeddingStore.purge_node(record_i
 
 - historical projection rows are not auto-adopted into the new typed space even when a human believes they were produced by the same model; they require explicit bounded rebuild under complete metadata;
 - callers that eventually write typed persistent projections must supply all descriptor axes rather than only a model name;
-- semantic quality is not established by this contract. A later Phase 3B would require separate admission and reproducible Titan-specific benchmarks before quality claims.
+- semantic quality is not established by this contract. A later phase would require separate admission and reproducible Titan-specific benchmarks before quality claims.
 
 ## Rejected alternatives
 
@@ -126,11 +127,11 @@ Rejected: duplicates ownership and creates drift between model dimensions and fu
 
 ### Create a new vector database/table
 
-Rejected: the existing `EmbeddingStore` already provides the required persistent derived-vector storage and erasure integration.
+Rejected: the existing `EmbeddingStore` already provides persistent derived-vector storage and erasure integration.
 
 ### Add schema v8 columns for every identity axis
 
-Rejected for Phase 3A: the existing TEXT storage axis can safely carry the deterministic full-space ID. A migration would add governance cost without a demonstrated correctness requirement.
+Rejected for Phase 3A: the existing TEXT storage axis safely carries the deterministic full-space ID. A migration would add governance cost without a demonstrated correctness requirement.
 
 ### Treat same model name or dimension as compatible
 
@@ -138,21 +139,37 @@ Rejected: provider, revision, normalization, pooling, metric, chunking and prepr
 
 ### Automatically rebuild stale/legacy rows
 
-Rejected: state detection must remain read-only and rebuild must remain explicit and bounded.
+Rejected: state detection remains read-only and rebuild remains explicit and bounded.
 
-## Validation required before acceptance
+## Acceptance evidence
 
-- focused identity/projection/dimension tests;
-- legacy-row fail-closed test;
-- erasure preservation test;
-- DenseRetriever pre-score mismatch test;
-- repository lint/type/test/governance gates;
-- exact-head GitHub CI, Docker and CodeQL as actually spawned;
-- changed-file and authority audit;
-- GitHub AI-context reconciliation;
-- same-page Notion synchronization + read-back;
-- fresh base/main check immediately before Ready/merge.
+Final accepted PR candidate:
+
+```text
+PR #328 head:              96f4aad2ae4a65203cc133dbe2af40ed869c99e8
+base:                      86ed963d2d31b9da174c88f0cf05cc27faced2b9
+Full CI:                   #1210 · 31882948349 · SUCCESS
+Docker:                    #799  · 31882948356 · SUCCESS
+CodeQL:                    #48   · 31882948357 · SUCCESS
+READY aggregate:           #1315 · 31883253917 · SUCCESS
+```
+
+Protected implementation merge and exact-main evidence:
+
+```text
+merge/main:                4932727c348ec967564d8babf80e25ca82bce8be
+parent:                    86ed963d2d31b9da174c88f0cf05cc27faced2b9
+signature:                 VERIFIED / valid
+post-merge Full CI:        #1211 · 31883324866 · SUCCESS
+post-merge Docker:         #800  · 31883324890 · SUCCESS
+post-merge CodeQL:         #49   · 31883324957 · SUCCESS
+post-merge aggregate:      #1316 · 31883324900 · SUCCESS
+```
+
+Tests cover identity axes, deterministic hashing, same-dimension incompatibility, legacy-row fail-close, existing storage reuse, erasure preservation and pre-score dimension mismatch. Full CI also passed the blocking mypy gate, full pytest, coverage ratchet ≥74%, dependency audit, reproducible wheel, deterministic SBOM and architecture/project-state/KB guards.
+
+No local CLI result or Codex approval is claimed.
 
 ## Follow-up boundary
 
-Phase 3A closure does not admit Phase 3B. Live persistent projection retrieval, provider execution, semantic quality benchmarking or runtime activation require a new explicit admission after this ADR is accepted.
+Phase 3A closure does not admit Phase 3B. Live persistent projection retrieval, provider execution, semantic quality benchmarking or runtime activation require a new explicit admission.
