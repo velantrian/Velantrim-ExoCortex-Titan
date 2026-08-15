@@ -1,4 +1,4 @@
-name: Temporary endpoint-scoped query-roles patch
+name: Temporary endpoint-scoped query-roles formatting
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  apply-bounded-patch:
+  normalize-bounded-patch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -17,7 +17,7 @@ jobs:
           ref: fix/query-roles-truthful-fallback
           fetch-depth: 0
 
-      - name: Apply exact endpoint-scoped patch
+      - name: Normalize only accepted query-roles continuation indentation
         shell: bash
         run: |
           python - <<'PY'
@@ -27,45 +27,39 @@ jobs:
           text = path.read_text(encoding="utf-8")
           marker = '@app.post("/query/roles"'
           if text.count(marker) != 1:
-              raise SystemExit(f"expected one /query/roles endpoint, got {text.count(marker)}")
-
+              raise SystemExit("unexpected /query/roles endpoint count")
           start = text.index(marker)
           end = text.find("\n@app.", start + len(marker))
           if end == -1:
               raise SystemExit("could not find endpoint boundary")
           block = text[start:end]
 
-          old_reason = "        synthesis = await bm.reason(query=req.query, roles=role_list)"
-          new_reason = """        synthesis = await bm.reason(
+          wrong_reason = """        synthesis = await bm.reason(
+          query=req.query,
+          roles=role_list,
+          llm_config=_env_llm_config(),
+      )"""
+          correct_reason = """        synthesis = await bm.reason(
               query=req.query,
               roles=role_list,
               llm_config=_env_llm_config(),
           )"""
-          old_llm = "            llm_answer=synthesis.response,"
-          new_llm = """            llm_answer=(
+          wrong_llm = """            llm_answer=(
+          synthesis.response if synthesis.all_branches_used_llm else None
+      ),"""
+          correct_llm = """            llm_answer=(
               synthesis.response if synthesis.all_branches_used_llm else None
           ),"""
-          old_branches = '                "branches": [b.to_dict() for b in synthesis.branches],'
-          new_branches = old_branches + '\n                "all_branches_used_llm": synthesis.all_branches_used_llm,'
 
-          expected = ((old_reason, "reason call"), (old_llm, "llm_answer"), (old_branches, "branch lens"))
-          if all(block.count(old) == 0 for old, _ in expected):
-              if (
-                  "llm_config=_env_llm_config()" in block
-                  and "synthesis.all_branches_used_llm else None" in block
-                  and '"all_branches_used_llm": synthesis.all_branches_used_llm' in block
-              ):
-                  raise SystemExit(0)
-              raise SystemExit("endpoint is neither accepted-old nor accepted-new form")
+          for wrong, correct, label in (
+              (wrong_reason, correct_reason, "reason"),
+              (wrong_llm, correct_llm, "llm_answer"),
+          ):
+              if wrong in block:
+                  block = block.replace(wrong, correct, 1)
+              elif correct not in block:
+                  raise SystemExit(f"unexpected {label} form")
 
-          for old, label in expected:
-              count = block.count(old)
-              if count != 1:
-                  raise SystemExit(f"expected one {label} inside endpoint, got {count}")
-
-          block = block.replace(old_reason, new_reason)
-          block = block.replace(old_llm, new_llm)
-          block = block.replace(old_branches, new_branches)
           text = text[:start] + block + text[end:]
           path.write_text(text, encoding="utf-8")
           PY
@@ -73,18 +67,18 @@ jobs:
           python -m py_compile server.py
           git diff --check
           changed="$(git diff --name-only)"
-          test "$changed" = "server.py"
+          test "$changed" = "server.py" || test -z "$changed"
           git diff -- server.py
 
-      - name: Commit bounded server patch
+      - name: Commit formatting only when needed
         shell: bash
         run: |
           if git diff --quiet -- server.py; then
-            echo "No server.py change required."
+            echo "server.py already normalized"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add server.py
-          git commit -m "fix(server): report query roles LLM provenance truthfully"
+          git commit -m "style(server): normalize query roles continuation indent"
           git push origin HEAD:fix/query-roles-truthful-fallback
