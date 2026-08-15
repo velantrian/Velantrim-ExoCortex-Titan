@@ -1,13 +1,14 @@
 """
 🔗 core/index_coordinator.py — Index Coordinator (V8.7 Titan)
 
-Гарантирует консистентность между NGramIndex (FTS5) и HybridRetriever (BM25+Dense).
-При store_fact() атомарно обновляет оба индекса.
+Координирует derived NGramIndex (FTS5) и HybridRetriever (BM25+Dense).
+Координатор не является Canon/write owner и сам не подключён к runtime write path.
 
-До V8.7: факт мог попасть в FTS5 но не в BM25 (или наоборот) → pre-filter
-пропускал релевантный факт, который BM25 мог бы найти.
-
-Инвариант: координатор не хранит содержимое — только синхронизирует индексы.
+Инварианты:
+- NGram и Hybrid остаются derived/rebuildable projections;
+- ошибки NGram не отменяют canonical write и не скрываются как healthy status;
+- Hybrid dirty отмечается независимо от NGram outcome;
+- этот модуль не добавляет runtime wiring сам по себе.
 """
 
 from __future__ import annotations
@@ -19,58 +20,83 @@ logger = logging.getLogger("velantrim.index_coordinator")
 
 
 class IndexCoordinator:
-    """
-    Единый координатор индексов: NGram + Hybrid.
-
-    При store_fact():
-      1. Обновить NGram (FTS5)
-      2. Пометить Hybrid как dirty → пересборка при следующем retrieve
-      3. Опционально: записать метрику в EventBus
-    """
+    """Bounded coordinator for derived NGram + Hybrid projection freshness."""
 
     def __init__(self):
         self._ngram = None
         self._hybrid_dirty = True
+        self._ngram_degraded = False
+        self._last_ngram_error: Optional[str] = None
 
     def set_ngram(self, ngram) -> None:
+        """Attach/replace the derived NGram surface and reset its health snapshot."""
         self._ngram = ngram
+        self._ngram_degraded = False
+        self._last_ngram_error = None
+
+    def _mark_ngram_healthy(self) -> None:
+        self._ngram_degraded = False
+        self._last_ngram_error = None
+
+    def _mark_ngram_degraded(self, operation: str, exc: Exception) -> None:
+        error_class = type(exc).__name__
+        self._ngram_degraded = True
+        self._last_ngram_error = error_class
+        # Keep diagnostics content-free: exception type is enough for this derived surface.
+        logger.warning("NGram %s degraded: %s", operation, error_class)
 
     def on_store_fact(self, fact: Dict[str, Any]) -> None:
-        """Вызвать после каждого store_fact()."""
-        # 1. NGram — индексировать новый факт
+        """Update the attached derived NGram projection after a fact store event."""
         if self._ngram is not None:
             try:
-                self._ngram.index_fact(
+                self._ngram.index(
                     fact.get("fact_id", ""),
                     fact.get("claim", ""),
                 )
-            except Exception:
-                logger.debug("NGram index_fact failed (graceful)")
+            except Exception as exc:
+                self._mark_ngram_degraded("index", exc)
+            else:
+                self._mark_ngram_healthy()
 
-        # 2. Hybrid — пометить грязным
         self._hybrid_dirty = True
 
     def on_store_batch(self, facts: List[Dict[str, Any]]) -> None:
-        """Вызвать после store_facts_batch()."""
+        """Best-effort derived indexing for a batch; any failure remains observable."""
+        batch_failed = False
+        last_error: Exception | None = None
+
         if self._ngram is not None:
-            try:
-                for f in facts:
-                    self._ngram.index_fact(
-                        f.get("fact_id", ""),
-                        f.get("claim", ""),
+            for fact in facts:
+                try:
+                    self._ngram.index(
+                        fact.get("fact_id", ""),
+                        fact.get("claim", ""),
                     )
-            except Exception:
-                logger.debug("NGram batch index failed (graceful)")
+                except Exception as exc:
+                    batch_failed = True
+                    last_error = exc
+                    logger.warning(
+                        "NGram batch index item degraded: %s",
+                        type(exc).__name__,
+                    )
+
+            if batch_failed and last_error is not None:
+                self._ngram_degraded = True
+                self._last_ngram_error = type(last_error).__name__
+            else:
+                self._mark_ngram_healthy()
 
         self._hybrid_dirty = True
 
     def on_delete_fact(self, fact_id: str) -> None:
-        """Вызвать при удалении факта."""
+        """Remove a fact from the attached derived NGram projection."""
         if self._ngram is not None:
             try:
-                self._ngram.remove_fact(fact_id)
-            except Exception:
-                pass
+                self._ngram.remove(fact_id)
+            except Exception as exc:
+                self._mark_ngram_degraded("remove", exc)
+            else:
+                self._mark_ngram_healthy()
         self._hybrid_dirty = True
 
     @property
@@ -83,6 +109,8 @@ class IndexCoordinator:
     def status(self) -> Dict[str, Any]:
         return {
             "ngram_available": self._ngram is not None,
+            "ngram_degraded": self._ngram_degraded,
+            "last_ngram_error": self._last_ngram_error,
             "hybrid_dirty": self._hybrid_dirty,
         }
 
@@ -104,15 +132,15 @@ def reset_index_coordinator() -> None:
     _coordinator = None
 
 
-# ─── Хук для store_fact ──────────────────────────────────────────────────────
+# ─── Dormant compatibility hooks ─────────────────────────────────────────────
 
 def hook_store_fact(fact: Dict[str, Any]) -> None:
-    """Вызвать в store_fact() для синхронизации индексов."""
+    """Forward to the coordinator if an explicit caller chooses this hook."""
     get_index_coordinator().on_store_fact(fact)
 
 
 def hook_store_batch(facts: List[Dict[str, Any]]) -> None:
-    """Вызвать в store_facts_batch() для синхронизации."""
+    """Forward a batch if an explicit caller chooses this hook."""
     get_index_coordinator().on_store_batch(facts)
 
 
