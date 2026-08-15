@@ -2,7 +2,8 @@
 
 Repository: `velantrian/Velantrim-ExoCortex-Titan`  
 Parent: #52 — Trusted platform: supply chain, World Skills, docs truth, and PR queue  
-C10 authoritative checkpoint entering C11: `main@0074ea569030e0708ea345693c74e8506ada94a5` (`VERIFIED / valid`)  
+Authoritative pre-C11 checkpoint: `main@5f916e0aeb130abf0c840dc622b350e1a268dac2` (`VERIFIED / valid`)  
+C10 closure checkpoint: `main@0074ea569030e0708ea345693c74e8506ada94a5` (`VERIFIED / valid`)  
 Notion target: existing `Velantrim Titan 9.0` page only, ID `398ac84d-0547-81fe-8ca5-d0d2727d1961`
 
 This document is the repository-side C11 closure matrix. It does not itself close the
@@ -26,8 +27,8 @@ normal exact-head / protected-merge / post-merge / same-page Notion lifecycle.
 | Public truth / `/system/epigenetic` / release evidence | **CLOSED** | C10 · PR #322 · accepted head `a07c2a6e...`, merge `0074ea56...`, Full CI #1189, Docker #785, CodeQL #27, aggregate #1248 all SUCCESS |
 | GitHub ↔ Notion maturity alignment | **CLOSED FOR C1–C10; C11 FINAL LIFECYCLE REQUIRED** | Existing `Velantrim Titan 9.0` received C8/C9/C10 FINAL records and read-back; C11 must perform the same lifecycle before #52 issue closure |
 | Historical “10 currently open PRs” queue requirement | **SUPERSEDED WITH EVIDENCE** | #52 comment 2026-08-10 records live open PR queue = 0 and explicitly says the old “10 open PRs” body bullet is stale; 2026-08-13 reconciliation repeats that the old count is historical and not a current acceptance count |
-| Current live PR queue | **CLASSIFIED / NO #52 HARDENING DEBT** | Direct GitHub Pulls API on 2026-08-15 returned exactly one open PR: #321, created 2026-08-14 after the historical queue baseline, scoped to a separate docs/research boundary. It is neither silently discarded nor mutated by C11 |
-| One ordered #52 hardening line | **CLOSED THROUGH C10; C11 FINAL DOCS ONLY** | Ordered closure chain: #308 → #309 → #310/#311 → #312 → #313 → #314 → #317 → #318 → #320 → #322; C11 reconciles only final evidence/status drift |
+| Post-C10 later PR queue | **CLASSIFIED / NO UNRESOLVED #52 HARDENING DEBT** | PR #321 is CLOSED / not merged / explicitly superseded by #323; PR #323 is MERGED at signed `5f916e0a...`; fresh direct Pulls API after that merge returned exactly one open PR, #324, which is this C11 closure PR itself |
+| One ordered #52 hardening line | **CLOSED THROUGH C10; C11 FINAL DOCS ONLY** | Ordered closure chain: #308 → #309 → #310/#311 → #312 → #313 → #314 → #317 → #318 → #320 → #322; #323 is separate post-C10 docs cleanup carried into C11's base; C11 reconciles final evidence/status drift |
 
 ## Queue interpretation
 
@@ -39,11 +40,13 @@ live reconciliation evidence explicitly superseding that count:
   readers not to treat the old “10 open PRs” bullet as current;
 - on 2026-08-13 another #52 reconciliation again classified the body count as stale
   historical queue evidence;
-- on 2026-08-15 the direct Pulls API shows one later-created open PR (#321), unrelated to
-  the bounded #52 hardening sequence.
+- on 2026-08-15 the first C11 audit saw later-created #321; the subsequent race audit
+  confirmed #321 **CLOSED / not merged / superseded by #323**, #323 **MERGED** at
+  `5f916e0a...`, and a fresh Pulls API read showed only #324 open — the C11 PR itself.
 
-No historical PR is silently discarded by this classification. The current later PR is
-left untouched and remains governed by its own scope.
+No historical PR is silently discarded by this classification. The post-C10 cleanup was
+resolved through explicit supersession (#321 → #323), and the merged #323 changes are
+preserved in C11's fresh base rather than overwritten.
 
 ## C11 documentation residual
 
@@ -56,9 +59,9 @@ language:
 3. `docs/evidence/release-evidence-2026-08-14.md` still said the C10 merge SHA was not yet
    known and endpoint hardening was in progress.
 
-C11 reconciles those surfaces to the already-proven C9/C10 state. It creates no new
-runtime, Canon, policy, schema, capability, provider, network, Operator-GO or production
-authority.
+C11 reconciles those surfaces to the already-proven C9/C10 state and carries forward the
+separate #323 docs cleanup from signed `main@5f916e0a...`. It creates no new runtime,
+Canon, policy, schema, capability, provider, network, Operator-GO or production authority.
 
 ## Authority invariants
 
