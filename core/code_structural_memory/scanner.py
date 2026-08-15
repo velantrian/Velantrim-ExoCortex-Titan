@@ -211,74 +211,54 @@ def _default_token_factory() -> str:
     return secrets.token_hex(16)
 
 
-def _db_bool(value: object) -> bool:
-    if value in (0, False):
-        return False
-    if value in (1, True):
-        return True
-    raise CSMScannerError(f"invalid SQLite boolean value: {value!r}")
+def _parser_versions() -> tuple[tuple[str, str], ...]:
+    version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    return ((PARSER_ADAPTER_ID, version),)
 
 
-def local_root_fingerprint(root: str | Path) -> str:
-    """Return a local-only root binding fingerprint without persisting the path."""
-    resolved = Path(root).expanduser().resolve(strict=True)
-    if not resolved.is_dir():
-        raise RepositoryRegistrationError("registered CSM root must be a directory")
-    payload = os.fsencode(str(resolved))
-    return hashlib.sha256(b"csm-local-root-v1\x00" + payload).hexdigest()
-
-
-def resolve_repository_root(root: str | Path) -> Path:
-    """Resolve and validate one caller-supplied repository root."""
-    resolved = Path(root).expanduser().resolve(strict=True)
-    if not resolved.is_dir():
-        raise RepositoryRegistrationError("CSM repository root must be a directory")
-    return resolved
-
-
-def _fetch_repository(conn: sqlite3.Connection, repository_id: str) -> sqlite3.Row:
-    row = conn.execute(
-        "SELECT * FROM csm_repositories WHERE repository_id = ?",
-        (repository_id,),
-    ).fetchone()
-    if row is None:
-        raise RepositoryRegistrationError(
-            f"CSM repository is not registered: {repository_id}"
-        )
-    return row
-
-
-def _registration_from_row(row: sqlite3.Row) -> RepositoryRegistration:
-    return RepositoryRegistration(
-        repository_id=row["repository_id"],
-        local_root_fingerprint=row["local_root_fingerprint"],
-        canonical_origin=row["canonical_origin"],
-        registration_policy_id=row["registration_policy_id"],
-        tenant_or_project_scope=row["tenant_or_project_scope"],
-        created_at=row["created_at"],
-        status=row["status"],
-        retention_policy_id=row["retention_policy_id"],
+def _scan_config_digest(budget: ScanBudget) -> str:
+    return _canonical_digest(
+        {
+            "version": SCANNER_CONTRACT_VERSION,
+            "parser_profile_id": PARSER_PROFILE_ID,
+            "parser_versions": _parser_versions(),
+            "supported_extensions": [SUPPORTED_EXTENSION],
+            "explicit_manifest_only": True,
+            "reject_symlinks": True,
+            "strict_complete_promotion": True,
+            "persist_source_body": False,
+            "node_kinds": ["MODULE", "CLASS", "FUNCTION", "METHOD"],
+            "edge_kinds": ["CONTAINS", "IMPORTS"],
+            "budget": {
+                "max_files": budget.max_files,
+                "max_file_bytes": budget.max_file_bytes,
+                "max_total_bytes": budget.max_total_bytes,
+                "max_path_depth": budget.max_path_depth,
+                "max_scan_seconds": budget.max_scan_seconds,
+            },
+        }
     )
 
 
-def _require_registered_root(
-    conn: sqlite3.Connection,
-    *,
-    repository_id: str,
-    root: str | Path,
-) -> tuple[RepositoryRegistration, Path]:
-    registration = _registration_from_row(_fetch_repository(conn, repository_id))
-    if registration.status != "ACTIVE":
-        raise RepositoryRegistrationError(
-            f"CSM repository is not active: {repository_id}"
-        )
-    resolved_root = resolve_repository_root(root)
-    observed_fingerprint = local_root_fingerprint(resolved_root)
-    if observed_fingerprint != registration.local_root_fingerprint:
-        raise RepositoryRegistrationError(
-            "CSM repository root does not match registered local root fingerprint"
-        )
-    return registration, resolved_root
+def resolve_repository_root(root: str | Path) -> Path:
+    """Resolve and freeze a non-symlink repository directory."""
+    raw = Path(root).expanduser()
+    try:
+        if raw.is_symlink():
+            raise RepositoryRegistrationError("repository root must not be a symlink")
+        resolved = raw.resolve(strict=True)
+    except (FileNotFoundError, OSError) as exc:
+        raise RepositoryRegistrationError("repository root cannot be resolved") from exc
+    if not resolved.is_dir():
+        raise RepositoryRegistrationError("repository root must be a directory")
+    return resolved
+
+
+def local_root_fingerprint(root: str | Path) -> str:
+    """Hash local deployment root identity without exposing the path in CSM rows."""
+    resolved = resolve_repository_root(root)
+    normalized = os.path.normcase(str(resolved)).replace("\\", "/")
+    return "sha256:" + hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
 def register_repository(
@@ -287,41 +267,61 @@ def register_repository(
     registration: RepositoryRegistration,
     root: str | Path,
 ) -> None:
-    """Register exactly one repository/root binding for explicit Stage-C scans."""
-    initialize_schema(conn)
+    """Persist one exact repository registration or prove an identical one exists."""
     _require_idle_connection(conn)
-    resolved_root = resolve_repository_root(root)
-    observed_fingerprint = local_root_fingerprint(resolved_root)
-    if registration.local_root_fingerprint != observed_fingerprint:
+    initialize_schema(conn)
+    resolved = resolve_repository_root(root)
+    expected_fingerprint = local_root_fingerprint(resolved)
+    if registration.local_root_fingerprint != expected_fingerprint:
         raise RepositoryRegistrationError(
-            "registration local_root_fingerprint does not match caller root"
+            "registration local_root_fingerprint does not match the resolved root"
         )
-    existing = conn.execute(
+    if registration.status != "ACTIVE":
+        raise RepositoryRegistrationError("new scanner registrations must be ACTIVE")
+
+    row = conn.execute(
         "SELECT * FROM csm_repositories WHERE repository_id = ?",
         (registration.repository_id,),
     ).fetchone()
-    if existing is not None:
-        if _registration_from_row(existing) != registration:
+    expected = (
+        registration.canonical_origin,
+        registration.local_root_fingerprint,
+        registration.registration_policy_id,
+        registration.tenant_or_project_scope,
+        registration.created_at,
+        registration.status,
+        registration.retention_policy_id,
+    )
+    if row is not None:
+        actual = (
+            row["canonical_origin"],
+            row["local_root_fingerprint"],
+            row["registration_policy_id"],
+            row["tenant_or_project_scope"],
+            row["created_at"],
+            row["status"],
+            row["retention_policy_id"],
+        )
+        if actual != expected:
             raise RepositoryRegistrationError(
-                "repository registration is immutable once persisted"
+                "repository_id is already bound to different registration metadata"
             )
         state = conn.execute(
-            "SELECT repository_id FROM csm_repository_scan_state WHERE repository_id = ?",
+            "SELECT 1 FROM csm_repository_scan_state WHERE repository_id = ?",
             (registration.repository_id,),
         ).fetchone()
         if state is None:
-            raise RepositoryRegistrationError(
-                "repository registration exists without Stage-C scan state"
-            )
+            raise CSMScannerError("repository registration exists without scan state")
         return
+
     try:
         conn.execute("BEGIN IMMEDIATE")
         conn.execute(
             """
-            INSERT INTO csm_repositories(
+            INSERT INTO csm_repositories (
                 repository_id,
-                local_root_fingerprint,
                 canonical_origin,
+                local_root_fingerprint,
                 registration_policy_id,
                 tenant_or_project_scope,
                 created_at,
@@ -331,8 +331,8 @@ def register_repository(
             """,
             (
                 registration.repository_id,
-                registration.local_root_fingerprint,
                 registration.canonical_origin,
+                registration.local_root_fingerprint,
                 registration.registration_policy_id,
                 registration.tenant_or_project_scope,
                 registration.created_at,
@@ -340,68 +340,97 @@ def register_repository(
                 registration.retention_policy_id,
             ),
         )
-        conn.execute(
-            """
-            INSERT INTO csm_repository_scan_state(
-                repository_id,
-                next_generation,
-                current_snapshot_id,
-                current_scan_generation,
-                current_scan_receipt_id,
-                lease_token,
-                lease_generation,
-                lease_issued_at,
-                lease_expires_at
-            ) VALUES (?, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
-            """,
+        state = conn.execute(
+            "SELECT next_generation FROM csm_repository_scan_state WHERE repository_id = ?",
             (registration.repository_id,),
-        )
+        ).fetchone()
+        if state is None or int(state[0]) != 1:
+            raise CSMScannerError("repository scan state was not initialized deterministically")
         conn.commit()
     except Exception:
         conn.rollback()
         raise
 
 
-def _lease_event(
+def _repository_registration_row(
     conn: sqlite3.Connection,
     *,
     repository_id: str,
+    root: Path,
+) -> sqlite3.Row:
+    row = conn.execute(
+        "SELECT * FROM csm_repositories WHERE repository_id = ?",
+        (repository_id,),
+    ).fetchone()
+    if row is None:
+        raise RepositoryRegistrationError("repository_id is not registered")
+    if row["status"] != "ACTIVE":
+        raise RepositoryRegistrationError("repository registration is not ACTIVE")
+    if row["local_root_fingerprint"] != local_root_fingerprint(root):
+        raise RepositoryRegistrationError(
+            "resolved repository root does not match the registered fingerprint"
+        )
+    return row
+
+
+def _lease_event_id(
+    *,
+    repository_id: str,
+    holder_token: str,
     generation: int,
-    lease_token: str,
     event_type: str,
     observed_at: float,
-    recovered_from_generation: int | None = None,
+    reason_code: str,
+) -> str:
+    return _canonical_digest(
+        (
+            "csm-lease-event-v1",
+            repository_id,
+            holder_token,
+            generation,
+            event_type,
+            f"{observed_at:.9f}",
+            reason_code,
+        )
+    )
+
+
+def _insert_lease_event(
+    conn: sqlite3.Connection,
+    *,
+    lease: ScanLease,
+    event_type: str,
+    observed_at: float,
+    reason_code: str,
 ) -> None:
     conn.execute(
         """
-        INSERT INTO csm_scan_lease_events(
-            event_id,
+        INSERT INTO csm_scan_lease_events (
             repository_id,
+            event_id,
             generation,
-            lease_token,
+            holder_token,
             event_type,
             observed_at,
-            recovered_from_generation
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            reason_code,
+            no_runtime_authority
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
         """,
         (
-            _canonical_digest(
-                (
-                    "csm-lease-event-v1",
-                    repository_id,
-                    generation,
-                    lease_token,
-                    event_type,
-                    observed_at,
-                    recovered_from_generation,
-                )
+            lease.repository_id,
+            _lease_event_id(
+                repository_id=lease.repository_id,
+                holder_token=lease.holder_token,
+                generation=lease.generation,
+                event_type=event_type,
+                observed_at=observed_at,
+                reason_code=reason_code,
             ),
-            repository_id,
-            generation,
-            lease_token,
+            lease.generation,
+            lease.holder_token,
             event_type,
             observed_at,
-            recovered_from_generation,
+            reason_code,
         ),
     )
 
@@ -410,14 +439,11 @@ def _acquire_scan_lease(
     conn: sqlite3.Connection,
     *,
     repository_id: str,
-    now: float,
     lease_ttl_seconds: float,
-    holder_token: str,
+    now: float,
+    token_factory: Callable[[], str],
 ) -> ScanLease:
-    lease_ttl_seconds = _require_positive_seconds(
-        lease_ttl_seconds,
-        "lease_ttl_seconds",
-    )
+    ttl = _require_positive_seconds(lease_ttl_seconds, "lease_ttl_seconds")
     try:
         conn.execute("BEGIN IMMEDIATE")
         row = conn.execute(
@@ -425,28 +451,23 @@ def _acquire_scan_lease(
             (repository_id,),
         ).fetchone()
         if row is None:
-            raise RepositoryRegistrationError(
-                f"missing CSM scan state for repository: {repository_id}"
-            )
-        existing_token = row["lease_token"]
-        existing_generation = row["lease_generation"]
-        existing_expires = row["lease_expires_at"]
-        recovered = False
-        recovered_from_generation: int | None = None
-        if existing_token is not None:
-            if existing_expires is None or float(existing_expires) > now:
-                raise ScanLeaseBusyError(
-                    f"repository scan lease is already held: {repository_id}"
-                )
-            recovered = True
-            recovered_from_generation = (
-                None
-                if existing_generation is None
-                else int(existing_generation)
+            raise RepositoryRegistrationError("repository scan state does not exist")
+
+        old_token = row["lease_token"]
+        old_generation = row["lease_generation"]
+        old_expiry = row["lease_expires_at"]
+        recovered = old_token is not None
+        if old_token is not None and float(old_expiry) > now:
+            raise ScanLeaseBusyError(
+                f"repository scan lease is active for generation {old_generation}"
             )
 
         generation = int(row["next_generation"])
-        expires_at = now + lease_ttl_seconds
+        holder_token = token_factory().strip()
+        if not holder_token or "\x00" in holder_token:
+            raise CSMScannerError("token_factory returned an invalid lease token")
+        expires_at = now + ttl
+
         updated = conn.execute(
             """
             UPDATE csm_repository_scan_state
@@ -472,22 +493,11 @@ def _acquire_scan_lease(
                 generation,
                 now,
             ),
-        ).rowcount
-        if updated != 1:
-            raise ScanLeaseBusyError(
-                f"repository scan lease acquisition raced: {repository_id}"
-            )
-        _lease_event(
-            conn,
-            repository_id=repository_id,
-            generation=generation,
-            lease_token=holder_token,
-            event_type="RECOVERED" if recovered else "ACQUIRED",
-            observed_at=now,
-            recovered_from_generation=recovered_from_generation,
         )
-        conn.commit()
-        return ScanLease(
+        if updated.rowcount != 1:
+            raise ScanLeaseLostError("scan lease compare-and-swap failed")
+
+        lease = ScanLease(
             repository_id=repository_id,
             holder_token=holder_token,
             generation=generation,
@@ -495,22 +505,57 @@ def _acquire_scan_lease(
             expires_at=expires_at,
             recovered_expired_lease=recovered,
         )
+        _insert_lease_event(
+            conn,
+            lease=lease,
+            event_type="RECOVERED" if recovered else "ACQUIRED",
+            observed_at=now,
+            reason_code=(
+                "EXPIRED_PREVIOUS_LEASE" if recovered else "EXPLICIT_SCAN_INVOCATION"
+            ),
+        )
+        conn.commit()
+        return lease
     except Exception:
         conn.rollback()
         raise
 
 
-def _release_scan_lease_best_effort(
+def _assert_current_lease(
     conn: sqlite3.Connection,
     *,
     lease: ScanLease,
     now: float,
-) -> None:
-    if conn.in_transaction:
-        conn.rollback()
+) -> sqlite3.Row:
+    row = conn.execute(
+        "SELECT * FROM csm_repository_scan_state WHERE repository_id = ?",
+        (lease.repository_id,),
+    ).fetchone()
+    if row is None:
+        raise ScanLeaseLostError("repository scan state disappeared")
+    if row["lease_token"] != lease.holder_token:
+        raise ScanLeaseLostError("scan lease token is no longer current")
+    if row["lease_generation"] != lease.generation:
+        raise ScanLeaseLostError("scan generation is no longer current")
+    if row["lease_expires_at"] is None or float(row["lease_expires_at"]) <= now:
+        raise ScanLeaseLostError("scan lease expired before finalization")
+    if row["current_generation"] is not None and int(row["current_generation"]) >= lease.generation:
+        raise ScanLeaseLostError("a newer or equal scan generation is already current")
+    return row
+
+
+def _release_scan_lease(
+    conn: sqlite3.Connection,
+    *,
+    lease: ScanLease,
+    now: float,
+    event_type: str,
+    reason_code: str,
+) -> bool:
+    """Best-effort exact-token release. Never clears a successor's lease."""
     try:
         conn.execute("BEGIN IMMEDIATE")
-        cleared = conn.execute(
+        updated = conn.execute(
             """
             UPDATE csm_repository_scan_state
             SET lease_token = NULL,
@@ -521,72 +566,164 @@ def _release_scan_lease_best_effort(
               AND lease_token = ?
               AND lease_generation = ?
             """,
-            (
-                lease.repository_id,
-                lease.holder_token,
-                lease.generation,
-            ),
-        ).rowcount
-        if cleared == 1:
-            _lease_event(
+            (lease.repository_id, lease.holder_token, lease.generation),
+        )
+        if updated.rowcount == 1:
+            _insert_lease_event(
                 conn,
-                repository_id=lease.repository_id,
-                generation=lease.generation,
-                lease_token=lease.holder_token,
-                event_type="RELEASED_AFTER_FAILURE",
+                lease=lease,
+                event_type=event_type,
                 observed_at=now,
+                reason_code=reason_code,
             )
-        conn.commit()
+            conn.commit()
+            return True
+        conn.rollback()
+        return False
     except Exception:
         conn.rollback()
+        raise
 
 
-def _path_has_symlink_component(root: Path, relative_path: str) -> bool:
-    current = root
-    for component in relative_path.split("/"):
-        current = current / component
-        try:
-            if current.is_symlink():
-                return True
-        except OSError:
-            return True
-    return False
+def _module_qualified_name(relative_path: str) -> str:
+    parts = relative_path.split("/")
+    last = parts[-1]
+    stem = last[:-3] if last.endswith(SUPPORTED_EXTENSION) else last
+    if stem == "__init__":
+        parts = parts[:-1]
+    else:
+        parts[-1] = stem
+    return ".".join(parts) if parts else "__root__"
 
 
-def _scan_config_digest(budget: ScanBudget) -> str:
-    return _canonical_digest(
-        (
-            SCANNER_CONTRACT_VERSION,
-            PARSER_PROFILE_ID,
-            PARSER_ADAPTER_ID,
-            budget.max_files,
-            budget.max_file_bytes,
-            budget.max_total_bytes,
-            budget.max_path_depth,
-            budget.max_scan_seconds,
+def _line_byte_offsets(raw: bytes) -> tuple[int, ...]:
+    offsets = [0]
+    cursor = 0
+    for line in raw.splitlines(keepends=True):
+        cursor += len(line)
+        offsets.append(cursor)
+    if not offsets:
+        return (0,)
+    return tuple(offsets)
+
+
+def _ast_span(node: ast.AST, *, raw: bytes, offsets: Sequence[int]) -> SourceSpan:
+    lineno = getattr(node, "lineno", None)
+    col = getattr(node, "col_offset", None)
+    end_lineno = getattr(node, "end_lineno", None)
+    end_col = getattr(node, "end_col_offset", None)
+    if lineno is None or col is None:
+        return SourceSpan(0, len(raw))
+    if lineno < 1 or lineno > len(offsets):
+        raise ValueError("AST start line is outside source bounds")
+    start = offsets[lineno - 1] + int(col)
+    if end_lineno is None or end_col is None:
+        end = start
+    else:
+        if end_lineno < 1 or end_lineno > len(offsets):
+            raise ValueError("AST end line is outside source bounds")
+        end = offsets[end_lineno - 1] + int(end_col)
+    if start < 0 or end < start or end > len(raw):
+        raise ValueError("AST source span is outside source bounds")
+    return SourceSpan(start, end)
+
+
+class _PythonStructureVisitor(ast.NodeVisitor):
+    def __init__(self, *, repository_id: str, relative_path: str, raw: bytes) -> None:
+        self._repository_id = repository_id
+        self._relative_path = relative_path
+        self._raw = raw
+        self._offsets = _line_byte_offsets(raw)
+        module_qname = _module_qualified_name(relative_path)
+        module_draft = _NodeDraft(
+            node_kind="MODULE",
+            relative_path=relative_path,
+            qualified_name=module_qname,
+            source_span=SourceSpan(0, len(raw)),
         )
-    )
+        self.nodes: list[_NodeDraft] = [module_draft]
+        self.edges: list[_EdgeDraft] = []
+        self._scope_stack: list[_Scope] = [
+            _Scope(
+                node_id=module_draft.node_id(repository_id),
+                qualified_name=module_qname,
+                node_kind="MODULE",
+            )
+        ]
 
+    @property
+    def _scope(self) -> _Scope:
+        return self._scope_stack[-1]
 
-def _source_span(node: ast.AST) -> SourceSpan:
-    start = int(getattr(node, "lineno", 0) or 0)
-    end = int(getattr(node, "end_lineno", start) or start)
-    return SourceSpan(start_byte=max(start, 0), end_byte=max(end, start, 0))
+    def _add_declaration(self, node: ast.AST, *, name: str, kind: str) -> _Scope:
+        qname = f"{self._scope.qualified_name}.{name}"
+        draft = _NodeDraft(
+            node_kind=kind,
+            relative_path=self._relative_path,
+            qualified_name=qname,
+            source_span=_ast_span(node, raw=self._raw, offsets=self._offsets),
+        )
+        node_id = draft.node_id(self._repository_id)
+        self.nodes.append(draft)
+        self.edges.append(
+            _EdgeDraft(
+                edge_kind="CONTAINS",
+                source_node_id=self._scope.node_id,
+                target_node_id=node_id,
+                source_span=draft.source_span,
+                resolution_rule="lexical-containment-v1",
+            )
+        )
+        return _Scope(node_id=node_id, qualified_name=qname, node_kind=kind)
 
+    def _visit_scoped_body(self, scope: _Scope, body: Sequence[ast.stmt]) -> None:
+        self._scope_stack.append(scope)
+        try:
+            for statement in body:
+                self.visit(statement)
+        finally:
+            self._scope_stack.pop()
 
-def _module_node(repository_id: str, relative_path: str) -> _NodeDraft:
-    return _NodeDraft(
-        node_kind="MODULE",
-        relative_path=relative_path,
-        qualified_name=relative_path,
-        source_span=SourceSpan(start_byte=0, end_byte=0),
-    )
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:  # noqa: N802
+        scope = self._add_declaration(node, name=node.name, kind="CLASS")
+        self._visit_scoped_body(scope, node.body)
 
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:  # noqa: N802
+        kind = "METHOD" if self._scope.node_kind == "CLASS" else "FUNCTION"
+        scope = self._add_declaration(node, name=node.name, kind=kind)
+        self._visit_scoped_body(scope, node.body)
 
-def _qualified(parent: _Scope, name: str) -> str:
-    if parent.node_kind == "MODULE":
-        return name
-    return f"{parent.qualified_name}.{name}"
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:  # noqa: N802
+        kind = "METHOD" if self._scope.node_kind == "CLASS" else "FUNCTION"
+        scope = self._add_declaration(node, name=node.name, kind=kind)
+        self._visit_scoped_body(scope, node.body)
+
+    def _add_import_target(self, node: ast.AST, normalized_target: str) -> None:
+        unresolved = UnresolvedTarget(
+            target_kind="IMPORT_TARGET",
+            normalized_target=normalized_target,
+        )
+        self.edges.append(
+            _EdgeDraft(
+                edge_kind="IMPORTS",
+                source_node_id=self._scope.node_id,
+                unresolved_target=unresolved,
+                source_span=_ast_span(node, raw=self._raw, offsets=self._offsets),
+                resolution_rule="python-import-unresolved-v1",
+            )
+        )
+
+    def visit_Import(self, node: ast.Import) -> None:  # noqa: N802
+        for target in sorted({alias.name for alias in node.names}):
+            self._add_import_target(node, target)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:  # noqa: N802
+        prefix = "." * node.level
+        if node.module:
+            self._add_import_target(node, prefix + node.module)
+            return
+        for target in sorted({alias.name for alias in node.names}):
+            self._add_import_target(node, prefix + target)
 
 
 def _parse_python_file(
@@ -597,161 +734,47 @@ def _parse_python_file(
 ) -> tuple[tuple[_NodeDraft, ...], tuple[_EdgeDraft, ...]]:
     text = raw.decode("utf-8", errors="strict")
     tree = ast.parse(text, filename=relative_path, mode="exec", type_comments=True)
-    module = _module_node(repository_id, relative_path)
-    nodes: list[_NodeDraft] = [module]
-    edges: list[_EdgeDraft] = []
-    module_id = module.node_id(repository_id)
-
-    def visit_body(body: Sequence[ast.stmt], parent: _Scope) -> None:
-        for statement in body:
-            if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                node_kind = "METHOD" if parent.node_kind == "CLASS" else "FUNCTION"
-                qualified_name = _qualified(parent, statement.name)
-                draft = _NodeDraft(
-                    node_kind=node_kind,
-                    relative_path=relative_path,
-                    qualified_name=qualified_name,
-                    source_span=_source_span(statement),
-                )
-                node_id = draft.node_id(repository_id)
-                nodes.append(draft)
-                edges.append(
-                    _EdgeDraft(
-                        edge_kind="CONTAINS",
-                        source_node_id=parent.node_id,
-                        target_node_id=node_id,
-                        source_span=_source_span(statement),
-                        resolution_rule="LEXICAL_CONTAINMENT",
-                    )
-                )
-                visit_body(
-                    statement.body,
-                    _Scope(
-                        node_id=node_id,
-                        qualified_name=qualified_name,
-                        node_kind=node_kind,
-                    ),
-                )
-            elif isinstance(statement, ast.ClassDef):
-                qualified_name = _qualified(parent, statement.name)
-                draft = _NodeDraft(
-                    node_kind="CLASS",
-                    relative_path=relative_path,
-                    qualified_name=qualified_name,
-                    source_span=_source_span(statement),
-                )
-                node_id = draft.node_id(repository_id)
-                nodes.append(draft)
-                edges.append(
-                    _EdgeDraft(
-                        edge_kind="CONTAINS",
-                        source_node_id=parent.node_id,
-                        target_node_id=node_id,
-                        source_span=_source_span(statement),
-                        resolution_rule="LEXICAL_CONTAINMENT",
-                    )
-                )
-                visit_body(
-                    statement.body,
-                    _Scope(
-                        node_id=node_id,
-                        qualified_name=qualified_name,
-                        node_kind="CLASS",
-                    ),
-                )
-            else:
-                for child in ast.iter_child_nodes(statement):
-                    if isinstance(child, ast.stmt):
-                        visit_body([child], parent)
-
-    visit_body(
-        tree.body,
-        _Scope(
-            node_id=module_id,
-            qualified_name=relative_path,
-            node_kind="MODULE",
-        ),
+    visitor = _PythonStructureVisitor(
+        repository_id=repository_id,
+        relative_path=relative_path,
+        raw=raw,
     )
+    visitor.visit(tree)
+    node_ids = [node.node_id(repository_id) for node in visitor.nodes]
+    if len(node_ids) != len(set(node_ids)):
+        raise ValueError("parser produced duplicate deterministic node identity")
 
-    for candidate in ast.walk(tree):
-        if isinstance(candidate, ast.Import):
-            for alias in candidate.names:
-                unresolved = UnresolvedTarget(
-                    normalized_target=alias.name,
-                    resolution_rule="PYTHON_IMPORT_UNRESOLVED",
-                    ambiguity_reason="STAGE_C_DOES_NOT_RESOLVE_IMPORT_TARGETS",
-                )
-                edges.append(
-                    _EdgeDraft(
-                        edge_kind="IMPORTS",
-                        source_node_id=module_id,
-                        unresolved_target=unresolved,
-                        source_span=_source_span(candidate),
-                        resolution_rule=unresolved.resolution_rule,
-                    )
-                )
-        elif isinstance(candidate, ast.ImportFrom):
-            module_name = candidate.module or ""
-            level_prefix = "." * int(candidate.level or 0)
-            normalized = f"{level_prefix}{module_name}" or level_prefix
-            if normalized:
-                unresolved = UnresolvedTarget(
-                    normalized_target=normalized,
-                    resolution_rule="PYTHON_IMPORT_FROM_UNRESOLVED",
-                    ambiguity_reason="STAGE_C_DOES_NOT_RESOLVE_IMPORT_TARGETS",
-                )
-                edges.append(
-                    _EdgeDraft(
-                        edge_kind="IMPORTS",
-                        source_node_id=module_id,
-                        unresolved_target=unresolved,
-                        source_span=_source_span(candidate),
-                        resolution_rule=unresolved.resolution_rule,
-                    )
-                )
-
-    unique_nodes: dict[str, _NodeDraft] = {}
-    for draft in nodes:
-        unique_nodes[draft.node_id(repository_id)] = draft
-    unique_edges: dict[str, _EdgeDraft] = {}
-    for draft in edges:
-        edge_id = draft.edge_id(repository_id)
-        current = unique_edges.get(edge_id)
-        if current is None or (
-            draft.source_span.start_byte,
-            draft.source_span.end_byte,
+    # Stable edge identity intentionally excludes source line/alias spelling. Repeated
+    # equivalent imports therefore collapse to one structural edge. Keep the earliest
+    # source span deterministically rather than fabricating a second identity.
+    edges_by_id: dict[str, _EdgeDraft] = {}
+    for edge in visitor.edges:
+        edge_id = edge.edge_id(repository_id)
+        existing = edges_by_id.get(edge_id)
+        if existing is None or (
+            edge.source_span.start_byte,
+            edge.source_span.end_byte,
         ) < (
-            current.source_span.start_byte,
-            current.source_span.end_byte,
+            existing.source_span.start_byte,
+            existing.source_span.end_byte,
         ):
-            unique_edges[edge_id] = draft
+            edges_by_id[edge_id] = edge
     return (
-        tuple(
-            sorted(
-                unique_nodes.values(),
-                key=lambda item: (
-                    item.relative_path,
-                    item.node_kind,
-                    item.qualified_name,
-                ),
-            )
-        ),
-        tuple(
-            sorted(
-                unique_edges.values(),
-                key=lambda item: (
-                    item.edge_kind,
-                    item.source_node_id,
-                    item.target_node_id or "",
-                    (
-                        item.unresolved_target.normalized_target
-                        if item.unresolved_target is not None
-                        else ""
-                    ),
-                ),
-            )
-        ),
+        tuple(sorted(visitor.nodes, key=lambda item: item.node_id(repository_id))),
+        tuple(edges_by_id[key] for key in sorted(edges_by_id)),
     )
+
+
+def _path_has_symlink_component(root: Path, relative_path: str) -> bool:
+    current = root
+    for part in relative_path.split("/"):
+        current = current / part
+        try:
+            if current.is_symlink():
+                return True
+        except OSError:
+            return True
+    return False
 
 
 def _problem(
@@ -776,22 +799,23 @@ def _safe_manifest_paths(
 ) -> tuple[list[str], list[_ObservedProblem]]:
     observed: list[str] = []
     problems: list[_ObservedProblem] = []
-    for raw_path in relative_paths:
-        if len(observed) >= budget.max_files:
-            problems.append(
-                _problem(relative_path="<manifest>", reason="FILE_COUNT_BUDGET_EXCEEDED")
-            )
+    iterator = iter(relative_paths)
+    for _ in range(budget.max_files + 1):
+        try:
+            raw_path = next(iterator)
+        except StopIteration:
             break
         try:
             normalized = normalize_relative_path(raw_path)
-        except (TypeError, ValueError):
+        except (AttributeError, TypeError, ValueError):
             problems.append(
-                _problem(relative_path="<invalid>", reason="INVALID_RELATIVE_PATH")
+                _problem(
+                    relative_path="__invalid_manifest_entry__.py",
+                    reason="INVALID_RELATIVE_PATH",
+                )
             )
             continue
         observed.append(normalized)
-    if len(set(observed)) < len(observed):
-        observed = list(dict.fromkeys(observed))
     if len(observed) > budget.max_files:
         overflow = observed.pop()
         problems.append(
@@ -866,8 +890,7 @@ def _discover_and_parse(
                 )
             )
             continue
-        remaining_total_bytes = budget.max_total_bytes - total_bytes
-        if remaining_total_bytes <= 0 or size > remaining_total_bytes:
+        if total_bytes + size > budget.max_total_bytes:
             problems.append(
                 _problem(
                     relative_path=relative_path,
@@ -877,36 +900,11 @@ def _discover_and_parse(
             )
             continue
 
-        # Bound the actual read, not only the successful-parse accounting. One
-        # look-ahead byte is permitted solely to detect growth beyond either the
-        # per-file or remaining total-byte budget after stat().
-        read_cap = min(budget.max_file_bytes, remaining_total_bytes)
         try:
-            with resolved.open("rb") as source:
-                raw = source.read(read_cap + 1)
+            raw = resolved.read_bytes()
         except OSError:
             problems.append(
                 _problem(relative_path=relative_path, reason="READ_ERROR", is_error=True)
-            )
-            # A failed read has unknown partial-consumption semantics. Stop
-            # conservatively rather than allowing later reads to exceed the
-            # declared aggregate budget.
-            break
-
-        total_bytes += len(raw)
-        if len(raw) > read_cap:
-            overflow_reason = (
-                "FILE_SIZE_LIMIT"
-                if budget.max_file_bytes <= remaining_total_bytes
-                else "TOTAL_BYTE_LIMIT"
-            )
-            problems.append(
-                _problem(
-                    relative_path=relative_path,
-                    reason=overflow_reason,
-                    observed_bytes=len(raw),
-                    is_error=True,
-                )
             )
             continue
         if len(raw) != size:
@@ -978,6 +976,7 @@ def _discover_and_parse(
             )
             break
 
+        total_bytes += len(raw)
         parsed.append(
             _ParsedFile(
                 relative_path=relative_path,
@@ -1013,64 +1012,76 @@ def _materialize_candidate(
         for item in problems
     )
     manifest_digest = _canonical_digest(
-        (
-            "csm-filesystem-manifest-v1",
-            tuple(sorted(manifest_records)),
-            tuple(problem_records),
-        )
+        {
+            "version": "csm-explicit-manifest-v1",
+            "files": manifest_records,
+            "problems": problem_records,
+        }
     )
     source_state = SourceState(
         manifest_digest=manifest_digest,
         dirty=True,
         commit_sha=None,
     )
-    parser_versions = ((PARSER_ADAPTER_ID, sys.version.split()[0]),)
+    parser_versions = _parser_versions()
     scan_config_digest = _scan_config_digest(budget)
 
-    node_drafts: dict[str, _NodeDraft] = {}
-    edge_drafts: dict[str, _EdgeDraft] = {}
-    for parsed_file in parsed_files:
-        for node in parsed_file.nodes:
-            node_drafts[node.node_id(repository_id)] = node
-        for edge in parsed_file.edges:
-            edge_drafts[edge.edge_id(repository_id)] = edge
-
-    graph_payload = (
-        tuple(
-            sorted(
-                (
-                    node_id,
-                    draft.node_kind,
-                    draft.relative_path,
-                    draft.qualified_name,
-                    draft.source_span.start_byte,
-                    draft.source_span.end_byte,
-                )
-                for node_id, draft in node_drafts.items()
-            )
-        ),
-        tuple(
-            sorted(
-                (
-                    edge_id,
-                    draft.edge_kind,
-                    draft.source_node_id,
-                    draft.target_node_id,
-                    (
-                        None
-                        if draft.unresolved_target is None
-                        else draft.unresolved_target.normalized_target
-                    ),
-                    draft.resolution_rule,
-                    draft.source_span.start_byte,
-                    draft.source_span.end_byte,
-                )
-                for edge_id, draft in edge_drafts.items()
-            )
-        ),
-        tuple(problem_records),
+    node_drafts = [node for item in parsed_files for node in item.nodes]
+    edge_drafts = [edge for item in parsed_files for edge in item.edges]
+    node_records = sorted(
+        (
+            node.node_id(repository_id),
+            node.node_kind,
+            node.relative_path,
+            node.qualified_name,
+            node.source_span.start_byte,
+            node.source_span.end_byte,
+            PARSER_PROFILE_ID,
+            PARSER_ADAPTER_ID,
+        )
+        for node in node_drafts
     )
-    structural_graph_digest = _canonical_digest(graph_payload)
+    edge_records = sorted(
+        (
+            edge.edge_id(repository_id),
+            edge.edge_kind,
+            edge.source_node_id,
+            edge.target_node_id,
+            (
+                edge.unresolved_target.target_kind
+                if edge.unresolved_target is not None
+                else None
+            ),
+            (
+                edge.unresolved_target.normalized_target
+                if edge.unresolved_target is not None
+                else None
+            ),
+            edge.source_span.start_byte,
+            edge.source_span.end_byte,
+            PARSER_ADAPTER_ID,
+            edge.resolution_rule,
+        )
+        for edge in edge_drafts
+    )
+    omission_counter = Counter(item.reason for item in problems if not item.is_error)
+    error_counter = Counter(item.reason for item in problems if item.is_error)
+    omission_counts = tuple(sorted(omission_counter.items()))
+    error_counts = tuple(sorted(error_counter.items()))
+    structural_graph_digest = _canonical_digest(
+        {
+            "version": "csm-structural-graph-v1",
+            "repository_id": repository_id,
+            "manifest_digest": manifest_digest,
+            "parser_profile_id": PARSER_PROFILE_ID,
+            "parser_versions": parser_versions,
+            "scan_config_digest": scan_config_digest,
+            "nodes": node_records,
+            "edges": edge_records,
+            "omissions": omission_counts,
+            "errors": error_counts,
+        }
+    )
     snapshot_id = make_snapshot_id(
         repository_id=repository_id,
         source_state=source_state,
@@ -1082,41 +1093,35 @@ def _materialize_candidate(
 
     nodes = tuple(
         StructuralNode(
-            node_id=node_id,
+            node_id=node.node_id(repository_id),
             repository_id=repository_id,
             snapshot_id=snapshot_id,
             generation=generation,
-            node_kind=draft.node_kind,
-            relative_path=draft.relative_path,
-            qualified_name=draft.qualified_name,
-            source_span=draft.source_span,
+            node_kind=node.node_kind,
+            relative_path=node.relative_path,
+            qualified_name=node.qualified_name,
+            source_span=node.source_span,
             parser_profile_id=PARSER_PROFILE_ID,
             parser_adapter_id=PARSER_ADAPTER_ID,
         )
-        for node_id, draft in sorted(node_drafts.items())
+        for node in sorted(node_drafts, key=lambda item: item.node_id(repository_id))
     )
     edges = tuple(
         StructuralEdge(
-            edge_id=edge_id,
+            edge_id=edge.edge_id(repository_id),
             repository_id=repository_id,
             snapshot_id=snapshot_id,
             generation=generation,
-            edge_kind=draft.edge_kind,
-            source_node_id=draft.source_node_id,
-            target_node_id=draft.target_node_id,
-            source_span=draft.source_span,
-            resolution_rule=draft.resolution_rule,
-            unresolved_target=draft.unresolved_target,
+            edge_kind=edge.edge_kind,
+            source_node_id=edge.source_node_id,
+            target_node_id=edge.target_node_id,
+            unresolved_target=edge.unresolved_target,
+            source_span=edge.source_span,
+            parser_adapter_id=PARSER_ADAPTER_ID,
+            resolution_rule=edge.resolution_rule,
         )
-        for edge_id, draft in sorted(edge_drafts.items())
+        for edge in sorted(edge_drafts, key=lambda item: item.edge_id(repository_id))
     )
-
-    omission_counter = Counter(
-        item.reason for item in problems if not item.is_error
-    )
-    error_counter = Counter(item.reason for item in problems if item.is_error)
-    omission_counts = tuple(sorted(omission_counter.items()))
-    error_counts = tuple(sorted(error_counter.items()))
     omissions = tuple(
         ScanOmission(
             omission_id=_canonical_digest(
@@ -1167,165 +1172,171 @@ def _materialize_candidate(
 
 def _receipt_id(
     *,
-    repository_id: str,
-    generation: int,
-    candidate: _ScanCandidate,
+    lease: ScanLease,
+    candidate_snapshot_id: str,
+    started_at: float,
 ) -> str:
     return _canonical_digest(
         (
             "csm-scan-receipt-v1",
-            repository_id,
-            generation,
-            candidate.snapshot_id,
-            candidate.source_state.manifest_digest,
-            candidate.scan_config_digest,
-            candidate.structural_graph_digest,
-            candidate.omission_reason_counts,
-            candidate.error_reason_counts,
+            lease.repository_id,
+            lease.generation,
+            lease.holder_token,
+            candidate_snapshot_id,
+            f"{started_at:.9f}",
         )
     )
 
 
-def _scan_receipt(
+def _make_receipt(
     *,
-    repository_id: str,
-    generation: int,
-    receipt_id: str,
+    lease: ScanLease,
     candidate: _ScanCandidate,
-    final_disposition: str,
+    receipt_id: str,
+    previous_snapshot_id: str | None,
+    started_at: float,
+    completed_at: float,
+    disposition: str,
+    lease_cas_result: str,
 ) -> ScanReceipt:
     return ScanReceipt(
         receipt_id=receipt_id,
-        repository_id=repository_id,
-        generation=generation,
+        repository_id=lease.repository_id,
+        generation=lease.generation,
+        previous_snapshot_id=previous_snapshot_id,
         candidate_snapshot_id=candidate.snapshot_id,
-        source_state=candidate.source_state,
-        scan_config_digest=candidate.scan_config_digest,
-        structural_graph_digest=candidate.structural_graph_digest,
-        discovered_file_count=candidate.discovered_file_count,
-        discovered_byte_count=candidate.discovered_byte_count,
-        omitted_count=len(candidate.omission_reason_counts) and sum(
-            count for _, count in candidate.omission_reason_counts
-        ) or 0,
-        error_count=len(candidate.error_reason_counts) and sum(
-            count for _, count in candidate.error_reason_counts
-        ) or 0,
-        omission_reason_counts=candidate.omission_reason_counts,
-        error_reason_counts=candidate.error_reason_counts,
-        final_disposition=final_disposition,
-    )
-
-
-def _insert_receipt(
-    conn: sqlite3.Connection,
-    receipt: ScanReceipt,
-) -> None:
-    conn.execute(
-        """
-        INSERT INTO csm_scan_receipts(
-            receipt_id,
-            repository_id,
-            generation,
-            candidate_snapshot_id,
-            source_manifest_digest,
-            source_dirty,
-            source_commit_sha,
-            scan_config_digest,
-            structural_graph_digest,
-            discovered_file_count,
-            discovered_byte_count,
-            omitted_count,
-            error_count,
-            omission_reason_counts_json,
-            error_reason_counts_json,
-            final_disposition
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            receipt.receipt_id,
-            receipt.repository_id,
-            receipt.generation,
-            receipt.candidate_snapshot_id,
-            receipt.source_state.manifest_digest,
-            int(receipt.source_state.dirty),
-            receipt.source_state.commit_sha,
-            receipt.scan_config_digest,
-            receipt.structural_graph_digest,
-            receipt.discovered_file_count,
-            receipt.discovered_byte_count,
-            receipt.omitted_count,
-            receipt.error_count,
-            serialize_reason_counts(receipt.omission_reason_counts),
-            serialize_reason_counts(receipt.error_reason_counts),
-            receipt.final_disposition,
-        ),
-    )
-
-
-def _snapshot_from_candidate(
-    *,
-    repository_id: str,
-    generation: int,
-    receipt_id: str,
-    candidate: _ScanCandidate,
-    promoted_at: str,
-) -> RepositorySnapshot:
-    return RepositorySnapshot(
-        snapshot_id=candidate.snapshot_id,
-        repository_id=repository_id,
-        generation=generation,
         source_state=candidate.source_state,
         parser_profile_id=PARSER_PROFILE_ID,
         parser_versions=candidate.parser_versions,
         scan_config_digest=candidate.scan_config_digest,
         discovered_file_count=candidate.discovered_file_count,
         discovered_byte_count=candidate.discovered_byte_count,
+        omitted_count=sum(count for _, count in candidate.omission_reason_counts),
+        omission_reason_counts=candidate.omission_reason_counts,
+        error_count=sum(count for _, count in candidate.error_reason_counts),
+        error_reason_counts=candidate.error_reason_counts,
         structural_graph_digest=candidate.structural_graph_digest,
-        scan_receipt_id=receipt_id,
-        promoted_at=promoted_at,
+        lease_cas_result=lease_cas_result,
+        final_disposition=disposition,
+        started_at=_utc_iso(started_at),
+        completed_at=_utc_iso(completed_at),
     )
 
 
-def _snapshot_semantically_matches(
+def _insert_receipt(conn: sqlite3.Connection, receipt: ScanReceipt) -> None:
+    conn.execute(
+        """
+        INSERT INTO csm_scan_receipts (
+            repository_id,
+            receipt_id,
+            generation,
+            previous_snapshot_id,
+            candidate_snapshot_id,
+            source_manifest_digest,
+            source_dirty,
+            source_commit_sha,
+            parser_profile_id,
+            parser_versions_json,
+            scan_config_digest,
+            discovered_file_count,
+            discovered_byte_count,
+            omitted_count,
+            omission_reason_counts_json,
+            error_count,
+            error_reason_counts_json,
+            structural_graph_digest,
+            lease_cas_result,
+            final_disposition,
+            started_at,
+            completed_at,
+            no_runtime_authority
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        """,
+        (
+            receipt.repository_id,
+            receipt.receipt_id,
+            receipt.generation,
+            receipt.previous_snapshot_id,
+            receipt.candidate_snapshot_id,
+            receipt.source_state.manifest_digest,
+            1 if receipt.source_state.dirty else 0,
+            receipt.source_state.commit_sha,
+            receipt.parser_profile_id,
+            json.dumps(receipt.parser_versions, separators=(",", ":")),
+            receipt.scan_config_digest,
+            receipt.discovered_file_count,
+            receipt.discovered_byte_count,
+            receipt.omitted_count,
+            serialize_reason_counts(receipt.omission_reason_counts),
+            receipt.error_count,
+            serialize_reason_counts(receipt.error_reason_counts),
+            receipt.structural_graph_digest,
+            receipt.lease_cas_result,
+            receipt.final_disposition,
+            receipt.started_at,
+            receipt.completed_at,
+        ),
+    )
+
+
+def _snapshot_semantics_match(
     conn: sqlite3.Connection,
     *,
-    repository_id: str,
     candidate: _ScanCandidate,
+    repository_id: str,
 ) -> bool:
     snapshot = conn.execute(
-        "SELECT * FROM csm_snapshots WHERE snapshot_id = ?",
-        (candidate.snapshot_id,),
+        """
+        SELECT *
+        FROM csm_snapshots
+        WHERE repository_id = ? AND snapshot_id = ?
+        """,
+        (repository_id, candidate.snapshot_id),
     ).fetchone()
     if snapshot is None:
         return False
-    if snapshot["repository_id"] != repository_id:
-        raise CSMScannerError("snapshot_id collision crossed repository scope")
+    if snapshot["promoted_at"] is None:
+        raise CSMScannerError("existing semantic snapshot is not a promoted snapshot")
     expected_header = (
         candidate.source_state.manifest_digest,
-        int(candidate.source_state.dirty),
-        candidate.source_state.commit_sha,
+        1,
+        None,
         PARSER_PROFILE_ID,
         json.dumps(candidate.parser_versions, separators=(",", ":")),
         candidate.scan_config_digest,
-        candidate.structural_graph_digest,
         candidate.discovered_file_count,
         candidate.discovered_byte_count,
+        candidate.structural_graph_digest,
     )
-    observed_header = (
-        snapshot["source_manifest_digest"],
-        snapshot["source_dirty"],
-        snapshot["source_commit_sha"],
+    actual_header = (
+        snapshot["manifest_digest"],
+        snapshot["dirty"],
+        snapshot["commit_sha"],
         snapshot["parser_profile_id"],
         snapshot["parser_versions_json"],
         snapshot["scan_config_digest"],
-        snapshot["structural_graph_digest"],
         snapshot["discovered_file_count"],
         snapshot["discovered_byte_count"],
+        snapshot["structural_graph_digest"],
     )
-    if observed_header != expected_header:
-        raise CSMScannerError("content-addressed snapshot header mismatch")
+    if actual_header != expected_header:
+        raise CSMScannerError("existing snapshot identity has conflicting semantic metadata")
 
-    expected_nodes = {
+    stored_nodes = [
+        tuple(row)
+        for row in conn.execute(
+            """
+            SELECT
+                node_id, node_kind, relative_path, qualified_name,
+                start_byte, end_byte, parser_profile_id, parser_adapter_id
+            FROM csm_nodes
+            WHERE repository_id = ? AND snapshot_id = ?
+            ORDER BY node_id
+            """,
+            (repository_id, candidate.snapshot_id),
+        ).fetchall()
+    ]
+    expected_nodes = [
         (
             node.node_id,
             node.node_kind,
@@ -1337,93 +1348,110 @@ def _snapshot_semantically_matches(
             node.parser_adapter_id,
         )
         for node in candidate.nodes
-    }
-    observed_nodes = {
-        (
-            row["node_id"],
-            row["node_kind"],
-            row["relative_path"],
-            row["qualified_name"],
-            row["source_start_byte"],
-            row["source_end_byte"],
-            row["parser_profile_id"],
-            row["parser_adapter_id"],
-        )
-        for row in conn.execute(
-            "SELECT * FROM csm_nodes WHERE snapshot_id = ?",
-            (candidate.snapshot_id,),
-        )
-    }
-    if observed_nodes != expected_nodes:
-        raise CSMScannerError("content-addressed snapshot node materialization mismatch")
+    ]
+    if stored_nodes != expected_nodes:
+        raise CSMScannerError("existing snapshot node materialization does not match digest")
 
-    expected_edges = {
+    stored_edges = [
+        tuple(row)
+        for row in conn.execute(
+            """
+            SELECT
+                edge.edge_id,
+                edge.edge_kind,
+                edge.source_node_id,
+                edge.target_node_id,
+                target.target_kind,
+                target.normalized_target,
+                edge.source_start_byte,
+                edge.source_end_byte,
+                edge.parser_adapter_id,
+                edge.resolution_rule
+            FROM csm_edges AS edge
+            LEFT JOIN csm_unresolved_targets AS target
+              ON target.repository_id = edge.repository_id
+             AND target.snapshot_id = edge.snapshot_id
+             AND target.unresolved_target_id = edge.unresolved_target_id
+            WHERE edge.repository_id = ? AND edge.snapshot_id = ?
+            ORDER BY edge.edge_id
+            """,
+            (repository_id, candidate.snapshot_id),
+        ).fetchall()
+    ]
+    expected_edges = [
         (
             edge.edge_id,
             edge.edge_kind,
             edge.source_node_id,
             edge.target_node_id,
+            edge.unresolved_target.target_kind if edge.unresolved_target else None,
+            edge.unresolved_target.normalized_target if edge.unresolved_target else None,
             edge.source_span.start_byte,
             edge.source_span.end_byte,
+            edge.parser_adapter_id,
             edge.resolution_rule,
-            None if edge.unresolved_target is None else edge.unresolved_target.normalized_target,
-            None if edge.unresolved_target is None else edge.unresolved_target.ambiguity_reason,
         )
         for edge in candidate.edges
-    }
-    observed_edges = {
-        (
-            row["edge_id"],
-            row["edge_kind"],
-            row["source_node_id"],
-            row["target_node_id"],
-            row["source_start_byte"],
-            row["source_end_byte"],
-            row["resolution_rule"],
-            row["unresolved_target"],
-            row["ambiguity_reason"],
-        )
-        for row in conn.execute(
-            "SELECT * FROM csm_edges WHERE snapshot_id = ?",
-            (candidate.snapshot_id,),
-        )
-    }
-    if observed_edges != expected_edges:
-        raise CSMScannerError("content-addressed snapshot edge materialization mismatch")
+    ]
+    if stored_edges != expected_edges:
+        raise CSMScannerError("existing snapshot edge materialization does not match digest")
     return True
 
 
-def _insert_snapshot_materialization(
+def _unresolved_target_id(
+    *,
+    repository_id: str,
+    snapshot_id: str,
+    unresolved: UnresolvedTarget,
+) -> str:
+    return _canonical_digest(
+        (
+            "csm-unresolved-target-v1",
+            repository_id,
+            snapshot_id,
+            unresolved.target_kind,
+            unresolved.normalized_target,
+        )
+    )
+
+
+def _insert_new_snapshot(
     conn: sqlite3.Connection,
     *,
-    snapshot: RepositorySnapshot,
+    lease: ScanLease,
     candidate: _ScanCandidate,
+    receipt: ScanReceipt,
+    promoted_at: float,
 ) -> None:
+    snapshot = RepositorySnapshot(
+        snapshot_id=candidate.snapshot_id,
+        repository_id=lease.repository_id,
+        generation=lease.generation,
+        source_state=candidate.source_state,
+        parser_profile_id=PARSER_PROFILE_ID,
+        parser_versions=candidate.parser_versions,
+        scan_config_digest=candidate.scan_config_digest,
+        discovered_file_count=candidate.discovered_file_count,
+        discovered_byte_count=candidate.discovered_byte_count,
+        structural_graph_digest=candidate.structural_graph_digest,
+        scan_receipt_id=receipt.receipt_id,
+        promoted_at=_utc_iso(promoted_at),
+    )
     conn.execute(
         """
-        INSERT INTO csm_snapshots(
-            snapshot_id,
-            repository_id,
-            generation,
-            source_manifest_digest,
-            source_dirty,
-            source_commit_sha,
-            parser_profile_id,
-            parser_versions_json,
-            scan_config_digest,
-            discovered_file_count,
-            discovered_byte_count,
-            structural_graph_digest,
-            scan_receipt_id,
-            promoted_at
+        INSERT INTO csm_snapshots (
+            repository_id, snapshot_id, generation, manifest_digest, dirty, commit_sha,
+            parser_profile_id, parser_versions_json, scan_config_digest,
+            discovered_file_count, discovered_byte_count, structural_graph_digest,
+            scan_receipt_id, promoted_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            snapshot.snapshot_id,
             snapshot.repository_id,
+            snapshot.snapshot_id,
             snapshot.generation,
             snapshot.source_state.manifest_digest,
-            int(snapshot.source_state.dirty),
+            1 if snapshot.source_state.dirty else 0,
             snapshot.source_state.commit_sha,
             snapshot.parser_profile_id,
             json.dumps(snapshot.parser_versions, separators=(",", ":")),
@@ -1435,27 +1463,19 @@ def _insert_snapshot_materialization(
             snapshot.promoted_at,
         ),
     )
-    conn.executemany(
-        """
-        INSERT INTO csm_nodes(
-            node_id,
-            repository_id,
-            snapshot_id,
-            generation,
-            node_kind,
-            relative_path,
-            qualified_name,
-            source_start_byte,
-            source_end_byte,
-            parser_profile_id,
-            parser_adapter_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
+    for node in candidate.nodes:
+        conn.execute(
+            """
+            INSERT INTO csm_nodes (
+                repository_id, snapshot_id, node_id, generation, node_kind,
+                relative_path, qualified_name, start_byte, end_byte,
+                parser_profile_id, parser_adapter_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
             (
-                node.node_id,
                 node.repository_id,
                 node.snapshot_id,
+                node.node_id,
                 node.generation,
                 node.node_kind,
                 node.relative_path,
@@ -1464,79 +1484,193 @@ def _insert_snapshot_materialization(
                 node.source_span.end_byte,
                 node.parser_profile_id,
                 node.parser_adapter_id,
-            )
-            for node in candidate.nodes
-        ),
-    )
-    conn.executemany(
-        """
-        INSERT INTO csm_edges(
-            edge_id,
-            repository_id,
-            snapshot_id,
-            generation,
-            edge_kind,
-            source_node_id,
-            target_node_id,
-            source_start_byte,
-            source_end_byte,
-            resolution_rule,
-            unresolved_target,
-            ambiguity_reason
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
+            ),
+        )
+
+    unresolved_ids: dict[tuple[str, str], str] = {}
+    for edge in candidate.edges:
+        if edge.unresolved_target is None:
+            continue
+        key = (
+            edge.unresolved_target.target_kind,
+            edge.unresolved_target.normalized_target,
+        )
+        unresolved_ids.setdefault(
+            key,
+            _unresolved_target_id(
+                repository_id=lease.repository_id,
+                snapshot_id=candidate.snapshot_id,
+                unresolved=edge.unresolved_target,
+            ),
+        )
+    for (target_kind, normalized_target), target_id in sorted(unresolved_ids.items()):
+        conn.execute(
+            """
+            INSERT INTO csm_unresolved_targets (
+                repository_id, snapshot_id, unresolved_target_id,
+                target_kind, normalized_target
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
             (
-                edge.edge_id,
+                lease.repository_id,
+                candidate.snapshot_id,
+                target_id,
+                target_kind,
+                normalized_target,
+            ),
+        )
+    for edge in candidate.edges:
+        unresolved_target_id = None
+        if edge.unresolved_target is not None:
+            unresolved_target_id = unresolved_ids[
+                (
+                    edge.unresolved_target.target_kind,
+                    edge.unresolved_target.normalized_target,
+                )
+            ]
+        conn.execute(
+            """
+            INSERT INTO csm_edges (
+                repository_id, snapshot_id, edge_id, generation, edge_kind,
+                source_node_id, target_node_id, unresolved_target_id,
+                source_start_byte, source_end_byte, parser_adapter_id, resolution_rule
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
                 edge.repository_id,
                 edge.snapshot_id,
+                edge.edge_id,
                 edge.generation,
                 edge.edge_kind,
                 edge.source_node_id,
                 edge.target_node_id,
+                unresolved_target_id,
                 edge.source_span.start_byte,
                 edge.source_span.end_byte,
+                edge.parser_adapter_id,
                 edge.resolution_rule,
-                None if edge.unresolved_target is None else edge.unresolved_target.normalized_target,
-                None if edge.unresolved_target is None else edge.unresolved_target.ambiguity_reason,
-            )
-            for edge in candidate.edges
-        ),
-    )
+            ),
+        )
 
 
-def _finalize_incomplete(
+def _finalize_complete_scan(
     conn: sqlite3.Connection,
     *,
     lease: ScanLease,
     candidate: _ScanCandidate,
     receipt_id: str,
-    now: float,
-) -> ScanOutcome:
+    started_at: float,
+    completed_at: float,
+) -> tuple[ScanReceipt, bool]:
     try:
         conn.execute("BEGIN IMMEDIATE")
-        state = conn.execute(
-            "SELECT * FROM csm_repository_scan_state WHERE repository_id = ?",
+        state = _assert_current_lease(conn, lease=lease, now=completed_at)
+        registration = conn.execute(
+            "SELECT status FROM csm_repositories WHERE repository_id = ?",
             (lease.repository_id,),
         ).fetchone()
-        if state is None:
-            raise ScanLeaseLostError("repository scan state disappeared")
-        if (
-            state["lease_token"] != lease.holder_token
-            or state["lease_generation"] != lease.generation
-            or state["lease_expires_at"] is None
-            or float(state["lease_expires_at"]) <= now
-        ):
-            raise ScanLeaseLostError("scan lease was lost before incomplete finalization")
-        receipt = _scan_receipt(
-            repository_id=lease.repository_id,
-            generation=lease.generation,
-            receipt_id=receipt_id,
+        if registration is None or registration["status"] != "ACTIVE":
+            raise RepositoryRegistrationError(
+                "repository registration is not ACTIVE at finalization"
+            )
+        previous_snapshot_id = state["current_snapshot_id"]
+        existing = conn.execute(
+            "SELECT 1 FROM csm_snapshots WHERE repository_id = ? AND snapshot_id = ?",
+            (lease.repository_id, candidate.snapshot_id),
+        ).fetchone()
+        reused = existing is not None
+        disposition = "REUSED_SNAPSHOT" if reused else "PROMOTED"
+        receipt = _make_receipt(
+            lease=lease,
             candidate=candidate,
-            final_disposition="INCOMPLETE_REJECTED",
+            receipt_id=receipt_id,
+            previous_snapshot_id=previous_snapshot_id,
+            started_at=started_at,
+            completed_at=completed_at,
+            disposition=disposition,
+            lease_cas_result="CAS_ACCEPTED",
         )
         _insert_receipt(conn, receipt)
-        cleared = conn.execute(
+        if reused:
+            _snapshot_semantics_match(
+                conn,
+                candidate=candidate,
+                repository_id=lease.repository_id,
+            )
+        else:
+            _insert_new_snapshot(
+                conn,
+                lease=lease,
+                candidate=candidate,
+                receipt=receipt,
+                promoted_at=completed_at,
+            )
+
+        updated = conn.execute(
+            """
+            UPDATE csm_repository_scan_state
+            SET current_snapshot_id = ?,
+                current_generation = ?,
+                current_receipt_id = ?,
+                lease_token = NULL,
+                lease_generation = NULL,
+                lease_issued_at = NULL,
+                lease_expires_at = NULL
+            WHERE repository_id = ?
+              AND lease_token = ?
+              AND lease_generation = ?
+              AND (current_generation IS NULL OR current_generation < ?)
+            """,
+            (
+                candidate.snapshot_id,
+                lease.generation,
+                receipt.receipt_id,
+                lease.repository_id,
+                lease.holder_token,
+                lease.generation,
+                lease.generation,
+            ),
+        )
+        if updated.rowcount != 1:
+            raise ScanLeaseLostError("current-snapshot CAS rejected stale scanner")
+        _insert_lease_event(
+            conn,
+            lease=lease,
+            event_type="FINALIZED",
+            observed_at=completed_at,
+            reason_code=disposition,
+        )
+        conn.commit()
+        return receipt, reused
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def _finalize_incomplete_scan(
+    conn: sqlite3.Connection,
+    *,
+    lease: ScanLease,
+    candidate: _ScanCandidate,
+    receipt_id: str,
+    started_at: float,
+    completed_at: float,
+) -> ScanReceipt:
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        state = _assert_current_lease(conn, lease=lease, now=completed_at)
+        receipt = _make_receipt(
+            lease=lease,
+            candidate=candidate,
+            receipt_id=receipt_id,
+            previous_snapshot_id=state["current_snapshot_id"],
+            started_at=started_at,
+            completed_at=completed_at,
+            disposition="INCOMPLETE_REJECTED",
+            lease_cas_result="CAS_REJECTED_INCOMPLETE",
+        )
+        _insert_receipt(conn, receipt)
+        updated = conn.execute(
             """
             UPDATE csm_repository_scan_state
             SET lease_token = NULL,
@@ -1547,157 +1681,19 @@ def _finalize_incomplete(
               AND lease_token = ?
               AND lease_generation = ?
             """,
-            (
-                lease.repository_id,
-                lease.holder_token,
-                lease.generation,
-            ),
-        ).rowcount
-        if cleared != 1:
-            raise ScanLeaseLostError("scan lease changed during incomplete finalization")
-        _lease_event(
+            (lease.repository_id, lease.holder_token, lease.generation),
+        )
+        if updated.rowcount != 1:
+            raise ScanLeaseLostError("incomplete-scan lease release lost ownership")
+        _insert_lease_event(
             conn,
-            repository_id=lease.repository_id,
-            generation=lease.generation,
-            lease_token=lease.holder_token,
-            event_type="FINALIZED_INCOMPLETE",
-            observed_at=now,
+            lease=lease,
+            event_type="RELEASED_INCOMPLETE",
+            observed_at=completed_at,
+            reason_code="INCOMPLETE_SCAN_NOT_PROMOTED",
         )
         conn.commit()
-        return ScanOutcome(
-            repository_id=lease.repository_id,
-            generation=lease.generation,
-            receipt_id=receipt_id,
-            snapshot_id=candidate.snapshot_id,
-            structural_graph_digest=candidate.structural_graph_digest,
-            final_disposition="INCOMPLETE_REJECTED",
-            promoted=False,
-            reused_snapshot=False,
-            source_state=candidate.source_state,
-            discovered_file_count=candidate.discovered_file_count,
-            discovered_byte_count=candidate.discovered_byte_count,
-            problems=candidate.omissions,
-            omission_reason_counts=candidate.omission_reason_counts,
-            error_reason_counts=candidate.error_reason_counts,
-        )
-    except Exception:
-        conn.rollback()
-        raise
-
-
-def _finalize_complete(
-    conn: sqlite3.Connection,
-    *,
-    lease: ScanLease,
-    candidate: _ScanCandidate,
-    receipt_id: str,
-    now: float,
-) -> ScanOutcome:
-    try:
-        conn.execute("BEGIN IMMEDIATE")
-        state = conn.execute(
-            "SELECT * FROM csm_repository_scan_state WHERE repository_id = ?",
-            (lease.repository_id,),
-        ).fetchone()
-        if state is None:
-            raise ScanLeaseLostError("repository scan state disappeared")
-        if (
-            state["lease_token"] != lease.holder_token
-            or state["lease_generation"] != lease.generation
-            or state["lease_expires_at"] is None
-            or float(state["lease_expires_at"]) <= now
-        ):
-            raise ScanLeaseLostError("scan lease was lost before complete finalization")
-        current_generation = state["current_scan_generation"]
-        if current_generation is not None and int(current_generation) >= lease.generation:
-            raise ScanLeaseLostError(
-                "scan generation is not newer than the current repository scan generation"
-            )
-
-        exists = _snapshot_semantically_matches(
-            conn,
-            repository_id=lease.repository_id,
-            candidate=candidate,
-        )
-        disposition = "REUSED_SNAPSHOT" if exists else "PROMOTED"
-        receipt = _scan_receipt(
-            repository_id=lease.repository_id,
-            generation=lease.generation,
-            receipt_id=receipt_id,
-            candidate=candidate,
-            final_disposition=disposition,
-        )
-        _insert_receipt(conn, receipt)
-        promoted_at = _utc_iso(time.time())
-        if not exists:
-            snapshot = _snapshot_from_candidate(
-                repository_id=lease.repository_id,
-                generation=lease.generation,
-                receipt_id=receipt_id,
-                candidate=candidate,
-                promoted_at=promoted_at,
-            )
-            _insert_snapshot_materialization(
-                conn,
-                snapshot=snapshot,
-                candidate=candidate,
-            )
-
-        updated = conn.execute(
-            """
-            UPDATE csm_repository_scan_state
-            SET current_snapshot_id = ?,
-                current_scan_generation = ?,
-                current_scan_receipt_id = ?,
-                lease_token = NULL,
-                lease_generation = NULL,
-                lease_issued_at = NULL,
-                lease_expires_at = NULL
-            WHERE repository_id = ?
-              AND lease_token = ?
-              AND lease_generation = ?
-              AND (
-                    current_scan_generation IS NULL
-                    OR current_scan_generation < ?
-              )
-            """,
-            (
-                candidate.snapshot_id,
-                lease.generation,
-                receipt_id,
-                lease.repository_id,
-                lease.holder_token,
-                lease.generation,
-                lease.generation,
-            ),
-        ).rowcount
-        if updated != 1:
-            raise ScanLeaseLostError("current snapshot CAS rejected stale scan finalizer")
-        _lease_event(
-            conn,
-            repository_id=lease.repository_id,
-            generation=lease.generation,
-            lease_token=lease.holder_token,
-            event_type="FINALIZED_REUSED" if exists else "FINALIZED_PROMOTED",
-            observed_at=now,
-        )
-        conn.commit()
-        return ScanOutcome(
-            repository_id=lease.repository_id,
-            generation=lease.generation,
-            receipt_id=receipt_id,
-            snapshot_id=candidate.snapshot_id,
-            structural_graph_digest=candidate.structural_graph_digest,
-            final_disposition=disposition,
-            promoted=True,
-            reused_snapshot=exists,
-            source_state=candidate.source_state,
-            discovered_file_count=candidate.discovered_file_count,
-            discovered_byte_count=candidate.discovered_byte_count,
-            problems=(),
-            omission_reason_counts=(),
-            error_reason_counts=(),
-        )
+        return receipt
     except Exception:
         conn.rollback()
         raise
@@ -1711,102 +1707,153 @@ def scan_python_repository(
     relative_paths: Iterable[str],
     budget: ScanBudget,
     lease_ttl_seconds: float = DEFAULT_LEASE_TTL_SECONDS,
+    wall_clock: Callable[[], float] = time.time,
     monotonic_clock: Callable[[], float] = time.monotonic,
     token_factory: Callable[[], str] = _default_token_factory,
 ) -> ScanOutcome:
-    """Explicitly scan a bounded Python manifest into one CSM candidate.
+    """Explicitly scan a bounded caller-provided Python manifest.
 
-    The function never imports or executes repository code. It stages parse results
-    in memory, persists an incomplete immutable receipt on any omission/error, and
-    promotes/reuses a semantic snapshot only for a complete scan.
+    The filesystem-only Stage-C source attestation is deliberately conservative:
+    every candidate is marked ``dirty=True`` with no ``commit_sha``. A future
+    separately reviewed Git-aware adapter may prove a clean commit; this scanner
+    never invents that claim.
     """
-    initialize_schema(conn)
     _require_idle_connection(conn)
-    _require_registered_root(
-        conn,
-        repository_id=repository_id,
-        root=root,
-    )
-    if not isinstance(budget, ScanBudget):
-        raise TypeError("budget must be a ScanBudget")
-    lease_ttl_seconds = _require_positive_seconds(
-        lease_ttl_seconds,
-        "lease_ttl_seconds",
-    )
+    initialize_schema(conn)
     if lease_ttl_seconds <= budget.max_scan_seconds:
         raise ValueError(
-            "lease_ttl_seconds must be greater than budget.max_scan_seconds"
+            "lease_ttl_seconds must exceed max_scan_seconds; Stage C v1 does not renew leases"
         )
-    holder_token = token_factory()
-    if not isinstance(holder_token, str) or not holder_token.strip():
-        raise ValueError("token_factory must return a non-empty string")
-    started_monotonic = monotonic_clock()
+    resolved_root = resolve_repository_root(root)
+    _repository_registration_row(
+        conn,
+        repository_id=repository_id,
+        root=resolved_root,
+    )
+    started_at = float(wall_clock())
+    started_monotonic = float(monotonic_clock())
     lease = _acquire_scan_lease(
         conn,
         repository_id=repository_id,
-        now=started_monotonic,
         lease_ttl_seconds=lease_ttl_seconds,
-        holder_token=holder_token,
+        now=started_at,
+        token_factory=token_factory,
     )
+
     try:
         parsed_files, problems = _discover_and_parse(
             repository_id=repository_id,
-            root=resolve_repository_root(root),
+            root=resolved_root,
             relative_paths=relative_paths,
             budget=budget,
             monotonic_clock=monotonic_clock,
             started_monotonic=started_monotonic,
         )
+        provisional_receipt = _canonical_digest(
+            (
+                "csm-provisional-receipt-v1",
+                repository_id,
+                lease.generation,
+                lease.holder_token,
+            )
+        )
         candidate = _materialize_candidate(
             repository_id=repository_id,
             generation=lease.generation,
-            receipt_id="pending",
+            receipt_id=provisional_receipt,
             parsed_files=parsed_files,
             problems=problems,
             budget=budget,
         )
         receipt_id = _receipt_id(
-            repository_id=repository_id,
-            generation=lease.generation,
-            candidate=candidate,
+            lease=lease,
+            candidate_snapshot_id=candidate.snapshot_id,
+            started_at=started_at,
         )
-        final_monotonic = monotonic_clock()
-        if final_monotonic > lease.expires_at:
-            raise ScanLeaseLostError("scan lease expired before finalization")
-        if problems:
-            return _finalize_incomplete(
+        completed_at = float(wall_clock())
+        if completed_at >= lease.expires_at:
+            raise ScanLeaseLostError("scan lease expired before persistence")
+
+        if candidate.problems:
+            receipt = _finalize_incomplete_scan(
                 conn,
                 lease=lease,
                 candidate=candidate,
                 receipt_id=receipt_id,
-                now=final_monotonic,
+                started_at=started_at,
+                completed_at=completed_at,
             )
-        return _finalize_complete(
+            return ScanOutcome(
+                repository_id=repository_id,
+                generation=lease.generation,
+                receipt_id=receipt.receipt_id,
+                snapshot_id=candidate.snapshot_id,
+                structural_graph_digest=candidate.structural_graph_digest,
+                final_disposition=receipt.final_disposition,
+                promoted=False,
+                reused_snapshot=False,
+                source_state=candidate.source_state,
+                discovered_file_count=candidate.discovered_file_count,
+                discovered_byte_count=candidate.discovered_byte_count,
+                problems=candidate.omissions,
+                omission_reason_counts=candidate.omission_reason_counts,
+                error_reason_counts=candidate.error_reason_counts,
+            )
+
+        receipt, reused = _finalize_complete_scan(
             conn,
             lease=lease,
             candidate=candidate,
             receipt_id=receipt_id,
-            now=final_monotonic,
+            started_at=started_at,
+            completed_at=completed_at,
+        )
+        return ScanOutcome(
+            repository_id=repository_id,
+            generation=lease.generation,
+            receipt_id=receipt.receipt_id,
+            snapshot_id=candidate.snapshot_id,
+            structural_graph_digest=candidate.structural_graph_digest,
+            final_disposition=receipt.final_disposition,
+            promoted=True,
+            reused_snapshot=reused,
+            source_state=candidate.source_state,
+            discovered_file_count=candidate.discovered_file_count,
+            discovered_byte_count=candidate.discovered_byte_count,
+            problems=(),
+            omission_reason_counts=(),
+            error_reason_counts=(),
         )
     except Exception:
-        _release_scan_lease_best_effort(
-            conn,
-            lease=lease,
-            now=monotonic_clock(),
-        )
+        # A real process crash would skip this cleanup and leave a lease that can only
+        # be recovered after expiry. Ordinary Python failures release only this exact
+        # token and can never clear a successor's lease.
+        try:
+            if not conn.in_transaction:
+                _release_scan_lease(
+                    conn,
+                    lease=lease,
+                    now=float(wall_clock()),
+                    event_type="RELEASED_ERROR",
+                    reason_code="SCAN_EXCEPTION",
+                )
+        except Exception:
+            # Preserve the original scanner failure. Expiry recovery remains the
+            # fail-closed path when bounded cleanup itself cannot complete.
+            pass
         raise
 
 
 __all__ = [
-    "SCANNER_CONTRACT_VERSION",
-    "PARSER_PROFILE_ID",
-    "PARSER_ADAPTER_ID",
     "DEFAULT_LEASE_TTL_SECONDS",
+    "PARSER_ADAPTER_ID",
+    "PARSER_PROFILE_ID",
+    "SCANNER_CONTRACT_VERSION",
     "CSMScannerError",
     "RepositoryRegistrationError",
+    "ScanLease",
     "ScanLeaseBusyError",
     "ScanLeaseLostError",
-    "ScanLease",
     "ScanOutcome",
     "local_root_fingerprint",
     "register_repository",
