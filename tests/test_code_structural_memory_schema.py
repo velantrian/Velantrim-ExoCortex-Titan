@@ -338,7 +338,7 @@ def test_dirty_source_state_matches_null_commit_across_receipt_and_snapshot(
         conn.close()
 
 
-def test_snapshot_identity_inputs_cannot_drift_after_insert(tmp_path) -> None:
+def test_snapshot_record_is_immutable_except_promotion(tmp_path) -> None:
     conn = connect_database(tmp_path / "snapshot-identity-immutable.sqlite3")
     try:
         initialize_schema(conn)
@@ -346,11 +346,18 @@ def test_snapshot_identity_inputs_cannot_drift_after_insert(tmp_path) -> None:
         _insert_receipt(conn, "repo-a", "receipt-a", "snapshot-a", 1)
         _insert_snapshot(conn, "repo-a", "snapshot-a", "receipt-a", 1)
 
-        with pytest.raises(sqlite3.IntegrityError, match="snapshot identity inputs"):
-            conn.execute(
-                "UPDATE csm_snapshots SET parser_profile_id='python-v2' "
-                "WHERE repository_id='repo-a' AND snapshot_id='snapshot-a'"
-            )
+        for update_sql in (
+            "UPDATE csm_snapshots SET parser_profile_id='python-v2' "
+            "WHERE repository_id='repo-a' AND snapshot_id='snapshot-a'",
+            "UPDATE csm_snapshots SET generation=2 "
+            "WHERE repository_id='repo-a' AND snapshot_id='snapshot-a'",
+            "UPDATE csm_snapshots SET scan_receipt_id='receipt-other' "
+            "WHERE repository_id='repo-a' AND snapshot_id='snapshot-a'",
+            "UPDATE csm_snapshots SET discovered_file_count=2 "
+            "WHERE repository_id='repo-a' AND snapshot_id='snapshot-a'",
+        ):
+            with pytest.raises(sqlite3.IntegrityError, match="immutable except promoted_at"):
+                conn.execute(update_sql)
 
         conn.execute(
             "UPDATE csm_snapshots SET promoted_at='2026-08-15T10:00:02Z' "
@@ -364,7 +371,7 @@ def test_snapshot_identity_inputs_cannot_drift_after_insert(tmp_path) -> None:
         conn.close()
 
 
-def test_receipt_snapshot_identity_inputs_cannot_drift_after_insert(tmp_path) -> None:
+def test_scan_receipt_cannot_drift_after_insert(tmp_path) -> None:
     conn = connect_database(tmp_path / "receipt-identity-immutable.sqlite3")
     try:
         initialize_schema(conn)
@@ -372,11 +379,17 @@ def test_receipt_snapshot_identity_inputs_cannot_drift_after_insert(tmp_path) ->
         _insert_receipt(conn, "repo-a", "receipt-a", "snapshot-a", 1)
         _insert_snapshot(conn, "repo-a", "snapshot-a", "receipt-a", 1)
 
-        with pytest.raises(sqlite3.IntegrityError, match="receipt snapshot identity inputs"):
-            conn.execute(
-                "UPDATE csm_scan_receipts SET source_manifest_digest='other' "
-                "WHERE repository_id='repo-a' AND receipt_id='receipt-a'"
-            )
+        for update_sql in (
+            "UPDATE csm_scan_receipts SET source_manifest_digest='other' "
+            "WHERE repository_id='repo-a' AND receipt_id='receipt-a'",
+            "UPDATE csm_scan_receipts SET omitted_count=1, "
+            "omission_reason_counts_json='[[\"late\",1]]' "
+            "WHERE repository_id='repo-a' AND receipt_id='receipt-a'",
+            "UPDATE csm_scan_receipts SET generation=2 "
+            "WHERE repository_id='repo-a' AND receipt_id='receipt-a'",
+        ):
+            with pytest.raises(sqlite3.IntegrityError, match="scan receipt is immutable"):
+                conn.execute(update_sql)
     finally:
         conn.close()
 

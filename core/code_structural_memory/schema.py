@@ -132,39 +132,33 @@ _V1_STATEMENTS = (
     END
     """,
     """
-    CREATE TRIGGER csm_snapshot_identity_inputs_immutable
+    CREATE TRIGGER csm_snapshot_record_immutable_except_promotion
     BEFORE UPDATE OF
         repository_id,
         snapshot_id,
+        generation,
         manifest_digest,
         dirty,
         commit_sha,
         parser_profile_id,
         parser_versions_json,
         scan_config_digest,
-        structural_graph_digest
+        discovered_file_count,
+        discovered_byte_count,
+        structural_graph_digest,
+        scan_receipt_id
     ON csm_snapshots
     FOR EACH ROW
     BEGIN
-        SELECT RAISE(ABORT, 'snapshot identity inputs are immutable');
+        SELECT RAISE(ABORT, 'snapshot record is immutable except promoted_at');
     END
     """,
     """
-    CREATE TRIGGER csm_receipt_snapshot_identity_inputs_immutable
-    BEFORE UPDATE OF
-        repository_id,
-        candidate_snapshot_id,
-        source_manifest_digest,
-        source_dirty,
-        source_commit_sha,
-        parser_profile_id,
-        parser_versions_json,
-        scan_config_digest,
-        structural_graph_digest
-    ON csm_scan_receipts
+    CREATE TRIGGER csm_scan_receipt_immutable
+    BEFORE UPDATE ON csm_scan_receipts
     FOR EACH ROW
     BEGIN
-        SELECT RAISE(ABORT, 'scan receipt snapshot identity inputs are immutable');
+        SELECT RAISE(ABORT, 'scan receipt is immutable');
     END
     """,
     """
