@@ -1,8 +1,8 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-15  
-**Current live base for C11:** `main@0074ea569030e0708ea345693c74e8506ada94a5` · signature `VERIFIED / valid`  
-**C11 candidate:** branch `agent/issue-52-final-reconciliation` · resolve exact head from live GitHub before any mutation or merge  
+**Authoritative C10 checkpoint:** `main@0074ea569030e0708ea345693c74e8506ada94a5` · signature `VERIFIED / valid`  
+**C11 lifecycle rule:** resolve the current #52 issue/PR/merge state from live GitHub; this file records repository truth and intentionally does not hard-code an open/closed issue lifecycle token  
 **Continuity:** `12/12 = 100%`  
 **Machine-readable state:** schema v7  
 **Notion target:** `Velantrim Titan 9.0` · `398ac84d-0547-81fe-8ca5-d0d2727d1961`  
@@ -95,20 +95,24 @@ CodeQL:                      #27   · 31868888435 · SUCCESS
 aggregate merge evidence:    #1248 · 31868888440 · SUCCESS
 ```
 
-C11 is the current bounded **final #52 residual / PR-queue reconciliation**. Its fresh
-audit found that this file, `docs/ai/KNOWN_RISKS.md`, and the dated release-evidence report
-still carried pre-merge C9/C10 wording even though GitHub/Notion FINAL evidence now exists.
-C11 is documentation-only convergence; it changes no runtime, Canon, policy, schema,
-Continuity, Operator GO, provider/model, network or production-authority semantics.
+C11 is the bounded **final #52 residual / PR-queue reconciliation**. Its fresh audit found
+that this file, `docs/ai/KNOWN_RISKS.md`, and the dated release-evidence report still
+carried pre-merge C9/C10 wording even though GitHub/Notion FINAL evidence existed. C11
+reconciles those documentation surfaces and adds the repository-side final requirement
+matrix at `docs/evidence/issue-52-final-reconciliation-2026-08-15.md`. It changes no
+runtime, Canon, policy, schema, Continuity, Operator GO, provider/model, network or
+production-authority semantics.
 
 The body statement in #52 about “10 currently open PRs” is historical queue evidence and
 was explicitly superseded by later #52 reconciliation. A fresh direct GitHub Pulls API
 audit on 2026-08-15 found one open PR, #321, created after that historical baseline and
 scoped to a separate docs/research boundary. C11 does not mutate or silently discard it.
 
-Parent #52 remains OPEN only until C11 exact-head acceptance, protected merge,
-post-merge evidence and same-page Notion FINAL/read-back produce a final requirement matrix
-with no `PARTIAL`, `UNKNOWN` or `NOT VERIFIED` rows.
+When this C11 documentation is read from `main`, treat the repository-side documentation
+residual as reconciled. Final GitHub issue closure is an external lifecycle action that is
+allowed only after exact-head acceptance, protected merge, post-merge evidence and
+same-page Notion FINAL/read-back. Always resolve the live #52 state rather than infer it
+from this dated file.
 
 ### Truth Foundation
 
