@@ -1,8 +1,8 @@
 # 📍 Current System State
 
-**Verified:** 2026-08-14  
-**Current live base for C10:** `main@0b2c49d701b88d12c66042148c19199638130d03` · signature `VERIFIED / valid`  
-**C10 candidate:** branch `agent/issue-52-public-truth-release-evidence` · resolve exact head from live GitHub before any mutation or merge  
+**Verified:** 2026-08-15  
+**Current live base for C11:** `main@0074ea569030e0708ea345693c74e8506ada94a5` · signature `VERIFIED / valid`  
+**C11 candidate:** branch `agent/issue-52-final-reconciliation` · resolve exact head from live GitHub before any mutation or merge  
 **Continuity:** `12/12 = 100%`  
 **Machine-readable state:** schema v7  
 **Notion target:** `Velantrim Titan 9.0` · `398ac84d-0547-81fe-8ca5-d0d2727d1961`  
@@ -49,15 +49,15 @@ rather than treating that old exact checkpoint as today's repository head.
 
 ### Parent #52 — supply-chain residual program
 
-C8 reproducible-wheel verification is protected-merged through PR #318. Its admitted
-claim is deliberately bounded: two clean Titan Python wheel builds from one exact source
-head under the frozen, hash-bound Setuptools build contract produced byte-identical wheel
-bytes. This is **not** a byte-reproducible Docker/OCI-image claim and changes no runtime
-authority.
+C8 reproducible-wheel verification is **CLOSED** through protected-merged PR #318. Its
+admitted claim is deliberately bounded: two clean Titan Python wheel builds from one exact
+source head under the frozen, hash-bound Setuptools build contract produced byte-identical
+wheel bytes. This is **not** a byte-reproducible Docker/OCI-image claim and changes no
+runtime authority.
 
 C9 World Skills provenance/admission is **CLOSED** through protected-merged PR #320 at
 `main@0b2c49d701b88d12c66042148c19199638130d03`. The historical direct
-`promote_to_validated()` business exception was removed. Current candidate flow is:
+`promote_to_validated()` business exception was removed. The admitted flow is:
 
 ```text
 Draft candidate
@@ -77,16 +77,38 @@ candidate/pack identifiers bind content/replay only; they are not cryptographic 
 reviewer signatures. C9 post-merge evidence on the exact merged main includes Full CI
 #1181, Docker #779, CodeQL #19 and aggregate #1213, all SUCCESS.
 
-C10 is the current bounded **public truth & release evidence** candidate. Fresh audit of
-`main@0b2c49d...` found concrete residuals: stale World Skills exception text in public
-status, base `docker-compose.yml` mislabeled as hardened production, English README
-scheduler/deployment overclaims, an unauthenticated/raw-error `/system/epigenetic`
-diagnostic, and a historical Titan GitHub Release whose public title is cross-project/
-mislabeled. C10 reconciles those claims, adds dedicated endpoint security regressions and
-a dated evidence snapshot. It does not create a new release or alter authority state.
+C10 public truth & release evidence is **CLOSED** through protected-merged PR #322 at
+`main@0074ea569030e0708ea345693c74e8506ada94a5` (parent
+`0b2c49d701b88d12c66042148c19199638130d03`, signature `VERIFIED / valid`). It reconciled
+post-C9 World Skills status, hardened-vs-compatibility Compose wording, README deployment
+and scheduler overclaims, the `/system/epigenetic` API-key/error-sanitization boundary,
+and a dated release-evidence snapshot. The historical cross-project/mislabeled GitHub
+Release remains classified as historical, not current Titan release evidence; no new tag
+or release was invented.
 
-Parent #52 remains OPEN until C10 is accepted and the final C11 residual/PR-queue matrix
-contains no PARTIAL/UNKNOWN/NOT VERIFIED requirements.
+C10 exact-main post-merge evidence:
+
+```text
+Full CI:                     #1189 · 31868888467 · SUCCESS (5/5)
+Docker:                      #785  · 31868888451 · SUCCESS
+CodeQL:                      #27   · 31868888435 · SUCCESS
+aggregate merge evidence:    #1248 · 31868888440 · SUCCESS
+```
+
+C11 is the current bounded **final #52 residual / PR-queue reconciliation**. Its fresh
+audit found that this file, `docs/ai/KNOWN_RISKS.md`, and the dated release-evidence report
+still carried pre-merge C9/C10 wording even though GitHub/Notion FINAL evidence now exists.
+C11 is documentation-only convergence; it changes no runtime, Canon, policy, schema,
+Continuity, Operator GO, provider/model, network or production-authority semantics.
+
+The body statement in #52 about “10 currently open PRs” is historical queue evidence and
+was explicitly superseded by later #52 reconciliation. A fresh direct GitHub Pulls API
+audit on 2026-08-15 found one open PR, #321, created after that historical baseline and
+scoped to a separate docs/research boundary. C11 does not mutate or silently discard it.
+
+Parent #52 remains OPEN only until C11 exact-head acceptance, protected merge,
+post-merge evidence and same-page Notion FINAL/read-back produce a final requirement matrix
+with no `PARTIAL`, `UNKNOWN` or `NOT VERIFIED` rows.
 
 ### Truth Foundation
 
@@ -217,22 +239,3 @@ Continuity 13/12                    not created
 
 Any later wiring or activation requires a separate bounded admission, fresh owner audit,
 exact-head tests/CI, protected merge and synchronized GitHub/Notion evidence.
-
-## Open residuals that remain separate
-
-Do not mix them into the current bounded #52/C10 work:
-
-- #51 — ADAO workstream;
-- #52 — trusted platform / supply-chain and related hardening; **current parent / OPEN**;
-- #53 — Local Semantic Capability; do not begin before #52 closure under the current handoff;
-- #92 — ARM, with ARM-04 not authorized;
-- #120 — Reader Core production evidence;
-- #249 — CAS contention evidence.
-
-## Historical evidence rule
-
-Historical Continuity, Truth Foundation, supply-chain and review checkpoints remain
-immutable evidence, but they are not substitutes for the current repository head. Use Git
-history, merged PRs, issues and ADRs for the full chronology. Use this file, `WORK_LOG.md`,
-`COMPONENT_MAP.md`, `KNOWN_RISKS.md` and `docs/state/project_state.json` for current
-orientation, resolving live GitHub before mutation.
