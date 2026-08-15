@@ -1923,7 +1923,11 @@ async def query_with_roles(req: _QueryRolesRequest):
         from core.branch_manager import get_branch_manager
         bm = get_branch_manager()
         t0 = time.perf_counter()
-        synthesis = await bm.reason(query=req.query, roles=role_list)
+        synthesis = await bm.reason(
+    query=req.query,
+    roles=role_list,
+    llm_config=_env_llm_config(),
+)
         latency = (time.perf_counter() - t0) * 1000.0
 
         all_facts: list[dict] = []
@@ -1942,7 +1946,9 @@ async def query_with_roles(req: _QueryRolesRequest):
         return QueryResponse(
             query=req.query,
             answer=synthesis.response,
-            llm_answer=synthesis.response,
+            llm_answer=(
+    synthesis.response if synthesis.all_branches_used_llm else None
+),
             facts=all_facts,
             total_facts=len(all_facts),
             mode="multi_perspective",
@@ -1953,6 +1959,7 @@ async def query_with_roles(req: _QueryRolesRequest):
                 "confidence": synthesis.confidence,
                 "dominant_role": synthesis.dominant_role,
                 "branches": [b.to_dict() for b in synthesis.branches],
+                "all_branches_used_llm": synthesis.all_branches_used_llm,
             },
             effective_params={
                 "cognitive_mode": req.cognitive_mode,
