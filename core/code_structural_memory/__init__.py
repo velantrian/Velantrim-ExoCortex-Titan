@@ -25,7 +25,7 @@ from .contracts import (
 from .schema import (
     SCHEMA_VERSION,
     CSMDatabaseError,
-    UnsupportedSchemaVersion,
+    UnsupportedSchemaVersionError,
     connect_database,
     initialize_schema,
     schema_version,
@@ -46,7 +46,7 @@ __all__ = [
     "StructuralEdge",
     "StructuralNode",
     "UnresolvedTarget",
-    "UnsupportedSchemaVersion",
+    "UnsupportedSchemaVersionError",
     "connect_database",
     "initialize_schema",
     "make_edge_id",
