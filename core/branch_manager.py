@@ -12,7 +12,8 @@ Pipeline:
     Query → resolve_roles() → для каждой роли ПАРАЛЛЕЛЬНО:
         → retrieval с hints роли
         → prompt с modifier роли
-        → LLM ответ
+        → LLM ответ, только если caller передал валидный LlmCallConfig
+        → иначе deterministic Essence fallback
     → Synthesizer: сравнить ответы, выбрать лучшие части
     → Финальный ответ
 
@@ -20,6 +21,8 @@ Pipeline:
     I-BM1: BranchManager не пишет в граф. Только retrieval + prompt.
     I-BM2: При одной роли — работает идентично прямому pipeline (без оверхеда).
     I-BM3: Confidence синтеза = среднее confidence веток × overlap_score.
+    I-BM4: BranchManager не выбирает provider/api_key; LLM config принадлежит caller.
+    I-BM5: used_llm=True только после реально завершённого chat_complete().
 """
 
 from __future__ import annotations
@@ -27,12 +30,15 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from core.perspectives import (
     PerspectiveRole,
     resolve_roles,
 )
+
+if TYPE_CHECKING:
+    from core.llm_router import LlmCallConfig
 
 logger = logging.getLogger("velantrim.branch_manager")
 
@@ -46,6 +52,7 @@ class BranchResult:
     confidence: float = 0.7
     key_claims: List[str] = field(default_factory=list)
     duration_ms: float = 0.0
+    used_llm: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -56,6 +63,7 @@ class BranchResult:
             "confidence": round(self.confidence, 2),
             "key_claims": self.key_claims[:5],
             "duration_ms": round(self.duration_ms, 1),
+            "used_llm": self.used_llm,
         }
 
 
@@ -69,6 +77,11 @@ class SynthesisResult:
     confidence: float               # агрегированная уверенность
     dominant_role: Optional[str] = None  # чей ответ был самым полным
 
+    @property
+    def all_branches_used_llm(self) -> bool:
+        """True только если полный synthesis состоит из реальных LLM-ответов."""
+        return bool(self.branches) and all(branch.used_llm for branch in self.branches)
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "response": self.response,
@@ -78,6 +91,7 @@ class SynthesisResult:
             "confidence": round(self.confidence, 2),
             "dominant_role": self.dominant_role,
             "branch_count": len(self.branches),
+            "all_branches_used_llm": self.all_branches_used_llm,
         }
 
 
@@ -107,6 +121,7 @@ class BranchManager:
         roles: Optional[List[str]] = None,
         facts: Optional[List[Dict[str, Any]]] = None,
         single_role: bool = False,
+        llm_config: Optional[LlmCallConfig] = None,
     ) -> SynthesisResult:
         """
         Запустить параллельное рассуждение.
@@ -116,6 +131,9 @@ class BranchManager:
             roles: явно указанные роли (если None — автоопределение).
             facts: готовые факты (если None — будут извлечены из store).
             single_role: если True — только одна роль (даже если передано несколько).
+            llm_config: уже разрешённый caller-ом LLM config. None = только
+                deterministic fallback; BranchManager сам credentials/provider
+                не выбирает.
 
         Returns:
             SynthesisResult с синтезированным ответом.
@@ -132,7 +150,12 @@ class BranchManager:
         # Если роль одна — быстрый путь (без синтеза)
         if len(resolved) == 1:
             start = time.time()
-            branch = await self._run_branch(query, resolved[0], facts)
+            branch = await self._run_branch(
+                query,
+                resolved[0],
+                facts,
+                llm_config=llm_config,
+            )
             branch.duration_ms = (time.time() - start) * 1000
             return SynthesisResult(
                 response=branch.response,
@@ -146,7 +169,7 @@ class BranchManager:
         # Параллельные ветки
         start = time.time()
         branches = await asyncio.gather(*[
-            self._run_branch(query, role, facts)
+            self._run_branch(query, role, facts, llm_config=llm_config)
             for role in resolved
         ])
 
@@ -162,6 +185,8 @@ class BranchManager:
         query: str,
         role: PerspectiveRole,
         preloaded_facts: Optional[List[Dict[str, Any]]] = None,
+        *,
+        llm_config: Optional[LlmCallConfig] = None,
     ) -> BranchResult:
         """Выполнить одну ветку рассуждения с заданной ролью."""
         # 1. Retrieval с hints роли
@@ -171,11 +196,21 @@ class BranchManager:
         else:
             try:
                 facts = self._retrieve_with_hints(query, hints)
-            except Exception:
+            except Exception as exc:
+                logger.debug(
+                    "Branch retrieval degraded for role %s: %s",
+                    role.role_id,
+                    type(exc).__name__,
+                )
                 facts = []
 
-        # 2. Собрать ответ (через LLM если доступен, иначе через essence)
-        response, confidence = await self._generate_response(query, facts, role)
+        # 2. Собрать ответ (через LLM только с caller-owned config, иначе essence)
+        response, confidence, used_llm = await self._generate_response(
+            query,
+            facts,
+            role,
+            llm_config=llm_config,
+        )
 
         # 3. Извлечь ключевые claims
         key_claims = self._extract_key_claims(response)
@@ -186,6 +221,7 @@ class BranchManager:
             response=response,
             confidence=confidence,
             key_claims=key_claims,
+            used_llm=used_llm,
         )
 
     def _retrieve_with_hints(
@@ -222,42 +258,51 @@ class BranchManager:
             return []
 
     async def _generate_response(
-        self, query: str, facts: List[Dict[str, Any]], role: PerspectiveRole
-    ) -> tuple[str, float]:
-        """Сгенерировать ответ в стиле роли."""
-        # Попробовать LLM
-        try:
-            from core.llm_router import chat_complete
-            from core.llm_router import LlmCallConfig
-            prompt = self._build_prompt(query, facts, role)
-            # Pre-existing bug: LlmCallConfig requires provider/api_key (no defaults);
-            # this call always raises, caught below like any other LLM-path failure, so
-            # this branch currently always falls through to essence/absolute fallback.
-            # Not fixed here (choosing provider/api_key is a behavior change out of
-            # scope for a typing-only pass) — tracked as a follow-up bug.
-            cfg = LlmCallConfig(max_tokens=500)  # type: ignore[call-arg]
-            response = await chat_complete(cfg, prompt)
-            if response:
-                return response, 0.8
-        except Exception:
-            pass
+        self,
+        query: str,
+        facts: List[Dict[str, Any]],
+        role: PerspectiveRole,
+        *,
+        llm_config: Optional[LlmCallConfig] = None,
+    ) -> tuple[str, float, bool]:
+        """Сгенерировать ответ и явно вернуть, использовался ли реальный LLM."""
+        if llm_config is not None:
+            try:
+                from core.llm_router import chat_complete
 
-        # Fallback: детерминированный ответ через essence
+                prompt = self._build_prompt(query, facts, role)
+                response = await chat_complete(llm_config, prompt)
+                if response:
+                    return response, 0.8, True
+            except Exception as exc:
+                # Content-free degradation signal: не логируем ключ/сырой provider payload.
+                logger.warning(
+                    "Branch LLM degraded for role %s: %s",
+                    role.role_id,
+                    type(exc).__name__,
+                )
+
+        # Fallback: существующий детерминированный Essence owner.
         try:
             from core.essence import compose_essence
-            # Pre-existing bug: compose_essence(facts, relations=None) has no `query`
-            # kwarg and returns an Essence object, not a dict — .get() doesn't exist on
-            # it either. Caught below like any other fallback failure, so this branch
-            # currently always falls through to the absolute fallback. Not fixed here
-            # (behavior change out of scope for a typing-only pass) — tracked as a
-            # follow-up bug.
-            result = compose_essence(query=query, facts=facts)  # type: ignore[call-arg]
-            return str(result.get("gist", "")), 0.6  # type: ignore[attr-defined]
-        except Exception:
-            pass
 
-        # Абсолютный fallback
-        return f"[{role.emoji} {role.label_ru}] Анализ {len(facts)} фактов по запросу: {query}", 0.3
+            result = compose_essence(facts, relations=None)
+            response = (result.short_answer or result.gist or "").strip()
+            if response:
+                return response, 0.6, False
+        except Exception as exc:
+            logger.warning(
+                "Branch Essence fallback degraded for role %s: %s",
+                role.role_id,
+                type(exc).__name__,
+            )
+
+        # Абсолютный fallback — честно остаётся non-LLM.
+        return (
+            f"[{role.emoji} {role.label_ru}] Анализ {len(facts)} фактов по запросу: {query}",
+            0.3,
+            False,
+        )
 
     def _build_prompt(
         self, query: str, facts: List[Dict[str, Any]], role: PerspectiveRole
