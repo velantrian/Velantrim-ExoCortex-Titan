@@ -1,8 +1,7 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-15  
-**C10 authoritative checkpoint:** `main@0074ea569030e0708ea345693c74e8506ada94a5` · signature `VERIFIED / valid`  
-**C11 lifecycle rule:** this snapshot records the reconciled repository risk state; resolve the current #52 issue/PR/merge lifecycle from live GitHub  
+**Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · signature `VERIFIED / valid`  
 **Continuity:** `12/12 = 100%` — complete  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0` · review-thread resolution required · required check `Titan aggregate merge evidence`
@@ -204,7 +203,7 @@ raw rows; unverified evidence could be rendered as confirmed; malformed typed in
 be accepted; and later review rounds found additional reset/identity/corrupt-metadata,
 policy-TOCTOU and semantic-collapse defects.
 
-Merged PR #297 closes that bounded hardening lane. `ModelFreeCore` now remains lexical and
+Merged PR #297 closes that bounded hardening lane. `ModelFreeCore` remains lexical and
 read-side only, avoids cognitive reranking/provider/network paths, does not initialize an
 absent graph, fails boundedly when a present graph cannot be trusted, validates every
 physical relation row before semantic collapse, validates reciprocal inverse identity,
@@ -240,19 +239,56 @@ is PolicyKernel input, not consent; unknown/unavailable health fails closed; exp
 preference cannot override a lease denial; policy evaluation failure or mixed snapshots
 cannot fall back to selection.
 
-The following **remain unproved and unauthorized** by Phase 2A:
+The following remain unproved and unauthorized by Phase 2A: runtime registry wiring,
+active provider probing/invocation, embedding/reranker/LLM/ADAO execution, remote-consent
+implementation/network activation, ARM-04, Operator GO, runtime authority and production
+authority. A later wiring/activation phase must be separately admitted. `auto` remains
+preference, never permission.
 
-- runtime wiring of the registry into the query/pipeline path;
-- active provider probing or provider invocation;
-- embeddings/vector or reranker execution;
-- LLM execution;
-- ADAO execution;
-- remote-consent implementation or network activation;
-- ARM-04;
-- Operator GO, runtime authority or production authority.
+## Reduced risk — Phase 3A embedding-space identity converged; semantic execution remains unwired
 
-A later wiring/activation phase must be separately admitted. `auto` remains preference,
-never permission.
+Issue #327 / protected-merged PR #328 closes the bounded correctness gap between Titan's
+existing embedding registry, persistent projection/storage identity and legacy dense
+scorer.
+
+The accepted `EmbeddingSpaceDescriptor` binds provider, model, model revision, dimension,
+normalization, pooling, distance metric, chunker version and preprocessing version into a
+canonical JSON + SHA-256 `embedding_space_id`. Same dimension is not sufficient for
+compatibility. Legacy rows that lack the complete identity are not auto-adopted; they fail
+closed to lexical fallback. The existing EmbeddingStore/Projection owners are reused and
+schema remains v7.
+
+DenseRetriever now preflights the complete candidate batch against the query dimension
+before any similarity multiplication, closing the future persistent-vector `zip()`
+truncation trap without wiring persistent projection into the live route.
+
+Accepted evidence:
+
+```text
+final PR head:             96f4aad2ae4a65203cc133dbe2af40ed869c99e8
+protected squash merge:    4932727c348ec967564d8babf80e25ca82bce8be
+signature:                 VERIFIED / valid
+exact-head Full CI:        #1210 · 31882948349 · SUCCESS
+exact-head Docker:         #799  · 31882948356 · SUCCESS
+exact-head CodeQL:         #48   · 31882948357 · SUCCESS
+READY aggregate:           #1315 · 31883253917 · SUCCESS
+post-merge Full CI:        #1211 · 31883324866 · SUCCESS
+post-merge Docker:         #800  · 31883324890 · SUCCESS
+post-merge CodeQL:         #49   · 31883324957 · SUCCESS
+post-merge aggregate:      #1316 · 31883324900 · SUCCESS
+```
+
+The remaining semantic risks are intentionally open for future admission rather than
+silently closed:
+
+- persistent projection is not wired into live retrieval;
+- no provider execution/probing/network/remote embedding is enabled;
+- no Titan-specific semantic retrieval-quality benchmark has been admitted or passed;
+- legacy projection rows require explicit bounded rebuild under complete typed metadata;
+- background indexing remains unauthorized;
+- Phase 3A grants no Operator GO, runtime authority or production authority.
+
+These residuals do not invalidate Phase 3A; they define the boundary of what it proved.
 
 ## Reduced risk — Documentation hand-off validation converged
 
@@ -271,15 +307,12 @@ Docker:                  not spawned / not claimed
 ```
 
 The existing `scripts/check_pr_merge_evidence.py` remains the aggregate owner. A thin
-trusted adapter now reads `docs/ai/NOTION_HANDOFF.md` from the actual exact PR head and
-fails connectorless `UNAVAILABLE + HANDOFF_REQUIRED` evidence unless the declared path is
-the machine-stable `#handoff-pr-<current-PR>` anchor, the hand-off file is part of that PR,
-and the matching structured item is bound to the current PR/base with the required
-provenance and sections. Arbitrary paths, missing items, stale other-PR items and wrong
-base SHA fail closed. The ordinary `AVAILABLE + SYNCED` route remains unchanged.
+trusted adapter reads `docs/ai/NOTION_HANDOFF.md` from the actual exact PR head and fails
+connectorless `UNAVAILABLE + HANDOFF_REQUIRED` evidence unless the declared path is the
+machine-stable `#handoff-pr-<current-PR>` anchor, the hand-off file is part of that PR, and
+the matching structured item is bound to the current PR/base with the required provenance
+and sections. The ordinary `AVAILABLE + SYNCED` route remains unchanged.
 
-Post-merge aggregate #1005 executed the adapter's `--all-open` entrypoint from trusted
-default-branch code, so the new workflow entrypoint is proven in real Actions execution.
 This governance hardening changes no runtime, Canon, capability, provider, Continuity,
 schema, Operator GO, runtime-authority or production-authority semantics.
 
@@ -293,7 +326,9 @@ Still not proved:
 - live backup/restore and disaster-recovery orchestration;
 - external audit service/SLO/alerting coverage;
 - independent security review or penetration test;
-- complete production evidence for Reader Core (#120).
+- complete production evidence for Reader Core (#120);
+- persistent semantic projection runtime integration;
+- Titan-specific semantic retrieval quality.
 
 ## Risk update rule
 
@@ -312,5 +347,6 @@ PRODUCTION AUTHORITY
 PRODUCTION-READY
 ```
 
-Never infer a later state from an earlier one. In particular, historical observation and
-12/12 Continuity never imply current permission or production authority.
+Never infer a later state from an earlier one. In particular, historical observation,
+Phase 3A's tested compatibility contract and 12/12 Continuity never imply current
+permission or production authority.
