@@ -44,8 +44,8 @@ _V1_STATEMENTS = (
     """,
     """
     CREATE TABLE csm_scan_receipts (
-        receipt_id TEXT PRIMARY KEY,
         repository_id TEXT NOT NULL,
+        receipt_id TEXT NOT NULL,
         generation INTEGER NOT NULL CHECK (generation >= 1),
         previous_snapshot_id TEXT,
         candidate_snapshot_id TEXT NOT NULL,
@@ -64,7 +64,8 @@ _V1_STATEMENTS = (
         completed_at TEXT NOT NULL,
         no_runtime_authority INTEGER NOT NULL DEFAULT 1
             CHECK (no_runtime_authority = 1),
-        UNIQUE (repository_id, generation, receipt_id),
+        PRIMARY KEY (repository_id, receipt_id),
+        UNIQUE (repository_id, receipt_id, generation, candidate_snapshot_id),
         FOREIGN KEY (repository_id)
             REFERENCES csm_repositories(repository_id)
             ON DELETE CASCADE
@@ -88,13 +89,22 @@ _V1_STATEMENTS = (
         promoted_at TEXT,
         PRIMARY KEY (repository_id, snapshot_id),
         UNIQUE (repository_id, generation),
+        UNIQUE (repository_id, snapshot_id, generation),
         CHECK (dirty = 0 OR commit_sha IS NULL),
         FOREIGN KEY (repository_id)
             REFERENCES csm_repositories(repository_id)
             ON DELETE CASCADE,
-        FOREIGN KEY (scan_receipt_id)
-            REFERENCES csm_scan_receipts(receipt_id)
-            DEFERRABLE INITIALLY DEFERRED
+        FOREIGN KEY (
+            repository_id,
+            scan_receipt_id,
+            generation,
+            snapshot_id
+        ) REFERENCES csm_scan_receipts(
+            repository_id,
+            receipt_id,
+            generation,
+            candidate_snapshot_id
+        )
     )
     """,
     """
@@ -111,8 +121,9 @@ _V1_STATEMENTS = (
         parser_profile_id TEXT NOT NULL,
         parser_adapter_id TEXT NOT NULL,
         PRIMARY KEY (repository_id, snapshot_id, node_id),
-        FOREIGN KEY (repository_id, snapshot_id)
-            REFERENCES csm_snapshots(repository_id, snapshot_id)
+        UNIQUE (repository_id, snapshot_id, node_id, generation),
+        FOREIGN KEY (repository_id, snapshot_id, generation)
+            REFERENCES csm_snapshots(repository_id, snapshot_id, generation)
             ON DELETE CASCADE
     )
     """,
@@ -150,11 +161,14 @@ _V1_STATEMENTS = (
             OR
             (target_node_id IS NULL AND unresolved_target_id IS NOT NULL)
         ),
-        FOREIGN KEY (repository_id, snapshot_id, source_node_id)
-            REFERENCES csm_nodes(repository_id, snapshot_id, node_id)
+        FOREIGN KEY (repository_id, snapshot_id, generation)
+            REFERENCES csm_snapshots(repository_id, snapshot_id, generation)
             ON DELETE CASCADE,
-        FOREIGN KEY (repository_id, snapshot_id, target_node_id)
-            REFERENCES csm_nodes(repository_id, snapshot_id, node_id)
+        FOREIGN KEY (repository_id, snapshot_id, source_node_id, generation)
+            REFERENCES csm_nodes(repository_id, snapshot_id, node_id, generation)
+            ON DELETE CASCADE,
+        FOREIGN KEY (repository_id, snapshot_id, target_node_id, generation)
+            REFERENCES csm_nodes(repository_id, snapshot_id, node_id, generation)
             ON DELETE CASCADE,
         FOREIGN KEY (repository_id, snapshot_id, unresolved_target_id)
             REFERENCES csm_unresolved_targets(
@@ -167,12 +181,13 @@ _V1_STATEMENTS = (
     """,
     """
     CREATE TABLE csm_scan_omissions (
-        omission_id TEXT PRIMARY KEY,
         repository_id TEXT NOT NULL,
         snapshot_id TEXT NOT NULL,
+        omission_id TEXT NOT NULL,
         relative_path TEXT NOT NULL,
         reason TEXT NOT NULL,
         observed_bytes INTEGER CHECK (observed_bytes IS NULL OR observed_bytes >= 0),
+        PRIMARY KEY (repository_id, snapshot_id, omission_id),
         FOREIGN KEY (repository_id, snapshot_id)
             REFERENCES csm_snapshots(repository_id, snapshot_id)
             ON DELETE CASCADE
