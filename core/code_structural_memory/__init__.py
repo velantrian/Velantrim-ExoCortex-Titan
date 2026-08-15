@@ -1,6 +1,8 @@
-"""Bounded Code Structural Memory contracts and schema.
+"""Bounded Code Structural Memory contracts, storage, and explicit scanner.
 
-This package is Stage-B only and intentionally has no runtime wiring.
+Stage C adds an explicit manifest-driven Python scanner and repository-scoped scan
+lifecycle. The package remains runtime-unwired and has no Canon, Truth, Policy,
+answer, action, or production authority.
 """
 
 from .contracts import (
@@ -25,6 +27,22 @@ from .contracts import (
     normalize_unresolved_target,
     serialize_reason_counts,
 )
+from .scanner import (
+    DEFAULT_LEASE_TTL_SECONDS,
+    PARSER_ADAPTER_ID,
+    PARSER_PROFILE_ID,
+    SCANNER_CONTRACT_VERSION,
+    CSMScannerError,
+    RepositoryRegistrationError,
+    ScanLease,
+    ScanLeaseBusyError,
+    ScanLeaseLostError,
+    ScanOutcome,
+    local_root_fingerprint,
+    register_repository,
+    resolve_repository_root,
+    scan_python_repository,
+)
 from .schema import (
     SCHEMA_VERSION,
     CSMDatabaseError,
@@ -39,11 +57,21 @@ __all__ = [
     "IDENTITY_SCHEMA_VERSION",
     "SNAPSHOT_IDENTITY_VERSION",
     "SCHEMA_VERSION",
+    "SCANNER_CONTRACT_VERSION",
+    "PARSER_PROFILE_ID",
+    "PARSER_ADAPTER_ID",
+    "DEFAULT_LEASE_TTL_SECONDS",
     "CSMDatabaseError",
+    "CSMScannerError",
     "RepositoryRegistration",
+    "RepositoryRegistrationError",
     "RepositorySnapshot",
     "ScanBudget",
+    "ScanLease",
+    "ScanLeaseBusyError",
+    "ScanLeaseLostError",
     "ScanOmission",
+    "ScanOutcome",
     "ScanReceipt",
     "SourceSpan",
     "SourceState",
@@ -53,12 +81,16 @@ __all__ = [
     "UnsupportedSchemaVersionError",
     "connect_database",
     "initialize_schema",
+    "local_root_fingerprint",
     "make_edge_id",
     "make_node_id",
     "make_snapshot_id",
     "normalize_qualified_name",
     "normalize_relative_path",
     "normalize_unresolved_target",
+    "register_repository",
+    "resolve_repository_root",
+    "scan_python_repository",
     "schema_version",
     "serialize_reason_counts",
 ]
