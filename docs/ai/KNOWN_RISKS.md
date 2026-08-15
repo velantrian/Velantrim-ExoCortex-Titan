@@ -2,6 +2,7 @@
 
 **Snapshot:** 2026-08-15  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · signature `VERIFIED / valid`  
+**C11 lifecycle rule:** this snapshot preserves the reconciled #52 risk record; resolve current issue/PR lifecycle from live GitHub  
 **Continuity:** `12/12 = 100%` — complete  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0` · review-thread resolution required · required check `Titan aggregate merge evidence`
@@ -203,7 +204,7 @@ raw rows; unverified evidence could be rendered as confirmed; malformed typed in
 be accepted; and later review rounds found additional reset/identity/corrupt-metadata,
 policy-TOCTOU and semantic-collapse defects.
 
-Merged PR #297 closes that bounded hardening lane. `ModelFreeCore` remains lexical and
+Merged PR #297 closes that bounded hardening lane. `ModelFreeCore` now remains lexical and
 read-side only, avoids cognitive reranking/provider/network paths, does not initialize an
 absent graph, fails boundedly when a present graph cannot be trusted, validates every
 physical relation row before semantic collapse, validates reciprocal inverse identity,
@@ -239,11 +240,19 @@ is PolicyKernel input, not consent; unknown/unavailable health fails closed; exp
 preference cannot override a lease denial; policy evaluation failure or mixed snapshots
 cannot fall back to selection.
 
-The following remain unproved and unauthorized by Phase 2A: runtime registry wiring,
-active provider probing/invocation, embedding/reranker/LLM/ADAO execution, remote-consent
-implementation/network activation, ARM-04, Operator GO, runtime authority and production
-authority. A later wiring/activation phase must be separately admitted. `auto` remains
-preference, never permission.
+The following **remain unproved and unauthorized** by Phase 2A:
+
+- runtime wiring of the registry into the query/pipeline path;
+- active provider probing or provider invocation;
+- embeddings/vector or reranker execution;
+- LLM execution;
+- ADAO execution;
+- remote-consent implementation or network activation;
+- ARM-04;
+- Operator GO, runtime authority or production authority.
+
+A later wiring/activation phase must be separately admitted. `auto` remains preference,
+never permission.
 
 ## Reduced risk — Phase 3A embedding-space identity converged; semantic execution remains unwired
 
@@ -307,12 +316,15 @@ Docker:                  not spawned / not claimed
 ```
 
 The existing `scripts/check_pr_merge_evidence.py` remains the aggregate owner. A thin
-trusted adapter reads `docs/ai/NOTION_HANDOFF.md` from the actual exact PR head and fails
-connectorless `UNAVAILABLE + HANDOFF_REQUIRED` evidence unless the declared path is the
-machine-stable `#handoff-pr-<current-PR>` anchor, the hand-off file is part of that PR, and
-the matching structured item is bound to the current PR/base with the required provenance
-and sections. The ordinary `AVAILABLE + SYNCED` route remains unchanged.
+trusted adapter now reads `docs/ai/NOTION_HANDOFF.md` from the actual exact PR head and
+fails connectorless `UNAVAILABLE + HANDOFF_REQUIRED` evidence unless the declared path is
+the machine-stable `#handoff-pr-<current-PR>` anchor, the hand-off file is part of that PR,
+and the matching structured item is bound to the current PR/base with the required
+provenance and sections. Arbitrary paths, missing items, stale other-PR items and wrong
+base SHA fail closed. The ordinary `AVAILABLE + SYNCED` route remains unchanged.
 
+Post-merge aggregate #1005 executed the adapter's `--all-open` entrypoint from trusted
+default-branch code, so the new workflow entrypoint is proven in real Actions execution.
 This governance hardening changes no runtime, Canon, capability, provider, Continuity,
 schema, Operator GO, runtime-authority or production-authority semantics.
 
