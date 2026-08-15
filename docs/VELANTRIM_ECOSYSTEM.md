@@ -26,7 +26,7 @@ Titan as ecosystem orchestrator
 | [🔱 Titan](https://github.com/velantrian/Velantrim-ExoCortex-Titan) | Cognition, orchestration, retrieval, tools, agents and task-aware context | This repository; broader Exo-Cortex research/runtime track |
 | [💎 Crystal](https://github.com/velantrian/velantrim-exocortex-crystal) | Verifiable memory, evidence, provenance, trust and audit boundaries | Independent grant-facing product; no automatic shared Canon |
 | [🧬 Native Kernel](https://github.com/velantrian/velantrim-native-kernel) | Long-horizon substrate-neutral event and memory-contract research | Independent research; a possible future Offline Shadow target, not Titan's current source of truth |
-| [⭐️ Mentaury Soul](https://github.com/velantrian/velantrim-mentaury-soul) | Digital individuality, identity continuity, relationships, commitments and governed development | Separate identity research; Titan may offer tools, not identity authority |
+| [🌀 Mentaury Soul](https://github.com/velantrian/velantrim-mentaury-soul) | Substrate-neutral cognition and evolving digital-individuality research: provenance-aware claims/beliefs, typed relations, identity continuity, character/presence and governed development | Separate cognition/identity owner; Titan may offer bounded tool/retrieval/context candidates through an explicit adapter, never belief, identity, M3 or truth authority |
 
 ### Conceptual relationship map
 
@@ -36,9 +36,9 @@ Titan as ecosystem orchestrator
           ┌────────────────────────┼────────────────────────┐
           │                        │                        │
           ▼                        ▼                        ▼
-  ⭐️ Mentaury Soul            🔱 Titan                 💎 Crystal
- identity / continuity     cognition / tools       evidence / trust
- relationships / M3        orchestration           provenance / audit
+  🌀 Mentaury Soul             🔱 Titan                 💎 Crystal
+ cognition / individuality   cognition / tools       evidence / trust
+ identity / character        orchestration           provenance / audit
           │                        │                        │
           └──────── proposed governed contracts ──────────┘
                                    │
@@ -53,15 +53,18 @@ Conceptual relationships are not claims of current runtime wiring.
 
 1. Titan does not become the truth authority for Crystal, Native Kernel or Mentaury.
 2. Crystal facts or Receipts do not become Titan Canon automatically; admission remains explicit and policy-gated.
-3. Titan tools and model outputs do not become Mentaury beliefs, relationships, commitments or M3 identity state automatically.
-4. Native Kernel projections remain research artifacts until separately integrated and validated.
-5. Cross-project credentials, consent, capabilities and authority are never inherited implicitly.
-6. Every integration requires a scoped RFC/ADR, explicit interface contract, deterministic tests, threat/privacy review, rollback and operator approval.
+3. Titan tools, retrieval results, context packs and model outputs do not become Mentaury beliefs, relationships, commitments, identity state or M3 automatically.
+4. Mentaury research results do not become Titan Canon, policy, runtime wiring or capability authority automatically.
+5. Native Kernel projections remain research artifacts until separately integrated and validated.
+6. Cross-project credentials, consent, capabilities and authority are never inherited implicitly.
+7. Research reuse starts with ownership discrimination: an idea may become a Titan-native research candidate or remain owned by another project, but shared vocabulary does not create shared architecture.
+8. Every integration requires a scoped RFC/ADR, explicit interface contract, deterministic tests, threat/privacy review, rollback and operator approval.
 
 ### Safe future integration pattern
 
 ```text
-proposal
+proposal / external research result
+→ ownership discrimination
 → bounded adapter contract
 → isolated implementation
 → deterministic tests
@@ -96,21 +99,24 @@ Titan как оркестратор экосистемы
 | [🔱 Titan](https://github.com/velantrian/Velantrim-ExoCortex-Titan) | Cognition, orchestration, retrieval, инструменты, агенты и task-aware context | Этот репозиторий; широкое Exo-Cortex направление |
 | [💎 Crystal](https://github.com/velantrian/velantrim-exocortex-crystal) | Проверяемая память, доказательства, provenance, доверие и аудит | Независимое грантовое направление; общего Canon по умолчанию нет |
 | [🧬 Native Kernel](https://github.com/velantrian/velantrim-native-kernel) | Долгосрочное substrate-neutral исследование event- и memory-контрактов | Независимое исследование; возможный будущий Offline Shadow target, но не текущий источник истины Titan |
-| [⭐️ Mentaury Soul](https://github.com/velantrian/velantrim-mentaury-soul) | Цифровая индивидуальность, continuity, отношения, commitments и управляемое развитие | Отдельное identity-исследование; Titan может предоставлять инструменты, но не identity authority |
+| [🌀 Mentaury Soul](https://github.com/velantrian/velantrim-mentaury-soul) | Substrate-neutral исследование cognition и развивающейся цифровой индивидуальности: provenance-aware claims/beliefs, typed relations, identity continuity, character/presence и governed development | Отдельный cognition/identity owner; Titan может давать bounded tool/retrieval/context candidates только через явный адаптер, но не belief, identity, M3 или truth authority |
 
 ### Обязательные границы
 
 1. Titan не становится truth-authority для Crystal, Native Kernel или Mentaury.
 2. Факты или Receipts Crystal не становятся Titan Canon автоматически; admission остаётся явным и policy-gated.
-3. Инструменты и model outputs Titan не становятся автоматически beliefs, relationships, commitments или M3-state Mentaury.
-4. Проекции Native Kernel остаются исследовательскими артефактами до отдельной интеграции и валидации.
-5. Credentials, consent, capabilities и authority не наследуются между проектами неявно.
-6. Каждая интеграция требует ограниченного RFC/ADR, явного interface contract, детерминированных тестов, threat/privacy review, rollback и одобрения оператора.
+3. Инструменты, retrieval results, context packs и model outputs Titan не становятся автоматически beliefs, relationships, commitments, identity-state или M3 Mentaury.
+4. Research-результаты Mentaury не становятся автоматически Titan Canon, policy, runtime wiring или capability authority.
+5. Проекции Native Kernel остаются исследовательскими артефактами до отдельной интеграции и валидации.
+6. Credentials, consent, capabilities и authority не наследуются между проектами неявно.
+7. Повторное использование исследования начинается с ownership discrimination: идея может стать Titan-native research candidate или остаться у другого проекта, но общий словарь не создаёт общую архитектуру.
+8. Каждая интеграция требует ограниченного RFC/ADR, явного interface contract, детерминированных тестов, threat/privacy review, rollback и одобрения оператора.
 
 ### Безопасная последовательность интеграции
 
 ```text
-предложение
+предложение / внешний research result
+→ ownership discrimination
 → ограниченный контракт адаптера
 → изолированная реализация
 → детерминированные тесты
