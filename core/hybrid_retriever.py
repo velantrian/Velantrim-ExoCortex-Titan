@@ -38,6 +38,8 @@ import threading
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from core.embedding_registry import EmbeddingRegistry
+
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
     from sentence_transformers.cross_encoder import CrossEncoder
@@ -103,7 +105,7 @@ class RetrievedFact:
         return {
             "fact_id":    self.fact_id,
             "claim":      self.claim,
-            "source":     self.source,
+            "source":      self.source,
             "confidence": self.confidence,
             "score":      self.final_score,
             "score_breakdown": {
@@ -351,6 +353,13 @@ class DenseRetriever:
         try:
             assert self._model is not None  # guaranteed by self.available above
             q_emb = self._model.encode([query], normalize_embeddings=True)[0]
+            # Validate the complete candidate batch before multiplying a single
+            # component. Python zip() truncates silently, so this preflight is
+            # the fail-closed boundary required before any persistent-vector
+            # integration can safely reuse this scorer.
+            for vec in self._embeddings:
+                EmbeddingRegistry.validate_pair_dimensions(vec, q_emb)
+
             # Per-candidate dot product (embeddings normalized ⇒ cosine). Plain
             # Python loop, not a vectorized matrix op: candidate sets here are
             # small (NGram narrows to ≤50-1000), and this keeps DenseRetriever
