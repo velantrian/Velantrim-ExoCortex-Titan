@@ -4,7 +4,7 @@
 **Runtime authority:** none  
 **Canon / ESM write authority:** none  
 **Initial baseline:** `main@a9b269903cd29448714aa985295b67cdb5fe64cf`  
-**Updated:** 2026-08-07
+**Updated:** 2026-08-14
 
 This protocol prevents useful ideas from disappearing in chat, audit notes or temporary
 AI context while also preventing speculative ideas from being presented as accepted
@@ -31,6 +31,27 @@ current engineering queue or grant runtime authority.
 | `PARKED` | the idea is coherent but no measured trigger justifies spending implementation capacity | research registry with a return trigger |
 | `REJECTED` | the idea conflicts with Titan invariants, duplicates an accepted owner or creates unacceptable authority/risk | research registry with the rejection reason |
 | `SUPERSEDED` | a later Titan-native contract or implementation replaces the original idea | research history with the replacement reference |
+
+### Cross-project ownership rule
+
+A useful result from Mentaury Soul, Native Kernel, Crystal, biology-inspired research or
+another external source does not become Titan architecture merely because the vocabulary
+looks compatible.
+
+```text
+external research result
+→ ownership discrimination
+→ Titan-specific problem / workload / measurable trigger
+→ RESEARCH_CANDIDATE or external reference
+
+external research result ≠ Titan Canon
+shared vocabulary ≠ shared architecture
+external capability ≠ Titan runtime authority
+```
+
+If another project already owns the cognition, identity, epistemic-history or trust
+semantics, Titan should reference that owner and define only the bounded Titan-side
+interface or experiment that is actually required.
 
 ### Items that are not Research Mode
 
@@ -221,6 +242,40 @@ These candidates are preserved without becoming current implementation commitmen
 - **Return trigger:** an accepted identity admission, consent, correction, supersession,
   retraction and erasure protocol.
 
+### `RT-MENTAURY-01` — Mentaury interoperability research boundary
+
+- **Status:** `R0 QUESTION · PARKED · EXTERNAL_OWNER_PRESENT`.
+- **Origin:** cross-project reconciliation with the independent `velantrim-mentaury-soul`
+  research architecture.
+- **Problem / opportunity:** a future workload may benefit from Titan retrieval, tools,
+  task context or evidence packaging while Mentaury Soul owns cognition/identity semantics
+  and digital-individuality research. The boundary must be explicit before any adapter.
+- **Current owner split:** Titan owns Titan-side retrieval/tools/runtime contracts;
+  Mentaury Soul owns its claims/beliefs, typed relations, identity continuity,
+  character/presence and governed cognitive-development semantics.
+- **Current evidence:** external project documentation and repository boundaries only;
+  no Titan↔Mentaury runtime adapter, cross-write path or shared authority is admitted here.
+- **Cheapest experiment:** an offline fixture adapter that emits a typed candidate package
+  with provenance, source scope, declared omissions and no write/action authority. No live
+  provider call, shared database or production caller.
+- **Return trigger:** an explicit accepted workload requires one Titan capability to serve
+  a Mentaury research/evaluation path and the external owner confirms the receiving
+  contract.
+- **Promotion evidence:** scoped RFC/ADR, exact data and privacy boundary, capability
+  lease/permission review, deterministic compatibility tests, failure/omission semantics,
+  erasure handling, read-only or shadow evaluation, rollback and separate owner approval.
+- **Forbidden shortcuts:**
+  - Titan output → Mentaury belief, identity, relationship, commitment or M3 by default;
+  - Mentaury research result → Titan Canon, policy or runtime authority by default;
+  - shared storage → shared truth or identity ownership;
+  - a Titan `CapabilityLease` → Mentaury identity admission;
+  - importing Mentaury cognition modules into Titan merely because terminology overlaps.
+- **Research-source boundary:** Mentaury may study biological, animal, plant/non-neural,
+  human intellectual and speculative-fiction sources under its own governance. Titan may
+  reuse only a separately triaged computational principle tied to a Titan-specific
+  measurable workload; biological inspiration or cross-model consensus is not evidence
+  for Titan architecture by itself.
+
 ## 7. Review cadence
 
 Review the registry only when:
@@ -240,4 +295,5 @@ Ideas are preserved.
 Current engineering remains explicit.
 Research has no hidden authority.
 Only evidence promotes a bounded slice.
+Cross-project research does not bypass ownership.
 ```
