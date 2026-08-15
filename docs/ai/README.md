@@ -106,6 +106,7 @@ A missing connector is `HANDOFF_REQUIRED`, not a generic blocker.
 | Projection outbox or FTS | `COMPONENT_MAP.md#projection-delivery` and `KNOWN_RISKS.md#risk-p0-01` |
 | Continuity PR stack | `CURRENT_STATE.md` plus current PR diffs/checks |
 | Capability/provider registry or Phase 2A #299/#300 | `PHASE2A_CAPABILITY_REGISTRY.md`, the Phase 2A ADR, then exact PR evidence |
+| Embedding-space identity or Phase 3A #327/#328 | `PHASE3A_EMBEDDING_SPACE_IDENTITY.md`, the Phase 3A ADR, then exact PR evidence |
 | Knowledge-base graph or release asset | `../knowledge/KB_GRAPH_GOVERNANCE.md`, `scripts/validate_kb_graph.py`, `scripts/audit_kb_graph.py` |
 | Identity or personalization | `CURRENT_STATE.md#identity-layer` and the identity risk entry |
 | API/security/deployment | `SECURITY.md`, compose files, Dockerfile, server lifespan, current checks |
