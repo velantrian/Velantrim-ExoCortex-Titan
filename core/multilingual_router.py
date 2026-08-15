@@ -26,7 +26,6 @@ logger = logging.getLogger("velantrim.multilingual_router")
 
 
 # ─── Детектор языка ──────────────────────────────────────────────────────────
-
 def detect_language(text: str) -> str:
     """
     Определить язык текста.
@@ -50,7 +49,6 @@ def detect_language(text: str) -> str:
 
 
 # ─── Лемматизация русского текста ─────────────────────────────────────────────
-
 def _get_lemmatizer():
     """Lazy-загрузка pymorphy3. Fallback — naive lowercase."""
     try:
@@ -104,7 +102,6 @@ def lemmatize_ru_query(query: str) -> str:
 
 
 # ─── Dual-index retrieval ────────────────────────────────────────────────────
-
 def retrieve_multilingual(
     query: str,
     *,
