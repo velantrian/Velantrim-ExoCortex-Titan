@@ -121,7 +121,7 @@ class BranchManager:
         roles: Optional[List[str]] = None,
         facts: Optional[List[Dict[str, Any]]] = None,
         single_role: bool = False,
-        llm_config: Optional["LlmCallConfig"] = None,
+        llm_config: Optional[LlmCallConfig] = None,
     ) -> SynthesisResult:
         """
         Запустить параллельное рассуждение.
@@ -186,7 +186,7 @@ class BranchManager:
         role: PerspectiveRole,
         preloaded_facts: Optional[List[Dict[str, Any]]] = None,
         *,
-        llm_config: Optional["LlmCallConfig"] = None,
+        llm_config: Optional[LlmCallConfig] = None,
     ) -> BranchResult:
         """Выполнить одну ветку рассуждения с заданной ролью."""
         # 1. Retrieval с hints роли
@@ -263,7 +263,7 @@ class BranchManager:
         facts: List[Dict[str, Any]],
         role: PerspectiveRole,
         *,
-        llm_config: Optional["LlmCallConfig"] = None,
+        llm_config: Optional[LlmCallConfig] = None,
     ) -> tuple[str, float, bool]:
         """Сгенерировать ответ и явно вернуть, использовался ли реальный LLM."""
         if llm_config is not None:
