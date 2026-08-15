@@ -1,7 +1,7 @@
 # 📍 Current System State
 
 **Verified:** 2026-08-15  
-**Authoritative C10 checkpoint:** `main@0074ea569030e0708ea345693c74e8506ada94a5` · signature `VERIFIED / valid`  
+**Authoritative pre-C11 checkpoint:** `main@5f916e0aeb130abf0c840dc622b350e1a268dac2` · signature `VERIFIED / valid`  
 **C11 lifecycle rule:** resolve the current #52 issue/PR/merge state from live GitHub; this file records repository truth and intentionally does not hard-code an open/closed issue lifecycle token  
 **Continuity:** `12/12 = 100%`  
 **Machine-readable state:** schema v7  
@@ -95,6 +95,12 @@ CodeQL:                      #27   · 31868888435 · SUCCESS
 aggregate merge evidence:    #1248 · 31868888440 · SUCCESS
 ```
 
+After C10, docs-only PR #323 was separately protected-merged as
+`main@5f916e0aeb130abf0c840dc622b350e1a268dac2`. It removes a residual English
+`Graph = Truth` overclaim and tightens cross-project research ownership boundaries. It
+changes no runtime or Canon authority and is carried forward into the C11 base rather than
+being overwritten.
+
 C11 is the bounded **final #52 residual / PR-queue reconciliation**. Its fresh audit found
 that this file, `docs/ai/KNOWN_RISKS.md`, and the dated release-evidence report still
 carried pre-merge C9/C10 wording even though GitHub/Notion FINAL evidence existed. C11
@@ -104,9 +110,11 @@ runtime, Canon, policy, schema, Continuity, Operator GO, provider/model, network
 production-authority semantics.
 
 The body statement in #52 about “10 currently open PRs” is historical queue evidence and
-was explicitly superseded by later #52 reconciliation. A fresh direct GitHub Pulls API
-audit on 2026-08-15 found one open PR, #321, created after that historical baseline and
-scoped to a separate docs/research boundary. C11 does not mutate or silently discard it.
+was explicitly superseded by later #52 reconciliation. During the C11 race audit, PR #321
+was confirmed **CLOSED / not merged / superseded by #323**, and #323 was confirmed
+**MERGED** to signed `main@5f916e0a...`. A fresh direct GitHub Pulls API read then returned
+exactly one open PR: #324, the C11 reconciliation PR itself. Therefore there is no separate
+unclassified open-PR debt remaining inside the #52 hardening scope.
 
 When this C11 documentation is read from `main`, treat the repository-side documentation
 residual as reconciled. Final GitHub issue closure is an external lifecycle action that is
