@@ -1,8 +1,8 @@
 # ⚠️ Known Risks and Required Proof
 
 **Snapshot:** 2026-08-15  
-**Current live base:** `main@0074ea569030e0708ea345693c74e8506ada94a5` · signature `VERIFIED / valid`  
-**C11 candidate:** branch `agent/issue-52-final-reconciliation` · documentation-only final #52 reconciliation  
+**C10 authoritative checkpoint:** `main@0074ea569030e0708ea345693c74e8506ada94a5` · signature `VERIFIED / valid`  
+**C11 lifecycle rule:** this snapshot records the reconciled repository risk state; resolve the current #52 issue/PR/merge lifecycle from live GitHub  
 **Continuity:** `12/12 = 100%` — complete  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
 **Governance:** active `main-governance` · solo mode · approvals `0` · review-thread resolution required · required check `Titan aggregate merge evidence`
