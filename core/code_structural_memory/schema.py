@@ -1,8 +1,8 @@
 """Repository-scoped SQLite schema for Titan Code Structural Memory (CSM).
 
-Stage B only: this module owns schema bootstrap/compatibility checks. It does not
-scan repositories, expose query APIs, promote runtime state, or receive Canon,
-Truth, Policy, TRACE, Audit, answer, action, or production authority.
+Stage C extends the Stage-B storage contract with repository-scoped scan
+lifecycle state. It still exposes no query API, background worker, Canon,
+Truth, Policy, TRACE, Audit, answer, action, runtime, or production authority.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 class CSMDatabaseError(RuntimeError):
@@ -270,6 +270,176 @@ _V1_STATEMENTS = (
 )
 
 
+_V2_STATEMENTS = (
+    """
+    CREATE UNIQUE INDEX uq_csm_scan_receipts_repository_generation
+        ON csm_scan_receipts(repository_id, generation)
+    """,
+    """
+    CREATE TABLE csm_repository_scan_state (
+        repository_id TEXT PRIMARY KEY,
+        next_generation INTEGER NOT NULL CHECK (next_generation >= 1),
+        current_snapshot_id TEXT,
+        current_generation INTEGER,
+        current_receipt_id TEXT,
+        lease_token TEXT,
+        lease_generation INTEGER,
+        lease_issued_at REAL,
+        lease_expires_at REAL,
+        CHECK (
+            (
+                current_snapshot_id IS NULL
+                AND current_generation IS NULL
+                AND current_receipt_id IS NULL
+            )
+            OR
+            (
+                current_snapshot_id IS NOT NULL
+                AND current_generation IS NOT NULL
+                AND current_receipt_id IS NOT NULL
+            )
+        ),
+        CHECK (
+            (
+                lease_token IS NULL
+                AND lease_generation IS NULL
+                AND lease_issued_at IS NULL
+                AND lease_expires_at IS NULL
+            )
+            OR
+            (
+                lease_token IS NOT NULL
+                AND lease_generation IS NOT NULL
+                AND lease_issued_at IS NOT NULL
+                AND lease_expires_at IS NOT NULL
+                AND lease_expires_at > lease_issued_at
+            )
+        ),
+        CHECK (current_generation IS NULL OR current_generation < next_generation),
+        CHECK (lease_generation IS NULL OR lease_generation < next_generation),
+        FOREIGN KEY (repository_id)
+            REFERENCES csm_repositories(repository_id)
+            ON DELETE CASCADE,
+        FOREIGN KEY (repository_id, current_snapshot_id)
+            REFERENCES csm_snapshots(repository_id, snapshot_id),
+        FOREIGN KEY (repository_id, current_receipt_id)
+            REFERENCES csm_scan_receipts(repository_id, receipt_id)
+    )
+    """,
+    """
+    INSERT INTO csm_repository_scan_state (
+        repository_id,
+        next_generation,
+        current_snapshot_id,
+        current_generation,
+        current_receipt_id
+    )
+    SELECT
+        repository.repository_id,
+        MAX(
+            COALESCE(
+                (
+                    SELECT MAX(receipt.generation)
+                    FROM csm_scan_receipts AS receipt
+                    WHERE receipt.repository_id = repository.repository_id
+                ),
+                0
+            ),
+            COALESCE(
+                (
+                    SELECT MAX(snapshot.generation)
+                    FROM csm_snapshots AS snapshot
+                    WHERE snapshot.repository_id = repository.repository_id
+                ),
+                0
+            )
+        ) + 1,
+        (
+            SELECT snapshot.snapshot_id
+            FROM csm_snapshots AS snapshot
+            WHERE snapshot.repository_id = repository.repository_id
+              AND snapshot.promoted_at IS NOT NULL
+            ORDER BY snapshot.generation DESC, snapshot.snapshot_id DESC
+            LIMIT 1
+        ),
+        (
+            SELECT snapshot.generation
+            FROM csm_snapshots AS snapshot
+            WHERE snapshot.repository_id = repository.repository_id
+              AND snapshot.promoted_at IS NOT NULL
+            ORDER BY snapshot.generation DESC, snapshot.snapshot_id DESC
+            LIMIT 1
+        ),
+        (
+            SELECT snapshot.scan_receipt_id
+            FROM csm_snapshots AS snapshot
+            WHERE snapshot.repository_id = repository.repository_id
+              AND snapshot.promoted_at IS NOT NULL
+            ORDER BY snapshot.generation DESC, snapshot.snapshot_id DESC
+            LIMIT 1
+        )
+    FROM csm_repositories AS repository
+    """,
+    """
+    CREATE TRIGGER csm_repository_scan_state_after_repository_insert
+    AFTER INSERT ON csm_repositories
+    FOR EACH ROW
+    BEGIN
+        INSERT INTO csm_repository_scan_state(repository_id, next_generation)
+        VALUES (NEW.repository_id, 1);
+    END
+    """,
+    """
+    CREATE TRIGGER csm_current_scan_receipt_guard
+    BEFORE UPDATE OF current_snapshot_id, current_generation, current_receipt_id
+    ON csm_repository_scan_state
+    FOR EACH ROW
+    WHEN NEW.current_snapshot_id IS NOT NULL
+      AND NOT EXISTS (
+          SELECT 1
+          FROM csm_scan_receipts AS receipt
+          WHERE receipt.repository_id = NEW.repository_id
+            AND receipt.receipt_id = NEW.current_receipt_id
+            AND receipt.generation = NEW.current_generation
+            AND receipt.candidate_snapshot_id = NEW.current_snapshot_id
+            AND receipt.final_disposition IN ('PROMOTED', 'REUSED_SNAPSHOT')
+      )
+    BEGIN
+        SELECT RAISE(ABORT, 'current scan receipt must bind current snapshot and generation');
+    END
+    """,
+    """
+    CREATE TABLE csm_scan_lease_events (
+        repository_id TEXT NOT NULL,
+        event_id TEXT NOT NULL,
+        generation INTEGER NOT NULL CHECK (generation >= 1),
+        holder_token TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        observed_at REAL NOT NULL,
+        reason_code TEXT NOT NULL,
+        no_runtime_authority INTEGER NOT NULL DEFAULT 1
+            CHECK (no_runtime_authority = 1),
+        PRIMARY KEY (repository_id, event_id),
+        FOREIGN KEY (repository_id)
+            REFERENCES csm_repositories(repository_id)
+            ON DELETE CASCADE
+    )
+    """,
+    """
+    CREATE TRIGGER csm_scan_lease_event_immutable
+    BEFORE UPDATE ON csm_scan_lease_events
+    FOR EACH ROW
+    BEGIN
+        SELECT RAISE(ABORT, 'scan lease event is immutable');
+    END
+    """,
+    """
+    CREATE INDEX idx_csm_scan_lease_events_generation
+        ON csm_scan_lease_events(repository_id, generation, observed_at)
+    """,
+)
+
+
 def connect_database(path: str | Path) -> sqlite3.Connection:
     """Open a CSM SQLite database with fail-closed foreign-key enforcement."""
     conn = sqlite3.connect(str(path))
@@ -283,7 +453,7 @@ def connect_database(path: str | Path) -> sqlite3.Connection:
 
 
 def schema_version(conn: sqlite3.Connection) -> int:
-    """Return the admitted schema version, checking both SQLite and table metadata."""
+    """Return the admitted schema version, checking SQLite and table metadata."""
     pragma_row = conn.execute("PRAGMA user_version").fetchone()
     pragma_version = 0 if pragma_row is None else int(pragma_row[0])
 
@@ -316,7 +486,7 @@ def _apply_statements_transactionally(
     statements: Iterable[str],
     target_version: int,
 ) -> None:
-    """Apply one bounded migration atomically; rollback on every failure."""
+    """Apply an empty-database bootstrap atomically; rollback on every failure."""
     try:
         conn.execute("BEGIN IMMEDIATE")
         for statement in statements:
@@ -332,12 +502,40 @@ def _apply_statements_transactionally(
         raise
 
 
-def initialize_schema(conn: sqlite3.Connection) -> int:
-    """Bootstrap or validate the currently admitted CSM schema.
+def _apply_versioned_migration(
+    conn: sqlite3.Connection,
+    *,
+    statements: Iterable[str],
+    expected_current: int,
+    target_version: int,
+) -> None:
+    """Apply one admitted non-empty migration with an exact version precondition."""
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        current = schema_version(conn)
+        if current != expected_current:
+            raise UnsupportedSchemaVersionError(
+                "CSM migration precondition changed: "
+                f"expected v{expected_current}, found v{current}"
+            )
+        for statement in statements:
+            conn.execute(statement)
+        conn.execute(
+            "UPDATE csm_schema_meta SET schema_version = ? WHERE singleton = 1",
+            (target_version,),
+        )
+        conn.execute(f"PRAGMA user_version = {target_version}")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
-    Stage B admits only an empty database -> v1 transition. Unknown older or
-    newer nonzero versions fail closed until a separately reviewed migration is
-    added.
+
+def initialize_schema(conn: sqlite3.Connection) -> int:
+    """Bootstrap or migrate to the currently admitted CSM schema.
+
+    Stage C admits empty database -> v2 and the bounded Stage-B v1 -> v2
+    lifecycle migration. Unknown nonzero versions fail closed.
     """
     current = schema_version(conn)
     if current == SCHEMA_VERSION:
@@ -346,14 +544,24 @@ def initialize_schema(conn: sqlite3.Connection) -> int:
         raise UnsupportedSchemaVersionError(
             f"database schema v{current} is newer than supported v{SCHEMA_VERSION}"
         )
-    if current != 0:
-        raise UnsupportedSchemaVersionError(
-            f"no admitted migration path from schema v{current} to v{SCHEMA_VERSION}"
-        )
 
-    _apply_statements_transactionally(
-        conn,
-        statements=_V1_STATEMENTS,
-        target_version=SCHEMA_VERSION,
+    if current == 0:
+        _apply_statements_transactionally(
+            conn,
+            statements=(*_V1_STATEMENTS, *_V2_STATEMENTS),
+            target_version=SCHEMA_VERSION,
+        )
+        return schema_version(conn)
+
+    if current == 1:
+        _apply_versioned_migration(
+            conn,
+            statements=_V2_STATEMENTS,
+            expected_current=1,
+            target_version=SCHEMA_VERSION,
+        )
+        return schema_version(conn)
+
+    raise UnsupportedSchemaVersionError(
+        f"no admitted migration path from schema v{current} to v{SCHEMA_VERSION}"
     )
-    return schema_version(conn)
