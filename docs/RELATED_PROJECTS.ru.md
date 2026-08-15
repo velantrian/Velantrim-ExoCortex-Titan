@@ -11,7 +11,7 @@
 | 🔱 **Titan** | [Velantrim-ExoCortex-Titan](https://github.com/velantrian/Velantrim-ExoCortex-Titan) | Cognition, orchestration, retrieval, инструменты, агенты и task-aware context | Этот репозиторий; широкое Exo-Cortex research/runtime направление |
 | 💎 **Crystal** | [velantrim-exocortex-crystal](https://github.com/velantrian/velantrim-exocortex-crystal) | Проверяемая память, evidence, provenance, TruthGate, TRACE и аудит | Независимое грантовое направление; общего Canon или автоматической записи нет |
 | 🧬 **Native Kernel** | [velantrim-native-kernel](https://github.com/velantrian/velantrim-native-kernel) | Substrate-neutral исследование event-, memory- и projection-контрактов | Независимое исследование; возможный будущий Offline Shadow target |
-| ⭐️ **Mentaury Soul** | [velantrim-mentaury-soul](https://github.com/velantrian/velantrim-mentaury-soul) | Цифровая индивидуальность, identity continuity, отношения и commitments | Отдельное identity-направление; Titan может предоставлять инструменты, но не identity authority |
+| 🌀 **Mentaury Soul** | [velantrim-mentaury-soul](https://github.com/velantrian/velantrim-mentaury-soul) | Substrate-neutral исследование cognition и развивающейся цифровой индивидуальности: provenance-aware claims/beliefs, typed relations, identity continuity, character/presence и explainable change | Отдельный cognition/identity owner; Titan может предоставлять только bounded tool/retrieval/context candidates через отдельный контракт, но не belief, identity, M3 или truth authority |
 
 ## 🗺️ Концептуальная карта
 
@@ -21,9 +21,9 @@
           ┌────────────────────────┼────────────────────────┐
           │                        │                        │
           ▼                        ▼                        ▼
-  ⭐️ Mentaury Soul            🔱 Titan                 💎 Crystal
- identity / continuity     cognition / tools       evidence / trust
- relationships / M3        orchestration           provenance / audit
+  🌀 Mentaury Soul             🔱 Titan                 💎 Crystal
+ cognition / individuality   cognition / tools       evidence / trust
+ identity / character        orchestration           provenance / audit
           │                        │                        │
           └──────── proposed governed contracts ──────────┘
                                    │
@@ -41,7 +41,7 @@
 | Titan cognition, orchestration, retrieval, tools, agents, task context | **Titan** |
 | Crystal Canon, evidence, provenance, Guardian, TruthGate, TRACE, Receipts | **Crystal** |
 | Substrate-neutral event/memory contracts, replay и rebuildable projections | **Native Kernel** |
-| Identity continuity, M0–M3, relationships, commitments, Character boundary | **Mentaury Soul** |
+| Mentaury cognition/identity semantics, claims/beliefs, typed relations, identity continuity, relationships, commitments, character/presence и controlled development | **Mentaury Soul** |
 
 Изменение в одном проекте не должно автоматически копироваться в другой. Перенос идеи выполняется через отдельный RFC/ADR, interface contract, тесты и review.
 
@@ -49,7 +49,9 @@
 
 ```text
 Titan tool output ≠ Crystal Canon
-Titan tool output ≠ Mentaury belief or M3
+Titan tool/retrieval/context output ≠ Mentaury belief / identity / M3
+Titan research result ≠ automatic Mentaury architecture
+Mentaury research result ≠ Titan Canon / runtime authority
 Crystal evidence ≠ automatic Titan Canon
 Crystal evidence ≠ automatic Mentaury identity
 Native Kernel event ≠ universal Velantrim truth
@@ -60,12 +62,14 @@ shared repository family ≠ shared credentials or authority
 2. Межпроектная запись запрещена без явного ограниченного адаптера.
 3. Credentials, capabilities, consent, relationships и commitments не наследуются автоматически.
 4. Open PR, research-документ и Notion-план не равны реализации в GitHub `main`.
-5. Интеграция требует threat/privacy review, deterministic tests, rollback, Receipts и одобрения оператора.
+5. Research reuse начинается с проверки ownership: внешний принцип может стать Titan-native research candidate или Mentaury-owned candidate, но не общим модулем по умолчанию.
+6. Интеграция требует threat/privacy review, deterministic tests, rollback, Receipts и одобрения оператора.
 
 ## 🔬 Безопасный путь будущей интеграции
 
 ```text
-идея
+идея / внешний research result
+→ ownership discrimination
 → scoped RFC / ADR
 → bounded interface contract
 → isolated adapter
