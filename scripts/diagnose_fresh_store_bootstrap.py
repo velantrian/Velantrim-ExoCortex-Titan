@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sqlite3
+import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -12,6 +15,9 @@ from typing import Any
 from unittest import mock
 
 from core.memory import SQLiteGraphStore
+
+_ROOT = Path(__file__).resolve().parents[1]
+_APPLY_MIGRATIONS = _ROOT / "scripts" / "apply_migrations.py"
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,7 +56,7 @@ class TraceRecorder:
 
 
 class _TracingCursor:
-    def __init__(self, real: sqlite3.Cursor, recorder: TraceRecorder, sql: str) -> None:
+    def __init__(self, real: sqlite3.Cursor, recorder: TraceRecorder, sql: str = "<cursor>") -> None:
         object.__setattr__(self, "_real", real)
         object.__setattr__(self, "_recorder", recorder)
         object.__setattr__(self, "_sql", sql)
@@ -65,6 +71,33 @@ class _TracingCursor:
                 exc=exc,
             )
             raise
+
+    def execute(self, sql, *args, **kwargs):
+        object.__setattr__(self, "_sql", str(sql))
+        self._call("cursor_execute", object.__getattribute__(self, "_real").execute, sql, *args, **kwargs)
+        return self
+
+    def executemany(self, sql, *args, **kwargs):
+        object.__setattr__(self, "_sql", str(sql))
+        self._call(
+            "cursor_executemany",
+            object.__getattribute__(self, "_real").executemany,
+            sql,
+            *args,
+            **kwargs,
+        )
+        return self
+
+    def executescript(self, sql, *args, **kwargs):
+        object.__setattr__(self, "_sql", str(sql))
+        self._call(
+            "cursor_executescript",
+            object.__getattribute__(self, "_real").executescript,
+            sql,
+            *args,
+            **kwargs,
+        )
+        return self
 
     def fetchone(self):
         return self._call("fetchone", object.__getattribute__(self, "_real").fetchone)
@@ -134,6 +167,16 @@ class _TracingConnection:
             raise
         return _TracingCursor(cursor, object.__getattribute__(self, "_recorder"), str(sql))
 
+    def cursor(self, *args, **kwargs):
+        try:
+            cursor = object.__getattribute__(self, "_real").cursor(*args, **kwargs)
+        except sqlite3.Error as exc:
+            object.__getattribute__(self, "_recorder").record_error(
+                phase="cursor", sql="<cursor>", exc=exc
+            )
+            raise
+        return _TracingCursor(cursor, object.__getattribute__(self, "_recorder"))
+
     def commit(self):
         try:
             return object.__getattribute__(self, "_real").commit()
@@ -175,10 +218,56 @@ class IterationResult:
     sql_errors: tuple[SqlErrorEvent, ...]
     integrity_check: str
     duration_ms: float
+    pre_cas_reached: int = 0
+    promotion_verdicts: tuple[str, ...] = ()
 
     @property
     def passed(self) -> bool:
         return not self.worker_errors and self.integrity_check == "ok"
+
+
+class _PeerPreCasAbort(RuntimeError):
+    """Diagnostic-only abort so no real CAS runs after a peer failed pre-CAS."""
+
+
+class _PromotionGate:
+    def __init__(self, contenders: int) -> None:
+        self.contenders = contenders
+        self._condition = threading.Condition()
+        self._reached = 0
+        self._pre_cas_failed = False
+        self._released = False
+
+    def mark_pre_cas_failure(self) -> None:
+        with self._condition:
+            self._pre_cas_failed = True
+            self._released = True
+            self._condition.notify_all()
+
+    def wait_before_real_cas(self, timeout: float) -> None:
+        deadline = time.monotonic() + timeout
+        with self._condition:
+            self._reached += 1
+            if self._reached == self.contenders:
+                self._released = True
+                self._condition.notify_all()
+            while not self._released:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    self._pre_cas_failed = True
+                    self._released = True
+                    self._condition.notify_all()
+                    raise TimeoutError(
+                        f"promotion pre-CAS gate timed out at {self._reached}/{self.contenders}"
+                    )
+                self._condition.wait(timeout=remaining)
+            if self._pre_cas_failed:
+                raise _PeerPreCasAbort("peer failed before all contenders reached real CAS")
+
+    @property
+    def reached(self) -> int:
+        with self._condition:
+            return self._reached
 
 
 def _integrity_check(db_path: Path) -> str:
@@ -195,7 +284,30 @@ def _seed_current_schema(db_path: Path) -> None:
         seed.close()
 
 
-def _run_iteration(
+def _migrate_and_seed_promotable_fact(db_path: Path, fact_id: str) -> None:
+    subprocess.run(
+        [sys.executable, str(_APPLY_MIGRATIONS), "--db", str(db_path), "--no-backup"],
+        check=True,
+        capture_output=True,
+        env={**os.environ},
+    )
+    seed = SQLiteGraphStore(str(db_path))
+    try:
+        assert seed.store_fact(
+            {
+                "fact_id": fact_id,
+                "claim": "A well-evidenced fact for issue 347 pre-CAS characterization",
+                "source": "manual",
+                "confidence": 0.95,
+                "metadata": {"evidence_refs": ["source-a", "source-b"]},
+            }
+        ) is True
+        assert seed.promote_esm_to(fact_id, "Supported", by="issue_347_setup") is True
+    finally:
+        seed.close()
+
+
+def _run_read_or_ensure_iteration(
     *,
     root: Path,
     mode: str,
@@ -230,8 +342,6 @@ def _run_iteration(
             if mode == "fresh-ensure-only":
                 stores[index].ensure_schema()
             else:
-                # Missing fact is deliberate: it forces the normal durable read path
-                # without introducing a concurrent canonical mutation.
                 assert stores[index].get_fact("__issue_347_missing__") is None
         except BaseException as exc:  # noqa: BLE001 - diagnostic records exact class
             with errors_lock:
@@ -264,8 +374,123 @@ def _run_iteration(
     )
 
 
+def _run_promotion_iteration(
+    *,
+    root: Path,
+    mode: str,
+    iteration: int,
+    contenders: int,
+    timeout: float,
+) -> IterationResult:
+    db_path = root / f"{mode}-{iteration}.db"
+    fact_id = "f_issue_347"
+    _migrate_and_seed_promotable_fact(db_path, fact_id)
+    stores = [SQLiteGraphStore(str(db_path)) for _ in range(contenders)]
+    if mode == "preinitialized-promotion":
+        for store in stores:
+            store.ensure_schema()
+
+    recorder = TraceRecorder()
+    gate = _PromotionGate(contenders)
+    worker_errors: list[str] = []
+    verdicts: list[str] = []
+    lock = threading.Lock()
+    start = threading.Barrier(contenders, timeout=timeout)
+    real_connect = sqlite3.connect
+
+    def traced_connect(path, *args, **kwargs):
+        real = real_connect(path, *args, **kwargs)
+        if str(path) == str(db_path):
+            return _TracingConnection(real, recorder)
+        return real
+
+    for store in stores:
+        original = store._promote_to_validated_cas
+
+        def gated(*args, _original=original, **kwargs):
+            gate.wait_before_real_cas(timeout)
+            return _original(*args, **kwargs)
+
+        store._promote_to_validated_cas = gated  # type: ignore[method-assign]
+
+    def worker(index: int) -> None:
+        threading.current_thread().name = f"contender_{index}"
+        try:
+            start.wait(timeout=timeout)
+            verdict = stores[index].validate_and_promote(fact_id, by=f"issue347_{index}")
+            with lock:
+                verdicts.append(f"{index}:{bool(verdict.passed)}:{verdict.reason}")
+        except _PeerPreCasAbort as exc:
+            with lock:
+                worker_errors.append(f"contender_{index}: diagnostic_abort: {exc}")
+        except BaseException as exc:  # noqa: BLE001 - diagnostic records exact class
+            gate.mark_pre_cas_failure()
+            with lock:
+                worker_errors.append(f"contender_{index}: {type(exc).__name__}: {exc}")
+
+    began = time.perf_counter()
+    try:
+        with mock.patch("sqlite3.connect", side_effect=traced_connect):
+            threads = [threading.Thread(target=worker, args=(index,)) for index in range(contenders)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=timeout + 10.0)
+                if thread.is_alive():
+                    gate.mark_pre_cas_failure()
+                    with lock:
+                        worker_errors.append(f"{thread.name}: TIMEOUT: thread remained alive")
+    finally:
+        for store in stores:
+            store.close()
+    duration_ms = (time.perf_counter() - began) * 1000.0
+
+    return IterationResult(
+        mode=mode,
+        iteration=iteration,
+        contenders=contenders,
+        worker_errors=tuple(sorted(worker_errors)),
+        sql_errors=tuple(recorder.snapshot()),
+        integrity_check=_integrity_check(db_path),
+        duration_ms=round(duration_ms, 3),
+        pre_cas_reached=gate.reached,
+        promotion_verdicts=tuple(sorted(verdicts)),
+    )
+
+
+def _run_iteration(
+    *,
+    root: Path,
+    mode: str,
+    iteration: int,
+    contenders: int,
+    timeout: float,
+) -> IterationResult:
+    if mode in {"fresh-promotion", "preinitialized-promotion"}:
+        return _run_promotion_iteration(
+            root=root,
+            mode=mode,
+            iteration=iteration,
+            contenders=contenders,
+            timeout=timeout,
+        )
+    return _run_read_or_ensure_iteration(
+        root=root,
+        mode=mode,
+        iteration=iteration,
+        contenders=contenders,
+        timeout=timeout,
+    )
+
+
 def run_probe(*, contenders: int, repetitions: int, root: Path) -> dict[str, object]:
-    modes = ("fresh-read", "preinitialized-read", "fresh-ensure-only")
+    modes = (
+        "fresh-read",
+        "preinitialized-read",
+        "fresh-ensure-only",
+        "fresh-promotion",
+        "preinitialized-promotion",
+    )
     results: list[IterationResult] = []
     for mode in modes:
         for iteration in range(1, repetitions + 1):
@@ -281,6 +506,7 @@ def run_probe(*, contenders: int, repetitions: int, root: Path) -> dict[str, obj
                 f"{mode} {iteration}/{repetitions}: "
                 f"worker_errors={len(result.worker_errors)} "
                 f"sql_errors={len(result.sql_errors)} "
+                f"pre_cas={result.pre_cas_reached}/{contenders} "
                 f"integrity={result.integrity_check}"
             )
             for error in result.worker_errors:
@@ -306,23 +532,26 @@ def run_probe(*, contenders: int, repetitions: int, root: Path) -> dict[str, obj
                 for event in result.sql_errors
                 if "database schema has changed" in event.error.lower()
             ),
+            "min_pre_cas_reached": min((result.pre_cas_reached for result in selected), default=0),
         }
 
-    # The preinitialized control is an accepted existing concurrency contract and must
-    # remain clean. The two fresh modes are characterization subjects: either failure or
-    # non-reproduction is evidence, so their outcome does not drive this script's exit.
-    preinitialized_clean = bool(
+    preinitialized_read_clean = bool(
         by_mode["preinitialized-read"]["failed_iterations"] == 0
         and by_mode["preinitialized-read"]["worker_error_count"] == 0
+    )
+    preinitialized_promotion_clean = bool(
+        by_mode["preinitialized-promotion"]["failed_iterations"] == 0
+        and by_mode["preinitialized-promotion"]["worker_error_count"] == 0
     )
     all_integrity_ok = all(result.integrity_check == "ok" for result in results)
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "contenders": contenders,
         "repetitions": repetitions,
         "modes": by_mode,
-        "preinitialized_control_clean": preinitialized_clean,
+        "preinitialized_read_control_clean": preinitialized_read_clean,
+        "preinitialized_promotion_control_clean": preinitialized_promotion_clean,
         "all_integrity_checks_ok": all_integrity_ok,
         "results": [
             {
@@ -360,7 +589,8 @@ def main() -> int:
         args.output.write_text(rendered + "\n", encoding="utf-8")
 
     return 0 if (
-        report["preinitialized_control_clean"]
+        report["preinitialized_read_control_clean"]
+        and report["preinitialized_promotion_control_clean"]
         and report["all_integrity_checks_ok"]
     ) else 1
 
