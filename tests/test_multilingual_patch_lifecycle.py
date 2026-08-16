@@ -5,21 +5,40 @@ from typing import Any
 
 import pytest
 
-from core import multilingual_router, pipeline
+
+# Some integration tests intentionally purge ``core.*`` from ``sys.modules`` and
+# re-import the package. Resolve reload-sensitive modules at test execution time
+# instead of retaining collection-time aliases.
+def _multilingual_router():
+    import core.multilingual_router as module
+
+    return module
+
+
+def _pipeline():
+    import core.pipeline as module
+
+    return module
 
 
 @pytest.fixture(autouse=True)
 def _restore_pipeline_retrieve():
+    multilingual_router = _multilingual_router()
+    pipeline = _pipeline()
     multilingual_router.unpatch_pipeline_retrieval()
     original = pipeline.retrieve
     try:
         yield
     finally:
+        multilingual_router = _multilingual_router()
+        pipeline = _pipeline()
         multilingual_router.unpatch_pipeline_retrieval()
         pipeline.retrieve = original
 
 
 def test_patch_is_idempotent_and_restores_exact_original(monkeypatch):
+    multilingual_router = _multilingual_router()
+    pipeline = _pipeline()
     original = pipeline.retrieve
     monkeypatch.setattr(
         multilingual_router,
@@ -45,6 +64,8 @@ def test_patch_is_idempotent_and_restores_exact_original(monkeypatch):
 
 
 def test_database_delegation_uses_exact_captured_original():
+    multilingual_router = _multilingual_router()
+    pipeline = _pipeline()
     calls: list[tuple[Any, ...]] = []
 
     def original(query, k=3, database=None, domain=None):
@@ -63,6 +84,8 @@ def test_database_delegation_uses_exact_captured_original():
 
 
 def test_unpatch_does_not_clobber_external_replacement():
+    multilingual_router = _multilingual_router()
+    pipeline = _pipeline()
     original = pipeline.retrieve
     assert multilingual_router.patch_pipeline_retrieval() is True
 
@@ -78,6 +101,8 @@ def test_unpatch_does_not_clobber_external_replacement():
 
 
 def test_lost_ownership_can_be_reinstalled_without_wrapper_stacking():
+    multilingual_router = _multilingual_router()
+    pipeline = _pipeline()
     original = pipeline.retrieve
     assert multilingual_router.patch_pipeline_retrieval() is True
     first_wrapper = pipeline.retrieve
