@@ -220,9 +220,50 @@ provenance/risk/review metadata contract; the focused ingest test explicitly exp
 legacy rows to auto-validate; and the promotion ownership inventory already documented the
 route as a `KNOWN_EXCEPTION` requiring separate convergence.
 
-C9 was bounded to that exception and ultimately closed through protected-merged #320. The
-historical in-progress text above remains chronology, not current lifecycle truth. Resolve
-current #52/C9 status from the newer current-state record and live GitHub.
+C9 is therefore bounded to that exception. The candidate does **not** weaken TruthGate or
+create a second Canon owner. It introduces explicit candidate metadata:
+
+```text
+truth_status
+source_refs
+confidence
+risk_domain
+limitations
+review_status
+reviewer
+reviewed_at
+```
+
+Legacy rows receive safe non-claims and remain quarantined. The proposed admission chain is:
+
+```text
+Draft
+→ Quarantine
+→ Provenance Check
+→ Domain Review
+→ existing TruthGate precheck
+→ legal ESM ladder to Supported
+→ existing PromotionGateway
+→ existing validate_and_promote()
+→ TruthGate recheck + CAS
+→ Validated / local Canon
+```
+
+A high-risk candidate selects the existing `PRECISION` mode; ordinary explicit risk uses
+existing `BALANCED`. Numerical truth/evidence thresholds remain entirely TruthGate-owned.
+Candidate and pack SHA-256 identifiers provide deterministic replay/content binding, not
+cryptographic reviewer authentication.
+
+Focused candidate tests cover legacy quarantine, successful reviewed low-risk admission,
+high-risk TruthGate rejection, self-review rejection and order-independent/content-bound
+pack identity. `tests/test_promotion_ownership_guard.py` removes World Skills from the
+reviewed direct-promotion allowlist, so a reintroduced business-level bypass fails CI.
+
+C9 also reconciles the promotion ownership inventory, the World Skills authoring/source
+rules, ADR and operator documentation. The existing Notion `Velantrim Titan 9.0` page has
+a C9 DRAFT checkpoint and was read back. No FINAL/merge claim is made yet: exact-head Full
+CI, Docker, CodeQL, review/race audit, Ready aggregate, protected merge, post-merge evidence
+and FINAL GitHub/Notion reconciliation remain required.
 
 ---
 
@@ -358,6 +399,19 @@ schema v8.
 Phase 3A adds a tested embedding-space identity / dimension-safety contract only. It does
 not authorize persistent projection live retrieval, embedding provider execution,
 background semantic indexing, semantic-quality claims or Phase 3B.
+
+Phase 2A closure sequence completed:
+
+```text
+#301 exact-head CI SUCCESS
+→ same-page Notion sync + read-back
+→ Ready aggregate #987 SUCCESS
+→ protected docs merge 840b5aa231fe7d8cc0383c072ad953ca9bf4f46a
+→ post-merge Full CI #1108 SUCCESS
+→ post-merge aggregate #988 SUCCESS
+→ FINAL Notion read-back
+→ #299 CLOSED_COMPLETED
+```
 
 CSM Stage C adds a tested structural scanner lifecycle only. It remains unwired,
 not enabled and non-canonical. PR #341 hardens only the ownership lifecycle of the existing
