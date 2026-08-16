@@ -30,6 +30,8 @@ Read only the minimum context needed, in this order:
 10. [`WORK_LOG.md`](WORK_LOG.md) — recent significant work, decisions, and hand-offs.
 11. [`NOTION_HANDOFF.md`](NOTION_HANDOFF.md) — structured synchronization queue when
     the current actor cannot access Notion.
+12. [`AUDIT_AND_FUTURE_WORK.md`](AUDIT_AND_FUTURE_WORK.md) — durable audit/future-work ledger;
+    reconcile it against live evidence before selecting any bounded work.
 
 Then open only the component-specific code, tests, ADRs, PRs, and workflow logs needed
 for the current task.
@@ -114,6 +116,7 @@ A missing connector is `HANDOFF_REQUIRED`, not a generic blocker.
 | General audit | `AUDIT_PLAYBOOK.md` and only the relevant component route |
 | New module, technology, or durable decision | `DOCUMENTATION_SYNC_PROTOCOL.md`, affected ADRs, and the related Notion record or connectorless hand-off |
 | No Notion connector | `NOTION_HANDOFF.md` and the connectorless procedure in the sync protocol |
+| Audit continuity / future work | `AUDIT_AND_FUTURE_WORK.md` and the current-state source route |
 
 ## Context-budget rule
 
