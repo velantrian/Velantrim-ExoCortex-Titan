@@ -11,7 +11,6 @@ import threading
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
 from unittest import mock
 
 from core.memory import SQLiteGraphStore
@@ -28,185 +27,48 @@ class SqlErrorEvent:
     sql: str
     error_type: str
     error: str
+    sqlite_errorcode: int | None
+    sqlite_errorname: str | None
 
 
 class TraceRecorder:
+    """Remember each worker's last real SQLite statement without proxying connections."""
+
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._sequence = 0
+        self._last_sql: dict[str, str] = {}
         self._errors: list[SqlErrorEvent] = []
 
-    def record_error(self, *, phase: str, sql: str, exc: BaseException) -> None:
+    @staticmethod
+    def _normalize(sql: str) -> str:
+        return " ".join(str(sql).split())
+
+    def trace(self, sql: str) -> None:
+        thread = threading.current_thread().name
+        with self._lock:
+            self._last_sql[thread] = self._normalize(sql)
+
+    def record_sqlite_error(self, *, phase: str, exc: sqlite3.Error) -> None:
+        thread = threading.current_thread().name
         with self._lock:
             self._sequence += 1
             self._errors.append(
                 SqlErrorEvent(
                     sequence=self._sequence,
-                    thread=threading.current_thread().name,
+                    thread=thread,
                     phase=phase,
-                    sql=" ".join(str(sql).split()),
+                    sql=self._last_sql.get(thread, "<no traced statement>"),
                     error_type=type(exc).__name__,
                     error=str(exc),
+                    sqlite_errorcode=getattr(exc, "sqlite_errorcode", None),
+                    sqlite_errorname=getattr(exc, "sqlite_errorname", None),
                 )
             )
 
     def snapshot(self) -> list[SqlErrorEvent]:
         with self._lock:
             return list(self._errors)
-
-
-class _TracingCursor:
-    def __init__(self, real: sqlite3.Cursor, recorder: TraceRecorder, sql: str = "<cursor>") -> None:
-        object.__setattr__(self, "_real", real)
-        object.__setattr__(self, "_recorder", recorder)
-        object.__setattr__(self, "_sql", sql)
-
-    def _call(self, phase: str, fn, *args, **kwargs):
-        try:
-            return fn(*args, **kwargs)
-        except sqlite3.Error as exc:
-            object.__getattribute__(self, "_recorder").record_error(
-                phase=phase,
-                sql=object.__getattribute__(self, "_sql"),
-                exc=exc,
-            )
-            raise
-
-    def execute(self, sql, *args, **kwargs):
-        object.__setattr__(self, "_sql", str(sql))
-        self._call("cursor_execute", object.__getattribute__(self, "_real").execute, sql, *args, **kwargs)
-        return self
-
-    def executemany(self, sql, *args, **kwargs):
-        object.__setattr__(self, "_sql", str(sql))
-        self._call(
-            "cursor_executemany",
-            object.__getattribute__(self, "_real").executemany,
-            sql,
-            *args,
-            **kwargs,
-        )
-        return self
-
-    def executescript(self, sql, *args, **kwargs):
-        object.__setattr__(self, "_sql", str(sql))
-        self._call(
-            "cursor_executescript",
-            object.__getattribute__(self, "_real").executescript,
-            sql,
-            *args,
-            **kwargs,
-        )
-        return self
-
-    def fetchone(self):
-        return self._call("fetchone", object.__getattribute__(self, "_real").fetchone)
-
-    def fetchall(self):
-        return self._call("fetchall", object.__getattribute__(self, "_real").fetchall)
-
-    def fetchmany(self, *args, **kwargs):
-        return self._call(
-            "fetchmany", object.__getattribute__(self, "_real").fetchmany, *args, **kwargs
-        )
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        try:
-            return next(object.__getattribute__(self, "_real"))
-        except StopIteration:
-            raise
-        except sqlite3.Error as exc:
-            object.__getattribute__(self, "_recorder").record_error(
-                phase="cursor_next",
-                sql=object.__getattribute__(self, "_sql"),
-                exc=exc,
-            )
-            raise
-
-    def __getattr__(self, name: str):
-        return getattr(object.__getattribute__(self, "_real"), name)
-
-
-class _TracingConnection:
-    """Test-only proxy. SQL is never rewritten, retried, or swallowed."""
-
-    def __init__(self, real: sqlite3.Connection, recorder: TraceRecorder) -> None:
-        object.__setattr__(self, "_real", real)
-        object.__setattr__(self, "_recorder", recorder)
-
-    def execute(self, sql, *args, **kwargs):
-        try:
-            cursor = object.__getattribute__(self, "_real").execute(sql, *args, **kwargs)
-        except sqlite3.Error as exc:
-            object.__getattribute__(self, "_recorder").record_error(
-                phase="execute", sql=str(sql), exc=exc
-            )
-            raise
-        return _TracingCursor(cursor, object.__getattribute__(self, "_recorder"), str(sql))
-
-    def executemany(self, sql, *args, **kwargs):
-        try:
-            cursor = object.__getattribute__(self, "_real").executemany(sql, *args, **kwargs)
-        except sqlite3.Error as exc:
-            object.__getattribute__(self, "_recorder").record_error(
-                phase="executemany", sql=str(sql), exc=exc
-            )
-            raise
-        return _TracingCursor(cursor, object.__getattribute__(self, "_recorder"), str(sql))
-
-    def executescript(self, sql, *args, **kwargs):
-        try:
-            cursor = object.__getattribute__(self, "_real").executescript(sql, *args, **kwargs)
-        except sqlite3.Error as exc:
-            object.__getattribute__(self, "_recorder").record_error(
-                phase="executescript", sql=str(sql), exc=exc
-            )
-            raise
-        return _TracingCursor(cursor, object.__getattribute__(self, "_recorder"), str(sql))
-
-    def cursor(self, *args, **kwargs):
-        try:
-            cursor = object.__getattribute__(self, "_real").cursor(*args, **kwargs)
-        except sqlite3.Error as exc:
-            object.__getattribute__(self, "_recorder").record_error(
-                phase="cursor", sql="<cursor>", exc=exc
-            )
-            raise
-        return _TracingCursor(cursor, object.__getattribute__(self, "_recorder"))
-
-    def commit(self):
-        try:
-            return object.__getattribute__(self, "_real").commit()
-        except sqlite3.Error as exc:
-            object.__getattribute__(self, "_recorder").record_error(
-                phase="commit", sql="<COMMIT>", exc=exc
-            )
-            raise
-
-    def rollback(self):
-        try:
-            return object.__getattribute__(self, "_real").rollback()
-        except sqlite3.Error as exc:
-            object.__getattribute__(self, "_recorder").record_error(
-                phase="rollback", sql="<ROLLBACK>", exc=exc
-            )
-            raise
-
-    def __enter__(self):
-        object.__getattribute__(self, "_real").__enter__()
-        return self
-
-    def __exit__(self, *args):
-        return object.__getattribute__(self, "_real").__exit__(*args)
-
-    def __getattr__(self, name: str):
-        return getattr(object.__getattribute__(self, "_real"), name)
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        setattr(object.__getattribute__(self, "_real"), name, value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -307,6 +169,25 @@ def _migrate_and_seed_promotable_fact(db_path: Path, fact_id: str) -> None:
         seed.close()
 
 
+def _patch_real_connections(db_path: Path, recorder: TraceRecorder):
+    """Patch connect only to install trace callbacks; return native connections unchanged."""
+
+    real_connect = sqlite3.connect
+
+    def traced_connect(path, *args, **kwargs):
+        conn = real_connect(path, *args, **kwargs)
+        if str(path) == str(db_path):
+            conn.set_trace_callback(recorder.trace)
+        return conn
+
+    return mock.patch("sqlite3.connect", side_effect=traced_connect)
+
+
+def _record_worker_exception(recorder: TraceRecorder, exc: BaseException) -> None:
+    if isinstance(exc, sqlite3.Error):
+        recorder.record_sqlite_error(phase="worker_exception_after_last_trace", exc=exc)
+
+
 def _run_read_or_ensure_iteration(
     *,
     root: Path,
@@ -327,13 +208,6 @@ def _run_read_or_ensure_iteration(
     worker_errors: list[str] = []
     errors_lock = threading.Lock()
     start = threading.Barrier(contenders, timeout=timeout)
-    real_connect = sqlite3.connect
-
-    def traced_connect(path, *args, **kwargs):
-        real = real_connect(path, *args, **kwargs)
-        if str(path) == str(db_path):
-            return _TracingConnection(real, recorder)
-        return real
 
     def worker(index: int) -> None:
         threading.current_thread().name = f"contender_{index}"
@@ -344,12 +218,13 @@ def _run_read_or_ensure_iteration(
             else:
                 assert stores[index].get_fact("__issue_347_missing__") is None
         except BaseException as exc:  # noqa: BLE001 - diagnostic records exact class
+            _record_worker_exception(recorder, exc)
             with errors_lock:
                 worker_errors.append(f"contender_{index}: {type(exc).__name__}: {exc}")
 
     began = time.perf_counter()
     try:
-        with mock.patch("sqlite3.connect", side_effect=traced_connect):
+        with _patch_real_connections(db_path, recorder):
             threads = [threading.Thread(target=worker, args=(index,)) for index in range(contenders)]
             for thread in threads:
                 thread.start()
@@ -396,13 +271,6 @@ def _run_promotion_iteration(
     verdicts: list[str] = []
     lock = threading.Lock()
     start = threading.Barrier(contenders, timeout=timeout)
-    real_connect = sqlite3.connect
-
-    def traced_connect(path, *args, **kwargs):
-        real = real_connect(path, *args, **kwargs)
-        if str(path) == str(db_path):
-            return _TracingConnection(real, recorder)
-        return real
 
     for store in stores:
         original = store._promote_to_validated_cas
@@ -424,13 +292,14 @@ def _run_promotion_iteration(
             with lock:
                 worker_errors.append(f"contender_{index}: diagnostic_abort: {exc}")
         except BaseException as exc:  # noqa: BLE001 - diagnostic records exact class
+            _record_worker_exception(recorder, exc)
             gate.mark_pre_cas_failure()
             with lock:
                 worker_errors.append(f"contender_{index}: {type(exc).__name__}: {exc}")
 
     began = time.perf_counter()
     try:
-        with mock.patch("sqlite3.connect", side_effect=traced_connect):
+        with _patch_real_connections(db_path, recorder):
             threads = [threading.Thread(target=worker, args=(index,)) for index in range(contenders)]
             for thread in threads:
                 thread.start()
@@ -514,7 +383,8 @@ def run_probe(*, contenders: int, repetitions: int, root: Path) -> dict[str, obj
             for event in result.sql_errors:
                 print(
                     f"  sql[{event.sequence}] {event.thread} {event.phase}: "
-                    f"{event.error_type}: {event.error} :: {event.sql}"
+                    f"{event.error_type}: {event.error} "
+                    f"({event.sqlite_errorname}/{event.sqlite_errorcode}) :: {event.sql}"
                 )
 
     by_mode: dict[str, dict[str, object]] = {}
@@ -546,7 +416,7 @@ def run_probe(*, contenders: int, repetitions: int, root: Path) -> dict[str, obj
     all_integrity_ok = all(result.integrity_check == "ok" for result in results)
 
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "contenders": contenders,
         "repetitions": repetitions,
         "modes": by_mode,
