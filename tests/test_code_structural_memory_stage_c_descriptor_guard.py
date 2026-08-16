@@ -51,6 +51,17 @@ def _require_symlinks(tmp_path: Path) -> None:
             probe.unlink()
 
 
+def _preserve_real_descriptor_capability_during_open_patch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if not scanner._descriptor_anchored_read_supported():
+        pytest.skip("descriptor-anchored no-follow reads are unavailable")
+    # The race harness intentionally wraps os.open. Production capability detection
+    # uses the real os.open object's membership in os.supports_dir_fd, so replacing
+    # that object would otherwise make the test fail closed before the injected race.
+    monkeypatch.setattr(scanner, "_descriptor_anchored_read_supported", lambda: True)
+
+
 def _qualified_names(conn: sqlite3.Connection) -> set[str]:
     return {
         row[0]
@@ -121,6 +132,7 @@ def test_swap_before_final_descriptor_open_is_rejected(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _require_symlinks(tmp_path)
+    _preserve_real_descriptor_capability_during_open_patch(monkeypatch)
     conn, root = _registered(tmp_path)
     try:
         alpha = b"def alpha():\n    return 1\n"
@@ -185,6 +197,7 @@ def test_intermediate_directory_swap_to_external_symlink_is_rejected(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _require_symlinks(tmp_path)
+    _preserve_real_descriptor_capability_during_open_patch(monkeypatch)
     conn, root = _registered(tmp_path)
     try:
         package = root / "pkg"
@@ -255,6 +268,7 @@ def test_root_path_replacement_after_root_fd_open_cannot_redirect_scan(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _require_symlinks(tmp_path)
+    _preserve_real_descriptor_capability_during_open_patch(monkeypatch)
     conn, root = _registered(tmp_path)
     backup_root = tmp_path / "repo-original"
     outside_root = tmp_path / "outside-root"
