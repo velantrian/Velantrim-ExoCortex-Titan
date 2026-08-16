@@ -475,6 +475,14 @@ def _run_cas_contention_race(
         fail_before_gate=fail_before_gate,
     )
     stores = [SQLiteGraphStore(str(db_path)) for _ in range(contenders)]
+    # Issue #249 is a CAS-contention test, not a concurrent schema-bootstrap
+    # test. Every independent store owns a per-instance lazy DDL guard, so
+    # entering validate_and_promote() concurrently on never-opened stores
+    # mixes first-use schema churn into the intended CAS race. Initialize
+    # each contender sequentially before installing/releasing the CAS gate;
+    # the threaded section below then races only the real promotion path.
+    for store in stores:
+        store.ensure_schema()
     for contender_id, store in enumerate(stores):
         harness.mark_submitted(contender_id)
         _install_cas_contention_gate(store, harness, contender_id)

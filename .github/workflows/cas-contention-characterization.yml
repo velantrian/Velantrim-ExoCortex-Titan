@@ -1,0 +1,137 @@
+name: CAS contention characterization
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/cas-contention-characterization.yml"
+      - "tests/test_promotion_projection_outbox_caller.py"
+      - "scripts/diagnose_cas_contention_harness.py"
+      - "scripts/apply_migrations.py"
+      - "core/memory.py"
+      - "migrations/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cas-contention-characterization.yml"
+      - "tests/test_promotion_projection_outbox_caller.py"
+      - "scripts/diagnose_cas_contention_harness.py"
+      - "scripts/apply_migrations.py"
+      - "core/memory.py"
+      - "migrations/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cas-contention-characterization-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  characterize:
+    name: Hosted CAS [25] · py${{ matrix.python }} · shard ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+        shard: [1, 2]
+
+    steps:
+      - name: Check out exact event head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install locked dependencies
+        uses: ./.github/actions/sync-python-deps
+        with:
+          extras: server dev parsers retrieval embeddings graph-lab
+
+      - name: Record hosted-runner environment
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          {
+            echo "event=${GITHUB_EVENT_NAME}"
+            echo "run_id=${GITHUB_RUN_ID}"
+            echo "run_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "runner_os=${RUNNER_OS}"
+            echo "runner_arch=${RUNNER_ARCH}"
+            echo "git_sha=$(git rev-parse HEAD)"
+            echo "python=$(python --version 2>&1)"
+            echo "pytest=$(python -m pytest --version | head -n 1)"
+            python - <<'PY'
+          import platform
+          import sqlite3
+
+          print(f"platform={platform.platform()}")
+          print(f"sqlite={sqlite3.sqlite_version}")
+          print(f"sqlite_threadsafety={sqlite3.threadsafety}")
+          PY
+            echo "cpu_count=$(getconf _NPROCESSORS_ONLN || true)"
+          } | tee artifacts/environment.txt
+
+      - name: Repeat exact current [25] invariant test
+        env:
+          PYTHONUNBUFFERED: 1
+          VELANTRIM_DB_PATH: "${{ runner.temp }}/velantrim-cas-characterization.db"
+          VELANTRIM_NGRAM_DB: "${{ runner.temp }}/velantrim-cas-characterization-ngram.db"
+          VELANTRIM_API_KEY: "ci-test-key"
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          log="artifacts/cas-contention-py${{ matrix.python }}-shard${{ matrix.shard }}.log"
+          node='tests/test_promotion_projection_outbox_caller.py::test_cas_contention_yields_exactly_one_winner_and_one_intent[25]'
+          repetitions=25
+          passed=0
+          status=0
+
+          echo "exact_sha=$(git rev-parse HEAD)" | tee -a "$log"
+          echo "node=${node}" | tee -a "$log"
+          echo "repetitions=${repetitions}" | tee -a "$log"
+
+          for iteration in $(seq 1 "$repetitions"); do
+            echo "=== iteration ${iteration}/${repetitions} ===" | tee -a "$log"
+            set +e
+            python -m pytest -q "$node" --tb=short --timeout=180 2>&1 | tee -a "$log"
+            rc=${PIPESTATUS[0]}
+            set -e
+            if [ "$rc" -ne 0 ]; then
+              status="$rc"
+              echo "iteration ${iteration}/${repetitions}: FAIL rc=${rc}" | tee -a "$log"
+              break
+            fi
+            passed=$((passed + 1))
+            echo "iteration ${iteration}/${repetitions}: PASS" | tee -a "$log"
+          done
+
+          {
+            echo "### CAS contention characterization"
+            echo "- exact SHA: \`$(git rev-parse HEAD)\`"
+            echo "- Python: \`${{ matrix.python }}\`"
+            echo "- shard: \`${{ matrix.shard }}\`"
+            echo "- exact test: \`[25]\`"
+            echo "- passes: \`${passed}/${repetitions}\`"
+            echo "- exit status: \`${status}\`"
+            echo "- each passing iteration asserts one winner, one outbox intent, final Validated state, canonical-version binding, idempotent retry, and SQLite integrity"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$status"
+
+      - name: Upload characterization evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cas-contention-py${{ matrix.python }}-shard${{ matrix.shard }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
