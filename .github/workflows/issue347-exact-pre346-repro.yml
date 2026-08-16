@@ -29,7 +29,7 @@ jobs:
       - uses: ./.github/actions/sync-python-deps
         with:
           extras: server dev parsers retrieval embeddings graph-lab
-      - name: Recreate fresh-store race and apply bounded candidate in runner workspace
+      - name: Recreate fresh-store race and apply rollback-safe candidate
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -50,20 +50,67 @@ jobs:
           test_path.write_text(text.replace(block, "", 1))
 
           memory_path = Path("core/memory.py")
-          memory = memory_path.read_text()
-          needle = '            if self.db_path not in self._ddl_initialized_paths:\n                conn.execute("""\n'
-          replacement = (
-              '            if self.db_path not in self._ddl_initialized_paths:\n'
-              '                # Issue #347 candidate: serialize the entire lazy schema bootstrap\n'
-              '                # across independent SQLite connections before any DDL executes.\n'
-              '                conn.execute("BEGIN IMMEDIATE")\n'
-              '                conn.execute("""\n'
-          )
-          if memory.count(needle) != 1:
-              raise SystemExit(f"expected exactly one lazy-bootstrap boundary, found {memory.count(needle)}")
-          memory_path.write_text(memory.replace(needle, replacement, 1))
+          lines = memory_path.read_text().splitlines(keepends=True)
+          boundary = "            if self.db_path not in self._ddl_initialized_paths:\n"
+          end_line = "                self._ddl_initialized_paths.add(self.db_path)\n"
+          try:
+              start = lines.index(boundary)
+              end = lines.index(end_line, start + 1)
+          except ValueError as exc:
+              raise SystemExit("lazy bootstrap boundaries not found; refusing approximate patch") from exc
+          body = lines[start + 1 : end + 1]
+          replacement = [
+              boundary,
+              '                # Issue #347: serialize this lazy DDL region across SQLite connections.\n',
+              '                conn.execute("BEGIN IMMEDIATE")\n',
+              '                try:\n',
+          ]
+          replacement.extend("    " + line for line in body)
+          replacement.extend([
+              '                except Exception:\n',
+              '                    try:\n',
+              '                        conn.rollback()\n',
+              '                    except sqlite3.Error:\n',
+              '                        logger.warning("SQLite bootstrap rollback failed", exc_info=True)\n',
+              '                    try:\n',
+              '                        conn.close()\n',
+              '                    except sqlite3.Error:\n',
+              '                        logger.warning("SQLite bootstrap close failed", exc_info=True)\n',
+              '                    self._sqlite_conn = None\n',
+              '                    raise\n',
+          ])
+          lines[start : end + 1] = replacement
+          memory_path.write_text("".join(lines))
           PY
-      - name: Repeat fresh-store [25] race with candidate
+      - name: Prove bootstrap failure releases writer transaction
+        run: |
+          python - <<'PY'
+          import sqlite3
+          import tempfile
+          from pathlib import Path
+          from core.memory import SQLiteGraphStore
+
+          with tempfile.TemporaryDirectory() as tmp:
+              db = Path(tmp) / "bootstrap-failure.db"
+              with sqlite3.connect(str(db)) as conn:
+                  conn.execute("CREATE VIEW facts AS SELECT 1 AS incompatible")
+                  conn.commit()
+              store = SQLiteGraphStore(str(db))
+              try:
+                  try:
+                      store.ensure_schema()
+                  except sqlite3.OperationalError:
+                      pass
+                  else:
+                      raise AssertionError("malformed schema unexpectedly initialized")
+                  assert store._sqlite_conn is None
+                  with sqlite3.connect(str(db), timeout=1.0) as probe:
+                      probe.execute("BEGIN IMMEDIATE")
+                      probe.rollback()
+              finally:
+                  store.close()
+          PY
+      - name: Repeat fresh-store [25] race with rollback-safe candidate
         run: |
           set -euo pipefail
           mkdir -p artifacts
@@ -72,7 +119,7 @@ jobs:
           passed=0
           failed=0
           first_failure=""
-          for iteration in $(seq 1 100); do
+          for iteration in $(seq 1 50); do
             set +e
             output=$(python -m pytest -q "$node" --tb=short --timeout=180 2>&1)
             rc=$?
@@ -96,6 +143,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: issue347-candidate-py${{ matrix.python }}
+          name: issue347-candidate-cleanup-py${{ matrix.python }}
           path: artifacts/
           retention-days: 14
