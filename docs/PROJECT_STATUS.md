@@ -68,8 +68,11 @@ Ranked by what would actually hurt someone relying on this in production:
    `docs/evidence/sqlite-concurrency-baseline-2026-08-03.json`. This materially closes
    the old claim that no automated 100-writer characterization existed, but it is not an
    SLA or proof of unlimited scale, network filesystems, production multiprocess load,
-   or every contention edge. Issue #249 remains a separate uncharacterized
-   CAS-contention flake and must not be weakened or reclassified without evidence.
+   or every contention edge. Issue #249 is now characterized through merged
+   PR #346 as a test-harness scope defect / historical runner sensitivity; a product CAS
+   defect was not confirmed, and its one-winner/one-intent assertions remain intact. The
+   distinct concurrent fresh-store bootstrap residual discovered during that work is
+   tracked separately as Issue #347 and remains open.
 4. **Observability is metrics + logs, not a persisted long-term trace store.** You can
    see current latency/health, but reconstructing "why did the system answer this way"
    for a request from last week is not yet a first-class capability.
@@ -119,9 +122,11 @@ parentheses for traceability.
   callers are CI-inventoried behind `PromotionGateway`; `/query` is read-only; the
   canonical promotion path is CAS guarded and transactionally couples its required
   Version/Audit evidence. World Skills now uses its dedicated fail-closed admission
-  contract rather than a direct-promotion exception. Still open: characterize issue
-  #249 without weakening its one-winner/one-intent assertions; prove the wider storage
-  path under realistic multiprocess/production conditions; and continue converging
+  contract rather than a direct-promotion exception. The #249 CAS question is now
+  characterized without weakening its one-winner/one-intent assertions: merged #346
+  isolates the intended race and has clean hosted pre/post-merge evidence. Still open:
+  characterize #347 concurrent fresh-store bootstrap; prove the wider storage path under
+  realistic multiprocess/production conditions; and continue converging
   separate legacy mutation families only where evidence shows an authority or atomicity
   gap. CI coverage gate (`--cov-fail-under`) is enforced, not just configured.
 - **Independent security review** before any deployment that will hold real users'
@@ -186,7 +191,9 @@ auditable provenance, and truth-bound generation, where the core write/read/trut
 cognitive layers are explicit research code. It has not had an independent security
 audit and does not have a certified compliance program. SQLite concurrency and crash
 behavior have bounded characterization evidence, but production-scale
-multiprocess/storage behavior and issue #249 remain unresolved. For deployment,
+multiprocess/storage behavior and Issue #347 remain unresolved. Issue #249 is no
+longer an uncharacterized product-CAS risk: its bounded classification is a harness-scope
+defect / historical runner sensitivity with product CAS defect not confirmed. For deployment,
 `docker-compose.prod.yml` is the repository's hardened deny-by-default profile;
 `docker-compose.yml` is retained for compatibility/research behavior and is not the
 hardened production contract. It is a reasonable choice to evaluate, extend, or run

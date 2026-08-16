@@ -218,8 +218,11 @@ path only exercises the 🟢 row.
   covered one-store 100-thread writes, a `1/10/25/50/100` writer matrix, 25 independent
   store instances on one WAL database, mixed readers/writers, committed crash survival,
   uncommitted rollback and `integrity_check = ok`. This is not production-scale or
-  unlimited-concurrency proof; issue #249 remains an uncharacterized CAS-contention
-  failure and realistic multiprocess/storage-environment proof is still open.
+  unlimited-concurrency proof. Issue #249 is characterized through merged #346 as a
+  test-harness scope defect / historical runner sensitivity; product CAS defect was not
+  confirmed and the one-winner/one-intent invariants remain intact. Issue #347 now tracks
+  the distinct concurrent fresh-store bootstrap/schema residual, while realistic
+  multiprocess/storage-environment proof remains open.
 - Observability is metrics + structured logs (`core/metrics.py`,
   `core/lightweight_metrics.py`); there is no persisted long-term trace store yet for
   answering "why did the system respond this way" after the fact at scale.

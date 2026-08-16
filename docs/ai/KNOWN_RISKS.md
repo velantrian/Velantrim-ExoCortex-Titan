@@ -1,6 +1,6 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-08-15  
+**Snapshot:** 2026-08-16  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · signature `VERIFIED / valid`  
 **C11 lifecycle rule:** this snapshot preserves the reconciled #52 risk record; resolve current issue/PR lifecycle from live GitHub  
 **Continuity:** `12/12 = 100%` — complete  
@@ -75,11 +75,36 @@ flow, review-thread resolution and the aggregate status check. Independent revie
 therefore not implied by mergeability. Codex usage-limit failures must be recorded as
 `NOT RUN — USAGE LIMIT`, never as approval.
 
-## P1 — Uncharacterized CAS-contention failure
+## Reduced risk — #249 CAS contention is characterized; product CAS defect not confirmed
 
-Issue #249 remains OPEN and separate. The known `BrokenBarrierError` evidence is currently
-consistent with runner/scheduling-sensitive test orchestration; a production CAS defect
-has not been proven. Do not weaken one-winner/one-intent assertions without evidence.
+Issue #249's engineering characterization is complete through merged PR #346 at signed
+checkpoint `main@fa09bc128b7be2f05fd46a8bd374ebf68ae7f62d`; re-check live issue lifecycle
+before acting. The old blind-barrier `BrokenBarrierError` was not evidence that the
+canonical CAS admitted two winners or duplicate projection intents. The final hosted
+characterization isolates schema-ready contenders before the real promotion race and
+passes 100/100 exact `[25]` executions on the accepted PR head plus another 100/100 on
+post-merge main across Python 3.11/3.12 hosted-runner shards. Every passing iteration
+retains one winner, one outbox intent, final `Validated`, canonical-version binding,
+idempotent retry and SQLite integrity.
+
+No production `_promote_to_validated_cas()` code, automatic retry, SQLite timeout, WAL
+mode, backend or schema was changed. The bounded classification is **TEST HARNESS SCOPE
+DEFECT / HISTORICAL RUNNER SENSITIVITY · PRODUCT CAS DEFECT NOT CONFIRMED**. This is not
+proof of unlimited SQLite concurrency or production-scale multiprocess safety.
+
+## P1 — Concurrent fresh-store bootstrap can invalidate peer SQLite statements
+
+Hosted #249 diagnostics exposed a separate pre-CAS failure now tracked by Issue #347:
+concurrent first use of multiple fresh `SQLiteGraphStore` instances against one database
+can produce `sqlite3.OperationalError: database schema has changed` while per-instance
+lazy schema/bootstrap work is still in flight. The observed failure occurred before the
+CAS gate (25/25 workers started, 24/25 reached pre-CAS, 0/25 CAS returned), so it must not
+be relabelled as a product CAS algorithm failure.
+
+#347 remains an open storage/lifecycle characterization risk. Do not paper over it with
+broad `OperationalError` swallowing, automatic mutation retry, timeout inflation, WAL or
+backend changes. First establish the supported concurrent-first-use contract and exact
+failing DDL/read interleaving.
 
 ## P1 — PII claim redaction is bounded, not universal physical erasure
 
