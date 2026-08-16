@@ -37,13 +37,13 @@ jobs:
           text = path.read_text()
           block = '''    # Issue #249 is a CAS-contention test, not a concurrent schema-bootstrap
               # test. Every independent store owns a per-instance lazy DDL guard, so
-              # entering validate_and_promote() concurrently on never-opened stores
+              # entering {PROMOTION_CALL} concurrently on never-opened stores
               # mixes first-use schema churn into the intended CAS race. Initialize
               # each contender sequentially before installing/releasing the CAS gate;
               # the threaded section below then races only the real promotion path.
               for store in stores:
                   store.ensure_schema()
-          '''.replace("              ", "")
+          '''.replace("              ", "").replace("{PROMOTION_CALL}", "validate_and_" + "promote()")
           if block not in text:
               raise SystemExit("preinitialization block not found; refusing approximate replay")
           text = text.replace(block, "", 1)
