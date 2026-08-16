@@ -98,8 +98,12 @@ The manifest path is normalized and bounded before use:
 - repository-relative path only;
 - maximum path depth;
 - `.py` only;
-- symlink components rejected;
-- resolved path must remain under the frozen repository root;
+- stable pre-existing symlink components rejected;
+- registered repository root opened as an anchored directory file descriptor with no-follow semantics;
+- intermediate components traversed relative to the anchored parent descriptor with `O_DIRECTORY | O_NOFOLLOW`;
+- final file opened relative to its anchored parent with `O_NOFOLLOW`;
+- `fstat()` and bounded `os.read()` operate on the same opened file object;
+- platforms without the required `dir_fd` / `O_NOFOLLOW` support fail closed instead of falling back to pathname reads;
 - per-file and total-byte limits;
 - wall-time budget;
 - NUL/binary and non-UTF-8 rejection.
@@ -228,6 +232,8 @@ Initial exact-head PR evidence on `1b0a18b4e38e47b8c17362f564f658483f7e265e`:
 
 The test fixture was corrected in a later PR commit. Do not inherit the historical results above onto the later head; use GitHub exact-head checks for readiness.
 
+Follow-up independent Manus audit evidence later reproduced a pathname `swap-read-restore` race that could inject equal-size external structural content and still promote a complete snapshot. The Stage-C candidate now anchors the root and file traversal to no-follow descriptors so the checked/read object is the opened object rather than a later pathname observation. Fresh exact-head CI after this hardening is mandatory; earlier green results remain historical.
+
 ## Known limitations
 
 - Python only.
@@ -238,7 +244,8 @@ The test fixture was corrected in a later PR commit. Do not inherit the historic
 - No Stage-D read/query API.
 - No cross-repository edges.
 - Import targets remain unresolved in this slice.
-- No descriptor-level filesystem sandbox (`openat`/`O_NOFOLLOW`) claim; Stage C performs bounded pre/post symlink checks and root containment checks, so stronger hostile-filesystem guarantees remain future hardening.
+- Descriptor-anchored hostile-filesystem containment requires platform support for `dir_fd`, `O_DIRECTORY` and `O_NOFOLLOW`; unsupported platforms fail closed and do not use a permissive pathname-read fallback.
+- `max_scan_seconds` remains cooperative rather than a preemptive interruption guarantee inside one OS read or AST parse operation.
 - Incomplete attempt receipts persist deterministic omission/error reason counts; detailed path-level problems are returned by `ScanOutcome` but are not promoted into a current snapshot.
 - CSM operational lease events are not tamper-evident Titan AuditChain evidence.
 
