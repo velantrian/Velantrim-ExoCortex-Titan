@@ -26,7 +26,6 @@ logger = logging.getLogger("velantrim.multilingual_router")
 
 
 # ─── Детектор языка ──────────────────────────────────────────────────────────
-
 def detect_language(text: str) -> str:
     """
     Определить язык текста.
@@ -50,7 +49,6 @@ def detect_language(text: str) -> str:
 
 
 # ─── Лемматизация русского текста ─────────────────────────────────────────────
-
 def _get_lemmatizer():
     """Lazy-загрузка pymorphy3. Fallback — naive lowercase."""
     try:
@@ -104,7 +102,6 @@ def lemmatize_ru_query(query: str) -> str:
 
 
 # ─── Dual-index retrieval ────────────────────────────────────────────────────
-
 def retrieve_multilingual(
     query: str,
     *,
@@ -188,15 +185,41 @@ def _relevance_score(query: str, claim: str, lang: str) -> float:
 
 
 # ─── Интеграция в pipeline ──────────────────────────────────────────────────
+# Храним identity ровно одного wrapper, которым владеет этот модуль. Это
+# предотвращает накопление closure-слоёв при повторном lifespan/setup в одном
+# процессе и позволяет безопасно вернуть точный pre-install retrieve.
+_original_retrieve: Any | None = None
+_installed_retrieve: Any | None = None
 
-def patch_pipeline_retrieval():
-    """
-    Monkey-patch: заменить стандартный retrieve() на multilingual.
 
-    Вызывается при старте сервера если VELANTRIM_MULTILINGUAL=1.
+def _clear_patch_state() -> None:
+    global _installed_retrieve, _original_retrieve
+    _original_retrieve = None
+    _installed_retrieve = None
+
+
+def patch_pipeline_retrieval() -> bool:
+    """Install multilingual retrieval once and report whether this call owns it.
+
+    Repeated setup is idempotent while the exact wrapper installed by this
+    module remains active. If another component replaced ``pipeline.retrieve``
+    after our install, we do not pretend ownership of that replacement; stale
+    bookkeeping is dropped before a new explicit install captures the current
+    callable as its new original.
     """
+    global _installed_retrieve, _original_retrieve
+
     try:
         from core import pipeline
+
+        if _installed_retrieve is not None:
+            if pipeline.retrieve is _installed_retrieve:
+                return False
+            logger.warning(
+                "Multilingual retrieval patch lost ownership; resetting stale state"
+            )
+            _clear_patch_state()
+
         original = pipeline.retrieve
 
         def multilingual_retrieve(query, k=3, database=None, domain=None):
@@ -205,9 +228,45 @@ def patch_pipeline_retrieval():
             return retrieve_multilingual(query, top_k=k)
 
         pipeline.retrieve = multilingual_retrieve
+        _original_retrieve = original
+        _installed_retrieve = multilingual_retrieve
         logger.info("Pipeline retrieval patched for multilingual support")
+        return True
     except Exception as exc:
         logger.warning("Failed to patch pipeline: %s", exc)
+        return False
+
+
+def unpatch_pipeline_retrieval() -> bool:
+    """Restore the exact pre-install retrieve only while this module owns it.
+
+    External replacements are never overwritten. In that case internal stale
+    state is cleared and the function returns ``False``.
+    """
+    global _installed_retrieve, _original_retrieve
+
+    if _installed_retrieve is None or _original_retrieve is None:
+        _clear_patch_state()
+        return False
+
+    try:
+        from core import pipeline
+
+        if pipeline.retrieve is not _installed_retrieve:
+            logger.warning(
+                "Multilingual retrieval patch no longer owns pipeline.retrieve; "
+                "external replacement preserved"
+            )
+            _clear_patch_state()
+            return False
+
+        pipeline.retrieve = _original_retrieve
+        _clear_patch_state()
+        logger.info("Pipeline multilingual retrieval patch removed")
+        return True
+    except Exception as exc:
+        logger.warning("Failed to unpatch pipeline: %s", exc)
+        return False
 
 
 def is_multilingual_enabled() -> bool:
@@ -222,4 +281,5 @@ __all__ = [
     "lemmatize_ru_text",
     "patch_pipeline_retrieval",
     "retrieve_multilingual",
+    "unpatch_pipeline_retrieval",
 ]
