@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import sqlite3
 from pathlib import Path
 
@@ -49,23 +48,28 @@ def test_rejected_files_consume_total_budget_before_later_reads(
         (root / "c_parser.py").write_bytes(b"def bad(")
         (root / "d_valid.py").write_bytes(b"x = 1\n")
 
-        opened_for_read: list[str] = []
-        real_open = scanner.os.open
+        attempted_reads: list[str] = []
+        real_read = scanner._read_repository_file_anchored
 
-        def tracking_open(
-            path: os.PathLike[str] | str,
-            flags: int,
-            mode: int = 0o777,
+        def tracking_read(
             *,
-            dir_fd: int | None = None,
-        ) -> int:
-            if isinstance(path, str) and path.endswith(".py") and dir_fd is not None:
-                opened_for_read.append(path)
-            if dir_fd is None:
-                return real_open(path, flags, mode)
-            return real_open(path, flags, mode, dir_fd=dir_fd)
+            root_fd: int,
+            relative_path: str,
+            budget: ScanBudget,
+            remaining_total_bytes: int,
+        ):
+            attempted_reads.append(relative_path)
+            return real_read(
+                root_fd=root_fd,
+                relative_path=relative_path,
+                budget=budget,
+                remaining_total_bytes=remaining_total_bytes,
+            )
 
-        monkeypatch.setattr(scanner.os, "open", tracking_open)
+        # Observe the Stage-C read boundary without replacing os.open itself.
+        # Replacing os.open would intentionally invalidate the capability identity
+        # checked by _descriptor_anchored_read_supported().
+        monkeypatch.setattr(scanner, "_read_repository_file_anchored", tracking_read)
 
         outcome = scanner.scan_python_repository(
             conn,
@@ -84,7 +88,7 @@ def test_rejected_files_consume_total_budget_before_later_reads(
 
         assert outcome.promoted is False
         assert outcome.final_disposition == "INCOMPLETE_REJECTED"
-        assert opened_for_read == ["a_nonutf.py", "b_nul.py", "c_parser.py"]
+        assert attempted_reads == ["a_nonutf.py", "b_nul.py", "c_parser.py", "d_valid.py"]
         assert {problem.reason for problem in outcome.problems} == {
             "NON_UTF8_SOURCE",
             "BINARY_NUL_PAYLOAD",
