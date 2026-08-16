@@ -1,0 +1,104 @@
+name: Apply issue 249 current-truth closure docs
+
+on:
+  push:
+    branches:
+      - agent/issue-249-characterization-closure
+    paths:
+      - .github/workflows/apply-issue-249-doc-closure.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out docs closure branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/issue-249-characterization-closure
+          fetch-depth: 0
+
+      - name: Reconcile #249 and #347 current truth
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text()
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f"expected anchor not found in {path}: {old[:120]!r}")
+              path.write_text(text.replace(old, new, 1))
+
+          # WORK_LOG: add the new current record above the #343 record and fix the
+          # older reconciliation matrix row so it no longer contradicts the newer truth.
+          work_log = Path("docs/ai/WORK_LOG.md")
+          old_anchor = """---\n\n## 2026-08-16 — #343 post-hardening current-truth convergence · FINAL RECONCILIATION RECORD\n"""
+          new_section = """---\n\n## 2026-08-16 — #249 hosted CAS characterization · ENGINEERING CHARACTERIZATION COMPLETE\n\n> **Live-state rule:** re-check Issue #249 and current `main` before acting. This dated\n> record freezes the engineering classification proven by PR #346; it does not make a\n> dated OPEN/CLOSED issue literal evergreen.\n\n```text\ncharacterization issue:            #249 · RE-VERIFY LIVE LIFECYCLE\nimplementation / evidence PR:      #346 · MERGED\nexact accepted PR head:            26fc2e6f8f7712740394d305f79596801eed4045\nprotected squash merge/checkpoint: fa09bc128b7be2f05fd46a8bd374ebf68ae7f62d\nmerge parent:                      6120fdbb386a6b90391e05398c19d56e1f576339\nmerge signature:                   VERIFIED / valid\nclassification:                    TEST HARNESS SCOPE DEFECT / HISTORICAL RUNNER SENSITIVITY\nproduct CAS defect:                NOT CONFIRMED\nseparate bootstrap residual:       #347 · OPEN · RE-VERIFY LIVE\nproduction CAS code changed:       NO\nruntime / authority changed:       NO\nPhase 3B:                          NOT ADMITTED / NOT STARTED\n```\n\n### What the hosted evidence established\n\nThe historical #249 failure was a `BrokenBarrierError` in the old blind pre-CAS barrier.\nPR #250 had already replaced that barrier with stage-aware diagnostics, but local repeated\npasses alone were not closure-grade evidence for GitHub-hosted scheduling. PR #346 added\na repeatable hosted matrix for the exact current `[25]` projection-outbox contention test.\n\nThe first hosted diagnostic run (`31958543077`) did **not** show a two-winner or duplicate-\nintent CAS failure. Instead, three of four independent jobs failed before the CAS gate was\nreleased with `sqlite3.OperationalError: database schema has changed`; stage evidence was\n25/25 workers started, 24/25 pre-CAS reached and 0/25 CAS returned. Fresh inspection showed\nthat the test created 25 fresh `SQLiteGraphStore` instances whose per-instance lazy schema\nbootstrap could race before the intended promotion contention. That distinct storage /\nlifecycle question is now isolated as Issue #347 rather than hidden inside #249.\n\nThe #249 harness was then narrowed to its actual causal question: every contender store is\nmade schema-ready sequentially before the synchronized real `validate_and_promote()` /\n`_promote_to_validated_cas()` race. No product CAS implementation, retry policy, SQLite\ntimeout, WAL mode, backend or schema was changed.\n\n### Accepted exact-head evidence\n\n```text\nhosted CAS characterization #4: 31959073081 · SUCCESS\n  Python 3.11 × 2 shards + Python 3.12 × 2 shards\n  25/25 repetitions per job = 100/100 exact hosted invariant executions\nFull CI #1288:                  31959073075 · SUCCESS\nCodeQL #126:                    31959073069 · SUCCESS\npost-Ready aggregate #1565:     31959620687 · SUCCESS\nDocker:                         NOT SPAWNED · no Docker success claimed\nsubmitted reviews:              0\nunresolved review threads:      0\n```\n\n### Protected-merge evidence on `main@fa09bc128…`\n\n```text\nhosted CAS characterization #5: 31959660584 · SUCCESS\n  4/4 required jobs = another 100/100 exact hosted invariant executions\nFull CI #1289:                  31959660561 · SUCCESS\nCodeQL #127:                    31959660558 · SUCCESS\npost-merge aggregate #1568:     31959660557 · SUCCESS\nDocker:                         NOT SPAWNED on the #346 exact-main path\n```\n\nEvery passing exact `[25]` execution retains the product invariants: exactly one winner,\nexactly one projection-outbox intent, final `Validated` state, canonical-version binding,\nidempotent post-race retry with no second intent, and `PRAGMA integrity_check = ok`.\n\nThe evidence therefore supports **TEST HARNESS SCOPE DEFECT / HISTORICAL RUNNER\nSENSITIVITY; PRODUCT CAS DEFECT NOT CONFIRMED**. It does **not** prove unlimited SQLite\nconcurrency, arbitrary multiprocess safety, or that the fresh-store bootstrap residual is\nclosed. Issue #347 owns that separate P1 characterization.\n\n### Authority boundary unchanged\n\n```text\nContinuity:             12/12\nproject-state schema:   v7\nruntime enabled:        false\nOperator GO:            false\nruntime authority:      false\nproduction authority:   false\nCanon:                  local\nremote Canon:           forbidden\nPhase 3B:               NOT ADMITTED / NOT STARTED\n```\n\n---\n\n## 2026-08-16 — #343 post-hardening current-truth convergence · FINAL RECONCILIATION RECORD\n"""
+          replace_once(work_log, old_anchor, new_section)
+          replace_once(
+              work_log,
+              "| CAS contention characterization | **OPEN / CHARACTERIZATION REQUIRED** | #249; production CAS defect not proven |",
+              "| CAS contention characterization | **CHARACTERIZED / HARNESS SCOPE DEFECT** | #249 / #346; product CAS defect not confirmed; separate fresh-store bootstrap residual is #347 |",
+          )
+
+          # KNOWN_RISKS: retire #249 as an uncharacterized product-CAS risk and preserve
+          # the newly discovered, separate #347 bootstrap risk.
+          risks = Path("docs/ai/KNOWN_RISKS.md")
+          replace_once(risks, "**Snapshot:** 2026-08-15  ", "**Snapshot:** 2026-08-16  ")
+          old_risk = """## P1 — Uncharacterized CAS-contention failure\n\nIssue #249 remains OPEN and separate. The known `BrokenBarrierError` evidence is currently\nconsistent with runner/scheduling-sensitive test orchestration; a production CAS defect\nhas not been proven. Do not weaken one-winner/one-intent assertions without evidence.\n"""
+          new_risk = """## Reduced risk — #249 CAS contention is characterized; product CAS defect not confirmed\n\nIssue #249's engineering characterization is complete through merged PR #346 at signed\ncheckpoint `main@fa09bc128b7be2f05fd46a8bd374ebf68ae7f62d`; re-check live issue lifecycle\nbefore acting. The old blind-barrier `BrokenBarrierError` was not evidence that the\ncanonical CAS admitted two winners or duplicate projection intents. The final hosted\ncharacterization isolates schema-ready contenders before the real promotion race and\npasses 100/100 exact `[25]` executions on the accepted PR head plus another 100/100 on\npost-merge main across Python 3.11/3.12 hosted-runner shards. Every passing iteration\nretains one winner, one outbox intent, final `Validated`, canonical-version binding,\nidempotent retry and SQLite integrity.\n\nNo production `_promote_to_validated_cas()` code, automatic retry, SQLite timeout, WAL\nmode, backend or schema was changed. The bounded classification is **TEST HARNESS SCOPE\nDEFECT / HISTORICAL RUNNER SENSITIVITY · PRODUCT CAS DEFECT NOT CONFIRMED**. This is not\nproof of unlimited SQLite concurrency or production-scale multiprocess safety.\n\n## P1 — Concurrent fresh-store bootstrap can invalidate peer SQLite statements\n\nHosted #249 diagnostics exposed a separate pre-CAS failure now tracked by Issue #347:\nconcurrent first use of multiple fresh `SQLiteGraphStore` instances against one database\ncan produce `sqlite3.OperationalError: database schema has changed` while per-instance\nlazy schema/bootstrap work is still in flight. The observed failure occurred before the\nCAS gate (25/25 workers started, 24/25 reached pre-CAS, 0/25 CAS returned), so it must not\nbe relabelled as a product CAS algorithm failure.\n\n#347 remains an open storage/lifecycle characterization risk. Do not paper over it with\nbroad `OperationalError` swallowing, automatic mutation retry, timeout inflation, WAL or\nbackend changes. First establish the supported concurrent-first-use contract and exact\nfailing DDL/read interleaving.\n"""
+          replace_once(risks, old_risk, new_risk)
+
+          # PROJECT_STATUS: current public risk/roadmap wording must distinguish the closed
+          # #249 causal question from the separate #347 storage/lifecycle residual.
+          status = Path("docs/PROJECT_STATUS.md")
+          replace_once(
+              status,
+              """   or every contention edge. Issue #249 remains a separate uncharacterized\n   CAS-contention flake and must not be weakened or reclassified without evidence.\n""",
+              """   or every contention edge. Issue #249 is now characterized through merged\n   PR #346 as a test-harness scope defect / historical runner sensitivity; a product CAS\n   defect was not confirmed, and its one-winner/one-intent assertions remain intact. The\n   distinct concurrent fresh-store bootstrap residual discovered during that work is\n   tracked separately as Issue #347 and remains open.\n""",
+          )
+          replace_once(
+              status,
+              """  `Supported`; final `Validated` / local-Canon admission is owned by\n""",
+              """  `Supported`; final `Validated` / local-Canon admission is owned by\n""",
+          )
+          replace_once(
+              status,
+              """  `PromotionGateway` + TruthGate recheck + CAS. Legacy/unreviewed World Skills rows are\n""",
+              """  `PromotionGateway` + TruthGate recheck + CAS. Legacy/unreviewed World Skills rows are\n""",
+          )
+          replace_once(
+              status,
+              """  contract rather than a direct-promotion exception. Still open: characterize issue\n  #249 without weakening its one-winner/one-intent assertions; prove the wider storage\n  path under realistic multiprocess/production conditions; and continue converging\n""",
+              """  contract rather than a direct-promotion exception. The #249 CAS question is now\n  characterized without weakening its one-winner/one-intent assertions: merged #346\n  isolates the intended race and has clean hosted pre/post-merge evidence. Still open:\n  characterize #347 concurrent fresh-store bootstrap; prove the wider storage path under\n  realistic multiprocess/production conditions; and continue converging\n""",
+          )
+          replace_once(
+              status,
+              """multiprocess/storage behavior and issue #249 remain unresolved. For deployment,\n""",
+              """multiprocess/storage behavior and Issue #347 remain unresolved. Issue #249 is no\nlonger an uncharacterized product-CAS risk: its bounded classification is a harness-scope\ndefect / historical runner sensitivity with product CAS defect not confirmed. For deployment,\n""",
+          )
+
+          # REVIEWER_README: same public reviewer-facing current-risk correction.
+          reviewer = Path("docs/REVIEWER_README.md")
+          replace_once(
+              reviewer,
+              """  unlimited-concurrency proof; issue #249 remains an uncharacterized CAS-contention\n  failure and realistic multiprocess/storage-environment proof is still open.\n""",
+              """  unlimited-concurrency proof. Issue #249 is characterized through merged #346 as a\n  test-harness scope defect / historical runner sensitivity; product CAS defect was not\n  confirmed and the one-winner/one-intent invariants remain intact. Issue #347 now tracks\n  the distinct concurrent fresh-store bootstrap/schema residual, while realistic\n  multiprocess/storage-environment proof remains open.\n""",
+          )
+          PY
+
+      - name: Commit current-truth docs
+        run: |
+          if git diff --quiet -- docs/ai/WORK_LOG.md docs/ai/KNOWN_RISKS.md docs/PROJECT_STATUS.md docs/REVIEWER_README.md; then
+            echo "No docs change required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ai/WORK_LOG.md docs/ai/KNOWN_RISKS.md docs/PROJECT_STATUS.md docs/REVIEWER_README.md
+          git commit -m "docs(truth): reconcile #249 characterization and #347 residual"
+          git push origin HEAD:agent/issue-249-characterization-closure
