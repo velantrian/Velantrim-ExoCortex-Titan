@@ -46,7 +46,14 @@ jobs:
           '''.replace("              ", "")
           if block not in text:
               raise SystemExit("preinitialization block not found; refusing approximate replay")
-          path.write_text(text.replace(block, "", 1))
+          text = text.replace(block, "", 1)
+          if "import traceback\n" not in text:
+              text = text.replace("import time\n", "import time\nimport traceback\n", 1)
+          old = 'harness.mark_failed_before_gate(contender_id, f"{type(exc).__name__}: {exc}")'
+          new = 'harness.mark_failed_before_gate(contender_id, f"{type(exc).__name__}: {exc}\\n{traceback.format_exc()}")'
+          if old not in text:
+              raise SystemExit("pre-gate diagnostic hook not found; refusing approximate replay")
+          path.write_text(text.replace(old, new, 1))
           PY
       - name: Repeat exact pre-346 [25] race
         run: |
@@ -57,7 +64,7 @@ jobs:
           passed=0
           failed=0
           first_failure=""
-          for iteration in $(seq 1 50); do
+          for iteration in $(seq 1 100); do
             set +e
             output=$(python -m pytest -q "$node" --tb=short --timeout=180 2>&1)
             rc=$?
