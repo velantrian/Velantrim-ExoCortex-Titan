@@ -5,6 +5,97 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
+## 2026-08-16 — #249 hosted CAS characterization · ENGINEERING CHARACTERIZATION COMPLETE
+
+> **Live-state rule:** re-check Issue #249 and current `main` before acting. This dated
+> record freezes the engineering classification proven by PR #346; it does not make a
+> dated OPEN/CLOSED issue literal evergreen.
+
+```text
+characterization issue:            #249 · RE-VERIFY LIVE LIFECYCLE
+implementation / evidence PR:      #346 · MERGED
+exact accepted PR head:            26fc2e6f8f7712740394d305f79596801eed4045
+protected squash merge/checkpoint: fa09bc128b7be2f05fd46a8bd374ebf68ae7f62d
+merge parent:                      6120fdbb386a6b90391e05398c19d56e1f576339
+merge signature:                   VERIFIED / valid
+classification:                    TEST HARNESS SCOPE DEFECT / HISTORICAL RUNNER SENSITIVITY
+product CAS defect:                NOT CONFIRMED
+separate bootstrap residual:       #347 · OPEN · RE-VERIFY LIVE
+production CAS code changed:       NO
+runtime / authority changed:       NO
+Phase 3B:                          NOT ADMITTED / NOT STARTED
+```
+
+### What the hosted evidence established
+
+The historical #249 failure was a `BrokenBarrierError` in the old blind pre-CAS barrier.
+PR #250 had already replaced that barrier with stage-aware diagnostics, but local repeated
+passes alone were not closure-grade evidence for GitHub-hosted scheduling. PR #346 added
+a repeatable hosted matrix for the exact current `[25]` projection-outbox contention test.
+
+The first hosted diagnostic run (`31958543077`) did **not** show a two-winner or duplicate-
+intent CAS failure. Instead, three of four independent jobs failed before the CAS gate was
+released with `sqlite3.OperationalError: database schema has changed`; stage evidence was
+25/25 workers started, 24/25 pre-CAS reached and 0/25 CAS returned. Fresh inspection showed
+that the test created 25 fresh `SQLiteGraphStore` instances whose per-instance lazy schema
+bootstrap could race before the intended promotion contention. That distinct storage /
+lifecycle question is now isolated as Issue #347 rather than hidden inside #249.
+
+The #249 harness was then narrowed to its actual causal question: every contender store is
+made schema-ready sequentially before the synchronized real `validate_and_promote()` /
+`_promote_to_validated_cas()` race. No product CAS implementation, retry policy, SQLite
+timeout, WAL mode, backend or schema was changed.
+
+### Accepted exact-head evidence
+
+```text
+hosted CAS characterization #4: 31959073081 · SUCCESS
+  Python 3.11 × 2 shards + Python 3.12 × 2 shards
+  25/25 repetitions per job = 100/100 exact hosted invariant executions
+Full CI #1288:                  31959073075 · SUCCESS
+CodeQL #126:                    31959073069 · SUCCESS
+post-Ready aggregate #1565:     31959620687 · SUCCESS
+Docker:                         NOT SPAWNED · no Docker success claimed
+submitted reviews:              0
+unresolved review threads:      0
+```
+
+### Protected-merge evidence on `main@fa09bc128…`
+
+```text
+hosted CAS characterization #5: 31959660584 · SUCCESS
+  4/4 required jobs = another 100/100 exact hosted invariant executions
+Full CI #1289:                  31959660561 · SUCCESS
+CodeQL #127:                    31959660558 · SUCCESS
+post-merge aggregate #1568:     31959660557 · SUCCESS
+Docker:                         NOT SPAWNED on the #346 exact-main path
+```
+
+Every passing exact `[25]` execution retains the product invariants: exactly one winner,
+exactly one projection-outbox intent, final `Validated` state, canonical-version binding,
+idempotent post-race retry with no second intent, and `PRAGMA integrity_check = ok`.
+
+The evidence therefore supports **TEST HARNESS SCOPE DEFECT / HISTORICAL RUNNER
+SENSITIVITY; PRODUCT CAS DEFECT NOT CONFIRMED**. It does **not** prove unlimited SQLite
+concurrency, arbitrary multiprocess safety, or that the fresh-store bootstrap residual is
+closed. Issue #347 owns that separate P1 characterization.
+
+### Authority boundary unchanged
+
+```text
+Continuity:             12/12
+project-state schema:   v7
+runtime enabled:        false
+Operator GO:            false
+runtime authority:      false
+production authority:   false
+Canon:                  local
+remote Canon:           forbidden
+Phase 3B:               NOT ADMITTED / NOT STARTED
+```
+
+---
+
 ## 2026-08-16 — #343 post-hardening current-truth convergence · FINAL RECONCILIATION RECORD
 
 > **Live-state rule:** this dated record does not encode the current open/closed state of
@@ -114,7 +205,7 @@ time; production retrieval semantics were not weakened or altered to make CI gre
 | multilingual wrapper lifecycle | **CLOSED** | #340 / #341; merge checkpoint `8ed2fb60…` |
 | CSM Stage C scanner | **IMPLEMENTED / TESTED / MERGED / UNWIRED / NON-CANONICAL** | #333 / #335; merge `b4c6f0c…` |
 | AI-context documentation drift | **RECONCILED** | #343 / #344; live issue lifecycle must be re-verified before action |
-| CAS contention characterization | **OPEN / CHARACTERIZATION REQUIRED** | #249; production CAS defect not proven |
+| CAS contention characterization | **CHARACTERIZED / HARNESS SCOPE DEFECT** | #249 / #346; product CAS defect not confirmed; separate fresh-store bootstrap residual is #347 |
 | independent approval | **KNOWN GOVERNANCE RISK / ACTIVATION PREREQUISITE** | solo ruleset currently requires 0 approvals; green CI is not independent review |
 | production-scale evidence | **OPEN** | SLO/recovery/backup-restore/security/real production evidence not established |
 | warning/deprecation debt | **P2 / CHARACTERIZE LATER** | separate bounded matrix required; not mixed into #343 |
