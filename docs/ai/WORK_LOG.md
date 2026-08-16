@@ -5,15 +5,27 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
-## 2026-08-16 — #343 post-hardening current-truth convergence · IN PROGRESS
+## 2026-08-16 — #343 post-hardening current-truth convergence · FINAL RECONCILIATION RECORD
+
+> **Live-state rule:** this dated record does not encode the current open/closed state of
+> Issue #343. Re-check the live GitHub issue before acting. The block below records the
+> verified #344 reconciliation evidence and removes lifecycle-sensitive wording that became
+> stale after post-merge closure/reopen activity.
 
 ```text
-tracking issue:                    #343 · OPEN
-reconciliation base/main:          8ed2fb60c1edaa96d9af9955184c4abc31ef8500
+tracking issue:                    #343 · RE-VERIFY LIVE LIFECYCLE
+reconciliation base:               8ed2fb60c1edaa96d9af9955184c4abc31ef8500
+original reconciliation PR:        #344 · MERGED
+#344 exact accepted head:          59d1074f913be4b65d212d7480a0acdf20b28829
+#344 protected squash merge/main:  62ab18eb199c90b04401f6da478d5f833e3771f3
+#344 post-merge Full CI:           #1282 · 31942430316 · SUCCESS
+#344 post-merge CodeQL:            #120  · 31942430394 · SUCCESS
+#344 post-merge aggregate:         #1549 · 31942430354 · SUCCESS
+#344 Docker:                       NOT SPAWNED · no Docker success claimed
 CSM Stage C issue / PR:            #333 CLOSED / #335 MERGED
 CSM Stage C merge:                 b4c6f0c16ef9920607d95e590a75df8176d92d71
 multilingual lifecycle issue / PR: #340 CLOSED / #341 MERGED
-multilingual merge/current main:   8ed2fb60c1edaa96d9af9955184c4abc31ef8500
+multilingual merge checkpoint:     8ed2fb60c1edaa96d9af9955184c4abc31ef8500
 documentation class:               GITHUB_AND_NOTION
 project-state schema:              v7 · UNCHANGED
 runtime enabled:                   false
@@ -23,15 +35,24 @@ production authority:              false
 Phase 3B:                          NOT ADMITTED / NOT STARTED
 ```
 
-Fresh live reconciliation confirmed that implementation closure had advanced beyond the
-public AI context pack. The highest-impact contradiction was
-`docs/ai/CSM_STAGE_C_SCANNER.md`, which still labelled PR #335 a draft candidate even after
-protected merge and post-merge verification. `CURRENT_STATE.md`, `COMPONENT_MAP.md` and
-this work log also stopped before #335/#341.
+Fresh reconciliation originally confirmed that implementation closure had advanced beyond
+public AI context. PR #344 corrected the mandatory current-state surfaces for protected-
+merged CSM Stage C (#335) and multilingual retrieval lifecycle hardening (#341) without
+changing runtime behavior or authority.
 
-This bounded workstream is documentation-only. It reconciles the current public technical
-record without touching Python runtime, project-state schema, feature flags, Canon, Truth,
-Policy, CSM scanner behavior, retrieval behavior or activation posture.
+A post-closure independent audit then found a smaller residual in this same top work-log
+block: it still labelled #343 `OPEN / IN PROGRESS`, called the #341 merge checkpoint
+`current main`, and left the documentation-drift row open after #344 had already merged.
+The audit's proposed patch also referred to aggregate #1548 as post-merge evidence; live
+GitHub verification shows #1548 is the successful post-Ready **pre-merge** aggregate on
+PR head `59d1074f…`, while #1549 / `31942430354` is the true successful post-merge
+aggregate on `main@62ab18eb…`.
+
+This final reconciliation record therefore uses lifecycle-stable wording: the live issue
+state is resolved from GitHub, historical merge checkpoints are labelled as checkpoints,
+and exact #344 post-merge evidence is bound to the merged main SHA. No Python runtime,
+project-state schema, feature flag, Canon, Truth, Policy, CSM behavior, retrieval behavior,
+or activation posture changes in this correction.
 
 ### CSM Stage C factual closure
 
@@ -50,7 +71,7 @@ post-merge aggregate:      #1520 · 31928517687 · SUCCESS
 unresolved review threads: 0
 ```
 
-Current status is:
+Current factual Stage C status at the #344 reconciliation checkpoint is:
 
 `IMPLEMENTED · TESTED · PROTECTED-MERGED · POST-MERGE VERIFIED · UNWIRED · NOT ENABLED · NON-CANONICAL`.
 
@@ -60,8 +81,9 @@ or production authority follows from #335.
 
 ### Multilingual retrieval patch lifecycle closure
 
-PR #341 final head `848f8c694cc6d884be6a1aa7f5d97d33879450c9` protected-squash-merged as current
-`main@8ed2fb60c1edaa96d9af9955184c4abc31ef8500`.
+PR #341 final head `848f8c694cc6d884be6a1aa7f5d97d33879450c9` protected-squash-merged as
+checkpoint `8ed2fb60c1edaa96d9af9955184c4abc31ef8500`; PR #344 later advanced main to
+`62ab18eb199c90b04401f6da478d5f833e3771f3`.
 
 ```text
 exact-head Full CI:        #1276 · SUCCESS
@@ -76,7 +98,7 @@ submitted reviews:         0
 unresolved review threads: 0
 ```
 
-The existing multilingual patch is now idempotent/reversible with exact original identity
+The existing multilingual patch is idempotent/reversible with exact original identity
 restoration, external-replacement non-clobbering and safe stale-ownership cleanup. The
 final test-only repair resolved intentionally re-imported `core.*` modules at execution
 time; production retrieval semantics were not weakened or altered to make CI green.
@@ -89,9 +111,9 @@ time; production retrieval semantics were not weakened or altered to make CI gre
 | `/query/roles` LLM provenance | **CLOSED** | #332 / #334; deterministic fallback cannot masquerade as LLM success |
 | IndexCoordinator ↔ NGram API contract | **CLOSED** | #336 / #337; real public NGram API + degraded health semantics |
 | `storage_info()` stale lifecycle cache | **CLOSED** | #338 / #339; reset clears cached backend metadata |
-| multilingual wrapper lifecycle | **CLOSED** | #340 / #341; current main `8ed2fb60…` |
+| multilingual wrapper lifecycle | **CLOSED** | #340 / #341; merge checkpoint `8ed2fb60…` |
 | CSM Stage C scanner | **IMPLEMENTED / TESTED / MERGED / UNWIRED / NON-CANONICAL** | #333 / #335; merge `b4c6f0c…` |
-| AI-context documentation drift | **OPEN UNTIL #343 DOCS CLOSURE** | #343; this bounded workstream owns remediation |
+| AI-context documentation drift | **RECONCILED** | #343 / #344; live issue lifecycle must be re-verified before action |
 | CAS contention characterization | **OPEN / CHARACTERIZATION REQUIRED** | #249; production CAS defect not proven |
 | independent approval | **KNOWN GOVERNANCE RISK / ACTIVATION PREREQUISITE** | solo ruleset currently requires 0 approvals; green CI is not independent review |
 | production-scale evidence | **OPEN** | SLO/recovery/backup-restore/security/real production evidence not established |
@@ -105,19 +127,17 @@ used as current truth.
 
 `docs/state/project_state.json` schema v7 is a governed machine record whose repository
 SHA fields are explicitly bound to the Continuity bounded-observation canary checkpoint.
-Neither #335 nor #341 changes Continuity completion, schema, current enablement, Operator
-GO, runtime authority, production authority or the canary semantics represented there.
-Changing that file merely to mirror the latest documentation SHA would therefore create a
-false semantic mutation. It remains untouched in #343 unless a separate schema/contract
-obligation is proven.
+Neither #335, #341, #344 nor this work-log correction changes Continuity completion,
+schema, current enablement, Operator GO, runtime authority, production authority or the
+canary semantics represented there. Changing that file merely to mirror the latest
+documentation SHA would therefore create a false semantic mutation.
 
 ### Risk surface intentionally unchanged
 
 `docs/ai/KNOWN_RISKS.md` already states the current #249 characterization, solo-governance
-risk, no current Operator GO, production-readiness gap and other durable residuals. #335
-and #341 do not close or widen those risk semantics. The transient public-documentation
-drift is tracked by #343 and should close with this workstream rather than being converted
-into a new long-lived runtime risk entry.
+risk, no current Operator GO, production-readiness gap and other durable residuals. The
+transient public-documentation drift is a current-truth reconciliation concern rather than
+a new long-lived runtime risk entry.
 
 ---
 
