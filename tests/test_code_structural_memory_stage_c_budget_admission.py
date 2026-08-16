@@ -48,7 +48,7 @@ def test_rejected_files_consume_total_budget_before_later_reads(
         (root / "c_parser.py").write_bytes(b"def bad(")
         (root / "d_valid.py").write_bytes(b"x = 1\n")
 
-        attempted_reads: list[str] = []
+        observed_reads: list[tuple[str, int]] = []
         real_read = scanner._read_repository_file_anchored
 
         def tracking_read(
@@ -58,13 +58,14 @@ def test_rejected_files_consume_total_budget_before_later_reads(
             budget: ScanBudget,
             remaining_total_bytes: int,
         ):
-            attempted_reads.append(relative_path)
-            return real_read(
+            result = real_read(
                 root_fd=root_fd,
                 relative_path=relative_path,
                 budget=budget,
                 remaining_total_bytes=remaining_total_bytes,
             )
+            observed_reads.append((relative_path, result.inspected_bytes))
+            return result
 
         # Observe the Stage-C read boundary without replacing os.open itself.
         # Replacing os.open would intentionally invalidate the capability identity
@@ -88,7 +89,12 @@ def test_rejected_files_consume_total_budget_before_later_reads(
 
         assert outcome.promoted is False
         assert outcome.final_disposition == "INCOMPLETE_REJECTED"
-        assert attempted_reads == ["a_nonutf.py", "b_nul.py", "c_parser.py", "d_valid.py"]
+        assert observed_reads == [
+            ("a_nonutf.py", 8),
+            ("b_nul.py", 8),
+            ("c_parser.py", 8),
+            ("d_valid.py", 0),
+        ]
         assert {problem.reason for problem in outcome.problems} == {
             "NON_UTF8_SOURCE",
             "BINARY_NUL_PAYLOAD",
