@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/fresh-store-bootstrap-characterization.yml"
       - "scripts/diagnose_fresh_store_bootstrap.py"
+      - "tests/test_promotion_projection_outbox_caller.py"
       - "core/memory.py"
       - "core/version_store.py"
   push:
@@ -13,6 +14,7 @@ on:
     paths:
       - ".github/workflows/fresh-store-bootstrap-characterization.yml"
       - "scripts/diagnose_fresh_store_bootstrap.py"
+      - "tests/test_promotion_projection_outbox_caller.py"
       - "core/memory.py"
       - "core/version_store.py"
 
@@ -46,5 +48,78 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: issue347-py${{ matrix.python }}
+          path: artifacts/
+          retention-days: 14
+
+  replay-pre346:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: ./.github/actions/sync-python-deps
+        with:
+          extras: server dev parsers retrieval embeddings graph-lab
+      - name: Recreate exact pre-346 harness in runner workspace
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("tests/test_promotion_projection_outbox_caller.py")
+          text = path.read_text()
+          block = '''    # Issue #249 is a CAS-contention test, not a concurrent schema-bootstrap
+              # test. Every independent store owns a per-instance lazy DDL guard, so
+              # entering validate_and_promote() concurrently on never-opened stores
+              # mixes first-use schema churn into the intended CAS race. Initialize
+              # each contender sequentially before installing/releasing the CAS gate;
+              # the threaded section below then races only the real promotion path.
+              for store in stores:
+                  store.ensure_schema()
+          '''.replace("              ", "")
+          if block not in text:
+              raise SystemExit("preinitialization block not found; refusing approximate replay")
+          path.write_text(text.replace(block, "", 1))
+          PY
+      - name: Repeat exact pre-346 [25] race
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          node='tests/test_promotion_projection_outbox_caller.py::test_cas_contention_yields_exactly_one_winner_and_one_intent[25]'
+          log="artifacts/pre346.log"
+          passed=0
+          failed=0
+          first_failure=""
+          for iteration in $(seq 1 50); do
+            set +e
+            output=$(python -m pytest -q "$node" --tb=short --timeout=180 2>&1)
+            rc=$?
+            set -e
+            printf '=== iteration %s ===\n%s\n' "$iteration" "$output" >> "$log"
+            if [ "$rc" -eq 0 ]; then
+              passed=$((passed + 1))
+            else
+              failed=$((failed + 1))
+              if [ -z "$first_failure" ]; then first_failure="$iteration"; fi
+            fi
+          done
+          {
+            echo "python=${{ matrix.python }}"
+            echo "passes=${passed}"
+            echo "failures=${failed}"
+            echo "first_failure=${first_failure:-none}"
+          } | tee artifacts/summary.txt
+          exit 0
+      - name: Upload exact replay evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: issue347-pre346-py${{ matrix.python }}
           path: artifacts/
           retention-days: 14
