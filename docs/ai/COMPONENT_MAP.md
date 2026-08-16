@@ -385,6 +385,8 @@ Existing TRACE/AnalysisTrace and AuditChain owners remain unchanged.
 Phase 2A `SelectionResult.as_trace_metadata()` returns bounded metadata only. It does not
 persist TRACE, append AuditChain receipts or create a new provenance authority.
 
+A future separately authorized caller may attach capability, provider-health and
+PolicyKernel snapshot metadata. Phase 3A adds no TRACE persistence or new audit owner.
 CSM scan/lease receipts are CSM operational custody evidence only; they are not Titan
 AuditChain evidence and do not become a second audit root. The multilingual lifecycle patch
 adds no TRACE or Audit owner.
@@ -411,16 +413,27 @@ adds no TRACE or Audit owner.
 - multilingual wrapper installation cannot create a second routing authority;
 - registry/provider/projection/CSM/wrapper state cannot grant Operator GO or production authority.
 
-## 14. Current first-read files
+## 14. Phase 2A, Phase 3A and current first-read files
 
 ```text
+#299                                           Phase 2A tracking / closure issue
+#300                                           MERGED Phase 2A implementation PR
+core/capability_registry.py                    Phase 2A metadata contract
+tests/test_capability_registry.py              Phase 2A adversarial tests
+docs/ai/PHASE2A_CAPABILITY_REGISTRY.md         Phase 2A hand-off
+
+#327                                           Phase 3A admission / closure issue
+#328                                           MERGED Phase 3A implementation PR
+core/embedding_registry.py                     typed space identity owner
+core/hybrid_retriever.py                       pre-score dimension fail-close
+tests/test_phase3a_embedding_space.py          Phase 3A contract tests
+docs/ai/PHASE3A_EMBEDDING_SPACE_IDENTITY.md   Phase 3A hand-off
+docs/adr/ADR-2026-08-15-phase3a-embedding-space-identity.md
+
 core/model_free_core.py                       ModelFreeCore bounded read-side facade
 core/policy_kernel.py                         permission authority
-core/capability_registry.py                   Phase 2A metadata/health/selection explanation
-core/embedding_registry.py                    embedding-space identity owner
 core/embedding_store.py                       persistent derived vector storage
 core/embedding_projection.py                  projection freshness/fallback
-core/hybrid_retriever.py                      on-demand dense scorer + dimension fail-close
 core/code_structural_memory/                  CSM contracts + Stage C scanner lifecycle
 core/multilingual_router.py                   existing multilingual patch + lifecycle ownership
 core/pipeline.py                              existing runtime/query route owner
