@@ -3,6 +3,7 @@
 **Verified:** 2026-08-16  
 **Current repository head at this reconciliation:** `main@8ed2fb60c1edaa96d9af9955184c4abc31ef8500` · parent `b4c6f0c16ef9920607d95e590a75df8176d92d71` · signature `VERIFIED / valid`  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · parent `86ed963d2d31b9da174c88f0cf05cc27faced2b9` · signature `VERIFIED / valid`  
+**C11 lifecycle rule:** resolve the current #52 lifecycle from live GitHub; the C11 paragraphs below remain historical repository evidence  
 **Continuity:** `12/12 = 100%`  
 **Machine-readable state:** schema v7  
 **Notion target:** `Velantrim Titan 9.0` · `398ac84d-0547-81fe-8ca5-d0d2727d1961`  
@@ -162,19 +163,25 @@ After C10, docs-only PR #323 was separately protected-merged as
 changes no runtime or Canon authority and is carried forward into the C11 base rather than
 being overwritten.
 
-C11 was the bounded **final #52 residual / PR-queue reconciliation**. It reconciled stale
-post-C9/C10 documentation surfaces and added the repository-side final requirement matrix
-at `docs/evidence/issue-52-final-reconciliation-2026-08-15.md`. It changed no runtime,
-Canon, policy, schema, Continuity, Operator GO, provider/model, network or
+C11 is the bounded **final #52 residual / PR-queue reconciliation**. Its fresh audit found
+that this file, `docs/ai/KNOWN_RISKS.md`, and the dated release-evidence report still
+carried pre-merge C9/C10 wording even though GitHub/Notion FINAL evidence existed. C11
+reconciles those documentation surfaces and adds the repository-side final requirement
+matrix at `docs/evidence/issue-52-final-reconciliation-2026-08-15.md`. It changes no
+runtime, Canon, policy, schema, Continuity, Operator GO, provider/model, network or
 production-authority semantics.
 
 The body statement in #52 about “10 currently open PRs” is historical queue evidence and
 was explicitly superseded by later #52 reconciliation. During the C11 race audit, PR #321
 was confirmed **CLOSED / not merged / superseded by #323**, and #323 was confirmed
-**MERGED** to signed `main@5f916e0a...`. Parent Issue #52 was subsequently closed as
-completed after exact-head acceptance, protected merge, post-merge evidence and same-page
-Notion FINAL/read-back. Resolve live GitHub for the current #52 lifecycle rather than
-inferring it from this historical record.
+**MERGED** to signed `main@5f916e0a...`. A fresh direct GitHub Pulls API read then returned
+exactly one open PR: #324, the C11 reconciliation PR itself. Therefore there was no separate
+unclassified open-PR debt remaining inside the #52 hardening scope at that checkpoint.
+
+Parent Issue #52 was subsequently closed as completed after exact-head acceptance,
+protected merge, post-merge evidence and same-page Notion FINAL/read-back. Resolve live
+GitHub for the current #52 lifecycle rather than inferring it from this dated historical
+record.
 
 ### Truth Foundation
 
@@ -271,9 +278,9 @@ existing `EmbeddingProjectionIdentity` / `EmbeddingStore` TEXT axis, so project 
 remains v7. Legacy plain-model rows lack complete identity metadata and fail closed to the
 existing lexical fallback rather than being auto-adopted.
 
-`DenseRetriever.retrieve()` validates the entire candidate batch against the query vector
-before any dot-product multiplication. Unequal dimensions therefore cannot produce a
-score through Python `zip()` truncation.
+`DenseRetriever.retrieve()` now validates the entire candidate batch against the query
+vector before any dot-product multiplication. Unequal dimensions therefore cannot produce
+a score through Python `zip()` truncation.
 
 Phase 3A is **IMPLEMENTED_BOUNDED · TESTED · UNWIRED · NOT ENABLED**. It does not wire
 persistent projection into `pipeline.py`, invoke/probe providers, enable network or remote
