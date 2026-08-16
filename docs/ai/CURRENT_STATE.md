@@ -1,17 +1,16 @@
 # 📍 Current System State
 
-**Verified:** 2026-08-15  
+**Verified:** 2026-08-16  
+**Current repository head at this reconciliation:** `main@8ed2fb60c1edaa96d9af9955184c4abc31ef8500` · parent `b4c6f0c16ef9920607d95e590a75df8176d92d71` · signature `VERIFIED / valid`  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · parent `86ed963d2d31b9da174c88f0cf05cc27faced2b9` · signature `VERIFIED / valid`  
-**C11 lifecycle rule:** resolve the current #52 lifecycle from live GitHub; the C11 paragraphs below remain historical repository evidence  
 **Continuity:** `12/12 = 100%`  
 **Machine-readable state:** schema v7  
 **Notion target:** `Velantrim Titan 9.0` · `398ac84d-0547-81fe-8ca5-d0d2727d1961`  
 **Reality boundary:** `IMPLEMENTED COMPONENTS PRESENT · RUNTIME CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVATION EXISTS · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`
 
-> This is a dated repository checkpoint. Re-read live GitHub, current Actions and the
-> existing Notion page before using it as operational truth. The exact repository head may
-> advance through documentation-only reconciliation without changing the implementation
-> checkpoint named above.
+> This document separates the **current repository checkpoint** from older implementation
+> checkpoints that remain useful historical evidence. Re-read live GitHub, current Actions
+> and the existing Notion page before using any SHA here as evergreen operational truth.
 
 ## State semantics
 
@@ -40,12 +39,72 @@ runtime authority:              false
 production authority:           false
 remote Canon:                   forbidden
 user-visible activation:        false
+Phase 3B:                       NOT ADMITTED / NOT STARTED
 ```
 
 Continuity 12/12 remains a historical mechanism/evidence milestone, not an activation or
 production-readiness grant. The bounded canary's one-time Operator GO is exhausted. For the
 full historical canary evidence, use the Continuity ADRs, issues #275/#276 and Git history
 rather than treating that old exact checkpoint as today's repository head.
+
+## Current-truth convergence — post-hardening milestones
+
+### Code Structural Memory Stage C
+
+Issue #333 is **CLOSED / completed** and PR #335 is **MERGED**. The accepted bounded
+manifest-driven Python scanner protected-squash-merged as
+`b4c6f0c16ef9920607d95e590a75df8176d92d71` from final head
+`2be69dc8c9007dd3fd7d9eae998e137095f1d4a1`.
+
+Accepted evidence:
+
+```text
+exact-head Full CI:           #1273 · 31927808211 · SUCCESS
+exact-head Docker:            #855  · 31927808219 · SUCCESS
+exact-head CodeQL:            #111  · 31927808241 · SUCCESS
+READY aggregate:              #1519 · 31928109777 · SUCCESS
+post-merge Full CI:           #1274 · 31928517680 · SUCCESS
+post-merge Docker:            #856  · 31928517601 · SUCCESS
+post-merge CodeQL:            #112  · 31928517705 · SUCCESS
+post-merge aggregate:         #1520 · 31928517687 · SUCCESS
+```
+
+Stage C is **IMPLEMENTED · TESTED · PROTECTED-MERGED · POST-MERGE VERIFIED · UNWIRED ·
+NOT ENABLED · NON-CANONICAL**. It remains `DERIVED · REBUILDABLE · REPOSITORY-SCOPED ·
+SNAPSHOT-BOUND`. There is no server route, startup hook, watcher, daemon, background worker,
+MCP adapter or default runtime call site. It owns no Canon, Truth, Policy, TRACE, Audit,
+answer, action or permission authority. Stage D is not admitted by this closure.
+
+Detailed current contract: `docs/ai/CSM_STAGE_C_SCANNER.md`.
+
+### Multilingual retrieval patch lifecycle safety
+
+Issue #340 is **CLOSED / completed** and PR #341 is **MERGED** as the current repository
+head `8ed2fb60c1edaa96d9af9955184c4abc31ef8500` from exact pre-merge head
+`848f8c694cc6d884be6a1aa7f5d97d33879450c9`.
+
+Accepted evidence:
+
+```text
+exact-head Full CI:           #1276 · SUCCESS
+exact-head Docker:            #858  · SUCCESS
+exact-head CodeQL:            #114  · SUCCESS
+READY aggregate:              #1532 · SUCCESS
+post-merge Full CI:           #1277 · SUCCESS
+post-merge Docker:            #859  · SUCCESS
+post-merge CodeQL:            #115  · SUCCESS
+post-merge aggregate:         #1533 · SUCCESS
+```
+
+The fix makes the existing `patch_pipeline_retrieval()` lifecycle idempotent/reversible,
+restores the exact captured original, avoids clobbering external replacement, and clears
+stale ownership bookkeeping safely. The final CI-only repair resolved module aliases at
+execution time because integration tests intentionally purge/re-import `core.*`; production
+retrieval semantics were not changed to make CI green.
+
+This is a bounded lifecycle-safety fix. It does **not** enable runtime, change Canon,
+activate a provider/network path, grant Operator GO, runtime authority or production
+authority, or admit Phase 3B.
 
 ## Current implementation milestones
 
@@ -103,25 +162,19 @@ After C10, docs-only PR #323 was separately protected-merged as
 changes no runtime or Canon authority and is carried forward into the C11 base rather than
 being overwritten.
 
-C11 is the bounded **final #52 residual / PR-queue reconciliation**. Its fresh audit found
-that this file, `docs/ai/KNOWN_RISKS.md`, and the dated release-evidence report still
-carried pre-merge C9/C10 wording even though GitHub/Notion FINAL evidence existed. C11
-reconciles those documentation surfaces and adds the repository-side final requirement
-matrix at `docs/evidence/issue-52-final-reconciliation-2026-08-15.md`. It changes no
-runtime, Canon, policy, schema, Continuity, Operator GO, provider/model, network or
+C11 was the bounded **final #52 residual / PR-queue reconciliation**. It reconciled stale
+post-C9/C10 documentation surfaces and added the repository-side final requirement matrix
+at `docs/evidence/issue-52-final-reconciliation-2026-08-15.md`. It changed no runtime,
+Canon, policy, schema, Continuity, Operator GO, provider/model, network or
 production-authority semantics.
 
 The body statement in #52 about “10 currently open PRs” is historical queue evidence and
 was explicitly superseded by later #52 reconciliation. During the C11 race audit, PR #321
 was confirmed **CLOSED / not merged / superseded by #323**, and #323 was confirmed
-**MERGED** to signed `main@5f916e0a...`. A fresh direct GitHub Pulls API read then returned
-exactly one open PR: #324, the C11 reconciliation PR itself. Therefore there was no separate
-unclassified open-PR debt remaining inside the #52 hardening scope at that checkpoint.
-
-Parent Issue #52 was subsequently closed as completed after exact-head acceptance,
-protected merge, post-merge evidence and same-page Notion FINAL/read-back. Resolve live
-GitHub for the current #52 lifecycle rather than inferring it from this dated historical
-record.
+**MERGED** to signed `main@5f916e0a...`. Parent Issue #52 was subsequently closed as
+completed after exact-head acceptance, protected merge, post-merge evidence and same-page
+Notion FINAL/read-back. Resolve live GitHub for the current #52 lifecycle rather than
+inferring it from this historical record.
 
 ### Truth Foundation
 
@@ -218,9 +271,9 @@ existing `EmbeddingProjectionIdentity` / `EmbeddingStore` TEXT axis, so project 
 remains v7. Legacy plain-model rows lack complete identity metadata and fail closed to the
 existing lexical fallback rather than being auto-adopted.
 
-`DenseRetriever.retrieve()` now validates the entire candidate batch against the query
-vector before any dot-product multiplication. Unequal dimensions therefore cannot produce
-a score through Python `zip()` truncation.
+`DenseRetriever.retrieve()` validates the entire candidate batch against the query vector
+before any dot-product multiplication. Unequal dimensions therefore cannot produce a
+score through Python `zip()` truncation.
 
 Phase 3A is **IMPLEMENTED_BOUNDED · TESTED · UNWIRED · NOT ENABLED**. It does not wire
 persistent projection into `pipeline.py`, invoke/probe providers, enable network or remote
@@ -287,6 +340,8 @@ schema, Operator GO, runtime-authority or production-authority semantics.
 | persistent derived vector storage | existing `core/embedding_store.py`; projection remains rebuildable, non-Canon state |
 | projection freshness / lexical fallback | existing `core/embedding_projection.py`; no automatic rebuild or live-route authority |
 | dense on-demand scoring | existing `core/hybrid_retriever.py`; Phase 3A adds pre-score dimension fail-close only |
+| CSM Stage C scan lifecycle | existing `core.code_structural_memory`; explicit caller only, derived/non-canonical/unwired |
+| multilingual retrieval patch lifecycle | existing `core.multilingual_router`; wrapper lifecycle only, no routing/authority expansion |
 | aggregate merge evidence | `scripts/check_pr_merge_evidence.py` with strict Notion hand-off adapter |
 
 No second PolicyKernel, QueryRouter, TruthGate, WriteGate, Canon writer, EmbeddingRegistry,
@@ -306,6 +361,8 @@ ADAO execution                               NOT AUTHORIZED
 remote consent implementation                NOT AUTHORIZED
 ARM-04                                       NOT AUTHORIZED
 background semantic indexing                 NOT AUTHORIZED
+CSM Stage D read/query API                    NOT ADMITTED
+CSM runtime/startup/background wiring         NOT AUTHORIZED
 semantic retrieval-quality claim             NOT ESTABLISHED
 network activation                           false
 runtime route replacement                    false
@@ -315,8 +372,9 @@ runtime authority                            false
 production authority                         false
 schema v8                                    not created
 Continuity 13/12                              not created
+Phase 3B                                     NOT ADMITTED / NOT STARTED
 ```
 
-Any later wiring, semantic-quality benchmark or activation requires a separate bounded
-admission, fresh owner audit, exact-head tests/CI, protected merge and synchronized
+Any later wiring, semantic-quality benchmark, CSM Stage D or activation requires a separate
+bounded admission, fresh owner audit, exact-head tests/CI, protected merge and synchronized
 GitHub/Notion evidence.
