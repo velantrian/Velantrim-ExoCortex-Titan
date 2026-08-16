@@ -12,11 +12,13 @@ INDEXED != UNDERSTOOD != CORRECT != SAFE != CANONICAL.
 from __future__ import annotations
 
 import ast
+import errno
 import hashlib
 import json
 import os
 import secrets
 import sqlite3
+import stat
 import sys
 import time
 from collections import Counter
@@ -824,6 +826,241 @@ def _safe_manifest_paths(
     return sorted(set(observed)), problems
 
 
+def _descriptor_anchored_read_supported() -> bool:
+    supports_dir_fd = getattr(os, "supports_dir_fd", ())
+    return (
+        hasattr(os, "O_DIRECTORY")
+        and hasattr(os, "O_NOFOLLOW")
+        and os.open in supports_dir_fd
+    )
+
+
+def _directory_open_flags() -> int:
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    if hasattr(os, "O_CLOEXEC"):
+        flags |= os.O_CLOEXEC
+    return flags
+
+
+def _file_open_flags() -> int:
+    flags = os.O_RDONLY | os.O_NOFOLLOW
+    if hasattr(os, "O_CLOEXEC"):
+        flags |= os.O_CLOEXEC
+    if hasattr(os, "O_BINARY"):
+        flags |= os.O_BINARY
+    return flags
+
+
+def _descriptor_path_problem(
+    *,
+    relative_path: str,
+    exc: OSError,
+    component_kind: str,
+) -> _ObservedProblem:
+    if exc.errno == errno.ENOENT:
+        reason = "MISSING_FILE"
+    elif exc.errno == errno.ELOOP:
+        reason = "SYMLINK_RACE_DETECTED"
+    elif exc.errno == errno.ENOTDIR and component_kind == "directory":
+        reason = "PATH_COMPONENT_NOT_DIRECTORY"
+    else:
+        reason = "PATH_RESOLUTION_ERROR"
+    return _problem(relative_path=relative_path, reason=reason, is_error=True)
+
+
+def _open_relative_file_no_follow(
+    *,
+    root_fd: int,
+    relative_path: str,
+) -> tuple[int | None, _ObservedProblem | None]:
+    parts = relative_path.split("/")
+    parent_fd = root_fd
+    owned_directory_fds: list[int] = []
+    try:
+        for component in parts[:-1]:
+            try:
+                next_fd = os.open(
+                    component,
+                    _directory_open_flags(),
+                    dir_fd=parent_fd,
+                )
+            except OSError as exc:
+                return None, _descriptor_path_problem(
+                    relative_path=relative_path,
+                    exc=exc,
+                    component_kind="directory",
+                )
+            owned_directory_fds.append(next_fd)
+            parent_fd = next_fd
+
+        try:
+            file_fd = os.open(
+                parts[-1],
+                _file_open_flags(),
+                dir_fd=parent_fd,
+            )
+        except OSError as exc:
+            return None, _descriptor_path_problem(
+                relative_path=relative_path,
+                exc=exc,
+                component_kind="file",
+            )
+        return file_fd, None
+    finally:
+        for directory_fd in reversed(owned_directory_fds):
+            try:
+                os.close(directory_fd)
+            except OSError:
+                pass
+
+
+@dataclass(frozen=True, slots=True)
+class _AnchoredReadResult:
+    raw: bytes | None
+    inspected_bytes: int
+    problem: _ObservedProblem | None
+    stop_scan: bool = False
+
+
+def _read_repository_file_anchored(
+    *,
+    root_fd: int,
+    relative_path: str,
+    budget: ScanBudget,
+    remaining_total_bytes: int,
+) -> _AnchoredReadResult:
+    file_fd, open_problem = _open_relative_file_no_follow(
+        root_fd=root_fd,
+        relative_path=relative_path,
+    )
+    if open_problem is not None:
+        return _AnchoredReadResult(
+            raw=None,
+            inspected_bytes=0,
+            problem=open_problem,
+        )
+    if file_fd is None:
+        raise CSMScannerError("descriptor open returned neither fd nor problem")
+
+    try:
+        try:
+            file_stat = os.fstat(file_fd)
+        except OSError:
+            return _AnchoredReadResult(
+                raw=None,
+                inspected_bytes=0,
+                problem=_problem(
+                    relative_path=relative_path,
+                    reason="STAT_ERROR",
+                    is_error=True,
+                ),
+            )
+
+        if not stat.S_ISREG(file_stat.st_mode):
+            return _AnchoredReadResult(
+                raw=None,
+                inspected_bytes=0,
+                problem=_problem(
+                    relative_path=relative_path,
+                    reason="NOT_REGULAR_FILE",
+                ),
+            )
+
+        size = int(file_stat.st_size)
+        if size > budget.max_file_bytes:
+            return _AnchoredReadResult(
+                raw=None,
+                inspected_bytes=0,
+                problem=_problem(
+                    relative_path=relative_path,
+                    reason="FILE_SIZE_LIMIT",
+                    observed_bytes=size,
+                ),
+            )
+        if remaining_total_bytes <= 0 or size > remaining_total_bytes:
+            return _AnchoredReadResult(
+                raw=None,
+                inspected_bytes=0,
+                problem=_problem(
+                    relative_path=relative_path,
+                    reason="TOTAL_BYTE_LIMIT",
+                    observed_bytes=size,
+                ),
+            )
+
+        read_cap = min(budget.max_file_bytes, remaining_total_bytes)
+        chunks: list[bytes] = []
+        bytes_left = read_cap + 1
+        read_error = False
+        while bytes_left > 0:
+            try:
+                chunk = os.read(file_fd, min(64 * 1024, bytes_left))
+            except InterruptedError:
+                continue
+            except OSError:
+                read_error = True
+                break
+            if not chunk:
+                break
+            chunks.append(chunk)
+            bytes_left -= len(chunk)
+
+        raw = b"".join(chunks)
+        inspected_bytes = len(raw)
+        if read_error:
+            return _AnchoredReadResult(
+                raw=None,
+                inspected_bytes=inspected_bytes,
+                problem=_problem(
+                    relative_path=relative_path,
+                    reason="READ_ERROR",
+                    observed_bytes=inspected_bytes or None,
+                    is_error=True,
+                ),
+                stop_scan=True,
+            )
+
+        if len(raw) > read_cap:
+            overflow_reason = (
+                "TOTAL_BYTE_LIMIT"
+                if remaining_total_bytes <= budget.max_file_bytes
+                else "FILE_SIZE_LIMIT"
+            )
+            return _AnchoredReadResult(
+                raw=None,
+                inspected_bytes=inspected_bytes,
+                problem=_problem(
+                    relative_path=relative_path,
+                    reason=overflow_reason,
+                    observed_bytes=inspected_bytes,
+                    is_error=True,
+                ),
+            )
+
+        if len(raw) != size:
+            return _AnchoredReadResult(
+                raw=None,
+                inspected_bytes=inspected_bytes,
+                problem=_problem(
+                    relative_path=relative_path,
+                    reason="FILE_CHANGED_DURING_SCAN",
+                    observed_bytes=inspected_bytes,
+                    is_error=True,
+                ),
+            )
+
+        return _AnchoredReadResult(
+            raw=raw,
+            inspected_bytes=inspected_bytes,
+            problem=None,
+        )
+    finally:
+        try:
+            os.close(file_fd)
+        except OSError:
+            pass
+
+
 def _discover_and_parse(
     *,
     repository_id: str,
@@ -838,180 +1075,166 @@ def _discover_and_parse(
     problems = list(initial_problems)
     total_bytes = 0
 
-    for relative_path in paths:
-        if monotonic_clock() - started_monotonic > budget.max_scan_seconds:
-            problems.append(_problem(relative_path=relative_path, reason="SCAN_TIMEOUT"))
-            break
-        if not relative_path.endswith(SUPPORTED_EXTENSION):
-            problems.append(
-                _problem(relative_path=relative_path, reason="UNSUPPORTED_EXTENSION")
-            )
-            continue
-        if len(relative_path.split("/")) > budget.max_path_depth:
-            problems.append(_problem(relative_path=relative_path, reason="PATH_DEPTH_LIMIT"))
-            continue
-        if _path_has_symlink_component(root, relative_path):
-            problems.append(_problem(relative_path=relative_path, reason="SYMLINK_REJECTED"))
-            continue
+    if not paths:
+        return (), tuple(problems)
 
-        candidate = root.joinpath(*relative_path.split("/"))
-        try:
-            resolved = candidate.resolve(strict=True)
-        except FileNotFoundError:
-            problems.append(
-                _problem(relative_path=relative_path, reason="MISSING_FILE", is_error=True)
-            )
-            continue
-        except OSError:
-            problems.append(
-                _problem(relative_path=relative_path, reason="PATH_RESOLUTION_ERROR", is_error=True)
-            )
-            continue
-        if not resolved.is_relative_to(root):
-            problems.append(_problem(relative_path=relative_path, reason="ROOT_ESCAPE"))
-            continue
-        try:
-            file_stat = resolved.stat()
-        except OSError:
-            problems.append(
-                _problem(relative_path=relative_path, reason="STAT_ERROR", is_error=True)
-            )
-            continue
-        if not resolved.is_file():
-            problems.append(_problem(relative_path=relative_path, reason="NOT_REGULAR_FILE"))
-            continue
-        size = int(file_stat.st_size)
-        if size > budget.max_file_bytes:
-            problems.append(
-                _problem(
-                    relative_path=relative_path,
-                    reason="FILE_SIZE_LIMIT",
-                    observed_bytes=size,
-                )
-            )
-            continue
-        remaining_total_bytes = budget.max_total_bytes - total_bytes
-        if remaining_total_bytes <= 0 or size > remaining_total_bytes:
-            problems.append(
-                _problem(
-                    relative_path=relative_path,
-                    reason="TOTAL_BYTE_LIMIT",
-                    observed_bytes=size,
-                )
-            )
-            continue
-
-        # Charge aggregate budget for bytes actually inspected, including files that
-        # are later rejected by decode/parse checks. Read one look-ahead byte only
-        # to detect growth after stat without allowing an unbounded read.
-        read_cap = min(budget.max_file_bytes, remaining_total_bytes)
-        try:
-            with resolved.open("rb", buffering=0) as source:
-                raw = source.read(read_cap + 1)
-        except OSError:
-            problems.append(
-                _problem(relative_path=relative_path, reason="READ_ERROR", is_error=True)
-            )
-            # The read request itself was bounded, but an exception gives no
-            # trustworthy byte count. Stop rather than spend an unknown remainder.
-            break
-
-        total_bytes += len(raw)
-        if len(raw) > read_cap:
-            overflow_reason = (
-                "TOTAL_BYTE_LIMIT"
-                if remaining_total_bytes <= budget.max_file_bytes
-                else "FILE_SIZE_LIMIT"
-            )
-            problems.append(
-                _problem(
-                    relative_path=relative_path,
-                    reason=overflow_reason,
-                    observed_bytes=len(raw),
-                    is_error=True,
-                )
-            )
-            continue
-        if len(raw) != size:
-            problems.append(
-                _problem(
-                    relative_path=relative_path,
-                    reason="FILE_CHANGED_DURING_SCAN",
-                    observed_bytes=len(raw),
-                    is_error=True,
-                )
-            )
-            continue
-        if _path_has_symlink_component(root, relative_path):
-            problems.append(
-                _problem(relative_path=relative_path, reason="SYMLINK_RACE_DETECTED", is_error=True)
-            )
-            continue
-        if b"\x00" in raw:
-            problems.append(
-                _problem(
-                    relative_path=relative_path,
-                    reason="BINARY_NUL_PAYLOAD",
-                    observed_bytes=len(raw),
-                )
-            )
-            continue
-        try:
-            raw.decode("utf-8", errors="strict")
-        except UnicodeDecodeError:
-            problems.append(
-                _problem(
-                    relative_path=relative_path,
-                    reason="NON_UTF8_SOURCE",
-                    observed_bytes=len(raw),
-                    is_error=True,
-                )
-            )
-            continue
-        try:
-            nodes, edges = _parse_python_file(
-                repository_id=repository_id,
+    if not _descriptor_anchored_read_supported():
+        problems.extend(
+            _problem(
                 relative_path=relative_path,
-                raw=raw,
+                reason="DESCRIPTOR_ANCHORED_READ_UNAVAILABLE",
+                is_error=True,
             )
-        except (
-            SyntaxError,
-            UnicodeError,
-            ValueError,
-            RecursionError,
-            MemoryError,
-            OverflowError,
-        ):
-            problems.append(
-                _problem(
-                    relative_path=relative_path,
-                    reason="PARSER_ERROR",
-                    observed_bytes=len(raw),
-                    is_error=True,
-                )
-            )
-            continue
-        if monotonic_clock() - started_monotonic > budget.max_scan_seconds:
-            problems.append(
-                _problem(
-                    relative_path=relative_path,
-                    reason="SCAN_TIMEOUT",
-                    observed_bytes=len(raw),
-                )
-            )
-            break
-
-        parsed.append(
-            _ParsedFile(
-                relative_path=relative_path,
-                size_bytes=len(raw),
-                content_digest=hashlib.sha256(raw).hexdigest(),
-                nodes=nodes,
-                edges=edges,
-            )
+            for relative_path in paths
         )
+        return (), tuple(problems)
 
-    return tuple(sorted(parsed, key=lambda item: item.relative_path)), tuple(problems)
+    try:
+        root_fd = os.open(root, _directory_open_flags())
+    except OSError as exc:
+        reason = (
+            "ROOT_SYMLINK_RACE_DETECTED"
+            if exc.errno in {errno.ELOOP, errno.ENOTDIR}
+            else "ROOT_DESCRIPTOR_OPEN_ERROR"
+        )
+        problems.extend(
+            _problem(
+                relative_path=relative_path,
+                reason=reason,
+                is_error=True,
+            )
+            for relative_path in paths
+        )
+        return (), tuple(problems)
+
+    try:
+        for relative_path in paths:
+            if monotonic_clock() - started_monotonic > budget.max_scan_seconds:
+                problems.append(
+                    _problem(relative_path=relative_path, reason="SCAN_TIMEOUT")
+                )
+                break
+            if not relative_path.endswith(SUPPORTED_EXTENSION):
+                problems.append(
+                    _problem(
+                        relative_path=relative_path,
+                        reason="UNSUPPORTED_EXTENSION",
+                    )
+                )
+                continue
+            if len(relative_path.split("/")) > budget.max_path_depth:
+                problems.append(
+                    _problem(relative_path=relative_path, reason="PATH_DEPTH_LIMIT")
+                )
+                continue
+            if _path_has_symlink_component(root, relative_path):
+                problems.append(
+                    _problem(relative_path=relative_path, reason="SYMLINK_REJECTED")
+                )
+                continue
+
+            remaining_total_bytes = budget.max_total_bytes - total_bytes
+            read_result = _read_repository_file_anchored(
+                root_fd=root_fd,
+                relative_path=relative_path,
+                budget=budget,
+                remaining_total_bytes=remaining_total_bytes,
+            )
+            total_bytes += read_result.inspected_bytes
+            if read_result.problem is not None:
+                problems.append(read_result.problem)
+                if read_result.stop_scan:
+                    break
+                continue
+            if read_result.raw is None:
+                raise CSMScannerError("anchored read succeeded without bytes")
+            raw = read_result.raw
+
+            # The descriptor is the security boundary. Keep the pathname check only
+            # as conservative race evidence; a swap that disappears before this check
+            # cannot redirect bytes already read from the opened descriptor.
+            if _path_has_symlink_component(root, relative_path):
+                problems.append(
+                    _problem(
+                        relative_path=relative_path,
+                        reason="SYMLINK_RACE_DETECTED",
+                        is_error=True,
+                    )
+                )
+                continue
+            if b"\x00" in raw:
+                problems.append(
+                    _problem(
+                        relative_path=relative_path,
+                        reason="BINARY_NUL_PAYLOAD",
+                        observed_bytes=len(raw),
+                    )
+                )
+                continue
+            try:
+                raw.decode("utf-8", errors="strict")
+            except UnicodeDecodeError:
+                problems.append(
+                    _problem(
+                        relative_path=relative_path,
+                        reason="NON_UTF8_SOURCE",
+                        observed_bytes=len(raw),
+                        is_error=True,
+                    )
+                )
+                continue
+            try:
+                nodes, edges = _parse_python_file(
+                    repository_id=repository_id,
+                    relative_path=relative_path,
+                    raw=raw,
+                )
+            except (
+                SyntaxError,
+                UnicodeError,
+                ValueError,
+                RecursionError,
+                MemoryError,
+                OverflowError,
+            ):
+                problems.append(
+                    _problem(
+                        relative_path=relative_path,
+                        reason="PARSER_ERROR",
+                        observed_bytes=len(raw),
+                        is_error=True,
+                    )
+                )
+                continue
+            if monotonic_clock() - started_monotonic > budget.max_scan_seconds:
+                problems.append(
+                    _problem(
+                        relative_path=relative_path,
+                        reason="SCAN_TIMEOUT",
+                        observed_bytes=len(raw),
+                    )
+                )
+                break
+
+            parsed.append(
+                _ParsedFile(
+                    relative_path=relative_path,
+                    size_bytes=len(raw),
+                    content_digest=hashlib.sha256(raw).hexdigest(),
+                    nodes=nodes,
+                    edges=edges,
+                )
+            )
+    finally:
+        try:
+            os.close(root_fd)
+        except OSError:
+            pass
+
+    return (
+        tuple(sorted(parsed, key=lambda item: item.relative_path)),
+        tuple(problems),
+    )
 
 
 def _materialize_candidate(
