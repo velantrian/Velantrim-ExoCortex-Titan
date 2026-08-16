@@ -23,13 +23,19 @@ Read only the minimum context needed, in this order:
    and what remains only in open PRs or research documents.
 6. [`../state/project_state.json`](../state/project_state.json) — machine-readable
    SHA roles, Continuity readiness, governance state and KB preservation boundary.
-7. [`COMPONENT_MAP.md`](COMPONENT_MAP.md) — component owners, key files, tests, and
+7. [`AUDIT_AND_FUTURE_WORK.md`](AUDIT_AND_FUTURE_WORK.md) — durable revalidation and
+   future-work ledger. It preserves unresolved work but **does not authorize implementation**
+   or auto-select the next milestone.
+8. [`COMPONENT_MAP.md`](COMPONENT_MAP.md) — component owners, key files, tests, and
    authority boundaries.
-8. [`KNOWN_RISKS.md`](KNOWN_RISKS.md) — unresolved engineering and governance risks.
-9. [`AUDIT_PLAYBOOK.md`](AUDIT_PLAYBOOK.md) — how to audit without exhausting context.
-10. [`WORK_LOG.md`](WORK_LOG.md) — recent significant work, decisions, and hand-offs.
-11. [`NOTION_HANDOFF.md`](NOTION_HANDOFF.md) — structured synchronization queue when
+9. [`KNOWN_RISKS.md`](KNOWN_RISKS.md) — unresolved engineering and governance risks.
+10. [`AUDIT_PLAYBOOK.md`](AUDIT_PLAYBOOK.md) — how to audit without exhausting context.
+11. [`WORK_LOG.md`](WORK_LOG.md) — recent significant work, decisions, and hand-offs.
+12. [`NOTION_HANDOFF.md`](NOTION_HANDOFF.md) — structured synchronization queue when
     the current actor cannot access Notion.
+
+Before selecting future work, re-resolve live GitHub and reconcile the relevant ledger
+entries. `OPEN`, `P0`, or roadmap order never grants implementation authority.
 
 Then open only the component-specific code, tests, ADRs, PRs, and workflow logs needed
 for the current task.
@@ -102,6 +108,7 @@ A missing connector is `HANDOFF_REQUIRED`, not a generic blocker.
 
 | Task | Read next |
 |---|---|
+| Future-work selection / project continuation | `AUDIT_AND_FUTURE_WORK.md` after live GitHub revalidation; never auto-select from priority/order alone |
 | Canon, ESM, promotion, truth | `COMPONENT_MAP.md#canon-and-promotion` plus Truth/Promotion ADRs |
 | Projection outbox or FTS | `COMPONENT_MAP.md#projection-delivery` and `KNOWN_RISKS.md#risk-p0-01` |
 | Continuity PR stack | `CURRENT_STATE.md` plus current PR diffs/checks |
@@ -134,13 +141,15 @@ actually change the conclusion.
 ## Update obligation
 
 Any PR that materially changes architecture, runtime wiring, authority boundaries,
-production posture, project direction, or a known risk must update the relevant files in
-this directory.
+production posture, project direction, a known risk, or a durable future-work
+classification must update the relevant files in this directory.
 
 At minimum:
 
 - update `CURRENT_STATE.md` when status changes;
 - update `KNOWN_RISKS.md` when a risk is opened, narrowed, proven, or closed;
+- update `AUDIT_AND_FUTURE_WORK.md` when a durable future-work state, blocker,
+  supersession or revalidation boundary materially changes;
 - add a concise entry to `WORK_LOG.md` for significant work;
 - update `COMPONENT_MAP.md` when ownership or key paths change;
 - add or amend an ADR for a durable architectural decision;
