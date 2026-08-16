@@ -23,12 +23,15 @@ Read only the minimum context needed, in this order:
    and what remains only in open PRs or research documents.
 6. [`../state/project_state.json`](../state/project_state.json) — machine-readable
    SHA roles, Continuity readiness, governance state and KB preservation boundary.
-7. [`COMPONENT_MAP.md`](COMPONENT_MAP.md) — component owners, key files, tests, and
+7. [`AUDIT_AND_FUTURE_WORK.md`](AUDIT_AND_FUTURE_WORK.md) — durable audit queue,
+   evidence anchors, revalidation triggers, authorization boundaries and safe continuation
+   procedure. **Ledger order is audit order, not implementation authorization.**
+8. [`COMPONENT_MAP.md`](COMPONENT_MAP.md) — component owners, key files, tests, and
    authority boundaries.
-8. [`KNOWN_RISKS.md`](KNOWN_RISKS.md) — unresolved engineering and governance risks.
-9. [`AUDIT_PLAYBOOK.md`](AUDIT_PLAYBOOK.md) — how to audit without exhausting context.
-10. [`WORK_LOG.md`](WORK_LOG.md) — recent significant work, decisions, and hand-offs.
-11. [`NOTION_HANDOFF.md`](NOTION_HANDOFF.md) — structured synchronization queue when
+9. [`KNOWN_RISKS.md`](KNOWN_RISKS.md) — unresolved engineering and governance risks.
+10. [`AUDIT_PLAYBOOK.md`](AUDIT_PLAYBOOK.md) — how to audit without exhausting context.
+11. [`WORK_LOG.md`](WORK_LOG.md) — recent significant work, decisions, and hand-offs.
+12. [`NOTION_HANDOFF.md`](NOTION_HANDOFF.md) — structured synchronization queue when
     the current actor cannot access Notion.
 
 Then open only the component-specific code, tests, ADRs, PRs, and workflow logs needed
@@ -36,7 +39,7 @@ for the current task.
 
 ## Source-of-truth order
 
-When sources disagree, use this order:
+When sources disagree, use this order for implementation/runtime claims:
 
 1. executable code at the exact commit under review;
 2. tests and current CI results;
@@ -44,6 +47,11 @@ When sources disagree, use this order:
 4. current-state documentation and accepted ADRs;
 5. PR descriptions and work-log entries;
 6. historical audits, journals, and archived documents.
+
+For semantic project-state questions, follow the repository-local declared owner. In the
+current architecture, `docs/state/project_state.json` is the machine-readable project-state
+surface; accepted ADRs or explicit contracts may own narrower semantic decisions. Re-query
+GitHub before treating any recorded SHA or lifecycle status as current.
 
 `COLLAB_JOURNAL.md`, old audits, and `docs/archive/` are valuable history, but they are
 not automatically current truth.
@@ -111,7 +119,7 @@ A missing connector is `HANDOFF_REQUIRED`, not a generic blocker.
 | Knowledge-base graph or release asset | `../knowledge/KB_GRAPH_GOVERNANCE.md`, `scripts/validate_kb_graph.py`, `scripts/audit_kb_graph.py` |
 | Identity or personalization | `CURRENT_STATE.md#identity-layer` and the identity risk entry |
 | API/security/deployment | `SECURITY.md`, compose files, Dockerfile, server lifespan, current checks |
-| General audit | `AUDIT_PLAYBOOK.md` and only the relevant component route |
+| General audit / future work | `AUDIT_AND_FUTURE_WORK.md` → `AUDIT_PLAYBOOK.md`, then only the relevant evidence owner |
 | New module, technology, or durable decision | `DOCUMENTATION_SYNC_PROTOCOL.md`, affected ADRs, and the related Notion record or connectorless hand-off |
 | No Notion connector | `NOTION_HANDOFF.md` and the connectorless procedure in the sync protocol |
 
@@ -121,6 +129,7 @@ Do not load the entire repository or every historical audit by default. Prefer:
 
 ```text
 orientation pack
+→ current-state + future-work ledger
 → affected component map
 → current diff / callers
 → focused tests and CI
@@ -140,6 +149,8 @@ this directory.
 At minimum:
 
 - update `CURRENT_STATE.md` when status changes;
+- reconcile `AUDIT_AND_FUTURE_WORK.md` when a future-work state, evidence anchor,
+  authorization boundary, or revalidation trigger changes;
 - update `KNOWN_RISKS.md` when a risk is opened, narrowed, proven, or closed;
 - add a concise entry to `WORK_LOG.md` for significant work;
 - update `COMPONENT_MAP.md` when ownership or key paths change;
