@@ -51,6 +51,26 @@ No production scanner invariant was weakened to make the test pass.
 
 Historical results above do **not** transfer to later PR heads.
 
+## Follow-up independent audit hardening
+
+A later Manus follow-up audit reproduced two resource/filesystem defects against historical Stage-C heads:
+
+1. read-but-rejected files could escape aggregate `max_total_bytes` accounting;
+2. an equal-size pathname `swap-read-restore` race could temporarily redirect a read to an external symlink target, restore the original pathname before the post-read check, and promote external structural content under the in-root relative path.
+
+The current candidate addresses both inside the existing Stage-C filesystem adapter:
+
+- aggregate budget is charged for inspected bytes before decode/AST outcome;
+- file growth is bounded to the admitted cap plus one overflow-detection byte;
+- the registered root is opened as an anchored directory descriptor;
+- intermediate directories are traversed with `dir_fd + O_DIRECTORY + O_NOFOLLOW`;
+- the final file is opened with `dir_fd + O_NOFOLLOW`;
+- `fstat()` and bounded `os.read()` operate on the same opened file object;
+- all owned descriptors are closed deterministically;
+- platforms without the required descriptor/no-follow capabilities fail closed rather than silently falling back to pathname reads.
+
+All CI evidence from before this hardening is historical. The authoritative acceptance result must come from the final code+documentation head.
+
 ## Focused Stage-C coverage
 
 New tests exercise:
@@ -79,8 +99,15 @@ New tests exercise:
 - repeated semantic scan reuses one snapshot while generation/receipt advance;
 - parser failure isolation and no promotion;
 - file-size, total-byte, file-count and path-depth budgets;
+- cumulative byte-budget enforcement across NUL/non-UTF-8/parser-rejected files;
+- growth-after-`fstat()` bounded-read overflow detection;
 - NUL/binary, non-UTF-8 and unsupported-extension rejection;
-- symlink rejection;
+- stable symlink rejection;
+- equal-size swap-read-restore reads the already-opened in-root object and never materializes external AST;
+- final-file symlink swap before descriptor open is rejected;
+- intermediate-directory symlink swap is rejected before an external file can be read;
+- repository-root pathname replacement after root-FD open cannot redirect the scan;
+- descriptor capability absence fails closed without pathname-read fallback;
 - active-lease exclusion;
 - expired-lease recovery to newer generation;
 - stale-lease rejection;
@@ -97,7 +124,7 @@ One scanner test parses a repository file containing:
 
 Acceptance requires that parsing does not execute the top-level code and that the secret/instruction/body strings are absent from the structural persistence surfaces under test.
 
-This proves only the bounded tested persistence surface. It is not a general secret-scanning or hostile-filesystem sandbox claim.
+The hostile-filesystem regression slice additionally verifies object-bound descriptor reads against controlled symlink/pathname mutation. It does not imply OS sandboxing, mount-namespace isolation, privilege separation or preemptive filesystem mutation control beyond the tested descriptor/no-follow boundary.
 
 ## Exact-head acceptance rule
 
@@ -125,7 +152,8 @@ If the head moves, all earlier exact-head CI becomes historical.
 - Python stdlib AST only.
 - Explicit manifest only.
 - No Git-clean source claim.
-- No descriptor-level filesystem sandbox/openat guarantee.
+- Descriptor-anchored hostile-filesystem containment depends on platform `dir_fd`, `O_DIRECTORY` and `O_NOFOLLOW` support; unsupported platforms fail closed.
+- `max_scan_seconds` is cooperative, not a preemptive interruption guarantee inside one OS read or AST parse operation.
 - Incomplete scan receipts retain reason counts, while path-level problem objects remain returned candidate diagnostics rather than current-snapshot structural rows.
 - Scan lease v1 does not renew; declared lease TTL must exceed declared max scan duration.
 - Scan lifecycle events are operational custody rows, not Titan AuditChain.
