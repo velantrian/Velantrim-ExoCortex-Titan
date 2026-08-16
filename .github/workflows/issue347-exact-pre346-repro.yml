@@ -1,4 +1,4 @@
-name: Issue 347 exact pre-346 repro
+name: Issue 347 serialized-bootstrap candidate
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  reproduce:
+  candidate:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -29,12 +29,13 @@ jobs:
       - uses: ./.github/actions/sync-python-deps
         with:
           extras: server dev parsers retrieval embeddings graph-lab
-      - name: Recreate exact pre-346 harness in runner workspace
+      - name: Recreate fresh-store race and apply bounded candidate in runner workspace
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path("tests/test_promotion_projection_outbox_caller.py")
-          text = path.read_text()
+
+          test_path = Path("tests/test_promotion_projection_outbox_caller.py")
+          text = test_path.read_text()
           block = '''    # Issue #249 is a CAS-contention test, not a concurrent schema-bootstrap
               # test. Every independent store owns a per-instance lazy DDL guard, so
               # entering {PROMOTION_CALL} concurrently on never-opened stores
@@ -46,21 +47,28 @@ jobs:
           '''.replace("              ", "").replace("{PROMOTION_CALL}", "validate_and_" + "promote()")
           if block not in text:
               raise SystemExit("preinitialization block not found; refusing approximate replay")
-          text = text.replace(block, "", 1)
-          if "import traceback\n" not in text:
-              text = text.replace("import time\n", "import time\nimport traceback\n", 1)
-          old = 'harness.mark_failed_before_gate(contender_id, f"{type(exc).__name__}: {exc}")'
-          new = 'harness.mark_failed_before_gate(contender_id, f"{type(exc).__name__}: {exc}\\n{traceback.format_exc()}")'
-          if old not in text:
-              raise SystemExit("pre-gate diagnostic hook not found; refusing approximate replay")
-          path.write_text(text.replace(old, new, 1))
+          test_path.write_text(text.replace(block, "", 1))
+
+          memory_path = Path("core/memory.py")
+          memory = memory_path.read_text()
+          needle = '            if self.db_path not in self._ddl_initialized_paths:\n                conn.execute("""\n'
+          replacement = (
+              '            if self.db_path not in self._ddl_initialized_paths:\n'
+              '                # Issue #347 candidate: serialize the entire lazy schema bootstrap\n'
+              '                # across independent SQLite connections before any DDL executes.\n'
+              '                conn.execute("BEGIN IMMEDIATE")\n'
+              '                conn.execute("""\n'
+          )
+          if memory.count(needle) != 1:
+              raise SystemExit(f"expected exactly one lazy-bootstrap boundary, found {memory.count(needle)}")
+          memory_path.write_text(memory.replace(needle, replacement, 1))
           PY
-      - name: Repeat exact pre-346 [25] race
+      - name: Repeat fresh-store [25] race with candidate
         run: |
           set -euo pipefail
           mkdir -p artifacts
           node='tests/test_promotion_projection_outbox_caller.py::test_cas_contention_yields_exactly_one_winner_and_one_intent[25]'
-          log="artifacts/pre346-py${{ matrix.python }}.log"
+          log="artifacts/candidate-py${{ matrix.python }}.log"
           passed=0
           failed=0
           first_failure=""
@@ -74,9 +82,7 @@ jobs:
               passed=$((passed + 1))
             else
               failed=$((failed + 1))
-              if [ -z "$first_failure" ]; then
-                first_failure="$iteration"
-              fi
+              if [ -z "$first_failure" ]; then first_failure="$iteration"; fi
             fi
           done
           {
@@ -84,13 +90,12 @@ jobs:
             echo "passes=${passed}"
             echo "failures=${failed}"
             echo "first_failure=${first_failure:-none}"
-          } | tee artifacts/summary-py${{ matrix.python }}.txt
-          # Characterization outcome: a reproduced failure and a clean run are both evidence.
-          exit 0
-      - name: Upload replay evidence
+          } | tee artifacts/candidate-summary-py${{ matrix.python }}.txt
+          test "$failed" -eq 0
+      - name: Upload candidate evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: issue347-pre346-py${{ matrix.python }}
+          name: issue347-candidate-py${{ matrix.python }}
           path: artifacts/
           retention-days: 14
