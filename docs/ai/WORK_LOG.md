@@ -5,6 +5,122 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
+## 2026-08-16 — #343 post-hardening current-truth convergence · IN PROGRESS
+
+```text
+tracking issue:                    #343 · OPEN
+reconciliation base/main:          8ed2fb60c1edaa96d9af9955184c4abc31ef8500
+CSM Stage C issue / PR:            #333 CLOSED / #335 MERGED
+CSM Stage C merge:                 b4c6f0c16ef9920607d95e590a75df8176d92d71
+multilingual lifecycle issue / PR: #340 CLOSED / #341 MERGED
+multilingual merge/current main:   8ed2fb60c1edaa96d9af9955184c4abc31ef8500
+documentation class:               GITHUB_AND_NOTION
+project-state schema:              v7 · UNCHANGED
+runtime enabled:                   false
+Operator GO:                       false
+runtime authority:                 false
+production authority:              false
+Phase 3B:                          NOT ADMITTED / NOT STARTED
+```
+
+Fresh live reconciliation confirmed that implementation closure had advanced beyond the
+public AI context pack. The highest-impact contradiction was
+`docs/ai/CSM_STAGE_C_SCANNER.md`, which still labelled PR #335 a draft candidate even after
+protected merge and post-merge verification. `CURRENT_STATE.md`, `COMPONENT_MAP.md` and
+this work log also stopped before #335/#341.
+
+This bounded workstream is documentation-only. It reconciles the current public technical
+record without touching Python runtime, project-state schema, feature flags, Canon, Truth,
+Policy, CSM scanner behavior, retrieval behavior or activation posture.
+
+### CSM Stage C factual closure
+
+PR #335 final accepted head `2be69dc8c9007dd3fd7d9eae998e137095f1d4a1` protected-squash-merged as
+`b4c6f0c16ef9920607d95e590a75df8176d92d71`.
+
+```text
+exact-head Full CI:        #1273 · 31927808211 · SUCCESS
+exact-head Docker:         #855  · 31927808219 · SUCCESS
+exact-head CodeQL:         #111  · 31927808241 · SUCCESS
+READY aggregate:           #1519 · 31928109777 · SUCCESS
+post-merge Full CI:        #1274 · 31928517680 · SUCCESS
+post-merge Docker:         #856  · 31928517601 · SUCCESS
+post-merge CodeQL:         #112  · 31928517705 · SUCCESS
+post-merge aggregate:      #1520 · 31928517687 · SUCCESS
+unresolved review threads: 0
+```
+
+Current status is:
+
+`IMPLEMENTED · TESTED · PROTECTED-MERGED · POST-MERGE VERIFIED · UNWIRED · NOT ENABLED · NON-CANONICAL`.
+
+CSM remains `DERIVED · REBUILDABLE · REPOSITORY-SCOPED · SNAPSHOT-BOUND`. No Stage D,
+runtime route, startup hook, worker, watcher, daemon, MCP adapter, Canon/Truth/Policy owner
+or production authority follows from #335.
+
+### Multilingual retrieval patch lifecycle closure
+
+PR #341 final head `848f8c694cc6d884be6a1aa7f5d97d33879450c9` protected-squash-merged as current
+`main@8ed2fb60c1edaa96d9af9955184c4abc31ef8500`.
+
+```text
+exact-head Full CI:        #1276 · SUCCESS
+exact-head Docker:         #858  · SUCCESS
+exact-head CodeQL:         #114  · SUCCESS
+READY aggregate:           #1532 · SUCCESS
+post-merge Full CI:        #1277 · SUCCESS
+post-merge Docker:         #859  · SUCCESS
+post-merge CodeQL:         #115  · SUCCESS
+post-merge aggregate:      #1533 · SUCCESS
+submitted reviews:         0
+unresolved review threads: 0
+```
+
+The existing multilingual patch is now idempotent/reversible with exact original identity
+restoration, external-replacement non-clobbering and safe stale-ownership cleanup. The
+final test-only repair resolved intentionally re-imported `core.*` modules at execution
+time; production retrieval semantics were not weakened or altered to make CI green.
+
+### Previous findings reconciliation matrix
+
+| Finding | Current status | Evidence / boundary |
+|---|---|---|
+| Query read-side purity | **CLOSED** | #331 / #342; query path must not initialize DDL-capable causal schema |
+| `/query/roles` LLM provenance | **CLOSED** | #332 / #334; deterministic fallback cannot masquerade as LLM success |
+| IndexCoordinator ↔ NGram API contract | **CLOSED** | #336 / #337; real public NGram API + degraded health semantics |
+| `storage_info()` stale lifecycle cache | **CLOSED** | #338 / #339; reset clears cached backend metadata |
+| multilingual wrapper lifecycle | **CLOSED** | #340 / #341; current main `8ed2fb60…` |
+| CSM Stage C scanner | **IMPLEMENTED / TESTED / MERGED / UNWIRED / NON-CANONICAL** | #333 / #335; merge `b4c6f0c…` |
+| AI-context documentation drift | **OPEN UNTIL #343 DOCS CLOSURE** | #343; this bounded workstream owns remediation |
+| CAS contention characterization | **OPEN / CHARACTERIZATION REQUIRED** | #249; production CAS defect not proven |
+| independent approval | **KNOWN GOVERNANCE RISK / ACTIVATION PREREQUISITE** | solo ruleset currently requires 0 approvals; green CI is not independent review |
+| production-scale evidence | **OPEN** | SLO/recovery/backup-restore/security/real production evidence not established |
+| warning/deprecation debt | **P2 / CHARACTERIZE LATER** | separate bounded matrix required; not mixed into #343 |
+
+This matrix is status reconciliation, not a claim that an omitted historical finding is
+resolved. Any older finding outside this bounded inventory must be rechecked before it is
+used as current truth.
+
+### Why `project_state.json` is intentionally unchanged
+
+`docs/state/project_state.json` schema v7 is a governed machine record whose repository
+SHA fields are explicitly bound to the Continuity bounded-observation canary checkpoint.
+Neither #335 nor #341 changes Continuity completion, schema, current enablement, Operator
+GO, runtime authority, production authority or the canary semantics represented there.
+Changing that file merely to mirror the latest documentation SHA would therefore create a
+false semantic mutation. It remains untouched in #343 unless a separate schema/contract
+obligation is proven.
+
+### Risk surface intentionally unchanged
+
+`docs/ai/KNOWN_RISKS.md` already states the current #249 characterization, solo-governance
+risk, no current Operator GO, production-readiness gap and other durable residuals. #335
+and #341 do not close or widen those risk semantics. The transient public-documentation
+drift is tracked by #343 and should close with this workstream rather than being converted
+into a new long-lived runtime risk entry.
+
+---
+
 ## 2026-08-15 — #53 Phase 3A embedding-space identity · IMPLEMENTED_BOUNDED / POST-MERGE VERIFIED
 
 ```text
@@ -272,6 +388,7 @@ runtime authority:      false
 production authority:   false
 Canon:                  local
 remote Canon:           forbidden
+Phase 3B:               NOT ADMITTED / NOT STARTED
 ```
 
 Phase 2A and #52 hardening do not authorize embeddings/vector execution, reranker/LLM
@@ -295,3 +412,7 @@ Phase 2A closure sequence completed:
 → FINAL Notion read-back
 → #299 CLOSED_COMPLETED
 ```
+
+CSM Stage C adds a tested structural scanner lifecycle only. It remains unwired,
+not enabled and non-canonical. PR #341 hardens only the ownership lifecycle of the existing
+multilingual retrieval wrapper. Neither grants runtime or production authority.

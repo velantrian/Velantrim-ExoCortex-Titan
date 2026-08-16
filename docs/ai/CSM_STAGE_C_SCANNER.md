@@ -1,11 +1,13 @@
 # Code Structural Memory — Stage C Scanner
 
-Status: **DRAFT IMPLEMENTATION CANDIDATE · PR #335 · NO RUNTIME AUTHORITY**  
-Tracking issue: **#333**  
-Admission baseline: `main@43e20f2a777079bf382c4c6512061edb83c6c0d5`  
+Status: **IMPLEMENTED · TESTED · PROTECTED-MERGED · POST-MERGE VERIFIED · UNWIRED · NOT ENABLED · NON-CANONICAL · NO RUNTIME AUTHORITY**  
+Tracking issue: **#333 · CLOSED / completed**  
+Implementation PR: **#335 · MERGED**  
+Protected squash merge: `b4c6f0c16ef9920607d95e590a75df8176d92d71`  
+Current repository head at reconciliation: `main@8ed2fb60c1edaa96d9af9955184c4abc31ef8500`  
 Predecessor: PC-01 / CSM Stage B, merged via PR #326.
 
-This page is the bounded AI hand-off for the first executable Code Structural Memory scanner slice. It does **not** describe current `main` until PR #335 is protected-merged and post-merge truth is reconciled.
+This page is the bounded AI hand-off for the first executable Code Structural Memory scanner slice. Stage C is now factual implementation truth in `main`; later commits, including PR #341, advanced the repository head without changing this scanner's authority or runtime posture.
 
 ## Purpose
 
@@ -39,11 +41,11 @@ receipt + semantic snapshot CAS
 atomic current-scan pointer
 ```
 
-The scanner remains a **derived, rebuildable, non-canonical projection producer**.
+The scanner remains a **derived, rebuildable, repository-scoped, snapshot-bound, non-canonical projection producer**.
 
 `INDEXED != UNDERSTOOD != CORRECT != SAFE != CANONICAL`.
 
-## Public Stage-C API candidate
+## Public Stage-C API
 
 Package: `core.code_structural_memory`
 
@@ -220,19 +222,34 @@ Properties:
 
 Stage C v1 has no lease renewal. `lease_ttl_seconds` must exceed the declared maximum scan duration.
 
-## Evidence status
+## Final merge and verification evidence
 
-Initial exact-head PR evidence on `1b0a18b4e38e47b8c17362f564f658483f7e265e`:
+The accepted Stage-C implementation was protected-squash-merged through PR #335.
 
-- Ruff: SUCCESS;
-- blocking mypy: SUCCESS;
-- Docker #813: SUCCESS;
-- CodeQL #67: SUCCESS;
-- Full CI #1229: first run found a regression-test setup defect in the new total-byte budget case; production scanner/type/lint gates were not the failing step.
+```text
+tracking issue:                 #333 · CLOSED / completed
+implementation PR:              #335 · MERGED
+final accepted PR head:         2be69dc8c9007dd3fd7d9eae998e137095f1d4a1
+protected squash merge:         b4c6f0c16ef9920607d95e590a75df8176d92d71
+parent main:                     7a513724836fc9624f9870120215c06f94e97ad4
+merge signature:                VERIFIED / valid
+exact-head Full CI:             #1273 · 31927808211 · SUCCESS
+exact-head Docker:              #855  · 31927808219 · SUCCESS
+exact-head CodeQL:              #111  · 31927808241 · SUCCESS
+READY aggregate:                #1519 · 31928109777 · SUCCESS
+post-merge Full CI:             #1274 · 31928517680 · SUCCESS
+post-merge Docker:              #856  · 31928517601 · SUCCESS
+post-merge CodeQL:              #112  · 31928517705 · SUCCESS
+post-merge aggregate:           #1520 · 31928517687 · SUCCESS
+unresolved review threads:      0
+```
 
-The test fixture was corrected in a later PR commit. Do not inherit the historical results above onto the later head; use GitHub exact-head checks for readiness.
+The independent Manus follow-up found two material hardening requirements before final acceptance:
 
-Follow-up independent Manus audit evidence later reproduced a pathname `swap-read-restore` race that could inject equal-size external structural content and still promote a complete snapshot. The Stage-C candidate now anchors the root and file traversal to no-follow descriptors so the checked/read object is the opened object rather than a later pathname observation. Fresh exact-head CI after this hardening is mandatory; earlier green results remain historical.
+1. aggregate byte-budget accounting had to charge bounded reads even when decode/parse later rejected the file;
+2. an equal-size symlink `swap-read-restore` race showed pathname checks were not a sufficient hostile-filesystem boundary.
+
+Both were closed before merge. The final implementation anchors traversal/read to descriptors (`dir_fd`, `O_DIRECTORY`, `O_NOFOLLOW`, same-object `fstat(fd)` and bounded `os.read(fd)`), and unsupported required descriptor/no-follow capability fails closed. Earlier candidate CI/audit checkpoints remain historical evidence; the exact-head and post-merge results above are the accepted closure evidence.
 
 ## Known limitations
 
@@ -268,6 +285,6 @@ The Stage-C scanner has no Canon, ESM, TruthGate, WriteGate, PolicyKernel, Query
 
 ## Next boundary
 
-PR #335 does not admit Stage D.
+Stage C closure does **not** admit Stage D.
 
-After Stage C is independently accepted and merged, a separate decision may admit a bounded read API such as repository/snapshot-scoped symbol and neighbor queries. Project Cognition, ProjectContextPack, MCP and review intelligence remain downstream milestones.
+A separate bounded admission decision is required before any repository/snapshot-scoped read/query API, automatic Git/repository attestation, Project Cognition ingestion, ProjectContextPack, MCP/A2A integration, review intelligence, semantic embeddings, runtime wiring or activation. Phase 3B remains **NOT ADMITTED / NOT STARTED** at this reconciliation checkpoint.

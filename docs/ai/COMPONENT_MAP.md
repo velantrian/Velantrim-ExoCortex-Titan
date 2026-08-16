@@ -1,13 +1,16 @@
 # 🗺️ Component and Authority Map
 
-**Verified implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be`  
+**Verified repository checkpoint:** `main@8ed2fb60c1edaa96d9af9955184c4abc31ef8500`  
+**Phase 3A implementation checkpoint:** `4932727c348ec967564d8babf80e25ca82bce8be`  
+**CSM Stage C merge checkpoint:** `b4c6f0c16ef9920607d95e590a75df8176d92d71`  
 **Continuity:** `12/12 = 100%`  
 **Machine state:** schema v7  
-**Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`
+**Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
+**Phase 3B:** `NOT ADMITTED / NOT STARTED`
 
-This file is an orientation map. Re-query live GitHub before treating the SHA above as
-current repository truth; documentation-only closure commits may advance `main` without
-changing the implementation checkpoint.
+This file is an orientation map. Re-query live GitHub before treating the SHAs above as
+evergreen repository truth. Current repository head, component implementation checkpoints
+and governed machine-state checkpoints intentionally have different semantics.
 
 ## 1. Global authority rules
 
@@ -24,7 +27,8 @@ explicit authorization
 ```
 
 No green CI run, descriptor, health flag, preset, `auto` selection, embedding-space ID,
-historical canary or Notion record grants runtime/production authority.
+CSM snapshot, retrieval wrapper, historical canary or Notion record grants runtime or
+production authority.
 
 ## 2. Continuity ownership
 
@@ -201,9 +205,10 @@ A preset or resource preference cannot grant network, provider or Canon authorit
 
 ## 8. Projection authority
 
-FTS, graph/vector indexes, caches, summaries, NetworkX analytics, Neo4j copies and
-projection-outbox workers are derived/rebuildable surfaces. Projection state never wins
-over Canon and cannot grant write or answer authority by itself.
+FTS, graph/vector indexes, caches, summaries, NetworkX analytics, Neo4j copies,
+projection-outbox workers and CSM structural snapshots are derived/rebuildable surfaces.
+Projection state never wins over Canon and cannot grant write, answer or permission
+authority by itself.
 
 Phase 3A does not change that rule. Persistent embedding projection remains derived,
 explicitly rebuildable and **not wired into the live pipeline route**.
@@ -268,7 +273,112 @@ post-merge aggregate:     #1316 · 31883324900 · SUCCESS
 No provider probing/invocation, remote embedding, background indexing, runtime activation,
 Canon/ESM mutation or semantic-quality claim is owned by this milestone.
 
-## 10. Trace / audit ownership
+## 10. Code Structural Memory Stage C ownership
+
+Issue #333 / protected-merged PR #335 introduced the first bounded executable scanner over
+the already-frozen CSM contracts.
+
+```text
+explicit caller-provided .py manifest
+        ↓
+registered repository root
+        ↓
+descriptor-anchored bounded file reads
+        ↓
+stdlib AST structural extraction
+        ↓
+in-memory validation
+        ↓
+CSM scan receipt + semantic snapshot CAS
+        ↓
+atomic CSM current-scan pointer
+```
+
+Stage C ownership is limited to:
+
+- CSM-local repository registration and root fingerprinting;
+- one repository-scoped scan lease/generation lifecycle;
+- bounded explicit-manifest Python source inspection;
+- structural `MODULE / CLASS / FUNCTION / METHOD` nodes;
+- `CONTAINS` and unresolved typed `IMPORTS` edges;
+- strict incomplete-scan rejection;
+- content-addressed structural snapshots and operational scan receipts.
+
+Security/resource boundary after the final independent-audit hardening:
+
+- aggregate reads are bounded/charged before decode/parse outcome;
+- repository root is opened as an anchored directory descriptor;
+- intermediate traversal uses `dir_fd + O_DIRECTORY + O_NOFOLLOW`;
+- final file open uses `O_NOFOLLOW`;
+- `fstat(fd)` and bounded `os.read(fd)` operate on the same object;
+- unsupported required descriptor/no-follow capability fails closed.
+
+Final merge/evidence:
+
+```text
+final head:                  2be69dc8c9007dd3fd7d9eae998e137095f1d4a1
+protected squash merge:      b4c6f0c16ef9920607d95e590a75df8176d92d71
+post-merge Full CI:          #1274 · 31928517680 · SUCCESS
+post-merge Docker:           #856  · 31928517601 · SUCCESS
+post-merge CodeQL:           #112  · 31928517705 · SUCCESS
+post-merge aggregate:        #1520 · 31928517687 · SUCCESS
+```
+
+Authority boundary:
+
+```text
+CSM = DERIVED
+    + REBUILDABLE
+    + REPOSITORY-SCOPED
+    + SNAPSHOT-BOUND
+    + NON-CANONICAL
+
+server route                    NONE
+startup hook                    NONE
+background worker               NONE
+watcher/daemon                  NONE
+MCP adapter                     NONE
+default runtime call site       NONE
+WIRED                           false
+ENABLED                         false
+runtime authority               false
+production authority            false
+```
+
+CSM Stage D read/query APIs are **NOT ADMITTED / NOT STARTED** by this closure.
+
+## 11. Multilingual retrieval patch lifecycle ownership
+
+Issue #340 / merged PR #341 hardened the lifecycle of the **existing** multilingual
+retrieval patch; it did not introduce a new router or retrieval authority.
+
+Owner: `core/multilingual_router.py`.
+
+Bounded contract:
+
+- repeated install is idempotent while the module owns the active wrapper;
+- exact pre-install `pipeline.retrieve` identity is retained;
+- explicit unpatch restores that exact original;
+- an external replacement is never clobbered on uninstall;
+- stale/lost ownership bookkeeping is cleared safely;
+- multilingual scoring/detection/default feature behavior remains unchanged.
+
+Current merge/evidence:
+
+```text
+final head:                  848f8c694cc6d884be6a1aa7f5d97d33879450c9
+protected squash merge:      8ed2fb60c1edaa96d9af9955184c4abc31ef8500
+post-merge Full CI:          #1277 · SUCCESS
+post-merge Docker:           #859  · SUCCESS
+post-merge CodeQL:           #115  · SUCCESS
+post-merge aggregate:        #1533 · SUCCESS
+```
+
+This lifecycle fix does not grant routing permission, runtime enablement, provider/network
+execution, Canon mutation, Operator GO, runtime authority, production authority or Phase 3B
+admission.
+
+## 12. Trace / audit ownership
 
 Existing TRACE/AnalysisTrace and AuditChain owners remain unchanged.
 
@@ -277,8 +387,11 @@ persist TRACE, append AuditChain receipts or create a new provenance authority.
 
 A future separately authorized caller may attach capability, provider-health and
 PolicyKernel snapshot metadata. Phase 3A adds no TRACE persistence or new audit owner.
+CSM scan/lease receipts are CSM operational custody evidence only; they are not Titan
+AuditChain evidence and do not become a second audit root. The multilingual lifecycle patch
+adds no TRACE or Audit owner.
 
-## 11. Anti-bypass guarantees
+## 13. Anti-bypass guarantees
 
 - one canonical store/write protocol;
 - one PolicyKernel permission owner;
@@ -296,9 +409,11 @@ PolicyKernel snapshot metadata. Phase 3A adds no TRACE persistence or new audit 
 - equal embedding dimension cannot override space incompatibility;
 - unknown/legacy projection metadata cannot auto-grant vector reuse;
 - dimension mismatch cannot reach similarity multiplication;
-- registry/provider/projection state cannot grant Operator GO or runtime authority.
+- CSM snapshot/scan state cannot become Canon or runtime authority;
+- multilingual wrapper installation cannot create a second routing authority;
+- registry/provider/projection/CSM/wrapper state cannot grant Operator GO or production authority.
 
-## 12. Phase 2A and Phase 3A files
+## 14. Phase 2A, Phase 3A and current first-read files
 
 ```text
 #299                                           Phase 2A tracking / closure issue
@@ -314,9 +429,17 @@ core/hybrid_retriever.py                       pre-score dimension fail-close
 tests/test_phase3a_embedding_space.py          Phase 3A contract tests
 docs/ai/PHASE3A_EMBEDDING_SPACE_IDENTITY.md   Phase 3A hand-off
 docs/adr/ADR-2026-08-15-phase3a-embedding-space-identity.md
+
+core/model_free_core.py                       ModelFreeCore bounded read-side facade
+core/policy_kernel.py                         permission authority
+core/embedding_store.py                       persistent derived vector storage
+core/embedding_projection.py                  projection freshness/fallback
+core/code_structural_memory/                  CSM contracts + Stage C scanner lifecycle
+core/multilingual_router.py                   existing multilingual patch + lifecycle ownership
+core/pipeline.py                              existing runtime/query route owner
 ```
 
-## 13. Explicitly unauthorized after Phase 3A
+## 15. Explicitly unauthorized at current checkpoint
 
 ```text
 capability registry runtime wiring     NOT DONE
@@ -330,6 +453,8 @@ ADAO execution                         OUT_OF_SCOPE
 ARM-04                                 NOT_AUTHORIZED
 remote consent implementation          OUT_OF_SCOPE
 background semantic indexing           OUT_OF_SCOPE
+CSM Stage D read/query API              NOT ADMITTED
+CSM runtime/startup/background wiring   NOT AUTHORIZED
 network activation                     false
 runtime route replacement              false
 runtime enablement                     false
@@ -340,8 +465,8 @@ remote Canon                           forbidden
 schema v8                              not created
 Continuity 13/12                       not created
 semantic retrieval-quality claim       not established
+Phase 3B                               NOT ADMITTED / NOT STARTED
 ```
 
-Before any later wiring, quality benchmark or activation, re-audit live `main`, preserve
-the owners above, and require a separate bounded admission decision. Phase 3A closure does
-not automatically admit Phase 3B.
+Before any later wiring, quality benchmark, CSM Stage D, Phase 3B or activation, re-audit
+live `main`, preserve the owners above, and require a separate bounded admission decision.
