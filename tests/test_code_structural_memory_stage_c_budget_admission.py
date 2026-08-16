@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import builtins
+import os
 import sqlite3
 from pathlib import Path
 
@@ -50,15 +50,22 @@ def test_rejected_files_consume_total_budget_before_later_reads(
         (root / "d_valid.py").write_bytes(b"x = 1\n")
 
         opened_for_read: list[str] = []
-        original_open = Path.open
+        real_open = scanner.os.open
 
-        def tracking_open(path: Path, *args: object, **kwargs: object):
-            mode = args[0] if args else kwargs.get("mode", "r")
-            if path.parent == root and mode == "rb":
-                opened_for_read.append(path.name)
-            return original_open(path, *args, **kwargs)  # type: ignore[arg-type]
+        def tracking_open(
+            path: os.PathLike[str] | str,
+            flags: int,
+            mode: int = 0o777,
+            *,
+            dir_fd: int | None = None,
+        ) -> int:
+            if isinstance(path, str) and path.endswith(".py") and dir_fd is not None:
+                opened_for_read.append(path)
+            if dir_fd is None:
+                return real_open(path, flags, mode)
+            return real_open(path, flags, mode, dir_fd=dir_fd)
 
-        monkeypatch.setattr(Path, "open", tracking_open)
+        monkeypatch.setattr(scanner.os, "open", tracking_open)
 
         outcome = scanner.scan_python_repository(
             conn,
@@ -93,7 +100,7 @@ def test_rejected_files_consume_total_budget_before_later_reads(
         conn.close()
 
 
-def test_growth_after_stat_reads_only_to_file_budget_plus_detection_byte(
+def test_growth_after_fstat_reads_only_to_file_budget_plus_detection_byte(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -101,19 +108,18 @@ def test_growth_after_stat_reads_only_to_file_budget_plus_detection_byte(
     try:
         victim = root / "victim.py"
         victim.write_bytes(b"x=1\n")
-        original_open = Path.open
-        swapped = False
+        real_read = scanner.os.read
+        grew = False
 
-        def grow_before_read(path: Path, *args: object, **kwargs: object):
-            nonlocal swapped
-            mode = args[0] if args else kwargs.get("mode", "r")
-            if path == victim and mode == "rb" and not swapped:
-                swapped = True
-                with builtins.open(victim, "wb") as handle:
-                    handle.write(b"x=1\n" + (b"#" * 100))
-            return original_open(path, *args, **kwargs)  # type: ignore[arg-type]
+        def grow_before_read(fd: int, count: int) -> bytes:
+            nonlocal grew
+            if not grew:
+                grew = True
+                with victim.open("ab") as handle:
+                    handle.write(b"#" * 100)
+            return real_read(fd, count)
 
-        monkeypatch.setattr(Path, "open", grow_before_read)
+        monkeypatch.setattr(scanner.os, "read", grow_before_read)
 
         outcome = scanner.scan_python_repository(
             conn,
@@ -125,7 +131,7 @@ def test_growth_after_stat_reads_only_to_file_budget_plus_detection_byte(
             token_factory=lambda: "lease-growth-budget",
         )
 
-        assert swapped is True
+        assert grew is True
         assert outcome.promoted is False
         assert outcome.final_disposition == "INCOMPLETE_REJECTED"
         assert victim.stat().st_size > 17
