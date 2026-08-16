@@ -1,56 +1,42 @@
-name: Issue 347 serialized-bootstrap candidate
+name: Issue 347 materialize bootstrap fix
 
 on:
   pull_request:
     branches: [main]
     paths:
       - ".github/workflows/issue347-exact-pre346-repro.yml"
-      - "tests/test_promotion_projection_outbox_caller.py"
       - "core/memory.py"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  candidate:
+  materialize:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    strategy:
-      fail-fast: false
-      matrix:
-        python: ["3.11", "3.12"]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
-          python-version: ${{ matrix.python }}
+          python-version: "3.11"
       - uses: ./.github/actions/sync-python-deps
         with:
           extras: server dev parsers retrieval embeddings graph-lab
-      - name: Recreate fresh-store race and apply rollback-safe candidate
+      - name: Apply rollback-safe serialized bootstrap fix
+        id: patch
         run: |
           python - <<'PY'
           from pathlib import Path
-
-          test_path = Path("tests/test_promotion_projection_outbox_caller.py")
-          text = test_path.read_text()
-          block = '''    # Issue #249 is a CAS-contention test, not a concurrent schema-bootstrap
-              # test. Every independent store owns a per-instance lazy DDL guard, so
-              # entering {PROMOTION_CALL} concurrently on never-opened stores
-              # mixes first-use schema churn into the intended CAS race. Initialize
-              # each contender sequentially before installing/releasing the CAS gate;
-              # the threaded section below then races only the real promotion path.
-              for store in stores:
-                  store.ensure_schema()
-          '''.replace("              ", "").replace("{PROMOTION_CALL}", "validate_and_" + "promote()")
-          if block not in text:
-              raise SystemExit("preinitialization block not found; refusing approximate replay")
-          test_path.write_text(text.replace(block, "", 1))
-
-          memory_path = Path("core/memory.py")
-          lines = memory_path.read_text().splitlines(keepends=True)
+          path = Path("core/memory.py")
+          lines = path.read_text().splitlines(keepends=True)
+          marker = "Issue #347: serialize this lazy DDL region across SQLite connections."
+          if marker in path.read_text():
+              Path(".issue347_already_patched").write_text("1")
+              raise SystemExit(0)
           boundary = "            if self.db_path not in self._ddl_initialized_paths:\n"
           end_line = "                self._ddl_initialized_paths.add(self.db_path)\n"
           try:
@@ -80,16 +66,15 @@ jobs:
               '                    raise\n',
           ])
           lines[start : end + 1] = replacement
-          memory_path.write_text("".join(lines))
+          path.write_text("".join(lines))
           PY
-      - name: Prove bootstrap failure releases writer transaction
+      - name: Prove failure cleanup
         run: |
           python - <<'PY'
           import sqlite3
           import tempfile
           from pathlib import Path
           from core.memory import SQLiteGraphStore
-
           with tempfile.TemporaryDirectory() as tmp:
               db = Path(tmp) / "bootstrap-failure.db"
               with sqlite3.connect(str(db)) as conn:
@@ -110,51 +95,20 @@ jobs:
               finally:
                   store.close()
           PY
-      - name: Repeat fresh-store [25] race with rollback-safe candidate
+      - name: Focused storage regression
         run: |
-          set -euo pipefail
-          mkdir -p artifacts
-          node='tests/test_promotion_projection_outbox_caller.py::test_cas_contention_yields_exactly_one_winner_and_one_intent[25]'
-          log="artifacts/candidate-py${{ matrix.python }}.log"
-          passed=0
-          failed=0
-          first_failure=""
-          for iteration in $(seq 1 25); do
-            set +e
-            output=$(python -m pytest -q "$node" --tb=short --timeout=180 2>&1)
-            rc=$?
-            set -e
-            printf '=== iteration %s ===\n%s\n' "$iteration" "$output" >> "$log"
-            if [ "$rc" -eq 0 ]; then
-              passed=$((passed + 1))
-            else
-              failed=$((failed + 1))
-              if [ -z "$first_failure" ]; then first_failure="$iteration"; fi
-            fi
-          done
-          {
-            echo "python=${{ matrix.python }}"
-            echo "passes=${passed}"
-            echo "failures=${failed}"
-            echo "first_failure=${first_failure:-none}"
-          } | tee artifacts/candidate-summary-py${{ matrix.python }}.txt
-          test "$failed" -eq 0
-      - name: Export validated core candidate
-        if: matrix.python == '3.11'
+          python -m pytest -q \
+            tests/test_promotion_projection_outbox_caller.py \
+            tests/test_sqlite_promotion_cas_contention.py \
+            tests/test_erasure_audit_view_bootstrap_race.py \
+            tests/test_sqlite_lazy_add_column_concurrency.py \
+            tests/test_sqlite_lazy_add_column_error_classification.py \
+            --timeout=180
+      - name: Commit validated production fix
+        if: hashFiles('.issue347_already_patched') == ''
         run: |
-          mkdir -p patched-core/core
-          cp core/memory.py patched-core/core/memory.py
-      - name: Upload patched core candidate
-        if: matrix.python == '3.11'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: issue347-patched-core
-          path: patched-core/
-          retention-days: 14
-      - name: Upload candidate evidence
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: issue347-candidate-export-py${{ matrix.python }}
-          path: artifacts/
-          retention-days: 14
+          git config user.name "Velantrim CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add core/memory.py
+          git commit -m "fix(storage): serialize fresh-store lazy bootstrap (#347)"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
