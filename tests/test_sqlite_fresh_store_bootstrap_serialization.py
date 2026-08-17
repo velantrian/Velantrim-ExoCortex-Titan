@@ -7,6 +7,7 @@ import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -70,6 +71,143 @@ def _outbox_version(db_path: Path, fact_id: str) -> int:
                 (fact_id,),
             ).fetchone()[0]
         )
+
+
+class _BootstrapTxnProbe:
+    """Shared test probe for the real SQLite writer-transaction boundary."""
+
+    def __init__(self, contenders: int) -> None:
+        self.barrier = threading.Barrier(contenders, timeout=20.0)
+        self.lock = threading.Lock()
+        self.active = 0
+        self.max_active = 0
+        self.begin_attempts = 0
+        self.begin_returns = 0
+
+    def before_begin(self) -> None:
+        with self.lock:
+            self.begin_attempts += 1
+        self.barrier.wait(timeout=20.0)
+
+    def after_begin(self) -> None:
+        with self.lock:
+            self.begin_returns += 1
+            self.active += 1
+            self.max_active = max(self.max_active, self.active)
+
+    def after_end(self) -> None:
+        with self.lock:
+            if self.active:
+                self.active -= 1
+
+
+class _BootstrapTxnProbeConnection:
+    """Proxy real SQLite calls; observe but never replace transaction semantics."""
+
+    def __init__(self, real_conn: sqlite3.Connection, probe: _BootstrapTxnProbe) -> None:
+        object.__setattr__(self, "_real", real_conn)
+        object.__setattr__(self, "_probe", probe)
+        object.__setattr__(self, "_owns_bootstrap_txn", False)
+
+    def execute(self, sql, *args, **kwargs):
+        normalized = " ".join(str(sql).split()).upper()
+        if normalized == "BEGIN IMMEDIATE":
+            probe = object.__getattribute__(self, "_probe")
+            probe.before_begin()
+            result = object.__getattribute__(self, "_real").execute(sql, *args, **kwargs)
+            object.__setattr__(self, "_owns_bootstrap_txn", True)
+            probe.after_begin()
+            return result
+        return object.__getattribute__(self, "_real").execute(sql, *args, **kwargs)
+
+    def commit(self):
+        try:
+            return object.__getattribute__(self, "_real").commit()
+        finally:
+            if object.__getattribute__(self, "_owns_bootstrap_txn"):
+                object.__setattr__(self, "_owns_bootstrap_txn", False)
+                object.__getattribute__(self, "_probe").after_end()
+
+    def rollback(self):
+        try:
+            return object.__getattribute__(self, "_real").rollback()
+        finally:
+            if object.__getattribute__(self, "_owns_bootstrap_txn"):
+                object.__setattr__(self, "_owns_bootstrap_txn", False)
+                object.__getattribute__(self, "_probe").after_end()
+
+    def __enter__(self):
+        object.__getattribute__(self, "_real").__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return object.__getattribute__(self, "_real").__exit__(exc_type, exc, tb)
+
+    def __getattr__(self, name):
+        return getattr(object.__getattribute__(self, "_real"), name)
+
+    def __setattr__(self, name, value):
+        setattr(object.__getattribute__(self, "_real"), name, value)
+
+
+def test_fresh_store_bootstrap_uses_single_writer_transaction_under_contention(
+    tmp_path: Path,
+) -> None:
+    """Deterministically prove the #347 serialization boundary.
+
+    Two genuinely fresh stores rendezvous immediately before the real
+    ``BEGIN IMMEDIATE`` call. Both attempt acquisition together, but only one
+    writer transaction may return at a time. This is differential evidence:
+    the historical implementation has no ``BEGIN IMMEDIATE`` at this boundary,
+    so ``begin_attempts``/``begin_returns`` remain zero and this test fails
+    deterministically instead of depending on a rare SQLITE_SCHEMA interleave.
+    """
+
+    db_path = tmp_path / "fresh-store-bootstrap-boundary.db"
+    seed = SQLiteGraphStore(str(db_path))
+    try:
+        seed.ensure_schema()
+    finally:
+        seed.close()
+
+    contenders = 2
+    stores = [SQLiteGraphStore(str(db_path)) for _ in range(contenders)]
+    probe = _BootstrapTxnProbe(contenders)
+    real_connect = sqlite3.connect
+    errors: list[BaseException] = []
+    errors_lock = threading.Lock()
+
+    def probed_connect(path, *args, **kwargs):
+        conn = real_connect(path, *args, **kwargs)
+        if str(path) == str(db_path):
+            return _BootstrapTxnProbeConnection(conn, probe)
+        return conn
+
+    def bootstrap(index: int) -> None:
+        try:
+            stores[index].ensure_schema()
+        except BaseException as exc:  # noqa: BLE001 - surfaced after all workers join
+            with errors_lock:
+                errors.append(exc)
+
+    try:
+        with mock.patch("sqlite3.connect", side_effect=probed_connect):
+            threads = [threading.Thread(target=bootstrap, args=(index,)) for index in range(contenders)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=30.0)
+                assert not thread.is_alive(), "bootstrap contender did not finish"
+    finally:
+        for store in stores:
+            store.close()
+
+    assert not errors, errors
+    assert probe.begin_attempts == contenders
+    assert probe.begin_returns == contenders
+    assert probe.max_active == 1, "fresh-store bootstrap writer transactions overlapped"
+    assert probe.active == 0
+    assert _integrity_ok(db_path)
 
 
 def test_concurrent_fresh_stores_serialize_bootstrap_before_real_cas(tmp_path: Path) -> None:
