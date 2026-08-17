@@ -26,7 +26,7 @@ def test_dependency_audit_uses_repository_uv_and_pinned_artifact_action() -> Non
     text = WORKFLOW.read_text(encoding="utf-8")
 
     audit_section = text.split("  dependency-audit:\n", 1)[1]
-    assert "astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86" in audit_section
+    assert "astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d" in audit_section
     assert "version: 0.12.3" in audit_section
     assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in audit_section
     assert "if: always()" in audit_section
