@@ -487,282 +487,296 @@ class SQLiteGraphStore(GraphStore):
                 pass
 
             if self.db_path not in self._ddl_initialized_paths:
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS facts (
-                        fact_id               TEXT PRIMARY KEY,
-                        claim                 TEXT NOT NULL,
-                        source                TEXT NOT NULL,
-                        confidence            REAL    DEFAULT 0.5,
-                        epistemic_state       TEXT    DEFAULT 'Observed',
-                        created_at            TEXT    NOT NULL,
-                        updated_at            TEXT    NOT NULL,
-                        metadata              TEXT    DEFAULT '{}',
-                        history               TEXT    DEFAULT '[]',
-                        -- Bi-temporal fields (I96, V9 Sprint 1 Contract)
-                        t_event_valid_start   TEXT    DEFAULT NULL,
-                        t_event_valid_end     TEXT    DEFAULT NULL,
-                        t_ingestion_start     TEXT    DEFAULT NULL,
-                        t_ingestion_end       TEXT    DEFAULT NULL,
-                        -- Modality fields (v8.7, P0 claim-type spec)
-                        claim_type            TEXT    NOT NULL DEFAULT 'UNKNOWN',
-                        origin_type           TEXT    NOT NULL DEFAULT 'UNKNOWN',
-                        -- Memory type taxonomy (v8.8 Codex audit): episodic/semantic/procedural/system
-                        memory_type           TEXT    NOT NULL DEFAULT 'semantic'
-                    )
-                """)
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_facts_epistemic_state
-                    ON facts (epistemic_state)
-                """)
-                # Bi-temporal индексы для time-travel запросов
-                # Обёрнуты в try/except: legacy-БД без bi-temporal колонок
-                # сначала получат ALTER TABLE ниже, а индексы создадутся при следующем open().
+                # Issue #347: serialize this lazy DDL region across SQLite connections.
+                conn.execute("BEGIN IMMEDIATE")
                 try:
                     conn.execute("""
-                        CREATE INDEX IF NOT EXISTS idx_facts_ingestion
-                        ON facts (fact_id, t_ingestion_start, t_ingestion_end)
+                        CREATE TABLE IF NOT EXISTS facts (
+                            fact_id               TEXT PRIMARY KEY,
+                            claim                 TEXT NOT NULL,
+                            source                TEXT NOT NULL,
+                            confidence            REAL    DEFAULT 0.5,
+                            epistemic_state       TEXT    DEFAULT 'Observed',
+                            created_at            TEXT    NOT NULL,
+                            updated_at            TEXT    NOT NULL,
+                            metadata              TEXT    DEFAULT '{}',
+                            history               TEXT    DEFAULT '[]',
+                            -- Bi-temporal fields (I96, V9 Sprint 1 Contract)
+                            t_event_valid_start   TEXT    DEFAULT NULL,
+                            t_event_valid_end     TEXT    DEFAULT NULL,
+                            t_ingestion_start     TEXT    DEFAULT NULL,
+                            t_ingestion_end       TEXT    DEFAULT NULL,
+                            -- Modality fields (v8.7, P0 claim-type spec)
+                            claim_type            TEXT    NOT NULL DEFAULT 'UNKNOWN',
+                            origin_type           TEXT    NOT NULL DEFAULT 'UNKNOWN',
+                            -- Memory type taxonomy (v8.8 Codex audit): episodic/semantic/procedural/system
+                            memory_type           TEXT    NOT NULL DEFAULT 'semantic'
+                        )
                     """)
-                except sqlite3.OperationalError:
-                    pass
-                try:
                     conn.execute("""
-                        CREATE INDEX IF NOT EXISTS idx_facts_event_valid
-                        ON facts (fact_id, t_event_valid_start, t_event_valid_end)
+                        CREATE INDEX IF NOT EXISTS idx_facts_epistemic_state
+                        ON facts (epistemic_state)
                     """)
-                except sqlite3.OperationalError:
-                    pass
-                # D1 (audit M5): expression index on claim_dedup_key → O(log N) dedup lookup
-                try:
-                    conn.execute("""
-                        CREATE INDEX IF NOT EXISTS idx_facts_claim_dedup
-                        ON facts (json_extract(metadata, '$.claim_dedup_key'))
-                    """)
-                except sqlite3.OperationalError:
-                    pass  # старая версия SQLite без индексов по выражению
-                # V8.8: FTS5 полнотекстовый индекс для O(log N) search()
-                try:
-                    conn.execute("""
-                        CREATE VIRTUAL TABLE IF NOT EXISTS facts_fts
-                        USING fts5(fact_id UNINDEXED, claim, source, tokenize='unicode61')
-                    """)
-                except sqlite3.OperationalError:
-                    pass  # FTS5 не поддерживается этой сборкой SQLite
-                # Миграция существующих БД — добавить колонки если их нет
-                existing_cols = {
-                    r[1] for r in conn.execute("PRAGMA table_info(facts)").fetchall()
-                }
-                for col in ("history", "t_event_valid_start", "t_event_valid_end",
-                            "t_ingestion_start", "t_ingestion_end",
-                            "audit_subject_id"):
-                    if col not in existing_cols:
+                    # Bi-temporal индексы для time-travel запросов
+                    # Обёрнуты в try/except: legacy-БД без bi-temporal колонок
+                    # сначала получат ALTER TABLE ниже, а индексы создадутся при следующем open().
+                    try:
+                        conn.execute("""
+                            CREATE INDEX IF NOT EXISTS idx_facts_ingestion
+                            ON facts (fact_id, t_ingestion_start, t_ingestion_end)
+                        """)
+                    except sqlite3.OperationalError:
+                        pass
+                    try:
+                        conn.execute("""
+                            CREATE INDEX IF NOT EXISTS idx_facts_event_valid
+                            ON facts (fact_id, t_event_valid_start, t_event_valid_end)
+                        """)
+                    except sqlite3.OperationalError:
+                        pass
+                    # D1 (audit M5): expression index on claim_dedup_key → O(log N) dedup lookup
+                    try:
+                        conn.execute("""
+                            CREATE INDEX IF NOT EXISTS idx_facts_claim_dedup
+                            ON facts (json_extract(metadata, '$.claim_dedup_key'))
+                        """)
+                    except sqlite3.OperationalError:
+                        pass  # старая версия SQLite без индексов по выражению
+                    # V8.8: FTS5 полнотекстовый индекс для O(log N) search()
+                    try:
+                        conn.execute("""
+                            CREATE VIRTUAL TABLE IF NOT EXISTS facts_fts
+                            USING fts5(fact_id UNINDEXED, claim, source, tokenize='unicode61')
+                        """)
+                    except sqlite3.OperationalError:
+                        pass  # FTS5 не поддерживается этой сборкой SQLite
+                    # Миграция существующих БД — добавить колонки если их нет
+                    existing_cols = {
+                        r[1] for r in conn.execute("PRAGMA table_info(facts)").fetchall()
+                    }
+                    for col in ("history", "t_event_valid_start", "t_event_valid_end",
+                                "t_ingestion_start", "t_ingestion_end",
+                                "audit_subject_id"):
+                        if col not in existing_cols:
+                            _safe_add_column_if_missing(
+                                conn, "facts", col,
+                                sql_type="TEXT", not_null=False, default_literal="NULL",
+                            )
+                    # v8.7 P0: modality fields — safe migration for existing databases
+                    if "claim_type" not in existing_cols:
                         _safe_add_column_if_missing(
-                            conn, "facts", col,
+                            conn, "facts", "claim_type",
+                            sql_type="TEXT", not_null=True, default_literal="'UNKNOWN'",
+                        )
+                    if "origin_type" not in existing_cols:
+                        _safe_add_column_if_missing(
+                            conn, "facts", "origin_type",
+                            sql_type="TEXT", not_null=True, default_literal="'UNKNOWN'",
+                        )
+    
+                    # TASK-09: L0 Raw Memory (migration 010 DDL — идемпотентно)
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS l0_raw_memory (
+                            raw_id        TEXT PRIMARY KEY,
+                            original_text TEXT NOT NULL,
+                            content_hash  TEXT NOT NULL UNIQUE,
+                            source        TEXT,
+                            source_type   TEXT DEFAULT 'unknown',
+                            language      TEXT DEFAULT 'unknown',
+                            char_count    INTEGER NOT NULL DEFAULT 0,
+                            word_count    INTEGER NOT NULL DEFAULT 0,
+                            created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+                            metadata      TEXT DEFAULT '{}'
+                        )
+                    """)
+                    conn.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_raw_hash
+                        ON l0_raw_memory(content_hash)
+                    """)
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS l0_fact_provenance (
+                            id              TEXT PRIMARY KEY,
+                            raw_id          TEXT NOT NULL REFERENCES l0_raw_memory(raw_id),
+                            fact_id         TEXT NOT NULL REFERENCES facts(fact_id),
+                            derivation_type TEXT NOT NULL DEFAULT 'direct',
+                            step_index      INTEGER NOT NULL DEFAULT 0,
+                            transformation  TEXT,
+                            linked_at       TEXT NOT NULL DEFAULT (datetime('now'))
+                        )
+                    """)
+                    # GDPR Art. 17/30: content-free erasure tombstones (right to be forgotten).
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS erasure_log (
+                            erasure_id   TEXT PRIMARY KEY,
+                            fact_id      TEXT NOT NULL,
+                            user_id      TEXT NOT NULL DEFAULT 'default',
+                            reason       TEXT NOT NULL DEFAULT 'user_request',
+                            claim_hash   TEXT NOT NULL,
+                            erased_at    TEXT NOT NULL,
+                            request_ref  TEXT DEFAULT NULL,
+                            job_id       TEXT DEFAULT NULL
+                        )
+                    """)
+                    _upgrade_erasure_log_schema(conn)
+                    # Post-review hotfix (migration 014): job_id scopes
+                    # write_tombstone()'s idempotency check to a specific
+                    # erasure_jobs generation instead of "any tombstone ever
+                    # recorded for this fact_id" — a fact_id that gets
+                    # recreated and durably re-erased needs its OWN new
+                    # tombstone row, not a silent no-op because an earlier
+                    # generation already has one. NULL for legacy rows written
+                    # before this column existed.
+                    erasure_log_cols = {
+                        r[1] for r in conn.execute("PRAGMA table_info(erasure_log)").fetchall()
+                    }
+                    if "job_id" not in erasure_log_cols:
+                        _safe_add_column_if_missing(
+                            conn, "erasure_log", "job_id",
                             sql_type="TEXT", not_null=False, default_literal="NULL",
                         )
-                # v8.7 P0: modality fields — safe migration for existing databases
-                if "claim_type" not in existing_cols:
-                    _safe_add_column_if_missing(
-                        conn, "facts", "claim_type",
-                        sql_type="TEXT", not_null=True, default_literal="'UNKNOWN'",
-                    )
-                if "origin_type" not in existing_cols:
-                    _safe_add_column_if_missing(
-                        conn, "facts", "origin_type",
-                        sql_type="TEXT", not_null=True, default_literal="'UNKNOWN'",
-                    )
-
-                # TASK-09: L0 Raw Memory (migration 010 DDL — идемпотентно)
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS l0_raw_memory (
-                        raw_id        TEXT PRIMARY KEY,
-                        original_text TEXT NOT NULL,
-                        content_hash  TEXT NOT NULL UNIQUE,
-                        source        TEXT,
-                        source_type   TEXT DEFAULT 'unknown',
-                        language      TEXT DEFAULT 'unknown',
-                        char_count    INTEGER NOT NULL DEFAULT 0,
-                        word_count    INTEGER NOT NULL DEFAULT 0,
-                        created_at    TEXT NOT NULL DEFAULT (datetime('now')),
-                        metadata      TEXT DEFAULT '{}'
-                    )
-                """)
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_raw_hash
-                    ON l0_raw_memory(content_hash)
-                """)
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS l0_fact_provenance (
-                        id              TEXT PRIMARY KEY,
-                        raw_id          TEXT NOT NULL REFERENCES l0_raw_memory(raw_id),
-                        fact_id         TEXT NOT NULL REFERENCES facts(fact_id),
-                        derivation_type TEXT NOT NULL DEFAULT 'direct',
-                        step_index      INTEGER NOT NULL DEFAULT 0,
-                        transformation  TEXT,
-                        linked_at       TEXT NOT NULL DEFAULT (datetime('now'))
-                    )
-                """)
-                # GDPR Art. 17/30: content-free erasure tombstones (right to be forgotten).
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS erasure_log (
-                        erasure_id   TEXT PRIMARY KEY,
-                        fact_id      TEXT NOT NULL,
-                        user_id      TEXT NOT NULL DEFAULT 'default',
-                        reason       TEXT NOT NULL DEFAULT 'user_request',
-                        claim_hash   TEXT NOT NULL,
-                        erased_at    TEXT NOT NULL,
-                        request_ref  TEXT DEFAULT NULL,
-                        job_id       TEXT DEFAULT NULL
-                    )
-                """)
-                _upgrade_erasure_log_schema(conn)
-                # Post-review hotfix (migration 014): job_id scopes
-                # write_tombstone()'s idempotency check to a specific
-                # erasure_jobs generation instead of "any tombstone ever
-                # recorded for this fact_id" — a fact_id that gets
-                # recreated and durably re-erased needs its OWN new
-                # tombstone row, not a silent no-op because an earlier
-                # generation already has one. NULL for legacy rows written
-                # before this column existed.
-                erasure_log_cols = {
-                    r[1] for r in conn.execute("PRAGMA table_info(erasure_log)").fetchall()
-                }
-                if "job_id" not in erasure_log_cols:
-                    _safe_add_column_if_missing(
-                        conn, "erasure_log", "job_id",
-                        sql_type="TEXT", not_null=False, default_literal="NULL",
-                    )
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_erasure_user
-                    ON erasure_log(user_id, erased_at)
-                """)
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_erasure_fact
-                    ON erasure_log(fact_id)
-                """)
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_erasure_job
-                    ON erasure_log(job_id)
-                """)
-                # Post-review hotfix (round 2): the fact_id/job_id
-                # check-then-insert in write_tombstone() below is a
-                # necessary but not sufficient guard — two concurrent
-                # callers finalizing the SAME job_id (e.g. a live
-                # erase_fact_durable() racing resume_incomplete_jobs()'s
-                # crash-recovery sweep for the same job) can both pass the
-                # SELECT check before either commits its INSERT. A real
-                # DB-level constraint is the actual source of truth: at
-                # most one tombstone row may ever exist for a given
-                # non-NULL job_id. NULL is excluded (SQLite treats NULL as
-                # distinct from every other NULL in a UNIQUE index) so
-                # legacy job_id=NULL rows are unaffected and can still
-                # accumulate per the old fact_id-wide semantics.
-                conn.execute("""
-                    CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_job_unique
-                    ON erasure_log(job_id)
-                    WHERE job_id IS NOT NULL
-                """)
-                # Round 5.3 Codex finding (P2): a virgin/tenant DB initialized
-                # ONLY through this runtime DDL path (no migrations/*.sql ever
-                # applied) must expose the SAME durable-erasure audit surface
-                # as a fully-migrated DB — append-only guards, the correction
-                # table, and the correction-aware erasure_audit VIEW — not
-                # just the bare erasure_log table. Mirrors migrations 012 and
-                # 016 verbatim; kept idempotent (IF NOT EXISTS / DROP+CREATE)
-                # for defense-in-depth even though _ddl_initialized_paths
-                # already makes this whole block run once per db_path.
-                conn.execute("""
-                    CREATE TRIGGER IF NOT EXISTS prevent_erasure_delete
-                    BEFORE DELETE ON erasure_log
-                    BEGIN
-                        SELECT RAISE(ABORT, 'VELANTRIM: erasure_log is append-only. Cannot delete audit records.');
-                    END
-                """)
-                conn.execute("""
-                    CREATE TRIGGER IF NOT EXISTS prevent_erasure_update
-                    BEFORE UPDATE ON erasure_log
-                    BEGIN
-                        SELECT RAISE(ABORT, 'VELANTRIM: erasure_log is append-only. Cannot modify audit records.');
-                    END
-                """)
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS erasure_log_subject_corrections (
-                        correction_id      TEXT PRIMARY KEY,
-                        erasure_id         TEXT NOT NULL UNIQUE REFERENCES erasure_log(erasure_id),
-                        job_id             TEXT,
-                        batch_id           TEXT NOT NULL REFERENCES erasure_batches(batch_id),
-                        corrected_user_id  TEXT NOT NULL,
-                        original_user_id   TEXT NOT NULL,
-                        created_at         TEXT NOT NULL
-                    )
-                """)
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_erasure_log_subject_corrections_erasure_id
-                    ON erasure_log_subject_corrections(erasure_id)
-                """)
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_erasure_log_subject_corrections_user
-                    ON erasure_log_subject_corrections(corrected_user_id)
-                """)
-                conn.execute("""
-                    CREATE TRIGGER IF NOT EXISTS prevent_erasure_log_subject_corrections_delete
-                    BEFORE DELETE ON erasure_log_subject_corrections
-                    BEGIN
-                        SELECT RAISE(ABORT, 'VELANTRIM: erasure_log_subject_corrections is append-only. Cannot delete audit records.');
-                    END
-                """)
-                conn.execute("""
-                    CREATE TRIGGER IF NOT EXISTS prevent_erasure_log_subject_corrections_update
-                    BEFORE UPDATE ON erasure_log_subject_corrections
-                    BEGIN
-                        SELECT RAISE(ABORT, 'VELANTRIM: erasure_log_subject_corrections is append-only. Cannot modify audit records.');
-                    END
-                """)
-                conn.execute("DROP VIEW IF EXISTS erasure_audit")
-                conn.execute("""
-                    CREATE VIEW IF NOT EXISTS erasure_audit AS
-                    SELECT
-                        el.erasure_id,
-                        el.fact_id,
-                        COALESCE(c.corrected_user_id, el.user_id) AS user_id,
-                        el.reason,
-                        el.claim_hash,
-                        el.erased_at,
-                        el.request_ref
-                    FROM erasure_log el
-                    LEFT JOIN erasure_log_subject_corrections c ON c.erasure_id = el.erasure_id
-                    ORDER BY el.erased_at DESC
-                """)
-                # TASK-09: derived_from на facts (указывает на l0_raw_memory.raw_id)
-                if "derived_from" not in existing_cols:
-                    _safe_add_column_if_missing(
-                        conn, "facts", "derived_from",
-                        sql_type="TEXT", not_null=False, default_literal="NULL",
-                    )
-
-                # D1 (audit M5): backfill claim_dedup_key для legacy-фактов без него,
-                # чтобы индексированный lookup был ПОЛНЫМ, а fallback не трогал keyed-факты.
-                # Идемпотентно: после первого прохода запрос возвращает 0 строк (быстро по индексу).
-                try:
-                    from core.fact_integrity import compute_claim_dedup_key as _cdk
-                    missing = conn.execute(
-                        "SELECT fact_id, claim, metadata FROM facts "
-                        "WHERE json_extract(metadata, '$.claim_dedup_key') IS NULL"
-                    ).fetchall()
-                    for _fid, _claim, _meta in missing:
-                        try:
-                            _md = json.loads(_meta or "{}")
-                        except (json.JSONDecodeError, TypeError):
-                            _md = {}
-                        _md["claim_dedup_key"] = _cdk(_claim or "")
-                        conn.execute(
-                            "UPDATE facts SET metadata = ? WHERE fact_id = ?",
-                            (json.dumps(_md), _fid),
+                    conn.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_erasure_user
+                        ON erasure_log(user_id, erased_at)
+                    """)
+                    conn.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_erasure_fact
+                        ON erasure_log(fact_id)
+                    """)
+                    conn.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_erasure_job
+                        ON erasure_log(job_id)
+                    """)
+                    # Post-review hotfix (round 2): the fact_id/job_id
+                    # check-then-insert in write_tombstone() below is a
+                    # necessary but not sufficient guard — two concurrent
+                    # callers finalizing the SAME job_id (e.g. a live
+                    # erase_fact_durable() racing resume_incomplete_jobs()'s
+                    # crash-recovery sweep for the same job) can both pass the
+                    # SELECT check before either commits its INSERT. A real
+                    # DB-level constraint is the actual source of truth: at
+                    # most one tombstone row may ever exist for a given
+                    # non-NULL job_id. NULL is excluded (SQLite treats NULL as
+                    # distinct from every other NULL in a UNIQUE index) so
+                    # legacy job_id=NULL rows are unaffected and can still
+                    # accumulate per the old fact_id-wide semantics.
+                    conn.execute("""
+                        CREATE UNIQUE INDEX IF NOT EXISTS idx_erasure_job_unique
+                        ON erasure_log(job_id)
+                        WHERE job_id IS NOT NULL
+                    """)
+                    # Round 5.3 Codex finding (P2): a virgin/tenant DB initialized
+                    # ONLY through this runtime DDL path (no migrations/*.sql ever
+                    # applied) must expose the SAME durable-erasure audit surface
+                    # as a fully-migrated DB — append-only guards, the correction
+                    # table, and the correction-aware erasure_audit VIEW — not
+                    # just the bare erasure_log table. Mirrors migrations 012 and
+                    # 016 verbatim; kept idempotent (IF NOT EXISTS / DROP+CREATE)
+                    # for defense-in-depth even though _ddl_initialized_paths
+                    # already makes this whole block run once per db_path.
+                    conn.execute("""
+                        CREATE TRIGGER IF NOT EXISTS prevent_erasure_delete
+                        BEFORE DELETE ON erasure_log
+                        BEGIN
+                            SELECT RAISE(ABORT, 'VELANTRIM: erasure_log is append-only. Cannot delete audit records.');
+                        END
+                    """)
+                    conn.execute("""
+                        CREATE TRIGGER IF NOT EXISTS prevent_erasure_update
+                        BEFORE UPDATE ON erasure_log
+                        BEGIN
+                            SELECT RAISE(ABORT, 'VELANTRIM: erasure_log is append-only. Cannot modify audit records.');
+                        END
+                    """)
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS erasure_log_subject_corrections (
+                            correction_id      TEXT PRIMARY KEY,
+                            erasure_id         TEXT NOT NULL UNIQUE REFERENCES erasure_log(erasure_id),
+                            job_id             TEXT,
+                            batch_id           TEXT NOT NULL REFERENCES erasure_batches(batch_id),
+                            corrected_user_id  TEXT NOT NULL,
+                            original_user_id   TEXT NOT NULL,
+                            created_at         TEXT NOT NULL
                         )
+                    """)
+                    conn.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_erasure_log_subject_corrections_erasure_id
+                        ON erasure_log_subject_corrections(erasure_id)
+                    """)
+                    conn.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_erasure_log_subject_corrections_user
+                        ON erasure_log_subject_corrections(corrected_user_id)
+                    """)
+                    conn.execute("""
+                        CREATE TRIGGER IF NOT EXISTS prevent_erasure_log_subject_corrections_delete
+                        BEFORE DELETE ON erasure_log_subject_corrections
+                        BEGIN
+                            SELECT RAISE(ABORT, 'VELANTRIM: erasure_log_subject_corrections is append-only. Cannot delete audit records.');
+                        END
+                    """)
+                    conn.execute("""
+                        CREATE TRIGGER IF NOT EXISTS prevent_erasure_log_subject_corrections_update
+                        BEFORE UPDATE ON erasure_log_subject_corrections
+                        BEGIN
+                            SELECT RAISE(ABORT, 'VELANTRIM: erasure_log_subject_corrections is append-only. Cannot modify audit records.');
+                        END
+                    """)
+                    conn.execute("DROP VIEW IF EXISTS erasure_audit")
+                    conn.execute("""
+                        CREATE VIEW IF NOT EXISTS erasure_audit AS
+                        SELECT
+                            el.erasure_id,
+                            el.fact_id,
+                            COALESCE(c.corrected_user_id, el.user_id) AS user_id,
+                            el.reason,
+                            el.claim_hash,
+                            el.erased_at,
+                            el.request_ref
+                        FROM erasure_log el
+                        LEFT JOIN erasure_log_subject_corrections c ON c.erasure_id = el.erasure_id
+                        ORDER BY el.erased_at DESC
+                    """)
+                    # TASK-09: derived_from на facts (указывает на l0_raw_memory.raw_id)
+                    if "derived_from" not in existing_cols:
+                        _safe_add_column_if_missing(
+                            conn, "facts", "derived_from",
+                            sql_type="TEXT", not_null=False, default_literal="NULL",
+                        )
+    
+                    # D1 (audit M5): backfill claim_dedup_key для legacy-фактов без него,
+                    # чтобы индексированный lookup был ПОЛНЫМ, а fallback не трогал keyed-факты.
+                    # Идемпотентно: после первого прохода запрос возвращает 0 строк (быстро по индексу).
+                    try:
+                        from core.fact_integrity import compute_claim_dedup_key as _cdk
+                        missing = conn.execute(
+                            "SELECT fact_id, claim, metadata FROM facts "
+                            "WHERE json_extract(metadata, '$.claim_dedup_key') IS NULL"
+                        ).fetchall()
+                        for _fid, _claim, _meta in missing:
+                            try:
+                                _md = json.loads(_meta or "{}")
+                            except (json.JSONDecodeError, TypeError):
+                                _md = {}
+                            _md["claim_dedup_key"] = _cdk(_claim or "")
+                            conn.execute(
+                                "UPDATE facts SET metadata = ? WHERE fact_id = ?",
+                                (json.dumps(_md), _fid),
+                            )
+                    except Exception:
+                        pass  # backfill — best-effort, не должен ломать запуск
+    
+                    conn.commit()
+                    self._ddl_initialized_paths.add(self.db_path)
                 except Exception:
-                    pass  # backfill — best-effort, не должен ломать запуск
-
-                conn.commit()
-                self._ddl_initialized_paths.add(self.db_path)
+                    try:
+                        conn.rollback()
+                    except sqlite3.Error:
+                        logger.warning("SQLite bootstrap rollback failed", exc_info=True)
+                    try:
+                        conn.close()
+                    except sqlite3.Error:
+                        logger.warning("SQLite bootstrap close failed", exc_info=True)
+                    self._sqlite_conn = None
+                    raise
 
                 # VersionStore — отдельное соединение; закрываем основное до DDL warmup.
                 try:

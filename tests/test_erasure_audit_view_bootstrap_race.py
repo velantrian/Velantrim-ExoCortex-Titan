@@ -1,42 +1,20 @@
 """
-tests/test_erasure_audit_view_bootstrap_race.py — erasure_audit CREATE boundary race
-=====================================================================================
+tests/test_erasure_audit_view_bootstrap_race.py — erasure_audit bootstrap race
+================================================================================
 
-Issue #182, narrowly scoped: `core/memory.py`'s lazy DDL bootstrap performs
+Issue #182 originally used a test-only barrier immediately before
+``CREATE VIEW erasure_audit`` to force multiple fresh SQLite connections into
+that DDL statement together. Issue #347 intentionally changes the bootstrap
+contract: the complete lazy DDL/bootstrap region is serialized by SQLite with
+``BEGIN IMMEDIATE``. A rendezvous *inside* that serialized region is therefore
+invalid and deadlocks by construction.
 
-    DROP VIEW IF EXISTS erasure_audit
-    CREATE VIEW erasure_audit AS ...
-
-with no `IF NOT EXISTS` on the `CREATE`, guarded only by the per-instance
-`self._ddl_initialized_paths` — not cross-connection. Two independent
-connections can both pass their own `DROP VIEW IF EXISTS` (each sees the
-view absent or drops it), then both attempt the bare `CREATE VIEW`; one
-succeeds and the other raises `sqlite3.OperationalError: view erasure_audit
-already exists`.
-
-Issue #184 tracks a SEPARATE, independent defect family in the same lazy
-bootstrap block (`PRAGMA table_info(...)` → Python-side membership check →
-`ALTER TABLE ... ADD COLUMN`, on several `facts`/`erasure_log` columns) and
-is explicitly out of scope here. To isolate the VIEW race from that
-unrelated defect, this file always seeds the database's schema completely
-(sequentially, through one ordinary store) BEFORE racing any fresh
-instance — every `ALTER TABLE ADD COLUMN` check that a racer's own
-first-use bootstrap performs will see its column already present (added
-during seeding) and take zero write action, so the ADD COLUMN family
-never fires here. Only the DROP/CREATE VIEW pair remains unconditional on
-every first use, exactly as issue #182 describes, so it is the only thing
-that can still race against a genuinely fresh contender.
-
-The test-only `_CreateViewBarrierConnection` proxy lets every statement —
-including `DROP VIEW IF EXISTS erasure_audit` — execute completely
-unmodified. It only pauses on a shared `threading.Barrier` immediately
-before a statement whose normalized text starts with
-`"CREATE VIEW erasure_audit"` — the exact CREATE boundary the race lives
-on — so multiple contenders that already independently dropped the view
-are made to attempt their CREATE in close proximity, deterministically,
-rather than hoping OS thread scheduling happens to interleave badly. It
-never rewrites SQL, never swallows an exception, never creates or drops
-the VIEW itself, and never substitutes commit/rollback.
+This regression now places the rendezvous immediately before each contender's
+real ``BEGIN IMMEDIATE`` acquisition. Every contender reaches the serialization
+boundary concurrently, then SQLite admits them one writer at a time. The test
+still verifies the original erasure-audit guarantees (exactly one correct view,
+append-only triggers, projection semantics, repeated fresh bootstrap safety),
+without requiring peers to coexist inside the serialized DDL region.
 """
 
 from __future__ import annotations
@@ -61,21 +39,17 @@ _APPEND_ONLY_TRIGGERS = {
     "prevent_erasure_log_subject_corrections_delete",
     "prevent_erasure_log_subject_corrections_update",
 }
+_BEGIN_IMMEDIATE_RE = re.compile(r"^BEGIN IMMEDIATE\b")
 
 
-_CREATE_ERASURE_AUDIT_RE = re.compile(
-    r"^CREATE VIEW (IF NOT EXISTS )?erasure_audit\b",
-)
+class _BootstrapBoundaryBarrierConnection:
+    """Test-only proxy that gates only the bootstrap serialization boundary.
 
-
-class _CreateViewBarrierConnection:
-    """Test-only proxy: every statement runs unmodified; only a statement
-    whose normalized text matches the erasure_audit CREATE boundary
-    (`CREATE VIEW erasure_audit ...` or, after the fix,
-    `CREATE VIEW IF NOT EXISTS erasure_audit ...`) pauses on `barrier`
-    first. DROP VIEW IF EXISTS erasure_audit is NOT gated — it runs
-    exactly like any other statement, ungated, on both the unmodified
-    baseline and the fixed runtime."""
+    SQL is never rewritten or swallowed. The first ``BEGIN IMMEDIATE`` on each
+    contender waits at the shared barrier *before* SQLite tries to acquire the
+    writer transaction. Once released, the real statement executes normally,
+    so SQLite itself serializes entry into the DDL region.
+    """
 
     def __init__(self, real_conn: sqlite3.Connection, barrier: threading.Barrier, timeout: float):
         object.__setattr__(self, "_real", real_conn)
@@ -85,13 +59,20 @@ class _CreateViewBarrierConnection:
 
     def execute(self, sql, *args, **kwargs):
         if not object.__getattribute__(self, "_gated"):
-            normalized = " ".join(str(sql).split())
-            if _CREATE_ERASURE_AUDIT_RE.match(normalized):
+            normalized = " ".join(str(sql).split()).upper()
+            if _BEGIN_IMMEDIATE_RE.match(normalized):
                 object.__setattr__(self, "_gated", True)
                 object.__getattribute__(self, "_barrier").wait(
                     timeout=object.__getattribute__(self, "_timeout"),
                 )
         return object.__getattribute__(self, "_real").execute(sql, *args, **kwargs)
+
+    def __enter__(self):
+        object.__getattribute__(self, "_real").__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return object.__getattribute__(self, "_real").__exit__(exc_type, exc, tb)
 
     def __getattr__(self, name):
         return getattr(object.__getattribute__(self, "_real"), name)
@@ -101,9 +82,6 @@ class _CreateViewBarrierConnection:
 
 
 def _seed_full_schema(db_path: Path) -> None:
-    """Sequentially bootstrap the complete schema through one ordinary
-    store BEFORE any racer opens a connection — see module docstring for
-    why this isolates the VIEW race from issue #184's ADD COLUMN family."""
     seed = SQLiteGraphStore(str(db_path))
     try:
         seed.ensure_schema()
@@ -145,11 +123,7 @@ def _assert_seed_complete(db_path: Path) -> None:
 def _race_fresh_bootstrap_on_seeded_db(
     db_path: Path, num_contenders: int, timeout: float = 20.0,
 ) -> tuple[dict[int, BaseException], list[SQLiteGraphStore]]:
-    """Race `num_contenders` genuinely fresh SQLiteGraphStore instances
-    (each with an empty `_ddl_initialized_paths`, none has called `_db()`
-    or `ensure_schema()` before) against an ALREADY fully-seeded database.
-    Every contender still performs a real, uncoordinated first-use
-    bootstrap — only the erasure_audit CREATE statement is barrier-gated."""
+    """Start genuinely fresh stores together at the BEGIN IMMEDIATE boundary."""
     barrier = threading.Barrier(num_contenders, timeout=timeout)
     errors: dict[int, BaseException] = {}
     errors_lock = threading.Lock()
@@ -159,7 +133,7 @@ def _race_fresh_bootstrap_on_seeded_db(
     def gated_connect(path, *args, **kwargs):
         real_conn = real_connect(path, *args, **kwargs)
         if str(path) == str(db_path):
-            return _CreateViewBarrierConnection(real_conn, barrier, timeout)
+            return _BootstrapBoundaryBarrierConnection(real_conn, barrier, timeout)
         return real_conn
 
     def make_and_bootstrap(index: int) -> None:
@@ -179,13 +153,13 @@ def _race_fresh_bootstrap_on_seeded_db(
             threading.Thread(target=make_and_bootstrap, args=(i,))
             for i in range(num_contenders)
         ]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join(timeout=timeout + 10)
-            assert not t.is_alive(), "contender thread did not finish within timeout"
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=timeout + 10)
+            assert not thread.is_alive(), "contender thread did not finish within timeout"
 
-    return errors, [s for s in stores if s is not None]
+    return errors, [store for store in stores if store is not None]
 
 
 def _erasure_audit_view_rows(db_path: Path) -> list[tuple]:
@@ -214,33 +188,19 @@ def _append_only_triggers_exist(db_path: Path) -> bool:
 
 
 def _assert_view_projection_semantics(db_path: Path) -> None:
-    """Insert one erasure_log row plus a subject correction and confirm the
-    view still resolves the EFFECTIVE user_id via COALESCE (migration 016's
-    contract), joined on c.erasure_id = el.erasure_id."""
     store = SQLiteGraphStore(str(db_path))
     try:
         with store._db() as conn:
-            # erasure_log_subject_corrections.batch_id REFERENCES
-            # erasure_batches(batch_id), a table created only by migration
-            # 015 (not by this runtime lazy-DDL path). SQLiteGraphStore's
-            # runtime connection used by this test does not enable
-            # PRAGMA foreign_keys=ON (unlike some other components, e.g.
-            # core/version_store.py, which do enable it on their own
-            # connections), so this connection does not enforce the
-            # reference and an arbitrary value suffices.
             conn.execute(
                 "INSERT INTO erasure_log "
-                "(erasure_id, fact_id, user_id, reason, claim_hash, erased_at, "
-                " request_ref) "
-                "VALUES ('e1', 'f1', 'original-user', 'dsr', 'hash1', "
-                "datetime('now'), 'ref1')",
+                "(erasure_id, fact_id, user_id, reason, claim_hash, erased_at, request_ref) "
+                "VALUES ('e1', 'f1', 'original-user', 'dsr', 'hash1', datetime('now'), 'ref1')",
             )
             conn.execute(
                 "INSERT INTO erasure_log_subject_corrections "
                 "(correction_id, erasure_id, batch_id, corrected_user_id, "
                 " original_user_id, created_at) "
-                "VALUES ('c1', 'e1', 'b1', 'corrected-user', 'original-user', "
-                "datetime('now'))",
+                "VALUES ('c1', 'e1', 'b1', 'corrected-user', 'original-user', datetime('now'))",
             )
             conn.commit()
             row = conn.execute(
@@ -249,13 +209,10 @@ def _assert_view_projection_semantics(db_path: Path) -> None:
                 ("e1",),
             ).fetchone()
         assert row is not None
-        (erasure_id, fact_id, user_id, reason, claim_hash, erased_at, request_ref) = row
+        erasure_id, fact_id, user_id, reason, claim_hash, erased_at, request_ref = row
         assert erasure_id == "e1"
         assert fact_id == "f1"
-        assert user_id == "corrected-user", (
-            "view must resolve the EFFECTIVE (corrected) subject, not the "
-            "original recorded one"
-        )
+        assert user_id == "corrected-user"
         assert reason == "dsr"
         assert claim_hash == "hash1"
         assert erased_at is not None
@@ -273,20 +230,15 @@ def test_concurrent_fresh_bootstrap_on_seeded_db_creates_exactly_one_view(
     _assert_seed_complete(db_path)
 
     errors, stores = _race_fresh_bootstrap_on_seeded_db(db_path, num_contenders)
-
     try:
-        # No duplicate-column exception (would mean the ADD COLUMN family
-        # from issue #184 leaked into this harness — the isolation failed)
-        # and no other exception is acceptable evidence for issue #182.
         for index, exc in errors.items():
             message = str(exc)
             assert "duplicate column name" not in message, (
-                f"contender {index} hit issue #184's ADD COLUMN race, not "
-                f"issue #182's VIEW race — isolation failed: {exc!r}"
+                f"contender {index} hit the separate ADD COLUMN race: {exc!r}"
             )
         assert not errors, (
-            f"{len(errors)}/{num_contenders} contenders raised during "
-            f"concurrent bootstrap: {errors!r}"
+            f"{len(errors)}/{num_contenders} contenders raised during concurrent bootstrap: "
+            f"{errors!r}"
         )
 
         for store in stores:
@@ -298,7 +250,6 @@ def test_concurrent_fresh_bootstrap_on_seeded_db_creates_exactly_one_view(
         with sqlite3.connect(str(db_path), timeout=5.0) as conn:
             cols = [r[1] for r in conn.execute("PRAGMA table_info(erasure_audit)").fetchall()]
         assert cols == _EXPECTED_COLUMNS
-
         assert _integrity_check(db_path) == "ok"
         assert _append_only_triggers_exist(db_path)
     finally:
@@ -308,9 +259,6 @@ def test_concurrent_fresh_bootstrap_on_seeded_db_creates_exactly_one_view(
     _assert_view_projection_semantics(db_path)
     assert _integrity_check(db_path) == "ok"
 
-    # A further round of concurrent first-use bootstrap (new stores, same
-    # already-fully-initialized database) must remain safe and must not
-    # change the view.
     before_sql = _erasure_audit_view_rows(db_path)[0][1]
     errors2, stores2 = _race_fresh_bootstrap_on_seeded_db(db_path, num_contenders)
     try:

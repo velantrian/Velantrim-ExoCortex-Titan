@@ -1,49 +1,18 @@
 """
-tests/test_sqlite_lazy_add_column_concurrency.py — lazy ADD COLUMN TOCTOU race
-================================================================================
+tests/test_sqlite_lazy_add_column_concurrency.py — lazy ADD COLUMN bootstrap concurrency
+=====================================================================================
 
-Issue #184: `SQLiteGraphStore._db()`'s lazy schema bootstrap performs, for several
-`facts`/`erasure_log` columns, a Python-side check-then-act upgrade:
+Issue #184 originally forced contenders to rendezvous immediately before the same
+``ALTER TABLE ... ADD COLUMN`` statement. Issue #347 intentionally serializes the
+complete lazy DDL/bootstrap region with ``BEGIN IMMEDIATE``. A barrier inside that
+serialized region is therefore invalid and deadlocks by construction.
 
-    existing_cols = {r[1] for r in conn.execute("PRAGMA table_info(table)").fetchall()}
-    if column not in existing_cols:
-        conn.execute(f"ALTER TABLE table ADD COLUMN {column} ...")
-
-guarded only by the per-**instance** `self._ddl_initialized_paths` — never shared
-across independent instances/connections/processes. Two fresh instances can both read
-the same pre-alter snapshot, both decide the column is absent, and then race the same
-`ALTER TABLE ... ADD COLUMN`:
-
-    A: PRAGMA table_info(facts) -> audit_subject_id absent
-    B: PRAGMA table_info(facts) -> audit_subject_id absent
-    A: ALTER TABLE facts ADD COLUMN audit_subject_id ...  -> success
-    B: ALTER TABLE facts ADD COLUMN audit_subject_id ...  -> OperationalError:
-                                                              duplicate column name
-
-This was discovered during issue #182's investigation (branch
-`agent/erasure-audit-ddl-bootstrap-race`, commit
-`58b20d950a915813c9bdbc4e7f6d63ee9589e9bc`) and is tracked independently here — it is
-NOT the `erasure_audit` VIEW race (issue #182, fixed in PR #185) and does not touch it.
-
-Two schema shapes exercise different code paths:
-
-- **Virgin/current schema** (no pre-existing database file): `facts.audit_subject_id`
-  and `facts.derived_from` are the only two of the nine guarded columns NOT already
-  present in the current `CREATE TABLE IF NOT EXISTS facts (...)` statement, so their
-  `ALTER TABLE ADD COLUMN` unconditionally fires even for a brand-new database.
-- **Legacy schema** (a pre-existing database file built with an older, narrower column
-  set — simulating a database created by an older version of this code, or by the
-  formal migrations before some of these columns were added at the runtime-bootstrap
-  layer): every other guarded column (`history`, the four bi-temporal columns,
-  `claim_type`, `origin_type`, `erasure_log.job_id`) only ever attempts its
-  `ALTER TABLE` when the column is genuinely absent from a pre-existing database —
-  which the current `CREATE TABLE IF NOT EXISTS` never produces by itself.
-
-A test-only connection proxy pauses each fresh contender on a shared
-`threading.Barrier` immediately before a statement matching a specific
-`ALTER TABLE {table} ADD COLUMN {column}` boundary. It never rewrites SQL, never
-swallows an exception, never performs the ALTER itself, and never substitutes
-commit/rollback.
+This regression now synchronizes genuinely fresh ``SQLiteGraphStore`` instances
+immediately before their real ``BEGIN IMMEDIATE`` acquisition. SQLite then admits
+one writer at a time. The test continues to verify the original ADD COLUMN
+correctness guarantees across virgin and legacy schema shapes: no bootstrap errors,
+exactly one correctly-shaped target column, idempotent repeated fresh bootstrap, and
+``PRAGMA integrity_check`` success.
 """
 
 from __future__ import annotations
@@ -58,35 +27,39 @@ import pytest
 
 from core.memory import SQLiteGraphStore
 
-_ALTER_RE_TEMPLATE = r"^ALTER TABLE {table} ADD COLUMN {column}\b"
+_BEGIN_IMMEDIATE_RE = re.compile(r"^BEGIN IMMEDIATE\b")
 
 
-class _AlterColumnBarrierConnection:
-    """Test-only proxy: every statement runs unmodified; only a statement
-    whose normalized text matches `ALTER TABLE {table} ADD COLUMN {column}`
-    pauses on `barrier` first. All other statements — including every OTHER
-    column's ALTER TABLE, and every PRAGMA table_info read — are never
-    gated, and run exactly as they otherwise would."""
+class _BootstrapBoundaryBarrierConnection:
+    """Gate only the first real bootstrap ``BEGIN IMMEDIATE`` per contender."""
 
     def __init__(
-        self, real_conn: sqlite3.Connection, pattern: re.Pattern[str],
-        barrier: threading.Barrier, timeout: float,
+        self,
+        real_conn: sqlite3.Connection,
+        barrier: threading.Barrier,
+        timeout: float,
     ):
         object.__setattr__(self, "_real", real_conn)
-        object.__setattr__(self, "_pattern", pattern)
         object.__setattr__(self, "_barrier", barrier)
         object.__setattr__(self, "_timeout", timeout)
         object.__setattr__(self, "_gated", False)
 
     def execute(self, sql, *args, **kwargs):
         if not object.__getattribute__(self, "_gated"):
-            normalized = " ".join(str(sql).split())
-            if object.__getattribute__(self, "_pattern").match(normalized):
+            normalized = " ".join(str(sql).split()).upper()
+            if _BEGIN_IMMEDIATE_RE.match(normalized):
                 object.__setattr__(self, "_gated", True)
                 object.__getattribute__(self, "_barrier").wait(
                     timeout=object.__getattribute__(self, "_timeout"),
                 )
         return object.__getattribute__(self, "_real").execute(sql, *args, **kwargs)
+
+    def __enter__(self):
+        object.__getattribute__(self, "_real").__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return object.__getattribute__(self, "_real").__exit__(exc_type, exc, tb)
 
     def __getattr__(self, name):
         return getattr(object.__getattribute__(self, "_real"), name)
@@ -95,12 +68,6 @@ class _AlterColumnBarrierConnection:
         setattr(object.__getattribute__(self, "_real"), name, value)
 
 
-# Union of every guarded column: the current CREATE TABLE's own column set
-# plus the two ALTER-only columns (audit_subject_id, derived_from) that are
-# never part of CREATE TABLE. Used to build a legacy fixture missing exactly
-# one target column while keeping every other guarded column already
-# present -- so only the ONE column under test is ever raced by a given
-# legacy scenario.
 _FULL_FACTS_DDL_COLUMNS = {
     "fact_id": "TEXT PRIMARY KEY",
     "claim": "TEXT NOT NULL",
@@ -124,11 +91,9 @@ _FULL_FACTS_DDL_COLUMNS = {
 
 
 def _build_legacy_facts_db(db_path: Path, missing: set[str]) -> None:
-    """Create a pre-existing `facts` table with every guarded column present
-    EXCEPT `missing` — so a racer's own lazy bootstrap only ever attempts
-    the ALTER for the column(s) under test, never any other."""
     columns_sql = ",\n            ".join(
-        f"{name} {ddl}" for name, ddl in _FULL_FACTS_DDL_COLUMNS.items()
+        f"{name} {ddl}"
+        for name, ddl in _FULL_FACTS_DDL_COLUMNS.items()
         if name not in missing
     )
     with sqlite3.connect(str(db_path), timeout=5.0) as conn:
@@ -137,11 +102,6 @@ def _build_legacy_facts_db(db_path: Path, missing: set[str]) -> None:
 
 
 def _build_legacy_erasure_log_db(db_path: Path, missing: set[str]) -> None:
-    """Create a pre-existing minimal `erasure_log` table missing `job_id`
-    (current `CREATE TABLE IF NOT EXISTS erasure_log` always includes it, so
-    only a genuinely pre-existing legacy table can exercise this path).
-    Also creates `facts` with the FULL current column set so the facts-side
-    ADD COLUMN loop takes no action and cannot interfere with this test."""
     full_erasure_log_columns = {
         "erasure_id": "TEXT PRIMARY KEY",
         "fact_id": "TEXT NOT NULL",
@@ -153,7 +113,8 @@ def _build_legacy_erasure_log_db(db_path: Path, missing: set[str]) -> None:
         "job_id": "TEXT DEFAULT NULL",
     }
     columns_sql = ",\n            ".join(
-        f"{name} {ddl}" for name, ddl in full_erasure_log_columns.items()
+        f"{name} {ddl}"
+        for name, ddl in full_erasure_log_columns.items()
         if name not in missing
     )
     _build_legacy_facts_db(db_path, missing=set())
@@ -162,14 +123,11 @@ def _build_legacy_erasure_log_db(db_path: Path, missing: set[str]) -> None:
         conn.commit()
 
 
-def _race_add_column(
-    db_path: Path, table: str, column: str, num_contenders: int, timeout: float = 20.0,
+def _race_bootstrap(
+    db_path: Path,
+    num_contenders: int,
+    timeout: float = 20.0,
 ) -> tuple[dict[int, BaseException], list[SQLiteGraphStore]]:
-    """Race `num_contenders` genuinely fresh SQLiteGraphStore instances
-    (each with an empty `_ddl_initialized_paths`) against `db_path`. Every
-    contender performs a real, uncoordinated first-use bootstrap — only the
-    `ALTER TABLE {table} ADD COLUMN {column}` statement is barrier-gated."""
-    pattern = re.compile(_ALTER_RE_TEMPLATE.format(table=re.escape(table), column=re.escape(column)))
     barrier = threading.Barrier(num_contenders, timeout=timeout)
     errors: dict[int, BaseException] = {}
     errors_lock = threading.Lock()
@@ -179,7 +137,7 @@ def _race_add_column(
     def gated_connect(path, *args, **kwargs):
         real_conn = real_connect(path, *args, **kwargs)
         if str(path) == str(db_path):
-            return _AlterColumnBarrierConnection(real_conn, pattern, barrier, timeout)
+            return _BootstrapBoundaryBarrierConnection(real_conn, barrier, timeout)
         return real_conn
 
     def make_and_bootstrap(index: int) -> None:
@@ -197,13 +155,13 @@ def _race_add_column(
             threading.Thread(target=make_and_bootstrap, args=(i,))
             for i in range(num_contenders)
         ]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join(timeout=timeout + 10)
-            assert not t.is_alive(), "contender thread did not finish within timeout"
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=timeout + 10)
+            assert not thread.is_alive(), "contender thread did not finish within timeout"
 
-    return errors, [s for s in stores if s is not None]
+    return errors, [store for store in stores if store is not None]
 
 
 def _integrity_check(db_path: Path) -> str:
@@ -215,8 +173,11 @@ def _integrity_check(db_path: Path) -> str:
 def _column_row(db_path: Path, table: str, column: str) -> tuple | None:
     with sqlite3.connect(str(db_path), timeout=5.0) as conn:
         return next(
-            (r for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
-             if r[1] == column),
+            (
+                row
+                for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
+                if row[1] == column
+            ),
             None,
         )
 
@@ -224,11 +185,10 @@ def _column_row(db_path: Path, table: str, column: str) -> tuple | None:
 def _column_occurrence_count(db_path: Path, table: str, column: str) -> int:
     with sqlite3.connect(str(db_path), timeout=5.0) as conn:
         rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
-    return sum(1 for r in rows if r[1] == column)
+    return sum(1 for row in rows if row[1] == column)
 
 
 _CASES = [
-    # (case_id, table, column, legacy_missing_or_None, expected_type, expected_notnull, expected_default)
     ("virgin_audit_subject_id", "facts", "audit_subject_id", None, "TEXT", 0, "NULL"),
     ("virgin_derived_from", "facts", "derived_from", None, "TEXT", 0, "NULL"),
     ("legacy_erasure_log_job_id", "erasure_log", "job_id", "erasure_log", "TEXT", 0, "NULL"),
@@ -238,13 +198,17 @@ _CASES = [
 ]
 
 
-def _prepare_db(tmp_path: Path, case_id: str, table: str, column: str, legacy_kind: str | None) -> Path:
+def _prepare_db(
+    tmp_path: Path,
+    case_id: str,
+    column: str,
+    legacy_kind: str | None,
+) -> Path:
     db_path = tmp_path / f"{case_id}.db"
     if legacy_kind == "erasure_log":
         _build_legacy_erasure_log_db(db_path, missing={column})
     elif legacy_kind == "facts":
         _build_legacy_facts_db(db_path, missing={column})
-    # legacy_kind is None -> virgin: no pre-existing file at all.
     return db_path
 
 
@@ -255,14 +219,18 @@ def _prepare_db(tmp_path: Path, case_id: str, table: str, column: str, legacy_ki
 )
 def test_concurrent_fresh_bootstrap_add_column_no_duplicate_error(
     tmp_path: Path,
-    case_id: str, table: str, column: str, legacy_kind: str | None,
-    expected_type: str, expected_notnull: int, expected_default: str,
+    case_id: str,
+    table: str,
+    column: str,
+    legacy_kind: str | None,
+    expected_type: str,
+    expected_notnull: int,
+    expected_default: str,
     num_contenders: int,
 ) -> None:
-    db_path = _prepare_db(tmp_path, f"{case_id}_{num_contenders}", table, column, legacy_kind)
+    db_path = _prepare_db(tmp_path, f"{case_id}_{num_contenders}", column, legacy_kind)
 
-    errors, stores = _race_add_column(db_path, table, column, num_contenders)
-
+    errors, stores = _race_bootstrap(db_path, num_contenders)
     try:
         for index, exc in errors.items():
             message = str(exc)
@@ -286,15 +254,12 @@ def test_concurrent_fresh_bootstrap_add_column_no_duplicate_error(
         assert notnull == expected_notnull
         assert dflt_value == expected_default
         assert pk == 0
-
         assert _integrity_check(db_path) == "ok"
     finally:
         for store in stores:
             store.close()
 
-    # A further round of concurrent first-use bootstrap (new stores, same
-    # already-initialized database) must remain idempotent and safe.
-    errors2, stores2 = _race_add_column(db_path, table, column, num_contenders)
+    errors2, stores2 = _race_bootstrap(db_path, num_contenders)
     try:
         assert not errors2, f"second bootstrap round raised: {errors2!r}"
         assert _column_occurrence_count(db_path, table, column) == 1
