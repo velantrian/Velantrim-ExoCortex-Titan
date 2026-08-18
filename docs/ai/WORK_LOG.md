@@ -5,6 +5,54 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
+## 2026-08-17 — Deep audit re-verification · #347/PR #349 current-truth reconciliation
+
+```text
+audit document:                    AUDIT_DEEP_2026-08-17.md (root)
+repository head verified:           588ffe61c711f6e63ac42cc304d95642a0671b08
+method:                             5 parallel read-only research agents (no code changed)
+prior audit re-verified:            AUDIT_DEEP_2026-07-28.md, all H1-H5 + M1-M15 + 3 Low items
+issue #347 / PR #349:               MERGED 2026-08-17T08:28:19Z · exact head d1d025a9 ·
+                                     Full CI #1317 SUCCESS · CodeQL #155 SUCCESS · Docker #868
+                                     SUCCESS · CAS characterization #14 SUCCESS (4/4 hosted jobs)
+ruff/mypy/pytest (uv.lock-pinned):  0 / 0 / 4301 passed, 17 skipped, 1 xfailed, 0 failed (228s)
+```
+
+This audit re-verified every High/Medium finding from `AUDIT_DEEP_2026-07-28.md` against
+current `main` by reading the actual code (not assuming from commit-range heuristics), and
+separately audited every subsystem merged since that audit (Phase 2A Capability Registry,
+Phase 3A Embedding Space Identity, CSM Stage C scanner, multilingual retrieval patch,
+storage-bootstrap serialization fix, CAS contention characterization). Full results,
+evidence tables and a recommended action order are in `AUDIT_DEEP_2026-08-17.md`.
+
+**Headline correction to this file's prior top entry (2026-08-16, below):** that entry
+records `separate bootstrap residual: #347 · OPEN · RE-VERIFY LIVE`. Issue #347 was fixed
+by PR #349, merged the same day this audit ran (`2026-08-17T08:28:19Z`), a few hours before
+this reconciliation. The corresponding `docs/ai/KNOWN_RISKS.md` entry has been updated from
+`P1 — open` to `Reduced risk — closed via PR #349` with full evidence. Per PR #349's own
+acceptance sequence, Issue #347 intentionally stays **open on GitHub** until a human
+performs manual closure after this reconciliation step — that is expected, not a gap.
+
+**One new residual found during independent re-verification, not covered by PR #349:**
+`core/version_store.py:200-206` (`VersionStore._ensure_schema()`) has the same class of
+unguarded concurrent-lazy-DDL gap #349 just closed elsewhere (process-local lock only, no
+`BEGIN IMMEDIATE`), reachable from the same bootstrap sequence plus
+`core/archival_mutation.py:83` and `core/pii_redaction.py:125`. A dedicated ~7,200-attempt
+stress probe did not reproduce a failure; tracked as low-probability but structurally real
+in `docs/ai/KNOWN_RISKS.md` and `AUDIT_DEEP_2026-08-17.md` Part II/III.
+
+**Net status change vs. 07-28:** 6 findings fixed (H1, H4, H5, M2, M7, M10), 1 closed by
+deliberate redesign rather than repair (H2 — Velum reinforcement now intentionally
+analysis-only), 2 partially fixed (H3 — bounded startup auto-recovery now wired, original
+named functions still manual-only; M12 — `compute_controller` gained a real but inert
+shadow-only caller), 10 unchanged (M1, M3, M4, M6, M8, M9, M11, M13, M14, M15). 3 new Medium
+and 5 new Low findings surfaced (unbounded `/ingest/text`, `GET /facts` limit/offset applied
+post-materialization, the `VersionStore` residual above, plus four Low items — see the audit
+document for full detail). No new Critical or High findings. CI/lint/test genuinely green on
+the project's `uv.lock`-pinned toolchain, confirmed by direct execution, not documentation.
+
+---
+
 ## 2026-08-16 — #249 hosted CAS characterization · ENGINEERING CHARACTERIZATION COMPLETE
 
 > **Live-state rule:** re-check Issue #249 and current `main` before acting. This dated

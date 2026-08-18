@@ -1,7 +1,8 @@
 # 📍 Current System State
 
-**Verified:** 2026-08-16  
-**Current repository head at this reconciliation:** `main@8ed2fb60c1edaa96d9af9955184c4abc31ef8500` · parent `b4c6f0c16ef9920607d95e590a75df8176d92d71` · signature `VERIFIED / valid`  
+**Verified:** 2026-08-17  
+**Current repository head at this reconciliation:** `main@588ffe61c711f6e63ac42cc304d95642a0671b08` · parent `6c744334199999935782d4f74db1b438f37b19f4` · PR #349 (issue #347 fix)  
+**Prior implementation checkpoint:** `main@8ed2fb60c1edaa96d9af9955184c4abc31ef8500` · parent `b4c6f0c16ef9920607d95e590a75df8176d92d71` · signature `VERIFIED / valid`  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · parent `86ed963d2d31b9da174c88f0cf05cc27faced2b9` · signature `VERIFIED / valid`  
 **C11 lifecycle rule:** resolve the current #52 lifecycle from live GitHub; the C11 paragraphs below remain historical repository evidence  
 **Continuity:** `12/12 = 100%`  
@@ -77,6 +78,37 @@ MCP adapter or default runtime call site. It owns no Canon, Truth, Policy, TRACE
 answer, action or permission authority. Stage D is not admitted by this closure.
 
 Detailed current contract: `docs/ai/CSM_STAGE_C_SCANNER.md`.
+
+### Storage bootstrap serialization (issue #347 / PR #349)
+
+Issue #347 is fixed by **MERGED** PR #349 (`2026-08-17T08:28:19Z`) as the current repository
+head `588ffe61c711f6e63ac42cc304d95642a0671b08` from exact pre-merge head
+`d1d025a952d623293f7ff2d868596fdfd37e119e`, base `main@6c744334199999935782d4f74db1b438f37b19f4`.
+
+Accepted evidence:
+
+```text
+exact-head Full CI:            #1317 · 32007770456 · SUCCESS
+exact-head CodeQL:             #155  · 32007770414 · SUCCESS
+exact-head Docker:             #868  · 32007770410 · SUCCESS
+CAS characterization:          #14   · 32007770435 · SUCCESS (4/4 hosted jobs, py3.11+py3.12)
+```
+
+The fix wraps the existing lazy SQLite schema/bootstrap body in `BEGIN IMMEDIATE … COMMIT`
+(`core/memory.py:489-491,767`) with explicit rollback/close/re-raise on failure, closing a
+pre-CAS race where independent fresh `SQLiteGraphStore` instances could invalidate a peer's
+in-flight statement with `sqlite3.OperationalError: database schema has changed`. `BEGIN
+IMMEDIATE` serializes at the SQLite file-lock level, so this holds across separate OS
+processes, not only same-process threads. No retry loop, timeout inflation, WAL/backend
+change or CAS-algorithm change was introduced. `AUDIT_DEEP_2026-08-17.md` independently
+re-verified this with a dedicated stress probe (40 trials × 8 separate OS processes) and
+found zero reproductions; it also found one related, low-probability, non-reproduced
+residual in `core/version_store.py`'s own lazy schema init — see
+`docs/ai/KNOWN_RISKS.md`.
+
+Per PR #349's own acceptance sequence, Issue #347 stays open on GitHub pending a separate
+manual-closure step by a human after this reconciliation; this section is that
+reconciliation, not the closure itself.
 
 ### Multilingual retrieval patch lifecycle safety
 

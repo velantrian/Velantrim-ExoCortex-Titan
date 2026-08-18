@@ -1,7 +1,8 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-08-16  
+**Snapshot:** 2026-08-17  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · signature `VERIFIED / valid`  
+**Repository head at this reconciliation:** `main@588ffe61c711f6e63ac42cc304d95642a0671b08` (PR #349, issue #347 fix) — see `AUDIT_DEEP_2026-08-17.md` for the full re-verification this snapshot is drawn from  
 **C11 lifecycle rule:** this snapshot preserves the reconciled #52 risk record; resolve current issue/PR lifecycle from live GitHub  
 **Continuity:** `12/12 = 100%` — complete  
 **Runtime:** `CURRENTLY DISABLED · CURRENT OPERATOR GO ABSENT · HISTORICAL OBSERVED=true · NO RUNTIME AUTHORITY · NO PRODUCTION AUTHORITY`  
@@ -92,19 +93,50 @@ mode, backend or schema was changed. The bounded classification is **TEST HARNES
 DEFECT / HISTORICAL RUNNER SENSITIVITY · PRODUCT CAS DEFECT NOT CONFIRMED**. This is not
 proof of unlimited SQLite concurrency or production-scale multiprocess safety.
 
-## P1 — Concurrent fresh-store bootstrap can invalidate peer SQLite statements
+## Reduced risk — Concurrent fresh-store bootstrap now serialized; one sibling residual remains open
 
-Hosted #249 diagnostics exposed a separate pre-CAS failure now tracked by Issue #347:
+Hosted #249 diagnostics exposed a separate pre-CAS failure tracked by Issue #347:
 concurrent first use of multiple fresh `SQLiteGraphStore` instances against one database
-can produce `sqlite3.OperationalError: database schema has changed` while per-instance
-lazy schema/bootstrap work is still in flight. The observed failure occurred before the
-CAS gate (25/25 workers started, 24/25 reached pre-CAS, 0/25 CAS returned), so it must not
-be relabelled as a product CAS algorithm failure.
+could produce `sqlite3.OperationalError: database schema has changed` while per-instance
+lazy schema/bootstrap work was still in flight. The observed failure occurred before the
+CAS gate (25/25 workers started, 24/25 reached pre-CAS, 0/25 CAS returned), so it was never
+evidence of a CAS algorithm defect.
 
-#347 remains an open storage/lifecycle characterization risk. Do not paper over it with
-broad `OperationalError` swallowing, automatic mutation retry, timeout inflation, WAL or
-backend changes. First establish the supported concurrent-first-use contract and exact
-failing DDL/read interleaving.
+PR #349 is **MERGED** (`2026-08-17T08:28:19Z`) at exact head
+`d1d025a952d623293f7ff2d868596fdfd37e119e`, base `main@6c744334199999935782d4f74db1b438f37b19f4`,
+squash-merged as current repository head `588ffe61c711f6e63ac42cc304d95642a0671b08`. The
+bounded fix wraps only the existing lazy DDL/bootstrap body in `BEGIN IMMEDIATE …  COMMIT`
+(`core/memory.py:489-491,767`), with explicit rollback/close/`raise` on failure and no
+silent `OperationalError` swallowing, retry loop, timeout inflation, WAL/backend change or
+CAS-algorithm change. `BEGIN IMMEDIATE` takes SQLite's RESERVED file lock, which serializes
+independent OS processes on the same database file, not only same-process threads.
+
+Accepted evidence: exact-head Full CI `#1317`/`32007770456` SUCCESS, CodeQL `#155` SUCCESS,
+Docker `#868` SUCCESS, Dependency vulnerability audit SUCCESS, Coverage ratchet SUCCESS, CAS
+contention characterization `#14`/`32007770435` SUCCESS across all 4 hosted matrix jobs
+(Python 3.11/3.12 × 2 shards). `AUDIT_DEEP_2026-08-17.md` independently re-verified the fix
+by reading the code and by running a dedicated stress probe — 40 trials × 8 genuinely
+separate OS processes attempting concurrent fresh-store bootstrap against the same file —
+with zero reproductions of the original failure.
+
+Per PR #349's own acceptance sequence, Issue #347 intentionally stays **open on GitHub**
+until a human performs the final manual-closure step after this GitHub current-truth
+reconciliation; this entry is that reconciliation. Re-check the live issue before treating
+closure as done.
+
+**One sibling residual found during that same re-verification, not covered by PR #349:**
+`core/version_store.py:200-206` (`VersionStore._ensure_schema()`) gates its own 5-statement
+`VERSIONS_SCHEMA` script with only a process-local `threading.Lock()`/`set()`
+(`_SCHEMA_INIT_LOCK`/`_SCHEMA_READY`, lines 60-61) — not a `BEGIN IMMEDIATE` transaction —
+even though `VersionStore(self.db_path)` is constructed inside the very same bootstrap
+sequence (`core/memory.py:790`) and is separately reachable from
+`core/archival_mutation.py:83` and `core/pii_redaction.py:125`. This is structurally the
+same unguarded-lazy-DDL bug class #347 just closed. A dedicated stress probe (40 × 8
+separate processes plus 450 × 8-30 threads racing `executescript(VERSIONS_SCHEMA)` via a
+`threading.Barrier`, ~7,200 combined attempts) produced zero failures — the script is small
+and purely `IF NOT EXISTS` (no `ALTER TABLE`, no read-modify-write), unlike the original
+bug's shape. Tracked as an open, low-probability, non-reproduced structural gap; not an
+emergency, but worth closing for consistency with the pattern PR #349 just established.
 
 ## P1 — PII claim redaction is bounded, not universal physical erasure
 
