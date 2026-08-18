@@ -126,6 +126,76 @@ need the machine-stable `handoff-pr-<PR-NUMBER>` heading.
 
 ## Queue
 
+## handoff-pr-355
+
+### 2026-08-19 — Typed Evidence Reference v1 Contract
+
+- **Status:** `HANDOFF_REQUIRED`
+- **Documentation impact:** `GITHUB_AND_NOTION`
+- **Repository / PR / issue:** `velantrian/Velantrim-ExoCortex-Titan` · PR #355
+- **Base SHA:** `588ffe61c711f6e63ac42cc304d95642a0671b08`
+- **Head SHA:** `ce1ea1f92e9e6c469b827361665a3c713b73f7d1`
+- **Intended Notion record:** `Velantrim Titan 9.0`
+- **Notion access for originating actor:** `UNAVAILABLE`
+
+### Problem / opportunity
+
+Legacy `metadata.evidence_refs` uses raw strings. It measures cardinality but cannot prove source identity, fragment integrity, lineage, or independence, making it inadequate for a strict TruthGate admission boundary.
+
+### Material findings
+
+The existing TruthGate logic currently accepts string arrays without validation. Changing it directly would break compatibility. The safe first step is an unwired, local-only prototype.
+
+### Decision and rationale
+
+Introduce `EvidenceReference` and an in-memory `EvidenceRegistry` as an unwired, local-only Python prototype. The contract enforces strict schema, canonical digests, and fail-closed validation. It does not change TruthGate thresholds, ingestion, persistence, or promotion.
+
+### Rejected or deferred alternatives
+
+- Do not auto-convert legacy string facts.
+- Do not persist the registry without a separate data classification decision.
+- Do not attach the receipt to TruthGate yet.
+- Do not synthesize digests for missing data.
+
+### Authority, safety, privacy, and Canon boundaries
+
+This is a **contract-only increment**. It does NOT change `TruthGate` outcomes, `metadata.evidence_refs`, canonical promotion, SQLite schema, network/provider behavior, or runtime authority. `EvidenceItem` remains the separate scoring owner.
+
+### GitHub files updated
+
+- `core/evidence_reference.py`
+- `core/evidence_registry.py`
+- `tests/test_evidence_reference.py`
+- `docs/adr/ADR-2026-08-19-typed-evidence-reference-contract.md`
+- `docs/ai/COMPONENT_MAP.md`
+- `docs/ai/KNOWN_RISKS.md`
+- `docs/ai/WORK_LOG.md`
+- `docs/ai/NOTION_HANDOFF.md`
+
+### Evidence
+
+- 22 focused contract tests passed locally.
+- Full repository suite (4,307 tests) passed locally without regression.
+- PR #355 is a DRAFT pending CI and this hand-off.
+
+### Known limitations
+
+The prototype is in-memory and unwired. Persistence, observe/enforce modes, and producer migration require separate PRs and admission decisions.
+
+### Next actions
+
+1. Verify CI success on PR #355 exact head.
+2. Create/update the Notion architecture record with this rationale and boundaries.
+3. Update this item's status to `SYNCED`.
+4. Proceed to PR 1B (persistence) data-classification review.
+
+### Synchronization result
+
+- Connected actor: 
+- Notion record: 
+- Status: 
+- Final PR / merge SHA / CI: 
+
 ## 2026-08-13 — PR #297 post-merge hardening final synchronization
 
 - **Status:** `SYNCED`
