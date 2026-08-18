@@ -5,6 +5,29 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
+## 2026-08-19 — Typed Evidence Reference v1 · DRAFT CONTRACT-ONLY IMPLEMENTATION
+
+> **Reality status:** `PROPOSED / IMPLEMENTED ON DRAFT BRANCH / FOCUSED-TESTED / UNWIRED / NOT ENABLED / NO RUNTIME AUTHORITY`.
+> Re-resolve the live PR and exact head before treating this draft record as merged reality.
+
+The first bounded increment adds `core/evidence_reference.py` and
+`core/evidence_registry.py`, plus a focused test suite and ADR. It defines immutable,
+versioned source/fragment/lineage references, strict local validation and deterministic,
+content-minimized validation receipts. The in-memory registry is a Python prototype only.
+
+It does **not** alter `TruthGate` thresholds or outcomes, `metadata.evidence_refs`,
+canonical promotion/CAS, SQLite schema, source ingestion, network/provider behavior,
+runtime wiring, feature flags, Operator GO, runtime authority or production authority.
+The existing `EvidenceItem` scoring model remains its own owner. A future admission must
+separately decide persistence, observe/enforce modes, receipt attachment and producer
+migration; no historical fact is auto-converted or reclassified by this draft.
+
+Focused local evidence on the draft branch: 22 new contract tests passed; the combined
+EvidenceReference/Evidence authenticity/TruthGate suite passed 52 tests. Full repository
+checks and exact draft-PR evidence remain required before review.
+
+---
+
 ## 2026-08-16 — #249 hosted CAS characterization · ENGINEERING CHARACTERIZATION COMPLETE
 
 > **Live-state rule:** re-check Issue #249 and current `main` before acting. This dated

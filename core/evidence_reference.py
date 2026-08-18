@@ -1,0 +1,189 @@
+"""Immutable, local-only evidence-reference contract.
+
+This v1 module is intentionally contract-only. It does not perform network I/O,
+mutate Canon, resolve sources, or change TruthGate admission. Resolution and
+validation are owned by :mod:`core.evidence_registry`.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Literal, Mapping
+
+EVIDENCE_REFERENCE_SCHEMA_VERSION = 1
+EVIDENCE_REFERENCE_POLICY_VERSION = "evidence-reference-v1"
+
+_REFERENCE_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
+_SPAN_PATTERN = re.compile(r"^chars:(\d+)-(\d+)$")
+_ALLOWED_INDEPENDENCE = frozenset({"independent", "derived", "same_lineage"})
+_REQUIRED_FIELDS = frozenset(
+    {
+        "schema_version",
+        "reference_id",
+        "source_id",
+        "source_digest",
+        "fragment_id",
+        "fragment_digest",
+        "span",
+        "lineage_id",
+        "independence_class",
+        "captured_at",
+    }
+)
+
+
+class EvidenceReferenceError(ValueError):
+    """Raised when an evidence-reference payload violates the v1 contract."""
+
+
+def _require_identifier(value: object, field_name: str) -> str:
+    if not isinstance(value, str) or not _REFERENCE_ID_PATTERN.fullmatch(value):
+        raise EvidenceReferenceError(
+            f"{field_name} must be a safe 1-128 character technical identifier"
+        )
+    return value
+
+
+def _require_digest(value: object, field_name: str) -> str:
+    if not isinstance(value, str) or not _DIGEST_PATTERN.fullmatch(value):
+        raise EvidenceReferenceError(
+            f"{field_name} must be a lower-case sha256:<64 hex> digest"
+        )
+    return value
+
+
+def _require_span(value: object) -> str:
+    if not isinstance(value, str):
+        raise EvidenceReferenceError("span must use the chars:<start>-<end> form")
+    match = _SPAN_PATTERN.fullmatch(value)
+    if match is None:
+        raise EvidenceReferenceError("span must use the chars:<start>-<end> form")
+    start, end = (int(part) for part in match.groups())
+    if end <= start:
+        raise EvidenceReferenceError("span end must be greater than span start")
+    return value
+
+
+def _require_timestamp(value: object) -> str:
+    if not isinstance(value, str) or not value:
+        raise EvidenceReferenceError("captured_at must be a non-empty ISO-8601 timestamp")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise EvidenceReferenceError("captured_at must be an ISO-8601 timestamp") from exc
+    if parsed.tzinfo is None:
+        raise EvidenceReferenceError("captured_at must include an explicit timezone")
+    return value
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceReference:
+    """One integrity-pinned reference to a local evidence fragment.
+
+    The reference contains only technical identifiers, digests, a local fragment
+    selector and lineage metadata. It deliberately excludes raw source content,
+    quotes, URLs, credentials and provider payloads.
+    """
+
+    schema_version: int
+    reference_id: str
+    source_id: str
+    source_digest: str
+    fragment_id: str
+    fragment_digest: str
+    span: str
+    lineage_id: str
+    independence_class: Literal["independent", "derived", "same_lineage"]
+    captured_at: str
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.schema_version, int)
+            or isinstance(self.schema_version, bool)
+            or self.schema_version != EVIDENCE_REFERENCE_SCHEMA_VERSION
+        ):
+            raise EvidenceReferenceError(
+                f"schema_version must equal {EVIDENCE_REFERENCE_SCHEMA_VERSION}"
+            )
+        _require_identifier(self.reference_id, "reference_id")
+        _require_identifier(self.source_id, "source_id")
+        _require_digest(self.source_digest, "source_digest")
+        _require_identifier(self.fragment_id, "fragment_id")
+        _require_digest(self.fragment_digest, "fragment_digest")
+        _require_span(self.span)
+        _require_identifier(self.lineage_id, "lineage_id")
+        if self.independence_class not in _ALLOWED_INDEPENDENCE:
+            raise EvidenceReferenceError(
+                "independence_class must be independent, derived, or same_lineage"
+            )
+        _require_timestamp(self.captured_at)
+
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any]) -> EvidenceReference:
+        """Parse an exact v1 mapping and reject missing or unknown fields."""
+        if not isinstance(payload, Mapping):
+            raise EvidenceReferenceError("evidence reference payload must be a mapping")
+        keys = frozenset(payload)
+        missing = _REQUIRED_FIELDS - keys
+        unexpected = keys - _REQUIRED_FIELDS
+        if missing or unexpected:
+            details: list[str] = []
+            if missing:
+                details.append("missing=" + ",".join(sorted(missing)))
+            if unexpected:
+                details.append("unexpected=" + ",".join(sorted(unexpected)))
+            raise EvidenceReferenceError("invalid evidence reference fields: " + "; ".join(details))
+        return cls(
+            schema_version=payload["schema_version"],
+            reference_id=payload["reference_id"],
+            source_id=payload["source_id"],
+            source_digest=payload["source_digest"],
+            fragment_id=payload["fragment_id"],
+            fragment_digest=payload["fragment_digest"],
+            span=payload["span"],
+            lineage_id=payload["lineage_id"],
+            independence_class=payload["independence_class"],
+            captured_at=payload["captured_at"],
+        )
+
+    def to_mapping(self) -> dict[str, object]:
+        """Return the canonical serializable v1 mapping."""
+        return {
+            "captured_at": self.captured_at,
+            "fragment_digest": self.fragment_digest,
+            "fragment_id": self.fragment_id,
+            "independence_class": self.independence_class,
+            "lineage_id": self.lineage_id,
+            "reference_id": self.reference_id,
+            "schema_version": self.schema_version,
+            "source_digest": self.source_digest,
+            "source_id": self.source_id,
+            "span": self.span,
+        }
+
+    def canonical_json_bytes(self) -> bytes:
+        """Encode the reference deterministically for identity and receipt binding."""
+        return json.dumps(
+            self.to_mapping(),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+
+    @property
+    def reference_digest(self) -> str:
+        """Return a content-minimized stable identifier for this exact reference."""
+        return "sha256:" + hashlib.sha256(self.canonical_json_bytes()).hexdigest()
+
+
+__all__ = [
+    "EVIDENCE_REFERENCE_POLICY_VERSION",
+    "EVIDENCE_REFERENCE_SCHEMA_VERSION",
+    "EvidenceReference",
+    "EvidenceReferenceError",
+]
