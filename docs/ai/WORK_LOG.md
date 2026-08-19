@@ -42,7 +42,16 @@ separately reproduced baseline failure, it completed with 4 failed, 4,323 passed
 failures were each reproduced with the same environment against unchanged
 `main@588ffe61`; none touches the EvidenceReference files or behavior. This is bounded
 baseline/environment evidence, not a waiver. The earlier GitHub checks belong to an
-ancestor head, so fresh exact-head CI remains required before review.
+ancestor head.
+
+The corrected code checkpoint
+`8a1b3aab56c2aeaa5050872b660aed6fc9df40db` then passed GitHub Main CI #1325,
+Docker #872 and CodeQL #164. Aggregate evaluator run 32232797602 completed successfully;
+the combined context remains `PENDING` while PR #355 remains a DRAFT. A dedicated Notion
+record, `Titan Typed Evidence Reference v1 — Trusted Independence Contract · 2026-08-19`
+(`3c1ac84d-0547-811f-8f81-ff62f45b659d`), was created under the Titan hub and verified by
+read-back. Fresh CI on the final documentation-sync head and review remain required; no
+merge, runtime enablement or authority follows from this synchronization.
 
 ---
 

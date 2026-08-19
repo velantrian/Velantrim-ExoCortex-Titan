@@ -130,12 +130,12 @@ need the machine-stable `handoff-pr-<PR-NUMBER>` heading.
 
 ### 2026-08-19 — Typed Evidence Reference v1 Contract
 
-- **Status:** `HANDOFF_REQUIRED`
+- **Status:** `SYNCED`
 - **Documentation impact:** `GITHUB_AND_NOTION`
 - **Repository / PR / issue:** `velantrian/Velantrim-ExoCortex-Titan` · PR #355
 - **Base SHA:** `588ffe61c711f6e63ac42cc304d95642a0671b08`
-- **Head SHA:** `ce1ea1f92e9e6c469b827361665a3c713b73f7d1`
-- **Intended Notion record:** `Velantrim Titan 9.0`
+- **Head SHA:** `8a1b3aab56c2aeaa5050872b660aed6fc9df40db`
+- **Intended Notion record:** `Titan Typed Evidence Reference v1 — Trusted Independence Contract · 2026-08-19`
 - **Notion access for originating actor:** `UNAVAILABLE`
 
 ### Problem / opportunity
@@ -200,9 +200,12 @@ is a bounded policy result, not objective truth.
   excluded failure and all four completed-run failures were each reproduced against
   unchanged `main@588ffe61` in the same environment. This is baseline/environment
   characterization, not a waiver or exact-head CI evidence.
-- Ancestor-head CI was green; fresh exact-head repository/CI evidence is still required
-  after this correction.
-- PR #355 remains a DRAFT pending fresh CI, Notion synchronization and review.
+- Exact code-checkpoint GitHub evidence is green: Main CI #1325, Docker #872 and
+  CodeQL #164 succeeded on `8a1b3aab56c2aeaa5050872b660aed6fc9df40db`.
+- Aggregate evaluator run 32232797602 completed successfully; the combined status context
+  remains `PENDING` while PR #355 remains a DRAFT.
+- The dedicated Notion architecture record was created under the Titan hub and verified
+  by read-back. Fresh final documentation-sync-head CI and review remain required.
 
 ### Known limitations
 
@@ -214,18 +217,22 @@ decisions and admission decisions.
 
 ### Next actions
 
-1. Verify focused, repository and CI evidence on the corrected exact head.
-2. Create/update the Notion architecture record with this rationale and boundaries.
-3. Update this item's status to `SYNCED` after read-back.
-4. Review and merge #355 only if head/base/checks/docs remain coherent.
+1. Publish this repository-side synchronization checkpoint.
+2. Verify fresh CI and aggregate evidence on the final documentation-sync head.
+3. Re-read head/base, changed files, Notion and unresolved review threads.
+4. Review/merge #355 only through a separate lifecycle decision.
 5. Decide OBSERVE integration separately; do not proceed automatically to persistence.
 
 ### Synchronization result
 
-- Connected actor: 
-- Notion record: 
-- Status: 
-- Final PR / merge SHA / CI: 
+- **Connected actor:** connected AI work cycle with GitHub + Notion access
+- **Notion record:** `Titan Typed Evidence Reference v1 — Trusted Independence Contract
+  · 2026-08-19` · page ID `3c1ac84d-0547-811f-8f81-ff62f45b659d`
+- **Status:** `SYNCED` · read-back verified 2026-08-19
+- **Final PR / merge SHA / CI:** PR #355 remains DRAFT and unmerged · code checkpoint
+  `8a1b3aab56c2aeaa5050872b660aed6fc9df40db` · Main CI #1325 SUCCESS · Docker #872
+  SUCCESS · CodeQL #164 SUCCESS · aggregate evaluator 32232797602 SUCCESS / combined
+  context PENDING
 
 ## 2026-08-13 — PR #297 post-merge hardening final synchronization
 
