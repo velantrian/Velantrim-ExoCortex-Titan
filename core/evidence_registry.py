@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Literal, Mapping, Protocol, Sequence
 
 from core.evidence_reference import (
@@ -25,17 +27,45 @@ EffectiveIndependenceClass = Literal["independent", "derived"]
 ValidationStatus = Literal[
     "accepted",
     "conflicting_reference_id",
-    "derived_not_counted",
     "duplicate_reference_id",
     "fragment_digest_mismatch",
     "invalid_span",
     "lineage_mismatch",
     "revoked_source",
-    "same_lineage_not_counted",
     "source_digest_mismatch",
     "unknown_fragment",
     "unknown_source",
 ]
+
+_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
+_SPAN_PATTERN = re.compile(r"^chars:(\d+)-(\d+)$")
+
+
+def _require_identifier(value: object, field_name: str) -> str:
+    if not isinstance(value, str) or not _IDENTIFIER_PATTERN.fullmatch(value):
+        raise ValueError(
+            f"{field_name} must be a safe 1-128 character technical identifier"
+        )
+    return value
+
+
+def _require_digest(value: object, field_name: str) -> str:
+    if not isinstance(value, str) or not _DIGEST_PATTERN.fullmatch(value):
+        raise ValueError(f"{field_name} must be a lower-case sha256:<64 hex> digest")
+    return value
+
+
+def _require_span(value: object, field_name: str = "span") -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{field_name} must use the chars:<start>-<end> form")
+    match = _SPAN_PATTERN.fullmatch(value)
+    if match is None:
+        raise ValueError(f"{field_name} must use the chars:<start>-<end> form")
+    start, end = (int(part) for part in match.groups())
+    if end <= start:
+        raise ValueError(f"{field_name} end must be greater than start")
+    return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,12 +77,17 @@ class EvidenceFragmentRecord:
     allowed_spans: frozenset[str]
 
     def __post_init__(self) -> None:
-        if not self.fragment_id:
-            raise ValueError("fragment_id must be non-empty")
-        if not self.fragment_digest.startswith("sha256:"):
-            raise ValueError("fragment_digest must be a sha256 digest")
-        if not self.allowed_spans:
+        _require_identifier(self.fragment_id, "fragment_id")
+        _require_digest(self.fragment_digest, "fragment_digest")
+        try:
+            allowed_spans = frozenset(self.allowed_spans)
+        except TypeError as exc:
+            raise ValueError("allowed_spans must be an iterable of spans") from exc
+        if not allowed_spans:
             raise ValueError("allowed_spans must contain at least one span")
+        for span in allowed_spans:
+            _require_span(span, "allowed_span")
+        object.__setattr__(self, "allowed_spans", allowed_spans)
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,31 +97,36 @@ class EvidenceSourceRecord:
     source_id: str
     source_digest: str
     lineage_id: str
-    effective_independence_class: EffectiveIndependenceClass
     status: Literal["active", "revoked"]
     fragments: Mapping[str, EvidenceFragmentRecord]
 
     def __post_init__(self) -> None:
-        if not self.source_id:
-            raise ValueError("source_id must be non-empty")
-        if not self.source_digest.startswith("sha256:"):
-            raise ValueError("source_digest must be a sha256 digest")
-        if not self.lineage_id:
-            raise ValueError("lineage_id must be non-empty")
-        if self.effective_independence_class not in {"independent", "derived"}:
-            raise ValueError(
-                "effective_independence_class must be independent or derived"
-            )
+        _require_identifier(self.source_id, "source_id")
+        _require_digest(self.source_digest, "source_digest")
+        _require_identifier(self.lineage_id, "lineage_id")
         if self.status not in {"active", "revoked"}:
             raise ValueError("status must be active or revoked")
-        if not self.fragments:
+        if not isinstance(self.fragments, Mapping) or not self.fragments:
             raise ValueError("fragments must contain at least one fragment")
+
+        fragments_snapshot: dict[str, EvidenceFragmentRecord] = {}
+        for fragment_key, fragment in self.fragments.items():
+            _require_identifier(fragment_key, "fragment mapping key")
+            if not isinstance(fragment, EvidenceFragmentRecord):
+                raise ValueError("fragments values must be EvidenceFragmentRecord instances")
+            if fragment_key != fragment.fragment_id:
+                raise ValueError("fragment mapping key must equal fragment.fragment_id")
+            fragments_snapshot[fragment_key] = fragment
+        object.__setattr__(self, "fragments", MappingProxyType(fragments_snapshot))
 
 
 class EvidenceRegistry(Protocol):
     """Read-only local source lookup used by the prototype validator."""
 
     def resolve(self, source_id: str) -> EvidenceSourceRecord | None: ...
+
+    @property
+    def snapshot_digest(self) -> str: ...
 
 
 class InMemoryEvidenceRegistry:
@@ -99,6 +139,8 @@ class InMemoryEvidenceRegistry:
 
     def register(self, record: EvidenceSourceRecord) -> None:
         """Register exactly one source record; conflicting replacement is rejected."""
+        if not isinstance(record, EvidenceSourceRecord):
+            raise ValueError("record must be an EvidenceSourceRecord")
         previous = self._records.get(record.source_id)
         if previous is not None and previous != record:
             raise ValueError("source_id already registered with different metadata")
@@ -106,6 +148,35 @@ class InMemoryEvidenceRegistry:
 
     def resolve(self, source_id: str) -> EvidenceSourceRecord | None:
         return self._records.get(source_id)
+
+    @property
+    def snapshot_digest(self) -> str:
+        snapshot = {
+            "sources": {
+                source_id: {
+                    "fragments": {
+                        fragment_id: {
+                            "allowed_spans": sorted(fragment.allowed_spans),
+                            "fragment_digest": fragment.fragment_digest,
+                            "fragment_id": fragment.fragment_id,
+                        }
+                        for fragment_id, fragment in sorted(record.fragments.items())
+                    },
+                    "lineage_id": record.lineage_id,
+                    "source_digest": record.source_digest,
+                    "source_id": record.source_id,
+                    "status": record.status,
+                }
+                for source_id, record in sorted(self._records.items())
+            }
+        }
+        canonical = json.dumps(
+            snapshot,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return "sha256:" + hashlib.sha256(canonical).hexdigest()
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,6 +196,7 @@ class EvidenceValidationReceipt:
     fact_ref: str
     policy_version: str
     reference_policy_version: str
+    registry_snapshot_digest: str
     raw_reference_count: int
     unique_reference_count: int
     validated_reference_count: int
@@ -132,6 +204,7 @@ class EvidenceValidationReceipt:
     outcomes: tuple[EvidenceValidationOutcome, ...]
 
     def __post_init__(self) -> None:
+        _require_digest(self.registry_snapshot_digest, "registry_snapshot_digest")
         counts = (
             self.raw_reference_count,
             self.unique_reference_count,
@@ -166,6 +239,7 @@ class EvidenceValidationReceipt:
             "policy_version": self.policy_version,
             "raw_reference_count": self.raw_reference_count,
             "reference_policy_version": self.reference_policy_version,
+            "registry_snapshot_digest": self.registry_snapshot_digest,
             "unique_reference_count": self.unique_reference_count,
             "validated_reference_count": self.validated_reference_count,
         }
@@ -197,7 +271,6 @@ class EvidenceReferenceValidator:
         if not isinstance(fact_id, str) or not fact_id:
             raise ValueError("fact_id must be a non-empty string")
         seen_reference_ids: set[str] = set()
-        counted_lineages: set[str] = set()
         outcomes: list[EvidenceValidationOutcome] = []
         validated_reference_count = 0
         unique_reference_count = 0
@@ -246,24 +319,16 @@ class EvidenceReferenceValidator:
             seen_reference_ids.add(reference.reference_id)
             unique_reference_count += 1
             status, source = self._validate_reference(reference)
-            effective_independence_class = None
             if status == "accepted":
                 assert source is not None
                 validated_reference_count += 1
-                effective_independence_class = source.effective_independence_class
-                if effective_independence_class != "independent":
-                    status = "derived_not_counted"
-                elif source.lineage_id in counted_lineages:
-                    status = "same_lineage_not_counted"
-                else:
-                    counted_lineages.add(source.lineage_id)
 
             outcomes.append(
                 EvidenceValidationOutcome(
                     reference_id=reference.reference_id,
                     reference_digest=reference.reference_digest,
                     status=status,
-                    effective_independence_class=effective_independence_class,
+                    effective_independence_class=None,
                 )
             )
 
@@ -272,10 +337,11 @@ class EvidenceReferenceValidator:
             fact_ref=self._fact_ref(fact_id),
             policy_version=EVIDENCE_VALIDATION_POLICY_VERSION,
             reference_policy_version=EVIDENCE_REFERENCE_POLICY_VERSION,
+            registry_snapshot_digest=self._registry.snapshot_digest,
             raw_reference_count=len(references),
             unique_reference_count=unique_reference_count,
             validated_reference_count=validated_reference_count,
-            distinct_independent_lineage_count=len(counted_lineages),
+            distinct_independent_lineage_count=0,
             outcomes=tuple(outcomes),
         )
 
