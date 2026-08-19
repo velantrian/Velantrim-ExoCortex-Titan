@@ -4,6 +4,7 @@ import pytest
 
 from core.evidence_reference import EvidenceReference, EvidenceReferenceError
 from core.evidence_registry import (
+    EffectiveIndependenceClass,
     EvidenceFragmentRecord,
     EvidenceReferenceValidator,
     EvidenceSourceRecord,
@@ -27,7 +28,6 @@ def _reference(
     fragment_digest: str = _FRAGMENT_A_DIGEST,
     span: str = "chars:0-10",
     lineage_id: str = "lineage-a",
-    independence_class: str = "independent",
 ) -> EvidenceReference:
     return EvidenceReference(
         schema_version=1,
@@ -38,18 +38,21 @@ def _reference(
         fragment_digest=fragment_digest,
         span=span,
         lineage_id=lineage_id,
-        independence_class=independence_class,  # type: ignore[arg-type]
         captured_at=_CAPTURED_AT,
     )
 
 
-def _registry() -> InMemoryEvidenceRegistry:
+def _registry(
+    *,
+    source_b_independence_class: EffectiveIndependenceClass = "independent",
+) -> InMemoryEvidenceRegistry:
     return InMemoryEvidenceRegistry(
         [
             EvidenceSourceRecord(
                 source_id="source-a",
                 source_digest=_SOURCE_A_DIGEST,
                 lineage_id="lineage-a",
+                effective_independence_class="independent",
                 status="active",
                 fragments={
                     "fragment-a": EvidenceFragmentRecord(
@@ -68,6 +71,7 @@ def _registry() -> InMemoryEvidenceRegistry:
                 source_id="source-b",
                 source_digest=_SOURCE_B_DIGEST,
                 lineage_id="lineage-b",
+                effective_independence_class=source_b_independence_class,
                 status="active",
                 fragments={
                     "fragment-c": EvidenceFragmentRecord(
@@ -99,6 +103,13 @@ def test_reference_is_frozen() -> None:
         reference.reference_id = "other"  # type: ignore[misc]
 
 
+def test_reference_rejects_producer_claimed_independence() -> None:
+    payload = {**_reference().to_mapping(), "independence_class": "independent"}
+
+    with pytest.raises(EvidenceReferenceError, match="unexpected=independence_class"):
+        EvidenceReference.from_mapping(payload)
+
+
 @pytest.mark.parametrize(
     "payload, message",
     [
@@ -127,6 +138,7 @@ def test_validator_accepts_one_registered_reference() -> None:
     assert receipt.validated_reference_count == 1
     assert receipt.distinct_independent_lineage_count == 1
     assert receipt.outcomes[0].status == "accepted"
+    assert receipt.outcomes[0].effective_independence_class == "independent"
     assert receipt.fact_ref.startswith("fact_")
     assert "fact-1" not in receipt.fact_ref
 
@@ -145,6 +157,31 @@ def test_validator_deduplicates_reference_ids_without_inflating_counts() -> None
         "accepted",
         "duplicate_reference_id",
     ]
+
+
+def test_validator_fails_closed_for_conflicting_reference_id_in_any_order() -> None:
+    valid = _reference(reference_id="ref-conflict")
+    conflicting = _reference(
+        reference_id="ref-conflict",
+        source_digest=_SOURCE_B_DIGEST,
+    )
+    validator = EvidenceReferenceValidator(_registry())
+
+    forward = validator.validate(fact_id="fact-1", references=[valid, conflicting])
+    backward = validator.validate(fact_id="fact-1", references=[conflicting, valid])
+
+    assert forward.to_mapping() == backward.to_mapping()
+    assert forward.raw_reference_count == 2
+    assert forward.unique_reference_count == 1
+    assert forward.validated_reference_count == 0
+    assert forward.distinct_independent_lineage_count == 0
+    assert {outcome.status for outcome in forward.outcomes} == {
+        "conflicting_reference_id"
+    }
+    assert all(
+        outcome.effective_independence_class is None
+        for outcome in forward.outcomes
+    )
 
 
 def test_validator_counts_same_lineage_only_once() -> None:
@@ -178,10 +215,11 @@ def test_validator_does_not_count_derived_reference_as_independent() -> None:
         fragment_digest=_FRAGMENT_C_DIGEST,
         span="chars:0-15",
         lineage_id="lineage-b",
-        independence_class="derived",
     )
 
-    receipt = EvidenceReferenceValidator(_registry()).validate(
+    receipt = EvidenceReferenceValidator(
+        _registry(source_b_independence_class="derived")
+    ).validate(
         fact_id="fact-1", references=[independent, derived]
     )
 
@@ -190,6 +228,10 @@ def test_validator_does_not_count_derived_reference_as_independent() -> None:
     assert [outcome.status for outcome in receipt.outcomes] == [
         "accepted",
         "derived_not_counted",
+    ]
+    assert [outcome.effective_independence_class for outcome in receipt.outcomes] == [
+        "independent",
+        "derived",
     ]
 
 
@@ -214,6 +256,7 @@ def test_validator_fails_closed_for_unresolvable_or_tampered_reference(
     assert receipt.validated_reference_count == 0
     assert receipt.distinct_independent_lineage_count == 0
     assert receipt.outcomes[0].status == expected_status
+    assert receipt.outcomes[0].effective_independence_class is None
 
 
 def test_validator_rejects_revoked_source() -> None:
@@ -227,6 +270,7 @@ def test_validator_rejects_revoked_source() -> None:
 
     assert receipt.validated_reference_count == 0
     assert receipt.outcomes[0].status == "revoked_source"
+    assert receipt.outcomes[0].effective_independence_class is None
 
 
 def test_receipt_is_deterministic_across_input_order() -> None:
@@ -239,6 +283,23 @@ def test_receipt_is_deterministic_across_input_order() -> None:
         fragment_digest=_FRAGMENT_C_DIGEST,
         span="chars:0-15",
         lineage_id="lineage-b",
+    )
+    validator = EvidenceReferenceValidator(_registry())
+
+    forward = validator.validate(fact_id="fact-1", references=[first, second])
+    backward = validator.validate(fact_id="fact-1", references=[second, first])
+
+    assert forward.to_mapping() == backward.to_mapping()
+    assert forward.receipt_digest == backward.receipt_digest
+
+
+def test_same_lineage_receipt_is_deterministic_across_input_order() -> None:
+    first = _reference(reference_id="ref-1")
+    second = _reference(
+        reference_id="ref-2",
+        fragment_id="fragment-b",
+        fragment_digest=_FRAGMENT_B_DIGEST,
+        span="chars:10-20",
     )
     validator = EvidenceReferenceValidator(_registry())
 

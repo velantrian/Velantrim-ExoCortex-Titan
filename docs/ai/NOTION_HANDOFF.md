@@ -144,11 +144,21 @@ Legacy `metadata.evidence_refs` uses raw strings. It measures cardinality but ca
 
 ### Material findings
 
-The existing TruthGate logic currently accepts string arrays without validation. Changing it directly would break compatibility. The safe first step is an unwired, local-only prototype.
+The existing TruthGate logic currently accepts string arrays without validation. Changing
+it directly would break compatibility. Review of the first prototype also found that its
+producer-owned `EvidenceReference.independence_class` could increase the effective lineage
+count. That would let a source participate in granting itself evidentiary independence.
 
 ### Decision and rationale
 
-Introduce `EvidenceReference` and an in-memory `EvidenceRegistry` as an unwired, local-only Python prototype. The contract enforces strict schema, canonical digests, and fail-closed validation. It does not change TruthGate thresholds, ingestion, persistence, or promotion.
+Introduce `EvidenceReference` and an in-memory `EvidenceRegistry` as an unwired,
+local-only Python prototype. Remove independence classification from the producer
+reference. Resolve `effective_independence_class` only from the explicitly supplied
+trusted registry/policy snapshot after source, digest, span and lineage validation. Count
+only distinct effective-independent lineages; record the effective class in the receipt.
+The contract enforces strict schema, canonical digests, deterministic ordering and
+fail-closed conflicting-ID handling. It does not change TruthGate thresholds, ingestion,
+persistence or promotion.
 
 ### Rejected or deferred alternatives
 
@@ -156,10 +166,17 @@ Introduce `EvidenceReference` and an in-memory `EvidenceRegistry` as an unwired,
 - Do not persist the registry without a separate data classification decision.
 - Do not attach the receipt to TruthGate yet.
 - Do not synthesize digests for missing data.
+- Do not retain a producer `claimed_independence_class` in v1 without a demonstrated
+  observe-mode need; it can be introduced later only as explicitly untrusted metadata.
 
 ### Authority, safety, privacy, and Canon boundaries
 
-This is a **contract-only increment**. It does NOT change `TruthGate` outcomes, `metadata.evidence_refs`, canonical promotion, SQLite schema, network/provider behavior, or runtime authority. `EvidenceItem` remains the separate scoring owner.
+This is a **contract-only increment**. It does NOT change `TruthGate` outcomes,
+`metadata.evidence_refs`, canonical promotion, SQLite schema, network/provider behavior or
+runtime authority. `EvidenceItem` remains the separate scoring owner. The in-memory Titan
+registry is a supplied resolver/prototype, not a second global evidence Canon and not a
+replacement for Crystal's trusted evidence-admission authority. A registry classification
+is a bounded policy result, not objective truth.
 
 ### GitHub files updated
 
@@ -174,20 +191,34 @@ This is a **contract-only increment**. It does NOT change `TruthGate` outcomes, 
 
 ### Evidence
 
-- 22 focused contract tests passed locally.
-- Full repository suite (4,307 tests) passed locally without regression.
-- PR #355 is a DRAFT pending CI and this hand-off.
+- 25 focused contract tests passed locally after the effective-independence correction.
+- The combined EvidenceReference/Evidence authenticity/TruthGate suite passed 55 tests.
+- Repository-wide Ruff and Mypy passed for all 332 `core/` source files; branding,
+  tracked-artifact, project-state and KB-integrity guards passed.
+- The local Python 3.12 suite completed (with one separately reproduced baseline test
+  excluded) at 4 failed, 4,323 passed, 17 skipped, 1 deselected and 1 xfailed. That
+  excluded failure and all four completed-run failures were each reproduced against
+  unchanged `main@588ffe61` in the same environment. This is baseline/environment
+  characterization, not a waiver or exact-head CI evidence.
+- Ancestor-head CI was green; fresh exact-head repository/CI evidence is still required
+  after this correction.
+- PR #355 remains a DRAFT pending fresh CI, Notion synchronization and review.
 
 ### Known limitations
 
-The prototype is in-memory and unwired. Persistence, observe/enforce modes, and producer migration require separate PRs and admission decisions.
+The prototype is in-memory and unwired. Its supplied registry snapshot is not an
+authenticated authority merely because it is typed. Independence may be contextual; v1
+records only the bounded effective classification used by this local policy snapshot.
+Persistence, observe/enforce modes and producer migration require separate PRs, ownership
+decisions and admission decisions.
 
 ### Next actions
 
-1. Verify CI success on PR #355 exact head.
+1. Verify focused, repository and CI evidence on the corrected exact head.
 2. Create/update the Notion architecture record with this rationale and boundaries.
-3. Update this item's status to `SYNCED`.
-4. Proceed to PR 1B (persistence) data-classification review.
+3. Update this item's status to `SYNCED` after read-back.
+4. Review and merge #355 only if head/base/checks/docs remain coherent.
+5. Decide OBSERVE integration separately; do not proceed automatically to persistence.
 
 ### Synchronization result
 

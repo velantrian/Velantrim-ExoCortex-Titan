@@ -12,7 +12,7 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Literal, Mapping
+from typing import Any, Mapping
 
 EVIDENCE_REFERENCE_SCHEMA_VERSION = 1
 EVIDENCE_REFERENCE_POLICY_VERSION = "evidence-reference-v1"
@@ -20,7 +20,6 @@ EVIDENCE_REFERENCE_POLICY_VERSION = "evidence-reference-v1"
 _REFERENCE_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 _SPAN_PATTERN = re.compile(r"^chars:(\d+)-(\d+)$")
-_ALLOWED_INDEPENDENCE = frozenset({"independent", "derived", "same_lineage"})
 _REQUIRED_FIELDS = frozenset(
     {
         "schema_version",
@@ -31,7 +30,6 @@ _REQUIRED_FIELDS = frozenset(
         "fragment_digest",
         "span",
         "lineage_id",
-        "independence_class",
         "captured_at",
     }
 )
@@ -98,7 +96,6 @@ class EvidenceReference:
     fragment_digest: str
     span: str
     lineage_id: str
-    independence_class: Literal["independent", "derived", "same_lineage"]
     captured_at: str
 
     def __post_init__(self) -> None:
@@ -117,10 +114,6 @@ class EvidenceReference:
         _require_digest(self.fragment_digest, "fragment_digest")
         _require_span(self.span)
         _require_identifier(self.lineage_id, "lineage_id")
-        if self.independence_class not in _ALLOWED_INDEPENDENCE:
-            raise EvidenceReferenceError(
-                "independence_class must be independent, derived, or same_lineage"
-            )
         _require_timestamp(self.captured_at)
 
     @classmethod
@@ -147,7 +140,6 @@ class EvidenceReference:
             fragment_digest=payload["fragment_digest"],
             span=payload["span"],
             lineage_id=payload["lineage_id"],
-            independence_class=payload["independence_class"],
             captured_at=payload["captured_at"],
         )
 
@@ -157,7 +149,6 @@ class EvidenceReference:
             "captured_at": self.captured_at,
             "fragment_digest": self.fragment_digest,
             "fragment_id": self.fragment_id,
-            "independence_class": self.independence_class,
             "lineage_id": self.lineage_id,
             "reference_id": self.reference_id,
             "schema_version": self.schema_version,

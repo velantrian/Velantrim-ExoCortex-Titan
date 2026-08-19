@@ -411,6 +411,7 @@ adds no TRACE or Audit owner.
 - dimension mismatch cannot reach similarity multiplication;
 - CSM snapshot/scan state cannot become Canon or runtime authority;
 - multilingual wrapper installation cannot create a second routing authority;
+- producer-owned EvidenceReference payloads cannot grant effective independence;
 - typed EvidenceReference validation cannot create a second TruthGate, promotion or Canon owner;
 - registry/provider/projection/CSM/wrapper state cannot grant Operator GO or production authority.
 
@@ -432,8 +433,8 @@ docs/ai/PHASE3A_EMBEDDING_SPACE_IDENTITY.md   Phase 3A hand-off
 docs/adr/ADR-2026-08-15-phase3a-embedding-space-identity.md
 
 Typed Evidence Reference v1 · DRAFT contract-only increment
-core/evidence_reference.py                 immutable local source/fragment/lineage reference
-core/evidence_registry.py                  in-memory local resolver + validation receipt prototype
+core/evidence_reference.py                 immutable source/fragment/lineage reference; no producer independence class
+core/evidence_registry.py                  in-memory resolver + registry-owned effective classification + receipt
 tests/test_evidence_reference.py           strict schema and fail-closed prototype tests
 docs/adr/ADR-2026-08-19-typed-evidence-reference-contract.md
                                             unwired/no-authority decision record

@@ -2,7 +2,7 @@
 
 - **Status:** proposed for the contract-only first PR
 - **Date:** 2026-08-19
-- **Owner:** existing TruthGate / canonical-promotion owners; no new authority owner
+- **Owner:** contract-only prototype; existing TruthGate / canonical-promotion owners unchanged
 - **Documentation impact:** `GITHUB_AND_NOTION`
 
 ## Context
@@ -34,14 +34,31 @@ Introduce two **unwired, local-only prototype modules**:
 
 `EvidenceReference` has a versioned exact schema with stable reference, source,
 fragment and lineage identifiers; SHA-256 source/fragment digests; an explicit local
-span; an independence class; and a timezone-aware capture timestamp. It carries no
-raw source text, quote, URL, credentials, prompt, provider payload or user content.
+span; and a timezone-aware capture timestamp. It deliberately carries no producer-owned
+independence classification and no raw source text, quote, URL, credentials, prompt,
+provider payload or user content.
+
+Effective independence is resolved only after source, digest, fragment, span and lineage
+validation. The explicitly supplied registry record owns
+`effective_independence_class`; the reference producer cannot set that field. A unique
+trusted `independent` lineage may increase the effective count, a registry-classified
+`derived` source may not, and a later reference to an already counted lineage receives
+`same_lineage_not_counted`. The validation outcome records the effective class used by
+the policy snapshot.
+
+This effective class is a bounded registry/policy decision, not a metaphysical claim
+that a source is universally independent. The in-memory registry does not authenticate
+itself or gain admission authority merely because it supplies the value. Any future
+runtime integration must obtain that classification from the target-domain-authorized
+evidence owner. At ecosystem level, Titan may host a resolver/projection or experimental
+registry; it does not become a second global trusted-evidence authority beside Crystal.
 
 The prototype resolver accepts an explicitly supplied local registry only. It performs
 no filesystem scan, network access, provider call, retrieval, LLM invocation, database
-write or background work. It emits reason-coded outcomes for duplicates, unknown or
-revoked sources/fragments, digest/lineage mismatches and invalid spans. Its receipt
-separates raw, unique, validated and distinct-independent-lineage counts.
+write or background work. It emits reason-coded outcomes for exact duplicates,
+conflicting reference identifiers, unknown or revoked sources/fragments,
+digest/lineage mismatches and invalid spans. Its receipt separates raw, unique,
+validated and distinct-effective-independent-lineage counts.
 
 ## Authority boundary
 
@@ -57,30 +74,37 @@ separates raw, unique, validated and distinct-independent-lineage counts.
   default configuration or Operator GO is introduced.
 - **Policy authority:** unchanged. This contract neither grants permission nor replaces
   PolicyKernel/WriteGate/TruthGate policy.
+- **Independence authority:** producer payloads cannot self-declare effective
+  independence. Only the supplied trusted registry/policy snapshot can classify a
+  resolved source, and that prototype classification grants no Canon or runtime write.
 
 ## Data and privacy
 
-The v1 reference stores only technical identifiers, digests, local selectors and
-classification metadata. It must not persist full source content or public URL strings
-in its canonical JSON or validation receipt. Future registry persistence requires a
-separate admission decision and data-classification review.
+The v1 reference stores only technical identifiers, digests and local selectors. The
+validation outcome may store the effective registry classification used for that
+decision. Neither artifact may persist full source content or public URL strings.
+Future registry persistence requires a separate admission decision, ownership decision
+and data-classification review.
 
 ## Failure semantics
 
-Parsing is strict: missing or unexpected fields, unknown schema versions, invalid
-technical identifiers, malformed SHA-256 digests, invalid spans and naive timestamps
-are rejected. Registry validation is fail-closed for unresolvable/tampered/revoked
-references. A validated reference in the prototype means only that its local metadata
-and integrity fields resolve; it does not declare the linked claim true.
+Parsing is strict: missing or unexpected fields—including producer-supplied
+`independence_class`—unknown schema versions, invalid technical identifiers, malformed
+SHA-256 digests, invalid spans and naive timestamps are rejected. Registry validation is
+fail-closed for unresolvable/tampered/revoked references. Conflicting payloads that reuse
+one `reference_id` are all rejected rather than selecting an input-order winner. A
+validated reference in the prototype means only that its local metadata and integrity
+fields resolve; it does not declare the linked claim true.
 
 No retry, fallback reference synthesis, automatic legacy conversion or automatic fact
 reclassification is permitted.
 
 ## Compatibility and rollout
 
-This first PR adds the new `evidence_refs_v1` contract surface only. It does not
-change the legacy `metadata.evidence_refs: list[str]` field and does not alter historic
-facts. A later, separately reviewed sequence may add:
+This first PR defines the typed contract intended for a later `evidence_refs_v1`
+producer/integration surface. It does not add that metadata field to current facts,
+change the legacy `metadata.evidence_refs: list[str]` field or alter historic facts. A
+later, separately reviewed sequence may add:
 
 1. a persisted local registry and transaction boundary;
 2. `LEGACY`, `OBSERVE` and opt-in `ENFORCE` validation modes;
@@ -92,10 +116,12 @@ No legacy fact may be auto-upgraded, downgraded or assigned synthetic provenance
 ## Validation
 
 Focused tests must prove deterministic canonical reference/receipt digests, strict
-schema rejection, immutability, duplicate-ID deduplication, same-lineage counting,
-derived-reference treatment, unknown/revoked/tampered source handling, receipt
-content minimization and absence of write/promotion shortcuts. Repository Ruff, Mypy,
-full pytest and the usual CI gates remain required before a draft PR can be promoted.
+schema rejection, immutability, rejection of producer-claimed independence,
+duplicate-ID deduplication, conflicting-ID fail-close, order-independent same-lineage
+counting, trusted-registry derived-reference treatment, unknown/revoked/tampered source
+handling, receipt content minimization and absence of write/promotion shortcuts.
+Repository Ruff, Mypy, full pytest and the usual CI gates remain required before a draft
+PR can be promoted.
 
 ## Rollback
 

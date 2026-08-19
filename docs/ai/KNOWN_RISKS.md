@@ -59,12 +59,22 @@ receipt prototype, but it does not change `TruthGate` thresholds, its current le
 canonical promotion. Therefore no claim is made that current evidence counts establish
 source integrity, independent provenance or automated truth.
 
+The draft contract explicitly rejects producer-supplied `independence_class`. Effective
+classification comes only from the supplied trusted registry/policy snapshot after
+integrity and lineage resolution, and the receipt counts only distinct effective-
+independent lineages. Conflicting payloads that reuse one `reference_id` fail closed. This
+closes the prototype's self-granted-independence surface; it does not authenticate the
+registry snapshot, prove that independence is universal rather than context-bound, or
+change current TruthGate behavior.
+
 The future work remains intentionally split: persist a local registry only after a
 separate data-classification decision; introduce `LEGACY`/`OBSERVE`/opt-in `ENFORCE`
 modes only after differential and fault testing; attach a receipt only through the
 existing authorized metadata/audit boundary; and migrate producers only when real stable
-source artifacts exist. Historical facts must not receive synthetic digests, lineage or
-reclassification. This risk is **not closed** by the contract-only draft.
+source artifacts exist. At ecosystem level, Titan must remain a resolver/projection or
+experimental registry rather than a second trusted-evidence Canon beside Crystal.
+Historical facts must not receive synthetic digests, lineage or reclassification. This
+risk is **not closed** by the contract-only draft.
 
 ## P0 — No current Operator GO or deployed activation
 

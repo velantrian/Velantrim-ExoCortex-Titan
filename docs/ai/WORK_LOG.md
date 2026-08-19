@@ -15,6 +15,15 @@ The first bounded increment adds `core/evidence_reference.py` and
 versioned source/fragment/lineage references, strict local validation and deterministic,
 content-minimized validation receipts. The in-memory registry is a Python prototype only.
 
+Architecture review of the first draft found and removed a self-grant surface:
+`EvidenceReference.independence_class` was producer-controlled but affected the effective
+lineage count. The corrected v1 reference contains no independence classification.
+`EvidenceSourceRecord.effective_independence_class` is supplied by the trusted local
+registry/policy snapshot, applied only after integrity/lineage validation and recorded in
+the outcome. Same-lineage handling is a validator result, not a producer assertion.
+Conflicting payloads that reuse one `reference_id` now all fail closed, and validation is
+ordered deterministically so same-lineage receipts do not depend on input order.
+
 It does **not** alter `TruthGate` thresholds or outcomes, `metadata.evidence_refs`,
 canonical promotion/CAS, SQLite schema, source ingestion, network/provider behavior,
 runtime wiring, feature flags, Operator GO, runtime authority or production authority.
@@ -22,9 +31,18 @@ The existing `EvidenceItem` scoring model remains its own owner. A future admiss
 separately decide persistence, observe/enforce modes, receipt attachment and producer
 migration; no historical fact is auto-converted or reclassified by this draft.
 
-Focused local evidence on the draft branch: 22 new contract tests passed; the combined
-EvidenceReference/Evidence authenticity/TruthGate suite passed 52 tests. Full repository
-checks and exact draft-PR evidence remain required before review.
+Focused local evidence after this correction: 25 contract tests passed; the combined
+EvidenceReference/Evidence authenticity/TruthGate suite passed 55 tests; repository-wide
+Ruff and Mypy passed for all 332 `core/` source files. Repository guard checks for
+branding, tracked artifacts, project state and KB graph integrity also passed.
+
+The local Python 3.12 full-suite characterization was not green: after excluding one
+separately reproduced baseline failure, it completed with 4 failed, 4,323 passed,
+17 skipped, 1 deselected and 1 xfailed. The excluded failure and all four completed-run
+failures were each reproduced with the same environment against unchanged
+`main@588ffe61`; none touches the EvidenceReference files or behavior. This is bounded
+baseline/environment evidence, not a waiver. The earlier GitHub checks belong to an
+ancestor head, so fresh exact-head CI remains required before review.
 
 ---
 

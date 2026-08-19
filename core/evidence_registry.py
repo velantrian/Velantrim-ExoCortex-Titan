@@ -20,8 +20,11 @@ from core.evidence_reference import (
 
 EVIDENCE_VALIDATION_POLICY_VERSION = "evidence-validation-v1"
 
+EffectiveIndependenceClass = Literal["independent", "derived"]
+
 ValidationStatus = Literal[
     "accepted",
+    "conflicting_reference_id",
     "derived_not_counted",
     "duplicate_reference_id",
     "fragment_digest_mismatch",
@@ -54,11 +57,12 @@ class EvidenceFragmentRecord:
 
 @dataclass(frozen=True, slots=True)
 class EvidenceSourceRecord:
-    """Hash-pinned local source metadata used for offline reference resolution."""
+    """Trusted local source metadata used for offline reference resolution."""
 
     source_id: str
     source_digest: str
     lineage_id: str
+    effective_independence_class: EffectiveIndependenceClass
     status: Literal["active", "revoked"]
     fragments: Mapping[str, EvidenceFragmentRecord]
 
@@ -69,6 +73,10 @@ class EvidenceSourceRecord:
             raise ValueError("source_digest must be a sha256 digest")
         if not self.lineage_id:
             raise ValueError("lineage_id must be non-empty")
+        if self.effective_independence_class not in {"independent", "derived"}:
+            raise ValueError(
+                "effective_independence_class must be independent or derived"
+            )
         if self.status not in {"active", "revoked"}:
             raise ValueError("status must be active or revoked")
         if not self.fragments:
@@ -107,6 +115,7 @@ class EvidenceValidationOutcome:
     reference_id: str
     reference_digest: str
     status: ValidationStatus
+    effective_independence_class: EffectiveIndependenceClass | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,6 +154,9 @@ class EvidenceValidationReceipt:
             "fact_ref": self.fact_ref,
             "outcomes": [
                 {
+                    "effective_independence_class": (
+                        outcome.effective_independence_class
+                    ),
                     "reference_digest": outcome.reference_digest,
                     "reference_id": outcome.reference_id,
                     "status": outcome.status,
@@ -190,38 +202,68 @@ class EvidenceReferenceValidator:
         validated_reference_count = 0
         unique_reference_count = 0
 
-        for reference in references:
+        ordered_references = sorted(
+            references,
+            key=lambda reference: (reference.reference_id, reference.reference_digest),
+        )
+        reference_digests_by_id: dict[str, set[str]] = {}
+        for reference in ordered_references:
+            reference_digests_by_id.setdefault(reference.reference_id, set()).add(
+                reference.reference_digest
+            )
+        conflicting_reference_ids = {
+            reference_id
+            for reference_id, reference_digests in reference_digests_by_id.items()
+            if len(reference_digests) > 1
+        }
+
+        for reference in ordered_references:
+            if reference.reference_id in conflicting_reference_ids:
+                if reference.reference_id not in seen_reference_ids:
+                    seen_reference_ids.add(reference.reference_id)
+                    unique_reference_count += 1
+                outcomes.append(
+                    EvidenceValidationOutcome(
+                        reference_id=reference.reference_id,
+                        reference_digest=reference.reference_digest,
+                        status="conflicting_reference_id",
+                        effective_independence_class=None,
+                    )
+                )
+                continue
+
             if reference.reference_id in seen_reference_ids:
                 outcomes.append(
                     EvidenceValidationOutcome(
                         reference_id=reference.reference_id,
                         reference_digest=reference.reference_digest,
                         status="duplicate_reference_id",
+                        effective_independence_class=None,
                     )
                 )
                 continue
 
             seen_reference_ids.add(reference.reference_id)
             unique_reference_count += 1
-            status = self._validate_reference(reference)
+            status, source = self._validate_reference(reference)
+            effective_independence_class = None
             if status == "accepted":
+                assert source is not None
                 validated_reference_count += 1
-                if reference.lineage_id in counted_lineages:
+                effective_independence_class = source.effective_independence_class
+                if effective_independence_class != "independent":
+                    status = "derived_not_counted"
+                elif source.lineage_id in counted_lineages:
                     status = "same_lineage_not_counted"
-                elif reference.independence_class != "independent":
-                    status = (
-                        "derived_not_counted"
-                        if reference.independence_class == "derived"
-                        else "same_lineage_not_counted"
-                    )
                 else:
-                    counted_lineages.add(reference.lineage_id)
+                    counted_lineages.add(source.lineage_id)
 
             outcomes.append(
                 EvidenceValidationOutcome(
                     reference_id=reference.reference_id,
                     reference_digest=reference.reference_digest,
                     status=status,
+                    effective_independence_class=effective_independence_class,
                 )
             )
 
@@ -237,24 +279,26 @@ class EvidenceReferenceValidator:
             outcomes=tuple(outcomes),
         )
 
-    def _validate_reference(self, reference: EvidenceReference) -> ValidationStatus:
+    def _validate_reference(
+        self, reference: EvidenceReference
+    ) -> tuple[ValidationStatus, EvidenceSourceRecord | None]:
         source = self._registry.resolve(reference.source_id)
         if source is None:
-            return "unknown_source"
+            return "unknown_source", None
         if source.status == "revoked":
-            return "revoked_source"
+            return "revoked_source", None
         if source.source_digest != reference.source_digest:
-            return "source_digest_mismatch"
+            return "source_digest_mismatch", None
         if source.lineage_id != reference.lineage_id:
-            return "lineage_mismatch"
+            return "lineage_mismatch", None
         fragment = source.fragments.get(reference.fragment_id)
         if fragment is None:
-            return "unknown_fragment"
+            return "unknown_fragment", None
         if fragment.fragment_digest != reference.fragment_digest:
-            return "fragment_digest_mismatch"
+            return "fragment_digest_mismatch", None
         if reference.span not in fragment.allowed_spans:
-            return "invalid_span"
-        return "accepted"
+            return "invalid_span", None
+        return "accepted", source
 
     @staticmethod
     def _fact_ref(fact_id: str) -> str:
@@ -264,6 +308,7 @@ class EvidenceReferenceValidator:
 
 __all__ = [
     "EVIDENCE_VALIDATION_POLICY_VERSION",
+    "EffectiveIndependenceClass",
     "EvidenceFragmentRecord",
     "EvidenceReferenceValidator",
     "EvidenceRegistry",
