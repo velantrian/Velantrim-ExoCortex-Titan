@@ -6,12 +6,15 @@ from core.evidence_reference import EvidenceReference, EvidenceReferenceError
 from core.evidence_registry import (
     EvidenceFragmentRecord,
     EvidenceReferenceValidator,
+    EvidenceRegistrySnapshot,
     EvidenceSourceRecord,
+    EvidenceValidationReceipt,
     InMemoryEvidenceRegistry,
 )
 
 _SOURCE_A_DIGEST = "sha256:" + "a" * 64
 _SOURCE_B_DIGEST = "sha256:" + "b" * 64
+_SOURCE_C_DIGEST = "sha256:" + "f" * 64
 _FRAGMENT_A_DIGEST = "sha256:" + "c" * 64
 _FRAGMENT_B_DIGEST = "sha256:" + "d" * 64
 _FRAGMENT_C_DIGEST = "sha256:" + "e" * 64
@@ -108,25 +111,34 @@ def test_reference_rejects_producer_claimed_independence() -> None:
         ({"schema_version": 1}, "missing="),
         ({**_reference().to_mapping(), "unknown": "value"}, "unexpected=unknown"),
         ({**_reference().to_mapping(), "span": "chars:10-10"}, "span end"),
-        ({**_reference().to_mapping(), "captured_at": "2026-08-19"}, "explicit timezone"),
-        ({**_reference().to_mapping(), "source_digest": "sha256:UPPER"}, "lower-case"),
+        (
+            {**_reference().to_mapping(), "captured_at": "2026-08-19"},
+            "explicit timezone",
+        ),
+        (
+            {**_reference().to_mapping(), "source_digest": "sha256:UPPER"},
+            "lower-case",
+        ),
     ],
 )
-def test_reference_parser_rejects_invalid_payloads(payload: dict[str, object], message: str) -> None:
+def test_reference_parser_rejects_invalid_payloads(
+    payload: dict[str, object],
+    message: str,
+) -> None:
     with pytest.raises(EvidenceReferenceError, match=message):
         EvidenceReference.from_mapping(payload)
 
 
-def test_validator_accepts_registered_reference_without_self_granting_independence() -> None:
+def test_validator_accepts_reference_without_self_granting_independence() -> None:
     receipt = EvidenceReferenceValidator(_registry()).validate(
-        fact_id="fact-1", references=[_reference()]
+        fact_id="fact-1",
+        references=[_reference()],
     )
     assert receipt.raw_reference_count == 1
     assert receipt.unique_reference_count == 1
     assert receipt.validated_reference_count == 1
     assert receipt.distinct_independent_lineage_count == 0
     assert receipt.outcomes[0].status == "accepted"
-    assert receipt.outcomes[0].effective_independence_class is None
     assert receipt.registry_snapshot_digest.startswith("sha256:")
     assert receipt.fact_ref.startswith("fact_")
     assert "fact-1" not in receipt.fact_ref
@@ -135,31 +147,45 @@ def test_validator_accepts_registered_reference_without_self_granting_independen
 def test_validator_deduplicates_reference_ids_without_inflating_counts() -> None:
     reference = _reference()
     receipt = EvidenceReferenceValidator(_registry()).validate(
-        fact_id="fact-1", references=[reference, reference]
+        fact_id="fact-1",
+        references=[reference, reference],
     )
     assert receipt.raw_reference_count == 2
     assert receipt.unique_reference_count == 1
     assert receipt.validated_reference_count == 1
     assert receipt.distinct_independent_lineage_count == 0
-    assert [outcome.status for outcome in receipt.outcomes] == ["accepted", "duplicate_reference_id"]
+    assert [outcome.status for outcome in receipt.outcomes] == [
+        "accepted",
+        "duplicate_reference_id",
+    ]
 
 
 def test_validator_fails_closed_for_conflicting_reference_id_in_any_order() -> None:
     valid = _reference(reference_id="ref-conflict")
-    conflicting = _reference(reference_id="ref-conflict", source_digest=_SOURCE_B_DIGEST)
+    conflicting = _reference(
+        reference_id="ref-conflict",
+        source_digest=_SOURCE_B_DIGEST,
+    )
     validator = EvidenceReferenceValidator(_registry())
-    forward = validator.validate(fact_id="fact-1", references=[valid, conflicting])
-    backward = validator.validate(fact_id="fact-1", references=[conflicting, valid])
+    forward = validator.validate(
+        fact_id="fact-1",
+        references=[valid, conflicting],
+    )
+    backward = validator.validate(
+        fact_id="fact-1",
+        references=[conflicting, valid],
+    )
     assert forward.to_mapping() == backward.to_mapping()
     assert forward.raw_reference_count == 2
     assert forward.unique_reference_count == 1
     assert forward.validated_reference_count == 0
     assert forward.distinct_independent_lineage_count == 0
-    assert {outcome.status for outcome in forward.outcomes} == {"conflicting_reference_id"}
-    assert all(outcome.effective_independence_class is None for outcome in forward.outcomes)
+    assert {outcome.status for outcome in forward.outcomes} == {
+        "conflicting_reference_id"
+    }
 
 
-def test_registry_copies_fragment_mapping_into_immutable_snapshot() -> None:
+def test_registry_copies_fragment_mapping_into_immutable_record() -> None:
     fragments = {
         "fragment-a": EvidenceFragmentRecord(
             fragment_id="fragment-a",
@@ -174,17 +200,14 @@ def test_registry_copies_fragment_mapping_into_immutable_snapshot() -> None:
         status="active",
         fragments=fragments,
     )
-    registry = InMemoryEvidenceRegistry([source])
     fragments["fragment-b"] = EvidenceFragmentRecord(
         fragment_id="fragment-b",
         fragment_digest=_FRAGMENT_B_DIGEST,
         allowed_spans=frozenset({"chars:10-20"}),
     )
-    resolved = registry.resolve("source-a")
-    assert resolved is not None
-    assert set(resolved.fragments) == {"fragment-a"}
+    assert set(source.fragments) == {"fragment-a"}
     with pytest.raises(TypeError):
-        resolved.fragments["fragment-b"] = fragments["fragment-b"]  # type: ignore[index]
+        source.fragments["fragment-b"] = fragments["fragment-b"]  # type: ignore[index]
 
 
 def test_registry_rejects_invalid_or_inconsistent_fragment_metadata() -> None:
@@ -228,26 +251,36 @@ def test_registry_rejects_invalid_or_inconsistent_fragment_metadata() -> None:
         (_reference(source_digest=_SOURCE_B_DIGEST), "source_digest_mismatch"),
         (_reference(lineage_id="lineage-b"), "lineage_mismatch"),
         (_reference(fragment_id="unknown"), "unknown_fragment"),
-        (_reference(fragment_digest=_FRAGMENT_B_DIGEST), "fragment_digest_mismatch"),
+        (
+            _reference(fragment_digest=_FRAGMENT_B_DIGEST),
+            "fragment_digest_mismatch",
+        ),
         (_reference(span="chars:20-30"), "invalid_span"),
     ],
 )
-def test_validator_fails_closed_for_unresolvable_or_tampered_reference(reference: EvidenceReference, expected_status: str) -> None:
-    receipt = EvidenceReferenceValidator(_registry()).validate(fact_id="fact-1", references=[reference])
+def test_validator_fails_closed_for_unresolvable_or_tampered_reference(
+    reference: EvidenceReference,
+    expected_status: str,
+) -> None:
+    receipt = EvidenceReferenceValidator(_registry()).validate(
+        fact_id="fact-1",
+        references=[reference],
+    )
     assert receipt.validated_reference_count == 0
     assert receipt.distinct_independent_lineage_count == 0
     assert receipt.outcomes[0].status == expected_status
-    assert receipt.outcomes[0].effective_independence_class is None
 
 
 def test_validator_rejects_revoked_source() -> None:
     source = _registry().resolve("source-a")
     assert source is not None
     registry = InMemoryEvidenceRegistry([replace(source, status="revoked")])
-    receipt = EvidenceReferenceValidator(registry).validate(fact_id="fact-1", references=[_reference()])
+    receipt = EvidenceReferenceValidator(registry).validate(
+        fact_id="fact-1",
+        references=[_reference()],
+    )
     assert receipt.validated_reference_count == 0
     assert receipt.outcomes[0].status == "revoked_source"
-    assert receipt.outcomes[0].effective_independence_class is None
 
 
 def test_receipt_is_deterministic_across_input_order() -> None:
@@ -262,21 +295,128 @@ def test_receipt_is_deterministic_across_input_order() -> None:
         lineage_id="lineage-b",
     )
     validator = EvidenceReferenceValidator(_registry())
-    forward = validator.validate(fact_id="fact-1", references=[first, second])
-    backward = validator.validate(fact_id="fact-1", references=[second, first])
+    forward = validator.validate(
+        fact_id="fact-1",
+        references=[first, second],
+    )
+    backward = validator.validate(
+        fact_id="fact-1",
+        references=[second, first],
+    )
     assert forward.to_mapping() == backward.to_mapping()
     assert forward.receipt_digest == backward.receipt_digest
     assert forward.distinct_independent_lineage_count == 0
 
 
 def test_registry_snapshot_digest_is_deterministic_and_metadata_bound() -> None:
-    first = _registry()
-    second = _registry()
+    first = _registry().snapshot()
+    second = _registry().snapshot()
     assert first.snapshot_digest == second.snapshot_digest
-    source = second.resolve("source-a")
+    source = _registry().resolve("source-a")
     assert source is not None
-    changed = InMemoryEvidenceRegistry([replace(source, status="revoked")])
+    changed = EvidenceRegistrySnapshot(
+        {source.source_id: replace(source, status="revoked")}
+    )
     assert changed.snapshot_digest != first.snapshot_digest
+
+
+def test_registry_snapshot_is_defensive_and_immutable() -> None:
+    registry = _registry()
+    snapshot = registry.snapshot()
+    digest_before = snapshot.snapshot_digest
+    source_c = EvidenceSourceRecord(
+        source_id="source-c",
+        source_digest=_SOURCE_C_DIGEST,
+        lineage_id="lineage-c",
+        status="active",
+        fragments={
+            "fragment-c": EvidenceFragmentRecord(
+                fragment_id="fragment-c",
+                fragment_digest=_FRAGMENT_C_DIGEST,
+                allowed_spans=frozenset({"chars:0-15"}),
+            )
+        },
+    )
+    registry.register(source_c)
+    assert snapshot.resolve("source-c") is None
+    assert snapshot.snapshot_digest == digest_before
+    with pytest.raises(TypeError):
+        snapshot.records["source-c"] = source_c  # type: ignore[index]
+
+
+def test_snapshot_rejects_source_mapping_key_mismatch() -> None:
+    source = _registry().resolve("source-a")
+    assert source is not None
+    with pytest.raises(ValueError, match="source mapping key"):
+        EvidenceRegistrySnapshot({"wrong-source": source})
+
+
+def test_validator_captures_exactly_one_snapshot_and_avoids_live_lookups() -> None:
+    initial_snapshot = _registry().snapshot()
+
+    class SnapshotOnlyRegistry:
+        def __init__(self) -> None:
+            self.snapshot_calls = 0
+
+        def snapshot(self) -> EvidenceRegistrySnapshot:
+            self.snapshot_calls += 1
+            return initial_snapshot
+
+        def resolve(self, source_id: str) -> EvidenceSourceRecord | None:
+            raise AssertionError(f"live lookup forbidden: {source_id}")
+
+        @property
+        def snapshot_digest(self) -> str:
+            raise AssertionError("live digest lookup forbidden")
+
+    registry = SnapshotOnlyRegistry()
+    second = _reference(
+        reference_id="ref-2",
+        source_id="source-b",
+        source_digest=_SOURCE_B_DIGEST,
+        fragment_id="fragment-c",
+        fragment_digest=_FRAGMENT_C_DIGEST,
+        span="chars:0-15",
+        lineage_id="lineage-b",
+    )
+    receipt = EvidenceReferenceValidator(registry).validate(
+        fact_id="fact-1",
+        references=[_reference(), second],
+    )
+    assert registry.snapshot_calls == 1
+    assert receipt.validated_reference_count == 2
+    assert receipt.registry_snapshot_digest == initial_snapshot.snapshot_digest
+
+
+def test_validator_rejects_non_snapshot_registry_view() -> None:
+    class BadRegistry:
+        def snapshot(self) -> object:
+            return object()
+
+    with pytest.raises(ValueError, match="EvidenceRegistrySnapshot"):
+        EvidenceReferenceValidator(BadRegistry()).validate(  # type: ignore[arg-type]
+            fact_id="fact-1",
+            references=[_reference()],
+        )
+
+
+def test_receipt_cannot_assert_independence_without_authorized_policy() -> None:
+    receipt = EvidenceReferenceValidator(_registry()).validate(
+        fact_id="fact-1",
+        references=[_reference()],
+    )
+    with pytest.raises(ValueError, match="authorized independence policy"):
+        EvidenceValidationReceipt(
+            fact_ref=receipt.fact_ref,
+            policy_version=receipt.policy_version,
+            reference_policy_version=receipt.reference_policy_version,
+            registry_snapshot_digest=receipt.registry_snapshot_digest,
+            raw_reference_count=1,
+            unique_reference_count=1,
+            validated_reference_count=1,
+            distinct_independent_lineage_count=1,
+            outcomes=receipt.outcomes,
+        )
 
 
 def test_registry_rejects_conflicting_source_replacement() -> None:

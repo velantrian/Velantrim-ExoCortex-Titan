@@ -1,9 +1,12 @@
-"""Local-only prototype registry and validator for typed evidence references.
+"""Local-only registry and provenance validator for typed evidence references.
 
 The module is deliberately not wired into TruthGate, SQLite storage, ingestion,
-network I/O or Canon mutation. It validates the contract from
-:mod:`core.evidence_reference` against an explicitly supplied in-memory registry
-and emits content-minimized, deterministic receipts for future observe-mode work.
+network I/O or Canon mutation. Validation runs against one immutable registry
+snapshot and emits a content-minimized deterministic receipt.
+
+This prototype does not classify evidence as independent. Snapshot identity
+binds a receipt to local metadata; it is not authentication, target-domain
+authorization, or evidence of claim truth.
 """
 
 from __future__ import annotations
@@ -21,8 +24,7 @@ from core.evidence_reference import (
 )
 
 EVIDENCE_VALIDATION_POLICY_VERSION = "evidence-validation-v1"
-
-EffectiveIndependenceClass = Literal["independent", "derived"]
+EVIDENCE_REGISTRY_SNAPSHOT_SCHEMA_VERSION = 1
 
 ValidationStatus = Literal[
     "accepted",
@@ -70,7 +72,7 @@ def _require_span(value: object, field_name: str = "span") -> str:
 
 @dataclass(frozen=True, slots=True)
 class EvidenceFragmentRecord:
-    """One locally registered fragment; no raw fragment text is retained here."""
+    """One immutable local fragment record; raw fragment text is not retained."""
 
     fragment_id: str
     fragment_digest: str
@@ -92,7 +94,7 @@ class EvidenceFragmentRecord:
 
 @dataclass(frozen=True, slots=True)
 class EvidenceSourceRecord:
-    """Trusted local source metadata used for offline reference resolution."""
+    """Immutable local source metadata used for provenance resolution."""
 
     source_id: str
     source_digest: str
@@ -113,24 +115,91 @@ class EvidenceSourceRecord:
         for fragment_key, fragment in self.fragments.items():
             _require_identifier(fragment_key, "fragment mapping key")
             if not isinstance(fragment, EvidenceFragmentRecord):
-                raise ValueError("fragments values must be EvidenceFragmentRecord instances")
+                raise ValueError(
+                    "fragments values must be EvidenceFragmentRecord instances"
+                )
             if fragment_key != fragment.fragment_id:
-                raise ValueError("fragment mapping key must equal fragment.fragment_id")
+                raise ValueError(
+                    "fragment mapping key must equal fragment.fragment_id"
+                )
             fragments_snapshot[fragment_key] = fragment
-        object.__setattr__(self, "fragments", MappingProxyType(fragments_snapshot))
+        object.__setattr__(
+            self,
+            "fragments",
+            MappingProxyType(fragments_snapshot),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceRegistrySnapshot:
+    """One immutable, content-addressed registry view for a validation run."""
+
+    records: Mapping[str, EvidenceSourceRecord]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.records, Mapping):
+            raise ValueError("records must be a mapping")
+
+        records_snapshot: dict[str, EvidenceSourceRecord] = {}
+        for source_key, record in self.records.items():
+            _require_identifier(source_key, "source mapping key")
+            if not isinstance(record, EvidenceSourceRecord):
+                raise ValueError(
+                    "records values must be EvidenceSourceRecord instances"
+                )
+            if source_key != record.source_id:
+                raise ValueError("source mapping key must equal record.source_id")
+            records_snapshot[source_key] = record
+        object.__setattr__(
+            self,
+            "records",
+            MappingProxyType(records_snapshot),
+        )
+
+    def resolve(self, source_id: str) -> EvidenceSourceRecord | None:
+        return self.records.get(source_id)
+
+    def to_mapping(self) -> dict[str, object]:
+        sources: dict[str, object] = {}
+        for source_id, record in sorted(self.records.items()):
+            fragments: dict[str, object] = {}
+            for fragment_id, fragment in sorted(record.fragments.items()):
+                fragments[fragment_id] = {
+                    "allowed_spans": sorted(fragment.allowed_spans),
+                    "fragment_digest": fragment.fragment_digest,
+                    "fragment_id": fragment.fragment_id,
+                }
+            sources[source_id] = {
+                "fragments": fragments,
+                "lineage_id": record.lineage_id,
+                "source_digest": record.source_digest,
+                "source_id": record.source_id,
+                "status": record.status,
+            }
+        return {
+            "schema_version": EVIDENCE_REGISTRY_SNAPSHOT_SCHEMA_VERSION,
+            "sources": sources,
+        }
+
+    @property
+    def snapshot_digest(self) -> str:
+        canonical = json.dumps(
+            self.to_mapping(),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return "sha256:" + hashlib.sha256(canonical).hexdigest()
 
 
 class EvidenceRegistry(Protocol):
-    """Read-only local source lookup used by the prototype validator."""
+    """Registry able to supply one immutable snapshot per validation run."""
 
-    def resolve(self, source_id: str) -> EvidenceSourceRecord | None: ...
-
-    @property
-    def snapshot_digest(self) -> str: ...
+    def snapshot(self) -> EvidenceRegistrySnapshot: ...
 
 
 class InMemoryEvidenceRegistry:
-    """Minimal local registry for deterministic unit tests and offline prototypes."""
+    """Mutable builder whose validator-facing surface is an immutable snapshot."""
 
     def __init__(self, records: Sequence[EvidenceSourceRecord] = ()) -> None:
         self._records: dict[str, EvidenceSourceRecord] = {}
@@ -138,7 +207,7 @@ class InMemoryEvidenceRegistry:
             self.register(record)
 
     def register(self, record: EvidenceSourceRecord) -> None:
-        """Register exactly one source record; conflicting replacement is rejected."""
+        """Register one source; conflicting replacement is rejected."""
         if not isinstance(record, EvidenceSourceRecord):
             raise ValueError("record must be an EvidenceSourceRecord")
         previous = self._records.get(record.source_id)
@@ -147,51 +216,31 @@ class InMemoryEvidenceRegistry:
         self._records[record.source_id] = record
 
     def resolve(self, source_id: str) -> EvidenceSourceRecord | None:
+        """Return the builder's current record; validators use snapshot()."""
         return self._records.get(source_id)
+
+    def snapshot(self) -> EvidenceRegistrySnapshot:
+        """Capture a defensive immutable copy of the current registry mapping."""
+        return EvidenceRegistrySnapshot(self._records)
 
     @property
     def snapshot_digest(self) -> str:
-        snapshot = {
-            "sources": {
-                source_id: {
-                    "fragments": {
-                        fragment_id: {
-                            "allowed_spans": sorted(fragment.allowed_spans),
-                            "fragment_digest": fragment.fragment_digest,
-                            "fragment_id": fragment.fragment_id,
-                        }
-                        for fragment_id, fragment in sorted(record.fragments.items())
-                    },
-                    "lineage_id": record.lineage_id,
-                    "source_digest": record.source_digest,
-                    "source_id": record.source_id,
-                    "status": record.status,
-                }
-                for source_id, record in sorted(self._records.items())
-            }
-        }
-        canonical = json.dumps(
-            snapshot,
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode("utf-8")
-        return "sha256:" + hashlib.sha256(canonical).hexdigest()
+        """Return the digest of a fresh snapshot for inspection compatibility."""
+        return self.snapshot().snapshot_digest
 
 
 @dataclass(frozen=True, slots=True)
 class EvidenceValidationOutcome:
-    """Content-minimized decision for one typed reference."""
+    """Content-minimized provenance-validation result for one typed reference."""
 
     reference_id: str
     reference_digest: str
     status: ValidationStatus
-    effective_independence_class: EffectiveIndependenceClass | None
 
 
 @dataclass(frozen=True, slots=True)
 class EvidenceValidationReceipt:
-    """Deterministic validation result; it is not a promotion or write receipt."""
+    """Deterministic result; not a promotion, truth, or authority receipt."""
 
     fact_ref: str
     policy_version: str
@@ -211,7 +260,10 @@ class EvidenceValidationReceipt:
             self.validated_reference_count,
             self.distinct_independent_lineage_count,
         )
-        if any(not isinstance(value, int) or value < 0 for value in counts):
+        if any(
+            not isinstance(value, int) or isinstance(value, bool) or value < 0
+            for value in counts
+        ):
             raise ValueError("receipt counts must be non-negative integers")
         if not (
             self.distinct_independent_lineage_count
@@ -220,16 +272,20 @@ class EvidenceValidationReceipt:
             <= self.raw_reference_count
         ):
             raise ValueError("receipt counts violate validation ordering")
+        if self.distinct_independent_lineage_count != 0:
+            raise ValueError(
+                "prototype receipt cannot assert independent lineages without "
+                "an authorized independence policy"
+            )
 
     def to_mapping(self) -> dict[str, object]:
         return {
-            "distinct_independent_lineage_count": self.distinct_independent_lineage_count,
+            "distinct_independent_lineage_count": (
+                self.distinct_independent_lineage_count
+            ),
             "fact_ref": self.fact_ref,
             "outcomes": [
                 {
-                    "effective_independence_class": (
-                        outcome.effective_independence_class
-                    ),
                     "reference_digest": outcome.reference_digest,
                     "reference_id": outcome.reference_id,
                     "status": outcome.status,
@@ -256,7 +312,7 @@ class EvidenceValidationReceipt:
 
 
 class EvidenceReferenceValidator:
-    """Validate typed references against a supplied local-only registry snapshot."""
+    """Validate typed references against one immutable local registry snapshot."""
 
     def __init__(self, registry: EvidenceRegistry) -> None:
         self._registry = registry
@@ -270,6 +326,13 @@ class EvidenceReferenceValidator:
         """Return a deterministic receipt without mutating a fact or registry."""
         if not isinstance(fact_id, str) or not fact_id:
             raise ValueError("fact_id must be a non-empty string")
+
+        snapshot = self._registry.snapshot()
+        if not isinstance(snapshot, EvidenceRegistrySnapshot):
+            raise ValueError(
+                "registry.snapshot() must return EvidenceRegistrySnapshot"
+            )
+
         seen_reference_ids: set[str] = set()
         outcomes: list[EvidenceValidationOutcome] = []
         validated_reference_count = 0
@@ -277,7 +340,10 @@ class EvidenceReferenceValidator:
 
         ordered_references = sorted(
             references,
-            key=lambda reference: (reference.reference_id, reference.reference_digest),
+            key=lambda reference: (
+                reference.reference_id,
+                reference.reference_digest,
+            ),
         )
         reference_digests_by_id: dict[str, set[str]] = {}
         for reference in ordered_references:
@@ -300,7 +366,6 @@ class EvidenceReferenceValidator:
                         reference_id=reference.reference_id,
                         reference_digest=reference.reference_digest,
                         status="conflicting_reference_id",
-                        effective_independence_class=None,
                     )
                 )
                 continue
@@ -311,16 +376,14 @@ class EvidenceReferenceValidator:
                         reference_id=reference.reference_id,
                         reference_digest=reference.reference_digest,
                         status="duplicate_reference_id",
-                        effective_independence_class=None,
                     )
                 )
                 continue
 
             seen_reference_ids.add(reference.reference_id)
             unique_reference_count += 1
-            status, source = self._validate_reference(reference)
+            status = self._validate_reference(snapshot, reference)
             if status == "accepted":
-                assert source is not None
                 validated_reference_count += 1
 
             outcomes.append(
@@ -328,16 +391,20 @@ class EvidenceReferenceValidator:
                     reference_id=reference.reference_id,
                     reference_digest=reference.reference_digest,
                     status=status,
-                    effective_independence_class=None,
                 )
             )
 
-        outcomes.sort(key=lambda outcome: (outcome.reference_id, outcome.reference_digest))
+        outcomes.sort(
+            key=lambda outcome: (
+                outcome.reference_id,
+                outcome.reference_digest,
+            )
+        )
         return EvidenceValidationReceipt(
             fact_ref=self._fact_ref(fact_id),
             policy_version=EVIDENCE_VALIDATION_POLICY_VERSION,
             reference_policy_version=EVIDENCE_REFERENCE_POLICY_VERSION,
-            registry_snapshot_digest=self._registry.snapshot_digest,
+            registry_snapshot_digest=snapshot.snapshot_digest,
             raw_reference_count=len(references),
             unique_reference_count=unique_reference_count,
             validated_reference_count=validated_reference_count,
@@ -345,26 +412,28 @@ class EvidenceReferenceValidator:
             outcomes=tuple(outcomes),
         )
 
+    @staticmethod
     def _validate_reference(
-        self, reference: EvidenceReference
-    ) -> tuple[ValidationStatus, EvidenceSourceRecord | None]:
-        source = self._registry.resolve(reference.source_id)
+        snapshot: EvidenceRegistrySnapshot,
+        reference: EvidenceReference,
+    ) -> ValidationStatus:
+        source = snapshot.resolve(reference.source_id)
         if source is None:
-            return "unknown_source", None
+            return "unknown_source"
         if source.status == "revoked":
-            return "revoked_source", None
+            return "revoked_source"
         if source.source_digest != reference.source_digest:
-            return "source_digest_mismatch", None
+            return "source_digest_mismatch"
         if source.lineage_id != reference.lineage_id:
-            return "lineage_mismatch", None
+            return "lineage_mismatch"
         fragment = source.fragments.get(reference.fragment_id)
         if fragment is None:
-            return "unknown_fragment", None
+            return "unknown_fragment"
         if fragment.fragment_digest != reference.fragment_digest:
-            return "fragment_digest_mismatch", None
+            return "fragment_digest_mismatch"
         if reference.span not in fragment.allowed_spans:
-            return "invalid_span", None
-        return "accepted", source
+            return "invalid_span"
+        return "accepted"
 
     @staticmethod
     def _fact_ref(fact_id: str) -> str:
@@ -373,11 +442,12 @@ class EvidenceReferenceValidator:
 
 
 __all__ = [
+    "EVIDENCE_REGISTRY_SNAPSHOT_SCHEMA_VERSION",
     "EVIDENCE_VALIDATION_POLICY_VERSION",
-    "EffectiveIndependenceClass",
     "EvidenceFragmentRecord",
     "EvidenceReferenceValidator",
     "EvidenceRegistry",
+    "EvidenceRegistrySnapshot",
     "EvidenceSourceRecord",
     "EvidenceValidationOutcome",
     "EvidenceValidationReceipt",
