@@ -59,13 +59,15 @@ receipt prototype, but it does not change `TruthGate` thresholds, its current le
 canonical promotion. Therefore no claim is made that current evidence counts establish
 source integrity, independent provenance or automated truth.
 
-The draft contract explicitly rejects producer-supplied `independence_class`. Effective
-classification comes only from the supplied trusted registry/policy snapshot after
-integrity and lineage resolution, and the receipt counts only distinct effective-
-independent lineages. Conflicting payloads that reuse one `reference_id` fail closed. This
-closes the prototype's self-granted-independence surface; it does not authenticate the
-registry snapshot, prove that independence is universal rather than context-bound, or
-change current TruthGate behavior.
+The draft contract explicitly rejects producer-supplied `independence_class` and records
+no replacement local effective-independence result. Its receipt is a deterministic
+local-validation artifact only: `validated_reference_count` is diagnostic cardinality, not
+evidence sufficiency, admission, truth or promotion authority. The hardening checkpoint
+also rejects noncanonical span/timestamp aliases and malformed direct outcome/receipt
+construction through controlled contract errors. Conflicting payloads that reuse one
+`reference_id` fail closed. This closes the prototype's self-granted-independence surface;
+it does not authenticate the registry snapshot, decide contextual independence or change
+current TruthGate behavior.
 
 The future work remains intentionally split: persist a local registry only after a
 separate data-classification decision; introduce `LEGACY`/`OBSERVE`/opt-in `ENFORCE`

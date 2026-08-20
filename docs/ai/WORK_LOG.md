@@ -5,6 +5,25 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
+## 2026-08-20 — Typed Evidence Reference v1 · CURRENT LIFECYCLE TRUTH
+
+> **Reality status:** `DRAFT / CONTRACT-ONLY / LOCAL VALIDATION ONLY / UNWIRED / NOT ENABLED / NO RUNTIME AUTHORITY / NO PRODUCTION AUTHORITY`.
+> Re-query live GitHub for exact head/base and CI before acting; dated checkpoints below remain history, not evergreen state.
+
+This current hardening checkpoint accepts only one canonical EvidenceReference span and
+captured-at representation, rejects malformed mapping keys and reference elements through
+controlled contract errors, and structurally validates local outcomes/receipts. The receipt
+contains no independence result. `validated_reference_count` is diagnostic local validation
+cardinality only; it is not evidence sufficiency and has no runtime consumer.
+
+No EvidenceAdmissionDecision, target evidence adapter, policy snapshot, OBSERVE/VERIFY/ENFORCE
+runtime mode, TruthGate/WriteGate/PromotionGateway integration, persistence, migration, route,
+worker, telemetry pipeline, runtime activation or authority is created here. Validation is not
+admission; a receipt is not authority or truth; Titan remains a local resolver/prototype rather
+than an evidence sovereign.
+
+---
+
 ## 2026-08-19 — Typed Evidence Reference v1 · DRAFT CONTRACT-ONLY IMPLEMENTATION
 
 > **Reality status:** `PROPOSED / IMPLEMENTED ON DRAFT BRANCH / FOCUSED-TESTED / UNWIRED / NOT ENABLED / NO RUNTIME AUTHORITY`.
@@ -15,14 +34,13 @@ The first bounded increment adds `core/evidence_reference.py` and
 versioned source/fragment/lineage references, strict local validation and deterministic,
 content-minimized validation receipts. The in-memory registry is a Python prototype only.
 
-Architecture review of the first draft found and removed a self-grant surface:
-`EvidenceReference.independence_class` was producer-controlled but affected the effective
-lineage count. The corrected v1 reference contains no independence classification.
-`EvidenceSourceRecord.effective_independence_class` is supplied by the trusted local
-registry/policy snapshot, applied only after integrity/lineage validation and recorded in
-the outcome. Same-lineage handling is a validator result, not a producer assertion.
-Conflicting payloads that reuse one `reference_id` now all fail closed, and validation is
-ordered deterministically so same-lineage receipts do not depend on input order.
+Historical review of the first draft found and removed a self-grant surface:
+`EvidenceReference.independence_class` was producer-controlled and affected an effective
+lineage count. That early registry-owned classification idea is **superseded by the current
+contract truth above**: v1 records no independence result because local validation does not
+own that semantic. The corrected reference contains no independence classification.
+Conflicting payloads that reuse one `reference_id` fail closed, and validation is ordered
+deterministically. No same-lineage or effective-independence policy is implemented here.
 
 It does **not** alter `TruthGate` thresholds or outcomes, `metadata.evidence_refs`,
 canonical promotion/CAS, SQLite schema, source ingestion, network/provider behavior,

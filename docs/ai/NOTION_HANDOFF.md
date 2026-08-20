@@ -130,13 +130,28 @@ need the machine-stable `handoff-pr-<PR-NUMBER>` heading.
 
 ### 2026-08-19 — Typed Evidence Reference v1 Contract
 
-- **Status:** `SYNCED`
+- **Status:** `SYNCED` (historical checkpoint; live GitHub governs current head)
 - **Documentation impact:** `GITHUB_AND_NOTION`
 - **Repository / PR / issue:** `velantrian/Velantrim-ExoCortex-Titan` · PR #355
 - **Base SHA:** `588ffe61c711f6e63ac42cc304d95642a0671b08`
-- **Head SHA:** `8a1b3aab56c2aeaa5050872b660aed6fc9df40db`
+- **Head SHA:** `8a1b3aab56c2aeaa5050872b660aed6fc9df40db` (historical)
 - **Intended Notion record:** `Titan Typed Evidence Reference v1 — Trusted Independence Contract · 2026-08-19`
 - **Notion access for originating actor:** `UNAVAILABLE`
+
+### Current lifecycle truth — 2026-08-20 contract hardening
+
+This remains a **Draft, contract-only, unwired local-validation prototype**. The current
+checkpoint hardens canonical ASCII span and RFC3339 UTC timestamp input, controlled error
+taxonomy, malformed input rejection and local outcome/receipt structure only. It adds no
+evidence admission decision, target evidence adapter, owner integration, policy snapshot,
+OBSERVE/VERIFY/ENFORCE runtime mode, TruthGate/WriteGate/PromotionGateway integration,
+persistence, migration, route, worker, feature flag, telemetry pipeline, runtime enablement
+or authority.
+
+`validated_reference_count` is diagnostic local validation cardinality only. It is neither
+evidence sufficiency nor a runtime input. The receipt contains no independence result and is
+not authentication, admission, truth or promotion authorization. Titan remains a supplied
+local resolver/prototype, not an evidence sovereign.
 
 ### Problem / opportunity
 
@@ -153,12 +168,12 @@ count. That would let a source participate in granting itself evidentiary indepe
 
 Introduce `EvidenceReference` and an in-memory `EvidenceRegistry` as an unwired,
 local-only Python prototype. Remove independence classification from the producer
-reference. Resolve `effective_independence_class` only from the explicitly supplied
-trusted registry/policy snapshot after source, digest, span and lineage validation. Count
-only distinct effective-independent lineages; record the effective class in the receipt.
-The contract enforces strict schema, canonical digests, deterministic ordering and
-fail-closed conflicting-ID handling. It does not change TruthGate thresholds, ingestion,
-persistence or promotion.
+reference and do not create a registry-owned replacement. The local receipt contains no
+effective-independence result because that semantic belongs to a future separately
+authorized evidence owner. The contract enforces strict schema, canonical digests,
+canonical ASCII spans, canonical RFC3339 UTC timestamps, deterministic ordering,
+structurally valid outcomes/receipts and fail-closed conflicting-ID handling. It does not
+change TruthGate thresholds, ingestion, persistence or promotion.
 
 ### Rejected or deferred alternatives
 
@@ -175,8 +190,8 @@ This is a **contract-only increment**. It does NOT change `TruthGate` outcomes,
 `metadata.evidence_refs`, canonical promotion, SQLite schema, network/provider behavior or
 runtime authority. `EvidenceItem` remains the separate scoring owner. The in-memory Titan
 registry is a supplied resolver/prototype, not a second global evidence Canon and not a
-replacement for Crystal's trusted evidence-admission authority. A registry classification
-is a bounded policy result, not objective truth.
+replacement for a separately authorized evidence-admission authority. Local validation is
+not admission; a local receipt is not a bounded policy result, authority or objective truth.
 
 ### GitHub files updated
 
@@ -211,8 +226,8 @@ is a bounded policy result, not objective truth.
 
 The prototype is in-memory and unwired. Its supplied registry snapshot is not an
 authenticated authority merely because it is typed. Independence may be contextual; v1
-records only the bounded effective classification used by this local policy snapshot.
-Persistence, observe/enforce modes and producer migration require separate PRs, ownership
+therefore records no local independence result. Persistence, evidence-admission decisions,
+OBSERVE/VERIFY/ENFORCE modes and producer migration require separate PRs, ownership
 decisions and admission decisions.
 
 ### Next actions

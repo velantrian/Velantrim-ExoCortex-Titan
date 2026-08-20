@@ -1,10 +1,20 @@
 # ADR — Typed Evidence Reference v1 Contract
 
-- **Status:** proposed on draft PR #355; P1 remediation applied
+- **Status:** proposed on Draft PR #355; contract-hardening applied; no runtime integration
 - **Date:** 2026-08-19
 - **Remediation checkpoints:** `cf58211a62ffc1df6b8b764ff07df3536fc945d0` → `c90ecc11617994e15670e8f9d81d1d1c143ccb1b`
 - **Owner:** contract-only prototype; existing TruthGate / canonical-promotion owners unchanged
 - **Documentation impact:** `GITHUB_AND_NOTION`
+
+## Current lifecycle truth
+
+This remains a **Draft, contract-only, unwired prototype**. This checkpoint hardens only
+canonical `EvidenceReference` representation, controlled local validation errors and the
+structural validity of local outcomes/receipts. It adds no evidence admission decision,
+no target-domain adapter, no policy snapshot, no TruthGate/WriteGate/PromotionGateway
+integration, no persistence, no migration, no runtime mode or authority. A local
+validation receipt remains neither authority nor truth, and `validated_reference_count`
+remains diagnostic local validation cardinality only.
 
 ## Context
 
@@ -42,10 +52,13 @@ Introduce two **unwired, local-only prototype modules**:
   `EvidenceValidationReceipt`.
 
 `EvidenceReference` has a versioned exact schema with stable reference, source, fragment
-and lineage identifiers; SHA-256 source/fragment digests; an explicit local span; and a
-timezone-aware capture timestamp. It deliberately carries no producer-owned independence
-classification and no raw source text, quote, URL, credentials, prompt, provider payload
-or user content.
+and lineage identifiers; SHA-256 source/fragment digests; one strict canonical ASCII
+`chars:<start>-<end>` span representation; and one strict canonical RFC3339 UTC timestamp
+representation (`YYYY-MM-DDTHH:MM:SSZ`). Aliases such as leading-zero or Unicode spans,
+and semantically equivalent noncanonical timestamp spellings, are rejected rather than
+silently creating alternate reference identities. The reference carries no producer-owned
+independence classification and no raw source text, quote, URL, credentials, prompt,
+provider payload or user content.
 
 The local registry is an integrity/resolution prototype only. `EvidenceSourceRecord` does
 **not** carry `effective_independence_class`. Registry construction validates technical
@@ -59,10 +72,10 @@ keys against embedded `source_id`, exposes read-only resolution for one validati
 and has a deterministic content digest. The mutable `InMemoryEvidenceRegistry` is only a
 builder; validators consume `snapshot()` rather than live mutable registry state.
 
-A valid reference may increase `validated_reference_count`, but this contract-only
-prototype does not classify trusted independence. `EvidenceValidationOutcome` contains no
-effective-independence field, and `distinct_independent_lineage_count` remains zero. A
-future non-zero independence result requires a separately authorized, snapshot-bound
+A valid reference may increase `validated_reference_count`, but this is diagnostic local
+validation cardinality only: it is not an evidence-sufficiency metric and has no runtime
+consumer in this prototype. The receipt intentionally contains no independence result.
+A future effective-independence result requires a separately authorized, snapshot-bound
 policy owner. Neither a producer nor this local Titan registry may grant that authority to
 itself.
 
@@ -104,10 +117,13 @@ data-classification review.
 
 ## Failure semantics
 
-Parsing is strict: missing or unexpected fields, producer-supplied independence fields,
-unknown schema versions, invalid technical identifiers, malformed SHA-256 digests,
-invalid spans and naive timestamps are rejected. Registry construction also rejects
-mapping-key/embedded-record-ID mismatch and malformed registry metadata.
+Parsing is strict: missing or unexpected fields, non-string mapping keys, producer-supplied
+independence fields, unknown schema versions, invalid technical identifiers, malformed
+SHA-256 digests, noncanonical/Unicode span aliases and noncanonical timestamp aliases are
+rejected with controlled contract errors. Registry construction also rejects
+mapping-key/embedded-record-ID mismatch and malformed registry metadata. Directly
+constructed local outcomes and receipts validate identifiers, digests, statuses, policy
+versions, outcome container/element types and deterministic count-to-outcome consistency.
 
 Registry validation is fail-closed for unresolvable, tampered or revoked references.
 Conflicting payloads that reuse one `reference_id` are all rejected rather than selecting
@@ -138,10 +154,12 @@ No legacy fact may be auto-upgraded, downgraded or assigned synthetic provenance
 ## Validation
 
 The remediated focused contract suite covers canonical digests, strict schema rejection,
-immutable source/fragment metadata, immutable validator-facing registry snapshots,
-source/fragment mapping-key consistency, identifier/digest/span validation, duplicate and
-conflicting IDs, unknown/revoked/tampered references, deterministic snapshot/receipt
-evidence and absence of write/promotion shortcuts.
+ASCII/canonical span and timestamp aliases, non-string mapping keys, immutable
+source/fragment metadata, immutable validator-facing registry snapshots, source/fragment
+mapping-key consistency, identifier/digest/status validation, malformed reference sequence
+elements, malformed direct outcome/receipt construction, deterministic count-to-outcome
+consistency, duplicate and conflicting IDs, unknown/revoked/tampered references,
+deterministic snapshot/receipt evidence and absence of write/promotion shortcuts.
 
 The first P1 remediation checkpoint `cf58211a...` passed GitHub Main CI #1327, Docker #874
 and CodeQL #166, and aggregate workflow #1673 completed successfully. The follow-up

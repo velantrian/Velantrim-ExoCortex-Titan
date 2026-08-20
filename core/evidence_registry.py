@@ -6,7 +6,7 @@ snapshot and emits a content-minimized deterministic receipt.
 
 This prototype does not classify evidence as independent. Snapshot identity
 binds a receipt to local metadata; it is not authentication, target-domain
-authorization, or evidence of claim truth.
+authorization, evidence admission, or evidence of claim truth.
 """
 
 from __future__ import annotations
@@ -39,34 +39,76 @@ ValidationStatus = Literal[
     "unknown_source",
 ]
 
+_VALIDATION_STATUSES = frozenset(
+    {
+        "accepted",
+        "conflicting_reference_id",
+        "duplicate_reference_id",
+        "fragment_digest_mismatch",
+        "invalid_span",
+        "lineage_mismatch",
+        "revoked_source",
+        "source_digest_mismatch",
+        "unknown_fragment",
+        "unknown_source",
+    }
+)
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+_POLICY_VERSION_PATTERN = re.compile(r"^[a-z][a-z0-9._:-]{0,127}$")
+_FACT_REF_PATTERN = re.compile(r"^fact_[0-9a-f]{24}$")
 _DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
-_SPAN_PATTERN = re.compile(r"^chars:(\d+)-(\d+)$")
+_SPAN_PATTERN = re.compile(r"^chars:(0|[1-9][0-9]*)-(0|[1-9][0-9]*)$")
+
+
+class EvidenceValidationError(ValueError):
+    """Raised when the local validation/receipt contract is malformed.
+
+    This exception intentionally says nothing about evidence admission, truth,
+    target-domain authorization or Canon mutation.
+    """
 
 
 def _require_identifier(value: object, field_name: str) -> str:
     if not isinstance(value, str) or not _IDENTIFIER_PATTERN.fullmatch(value):
-        raise ValueError(
+        raise EvidenceValidationError(
             f"{field_name} must be a safe 1-128 character technical identifier"
+        )
+    return value
+
+
+def _require_policy_version(value: object, field_name: str) -> str:
+    if not isinstance(value, str) or not _POLICY_VERSION_PATTERN.fullmatch(value):
+        raise EvidenceValidationError(
+            f"{field_name} must be a non-empty lower-case technical policy version"
+        )
+    return value
+
+
+def _require_fact_ref(value: object) -> str:
+    if not isinstance(value, str) or not _FACT_REF_PATTERN.fullmatch(value):
+        raise EvidenceValidationError(
+            "fact_ref must use content-minimized fact_<24 lower-case hex> form"
         )
     return value
 
 
 def _require_digest(value: object, field_name: str) -> str:
     if not isinstance(value, str) or not _DIGEST_PATTERN.fullmatch(value):
-        raise ValueError(f"{field_name} must be a lower-case sha256:<64 hex> digest")
+        raise EvidenceValidationError(
+            f"{field_name} must be a lower-case sha256:<64 hex> digest"
+        )
     return value
 
 
 def _require_span(value: object, field_name: str = "span") -> str:
-    if not isinstance(value, str):
-        raise ValueError(f"{field_name} must use the chars:<start>-<end> form")
-    match = _SPAN_PATTERN.fullmatch(value)
-    if match is None:
-        raise ValueError(f"{field_name} must use the chars:<start>-<end> form")
-    start, end = (int(part) for part in match.groups())
+    if not isinstance(value, str) or _SPAN_PATTERN.fullmatch(value) is None:
+        raise EvidenceValidationError(
+            f"{field_name} must use canonical ASCII chars:<start>-<end> form"
+        )
+    start_text, end_text = value.removeprefix("chars:").split("-", maxsplit=1)
+    start, end = int(start_text), int(end_text)
     if end <= start:
-        raise ValueError(f"{field_name} end must be greater than start")
+        raise EvidenceValidationError(f"{field_name} end must be greater than start")
     return value
 
 
@@ -84,9 +126,9 @@ class EvidenceFragmentRecord:
         try:
             allowed_spans = frozenset(self.allowed_spans)
         except TypeError as exc:
-            raise ValueError("allowed_spans must be an iterable of spans") from exc
+            raise EvidenceValidationError("allowed_spans must be an iterable of spans") from exc
         if not allowed_spans:
-            raise ValueError("allowed_spans must contain at least one span")
+            raise EvidenceValidationError("allowed_spans must contain at least one span")
         for span in allowed_spans:
             _require_span(span, "allowed_span")
         object.__setattr__(self, "allowed_spans", allowed_spans)
@@ -107,19 +149,19 @@ class EvidenceSourceRecord:
         _require_digest(self.source_digest, "source_digest")
         _require_identifier(self.lineage_id, "lineage_id")
         if self.status not in {"active", "revoked"}:
-            raise ValueError("status must be active or revoked")
+            raise EvidenceValidationError("status must be active or revoked")
         if not isinstance(self.fragments, Mapping) or not self.fragments:
-            raise ValueError("fragments must contain at least one fragment")
+            raise EvidenceValidationError("fragments must contain at least one fragment")
 
         fragments_snapshot: dict[str, EvidenceFragmentRecord] = {}
         for fragment_key, fragment in self.fragments.items():
             _require_identifier(fragment_key, "fragment mapping key")
             if not isinstance(fragment, EvidenceFragmentRecord):
-                raise ValueError(
+                raise EvidenceValidationError(
                     "fragments values must be EvidenceFragmentRecord instances"
                 )
             if fragment_key != fragment.fragment_id:
-                raise ValueError(
+                raise EvidenceValidationError(
                     "fragment mapping key must equal fragment.fragment_id"
                 )
             fragments_snapshot[fragment_key] = fragment
@@ -138,17 +180,17 @@ class EvidenceRegistrySnapshot:
 
     def __post_init__(self) -> None:
         if not isinstance(self.records, Mapping):
-            raise ValueError("records must be a mapping")
+            raise EvidenceValidationError("records must be a mapping")
 
         records_snapshot: dict[str, EvidenceSourceRecord] = {}
         for source_key, record in self.records.items():
             _require_identifier(source_key, "source mapping key")
             if not isinstance(record, EvidenceSourceRecord):
-                raise ValueError(
+                raise EvidenceValidationError(
                     "records values must be EvidenceSourceRecord instances"
                 )
             if source_key != record.source_id:
-                raise ValueError("source mapping key must equal record.source_id")
+                raise EvidenceValidationError("source mapping key must equal record.source_id")
             records_snapshot[source_key] = record
         object.__setattr__(
             self,
@@ -209,10 +251,10 @@ class InMemoryEvidenceRegistry:
     def register(self, record: EvidenceSourceRecord) -> None:
         """Register one source; conflicting replacement is rejected."""
         if not isinstance(record, EvidenceSourceRecord):
-            raise ValueError("record must be an EvidenceSourceRecord")
+            raise EvidenceValidationError("record must be an EvidenceSourceRecord")
         previous = self._records.get(record.source_id)
         if previous is not None and previous != record:
-            raise ValueError("source_id already registered with different metadata")
+            raise EvidenceValidationError("source_id already registered with different metadata")
         self._records[record.source_id] = record
 
     def resolve(self, source_id: str) -> EvidenceSourceRecord | None:
@@ -231,16 +273,31 @@ class InMemoryEvidenceRegistry:
 
 @dataclass(frozen=True, slots=True)
 class EvidenceValidationOutcome:
-    """Content-minimized provenance-validation result for one typed reference."""
+    """Content-minimized local validation result for one typed reference.
+
+    An accepted result is a local provenance-resolution observation only. It is
+    not evidence admission, independence, truth or promotion authority.
+    """
 
     reference_id: str
     reference_digest: str
     status: ValidationStatus
 
+    def __post_init__(self) -> None:
+        _require_identifier(self.reference_id, "reference_id")
+        _require_digest(self.reference_digest, "reference_digest")
+        if not isinstance(self.status, str) or self.status not in _VALIDATION_STATUSES:
+            raise EvidenceValidationError("status must be a supported validation status")
+
 
 @dataclass(frozen=True, slots=True)
 class EvidenceValidationReceipt:
-    """Deterministic result; not a promotion, truth, or authority receipt."""
+    """Deterministic local-validation result; never an authority or truth receipt.
+
+    ``validated_reference_count`` is diagnostic local validation cardinality.
+    It is not an evidence-sufficiency metric and has no runtime consumer in this
+    prototype. The receipt intentionally contains no independence result.
+    """
 
     fact_ref: str
     policy_version: str
@@ -249,40 +306,52 @@ class EvidenceValidationReceipt:
     raw_reference_count: int
     unique_reference_count: int
     validated_reference_count: int
-    distinct_independent_lineage_count: int
     outcomes: tuple[EvidenceValidationOutcome, ...]
 
     def __post_init__(self) -> None:
+        _require_fact_ref(self.fact_ref)
+        _require_policy_version(self.policy_version, "policy_version")
+        _require_policy_version(
+            self.reference_policy_version,
+            "reference_policy_version",
+        )
         _require_digest(self.registry_snapshot_digest, "registry_snapshot_digest")
+        if not isinstance(self.outcomes, tuple):
+            raise EvidenceValidationError("outcomes must be a tuple of EvidenceValidationOutcome")
+        if any(not isinstance(outcome, EvidenceValidationOutcome) for outcome in self.outcomes):
+            raise EvidenceValidationError("outcomes must contain EvidenceValidationOutcome instances")
+
         counts = (
             self.raw_reference_count,
             self.unique_reference_count,
             self.validated_reference_count,
-            self.distinct_independent_lineage_count,
         )
         if any(
             not isinstance(value, int) or isinstance(value, bool) or value < 0
             for value in counts
         ):
-            raise ValueError("receipt counts must be non-negative integers")
+            raise EvidenceValidationError("receipt counts must be non-negative integers")
+        if self.raw_reference_count != len(self.outcomes):
+            raise EvidenceValidationError("raw_reference_count must equal outcomes length")
+        unique_outcome_ids = {outcome.reference_id for outcome in self.outcomes}
+        if self.unique_reference_count != len(unique_outcome_ids):
+            raise EvidenceValidationError(
+                "unique_reference_count must equal distinct outcome reference IDs"
+            )
+        accepted_count = sum(outcome.status == "accepted" for outcome in self.outcomes)
+        if self.validated_reference_count != accepted_count:
+            raise EvidenceValidationError(
+                "validated_reference_count must equal accepted outcome count"
+            )
         if not (
-            self.distinct_independent_lineage_count
-            <= self.validated_reference_count
+            self.validated_reference_count
             <= self.unique_reference_count
             <= self.raw_reference_count
         ):
-            raise ValueError("receipt counts violate validation ordering")
-        if self.distinct_independent_lineage_count != 0:
-            raise ValueError(
-                "prototype receipt cannot assert independent lineages without "
-                "an authorized independence policy"
-            )
+            raise EvidenceValidationError("receipt counts violate validation ordering")
 
     def to_mapping(self) -> dict[str, object]:
         return {
-            "distinct_independent_lineage_count": (
-                self.distinct_independent_lineage_count
-            ),
             "fact_ref": self.fact_ref,
             "outcomes": [
                 {
@@ -323,13 +392,26 @@ class EvidenceReferenceValidator:
         fact_id: str,
         references: Sequence[EvidenceReference],
     ) -> EvidenceValidationReceipt:
-        """Return a deterministic receipt without mutating a fact or registry."""
+        """Return a deterministic receipt without mutating fact or registry.
+
+        The receipt reports local validation only. It must not be consumed as
+        evidence admission, target-policy authorization or promotion authority.
+        """
         if not isinstance(fact_id, str) or not fact_id:
-            raise ValueError("fact_id must be a non-empty string")
+            raise EvidenceValidationError("fact_id must be a non-empty string")
+        if isinstance(references, (str, bytes, bytearray)) or not isinstance(
+            references, Sequence
+        ):
+            raise EvidenceValidationError("references must be a sequence of EvidenceReference")
+        references_tuple = tuple(references)
+        if any(not isinstance(reference, EvidenceReference) for reference in references_tuple):
+            raise EvidenceValidationError(
+                "references must contain EvidenceReference instances"
+            )
 
         snapshot = self._registry.snapshot()
         if not isinstance(snapshot, EvidenceRegistrySnapshot):
-            raise ValueError(
+            raise EvidenceValidationError(
                 "registry.snapshot() must return EvidenceRegistrySnapshot"
             )
 
@@ -339,7 +421,7 @@ class EvidenceReferenceValidator:
         unique_reference_count = 0
 
         ordered_references = sorted(
-            references,
+            references_tuple,
             key=lambda reference: (
                 reference.reference_id,
                 reference.reference_digest,
@@ -405,10 +487,9 @@ class EvidenceReferenceValidator:
             policy_version=EVIDENCE_VALIDATION_POLICY_VERSION,
             reference_policy_version=EVIDENCE_REFERENCE_POLICY_VERSION,
             registry_snapshot_digest=snapshot.snapshot_digest,
-            raw_reference_count=len(references),
+            raw_reference_count=len(references_tuple),
             unique_reference_count=unique_reference_count,
             validated_reference_count=validated_reference_count,
-            distinct_independent_lineage_count=0,
             outcomes=tuple(outcomes),
         )
 
@@ -449,6 +530,7 @@ __all__ = [
     "EvidenceRegistry",
     "EvidenceRegistrySnapshot",
     "EvidenceSourceRecord",
+    "EvidenceValidationError",
     "EvidenceValidationOutcome",
     "EvidenceValidationReceipt",
     "InMemoryEvidenceRegistry",

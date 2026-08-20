@@ -19,7 +19,11 @@ EVIDENCE_REFERENCE_POLICY_VERSION = "evidence-reference-v1"
 
 _REFERENCE_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
-_SPAN_PATTERN = re.compile(r"^chars:(\d+)-(\d+)$")
+# v1 accepts exactly one ASCII representation per numeric span component.
+_SPAN_PATTERN = re.compile(r"^chars:(0|[1-9][0-9]*)-(0|[1-9][0-9]*)$")
+# UTC second precision is deliberately strict in v1.  It rejects equivalent
+# aliases such as +00:00, fractional .000Z, lower-case t/z and Unicode digits.
+_TIMESTAMP_PATTERN = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
 _REQUIRED_FIELDS = frozenset(
     {
         "schema_version",
@@ -56,26 +60,30 @@ def _require_digest(value: object, field_name: str) -> str:
 
 
 def _require_span(value: object) -> str:
-    if not isinstance(value, str):
-        raise EvidenceReferenceError("span must use the chars:<start>-<end> form")
-    match = _SPAN_PATTERN.fullmatch(value)
-    if match is None:
-        raise EvidenceReferenceError("span must use the chars:<start>-<end> form")
-    start, end = (int(part) for part in match.groups())
+    if not isinstance(value, str) or _SPAN_PATTERN.fullmatch(value) is None:
+        raise EvidenceReferenceError(
+            "span must use canonical ASCII chars:<start>-<end> form"
+        )
+    start_text, end_text = value.removeprefix("chars:").split("-", maxsplit=1)
+    start, end = int(start_text), int(end_text)
     if end <= start:
         raise EvidenceReferenceError("span end must be greater than span start")
     return value
 
 
 def _require_timestamp(value: object) -> str:
-    if not isinstance(value, str) or not value:
-        raise EvidenceReferenceError("captured_at must be a non-empty ISO-8601 timestamp")
+    if not isinstance(value, str) or _TIMESTAMP_PATTERN.fullmatch(value) is None:
+        raise EvidenceReferenceError(
+            "captured_at must use canonical RFC3339 UTC second precision "
+            "YYYY-MM-DDTHH:MM:SSZ"
+        )
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
     except ValueError as exc:
-        raise EvidenceReferenceError("captured_at must be an ISO-8601 timestamp") from exc
-    if parsed.tzinfo is None:
-        raise EvidenceReferenceError("captured_at must include an explicit timezone")
+        raise EvidenceReferenceError(
+            "captured_at must use canonical RFC3339 UTC second precision "
+            "YYYY-MM-DDTHH:MM:SSZ"
+        ) from exc
     return value
 
 
@@ -121,7 +129,10 @@ class EvidenceReference:
         """Parse an exact v1 mapping and reject missing or unknown fields."""
         if not isinstance(payload, Mapping):
             raise EvidenceReferenceError("evidence reference payload must be a mapping")
-        keys = frozenset(payload)
+        payload_keys = tuple(payload.keys())
+        if any(not isinstance(key, str) for key in payload_keys):
+            raise EvidenceReferenceError("evidence reference field names must be strings")
+        keys = frozenset(payload_keys)
         missing = _REQUIRED_FIELDS - keys
         unexpected = keys - _REQUIRED_FIELDS
         if missing or unexpected:

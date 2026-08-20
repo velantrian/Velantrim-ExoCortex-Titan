@@ -8,6 +8,8 @@ from core.evidence_registry import (
     EvidenceReferenceValidator,
     EvidenceRegistrySnapshot,
     EvidenceSourceRecord,
+    EvidenceValidationError,
+    EvidenceValidationOutcome,
     EvidenceValidationReceipt,
     InMemoryEvidenceRegistry,
 )
@@ -18,7 +20,7 @@ _SOURCE_C_DIGEST = "sha256:" + "f" * 64
 _FRAGMENT_A_DIGEST = "sha256:" + "c" * 64
 _FRAGMENT_B_DIGEST = "sha256:" + "d" * 64
 _FRAGMENT_C_DIGEST = "sha256:" + "e" * 64
-_CAPTURED_AT = "2026-08-19T00:00:00+00:00"
+_CAPTURED_AT = "2026-08-19T00:00:00Z"
 
 
 def _reference(
@@ -113,7 +115,7 @@ def test_reference_rejects_producer_claimed_independence() -> None:
         ({**_reference().to_mapping(), "span": "chars:10-10"}, "span end"),
         (
             {**_reference().to_mapping(), "captured_at": "2026-08-19"},
-            "explicit timezone",
+            "canonical RFC3339 UTC",
         ),
         (
             {**_reference().to_mapping(), "source_digest": "sha256:UPPER"},
@@ -137,7 +139,6 @@ def test_validator_accepts_reference_without_self_granting_independence() -> Non
     assert receipt.raw_reference_count == 1
     assert receipt.unique_reference_count == 1
     assert receipt.validated_reference_count == 1
-    assert receipt.distinct_independent_lineage_count == 0
     assert receipt.outcomes[0].status == "accepted"
     assert receipt.registry_snapshot_digest.startswith("sha256:")
     assert receipt.fact_ref.startswith("fact_")
@@ -153,7 +154,6 @@ def test_validator_deduplicates_reference_ids_without_inflating_counts() -> None
     assert receipt.raw_reference_count == 2
     assert receipt.unique_reference_count == 1
     assert receipt.validated_reference_count == 1
-    assert receipt.distinct_independent_lineage_count == 0
     assert [outcome.status for outcome in receipt.outcomes] == [
         "accepted",
         "duplicate_reference_id",
@@ -179,7 +179,6 @@ def test_validator_fails_closed_for_conflicting_reference_id_in_any_order() -> N
     assert forward.raw_reference_count == 2
     assert forward.unique_reference_count == 1
     assert forward.validated_reference_count == 0
-    assert forward.distinct_independent_lineage_count == 0
     assert {outcome.status for outcome in forward.outcomes} == {
         "conflicting_reference_id"
     }
@@ -267,7 +266,6 @@ def test_validator_fails_closed_for_unresolvable_or_tampered_reference(
         references=[reference],
     )
     assert receipt.validated_reference_count == 0
-    assert receipt.distinct_independent_lineage_count == 0
     assert receipt.outcomes[0].status == expected_status
 
 
@@ -305,7 +303,6 @@ def test_receipt_is_deterministic_across_input_order() -> None:
     )
     assert forward.to_mapping() == backward.to_mapping()
     assert forward.receipt_digest == backward.receipt_digest
-    assert forward.distinct_independent_lineage_count == 0
 
 
 def test_registry_snapshot_digest_is_deterministic_and_metadata_bound() -> None:
@@ -400,23 +397,13 @@ def test_validator_rejects_non_snapshot_registry_view() -> None:
         )
 
 
-def test_receipt_cannot_assert_independence_without_authorized_policy() -> None:
+def test_receipt_exposes_no_independence_result_or_authority() -> None:
     receipt = EvidenceReferenceValidator(_registry()).validate(
         fact_id="fact-1",
         references=[_reference()],
     )
-    with pytest.raises(ValueError, match="authorized independence policy"):
-        EvidenceValidationReceipt(
-            fact_ref=receipt.fact_ref,
-            policy_version=receipt.policy_version,
-            reference_policy_version=receipt.reference_policy_version,
-            registry_snapshot_digest=receipt.registry_snapshot_digest,
-            raw_reference_count=1,
-            unique_reference_count=1,
-            validated_reference_count=1,
-            distinct_independent_lineage_count=1,
-            outcomes=receipt.outcomes,
-        )
+    assert "distinct_independent_lineage_count" not in receipt.to_mapping()
+    assert not hasattr(receipt, "distinct_independent_lineage_count")
 
 
 def test_registry_rejects_conflicting_source_replacement() -> None:
@@ -432,3 +419,147 @@ def test_validator_exposes_no_write_or_promotion_shortcut() -> None:
     assert not hasattr(validator, "validate_and_promote")
     assert not hasattr(validator, "store_fact")
     assert not hasattr(validator, "transition_esm")
+
+
+@pytest.mark.parametrize(
+    "span",
+    [
+        "chars:00-01",
+        "chars:0-01",
+        "chars:٠-١",
+        "chars:0-١",
+        "chars:+0-1",
+        "chars: 0-1",
+    ],
+)
+def test_reference_rejects_noncanonical_or_unicode_span_aliases(span: str) -> None:
+    with pytest.raises(EvidenceReferenceError, match="canonical ASCII"):
+        _reference(span=span)
+
+
+@pytest.mark.parametrize(
+    "captured_at",
+    [
+        "2026-08-19T00:00:00+00:00",
+        "2026-08-19T00:00:00.000Z",
+        "2026-08-19t00:00:00z",
+        "2026-08-19 00:00:00Z",
+        "٢٠٢٦-٠٨-١٩T٠٠:٠٠:٠٠Z",
+    ],
+)
+def test_reference_rejects_semantic_timestamp_aliases(captured_at: str) -> None:
+    with pytest.raises(EvidenceReferenceError, match="canonical RFC3339 UTC"):
+        EvidenceReference(
+            schema_version=1,
+            reference_id="ref-1",
+            source_id="source-a",
+            source_digest=_SOURCE_A_DIGEST,
+            fragment_id="fragment-a",
+            fragment_digest=_FRAGMENT_A_DIGEST,
+            span="chars:0-10",
+            lineage_id="lineage-a",
+            captured_at=captured_at,
+        )
+
+
+def test_reference_mapping_rejects_non_string_key_with_controlled_error() -> None:
+    payload: dict[object, object] = {**_reference().to_mapping(), 7: "bad"}
+    with pytest.raises(EvidenceReferenceError, match="field names must be strings"):
+        EvidenceReference.from_mapping(payload)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "reference_id, reference_digest, status",
+    [
+        ("bad space", _FRAGMENT_A_DIGEST, "accepted"),
+        ("ref-1", "sha256:short", "accepted"),
+        ("ref-1", _FRAGMENT_A_DIGEST, "admitted"),
+        ("ref-1", _FRAGMENT_A_DIGEST, object()),
+    ],
+)
+def test_outcome_direct_construction_is_structurally_validated(
+    reference_id: object,
+    reference_digest: object,
+    status: object,
+) -> None:
+    with pytest.raises(EvidenceValidationError):
+        EvidenceValidationOutcome(
+            reference_id=reference_id,  # type: ignore[arg-type]
+            reference_digest=reference_digest,  # type: ignore[arg-type]
+            status=status,  # type: ignore[arg-type]
+        )
+
+
+def test_receipt_direct_construction_is_structurally_validated() -> None:
+    receipt = EvidenceReferenceValidator(_registry()).validate(
+        fact_id="fact-1",
+        references=[_reference()],
+    )
+    common = {
+        "fact_ref": receipt.fact_ref,
+        "policy_version": receipt.policy_version,
+        "reference_policy_version": receipt.reference_policy_version,
+        "registry_snapshot_digest": receipt.registry_snapshot_digest,
+        "raw_reference_count": receipt.raw_reference_count,
+        "unique_reference_count": receipt.unique_reference_count,
+        "validated_reference_count": receipt.validated_reference_count,
+        "outcomes": receipt.outcomes,
+    }
+    invalid_cases = [
+        {**common, "fact_ref": "fact_invalid"},
+        {**common, "policy_version": ""},
+        {**common, "reference_policy_version": "UPPER"},
+        {**common, "outcomes": list(receipt.outcomes)},
+        {**common, "outcomes": (object(),)},
+        {**common, "raw_reference_count": 2},
+        {**common, "unique_reference_count": 0},
+        {**common, "validated_reference_count": 0},
+    ]
+    for payload in invalid_cases:
+        with pytest.raises(EvidenceValidationError):
+            EvidenceValidationReceipt(**payload)  # type: ignore[arg-type]
+
+
+def test_receipt_remains_deterministic_after_structural_hardening() -> None:
+    validator = EvidenceReferenceValidator(_registry())
+    first = validator.validate(fact_id="fact-1", references=[_reference()])
+    second = validator.validate(fact_id="fact-1", references=[_reference()])
+    assert first.to_mapping() == second.to_mapping()
+    assert first.receipt_digest == second.receipt_digest
+    assert "validated_reference_count" in first.to_mapping()
+    assert "distinct_independent_lineage_count" not in first.to_mapping()
+
+
+@pytest.mark.parametrize("references", [[object()], "not-a-sequence-of-references"])
+def test_validator_rejects_malformed_reference_elements_with_controlled_error(
+    references: object,
+) -> None:
+    with pytest.raises(EvidenceValidationError, match="references"):
+        EvidenceReferenceValidator(_registry()).validate(
+            fact_id="fact-1",
+            references=references,  # type: ignore[arg-type]
+        )
+
+
+def test_validated_reference_count_is_diagnostic_and_has_no_runtime_authority() -> None:
+    receipt = EvidenceReferenceValidator(_registry()).validate(
+        fact_id="fact-1",
+        references=[_reference()],
+    )
+    assert receipt.validated_reference_count == 1
+    assert not hasattr(receipt, "admission_decision")
+    assert not hasattr(receipt, "promotion_authorized")
+    assert not hasattr(receipt, "independence_class")
+
+
+def test_validator_surface_contains_no_runtime_admission_or_promotion_wiring() -> None:
+    validator = EvidenceReferenceValidator(_registry())
+    forbidden = (
+        "admit",
+        "authorize",
+        "promote",
+        "transition_esm",
+        "validate_and_promote",
+        "store_fact",
+    )
+    assert all(not hasattr(validator, name) for name in forbidden)
