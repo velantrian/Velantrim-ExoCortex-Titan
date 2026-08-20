@@ -58,6 +58,9 @@ _POLICY_VERSION_PATTERN = re.compile(r"^[a-z][a-z0-9._:-]{0,127}$")
 _FACT_REF_PATTERN = re.compile(r"^fact_[0-9a-f]{24}$")
 _DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 _SPAN_PATTERN = re.compile(r"^chars:(0|[1-9][0-9]*)-(0|[1-9][0-9]*)$")
+# Bound decimal parsing before int conversion. This constrains representation only;
+# it does not add admission, authority, persistence, or runtime semantics.
+_MAX_SPAN_COMPONENT_DIGITS = 18
 
 
 class EvidenceValidationError(ValueError):
@@ -106,6 +109,14 @@ def _require_span(value: object, field_name: str = "span") -> str:
             f"{field_name} must use canonical ASCII chars:<start>-<end> form"
         )
     start_text, end_text = value.removeprefix("chars:").split("-", maxsplit=1)
+    if (
+        len(start_text) > _MAX_SPAN_COMPONENT_DIGITS
+        or len(end_text) > _MAX_SPAN_COMPONENT_DIGITS
+    ):
+        raise EvidenceValidationError(
+            f"{field_name} decimal components must contain at most "
+            f"{_MAX_SPAN_COMPONENT_DIGITS} ASCII digits"
+        )
     start, end = int(start_text), int(end_text)
     if end <= start:
         raise EvidenceValidationError(f"{field_name} end must be greater than start")

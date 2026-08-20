@@ -437,6 +437,20 @@ def test_reference_rejects_noncanonical_or_unicode_span_aliases(span: str) -> No
         _reference(span=span)
 
 
+def test_reference_and_registry_reject_very_large_span_with_controlled_errors() -> None:
+    oversized_span = "chars:" + "9" * 5_000 + "-" + "9" * 5_001
+
+    with pytest.raises(EvidenceReferenceError, match="at most 18 ASCII digits"):
+        _reference(span=oversized_span)
+
+    with pytest.raises(EvidenceValidationError, match="at most 18 ASCII digits"):
+        EvidenceFragmentRecord(
+            fragment_id="fragment-a",
+            fragment_digest=_FRAGMENT_A_DIGEST,
+            allowed_spans=frozenset({oversized_span}),
+        )
+
+
 @pytest.mark.parametrize(
     "captured_at",
     [

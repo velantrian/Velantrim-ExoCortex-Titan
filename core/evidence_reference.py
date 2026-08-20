@@ -21,6 +21,9 @@ _REFERENCE_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 # v1 accepts exactly one ASCII representation per numeric span component.
 _SPAN_PATTERN = re.compile(r"^chars:(0|[1-9][0-9]*)-(0|[1-9][0-9]*)$")
+# Keep int conversion bounded and deterministic. This is a representation limit,
+# not an evidence-policy, retrieval, admission, or runtime behavior change.
+_MAX_SPAN_COMPONENT_DIGITS = 18
 # UTC second precision is deliberately strict in v1.  It rejects equivalent
 # aliases such as +00:00, fractional .000Z, lower-case t/z and Unicode digits.
 _TIMESTAMP_PATTERN = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
@@ -65,6 +68,14 @@ def _require_span(value: object) -> str:
             "span must use canonical ASCII chars:<start>-<end> form"
         )
     start_text, end_text = value.removeprefix("chars:").split("-", maxsplit=1)
+    if (
+        len(start_text) > _MAX_SPAN_COMPONENT_DIGITS
+        or len(end_text) > _MAX_SPAN_COMPONENT_DIGITS
+    ):
+        raise EvidenceReferenceError(
+            "span decimal components must contain at most "
+            f"{_MAX_SPAN_COMPONENT_DIGITS} ASCII digits"
+        )
     start, end = int(start_text), int(end_text)
     if end <= start:
         raise EvidenceReferenceError("span end must be greater than span start")
