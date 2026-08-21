@@ -126,6 +126,129 @@ need the machine-stable `handoff-pr-<PR-NUMBER>` heading.
 
 ## Queue
 
+## handoff-pr-355
+
+### 2026-08-19 — Typed Evidence Reference v1 Contract
+
+- **Status:** `SYNCED` (historical checkpoint; live GitHub governs current head)
+- **Documentation impact:** `GITHUB_AND_NOTION`
+- **Repository / PR / issue:** `velantrian/Velantrim-ExoCortex-Titan` · PR #355
+- **Base SHA:** `588ffe61c711f6e63ac42cc304d95642a0671b08`
+- **Head SHA:** `8a1b3aab56c2aeaa5050872b660aed6fc9df40db` (historical)
+- **Intended Notion record:** `Titan Typed Evidence Reference v1 — Trusted Independence Contract · 2026-08-19`
+- **Notion access for originating actor:** `UNAVAILABLE`
+
+### Current lifecycle truth — 2026-08-20 contract hardening
+
+This remains a **Draft, contract-only, unwired local-validation prototype**. The current
+checkpoint hardens canonical ASCII span and RFC3339 UTC timestamp input, controlled error
+taxonomy, malformed input rejection and local outcome/receipt structure only. It adds no
+evidence admission decision, target evidence adapter, owner integration, policy snapshot,
+OBSERVE/VERIFY/ENFORCE runtime mode, TruthGate/WriteGate/PromotionGateway integration,
+persistence, migration, route, worker, feature flag, telemetry pipeline, runtime enablement
+or authority.
+
+`validated_reference_count` is diagnostic local validation cardinality only. It is neither
+evidence sufficiency nor a runtime input. The receipt contains no independence result and is
+not authentication, admission, truth or promotion authorization. Titan remains a supplied
+local resolver/prototype, not an evidence sovereign.
+
+### Problem / opportunity
+
+Legacy `metadata.evidence_refs` uses raw strings. It measures cardinality but cannot prove source identity, fragment integrity, lineage, or independence, making it inadequate for a strict TruthGate admission boundary.
+
+### Material findings
+
+The existing TruthGate logic currently accepts string arrays without validation. Changing
+it directly would break compatibility. Review of the first prototype also found that its
+producer-owned `EvidenceReference.independence_class` could increase the effective lineage
+count. That would let a source participate in granting itself evidentiary independence.
+
+### Decision and rationale
+
+Introduce `EvidenceReference` and an in-memory `EvidenceRegistry` as an unwired,
+local-only Python prototype. Remove independence classification from the producer
+reference and do not create a registry-owned replacement. The local receipt contains no
+effective-independence result because that semantic belongs to a future separately
+authorized evidence owner. The contract enforces strict schema, canonical digests,
+canonical ASCII spans, canonical RFC3339 UTC timestamps, deterministic ordering,
+structurally valid outcomes/receipts and fail-closed conflicting-ID handling. It does not
+change TruthGate thresholds, ingestion, persistence or promotion.
+
+### Rejected or deferred alternatives
+
+- Do not auto-convert legacy string facts.
+- Do not persist the registry without a separate data classification decision.
+- Do not attach the receipt to TruthGate yet.
+- Do not synthesize digests for missing data.
+- Do not retain a producer `claimed_independence_class` in v1 without a demonstrated
+  observe-mode need; it can be introduced later only as explicitly untrusted metadata.
+
+### Authority, safety, privacy, and Canon boundaries
+
+This is a **contract-only increment**. It does NOT change `TruthGate` outcomes,
+`metadata.evidence_refs`, canonical promotion, SQLite schema, network/provider behavior or
+runtime authority. `EvidenceItem` remains the separate scoring owner. The in-memory Titan
+registry is a supplied resolver/prototype, not a second global evidence Canon and not a
+replacement for a separately authorized evidence-admission authority. Local validation is
+not admission; a local receipt is not a bounded policy result, authority or objective truth.
+
+### GitHub files updated
+
+- `core/evidence_reference.py`
+- `core/evidence_registry.py`
+- `tests/test_evidence_reference.py`
+- `docs/adr/ADR-2026-08-19-typed-evidence-reference-contract.md`
+- `docs/ai/COMPONENT_MAP.md`
+- `docs/ai/KNOWN_RISKS.md`
+- `docs/ai/WORK_LOG.md`
+- `docs/ai/NOTION_HANDOFF.md`
+
+### Evidence
+
+- 25 focused contract tests passed locally after the effective-independence correction.
+- The combined EvidenceReference/Evidence authenticity/TruthGate suite passed 55 tests.
+- Repository-wide Ruff and Mypy passed for all 332 `core/` source files; branding,
+  tracked-artifact, project-state and KB-integrity guards passed.
+- The local Python 3.12 suite completed (with one separately reproduced baseline test
+  excluded) at 4 failed, 4,323 passed, 17 skipped, 1 deselected and 1 xfailed. That
+  excluded failure and all four completed-run failures were each reproduced against
+  unchanged `main@588ffe61` in the same environment. This is baseline/environment
+  characterization, not a waiver or exact-head CI evidence.
+- Exact code-checkpoint GitHub evidence is green: Main CI #1325, Docker #872 and
+  CodeQL #164 succeeded on `8a1b3aab56c2aeaa5050872b660aed6fc9df40db`.
+- Aggregate evaluator run 32232797602 completed successfully; the combined status context
+  remains `PENDING` while PR #355 remains a DRAFT.
+- The dedicated Notion architecture record was created under the Titan hub and verified
+  by read-back. Fresh final documentation-sync-head CI and review remain required.
+
+### Known limitations
+
+The prototype is in-memory and unwired. Its supplied registry snapshot is not an
+authenticated authority merely because it is typed. Independence may be contextual; v1
+therefore records no local independence result. Persistence, evidence-admission decisions,
+OBSERVE/VERIFY/ENFORCE modes and producer migration require separate PRs, ownership
+decisions and admission decisions.
+
+### Next actions
+
+1. Publish this repository-side synchronization checkpoint.
+2. Verify fresh CI and aggregate evidence on the final documentation-sync head.
+3. Re-read head/base, changed files, Notion and unresolved review threads.
+4. Review/merge #355 only through a separate lifecycle decision.
+5. Decide OBSERVE integration separately; do not proceed automatically to persistence.
+
+### Synchronization result
+
+- **Connected actor:** connected AI work cycle with GitHub + Notion access
+- **Notion record:** `Titan Typed Evidence Reference v1 — Trusted Independence Contract
+  · 2026-08-19` · page ID `3c1ac84d-0547-811f-8f81-ff62f45b659d`
+- **Status:** `SYNCED` · read-back verified 2026-08-19
+- **Final PR / merge SHA / CI:** PR #355 remains DRAFT and unmerged · code checkpoint
+  `8a1b3aab56c2aeaa5050872b660aed6fc9df40db` · Main CI #1325 SUCCESS · Docker #872
+  SUCCESS · CodeQL #164 SUCCESS · aggregate evaluator 32232797602 SUCCESS / combined
+  context PENDING
+
 ## 2026-08-13 — PR #297 post-merge hardening final synchronization
 
 - **Status:** `SYNCED`
