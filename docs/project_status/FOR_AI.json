@@ -21,26 +21,27 @@
     "freshness_rule": "READ_THIS_ORIENTATION_FIRST_THEN_LIVE_VERIFY_CHANGING_FACTS; LIVE_GITHUB_AND_EXACT_SHA_OVERRIDE_ON_CONFLICT"
   },
   "snapshot": {
-    "date": "2026-08-21",
+    "date": "2026-08-22",
     "repository": "velantrian/Velantrim-ExoCortex-Titan",
-    "main_sha_at_snapshot": "431b1b68e96bb0cad2848078d1e2e856d07039dc",
-    "status": "ARCHITECTURAL_HARDENING_AND_PRODUCTIZATION",
-    "interpretation": "Core architecture is substantially mature. PR355, PR357 and PR358 are merged. The next authority-sensitive workstream is bounded D1 legacy TruthGate duplicate-cardinality normalization, still approval-gated and not yet authorized for implementation."
+    "main_sha_at_snapshot": "42b212e005420adf674794155707512c2e09edec",
+    "status": "TITAN_V1_PRODUCTIZATION_STAGE_3_MODEL_PROVIDER_SETUP",
+    "interpretation": "Titan V1 is now being finished as a bounded end-user product. Stage 1 Product Reality Audit and Stage 2 Installation + First Run are closed. Do not reopen architecture or D1 merely because older status documents called D1 the next workstream. The current predefined stage is Stage 3 Model / Provider Setup."
   },
   "read_order": [
     "this overview",
     "live GitHub PR/branch/check state for facts that can change",
-    "exact-SHA code and tests for the affected component",
+    "exact-SHA code and tests for the active product stage",
     "docs/state/project_state.json and validated lifecycle/ADR records when relevant",
     "human-facing documentation only when explicitly needed"
   ],
-  "maturity_estimates": {
-    "note": "Engineering estimates only; not formal admission, safety, release, or production metrics.",
-    "architecture_core_percent_range": [80, 85],
-    "bounded_local_pilot_readiness_percent_range": [70, 80],
-    "finished_user_product_percent_range": [55, 65],
-    "regulated_or_high_assurance_readiness": "LOWER_THAN_GENERAL_PRODUCT_READINESS_AND_REQUIRES_SEPARATE_ASSURANCE_PROGRAM"
-  },
+  "status_semantics": [
+    "PROPOSED != IMPLEMENTED",
+    "IMPLEMENTED != TESTED",
+    "TESTED != WIRED",
+    "WIRED != ENABLED",
+    "ENABLED != OBSERVED",
+    "OBSERVED != PRODUCTION_AUTHORIZED"
+  ],
   "core_invariants": [
     "research != runtime",
     "spec != implementation",
@@ -50,7 +51,6 @@
     "validation != admission",
     "admission != promotion authorization",
     "receipt != truth",
-    "receipt != authority",
     "claim != belief",
     "evidence != identity",
     "identity != authority",
@@ -59,170 +59,156 @@
     "merge != runtime activation",
     "pilot != evidence"
   ],
-  "completed_or_stable_areas": {
-    "continuity": {
-      "source": "docs/state/project_state.json",
-      "capabilities_complete": "12/12",
-      "runtime_authority": false,
-      "operator_go": false,
-      "current_runtime_enabled": false,
-      "warning": "Continuity capability completion is not total-project completion or production authorization."
+  "titan_v1_execution_contract": {
+    "goal": "Finish Titan as an ordinary-user product rather than indefinitely improving architecture.",
+    "one_active_stage_only": true,
+    "mandatory_scope_rule": "Only P0/P1 findings that block the current V1 user scenario, safety/authority/data integrity, install/run, recovery, pilot, or release may create required work. P2/P3 are backlog.",
+    "finish_condition": "P0=0, P1=0, bounded pilot passed, architecture/core/install/user-E2E/integration >=90 target, failure/recovery >=85, UX/operations >=85, then TITAN V1 — DONE."
+  },
+  "product_stages": [
+    {"stage": 1, "name": "Current Product Reality Audit", "status": "DONE"},
+    {"stage": 2, "name": "Installation + First Run", "status": "DONE"},
+    {"stage": 3, "name": "Model / Provider Setup", "status": "ACTIVE"},
+    {"stage": 4, "name": "Core User Experience", "status": "NOT_STARTED"},
+    {"stage": 5, "name": "Files / Data / Tools E2E", "status": "NOT_STARTED"},
+    {"stage": 6, "name": "Continuity / State / Restart", "status": "NOT_STARTED"},
+    {"stage": 7, "name": "Failure / Recovery", "status": "NOT_STARTED"},
+    {"stage": 8, "name": "Packaging / Update / Operations", "status": "NOT_STARTED"},
+    {"stage": 9, "name": "End-to-End Acceptance", "status": "NOT_STARTED"},
+    {"stage": 10, "name": "Bounded Pilot", "status": "NOT_STARTED"},
+    {"stage": 11, "name": "Titan V1 Closure", "status": "NOT_STARTED"}
+  ],
+  "stage_2_installation_first_run": {
+    "status": "MERGED_CLOSED",
+    "pr": 360,
+    "reviewed_head": "c870e3a11fd9c771a2434592a0aae140ef9c30e7",
+    "merge_sha": "42b212e005420adf674794155707512c2e09edec",
+    "evidence": {
+      "focused_bootstrap_tests": "7 passed before PR CI",
+      "py_compile": "PASS",
+      "full_ci_run": 1347,
+      "full_ci": "SUCCESS",
+      "codeql_run": 186,
+      "codeql": "SUCCESS",
+      "aggregate_merge_evidence": "SUCCESS",
+      "aggregate_run_id": 32536814671
     },
-    "evidence_reference_pr355": {
-      "status": "MERGED_POSTMERGE_CLOSED",
-      "reviewed_head": "7df06f0d4731a1bdfdf522a64879681fb046ae6a",
-      "merge_sha": "a0292c4d138b1ef76840c7d37ed5aa5cbde178e3",
-      "semantics": [
-        "typed EvidenceReference v1",
-        "local immutable-snapshot validation",
-        "strict identifier/digest/span/timestamp contract",
-        "local validation outcomes and receipt"
-      ],
-      "explicit_non_authority": [
-        "no trusted independence result",
-        "no TruthGate evidence admission",
-        "no Canon/ESM mutation authority",
-        "no production activation",
-        "validated_reference_count is diagnostic local-validation cardinality only"
-      ]
-    },
-    "mapping_parser_hardening_pr357": {
-      "status": "MERGED",
-      "reviewed_head": "b2ed601e106ec837ed8cc5d20b590be6a4dce0ea",
-      "merge_sha": "431b1b68e96bb0cad2848078d1e2e856d07039dc",
-      "independent_review": "APPROVE_FOR_OWNER_MERGE_DECISION",
-      "aggregate_merge_evidence_before_merge": "SUCCESS",
-      "scope": [
-        "single caller-Mapping snapshot via dict(payload)",
-        "ordinary Exception-derived Mapping read failures normalized to EvidenceReferenceError",
-        "MemoryError re-raised",
-        "BaseException process-control exceptions not caught",
-        "adversarial regression coverage",
-        "PR355 lifecycle closure documentation"
-      ],
-      "explicit_non_authority": [
-        "no TruthGate changes",
-        "no Evidence Admission",
-        "no EvidenceRegistry or receipt runtime wiring",
-        "no Canon/ESM mutation",
-        "no runtime activation",
-        "no production authorization"
-      ]
-    },
-    "project_status_routing_pr358": {
-      "status": "MERGED",
-      "merge_sha": "1a87938898b7b41e3637b7f2c8738681aafd6932",
-      "purpose": "Separate human-readable and AI-optimized project status plus AI fast-path routing without runtime or authority changes.",
-      "files": [
-        "AGENTS.md",
-        "docs/ai/README.md",
-        "docs/project_status/FOR_AI.json",
-        "docs/project_status/FOR_HUMAN.md"
-      ],
-      "non_authority": true
-    },
-    "governance": {
-      "signals": [
-        "aggregate merge evidence",
-        "CodeQL",
-        "Docker hardening",
-        "dependency vulnerability audit",
-        "reproducible wheel",
-        "deterministic SBOM",
-        "coverage ratchet",
-        "machine-readable project-state validator",
-        "bounded independent review discipline"
-      ]
-    }
+    "user_capability_now": [
+      "one canonical cross-platform Python 3.11+ bootstrap",
+      "automatic .venv creation/reuse",
+      "automatic existing [server] dependency installation when needed",
+      "safe local .env creation with random API key",
+      "fail-closed network and remote-data defaults for a new env",
+      "loopback-only first run",
+      "health-gated console opening",
+      "clear failure for unsupported Python, incomplete checkout, occupied port, dependency failure, early server exit, or health timeout"
+    ],
+    "explicit_non_scope": [
+      "no provider/model onboarding change",
+      "no file ingestion wiring",
+      "no TruthGate/D1 change",
+      "no new authority mechanism",
+      "no research/autonomous activation",
+      "no production authorization"
+    ],
+    "observation_boundary": "Fresh ordinary-user end-to-end observation is still required later in Stage 9 and Stage 10; CI success and merge are not runtime observation."
+  },
+  "maturity_estimates": {
+    "note": "Engineering estimates only; not formal admission, safety, release, or production metrics.",
+    "architecture_percent": 85,
+    "security_governance_percent": 82,
+    "tests_ci_engineering_quality_percent": 85,
+    "core_capabilities_percent": 80,
+    "integration_percent": 70,
+    "user_e2e_percent": 60,
+    "installation_percent": 90,
+    "ux_percent": 55,
+    "failure_recovery_percent": 60,
+    "packaging_update_lifecycle_percent": 55,
+    "human_docs_percent": 68,
+    "ai_docs_percent": 90,
+    "bounded_pilot_readiness_percent": 75,
+    "total_finished_user_product_percent": 69,
+    "remaining_percent": 31
   },
   "current_workstream": {
-    "name": "D1_LEGACY_TRUTHGATE_DUPLICATE_CARDINALITY_PREPARATION",
-    "status": "APPROVAL_GATED_NOT_AUTHORIZED",
-    "problem": "Legacy metadata.evidence_refs counts duplicate string tokens as separate evidence cardinality, allowing repeated identical tokens to inflate TruthGate thresholds.",
-    "confirmed_current_behavior": "TruthGate currently uses max(1, len(refs)) for list-valued metadata.evidence_refs; existing tests demonstrate repeated identical strings can satisfy evidence thresholds.",
-    "required_separation": "D1 must remain a standalone legacy-cardinality fix and must not wire PR355/PR357 EvidenceReference machinery into TruthGate.",
-    "recommended_initial_policy": {
-      "OD1": "standalone bounded D1",
-      "OD2": "C1 preserve fallback=1 for empty/non-list legacy values",
-      "OD3": "EXACT_STRING_IDENTITY; no trim/case/Unicode/URL normalization",
-      "OD4": "do not add new size limits until corpus/fixture measurement justifies them"
-    },
-    "owner_decisions_required_before_implementation": [
-      "OD1",
-      "OD2",
-      "OD3",
-      "OD4"
-    ],
-    "must_not_wire": [
-      "EvidenceReference",
-      "EvidenceRegistry",
-      "EvidenceValidationReceipt",
-      "trusted independence",
-      "source authenticity",
-      "Evidence Admission",
-      "Canon mutation"
+    "stage": 3,
+    "name": "MODEL_PROVIDER_SETUP",
+    "status": "ACTIVE_BOUNDED_PRODUCT_STAGE",
+    "problem": "Provider execution exists, but the ordinary-user path from choosing a provider and entering an API key to obtaining a working model is not yet deterministic because remote-egress policy is fail-closed and onboarding surfaces do not consistently explain or satisfy the required policy conditions.",
+    "human_goal": "An ordinary local user can intentionally connect a supported model, understand the remote-data boundary, test the connection, receive actionable errors, and keep fail-closed defaults when remote model use is not explicitly enabled.",
+    "must_preserve": [
+      "VELANTRIM_NETWORK_MODE defaults deny",
+      "VELANTRIM_REMOTE_DATA_MODE defaults never",
+      "remote model use remains explicit opt-in",
+      "no provider credential is silently promoted into Canon or authority",
+      "no runtime authority, Operator GO, remote Canon, or autonomous layer activation"
     ],
     "next_actions": [
-      "obtain explicit owner decisions OD1 through OD4",
-      "after authorization, reread exact main TruthGate code and focused tests",
-      "implement only exact-string duplicate-cardinality normalization",
-      "prove duplicate tokens cannot inflate thresholds while preserving legacy fallback behavior",
-      "run focused and full CI",
-      "perform bounded review before any merge decision"
+      "read exact current provider/console/egress setup paths",
+      "identify the smallest user-facing configuration gap",
+      "fix only P1-02 without weakening fail-closed policy",
+      "add focused tests for explicit opt-in, provider readiness and actionable failure states",
+      "run exact-head CI and merge-evidence gate before closure"
     ]
   },
-  "future_separate_programs": {
-    "D2_evidence_admission": {
-      "status": "NOT_AUTHORIZED",
-      "conceptual_sequence": ["LEGACY", "OBSERVE", "VERIFY", "ENFORCE"],
-      "invariants": [
-        "parsing != admission",
-        "validation != truth",
-        "admission != target mutation authorization",
-        "receipt != bearer token",
-        "target domain retains canonical mutation authority"
-      ]
+  "remaining_v1_p1": [
+    {
+      "id": "P1-02",
+      "stage": 3,
+      "name": "Provider onboarding",
+      "status": "ACTIVE"
     },
-    "notion_architecture_monitor": {
-      "status": "SEPARATE_WORKSTREAM_DO_NOT_RESUME_UNLESS_EXPLICITLY_REQUESTED",
-      "must_not_mix_with": ["PR355", "PR357", "TruthGate D1"]
+    {
+      "id": "P1-03",
+      "stage": 5,
+      "name": "Files user E2E wiring",
+      "status": "DEFERRED_TO_PREDEFINED_STAGE"
+    },
+    {
+      "id": "P1-04",
+      "stage": 8,
+      "name": "Current Titan V1 release/update lifecycle",
+      "status": "DEFERRED_TO_PREDEFINED_STAGE"
+    },
+    {
+      "id": "P1-05",
+      "stage": 5,
+      "name": "Legacy TruthGate duplicate evidence-token cardinality (D1)",
+      "status": "DEFERRED_TO_PREDEFINED_STAGE",
+      "bounded_rule": "Exact-string duplicate-cardinality normalization only; do not wire EvidenceReference, EvidenceRegistry, Evidence Admission, source authenticity, trusted independence, or new authority."
     }
-  },
-  "productization_remaining": [
-    "installation and onboarding",
-    "operator and user UX",
-    "release/update/rollback workflow",
-    "operational observability",
-    "failure recovery and supportability",
-    "performance validation on target scenarios",
-    "user/operator documentation",
-    "end-to-end acceptance scenarios",
-    "deployment-level threat/security review",
-    "packaging and deployment ergonomics",
-    "limited pilot with measured feedback",
-    "reliability hardening based on pilot evidence"
   ],
-  "recommended_sequence": [
-    "PR355 merged and closed",
-    "PR358 merged",
-    "PR357 merged after independent review and owner merge decision",
-    "resolve D1 owner decisions OD1 through OD4",
-    "implement and review bounded D1",
-    "run architecture/product gap audit",
-    "define bounded pilot-readiness program",
-    "product hardening",
-    "limited pilot",
-    "measured reliability iteration",
-    "separate production-readiness decision"
+  "stable_architecture_context": {
+    "continuity_capabilities": "12/12",
+    "runtime_authority": false,
+    "operator_go": false,
+    "current_runtime_enabled": false,
+    "remote_canon": "FORBIDDEN",
+    "evidence_reference_pr355": "MERGED_POSTMERGE_CLOSED",
+    "mapping_parser_hardening_pr357": "MERGED",
+    "project_status_routing_pr358": "MERGED"
+  },
+  "p2_p3_backlog_not_mandatory_for_v1": [
+    "full typed EvidenceReference to Evidence Admission architecture",
+    "trusted evidence registry",
+    "NLI contradiction subsystem",
+    "GraphRAG/Louvain improvements",
+    "enabling TruthPolicy before its fail-open mode is resolved",
+    "all-provider response integrity expansion",
+    "additional providers",
+    "new telemetry frameworks",
+    "new authority router",
+    "speculative cognitive capabilities"
   ],
   "stop_conditions": [
     "do not treat this document as live proof",
-    "do not treat maturity percentages as authorization",
-    "do not reopen PR355 or PR357",
+    "do not treat percentages as authorization",
+    "do not reopen architecture during productization unless a current P0/P1 proves it necessary",
+    "do not resume D1 before Stage 5 merely because older documents called it the next workstream",
     "do not silently wire EvidenceReference into TruthGate",
-    "do not start D1 implementation before explicit OD1 through OD4",
-    "do not mix Notion monitor work with current evidence/TruthGate workstreams",
-    "do not infer production authorization from CI, merge, receipt, validation, or pilot"
+    "do not infer production authorization from CI, merge, validation, receipt, or pilot",
+    "after Stage 11 closure do not invent an additional mandatory stage"
   ],
   "existing_machine_contract": {
     "path": "docs/state/project_state.json",
