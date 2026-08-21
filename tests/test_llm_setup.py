@@ -9,9 +9,19 @@ from scripts import configure_llm
 
 
 def test_server_provider_catalog_is_unique_and_executable():
+    catalog = {str(item["id"]): item for item in list_providers()}
     ids = [str(item["id"]) for item in list_providers()]
+
     assert len(ids) == len(set(ids)), "provider catalog must not contain duplicate ids"
     assert set(ids) == set(configure_llm.PROVIDERS)
+    assert {
+        provider_id: str(item["default_model"])
+        for provider_id, item in catalog.items()
+    } == {
+        provider_id: spec.default_model
+        for provider_id, spec in configure_llm.PROVIDERS.items()
+    }
+    assert catalog["openrouter"]["default_model"] == "openai/gpt-chat-latest"
 
 
 def test_requires_explicit_remote_data_consent(tmp_path: Path):
