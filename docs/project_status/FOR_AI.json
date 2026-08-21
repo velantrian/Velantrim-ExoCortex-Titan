@@ -3,6 +3,14 @@
   "document_role": "AI_PROJECT_STATUS_OVERVIEW",
   "audience": "AI_AGENT",
   "human_companion": "docs/project_status/FOR_HUMAN.md",
+  "human_document_read_policy": {
+    "read_by_default": false,
+    "read_only_when": [
+      "the user explicitly requests the human-facing explanation",
+      "human-facing wording or documentation synchronization is under review",
+      "this AI snapshot explicitly identifies a missing fact that requires comparison with the human document"
+    ]
+  },
   "canonicality": {
     "is_canon": false,
     "is_runtime_authority": false,
@@ -10,7 +18,7 @@
     "is_promotion_authority": false,
     "is_merge_authority": false,
     "is_production_authorization": false,
-    "freshness_rule": "LIVE_GITHUB_AND_EXACT_SHA_OVERRIDE_THIS_SNAPSHOT"
+    "freshness_rule": "READ_THIS_ORIENTATION_FIRST_THEN_LIVE_VERIFY_CHANGING_FACTS; LIVE_GITHUB_AND_EXACT_SHA_OVERRIDE_ON_CONFLICT"
   },
   "snapshot": {
     "date": "2026-08-21",
@@ -20,10 +28,11 @@
     "interpretation": "Core architecture is substantially mature; current work is closing bounded authority-sensitive defects and moving toward product/pilot readiness."
   },
   "read_order": [
-    "live GitHub PR/branch/check state",
-    "exact-SHA code and tests",
-    "docs/state/project_state.json and validated lifecycle/ADR records",
-    "this overview"
+    "this overview",
+    "live GitHub PR/branch/check state for facts that can change",
+    "exact-SHA code and tests for the affected component",
+    "docs/state/project_state.json and validated lifecycle/ADR records when relevant",
+    "human-facing documentation only when explicitly needed"
   ],
   "maturity_estimates": {
     "note": "Engineering estimates only; not formal admission, safety, release, or production metrics.",
@@ -131,7 +140,7 @@
     "name": "PR358_AI_HUMAN_PROJECT_STATUS_ROUTING",
     "pr": 358,
     "lifecycle_expected": "OPEN_DRAFT_UNMERGED",
-    "head_sha_at_snapshot": "ff86d3c7ea79cb9d5a323c2fb19e957799cb41eb",
+    "head_tracking": "LIVE_VERIFY_PR_HEAD; do not treat an embedded self-SHA as evergreen",
     "purpose": "Provide separate human-readable and AI-optimized project status plus AI fast-path routing without changing runtime or authority.",
     "files": [
       "AGENTS.md",
