@@ -3,6 +3,11 @@
 
 Все маршруты /llm/providers должны импортировать ТОЛЬКО отсюда,
 чтобы не подхватывать устаревший PROVIDER_CATALOG из кэша llm_router.
+
+V1 product rule: every top-level provider advertised here must be a direct
+server backend actually executable by ``core.llm_router.chat_complete``.
+Provider-specific models can still be reached through OpenRouter without
+pretending that Titan implements another direct transport.
 """
 
 from __future__ import annotations
@@ -13,7 +18,7 @@ from typing import Any, Dict, List, Optional
 from core.gemini_models import GEMINI_CATALOG_REVISION, build_gemini_provider_entry
 
 # Меняйте при обновлении списков моделей — видно в GET /console/llm/providers
-CATALOG_BUILD_ID = "2026-07-velantrim-titan-90-provider-catalog"
+CATALOG_BUILD_ID = "2026-08-titan-v1-executable-provider-catalog"
 _CATALOG_FILE = Path(__file__).resolve()
 
 OPENAI_MODELS: List[str] = [
@@ -37,6 +42,9 @@ OPENAI_MODEL_META: Dict[str, Dict[str, str]] = {
     },
 }
 
+# Direct transports implemented by core.llm_router.chat_complete().
+# Keep ids unique. Qwen models are intentionally available through OpenRouter
+# until/unless a separate direct Qwen transport is implemented and tested.
 PROVIDER_CATALOG: List[Dict[str, Any]] = [
     {
         "id": "openai",
@@ -50,19 +58,10 @@ PROVIDER_CATALOG: List[Dict[str, Any]] = [
         "title": "DeepSeek",
         "default_model": "deepseek-v4-flash",
         "models": [
-            "deepseek-v4-flash",       # 284B, быстрый, 1M контекст · апрель 2026
-            "deepseek-v4-pro",         # 1.6T, флагманский reasoning · апрель 2026
+            "deepseek-v4-flash",
+            "deepseek-v4-pro",
         ],
         "thinking_modes": ["off", "medium", "high"],
-    },
-    {
-        "id": "qwen",
-        "title": "Qwen (Alibaba)",
-        "default_model": "qwen3.7-max",
-        "models": [
-            "qwen3.7-max",             # текстовый флагман, 1M контекст, агентный · 21 мая 2026
-            "qwen3.7-plus",            # мультимодальный (текст+изображение+видео) · 1 июня 2026
-        ],
     },
     build_gemini_provider_entry(),
     {
@@ -87,16 +86,8 @@ PROVIDER_CATALOG: List[Dict[str, Any]] = [
         "title": "Anthropic Claude",
         "default_model": "claude-sonnet-4-6",
         "models": [
-            "claude-sonnet-4-6",       # флагманский эффективный · 17 фев 2026 · 1M контекст
-            "claude-opus-4-8",         # самый мощный, reasoning · 28 мая 2026 · 1M контекст
-        ],
-    },
-    {
-        "id": "gemini",
-        "title": "Google Gemini",
-        "default_model": "gemini-3.5-flash",
-        "models": [
-            "gemini-3.5-flash",        # мультимодальный (текст+изобр+видео+аудио+PDF) · 19 мая 2026 · 1M контекст · GA
+            "claude-sonnet-4-6",
+            "claude-opus-4-8",
         ],
     },
 ]
@@ -105,21 +96,21 @@ PROVIDER_CATALOG: List[Dict[str, Any]] = [
 def list_providers() -> List[Dict[str, Any]]:
     """Актуальный каталог; Gemini пересобирается при каждом вызове."""
     out: List[Dict[str, Any]] = []
-    for p in PROVIDER_CATALOG:
-        if p.get("id") == "gemini":
+    for provider in PROVIDER_CATALOG:
+        if provider.get("id") == "gemini":
             out.append(build_gemini_provider_entry())
         else:
-            out.append(dict(p))
+            out.append(dict(provider))
     return out
 
 
 def get_provider_info(provider_id: str) -> Optional[Dict[str, Any]]:
     key = (provider_id or "").strip().lower()
-    for p in PROVIDER_CATALOG:
-        if p.get("id") == key:
+    for provider in PROVIDER_CATALOG:
+        if provider.get("id") == key:
             if key == "gemini":
                 return build_gemini_provider_entry()
-            return dict(p)
+            return dict(provider)
     return None
 
 
