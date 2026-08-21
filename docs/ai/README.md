@@ -10,9 +10,37 @@ inspecting current code, tests, workflows, configuration, and runtime evidence.
 > current implementation, locate its callers, inspect tests and CI, and distinguish
 > proposed, implemented, tested, wired, enabled, and observed behavior.
 
+## ⚡ Project-status fast path
+
+If the task is primarily about **overall project status, maturity, progress, remaining
+work, roadmap, next steps, or continuation/handoff**, do **not** read the human status
+narrative first.
+
+Read:
+
+1. [`../project_status/FOR_AI.json`](../project_status/FOR_AI.json) — compact AI-oriented
+   project-status snapshot and routing metadata.
+2. Live GitHub state for any PR/SHA/check that could change the conclusion.
+3. Only the task-specific files needed to verify or continue the work.
+
+Do **not** read [`../project_status/FOR_HUMAN.md`](../project_status/FOR_HUMAN.md) unless
+one of these is true:
+
+- the user explicitly asks for the human-facing explanation;
+- a human-readable wording issue itself is under review;
+- the AI snapshot explicitly marks a field as requiring human-document comparison.
+
+The AI snapshot is descriptive orientation only. It is not Canon, evidence, runtime
+authority, merge authority, production authorization, or an evergreen claim about remote
+state. Exact code, tests, CI, configuration, and observed runtime evidence override it.
+
+For a status-only task, this fast path replaces the general reading order below until
+additional context is actually needed.
+
 ## Required reading order
 
-Read only the minimum context needed, in this order:
+For audits, code changes, or architecture work that need broader context, read only the
+minimum context needed, in this order:
 
 1. [`../../README.md`](../../README.md) — product purpose and public maturity claim.
 2. [`../../SYSTEM_OVERVIEW.md`](../../SYSTEM_OVERVIEW.md) — high-level architecture.
@@ -108,6 +136,7 @@ A missing connector is `HANDOFF_REQUIRED`, not a generic blocker.
 
 | Task | Read next |
 |---|---|
+| Overall project status / maturity / remaining work / continuation | `../project_status/FOR_AI.json` first; do not read the human counterpart by default; then live-revalidate relevant GitHub state |
 | Future-work selection / project continuation | `AUDIT_AND_FUTURE_WORK.md` after live GitHub revalidation; never auto-select from priority/order alone |
 | Canon, ESM, promotion, truth | `COMPONENT_MAP.md#canon-and-promotion` plus Truth/Promotion ADRs |
 | Projection outbox or FTS | `COMPONENT_MAP.md#projection-delivery` and `KNOWN_RISKS.md#risk-p0-01` |
