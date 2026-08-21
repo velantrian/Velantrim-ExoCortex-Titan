@@ -97,6 +97,13 @@
     "lifecycle_expected": "OPEN_DRAFT_UNMERGED",
     "base_sha": "a0292c4d138b1ef76840c7d37ed5aa5cbde178e3",
     "current_review_target_after_bounded_fix": "c477500245c8df319fb6c873f8cc510e1f33ec43",
+    "ci_status_at_snapshot": {
+      "titan_ci_1336": "SUCCESS",
+      "docker_882": "SUCCESS",
+      "codeql_175": "SUCCESS",
+      "aggregate_evaluator": "SUCCESS",
+      "exposed_aggregate_status": "PENDING_WHILE_DRAFT_BY_POLICY"
+    },
     "scope": [
       "normalize ordinary custom Mapping snapshot-read exceptions into EvidenceReferenceError",
       "re-raise MemoryError",
@@ -115,12 +122,24 @@
       "production authorization"
     ],
     "next_actions": [
-      "live verify exact PR357 head/base/scope and CI",
-      "complete exact-head CI",
       "perform fresh independent REVIEW ONLY on c477500245c8df319fb6c873f8cc510e1f33ec43",
       "if approved, obtain separate owner merge decision",
       "after merge, reread exact main SHA"
     ]
+  },
+  "documentation_workstream": {
+    "name": "PR358_AI_HUMAN_PROJECT_STATUS_ROUTING",
+    "pr": 358,
+    "lifecycle_expected": "OPEN_DRAFT_UNMERGED",
+    "head_sha_at_snapshot": "ff86d3c7ea79cb9d5a323c2fb19e957799cb41eb",
+    "purpose": "Provide separate human-readable and AI-optimized project status plus AI fast-path routing without changing runtime or authority.",
+    "files": [
+      "AGENTS.md",
+      "docs/ai/README.md",
+      "docs/project_status/FOR_AI.json",
+      "docs/project_status/FOR_HUMAN.md"
+    ],
+    "non_authority": true
   },
   "next_authority_sensitive_workstream": {
     "name": "D1_LEGACY_TRUTHGATE_DUPLICATE_CARDINALITY",
