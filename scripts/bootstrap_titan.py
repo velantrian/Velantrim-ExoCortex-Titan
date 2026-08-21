@@ -247,6 +247,7 @@ def run(argv: Iterable[str] | None = None) -> int:
     print(f"Environment: {env_path}{' (created)' if env_created else ''}")
     print(f"Console: {console_url}")
     print("LLM is optional for first run and remains off until you configure a provider.")
+    print("Model setup: stop Titan, run `python scripts/configure_llm.py`, then restart.")
     print("Press Ctrl+C to stop Titan.\n")
 
     process = subprocess.Popen(
