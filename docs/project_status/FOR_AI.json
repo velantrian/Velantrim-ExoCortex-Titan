@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "document_role": "AI_PROJECT_STATUS_OVERVIEW",
+  "audience": "AI_AGENT",
+  "human_companion": "docs/project_status/FOR_HUMAN.md",
+  "canonicality": {
+    "is_canon": false,
+    "is_runtime_authority": false,
+    "is_admission_authority": false,
+    "is_promotion_authority": false,
+    "is_merge_authority": false,
+    "is_production_authorization": false,
+    "freshness_rule": "LIVE_GITHUB_AND_EXACT_SHA_OVERRIDE_THIS_SNAPSHOT"
+  },
+  "snapshot": {
+    "date": "2026-08-21",
+    "repository": "velantrian/Velantrim-ExoCortex-Titan",
+    "main_sha_at_snapshot": "a0292c4d138b1ef76840c7d37ed5aa5cbde178e3",
+    "status": "ARCHITECTURAL_HARDENING_AND_PRODUCTIZATION",
+    "interpretation": "Core architecture is substantially mature; current work is closing bounded authority-sensitive defects and moving toward product/pilot readiness."
+  },
+  "read_order": [
+    "live GitHub PR/branch/check state",
+    "exact-SHA code and tests",
+    "docs/state/project_state.json and validated lifecycle/ADR records",
+    "this overview"
+  ],
+  "maturity_estimates": {
+    "note": "Engineering estimates only; not formal admission, safety, release, or production metrics.",
+    "architecture_core_percent_range": [80, 85],
+    "bounded_local_pilot_readiness_percent_range": [70, 80],
+    "finished_user_product_percent_range": [55, 65],
+    "regulated_or_high_assurance_readiness": "LOWER_THAN_GENERAL_PRODUCT_READINESS_AND_REQUIRES_SEPARATE_ASSURANCE_PROGRAM"
+  },
+  "core_invariants": [
+    "research != runtime",
+    "spec != implementation",
+    "implementation != Canon",
+    "integration != authority transfer",
+    "retrieval != evidence",
+    "validation != admission",
+    "admission != promotion authorization",
+    "receipt != truth",
+    "receipt != authority",
+    "claim != belief",
+    "evidence != identity",
+    "identity != authority",
+    "model output != Canon",
+    "CI green != production authorization",
+    "merge != runtime activation",
+    "pilot != evidence"
+  ],
+  "completed_or_stable_areas": {
+    "continuity": {
+      "source": "docs/state/project_state.json",
+      "capabilities_complete": "12/12",
+      "runtime_authority": false,
+      "operator_go": false,
+      "current_runtime_enabled": false,
+      "warning": "Continuity capability completion is not total-project completion or production authorization."
+    },
+    "evidence_reference_pr355": {
+      "status": "MERGED_POSTMERGE_CLOSED",
+      "reviewed_head": "7df06f0d4731a1bdfdf522a64879681fb046ae6a",
+      "merge_sha": "a0292c4d138b1ef76840c7d37ed5aa5cbde178e3",
+      "semantics": [
+        "typed EvidenceReference v1",
+        "local immutable-snapshot validation",
+        "strict identifier/digest/span/timestamp contract",
+        "local validation outcomes and receipt"
+      ],
+      "explicit_non_authority": [
+        "no trusted independence result",
+        "no TruthGate evidence admission",
+        "no Canon/ESM mutation authority",
+        "no production activation",
+        "validated_reference_count is diagnostic local-validation cardinality only"
+      ]
+    },
+    "governance": {
+      "signals": [
+        "aggregate merge evidence",
+        "CodeQL",
+        "Docker hardening",
+        "dependency vulnerability audit",
+        "reproducible wheel",
+        "deterministic SBOM",
+        "coverage ratchet",
+        "machine-readable project-state validator",
+        "bounded independent review discipline"
+      ]
+    }
+  },
+  "current_workstream": {
+    "name": "PR357_MAPPING_PARSER_HARDENING",
+    "pr": 357,
+    "lifecycle_expected": "OPEN_DRAFT_UNMERGED",
+    "base_sha": "a0292c4d138b1ef76840c7d37ed5aa5cbde178e3",
+    "current_review_target_after_bounded_fix": "c477500245c8df319fb6c873f8cc510e1f33ec43",
+    "scope": [
+      "normalize ordinary custom Mapping snapshot-read exceptions into EvidenceReferenceError",
+      "re-raise MemoryError",
+      "do not catch BaseException process-control exceptions",
+      "adversarial mapping regression coverage",
+      "PR355 lifecycle closure documentation"
+    ],
+    "forbidden_scope": [
+      "TruthGate changes",
+      "Evidence Admission",
+      "EvidenceRegistry or receipt runtime wiring",
+      "persistence",
+      "network/provider access",
+      "Canon/ESM mutation",
+      "runtime activation",
+      "production authorization"
+    ],
+    "next_actions": [
+      "live verify exact PR357 head/base/scope and CI",
+      "complete exact-head CI",
+      "perform fresh independent REVIEW ONLY on c477500245c8df319fb6c873f8cc510e1f33ec43",
+      "if approved, obtain separate owner merge decision",
+      "after merge, reread exact main SHA"
+    ]
+  },
+  "next_authority_sensitive_workstream": {
+    "name": "D1_LEGACY_TRUTHGATE_DUPLICATE_CARDINALITY",
+    "status": "APPROVAL_GATED_NOT_AUTHORIZED",
+    "problem": "Legacy metadata.evidence_refs counts duplicate string tokens as separate evidence cardinality.",
+    "required_separation": "D1 must remain separate from D2 Evidence Admission.",
+    "recommended_initial_policy": {
+      "compatibility": "C1_PRESERVE_FALLBACK",
+      "identity": "EXACT_STRING_IDENTITY",
+      "goal": "duplicate exact legacy token must not inflate threshold cardinality"
+    },
+    "owner_decisions_required_before_apply": ["OD-1", "OD-2", "OD-3", "OD-4"],
+    "must_not_wire": [
+      "EvidenceReference",
+      "EvidenceRegistry",
+      "EvidenceValidationReceipt",
+      "trusted independence",
+      "source authenticity",
+      "Evidence Admission",
+      "Canon mutation"
+    ]
+  },
+  "future_separate_programs": {
+    "D2_evidence_admission": {
+      "status": "NOT_AUTHORIZED",
+      "conceptual_sequence": ["LEGACY", "OBSERVE", "VERIFY", "ENFORCE"],
+      "invariants": [
+        "parsing != admission",
+        "validation != truth",
+        "admission != target mutation authorization",
+        "receipt != bearer token",
+        "target domain retains canonical mutation authority"
+      ]
+    },
+    "notion_architecture_monitor": {
+      "status": "SEPARATE_WORKSTREAM_DO_NOT_RESUME_UNLESS_EXPLICITLY_REQUESTED",
+      "must_not_mix_with": ["PR355", "PR357", "TruthGate D1"]
+    }
+  },
+  "productization_remaining": [
+    "installation and onboarding",
+    "operator and user UX",
+    "release/update/rollback workflow",
+    "operational observability",
+    "failure recovery and supportability",
+    "performance validation on target scenarios",
+    "user/operator documentation",
+    "end-to-end acceptance scenarios",
+    "deployment-level threat/security review",
+    "packaging and deployment ergonomics",
+    "limited pilot with measured feedback",
+    "reliability hardening based on pilot evidence"
+  ],
+  "recommended_sequence": [
+    "finish PR357 bounded hardening",
+    "fresh exact-head review",
+    "separate owner merge decision",
+    "reread main",
+    "resolve D1 owner decisions",
+    "implement and review bounded D1",
+    "run architecture/product gap audit",
+    "define bounded pilot-readiness program",
+    "product hardening",
+    "limited pilot",
+    "measured reliability iteration",
+    "separate production-readiness decision"
+  ],
+  "stop_conditions": [
+    "do not treat this document as live proof",
+    "do not treat maturity percentages as authorization",
+    "do not reopen PR355",
+    "do not silently wire EvidenceReference into TruthGate",
+    "do not start D1 implementation before explicit OD-1 through OD-4",
+    "do not mix Notion monitor work with current evidence/TruthGate workstreams",
+    "do not infer production authorization from CI, merge, receipt, validation, or pilot"
+  ],
+  "existing_machine_contract": {
+    "path": "docs/state/project_state.json",
+    "relationship": "SEPARATE_VALIDATED_COMPONENT_STATE_CONTRACT",
+    "warning": "Do not replace or reinterpret it as total-project completion percentage."
+  }
+}
