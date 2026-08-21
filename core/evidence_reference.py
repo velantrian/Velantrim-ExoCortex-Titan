@@ -140,7 +140,13 @@ class EvidenceReference:
         """Parse an exact v1 mapping and reject missing or unknown fields."""
         if not isinstance(payload, Mapping):
             raise EvidenceReferenceError("evidence reference payload must be a mapping")
-        payload_keys = tuple(payload.keys())
+        try:
+            payload_snapshot = dict(payload)
+        except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+            raise EvidenceReferenceError(
+                "evidence reference payload could not be read consistently"
+            ) from exc
+        payload_keys = tuple(payload_snapshot.keys())
         if any(not isinstance(key, str) for key in payload_keys):
             raise EvidenceReferenceError("evidence reference field names must be strings")
         keys = frozenset(payload_keys)
@@ -154,15 +160,15 @@ class EvidenceReference:
                 details.append("unexpected=" + ",".join(sorted(unexpected)))
             raise EvidenceReferenceError("invalid evidence reference fields: " + "; ".join(details))
         return cls(
-            schema_version=payload["schema_version"],
-            reference_id=payload["reference_id"],
-            source_id=payload["source_id"],
-            source_digest=payload["source_digest"],
-            fragment_id=payload["fragment_id"],
-            fragment_digest=payload["fragment_digest"],
-            span=payload["span"],
-            lineage_id=payload["lineage_id"],
-            captured_at=payload["captured_at"],
+            schema_version=payload_snapshot["schema_version"],
+            reference_id=payload_snapshot["reference_id"],
+            source_id=payload_snapshot["source_id"],
+            source_digest=payload_snapshot["source_digest"],
+            fragment_id=payload_snapshot["fragment_id"],
+            fragment_digest=payload_snapshot["fragment_digest"],
+            span=payload_snapshot["span"],
+            lineage_id=payload_snapshot["lineage_id"],
+            captured_at=payload_snapshot["captured_at"],
         )
 
     def to_mapping(self) -> dict[str, object]:
