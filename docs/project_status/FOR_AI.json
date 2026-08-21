@@ -23,9 +23,9 @@
   "snapshot": {
     "date": "2026-08-21",
     "repository": "velantrian/Velantrim-ExoCortex-Titan",
-    "main_sha_at_snapshot": "a0292c4d138b1ef76840c7d37ed5aa5cbde178e3",
+    "main_sha_at_snapshot": "431b1b68e96bb0cad2848078d1e2e856d07039dc",
     "status": "ARCHITECTURAL_HARDENING_AND_PRODUCTIZATION",
-    "interpretation": "Core architecture is substantially mature; current work is closing bounded authority-sensitive defects and moving toward product/pilot readiness."
+    "interpretation": "Core architecture is substantially mature. PR355, PR357 and PR358 are merged. The next authority-sensitive workstream is bounded D1 legacy TruthGate duplicate-cardinality normalization, still approval-gated and not yet authorized for implementation."
   },
   "read_order": [
     "this overview",
@@ -86,6 +86,41 @@
         "validated_reference_count is diagnostic local-validation cardinality only"
       ]
     },
+    "mapping_parser_hardening_pr357": {
+      "status": "MERGED",
+      "reviewed_head": "b2ed601e106ec837ed8cc5d20b590be6a4dce0ea",
+      "merge_sha": "431b1b68e96bb0cad2848078d1e2e856d07039dc",
+      "independent_review": "APPROVE_FOR_OWNER_MERGE_DECISION",
+      "aggregate_merge_evidence_before_merge": "SUCCESS",
+      "scope": [
+        "single caller-Mapping snapshot via dict(payload)",
+        "ordinary Exception-derived Mapping read failures normalized to EvidenceReferenceError",
+        "MemoryError re-raised",
+        "BaseException process-control exceptions not caught",
+        "adversarial regression coverage",
+        "PR355 lifecycle closure documentation"
+      ],
+      "explicit_non_authority": [
+        "no TruthGate changes",
+        "no Evidence Admission",
+        "no EvidenceRegistry or receipt runtime wiring",
+        "no Canon/ESM mutation",
+        "no runtime activation",
+        "no production authorization"
+      ]
+    },
+    "project_status_routing_pr358": {
+      "status": "MERGED",
+      "merge_sha": "1a87938898b7b41e3637b7f2c8738681aafd6932",
+      "purpose": "Separate human-readable and AI-optimized project status plus AI fast-path routing without runtime or authority changes.",
+      "files": [
+        "AGENTS.md",
+        "docs/ai/README.md",
+        "docs/project_status/FOR_AI.json",
+        "docs/project_status/FOR_HUMAN.md"
+      ],
+      "non_authority": true
+    },
     "governance": {
       "signals": [
         "aggregate merge evidence",
@@ -101,66 +136,23 @@
     }
   },
   "current_workstream": {
-    "name": "PR357_MAPPING_PARSER_HARDENING",
-    "pr": 357,
-    "lifecycle_expected": "OPEN_DRAFT_UNMERGED",
-    "base_sha": "a0292c4d138b1ef76840c7d37ed5aa5cbde178e3",
-    "current_review_target_after_bounded_fix": "c477500245c8df319fb6c873f8cc510e1f33ec43",
-    "ci_status_at_snapshot": {
-      "titan_ci_1336": "SUCCESS",
-      "docker_882": "SUCCESS",
-      "codeql_175": "SUCCESS",
-      "aggregate_evaluator": "SUCCESS",
-      "exposed_aggregate_status": "PENDING_WHILE_DRAFT_BY_POLICY"
-    },
-    "scope": [
-      "normalize ordinary custom Mapping snapshot-read exceptions into EvidenceReferenceError",
-      "re-raise MemoryError",
-      "do not catch BaseException process-control exceptions",
-      "adversarial mapping regression coverage",
-      "PR355 lifecycle closure documentation"
-    ],
-    "forbidden_scope": [
-      "TruthGate changes",
-      "Evidence Admission",
-      "EvidenceRegistry or receipt runtime wiring",
-      "persistence",
-      "network/provider access",
-      "Canon/ESM mutation",
-      "runtime activation",
-      "production authorization"
-    ],
-    "next_actions": [
-      "perform fresh independent REVIEW ONLY on c477500245c8df319fb6c873f8cc510e1f33ec43",
-      "if approved, obtain separate owner merge decision",
-      "after merge, reread exact main SHA"
-    ]
-  },
-  "documentation_workstream": {
-    "name": "PR358_AI_HUMAN_PROJECT_STATUS_ROUTING",
-    "pr": 358,
-    "lifecycle_expected": "OPEN_DRAFT_UNMERGED",
-    "head_tracking": "LIVE_VERIFY_PR_HEAD; do not treat an embedded self-SHA as evergreen",
-    "purpose": "Provide separate human-readable and AI-optimized project status plus AI fast-path routing without changing runtime or authority.",
-    "files": [
-      "AGENTS.md",
-      "docs/ai/README.md",
-      "docs/project_status/FOR_AI.json",
-      "docs/project_status/FOR_HUMAN.md"
-    ],
-    "non_authority": true
-  },
-  "next_authority_sensitive_workstream": {
-    "name": "D1_LEGACY_TRUTHGATE_DUPLICATE_CARDINALITY",
+    "name": "D1_LEGACY_TRUTHGATE_DUPLICATE_CARDINALITY_PREPARATION",
     "status": "APPROVAL_GATED_NOT_AUTHORIZED",
-    "problem": "Legacy metadata.evidence_refs counts duplicate string tokens as separate evidence cardinality.",
-    "required_separation": "D1 must remain separate from D2 Evidence Admission.",
+    "problem": "Legacy metadata.evidence_refs counts duplicate string tokens as separate evidence cardinality, allowing repeated identical tokens to inflate TruthGate thresholds.",
+    "confirmed_current_behavior": "TruthGate currently uses max(1, len(refs)) for list-valued metadata.evidence_refs; existing tests demonstrate repeated identical strings can satisfy evidence thresholds.",
+    "required_separation": "D1 must remain a standalone legacy-cardinality fix and must not wire PR355/PR357 EvidenceReference machinery into TruthGate.",
     "recommended_initial_policy": {
-      "compatibility": "C1_PRESERVE_FALLBACK",
-      "identity": "EXACT_STRING_IDENTITY",
-      "goal": "duplicate exact legacy token must not inflate threshold cardinality"
+      "OD1": "standalone bounded D1",
+      "OD2": "C1 preserve fallback=1 for empty/non-list legacy values",
+      "OD3": "EXACT_STRING_IDENTITY; no trim/case/Unicode/URL normalization",
+      "OD4": "do not add new size limits until corpus/fixture measurement justifies them"
     },
-    "owner_decisions_required_before_apply": ["OD-1", "OD-2", "OD-3", "OD-4"],
+    "owner_decisions_required_before_implementation": [
+      "OD1",
+      "OD2",
+      "OD3",
+      "OD4"
+    ],
     "must_not_wire": [
       "EvidenceReference",
       "EvidenceRegistry",
@@ -169,6 +161,14 @@
       "source authenticity",
       "Evidence Admission",
       "Canon mutation"
+    ],
+    "next_actions": [
+      "obtain explicit owner decisions OD1 through OD4",
+      "after authorization, reread exact main TruthGate code and focused tests",
+      "implement only exact-string duplicate-cardinality normalization",
+      "prove duplicate tokens cannot inflate thresholds while preserving legacy fallback behavior",
+      "run focused and full CI",
+      "perform bounded review before any merge decision"
     ]
   },
   "future_separate_programs": {
@@ -203,11 +203,10 @@
     "reliability hardening based on pilot evidence"
   ],
   "recommended_sequence": [
-    "finish PR357 bounded hardening",
-    "fresh exact-head review",
-    "separate owner merge decision",
-    "reread main",
-    "resolve D1 owner decisions",
+    "PR355 merged and closed",
+    "PR358 merged",
+    "PR357 merged after independent review and owner merge decision",
+    "resolve D1 owner decisions OD1 through OD4",
     "implement and review bounded D1",
     "run architecture/product gap audit",
     "define bounded pilot-readiness program",
@@ -219,9 +218,9 @@
   "stop_conditions": [
     "do not treat this document as live proof",
     "do not treat maturity percentages as authorization",
-    "do not reopen PR355",
+    "do not reopen PR355 or PR357",
     "do not silently wire EvidenceReference into TruthGate",
-    "do not start D1 implementation before explicit OD-1 through OD-4",
+    "do not start D1 implementation before explicit OD1 through OD4",
     "do not mix Notion monitor work with current evidence/TruthGate workstreams",
     "do not infer production authorization from CI, merge, receipt, validation, or pilot"
   ],
