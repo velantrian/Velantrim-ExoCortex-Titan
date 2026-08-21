@@ -19,7 +19,7 @@
 - запустит FastAPI только на `127.0.0.1`;
 - дождётся `/health` и откроет локальную Web Console.
 
-LLM **не нужен для первого запуска**. Titan стартует с `LLM_PROVIDER=none`; подключение модели — отдельный следующий этап настройки.
+LLM **не нужен для первого запуска**. Titan стартует с `LLM_PROVIDER=none`; модель подключается отдельным явным шагом после проверки локального запуска.
 
 ---
 
@@ -109,6 +109,45 @@ Ctrl+C
 
 ---
 
+## 4. Подключи модель, если она нужна
+
+Remote LLM — **не обязательная часть первого запуска**. Если локальная Console уже работает и ты хочешь подключить модель, сначала останови Titan, затем выполни:
+
+```bash
+python scripts/configure_llm.py
+```
+
+На Windows также можно:
+
+```powershell
+py -3.11 scripts/configure_llm.py
+```
+
+Wizard:
+
+- предложит только реально поддерживаемые direct server providers;
+- попросит API key через скрытый ввод;
+- объяснит, какие данные будут отправляться remote provider;
+- потребует явную фразу согласия перед изменением egress policy;
+- не выведет secret обратно в терминал;
+- сохранит остальные `.env`-настройки.
+
+После настройки снова запусти:
+
+```bash
+python scripts/bootstrap_titan.py
+```
+
+Проверить readiness без показа API key:
+
+```bash
+python scripts/configure_llm.py --status
+```
+
+Подробно: [`LLM_SETUP.ru.md`](LLM_SETUP.ru.md).
+
+---
+
 ## 🔐 Что происходит с `.env`
 
 Если `.env` отсутствует, bootstrap создаёт его из `.env.example` и задаёт безопасные локальные значения:
@@ -124,6 +163,8 @@ LLM_PROVIDER=none
 Если `.env` уже существует, пользовательские provider/network-настройки **не переписываются**. Если ключ пустой, bootstrap только заполняет `VELANTRIM_API_KEY`.
 
 `.env` и `.venv` исключены из Git и не должны коммититься.
+
+Remote model setup меняет `network/data` policy только после отдельного явного согласия пользователя. Один введённый provider API key сам по себе не является разрешением на egress.
 
 ---
 
@@ -151,7 +192,7 @@ python scripts/bootstrap_titan.py --no-install
 
 ---
 
-## 🛠️ Частые проблемы
+## 🛠️ Частые проблемы первого запуска
 
 ### Python ниже 3.11
 
@@ -189,6 +230,22 @@ Bootstrap сообщит код завершения. Ошибка самого 
 
 Bootstrap ждёт готовность до 45 секунд. Если сервер не становится доступен, он завершает запуск с ошибкой вместо ложного сообщения «готово».
 
+### Модель не подключается
+
+Не меняй `deny/never` вслепую. Сначала выполни:
+
+```bash
+python scripts/configure_llm.py --status
+```
+
+Если remote LLM действительно нужен — повтори канонический wizard:
+
+```bash
+python scripts/configure_llm.py
+```
+
+Диагностика provider/policy описана в [`LLM_SETUP.ru.md`](LLM_SETUP.ru.md).
+
 ---
 
 ## 🧑‍💻 Для разработчика
@@ -220,17 +277,16 @@ API docs по умолчанию могут быть отключены. Не и
 
 ---
 
-## 🎯 Граница этапа
+## 🎯 Граница пользовательского setup
 
-Этот bootstrap решает только **Installation + First Run**.
+Installation и provider setup намеренно не:
 
-Он намеренно не:
+- включают удалённую модель автоматически;
+- дают браузеру право менять remote egress authority;
+- включают research/autonomous layers;
+- подключают file ingestion;
+- изменяют TruthGate;
+- создают новую runtime authority;
+- разрешают remote Canon writes.
 
-- включает удалённую модель автоматически;
-- меняет remote egress authority;
-- включает research/autonomous layers;
-- подключает file ingestion;
-- изменяет TruthGate;
-- создаёт новую runtime authority.
-
-Настройка LLM/provider выполняется отдельно после успешного первого запуска.
+Сначала Titan работает локально. Remote model становится доступна только как отдельный осознанный opt-in владельца установки.
