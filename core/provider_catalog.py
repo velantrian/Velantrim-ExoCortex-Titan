@@ -67,9 +67,9 @@ PROVIDER_CATALOG: List[Dict[str, Any]] = [
     {
         "id": "openrouter",
         "title": "OpenRouter",
-        "default_model": "openai/chat-latest",
+        "default_model": "openai/gpt-chat-latest",
         "models": [
-            "openai/chat-latest",
+            "openai/gpt-chat-latest",
             "openai/gpt-5.5",
             "google/gemini-3.5-flash",
             "deepseek/deepseek-v4-flash",
