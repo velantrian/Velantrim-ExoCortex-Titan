@@ -48,7 +48,7 @@ PROVIDERS: dict[str, ProviderEnv] = {
         "OpenRouter",
         "OPENROUTER_API_KEY",
         "OPENROUTER_MODEL",
-        "openai/chat-latest",
+        "openai/gpt-chat-latest",
     ),
     "anthropic": ProviderEnv(
         "anthropic",
