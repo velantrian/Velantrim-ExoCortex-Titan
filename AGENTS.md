@@ -3,13 +3,33 @@
 This file is the mandatory entry point for AI coding agents and automated reviewers.
 It applies to the entire repository unless a more local `AGENTS.md` narrows the rules.
 
+## 0. Fast path for project status
+
+If the task is about **overall project status, maturity, progress, remaining work,
+roadmap, next steps, or continuation/handoff**, read this first:
+
+1. [`docs/project_status/FOR_AI.json`](docs/project_status/FOR_AI.json)
+2. Live GitHub state for any PR, SHA, check, or branch that can change the answer.
+3. Only the task-specific files required for verification or continuation.
+
+Do **not** read [`docs/project_status/FOR_HUMAN.md`](docs/project_status/FOR_HUMAN.md)
+for an AI status task unless the user explicitly asks for the human-facing narrative or
+the wording of that document is itself under review.
+
+This is a context-budget rule, not an authority rule. `FOR_AI.json` is orientation only:
+it is not Canon, runtime evidence, merge authority, production authorization, or an
+evergreen remote-state claim.
+
+For status-only tasks, this fast path supersedes the general reading order below until
+additional context is actually required.
+
 ## 1. Read before auditing or changing code
 
-Read in this order:
+For code changes, audits, or architecture work that need broader context, read in this order:
 
-1. [`README.md`](README.md) — public purpose and maturity claim.
+1. [`docs/ai/README.md`](docs/ai/README.md) — AI context-pack manifest and task routes.
 2. [`SYSTEM_OVERVIEW.md`](SYSTEM_OVERVIEW.md) — high-level system architecture.
-3. [`docs/ai/README.md`](docs/ai/README.md) — AI context-pack manifest.
+3. [`README.md`](README.md) — public purpose and maturity claim, only when public/product framing matters.
 4. [`docs/ai/DOCUMENTATION_SYNC_PROTOCOL.md`](docs/ai/DOCUMENTATION_SYNC_PROTOCOL.md)
    — GitHub and Notion definition of done.
 5. [`docs/ai/CURRENT_STATE.md`](docs/ai/CURRENT_STATE.md) — verified `main`, open-PR,
