@@ -142,7 +142,9 @@ class EvidenceReference:
             raise EvidenceReferenceError("evidence reference payload must be a mapping")
         try:
             payload_snapshot = dict(payload)
-        except (KeyError, TypeError, ValueError, RuntimeError) as exc:
+        except MemoryError:
+            raise
+        except Exception as exc:
             raise EvidenceReferenceError(
                 "evidence reference payload could not be read consistently"
             ) from exc
