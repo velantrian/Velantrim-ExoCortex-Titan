@@ -147,7 +147,9 @@ async def test_failed_unit_is_retried_once_from_selective_reread_plan() -> None:
     assert result.session.state is SessionState.COMPLETED
     assert result.reread_attempts == 1
     assert result.reader_attempts == result.total_units + 1
-    assert ReaderMode.DEEP in reader.modes
+    assert len(result.initial_reread_plan.tasks) == 1
+    assert result.initial_reread_plan.tasks[0].reader_mode is ReaderMode.STANDARD
+    assert reader.modes[-1] is ReaderMode.STANDARD
     assert not result.remaining_reread_plan.tasks
 
 
