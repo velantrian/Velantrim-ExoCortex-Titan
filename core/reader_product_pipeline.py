@@ -8,7 +8,7 @@ operation:
     -> completed ReadingSession -> source-linked GlobalDocumentSynthesis
 
 It deliberately adds no scheduler, persistence adapter, memory admission, Canon
-write, TruthGate call, graph authority, or production activation.  A synthesis is
+write, TruthGate call, graph authority, or production activation. A synthesis is
 an interpretation candidate built from source-grounded Reader claims; it is not
 truth and is never written anywhere by this module.
 """
@@ -113,7 +113,7 @@ class ReaderProductConfig:
 
 @dataclass(frozen=True, slots=True)
 class ReaderProductResult:
-    """Read-side result.  Nothing here is automatically admitted to memory/Canon."""
+    """Read-side result. Nothing here is automatically admitted to memory/Canon."""
 
     source: RawSource
     reading_plan: HierarchicalSectionPlan
@@ -304,7 +304,7 @@ class ReaderProductPipeline:
                 now_ms=_next_ms(now_ms, 2),
             )
 
-        digest = _source_grounded_digest(
+        digest, represented_claim_ids = _source_grounded_digest(
             cards,
             max_chars=self._config.max_digest_chars,
         )
@@ -368,6 +368,7 @@ class ReaderProductPipeline:
             cards=cards,
             exceptions=exceptions,
             digest=digest,
+            supporting_claim_ids=represented_claim_ids,
         )
         if remaining_reread_plan.tasks or remaining_reread_plan.deferred_items:
             warnings.append("bounded_reread_completed_with_remaining_advisory_work")
@@ -447,14 +448,9 @@ class ReaderProductPipeline:
         cards: tuple[SectionCard, ...],
         exceptions: tuple[CriticalExceptionCandidate, ...],
         digest: str,
+        supporting_claim_ids: tuple[str, ...],
     ) -> GlobalDocumentSynthesis:
-        supporting_claim_ids = tuple(
-            sorted(
-                card_claim.claim.claim_id
-                for card in cards
-                for card_claim in card.claims
-            )
-        )
+        supporting_claim_ids = tuple(sorted(set(supporting_claim_ids)))
         if not supporting_claim_ids or not digest:
             raise ReaderProductPipelineError(
                 "completed reading produced no source-grounded synthesis material"
@@ -523,8 +519,19 @@ def _source_grounded_digest(
     cards: Iterable[SectionCard],
     *,
     max_chars: int,
-) -> str:
+) -> tuple[str, tuple[str, ...]]:
+    """Build the bounded digest and exact claim correspondence together.
+
+    A source claim supports the digest only when its complete claim text occurs in
+    the actually retained fragment of its own SectionCard essence. Claims omitted
+    by an upstream essence budget, or cut by this digest budget, remain unsupported.
+    Matching proceeds in card-claim order and consumes occurrences one-to-one, so
+    duplicate claim text cannot make several source identities look represented by
+    a single retained occurrence.
+    """
+
     parts: list[str] = []
+    supporting_claim_ids: list[str] = []
     used = 0
     for card in cards:
         text = card.local_essence.strip()
@@ -534,14 +541,36 @@ def _source_grounded_digest(
         available = max_chars - used - len(separator)
         if available <= 0:
             break
-        if len(text) > available:
-            text = text[:available].rstrip()
-        if text:
-            parts.append(text)
-            used += len(separator) + len(text)
+        fragment = text
+        if len(fragment) > available:
+            fragment = fragment[:available].rstrip()
+        if fragment:
+            parts.append(fragment)
+            supporting_claim_ids.extend(
+                _claim_ids_represented_in_fragment(card, fragment)
+            )
+            used += len(separator) + len(fragment)
         if used >= max_chars:
             break
-    return "\n\n".join(parts)
+    return "\n\n".join(parts), tuple(sorted(set(supporting_claim_ids)))
+
+
+def _claim_ids_represented_in_fragment(
+    card: SectionCard,
+    fragment: str,
+) -> tuple[str, ...]:
+    """Return claim IDs whose full text is represented by distinct occurrences."""
+
+    represented: list[str] = []
+    cursor = 0
+    for card_claim in card.claims:
+        claim_text = card_claim.claim.text
+        position = fragment.find(claim_text, cursor)
+        if position < 0:
+            continue
+        represented.append(card_claim.claim.claim_id)
+        cursor = position + len(claim_text)
+    return tuple(represented)
 
 
 def _now_ms() -> int:
