@@ -191,6 +191,24 @@ Bootstrap ждёт готовность до 45 секунд. Если серв�
 
 ---
 
+## 🤖 Следующий шаг: подключить модель
+
+После успешного первого запуска Titan остаётся local-only и не отправляет данные удалённым моделям автоматически.
+
+Для осознанного подключения OpenAI, DeepSeek, Gemini, OpenRouter или Anthropic используй канонический Stage 3 путь:
+
+[`docs/PROVIDER_SETUP.ru.md`](PROVIDER_SETUP.ru.md)
+
+Коротко:
+
+```bash
+python scripts/configure_provider.py
+```
+
+Конфигуратор скрыто запросит API-ключ и отдельно потребует явное подтверждение remote network + prompt/context egress. Без такого подтверждения `.env` не меняется.
+
+---
+
 ## 🧑‍💻 Для разработчика
 
 Ручной dev-путь остаётся доступен и не является обязательным для обычного пользователя:
@@ -222,7 +240,7 @@ API docs по умолчанию могут быть отключены. Не и
 
 ## 🎯 Граница этапа
 
-Этот bootstrap решает только **Installation + First Run**.
+Bootstrap решает только **Installation + First Run**.
 
 Он намеренно не:
 
@@ -233,4 +251,4 @@ API docs по умолчанию могут быть отключены. Не и
 - изменяет TruthGate;
 - создаёт новую runtime authority.
 
-Настройка LLM/provider выполняется отдельно после успешного первого запуска.
+Настройка LLM/provider выполняется отдельно и только после явного opt-in по [`docs/PROVIDER_SETUP.ru.md`](PROVIDER_SETUP.ru.md).
