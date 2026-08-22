@@ -11,6 +11,10 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from scripts.ingest_file import ingest_file
 from scripts.titan_tools import list_tools
 
@@ -161,7 +165,7 @@ def _offline_chat(base_url: str) -> dict:
 
 
 def main() -> int:
-    root = Path(__file__).resolve().parents[1]
+    root = ROOT
     results: list[dict[str, object]] = []
 
     with tempfile.TemporaryDirectory(prefix="titan-v1-pilot-") as tmp:
@@ -188,14 +192,12 @@ def main() -> int:
 
         process: subprocess.Popen | None = None
         try:
-            # Scenario 1: authenticated local startup and health.
             process, base_url = _start_server(root, env)
             status, health = _request_json("GET", f"{base_url}/health")
             if status != 200:
                 raise RuntimeError(f"Pilot health failed: HTTP {status} {health}")
             results.append({"scenario": "startup_health", "status": "PASS"})
 
-            # Scenario 2: canonical strong-fact path + useful local answer.
             fact = _seed_validated_fact(base_url)
             chat = _offline_chat(base_url)
             results.append(
@@ -207,7 +209,6 @@ def main() -> int:
                 }
             )
 
-            # Scenario 3: supported local file parser -> canonical /ingest/text path.
             pilot_file = tmp_path / "pilot-note.txt"
             pilot_file.write_text(
                 "Titan bounded pilot document. The local launch color is amber.\n",
@@ -229,7 +230,6 @@ def main() -> int:
                 }
             )
 
-            # Scenario 4: existing MCP transport is reachable under reader clamp.
             tools = list_tools(
                 base_url=base_url,
                 api_key=PILOT_API_KEY,
@@ -246,7 +246,6 @@ def main() -> int:
                 }
             )
 
-            # Scenario 5: stop/restart against the same durable paths and recall again.
             _stop_server(process)
             process = None
             process, restarted_url = _start_server(root, env)
