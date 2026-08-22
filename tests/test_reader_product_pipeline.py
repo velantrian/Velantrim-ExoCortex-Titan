@@ -28,9 +28,16 @@ class _ExactQuoteReader:
     reader_id = "tests.exact-quote-reader"
     reader_version = "1"
 
-    def __init__(self, *, fail_first_for: str | None = None, always_fail_for: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        fail_first_for: str | None = None,
+        always_fail_for: str | None = None,
+        claim_prefix_chars: int | None = None,
+    ) -> None:
         self.fail_first_for = fail_first_for
         self.always_fail_for = always_fail_for
+        self.claim_prefix_chars = claim_prefix_chars
         self.calls: dict[str, int] = defaultdict(int)
         self.modes: list[ReaderMode] = []
 
@@ -62,7 +69,12 @@ class _ExactQuoteReader:
                 retryable=True,
             )
 
-        claim_text = source.text.strip()
+        claim_source = (
+            source.text[: self.claim_prefix_chars]
+            if self.claim_prefix_chars is not None
+            else source.text
+        )
+        claim_text = claim_source.strip()
         start = source.text.index(claim_text)
         span = SourceSpan.from_text(
             document_id=source.document_id,
@@ -151,6 +163,42 @@ async def test_failed_unit_is_retried_once_from_selective_reread_plan() -> None:
     assert result.initial_reread_plan.tasks[0].reader_mode is ReaderMode.STANDARD
     assert reader.modes[-1] is ReaderMode.STANDARD
     assert not result.remaining_reread_plan.tasks
+
+
+@pytest.mark.asyncio
+async def test_non_reader_reread_action_does_not_trigger_hidden_llm_call() -> None:
+    text = (
+        "Grounded premise. "
+        + ("filler " * 90)
+        + ". Unless manual approval is recorded, the exception remains unresolved."
+    )
+    source = RawSource(document_id="reader-product-non-reader-reread", text=text)
+    reader = _ExactQuoteReader(claim_prefix_chars=len("Grounded premise."))
+    config = ReaderProductConfig(
+        initial_mode=ReaderMode.STANDARD,
+        section_budget=SectionPlanningBudget(
+            max_unit_chars=2_000,
+            min_unit_chars=20,
+            boundary_search_chars=60,
+        ),
+        reader_budget=ReaderBudget(
+            max_source_chars=2_000,
+            max_claims=16,
+            max_essence_chars=500,
+        ),
+        max_digest_chars=2_000,
+    )
+
+    result = await ReaderProductPipeline(reader, config=config).read(source)
+
+    assert result.total_units == 1
+    assert result.reader_attempts == 1
+    assert result.reread_attempts == 0
+    assert len(result.initial_reread_plan.tasks) == 1
+    assert result.initial_reread_plan.tasks[0].reader_mode is None
+    assert result.remaining_reread_plan.tasks
+    assert reader.modes == [ReaderMode.STANDARD]
+    assert any("requires_non_reader_action" in item for item in result.warnings)
 
 
 @pytest.mark.asyncio
