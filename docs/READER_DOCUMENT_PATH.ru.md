@@ -1,6 +1,6 @@
 # 📚 Titan Reader — поэтапное чтение длинных документов
 
-**Статус:** `PR #374 CANDIDATE · POST-V1 · EXPLICIT FOREGROUND ONLY · NO CANON AUTHORITY`
+**Статус:** `PR #374 READY FOR REVIEW CANDIDATE · POST-V1 · EXPLICIT FOREGROUND ONLY · NO CANON AUTHORITY`
 
 Этот путь соединяет уже существующие компоненты Reader Core в один явный пользовательский сценарий:
 
@@ -102,6 +102,12 @@ DEGRADED
 
 `source-grounded digest` — это не свободный «красивый пересказ» модели. Он собирается из уже принятых source-linked SectionCard essences. Это сознательно более консервативно: первый product bridge не расширяет доверенную поверхность LLM.
 
+### 🔗 Provenance при bounded digest
+
+Ограничение `max_digest_chars` не даёт synthesis права заявлять больше provenance, чем реально видно в digest. `supporting_claim_ids` формируются только для claims, чей **полный exact claim text** присутствует в фактически сохранённой части essence соответствующей SectionCard. Если claim был отброшен upstream essence budget или обрезан границей итогового digest, он не считается supporting и остаётся `unsupported_source_claim_ids` в существующем synthesis contract.
+
+То есть сокращение digest может уменьшить declared support, но не должно создавать ложный support.
+
 ## 🔁 Bounded reread
 
 Первый проход использует выбранный `ReaderMode`. Затем существующий `CoverageMap` и `SelectiveReReadPlanner` определяют, какие units требуют повторного внимания.
@@ -119,6 +125,17 @@ remaining reread work → EXPLICIT
 ```
 
 Titan не подменяет неполное чтение «готовой сутью».
+
+## 📊 Что означают usage-метрики
+
+`ReadingSessionUsage` в этом product bridge — это **частичная card-centric observability**, а не полный расчёт стоимости provider calls.
+
+- `processed_units` относится к записанным cards/units, а не к числу provider вызовов;
+- `source_chars` отражает source spans записанных cards и не заявляет cumulative reread transport volume;
+- `model_tokens` может оставаться недоступным/default, если существующий `SemanticReader` contract не передаёт usage в product bridge;
+- фактическое число execution attempts отдельно видно через `reader_attempts` и `reread_attempts`.
+
+Titan не должен выдумывать точность token/cost accounting, которой нет в существующем контракте.
 
 ## 🔐 Authority boundary
 
@@ -152,7 +169,8 @@ Remote document text может передаваться только через
 2. Автоматический cross-section relation detector не включён. Product v1 создаёт валидный relation set без выдумывания отношений.
 3. Global synthesis остаётся source-linked interpretation candidate, а не epistemic verdict.
 4. Один bounded reread round не гарантирует, что любой проблемный документ станет `COMPLETE`; возможны `COMPLETE_WITH_OPEN_WORK` или `DEGRADED`.
-5. Issue #120 остаётся отдельной программой production evidence: реальные rights-cleared корпуса, независимая human annotation, benchmark/calibration, shadow burn-in и Operator decision этим PR не закрываются.
+5. Machine-readable open-work detail можно расширять в будущем, но отсутствие richer UI metadata не скрывает сам факт remaining/deferred work и не является authority boundary.
+6. Issue #120 остаётся отдельной программой production evidence: реальные rights-cleared корпуса, независимая human annotation, benchmark/calibration, shadow burn-in и Operator decision этим PR не закрываются.
 
 ## 🧭 Почему Reader не идёт через `/ingest/text`
 
