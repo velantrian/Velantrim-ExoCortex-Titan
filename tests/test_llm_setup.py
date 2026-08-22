@@ -159,4 +159,4 @@ def test_interactive_setup_uses_template_and_preserves_titan_key(tmp_path: Path)
     assert "VELANTRIM_API_KEY=titan-key" in text
     assert "LLM_PROVIDER=gemini" in text
     assert "GEMINI_API_KEY=AIza-secret" in text
-    assert "GEMINI_MODEL=gemini-3.5-flash" in text
+    assert "GEMINI_MODEL=gemini-2.5-flash" in text
