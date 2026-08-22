@@ -134,6 +134,14 @@ def _coverage_payload(result) -> dict[str, float | None]:
     }
 
 
+def _product_status(result) -> str:
+    if not result.complete:
+        return "degraded"
+    if result.remaining_reread_plan.tasks or result.remaining_reread_plan.deferred_items:
+        return "complete_with_open_work"
+    return "complete"
+
+
 def result_payload(result, *, file_name: str, file_type: str) -> dict[str, object]:
     exceptions = [
         {
@@ -148,6 +156,7 @@ def result_payload(result, *, file_name: str, file_type: str) -> dict[str, objec
     return {
         "file": file_name,
         "file_type": file_type,
+        "status": _product_status(result),
         "complete": result.complete,
         "document_id": result.source.document_id,
         "source_revision": result.source.source_revision,
@@ -158,6 +167,7 @@ def result_payload(result, *, file_name: str, file_type: str) -> dict[str, objec
         "reader_attempts": result.reader_attempts,
         "reread_attempts": result.reread_attempts,
         "remaining_reread_tasks": len(result.remaining_reread_plan.tasks),
+        "deferred_reread_items": len(result.remaining_reread_plan.deferred_items),
         "coverage": _coverage_payload(result),
         "source_grounded_digest": result.source_grounded_digest,
         "synthesis_id": result.synthesis.synthesis_id if result.synthesis else None,
@@ -201,7 +211,7 @@ async def read_document(path: Path, *, mode: ReaderMode):
 
 
 def _print_human(payload: dict[str, object]) -> None:
-    status = "COMPLETE" if payload["complete"] else "DEGRADED"
+    status = str(payload["status"]).upper()
     print(f"[Titan Reader] {status}: {payload['file']} ({payload['file_type']})")
     print(
         "[Titan Reader] Units: "
@@ -220,8 +230,17 @@ def _print_human(payload: dict[str, object]) -> None:
                 print(f"- [{item['category']}] {item['statement']}")
 
     remaining = payload["remaining_reread_tasks"]
+    deferred = payload["deferred_reread_items"]
     if remaining:
         print(f"\n[Titan Reader] Remaining bounded reread tasks: {remaining}")
+    if deferred:
+        print(f"[Titan Reader] Deferred reread items: {deferred}")
+    if payload["status"] == "complete_with_open_work":
+        print(
+            "[Titan Reader] All reading units were processed, but explicit "
+            "follow-up work remains open; do not treat this as fully resolved."
+        )
+
     warnings = payload["warnings"]
     if isinstance(warnings, list) and warnings:
         print("\nBOUNDARY / WARNINGS")
