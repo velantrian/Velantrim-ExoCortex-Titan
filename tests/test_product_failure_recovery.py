@@ -66,10 +66,16 @@ def test_dependency_install_failure_is_actionable(tmp_path: Path) -> None:
     assert "internet access" in message
 
 
-def test_busy_port_has_recovery_instruction() -> None:
-    message = (
-        f"Port {bootstrap.DEFAULT_PORT} is already in use. "
-        "Stop the existing process or pass --port <free-port>."
-    )
+def test_busy_port_run_path_has_recovery_instruction(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(bootstrap, "require_supported_python", lambda: None)
+    monkeypatch.setattr(bootstrap, "project_root", lambda: tmp_path)
+    monkeypatch.setattr(bootstrap, "validate_project", lambda _root: None)
+    monkeypatch.setattr(bootstrap, "port_is_available", lambda _port: False)
+
+    with pytest.raises(bootstrap.BootstrapError) as exc:
+        bootstrap.run(["--port", "8755", "--no-browser"])
+
+    message = str(exc.value)
+    assert "Port 8755 is already in use" in message
     assert "Stop the existing process" in message
     assert "--port <free-port>" in message
