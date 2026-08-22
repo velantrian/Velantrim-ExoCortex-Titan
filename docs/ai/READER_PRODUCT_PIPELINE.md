@@ -2,11 +2,13 @@
 
 ## Status
 
-`PR #374 DRAFT CANDIDATE · NOT IN MAIN · GITHUB_AND_NOTION`
+`PR #374 READY FOR REVIEW · NOT IN MAIN · GITHUB_AND_NOTION`
 
 Exact base at branch creation:
 
 `aab1fbca55e35577fd09cc88fa8872be901fd25f`
+
+`main` may move independently while the PR is open. The authoritative current PR head, current `main`, mergeability, and exact-head CI evidence live in PR metadata / the synchronized Notion record rather than being self-referentially hard-coded into this in-branch file.
 
 This document describes the candidate in PR #374. It is **not** evidence that `main` contains or enables the capability until protected merge and post-merge verification occur.
 
@@ -66,6 +68,14 @@ The user-facing CLI distinguishes:
 
 This product distinction does not redefine the underlying RDR-07 `ReadingSession.COMPLETED` state; it prevents that state from being presented to an ordinary user as proof that every exception, relation or follow-up question has been resolved.
 
+## Synthesis provenance
+
+The digest is a bounded deterministic rollup of accepted `SectionCard.local_essence` values, not unconstrained model prose.
+
+The product bridge builds digest text and its supporting claim correspondence together. A source claim may be listed in `synthesis.supporting_claim_ids` only when the complete exact claim text is present in the actually retained fragment of that claim's own SectionCard essence. Claims omitted by an upstream essence budget or cut by `max_digest_chars` remain unrepresented and are left to the existing `GlobalDocumentSynthesisBuilder` as `unsupported_source_claim_ids`.
+
+This is fail-closed provenance: truncation may reduce declared support, but it must never create support that the visible bounded digest does not contain.
+
 ## Authority boundary
 
 The candidate does not:
@@ -83,22 +93,34 @@ The candidate does not:
 
 `Reader output != truth` and `GlobalDocumentSynthesis != Canon` remain invariant.
 
+## Resource-accounting boundary
+
+`ReadingSessionUsage` on this product bridge is intentionally partial/card-centric observability, not complete provider cost accounting.
+
+- `processed_units` describes recorded cards/units, not provider-call count;
+- `source_chars` describes the source spans represented by recorded cards and does not claim cumulative reread transport volume;
+- `model_tokens` may remain unavailable/default when the existing `SemanticReader` contract does not expose provider usage to this bridge.
+
+The bridge must not invent token/cost precision that its existing contracts do not provide. `reader_attempts` and `reread_attempts` remain the explicit execution-count signals exposed by this product layer.
+
 ## Current deliberate limitations
 
 - ReadingSession durability/cross-process resume remains unwired.
 - Product v1 does not infer cross-section relations automatically.
-- The digest is a bounded deterministic rollup of source-grounded SectionCard essences, not unconstrained model prose.
 - One explicit invocation does not attempt to resolve non-reader follow-up actions.
+- JSON open-work detail is sufficient to expose status/counts but richer downstream UI metadata remains a non-blocking follow-up.
 - Issue #120 remains external-evidence blocked and is not closed by this PR.
 
-## Review checklist
+## Review / merge checklist
 
-Before this candidate may leave Draft:
+Before merge of this ready-for-review candidate:
 
 1. exact-head Ruff / blocking mypy / focused tests / full pytest as applicable are green;
 2. no hidden memory/Canon/write path is reachable from the new pipeline/CLI;
 3. incomplete reading cannot create global synthesis;
-4. reread work is bounded and foreground-only, and `reader_mode=None` never becomes a hidden Reader call;
-5. user-facing status exposes remaining/deferred work instead of presenting it as fully resolved;
-6. GitHub docs and existing `Velantrim Titan 9.0` Notion page are synchronized/read back;
-7. current PR head/base are revalidated.
+4. digest truncation cannot overclaim `supporting_claim_ids`;
+5. reread work is bounded and foreground-only, and `reader_mode=None` never becomes a hidden Reader call;
+6. user-facing status exposes remaining/deferred work instead of presenting it as fully resolved;
+7. GitHub docs and existing `Velantrim Titan 9.0` Notion page are synchronized/read back;
+8. current PR head/base are revalidated;
+9. merge still requires the appropriate owner decision and does not authorize production/runtime or close Issue #120.
