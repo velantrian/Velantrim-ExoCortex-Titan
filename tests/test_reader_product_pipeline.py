@@ -100,7 +100,7 @@ class _ExactQuoteReader:
         return ReaderResult.success(capsule)
 
 
-def _config() -> ReaderProductConfig:
+def _config(*, max_digest_chars: int = 2_000) -> ReaderProductConfig:
     return ReaderProductConfig(
         initial_mode=ReaderMode.STANDARD,
         section_budget=SectionPlanningBudget(
@@ -113,7 +113,7 @@ def _config() -> ReaderProductConfig:
             max_claims=16,
             max_essence_chars=500,
         ),
-        max_digest_chars=2_000,
+        max_digest_chars=max_digest_chars,
     )
 
 
@@ -148,6 +148,42 @@ async def test_complete_read_builds_source_linked_synthesis_without_writes() -> 
     assert not result.remaining_reread_plan.tasks
     assert "synthesis_is_interpretation_candidate_not_truth" in result.warnings
     assert "relation_detection_not_auto_inferred_in_product_v1" in result.warnings
+
+
+@pytest.mark.asyncio
+async def test_digest_truncation_does_not_overclaim_synthesis_provenance() -> None:
+    reader = _ExactQuoteReader()
+    result = await ReaderProductPipeline(
+        reader,
+        config=_config(max_digest_chars=80),
+    ).read(_source())
+
+    assert result.complete is True
+    assert result.synthesis is not None
+    central = next(
+        claim
+        for claim in result.synthesis.claims
+        if claim.synthesis_claim_id == result.synthesis.central_theme_claim_id
+    )
+    all_claims = {
+        card_claim.claim.claim_id: card_claim.claim.text
+        for card in result.cards
+        for card_claim in card.claims
+    }
+    supporting = set(central.supporting_claim_ids)
+    unsupported = set(result.synthesis.unsupported_source_claim_ids)
+
+    assert supporting
+    assert supporting < set(all_claims)
+    assert unsupported == set(all_claims) - supporting
+    assert all(
+        all_claims[claim_id] in result.source_grounded_digest
+        for claim_id in supporting
+    )
+    assert all(
+        all_claims[claim_id] not in result.source_grounded_digest
+        for claim_id in unsupported
+    )
 
 
 @pytest.mark.asyncio
