@@ -49,7 +49,6 @@ class CognitiveMode(str, Enum):
     CREATIVE    = "CREATIVE"
 
 
-# Пороги по V9 §12.1
 _MODE_CONFIG: dict[CognitiveMode, dict] = {
     CognitiveMode.PRECISION:   {"min_confidence": 0.9, "min_evidence": 5},
     CognitiveMode.BALANCED:    {"min_confidence": 0.7, "min_evidence": 2},
@@ -58,17 +57,13 @@ _MODE_CONFIG: dict[CognitiveMode, dict] = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Результат Truth Gate
-# ---------------------------------------------------------------------------
-
 @dataclass
 class TruthGateVerdict:
     """Вердикт Truth Gate — полный audit trail."""
     passed:         bool
     fact_id:        str
-    reason:         str                  # машиночитаемый код причины
-    justification:  str                  # человекочитаемое объяснение
+    reason:         str
+    justification:  str
     by:             str = "truth_gate"
     mode:           CognitiveMode = CognitiveMode.BALANCED
     confidence:     float = 0.0
@@ -82,10 +77,6 @@ class TruthGateVerdict:
         return self.passed
 
 
-# ---------------------------------------------------------------------------
-# Главный класс
-# ---------------------------------------------------------------------------
-
 class TruthGate:
     """
     Единственный путь перевода факта в Validated (инвариант I68).
@@ -95,20 +86,8 @@ class TruthGate:
         2. confidence >= порог для текущего mode
         3. evidence_count >= порог для текущего mode
         4. Отсутствие активных contradictions в L1 (опционально — см. contradiction_detector)
-
-    Usage:
-        gate = TruthGate(store)                              # default: contradiction-stage отключена
-        gate = TruthGate(store, contradiction_detector="naive")  # включить naive (development!)
-        verdict = gate.evaluate(fact, mode=CognitiveMode.BALANCED)
-        if verdict:
-            transition_esm(fact_id, "Validated", by="truth_gate")
     """
 
-    # AUDIT-FIX v8.4.0: возможные значения contradiction_detector.
-    # "none"  — стадия 4 пропускается. Используется по умолчанию до подключения NLI.
-    # "naive" — word-overlap-XOR-negation эвристика. Известно даёт false positives.
-    #           Включать ТОЛЬКО для development/debug, не в production.
-    # "nli"   — TODO Sprint 2c: cross-encoder через ATLAS-OS (NLI-1 invariant).
     _ALLOWED_DETECTORS = {"none", "naive", "nli"}
 
     def __init__(
@@ -135,85 +114,89 @@ class TruthGate:
                 "Только для development."
             )
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
     def evaluate(
         self,
         fact: dict,
         mode: CognitiveMode = CognitiveMode.BALANCED,
         by: str = "truth_gate",
     ) -> TruthGateVerdict:
-        """
-        Оценить факт. Возвращает TruthGateVerdict.
-        Никогда не бросает исключений — только verdict.passed = False.
-        """
+        """Оценить факт. Никогда не бросает исключений — только verdict.passed=False."""
         fact_id = fact.get("fact_id", "<unknown>")
         cfg = _MODE_CONFIG[mode]
 
-        # 1. Source check
-        # FIX v8.5.2 (Claude audit): делегировано в validators.validate_source.
-        # Поведение идентично прежнему (пустое или whitespace-only → reject),
-        # но теперь правило едино с memory и pipeline.
         from core.validators import validate_confidence, validate_source
         source = fact.get("source", "")
         ok_src, err_src = validate_source(source)
         if not ok_src:
-            return self._reject(fact_id, mode, fact,
+            return self._reject(
+                fact_id,
+                mode,
+                fact,
                 reason="no_source",
-                justification=f"{err_src}. Каждый факт обязан иметь источник.")
+                justification=f"{err_src}. Каждый факт обязан иметь источник.",
+            )
 
-        # 2. Confidence check
-        # FIX v8.5.2 (Claude audit): раньше `not isinstance(confidence, (int, float))
-        # or confidence < min_conf` пропускал NaN, потому что `NaN < anything == False`.
-        # Сейчас validators.validate_confidence явно ловит NaN/Inf через isnan/isinf
-        # и нечисловые типы. После проверки типа отдельно сверяемся с min_conf.
         confidence = fact.get("confidence", 0.0)
         min_conf = cfg["min_confidence"]
         ok_conf, err_conf = validate_confidence(confidence)
         if not ok_conf:
-            return self._reject(fact_id, mode, fact,
+            return self._reject(
+                fact_id,
+                mode,
+                fact,
                 reason="invalid_confidence",
-                justification=f"confidence={confidence!r}: {err_conf}")
+                justification=f"confidence={confidence!r}: {err_conf}",
+            )
         if confidence < min_conf:
-            return self._reject(fact_id, mode, fact,
+            return self._reject(
+                fact_id,
+                mode,
+                fact,
                 reason="low_confidence",
-                justification=f"confidence={confidence:.3f} < "
-                              f"порог {min_conf} для mode={mode.value}.")
+                justification=(
+                    f"confidence={confidence:.3f} < порог {min_conf} "
+                    f"для mode={mode.value}."
+                ),
+            )
 
-        # 3. Evidence count check
         evidence_count = self._count_evidence(fact)
         min_ev = cfg["min_evidence"]
         if evidence_count < min_ev:
-            return self._reject(fact_id, mode, fact,
+            return self._reject(
+                fact_id,
+                mode,
+                fact,
                 reason="insufficient_evidence",
-                justification=f"evidence_count={evidence_count} < "
-                              f"порог {min_ev} для mode={mode.value}. "
-                              "Добавьте больше подтверждающих источников.",
-                evidence_count=evidence_count)
+                justification=(
+                    f"evidence_count={evidence_count} < порог {min_ev} "
+                    f"для mode={mode.value}. Добавьте больше подтверждающих источников."
+                ),
+                evidence_count=evidence_count,
+            )
 
-        # 4. Contradiction check (опционально — AUDIT-FIX v8.4.0)
-        # Naive детектор отключён по умолчанию из-за false positives.
-        # Включать через TruthGate(store, contradiction_detector="naive")
-        # или ждать NLI в Sprint 2c.
         if self._contradiction_detector == "naive":
             contradictions = self._find_contradictions_naive(fact)
             if contradictions:
-                return self._reject(fact_id, mode, fact,
+                return self._reject(
+                    fact_id,
+                    mode,
+                    fact,
                     reason="active_contradictions",
-                    justification=f"Найдено {len(contradictions)} активных "
-                                  f"противоречий в L1: {contradictions}. "
-                                  "ВНИМАНИЕ: naive детектор даёт false positives — "
-                                  "проверь вручную. Разрешение через "
-                                  "ConflictResolutionWorker (RFC0062).",
+                    justification=(
+                        f"Найдено {len(contradictions)} активных противоречий в L1: "
+                        f"{contradictions}. ВНИМАНИЕ: naive детектор даёт false positives — "
+                        "проверь вручную. Разрешение через ConflictResolutionWorker (RFC0062)."
+                    ),
                     evidence_count=evidence_count,
-                    contradictions=contradictions)
+                    contradictions=contradictions,
+                )
 
-        # ✅ Все проверки пройдены
         logger.info(
             "TruthGate PASS | fact_id=%s mode=%s confidence=%.3f evidence=%d",
-            fact_id, mode.value, confidence, evidence_count,
+            fact_id,
+            mode.value,
+            confidence,
+            evidence_count,
         )
         return TruthGateVerdict(
             passed=True,
@@ -222,7 +205,7 @@ class TruthGate:
             justification=(
                 f"Все проверки пройдены: source='{source}', "
                 f"confidence={confidence:.3f}, evidence={evidence_count}, "
-                f"contradictions=0."
+                "contradictions=0."
             ),
             by=by,
             mode=mode,
@@ -230,40 +213,21 @@ class TruthGate:
             evidence_count=evidence_count,
         )
 
-    # ------------------------------------------------------------------
-    # Private helpers
-    # ------------------------------------------------------------------
-
     def _count_evidence(self, fact: dict) -> int:
-        """
-        Считаем доказательства.
-        Сейчас: metadata.evidence_refs + 1 (сам факт).
-        Sprint 2c: граф-запрос к Neo4j/Graphiti.
-        """
+        """Count legacy evidence refs by exact unique token, preserving the legacy floor of one."""
         metadata = fact.get("metadata") or {}
         refs = metadata.get("evidence_refs", [])
         if isinstance(refs, list):
-            return max(1, len(refs))
-        # Если refs — строка (legacy), считаем как 1
+            # Stage 5 / D1 bounded remediation: repeated caller-supplied legacy
+            # tokens are not independent evidence. Exact-string distinct values
+            # remain distinct; no EvidenceReference/registry/authority semantics
+            # are introduced here.
+            unique_refs = {ref for ref in refs if isinstance(ref, str)}
+            return max(1, len(unique_refs))
         return 1
 
     def _find_contradictions_naive(self, fact: dict) -> list[str]:
-        """
-        ⚠️ NAIVE детектор противоречий — даёт ЛОЖНЫЕ срабатывания.
-
-        Алгоритм: пары фактов с пересечением ≥ 2 слов И XOR на маркерах
-        отрицания ("не", "нет", "no", "not", "never") считаются
-        противоречащими.
-
-        Известные ложные срабатывания:
-          - "вода кипит при 100°C" / "вода не кипит при 0°C"
-            → overlap={вода, кипит}, XOR=True → false positive
-          - "Apple продаёт iPhone" / "Tesla не продаёт iPhone"
-            → overlap={продаёт, iPhone}, XOR=True → false positive
-
-        TODO Sprint 2c: заменить на NLI cross-encoder через ATLAS-OS
-        (NLI-1 invariant). До тех пор включать только для development/debug.
-        """
+        """Development-only word-overlap/XOR-negation contradiction heuristic."""
         if self._store is None:
             return []
         try:
@@ -272,8 +236,8 @@ class TruthGate:
             logger.warning("TruthGate: не удалось проверить contradictions: %s", exc)
             return []
 
-        fact_id  = fact.get("fact_id", "")
-        claim    = (fact.get("claim") or "").strip().lower()
+        fact_id = fact.get("fact_id", "")
+        claim = (fact.get("claim") or "").strip().lower()
         if not claim:
             return []
 
@@ -284,14 +248,13 @@ class TruthGate:
             if stored.get("epistemic_state") not in ("Validated", "Supported"):
                 continue
             stored_claim = (stored.get("claim") or "").strip().lower()
-            claim_words   = set(claim.split())
-            stored_words  = set(stored_claim.split())
+            claim_words = set(claim.split())
+            stored_words = set(stored_claim.split())
             negation_markers = {"не", "нет", "no", "not", "never", "никогда"}
             overlap = claim_words & stored_words
             if len(overlap) >= 2:
-                xor_negation = (
-                    bool(claim_words & negation_markers) ^
-                    bool(stored_words & negation_markers)
+                xor_negation = bool(claim_words & negation_markers) ^ bool(
+                    stored_words & negation_markers
                 )
                 if xor_negation:
                     contradicting.append(stored["fact_id"])
@@ -310,7 +273,9 @@ class TruthGate:
     ) -> TruthGateVerdict:
         logger.warning(
             "TruthGate REJECT | fact_id=%s reason=%s mode=%s",
-            fact_id, reason, mode.value,
+            fact_id,
+            reason,
+            mode.value,
         )
         return TruthGateVerdict(
             passed=False,
@@ -324,26 +289,13 @@ class TruthGate:
         )
 
 
-# ---------------------------------------------------------------------------
-# Backward-compatible функция для pipeline.py
-# ---------------------------------------------------------------------------
-
 def truth_gate(
     fact: dict,
     store: GraphStore,
     mode: CognitiveMode = CognitiveMode.BALANCED,
     by: str = "pipeline.run",
 ) -> bool:
-    """
-    Drop-in замена для MVP `if confidence >= 0.5`.
-    Использование в pipeline.py:
-
-        from core.truth_gate import truth_gate, CognitiveMode
-        ...
-        if not truth_gate(fact, store, mode=CognitiveMode.BALANCED):
-            blocked.append(fact)
-            continue
-    """
+    """Backward-compatible boolean helper used by pipeline.py."""
     gate = TruthGate(store)
     verdict = gate.evaluate(fact, mode=mode, by=by)
     return verdict.passed
