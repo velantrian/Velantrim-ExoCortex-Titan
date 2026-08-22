@@ -80,9 +80,25 @@ CLI показывает:
 - независимые CoverageMap axes;
 - source-grounded digest из `SectionCard.local_essence`;
 - source-linked critical exception candidates;
-- оставшуюся bounded reread work;
+- оставшуюся bounded reread work и deferred work;
 - идентификаторы ReadingSession / synthesis в JSON-режиме;
 - warnings, которые не позволяют спутать interpretation с truth.
+
+Пользовательский статус намеренно отделён от внутреннего `ReadingSession` state:
+
+```text
+COMPLETE
+  = все reading units обработаны и открытой reread/deferred work нет
+
+COMPLETE_WITH_OPEN_WORK
+  = все reading units обработаны и synthesis может существовать,
+    но остаются явные follow-up задачи (например unresolved exception target)
+
+DEGRADED
+  = часть reading units реально не была успешно обработана
+```
+
+`COMPLETE_WITH_OPEN_WORK` нельзя интерпретировать как «в документе всё разрешено и понято». Это честная маркировка: чтение источника завершено, но Reader Core сохранил открытые вопросы/действия вместо их скрытого удаления.
 
 `source-grounded digest` — это не свободный «красивый пересказ» модели. Он собирается из уже принятых source-linked SectionCard essences. Это сознательно более консервативно: первый product bridge не расширяет доверенную поверхность LLM.
 
@@ -91,6 +107,8 @@ CLI показывает:
 Первый проход использует выбранный `ReaderMode`. Затем существующий `CoverageMap` и `SelectiveReReadPlanner` определяют, какие units требуют повторного внимания.
 
 PR #374 исполняет **не более одного** такого reread round в рамках одной явной CLI-команды. Он не создаёт background worker, scheduler или бесконечный autonomous loop.
+
+Только reread task с явно назначенным самим `SelectiveReReadPlanner` значением `ReaderMode` может повторно вызвать `SemanticReader`. Задачи без `ReaderMode` (например действия, требующие отдельного разрешения exception target или inspection) **не превращаются автоматически в скрытый `DEEP` LLM-вызов**; они остаются видимой открытой работой.
 
 Если после bounded reread остаётся непрочитанный unit:
 
@@ -133,7 +151,7 @@ Remote document text может передаваться только через
 1. `ReadingSession` snapshot пока остаётся in-memory контрактом; durable cross-process resume этим PR не добавляется.
 2. Автоматический cross-section relation detector не включён. Product v1 создаёт валидный relation set без выдумывания отношений.
 3. Global synthesis остаётся source-linked interpretation candidate, а не epistemic verdict.
-4. Один bounded reread round не гарантирует, что любой проблемный документ станет complete.
+4. Один bounded reread round не гарантирует, что любой проблемный документ станет `COMPLETE`; возможны `COMPLETE_WITH_OPEN_WORK` или `DEGRADED`.
 5. Issue #120 остаётся отдельной программой production evidence: реальные rights-cleared корпуса, независимая human annotation, benchmark/calibration, shadow burn-in и Operator decision этим PR не закрываются.
 
 ## 🧭 Почему Reader не идёт через `/ingest/text`
