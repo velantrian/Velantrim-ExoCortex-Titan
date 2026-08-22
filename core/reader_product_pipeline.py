@@ -250,6 +250,11 @@ class ReaderProductPipeline:
 
         reread_attempts = 0
         for task in initial_reread_plan.tasks:
+            if task.reader_mode is None:
+                warnings.append(
+                    f"reread:task:{task.task_id}:requires_non_reader_action"
+                )
+                continue
             unit = _unit_by_id(plan, task.unit_id)
             reread_attempts += 1
             reader_attempts += 1
@@ -257,7 +262,7 @@ class ReaderProductPipeline:
                 normalized,
                 plan,
                 unit,
-                mode=task.reader_mode or ReaderMode.DEEP,
+                mode=task.reader_mode,
             )
             if card is not None:
                 cards_by_unit[unit.unit_id] = card
@@ -289,7 +294,11 @@ class ReaderProductPipeline:
                 cards,
                 usage_delta=ReadingSessionUsage(
                     processed_units=len(cards),
-                    source_chars=sum(card.unit_source_span.end_offset - card.unit_source_span.start_offset for card in cards),
+                    source_chars=sum(
+                        card.unit_source_span.end_offset
+                        - card.unit_source_span.start_offset
+                        for card in cards
+                    ),
                     wall_time_ms=max(1, _now_ms() - now_ms),
                 ),
                 now_ms=_next_ms(now_ms, 2),
