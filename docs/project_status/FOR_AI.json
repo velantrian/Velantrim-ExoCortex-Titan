@@ -2,20 +2,9 @@
   "schema_version": 1,
   "document_role": "AI_PROJECT_STATUS_OVERVIEW",
   "audience": "AI_AGENT",
-  "human_companion": "docs/project_status/FOR_HUMAN.md",
-  "human_document_read_policy": {
-    "read_by_default": false,
-    "read_only_when": [
-      "the user explicitly requests the human-facing explanation",
-      "human-facing wording or documentation synchronization is under review",
-      "this AI snapshot explicitly identifies a missing fact that requires comparison with the human document"
-    ]
-  },
   "canonicality": {
     "is_canon": false,
     "is_runtime_authority": false,
-    "is_admission_authority": false,
-    "is_promotion_authority": false,
     "is_merge_authority": false,
     "is_production_authorization": false,
     "freshness_rule": "READ_THIS_ORIENTATION_FIRST_THEN_LIVE_VERIFY_CHANGING_FACTS; LIVE_GITHUB_AND_EXACT_SHA_OVERRIDE_ON_CONFLICT"
@@ -23,17 +12,10 @@
   "snapshot": {
     "date": "2026-08-22",
     "repository": "velantrian/Velantrim-ExoCortex-Titan",
-    "main_sha_at_snapshot": "42b212e005420adf674794155707512c2e09edec",
-    "status": "TITAN_V1_PRODUCTIZATION_STAGE_3_MODEL_PROVIDER_SETUP",
-    "interpretation": "Titan V1 is now being finished as a bounded end-user product. Stage 1 Product Reality Audit and Stage 2 Installation + First Run are closed. Do not reopen architecture or D1 merely because older status documents called D1 the next workstream. The current predefined stage is Stage 3 Model / Provider Setup."
+    "main_sha_at_snapshot": "d3a3fa04081b6399011b27b10082c146b7306e6c",
+    "status": "TITAN_V1_PRODUCTIZATION_STAGE_5_FILES_DATA_TOOLS_E2E",
+    "interpretation": "Stages 1-4 are closed in sequence. The only active predefined stage is Stage 5 Files / Data / Tools E2E. Do not reopen architecture, provider onboarding, or later stages unless a current P0/P1 proves it necessary."
   },
-  "read_order": [
-    "this overview",
-    "live GitHub PR/branch/check state for facts that can change",
-    "exact-SHA code and tests for the active product stage",
-    "docs/state/project_state.json and validated lifecycle/ADR records when relevant",
-    "human-facing documentation only when explicitly needed"
-  ],
   "status_semantics": [
     "PROPOSED != IMPLEMENTED",
     "IMPLEMENTED != TESTED",
@@ -45,14 +27,10 @@
   "core_invariants": [
     "research != runtime",
     "spec != implementation",
-    "implementation != Canon",
     "integration != authority transfer",
     "retrieval != evidence",
     "validation != admission",
-    "admission != promotion authorization",
     "receipt != truth",
-    "claim != belief",
-    "evidence != identity",
     "identity != authority",
     "model output != Canon",
     "CI green != production authorization",
@@ -62,15 +40,15 @@
   "titan_v1_execution_contract": {
     "goal": "Finish Titan as an ordinary-user product rather than indefinitely improving architecture.",
     "one_active_stage_only": true,
-    "mandatory_scope_rule": "Only P0/P1 findings that block the current V1 user scenario, safety/authority/data integrity, install/run, recovery, pilot, or release may create required work. P2/P3 are backlog.",
-    "finish_condition": "P0=0, P1=0, bounded pilot passed, architecture/core/install/user-E2E/integration >=90 target, failure/recovery >=85, UX/operations >=85, then TITAN V1 — DONE."
+    "mandatory_scope_rule": "Only P0/P1 findings that block the current V1 user scenario, safety/authority/data integrity, install/run, recovery, pilot, or release may create required work.",
+    "finish_condition": "P0=0, P1=0, bounded pilot passed, target product dimensions reached, then TITAN V1 — DONE."
   },
   "product_stages": [
     {"stage": 1, "name": "Current Product Reality Audit", "status": "DONE"},
     {"stage": 2, "name": "Installation + First Run", "status": "DONE"},
-    {"stage": 3, "name": "Model / Provider Setup", "status": "ACTIVE"},
-    {"stage": 4, "name": "Core User Experience", "status": "NOT_STARTED"},
-    {"stage": 5, "name": "Files / Data / Tools E2E", "status": "NOT_STARTED"},
+    {"stage": 3, "name": "Model / Provider Setup", "status": "DONE"},
+    {"stage": 4, "name": "Core User Experience", "status": "DONE"},
+    {"stage": 5, "name": "Files / Data / Tools E2E", "status": "ACTIVE"},
     {"stage": 6, "name": "Continuity / State / Restart", "status": "NOT_STARTED"},
     {"stage": 7, "name": "Failure / Recovery", "status": "NOT_STARTED"},
     {"stage": 8, "name": "Packaging / Update / Operations", "status": "NOT_STARTED"},
@@ -83,118 +61,98 @@
     "pr": 360,
     "reviewed_head": "c870e3a11fd9c771a2434592a0aae140ef9c30e7",
     "merge_sha": "42b212e005420adf674794155707512c2e09edec",
+    "evidence": {"focused_tests": "7 passed", "full_ci_run": 1347, "full_ci": "SUCCESS", "codeql_run": 186, "codeql": "SUCCESS", "aggregate_merge_evidence": "SUCCESS"}
+  },
+  "stage_3_model_provider_setup": {
+    "status": "MERGED_CLOSED",
+    "p1": "P1-02",
+    "pr": 364,
+    "reviewed_head": "f5aba9fb060a65f860a51f50a6df136845ecea60",
+    "merge_sha": "d3a3fa04081b6399011b27b10082c146b7306e6c",
     "evidence": {
-      "focused_bootstrap_tests": "7 passed before PR CI",
+      "focused_provider_setup_tests": "7 passed",
       "py_compile": "PASS",
-      "full_ci_run": 1347,
+      "full_ci_run": 1357,
       "full_ci": "SUCCESS",
-      "codeql_run": 186,
+      "codeql_run": 196,
       "codeql": "SUCCESS",
-      "aggregate_merge_evidence": "SUCCESS",
-      "aggregate_run_id": 32536814671
+      "aggregate_merge_evidence_run": 32561068264,
+      "aggregate_merge_evidence": "SUCCESS_AFTER_PR_BODY_GOVERNANCE_FIX"
     },
-    "user_capability_now": [
-      "one canonical cross-platform Python 3.11+ bootstrap",
-      "automatic .venv creation/reuse",
-      "automatic existing [server] dependency installation when needed",
-      "safe local .env creation with random API key",
-      "fail-closed network and remote-data defaults for a new env",
-      "loopback-only first run",
-      "health-gated console opening",
-      "clear failure for unsupported Python, incomplete checkout, occupied port, dependency failure, early server exit, or health timeout"
-    ],
-    "explicit_non_scope": [
-      "no provider/model onboarding change",
-      "no file ingestion wiring",
+    "preserved_boundaries": [
+      "no PolicyKernel semantic change",
+      "no consent broker or new authority",
+      "no remote Canon/write authority",
       "no TruthGate/D1 change",
-      "no new authority mechanism",
-      "no research/autonomous activation",
-      "no production authorization"
+      "no file/tool E2E change",
+      "fail-closed defaults remain until explicit opt-in"
+    ]
+  },
+  "stage_4_core_user_experience": {
+    "status": "CLOSED_NO_RUNTIME_PATCH_REQUIRED",
+    "assessment_base_sha": "d3a3fa04081b6399011b27b10082c146b7306e6c",
+    "finding": "No new P0/P1 blocker was found in the existing core user loop.",
+    "evidence": [
+      "Console exposes a primary composer with Enter-to-send and explicit offline/online state",
+      "server /chat and /chat/stream are wired and authenticated",
+      "integration tests cover local/offline memory answers, streaming, RU/EN inventory, notes-to-chat, long console messages and memory write outcomes",
+      "Console response metadata distinguishes provider/model output from memory/local output",
+      "Console auth probe uses real protected endpoints and provides actionable key guidance",
+      "server key is not returned over HTTP, avoiding reverse-proxy credential leakage"
     ],
-    "observation_boundary": "Fresh ordinary-user end-to-end observation is still required later in Stage 9 and Stage 10; CI success and merge are not runtime observation."
+    "p2_backlog": [
+      "manual copy of VELANTRIM_API_KEY from .env into the Console upper field remains UX friction but does not block the documented path"
+    ],
+    "observation_boundary": "Fresh ordinary-user browser E2E remains intentionally deferred to Stage 9 and bounded pilot to Stage 10; Stage 4 closure is component/integration acceptance, not production observation."
   },
   "maturity_estimates": {
-    "note": "Engineering estimates only; not formal admission, safety, release, or production metrics.",
+    "note": "Engineering estimates only; not formal authorization metrics.",
     "architecture_percent": 85,
-    "security_governance_percent": 82,
-    "tests_ci_engineering_quality_percent": 85,
-    "core_capabilities_percent": 80,
-    "integration_percent": 70,
-    "user_e2e_percent": 60,
+    "security_governance_percent": 84,
+    "tests_ci_engineering_quality_percent": 86,
+    "core_capabilities_percent": 84,
+    "integration_percent": 76,
+    "user_e2e_percent": 68,
     "installation_percent": 90,
-    "ux_percent": 55,
+    "ux_percent": 68,
     "failure_recovery_percent": 60,
     "packaging_update_lifecycle_percent": 55,
-    "human_docs_percent": 68,
-    "ai_docs_percent": 90,
-    "bounded_pilot_readiness_percent": 75,
-    "total_finished_user_product_percent": 69,
-    "remaining_percent": 31
+    "human_docs_percent": 72,
+    "ai_docs_percent": 92,
+    "bounded_pilot_readiness_percent": 78,
+    "total_finished_user_product_percent": 75,
+    "remaining_percent": 25
   },
   "current_workstream": {
-    "stage": 3,
-    "name": "MODEL_PROVIDER_SETUP",
+    "stage": 5,
+    "name": "FILES_DATA_TOOLS_E2E",
     "status": "ACTIVE_BOUNDED_PRODUCT_STAGE",
-    "problem": "Provider execution exists, but the ordinary-user path from choosing a provider and entering an API key to obtaining a working model is not yet deterministic because remote-egress policy is fail-closed and onboarding surfaces do not consistently explain or satisfy the required policy conditions.",
-    "human_goal": "An ordinary local user can intentionally connect a supported model, understand the remote-data boundary, test the connection, receive actionable errors, and keep fail-closed defaults when remote model use is not explicitly enabled.",
-    "must_preserve": [
-      "VELANTRIM_NETWORK_MODE defaults deny",
-      "VELANTRIM_REMOTE_DATA_MODE defaults never",
-      "remote model use remains explicit opt-in",
-      "no provider credential is silently promoted into Canon or authority",
-      "no runtime authority, Operator GO, remote Canon, or autonomous layer activation"
-    ],
+    "human_goal": "An ordinary user can use supported files/data/tools through the product surface and receive useful results without understanding internal parser, MCP, registry, or TruthGate architecture.",
+    "scope_rule": "Close only P1-03 file user-E2E wiring and bounded P1-05/D1 duplicate-cardinality integrity issue, plus verify the existing tool path. Do not expand into EvidenceReference/EvidenceAdmission architecture, restart persistence, failure matrix, packaging, or new tools.",
     "next_actions": [
-      "read exact current provider/console/egress setup paths",
-      "identify the smallest user-facing configuration gap",
-      "fix only P1-02 without weakening fail-closed policy",
-      "add focused tests for explicit opt-in, provider readiness and actionable failure states",
-      "run exact-head CI and merge-evidence gate before closure"
+      "trace existing file parser and user-facing ingestion surfaces",
+      "wire the smallest safe ordinary-user file path if still absent",
+      "verify existing tool/MCP path from user action to result",
+      "apply only exact-string duplicate-cardinality normalization for D1",
+      "add focused regression evidence and run exact-head CI/CodeQL/aggregate"
     ]
   },
   "remaining_v1_p1": [
-    {
-      "id": "P1-02",
-      "stage": 3,
-      "name": "Provider onboarding",
-      "status": "ACTIVE"
-    },
-    {
-      "id": "P1-03",
-      "stage": 5,
-      "name": "Files user E2E wiring",
-      "status": "DEFERRED_TO_PREDEFINED_STAGE"
-    },
-    {
-      "id": "P1-04",
-      "stage": 8,
-      "name": "Current Titan V1 release/update lifecycle",
-      "status": "DEFERRED_TO_PREDEFINED_STAGE"
-    },
-    {
-      "id": "P1-05",
-      "stage": 5,
-      "name": "Legacy TruthGate duplicate evidence-token cardinality (D1)",
-      "status": "DEFERRED_TO_PREDEFINED_STAGE",
-      "bounded_rule": "Exact-string duplicate-cardinality normalization only; do not wire EvidenceReference, EvidenceRegistry, Evidence Admission, source authenticity, trusted independence, or new authority."
-    }
+    {"id": "P1-03", "stage": 5, "name": "Files user E2E wiring", "status": "ACTIVE"},
+    {"id": "P1-04", "stage": 8, "name": "Current Titan V1 release/update lifecycle", "status": "DEFERRED_TO_PREDEFINED_STAGE"},
+    {"id": "P1-05", "stage": 5, "name": "Legacy TruthGate duplicate evidence-token cardinality (D1)", "status": "ACTIVE", "bounded_rule": "Exact-string duplicate-cardinality normalization only; no EvidenceReference/EvidenceAdmission architecture expansion."}
   ],
   "stable_architecture_context": {
-    "continuity_capabilities": "12/12",
     "runtime_authority": false,
     "operator_go": false,
     "current_runtime_enabled": false,
-    "remote_canon": "FORBIDDEN",
-    "evidence_reference_pr355": "MERGED_POSTMERGE_CLOSED",
-    "mapping_parser_hardening_pr357": "MERGED",
-    "project_status_routing_pr358": "MERGED"
+    "remote_canon": "FORBIDDEN"
   },
   "p2_p3_backlog_not_mandatory_for_v1": [
     "full typed EvidenceReference to Evidence Admission architecture",
     "trusted evidence registry",
     "NLI contradiction subsystem",
     "GraphRAG/Louvain improvements",
-    "enabling TruthPolicy before its fail-open mode is resolved",
     "all-provider response integrity expansion",
     "additional providers",
     "new telemetry frameworks",
@@ -204,15 +162,9 @@
   "stop_conditions": [
     "do not treat this document as live proof",
     "do not treat percentages as authorization",
-    "do not reopen architecture during productization unless a current P0/P1 proves it necessary",
-    "do not resume D1 before Stage 5 merely because older documents called it the next workstream",
-    "do not silently wire EvidenceReference into TruthGate",
+    "do not reopen architecture unless a current P0/P1 proves it necessary",
+    "D1 in Stage 5 is exact-string duplicate-cardinality normalization only",
     "do not infer production authorization from CI, merge, validation, receipt, or pilot",
     "after Stage 11 closure do not invent an additional mandatory stage"
-  ],
-  "existing_machine_contract": {
-    "path": "docs/state/project_state.json",
-    "relationship": "SEPARATE_VALIDATED_COMPONENT_STATE_CONTRACT",
-    "warning": "Do not replace or reinterpret it as total-project completion percentage."
-  }
+  ]
 }
