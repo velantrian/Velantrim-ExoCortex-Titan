@@ -38,12 +38,15 @@ One invocation performs:
 4. SectionCard materialization only for accepted source-linked results;
 5. deterministic exception scan and CoverageMap;
 6. one SelectiveReReadPlanner pass;
-7. at most one explicit reread attempt for each queued task within the existing reread budget;
-8. final coverage reconstruction;
-9. ReadingSession completion only when every reading unit has a valid card;
-10. source-linked synthesis only for a completed session.
+7. at most one explicit reread attempt for each queued task that already carries a planner-assigned `ReaderMode` within the existing reread budget;
+8. non-reader tasks with `reader_mode=None` remain explicit open work and are never coerced into a hidden `DEEP` or other model call;
+9. final coverage reconstruction;
+10. ReadingSession completion only when every reading unit has a valid card;
+11. source-linked synthesis only for a completed reading session.
 
-If any unit remains unresolved, the session becomes `DEGRADED`; global synthesis is skipped and remaining work stays explicit.
+If any reading unit remains unresolved, the session becomes `DEGRADED`; global synthesis is skipped and remaining work stays explicit.
+
+The product-facing CLI further distinguishes `COMPLETE`, `COMPLETE_WITH_OPEN_WORK`, and `DEGRADED`. `COMPLETE_WITH_OPEN_WORK` means all reading units were processed but explicit reread/deferred follow-up remains. This does not redefine the RDR-07 session state; it prevents a completed reading-unit state from being presented as proof that every exception or follow-up action is resolved.
 
 ## Synthesis policy
 
@@ -99,6 +102,6 @@ PR #374 remains Draft until:
 - focused tests and repository CI are green on the exact head;
 - documentation accurately reflects candidate status and limitations;
 - existing `Velantrim Titan 9.0` Notion record is synchronized/read back;
-- review finds no authority expansion or hidden write path.
+- review finds no authority expansion, hidden write path, or hidden provider call for non-reader work.
 
 This ADR does not close Issue #120. Production Reader evidence remains externally blocked on real corpora, independent adjudicated labels, benchmark/calibration, shadow burn-in and explicit operator decision.
