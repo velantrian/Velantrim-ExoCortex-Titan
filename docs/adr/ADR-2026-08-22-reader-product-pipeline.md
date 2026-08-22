@@ -2,7 +2,7 @@
 
 ## Status
 
-`PROPOSED IN PR #374 · POST-V1 · GITHUB_AND_NOTION · NO RUNTIME AUTHORITY`
+`READY FOR REVIEW IN PR #374 · PROPOSED · POST-V1 · GITHUB_AND_NOTION · NO RUNTIME AUTHORITY`
 
 ## Context
 
@@ -52,13 +52,19 @@ The product-facing CLI further distinguishes `COMPLETE`, `COMPLETE_WITH_OPEN_WOR
 
 PR #374 does not add a second free-form LLM synthesis surface.
 
-The product-facing digest is deterministically assembled from accepted `SectionCard.local_essence` values, whose upstream LLM adapter admits only exact source-linked claims. `GlobalDocumentSynthesis` remains an `UNVALIDATED` interpretation candidate backed by those claims.
+The product-facing digest is deterministically assembled from accepted `SectionCard.local_essence` values, whose built-in readers retain source-linked claim text. `GlobalDocumentSynthesis` remains an `UNVALIDATED` interpretation candidate backed by those claims.
+
+Digest provenance is fail-closed under truncation. The product bridge computes the retained digest fragment and its supporting IDs together: a source claim is declared supporting only if its complete exact claim text occurs in the actually retained fragment of its own SectionCard essence. Claims omitted by an upstream essence budget or cut by `max_digest_chars` are not declared supporting; the existing synthesis builder therefore preserves them as `unsupported_source_claim_ids` unless represented elsewhere by an explicit supported synthesis structure.
 
 This is intentionally conservative. Fluent semantic abstraction can be proposed later only with an explicit provenance/admission contract rather than silently widening model authority.
 
 ## Relation policy
 
 The existing relation-set contract is reused, but v1 does not invent cross-section relations automatically. A valid empty evaluated relation projection is attached so the synthesis contract remains coherent without introducing an unreviewed detector.
+
+## Resource accounting policy
+
+Product-bridge `ReadingSessionUsage` is partial/card-centric observability, not complete provider cost accounting. `processed_units` tracks recorded cards/units; `source_chars` does not claim cumulative reread transport volume; provider token usage is not fabricated when the existing `SemanticReader` contract does not expose it. Execution attempts remain separately observable through `reader_attempts` / `reread_attempts`.
 
 ## Authority and safety boundary
 
@@ -97,11 +103,14 @@ Deferred. Existing `LlmReaderAdapter` deliberately restricts trusted model contr
 
 ## Evidence and completion
 
-PR #374 remains Draft until:
+PR #374 is ready for review but remains unmerged. Merge requires:
 
-- focused tests and repository CI are green on the exact head;
-- documentation accurately reflects candidate status and limitations;
-- existing `Velantrim Titan 9.0` Notion record is synchronized/read back;
-- review finds no authority expansion, hidden write path, or hidden provider call for non-reader work.
+- focused tests and repository CI green on the final exact head;
+- documentation accurately reflecting lifecycle and limitations;
+- existing `Velantrim Titan 9.0` Notion record synchronized/read back to that final exact head;
+- review showing no unresolved P0/P1 authority, provenance, hidden-write, or hidden-provider-call blocker;
+- final head/main race check and the appropriate owner decision.
+
+The current exact head and current `main` are intentionally recorded in PR/Notion evidence rather than hard-coded here, because editing this file would itself create another head.
 
 This ADR does not close Issue #120. Production Reader evidence remains externally blocked on real corpora, independent adjudicated labels, benchmark/calibration, shadow burn-in and explicit operator decision.
