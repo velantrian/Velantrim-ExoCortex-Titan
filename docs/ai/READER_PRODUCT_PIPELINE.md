@@ -38,23 +38,33 @@ FileIngester
 → DeterministicCriticalExceptionScanner
 → CoverageMapBuilder
 → SelectiveReReadPlanner
-→ at most one explicit bounded reread round
+→ at most one explicit bounded reread round for tasks with planner-assigned ReaderMode
 → ReadingSession
 → DeterministicSectionRelationBuilder (no inferred relations in v1)
 → GlobalDocumentSynthesis candidate
 ```
 
-## Failure semantics
+A queued reread task is not automatically an LLM call. Only tasks carrying an explicit `ReaderMode` from the existing planner are executed through `SemanticReader`. Tasks with `reader_mode=None` represent non-reader follow-up actions and remain explicit open work; the product bridge must not coerce them into `DEEP` or any other hidden provider call.
+
+## Failure and product-status semantics
 
 The initial pass may leave units without accepted cards. Existing CoverageMap + SelectiveReReadPlanner then produces bounded reread tasks.
 
-PR #374 executes at most one reread round. If any unit remains unresolved:
+PR #374 executes at most one reader-capable reread round. If any reading unit remains unresolved:
 
 - valid cards and coverage remain observable;
 - `ReadingSession` becomes `DEGRADED`;
 - `GlobalDocumentSynthesis` is not created;
 - remaining reread work stays explicit;
 - no fake complete-reading claim is emitted.
+
+The user-facing CLI distinguishes:
+
+- `COMPLETE` — all reading units processed and no remaining/deferred reread work;
+- `COMPLETE_WITH_OPEN_WORK` — all reading units processed and synthesis may exist, but explicit non-reader/advisory follow-up remains;
+- `DEGRADED` — one or more reading units remain unprocessed after the bounded attempt.
+
+This product distinction does not redefine the underlying RDR-07 `ReadingSession.COMPLETED` state; it prevents that state from being presented to an ordinary user as proof that every exception, relation or follow-up question has been resolved.
 
 ## Authority boundary
 
@@ -78,6 +88,7 @@ The candidate does not:
 - ReadingSession durability/cross-process resume remains unwired.
 - Product v1 does not infer cross-section relations automatically.
 - The digest is a bounded deterministic rollup of source-grounded SectionCard essences, not unconstrained model prose.
+- One explicit invocation does not attempt to resolve non-reader follow-up actions.
 - Issue #120 remains external-evidence blocked and is not closed by this PR.
 
 ## Review checklist
@@ -87,6 +98,7 @@ Before this candidate may leave Draft:
 1. exact-head Ruff / blocking mypy / focused tests / full pytest as applicable are green;
 2. no hidden memory/Canon/write path is reachable from the new pipeline/CLI;
 3. incomplete reading cannot create global synthesis;
-4. reread work is bounded and foreground-only;
-5. GitHub docs and existing `Velantrim Titan 9.0` Notion page are synchronized/read back;
-6. current PR head/base are revalidated.
+4. reread work is bounded and foreground-only, and `reader_mode=None` never becomes a hidden Reader call;
+5. user-facing status exposes remaining/deferred work instead of presenting it as fully resolved;
+6. GitHub docs and existing `Velantrim Titan 9.0` Notion page are synchronized/read back;
+7. current PR head/base are revalidated.
