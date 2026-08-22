@@ -32,16 +32,24 @@ def _wait_http(url: str, timeout_s: float = 45.0) -> None:
     raise RuntimeError(f"Titan did not become ready: {last_error}")
 
 
-def _post_json(url: str, payload: dict) -> tuple[int, dict]:
+def _request_json(method: str, url: str, payload: dict) -> tuple[int, dict]:
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
-        method="POST",
+        method=method,
     )
     with urllib.request.urlopen(req, timeout=10) as response:
         body = json.loads(response.read().decode("utf-8"))
         return int(response.status), body
+
+
+def _post_json(url: str, payload: dict) -> tuple[int, dict]:
+    return _request_json("POST", url, payload)
+
+
+def _patch_json(url: str, payload: dict) -> tuple[int, dict]:
+    return _request_json("PATCH", url, payload)
 
 
 def main() -> int:
@@ -96,18 +104,37 @@ def main() -> int:
         try:
             _wait_http(f"{base_url}/health")
 
+            fact_id = "stage9_browser_fact"
             status, _ = _post_json(
                 f"{base_url}/facts",
                 {
-                    "fact_id": "stage9_browser_fact",
+                    "fact_id": fact_id,
                     "claim": "my name is Stage Nine User",
                     "source": "stage9-browser-acceptance",
                     "confidence": 0.9,
-                    "metadata": {"memory_category": "personal"},
+                    "metadata": {
+                        "memory_category": "personal",
+                        "evidence_refs": ["stage9-source-1", "stage9-source-2"],
+                    },
                 },
             )
             if status not in (200, 201):
                 raise RuntimeError(f"Could not seed Stage 9 fact: HTTP {status}")
+
+            # Use Titan's existing public ESM + TruthGate path. The acceptance
+            # seed must satisfy the same BALANCED policy as ordinary memory;
+            # the browser test must not weaken recall rules merely to pass.
+            for target in ("Hypothesized", "Supported", "Validated"):
+                status, body = _patch_json(
+                    f"{base_url}/facts/{fact_id}/transition",
+                    {"new_state": target, "by": "stage9-browser-acceptance"},
+                )
+                if status != 200:
+                    raise RuntimeError(
+                        f"Could not transition Stage 9 fact to {target}: HTTP {status} {body}"
+                    )
+            if body.get("epistemic_state") != "Validated":
+                raise RuntimeError("Stage 9 fact did not reach Validated through TruthGate")
 
             with sync_playwright() as playwright:
                 browser = playwright.chromium.launch(headless=True)
@@ -135,11 +162,11 @@ def main() -> int:
 
                 text = page.locator("#messages").inner_text()
                 if "Stage Nine User" not in text:
-                    raise RuntimeError("Console did not surface the seeded memory fact")
+                    raise RuntimeError("Console did not surface the validated memory fact")
 
                 print("STAGE9_BROWSER_ACCEPTANCE=PASS")
                 print(f"CONSOLE_URL={base_url}/console/")
-                print("FLOW=real Chromium -> Console composer -> /chat -> memory -> DOM reply")
+                print("FLOW=real Chromium -> Console composer -> /chat -> validated memory -> DOM reply")
                 print("LLM=disabled; external network/provider not required")
                 browser.close()
         finally:
