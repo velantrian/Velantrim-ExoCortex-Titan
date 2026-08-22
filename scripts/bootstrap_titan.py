@@ -21,7 +21,7 @@ REQUIRED_PROJECT_FILES = (
     "server.py",
     "static/console/index.html",
 )
-SERVER_IMPORTS = (
+RUNTIME_IMPORTS = (
     "fastapi",
     "uvicorn",
     "dotenv",
@@ -29,6 +29,11 @@ SERVER_IMPORTS = (
     "httpx",
     "aiosqlite",
     "pymorphy3",
+    "pypdf",
+    "docx",
+    "openpyxl",
+    "yaml",
+    "PIL",
 )
 
 
@@ -120,7 +125,7 @@ def create_venv(root: Path) -> Path:
 
 
 def dependency_check_command(py: Path) -> list[str]:
-    imports = "; ".join(f"import {name}" for name in SERVER_IMPORTS)
+    imports = "; ".join(f"import {name}" for name in RUNTIME_IMPORTS)
     return [str(py), "-c", imports]
 
 
@@ -137,13 +142,21 @@ def dependencies_ready(py: Path, *, runner=subprocess.run) -> bool:
 def install_server_dependencies(root: Path, py: Path, *, runner=subprocess.run) -> None:
     try:
         runner(
-            [str(py), "-m", "pip", "install", "--disable-pip-version-check", "-e", f"{root}[server]"],
+            [
+                str(py),
+                "-m",
+                "pip",
+                "install",
+                "--disable-pip-version-check",
+                "-e",
+                f"{root}[server,parsers]",
+            ],
             cwd=root,
             check=True,
         )
     except subprocess.CalledProcessError as exc:
         raise BootstrapError(
-            "Titan server dependencies could not be installed. Check internet access, "
+            "Titan V1 runtime dependencies could not be installed. Check internet access, "
             "Python package index access, and the error above."
         ) from exc
 
@@ -197,14 +210,14 @@ def build_server_command(py: Path, port: int) -> list[str]:
 
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Install the minimal Titan server runtime and launch the local web console."
+        description="Install the bounded Titan V1 runtime and launch the local web console."
     )
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--no-browser", action="store_true")
     parser.add_argument(
         "--no-install",
         action="store_true",
-        help="Do not install missing server dependencies; fail with a clear message instead.",
+        help="Do not install missing runtime dependencies; fail with a clear message instead.",
     )
     return parser.parse_args(list(argv) if argv is not None else None)
 
@@ -228,9 +241,9 @@ def run(argv: Iterable[str] | None = None) -> int:
     if not dependencies_ready(py):
         if args.no_install:
             raise BootstrapError(
-                "Titan server dependencies are missing in .venv. Re-run without --no-install."
+                "Titan V1 runtime dependencies are missing in .venv. Re-run without --no-install."
             )
-        print("[Titan] Installing minimal server dependencies into .venv ...", flush=True)
+        print("[Titan] Installing bounded V1 server + file parser dependencies into .venv ...", flush=True)
         install_server_dependencies(root, py)
         if not dependencies_ready(py):
             raise BootstrapError("Dependency installation finished, but required imports still fail.")
@@ -247,6 +260,7 @@ def run(argv: Iterable[str] | None = None) -> int:
     print(f"Environment: {env_path}{' (created)' if env_created else ''}")
     print(f"Console: {console_url}")
     print("LLM is optional for first run and remains off until you configure a provider.")
+    print("File parsing for the bounded V1 formats is installed with this runtime.")
     print("Press Ctrl+C to stop Titan.\n")
 
     process = subprocess.Popen(

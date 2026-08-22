@@ -236,14 +236,16 @@ class TruthGate:
 
     def _count_evidence(self, fact: dict) -> int:
         """
-        Считаем доказательства.
-        Сейчас: metadata.evidence_refs + 1 (сам факт).
+        Считаем legacy evidence tokens по точному уникальному строковому значению.
         Sprint 2c: граф-запрос к Neo4j/Graphiti.
         """
         metadata = fact.get("metadata") or {}
         refs = metadata.get("evidence_refs", [])
         if isinstance(refs, list):
-            return max(1, len(refs))
+            # D1 bounded remediation: повтор одной строки не создаёт новое evidence.
+            # Никакой EvidenceReference/registry/independence authority здесь не вводится.
+            unique_refs = {ref for ref in refs if isinstance(ref, str)}
+            return max(1, len(unique_refs))
         # Если refs — строка (legacy), считаем как 1
         return 1
 
