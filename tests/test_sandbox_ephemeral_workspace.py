@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-import core.sandbox.ephemeral_workspace as workspace_module
 from core.sandbox import (
     EphemeralWorkspaceError,
     EphemeralWorkspaceWriter,
@@ -77,23 +76,22 @@ def test_closed_workspace_cannot_be_reentered() -> None:
 
 
 def test_partial_materialization_failure_removes_allocated_root(
-    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    allocated = tmp_path / "allocated-workspace"
+    allocated: list[Path] = []
 
-    def fake_mkdtemp(*, prefix: str) -> str:
-        assert prefix.startswith("velantrim-sandbox-")
-        allocated.mkdir()
-        return str(allocated)
-
-    def fail_write(*args: object, **kwargs: object) -> None:
+    def fail_write(root: Path, *args: object, **kwargs: object) -> None:
+        allocated.append(root)
         raise EphemeralWorkspaceError("synthetic write failure")
 
-    monkeypatch.setattr(workspace_module.tempfile, "mkdtemp", fake_mkdtemp)
-    monkeypatch.setattr(EphemeralWorkspaceWriter, "_write_blob", fail_write)
+    monkeypatch.setattr(
+        EphemeralWorkspaceWriter,
+        "_write_blob",
+        staticmethod(fail_write),
+    )
 
     with pytest.raises(EphemeralWorkspaceError, match="synthetic"):
         EphemeralWorkspaceWriter().materialize(_verified_workspace())
 
-    assert not allocated.exists()
+    assert len(allocated) == 1
+    assert not allocated[0].exists()
