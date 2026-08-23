@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 import hashlib
 import os
 from pathlib import Path, PurePosixPath
-import shutil
 import tempfile
 
 from .materializer import VerifiedWorkspace
@@ -27,27 +26,30 @@ class EphemeralWorkspaceError(RuntimeError):
 
 @dataclass(slots=True)
 class EphemeralWorkspace:
-    """One backend-owned temporary workspace with explicit verified cleanup."""
+    """Handle owning exactly one OS-created temporary directory."""
 
-    root: Path
+    _temporary_directory: tempfile.TemporaryDirectory[str] = field(repr=False)
     manifest_id: str
     _closed: bool = field(default=False, init=False, repr=False)
+
+    @property
+    def root(self) -> Path:
+        return Path(self._temporary_directory.name)
 
     @property
     def closed(self) -> bool:
         return self._closed
 
     def close(self) -> None:
-        """Remove the complete workspace and verify that it is gone."""
+        """Remove the owned workspace and verify that it is gone."""
         if self._closed:
             return
+        root = self.root
         try:
-            shutil.rmtree(self.root)
-        except FileNotFoundError:
-            pass
+            self._temporary_directory.cleanup()
         except OSError as exc:
             raise EphemeralWorkspaceError("failed to remove ephemeral workspace") from exc
-        if self.root.exists():
+        if root.exists():
             raise EphemeralWorkspaceError("ephemeral workspace remains after cleanup")
         self._closed = True
 
@@ -64,8 +66,12 @@ class EphemeralWorkspaceWriter:
     """Write a VerifiedWorkspace into private OS-managed temporary storage."""
 
     def materialize(self, verified: VerifiedWorkspace) -> EphemeralWorkspace:
-        root = Path(tempfile.mkdtemp(prefix=_WORKSPACE_PREFIX))
-        workspace = EphemeralWorkspace(root=root, manifest_id=verified.manifest_id)
+        temporary_directory = tempfile.TemporaryDirectory(prefix=_WORKSPACE_PREFIX)
+        workspace = EphemeralWorkspace(
+            _temporary_directory=temporary_directory,
+            manifest_id=verified.manifest_id,
+        )
+        root = workspace.root
         try:
             self._harden_root(root)
             for blob in verified.files:
