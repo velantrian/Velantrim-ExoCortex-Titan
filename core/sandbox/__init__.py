@@ -27,9 +27,19 @@ from .security import (
     RuntimeSecurityProfile,
     SandboxAdmissionError,
 )
+from .workspace import (
+    DEFAULT_MAX_WORKSPACE_BYTES,
+    DEFAULT_MAX_WORKSPACE_FILES,
+    WORKSPACE_MANIFEST_SCHEMA_VERSION,
+    WorkspaceFile,
+    WorkspaceManifest,
+    WorkspaceManifestError,
+)
 
 __all__ = [
     "ArtifactRef",
+    "DEFAULT_MAX_WORKSPACE_BYTES",
+    "DEFAULT_MAX_WORKSPACE_FILES",
     "DEFAULT_RUNTIME_SECURITY_PROFILE",
     "ExecutionReceipt",
     "NetworkPolicy",
@@ -45,4 +55,8 @@ __all__ = [
     "SandboxRun",
     "SandboxSpec",
     "SandboxStatus",
+    "WORKSPACE_MANIFEST_SCHEMA_VERSION",
+    "WorkspaceFile",
+    "WorkspaceManifest",
+    "WorkspaceManifestError",
 ]
