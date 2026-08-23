@@ -8,7 +8,7 @@ from core.sandbox import (
     NullBackend,
     SandboxBackend,
     SandboxBackendStateError,
-    SandboxBackendUnavailable,
+    SandboxBackendUnavailableError,
     SandboxSpec,
     SandboxStatus,
 )
@@ -35,7 +35,10 @@ def test_null_backend_satisfies_protocol_and_fails_closed() -> None:
     assert run.backend == "null"
     assert run.status is SandboxStatus.PREPARED
 
-    with pytest.raises(SandboxBackendUnavailable, match="no execution capability"):
+    with pytest.raises(
+        SandboxBackendUnavailableError,
+        match="no execution capability",
+    ):
         backend.execute(run)
 
     backend.teardown(run)
@@ -87,7 +90,10 @@ def test_fake_backend_rejects_duplicate_attempt_identity() -> None:
     backend = FakeBackend()
     backend.prepare(_spec(), attempt_id="attempt-4")
 
-    with pytest.raises(SandboxBackendStateError, match="attempt_id was already used"):
+    with pytest.raises(
+        SandboxBackendStateError,
+        match="attempt_id was already used",
+    ):
         backend.prepare(_spec(), attempt_id="attempt-4")
 
 
