@@ -2,15 +2,19 @@
 
 ## Status
 
-`PR #374 READY FOR REVIEW · NOT IN MAIN · GITHUB_AND_NOTION`
+`PR #374 MERGED · IN MAIN · GITHUB_AND_NOTION`
 
-Exact base at branch creation:
+Accepted remediation head:
 
-`aab1fbca55e35577fd09cc88fa8872be901fd25f`
+`c374ccf01ea1b73ff3c3012dce3cc4b45e84c4ef`
 
-`main` may move independently while the PR is open. The authoritative current PR head, current `main`, mergeability, and exact-head CI evidence live in PR metadata / the synchronized Notion record rather than being self-referentially hard-coded into this in-branch file.
+Merged/current main checkpoint:
 
-This document describes the candidate in PR #374. It is **not** evidence that `main` contains or enables the capability until protected merge and post-merge verification occur.
+`b298ce65b2e9a50aaa0cabdf7772c73fd578ef91`
+
+PR #374 was merged after bounded remediation and exact-head verification. GitHub and the synchronized Notion record carry the authoritative live lifecycle/evidence state; these identifiers are retained here only to prevent future AI-context readers from mistaking the merged Reader path for an unmerged candidate.
+
+This document describes the bounded Reader Product Pipeline now present in `main`. Merge does **not** authorize production/runtime, memory/Canon writes, TruthGate authority, or closure of Issue #120.
 
 ## Problem
 
@@ -18,7 +22,7 @@ Titan already had mature Reader Core primitives, and Titan V1 already had a user
 
 The existing `scripts/ingest_file.py` intentionally sends extracted file text through `/ingest/text`, which is the governed memory/write path. Long-document reading should not require memory admission first.
 
-## Candidate solution
+## Merged solution
 
 PR #374 adds:
 
@@ -78,7 +82,7 @@ This is fail-closed provenance: truncation may reduce declared support, but it m
 
 ## Authority boundary
 
-The candidate does not:
+The merged path does not:
 
 - call `/ingest/text`;
 - call `store_fact()`;
@@ -109,18 +113,10 @@ The bridge must not invent token/cost precision that its existing contracts do n
 - Product v1 does not infer cross-section relations automatically.
 - One explicit invocation does not attempt to resolve non-reader follow-up actions.
 - JSON open-work detail is sufficient to expose status/counts but richer downstream UI metadata remains a non-blocking follow-up.
-- Issue #120 remains external-evidence blocked and is not closed by this PR.
+- Issue #120 remains external-evidence blocked and is not closed by PR #374.
 
-## Review / merge checklist
+## Post-merge verification state
 
-Before merge of this ready-for-review candidate:
+The merged bounded Reader path was independently re-reviewed on accepted head `c374ccf01ea1b73ff3c3012dce3cc4b45e84c4ef` with `R374-01 FIXED`, no P0/P1 findings, and all five remediation-head workflows successful. The squash merge produced main checkpoint `b298ce65b2e9a50aaa0cabdf7772c73fd578ef91`.
 
-1. exact-head Ruff / blocking mypy / focused tests / full pytest as applicable are green;
-2. no hidden memory/Canon/write path is reachable from the new pipeline/CLI;
-3. incomplete reading cannot create global synthesis;
-4. digest truncation cannot overclaim `supporting_claim_ids`;
-5. reread work is bounded and foreground-only, and `reader_mode=None` never becomes a hidden Reader call;
-6. user-facing status exposes remaining/deferred work instead of presenting it as fully resolved;
-7. GitHub docs and existing `Velantrim Titan 9.0` Notion page are synchronized/read back;
-8. current PR head/base are revalidated;
-9. merge still requires the appropriate owner decision and does not authorize production/runtime or close Issue #120.
+Post-merge lifecycle reconciliation does not change Reader code or authority. Issue #120 remains the separate production-evidence program, and successful merge/CI remains distinct from Operator GO or production authorization.
