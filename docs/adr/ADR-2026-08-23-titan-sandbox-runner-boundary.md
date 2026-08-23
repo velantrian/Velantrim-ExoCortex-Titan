@@ -2,7 +2,7 @@
 
 Date: 2026-08-23
 Status: Proposed
-Scope: contracts only; no execution backend
+Scope: contracts and non-executing backend interfaces; no execution backend
 
 ## Context
 
@@ -20,7 +20,7 @@ workloads without conflating execution success with truth or authorization.
 
 ## Decision
 
-Introduce `core.sandbox` as a contracts-only boundary.
+Introduce `core.sandbox` as a contracts-first boundary.
 
 The initial contract contains:
 
@@ -36,8 +36,13 @@ Each execution attempt has an explicit `attempt_id`. `run_id` is derived from
 attempt stable across PREPARED/RUNNING/terminal snapshots while preventing two
 repeated executions of the same spec from collapsing into one provenance identity.
 
-No Docker/Podman/Firecracker/gVisor integration is added in this ADR.
-No code path in `core.sandbox` starts a process, opens a network connection,
+A follow-up protocol phase may define `SandboxBackend` plus deliberately
+non-executing adapters/test doubles. Such code may model lifecycle behavior but
+must not start processes, access container daemons, touch external networks,
+mount host paths, inherit host secrets, or create a runtime execution surface.
+
+No Docker/Podman/Firecracker/gVisor integration is authorized by this ADR.
+No code path covered by this ADR starts a process, opens a network connection,
 mounts a host path, reads host secrets, writes memory, or mutates Canon.
 
 ## Trust invariants
@@ -57,6 +62,8 @@ mounts a host path, reads host secrets, writes memory, or mutates Canon.
     admission path outside this package.
 12. The contract is backend-neutral; Docker is one possible future backend, not
     the semantic definition of the sandbox.
+13. A protocol implementation or test double is not evidence that runtime
+    execution authority has been approved.
 
 ## Explicit non-equivalences
 
@@ -69,6 +76,8 @@ artifact digest != trusted evidence
 ExecutionReceipt != authorization
 Working Notebook != execution sandbox
 production Docker image != sandbox image
+FakeBackend != execution capability
+SandboxBackend protocol != runtime authorization
 ```
 
 ## Intended future flow
@@ -83,7 +92,7 @@ Titan Orchestrator
 SandboxSpec
     |
     v
-Sandbox Backend (future)
+Sandbox Backend (future runtime-capable implementation)
     |
     +--> ephemeral workspace
     +--> bounded command
@@ -109,6 +118,7 @@ Titan reasoning
 - Prevents ad-hoc subprocess calls from becoming an implicit generic executor.
 - Keeps production Docker hardening separate from arbitrary-workload isolation.
 - Gives future backends a stable semantic contract.
+- Allows lifecycle orchestration to be tested without an execution surface.
 - Makes authority boundaries reviewable and testable before implementation.
 - Preserves per-attempt provenance across lifecycle transitions.
 
@@ -117,14 +127,13 @@ Titan reasoning
 - A future backend must translate its native controls into these contracts.
 - Backend-specific concepts may require additive contract revisions.
 - The orchestrator/backend must allocate a unique execution-attempt identifier.
-- This ADR intentionally delivers no executable sandbox functionality.
+- Protocol/test-double support intentionally delivers no executable sandbox functionality.
 
 ## Follow-up, not authorized by this ADR
 
-A later PR may add a backend interface and one concrete implementation after a
-separate threat-model review. Candidate backends include Docker/Podman for local
-use and stronger isolation such as gVisor or Firecracker where threat posture
-requires it.
+A later PR may add one concrete runtime-capable backend only after a separate
+threat-model review. Candidate backends include Docker/Podman for local use and
+stronger isolation such as gVisor or Firecracker where threat posture requires it.
 
 That later PR must define filesystem mount policy, secret injection, network
 enforcement, image provenance, artifact export, cancellation, cleanup, and
