@@ -28,6 +28,16 @@ def _spec(**overrides: object) -> SandboxSpec:
     return SandboxSpec(**values)  # type: ignore[arg-type]
 
 
+def _run(**overrides: object) -> SandboxRun:
+    values: dict[str, object] = {
+        "spec_id": _spec().spec_id,
+        "backend": "unimplemented",
+        "attempt_id": "attempt-001",
+    }
+    values.update(overrides)
+    return SandboxRun(**values)  # type: ignore[arg-type]
+
+
 def test_defaults_are_fail_closed() -> None:
     spec = _spec()
 
@@ -66,6 +76,11 @@ def test_allowlist_policy_requires_destination() -> None:
         _spec(network_policy=NetworkPolicy.ALLOWLIST)
 
 
+def test_duplicate_environment_keys_are_rejected() -> None:
+    with pytest.raises(SandboxContractError, match="environment keys must be unique"):
+        _spec(environment=(("TOKEN", "a"), (" TOKEN ", "b")))
+
+
 def test_resource_limits_must_be_positive() -> None:
     with pytest.raises(SandboxContractError, match="timeout_seconds"):
         ResourceLimits(timeout_seconds=0)
@@ -76,8 +91,49 @@ def test_artifact_requires_content_digest() -> None:
         ArtifactRef(path="dist/pkg.whl", sha256="not-a-digest", size_bytes=12)
 
 
+def test_run_identity_is_stable_across_status_transitions() -> None:
+    prepared = _run(status=SandboxStatus.PREPARED)
+    running = _run(status=SandboxStatus.RUNNING)
+    succeeded = _run(status=SandboxStatus.SUCCEEDED)
+
+    assert prepared.run_id == running.run_id == succeeded.run_id
+
+
+def test_distinct_attempts_have_distinct_run_identity() -> None:
+    first = _run(attempt_id="attempt-001")
+    second = _run(attempt_id="attempt-002")
+
+    assert first.run_id != second.run_id
+
+
+def test_receipt_requires_terminal_status() -> None:
+    run = _run()
+
+    with pytest.raises(SandboxContractError, match="terminal"):
+        ExecutionReceipt(
+            run_id=run.run_id,
+            status=SandboxStatus.RUNNING,
+            exit_code=None,
+            stdout_sha256=ZERO_SHA,
+            stderr_sha256=ZERO_SHA,
+        )
+
+
+def test_success_receipt_requires_zero_exit_code() -> None:
+    run = _run()
+
+    with pytest.raises(SandboxContractError, match="exit_code=0"):
+        ExecutionReceipt(
+            run_id=run.run_id,
+            status=SandboxStatus.SUCCEEDED,
+            exit_code=1,
+            stdout_sha256=ZERO_SHA,
+            stderr_sha256=ZERO_SHA,
+        )
+
+
 def test_receipt_cannot_carry_authority() -> None:
-    run = SandboxRun(spec_id=_spec().spec_id, backend="unimplemented")
+    run = _run()
 
     with pytest.raises(SandboxContractError, match="cannot carry authority"):
         ExecutionReceipt(
@@ -91,7 +147,7 @@ def test_receipt_cannot_carry_authority() -> None:
 
 
 def test_receipt_identity_is_stable_across_artifact_order() -> None:
-    run = SandboxRun(spec_id=_spec().spec_id, backend="unimplemented")
+    run = _run()
     a = ArtifactRef(path="a.txt", sha256=ZERO_SHA, size_bytes=1)
     b = ArtifactRef(path="b.txt", sha256=ONE_SHA, size_bytes=2)
 
