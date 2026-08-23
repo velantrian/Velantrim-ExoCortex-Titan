@@ -10,7 +10,7 @@ from .backend import (
     SandboxBackend,
     SandboxBackendError,
     SandboxBackendStateError,
-    SandboxBackendUnavailable,
+    SandboxBackendUnavailableError,
 )
 from .contracts import (
     ArtifactRef,
@@ -31,7 +31,7 @@ __all__ = [
     "SandboxBackend",
     "SandboxBackendError",
     "SandboxBackendStateError",
-    "SandboxBackendUnavailable",
+    "SandboxBackendUnavailableError",
     "SandboxRun",
     "SandboxSpec",
     "SandboxStatus",
