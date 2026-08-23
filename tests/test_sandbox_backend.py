@@ -4,6 +4,7 @@ import pytest
 
 from core.sandbox import (
     ArtifactRef,
+    ExecutionReceipt,
     NullBackend,
     SandboxBackend,
     SandboxBackendStateError,
@@ -15,6 +16,7 @@ from core.sandbox.testing import FakeBackend, FakeOutcome
 
 
 ZERO_SHA = "0" * 64
+ONE_SHA = "1" * 64
 
 
 def _spec() -> SandboxSpec:
@@ -83,11 +85,10 @@ def test_fake_backend_rejects_duplicate_execution() -> None:
 
 def test_fake_backend_rejects_duplicate_attempt_identity() -> None:
     backend = FakeBackend()
-    spec = _spec()
-    backend.prepare(spec, attempt_id="attempt-4")
+    backend.prepare(_spec(), attempt_id="attempt-4")
 
-    with pytest.raises(SandboxBackendStateError, match="already prepared"):
-        backend.prepare(spec, attempt_id="attempt-4")
+    with pytest.raises(SandboxBackendStateError, match="attempt_id was already used"):
+        backend.prepare(_spec(), attempt_id="attempt-4")
 
 
 def test_fake_backend_rejects_collection_after_teardown() -> None:
@@ -108,3 +109,19 @@ def test_fake_backend_rejects_foreign_receipt() -> None:
 
     with pytest.raises(SandboxBackendStateError, match="does not belong"):
         second.collect(receipt)
+
+
+def test_fake_backend_rejects_forged_receipt_for_known_run() -> None:
+    backend = FakeBackend()
+    run = backend.prepare(_spec(), attempt_id="attempt-7")
+    backend.execute(run)
+    forged = ExecutionReceipt(
+        run_id=run.run_id,
+        status=SandboxStatus.SUCCEEDED,
+        exit_code=0,
+        stdout_sha256=ONE_SHA,
+        stderr_sha256=ZERO_SHA,
+    )
+
+    with pytest.raises(SandboxBackendStateError, match="identity does not match"):
+        backend.collect(forged)
