@@ -33,15 +33,12 @@ def _normalize_relative_path(value: str) -> str:
     raw = (value or "").strip().replace("\\", "/")
     if not raw:
         raise WorkspaceManifestError("workspace path must be non-empty")
-    path = PurePosixPath(raw)
-    if path.is_absolute():
+    if raw.startswith("/") or (len(raw) >= 2 and raw[0].isalpha() and raw[1] == ":"):
         raise WorkspaceManifestError("workspace path must be relative")
-    if any(part in ("", ".", "..") for part in path.parts):
+    parts = raw.split("/")
+    if any(part in ("", ".", "..") for part in parts):
         raise WorkspaceManifestError("workspace path cannot contain traversal components")
-    normalized = str(path)
-    if normalized.startswith("../") or normalized == "..":
-        raise WorkspaceManifestError("workspace path cannot escape workspace root")
-    return normalized
+    return str(PurePosixPath(*parts))
 
 
 @dataclass(frozen=True, slots=True)
