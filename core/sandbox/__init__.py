@@ -21,6 +21,14 @@ from .contracts import (
     SandboxSpec,
     SandboxStatus,
 )
+from .materializer import (
+    BlobResolutionError,
+    BlobResolver,
+    VerifiedWorkspace,
+    VerifiedWorkspaceBlob,
+    WorkspaceMaterializationError,
+    WorkspaceMaterializer,
+)
 from .security import (
     DEFAULT_RUNTIME_SECURITY_PROFILE,
     RUNTIME_SECURITY_PROFILE_VERSION,
@@ -38,6 +46,8 @@ from .workspace import (
 
 __all__ = [
     "ArtifactRef",
+    "BlobResolutionError",
+    "BlobResolver",
     "DEFAULT_MAX_WORKSPACE_BYTES",
     "DEFAULT_MAX_WORKSPACE_FILES",
     "DEFAULT_RUNTIME_SECURITY_PROFILE",
@@ -55,8 +65,12 @@ __all__ = [
     "SandboxRun",
     "SandboxSpec",
     "SandboxStatus",
+    "VerifiedWorkspace",
+    "VerifiedWorkspaceBlob",
     "WORKSPACE_MANIFEST_SCHEMA_VERSION",
     "WorkspaceFile",
     "WorkspaceManifest",
     "WorkspaceManifestError",
+    "WorkspaceMaterializationError",
+    "WorkspaceMaterializer",
 ]
