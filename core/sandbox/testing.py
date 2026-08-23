@@ -11,7 +11,13 @@ from dataclasses import dataclass
 import hashlib
 
 from .backend import SandboxBackendStateError
-from .contracts import ArtifactRef, ExecutionReceipt, SandboxRun, SandboxSpec, SandboxStatus
+from .contracts import (
+    ArtifactRef,
+    ExecutionReceipt,
+    SandboxRun,
+    SandboxSpec,
+    SandboxStatus,
+)
 
 
 _EMPTY_SHA256 = hashlib.sha256(b"").hexdigest()
@@ -37,17 +43,22 @@ class FakeBackend:
     def __init__(self, outcome: FakeOutcome | None = None) -> None:
         self._outcome = outcome or FakeOutcome()
         self._prepared: dict[str, SandboxRun] = {}
-        self._executed: set[str] = set()
+        self._attempt_ids: set[str] = set()
+        self._receipts: dict[str, str] = {}
         self._torn_down: set[str] = set()
 
     def prepare(self, spec: SandboxSpec, *, attempt_id: str) -> SandboxRun:
+        normalized_attempt_id = attempt_id.strip()
+        if normalized_attempt_id in self._attempt_ids:
+            raise SandboxBackendStateError("attempt_id was already used")
         run = SandboxRun(
             spec_id=spec.spec_id,
             backend=self.name,
-            attempt_id=attempt_id,
+            attempt_id=normalized_attempt_id,
         )
         if run.run_id in self._prepared:
             raise SandboxBackendStateError("run was already prepared")
+        self._attempt_ids.add(normalized_attempt_id)
         self._prepared[run.run_id] = run
         return run
 
@@ -55,7 +66,7 @@ class FakeBackend:
         self._require_prepared(run)
         if run.run_id in self._torn_down:
             raise SandboxBackendStateError("run was already torn down")
-        if run.run_id in self._executed:
+        if run.run_id in self._receipts:
             raise SandboxBackendStateError("run was already executed")
 
         receipt = ExecutionReceipt(
@@ -67,13 +78,18 @@ class FakeBackend:
             artifacts=self._outcome.artifacts,
             duration_ms=self._outcome.duration_ms,
         )
-        self._executed.add(run.run_id)
+        self._receipts[run.run_id] = receipt.receipt_id
         return receipt
 
     def collect(self, receipt: ExecutionReceipt) -> tuple[ArtifactRef, ...]:
-        if receipt.run_id not in self._executed:
+        expected_receipt_id = self._receipts.get(receipt.run_id)
+        if expected_receipt_id is None:
             raise SandboxBackendStateError(
                 "receipt does not belong to an executed FakeBackend run"
+            )
+        if receipt.receipt_id != expected_receipt_id:
+            raise SandboxBackendStateError(
+                "receipt identity does not match FakeBackend execution"
             )
         if receipt.run_id in self._torn_down:
             raise SandboxBackendStateError("run was already torn down")
