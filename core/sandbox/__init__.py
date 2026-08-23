@@ -21,6 +21,13 @@ from .contracts import (
     SandboxSpec,
     SandboxStatus,
 )
+from .docker_plan import (
+    DOCKER_LAUNCH_PLAN_SCHEMA_VERSION,
+    DOCKER_SANDBOX_USER,
+    DockerLaunchPlan,
+    DockerPlanCompiler,
+    DockerPlanError,
+)
 from .ephemeral_workspace import (
     EphemeralWorkspace,
     EphemeralWorkspaceError,
@@ -56,6 +63,11 @@ __all__ = [
     "DEFAULT_MAX_WORKSPACE_BYTES",
     "DEFAULT_MAX_WORKSPACE_FILES",
     "DEFAULT_RUNTIME_SECURITY_PROFILE",
+    "DOCKER_LAUNCH_PLAN_SCHEMA_VERSION",
+    "DOCKER_SANDBOX_USER",
+    "DockerLaunchPlan",
+    "DockerPlanCompiler",
+    "DockerPlanError",
     "EphemeralWorkspace",
     "EphemeralWorkspaceError",
     "EphemeralWorkspaceWriter",
