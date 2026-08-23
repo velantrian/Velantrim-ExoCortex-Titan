@@ -31,6 +31,11 @@ The initial contract contains:
 - `ArtifactRef`: digest-addressed untrusted output;
 - `ExecutionReceipt`: deterministic observation of an execution result.
 
+Each execution attempt has an explicit `attempt_id`. `run_id` is derived from
+`spec_id`, backend, and `attempt_id`, but not lifecycle status. This keeps one
+attempt stable across PREPARED/RUNNING/terminal snapshots while preventing two
+repeated executions of the same spec from collapsing into one provenance identity.
+
 No Docker/Podman/Firecracker/gVisor integration is added in this ADR.
 No code path in `core.sandbox` starts a process, opens a network connection,
 mounts a host path, reads host secrets, writes memory, or mutates Canon.
@@ -44,11 +49,13 @@ mounts a host path, reads host secrets, writes memory, or mutates Canon.
 5. Resource limits are mandatory and positive.
 6. Sandbox artifacts and receipts are untrusted outputs.
 7. `SUCCEEDED` means only that the bounded execution reported success.
-8. A receipt cannot carry `trusted`, `canon_admitted`, or
+8. A receipt must describe a terminal run state and use coherent exit-code semantics.
+9. A receipt cannot carry `trusted`, `canon_admitted`, or
    `production_authorized` authority.
-9. Sandbox output may become an evidence candidate only through a separate
-   admission path outside this package.
-10. The contract is backend-neutral; Docker is one possible future backend, not
+10. Distinct execution attempts must have distinct provenance identities.
+11. Sandbox output may become an evidence candidate only through a separate
+    admission path outside this package.
+12. The contract is backend-neutral; Docker is one possible future backend, not
     the semantic definition of the sandbox.
 
 ## Explicit non-equivalences
@@ -103,11 +110,13 @@ Titan reasoning
 - Keeps production Docker hardening separate from arbitrary-workload isolation.
 - Gives future backends a stable semantic contract.
 - Makes authority boundaries reviewable and testable before implementation.
+- Preserves per-attempt provenance across lifecycle transitions.
 
 ### Costs
 
 - A future backend must translate its native controls into these contracts.
 - Backend-specific concepts may require additive contract revisions.
+- The orchestrator/backend must allocate a unique execution-attempt identifier.
 - This ADR intentionally delivers no executable sandbox functionality.
 
 ## Follow-up, not authorized by this ADR
