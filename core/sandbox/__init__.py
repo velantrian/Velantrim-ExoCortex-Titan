@@ -1,8 +1,8 @@
 """Bounded sandbox contracts and backend interfaces for Titan.
 
-The package defines data contracts plus non-executing backend boundaries. It
-does not itself start containers, shell out, access Docker/Podman, or grant
-runtime authority.
+The package defines data contracts plus bounded non-executing sandbox layers. It
+does not itself start containers, shell out, access Docker/Podman, open networks,
+or grant runtime authority.
 """
 
 from .backend import (
@@ -20,6 +20,11 @@ from .contracts import (
     SandboxRun,
     SandboxSpec,
     SandboxStatus,
+)
+from .ephemeral_workspace import (
+    EphemeralWorkspace,
+    EphemeralWorkspaceError,
+    EphemeralWorkspaceWriter,
 )
 from .materializer import (
     BlobResolutionError,
@@ -51,6 +56,9 @@ __all__ = [
     "DEFAULT_MAX_WORKSPACE_BYTES",
     "DEFAULT_MAX_WORKSPACE_FILES",
     "DEFAULT_RUNTIME_SECURITY_PROFILE",
+    "EphemeralWorkspace",
+    "EphemeralWorkspaceError",
+    "EphemeralWorkspaceWriter",
     "ExecutionReceipt",
     "NetworkPolicy",
     "NullBackend",
