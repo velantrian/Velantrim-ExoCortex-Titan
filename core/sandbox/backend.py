@@ -16,7 +16,7 @@ class SandboxBackendError(RuntimeError):
     """Base error for bounded sandbox backend adapters."""
 
 
-class SandboxBackendUnavailable(SandboxBackendError):
+class SandboxBackendUnavailableError(SandboxBackendError):
     """Raised when a backend intentionally has no execution capability."""
 
 
@@ -74,12 +74,12 @@ class NullBackend:
 
     def execute(self, run: SandboxRun) -> ExecutionReceipt:
         self._require_owned_run(run)
-        raise SandboxBackendUnavailable(
+        raise SandboxBackendUnavailableError(
             "NullBackend has no execution capability"
         )
 
     def collect(self, receipt: ExecutionReceipt) -> tuple[ArtifactRef, ...]:
-        raise SandboxBackendUnavailable(
+        raise SandboxBackendUnavailableError(
             "NullBackend cannot collect artifacts because it never executes"
         )
 
@@ -98,5 +98,5 @@ __all__ = [
     "SandboxBackend",
     "SandboxBackendError",
     "SandboxBackendStateError",
-    "SandboxBackendUnavailable",
+    "SandboxBackendUnavailableError",
 ]
