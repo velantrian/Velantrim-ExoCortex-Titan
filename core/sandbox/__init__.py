@@ -21,13 +21,23 @@ from .contracts import (
     SandboxSpec,
     SandboxStatus,
 )
+from .security import (
+    DEFAULT_RUNTIME_SECURITY_PROFILE,
+    RUNTIME_SECURITY_PROFILE_VERSION,
+    RuntimeSecurityProfile,
+    SandboxAdmissionError,
+)
 
 __all__ = [
     "ArtifactRef",
+    "DEFAULT_RUNTIME_SECURITY_PROFILE",
     "ExecutionReceipt",
     "NetworkPolicy",
     "NullBackend",
+    "RUNTIME_SECURITY_PROFILE_VERSION",
     "ResourceLimits",
+    "RuntimeSecurityProfile",
+    "SandboxAdmissionError",
     "SandboxBackend",
     "SandboxBackendError",
     "SandboxBackendStateError",
