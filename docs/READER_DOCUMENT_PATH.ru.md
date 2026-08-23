@@ -1,8 +1,11 @@
 # 📚 Titan Reader — поэтапное чтение длинных документов
 
-**Статус:** `PR #374 READY FOR REVIEW CANDIDATE · POST-V1 · EXPLICIT FOREGROUND ONLY · NO CANON AUTHORITY`
+**Статус:** `PR #374 MERGED · IN MAIN · POST-V1 · EXPLICIT FOREGROUND ONLY · NO CANON AUTHORITY`
 
-Этот путь соединяет уже существующие компоненты Reader Core в один явный пользовательский сценарий:
+**Accepted remediation head:** `c374ccf01ea1b73ff3c3012dce3cc4b45e84c4ef`  
+**Merged/main checkpoint:** `b298ce65b2e9a50aaa0cabdf7772c73fd578ef91`
+
+Этот путь соединяет уже существующие компоненты Reader Core в один явный пользовательский сценарий. Он присутствует в `main`, но сам факт merge не означает production/runtime authorization, Operator GO, memory/Canon write authority или закрытие Issue #120.
 
 ```text
 PDF / DOCX / EPUB / TXT / MD
@@ -112,7 +115,7 @@ DEGRADED
 
 Первый проход использует выбранный `ReaderMode`. Затем существующий `CoverageMap` и `SelectiveReReadPlanner` определяют, какие units требуют повторного внимания.
 
-PR #374 исполняет **не более одного** такого reread round в рамках одной явной CLI-команды. Он не создаёт background worker, scheduler или бесконечный autonomous loop.
+Merged Reader path исполняет **не более одного** такого reread round в рамках одной явной CLI-команды. Он не создаёт background worker, scheduler или бесконечный autonomous loop.
 
 Только reread task с явно назначенным самим `SelectiveReReadPlanner` значением `ReaderMode` может повторно вызвать `SemanticReader`. Задачи без `ReaderMode` (например действия, требующие отдельного разрешения exception target или inspection) **не превращаются автоматически в скрытый `DEEP` LLM-вызов**; они остаются видимой открытой работой.
 
@@ -170,13 +173,13 @@ Remote document text может передаваться только через
 3. Global synthesis остаётся source-linked interpretation candidate, а не epistemic verdict.
 4. Один bounded reread round не гарантирует, что любой проблемный документ станет `COMPLETE`; возможны `COMPLETE_WITH_OPEN_WORK` или `DEGRADED`.
 5. Machine-readable open-work detail можно расширять в будущем, но отсутствие richer UI metadata не скрывает сам факт remaining/deferred work и не является authority boundary.
-6. Issue #120 остаётся отдельной программой production evidence: реальные rights-cleared корпуса, независимая human annotation, benchmark/calibration, shadow burn-in и Operator decision этим PR не закрываются.
+6. Issue #120 остаётся отдельной программой production evidence: реальные rights-cleared корпуса, независимая human annotation, benchmark/calibration, shadow burn-in и Operator decision PR #374 не закрывает.
 
 ## 🧭 Почему Reader не идёт через `/ingest/text`
 
 `/ingest/text` — существующий governed memory/write path. Для чтения книги это неправильная граница: сначала документ должен быть прочитан и разобран как источник, а уже отдельное последующее решение может определить, какие source-linked claims вообще имеют право быть предложены memory admission.
 
-Поэтому PR #374 использует:
+Поэтому merged Reader path использует:
 
 ```text
 FileIngester → RawSource → Reader Core

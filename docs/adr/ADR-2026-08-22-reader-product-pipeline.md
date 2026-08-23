@@ -2,7 +2,15 @@
 
 ## Status
 
-`READY FOR REVIEW IN PR #374 · PROPOSED · POST-V1 · GITHUB_AND_NOTION · NO RUNTIME AUTHORITY`
+`ACCEPTED · MERGED IN PR #374 · POST-V1 · GITHUB_AND_NOTION · NO RUNTIME AUTHORITY`
+
+Accepted remediation head:
+
+`c374ccf01ea1b73ff3c3012dce3cc4b45e84c4ef`
+
+Merged/main checkpoint:
+
+`b298ce65b2e9a50aaa0cabdf7772c73fd578ef91`
 
 ## Context
 
@@ -103,14 +111,14 @@ Deferred. Existing `LlmReaderAdapter` deliberately restricts trusted model contr
 
 ## Evidence and completion
 
-PR #374 is ready for review but remains unmerged. Merge requires:
+PR #374 was merged after bounded remediation and exact-head verification on accepted head `c374ccf01ea1b73ff3c3012dce3cc4b45e84c4ef`. The resulting squash merge/main checkpoint is `b298ce65b2e9a50aaa0cabdf7772c73fd578ef91`.
 
-- focused tests and repository CI green on the final exact head;
-- documentation accurately reflecting lifecycle and limitations;
-- existing `Velantrim Titan 9.0` Notion record synchronized/read back to that final exact head;
-- review showing no unresolved P0/P1 authority, provenance, hidden-write, or hidden-provider-call blocker;
-- final head/main race check and the appropriate owner decision.
+Post-merge verification recorded:
 
-The current exact head and current `main` are intentionally recorded in PR/Notion evidence rather than hard-coded here, because editing this file would itself create another head.
+- focused and repository CI green on the accepted exact head;
+- `R374-01` fixed;
+- no unresolved P0/P1 authority, provenance, hidden-write, or hidden-provider-call blocker in the bounded remediation re-review;
+- GitHub and `Velantrim Titan 9.0` Notion lifecycle evidence reconciled to the merged state;
+- no production/runtime authorization created by merge.
 
 This ADR does not close Issue #120. Production Reader evidence remains externally blocked on real corpora, independent adjudicated labels, benchmark/calibration, shadow burn-in and explicit operator decision.
