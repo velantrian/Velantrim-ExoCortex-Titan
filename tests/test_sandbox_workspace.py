@@ -35,10 +35,14 @@ def test_workspace_manifest_is_deterministic_and_sorted() -> None:
         "/etc/passwd",
         "./file.txt",
         "src/../file.txt",
+        "src//file.txt",
+        "C:/Windows/System32/config",
+        "C:\\Windows\\System32\\config",
+        "\\\\server\\share\\file.txt",
         "",
     ],
 )
-def test_workspace_file_rejects_traversal_or_absolute_paths(path: str) -> None:
+def test_workspace_file_rejects_traversal_absolute_or_ambiguous_paths(path: str) -> None:
     with pytest.raises(WorkspaceManifestError):
         WorkspaceFile(path=path, sha256=DIGEST_A, size_bytes=1)
 
