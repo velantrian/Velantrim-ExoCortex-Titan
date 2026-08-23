@@ -1,9 +1,17 @@
-"""Bounded sandbox contracts for Titan.
+"""Bounded sandbox contracts and backend interfaces for Titan.
 
-This package defines data contracts only. It does not execute commands,
-start containers, access Docker/Podman, or grant runtime authority.
+The package defines data contracts plus non-executing backend boundaries. It
+does not itself start containers, shell out, access Docker/Podman, or grant
+runtime authority.
 """
 
+from .backend import (
+    NullBackend,
+    SandboxBackend,
+    SandboxBackendError,
+    SandboxBackendStateError,
+    SandboxBackendUnavailable,
+)
 from .contracts import (
     ArtifactRef,
     ExecutionReceipt,
@@ -18,7 +26,12 @@ __all__ = [
     "ArtifactRef",
     "ExecutionReceipt",
     "NetworkPolicy",
+    "NullBackend",
     "ResourceLimits",
+    "SandboxBackend",
+    "SandboxBackendError",
+    "SandboxBackendStateError",
+    "SandboxBackendUnavailable",
     "SandboxRun",
     "SandboxSpec",
     "SandboxStatus",
