@@ -59,21 +59,23 @@ class VerifiedWorkspaceBlob:
 
 @dataclass(frozen=True, slots=True)
 class VerifiedWorkspace:
-    """Fully verified in-memory inputs bound to one exact manifest identity."""
+    """Fully verified in-memory inputs bound to one exact manifest."""
 
-    manifest_id: str
+    manifest: WorkspaceManifest
     files: tuple[VerifiedWorkspaceBlob, ...]
 
     def __post_init__(self) -> None:
-        if not self.manifest_id.strip():
-            raise WorkspaceMaterializationError("manifest_id must be non-empty")
         files = tuple(sorted(tuple(self.files), key=lambda item: item.file.path))
-        seen: set[str] = set()
-        for item in files:
-            if item.file.path in seen:
-                raise WorkspaceMaterializationError("verified workspace paths must be unique")
-            seen.add(item.file.path)
+        descriptors = tuple(item.file for item in files)
+        if descriptors != self.manifest.files:
+            raise WorkspaceMaterializationError(
+                "verified workspace files do not match the bound manifest"
+            )
         object.__setattr__(self, "files", files)
+
+    @property
+    def manifest_id(self) -> str:
+        return self.manifest.manifest_id
 
 
 class WorkspaceMaterializer:
@@ -89,7 +91,7 @@ class WorkspaceMaterializer:
                     f"unable to resolve admitted blob for {item.path}"
                 ) from exc
             verified.append(VerifiedWorkspaceBlob(file=item, payload=payload))
-        return VerifiedWorkspace(manifest_id=manifest.manifest_id, files=tuple(verified))
+        return VerifiedWorkspace(manifest=manifest, files=tuple(verified))
 
 
 __all__ = [
