@@ -38,7 +38,10 @@ class StructuredElementResolution:
 
 _ELEMENT_KIND_BY_TYPE = {
     "title": ContentKind.HEADING,
-    "header": ContentKind.HEADING,
+    # Unstructured Header can represent a running/page header rather than a
+    # semantic document heading. Preserve the parser-owned text without
+    # promoting it into hierarchy that the source metadata does not prove.
+    "header": ContentKind.TEXT,
     "table": ContentKind.TABLE,
     "image": ContentKind.FIGURE,
     "picture": ContentKind.FIGURE,
