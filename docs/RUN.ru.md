@@ -1,428 +1,254 @@
-# 🚀 Пошаговое руководство по запуску Velantrim на своём ПК
+# 🚀 Velantrim Titan — установка и первый запуск
 
-> Написано специально для тебя — предполагаем что Python уже есть.
-> Читай последовательно, не пропускай шаги.
-
----
-
-## 📋 Что понадобится
-
-- **Python 3.11 или новее** (проверь: `python --version`)
-- **Git** (для клонирования репозитория)
-- **Windows/macOS/Linux** — всё работает везде
+> Это **канонический путь первого запуска Titan V1** для обычного пользователя.
+> Старые инструкции с архивами v8.x, ручной миграцией SQLite и поштучной установкой пакетов больше не являются актуальным способом установки.
 
 ---
 
-## Шаг 1 — Проверь Python
+## ✅ Что получится после этих шагов
+
+После первого запуска Titan автоматически:
+
+- проверит, что используется Python 3.11+;
+- проверит целостность checkout по ключевым файлам;
+- создаст локальное виртуальное окружение `.venv`;
+- установит минимальные зависимости server runtime;
+- создаст `.env`, если его ещё нет;
+- сгенерирует случайный `VELANTRIM_API_KEY` вместо общего dev-key;
+- оставит network/remote-data policy в безопасном fail-closed режиме;
+- запустит FastAPI только на `127.0.0.1`;
+- дождётся `/health` и откроет локальную Web Console.
+
+LLM **не нужен для первого запуска**. Titan стартует с `LLM_PROVIDER=none`; подключение модели — отдельный следующий этап настройки.
+
+---
+
+## 📋 Требования
+
+Нужно только:
+
+- **Python 3.11 или новее**;
+- **Git**;
+- доступ к Python Package Index при первом запуске, чтобы установить server dependencies;
+- Windows, macOS или Linux.
+
+Проверь Python:
 
 ```bash
 python --version
-# Должно быть: Python 3.11.x или 3.12.x или 3.13.x
-# Если меньше 3.11 → скачай с python.org
+```
+
+На Windows, если команда `python` не найдена, но установлен Python Launcher:
+
+```powershell
+py -3.11 --version
 ```
 
 ---
 
-## Шаг 2 — Распакуй архивы в нужном порядке
-
-У тебя есть несколько архивов. Применяй в таком порядке:
-
-```
-1. velantrim_FULL_v8.4.0.zip         ← основа (аудит-фиксы)
-2. velantrim_file_parsers_v2.zip     ← парсеры файлов
-3. velantrim_file_generators_v1.zip  ← генераторы файлов
-4. velantrim_etap3_integration.zip   ← интеграция
-5. velantrim_patch13.zip             ← Causal Graph + Living Context (этот архив)
-```
-
-**Как распаковать каждый:**
+## 1. Получи Titan
 
 ```bash
-# Создай папку проекта
-mkdir velantrim_project
-cd velantrim_project
-
-# Распакуй первый архив
-unzip ~/Downloads/velantrim_FULL_v8.4.0.zip
-
-# Посмотри что внутри
-ls
-
-# Распакуй остальные поверх (они добавляют новые файлы)
-unzip -o ~/Downloads/velantrim_file_parsers_v2.zip
-unzip -o ~/Downloads/velantrim_file_generators_v1.zip
-unzip -o ~/Downloads/velantrim_etap3_integration.zip
-unzip -o ~/Downloads/velantrim_patch13.zip
+git clone https://github.com/velantrian/Velantrim-ExoCortex-Titan.git
+cd Velantrim-ExoCortex-Titan
 ```
 
-**На Windows** используй правый клик → "Извлечь всё", или установи 7-Zip.
-
----
-
-## Шаг 3 — Создай виртуальное окружение
-
-Виртуальное окружение — это изолированное место для зависимостей.
-Не устанавливай пакеты в глобальный Python — это плохая практика.
+Если репозиторий уже скачан:
 
 ```bash
-# В папке проекта
-python -m venv venv
-
-# Активация:
-# Windows:
-venv\Scripts\activate
-
-# macOS / Linux:
-source venv/bin/activate
-
-# Должно появиться (venv) в начале строки терминала
+git pull --ff-only
 ```
 
 ---
 
-## Шаг 4 — Установи базовые зависимости
+## 2. Запусти bootstrap
+
+### Windows
+
+```powershell
+python scripts/bootstrap_titan.py
+```
+
+или через Python Launcher:
+
+```powershell
+py -3.11 scripts/bootstrap_titan.py
+```
+
+### macOS / Linux
 
 ```bash
-# Сначала обнови pip
-python -m pip install --upgrade pip
+python3 scripts/bootstrap_titan.py
+```
 
-# Установи основное (всегда нужно)
-pip install fastapi "uvicorn[standard]" python-dotenv pydantic httpx
+Первый запуск может установить зависимости в `.venv`. Последующие запуски используют уже подготовленное окружение.
 
-# Тесты
-pip install pytest pytest-asyncio pytest-cov
+---
+
+## 3. Открой Console
+
+По умолчанию bootstrap открывает:
+
+```text
+http://127.0.0.1:8755/console/
+```
+
+Если браузер не открылся автоматически — открой этот адрес вручную.
+
+Проверка сервера:
+
+```text
+http://127.0.0.1:8755/health
+```
+
+Остановить Titan:
+
+```text
+Ctrl+C
 ```
 
 ---
 
-## Шаг 5 — Настрой переменные окружения
+## 🔐 Что происходит с `.env`
 
-```bash
-# Скопируй шаблон
-cp .env.example .env
-
-# Открой .env в редакторе и заполни:
-# На Windows:
-notepad .env
-
-# На macOS:
-open -e .env
-
-# На Linux:
-nano .env
-```
-
-**Что ОБЯЗАТЕЛЬНО заполнить в .env:**
+Если `.env` отсутствует, bootstrap создаёт его из `.env.example` и задаёт безопасные локальные значения:
 
 ```env
-# Сгенерируй ключ командой:
-# python -c "import secrets; print(secrets.token_urlsafe(32))"
-VELANTRIM_API_KEY=вставь_сюда_ключ
-
-# Пути к базам данных (можно оставить дефолтные)
-VELANTRIM_DB_PATH=./data/velantrim.db
-VELANTRIM_NGRAM_DB=./data/velantrim_ngram.db
-
-# LLM провайдер (none = заглушка для разработки)
+VELANTRIM_API_KEY=<случайно сгенерированный ключ>
+VELANTRIM_ALLOW_OPEN=false
+VELANTRIM_NETWORK_MODE=deny
+VELANTRIM_REMOTE_DATA_MODE=never
 LLM_PROVIDER=none
 ```
 
----
+Если `.env` уже существует, пользовательские provider/network-настройки **не переписываются**. Если ключ пустой, bootstrap только заполняет `VELANTRIM_API_KEY`.
 
-## Шаг 6 — Создай папку для данных
-
-```bash
-mkdir -p data
-```
+`.env` и `.venv` исключены из Git и не должны коммититься.
 
 ---
 
-## Шаг 7 — Примени SQLite миграцию
+## ⚙️ Полезные параметры
 
-Это добавляет новые таблицы в базу данных для Causal Graph и Living Context:
+Запустить без автоматического открытия браузера:
 
 ```bash
-# Если база ещё не существует — она создастся автоматически при первом запуске.
-# Если уже есть — применяем миграцию:
-
-python -c "
-import sqlite3
-import os
-
-db_path = os.getenv('VELANTRIM_DB_PATH', './data/velantrim.db')
-with open('migrations/008_add_relations.sql') as f:
-    sql = f.read()
-conn = sqlite3.connect(db_path)
-conn.executescript(sql)
-conn.close()
-print('Миграция применена успешно!')
-"
+python scripts/bootstrap_titan.py --no-browser
 ```
+
+Использовать другой порт:
+
+```bash
+python scripts/bootstrap_titan.py --port 8765
+```
+
+Не разрешать bootstrap устанавливать отсутствующие зависимости:
+
+```bash
+python scripts/bootstrap_titan.py --no-install
+```
+
+В этом режиме он завершится с понятной ошибкой, если `.venv` ещё не подготовлено.
 
 ---
 
-## Шаг 8 — Запусти базовые тесты
+## 🛠️ Частые проблемы
+
+### Python ниже 3.11
+
+Bootstrap завершится до любых изменений и сообщит обнаруженную версию.
+
+Установи Python 3.11+ и повтори команду.
+
+### Не удалось создать `.venv`
+
+Убедись, что каталог проекта доступен на запись и в установленном Python присутствует модуль `venv`.
+
+На некоторых Linux-дистрибутивах пакет `venv` устанавливается отдельно системным package manager.
+
+### Не удалось установить зависимости
+
+Проверь интернет-доступ и доступ к Python package index. Bootstrap не скрывает вывод `pip`, поэтому исходная ошибка остаётся видимой.
+
+После исправления причины просто запусти ту же команду снова.
+
+### Порт 8755 уже занят
+
+Либо останови старый Titan, либо используй другой порт:
 
 ```bash
-# Только тесты без внешних зависимостей (всегда должны работать)
-pytest tests/test_causal_graph.py -v
-
-# Тесты Understanding Layer
-pytest tests/test_understanding_layer.py -v
-
-# MVP benchmark с отчётом
-pytest tests/test_affordance_mvp.py -v -s
+python scripts/bootstrap_titan.py --port 8765
 ```
 
-**Ожидаемый результат:**
-```
-tests/test_causal_graph.py ...............     ← 45+ тестов
-tests/test_understanding_layer.py ..........  ← 11 тестов
-tests/test_affordance_mvp.py ..........        ← 10 тестов
+Bootstrap **не убивает чужие процессы автоматически**.
 
-╔══════════════════════════════════════╗
-║  📊 MVP Benchmark Results            ║
-║  Precision: 0.xxx                    ║
-║  Recall:    0.xxx                    ║
-║  F1:        0.xxx                    ║
-║  Go/No-Go:  🟡 ...                  ║
-╚══════════════════════════════════════╝
-```
+### Сервер завершился во время старта
+
+Bootstrap сообщит код завершения. Ошибка самого `uvicorn/server.py` остаётся в терминале прямо перед сообщением bootstrap.
+
+### `/health` не стал доступен
+
+Bootstrap ждёт готовность до 45 секунд. Если сервер не становится доступен, он завершает запуск с ошибкой вместо ложного сообщения «готово».
 
 ---
 
-## Шаг 9 — Запусти все тесты
+## 🤖 Следующий шаг: подключить модель
+
+После успешного первого запуска Titan остаётся local-only и не отправляет данные удалённым моделям автоматически.
+
+Для осознанного подключения OpenAI, DeepSeek, Gemini, OpenRouter или Anthropic используй канонический Stage 3 путь:
+
+[`docs/PROVIDER_SETUP.ru.md`](PROVIDER_SETUP.ru.md)
+
+Коротко:
 
 ```bash
-# Все тесты проекта
-pytest tests/ -v
-
-# С покрытием
-pytest tests/ -v --cov=core --cov-report=term-missing
-
-# Только быстрые (без e2e)
-pytest tests/ -v -m "not e2e"
+python scripts/configure_provider.py
 ```
+
+Конфигуратор скрыто запросит API-ключ и отдельно потребует явное подтверждение remote network + prompt/context egress. Без такого подтверждения `.env` не меняется.
 
 ---
 
-## Шаг 10 — Запусти сервер
+## 🧑‍💻 Для разработчика
+
+Ручной dev-путь остаётся доступен и не является обязательным для обычного пользователя:
 
 ```bash
-# Запуск FastAPI сервера
-uvicorn server:app --host 0.0.0.0 --port 8000 --reload
-
-# Должно появиться:
-# INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+python -m venv .venv
+source .venv/bin/activate                  # Windows: .venv\Scripts\activate
+python -m pip install -e ".[server,dev]"
+uvicorn server:app --port 8000 --reload
 ```
+
+Полный тестовый набор:
+
+```bash
+python -m pytest tests/ -v --tb=short
+```
+
+API docs по умолчанию могут быть отключены. Не используй наличие `/docs` как критерий успешного первого запуска; каноническая проверка — `/health` и Web Console.
 
 ---
 
-## Шаг 11 — Проверь что всё работает
+## 🐳 Docker
 
-Открой браузер и перейди по адресу:
+Для hardened deployment существует отдельный операторский путь в корневом `README.md` и `docs/operations/hardened-production-profile.md`.
 
-```
-http://localhost:8000/health
-```
-
-Должен увидеть что-то вроде:
-```json
-{
-  "status": "healthy",
-  "version": "8.5.0",
-  ...
-}
-```
-
-**Проверь API документацию:**
-```
-http://localhost:8000/docs
-```
-
-Там интерактивный интерфейс Swagger — можно тестировать все endpoints прямо в браузере.
+Он **не заменяет** этот first-run путь: этот документ предназначен для человека, который хочет впервые локально запустить Titan и открыть интерфейс.
 
 ---
 
-## Шаг 12 — Попробуй Causal Graph через API
+## 🎯 Граница этапа
 
-В Swagger (http://localhost:8000/docs) найди endpoint и попробуй:
+Bootstrap решает только **Installation + First Run**.
 
-```bash
-# Через curl
-curl -X POST http://localhost:8000/facts \
-  -H "X-Api-Key: ВАШ_КЛЮЧ" \
-  -H "Content-Type: application/json" \
-  -d '{"fact_id": "f1", "claim": "Вода нужна для жизни", "confidence": 0.99}'
+Он намеренно не:
 
-curl -X POST http://localhost:8000/facts \
-  -H "X-Api-Key: ВАШ_КЛЮЧ" \
-  -H "Content-Type: application/json" \
-  -d '{"fact_id": "f2", "claim": "Жизнь существует на Земле", "confidence": 0.99}'
+- включает удалённую модель автоматически;
+- меняет remote egress authority;
+- включает research/autonomous layers;
+- подключает file ingestion;
+- изменяет TruthGate;
+- создаёт новую runtime authority.
 
-# Добавить каузальную связь
-curl -X POST http://localhost:8000/relations \
-  -H "X-Api-Key: ВАШ_КЛЮЧ" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "from_fact_id": "f1",
-    "to_fact_id": "f2",
-    "relation_type": "enables",
-    "confidence": 0.95
-  }'
-```
-
----
-
-## 🛠️ Частые проблемы и решения
-
-### "ModuleNotFoundError: No module named 'core'"
-
-```bash
-# Убедись что ты в корневой папке проекта
-ls core/  # должен видеть файлы
-
-# Запускай из корня
-pytest tests/ -v
-# НЕ из подпапки tests/
-```
-
-### "ImportError: No module named 'fastapi'"
-
-```bash
-# Виртуальное окружение не активировано
-source venv/bin/activate   # macOS/Linux
-venv\Scripts\activate      # Windows
-
-# Или зависимости не установлены
-pip install fastapi uvicorn
-```
-
-### "RuntimeError: VELANTRIM_API_KEY is not set"
-
-```bash
-# Ключ не задан в .env
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-# Скопируй результат в .env: VELANTRIM_API_KEY=...
-```
-
-### "sqlite3.OperationalError: no such table: relations"
-
-```bash
-# Миграция не применена
-python -c "
-import sqlite3
-with open('migrations/008_add_relations.sql') as f:
-    sql = f.read()
-conn = sqlite3.connect('./data/velantrim.db')
-conn.executescript(sql)
-conn.close()
-print('OK')
-"
-```
-
-### "pytest: command not found"
-
-```bash
-# Убедись что venv активирован, затем:
-pip install pytest
-```
-
-### Тест падает с "fact_id not found"
-
-```bash
-# Базовая БД не инициализирована. Запусти сервер один раз:
-uvicorn server:app --port 8000
-# Он создаст таблицы при старте.
-# Потом останови (Ctrl+C) и запусти тесты.
-```
-
----
-
-## 📦 Установка опциональных зависимостей
-
-### Для улучшения парсера (Этап 1):
-
-```bash
-# PDF
-pip install pymupdf           # PyMuPDF — быстрый fallback
-pip install marker-pdf        # Лучший PDF парсер 2026
-
-# Аудио
-pip install faster-whisper    # 4× быстрее openai-whisper
-
-# OCR
-pip install pytesseract       # + нужен системный tesseract
-# Ubuntu: sudo apt install tesseract-ocr tesseract-ocr-rus
-# macOS:  brew install tesseract tesseract-lang
-```
-
-### Для улучшения AffordanceLinker (Variant C):
-
-```bash
-# Лемматизация русского языка
-pip install pymorphy2
-
-# После установки — перезапусти benchmark тест:
-pytest tests/test_affordance_mvp.py -v -s
-# F1 должен вырасти на 5-15%
-```
-
-### Для генераторов файлов (Этап 2):
-
-```bash
-pip install reportlab         # PDF
-pip install python-docx       # Word
-pip install python-pptx       # PowerPoint
-pip install openpyxl          # Excel
-```
-
----
-
-## 🔱 Структура проекта (итог)
-
-```
-velantrim_project/
-│
-├── core/                       ← Ядро Velantrim
-│   ├── memory.py               ← ESM, bi-temporal
-│   ├── pipeline.py             ← Оркестратор запросов
-│   ├── truth_gate.py           ← TruthGate (v8.4.4 с NLI)
-│   ├── mhi.py                  ← Memory Health Index
-│   ├── causal_graph.py         ← 🆕 Causal Graph (Patch 13)
-│   ├── living_context.py       ← 🆕 Living Context (Patch 14)
-│   ├── understanding_layer.py  ← 🆕 Understanding Layer
-│   ├── affordance_linker.py    ← 🆕 Variant C MVP
-│   ├── file_parsers/           ← Парсеры 60+ форматов
-│   ├── file_generators/        ← Генераторы PDF/DOCX/PPTX/...
-│   └── velantrim_reports/      ← Готовые шаблоны отчётов
-│
-├── tests/                      ← Тесты
-│   ├── test_causal_graph.py    ← 🆕 45+ тестов Causal Graph
-│   ├── test_understanding_layer.py ← 🆕 11 тестов
-│   ├── test_affordance_mvp.py  ← 🆕 10 тестов + benchmark
-│   └── ... остальные тесты
-│
-├── migrations/
-│   └── 008_add_relations.sql   ← 🆕 SQLite миграция
-│
-├── data/                       ← SQLite базы (в .gitignore)
-│   ├── velantrim.db
-│   └── velantrim_ngram.db
-│
-├── server.py                   ← FastAPI сервер
-├── .env                        ← Твои настройки (в .gitignore)
-├── .env.example                ← Шаблон
-└── pyproject.toml              ← Зависимости
-```
-
----
-
-## 💬 Если что-то пошло не так
-
-Скопируй вывод ошибки и пришли мне в чат. Обычно это:
-1. Ошибка импорта → не установлена зависимость
-2. Ошибка SQLite → не применена миграция
-3. Ошибка API key → не заполнен .env
-
-Большинство проблем решается в 2 строки. 🔱
+Настройка LLM/provider выполняется отдельно и только после явного opt-in по [`docs/PROVIDER_SETUP.ru.md`](PROVIDER_SETUP.ru.md).

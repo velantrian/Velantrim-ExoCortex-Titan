@@ -1,0 +1,134 @@
+{
+  "schema_version": 2,
+  "document_role": "AI_PROJECT_STATUS_OVERVIEW",
+  "audience": "AI_AGENT",
+  "canonicality": {
+    "is_canon": false,
+    "is_runtime_authority": false,
+    "is_merge_authority": false,
+    "is_production_authorization": false,
+    "freshness_rule": "READ_THIS_ORIENTATION_FIRST_THEN_LIVE_VERIFY_CHANGING_FACTS; LIVE_GITHUB_AND_EXACT_SHA_OVERRIDE_ON_CONFLICT"
+  },
+  "snapshot": {
+    "date": "2026-08-22",
+    "repository": "velantrian/Velantrim-ExoCortex-Titan",
+    "stage10_merged_main_sha": "f72b93cb044fc317752430e12d75217313997338",
+    "status": "TITAN_V1_CLOSURE_CANDIDATE",
+    "interpretation": "Stages 1-10 are merged and closed. Stage 11 is the only active predefined stage. If this closure record is merged to main after exact-head CI, CodeQL and aggregate success, interpret the resulting main state as TITAN_V1_DONE. Do not invent Stage 12 or reopen P2/P3 research as mandatory V1 work."
+  },
+  "status_semantics": [
+    "PROPOSED != IMPLEMENTED",
+    "IMPLEMENTED != TESTED",
+    "TESTED != WIRED",
+    "WIRED != ENABLED",
+    "ENABLED != OBSERVED",
+    "OBSERVED != PRODUCTION_AUTHORIZED"
+  ],
+  "core_invariants": [
+    "research != runtime",
+    "spec != implementation",
+    "integration != authority transfer",
+    "retrieval != evidence",
+    "validation != admission",
+    "receipt != truth",
+    "identity != authority",
+    "model output != Canon",
+    "CI green != production authorization",
+    "merge != runtime activation",
+    "pilot != production evidence"
+  ],
+  "titan_v1_execution_contract": {
+    "goal": "Finish Titan as an ordinary-user product rather than indefinitely improving architecture.",
+    "one_active_stage_only": true,
+    "mandatory_scope_rule": "Only a current P0/P1 may reopen required V1 work. P2/P3 and research remain backlog.",
+    "finish_condition": "P0=0, P1=0, bounded pilot passed, V1 product targets reached, Stage 11 closure merged, then TITAN V1 — DONE."
+  },
+  "product_stages": [
+    {"stage": 1, "name": "Current Product Reality Audit", "status": "DONE"},
+    {"stage": 2, "name": "Installation + First Run", "status": "DONE"},
+    {"stage": 3, "name": "Model / Provider Setup", "status": "DONE"},
+    {"stage": 4, "name": "Core User Experience", "status": "DONE"},
+    {"stage": 5, "name": "Files / Data / Tools E2E", "status": "DONE"},
+    {"stage": 6, "name": "Continuity / State / Restart", "status": "DONE"},
+    {"stage": 7, "name": "Failure / Recovery", "status": "DONE"},
+    {"stage": 8, "name": "Packaging / Update / Operations", "status": "DONE"},
+    {"stage": 9, "name": "End-to-End Acceptance", "status": "DONE"},
+    {"stage": 10, "name": "Bounded Pilot", "status": "DONE"},
+    {"stage": 11, "name": "Titan V1 Closure", "status": "DONE_WHEN_THIS_CLOSURE_CANDIDATE_IS_PRESENT_ON_MAIN_AFTER_GREEN_GATES"}
+  ],
+  "p0_p1": {
+    "p0_open": 0,
+    "p1_open": 0,
+    "closed_v1_p1": [
+      {"id": "P1-01", "name": "Installation / first run fragmented", "status": "CLOSED", "stage": 2},
+      {"id": "P1-02", "name": "Provider setup vs fail-closed egress", "status": "CLOSED", "stage": 3},
+      {"id": "P1-03", "name": "Files user E2E wiring", "status": "CLOSED", "stage": 5},
+      {"id": "P1-04", "name": "Release / update lifecycle", "status": "CLOSED", "stage": 8},
+      {"id": "P1-05", "name": "Legacy TruthGate duplicate evidence-token cardinality", "status": "CLOSED", "stage": 5}
+    ]
+  },
+  "key_stage_evidence": {
+    "stage_2": {"pr": 360, "merge_sha": "42b212e005420adf674794155707512c2e09edec", "result": "CROSS_PLATFORM_BOOTSTRAP_ACCEPTED"},
+    "stage_3": {"pr": 364, "merge_sha": "d3a3fa04081b6399011b27b10082c146b7306e6c", "result": "BOUNDED_PROVIDER_ONBOARDING_ACCEPTED"},
+    "stage_5": {"pr": 366, "merge_sha": "7126a96fe061f9590f42bc7ddc916e2c1529132d", "result": "FILES_TOOLS_E2E_AND_D1_CLOSED"},
+    "stage_6": {"pr": 367, "merge_sha": "487e5213b942418ebdc1529b70e3288f413c4dd3", "result": "RESTART_CONTINUITY_PROVED"},
+    "stage_7": {"pr": 368, "merge_sha": "10d31847838fddb9d05594381cda997a7bbc530a", "result": "FAILURE_RECOVERY_ACCEPTED"},
+    "stage_8": {"pr": 369, "merge_sha": "b8349b1430298f7c3a39771f678fb90a472b2450", "result": "BOUNDED_UPDATE_LIFECYCLE_ACCEPTED"},
+    "stage_9": {
+      "pr": 370,
+      "merge_sha": "93134ecde44475c82f28b2eac4fab6eacd10b3e4",
+      "result": "REAL_CHROMIUM_E2E_PASS",
+      "flow": "Chromium -> Console composer -> /chat -> Validated memory -> DOM reply",
+      "external_llm_required": false
+    },
+    "stage_10": {
+      "pr": 371,
+      "merge_sha": "f72b93cb044fc317752430e12d75217313997338",
+      "result": "BOUNDED_PILOT_5_OF_5_PASS",
+      "production_authorized": false,
+      "remote_canon": false,
+      "external_llm_required": false,
+      "scenarios": [
+        "startup_health",
+        "validated_memory_chat",
+        "file_ingest",
+        "mcp_reader_tools",
+        "restart_continuity"
+      ]
+    }
+  },
+  "bounded_v1_readiness_estimates": {
+    "note": "Engineering estimates relative only to the frozen bounded V1 scope; not authorization metrics.",
+    "architecture_fitness_percent": 90,
+    "core_capabilities_percent": 92,
+    "installation_percent": 95,
+    "user_e2e_percent": 93,
+    "integration_percent": 92,
+    "failure_recovery_percent": 90,
+    "ux_operations_percent": 88
+  },
+  "stable_architecture_context": {
+    "runtime_authority": false,
+    "operator_go": false,
+    "production_authorized": false,
+    "remote_canon": "FORBIDDEN"
+  },
+  "p2_p3_backlog_not_mandatory_for_v1": [
+    "full typed EvidenceReference to Evidence Admission architecture",
+    "trusted evidence registry",
+    "NLI contradiction subsystem",
+    "GraphRAG/Louvain improvements",
+    "all-provider response integrity expansion",
+    "additional providers",
+    "new telemetry frameworks",
+    "new authority router",
+    "speculative cognitive capabilities"
+  ],
+  "closure_rule": "If this file and docs/TITAN_V1_CLOSURE.ru.md are present on main as the result of a Stage 11 PR whose exact head passed full CI, CodeQL and aggregate merge evidence, then Stage 11 is DONE and the productization status is TITAN_V1_DONE.",
+  "stop_conditions": [
+    "do not treat this document as live proof; verify GitHub and exact SHA",
+    "do not infer production authorization from CI, merge, validation, receipt, acceptance, or pilot",
+    "do not reopen architecture unless a new current P0/P1 proves it necessary",
+    "after Stage 11 closure do not invent an additional mandatory stage"
+  ]
+}
