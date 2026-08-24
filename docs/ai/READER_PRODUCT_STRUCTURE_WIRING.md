@@ -2,12 +2,12 @@
 
 ## Status
 
-`OWNER REVIEW CLEAN · DRAFT PR · NOT IN MAIN · READ-SIDE ONLY · NO AUTHORITY EXPANSION`
+`OWNER REVIEW CLEAN · READY-FOR-REVIEW · NOT IN MAIN · READ-SIDE ONLY · NO AUTHORITY EXPANSION`
 
 Parent dependency PR #381 is merged on `main` as
 `6cfe3a9252652fd6439f0ffcd499857e4b549a48`.
 
-This slice is restacked directly on merged `main` and carries only the bounded product-wiring delta. Fresh bounded owner review is sufficient; current verdict is `P0=0 · P1=0`. No external reviewer is required. Exact-head CI and aggregate merge evidence remain mandatory.
+This slice is based directly on merged `main` and carries only the bounded product-wiring delta. Fresh bounded owner review is sufficient; current verdict is `P0=0 · P1=0`. No external reviewer is required. Exact-head CI and aggregate merge evidence remain mandatory.
 
 ## Purpose
 
@@ -51,6 +51,24 @@ only for `structure_map=None`.
 parser-compatible seam on a fresh pipeline instance. This keeps ordinary Reader behavior
 stable and makes the new path independently removable/reviewable.
 
+## CI remediations
+
+The first main-target run exposed a mypy assignment mismatch because the existing pipeline
+field is concretely typed as `DeterministicDocumentStructureParser`. The exact-map adapter
+now inherits that existing parser class while fully overriding `parse()`; the same exact
+source/map validation still runs before the map is returned.
+
+The next exact-head run exposed a test-fixture defect rather than a product failure: the
+negative revision test tried to construct a `DocumentStructureMap` whose map revision and
+section revisions disagreed, so the immutable Reader Core contract correctly rejected the
+fixture before product wiring was reached. The test now changes the map and all section
+revisions together, producing an internally valid map that is nevertheless bound to the
+wrong source revision. Product wiring must then reject it with
+`ReaderProductStructureWiringError` as intended.
+
+Neither remediation changes the public pipeline API, fallback semantics, exact binding
+rules, or authority boundaries.
+
 ## Owner review result
 
 The current bounded delta has been reviewed at owner level with `P0=0` and `P1=0`.
@@ -67,5 +85,5 @@ production authorization.
 
 ## Verification rule
 
-Only exact-head CI for this PR after its main-based restack counts. Parent/ancestor workflow
-results are historical evidence and are not transferred.
+Only exact-head CI for the current PR head counts. Parent/ancestor workflow results are
+historical evidence and are not transferred.
