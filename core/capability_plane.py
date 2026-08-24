@@ -68,7 +68,7 @@ class CapabilityManifest:
     needs_principal: bool
 
     @classmethod
-    def from_tool(cls, tool: ToolDef) -> "CapabilityManifest":
+    def from_tool(cls, tool: ToolDef) -> CapabilityManifest:
         return cls(
             name=tool.name,
             description=tool.description,
