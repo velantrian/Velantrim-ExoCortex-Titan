@@ -43,6 +43,8 @@ PR is eventually accepted/merged.
 ## Mapping policy
 
 Known parser element classes map conservatively to existing Reader `ContentKind` values.
+`Title` may map to `HEADING`, but Unstructured `Header` is preserved as `TEXT` at level 0
+because it can represent a running/page header and does not itself prove semantic hierarchy.
 Unknown parser classes remain `UNKNOWN` with an explicit warning. There is no semantic
 classifier, model call, fuzzy match, or type guessing.
 
@@ -60,7 +62,7 @@ Any source mismatch returns `typed_elements_source_mismatch` and emits no map.
 - page/bbox semantics;
 - table cells or figure payload identity;
 - parent-child element hierarchy;
-- DOCX/EPUB typed bridges;
+- DOCX/EPUB typed-element product activation;
 - structure-aware retrieval;
 - PageIndex/RAPTOR/GraphRAG;
 - session persistence.

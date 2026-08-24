@@ -50,6 +50,19 @@ def test_exact_unstructured_elements_materialize_typed_reader_sections() -> None
     )
 
 
+def test_parser_header_is_preserved_without_heading_promotion() -> None:
+    resolution = build_exact_element_structure(
+        _source("Running page header"),
+        {"elements": [{"type": "Header", "text": "Running page header"}]},
+    )
+
+    assert resolution.structure_map is not None
+    section = resolution.structure_map.sections[0]
+    assert section.content_kind is ContentKind.TEXT
+    assert section.level == 0
+    assert section.heading == "Header 1"
+
+
 def test_exact_offsets_slice_back_to_element_text_plus_owned_separator() -> None:
     elements = [
         {"type": "NarrativeText", "text": "alpha"},
