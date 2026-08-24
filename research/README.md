@@ -17,6 +17,7 @@ The root [`README.md`](../README.md) links to this research directory as the ent
 | [`RAPID_CALIBRATED_ORIENTATION.md`](RAPID_CALIBRATED_ORIENTATION.md) | read-only orientation research | research / proposed |
 | [`D16_EXECUTIVE_CONTROL_CONTRACT.md`](D16_EXECUTIVE_CONTROL_CONTRACT.md) | proposal vocabulary; no active controller authority | research / proposed |
 | [`FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md`](FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md) | failure, lifecycle and reliability boundaries | research / proposed |
+| [`HYPERIA_LINEAGE_REASSESSMENT_2026-08-24.md`](HYPERIA_LINEAGE_REASSESSMENT_2026-08-24.md) | current-code reassessment of residual Hyperia/v7.5/v8 ideas; separates one bounded engineering slice from parked research | triaged research + offline prototype |
 | [`WORKING_DESK_RESEARCH_MODE.md`](WORKING_DESK_RESEARCH_MODE.md) | bounded task-aware research composition | research / proposed |
 
 Adaptive retrieval and selective-memory architecture is tracked separately at [`../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md`](../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md).
