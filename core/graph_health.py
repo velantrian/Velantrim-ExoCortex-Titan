@@ -2,7 +2,7 @@
 
 This module extends, but does not replace, ``CausalGraph.integrity_report()``.
 It deliberately owns no graph mutation, repair, truth, evidence, Canon, policy or
-admission authority.  The existing integrity report remains the base structural
+admission authority. The existing integrity report remains the base structural
 health signal; this module adds topology observations that were missing from it:
 
 - high total-degree hubs;
@@ -11,14 +11,14 @@ health signal; this module adds topology observations that were missing from it:
 - small structural islands (a conservative proxy for topology dead zones).
 
 The report never changes relation weights or epistemic state and never auto-repairs
-anything.  Thresholds are explicit inputs so a future benchmark can calibrate them
+anything. Thresholds are explicit inputs so a future benchmark can calibrate them
 without silently changing truth or retrieval semantics.
 """
 from __future__ import annotations
 
 from collections import defaultdict, deque
 from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from core.causal_graph import CausalGraph
@@ -44,7 +44,7 @@ class GraphHealthThresholds:
 DEFAULT_THRESHOLDS = GraphHealthThresholds()
 
 
-def _active_fact_ids(graph: "CausalGraph") -> list[str]:
+def _active_fact_ids(graph: CausalGraph) -> list[str]:
     rows = graph._conn.execute(  # noqa: SLF001 - bounded diagnostic over canonical owner
         """
         SELECT fact_id
@@ -57,7 +57,7 @@ def _active_fact_ids(graph: "CausalGraph") -> list[str]:
 
 
 def _relation_pairs(
-    graph: "CausalGraph",
+    graph: CausalGraph,
     *,
     only_approved: bool,
 ) -> list[tuple[str, str]]:
@@ -91,13 +91,17 @@ def _components(
     return sorted(components, key=lambda item: (-len(item), item))
 
 
+def _degree_sort_key(row: dict[str, Any], field: str) -> tuple[int, str]:
+    return (-cast(int, row[field]), cast(str, row["fact_id"]))
+
+
 def topology_report(
-    graph: "CausalGraph",
+    graph: CausalGraph,
     *,
     thresholds: GraphHealthThresholds = DEFAULT_THRESHOLDS,
     only_approved: bool = True,
     sample_limit: int = 20,
-) -> dict:
+) -> dict[str, Any]:
     """Return deterministic read-only topology diagnostics.
 
     ``only_approved=True`` is the conservative default: pending/hypothetical
@@ -123,22 +127,19 @@ def topology_report(
     total_degree = {fact_id: len(adjacency.get(fact_id, set())) for fact_id in fact_ids}
     fan_out = {fact_id: len(out_neighbors.get(fact_id, set())) for fact_id in fact_ids}
 
-    hubs = sorted(
-        (
-            {"fact_id": fact_id, "degree": degree}
-            for fact_id, degree in total_degree.items()
-            if degree > thresholds.hub_total_degree
-        ),
-        key=lambda row: (-row["degree"], row["fact_id"]),
-    )
-    fan_out_anomalies = sorted(
-        (
-            {"fact_id": fact_id, "fan_out": degree}
-            for fact_id, degree in fan_out.items()
-            if degree > thresholds.fan_out_degree
-        ),
-        key=lambda row: (-row["fan_out"], row["fact_id"]),
-    )
+    hubs: list[dict[str, Any]] = [
+        {"fact_id": fact_id, "degree": degree}
+        for fact_id, degree in total_degree.items()
+        if degree > thresholds.hub_total_degree
+    ]
+    hubs.sort(key=lambda row: _degree_sort_key(row, "degree"))
+
+    fan_out_anomalies: list[dict[str, Any]] = [
+        {"fact_id": fact_id, "fan_out": degree}
+        for fact_id, degree in fan_out.items()
+        if degree > thresholds.fan_out_degree
+    ]
+    fan_out_anomalies.sort(key=lambda row: _degree_sort_key(row, "fan_out"))
 
     components = _components(fact_ids, adjacency)
     nontrivial = [component for component in components if len(component) > 1]
@@ -150,11 +151,7 @@ def topology_report(
     ]
 
     largest_component_size = len(components[0]) if components else 0
-    connected_fraction = (
-        largest_component_size / len(fact_ids)
-        if fact_ids
-        else 1.0
-    )
+    connected_fraction = largest_component_size / len(fact_ids) if fact_ids else 1.0
 
     attention_reasons: list[str] = []
     if hubs:
@@ -194,15 +191,15 @@ def topology_report(
 
 
 def extended_integrity_report(
-    graph: "CausalGraph",
+    graph: CausalGraph,
     *,
     thresholds: GraphHealthThresholds = DEFAULT_THRESHOLDS,
     only_approved: bool = True,
     sample_limit: int = 20,
-) -> dict:
+) -> dict[str, Any]:
     """Compose the existing integrity report with additive topology diagnostics."""
 
-    base = dict(graph.integrity_report())
+    base: dict[str, Any] = dict(graph.integrity_report())
     base["topology"] = topology_report(
         graph,
         thresholds=thresholds,
