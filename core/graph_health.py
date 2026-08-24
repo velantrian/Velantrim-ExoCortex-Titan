@@ -33,12 +33,15 @@ class GraphHealthThresholds:
     small_component_max_nodes: int = 3
 
     def __post_init__(self) -> None:
-        if self.hub_total_degree < 1:
-            raise ValueError("hub_total_degree must be >= 1")
-        if self.fan_out_degree < 1:
-            raise ValueError("fan_out_degree must be >= 1")
-        if self.small_component_max_nodes < 1:
-            raise ValueError("small_component_max_nodes must be >= 1")
+        for name, value in (
+            ("hub_total_degree", self.hub_total_degree),
+            ("fan_out_degree", self.fan_out_degree),
+            ("small_component_max_nodes", self.small_component_max_nodes),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise TypeError(f"{name} must be an int")
+            if value < 1:
+                raise ValueError(f"{name} must be >= 1")
 
 
 DEFAULT_THRESHOLDS = GraphHealthThresholds()
@@ -63,7 +66,14 @@ def _relation_pairs(
 ) -> list[tuple[str, str]]:
     sql = "SELECT from_fact_id, to_fact_id FROM relations"
     if only_approved:
-        sql += " WHERE review_state = 'approved'"
+        # Default topology is intentionally stricter than review_state alone.
+        # Explicitly-approved hypothetical/pending material is still not allowed
+        # to make the canonical topology look healthier.
+        sql += (
+            " WHERE review_state = 'approved'"
+            " AND truth_status = 'validated'"
+            " AND knowledge_status IN ('known', 'inferred')"
+        )
     sql += " ORDER BY from_fact_id, to_fact_id"
     rows = graph._conn.execute(sql).fetchall()  # noqa: SLF001
     return [(str(row[0]), str(row[1])) for row in rows]
@@ -104,10 +114,13 @@ def topology_report(
 ) -> dict[str, Any]:
     """Return deterministic read-only topology diagnostics.
 
-    ``only_approved=True`` is the conservative default: pending/hypothetical
-    relations are not allowed to make the canonical topology look healthier.
-    The result is diagnostic metadata only; it is not evidence and does not
-    alter ``CausalGraph.integrity_report().integrity_score``.
+    ``only_approved=True`` uses the conservative canonical-topology eligibility
+    rule: review_state=approved, truth_status=validated, and knowledge_status in
+    {known, inferred}. Pending, unknown, hypothetical or hypothesis relations are
+    therefore excluded even if one field was explicitly marked approved.
+
+    The result is diagnostic metadata only; it is not evidence and does not alter
+    ``CausalGraph.integrity_report().integrity_score``.
     """
 
     sample_limit = max(1, int(sample_limit))
@@ -144,9 +157,11 @@ def topology_report(
     components = _components(fact_ids, adjacency)
     nontrivial = [component for component in components if len(component) > 1]
     disconnected_nontrivial = max(0, len(nontrivial) - 1)
+    # An island must be structurally separate from a larger/equal primary region.
+    # A tiny graph with one connected component is not itself an "island".
     small_islands = [
         component
-        for component in nontrivial
+        for component in nontrivial[1:]
         if len(component) <= thresholds.small_component_max_nodes
     ]
 
@@ -167,6 +182,9 @@ def topology_report(
         "version": "graph-health-v1",
         "diagnostic_only": True,
         "only_approved_relations": bool(only_approved),
+        "default_relation_eligibility": (
+            "approved+validated+known_or_inferred" if only_approved else "all_relations"
+        ),
         "thresholds": asdict(thresholds),
         "active_fact_count": len(fact_ids),
         "approved_relation_rows": len(pairs),
