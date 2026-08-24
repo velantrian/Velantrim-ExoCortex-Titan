@@ -161,7 +161,18 @@ class McpHandler:
 
     def _tools_for(self, capability: str) -> list[dict[str, Any]]:
         tools = self.registry.for_capability(capability)
-        return [t.to_manifest() for t in tools.values()]
+        # Fail closed against a stale derived visibility index. ToolRegistry's
+        # canonical ToolDef is the source for minimum-capability semantics;
+        # has_tool() recomputes that relation directly instead of trusting the
+        # cached _by_capability membership alone. This protects MCP even if a
+        # tool name is re-registered at a higher capability and an old index
+        # entry survives.
+        return [
+            tool.to_manifest()
+            for name, tool in tools.items()
+            if self.registry.has_tool(name, capability)
+            and (not tool.destructive or capability == "admin")
+        ]
 
     def _tools_call(
         self,
@@ -175,7 +186,7 @@ class McpHandler:
         arguments = params.get("arguments")
 
         available = self.registry.for_capability(capability)
-        if name not in available:
+        if name not in available or not self.registry.has_tool(name, capability):
             return make_error(
                 msg_id,
                 -32602,
