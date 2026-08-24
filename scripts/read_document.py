@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from dataclasses import replace
 from hashlib import sha256
 import json
 import os
@@ -12,6 +13,7 @@ from typing import Iterable
 
 from core.document_structure import DocumentStructureFormat
 from core.reader_core_contracts import CoverageAxis
+from core.reader_parse_bridge import resolve_reader_document_format
 from core.reader_product_pipeline import (
     ReaderProductConfig,
     ReaderProductPipeline,
@@ -112,10 +114,12 @@ def resolve_reader_from_env() -> LlmReaderAdapter:
     return LlmReaderAdapter(provider=provider, model=model, api_key=api_key)
 
 
-def document_format_for(path: Path) -> DocumentStructureFormat:
-    if path.suffix.lower() in {".md", ".markdown"}:
-        return DocumentStructureFormat.MARKDOWN
-    return DocumentStructureFormat.PLAIN_TEXT
+def document_format_for(path: Path, parsed=None) -> DocumentStructureFormat:
+    structured_data = getattr(parsed, "structured_data", None)
+    return resolve_reader_document_format(
+        path_suffix=path.suffix,
+        structured_data=structured_data,
+    ).document_format
 
 
 def raw_source_for(path: Path, text: str) -> RawSource:
@@ -202,11 +206,24 @@ async def read_document(path: Path, *, mode: ReaderMode):
     parsed = parse_local_file(path)
     reader = resolve_reader_from_env()
     source = raw_source_for(path, parsed.extracted_text)
+    structure_resolution = resolve_reader_document_format(
+        path_suffix=path.suffix,
+        structured_data=parsed.structured_data,
+    )
     config = ReaderProductConfig(initial_mode=mode)
     result = await ReaderProductPipeline(reader, config=config).read(
         source,
-        document_format=document_format_for(path),
+        document_format=structure_resolution.document_format,
     )
+    if structure_resolution.reason_code == "parser_declared_markdown":
+        result = replace(
+            result,
+            warnings=tuple(
+                dict.fromkeys(
+                    (*result.warnings, "reader_structure:parser_declared_markdown")
+                )
+            ),
+        )
     return parsed, result
 
 
