@@ -1,5 +1,17 @@
 # 🗺️ Velantrim — Карта-реконсиляция архитектуры (single source of truth)
 
+> ⚠️ **HISTORICAL DOCUMENT / SUPERSEDED AUTHORITY MODEL (2026-08-24)**
+>
+> Этот документ сохранён как исторический снимок архитектурного мышления мая 2026 и **не является текущим источником authority semantics**.
+>
+> Актуальные корректировки:
+> - `Graph = Truth` больше не является допустимым буквальным инвариантом: graph/retrieval может организовывать claims/evidence, но `retrieval != evidence != truth`.
+> - OpenClaw остаётся внешним проектом и не получает никакой authority внутри Velantrim, однако отдельные операционные паттерны могут быть заимствованы в Titan за явными границами.
+> - текущая bounded политика заимствования описана в `docs/architecture/OPENCLAW_ADOPTION_BOUNDARY_V0_1.md`.
+> - федеративные ownership boundaries между Crystal / Titan / Native Kernel / Mentaury Soul / Continuum / Mentaury Kernel имеют приоритет над формулами и ownership-допущениями ниже.
+>
+> Ниже сохранён исходный текст для истории и трассируемости решений.
+
 > **Дата:** 2026-05-31 · **Автор:** Velantrim × Claude
 > **Зачем:** дизайн Velantrim разошёлся на **4 параллельные линии** в разных документах и чатах,
 > которые НЕ согласованы по именам компонентов, нумерации слоёв и даже канонической формуле.
@@ -31,7 +43,7 @@
 Одни и те же «L1/L2/L3» означают **разное** в каждой линии:
 
 | Слой | 🟢 CODE V8.6 | 🟠 OpenClaw | 🟣 Strategy | 🔵 Correspondence |
-|---|---|---|---|---|
+|---|---|---|---|
 | **L0** | Raw Memory | raw events (files) | episodic | сырой ввод |
 | **L1** | ESM-факты (SQLite) | episodes | episodic | рабочий контекст |
 | **L1.5** | Velum / Salience | — | — | Velum / context hint |
