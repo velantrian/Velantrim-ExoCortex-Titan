@@ -38,7 +38,8 @@ approximate page mapping is permitted.
 
 ### Supported conservative element mapping
 
-- `Title` / `Header` → `HEADING`
+- `Title` → `HEADING`
+- `Header` → `TEXT` (Unstructured `Header` may be a running/page header and is not promoted into Reader hierarchy)
 - `Table` → `TABLE`
 - `Image` / `Picture` / `Figure` → `FIGURE`
 - `FigureCaption` / `ImageCaption` / `Caption` → `CAPTION`
@@ -48,7 +49,9 @@ approximate page mapping is permitted.
 - common narrative/list/address/formula text → `TEXT`
 - unknown parser types → `UNKNOWN` plus an explicit parser warning
 
-Unknown values are not promoted to a guessed known type.
+Known parser labels are mapped only to semantics the upstream label actually supports.
+Unknown values are not promoted to a guessed known type, and document/page headers are not
+promoted to semantic section headings.
 
 ## Exact offset rule
 
@@ -63,7 +66,7 @@ returns no structure map and reports `typed_elements_source_mismatch`.
 
 This PR proves only the parser-metadata → exact typed `DocumentStructureMap` contract.
 It deliberately does **not** modify `ReaderProductPipeline` yet. Product wiring should be a
-small follow-up after independent review of exact source binding and content-kind mapping.
+small follow-up after bounded review of exact source binding and content-kind mapping.
 
 This avoids combining:
 
@@ -81,7 +84,7 @@ This slice does not provide:
 - table cell semantics;
 - figure binary/image identity;
 - parent/child hierarchy between typed elements;
-- DOCX/EPUB typed-element support;
+- DOCX/EPUB typed-element product activation;
 - structure-aware retrieval;
 - PageIndex/RAPTOR/GraphRAG;
 - durable ReaderSession resume.
@@ -109,6 +112,7 @@ runtime activation, or production authorization.
 Focused tests must prove:
 
 - known Unstructured element types map to the intended `ContentKind`;
+- `Title` remains a semantic heading while `Header` is preserved without heading promotion;
 - emitted sections exactly partition the immutable Reader text;
 - source mismatch fails closed with no fuzzy recovery;
 - malformed/missing elements create no map;
