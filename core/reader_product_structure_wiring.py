@@ -13,7 +13,10 @@ from __future__ import annotations
 
 from hashlib import sha256
 
-from core.document_structure import DocumentStructureFormat
+from core.document_structure import (
+    DeterministicDocumentStructureParser,
+    DocumentStructureFormat,
+)
 from core.reader_core_contracts import DocumentStructureMap
 from core.reader_product_pipeline import (
     ReaderProductConfig,
@@ -28,7 +31,7 @@ class ReaderProductStructureWiringError(ReaderProductPipelineError):
     """Raised when a prebuilt structure cannot bind exactly to Reader source."""
 
 
-class _ExactPrebuiltStructureParser:
+class _ExactPrebuiltStructureParser(DeterministicDocumentStructureParser):
     """Parser-compatible adapter returning one already-validated immutable map."""
 
     def __init__(self, structure_map: DocumentStructureMap) -> None:

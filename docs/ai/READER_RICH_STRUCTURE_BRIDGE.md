@@ -2,13 +2,11 @@
 
 ## Status
 
-`PR #380 · DRAFT · NOT IN MAIN · GITHUB_AND_NOTION`
-
-Exact branch base:
-
-`main@a138a622820fabe45ed32273bca0884e6651d9a8`
+`PR #380 · OWNER REVIEW CLEAN · READY-FOR-REVIEW · NOT IN MAIN · GITHUB_AND_NOTION SYNCED`
 
 This record describes only the bounded parser-structure bridge proposed by PR #380. It does not modify or supersede the merged lifecycle of Reader Product PR #374.
+
+Fresh bounded owner review is sufficient for this slice. Current owner verdict: `P0=0 · P1=0`; no external reviewer is required. Exact-head CI and aggregate merge evidence remain mandatory.
 
 ## Problem
 
@@ -53,7 +51,7 @@ Markdown table text remains part of the corresponding section text. This PR does
 
 Exact `RawSource` text and SHA-256 source revision remain unchanged, so existing SectionCard/source-span provenance continues to bind to the actual text passed into Reader.
 
-## Tests
+## Tests and lifecycle
 
 Focused tests cover:
 
@@ -63,7 +61,7 @@ Focused tests cover:
 - parser-declared Markdown reaches the existing deterministic hierarchy parser and yields separate chapter sections;
 - `scripts/read_document.py` consumes `ParseResult.structured_data`.
 
-Exact-head GitHub CI remains the authoritative execution evidence. No green status should be transferred from PR #374 or another head.
+The branch is synchronized with the live `main` lineage before final merge evidence is accepted. GitHub PR metadata is authoritative for the current exact head. No prior-head status is transferred.
 
 ## Authority boundary
 

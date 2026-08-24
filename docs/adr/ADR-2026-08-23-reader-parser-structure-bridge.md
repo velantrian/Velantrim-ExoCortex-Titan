@@ -1,7 +1,7 @@
 # ADR — Reader parser-structure bridge
 
 **Date:** 2026-08-23  
-**Status:** DRAFT PR DECISION · NOT MERGED · NO RUNTIME/PRODUCTION AUTHORITY  
+**Status:** OWNER REVIEW CLEAN · READY-FOR-REVIEW · NOT MERGED · NO RUNTIME/PRODUCTION AUTHORITY  
 **Documentation impact:** `GITHUB_AND_NOTION`
 
 ## Context
@@ -64,6 +64,15 @@ must not be promoted into Reader structure by heuristic guesswork.
 
 Deferred. Retrieval projections are not the current bottleneck for this bounded defect.
 First preserve structure that Titan already has.
+
+## Review and lifecycle gate
+
+Fresh bounded owner review is sufficient for this slice. The current owner review found
+`P0=0` and `P1=0`; no external reviewer is required. Exact-head CI and aggregate merge
+evidence remain mandatory and are not replaced by owner review.
+
+The branch is synchronized with the live `main` lineage before final merge evidence is
+accepted. GitHub PR metadata is authoritative for the current exact head.
 
 ## Authority and safety boundary
 

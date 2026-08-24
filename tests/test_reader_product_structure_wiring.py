@@ -80,7 +80,15 @@ async def test_missing_prebuilt_structure_preserves_existing_plain_text_path() -
 @pytest.mark.asyncio
 async def test_mismatched_structure_revision_fails_before_reader_execution() -> None:
     source, structure = _source_and_map()
-    bad = replace(structure, source_revision="rev:wrong")
+    wrong_revision = "rev:wrong"
+    bad = replace(
+        structure,
+        source_revision=wrong_revision,
+        sections=tuple(
+            replace(section, source_revision=wrong_revision)
+            for section in structure.sections
+        ),
+    )
 
     with pytest.raises(
         ReaderProductStructureWiringError,
