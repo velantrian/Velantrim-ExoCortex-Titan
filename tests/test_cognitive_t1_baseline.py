@@ -29,23 +29,23 @@ T1_MARKER = "T1_COBALT_ORCHARD_7F31"
 T1_CLAIM = f"The active project codename is {T1_MARKER}."
 
 
-def _is_t1_runtime_module(name: str) -> bool:
-    """Return whether a module belongs to the runtime surface reloaded by T1."""
-    return name == "server" or name.startswith(("server.", "core.", "api."))
-
-
 @pytest.fixture
 def t1_client(tmp_path, monkeypatch):
     """Isolated Titan server with deterministic local-only behavior.
 
-    The fixture temporarily reloads Titan runtime modules so environment-backed
-    configuration points at the per-test stores. Every displaced module is restored
-    afterwards; otherwise this integration test can contaminate later tests in the
-    full suite through process-global ``sys.modules`` state.
+    Keep the already-collected ``core.*`` module graph canonical. Re-importing all
+    core modules in-process creates duplicate class/module singletons while pytest
+    test modules still hold references to the originals; that contaminates later
+    tests. Titan already exposes ``memory.make_store()`` specifically for isolated
+    test dependency injection, so T1 swaps only the documented mutable singletons
+    and reloads the top-level server module that snapshots environment settings.
     """
+    db_path = str(tmp_path / "t1.db")
+    ngram_db_path = str(tmp_path / "t1_ngram.db")
+
     monkeypatch.setenv("VELANTRIM_API_KEY", "test-key")
-    monkeypatch.setenv("VELANTRIM_DB_PATH", str(tmp_path / "t1.db"))
-    monkeypatch.setenv("VELANTRIM_NGRAM_DB", str(tmp_path / "t1_ngram.db"))
+    monkeypatch.setenv("VELANTRIM_DB_PATH", db_path)
+    monkeypatch.setenv("VELANTRIM_NGRAM_DB", ngram_db_path)
     monkeypatch.setenv("CORE_BLOCKS_DB", str(tmp_path / "blocks.db"))
     monkeypatch.setenv("NOTEBOOK_DB", str(tmp_path / "notebook.db"))
     monkeypatch.setenv("LLM_PROVIDER", "none")
@@ -55,33 +55,46 @@ def t1_client(tmp_path, monkeypatch):
     monkeypatch.setenv("ENABLE_VELUM", "0")
     monkeypatch.setenv("ENABLE_ETIR", "0")
 
-    saved_modules = {
-        name: module
-        for name, module in list(sys.modules.items())
-        if _is_t1_runtime_module(name)
-    }
-    for name in saved_modules:
-        sys.modules.pop(name, None)
+    try:
+        from fastapi.testclient import TestClient
+
+        import core.memory as memory_api
+        import core.ngram_index as ngram_api
+        from core.feature_config import clear_config_cache
+    except ImportError as exc:
+        pytest.skip(f"Titan server unavailable: {exc}")
+
+    isolated_store = memory_api.make_store(db_path)
+    isolated_ngram = ngram_api.NGramIndex(ngram_db_path)
+
+    monkeypatch.setattr(memory_api, "_GLOBAL_STORE", isolated_store)
+    monkeypatch.setattr(memory_api, "_L0", isolated_store._l0)
+    monkeypatch.setattr(
+        memory_api,
+        "_DDL_INITIALIZED",
+        isolated_store._ddl_initialized_paths,
+    )
+    monkeypatch.setattr(ngram_api, "_GLOBAL_NGRAM", isolated_ngram)
+
+    # server.py snapshots env and the current injected global store at import time.
+    # Reload only this top-level module; never reload core.* or api.* in-process.
+    saved_server = sys.modules.pop("server", None)
+    clear_config_cache()
 
     try:
-        try:
-            from fastapi.testclient import TestClient
-
-            import server as srv
-            from core.feature_config import clear_config_cache
-        except ImportError as exc:
-            pytest.skip(f"Titan server unavailable: {exc}")
-
-        clear_config_cache()
+        import server as srv
 
         with TestClient(srv.app) as client:
             client.headers.update({"X-Api-Key": "test-key"})
             yield client, srv
     finally:
-        for name in list(sys.modules):
-            if _is_t1_runtime_module(name):
-                sys.modules.pop(name, None)
-        sys.modules.update(saved_modules)
+        isolated_store.close()
+        sys.modules.pop("server", None)
+        if saved_server is not None:
+            sys.modules["server"] = saved_server
+        # Clear the env-derived cache while the fixture is unwinding. The next
+        # caller will rebuild it from the environment restored by monkeypatch.
+        clear_config_cache()
 
 
 def _fact_count(client) -> int:
