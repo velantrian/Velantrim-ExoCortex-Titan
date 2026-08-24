@@ -12,12 +12,16 @@ import sys
 from typing import Iterable
 
 from core.document_structure import DocumentStructureFormat
-from core.reader_core_contracts import CoverageAxis
+from core.reader_core_contracts import CoverageAxis, DocumentStructureMap
 from core.reader_parse_bridge import resolve_reader_document_format
 from core.reader_product_pipeline import (
     ReaderProductConfig,
-    ReaderProductPipeline,
     ReaderProductPipelineError,
+)
+from core.reader_product_structure_wiring import read_with_optional_exact_structure
+from core.reader_structured_elements_bridge import (
+    StructuredElementResolution,
+    build_exact_element_structure,
 )
 from core.readers.llm_adapter import LlmReaderAdapter
 from core.semantic_reader import RawSource, ReaderMode
@@ -131,6 +135,17 @@ def raw_source_for(path: Path, text: str) -> RawSource:
     )
 
 
+def exact_structure_for(parsed, source: RawSource) -> StructuredElementResolution:
+    """Attempt exact parser-element reuse; never guess coordinates or structure."""
+    structured_data = getattr(parsed, "structured_data", None)
+    return build_exact_element_structure(source, structured_data)
+
+
+def selected_structure_map(parsed, source: RawSource) -> DocumentStructureMap | None:
+    """Return only a proven exact typed map; otherwise preserve legacy structure path."""
+    return exact_structure_for(parsed, source).structure_map
+
+
 def _coverage_payload(result) -> dict[str, float | None]:
     return {
         axis.value: result.coverage_map.axis(axis).ratio
@@ -210,18 +225,34 @@ async def read_document(path: Path, *, mode: ReaderMode):
         path_suffix=path.suffix,
         structured_data=parsed.structured_data,
     )
+    typed_resolution = exact_structure_for(parsed, source)
     config = ReaderProductConfig(initial_mode=mode)
-    result = await ReaderProductPipeline(reader, config=config).read(
+    result = await read_with_optional_exact_structure(
+        reader,
         source,
+        structure_map=typed_resolution.structure_map,
         document_format=structure_resolution.document_format,
+        config=config,
     )
+
+    structure_warnings: list[str] = []
+    if typed_resolution.structure_map is not None:
+        structure_warnings.append("reader_structure:exact_typed_elements")
+    elif typed_resolution.reason_code not in {
+        "structured_data_unavailable",
+        "typed_elements_unavailable",
+        "typed_elements_empty",
+    }:
+        structure_warnings.append(
+            f"reader_structure:{typed_resolution.reason_code}:fallback"
+        )
     if structure_resolution.reason_code == "parser_declared_markdown":
+        structure_warnings.append("reader_structure:parser_declared_markdown")
+    if structure_warnings:
         result = replace(
             result,
             warnings=tuple(
-                dict.fromkeys(
-                    (*result.warnings, "reader_structure:parser_declared_markdown")
-                )
+                dict.fromkeys((*result.warnings, *structure_warnings))
             ),
         )
     return parsed, result
