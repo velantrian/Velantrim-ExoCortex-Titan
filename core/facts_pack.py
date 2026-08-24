@@ -15,6 +15,7 @@ Sprint 1a — Этап G1
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -54,6 +55,46 @@ COGNITIVE_MODE_POLICIES: dict[str, dict] = {
 
 # Состояния которые НИКОГДА не попадают к LLM независимо от режима
 ALWAYS_EXCLUDED_STATES = frozenset({"Contradicted", "Collapsed", "Deprecated"})
+
+# A first-ranked RRF contribution is 1 / (60 + 1). With Titan's two-list
+# hybrid retriever, an unrelated candidate can receive one contribution from
+# dense ranking plus another from BM25 matching only stopwords. The pipeline
+# serializes both shapes to four decimals. These exact rank-only shapes are
+# ranking evidence, not sufficient relevance authority by themselves.
+_WEAKEST_RRF_RANK_SCORES = frozenset({
+    round(1.0 / 61.0, 4),
+    round(2.0 / 61.0, 4),
+})
+_RRF_SCORE_EPSILON = 1e-6
+_RELEVANCE_TOKEN_RE = re.compile(r"\w+", re.UNICODE)
+_RELEVANCE_STOPWORDS = frozenset({
+    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
+    "how", "in", "is", "it", "of", "on", "or", "the", "this", "to",
+    "what", "when", "where", "which", "who", "why", "with", "me", "tell",
+    "called", "а", "в", "во", "для", "и", "из", "к", "как", "на", "не",
+    "о", "об", "от", "по", "с", "со", "что", "это", "этот", "эта", "эти",
+    "мне", "скажи",
+})
+
+
+def _relevance_tokens(text: str) -> frozenset[str]:
+    return frozenset(
+        token
+        for token in _RELEVANCE_TOKEN_RE.findall(text.lower())
+        if len(token) >= 3 and token not in _RELEVANCE_STOPWORDS
+    )
+
+
+def _has_lexical_anchor(query: str, claim: str) -> bool:
+    query_tokens = _relevance_tokens(query)
+    return bool(query_tokens and query_tokens & _relevance_tokens(claim))
+
+
+def _is_weakest_rrf_rank_shape(score: float) -> bool:
+    return any(
+        abs(score - weak_score) <= _RRF_SCORE_EPSILON
+        for weak_score in _WEAKEST_RRF_RANK_SCORES
+    )
 
 
 # ── PackedFact ────────────────────────────────────────────────────────────────
@@ -299,6 +340,8 @@ class FactsPackBuilder:
             fact_id = fact.get("fact_id", "unknown")
             claim = fact.get("claim", "")
             source = fact.get("source", "unknown")
+            retrieval_score = float(fact.get("retrieval_score", 0.0))
+            canonical_record = fact.get("canonical_record") is True
 
             # Проверка 1: всегда исключаемые состояния
             if state in ALWAYS_EXCLUDED_STATES:
@@ -330,6 +373,26 @@ class FactsPackBuilder:
                 ))
                 continue
 
+            # Проверка 4: rank-only RRF or a persisted canonical record with
+            # zero retrieval evidence is not relevance authority by itself.
+            # Preserve legacy/non-canonical zero-score behavior: the zero-score
+            # fail-closed branch applies only to canonical records returned by
+            # Titan's real read path.
+            zero_canonical_relevance = (
+                canonical_record and abs(retrieval_score) <= _RRF_SCORE_EPSILON
+            )
+            if (
+                _is_weakest_rrf_rank_shape(retrieval_score)
+                or zero_canonical_relevance
+            ) and not _has_lexical_anchor(query, claim):
+                excluded.append(ExcludedFact(
+                    fact_id=fact_id,
+                    claim=claim,
+                    reason="Weak retrieval without a lexical relevance anchor",
+                    state=state,
+                ))
+                continue
+
             # Прошло все фильтры
             included.append(PackedFact(
                 fact_id=fact_id,
@@ -337,7 +400,7 @@ class FactsPackBuilder:
                 epistemic_state=state,
                 confidence=conf,
                 source=source,
-                retrieval_score=float(fact.get("retrieval_score", 0.0)),
+                retrieval_score=retrieval_score,
                 context_applicability=float(fact.get("context_applicability", 1.0)),
                 causal_summary=fact.get("causal_summary"),
                 living_context=fact.get("living_context"),
