@@ -53,6 +53,12 @@ The first completed result is retained in a bounded process-local cache. A retry
 
 JSON-RPC response IDs are not cached: a replay result is wrapped with the current request ID.
 
+### Oversized responses
+
+A completed side-effecting response may itself be very large. Counting cache entries alone would therefore not bound memory. v0.1 retains at most 64 KiB of replay payload per generic entry.
+
+If the first response exceeds that ceiling, the original caller still receives the original response. The cache stores only a small replay marker. A retry with the same key receives that marker and the tool is **not** re-executed. The marker preserves the original `isError` class but honestly states that the original response body was not retained.
+
 ## Existing durable operation idempotency
 
 `forget_all` already owns a durable `idempotency_key` contract inside its batch-erasure saga. The MCP transport therefore does not invent a competing cache or key namespace for that operation.
@@ -98,6 +104,7 @@ The generic transport cache is:
 
 - process-local;
 - bounded to 1024 completed entries by default;
+- bounded to 64 KiB retained replay payload per entry;
 - lost on restart;
 - not shared across multiple workers or hosts;
 - bypassed when a tool already declares operation-owned durable idempotency.
@@ -137,7 +144,7 @@ This change does not alter:
 4. Read-only tools are not cached.
 5. Existing calls without an idempotency key remain compatible.
 6. Operation-owned durable idempotency is delegated to and never shadowed by the transport cache.
-7. Cache size is bounded.
+7. Cache cardinality and retained replay bytes are bounded.
 8. Batch-derived keys stay within the transport key bound and invalid source headers fail before derivation.
 9. PR #397 stale capability visibility defense remains fail-closed.
 10. No exactly-once, in-flight cross-thread, cross-worker, or post-restart durability claim is made.
