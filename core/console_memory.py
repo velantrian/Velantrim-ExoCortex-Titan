@@ -154,13 +154,17 @@ def extract_memory_candidates(message: str) -> list[dict[str, Any]]:
             }
         )
 
-    explicit_done = False
     m = _EXPLICIT_REMEMBER.search(raw)
     if m:
         add(m.group(1).strip(), 0.95, "explicit_remember")
-        explicit_done = True
+        # An explicit remember command is already the user's consolidation
+        # instruction. Re-scanning the same message as generic clauses can
+        # create a second near-duplicate candidate (for example when the
+        # remembered statement also matches the project category). Treat the
+        # explicit payload as the authoritative candidate for this message.
+        return out[:8]
 
-    if not explicit_done and _SHORT_FACT.search(raw) and len(raw) >= 5:
+    if _SHORT_FACT.search(raw) and len(raw) >= 5:
         add(raw, 0.88, "short_fact_pattern")
 
     for part in _CLAUSE_SPLIT.split(raw):
