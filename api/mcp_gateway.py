@@ -12,7 +12,11 @@ from typing import Any, Callable
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from core.mcp_transport import McpHandler, resolve_authorized_capability
+from core.mcp_transport import (
+    McpHandler,
+    _normalize_idempotency_key,
+    resolve_authorized_capability,
+)
 
 logger = logging.getLogger("velantrim.mcp.gateway")
 
@@ -54,11 +58,14 @@ def _derive_credential_fingerprint(x_api_key: str) -> str:
 def _derive_batch_idempotency_key(base_key: str, message_id: Any) -> str:
     """Derive a stable, bounded key for one JSON-RPC batch item.
 
-    Hashing avoids exceeding the transport's 128-character key limit and keeps
-    arbitrary JSON-RPC string IDs (including Unicode or whitespace) out of the
-    idempotency-key syntax surface. The canonical JSON encoding preserves type,
-    so integer ``1`` and string ``"1"`` remain distinct message identities.
+    The original HTTP key is validated before hashing so derivation cannot turn
+    an invalid overlong/control-character key into an apparently valid digest.
+    Canonical JSON preserves the JSON-RPC ID type, so integer ``1`` and string
+    ``"1"`` remain distinct message identities.
     """
+    normalized = _normalize_idempotency_key(base_key)
+    if normalized is None:
+        raise ValueError("idempotency key is required for batch derivation")
     encoded_id = json.dumps(
         message_id,
         ensure_ascii=False,
@@ -67,7 +74,7 @@ def _derive_batch_idempotency_key(base_key: str, message_id: Any) -> str:
         allow_nan=False,
     )
     digest = hashlib.sha256(
-        f"{base_key}\0{encoded_id}".encode("utf-8")
+        f"{normalized}\0{encoded_id}".encode("utf-8")
     ).hexdigest()
     return f"batch-{digest}"
 
@@ -151,14 +158,10 @@ def register_mcp_routes(
                                 "id": item.get("id"),
                                 "error": {
                                     "code": -32602,
-                                    "message": (
-                                        "JSON-RPC id is not canonical JSON for "
-                                        "batch idempotency"
-                                    ),
+                                    "message": str(exc),
                                 },
                             }
                         )
-                        logger.debug("Invalid batch idempotency id: %s", exc)
                         continue
                 resp = _dispatch(
                     item,
