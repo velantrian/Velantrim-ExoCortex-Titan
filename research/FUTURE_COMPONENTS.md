@@ -3,7 +3,7 @@
 **Status:** `RESEARCH INDEX`  
 **Runtime authority:** none  
 **Canon write authority:** none  
-**Updated:** 2026-08-07
+**Updated:** 2026-08-24
 
 This file is the current entry point for future and external architecture research. Historical feature catalogues are preserved separately and must not be read as current runtime claims.
 
@@ -37,6 +37,28 @@ These items are preserved as future research. They are not active implementation
 
 Detailed boundaries, cheapest experiments and forbidden shortcuts are defined in [`IDEA_INTAKE_PROTOCOL.md`](IDEA_INTAKE_PROTOCOL.md#6-initial-candidate-set-from-the-2026-08-07-audit).
 
+## Triaged candidate tracks — 2026-08-24 lineage reassessment
+
+The historical Hyperia / Titan v7.5 / v8 specifications were re-read against current
+`main`. Most components are already implemented, superseded or deliberately rejected.
+Only the residual bounded slices below remain. Full research cards and decision history
+are in [`HYPERIA_LINEAGE_REASSESSMENT_2026-08-24.md`](HYPERIA_LINEAGE_REASSESSMENT_2026-08-24.md).
+
+| ID | Candidate | State | Return trigger |
+|---|---|---|---|
+| `RT-TOPOLOGY-01` | fan-out prevention and retrieval homeostasis without truth-weight coupling | `R1 · RESEARCH` | topology benchmark proves hub/fan-out concentration or domain starvation harms retrieval |
+| `RT-RANKING-01` | typed ranking features, inverted HyDE keys and ephemeral ReasonGraph | `R0 · RESEARCH` | Reader/multi-hop benchmark misses declared recall, coverage or latency goal |
+| `RT-LIFECYCLE-01` | task-state-informed consolidation scheduling | `R0 · RESEARCH` | long-running task replay shows measurable resume/context-loss or consolidation-cost defect |
+| `RT-RESTORE-01` | evidence-preserving archive restore request with Crystal admission ownership | `R0 · CROSS-PROJECT` | accepted archive/recovery workload requires restoration and cross-project owner contract exists |
+| `RT-GOALS-01` | hierarchical Goal Stack relationships | `R0 · PARKED` | concrete nested-goal workload cannot be represented cleanly by current flat goal model |
+| `RT-REFTRACE-01` | reference decision trace fixtures for replay/regression | `R1 · EVAL-ONLY` | current evaluation fixtures cannot express a required regression case |
+| `RT-RESOURCE-01` | deterministic multi-component RAM/CPU profile budget | `R2 · OFFLINE PROTOTYPE` | supported local runtime profiles require an OOM/contention preflight |
+
+A separate bounded engineering slice, `ENG-GH-01`, adds read-only topology diagnostics
+(hubs, fan-out and disconnected non-trivial components) without changing the existing
+`CausalGraph.integrity_report()` score or adding auto-repair. It is current engineering,
+not a research commitment.
+
 ## Current engineering work that is not research
 
 Do not move these items into the future registry:
@@ -56,9 +78,10 @@ They already have accepted owners, evidence and required completion criteria.
 
 - [`RAPID_CALIBRATED_ORIENTATION.md`](RAPID_CALIBRATED_ORIENTATION.md) — read-only orientation and route proposals;
 - [`D16_EXECUTIVE_CONTROL_CONTRACT.md`](D16_EXECUTIVE_CONTROL_CONTRACT.md) — proposal vocabulary, no active controller authority;
-- [`FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md`](FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md) — failure disposition, memory lifecycle and reliability;
+- [`FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md`](FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md) — failure, lifecycle and reliability boundaries;
 - [`WORKING_DESK_RESEARCH_MODE.md`](WORKING_DESK_RESEARCH_MODE.md) — bounded task-aware research composition;
-- [`../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md`](../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md) — adaptive routing, selective memory and rebuildable projections.
+- [`../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md`](../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md) — adaptive routing, selective memory and rebuildable projections;
+- [`HYPERIA_LINEAGE_REASSESSMENT_2026-08-24.md`](HYPERIA_LINEAGE_REASSESSMENT_2026-08-24.md) — residual lineage ideas after current-code deduplication and authority review.
 
 ## Promotion rule
 
