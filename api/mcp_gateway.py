@@ -51,6 +51,27 @@ def _derive_credential_fingerprint(x_api_key: str) -> str:
     return f"api:{digest}"
 
 
+def _derive_batch_idempotency_key(base_key: str, message_id: Any) -> str:
+    """Derive a stable, bounded key for one JSON-RPC batch item.
+
+    Hashing avoids exceeding the transport's 128-character key limit and keeps
+    arbitrary JSON-RPC string IDs (including Unicode or whitespace) out of the
+    idempotency-key syntax surface. The canonical JSON encoding preserves type,
+    so integer ``1`` and string ``"1"`` remain distinct message identities.
+    """
+    encoded_id = json.dumps(
+        message_id,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    )
+    digest = hashlib.sha256(
+        f"{base_key}\0{encoded_id}".encode("utf-8")
+    ).hexdigest()
+    return f"batch-{digest}"
+
+
 async def _read_json_body(request: Request) -> Any:
     raw = await request.body()
     if not raw:
@@ -114,12 +135,31 @@ def register_mcp_routes(
                 if not isinstance(item, dict):
                     continue
                 # One HTTP retry key may safely cover a JSON-RPC batch only by
-                # deriving a stable per-message key from the JSON-RPC id.
-                # Notifications have no response id and therefore do not get a
-                # derived retry key from the shared HTTP header.
+                # deriving a stable, bounded per-message key from the JSON-RPC
+                # id. Notifications have no response id and therefore do not
+                # get a derived retry key from the shared HTTP header.
                 item_key = None
                 if transport_key is not None and item.get("id") is not None:
-                    item_key = f"{transport_key}:{item['id']}"
+                    try:
+                        item_key = _derive_batch_idempotency_key(
+                            transport_key, item["id"]
+                        )
+                    except (TypeError, ValueError) as exc:
+                        responses.append(
+                            {
+                                "jsonrpc": "2.0",
+                                "id": item.get("id"),
+                                "error": {
+                                    "code": -32602,
+                                    "message": (
+                                        "JSON-RPC id is not canonical JSON for "
+                                        "batch idempotency"
+                                    ),
+                                },
+                            }
+                        )
+                        logger.debug("Invalid batch idempotency id: %s", exc)
+                        continue
                 resp = _dispatch(
                     item,
                     capability=capability,
