@@ -237,7 +237,14 @@ class McpHandler:
 
     def _tools_for(self, capability: str) -> list[dict[str, Any]]:
         tools = self.registry.for_capability(capability)
-        return [t.to_manifest() for t in tools.values()]
+        # Defense-in-depth carried from PR #397: never trust a possibly stale
+        # derived visibility index without re-checking the canonical ToolDef.
+        return [
+            tool.to_manifest()
+            for name, tool in tools.items()
+            if self.registry.has_tool(name, capability)
+            and (not tool.destructive or capability == "admin")
+        ]
 
     def _tools_call(
         self,
@@ -251,7 +258,7 @@ class McpHandler:
         name = params.get("name", "")
         arguments = params.get("arguments")
         available = self.registry.for_capability(capability)
-        if name not in available:
+        if name not in available or not self.registry.has_tool(name, capability):
             return make_error(
                 msg_id,
                 -32602,
