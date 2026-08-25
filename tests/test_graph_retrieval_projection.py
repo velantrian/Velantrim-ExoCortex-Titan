@@ -89,3 +89,46 @@ def test_budget_rejects_non_positive_values() -> None:
         assert "max_nodes" in str(exc)
     else:
         raise AssertionError("expected ValueError")
+
+
+class _LeakyActivationStore(MemoryGraphStore):
+    def spreading_activation(self, *args, **kwargs):
+        raise AssertionError("projection must not invoke unbounded backend activation")
+
+
+def test_projection_never_invokes_backend_activation_outside_its_bounded_graph() -> None:
+    store = _LeakyActivationStore()
+    for index in range(12):
+        store.upsert_edge("root", f"n{index}")
+
+    result = GraphRetrievalProjection(
+        store,
+        budget=GraphProjectionBudget(
+            max_hops=1,
+            max_nodes=4,
+            max_neighbors_per_node=2,
+            activation_top_k=2,
+        ),
+    ).expand(["root"])
+
+    assert {node.node_id for node in result.nodes} <= {"root", "n0", "n1"}
+    assert result.truncated is True
+
+
+def test_projection_marks_discarded_communities_as_truncated() -> None:
+    store = MemoryGraphStore()
+    store.upsert_edge("a", "b")
+    store.upsert_edge("c", "d")
+
+    result = GraphRetrievalProjection(
+        store,
+        budget=GraphProjectionBudget(
+            max_hops=1,
+            max_nodes=8,
+            max_neighbors_per_node=4,
+            max_communities=1,
+        ),
+    ).expand(["a", "c"])
+
+    assert len(result.communities) == 1
+    assert result.truncated is True
