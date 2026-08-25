@@ -98,7 +98,7 @@ class TestConfidenceCheck:
 
     def test_precision_requires_high_confidence(self, gate, good_fact):
         good_fact["confidence"] = 0.85  # PRECISION порог 0.9
-        good_fact["metadata"]["evidence_refs"] = ["r"] * 5
+        good_fact["metadata"]["evidence_refs"] = [f"r{i}" for i in range(5)]
         v = gate.evaluate(good_fact, mode=CognitiveMode.PRECISION)
         assert not v.passed
         assert v.reason == "low_confidence"
@@ -125,6 +125,19 @@ class TestEvidenceCheck:
         v = gate.evaluate(good_fact, mode=CognitiveMode.EXPLORATION)
         assert v.passed
 
+    def test_duplicate_legacy_refs_do_not_inflate_cardinality(self, gate, good_fact):
+        good_fact["metadata"] = {"evidence_refs": ["same-ref", "same-ref"]}
+        v = gate.evaluate(good_fact, mode=CognitiveMode.BALANCED)
+        assert not v.passed
+        assert v.reason == "insufficient_evidence"
+        assert v.evidence_count == 1
+
+    def test_distinct_legacy_refs_still_count_separately(self, gate, good_fact):
+        good_fact["metadata"] = {"evidence_refs": ["ref-a", "ref-b"]}
+        v = gate.evaluate(good_fact, mode=CognitiveMode.BALANCED)
+        assert v.passed
+        assert v.evidence_count == 2
+
 
 # ─── Cognitive modes integration ───────────────────────────────────────────
 
@@ -136,9 +149,9 @@ class TestCognitiveModes:
         (CognitiveMode.CREATIVE,    0.7, 2),
     ])
     def test_mode_thresholds_applied(self, gate, good_fact, mode, min_conf, min_ev):
-        # Точно на пороге — должно пройти
+        # Точно на пороге — должно пройти с DISTINCT legacy evidence tokens.
         good_fact["confidence"] = min_conf
-        good_fact["metadata"] = {"evidence_refs": ["r"] * min_ev}
+        good_fact["metadata"] = {"evidence_refs": [f"r{i}" for i in range(min_ev)]}
         v = gate.evaluate(good_fact, mode=mode)
         assert v.passed, f"{mode.value}: confidence={min_conf} evidence={min_ev} должно пройти"
 
