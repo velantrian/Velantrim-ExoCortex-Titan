@@ -181,13 +181,13 @@ def test_side_effect_call_without_key_remains_backward_compatible(monkeypatch) -
     assert calls["count"] == 2
 
 
-def test_transport_key_reuses_operation_owned_idempotency_argument(monkeypatch) -> None:
+def test_transport_key_delegates_to_operation_owned_idempotency_each_retry(monkeypatch) -> None:
     monkeypatch.setenv("VELANTRIM_MCP_MAX_CAPABILITY", "admin")
     seen: list[str | None] = []
 
-    def durable_operation(*, idempotency_key: str | None = None) -> dict[str, str | None]:
+    def durable_operation(*, idempotency_key: str | None = None) -> dict[str, object]:
         seen.append(idempotency_key)
-        return {"idempotency_key": idempotency_key}
+        return {"idempotency_key": idempotency_key, "invocation": len(seen)}
 
     registry = ToolRegistry()
     registry.register(
@@ -215,9 +215,9 @@ def test_transport_key_reuses_operation_owned_idempotency_argument(monkeypatch) 
         key="durable-key",
     )
 
-    assert seen == ["durable-key"]
-    assert _decoded(first) == {"idempotency_key": "durable-key"}
-    assert _decoded(second) == {"idempotency_key": "durable-key"}
+    assert seen == ["durable-key", "durable-key"]
+    assert _decoded(first) == {"idempotency_key": "durable-key", "invocation": 1}
+    assert _decoded(second) == {"idempotency_key": "durable-key", "invocation": 2}
 
 
 def test_conflicting_transport_and_operation_keys_fail_closed(monkeypatch) -> None:
