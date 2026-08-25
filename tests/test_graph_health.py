@@ -244,3 +244,31 @@ def test_thresholds_reject_non_positive_and_non_integer_values() -> None:
             pass
         else:  # pragma: no cover - assertion branch
             raise AssertionError(f"expected validation error for {kwargs}")
+
+
+def test_materialized_inverse_rows_do_not_create_synthetic_outgoing_fanout() -> None:
+    graph = _graph()
+    graph._conn.execute("DELETE FROM relations")  # noqa: SLF001 - isolated public-API fixture
+    graph._conn.commit()  # noqa: SLF001
+
+    # Public CausalGraph writes materialize inverse rows for traversal.
+    graph.add_relation("f0", "f2", "causes")
+    graph.add_relation("f1", "f2", "causes")
+
+    rows = graph._conn.execute(  # noqa: SLF001 - verify canonical materialization
+        "SELECT from_fact_id, to_fact_id, metadata FROM relations ORDER BY relation_id"
+    ).fetchall()
+    assert len(rows) == 4
+    assert sum('"inverse_of"' in str(row[2]) for row in rows) == 2
+
+    report = topology_report(
+        graph,
+        thresholds=GraphHealthThresholds(
+            hub_total_degree=99,
+            fan_out_degree=1,
+            small_component_max_nodes=3,
+        ),
+    )
+
+    assert report["approved_relation_rows"] == 2
+    assert report["fan_out_anomaly_count"] == 0
