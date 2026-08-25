@@ -35,6 +35,22 @@ These items are preserved as future research. They are not active implementation
 | `RT-WORLDMODEL-01` | meta-causal model of causes, motives, invariants, contradictions and unknowns | `R0` | fixed evidence corpus and comparison target against current causal retrieval |
 | `RT-IDENTITY-01` | contestable evidence-bound persona and identity candidates | `R0 · PARKED` | accepted identity admission, consent, correction, supersession, retraction and erasure protocol |
 
+| `RT-SMART-CONTEXT-01` | Smart Context / Context Observer / state-delta / successor-handoff | `R0 · RESEARCH DESIGN · SHADOW CANDIDATE` | explicit owner selection of a bounded shadow prototype; stable typed contract; privacy/retention boundary; replay/evaluation plan; no runtime authority |
+
+### `RT-SMART-CONTEXT-01` boundary
+
+The design contract is [`SMART_CONTEXT_HANDOFF_V0_1.md`](SMART_CONTEXT_HANDOFF_V0_1.md). It is a post-V1 research direction and **not** a Titan Stage 12. It may reuse existing Continuity conversation/thread/context-pack/replay/shadow-runner primitives, but documentation does not establish that those primitives already implement Smart Context semantics.
+
+The shadow candidate must not:
+
+- write Canon or epistemic state;
+- change live answers, reminders or actions;
+- turn an observer summary into user attestation or fact;
+- treat a second AI as independent approval;
+- freeze a context-pressure threshold without evidence;
+- bypass current privacy, retention or authority boundaries;
+- imply that Continuum Experiment 0 or ecosystem integration is authorized.
+
 Detailed boundaries, cheapest experiments and forbidden shortcuts are defined in [`IDEA_INTAKE_PROTOCOL.md`](IDEA_INTAKE_PROTOCOL.md#6-initial-candidate-set-from-the-2026-08-07-audit).
 
 ## Triaged candidate tracks — 2026-08-24 lineage reassessment
