@@ -17,6 +17,7 @@ without silently changing truth or retrieval semantics.
 from __future__ import annotations
 
 from collections import defaultdict, deque
+import json
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, cast
 
@@ -59,12 +60,23 @@ def _active_fact_ids(graph: CausalGraph) -> list[str]:
     return [str(row[0]) for row in rows]
 
 
+def _is_materialized_inverse(metadata: object) -> bool:
+    """Return whether a physical row is the generated inverse of a logical edge."""
+    if not isinstance(metadata, str):
+        return False
+    try:
+        decoded = json.loads(metadata)
+    except json.JSONDecodeError:
+        return False
+    return isinstance(decoded, dict) and bool(decoded.get("inverse_of"))
+
+
 def _relation_pairs(
     graph: CausalGraph,
     *,
     only_approved: bool,
 ) -> list[tuple[str, str]]:
-    sql = "SELECT from_fact_id, to_fact_id FROM relations"
+    sql = "SELECT from_fact_id, to_fact_id, metadata FROM relations"
     if only_approved:
         # Default topology is intentionally stricter than review_state alone.
         # Explicitly-approved hypothetical/pending material is still not allowed
@@ -76,7 +88,14 @@ def _relation_pairs(
         )
     sql += " ORDER BY from_fact_id, to_fact_id"
     rows = graph._conn.execute(sql).fetchall()  # noqa: SLF001
-    return [(str(row[0]), str(row[1])) for row in rows]
+    # CausalGraph materializes inverse rows for traversal.  Diagnostics project
+    # the logical relation once, otherwise an incoming semantic edge is counted
+    # incorrectly as outgoing fan-out on its generated inverse row.
+    return [
+        (str(row[0]), str(row[1]))
+        for row in rows
+        if not _is_materialized_inverse(row[2])
+    ]
 
 
 def _components(
