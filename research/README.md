@@ -10,6 +10,7 @@ The root [`README.md`](../README.md) links to this research directory as the ent
 |---|---|---|
 | [`IDEA_INTAKE_PROTOCOL.md`](IDEA_INTAKE_PROTOCOL.md) | capture, classify and preserve ideas from audits, conversations and external analysis without confusing them with current engineering | research governance contract |
 | [`FUTURE_COMPONENTS.md`](FUTURE_COMPONENTS.md) | current research registry, candidate tracks and return triggers | index |
+| [`SMART_CONTEXT_HANDOFF_V0_1.md`](SMART_CONTEXT_HANDOFF_V0_1.md) | bounded Smart Context / Context Observer / state-delta / successor-handoff research contract | research design · shadow candidate · not runtime authority |
 | [`EXTERNAL_ARCHITECTURE_PATTERNS.md`](EXTERNAL_ARCHITECTURE_PATTERNS.md) | neutral Titan-native patterns derived from external prior art | research / prior art |
 | [`EVALUATION_REPLAY_PROTOCOL.md`](EVALUATION_REPLAY_PROTOCOL.md) | fixed-corpus baseline, replay, fork and structural-diff protocol | partial offline prototype |
 | [`../docs/EVALUATION_REPLAY_QUICKSTART.md`](../docs/EVALUATION_REPLAY_QUICKSTART.md) | command, report classes, critical gates and fixture boundary | PR-ERP-01 implementation guide |
