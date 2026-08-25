@@ -40,7 +40,7 @@ A caller may send:
 Idempotency-Key: <opaque visible-ASCII token up to 128 chars>
 ```
 
-For a side-effecting `tools/call`, Titan binds the key to:
+For a side-effecting `tools/call` that does **not** already own durable idempotency, Titan binds the key to:
 
 ```text
 server-derived caller fingerprint
@@ -55,12 +55,16 @@ JSON-RPC response IDs are not cached: a replay result is wrapped with the curren
 
 ## Existing durable operation idempotency
 
-`forget_all` already owns a durable `idempotency_key` contract inside its batch-erasure saga. The MCP transport therefore does not invent a competing key. When `Idempotency-Key` is supplied and the operation argument is absent, the same transport key is passed into `forget_all(idempotency_key=...)`.
+`forget_all` already owns a durable `idempotency_key` contract inside its batch-erasure saga. The MCP transport therefore does not invent a competing cache or key namespace for that operation.
+
+When `Idempotency-Key` is supplied and the operation argument is absent, the same transport key is passed into `forget_all(idempotency_key=...)`. Every retry is delegated back to the durable operation so it can resume/read back the same batch according to its own state machine. The process-local transport cache is deliberately bypassed for tools declaring `idempotencyArg`.
 
 If both transport and operation keys are supplied and differ, the call fails closed before execution.
 
 ```text
 transport retry key
+        ↓
+validate / reconcile
         ↓
 existing operation idempotency key
         ↓
@@ -72,10 +76,10 @@ durable batch-erasure semantics
 For an HTTP JSON-RPC batch, one HTTP `Idempotency-Key` is deterministically scoped per JSON-RPC item using a fixed-length SHA-256 derivation over:
 
 ```text
-<header-key> + canonical-json(<json-rpc-id>)
+validated <header-key> + canonical-json(<json-rpc-id>)
 ```
 
-The resulting item key is `batch-<sha256>` (70 ASCII characters). This prevents a maximum-length header key or an arbitrary Unicode/whitespace string JSON-RPC ID from overflowing or violating the transport key syntax. JSON-RPC ID type is preserved by canonical JSON, so numeric `1` and string `"1"` derive different item keys.
+The original header key is validated **before** hashing, so derivation cannot turn an overlong or control-character key into an apparently valid digest. The resulting item key is `batch-<sha256>` (70 ASCII characters). JSON-RPC ID type is preserved by canonical JSON, so numeric `1` and string `"1"` derive different item keys; Unicode/whitespace string IDs remain safe because only the digest enters the transport idempotency surface.
 
 Notifications without a JSON-RPC ID do not receive a derived idempotency key from the shared batch header.
 
@@ -90,12 +94,13 @@ A later version may make a key mandatory for selected high-risk operations only 
 
 ## Hard limits / non-claims
 
-The transport cache is:
+The generic transport cache is:
 
 - process-local;
 - bounded to 1024 completed entries by default;
 - lost on restart;
-- not shared across multiple workers or hosts.
+- not shared across multiple workers or hosts;
+- bypassed when a tool already declares operation-owned durable idempotency.
 
 Therefore:
 
@@ -126,12 +131,13 @@ This change does not alter:
 
 ## Acceptance criteria
 
-1. Same caller + same completed side-effecting request + same key replays the completed result without a second execution in the current supported single-worker runtime.
-2. Same caller + same key + different arguments fails closed before a second execution.
+1. Same caller + same completed generic side-effecting request + same key replays the completed result without a second execution in the current supported single-worker runtime.
+2. Same caller + same key + different arguments fails closed before a second generic execution.
 3. Different server-derived callers may independently reuse the same opaque key.
 4. Read-only tools are not cached.
 5. Existing calls without an idempotency key remain compatible.
-6. Existing operation-owned idempotency is reused instead of duplicated.
+6. Operation-owned durable idempotency is delegated to and never shadowed by the transport cache.
 7. Cache size is bounded.
-8. Batch-derived keys stay within the transport key bound for all canonical JSON-RPC IDs.
-9. No exactly-once, in-flight cross-thread, cross-worker, or post-restart durability claim is made.
+8. Batch-derived keys stay within the transport key bound and invalid source headers fail before derivation.
+9. PR #397 stale capability visibility defense remains fail-closed.
+10. No exactly-once, in-flight cross-thread, cross-worker, or post-restart durability claim is made.
