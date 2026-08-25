@@ -119,7 +119,7 @@ class _IdempotencyCache:
 
     This deliberately does not claim cross-process or post-restart exactly-once
     semantics. Durable operation-owned idempotency remains authoritative where
-    it already exists (for example forget_all).
+    it already exists (for example forget_all), so such tools bypass this cache.
     """
 
     def __init__(self, max_entries: int = _DEFAULT_IDEMPOTENCY_CACHE_SIZE) -> None:
@@ -287,6 +287,10 @@ class McpHandler:
 
             if normalized_key is not None:
                 if tool.idempotency_arg:
+                    # The operation already owns durable idempotency/resume
+                    # semantics. Reconcile and forward the transport key, but
+                    # deliberately do NOT shadow that operation with the
+                    # process-local replay cache.
                     supplied = call_kwargs.get(tool.idempotency_arg)
                     if supplied not in (None, "", normalized_key):
                         return make_error(
@@ -295,27 +299,27 @@ class McpHandler:
                             "transport idempotency key conflicts with operation idempotency key",
                         )
                     call_kwargs[tool.idempotency_arg] = normalized_key
+                else:
+                    try:
+                        request_fingerprint = _canonical_request_fingerprint(
+                            tool_name=name,
+                            capability=capability,
+                            arguments=call_kwargs,
+                        )
+                    except ValueError as exc:
+                        return make_error(msg_id, -32602, str(exc))
 
-                try:
-                    request_fingerprint = _canonical_request_fingerprint(
-                        tool_name=name,
-                        capability=capability,
-                        arguments=call_kwargs,
-                    )
-                except ValueError as exc:
-                    return make_error(msg_id, -32602, str(exc))
-
-                caller = credential_fingerprint or "api:anon"
-                cache_scope = (caller, name, normalized_key)
-                state, cached = self._idempotency.get(cache_scope, request_fingerprint)
-                if state == "CONFLICT":
-                    return make_error(
-                        msg_id,
-                        -32602,
-                        "idempotency key was already used with different tool arguments",
-                    )
-                if state == "HIT" and cached is not None:
-                    return make_result(msg_id, cached)
+                    caller = credential_fingerprint or "api:anon"
+                    cache_scope = (caller, name, normalized_key)
+                    state, cached = self._idempotency.get(cache_scope, request_fingerprint)
+                    if state == "CONFLICT":
+                        return make_error(
+                            msg_id,
+                            -32602,
+                            "idempotency key was already used with different tool arguments",
+                        )
+                    if state == "HIT" and cached is not None:
+                        return make_result(msg_id, cached)
 
         if tool.needs_principal:
             call_kwargs["principal"] = PrincipalContext(
