@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from api.mcp_gateway import _derive_batch_idempotency_key
 from core.mcp_transport import McpHandler
 from core.tool_registry import ToolRegistry
 
@@ -290,3 +291,28 @@ def test_manifest_declares_side_effect_and_operation_idempotency_metadata() -> N
     manifest = registry.get_tool("write").to_manifest()
     assert manifest["sideEffecting"] is True
     assert manifest["idempotencyArg"] == "idempotency_key"
+
+
+def test_batch_key_derivation_is_bounded_for_max_length_header() -> None:
+    derived = _derive_batch_idempotency_key("x" * 128, 123)
+
+    assert derived.startswith("batch-")
+    assert len(derived) == 70
+    assert derived.isascii()
+
+
+def test_batch_key_derivation_accepts_unicode_and_whitespace_message_ids() -> None:
+    first = _derive_batch_idempotency_key("retry", " сообщение 1 ")
+    second = _derive_batch_idempotency_key("retry", " сообщение 1 ")
+    different = _derive_batch_idempotency_key("retry", "сообщение 2")
+
+    assert first == second
+    assert first != different
+    assert len(first) == 70
+
+
+def test_batch_key_derivation_preserves_json_rpc_id_type() -> None:
+    numeric = _derive_batch_idempotency_key("retry", 1)
+    textual = _derive_batch_idempotency_key("retry", "1")
+
+    assert numeric != textual
