@@ -69,11 +69,13 @@ durable batch-erasure semantics
 
 ## Batch requests
 
-For an HTTP JSON-RPC batch, one HTTP `Idempotency-Key` is deterministically scoped per JSON-RPC item as:
+For an HTTP JSON-RPC batch, one HTTP `Idempotency-Key` is deterministically scoped per JSON-RPC item using a fixed-length SHA-256 derivation over:
 
 ```text
-<header-key>:<json-rpc-id>
+<header-key> + canonical-json(<json-rpc-id>)
 ```
+
+The resulting item key is `batch-<sha256>` (70 ASCII characters). This prevents a maximum-length header key or an arbitrary Unicode/whitespace string JSON-RPC ID from overflowing or violating the transport key syntax. JSON-RPC ID type is preserved by canonical JSON, so numeric `1` and string `"1"` derive different item keys.
 
 Notifications without a JSON-RPC ID do not receive a derived idempotency key from the shared batch header.
 
@@ -124,11 +126,12 @@ This change does not alter:
 
 ## Acceptance criteria
 
-1. Same caller + same side-effecting request + same key executes once within the process lifetime.
+1. Same caller + same completed side-effecting request + same key replays the completed result without a second execution in the current supported single-worker runtime.
 2. Same caller + same key + different arguments fails closed before a second execution.
 3. Different server-derived callers may independently reuse the same opaque key.
 4. Read-only tools are not cached.
 5. Existing calls without an idempotency key remain compatible.
 6. Existing operation-owned idempotency is reused instead of duplicated.
 7. Cache size is bounded.
-8. No exactly-once or post-restart durability claim is made.
+8. Batch-derived keys stay within the transport key bound for all canonical JSON-RPC IDs.
+9. No exactly-once, in-flight cross-thread, cross-worker, or post-restart durability claim is made.
