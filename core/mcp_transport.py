@@ -28,6 +28,7 @@ SERVER_VERSION = "9.0"
 _DEFAULT_MAX_CAPABILITY = "reader"
 _MAX_IDEMPOTENCY_KEY_LENGTH = 128
 _DEFAULT_IDEMPOTENCY_CACHE_SIZE = 1024
+_MAX_IDEMPOTENCY_REPLAY_BYTES = 64 * 1024
 
 
 def _server_max_capability() -> str:
@@ -108,6 +109,34 @@ def _canonical_request_fingerprint(
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _bounded_replay_payload(result_payload: dict[str, Any]) -> dict[str, Any]:
+    encoded = json.dumps(
+        result_payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    if len(encoded) <= _MAX_IDEMPOTENCY_REPLAY_BYTES:
+        return deepcopy(result_payload)
+
+    original_is_error = bool(result_payload.get("isError", False))
+    return {
+        "content": [
+            {
+                "type": "text",
+                "text": (
+                    "Idempotent replay suppressed: the original side-effecting "
+                    "call completed, but its response exceeded the 64 KiB replay "
+                    "cache limit. The tool was NOT re-executed."
+                ),
+            }
+        ],
+        "isError": original_is_error,
+        "idempotencyReplayLimited": True,
+    }
+
+
 @dataclass(frozen=True)
 class _IdempotencyEntry:
     request_fingerprint: str
@@ -149,10 +178,11 @@ class _IdempotencyCache:
         request_fingerprint: str,
         result_payload: dict[str, Any],
     ) -> None:
+        replay_payload = _bounded_replay_payload(result_payload)
         with self._lock:
             self._entries[scope] = _IdempotencyEntry(
                 request_fingerprint=request_fingerprint,
-                result_payload=deepcopy(result_payload),
+                result_payload=replay_payload,
             )
             self._entries.move_to_end(scope)
             while len(self._entries) > self._max_entries:
