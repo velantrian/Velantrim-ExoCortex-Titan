@@ -50,6 +50,34 @@ FINAL/read-back were reconciled. The remaining risk is semantic, not an admissio
 the historical corpus is still not retroactively reviewed until real source/reviewer
 metadata is authored. C9 proves fail-closed admission, not corpus truth.
 
+## Open risk — TruthGate evidence references remain cardinality-based pending a separate admission
+
+The first `Typed Evidence Reference v1` increment is an **unwired draft contract only**.
+It adds strict local source/fragment/lineage reference parsing and an in-memory validation
+receipt prototype, but it does not change `TruthGate` thresholds, its current legacy
+`metadata.evidence_refs` string-list interpretation, candidate ingestion, persistence or
+canonical promotion. Therefore no claim is made that current evidence counts establish
+source integrity, independent provenance or automated truth.
+
+The draft contract explicitly rejects producer-supplied `independence_class` and records
+no replacement local effective-independence result. Its receipt is a deterministic
+local-validation artifact only: `validated_reference_count` is diagnostic cardinality, not
+evidence sufficiency, admission, truth or promotion authority. The hardening checkpoint
+also rejects noncanonical span/timestamp aliases and malformed direct outcome/receipt
+construction through controlled contract errors. Conflicting payloads that reuse one
+`reference_id` fail closed. This closes the prototype's self-granted-independence surface;
+it does not authenticate the registry snapshot, decide contextual independence or change
+current TruthGate behavior.
+
+The future work remains intentionally split: persist a local registry only after a
+separate data-classification decision; introduce `LEGACY`/`OBSERVE`/opt-in `ENFORCE`
+modes only after differential and fault testing; attach a receipt only through the
+existing authorized metadata/audit boundary; and migrate producers only when real stable
+source artifacts exist. At ecosystem level, Titan must remain a resolver/projection or
+experimental registry rather than a second trusted-evidence Canon beside Crystal.
+Historical facts must not receive synthetic digests, lineage or reclassification. This
+risk is **not closed** by the contract-only draft.
+
 ## P0 — No current Operator GO or deployed activation
 
 The completed bounded canary used a single-use human authorization that is exhausted.

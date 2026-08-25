@@ -10,6 +10,7 @@ The root [`README.md`](../README.md) links to this research directory as the ent
 |---|---|---|
 | [`IDEA_INTAKE_PROTOCOL.md`](IDEA_INTAKE_PROTOCOL.md) | capture, classify and preserve ideas from audits, conversations and external analysis without confusing them with current engineering | research governance contract |
 | [`FUTURE_COMPONENTS.md`](FUTURE_COMPONENTS.md) | current research registry, candidate tracks and return triggers | index |
+| [`SMART_CONTEXT_HANDOFF_V0_1.md`](SMART_CONTEXT_HANDOFF_V0_1.md) | bounded Smart Context / Context Observer / state-delta / successor-handoff research contract | research design · shadow candidate · not runtime authority |
 | [`EXTERNAL_ARCHITECTURE_PATTERNS.md`](EXTERNAL_ARCHITECTURE_PATTERNS.md) | neutral Titan-native patterns derived from external prior art | research / prior art |
 | [`EVALUATION_REPLAY_PROTOCOL.md`](EVALUATION_REPLAY_PROTOCOL.md) | fixed-corpus baseline, replay, fork and structural-diff protocol | partial offline prototype |
 | [`../docs/EVALUATION_REPLAY_QUICKSTART.md`](../docs/EVALUATION_REPLAY_QUICKSTART.md) | command, report classes, critical gates and fixture boundary | PR-ERP-01 implementation guide |
@@ -17,6 +18,7 @@ The root [`README.md`](../README.md) links to this research directory as the ent
 | [`RAPID_CALIBRATED_ORIENTATION.md`](RAPID_CALIBRATED_ORIENTATION.md) | read-only orientation research | research / proposed |
 | [`D16_EXECUTIVE_CONTROL_CONTRACT.md`](D16_EXECUTIVE_CONTROL_CONTRACT.md) | proposal vocabulary; no active controller authority | research / proposed |
 | [`FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md`](FAILURE_LIFECYCLE_RELIABILITY_CONTRACT.md) | failure, lifecycle and reliability boundaries | research / proposed |
+| [`HYPERIA_LINEAGE_REASSESSMENT_2026-08-24.md`](HYPERIA_LINEAGE_REASSESSMENT_2026-08-24.md) | current-code reassessment of residual Hyperia/v7.5/v8 ideas; separates one bounded engineering slice from parked research | triaged research + offline prototype |
 | [`WORKING_DESK_RESEARCH_MODE.md`](WORKING_DESK_RESEARCH_MODE.md) | bounded task-aware research composition | research / proposed |
 
 Adaptive retrieval and selective-memory architecture is tracked separately at [`../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md`](../docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md).

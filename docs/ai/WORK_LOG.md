@@ -5,6 +5,74 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
+## 2026-08-20 — Typed Evidence Reference v1 · CURRENT LIFECYCLE TRUTH
+
+> **Reality status:** `DRAFT / CONTRACT-ONLY / LOCAL VALIDATION ONLY / UNWIRED / NOT ENABLED / NO RUNTIME AUTHORITY / NO PRODUCTION AUTHORITY`.
+> Re-query live GitHub for exact head/base and CI before acting; dated checkpoints below remain history, not evergreen state.
+
+This current hardening checkpoint accepts only one canonical EvidenceReference span and
+captured-at representation, rejects malformed mapping keys and reference elements through
+controlled contract errors, and structurally validates local outcomes/receipts. The receipt
+contains no independence result. `validated_reference_count` is diagnostic local validation
+cardinality only; it is not evidence sufficiency and has no runtime consumer.
+
+No EvidenceAdmissionDecision, target evidence adapter, policy snapshot, OBSERVE/VERIFY/ENFORCE
+runtime mode, TruthGate/WriteGate/PromotionGateway integration, persistence, migration, route,
+worker, telemetry pipeline, runtime activation or authority is created here. Validation is not
+admission; a receipt is not authority or truth; Titan remains a local resolver/prototype rather
+than an evidence sovereign.
+
+---
+
+## 2026-08-19 — Typed Evidence Reference v1 · DRAFT CONTRACT-ONLY IMPLEMENTATION
+
+> **Reality status:** `PROPOSED / IMPLEMENTED ON DRAFT BRANCH / FOCUSED-TESTED / UNWIRED / NOT ENABLED / NO RUNTIME AUTHORITY`.
+> Re-resolve the live PR and exact head before treating this draft record as merged reality.
+
+The first bounded increment adds `core/evidence_reference.py` and
+`core/evidence_registry.py`, plus a focused test suite and ADR. It defines immutable,
+versioned source/fragment/lineage references, strict local validation and deterministic,
+content-minimized validation receipts. The in-memory registry is a Python prototype only.
+
+Historical review of the first draft found and removed a self-grant surface:
+`EvidenceReference.independence_class` was producer-controlled and affected an effective
+lineage count. That early registry-owned classification idea is **superseded by the current
+contract truth above**: v1 records no independence result because local validation does not
+own that semantic. The corrected reference contains no independence classification.
+Conflicting payloads that reuse one `reference_id` fail closed, and validation is ordered
+deterministically. No same-lineage or effective-independence policy is implemented here.
+
+It does **not** alter `TruthGate` thresholds or outcomes, `metadata.evidence_refs`,
+canonical promotion/CAS, SQLite schema, source ingestion, network/provider behavior,
+runtime wiring, feature flags, Operator GO, runtime authority or production authority.
+The existing `EvidenceItem` scoring model remains its own owner. A future admission must
+separately decide persistence, observe/enforce modes, receipt attachment and producer
+migration; no historical fact is auto-converted or reclassified by this draft.
+
+Focused local evidence after this correction: 25 contract tests passed; the combined
+EvidenceReference/Evidence authenticity/TruthGate suite passed 55 tests; repository-wide
+Ruff and Mypy passed for all 332 `core/` source files. Repository guard checks for
+branding, tracked artifacts, project state and KB graph integrity also passed.
+
+The local Python 3.12 full-suite characterization was not green: after excluding one
+separately reproduced baseline failure, it completed with 4 failed, 4,323 passed,
+17 skipped, 1 deselected and 1 xfailed. The excluded failure and all four completed-run
+failures were each reproduced with the same environment against unchanged
+`main@588ffe61`; none touches the EvidenceReference files or behavior. This is bounded
+baseline/environment evidence, not a waiver. The earlier GitHub checks belong to an
+ancestor head.
+
+The corrected code checkpoint
+`8a1b3aab56c2aeaa5050872b660aed6fc9df40db` then passed GitHub Main CI #1325,
+Docker #872 and CodeQL #164. Aggregate evaluator run 32232797602 completed successfully;
+the combined context remains `PENDING` while PR #355 remains a DRAFT. A dedicated Notion
+record, `Titan Typed Evidence Reference v1 — Trusted Independence Contract · 2026-08-19`
+(`3c1ac84d-0547-811f-8f81-ff62f45b659d`), was created under the Titan hub and verified by
+read-back. Fresh CI on the final documentation-sync head and review remain required; no
+merge, runtime enablement or authority follows from this synchronization.
+
+---
+
 ## 2026-08-16 — #249 hosted CAS characterization · ENGINEERING CHARACTERIZATION COMPLETE
 
 > **Live-state rule:** re-check Issue #249 and current `main` before acting. This dated

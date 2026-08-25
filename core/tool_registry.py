@@ -110,15 +110,25 @@ class ToolDef:
     # capability — core.mcp_transport._tools_call() injects it as a
     # `principal=` kwarg when this is set.
     needs_principal: bool = False
+    # Transport retry-safety metadata only. It does not grant write authority
+    # and does not claim exactly-once execution.
+    side_effecting: bool = False
+    # Existing operation-owned idempotency parameter, when one already exists.
+    idempotency_arg: str | None = None
 
     def to_manifest(self) -> Dict[str, Any]:
         """MCP-совместимый манифест инструмента."""
-        return {
+        manifest: Dict[str, Any] = {
             "name": self.name,
             "description": self.description,
             "inputSchema": self.params,
             "capability": self.capability,
         }
+        if self.side_effecting:
+            manifest["sideEffecting"] = True
+        if self.idempotency_arg:
+            manifest["idempotencyArg"] = self.idempotency_arg
+        return manifest
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -151,6 +161,8 @@ class ToolRegistry:
         destructive: bool = False,
         audit: bool = True,
         needs_principal: bool = False,
+        side_effecting: bool = False,
+        idempotency_arg: str | None = None,
     ) -> Callable:
         """
         Зарегистрировать инструмент. Можно использовать как декоратор.
@@ -167,6 +179,8 @@ class ToolRegistry:
                 (см. выше) как kwarg `principal=` — для инструментов, которым
                 нельзя доверять capability/identity, заявленные в клиентском
                 JSON, а нужно то, что реально проверил transport-слой
+            side_effecting: True если повторный вызов может изменить состояние
+            idempotency_arg: существующий operation-owned аргумент идемпотентности
 
         Returns:
             fn (для использования как декоратор)
@@ -176,6 +190,12 @@ class ToolRegistry:
                 f"Неизвестный capability: {capability!r}. "
                 f"Допустимые: {CAPABILITY_CHAIN}"
             )
+        if idempotency_arg is not None:
+            if not isinstance(idempotency_arg, str) or not idempotency_arg.strip():
+                raise ValueError("idempotency_arg must be a non-empty string")
+            if not side_effecting:
+                raise ValueError("idempotency_arg requires side_effecting=True")
+            idempotency_arg = idempotency_arg.strip()
 
         tool = ToolDef(
             name=name,
@@ -186,6 +206,8 @@ class ToolRegistry:
             destructive=destructive,
             audit=audit,
             needs_principal=needs_principal,
+            side_effecting=side_effecting,
+            idempotency_arg=idempotency_arg,
         )
         self._tools[name] = tool
 
@@ -264,7 +286,7 @@ def register_velantrim_tools(registry: ToolRegistry) -> None:
 
     Разбивка по уровням как в статье: reader видит только read-инструменты,
     admin видит всё. Инструменты, недоступные роли, физически отсутствуют
-    в её наборе — модель не может их вызвать даже случайно.
+    в её наборе — модель не может его вызвать даже случайно.
     """
     # GDPR Art. 17 erasure handler (lazy import → no circular import at module
     # load). Production tools call the durable coordinator directly — NOT
@@ -334,6 +356,7 @@ def register_velantrim_tools(registry: ToolRegistry) -> None:
     registry.register(
         "propose_hypothesis", h.propose_hypothesis, capability="researcher",
         description="Предложить гипотезу (сохраняется как Hypothesized, требует проверки)",
+        side_effecting=True,
     )
 
     registry.register(
@@ -347,11 +370,13 @@ def register_velantrim_tools(registry: ToolRegistry) -> None:
         "store_fact", h.store_fact, capability="ingester",
         description="Сохранить новый факт (epistemic_state=Observed, пройдёт TruthGate)",
         audit=True,
+        side_effecting=True,
     )
 
     registry.register(
         "link_entity", h.link_entity, capability="ingester",
         description="Связать факт с сущностью (entity-centric retrieval)",
+        side_effecting=True,
     )
 
     # ─── guardian ─────────────────────────────────────────────────────────
@@ -360,12 +385,14 @@ def register_velantrim_tools(registry: ToolRegistry) -> None:
         "validate_fact", h.validate_fact, capability="guardian",
         description="Валидировать факт (переход ESM: Hypothesized/Supported → Validated)",
         audit=True,
+        side_effecting=True,
     )
 
     registry.register(
         "contradict_fact", h.contradict_fact, capability="guardian",
         description="Пометить факт как противоречащий (transition → Contradicted)",
         audit=True,
+        side_effecting=True,
     )
 
     registry.register(
@@ -396,6 +423,7 @@ def register_velantrim_tools(registry: ToolRegistry) -> None:
             "required": ["old_fact_id", "new_fact"],
         },
         audit=True,
+        side_effecting=True,
     )
 
     # ─── admin ────────────────────────────────────────────────────────────
@@ -426,6 +454,7 @@ def register_velantrim_tools(registry: ToolRegistry) -> None:
             "required": ["fact_id"],
         },
         destructive=True, audit=True,
+        side_effecting=True,
     )
 
     registry.register(
@@ -479,12 +508,15 @@ def register_velantrim_tools(registry: ToolRegistry) -> None:
             "required": ["user_id"],
         },
         destructive=True, audit=True,
+        side_effecting=True,
+        idempotency_arg="idempotency_key",
     )
 
     registry.register(
         "reset_graph", h.reset_graph, capability="admin",
         description="Сбросить граф (полная очистка relations)",
         destructive=True, audit=True,
+        side_effecting=True,
     )
 
 

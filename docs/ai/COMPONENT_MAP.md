@@ -411,6 +411,8 @@ adds no TRACE or Audit owner.
 - dimension mismatch cannot reach similarity multiplication;
 - CSM snapshot/scan state cannot become Canon or runtime authority;
 - multilingual wrapper installation cannot create a second routing authority;
+- producer-owned EvidenceReference payloads cannot grant effective independence;
+- typed EvidenceReference local validation / receipt cannot create a second TruthGate, promotion, evidence-admission or Canon owner;
 - registry/provider/projection/CSM/wrapper state cannot grant Operator GO or production authority.
 
 ## 14. Phase 2A, Phase 3A and current first-read files
@@ -429,6 +431,13 @@ core/hybrid_retriever.py                       pre-score dimension fail-close
 tests/test_phase3a_embedding_space.py          Phase 3A contract tests
 docs/ai/PHASE3A_EMBEDDING_SPACE_IDENTITY.md   Phase 3A hand-off
 docs/adr/ADR-2026-08-15-phase3a-embedding-space-identity.md
+
+Typed Evidence Reference v1 · DRAFT contract-only increment
+core/evidence_reference.py                 immutable canonical source/fragment/lineage reference; no producer independence class
+core/evidence_registry.py                  in-memory local resolver/validator + deterministic local-validation receipt; no independence/admission authority
+tests/test_evidence_reference.py           strict canonical schema, structural receipt and fail-closed prototype tests
+docs/adr/ADR-2026-08-19-typed-evidence-reference-contract.md
+                                            unwired/no-authority decision record
 
 core/model_free_core.py                       ModelFreeCore bounded read-side facade
 core/policy_kernel.py                         permission authority
