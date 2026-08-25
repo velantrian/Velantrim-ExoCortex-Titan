@@ -151,14 +151,18 @@ def register_mcp_routes(
                         item_key = _derive_batch_idempotency_key(
                             transport_key, item["id"]
                         )
-                    except (TypeError, ValueError) as exc:
+                    except (TypeError, ValueError):
+                        # Fail closed without reflecting exception text to the
+                        # external caller. Even validation/serialization errors
+                        # can contain implementation details, so the public
+                        # JSON-RPC surface uses a fixed message.
                         responses.append(
                             {
                                 "jsonrpc": "2.0",
                                 "id": item.get("id"),
                                 "error": {
                                     "code": -32602,
-                                    "message": str(exc),
+                                    "message": "Invalid batch idempotency key or JSON-RPC id",
                                 },
                             }
                         )
