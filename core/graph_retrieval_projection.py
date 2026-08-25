@@ -117,25 +117,25 @@ class GraphRetrievalProjection:
         }
         labels = self._labels(bounded_adjacency)
 
-        activation = {
-            item.node_id: item.score
-            for item in self._store.spreading_activation(
-                list(seeds),
-                max_hops=self._budget.max_hops,
-                top_k=min(self._budget.activation_top_k, self._budget.max_nodes),
-            )
-            if item.node_id in allowed
-        }
+        activation = self._bounded_activation(
+            seeds,
+            discovered,
+            bounded_adjacency,
+        )
 
         grouped: dict[str, list[str]] = {}
         for node_id in sorted(allowed):
             grouped.setdefault(labels[node_id], []).append(node_id)
 
+        ordered_communities = sorted(
+            grouped.items(),
+            key=lambda item: (-len(item[1]), item[0]),
+        )
+        if len(ordered_communities) > self._budget.max_communities:
+            truncated = True
         communities = tuple(
             GraphProjectionCommunity(community_id=label, node_ids=tuple(nodes))
-            for label, nodes in sorted(grouped.items(), key=lambda item: (-len(item[1]), item[0]))[
-                : self._budget.max_communities
-            ]
+            for label, nodes in ordered_communities[: self._budget.max_communities]
         )
         visible_communities = {community.community_id for community in communities}
 
@@ -157,6 +157,36 @@ class GraphRetrievalProjection:
             )
         )
         return GraphProjectionResult(seeds, nodes, communities, truncated)
+
+    def _bounded_activation(
+        self,
+        seeds: tuple[str, ...],
+        discovered: dict[str, tuple[int, str | None]],
+        adjacency: dict[str, set[str]],
+    ) -> dict[str, float]:
+        """Return deterministic seed-proximity scores from the bounded projection only.
+
+        This deliberately does not delegate to a backend activation routine: such a
+        routine may traverse storage outside this projection's node and neighbor
+        budget.  Scores express bounded local proximity, never truth or confidence.
+        """
+        candidates = [
+            node_id
+            for node_id in discovered
+            if node_id in adjacency
+        ]
+        ranked = sorted(
+            candidates,
+            key=lambda node_id: (
+                discovered[node_id][0],
+                0 if node_id in seeds else 1,
+                node_id,
+            ),
+        )[: self._budget.activation_top_k]
+        return {
+            node_id: 1.0 / (1.0 + discovered[node_id][0])
+            for node_id in ranked
+        }
 
     def _labels(self, adjacency: dict[str, set[str]]) -> dict[str, str]:
         labels = {node_id: node_id for node_id in adjacency}
