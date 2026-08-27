@@ -1,10 +1,8 @@
 """Typed Interaction Continuity Capture (TICC) shadow-only source adapter.
 
-This module is deliberately small. It binds an explicit source turn/span to
-orthogonal actor/origin/modality metadata and may emit an existing
-``InteractionEvent`` plus, only when fully specified, an existing
-``AssertionRecord``. It has no persistence, Canon, TruthGate, belief/identity,
-reply, tool/action, network, or runtime authority.
+TICC preserves source-bound distinctions before semantic compression. It is an
+explicit, in-memory/shadow adapter only: no persistence, Canon, TruthGate,
+belief/identity, reply, tool/action, network, or runtime authority.
 """
 
 from __future__ import annotations
@@ -75,6 +73,7 @@ class TICCReasonCode(str, Enum):
     SHADOW_FEATURE_DISABLED = "shadow_feature_disabled"
     SOURCE_DIGEST_MISMATCH = "source_digest_mismatch"
     SOURCE_SPAN_INVALID = "source_span_invalid"
+    QUALIFIER_NOT_SOURCE_BOUND = "qualifier_not_source_bound"
     ACTOR_ORIGIN_MISMATCH = "actor_origin_mismatch"
     ASSERTION_SPEC_INCOMPLETE = "assertion_spec_incomplete"
     ASSERTION_NOT_PERMITTED_FOR_MODALITY = "assertion_not_permitted_for_modality"
@@ -87,7 +86,10 @@ _ASSERTION_MODALITIES = {
     TICCSemanticModality.ASSERTION,
     TICCSemanticModality.DIRECTIVE,
     TICCSemanticModality.DECISION,
+}
+_RELATION_REQUIRED_MODALITIES = {
     TICCSemanticModality.CORRECTION,
+    TICCSemanticModality.RETRACTION,
 }
 
 
@@ -123,10 +125,8 @@ class ConversationSourceTurn:
     raw_text_sha256: str = ""
 
     def __post_init__(self) -> None:
-        if not isinstance(self.turn_ref, str) or not self.turn_ref.strip():
-            raise TICCError("turn_ref must be non-empty")
-        if not isinstance(self.session_ref, str) or not self.session_ref.strip():
-            raise TICCError("session_ref must be non-empty")
+        _nonempty(self.turn_ref, "turn_ref")
+        _nonempty(self.session_ref, "session_ref")
         if isinstance(self.sequence, bool) or not isinstance(self.sequence, int) or self.sequence <= 0:
             raise TICCError("sequence must be a positive integer")
         if not isinstance(self.event_type, InteractionEventType):
@@ -147,9 +147,9 @@ class ConversationSourceTurn:
             raise TICCError("sensitivity_category must be SensitivityCategory")
         if not isinstance(self.sensitivity_level, SensitivityLevel):
             raise TICCError("sensitivity_level must be SensitivityLevel")
-        expected = sha256(normalized.encode("utf-8")).hexdigest()
         if not isinstance(self.raw_text_sha256, str) or _SHA256_RE.fullmatch(self.raw_text_sha256) is None:
             raise TICCError("raw_text_sha256 must be lowercase SHA-256")
+        expected = sha256(normalized.encode("utf-8")).hexdigest()
         if self.raw_text_sha256 != expected:
             raise TICCError(TICCReasonCode.SOURCE_DIGEST_MISMATCH.value)
 
@@ -162,8 +162,7 @@ class TICCSourceSpan:
     slice_sha256: str
 
     def __post_init__(self) -> None:
-        if not isinstance(self.source_turn_ref, str) or not self.source_turn_ref.strip():
-            raise TICCError("source_turn_ref must be non-empty")
+        _nonempty(self.source_turn_ref, "source_turn_ref")
         if isinstance(self.start_offset, bool) or not isinstance(self.start_offset, int):
             raise TICCError("start_offset must be an integer")
         if isinstance(self.end_offset, bool) or not isinstance(self.end_offset, int):
@@ -186,8 +185,7 @@ class TICCAssertionSpec:
     def __post_init__(self) -> None:
         if not isinstance(self.subject_ref, SubjectRef):
             raise TICCError("subject_ref must be SubjectRef")
-        if not isinstance(self.predicate, str) or not self.predicate.strip():
-            raise TICCError("predicate must be non-empty")
+        _nonempty(self.predicate, "predicate")
         if not isinstance(self.origin_type, OriginType):
             raise TICCError("origin_type must be OriginType")
         if not _aware(self.valid_from):
@@ -233,6 +231,7 @@ class TICCCaptureCandidate:
     actor_ref: ActorRef
     origin_type: OriginType | None
     assertion_ref: str | None
+    qualifier_text: str | None
     disposition: TICCDisposition
     uncertainty_codes: tuple[str, ...]
     declared_loss_codes: tuple[str, ...]
@@ -273,17 +272,17 @@ def capture_turn(
     config: TICCConfig,
     created_at: datetime,
 ) -> TICCCaptureResult:
-    """Capture one explicitly annotated source turn into shadow-only candidates."""
+    """Capture one explicitly annotated turn into non-authoritative shadow artifacts."""
     if not isinstance(config, TICCConfig):
         raise TICCError("config must be TICCConfig")
     if not _aware(created_at):
         raise TICCError("created_at must be timezone-aware")
-
     if not config.enabled:
         return _disabled_result(turn, created_at)
 
-    source_ref = _validate_and_encode_span(turn, annotation.source_span)
+    source_ref, source_text = _validate_and_encode_span(turn, annotation.source_span)
     _validate_actor_origin(turn, annotation)
+    _validate_qualifier(source_text, annotation.qualifier_text)
 
     event = InteractionEvent.create(
         event_type=turn.event_type,
@@ -298,15 +297,21 @@ def capture_turn(
         sensitivity_level=turn.sensitivity_level,
     )
 
-    assertion: AssertionRecord | None = None
     reason_codes: list[TICCReasonCode] = [TICCReasonCode.NO_RUNTIME_AUTHORITY]
     disposition = TICCDisposition.CAPTURED
+    assertion: AssertionRecord | None = None
 
     if annotation.declared_loss_codes:
         reason_codes.append(TICCReasonCode.CAPTURE_LOSS_DECLARED)
         disposition = TICCDisposition.CAPTURED_WITH_DECLARED_LOSS
 
-    if annotation.assertion_spec is not None:
+    if annotation.modality in _RELATION_REQUIRED_MODALITIES:
+        # v0.1 intentionally has no relation target contract. A correction or
+        # retraction without its exact target must never become a standalone
+        # assertion that downstream reconciliation could mistake for ordinary state.
+        reason_codes.append(TICCReasonCode.RELATION_NOT_IMPLEMENTED)
+        disposition = TICCDisposition.DEFERRED
+    elif annotation.assertion_spec is not None:
         if annotation.modality not in _ASSERTION_MODALITIES:
             raise TICCError(TICCReasonCode.ASSERTION_NOT_PERMITTED_FOR_MODALITY.value)
         if annotation.origin_type is None:
@@ -337,11 +342,11 @@ def capture_turn(
         "actor": turn.actor_ref.identity_payload(),
         "origin_type": annotation.origin_type.value if annotation.origin_type else None,
         "assertion_ref": assertion.assertion_id if assertion else None,
+        "qualifier_text": annotation.qualifier_text,
         "disposition": disposition.value,
         "uncertainty_codes": annotation.uncertainty_codes,
         "declared_loss_codes": annotation.declared_loss_codes,
         "reason_codes": tuple(code.value for code in reason_codes),
-        "qualifier_text": annotation.qualifier_text,
     }
     candidate_hash = _digest(candidate_payload)
     candidate = TICCCaptureCandidate(
@@ -354,6 +359,7 @@ def capture_turn(
         actor_ref=turn.actor_ref,
         origin_type=annotation.origin_type,
         assertion_ref=assertion.assertion_id if assertion else None,
+        qualifier_text=annotation.qualifier_text,
         disposition=disposition,
         uncertainty_codes=annotation.uncertainty_codes,
         declared_loss_codes=annotation.declared_loss_codes,
@@ -370,24 +376,16 @@ def capture_turn(
         assertion_refs=tuple(item.assertion_id for item in assertions),
         reason_codes=tuple(reason_codes),
     )
-    return TICCCaptureResult(
-        interaction_event=event,
-        candidates=(candidate,),
-        assertions=assertions,
-        receipt=receipt,
-    )
+    return TICCCaptureResult(event, (candidate,), assertions, receipt)
 
 
 def _disabled_result(turn: ConversationSourceTurn, created_at: datetime) -> TICCCaptureResult:
-    reasons = (
-        TICCReasonCode.SHADOW_FEATURE_DISABLED,
-        TICCReasonCode.NO_RUNTIME_AUTHORITY,
-    )
+    reasons = (TICCReasonCode.SHADOW_FEATURE_DISABLED, TICCReasonCode.NO_RUNTIME_AUTHORITY)
     return TICCCaptureResult(
-        interaction_event=None,
-        candidates=(),
-        assertions=(),
-        receipt=_receipt(
+        None,
+        (),
+        (),
+        _receipt(
             turn=turn,
             created_at=created_at,
             interaction_event_ref=None,
@@ -424,51 +422,58 @@ def _receipt(
     }
     digest = _digest(payload)
     return TICCCaptureReceipt(
-        receipt_id=digest,
-        schema_version=TICC_SCHEMA_VERSION,
-        adapter_id=TICC_ADAPTER_ID,
-        adapter_version=TICC_ADAPTER_VERSION,
-        mode=TICCMode.SHADOW,
-        source_turn_ref=turn.turn_ref,
-        source_turn_digest=turn.raw_text_sha256,
-        interaction_event_ref=interaction_event_ref,
-        candidate_refs=candidate_refs,
-        assertion_refs=assertion_refs,
-        reason_codes=reason_codes,
-        shadow_only=True,
-        no_runtime_authority=True,
-        payload_hash=digest,
+        digest,
+        TICC_SCHEMA_VERSION,
+        TICC_ADAPTER_ID,
+        TICC_ADAPTER_VERSION,
+        TICCMode.SHADOW,
+        turn.turn_ref,
+        turn.raw_text_sha256,
+        interaction_event_ref,
+        candidate_refs,
+        assertion_refs,
+        reason_codes,
+        True,
+        True,
+        digest,
     )
 
 
-def _validate_and_encode_span(turn: ConversationSourceTurn, span: TICCSourceSpan) -> str:
-    if span.source_turn_ref != turn.turn_ref:
-        raise TICCError(TICCReasonCode.SOURCE_SPAN_INVALID.value)
-    if span.end_offset > len(turn.raw_text):
+def _validate_and_encode_span(turn: ConversationSourceTurn, span: TICCSourceSpan) -> tuple[str, str]:
+    if span.source_turn_ref != turn.turn_ref or span.end_offset > len(turn.raw_text):
         raise TICCError(TICCReasonCode.SOURCE_SPAN_INVALID.value)
     text = turn.raw_text[span.start_offset:span.end_offset]
     expected = sha256(text.encode("utf-8")).hexdigest()
     if expected != span.slice_sha256:
         raise TICCError(TICCReasonCode.SOURCE_SPAN_INVALID.value)
-    return (
+    ref = (
         f"conversation_turn:v0_1:{turn.session_ref}:{turn.sequence}:{turn.turn_ref}:"
         f"{turn.raw_text_sha256}#char={span.start_offset}:{span.end_offset};sha256={span.slice_sha256}"
     )
+    return ref, text
+
+
+def _validate_qualifier(source_text: str, qualifier_text: str | None) -> None:
+    if qualifier_text is not None and qualifier_text not in source_text:
+        raise TICCError(TICCReasonCode.QUALIFIER_NOT_SOURCE_BOUND.value)
 
 
 def _validate_actor_origin(turn: ConversationSourceTurn, annotation: TICCSemanticAnnotation) -> None:
     origin = annotation.origin_type
     if origin is None:
         return
-    human_kinds = {ActorKind.HUMAN, ActorKind.OPERATOR}
-    model_kinds = {ActorKind.TITAN_COMPONENT, ActorKind.EXTERNAL_AGENT}
-    system_kinds = {ActorKind.SYSTEM, ActorKind.SERVICE, ActorKind.TOOL}
-    if origin is OriginType.USER_STATED and turn.actor_ref.kind not in human_kinds:
+    if origin is OriginType.USER_STATED and turn.actor_ref.kind not in {ActorKind.HUMAN, ActorKind.OPERATOR}:
         raise TICCError(TICCReasonCode.ACTOR_ORIGIN_MISMATCH.value)
-    if origin is OriginType.MODEL_INFERRED and turn.actor_ref.kind not in model_kinds:
+    if origin is OriginType.MODEL_INFERRED and turn.actor_ref.kind not in {ActorKind.TITAN_COMPONENT, ActorKind.EXTERNAL_AGENT}:
         raise TICCError(TICCReasonCode.ACTOR_ORIGIN_MISMATCH.value)
-    if origin in {OriginType.SYSTEM_OBSERVED, OriginType.SYSTEM_MEASURED} and turn.actor_ref.kind not in system_kinds:
+    if origin in {OriginType.SYSTEM_OBSERVED, OriginType.SYSTEM_MEASURED} and turn.actor_ref.kind not in {ActorKind.SYSTEM, ActorKind.SERVICE, ActorKind.TOOL}:
         raise TICCError(TICCReasonCode.ACTOR_ORIGIN_MISMATCH.value)
+
+
+def _nonempty(value: object, field_name: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise TICCError(f"{field_name} must be non-empty")
+    return value
 
 
 def _normalize_text(value: object, field_name: str) -> str:
@@ -493,13 +498,7 @@ def _codes(values: Iterable[str]) -> tuple[str, ...]:
 
 def _digest(payload: object) -> str:
     return sha256(
-        json.dumps(
-            payload,
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-            allow_nan=False,
-        ).encode("utf-8")
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
     ).hexdigest()
 
 
