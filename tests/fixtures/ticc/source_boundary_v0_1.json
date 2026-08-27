@@ -1,0 +1,364 @@
+{
+  "schema_version": "ticc.fixtures.v0_1",
+  "status": "TEST_ONLY_SHADOW_NO_RUNTIME_AUTHORITY",
+  "authority": "none",
+  "fixtures": [
+    {
+      "id": "RB-01",
+      "title": "Correction precedence",
+      "turns": [
+        {
+          "turn_ref": "t1",
+          "sequence": 1,
+          "actor_kind": "human",
+          "origin_type": "user_stated",
+          "semantic_modality": "ASSERTION",
+          "raw_text": "Store summaries in the graph.",
+          "raw_text_sha256": "bbb57007cdbfe4306b9d66c63b3264bbd0894a95839433e4c3a5fa4d3a4239b3",
+          "span": {
+            "start_offset": 0,
+            "end_offset": 29,
+            "slice_sha256": "bbb57007cdbfe4306b9d66c63b3264bbd0894a95839433e4c3a5fa4d3a4239b3"
+          }
+        },
+        {
+          "turn_ref": "t2",
+          "sequence": 2,
+          "actor_kind": "titan_component",
+          "origin_type": "model_inferred",
+          "semantic_modality": "PROPOSAL",
+          "raw_text": "I suggest storing summaries in the graph.",
+          "raw_text_sha256": "ef4e0b3e81f1ec4f934b97c655dd648853c06123e34f809858e534a4f09182cb",
+          "span": {
+            "start_offset": 0,
+            "end_offset": 41,
+            "slice_sha256": "ef4e0b3e81f1ec4f934b97c655dd648853c06123e34f809858e534a4f09182cb"
+          }
+        },
+        {
+          "turn_ref": "t3",
+          "sequence": 3,
+          "actor_kind": "human",
+          "origin_type": "user_stated",
+          "semantic_modality": "CORRECTION",
+          "raw_text": "Replace the earlier rule: keep only original records.",
+          "raw_text_sha256": "72bb6d271e93543df05f9977e61367b4954ac1307af75a464dadfac759e245cc",
+          "span": {
+            "start_offset": 26,
+            "end_offset": 52,
+            "slice_sha256": "60751812283cede70d19c7c7c033d848f4321b7d4f1ad8452588ab954a05587f"
+          }
+        }
+      ],
+      "expected": {
+        "governing_modality": "CORRECTION",
+        "relation": "CORRECTS",
+        "target_turn_ref": "t1",
+        "must_not_promote": [
+          "PROPOSAL"
+        ]
+      }
+    },
+    {
+      "id": "RB-02",
+      "title": "Recommendation is not decision",
+      "turns": [
+        {
+          "turn_ref": "t1",
+          "sequence": 1,
+          "actor_kind": "titan_component",
+          "origin_type": "model_inferred",
+          "semantic_modality": "RECOMMENDATION",
+          "raw_text": "I recommend implementing Task Tracker first.",
+          "raw_text_sha256": "4f40139deabc4990758a70ca30d01438a7b66ad6a52ce539f3485f9ade8f2dea",
+          "span": {
+            "start_offset": 0,
+            "end_offset": 44,
+            "slice_sha256": "4f40139deabc4990758a70ca30d01438a7b66ad6a52ce539f3485f9ade8f2dea"
+          }
+        },
+        {
+          "turn_ref": "t2",
+          "sequence": 2,
+          "actor_kind": "human",
+          "origin_type": "user_stated",
+          "semantic_modality": "DECISION",
+          "raw_text": "We will start with the minimal vertical slice instead.",
+          "raw_text_sha256": "0e6d69ce5381f3173c5b3fcaa9f94c04444ded4ff8747be0129fdab92b914780",
+          "span": {
+            "start_offset": 0,
+            "end_offset": 54,
+            "slice_sha256": "0e6d69ce5381f3173c5b3fcaa9f94c04444ded4ff8747be0129fdab92b914780"
+          }
+        }
+      ],
+      "expected": {
+        "governing_modality": "DECISION",
+        "must_not_promote": [
+          "RECOMMENDATION"
+        ]
+      }
+    },
+    {
+      "id": "RB-03",
+      "title": "Conditional constraint scope",
+      "turns": [
+        {
+          "turn_ref": "t1",
+          "sequence": 1,
+          "actor_kind": "human",
+          "origin_type": "user_stated",
+          "semantic_modality": "DIRECTIVE",
+          "raw_text": "Do not publish until I explicitly approve it.",
+          "raw_text_sha256": "745e5d1fffe799157ffcd48b8a4de068f07b3fa2be397ac002b4af893c3b4df5",
+          "span": {
+            "start_offset": 0,
+            "end_offset": 45,
+            "slice_sha256": "745e5d1fffe799157ffcd48b8a4de068f07b3fa2be397ac002b4af893c3b4df5"
+          },
+          "qualifier_text": "until I explicitly approve it"
+        },
+        {
+          "turn_ref": "t2",
+          "sequence": 2,
+          "actor_kind": "titan_component",
+          "origin_type": "model_inferred",
+          "semantic_modality": "PROPOSAL",
+          "raw_text": "Let's publish it now.",
+          "raw_text_sha256": "f790320c16c6a31bd0afa86c78a01b896427d4eb060f77d49150d1a6f9da9dcd",
+          "span": {
+            "start_offset": 0,
+            "end_offset": 21,
+            "slice_sha256": "f790320c16c6a31bd0afa86c78a01b896427d4eb060f77d49150d1a6f9da9dcd"
+          }
+        }
+      ],
+      "expected": {
+        "governing_modality": "DIRECTIVE",
+        "must_preserve_qualifier": "until I explicitly approve it",
+        "must_not_promote": [
+          "PROPOSAL"
+        ]
+      }
+    },
+    {
+      "id": "RB-05",
+      "title": "Illustrative metric laundering",
+      "turns": [
+        {
+          "turn_ref": "t1",
+          "sequence": 1,
+          "actor_kind": "human",
+          "origin_type": "user_stated",
+          "semantic_modality": "EXAMPLE",
+          "raw_text": "For example, assume latency is 150 ms.",
+          "raw_text_sha256": "33d23d787d4bd6f61c850ad66c657734cfedc22c7d3744f936b452621a394ba0",
+          "span": {
+            "start_offset": 13,
+            "end_offset": 37,
+            "slice_sha256": "73dbbf42e8539c769932e86fd77edc0c0fa2ea79fe68813ea36f1c34ffbdb93a"
+          }
+        }
+      ],
+      "expected": {
+        "must_not_become": [
+          "MEASUREMENT",
+          "CURRENT_STATE"
+        ]
+      }
+    },
+    {
+      "id": "RB-06",
+      "title": "Simulation is not experience",
+      "turns": [
+        {
+          "turn_ref": "t1",
+          "sequence": 1,
+          "actor_kind": "titan_component",
+          "origin_type": "model_inferred",
+          "semantic_modality": "SIMULATION",
+          "raw_text": "Imagine that I researched this for two hours and found 12 sources.",
+          "raw_text_sha256": "b67dc4d37948bae992ca3fb308240bb1f7c975b034d73fe49ad675fa14cd15c3",
+          "span": {
+            "start_offset": 13,
+            "end_offset": 65,
+            "slice_sha256": "ee4355fb8cfe335c009e79230c2970710b20704cc6179090b30953f313360d59"
+          }
+        }
+      ],
+      "expected": {
+        "must_not_become": [
+          "EXECUTED_EXPERIENCE",
+          "MEASURED_RESULT"
+        ]
+      }
+    },
+    {
+      "id": "RB-07",
+      "title": "Pseudocode is not implementation",
+      "turns": [
+        {
+          "turn_ref": "t1",
+          "sequence": 1,
+          "actor_kind": "titan_component",
+          "origin_type": "model_inferred",
+          "semantic_modality": "PSEUDOCODE",
+          "raw_text": "Pseudocode: engine.start(); monitor.run();",
+          "raw_text_sha256": "96d5869aaa284e9840bfe726df80747486a915fa90442226af4813cf6164ded8",
+          "span": {
+            "start_offset": 12,
+            "end_offset": 42,
+            "slice_sha256": "0f795eafb7dbcc1f5d1b4aac265a6c7aef8a824c50e1a6506d5e5e429d1eba33"
+          }
+        }
+      ],
+      "expected": {
+        "must_not_become": [
+          "IMPLEMENTED",
+          "WIRED",
+          "ENABLED"
+        ]
+      }
+    },
+    {
+      "id": "RB-08",
+      "title": "Provenance and endorsement",
+      "turns": [
+        {
+          "turn_ref": "t1",
+          "sequence": 1,
+          "actor_kind": "external_agent",
+          "origin_type": "external_stated",
+          "semantic_modality": "PROPOSAL",
+          "raw_text": "Model A proposes replacing X with Y.",
+          "raw_text_sha256": "be3ca567e8110f3f2c699fe3ff260c4ef021ea9674c9cc4ec91cbbec93869ac9",
+          "span": {
+            "start_offset": 0,
+            "end_offset": 36,
+            "slice_sha256": "be3ca567e8110f3f2c699fe3ff260c4ef021ea9674c9cc4ec91cbbec93869ac9"
+          },
+          "source_actor_label": "model_a"
+        },
+        {
+          "turn_ref": "t2",
+          "sequence": 2,
+          "actor_kind": "external_agent",
+          "origin_type": "external_stated",
+          "semantic_modality": "UNRESOLVED",
+          "raw_text": "Model B critiques that proposal.",
+          "raw_text_sha256": "64c106f64f8de193558812b7729239dcd98088bc53d37e70886dcd03c074146e",
+          "span": {
+            "start_offset": 0,
+            "end_offset": 31,
+            "slice_sha256": "64c106f64f8de193558812b7729239dcd98088bc53d37e70886dcd03c074146e"
+          },
+          "source_actor_label": "model_b",
+          "declared_loss": [
+            "semantic_modality_not_frozen_for_critique"
+          ]
+        },
+        {
+          "turn_ref": "t3",
+          "sequence": 3,
+          "actor_kind": "human",
+          "origin_type": "user_stated",
+          "semantic_modality": "UNRESOLVED",
+          "raw_text": "I have not accepted either position.",
+          "raw_text_sha256": "dc3a74b12fc43814f70a712c75ecaa8479bbd7a42fee39c99b8b7ebfd42c878e",
+          "span": {
+            "start_offset": 0,
+            "end_offset": 36,
+            "slice_sha256": "dc3a74b12fc43814f70a712c75ecaa8479bbd7a42fee39c99b8b7ebfd42c878e"
+          }
+        }
+      ],
+      "expected": {
+        "endorsement": "UNKNOWN",
+        "must_not_become": [
+          "USER_DECISION"
+        ],
+        "must_preserve_distinct_sources": true
+      }
+    },
+    {
+      "id": "RB-10",
+      "title": "User-model contamination",
+      "turns": [
+        {
+          "turn_ref": "t1",
+          "sequence": 1,
+          "actor_kind": "titan_component",
+          "origin_type": "model_inferred",
+          "semantic_modality": "HYPOTHESIS",
+          "raw_text": "You may be avoiding a decision.",
+          "raw_text_sha256": "3feb23710c675e52ba258e4d3484e4af38a506b1172646d58dbd1f147cd26bda",
+          "span": {
+            "start_offset": 0,
+            "end_offset": 31,
+            "slice_sha256": "3feb23710c675e52ba258e4d3484e4af38a506b1172646d58dbd1f147cd26bda"
+          }
+        },
+        {
+          "turn_ref": "t2",
+          "sequence": 2,
+          "actor_kind": "human",
+          "origin_type": "user_stated",
+          "semantic_modality": "UNRESOLVED",
+          "raw_text": "I did not confirm that interpretation.",
+          "raw_text_sha256": "0a10f7757d27c1c814cc70ab70995fef76e7bf4b9e37342baddd571e443339a4",
+          "span": {
+            "start_offset": 0,
+            "end_offset": 38,
+            "slice_sha256": "0a10f7757d27c1c814cc70ab70995fef76e7bf4b9e37342baddd571e443339a4"
+          }
+        }
+      ],
+      "expected": {
+        "must_not_become": [
+          "USER_TESTIMONY",
+          "IDENTITY_FACT"
+        ]
+      }
+    },
+    {
+      "id": "RB-11",
+      "title": "Historical state is not current",
+      "turns": [
+        {
+          "turn_ref": "t1",
+          "sequence": 1,
+          "actor_kind": "service",
+          "origin_type": "document_stated",
+          "semantic_modality": "ASSERTION",
+          "raw_text": "Historical note: PR #373 is OPEN.",
+          "raw_text_sha256": "aff1bd2922920cd8ad03a180ce28e5bdde702ac16aa88d7f7a94f3a0a1320e0e",
+          "span": {
+            "start_offset": 17,
+            "end_offset": 32,
+            "slice_sha256": "d6b0d2a06d84481a0f312073ba68f9d263bd745d7b64bebc6760afd6157c859b"
+          },
+          "temporal_status": "HISTORICAL"
+        },
+        {
+          "turn_ref": "t2",
+          "sequence": 2,
+          "actor_kind": "system",
+          "origin_type": "system_observed",
+          "semantic_modality": "ASSERTION",
+          "raw_text": "Live owner reports PR #373 is MERGED.",
+          "raw_text_sha256": "60db23f4d6f4fbcdc676a63d8650edc6553480bf8928a5edcc74a19beb2e830f",
+          "span": {
+            "start_offset": 19,
+            "end_offset": 36,
+            "slice_sha256": "6929cedb0ac90663c6efaade6729d3314f979cad518e9194517aab4c2a085d85"
+          },
+          "temporal_status": "CURRENT"
+        }
+      ],
+      "expected": {
+        "governing_temporal_status": "CURRENT",
+        "must_not_govern_temporal_status": "HISTORICAL"
+      }
+    }
+  ]
+}
