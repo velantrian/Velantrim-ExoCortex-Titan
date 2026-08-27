@@ -39,7 +39,7 @@ on:
       - "docs/operations/hardened-production-profile.md"
       - ".github/workflows/docker.yml"
   pull_request:
-    branches: [main, master]
+    branches: ["**"]
     paths:
       - "Dockerfile"
       - ".dockerignore"
