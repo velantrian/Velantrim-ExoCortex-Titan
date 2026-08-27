@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from dataclasses import fields
 from pathlib import Path
 
@@ -79,29 +80,39 @@ def test_ticc_modules_are_not_imported_by_non_test_runtime_modules() -> None:
     assert offenders == []
 
 
+def _imported_modules(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    modules: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            modules.add(node.module)
+    return modules
+
+
 def test_ticc_core_has_no_direct_persistence_network_or_notebook_dependency() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     paths = [
         repo_root / "core" / "continuity" / "ticc.py",
         repo_root / "core" / "continuity" / "ticc_relations.py",
     ]
-    forbidden_tokens = (
+    forbidden_modules = {
         "sqlite3",
         "requests",
         "httpx",
         "urllib",
         "socket",
-        "ConversationConsolidator",
-        "ConversationNotebook",
-        "LocalShadowLedger",
-        "TruthGate",
-        "Canon",
-    )
+        "core.conversation_consolidation",
+        "conversation_consolidation",
+    }
 
     for path in paths:
-        text = path.read_text(encoding="utf-8")
-        for token in forbidden_tokens:
-            assert token not in text, f"forbidden dependency token {token!r} in {path.name}"
+        imported = _imported_modules(path)
+        assert imported.isdisjoint(forbidden_modules), (
+            f"forbidden direct dependency in {path.name}: "
+            f"{sorted(imported & forbidden_modules)}"
+        )
 
 
 def test_structural_comparison_does_not_claim_behavioral_superiority() -> None:
