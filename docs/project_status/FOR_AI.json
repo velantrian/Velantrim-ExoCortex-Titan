@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 2,
   "document_role": "AI_PROJECT_STATUS_OVERVIEW",
   "audience": "AI_AGENT",
   "canonicality": {
@@ -45,7 +45,7 @@
     "repository": "velantrian/Velantrim-ExoCortex-Titan",
     "stage10_merged_main_sha": "f72b93cb044fc317752430e12d75217313997338",
     "status": "TITAN_V1_CLOSURE_CANDIDATE",
-    "interpretation": "HISTORICAL V1 closure snapshot retained for traceability. For current orientation use current_verification above and then live GitHub. Stages 1-10 were merged and closed at this snapshot; do not infer current lifecycle from this historical section."
+    "interpretation": "Stages 1-10 are merged and closed. Stage 11 is the only active predefined stage. If this closure record is merged to main after exact-head CI, CodeQL and aggregate success, interpret the resulting main state as TITAN_V1_DONE. Do not invent Stage 12 or reopen P2/P3 research as mandatory V1 work."
   },
   "status_semantics": [
     "PROPOSED != IMPLEMENTED",
@@ -85,12 +85,11 @@
     {"stage": 8, "name": "Packaging / Update / Operations", "status": "DONE"},
     {"stage": 9, "name": "End-to-End Acceptance", "status": "DONE"},
     {"stage": 10, "name": "Bounded Pilot", "status": "DONE"},
-    {"stage": 11, "name": "Titan V1 Closure", "status": "DONE"}
+    {"stage": 11, "name": "Titan V1 Closure", "status": "DONE_WHEN_THIS_CLOSURE_CANDIDATE_IS_PRESENT_ON_MAIN_AFTER_GREEN_GATES"}
   ],
   "p0_p1": {
-    "p0_open_at_v1_closure": 0,
-    "p1_open_at_v1_closure": 0,
-    "note": "These counts describe the bounded V1 closure, not all post-V1 audit findings or open work. Re-resolve live GitHub before using current severity counts.",
+    "p0_open": 0,
+    "p1_open": 0,
     "closed_v1_p1": [
       {"id": "P1-01", "name": "Installation / first run fragmented", "status": "CLOSED", "stage": 2},
       {"id": "P1-02", "name": "Provider setup vs fail-closed egress", "status": "CLOSED", "stage": 3},
@@ -120,11 +119,17 @@
       "production_authorized": false,
       "remote_canon": false,
       "external_llm_required": false,
-      "scenarios": ["startup_health", "validated_memory_chat", "file_ingest", "mcp_reader_tools", "restart_continuity"]
+      "scenarios": [
+        "startup_health",
+        "validated_memory_chat",
+        "file_ingest",
+        "mcp_reader_tools",
+        "restart_continuity"
+      ]
     }
   },
   "bounded_v1_readiness_estimates": {
-    "note": "Historical engineering estimates relative only to the frozen bounded V1 scope; not authorization metrics and not current post-V1 measurements.",
+    "note": "Engineering estimates relative only to the frozen bounded V1 scope; not authorization metrics.",
     "architecture_fitness_percent": 90,
     "core_capabilities_percent": 92,
     "installation_percent": 95,
@@ -150,12 +155,11 @@
     "new authority router",
     "speculative cognitive capabilities"
   ],
-  "closure_rule": "Historical V1 closure rule retained for traceability. Presence of this file never grants current runtime or production authority; use current_verification and live GitHub for post-V1 state.",
+  "closure_rule": "If this file and docs/TITAN_V1_CLOSURE.ru.md are present on main as the result of a Stage 11 PR whose exact head passed full CI, CodeQL and aggregate merge evidence, then Stage 11 is DONE and the productization status is TITAN_V1_DONE.",
   "stop_conditions": [
     "do not treat this document as live proof; verify GitHub and exact SHA",
     "do not infer production authorization from CI, merge, validation, receipt, acceptance, or pilot",
     "do not reopen architecture unless a new current P0/P1 proves it necessary",
-    "after V1 closure do not invent an additional mandatory V1 stage",
-    "do not move, delete, or LFS-migrate kb_graph.json merely because of size"
+    "after Stage 11 closure do not invent an additional mandatory stage"
   ]
 }
