@@ -317,3 +317,48 @@ This document does not authorize:
 - runtime planning/action enforcement changes from the adversarial profile itself.
 
 Any executable implementation requires a separate bounded PR with explicit tests and review.
+
+## 13. TICC pre-implementation design guards
+
+A future typed source-capture experiment may be useful only if it preserves orthogonal distinctions rather than creating another compressed semantic layer. Before any executable TICC PR, the design should satisfy all of the following:
+
+1. **Origin is separate from semantic modality.** Reuse existing Titan `ActorKind` and `OriginType` for who/where a statement came from. A capture-specific modality must remain origin-neutral; do not encode origin in values such as `MODEL_PROPOSAL`, `SYSTEM_OBSERVATION`, or `EXTERNAL_STATEMENT`.
+2. **Recommendation, proposal, decision and endorsement are not interchangeable.** The source representation must preserve a user-supported decision/acceptance/rejection/deferment when explicit, or declare unresolved/loss when it cannot establish one. Repetition or later summary is not endorsement.
+3. **Illustration, simulation and pseudocode must be representable before compression.** RB-05/RB-06/RB-07 must not depend on downstream prose heuristics. If the source distinction cannot be represented exactly, the capture must defer or declare loss rather than emit an upgraded assertion.
+4. **Constraint qualifiers and conditions must remain source-bound.** `Do not publish until approval` must not collapse into an unconditional boolean prohibition. Preserve source-bound qualifier/condition/temporal/applicability scope, or declare loss explicitly.
+5. **Boundary declarations are not verification evidence.** A receipt may declare `shadow-only` / `no runtime authority`, but claims such as no source mutation, no notebook mutation or no Canon mutation require tests/static call-surface evidence; a boolean written by the component is not proof of its own isolation.
+6. **Source hashes/spans require a read-only source resolver in evaluation.** If raw text is intentionally absent from candidates/receipts, the shadow evaluator must receive the original fixture/source through an explicit read-only input and verify the bound span; candidate references alone cannot prove source correspondence.
+
+### Orthogonal source model
+
+A bounded candidate should preserve separate axes conceptually like:
+
+```text
+Actor / Origin
+    !=
+Semantic Modality
+    !=
+Epistemic / implementation status
+    !=
+Authority / permission
+```
+
+Candidate modality may need values such as `ASSERTION`, `DIRECTIVE`, `PROPOSAL`, `RECOMMENDATION`, `DECISION`, `CORRECTION`, `RETRACTION`, `EXAMPLE`, `HYPOTHESIS`, `PREDICTION`, `SIMULATION`, `PSEUDOCODE`, `QUESTION`, and `UNRESOLVED`, but the exact closed vocabulary must be justified by fixtures before implementation.
+
+### Observability stop boundary
+
+Operational observability is **not part of the first TICC evidence slice**. A future telemetry profile may be useful, but production-environment shadow sampling, exporters, dashboards, alert thresholds, retention policies, HMAC correlation tokens, and host telemetry adapters all imply additional privacy/operations surfaces and require a separate owner decision after the source-capture experiment itself demonstrates value.
+
+The first executable TICC slice, if separately authorized, should prefer only:
+
+- deterministic fixture inputs;
+- in-memory/shadow capture;
+- immutable local evaluation receipts/reports;
+- a recording/no-op test sink where needed to prove instrumentation cannot alter results;
+- no production source call site;
+- no remote telemetry/exporter;
+- no operational dashboard/alert dependency.
+
+`shadow evaluation success != authorization for production shadow observation`.
+
+If source-bound typed capture does not materially improve correction/status/constraint preservation over the simpler baseline, both TICC expansion and its operational observability layer should be rejected.
