@@ -85,6 +85,42 @@ def test_ticc_is_disabled_by_default_and_emits_no_artifacts() -> None:
     assert TICCReasonCode.SHADOW_FEATURE_DISABLED in result.receipt.reason_codes
     assert result.receipt.shadow_only is True
     assert result.receipt.no_runtime_authority is True
+    assert result.receipt.scenario_id == "ticc-v0_1-shadow"
+
+
+def test_shadow_scenario_id_is_materialized_and_hash_bound() -> None:
+    turn = _turn("Keep original records.")
+    annotation = TICCSemanticAnnotation(
+        modality=TICCSemanticModality.DIRECTIVE,
+        source_span=_span(turn),
+        origin_type=OriginType.USER_STATED,
+    )
+
+    first = capture_turn(
+        turn=turn,
+        annotation=annotation,
+        config=TICCConfig(enabled=True, scenario_id="scenario-alpha"),
+        created_at=NOW,
+    )
+    repeated = capture_turn(
+        turn=turn,
+        annotation=annotation,
+        config=TICCConfig(enabled=True, scenario_id="scenario-alpha"),
+        created_at=NOW,
+    )
+    second = capture_turn(
+        turn=turn,
+        annotation=annotation,
+        config=TICCConfig(enabled=True, scenario_id="scenario-beta"),
+        created_at=NOW,
+    )
+
+    assert first.candidates[0].scenario_id == first.receipt.scenario_id == "scenario-alpha"
+    assert second.candidates[0].scenario_id == second.receipt.scenario_id == "scenario-beta"
+    assert first.candidates[0].candidate_id == repeated.candidates[0].candidate_id
+    assert first.receipt.receipt_id == repeated.receipt.receipt_id
+    assert first.candidates[0].candidate_id != second.candidates[0].candidate_id
+    assert first.receipt.receipt_id != second.receipt.receipt_id
 
 
 def test_exact_source_binding_and_assertion_reuse_existing_contract() -> None:
