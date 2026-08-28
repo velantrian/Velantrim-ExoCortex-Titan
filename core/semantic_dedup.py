@@ -49,8 +49,6 @@ DEFAULT_THRESHOLD = _env_float("SEMANTIC_DEDUP_THRESHOLD", 0.90)
 _MAX_CLUSTER_SIZE = int(_env_float("SEMANTIC_DEDUP_MAX_CLUSTER", 8))
 # Ранг ESM для выбора канонического факта в кластере (выше = каноничнее).
 _ESM_RANK = {"Validated": 3, "Supported": 2, "Hypothesized": 1, "Observed": 0}
-# Ранг ESM для выбора канонического факта в кластере (выше = каноничнее).
-_ESM_RANK = {"Validated": 3, "Supported": 2, "Hypothesized": 1, "Observed": 0}
 
 EmbedFn = Callable[[Sequence[str]], list[Sequence[float]]]
 
@@ -158,11 +156,11 @@ def _similar_pairs(positions: list[int], vecs: Sequence[Sequence[float]],
                 dist, idx = nn.kneighbors(Vn)
                 for a in range(m):
                     for b, d in zip(idx[a], dist[a]):
-                        if b > a and (1.0 - float(d)) >= threshold:   # sim = 1 - cosine-distance
+                        if b > a and (1.0 - float(d)) >= threshold:
                             edges.append((positions[a], positions[b]))
                 return edges
             except Exception:  # noqa: BLE001
-                pass  # ANN недоступен/сбой → точное попарное ниже
+                pass
         S = Vn @ Vn.T
         for a in range(m):
             row = S[a]
@@ -170,7 +168,7 @@ def _similar_pairs(positions: list[int], vecs: Sequence[Sequence[float]],
                 if row[b] >= threshold:
                     edges.append((positions[a], positions[b]))
         return edges
-    except Exception:  # noqa: BLE001 — нет numpy → чистый stdlib
+    except Exception:  # noqa: BLE001
         for a in range(m):
             for b in range(a + 1, m):
                 if _cosine(vecs[positions[a]], vecs[positions[b]]) >= threshold:
@@ -197,7 +195,6 @@ def cluster_by_meaning(
     """
     norm = [_normalize_claim(f.get("claim", "")) for f in facts]
     idxs = [i for i, n in enumerate(norm) if n]
-    # детерминированный порядок: по fact_id, затем по индексу
     idxs.sort(key=lambda i: (str(facts[i].get("fact_id", "")), i))
 
     if embed_fn is None:
@@ -208,8 +205,6 @@ def cluster_by_meaning(
 
     vecs = embed_fn([facts[i].get("claim", "") for i in idxs])
 
-    # блокировка по домену: сравниваем только внутри одного домена (graceful: нет
-    # домена → все в блоке "" → корректно, просто без выигрыша по скорости)
     blocks: dict[str, list[int]] = {}
     for pos, i in enumerate(idxs):
         blocks.setdefault(_domain_of(facts[i]), []).append(pos)
@@ -220,9 +215,6 @@ def cluster_by_meaning(
         edges = _similar_pairs(positions, vecs, threshold)
         for comp in _connected_components(positions, edges):
             members = sorted(idxs[p] for p in comp)
-            # OVER-MERGE GUARD (RU-калибровка): аномально большой компонент — почти всегда
-            # артефакт низкого порога + транзитивности (цепочка сцепляет разные факты).
-            # НЕ сливаем такой кластер: разбиваем на одиночные (флаг на ручную проверку).
             if len(members) > _MAX_CLUSTER_SIZE:
                 logger.warning(
                     "semantic_dedup: компонент размера %d > %d в домене %r → НЕ сливаю "
@@ -233,7 +225,6 @@ def cluster_by_meaning(
             else:
                 clusters.append(members)
 
-    # детерминированный порядок кластеров: по наименьшему fact_id
     clusters.sort(key=lambda c: (str(facts[c[0]].get("fact_id", "")), c[0]))
     return clusters
 
@@ -259,9 +250,6 @@ def compute_semantic_corroboration(
     """
     out: dict[str, int] = {}
     for cl in cluster_by_meaning(facts, threshold, embed_fn):
-        # Разделить кластер по ПОЛЯРНОСТИ: «X» и «не X» попадают в один смысловой кластер,
-        # но НЕ корроборируют друг друга (это противоречие, см. contradiction_resolver).
-        # Корроборация считается только среди СОГЛАСНЫХ (одной полярности). (audit-фикс P1)
         by_pol: dict[int, list[int]] = {}
         for i in cl:
             by_pol.setdefault(_claim_polarity(facts[i].get("claim", "")), []).append(i)
@@ -299,8 +287,8 @@ def plan_dedup(
 ) -> list[MergePlan]:
     """
     Планы слияния для кластеров размера >= 2. Канонический факт выбирается по
-    (ранг ESM ↑, confidence ↑, порядок входа); остальные — кандидаты на Deprecated
-    с ребром merged_into (исполняет ОТДЕЛЬНЫЙ шаг, не этот модуль). No-DELETE.
+    (ранг ESM ↑, confidence ↑, fact_id ↑ детерминированно); остальные — кандидаты
+    на Deprecated с ребром merged_into (исполняет ОТДЕЛЬНЫЙ шаг, не этот модуль). No-DELETE.
     """
     plans: list[MergePlan] = []
     for cl in cluster_by_meaning(facts, threshold, embed_fn):
@@ -309,10 +297,13 @@ def plan_dedup(
 
         def _rank(i: int):
             f = facts[i]
-            return (_ESM_RANK.get(str(f.get("epistemic_state", "")), 0),
-                    float(f.get("confidence", 0.0) or 0.0))
+            return (
+                -_ESM_RANK.get(str(f.get("epistemic_state", "")), 0),
+                -float(f.get("confidence", 0.0) or 0.0),
+                str(f.get("fact_id", "")),
+            )
 
-        ordered = sorted(cl, key=_rank, reverse=True)
+        ordered = sorted(cl, key=_rank)
         canon = ordered[0]
         sources = sorted({str(facts[i].get("source", "")).strip()
                           for i in cl if str(facts[i].get("source", "")).strip()})
