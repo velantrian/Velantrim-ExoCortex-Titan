@@ -104,8 +104,11 @@ class TICCConfig:
             raise TICCError("only shadow mode is supported")
         if not isinstance(self.enabled, bool):
             raise TICCError("enabled must be a bool")
-        if not isinstance(self.scenario_id, str) or not self.scenario_id.strip():
-            raise TICCError("scenario_id must be non-empty")
+        object.__setattr__(
+            self,
+            "scenario_id",
+            _normalize_text(self.scenario_id, "scenario_id"),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,6 +227,7 @@ class TICCSemanticAnnotation:
 class TICCCaptureCandidate:
     candidate_id: str
     schema_version: str
+    scenario_id: str
     source_turn_ref: str
     source_ref: str
     interaction_event_ref: str
@@ -246,6 +250,7 @@ class TICCCaptureReceipt:
     adapter_id: str
     adapter_version: str
     mode: TICCMode
+    scenario_id: str
     source_turn_ref: str
     source_turn_digest: str
     interaction_event_ref: str | None
@@ -278,7 +283,7 @@ def capture_turn(
     if not _aware(created_at):
         raise TICCError("created_at must be timezone-aware")
     if not config.enabled:
-        return _disabled_result(turn, created_at)
+        return _disabled_result(turn, config, created_at)
 
     source_ref, source_text = _validate_and_encode_span(turn, annotation.source_span)
     _validate_actor_origin(turn, annotation)
@@ -335,6 +340,7 @@ def capture_turn(
 
     candidate_payload = {
         "schema_version": TICC_SCHEMA_VERSION,
+        "scenario_id": config.scenario_id,
         "source_turn_ref": turn.turn_ref,
         "source_ref": source_ref,
         "interaction_event_ref": event.event_id,
@@ -352,6 +358,7 @@ def capture_turn(
     candidate = TICCCaptureCandidate(
         candidate_id=candidate_hash,
         schema_version=TICC_SCHEMA_VERSION,
+        scenario_id=config.scenario_id,
         source_turn_ref=turn.turn_ref,
         source_ref=source_ref,
         interaction_event_ref=event.event_id,
@@ -370,6 +377,7 @@ def capture_turn(
     assertions = (assertion,) if assertion is not None else ()
     receipt = _receipt(
         turn=turn,
+        scenario_id=config.scenario_id,
         created_at=created_at,
         interaction_event_ref=event.event_id,
         candidate_refs=(candidate.candidate_id,),
@@ -379,7 +387,11 @@ def capture_turn(
     return TICCCaptureResult(event, (candidate,), assertions, receipt)
 
 
-def _disabled_result(turn: ConversationSourceTurn, created_at: datetime) -> TICCCaptureResult:
+def _disabled_result(
+    turn: ConversationSourceTurn,
+    config: TICCConfig,
+    created_at: datetime,
+) -> TICCCaptureResult:
     reasons = (TICCReasonCode.SHADOW_FEATURE_DISABLED, TICCReasonCode.NO_RUNTIME_AUTHORITY)
     return TICCCaptureResult(
         None,
@@ -387,6 +399,7 @@ def _disabled_result(turn: ConversationSourceTurn, created_at: datetime) -> TICC
         (),
         _receipt(
             turn=turn,
+            scenario_id=config.scenario_id,
             created_at=created_at,
             interaction_event_ref=None,
             candidate_refs=(),
@@ -399,6 +412,7 @@ def _disabled_result(turn: ConversationSourceTurn, created_at: datetime) -> TICC
 def _receipt(
     *,
     turn: ConversationSourceTurn,
+    scenario_id: str,
     created_at: datetime,
     interaction_event_ref: str | None,
     candidate_refs: tuple[str, ...],
@@ -410,6 +424,7 @@ def _receipt(
         "adapter_id": TICC_ADAPTER_ID,
         "adapter_version": TICC_ADAPTER_VERSION,
         "mode": TICCMode.SHADOW.value,
+        "scenario_id": scenario_id,
         "source_turn_ref": turn.turn_ref,
         "source_turn_digest": turn.raw_text_sha256,
         "interaction_event_ref": interaction_event_ref,
@@ -427,6 +442,7 @@ def _receipt(
         TICC_ADAPTER_ID,
         TICC_ADAPTER_VERSION,
         TICCMode.SHADOW,
+        scenario_id,
         turn.turn_ref,
         turn.raw_text_sha256,
         interaction_event_ref,
