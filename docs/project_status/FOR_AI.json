@@ -9,6 +9,37 @@
     "is_production_authorization": false,
     "freshness_rule": "READ_THIS_ORIENTATION_FIRST_THEN_LIVE_VERIFY_CHANGING_FACTS; LIVE_GITHUB_AND_EXACT_SHA_OVERRIDE_ON_CONFLICT"
   },
+  "current_verification": {
+    "date": "2026-08-27",
+    "repository": "velantrian/Velantrim-ExoCortex-Titan",
+    "verified_main_sha": "0c2cb65787a90e60e6cc5dae762af38fff1739f8",
+    "notion_page_id": "398ac84d-0547-81fe-8ca5-d0d2727d1961",
+    "runtime_authority": false,
+    "production_authorized": false,
+    "operator_go": false,
+    "live_state_rule": "GitHub live state overrides this checkpoint for volatile PR, issue, check, and head lifecycle",
+    "federated_role": {
+      "titan": ["orchestration", "execution", "providers_models", "tools", "retrieval", "integration_host"],
+      "crystal": ["trusted_evidence", "provenance", "admission", "bounded_canon_authority"]
+    },
+    "boundary": "Titan-local memory/ESM/TruthGate/provenance mechanisms do not transfer ecosystem-wide evidence sovereignty; integration != authority transfer",
+    "recent_lifecycle": {
+      "pr_394": "MERGED_BOUNDED_OPENCLAW_ADOPTION_BOUNDARY",
+      "pr_396": "MERGED_OPERATIONAL_CAPABILITY_PLANE_V0_1",
+      "pr_397": "CLOSED_SUPERSEDED_RELEVANT_DEFENSE_LANDED_VIA_PR_399",
+      "mcp_gateway_transport": "PRESENT_ON_VERIFIED_MAIN"
+    },
+    "preservation": {
+      "kb_graph.json": "KEEP_VERSIONED_KNOWLEDGE_ASSET"
+    },
+    "evidence_priority": [
+      "memory evaluation harness (#402 or current successor)",
+      "Reader production evidence program (#120 or current successor)",
+      "controlled measurement on representative corpus",
+      "minimal correction from measured failure",
+      "repeat measurement"
+    ]
+  },
   "snapshot": {
     "date": "2026-08-22",
     "repository": "velantrian/Velantrim-ExoCortex-Titan",
