@@ -29,6 +29,8 @@ _DEFAULT_MAX_CAPABILITY = "reader"
 _MAX_IDEMPOTENCY_KEY_LENGTH = 128
 _DEFAULT_IDEMPOTENCY_CACHE_SIZE = 1024
 _MAX_IDEMPOTENCY_REPLAY_BYTES = 64 * 1024
+_PUBLIC_TOOL_ERROR_CODE = "TOOL_EXECUTION_FAILED"
+_PUBLIC_TOOL_ERROR_MESSAGE = "Tool execution failed. See correlationId in server logs."
 
 
 def _server_max_capability() -> str:
@@ -69,6 +71,15 @@ def make_error(id_: Any, code: int, message: str) -> dict[str, Any]:
 
 def make_result(id_: Any, result: Any) -> dict[str, Any]:
     return {"jsonrpc": "2.0", "id": id_, "result": result}
+
+
+def _tool_error_payload(correlation_id: str) -> dict[str, Any]:
+    return {
+        "content": [{"type": "text", "text": _PUBLIC_TOOL_ERROR_MESSAGE}],
+        "isError": True,
+        "errorCode": _PUBLIC_TOOL_ERROR_CODE,
+        "correlationId": correlation_id,
+    }
 
 
 def _normalize_idempotency_key(raw: str | None) -> str | None:
@@ -267,8 +278,6 @@ class McpHandler:
 
     def _tools_for(self, capability: str) -> list[dict[str, Any]]:
         tools = self.registry.for_capability(capability)
-        # Defense-in-depth carried from PR #397: never trust a possibly stale
-        # derived visibility index without re-checking the canonical ToolDef.
         return [
             tool.to_manifest()
             for name, tool in tools.items()
@@ -317,10 +326,6 @@ class McpHandler:
 
             if normalized_key is not None:
                 if tool.idempotency_arg:
-                    # The operation already owns durable idempotency/resume
-                    # semantics. Reconcile and forward the transport key, but
-                    # deliberately do NOT shadow that operation with the
-                    # process-local replay cache.
                     supplied = call_kwargs.get(tool.idempotency_arg)
                     if supplied not in (None, "", normalized_key):
                         return make_error(
@@ -370,17 +375,18 @@ class McpHandler:
                 ],
                 "isError": False,
             }
-        except TypeError as exc:
-            result_payload = {
-                "content": [{"type": "text", "text": str(exc)}],
-                "isError": True,
-            }
-        except Exception as exc:
-            logger.exception("MCP tool %s failed", name)
-            result_payload = {
-                "content": [{"type": "text", "text": str(exc)}],
-                "isError": True,
-            }
+        except TypeError:
+            correlation_id = str(uuid.uuid4())
+            logger.exception(
+                "MCP tool %s failed with TypeError correlation_id=%s",
+                name,
+                correlation_id,
+            )
+            result_payload = _tool_error_payload(correlation_id)
+        except Exception:
+            correlation_id = str(uuid.uuid4())
+            logger.exception("MCP tool %s failed correlation_id=%s", name, correlation_id)
+            result_payload = _tool_error_payload(correlation_id)
 
         if (
             tool.side_effecting
