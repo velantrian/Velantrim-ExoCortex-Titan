@@ -5,6 +5,9 @@
 # file to drift from the actual dev/runtime dependency graph (including stale pytest,
 # pytest-asyncio, and Kuzu constraints after the LadybugDB migration).
 #
+# PyYAML is a required production-profile verification dependency, but its version is
+# declared only by the `dev` extra in pyproject.toml; it is intentionally not pinned here.
+#
 # This file is retained only for tools or contributors that still invoke:
 #
 #     pip install -r requirements-dev.txt
