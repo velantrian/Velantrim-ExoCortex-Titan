@@ -1,5 +1,8 @@
 # Project Status — Velantrim Titan 9.0
 
+> **Status:** CURRENT STATUS GUIDE  
+> **Live-state rule:** mutable repository facts (current `main` SHA, PR/Issue state, workflow/review state) must be verified from GitHub when they matter. Dated evidence below remains snapshot evidence, not an evergreen remote-state claim.
+
 **Current public version:** Velantrim Titan 9.0 (`pyproject.toml` / `core.__version__` /
 `server.py`'s `/api` response are the single source of truth — see
 [`docs/REVIEWER_README.md`](REVIEWER_README.md) §10 for how to confirm this yourself).
@@ -65,14 +68,15 @@ Ranked by what would actually hurt someone relying on this in production:
    `1/10/25/50/100`, 25 independent store instances against one WAL database, mixed
    readers/writers, committed-write crash survival, uncommitted rollback, and
    `PRAGMA integrity_check = ok`. The retained evidence is
-   `docs/evidence/sqlite-concurrency-baseline-2026-08-03.json`. This materially closes
-   the old claim that no automated 100-writer characterization existed, but it is not an
-   SLA or proof of unlimited scale, network filesystems, production multiprocess load,
-   or every contention edge. Issue #249 is now characterized through merged
-   PR #346 as a test-harness scope defect / historical runner sensitivity; a product CAS
-   defect was not confirmed, and its one-winner/one-intent assertions remain intact. The
-   distinct concurrent fresh-store bootstrap residual discovered during that work is
-   tracked separately as Issue #347 and remains open.
+   `docs/evidence/sqlite-concurrency-baseline-2026-08-03.json`. Issue #249 was later
+   characterized through merged PR #346 as a test-harness scope defect / historical
+   runner sensitivity; a product CAS defect was not confirmed, and its one-winner /
+   one-intent assertions remain intact. The distinct concurrent fresh-store bootstrap
+   residual tracked as Issue #347 was subsequently resolved by the bounded bootstrap
+   serialization fix merged through PR #349. Exact closure evidence records final PR,
+   post-merge aggregate, and scheduled CodeQL success. This resolves the supported
+   bounded concurrent fresh-store first-use scenario; it does **not** establish an SLA,
+   unlimited scale, network-filesystem safety, or general multiprocess production proof.
 4. **Observability is metrics + logs, not a persisted long-term trace store.** You can
    see current latency/health, but reconstructing "why did the system answer this way"
    for a request from last week is not yet a first-class capability.
@@ -100,10 +104,10 @@ Ranked by what would actually hurt someone relying on this in production:
    boundaries.
 6. **Version/branding/public-release drift risk.** Public entrypoints use Titan 9.0,
    while historical docs and comments intentionally retain older version numbers as
-   history. The only historical GitHub Release visible during the 2026-08-14 audit has
-   a Titan tag but a cross-project/mislabeled release title; it is explicitly classified
-   as historical and not current Titan release evidence in
-   `docs/evidence/release-evidence-2026-08-14.md`.
+   history. `CANONICAL.md` is now the current authority index; older V8.x material is
+   historical unless explicitly re-adopted by a current contract. The historical
+   GitHub Release classified in `docs/evidence/release-evidence-2026-08-14.md` is not
+   current Titan release evidence.
 
 ## 4. Roadmap: P0 / P1 / P2
 
@@ -118,17 +122,16 @@ parentheses for traceability.
   tracking, lawful-basis handling, PII redaction policy, and legal/operational proof.
   The durable erasure coordinators are engineering mechanisms, not a certified program.
 - **Contract + concurrency test-gate** (Phase 3): ✅ core promotion ownership and the
-  bounded SQLite concurrency/crash characterization now exist. Standard Validated
-  callers are CI-inventoried behind `PromotionGateway`; `/query` is read-only; the
-  canonical promotion path is CAS guarded and transactionally couples its required
-  Version/Audit evidence. World Skills now uses its dedicated fail-closed admission
-  contract rather than a direct-promotion exception. The #249 CAS question is now
-  characterized without weakening its one-winner/one-intent assertions: merged #346
-  isolates the intended race and has clean hosted pre/post-merge evidence. Still open:
-  characterize #347 concurrent fresh-store bootstrap; prove the wider storage path under
-  realistic multiprocess/production conditions; and continue converging
-  separate legacy mutation families only where evidence shows an authority or atomicity
-  gap. CI coverage gate (`--cov-fail-under`) is enforced, not just configured.
+  bounded SQLite concurrency/crash characterization exist. Standard Validated callers
+  are CI-inventoried behind `PromotionGateway`; `/query` is read-only; the canonical
+  promotion path is CAS guarded and transactionally couples its required Version/Audit
+  evidence. World Skills uses its fail-closed admission contract rather than a
+  direct-promotion exception. #249 has a bounded harness-scope classification and #347
+  has a bounded fresh-store bootstrap fix. Still required for a broader production
+  claim: prove the wider storage path under realistic multiprocess/production
+  conditions and continue converging separate legacy mutation families only where
+  evidence shows an authority or atomicity gap. CI coverage gate (`--cov-fail-under`)
+  is enforced, not just configured.
 - **Independent security review** before any deployment that will hold real users'
   sensitive data on the public internet.
 
@@ -148,16 +151,16 @@ parentheses for traceability.
   SSE) onto the existing `core/tool_registry.py` contract, replacing placeholder
   handlers, so multi-role agent access actually works end-to-end.
 - **Lean "core profile" packaging** (Phase 6): an install path with only stdlib
-  dependencies for evaluation, with `fastapi`/`kuzu`/`sentence-transformers`/etc. as
-  clearly optional extras (already partially true via `pyproject.toml` extras — this is
-  about lowering the default-path friction further).
+  dependencies for evaluation, with `fastapi`/graph/embedding dependencies as clearly
+  optional extras (already partially true via `pyproject.toml` extras — this is about
+  lowering default-path friction further).
 - **Continued version-string hygiene**: keep new code routing through
   `core.__version__` (`server.py` already does, as of Titan 9.0) rather than
   reintroducing hardcoded version literals.
 
-## 5. Current test / release evidence
+## 5. Retained test / release evidence snapshot
 
-The current dated evidence snapshot is:
+A retained dated evidence snapshot is:
 
 [`docs/evidence/release-evidence-2026-08-14.md`](evidence/release-evidence-2026-08-14.md)
 
@@ -173,9 +176,9 @@ full pytest path                          4160 passed
 coverage ratchet                          76% >= 74%
 ```
 
-Those values supersede the old focused `126 passed` snapshot as the current public
-CI evidence for this document. They remain **snapshot evidence**, not an evergreen
-claim: any newer candidate or merge must establish its own exact-head/post-merge runs.
+Those values remain **historical snapshot evidence**, not the current repository HEAD
+or evergreen CI state. Any newer candidate, merge, or decision must establish its own
+fresh exact-head/post-merge evidence from GitHub.
 
 The evidence report also records the explicit absence of a current 2026-08-14 GitHub
 Release and classifies the repository's older mislabeled release/tag as historical, not
@@ -190,12 +193,11 @@ auditable provenance, and truth-bound generation, where the core write/read/trut
 (memory → Truth Gate → provenance → retrieval) is stable and test-covered, and higher
 cognitive layers are explicit research code. It has not had an independent security
 audit and does not have a certified compliance program. SQLite concurrency and crash
-behavior have bounded characterization evidence, but production-scale
-multiprocess/storage behavior and Issue #347 remain unresolved. Issue #249 is no
-longer an uncharacterized product-CAS risk: its bounded classification is a harness-scope
-defect / historical runner sensitivity with product CAS defect not confirmed. For deployment,
-`docker-compose.prod.yml` is the repository's hardened deny-by-default profile;
-`docker-compose.yml` is retained for compatibility/research behavior and is not the
-hardened production contract. It is a reasonable choice to evaluate, extend, or run
-locally today; it is not yet a drop-in production system for sensitive,
-internet-facing, multi-user workloads without the P0 work above.
+behavior have bounded characterization evidence, including closure of the #347 bounded
+fresh-store first-use residual, but that does not imply unlimited or general
+multiprocess production-scale proof. For deployment, `docker-compose.prod.yml` is the
+repository's hardened deny-by-default profile; `docker-compose.yml` is retained for
+compatibility/research behavior and is not the hardened production contract. It is a
+reasonable choice to evaluate, extend, or run locally today; it is not yet a drop-in
+production system for sensitive, internet-facing, multi-user workloads without the P0
+work above.
