@@ -39,8 +39,9 @@ jobs:
           ]
           for old, _new, label, text in replacements:
               count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f'{label}: expected exactly 1 stale target, found {count}')
+              if count < 1:
+                  raise SystemExit(f'{label}: expected at least 1 active stale target, found {count}')
+              print(f'{label}: replacing {count} active stale target(s)')
 
           index = index.replace(replacements[0][0], replacements[0][1]).replace(replacements[1][0], replacements[1][1])
           de = de.replace(replacements[2][0], replacements[2][1])
