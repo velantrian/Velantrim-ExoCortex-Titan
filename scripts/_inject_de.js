@@ -40,7 +40,7 @@ console.log("Injected I18N.de with", Object.keys(de).length, "keys");
 function translate(key, en) {
   const map = {
     pageTitle: "VELANTRIM Titan — Konsole",
-    "header.subtitle": "V8.7 · Speicher + LLM · API einrichten und chatten",
+    "header.subtitle": "V9.0 · Speicher + LLM · API einrichten und chatten",
     "readMode.enter": "Lesen",
     "readMode.exit": "Beenden",
     "readMode.toggleTitle": "Vollbild — nur Chat-Text",
