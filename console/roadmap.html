@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Velantrim Roadmap v8.17.9</title>
+  <style>
+    :root {
+      --bg: #070b14;
+      --panel: #0a1120;
+      --panel-open: #0d1828;
+      --head-grad-a: #0d1421;
+      --head-grad-b: #111927;
+      --line: rgba(255, 255, 255, 0.08);
+      --text: #e0e8f0;
+      --muted: #9ba8bc;
+      --soft: #5a6a80;
+      --accent: #4ecdc4;
+      --p0: #ff4444;
+      --p1: #ff8800;
+      --p2: #f0c040;
+      --p3: #40c080;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 20% 0, rgba(78, 205, 196, 0.08), transparent 42%), var(--bg);
+      color: var(--text);
+      font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+      min-height: 100vh;
+      padding-bottom: 60px;
+    }
+
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .header {
+      background: linear-gradient(135deg, var(--head-grad-a), var(--head-grad-b));
+      border-bottom: 1px solid rgba(78, 205, 196, 0.15);
+      padding: 28px 0 20px;
+    }
+
+    .kicker {
+      font-size: 10px;
+      color: var(--accent);
+      letter-spacing: 0.2em;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 22px;
+      color: #e8e8e8;
+    }
+
+    .sub {
+      font-size: 11px;
+      color: var(--soft);
+      margin: 0 0 18px;
+    }
+
+    .prio-grid {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .prio-pill {
+      border-radius: 8px;
+      padding: 6px 12px;
+      border: 1px solid transparent;
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.2s ease, transform 0.15s ease;
+      user-select: none;
+    }
+
+    .prio-pill:hover { transform: translateY(-1px); }
+
+    .prio-pill.is-dim { opacity: 0.45; }
+
+    .count {
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-weight: 700;
+      font-size: 10px;
+      color: #000;
+      background: currentColor;
+    }
+
+    .filters {
+      background: var(--head-grad-a);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 10px 0;
+      overflow-x: auto;
+    }
+
+    .tag-row {
+      display: flex;
+      gap: 6px;
+      min-width: fit-content;
+    }
+
+    .tag-btn {
+      background: transparent;
+      color: var(--soft);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+
+    .tag-btn.active {
+      color: #070b14;
+      border-color: var(--accent);
+      background: var(--accent);
+      font-weight: 700;
+    }
+
+    .meta {
+      font-size: 10px;
+      color: var(--soft);
+      margin: 14px 0;
+    }
+
+    .task {
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-left: 3px solid transparent;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .task.open {
+      background: var(--panel-open);
+    }
+
+    .task-head {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 12px 14px;
+    }
+
+    .task-id {
+      color: var(--soft);
+      font-size: 10px;
+      min-width: 30px;
+    }
+
+    .task-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .task-tag {
+      background: rgba(78, 205, 196, 0.1);
+      color: var(--accent);
+      font-size: 9px;
+      border-radius: 4px;
+      padding: 2px 7px;
+      white-space: nowrap;
+    }
+
+    .task-effort, .arrow {
+      color: var(--soft);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .arrow {
+      font-size: 12px;
+      transition: transform 0.2s ease;
+    }
+
+    .task.open .arrow {
+      transform: rotate(180deg);
+    }
+
+    .task-body {
+      display: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 6px 14px 18px;
+    }
+
+    .task.open .task-body {
+      display: block;
+    }
+
+    .sec-label {
+      font-size: 9px;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+      margin: 12px 0 6px;
+      text-transform: uppercase;
+    }
+
+    .why {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .what-item {
+      display: flex;
+      gap: 7px;
+      margin-bottom: 6px;
+      align-items: flex-start;
+      font-size: 11px;
+      color: #c8d8e8;
+      line-height: 1.6;
+    }
+
+    .what-arrow {
+      margin-top: 1px;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+
+    .meta-grid {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .box {
+      flex: 1;
+      min-width: 210px;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .box.from {
+      background: rgba(201, 169, 110, 0.08);
+      border: 1px solid rgba(201, 169, 110, 0.2);
+      color: var(--muted);
+    }
+
+    .box.closes {
+      background: rgba(78, 205, 196, 0.06);
+      border: 1px solid rgba(78, 205, 196, 0.15);
+      color: var(--muted);
+    }
+
+    .label {
+      font-weight: 700;
+      margin-right: 4px;
+    }
+
+    .hint {
+      margin-top: 12px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(78, 205, 196, 0.15);
+      background: rgba(78, 205, 196, 0.05);
+      color: #c7f0ea;
+      font-size: 10px;
+      line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="wrap">
+      <div class="kicker">Velantrim Exocortex - Technical Backlog</div>
+      <h1>Roadmap улучшений v8.17.9</h1>
+      <p class="sub">Аудит + сравнение с v8.6 Complex. Нажмите карточку для деталей.</p>
+      <div id="prio-grid" class="prio-grid"></div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="wrap">
+      <div id="tag-row" class="tag-row"></div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <p id="meta" class="meta"></p>
+    <div id="tasks"></div>
+    <div class="hint">
+      Страница статическая (без React-сборки) и работает внутри текущей FastAPI-консоли.
+      Маршрут: <code>/console/roadmap</code>.
+    </div>
+  </div>
+
+  <script>
+    const tasks = [
+      {
+        id: "T01", priority: "P0", tag: "Security", title: "REST API Authentication", effort: "1 день",
+        why: "Сейчас 0 из 25 endpoints защищены. GDPR Article 22/30 claim невозможен без идентификации контроллера данных.",
+        what: [
+          "Добавить require_api_key(x_api_key: str = Header(default='')) в rest_api.py",
+          "Depends(require_api_key) на все mutation endpoints (POST/DELETE/PATCH)",
+          "VELANTRIM_API_KEY из ENV - обязателен. VELANTRIM_ALLOW_OPEN=true только для dev",
+          "401 Unauthorized с понятным сообщением"
+        ],
+        from: "server.py:493-498 из v8.6 - готовый код, copy-paste",
+        closes: "P0-3 из аудита v8.17.9"
+      },
+      {
+        id: "T02", priority: "P0", tag: "Security", title: "CORS Hardening", effort: "30 минут",
+        why: "allow_origins=['*'] + allow_credentials=True - запрещённая комбинация по CORS spec. Браузер блокирует preflight.",
+        what: [
+          "CORS_ORIGINS из ENV (comma-separated)",
+          "CORS_ALLOW_CREDENTIALS = '*' not in CORS_ORIGINS - одна строка, автоматическая защита",
+          "По умолчанию CORS отключён"
+        ],
+        from: "server.py:65-70 из v8.6",
+        closes: "P0-4 из аудита v8.17.9"
+      },
+      {
+        id: "T03", priority: "P0", tag: "Bug", title: "Fix /ask: top_k -> k", effort: "2 минуты",
+        why: "rest_api.py:374 передаёт top_k= в pipeline.run() который принимает k=. Каждый вызов /ask -> 500 TypeError.",
+        what: [
+          "rest_api.py:374: top_k=query.limit -> k=query.limit",
+          "Проверить rest_api.py:656 causal_retrieve"
+        ],
+        from: "Найдено в аудите v8.17.9",
+        closes: "P0-1 из аудита - главный публичный endpoint сломан"
+      },
+      {
+        id: "T04", priority: "P0", tag: "Testing", title: "Integration Tests - FastAPI TestClient", effort: "2 дня",
+        why: "Нет ни одного теста на /ask через TestClient. Именно поэтому top_k баг жил в релизе.",
+        what: [
+          "tests/test_rest_api.py с fixture client",
+          "test_ask_returns_200, test_ask_passes_k_correctly",
+          "test_health_unhealthy_on_bad_db",
+          "test_create_fact_returns_409_not_400",
+          "test_auth_returns_401_without_key"
+        ],
+        from: "test_server_integration.py из v8.6 - паттерн",
+        closes: "P0-1 первопричина"
+      },
+      {
+        id: "T05", priority: "P1", tag: "Performance", title: "SQLite WAL + busy_timeout", effort: "30 минут",
+        why: "journal_mode=delete: 273 ops/sec на store_fact. WAL -> 3000+ ops/sec. Три строки кода.",
+        what: [
+          "PRAGMA journal_mode = WAL в try/except",
+          "PRAGMA busy_timeout = 30000",
+          "PRAGMA synchronous = NORMAL",
+          "Применить в RelationStore, ProjectionStore, VersionStore"
+        ],
+        from: "memory.py:105-111 из v8.6",
+        closes: "P2-8 из аудита"
+      },
+      {
+        id: "T06", priority: "P1", tag: "Architecture", title: "core/validators.py - единая валидация", effort: "1 день",
+        why: "fact_id='../../../etc/passwd' проходит store_fact. Валидация разбросана по 4 файлам с разными правилами.",
+        what: [
+          "validate_confidence: явная math.isnan, math.isinf",
+          "validate_fact_id: regex ^[a-zA-Z0-9_\\-.]+$ + max 200 chars",
+          "validate_claim: min 3 символа",
+          "validate_fact_dict: единая точка входа"
+        ],
+        from: "core/validators.py из v8.6 - полный перенос",
+        closes: "Anti path-traversal + NaN/Inf"
+      },
+      {
+        id: "T07", priority: "P1", tag: "Architecture", title: "core/errors.py - типизированные исключения", effort: "1 день",
+        why: "Все ошибки -> HTTP 400. Дубликат, не найден, ESM violation - всё одно. Клиент не может различить.",
+        what: [
+          "VelantrimError -> MemoryError, ValidationError, ESMViolationError, AuditError",
+          "FactNotFoundError (404), DuplicateFactError (409), ImmutableCoreError (403)",
+          "normalize_sqlite_error() конвертирует sqlite3.IntegrityError",
+          "@app.exception_handler(VelantrimError) в FastAPI"
+        ],
+        from: "core/errors.py из v8.6 - полный перенос",
+        closes: "Корректные HTTP статусы"
+      },
+      {
+        id: "T08", priority: "P1", tag: "Memory", title: "VersionStore интеграция в store_fact()", effort: "3 дня",
+        why: "R50 написан но не подключён. GET /mem/history всегда []. 'Full bi-temporal' claim не выполняется.",
+        what: [
+          "В store_fact(): перед UPSERT -> vs.snapshot_before_change(fact_id) если факт существует",
+          "Атомарно в одной транзакции BEGIN IMMEDIATE",
+          "В transition_esm(): автоматически создавать snapshot",
+          "GET /facts/{id}/as-of?date=YYYY-MM-DD -> time-travel"
+        ],
+        from: "core/version_store.py уже есть - только интеграция",
+        closes: "P0-5 из аудита"
+      },
+      {
+        id: "T09", priority: "P1", tag: "Memory", title: "core/raw_memory.py - L0 Immutable Anti-Drift", effort: "2 дня",
+        why: "'Волки иногда избегают людей' -> после 3 суммаризаций -> 'волки боятся людей'. Тихо, без ошибок. L0 в v8.17.9 = просто LRU-кеш.",
+        what: [
+          "Перенести RawMemoryStore, RawMemoryEntry из v8.6",
+          "Таблица l0_raw_memory (migrations/010 из v8.6)",
+          "Поле derived_from в facts (опциональное)",
+          "При ingestion: сначала L0, потом derived факты",
+          "GET /facts/{id}/original"
+        ],
+        from: "core/raw_memory.py из v8.6",
+        closes: "Semantic Drift gap"
+      },
+      {
+        id: "T10", priority: "P2", tag: "Retrieval", title: "TextRank - граф предложений", effort: "3 дня",
+        why: "ExoCortex сохраняет сырые чанки без семантической фильтрации. EITI уже имеет TextRank - портировать в Python.",
+        what: [
+          "core/text_rank.py: TF-IDF similarity matrix, PowerIteration PageRank, SentenceExtractor",
+          "Интегрировать в ingestion: документ -> TextRank -> топ-N предложений -> store_fact",
+          "В L2 consolidation: сессия -> TextRank -> дайджест без LLM",
+          "Граница: TextRank=текст(предложения), PPR=граф(факты)"
+        ],
+        from: "Алгоритм из EITI (JS) -> портировать Python без зависимостей",
+        closes: "Ingestion quality gap"
+      },
+      {
+        id: "T11", priority: "P2", tag: "Memory", title: "FSRS Power-Law Decay R=(1+19/81*t/S)^-0.5", effort: "2 дня",
+        why: "ACT-R экспоненциальный. FSRS power-law верифицирован на миллионах карточек Anki. Готов в v8.6.",
+        what: [
+          "FSRSParams (frozen dataclass), retention(t, S), update_stability()",
+          "В GC._decay_supported(): confidence *= retention(days_since_access, stability)",
+          "Поле stability в facts (ALTER TABLE + DEFAULT 1.0)",
+          "При R < 0.2 -> автоматически Deprecated"
+        ],
+        from: "core/fsrs.py из v8.6 - полный перенос",
+        closes: "RFC0017, дополняет ACT-R"
+      },
+      {
+        id: "T12", priority: "P2", tag: "Retrieval", title: "PPR Approximate - <200ms на 100K фактов", effort: "4 дня",
+        why: "O(VxExiterations) на каждый запрос. На 100K фактов -> 10+ сек. Нет кеша adjacency matrix.",
+        what: [
+          "LRU кеш adjacency matrix - переиспользовать если граф не менялся",
+          "Early stopping при max_diff < 1e-4",
+          "Ограничить обход топ-K рёбер по strength",
+          "Invalidate кеш только при store_fact/add_relation",
+          "Benchmark: test_ppr_latency_100k < 200ms"
+        ],
+        from: "core/retrieval.py в v8.17.9 - оптимизация",
+        closes: "Performance bottleneck"
+      },
+      {
+        id: "T13", priority: "P2", tag: "Verifiability", title: "output_faithfulness.py - TF-IDF overlap checker", effort: "2 дня",
+        why: "Нет проверки что ответ опирается на факты графа. LLM может галлюцинировать поверх верифицированных фактов.",
+        what: [
+          "FaithfulnessResult, check(answer, facts)",
+          "TF-IDF overlap: токенизировать ответ и факты, считать пересечение",
+          "score < 0.3 -> warning в Reasoning Trace",
+          "{faithfulness: {score: 0.82, grounded: 4, total: 5}} в /ask ответ"
+        ],
+        from: "core/output_faithfulness.py из v8.6",
+        closes: "I5/I6 инварианты + GDPR claim"
+      },
+      {
+        id: "T14", priority: "P2", tag: "Architecture", title: "core/feature_config.py + единая версия", effort: "1 день",
+        why: "Версия в 5 местах: core/__init__=8.8.0, pyproject=8.17.8, REST /=8.17.8, /health=8.17.9. ENV-флаги разбросаны.",
+        what: [
+          "core/feature_config.py: @lru_cache, AppSettings dataclass, _flag() helper",
+          "core/__init__.py: from importlib.metadata import version",
+          "pyproject.toml - единственный источник version = '8.17.9'",
+          "clear_config_cache() для тестов"
+        ],
+        from: "core/feature_config.py из v8.6",
+        closes: "P1-1 version drift"
+      },
+      {
+        id: "T15", priority: "P2", tag: "Testing", title: "test_adversarial.py - 48 edge-case тестов", effort: "2 дня",
+        why: "Нет тестов на: NaN confidence, path-traversal fact_id, Ring Zero bypass, ImmutableCore override.",
+        what: [
+          "test_nan_confidence_blocked, test_inf_confidence_blocked",
+          "test_path_traversal_fact_id_blocked",
+          "test_ring_zero_immutable",
+          "test_duplicate_fact_returns_409",
+          "test_esm_forbidden_transition"
+        ],
+        from: "tests/test_adversarial.py из v8.6 - адаптация",
+        closes: "Edge-case coverage"
+      },
+      {
+        id: "T16", priority: "P3", tag: "Product", title: "Deployment Profiles - 6 verticals", effort: "2 дня",
+        why: "Нет готовых конфигов для аудиторий. NLnet pitch: citizen/personal/company/science/education/research.",
+        what: [
+          "core/deployment_profiles.py из v8.6",
+          "config/profiles/*.env: citizen, personal, company, science, education, research",
+          "VELANTRIM_PROFILE=personal -> автозагрузка флагов",
+          "GET /profiles -> список"
+        ],
+        from: "core/deployment_profiles.py из v8.6",
+        closes: "USP + NLnet 'six verticals'"
+      },
+      {
+        id: "T17", priority: "P3", tag: "Product", title: "CrossDomain Bridges - science<->engineering", effort: "3 дня",
+        why: "Запрос о 'нагрузке на материал' не находит факты из 'физики прочности'. Мостов между доменами нет.",
+        what: [
+          "core/cross_domain.py из v8.6: DomainBridge, DomainOrchestrator",
+          "Домены: science, engineering, medicine, law, finance, personal",
+          "При пустом retrieval -> bridge terms из смежного домена",
+          "ENABLE_CROSS_DOMAIN=1"
+        ],
+        from: "core/cross_domain.py из v8.6",
+        closes: "Уникальная USP - нет у Mem0/Letta"
+      },
+      {
+        id: "T18", priority: "P3", tag: "Benchmark", title: "LongMemEval Public Benchmark", effort: "1 неделя",
+        why: "Без публичного числа сравнение с Mem0/Zep/Letta - слова, не наука. NLnet это заметит.",
+        what: [
+          "LongMemEval dataset (публичный MIT)",
+          "Evaluation script: query -> Velantrim -> ground truth",
+          "Baseline Mem0 + Velantrim на одном датасете",
+          "Публикация: raw results + код + воспроизводимая инструкция",
+          "Честно - если хуже в чём-то, написать почему"
+        ],
+        from: "Новое - нет аналога в v8.6",
+        closes: "Главный gap перед академическим сообществом"
+      },
+      {
+        id: "T19", priority: "P1", tag: "Architecture", title: "Fractal Memory Contracts L0-L3", effort: "0.5 дня",
+        why: "Qwen/MemTree подтверждает: память должна быть не плоским RAG, а иерархией L0 raw -> L1 working -> L2 episodic -> Pending -> TruthGate -> L3 canonical.",
+        what: [
+          "core/fractal_memory.py: MemoryRecord, FractalMemoryNode, TraceRecord",
+          "Зафиксировать путь L0 -> L1 -> L2 -> Pending -> TruthGate -> L3",
+          "L3 promotion только при provenance + Guardian + VERIFIED/CANON",
+          "Не заменять memory.py/pipeline.py; это каркас для будущего runtime"
+        ],
+        from: "Qwen Fractal Memory / MemTree / Stingy Context analysis",
+        closes: "Memory Tiers formalization gap"
+      },
+      {
+        id: "T20", priority: "P2", tag: "Retrieval", title: "Fractal Memory Router - recursive retrieval", effort: "3-5 дней",
+        why: "Retrieval должен не только искать чанки, а навигировать по уровням: domain -> concept -> relation -> mechanism -> evidence -> principle.",
+        what: [
+          "Intent Detection -> Domain Selection -> Level Selection -> Recursive Retrieval",
+          "Detail Expansion только если confidence ниже порога",
+          "Использовать HybridRetriever, CrossDomainLayer и CausalGraph как backend",
+          "Заполнять RetrievalPath: traversed_nodes, decisions, depth, time_ms",
+          "Возвращать memory_route рядом с обычным TRACE"
+        ],
+        from: "Qwen Fractal RAG + существующий pipeline TRACE",
+        closes: "Flat retrieval -> hierarchical navigation"
+      },
+      {
+        id: "T21", priority: "P2", tag: "Memory", title: "Compression Strategy L0-L3", effort: "2-3 дня",
+        why: "Сжатие не должно быть одним summary. Для L0->L1, L1->L2, L2->Pending и Pending->L3 нужны разные операции и разные guardrails.",
+        what: [
+          "L0 -> L1: noise filtering, deduplication, tokenization",
+          "L1 -> L2: episode summary, entity extraction, relation extraction",
+          "L2 -> Pending: generalization, principle candidates, conflict scan",
+          "Pending -> L3: verification, graph integration, persisted TRACE"
+        ],
+        from: "Qwen Stingy Context + Velantrim Raw Memory/TruthGate",
+        closes: "Hierarchical compression gap"
+      },
+      {
+        id: "T22", priority: "P2", tag: "Security", title: "Multi-Level Guardian Contract", effort: "1-2 дня",
+        why: "Guardian должен проверять не только финальный ответ, но и retrieval, generation и продвижение в canonical graph memory.",
+        what: [
+          "L1 Guardian: source reliability, dangerous content, stale context",
+          "L2 Guardian: trace coverage, faithfulness, contradiction disclosure",
+          "L3 Guardian: TruthGate, provenance, policy boundary before canon promotion",
+          "L3_ACTION может блокировать продвижение в L3"
+        ],
+        from: "Qwen gap: слабая safety/truth governance",
+        closes: "Guardian layering contract"
+      }
+    ];
+
+    const tags = ["All", "Security", "Memory", "Retrieval", "Architecture", "Testing", "Verifiability", "Product", "Benchmark", "Bug", "Performance"];
+    const priorities = ["P0", "P1", "P2", "P3"];
+    const pc = {
+      P0: { bg: "#ff4444", label: "КРИТИЧНО" },
+      P1: { bg: "#ff8800", label: "ВАЖНО" },
+      P2: { bg: "#f0c040", label: "НУЖНО" },
+      P3: { bg: "#40c080", label: "УЛУЧШЕНИЕ" }
+    };
+
+    let tagF = "All";
+    let prioF = "All";
+    let openTask = null;
+
+    function visibleTasks() {
+      return tasks.filter(function (t) {
+        return (tagF === "All" || t.tag === tagF) && (prioF === "All" || t.priority === prioF);
+      });
+    }
+
+    function renderPriorityPills() {
+      const root = document.getElementById("prio-grid");
+      root.innerHTML = "";
+      priorities.forEach(function (p) {
+        const cfg = pc[p];
+        const count = tasks.filter(function (t) { return t.priority === p; }).length;
+        const active = prioF === p || prioF === "All";
+
+        const pill = document.createElement("div");
+        pill.className = "prio-pill" + (active ? "" : " is-dim");
+        pill.style.background = cfg.bg + "22";
+        pill.style.borderColor = cfg.bg + "55";
+        pill.style.color = cfg.bg;
+        pill.setAttribute("role", "button");
+        pill.setAttribute("tabindex", "0");
+        pill.onclick = function () {
+          prioF = (prioF === p) ? "All" : p;
+          render();
+        };
+        pill.onkeydown = function (e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            pill.click();
+          }
+        };
+
+        const pKey = document.createElement("span");
+        pKey.style.fontWeight = "700";
+        pKey.textContent = p;
+
+        const label = document.createElement("span");
+        label.style.color = "#9ba8bc";
+        label.textContent = cfg.label;
+
+        const badge = document.createElement("span");
+        badge.className = "count";
+        badge.style.color = cfg.bg;
+        badge.textContent = String(count);
+
+        pill.appendChild(pKey);
+        pill.appendChild(label);
+        pill.appendChild(badge);
+        root.appendChild(pill);
+      });
+    }
+
+    function renderTags() {
+      const root = document.getElementById("tag-row");
+      root.innerHTML = "";
+      tags.forEach(function (tag) {
+        const btn = document.createElement("button");
+        btn.className = "tag-btn" + (tagF === tag ? " active" : "");
+        btn.textContent = tag;
+        btn.onclick = function () {
+          tagF = tag;
+          render();
+        };
+        root.appendChild(btn);
+      });
+    }
+
+    function priorityChip(p) {
+      const cfg = pc[p];
+      const el = document.createElement("span");
+      el.style.background = cfg.bg + "22";
+      el.style.color = cfg.bg;
+      el.style.fontSize = "9px";
+      el.style.fontWeight = "700";
+      el.style.padding = "2px 7px";
+      el.style.borderRadius = "4px";
+      el.style.letterSpacing = "0.05em";
+      el.textContent = p;
+      return el;
+    }
+
+    function renderTasks() {
+      const list = visibleTasks();
+      const meta = document.getElementById("meta");
+      meta.textContent = "Показано " + list.length + " из " + tasks.length;
+
+      const root = document.getElementById("tasks");
+      root.innerHTML = "";
+
+      list.forEach(function (task) {
+        const isOpen = (openTask === task.id);
+        const cfg = pc[task.priority];
+
+        const card = document.createElement("div");
+        card.className = "task" + (isOpen ? " open" : "");
+        card.style.borderLeftColor = cfg.bg;
+        card.style.borderColor = isOpen ? (cfg.bg + "55") : "rgba(255,255,255,0.06)";
+        card.onclick = function () {
+          openTask = (isOpen ? null : task.id);
+          renderTasks();
+        };
+
+        const head = document.createElement("div");
+        head.className = "task-head";
+        head.appendChild(priorityChip(task.priority));
+
+        const id = document.createElement("span");
+        id.className = "task-id";
+        id.textContent = task.id;
+        head.appendChild(id);
+
+        const title = document.createElement("span");
+        title.className = "task-title";
+        title.textContent = task.title;
+        head.appendChild(title);
+
+        const tag = document.createElement("span");
+        tag.className = "task-tag";
+        tag.textContent = task.tag;
+        head.appendChild(tag);
+
+        const effort = document.createElement("span");
+        effort.className = "task-effort";
+        effort.textContent = task.effort;
+        head.appendChild(effort);
+
+        const arrow = document.createElement("span");
+        arrow.className = "arrow";
+        arrow.textContent = "▾";
+        head.appendChild(arrow);
+
+        card.appendChild(head);
+
+        const body = document.createElement("div");
+        body.className = "task-body";
+
+        const whyLabel = document.createElement("div");
+        whyLabel.className = "sec-label";
+        whyLabel.textContent = "Почему важно";
+        body.appendChild(whyLabel);
+
+        const why = document.createElement("div");
+        why.className = "why";
+        why.textContent = task.why;
+        body.appendChild(why);
+
+        const whatLabel = document.createElement("div");
+        whatLabel.className = "sec-label";
+        whatLabel.textContent = "Что сделать";
+        body.appendChild(whatLabel);
+
+        task.what.forEach(function (item) {
+          const row = document.createElement("div");
+          row.className = "what-item";
+
+          const marker = document.createElement("span");
+          marker.className = "what-arrow";
+          marker.style.color = cfg.bg;
+          marker.textContent = "→";
+
+          const text = document.createElement("span");
+          text.textContent = item;
+
+          row.appendChild(marker);
+          row.appendChild(text);
+          body.appendChild(row);
+        });
+
+        const metaGrid = document.createElement("div");
+        metaGrid.className = "meta-grid";
+
+        const from = document.createElement("div");
+        from.className = "box from";
+        from.innerHTML = '<span class="label" style="color:#c9a96e">Откуда:</span>' + task.from;
+
+        const closes = document.createElement("div");
+        closes.className = "box closes";
+        closes.innerHTML = '<span class="label" style="color:#4ecdc4">Закрывает:</span>' + task.closes;
+
+        metaGrid.appendChild(from);
+        metaGrid.appendChild(closes);
+        body.appendChild(metaGrid);
+
+        card.appendChild(body);
+        root.appendChild(card);
+      });
+    }
+
+    function render() {
+      renderPriorityPills();
+      renderTags();
+      renderTasks();
+    }
+
+    document.addEventListener("DOMContentLoaded", render);
+  </script>
+</body>
+</html>
