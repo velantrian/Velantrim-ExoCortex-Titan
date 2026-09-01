@@ -107,6 +107,17 @@ class LaterTaskReopenPlan:
         return sum(target.char_count for target in self.targets)
 
 
+def _target_key(target: LaterTaskReopenTarget) -> tuple[int, int, str, str, str, str]:
+    return (
+        target.source_span.start_offset,
+        target.source_span.end_offset,
+        target.source_span.span_id,
+        target.card_id,
+        target.unit_id,
+        target.claim_id,
+    )
+
+
 class LaterTaskReopenPlanner:
     """Select exact source-linked claims for bounded later-task reopen.
 
@@ -118,12 +129,13 @@ class LaterTaskReopenPlanner:
       unsupported claim IDs is eligible;
     * the card document/revision must exactly match the explicit request;
     * claim provenance must include an exact SourceSpan for that revision;
-    * targets are ordered by source offsets, then claim ID;
+    * duplicate claim occurrences across cards collapse to one canonical target;
+    * targets are ordered by stable source/provenance properties;
     * if the hard budget cannot cover all eligible targets, the plan returns
       UNKNOWN rather than silently broadening or truncating semantic scope.
     """
 
-    planner_version = "later-task-reopen.v0.2"
+    planner_version = "later-task-reopen.v0.3"
 
     def plan(
         self,
@@ -167,69 +179,62 @@ class LaterTaskReopenPlanner:
                 source_revision=request.source_revision,
             )
 
-        candidates: list[LaterTaskReopenTarget] = []
-        seen_claim_ids: set[str] = set()
-        saw_revision_mismatch = False
+        candidates_by_claim: dict[str, list[LaterTaskReopenTarget]] = {
+            claim_id: [] for claim_id in eligible
+        }
+        saw_same_document_card = False
+        saw_requested_revision_card = False
 
         for card in cards:
             if not isinstance(card, SectionCard):
                 raise LaterTaskReopenError("cards must contain only SectionCard values")
             if card.document_id != request.document_id:
                 continue
+            saw_same_document_card = True
             if card.source_revision != request.source_revision:
-                saw_revision_mismatch = True
                 continue
+            saw_requested_revision_card = True
 
             for card_claim in card.claims:
                 claim_id = card_claim.claim.claim_id
-                if claim_id not in eligible or claim_id in seen_claim_ids:
+                if claim_id not in eligible:
                     continue
-                spans = tuple(
-                    span
-                    for span in card_claim.claim.source_spans
-                    if span.document_id == request.document_id
-                    and span.source_revision == request.source_revision
-                )
-                if not spans:
-                    continue
-                source_span = min(
-                    spans,
-                    key=lambda span: (span.start_offset, span.end_offset, span.span_id),
-                )
-                candidates.append(
-                    LaterTaskReopenTarget(
-                        claim_id=claim_id,
-                        card_id=card.card_id,
-                        unit_id=card.unit_id,
-                        source_span=source_span,
-                    )
-                )
-                seen_claim_ids.add(claim_id)
+                for span in card_claim.claim.source_spans:
+                    if (
+                        span.document_id == request.document_id
+                        and span.source_revision == request.source_revision
+                    ):
+                        candidates_by_claim[claim_id].append(
+                            LaterTaskReopenTarget(
+                                claim_id=claim_id,
+                                card_id=card.card_id,
+                                unit_id=card.unit_id,
+                                source_span=span,
+                            )
+                        )
+
+        candidates = [
+            min(claim_candidates, key=_target_key)
+            for claim_candidates in candidates_by_claim.values()
+            if claim_candidates
+        ]
 
         if not candidates:
+            if saw_same_document_card and not saw_requested_revision_card:
+                disposition = LaterTaskReopenDisposition.REFUSED
+                reason_code = "source_revision_mismatch"
+            else:
+                disposition = LaterTaskReopenDisposition.UNKNOWN
+                reason_code = "eligible_claims_not_reopenable_from_cards"
             return LaterTaskReopenPlan(
-                disposition=(
-                    LaterTaskReopenDisposition.REFUSED
-                    if saw_revision_mismatch
-                    else LaterTaskReopenDisposition.UNKNOWN
-                ),
-                reason_code=(
-                    "source_revision_mismatch"
-                    if saw_revision_mismatch
-                    else "eligible_claims_not_reopenable_from_cards"
-                ),
+                disposition=disposition,
+                reason_code=reason_code,
                 task_text=request.task_text,
                 document_id=request.document_id,
                 source_revision=request.source_revision,
             )
 
-        candidates.sort(
-            key=lambda target: (
-                target.source_span.start_offset,
-                target.source_span.end_offset,
-                target.claim_id,
-            )
-        )
+        candidates.sort(key=_target_key)
         total_chars = sum(target.char_count for target in candidates)
         if (
             len(candidates) > resolved_budget.max_spans
