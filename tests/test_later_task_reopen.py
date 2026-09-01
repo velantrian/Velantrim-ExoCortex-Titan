@@ -107,32 +107,49 @@ async def _t1_result():
     )
 
 
-def _request(result, *, revision: str | None = None, claim_ids=None):
-    assert result.synthesis is not None
-    return LaterTaskReopenRequest(
-        task_text=_T2,
-        document_id=result.source.document_id,
-        source_revision=revision or result.source.source_revision,
-        unsupported_source_claim_ids=(
-            tuple(result.synthesis.unsupported_source_claim_ids)
-            if claim_ids is None
-            else tuple(claim_ids)
-        ),
-    )
-
-
-@pytest.mark.asyncio
-async def test_later_task_reopen_selects_exact_unsupported_t2_source_span() -> None:
-    result = await _t1_result()
-    assert result.synthesis is not None
-    assert _EXCEPTION_EVIDENCE not in result.source_grounded_digest
-
-    t2_claim_ids = tuple(
+def _t2_claim_ids(result) -> tuple[str, ...]:
+    return tuple(
         card_claim.claim.claim_id
         for card in result.cards
         for card_claim in card.claims
         if _EXCEPTION_EVIDENCE in card_claim.claim.text
     )
+
+
+def _request(
+    result,
+    *,
+    requested_claim_ids=None,
+    unsupported_claim_ids=None,
+    revision: str | None = None,
+):
+    assert result.synthesis is not None
+    requested = (
+        _t2_claim_ids(result)
+        if requested_claim_ids is None
+        else tuple(requested_claim_ids)
+    )
+    unsupported = (
+        tuple(result.synthesis.unsupported_source_claim_ids)
+        if unsupported_claim_ids is None
+        else tuple(unsupported_claim_ids)
+    )
+    return LaterTaskReopenRequest(
+        task_text=_T2,
+        document_id=result.source.document_id,
+        source_revision=revision or result.source.source_revision,
+        requested_claim_ids=requested,
+        unsupported_source_claim_ids=unsupported,
+    )
+
+
+@pytest.mark.asyncio
+async def test_later_task_reopen_selects_exact_requested_unsupported_t2_span() -> None:
+    result = await _t1_result()
+    assert result.synthesis is not None
+    assert _EXCEPTION_EVIDENCE not in result.source_grounded_digest
+
+    t2_claim_ids = _t2_claim_ids(result)
     assert t2_claim_ids
     assert set(t2_claim_ids).issubset(result.synthesis.unsupported_source_claim_ids)
 
@@ -140,11 +157,24 @@ async def test_later_task_reopen_selects_exact_unsupported_t2_source_span() -> N
 
     assert plan.disposition is LaterTaskReopenDisposition.READY
     assert plan.reason_code == "explicit_later_task_with_reopenable_unsupported_claims"
-    assert plan.targets
-    assert set(t2_claim_ids).issubset({target.claim_id for target in plan.targets})
+    assert {target.claim_id for target in plan.targets} == set(t2_claim_ids)
     assert all(target.source_span.document_id == result.source.document_id for target in plan.targets)
     assert all(target.source_span.source_revision == result.source.source_revision for target in plan.targets)
     assert all(target.source_span.verify(result.source.text) for target in plan.targets)
+
+
+@pytest.mark.asyncio
+async def test_later_task_reopen_does_not_infer_task_relevance_without_claim_selection() -> None:
+    result = await _t1_result()
+
+    plan = LaterTaskReopenPlanner().plan(
+        _request(result, requested_claim_ids=()),
+        result.cards,
+    )
+
+    assert plan.disposition is LaterTaskReopenDisposition.UNKNOWN
+    assert plan.reason_code == "no_later_task_claim_selection"
+    assert plan.targets == ()
 
 
 @pytest.mark.asyncio
@@ -152,12 +182,28 @@ async def test_later_task_reopen_does_not_trigger_without_unsupported_signal() -
     result = await _t1_result()
 
     plan = LaterTaskReopenPlanner().plan(
-        _request(result, claim_ids=()),
+        _request(result, unsupported_claim_ids=()),
         result.cards,
     )
 
     assert plan.disposition is LaterTaskReopenDisposition.UNKNOWN
     assert plan.reason_code == "no_unsupported_claim_signal"
+    assert plan.targets == ()
+
+
+@pytest.mark.asyncio
+async def test_later_task_reopen_requires_requested_claim_to_be_unsupported() -> None:
+    result = await _t1_result()
+    t2_claim_ids = _t2_claim_ids(result)
+    assert t2_claim_ids
+
+    plan = LaterTaskReopenPlanner().plan(
+        _request(result, unsupported_claim_ids=("unrelated-claim-id",)),
+        result.cards,
+    )
+
+    assert plan.disposition is LaterTaskReopenDisposition.UNKNOWN
+    assert plan.reason_code == "requested_claims_not_marked_unsupported"
     assert plan.targets == ()
 
 
