@@ -120,6 +120,17 @@ def _has_t2_material(text: str, task: str) -> bool:
     return _EXCEPTION_EVIDENCE in text
 
 
+def _t2_material_claim_ids(result) -> tuple[str, ...]:
+    """Return source-linked claim IDs whose exact claim text contains T2 material."""
+
+    return tuple(
+        card_claim.claim.claim_id
+        for card in result.cards
+        for card_claim in card.claims
+        if _has_t2_material(card_claim.claim.text, _T2)
+    )
+
+
 async def _run_t1():
     reader = _ExactSourceReader()
     assert isinstance(reader, SemanticReader)
@@ -174,6 +185,15 @@ async def test_f2_new_t2_exposes_compact_view_insufficiency_without_proving_abse
 
     # ...but not from the compact T1 representation alone.
     assert _has_t2_material(result.source_grounded_digest, _T2) is False
+
+    # The existing synthesis contract already exposes the omitted T2-material
+    # claim as unsupported rather than silently treating the omission as absence.
+    t2_claim_ids = _t2_material_claim_ids(result)
+    assert t2_claim_ids
+    assert set(t2_claim_ids).issubset(
+        set(result.synthesis.unsupported_source_claim_ids)
+    )
+    assert "source_claims_not_represented_in_synthesis" in result.synthesis.warnings
 
     # Therefore omission from T1 cannot be treated as evidence that X is absent.
     assert _EXCEPTION_EVIDENCE in result.source.text
