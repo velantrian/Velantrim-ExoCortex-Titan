@@ -11,16 +11,20 @@ It intentionally does NOT claim:
     U = evidence demonstrably used by the model
     A = evidence demonstrably supporting the reported answer
 
-Those stages require separate attribution evidence. Prompt presence, message
-transmission, model self-report, or answer change are not treated here as proof
-of internal causal use or answer support.
+U and A remain NOT_ESTABLISHED in this fixture. Those stages require separate
+attribution evidence. Prompt presence, message transmission, model self-report,
+or answer change are not treated here as proof of internal causal use or answer
+support.
 
 Scope: test-only. No runtime behavior is changed.
 """
 from __future__ import annotations
 
 import server
-from core.llm_router import compact_messages_for_deepseek
+from core.llm_router import (
+    compact_messages_for_deepseek,
+    message_content_char_limit_for_provider,
+)
 
 
 def _fact(marker: str, claim: str) -> dict:
@@ -70,38 +74,37 @@ def test_retrieved_facts_are_serialized_into_the_answer_system_prompt():
     assert "fixture-only" not in enriched_system
 
 
-def test_deepseek_packing_can_make_transmitted_context_a_lossy_subset_of_serialized_context():
-    """S -> T is measurable and can be lossy under provider packing."""
+def test_deepseek_packing_can_drop_tail_evidence_from_real_titan_serialization():
+    """Real Titan S -> provider-packed T is observable and can be lossy."""
     early_marker = "RSTA-EARLY-EVIDENCE"
     tail_marker = "RSTA-TAIL-EVIDENCE"
-    long_system = (
-        f"{early_marker}: keep this evidence near the front.\n"
-        + ("x" * 4200)
-        + f"\n{tail_marker}: this evidence is deliberately beyond the limit."
-    )
+    limit = message_content_char_limit_for_provider("deepseek")
+    assert limit is not None
 
-    # S: before provider packing, both evidence markers are serialized.
-    assert early_marker in long_system
-    assert tail_marker in long_system
+    # Build S through Titan's actual serializer, not a hand-built surrogate.
+    # The first fact deliberately exceeds the provider message limit so a later
+    # fact can be present in S while being absent from transmitted T.
+    facts = [
+        _fact(early_marker, "x" * (limit + 500)),
+        _fact(tail_marker, "This tail fact must be serialized before packing."),
+    ]
+    serialized_system = server._build_system_prompt(facts)
+
+    # S: both evidence markers are present in the actual Titan system prompt.
+    assert early_marker in serialized_system
+    assert tail_marker in serialized_system
+    assert len(serialized_system) > limit
 
     packed = compact_messages_for_deepseek(
-        [{"role": "system", "content": long_system}]
+        [{"role": "system", "content": serialized_system}]
     )
     transmitted_system = packed[0]["content"]
 
-    # T: DeepSeek's existing packing contract preserves the early marker while
-    # dropping the tail marker and recording truncation explicitly.
-    assert len(transmitted_system) <= 4000
+    # T: existing DeepSeek packing preserves the early marker while dropping
+    # later serialized evidence and recording the truncation explicitly.
+    assert len(transmitted_system) <= limit
     assert early_marker in transmitted_system
     assert tail_marker not in transmitted_system
     assert "truncated by Velantrim console" in transmitted_system
 
-
-def test_fixture_does_not_promote_transmission_into_use_or_answer_support():
-    """T != U != A remains an explicit negative-authority boundary."""
-    measured_stages = {"R", "S", "T"}
-    unestablished_stages = {"U", "A"}
-
-    assert measured_stages.isdisjoint(unestablished_stages)
-    assert "U" not in measured_stages
-    assert "A" not in measured_stages
+    # No assertion here promotes T into U or A: both remain NOT_ESTABLISHED.
