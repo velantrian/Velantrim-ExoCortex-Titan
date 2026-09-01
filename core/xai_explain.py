@@ -3,6 +3,10 @@ XAI-from-TRACE (Crystal RFC0058 / I34).
 
 Объяснение ответа строится ТОЛЬКО из реального TRACE / reasoning_traces.
 Генерация «почему» через LLM без TRACE — запрещена.
+
+Важно: наличие fact_id в TRACE фиксирует trace membership / доступность на
+наблюдаемом пути, но само по себе не доказывает semantic use, answer support
+или decision authority.
 """
 
 from __future__ import annotations
@@ -24,7 +28,7 @@ def explain_from_trace_elements(
     answer_preview: str = "",
     level: str = "brief",
 ) -> dict[str, Any]:
-    """Собрать объяснение из уже построенной trace-цепочки (без LLM)."""
+    """Собрать bounded-объяснение из уже построенной trace-цепочки (без LLM)."""
     summary = trace_summary(trace)
     if not trace:
         return {
@@ -53,7 +57,7 @@ def explain_from_trace_elements(
     states = summary.get("states") or {}
     validated_n = int(states.get("Validated", 0)) + int(states.get("ImmutableCore", 0))
     lines = [
-        f"Ответ опирается на {summary['count']} факт(ов) из TRACE.",
+        f"TRACE содержит {summary['count']} факт(ов), связанных с путём ответа; это не доказывает их semantic use или поддержку ответа.",
         f"Из них Validated/ImmutableCore: {validated_n}.",
     ]
     if summary.get("sources"):

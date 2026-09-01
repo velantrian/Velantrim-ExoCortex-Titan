@@ -4,7 +4,7 @@
 
 Цель этого слоя — превратить память из набора фактов в рабочую операционную
 систему: у каждого знания должен быть источник, стадия допуска, история
-изменений и объяснимый след использования в ответе.
+изменений и объяснимый след прохождения через ответный путь.
 
 ## Уже добавлено
 
@@ -45,8 +45,14 @@ API:
 ### Reasoning Trace
 
 `reasoning_traces` хранит компактный след ответа: query, answer, режим,
-линзу, использованные fact_id, отброшенные fact_id и заметки. `POST /query`
-теперь сохраняет автоматический trace и возвращает `reasoning_trace_id`.
+линзу, `source_fact_ids` фактов, присутствовавших в наблюдаемом trace-пути,
+`rejected_fact_ids` и заметки. `POST /query` теперь сохраняет автоматический
+trace и возвращает `reasoning_trace_id`.
+
+Важно: наличие `fact_id` в `source_fact_ids` само по себе не доказывает, что
+факт был семантически использован моделью, поддержал конкретное утверждение
+ответа или имеет decision authority. Trace membership — это наблюдение пути,
+а не causal/answer-support attribution.
 
 API:
 
@@ -61,8 +67,9 @@ API:
 3. Добавить Contradiction Dashboard поверх CausalGraph и TruthGate.
 4. Научить SleepTimeWorker ночью разбирать `fact_inbox`, искать дубли и
    предлагать promote/reject.
-5. Расширить ReasoningTrace до полного "why this answer" с исключёнными
-   фактами, thresholds и decisions TruthGate.
+5. Если понадобится полный "why this answer", сначала отдельно измерить и
+   определить контракт semantic use / answer support; текущий ReasoningTrace
+   не должен автоматически считаться таким attribution-механизмом.
 6. Добавить forgetting policy: не delete, а переходы active → archived →
    cold storage с сохранением аудита.
 
@@ -71,5 +78,6 @@ API:
 - L0 сырьё не теряется.
 - L1 facts остаются каноническим источником истины.
 - Inbox не должен автоматически делать факт истинным.
-- Trace не является доказательством; это объяснение пути ответа.
+- Trace не является доказательством semantic use, answer support или decision authority.
+- Trace membership ≠ semantic use ≠ answer support ≠ decision authority.
 - Новые контуры должны быть additive: старые API не ломаются.

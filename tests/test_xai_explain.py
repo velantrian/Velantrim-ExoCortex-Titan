@@ -37,6 +37,9 @@ def test_explain_from_facts_no_llm():
     assert out["policy"] == "xai_from_trace_only"
     assert out["trace_summary"]["count"] == 2
     assert "Validated/ImmutableCore" in out["human_summary"]
+    assert "TRACE содержит 2 факт(ов)" in out["human_summary"]
+    assert "это не доказывает их semantic use или поддержку ответа" in out["human_summary"]
+    assert "Ответ опирается" not in out["human_summary"]
     assert len(out["facts"]) == 2
     assert "trace" in out
 
