@@ -200,6 +200,34 @@ async def test_f2_new_t2_exposes_compact_view_insufficiency_without_proving_abse
     assert _EXCEPTION_EVIDENCE not in result.source_grounded_digest
 
 
+async def test_f2_t2_material_claim_preserves_exact_source_addressability() -> None:
+    """The omitted T2-material claim retains an exact claim-level source handle.
+
+    This proves addressability inside the current read result only. It does not
+    prove that the handle is durably persisted, recoverable across tasks, or wired
+    to an automatic later-task reopen policy.
+    """
+
+    result = await _run_t1()
+
+    t2_claims = [
+        card_claim.claim
+        for card in result.cards
+        for card_claim in card.claims
+        if _has_t2_material(card_claim.claim.text, _T2)
+    ]
+    assert t2_claims
+
+    for claim in t2_claims:
+        assert claim.source_spans
+        for span in claim.source_spans:
+            assert span.document_id == result.source.document_id
+            assert span.source_revision == result.source.source_revision
+            exact_source_text = result.source.text[span.start_offset : span.end_offset]
+            assert exact_source_text == claim.text
+            assert _has_t2_material(exact_source_text, _T2) is True
+
+
 async def test_f2_later_task_reopen_policy_remains_not_established() -> None:
     """Current product result explicitly stops short of durable later-task resume.
 
