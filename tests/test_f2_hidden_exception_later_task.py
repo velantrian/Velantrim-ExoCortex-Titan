@@ -1,6 +1,6 @@
 """F2 Hidden Exception: bounded later-task representation-sufficiency fixture.
 
-This fixture intentionally does not add a reopen mechanism.  It establishes the
+This fixture intentionally does not add a reopen mechanism. It establishes the
 narrow boundary discovered in the 2026-09-01 memory-boundary audit:
 
 * a compact T1 representation can be valid for T1 while omitting source material
@@ -10,7 +10,7 @@ narrow boundary discovered in the 2026-09-01 memory-boundary audit:
 * the current ReaderProductPipeline result is not a durable resume state, so an
   end-to-end later-task reopen policy remains NOT_ESTABLISHED.
 
-The fixture is evidence for a TEST/CONTRACT GAP only.  It grants no runtime,
+The fixture is evidence for a TEST/CONTRACT GAP only. It grants no runtime,
 Canon, persistence, or architecture authority.
 """
 
@@ -32,6 +32,10 @@ from core.semantic_reader import (
     ReaderResult,
     SemanticReader,
 )
+
+
+_EXCEPTION_EVIDENCE = "revoked credential"
+_T2 = "May a request involving a revoked credential be approved?"
 
 
 class _ExactSourceReader:
@@ -90,7 +94,7 @@ def _config() -> ReaderProductConfig:
             max_essence_chars=1_000,
         ),
         # Force a legitimate compact T1 view that cannot contain every source
-        # claim.  The pipeline already records unsupported_source_claim_ids for
+        # claim. The pipeline already records unsupported_source_claim_ids for
         # this bounded truncation case.
         max_digest_chars=96,
     )
@@ -107,6 +111,13 @@ def _source() -> RawSource:
             "be approved, even when ordinary review would otherwise pass."
         ),
     )
+
+
+def _has_t2_material(text: str, task: str) -> bool:
+    """Bounded fixture predicate: does this representation expose T2's key evidence?"""
+
+    assert task == _T2
+    return _EXCEPTION_EVIDENCE in text
 
 
 async def _run_t1():
@@ -126,18 +137,16 @@ async def test_f2_t1_compact_view_can_omit_later_material_exception() -> None:
     assert result.complete is True
     assert result.synthesis is not None
 
-    exception_text = "revoked credential"
-
     # X is genuinely present in the source and in source-linked Reader material.
-    assert exception_text in result.source.text
+    assert _EXCEPTION_EVIDENCE in result.source.text
     assert any(
-        exception_text in card_claim.claim.text
+        _EXCEPTION_EVIDENCE in card_claim.claim.text
         for card in result.cards
         for card_claim in card.claims
     )
 
     # But the bounded compact T1 digest can legally omit X.
-    assert exception_text not in result.source_grounded_digest
+    assert _EXCEPTION_EVIDENCE not in result.source_grounded_digest
 
     central = next(
         claim
@@ -150,18 +159,32 @@ async def test_f2_t1_compact_view_can_omit_later_material_exception() -> None:
     )
 
 
-def test_f2_omitted_from_compact_view_is_not_absent_from_source() -> None:
-    """The discriminating law is NOT REPRESENTED != ABSENT."""
+async def test_f2_new_t2_exposes_compact_view_insufficiency_without_proving_absence() -> None:
+    """A later task needs evidence omitted by the otherwise valid T1 compact view."""
 
-    source = _source()
-    assert "revoked credential" in source.text
+    result = await _run_t1()
+
+    # The genuinely new T2 is answerable from the source-linked material...
+    assert _has_t2_material(result.source.text, _T2) is True
+    assert any(
+        _has_t2_material(card_claim.claim.text, _T2)
+        for card in result.cards
+        for card_claim in card.claims
+    )
+
+    # ...but not from the compact T1 representation alone.
+    assert _has_t2_material(result.source_grounded_digest, _T2) is False
+
+    # Therefore omission from T1 cannot be treated as evidence that X is absent.
+    assert _EXCEPTION_EVIDENCE in result.source.text
+    assert _EXCEPTION_EVIDENCE not in result.source_grounded_digest
 
 
 async def test_f2_later_task_reopen_policy_remains_not_established() -> None:
     """Current product result explicitly stops short of durable later-task resume.
 
     This is intentionally a passing localization test, not an expected-failure
-    implementation demand.  A future owner-local later-task reopen contract may
+    implementation demand. A future owner-local later-task reopen contract may
     replace this assertion only with separate evidence and authorization.
     """
 
